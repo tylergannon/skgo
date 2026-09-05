@@ -46,10 +46,13 @@ and nothing else.
 
 - `ephemeral/` — tracked working material: worklogs, plans, downloaded
   artifacts. Never write to `docs/` without express permission.
-- `ephemeral/inspiration/junkyard/` — a failed earlier attempt, gitignored and
-  read-only. Useful for its Playwright task suite, its guestbook app, and its
-  hard-won kit-3 facts in `.agents/skills/sveltekit-current/SKILL.md`. Do not
-  resurrect its architecture, its codegen, or its process.
+- `ephemeral/inspiration/junkyard/` — an earlier attempt that never produced a
+  working server, kept as gitignored read-only reference. Mine it: the
+  Playwright task suite, the guestbook app, and the kit-3 facts in
+  `.agents/skills/sveltekit-current/SKILL.md` were all paid for. Take any idea
+  that earns its place. What does not come across is the process — its ledgers,
+  sprint contracts, proof harnesses, review rounds and evidence directories are
+  what it built *instead of* the product.
 
 ## SvelteKit facts
 
