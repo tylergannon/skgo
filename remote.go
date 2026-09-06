@@ -10,6 +10,7 @@ package skgo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -70,8 +71,8 @@ type Remote struct {
 	id     string
 	kind   remoteKind
 
-	call func(e *Event, arg any, present bool) (any, error)
-	live func(e *Event, arg any, present bool, yield func(any) error) error
+	call func(ctx context.Context, arg any, present bool) (any, error)
+	live func(ctx context.Context, arg any, present bool, yield func(any) error) error
 }
 
 // ID is the `<hash>/<name>` pair the client addresses this function by.
@@ -102,23 +103,25 @@ type Marker struct{}
 // Query declares fn as a SvelteKit `query`. Write it beside the function, in a
 // file named `*.remote.go`:
 //
-//	func getTodos(e *skgo.Event, _ skgo.None) ([]Todo, error) { ... }
+//	func getTodos(ctx context.Context, _ skgo.None) ([]Todo, error) { ... }
 //
 //	var _ = skgo.Query(getTodos)
 //
 // `skgo generate` emits the sibling `.remote.ts` kit compiles and the Go
-// registration that answers the calls. A query takes an *Event, which cannot
-// write cookies — the same restriction kit places on its own queries.
-func Query[In, Out any](fn func(*Event, In) (Out, error)) Marker { _ = fn; return Marker{} }
+// registration that answers the calls. The request is reachable with
+// skgo.EventFrom(ctx); a query may read cookies but not write them, which is
+// the restriction kit places on its own queries.
+func Query[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
 
-// Command declares fn as a SvelteKit `command`. A command takes a
-// *CommandEvent, which can write cookies; kit allows that in commands and
+// Command declares fn as a SvelteKit `command`. A command is the only remote
+// function whose event may write cookies; kit allows that in commands and
 // forms and nowhere else.
-func Command[In, Out any](fn func(*CommandEvent, In) (Out, error)) Marker { _ = fn; return Marker{} }
+func Command[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
 
 // LiveQuery declares fn as a SvelteKit `query.live`. fn pushes values with
-// yield and returns when the subscription ends.
-func LiveQuery[In, Out any](fn func(*Event, In, func(Out) error) error) Marker {
+// yield and returns when the subscription ends; its context is cancelled when
+// the client disconnects.
+func LiveQuery[In, Out any](fn func(context.Context, In, func(Out) error) error) Marker {
 	_ = fn
 	return Marker{}
 }
@@ -126,30 +129,30 @@ func LiveQuery[In, Out any](fn func(*Event, In, func(Out) error) error) Marker {
 // NewQuery registers a `query` export. module is the module's vite-root-relative
 // path (for example "src/lib/todos.remote.ts") and name the export name.
 // Generated code calls this; application code uses Query.
-func NewQuery[In, Out any](module, name string, fn func(*Event, In) (Out, error)) *Remote {
+func NewQuery[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindQuery)
 	r.call = callAdapter(fn)
 	return r
 }
 
 // NewCommand registers a `command` export.
-func NewCommand[In, Out any](module, name string, fn func(*CommandEvent, In) (Out, error)) *Remote {
+func NewCommand[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindCommand)
-	r.call = callAdapter(func(e *Event, in In) (Out, error) { return fn(&CommandEvent{Event: *e}, in) })
+	r.call = callAdapter(fn)
 	return r
 }
 
 // NewLiveQuery registers a `query.live` export. fn pushes values with yield and
 // returns when the subscription ends; its event's context is cancelled when the
 // client disconnects, and yield returns a non-nil error once that has happened.
-func NewLiveQuery[In, Out any](module, name string, fn func(*Event, In, func(Out) error) error) *Remote {
+func NewLiveQuery[In, Out any](module, name string, fn func(context.Context, In, func(Out) error) error) *Remote {
 	r := newRemote(module, name, kindLive)
-	r.live = func(e *Event, arg any, present bool, yield func(any) error) error {
+	r.live = func(ctx context.Context, arg any, present bool, yield func(any) error) error {
 		in, err := decodeArg[In](arg, present)
 		if err != nil {
 			return err
 		}
-		return fn(e, in, func(out Out) error {
+		return fn(ctx, in, func(out Out) error {
 			v, err := encodeValue(out)
 			if err != nil {
 				return err
@@ -160,13 +163,13 @@ func NewLiveQuery[In, Out any](module, name string, fn func(*Event, In, func(Out
 	return r
 }
 
-func callAdapter[In, Out any](fn func(*Event, In) (Out, error)) func(*Event, any, bool) (any, error) {
-	return func(e *Event, arg any, present bool) (any, error) {
+func callAdapter[In, Out any](fn func(context.Context, In) (Out, error)) func(context.Context, any, bool) (any, error) {
+	return func(ctx context.Context, arg any, present bool) (any, error) {
 		in, err := decodeArg[In](arg, present)
 		if err != nil {
 			return nil, err
 		}
-		out, err := fn(e, in)
+		out, err := fn(ctx, in)
 		if err != nil {
 			return nil, err
 		}
@@ -443,11 +446,9 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 		return
 	}
 
-	// A query gets a plain *Event: kit forbids cookie writes here, and skgo
-	// makes them unrepresentable rather than reporting them at runtime.
-	ev := rs.newEvent(w, r)
+	ev := rs.newEvent(r, false)
 
-	value, err := fn.call(ev, arg, present)
+	value, err := fn.call(withEvent(r.Context(), ev), arg, present)
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
 			rs.writeResult(w, ev, map[string]any{"redirect": redirect.Location})
@@ -491,9 +492,9 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 		return
 	}
 
-	ev := rs.newEvent(w, r)
+	ev := rs.newEvent(r, true)
 
-	value, err := fn.call(ev, arg, present)
+	value, err := fn.call(withEvent(r.Context(), ev), arg, present)
 	if err != nil {
 		// A redirect in a command response makes the client throw, so it is
 		// reported as an ordinary error instead. Cookies written before the
@@ -506,7 +507,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 	// query refreshed by a command that just signed the visitor in reads the
 	// new cookie — exactly as it does in kit, where both share one request.
 	data := map[string]any{"_": value}
-	if q := rs.resolveRefreshes(ev, body.Refreshes); len(q) > 0 {
+	if q := rs.resolveRefreshes(withEvent(r.Context(), ev.immutable()), body.Refreshes); len(q) > 0 {
 		data["q"] = q
 		// `r` tells the client these single-flight updates replace the
 		// invalidateAll it would otherwise run.
@@ -517,7 +518,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 
 // resolveRefreshes runs every refresh key that names a registered query.
 // Unrecognised keys are skipped in silence, as kit does.
-func (rs *Remotes) resolveRefreshes(ev *Event, keys []string) map[string]any {
+func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) map[string]any {
 	q := map[string]any{}
 	for _, key := range keys {
 		// The payload can itself contain no slash, but the id always holds
@@ -536,7 +537,7 @@ func (rs *Remotes) resolveRefreshes(ev *Event, keys []string) map[string]any {
 		if err != nil {
 			continue
 		}
-		value, err := fn.call(ev, arg, present)
+		value, err := fn.call(ctx, arg, present)
 		if err != nil {
 			q[key] = map[string]any{"e": errorNode(asHTTPError(err))}
 			continue
@@ -553,9 +554,19 @@ func rawPayload(u *url.URL) string {
 }
 
 // newEvent builds the per-call handle. The cookie jar it carries is shared by
-// the command and by every query the command's `refreshes` list resolves.
-func (rs *Remotes) newEvent(w http.ResponseWriter, r *http.Request) *Event {
-	return &Event{req: r, jar: newCookieJar(r, rs.secureCookies), writer: w}
+// the command and by every query the command's `refreshes` list resolves, so a
+// refreshed query reads the cookie the command just wrote — kit resolves both
+// on one request, and so does this.
+func (rs *Remotes) newEvent(r *http.Request, mutable bool) *Event {
+	return &Event{req: r, jar: newCookieJar(r, rs.secureCookies), mutable: mutable}
+}
+
+// immutable derives the event a query gets, mirroring kit's
+// `derive_remote_function_event(event, state, false)`.
+func (e *Event) immutable() *Event {
+	derived := *e
+	derived.mutable = false
+	return &derived
 }
 
 func (rs *Remotes) header(w http.ResponseWriter) http.Header {

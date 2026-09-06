@@ -7,6 +7,8 @@
 package todos
 
 import (
+	"context"
+
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
 )
@@ -14,22 +16,22 @@ import (
 // sessionCookie is the name of the cookie the auth functions in src/lib set.
 const sessionCookie = "skgo_session"
 
-// signedIn reports whether the caller has a live session. A query may read
-// cookies; only a command may write them, which is the rule kit enforces on
-// its own remote functions.
-func signedIn(e *skgo.Event) bool {
-	id, _ := e.Cookie(sessionCookie)
+// signedIn reports whether the caller has a live session. The request is
+// reachable from the context, the way kit reaches it with `getRequestEvent()`.
+// A query may read cookies; only a command may write them.
+func signedIn(ctx context.Context) bool {
+	id, _ := skgo.EventFrom(ctx).Cookie(sessionCookie)
 	return businesslogic.Default.Session(id).User != ""
 }
 
 // getTodos lists the todos this visitor may see.
-func getTodos(e *skgo.Event, _ skgo.None) ([]businesslogic.Todo, error) {
-	return businesslogic.Default.Todos(signedIn(e)), nil
+func getTodos(ctx context.Context, _ skgo.None) ([]businesslogic.Todo, error) {
+	return businesslogic.Default.Todos(signedIn(ctx)), nil
 }
 
 // getTodo looks one todo up by id.
-func getTodo(e *skgo.Event, id string) (businesslogic.Todo, error) {
-	todo, ok := businesslogic.Default.Todo(id, signedIn(e))
+func getTodo(ctx context.Context, id string) (businesslogic.Todo, error) {
+	todo, ok := businesslogic.Default.Todo(id, signedIn(ctx))
 	if !ok {
 		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", id)
 	}
@@ -37,7 +39,7 @@ func getTodo(e *skgo.Event, id string) (businesslogic.Todo, error) {
 }
 
 // addTodo appends a todo to the list.
-func addTodo(e *skgo.CommandEvent, text string) (businesslogic.Todo, error) {
+func addTodo(ctx context.Context, text string) (businesslogic.Todo, error) {
 	if text == "" {
 		return businesslogic.Todo{}, skgo.Errorf(400, "A todo needs some text")
 	}
@@ -53,7 +55,7 @@ type Rename struct {
 }
 
 // renameTodo changes one todo's text.
-func renameTodo(e *skgo.CommandEvent, arg Rename) (businesslogic.Todo, error) {
+func renameTodo(ctx context.Context, arg Rename) (businesslogic.Todo, error) {
 	todo, ok := businesslogic.Default.Rename(arg.ID, arg.Text)
 	if !ok {
 		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", arg.ID)
@@ -63,7 +65,7 @@ func renameTodo(e *skgo.CommandEvent, arg Rename) (businesslogic.Todo, error) {
 
 // watchCount pushes the number of todos, now and after every change, until the
 // client disconnects.
-func watchCount(e *skgo.Event, _ skgo.None, yield func(int) error) error {
+func watchCount(ctx context.Context, _ skgo.None, yield func(int) error) error {
 	updates, unsubscribe, count := businesslogic.Default.Watch()
 	defer unsubscribe()
 
@@ -72,7 +74,7 @@ func watchCount(e *skgo.Event, _ skgo.None, yield func(int) error) error {
 	}
 	for {
 		select {
-		case <-e.Context().Done():
+		case <-ctx.Done():
 			return nil
 		case n := <-updates:
 			if err := yield(n); err != nil {

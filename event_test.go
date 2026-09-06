@@ -1,6 +1,7 @@
 package skgo
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -48,8 +49,8 @@ func jsonList(items []string) string {
 }
 
 func TestCommandSetsCookieWithKitDefaults(t *testing.T) {
-	login := NewCommand(testModule, "login", func(e *CommandEvent, user string) (string, error) {
-		if err := e.SetCookie("session", user, CookieOptions{MaxAge: 3600}); err != nil {
+	login := NewCommand(testModule, "login", func(ctx context.Context, user string) (string, error) {
+		if err := EventFrom(ctx).SetCookie("session", user, CookieOptions{MaxAge: 3600}); err != nil {
 			return "", err
 		}
 		return user, nil
@@ -74,8 +75,8 @@ func TestCommandSetsCookieWithKitDefaults(t *testing.T) {
 }
 
 func TestCommandDeleteCookieExpiresIt(t *testing.T) {
-	logout := NewCommand(testModule, "logout", func(e *CommandEvent, _ None) (bool, error) {
-		return true, e.DeleteCookie("session", CookieOptions{})
+	logout := NewCommand(testModule, "logout", func(ctx context.Context, _ None) (bool, error) {
+		return true, EventFrom(ctx).DeleteCookie("session", CookieOptions{})
 	})
 	rs := testRemotes(t, RemoteConfig{Origin: "http://localhost:8080"}, logout)
 
@@ -95,11 +96,11 @@ func TestCommandDeleteCookieExpiresIt(t *testing.T) {
 
 func TestCookieWrittenInCallIsVisibleToTheSameCall(t *testing.T) {
 	var seen string
-	login := NewCommand(testModule, "login", func(e *CommandEvent, user string) (string, error) {
-		if err := e.SetCookie("session", user, CookieOptions{}); err != nil {
+	login := NewCommand(testModule, "login", func(ctx context.Context, user string) (string, error) {
+		if err := EventFrom(ctx).SetCookie("session", user, CookieOptions{}); err != nil {
 			return "", err
 		}
-		seen, _ = e.Cookie("session")
+		seen, _ = EventFrom(ctx).Cookie("session")
 		return user, nil
 	})
 	rs := testRemotes(t, RemoteConfig{}, login)
@@ -112,11 +113,11 @@ func TestCookieWrittenInCallIsVisibleToTheSameCall(t *testing.T) {
 
 func TestDeletedCookieReadsAsAbsent(t *testing.T) {
 	var present bool
-	logout := NewCommand(testModule, "logout", func(e *CommandEvent, _ None) (bool, error) {
-		if err := e.DeleteCookie("session", CookieOptions{}); err != nil {
+	logout := NewCommand(testModule, "logout", func(ctx context.Context, _ None) (bool, error) {
+		if err := EventFrom(ctx).DeleteCookie("session", CookieOptions{}); err != nil {
 			return false, err
 		}
-		_, present = e.Cookie("session")
+		_, present = EventFrom(ctx).Cookie("session")
 		return true, nil
 	})
 	rs := testRemotes(t, RemoteConfig{}, logout)
@@ -131,12 +132,12 @@ func TestRefreshedQuerySeesTheCookieTheCommandJustSet(t *testing.T) {
 	// This is the single-flight sign-in: `login(...).updates(whoami())` must
 	// come back carrying the signed-in answer, or the page shows the
 	// signed-out one until the next navigation.
-	whoami := NewQuery(testModule, "whoami", func(e *Event, _ None) (string, error) {
-		user, _ := e.Cookie("session")
+	whoami := NewQuery(testModule, "whoami", func(ctx context.Context, _ None) (string, error) {
+		user, _ := EventFrom(ctx).Cookie("session")
 		return user, nil
 	})
-	login := NewCommand(testModule, "login", func(e *CommandEvent, user string) (string, error) {
-		return user, e.SetCookie("session", user, CookieOptions{})
+	login := NewCommand(testModule, "login", func(ctx context.Context, user string) (string, error) {
+		return user, EventFrom(ctx).SetCookie("session", user, CookieOptions{})
 	})
 	rs := testRemotes(t, RemoteConfig{}, whoami, login)
 
@@ -149,8 +150,8 @@ func TestRefreshedQuerySeesTheCookieTheCommandJustSet(t *testing.T) {
 
 func TestRelativeCookiePathIsRefused(t *testing.T) {
 	// Kit: "Cookies set in remote functions must have an absolute path".
-	bad := NewCommand(testModule, "bad", func(e *CommandEvent, _ None) (bool, error) {
-		if err := e.SetCookie("session", "ada", CookieOptions{Path: "todos"}); err != nil {
+	bad := NewCommand(testModule, "bad", func(ctx context.Context, _ None) (bool, error) {
+		if err := EventFrom(ctx).SetCookie("session", "ada", CookieOptions{Path: "todos"}); err != nil {
 			return false, err
 		}
 		return true, nil
@@ -170,12 +171,16 @@ func TestRelativeCookiePathIsRefused(t *testing.T) {
 	}
 }
 
-func TestQueryNeverWritesCookies(t *testing.T) {
-	// A query cannot write a cookie at all: it receives an *Event, which has
-	// no SetCookie method, so kit's "Cannot set cookies in `query`" rule is a
-	// compile error here rather than a runtime throw. All that is left to
-	// check is that the response carries nothing.
-	q := NewQuery(testModule, "whoami", func(e *Event, _ None) (string, error) {
+func TestQueryCannotWriteCookies(t *testing.T) {
+	// Kit throws "Cannot set cookies in `query` or `prerender` functions"
+	// because a query's result is cached by its argument and replayed from
+	// that cache, so the cookie would be written once and then quietly
+	// skipped. skgo returns the refusal instead of throwing it.
+	var setErr, deleteErr error
+	q := NewQuery(testModule, "whoami", func(ctx context.Context, _ None) (string, error) {
+		e := EventFrom(ctx)
+		setErr = e.SetCookie("session", "ada", CookieOptions{})
+		deleteErr = e.DeleteCookie("session", CookieOptions{})
 		user, _ := e.Cookie("session")
 		return user, nil
 	})
@@ -186,12 +191,60 @@ func TestQueryNeverWritesCookies(t *testing.T) {
 	rec := httptest.NewRecorder()
 	rs.ServeHTTP(rec, req)
 
+	for _, err := range []error{setErr, deleteErr} {
+		if err == nil {
+			t.Fatal("a query wrote a cookie")
+		}
+		if !strings.Contains(err.Error(), "only a command") {
+			t.Fatalf("error = %q, want it to name the rule", err)
+		}
+	}
 	if got := rec.Header().Values("Set-Cookie"); len(got) != 0 {
 		t.Fatalf("Set-Cookie = %v, want none", got)
 	}
 	_, data, _ := envelope(t, rec.Body.Bytes())
 	if got := field(t, data, "_"); got != "ada" {
-		t.Fatalf("whoami = %#v, want the request cookie", got)
+		t.Fatalf("whoami = %#v, want the request cookie it may still read", got)
+	}
+}
+
+func TestARefreshedQueryStillCannotWriteCookies(t *testing.T) {
+	// The refreshes a command resolves share its cookie jar, so they must not
+	// also inherit its permission to write.
+	var refreshErr error
+	whoami := NewQuery(testModule, "whoami", func(ctx context.Context, _ None) (string, error) {
+		refreshErr = EventFrom(ctx).SetCookie("session", "eve", CookieOptions{})
+		return "", nil
+	})
+	login := NewCommand(testModule, "login", func(ctx context.Context, user string) (string, error) {
+		return user, EventFrom(ctx).SetCookie("session", user, CookieOptions{})
+	})
+	rs := testRemotes(t, RemoteConfig{}, whoami, login)
+
+	rec := postCommand(t, rs, login, "ada", []string{whoami.ID() + "/"})
+	if refreshErr == nil {
+		t.Fatal("a query refreshed by a command wrote a cookie")
+	}
+	if got := rec.Header().Values("Set-Cookie"); len(got) != 1 || !strings.Contains(got[0], "session=ada") {
+		t.Fatalf("Set-Cookie = %v, want only the command's cookie", got)
+	}
+}
+
+func TestEventOutsideARemoteFunction(t *testing.T) {
+	// A helper shared with ordinary server code must not have to branch: every
+	// method is safe on the nil event EventFrom returns outside a call.
+	e := EventFrom(context.Background())
+	if e != nil {
+		t.Fatalf("EventFrom(background) = %v, want nil", e)
+	}
+	if v, ok := e.Cookie("session"); ok || v != "" {
+		t.Fatalf("Cookie on a nil event = %q, %v", v, ok)
+	}
+	if e.Request() != nil {
+		t.Fatal("Request on a nil event is not nil")
+	}
+	if err := e.SetCookie("session", "ada", CookieOptions{}); err == nil {
+		t.Fatal("SetCookie on a nil event succeeded")
 	}
 }
 
@@ -219,7 +272,7 @@ func TestSecureCookieDefaultMirrorsKit(t *testing.T) {
 }
 
 func TestRegistryRefusesToStartWhenTheBuildDisagrees(t *testing.T) {
-	q := NewQuery(testModule, "getTodos", func(e *Event, _ None) (int, error) { return 1, nil })
+	q := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) (int, error) { return 1, nil })
 
 	manifest := Manifest{AppDir: "_app", Remotes: []string{q.ID(), "abc123/vanished"}}
 	_, err := NewRemotes(manifest.RemoteConfig("http://127.0.0.1:8080"), q)
@@ -245,7 +298,7 @@ func TestDevModeSkipsTheBuildCheck(t *testing.T) {
 	// In dev the client comes from vite, not from `build/`, so the manifest's
 	// list describes the last production build and says nothing about what is
 	// running.
-	q := NewQuery(testModule, "getTodos", func(e *Event, _ None) (int, error) { return 1, nil })
+	q := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) (int, error) { return 1, nil })
 	cfg := Manifest{AppDir: "_app", Remotes: []string{"abc123/vanished"}}.RemoteConfig("")
 	cfg.Dev = true
 	if _, err := NewRemotes(cfg, q); err != nil {
@@ -254,7 +307,7 @@ func TestDevModeSkipsTheBuildCheck(t *testing.T) {
 }
 
 func TestHandBuiltConfigIsNotCheckedAgainstAManifest(t *testing.T) {
-	q := NewQuery(testModule, "getTodos", func(e *Event, _ None) (int, error) { return 1, nil })
+	q := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) (int, error) { return 1, nil })
 	if _, err := NewRemotes(RemoteConfig{}, q); err != nil {
 		t.Fatalf("NewRemotes refused a config that never came from a build: %v", err)
 	}

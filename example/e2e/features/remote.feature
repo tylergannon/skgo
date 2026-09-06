@@ -30,8 +30,11 @@ Feature: Remote functions written in Go
     Then the live count increased by 1
 
   Scenario: Renaming a todo updates the open page without a second request
-    Given I open "/todos/t1"
-    When the todo detail has loaded
+    Given I open "/todos"
+    When the todo list has loaded
+    And I add the todo "rename me"
+    And I open the todo "rename me"
+    And the todo detail has loaded
     And I note the remote request count
     And I rename the open todo to "renamed in one flight"
     Then the todo detail shows "renamed in one flight"

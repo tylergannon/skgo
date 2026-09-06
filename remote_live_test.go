@@ -99,11 +99,11 @@ func readFrame(t *testing.T, br *bufio.Reader) string {
 }
 
 func TestLiveFirstFrameIsGolden(t *testing.T) {
-	fn := NewLiveQuery(testModule, "watchCount", func(e *Event, _ None, yield func(string) error) error {
+	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
 		if err := yield("initial"); err != nil {
 			return err
 		}
-		<-e.Context().Done()
+		<-ctx.Done()
 		return nil
 	})
 	srv, _, _ := liveServer(t, fn)
@@ -117,13 +117,13 @@ func TestLiveFirstFrameIsGolden(t *testing.T) {
 }
 
 func TestLiveDedupesUnchangedFrames(t *testing.T) {
-	fn := NewLiveQuery(testModule, "watchCount", func(e *Event, _ None, yield func(string) error) error {
+	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
 		for _, v := range []string{"a", "a", "b"} {
 			if err := yield(v); err != nil {
 				return err
 			}
 		}
-		<-e.Context().Done()
+		<-ctx.Done()
 		return nil
 	})
 	srv, _, _ := liveServer(t, fn)
@@ -146,11 +146,11 @@ func TestLiveSendsKeepAlive(t *testing.T) {
 	liveKeepAlive = 20 * time.Millisecond
 	t.Cleanup(func() { liveKeepAlive = previous })
 
-	fn := NewLiveQuery(testModule, "watchCount", func(e *Event, _ None, yield func(string) error) error {
+	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
 		if err := yield("initial"); err != nil {
 			return err
 		}
-		<-e.Context().Done()
+		<-ctx.Done()
 		return nil
 	})
 	srv, _, _ := liveServer(t, fn)
@@ -169,12 +169,12 @@ func TestLiveCancellationTearsDownOnceAndDropsLateValues(t *testing.T) {
 	var cleanups atomic.Int32
 	lateYield := make(chan error, 1)
 
-	fn := NewLiveQuery(testModule, "watchCount", func(e *Event, _ None, yield func(string) error) error {
+	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
 		defer cleanups.Add(1)
 		if err := yield("initial"); err != nil {
 			return err
 		}
-		<-e.Context().Done()
+		<-ctx.Done()
 		// A value produced after cancellation must be refused, and the error
 		// this function then returns must never reach the client.
 		lateYield <- yield("too late")
@@ -211,7 +211,7 @@ func TestLiveCancellationTearsDownOnceAndDropsLateValues(t *testing.T) {
 }
 
 func TestLiveRejectsNonGet(t *testing.T) {
-	fn := NewLiveQuery(testModule, "watchCount", func(e *Event, _ None, yield func(string) error) error {
+	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
 		return nil
 	})
 	rs := testRemotes(t, RemoteConfig{}, fn)

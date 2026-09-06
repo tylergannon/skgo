@@ -7,45 +7,65 @@ import (
 	"time"
 )
 
-// Event is the per-call handle a remote function receives. It is skgo's
-// equivalent of the `RequestEvent` kit hands to a remote function through
-// `getRequestEvent()`, narrowed the same way kit narrows it.
+// Event is the per-call handle a remote function reaches through its context.
+// It is skgo's equivalent of the `RequestEvent` kit hands to a remote function
+// through `getRequestEvent()`, narrowed the same way kit narrows it.
 //
 // Kit derives a restricted event for every remote function
 // (`runtime/app/server/remote/shared.js`): `setHeaders` throws, and inside a
-// `query`, `query.live`, `query.batch` or `prerender` so does `cookies.set`
-// and `cookies.delete`. skgo enforces the same rule with types instead of
-// throws: a query receives an *Event, which can only read cookies, and a
-// command receives a *CommandEvent, which can also write them.
+// `query`, `query.live`, `query.batch` or `prerender` so do `cookies.set` and
+// `cookies.delete`. skgo enforces the same rules; the difference is that a Go
+// handler returns the refusal rather than throwing it.
 type Event struct {
-	req    *http.Request
-	jar    *cookieJar
-	writer http.ResponseWriter
+	req *http.Request
+	jar *cookieJar
+	// mutable reports that this call may write cookies, which is true of a
+	// command and of nothing else. A query refreshed by a command shares the
+	// command's cookie jar but gets its own immutable event, exactly as kit
+	// derives a fresh non-cookie-writing event for it.
+	mutable bool
 }
 
-// Context is the request's context. It is cancelled when the client goes away,
-// which is how a `query.live` producer learns to stop.
-func (e *Event) Context() context.Context { return e.req.Context() }
+type eventKey struct{}
 
-// Request is the HTTP request that carried this call.
+// EventFrom returns the remote function's event, mirroring kit's
+// `getRequestEvent()`. Outside a remote function it returns nil, and every
+// method below is safe on a nil *Event, so a helper shared with non-remote
+// code does not have to branch.
+func EventFrom(ctx context.Context) *Event {
+	e, _ := ctx.Value(eventKey{}).(*Event)
+	return e
+}
+
+// withEvent is how the dispatcher makes the event reachable.
+func withEvent(ctx context.Context, e *Event) context.Context {
+	return context.WithValue(ctx, eventKey{}, e)
+}
+
+// Request is the HTTP request that carried this call, or nil outside a remote
+// function.
 //
 // Note that its URL is the remote-function endpoint — `/_app/remote/<hash>/<name>` —
 // not the page the user is looking at. Kit is stricter still: reading
 // `event.url`, `event.params` or `event.route` inside a query throws, because a
-// query's result is cached by its argument and would go stale. Anything a
-// remote function needs about the page belongs in its argument.
-func (e *Event) Request() *http.Request { return e.req }
+// query's result is cached by its argument and would go stale, so the client
+// would keep showing an answer computed for a page it has since left. Anything
+// a remote function needs about the page belongs in its argument.
+func (e *Event) Request() *http.Request {
+	if e == nil {
+		return nil
+	}
+	return e.req
+}
 
 // Cookie returns the value of a request cookie. A cookie written earlier in
 // the same call shadows the one the browser sent, and a cookie deleted earlier
 // reads as absent — the same precedence kit's `cookies.get` applies.
-func (e *Event) Cookie(name string) (string, bool) { return e.jar.get(name) }
-
-// CommandEvent is the handle a `command` receives. Kit allows cookie writes in
-// commands and forms and nowhere else, so this is the only event type that can
-// make them.
-type CommandEvent struct {
-	Event
+func (e *Event) Cookie(name string) (string, bool) {
+	if e == nil {
+		return "", false
+	}
+	return e.jar.get(name)
 }
 
 // CookieOptions mirrors the options kit's `cookies.set` accepts. A zero field
@@ -71,16 +91,37 @@ type CookieOptions struct {
 	Secure *bool
 }
 
-// SetCookie writes a cookie on the command's response.
-func (e *CommandEvent) SetCookie(name, value string, opts CookieOptions) error {
+// SetCookie writes a cookie on the response.
+//
+// Only a `command` may do this. Kit throws "Cannot set cookies in `query` or
+// `prerender` functions" everywhere else, because a query's result is cached
+// by its argument and replayed from that cache, so a cookie it wrote would be
+// written once and then silently skipped.
+func (e *Event) SetCookie(name, value string, opts CookieOptions) error {
+	if err := e.mayWriteCookies("set"); err != nil {
+		return err
+	}
 	return e.jar.set(name, value, opts, false)
 }
 
 // DeleteCookie removes a cookie. Kit implements `cookies.delete` as a `set`
 // with an empty value and `maxAge: 0`, and so does this; the options must name
 // the same Path and Domain the cookie was set with or the browser keeps it.
-func (e *CommandEvent) DeleteCookie(name string, opts CookieOptions) error {
+func (e *Event) DeleteCookie(name string, opts CookieOptions) error {
+	if err := e.mayWriteCookies("delete"); err != nil {
+		return err
+	}
 	return e.jar.set(name, "", opts, true)
+}
+
+func (e *Event) mayWriteCookies(verb string) error {
+	if e == nil {
+		return Errorf(500, "skgo: cannot %s cookies outside a remote function", verb)
+	}
+	if !e.mutable {
+		return Errorf(500, "skgo: cannot %s cookies in a query; only a command may write them", verb)
+	}
+	return nil
 }
 
 // cookieJar collects the cookies one call writes and answers reads with the

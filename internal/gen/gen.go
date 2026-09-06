@@ -6,7 +6,7 @@
 // Go function in a `*.remote.go` file, colocated with the routes that use it,
 // and marks it:
 //
-//	func getTodos(e *skgo.Event, _ skgo.None) ([]Todo, error) { ... }
+//	func getTodos(ctx context.Context, _ skgo.None) ([]Todo, error) { ... }
 //
 //	var _ = skgo.Query(getTodos)
 //

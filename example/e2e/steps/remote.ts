@@ -28,6 +28,10 @@ When('the todo detail has loaded', async ({ page }) => {
 	await expect(page.getByTestId('todo-detail').getByTestId('todo-text')).not.toBeEmpty();
 });
 
+When('I open the todo {string}', async ({ page }, text: string) => {
+	await page.getByTestId('todos').getByRole('link', { name: text }).click();
+});
+
 When('I rename the open todo to {string}', async ({ page }, text: string) => {
 	await page.getByTestId('rename-todo').fill(text);
 	await page.getByTestId('save-todo').click();

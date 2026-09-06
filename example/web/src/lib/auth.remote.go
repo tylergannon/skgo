@@ -2,6 +2,8 @@
 package lib
 
 import (
+	"context"
+
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
 )
@@ -11,27 +13,28 @@ const sessionCookie = "skgo_session"
 
 // whoami reports who the caller is signed in as. A query may read cookies but
 // never write them, so this cannot accidentally start a session.
-func whoami(e *skgo.Event, _ skgo.None) (businesslogic.Session, error) {
-	id, _ := e.Cookie(sessionCookie)
+func whoami(ctx context.Context, _ skgo.None) (businesslogic.Session, error) {
+	id, _ := skgo.EventFrom(ctx).Cookie(sessionCookie)
 	return businesslogic.Default.Session(id), nil
 }
 
 // signIn opens a session and stores its id in an HttpOnly cookie. Kit allows
-// cookie writes in commands and nowhere else, which is why this takes a
-// *skgo.CommandEvent.
-func signIn(e *skgo.CommandEvent, user string) (businesslogic.Session, error) {
+// cookie writes in commands and forms and nowhere else, so declaring this as
+// anything but a command would make SetCookie fail.
+func signIn(ctx context.Context, user string) (businesslogic.Session, error) {
 	if user == "" {
 		return businesslogic.Session{}, skgo.Errorf(400, "Who are you?")
 	}
 	id := businesslogic.Default.SignIn(user)
-	if err := e.SetCookie(sessionCookie, id, skgo.CookieOptions{MaxAge: 60 * 60}); err != nil {
+	if err := skgo.EventFrom(ctx).SetCookie(sessionCookie, id, skgo.CookieOptions{MaxAge: 60 * 60}); err != nil {
 		return businesslogic.Session{}, err
 	}
 	return businesslogic.Session{User: user}, nil
 }
 
 // signOut ends the session and clears the cookie.
-func signOut(e *skgo.CommandEvent, _ skgo.None) (businesslogic.Session, error) {
+func signOut(ctx context.Context, _ skgo.None) (businesslogic.Session, error) {
+	e := skgo.EventFrom(ctx)
 	id, _ := e.Cookie(sessionCookie)
 	businesslogic.Default.SignOut(id)
 	if err := e.DeleteCookie(sessionCookie, skgo.CookieOptions{}); err != nil {
