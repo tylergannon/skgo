@@ -79,6 +79,36 @@ load-bearing — would each one actually fail if the feature were broken or
 removed — and then runs them. Do not audit diffs or re-derive claims from
 source as a substitute; a passing load-bearing suite is the answer.
 
+**A passing command is not evidence.** An exit code of zero is exactly what a
+silently skipped test prints. Validation has to produce artifacts a human can
+look at without reading code or rerunning anything: screenshots of the running
+app at the moment each scenario asserts, and they have to be good — the actual
+page, showing the actual state the scenario claims, legible enough to tell
+whether it is real. A scenario that cannot produce one is a scenario nobody can
+check. Skips are failures: a check that cannot run because its toolchain is
+missing has not passed, and must not be able to report that it did.
+
+**Never derive what you expect from the thing you are testing.** The one leak
+this project has shipped got past an assertion that was already exact — the live
+count had to equal *the count noted a moment earlier, plus one* — because the
+baseline was read off the same broken counter. Every wrong value satisfied it.
+Anchor an expectation in something independent: a fixture the test supplied, the
+rows actually visible on the page, a number written into the scenario. The same
+trap in another shape is a `Then` whose only content is "X is absent", which a
+page that rendered nothing at all satisfies perfectly.
+
+Assert at the granularity the behaviour deserves, and tighten one when it lets a
+real bug through. A suite tightened *a priori* is brittle, and brittle scenarios
+get deleted rather than fixed.
+
+Then **open every screenshot and look at it.** Producing them is half the job;
+an unexamined screenshot is the same unread artifact as an exit code. A green
+suite over a screenshot showing an error boundary, an empty list, a stack trace
+or a blank page means the suite is wrong, and that is the single most valuable
+thing an agent can find. Never hand a human a screenshot you have not looked at,
+and never hand them one that obviously shows a failure — if it does, the finding
+is the failure, not the file.
+
 **Don't narrate.** No status documents, no progress reports, no summaries of
 work already visible in the diff. The worklog exists for actionable
 intelligence — corrections, traps, things that will change a future decision —

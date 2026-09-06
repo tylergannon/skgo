@@ -1,0 +1,33 @@
+# Template for dispatching a skgo mission. Copy it, replace `goal`, run it.
+#
+# The point of the shape: the agent does not decide whether it is done. The
+# check does, and the check is the acceptance suite. An agent that reports
+# success while the suite is red simply loops.
+name: skgo-mission
+goal: |
+  REPLACE ME. State the capability a developer should have when this is done,
+  where kit's pinned source is, and what proof is accepted. Do not prescribe
+  files, designs, or steps — see AGENTS.md, "Delegate missions, not methods".
+start: build
+
+defaults:
+  timeout: 3600s
+  max_retries: 1
+  model:
+    name: claude-opus-5
+    effort: high
+
+nodes:
+  - id: build
+    type: agent
+    max_visits: 6
+    prompt: $goal
+    edges:
+      - to: acceptance
+
+  - id: acceptance
+    type: command
+    command: ./ephemeral/tractor/acceptance.sh
+    edges:
+      success: success
+      error: build
