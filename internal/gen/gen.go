@@ -61,28 +61,34 @@ func Run(cfg Config) error {
 		return fmt.Errorf("skgo: %s does not look like a vite root: no src/ directory", web)
 	}
 
-	files, err := findRemoteFiles(web)
+	files, err := findSourceFiles(web)
 	if err != nil {
 		return err
 	}
 	if len(files) == 0 {
-		return fmt.Errorf("skgo: no *.remote.go files under %s", filepath.Join(web, "src"))
+		return fmt.Errorf("skgo: no *.remote.go, page.server.go or layout.server.go files under %s", filepath.Join(web, "src"))
 	}
 
 	app, err := loadApp(cfg, files)
 	if err != nil {
 		return err
 	}
-	if len(app.remotes) == 0 {
-		return fmt.Errorf("skgo: found %d *.remote.go file(s) but no skgo.Query, skgo.Command or skgo.LiveQuery declaration in any of them", len(files))
+	if len(app.remotes) == 0 && len(app.loads) == 0 {
+		return fmt.Errorf("skgo: found %d source file(s) but no skgo.Query, skgo.Command, skgo.LiveQuery or skgo.Load declaration in any of them", len(files))
 	}
 
 	// Types first: the stubs import what polytype emits, so a type that
 	// cannot be projected must stop generation before any stub is written.
+	if err := app.declareLoadTypes(); err != nil {
+		return err
+	}
 	if err := app.generateTypes(); err != nil {
 		return err
 	}
 	if err := app.writeStubs(); err != nil {
+		return err
+	}
+	if err := app.writeLoadStubs(); err != nil {
 		return err
 	}
 	if err := app.writePackageBindings(); err != nil {
@@ -100,9 +106,19 @@ func Run(cfg Config) error {
 	return app.writeRemoteList()
 }
 
-// findRemoteFiles collects every `*.remote.go` under `<web>/src`, skipping the
-// directories neither Go nor a developer means to be scanned.
-func findRemoteFiles(web string) ([]string, error) {
+// loadFileNames are the two file names that carry a server load. A route
+// directory holds one `+page.server.ts` and one `+layout.server.ts` at most, so
+// the Go file that generates each is named for it — minus the `+`, which Go
+// refuses in a file name.
+var loadFileNames = map[string]string{
+	"page.server.go":   "+page.server.ts",
+	"layout.server.go": "+layout.server.ts",
+}
+
+// findSourceFiles collects every `*.remote.go`, `page.server.go` and
+// `layout.server.go` under `<web>/src`, skipping the directories neither Go nor
+// a developer means to be scanned.
+func findSourceFiles(web string) ([]string, error) {
 	var found []string
 	src := filepath.Join(web, "src")
 	err := filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
@@ -119,7 +135,10 @@ func findRemoteFiles(web string) ([]string, error) {
 			}
 			return nil
 		}
-		if !strings.HasSuffix(name, ".remote.go") || strings.HasSuffix(name, "_gen.go") {
+		if strings.HasSuffix(name, "_gen.go") {
+			return nil
+		}
+		if _, isLoad := loadFileNames[name]; !isLoad && !strings.HasSuffix(name, ".remote.go") {
 			return nil
 		}
 		found = append(found, path)

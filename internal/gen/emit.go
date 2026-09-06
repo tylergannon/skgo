@@ -143,9 +143,15 @@ func (a *app) writePackageBindings() error {
 	for _, fn := range a.remotes {
 		byPkg[fn.goPkg] = append(byPkg[fn.goPkg], fn)
 	}
+	loadsByPkg := map[*goPackage][]*loadFn{}
+	for _, load := range a.loads {
+		loadsByPkg[load.goPkg] = append(loadsByPkg[load.goPkg], load)
+	}
+
 	for _, gp := range a.pkgs {
 		fns := byPkg[gp]
-		if len(fns) == 0 {
+		loads := loadsByPkg[gp]
+		if len(fns) == 0 && len(loads) == 0 {
 			continue
 		}
 		var b strings.Builder
@@ -156,6 +162,12 @@ func (a *app) writePackageBindings() error {
 		b.WriteString("func SkgoRemotes() []*skgo.Remote {\n\treturn []*skgo.Remote{\n")
 		for _, fn := range fns {
 			fmt.Fprintf(&b, "\t\tskgo.%s(%q, %q, %s),\n", constructor(fn.kind), fn.module, fn.name, fn.name)
+		}
+		b.WriteString("\t}\n}\n\n")
+		b.WriteString("// SkgoLoads returns the server loads declared in this package.\n")
+		b.WriteString("func SkgoLoads() []*skgo.ServerLoad {\n\treturn []*skgo.ServerLoad{\n")
+		for _, load := range loads {
+			fmt.Fprintf(&b, "\t\tskgo.NewLoad(%q, %s),\n", load.module, load.name)
 		}
 		b.WriteString("\t}\n}\n")
 		if err := a.writeGo(filepath.Join(gp.dir, "skgo_remotes_gen.go"), b.String()); err != nil {
@@ -192,6 +204,13 @@ func (a *app) writeAppBindings() error {
 	for _, gp := range a.pkgs {
 		fmt.Fprintf(&b, "\tout = append(out, %s.SkgoRemotes()...)\n", gp.alias)
 	}
+	b.WriteString("\treturn out\n}\n\n")
+	b.WriteString("// Loads returns every server load declared in the app, ready to hand to\n")
+	b.WriteString("// skgo.NewLoads.\n")
+	b.WriteString("func Loads() []*skgo.ServerLoad {\n\tvar out []*skgo.ServerLoad\n")
+	for _, gp := range a.pkgs {
+		fmt.Fprintf(&b, "\tout = append(out, %s.SkgoLoads()...)\n", gp.alias)
+	}
 	b.WriteString("\treturn out\n}\n")
 	return a.writeGo(filepath.Join(a.cfg.Out, "skgo_bindings_gen.go"), b.String())
 }
@@ -201,14 +220,21 @@ func (a *app) writeAppBindings() error {
 // different set of remote functions than the one it answers.
 type remoteList struct {
 	Remotes []string `json:"remotes"`
+	// Loads names the `+*.server.ts` modules skgo generated, which is the key
+	// kit itself records for a node that has a server load.
+	Loads []string `json:"loads"`
 }
 
 func (a *app) writeRemoteList() error {
-	list := remoteList{Remotes: []string{}}
+	list := remoteList{Remotes: []string{}, Loads: []string{}}
 	for _, fn := range a.remotes {
 		list.Remotes = append(list.Remotes, kithash.Kit(fn.module)+"/"+fn.name)
 	}
+	for _, load := range a.loads {
+		list.Loads = append(list.Loads, load.module)
+	}
 	sort.Strings(list.Remotes)
+	sort.Strings(list.Loads)
 	raw, err := json.MarshalIndent(list, "", "\t")
 	if err != nil {
 		return err

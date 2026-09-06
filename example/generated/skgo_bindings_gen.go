@@ -8,9 +8,12 @@ import (
 	skgo0 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizlt"
 	skgo1 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th"
 	skgo2 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf52g6zdpom"
-	skgo3 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5"
-	skgo4 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
-	skgo5 "github.com/tylergannon/skgo/example/web/src/lib"
+	skgo3 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5qwgy3povxhi"
+	skgo4 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt"
+	skgo5 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi"
+	skgo6 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5"
+	skgo7 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
+	skgo8 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
 // Remotes returns every remote function declared in the app, ready to hand
@@ -23,5 +26,24 @@ func Remotes() []*skgo.Remote {
 	out = append(out, skgo3.SkgoRemotes()...)
 	out = append(out, skgo4.SkgoRemotes()...)
 	out = append(out, skgo5.SkgoRemotes()...)
+	out = append(out, skgo6.SkgoRemotes()...)
+	out = append(out, skgo7.SkgoRemotes()...)
+	out = append(out, skgo8.SkgoRemotes()...)
+	return out
+}
+
+// Loads returns every server load declared in the app, ready to hand to
+// skgo.NewLoads.
+func Loads() []*skgo.ServerLoad {
+	var out []*skgo.ServerLoad
+	out = append(out, skgo0.SkgoLoads()...)
+	out = append(out, skgo1.SkgoLoads()...)
+	out = append(out, skgo2.SkgoLoads()...)
+	out = append(out, skgo3.SkgoLoads()...)
+	out = append(out, skgo4.SkgoLoads()...)
+	out = append(out, skgo5.SkgoLoads()...)
+	out = append(out, skgo6.SkgoLoads()...)
+	out = append(out, skgo7.SkgoLoads()...)
+	out = append(out, skgo8.SkgoLoads()...)
 	return out
 }

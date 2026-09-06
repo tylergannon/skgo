@@ -71,10 +71,24 @@ func build(proxy, origin string) (http.Handler, string, error) {
 		if err != nil {
 			return nil, "", err
 		}
-		return remotes.Intercept(skgo.NewDevProxy(target, log.Printf)), "dev", nil
+		loadCfg := manifest.LoadConfig(origin)
+		loadCfg.Version = ""
+		loadCfg.Dev = true
+		loadCfg.Handle = handle
+		loads, err := skgo.NewLoads(loadCfg, generated.Loads()...)
+		if err != nil {
+			return nil, "", err
+		}
+		return loads.Intercept(remotes.Intercept(skgo.NewDevProxy(target, log.Printf))), "dev", nil
 	}
 
 	remotes, err := skgo.NewRemotes(manifest.RemoteConfig(origin), generated.Remotes()...)
+	if err != nil {
+		return nil, "", err
+	}
+	loadCfg := manifest.LoadConfig(origin)
+	loadCfg.Handle = handle
+	loads, err := skgo.NewLoads(loadCfg, generated.Loads()...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -82,7 +96,11 @@ func build(proxy, origin string) (http.Handler, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	return remotes.Intercept(static), "prod", nil
+	// The loads registry is outermost: kit runs `handle` before it dispatches
+	// to a page, a data request or a remote function, and `__data.json` must
+	// never reach the static handler, which would answer it with the boot
+	// document.
+	return loads.Intercept(remotes.Intercept(static)), "prod", nil
 }
 
 // withMode stamps every response so a test can tell which server answered it.

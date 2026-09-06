@@ -27,6 +27,10 @@ type Manifest struct {
 	Base string `json:"base"`
 	// Version is kit's build version name.
 	Version string `json:"version"`
+	// Nodes gives, per kit node index, the vite-root-relative path of that
+	// node's `+page.server.ts` or `+layout.server.ts`, or "" when it has
+	// none. It is the key a Go load is registered under.
+	Nodes []string `json:"nodes"`
 	// Routes lists every route kit knows about, with the regular expression
 	// kit's own router uses to match it.
 	Routes []ManifestRoute `json:"routes"`
@@ -42,6 +46,40 @@ type Manifest struct {
 type ManifestRoute struct {
 	ID      string `json:"id"`
 	Pattern string `json:"pattern"`
+	// Params names the route's parameters in the order the pattern captures
+	// them.
+	Params []ManifestParam `json:"params,omitempty"`
+	// Page describes the node branch of a route that has a page. It is nil for
+	// a route that is an endpoint and nothing else.
+	Page *ManifestPage `json:"page,omitempty"`
+}
+
+// ManifestParam is one route parameter, as kit's own router describes it.
+type ManifestParam struct {
+	Name     string `json:"name"`
+	Optional bool   `json:"optional"`
+	Rest     bool   `json:"rest"`
+	Chained  bool   `json:"chained"`
+	Matcher  string `json:"matcher,omitempty"`
+}
+
+// ManifestPage is a page route's node branch. `append(Layouts, Leaf)` is the
+// branch itself: one slot per node, outermost first, and the order kit's client
+// positions its `x-sveltekit-invalidated` string over.
+type ManifestPage struct {
+	// Layouts holds the node index of each layout wrapping the page. -1 marks
+	// a slot no layout fills, which JSON cannot express as a hole.
+	Layouts []int `json:"layouts"`
+	// Leaf is the node index of the page itself.
+	Leaf int `json:"leaf"`
+}
+
+// Branch is `[...layouts, leaf]`: the nodes of this route, outermost first.
+func (p *ManifestPage) Branch() []int {
+	if p == nil {
+		return nil
+	}
+	return append(append(make([]int, 0, len(p.Layouts)+1), p.Layouts...), p.Leaf)
 }
 
 // staticHandler serves an adapter build: the client bundle as files, and kit's

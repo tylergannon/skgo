@@ -48,7 +48,19 @@ func Errorf(status int, format string, args ...any) *HTTPError {
 // carries a redirect, so a Redirect returned from a command is reported as an
 // ordinary error instead.
 type Redirect struct {
+	// Status is the HTTP status kit's client is told about. Kit requires one
+	// of 300..308; zero means 307, kit's own default for a redirect that does
+	// not name one.
+	Status   int
 	Location string
+}
+
+// status is the status to put on the wire.
+func (r *Redirect) status() int {
+	if r.Status == 0 {
+		return http.StatusTemporaryRedirect
+	}
+	return r.Status
 }
 
 func (r *Redirect) Error() string { return "redirect to " + r.Location }

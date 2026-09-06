@@ -11,6 +11,7 @@
 	<a href="/todos">Todos</a>
 	<a href="/pricing">Pricing</a>
 	<a href="/docs/guide/getting-started">Docs</a>
+	<a href="/account">Account</a>
 </nav>
 
 <svelte:boundary>
