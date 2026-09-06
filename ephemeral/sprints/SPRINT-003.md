@@ -79,14 +79,22 @@ Loads (`drafts/SPRINT-003-research-data-json.md`):
   positions without a server load; `{"type":"skip"}` for bit `0` (mandatory once layouts
   exist). Redirect is HTTP 200 `{"type":"redirect"}`. Top-level error is `App.Error` JSON at
   the status with `application/json`. Omit `x-sveltekit-version` or echo kit's.
-- The leaf is always the last position (`parse.js:23-31`). Page-only loads need no node
-  info. **Layout loads need the route's layout chain** — kit's own CSR fixture is a layout
-  server load (`kit/test/apps/no-ssr/src/routes/+layout.server.js`), because the load-only
-  capabilities in a CSR app are layout-level: gate a subtree, redirect an unauthenticated
-  deep link, `page.data` inherited by children. A page-level load is a `query` with worse
-  granularity. Track C's first research question: cheapest source of the layout chain
-  (the generated client `app.js` dictionary, or importing the server manifest — its node
-  imports are lazy — or the generator, which knows every `layout.server.go`).
+- **Loads are not queries with a route attached.** A navigation runs the whole branch —
+  root layout, nested layouts, page — as one tree in one `__data.json` request; children
+  see parents (`parent()`), `page.data` is the merged chain, `uses`/`invalidate` rerun only
+  the nodes whose inputs changed (`skip` for the rest), navigation blocks until data is
+  ready, redirects/errors are navigation-time decisions landing in `+error.svelte`, preload
+  on hover is free. And they **stream**: promises in the result turn the response into a
+  `text/sveltekit-data` NDJSON stream — first line with promise slots as chunk ids, then
+  `{"type":"chunk","id":N,"data":…}` as each settles (`data/index.js:114-129`,
+  `data_serializer.js:174`) — the most Go-shaped thing in kit (one goroutine per deferred
+  field). Loads are stable kit API; remote functions are experimental.
+- The leaf is always the last position (`parse.js:23-31`). Layout loads need the route's
+  layout chain (kit's own CSR fixture is a layout server load,
+  `kit/test/apps/no-ssr/src/routes/+layout.server.js`). Track C's first research question:
+  cheapest source of the layout chain (the generated client `app.js` dictionary, importing
+  the server manifest — its node imports are lazy — or the generator, which knows every
+  `layout.server.go`).
 - **`uses` is load-bearing** (`client.js:1332-1361`): omitted → a param change never
   refetches, silently. `refreshAll` bypasses `uses`, so it proves nothing about them. Declare
   `uses` statically at registration (`UsesParams(...)`, `Depends(...)`), not by observing
@@ -123,10 +131,12 @@ stringify refuses maps. Owns `example/web/src/lib/*.svelte` and `remote.feature`
 refresh scenario. Small; lands first so A's registrar targets the final API.
 
 **C — loads.** Owns `static.go` (one matcher, `[^]` rewrite, route table from
-`skgo.manifest.json`), the `__data.json` dispatcher, `PageLoad`/`LayoutLoad` bindings with
-declared `uses`, `example/cmd/main.go` load wiring, a **new route subtree** (not `/todos`)
-with hand-written throwing stubs until A's generator emits them, `loads.feature`, and a
-`__data.json` fixture counter. Layout chain first; page-only is the shrink fallback.
+`skgo.manifest.json`), the `__data.json` dispatcher including the streaming path,
+`PageLoad`/`LayoutLoad` bindings with declared `uses`, `Parent()` access from a page load
+to its layout's data, deferred fields (promises) in results, `example/cmd/main.go` load
+wiring, a **new route subtree** (not `/todos`) with hand-written throwing stubs until A's
+generator emits them, `loads.feature`, and a `__data.json` fixture counter. The layout
+chain and streaming are the feature; page-only-non-streaming is only the shrink fallback.
 
 ## Functional Definition of Done
 
@@ -152,19 +162,21 @@ PR C (closes #5):
    back `skip`); `refreshAll()` reruns loads and the active query in one gesture.
 7. A layout load redirects an unauthenticated deep link (`{"type":"redirect"}` at 200) and
    an error envelope renders `+error.svelte`; both also unit-tested against captured shapes.
+7b. A page load with one immediate field and one deferred field: the page renders the
+   immediate field before the deferred one arrives (`{#await}`), and the chunk lands
+   without a second request (`text/sveltekit-data` stream).
 8. `vp dev` behind the Go binary: the subtree works with the JS stubs throwing; a route with
    no Go load still reaches kit's dev server.
 9. Adapter refuses a Go-loaded route that is also prerendered.
 
 ## Shrink order if the session blows out
 
-Layout loads (fall back to page-only; DoD 6–7 shrink accordingly) → the cookie half of DoD 3
+Streaming (DoD 7b) → layout loads (fall back to page-only; DoD 6–7 shrink accordingly) → the cookie half of DoD 3
 → the astral corpus in #2 (keep the ported `shared.spec.js` goldens and #3).
 
 ## Advice and traps
 
-- Layout server loads, streaming promises, `form`, `query.batch`, `prerender`, SSR: out
-  except as stated above.
+- `form`, `query.batch`, `prerender`, SSR: out.
 - Never emit an exported helper from a stub; keep `unimplemented` module-private.
 - `example/web/node_modules` must be installed and `vp build` run before `go vet ./example/...`
   passes (`//go:embed all:build`).
