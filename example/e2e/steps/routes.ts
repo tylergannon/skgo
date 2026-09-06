@@ -26,13 +26,15 @@ Then(
 
 Then(
 	'the endpoint said the methods it allows are {string}',
-	async ({ page }, allow: string) => {
+	async ({ page, shot }, allow: string) => {
 		await expect(responseLine(page)).toContainText(`Allow: ${allow}`, { timeout: 15_000 });
+		await shot();
 	}
 );
 
-Then('the endpoint returned a todo saying {string}', async ({ page }, text: string) => {
+Then('the endpoint returned a todo saying {string}', async ({ page, shot }, text: string) => {
 	await expect(page.getByTestId('api-todo').filter({ hasText: text })).toHaveCount(1);
+	await shot();
 });
 
 When('I POST the todo {string}', async ({ page }, text: string) => {
@@ -69,11 +71,12 @@ Then('the document content type was {string}', async ({ documents }, type: strin
 
 Then(
 	'the document is JSON listing a todo saying {string}',
-	async ({ documents }, text: string) => {
+	async ({ documents, shot }, text: string) => {
 		expect(documents.last, 'no document response was observed').not.toBeNull();
 		const body = await documents.last!.text();
 		const todos = JSON.parse(body) as Array<{ text: string }>;
 		expect(todos.map((todo) => todo.text)).toContain(text);
+		await shot();
 	}
 );
 
@@ -88,7 +91,7 @@ Then(
  * the build the server is serving, so a broken build cannot satisfy it by
  * agreeing with itself.
  */
-Then('the document is not the one every unprerendered route gets', async ({ page, documents }) => {
+Then('the document is not the one every unprerendered route gets', async ({ page, documents, shot }) => {
 	expect(documents.last, 'no document response was observed').not.toBeNull();
 	const prerendered = await documents.last!.text();
 
@@ -96,6 +99,7 @@ Then('the document is not the one every unprerendered route gets', async ({ page
 	expect(other.status(), 'GET /todos should be an ordinary page').toBe(200);
 	expect(prerendered).not.toBe(await other.text());
 	expect(prerendered.length, 'the prerendered page is empty').toBeGreaterThan(0);
+	await shot();
 });
 
 When(
@@ -115,6 +119,7 @@ Then('the response status was {int}', async ({ notes }, status: number) => {
 	expect(notes.get('status')).toBe(status);
 });
 
-Then('the redirect location was {string}', async ({ page }, location: string) => {
+Then('the redirect location was {string}', async ({ page, shot }, location: string) => {
 	await expect(page.getByTestId('raw-response')).toContainText(location);
+	await shot();
 });

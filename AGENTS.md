@@ -6,14 +6,15 @@ A Go program owns the socket and the process. Its Kit-facing interface is an
 ordinary SvelteKit adapter, so the frontend stays plain SvelteKit — kit's
 tooling, kit's conventions, no Go-isms. Go serves kit's client-rendered output
 natively, makes the trust decisions, and answers the endpoints kit's client
-already calls: remote functions (`/_app/remote/...`) and server loads
-(`__data.json`).
+already calls: remote functions (`/_app/remote/...`), server loads
+(`__data.json`) and the routes a `+server.ts` declares.
 
 **Every server endpoint is Go's.** Not "Go where you want it, kit otherwise" —
 all of them. Loads and remote functions are written in Go with end-to-end types,
-and the JavaScript kit requires is a generated stub that throws, so any real
-response proves Go answered. Running remote functions in TypeScript is not a
-supported mode.
+and a `+server.ts` route is an ordinary `net/http` handler written beside it;
+the JavaScript kit requires is a generated stub that throws, so any real
+response proves Go answered. Running remote functions or server routes in
+TypeScript is not a supported mode.
 
 **CSR only, to start.** The app runs with `ssr = false`; the document is kit's
 own SPA fallback; kit's server bundle is built but never runs, and no JavaScript

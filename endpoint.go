@@ -357,6 +357,26 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 		return
 	}
 
+	// Kit refuses a form-shaped cross-site mutation at the very top of
+	// `respond`, before it has matched a route or looked at a method
+	// (`runtime/server/respond.js`). The order is the point: refusing it after
+	// method resolution answers a cross-site DELETE with a 405 that tells the
+	// caller which methods the route does answer.
+	//
+	// The app directory is exempt for the same reason kit's is: those requests
+	// are the bundle, and kit's adapters answer them before the server runs.
+	if !strings.HasPrefix(urlPath, es.appPrefix()) && es.csrfForbidden(r) {
+		message := "Cross-site " + r.Method + " form submissions are forbidden"
+		if r.Header.Get("Accept") == "application/json" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			writeJSON(w, map[string]string{"message": message})
+			return
+		}
+		http.Error(w, message, http.StatusForbidden)
+		return
+	}
+
 	routePath := strings.TrimPrefix(urlPath, es.base)
 	if routePath == "" {
 		routePath = "/"
@@ -396,32 +416,23 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 		}
 	}
 
-	handler, method, chosen := route.pick(r)
-	if !chosen {
-		// Kit prefers the page whenever the endpoint cannot answer this GET,
-		// HEAD or POST; a route with no page has nothing to fall back to and
-		// gets the 405.
-		if route.hasPage {
-			next.ServeHTTP(w, r)
-			return
-		}
+	if !route.answers(r) {
+		next.ServeHTTP(w, r)
+		return
+	}
+
+	handler, method, found := route.resolve(r.Method)
+	if !found {
 		methodNotAllowed(w, route.allowed(), r.Method)
 		return
 	}
 
-	if es.csrfForbidden(r) {
-		message := "Cross-site " + r.Method + " form submissions are forbidden"
-		if r.Header.Get("Accept") == "application/json" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			writeJSON(w, map[string]string{"message": message})
-			return
-		}
-		http.Error(w, message, http.StatusForbidden)
-		return
-	}
-
 	es.run(w, r, route, params, method, handler)
+}
+
+// appPrefix is the app directory with the configured base, e.g. "/_app/".
+func (es *Endpoints) appPrefix() string {
+	return es.base + "/" + es.cfg.AppDir + "/"
 }
 
 // run puts the request's event in place and calls the handler, turning a panic
@@ -555,32 +566,46 @@ func (es *Endpoints) csrfForbidden(r *http.Request) bool {
 	return true
 }
 
-// pick resolves the request's method to a handler, mirroring kit's two
-// decisions in order: which of `+page` and `+server` answers a GET, HEAD or
-// POST (`is_endpoint_request` and the `endpoint_can_handle` test in
-// `respond.js`), and then which export answers the method (`render_endpoint`).
-func (r *endpointRoute) pick(req *http.Request) (http.HandlerFunc, string, bool) {
-	method := req.Method
-
+// answers reports whether the server route takes this request rather than the
+// page. It is kit's own decision, from `runtime/server/respond.js`:
+//
+//	route.endpoint && (!route.page || (!prerendering && is_endpoint_request(event)))
+//
+// followed by "prefer the page if the endpoint cannot handle this GET, HEAD or
+// POST". The second half is deliberately narrow — a method a page could never
+// answer stays with the endpoint and gets its 405 there, rather than falling
+// through to a page that cannot serve it either.
+func (r *endpointRoute) answers(req *http.Request) bool {
+	if r.handlers == nil && r.declared == nil {
+		return false
+	}
 	if r.hasPage && !r.isEndpointRequest(req) {
-		return nil, "", false
+		return false
 	}
+	if !r.hasPage || !pageMethods[req.Method] {
+		return true
+	}
+	if req.Method == http.MethodPost {
+		return r.handlers["POST"] != nil || r.handlers[fallbackMethod] != nil
+	}
+	return r.handlers["GET"] != nil || r.handlers[fallbackMethod] != nil ||
+		(req.Method == http.MethodHead && r.handlers["HEAD"] != nil)
+}
 
-	handler := r.handlers[method]
-	chosen := method
-	if handler == nil {
-		// Kit answers HEAD with the GET handler when the module exports no
-		// HEAD of its own, before it considers the fallback.
-		if method == http.MethodHead && r.handlers["GET"] != nil {
-			handler, chosen = r.handlers["GET"], "GET"
-		} else if fallback := r.handlers[fallbackMethod]; fallback != nil {
-			handler, chosen = fallback, fallbackMethod
-		}
+// resolve is kit's `render_endpoint`: the module's export for this method, else
+// its `fallback` — with HEAD answered by GET when the module exports no HEAD of
+// its own.
+func (r *endpointRoute) resolve(method string) (http.HandlerFunc, string, bool) {
+	if handler := r.handlers[method]; handler != nil {
+		return handler, method, true
 	}
-	if handler == nil {
-		return nil, "", false
+	if method == http.MethodHead && r.handlers["GET"] != nil {
+		return r.handlers["GET"], "GET", true
 	}
-	return handler, chosen, true
+	if fallback := r.handlers[fallbackMethod]; fallback != nil {
+		return fallback, fallbackMethod, true
+	}
+	return nil, "", false
 }
 
 // isEndpointRequest is kit's own (`runtime/server/endpoint.js`): for a route

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -432,6 +433,122 @@ func TestAConditionalRequestForADataURLStillGetsKitsData(t *testing.T) {
 		}
 		if !strings.HasPrefix(rec.Body.String(), `{"type":"data","nodes":[`) {
 			t.Errorf("%v: not kit's data envelope: %s", headers, rec.Body.String())
+		}
+	}
+}
+
+// TestAServerRouteAnswersItsOwnMethods is issue #19 through the real stack.
+//
+// The bug was not the 405 on POST; it was the 200 on GET, which handed kit's
+// client an HTML document where the caller expected an API response — the same
+// wrong-200 shape that made `__data.json` fail inside kit's client rather than
+// at the boundary.
+func TestAServerRouteAnswersItsOwnMethods(t *testing.T) {
+	h := newProdHandler(t)
+
+	document, err := fs.ReadFile(prodDist(t), "index.html")
+	if err != nil {
+		t.Fatalf("reading index.html: %v", err)
+	}
+
+	rec := get(t, h, "/api/todos")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /api/todos: status %d, want 200", rec.Code)
+	}
+	if rec.Body.String() == string(document) {
+		t.Fatal("GET /api/todos returned kit's boot document")
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("GET /api/todos: Content-Type %q, want application/json", ct)
+	}
+
+	// The seeded todos are the store's own fixture, so this is anchored in
+	// something the endpoint did not produce.
+	var todos []businesslogic.Todo
+	if err := json.Unmarshal(rec.Body.Bytes(), &todos); err != nil {
+		t.Fatalf("GET /api/todos is not JSON: %v: %s", err, rec.Body.String())
+	}
+	var texts []string
+	for _, todo := range todos {
+		texts = append(texts, todo.Text)
+	}
+	if !slices.Contains(texts, "write the adapter") {
+		t.Errorf("GET /api/todos returned %v, which does not include the seeded todo", texts)
+	}
+
+	// A method the route declares no handler for is refused with kit's own 405,
+	// and the Allow header names what the route does answer — including the
+	// HEAD kit synthesizes from GET.
+	req := httptest.NewRequest(http.MethodDelete, "/api/todos", nil)
+	req.Header.Set("Origin", prodOrigin)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("DELETE /api/todos: status %d, want 405", rec.Code)
+	}
+	if got := rec.Header().Get("Allow"); got != "GET, POST, HEAD" {
+		t.Errorf("DELETE /api/todos: Allow %q, want %q", got, "GET, POST, HEAD")
+	}
+
+	// POST is one of the methods the route declares, and it used to be a 405.
+	req = httptest.NewRequest(http.MethodPost, "/api/todos", strings.NewReader(`{"text":"go test wrote this"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", prodOrigin)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST /api/todos: status %d, want 201: %s", rec.Code, rec.Body.String())
+	}
+	var created businesslogic.Todo
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("POST /api/todos is not JSON: %v", err)
+	}
+	if created.Text != "go test wrote this" {
+		t.Errorf("POST /api/todos returned %q, want the text this test supplied", created.Text)
+	}
+	if got := rec.Header().Get("Location"); got != "/api/todos/"+created.ID {
+		t.Errorf("POST /api/todos: Location %q", got)
+	}
+}
+
+// TestEveryPrerenderedPathIsServedFromItsFile walks what the build recorded.
+//
+// Kit removes a prerendered route from the table the manifest is generated
+// from, so a prerendered path that is not served here is not served at all —
+// and the failure is a 404 on a page that exists, which kit's client papers
+// over by rendering the route anyway.
+func TestEveryPrerenderedPathIsServedFromItsFile(t *testing.T) {
+	h := newProdHandler(t)
+	dist := prodDist(t)
+
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		t.Fatalf("reading the build manifest: %v", err)
+	}
+	if len(manifest.Prerendered) == 0 {
+		t.Fatal("the build prerendered nothing, so this test asserts nothing")
+	}
+
+	document, err := fs.ReadFile(dist, "index.html")
+	if err != nil {
+		t.Fatalf("reading index.html: %v", err)
+	}
+
+	for _, path := range manifest.Prerendered {
+		rec := get(t, h, path)
+		if rec.Code != http.StatusOK {
+			t.Errorf("GET %s: status %d, want 200", path, rec.Code)
+			continue
+		}
+		// The boot document is what an unprerendered route gets. Serving it
+		// here would look identical in a browser — kit's client would render
+		// the route anyway — and would mean the prerendered file was never
+		// used.
+		if rec.Body.String() == string(document) {
+			t.Errorf("GET %s served the single-page fallback, not the prerendered file", path)
+		}
+		if !strings.Contains(rec.Header().Get("Content-Type"), "text/html") {
+			t.Errorf("GET %s: Content-Type %q", path, rec.Header().Get("Content-Type"))
 		}
 	}
 }

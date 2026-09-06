@@ -529,3 +529,192 @@ func TestOnlyKitsOwnSuffixCountsAsADataRequest(t *testing.T) {
 		t.Errorf("/items/my__data.json did not get the boot document")
 	}
 }
+
+// prerenderedBuildFS is a build with one prerendered page, one prerendered
+// non-HTML asset, and the `.br`/`.gz` siblings kit's `builder.compress` writes.
+//
+// `/about` is deliberately absent from `routes`: kit removes a prerendered route
+// from the table it generates the manifest from, so the file is the only thing
+// that can answer it.
+func prerenderedBuildFS() fstest.MapFS {
+	build := testBuildFS()
+	build["skgo.manifest.json"] = &fstest.MapFile{Data: []byte(`{
+		"appDir": "_app",
+		"base": "",
+		"version": "1788665374100",
+		"routes": [
+			{ "id": "/", "pattern": "^\\/$" },
+			{ "id": "/items/[id]", "pattern": "^\\/items\\/([^/]+?)\\/?$" }
+		],
+		"prerendered": ["/about", "/guide/", "/feed.xml"],
+		"precompressed": true
+	}`)}
+	build["prerendered/about.html"] = &fstest.MapFile{Data: []byte("<!doctype html><p>about</p>")}
+	build["prerendered/about.html.gz"] = &fstest.MapFile{Data: []byte("gzipped about")}
+	build["prerendered/about.html.br"] = &fstest.MapFile{Data: []byte("brotlied about")}
+	build["prerendered/guide/index.html"] = &fstest.MapFile{Data: []byte("<!doctype html><p>guide</p>")}
+	build["prerendered/feed.xml"] = &fstest.MapFile{Data: []byte("<rss/>")}
+	build["client/_app/immutable/entry/start.DWsVriQH.js.br"] = &fstest.MapFile{Data: []byte("brotlied start")}
+	return build
+}
+
+func newPrerenderedHandler(t *testing.T) http.Handler {
+	t.Helper()
+	h, err := NewStaticHandler(prerenderedBuildFS())
+	if err != nil {
+		t.Fatalf("NewStaticHandler: %v", err)
+	}
+	return h
+}
+
+// A prerendered page is a file the build wrote, and it is the only thing that
+// serves that path: kit drops the route, so falling through would 404.
+func TestAPrerenderedPageIsServedFromItsFile(t *testing.T) {
+	h := newPrerenderedHandler(t)
+
+	cases := map[string]string{
+		"/about":    "<!doctype html><p>about</p>",
+		"/guide/":   "<!doctype html><p>guide</p>",
+		"/feed.xml": "<rss/>",
+	}
+	for path, want := range cases {
+		resp := do(t, h, http.MethodGet, path, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("%s: status %d, want 200", path, resp.StatusCode)
+			continue
+		}
+		if got := body(t, resp); got != want {
+			t.Errorf("%s: body %q, want %q", path, got, want)
+		}
+	}
+
+	if ct := do(t, h, http.MethodGet, "/feed.xml", nil).Header.Get("Content-Type"); !strings.Contains(ct, "xml") {
+		t.Errorf("/feed.xml: Content-Type %q, want an XML type", ct)
+	}
+}
+
+// The static file server ignores a trailing slash, so `/about/` would be served
+// from `about.html` and quietly defeat the app's trailing-slash choice. Kit
+// redirects instead, off the same set and with a relative location.
+func TestTheOtherTrailingSlashFormOfAPrerenderedPageRedirects(t *testing.T) {
+	h := newPrerenderedHandler(t)
+
+	resp := do(t, h, http.MethodGet, "/about/", nil)
+	if resp.StatusCode != http.StatusPermanentRedirect {
+		t.Fatalf("/about/: status %d, want 308", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Location"); got != "../about" {
+		t.Errorf("/about/: Location %q, want ../about", got)
+	}
+
+	resp = do(t, h, http.MethodGet, "/guide?q=1", nil)
+	if resp.StatusCode != http.StatusPermanentRedirect {
+		t.Fatalf("/guide: status %d, want 308", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Location"); got != "guide/?q=1" {
+		t.Errorf("/guide: Location %q, want guide/?q=1", got)
+	}
+}
+
+// A manifest that names a prerendered path the build has no file for is a build
+// that lost something between writing the tree and writing the manifest. It
+// would surface as a 404 on a page that exists.
+func TestAPrerenderedPathWithNoFileRefusesToStart(t *testing.T) {
+	build := prerenderedBuildFS()
+	delete(build, "prerendered/about.html")
+
+	if _, err := NewStaticHandler(build); err == nil {
+		t.Fatal("a build whose prerendered page is missing was accepted")
+	} else if !strings.Contains(err.Error(), "/about") {
+		t.Errorf("the error does not name the missing page: %v", err)
+	}
+}
+
+// Kit's `builder.compress` writes a `.br` and a `.gz` beside every file it
+// compresses. Serving them is the point of writing them.
+func TestAPrecompressedVariantIsServedWhenItIsAccepted(t *testing.T) {
+	h := newPrerenderedHandler(t)
+
+	cases := []struct {
+		accept   string
+		encoding string
+		want     string
+	}{
+		{"br, gzip", "br", "brotlied about"},
+		{"gzip", "gzip", "gzipped about"},
+		{"gzip, deflate", "gzip", "gzipped about"},
+		// A client that says it will not take brotli must not be sent brotli.
+		// Kit's own static server tests `/(br|brotli)/i` against the whole
+		// header and would send it anyway.
+		{"br;q=0, gzip", "gzip", "gzipped about"},
+		{"identity", "", "<!doctype html><p>about</p>"},
+		{"", "", "<!doctype html><p>about</p>"},
+	}
+	for _, tc := range cases {
+		header := http.Header{}
+		if tc.accept != "" {
+			header.Set("Accept-Encoding", tc.accept)
+		}
+		resp := do(t, h, http.MethodGet, "/about", header)
+		if got := resp.Header.Get("Content-Encoding"); got != tc.encoding {
+			t.Errorf("Accept-Encoding %q: Content-Encoding %q, want %q", tc.accept, got, tc.encoding)
+		}
+		if got := body(t, resp); got != tc.want {
+			t.Errorf("Accept-Encoding %q: body %q, want %q", tc.accept, got, tc.want)
+		}
+		// The content type is the file's own, never the encoding's.
+		if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "text/html") {
+			t.Errorf("Accept-Encoding %q: Content-Type %q, want text/html", tc.accept, ct)
+		}
+		if got := resp.Header.Get("Vary"); !strings.Contains(got, "Accept-Encoding") {
+			t.Errorf("Accept-Encoding %q: Vary %q, want it to name Accept-Encoding", tc.accept, got)
+		}
+	}
+}
+
+// RFC 9110 §8.8.3: a different representation needs a different validator, or a
+// cache holding the compressed bytes will serve them to a client that asked for
+// the plain ones and matched the same ETag.
+func TestEachEncodingHasItsOwnETag(t *testing.T) {
+	h := newPrerenderedHandler(t)
+
+	plain := do(t, h, http.MethodGet, "/about", nil).Header.Get("ETag")
+	brotli := do(t, h, http.MethodGet, "/about", http.Header{"Accept-Encoding": {"br"}}).Header.Get("ETag")
+	if plain == "" || brotli == "" {
+		t.Fatalf("missing ETag: plain %q, br %q", plain, brotli)
+	}
+	if plain == brotli {
+		t.Errorf("the compressed and uncompressed representations share the ETag %q", plain)
+	}
+}
+
+// A file with no compressed sibling is answered without a Vary, because nothing
+// about it depends on Accept-Encoding.
+func TestAnUncompressedFileDoesNotVary(t *testing.T) {
+	h := newPrerenderedHandler(t)
+
+	resp := do(t, h, http.MethodGet, "/favicon.svg", http.Header{"Accept-Encoding": {"br, gzip"}})
+	if got := resp.Header.Get("Vary"); got != "" {
+		t.Errorf("Vary = %q on a file with only one representation", got)
+	}
+	if got := resp.Header.Get("Content-Encoding"); got != "" {
+		t.Errorf("Content-Encoding = %q on a file with no compressed sibling", got)
+	}
+}
+
+// An immutable asset keeps its cache-control whichever encoding answers.
+func TestAPrecompressedImmutableAssetKeepsItsCacheControl(t *testing.T) {
+	h := newPrerenderedHandler(t)
+
+	resp := do(t, h, http.MethodGet, "/_app/immutable/entry/start.DWsVriQH.js",
+		http.Header{"Accept-Encoding": {"br"}})
+	if got := resp.Header.Get("Content-Encoding"); got != "br" {
+		t.Errorf("Content-Encoding = %q, want br", got)
+	}
+	if got := resp.Header.Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
+		t.Errorf("Cache-Control = %q", got)
+	}
+	if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "javascript") {
+		t.Errorf("Content-Type = %q, want a JavaScript type", ct)
+	}
+}

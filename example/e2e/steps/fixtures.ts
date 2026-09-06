@@ -1,7 +1,7 @@
 import { expect, type Page, type Response } from '@playwright/test';
 import { createBdd, test as base } from 'playwright-bdd';
 import { mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 /** Records the document (top-level navigation) traffic of one scenario. */
 export type Documents = {
@@ -156,12 +156,16 @@ export const test = base.extend<{
 		// silently overwrites the first — the tracked evidence then shows one
 		// mode while the claim is about two.
 		const mode = process.env.EXPECTED_MODE ?? 'unknown';
+		// And the feature, so the tracked evidence is not one heap named after
+		// whichever feature happened to need screenshots first.
+		const feature =
+			basename(testInfo.file).replace(/\.feature\.spec\.[jt]s$/, '') || 'unknown';
 		let taken = 0;
 		const shot: Shot = async (name) => {
 			const suffix = name ? `-${name}` : taken > 0 ? `-${taken}` : '';
 			taken += 1;
 			await page.screenshot({
-				path: `../../ephemeral/screenshots/loads/${mode}/${slug}${suffix}.png`,
+				path: `../../ephemeral/screenshots/${feature}/${mode}/${slug}${suffix}.png`,
 				fullPage: true
 			});
 		};
