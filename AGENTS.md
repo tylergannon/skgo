@@ -4,16 +4,22 @@
 
 A Go program owns the socket and the process. Its Kit-facing interface is an
 ordinary SvelteKit adapter, so the frontend stays plain SvelteKit — kit's
-tooling, kit's conventions, no Go-isms. Go serves static and prerendered output
-natively, makes the trust decisions, and supervises a Node sidecar running
-SvelteKit's own server for rendering. Server logic — loads and remote functions
-— can be written in Go with end-to-end types; anything not written in Go stays
-plain kit.
+tooling, kit's conventions, no Go-isms. Go serves kit's client-rendered output
+natively, makes the trust decisions, and answers the endpoints kit's client
+already calls: remote functions (`/_app/remote/...`) and server loads
+(`__data.json`). Server logic — loads and remote functions — is written in Go
+with end-to-end types; anything not written in Go stays plain kit.
+
+**CSR only, to start.** The app runs with `ssr = false`; the document is kit's
+own SPA fallback; kit's server bundle is built but never runs, and there is no
+Node process at runtime. Server-side rendering via a supervised Node sidecar is
+a feature we will add only if the CSR base case proves out. Do not design for
+it, plan around it, or describe the system as having it.
 
 To a Go developer: a real frontend framework for a Go monolith. To a Svelte
 developer: the app is still SvelteKit.
 
-One binary. One build gesture. A system Node for the sidecar.
+One binary. One build gesture. Node is a build-time dependency only.
 
 We never reimplement kit, never build or maintain a JS runtime, and never claim
 anything that hasn't been demonstrated running.
@@ -29,7 +35,7 @@ synchronization all come from there. Do not improvise a substitute.
 
 **This is a Go library.** Write Go. Test with `go test`. Build tooling as Go
 commands. JavaScript exists here only where SvelteKit itself requires it — the
-adapter package and the sidecar entry — never as the implementation language for
+adapter package and generated stubs — never as the implementation language for
 anything skgo owns. No `.mjs` harnesses, no shell test runners.
 
 **Build the software.** Not ledgers, sprint files, chapter docs, acceptance-gate
