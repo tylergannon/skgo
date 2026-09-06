@@ -15,8 +15,8 @@ When('I note the remote request count', async ({ remotes }) => {
 	remotes.mark();
 });
 
-When('I note the live count', async ({ page, notes }) => {
-	notes.set('live count', await liveCount(page));
+When('I note the live count as {string}', async ({ page, notes }, label: string) => {
+	notes.set(label, await liveCount(page));
 });
 
 When('I add the todo {string}', async ({ page }, text: string) => {
@@ -67,18 +67,33 @@ Then(
 	}
 );
 
-Then('the live count increased by {int}', async ({ page, notes }, by: number) => {
-	const before = notes.get('live count');
-	expect(before, 'the live count was never noted').not.toBeUndefined();
-	await expect(page.getByTestId('count')).toHaveText(String(before! + by), { timeout: 15_000 });
+Then(
+	'the live count is {int} more than {string}',
+	async ({ page, notes }, by: number, label: string) => {
+		await expectLiveCount(page, noted(notes, label) + by);
+	}
+);
+
+Then('the live count is the same as {string}', async ({ page, notes }, label: string) => {
+	await expectLiveCount(page, noted(notes, label));
 });
 
 // The number on screen is the live query's answer; the list beside it is the
 // `getTodos` query's answer. They are two different endpoints, so asserting one
 // against the other is an assertion about two real numbers, and it is the thing
 // a signed-out visitor can check with their own eyes.
-Then('the todo count matches the todos on the page', async ({ page }) => {
-	const shot = `../../ephemeral/screenshots/todo-count-${await audience(page)}-${
+Then('the todo count is the number of todos on the page', async ({ page }) => {
+	await countMatchesList(page, 'todo-count');
+});
+
+// The same check after a command has driven the live query, kept under its own
+// name so both moments leave a screenshot behind.
+Then('the todo count still matches the todos on the page', async ({ page }) => {
+	await countMatchesList(page, 'live-count-after-command');
+});
+
+async function countMatchesList(page: Page, shot: string): Promise<void> {
+	const path = `../../ephemeral/screenshots/${shot}-${await audience(page)}-${
 		process.env.EXPECTED_MODE ?? 'unknown'
 	}.png`;
 	try {
@@ -88,9 +103,19 @@ Then('the todo count matches the todos on the page', async ({ page }) => {
 			expect(counted, `the counter says ${counted}; the page lists ${listed} todos`).toBe(listed);
 		}).toPass({ timeout: 15_000 });
 	} finally {
-		await page.screenshot({ path: shot, fullPage: true });
+		await page.screenshot({ path, fullPage: true });
 	}
-});
+}
+
+async function expectLiveCount(page: Page, expected: number): Promise<void> {
+	await expect(page.getByTestId('count')).toHaveText(String(expected), { timeout: 15_000 });
+}
+
+function noted(notes: Map<string, number>, label: string): number {
+	const value = notes.get(label);
+	expect(value, `the live count was never noted as ${JSON.stringify(label)}`).not.toBeUndefined();
+	return value!;
+}
 
 /** "signed-out", or "signed-in-<user>" — used to name the screenshot. */
 async function audience(page: Page): Promise<string> {

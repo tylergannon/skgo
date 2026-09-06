@@ -31,15 +31,19 @@ Feature: Signing in
   Scenario: The todo count counts only the todos the visitor can see
     Given I open "/todos"
     When the todo list has loaded
+    And I note the live count as "signed out"
     Then I do not see the todo "ship the private roadmap"
-    And the todo count matches the todos on the page
+    And the todo count is the number of todos on the page
     When I sign in as "ada"
     Then I see the todo "ship the private roadmap"
-    And the todo count matches the todos on the page
+    And the live count is 1 more than "signed out"
+    And the todo count is the number of todos on the page
     When I reload the page
     And the todo list has loaded
     Then I see the todo "ship the private roadmap"
-    And the todo count matches the todos on the page
+    And the live count is 1 more than "signed out"
+    And the todo count is the number of todos on the page
     When I sign out
     Then I do not see the todo "ship the private roadmap"
-    And the todo count matches the todos on the page
+    And the live count is the same as "signed out"
+    And the todo count is the number of todos on the page

@@ -515,8 +515,12 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 		data["l"] = l
 	}
 	if len(q) > 0 || len(l) > 0 {
-		// `r` tells the client these single-flight updates replace the
-		// invalidateAll it would otherwise run.
+		// `r` says the server performed explicit single-flight updates. Kit's
+		// server sets it for any refresh, so skgo does too, but it is inert on
+		// a command: only `form.svelte.js` reads it, to skip the `refreshAll`
+		// an unenhanced submission would otherwise run. `command.svelte.js`
+		// never invalidates anything — a kit command updates exactly what the
+		// server put in `q` and `l` and nothing else.
 		data["r"] = true
 	}
 	rs.writeResult(w, ev, data)
