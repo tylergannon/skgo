@@ -23,10 +23,6 @@ for tool in go mise lsof; do
 	}
 done
 
-go vet ./... ./example/...
-go test -count=1 ./...
-(cd example && go test -count=1 ./...)
-
 # The e2e suite against a production build with vite stopped.
 if lsof -ti:"$SKGO_VITE_PORT" >/dev/null 2>&1; then
 	echo "acceptance: vite is running on $SKGO_VITE_PORT; the prod run must not proxy" >&2
@@ -37,6 +33,14 @@ if lsof -ti:"$SKGO_PORT" >/dev/null 2>&1; then
 	exit 1
 fi
 (cd example/web && ORIGIN="$ORIGIN" mise x -- vp build)
+
+# The Go checks come after the build: example/web/dist.go embeds `all:build`,
+# so in a worktree that has never built the frontend, `go vet` fails with
+# "pattern all:build: no matching files found" before a single real check has
+# run — a harness fault that reads exactly like a red suite.
+go vet ./... ./example/...
+go test -count=1 ./...
+(cd example && go test -count=1 ./...)
 go build -o /tmp/skgo-acceptance-$SKGO_PORT ./example/cmd
 /tmp/skgo-acceptance-$SKGO_PORT -listen 127.0.0.1:"$SKGO_PORT" &
 SERVER=$!
