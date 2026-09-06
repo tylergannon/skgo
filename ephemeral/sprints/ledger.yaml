@@ -9,3 +9,8 @@ sprints:
     status: done
     created: "2026-09-06T04:23:34+00:00"
     updated: "2026-09-06T04:42:11+00:00"
+  - id: SPRINT-0003
+    title: Bindings generation and server loads, CSR
+    status: planned
+    created: "2026-09-06T13:51:15+00:00"
+    updated: "2026-09-06T13:51:15+00:00"
