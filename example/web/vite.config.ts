@@ -7,7 +7,9 @@ export default defineConfig({
 		sveltekit({
 			adapter: skgo(),
 			// Kit 3 fixes the app's origin at build time.
-			paths: { origin: process.env.ORIGIN ?? 'http://127.0.0.1:8080' }
+			paths: { origin: process.env.ORIGIN ?? 'http://127.0.0.1:8080' },
+			experimental: { remoteFunctions: true },
+			compilerOptions: { experimental: { async: true } }
 		})
 	]
 });
