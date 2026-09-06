@@ -47,7 +47,7 @@ func (ls *Loads) Intercept(next http.Handler) http.Handler {
 		// which holds nothing but the immutable bundle — and the remote calls,
 		// which are requests the app answers and so must pass through.
 		if ls.handle != nil && !ls.isImmutableAsset(r.URL.Path) {
-			req, err := ls.runHandle(r, data)
+			req, err := ls.runHandleGuarded(r, data)
 			if err != nil {
 				ls.refuse(w, r, err, data)
 				return
@@ -227,7 +227,7 @@ func (ls *Loads) serveBranch(w http.ResponseWriter, r *http.Request, req dataReq
 				return dataNode{}
 			}
 			e := shared.event(i, fns)
-			value, err := load.run(withEvent(ctx, e))
+			value, err := ls.runLoad(withEvent(ctx, e), load)
 			if err != nil {
 				aborted.set()
 				if redirect := asRedirect(err); redirect != nil {

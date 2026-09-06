@@ -12,8 +12,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
 	"net/url"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strings"
 )
@@ -86,6 +89,13 @@ type LoadConfig struct {
 	// Handle is the app's `handle` hook: the one place it decides what a
 	// request may do. It is optional; see the Handle type.
 	Handle Handle
+	// OnPanic is called when a load or the `handle` hook panics, with the
+	// `+*.server.ts` module of the load (or "handle" for the hook), the
+	// recovered value, and the stack. The client is told nothing but an opaque
+	// 500, so this is the only record the panic leaves; leaving it nil logs
+	// the same three things to the standard logger, because a panicking
+	// handler that reports nowhere is a bug that cannot be found.
+	OnPanic func(id string, value any, stack []byte)
 	// Nodes and Routes come from the manifest.
 	Nodes  []string
 	Routes []ManifestRoute
@@ -342,4 +352,51 @@ func execParams(path string, loc []int, params []ManifestParam) (map[string]stri
 		return nil, false
 	}
 	return result, true
+}
+
+// runLoad runs one load, turning a panic into the error the branch already
+// knows how to answer.
+//
+// A load is ordinary Go and one of them will panic. It matters more here than
+// on a remote call: loads run on their own goroutines, one per node of the
+// branch, and an unrecovered panic on a goroutine is not a reset connection
+// but a dead process, taking every other visitor with it. Kit answers an
+// unexpected throw from a load with the same opaque 500 it gives any
+// unexpected error, and so does this.
+func (ls *Loads) runLoad(ctx context.Context, load *ServerLoad) (v any, err error) {
+	defer func() { err = ls.recovered(load.module, recover(), err) }()
+	return load.run(ctx)
+}
+
+// runHandleGuarded is the same guard for the `handle` hook, which is
+// application code on the same request and runs before any load does.
+func (ls *Loads) runHandleGuarded(r *http.Request, isData bool) (req *http.Request, err error) {
+	defer func() {
+		if err = ls.recovered("handle", recover(), err); err != nil {
+			req = r
+		}
+	}()
+	return ls.runHandle(r, isData)
+}
+
+// recovered reports a panic and converts it to an error. It is a no-op when
+// nothing panicked, so the guards above read as one deferred line.
+func (ls *Loads) recovered(id string, value any, err error) error {
+	if value == nil {
+		return err
+	}
+	// net/http panics with ErrAbortHandler to abandon a response on purpose.
+	// Swallowing it would turn a deliberate abort into a 500 the client reads
+	// as a real answer, so it goes back up untouched.
+	if value == http.ErrAbortHandler {
+		panic(value)
+	}
+
+	stack := debug.Stack()
+	if ls.cfg.OnPanic != nil {
+		ls.cfg.OnPanic(id, value, stack)
+	} else {
+		log.Printf("skgo: server load %s panicked: %v\n%s", id, value, stack)
+	}
+	return &HTTPError{Status: 500, Message: "Internal Error"}
 }
