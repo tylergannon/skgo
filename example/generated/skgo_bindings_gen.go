@@ -5,8 +5,8 @@ package generated
 import (
 	"github.com/tylergannon/skgo"
 
-	skgo0 "github.com/tylergannon/skgo/example/web/src/lib"
-	skgo1 "github.com/tylergannon/skgo/example/web/src/routes/todos"
+	skgo0 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf52g6zdpom"
+	skgo1 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
 // Remotes returns every remote function declared in the app, ready to hand

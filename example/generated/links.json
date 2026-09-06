@@ -1,0 +1,14 @@
+{
+	"schemaVersion": 1,
+	"linkRoot": "generated/links",
+	"boundary": {
+		"path": "web/src/routes/go.mod",
+		"owned": true
+	},
+	"links": [
+		{
+			"link": "generated/links/onzggl3sn52xizltf52g6zdpom",
+			"target": "web/src/routes/todos"
+		}
+	]
+}

@@ -3,6 +3,7 @@ package gen
 import (
 	"go/token"
 	"go/types"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -93,21 +94,25 @@ func TestProjectRefusesWhatPolytypeCannotCarry(t *testing.T) {
 	}
 }
 
-// TestImportPathRefusesARouteDirectoryGoCannotName is the honest limit of
-// colocation: `src/routes/todos/[id]` is not a legal Go import path, so no
-// package can live there.
-func TestImportPathRefusesARouteDirectoryGoCannotName(t *testing.T) {
-	a := &app{hostDir: "/app", hostModule: "example.com/app"}
-
-	if got, err := a.importPath("/app/web/src/routes/todos"); err != nil || got != "example.com/app/web/src/routes/todos" {
-		t.Fatalf("importPath(todos) = %q, %v; want the plain import path", got, err)
+// TestImportPathOutsideTheRouteTreeStillHasToBeNameable: the link tree covers
+// route directories, whose names SvelteKit chooses. Anywhere else the developer
+// chose the name, and Go's rules apply.
+func TestImportPathOutsideTheRouteTreeStillHasToBeNameable(t *testing.T) {
+	a := &app{
+		cfg:        Config{Web: filepath.Join("/app", "web")},
+		hostDir:    "/app",
+		hostModule: "example.com/app",
 	}
 
-	_, err := a.importPath("/app/web/src/routes/todos/[id]")
+	if got, err := a.importPath("/app/web/src/lib"); err != nil || got != "example.com/app/web/src/lib" {
+		t.Fatalf("importPath(lib) = %q, %v; want the plain import path", got, err)
+	}
+
+	_, err := a.importPath("/app/web/src/lib/(shared)")
 	if err == nil {
-		t.Fatal("importPath accepted a bracketed route directory")
+		t.Fatal("importPath accepted a library directory Go cannot name")
 	}
-	if !strings.Contains(err.Error(), "brackets") {
-		t.Fatalf("error = %q, want it to explain why the directory cannot hold Go", err)
+	if !strings.Contains(err.Error(), "Go can spell") {
+		t.Fatalf("error = %q, want it to say what is wrong with the name", err)
 	}
 }

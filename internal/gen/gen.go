@@ -88,6 +88,12 @@ func Run(cfg Config) error {
 	if err := app.writePackageBindings(); err != nil {
 		return err
 	}
+	// The per-package registration files are new Go source in authored route
+	// directories; the route root reaches Go only through per-file links, so
+	// the tree has to take one more pass before anything can compile.
+	if err := app.links.sync(); err != nil {
+		return err
+	}
 	if err := app.writeAppBindings(); err != nil {
 		return err
 	}

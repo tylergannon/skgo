@@ -53,9 +53,19 @@ type remoteFn struct {
 }
 
 // goPackage is one Go package that declares remote functions.
+//
+// A package under the route tree has two directories, and confusing them is
+// the classic way to get this wrong: `dir` is where the developer's source
+// lives and where everything generated for a human to see must land, while
+// `loadDir` is the link Go compiled it through. `go list` reports the link
+// unresolved, so every path that comes back from `packages.Load` is a loadDir
+// path until it is translated.
 type goPackage struct {
 	pkg *packages.Package
 	dir string
+	// loadDir is the directory Go named the package by. It equals dir for a
+	// package Go can already name.
+	loadDir string
 	// alias is the import alias the generated bindings file uses.
 	alias string
 }
@@ -74,13 +84,20 @@ type app struct {
 	// hostModule is the module the generated bindings package belongs to.
 	hostModule string
 	hostDir    string
+	// links gives the route tree's packages import paths Go can spell.
+	links *routeLinks
 }
 
 type namedTypes struct {
-	pkg   *types.Package
-	dir   string
-	names []string
-	seen  map[string]bool
+	pkg *types.Package
+	// dir is the authored directory: where the developer's source lives, and
+	// where the polytype registration file and its output belong.
+	dir string
+	// loadDir is the address polytype is given, which for a route package is
+	// its link rather than its authored path.
+	loadDir string
+	names   []string
+	seen    map[string]bool
 	// tsDir is where polytype writes types.ts for this package.
 	tsDir string
 }
@@ -97,6 +114,13 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	var err error
 	a.hostDir, a.hostModule, err = moduleOf(cfg.Out)
 	if err != nil {
+		return nil, err
+	}
+
+	if a.links, err = newRouteLinks(cfg, a.hostDir, a.hostModule); err != nil {
+		return nil, err
+	}
+	if err := a.links.sync(); err != nil {
 		return nil, err
 	}
 
@@ -142,11 +166,12 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	for i, p := range loaded {
 		gp := &goPackage{pkg: p, alias: fmt.Sprintf("skgo%d", i)}
 		if len(p.GoFiles) > 0 {
-			gp.dir = filepath.Dir(p.GoFiles[0])
+			gp.loadDir = filepath.Dir(p.GoFiles[0])
+			gp.dir = a.links.authoredDir(gp.loadDir)
 		}
 		found := false
 		for _, file := range p.Syntax {
-			path := p.Fset.Position(file.Pos()).Filename
+			path := a.links.authoredPath(p.Fset.Position(file.Pos()).Filename)
 			if !wanted[path] {
 				continue
 			}
@@ -288,11 +313,13 @@ func (a *app) checkDuplicates() error {
 	return nil
 }
 
-// importPath names the Go package in dir. A SvelteKit route directory can be
-// called `[id]` or `(app)`, which Go cannot spell in an import path; there is
-// no way to compile such a package, so say so rather than emitting something
-// that will not build.
+// importPath names the Go package in dir. A route directory is called `[id]`
+// or `(app)` and cannot be spelled in an import path at all, so the answer is
+// the link tree: the package is compiled through an address Go can name.
 func (a *app) importPath(dir string) (string, error) {
+	if link := a.links.linkFor(dir); link != nil {
+		return link.importPath, nil
+	}
 	rel, err := filepath.Rel(a.hostDir, dir)
 	if err != nil {
 		return "", err
@@ -303,9 +330,8 @@ func (a *app) importPath(dir string) (string, error) {
 	path := a.hostModule + "/" + filepath.ToSlash(rel)
 	if err := module.CheckImportPath(path); err != nil {
 		return "", fmt.Errorf("skgo: Go cannot name a package in %s, so a remote function cannot live there.\n"+
-			"  A SvelteKit route directory with brackets or parentheses is not a legal Go import path.\n"+
-			"  Move the *.remote.go file to a directory Go can name, such as its parent route, and import\n"+
-			"  the generated stub from the page that needs it", dir)
+			"  Only directories under %s get a generated import path; anywhere else, the directory name\n"+
+			"  has to be one Go can spell", dir, filepath.Join(a.cfg.Web, "src", "routes"))
 	}
 	return path, nil
 }

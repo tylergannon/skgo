@@ -117,7 +117,7 @@ func (a *app) declare(named *types.Named) error {
 	pkg := named.Obj().Pkg()
 	set, ok := a.typeSets[pkg]
 	if !ok {
-		dir, err := a.dirOf(pkg)
+		dir, loadDir, err := a.dirOf(pkg)
 		if err != nil {
 			return err
 		}
@@ -125,7 +125,7 @@ func (a *app) declare(named *types.Named) error {
 		if err != nil {
 			return err
 		}
-		set = &namedTypes{pkg: pkg, dir: dir, seen: map[string]bool{}, tsDir: tsDir}
+		set = &namedTypes{pkg: pkg, dir: dir, loadDir: loadDir, seen: map[string]bool{}, tsDir: tsDir}
 		a.typeSets[pkg] = set
 	}
 	if !set.seen[named.Obj().Name()] {
@@ -135,11 +135,13 @@ func (a *app) declare(named *types.Named) error {
 	return nil
 }
 
-// dirOf resolves a types.Package to the directory holding its source.
-func (a *app) dirOf(pkg *types.Package) (string, error) {
+// dirOf resolves a types.Package to the directory holding its source and to
+// the directory Go names it by. The two differ for a package under the route
+// tree, which Go reaches only through its link.
+func (a *app) dirOf(pkg *types.Package) (dir, loadDir string, err error) {
 	for _, gp := range a.pkgs {
 		if gp.pkg.Types == pkg {
-			return gp.dir, nil
+			return gp.dir, gp.loadDir, nil
 		}
 	}
 	cmd := exec.Command("go", "list", "-f", "{{.Dir}}", pkg.Path())
@@ -147,9 +149,10 @@ func (a *app) dirOf(pkg *types.Package) (string, error) {
 	cmd.Stderr = os.Stderr
 	raw, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("skgo: locating the source of package %s: %w", pkg.Path(), err)
+		return "", "", fmt.Errorf("skgo: locating the source of package %s: %w", pkg.Path(), err)
 	}
-	return strings.TrimSpace(string(raw)), nil
+	loadDir = strings.TrimSpace(string(raw))
+	return a.links.authoredDir(loadDir), loadDir, nil
 }
 
 // typesDirFor decides where polytype writes a package's types.ts. A package
@@ -196,15 +199,28 @@ func (a *app) generateTypes() error {
 		}
 	}
 
-	for _, set := range a.sortedTypeSets() {
+	sets := a.sortedTypeSets()
+	for _, set := range sets {
 		sort.Strings(set.names)
 		if err := a.writePolytypeMarkers(set); err != nil {
 			return err
 		}
+	}
+	// The registration files just landed in authored directories, one of which
+	// may be the route root, whose link is a directory of per-file symlinks.
+	// polytype has to be able to see them through the link.
+	if err := a.links.sync(); err != nil {
+		return err
+	}
+
+	for _, set := range sets {
 		if err := os.MkdirAll(set.tsDir, 0o755); err != nil {
 			return err
 		}
-		cmd := exec.Command("go", "tool", "polytype", "--typescript", set.tsDir, "--target", set.dir)
+		// --target is the address Go can resolve, never the authored path: a
+		// route directory called `[id]` is not something the package loader can
+		// be handed at all.
+		cmd := exec.Command("go", "tool", "polytype", "--typescript", set.tsDir, "--target", set.loadDir)
 		cmd.Dir = a.hostDir
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stderr
@@ -213,7 +229,10 @@ func (a *app) generateTypes() error {
 		}
 		a.cfg.Logf("projected the types in %s to %s", set.pkg.Path(), filepath.Join(set.tsDir, "types.ts"))
 	}
-	return nil
+	// polytype writes beside the package it was given. Through a directory
+	// symlink that is the authored directory already; through the route root's
+	// per-file link it is not, so anything it left there is moved home.
+	return a.links.reclaim()
 }
 
 func (a *app) sortedTypeSets() []*namedTypes {
