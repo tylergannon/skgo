@@ -86,30 +86,49 @@ inventing before server loads exist. Nothing observable changes today: the
 built client contains no `__data.json` string at all, because kit fetches one
 only for a node with a server load.
 
-## polytype requires the declared type to be local — but an alias counts
+## polytype: relocating a foreign wire type needs a DEFINED type, not an alias
 
-This is the fact the #14 design turns on, and it is measured, not read.
+This is the fact the #14 fix turns on, and getting it wrong is easy because the
+wrong answer generates output. It is measured, not read.
 
 - `polytype.Declare` takes a method expression *or* a free function whose sole
-  parameter is T. `examples/indirecttypes/schema.go` uses the free form for
-  named pointer types, where a method is impossible.
-- It still refuses a directly-referenced foreign type:
-  `undeclared local type found: HTTPError`, from `requestType` checking
-  `LocalNamedTypes` (`internal/syntax/scan_result.go`).
-- A local **alias** satisfies it. `type WireHTTPError = skgo.HTTPError` in the
-  target package, plus a free function over the alias, generates cleanly into
-  the app's own directory. An alias is the same type, so no method set and no
-  custom `MarshalJSON` is lost — a defined type (`type X wire.Thing`) would
-  silently drop one and the schema would then lie.
-- Name the alias *differently* from the foreign type. A same-name alias makes
+  parameter is T. `examples/indirecttypes/schema.go` uses the free form.
+- It refuses a directly-referenced foreign type: `undeclared local type found:
+  HTTPError`, from `requestType` checking `LocalNamedTypes`
+  (`internal/syntax/scan_result.go`). So the type must be named locally.
+- **A local alias satisfies the scanner and then does not compile.** `type
+  WireHTTPError = skgo.HTTPError` generates cleanly and produces correct
+  TypeScript, so it looks right — but polytype emits its entrypoint as a
+  *method on the receiver type even when the registration was a free
+  function*, and `go build` fails with `cannot define new methods on non-local
+  type WireHTTPError`. The free-function shape is kept only when
+  `hasInvalidMethodReceiverBase` is true, i.e. only for pointer and interface
+  underlying types — which is why `examples/indirecttypes` uses it, those are
+  named *pointer* types. **Generate and then compile; generating is not the
+  check.** This cost a wrong instruction to an implementer.
+- **A defined type is the answer.** `type SkgoHTTPError skgo.HTTPError`
+  compiles, and its TypeScript is identical to the alias form: polytype
+  resolves through the definition and emits the foreign type under its own
+  name, which is what the stubs import.
+- Losing the method set across the definition does **not** lose safety.
+  polytype does not honour a custom marshaller, it *refuses* the type —
+  `rejectCustomWireType`: "defines MarshalJSON; custom JSON/text wire mappings
+  are not statically derivable" — and it resolves through the defined type to
+  find it. Verified: a defined type over a struct with `MarshalJSON` is
+  refused, naming the underlying type. So relocation cannot smuggle a type
+  whose Go encoding contradicts its declaration.
+- The defined form is also strictly better for a foreign enum. An alias
+  inherits the `enum()` marker without the constants that give it meaning
+  (`declares enum() but has no typed constants`); the defined form projects
+  `"on" | "off"` correctly.
+- Name the local type *differently* from the foreign one. A same name makes
   polytype disambiguate and emit hash-suffixed identifiers
-  (`HTTPError$6769746875622e...`), which breaks stub generation. A distinct
-  name emits `export type HTTPError = {...}` under the real name plus an alias
-  line, so stubs keep referring to the foreign type by its own name.
+  (`HTTPError$6769746875622e...`), which breaks stub generation.
 - Trap: polytype's generated `jsonschema_gen.go` carries `//go:build
-  !jsonschema` while the declaration file carries `//go:build jsonschema`. An
-  alias that exists only in the tagged file leaves the generated file
-  referring to a name that does not exist in an ordinary build.
+  !jsonschema` while the registration file carries `//go:build jsonschema`.
+  The type declarations have to live in an untagged file or the generated one
+  refers to names that do not exist in an ordinary build. Build the generated
+  app both ways in any test.
 
 ## Ownership is a directory question, not a module-path question
 

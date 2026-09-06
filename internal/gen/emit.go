@@ -28,15 +28,29 @@ func (a *app) writeStubs() error {
 		dir := filepath.Dir(stub)
 
 		imports := map[string][]string{}
+		// A stub refers to every type by the name its own package gave it, so
+		// two packages that both declare `Thing` would import the identifier
+		// twice into one module. Their declarations are kept apart on disk —
+		// each package's types.ts is addressed by its import path — but one
+		// TypeScript module can still only have one `Thing` in scope.
+		declaredBy := map[string]*types.Package{}
 		var kinds []string
 		for _, fn := range fns {
 			for _, dep := range a.depsOf(fn) {
-				set := a.typeSets[dep.Obj().Pkg()]
+				pkg := dep.Obj().Pkg()
+				name := dep.Obj().Name()
+				if other, clash := declaredBy[name]; clash && other != pkg {
+					return fmt.Errorf("skgo: %s puts a type called %s on the wire from both %s and %s; "+
+						"TypeScript can only have one %s in a module, so one of them has to be renamed "+
+						"or moved to a remote function in another file", stub, name, other.Path(), pkg.Path(), name)
+				}
+				declaredBy[name] = pkg
+				set := a.typeSets[pkg]
 				spec, err := importSpecifier(dir, set.tsDir)
 				if err != nil {
 					return err
 				}
-				imports[spec] = appendUnique(imports[spec], dep.Obj().Name())
+				imports[spec] = appendUnique(imports[spec], name)
 			}
 			switch fn.kind {
 			case kindCommand:

@@ -90,16 +90,35 @@ type app struct {
 
 type namedTypes struct {
 	pkg *types.Package
-	// dir is the authored directory: where the developer's source lives, and
-	// where the polytype registration file and its output belong.
+	// dir is the directory the polytype registration file and its output go
+	// in. For a package of the app's own it is the authored directory, where
+	// the developer's source lives; for a foreign package it is the
+	// declaration package skgo writes into the app instead.
 	dir string
 	// loadDir is the address polytype is given, which for a route package is
 	// its link rather than its authored path.
 	loadDir string
-	names   []string
-	seen    map[string]bool
+	// names are the type names as the defining package spells them, which is
+	// also how they reach TypeScript.
+	names []string
+	seen  map[string]bool
 	// tsDir is where polytype writes types.ts for this package.
 	tsDir string
+	// foreign marks a package outside the app's own tree, whose types are
+	// declared again locally so that skgo never writes into source the app
+	// does not own.
+	foreign bool
+}
+
+// localName is the identifier a type is declared under in the package that
+// carries its polytype registration: its own name for the app's packages, and
+// a distinct one where the declaration was relocated. See
+// writeLocalDeclarations for why the two must differ.
+func (s *namedTypes) localName(name string) string {
+	if s.foreign {
+		return "Skgo" + name
+	}
+	return name
 }
 
 // loadApp resolves every package holding a `.remote.go` file and reads the

@@ -1,35 +1,29 @@
 package gen
 
 import (
+	"go/types"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-// The rule that decides where the generator may write, on its own.
+// The rule that decides where a type's declaration is written, on its own.
 //
-// `declare` resolves whichever package *defines* a wire type and writes
-// `skgo_polytype_gen.go` — and then polytype's `jsonschema/` — into that
-// package's own source directory. For any type declared outside the app that
-// directory belongs to somebody else: the module cache for a dependency, a
-// shared internal module, another repository. skgo's own module was only the
-// instance this repo could see, because a go.work member is writable and the
-// scribble left no mark.
-//
-// The TypeScript half of the same problem is already solved by relocation —
-// `typesDirFor` sends any package outside the vite root to
-// `src/lib/skgo/<pkg>` instead of writing beside foreign source. The Go half
-// cannot copy that answer: polytype's registration is `func (T) Schema()
-// json.RawMessage`, a method on T, and Go does not allow a method on a type
-// declared in another package. There is no other directory the file could go
-// in. So the Go half refuses where the TypeScript half relocates.
+// `declare` resolves whichever package *defines* a wire type. For the app's own
+// packages the declaration goes beside that source, which is where a developer
+// would look for it. For any type declared outside the app — a dependency in
+// the module cache, a shared internal module, another repository — that
+// directory belongs to somebody else and, for any real consumer, is read-only;
+// so the declaration comes to the app instead, exactly as `typesDirFor` already
+// brings a foreign package's types.ts to `src/lib/skgo/`.
 //
 // The rule is therefore about the directory, decided before anything is
-// written, and never about whether that directory happens to be writable —
-// a writable dependency is the case that hid this bug, not the case that
-// excuses it.
+// written, and never about whether that directory happens to be writable — a
+// writable dependency is the case that hid this bug, not the case that excuses
+// it.
 
-func TestTheGeneratorMayOnlyWriteInsideTheAppsOwnTree(t *testing.T) {
+func TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace(t *testing.T) {
 	root := t.TempDir()
 	mkdir := func(rel string) string {
 		t.Helper()
@@ -51,7 +45,7 @@ func TestTheGeneratorMayOnlyWriteInsideTheAppsOwnTree(t *testing.T) {
 		// The route tree carries a `go.mod` of its own — the boundary that
 		// stops `go build ./...` walking into `[id]` — so a package the
 		// developer authored reports a module path that is not the app's.
-		// Comparing module paths would refuse the developer's own source;
+		// Comparing module paths would relocate the developer's own source;
 		// containment is what actually answers the question.
 		{"a route package behind skgo's own go.mod boundary", mkdir("app/web/src/routes/items"), true},
 		{"a dependency in the module cache", mkdir("gopath/pkg/mod/example.com/wire@v1.2.3"), false},
@@ -73,7 +67,7 @@ func TestTheGeneratorMayOnlyWriteInsideTheAppsOwnTree(t *testing.T) {
 
 // `go list -f {{.Dir}}` reports a path with every symlink resolved, while the
 // app's own root may still hold one — /var against /private/var is the
-// everyday macOS case, and it would refuse every package in the app.
+// everyday macOS case, and it would relocate every package in the app.
 func TestOwnershipSurvivesASymlinkedPath(t *testing.T) {
 	root := t.TempDir()
 	real := filepath.Join(root, "real")
@@ -86,12 +80,57 @@ func TestOwnershipSurvivesASymlinkedPath(t *testing.T) {
 	}
 
 	if !withinTree(link, filepath.Join(real, "pkg")) {
-		t.Error("a package under the app's real path was refused when the app was reached through a symlink")
+		t.Error("a package under the app's real path was treated as foreign when the app was reached through a symlink")
 	}
 	if !withinTree(real, filepath.Join(link, "pkg")) {
-		t.Error("a package reached through a symlink into the app was refused")
+		t.Error("a package reached through a symlink into the app was treated as foreign")
 	}
 	if withinTree(link, t.TempDir()) {
-		t.Error("an unrelated directory was accepted")
+		t.Error("an unrelated directory was treated as the app's own")
+	}
+}
+
+// Where a relocated declaration lands. It has to be inside the app's own
+// module — that is what makes it compilable, nameable by Go, and a directory
+// `go:embed` can reach — and it has to be addressed by the foreign package's
+// import path, because package names are short, not unique, and not the app's
+// to change.
+func TestARelocatedDeclarationLandsInTheAppsOwnGeneratedTree(t *testing.T) {
+	a := &app{
+		cfg:        Config{Out: filepath.FromSlash("/app/generated")},
+		hostDir:    filepath.FromSlash("/app"),
+		hostModule: "example.com/app",
+	}
+
+	first, err := a.declarationDirFor(types.NewPackage("example.com/wire", "wire"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.FromSlash("/app/generated/wiretypes/example.com/wire"); first != want {
+		t.Fatalf("declarationDirFor = %q, want %q", first, want)
+	}
+	if !withinTree(a.hostDir, first) {
+		t.Fatalf("%s is not inside the app", first)
+	}
+	// It must not fall inside the route tree, whose own go.mod would put it in
+	// a different module from the bindings that use it.
+	if withinTree(filepath.FromSlash("/app/web/src/routes"), first) {
+		t.Fatalf("%s is behind the route tree's module boundary", first)
+	}
+
+	second, err := a.declarationDirFor(types.NewPackage("example.com/other/wire", "wire"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second == first {
+		t.Fatalf("two packages both called wire were given the same directory %q", first)
+	}
+
+	// A path Go cannot name is refused rather than written into a directory
+	// the toolchain will then refuse to compile.
+	if _, err := a.declarationDirFor(types.NewPackage("example.com/wire/[id]", "wire")); err == nil {
+		t.Fatal("a package whose import path Go cannot name was accepted")
+	} else if !strings.Contains(err.Error(), "example.com/wire/[id]") {
+		t.Fatalf("the refusal does not name the package:\n%v", err)
 	}
 }
