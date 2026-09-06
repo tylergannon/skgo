@@ -20,6 +20,7 @@ Feature: Server loads written in Go
     Given nobody has signed in
     When I visit "<path>"
     Then I land on "/"
+    And I see "Home"
     And the account layout is not on the page
 
     Examples:
