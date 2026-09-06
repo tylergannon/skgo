@@ -276,27 +276,42 @@ func kitSuffix(urlPath string) string {
 //
 // skgo has no server loads: every route it serves is a page whose data comes
 // from remote functions, which the client fetches from `/_app/remote/...` and
-// never from a data URL. Kit's own answer for a route with no page data to
-// give is a 404 (`runtime/server/data/index.js`, the `!route.page` branch),
-// and 404 is the one status kit's client is written to survive here — its
-// hydration path singles it out ("if __data.json returned 404, the route
-// doesn't exist — don't reload or we loop") and carries on rendering the route
-// client-side. Any other status sends it into a full page reload; a 200 with
-// the wrong body sends it into JSON.parse.
+// never from a data URL. The built client carries no `__data.json` string at
+// all, because kit only fetches one for a node with a server load.
 //
-// The body is an App.Error rather than kit's empty one because kit's client
-// spreads a JSON body over `{status}` when the content type says JSON, so this
-// reaches the client as the same `{status: 404, message: 'Not Found'}` an
-// empty body produces — and says something to whoever curls it.
+// So the answer is a refusal, and 404 is the one status kit's client is
+// written to survive here — its hydration path singles it out ("if
+// __data.json returned 404, the route doesn't exist — don't reload or we
+// loop") and carries on rendering the route client-side. Any other status
+// sends it into a full page reload; a 200 with the wrong body sends it into
+// JSON.parse, which is the bug this replaces. The body is an App.Error rather
+// than kit's empty one because kit's client spreads a JSON body over
+// `{status}` when the content type says JSON, so it reaches the client as the
+// same `{status: 404, message: 'Not Found'}` an empty body gives — and says
+// something to whoever curls it.
+//
+// This is the one place skgo deliberately does not match kit byte for byte,
+// and the divergence is measured rather than assumed: kit's own dev server
+// answers this app's `/todos/__data.json` with 200 `application/json` and
+// `{"type":"data","nodes":[null,null]}` — the "page with no server load"
+// answer from `runtime/server/data/index.js`. Producing that means claiming to
+// be the server-load endpoint and knowing how many nodes are in each route's
+// branch, which the manifest does not carry and kit's public adapter API does
+// not expose. Server loads are a later mission (issue #5); whoever lands them
+// owns this function and should replace the refusal with kit's envelope, with
+// the node count coming from the adapter rather than from a guess.
 func (h *staticHandler) refuseInternalRequest(w http.ResponseWriter, r *http.Request, suffix string) {
 	header := w.Header()
 	header.Set("Cache-Control", "private, no-store")
 
 	if suffix == routeSuffix || suffix == htmlRouteSuffix {
-		// A route-resolution response is a JavaScript module. There is nothing
-		// truthful to serve, and a body here would be imported and executed.
-		header.Set("Content-Type", "text/javascript; charset=utf-8")
-		w.WriteHeader(http.StatusNotFound)
+		// Kit's own answer, verbatim, when `router.resolution` is `client` —
+		// its default and the only mode skgo serves:
+		// `text('Server-side route resolution disabled', { status: 400 })`
+		// (`runtime/server/page/server_routing.js`). Measured against this
+		// app's own `vp dev` server, which returns exactly this body and
+		// status, so the two modes agree here.
+		http.Error(w, "Server-side route resolution disabled", http.StatusBadRequest)
 		return
 	}
 

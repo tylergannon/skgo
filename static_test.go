@@ -499,13 +499,18 @@ func TestADataRequestIsRefusedWithA404TheClientUnderstands(t *testing.T) {
 func TestARouteResolutionRequestIsNeverAnsweredWithTheDocument(t *testing.T) {
 	h := newTestHandler(t)
 
+	// Kit's answer when `router.resolution` is `client`, its default and the
+	// only mode skgo serves. Taken from
+	// `runtime/server/page/server_routing.js` and confirmed on the wire
+	// against this app's own `vp dev` server, so both modes agree.
 	for _, path := range []string{"/about/__route.js", "/__route.js", "/about.html__route.js"} {
 		resp := do(t, h, http.MethodGet, path, nil)
-		if resp.StatusCode == http.StatusOK {
-			t.Errorf("%s answered 200", path)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s: status %d, want 400", path, resp.StatusCode)
 		}
-		if got := body(t, resp); got == testIndexHTML {
-			t.Errorf("%s answered with the boot document", path)
+		got := strings.TrimSpace(body(t, resp))
+		if got != "Server-side route resolution disabled" {
+			t.Errorf("%s: body %q, want kit's own refusal", path, got)
 		}
 	}
 }

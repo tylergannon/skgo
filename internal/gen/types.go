@@ -146,22 +146,34 @@ func (a *app) declare(named *types.Named) error {
 	return nil
 }
 
-// mustOwn refuses a named type whose package belongs to a module other than
-// the app's.
+// mustOwn refuses a named type declared outside the app's own source tree.
+//
+// The rule is about any foreign package, not about skgo's. `declare` resolves
+// whichever package *defines* a wire type and writes into that package's own
+// directory, so a `uuid.UUID`, a domain type from another repository, or a
+// type from a shared internal module all landed in somebody else's source.
+// skgo's own module was merely the instance this repo could see, because a
+// go.work member is writable and the scribble left no mark.
 //
 // Projecting a type is not something skgo can do at arm's length: polytype's
-// registration is a method on the type, so it has to be a Go file in the type's
-// own package, and polytype then writes its `jsonschema/` output beside it.
-// For a dependency that directory is the module cache, which is read-only — and
-// in a workspace where it happens to be writable, generating would silently
-// edit source the app does not own. Either way the answer is the same one skgo
-// gives a pointer or a map: say what cannot travel, and why, rather than emit
-// something that breaks on the next machine.
+// registration is `func (T) Schema() json.RawMessage`, a method on T, and Go
+// does not allow a method on a type declared in another package. So the file
+// has to sit in the type's own package, and polytype then writes its
+// `jsonschema/` output beside it. That is why this half refuses where the
+// TypeScript half relocates — typesDirFor can send a foreign package's
+// types.ts to `src/lib/skgo/<pkg>` because a TypeScript declaration needs only
+// to be importable from somewhere, while the Go declaration has nowhere else
+// it is allowed to be. The refusal is the same one skgo already gives a
+// pointer or a map: say what cannot travel, and why.
 //
-// Ownership is a question about the directory, not about the module path. The
-// route tree carries a `go.mod` of its own — the boundary that stops `go build
-// ./...` walking into `[id]` — so a package the developer authored can report a
-// module path that is not the app's while still being the app's source.
+// Two things this deliberately does not do. It does not ask whether the
+// directory is writable — a writable dependency is the case that hid the bug,
+// not the case that excuses it — and it decides before anything is written, so
+// a refused build leaves nothing behind. And it does not compare module paths:
+// the route tree carries a `go.mod` of its own, the boundary that stops `go
+// build ./...` walking into `[id]`, so a package the developer authored
+// reports a module path that is not the app's while still being the app's
+// source. Containment is what answers the question.
 func (a *app) mustOwn(named *types.Named, dir string) error {
 	if withinTree(a.hostDir, dir) {
 		return nil
