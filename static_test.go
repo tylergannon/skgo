@@ -323,3 +323,100 @@ func TestKitPatternLeavesEverythingElseAlone(t *testing.T) {
 		}
 	}
 }
+
+// TestTheDocumentAnswersItsOwnETag closes the loop the handler left open: it
+// advertised a validator on every boot document and then ignored the one the
+// browser offered back, so a reload transferred the whole document again. The
+// ETag is only a promise if a conditional request can collect on it.
+func TestTheDocumentAnswersItsOwnETag(t *testing.T) {
+	h := newTestHandler(t)
+
+	first := do(t, h, http.MethodGet, "/about", nil)
+	etag := first.Header.Get("ETag")
+	if etag == "" {
+		t.Fatal("the boot document carries no ETag")
+	}
+	if got := body(t, first); got != testIndexHTML {
+		t.Fatalf("the first response was not the boot document: %q", got)
+	}
+
+	second := do(t, h, http.MethodGet, "/about", http.Header{"If-None-Match": {etag}})
+	if second.StatusCode != http.StatusNotModified {
+		t.Errorf("a request offering the document's own ETag got %d, want 304", second.StatusCode)
+	}
+	if got := body(t, second); got != "" {
+		t.Errorf("a 304 carried a body of %d bytes", len(got))
+	}
+	// RFC 9110: a 304 repeats the validator and must not claim a length it is
+	// not sending.
+	if got := second.Header.Get("ETag"); got != etag {
+		t.Errorf("the 304 returned ETag %q, want %q", got, etag)
+	}
+	if got := second.Header.Get("Content-Length"); got != "" {
+		t.Errorf("the 304 declared Content-Length %q", got)
+	}
+}
+
+// A validator matches when it is one of the offered ones, or when the client
+// offers `*`; a weak validator matches its own strong form, because the
+// comparison a conditional GET uses is the weak one.
+func TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt(t *testing.T) {
+	h := newTestHandler(t)
+	etag := do(t, h, http.MethodGet, "/", nil).Header.Get("ETag")
+
+	for _, tc := range []struct {
+		name  string
+		offer string
+		want  int
+	}{
+		{"the exact validator", etag, http.StatusNotModified},
+		{"a list containing it", `"someone-elses", ` + etag, http.StatusNotModified},
+		{"the weak form of it", "W/" + etag, http.StatusNotModified},
+		{"any validator at all", "*", http.StatusNotModified},
+		{"a stale validator", `"0000000000000000"`, http.StatusOK},
+		{"nothing offered", "", http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			header := http.Header{}
+			if tc.offer != "" {
+				header.Set("If-None-Match", tc.offer)
+			}
+			resp := do(t, h, http.MethodGet, "/", header)
+			if resp.StatusCode != tc.want {
+				t.Errorf("If-None-Match %q got %d, want %d", tc.offer, resp.StatusCode, tc.want)
+			}
+		})
+	}
+}
+
+// A 404 boot document is still the same bytes, so it still validates — but it
+// has to stay a 404. Answering 304 to a request the server would have refused
+// tells the client the *error* page it already has is still current, which is
+// true, and kit's router renders +error.svelte from it either way.
+func TestAConditionalRequestForAMissingPageStays404(t *testing.T) {
+	h := newTestHandler(t)
+
+	first := do(t, h, http.MethodGet, "/no-such-page", nil)
+	if first.StatusCode != http.StatusNotFound {
+		t.Fatalf("GET /no-such-page: status %d, want 404", first.StatusCode)
+	}
+
+	second := do(t, h, http.MethodGet, "/no-such-page", http.Header{"If-None-Match": {first.Header.Get("ETag")}})
+	if second.StatusCode != http.StatusNotFound {
+		t.Errorf("a conditional request for a missing page got %d, want 404", second.StatusCode)
+	}
+	if got := body(t, second); got != testIndexHTML {
+		t.Errorf("the 404 stopped returning the document kit's client needs to render +error.svelte")
+	}
+}
+
+// HEAD gets the same answer as GET, minus the body — including the 304.
+func TestAConditionalHEADIsAnsweredLikeAConditionalGET(t *testing.T) {
+	h := newTestHandler(t)
+	etag := do(t, h, http.MethodGet, "/", nil).Header.Get("ETag")
+
+	resp := do(t, h, http.MethodHead, "/", http.Header{"If-None-Match": {etag}})
+	if resp.StatusCode != http.StatusNotModified {
+		t.Errorf("conditional HEAD got %d, want 304", resp.StatusCode)
+	}
+}

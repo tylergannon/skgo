@@ -1,6 +1,8 @@
 package example_test
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"io/fs"
@@ -11,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/example/businesslogic"
 	"github.com/tylergannon/skgo/example/generated"
 	"github.com/tylergannon/skgo/example/web"
 )
@@ -196,4 +199,93 @@ func samplePath(t *testing.T, id string) string {
 		}
 	}
 	return "/" + strings.Join(out, "/")
+}
+
+// post drives a command through the production stack. Kit's client sends the
+// argument as a base64url devalue payload in a JSON envelope, and the registry
+// refuses a cross-site POST, so the Origin has to be the configured one.
+func post(t *testing.T, h http.Handler, path, payload string, refreshes ...string) *httptest.ResponseRecorder {
+	t.Helper()
+	if refreshes == nil {
+		refreshes = []string{}
+	}
+	body, err := json.Marshal(map[string]any{"payload": payload, "refreshes": refreshes})
+	if err != nil {
+		t.Fatalf("encoding the command envelope: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", prodOrigin)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+// devaluePayload encodes a hand-written devalue tree the way kit's client
+// does: base64url of `[root, ...pool]`, where index 0 is the root itself.
+func devaluePayload(tree string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(tree))
+}
+
+// TestACommandRefusesTheTodoTheQueryRefuses is the authorization gate for the
+// write path.
+//
+// A signed-out visitor asking to read `t3` gets a 404, because it is private.
+// Asking to *rename* it used to succeed: the store applied the visibility rule
+// in every reader and in no writer, so the command changed the row and
+// returned the whole record — id, text and `private: true` — to the visitor
+// who had just been told it does not exist. Both halves are asserted here,
+// because refusing the write while still describing the row is still the leak.
+func TestACommandRefusesTheTodoTheQueryRefuses(t *testing.T) {
+	h := newProdHandler(t)
+
+	const privateID = "t3"
+	read := get(t, h, "/_app/remote/"+remoteID(t, "getTodo")+"?payload="+devaluePayload(`["`+privateID+`"]`))
+	if status := errorStatus(t, read.Body.Bytes()); status != 404 {
+		t.Fatalf("signed out, getTodo %s answered %d; this test needs it to be the refused fixture", privateID, status)
+	}
+
+	const newText = "renamed by a visitor who cannot see it"
+	wrote := post(t, h, "/_app/remote/"+remoteID(t, "renameTodo"),
+		devaluePayload(`[{"id":1,"text":2},"`+privateID+`","`+newText+`"]`))
+
+	body := wrote.Body.String()
+	if status := errorStatus(t, wrote.Body.Bytes()); status != 404 {
+		t.Errorf("signed out, renameTodo %s answered %v, want the 404 getTodo gives: %s", privateID, status, body)
+	}
+	if strings.Contains(body, newText) {
+		t.Errorf("the response echoes the private todo back to a signed-out visitor: %s", body)
+	}
+
+	// The write itself must not have landed, whatever the response said.
+	signedIn := businesslogic.Default.Session(businesslogic.Default.SignIn("gate")).User != ""
+	if !signedIn {
+		t.Fatal("could not open a session to read the private todo back")
+	}
+	todo, ok := businesslogic.Default.Todo(privateID, true)
+	if !ok {
+		t.Fatalf("%s is gone", privateID)
+	}
+	if todo.Text == newText {
+		t.Errorf("a signed-out visitor changed the private todo to %q", todo.Text)
+	}
+}
+
+// errorStatus reads the status out of a remote-function error envelope, or
+// reports 0 for a successful result.
+func errorStatus(t *testing.T, body []byte) int {
+	t.Helper()
+	var envelope struct {
+		Type  string `json:"type"`
+		Error struct {
+			Status int `json:"status"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		t.Fatalf("the remote response is not JSON: %v\n%s", err, body)
+	}
+	if envelope.Type != "error" {
+		return 0
+	}
+	return envelope.Error.Status
 }

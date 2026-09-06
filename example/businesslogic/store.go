@@ -121,12 +121,18 @@ func (s *Store) Add(text string) Todo {
 	return todo
 }
 
-// Rename changes a todo's text in place.
-func (s *Store) Rename(id, text string) (Todo, bool) {
+// Rename changes a todo's text in place, for a visitor allowed to see it.
+//
+// It reports the same miss as Todo for a todo this visitor may not read, so a
+// signed-out visitor gets one answer for `t3` whether they ask to read it or
+// to write it. Guarding only the readers leaks twice over: the write lands,
+// and the response hands back the record — text, id and Private — that the
+// reader was refused.
+func (s *Store) Rename(id, text string, signedIn bool) (Todo, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i := range s.todos {
-		if s.todos[i].ID == id {
+		if s.todos[i].ID == id && visible(s.todos[i], signedIn) {
 			s.todos[i].Text = text
 			return s.todos[i], true
 		}

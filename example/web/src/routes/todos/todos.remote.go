@@ -55,8 +55,13 @@ type Rename struct {
 }
 
 // renameTodo changes one todo's text.
+//
+// The visitor is passed to the store rather than checked here, so the answer
+// for a todo this visitor may not see is the same 404 getTodo gives. A command
+// that reached a todo the matching query refuses would disclose the row it
+// returns.
 func renameTodo(ctx context.Context, arg Rename) (businesslogic.Todo, error) {
-	todo, ok := businesslogic.Default.Rename(arg.ID, arg.Text)
+	todo, ok := businesslogic.Default.Rename(arg.ID, arg.Text, signedIn(ctx))
 	if !ok {
 		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", arg.ID)
 	}
