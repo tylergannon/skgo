@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -35,11 +36,21 @@ type tsType struct {
 	deps []*types.Named
 }
 
+// skgoFilePkg is where skgo.File actually lives; the exported name is an
+// alias, so go/types reports the underlying package.
+const skgoFilePkg = "github.com/tylergannon/skgo/internal/formdata"
+
 // project returns the TypeScript for t, or an error explaining why it cannot
 // travel. The rules are polytype's, because polytype is what has to emit the
 // declaration; skgo refuses the shapes polytype cannot express, and the ones it
 // expresses unfaithfully, rather than papering over them.
 func project(t types.Type) (tsType, error) {
+	// Since Go 1.23 an alias is its own node in the type graph rather than
+	// the type it names, so `skgo.File` arrives here as a *types.Alias and
+	// would fall past every case below. An alias is transparent by
+	// definition, so resolving it is the whole handling it needs.
+	t = types.Unalias(t)
+
 	switch u := t.(type) {
 	case *types.Named:
 		obj := u.Obj()
@@ -50,12 +61,29 @@ func project(t types.Type) (tsType, error) {
 		if obj.Pkg().Path() == "time" && obj.Name() == "Time" {
 			return tsType{expr: "string"}, nil
 		}
+		// skgo.File is an alias for the internal type a form decodes an upload
+		// into. It is not a struct to declare: on the client's side of the wire
+		// it is the browser's own File, which is what `form.fields.x.as('file')`
+		// puts in the FormData.
+		if obj.Pkg().Path() == skgoFilePkg && obj.Name() == "File" {
+			return tsType{expr: "File"}, nil
+		}
 		if _, isBasic := u.Underlying().(*types.Basic); isBasic {
 			// A named basic type is either an enum, which polytype emits as a
 			// union of literals, or a plain alias it emits as itself.
 			return tsType{expr: obj.Name(), deps: []*types.Named{u}}, nil
 		}
-		if _, isStruct := u.Underlying().(*types.Struct); isStruct {
+		if st, isStruct := u.Underlying().(*types.Struct); isStruct {
+			// A struct carrying an upload is written out inline instead of
+			// being declared. polytype describes JSON, and a File is not a
+			// JSON value — it is the browser's own File object, which kit's
+			// client puts in the FormData and skgo's binary form decoder
+			// carries to Go. Asking polytype to declare it fails outright
+			// ("type byte not found" on the bytes), and any shape it could be
+			// talked into would describe something the client never sends.
+			if containsFile(u) {
+				return inlineStruct(st)
+			}
 			return tsType{expr: obj.Name(), deps: []*types.Named{u}}, nil
 		}
 		return tsType{}, fmt.Errorf("%s is a named %s; polytype declares named struct and enum types only", t, kindWord(u.Underlying()))
@@ -494,4 +522,116 @@ func importSpecifier(fromDir, tsDir string) (string, error) {
 		spec = "./" + spec
 	}
 	return spec, nil
+}
+
+// checkFileUsage refuses a skgo.File anywhere it cannot work.
+//
+// A File only crosses the wire in one direction, in one kind: the browser puts
+// one in a FormData, and kit's binary form envelope carries its bytes to a
+// form's argument. Nothing sends one back — a result is serialised through
+// encoding/json, which would turn a File into an object with a base64 blob in
+// it — and no other remote kind receives one, because a query's and a command's
+// argument is decoded with a JSON round-trip that drops the bytes.
+//
+// Left unchecked, each of those is a silent wrong answer rather than a failure,
+// which is exactly the shape of bug a generator should make impossible.
+func (a *app) checkFileUsage() error {
+	for _, fn := range a.remotes {
+		if containsFile(fn.out) {
+			return fmt.Errorf("skgo: %s: %s returns a skgo.File. A File travels from the browser to a form only; a result is serialised as JSON and cannot carry one", fn.pos, fn.name)
+		}
+		if fn.kind == kindForm || !containsFile(fn.in) {
+			continue
+		}
+		return fmt.Errorf("skgo: %s: %s takes a skgo.File but is declared as a %s. Only a form receives an upload — kit posts a form as multipart-equivalent binary data, while a %s argument is a JSON-compatible devalue payload", fn.pos, fn.name, fn.kind, fn.kind)
+	}
+	for _, load := range a.loads {
+		if containsFile(load.out) {
+			return fmt.Errorf("skgo: %s: %s returns a skgo.File, which cannot be serialised into a load's data", load.pos, load.name)
+		}
+	}
+	return nil
+}
+
+// containsFile reports whether t is, or structurally contains, a skgo.File.
+func containsFile(t types.Type) bool {
+	return findFile(t, map[types.Type]bool{})
+}
+
+func findFile(t types.Type, seen map[types.Type]bool) bool {
+	if t == nil {
+		return false
+	}
+	// `skgo.File` is an alias, and an alias is a distinct node in go/types.
+	t = types.Unalias(t)
+	if seen[t] {
+		return false
+	}
+	seen[t] = true
+
+	switch u := t.(type) {
+	case *types.Named:
+		if obj := u.Obj(); obj.Pkg() != nil && obj.Pkg().Path() == skgoFilePkg && obj.Name() == "File" {
+			return true
+		}
+		return findFile(u.Underlying(), seen)
+	case *types.Struct:
+		for i := 0; i < u.NumFields(); i++ {
+			if findFile(u.Field(i).Type(), seen) {
+				return true
+			}
+		}
+	case *types.Slice:
+		return findFile(u.Elem(), seen)
+	case *types.Array:
+		return findFile(u.Elem(), seen)
+	case *types.Pointer:
+		return findFile(u.Elem(), seen)
+	case *types.Map:
+		return findFile(u.Elem(), seen)
+	}
+	return false
+}
+
+// inlineStruct renders a struct as a TypeScript object literal, for the one
+// case that cannot be a declared type: a form's argument with a file in it.
+//
+// The field names are encoding/json's, because that is what the runtime
+// decoder matches against, and a file field is optional because an
+// `<input type="file">` the visitor left alone sends nothing at all.
+func inlineStruct(st *types.Struct) (tsType, error) {
+	var (
+		parts []string
+		deps  []*types.Named
+	)
+	for i := 0; i < st.NumFields(); i++ {
+		f := st.Field(i)
+		if !f.Exported() {
+			continue
+		}
+		tag := reflect.StructTag(st.Tag(i)).Get("json")
+		name, opts, _ := strings.Cut(tag, ",")
+		if name == "-" && opts == "" {
+			continue
+		}
+		if name == "" {
+			name = f.Name()
+		}
+
+		inner, err := project(f.Type())
+		if err != nil {
+			return tsType{}, fmt.Errorf("field %s: %w", f.Name(), err)
+		}
+		deps = append(deps, inner.deps...)
+
+		optional := ""
+		if inner.expr == "File" || strings.Contains(opts, "omitempty") {
+			optional = "?"
+		}
+		parts = append(parts, fmt.Sprintf("%s%s: %s", name, optional, inner.expr))
+	}
+	if len(parts) == 0 {
+		return tsType{expr: "Record<string, never>"}, nil
+	}
+	return tsType{expr: "{ " + strings.Join(parts, "; ") + " }", deps: deps}, nil
 }

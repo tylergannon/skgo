@@ -55,6 +55,8 @@ func (a *app) writeStubs() error {
 			switch fn.kind {
 			case kindCommand:
 				kinds = appendUnique(kinds, "command")
+			case kindForm:
+				kinds = appendUnique(kinds, "form")
 			default:
 				kinds = appendUnique(kinds, "query")
 			}
@@ -116,6 +118,8 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 	result := out.expr
 	if fn.kind == kindCommand {
 		call = "command"
+	} else if fn.kind == kindForm {
+		call = "form"
 	} else if fn.kind == kindLive {
 		call = "query.live"
 		// `query.live` hands the client a stream, so kit types its function as
@@ -197,6 +201,8 @@ func constructor(k remoteKind) string {
 		return "NewCommand"
 	case kindLive:
 		return "NewLiveQuery"
+	case kindForm:
+		return "NewForm"
 	}
 	return "NewQuery"
 }

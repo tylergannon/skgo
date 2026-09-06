@@ -1,5 +1,7 @@
 {
 	"remotes": [
+		"14q4me9/getMessages",
+		"14q4me9/sendMessage",
 		"16h93j5/addTodo",
 		"16h93j5/getTodo",
 		"16h93j5/getTodos",

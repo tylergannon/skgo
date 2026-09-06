@@ -77,6 +77,10 @@ func Run(cfg Config) error {
 		return fmt.Errorf("skgo: found %d source file(s) but no skgo.Query, skgo.Command, skgo.LiveQuery or skgo.Load declaration in any of them", len(files))
 	}
 
+	if err := app.checkFileUsage(); err != nil {
+		return err
+	}
+
 	// Types first: the stubs import what polytype emits, so a type that
 	// cannot be projected must stop generation before any stub is written.
 	if err := app.declareLoadTypes(); err != nil {
