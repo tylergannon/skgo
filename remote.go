@@ -15,8 +15,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -47,11 +49,61 @@ func Errorf(status int, format string, args ...any) *HTTPError {
 // queries and live queries; kit's client throws when a *command* response
 // carries a redirect, so a Redirect returned from a command is reported as an
 // ordinary error instead.
+//
+// Status is kit's `redirect(status, location)` status and must be in 300-308,
+// the range kit validates in `exports/index.js`. Build one with NewRedirect,
+// which applies that check and the header-safety check kit's own Redirect
+// constructor applies to the location.
+//
+// The status does not reach the browser from a remote function, and that is
+// kit's design, not a gap here: kit serialises a remote-function redirect as
+// `{redirect: location}` inside the *success* envelope and drops the status
+// (`runtime/server/remote-functions.js`, the `error instanceof Redirect`
+// branch), and its client calls `goto(location)` on it. A live query's frame
+// is `{type:"redirect",location}` and kit's client fabricates a 307 purely so
+// its reconnect loop can recognise it. The status is carried and validated
+// here because it is part of what a caller means, and it becomes observable
+// wherever a redirect is answered as HTTP rather than as an envelope.
 type Redirect struct {
+	// Status is the HTTP status code, 300-308.
+	Status int
+	// Location is where the client is sent.
 	Location string
 }
 
-func (r *Redirect) Error() string { return "redirect to " + r.Location }
+// NewRedirect builds a Redirect, applying kit's own two checks: `redirect()`
+// refuses a status outside 300-308 with "Invalid status code", and the
+// Redirect constructor refuses a location that cannot be a header value.
+//
+// It reports an error rather than panicking, because a redirect target is
+// usually built from a request and a bad one is a request problem.
+func NewRedirect(status int, location string) (*Redirect, error) {
+	if status < 300 || status > 308 {
+		return nil, fmt.Errorf("skgo: invalid redirect status code %d: kit's redirect() accepts 300-308", status)
+	}
+	if !validHeaderValue(location) {
+		return nil, fmt.Errorf("skgo: invalid redirect location %q: this string contains characters that cannot be used in HTTP headers", location)
+	}
+	return &Redirect{Status: status, Location: location}, nil
+}
+
+// validHeaderValue mirrors what `new Headers({location})` rejects: control
+// characters, which is what would let a location split the response.
+func validHeaderValue(v string) bool {
+	for i := 0; i < len(v); i++ {
+		if c := v[i]; c < 0x20 || c == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *Redirect) Error() string {
+	if r.Status == 0 {
+		return "redirect to " + r.Location
+	}
+	return fmt.Sprintf("redirect %d to %s", r.Status, r.Location)
+}
 
 type remoteKind int
 
@@ -241,6 +293,13 @@ type RemoteConfig struct {
 	// recorded in the manifest. NewRemotes refuses to build a registry that
 	// does not answer exactly these.
 	Remotes []string
+	// OnPanic is called when a remote function panics, with the function's
+	// `<hash>/<name>` id, the recovered value, and the stack. The client is
+	// told nothing but an opaque 500, so this is the only record the panic
+	// leaves; leaving it nil logs the same three things to the standard
+	// logger, because a panicking handler that reports nowhere is a bug that
+	// cannot be found.
+	OnPanic func(id string, value any, stack []byte)
 
 	// manifest reports that this config came from a build manifest, which is
 	// what makes the Remotes check meaningful. A hand-built config is not
@@ -448,7 +507,7 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 
 	ev := rs.newEvent(r, false)
 
-	value, err := fn.call(withEvent(r.Context(), ev), arg, present)
+	value, err := rs.call(withEvent(r.Context(), ev), fn, arg, present)
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
 			rs.writeResult(w, ev, map[string]any{"redirect": redirect.Location})
@@ -494,7 +553,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 
 	ev := rs.newEvent(r, true)
 
-	value, err := fn.call(withEvent(r.Context(), ev), arg, present)
+	value, err := rs.call(withEvent(r.Context(), ev), fn, arg, present)
 	if err != nil {
 		// A redirect in a command response makes the client throw, so it is
 		// reported as an ordinary error instead. Cookies written before the
@@ -556,12 +615,15 @@ func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) (q, l ma
 			continue
 		}
 
+		// A refresh runs after the command has already succeeded — and may
+		// already have written a cookie — so a panic in one of them becomes
+		// that entry's error and nothing more. The command keeps its answer.
 		into, result := q, any(nil)
 		if fn.kind == kindLive {
 			into = l
-			result, err = fn.firstValue(ctx, arg, present)
+			result, err = rs.firstValue(ctx, fn, arg, present)
 		} else {
-			result, err = fn.call(ctx, arg, present)
+			result, err = rs.call(ctx, fn, arg, present)
 		}
 		if err != nil {
 			into[key] = map[string]any{"e": errorNode(asHTTPError(err))}
@@ -580,15 +642,14 @@ var errFirstValueTaken = errors.New("skgo: first value taken")
 // mirroring kit's `get_first_value`, which consumes a single value from the
 // generator and closes the iterator. The producer sees a cancelled context, so
 // a `select` on ctx.Done() unwinds exactly as it does on a client disconnect.
-func (r *Remote) firstValue(ctx context.Context, arg any, present bool) (any, error) {
+func (rs *Remotes) firstValue(ctx context.Context, r *Remote, arg any, present bool) (value any, err error) {
+	defer func() { err = rs.recovered(r, recover(), err) }()
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	var (
-		value any
-		got   bool
-	)
-	err := r.live(ctx, arg, present, func(v any) error {
+	var got bool
+	err = r.live(ctx, arg, present, func(v any) error {
 		value, got = v, true
 		cancel()
 		return errFirstValueTaken
@@ -606,6 +667,52 @@ func (r *Remote) firstValue(ctx context.Context, arg any, present bool) (any, er
 // caches under is built from this string, so it must never be re-encoded.
 func rawPayload(u *url.URL) string {
 	return u.Query().Get("payload")
+}
+
+// call runs a remote function, turning a panic into the error every path here
+// already knows how to answer.
+//
+// A remote function is ordinary Go and one of them will panic. Unrecovered,
+// the panic escapes ServeHTTP, net/http drops the connection, and the browser
+// reports a network failure rather than the app's error page — one bad handler
+// reads as an outage. Kit answers an unexpected throw with the same opaque 500
+// it gives any unexpected error, and so does this: the panic's text is the
+// server's business, and asHTTPError renders anything that is not an
+// *HTTPError as `{"status":500,"message":"Internal Error"}`.
+func (rs *Remotes) call(ctx context.Context, fn *Remote, arg any, present bool) (v any, err error) {
+	defer func() { err = rs.recovered(fn, recover(), err) }()
+	return fn.call(ctx, arg, present)
+}
+
+// callLive is the same guard for a `query.live` producer. It matters more
+// there: the producer runs on its own goroutine, where an unrecovered panic
+// does not reset one connection but ends the process, taking every other
+// visitor with it.
+func (rs *Remotes) callLive(ctx context.Context, fn *Remote, arg any, present bool, yield func(any) error) (err error) {
+	defer func() { err = rs.recovered(fn, recover(), err) }()
+	return fn.live(ctx, arg, present, yield)
+}
+
+// recovered reports a panic and converts it to an error. It is a no-op when
+// nothing panicked, so the guards above read as one deferred line.
+func (rs *Remotes) recovered(fn *Remote, value any, err error) error {
+	if value == nil {
+		return err
+	}
+	// net/http panics with ErrAbortHandler to abandon a response on purpose.
+	// Swallowing it would turn a deliberate abort into a 500 the client reads
+	// as a real answer, so it goes back up untouched.
+	if value == http.ErrAbortHandler {
+		panic(value)
+	}
+
+	stack := debug.Stack()
+	if rs.cfg.OnPanic != nil {
+		rs.cfg.OnPanic(fn.id, value, stack)
+	} else {
+		log.Printf("skgo: remote function %s panicked: %v\n%s", fn.id, value, stack)
+	}
+	return &HTTPError{Status: 500, Message: "Internal Error"}
 }
 
 // newEvent builds the per-call handle. The cookie jar it carries is shared by

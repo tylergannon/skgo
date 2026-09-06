@@ -79,7 +79,7 @@ func (rs *Remotes) serveLive(w http.ResponseWriter, r *http.Request, fn *Remote)
 	done := make(chan error, 1)
 
 	go func() {
-		done <- fn.live(liveCtx, arg, present, func(v any) error {
+		done <- rs.callLive(liveCtx, fn, arg, present, func(v any) error {
 			select {
 			case values <- v:
 				return nil
