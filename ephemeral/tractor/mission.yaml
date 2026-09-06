@@ -1,13 +1,25 @@
 # Template for dispatching a skgo mission. Copy it, replace `goal`, run it.
 #
-# The point of the shape: the agent does not decide whether it is done. The
-# check does, and the check is the acceptance suite. An agent that reports
-# success while the suite is red simply loops.
+# There is no acceptance node, and adding one would be a mistake. A command
+# that exits 0 cannot see the software, but every agent that is shown one
+# starts building toward it — which is how a project accumulates ten thousand
+# lines and no working app. The run ends when the agent has produced
+# screenshots of the running app; whether the work is done is decided by a
+# human looking at them.
+#
+# The agent node is the builder. It may delegate, but it must not return while
+# dispatched work is outstanding: its process ending kills its subagents, and
+# a run that abandoned its work looks exactly like a run that finished.
 name: skgo-mission
 goal: |
-  REPLACE ME. State the capability a developer should have when this is done,
-  where kit's pinned source is, and what proof is accepted. Do not prescribe
-  files, designs, or steps — see AGENTS.md, "Delegate missions, not methods".
+  REPLACE ME with the capability a developer should have when this is done,
+  kit as the specification and where the pinned source is, the scenarios that
+  will be believed, the non-negotiable constraints, and what this run owns so
+  parallel work does not collide. No file lists, no prescribed design.
+
+  Create the worktree with `just worktree <branch>`; `just --list` is the rest
+  of the plumbing. Read AGENTS.md first — it governs this project.
+
 start: build
 
 defaults:
@@ -20,14 +32,7 @@ defaults:
 nodes:
   - id: build
     type: agent
-    max_visits: 6
+    max_visits: 1
     prompt: $goal
     edges:
-      - to: acceptance
-
-  - id: acceptance
-    type: command
-    command: ./ephemeral/tractor/acceptance.sh
-    edges:
-      success: success
-      error: build
+      - to: success
