@@ -310,13 +310,20 @@ func TestADataURLIsRefusedAtTheBoundary(t *testing.T) {
 		t.Fatalf("reading index.html: %v", err)
 	}
 
+	// `__data.json` is refused 404, the status kit's client survives here.
+	// `__route.js` gets kit's own 400, verbatim. Both must stop being the boot
+	// document, which is the defect; the statuses are pinned so a future change
+	// to one of them has to be deliberate.
 	for _, route := range manifest.Routes {
 		page := samplePath(t, route.ID)
-		for _, suffix := range []string{"/__data.json", "/__route.js"} {
+		for suffix, want := range map[string]int{
+			"/__data.json": http.StatusNotFound,
+			"/__route.js":  http.StatusBadRequest,
+		} {
 			url := strings.TrimSuffix(page, "/") + suffix
 			rec := get(t, h, url)
-			if rec.Code != http.StatusNotFound {
-				t.Errorf("route %s: GET %s returned %d, want 404", route.ID, url, rec.Code)
+			if rec.Code != want {
+				t.Errorf("route %s: GET %s returned %d, want %d", route.ID, url, rec.Code, want)
 			}
 			if rec.Body.String() == string(document) {
 				t.Errorf("route %s: GET %s returned kit's boot document", route.ID, url)
