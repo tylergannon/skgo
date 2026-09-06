@@ -30,5 +30,6 @@ bindings, polytype.
    command mutates and refreshes in one round trip, an argument-taking query resolves on a
    deep link, and a live query updates the page as Go pushes values.
 2. Gherkin scenarios for those four flows pass against the production binary.
+   Dev (`vp dev` behind the Go server) answers remote calls from Go too.
 3. `go vet ./... ./example/...` and `go test ./... ./example/...` pass.
 4. Bar is working and not broken at ~90-95%. No gold plating.
