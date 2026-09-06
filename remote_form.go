@@ -123,6 +123,7 @@ func Form[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = f
 func NewForm[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindForm)
 	r.call = formAdapter(fn)
+	r.ptr = codePointer(fn)
 	return r
 }
 
@@ -204,6 +205,7 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 	}
 
 	ev := rs.newEvent(r, true)
+	ev.refreshes = newRefreshSet(rs)
 	ctx := withEvent(r.Context(), ev)
 
 	value, err := rs.call(ctx, fn, arg, true)
@@ -231,7 +233,7 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 	}
 
 	data := map[string]any{"_": devalue.NewObject("submission", true, "result", value)}
-	q, l := rs.resolveRefreshes(withEvent(r.Context(), ev.immutable()), meta.RemoteRefreshes)
+	q, l := rs.collectRefreshes(r.Context(), ev, meta.RemoteRefreshes)
 	if len(q) > 0 {
 		data["q"] = q
 	}

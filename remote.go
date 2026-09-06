@@ -137,6 +137,11 @@ type Remote struct {
 
 	call func(ctx context.Context, arg any, present bool) (any, error)
 	live func(ctx context.Context, arg any, present bool, yield func(any) error) error
+
+	// ptr is the code pointer of the Go function this registration publishes.
+	// It is the identity skgo.Refresh looks a function up by, which is what
+	// lets a refresh name `getTodo` rather than a string.
+	ptr uintptr
 }
 
 // ID is the `<hash>/<name>` pair the client addresses this function by.
@@ -195,6 +200,7 @@ func LiveQuery[In, Out any](fn func(context.Context, In, func(Out) error) error)
 func NewQuery[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindQuery)
 	r.call = callAdapter(fn)
+	r.ptr = codePointer(fn)
 	return r
 }
 
@@ -202,6 +208,7 @@ func NewQuery[In, Out any](module, name string, fn func(context.Context, In) (Ou
 func NewCommand[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindCommand)
 	r.call = callAdapter(fn)
+	r.ptr = codePointer(fn)
 	return r
 }
 
@@ -210,6 +217,7 @@ func NewCommand[In, Out any](module, name string, fn func(context.Context, In) (
 // client disconnects, and yield returns a non-nil error once that has happened.
 func NewLiveQuery[In, Out any](module, name string, fn func(context.Context, In, func(Out) error) error) *Remote {
 	r := newRemote(module, name, kindLive)
+	r.ptr = codePointer(fn)
 	r.live = func(ctx context.Context, arg any, present bool, yield func(any) error) error {
 		in, err := decodeArg[In](arg, present)
 		if err != nil {
@@ -349,9 +357,13 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 // Remotes is a registry of remote functions and the http.Handler that answers
 // calls to them.
 type Remotes struct {
-	cfg           RemoteConfig
-	prefix        string
-	fns           map[string]*Remote
+	cfg    RemoteConfig
+	prefix string
+	fns    map[string]*Remote
+	// byFunc indexes the registrations by the code pointer of the Go function
+	// each one publishes, which is how skgo.Refresh turns `getTodo` into the
+	// id half of a refresh key.
+	byFunc        map[uintptr]*Remote
 	secureCookies bool
 }
 
@@ -376,6 +388,7 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 		cfg:           cfg,
 		prefix:        base + "/" + cfg.AppDir + "/remote/",
 		fns:           make(map[string]*Remote, len(fns)),
+		byFunc:        make(map[uintptr]*Remote, len(fns)),
 		secureCookies: secureCookieDefault(cookieOrigin, cfg.Dev),
 	}
 	for _, fn := range fns {
@@ -387,6 +400,20 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 				fn.id, existing.module, existing.name, fn.module, fn.name)
 		}
 		rs.fns[fn.id] = fn
+		if fn.ptr == 0 {
+			continue
+		}
+		if existing, dup := rs.byFunc[fn.ptr]; dup {
+			// Two registrations that cannot be told apart by their function
+			// value would make skgo.Refresh update whichever one won the map,
+			// silently and not always the same one. Go gives two named
+			// top-level functions distinct code pointers even when their
+			// bodies are identical, so this is a registry built some other
+			// way — and it has to stop here rather than at the refresh.
+			return nil, fmt.Errorf("skgo: %s and %s are the same Go function (%s), so a refresh could not tell them apart",
+				existing.id, fn.id, funcNameAt(fn.ptr))
+		}
+		rs.byFunc[fn.ptr] = fn
 	}
 	if err := rs.checkDrift(); err != nil {
 		return nil, err
@@ -565,6 +592,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 	}
 
 	ev := rs.newEvent(r, true)
+	ev.refreshes = newRefreshSet(rs)
 
 	value, err := rs.call(withEvent(r.Context(), ev), fn, arg, present)
 	if err != nil {
@@ -579,7 +607,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 	// query refreshed by a command that just signed the visitor in reads the
 	// new cookie — exactly as it does in kit, where both share one request.
 	data := map[string]any{"_": value}
-	q, l := rs.resolveRefreshes(withEvent(r.Context(), ev.immutable()), body.Refreshes)
+	q, l := rs.collectRefreshes(r.Context(), ev, body.Refreshes)
 	if len(q) > 0 {
 		data["q"] = q
 	}
