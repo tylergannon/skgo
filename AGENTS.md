@@ -116,6 +116,14 @@ does not announce itself. Without a watcher the work finishes and sits there,
 and the human ends up asking whether anything is happening, which is the one
 question a lead should never make someone ask.
 
+**A worktree is not a working copy.** `ephemeral/inspiration` is gitignored, so
+the pinned kit source — the specification this project mirrors — lives only in
+the root checkout. An agent dispatched into a bare worktree and told to read kit
+finds an empty directory and proceeds on priors, silently, on the one thing that
+was supposed to be non-negotiable. Create every task worktree with
+`ephemeral/tractor/worktree.sh <branch>`, which links the source through and
+verifies both the link and the branch before handing the tree over.
+
 **Don't narrate.** No status documents, no progress reports, no summaries of
 work already visible in the diff. The worklog exists for actionable
 intelligence — corrections, traps, things that will change a future decision —
