@@ -130,6 +130,22 @@ wrong answer generates output. It is measured, not read.
   refers to names that do not exist in an ordinary build. Build the generated
   app both ways in any test.
 
+## Where a relocated declaration goes
+
+`<Out>/wiretypes/<import path>`. Inside `Out` because that is already skgo's
+disposable output and is documented to be in the same module as the remote
+functions — which is what makes the directory compilable, nameable by Go, and
+reachable by `go:embed`. Not under the route tree, whose own `go.mod` would put
+it in a different module from the bindings. The directory is the **import
+path**, not the package name, on both halves: two dependencies called `wire`
+are ordinary, and import paths are the only names guaranteed to differ.
+
+Residual and pre-existing, now reachable: separate directories do not help once
+two types called `Thing` land in one `.remote.ts`, because TypeScript has one
+namespace per module. That used to emit a module declaring `Thing` twice;
+`writeStubs` now refuses it by name. Fixing it properly needs import aliasing
+threaded through `project`.
+
 ## Ownership is a directory question, not a module-path question
 
 skgo writes a `go.mod` boundary into `web/src/routes` — the thing that stops
@@ -152,3 +168,10 @@ reproduced with polytype not installed at all.
 - A hand-written remote payload is base64url of the devalue JSON, not the JSON.
   `["t3"]` must be sent as `WyJ0MyJd`. Sending the JSON gets a 400 that reads
   like a server bug.
+- The root module's tests alone are not the gate. Changing a status in
+  `static.go` left `example/server_test.go` asserting the old one, and a run of
+  `go test ./...` from the root said nothing. Run both modules.
+- Deleting a remote function makes the *next* `skgo generate` fail at
+  `packages.Load`, because the stale `skgo_remotes_gen.go` still references it.
+  The generator cannot recover from its own previous output. Pre-existing,
+  found while testing #14, not filed.
