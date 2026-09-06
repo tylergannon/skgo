@@ -4,13 +4,14 @@
 	let { children } = $props();
 </script>
 
-<nav>
+<nav data-testid="app-nav">
 	<a href="/">Home</a>
 	<a href="/about">About</a>
 	<a href="/items/42">Item 42</a>
 	<a href="/todos">Todos</a>
 	<a href="/pricing">Pricing</a>
 	<a href="/docs/guide/getting-started">Docs</a>
+	<a href="/account">Account</a>
 </nav>
 
 <svelte:boundary>

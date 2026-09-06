@@ -20,10 +20,16 @@ type Event struct {
 	req *http.Request
 	jar *cookieJar
 	// mutable reports that this call may write cookies, which is true of a
-	// command and of nothing else. A query refreshed by a command shares the
+	// command and of a server load. A query refreshed by a command shares the
 	// command's cookie jar but gets its own immutable event, exactly as kit
 	// derives a fresh non-cookie-writing event for it.
 	mutable bool
+	// load is non-nil inside a server load. It carries the page's URL, the
+	// route parameters, and the record of what the load read — which is what
+	// tells kit's client whether the load has to run again on the next
+	// navigation. Outside a load, the methods that need it answer as they do
+	// on a nil event, because kit forbids reading any of it from a query.
+	load *loadState
 }
 
 type eventKey struct{}

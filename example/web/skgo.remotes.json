@@ -12,5 +12,11 @@
 		"9lqpme/getPage",
 		"ezl04l/getSite",
 		"gu007f/getPlans"
+	],
+	"loads": [
+		"src/routes/account/+layout.server.ts",
+		"src/routes/account/+page.server.ts",
+		"src/routes/account/orders/+page.server.ts",
+		"src/routes/account/statement/+page.server.ts"
 	]
 }

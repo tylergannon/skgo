@@ -10,3 +10,8 @@ func SkgoRemotes() []*skgo.Remote {
 		skgo.NewQuery("src/routes/(marketing)/pricing/pricing.remote.ts", "getPlans", getPlans),
 	}
 }
+
+// SkgoLoads returns the server loads declared in this package.
+func SkgoLoads() []*skgo.ServerLoad {
+	return []*skgo.ServerLoad{}
+}

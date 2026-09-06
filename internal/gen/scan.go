@@ -34,6 +34,27 @@ var markerKinds = map[string]remoteKind{
 	"LiveQuery": kindLive,
 }
 
+// loadFn is one declared server load.
+type loadFn struct {
+	// name is the Go identifier. It is not `load`: a route directory holds
+	// both `+page.server.ts` and `+layout.server.ts`, so their two Go files
+	// are one Go package and cannot both declare a function of that name. The
+	// file the marker sits in is what says which stub it generates.
+	name string
+	// goPkg is the package that declares it.
+	goPkg *goPackage
+	// module is the vite-root-relative path of the `+*.server.ts` that will
+	// carry it, e.g. "src/routes/account/+layout.server.ts". Kit records the
+	// same string for the node, which is what joins the two halves.
+	module string
+	// stub is the absolute path of that file.
+	stub string
+	// out is the load's result type, straight out of the marker's generic
+	// instantiation.
+	out types.Type
+	pos token.Position
+}
+
 // remoteFn is one declared remote function.
 type remoteFn struct {
 	kind remoteKind
@@ -74,7 +95,9 @@ type app struct {
 	cfg Config
 
 	remotes []*remoteFn
-	// pkgs is every package that declares remote functions, in load order.
+	loads   []*loadFn
+	// pkgs is every package that declares remote functions or loads, in load
+	// order.
 	pkgs []*goPackage
 	// stubs groups the functions by the `.remote.ts` they land in.
 	stubs map[string][]*remoteFn
@@ -194,14 +217,15 @@ func loadApp(cfg Config, files []string) (*app, error) {
 			if !wanted[path] {
 				continue
 			}
-			fns, err := a.scanFile(gp, p, file, path)
+			fns, loads, err := a.scanFile(gp, p, file, path)
 			if err != nil {
 				return nil, err
 			}
-			if len(fns) > 0 {
+			if len(fns) > 0 || len(loads) > 0 {
 				found = true
 			}
 			a.remotes = append(a.remotes, fns...)
+			a.loads = append(a.loads, loads...)
 		}
 		if found {
 			a.pkgs = append(a.pkgs, gp)
@@ -217,18 +241,26 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	for _, fn := range a.remotes {
 		a.stubs[fn.stub] = append(a.stubs[fn.stub], fn)
 	}
+	sort.Slice(a.loads, func(i, j int) bool { return a.loads[i].module < a.loads[j].module })
 	return a, a.checkDuplicates()
 }
 
-// scanFile reads the markers in one `.remote.go` file.
-func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path string) ([]*remoteFn, error) {
-	mod, err := webRel(a.cfg.Web, strings.TrimSuffix(path, ".go")+".ts")
-	if err != nil {
-		return nil, err
-	}
+// scanFile reads the markers in one `.remote.go`, `page.server.go` or
+// `layout.server.go` file. The file's name decides which markers may appear in
+// it, because it also decides what kit compiles beside it.
+func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path string) ([]*remoteFn, []*loadFn, error) {
 	stub := strings.TrimSuffix(path, ".go") + ".ts"
+	if tsName, isLoad := loadFileNames[filepath.Base(path)]; isLoad {
+		stub = filepath.Join(filepath.Dir(path), tsName)
+		_ = isLoad
+	}
+	mod, err := webRel(a.cfg.Web, stub)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	var out []*remoteFn
+	var remotes []*remoteFn
+	var loads []*loadFn
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)
 		if !ok || gd.Tok != token.VAR {
@@ -244,54 +276,81 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 				if !ok {
 					continue
 				}
-				fn, err := a.readMarker(gp, p, call, mod, stub)
+				fn, load, err := a.readMarker(gp, p, call, mod, stub)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				if fn != nil {
-					out = append(out, fn)
+					remotes = append(remotes, fn)
+				}
+				if load != nil {
+					loads = append(loads, load)
 				}
 			}
 		}
 	}
-	return out, nil
+
+	_, isLoadFile := loadFileNames[filepath.Base(path)]
+	if isLoadFile && len(remotes) > 0 {
+		return nil, nil, fmt.Errorf("skgo: %s declares a remote function; a remote function belongs in a *.remote.go file", path)
+	}
+	if !isLoadFile && len(loads) > 0 {
+		return nil, nil, fmt.Errorf("skgo: %s declares a server load; a load belongs in page.server.go or layout.server.go", path)
+	}
+	return remotes, loads, nil
 }
 
 // readMarker turns one call expression into a remoteFn, or returns nil if the
 // call is not a marker at all.
-func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr, mod, stub string) (*remoteFn, error) {
+func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr, mod, stub string) (*remoteFn, *loadFn, error) {
 	ident := calleeIdent(call.Fun)
 	if ident == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	obj, _ := p.TypesInfo.Uses[ident].(*types.Func)
 	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != skgoPkg {
-		return nil, nil
+		return nil, nil, nil
 	}
-	kind, ok := markerKinds[obj.Name()]
-	if !ok {
-		return nil, nil
+	kind, isRemote := markerKinds[obj.Name()]
+	isLoad := obj.Name() == "Load"
+	if !isRemote && !isLoad {
+		return nil, nil, nil
 	}
 
 	pos := p.Fset.Position(call.Pos())
 	inst := p.TypesInfo.Instances[ident]
-	if inst.TypeArgs == nil || inst.TypeArgs.Len() != 2 {
-		return nil, fmt.Errorf("skgo: %s: cannot read the argument and result types of this skgo.%s declaration", pos, obj.Name())
+	arity := 2
+	if isLoad {
+		arity = 1
+	}
+	if inst.TypeArgs == nil || inst.TypeArgs.Len() != arity {
+		return nil, nil, fmt.Errorf("skgo: %s: cannot read the types of this skgo.%s declaration", pos, obj.Name())
 	}
 	if len(call.Args) != 1 {
-		return nil, fmt.Errorf("skgo: %s: skgo.%s takes exactly one argument, the function to publish", pos, obj.Name())
+		return nil, nil, fmt.Errorf("skgo: %s: skgo.%s takes exactly one argument, the function to publish", pos, obj.Name())
 	}
 
 	arg, ok := call.Args[0].(*ast.Ident)
 	if !ok {
-		return nil, fmt.Errorf("skgo: %s: skgo.%s needs a named function, not an expression — declare the function and pass its name", pos, obj.Name())
+		return nil, nil, fmt.Errorf("skgo: %s: skgo.%s needs a named function, not an expression — declare the function and pass its name", pos, obj.Name())
 	}
 	target, _ := p.TypesInfo.Uses[arg].(*types.Func)
 	if target == nil {
-		return nil, fmt.Errorf("skgo: %s: %s is not a function", pos, arg.Name)
+		return nil, nil, fmt.Errorf("skgo: %s: %s is not a function", pos, arg.Name)
 	}
 	if target.Pkg() != p.Types {
-		return nil, fmt.Errorf("skgo: %s: %s is declared in another package; a remote function must live in the file that publishes it", pos, arg.Name)
+		return nil, nil, fmt.Errorf("skgo: %s: %s is declared in another package; it must live in the file that publishes it", pos, arg.Name)
+	}
+
+	if isLoad {
+		return nil, &loadFn{
+			name:   target.Name(),
+			goPkg:  gp,
+			module: mod,
+			stub:   stub,
+			out:    inst.TypeArgs.At(0),
+			pos:    pos,
+		}, nil
 	}
 
 	return &remoteFn{
@@ -303,7 +362,7 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 		in:     inst.TypeArgs.At(0),
 		out:    inst.TypeArgs.At(1),
 		pos:    pos,
-	}, nil
+	}, nil, nil
 }
 
 func calleeIdent(fun ast.Expr) *ast.Ident {
@@ -328,6 +387,13 @@ func (a *app) checkDuplicates() error {
 			return fmt.Errorf("skgo: %s is declared twice, at %s and %s", key, prev.pos, fn.pos)
 		}
 		seen[key] = fn
+	}
+	loads := map[string]*loadFn{}
+	for _, load := range a.loads {
+		if prev, dup := loads[load.module]; dup {
+			return fmt.Errorf("skgo: %s has two server loads, at %s and %s", load.module, prev.pos, load.pos)
+		}
+		loads[load.module] = load
 	}
 	return nil
 }

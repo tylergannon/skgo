@@ -14,3 +14,8 @@ func SkgoRemotes() []*skgo.Remote {
 		skgo.NewLiveQuery("src/routes/todos/todos.remote.ts", "watchCount", watchCount),
 	}
 }
+
+// SkgoLoads returns the server loads declared in this package.
+func SkgoLoads() []*skgo.ServerLoad {
+	return []*skgo.ServerLoad{}
+}
