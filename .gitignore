@@ -7,6 +7,4 @@ example/e2e/.features-gen/
 test-results/
 playwright-report/
 example/e2e/screenshots/
-
-# tractor run logs
-/.tractor/
+.tractor/

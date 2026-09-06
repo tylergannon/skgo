@@ -83,6 +83,13 @@ func NewLiveQuery[In, Out any](module, name string, fn func(context.Context, In,
 	_, _, _ = module, name, fn
 	return &Remote{}
 }
+
+type ServerLoad struct{}
+
+func NewLoad[Out any](module string, fn func(context.Context) (Out, error)) *ServerLoad {
+	_, _ = module, fn
+	return &ServerLoad{}
+}
 `)
 
 	// `wire` is the dependency. Its types are the ones that have to travel: a

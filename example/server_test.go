@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/example"
 	"github.com/tylergannon/skgo/example/businesslogic"
 	"github.com/tylergannon/skgo/example/generated"
 	"github.com/tylergannon/skgo/example/web"
@@ -22,32 +23,32 @@ import (
 // listens on it: every request below is served in-process.
 const prodOrigin = "http://127.0.0.1:8080"
 
-// newProdHandler assembles the production stack exactly as cmd/main.go does,
-// from the build embedded in this binary.
+// newProdHandler is the production stack: not a copy of what cmd/main.go
+// composes, but the same function it calls.
 //
-// The unit tests for the static handler and the registry feed them synthetic
+// The unit tests for the static handler and the registries feed them synthetic
 // fixtures, which is why they cannot see a manifest the real adapter wrote.
 // This one starts where the developer does: the artifacts in the tree.
 func newProdHandler(t *testing.T) http.Handler {
 	t.Helper()
 
+	h, mode, err := example.NewHandler(prodDist(t), "", prodOrigin)
+	if err != nil {
+		t.Fatalf("assembling the production stack: %v", err)
+	}
+	if mode != "prod" {
+		t.Fatalf("mode = %q, want prod", mode)
+	}
+	return h
+}
+
+func prodDist(t *testing.T) fs.FS {
+	t.Helper()
 	dist, err := fs.Sub(web.Build, "build")
 	if err != nil {
 		t.Fatalf("opening the embedded build: %v", err)
 	}
-	manifest, err := skgo.ReadManifest(dist)
-	if err != nil {
-		t.Fatalf("reading the build manifest: %v", err)
-	}
-	remotes, err := skgo.NewRemotes(manifest.RemoteConfig(prodOrigin), generated.Remotes()...)
-	if err != nil {
-		t.Fatalf("mounting the remote registry: %v", err)
-	}
-	static, err := skgo.NewStaticHandler(dist)
-	if err != nil {
-		t.Fatalf("building the static handler: %v", err)
-	}
-	return remotes.Intercept(static)
+	return dist
 }
 
 func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
@@ -294,40 +295,112 @@ func errorStatus(t *testing.T, body []byte) int {
 // against the routes kit actually compiled. Kit's route patterns end `\/?$`,
 // so `/todos/__data.json` matched the `/todos` page and came back 200
 // text/html — a failure that landed inside kit's client rather than here.
-func TestADataURLIsRefusedAtTheBoundary(t *testing.T) {
+// A data URL is the app's own endpoint, and every route has one. What must
+// never happen is the defect this replaced: the boot document served at a data
+// URL, which kit's client hands to JSON.parse.
+//
+// `__route.js` is a different case — kit's own 400 for the client-side route
+// resolution skgo serves — and is pinned here beside it.
+func TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument(t *testing.T) {
 	h := newProdHandler(t)
 
-	dist, err := fs.Sub(web.Build, "build")
-	if err != nil {
-		t.Fatalf("opening the embedded build: %v", err)
-	}
-	manifest, err := skgo.ReadManifest(dist)
-	if err != nil {
-		t.Fatalf("reading the build manifest: %v", err)
-	}
-	document, err := fs.ReadFile(dist, "index.html")
+	document, err := fs.ReadFile(prodDist(t), "index.html")
 	if err != nil {
 		t.Fatalf("reading index.html: %v", err)
 	}
+	manifest, err := skgo.ReadManifest(prodDist(t))
+	if err != nil {
+		t.Fatalf("reading the build manifest: %v", err)
+	}
 
-	// `__data.json` is refused 404, the status kit's client survives here.
-	// `__route.js` gets kit's own 400, verbatim. Both must stop being the boot
-	// document, which is the defect; the statuses are pinned so a future change
-	// to one of them has to be deliberate.
 	for _, route := range manifest.Routes {
-		page := samplePath(t, route.ID)
-		for suffix, want := range map[string]int{
-			"/__data.json": http.StatusNotFound,
-			"/__route.js":  http.StatusBadRequest,
-		} {
-			url := strings.TrimSuffix(page, "/") + suffix
-			rec := get(t, h, url)
-			if rec.Code != want {
-				t.Errorf("route %s: GET %s returned %d, want %d", route.ID, url, rec.Code, want)
-			}
-			if rec.Body.String() == string(document) {
-				t.Errorf("route %s: GET %s returned kit's boot document", route.ID, url)
-			}
+		page := strings.TrimSuffix(samplePath(t, route.ID), "/")
+
+		rec := get(t, h, page+"/__data.json")
+		if rec.Code != http.StatusOK {
+			t.Errorf("route %s: GET %s/__data.json returned %d, want 200", route.ID, page, rec.Code)
+		}
+		if rec.Body.String() == string(document) {
+			t.Errorf("route %s: GET %s/__data.json returned kit's boot document", route.ID, page)
+		}
+		// Kit's client reads the first line as one of three envelopes. A body
+		// that is none of them is a body it cannot use.
+		var envelope struct {
+			Type string `json:"type"`
+		}
+		line, _, _ := strings.Cut(rec.Body.String(), "\n")
+		if err := json.Unmarshal([]byte(line), &envelope); err != nil {
+			t.Errorf("route %s: GET %s/__data.json is not JSON: %v: %s", route.ID, page, err, line)
+			continue
+		}
+		switch envelope.Type {
+		case "data", "redirect", "error":
+		default:
+			t.Errorf("route %s: GET %s/__data.json answered %q, not one of kit's envelopes: %s",
+				route.ID, page, envelope.Type, line)
+		}
+
+		rec = get(t, h, page+"/__route.js")
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("route %s: GET %s/__route.js returned %d, want 400", route.ID, page, rec.Code)
+		}
+		if rec.Body.String() == string(document) {
+			t.Errorf("route %s: GET %s/__route.js returned kit's boot document", route.ID, page)
+		}
+	}
+}
+
+// The static handler answers a page with an ETag and honours a conditional
+// request against it. A data URL is not that page, and the two live one
+// `Intercept` apart: if a data request ever reached the static handler it would
+// be matched against the document's validator and answered 304 with no body,
+// which kit's client reads as an empty response.
+//
+// The load below returns data the browser can be seen to have used, so a 304
+// or a document is not merely a different status but visibly the wrong bytes.
+func TestAConditionalRequestForADataURLStillGetsKitsData(t *testing.T) {
+	h := newProdHandler(t)
+
+	// The document's own ETag, taken from the page this data URL belongs to.
+	// It is the validator a confused conditional request would be matched
+	// against, so it is the one worth sending.
+	page := get(t, h, "/account")
+	documentETag := page.Header().Get("ETag")
+	if documentETag == "" {
+		t.Fatal("GET /account served no ETag; this test would prove nothing")
+	}
+
+	session := businesslogic.Default.SignIn("ada")
+
+	for _, headers := range []map[string]string{
+		{},
+		{"If-None-Match": "*"},
+		{"If-None-Match": documentETag},
+		{"If-Modified-Since": "Wed, 21 Oct 2099 07:28:00 GMT"},
+	} {
+		req := httptest.NewRequest(http.MethodGet, "/account/__data.json?x-sveltekit-invalidated=111", nil)
+		req.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
+		for name, value := range headers {
+			req.Header.Set(name, value)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("%v: status %d, want 200 — a data URL has no validator to match", headers, rec.Code)
+			continue
+		}
+		if rec.Body.Len() == 0 {
+			t.Errorf("%v: empty body", headers)
+			continue
+		}
+		// `ada` is the name the fixture signed in with, and the layout's load
+		// is the only thing that can put it on the wire.
+		if !strings.Contains(rec.Body.String(), `"ada"`) {
+			t.Errorf("%v: the signed-in visitor's data is not in the response: %s", headers, rec.Body.String())
+		}
+		if !strings.HasPrefix(rec.Body.String(), `{"type":"data","nodes":[`) {
+			t.Errorf("%v: not kit's data envelope: %s", headers, rec.Body.String())
 		}
 	}
 }

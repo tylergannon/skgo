@@ -27,6 +27,10 @@ type Manifest struct {
 	Base string `json:"base"`
 	// Version is kit's build version name.
 	Version string `json:"version"`
+	// Nodes gives, per kit node index, the vite-root-relative path of that
+	// node's `+page.server.ts` or `+layout.server.ts`, or "" when it has
+	// none. It is the key a Go load is registered under.
+	Nodes []string `json:"nodes"`
 	// Routes lists every route kit knows about, with the regular expression
 	// kit's own router uses to match it.
 	Routes []ManifestRoute `json:"routes"`
@@ -42,6 +46,40 @@ type Manifest struct {
 type ManifestRoute struct {
 	ID      string `json:"id"`
 	Pattern string `json:"pattern"`
+	// Params names the route's parameters in the order the pattern captures
+	// them.
+	Params []ManifestParam `json:"params,omitempty"`
+	// Page describes the node branch of a route that has a page. It is nil for
+	// a route that is an endpoint and nothing else.
+	Page *ManifestPage `json:"page,omitempty"`
+}
+
+// ManifestParam is one route parameter, as kit's own router describes it.
+type ManifestParam struct {
+	Name     string `json:"name"`
+	Optional bool   `json:"optional"`
+	Rest     bool   `json:"rest"`
+	Chained  bool   `json:"chained"`
+	Matcher  string `json:"matcher,omitempty"`
+}
+
+// ManifestPage is a page route's node branch. `append(Layouts, Leaf)` is the
+// branch itself: one slot per node, outermost first, and the order kit's client
+// positions its `x-sveltekit-invalidated` string over.
+type ManifestPage struct {
+	// Layouts holds the node index of each layout wrapping the page. -1 marks
+	// a slot no layout fills, which JSON cannot express as a hole.
+	Layouts []int `json:"layouts"`
+	// Leaf is the node index of the page itself.
+	Leaf int `json:"leaf"`
+}
+
+// Branch is `[...layouts, leaf]`: the nodes of this route, outermost first.
+func (p *ManifestPage) Branch() []int {
+	if p == nil {
+		return nil
+	}
+	return append(append(make([]int, 0, len(p.Layouts)+1), p.Layouts...), p.Leaf)
 }
 
 // staticHandler serves an adapter build: the client bundle as files, and kit's
@@ -249,13 +287,11 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.serveDocument(w, r, http.StatusNotFound)
 }
 
-// Kit's internal pathname suffixes, from `src/pathname.js`. `__data.json` is
-// the server-load endpoint of a page; `__route.js` is the module `preloadCode`
-// imports to resolve a route. Each has an `.html` variant, for a page whose
-// own URL ends in `.html`.
+// Kit's route-resolution suffixes, from `src/pathname.js`: `__route.js` is the
+// module `preloadCode` imports to resolve a route, with an `.html` variant for
+// a page whose own URL ends in `.html`. The two data suffixes live in data.go,
+// beside the handler that answers them.
 const (
-	dataSuffix      = "/__data.json"
-	htmlDataSuffix  = ".html__data.json"
 	routeSuffix     = "/__route.js"
 	htmlRouteSuffix = ".html__route.js"
 )
@@ -272,34 +308,29 @@ func kitSuffix(urlPath string) string {
 	return ""
 }
 
-// refuseInternalRequest answers a `__data.json` or `__route.js` request.
+// refuseInternalRequest answers a `__data.json` or `__route.js` request that
+// reached the static handler.
 //
-// skgo has no server loads: every route it serves is a page whose data comes
-// from remote functions, which the client fetches from `/_app/remote/...` and
-// never from a data URL. The built client carries no `__data.json` string at
-// all, because kit only fetches one for a node with a server load.
+// Server loads landed: `__data.json` is answered by Loads.Intercept, which
+// must sit in front of this handler, and a data URL that gets this far is one
+// no Loads was ever installed to answer. The refusal stays because the static
+// handler is usable on its own, and because kit's route patterns end `\/?$`,
+// so a one-segment data URL matches its own page route. Left to fall through,
+// `/todos/__data.json` was answered 200 with the boot document and kit's
+// client parsed HTML as JSON.
 //
-// So the answer is a refusal, and 404 is the one status kit's client is
-// written to survive here — its hydration path singles it out ("if
-// __data.json returned 404, the route doesn't exist — don't reload or we
-// loop") and carries on rendering the route client-side. Any other status
-// sends it into a full page reload; a 200 with the wrong body sends it into
-// JSON.parse, which is the bug this replaces. The body is an App.Error rather
-// than kit's empty one because kit's client spreads a JSON body over
-// `{status}` when the content type says JSON, so it reaches the client as the
-// same `{status: 404, message: 'Not Found'}` an empty body gives — and says
-// something to whoever curls it.
+// 404 is the one status kit's client is written to survive here — its
+// hydration path singles it out ("if __data.json returned 404, the route
+// doesn't exist — don't reload or we loop") and carries on rendering the route
+// client-side. Any other status sends it into a full page reload; a 200 with
+// the wrong body sends it into JSON.parse, which is the bug this replaces. The
+// body is an App.Error rather than kit's empty one because kit's client
+// spreads a JSON body over `{status}` when the content type says JSON, so it
+// reaches the client as the same `{status: 404, message: 'Not Found'}` an
+// empty body gives — and says something to whoever curls it.
 //
-// This is the one place skgo deliberately does not match kit byte for byte,
-// and the divergence is measured rather than assumed: kit's own dev server
-// answers this app's `/todos/__data.json` with 200 `application/json` and
-// `{"type":"data","nodes":[null,null]}` — the "page with no server load"
-// answer from `runtime/server/data/index.js`. Producing that means claiming to
-// be the server-load endpoint and knowing how many nodes are in each route's
-// branch, which the manifest does not carry and kit's public adapter API does
-// not expose. Server loads are a later mission (issue #5); whoever lands them
-// owns this function and should replace the refusal with kit's envelope, with
-// the node count coming from the adapter rather than from a guess.
+// `__route.js` has no equivalent elsewhere: it is refused here for every app,
+// because skgo serves only kit's default client-side route resolution.
 func (h *staticHandler) refuseInternalRequest(w http.ResponseWriter, r *http.Request, suffix string) {
 	header := w.Header()
 	header.Set("Cache-Control", "private, no-store")

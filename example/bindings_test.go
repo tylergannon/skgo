@@ -95,3 +95,79 @@ func TestTheServerRefusesABuildItCannotServe(t *testing.T) {
 	}
 	t.Logf("refused, as it should: %v", err)
 }
+
+// serverLoadModules is the set of `+*.server.ts` modules the built frontend has
+// a server load for: the key kit itself records for each node.
+func serverLoadModules(t *testing.T) []string {
+	t.Helper()
+	var modules []string
+	for _, module := range buildManifest(t).Nodes {
+		if module != "" {
+			modules = append(modules, module)
+		}
+	}
+	slices.Sort(modules)
+	return modules
+}
+
+// TestTheBinaryAnswersEveryServerLoadTheFrontendHas is the other half of the
+// startup check. Kit decides whether its client ever asks for `__data.json`
+// from the `load` export it finds in the built module, so a page whose stub
+// reached the build without a Go load behind it is a page nobody answers.
+func TestTheBinaryAnswersEveryServerLoadTheFrontendHas(t *testing.T) {
+	var registered []string
+	for _, load := range generated.Loads() {
+		registered = append(registered, load.Module())
+	}
+	slices.Sort(registered)
+
+	if built := serverLoadModules(t); !slices.Equal(registered, built) {
+		t.Fatalf("the Go registry answers\n  %v\nbut the built frontend has server loads at\n  %v\nRun `go generate ./...` and rebuild the frontend.", registered, built)
+	}
+}
+
+// TestTheGeneratorAndTheBuildAgreeAboutLoads closes the loop on the other side.
+func TestTheGeneratorAndTheBuildAgreeAboutLoads(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("web", "skgo.remotes.json"))
+	if err != nil {
+		t.Fatalf("reading skgo.remotes.json: %v", err)
+	}
+	var declared struct {
+		Loads []string `json:"loads"`
+	}
+	if err := json.Unmarshal(raw, &declared); err != nil {
+		t.Fatalf("parsing skgo.remotes.json: %v", err)
+	}
+	slices.Sort(declared.Loads)
+
+	if built := serverLoadModules(t); !slices.Equal(declared.Loads, built) {
+		t.Fatalf("skgo.remotes.json lists\n  %v\nbut the build carries\n  %v", declared.Loads, built)
+	}
+}
+
+// TestTheServerRefusesABuildWhoseLoadsItCannotAnswer proves that check is
+// load-bearing too.
+func TestTheServerRefusesABuildWhoseLoadsItCannotAnswer(t *testing.T) {
+	manifest := buildManifest(t)
+	if len(serverLoadModules(t)) == 0 {
+		t.Fatal("the build has no server loads")
+	}
+
+	if _, err := skgo.NewLoads(manifest.LoadConfig("http://127.0.0.1:8080"), generated.Loads()...); err != nil {
+		t.Fatalf("the server refused the build it was compiled against: %v", err)
+	}
+
+	stale := manifest
+	stale.Nodes = slices.Clone(manifest.Nodes)
+	for i, module := range stale.Nodes {
+		if module != "" {
+			stale.Nodes[i] = "src/routes/renamed/+page.server.ts"
+			break
+		}
+	}
+	_, err := skgo.NewLoads(stale.LoadConfig("http://127.0.0.1:8080"), generated.Loads()...)
+	if err == nil {
+		t.Fatal("the server started against a frontend whose server loads it does not answer")
+	}
+	t.Logf("refused, as it should: %v", err)
+}

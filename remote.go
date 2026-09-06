@@ -65,7 +65,9 @@ func Errorf(status int, format string, args ...any) *HTTPError {
 // here because it is part of what a caller means, and it becomes observable
 // wherever a redirect is answered as HTTP rather than as an envelope.
 type Redirect struct {
-	// Status is the HTTP status code, 300-308.
+	// Status is the HTTP status kit's client is told about. Kit requires one
+	// of 300..308; zero means 307, kit's own default for a redirect that does
+	// not name one.
 	Status int
 	// Location is where the client is sent.
 	Location string
@@ -96,6 +98,15 @@ func validHeaderValue(v string) bool {
 		}
 	}
 	return true
+}
+
+// status is the status to put on the wire. A Redirect built by hand rather
+// than by NewRedirect may leave Status zero; kit's own default is 307.
+func (r *Redirect) status() int {
+	if r.Status == 0 {
+		return http.StatusTemporaryRedirect
+	}
+	return r.Status
 }
 
 func (r *Redirect) Error() string {
@@ -774,10 +785,11 @@ type remoteResponse struct {
 	Error *HTTPError `json:"error,omitempty"`
 }
 
-func errorNode(e *HTTPError) map[string]any {
+func errorNode(e *HTTPError) *devalue.Object {
 	// devalue serialises the JSON value set only, so the status must be a
-	// float, not a Go int.
-	return map[string]any{"status": float64(e.Status), "message": e.Message}
+	// float, not a Go int. The object is ordered rather than a Go map, so the
+	// two properties land in kit's own order.
+	return devalue.NewObject("status", float64(e.Status), "message", e.Message)
 }
 
 func asHTTPError(err error) *HTTPError {

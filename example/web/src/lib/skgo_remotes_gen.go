@@ -12,3 +12,8 @@ func SkgoRemotes() []*skgo.Remote {
 		skgo.NewQuery("src/lib/auth.remote.ts", "whoami", whoami),
 	}
 }
+
+// SkgoLoads returns the server loads declared in this package.
+func SkgoLoads() []*skgo.ServerLoad {
+	return []*skgo.ServerLoad{}
+}

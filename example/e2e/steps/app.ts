@@ -22,7 +22,11 @@ Then('the document response came from skgo in the expected mode', async ({ page,
 	// A document that boots nothing is not evidence skgo served the app, and
 	// the frame this step leaves behind would be a blank page — which is what
 	// it was in dev, where the first load waits on vite's module graph.
-	await expect(page.getByRole('navigation')).toBeVisible({ timeout: 15_000 });
+	//
+	// The root layout's own nav, by test id rather than by role: a section
+	// layout may have a nav of its own, and `getByRole('navigation')` then
+	// matches two elements and fails on a page that rendered perfectly.
+	await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 15_000 });
 });
 
 Then('every part of the page loaded', async ({ page }) => {
@@ -40,7 +44,7 @@ Then('every part of the page loaded', async ({ page }) => {
 	// dev, where the first paint waits on vite's module graph, this step passed
 	// twice against a page that had rendered nothing at all and left two blank
 	// frames behind.
-	await expect(page.getByRole('navigation')).toBeVisible({ timeout: 15_000 });
+	await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 15_000 });
 	await expect(page.locator('[data-testid$="-pending"]')).toHaveCount(0, { timeout: 15_000 });
 	await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);
 });

@@ -20,6 +20,18 @@
 			"target": "web/src/routes/todos"
 		},
 		{
+			"link": "generated/links/onzggl3sn52xizltf5qwgy3povxhi",
+			"target": "web/src/routes/account"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt",
+			"target": "web/src/routes/account/orders"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi",
+			"target": "web/src/routes/account/statement"
+		},
+		{
 			"link": "generated/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5",
 			"target": "web/src/routes/docs/[...rest]"
 		},
