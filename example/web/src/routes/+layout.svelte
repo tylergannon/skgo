@@ -4,7 +4,7 @@
 	let { children } = $props();
 </script>
 
-<nav>
+<nav data-testid="app-nav">
 	<a href="/">Home</a>
 	<a href="/about">About</a>
 	<a href="/items/42">Item 42</a>

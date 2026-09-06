@@ -150,12 +150,18 @@ export const test = base.extend<{
 			.replace(/[^a-z0-9]+/gi, '-')
 			.replace(/^-|-$/g, '')
 			.toLowerCase();
+		// The mode is part of the path for the same reason it is part of the
+		// AfterStep frames': the same scenarios run twice, against the embedded
+		// build and against `vp dev`, and a shared path means the second run
+		// silently overwrites the first — the tracked evidence then shows one
+		// mode while the claim is about two.
+		const mode = process.env.EXPECTED_MODE ?? 'unknown';
 		let taken = 0;
 		const shot: Shot = async (name) => {
 			const suffix = name ? `-${name}` : taken > 0 ? `-${taken}` : '';
 			taken += 1;
 			await page.screenshot({
-				path: `../../ephemeral/screenshots/loads/${slug}${suffix}.png`,
+				path: `../../ephemeral/screenshots/loads/${mode}/${slug}${suffix}.png`,
 				fullPage: true
 			});
 		};
