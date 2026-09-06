@@ -47,18 +47,29 @@ owner) does the round-trip match the TS exactly. `ValidateJSON` is opt-in and po
 
 ## Gaps for the skgo flow, ranked
 
-1. No codec for plain structs — the "marshaled Go ⇒ TS shape" guarantee is false for the
-   common case. Needs generated `MarshalJSON` on every declared struct (normalize nil slice
-   to `[]`, validate enums on encode), or rejection of every field whose Go encoding can
-   deviate.
-2. Pointer widening is silent. `*T` must become `T | null` in schema + TS, or be rejected.
-3. Nil slice ⇒ `null` (fixed by 1).
-4. Cross-package `Declare` (workaround exists: per-package generated marker files).
-5. No maps (`Record<string, T>` is expressible in both targets).
-6. `types.ts` overwritten per run (workaround: fan out one dir per package; skgo owns the
-   barrel).
-7. No machine-readable "Go type ⇒ TS name/file" manifest; name equality is an unstated
-   invariant.
+**Corrected 2026-09-06 (Tyler).** The original list led with "no codec for plain
+structs." That was wrong. Codecs earn their place only where the default encoder
+cannot produce the target format — a discriminated union needs a discriminator
+`json.Marshal` will never emit. A plain struct has no such gap. The observed
+failures were the *projection* describing `encoding/json`'s output incorrectly,
+not `encoding/json` misbehaving: nil `*string` → `null` is correct, and the TS
+claiming `string` is the defect. Filed accordingly.
+
+1. The TypeScript projection must be true of `json.Marshal`'s output for the
+   admitted type set: `*T` → `T | null` (or a diagnostic), nil slice →
+   `Array<T> | null` (or a diagnostic), `omitempty`/`omitzero` → optional.
+   → tylergannon/polytype#100
+2. `map[string]V` → `Record<string, V>`; currently rejected outright.
+   → tylergannon/polytype#101
+3. A run without `--validate` silently deletes `ValidateJSON` and breaks the
+   build. → tylergannon/polytype#102
+4. `types.ts` overwritten per run; no machine-readable Go-type → TS-name record.
+   → tylergannon/polytype#103
+
+Not filed: an enum-typed Go value outside its declared set (`Priority("bogus")`)
+marshals happily against a TS literal union. Real, but it is a Go type-system
+limitation rather than a projection or codec defect, and validation on encode is
+opt-in by design.
 
 ## Traps
 
