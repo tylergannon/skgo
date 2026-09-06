@@ -26,12 +26,14 @@ const (
 	kindQuery   remoteKind = "query"
 	kindCommand remoteKind = "command"
 	kindLive    remoteKind = "query.live"
+	kindForm    remoteKind = "form"
 )
 
 var markerKinds = map[string]remoteKind{
 	"Query":     kindQuery,
 	"Command":   kindCommand,
 	"LiveQuery": kindLive,
+	"Form":      kindForm,
 }
 
 // loadFn is one declared server load.

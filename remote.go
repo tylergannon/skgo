@@ -1,5 +1,5 @@
-// Remote-function dispatch: the Go side of SvelteKit's `query`, `query.live`
-// and `command`.
+// Remote-function dispatch: the Go side of SvelteKit's `query`, `query.live`,
+// `command` and `form`.
 //
 // A kit client calls a remote function by fetching
 // `${base}/${appDir}/remote/<hash>/<name>`, where <hash> is kit's id hash of
@@ -122,11 +122,12 @@ const (
 	kindQuery remoteKind = iota
 	kindCommand
 	kindLive
+	kindForm
 )
 
 // Remote is one registered remote function. Generated code builds these with
-// NewQuery, NewCommand and NewLiveQuery; application code declares the
-// functions and marks them with Query, Command and LiveQuery.
+// NewQuery, NewCommand, NewLiveQuery and NewForm; application code declares the
+// functions and marks them with Query, Command, LiveQuery and Form.
 type Remote struct {
 	module string
 	name   string
@@ -159,8 +160,8 @@ func newRemote(module, name string, kind remoteKind) *Remote {
 }
 
 // Marker is what the declaration helpers return. It carries nothing: Query,
-// Command and LiveQuery exist to be read by `skgo generate`, and to make a
-// function with the wrong shape a compile error at the point of declaration.
+// Command, LiveQuery and Form exist to be read by `skgo generate`, and to make
+// a function with the wrong shape a compile error at the point of declaration.
 type Marker struct{}
 
 // Query declares fn as a SvelteKit `query`. Write it beside the function, in a
@@ -176,9 +177,8 @@ type Marker struct{}
 // the restriction kit places on its own queries.
 func Query[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
 
-// Command declares fn as a SvelteKit `command`. A command is the only remote
-// function whose event may write cookies; kit allows that in commands and
-// forms and nowhere else.
+// Command declares fn as a SvelteKit `command`. A command's event may write
+// cookies; kit allows that in commands and forms and nowhere else.
 func Command[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
 
 // LiveQuery declares fn as a SvelteKit `query.live`. fn pushes values with
@@ -494,6 +494,8 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rs.serveLive(w, r, fn)
 	case kindCommand:
 		rs.serveCommand(w, r, fn)
+	case kindForm:
+		rs.serveForm(w, r, fn)
 	}
 }
 

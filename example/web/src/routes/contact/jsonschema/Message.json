@@ -1,0 +1,10 @@
+{"type":"object",
+"description":"Message is one message the visitor has sent, as the page lists it.","properties":{
+"id":{"type":"string","description":"ID is the message's number in the order it arrived."},
+"from":{"type":"string","description":"From is the sender's name."},
+"email":{"type":"string","description":"Email is the address they gave."},
+"body":{"type":"string","description":"Body is what they wrote."},
+"attachment":{"type":"string","description":"Attachment is the uploaded file's name, or empty when there was none."},
+"attachmentBytes":{"type":"integer","description":"AttachmentBytes is how many bytes of it reached Go."},
+"attachmentDigest":{"type":"string","description":"AttachmentDigest is the first twelve hex digits of the SHA-256 of those bytes. It is on the page because a byte count alone cannot tell an upload that arrived from one that arrived scrambled — the digest changes if a single byte moved, which is exactly the failure kit's smallest-file-first body ordering invites."}
+},"required":["id","from","email","body","attachment","attachmentBytes","attachmentDigest"],"additionalProperties":false}
