@@ -43,15 +43,26 @@ runners, adjudication records, proof directories, or evidence manifests. When
 asked to build something, build that thing. Verification is ordinary Go tests
 and running the real program.
 
-**Map the feature before proposing how to mirror it.** Never raise a design
-question, recommendation, or option list about a SvelteKit feature skgo is
-mirroring until kit's own implementation of that feature is mapped from pinned
-source: its API shape, its constraints, what it forbids and why, and how it
-differs across the surfaces it spans. Kit has usually already answered the
-question, and its answer is usually more specific than the one being invented.
-An option list built on an unmapped feature wastes a decision and risks
-divergence — the brief promises Go and kit code coexist in one app, so a
-mirrored feature must obey kit's rules, not merely resemble its ergonomics.
+**This is mirroring, not design.** Kit is the specification. Before any design
+question, recommendation, or option list about a feature skgo mirrors, map kit's
+own implementation from pinned source — its API shape, its constraints, what it
+forbids and why. Kit has usually already answered the question, and more
+specifically than the answer being invented. A mirrored feature must obey kit's
+rules, not merely resemble its ergonomics: the brief promises Go and kit code
+coexist in one app, so identical functions must behave identically. If kit
+answers it, it was never a decision — only unmapped research.
+
+**Delegate missions, not methods.** A subagent gets: the capability a developer
+should have when it is done, kit as the spec and where the pinned source is, the
+proof that will be accepted, the non-negotiable constraints, and what it owns so
+parallel work does not collide. It does its own mapping and chooses its own
+path — that research is the work, and it must not arrive secondhand. Detailed
+instructions cap an agent's quality at the dispatcher's understanding and
+transmit the dispatcher's unverified assumptions as fact. Sprint documents obey
+the same rule: mission, standard, ownership. No file lists, no prescribed
+designs, no step-by-step. Rigor belongs on the receiving end — verify outcomes
+against the standard, check claims against source, reject work that misses the
+bar.
 
 **Don't narrate.** No status documents, no progress reports, no summaries of
 work already visible in the diff. The worklog exists for actionable
