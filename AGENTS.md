@@ -88,6 +88,14 @@ whether it is real. A scenario that cannot produce one is a scenario nobody can
 check. Skips are failures: a check that cannot run because its toolchain is
 missing has not passed, and must not be able to report that it did.
 
+Then **open every screenshot and look at it.** Producing them is half the job;
+an unexamined screenshot is the same unread artifact as an exit code. A green
+suite over a screenshot showing an error boundary, an empty list, a stack trace
+or a blank page means the suite is wrong, and that is the single most valuable
+thing an agent can find. Never hand a human a screenshot you have not looked at,
+and never hand them one that obviously shows a failure — if it does, the finding
+is the failure, not the file.
+
 **Don't narrate.** No status documents, no progress reports, no summaries of
 work already visible in the diff. The worklog exists for actionable
 intelligence — corrections, traps, things that will change a future decision —
