@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -27,7 +28,17 @@ import (
 // scaffoldVersion is the version this checkout is published under, into the
 // module proxy the scaffolded project fetches skgo from. It is a prerelease of
 // v0.0.0 so that it can never be confused with a released one.
-const scaffoldVersion = "v0.0.0-scaffoldtest"
+// It carries the run's start time because the go command treats the module
+// cache as immutable and indexes it by version: publish twice under one version
+// and the second run compiles the first run's source, silently. That is not
+// hypothetical — this test was green for a checkout it had never compiled until
+// a change to the adapter made the stale copy fail out loud.
+var scaffoldVersion = "v0.0.0-scaffoldtest" + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+// scaffoldVersionPrefix is what every run of this test publishes under, so that
+// a run can clear the ones before it out of the module cache rather than
+// leaving a copy of the checkout there for good.
+const scaffoldVersionPrefix = "v0.0.0-scaffoldtest"
 
 // greeted is the name the test sends to the app's command. It is the whole
 // point of the fixture: the value the page ends up showing has to be one the
@@ -392,6 +403,7 @@ func publish(t *testing.T, dir string) string {
 	t.Helper()
 	source := checkoutRoot(t)
 	mv := module.Version{Path: "github.com/tylergannon/skgo", Version: scaffoldVersion}
+	purgeFromModuleCache(t, mv.Path)
 
 	at := filepath.Join(dir, filepath.FromSlash(mv.Path), "@v")
 	if err := os.MkdirAll(at, 0o755); err != nil {
@@ -421,6 +433,50 @@ func publish(t *testing.T, dir string) string {
 		scaffoldVersion, time.Now().UTC().Format(time.RFC3339))))
 	write("list", []byte(scaffoldVersion+"\n"))
 	return dir
+}
+
+// purgeFromModuleCache removes what earlier runs of this test left behind.
+//
+// Every run publishes under a fresh version, so nothing here is load-bearing
+// for correctness — it just keeps the module cache from accumulating one copy
+// of the checkout per run. The cache is deliberately read-only, so the
+// permissions come back first.
+func purgeFromModuleCache(t *testing.T, path string) {
+	t.Helper()
+	out, err := exec.Command("go", "env", "GOMODCACHE").Output()
+	if err != nil {
+		t.Fatalf("locating the module cache: %v", err)
+	}
+	cache := strings.TrimSpace(string(out))
+	if cache == "" {
+		return
+	}
+
+	remove := func(name string) {
+		_ = filepath.WalkDir(name, func(p string, d fs.DirEntry, err error) error {
+			if err == nil {
+				_ = os.Chmod(p, 0o755)
+			}
+			return nil
+		})
+		_ = os.RemoveAll(name)
+	}
+
+	dir := filepath.Dir(filepath.Join(cache, filepath.FromSlash(path)))
+	entries, _ := os.ReadDir(dir)
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "skgo@"+scaffoldVersionPrefix) {
+			remove(filepath.Join(dir, entry.Name()))
+		}
+	}
+
+	downloads := filepath.Join(cache, "cache", "download", filepath.FromSlash(path), "@v")
+	entries, _ = os.ReadDir(downloads)
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), scaffoldVersionPrefix) {
+			remove(filepath.Join(downloads, entry.Name()))
+		}
+	}
 }
 
 // moduleFiles is what a consumer of skgo gets: the library, the command, the

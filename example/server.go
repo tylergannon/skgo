@@ -39,11 +39,16 @@ func Handle(ctx context.Context) error {
 
 // NewHandler builds the app's server over the build in dist. With a non-empty
 // proxy it forwards pages to a running `vp dev` server; otherwise it serves the
-// embedded build. Either way the loads registry is outermost and the remote
-// registry sits in front of whatever answers pages: kit runs `handle` before it
-// dispatches to a page, a data request or a remote function, and `__data.json`
-// must never reach the static handler, which would answer it with the boot
-// document.
+// embedded build.
+//
+// The order is kit's own dispatch order, turned inside out into middleware. The
+// loads registry is outermost because kit runs `handle` before it dispatches to
+// anything, and because `__data.json` must never reach the static handler,
+// which would answer it with the boot document. Then remote functions, which
+// live under the app directory and are not routes at all. Then the server
+// routes, which own every path kit compiled a `+server.ts` for — in dev too,
+// where kit's own server would otherwise run the generated stub and throw.
+// Pages are last, because in kit they are what answers when nothing else did.
 func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) {
 	// The manifest is read in both modes: it is where appDir and base come
 	// from, and those decide the URL prefix remote calls arrive on.
@@ -55,6 +60,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	remoteCfg := manifest.RemoteConfig(origin)
 	loadCfg := manifest.LoadConfig(origin)
 	loadCfg.Handle = Handle
+	endpointCfg := manifest.EndpointConfig(origin)
 
 	mode := "prod"
 	var pages http.Handler
@@ -73,6 +79,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		remoteCfg.CookieOrigin = origin
 		loadCfg.Version = ""
 		loadCfg.Dev = true
+		endpointCfg.Dev = true
 		mode, pages = "dev", skgo.NewDevProxy(target, log.Printf)
 	} else {
 		static, err := skgo.NewStaticHandler(dist)
@@ -90,5 +97,9 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
-	return loads.Intercept(remotes.Intercept(pages)), mode, nil
+	endpoints, err := skgo.NewEndpoints(endpointCfg, generated.Endpoints()...)
+	if err != nil {
+		return nil, "", err
+	}
+	return loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))), mode, nil
 }

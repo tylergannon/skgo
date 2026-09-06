@@ -11,10 +11,11 @@ import (
 	skgo3 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5qwgy3povxhi"
 	skgo4 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt"
 	skgo5 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi"
-	skgo6 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5rw63tumfrxi"
-	skgo7 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5"
-	skgo8 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
-	skgo9 "github.com/tylergannon/skgo/example/web/src/lib"
+	skgo6 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5qxa2jporxwi33t"
+	skgo7 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5rw63tumfrxi"
+	skgo8 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5"
+	skgo9 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
+	skgo10 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
 // Remotes returns every remote function declared in the app, ready to hand
@@ -31,6 +32,7 @@ func Remotes() []*skgo.Remote {
 	out = append(out, skgo7.SkgoRemotes()...)
 	out = append(out, skgo8.SkgoRemotes()...)
 	out = append(out, skgo9.SkgoRemotes()...)
+	out = append(out, skgo10.SkgoRemotes()...)
 	return out
 }
 
@@ -48,5 +50,24 @@ func Loads() []*skgo.ServerLoad {
 	out = append(out, skgo7.SkgoLoads()...)
 	out = append(out, skgo8.SkgoLoads()...)
 	out = append(out, skgo9.SkgoLoads()...)
+	out = append(out, skgo10.SkgoLoads()...)
+	return out
+}
+
+// Endpoints returns every server route declared in the app, ready to hand
+// to skgo.NewEndpoints.
+func Endpoints() []*skgo.Endpoint {
+	var out []*skgo.Endpoint
+	out = append(out, skgo0.SkgoEndpoints()...)
+	out = append(out, skgo1.SkgoEndpoints()...)
+	out = append(out, skgo2.SkgoEndpoints()...)
+	out = append(out, skgo3.SkgoEndpoints()...)
+	out = append(out, skgo4.SkgoEndpoints()...)
+	out = append(out, skgo5.SkgoEndpoints()...)
+	out = append(out, skgo6.SkgoEndpoints()...)
+	out = append(out, skgo7.SkgoEndpoints()...)
+	out = append(out, skgo8.SkgoEndpoints()...)
+	out = append(out, skgo9.SkgoEndpoints()...)
+	out = append(out, skgo10.SkgoEndpoints()...)
 	return out
 }

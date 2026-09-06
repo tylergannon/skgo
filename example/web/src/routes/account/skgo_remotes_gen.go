@@ -16,3 +16,8 @@ func SkgoLoads() []*skgo.ServerLoad {
 		skgo.NewLoad("src/routes/account/+page.server.ts", pageLoad),
 	}
 }
+
+// SkgoEndpoints returns the server routes declared in this package.
+func SkgoEndpoints() []*skgo.Endpoint {
+	return []*skgo.Endpoint{}
+}

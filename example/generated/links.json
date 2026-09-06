@@ -32,6 +32,10 @@
 			"target": "web/src/routes/account/statement"
 		},
 		{
+			"link": "generated/links/onzggl3sn52xizltf5qxa2jporxwi33t",
+			"target": "web/src/routes/api/todos"
+		},
+		{
 			"link": "generated/links/onzggl3sn52xizltf5rw63tumfrxi",
 			"target": "web/src/routes/contact"
 		},

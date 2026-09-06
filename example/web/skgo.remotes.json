@@ -20,5 +20,11 @@
 		"src/routes/account/+page.server.ts",
 		"src/routes/account/orders/+page.server.ts",
 		"src/routes/account/statement/+page.server.ts"
-	]
+	],
+	"endpoints": {
+		"/api/todos": [
+			"GET",
+			"POST"
+		]
+	}
 }

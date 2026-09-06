@@ -30,6 +30,10 @@ type Event struct {
 	// navigation. Outside a load, the methods that need it answer as they do
 	// on a nil event, because kit forbids reading any of it from a query.
 	load *loadState
+	// endpoint marks the event of a server route. An endpoint owns the
+	// http.ResponseWriter, so it writes cookies and headers with net/http; the
+	// setters here refuse rather than accept something nothing would apply.
+	endpoint bool
 }
 
 type eventKey struct{}
@@ -123,6 +127,9 @@ func (e *Event) DeleteCookie(name string, opts CookieOptions) error {
 func (e *Event) mayWriteCookies(verb string) error {
 	if e == nil {
 		return Errorf(500, "skgo: cannot %s cookies outside a remote function", verb)
+	}
+	if e.endpoint {
+		return Errorf(500, "skgo: a server route writes its own response — use http.SetCookie to %s a cookie", verb)
 	}
 	if !e.mutable {
 		return Errorf(500, "skgo: cannot %s cookies in a query; only a command may write them", verb)

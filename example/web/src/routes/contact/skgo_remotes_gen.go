@@ -16,3 +16,8 @@ func SkgoRemotes() []*skgo.Remote {
 func SkgoLoads() []*skgo.ServerLoad {
 	return []*skgo.ServerLoad{}
 }
+
+// SkgoEndpoints returns the server routes declared in this package.
+func SkgoEndpoints() []*skgo.Endpoint {
+	return []*skgo.Endpoint{}
+}

@@ -52,7 +52,10 @@ func foreignFixture(t *testing.T, remote string, extra map[string]string) (root 
 	write("skgo/go.mod", "module github.com/tylergannon/skgo\n\ngo 1.27.1\n")
 	write("skgo/skgo.go", `package skgo
 
-import "context"
+import (
+	"context"
+	"net/http"
+)
 
 type None struct{}
 
@@ -89,6 +92,17 @@ type ServerLoad struct{}
 func NewLoad[Out any](module string, fn func(context.Context) (Out, error)) *ServerLoad {
 	_, _ = module, fn
 	return &ServerLoad{}
+}
+
+type Endpoint struct{}
+
+func GET(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
+
+func POST(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
+
+func NewEndpoint(routeID, method string, fn http.HandlerFunc) *Endpoint {
+	_, _, _ = routeID, method, fn
+	return &Endpoint{}
 }
 `)
 
