@@ -10,7 +10,8 @@ import (
 	"strings"
 )
 
-// noneType is the argument type of a remote function that takes no argument.
+// noneType is skgo's marker for nothing on the wire: the argument of a remote
+// function that takes none, and the result of one that returns none.
 const noneType = skgoPkg + ".None"
 
 // tsType is a TypeScript type expression plus the named Go types it depends
@@ -36,6 +37,14 @@ func project(t types.Type) (tsType, error) {
 		// polytype accepts time.Time and renders it as an RFC3339 string.
 		if obj.Pkg().Path() == "time" && obj.Name() == "Time" {
 			return tsType{expr: "string"}, nil
+		}
+		// skgo.None is skgo's own marker for "nothing on the wire", not a type
+		// the app declares. As an argument it is kit's no-argument overload; as
+		// a result it is a remote function that returns nothing, which kit
+		// types as void. Either way there is nothing for polytype to declare —
+		// and declaring it would mean writing into skgo's own module.
+		if isNone(u) {
+			return tsType{expr: "void"}, nil
 		}
 		if _, isBasic := u.Underlying().(*types.Basic); isBasic {
 			// A named basic type is either an enum, which polytype emits as a
@@ -101,8 +110,7 @@ func kindWord(t types.Type) string {
 	return "type"
 }
 
-// isNone reports whether t is skgo.None, the argument type of a remote
-// function that takes no argument.
+// isNone reports whether t is skgo.None.
 func isNone(t types.Type) bool {
 	named, ok := t.(*types.Named)
 	if !ok || named.Obj().Pkg() == nil {
@@ -121,6 +129,9 @@ func (a *app) declare(named *types.Named) error {
 		if err != nil {
 			return err
 		}
+		if err := a.mustOwn(named, dir); err != nil {
+			return err
+		}
 		tsDir, err := a.typesDirFor(pkg, dir)
 		if err != nil {
 			return err
@@ -133,6 +144,64 @@ func (a *app) declare(named *types.Named) error {
 		set.names = append(set.names, named.Obj().Name())
 	}
 	return nil
+}
+
+// mustOwn refuses a named type whose package belongs to a module other than
+// the app's.
+//
+// Projecting a type is not something skgo can do at arm's length: polytype's
+// registration is a method on the type, so it has to be a Go file in the type's
+// own package, and polytype then writes its `jsonschema/` output beside it.
+// For a dependency that directory is the module cache, which is read-only — and
+// in a workspace where it happens to be writable, generating would silently
+// edit source the app does not own. Either way the answer is the same one skgo
+// gives a pointer or a map: say what cannot travel, and why, rather than emit
+// something that breaks on the next machine.
+//
+// Ownership is a question about the directory, not about the module path. The
+// route tree carries a `go.mod` of its own — the boundary that stops `go build
+// ./...` walking into `[id]` — so a package the developer authored can report a
+// module path that is not the app's while still being the app's source.
+func (a *app) mustOwn(named *types.Named, dir string) error {
+	if withinTree(a.hostDir, dir) {
+		return nil
+	}
+	owner := "a module this app does not own"
+	if _, mod, err := moduleOf(dir); err == nil {
+		owner = "module " + mod
+	}
+	pkg := named.Obj().Pkg()
+	return fmt.Errorf("%s.%s is declared in %s, and projecting it means writing skgo_polytype_gen.go "+
+		"and a jsonschema/ directory into %s — source this app does not own, and read-only in the module cache. "+
+		"Declare the type in %s and convert to it in the remote function",
+		pkg.Name(), named.Obj().Name(), owner, dir, a.hostModule)
+}
+
+// withinTree reports whether dir is root or lives under it. `go list` reports a
+// path with every symlink resolved, while the app's own root may still hold
+// one — /var against /private/var is the everyday case — so a plain prefix
+// comparison is not enough on its own.
+func withinTree(root, dir string) bool {
+	if dirContains(root, dir) {
+		return true
+	}
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false
+	}
+	realDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return false
+	}
+	return dirContains(realRoot, realDir)
+}
+
+func dirContains(root, dir string) bool {
+	rel, err := filepath.Rel(root, dir)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // dirOf resolves a types.Package to the directory holding its source and to
@@ -177,25 +246,11 @@ func (a *app) typesDirFor(pkg *types.Package, dir string) (string, error) {
 // generator skgo runs and consumes; skgo never projects a named type itself.
 func (a *app) generateTypes() error {
 	for _, fn := range a.remotes {
-		if !isNone(fn.in) {
-			t, err := project(fn.in)
-			if err != nil {
-				return fmt.Errorf("skgo: %s: the argument of %s cannot cross to TypeScript: %v", fn.pos, fn.name, err)
-			}
-			for _, dep := range t.deps {
-				if err := a.declare(dep); err != nil {
-					return err
-				}
-			}
+		if err := a.declareAll(fn.in); err != nil {
+			return fmt.Errorf("skgo: %s: the argument of %s cannot cross to TypeScript: %v", fn.pos, fn.name, err)
 		}
-		t, err := project(fn.out)
-		if err != nil {
+		if err := a.declareAll(fn.out); err != nil {
 			return fmt.Errorf("skgo: %s: the result of %s cannot cross to TypeScript: %v", fn.pos, fn.name, err)
-		}
-		for _, dep := range t.deps {
-			if err := a.declare(dep); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -228,6 +283,23 @@ func (a *app) generateTypes() error {
 			return fmt.Errorf("skgo: polytype could not project the types in %s: %w", set.pkg.Path(), err)
 		}
 		a.cfg.Logf("projected the types in %s to %s", set.pkg.Path(), filepath.Join(set.tsDir, "types.ts"))
+	}
+	return nil
+}
+
+// declareAll projects t and records every named type it needs. The argument
+// and the result go through the same door: a type skgo cannot declare is
+// refused wherever it appears, and skgo.None is nothing to declare in either
+// position.
+func (a *app) declareAll(t types.Type) error {
+	projected, err := project(t)
+	if err != nil {
+		return err
+	}
+	for _, dep := range projected.deps {
+		if err := a.declare(dep); err != nil {
+			return err
+		}
 	}
 	return nil
 }
