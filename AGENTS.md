@@ -88,14 +88,18 @@ whether it is real. A scenario that cannot produce one is a scenario nobody can
 check. Skips are failures: a check that cannot run because its toolchain is
 missing has not passed, and must not be able to report that it did.
 
-**Assert at the granularity of the behaviour.** A `Then` that checks something
-grew, changed, or is non-empty passes for every wrong answer as well as the
-right one — the one leak this project has shipped got through a scenario
-asserting a count *increases*, which it did, while disclosing a private row to a
-signed-out visitor. The fix is "increments by one", not asserting everything
-about everything: a suite tightened *a priori* is brittle, and brittle scenarios
-get deleted rather than fixed. Write the assertion the behaviour deserves, and
-tighten one when it lets a real bug through.
+**Never derive what you expect from the thing you are testing.** The one leak
+this project has shipped got past an assertion that was already exact — the live
+count had to equal *the count noted a moment earlier, plus one* — because the
+baseline was read off the same broken counter. Every wrong value satisfied it.
+Anchor an expectation in something independent: a fixture the test supplied, the
+rows actually visible on the page, a number written into the scenario. The same
+trap in another shape is a `Then` whose only content is "X is absent", which a
+page that rendered nothing at all satisfies perfectly.
+
+Assert at the granularity the behaviour deserves, and tighten one when it lets a
+real bug through. A suite tightened *a priori* is brittle, and brittle scenarios
+get deleted rather than fixed.
 
 Then **open every screenshot and look at it.** Producing them is half the job;
 an unexamined screenshot is the same unread artifact as an exit code. A green
