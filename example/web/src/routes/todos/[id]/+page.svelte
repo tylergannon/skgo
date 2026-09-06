@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TodoDetail from '#lib/TodoDetail.svelte';
+	import TodoDetail from '../TodoDetail.svelte';
 	import type { PageProps } from './$types';
 
 	let { params }: PageProps = $props();

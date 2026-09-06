@@ -10,7 +10,10 @@ tmp_dir = "example/tmp"
   bin = "tmp/skgo-example"
   args_bin = ["--listen", "127.0.0.1:8080", "--proxy", "http://127.0.0.1:5173"]
   include_ext = ["go"]
-  exclude_dir = ["example/web", "example/e2e", "example/tmp", "ephemeral", ".claude", ".agents", ".git"]
+  # `example/web` is NOT excluded: the app's remote functions live under
+  # example/web/src, so an edit there has to rebuild the Go binary. Only the
+  # directories that hold no Go source are skipped.
+  exclude_dir = ["example/web/node_modules", "example/web/build", "example/web/.svelte-kit", "example/e2e", "example/tmp", "ephemeral", ".claude", ".agents", ".git"]
   delay = 200
   stop_on_error = false
   send_interrupt = true

@@ -1,7 +1,8 @@
-Feature: Remote functions answered by Go
+Feature: Remote functions written in Go
 
-  Every function body in `src/lib/todos.remote.ts` throws, so anything that
-  renders below proves the Go server answered `/_app/remote/worolc/...`.
+  Every function in `src/routes/todos/todos.remote.ts` is generated from
+  `todos.remote.go` and every body throws, so anything that renders below
+  proves the Go server answered.
 
   Scenario: The todo list is served by Go
     Given I open "/todos"
@@ -27,3 +28,11 @@ Feature: Remote functions answered by Go
     And I note the live count
     And I add the todo "watch the live count"
     Then the live count increased by 1
+
+  Scenario: Renaming a todo updates the open page without a second request
+    Given I open "/todos/t1"
+    When the todo detail has loaded
+    And I note the remote request count
+    And I rename the open todo to "renamed in one flight"
+    Then the todo detail shows "renamed in one flight"
+    And exactly 1 remote request was made since

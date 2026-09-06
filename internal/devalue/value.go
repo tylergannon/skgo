@@ -9,7 +9,11 @@
 // payload containing one parses to an "Unknown type" error.
 package devalue
 
-import "time"
+import (
+	"bytes"
+	"encoding/json"
+	"time"
+)
 
 // Undefined is the JavaScript value `undefined`. It is what Parse returns for
 // the payload "-1", and what Stringify writes as the bare token "-1".
@@ -238,3 +242,43 @@ type Boxed struct {
 
 // NewBoxed boxes a primitive.
 func NewBoxed(v any) *Boxed { return &Boxed{Value: v} }
+
+// MarshalJSON renders the object the way JSON.stringify would, so a parsed
+// devalue tree can be round-tripped through encoding/json into a typed Go
+// value. Property order is preserved, and an `undefined` property is omitted
+// exactly as JSON.stringify omits it.
+func (o *Object) MarshalJSON() ([]byte, error) {
+	var b bytes.Buffer
+	b.WriteByte('{')
+	first := true
+	for _, key := range o.keys {
+		value := o.values[key]
+		if value == Undefined {
+			continue
+		}
+		if !first {
+			b.WriteByte(',')
+		}
+		first = false
+		name, err := json.Marshal(key)
+		if err != nil {
+			return nil, err
+		}
+		b.Write(name)
+		b.WriteByte(':')
+		raw, err := json.Marshal(value)
+		if err != nil {
+			return nil, err
+		}
+		b.Write(raw)
+	}
+	b.WriteByte('}')
+	return b.Bytes(), nil
+}
+
+// MarshalJSON renders `undefined` as null, which is what JSON.stringify does
+// with it inside an array.
+func (UndefinedValue) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
+
+// MarshalJSON renders an array hole as null, as JSON.stringify does.
+func (HoleValue) MarshalJSON() ([]byte, error) { return []byte("null"), nil }

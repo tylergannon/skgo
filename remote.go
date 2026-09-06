@@ -184,7 +184,9 @@ func decodeArg[In any](arg any, present bool) (In, error) {
 	}
 	raw, err := json.Marshal(arg)
 	if err != nil {
-		return in, fmt.Errorf("skgo: encoding remote argument: %w", err)
+		// The argument came from the client, so a value JSON cannot carry —
+		// NaN, an infinity — is a bad request, not a server fault.
+		return in, Errorf(400, "Bad Request")
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return in, Errorf(400, "Bad Request")

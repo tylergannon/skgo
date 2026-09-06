@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { addTodo, getTodos } from '#lib/todos.remote';
+	import { addTodo, getTodos } from './todos.remote';
 
 	let text = $state('');
 	let busy = $state(false);
