@@ -1,0 +1,64 @@
+# skgo
+
+**A SvelteKit backend written in Go.** (pronounced "skaygo")
+
+Developers build a server in Go and serve a SvelteKit app from it: file-based
+routing, remote functions, and PageServerLoad / LayoutServerLoad are implemented in
+Go. There is no SSR and no JavaScript runtime in production: Go serves the built
+client bundle, answers every server request kit's client makes, and in dev proxies
+to `vp dev`. `skgo` generates, from `*.remote.go` / `page.server.go` /
+`layout.server.go`, the Go `http.Handler`s mounted at exactly the URLs SvelteKit
+uses, plus type-safe TypeScript stubs (`*.remote.ts`, `+page.server.ts`) that throw
+if ever executed — so a valid response always proves Go answered.
+
+It is not a SvelteKit adapter in the true sense; it replaces all server endpoints
+with identical Go implementations. Proof is Playwright tests against the running
+Go server, never a deductive proof of the protocol.
+
+We never reimplement kit's client, never build or maintain a JS runtime, and never
+claim anything that hasn't been demonstrated running.
+
+## Read this first
+
+**Invoke the `agent-protocol` skill at the start of every session and after any
+context compaction.** Worktrees, worklogs, `ephemeral/`, checkpoint commits,
+squash-merge PRs, and root-checkout synchronization all come from there.
+
+The brief: `ephemeral/brief/2026-09-05-skgo-vision.md`. The plan:
+`ephemeral/plans/2026-09-05-skgo-build-plan.md`. The semantic index over pinned
+upstream sources and the junkyard: `ephemeral/semantic-index/README.md` — read
+`TAXONOMY.md` there before touching a protocol, the toolchain, or codegen.
+
+## Rules
+
+**This is a Go library.** Write Go. Test with `go test`. Build tooling as Go
+commands. JavaScript exists here only where SvelteKit itself requires it — the
+thin build adapter, `vite.config.ts`, and the example app's client code. Server
+endpoints are never written in JavaScript; generated stubs throw.
+
+**Port, don't reverse-engineer.** Kit 3.0.0-next.25 and devalue are pinned under
+`ephemeral/inspiration/reference/`. Copy upstream behavior by direct observation
+of that source and port its unit tests. Run a Node kit app only when reading the
+code is not enough.
+
+**Build the software.** Not ledgers, sprint files, proof harnesses, adjudication
+records, or evidence manifests. Verification is ordinary Go tests and Playwright
+against the real binary. Code review fixes real bugs in real scenarios; edge cases
+go to GitHub issues.
+
+**Don't narrate.** The worklog is for actionable intelligence only.
+
+## Layout
+
+- `ephemeral/` — tracked working material: brief, plans, worklogs, semantic index.
+  Never write to `docs/` without express permission.
+- `ephemeral/inspiration/` — gitignored token cache: pinned kit/devalue/sirv/mrmime
+  clones, the polytype mirror, and `junkyard/` (an earlier attempt that never
+  produced a working server). Mine the junkyard through the semantic index; do not
+  resurrect its process.
+
+## SvelteKit facts
+
+Kit 3 breaks most model priors. Read
+`ephemeral/semantic-index/sources/kit/docs/kit3-facts.md` before writing SvelteKit
+code, and check pinned kit source over any documentation site.

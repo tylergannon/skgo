@@ -1,0 +1,22 @@
+# recipes — "to do X, start at"
+
+- **Compute a remote id in Go** → `sources/kit/remote-server/ids-and-build.md` (Go snippet + goldens); upstream `reference/kit/packages/kit/src/utils/hash.js:L5-L23`.
+- **Decode a query payload** → `sources/kit/remote-client/client-requests.md` (base64url + reducers), then `sources/kit/remote-server/serialization.md`; upstream `reference/kit/packages/kit/src/runtime/shared.js`.
+- **Build the query/command response envelope** (note: GET query results are delivered via `data.q`, not `data._`) → `sources/kit/remote-client/client-expectations.md`, `sources/kit/remote-server/request-handling.md`.
+- **Stream `query.live`** → `sources/kit/remote-server/live-and-stream.md` (frame + keep-alive), `sources/kit/remote-client/live-and-batch.md` (client retry rules).
+- **Answer `__data.json`** → `sources/kit/server-runtime/data-requests.md` §URL/§envelope/§streaming; upstream `reference/kit/packages/kit/src/runtime/server/data/index.js`.
+- **Build the route tree like kit** → `sources/kit/server-runtime/routing.md`, `sources/kit/portable-tests/routing-and-manifest-spec.md`; upstream `reference/kit/packages/kit/src/core/sync/create_manifest_data/index.js`.
+- **Serve static output like adapter-node** → `sources/kit/build-adapt/static-serving.md`, `sources/libs/sirv.md`.
+- **Serve the CSR shell** → `sources/kit/server-runtime/csr-shell.md`, `sources/kit/client-router/csr-boot.md`.
+- **Proxy `vp dev`** → `sources/kit/build-adapt/dev-server.md`.
+- **Write a thin adapter that emits a manifest** → `sources/kit/build-adapt/adapter-api.md` (60-line sketch).
+- **Generate a `.remote.ts` stub** → `sources/kit/remote-client/stub-shape.md`; old emitter `sources/junkyard/go/remotegen.md` (emit.go).
+- **Make `src/routes/(g)/[id]` importable** → `sources/junkyard/colocation/link-tree.md` (five-command experiment).
+- **Scan markers by type identity** → `sources/junkyard/go/remotegen.md` (scan.go L265-L337).
+- **Emit TS types from Go** → `sources/libs/polytype.md` (`--typescript`), `sources/junkyard/remote-codegen/typeglue.md`.
+- **Port devalue** → `sources/kit/portable-tests/devalue-port.md`, `sources/libs/devalue.md`.
+- **Pick the first Go tests to write** → `sources/kit/portable-tests/port-map.md`.
+- **Point Playwright at the Go binary** → `sources/junkyard/app/e2e-suite.md` (BASE_URL), `sources/junkyard/app/toolchain.md` (mise launch line).
+- **Pin the JS toolchain** → `sources/junkyard/app/toolchain.md`.
+- **Handle classic form actions with `use:enhance`** → `sources/kit/server-runtime/actions.md`.
+- **Handle `form` remotes (binary formdata)** → `sources/kit/remote-server/form-and-prerender.md`.
