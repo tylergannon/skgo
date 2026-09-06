@@ -211,7 +211,7 @@ func (a *app) generateTypes() error {
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("skgo: polytype could not project the types in %s: %w", set.pkg.Path(), err)
 		}
-		a.cfg.Logf("wrote %s", filepath.Join(set.tsDir, "types.ts"))
+		a.cfg.Logf("projected the types in %s to %s", set.pkg.Path(), filepath.Join(set.tsDir, "types.ts"))
 	}
 	return nil
 }
@@ -243,7 +243,7 @@ func (a *app) writePolytypeMarkers(set *namedTypes) error {
 		fmt.Fprintf(&b, "\t_ = polytype.Declare(%s.Schema)\n", name)
 	}
 	b.WriteString(")\n")
-	return a.write(filepath.Join(set.dir, "skgo_polytype_gen.go"), b.String())
+	return a.writeGo(filepath.Join(set.dir, "skgo_polytype_gen.go"), b.String())
 }
 
 // importSpecifier is the module specifier a stub uses to reach a package's

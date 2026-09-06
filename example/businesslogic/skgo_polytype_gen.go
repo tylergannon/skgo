@@ -12,7 +12,7 @@ import (
 
 // Stubs so the package compiles before polytype has run.
 func (Session) Schema() json.RawMessage { panic("not implemented") }
-func (Todo) Schema() json.RawMessage { panic("not implemented") }
+func (Todo) Schema() json.RawMessage    { panic("not implemented") }
 
 var (
 	_ = polytype.Declare(Session.Schema)
