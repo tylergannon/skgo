@@ -21,8 +21,8 @@ rounds applied (2026-09-06).
   - Loads (Track C): `__data.json` dispatcher with declared `uses`; layout chain is the goal,
     page-only the fallback.
 - L2: `ephemeral/plans/2026-09-05-skgo-build-plan.md` §3; `ephemeral/brief/`;
-  `drafts/SPRINT-003-research-bindings.md`, `drafts/SPRINT-003-research-data-json.md`;
-  issues #2–#7.
+  `drafts/SPRINT-003-research-bindings.md`, `drafts/SPRINT-003-research-data-json.md`,
+  `drafts/SPRINT-003-research-polytype-probe.md`; issues #2–#7.
 
 ## Facts that de-risk this (verified against pinned kit next.25)
 
@@ -46,18 +46,22 @@ Bindings (`drafts/SPRINT-003-research-bindings.md`):
   (`docs/20-core-concepts/60-remote-functions.md:14`); `__data.json` has been stable since
   kit 1. The version gate above is the mitigation.
 - **polytype is a code generator, not a library, and that is the intended use** (Tyler,
-  2026-09-06). It emits both sides of the wire: Go codecs (`MarshalJSON`/`UnmarshalJSON` on
-  registered types, README:408-412) and TypeScript declarations
-  (`//go:generate go tool polytype --typescript web/src/generated`, README:436), from one
-  portable grammar (`internal/typegrammar/grammar.go`) that deliberately excludes
-  bare-pointer-as-null, `omitempty`-as-optional, byte slices, maps and `any`. So skgo does
-  **not** write a TS emitter and does **not** "mirror `encoding/json`": remote `In`/`Out`
-  types are polytype-registered types, polytype generates their codecs and `types.ts`, and
-  skgo's `.remote.ts` stubs import those names. Whatever polytype cannot project is rejected
-  at generation — the admission rule comes for free. If polytype lacks something skgo needs
-  (e.g. a way for skgo's scan to register the In/Out set, per-package `types.ts` for
-  colocated route packages, codec generation for a type that has no marker), that is
-  polytype work in `/Users/tyler/src/…/polytype`, not a workaround in skgo. Pin
+  2026-09-06): it should emit both sides of the wire — Go codecs and TypeScript — from one
+  grammar, so a marshaled Go value always has the emitted TS shape. skgo runs it via
+  `go:generate` and consumes the output; it never calls into it.
+  **Probe result (`drafts/SPRINT-003-research-polytype-probe.md`): rc.9 does not do this yet
+  for plain structs.** It emits `Schema()`/`ValidateJSON()` only; codecs exist only for
+  sealed-union owners; `*T` is silently widened to `T`; nil slices marshal as `null` against
+  `Array<T>`; maps are rejected; `types.ts` is overwritten per run; markers must be in the
+  type's package but may live in a generated file. Its README says conformance is not yet
+  claimed (issue #71). That is polytype work, tracked separately.
+  **Interim contract for this sprint:** skgo's scan writes the per-package polytype marker
+  files, runs polytype per package into per-package output dirs, and imports TS names (==
+  Go identifiers) from them; skgo's scan enforces the admission rule polytype will
+  eventually enforce — reject `any`, `chan`, `func`, maps, and bare `*T` in In/Out (use
+  `Nullable`/`Optional`) — so nothing shipped depends on the missing codec. Known remaining
+  hole until polytype codecs land: nil slice ⇒ `null`. Carry the full flag set on every
+  polytype invocation (a run without `--validate` deletes `ValidateJSON`). Pin
   `@v1.0.0-rc.9`; `@latest` is v0.11.3.
 - Server-pushed `q` entries are applied by the client without it having asked
   (`shared.svelte.js:139-150`), but a key that does not match the client's own
