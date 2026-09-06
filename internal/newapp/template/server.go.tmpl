@@ -1,0 +1,106 @@
+// Package app assembles the server. It exists so that there is exactly one
+// production stack: the binary in cmd and any test beside this file both call
+// NewHandler, and neither can be green over a composition the other does not
+// use.
+package app
+
+import (
+	"io/fs"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/tylergannon/skgo"
+
+	"{{.Module}}/generated"
+)
+
+// NewHandler builds the server over the frontend build in dist. With a
+// non-empty proxy it forwards pages to a running `vp dev` server; otherwise it
+// serves the embedded build. Either way the remote registry sits in front of
+// whatever answers pages, because in dev kit's own server would otherwise run
+// the generated stub, whose every body throws.
+func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) {
+	// The manifest is read in both modes: it is where appDir and base come
+	// from, and those decide the URL prefix remote calls arrive on.
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		return nil, "", err
+	}
+
+	cfg := manifest.RemoteConfig(origin)
+
+	mode := "prod"
+	var pages http.Handler
+	if proxy != "" {
+		target, err := url.Parse(proxy)
+		if err != nil {
+			return nil, "", err
+		}
+		// In dev the client is served by vite, not by this build, so its baked
+		// version differs from the manifest's — sending x-sveltekit-version
+		// would make it reload in a loop. Kit skips the remote origin check in
+		// dev too.
+		cfg = manifest.RemoteConfig("")
+		cfg.Version = ""
+		cfg.Dev = true
+		cfg.CookieOrigin = origin
+		mode, pages = "dev", skgo.NewDevProxy(target, log.Printf)
+	} else {
+		static, err := skgo.NewStaticHandler(dist)
+		if err != nil {
+			return nil, "", err
+		}
+		pages = static
+	}
+
+	remotes, err := skgo.NewRemotes(cfg, generated.Remotes()...)
+	if err != nil {
+		return nil, "", err
+	}
+	return explainOriginRefusals(cfg, remotes.Intercept(pages)), mode, nil
+}
+
+// explainOriginRefusals turns the one failure a new app is most likely to hit
+// into a message that says what to do about it.
+//
+// A command is a POST, and skgo refuses a non-GET remote call whose `Origin`
+// header is not the origin the server was configured with — the same check kit
+// makes. That is a bare 403 with no body: in the browser every command fails
+// and nothing says why. The origin is decided in two places that have to
+// agree — the frontend is built with it, the binary is run with it — so this
+// wrapper watches for the mismatch and writes down both values and the fix.
+func explainOriginRefusals(cfg skgo.RemoteConfig, next http.Handler) http.Handler {
+	if cfg.Origin == "" {
+		return next
+	}
+	appDir := cfg.AppDir
+	if appDir == "" {
+		appDir = "_app"
+	}
+	prefix := cfg.Base + "/" + appDir + "/remote/"
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got := r.Header.Get("Origin")
+		if r.Method == http.MethodGet || got == cfg.Origin || !strings.HasPrefix(r.URL.Path, prefix) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		msg := "This app's origin is " + cfg.Origin + ", but the request came from " +
+			quoteOrigin(got) + ", so it was refused.\n\n" +
+			"The origin is fixed when the frontend is built and checked again when the\n" +
+			"binary runs. Either browse the app at " + cfg.Origin + ", or set ORIGIN in\n" +
+			"mise.toml to the origin you are using and run `mise run build` again.\n"
+		log.Printf("skgo: refused %s %s: Origin %s, want %s. Rebuild with ORIGIN=%s or browse the app at %s",
+			r.Method, r.URL.Path, quoteOrigin(got), cfg.Origin, quoteOrigin(got), cfg.Origin)
+		http.Error(w, msg, http.StatusForbidden)
+	})
+}
+
+func quoteOrigin(origin string) string {
+	if origin == "" {
+		return "(no Origin header)"
+	}
+	return origin
+}
