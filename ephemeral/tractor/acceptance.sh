@@ -4,6 +4,16 @@
 set -e
 cd "$(dirname "$0")/../.."
 
+# A gate that cannot run has not passed. Fail with a message that says so,
+# distinctly from an honest red, so a routed-back agent is not told its code
+# is broken when the harness is.
+for tool in go mise lsof; do
+	command -v "$tool" >/dev/null 2>&1 || {
+		echo "acceptance: HARNESS FAULT - $tool is not on PATH; this says nothing about the code" >&2
+		exit 90
+	}
+done
+
 go vet ./... ./example/...
 go test -count=1 ./...
 (cd example && go test -count=1 ./...)
