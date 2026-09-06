@@ -1,0 +1,12 @@
+{"type":"object",
+"description":"Message is one guestbook entry.","properties":{
+"id":{"type":"integer"},
+"author":{"type":"string"},
+"text":{"type":"string"},
+"attachment":{"type":"object",
+"description":"Attachment mirrors the { name, size } shape the app renders.","properties":{
+"name":{"type":"string"},
+"size":{"type":"integer"}
+},"required":["name","size"],"additionalProperties":false},
+"postedAt":{"type":"string"}
+},"required":["id","author","text","attachment","postedAt"],"additionalProperties":false}

@@ -1,0 +1,35 @@
+{
+	"schemaVersion": 1,
+	"linkRoot": "generated/links",
+	"boundary": {
+		"path": "web/src/routes/go.mod",
+		"owned": true
+	},
+	"links": [
+		{
+			"link": "generated/links/onzggl3sn52xizlt",
+			"target": "web/src/routes",
+			"perFile": true
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5sxe4tpoi",
+			"target": "web/src/routes/error"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5wwk43tmftwk4y",
+			"target": "web/src/routes/messages"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5yhe2ldmvzq",
+			"target": "web/src/routes/prices"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5zgkzdjojswg5a",
+			"target": "web/src/routes/redirect"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5zwy33x",
+			"target": "web/src/routes/slow"
+		}
+	]
+}

@@ -1,0 +1,5 @@
+{"type":"object",
+"description":"Money is the Go side of the app's `Money` class. The junkyard app declared a `transport` codec so that both sides see a real `Money`, not a plain object.","properties":{
+"cents":{"type":"integer"},
+"currency":{"type":"string"}
+},"required":["cents","currency"],"additionalProperties":false}

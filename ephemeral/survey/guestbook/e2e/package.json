@@ -1,0 +1,17 @@
+{
+	"name": "guestbook-survey-e2e",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"@playwright/test": "1.63.0",
+		"@types/node": "26.4.1",
+		"typescript": "6.0.3"
+	},
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "11.25.0",
+			"onFail": "download"
+		}
+	}
+}

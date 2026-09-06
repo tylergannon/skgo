@@ -1,0 +1,5 @@
+{"type":"object",
+"description":"SignInResult mirrors what the junkyard action returned through `form`.","properties":{
+"name":{"type":"string"},
+"error":{"type":"string"}
+},"required":["name","error"],"additionalProperties":false}

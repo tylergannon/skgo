@@ -1,0 +1,4 @@
+{"type":"object",
+"description":"Banner is the payload of the prerendered remote function.","properties":{
+"text":{"type":"string"}
+},"required":["text"],"additionalProperties":false}

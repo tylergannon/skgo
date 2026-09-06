@@ -1,0 +1,5 @@
+{"type":"object",
+"description":"Home is the root page's data.","properties":{
+"greeting":{"type":"string"},
+"messageCount":{"type":"integer"}
+},"required":["greeting","messageCount"],"additionalProperties":false}

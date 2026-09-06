@@ -1,0 +1,8 @@
+{"type":"object",
+"description":"Whoami is the payload of the /whoami page.","properties":{
+"url":{"type":"string"},
+"clientAddress":{"type":"string"},
+"requestId":{"type":"string"},
+"user":{"type":"string"},
+"host":{"type":"string"}
+},"required":["url","clientAddress","requestId","user","host"],"additionalProperties":false}

@@ -1,0 +1,21 @@
+{
+	"remotes": [
+		"11phipt/getBanner",
+		"11phipt/getMessage",
+		"11phipt/getMessageCount",
+		"11phipt/getMessages",
+		"11phipt/postMessage",
+		"1bqwj7l/getListPrice",
+		"1bqwj7l/getSalePrice",
+		"drcxy9/expectedError",
+		"drcxy9/unexpectedError",
+		"f1gjfl/getSlowPart",
+		"wozxc1/goSomewhereElse",
+		"xu03kg/getHome",
+		"xu03kg/getSession",
+		"xu03kg/recordVisit",
+		"xu03kg/signIn",
+		"xu03kg/signOut",
+		"xu03kg/whoami"
+	]
+}

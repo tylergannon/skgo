@@ -1,0 +1,5 @@
+{"type":"object",
+"description":"Session is what the layout shows: who the visitor is and how many times they have arrived.","properties":{
+"user":{"type":"string"},
+"visits":{"type":"integer"}
+},"required":["user","visits"],"additionalProperties":false}

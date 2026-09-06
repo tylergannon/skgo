@@ -6,3 +6,5 @@ example/tmp/
 example/e2e/.features-gen/
 test-results/
 playwright-report/
+ephemeral/survey/guestbook/web/build/
+ephemeral/survey/guestbook/e2e/test-results/
