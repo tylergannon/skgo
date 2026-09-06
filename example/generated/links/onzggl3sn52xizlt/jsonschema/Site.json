@@ -1,0 +1,5 @@
+{"type":"object",
+"description":"Site describes the running application.","properties":{
+"name":{"type":"string","description":"Name is the application's name."},
+"colocated":{"type":"string","description":"Colocated says which directory the Go that answered lives in."}
+},"required":["name","colocated"],"additionalProperties":false}

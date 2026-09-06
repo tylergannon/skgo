@@ -229,10 +229,7 @@ func (a *app) generateTypes() error {
 		}
 		a.cfg.Logf("projected the types in %s to %s", set.pkg.Path(), filepath.Join(set.tsDir, "types.ts"))
 	}
-	// polytype writes beside the package it was given. Through a directory
-	// symlink that is the authored directory already; through the route root's
-	// per-file link it is not, so anything it left there is moved home.
-	return a.links.reclaim()
+	return nil
 }
 
 func (a *app) sortedTypeSets() []*namedTypes {

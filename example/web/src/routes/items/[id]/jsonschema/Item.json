@@ -1,0 +1,6 @@
+{"type":"object",
+"description":"Item is one thing in the catalogue.","properties":{
+"id":{"type":"string","description":"ID is the value SvelteKit matched into the `[id]` segment."},
+"name":{"type":"string","description":"Name is what the page shows."},
+"colocated":{"type":"string","description":"Colocated says where the Go that answered lives, so the page can show that a bracketed directory really is the source of the answer."}
+},"required":["id","name","colocated"],"additionalProperties":false}

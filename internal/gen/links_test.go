@@ -262,10 +262,12 @@ func TestRemovingTheLastGoFileRemovesTheBoundary(t *testing.T) {
 	}
 }
 
-// TestGeneratedOutputInTheRouteRootLinkIsMovedHome: polytype writes beside the
-// package address it is given. For the route root that address is a real
-// directory, so its output has to be carried back to the developer's source.
-func TestGeneratedOutputInTheRouteRootLinkIsMovedHome(t *testing.T) {
+// TestGeneratedOutputStaysInsideTheRouteRootLink pins the reason the route
+// root behaves differently from every other route package. polytype emits a
+// `jsonschema_gen.go` that embeds the directory beside it, and `go:embed`
+// refuses a symlink outright — so that output has to live in the directory Go
+// compiles, and skgo must leave it there rather than tidying it away.
+func TestGeneratedOutputStaysInsideTheRouteRootLink(t *testing.T) {
 	cfg := fakeApp(t, "src/routes")
 	tree := linksFor(t, cfg)
 	if err := tree.sync(); err != nil {
@@ -283,26 +285,48 @@ func TestGeneratedOutputInTheRouteRootLinkIsMovedHome(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := tree.reclaim(); err != nil {
-		t.Fatalf("reclaim: %v", err)
+	if err := linksFor(t, cfg).sync(); err != nil {
+		t.Fatalf("sync: %v", err)
 	}
 
-	authored := filepath.Join(cfg.Web, "src", "routes")
-	if _, err := os.Stat(filepath.Join(authored, "jsonschema_gen.go")); err != nil {
-		t.Fatalf("the generated Go did not land beside the source: %v", err)
+	if _, err := os.Stat(filepath.Join(linkDir, "jsonschema_gen.go")); err != nil {
+		t.Fatalf("the embedding Go file was removed from the package: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(authored, "jsonschema", "Item.json")); err != nil {
-		t.Fatalf("the generated schema did not land beside the source: %v", err)
+	if _, err := os.Stat(filepath.Join(linkDir, "jsonschema", "Item.json")); err != nil {
+		t.Fatalf("the embedded directory was removed from the package: %v", err)
 	}
-	fi, err := os.Lstat(filepath.Join(linkDir, "jsonschema_gen.go"))
-	if err != nil {
+	// The link to the developer's own file is still there beside it.
+	if !sameDir(t, filepath.Join(linkDir, "data.remote.go"), filepath.Join(cfg.Web, "src", "routes", "data.remote.go")) {
+		t.Fatal("the authored source is no longer linked into the package")
+	}
+}
+
+// TestAStaleLinkInTheRouteRootGoes: a file the developer deleted must not keep
+// a dangling link, which would stop the package compiling altogether.
+func TestAStaleLinkInTheRouteRootGoes(t *testing.T) {
+	cfg := fakeApp(t, "src/routes")
+	if err := linksFor(t, cfg).sync(); err != nil {
 		t.Fatal(err)
 	}
-	if fi.Mode()&os.ModeSymlink == 0 {
-		t.Fatal("the reclaimed file was not replaced by a link, so the package would lose it")
+	linkDir := filepath.Join(cfg.Out, linkRootName, encodeLinkName("src/routes"))
+	extra := filepath.Join(cfg.Web, "src", "routes", "helper.go")
+	if err := os.WriteFile(extra, []byte("package p\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Lstat(filepath.Join(linkDir, "jsonschema")); err == nil {
-		t.Fatal("a non-Go directory was left inside the link")
+	if err := linksFor(t, cfg).sync(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(linkDir, "helper.go")); err != nil {
+		t.Fatalf("a new Go file was not linked: %v", err)
+	}
+	if err := os.Remove(extra); err != nil {
+		t.Fatal(err)
+	}
+	if err := linksFor(t, cfg).sync(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(linkDir, "helper.go")); err == nil {
+		t.Fatal("a link to a deleted file survived, leaving the package uncompilable")
 	}
 }
 

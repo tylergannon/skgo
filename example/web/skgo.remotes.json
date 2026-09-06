@@ -7,6 +7,10 @@
 		"16h93j5/watchCount",
 		"4cga8b/signIn",
 		"4cga8b/signOut",
-		"4cga8b/whoami"
+		"4cga8b/whoami",
+		"4rw8ae/getItem",
+		"9lqpme/getPage",
+		"ezl04l/getSite",
+		"gu007f/getPlans"
 	]
 }

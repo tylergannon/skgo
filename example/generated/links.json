@@ -7,8 +7,25 @@
 	},
 	"links": [
 		{
+			"link": "generated/links/onzggl3sn52xizlt",
+			"target": "web/src/routes",
+			"perFile": true
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th",
+			"target": "web/src/routes/(marketing)/pricing"
+		},
+		{
 			"link": "generated/links/onzggl3sn52xizltf52g6zdpom",
 			"target": "web/src/routes/todos"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5",
+			"target": "web/src/routes/docs/[...rest]"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu",
+			"target": "web/src/routes/items/[id]"
 		}
 	]
 }

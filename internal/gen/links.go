@@ -250,11 +250,19 @@ func (t *routeLinks) syncDirLink(link *routeLink) error {
 }
 
 // syncPerFile builds the route root's link as a real directory of file
-// symlinks. `go.mod` is deliberately left out: that file is the boundary, and
-// a package directory that contains one is a different module.
+// symlinks. `go.mod` is deliberately left out: that file is the boundary, and a
+// package directory that contains one is a different module.
+//
+// Real files already in the link directory are left where they are. They are
+// polytype's output, and they have to stay: `go:embed` refuses a symlink
+// outright ("cannot embed irregular file"), so the generated `jsonschema_gen.go`
+// and the `jsonschema/` directory it embeds can only live in the directory Go
+// compiles. For every other route package the link *is* the authored directory,
+// so this is the one package whose polytype output does not sit beside its
+// source.
 func (t *routeLinks) syncPerFile(link *routeLink) error {
 	if fi, err := os.Lstat(link.linkDir); err == nil && (fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir()) {
-		if err := removeLinkEntry(link.linkDir); err != nil {
+		if err := os.Remove(link.linkDir); err != nil {
 			return err
 		}
 	}
@@ -277,7 +285,7 @@ func (t *routeLinks) syncPerFile(link *routeLink) error {
 		if existing, err := os.Readlink(path); err == nil && existing == target {
 			continue
 		}
-		if err := removeLinkEntry(path); err != nil {
+		if err := os.RemoveAll(path); err != nil {
 			return err
 		}
 		if err := os.Symlink(target, path); err != nil {
@@ -291,52 +299,12 @@ func (t *routeLinks) syncPerFile(link *routeLink) error {
 		return err
 	}
 	for _, e := range entries {
-		if keep[e.Name()] {
+		// A stale link to a file the developer deleted goes; anything that is
+		// not a link was written here by a generator that needs it here.
+		if keep[e.Name()] || e.Type()&os.ModeSymlink == 0 {
 			continue
 		}
-		if err := removeLinkEntry(filepath.Join(link.linkDir, e.Name())); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// reclaim moves anything a generator wrote *into* a per-file link directory
-// back to the authored directory, leaving a symlink in its place. polytype
-// writes `jsonschema_gen.go` and `jsonschema/` next to the package it is given,
-// and for the route root that package address is a real directory rather than a
-// symlink, so the output would otherwise land in generated output instead of
-// beside the developer's source.
-func (t *routeLinks) reclaim() error {
-	if t == nil {
-		return nil
-	}
-	for _, link := range t.links {
-		if !link.PerFile {
-			continue
-		}
-		entries, err := os.ReadDir(link.linkDir)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return err
-		}
-		for _, e := range entries {
-			if e.Type()&os.ModeSymlink != 0 {
-				continue
-			}
-			from := filepath.Join(link.linkDir, e.Name())
-			to := filepath.Join(link.dir, e.Name())
-			if err := os.RemoveAll(to); err != nil {
-				return err
-			}
-			if err := os.Rename(from, to); err != nil {
-				return fmt.Errorf("skgo: moving generated %s back to %s: %w", e.Name(), link.Target, err)
-			}
-			t.logf("moved %s into %s", e.Name(), link.Target)
-		}
-		if err := t.syncPerFile(link); err != nil {
+		if err := os.Remove(filepath.Join(link.linkDir, e.Name())); err != nil {
 			return err
 		}
 	}
@@ -366,9 +334,12 @@ func (t *routeLinks) prune(keep map[string]bool) error {
 	return nil
 }
 
-// removeLinkEntry deletes a symlink, or a directory whose entries are all
-// symlinks. It never follows a link and never deletes a regular file, because
-// the only regular files that can appear here are ones skgo did not put there.
+// removeLinkEntry deletes one entry of the link root: a symlink, or a link
+// directory together with the generated output inside it. It refuses a regular
+// file, because skgo never writes one there and a file that has appeared is the
+// signal that the output directory is not what its owner thinks it is.
+// RemoveAll does not follow symlinks, so nothing it does can reach authored
+// source.
 func removeLinkEntry(path string) error {
 	fi, err := os.Lstat(path)
 	if err != nil {
@@ -383,19 +354,7 @@ func removeLinkEntry(path string) error {
 	if !fi.IsDir() {
 		return fmt.Errorf("skgo: %s is a regular file inside the generated link tree; skgo will not delete it. Remove it by hand if it is stale", path)
 	}
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.Type()&os.ModeSymlink == 0 {
-			return fmt.Errorf("skgo: %s is not a symlink but sits inside the generated link tree; skgo will not delete it", filepath.Join(path, e.Name()))
-		}
-		if err := os.Remove(filepath.Join(path, e.Name())); err != nil {
-			return err
-		}
-	}
-	return os.Remove(path)
+	return os.RemoveAll(path)
 }
 
 // syncBoundary makes sure the route tree is a module boundary, which is what
