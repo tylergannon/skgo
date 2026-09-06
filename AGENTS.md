@@ -7,22 +7,29 @@ ordinary SvelteKit adapter, so the frontend stays plain SvelteKit — kit's
 tooling, kit's conventions, no Go-isms. Go serves kit's client-rendered output
 natively, makes the trust decisions, and answers the endpoints kit's client
 already calls: remote functions (`/_app/remote/...`) and server loads
-(`__data.json`). Server logic — loads and remote functions — is written in Go
-with end-to-end types; anything not written in Go stays plain kit.
+(`__data.json`).
+
+**Every server endpoint is Go's.** Not "Go where you want it, kit otherwise" —
+all of them. Loads and remote functions are written in Go with end-to-end types,
+and the JavaScript kit requires is a generated stub that throws, so any real
+response proves Go answered. Running remote functions in TypeScript is not a
+supported mode.
 
 **CSR only, to start.** The app runs with `ssr = false`; the document is kit's
-own SPA fallback; kit's server bundle is built but never runs, and there is no
-Node process at runtime. Server-side rendering via a supervised Node sidecar is
-a feature we will add only if the CSR base case proves out. Do not design for
-it, plan around it, or describe the system as having it.
+own SPA fallback; kit's server bundle is built but never runs, and no JavaScript
+executes in production. If server-side rendering arrives, the intent is a
+runtime embedded in the Go binary — one process, one binary — not a supervised
+Node sidecar. That is unproven and conditional on the CSR base case proving out:
+do not design for it, plan around it, or describe the system as having it.
 
 To a Go developer: a real frontend framework for a Go monolith. To a Svelte
 developer: the app is still SvelteKit.
 
 One binary. One build gesture. Node is a build-time dependency only.
 
-We never reimplement kit, never build or maintain a JS runtime, and never claim
-anything that hasn't been demonstrated running.
+We never reimplement kit, never write or maintain a JavaScript engine — should
+SSR ever need one, embedding an existing engine is a different thing — and never
+claim anything that hasn't been demonstrated running.
 
 ## Read this first
 
@@ -48,9 +55,11 @@ question, recommendation, or option list about a feature skgo mirrors, map kit's
 own implementation from pinned source — its API shape, its constraints, what it
 forbids and why. Kit has usually already answered the question, and more
 specifically than the answer being invented. A mirrored feature must obey kit's
-rules, not merely resemble its ergonomics: the brief promises Go and kit code
-coexist in one app, so identical functions must behave identically. If kit
-answers it, it was never a decision — only unmapped research.
+rules, not merely resemble its ergonomics — the browser runs kit's own client, so
+a constraint kit enforces on the server usually exists to protect a client-side
+invariant (an argument-keyed query cache, say), and dropping it breaks the client
+rather than skgo. If kit answers it, it was never a decision, only unmapped
+research.
 
 **Delegate missions, not methods.** A subagent gets: the capability a developer
 should have when it is done, kit as the spec and where the pinned source is, the

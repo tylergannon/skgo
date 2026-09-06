@@ -273,3 +273,17 @@ Another point is that I have left the "generated wiring" stuff very incomplete. 
 ## Addendum: polytype status
 
 I'm working on getting a new rc.6 version of polytype.  you shouldn't have any trouble using that by the time you're done with your research and are ready to start programming.
+
+## Addendum, 2026-09-06 — all server-side work is Go's
+
+Clarifying the direction, because a summary of this brief had drifted into
+"anything not written in Go stays plain kit."
+
+Every server endpoint is Go's. Running remote functions or server loads in
+TypeScript is not a supported mode and is not a fallback — the JavaScript is a
+generated stub that throws, and that is the point.
+
+Server-side rendering, when it comes, should be a runtime embedded in the Go
+binary rather than a supervised Node sidecar. One process, one binary. That is
+an aspiration and is unproven; nothing should be designed around it until the
+CSR base case has earned it.
