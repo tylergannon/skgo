@@ -1,0 +1,6 @@
+sprints:
+  - id: SPRINT-0001
+    title: Bare Go server fronting a SvelteKit app
+    status: planned
+    created: "2026-09-06T03:20:31+00:00"
+    updated: "2026-09-06T03:20:31+00:00"
