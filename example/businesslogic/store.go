@@ -108,7 +108,7 @@ func (s *Store) Todo(id string, signedIn bool) (Todo, bool) {
 // Add appends a todo and wakes every live-query subscriber.
 func (s *Store) Add(text string) Todo {
 	s.mu.Lock()
-	todo := Todo{ID: fmt.Sprintf("t%d", s.next), Text: text}
+	todo := Todo{ID: fmt.Sprintf("t%d", s.next)}
 	s.next++
 	s.todos = append(s.todos, todo)
 	// Notify while still holding the lock so subscribers can never observe
