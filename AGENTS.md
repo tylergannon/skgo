@@ -59,10 +59,16 @@ parallel work does not collide. It does its own mapping and chooses its own
 path — that research is the work, and it must not arrive secondhand. Detailed
 instructions cap an agent's quality at the dispatcher's understanding and
 transmit the dispatcher's unverified assumptions as fact. Sprint documents obey
-the same rule: mission, standard, ownership. No file lists, no prescribed
-designs, no step-by-step. Rigor belongs on the receiving end — verify outcomes
-against the standard, check claims against source, reject work that misses the
-bar.
+the same rule: mission, acceptance, ownership. No file lists, no prescribed
+designs, no step-by-step.
+
+**Acceptance is the Gherkin suite.** Behaviour written in business language is
+the contract, and it exists so nobody has to read code to decide whether the
+software works. Define what winning looks like as scenarios; let the builder
+choose how. Validate by dispatching an agent that checks the scenarios are
+load-bearing — would each one actually fail if the feature were broken or
+removed — and then runs them. Do not audit diffs or re-derive claims from
+source as a substitute; a passing load-bearing suite is the answer.
 
 **Don't narrate.** No status documents, no progress reports, no summaries of
 work already visible in the diff. The worklog exists for actionable
