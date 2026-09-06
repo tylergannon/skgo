@@ -63,10 +63,20 @@ func renameTodo(ctx context.Context, arg Rename) (businesslogic.Todo, error) {
 	return todo, nil
 }
 
-// watchCount pushes the number of todos, now and after every change, until the
-// client disconnects.
+// watchCount pushes the number of todos this visitor may see, now and after
+// every change, until the client disconnects.
+//
+// The identity is read once, here, and then never again. kit's event is a
+// snapshot of the request that opened the stream — the generator body runs a
+// single time and kit merely re-enters that same event around each resumption
+// (`run_remote_generator` in runtime/app/server/remote/shared.js) — so there is
+// no later request to consult and nothing to re-read. kit's own live-query
+// fixture captures the session the same way, at the top, before the first
+// await. When the cookie changes, kit's answer is not to re-read it but to
+// restart the stream: the command that wrote it reconnects the live query in
+// the same flight, which is what signIn and signOut do.
 func watchCount(ctx context.Context, _ skgo.None, yield func(int) error) error {
-	updates, unsubscribe, count := businesslogic.Default.Watch()
+	updates, unsubscribe, count := businesslogic.Default.Watch(signedIn(ctx))
 	defer unsubscribe()
 
 	if err := yield(count); err != nil {

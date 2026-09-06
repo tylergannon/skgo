@@ -73,6 +73,32 @@ Then('the live count increased by {int}', async ({ page, notes }, by: number) =>
 	await expect(page.getByTestId('count')).toHaveText(String(before! + by), { timeout: 15_000 });
 });
 
+// The number on screen is the live query's answer; the list beside it is the
+// `getTodos` query's answer. They are two different endpoints, so asserting one
+// against the other is an assertion about two real numbers, and it is the thing
+// a signed-out visitor can check with their own eyes.
+Then('the todo count matches the todos on the page', async ({ page }) => {
+	const shot = `../../ephemeral/screenshots/todo-count-${await audience(page)}-${
+		process.env.EXPECTED_MODE ?? 'unknown'
+	}.png`;
+	try {
+		await expect(async () => {
+			const listed = await page.getByTestId('todo').count();
+			const counted = await liveCount(page);
+			expect(counted, `the counter says ${counted}; the page lists ${listed} todos`).toBe(listed);
+		}).toPass({ timeout: 15_000 });
+	} finally {
+		await page.screenshot({ path: shot, fullPage: true });
+	}
+});
+
+/** "signed-out", or "signed-in-<user>" — used to name the screenshot. */
+async function audience(page: Page): Promise<string> {
+	const session = (await page.getByTestId('session').innerText()).trim();
+	const user = session.match(/^Signed in as (.+)$/);
+	return user ? `signed-in-${user[1]}` : 'signed-out';
+}
+
 async function liveCount(page: Page): Promise<number> {
 	const text = await page.getByTestId('count').innerText();
 	const value = Number(text.trim());

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { signIn, signOut, whoami } from './auth.remote';
-	import { getTodos } from '../routes/todos/todos.remote';
+	import { getTodos, watchCount } from '../routes/todos/todos.remote';
 
 	let name = $state('');
 	let busy = $state(false);
@@ -14,7 +14,11 @@
 		try {
 			// The session cookie the command sets is already in force by the
 			// time these queries run: they are resolved on the same request.
-			await signIn(name).updates(whoami(), getTodos());
+			// `watchCount` is a live query, so it cannot be refreshed — its
+			// event is the request that opened the stream. Naming it here
+			// reconnects it in the same flight, which is kit's answer to a
+			// command that changes a cookie a live query reads.
+			await signIn(name).updates(whoami(), getTodos(), watchCount);
 			name = '';
 		} finally {
 			busy = false;
@@ -24,7 +28,7 @@
 	async function leave() {
 		busy = true;
 		try {
-			await signOut().updates(whoami(), getTodos());
+			await signOut().updates(whoami(), getTodos(), watchCount);
 		} finally {
 			busy = false;
 		}
