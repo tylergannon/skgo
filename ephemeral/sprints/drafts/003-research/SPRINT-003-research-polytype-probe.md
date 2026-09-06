@@ -47,29 +47,38 @@ owner) does the round-trip match the TS exactly. `ValidateJSON` is opt-in and po
 
 ## Gaps for the skgo flow, ranked
 
-**Corrected 2026-09-06 (Tyler).** The original list led with "no codec for plain
-structs." That was wrong. Codecs earn their place only where the default encoder
-cannot produce the target format — a discriminated union needs a discriminator
-`json.Marshal` will never emit. A plain struct has no such gap. The observed
-failures were the *projection* describing `encoding/json`'s output incorrectly,
-not `encoding/json` misbehaving: nil `*string` → `null` is correct, and the TS
-claiming `string` is the defect. Filed accordingly.
+**Corrected twice, 2026-09-06 (Tyler).** First pass led with "no codec for plain
+structs" — wrong: codecs earn their place only where the default encoder cannot
+produce the target format (a union discriminator), and nil `*string` → `null` is
+`encoding/json` behaving correctly. Second pass then asked to *widen* the
+projection to `T | null` — also wrong: `Nullable[T]`/`Optional[T]` exist so
+nullability and presence are stated, not inferred. The right ask is that the
+un-stated forms be **diagnosed**, not silently accepted.
 
-1. The TypeScript projection must be true of `json.Marshal`'s output for the
-   admitted type set: `*T` → `T | null` (or a diagnostic), nil slice →
-   `Array<T> | null` (or a diagnostic), `omitempty`/`omitzero` → optional.
-   → tylergannon/polytype#100
-2. `map[string]V` → `Record<string, V>`; currently rejected outright.
-   → tylergannon/polytype#101
+**The admitted subset is the design, not a limitation.** Scalars, `time.Time`,
+structs, slices, named types, embedding, enums, sealed unions, `Optional`,
+`Nullable` cover the remote-function boundary. Remote In/Out types are wire
+contract types; every typed-RPC system narrows the host language at that
+boundary. Cost to state in skgo's docs: an existing domain struct containing a
+map or a bare `*T` cannot be handed to a remote function directly — the author
+writes a boundary type.
+
+1. Bare `*T` and bare `omitempty`/`omitzero` should be rejected with a
+   diagnostic naming `Nullable[T]` / `Optional[T]`, rather than silently emitting
+   a declaration that is false of the bytes. → tylergannon/polytype#100
+2. Nil slices marshal to `null` and no wrapper covers it — the zero value hits
+   the empty-list case immediately. Genuinely unresolved; three options weighed
+   in the issue. → tylergannon/polytype#100
 3. A run without `--validate` silently deletes `ValidateJSON` and breaks the
    build. → tylergannon/polytype#102
 4. `types.ts` overwritten per run; no machine-readable Go-type → TS-name record.
    → tylergannon/polytype#103
+5. `map[string]V` rejected. **Not blocking** — filed from a probe finding, not a
+   use case. → tylergannon/polytype#101
 
 Not filed: an enum-typed Go value outside its declared set (`Priority("bogus")`)
-marshals happily against a TS literal union. Real, but it is a Go type-system
-limitation rather than a projection or codec defect, and validation on encode is
-opt-in by design.
+marshals happily against a TS literal union. Real, but a Go type-system
+limitation rather than a projection defect.
 
 ## Traps
 
