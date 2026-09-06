@@ -88,6 +88,12 @@ whether it is real. A scenario that cannot produce one is a scenario nobody can
 check. Skips are failures: a check that cannot run because its toolchain is
 missing has not passed, and must not be able to report that it did.
 
+**Assert the value, not the change.** A `Then` that checks something grew,
+changed, or is non-empty passes for every wrong answer as well as the right one.
+Kit's own client is watching a specific number; write the number. The one leak
+this project has shipped got through a scenario asserting a count *increases*,
+which it did, while showing a signed-out visitor the existence of a private row.
+
 Then **open every screenshot and look at it.** Producing them is half the job;
 an unexamined screenshot is the same unread artifact as an exit code. A green
 suite over a screenshot showing an error boundary, an empty list, a stack trace
