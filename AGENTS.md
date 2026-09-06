@@ -79,6 +79,15 @@ load-bearing — would each one actually fail if the feature were broken or
 removed — and then runs them. Do not audit diffs or re-derive claims from
 source as a substitute; a passing load-bearing suite is the answer.
 
+**A passing command is not evidence.** An exit code of zero is exactly what a
+silently skipped test prints. Validation has to produce artifacts a human can
+look at without reading code or rerunning anything: screenshots of the running
+app at the moment each scenario asserts, and they have to be good — the actual
+page, showing the actual state the scenario claims, legible enough to tell
+whether it is real. A scenario that cannot produce one is a scenario nobody can
+check. Skips are failures: a check that cannot run because its toolchain is
+missing has not passed, and must not be able to report that it did.
+
 **Don't narrate.** No status documents, no progress reports, no summaries of
 work already visible in the diff. The worklog exists for actionable
 intelligence — corrections, traps, things that will change a future decision —
