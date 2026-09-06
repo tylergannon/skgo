@@ -1,0 +1,65 @@
+// Command {{.App}} serves the SvelteKit app in web/ from Go.
+//
+// With --proxy it forwards pages to a running `vp dev` server; without it, it
+// serves the build embedded at compile time and no Node process is involved at
+// all. Either way remote-function calls are answered by Go: the registry sits
+// in front of both the proxy and the static handler, because in dev kit's own
+// server would otherwise run the generated stub, whose every body throws.
+package main
+
+import (
+	"flag"
+	"io/fs"
+	"log"
+	"net/http"
+	"net/url"
+
+	"{{.Module}}"
+	"{{.Module}}/web"
+)
+
+// origin is the app's origin: the URL a browser reaches it at. It is baked in
+// at link time by `mise run build`, from the single ORIGIN in mise.toml that
+// the frontend build also reads, so the two halves cannot disagree by
+// accident. The value here is only the fallback for `go run ./cmd`.
+//
+// It is not derived from --listen. Behind a reverse proxy the two are
+// legitimately different, and guessing would replace a clear refusal with a
+// silent one.
+var origin = "{{.Origin}}"
+
+func main() {
+	listen := flag.String("listen", hostPort(origin), "address to listen on")
+	trusted := flag.String("origin", origin, "the origin browsers reach this app at; non-GET remote calls from anywhere else are refused")
+	proxy := flag.String("proxy", "", "URL of a `vp dev` server to proxy pages to; empty serves the embedded build")
+	flag.Parse()
+
+	dist, err := fs.Sub(web.Build, "build")
+	if err != nil {
+		log.Fatalf("{{.App}}: %v", err)
+	}
+	handler, mode, err := app.NewHandler(dist, *proxy, *trusted)
+	if err != nil {
+		log.Fatalf("{{.App}}: %v", err)
+	}
+
+	// In dev the client is served by vite and kit itself skips the origin
+	// check, so saying which origin is trusted would be a lie about prod.
+	if mode == "prod" {
+		log.Printf("{{.App}}: listening on http://%s; commands are accepted from %s", *listen, *trusted)
+	} else {
+		log.Printf("{{.App}}: listening on http://%s in dev mode, proxying pages to %s; the origin check is off, as it is in kit", *listen, *proxy)
+	}
+	if err := http.ListenAndServe(*listen, handler); err != nil {
+		log.Fatalf("{{.App}}: %v", err)
+	}
+}
+
+// hostPort is the listen address an origin implies.
+func hostPort(origin string) string {
+	u, err := url.Parse(origin)
+	if err != nil || u.Host == "" {
+		return "{{.OriginHostPort}}"
+	}
+	return u.Host
+}

@@ -1,0 +1,5 @@
+/bin/
+/tmp/
+web/node_modules/
+web/.svelte-kit/
+web/build/

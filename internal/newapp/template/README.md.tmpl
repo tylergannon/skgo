@@ -1,0 +1,54 @@
+# {{.App}}
+
+A SvelteKit app served by Go. One binary, one build gesture; Node is a
+build-time dependency only.
+
+## Build and run
+
+```sh
+mise run build
+./bin/{{.App}}
+```
+
+Then open {{.Origin}}. The page's heading, the Go version below it, and the
+greeting counter all come from `web/src/routes/hello.remote.go` — the
+`hello.remote.ts` beside it is generated and every one of its bodies throws, so
+anything that renders is proof that Go answered.
+
+## Where things are
+
+| | |
+| --- | --- |
+| `web/` | an ordinary SvelteKit app: kit's tooling, kit's conventions |
+| `web/src/routes/*.remote.go` | server logic, colocated with the routes that call it |
+| `generated/` | what `go generate ./...` writes; never edited by hand |
+| `cmd/` | the binary |
+| `server.go` | the one composition the binary and any test both use |
+
+Write a remote function by adding a Go function to a `*.remote.go` file beside
+the route that needs it and marking it with `skgo.Query` or `skgo.Command`, then
+run `mise run build`. skgo writes the `.remote.ts` module kit compiles, the
+TypeScript types its callers see, and the Go registration the server mounts.
+
+## The origin
+
+The app's origin is fixed when the frontend is built, and the server checks it
+on every non-GET remote call — that is kit's own rule, and a command is a POST.
+It is written once, as `ORIGIN` in `mise.toml`, and both halves read it from
+there.
+
+To serve the app somewhere else, change `ORIGIN` and run `mise run build`
+again. Changing only one half makes every command fail with 403; the server
+says so in its log and in the response body if it happens.
+
+## Development
+
+`mise run build` once, then two terminals:
+
+```sh
+mise run dev:web   # vite, on 127.0.0.1:5173
+mise run dev:go    # the Go server, proxying pages to vite
+```
+
+Go answers the remote functions in both modes. Pages are served by vite in dev
+and out of the binary in production.

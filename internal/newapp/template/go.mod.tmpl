@@ -1,0 +1,16 @@
+module {{.Module}}
+
+go {{.GoVersion}}
+
+require (
+	github.com/tylergannon/polytype {{.PolytypeVersion}}
+	github.com/tylergannon/skgo {{.SkgoVersion}}
+)
+
+// skgo generates the bindings and polytype projects the Go types that cross to
+// TypeScript. Both run through `go tool`, so they are built from the module
+// cache and neither has to be a writable checkout.
+tool (
+	github.com/tylergannon/polytype/polytype
+	github.com/tylergannon/skgo/cmd/skgo
+)

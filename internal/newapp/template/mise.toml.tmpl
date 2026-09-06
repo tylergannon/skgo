@@ -1,0 +1,41 @@
+[tools]
+node = "24.16.0"
+# Bootstrap copy of `vp`, used only before `web/node_modules` exists. Once the
+# project is installed, `_.path` below makes the project-local `vp` win.
+"npm:vite-plus" = "0.3.0"
+
+[env]
+# The one place the app's origin is written down.
+#
+# The frontend is built with it (web/vite.config.ts reads $ORIGIN) and the same
+# value is linked into the binary, so a browser at this URL is the one the
+# server accepts commands from. Change it here and run `mise run build` again;
+# changing only one half makes every command answer 403.
+ORIGIN = "{{.Origin}}"
+
+# SvelteKit checks the dev server's SSR environment with `isRunnableDevEnvironment`,
+# which is an `instanceof` against the *project's* resolved `vite`. The
+# mise-global `npm:vite-plus` install ships its own copy of
+# @voidzero-dev/vite-plus-core, so a dev server created by that binary carries
+# classes from a different module realm and the check fails. Putting the
+# project's bin dir first on PATH makes `vp` resolve the copy that shares a
+# realm with the project's kit.
+_.path = ["./web/node_modules/.bin"]
+
+[tasks.build]
+description = "The build gesture: install, generate, build the frontend, link the binary."
+run = [
+	"go mod tidy",
+	"cd web && vp install",
+	"go generate ./...",
+	"cd web && vp build",
+	"go build -ldflags \"-X main.origin=$ORIGIN\" -o bin/{{.App}} ./cmd",
+]
+
+[tasks."dev:web"]
+description = "The vite dev server. Run `mise run build` once first: the binary embeds the build."
+run = "cd web && vp dev --host 127.0.0.1 --port 5173 --strictPort"
+
+[tasks."dev:go"]
+description = "The Go server, proxying pages to `vp dev`. Remote functions are still answered here."
+run = "go run ./cmd --proxy http://127.0.0.1:5173"
