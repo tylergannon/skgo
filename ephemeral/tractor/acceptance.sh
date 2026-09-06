@@ -32,6 +32,18 @@ done
 	exit 90
 }
 
+# A mission that changed nothing did not pass. Everything below was already
+# green on main, so it answers "is the tree still good" and never "was the work
+# done" — and an agent that delegated its work and returned leaves exactly this
+# shape: a worklog commit, a green gate, and no product. That has happened.
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$BRANCH" != "main" ]; then
+	if [ -z "$(git diff --name-only main...HEAD -- . ':!ephemeral/' | head -1)" ]; then
+		echo "acceptance: $BRANCH changes nothing outside ephemeral/; the mission is not done" >&2
+		exit 1
+	fi
+fi
+
 # The e2e suite against a production build with vite stopped.
 if lsof -ti:"$SKGO_VITE_PORT" >/dev/null 2>&1; then
 	echo "acceptance: vite is running on $SKGO_VITE_PORT; the prod run must not proxy" >&2

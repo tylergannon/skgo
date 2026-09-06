@@ -3,6 +3,11 @@
 # The point of the shape: the agent does not decide whether it is done. The
 # check does, and the check is the acceptance suite. An agent that reports
 # success while the suite is red simply loops.
+#
+# One rule the graph cannot enforce for you, stated in every mission's goal:
+# the agent node is the builder. It may delegate, but it must not return while
+# dispatched work is outstanding — its process ending kills its subagents, and
+# the acceptance suite cannot tell an abandoned mission from a finished one.
 name: skgo-mission
 goal: |
   REPLACE ME. State the capability a developer should have when this is done,
