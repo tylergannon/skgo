@@ -1,8 +1,16 @@
-# Sprint 002 Intent: Remote functions in Go (`query` + `command`, hand-written stubs)
+# Sprint 002 Intent: Remote functions in Go (`query`, `query.live`, `command`; hand-written stubs)
 
 ## Seed
 
 plan sprint 002: remote functions in Go
+
+Tyler's notes (2026-09-05, verbatim intent): implement `query`, `query.live`, and
+`command`-style remote functions and actually see them working. Prove them via Playwright
+BDD tests written in Gherkin against simple scenarios that exercise the required
+functionality, against a **production build**, then merge. Do it in the best way you see
+fit. Do not get caught up planning: find out how to build it, build it, prove it, fix it.
+Do not gold plate or over-polish; get it to where it works (isn't broken) and is 90-95%
+complete, then merge it.
 
 (Tyler's compaction instruction. Brief context: the build plan's Phase A step (c)/(d) —
 "mount a hand-written Go handler at one remote URL … called from a hand-written throwing
@@ -52,8 +60,9 @@ to Go from pinned kit source, with real Go implementations behind an unmodified 
 
 ## Pyramid Index
 
-- L0: Port kit's remote-function protocol (`query` GET, `command` POST) to Go from pinned source with ported tests, expose a typed Go authoring API, mount it in front of both the dev proxy and the prod static handler, and prove it with a hand-written throwing `.remote.ts` stub plus Playwright scenarios where every valid response can only have come from Go.
+- L0: Port kit's remote-function protocol (`query` GET, `query.live` GET/SSE, `command` POST) to Go from pinned source with ported tests, expose a typed Go authoring API, mount it in front of both the dev proxy and the prod static handler, and prove it with a hand-written throwing `.remote.ts` stub plus Playwright scenarios where every valid response can only have come from Go.
 - L1:
+  - **`query.live`:** SSE response per `create_live_query_response` (frames `data: {"type":"result","result":<devalue>}\n\n`, dedupe on serialized string, 30 s `: keep-alive` comment, `text/event-stream`, teardown on client disconnect via `context.Context`); Go authoring shape is a generator-like `func(ctx, In, yield func(Out) error) error` or a channel; port the two upstream spec tests (`sources/kit/portable-tests/remote-functions-spec.md`) through a real `httptest.Server`, never `ResponseRecorder`.
   - **Library ports (Go, test-first):** kit `hash` (golden `src/lib/todos.remote.ts → worolc`); devalue `stringify`/`parse` with the upstream fixture table minus JS-only rows; remote-arg codec (`__skrao`/`__skram`/`__skras` revivers, base64url, sorted-key canonical encoder); the `/_app/remote/<hash>/<name>` dispatcher: envelope `{type:'result',data:<devalue>}`, `q` node on every query response, `refreshes` allow-list + `q`/`r` on commands, error envelope `{status,message}` with HTTP 200, redirect-as-result, 404 inside the envelope, `cache-control: private, no-store`, Origin check on non-GET (`403 {"message":"Cross-site remote requests are forbidden"}`).
   - **Authoring surface:** `skgo.Query[In,Out]` / `skgo.Command[In,Out]` (or equivalent) taking `func(context.Context, In) (Out, error)`, a registry that mounts by `(hash, name)`, Go error → kit `error(status, message)` and `redirect` mapping, single-flight refresh from inside a command (the Go equivalent of `requested(...)`/`.refresh()`/`.set()`).
   - **Composition:** one handler ordering used by `example/cmd`: remote prefix → Go; everything else → proxy (dev) or static (prod). `base`/`appDir`/`origin`/`version.name` come from the adapter manifest so Go and the client bundle agree.
@@ -160,15 +169,15 @@ working) or devalue → Go reflection directly.
 
 1. `go test ./... ./example/...` and `go vet` pass; the devalue fixture port, hash goldens,
    payload goldens from `client-requests.md`, and envelope table tests are green.
-2. In dev (`overmind start`) and in prod (bare binary, Vite stopped), a browser at the Go
+2. In prod (bare binary from `vp build` + `go build`, Vite stopped) — dev is a bonus, not the gate — a browser at the Go
    origin renders a list fetched through `await getTodos()`, adds an item through a
    `command` with `.updates(getTodos())` making exactly one programmatic request, opens a
    deep link that calls a query with an argument, and shows an error state when a query
-   throws — with the `.remote.ts` bodies throwing, so every rendered value came from Go.
-3. Playwright scenarios for those flows pass against both modes via `BASE_URL`.
+   throws, and a `query.live` subscription that updates the page as Go pushes new values — with the `.remote.ts` bodies throwing, so every rendered value came from Go.
+3. Playwright BDD (Gherkin) scenarios for those flows pass against the production build via `BASE_URL`.
 4. A test proves the `(hash, name)` ids Go mounts are present in the built client bundle.
-5. No `query.live`, `query.batch`, `form`, `prerender`, `__data.json`, or generated code
-   in this sprint; their absence is stated, not hand-waved.
+5. No `query.batch`, `form`, `prerender`, `__data.json`, or generated code in this sprint;
+   their absence is stated, not hand-waved. Bar: works, not broken, 90-95% complete; no gold plating.
 
 ## Open Questions
 
