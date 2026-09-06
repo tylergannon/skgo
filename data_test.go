@@ -651,3 +651,39 @@ func readLines(t *testing.T, s string) []string {
 	}
 	return out
 }
+
+// TestRestParametersAreNamed uses kit's own pattern for `/docs/[...rest]`,
+// translated by kitPattern the way the static handler translates it.
+func TestRestParametersAreNamed(t *testing.T) {
+	m := Manifest{
+		AppDir: "_app",
+		Nodes:  []string{""},
+		Routes: []ManifestRoute{{
+			ID:      "/docs/[...rest]",
+			Pattern: `^\/docs(?:\/([^]*))?\/?$`,
+			Params:  []ManifestParam{{Name: "rest", Rest: true, Chained: true}},
+			Page:    &ManifestPage{Layouts: []int{0}, Leaf: 0},
+		}},
+	}
+	cfg := m.LoadConfig("http://127.0.0.1:8080")
+	cfg.Dev = true
+	ls, err := NewLoads(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct{ path, want string }{
+		{"/docs/guide/getting-started", "guide/getting-started"},
+		{"/docs", ""},
+		{"/docs/", ""},
+	} {
+		_, params, ok := ls.match(tc.path)
+		if !ok {
+			t.Errorf("%s did not match", tc.path)
+			continue
+		}
+		if params["rest"] != tc.want {
+			t.Errorf("%s: rest = %q, want %q", tc.path, params["rest"], tc.want)
+		}
+	}
+}
