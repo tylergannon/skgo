@@ -1,0 +1,23 @@
+# Air is launched from example/ by the Procfile. `root` is the repository root
+# so that edits to the skgo library itself, not just to example/, trigger a
+# rebuild; `exclude_dir` and `tmp_dir` are relative to `root`, but `cmd` runs —
+# and `bin` is resolved — in Air's own working directory, which is example/.
+root = ".."
+tmp_dir = "example/tmp"
+
+[build]
+  cmd = "go build -o tmp/skgo-example ./cmd"
+  bin = "tmp/skgo-example"
+  args_bin = ["--listen", "127.0.0.1:8080", "--proxy", "http://127.0.0.1:5173"]
+  include_ext = ["go"]
+  exclude_dir = ["example/web", "example/e2e", "example/tmp", "ephemeral", ".claude", ".agents", ".git"]
+  delay = 200
+  stop_on_error = false
+  send_interrupt = true
+  kill_delay = 500
+
+[log]
+  time = true
+
+[misc]
+  clean_on_exit = false

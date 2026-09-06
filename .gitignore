@@ -1,1 +1,8 @@
 /ephemeral/inspiration/
+node_modules/
+.svelte-kit/
+example/web/build/
+example/tmp/
+example/e2e/.features-gen/
+test-results/
+playwright-report/

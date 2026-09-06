@@ -2,13 +2,14 @@
 
 ## Pyramid Index
 
-- L0: One Go binary serves a real SvelteKit 3 app — in dev by proxying `vp dev` (HMR included) under Air and overmind, in prod from an embedded build produced by a 20-line skgo adapter — proven by playwright-bdd scenarios run against both modes.
+- L0: One Go binary serves a real SvelteKit 3 app — in dev by proxying the Vite dev server (HMR included) under Air and overmind, in prod from an embedded build produced by a 20-line skgo adapter — proven by playwright-bdd scenarios run against both modes.
 - L1:
   - Repo shape from the brief: root `go.mod` + `go.work`, `example/` module with `cmd/`, `web/`, `e2e/`.
   - Two library handlers: `NewDevProxy` (reverse proxy incl. WebSocket upgrade) and `NewStaticHandler` (embedded build + boot document for page routes).
   - A thin skgo adapter writes `build/client`, `build/index.html` (kit's own `generateFallback`) and `build/skgo.manifest.json`; no Node server output exists.
   - Example app: root layout with `ssr = false`, routes `/`, `/about`, `/items/[id]`, one shared Svelte component; no remote functions, no server loads.
   - Proof: three Gherkin scenarios via playwright-bdd against `BASE_URL`, dev and prod; Go unit tests for both handlers; embed guard test.
+  - Built as specified except where source contradicted the plan: `vp dev` needs the project-local Vite+ with `vite` aliased to `@voidzero-dev/vite-plus-core` (kit's `instanceof` check), `builder.writeJson` does not exist, Air's `root` is not its working directory, and `go test ./...` does not cross module boundaries. Each is diagnosed in `ephemeral/worklog/202609052129-sprint-001-execute.md`; the Architecture and Implementation Plan sections below are the pre-execution spec and still carry those four errors.
 - L2:
   - Adapter and build contract → §Architecture / "Build output"; kit facts in `ephemeral/semantic-index/sources/kit/build-adapt/adapter-api.md`, `spa-and-prerender.md`.
   - Proxy and HMR → §Architecture / "Dev mode"; `sources/kit/build-adapt/dev-server.md`.
@@ -123,7 +124,7 @@ Flags: `--listen` (default `127.0.0.1:8080`), `--proxy` (URL; empty = embedded m
 ### Dev process model
 `example/Procfile`:
 ```
-web: cd web && mise x -- vp dev --host 127.0.0.1 --port 5173 --strictPort
+web: cd web && mise x -- node_modules/.bin/vp dev --host 127.0.0.1 --port 5173 --strictPort
 go:  air -c .air.toml
 ```
 `example/.air.toml` (root is the repo root so edits to the library also rebuild):

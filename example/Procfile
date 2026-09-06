@@ -1,0 +1,6 @@
+# `vp dev` must be the project-local binary: kit checks the SSR environment with
+# `instanceof` against the project's `vite`, so `vite` is aliased to
+# `@voidzero-dev/vite-plus-core` in package.json and the mise-global `vp` (a
+# separate copy of the same version) would fail that check.
+web: cd web && mise x -- node_modules/.bin/vp dev --host 127.0.0.1 --port 5173 --strictPort
+go: air -c .air.toml
