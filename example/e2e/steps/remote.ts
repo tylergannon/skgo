@@ -7,6 +7,7 @@ const { When, Then } = createBdd(test);
 When('the todo list has loaded', async ({ page }) => {
 	// Both the list query and the live-count stream must have gone out before a
 	// scenario starts counting remote requests.
+	await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);
 	await expect(page.getByTestId('todo').first()).toBeVisible();
 	await expect(page.getByTestId('count')).toBeVisible();
 });
@@ -38,6 +39,11 @@ When('I rename the open todo to {string}', async ({ page }, text: string) => {
 });
 
 Then('I do not see the todo {string}', async ({ page }, text: string) => {
+	// An absence is only evidence when the thing that would have shown it is
+	// working. A crashed query renders the boundary's `failed` snippet and no
+	// todos at all, and a bare count-of-zero would call that a pass.
+	await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);
+	await expect(page.getByTestId('todo').first()).toBeVisible({ timeout: 15_000 });
 	await expect(page.getByTestId('todo').filter({ hasText: text })).toHaveCount(0, {
 		timeout: 15_000
 	});
@@ -97,6 +103,10 @@ async function countMatchesList(page: Page, shot: string): Promise<void> {
 		process.env.EXPECTED_MODE ?? 'unknown'
 	}.png`;
 	try {
+		// Zero against zero is not agreement, it is two broken components
+		// agreeing about nothing. Both halves have to be on screen first.
+		await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);
+		await expect(page.getByTestId('todo').first()).toBeVisible({ timeout: 15_000 });
 		await expect(async () => {
 			const listed = await page.getByTestId('todo').count();
 			const counted = await liveCount(page);

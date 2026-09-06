@@ -13,10 +13,18 @@ export default defineConfig({
 	fullyParallel: false,
 	workers: 1,
 	retries: 0,
-	reporter: 'list',
+	// `list` for the terminal; the HTML report is where the frames each
+	// scenario left behind can be looked at afterwards, which is the point of
+	// taking them.
+	reporter: [
+		['list'],
+		['html', { open: 'never', outputFolder: `playwright-report/${process.env.EXPECTED_MODE ?? 'unknown'}` }]
+	],
+	outputDir: `test-results/${process.env.EXPECTED_MODE ?? 'unknown'}`,
 	use: {
 		baseURL: process.env.BASE_URL,
-		trace: 'retain-on-failure'
+		trace: 'retain-on-failure',
+		screenshot: 'only-on-failure'
 	},
 	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }]
 });

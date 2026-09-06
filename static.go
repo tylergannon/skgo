@@ -250,6 +250,17 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Kit's two internal pathname suffixes are recognised before anything is
+	// routed, exactly as kit does it at the top of `runtime/server/respond.js`,
+	// because kit's route patterns end `\/?$` and a one-segment data URL
+	// therefore matches its own page route. Left to fall through,
+	// `/todos/__data.json` was answered 200 with the boot document and kit's
+	// client parsed HTML as JSON.
+	if suffix := kitSuffix(urlPath); suffix != "" {
+		h.refuseInternalRequest(w, r, suffix)
+		return
+	}
+
 	rel := strings.TrimPrefix(strings.TrimPrefix(urlPath, h.base), "/")
 	if rel != "" {
 		if meta, found := h.assets[rel]; found {
@@ -274,6 +285,73 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.serveDocument(w, r, http.StatusNotFound)
+}
+
+// Kit's route-resolution suffixes, from `src/pathname.js`: `__route.js` is the
+// module `preloadCode` imports to resolve a route, with an `.html` variant for
+// a page whose own URL ends in `.html`. The two data suffixes live in data.go,
+// beside the handler that answers them.
+const (
+	routeSuffix     = "/__route.js"
+	htmlRouteSuffix = ".html__route.js"
+)
+
+// kitSuffix reports which of kit's internal suffixes a path carries, or "".
+// The suffix is a whole final segment or the `.html` form of one, so an
+// ordinary page at `/items/my__data.json` is not a data request.
+func kitSuffix(urlPath string) string {
+	for _, suffix := range []string{dataSuffix, htmlDataSuffix, routeSuffix, htmlRouteSuffix} {
+		if strings.HasSuffix(urlPath, suffix) {
+			return suffix
+		}
+	}
+	return ""
+}
+
+// refuseInternalRequest answers a `__data.json` or `__route.js` request that
+// reached the static handler.
+//
+// Server loads landed: `__data.json` is answered by Loads.Intercept, which
+// must sit in front of this handler, and a data URL that gets this far is one
+// no Loads was ever installed to answer. The refusal stays because the static
+// handler is usable on its own, and because kit's route patterns end `\/?$`,
+// so a one-segment data URL matches its own page route. Left to fall through,
+// `/todos/__data.json` was answered 200 with the boot document and kit's
+// client parsed HTML as JSON.
+//
+// 404 is the one status kit's client is written to survive here — its
+// hydration path singles it out ("if __data.json returned 404, the route
+// doesn't exist — don't reload or we loop") and carries on rendering the route
+// client-side. Any other status sends it into a full page reload; a 200 with
+// the wrong body sends it into JSON.parse, which is the bug this replaces. The
+// body is an App.Error rather than kit's empty one because kit's client
+// spreads a JSON body over `{status}` when the content type says JSON, so it
+// reaches the client as the same `{status: 404, message: 'Not Found'}` an
+// empty body gives — and says something to whoever curls it.
+//
+// `__route.js` has no equivalent elsewhere: it is refused here for every app,
+// because skgo serves only kit's default client-side route resolution.
+func (h *staticHandler) refuseInternalRequest(w http.ResponseWriter, r *http.Request, suffix string) {
+	header := w.Header()
+	header.Set("Cache-Control", "private, no-store")
+
+	if suffix == routeSuffix || suffix == htmlRouteSuffix {
+		// Kit's own answer, verbatim, when `router.resolution` is `client` —
+		// its default and the only mode skgo serves:
+		// `text('Server-side route resolution disabled', { status: 400 })`
+		// (`runtime/server/page/server_routing.js`). Measured against this
+		// app's own `vp dev` server, which returns exactly this body and
+		// status, so the two modes agree here.
+		http.Error(w, "Server-side route resolution disabled", http.StatusBadRequest)
+		return
+	}
+
+	header.Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	if r.Method == http.MethodHead {
+		return
+	}
+	writeJSON(w, map[string]any{"status": 404, "message": "Not Found"})
 }
 
 func (h *staticHandler) matchesRoute(urlPath string) bool {
@@ -313,13 +391,50 @@ func (h *staticHandler) serveDocument(w http.ResponseWriter, r *http.Request, st
 	header.Set("Content-Type", "text/html; charset=utf-8")
 	header.Set("Cache-Control", "no-cache")
 	header.Set("ETag", h.documentETag)
-	header.Set("Content-Length", strconv.Itoa(len(h.document)))
 
+	// The document is one immutable blob for the life of the build, and
+	// `no-cache` means the browser revalidates rather than skips the request —
+	// so every reload offers the validator back and every reload used to be
+	// answered with the whole document anyway. A 304 keeps the status the
+	// request earned: a page that does not exist stays a 404, because the
+	// client renders `+error.svelte` off the status, not off the body.
+	if status == http.StatusOK && etagMatches(r.Header.Get("If-None-Match"), h.documentETag) {
+		// RFC 9110 §15.4.5: a 304 carries the validator and no
+		// representation, so it must not declare a length it is not sending.
+		header.Del("Content-Length")
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	header.Set("Content-Length", strconv.Itoa(len(h.document)))
 	w.WriteHeader(status)
 	if r.Method == http.MethodHead {
 		return
 	}
 	w.Write(h.document)
+}
+
+// etagMatches reports whether an If-None-Match header field covers etag, using
+// the weak comparison RFC 9110 §8.8.3.2 prescribes for conditional requests:
+// `W/"x"` and `"x"` are a match, and `*` matches anything the server has.
+//
+// net/http does this for files it serves through ServeContent, but the boot
+// document is not a file — it is answered under three different statuses — so
+// the comparison is spelled out here.
+func etagMatches(field, etag string) bool {
+	field = strings.TrimSpace(field)
+	if field == "" {
+		return false
+	}
+	if field == "*" {
+		return true
+	}
+	for _, candidate := range strings.Split(field, ",") {
+		if strings.TrimPrefix(strings.TrimSpace(candidate), "W/") == etag {
+			return true
+		}
+	}
+	return false
 }
 
 // normalizePath validates and cleans a request path. It reports false for any

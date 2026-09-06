@@ -7,6 +7,7 @@ Feature: Remote functions written in Go
   Scenario: The todo list is served by Go
     Given I open "/todos"
     Then the document response came from skgo in the expected mode
+    And every part of the page loaded
     And I see the todo "write the adapter"
     And I see the todo "serve remote functions"
 
@@ -29,9 +30,11 @@ Feature: Remote functions written in Go
     And I add the todo "the first of two"
     Then the live count is 1 more than "before"
     And the todo count still matches the todos on the page
+    And every part of the page loaded
     When I add the todo "the second of two"
     Then the live count is 2 more than "before"
     And the todo count still matches the todos on the page
+    And every part of the page loaded
 
   Scenario: Renaming a todo updates the open page without a second request
     Given I open "/todos"

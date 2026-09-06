@@ -5,13 +5,26 @@ import (
 	"go/types"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"golang.org/x/mod/module"
 )
 
 // noneType is the argument type of a remote function that takes no argument.
 const noneType = skgoPkg + ".None"
+
+// relocatedRootName is the directory, inside the generated bindings package,
+// that holds the declaration packages skgo writes for types belonging to
+// modules the app does not own.
+const relocatedRootName = "wiretypes"
+
+// declarationsFileName is the untagged file in a declaration package that
+// gives a foreign package's types a local Go declaration. It is also how a
+// declaration package is recognised when a later run has to remove it.
+const declarationsFileName = "skgo_wiretypes_gen.go"
 
 // tsType is a TypeScript type expression plus the named Go types it depends
 // on. skgo does not project Go types to TypeScript itself: every named type is
@@ -121,11 +134,21 @@ func (a *app) declare(named *types.Named) error {
 		if err != nil {
 			return err
 		}
-		tsDir, err := a.typesDirFor(pkg, dir)
+		foreign := !withinTree(a.hostDir, dir)
+		if foreign {
+			// The declaration cannot go where the type lives, so it comes to
+			// the app instead. dir and loadDir become the same real directory:
+			// nothing about it needs the route tree's links.
+			if dir, err = a.declarationDirFor(pkg); err != nil {
+				return err
+			}
+			loadDir = dir
+		}
+		tsDir, err := a.typesDirFor(pkg, dir, foreign)
 		if err != nil {
 			return err
 		}
-		set = &namedTypes{pkg: pkg, dir: dir, loadDir: loadDir, seen: map[string]bool{}, tsDir: tsDir}
+		set = &namedTypes{pkg: pkg, dir: dir, loadDir: loadDir, seen: map[string]bool{}, tsDir: tsDir, foreign: foreign}
 		a.typeSets[pkg] = set
 	}
 	if !set.seen[named.Obj().Name()] {
@@ -133,6 +156,75 @@ func (a *app) declare(named *types.Named) error {
 		set.names = append(set.names, named.Obj().Name())
 	}
 	return nil
+}
+
+// declarationDirFor is where a foreign package's declaration package is
+// written: a directory of the app's own module, named after the foreign
+// package's import path.
+//
+// Inside `Out` because everything there is already skgo's disposable output —
+// it is where the link tree lives — and because Out is documented to be in the
+// same module as the remote functions, which is what makes the directory
+// compilable, nameable by Go, and a place `go:embed` can reach. It is
+// deliberately not under the route tree, whose own `go.mod` would put it in a
+// different module.
+//
+// The import path is the directory name, not the package name. Two
+// dependencies called `wire` are an ordinary thing to have, and their import
+// paths are the only names that are guaranteed to differ.
+func (a *app) declarationDirFor(pkg *types.Package) (string, error) {
+	// Out is inside the host module by construction: it is the directory the
+	// host module was resolved from.
+	out, err := filepath.Rel(a.hostDir, a.cfg.Out)
+	if err != nil {
+		return "", err
+	}
+	rel := path.Join(filepath.ToSlash(out), relocatedRootName, pkg.Path())
+	if err := module.CheckImportPath(a.hostModule + "/" + rel); err != nil {
+		return "", fmt.Errorf("skgo: %s puts a type on the wire, but Go cannot name a directory after its import path: %w", pkg.Path(), err)
+	}
+	return filepath.Join(a.hostDir, filepath.FromSlash(rel)), nil
+}
+
+// withinTree reports whether dir is root or lives under it. It is the whole
+// ownership rule: a package inside the app's own tree gets its declaration
+// written beside its source, and every other package — a dependency in the
+// module cache, a shared internal module, another repository — gets one
+// written into the app instead. The rule never asks whether the foreign
+// directory happens to be writable, because for any real consumer it is not,
+// and a writable dependency is the case that hid this bug rather than the case
+// that excuses it.
+//
+// It asks about the directory, not the module path. The route tree carries a
+// `go.mod` of its own — the boundary that stops `go build ./...` walking into
+// `[id]` — so a package the developer authored reports a module path that is
+// not the app's while still being the app's source. Containment is what
+// actually answers the question.
+//
+// `go list` reports a path with every symlink resolved, while the app's own
+// root may still hold one — /var against /private/var is the everyday case —
+// so a plain prefix comparison is not enough on its own.
+func withinTree(root, dir string) bool {
+	if dirContains(root, dir) {
+		return true
+	}
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false
+	}
+	realDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return false
+	}
+	return dirContains(realRoot, realDir)
+}
+
+func dirContains(root, dir string) bool {
+	rel, err := filepath.Rel(root, dir)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // dirOf resolves a types.Package to the directory holding its source and to
@@ -159,12 +251,20 @@ func (a *app) dirOf(pkg *types.Package) (dir, loadDir string, err error) {
 // that already lives under the vite root keeps its declarations beside its Go
 // source; anything else gets a directory under `src/lib/skgo/`, because the
 // stub that imports it has to be able to reach it.
-func (a *app) typesDirFor(pkg *types.Package, dir string) (string, error) {
+//
+// A foreign package is addressed by its import path there too, for the same
+// reason its declaration package is: two dependencies called `wire` are an
+// ordinary thing to have. The app's own packages keep the short name — the
+// developer chose it, and one name per app is a rule they can act on.
+func (a *app) typesDirFor(pkg *types.Package, dir string, foreign bool) (string, error) {
 	if rel, err := filepath.Rel(filepath.Join(a.cfg.Web, "src"), dir); err == nil && !strings.HasPrefix(rel, "..") {
 		return dir, nil
 	}
+	if foreign {
+		return filepath.Join(a.cfg.Web, "src", "lib", "skgo", filepath.FromSlash(pkg.Path())), nil
+	}
 	for other, set := range a.typeSets {
-		if other.Name() == pkg.Name() && other.Path() != pkg.Path() && set.tsDir != dir {
+		if other.Name() == pkg.Name() && other.Path() != pkg.Path() && !set.foreign && set.tsDir != dir {
 			return "", fmt.Errorf("skgo: packages %s and %s are both named %q and both own types on the wire; rename one",
 				other.Path(), pkg.Path(), pkg.Name())
 		}
@@ -200,6 +300,9 @@ func (a *app) generateTypes() error {
 	}
 
 	sets := a.sortedTypeSets()
+	if err := a.pruneDeclarationPackages(sets); err != nil {
+		return err
+	}
 	for _, set := range sets {
 		sort.Strings(set.names)
 		if err := a.writePolytypeMarkers(set); err != nil {
@@ -242,9 +345,16 @@ func (a *app) sortedTypeSets() []*namedTypes {
 }
 
 // writePolytypeMarkers emits the registration file polytype expects the
-// developer to write. It has to live in the type's own package and be behind
-// the `jsonschema` build tag, so it never reaches the production binary.
+// developer to write. It has to live in the package that declares the type and
+// be behind the `jsonschema` build tag, so it never reaches the production
+// binary. For a foreign package that means the declaration package skgo wrote
+// into the app, and the local types it declares.
 func (a *app) writePolytypeMarkers(set *namedTypes) error {
+	if set.foreign {
+		if err := a.writeLocalDeclarations(set); err != nil {
+			return err
+		}
+	}
 	var b strings.Builder
 	b.WriteString("//go:build jsonschema\n\n")
 	b.WriteString("// Code generated by skgo. DO NOT EDIT.\n\n")
@@ -252,14 +362,123 @@ func (a *app) writePolytypeMarkers(set *namedTypes) error {
 	b.WriteString("import (\n\t\"encoding/json\"\n\n\t\"github.com/tylergannon/polytype\"\n)\n\n")
 	b.WriteString("// Stubs so the package compiles before polytype has run.\n")
 	for _, name := range set.names {
-		fmt.Fprintf(&b, "func (%s) Schema() json.RawMessage { panic(\"not implemented\") }\n", name)
+		fmt.Fprintf(&b, "func (%s) Schema() json.RawMessage { panic(\"not implemented\") }\n", set.localName(name))
 	}
 	b.WriteString("\nvar (\n")
 	for _, name := range set.names {
-		fmt.Fprintf(&b, "\t_ = polytype.Declare(%s.Schema)\n", name)
+		fmt.Fprintf(&b, "\t_ = polytype.Declare(%s.Schema)\n", set.localName(name))
 	}
 	b.WriteString(")\n")
 	return a.writeGo(filepath.Join(set.dir, "skgo_polytype_gen.go"), b.String())
+}
+
+// writeLocalDeclarations gives a foreign package's types a local declaration
+// polytype will accept, in the declaration package skgo writes into the app.
+//
+// polytype requires the type it is asked to project to be declared in the
+// target package (`undeclared local type found`), so there has to be a local
+// declaration whatever else is true. It is a defined type rather than an alias
+// because polytype emits its own entrypoint as a method on that type — even
+// for a registration written as a free function — and Go forbids a method on
+// an alias of a type from another package: the generated `jsonschema_gen.go`
+// simply does not compile.
+//
+// Losing the foreign method set across the definition costs nothing, and the
+// reason is worth knowing: polytype does not honour a custom marshaller, it
+// refuses the type outright — `rejectCustomWireType`, "defines MarshalJSON;
+// custom JSON/text wire mappings are not statically derivable" — and it
+// resolves *through* a defined type to find one, naming the underlying type in
+// the refusal. So a type whose Go encoding would contradict its declaration
+// cannot be smuggled past by relocating it. Measured against pinned rc.9, not
+// inferred. Otherwise the projection is structural, so both forms emit the
+// same TypeScript, and skgo's runtime encodes the foreign type itself and
+// never touches this declaration. The defined form also carries a foreign
+// enum, where an alias inherits the `enum()` marker without the constants that
+// give it meaning and polytype stops.
+//
+// This file carries no build tag. polytype's own output is `//go:build
+// !jsonschema` and refers to these names, so a declaration behind the
+// `jsonschema` tag would leave an ordinary build broken.
+//
+// The local name is not the foreign one. With both in scope polytype has two
+// types called `Thing` and disambiguates by hashing the identifier into the
+// TypeScript; with a distinct one it emits the foreign type under its own
+// name, which is the name the stubs use.
+func (a *app) writeLocalDeclarations(set *namedTypes) error {
+	var b strings.Builder
+	b.WriteString("// Code generated by skgo. DO NOT EDIT.\n//\n")
+	fmt.Fprintf(&b, "// Local declarations of the types %s puts on the wire, so polytype has\n", set.pkg.Path())
+	b.WriteString("// something in this package to project. Nothing but polytype reads them.\n\n")
+	fmt.Fprintf(&b, "package %s\n\n", set.pkg.Name())
+	fmt.Fprintf(&b, "import %s %q\n\n", set.pkg.Name(), set.pkg.Path())
+	for _, name := range set.names {
+		fmt.Fprintf(&b, "type %s %s.%s\n", set.localName(name), set.pkg.Name(), name)
+	}
+	return a.writeGo(filepath.Join(set.dir, declarationsFileName), b.String())
+}
+
+// pruneDeclarationPackages removes declaration packages a previous run left
+// behind. They are ordinary Go source in the app's module, so one for a
+// dependency that has since been dropped is a build failure rather than
+// clutter.
+func (a *app) pruneDeclarationPackages(sets []*namedTypes) error {
+	root := filepath.Join(a.cfg.Out, relocatedRootName)
+	keep := map[string]bool{}
+	for _, set := range sets {
+		if set.foreign {
+			keep[set.dir] = true
+		}
+	}
+	var stale []string
+	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || d.Name() != declarationsFileName {
+			return nil
+		}
+		if dir := filepath.Dir(p); !keep[dir] {
+			stale = append(stale, dir)
+		}
+		return nil
+	})
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, dir := range stale {
+		if err := os.RemoveAll(dir); err != nil {
+			return err
+		}
+		a.cfg.Logf("removed %s: nothing on the wire comes from it any more", dir)
+	}
+	return removeEmptyDirs(root)
+}
+
+// removeEmptyDirs deletes every empty directory under root, and root itself if
+// it ends up empty. An import path is a directory tree, so dropping one
+// dependency's declaration package can leave several levels of nothing.
+func removeEmptyDirs(root string) error {
+	entries, err := os.ReadDir(root)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			if err := removeEmptyDirs(filepath.Join(root, e.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	if rest, err := os.ReadDir(root); err == nil && len(rest) == 0 {
+		return os.Remove(root)
+	}
+	return nil
 }
 
 // importSpecifier is the module specifier a stub uses to reach a package's

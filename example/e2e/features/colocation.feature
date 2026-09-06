@@ -9,6 +9,7 @@ Feature: Go beside the route it serves
   Scenario: A dynamic route is answered from its own bracketed directory
     Given I open "/items/7"
     Then the document response came from skgo in the expected mode
+    And every part of the page loaded
     And I see "Item 7"
     And the item is named "Widget 7"
     And the answer came from "src/routes/items/[id]/item.remote.go"
@@ -22,11 +23,13 @@ Feature: Go beside the route it serves
 
   Scenario: A rest parameter reaches the Go function in its own directory
     Given I open "/docs/guide/getting-started"
-    Then I see "Docs"
+    Then every part of the page loaded
+    And I see "Docs"
     And the doc is titled "guide / getting-started"
     And the doc is 2 segments deep
 
   Scenario: The route tree's own root directory holds Go too
     Given I open "/"
-    Then the site is named "skgo"
+    Then every part of the page loaded
+    And the site is named "skgo"
     And the answer came from "src/routes/site.remote.go"
