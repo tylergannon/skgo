@@ -30,6 +30,12 @@ type Manifest struct {
 	// Routes lists every route kit knows about, with the regular expression
 	// kit's own router uses to match it.
 	Routes []ManifestRoute `json:"routes"`
+	// Remotes lists the `<hash>/<name>` ids of every remote function the
+	// built client calls. The adapter copies it from the list `skgo generate`
+	// wrote and refuses to build if kit compiled a different set, so a
+	// mismatch here means the Go binary and the frontend were generated from
+	// different sources.
+	Remotes []string `json:"remotes"`
 }
 
 // ManifestRoute is one entry of Manifest.Routes.

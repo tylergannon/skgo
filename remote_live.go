@@ -54,6 +54,10 @@ func (rs *Remotes) serveLive(w http.ResponseWriter, r *http.Request, fn *Remote)
 		return
 	}
 
+	// A live query is a query: it may read cookies but not write them, so it
+	// gets a plain *Event and nothing is ever added to the response headers.
+	ev := rs.newEvent(w, r)
+
 	h := rs.header(w)
 	h.Set("Content-Type", "text/event-stream")
 	w.WriteHeader(http.StatusOK)
@@ -65,11 +69,16 @@ func (rs *Remotes) serveLive(w http.ResponseWriter, r *http.Request, fn *Remote)
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
+	// The producer sees a context that ends when this handler does, so a
+	// `query.live` that blocks on e.Context().Done() unwinds on disconnect.
+	liveEvent := *ev
+	liveEvent.req = r.WithContext(ctx)
+
 	values := make(chan any)
 	done := make(chan error, 1)
 
 	go func() {
-		done <- fn.live(ctx, arg, present, func(v any) error {
+		done <- fn.live(&liveEvent, arg, present, func(v any) error {
 			select {
 			case values <- v:
 				return nil

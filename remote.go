@@ -10,13 +10,13 @@ package skgo
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/devalue"
@@ -60,8 +60,9 @@ const (
 	kindLive
 )
 
-// Remote is one registered remote function. Build one with Query, Command or
-// LiveQuery and hand it to NewRemotes.
+// Remote is one registered remote function. Generated code builds these with
+// NewQuery, NewCommand and NewLiveQuery; application code declares the
+// functions and marks them with Query, Command and LiveQuery.
 type Remote struct {
 	module string
 	name   string
@@ -69,8 +70,8 @@ type Remote struct {
 	id     string
 	kind   remoteKind
 
-	call func(ctx context.Context, arg any, present bool) (any, error)
-	live func(ctx context.Context, arg any, present bool, yield func(any) error) error
+	call func(e *Event, arg any, present bool) (any, error)
+	live func(e *Event, arg any, present bool, yield func(any) error) error
 }
 
 // ID is the `<hash>/<name>` pair the client addresses this function by.
@@ -93,32 +94,62 @@ func newRemote(module, name string, kind remoteKind) *Remote {
 	}
 }
 
-// Query registers a `query` export. module is the module's vite-root-relative
+// Marker is what the declaration helpers return. It carries nothing: Query,
+// Command and LiveQuery exist to be read by `skgo generate`, and to make a
+// function with the wrong shape a compile error at the point of declaration.
+type Marker struct{}
+
+// Query declares fn as a SvelteKit `query`. Write it beside the function, in a
+// file named `*.remote.go`:
+//
+//	func getTodos(e *skgo.Event, _ skgo.None) ([]Todo, error) { ... }
+//
+//	var _ = skgo.Query(getTodos)
+//
+// `skgo generate` emits the sibling `.remote.ts` kit compiles and the Go
+// registration that answers the calls. A query takes an *Event, which cannot
+// write cookies — the same restriction kit places on its own queries.
+func Query[In, Out any](fn func(*Event, In) (Out, error)) Marker { _ = fn; return Marker{} }
+
+// Command declares fn as a SvelteKit `command`. A command takes a
+// *CommandEvent, which can write cookies; kit allows that in commands and
+// forms and nowhere else.
+func Command[In, Out any](fn func(*CommandEvent, In) (Out, error)) Marker { _ = fn; return Marker{} }
+
+// LiveQuery declares fn as a SvelteKit `query.live`. fn pushes values with
+// yield and returns when the subscription ends.
+func LiveQuery[In, Out any](fn func(*Event, In, func(Out) error) error) Marker {
+	_ = fn
+	return Marker{}
+}
+
+// NewQuery registers a `query` export. module is the module's vite-root-relative
 // path (for example "src/lib/todos.remote.ts") and name the export name.
-func Query[In, Out any](module, name string, fn func(ctx context.Context, in In) (Out, error)) *Remote {
+// Generated code calls this; application code uses Query.
+func NewQuery[In, Out any](module, name string, fn func(*Event, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindQuery)
 	r.call = callAdapter(fn)
 	return r
 }
 
-// Command registers a `command` export.
-func Command[In, Out any](module, name string, fn func(ctx context.Context, in In) (Out, error)) *Remote {
+// NewCommand registers a `command` export.
+func NewCommand[In, Out any](module, name string, fn func(*CommandEvent, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindCommand)
-	r.call = callAdapter(fn)
+	r.call = callAdapter(func(e *Event, in In) (Out, error) { return fn(&CommandEvent{Event: *e}, in) })
 	return r
 }
 
-// LiveQuery registers a `query.live` export. fn pushes values with yield and
-// returns when the subscription ends; its context is cancelled when the client
-// disconnects, and yield returns a non-nil error once that has happened.
-func LiveQuery[In, Out any](module, name string, fn func(ctx context.Context, in In, yield func(Out) error) error) *Remote {
+// NewLiveQuery registers a `query.live` export. fn pushes values with yield and
+// returns when the subscription ends; its event's context is cancelled when the
+// client disconnects, and yield returns a non-nil error once that has happened.
+func NewLiveQuery[In, Out any](module, name string, fn func(*Event, In, func(Out) error) error) *Remote {
 	r := newRemote(module, name, kindLive)
-	r.live = func(ctx context.Context, arg any, present bool, yield func(any) error) error {
+	r.live = func(e *Event, arg any, present bool, yield func(any) error) error {
 		in, err := decodeArg[In](arg, present)
 		if err != nil {
 			return err
 		}
-		return fn(ctx, in, func(out Out) error {
+		return fn(e, in, func(out Out) error {
 			v, err := encodeValue(out)
 			if err != nil {
 				return err
@@ -129,13 +160,13 @@ func LiveQuery[In, Out any](module, name string, fn func(ctx context.Context, in
 	return r
 }
 
-func callAdapter[In, Out any](fn func(ctx context.Context, in In) (Out, error)) func(context.Context, any, bool) (any, error) {
-	return func(ctx context.Context, arg any, present bool) (any, error) {
+func callAdapter[In, Out any](fn func(*Event, In) (Out, error)) func(*Event, any, bool) (any, error) {
+	return func(e *Event, arg any, present bool) (any, error) {
 		in, err := decodeArg[In](arg, present)
 		if err != nil {
 			return nil, err
 		}
-		out, err := fn(ctx, in)
+		out, err := fn(e, in)
 		if err != nil {
 			return nil, err
 		}
@@ -192,15 +223,35 @@ type RemoteConfig struct {
 	// refused with 403. Empty disables the check, which is what kit does in
 	// dev.
 	Origin string
+	// Dev reports that the client is being served by a `vp dev` server rather
+	// than by this build. It relaxes the cookie `secure` default exactly as
+	// kit's own `__SVELTEKIT_DEV__` does, and it turns off the check against
+	// Manifest.Remotes, which describes the last production build and not the
+	// files vite is serving.
+	Dev bool
+	// CookieOrigin is the origin whose scheme and host decide the `secure`
+	// cookie default. It defaults to Origin.
+	CookieOrigin string
+	// Remotes is the set of `<hash>/<name>` ids the built frontend calls, as
+	// recorded in the manifest. NewRemotes refuses to build a registry that
+	// does not answer exactly these.
+	Remotes []string
+
+	// manifest reports that this config came from a build manifest, which is
+	// what makes the Remotes check meaningful. A hand-built config is not
+	// checked.
+	manifest bool
 }
 
 // RemoteConfig derives a registry configuration from a build manifest.
 func (m Manifest) RemoteConfig(origin string) RemoteConfig {
 	return RemoteConfig{
-		AppDir:  m.AppDir,
-		Base:    m.Base,
-		Version: m.Version,
-		Origin:  origin,
+		AppDir:   m.AppDir,
+		Base:     m.Base,
+		Version:  m.Version,
+		Origin:   origin,
+		Remotes:  m.Remotes,
+		manifest: true,
 	}
 }
 
@@ -223,9 +274,10 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 // Remotes is a registry of remote functions and the http.Handler that answers
 // calls to them.
 type Remotes struct {
-	cfg    RemoteConfig
-	prefix string
-	fns    map[string]*Remote
+	cfg           RemoteConfig
+	prefix        string
+	fns           map[string]*Remote
+	secureCookies bool
 }
 
 // NewRemotes builds a registry. Two functions with the same module and export
@@ -240,10 +292,16 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 	}
 	cfg.Base = base
 
+	cookieOrigin := cfg.CookieOrigin
+	if cookieOrigin == "" {
+		cookieOrigin = cfg.Origin
+	}
+
 	rs := &Remotes{
-		cfg:    cfg,
-		prefix: base + "/" + cfg.AppDir + "/remote/",
-		fns:    make(map[string]*Remote, len(fns)),
+		cfg:           cfg,
+		prefix:        base + "/" + cfg.AppDir + "/remote/",
+		fns:           make(map[string]*Remote, len(fns)),
+		secureCookies: secureCookieDefault(cookieOrigin, cfg.Dev),
 	}
 	for _, fn := range fns {
 		if fn == nil {
@@ -255,7 +313,56 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 		}
 		rs.fns[fn.id] = fn
 	}
+	if err := rs.checkDrift(); err != nil {
+		return nil, err
+	}
 	return rs, nil
+}
+
+// checkDrift refuses to build a registry whose functions are not the ones the
+// built frontend calls. The manifest's remote list is written during `vp build`
+// from the ids `skgo generate` emitted, so a Go binary whose registry disagrees
+// with it is serving a client that will get 404s from half its remote calls —
+// or, worse, silently stale behaviour. Better to not start.
+func (rs *Remotes) checkDrift() error {
+	if rs.cfg.Dev || !rs.cfg.manifest {
+		return nil
+	}
+	if rs.cfg.Remotes == nil {
+		return errors.New("skgo: the build has no remote-function list; re-run `skgo generate` and rebuild the frontend")
+	}
+
+	built := map[string]bool{}
+	for _, id := range rs.cfg.Remotes {
+		built[id] = true
+	}
+
+	var missing, extra []string
+	for id := range built {
+		if _, ok := rs.fns[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	for id, fn := range rs.fns {
+		if !built[id] {
+			extra = append(extra, id+" ("+fn.module+"#"+fn.name+")")
+		}
+	}
+	if len(missing) == 0 && len(extra) == 0 {
+		return nil
+	}
+	sort.Strings(missing)
+	sort.Strings(extra)
+
+	msg := "skgo: the built frontend and this binary disagree about the remote functions."
+	if len(missing) > 0 {
+		msg += "\n  the frontend calls, but this binary does not serve: " + strings.Join(missing, ", ")
+	}
+	if len(extra) > 0 {
+		msg += "\n  this binary serves, but the frontend does not call: " + strings.Join(extra, ", ")
+	}
+	msg += "\n  run `go generate ./...` and rebuild the frontend, then rebuild this binary."
+	return errors.New(msg)
 }
 
 // Prefix is the URL prefix every remote call lives under, including the
@@ -334,10 +441,14 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 		return
 	}
 
-	value, err := fn.call(r.Context(), arg, present)
+	// A query gets a plain *Event: kit forbids cookie writes here, and skgo
+	// makes them unrepresentable rather than reporting them at runtime.
+	ev := rs.newEvent(w, r)
+
+	value, err := fn.call(ev, arg, present)
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
-			rs.writeResult(w, map[string]any{"redirect": redirect.Location})
+			rs.writeResult(w, ev, map[string]any{"redirect": redirect.Location})
 			return
 		}
 		rs.writeError(w, asHTTPError(err))
@@ -348,7 +459,7 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 	// response carrying only `_` hydrates as undefined. The key uses the raw
 	// payload string exactly as it arrived.
 	key := fn.id + "/" + payload
-	rs.writeResult(w, map[string]any{
+	rs.writeResult(w, ev, map[string]any{
 		"_": value,
 		"q": map[string]any{key: map[string]any{"v": value}},
 	})
@@ -378,27 +489,33 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 		return
 	}
 
-	value, err := fn.call(r.Context(), arg, present)
+	ev := rs.newEvent(w, r)
+
+	value, err := fn.call(ev, arg, present)
 	if err != nil {
 		// A redirect in a command response makes the client throw, so it is
-		// reported as an ordinary error instead.
+		// reported as an ordinary error instead. Cookies written before the
+		// failure are dropped with it.
 		rs.writeError(w, asHTTPError(err))
 		return
 	}
 
+	// Single-flight refreshes run after the command, on the same event, so a
+	// query refreshed by a command that just signed the visitor in reads the
+	// new cookie — exactly as it does in kit, where both share one request.
 	data := map[string]any{"_": value}
-	if q := rs.resolveRefreshes(r.Context(), body.Refreshes); len(q) > 0 {
+	if q := rs.resolveRefreshes(ev, body.Refreshes); len(q) > 0 {
 		data["q"] = q
 		// `r` tells the client these single-flight updates replace the
 		// invalidateAll it would otherwise run.
 		data["r"] = true
 	}
-	rs.writeResult(w, data)
+	rs.writeResult(w, ev, data)
 }
 
 // resolveRefreshes runs every refresh key that names a registered query.
 // Unrecognised keys are skipped in silence, as kit does.
-func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) map[string]any {
+func (rs *Remotes) resolveRefreshes(ev *Event, keys []string) map[string]any {
 	q := map[string]any{}
 	for _, key := range keys {
 		// The payload can itself contain no slash, but the id always holds
@@ -417,7 +534,7 @@ func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) map[stri
 		if err != nil {
 			continue
 		}
-		value, err := fn.call(ctx, arg, present)
+		value, err := fn.call(ev, arg, present)
 		if err != nil {
 			q[key] = map[string]any{"e": errorNode(asHTTPError(err))}
 			continue
@@ -433,6 +550,12 @@ func rawPayload(u *url.URL) string {
 	return u.Query().Get("payload")
 }
 
+// newEvent builds the per-call handle. The cookie jar it carries is shared by
+// the command and by every query the command's `refreshes` list resolves.
+func (rs *Remotes) newEvent(w http.ResponseWriter, r *http.Request) *Event {
+	return &Event{req: r, jar: newCookieJar(r, rs.secureCookies), writer: w}
+}
+
 func (rs *Remotes) header(w http.ResponseWriter) http.Header {
 	h := w.Header()
 	h.Set("Cache-Control", "private, no-store")
@@ -442,13 +565,16 @@ func (rs *Remotes) header(w http.ResponseWriter) http.Header {
 	return h
 }
 
-func (rs *Remotes) writeResult(w http.ResponseWriter, data map[string]any) {
+func (rs *Remotes) writeResult(w http.ResponseWriter, ev *Event, data map[string]any) {
 	serialized, err := devalue.Stringify(data)
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 500, Message: "Internal Error"})
 		return
 	}
 	h := rs.header(w)
+	if ev != nil {
+		ev.jar.writeTo(h)
+	}
 	h.Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	writeJSON(w, remoteResponse{Type: "result", Data: serialized})
