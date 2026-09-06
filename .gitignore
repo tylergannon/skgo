@@ -1,4 +1,4 @@
-/ephemeral/inspiration/
+/ephemeral/inspiration
 node_modules/
 .svelte-kit/
 example/web/build/
