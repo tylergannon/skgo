@@ -679,10 +679,11 @@ type remoteResponse struct {
 	Error *HTTPError `json:"error,omitempty"`
 }
 
-func errorNode(e *HTTPError) map[string]any {
+func errorNode(e *HTTPError) *devalue.Object {
 	// devalue serialises the JSON value set only, so the status must be a
-	// float, not a Go int.
-	return map[string]any{"status": float64(e.Status), "message": e.Message}
+	// float, not a Go int. The object is ordered rather than a Go map, so the
+	// two properties land in kit's own order.
+	return devalue.NewObject("status", float64(e.Status), "message", e.Message)
 }
 
 func asHTTPError(err error) *HTTPError {

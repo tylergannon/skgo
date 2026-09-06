@@ -3,7 +3,6 @@ package skgo
 import (
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -497,37 +496,40 @@ func (u *uses) depend(href string) {
 	u.dependencies = append(u.dependencies, href)
 }
 
-// serialize is kit's sparse form: empty collections and false flags are left
-// out, and the flags travel as the number 1.
-func (u *uses) serialize() map[string]any {
+// usesWire is kit's sparse form: empty collections and false flags are left
+// out, the flags travel as the number 1, and the fields keep kit's own order
+// (`runtime/server/utils.js`, serialize_uses).
+type usesWire struct {
+	Dependencies []string `json:"dependencies,omitempty"`
+	SearchParams []string `json:"search_params,omitempty"`
+	Params       []string `json:"params,omitempty"`
+	Parent       int      `json:"parent,omitempty"`
+	Route        int      `json:"route,omitempty"`
+	URL          int      `json:"url,omitempty"`
+}
+
+// serialize records what the load read, in the order it read it — kit's sets
+// preserve insertion order too.
+func (u *uses) serialize() usesWire {
 	if u == nil {
-		return map[string]any{}
+		return usesWire{}
 	}
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
-	out := map[string]any{}
-	if len(u.dependencies) > 0 {
-		out["dependencies"] = u.dependencies
-	}
-	if len(u.searchParams) > 0 {
-		sorted := append([]string(nil), u.searchParams...)
-		sort.Strings(sorted)
-		out["search_params"] = sorted
-	}
-	if len(u.params) > 0 {
-		sorted := append([]string(nil), u.params...)
-		sort.Strings(sorted)
-		out["params"] = sorted
+	out := usesWire{
+		Dependencies: u.dependencies,
+		SearchParams: u.searchParams,
+		Params:       u.params,
 	}
 	if u.parent {
-		out["parent"] = 1
+		out.Parent = 1
 	}
 	if u.route {
-		out["route"] = 1
+		out.Route = 1
 	}
 	if u.url {
-		out["url"] = 1
+		out.URL = 1
 	}
 	return out
 }
