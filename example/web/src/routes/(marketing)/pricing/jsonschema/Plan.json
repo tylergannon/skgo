@@ -1,0 +1,5 @@
+{"type":"object",
+"description":"Plan is one row of the pricing table.","properties":{
+"name":{"type":"string","description":"Name is the plan's name."},
+"price":{"type":"integer","description":"Price is what it costs per month, in whole dollars."}
+},"required":["name","price"],"additionalProperties":false}

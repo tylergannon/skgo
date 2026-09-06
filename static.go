@@ -30,6 +30,12 @@ type Manifest struct {
 	// Routes lists every route kit knows about, with the regular expression
 	// kit's own router uses to match it.
 	Routes []ManifestRoute `json:"routes"`
+	// Remotes lists the `<hash>/<name>` ids of every remote function the
+	// built client calls. The adapter copies it from the list `skgo generate`
+	// wrote and refuses to build if kit compiled a different set, so a
+	// mismatch here means the Go binary and the frontend were generated from
+	// different sources.
+	Remotes []string `json:"remotes"`
 }
 
 // ManifestRoute is one entry of Manifest.Routes.
@@ -106,7 +112,7 @@ func NewStaticHandler(build fs.FS) (http.Handler, error) {
 	}
 
 	for _, route := range manifest.Routes {
-		re, err := regexp.Compile(route.Pattern)
+		re, err := regexp.Compile(kitPattern(route.Pattern))
 		if err != nil {
 			return nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
 		}
@@ -118,6 +124,39 @@ func NewStaticHandler(build fs.FS) (http.Handler, error) {
 	}
 
 	return h, nil
+}
+
+// kitPattern rewrites the source of kit's own route regular expression into one
+// Go's regexp accepts.
+//
+// Kit builds route patterns in JavaScript, where the empty negated class `[^]`
+// means "any character, newline included". It uses it for both forms of the
+// rest parameter — `(?:/([^]*))?` for a whole `[...rest]` segment and `([^]*?)`
+// for one inside a segment (`packages/kit/src/utils/routing.js`,
+// `parse_route_id`). Go's regexp rejects `[^]` outright, so `/docs/[...rest]`
+// would stop the server from starting at all.
+//
+// Nothing else needs translating: `(?:…)`, lazy quantifiers and escaped
+// literals mean the same in both engines, and kit escapes `[`, `^` and `]`
+// wherever they appear in a literal route segment (`escape_for_regexp` in
+// `utils/regex.js`), so an unescaped `[^]` is always kit's rest parameter and
+// never part of a path.
+func kitPattern(src string) string {
+	var b strings.Builder
+	for i := 0; i < len(src); i++ {
+		if src[i] == '\\' && i+1 < len(src) {
+			b.WriteString(src[i : i+2])
+			i++
+			continue
+		}
+		if strings.HasPrefix(src[i:], "[^]") {
+			b.WriteString(`[\s\S]`)
+			i += 2
+			continue
+		}
+		b.WriteByte(src[i])
+	}
+	return b.String()
 }
 
 // indexAssets hashes every file under client/ once, so that request handling
@@ -173,6 +212,17 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Kit's two internal pathname suffixes are recognised before anything is
+	// routed, exactly as kit does it at the top of `runtime/server/respond.js`,
+	// because kit's route patterns end `\/?$` and a one-segment data URL
+	// therefore matches its own page route. Left to fall through,
+	// `/todos/__data.json` was answered 200 with the boot document and kit's
+	// client parsed HTML as JSON.
+	if suffix := kitSuffix(urlPath); suffix != "" {
+		h.refuseInternalRequest(w, r, suffix)
+		return
+	}
+
 	rel := strings.TrimPrefix(strings.TrimPrefix(urlPath, h.base), "/")
 	if rel != "" {
 		if meta, found := h.assets[rel]; found {
@@ -197,6 +247,80 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.serveDocument(w, r, http.StatusNotFound)
+}
+
+// Kit's internal pathname suffixes, from `src/pathname.js`. `__data.json` is
+// the server-load endpoint of a page; `__route.js` is the module `preloadCode`
+// imports to resolve a route. Each has an `.html` variant, for a page whose
+// own URL ends in `.html`.
+const (
+	dataSuffix      = "/__data.json"
+	htmlDataSuffix  = ".html__data.json"
+	routeSuffix     = "/__route.js"
+	htmlRouteSuffix = ".html__route.js"
+)
+
+// kitSuffix reports which of kit's internal suffixes a path carries, or "".
+// The suffix is a whole final segment or the `.html` form of one, so an
+// ordinary page at `/items/my__data.json` is not a data request.
+func kitSuffix(urlPath string) string {
+	for _, suffix := range []string{dataSuffix, htmlDataSuffix, routeSuffix, htmlRouteSuffix} {
+		if strings.HasSuffix(urlPath, suffix) {
+			return suffix
+		}
+	}
+	return ""
+}
+
+// refuseInternalRequest answers a `__data.json` or `__route.js` request.
+//
+// skgo has no server loads: every route it serves is a page whose data comes
+// from remote functions, which the client fetches from `/_app/remote/...` and
+// never from a data URL. The built client carries no `__data.json` string at
+// all, because kit only fetches one for a node with a server load.
+//
+// So the answer is a refusal, and 404 is the one status kit's client is
+// written to survive here — its hydration path singles it out ("if
+// __data.json returned 404, the route doesn't exist — don't reload or we
+// loop") and carries on rendering the route client-side. Any other status
+// sends it into a full page reload; a 200 with the wrong body sends it into
+// JSON.parse, which is the bug this replaces. The body is an App.Error rather
+// than kit's empty one because kit's client spreads a JSON body over
+// `{status}` when the content type says JSON, so it reaches the client as the
+// same `{status: 404, message: 'Not Found'}` an empty body gives — and says
+// something to whoever curls it.
+//
+// This is the one place skgo deliberately does not match kit byte for byte,
+// and the divergence is measured rather than assumed: kit's own dev server
+// answers this app's `/todos/__data.json` with 200 `application/json` and
+// `{"type":"data","nodes":[null,null]}` — the "page with no server load"
+// answer from `runtime/server/data/index.js`. Producing that means claiming to
+// be the server-load endpoint and knowing how many nodes are in each route's
+// branch, which the manifest does not carry and kit's public adapter API does
+// not expose. Server loads are a later mission (issue #5); whoever lands them
+// owns this function and should replace the refusal with kit's envelope, with
+// the node count coming from the adapter rather than from a guess.
+func (h *staticHandler) refuseInternalRequest(w http.ResponseWriter, r *http.Request, suffix string) {
+	header := w.Header()
+	header.Set("Cache-Control", "private, no-store")
+
+	if suffix == routeSuffix || suffix == htmlRouteSuffix {
+		// Kit's own answer, verbatim, when `router.resolution` is `client` —
+		// its default and the only mode skgo serves:
+		// `text('Server-side route resolution disabled', { status: 400 })`
+		// (`runtime/server/page/server_routing.js`). Measured against this
+		// app's own `vp dev` server, which returns exactly this body and
+		// status, so the two modes agree here.
+		http.Error(w, "Server-side route resolution disabled", http.StatusBadRequest)
+		return
+	}
+
+	header.Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	if r.Method == http.MethodHead {
+		return
+	}
+	writeJSON(w, map[string]any{"status": 404, "message": "Not Found"})
 }
 
 func (h *staticHandler) matchesRoute(urlPath string) bool {
@@ -236,13 +360,50 @@ func (h *staticHandler) serveDocument(w http.ResponseWriter, r *http.Request, st
 	header.Set("Content-Type", "text/html; charset=utf-8")
 	header.Set("Cache-Control", "no-cache")
 	header.Set("ETag", h.documentETag)
-	header.Set("Content-Length", strconv.Itoa(len(h.document)))
 
+	// The document is one immutable blob for the life of the build, and
+	// `no-cache` means the browser revalidates rather than skips the request —
+	// so every reload offers the validator back and every reload used to be
+	// answered with the whole document anyway. A 304 keeps the status the
+	// request earned: a page that does not exist stays a 404, because the
+	// client renders `+error.svelte` off the status, not off the body.
+	if status == http.StatusOK && etagMatches(r.Header.Get("If-None-Match"), h.documentETag) {
+		// RFC 9110 §15.4.5: a 304 carries the validator and no
+		// representation, so it must not declare a length it is not sending.
+		header.Del("Content-Length")
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	header.Set("Content-Length", strconv.Itoa(len(h.document)))
 	w.WriteHeader(status)
 	if r.Method == http.MethodHead {
 		return
 	}
 	w.Write(h.document)
+}
+
+// etagMatches reports whether an If-None-Match header field covers etag, using
+// the weak comparison RFC 9110 §8.8.3.2 prescribes for conditional requests:
+// `W/"x"` and `"x"` are a match, and `*` matches anything the server has.
+//
+// net/http does this for files it serves through ServeContent, but the boot
+// document is not a file — it is answered under three different statuses — so
+// the comparison is spelled out here.
+func etagMatches(field, etag string) bool {
+	field = strings.TrimSpace(field)
+	if field == "" {
+		return false
+	}
+	if field == "*" {
+		return true
+	}
+	for _, candidate := range strings.Split(field, ",") {
+		if strings.TrimPrefix(strings.TrimSpace(candidate), "W/") == etag {
+			return true
+		}
+	}
+	return false
 }
 
 // normalizePath validates and cleans a request path. It reports false for any

@@ -1,6 +1,7 @@
 package devalue
 
 import (
+	"encoding/json"
 	"math"
 	"reflect"
 	"strings"
@@ -221,5 +222,44 @@ func TestParseInvalidJSON(t *testing.T) {
 	}
 	if _, err := Parse("][", nil); err == nil {
 		t.Error("expected an error for invalid JSON")
+	}
+}
+
+// A parsed tree has to survive an encoding/json round trip: that is how skgo
+// turns a devalue argument into a typed Go value.
+func TestParsedTreeMarshalsAsJSON(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		payload string
+		want    string
+	}{
+		{"object", `[{"id":1,"text":2},"t1","hello"]`, `{"id":"t1","text":"hello"}`},
+		{"nested", `[{"a":1},[2,3],1,2]`, `{"a":[1,2]}`},
+		{"undefined property", `[{"a":1,"b":-1},"x"]`, `{"a":"x"}`},
+		{"array hole", `[[1,-2,2],"a","b"]`, `["a",null,"b"]`},
+		{"scalars", `[{"n":1,"t":2,"f":3,"z":4},2.5,true,false,null]`, `{"n":2.5,"t":true,"f":false,"z":null}`},
+		// devalue spells NaN and the infinities as negative indices; nothing
+		// JSON can carry, so the round trip has to fail rather than invent a value.
+		{"not a number", `[{"n":-3}]`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parsed, err := Parse(tc.payload, nil)
+			if err != nil {
+				t.Fatalf("Parse(%s): %v", tc.payload, err)
+			}
+			raw, err := json.Marshal(parsed)
+			if tc.want == "" {
+				if err == nil {
+					t.Fatalf("json.Marshal = %s, want an error", raw)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("json.Marshal: %v", err)
+			}
+			if string(raw) != tc.want {
+				t.Fatalf("json.Marshal = %s, want %s", raw, tc.want)
+			}
+		})
 	}
 }

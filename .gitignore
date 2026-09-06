@@ -6,3 +6,4 @@ example/tmp/
 example/e2e/.features-gen/
 test-results/
 playwright-report/
+example/e2e/screenshots/

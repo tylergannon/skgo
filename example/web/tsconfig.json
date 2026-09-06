@@ -2,5 +2,12 @@
 	"extends": "$app/tsconfig",
 	"compilerOptions": {
 		"strict": true
-	}
+	},
+	"include": [
+		"src/**/*",
+		"vite.config.ts",
+		"skgo-adapter.js",
+		".svelte-kit/types/**/*"
+	],
+	"exclude": ["build", "node_modules"]
 }

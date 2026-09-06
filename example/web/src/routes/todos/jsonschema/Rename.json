@@ -1,0 +1,5 @@
+{"type":"object",
+"description":"Rename is the argument of the renameTodo command.","properties":{
+"id":{"type":"string","description":"ID names the todo to change."},
+"text":{"type":"string","description":"Text is its new text."}
+},"required":["id","text"],"additionalProperties":false}

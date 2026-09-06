@@ -3,6 +3,7 @@ Feature: SvelteKit served by Go
   Scenario: Home page renders a Svelte component through Go
     Given I open "/"
     Then the document response came from skgo in the expected mode
+    And every part of the page loaded
     And I see the greeting component
 
   Scenario: Client-side navigation does not reload the document

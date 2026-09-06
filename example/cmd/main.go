@@ -16,7 +16,7 @@ import (
 	"os"
 
 	"github.com/tylergannon/skgo"
-	"github.com/tylergannon/skgo/example"
+	"github.com/tylergannon/skgo/example/generated"
 	"github.com/tylergannon/skgo/example/web"
 )
 
@@ -54,8 +54,6 @@ func build(proxy, origin string) (http.Handler, string, error) {
 		return nil, "", err
 	}
 
-	store := example.NewStore()
-
 	if proxy != "" {
 		target, err := url.Parse(proxy)
 		if err != nil {
@@ -67,14 +65,16 @@ func build(proxy, origin string) (http.Handler, string, error) {
 		// remote CSRF check in dev too.
 		cfg := manifest.RemoteConfig("")
 		cfg.Version = ""
-		remotes, err := skgo.NewRemotes(cfg, store.Remotes()...)
+		cfg.Dev = true
+		cfg.CookieOrigin = origin
+		remotes, err := skgo.NewRemotes(cfg, generated.Remotes()...)
 		if err != nil {
 			return nil, "", err
 		}
 		return remotes.Intercept(skgo.NewDevProxy(target, log.Printf)), "dev", nil
 	}
 
-	remotes, err := skgo.NewRemotes(manifest.RemoteConfig(origin), store.Remotes()...)
+	remotes, err := skgo.NewRemotes(manifest.RemoteConfig(origin), generated.Remotes()...)
 	if err != nil {
 		return nil, "", err
 	}

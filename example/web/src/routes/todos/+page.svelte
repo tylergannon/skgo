@@ -1,7 +1,7 @@
 <script lang="ts">
-	import AddTodo from '#lib/AddTodo.svelte';
-	import TodoCount from '#lib/TodoCount.svelte';
-	import TodoList from '#lib/TodoList.svelte';
+	import AddTodo from './AddTodo.svelte';
+	import TodoCount from './TodoCount.svelte';
+	import TodoList from './TodoList.svelte';
 </script>
 
 <h1 data-testid="title">Todos</h1>

@@ -1,0 +1,6 @@
+{"type":"object",
+"description":"Page is one documentation page.","properties":{
+"path":{"type":"string","description":"Path is the rest parameter as SvelteKit matched it."},
+"title":{"type":"string","description":"Title is what the page shows."},
+"depth":{"type":"integer","description":"Depth is how many segments deep the request went."}
+},"required":["path","title","depth"],"additionalProperties":false}

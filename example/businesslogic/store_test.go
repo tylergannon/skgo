@@ -1,0 +1,97 @@
+package businesslogic
+
+import "testing"
+
+// The store seeds two public todos and one private one, so a signed-out
+// visitor may see two and a signed-in visitor three.
+
+func TestTodosAndCountAgree(t *testing.T) {
+	s := NewStore()
+
+	for _, signedIn := range []bool{false, true} {
+		listed := len(s.Todos(signedIn))
+		_, unsubscribe, counted := s.Watch(signedIn)
+		unsubscribe()
+
+		if counted != listed {
+			t.Errorf("signedIn=%v: Watch reported %d, Todos listed %d", signedIn, counted, listed)
+		}
+	}
+
+	if got := len(s.Todos(false)); got != 2 {
+		t.Errorf("a signed-out visitor sees %d todos, want 2", got)
+	}
+	if got := len(s.Todos(true)); got != 3 {
+		t.Errorf("a signed-in visitor sees %d todos, want 3", got)
+	}
+}
+
+func TestEachWatcherIsToldItsOwnCount(t *testing.T) {
+	s := NewStore()
+
+	out, stopOut, startOut := s.Watch(false)
+	defer stopOut()
+	in, stopIn, startIn := s.Watch(true)
+	defer stopIn()
+
+	if startOut != 2 || startIn != 3 {
+		t.Fatalf("opening counts = %d signed out, %d signed in; want 2 and 3", startOut, startIn)
+	}
+
+	// One added todo is public, so both watchers gain exactly one — and
+	// neither is told about the other's rows.
+	s.Add("a public todo")
+
+	if got := <-out; got != 3 {
+		t.Errorf("the signed-out watcher was sent %d, want 3", got)
+	}
+	if got := <-in; got != 4 {
+		t.Errorf("the signed-in watcher was sent %d, want 4", got)
+	}
+	if got := len(s.Todos(false)); got != 3 {
+		t.Errorf("a signed-out visitor now lists %d todos, want 3", got)
+	}
+}
+
+func TestUnsubscribingStopsTheUpdates(t *testing.T) {
+	s := NewStore()
+
+	ch, stop, _ := s.Watch(false)
+	stop()
+	s.Add("nobody is listening")
+
+	select {
+	case v := <-ch:
+		t.Errorf("an unsubscribed watcher was sent %d", v)
+	default:
+	}
+}
+
+// The write path is guarded by the same rule as the read path. Signed out,
+// getTodo already refuses the private todo; Rename used to change it anyway
+// and hand the whole record — text, id and `private: true` — back to the
+// visitor who was not allowed to know it existed.
+func TestRenameObeysTheSameRuleAsTheReaders(t *testing.T) {
+	s := NewStore()
+
+	private, ok := s.Todo("t3", true)
+	if !ok || !private.Private {
+		t.Fatalf("t3 is meant to be the private fixture; got %+v ok=%v", private, ok)
+	}
+
+	if _, ok := s.Rename("t3", "renamed by a signed-out visitor", false); ok {
+		t.Error("Rename accepted a signed-out visitor's change to a private todo")
+	}
+	if got, _ := s.Todo("t3", true); got.Text != private.Text {
+		t.Errorf("the private todo now reads %q; a signed-out visitor changed it", got.Text)
+	}
+
+	// The same visitor may still rename what they can see, and a signed-in
+	// visitor may rename the private one.
+	if _, ok := s.Rename("t1", "renamed by anyone", false); !ok {
+		t.Error("Rename refused a public todo to a signed-out visitor")
+	}
+	if _, ok := s.Rename("t3", "renamed by ada", true); !ok {
+		t.Error("Rename refused the private todo to a signed-in visitor")
+	}
+}
