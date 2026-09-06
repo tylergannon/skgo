@@ -18,7 +18,10 @@ goal: |
   parallel work does not collide. No file lists, no prescribed design.
 
   Create the worktree with `just worktree <branch>`; `just --list` is the rest
-  of the plumbing. Read AGENTS.md first — it governs this project.
+  of the plumbing. The pinned kit source — the specification — is at the
+  absolute path /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit, which
+  is outside the worktree and reachable from anywhere. Read AGENTS.md first — it
+  governs this project.
 
 start: build
 

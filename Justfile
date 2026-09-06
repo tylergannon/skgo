@@ -56,23 +56,21 @@ dev:
 e2e mode="prod":
     cd example/e2e && BASE_URL="{{origin}}" EXPECTED_MODE={{mode}} mise x -- pnpm test
 
-# ephemeral/inspiration is gitignored, so the pinned kit source — the
-# specification every mirrored feature is written against — exists only in the
-# root checkout. A bare worktree leaves an agent reading an empty directory and
-# proceeding on priors.
+# `git worktree add -b` has silently landed an agent on main once, so the
+# branch is confirmed rather than assumed. The pinned kit source is not copied
+# or linked in: it lives at one absolute path, /Users/tyler/src/skgo/ephemeral/
+# inspiration, reachable from any tree.
 
-# a task worktree with the pinned kit source linked in
+# a task worktree, on the branch it says it is on
 worktree branch:
     #!/bin/sh
     set -e
     root=$(git rev-parse --show-toplevel)
     dest="$root/.claude/worktrees/{{branch}}"
     git -C "$root" worktree add -b "{{branch}}" "$dest" main
-    ln -s "$root/ephemeral/inspiration" "$dest/ephemeral/inspiration"
     on=$(git -C "$dest" branch --show-current)
     [ "$on" = "{{branch}}" ] || { echo "expected branch {{branch}}, got $on" >&2; exit 1; }
-    [ -d "$dest/ephemeral/inspiration/reference/kit" ] || { echo "kit source did not link through" >&2; exit 1; }
-    echo "$dest  ({{branch}}, kit source linked)"
+    echo "$dest  ({{branch}})"
 
 # what is already listening, before you bind a port
 ports:
