@@ -11,6 +11,7 @@ func SkgoRemotes() []*skgo.Remote {
 		skgo.NewQuery("src/routes/todos/todos.remote.ts", "getTodo", getTodo),
 		skgo.NewQuery("src/routes/todos/todos.remote.ts", "getTodos", getTodos),
 		skgo.NewCommand("src/routes/todos/todos.remote.ts", "renameTodo", renameTodo),
+		skgo.NewCommand("src/routes/todos/todos.remote.ts", "retitleTodo", retitleTodo),
 		skgo.NewLiveQuery("src/routes/todos/todos.remote.ts", "watchCount", watchCount),
 	}
 }

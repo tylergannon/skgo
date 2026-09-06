@@ -11,8 +11,10 @@ import (
 )
 
 // Stubs so the package compiles before polytype has run.
-func (Rename) Schema() json.RawMessage { panic("not implemented") }
+func (Rename) Schema() json.RawMessage  { panic("not implemented") }
+func (Retitle) Schema() json.RawMessage { panic("not implemented") }
 
 var (
 	_ = polytype.Declare(Rename.Schema)
+	_ = polytype.Declare(Retitle.Schema)
 )

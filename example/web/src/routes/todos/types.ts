@@ -13,3 +13,21 @@ export type Rename = {
    */
   "text": string;
 };
+
+/**
+ * Retitle is the argument of the retitleTodo command.
+ */
+export type Retitle = {
+  /**
+   * ID names the todo to change.
+   */
+  "id": string;
+  /**
+   * Text is its new text.
+   */
+  "text": string;
+  /**
+   * RefreshID names the getTodo the command will refresh afterwards. A real app would not take this from the caller — it would refresh what it knows it changed — but naming it here is what lets the page ask for a refresh of a todo other than the one it just wrote, which is the difference between "the refresh worked" and "the refresh went where its argument said".
+   */
+  "refreshId": string;
+};
