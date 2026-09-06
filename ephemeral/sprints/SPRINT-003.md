@@ -2,7 +2,7 @@
 
 Closes #4, #2, #3 (PR A+B) and #5 (PR C). Two worktrees, three Opus builders. This document
 de-risks and draws seams; the builders choose packages, names, and commands. Two critique
-rounds applied (2026-09-06); open decisions are marked **DECISION**.
+rounds applied (2026-09-06).
 
 ## Pyramid Index
 
