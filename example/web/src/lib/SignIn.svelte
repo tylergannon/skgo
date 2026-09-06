@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { signIn, signOut, whoami } from './auth.remote';
-	import { getTodos } from '../routes/todos/todos.remote';
+	import { getTodos, watchCount } from '../routes/todos/todos.remote';
 
 	let name = $state('');
 	let busy = $state(false);
@@ -15,6 +15,11 @@
 			// The session cookie the command sets is already in force by the
 			// time these queries run: they are resolved on the same request.
 			await signIn(name).updates(whoami(), getTodos());
+			// A live query is not a query: `updates` cannot carry it, and kit
+			// caches it by (id, argument), so the open stream survives the new
+			// session and keeps reporting the old visitor's count. `reconnect`
+			// is the handle kit gives you for exactly this.
+			await watchCount().reconnect();
 			name = '';
 		} finally {
 			busy = false;
@@ -25,6 +30,7 @@
 		busy = true;
 		try {
 			await signOut().updates(whoami(), getTodos());
+			await watchCount().reconnect();
 		} finally {
 			busy = false;
 		}

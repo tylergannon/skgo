@@ -1,5 +1,7 @@
-import { expect, type Response } from '@playwright/test';
-import { test as base } from 'playwright-bdd';
+import { expect, type Page, type Response } from '@playwright/test';
+import { createBdd, test as base } from 'playwright-bdd';
+import { mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 /** Records the document (top-level navigation) traffic of one scenario. */
 export type Documents = {
@@ -78,5 +80,65 @@ export const test = base.extend<{ documents: Documents; remotes: Remotes; notes:
 		await use(new Map<string, number>());
 	}
 });
+
+const { AfterStep } = createBdd(test);
+
+/**
+ * Photographs the page the instant a scenario asserts.
+ *
+ * An exit code says a scenario passed; it does not say what the visitor was
+ * looking at when it did. Every step Gherkin classifies as an outcome — Then,
+ * and the And/But that continue it — leaves a frame of the real page in the
+ * real state the sentence claims, so the run can be checked by looking rather
+ * than by rerunning it. The same frames are taken when a step fails, which is
+ * the moment they are worth most.
+ *
+ * Kept out of the step definitions on purpose: a screenshot nobody has to
+ * remember to write cannot be forgotten from the next scenario somebody adds.
+ */
+AfterStep(async ({ page, $step, $bddContext, $testInfo }) => {
+	const step = $bddContext.bddTestData?.steps?.[$bddContext.stepIndex];
+	if (step?.keywordType !== 'Outcome') return;
+
+	const file = join(
+		screenshotDir(),
+		slug($bddContext.featureUri.replace(/^features\//, '').replace(/\.feature$/, '')),
+		slug($testInfo.title),
+		`${String($bddContext.stepIndex + 1).padStart(2, '0')}-${slug(step.textWithKeyword ?? $step.title)}.png`
+	);
+	mkdirSync(dirname(file), { recursive: true });
+	await shoot(page, file);
+	await $testInfo.attach(step.textWithKeyword ?? $step.title, { path: file, contentType: 'image/png' });
+});
+
+/**
+ * Where this run's frames go. The mode is part of the path because the same
+ * scenarios run twice — against the embedded build and against `vp dev` — and
+ * the two sets are only useful side by side.
+ */
+function screenshotDir(): string {
+	return join('screenshots', process.env.EXPECTED_MODE ?? 'unknown');
+}
+
+/**
+ * Takes the picture. A page that has navigated away or crashed cannot be
+ * photographed; that is worth recording as a note in the report rather than
+ * failing a step that already passed.
+ */
+async function shoot(page: Page, file: string) {
+	try {
+		await page.screenshot({ path: file, fullPage: true, timeout: 10_000 });
+	} catch (error) {
+		console.warn(`skgo e2e: could not photograph ${file}: ${(error as Error).message}`);
+	}
+}
+
+function slug(text: string): string {
+	return text
+		.replace(/[^\w\s.-]/g, '')
+		.trim()
+		.replace(/\s+/g, '-')
+		.slice(0, 80);
+}
 
 export { expect };

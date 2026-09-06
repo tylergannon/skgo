@@ -63,10 +63,14 @@ func renameTodo(ctx context.Context, arg Rename) (businesslogic.Todo, error) {
 	return todo, nil
 }
 
-// watchCount pushes the number of todos, now and after every change, until the
-// client disconnects.
+// watchCount pushes the number of todos this visitor may see, now and after
+// every change, until the client disconnects.
+//
+// The session is fixed when the stream opens, the way kit's own live queries
+// work: signing in or out gives the page a different visitor, and the page
+// re-subscribes.
 func watchCount(ctx context.Context, _ skgo.None, yield func(int) error) error {
-	updates, unsubscribe, count := businesslogic.Default.Watch()
+	updates, unsubscribe, count := businesslogic.Default.Watch(signedIn(ctx))
 	defer unsubscribe()
 
 	if err := yield(count); err != nil {

@@ -34,7 +34,10 @@ type Store struct {
 	todos    []Todo
 	next     int
 	sessions map[string]string
-	subs     map[chan int]struct{}
+	// subs maps a live-count subscriber to the visibility it subscribed with,
+	// because the number a visitor may be told is not the same number for
+	// everyone.
+	subs map[chan int]bool
 }
 
 // Default is the store the example app serves.
@@ -49,7 +52,7 @@ func NewStore() *Store {
 		},
 		next:     4,
 		sessions: map[string]string{},
-		subs:     map[chan int]struct{}{},
+		subs:     map[chan int]bool{},
 	}
 }
 
@@ -86,15 +89,26 @@ func (s *Store) Add(text string) Todo {
 	todo := Todo{ID: fmt.Sprintf("t%d", s.next), Text: text}
 	s.next++
 	s.todos = append(s.todos, todo)
-	count := len(s.todos)
 	// Notify while still holding the lock so subscribers can never observe
 	// counts out of order. The channels are buffered and latest-wins, so this
 	// never blocks.
-	for ch := range s.subs {
-		latest(ch, count)
+	for ch, signedIn := range s.subs {
+		latest(ch, s.countLocked(signedIn))
 	}
 	s.mu.Unlock()
 	return todo
+}
+
+// countLocked is how many todos a visitor may see. The caller holds s.mu.
+func (s *Store) countLocked(signedIn bool) int {
+	n := 0
+	for _, todo := range s.todos {
+		if todo.Private && !signedIn {
+			continue
+		}
+		n++
+	}
+	return n
 }
 
 // Rename changes a todo's text in place.
@@ -110,13 +124,17 @@ func (s *Store) Rename(id, text string) (Todo, bool) {
 	return Todo{}, false
 }
 
-// Watch subscribes to the total number of todos. Close the returned function
-// to unsubscribe.
-func (s *Store) Watch() (<-chan int, func(), int) {
+// Watch subscribes to the number of todos this visitor may see. Call the
+// returned function to unsubscribe.
+//
+// The count obeys the same visibility rule as Todos. A total would tell a
+// signed-out visitor that a todo they cannot read exists, which is the whole
+// thing Private is for.
+func (s *Store) Watch(signedIn bool) (<-chan int, func(), int) {
 	s.mu.Lock()
 	ch := make(chan int, 1)
-	s.subs[ch] = struct{}{}
-	count := len(s.todos)
+	s.subs[ch] = signedIn
+	count := s.countLocked(signedIn)
 	s.mu.Unlock()
 	return ch, func() {
 		s.mu.Lock()
