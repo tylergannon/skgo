@@ -63,6 +63,22 @@ Bindings (`drafts/SPRINT-003-research-bindings.md`):
   hole until polytype codecs land: nil slice ⇒ `null`. Carry the full flag set on every
   polytype invocation (a run without `--validate` deletes `ValidateJSON`). Pin
   `@v1.0.0-rc.9`; `@latest` is v0.11.3.
+- **Kit already answers "how does a handler reach the request", and skgo must match its
+  rules, not just its ergonomics.** In a `.remote.ts` you call `getRequestEvent()` (ambient,
+  via AsyncLocalStorage — `remote-functions.js:151` `with_request_store`). Constraints
+  (`docs/60-remote-functions.md:1268-1315`, verified): cookies READ in any remote function
+  but WRITTEN only in `command`/`form`; arbitrary response headers cannot be set at all;
+  inside a query (incl. batch/live) accessing `route`/`params`/`url` THROWS, because queries
+  are cached by argument and never re-run on navigation; in `command`/`form` those values
+  describe the calling page and must never be used for authorization; `redirect()` works in
+  query/form but not command. Server loads instead take the event as a PARAMETER
+  (`load({cookies, params, url})`) — kit's split is ambient where a function is callable from
+  anywhere, parameter where it is route-anchored. Refresh is a method on the query resource,
+  not the event: `getPosts().refresh()` / `getPost(id).set(value)`
+  (`docs/60-remote-functions.md:982-1028`), so the Go form is `getTodos.Refresh(ctx)`.
+  **Why matching matters:** the brief promises Go remotes and TS remotes coexist in one app,
+  so identical functions must behave identically in both languages or porting one silently
+  changes its semantics. Track B enforces the rules at runtime, whichever syntax is chosen.
 - Server-pushed `q` entries are applied by the client without it having asked
   (`shared.svelte.js:139-150`), but a key that does not match the client's own
   `stringify_query_arg` bytes is silently dropped. `r: true` is read only by `form`.
