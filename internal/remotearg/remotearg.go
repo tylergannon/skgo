@@ -27,10 +27,20 @@ const (
 	tagSet    = "__skras"
 	tagFile   = "__skraf"
 	tagRegExp = "__skrag"
+
+	// tagMapGuard has no counterpart in kit — kit has no unordered object. It
+	// exists only so the guard can be a reducer, and never reaches the wire.
+	tagMapGuard = "__skgomap"
 )
 
 // ErrRegExp is returned when a regular expression appears in an argument.
 var ErrRegExp = errors.New("Regular expressions are not valid remote function arguments")
+
+// ErrCommandMap is returned by StringifyCommandArg when a map[string]any
+// appears anywhere in the argument. A command argument is not canonicalized —
+// its property order is part of the payload the client sent — and a Go map has
+// no order, so the only honest thing to do is refuse. Use *devalue.Object.
+var ErrCommandMap = errors.New("map[string]any is not a valid command argument: property order is part of the payload, use *devalue.Object")
 
 // File is a JavaScript File, the one non-JSON value a command argument may
 // carry. Size is derived from Data.
@@ -44,6 +54,14 @@ type File struct {
 // ParsePayload decodes a base64url (no padding) devalue payload from a remote
 // request. present is false when payload is "" — kit's `undefined` — and when
 // the payload decodes to undefined.
+//
+// JavaScript's `undefined` and `null` are different values and produce
+// different payloads. When present is false the argument was `undefined`; a
+// returned value of nil with present true is JavaScript `null`. Do not conflate
+// the two: devalue.Undefined is "no argument", Go nil is `null`.
+//
+// Plain objects always come back as *devalue.Object, which preserves property
+// order, never as map[string]any.
 func ParsePayload(payload string) (value any, present bool, err error) {
 	if payload == "" {
 		return nil, false, nil
@@ -66,14 +84,31 @@ func ParsePayload(payload string) (value any, present bool, err error) {
 }
 
 // StringifyQueryArg encodes a value the way kit's stringify_remote_arg does
-// (sorted reducers) and returns the base64url payload. devalue.Undefined
-// encodes to the empty payload.
+// (sorted reducers) and returns the base64url payload. The payload doubles as a
+// cache key, so the bytes must match what the client computed for the same
+// argument.
+//
+// devalue.Undefined — not Go nil — is "no argument", and encodes to the empty
+// payload. Go nil is JavaScript `null` and encodes to a non-empty payload; a
+// caller that passes nil for "no argument" builds a key the client never
+// builds, and the mismatch is silent.
+//
+// Plain objects may be given as *devalue.Object (ordered) or map[string]any;
+// both work here, because the canonical form sorts keys anyway.
 func StringifyQueryArg(v any) (string, error) {
 	return stringifyArg(v, queryReducers())
 }
 
 // StringifyCommandArg mirrors kit's stringify_command_arg: the same guards, but
 // no canonical ordering, and File values are supported.
+//
+// devalue.Undefined — not Go nil — is "no argument", and encodes to the empty
+// payload; Go nil is JavaScript `null`.
+//
+// Because nothing is reordered, a plain object's property order is part of the
+// payload, so plain objects must be given as *devalue.Object. A map[string]any
+// anywhere in the value is refused with ErrCommandMap rather than silently
+// serialized in sorted order.
 func StringifyCommandArg(v any) (string, error) {
 	return stringifyArg(v, commandReducers())
 }
@@ -144,8 +179,22 @@ func asFile(v any) (File, bool) {
 	return File{}, false
 }
 
+// mapGuard refuses a Go map in a command argument. It is a reducer so that the
+// guard reaches every value the stringifier visits, however deeply nested.
+func mapGuard() devalue.Reducer {
+	return devalue.Reducer{
+		Key: tagMapGuard,
+		Fn: func(v any) (any, bool, error) {
+			if _, ok := v.(map[string]any); ok {
+				return nil, false, ErrCommandMap
+			}
+			return nil, false, nil
+		},
+	}
+}
+
 func commandReducers() []devalue.Reducer {
-	return []devalue.Reducer{regexpGuard(), fileReducer()}
+	return []devalue.Reducer{regexpGuard(), mapGuard(), fileReducer()}
 }
 
 // queryReducers builds the canonicalizing reducers. They share one clone table,
@@ -186,11 +235,13 @@ func queryReducers() []devalue.Reducer {
 					entries = append(entries, [2]string{key, value})
 				}
 
-				sort.Slice(entries, func(i, j int) bool {
-					if entries[i][0] != entries[j][0] {
-						return entries[i][0] < entries[j][0]
+				// kit compares the nested devalue strings with JavaScript's
+				// `<`, which is UTF-16 code-unit order, not Go's byte order.
+				sort.SliceStable(entries, func(i, j int) bool {
+					if c := devalue.CompareUTF16(entries[i][0], entries[j][0]); c != 0 {
+						return c < 0
 					}
-					return entries[i][1] < entries[j][1]
+					return devalue.CompareUTF16(entries[i][1], entries[j][1]) < 0
 				})
 
 				out := make([]any, len(entries))
@@ -217,7 +268,8 @@ func queryReducers() []devalue.Reducer {
 					}
 					items = append(items, str)
 				}
-				sort.Strings(items)
+				// `items.sort()` in kit: UTF-16 code-unit order.
+				devalue.SortStringsUTF16(items)
 
 				out := make([]any, len(items))
 				for i, item := range items {
@@ -258,8 +310,9 @@ func queryReducers() []devalue.Reducer {
 				}
 				cloned[clone] = true
 
+				// `Object.keys(value).sort()` in kit: UTF-16 code-unit order.
 				sorted := append([]string(nil), keys...)
-				sort.Strings(sorted)
+				devalue.SortStringsUTF16(sorted)
 
 				for _, k := range sorted {
 					property := get(k)

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -185,13 +184,19 @@ func (s *stringifier) serialize(v any) (string, error) {
 			return t.values[k]
 		})
 	case map[string]any:
-		// A Go map has no property order, so keys are hoisted and sorted to
-		// keep output deterministic.
+		// A Go map has no property order, so keys are sorted to keep the output
+		// deterministic. Sorting rather than rejecting is deliberate: it is
+		// what lets a caller hand a plain Go map to a *query* argument, whose
+		// canonical form is sorted anyway (remotearg's __skrao reducer), and
+		// still get the bytes the client computed. The sort is by UTF-16 code
+		// unit so that a map and the equivalent *Object sorted by JavaScript
+		// agree. Command arguments, where property order is the caller's to
+		// choose, reject maps instead — see remotearg.StringifyCommandArg.
 		keys := make([]string, 0, len(t))
 		for k := range t {
 			keys = append(keys, k)
 		}
-		sort.Strings(keys)
+		SortStringsUTF16(keys)
 		return s.object(propertyOrder(keys), false, func(k string) any {
 			return t[k]
 		})
