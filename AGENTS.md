@@ -109,6 +109,13 @@ thing an agent can find. Never hand a human a screenshot you have not looked at,
 and never hand them one that obviously shows a failure — if it does, the finding
 is the failure, not the file.
 
+**Wake yourself.** Every dispatched run gets a watcher started in the same
+breath — a backgrounded `until ! kill -0 <pid>; do sleep 20; done` on its
+process — so the session is re-entered the moment the run exits. A tractor run
+does not announce itself. Without a watcher the work finishes and sits there,
+and the human ends up asking whether anything is happening, which is the one
+question a lead should never make someone ask.
+
 **Don't narrate.** No status documents, no progress reports, no summaries of
 work already visible in the diff. The worklog exists for actionable
 intelligence — corrections, traps, things that will change a future decision —
