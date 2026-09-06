@@ -23,6 +23,15 @@ for tool in go mise lsof; do
 	}
 done
 
+# The pinned kit source is gitignored, so a worktree created without
+# ephemeral/tractor/worktree.sh does not have it. Everything here mirrors kit;
+# a tree that cannot see the specification is a harness fault, not a red suite.
+[ -d ephemeral/inspiration/reference/kit ] || {
+	echo "acceptance: HARNESS FAULT - no pinned kit source at ephemeral/inspiration/reference/kit" >&2
+	echo "acceptance: link it with: ln -s <root-checkout>/ephemeral/inspiration ephemeral/inspiration" >&2
+	exit 90
+}
+
 # The e2e suite against a production build with vite stopped.
 if lsof -ti:"$SKGO_VITE_PORT" >/dev/null 2>&1; then
 	echo "acceptance: vite is running on $SKGO_VITE_PORT; the prod run must not proxy" >&2
