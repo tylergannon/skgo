@@ -121,8 +121,15 @@ the pinned kit source — the specification this project mirrors — lives only 
 the root checkout. An agent dispatched into a bare worktree and told to read kit
 finds an empty directory and proceeds on priors, silently, on the one thing that
 was supposed to be non-negotiable. Create every task worktree with
-`ephemeral/tractor/worktree.sh <branch>`, which links the source through and
-verifies both the link and the branch before handing the tree over.
+`just worktree <branch>`, which links the source through and verifies both the
+link and the branch before handing the tree over.
+
+**There is no command that means "done."** The `Justfile` holds recipes that do
+things — build, test, serve, run the suite — and not one of them returns a
+verdict. Do not write one. A single script that exits 0 is the thing every
+agent starts building toward, and it cannot see the app: that is how a project
+reaches ten thousand lines with nothing working. `just test` passing is a fact
+about the tests, not about the software.
 
 **Don't narrate.** No status documents, no progress reports, no summaries of
 work already visible in the diff. The worklog exists for actionable
