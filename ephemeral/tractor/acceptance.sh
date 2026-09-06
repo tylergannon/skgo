@@ -29,4 +29,8 @@ go build -o /tmp/skgo-acceptance ./example/cmd
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true' EXIT
 sleep 2
-(cd example/e2e && BASE_URL=http://127.0.0.1:8080 EXPECTED_MODE=prod mise x -- pnpm exec playwright test)
+# `pnpm test`, not `playwright test`: playwright-bdd compiles the feature files
+# into `.features-gen/` in a separate step, and `playwright test` alone happily
+# runs whatever that directory already holds. A stale one is a green run over
+# the previous sprint's scenarios.
+(cd example/e2e && BASE_URL=http://127.0.0.1:8080 EXPECTED_MODE=prod mise x -- pnpm test)
