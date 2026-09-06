@@ -99,7 +99,16 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 		t.Fatalf("reading index.html: %v", err)
 	}
 
+	pages := 0
 	for _, route := range manifest.Routes {
+		if route.Page == nil {
+			// A route that is a `+server.ts` and nothing else has no page to
+			// boot. Serving it the document is the bug this distinction
+			// exists to prevent, and TestAServerRouteAnswersItsOwnMethods
+			// pins what it does answer instead.
+			continue
+		}
+		pages++
 		path := samplePath(t, route.ID)
 		rec := get(t, h, path)
 		if rec.Code != http.StatusOK {
@@ -109,6 +118,9 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 		if got := rec.Body.String(); got != string(document) {
 			t.Errorf("route %s: GET %s did not return kit's boot document", route.ID, path)
 		}
+	}
+	if pages == 0 {
+		t.Fatal("the manifest lists no page routes, so this test asserted nothing")
 	}
 }
 
@@ -313,8 +325,24 @@ func TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument(t *testing.T) {
 		t.Fatalf("reading the build manifest: %v", err)
 	}
 
+	checked := 0
 	for _, route := range manifest.Routes {
 		page := strings.TrimSuffix(samplePath(t, route.ID), "/")
+
+		if route.Page == nil {
+			// Kit answers `__data.json` on an endpoint-only route with a bare
+			// 404 and no body (`runtime/server/data/index.js`), because there
+			// is no branch to run.
+			rec := get(t, h, page+"/__data.json")
+			if rec.Code != http.StatusNotFound {
+				t.Errorf("route %s: GET %s/__data.json returned %d, want 404", route.ID, page, rec.Code)
+			}
+			if rec.Body.String() == string(document) {
+				t.Errorf("route %s: GET %s/__data.json returned kit's boot document", route.ID, page)
+			}
+			continue
+		}
+		checked++
 
 		rec := get(t, h, page+"/__data.json")
 		if rec.Code != http.StatusOK {
@@ -347,6 +375,9 @@ func TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument(t *testing.T) {
 		if rec.Body.String() == string(document) {
 			t.Errorf("route %s: GET %s/__route.js returned kit's boot document", route.ID, page)
 		}
+	}
+	if checked == 0 {
+		t.Fatal("the manifest lists no page routes, so this test asserted nothing")
 	}
 }
 

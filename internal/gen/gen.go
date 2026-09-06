@@ -66,15 +66,18 @@ func Run(cfg Config) error {
 		return err
 	}
 	if len(files) == 0 {
-		return fmt.Errorf("skgo: no *.remote.go, page.server.go or layout.server.go files under %s", filepath.Join(web, "src"))
+		return fmt.Errorf("skgo: no *.remote.go, page.server.go, layout.server.go or server.go files under %s", filepath.Join(web, "src"))
 	}
 
 	app, err := loadApp(cfg, files)
 	if err != nil {
 		return err
 	}
-	if len(app.remotes) == 0 && len(app.loads) == 0 {
-		return fmt.Errorf("skgo: found %d source file(s) but no skgo.Query, skgo.Command, skgo.LiveQuery or skgo.Load declaration in any of them", len(files))
+	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.endpoints) == 0 {
+		return fmt.Errorf("skgo: found %d source file(s) but no skgo.Query, skgo.Command, skgo.LiveQuery, skgo.Load or skgo.GET declaration in any of them", len(files))
+	}
+	if err := app.checkEndpointDuplicates(); err != nil {
+		return err
 	}
 
 	if err := app.checkFileUsage(); err != nil {
@@ -93,6 +96,9 @@ func Run(cfg Config) error {
 		return err
 	}
 	if err := app.writeLoadStubs(); err != nil {
+		return err
+	}
+	if err := app.writeEndpointStubs(); err != nil {
 		return err
 	}
 	if err := app.writePackageBindings(); err != nil {
@@ -119,9 +125,9 @@ var loadFileNames = map[string]string{
 	"layout.server.go": "+layout.server.ts",
 }
 
-// findSourceFiles collects every `*.remote.go`, `page.server.go` and
-// `layout.server.go` under `<web>/src`, skipping the directories neither Go nor
-// a developer means to be scanned.
+// findSourceFiles collects every `*.remote.go`, `page.server.go`,
+// `layout.server.go` and `server.go` under `<web>/src`, skipping the
+// directories neither Go nor a developer means to be scanned.
 func findSourceFiles(web string) ([]string, error) {
 	var found []string
 	src := filepath.Join(web, "src")
@@ -142,7 +148,8 @@ func findSourceFiles(web string) ([]string, error) {
 		if strings.HasSuffix(name, "_gen.go") {
 			return nil
 		}
-		if _, isLoad := loadFileNames[name]; !isLoad && !strings.HasSuffix(name, ".remote.go") {
+		_, isLoad := loadFileNames[name]
+		if !isLoad && name != serverFileName && !strings.HasSuffix(name, ".remote.go") {
 			return nil
 		}
 		found = append(found, path)

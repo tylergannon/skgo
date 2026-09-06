@@ -166,10 +166,13 @@ func (a *app) writePackageBindings() error {
 		loadsByPkg[load.goPkg] = append(loadsByPkg[load.goPkg], load)
 	}
 
+	endpointsByPkg := a.endpointsByPackage()
+
 	for _, gp := range a.pkgs {
 		fns := byPkg[gp]
 		loads := loadsByPkg[gp]
-		if len(fns) == 0 && len(loads) == 0 {
+		endpoints := endpointsByPkg[gp]
+		if len(fns) == 0 && len(loads) == 0 && len(endpoints) == 0 {
 			continue
 		}
 		var b strings.Builder
@@ -187,12 +190,27 @@ func (a *app) writePackageBindings() error {
 		for _, load := range loads {
 			fmt.Fprintf(&b, "\t\tskgo.NewLoad(%q, %s),\n", load.module, load.name)
 		}
+		b.WriteString("\t}\n}\n\n")
+		b.WriteString("// SkgoEndpoints returns the server routes declared in this package.\n")
+		b.WriteString("func SkgoEndpoints() []*skgo.Endpoint {\n\treturn []*skgo.Endpoint{\n")
+		for _, ep := range endpoints {
+			fmt.Fprintf(&b, "\t\tskgo.NewEndpoint(%q, %q, %s),\n", ep.routeID, endpointWireMethod(ep.method), ep.name)
+		}
 		b.WriteString("\t}\n}\n")
 		if err := a.writeGo(filepath.Join(gp.dir, "skgo_remotes_gen.go"), b.String()); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// endpointWireMethod is how a method travels to the Go registry and to the
+// adapter: kit's own method names, and `"*"` for a fallback.
+func endpointWireMethod(method string) string {
+	if method == "fallback" {
+		return "*"
+	}
+	return method
 }
 
 func constructor(k remoteKind) string {
@@ -231,6 +249,13 @@ func (a *app) writeAppBindings() error {
 	for _, gp := range a.pkgs {
 		fmt.Fprintf(&b, "\tout = append(out, %s.SkgoLoads()...)\n", gp.alias)
 	}
+	b.WriteString("\treturn out\n}\n\n")
+	b.WriteString("// Endpoints returns every server route declared in the app, ready to hand\n")
+	b.WriteString("// to skgo.NewEndpoints.\n")
+	b.WriteString("func Endpoints() []*skgo.Endpoint {\n\tvar out []*skgo.Endpoint\n")
+	for _, gp := range a.pkgs {
+		fmt.Fprintf(&b, "\tout = append(out, %s.SkgoEndpoints()...)\n", gp.alias)
+	}
 	b.WriteString("\treturn out\n}\n")
 	return a.writeGo(filepath.Join(a.cfg.Out, "skgo_bindings_gen.go"), b.String())
 }
@@ -243,10 +268,14 @@ type remoteList struct {
 	// Loads names the `+*.server.ts` modules skgo generated, which is the key
 	// kit itself records for a node that has a server load.
 	Loads []string `json:"loads"`
+	// Endpoints names, per kit route id, the methods skgo generated an export
+	// for. Kit's build reports the same list for every route it compiled a
+	// `+server.ts` into, so the adapter can compare the two literally.
+	Endpoints map[string][]string `json:"endpoints"`
 }
 
 func (a *app) writeRemoteList() error {
-	list := remoteList{Remotes: []string{}, Loads: []string{}}
+	list := remoteList{Remotes: []string{}, Loads: []string{}, Endpoints: a.endpointList()}
 	for _, fn := range a.remotes {
 		list.Remotes = append(list.Remotes, kithash.Kit(fn.module)+"/"+fn.name)
 	}

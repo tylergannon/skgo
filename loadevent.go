@@ -168,6 +168,9 @@ func (e *Event) SetHeader(name, value string) error {
 	if e == nil || e.load == nil {
 		return Errorf(500, "skgo: response headers can only be set from a server load")
 	}
+	if e.endpoint {
+		return Errorf(500, "skgo: a server route writes its own response — set headers on the http.ResponseWriter")
+	}
 	lower := strings.ToLower(name)
 	if lower == "set-cookie" {
 		return Errorf(500, "skgo: use SetCookie to set cookies, not SetHeader")
@@ -203,7 +206,11 @@ func (e *Event) SetHeader(name, value string) error {
 func Parent[T any](ctx context.Context) (T, error) {
 	var out T
 	e := EventFrom(ctx)
-	if e == nil || e.load == nil {
+	// fns is nil on the events skgo builds for the `handle` hook and for a
+	// server route: neither sits in a branch, so neither has a parent. Without
+	// this they would both read as a load whose branch happens to be empty and
+	// get a zero value back.
+	if e == nil || e.load == nil || e.load.fns == nil {
 		return out, Errorf(500, "skgo: Parent can only be called from a server load")
 	}
 

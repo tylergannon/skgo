@@ -15,27 +15,39 @@ import { pathToFileURL } from 'node:url';
  * build, so the Go binary can refuse to serve a frontend that was built from a
  * different set of Go functions than it answers.
  *
- * @param {{ out?: string }} [options]
+ * @param {{ out?: string, precompress?: boolean }} [options]
  * @returns {import('@sveltejs/kit').Adapter}
  */
-export default function skgo({ out = 'build' } = {}) {
+export default function skgo({ out = 'build', precompress = true } = {}) {
 	return {
 		name: 'skgo',
 		async adapt(builder) {
 			rmSync(out, { force: true, recursive: true });
 
 			const generated = readGenerated();
-			const kit = await readKitManifest(builder);
+			const { manifest: kit, source } = await readKitManifest(builder);
 			const hashes = checkRemoteHashes(kit, generated.remotes);
 
-			const nodes = readNodes(builder);
+			const nodes = readNodes(builder, source, kit);
 			checkServerLoads(nodes, generated.loads);
+
+			const endpoints = checkEndpoints(builder, generated.endpoints);
 
 			builder.writeClient(`${out}/client`);
 			checkRemoteIds(`${out}/client`, generated.remotes, hashes);
 
 			builder.writePrerendered(`${out}/prerendered`);
+			const prerendered = readPrerendered(builder);
 			await builder.generateFallback(`${out}/index.html`);
+
+			// Kit's own `builder.compress` writes a `.br` and a `.gz` beside every
+			// file whose extension it compresses, and Go chooses one per request
+			// from Accept-Encoding. Same contract adapter-node ships with its
+			// `precompress: true` default.
+			if (precompress) {
+				await builder.compress(`${out}/client`);
+				await builder.compress(`${out}/prerendered`);
+			}
 
 			// `builder` has no writeJson in kit 3.0.0-next.25 (it existed on the
 			// kit 2 line); write the manifest ourselves.
@@ -56,6 +68,13 @@ export default function skgo({ out = 'build' } = {}) {
 							id: route.id,
 							pattern: route.pattern.source,
 							params: route.params,
+							// The methods kit's build says the compiled `+server.ts`
+							// exports. Without it a route that is an endpoint and
+							// nothing else is indistinguishable from a page route, and
+							// Go answered it with the boot document at HTTP 200.
+							endpoint: endpoints.has(route.id)
+								? { methods: endpoints.get(route.id) }
+								: null,
 							page: route.page
 								? {
 										// `[...layouts, leaf]` is the branch the
@@ -71,7 +90,9 @@ export default function skgo({ out = 'build' } = {}) {
 									}
 								: null
 						})),
-						remotes: generated.remotes
+						remotes: generated.remotes,
+						prerendered,
+						precompressed: precompress
 					},
 					null,
 					'\t'
@@ -90,7 +111,7 @@ export default function skgo({ out = 'build' } = {}) {
  * quietly compares nothing to nothing reports success for an app whose two
  * halves were never checked against each other.
  *
- * @returns {{ remotes: string[], loads: string[] }}
+ * @returns {{ remotes: string[], loads: string[], endpoints: Record<string, string[]> }}
  */
 function readGenerated() {
 	let raw;
@@ -126,57 +147,177 @@ function readGenerated() {
 			);
 		}
 	}
-	return { remotes: parsed.remotes, loads: parsed.loads };
+	if (typeof parsed.endpoints !== 'object' || parsed.endpoints === null || Array.isArray(parsed.endpoints)) {
+		throw new Error(
+			'skgo: skgo.remotes.json has no `endpoints` object. Run `go generate ./...` before building the frontend.'
+		);
+	}
+	for (const [id, methods] of Object.entries(parsed.endpoints)) {
+		if (!id.startsWith('/') || !Array.isArray(methods) || methods.length === 0) {
+			throw new Error(
+				`skgo: skgo.remotes.json maps ${JSON.stringify(id)} to ${JSON.stringify(methods)}, which is not a route id and its methods.`
+			);
+		}
+	}
+	return { remotes: parsed.remotes, loads: parsed.loads, endpoints: parsed.endpoints };
 }
 
 /**
- * Kit's own server manifest, as an object rather than as text. `generateManifest`
- * returns the source of a module whose only imports sit inside lazy thunks, so
- * importing it resolves nothing and runs no application code.
+ * The same check for server routes, against the one place kit reports what it
+ * compiled: `builder.routes[].api.methods`, which kit derives by importing each
+ * built `+server.js` and reading its exports
+ * (packages/kit/src/core/postbuild/analyse.js, `analyse_endpoint`). A `fallback`
+ * export travels there as `'*'`, and `skgo generate` writes the same spelling,
+ * so the two lists are compared literally.
+ *
+ * This is the check that makes a hand-written `+server.ts` fail the build rather
+ * than 404 in the browser: kit would compile it, Go would never have been told
+ * about it, and the route would answer nothing.
  *
  * @param {import('@sveltejs/kit').Builder} builder
- * @returns {Promise<any>}
+ * @param {Record<string, string[]>} declared
+ * @returns {Map<string, string[]>} the methods kit compiled, per route id
+ */
+function checkEndpoints(builder, declared) {
+	/** @type {Map<string, string[]>} */
+	const built = new Map();
+	for (const route of builder.routes) {
+		if (route.api.methods.length > 0) built.set(route.id, [...route.api.methods].sort());
+	}
+
+	/** @type {string[]} */
+	const problems = [];
+	for (const [id, methods] of Object.entries(declared)) {
+		const compiled = built.get(id);
+		if (!compiled) {
+			problems.push(`  generated but not compiled: ${methods.join(', ')} ${id}`);
+			continue;
+		}
+		const want = [...methods].sort().join(', ');
+		const got = compiled.join(', ');
+		if (want !== got) {
+			problems.push(`  ${id}: Go answers ${want}, the built +server.ts exports ${got}`);
+		}
+	}
+	for (const [id, methods] of built) {
+		if (!(id in declared)) {
+			problems.push(`  compiled but not generated: ${methods.join(', ')} ${id}`);
+		}
+	}
+
+	if (problems.length) {
+		throw new Error(
+			'skgo: skgo.remotes.json does not describe the server routes kit just compiled.\n' +
+				problems.join('\n') +
+				'\n  Every server route is written in Go. Run `go generate ./...`.'
+		);
+	}
+	return built;
+}
+
+/**
+ * The pathnames the build wrote a file for, exactly as kit records them:
+ * percent-decoded and carrying the configured base. Go serves the prerendered
+ * tree off this list and issues the trailing-slash 308 off it, which is what
+ * adapter-node does with the same array.
+ *
+ * A prerendered *redirect* is refused rather than dropped. Kit records one when
+ * a page it rendered redirected somewhere, and skgo has nothing that would
+ * replay it — an app that produced one would silently lose it.
+ *
+ * @param {import('@sveltejs/kit').Builder} builder
+ * @returns {string[]}
+ */
+function readPrerendered(builder) {
+	if (builder.prerendered.redirects.size > 0) {
+		throw new Error(
+			'skgo: the build prerendered a redirect, which skgo does not serve:\n' +
+				[...builder.prerendered.redirects]
+					.map(([from, { status, location }]) => `  ${from} -> ${status} ${location}`)
+					.join('\n')
+		);
+	}
+	return [...builder.prerendered.paths].sort();
+}
+
+/**
+ * Kit's own server manifest, as an object *and* as text. `generateManifest`
+ * returns the source of a module whose only imports sit inside lazy thunks, so
+ * importing it resolves nothing and runs no application code — but the source
+ * is worth keeping, because the thunks carry information the imported object
+ * has already hidden inside closures. See readNodes.
+ *
+ * @param {import('@sveltejs/kit').Builder} builder
+ * @returns {Promise<{ manifest: any, source: string }>}
  */
 async function readKitManifest(builder) {
 	const dir = builder.getBuildDirectory('skgo');
 	const file = join(dir, 'kit-manifest.js');
+	const source = builder.generateManifest({ relativePath: '.' });
 	mkdirSync(dir, { recursive: true });
-	writeFileSync(
-		file,
-		`export const manifest = ${builder.generateManifest({ relativePath: '.' })};\n`
-	);
+	writeFileSync(file, `export const manifest = ${source};\n`);
 	try {
 		// The cache buster matters: `vp build` can run twice in one process.
-		return (await import(`${pathToFileURL(file).href}?t=${Date.now()}`)).manifest;
+		return { manifest: (await import(`${pathToFileURL(file).href}?t=${Date.now()}`)).manifest, source };
 	} finally {
 		rmSync(file, { force: true });
 	}
 }
 
 /**
- * The vite-root-relative path of every node's `+*.server.ts`, indexed by node.
- * Kit records it as `server_id` in the node modules it builds, and that is the
- * only place the mapping from a branch slot back to an authored file survives
- * the build.
+ * The vite-root-relative path of every node's `+*.server.ts`, in the positions
+ * the manifest's own route branches point at. Kit records the path as
+ * `server_id` in the node modules it builds, and that is the only place the
+ * mapping from a branch slot back to an authored file survives the build.
+ *
+ * The positions are the trap. Kit *renumbers* nodes when it writes a manifest:
+ * `generate_manifest` collects the nodes the surviving routes use and hands each
+ * one a fresh consecutive index, so a route's `leaf` is a position in the
+ * manifest's node array and not the number the node's own module declares. The
+ * two agree only while every node is used — and prerendering a single page drops
+ * that page's node and shifts every later one down by one.
+ *
+ * It shows up as a page whose Go load never runs while the layout above it works
+ * perfectly, which reads like a bug in the load rather than in the manifest.
+ *
+ * The renumbering is recoverable because kit writes the original index into each
+ * node's import path (`__memo(() => import('./nodes/6.js'))`), in the new order.
  *
  * @param {import('@sveltejs/kit').Builder} builder
+ * @param {string} source kit's generated manifest, as text
+ * @param {any} kit the same manifest, imported
  * @returns {string[]}
  */
-function readNodes(builder) {
+function readNodes(builder, source, kit) {
 	const dir = join(builder.getServerDirectory(), 'nodes');
-	/** @type {string[]} */
-	const nodes = [];
+	/** @type {Map<number, string>} */
+	const serverIds = new Map();
 	for (const name of readdirSync(dir)) {
 		if (!name.endsWith('.js')) continue;
-		const source = readFileSync(join(dir, name), 'utf-8');
-		const index = Number(source.match(/^export const index = (\d+);$/m)?.[1]);
+		const module = readFileSync(join(dir, name), 'utf-8');
+		const index = Number(module.match(/^export const index = (\d+);$/m)?.[1]);
 		if (!Number.isInteger(index)) {
 			throw new Error(`skgo: ${join(dir, name)} does not declare a node index`);
 		}
-		nodes[index] = source.match(/^export const server_id = "([^"]*)";$/m)?.[1] ?? '';
+		serverIds.set(index, module.match(/^export const server_id = "([^"]*)";$/m)?.[1] ?? '');
 	}
-	for (let i = 0; i < nodes.length; i += 1) nodes[i] ??= '';
-	return nodes;
+
+	const order = [...source.matchAll(/import\('[^']*\/nodes\/(\d+)\.js'\)/g)].map((m) =>
+		Number(m[1])
+	);
+	if (order.length !== kit._.nodes.length) {
+		throw new Error(
+			`skgo: kit's manifest holds ${kit._.nodes.length} node(s) but ${order.length} node import(s) could be read out of it. ` +
+				'The manifest no longer says which node module each branch slot points at, and skgo would silently run the wrong load.'
+		);
+	}
+
+	return order.map((index) => {
+		if (!serverIds.has(index)) {
+			throw new Error(`skgo: kit's manifest imports nodes/${index}.js, which the build did not write`);
+		}
+		return serverIds.get(index) ?? '';
+	});
 }
 
 /**
