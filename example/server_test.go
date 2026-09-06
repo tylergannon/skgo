@@ -289,3 +289,38 @@ func errorStatus(t *testing.T, body []byte) int {
 	}
 	return envelope.Error.Status
 }
+
+// TestADataURLIsRefusedAtTheBoundary is the same gate as the unit tests, but
+// against the routes kit actually compiled. Kit's route patterns end `\/?$`,
+// so `/todos/__data.json` matched the `/todos` page and came back 200
+// text/html — a failure that landed inside kit's client rather than here.
+func TestADataURLIsRefusedAtTheBoundary(t *testing.T) {
+	h := newProdHandler(t)
+
+	dist, err := fs.Sub(web.Build, "build")
+	if err != nil {
+		t.Fatalf("opening the embedded build: %v", err)
+	}
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		t.Fatalf("reading the build manifest: %v", err)
+	}
+	document, err := fs.ReadFile(dist, "index.html")
+	if err != nil {
+		t.Fatalf("reading index.html: %v", err)
+	}
+
+	for _, route := range manifest.Routes {
+		page := samplePath(t, route.ID)
+		for _, suffix := range []string{"/__data.json", "/__route.js"} {
+			url := strings.TrimSuffix(page, "/") + suffix
+			rec := get(t, h, url)
+			if rec.Code != http.StatusNotFound {
+				t.Errorf("route %s: GET %s returned %d, want 404", route.ID, url, rec.Code)
+			}
+			if rec.Body.String() == string(document) {
+				t.Errorf("route %s: GET %s returned kit's boot document", route.ID, url)
+			}
+		}
+	}
+}

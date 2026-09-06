@@ -1,6 +1,7 @@
 package skgo
 
 import (
+	"encoding/json"
 	"io"
 	"io/fs"
 	"net/http"
@@ -418,5 +419,108 @@ func TestAConditionalHEADIsAnsweredLikeAConditionalGET(t *testing.T) {
 	resp := do(t, h, http.MethodHead, "/", http.Header{"If-None-Match": {etag}})
 	if resp.StatusCode != http.StatusNotModified {
 		t.Errorf("conditional HEAD got %d, want 304", resp.StatusCode)
+	}
+}
+
+// Kit recognises a data request by its pathname suffix before it routes
+// anything (`has_data_suffix` in `src/pathname.js`, called at the top of
+// `runtime/server/respond.js`), and then branches on `is_data_request` at
+// every rendering decision. skgo did neither: it matched the data URL against
+// the page routes, and because kit's route patterns end `\/?$` a one-segment
+// data URL matches its own page. `/todos/__data.json` came back 200 text/html,
+// and kit's client `JSON.parse`d the boot document.
+//
+// A 200 is the worst of the possible answers, because the failure lands inside
+// kit's client instead of at this boundary.
+
+func TestADataRequestIsNeverAnsweredWithTheDocument(t *testing.T) {
+	h := newTestHandler(t)
+
+	for _, path := range []string{
+		"/about/__data.json",        // one segment: matched its own page route
+		"/__data.json",              // the root route
+		"/items/7/__data.json",      // a bracketed route
+		"/docs/a/b/__data.json",     // swallowed by [...rest]
+		"/about.html__data.json",    // kit's HTML_DATA_SUFFIX form
+		"/no-such-page/__data.json", // no route at all
+	} {
+		t.Run(path, func(t *testing.T) {
+			resp := do(t, h, http.MethodGet, path, nil)
+			if ct := resp.Header.Get("Content-Type"); strings.HasPrefix(ct, "text/html") {
+				t.Errorf("answered with Content-Type %q", ct)
+			}
+			if got := body(t, resp); strings.Contains(got, "<html") || got == testIndexHTML {
+				t.Errorf("answered with the boot document: %q", got)
+			}
+			if resp.StatusCode == http.StatusOK {
+				t.Errorf("answered 200; kit never answers a data request 200 with a page")
+			}
+		})
+	}
+}
+
+// The status is the thing kit's client keys on. `load_data` refuses to parse
+// anything but a 2xx, and its hydration path singles 404 out — "if
+// __data.json returned 404, the route doesn't exist — don't reload or we
+// loop" — so a 404 leaves the client rendering the route itself rather than
+// reloading. Any other status sends it into a full page reload.
+func TestADataRequestIsRefusedWithA404TheClientUnderstands(t *testing.T) {
+	h := newTestHandler(t)
+
+	resp := do(t, h, http.MethodGet, "/about/__data.json", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+	// kit's client spreads the JSON body over `{status}` when the content type
+	// says JSON, so the body has to be an App.Error and nothing else.
+	var appError struct {
+		Status  int    `json:"status"`
+		Message string `json:"message"`
+	}
+	raw := body(t, resp)
+	if err := json.Unmarshal([]byte(raw), &appError); err != nil {
+		t.Fatalf("the body is not JSON, so kit's client cannot read it: %v\n%s", err, raw)
+	}
+	if appError.Status != 404 || appError.Message == "" {
+		t.Errorf("body = %s, want an App.Error naming the 404", raw)
+	}
+	if cc := resp.Header.Get("Cache-Control"); !strings.Contains(cc, "no-store") {
+		t.Errorf("Cache-Control = %q; a data response must not be cached", cc)
+	}
+}
+
+// Kit's other pathname suffix, for `preloadCode` route resolution
+// (`has_resolution_suffix`, `src/pathname.js`). It is a JavaScript module the
+// client imports; the boot document served in its place is a syntax error
+// inside a dynamic import, which is even harder to read than a bad JSON.parse.
+func TestARouteResolutionRequestIsNeverAnsweredWithTheDocument(t *testing.T) {
+	h := newTestHandler(t)
+
+	for _, path := range []string{"/about/__route.js", "/__route.js", "/about.html__route.js"} {
+		resp := do(t, h, http.MethodGet, path, nil)
+		if resp.StatusCode == http.StatusOK {
+			t.Errorf("%s answered 200", path)
+		}
+		if got := body(t, resp); got == testIndexHTML {
+			t.Errorf("%s answered with the boot document", path)
+		}
+	}
+}
+
+// A page whose own name ends in the suffix is not a data request — the suffix
+// is a whole final segment, or an `.html` variant of one. `/my__data.json` is
+// an ordinary path and `/items/[id]` matches it.
+func TestOnlyKitsOwnSuffixCountsAsADataRequest(t *testing.T) {
+	h := newTestHandler(t)
+
+	resp := do(t, h, http.MethodGet, "/items/my__data.json", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("/items/my__data.json: status %d, want 200 — it is a page, not a data request", resp.StatusCode)
+	}
+	if got := body(t, resp); got != testIndexHTML {
+		t.Errorf("/items/my__data.json did not get the boot document")
 	}
 }

@@ -212,6 +212,17 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Kit's two internal pathname suffixes are recognised before anything is
+	// routed, exactly as kit does it at the top of `runtime/server/respond.js`,
+	// because kit's route patterns end `\/?$` and a one-segment data URL
+	// therefore matches its own page route. Left to fall through,
+	// `/todos/__data.json` was answered 200 with the boot document and kit's
+	// client parsed HTML as JSON.
+	if suffix := kitSuffix(urlPath); suffix != "" {
+		h.refuseInternalRequest(w, r, suffix)
+		return
+	}
+
 	rel := strings.TrimPrefix(strings.TrimPrefix(urlPath, h.base), "/")
 	if rel != "" {
 		if meta, found := h.assets[rel]; found {
@@ -236,6 +247,65 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.serveDocument(w, r, http.StatusNotFound)
+}
+
+// Kit's internal pathname suffixes, from `src/pathname.js`. `__data.json` is
+// the server-load endpoint of a page; `__route.js` is the module `preloadCode`
+// imports to resolve a route. Each has an `.html` variant, for a page whose
+// own URL ends in `.html`.
+const (
+	dataSuffix      = "/__data.json"
+	htmlDataSuffix  = ".html__data.json"
+	routeSuffix     = "/__route.js"
+	htmlRouteSuffix = ".html__route.js"
+)
+
+// kitSuffix reports which of kit's internal suffixes a path carries, or "".
+// The suffix is a whole final segment or the `.html` form of one, so an
+// ordinary page at `/items/my__data.json` is not a data request.
+func kitSuffix(urlPath string) string {
+	for _, suffix := range []string{dataSuffix, htmlDataSuffix, routeSuffix, htmlRouteSuffix} {
+		if strings.HasSuffix(urlPath, suffix) {
+			return suffix
+		}
+	}
+	return ""
+}
+
+// refuseInternalRequest answers a `__data.json` or `__route.js` request.
+//
+// skgo has no server loads: every route it serves is a page whose data comes
+// from remote functions, which the client fetches from `/_app/remote/...` and
+// never from a data URL. Kit's own answer for a route with no page data to
+// give is a 404 (`runtime/server/data/index.js`, the `!route.page` branch),
+// and 404 is the one status kit's client is written to survive here — its
+// hydration path singles it out ("if __data.json returned 404, the route
+// doesn't exist — don't reload or we loop") and carries on rendering the route
+// client-side. Any other status sends it into a full page reload; a 200 with
+// the wrong body sends it into JSON.parse.
+//
+// The body is an App.Error rather than kit's empty one because kit's client
+// spreads a JSON body over `{status}` when the content type says JSON, so this
+// reaches the client as the same `{status: 404, message: 'Not Found'}` an
+// empty body produces — and says something to whoever curls it.
+func (h *staticHandler) refuseInternalRequest(w http.ResponseWriter, r *http.Request, suffix string) {
+	header := w.Header()
+	header.Set("Cache-Control", "private, no-store")
+
+	if suffix == routeSuffix || suffix == htmlRouteSuffix {
+		// A route-resolution response is a JavaScript module. There is nothing
+		// truthful to serve, and a body here would be imported and executed.
+		header.Set("Content-Type", "text/javascript; charset=utf-8")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	header.Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	if r.Method == http.MethodHead {
+		return
+	}
+	writeJSON(w, map[string]any{"status": 404, "message": "Not Found"})
 }
 
 func (h *staticHandler) matchesRoute(urlPath string) bool {
