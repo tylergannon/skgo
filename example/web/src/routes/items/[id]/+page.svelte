@@ -11,7 +11,7 @@
 	{#if params.id}
 		{@const item = await getItem(params.id)}
 		<p data-testid="item-name">{item.name}</p>
-		<p data-testid="item-colocated">{item.colocated}</p>
+		<p data-testid="colocated">{item.colocated}</p>
 	{/if}
 	{#snippet pending()}
 		<p data-testid="item-pending">loading…</p>

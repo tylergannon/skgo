@@ -39,5 +39,7 @@ function linkName(path: string): string {
 	if (path === '/') return 'Home';
 	if (path === '/about') return 'About';
 	if (path === '/items/42') return 'Item 42';
+	if (path === '/pricing') return 'Pricing';
+	if (path === '/docs/guide/getting-started') return 'Docs';
 	throw new Error(`no nav link for ${path}`);
 }

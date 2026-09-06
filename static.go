@@ -112,7 +112,7 @@ func NewStaticHandler(build fs.FS) (http.Handler, error) {
 	}
 
 	for _, route := range manifest.Routes {
-		re, err := regexp.Compile(route.Pattern)
+		re, err := regexp.Compile(kitPattern(route.Pattern))
 		if err != nil {
 			return nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
 		}
@@ -124,6 +124,39 @@ func NewStaticHandler(build fs.FS) (http.Handler, error) {
 	}
 
 	return h, nil
+}
+
+// kitPattern rewrites the source of kit's own route regular expression into one
+// Go's regexp accepts.
+//
+// Kit builds route patterns in JavaScript, where the empty negated class `[^]`
+// means "any character, newline included". It uses it for both forms of the
+// rest parameter — `(?:/([^]*))?` for a whole `[...rest]` segment and `([^]*?)`
+// for one inside a segment (`packages/kit/src/utils/routing.js`,
+// `parse_route_id`). Go's regexp rejects `[^]` outright, so `/docs/[...rest]`
+// would stop the server from starting at all.
+//
+// Nothing else needs translating: `(?:…)`, lazy quantifiers and escaped
+// literals mean the same in both engines, and kit escapes `[`, `^` and `]`
+// wherever they appear in a literal route segment (`escape_for_regexp` in
+// `utils/regex.js`), so an unescaped `[^]` is always kit's rest parameter and
+// never part of a path.
+func kitPattern(src string) string {
+	var b strings.Builder
+	for i := 0; i < len(src); i++ {
+		if src[i] == '\\' && i+1 < len(src) {
+			b.WriteString(src[i : i+2])
+			i++
+			continue
+		}
+		if strings.HasPrefix(src[i:], "[^]") {
+			b.WriteString(`[\s\S]`)
+			i += 2
+			continue
+		}
+		b.WriteByte(src[i])
+	}
+	return b.String()
 }
 
 // indexAssets hashes every file under client/ once, so that request handling

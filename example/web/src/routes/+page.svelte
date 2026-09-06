@@ -9,7 +9,7 @@
 <svelte:boundary>
 	{@const site = await getSite()}
 	<p data-testid="site-name">{site.name}</p>
-	<p data-testid="site-colocated">{site.colocated}</p>
+	<p data-testid="colocated">{site.colocated}</p>
 	{#snippet pending()}
 		<p data-testid="site-pending">loading…</p>
 	{/snippet}

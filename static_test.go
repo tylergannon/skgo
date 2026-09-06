@@ -19,7 +19,8 @@ const testManifest = `{
 	"routes": [
 		{ "id": "/", "pattern": "^\\/$" },
 		{ "id": "/about", "pattern": "^\\/about\\/?$" },
-		{ "id": "/items/[id]", "pattern": "^\\/items\\/([^/]+?)\\/?$" }
+		{ "id": "/items/[id]", "pattern": "^\\/items\\/([^/]+?)\\/?$" },
+		{ "id": "/docs/[...rest]", "pattern": "^\\/docs(?:\\/([^]*))?\\/?$" }
 	]
 }`
 
@@ -285,5 +286,40 @@ func TestStaticHandlerSubFSFromEmbedRoot(t *testing.T) {
 	resp := do(t, h, http.MethodGet, "/items/1", nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+}
+
+// TestStaticHandlerServesARestParameterRoute: kit writes its route patterns as
+// JavaScript regular expressions, and a `[...rest]` segment comes out as
+// `(?:/([^]*))?`. Go's regexp cannot compile `[^]` at all, so before this was
+// translated an app with one rest route could not start.
+func TestStaticHandlerServesARestParameterRoute(t *testing.T) {
+	h := newTestHandler(t)
+	for _, path := range []string{"/docs", "/docs/guide", "/docs/guide/getting-started"} {
+		resp := do(t, h, http.MethodGet, path, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("GET %s = %d, want 200 with the boot document", path, resp.StatusCode)
+		}
+		if got := body(t, resp); got != testIndexHTML {
+			t.Fatalf("GET %s did not serve the boot document", path)
+		}
+	}
+}
+
+// TestKitPatternLeavesEverythingElseAlone: the translation is one construct,
+// not a rewrite of kit's regular expressions.
+func TestKitPatternLeavesEverythingElseAlone(t *testing.T) {
+	for src, want := range map[string]string{
+		`^\/$`:                     `^\/$`,
+		`^\/items\/([^/]+?)\/?$`:   `^\/items\/([^/]+?)\/?$`,
+		`^\/docs(?:\/([^]*))?\/?$`: `^\/docs(?:\/([\s\S]*))?\/?$`,
+		`^\/x\/y([^]*?)z\/?$`:      `^\/x\/y([\s\S]*?)z\/?$`,
+		// A literal `[`, `^` or `]` in a route segment arrives escaped, and an
+		// escaped bracket must not be mistaken for the rest construct.
+		`^\/a\[\^\]b\/?$`: `^\/a\[\^\]b\/?$`,
+	} {
+		if got := kitPattern(src); got != want {
+			t.Fatalf("kitPattern(%q) = %q, want %q", src, got, want)
+		}
 	}
 }
