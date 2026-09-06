@@ -43,6 +43,16 @@ runners, adjudication records, proof directories, or evidence manifests. When
 asked to build something, build that thing. Verification is ordinary Go tests
 and running the real program.
 
+**Map the feature before proposing how to mirror it.** Never raise a design
+question, recommendation, or option list about a SvelteKit feature skgo is
+mirroring until kit's own implementation of that feature is mapped from pinned
+source: its API shape, its constraints, what it forbids and why, and how it
+differs across the surfaces it spans. Kit has usually already answered the
+question, and its answer is usually more specific than the one being invented.
+An option list built on an unmapped feature wastes a decision and risks
+divergence — the brief promises Go and kit code coexist in one app, so a
+mirrored feature must obey kit's rules, not merely resemble its ergonomics.
+
 **Don't narrate.** No status documents, no progress reports, no summaries of
 work already visible in the diff. The worklog exists for actionable
 intelligence — corrections, traps, things that will change a future decision —
