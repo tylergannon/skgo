@@ -23,13 +23,18 @@ Feature: Remote functions written in Go
     Given I open "/todos/t2"
     Then the todo detail shows "serve remote functions"
 
-  Scenario: The live count is the list, not the total
+  Scenario: Commands drive the live count, one todo at a time
     Given I open "/todos"
     When the todo list has loaded
-    Then the live count is the number of todos I can see
-    When I add the todo "watch the live count"
-    Then I see the todo "watch the live count"
-    And the live count is the number of todos I can see
+    And I note the live count as "before"
+    And I add the todo "the first of two"
+    Then the live count is 1 more than "before"
+    And the todo count still matches the todos on the page
+    And every part of the page loaded
+    When I add the todo "the second of two"
+    Then the live count is 2 more than "before"
+    And the todo count still matches the todos on the page
+    And every part of the page loaded
 
   Scenario: Renaming a todo updates the open page without a second request
     Given I open "/todos"

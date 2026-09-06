@@ -34,10 +34,15 @@ type Store struct {
 	todos    []Todo
 	next     int
 	sessions map[string]string
-	// subs maps a live-count subscriber to the visibility it subscribed with,
-	// because the number a visitor may be told is not the same number for
-	// everyone.
-	subs map[chan int]bool
+	subs     map[*subscriber]struct{}
+}
+
+// subscriber is one open Watch. It remembers whether its visitor is signed in,
+// because the count it is sent has to be the count that visitor may see — a
+// subscriber is never told about a todo it could not have listed.
+type subscriber struct {
+	ch       chan int
+	signedIn bool
 }
 
 // Default is the store the example app serves.
@@ -52,7 +57,7 @@ func NewStore() *Store {
 		},
 		next:     4,
 		sessions: map[string]string{},
-		subs:     map[chan int]bool{},
+		subs:     map[*subscriber]struct{}{},
 	}
 }
 
@@ -63,7 +68,7 @@ func (s *Store) Todos(signedIn bool) []Todo {
 	defer s.mu.Unlock()
 	out := make([]Todo, 0, len(s.todos))
 	for _, todo := range s.todos {
-		if todo.Private && !signedIn {
+		if !visible(todo, signedIn) {
 			continue
 		}
 		out = append(out, todo)
@@ -71,12 +76,29 @@ func (s *Store) Todos(signedIn bool) []Todo {
 	return out
 }
 
+// visible is the one rule about who may see what. Todos, Todo and Count all
+// apply it, so a count can never disagree with the list it counts.
+func visible(todo Todo, signedIn bool) bool {
+	return signedIn || !todo.Private
+}
+
+// count reports how many todos a visitor may see. Callers hold s.mu.
+func (s *Store) count(signedIn bool) int {
+	n := 0
+	for _, todo := range s.todos {
+		if visible(todo, signedIn) {
+			n++
+		}
+	}
+	return n
+}
+
 // Todo looks one up, applying the same visibility rule.
 func (s *Store) Todo(id string, signedIn bool) (Todo, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, todo := range s.todos {
-		if todo.ID == id && (signedIn || !todo.Private) {
+		if todo.ID == id && visible(todo, signedIn) {
 			return todo, true
 		}
 	}
@@ -91,24 +113,12 @@ func (s *Store) Add(text string) Todo {
 	s.todos = append(s.todos, todo)
 	// Notify while still holding the lock so subscribers can never observe
 	// counts out of order. The channels are buffered and latest-wins, so this
-	// never blocks.
-	for ch, signedIn := range s.subs {
-		latest(ch, s.countLocked(signedIn))
+	// never blocks. Each subscriber is sent its own visitor's count.
+	for sub := range s.subs {
+		latest(sub.ch, s.count(sub.signedIn))
 	}
 	s.mu.Unlock()
 	return todo
-}
-
-// countLocked is how many todos a visitor may see. The caller holds s.mu.
-func (s *Store) countLocked(signedIn bool) int {
-	n := 0
-	for _, todo := range s.todos {
-		if todo.Private && !signedIn {
-			continue
-		}
-		n++
-	}
-	return n
 }
 
 // Rename changes a todo's text in place.
@@ -124,21 +134,21 @@ func (s *Store) Rename(id, text string) (Todo, bool) {
 	return Todo{}, false
 }
 
-// Watch subscribes to the number of todos this visitor may see. Call the
-// returned function to unsubscribe.
+// Watch subscribes to the number of todos this visitor may see, now and after
+// every change. Call the returned function to unsubscribe.
 //
-// The count obeys the same visibility rule as Todos. A total would tell a
-// signed-out visitor that a todo they cannot read exists, which is the whole
-// thing Private is for.
+// The visitor is fixed for the life of the subscription: the caller decides who
+// is watching when the stream opens, and a subscription that outlives a change
+// of identity has to be replaced rather than updated.
 func (s *Store) Watch(signedIn bool) (<-chan int, func(), int) {
 	s.mu.Lock()
-	ch := make(chan int, 1)
-	s.subs[ch] = signedIn
-	count := s.countLocked(signedIn)
+	sub := &subscriber{ch: make(chan int, 1), signedIn: signedIn}
+	s.subs[sub] = struct{}{}
+	count := s.count(signedIn)
 	s.mu.Unlock()
-	return ch, func() {
+	return sub.ch, func() {
 		s.mu.Lock()
-		delete(s.subs, ch)
+		delete(s.subs, sub)
 		s.mu.Unlock()
 	}, count
 }

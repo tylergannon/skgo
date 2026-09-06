@@ -14,12 +14,11 @@
 		try {
 			// The session cookie the command sets is already in force by the
 			// time these queries run: they are resolved on the same request.
-			await signIn(name).updates(whoami(), getTodos());
-			// A live query is not a query: `updates` cannot carry it, and kit
-			// caches it by (id, argument), so the open stream survives the new
-			// session and keeps reporting the old visitor's count. `reconnect`
-			// is the handle kit gives you for exactly this.
-			await watchCount().reconnect();
+			// `watchCount` is a live query, so it cannot be refreshed — its
+			// event is the request that opened the stream. Naming it here
+			// reconnects it in the same flight, which is kit's answer to a
+			// command that changes a cookie a live query reads.
+			await signIn(name).updates(whoami(), getTodos(), watchCount);
 			name = '';
 		} finally {
 			busy = false;
@@ -29,8 +28,7 @@
 	async function leave() {
 		busy = true;
 		try {
-			await signOut().updates(whoami(), getTodos());
-			await watchCount().reconnect();
+			await signOut().updates(whoami(), getTodos(), watchCount);
 		} finally {
 			busy = false;
 		}

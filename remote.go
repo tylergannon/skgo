@@ -507,19 +507,37 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 	// query refreshed by a command that just signed the visitor in reads the
 	// new cookie — exactly as it does in kit, where both share one request.
 	data := map[string]any{"_": value}
-	if q := rs.resolveRefreshes(withEvent(r.Context(), ev.immutable()), body.Refreshes); len(q) > 0 {
+	q, l := rs.resolveRefreshes(withEvent(r.Context(), ev.immutable()), body.Refreshes)
+	if len(q) > 0 {
 		data["q"] = q
-		// `r` tells the client these single-flight updates replace the
-		// invalidateAll it would otherwise run.
+	}
+	if len(l) > 0 {
+		data["l"] = l
+	}
+	if len(q) > 0 || len(l) > 0 {
+		// `r` says the server performed explicit single-flight updates. Kit's
+		// server sets it for any refresh, so skgo does too, but it is inert on
+		// a command: only `form.svelte.js` reads it, to skip the `refreshAll`
+		// an unenhanced submission would otherwise run. `command.svelte.js`
+		// never invalidates anything — a kit command updates exactly what the
+		// server put in `q` and `l` and nothing else.
 		data["r"] = true
 	}
 	rs.writeResult(w, ev, data)
 }
 
-// resolveRefreshes runs every refresh key that names a registered query.
-// Unrecognised keys are skipped in silence, as kit does.
-func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) map[string]any {
-	q := map[string]any{}
+// resolveRefreshes runs every refresh key that names a registered query or live
+// query. Unrecognised keys are skipped in silence, as kit does.
+//
+// It returns two maps because kit's client reads them differently: a `q` entry
+// replaces a query's value, while an `l` entry seeds a live query's value and
+// then tears the stream down and reopens it
+// (`runtime/client/remote-functions/shared.svelte.js`). Reconnecting is the
+// only way a live query can pick up a cookie the command just wrote — kit's
+// event is a snapshot of the request that opened the stream and never
+// refreshes — and it is what kit documents for exactly that case.
+func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) (q, l map[string]any) {
+	q, l = map[string]any{}, map[string]any{}
 	for _, key := range keys {
 		// The payload can itself contain no slash, but the id always holds
 		// exactly one, so the split is on the LAST slash.
@@ -530,21 +548,58 @@ func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) map[stri
 		id, payload := key[:i], key[i+1:]
 
 		fn, ok := rs.fns[id]
-		if !ok || fn.kind != kindQuery {
+		if !ok || fn.kind == kindCommand {
 			continue
 		}
 		arg, present, err := remotearg.ParsePayload(payload)
 		if err != nil {
 			continue
 		}
-		value, err := fn.call(ctx, arg, present)
+
+		into, result := q, any(nil)
+		if fn.kind == kindLive {
+			into = l
+			result, err = fn.firstValue(ctx, arg, present)
+		} else {
+			result, err = fn.call(ctx, arg, present)
+		}
 		if err != nil {
-			q[key] = map[string]any{"e": errorNode(asHTTPError(err))}
+			into[key] = map[string]any{"e": errorNode(asHTTPError(err))}
 			continue
 		}
-		q[key] = map[string]any{"v": value}
+		into[key] = map[string]any{"v": result}
 	}
-	return q
+	return q, l
+}
+
+// errFirstValueTaken stops a live producer once its first value is in hand. It
+// never reaches the caller.
+var errFirstValueTaken = errors.New("skgo: first value taken")
+
+// firstValue runs a live query far enough to yield once and then stops it,
+// mirroring kit's `get_first_value`, which consumes a single value from the
+// generator and closes the iterator. The producer sees a cancelled context, so
+// a `select` on ctx.Done() unwinds exactly as it does on a client disconnect.
+func (r *Remote) firstValue(ctx context.Context, arg any, present bool) (any, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var (
+		value any
+		got   bool
+	)
+	err := r.live(ctx, arg, present, func(v any) error {
+		value, got = v, true
+		cancel()
+		return errFirstValueTaken
+	})
+	if got {
+		return value, nil
+	}
+	if err != nil && !errors.Is(err, errFirstValueTaken) {
+		return nil, err
+	}
+	return nil, Errorf(500, "skgo: live query %s produced no value", r.id)
 }
 
 // rawPayload returns the payload parameter exactly as sent. The key the client

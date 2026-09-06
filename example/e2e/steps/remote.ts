@@ -1,4 +1,5 @@
 import { createBdd } from 'playwright-bdd';
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
@@ -13,6 +14,10 @@ When('the todo list has loaded', async ({ page }) => {
 
 When('I note the remote request count', async ({ remotes }) => {
 	remotes.mark();
+});
+
+When('I note the live count as {string}', async ({ page, notes }, label: string) => {
+	notes.set(label, await liveCount(page));
 });
 
 When('I add the todo {string}', async ({ page }, text: string) => {
@@ -68,11 +73,70 @@ Then(
 	}
 );
 
-Then('the live count is the number of todos I can see', async ({ page }) => {
-	// The count is the one number on this page a visitor cannot check against
-	// anything else, which is exactly why it was the one that leaked: it used
-	// to report the total, telling a signed-out visitor a todo they may not
-	// read exists. Held to the list, it cannot say that again.
-	const listed = await page.getByTestId('todo').count();
-	await expect(page.getByTestId('count')).toHaveText(String(listed), { timeout: 15_000 });
+Then(
+	'the live count is {int} more than {string}',
+	async ({ page, notes }, by: number, label: string) => {
+		await expectLiveCount(page, noted(notes, label) + by);
+	}
+);
+
+Then('the live count is the same as {string}', async ({ page, notes }, label: string) => {
+	await expectLiveCount(page, noted(notes, label));
 });
+
+// The number on screen is the live query's answer; the list beside it is the
+// `getTodos` query's answer. They are two different endpoints, so asserting one
+// against the other is an assertion about two real numbers, and it is the thing
+// a signed-out visitor can check with their own eyes.
+Then('the todo count is the number of todos on the page', async ({ page }) => {
+	await countMatchesList(page, 'todo-count');
+});
+
+// The same check after a command has driven the live query, kept under its own
+// name so both moments leave a screenshot behind.
+Then('the todo count still matches the todos on the page', async ({ page }) => {
+	await countMatchesList(page, 'live-count-after-command');
+});
+
+async function countMatchesList(page: Page, shot: string): Promise<void> {
+	const path = `../../ephemeral/screenshots/${shot}-${await audience(page)}-${
+		process.env.EXPECTED_MODE ?? 'unknown'
+	}.png`;
+	try {
+		// Zero against zero is not agreement, it is two broken components
+		// agreeing about nothing. Both halves have to be on screen first.
+		await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);
+		await expect(page.getByTestId('todo').first()).toBeVisible({ timeout: 15_000 });
+		await expect(async () => {
+			const listed = await page.getByTestId('todo').count();
+			const counted = await liveCount(page);
+			expect(counted, `the counter says ${counted}; the page lists ${listed} todos`).toBe(listed);
+		}).toPass({ timeout: 15_000 });
+	} finally {
+		await page.screenshot({ path, fullPage: true });
+	}
+}
+
+async function expectLiveCount(page: Page, expected: number): Promise<void> {
+	await expect(page.getByTestId('count')).toHaveText(String(expected), { timeout: 15_000 });
+}
+
+function noted(notes: Map<string, number>, label: string): number {
+	const value = notes.get(label);
+	expect(value, `the live count was never noted as ${JSON.stringify(label)}`).not.toBeUndefined();
+	return value!;
+}
+
+/** "signed-out", or "signed-in-<user>" — used to name the screenshot. */
+async function audience(page: Page): Promise<string> {
+	const session = (await page.getByTestId('session').innerText()).trim();
+	const user = session.match(/^Signed in as (.+)$/);
+	return user ? `signed-in-${user[1]}` : 'signed-out';
+}
+
+async function liveCount(page: Page): Promise<number> {
+	const text = await page.getByTestId('count').innerText();
+	const value = Number(text.trim());
+	expect(Number.isFinite(value), `live count was ${JSON.stringify(text)}`).toBe(true);
+	return value;
+}
