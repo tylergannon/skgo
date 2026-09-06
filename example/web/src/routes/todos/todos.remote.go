@@ -68,6 +68,35 @@ func renameTodo(ctx context.Context, arg Rename) (businesslogic.Todo, error) {
 	return todo, nil
 }
 
+// Retitle is the argument of the retitleTodo command.
+type Retitle struct {
+	// ID names the todo to change.
+	ID string `json:"id"`
+	// Text is its new text.
+	Text string `json:"text"`
+	// RefreshID names the getTodo the command will refresh afterwards. A real
+	// app would not take this from the caller — it would refresh what it knows
+	// it changed — but naming it here is what lets the page ask for a refresh
+	// of a todo other than the one it just wrote, which is the difference
+	// between "the refresh worked" and "the refresh went where its argument
+	// said".
+	RefreshID string `json:"refreshId"`
+}
+
+// retitleTodo changes one todo's text and refreshes a getTodo from Go.
+//
+// The page that calls this passes no `updates(...)`: the browser never says
+// what it wants refreshed. The refreshed value on the response is entirely the
+// server's doing, and it names the Go function and the argument rather than a
+// string — getTodo's own parameter type is what RefreshID has to satisfy.
+func retitleTodo(ctx context.Context, arg Retitle) (businesslogic.Todo, error) {
+	todo, ok := businesslogic.Default.Rename(arg.ID, arg.Text, signedIn(ctx))
+	if !ok {
+		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", arg.ID)
+	}
+	return todo, skgo.Refresh(ctx, getTodo, arg.RefreshID)
+}
+
 // watchCount pushes the number of todos this visitor may see, now and after
 // every change, until the client disconnects.
 //
@@ -104,5 +133,6 @@ var (
 	_ = skgo.Query(getTodo)
 	_ = skgo.Command(addTodo)
 	_ = skgo.Command(renameTodo)
+	_ = skgo.Command(retitleTodo)
 	_ = skgo.LiveQuery(watchCount)
 )

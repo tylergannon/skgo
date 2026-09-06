@@ -2,8 +2,8 @@ package businesslogic
 
 import "testing"
 
-// The store seeds two public todos and one private one, so a signed-out
-// visitor may see two and a signed-in visitor three.
+// The store seeds four public todos and one private one, so a signed-out
+// visitor may see four and a signed-in visitor five.
 
 func TestTodosAndCountAgree(t *testing.T) {
 	s := NewStore()
@@ -18,11 +18,11 @@ func TestTodosAndCountAgree(t *testing.T) {
 		}
 	}
 
-	if got := len(s.Todos(false)); got != 2 {
-		t.Errorf("a signed-out visitor sees %d todos, want 2", got)
+	if got := len(s.Todos(false)); got != 4 {
+		t.Errorf("a signed-out visitor sees %d todos, want 4", got)
 	}
-	if got := len(s.Todos(true)); got != 3 {
-		t.Errorf("a signed-in visitor sees %d todos, want 3", got)
+	if got := len(s.Todos(true)); got != 5 {
+		t.Errorf("a signed-in visitor sees %d todos, want 5", got)
 	}
 }
 
@@ -34,22 +34,22 @@ func TestEachWatcherIsToldItsOwnCount(t *testing.T) {
 	in, stopIn, startIn := s.Watch(true)
 	defer stopIn()
 
-	if startOut != 2 || startIn != 3 {
-		t.Fatalf("opening counts = %d signed out, %d signed in; want 2 and 3", startOut, startIn)
+	if startOut != 4 || startIn != 5 {
+		t.Fatalf("opening counts = %d signed out, %d signed in; want 4 and 5", startOut, startIn)
 	}
 
 	// One added todo is public, so both watchers gain exactly one — and
 	// neither is told about the other's rows.
 	s.Add("a public todo")
 
-	if got := <-out; got != 3 {
-		t.Errorf("the signed-out watcher was sent %d, want 3", got)
+	if got := <-out; got != 5 {
+		t.Errorf("the signed-out watcher was sent %d, want 5", got)
 	}
-	if got := <-in; got != 4 {
-		t.Errorf("the signed-in watcher was sent %d, want 4", got)
+	if got := <-in; got != 6 {
+		t.Errorf("the signed-in watcher was sent %d, want 6", got)
 	}
-	if got := len(s.Todos(false)); got != 3 {
-		t.Errorf("a signed-out visitor now lists %d todos, want 3", got)
+	if got := len(s.Todos(false)); got != 5 {
+		t.Errorf("a signed-out visitor now lists %d todos, want 5", got)
 	}
 }
 

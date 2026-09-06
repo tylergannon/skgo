@@ -27,3 +27,12 @@ func (Rename) Schema() json.RawMessage {
 	}
 	return data
 }
+
+func (Retitle) Schema() json.RawMessage {
+	const fileName = "jsonschema/Retitle.json"
+	data, err := __gen_jsonschema_fs.ReadFile(fileName)
+	if err != nil {
+		__gen_jsonschema_panic(fileName, err)
+	}
+	return data
+}

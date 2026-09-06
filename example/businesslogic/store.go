@@ -54,8 +54,15 @@ func NewStore() *Store {
 			{ID: "t1", Text: "write the adapter"},
 			{ID: "t2", Text: "serve remote functions"},
 			{ID: "t3", Text: "ship the private roadmap", Private: true},
+			// The pair page shows these two side by side, so a command can
+			// refresh one of them and be seen to leave the other alone. They
+			// are separate rows from t1 and t2 because that page rewrites
+			// them, and a fixture two pages disagree about is a scenario that
+			// passes or fails on the order the suite happened to run in.
+			{ID: "p1", Text: "the left of the pair"},
+			{ID: "p2", Text: "the right of the pair"},
 		},
-		next:     4,
+		next:     6,
 		sessions: map[string]string{},
 		subs:     map[*subscriber]struct{}{},
 	}
