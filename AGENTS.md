@@ -16,21 +16,28 @@ the JavaScript kit requires is a generated stub that throws, so any real
 response proves Go answered. Running remote functions or server routes in
 TypeScript is not a supported mode.
 
-**CSR only, to start.** The app runs with `ssr = false`; the document is kit's
-own SPA fallback; kit's server bundle is built but never runs, and no JavaScript
-executes in production. If server-side rendering arrives, the intent is a
-runtime embedded in the Go binary — one process, one binary — not a supervised
-Node sidecar. That is unproven and conditional on the CSR base case proving out:
-do not design for it, plan around it, or describe the system as having it.
+**Pages are rendered in the Go process.** A page document leaves Go with its
+markup already in it, rendered by SvelteKit's own renderer inside an embedded
+JavaScript engine — one process, one binary, no Node at request time and no
+sidecar. A page whose branch sets `ssr = false` still gets kit's SPA fallback,
+and one that sets `csr = false` gets no script at all.
+
+**No application I/O executes in JavaScript.** That is the rule the engine has
+to obey, and it is narrower than "no JavaScript runs": the engine executes kit's
+root component, Svelte's renderer and the app's components, and nothing in it
+reads a file, opens a socket or sets a timer. Every remote function's body is
+still the generated stub that throws; the only path by which a value reaches the
+engine is a call back out to Go, which is what makes a rendered value proof that
+Go answered.
 
 To a Go developer: a real frontend framework for a Go monolith. To a Svelte
 developer: the app is still SvelteKit.
 
 One binary. One build gesture. Node is a build-time dependency only.
 
-We never reimplement kit, never write or maintain a JavaScript engine — should
-SSR ever need one, embedding an existing engine is a different thing — and never
-claim anything that hasn't been demonstrated running.
+We never reimplement kit, never write or maintain a JavaScript engine — the one
+SSR runs on is embedded, not ours — and never claim anything that hasn't been
+demonstrated running.
 
 ## Read this first
 
