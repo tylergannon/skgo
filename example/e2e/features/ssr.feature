@@ -68,6 +68,70 @@ Feature: Pages arrive rendered
     Then the document carried no rendered page
     And the site is named "skgo"
 
+  Rule: Errors and redirects are the document's
+
+    A page that cannot render normally still arrives rendered, with the status
+    kit would give it. Which `+error.svelte` answers, and how many layouts
+    survive with it, are kit's decisions and not skgo's: kit walks outward from
+    the node that failed to the nearest error page declared above it.
+
+    The fixtures are one per failure and have one source each. The load in
+    src/routes/error/expected/page.server.go refuses with 418 and the words
+    "This page is a teapot". The one in
+    src/routes/error/unexpected/page.server.go fails with an ordinary Go error
+    whose text names a database password. The load in
+    src/routes/account/statement/page.server.go refuses with 402 and "Your
+    account is in arrears", under a section that declares its own
+    `+error.svelte`. The layout load in src/routes/account/layout.server.go
+    redirects a signed-out visitor to "/", and the query in
+    src/routes/error/redirect/redirect.remote.go redirects to "/about" instead
+    of answering.
+
+    Scenario: A load that fails returns the error page with the status it threw
+      Given I open "/error/expected"
+      Then the document was answered with 418
+      And the document already said the error page shows "Error 418" and "This page is a teapot"
+      And the document already carried the root layout
+      And the error message is "This page is a teapot"
+      And the browser never asked for the page's data
+
+    Scenario: A load that fails unexpectedly is a 500 that says nothing about why
+      Given I open "/error/unexpected"
+      Then the document was answered with 500
+      And the document already said the error page shows "Error 500" and "Internal Error"
+      And the document never mentions "hunter2"
+      And the document never mentions "postgres://"
+
+    Scenario: An unknown route returns the error page with 404
+      Given I open "/no-such-page"
+      Then the document was answered with 404
+      And the document already said the error page shows "Error 404" and "Not Found"
+      And the document already carried the root layout
+      And the browser never asked for the page's data
+
+    Scenario: An expected error in a nested page renders inside its layout
+      Given I have signed in as "ada"
+      When I visit "/account/statement"
+      Then the document was answered with 402
+      And the document already said "Account of ada"
+      And the document already said the error page shows "Account error 402" and "Your account is in arrears"
+      And the account layout greets "ada"
+      And the browser never asked for the page's data
+
+    Scenario: A redirect thrown from a load answers with a 3xx and no body
+      Given nobody has signed in
+      When I visit "/account"
+      Then I land on "/"
+      And I see "Home"
+      When I ask for "/account" without following redirects
+      Then it answered 307 to "/" with no body
+
+    Scenario: A redirect thrown while the page renders answers the same way
+      When I visit "/error/redirect"
+      Then I land on "/about"
+      When I ask for "/error/redirect" without following redirects
+      Then it answered 307 to "/about" with no body
+
   Rule: The engine is Go's
 
     The renderer is a pool of engines inside the Go binary. Nothing in it reads a
@@ -85,3 +149,24 @@ Feature: Pages arrive rendered
       Then the document already said "src/routes/site.remote.go"
       And the document never mentions "skgo: implemented in Go"
       And nothing on the page failed to load
+
+    Scenario: A render that throws yields a Go error and a static error page, never a blank
+      The root layout is the one node no `+error.svelte` can guard, so a throw
+      there takes the render down and takes the retry down with it.
+      src/routes/+layout.svelte throws for /error/render and nowhere else.
+
+      Given I open "/error/render"
+      Then the document was answered with 500
+      And the document is kit's static error page saying 500 and "Internal Error"
+
+    Scenario: A command called during render is refused
+      src/routes/error/command/+page.svelte awaits a command in its markup.
+      Kit refuses a command while a document is being rendered, because a
+      document is produced on every navigation and the mutation would run
+      again on every reload.
+
+      Given I open "/error/command"
+      Then the document was answered with 500
+      And the document already said the error page shows "Error 500" and "Internal Error"
+      And the document never mentions "Cannot call a command"
+      And the tally is nowhere on the page

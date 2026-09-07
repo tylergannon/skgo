@@ -135,6 +135,17 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 			if rec.Code != want.status {
 				t.Errorf("route %s: GET %s returned %d, want %d", route.ID, path, rec.Code, want.status)
 			}
+			if want.location != "" {
+				// A redirect has no document at all: a Location and nothing
+				// else, which is kit's `redirect_response`.
+				if got := rec.Header().Get("Location"); got != want.location {
+					t.Errorf("route %s: GET %s sent Location %q, want %q", route.ID, path, got, want.location)
+				}
+				if body != "" {
+					t.Errorf("route %s: GET %s answered a redirect with %d bytes of body", route.ID, path, len(body))
+				}
+				continue
+			}
 			if body == string(shell) {
 				t.Errorf("route %s: GET %s returned kit's shell rather than a rendered error document", route.ID, path)
 			}
@@ -232,6 +243,9 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 // exactly one source in the app.
 var deliberateFailures = map[string]struct {
 	status int
+	// location, when set, is where a bare 3xx sends the visitor. There is no
+	// document to check in that case.
+	location string
 	// says is text the document itself must carry.
 	says string
 	// inside is markup from the layout the error page must render within.
@@ -262,6 +276,9 @@ var deliberateFailures = map[string]struct {
 		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
 		never: []string{"Cannot call a command"},
 	},
+	// A query that redirects while the page renders. Kit turns that into a
+	// redirect of the whole document, not into an error inside it.
+	"/error/redirect": {status: 307, location: "/about"},
 	// A throw in the root layout, which no error page can guard. Both the
 	// render and the retry through respond_with_error fail, and kit's static
 	// error.html is what is left.

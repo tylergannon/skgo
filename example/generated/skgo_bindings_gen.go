@@ -20,9 +20,10 @@ import (
 	skgo9 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5"
 	skgo10 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za"
 	skgo11 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle"
-	skgo12 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa"
-	skgo13 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
-	skgo15 "github.com/tylergannon/skgo/example/web/src/lib"
+	skgo12 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u"
+	skgo13 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa"
+	skgo14 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
+	skgo16 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
 // Remotes returns every remote function declared in the app, ready to hand
@@ -43,7 +44,8 @@ func Remotes() []*skgo.Remote {
 	out = append(out, skgo11.SkgoRemotes()...)
 	out = append(out, skgo12.SkgoRemotes()...)
 	out = append(out, skgo13.SkgoRemotes()...)
-	out = append(out, skgo15.SkgoRemotes()...)
+	out = append(out, skgo14.SkgoRemotes()...)
+	out = append(out, skgo16.SkgoRemotes()...)
 	return out
 }
 
@@ -65,7 +67,8 @@ func Loads() []*skgo.ServerLoad {
 	out = append(out, skgo11.SkgoLoads()...)
 	out = append(out, skgo12.SkgoLoads()...)
 	out = append(out, skgo13.SkgoLoads()...)
-	out = append(out, skgo15.SkgoLoads()...)
+	out = append(out, skgo14.SkgoLoads()...)
+	out = append(out, skgo16.SkgoLoads()...)
 	return out
 }
 
@@ -87,7 +90,8 @@ func Endpoints() []*skgo.Endpoint {
 	out = append(out, skgo11.SkgoEndpoints()...)
 	out = append(out, skgo12.SkgoEndpoints()...)
 	out = append(out, skgo13.SkgoEndpoints()...)
-	out = append(out, skgo15.SkgoEndpoints()...)
+	out = append(out, skgo14.SkgoEndpoints()...)
+	out = append(out, skgo16.SkgoEndpoints()...)
 	return out
 }
 
