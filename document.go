@@ -215,7 +215,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		if node.kind != "error" || node.err == nil {
 			continue
 		}
-		return s.serveLoadError(w, r, req, route, params, shared, hydrate, filled, nodes, i, node.err)
+		return s.serveLoadError(w, r, req, route, params, shared, filled, nodes, i, node.err)
 	}
 
 	// Kit renders `compact(branch)`: a slot that no layout fills is dropped,
@@ -289,7 +289,7 @@ func (s *SSR) pageOptions(route *dataRoute) (ssr bool, csr bool) {
 // layouts below that depth are dropped, and so is their data. A failure with no
 // error page above it happened in the root layout, and kit's answer to that is
 // `error.html`.
-func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataRequest, route *dataRoute, params map[string]string, shared *loadRequest, hydrate bool, filled []bool, nodes []dataNode, at int, e *HTTPError) bool {
+func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataRequest, route *dataRoute, params map[string]string, shared *loadRequest, filled []bool, nodes []dataNode, at int, e *HTTPError) bool {
 	for _, candidate := range nearestErrorPages(at, filled, route.errors) {
 		if candidate.node < 0 || candidate.node >= len(s.info.Nodes) {
 			continue
@@ -299,11 +299,18 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 			params:    params,
 			status:    e.Status,
 			pageError: &ssr.Error{Status: e.Status, Message: e.Message},
-			hydrate:   hydrate,
+			// The page's own options are gone with the page. Kit reduces `ssr`
+			// and `csr` over the layouts that survive and nothing else
+			// (`new PageNodes(layouts.map(...))`), so a leaf that turned
+			// hydration off does not leave its error page unable to boot.
+			hydrate: true,
 		}
 		for i := 0; i < candidate.idx && i < len(nodes); i++ {
 			if !filled[i] {
 				continue
+			}
+			if v := s.info.Nodes[route.nodes[i]].CSR; v != nil {
+				plan.hydrate = *v
 			}
 			plan.indices = append(plan.indices, route.nodes[i])
 			plan.nodes = append(plan.nodes, nodes[i])
