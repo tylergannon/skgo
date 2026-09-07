@@ -18,7 +18,7 @@ import * as esbuild from 'esbuild';
 // the Go that reads the manifest below checks what is stamped here against its
 // own, so a copy that has fallen behind is refused by name instead of failing
 // later as something unrelated.
-const SKGO = { version: 'devel', adapter: '56f17a75da56' };
+const SKGO = { version: 'devel', adapter: '259f23a7073b' };
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
