@@ -445,10 +445,14 @@ func (a *app) writeGo(path, content string) error {
 	return a.write(path, string(formatted))
 }
 
+func (a *app) write(path, content string) error {
+	return write(a.cfg, path, content)
+}
+
 // write is idempotent: a file whose content already matches is left alone, so
 // re-running the generator does not disturb file timestamps and, with them,
 // vite's dev server.
-func (a *app) write(path, content string) error {
+func write(cfg Config, path, content string) error {
 	if existing, err := os.ReadFile(path); err == nil && string(existing) == content {
 		return nil
 	}
@@ -458,7 +462,7 @@ func (a *app) write(path, content string) error {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return err
 	}
-	a.cfg.Logf("wrote %s", path)
+	cfg.Logf("wrote %s", path)
 	return nil
 }
 

@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/kithash"
@@ -373,12 +372,7 @@ func TestPrefixHonoursBaseAndAppDir(t *testing.T) {
 }
 
 func TestReadManifestAndRemoteConfig(t *testing.T) {
-	build := fstest.MapFS{
-		"skgo.manifest.json": &fstest.MapFile{
-			Data: []byte(`{"appDir":"_app","base":"","version":"1737000000000","routes":[]}`),
-		},
-	}
-	m, err := ReadManifest(build)
+	m, err := ReadManifest(buildFrom("devel", thisAdapter(t)))
 	if err != nil {
 		t.Fatalf("ReadManifest: %v", err)
 	}

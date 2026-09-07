@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/skgo/internal/adapter"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
@@ -415,6 +416,15 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 	}
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return m, fmt.Errorf("skgo: parsing skgo.manifest.json: %w", err)
+	}
+	if m.SkgoAdapter != adapter.Fingerprint() {
+		return Manifest{}, fmt.Errorf(
+			"skgo: the frontend build and this program come from different skgo versions.\n"+
+				"\tthe skgo-adapter.js that built it: %s\n"+
+				"\tthis program:                      %s\n"+
+				"The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.\n"+
+				"`skgo generate` writes web/skgo-adapter.js out of the module it was built from, so run `go generate ./...` and build the frontend again.",
+			adapter.Identity(m.Skgo, m.SkgoAdapter), adapter.Identity(adapter.Version(), adapter.Fingerprint()))
 	}
 	if m.AppDir == "" {
 		m.AppDir = "_app"

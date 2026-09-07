@@ -1,6 +1,8 @@
 package newapp_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -108,6 +110,15 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 		"GOWORK=off",
 	)
 
+	// Nothing about the adapter is vendored either. It comes out of the skgo
+	// the project's Go is built against, written by `skgo generate` inside the
+	// build gesture, so a project cannot be building with one skgo's adapter
+	// and reading its manifest with another's.
+	adapterPath := filepath.Join(dir, "web", "skgo-adapter.js")
+	if _, err := os.Stat(adapterPath); err == nil {
+		t.Fatal("`skgo new` wrote web/skgo-adapter.js; the adapter is generated, not scaffolded")
+	}
+
 	// mise refuses to run a config file it has not been told to trust, and a
 	// developer answers that prompt once. The test has no prompt to answer.
 	run(t, dir, env, "mise", "trust", "--yes")
@@ -116,6 +127,19 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	// If `mise run build` stops being the one thing a developer types, this
 	// test is the thing that notices.
 	run(t, dir, env, "mise", "run", "build")
+
+	written, err := os.ReadFile(adapterPath)
+	if err != nil {
+		t.Fatalf("the build gesture did not write web/skgo-adapter.js: %v", err)
+	}
+	// It is the module's adapter, and it says which skgo it came from: the
+	// version this project requires, and the checksum of the adapter source
+	// published into the proxy under it — computed here rather than asked of
+	// the code that does the checking.
+	stampedWith := fingerprintOf(t, filepath.Join(checkoutRoot(t), "internal", "adapter", "skgo-adapter.js"))
+	if want := "const SKGO = { version: '" + scaffoldVersion + "', adapter: '" + stampedWith + "' };"; !strings.Contains(string(written), want) {
+		t.Fatalf("the generated adapter is not stamped %s:\n%s", want, firstLines(string(written), 30))
+	}
 
 	binary := filepath.Join(dir, "bin", "myapp")
 	if _, err := os.Stat(binary); err != nil {
@@ -541,4 +565,24 @@ func checkoutRoot(t *testing.T) string {
 		t.Fatalf("%s is not the module root: %v", root, err)
 	}
 	return root
+}
+
+// fingerprintOf is how skgo names an adapter: the first 12 hex digits of the
+// SHA-256 of its source, before `skgo generate` stamps it.
+func fingerprintOf(t *testing.T, path string) string {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])[:12]
+}
+
+func firstLines(s string, n int) string {
+	lines := strings.SplitN(s, "\n", n+1)
+	if len(lines) > n {
+		lines = lines[:n]
+	}
+	return strings.Join(lines, "\n")
 }
