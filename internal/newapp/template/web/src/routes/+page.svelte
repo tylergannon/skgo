@@ -19,15 +19,17 @@
 	}
 </script>
 
+<!--
+	No `pending` snippet: with one, Svelte renders only the snippet on the server
+	and the awaited content on the client. Without it the render waits for Go's
+	answer, so the document arrives with the values in it.
+-->
 <svelte:boundary>
 	{@const s = await status()}
 	<h1 data-testid="title">{s.name}</h1>
 	<p data-testid="answered-by">Served by {s.goVersion}.</p>
 	<p>Greetings so far: <strong data-testid="greetings">{s.greetings}</strong></p>
 	<p data-testid="last-greeting">Last greeting: {s.lastGreeting || '(none yet)'}</p>
-	{#snippet pending()}
-		<p data-testid="status-pending">loading…</p>
-	{/snippet}
 	{#snippet failed(error)}
 		<p data-testid="status-failed">{(error as Error).message}</p>
 	{/snippet}
