@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 )
 
 // ContentType is the media type kit's enhanced client posts a form as.

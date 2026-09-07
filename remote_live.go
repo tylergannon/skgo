@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
 

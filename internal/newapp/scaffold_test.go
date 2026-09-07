@@ -20,7 +20,7 @@ import (
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/zip"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/newapp"
 	"github.com/tylergannon/skgo/internal/remotearg"
 )

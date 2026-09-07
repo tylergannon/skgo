@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 )
 
 // dataSuffix and htmlDataSuffix are kit's own (`packages/kit/src/pathname.js`).
