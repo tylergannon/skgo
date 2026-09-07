@@ -30,9 +30,11 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	}
 
 	cfg := manifest.RemoteConfig(origin)
+	loadCfg := manifest.LoadConfig(origin)
 
 	mode := "prod"
 	var pages http.Handler
+	var static func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
 	if proxy != "" {
 		target, err := url.Parse(proxy)
 		if err != nil {
@@ -46,20 +48,37 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		cfg.Version = ""
 		cfg.Dev = true
 		cfg.CookieOrigin = origin
+		loadCfg.Version = ""
+		loadCfg.Dev = true
 		mode, pages = "dev", skgo.NewDevProxy(target, log.Printf)
 	} else {
-		static, err := skgo.NewStaticHandler(dist)
-		if err != nil {
-			return nil, "", err
+		// Pages are rendered here, in this process, by the SSR bundle the
+		// adapter built. The renderer needs the loads and the remote functions
+		// it will answer during a render, so the page handler is built after
+		// both of them exist.
+		static = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{})
+			if err != nil {
+				return nil, err
+			}
+			return skgo.NewStaticHandler(dist, skgo.WithSSR(ssr))
 		}
-		pages = static
 	}
 
 	remotes, err := skgo.NewRemotes(cfg, generated.Remotes()...)
 	if err != nil {
 		return nil, "", err
 	}
-	return explainOriginRefusals(cfg, remotes.Intercept(pages)), mode, nil
+	loads, err := skgo.NewLoads(loadCfg, generated.Loads()...)
+	if err != nil {
+		return nil, "", err
+	}
+	if static != nil {
+		if pages, err = static(loads, remotes); err != nil {
+			return nil, "", err
+		}
+	}
+	return explainOriginRefusals(cfg, loads.Intercept(remotes.Intercept(pages))), mode, nil
 }
 
 // explainOriginRefusals turns the one failure a new app is most likely to hit

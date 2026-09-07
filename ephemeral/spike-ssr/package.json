@@ -1,9 +1,0 @@
-{
-  "name": "skgo-spike-ssr",
-  "private": true,
-  "type": "module",
-  "description": "Feasibility spike: build a Svelte SSR bundle that goja can run. Build-time only.",
-  "dependencies": {
-    "esbuild": "0.28.2"
-  }
-}

@@ -74,14 +74,20 @@ func TestTheEmbeddedBuildProducesAWorkingServer(t *testing.T) {
 }
 
 // TestEveryRouteInTheManifestIsServed walks the manifest the adapter wrote and
-// requires the boot document for a concrete URL of each route.
+// asks for a concrete URL of each route.
 //
 // Kit's route patterns are JavaScript regular expressions and Go's are not the
 // same dialect, so a route shape that Go cannot compile — or compiles but does
 // not match — takes the whole server down at startup or serves a 404 to a page
 // that exists. Both are invisible to a test that builds its own patterns.
+//
+// What each route is answered with comes from the manifest too, because that is
+// where a page's own options live: a branch that turns SSR off is answered with
+// kit's shell, one that turns CSR off is answered with a document carrying no
+// script at all, and everything else is rendered and boots.
 func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 	h := newProdHandler(t)
+	session := businesslogic.Default.SignIn("ada")
 
 	dist, err := fs.Sub(web.Build, "build")
 	if err != nil {
@@ -94,13 +100,16 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 	if len(manifest.Routes) == 0 {
 		t.Fatal("the manifest lists no routes")
 	}
+	if manifest.SSR == nil {
+		t.Fatal("the build carries no SSR bundle, so nothing below is about the server that ships")
+	}
 
-	document, err := fs.ReadFile(dist, "index.html")
+	shell, err := fs.ReadFile(dist, "index.html")
 	if err != nil {
 		t.Fatalf("reading index.html: %v", err)
 	}
 
-	pages := 0
+	pages, rendered := 0, 0
 	for _, route := range manifest.Routes {
 		if route.Page == nil {
 			// A route that is a `+server.ts` and nothing else has no page to
@@ -110,19 +119,82 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 			continue
 		}
 		pages++
+
 		path := samplePath(t, route.ID)
-		rec := get(t, h, path)
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		// Signed in, because a section of this app turns a signed-out visitor
+		// away and a redirect is not what this test is about.
+		req.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
 		if rec.Code != http.StatusOK {
 			t.Errorf("route %s: GET %s returned %d, want 200", route.ID, path, rec.Code)
 			continue
 		}
-		if got := rec.Body.String(); got != string(document) {
-			t.Errorf("route %s: GET %s did not return kit's boot document", route.ID, path)
+
+		ssr, csr := true, true
+		for _, index := range route.Page.Branch() {
+			if index < 0 || index >= len(manifest.SSR.Nodes) {
+				continue
+			}
+			if v := manifest.SSR.Nodes[index].SSR; v != nil {
+				ssr = *v
+			}
+			if v := manifest.SSR.Nodes[index].CSR; v != nil {
+				csr = *v
+			}
+		}
+
+		body := rec.Body.String()
+		switch {
+		case !ssr:
+			if body != string(shell) {
+				t.Errorf("route %s turns SSR off: GET %s did not return kit's shell", route.ID, path)
+			}
+		case body == string(shell):
+			// The one page that is still answered with the shell is one whose
+			// load failed: the error branch is not rendered here yet, so the
+			// client boots and renders `+error.svelte` off the same error the
+			// data endpoint gives it. Anything else getting the shell is a
+			// page that silently stopped being server-rendered.
+			if !dataRequestFails(t, h, path, session) {
+				t.Errorf("route %s: GET %s returned kit's shell rather than a rendered page", route.ID, path)
+			}
+		case !strings.Contains(body, `data-testid="app-nav"`):
+			t.Errorf("route %s: GET %s carries no rendered markup from the root layout", route.ID, path)
+		default:
+			rendered++
+		}
+
+		boots := strings.Contains(body, "kit.start(app, element")
+		if csr && ssr && !boots {
+			t.Errorf("route %s: GET %s carries no boot script, so nothing would hydrate", route.ID, path)
+		}
+		if !csr && strings.Contains(body, "<script") {
+			t.Errorf("route %s turns CSR off: GET %s still carries a script", route.ID, path)
 		}
 	}
 	if pages == 0 {
 		t.Fatal("the manifest lists no page routes, so this test asserted nothing")
 	}
+	if rendered == 0 {
+		t.Fatal("not one page route was rendered, so this test asserted nothing about SSR")
+	}
+}
+
+// dataRequestFails reports that the loads of the page at path threw, by asking
+// the endpoint kit's own client would ask.
+func dataRequestFails(t *testing.T, h http.Handler, path, session string) bool {
+	t.Helper()
+	if path == "/" {
+		path = ""
+	}
+	req := httptest.NewRequest(http.MethodGet, path+"/__data.json", nil)
+	req.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return strings.Contains(rec.Body.String(), `{"type":"error"`)
 }
 
 // TestAnUnknownPathStillBootsKitsClient keeps the 404 half of the contract
@@ -396,13 +468,16 @@ func TestAConditionalRequestForADataURLStillGetsKitsData(t *testing.T) {
 	// The document's own ETag, taken from the page this data URL belongs to.
 	// It is the validator a confused conditional request would be matched
 	// against, so it is the one worth sending.
-	page := get(t, h, "/account")
-	documentETag := page.Header().Get("ETag")
-	if documentETag == "" {
-		t.Fatal("GET /account served no ETag; this test would prove nothing")
-	}
-
 	session := businesslogic.Default.SignIn("ada")
+
+	page := httptest.NewRequest(http.MethodGet, "/account", nil)
+	page.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
+	pageRec := httptest.NewRecorder()
+	h.ServeHTTP(pageRec, page)
+	documentETag := pageRec.Header().Get("ETag")
+	if documentETag == "" {
+		t.Fatalf("GET /account served no ETag (status %d); this test would prove nothing", pageRec.Code)
+	}
 
 	for _, headers := range []map[string]string{
 		{},

@@ -288,10 +288,12 @@ async function readKitManifest(builder) {
 }
 
 /**
- * The vite-root-relative path of every node's `+*.server.ts`, in the positions
- * the manifest's own route branches point at. Kit records the path as
- * `server_id` in the node modules it builds, and that is the only place the
- * mapping from a branch slot back to an authored file survives the build.
+ * The node table, in the positions the manifest's own route branches point at:
+ * for each node, the vite-root-relative path of its `+*.server.ts`, the
+ * component it renders, the client assets it needs and the page options it
+ * sets. Kit records the server path as `server_id` in the node modules it
+ * builds, and that is the only place the mapping from a branch slot back to an
+ * authored file survives the build.
  *
  * The positions are the trap. Kit *renumbers* nodes when it writes a manifest:
  * `generate_manifest` collects the nodes the surviving routes use and hands each
@@ -309,7 +311,7 @@ async function readKitManifest(builder) {
  * @param {import('@sveltejs/kit').Builder} builder
  * @param {string} source kit's generated manifest, as text
  * @param {any} kit the same manifest, imported
- * @returns {string[]}
+ * @returns {Promise<Node[]>}
  */
 async function readNodes(builder, source, kit) {
 	const dir = join(builder.getServerDirectory(), 'nodes');
@@ -731,27 +733,72 @@ if (typeof globalThis.atob === 'undefined') {
 	};
 }
 
+// Blob and File are named by kit's form-field proxy, which asks whether a
+// field's value is a File before it decides how to describe it to the markup.
+// Nothing here ever holds one — an uploaded file's bytes are Go's, and they
+// never enter the engine — so these exist to be compared against.
+if (typeof globalThis.Blob === 'undefined') {
+	globalThis.Blob = class Blob {
+		constructor(parts = [], options = {}) {
+			this._parts = parts;
+			this.type = options.type ?? '';
+			this.size = 0;
+		}
+	};
+}
+
+if (typeof globalThis.File === 'undefined') {
+	globalThis.File = class File extends globalThis.Blob {
+		constructor(parts = [], name = '', options = {}) {
+			super(parts, options);
+			this.name = String(name);
+			this.lastModified = options.lastModified ?? 0;
+		}
+	};
+}
+
 if (typeof globalThis.URL === 'undefined') {
 	const ABS = /^([a-zA-Z][a-zA-Z0-9+.-]*:)\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/;
 	const SCHEME_ONLY = /^([a-zA-Z][a-zA-Z0-9+.-]*:)(.*)$/;
 
 	class SearchParams {
-		constructor(search) {
+		constructor(init) {
 			this._ = [];
-			for (const pair of String(search).replace(/^\?/, '').split('&')) {
-				if (!pair) continue;
-				const i = pair.indexOf('=');
-				const k = decodeURIComponent((i < 0 ? pair : pair.slice(0, i)).replace(/\+/g, ' '));
-				const v = i < 0 ? '' : decodeURIComponent(pair.slice(i + 1).replace(/\+/g, ' '));
-				this._.push([k, v]);
+			if (init instanceof SearchParams) {
+				this._ = init._.map(([k, v]) => [k, v]);
+			} else if (Array.isArray(init)) {
+				for (const [k, v] of init) this._.push([String(k), String(v)]);
+			} else if (init && typeof init === 'object') {
+				for (const k of Object.keys(init)) this._.push([k, String(init[k])]);
+			} else {
+				for (const pair of String(init ?? '').replace(/^\?/, '').split('&')) {
+					if (!pair) continue;
+					const i = pair.indexOf('=');
+					const k = decodeURIComponent((i < 0 ? pair : pair.slice(0, i)).replace(/\+/g, ' '));
+					const v = i < 0 ? '' : decodeURIComponent(pair.slice(i + 1).replace(/\+/g, ' '));
+					this._.push([k, v]);
+				}
 			}
 		}
+		get size() { return this._.length; }
 		get(name) {
 			for (const [k, v] of this._) if (k === name) return v;
 			return null;
 		}
 		getAll(name) { return this._.filter(([k]) => k === name).map(([, v]) => v); }
 		has(name) { return this.get(name) !== null; }
+		append(name, value) { this._.push([String(name), String(value)]); }
+		set(name, value) {
+			const at = this._.findIndex(([k]) => k === name);
+			this._ = this._.filter(([k], i) => k !== name || i === at);
+			if (at < 0) this._.push([String(name), String(value)]);
+			else this._[at] = [String(name), String(value)];
+		}
+		delete(name, value) {
+			this._ = this._.filter(([k, v]) => k !== name || (value !== undefined && v !== value));
+		}
+		sort() { this._.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)); }
+		forEach(fn, thisArg) { for (const [k, v] of this._) fn.call(thisArg, v, k, this); }
 		keys() { return this._.map(([k]) => k)[Symbol.iterator](); }
 		values() { return this._.map(([, v]) => v)[Symbol.iterator](); }
 		entries() { return this._.map(([k, v]) => [k, v])[Symbol.iterator](); }
@@ -1286,7 +1333,9 @@ function globalName(config) {
  * @param {Node[]} nodes
  */
 function nodeTable(cwd, nodes) {
+	/** @type {string[]} */
 	const imports = [];
+	/** @type {string[]} */
 	const table = [];
 	nodes.forEach((node, i) => {
 		if (!node.component) {
@@ -1325,7 +1374,10 @@ async function stripTypeScript(source) {
 	return source;
 }
 
-/** kit's djb2, packages/kit/src/utils/hash.js */
+/**
+ * kit's djb2, packages/kit/src/utils/hash.js
+ * @param {string[]} values
+ */
 function djb2(...values) {
 	let hash = 5381;
 	for (const value of values) {
