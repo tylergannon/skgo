@@ -48,3 +48,19 @@ The failed run's kit map was worth keeping: for a remote form post kit leaves
 `form:` null and carries the submission in `<global>.data.f`, so the issue
 text's "form: instead of always null" was wrong. Recorded on #39, with the
 instruction to verify it from source.
+
+## End of the morning: four merged, what the validators were worth
+
+PRs #47, #55, #54 and #58 merged, all four with an independent Opus
+validation first. Two of the four had real defects a green suite and a
+plausible PR body had hidden (#54: an untested code path and a wrong-output
+bug; #58: four kit-fidelity gaps). The validation shape that worked: break
+the code, require the test to fail; rerun both suites; open every screenshot;
+compare the wire against kit's lines. The manager never read a diff.
+
+Every rebase in the morning conflicted only on tracked screenshots (29 the
+first time, one the second). That is issue #56's cost, measured.
+
+Dev-mode scope: the e2e dev suite needs a Go proxy started by hand alongside
+`just dev`, because Playwright's BASE_URL always targets Go. No recipe does
+this. It is item 10 on the board's polish list.
