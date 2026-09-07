@@ -45,6 +45,15 @@ func Uneval(v any) (string, error) {
 	return UnevalWith(v, nil)
 }
 
+// QuoteString writes s as the JavaScript string literal devalue writes: a JSON
+// string in which `<` becomes \u003C, so that nothing a value carries can close
+// the <script> element the document puts it in.
+//
+// It is [Uneval] of a string, exposed on its own because a document is also
+// full of strings that are not values — a module URL, a cache key — and those
+// have to be escaped by the same rule.
+func QuoteString(s string) string { return quoteJS(s) }
+
 // UnevalWith is [Uneval] with a replacer hook.
 func UnevalWith(v any, replacer Replacer) (string, error) {
 	u := &unevaler{replacer: replacer, byKey: map[any]*refEntry{}}

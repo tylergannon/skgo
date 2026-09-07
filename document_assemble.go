@@ -1,7 +1,6 @@
 package skgo
 
 import (
-	"encoding/json"
 	"regexp"
 	"sort"
 	"strconv"
@@ -16,7 +15,7 @@ import (
 // is assembled in kit's five buckets and in kit's order, the boot script is
 // kit's split-bundle form with kit's own indentation, and the template is
 // substituted the way the function kit compiles from `app.html` substitutes it.
-func (s *SSR) assemble(req dataRequest, indices []int, nodes []dataNode, result ssr.Result, csr bool, answers map[string]map[string]json.RawMessage) (string, error) {
+func (s *SSR) assemble(req dataRequest, indices []int, nodes []dataNode, result ssr.Result, csr bool, answers map[string]map[string]answered) (string, error) {
 	client := s.info.Client
 
 	base := s.base
@@ -109,7 +108,7 @@ func (s *SSR) assemble(req dataRequest, indices []int, nodes []dataNode, result 
 // bootScript is the one script a document carries: the object the client reads
 // its configuration out of, the element it mounts on, and the import that
 // starts kit.
-func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, indices []int, nodes []dataNode, answers map[string]map[string]json.RawMessage) (string, error) {
+func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, indices []int, nodes []dataNode, answers map[string]map[string]answered) (string, error) {
 	global := s.info.GlobalName
 
 	properties := []string{
@@ -170,14 +169,19 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, in
 // per node, holding what that node's load returned and what it read while doing
 // it. A node with no load is `null`, which is what tells the client that the
 // slot has no server data rather than that it has none yet.
+//
+// The value written here is the same tree the engine rendered from, encoded
+// once in render() with the app's transport hook in hand, so the markup in the
+// document and the data the client hydrates it with cannot disagree.
 func (s *SSR) hydrationData(nodes []dataNode) (string, error) {
+	replacer := s.loads.cfg.Transport.unevalReplacer()
 	parts := make([]string, 0, len(nodes))
 	for _, node := range nodes {
 		if node.kind != "data" {
 			parts = append(parts, "null")
 			continue
 		}
-		data, err := uneval(node.data)
+		data, err := devalue.UnevalWith(node.data, replacer)
 		if err != nil {
 			return "", err
 		}
@@ -197,10 +201,13 @@ func (s *SSR) hydrationData(nodes []dataNode) (string, error) {
 // Only calls that were answered are here, so an entry with neither a value nor
 // an error cannot occur; kit omits those, because the client would hydrate one
 // as `undefined` rather than fetching it.
-func (s *SSR) remoteData(answers map[string]map[string]json.RawMessage) (string, error) {
+func (s *SSR) remoteData(answers map[string]map[string]answered) (string, error) {
 	if len(answers) == 0 {
 		return "", nil
 	}
+	transport := s.remotes.cfg.Transport
+	replacer := transport.unevalReplacer()
+
 	kinds := make([]string, 0, len(answers))
 	for kind := range answers {
 		kinds = append(kinds, kind)
@@ -225,7 +232,23 @@ func (s *SSR) remoteData(answers map[string]map[string]json.RawMessage) (string,
 			if j > 0 {
 				b.WriteByte(',')
 			}
-			written, err := unevalRaw(answers[kind][key])
+			answer := answers[kind][key]
+			var written string
+			var err error
+			if answer.err != nil {
+				written, err = unevalJSON(answer.err)
+				written = "{e:" + written + "}"
+			} else {
+				// The registry answered with a Go value and kept it; this is
+				// where it is written, because this is where the transport
+				// hook is known.
+				tree, terr := transport.encodeTree(answer.value)
+				if terr != nil {
+					return "", terr
+				}
+				written, err = devalue.UnevalWith(tree, replacer)
+				written = "{v:" + written + "}"
+			}
 			if err != nil {
 				return "", err
 			}
@@ -262,31 +285,17 @@ func escapeHTML(s string) string {
 
 // jsString writes a JavaScript string literal, with devalue's escaping so that
 // nothing it carries can close the script element it sits in.
-func jsString(s string) string {
-	var b strings.Builder
-	unevalString(&b, s)
-	return b.String()
-}
+func jsString(s string) string { return devalue.QuoteString(s) }
 
 // unevalJSON writes the JavaScript for a value by taking it through
-// encoding/json first, which is how every other value in skgo crosses this
-// boundary.
+// encoding/json first, which is how every value that carries no custom type
+// crosses this boundary.
 func unevalJSON(v any) (string, error) {
-	raw, err := json.Marshal(v)
+	tree, err := encodeValue(v)
 	if err != nil {
 		return "", err
 	}
-	return unevalRaw(raw)
-}
-
-func unevalRaw(raw json.RawMessage) (string, error) {
-	var tree any
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	decoder.UseNumber()
-	if err := decoder.Decode(&tree); err != nil {
-		return "", err
-	}
-	return uneval(tree)
+	return devalue.Uneval(tree)
 }
 
 // indent6 re-indents a block to sit inside the boot script, which is where kit

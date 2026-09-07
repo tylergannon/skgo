@@ -6,8 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tylergannon/polytype/devalue"
-
+	"github.com/tylergannon/skgo/internal/devalue"
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
 
@@ -145,6 +144,52 @@ func (t Transport) reducers() []devalue.Reducer {
 		}})
 	}
 	return out
+}
+
+// unevalReplacer is the transport as a devalue `uneval` replacer, for the one
+// place a value is written as JavaScript rather than as the flat wire format:
+// the document skgo renders.
+//
+// It is kit's own replacer, from `packages/kit/src/runtime/app/internal/
+// transport.js`:
+//
+//	const replacer = (thing) => {
+//		for (const key of Object.keys(transport)) {
+//			const encoded = transport[key].encode(thing);
+//			if (encoded) {
+//				return `app.decode('${key}', ${devalue.uneval(encoded, replacer)})`;
+//			}
+//		}
+//	};
+//
+// `app` is the client's app module, which the boot script has already imported
+// by the time either the hydration array or `<global>.data` is evaluated, and
+// `app.decode(type, value)` is the client half of the same hook — so a value
+// written this way arrives in the browser as an instance of the app's class
+// rather than as the object its fields were carried in.
+func (t Transport) unevalReplacer() devalue.Replacer {
+	if len(t) == 0 {
+		return nil
+	}
+	keys := t.keys()
+	return func(v any, uneval func(any) (string, error)) (string, bool, error) {
+		for _, key := range keys {
+			transporter := t[key]
+			if reflect.TypeOf(v) != transporter.Type {
+				continue
+			}
+			encoded, err := transporter.Encode(v)
+			if err != nil {
+				return "", false, err
+			}
+			written, err := uneval(encoded)
+			if err != nil {
+				return "", false, err
+			}
+			return "app.decode(" + devalue.QuoteString(key) + ", " + written + ")", true, nil
+		}
+		return "", false, nil
+	}
 }
 
 // revivers is the transport as devalue revivers, for everything Go parses that

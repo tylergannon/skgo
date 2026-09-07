@@ -204,14 +204,24 @@ func (s *SSR) pageURL(r *http.Request, urlPath string) *url.URL {
 func (s *SSR) render(w http.ResponseWriter, r *http.Request, req dataRequest, route *dataRoute, params map[string]string, nodes []dataNode, shared *loadRequest, hydrate bool) error {
 	ctx := r.Context()
 
-	// Every deferred value is settled before the render starts. A promise in a
-	// load's result reaches kit's client as a streamed chunk; a component that
-	// renders on the server needs the value itself.
+	// A load returned a Go value; the engine and the document both need the
+	// tree. Encoding it once, here, is what keeps them from disagreeing — and
+	// it has to happen here rather than at either end, because this is where
+	// the app's transport hook is known.
+	//
+	// Every deferred value is then settled, before the render starts. A promise
+	// in a load's result reaches kit's client as a streamed chunk; a component
+	// that renders on the server needs the value itself.
+	transport := s.loads.cfg.Transport
 	for i := range nodes {
 		if nodes[i].kind != "data" {
 			continue
 		}
-		value, err := settle(ctx, nodes[i].data)
+		tree, err := transport.encodeLoadValue(nodes[i].data)
+		if err != nil {
+			return err
+		}
+		value, err := settle(ctx, transport, tree)
 		if err != nil {
 			return err
 		}
@@ -257,7 +267,7 @@ func (s *SSR) render(w http.ResponseWriter, r *http.Request, req dataRequest, ro
 	// derived once and immutable, which is kit's own rule: a query may read a
 	// cookie and may not write one.
 	event := s.remotes.newEvent(r, false).immutable()
-	answers := map[string]map[string]json.RawMessage{}
+	answers := map[string]map[string]answered{}
 
 	result, _, err := s.engine.Render(request, func(id, payload string) ([]byte, error) {
 		return s.answer(withEvent(ctx, event), id, payload, answers)
@@ -302,7 +312,7 @@ func (s *SSR) render(w http.ResponseWriter, r *http.Request, req dataRequest, ro
 // answer runs one remote function the render asked for and records what it gave
 // back, so that the document can carry the same value to the browser under the
 // key kit's client will look it up by.
-func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]map[string]json.RawMessage) ([]byte, error) {
+func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]map[string]answered) ([]byte, error) {
 	fn, ok := s.remotes.Lookup(id)
 	if !ok {
 		// Not a Go error: kit answers an unknown remote function with a 404
@@ -327,36 +337,43 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 			return json.Marshal(remoteAnswer{E: &ssr.Error{Status: redirect.status(), Message: redirect.Location}})
 		}
 		e := asHTTPError(err)
-		answer := remoteAnswer{E: &ssr.Error{Status: e.Status, Message: e.Message}}
-		s.record(into, kind, id+"/"+payload, answer)
-		return json.Marshal(answer)
+		failure := &ssr.Error{Status: e.Status, Message: e.Message}
+		s.record(into, kind, id+"/"+payload, answered{err: failure})
+		return json.Marshal(remoteAnswer{E: failure})
 	}
 
+	// The engine gets JSON, because a component in it has no way to be handed
+	// anything else. The document gets the Go value, kept whole so that the
+	// transport hook can still see a custom type in it when the boot script is
+	// written.
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 500, Message: "Internal Error"}})
 	}
-	answer := remoteAnswer{V: raw}
-	s.record(into, kind, id+"/"+payload, answer)
-	return json.Marshal(answer)
+	s.record(into, kind, id+"/"+payload, answered{value: value})
+	return json.Marshal(remoteAnswer{V: raw})
 }
 
 // record files an answer under kit's own key: the single letter of the remote
 // function's kind, then `<hash>/<name>/<payload>`. A kind with no letter — a
 // command, which kit refuses during a render — is not recorded at all, which is
 // what makes an entry with neither a value nor an error impossible.
-func (s *SSR) record(into map[string]map[string]json.RawMessage, kind, key string, answer remoteAnswer) {
+func (s *SSR) record(into map[string]map[string]answered, kind, key string, answer answered) {
 	if kind == "" {
 		return
 	}
-	raw, err := json.Marshal(answer)
-	if err != nil {
-		return
-	}
 	if into[kind] == nil {
-		into[kind] = map[string]json.RawMessage{}
+		into[kind] = map[string]answered{}
 	}
-	into[kind][key] = raw
+	into[kind][key] = answer
+}
+
+// answered is what one remote function gave back during a render, held as the
+// Go value rather than as JSON so that the document can write it with the app's
+// transport hook in hand.
+type answered struct {
+	value any
+	err   *ssr.Error
 }
 
 // remoteAnswer is the envelope the SSR bundle parses: a value, or an error.
@@ -365,19 +382,28 @@ type remoteAnswer struct {
 	E *ssr.Error      `json:"e,omitempty"`
 }
 
-// settle replaces every Deferred in a load's result with the value it was
-// waiting for.
-func settle(ctx context.Context, v any) (any, error) {
+// settle replaces every Deferred in an encoded load result with the value it
+// was waiting for.
+//
+// A Deferred holds the raw Go value the load produced — encoding it when it was
+// created would have flattened a transported type before any encoder saw it —
+// so the settled value is encoded here, with the same transport the rest of the
+// tree was encoded with.
+func settle(ctx context.Context, transport Transport, v any) (any, error) {
 	switch value := v.(type) {
 	case *deferred:
 		settled, err := value.wait(ctx)
 		if err != nil {
 			return nil, err
 		}
-		return settle(ctx, settled)
+		tree, err := transport.encodeTree(settled)
+		if err != nil {
+			return nil, err
+		}
+		return settle(ctx, transport, tree)
 	case map[string]any:
 		for key, item := range value {
-			resolved, err := settle(ctx, item)
+			resolved, err := settle(ctx, transport, item)
 			if err != nil {
 				return nil, err
 			}
@@ -386,7 +412,7 @@ func settle(ctx context.Context, v any) (any, error) {
 		return value, nil
 	case []any:
 		for i, item := range value {
-			resolved, err := settle(ctx, item)
+			resolved, err := settle(ctx, transport, item)
 			if err != nil {
 				return nil, err
 			}
@@ -395,7 +421,7 @@ func settle(ctx context.Context, v any) (any, error) {
 		return value, nil
 	}
 	if holder, ok := v.(deferredHolder); ok && holder.deferredValue() != nil {
-		return settle(ctx, holder.deferredValue())
+		return settle(ctx, transport, holder.deferredValue())
 	}
 	return v, nil
 }
