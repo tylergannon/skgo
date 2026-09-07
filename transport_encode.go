@@ -48,9 +48,13 @@ func (t Transport) walk(rv reflect.Value) (any, error) {
 
 	case reflect.Slice, reflect.Array:
 		if rv.Kind() == reflect.Slice && rv.IsNil() {
-			// encoding/json writes null for a nil slice, and encodeValue would
-			// have produced nil here too.
-			return nil, nil
+			// encoding/json writes null for a nil slice; the declared type says
+			// `Array<T>`, so the wire says `[]`. See emptyArrays, which is the
+			// same correction on the round-trip side.
+			if rv.Type().Elem().Kind() == reflect.Uint8 {
+				return nil, nil
+			}
+			return []any{}, nil
 		}
 		out := make([]any, rv.Len())
 		for i := range out {

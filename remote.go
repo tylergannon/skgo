@@ -18,6 +18,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"reflect"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -334,6 +335,10 @@ func decodeArg[In any](arg any, present bool) (In, error) {
 
 // encodeValue is the reverse round-trip: a typed Go value becomes the plain
 // tree devalue.Stringify expects.
+//
+// The one place it parts company with encoding/json is a nil slice, which json
+// writes as `null` and the generated `Array<T>` says is an array; see
+// emptyArrays.
 func encodeValue(v any) (any, error) {
 	raw, err := json.Marshal(v)
 	if err != nil {
@@ -343,7 +348,7 @@ func encodeValue(v any) (any, error) {
 	if err := json.Unmarshal(raw, &tree); err != nil {
 		return nil, fmt.Errorf("skgo: encoding remote result: %w", err)
 	}
-	return tree, nil
+	return emptyArrays(reflect.ValueOf(v), tree), nil
 }
 
 // RemoteConfig describes the app the registry is serving. Everything but
