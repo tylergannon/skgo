@@ -1,0 +1,4 @@
+{"type":"object",
+"description":"Ack is what the command returns, so the page can show that it landed even when nothing else on the page moved.","properties":{
+"wrote":{"type":"integer","description":"Wrote is how many values the command changed. It is always three, which is the point: everything was written, and what the page shows afterwards is a question about refreshes rather than about writes."}
+},"required":["wrote"],"additionalProperties":false}
