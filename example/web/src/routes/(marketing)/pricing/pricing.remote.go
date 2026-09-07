@@ -29,3 +29,25 @@ func getPlans(ctx context.Context, _ skgo.None) ([]Plan, error) {
 }
 
 var _ = skgo.Query(getPlans)
+
+// Quote is what Go says about a price the browser sent it.
+type Quote struct {
+	// Heard is the amount Go read back out of the argument, formatted by Go's
+	// own method rather than the browser's. If the transport hook were not
+	// working this function would never see a Money at all.
+	Heard string `json:"heard"`
+	// Doubled is that amount doubled, formatted the same way. It is arithmetic
+	// only a real Money can do, which is the point: a plain object could not
+	// have been doubled.
+	Doubled string `json:"doubled"`
+}
+
+// quoteFor takes a price from the browser and answers in Go's own words.
+func quoteFor(ctx context.Context, price businesslogic.Money) (Quote, error) {
+	return Quote{
+		Heard:   price.Format(),
+		Doubled: businesslogic.Money{Cents: price.Cents * 2}.Format(),
+	}, nil
+}
+
+var _ = skgo.Command(quoteFor)
