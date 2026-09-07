@@ -72,3 +72,76 @@ which is what happens when a step fails before reaching one. Those `-final`
 files are left behind in `ephemeral/screenshots/` (tracked) after a deliberate
 break-it run and will sit there looking like passing evidence of an error page.
 Delete the feature's directory and rerun before committing.
+
+## Validation round: four blockers, and a fifth the validator did not see
+
+**`TestTransportWalkAgreesWithEncodingJSON` was comparing encoding/json with
+itself.** `forceWalk` claimed `struct{ never int }`, a type no fixture holds, so
+`reaches()` said no for every fixture and `walk` returned `encodeValue(...)`
+before the walk began. Renaming every property `structFields` writes
+(`obj["BROKEN"+name]`) left it green. It now claims `string` — the one type
+every fixture holds somewhere — which is what puts the whole value on the walk;
+a transported string comes back out as the same Go string encoding/json writes,
+so the comparison stays about structure. Check a "the two encoders agree" test
+by breaking the encoder, not by reading it.
+
+**encoding/json's shadowing rule is not "the first promoted field wins".** Both
+encoders promoted an embedded struct's fields by walking the struct in
+declaration order, so a collision was resolved by whoever wrote last. Real rule:
+shallower wins, tagged beats untagged at the same depth, and a tie on both is
+dropped from the object entirely. With `embB{embA; X *string}` where `embA` has
+`X []string`, encoding/json writes `{"x":null}` and the rewrite turned it into
+`{"x":[]}` — the same lie this branch exists to stop, pointing the other way.
+`jsonfields.go` is a port of `typeFields` from `$GOROOT/src/encoding/json/
+encode.go`; both encoders now ask it which Go value produced a property. It
+carries `omitzero` too, which the walk had never handled.
+
+**`go vet` refuses two embedded types with the same json tag.** The ambiguity
+fixture had to be built out of untagged fields (`Z []string` beside `Z *string`)
+to say the same thing; vet's structtag check only sees tags.
+
+**An argument is not a result.** `queryPayload` ran the refresh argument through
+`encodeValue`, so with the empty-array rewrite in place `Refresh(ctx, getTags,
+nil)` keyed as `[]` (`W1tdXQ`) where the client had keyed `null` (`W251bGxd`).
+The client parks an unknown key as a pre-seed rather than erroring, so the open
+page just never updates and nothing anywhere reports it. Arguments take
+`roundTripValue`, the raw round trip. The rule: the rewrite is a claim about the
+declaration Go generated for a *return* type; the client owns the bytes of an
+argument.
+
+**Regenerating a payload golden.** The recipe in
+`202609060830-codec-conformance.md` still works verbatim; `devalue.stringify([])`
+is `"[[]]"` → `W1tdXQ`, `devalue.stringify(null)` is `"[null]"` → `W251bGxd`.
+
+## Both suites, on ports of their own
+
+Something was already on 5173, so: vite on 5187, Go on 8087, `ORIGIN` matching
+at both build time and run time, killed by pid afterwards. dev 56 passed / 0
+failed / 0 skipped; prod 64 passed / 0 failed / 0 skipped, on a server restarted
+between them (the store is in-memory and the suite is not idempotent). Every
+frame the two runs rewrote is byte-identical to the tracked one.
+
+## Rebased onto main after #55 and #47
+
+Every conflict was a screenshot — 29 binary frames both branches had re-taken
+(this branch added the `Empty` nav link, #55 changed the account/orders page).
+Taking either side and regenerating is the only resolution that means anything:
+`git checkout --theirs` on all 29, then both suites on the rebased tree, which
+rewrote 24 prod frames and left the 29 dev/transport frames byte-identical.
+
+**No source file conflicted.** The branch owns the encoders (`emptyarray.go`,
+`jsonfields.go`, `transport_encode.go`, `encodeValue`/`roundTripValue`,
+`queryPayload`) and main's additions to `remote.go` were the adapter fingerprint
+check, several hundred lines away.
+
+**The streaming chunk path already gets the correction, in both halves.**
+`data.go`'s `chunkLine` and `document.go`'s `unevalChunk` each encode a settled
+`Deferred` with `transport.encodeTree(value)` — the same entry point a remote
+result uses — so a resolved chunk whose value is a nil slice carries `[]`, not
+`null`, with or without a transport hook. Nothing had to be added for #55, and
+the reason is that #55 routed the chunk through the one encoder rather than
+marshalling it itself.
+
+dev 56 passed / 0 failed / 0 skipped; prod 64 passed / 0 failed / 0 skipped,
+vite on 5191 and Go on 8093, `ORIGIN` matching at build and run time, server
+restarted between the two runs. No `-final.png` was left behind.

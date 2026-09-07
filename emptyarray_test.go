@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -205,6 +206,44 @@ func TestNilSliceIsAnEmptyArrayInLoadData(t *testing.T) {
 	}
 }
 
+// encoding/json promotes an untagged embedded struct's fields into the same
+// object, and when two promoted names collide it does not simply take the first
+// one it walks past. The three shapes below are the three arms of that rule,
+// each arranged so the field that *loses* is a slice and the field that wins is
+// not: an encoder that resolves the collision the wrong way turns a null the
+// declaration promises into an array it never promised.
+type inheritedSlice struct {
+	X []string `json:"x"`
+}
+
+// The shallower field wins, whatever the order they are declared in.
+type shadowing struct {
+	inheritedSlice
+	X *string `json:"x"`
+}
+
+// At equal depth the tagged name wins. Declared first, so that an encoder
+// taking the last writer would get it wrong.
+type tieTagged struct {
+	P *string `json:"Tie"`
+}
+type tieUntagged struct{ Tie []string }
+type tiebreak struct {
+	tieTagged
+	tieUntagged
+}
+
+// At equal depth with the same taggedness nobody wins and encoding/json writes
+// no such property at all. Kept is there so the object is not empty for a
+// reason that has nothing to do with the rule.
+type ambiguousA struct{ Z []string }
+type ambiguousB struct{ Z *string }
+type ambiguous struct {
+	ambiguousA
+	ambiguousB
+	Kept []string `json:"kept"`
+}
+
 // The rewrite is not a blanket "null becomes an array". Everything below is a
 // null the declaration also promises, and it has to survive.
 func TestOnlyANilSliceBecomesAnArray(t *testing.T) {
@@ -225,34 +264,107 @@ func TestOnlyANilSliceBecomesAnArray(t *testing.T) {
 		Fixed    [2][]string       `json:"fixed"`
 	}
 
-	tree, err := encodeValue(wide{
-		Deep:     &inner{},
-		ByKey:    map[string]inner{"a": {}},
-		ByNumber: map[int][]string{7: nil},
-		Nested:   []inner{{}},
-		When:     time.Date(2026, 9, 7, 0, 0, 0, 0, time.UTC),
-	})
-	if err != nil {
-		t.Fatalf("encodeValue: %v", err)
+	for _, tc := range []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{
+			name: "every other null survives",
+			value: wide{
+				Deep:     &inner{},
+				ByKey:    map[string]inner{"a": {}},
+				ByNumber: map[int][]string{7: nil},
+				Nested:   []inner{{}},
+				When:     time.Date(2026, 9, 7, 0, 0, 0, 0, time.UTC),
+			},
+			want: `{"any":null,"byKey":{"a":{"tags":[]}},"byNumber":{"7":[]},"bytes":null,"deep":{"tags":[]},"fixed":[[],[]],"map":null,"nested":[{"tags":[]}],"ptr":null,"when":"2026-09-07T00:00:00Z"}`,
+		},
+		// The three collision cases. Each `want` is what encoding/json's own
+		// shadowing rule says the property is — a nil pointer, or nothing at
+		// all — so a rewrite that credits the property to the shadowed slice
+		// fails here rather than shipping an array the client cannot get a
+		// string out of.
+		{
+			name:  "a shallower field shadows a promoted slice",
+			value: shadowing{},
+			want:  `{"x":null}`,
+		},
+		{
+			name:  "a tagged name beats an untagged one at the same depth",
+			value: tiebreak{},
+			want:  `{"Tie":null}`,
+		},
+		{
+			name:  "an ambiguous name is nobody's property",
+			value: ambiguous{},
+			want:  `{"kept":[]}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// encoding/json is the authority on which properties there are and
+			// which field each one came from, so the rewrite is held to the
+			// object it actually produced.
+			plain, err := json.Marshal(tc.value)
+			if err != nil {
+				t.Fatalf("json.Marshal: %v", err)
+			}
+			if names := propertyNames(t, plain); names != propertyNamesOf(t, tc.want) {
+				t.Fatalf("the case is wrong before the rewrite runs: encoding/json writes %s, and the expectation names %s", plain, tc.want)
+			}
+
+			tree, err := encodeValue(tc.value)
+			if err != nil {
+				t.Fatalf("encodeValue: %v", err)
+			}
+			raw, err := json.Marshal(tree)
+			if err != nil {
+				t.Fatalf("marshalling the tree: %v", err)
+			}
+			if string(raw) != tc.want {
+				t.Errorf("tree =\n%s\nwant\n%s", raw, tc.want)
+			}
+		})
 	}
-	raw, err := json.Marshal(tree)
-	if err != nil {
-		t.Fatalf("marshalling the tree: %v", err)
+}
+
+// propertyNames is the sorted top-level property names of a JSON object, so a
+// case can be checked against encoding/json before its expectation is trusted.
+func propertyNames(t *testing.T, raw []byte) string {
+	t.Helper()
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		t.Fatalf("decoding %s: %v", raw, err)
 	}
-	want := `{"any":null,"byKey":{"a":{"tags":[]}},"byNumber":{"7":[]},"bytes":null,"deep":{"tags":[]},"fixed":[[],[]],"map":null,"nested":[{"tags":[]}],"ptr":null,"when":"2026-09-07T00:00:00Z"}`
-	if string(raw) != want {
-		t.Errorf("tree =\n%s\nwant\n%s", raw, want)
+	names := make([]string, 0, len(obj))
+	for name := range obj {
+		names = append(names, name)
 	}
+	sort.Strings(names)
+	return strings.Join(names, ",")
+}
+
+func propertyNamesOf(t *testing.T, raw string) string {
+	t.Helper()
+	return propertyNames(t, []byte(raw))
 }
 
 // The transport walk is a second encoder — it descends into the Go value so
 // devalue's reducers can still see a transported type — and it has to make the
 // same correction, or a result gains and loses its nulls depending on whether
 // the app happens to declare a transport.
+//
+// Prices is the field that proves it. Its element type is transported, so
+// reaches() keeps the whole field on the walk and it never reaches encodeValue:
+// the walk itself is the only thing that can turn its null into an array. Tags
+// is the control, and it is not proof of anything on its own — a []string
+// cannot hold a money, so the walk hands it straight back to the round trip and
+// it would come out as [] even if the walk made no correction at all.
 func TestTheTransportWalkAgreesAboutNilSlices(t *testing.T) {
-	type priced struct {
-		Price money    `json:"price"`
-		Tags  []string `json:"tags"`
+	type basket struct {
+		Price  money    `json:"price"`
+		Prices []money  `json:"prices"`
+		Tags   []string `json:"tags"`
 	}
 	tr := Transport{"Money": {
 		Type:   reflect.TypeFor[money](),
@@ -260,7 +372,7 @@ func TestTheTransportWalkAgreesAboutNilSlices(t *testing.T) {
 		Decode: func(any) (any, error) { return money{}, nil },
 	}}
 
-	tree, err := tr.encodeTree(priced{Price: money{Cents: 1250}})
+	tree, err := tr.encodeTree(basket{Price: money{Cents: 1250}})
 	if err != nil {
 		t.Fatalf("encodeTree: %v", err)
 	}
@@ -268,6 +380,7 @@ func TestTheTransportWalkAgreesAboutNilSlices(t *testing.T) {
 	if !ok {
 		t.Fatalf("tree is %#v, want an object", tree)
 	}
+	assertEmptyArray(t, obj["prices"], "prices")
 	assertEmptyArray(t, obj["tags"], "tags")
 	if obj["price"] != (money{Cents: 1250}) {
 		t.Errorf("price = %#v, want the Go value the reducer is watching for", obj["price"])

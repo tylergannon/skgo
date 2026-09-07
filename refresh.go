@@ -118,8 +118,18 @@ func refreshTarget(ctx context.Context, who string, fn any) (*refreshSet, *Remot
 
 // queryPayload builds the payload half of a refresh key: kit's
 // `stringify_remote_arg`, which is what the client used to key its cache.
+//
+// The round trip here is the raw one, deliberately: not encodeValue, which
+// rewrites a nil slice into an empty array on its way to the client. That
+// rewrite is about results — the declaration polytype generates for a returned
+// slice says `Array<T>` — and an argument is not a result. It is the value the
+// browser chose and already stringified, and `null` and `[]` stringify to
+// different payloads, so keying a nil slice as `[]` would name a query instance
+// no page holds. The client would drop it as a pre-seed for a query nobody is
+// showing and the open page would never see the refresh, with nothing anywhere
+// reporting an error.
 func queryPayload(arg any) (payload string, present bool, err error) {
-	tree, err := encodeValue(arg)
+	tree, err := roundTripValue(arg)
 	if err != nil {
 		return "", false, err
 	}

@@ -3,7 +3,6 @@ package skgo
 import (
 	"fmt"
 	"reflect"
-	"strings"
 	"sync"
 )
 
@@ -103,82 +102,24 @@ func (t Transport) walk(rv reflect.Value) (any, error) {
 }
 
 // structFields writes rv's JSON properties into obj under the names
-// encoding/json would give them, promoting an untagged embedded struct's fields
-// rather than nesting them.
+// encoding/json gives them. jsonFields answers which properties those are,
+// including which field survives when an embedded struct's promoted name
+// collides with another; writing each promoted field as the walk passes it
+// would let the loser of a collision overwrite the winner, and would invent a
+// property for an ambiguous name that encoding/json writes for nobody.
 func (t Transport) structFields(rv reflect.Value, obj map[string]any) error {
-	rt := rv.Type()
-	for i := range rt.NumField() {
-		field := rt.Field(i)
-		tag, hasTag := field.Tag.Lookup("json")
-		// `json:"-"` skips the field; `json:"-,"` names it "-".
-		if tag == "-" {
-			continue
-		}
-		name, opts, _ := strings.Cut(tag, ",")
-
-		if field.Anonymous && !hasTag && embeddedStruct(field.Type) {
-			// An embedded struct with no tag promotes its fields into this
-			// object rather than nesting under its type name.
-			value := rv.Field(i)
-			if field.Type.Kind() == reflect.Pointer {
-				if value.IsNil() {
-					continue
-				}
-				value = value.Elem()
-			}
-			if err := t.structFields(value, obj); err != nil {
-				return err
-			}
-			continue
-		}
-
-		if field.PkgPath != "" {
-			// Unexported, and encoding/json does not write it.
-			continue
-		}
-		if name == "" {
-			name = field.Name
-		}
-
-		value := rv.Field(i)
-		if strings.Contains(","+opts+",", ",omitempty,") && isEmptyValue(value) {
+	for _, f := range jsonFields(rv.Type()) {
+		value, reached := f.value(rv)
+		if !reached || f.omit(value) {
 			continue
 		}
 		encoded, err := t.walk(value)
 		if err != nil {
 			return err
 		}
-		obj[name] = encoded
+		obj[f.name] = encoded
 	}
 	return nil
-}
-
-// embeddedStruct reports whether an anonymous field is one encoding/json
-// promotes: a struct, or a pointer to one.
-func embeddedStruct(rt reflect.Type) bool {
-	if rt.Kind() == reflect.Pointer {
-		rt = rt.Elem()
-	}
-	return rt.Kind() == reflect.Struct
-}
-
-// isEmptyValue is encoding/json's `omitempty` test.
-func isEmptyValue(v reflect.Value) bool {
-	switch v.Kind() {
-	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
-		return v.Len() == 0
-	case reflect.Bool:
-		return !v.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return v.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return v.Float() == 0
-	case reflect.Interface, reflect.Pointer:
-		return v.IsNil()
-	}
-	return false
 }
 
 // byType finds the transporter that claims rt, if any.

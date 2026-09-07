@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"reflect"
 	"strconv"
-	"strings"
 )
 
 // emptyArrays rewrites the `null` encoding/json writes for a nil slice into the
@@ -90,42 +89,27 @@ func emptyArrays(rv reflect.Value, tree any) any {
 	return tree
 }
 
-// emptyArrayFields rewrites the properties of one struct, promoting an untagged
-// embedded struct's fields into the same object the way encoding/json does.
+// emptyArrayFields rewrites the properties of one struct, asking jsonFields
+// which Go value produced each one. That question has a real answer only
+// because encoding/json's shadowing rule is ported there rather than guessed
+// at: an embedded struct's fields are promoted into this same object, and a
+// promoted `[]string` that lost a name collision to a `*string` must not be
+// the field this rewrite consults — that would turn a nil pointer into an
+// empty array, which is the same lie in the other direction.
 func emptyArrayFields(rv reflect.Value, obj map[string]any) {
-	rt := rv.Type()
-	for i := range rt.NumField() {
-		field := rt.Field(i)
-		tag, hasTag := field.Tag.Lookup("json")
-		if tag == "-" {
+	for _, f := range jsonFields(rv.Type()) {
+		// An absent property is one `omitempty` dropped, or one an ambiguous
+		// name meant nobody wrote; dropping it is what makes the declaration
+		// optional, and it is not a null to rewrite.
+		tree, present := obj[f.name]
+		if !present {
 			continue
 		}
-		name, _, _ := strings.Cut(tag, ",")
-
-		if field.Anonymous && !hasTag && embeddedStruct(field.Type) {
-			value := rv.Field(i)
-			if field.Type.Kind() == reflect.Pointer {
-				if value.IsNil() {
-					continue
-				}
-				value = value.Elem()
-			}
-			if !marshalsItself(field.Type) {
-				emptyArrayFields(value, obj)
-			}
+		value, reached := f.value(rv)
+		if !reached {
 			continue
 		}
-		if field.PkgPath != "" {
-			continue
-		}
-		if name == "" {
-			name = field.Name
-		}
-		// An absent property is one `omitempty` dropped, and dropping it is
-		// what makes the declaration optional; it is not a null to rewrite.
-		if value, present := obj[name]; present {
-			obj[name] = emptyArrays(rv.Field(i), value)
-		}
+		obj[f.name] = emptyArrays(value, tree)
 	}
 }
 
