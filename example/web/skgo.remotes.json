@@ -18,6 +18,7 @@
 		"gu007f/quoteFor"
 	],
 	"loads": [
+		"src/routes/(marketing)/pricing/+page.server.ts",
 		"src/routes/account/+layout.server.ts",
 		"src/routes/account/+page.server.ts",
 		"src/routes/account/orders/+page.server.ts",

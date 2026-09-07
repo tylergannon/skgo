@@ -10,7 +10,9 @@ Feature: Pages arrive rendered
   `getSite` in src/routes/site.remote.go answers with the name "skgo" and its own
   path; `getItem` in src/routes/items/[id]/item.remote.go answers "Widget <id>"
   for the id in the URL; the loads under /account answer with the signed-in
-  visitor's name. The generated TypeScript beside each of those throws
+  visitor's name; the load in src/routes/(marketing)/pricing/page.server.go
+  answers with a featured plan priced at 4500 cents, an amount no other function
+  in the app returns. The generated TypeScript beside each of those throws
   "skgo: implemented in Go", so none of these strings has a second way to appear.
 
   Scenario: The home page's HTML already contains the site name
@@ -47,6 +49,13 @@ Feature: Pages arrive rendered
     And I am signed in as "ada"
     And exactly 0 data requests were made since
     And exactly 0 remote requests were made since
+
+  Scenario: A custom-typed value round-trips through the document into the client
+    Given I note the data request count
+    When I open "/pricing"
+    Then the featured plan costs "$45.00"
+    And the document never mentions "$45.00"
+    And exactly 0 data requests were made since
 
   Scenario: A page marked csr = false is plain HTML with no script tag
     Given I open "/plain"

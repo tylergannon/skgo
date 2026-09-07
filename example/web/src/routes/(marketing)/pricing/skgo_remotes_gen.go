@@ -14,7 +14,9 @@ func SkgoRemotes() []*skgo.Remote {
 
 // SkgoLoads returns the server loads declared in this package.
 func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{}
+	return []*skgo.ServerLoad{
+		skgo.NewLoad("src/routes/(marketing)/pricing/+page.server.ts", pageLoad),
+	}
 }
 
 // SkgoEndpoints returns the server routes declared in this package.

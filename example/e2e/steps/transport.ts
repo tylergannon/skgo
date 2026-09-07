@@ -31,3 +31,14 @@ Then('Go says double that is {string}', async ({ page, shot }, price: string) =>
 	await expect(page.getByTestId('quote-doubled')).toHaveText(price);
 	await shot();
 });
+
+// The featured plan is a server load's, so it came down inside the document
+// rather than in a request of its own. Nothing on the wire spells the price:
+// Go sends 4500 cents, and the only thing that can write "$45.00" is the
+// Money the boot script's `app.decode` built out of them.
+Then('the featured plan costs {string}', async ({ page, shot }, price: string) => {
+	await expect(page.getByTestId('featured')).toHaveText(`Startup — ${price}`, {
+		timeout: 15_000
+	});
+	await shot();
+});
