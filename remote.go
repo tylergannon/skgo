@@ -18,6 +18,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"reflect"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -334,7 +335,28 @@ func decodeArg[In any](arg any, present bool) (In, error) {
 
 // encodeValue is the reverse round-trip: a typed Go value becomes the plain
 // tree devalue.Stringify expects.
+//
+// The one place it parts company with encoding/json is a nil slice, which json
+// writes as `null` and the generated `Array<T>` says is an array; see
+// emptyArrays.
 func encodeValue(v any) (any, error) {
+	tree, err := roundTripValue(v)
+	if err != nil {
+		return nil, err
+	}
+	return emptyArrays(reflect.ValueOf(v), tree), nil
+}
+
+// roundTripValue is the round trip without that correction: encoding/json's
+// answer and nothing else, nil slices still spelled `null`.
+//
+// It is what a value the client *sent* goes back through. The empty-array
+// rewrite exists to make a Go zero value match a declaration Go generated, and
+// that is a claim about results; an argument was chosen by the browser, and
+// kit's client has already keyed its query cache on the bytes it sent. `null`
+// and `[]` are different values there, so correcting one into the other would
+// compute a key no page holds. See queryPayload in refresh.go.
+func roundTripValue(v any) (any, error) {
 	raw, err := json.Marshal(v)
 	if err != nil {
 		return nil, fmt.Errorf("skgo: encoding remote result: %w", err)

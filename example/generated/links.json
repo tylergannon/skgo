@@ -48,6 +48,10 @@
 			"target": "web/src/routes/docs/[...rest]"
 		},
 		{
+			"link": "generated/links/onzggl3sn52xizltf5sw24dupe",
+			"target": "web/src/routes/empty"
+		},
+		{
 			"link": "generated/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz",
 			"target": "web/src/routes/error/boundary"
 		},

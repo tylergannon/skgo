@@ -41,16 +41,24 @@ type outer struct {
 	Deep [][]notTransported
 }
 
-// forceWalk is a transport whose type nothing in the fixtures holds, but which
-// claims the fixture type itself so that reaches() says yes and the walk runs
-// over the whole value. Without it every fixture would take encodeTree's
-// encoding/json fast path and the test would be comparing encoding/json with
-// itself.
-func forceWalk(rt reflect.Type) Transport {
+// forceWalk is what puts these fixtures on the walk at all.
+//
+// walk hands any subtree whose type cannot reach a transported type straight
+// back to encodeValue, so a transport claiming a type the fixtures do not hold
+// leaves every one of them on the encoding/json fast path and the test compares
+// encoding/json with itself — which is exactly what it did until a deliberate
+// break in structFields (every property renamed) still left it green.
+//
+// So the claimed type is `string`, the one type every fixture holds somewhere:
+// reaches() then says yes for every fixture and for every struct inside it, and
+// the walk really runs. A transported string comes back out of walk as the same
+// Go string encoding/json writes, so the comparison stays a comparison about
+// structure — which properties there are and what they are called.
+func forceWalk() Transport {
 	return Transport{"Forced": {
-		Type:   rt,
-		Encode: func(any) (any, error) { return nil, nil },
-		Decode: func(any) (any, error) { return nil, nil },
+		Type:   reflect.TypeFor[string](),
+		Encode: func(v any) (any, error) { return v, nil },
+		Decode: func(v any) (any, error) { return v, nil },
 	}}
 }
 
@@ -74,6 +82,13 @@ func TestTransportWalkAgreesWithEncodingJSON(t *testing.T) {
 		{"slice of structs", []tagged{{Renamed: "one"}, {Renamed: "two", Kept: "yes"}}},
 		{"map of structs", map[string]tagged{"k": {Renamed: "v"}}},
 		{"pointer to struct", &tagged{Renamed: "p"}},
+		// The shadowing shapes from emptyarray_test.go. encoding/json resolves
+		// a collision between promoted names by depth, then by tag, and drops
+		// the property when neither wins; a walk that writes each promoted
+		// field as it passes it invents a property nobody declared.
+		{"a shallower field shadows a promoted one", shadowing{}},
+		{"a tagged name beats an untagged one at the same depth", tiebreak{}},
+		{"an ambiguous name is nobody's property", ambiguous{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -85,9 +100,7 @@ func TestTransportWalkAgreesWithEncodingJSON(t *testing.T) {
 				t.Fatalf("encodeValue: %v", err)
 			}
 
-			// reflect.TypeOf on the fixture, so reaches() forces the walk over
-			// the value's own type rather than a nested one.
-			got, err := forceWalk(reflect.TypeOf(struct{ never int }{})).walk(reflect.ValueOf(tc.value))
+			got, err := forceWalk().walk(reflect.ValueOf(tc.value))
 			if err != nil {
 				t.Fatalf("walk: %v", err)
 			}

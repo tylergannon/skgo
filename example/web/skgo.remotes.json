@@ -12,6 +12,10 @@
 		"1eqvn7x/getBanner",
 		"1eqvn7x/getNote",
 		"1eqvn7x/writeNotes",
+		"1sgmw1/getKnownReport",
+		"1sgmw1/getModels",
+		"1sgmw1/getReport",
+		"1sgmw1/reparse",
 		"4cga8b/signIn",
 		"4cga8b/signOut",
 		"4cga8b/whoami",
@@ -30,6 +34,7 @@
 		"src/routes/account/+page.server.ts",
 		"src/routes/account/orders/+page.server.ts",
 		"src/routes/account/statement/+page.server.ts",
+		"src/routes/empty/+page.server.ts",
 		"src/routes/error/expected/+page.server.ts",
 		"src/routes/error/unexpected/+page.server.ts"
 	],

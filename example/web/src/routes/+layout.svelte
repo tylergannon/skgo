@@ -27,6 +27,7 @@
 	<a href="/about">About</a>
 	<a href="/items/42">Item 42</a>
 	<a href="/todos">Todos</a>
+	<a href="/empty">Empty</a>
 	<a href="/api">API</a>
 	<a href="/pricing">Pricing</a>
 	<a href="/docs/guide/getting-started">Docs</a>

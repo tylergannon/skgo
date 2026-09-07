@@ -25,6 +25,13 @@ const (
 	keyGetTodoT1 = "worolc/getTodo/WyJ0MSJd"
 	keyGetTodoT2 = "worolc/getTodo/WyJ0MiJd"
 	keyGetTodos  = "worolc/getTodos/"
+
+	// The two payloads a slice-typed argument arrives as. They are different
+	// JavaScript values and kit keys them apart, which is the whole point:
+	// `null` is what the client sends for a slice it has none of, and `[]` is
+	// what it sends for one it has zero of.
+	payloadNull       = "W251bGxd" // devalue.stringify(null) === "[null]"
+	payloadEmptyArray = "W1tdXQ"   // devalue.stringify([])   === "[[]]"
 )
 
 type queryFn = func(context.Context, string) (todo, error)
@@ -321,5 +328,60 @@ func TestNewRemotesRefusesTwoRegistrationsOfOneFunction(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "same Go function") {
 		t.Errorf("error = %v", err)
+	}
+}
+
+// A query argument is the client's value, not Go's.
+//
+// Everything a remote function *returns* goes out with nil slices rewritten to
+// empty arrays, because the generated declaration says `Array<T>`. An argument
+// is the other direction: kit's client already keyed its cache on the payload
+// it sent, and a refresh has to name that key or the client never hears about
+// it. `null` and `[]` are different payloads, so a refresh that rewrote a nil
+// slice into an empty array before keying it would ask the client for a query
+// instance the client does not have — and the failure is silent, because a key
+// no page holds is a legitimate pre-seed rather than an error.
+func TestRefreshKeyForASliceArgumentIsThePayloadTheClientSent(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		payload string
+		arg     []string
+	}{
+		{"sent as null", payloadNull, nil},
+		{"sent as an empty array", payloadEmptyArray, []string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var argWasNil bool
+			var getTags = func(ctx context.Context, tags []string) (int, error) {
+				argWasNil = tags == nil
+				return len(tags), nil
+			}
+			query := NewQuery(testModule, "getTags", getTags)
+			command := NewCommandNoArg(testModule, "addTag", func(ctx context.Context) (string, error) {
+				return "added", Refresh(ctx, getTags, tc.arg)
+			})
+			rs := testRemotes(t, RemoteConfig{}, query, command)
+
+			// The client's half, first: this payload really is the one that
+			// arrives as this Go value, so the two halves of the test are
+			// about the same argument.
+			rec := httptest.NewRecorder()
+			rs.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, rs.Prefix()+query.ID()+"?payload="+tc.payload, nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("querying with payload %q: status %d: %s", tc.payload, rec.Code, rec.Body.String())
+			}
+			if argWasNil != (tc.arg == nil) {
+				t.Fatalf("payload %q arrived as a nil slice = %v, want %v", tc.payload, argWasNil, tc.arg == nil)
+			}
+
+			// The server's half: the key a refresh of that same argument
+			// lands under is the payload the client sent, character for
+			// character.
+			_, data, _ := envelope(t, postCommand(t, rs, command, devalue.Undefined, nil).Body.Bytes())
+			want := query.ID() + "/" + tc.payload
+			if got := refreshedKeys(t, data); !slices.Equal(got, []string{want}) {
+				t.Fatalf("refreshed keys = %v, want exactly [%s]", got, want)
+			}
+		})
 	}
 }
