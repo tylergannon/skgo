@@ -313,6 +313,39 @@ func TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage(t *testing.T) {
 	}
 }
 
+// TestAMissingImageIsNotAnsweredWithADocument keeps a rendered error page off
+// the requests that cannot read one. Kit decides by `Sec-Fetch-Dest`
+// (`runtime/server/respond.js`) and answers those with four words of plain
+// text; a browser asking for an image and getting a full HTML document treats
+// it as a broken image either way and pays for the render.
+func TestAMissingImageIsNotAnsweredWithADocument(t *testing.T) {
+	h := newProdHandler(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/no-such-image.png", nil)
+	req.Header.Set("Sec-Fetch-Dest", "image")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status %d, want 404", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/plain") {
+		t.Errorf("Content-Type %q, want text/plain", got)
+	}
+	if got := rec.Header().Get("Vary"); got != "Sec-Fetch-Dest" {
+		t.Errorf("Vary %q, want Sec-Fetch-Dest", got)
+	}
+	if strings.Contains(rec.Body.String(), "data-testid") {
+		t.Errorf("a missing image was answered with a rendered document")
+	}
+
+	// And the same path without the header is still the visitor's 404 page.
+	rec = get(t, h, "/no-such-image.png")
+	if !strings.Contains(rec.Body.String(), `<p data-testid="error-message">Not Found</p>`) {
+		t.Errorf("a document request for the same path did not get the error page")
+	}
+}
+
 // TestTheServerAnswersARealRemoteCall runs one of the app's own remote
 // functions through the production stack. Every `.remote.ts` body throws, so a
 // value coming back here could only have come from Go.

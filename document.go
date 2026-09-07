@@ -151,6 +151,17 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 
 	route, params, matched := s.loads.match(routePath)
 	if !matched {
+		if nonHTMLDestination(r.Header.Get("Sec-Fetch-Dest")) {
+			// A missing image, stylesheet or script is not worth a document,
+			// and a browser that asked for one cannot read a document anyway.
+			// Kit's own answer (`respond.js`) is four words of plain text, and
+			// it varies on the header it decided by.
+			h := w.Header()
+			h.Set("Content-Type", "text/plain; charset=utf-8")
+			h.Set("Vary", "Sec-Fetch-Dest")
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return true
+		}
 		// `respond.js` answers a path that matched nothing with
 		// `respond_with_error(new SvelteKitError(404, 'Not Found', ...))`, so
 		// the visitor gets the app's own error page inside the app's own root
@@ -632,6 +643,18 @@ func allFilled(n int) []bool {
 // only `&` and `<` carry meaning there.
 func escapeHTMLText(s string) string {
 	return strings.NewReplacer("&", "&amp;", "<", "&lt;").Replace(s)
+}
+
+// nonHTMLDestination reports that the browser asked for something that is not a
+// document. It is kit's own set (`runtime/server/respond.js`).
+func nonHTMLDestination(dest string) bool {
+	switch dest {
+	case "audio", "audioworklet", "font", "image", "json", "manifest",
+		"paintworklet", "report", "script", "serviceworker", "sharedworker",
+		"style", "track", "video", "webidentity", "worker", "xslt":
+		return true
+	}
+	return false
 }
 
 // pageURL is the URL the page was asked for, resolved against the app's
