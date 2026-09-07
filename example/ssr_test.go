@@ -1,0 +1,205 @@
+package example_test
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/example"
+	"github.com/tylergannon/skgo/example/businesslogic"
+	"github.com/tylergannon/skgo/example/generated"
+)
+
+// TestTheProductionBundleRunsInAFreshRuntime is the check that turns a
+// SvelteKit or Svelte upgrade skgo's engine cannot run into a red build rather
+// than a broken deployment.
+//
+// The engine is a pure ECMAScript interpreter with no published compatibility
+// statement. A minor release that emits a syntax it cannot parse, or reaches
+// for a web global the bundle does not carry, breaks at the moment the bundle
+// is compiled into a runtime — which is here, on the bytes that would ship.
+func TestTheProductionBundleRunsInAFreshRuntime(t *testing.T) {
+	dist := prodDist(t)
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		t.Fatalf("reading the build manifest: %v", err)
+	}
+	if manifest.SSR == nil {
+		t.Fatal("the build carries no SSR bundle")
+	}
+
+	remotes, err := skgo.NewRemotes(manifest.RemoteConfig(prodOrigin), generated.Remotes()...)
+	if err != nil {
+		t.Fatalf("building the remote registry: %v", err)
+	}
+	loadCfg := manifest.LoadConfig(prodOrigin)
+	loadCfg.Handle = example.Handle
+	loads, err := skgo.NewLoads(loadCfg, generated.Loads()...)
+	if err != nil {
+		t.Fatalf("building the load registry: %v", err)
+	}
+
+	if _, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{Runtimes: 1}); err != nil {
+		t.Fatalf("the SSR bundle this build ships does not run: %v", err)
+	}
+}
+
+// TestARenderedPageCarriesGosAnswerToTheBrowser is the whole point of the
+// renderer, at the level a browser sees it: the markup is already in the
+// document, and the value behind it is in the boot payload under the key kit's
+// own query cache looks it up by — so the client has no reason to ask again.
+//
+// The fixture is named here rather than read off the page: `getSite` in
+// src/routes/site.remote.go answers with this name and this path, and nothing
+// else in the app can produce either string.
+func TestARenderedPageCarriesGosAnswerToTheBrowser(t *testing.T) {
+	h := newProdHandler(t)
+
+	body := get(t, h, "/").Body.String()
+
+	for _, want := range []string{
+		`<p data-testid="site-name">skgo</p>`,
+		`<p data-testid="colocated">src/routes/site.remote.go</p>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the document does not contain %s", want)
+		}
+	}
+
+	// `<hash>/<name>/<payload>`, with an empty payload for a query that takes
+	// no argument — kit's `create_remote_key`.
+	site := remoteID(t, "getSite")
+	if !strings.Contains(body, `"`+site+`/":{v:{colocated:"src/routes/site.remote.go",name:"skgo"}}`) {
+		t.Errorf("the boot payload does not carry %s's answer; the client would fetch it again", site)
+	}
+}
+
+// TestAQueryWithAnArgumentIsRenderedWithTheArgumentGoWasGiven pins the other
+// half of the key: a query keyed by its argument has to be rendered with the
+// argument the request carried, and cached under that argument, or the client
+// looks up a key that is not there.
+func TestAQueryWithAnArgumentIsRenderedWithTheArgumentGoWasGiven(t *testing.T) {
+	h := newProdHandler(t)
+
+	body := get(t, h, "/items/93").Body.String()
+
+	if !strings.Contains(body, `<p data-testid="item-name">Widget 93</p>`) {
+		t.Error(`the document does not name the item Go was asked for ("Widget 93")`)
+	}
+	if strings.Contains(body, "Widget 42") {
+		t.Error("the document names an item nobody asked for")
+	}
+	item := remoteID(t, "getItem")
+	if !strings.Contains(body, `"`+item+`/`) {
+		t.Errorf("the boot payload carries no answer for %s", item)
+	}
+}
+
+// TestTwoPagesRenderingAtOnceAreEachTheirOwn puts the pool under real HTTP.
+// Two documents rendered at the same time on one runtime would each carry the
+// other's module state, and the symptom is a page that is silently somebody
+// else's.
+func TestTwoPagesRenderingAtOnceAreEachTheirOwn(t *testing.T) {
+	h := newProdHandler(t)
+
+	paths := []string{"/items/11", "/items/22", "/items/33", "/items/44", "/", "/items/55", "/items/66", "/items/77"}
+	bodies := make([]string, len(paths))
+
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i, path := range paths {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+			bodies[i] = rec.Body.String()
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	for i, path := range paths {
+		if path == "/" {
+			if !strings.Contains(bodies[i], `<h1 data-testid="title">Home</h1>`) {
+				t.Errorf("%s did not render the home page", path)
+			}
+			continue
+		}
+		id := strings.TrimPrefix(path, "/items/")
+		if !strings.Contains(bodies[i], `<p data-testid="item-name">Widget `+id+`</p>`) {
+			t.Errorf("%s did not render Widget %s", path, id)
+		}
+		for _, other := range paths {
+			if other == path || other == "/" {
+				continue
+			}
+			if strings.Contains(bodies[i], "Widget "+strings.TrimPrefix(other, "/items/")+"</p>") {
+				t.Errorf("%s carries %s's item", path, other)
+			}
+		}
+	}
+}
+
+// TestARenderedPageDoesNotRepeatItself renders the same page twice and requires
+// the same bytes, because the document's ETag is a hash of itself: a map
+// iterated in a different order would make every reload a fresh 200 and every
+// conditional request a wasted round trip.
+//
+// The page is one whose data does not change between requests. `/account` is
+// not: its layout hands out a fresh serial per load, on purpose, and two
+// renders of it are supposed to differ.
+func TestARenderedPageDoesNotRepeatItself(t *testing.T) {
+	h := newProdHandler(t)
+
+	first, firstETag := get(t, h, "/items/42").Body.String(), get(t, h, "/items/42").Header().Get("ETag")
+	second := get(t, h, "/items/42").Body.String()
+	if first != second {
+		t.Error("the same page rendered twice produced different bytes")
+	}
+	if firstETag == "" {
+		t.Fatal("a rendered page carried no ETag")
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/items/42", nil)
+	req.Header.Set("If-None-Match", firstETag)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotModified {
+		t.Errorf("a conditional request for an unchanged page returned %d, want 304", rec.Code)
+	}
+	if rec.Body.Len() != 0 {
+		t.Error("a 304 carried a body")
+	}
+}
+
+// TestALayoutsDataAndItsPagesDataArriveTogether checks the hydration array a
+// page under a layout boots from: one entry per node of the branch, each
+// carrying what that node's Go load returned.
+func TestALayoutsDataAndItsPagesDataArriveTogether(t *testing.T) {
+	h := newProdHandler(t)
+	session := businesslogic.Default.SignIn("grace")
+
+	req := httptest.NewRequest(http.MethodGet, "/account", nil)
+	req.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	body := rec.Body.String()
+
+	if !strings.Contains(body, `<p data-testid="account-user">Account of grace</p>`) {
+		t.Error("the layout's data is not in the markup")
+	}
+	if !strings.Contains(body, `<p data-testid="parent-user">The layout loaded grace</p>`) {
+		t.Error("the page's data is not in the markup")
+	}
+	if !strings.Contains(body, `data:{accountSerial:`) || !strings.Contains(body, `accountUser:"grace"`) {
+		t.Error("the layout's data is not in the hydration array")
+	}
+	if !strings.Contains(body, `data:{parentUser:"grace"}`) {
+		t.Error("the page's data is not in the hydration array")
+	}
+}
