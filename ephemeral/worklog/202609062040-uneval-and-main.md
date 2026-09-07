@@ -67,3 +67,15 @@ the module cache, and it is `skgo generate` shelling out to `go` that fails with
 "missing go.sum entry for module providing package github.com/dop251/goja".
 `go mod tidy` in both modules is the fix; `quickjs-go` fell out at the same time,
 because nothing imports it any more.
+
+## `pkill -f "example/cmd"` does not stop `just serve`
+
+`go run ./example/cmd` compiles to a binary called `cmd` in the build cache and
+execs it; the child's command line is the cache path, so no pattern containing
+`example/cmd` matches it. `pkill` reports success, the port stays bound, and the
+next `just serve` exits with "address already in use" — into a log nobody reads,
+because it was backgrounded. The suite then runs against the *previous* build.
+
+`lsof -nP -iTCP:8080 -sTCP:LISTEN` and `kill <pid>` is the reliable pair, and
+`just ports` exists for the first half of it. Confirm the port is free *before*
+starting the replacement, not after.
