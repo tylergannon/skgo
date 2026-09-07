@@ -191,6 +191,27 @@ type dataNode struct {
 
 // serveBranch runs a route's branch and writes the response.
 func (ls *Loads) serveBranch(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, branch []*ServerLoad, invalidated []bool) {
+	shared, nodes := ls.runBranch(r, req, routeID, params, branch, invalidated)
+
+	// A redirect anywhere in the branch is the whole answer. Kit's `Promise.all`
+	// rejects on the first one to arrive; taking the outermost keeps it
+	// deterministic, and it is the one a guard on a layout means.
+	for _, n := range nodes {
+		if n.redir != nil {
+			ls.writeRedirect(w, shared, n.redir)
+			return
+		}
+	}
+
+	ls.writeNodes(w, r, shared, nodes)
+}
+
+// runBranch runs a route's branch and returns what each node produced, without
+// deciding how it is answered. A `__data.json` request serializes the nodes; a
+// document request hands them to the renderer and then serializes the same
+// nodes into the page's hydration array, so both go through here and neither
+// can drift from the other.
+func (ls *Loads) runBranch(r *http.Request, req dataRequest, routeID string, params map[string]string, branch []*ServerLoad, invalidated []bool) (*loadRequest, []dataNode) {
 	ctx := r.Context()
 
 	shared := &loadRequest{
@@ -255,17 +276,7 @@ func (ls *Loads) serveBranch(w http.ResponseWriter, r *http.Request, req dataReq
 	}
 	wg.Wait()
 
-	// A redirect anywhere in the branch is the whole answer. Kit's `Promise.all`
-	// rejects on the first one to arrive; taking the outermost keeps it
-	// deterministic, and it is the one a guard on a layout means.
-	for _, n := range nodes {
-		if n.redir != nil {
-			ls.writeRedirect(w, shared, n.redir)
-			return
-		}
-	}
-
-	ls.writeNodes(w, r, shared, nodes)
+	return shared, nodes
 }
 
 // writeNodes serializes the branch and writes it, streaming the deferred values

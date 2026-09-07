@@ -76,17 +76,33 @@ Then(
 );
 
 // The total is a field the load had in hand; the orders are a field it promised
-// for later. Seeing the first while the second is still missing is the whole
-// claim, so the assertion is made about both at once.
-Then('I see the order total while the orders are still coming', async ({ page, shot }) => {
-	await expect(page.getByTestId('order-total')).toBeVisible({ timeout: 15_000 });
-	await expect(page.getByTestId('orders-pending')).toBeVisible();
-	await expect(page.getByTestId('order')).toHaveCount(0);
-	await shot('pending');
-});
+// for later. Both are in the document, because Go settles what a load promised
+// before it renders — and the two are compared against each other rather than
+// against a number written here, so a page that rendered nothing fails.
+Then(
+	'the document already carried as many orders as the total said',
+	async ({ documents, shot }) => {
+		expect(documents.last, 'no document response was observed').not.toBeNull();
+		const html = await documents.last!.text();
 
-When('the orders arrive', async ({ page }) => {
-	await expect(page.getByTestId('orders')).toBeVisible({ timeout: 15_000 });
+		const total = Number(
+			/data-testid="order-total">(\d+)/.exec(html)?.[1] ?? NaN
+		);
+		expect(Number.isFinite(total), 'the document carried no order total').toBe(true);
+		expect(total, 'the order total was zero, so counting rows proves nothing').toBeGreaterThan(0);
+
+		const rows = html.match(/data-testid="order"/g)?.length ?? 0;
+		expect(rows).toBe(total);
+		await shot('in-the-document');
+	}
+);
+
+Then("the browser never asked for the page's data", async ({ page, data, shot }) => {
+	// A refetch would already be in flight; wait a beat so it lands and can be
+	// counted.
+	await page.waitForTimeout(500);
+	expect(data.count, `data requests: ${data.urls.join(', ') || 'none'}`).toBe(0);
+	await shot('no-refetch');
 });
 
 // Cross-endpoint in spirit: the number was in the first line of the response and

@@ -10,9 +10,6 @@
 	{@const site = await getSite()}
 	<p data-testid="site-name">{site.name}</p>
 	<p data-testid="colocated">{site.colocated}</p>
-	{#snippet pending()}
-		<p data-testid="site-pending">loading…</p>
-	{/snippet}
 	{#snippet failed(error)}
 		<p data-testid="site-failed">{(error as Error).message}</p>
 	{/snippet}

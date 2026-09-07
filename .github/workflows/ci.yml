@@ -174,8 +174,12 @@ jobs:
           done
           exit $status
 
-      # The same scenarios again with kit's dev server behind the Go one: pages
-      # come from `vp dev`, remote functions and loads are still answered by Go.
+      # The suite again with kit's dev server behind the Go one: pages come from
+      # `vp dev`, remote functions, loads and endpoints are still answered by
+      # Go. Not the same scenarios — the two modes really do render differently,
+      # so the ones whose claim is about the document Go rendered are tagged
+      # `@prod` and their dev counterparts `@dev`, and the run generates only
+      # the half that belongs to it (example/e2e/playwright.config.ts).
       #
       # The recipes have no proxying server — `just serve` takes no --proxy — so
       # the one gesture they do not cover is spelled out here rather than added

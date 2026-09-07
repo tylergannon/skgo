@@ -1,0 +1,4 @@
+{"type":"object",
+"description":"Destination is what this query would have answered with.","properties":{
+"where":{"type":"string","description":"Where is the path the visitor is sent to."}
+},"required":["where"],"additionalProperties":false}

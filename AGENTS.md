@@ -16,38 +16,33 @@ the JavaScript kit requires is a generated stub that throws, so any real
 response proves Go answered. Running remote functions or server routes in
 TypeScript is not a supported mode.
 
-**CSR today. SSR is decided, and being built.** What ships now runs with
-`ssr = false`: the document is kit's own SPA fallback, kit's server bundle is
-built but never runs, and no JavaScript executes in production.
+**Pages are rendered in the Go process.** A page document leaves Go with its
+markup already in it, rendered by SvelteKit's own renderer inside an embedded
+JavaScript engine — one process, one binary, no Node at request time and no
+sidecar. A page whose branch sets `ssr = false` still gets kit's SPA fallback,
+and one that sets `csr = false` gets no script at all.
 
-SSR is no longer conditional or unproven. The CSR base case proved out, and a
-spike server-rendered four pages of the example app inside goja — a pure-Go
-engine embedded in the binary — byte-identical to the same bundle under Node,
-with Go answering every remote function in-process. One process, one binary, no
-cgo, no Node at request time.
+**No application I/O executes in JavaScript.** That is the rule the engine has
+to obey, and it is narrower than "no JavaScript runs": the engine executes kit's
+root component, Svelte's renderer and the app's components, and nothing in it
+reads a file, opens a socket or sets a timer. Every remote function's body is
+still the generated stub that throws; the only path by which a value reaches the
+engine is a call back out to Go, which is what makes a rendered value proof that
+Go answered.
 
-The spike and its proposal are not on `main` yet: they live on the branch
-`claude/ssr-no-node-sidecar-9e3be4` as `internal/ssrspike/` and
-`ephemeral/brief/2026-09-06-ssr-in-process.md`. Read them there, on that
-branch, before planning an SSR slice — they answer issue #7 and they answer the
-AsyncLocalStorage question that issue named as the kill criterion.
-
-Build functionality first. The performance levers — a runtime pool, an engine
-swap — sit behind the same seam and are deferred, not forgotten; the pool is
-mandatory rather than optional, because a re-entrant render on one runtime
-returns empty with no error. A supervised Node sidecar is not on the table and
-that question is closed.
-
-Until a slice actually ships, do not describe the system as having SSR.
+The engine is goja, pure Go, embedded in the binary — no cgo. Renders are
+served from a pool of runtimes, which is mandatory rather than an optimisation:
+a re-entrant render on one runtime returns empty markup with no error. A
+supervised Node sidecar is not on the table and that question is closed.
 
 To a Go developer: a real frontend framework for a Go monolith. To a Svelte
 developer: the app is still SvelteKit.
 
 One binary. One build gesture. Node is a build-time dependency only.
 
-We never reimplement kit, never write or maintain a JavaScript engine —
-embedding an existing one, as SSR does with goja, is a different thing — and
-never claim anything that hasn't been demonstrated running.
+We never reimplement kit, never write or maintain a JavaScript engine — the one
+SSR runs on is embedded, not ours — and never claim anything that hasn't been
+demonstrated running.
 
 ## Read this first
 

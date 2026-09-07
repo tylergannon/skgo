@@ -74,14 +74,20 @@ func TestTheEmbeddedBuildProducesAWorkingServer(t *testing.T) {
 }
 
 // TestEveryRouteInTheManifestIsServed walks the manifest the adapter wrote and
-// requires the boot document for a concrete URL of each route.
+// asks for a concrete URL of each route.
 //
 // Kit's route patterns are JavaScript regular expressions and Go's are not the
 // same dialect, so a route shape that Go cannot compile — or compiles but does
 // not match — takes the whole server down at startup or serves a 404 to a page
 // that exists. Both are invisible to a test that builds its own patterns.
+//
+// What each route is answered with comes from the manifest too, because that is
+// where a page's own options live: a branch that turns SSR off is answered with
+// kit's shell, one that turns CSR off is answered with a document carrying no
+// script at all, and everything else is rendered and boots.
 func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 	h := newProdHandler(t)
+	session := businesslogic.Default.SignIn("ada")
 
 	dist, err := fs.Sub(web.Build, "build")
 	if err != nil {
@@ -94,13 +100,16 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 	if len(manifest.Routes) == 0 {
 		t.Fatal("the manifest lists no routes")
 	}
+	if manifest.SSR == nil {
+		t.Fatal("the build carries no SSR bundle, so nothing below is about the server that ships")
+	}
 
-	document, err := fs.ReadFile(dist, "index.html")
+	shell, err := fs.ReadFile(dist, "index.html")
 	if err != nil {
 		t.Fatalf("reading index.html: %v", err)
 	}
 
-	pages := 0
+	pages, rendered, errored := 0, 0, 0
 	for _, route := range manifest.Routes {
 		if route.Page == nil {
 			// A route that is a `+server.ts` and nothing else has no page to
@@ -110,33 +119,243 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 			continue
 		}
 		pages++
+
 		path := samplePath(t, route.ID)
-		rec := get(t, h, path)
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		// Signed in, because a section of this app turns a signed-out visitor
+		// away and a redirect is not what this test is about.
+		req.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		body := rec.Body.String()
+
+		if want, deliberate := deliberateFailures[route.ID]; deliberate {
+			errored++
+			if rec.Code != want.status {
+				t.Errorf("route %s: GET %s returned %d, want %d", route.ID, path, rec.Code, want.status)
+			}
+			if want.location != "" {
+				// A redirect has no document at all: a Location and nothing
+				// else, which is kit's `redirect_response`.
+				if got := rec.Header().Get("Location"); got != want.location {
+					t.Errorf("route %s: GET %s sent Location %q, want %q", route.ID, path, got, want.location)
+				}
+				if body != "" {
+					t.Errorf("route %s: GET %s answered a redirect with %d bytes of body", route.ID, path, len(body))
+				}
+				continue
+			}
+			if body == string(shell) {
+				t.Errorf("route %s: GET %s returned kit's shell rather than a rendered error document", route.ID, path)
+			}
+			if !strings.Contains(body, want.says) {
+				t.Errorf("route %s: GET %s does not say %q", route.ID, path, want.says)
+			}
+			for _, leaked := range want.never {
+				if strings.Contains(body, leaked) {
+					t.Errorf("route %s: GET %s leaked %q into the document", route.ID, path, leaked)
+				}
+			}
+			if want.static {
+				// error.html is a whole document of its own: no app markup, and
+				// no script, so nothing boots and nothing tries again.
+				if strings.Contains(body, "<script") {
+					t.Errorf("route %s: GET %s carries a script, so it is not kit's static error page", route.ID, path)
+				}
+				if strings.Contains(body, `data-testid="app-nav"`) {
+					t.Errorf("route %s: GET %s rendered the root layout, which is the layout that failed", route.ID, path)
+				}
+			} else {
+				// A page that caught its own failure still rendered; only the
+				// status moved. Everything else is answered by an error page in
+				// the page's place.
+				if !want.rendered && !strings.Contains(body, `data-testid="error-message"`) {
+					t.Errorf("route %s: GET %s carries no rendered error page", route.ID, path)
+				}
+				if !strings.Contains(body, want.inside) {
+					t.Errorf("route %s: GET %s did not render inside %s", route.ID, path, want.inside)
+				}
+			}
+			continue
+		}
+
 		if rec.Code != http.StatusOK {
 			t.Errorf("route %s: GET %s returned %d, want 200", route.ID, path, rec.Code)
 			continue
 		}
-		if got := rec.Body.String(); got != string(document) {
-			t.Errorf("route %s: GET %s did not return kit's boot document", route.ID, path)
+
+		ssr, csr := true, true
+		for _, index := range route.Page.Branch() {
+			if index < 0 || index >= len(manifest.SSR.Nodes) {
+				continue
+			}
+			if v := manifest.SSR.Nodes[index].SSR; v != nil {
+				ssr = *v
+			}
+			if v := manifest.SSR.Nodes[index].CSR; v != nil {
+				csr = *v
+			}
+		}
+
+		switch {
+		case !ssr:
+			if body != string(shell) {
+				t.Errorf("route %s turns SSR off: GET %s did not return kit's shell", route.ID, path)
+			}
+		case body == string(shell):
+			// Nothing is answered with the shell any more except a branch that
+			// turns SSR off. A page that quietly stopped rendering used to hide
+			// here, behind "its load failed"; a load that fails is now a
+			// rendered error document with the status it threw, and is listed
+			// in deliberateFailures above.
+			t.Errorf("route %s: GET %s returned kit's shell rather than a rendered page", route.ID, path)
+		case !strings.Contains(body, `data-testid="app-nav"`):
+			t.Errorf("route %s: GET %s carries no rendered markup from the root layout", route.ID, path)
+		default:
+			rendered++
+		}
+
+		boots := strings.Contains(body, "kit.start(app, element")
+		if csr && ssr && !boots {
+			t.Errorf("route %s: GET %s carries no boot script, so nothing would hydrate", route.ID, path)
+		}
+		if !csr && strings.Contains(body, "<script") {
+			t.Errorf("route %s turns CSR off: GET %s still carries a script", route.ID, path)
 		}
 	}
 	if pages == 0 {
 		t.Fatal("the manifest lists no page routes, so this test asserted nothing")
 	}
+	if rendered == 0 {
+		t.Fatal("not one page route was rendered, so this test asserted nothing about SSR")
+	}
+	if errored != len(deliberateFailures) {
+		t.Errorf("%d of the %d routes this app fails on purpose were visited; the manifest no longer carries the rest",
+			errored, len(deliberateFailures))
+	}
 }
 
-// TestAnUnknownPathStillBootsKitsClient keeps the 404 half of the contract
-// honest: kit's client has to receive the document so it can render
-// +error.svelte, and it has to receive it with a 404.
-func TestAnUnknownPathStillBootsKitsClient(t *testing.T) {
+// deliberateFailures is what this app does wrong on purpose, and what kit's own
+// rules make of each one.
+//
+// The statuses are written here rather than read back off the response, because
+// the failure this guards against — a page falling back to kit's shell — is
+// answered with a perfectly ordinary 200 and a document that looks fine until
+// the browser boots. Every fixture named below exists for one scenario and has
+// exactly one source in the app.
+var deliberateFailures = map[string]struct {
+	status int
+	// location, when set, is where a bare 3xx sends the visitor. There is no
+	// document to check in that case.
+	location string
+	// says is text the document itself must carry.
+	says string
+	// inside is markup from the layout the error page must render within.
+	inside string
+	// never is text the document must not carry: what the error actually said,
+	// where kit's rules say the visitor is told nothing.
+	never []string
+	// static reports that kit's `error.html` is the answer, which carries no
+	// app markup and no script at all.
+	static bool
+	// rendered reports that the page itself rendered and only the status
+	// moved, which is what a boundary that caught its own failure produces.
+	rendered bool
+}{
+	// A load that throws error(402, ...) under /account, which declares its own
+	// +error.svelte: the account layout survives and its error page renders
+	// inside it.
+	"/account/statement": {status: 402, says: "Your account is in arrears", inside: `data-testid="account-user"`},
+	// The same thing with no error page nearer than the root's.
+	"/error/expected": {status: 418, says: "This page is a teapot", inside: `data-testid="app-nav"`},
+	// A load that fails with an ordinary error: 500 Internal Error, and not one
+	// word of what actually went wrong.
+	"/error/unexpected": {
+		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
+		never: []string{"hunter2", "postgres://"},
+	},
+	// A command called while the page renders. Kit refuses it, transformError
+	// turns the refusal into Internal Error, and the boundary the root error
+	// page guards renders in the page's place.
+	"/error/command": {
+		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
+		never: []string{"Cannot call a command"},
+	},
+	// A page that catches its own failure. It renders — its own heading is in
+	// the document — and kit's transformError still moves the whole document's
+	// status to the caught error's.
+	"/error/boundary": {
+		status: 409, says: "The sensor is being calibrated",
+		inside: `<h1 data-testid="title">Sensor</h1>`, rendered: true,
+	},
+	// A query that redirects while the page renders. Kit turns that into a
+	// redirect of the whole document, not into an error inside it.
+	"/error/redirect": {status: 307, location: "/about"},
+	// A throw in the root layout, which no error page can guard. Both the
+	// render and the retry through respond_with_error fail, and kit's static
+	// error.html is what is left.
+	"/error/render": {status: 500, says: "Internal Error", static: true},
+}
+
+// TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage is kit's `respond.js`
+// answer to a path that matched no route: `respond_with_error` renders the root
+// layout with the root error page inside it, at 404. The document says the page
+// is missing before a line of JavaScript has run, which a shell that has to boot
+// first cannot.
+func TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage(t *testing.T) {
 	h := newProdHandler(t)
 
 	rec := get(t, h, "/no-such-page")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("GET /no-such-page: status %d, want 404", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "<") {
-		t.Errorf("GET /no-such-page returned no document")
+	body := rec.Body.String()
+	for _, want := range []string{
+		// The root error page, showing the status and the message kit gives.
+		`<h1 data-testid="title">Error 404</h1>`,
+		`<p data-testid="error-message">Not Found</p>`,
+		// Inside the app's own root layout.
+		`data-testid="app-nav"`,
+		// And it still boots, so the client takes over from the same page.
+		"kit.start(app, element",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("GET /no-such-page: the document does not carry %q", want)
+		}
+	}
+}
+
+// TestAMissingImageIsNotAnsweredWithADocument keeps a rendered error page off
+// the requests that cannot read one. Kit decides by `Sec-Fetch-Dest`
+// (`runtime/server/respond.js`) and answers those with four words of plain
+// text; a browser asking for an image and getting a full HTML document treats
+// it as a broken image either way and pays for the render.
+func TestAMissingImageIsNotAnsweredWithADocument(t *testing.T) {
+	h := newProdHandler(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/no-such-image.png", nil)
+	req.Header.Set("Sec-Fetch-Dest", "image")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status %d, want 404", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/plain") {
+		t.Errorf("Content-Type %q, want text/plain", got)
+	}
+	if got := rec.Header().Get("Vary"); got != "Sec-Fetch-Dest" {
+		t.Errorf("Vary %q, want Sec-Fetch-Dest", got)
+	}
+	if strings.Contains(rec.Body.String(), "data-testid") {
+		t.Errorf("a missing image was answered with a rendered document")
+	}
+
+	// And the same path without the header is still the visitor's 404 page.
+	rec = get(t, h, "/no-such-image.png")
+	if !strings.Contains(rec.Body.String(), `<p data-testid="error-message">Not Found</p>`) {
+		t.Errorf("a document request for the same path did not get the error page")
 	}
 }
 
@@ -396,13 +615,16 @@ func TestAConditionalRequestForADataURLStillGetsKitsData(t *testing.T) {
 	// The document's own ETag, taken from the page this data URL belongs to.
 	// It is the validator a confused conditional request would be matched
 	// against, so it is the one worth sending.
-	page := get(t, h, "/account")
-	documentETag := page.Header().Get("ETag")
-	if documentETag == "" {
-		t.Fatal("GET /account served no ETag; this test would prove nothing")
-	}
-
 	session := businesslogic.Default.SignIn("ada")
+
+	page := httptest.NewRequest(http.MethodGet, "/account", nil)
+	page.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
+	pageRec := httptest.NewRecorder()
+	h.ServeHTTP(pageRec, page)
+	documentETag := pageRec.Header().Get("ETag")
+	if documentETag == "" {
+		t.Fatalf("GET /account served no ETag (status %d); this test would prove nothing", pageRec.Code)
+	}
 
 	for _, headers := range []map[string]string{
 		{},

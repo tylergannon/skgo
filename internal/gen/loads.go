@@ -41,7 +41,11 @@ func (a *app) writeLoadStubs() error {
 
 		dir := filepath.Dir(load.stub)
 		imports := map[string][]string{}
+		var transported []string
 		for _, field := range fields {
+			for _, custom := range field.transported {
+				transported = appendUnique(transported, custom.Obj().Name())
+			}
 			for _, dep := range field.deps {
 				set := a.typeSets[dep.Obj().Pkg()]
 				spec, err := importSpecifier(dir, set.tsDir)
@@ -55,6 +59,18 @@ func (a *app) writeLoadStubs() error {
 		var b strings.Builder
 		b.WriteString(tsHeader)
 
+		if len(transported) > 0 {
+			sort.Strings(transported)
+			spec, err := a.hooksSpecifier(dir)
+			if err != nil {
+				return err
+			}
+			// From src/hooks.ts, not from a projected types.ts: these are the
+			// classes the app's `transport` hook builds, and their methods are
+			// the reason a load bothers to send one.
+			fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(transported, ", "), spec)
+		}
+
 		var specs []string
 		for spec := range imports {
 			specs = append(specs, spec)
@@ -65,7 +81,7 @@ func (a *app) writeLoadStubs() error {
 			sort.Strings(names)
 			fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(names, ", "), spec)
 		}
-		if len(specs) > 0 {
+		if len(specs) > 0 || len(transported) > 0 {
 			b.WriteString("\n")
 		}
 
@@ -102,6 +118,10 @@ type loadField struct {
 	expr     string
 	optional bool
 	deps     []*types.Named
+	// transported are the app's own custom types the property names. Like a
+	// remote stub's, they are imported from `src/hooks.ts` and not from a
+	// projected types.ts, because they are the classes the app declares there.
+	transported []*types.Named
 }
 
 // loadFields projects the Go struct a load returns into the properties kit's
@@ -150,7 +170,7 @@ func (a *app) collectLoadFields(load *loadFn, st *types.Struct, into *[]loadFiel
 		}
 		seen[name] = true
 
-		expr, deps, err := a.projectLoadField(field.Type())
+		expr, deps, transported, err := a.projectLoadField(field.Type())
 		if err != nil {
 			return fmt.Errorf("skgo: %s: the %s field of the load's result cannot cross to TypeScript: %v", load.pos, field.Name(), err)
 		}
@@ -159,29 +179,29 @@ func (a *app) collectLoadFields(load *loadFn, st *types.Struct, into *[]loadFiel
 				return err
 			}
 		}
-		*into = append(*into, loadField{name: name, expr: expr, optional: optional, deps: deps})
+		*into = append(*into, loadField{name: name, expr: expr, optional: optional, deps: deps, transported: transported})
 	}
 	return nil
 }
 
 // projectLoadField is `project` plus the one type it does not know: a Deferred,
 // which reaches the browser as a promise.
-func (a *app) projectLoadField(t types.Type) (string, []*types.Named, error) {
+func (a *app) projectLoadField(t types.Type) (string, []*types.Named, []*types.Named, error) {
 	if inner, ok := deferredElem(t); ok {
 		projected, err := a.project(inner)
 		if err != nil {
-			return "", nil, fmt.Errorf("a deferred value's type cannot cross: %v", err)
+			return "", nil, nil, fmt.Errorf("a deferred value's type cannot cross: %v", err)
 		}
-		return "Promise<" + projected.expr + ">", projected.deps, nil
+		return "Promise<" + projected.expr + ">", projected.deps, projected.transported, nil
 	}
 	if containsDeferred(t) {
-		return "", nil, fmt.Errorf("%s holds a Deferred below the top level of the load's result; kit's client only awaits promises the load returns directly", t)
+		return "", nil, nil, fmt.Errorf("%s holds a Deferred below the top level of the load's result; kit's client only awaits promises the load returns directly", t)
 	}
 	projected, err := a.project(t)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
-	return projected.expr, projected.deps, nil
+	return projected.expr, projected.deps, projected.transported, nil
 }
 
 // deferredElem reports whether t is skgo.Deferred[T], and returns T.

@@ -1,9 +1,25 @@
 import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
+// Which mode this run is for. It decides two things: what the suite tells the
+// server it expects to be answering (EXPECTED_MODE), and which scenarios exist
+// at all.
+//
+// A handful of claims are true in one mode and not the other, because the two
+// modes really do behave differently: in prod Go renders the document, and in
+// dev kit's own server owns it and the app turns server rendering off (see
+// web/src/routes/+layout.ts). Rather than let a step quietly mean two things,
+// each such scenario is written twice — `@prod` beside `@dev` — and the run
+// generates only the half that belongs to it. Everything untagged runs in both.
+const mode = process.env.EXPECTED_MODE === 'dev' ? 'dev' : 'prod';
+
 const testDir = defineBddConfig({
 	features: 'features/**/*.feature',
-	steps: 'steps/**/*.ts'
+	steps: 'steps/**/*.ts',
+	tags: mode === 'dev' ? 'not @prod' : 'not @dev',
+	// Per mode, so a run cannot execute the spec files the other mode's
+	// generation left behind if bddgen ever fails to overwrite them.
+	outputDir: `.features-gen/${mode}`
 });
 
 // The suite always targets an already-running server: BASE_URL points at Go,

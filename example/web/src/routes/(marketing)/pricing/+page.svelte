@@ -2,6 +2,10 @@
 	import { Money } from '../../../hooks';
 	import { getPlans, quoteFor } from './pricing.remote';
 
+	// The featured plan comes from the Go load, so it travelled down inside the
+	// document rather than in a request of its own.
+	let { data } = $props();
+
 	// What Go said about a price this page sent it. Empty until the button is
 	// pressed, so nothing here is on screen unless a Money made the round trip.
 	let heard = $state('');
@@ -17,6 +21,13 @@
 </script>
 
 <h1 data-testid="title">Pricing</h1>
+
+<!-- format() is a method on the class in src/hooks.ts, and it is called while
+     this page is rendered. Go sends 4500 cents under the transport key; the
+     engine has the app's own decoders, so what reaches this line is a Money and
+     the price is already in the document. A plain object would throw here and
+     the visitor would get the shell instead. -->
+<p data-testid="featured">{data.featured.name} — {data.featured.price.format()}</p>
 
 <svelte:boundary>
 	<ul data-testid="plans">

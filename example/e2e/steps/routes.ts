@@ -80,28 +80,6 @@ Then(
 	}
 );
 
-/**
- * A prerendered page is a file the build wrote for that one route. Every route
- * that is *not* prerendered is answered with kit's single boot document
- * instead, so "these two are not the same bytes" is the difference between the
- * two mechanisms — and it is what fails if the prerendered tree stops being
- * served, along with the 200 that turns into a 404.
- *
- * The comparison is against a page fetched here, not against a file read out of
- * the build the server is serving, so a broken build cannot satisfy it by
- * agreeing with itself.
- */
-Then('the document is not the one every unprerendered route gets', async ({ page, documents, shot }) => {
-	expect(documents.last, 'no document response was observed').not.toBeNull();
-	const prerendered = await documents.last!.text();
-
-	const other = await page.request.get('/todos');
-	expect(other.status(), 'GET /todos should be an ordinary page').toBe(200);
-	expect(prerendered).not.toBe(await other.text());
-	expect(prerendered.length, 'the prerendered page is empty').toBeGreaterThan(0);
-	await shot();
-});
-
 When(
 	'I request {string} without following redirects',
 	async ({ page, notes }, path: string) => {

@@ -152,6 +152,14 @@ type dataRoute struct {
 	// branch is `[...layouts, leaf]`; an entry is nil when that node has no
 	// server load, which is what the client is told with a `null` node.
 	branch []*ServerLoad
+	// nodes is the same branch as node indices into the manifest's node table.
+	// A document render needs them: they are what the boot script's
+	// `node_ids` carries and what the SSR bundle looks its components up by.
+	nodes []int
+	// errors is the `+error.svelte` declared at each layout depth, or -1. It
+	// is one shorter than nodes, because a leaf declares no error page of its
+	// own, and it is what the renderer walks outward when a load fails.
+	errors []int
 	// hasPage is false for a route that is an endpoint and nothing else. Kit
 	// answers `__data.json` on one of those with a bare 404.
 	hasPage bool
@@ -205,8 +213,9 @@ func NewLoads(cfg LoadConfig, loads ...*ServerLoad) (*Loads, error) {
 		if err != nil {
 			return nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
 		}
-		dr := &dataRoute{id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil}
+		dr := &dataRoute{id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil, errors: route.Page.ErrorPages()}
 		for _, index := range route.Page.Branch() {
+			dr.nodes = append(dr.nodes, index)
 			if index < 0 || index >= len(ls.nodes) {
 				dr.branch = append(dr.branch, nil)
 				continue

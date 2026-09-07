@@ -48,6 +48,26 @@
 			"target": "web/src/routes/docs/[...rest]"
 		},
 		{
+			"link": "generated/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz",
+			"target": "web/src/routes/error/boundary"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za",
+			"target": "web/src/routes/error/command"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle",
+			"target": "web/src/routes/error/expected"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u",
+			"target": "web/src/routes/error/redirect"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa",
+			"target": "web/src/routes/error/unexpected"
+		},
+		{
 			"link": "generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu",
 			"target": "web/src/routes/items/[id]"
 		}
