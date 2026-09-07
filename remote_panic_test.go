@@ -87,12 +87,13 @@ func TestAPanickingCommandAnswersInsteadOfResettingTheConnection(t *testing.T) {
 // A panic in a query a command refreshes must not take the command's own
 // answer down with it: the command already ran and may have written a cookie.
 func TestAPanickingRefreshDoesNotDestroyTheCommandsAnswer(t *testing.T) {
-	command := NewCommandNoArg(testModule, "act", func(ctx context.Context) (string, error) {
-		return "done", nil
-	})
-	query := NewQueryNoArg(testModule, "boom", func(ctx context.Context) (string, error) {
+	boom := func(ctx context.Context) (string, error) {
 		panic("the refresh exploded")
+	}
+	command := NewCommandNoArg(testModule, "act", func(ctx context.Context) (string, error) {
+		return "done", RefreshRequestedNoArg(ctx, boom)
 	})
+	query := NewQueryNoArg(testModule, "boom", boom)
 	rs := testRemotes(t, RemoteConfig{}, command, query)
 	srv := silentServer(t, rs)
 

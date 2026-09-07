@@ -132,12 +132,16 @@ func TestRefreshedQuerySeesTheCookieTheCommandJustSet(t *testing.T) {
 	// This is the single-flight sign-in: `login(...).updates(whoami())` must
 	// come back carrying the signed-in answer, or the page shows the
 	// signed-out one until the next navigation.
-	whoami := NewQueryNoArg(testModule, "whoami", func(ctx context.Context) (string, error) {
+	whoamiFn := func(ctx context.Context) (string, error) {
 		user, _ := EventFrom(ctx).Cookie("session")
 		return user, nil
-	})
+	}
+	whoami := NewQueryNoArg(testModule, "whoami", whoamiFn)
 	login := NewCommand(testModule, "login", func(ctx context.Context, user string) (string, error) {
-		return user, EventFrom(ctx).SetCookie("session", user, CookieOptions{})
+		if err := EventFrom(ctx).SetCookie("session", user, CookieOptions{}); err != nil {
+			return "", err
+		}
+		return user, RefreshRequestedNoArg(ctx, whoamiFn)
 	})
 	rs := testRemotes(t, RemoteConfig{}, whoami, login)
 
@@ -212,12 +216,16 @@ func TestARefreshedQueryStillCannotWriteCookies(t *testing.T) {
 	// The refreshes a command resolves share its cookie jar, so they must not
 	// also inherit its permission to write.
 	var refreshErr error
-	whoami := NewQueryNoArg(testModule, "whoami", func(ctx context.Context) (string, error) {
+	whoamiFn := func(ctx context.Context) (string, error) {
 		refreshErr = EventFrom(ctx).SetCookie("session", "eve", CookieOptions{})
 		return "", nil
-	})
+	}
+	whoami := NewQueryNoArg(testModule, "whoami", whoamiFn)
 	login := NewCommand(testModule, "login", func(ctx context.Context, user string) (string, error) {
-		return user, EventFrom(ctx).SetCookie("session", user, CookieOptions{})
+		if err := EventFrom(ctx).SetCookie("session", user, CookieOptions{}); err != nil {
+			return "", err
+		}
+		return user, RefreshRequestedNoArg(ctx, whoamiFn)
 	})
 	rs := testRemotes(t, RemoteConfig{}, whoami, login)
 
