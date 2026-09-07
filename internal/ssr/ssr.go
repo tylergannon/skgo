@@ -27,7 +27,11 @@ import (
 // `<hash>/<name>`, as kit's own vite plugin assigns it, and payload is
 // `stringify_remote_arg(arg)`; together they are the key the browser's query
 // cache looks the value up under. The returned bytes are the JSON envelope the
-// bundle parses: `{"v": <value>}` or `{"e": {"status": n, "message": "..."}}`.
+// bundle parses: `{"v": "<devalue>"}` or `{"e": {"status": n, "message": "..."}}`.
+//
+// `v` is a string rather than a value, and for the same reason Node.Data is:
+// it is devalue's flat form, so the bundle can hand it to the app's own
+// decoders and a custom type arrives in the render with its methods.
 type Host func(id, payload string) ([]byte, error)
 
 // Request is what a render is given. It is marshalled straight to the bundle's
@@ -61,9 +65,18 @@ type Request struct {
 type Node struct {
 	// Index is the node's index in the manifest's node table.
 	Index int `json:"node"`
-	// Data is what the node's server load returned, already reduced to the
-	// plain tree JSON carries. It is nil for a node with no load.
-	Data any `json:"data"`
+	// Data is what the node's server load returned, serialized exactly as it
+	// is for `__data.json`: devalue's flat form, with the app's transport
+	// encoders applied. The bundle parses it back with the app's own decoders,
+	// so a component renders against the same instance the browser will hold —
+	// a `Money` with its `format()`, not the object its fields travelled in.
+	//
+	// A plain tree would lose that: JSON has no way to say which class an
+	// object belongs to, and a method call on the object that arrived instead
+	// throws in the middle of a render.
+	//
+	// "" is a node with no load.
+	Data string `json:"data"`
 }
 
 // Error is kit's `App.Error`.

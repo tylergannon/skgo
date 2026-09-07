@@ -15,6 +15,11 @@ Feature: Pages arrive rendered
   in the app returns. The generated TypeScript beside each of those throws
   "skgo: implemented in Go", so none of these strings has a second way to appear.
 
+  "$45.00" is what `Money.format()` in src/hooks.ts makes of those 4500 cents. It
+  is a method on a class, so a page that received a plain object cannot write it
+  — which is why the price standing in the raw document says the engine was
+  handed a Money, decoded by the app's own `transport` hook, before it rendered.
+
   Scenario: The home page's HTML already contains the site name
     Given I open "/"
     Then the document already said the site is named "skgo"
@@ -50,11 +55,12 @@ Feature: Pages arrive rendered
     And exactly 0 data requests were made since
     And exactly 0 remote requests were made since
 
-  Scenario: A custom-typed value round-trips through the document into the client
+  Scenario: A custom-typed value is rendered by its own method on the server
     Given I note the data request count
     When I open "/pricing"
-    Then the featured plan costs "$45.00"
-    And the document never mentions "$45.00"
+    Then the document already said "Startup — $45.00"
+    And the document carried the price as a Money of 4500 cents
+    And the featured plan costs "$45.00"
     And exactly 0 data requests were made since
 
   Scenario: A page marked csr = false is plain HTML with no script tag

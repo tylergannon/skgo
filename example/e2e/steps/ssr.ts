@@ -37,6 +37,20 @@ Then(
 	}
 );
 
+// The other half of the same claim. The markup says a method ran; this says the
+// value it ran on was still cents on the wire, handed to the client under the
+// transport key for `app.decode` to rebuild — so the server did not render the
+// price by flattening the type, and the client is not hydrating a plain object
+// over markup that claims otherwise.
+Then(
+	'the document carried the price as a Money of {int} cents',
+	async ({ documents, shot }, cents: number) => {
+		const html = await documentText(documents);
+		expect(html).toContain(`price:app.decode("Money", {cents:${cents}})`);
+		await shot();
+	}
+);
+
 Then('the document never mentions {string}', async ({ documents, shot }, text: string) => {
 	expect(await documentText(documents)).not.toContain(text);
 	await shot();
