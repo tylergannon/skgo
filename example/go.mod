@@ -8,7 +8,6 @@ require (
 )
 
 require (
-	github.com/buke/quickjs-go v0.7.7 // indirect
 	github.com/dave/dst v0.27.3 // indirect
 	github.com/dlclark/regexp2/v2 v2.5.2 // indirect
 	github.com/dop251/goja v0.0.0-20260906210903-70ad66ec7ce4 // indirect
