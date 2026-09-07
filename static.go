@@ -56,6 +56,70 @@ type Manifest struct {
 	// Precompressed reports that the build wrote `.br` and `.gz` siblings for
 	// the files kit's own `builder.compress` compresses.
 	Precompressed bool `json:"precompressed,omitempty"`
+	// SSR describes the server-rendering half of the build: the bundle the Go
+	// process renders pages with, the document template, and everything kit's
+	// own `render_response` reads out of its manifest to assemble a document.
+	// It is absent from a build made by an adapter that emitted no bundle, and
+	// such a build is served the way it always was, as the SPA shell.
+	SSR *ManifestSSR `json:"ssr,omitempty"`
+}
+
+// ManifestSSR is the build's server-rendering description.
+type ManifestSSR struct {
+	// Bundle is the path of the SSR bundle inside the build.
+	Bundle string `json:"bundle"`
+	// Template is the path of `app.html` inside the build, verbatim, with
+	// kit's `%sveltekit.*%` placeholders still in it.
+	Template string `json:"template"`
+	// Target is the ECMAScript version the bundle was compiled to. It is
+	// recorded because it is a correctness claim, not a preference: below
+	// es2022 the bundle still runs and costs several times more.
+	Target string `json:"target"`
+	// GlobalName is the `__sveltekit_<hash>` object the boot script assigns
+	// and the client reads.
+	GlobalName string `json:"globalName"`
+	// Assets is kit's `paths.assets`.
+	Assets string `json:"assets"`
+	// Relative is kit's `paths.relative`: whether the document addresses its
+	// own assets by a path relative to the page.
+	Relative bool `json:"relative"`
+	// Client is the client bundle the document boots.
+	Client ManifestClient `json:"client"`
+	// Nodes describes each node of the table `Nodes` indexes, positionally.
+	Nodes []ManifestSSRNode `json:"nodes"`
+}
+
+// ManifestClient is kit's own `manifest._.client`: the entry points a document
+// imports and the assets it must link.
+type ManifestClient struct {
+	Start                string         `json:"start"`
+	App                  string         `json:"app"`
+	Imports              []string       `json:"imports"`
+	Stylesheets          []string       `json:"stylesheets"`
+	Fonts                []ManifestFont `json:"fonts"`
+	UsesEnvDynamicPublic bool           `json:"usesEnvDynamicPublic"`
+}
+
+// ManifestFont is one font the build asks a document to preload.
+type ManifestFont struct {
+	File     string `json:"file"`
+	Filename string `json:"filename"`
+}
+
+// ManifestSSRNode is one node's contribution to a document.
+type ManifestSSRNode struct {
+	// Component reports that kit compiled a component for this node. Kit omits
+	// one for a node that will never be server-rendered.
+	Component bool `json:"component"`
+	// SSR and CSR are the page options this node sets, or nil for a node that
+	// sets neither. Kit reduces them over a route's branch, last one wins.
+	SSR *bool `json:"ssr"`
+	CSR *bool `json:"csr"`
+	// Imports, Stylesheets and Fonts are the client assets a page carrying
+	// this node must link.
+	Imports     []string       `json:"imports"`
+	Stylesheets []string       `json:"stylesheets"`
+	Fonts       []ManifestFont `json:"fonts"`
 }
 
 // ManifestRoute is one entry of Manifest.Routes.
@@ -133,6 +197,11 @@ type staticHandler struct {
 	document     []byte
 	documentETag string
 
+	// ssr renders page documents in this process. It is nil for a build with
+	// no SSR bundle, and for a handler built without one, and every page is
+	// then answered with the boot document as it always was.
+	ssr *SSR
+
 	routes []*regexp.Regexp
 
 	assets map[string]assetMeta
@@ -177,16 +246,27 @@ var contentEncodings = map[string]string{
 	".gz": "gzip",
 }
 
+// A StaticOption configures a static handler.
+type StaticOption func(*staticHandler)
+
+// WithSSR makes the handler render page documents with s rather than answer
+// them with kit's SPA shell. The shell is still what answers a page whose
+// branch turns SSR off.
+func WithSSR(s *SSR) StaticOption {
+	return func(h *staticHandler) { h.ssr = s }
+}
+
 // NewStaticHandler serves an embedded skgo adapter build. build must be rooted
 // at the adapter's output directory, so that `index.html`,
 // `skgo.manifest.json` and `client/` are at its top level.
 //
 // Requests are answered in this order: an exact file under `client/`; a 404
 // with an empty body for any other miss below the app directory; a page the
-// build prerendered; kit's boot document with status 200 for a path matching a
-// route from the manifest; and the boot document with status 404 for anything
-// else, so kit's client router can render `+error.svelte`.
-func NewStaticHandler(build fs.FS) (http.Handler, error) {
+// build prerendered; a page rendered by the renderer, if one was given and the
+// route's branch does not turn SSR off; kit's boot document with status 200 for
+// a path matching a route from the manifest; and the boot document with status
+// 404 for anything else, so kit's client router can render `+error.svelte`.
+func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error) {
 	document, err := fs.ReadFile(build, "index.html")
 	if err != nil {
 		return nil, fmt.Errorf("skgo: reading index.html from the build: %w", err)
@@ -219,6 +299,9 @@ func NewStaticHandler(build fs.FS) (http.Handler, error) {
 		document:     document,
 		documentETag: etagOf(document),
 		prerendered:  map[string]bool{},
+	}
+	for _, option := range options {
+		option(h)
 	}
 	for _, p := range manifest.Prerendered {
 		h.prerendered[p] = true
@@ -436,6 +519,13 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.matchesRoute(urlPath) {
+		// The renderer declines a page it cannot or should not render — a
+		// branch that turns SSR off, a load that failed — and the boot document
+		// answers it, which is what answered every page before there was a
+		// renderer.
+		if h.ssr != nil && h.ssr.serve(w, r, urlPath) {
+			return
+		}
 		h.serveDocument(w, r, http.StatusOK)
 		return
 	}

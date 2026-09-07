@@ -13,9 +13,6 @@
 		<p data-testid="item-name">{item.name}</p>
 		<p data-testid="colocated">{item.colocated}</p>
 	{/if}
-	{#snippet pending()}
-		<p data-testid="item-pending">loading…</p>
-	{/snippet}
 	{#snippet failed(error)}
 		<p data-testid="item-failed">{(error as Error).message}</p>
 	{/snippet}

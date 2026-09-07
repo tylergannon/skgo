@@ -64,6 +64,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 
 	mode := "prod"
 	var pages http.Handler
+	var static func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
 	if proxy != "" {
 		target, err := url.Parse(proxy)
 		if err != nil {
@@ -82,11 +83,16 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		endpointCfg.Dev = true
 		mode, pages = "dev", skgo.NewDevProxy(target, log.Printf)
 	} else {
-		static, err := skgo.NewStaticHandler(dist)
-		if err != nil {
-			return nil, "", err
+		// The renderer needs the loads and the remote functions, and they need
+		// the manifest, so the page handler is built last — after both of the
+		// registries it renders with exist.
+		static = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{})
+			if err != nil {
+				return nil, err
+			}
+			return skgo.NewStaticHandler(dist, skgo.WithSSR(ssr))
 		}
-		pages = static
 	}
 
 	remotes, err := skgo.NewRemotes(remoteCfg, generated.Remotes()...)
@@ -100,6 +106,11 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	endpoints, err := skgo.NewEndpoints(endpointCfg, generated.Endpoints()...)
 	if err != nil {
 		return nil, "", err
+	}
+	if static != nil {
+		if pages, err = static(loads, remotes); err != nil {
+			return nil, "", err
+		}
 	}
 	return loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))), mode, nil
 }
