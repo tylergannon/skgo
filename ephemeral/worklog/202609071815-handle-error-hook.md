@@ -63,3 +63,17 @@ matching ambient declaration type-checks against nothing. There was no
 `example/web/src/app.d.ts` at all before this. Added one declaring
 `interface Error { supportId?: string }` — the standard kit convention
 (`ambient.d.ts`'s own doc comment), not a workaround.
+
+## Rebasing onto #51 moved HandleError off LoadConfig
+
+This branch started before #51 ("Run the handle hook without a loads
+registry") landed. #51's whole point is that `handle` is not a Loads
+concern merely because it also runs during a request that happens to hit
+Loads — it got its own `HandleConfig`/`Intercept`, entirely decoupled.
+`handleError` was originally added as a `LoadConfig` field here, by the same
+mistake #51 fixed for `Handle`; rebasing surfaced the conflict, and the same
+reasoning applies: nothing about `__data.json` consults `handleError` today,
+so it moved to `SSROptions`/`SSR` instead, next to `OnError`, which is
+already render-scoped. Anyone re-deriving this: a hook belongs on the
+config of whatever actually calls it, not on whichever registry happens to
+be nearby.
