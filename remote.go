@@ -22,7 +22,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
@@ -137,6 +137,11 @@ type Remote struct {
 
 	call func(ctx context.Context, arg any, present bool) (any, error)
 	live func(ctx context.Context, arg any, present bool, yield func(any) error) error
+
+	// ptr is the code pointer of the Go function this registration publishes.
+	// It is the identity skgo.Refresh looks a function up by, which is what
+	// lets a refresh name `getTodo` rather than a string.
+	ptr uintptr
 }
 
 // ID is the `<hash>/<name>` pair the client addresses this function by.
@@ -195,6 +200,7 @@ func LiveQuery[In, Out any](fn func(context.Context, In, func(Out) error) error)
 func NewQuery[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindQuery)
 	r.call = callAdapter(fn)
+	r.ptr = codePointer(fn)
 	return r
 }
 
@@ -202,6 +208,7 @@ func NewQuery[In, Out any](module, name string, fn func(context.Context, In) (Ou
 func NewCommand[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindCommand)
 	r.call = callAdapter(fn)
+	r.ptr = codePointer(fn)
 	return r
 }
 
@@ -210,18 +217,16 @@ func NewCommand[In, Out any](module, name string, fn func(context.Context, In) (
 // client disconnects, and yield returns a non-nil error once that has happened.
 func NewLiveQuery[In, Out any](module, name string, fn func(context.Context, In, func(Out) error) error) *Remote {
 	r := newRemote(module, name, kindLive)
+	r.ptr = codePointer(fn)
 	r.live = func(ctx context.Context, arg any, present bool, yield func(any) error) error {
 		in, err := decodeArg[In](arg, present)
 		if err != nil {
 			return err
 		}
-		return fn(ctx, in, func(out Out) error {
-			v, err := encodeValue(out)
-			if err != nil {
-				return err
-			}
-			return yield(v)
-		})
+		// The raw Go value: encoding happens in Remotes.live, which is where
+		// the app's transport hook is known. A transported value has to reach
+		// devalue as itself, and encoding here would already have flattened it.
+		return fn(ctx, in, func(out Out) error { return yield(out) })
 	}
 	return r
 }
@@ -236,7 +241,8 @@ func callAdapter[In, Out any](fn func(context.Context, In) (Out, error)) func(co
 		if err != nil {
 			return nil, err
 		}
-		return encodeValue(out)
+		// The raw Go value; see NewLiveQuery.
+		return out, nil
 	}
 }
 
@@ -300,6 +306,11 @@ type RemoteConfig struct {
 	// CookieOrigin is the origin whose scheme and host decide the `secure`
 	// cookie default. It defaults to Origin.
 	CookieOrigin string
+	// Transport is the app's `transport` hook: the Go half of the encode/decode
+	// pairs `src/hooks.ts` declares. It is optional; without it a custom type
+	// goes out as whatever encoding/json makes of it, which is a plain object
+	// with no methods on the other side. See the Transport type.
+	Transport Transport
 	// Remotes is the set of `<hash>/<name>` ids the built frontend calls, as
 	// recorded in the manifest. NewRemotes refuses to build a registry that
 	// does not answer exactly these.
@@ -349,9 +360,13 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 // Remotes is a registry of remote functions and the http.Handler that answers
 // calls to them.
 type Remotes struct {
-	cfg           RemoteConfig
-	prefix        string
-	fns           map[string]*Remote
+	cfg    RemoteConfig
+	prefix string
+	fns    map[string]*Remote
+	// byFunc indexes the registrations by the code pointer of the Go function
+	// each one publishes, which is how skgo.Refresh turns `getTodo` into the
+	// id half of a refresh key.
+	byFunc        map[uintptr]*Remote
 	secureCookies bool
 }
 
@@ -372,10 +387,15 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 		cookieOrigin = cfg.Origin
 	}
 
+	if err := cfg.Transport.validate(); err != nil {
+		return nil, err
+	}
+
 	rs := &Remotes{
 		cfg:           cfg,
 		prefix:        base + "/" + cfg.AppDir + "/remote/",
 		fns:           make(map[string]*Remote, len(fns)),
+		byFunc:        make(map[uintptr]*Remote, len(fns)),
 		secureCookies: secureCookieDefault(cookieOrigin, cfg.Dev),
 	}
 	for _, fn := range fns {
@@ -387,6 +407,20 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 				fn.id, existing.module, existing.name, fn.module, fn.name)
 		}
 		rs.fns[fn.id] = fn
+		if fn.ptr == 0 {
+			continue
+		}
+		if existing, dup := rs.byFunc[fn.ptr]; dup {
+			// Two registrations that cannot be told apart by their function
+			// value would make skgo.Refresh update whichever one won the map,
+			// silently and not always the same one. Go gives two named
+			// top-level functions distinct code pointers even when their
+			// bodies are identical, so this is a registry built some other
+			// way — and it has to stop here rather than at the refresh.
+			return nil, fmt.Errorf("skgo: %s and %s are the same Go function (%s), so a refresh could not tell them apart",
+				existing.id, fn.id, funcNameAt(fn.ptr))
+		}
+		rs.byFunc[fn.ptr] = fn
 	}
 	if err := rs.checkDrift(); err != nil {
 		return nil, err
@@ -512,7 +546,7 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 	}
 
 	payload := rawPayload(r.URL)
-	arg, present, err := remotearg.ParsePayload(payload)
+	arg, present, err := remotearg.ParsePayloadWith(payload, rs.codecs())
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
 		return
@@ -558,13 +592,14 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 		return
 	}
 
-	arg, present, err := remotearg.ParsePayload(body.Payload)
+	arg, present, err := remotearg.ParsePayloadWith(body.Payload, rs.codecs())
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
 		return
 	}
 
 	ev := rs.newEvent(r, true)
+	ev.refreshes = newRefreshSet(rs)
 
 	value, err := rs.call(withEvent(r.Context(), ev), fn, arg, present)
 	if err != nil {
@@ -579,7 +614,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 	// query refreshed by a command that just signed the visitor in reads the
 	// new cookie — exactly as it does in kit, where both share one request.
 	data := map[string]any{"_": value}
-	q, l := rs.resolveRefreshes(withEvent(r.Context(), ev.immutable()), body.Refreshes)
+	q, l := rs.collectRefreshes(r.Context(), ev, body.Refreshes)
 	if len(q) > 0 {
 		data["q"] = q
 	}
@@ -623,7 +658,7 @@ func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) (q, l ma
 		if !ok || fn.kind == kindCommand {
 			continue
 		}
-		arg, present, err := remotearg.ParsePayload(payload)
+		arg, present, err := remotearg.ParsePayloadWith(payload, rs.codecs())
 		if err != nil {
 			continue
 		}
@@ -694,7 +729,11 @@ func rawPayload(u *url.URL) string {
 // *HTTPError as `{"status":500,"message":"Internal Error"}`.
 func (rs *Remotes) call(ctx context.Context, fn *Remote, arg any, present bool) (v any, err error) {
 	defer func() { err = rs.recovered(fn, recover(), err) }()
-	return fn.call(ctx, arg, present)
+	out, err := fn.call(ctx, arg, present)
+	if err != nil {
+		return nil, err
+	}
+	return rs.cfg.Transport.encodeTree(out)
 }
 
 // callLive is the same guard for a `query.live` producer. It matters more
@@ -703,7 +742,13 @@ func (rs *Remotes) call(ctx context.Context, fn *Remote, arg any, present bool) 
 // visitor with it.
 func (rs *Remotes) callLive(ctx context.Context, fn *Remote, arg any, present bool, yield func(any) error) (err error) {
 	defer func() { err = rs.recovered(fn, recover(), err) }()
-	return fn.live(ctx, arg, present, yield)
+	return fn.live(ctx, arg, present, func(v any) error {
+		encoded, err := rs.cfg.Transport.encodeTree(v)
+		if err != nil {
+			return err
+		}
+		return yield(encoded)
+	})
 }
 
 // recovered reports a panic and converts it to an error. It is a no-op when
@@ -754,7 +799,7 @@ func (rs *Remotes) header(w http.ResponseWriter) http.Header {
 }
 
 func (rs *Remotes) writeResult(w http.ResponseWriter, ev *Event, data map[string]any) {
-	serialized, err := devalue.Stringify(data)
+	serialized, err := devalue.StringifyWith(data, rs.cfg.Transport.reducers())
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 500, Message: "Internal Error"})
 		return

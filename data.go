@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 )
 
 // dataSuffix and htmlDataSuffix are kit's own (`packages/kit/src/pathname.js`).
@@ -283,7 +283,12 @@ func (ls *Loads) runBranch(r *http.Request, req dataRequest, routeID string, par
 // as they settle.
 func (ls *Loads) writeNodes(w http.ResponseWriter, r *http.Request, shared *loadRequest, nodes []dataNode) {
 	promises := &promiseTable{ids: map[*deferred]int{}}
-	reducers := []devalue.Reducer{{
+	// The app's transport hook first, then skgo's own Promise reducer for a
+	// deferred value — the order kit's `{ ...encoders, ... }` spread produces.
+	// Nothing turns on it here (a *deferred is not a value any transporter
+	// claims), but the two sites that serialize towards the browser should not
+	// disagree about precedence.
+	reducers := append(ls.cfg.Transport.reducers(), devalue.Reducer{
 		Key: "Promise",
 		Fn: func(v any) (any, bool, error) {
 			holder, ok := v.(*deferred)
@@ -292,13 +297,13 @@ func (ls *Loads) writeNodes(w http.ResponseWriter, r *http.Request, shared *load
 			}
 			return float64(promises.id(holder)), true, nil
 		},
-	}}
+	})
 
 	parts := make([]string, len(nodes))
 	for i, n := range nodes {
-		serialized, err := serializeNode(n, reducers)
+		serialized, err := serializeNode(n, reducers, ls.cfg.Transport)
 		if err != nil {
-			serialized, _ = serializeNode(dataNode{kind: "error", err: Errorf(500, "Internal Error")}, nil)
+			serialized, _ = serializeNode(dataNode{kind: "error", err: Errorf(500, "Internal Error")}, nil, nil)
 		}
 		parts[i] = serialized
 	}
@@ -337,13 +342,18 @@ func (ls *Loads) writeNodes(w http.ResponseWriter, r *http.Request, shared *load
 		if ctx.Err() != nil {
 			return
 		}
-		w.Write([]byte(chunkLine(id, value, err, reducers)))
+		w.Write([]byte(chunkLine(id, value, err, reducers, ls.cfg.Transport)))
 		flush(w)
 	}
 }
 
-func chunkLine(id int, value any, err error, reducers []devalue.Reducer) string {
-	key, payload := "data", value
+func chunkLine(id int, value any, err error, reducers []devalue.Reducer, transport Transport) string {
+	key, payload := "data", any(nil)
+	if err == nil {
+		// The Deferred held the raw Go value so that this is the first place it
+		// is encoded, with the transport hook in hand.
+		payload, err = transport.encodeTree(value)
+	}
 	if err != nil {
 		key, payload = "error", errorNode(asHTTPError(err))
 	}
@@ -355,7 +365,7 @@ func chunkLine(id int, value any, err error, reducers []devalue.Reducer) string 
 	return `{"type":"chunk","id":` + strconv.Itoa(id) + `,"` + key + `":` + serialized + "}\n"
 }
 
-func serializeNode(n dataNode, reducers []devalue.Reducer) (string, error) {
+func serializeNode(n dataNode, reducers []devalue.Reducer, transport Transport) (string, error) {
 	switch n.kind {
 	case "":
 		return "null", nil
@@ -369,7 +379,13 @@ func serializeNode(n dataNode, reducers []devalue.Reducer) (string, error) {
 		return string(raw), nil
 	}
 
-	data, err := devalue.StringifyWith(n.data, reducers)
+	// The load returned its raw Go value; this is where it becomes a tree,
+	// because this is where the transport hook is known.
+	tree, err := transport.encodeLoadValue(n.data)
+	if err != nil {
+		return "", err
+	}
+	data, err := devalue.StringifyWith(tree, reducers)
 	if err != nil {
 		return "", err
 	}

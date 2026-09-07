@@ -32,7 +32,7 @@ Everything below cites index leaves; open the leaf for the upstream line numbers
 ```
 skgo/                         go.mod github.com/tylergannon/skgo   (library + CLI)
   cmd/skgo/                   the generator/CLI (gen-bindings, new, dev helpers)
-  internal/devalue/           port of devalue stringify/parse (+ ported tests)
+  polytype/devalue/           port of devalue stringify/parse (+ ported tests)
   internal/remote/            remote-function protocol: envelopes, payload codec, SSE, formdata
   internal/data/              __data.json responder: nodes, invalidation bitmask, ndjson deferral
   internal/routing/           route tree from filesystem, id sorting, param matching (port of create_manifest_data + utils/routing)
@@ -64,7 +64,7 @@ fallback; (b) in dev proxies everything to `vp dev` incl. the HMR websocket; (c)
 mounts a hand-written Go handler at one remote URL and one `__data.json` URL,
 computed with the Go port of kit's hash, called from a hand-written throwing
 `.remote.ts` stub; (d) one Playwright test proves Go answered. Air config for
-rebuild. This is where `internal/devalue`, `internal/remote`, `internal/data`,
+rebuild. This is where `polytype/devalue`, `internal/remote`, `internal/data`,
 `internal/routing`, `internal/static`, `internal/proxy` get built by direct port
 with ported tests. See §4 for the port list and order.
 
@@ -245,7 +245,7 @@ dependency.
 
 | # | Upstream (under `reference/`) | Go package | Notes |
 |---|---|---|---|
-| 1 | `devalue/src/{stringify,parse,base64,constants}.js` + `devalue/test/index.test.js` | `internal/devalue` | Everything else depends on it. Needs an `Undefined` sentinel, ordered objects, JS number formatting, devalue's own string escaper. Do not port `uneval` or `operations`. → `sources/libs/devalue.md`, `sources/kit/portable-tests/devalue-port.md` |
+| 1 | `devalue/src/{stringify,parse,base64,constants}.js` + `devalue/test/index.test.js` | `polytype/devalue` | Everything else depends on it. Needs an `Undefined` sentinel, ordered objects, JS number formatting, devalue's own string escaper. Do not port `uneval` or `operations`. → `sources/libs/devalue.md`, `sources/kit/portable-tests/devalue-port.md` |
 | 2 | `kit/.../runtime/shared.js` + `shared.spec.js` | `internal/remote/args` | base64url + `__skra*` reducers/revivers, sorted keys for GET kinds. |
 | 3 | `kit/.../runtime/server/remote-functions.js` + `.spec.js` | `internal/remote` | `/_app/remote/*` handler, envelopes, live SSE, method/415/404 rules. Port the two spec tests plus the table tests the leaf lists. |
 | 4 | `kit/.../runtime/server/{cookie,csrf}.js` + specs | `internal/cookie`, `internal/csrf` | Cookie path defaults; CSRF origin rules and exact error text. |

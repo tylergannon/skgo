@@ -1,284 +1,422 @@
-// Package devalue implements SvelteKit's wire format for structured values.
+// Package devalue emits the JavaScript expression form of devalue —
+// `devalue.uneval` — that SvelteKit's SSR document embeds for hydration.
 //
-// It is a port of the `devalue` package's flat "stringify"/"parse" pair (the
-// JSON-array form, not `uneval`), scoped to the value shapes that reach a
-// SvelteKit remote function: plain and null-prototype objects, arrays with
-// holes, strings, numbers, booleans, null, undefined, Date, Map, Set, BigInt,
-// RegExp, ArrayBuffer and boxed primitives. Typed arrays, DataView, URL,
-// URLSearchParams and Temporal values are deliberately not implemented; a
-// payload containing one parses to an "Unknown type" error.
+// The flat-array `stringify`/`parse` pair already exists in
+// github.com/tylergannon/polytype/devalue, and this package re-exports it
+// unchanged along with its value model, so a caller needs one import. What is
+// added here is [Uneval] / [UnevalWith] and the JavaScript types `uneval`
+// distinguishes that the flat format never carries: URL, URLSearchParams,
+// typed arrays, DataView and Temporal.
+//
+// The spec is devalue's own `src/uneval.js`; every rule below is a port of it,
+// including the shared-reference IIFE, the sparse-array cost heuristic and the
+// `<` escaping that makes output safe to inline in a <script> element.
 package devalue
 
 import (
-	"bytes"
-	"encoding/json"
-	"time"
+	"encoding/binary"
+	"math"
+	"reflect"
+
+	pt "github.com/tylergannon/polytype/devalue"
 )
 
-// Undefined is the JavaScript value `undefined`. It is what Parse returns for
-// the payload "-1", and what Stringify writes as the bare token "-1".
-var Undefined = UndefinedValue{}
+// The value model is polytype's. These aliases exist so that a caller writing
+// `uneval` output does not need a second import, and so that a value built for
+// Stringify can be handed to Uneval unchanged.
+type (
+	// UndefinedValue is the type of [Undefined].
+	UndefinedValue = pt.UndefinedValue
+	// HoleValue is the type of [Hole].
+	HoleValue = pt.HoleValue
+	// Object is a JavaScript plain object with an explicit property order.
+	Object = pt.Object
+	// MapEntry is one key/value pair of a [Map].
+	MapEntry = pt.MapEntry
+	// Map is a JavaScript Map.
+	Map = pt.Map
+	// Set is a JavaScript Set.
+	Set = pt.Set
+	// Date is a JavaScript Date.
+	Date = pt.Date
+	// BigInt is a JavaScript BigInt, held as its decimal digits.
+	BigInt = pt.BigInt
+	// RegExp is a JavaScript regular expression.
+	RegExp = pt.RegExp
+	// ArrayBuffer is a JavaScript ArrayBuffer.
+	//
+	// Two ArrayBuffer values that share a backing array are the same buffer,
+	// which is how a typed array and the buffer it views are linked.
+	ArrayBuffer = pt.ArrayBuffer
+	// Boxed is a boxed primitive — `Object(42)`, `new String("x")`.
+	Boxed = pt.Boxed
+	// Reducer is a custom serializer for [StringifyWith].
+	Reducer = pt.Reducer
+)
 
-// UndefinedValue is the type of Undefined.
-type UndefinedValue struct{}
+// Re-exported from polytype/devalue so that this package is a superset of it.
+var (
+	Undefined          = pt.Undefined
+	Hole               = pt.Hole
+	NewObject          = pt.NewObject
+	NewNullProtoObject = pt.NewNullProtoObject
+	NewMap             = pt.NewMap
+	NewSet             = pt.NewSet
+	NewBoxed           = pt.NewBoxed
+	Stringify          = pt.Stringify
+	StringifyWith      = pt.StringifyWith
+	CompareUTF16       = pt.CompareUTF16
+	SortStringsUTF16   = pt.SortStringsUTF16
+)
 
-func (UndefinedValue) String() string { return "undefined" }
-
-// Hole is an empty slot in a sparse array. It appears in the []any produced by
-// Parse wherever the array had no element, and may be used in a []any passed to
-// Stringify to produce holes.
-var Hole = HoleValue{}
-
-// HoleValue is the type of Hole.
-type HoleValue struct{}
-
-func (HoleValue) String() string { return "<hole>" }
-
-// Object is a JavaScript plain object with an explicit property order.
+// URL is a JavaScript URL, held as its serialized href — what `url.toString()`
+// returns, which is what devalue emits.
 //
-// Property order is part of the serialized bytes, so Stringify accepts both
-// *Object (order preserved) and map[string]any (keys sorted, since a Go map has
-// no order). Parse always produces *Object.
-type Object struct {
-	// NullProto reports whether this is an `Object.create(null)` object,
-	// which devalue tags as ["null", key, value, ...].
-	NullProto bool
+// It is a string rather than a *net/url.URL because the WHATWG URL
+// serialization a browser (and therefore `new URL(...)`) produces is not the
+// RFC 3986 form net/url produces; the caller owns that normalization.
+type URL string
 
-	keys   []string
-	values map[string]any
+// URLSearchParams is a JavaScript URLSearchParams, held as its serialized
+// query string — what `params.toString()` returns.
+type URLSearchParams string
+
+// TemporalKind names one of the Temporal types devalue serializes. It is the
+// JavaScript constructor path, which is also what the emitted expression uses.
+type TemporalKind string
+
+// The Temporal types devalue serializes.
+const (
+	TemporalDuration       TemporalKind = "Temporal.Duration"
+	TemporalInstant        TemporalKind = "Temporal.Instant"
+	TemporalPlainDate      TemporalKind = "Temporal.PlainDate"
+	TemporalPlainTime      TemporalKind = "Temporal.PlainTime"
+	TemporalPlainDateTime  TemporalKind = "Temporal.PlainDateTime"
+	TemporalPlainMonthDay  TemporalKind = "Temporal.PlainMonthDay"
+	TemporalPlainYearMonth TemporalKind = "Temporal.PlainYearMonth"
+	TemporalZonedDateTime  TemporalKind = "Temporal.ZonedDateTime"
+)
+
+// Temporal is a Temporal value, held as its kind and its `toString()` form —
+// the round-trip form `Kind.from(...)` accepts.
+type Temporal struct {
+	Kind  TemporalKind
+	Value string
 }
 
-// NewObject builds an object from alternating key/value pairs. It panics if the
-// arguments are not pairs of (string, any).
-func NewObject(kv ...any) *Object {
-	o := &Object{}
-	o.setPairs(kv)
-	return o
-}
+// TypedArrayKind names a JavaScript typed array constructor.
+type TypedArrayKind string
 
-// NewNullProtoObject is NewObject for a null-prototype object.
-func NewNullProtoObject(kv ...any) *Object {
-	o := &Object{NullProto: true}
-	o.setPairs(kv)
-	return o
-}
+// The typed array kinds devalue serializes. Float16Array is deliberately
+// absent: Go has no half-precision float and devalue's own test suite never
+// exercises it.
+const (
+	Int8Array         TypedArrayKind = "Int8Array"
+	Uint8Array        TypedArrayKind = "Uint8Array"
+	Uint8ClampedArray TypedArrayKind = "Uint8ClampedArray"
+	Int16Array        TypedArrayKind = "Int16Array"
+	Uint16Array       TypedArrayKind = "Uint16Array"
+	Int32Array        TypedArrayKind = "Int32Array"
+	Uint32Array       TypedArrayKind = "Uint32Array"
+	Float32Array      TypedArrayKind = "Float32Array"
+	Float64Array      TypedArrayKind = "Float64Array"
+	BigInt64Array     TypedArrayKind = "BigInt64Array"
+	BigUint64Array    TypedArrayKind = "BigUint64Array"
+)
 
-func (o *Object) setPairs(kv []any) {
-	if len(kv)%2 != 0 {
-		panic("devalue: NewObject requires alternating key/value arguments")
+// BytesPerElement is the kind's BYTES_PER_ELEMENT, or 0 if the kind is unknown.
+func (k TypedArrayKind) BytesPerElement() int {
+	switch k {
+	case Int8Array, Uint8Array, Uint8ClampedArray:
+		return 1
+	case Int16Array, Uint16Array:
+		return 2
+	case Int32Array, Uint32Array, Float32Array:
+		return 4
+	case Float64Array, BigInt64Array, BigUint64Array:
+		return 8
 	}
-	for i := 0; i < len(kv); i += 2 {
-		key, ok := kv[i].(string)
-		if !ok {
-			panic("devalue: NewObject keys must be strings")
+	return 0
+}
+
+// TypedArray is a JavaScript typed array: a view of a byte range of an
+// [ArrayBuffer].
+//
+// Buffer is always the *whole* underlying buffer, because that is what devalue
+// serializes — the view's own extent is emitted as a trailing `.subarray(a,b)`.
+// Two views over the same Buffer value share a buffer in the emitted output,
+// which is the property `new Uint16Array(uint8.buffer)` has in JavaScript.
+//
+// Use a *TypedArray: identity, and therefore reference sharing, is the
+// pointer's.
+type TypedArray struct {
+	Kind       TypedArrayKind
+	Buffer     ArrayBuffer
+	ByteOffset int
+	ByteLength int
+}
+
+// NewTypedArray views the whole of buf as kind.
+func NewTypedArray(kind TypedArrayKind, buf ArrayBuffer) *TypedArray {
+	return &TypedArray{Kind: kind, Buffer: buf, ByteLength: len(buf)}
+}
+
+// Subarray returns the [start, end) element range of t, as
+// `TypedArray#subarray` does. It shares t's buffer.
+func (t *TypedArray) Subarray(start, end int) *TypedArray {
+	n := t.Kind.BytesPerElement()
+	return &TypedArray{
+		Kind:       t.Kind,
+		Buffer:     t.Buffer,
+		ByteOffset: t.ByteOffset + start*n,
+		ByteLength: (end - start) * n,
+	}
+}
+
+// Len returns the number of elements in the view.
+func (t *TypedArray) Len() int {
+	n := t.Kind.BytesPerElement()
+	if n == 0 {
+		return 0
+	}
+	return t.ByteLength / n
+}
+
+// DataView is a JavaScript DataView over an [ArrayBuffer]. As with
+// [TypedArray], Buffer is the whole buffer and the view's extent is separate.
+type DataView struct {
+	Buffer     ArrayBuffer
+	ByteOffset int
+	ByteLength int
+}
+
+// NewDataView views the whole of buf.
+func NewDataView(buf ArrayBuffer) *DataView {
+	return &DataView{Buffer: buf, ByteLength: len(buf)}
+}
+
+// NewDataViewRange views byteLength bytes of buf starting at byteOffset.
+func NewDataViewRange(buf ArrayBuffer, byteOffset, byteLength int) *DataView {
+	return &DataView{Buffer: buf, ByteOffset: byteOffset, ByteLength: byteLength}
+}
+
+// Constructors that build a buffer from elements, mirroring
+// `new Uint16Array([...])`. Elements are laid out little-endian, which is the
+// byte order of every platform a browser runs on.
+
+func Int8ArrayOf(v ...int8) *TypedArray {
+	b := make([]byte, len(v))
+	for i, x := range v {
+		b[i] = byte(x)
+	}
+	return NewTypedArray(Int8Array, b)
+}
+
+func Uint8ArrayOf(v ...uint8) *TypedArray {
+	return NewTypedArray(Uint8Array, append(ArrayBuffer(nil), v...))
+}
+
+func Uint8ClampedArrayOf(v ...uint8) *TypedArray {
+	return NewTypedArray(Uint8ClampedArray, append(ArrayBuffer(nil), v...))
+}
+
+func Int16ArrayOf(v ...int16) *TypedArray {
+	b := make([]byte, 2*len(v))
+	for i, x := range v {
+		binary.LittleEndian.PutUint16(b[2*i:], uint16(x))
+	}
+	return NewTypedArray(Int16Array, b)
+}
+
+func Uint16ArrayOf(v ...uint16) *TypedArray {
+	b := make([]byte, 2*len(v))
+	for i, x := range v {
+		binary.LittleEndian.PutUint16(b[2*i:], x)
+	}
+	return NewTypedArray(Uint16Array, b)
+}
+
+func Int32ArrayOf(v ...int32) *TypedArray {
+	b := make([]byte, 4*len(v))
+	for i, x := range v {
+		binary.LittleEndian.PutUint32(b[4*i:], uint32(x))
+	}
+	return NewTypedArray(Int32Array, b)
+}
+
+func Uint32ArrayOf(v ...uint32) *TypedArray {
+	b := make([]byte, 4*len(v))
+	for i, x := range v {
+		binary.LittleEndian.PutUint32(b[4*i:], x)
+	}
+	return NewTypedArray(Uint32Array, b)
+}
+
+func Float32ArrayOf(v ...float32) *TypedArray {
+	b := make([]byte, 4*len(v))
+	for i, x := range v {
+		binary.LittleEndian.PutUint32(b[4*i:], math.Float32bits(x))
+	}
+	return NewTypedArray(Float32Array, b)
+}
+
+func Float64ArrayOf(v ...float64) *TypedArray {
+	b := make([]byte, 8*len(v))
+	for i, x := range v {
+		binary.LittleEndian.PutUint64(b[8*i:], math.Float64bits(x))
+	}
+	return NewTypedArray(Float64Array, b)
+}
+
+func BigInt64ArrayOf(v ...int64) *TypedArray {
+	b := make([]byte, 8*len(v))
+	for i, x := range v {
+		binary.LittleEndian.PutUint64(b[8*i:], uint64(x))
+	}
+	return NewTypedArray(BigInt64Array, b)
+}
+
+func BigUint64ArrayOf(v ...uint64) *TypedArray {
+	b := make([]byte, 8*len(v))
+	for i, x := range v {
+		binary.LittleEndian.PutUint64(b[8*i:], x)
+	}
+	return NewTypedArray(BigUint64Array, b)
+}
+
+// isPrimitive reports whether v is a JavaScript primitive, which is devalue's
+// `is_primitive`: null, undefined, booleans, numbers, strings and bigints. A
+// primitive is never hoisted into the IIFE and never reaches the replacer.
+func isPrimitive(v any) bool {
+	switch v.(type) {
+	case nil, bool, string, UndefinedValue, BigInt:
+		return true
+	}
+	_, ok := asFloat(v)
+	return ok
+}
+
+func isHole(v any) bool {
+	_, ok := v.(HoleValue)
+	return ok
+}
+
+// ptrKey stands in for a JavaScript object reference. n distinguishes buffers
+// of different length that happen to start at the same address.
+type ptrKey struct {
+	kind string
+	p    uintptr
+	n    int
+}
+
+// dateKey and the other value keys below stand in for reference identity for
+// the types this package models as Go values rather than pointers. Two Go
+// values that compare equal serialize identically, so treating them as one
+// object is safe for hydration; the only visible difference from JavaScript is
+// that two distinct-but-equal Dates share a reference in the output.
+type dateKey int64
+
+// refKey returns a comparable key standing in for v's JavaScript object
+// identity, and whether v participates in reference sharing at all.
+//
+// An empty array, buffer or map gets dedupe=false: Go cannot distinguish two
+// empty slices (they may share the zero-size allocation), and collapsing
+// `{a:[],b:[]}` into one shared array would be a real aliasing bug in the
+// hydrated client. Such a value has no children and cannot take part in a
+// cycle, so nothing is lost by not tracking it.
+func refKey(v any) (any, bool) {
+	switch t := v.(type) {
+	case *Object:
+		return t, true
+	case *Map:
+		return t, true
+	case *Set:
+		return t, true
+	case *Boxed:
+		return t, true
+	case *TypedArray:
+		return t, true
+	case *DataView:
+		return t, true
+	case Date:
+		return dateKey(t.Time().UnixMilli()), true
+	case RegExp:
+		return t, true
+	case URL:
+		return t, true
+	case URLSearchParams:
+		return t, true
+	case Temporal:
+		return t, true
+	case []any:
+		if len(t) == 0 {
+			return nil, false
 		}
-		o.Set(key, kv[i+1])
+		return ptrKey{"array", reflect.ValueOf(t).Pointer(), len(t)}, true
+	case ArrayBuffer:
+		if len(t) == 0 {
+			return nil, false
+		}
+		return ptrKey{"buffer", reflect.ValueOf(t).Pointer(), len(t)}, true
+	case map[string]any:
+		if len(t) == 0 {
+			return nil, false
+		}
+		return ptrKey{"map", reflect.ValueOf(t).Pointer(), -1}, true
 	}
-}
 
-// Set assigns a property, appending it if new and keeping its original position
-// if it already exists.
-func (o *Object) Set(key string, value any) {
-	if o.values == nil {
-		o.values = make(map[string]any)
+	// Anything else is a type this package does not model, which is still a
+	// JavaScript object as far as the replacer is concerned: it has to be
+	// counted and offered to the replacer before it can be rejected. A pointer
+	// (or map/slice/chan/func) keys on its address; any other comparable value
+	// keys on itself, which is how this package already treats Date and RegExp.
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Pointer, reflect.UnsafePointer, reflect.Chan, reflect.Func:
+		if rv.IsNil() {
+			return nil, false
+		}
+		// An interface holding a pointer compares by type and address.
+		return v, true
+	case reflect.Map, reflect.Slice:
+		if rv.Len() == 0 {
+			return nil, false
+		}
+		return ptrKey{rv.Type().String(), rv.Pointer(), rv.Len()}, true
 	}
-	if _, ok := o.values[key]; !ok {
-		o.keys = append(o.keys, key)
-	}
-	o.values[key] = value
-}
-
-// Get returns the named property.
-func (o *Object) Get(key string) (any, bool) {
-	v, ok := o.values[key]
-	return v, ok
-}
-
-// Keys returns the property names in insertion order.
-func (o *Object) Keys() []string {
-	out := make([]string, len(o.keys))
-	copy(out, o.keys)
-	return out
-}
-
-// Len returns the number of properties.
-func (o *Object) Len() int { return len(o.keys) }
-
-// MapEntry is one key/value pair of a Map.
-type MapEntry struct {
-	Key   any
-	Value any
-}
-
-// Map is a JavaScript Map: ordered entries, keys compared by identity the way
-// SameValueZero compares them (primitives by value, containers by reference).
-type Map struct {
-	entries []MapEntry
-}
-
-// NewMap builds a Map from alternating key/value arguments.
-func NewMap(kv ...any) *Map {
-	if len(kv)%2 != 0 {
-		panic("devalue: NewMap requires alternating key/value arguments")
-	}
-	m := &Map{}
-	for i := 0; i < len(kv); i += 2 {
-		m.Set(kv[i], kv[i+1])
-	}
-	return m
-}
-
-// Set adds or replaces an entry.
-func (m *Map) Set(key, value any) {
-	if i := m.indexOf(key); i >= 0 {
-		m.entries[i].Value = value
-		return
-	}
-	m.entries = append(m.entries, MapEntry{Key: key, Value: value})
-}
-
-// Get returns the value stored under key.
-func (m *Map) Get(key any) (any, bool) {
-	if i := m.indexOf(key); i >= 0 {
-		return m.entries[i].Value, true
+	if rv.IsValid() && rv.Type().Comparable() {
+		return v, true
 	}
 	return nil, false
 }
 
-func (m *Map) indexOf(key any) int {
-	k, ok := identityKey(key)
-	if !ok {
-		return -1
+// asFloat converts any Go number to the float64 JavaScript would hold.
+func asFloat(v any) (float64, bool) {
+	switch t := v.(type) {
+	case float64:
+		return t, true
+	case float32:
+		return float64(t), true
+	case int:
+		return float64(t), true
+	case int8:
+		return float64(t), true
+	case int16:
+		return float64(t), true
+	case int32:
+		return float64(t), true
+	case int64:
+		return float64(t), true
+	case uint:
+		return float64(t), true
+	case uint8:
+		return float64(t), true
+	case uint16:
+		return float64(t), true
+	case uint32:
+		return float64(t), true
+	case uint64:
+		return float64(t), true
 	}
-	for i, e := range m.entries {
-		if ek, ok := identityKey(e.Key); ok && ek == k {
-			return i
-		}
-	}
-	return -1
+	return 0, false
 }
-
-// Entries returns the entries in insertion order.
-func (m *Map) Entries() []MapEntry {
-	out := make([]MapEntry, len(m.entries))
-	copy(out, m.entries)
-	return out
-}
-
-// Len returns the number of entries.
-func (m *Map) Len() int { return len(m.entries) }
-
-// Set is a JavaScript Set: ordered items, deduplicated by identity.
-type Set struct {
-	items []any
-}
-
-// NewSet builds a Set from its items.
-func NewSet(items ...any) *Set {
-	s := &Set{}
-	for _, item := range items {
-		s.Add(item)
-	}
-	return s
-}
-
-// Add appends an item unless an identical one is already present.
-func (s *Set) Add(v any) {
-	if s.Has(v) {
-		return
-	}
-	s.items = append(s.items, v)
-}
-
-// Has reports whether an identical item is present.
-func (s *Set) Has(v any) bool {
-	k, ok := identityKey(v)
-	if !ok {
-		return false
-	}
-	for _, item := range s.items {
-		if ik, ok := identityKey(item); ok && ik == k {
-			return true
-		}
-	}
-	return false
-}
-
-// Items returns the items in insertion order.
-func (s *Set) Items() []any {
-	out := make([]any, len(s.items))
-	copy(out, s.items)
-	return out
-}
-
-// Len returns the number of items.
-func (s *Set) Len() int { return len(s.items) }
-
-// Date is a JavaScript Date. It serializes as an ISO 8601 string with
-// millisecond precision in UTC.
-type Date time.Time
-
-// Time returns the underlying time.
-func (d Date) Time() time.Time { return time.Time(d) }
-
-// BigInt is a JavaScript BigInt, held as its decimal digits.
-type BigInt string
-
-// RegExp is a JavaScript regular expression. Kit rejects these as remote
-// function arguments, but the wire format can carry them.
-type RegExp struct {
-	Source string
-	Flags  string
-}
-
-// ArrayBuffer is a JavaScript ArrayBuffer, serialized as base64.
-type ArrayBuffer []byte
-
-// Boxed is a boxed primitive — `Object(42)`, `new String("x")` — serialized as
-// ["Object", i]. Always use *Boxed so that repeated references share identity.
-type Boxed struct {
-	Value any
-}
-
-// NewBoxed boxes a primitive.
-func NewBoxed(v any) *Boxed { return &Boxed{Value: v} }
-
-// MarshalJSON renders the object the way JSON.stringify would, so a parsed
-// devalue tree can be round-tripped through encoding/json into a typed Go
-// value. Property order is preserved, and an `undefined` property is omitted
-// exactly as JSON.stringify omits it.
-func (o *Object) MarshalJSON() ([]byte, error) {
-	var b bytes.Buffer
-	b.WriteByte('{')
-	first := true
-	for _, key := range o.keys {
-		value := o.values[key]
-		if value == Undefined {
-			continue
-		}
-		if !first {
-			b.WriteByte(',')
-		}
-		first = false
-		name, err := json.Marshal(key)
-		if err != nil {
-			return nil, err
-		}
-		b.Write(name)
-		b.WriteByte(':')
-		raw, err := json.Marshal(value)
-		if err != nil {
-			return nil, err
-		}
-		b.Write(raw)
-	}
-	b.WriteByte('}')
-	return b.Bytes(), nil
-}
-
-// MarshalJSON renders `undefined` as null, which is what JSON.stringify does
-// with it inside an array.
-func (UndefinedValue) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
-
-// MarshalJSON renders an array hole as null, as JSON.stringify does.
-func (HoleValue) MarshalJSON() ([]byte, error) { return []byte("null"), nil }

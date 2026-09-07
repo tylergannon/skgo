@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 )
 
 func devalueString(t *testing.T, payload string) string {

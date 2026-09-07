@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 )
 
 // The payloads in this file are goldens taken from kit itself, not derived by

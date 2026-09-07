@@ -34,6 +34,13 @@ type Event struct {
 	// http.ResponseWriter, so it writes cookies and headers with net/http; the
 	// setters here refuse rather than accept something nothing would apply.
 	endpoint bool
+	// refreshes is where skgo.Refresh registers, and it is non-nil only inside
+	// a command or a form. Kit hangs the same record off the request state
+	// (`state.remote.explicit`) and, like this one, only a command or a form
+	// has anywhere for the result to ride back on. The queries a command
+	// refreshes get events derived from its own, and the derivation copies the
+	// pointer, so a refreshed query can refresh another.
+	refreshes *refreshSet
 }
 
 type eventKey struct{}

@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/formdata"
 )
 
@@ -123,6 +123,7 @@ func Form[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = f
 func NewForm[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindForm)
 	r.call = formAdapter(fn)
+	r.ptr = codePointer(fn)
 	return r
 }
 
@@ -141,7 +142,9 @@ func formAdapter[In, Out any](fn func(context.Context, In) (Out, error)) func(co
 		if err != nil {
 			return nil, err
 		}
-		return encodeValue(out)
+		// The raw Go value; Remotes.call encodes it, where the transport hook
+		// is known.
+		return out, nil
 	}
 }
 
@@ -186,7 +189,7 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 		return
 	}
 
-	arg, meta, err := formdata.Parse(body)
+	arg, meta, err := formdata.ParseWith(body, rs.cfg.Transport.revivers())
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
 		return
@@ -204,6 +207,7 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 	}
 
 	ev := rs.newEvent(r, true)
+	ev.refreshes = newRefreshSet(rs)
 	ctx := withEvent(r.Context(), ev)
 
 	value, err := rs.call(ctx, fn, arg, true)
@@ -231,7 +235,7 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 	}
 
 	data := map[string]any{"_": devalue.NewObject("submission", true, "result", value)}
-	q, l := rs.resolveRefreshes(withEvent(r.Context(), ev.immutable()), meta.RemoteRefreshes)
+	q, l := rs.collectRefreshes(r.Context(), ev, meta.RemoteRefreshes)
 	if len(q) > 0 {
 		data["q"] = q
 	}

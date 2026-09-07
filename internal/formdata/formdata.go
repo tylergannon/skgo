@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 )
 
 // ContentType is the media type kit's enhanced client posts a form as.
@@ -86,6 +86,12 @@ func badRequest(format string, args ...any) error {
 // the form's fields — a *devalue.Object at the top, with File values wherever
 // the form carried a file.
 func Parse(body []byte) (data any, meta Meta, err error) {
+	return ParseWith(body, nil)
+}
+
+// ParseWith is Parse for an app that declares a transport hook, keyed as
+// kit's `transport` object keys it.
+func ParseWith(body []byte, transport map[string]func(any) (any, error)) (data any, meta Meta, err error) {
 	if len(body) < headerBytes {
 		return nil, Meta{}, badRequest("too short")
 	}
@@ -114,9 +120,17 @@ func Parse(body []byte) (data any, meta Meta, err error) {
 	}
 
 	files := &fileTable{offsets: offsets, start: tableEnd, body: body}
-	parsed, err := devalue.Parse(string(body[headerBytes:headerEnd]), map[string]func(any) (any, error){
-		fileTag: files.revive,
-	})
+	revivers := map[string]func(any) (any, error){fileTag: files.revive}
+	// The app's transport hook, if it declares one. kit's client stringifies a
+	// form body with the same encoders it uses everywhere else, so a custom
+	// type reaches Go here exactly as it reaches a remote function's argument.
+	for key, decode := range transport {
+		if _, taken := revivers[key]; taken {
+			continue
+		}
+		revivers[key] = decode
+	}
+	parsed, err := devalue.Parse(string(body[headerBytes:headerEnd]), revivers)
 	if err != nil {
 		return nil, Meta{}, badRequest("%v", err)
 	}

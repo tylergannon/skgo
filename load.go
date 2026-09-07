@@ -63,7 +63,10 @@ func NewLoad[Out any](module string, fn func(context.Context) (Out, error)) *Ser
 			if err != nil {
 				return nil, err
 			}
-			return encodeLoadValue(out)
+			// The raw Go value. Encoding happens in the serializer, which is
+			// where the app's transport hook is known; a transported value has
+			// to reach devalue as itself.
+			return out, nil
 		},
 	}
 }
@@ -86,6 +89,11 @@ type LoadConfig struct {
 	Origin string
 	// Dev relaxes the checks that only describe a production build.
 	Dev bool
+	// Transport is the app's `transport` hook: the Go half of the encode/decode
+	// pairs `src/hooks.ts` declares. It is optional; without it a custom type
+	// goes out as whatever encoding/json makes of it, which is a plain object
+	// with no methods on the other side. See the Transport type.
+	Transport Transport
 	// Handle is the app's `handle` hook: the one place it decides what a
 	// request may do. It is optional; see the Handle type.
 	Handle Handle

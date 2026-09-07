@@ -11,8 +11,8 @@ import (
 )
 
 // Stubs so the package compiles before polytype has run.
-func (Plan) Schema() json.RawMessage { panic("not implemented") }
+func (Quote) Schema() json.RawMessage { panic("not implemented") }
 
 var (
-	_ = polytype.Declare(Plan.Schema)
+	_ = polytype.Declare(Quote.Schema)
 )

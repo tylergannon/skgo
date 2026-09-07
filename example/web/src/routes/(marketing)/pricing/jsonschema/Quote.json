@@ -1,0 +1,5 @@
+{"type":"object",
+"description":"Quote is what Go says about a price the browser sent it.","properties":{
+"heard":{"type":"string","description":"Heard is the amount Go read back out of the argument, formatted by Go's own method rather than the browser's. If the transport hook were not working this function would never see a Money at all."},
+"doubled":{"type":"string","description":"Doubled is that amount doubled, formatted the same way. It is arithmetic only a real Money can do, which is the point: a plain object could not have been doubled."}
+},"required":["heard","doubled"],"additionalProperties":false}

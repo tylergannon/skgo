@@ -30,6 +30,11 @@ still the generated stub that throws; the only path by which a value reaches the
 engine is a call back out to Go, which is what makes a rendered value proof that
 Go answered.
 
+The engine is goja, pure Go, embedded in the binary — no cgo. Renders are
+served from a pool of runtimes, which is mandatory rather than an optimisation:
+a re-entrant render on one runtime returns empty markup with no error. A
+supervised Node sidecar is not on the table and that question is closed.
+
 To a Go developer: a real frontend framework for a Go monolith. To a Svelte
 developer: the app is still SvelteKit.
 

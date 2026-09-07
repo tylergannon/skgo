@@ -44,7 +44,7 @@ func Async[T any](ctx context.Context, fn func(context.Context) (T, error)) Defe
 			d.err = err
 			return
 		}
-		d.value, d.err = encodeValue(value)
+		d.value = value
 	}()
 	return Deferred[T]{d: d}
 }
@@ -53,7 +53,7 @@ func Async[T any](ctx context.Context, fn func(context.Context) (T, error)) Defe
 // return the same shape whether or not the work was worth deferring.
 func Resolved[T any](value T) Deferred[T] {
 	d := &deferred{done: make(chan struct{})}
-	d.value, d.err = encodeValue(value)
+	d.value = value
 	close(d.done)
 	return Deferred[T]{d: d}
 }
@@ -75,7 +75,11 @@ var deferredHolderType = reflect.TypeOf((*deferredHolder)(nil)).Elem()
 // deferred is the untyped half: a value that is being computed, plus the
 // channel that says when it is not.
 type deferred struct {
-	done  chan struct{}
+	done chan struct{}
+	// value is the raw Go value the load produced, not a tree: it is encoded
+	// at serialization time, which is the only place the app's transport hook
+	// is known. Encoding it here would flatten a transported value before any
+	// reducer could see it.
 	value any
 	err   error
 
@@ -99,8 +103,8 @@ func (d *deferred) wait(ctx context.Context) (any, error) {
 // type. The deferred fields are then put back: encoding/json wrote null for
 // each of them, and each is replaced by the Deferred itself, which the devalue
 // reducer turns into kit's promise placeholder.
-func encodeLoadValue(v any) (any, error) {
-	tree, err := encodeValue(v)
+func (t Transport) encodeLoadValue(v any) (any, error) {
+	tree, err := t.encodeTree(v)
 	if err != nil {
 		return nil, err
 	}
