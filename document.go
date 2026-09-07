@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tylergannon/skgo/internal/devalue"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/internal/remotearg"
 	"github.com/tylergannon/skgo/internal/ssr"
@@ -230,6 +231,12 @@ func (s *SSR) render(w http.ResponseWriter, r *http.Request, req dataRequest, ro
 
 	// Kit renders `compact(branch)`: a slot that no layout fills is dropped,
 	// and so is its place in `node_ids` and in the hydration array.
+	//
+	// Each node's data crosses into the engine in devalue's flat form, which
+	// is the same form `__data.json` carries and produced by the same encoders.
+	// The engine parses it with the app's own `transport` decoders, so the
+	// value a component renders against is the instance the browser will hold.
+	reducers := transport.reducers()
 	branch := make([]ssr.Node, 0, len(nodes))
 	present := make([]dataNode, 0, len(nodes))
 	indices := make([]int, 0, len(nodes))
@@ -237,7 +244,15 @@ func (s *SSR) render(w http.ResponseWriter, r *http.Request, req dataRequest, ro
 		if index < 0 || index >= len(s.info.Nodes) {
 			continue
 		}
-		branch = append(branch, ssr.Node{Index: index, Data: nodes[i].data})
+		data := ""
+		if nodes[i].kind == "data" {
+			serialized, err := devalue.StringifyWith(nodes[i].data, reducers)
+			if err != nil {
+				return err
+			}
+			data = serialized
+		}
+		branch = append(branch, ssr.Node{Index: index, Data: data})
 		present = append(present, nodes[i])
 		indices = append(indices, index)
 	}
@@ -342,16 +357,23 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 		return json.Marshal(remoteAnswer{E: failure})
 	}
 
-	// The engine gets JSON, because a component in it has no way to be handed
-	// anything else. The document gets the Go value, kept whole so that the
-	// transport hook can still see a custom type in it when the boot script is
-	// written.
-	raw, err := json.Marshal(value)
+	// The engine gets the same bytes `/_app/remote/...` would have sent the
+	// browser — devalue's flat form, encoded with the app's transport — so the
+	// component rendering here and the client hydrating it are looking at a
+	// value of the same type. The document gets the Go value, kept whole so
+	// that the transport hook can still see a custom type in it when the boot
+	// script is written.
+	transport := s.remotes.cfg.Transport
+	tree, err := transport.encodeTree(value)
+	if err != nil {
+		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 500, Message: "Internal Error"}})
+	}
+	serialized, err := devalue.StringifyWith(tree, transport.reducers())
 	if err != nil {
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 500, Message: "Internal Error"}})
 	}
 	s.record(into, kind, id+"/"+payload, answered{value: value})
-	return json.Marshal(remoteAnswer{V: raw})
+	return json.Marshal(remoteAnswer{V: serialized})
 }
 
 // record files an answer under kit's own key: the single letter of the remote
@@ -377,9 +399,13 @@ type answered struct {
 }
 
 // remoteAnswer is the envelope the SSR bundle parses: a value, or an error.
+//
+// V is devalue's flat form as a string, not a JSON value: the bundle hands it
+// to the app's own `transport` decoders, which is what gives a custom type its
+// class back before a component calls a method on it.
 type remoteAnswer struct {
-	V json.RawMessage `json:"v,omitempty"`
-	E *ssr.Error      `json:"e,omitempty"`
+	V string     `json:"v,omitempty"`
+	E *ssr.Error `json:"e,omitempty"`
 }
 
 // settle replaces every Deferred in an encoded load result with the value it

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { browser } from '$app/env';
 	import { Money } from '../../../hooks';
 	import { getPlans, quoteFor } from './pricing.remote';
 
@@ -23,13 +22,12 @@
 
 <h1 data-testid="title">Pricing</h1>
 
-<!-- format() is the browser's half of the transport hook: the class lives in
-     src/hooks.ts, so the price can only be written once kit's client has turned
-     what the document carried back into a Money. `browser` is what says that
-     moment has come; on the server there is no Money to ask. -->
-{#if browser}
-	<p data-testid="featured">{data.featured.name} — {data.featured.price.format()}</p>
-{/if}
+<!-- format() is a method on the class in src/hooks.ts, and it is called while
+     this page is rendered. Go sends 4500 cents under the transport key; the
+     engine has the app's own decoders, so what reaches this line is a Money and
+     the price is already in the document. A plain object would throw here and
+     the visitor would get the shell instead. -->
+<p data-testid="featured">{data.featured.name} — {data.featured.price.format()}</p>
 
 <svelte:boundary>
 	<ul data-testid="plans">

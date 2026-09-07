@@ -203,3 +203,41 @@ func TestALayoutsDataAndItsPagesDataArriveTogether(t *testing.T) {
 		t.Error("the page's data is not in the hydration array")
 	}
 }
+
+// TestATransportedValueReachesTheEngineWithItsType is the seam this file exists
+// to pin: what the engine renders against is a value of the app's own class,
+// not the object its fields travelled in.
+//
+// The fixture is 4500 cents, from `pageLoad` in
+// src/routes/(marketing)/pricing/page.server.go, and it is the only place in
+// the app that amount is written. "$45.00" is what `Money.format()` in
+// src/hooks.ts makes of it — a method, on a class the browser declares — and
+// nothing else on this page can produce that string: Go's own
+// `businesslogic.Money.Format` is reached only by `quoteFor`, which is a
+// command and is not called while a page renders.
+//
+// So the price standing in the markup is proof that Go's cents were decoded
+// into a Money inside the engine and asked to format themselves. Before the
+// SSR bundle carried the app's transport, this line threw mid-render and the
+// visitor got the shell.
+func TestATransportedValueReachesTheEngineWithItsType(t *testing.T) {
+	h := newProdHandler(t)
+
+	body := get(t, h, "/pricing").Body.String()
+
+	if !strings.Contains(body, `<p data-testid="featured">Startup — $45.00</p>`) {
+		t.Error(`the document does not carry the featured plan formatted by Money.format(); the render did not see a Money`)
+	}
+
+	// And the same value reaches the browser the way it always did: as cents
+	// under the transport key, for kit's client to decode. A document that
+	// server-rendered the price by flattening the type would carry the
+	// formatted string here instead, and the client would hydrate a plain
+	// object over markup that claims a method ran.
+	if !strings.Contains(body, `price:app.decode("Money", {cents:4500})`) {
+		t.Error("the hydration array does not carry the price as a Money for the client to decode")
+	}
+	if strings.Contains(body, `price:"$45.00"`) {
+		t.Error("the hydration array carries a formatted string where the client expects a Money")
+	}
+}

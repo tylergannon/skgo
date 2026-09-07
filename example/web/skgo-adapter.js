@@ -1,4 +1,5 @@
 import {
+	existsSync,
 	mkdirSync,
 	readdirSync,
 	readFileSync,
@@ -887,12 +888,19 @@ if (typeof globalThis.URL === 'undefined') {
 const SSR_APP_SERVER = String.raw`
 import * as real from 'skgo:kit/remote';
 import { stringify_remote_arg } from 'skgo:kit/shared';
+import { parse } from 'skgo:kit/transport';
 
 export { getRequestEvent } from '@sveltejs/kit/internal/server';
 
 /**
  * Calls Go. Synchronous: Go has the answer in this process, so there is nothing
  * for an event loop to wait on.
+ *
+ * The answer is devalue's flat form, the same bytes Go would have sent the
+ * browser from /_app/remote/..., and it is read back with kit's own parse —
+ * the app's transport decoders. So a query answering with a custom type hands
+ * the component an instance of the app's class, and a method call on it during
+ * a render works for the same reason it works in the browser.
  */
 function host(id, payload) {
 	const raw = globalThis.__skgo_remote(id, payload);
@@ -902,7 +910,7 @@ function host(id, payload) {
 		err.status = res.e.status ?? 500;
 		throw err;
 	}
-	return res.v;
+	return parse(res.v);
 }
 
 export function query(validate_or_fn, maybe_fn) {
@@ -955,7 +963,21 @@ import { render } from 'svelte/server';
 import Root from 'skgo:kit/root';
 import { Props, RenderNode } from 'skgo:kit/props';
 import { with_request_store } from '@sveltejs/kit/internal/server';
+import { init_transport, parse } from 'skgo:kit/transport';
 import { components } from 'skgo:nodes';
+import { transport } from 'skgo:hooks';
+
+/**
+ * The app's transport hook, installed the way kit installs it
+ * (runtime/server/index.js: init_transport(module.transport ?? {})).
+ *
+ * Kit does it per request because it loads the hooks with a dynamic import;
+ * the hooks are static and this bundle has no top-level await, so it happens
+ * once per runtime instead. From here on, parse() is the app's own decoders
+ * and a value Go serialized under a transport key comes back as an instance
+ * of the class src/hooks.ts declares.
+ */
+init_transport(transport ?? {});
 
 /**
  * A RequestState (packages/kit/src/types/internal.d.ts). Only the fields
@@ -1014,6 +1036,16 @@ function make_event(req, url) {
 	};
 }
 
+/**
+ * One node's load result. Go sends devalue's flat form — the same bytes it
+ * sends the client in __data.json, produced by the same encoders — and the
+ * app's decoders read it back, so the component renders against the instance
+ * the browser is about to hold rather than the object its fields travelled in.
+ */
+function node_data(node) {
+	return node.data ? parse(node.data) : null;
+}
+
 function build_props(req, url) {
 	const page = {
 		error: req.error ?? null,
@@ -1043,7 +1075,7 @@ function build_props(req, url) {
 	let data = props.page.data;
 
 	for (let i = 0; i < branch.length; i += 1) {
-		data = { ...data, ...branch[i].data };
+		data = { ...data, ...node_data(branch[i]) };
 		current_node.data = data;
 
 		if (i < branch.length - 1) {
@@ -1146,6 +1178,12 @@ async function buildServerBundle(builder, nodes, outfile) {
 		'$app/server': 'skgo:app-server',
 		'skgo:kit/remote': join(kit, 'runtime/app/server/remote/index.js'),
 		'skgo:kit/shared': join(kit, 'runtime/shared.js'),
+		// kit's own `#app/internal/transport`. It is aliased by absolute path
+		// rather than imported by its `#` specifier because a virtual module
+		// resolves package imports against the *app's* package.json, not kit's;
+		// the path is the same file kit's modules reach, so the bundle holds one
+		// instance of it and one installed transport.
+		'skgo:kit/transport': join(kit, 'runtime/app/internal/transport.js'),
 		'skgo:kit/props': join(kit, 'runtime/props.svelte.js'),
 		'skgo:kit/root': join(kit, 'runtime/components/root.svelte')
 	};
@@ -1157,6 +1195,12 @@ async function buildServerBundle(builder, nodes, outfile) {
 		'skgo:app-server': SSR_APP_SERVER,
 		'skgo:nodes': nodeTable(cwd, nodes),
 		'skgo:esm-env': 'export const DEV = false; export const BROWSER = false;',
+		// The app's universal hooks, which is where kit keeps `transport`. Kit
+		// reaches them through `get_hooks()` and a dynamic import; this bundle
+		// has no top-level await, so the entry imports them statically instead
+		// and installs the transport itself. `get_hooks` stays empty: `reroute`
+		// is the only other thing it carries and Go does the routing.
+		'skgo:hooks': universalHooks(builder),
 		'skgo:generated': 'export const get_hooks = () => ({});',
 		// Neither kit nor Svelte can reach AsyncLocalStorage here, and neither
 		// needs to: the webcontainer flag in the banner selects Svelte's own
@@ -1287,6 +1331,55 @@ for (const [$$name, $$fn] of Object.entries($$self)) {
 	if (result.errors.length) {
 		throw new Error(`skgo: the SSR bundle did not build:\n${result.errors.map((e) => '  ' + e.text).join('\n')}`);
 	}
+}
+
+/**
+ * The module the SSR bundle reads the app's `transport` hook out of.
+ *
+ * kit's universal hooks file is the one declaration of a custom type's two
+ * halves that both sides share (`packages/kit/src/core/sync/write_server.js`
+ * loads the same file for the server, `write_client_manifest.js` for the
+ * client), so the engine loading anything else would be a third answer to a
+ * question that has two.
+ *
+ * A namespace import rather than a re-export: an app with a hooks file that
+ * declares only `reroute` must still build.
+ *
+ * @param {import('@sveltejs/kit').Builder} builder
+ */
+function universalHooks(builder) {
+	const file = resolveEntry(builder.config.files.hooks.universal);
+	if (!file) return 'export const transport = {};';
+	return (
+		`import * as hooks from ${JSON.stringify(file)};\n` +
+		'export const transport = hooks.transport ?? {};\n'
+	);
+}
+
+/**
+ * kit's `resolve_entry` (packages/kit/src/utils/filesystem.js): an
+ * extensionless path becomes the file that is actually there.
+ *
+ * @param {string} entry
+ * @returns {string | null}
+ */
+function resolveEntry(entry) {
+	if (existsSync(entry)) {
+		if (statSync(entry).isFile()) return entry;
+		const index = join(entry, 'index');
+		if (existsSync(index + '.js') || existsSync(index + '.ts')) return resolveEntry(index);
+	}
+
+	const dir = dirname(entry);
+	if (existsSync(dir)) {
+		const base = basename(entry);
+		const found = readdirSync(dir).find(
+			(file) => file.replace(/\.(js|ts)$/, '') === base && statSync(join(dir, file)).isFile()
+		);
+		if (found) return join(dir, found);
+	}
+
+	return null;
 }
 
 /**
