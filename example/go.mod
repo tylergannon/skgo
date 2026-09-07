@@ -2,6 +2,10 @@ module github.com/tylergannon/skgo/example
 
 go 1.27.1
 
+// web/ is a Go package (it embeds the build), so without this every ./... walk
+// descends into web/node_modules looking for Go packages.
+ignore ./web/node_modules
+
 require (
 	github.com/tylergannon/polytype v1.0.0-rc.11
 	github.com/tylergannon/skgo v0.0.0

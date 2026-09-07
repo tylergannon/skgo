@@ -51,5 +51,10 @@ mise run dev:web   # vite, on 127.0.0.1:5173
 mise run dev:go    # the Go server, proxying pages to vite
 ```
 
-Go answers the remote functions in both modes. Pages are served by vite in dev
-and out of the binary in production.
+`#lib` is a Node subpath import (`package.json` → `imports`), and TypeScript
+resolves those without probing for extensions: write `#lib/model.ts`, not
+`#lib/model`. Vite accepts both, so only the type check would tell you.
+
+Go answers the remote functions in both modes. In production the binary renders
+every page in the Go process and serves it with kit's client; in dev, pages come
+from vite and render in the browser (see `src/routes/+layout.ts`).

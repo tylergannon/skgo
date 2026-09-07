@@ -2,6 +2,10 @@ module {{.Module}}
 
 go {{.GoVersion}}
 
+// web/ is a Go package (it embeds the build), so without this every ./... walk
+// descends into web/node_modules looking for Go packages.
+ignore ./web/node_modules
+
 require (
 	github.com/tylergannon/polytype {{.PolytypeVersion}}
 	github.com/tylergannon/skgo {{.SkgoVersion}}

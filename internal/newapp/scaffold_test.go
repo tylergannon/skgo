@@ -130,6 +130,12 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	// test is the thing that notices.
 	run(t, dir, env, "mise", "run", "build")
 
+	// The type check is the second thing a developer types, and the scaffold is
+	// where a kit-3 rule they cannot see (a `#lib` import of a `.ts` module
+	// needs its extension) would first bite. It runs kit's sync itself, so it
+	// does not depend on a build having happened.
+	run(t, filepath.Join(dir, "web"), env, "mise", "x", "--", "vp", "run", "check")
+
 	written, err := os.ReadFile(adapterPath)
 	if err != nil {
 		t.Fatalf("the build gesture did not write web/skgo-adapter.js: %v", err)
@@ -169,17 +175,29 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	client := &http.Client{Timeout: 20 * time.Second}
 	awaitServer(t, client, origin)
 
-	t.Run("it serves the app", func(t *testing.T) {
+	t.Run("it renders the app in Go", func(t *testing.T) {
 		body := getOK(t, client, origin+"/")
-		// Kit's SPA fallback boots the client from _app/. A 200 alone would
-		// also be satisfied by an empty file.
-		if !strings.Contains(body, "/_app/immutable/") {
-			t.Fatalf("GET / does not look like kit's boot document:\n%s", body)
+		// The home page's markup, with the values Go answered already in it:
+		// the app's own name and the Go that built the binary. Neither can be
+		// in the document unless the render happened in this process — kit's
+		// SPA fallback carries no h1 at all.
+		for _, want := range []string{
+			`<h1 data-testid="title">myapp</h1>`,
+			`Served by go1.`,
+			`<strong data-testid="greetings">0</strong>`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("GET / was not rendered in Go; it lacks %q:\n%s", want, firstLines(body, 40))
+			}
 		}
-		// A deep link is served by the same document: there is no file at
-		// /about, and the static handler has to know that.
-		if b := getOK(t, client, origin+"/about"); b != body {
-			t.Fatal("GET /about did not serve the boot document")
+		// And it still boots kit's client from _app/, so the page hydrates.
+		if !strings.Contains(body, "/_app/immutable/") {
+			t.Fatalf("GET / carries no client script:\n%s", firstLines(body, 40))
+		}
+		// A deep link is its own render, not a shared fallback document.
+		about := getOK(t, client, origin+"/about")
+		if !strings.Contains(about, `<h1 data-testid="title">About</h1>`) {
+			t.Fatalf("GET /about was not rendered in Go:\n%s", firstLines(about, 40))
 		}
 	})
 
