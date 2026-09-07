@@ -40,6 +40,21 @@ export type Data = {
 	count: number;
 	/** Their URLs, in order — used to explain a failed count. */
 	urls: string[];
+	/**
+	 * The most recent data response. It is the other half of a streaming
+	 * claim: a client-side navigation gets the page's values on this response
+	 * rather than on a document, so the order they arrive in is only visible
+	 * here.
+	 */
+	last: Response | null;
+	/**
+	 * Its body, read from the moment the response arrived.
+	 *
+	 * Not `last.text()` later: Chrome keeps a response body only until the
+	 * page moves on, and a fetch the client made during a navigation is
+	 * already past that by the time a Then step asks. Reading it here holds it.
+	 */
+	lastBody: Promise<string> | null;
 	/** Freeze the current count so `since` can measure a single interaction. */
 	mark(): void;
 	/** How many data requests were made since the last `mark()`. */
@@ -118,6 +133,8 @@ export const test = base.extend<{
 			const data: Data = {
 				count: 0,
 				urls: [],
+				last: null,
+				lastBody: null,
 				mark() {
 					marked = data.count;
 				},
@@ -133,6 +150,14 @@ export const test = base.extend<{
 				if (!request.url().includes('/__data.json')) return;
 				data.count++;
 				data.urls.push(`${request.method()} ${new URL(request.url()).pathname}`);
+			});
+			page.on('response', (response) => {
+				if (!response.url().includes('/__data.json')) return;
+				data.last = response;
+				data.lastBody = response.text();
+				// The body is read whether or not a scenario wants it, so an
+				// unwanted one must not become an unhandled rejection.
+				void data.lastBody.catch(() => {});
 			});
 
 			await use(data);

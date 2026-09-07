@@ -9,6 +9,7 @@ import {
 	writeFileSync
 } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import * as esbuild from 'esbuild';
 
@@ -18,7 +19,7 @@ import * as esbuild from 'esbuild';
 // the Go that reads the manifest below checks what is stamped here against its
 // own, so a copy that has fallen behind is refused by name instead of failing
 // later as something unrelated.
-const SKGO = { version: 'devel', adapter: 'e3a0bb10fcf9' };
+const SKGO = { version: 'devel', adapter: 'e618303853ac' };
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
@@ -1092,7 +1093,8 @@ import {
 	SvelteKitError,
 	ValidationError
 } from '@sveltejs/kit/internal/server';
-import { init_transport, parse } from 'skgo:kit/transport';
+import * as devalue from 'skgo:devalue';
+import { decoders, init_transport, parse } from 'skgo:kit/transport';
 import { components } from 'skgo:nodes';
 import { transport } from 'skgo:hooks';
 
@@ -1185,22 +1187,24 @@ function make_event(req, url) {
  * app's decoders read it back, so the component renders against the instance
  * the browser is about to hold rather than the object its fields travelled in.
  *
- * A field the load promised is not in those bytes. Go names it instead, and it
- * becomes a promise here that never settles: Svelte's server renderer does not
- * await an await block — it pushes the block marker and renders the pending
- * branch (svelte/src/internal/server/index.js, await_block) — so the document
- * leaves Go with the loading state already in it, and the value follows it down
- * as a chunk Go appends. That is exactly what kit does, which hands its renderer
- * the promise itself.
+ * A value the load promised is in those bytes as kit's own placeholder, and it
+ * is read back the way kit's client reads it (process_stream in client.js): a
+ * Promise reviver alongside the app's decoders. So a promise is found wherever
+ * the load left one, at any depth, which is where devalue's reducer put it.
+ *
+ * The promise it becomes never settles. Svelte's server renderer does not await
+ * an await block — it pushes the block marker and renders the pending branch
+ * (svelte/src/internal/server/index.js, await_block) — so the document leaves Go
+ * with the loading state already in it, and the value follows it down as a chunk
+ * Go appends. That is exactly what kit does, which hands its renderer the
+ * promise itself.
  */
 function node_data(node) {
-	const data = node.data ? parse(node.data) : null;
-	if (data) {
-		for (const key of node.deferred ?? []) {
-			data[key] = new Promise(() => {});
-		}
-	}
-	return data;
+	if (!node.data) return null;
+	return devalue.parse(node.data, {
+		...decoders,
+		Promise: () => new Promise(() => {})
+	});
 }
 
 function build_props(req, url) {
@@ -1418,6 +1422,12 @@ async function buildServerBundle(builder, nodes, outfile) {
 		// the path is the same file kit's modules reach, so the bundle holds one
 		// instance of it and one installed transport.
 		'skgo:kit/transport': join(kit, 'runtime/app/internal/transport.js'),
+		// devalue itself, resolved from kit rather than from the app: kit is
+		// what depends on it, and under pnpm the app's own node_modules has no
+		// such directory. The entry needs it directly for one thing kit's
+		// `parse` cannot do — read a promise placeholder back — and it is the
+		// same file kit's own modules reach, so the bundle holds one copy.
+		'skgo:devalue': createRequire(join(kit, 'package.json')).resolve('devalue'),
 		'skgo:kit/props': join(kit, 'runtime/props.svelte.js'),
 		'skgo:kit/root': join(kit, 'runtime/components/root.svelte')
 	};

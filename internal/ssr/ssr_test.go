@@ -263,3 +263,81 @@ func TestARedirectThrownDuringARenderIsNotAFailure(t *testing.T) {
 		t.Fatalf("redirect = %+v, want 307 to /elsewhere", result.Redirect)
 	}
 }
+
+// A render that reports through `console` reaches Go. The engine is a bare
+// ECMAScript runtime and goja has no console at all, so before there was one
+// every such report was a ReferenceError thrown in the middle of a render —
+// which is how kit's `log_handle_error_hook_failure` and Svelte's own warnings
+// disappeared. The route comes with it, because a line an operator reads is
+// worth little without the page that wrote it.
+func TestTheEngineConsoleReachesGo(t *testing.T) {
+	const reporting = `
+globalThis.__skgo_ping = function () { return 'ok'; };
+globalThis.__skgo_render = function (json) {
+	console.error(new Error('the render fell over'));
+	console.log('and this is just chatter');
+	return { done: true, failure: '', redirect: null, status: 200, error: null, head: '', body: '' };
+};
+`
+	var mu sync.Mutex
+	var lines []string
+	engine, err := ssr.New("bundle.js", []byte(reporting), 1, func(routeID, level, text string) {
+		mu.Lock()
+		defer mu.Unlock()
+		lines = append(lines, routeID+" "+level+" "+text)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := engine.Render("/checkout", request(t, "/checkout"), nil); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(lines) != 2 {
+		t.Fatalf("got %d console lines, want 2: %v", len(lines), lines)
+	}
+	if !strings.HasPrefix(lines[0], "/checkout error Error: the render fell over") {
+		t.Errorf("console.error reached Go as %q", lines[0])
+	}
+	if lines[1] != "/checkout log and this is just chatter" {
+		t.Errorf("console.log reached Go as %q", lines[1])
+	}
+}
+
+// The two globals goja is missing that kit's own runtime declares outright:
+// `Promise.withResolvers`, which its streaming helper calls, and
+// `Symbol.asyncIterator`, which its live-query iterators use as a method name.
+// Without the symbol that method is called "undefined" instead, which is not an
+// error anywhere — it is just wrong later.
+func TestTheEngineHasTheGlobalsKitAssumes(t *testing.T) {
+	const probing = `
+globalThis.__skgo_ping = function () { return 'ok'; };
+globalThis.__skgo_render = function () {
+	var d = Promise.withResolvers();
+	d.resolve('resolved');
+	var stream = { [Symbol.asyncIterator]() { return 'iterable'; } };
+	return {
+		done: true,
+		failure: '',
+		redirect: null,
+		status: 200,
+		error: null,
+		head: '',
+		body: typeof Symbol.asyncIterator + ' ' + typeof d.promise.then + ' ' + stream[Symbol.asyncIterator]()
+	};
+};
+`
+	engine, err := ssr.New("bundle.js", []byte(probing), 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, _, err := engine.Render("/", request(t, "/"), nil)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if want := "symbol function iterable"; result.Body != want {
+		t.Errorf("body = %q, want %q", result.Body, want)
+	}
+}
