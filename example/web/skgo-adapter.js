@@ -18,7 +18,7 @@ import * as esbuild from 'esbuild';
 // the Go that reads the manifest below checks what is stamped here against its
 // own, so a copy that has fallen behind is refused by name instead of failing
 // later as something unrelated.
-const SKGO = { version: 'devel', adapter: '56f17a75da56' };
+const SKGO = { version: 'devel', adapter: '259f23a7073b' };
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
@@ -1169,9 +1169,23 @@ function make_event(req, url) {
  * sends the client in __data.json, produced by the same encoders — and the
  * app's decoders read it back, so the component renders against the instance
  * the browser is about to hold rather than the object its fields travelled in.
+ *
+ * A field the load promised is not in those bytes. Go names it instead, and it
+ * becomes a promise here that never settles: Svelte's server renderer does not
+ * await an await block — it pushes the block marker and renders the pending
+ * branch (svelte/src/internal/server/index.js, await_block) — so the document
+ * leaves Go with the loading state already in it, and the value follows it down
+ * as a chunk Go appends. That is exactly what kit does, which hands its renderer
+ * the promise itself.
  */
 function node_data(node) {
-	return node.data ? parse(node.data) : null;
+	const data = node.data ? parse(node.data) : null;
+	if (data) {
+		for (const key of node.deferred ?? []) {
+			data[key] = new Promise(() => {});
+		}
+	}
+	return data;
 }
 
 function build_props(req, url) {

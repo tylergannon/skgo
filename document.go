@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -195,11 +196,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	// tree. Encoding it once, here, is what keeps them from disagreeing — and
 	// it has to happen here rather than at either end, because this is where
 	// the app's transport hook is known.
-	//
-	// Every deferred value is then settled, before the render starts. A promise
-	// in a load's result reaches kit's client as a streamed chunk; a component
-	// that renders on the server needs the value itself.
-	if err := s.encodeBranch(r.Context(), nodes); err != nil {
+	if err := s.encodeBranch(nodes); err != nil {
 		return s.failed(w, r, req, route.id, params, err)
 	}
 
@@ -367,7 +364,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		s.report(routeID, nodes[0].err)
 		return s.staticErrorPage(w, r, e.Status, e.Message)
 	}
-	if err := s.encodeBranch(r.Context(), nodes); err != nil {
+	if err := s.encodeBranch(nodes); err != nil {
 		s.report(routeID, err)
 		return s.staticErrorPage(w, r, e.Status, e.Message)
 	}
@@ -395,10 +392,14 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		return true
 	}
 	plan.status, plan.pageError = result.Status, result.Error
-	document, err := s.assemble(req, plan, result, answers)
+	document, promises, err := s.assemble(req, plan, result, answers)
 	if err != nil {
 		s.report(routeID, err)
 		return s.staticErrorPage(w, r, e.Status, e.Message)
+	}
+	if len(promises.order) > 0 {
+		s.stream(w, r, shared, document, promises)
+		return true
 	}
 	s.write(w, r, shared, document, plan.status)
 	return true
@@ -444,17 +445,27 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 	// boundary that caught something sets `page.status` and `page.error`, and
 	// the response carries what the page ended up showing.
 	plan.status, plan.pageError = result.Status, result.Error
-	document, err := s.assemble(req, plan, result, answers)
+	document, promises, err := s.assemble(req, plan, result, answers)
 	if err != nil {
 		return s.failed(w, r, req, plan.routeID, plan.params, err)
+	}
+	if len(promises.order) > 0 {
+		s.stream(w, r, shared, document, promises)
+		return true
 	}
 	s.write(w, r, shared, document, plan.status)
 	return true
 }
 
-// encodeBranch takes every node's load result through the app's transport hook
-// and settles every deferred value in it, in place.
-func (s *SSR) encodeBranch(ctx context.Context, nodes []dataNode) error {
+// encodeBranch takes every node's load result through the app's transport hook,
+// in place.
+//
+// A deferred value is left exactly where it is. Kit hands its renderer the
+// promise a load returned and lets `{#await}` render the pending branch, so
+// waiting for one here would be the single change that makes a document unable
+// to stream — the page would arrive whole and late instead of at once and in
+// two pieces.
+func (s *SSR) encodeBranch(nodes []dataNode) error {
 	transport := s.loads.cfg.Transport
 	for i := range nodes {
 		if nodes[i].kind != "data" {
@@ -464,11 +475,7 @@ func (s *SSR) encodeBranch(ctx context.Context, nodes []dataNode) error {
 		if err != nil {
 			return err
 		}
-		value, err := settle(ctx, transport, tree)
-		if err != nil {
-			return err
-		}
-		nodes[i].data = value
+		nodes[i].data = tree
 	}
 	return nil
 }
@@ -484,18 +491,24 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 	//
 	// A slot the plan filled with no load — an error page's own place in the
 	// branch — has no data and crosses as "".
+	//
+	// A field the load promised crosses as its name rather than as a value: the
+	// engine has no way to wait for it and no reason to, because `{#await}`
+	// renders its pending branch either way.
 	reducers := s.loads.cfg.Transport.reducers()
 	branch := make([]ssr.Node, len(plan.indices))
 	for i, index := range plan.indices {
 		data := ""
+		var promised []string
 		if plan.nodes[i].kind == "data" {
-			serialized, err := devalue.StringifyWith(plan.nodes[i].data, reducers)
+			tree, keys := withoutDeferred(plan.nodes[i].data)
+			serialized, err := devalue.StringifyWith(tree, reducers)
 			if err != nil {
 				return ssr.Result{}, nil, err
 			}
-			data = serialized
+			data, promised = serialized, keys
 		}
-		branch[i] = ssr.Node{Index: index, Data: data}
+		branch[i] = ssr.Node{Index: index, Data: data, Deferred: promised}
 	}
 
 	cookies := map[string]string{}
@@ -781,48 +794,155 @@ type remoteAnswer struct {
 	R *ssr.Redirect `json:"r,omitempty"`
 }
 
-// settle replaces every Deferred in an encoded load result with the value it
-// was waiting for.
+// withoutDeferred is the load result the engine renders against: every field
+// the server only promised is replaced by null, and the names of those fields
+// are returned alongside.
 //
-// A Deferred holds the raw Go value the load produced — encoding it when it was
-// created would have flattened a transported type before any encoder saw it —
-// so the settled value is encoded here, with the same transport the rest of the
-// tree was encoded with.
-func settle(ctx context.Context, transport Transport, v any) (any, error) {
-	switch value := v.(type) {
-	case *deferred:
-		settled, err := value.wait(ctx)
-		if err != nil {
-			return nil, err
-		}
-		tree, err := transport.encodeTree(settled)
-		if err != nil {
-			return nil, err
-		}
-		return settle(ctx, transport, tree)
-	case map[string]any:
-		for key, item := range value {
-			resolved, err := settle(ctx, transport, item)
-			if err != nil {
-				return nil, err
-			}
-			value[key] = resolved
-		}
-		return value, nil
-	case []any:
-		for i, item := range value {
-			resolved, err := settle(ctx, transport, item)
-			if err != nil {
-				return nil, err
-			}
-			value[i] = resolved
-		}
-		return value, nil
+// The names are all the bundle needs — it puts a promise at each of them — and
+// a null is what the field would have carried anyway, because a promise has no
+// value yet. A Deferred may only be a field of what a load returns (deferred.go
+// enforces kit's own rule, which exists because that object is what kit's client
+// walks looking for promises), so the top level is the only place to look.
+func withoutDeferred(tree any) (any, []string) {
+	obj, ok := tree.(map[string]any)
+	if !ok {
+		return tree, nil
 	}
-	if holder, ok := v.(deferredHolder); ok && holder.deferredValue() != nil {
-		return settle(ctx, transport, holder.deferredValue())
+	var promised []string
+	for key, value := range obj {
+		if _, ok := value.(*deferred); ok {
+			promised = append(promised, key)
+		}
 	}
-	return v, nil
+	if len(promised) == 0 {
+		return tree, nil
+	}
+	sort.Strings(promised)
+
+	// A copy, because the original tree is what the hydration array is written
+	// from and it still has to hold the Deferred itself.
+	out := make(map[string]any, len(obj))
+	for key, value := range obj {
+		out[key] = value
+	}
+	for _, key := range promised {
+		out[key] = nil
+	}
+	return out, promised
+}
+
+// stream sends a document that is still waiting for something: the document
+// itself, then one `<script>` per promise as it settles, on the same response.
+//
+// It is the streaming branch of kit's `render_response`, quirks and all. Kit
+// builds that response as
+//
+//	new Response(stream_text(transformed + '\n', chunks), { headers })
+//
+// where `headers` is the object the etag was deliberately not put on
+// (`if (!chunks) headers.set('etag', ...)`) and the page's `status` — which the
+// non-streaming branch passes to `text()` — is simply not passed at all. So a
+// streamed document is a 200 whatever the page's status was, and carries no
+// etag to revalidate against. Both are kit's, and skgo mirrors rather than
+// improves on them: the browser runs kit's client either way.
+func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest, document string, promises *promiseTable) {
+	header := w.Header()
+	if shared != nil {
+		shared.applyTo(header)
+	}
+	header.Set("Content-Type", "text/html; charset=utf-8")
+	header.Set("X-Sveltekit-Page", "true")
+	header.Set("Cache-Control", "private, no-cache")
+	if s.version != "" {
+		header.Set("X-Sveltekit-Version", s.version)
+	}
+	// No Content-Length: the chunks are not written yet and their length is not
+	// known until the last of them settles.
+	w.WriteHeader(http.StatusOK)
+	if r.Method == http.MethodHead {
+		return
+	}
+
+	_, _ = io.WriteString(w, document+"\n")
+	flush(w)
+
+	ctx := r.Context()
+	replacer := s.deferReplacer(promises)
+	promises.settled(ctx, func(id int, value any, err error) {
+		_, _ = io.WriteString(w, s.chunkScript(id, value, err, replacer))
+		flush(w)
+	})
+}
+
+// chunkScript is one settled value on its way to the browser, as kit writes it
+// (`page/data_serializer.js`): a script element of its own, appended to a
+// document the browser has already started rendering.
+//
+//	<script>__sveltekit_1a2b3c.resolve(1, () => [<value>])</script>
+//
+// The array is the pair the boot script destructures — `[value]` fulfils the
+// promise and `[, error]`, a hole then the error, rejects it — and the arrow
+// takes `app` rather than nothing when the value was written through the app's
+// transport hook, because `app.decode` is only in scope once the client's app
+// module is in hand.
+func (s *SSR) chunkScript(id int, value any, err error, replacer devalue.Replacer) string {
+	written := s.unevalChunk(value, err, replacer)
+	arrow := "() => "
+	if strings.Contains(written, "app.decode") {
+		arrow = "(app) => "
+	}
+	return "<script>" + s.info.GlobalName + ".resolve(" + strconv.Itoa(id) + ", " + arrow + written + ")</script>\n"
+}
+
+// unevalChunk writes the pair a chunk carries. A value that cannot be written
+// becomes the same error kit's would: kit catches the failure, puts it through
+// `handle_error_and_jsonify` and writes `[, error]` instead, and with no
+// handleError hook that is Internal Error every time.
+func (s *SSR) unevalChunk(value any, err error, replacer devalue.Replacer) string {
+	if err == nil {
+		// The Deferred held the raw Go value so that this is the first place it
+		// is encoded, with the transport hook in hand.
+		tree, encodeErr := s.loads.cfg.Transport.encodeTree(value)
+		if encodeErr == nil {
+			written, unevalErr := devalue.UnevalWith([]any{tree}, replacer)
+			if unevalErr == nil {
+				return written
+			}
+			encodeErr = unevalErr
+		}
+		s.report("", encodeErr)
+		err = encodeErr
+	}
+	written, unevalErr := devalue.UnevalWith([]any{devalue.Hole, errorNode(asHTTPError(err))}, replacer)
+	if unevalErr != nil {
+		// The error itself is two numbers and a string, so this cannot happen
+		// with any error skgo produces; a document that has already been sent
+		// still has to say something.
+		return "[, {status: 500, message: " + jsString("Internal Error") + "}]"
+	}
+	return written
+}
+
+// deferReplacer is kit's `get_replacer` (`page/data_serializer.js`): a promise
+// becomes `<global>.defer(<id>)` and everything else is offered to the app's
+// own transport hook, in that order — kit tests `thing?.then` before it tries
+// the encoders, so a transported type that somehow were also a promise would
+// still stream.
+//
+// Ids are assigned on first encounter, which is what makes them the numbers
+// they are: the hydration array is written first and node by node, so the
+// promise a page's own load made is numbered after the one its layout made.
+func (s *SSR) deferReplacer(promises *promiseTable) devalue.Replacer {
+	transport := s.loads.cfg.Transport.unevalReplacer()
+	return func(v any, uneval func(any) (string, error)) (string, bool, error) {
+		if d, ok := v.(*deferred); ok {
+			return s.info.GlobalName + ".defer(" + strconv.Itoa(promises.id(d)) + ")", true, nil
+		}
+		if transport == nil {
+			return "", false, nil
+		}
+		return transport(v, uneval)
+	}
 }
 
 func clientAddress(r *http.Request) string {
