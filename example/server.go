@@ -60,6 +60,12 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	remoteCfg := manifest.RemoteConfig(origin)
 	loadCfg := manifest.LoadConfig(origin)
 	loadCfg.Handle = Handle
+	// The `transport` hook, declared in web/src/hooks.go beside the
+	// web/src/hooks.ts that holds its browser half. Both registries get it:
+	// a custom type reaches the browser through a remote function and through
+	// a server load alike.
+	remoteCfg.Transport = generated.Transport()
+	loadCfg.Transport = generated.Transport()
 	endpointCfg := manifest.EndpointConfig(origin)
 
 	mode := "prod"

@@ -7,7 +7,7 @@
 <svelte:boundary>
 	<ul data-testid="plans">
 		{#each await getPlans() as plan (plan.name)}
-			<li data-testid="plan">{plan.name} — ${plan.price}</li>
+			<li data-testid="plan">{plan.name} — {plan.price.format()}</li>
 		{/each}
 	</ul>
 	{#snippet pending()}

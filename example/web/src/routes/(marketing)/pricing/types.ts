@@ -9,7 +9,18 @@ export type Plan = {
    */
   "name": string;
   /**
-   * Price is what it costs per month, in whole dollars.
+   * Price is what it costs per month. It is a domain type with a method, and it reaches the browser as one because the app declares a `transport` hook for it in src/hooks.go and src/hooks.ts.
    */
-  "price": number;
+  "price": Money;
+};
+
+/**
+ * Money is an amount of US dollars, held in cents so that arithmetic on it is exact.
+ * It is the app's example of a domain type with behaviour: `Format` is a method, not a field, so a page that renders a price is calling something rather than reading something. That is the whole point of the `transport` hook — without one this arrives in the browser as `{ cents: 2000 }`, an object that has no `format` to call.
+ */
+export type Money = {
+  /**
+   * Cents is the amount, in cents.
+   */
+  "cents": number;
 };

@@ -168,7 +168,7 @@ func (a *app) collectLoadFields(load *loadFn, st *types.Struct, into *[]loadFiel
 // which reaches the browser as a promise.
 func (a *app) projectLoadField(t types.Type) (string, []*types.Named, error) {
 	if inner, ok := deferredElem(t); ok {
-		projected, err := project(inner)
+		projected, err := a.project(inner)
 		if err != nil {
 			return "", nil, fmt.Errorf("a deferred value's type cannot cross: %v", err)
 		}
@@ -177,7 +177,7 @@ func (a *app) projectLoadField(t types.Type) (string, []*types.Named, error) {
 	if containsDeferred(t) {
 		return "", nil, fmt.Errorf("%s holds a Deferred below the top level of the load's result; kit's client only awaits promises the load returns directly", t)
 	}
-	projected, err := project(t)
+	projected, err := a.project(t)
 	if err != nil {
 		return "", nil, err
 	}

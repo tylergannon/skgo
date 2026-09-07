@@ -34,8 +34,12 @@ func (a *app) writeStubs() error {
 		// each package's types.ts is addressed by its import path — but one
 		// TypeScript module can still only have one `Thing` in scope.
 		declaredBy := map[string]*types.Package{}
+		var transported []string
 		var kinds []string
 		for _, fn := range fns {
+			for _, custom := range a.transportedOf(fn) {
+				transported = appendUnique(transported, custom.Obj().Name())
+			}
 			for _, dep := range a.depsOf(fn) {
 				pkg := dep.Obj().Pkg()
 				name := dep.Obj().Name()
@@ -66,6 +70,18 @@ func (a *app) writeStubs() error {
 		var b strings.Builder
 		b.WriteString(tsHeader)
 		fmt.Fprintf(&b, "import { %s } from '$app/server';\n", strings.Join(kinds, ", "))
+
+		if len(transported) > 0 {
+			sort.Strings(transported)
+			spec, err := a.hooksSpecifier(dir)
+			if err != nil {
+				return err
+			}
+			// From src/hooks.ts, not from a projected types.ts: these are the
+			// classes the app's `transport` hook builds, and their methods are
+			// the reason the hook exists.
+			fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(transported, ", "), spec)
+		}
 
 		var specs []string
 		for spec := range imports {
@@ -109,7 +125,7 @@ func (a *app) writeStubs() error {
 
 // stubSignature renders one export.
 func (a *app) stubSignature(fn *remoteFn) (string, error) {
-	out, err := project(fn.out)
+	out, err := a.project(fn.out)
 	if err != nil {
 		return "", err
 	}
@@ -131,7 +147,7 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 		// Kit's no-validator overload: a function taking no argument.
 		return fmt.Sprintf("export const %s = %s((): %s => unimplemented());\n", fn.name, call, result), nil
 	}
-	in, err := project(fn.in)
+	in, err := a.project(fn.in)
 	if err != nil {
 		return "", err
 	}
@@ -144,14 +160,45 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 func (a *app) depsOf(fn *remoteFn) []*types.Named {
 	var deps []*types.Named
 	if !isNone(fn.in) {
-		if t, err := project(fn.in); err == nil {
+		if t, err := a.project(fn.in); err == nil {
 			deps = append(deps, t.deps...)
 		}
 	}
-	if t, err := project(fn.out); err == nil {
+	if t, err := a.project(fn.out); err == nil {
 		deps = append(deps, t.deps...)
 	}
 	return deps
+}
+
+// transportedOf is the app's custom types a stub's signatures name. They are
+// imported from `src/hooks.ts` rather than from a projected types.ts, because
+// they are the classes the app declares there.
+func (a *app) transportedOf(fn *remoteFn) []*types.Named {
+	var out []*types.Named
+	if !isNone(fn.in) {
+		if t, err := a.project(fn.in); err == nil {
+			out = append(out, t.transported...)
+		}
+	}
+	if t, err := a.project(fn.out); err == nil {
+		out = append(out, t.transported...)
+	}
+	return out
+}
+
+// hooksSpecifier is the module specifier a file in dir uses to import from the
+// app's `src/hooks.ts`, which is where kit looks for the transport hook and so
+// where the app's custom-type classes live.
+func (a *app) hooksSpecifier(dir string) (string, error) {
+	rel, err := filepath.Rel(dir, filepath.Join(a.cfg.Web, "src", "hooks"))
+	if err != nil {
+		return "", err
+	}
+	spec := filepath.ToSlash(rel)
+	if !strings.HasPrefix(spec, ".") {
+		spec = "./" + spec
+	}
+	return spec, nil
 }
 
 // writePackageBindings emits, per Go package, the registration list for the
@@ -230,10 +277,17 @@ func (a *app) writeAppBindings() error {
 	var b strings.Builder
 	b.WriteString(goHeader)
 	fmt.Fprintf(&b, "package %s\n\n", a.cfg.Package)
+	transportPkgs := a.transportImports()
 	b.WriteString("import (\n")
+	if len(transportPkgs) > 0 {
+		b.WriteString("\t\"reflect\"\n\n")
+	}
 	fmt.Fprintf(&b, "\t%q\n\n", skgoPkg)
 	for _, gp := range a.pkgs {
 		fmt.Fprintf(&b, "\t%s %q\n", gp.alias, gp.pkg.PkgPath)
+	}
+	for _, imp := range transportPkgs {
+		fmt.Fprintf(&b, "\t%s %q\n", imp.alias, imp.path)
 	}
 	b.WriteString(")\n\n")
 	b.WriteString("// Remotes returns every remote function declared in the app, ready to hand\n")
@@ -257,7 +311,77 @@ func (a *app) writeAppBindings() error {
 		fmt.Fprintf(&b, "\tout = append(out, %s.SkgoEndpoints()...)\n", gp.alias)
 	}
 	b.WriteString("\treturn out\n}\n")
+	a.writeTransportBinding(&b)
 	return a.writeGo(filepath.Join(a.cfg.Out, "skgo_bindings_gen.go"), b.String())
+}
+
+// writeTransportBinding emits the app's `transport` hook, wiring each key to
+// the codecs polytype generated for it. The app hands the result to
+// RemoteConfig.Transport and LoadConfig.Transport, which is where kit puts the
+// same object on its own server.
+func (a *app) writeTransportBinding(b *strings.Builder) {
+	entries := a.transportKeyOrder()
+	if len(entries) == 0 {
+		return
+	}
+	b.WriteString("\n// Transport is the app's `transport` hook: the Go half of the encode/decode\n")
+	b.WriteString("// pairs src/hooks.ts declares. Hand it to skgo.RemoteConfig.Transport and\n")
+	b.WriteString("// skgo.LoadConfig.Transport.\n")
+	b.WriteString("//\n")
+	b.WriteString("// Each key must be spelled the same here and in src/hooks.ts: it is what the\n")
+	b.WriteString("// value travels under, and a client with no decoder for it cannot read the\n")
+	b.WriteString("// response at all.\n")
+	b.WriteString("func Transport() skgo.Transport {\n\treturn skgo.Transport{\n")
+	for _, entry := range entries {
+		goType := a.transportGoType(entry)
+		name := codecName(entry)
+		fmt.Fprintf(b, "\t\t%q: {\n", entry.key)
+		fmt.Fprintf(b, "\t\t\tType: reflect.TypeFor[%s](),\n", goType)
+		fmt.Fprintf(b, "\t\t\tEncode: func(v any) (any, error) { return Encode%s(v.(%s)) },\n", name, goType)
+		fmt.Fprintf(b, "\t\t\tDecode: func(raw any) (any, error) { return Decode%s(raw) },\n", name)
+		b.WriteString("\t\t},\n")
+	}
+	b.WriteString("\t}\n}\n")
+}
+
+// transportImport is one package the bindings file has to import to name a
+// transported type.
+type transportImport struct {
+	alias string
+	path  string
+}
+
+// transportImports are the packages declaring transported types, aliased for
+// the bindings file. The polytype codec file in the same package imports the
+// same packages under aliases of its own choosing; two files of one package may
+// alias an import differently, so neither generator has to know about the other.
+func (a *app) transportImports() []transportImport {
+	seen := map[string]bool{}
+	var out []transportImport
+	for _, entry := range a.transportKeyOrder() {
+		pkg := entry.named.Obj().Pkg()
+		if pkg == nil || pkg.Path() == a.bindingsImportPath() || seen[pkg.Path()] {
+			continue
+		}
+		seen[pkg.Path()] = true
+		out = append(out, transportImport{alias: fmt.Sprintf("skgotp%d", len(out)), path: pkg.Path()})
+	}
+	return out
+}
+
+// transportGoType spells a transported type the way the bindings file can
+// reference it.
+func (a *app) transportGoType(entry *transportedType) string {
+	pkg := entry.named.Obj().Pkg()
+	if pkg == nil || pkg.Path() == a.bindingsImportPath() {
+		return entry.named.Obj().Name()
+	}
+	for _, imp := range a.transportImports() {
+		if imp.path == pkg.Path() {
+			return imp.alias + "." + entry.named.Obj().Name()
+		}
+	}
+	return entry.named.Obj().Name()
 }
 
 // remoteList is the file the SvelteKit adapter copies into the build. It is

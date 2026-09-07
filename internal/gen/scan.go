@@ -99,6 +99,8 @@ type app struct {
 	remotes   []*remoteFn
 	loads     []*loadFn
 	endpoints []*endpointFn
+	// transported are the app's `transport` hook entries, from src/hooks.go.
+	transported []*transportedType
 	// pkgs is every package that declares remote functions, loads or server
 	// routes, in load order.
 	pkgs []*goPackage
@@ -112,6 +114,20 @@ type app struct {
 	hostDir    string
 	// links gives the route tree's packages import paths Go can spell.
 	links *routeLinks
+}
+
+// transportedType is one entry of the app's transport hook: a Go type that
+// crosses the wire as a custom type, under the key kit's client looks it up by.
+type transportedType struct {
+	// key is the property name in kit's transport object, and the tag the
+	// value travels under.
+	key string
+	// named is the Go type, which must be a named type: the generated codec
+	// and the TypeScript class both need a name to be spelled by.
+	named *types.Named
+	// goPkg is the package src/hooks.go lives in.
+	goPkg *goPackage
+	pos   token.Position
 }
 
 type namedTypes struct {
@@ -262,6 +278,11 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 	base := filepath.Base(path)
 	_, isLoadFile := loadFileNames[base]
 	isServerFile := base == serverFileName
+	isHooksFile := base == hooksFileName
+
+	if isHooksFile {
+		return nil, nil, nil, a.scanHooks(gp, p, file, path)
+	}
 
 	stub := strings.TrimSuffix(path, ".go") + ".ts"
 	if tsName, isLoad := loadFileNames[base]; isLoad {

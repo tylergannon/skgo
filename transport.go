@@ -167,3 +167,27 @@ func (rs *Remotes) codecs() remotearg.Codecs {
 		Revivers: rs.cfg.Transport.revivers(),
 	}
 }
+
+// Transported declares that T crosses the wire as a custom type under key, and
+// is skgo's mirror of one entry of kit's `transport` hook.
+//
+// It goes in `src/hooks.go`, beside the `src/hooks.ts` that holds the browser
+// half, because kit's transport is a universal hook and both halves are one
+// declaration:
+//
+//	// src/hooks.go
+//	var _ = skgo.Transported[businesslogic.Money]("Money")
+//
+//	// src/hooks.ts
+//	export const transport = {
+//		Money: {
+//			encode: (v) => v instanceof Money && [v.cents],
+//			decode: ([cents]) => new Money(cents)
+//		}
+//	};
+//
+// `skgo generate` reads the marker, projects T's shape with polytype, and emits
+// the Go encoder and strict decoder that answer the browser's pair. Like every
+// other skgo marker it is a declaration and not a call: it does nothing at run
+// time.
+func Transported[T any](key string) Marker { _ = key; return Marker{} }
