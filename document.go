@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -105,22 +104,25 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	if size <= 0 {
 		size = runtime.NumCPU()
 	}
-	engine, err := ssr.New(info.Bundle, source, size)
-	if err != nil {
-		return nil, err
-	}
-
-	return &SSR{
+	s := &SSR{
 		loads:     loads,
 		remotes:   remotes,
-		engine:    engine,
 		info:      info,
 		template:  string(template),
 		errorPage: string(errorPage),
 		base:      strings.TrimSuffix(m.Base, "/"),
 		version:   m.Version,
 		onError:   opts.OnError,
-	}, nil
+	}
+	// The engine is built after the SSR rather than into it because the bundle
+	// writes to `console` while it is coming up, and that line has to reach the
+	// same place every other failure does.
+	engine, err := ssr.New(info.Bundle, source, size, s.console)
+	if err != nil {
+		return nil, err
+	}
+	s.engine = engine
+	return s, nil
 }
 
 // ssrTarget is the ECMAScript version skgo runs. It is a correctness claim
@@ -458,6 +460,22 @@ func (s *SSR) failed(w http.ResponseWriter, r *http.Request, req dataRequest, ro
 
 // report tells the app about a failure it will otherwise never see, because the
 // visitor is about to be handed a page that does not mention it.
+// console is where the engine's `console` lands.
+//
+// A warning or an error is a failure the visitor will not see — kit's
+// `log_handle_error_hook_failure` and Svelte's own warnings both come through
+// here — so it goes wherever every other such failure goes, which is OnError if
+// the app named one. Anything quieter is a line the app itself wrote, and it
+// just gets logged.
+func (s *SSR) console(routeID, level, text string) {
+	switch level {
+	case "warn", "error":
+		s.report(routeID, fmt.Errorf("console.%s: %s", level, text))
+	default:
+		log.Printf("skgo: console.%s: %s", level, text)
+	}
+}
+
 func (s *SSR) report(routeID string, err error) {
 	if err == nil {
 		return
@@ -533,23 +551,30 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 	// A slot the plan filled with no load — an error page's own place in the
 	// branch — has no data and crosses as "".
 	//
-	// A field the load promised crosses as its name rather than as a value: the
-	// engine has no way to wait for it and no reason to, because `{#await}`
-	// renders its pending branch either way.
-	reducers := s.loads.cfg.Transport.reducers()
+	// A value the load promised crosses as kit's own promise placeholder —
+	// `["Promise", <id>]` in devalue's flat form, exactly what `__data.json`
+	// carries — and the bundle reads it back with a `Promise` reviver, the way
+	// kit's client does in `process_stream`. So a promise is found wherever it
+	// sits, at any depth, without either side agreeing on a list of names.
+	//
+	// The ids never leave the engine: the bundle puts a promise that never
+	// settles at each of them, because Svelte's server renderer does not await
+	// an `{#await}` block — it renders the pending branch — and the value
+	// follows the document down as a chunk. So this table is its own, and its
+	// numbering has nothing to do with the one the document's chunks use.
+	promises := &promiseTable{ids: map[*deferred]int{}}
+	reducers := append(s.loads.cfg.Transport.reducers(), promiseReducer(promises))
 	branch := make([]ssr.Node, len(plan.indices))
 	for i, index := range plan.indices {
 		data := ""
-		var promised []string
 		if plan.nodes[i].kind == "data" {
-			tree, keys := withoutDeferred(plan.nodes[i].data)
-			serialized, err := devalue.StringifyWith(tree, reducers)
+			serialized, err := devalue.StringifyWith(plan.nodes[i].data, reducers)
 			if err != nil {
 				return ssr.Result{}, nil, err
 			}
-			data, promised = serialized, keys
+			data = serialized
 		}
-		branch[i] = ssr.Node{Index: index, Data: data, Deferred: promised}
+		branch[i] = ssr.Node{Index: index, Data: data}
 	}
 
 	cookies := map[string]string{}
@@ -591,7 +616,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 		s.record(answers, "f", plan.action.id, answered{tree: plan.action.output})
 	}
 
-	result, _, err := s.engine.Render(request, func(id, payload string) ([]byte, error) {
+	result, _, err := s.engine.Render(plan.routeID, request, func(id, payload string) ([]byte, error) {
 		return s.answer(withEvent(ctx, event), id, payload, answers)
 	})
 	return result, answers, err
@@ -854,43 +879,6 @@ type remoteAnswer struct {
 	R *ssr.Redirect `json:"r,omitempty"`
 }
 
-// withoutDeferred is the load result the engine renders against: every field
-// the server only promised is replaced by null, and the names of those fields
-// are returned alongside.
-//
-// The names are all the bundle needs — it puts a promise at each of them — and
-// a null is what the field would have carried anyway, because a promise has no
-// value yet. A Deferred may only be a field of what a load returns (deferred.go
-// enforces kit's own rule, which exists because that object is what kit's client
-// walks looking for promises), so the top level is the only place to look.
-func withoutDeferred(tree any) (any, []string) {
-	obj, ok := tree.(map[string]any)
-	if !ok {
-		return tree, nil
-	}
-	var promised []string
-	for key, value := range obj {
-		if _, ok := value.(*deferred); ok {
-			promised = append(promised, key)
-		}
-	}
-	if len(promised) == 0 {
-		return tree, nil
-	}
-	sort.Strings(promised)
-
-	// A copy, because the original tree is what the hydration array is written
-	// from and it still has to hold the Deferred itself.
-	out := make(map[string]any, len(obj))
-	for key, value := range obj {
-		out[key] = value
-	}
-	for _, key := range promised {
-		out[key] = nil
-	}
-	return out, promised
-}
-
 // stream sends a document that is still waiting for something: the document
 // itself, then one `<script>` per promise as it settles, on the same response.
 //
@@ -961,8 +949,10 @@ func (s *SSR) chunkScript(id int, value any, err error, replacer devalue.Replace
 func (s *SSR) unevalChunk(value any, err error, replacer devalue.Replacer) string {
 	if err == nil {
 		// The Deferred held the raw Go value so that this is the first place it
-		// is encoded, with the transport hook in hand.
-		tree, encodeErr := s.loads.cfg.Transport.encodeTree(value)
+		// is encoded, with the transport hook in hand. encodeLoadValue rather
+		// than encodeTree because a promised value may itself hold a promise,
+		// and kit writes each chunk with the replacer that wrote the first one.
+		tree, encodeErr := s.loads.cfg.Transport.encodeLoadValue(value)
 		if encodeErr == nil {
 			written, unevalErr := devalue.UnevalWith([]any{tree}, replacer)
 			if unevalErr == nil {

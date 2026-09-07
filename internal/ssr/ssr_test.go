@@ -64,7 +64,7 @@ func answer(value string) []byte {
 // finish. On one runtime the second render's module state would have replaced
 // the first's, and the first would come back describing the second's page.
 func TestConcurrentRendersDoNotShareARuntime(t *testing.T) {
-	engine, err := ssr.New("bundle.js", []byte(bundle), 4)
+	engine, err := ssr.New("bundle.js", []byte(bundle), 4, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestConcurrentRendersDoNotShareARuntime(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			result, _, err := engine.Render(request(t, route), func(id, payload string) ([]byte, error) {
+			result, _, err := engine.Render(route, request(t, route), func(id, payload string) ([]byte, error) {
 				both <- struct{}{}
 				<-release
 				return answer("answered " + payload), nil
@@ -114,11 +114,11 @@ func TestConcurrentRendersDoNotShareARuntime(t *testing.T) {
 // no error attached. Nothing may read a body out of a result whose promise is
 // still pending: it is empty, and an empty document is not a page.
 func TestARenderThatNeverFinishesIsAnError(t *testing.T) {
-	engine, err := ssr.New("bundle.js", []byte(neverSettles), 1)
+	engine, err := ssr.New("bundle.js", []byte(neverSettles), 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = engine.Render(request(t, "/"), func(string, string) ([]byte, error) {
+	_, _, err = engine.Render("/", request(t, "/"), func(string, string) ([]byte, error) {
 		return answer(""), nil
 	})
 	if err == nil {
@@ -132,11 +132,11 @@ func TestARenderThatNeverFinishesIsAnError(t *testing.T) {
 // TestAHostFailureIsAGoError keeps a failed remote answer from being swallowed
 // by the component boundary that catches the throw it turns into.
 func TestAHostFailureIsAGoError(t *testing.T) {
-	engine, err := ssr.New("bundle.js", []byte(bundle), 1)
+	engine, err := ssr.New("bundle.js", []byte(bundle), 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, calls, err := engine.Render(request(t, "/"), func(string, string) ([]byte, error) {
+	_, calls, err := engine.Render("/", request(t, "/"), func(string, string) ([]byte, error) {
 		return nil, errNoAnswer
 	})
 	if err == nil {
@@ -163,7 +163,7 @@ func TestABundleTheEngineCannotRunIsRefusedAtStartup(t *testing.T) {
 		"throws on evaluation": "throw new Error('boom');",
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := ssr.New("bundle.js", []byte(source), 1); err == nil {
+			if _, err := ssr.New("bundle.js", []byte(source), 1, nil); err == nil {
 				t.Fatal("accepted")
 			}
 		})
@@ -173,12 +173,12 @@ func TestABundleTheEngineCannotRunIsRefusedAtStartup(t *testing.T) {
 // TestTheEngineReusesItsRuntimes checks that a pool is a pool: renders that do
 // not overlap are served by runtimes that already exist.
 func TestTheEngineReusesItsRuntimes(t *testing.T) {
-	engine, err := ssr.New("bundle.js", []byte(bundle), 4)
+	engine, err := ssr.New("bundle.js", []byte(bundle), 4, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for range 20 {
-		if _, _, err := engine.Render(request(t, "/"), func(_, payload string) ([]byte, error) {
+		if _, _, err := engine.Render("/", request(t, "/"), func(_, payload string) ([]byte, error) {
 			return answer(payload), nil
 		}); err != nil {
 			t.Fatal(err)
@@ -225,11 +225,11 @@ globalThis.__skgo_render = function (json) {
 // the request over; a result that did not carry them back would answer a caught
 // error with 200.
 func TestARenderReportsTheStatusAndErrorItEndedWith(t *testing.T) {
-	engine, err := ssr.New("bundle.js", []byte(reporting), 1)
+	engine, err := ssr.New("bundle.js", []byte(reporting), 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render(request(t, "/teapot"), nil)
+	result, _, err := engine.Render("/teapot", request(t, "/teapot"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,11 +251,11 @@ func TestARenderReportsTheStatusAndErrorItEndedWith(t *testing.T) {
 // error path. Kit answers one with a bare 3xx and no document at all, so a
 // render that ends in a redirect must not look like a render that broke.
 func TestARedirectThrownDuringARenderIsNotAFailure(t *testing.T) {
-	engine, err := ssr.New("bundle.js", []byte(reporting), 1)
+	engine, err := ssr.New("bundle.js", []byte(reporting), 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render(request(t, "/go-away"), nil)
+	result, _, err := engine.Render("/go-away", request(t, "/go-away"), nil)
 	if err != nil {
 		t.Fatalf("a redirect was reported as a failure: %v", err)
 	}

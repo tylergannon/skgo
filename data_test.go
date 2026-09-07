@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -356,22 +357,111 @@ func TestDeferredFailureIsAnErrorChunk(t *testing.T) {
 	}
 }
 
-func TestDeferredBelowTheTopLevelIsRefused(t *testing.T) {
+// Kit lets a promise sit anywhere in the object a load returns: its serializer
+// reaches one through a devalue reducer and its client reads it back through a
+// devalue reviver, and both walk the whole tree
+// (`server_data_serializer_json`, `process_stream`). So does skgo.
+func TestADeferredBelowTheTopLevelStreams(t *testing.T) {
+	type inner struct {
+		Label string           `json:"label"`
+		Slow  Deferred[string] `json:"slow"`
+	}
 	type nested struct {
-		Inner struct {
-			Slow Deferred[string] `json:"slow"`
-		} `json:"inner"`
+		Inner inner `json:"inner"`
 	}
 	page := NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (nested, error) {
-		var out nested
-		out.Inner.Slow = Resolved("x")
-		return out, nil
+		return nested{Inner: inner{
+			Label: "here now",
+			Slow:  Async(ctx, func(context.Context) (string, error) { return "here later", nil }),
+		}}, nil
 	})
 	ls := mustLoads(t, nil, page)
 
-	got := recorded(get(t, ls, "/a/__data.json?x-sveltekit-invalidated=111"))
-	if !strings.Contains(got, `"type":"error"`) {
-		t.Errorf("a Deferred nested below the top level must be refused, not serialized as null; got %s", got)
+	lines := readLines(t, get(t, ls, "/a/__data.json?x-sveltekit-invalidated=111").Body.String())
+	if len(lines) != 2 {
+		t.Fatalf("got %d lines:\n%s", len(lines), strings.Join(lines, "\n"))
+	}
+	wantHead := `{"type":"data","nodes":[null,null,{"type":"data","data":[{"inner":1},{"label":2,"slow":3},"here now",["Promise",4],1],"uses":{}}]}`
+	if lines[0] != wantHead {
+		t.Errorf("head =\n%s\nwant\n%s", lines[0], wantHead)
+	}
+	if want := `{"type":"chunk","id":1,"data":["here later"]}`; lines[1] != want {
+		t.Errorf("chunk = %s, want %s", lines[1], want)
+	}
+}
+
+// A value a promise carries may itself promise something, because kit writes
+// every chunk with the same reducers it wrote the first one with — which is why
+// its own iterator's comment says `deferred` can grow while it is being
+// iterated.
+func TestAPromisedValueMayItselfPromise(t *testing.T) {
+	type second struct {
+		Deeper Deferred[string] `json:"deeper"`
+	}
+	type first struct {
+		Outer Deferred[second] `json:"outer"`
+	}
+	page := NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (first, error) {
+		return first{Outer: Async(ctx, func(ctx context.Context) (second, error) {
+			return second{Deeper: Async(ctx, func(context.Context) (string, error) {
+				return "all the way down", nil
+			})}, nil
+		})}, nil
+	})
+	ls := mustLoads(t, nil, page)
+
+	lines := readLines(t, get(t, ls, "/a/__data.json?x-sveltekit-invalidated=111").Body.String())
+	if len(lines) != 3 {
+		t.Fatalf("got %d lines, want the head and two chunks:\n%s", len(lines), strings.Join(lines, "\n"))
+	}
+	if want := `{"type":"chunk","id":1,"data":[{"deeper":1},["Promise",2],2]}`; lines[1] != want {
+		t.Errorf("chunk 1 = %s, want %s", lines[1], want)
+	}
+	if want := `{"type":"chunk","id":2,"data":["all the way down"]}`; lines[2] != want {
+		t.Errorf("chunk 2 = %s, want %s", lines[2], want)
+	}
+}
+
+// Kit yields chunks in the order the promises settle, not the order it numbered
+// them: `create_async_iterator.add` gives a settling promise the next free slot
+// (`utils/streaming.js`), so a fast second value is never held behind a slow
+// first one. The document path has always mirrored that; this is the same claim
+// for the response a client-side navigation gets.
+func TestChunksAreSentInTheOrderTheySettleOnTheDataPath(t *testing.T) {
+	type streamed struct {
+		// Named so that the order devalue numbers them in — it sorts an
+		// object's keys — is the opposite of the order they settle in.
+		Alpha Deferred[string] `json:"alpha"`
+		Beta  Deferred[string] `json:"beta"`
+	}
+	page := NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (streamed, error) {
+		return streamed{
+			Alpha: Async(ctx, func(context.Context) (string, error) {
+				time.Sleep(150 * time.Millisecond)
+				return "slow, and numbered first", nil
+			}),
+			Beta: Async(ctx, func(context.Context) (string, error) {
+				return "fast, and numbered second", nil
+			}),
+		}, nil
+	})
+	ls := mustLoads(t, nil, page)
+
+	lines := readLines(t, get(t, ls, "/a/__data.json?x-sveltekit-invalidated=111").Body.String())
+	if len(lines) != 3 {
+		t.Fatalf("got %d lines:\n%s", len(lines), strings.Join(lines, "\n"))
+	}
+	// alpha is 1 and beta is 2 in the head, and beta arrives first.
+	wantHead := `{"type":"data","nodes":[null,null,{"type":"data","data":[{"alpha":1,"beta":3},["Promise",2],1,["Promise",4],2],"uses":{}}]}`
+	if lines[0] != wantHead {
+		t.Errorf("head =\n%s\nwant\n%s", lines[0], wantHead)
+	}
+	want := []string{
+		`{"type":"chunk","id":2,"data":["fast, and numbered second"]}`,
+		`{"type":"chunk","id":1,"data":["slow, and numbered first"]}`,
+	}
+	if !reflect.DeepEqual(lines[1:], want) {
+		t.Errorf("chunks\n got %v\nwant %v", lines[1:], want)
 	}
 }
 

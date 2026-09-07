@@ -46,6 +46,28 @@ const skgoFilePkg = "github.com/tylergannon/skgo/internal/formdata"
 // declaration; skgo refuses the shapes polytype cannot express, and the ones it
 // expresses unfaithfully, rather than papering over them.
 func (a *app) project(t types.Type) (tsType, error) {
+	return a.projectType(t, false)
+}
+
+// projectType is project, carrying whether a value the server has only promised
+// may appear. It may inside a load's result — kit lets a promise sit anywhere
+// in the object a load returns, and inside a value another promise carries —
+// and nowhere else, because nothing else on the wire streams.
+func (a *app) projectType(t types.Type, promises bool) (tsType, error) {
+	if inner, ok := deferredElem(t); ok {
+		if !promises {
+			return tsType{}, fmt.Errorf("%s is a Deferred; only a load's result may promise a value", t)
+		}
+		projected, err := a.projectType(inner, true)
+		if err != nil {
+			return tsType{}, fmt.Errorf("a deferred value's type cannot cross: %v", err)
+		}
+		return tsType{expr: "Promise<" + projected.expr + ">", deps: projected.deps, transported: projected.transported}, nil
+	}
+	if !promises && containsDeferred(t) {
+		return tsType{}, fmt.Errorf("%s holds a Deferred; only a load's result may promise a value", t)
+	}
+
 	// Since Go 1.23 an alias is its own node in the type graph rather than
 	// the type it names, so `skgo.File` arrives here as a *types.Alias and
 	// would fall past every case below. An alias is transparent by
@@ -94,8 +116,11 @@ func (a *app) project(t types.Type) (tsType, error) {
 			// it were declared by polytype, its property would be typed as the
 			// transported type's *fields* and a page calling a method on it
 			// would not compile. Inlining keeps the reference to the class.
-			if containsFile(u) || a.containsTransported(u) {
-				return a.inlineStruct(st)
+			// A struct holding a promised value is inlined for the third
+			// time for the same reason: `Promise<T>` is not a projection of
+			// any Go type, so polytype cannot declare one.
+			if containsFile(u) || a.containsTransported(u) || (promises && containsDeferred(u)) {
+				return a.inlineStruct(st, promises)
 			}
 			return tsType{expr: obj.Name(), deps: []*types.Named{u}}, nil
 		}
@@ -113,14 +138,14 @@ func (a *app) project(t types.Type) (tsType, error) {
 		return tsType{}, fmt.Errorf("%s cannot travel over JSON", t)
 
 	case *types.Slice:
-		inner, err := a.project(u.Elem())
+		inner, err := a.projectType(u.Elem(), promises)
 		if err != nil {
 			return tsType{}, err
 		}
 		return tsType{expr: "Array<" + inner.expr + ">", deps: inner.deps, transported: inner.transported}, nil
 
 	case *types.Array:
-		inner, err := a.project(u.Elem())
+		inner, err := a.projectType(u.Elem(), promises)
 		if err != nil {
 			return tsType{}, err
 		}
@@ -602,7 +627,7 @@ func findFile(t types.Type, seen map[types.Type]bool) bool {
 // The field names are encoding/json's, because that is what the runtime
 // decoder matches against, and a file field is optional because an
 // `<input type="file">` the visitor left alone sends nothing at all.
-func (a *app) inlineStruct(st *types.Struct) (tsType, error) {
+func (a *app) inlineStruct(st *types.Struct, promises bool) (tsType, error) {
 	var (
 		parts       []string
 		deps        []*types.Named
@@ -622,7 +647,7 @@ func (a *app) inlineStruct(st *types.Struct) (tsType, error) {
 			name = f.Name()
 		}
 
-		inner, err := a.project(f.Type())
+		inner, err := a.projectType(f.Type(), promises)
 		if err != nil {
 			return tsType{}, fmt.Errorf("field %s: %w", f.Name(), err)
 		}

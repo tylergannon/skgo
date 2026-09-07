@@ -271,23 +271,30 @@ func TestChunksAreSentInTheOrderTheySettle(t *testing.T) {
 }
 
 // The engine renders against a promise it cannot wait for, so the value never
-// crosses into it — only the name of the field does. `{#await}` renders its
-// pending branch either way (svelte/src/internal/server, `await_block`), which
-// is why kit hands its own renderer the promise and not the value.
-func TestTheEngineIsToldWhichFieldsAreStillOutstanding(t *testing.T) {
-	tree, promised := withoutDeferred(map[string]any{
+// crosses into it — only kit's own placeholder does, wherever the load left the
+// promise. `{#await}` renders its pending branch either way
+// (svelte/src/internal/server, `await_block`), which is why kit hands its own
+// renderer the promise and not the value.
+func TestAPromisedValueCrossesIntoTheEngineAsAPromise(t *testing.T) {
+	promises := &promiseTable{ids: map[*deferred]int{}}
+	node := map[string]any{
 		"orderTotal": float64(2),
-		"orders":     pending(),
-	})
-	if want := []string{"orders"}; !reflect.DeepEqual(promised, want) {
-		t.Fatalf("promised: got %v, want %v", promised, want)
+		// Below the top level, which is where kit lets a promise sit and where
+		// skgo used to refuse one.
+		"account": map[string]any{"orders": pending()},
 	}
-	got, err := devalue.Stringify(tree)
+	got, err := devalue.StringifyWith(node, []devalue.Reducer{promiseReducer(promises)})
 	if err != nil {
 		t.Fatalf("stringify: %v", err)
 	}
-	if want := `[{"orderTotal":1,"orders":2},2,null]`; got != want {
+	// kit's own flat form for a reduced value: ["Promise", <slot holding the
+	// id>]. The client's reviver reads the id back and makes a promise of it.
+	want := `[{"account":1,"orderTotal":4},{"orders":2},["Promise",3],1,2]`
+	if got != want {
 		t.Errorf("node data\n got %s\nwant %s", got, want)
+	}
+	if len(promises.order) != 1 {
+		t.Errorf("the nested promise was not found: %d in the table, want 1", len(promises.order))
 	}
 }
 

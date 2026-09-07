@@ -3,9 +3,7 @@ package skgo
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"reflect"
-	"strings"
 	"sync"
 )
 
@@ -15,9 +13,10 @@ import (
 // without a second request.
 //
 // It is what kit's own loads do by putting a promise in the returned object,
-// and it obeys kit's rule about where one may sit: a Deferred may only be a
-// field of the value a load returns, because that is the object kit's client
-// walks looking for promises to await.
+// and it may sit wherever kit lets a promise sit: anywhere in the value a load
+// returns, at any depth, including inside a value another Deferred promised.
+// Kit reaches promises with a devalue reducer and its client reads them back
+// with a devalue reviver, and both walk the whole tree.
 type Deferred[T any] struct{ d *deferred }
 
 // Async starts fn and returns a Deferred for its result. fn runs on its own
@@ -98,144 +97,30 @@ func (d *deferred) wait(ctx context.Context) (any, error) {
 
 // encodeLoadValue turns a load's result into the tree the serializer walks.
 //
-// Everything that is not deferred travels exactly as a remote function's result
-// does, through encoding/json, so the two boundaries never disagree about a
-// type. The deferred fields are then put back: encoding/json wrote null for
-// each of them, and each is replaced by the Deferred itself, which the devalue
-// reducer turns into kit's promise placeholder.
+// It is encodeTree with one addition: a Deferred survives the walk instead of
+// being flattened, so the devalue reducer can put kit's promise placeholder
+// where the load left it.
+//
+// Kit's rule is that a promise may sit anywhere in the object a load returns.
+// Its serializer reaches one through a devalue reducer — `Promise` in
+// `server_data_serializer_json`, the `thing?.then` arm of `get_replacer` in
+// `server_data_serializer` — and a reducer runs over every value in the tree,
+// at every depth. The client agrees: `process_stream` deserializes with
+// `devalue.unflatten(data, { ...app.decoders, Promise })`, which walks the
+// same way. A promised value that itself holds a promise works too, because
+// each chunk is written with the same reducers that wrote the first one.
+//
+// A Deferred is not encoded here. It holds the raw Go value so that the value
+// is encoded at the moment it settles, which is the only place the app's
+// transport hook is known; encoding it now would flatten a transported value
+// before any reducer could see it.
 func (t Transport) encodeLoadValue(v any) (any, error) {
-	tree, err := t.encodeTree(v)
-	if err != nil {
-		return nil, err
-	}
-
-	fields, err := deferredFields(reflect.ValueOf(v))
-	if err != nil {
-		return nil, err
-	}
-	if len(fields) == 0 {
-		return tree, nil
-	}
-
-	obj, ok := tree.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("skgo: a load that defers a value must return a struct")
-	}
-	for name, d := range fields {
-		if _, present := obj[name]; !present {
-			// The field was dropped by encoding/json — a `json:"-"` tag, most
-			// likely — so nothing on the client is waiting for it.
-			continue
-		}
-		obj[name] = d
-	}
-	return tree, nil
+	return treeEncoder{t: t, promises: true}.walk(reflect.ValueOf(v))
 }
 
-// deferredFields finds the Deferred fields of a load's result, keyed by the
-// name encoding/json gave them. A Deferred anywhere else is refused rather than
-// silently serialized as null.
-func deferredFields(rv reflect.Value) (map[string]*deferred, error) {
-	for rv.Kind() == reflect.Pointer || rv.Kind() == reflect.Interface {
-		if rv.IsNil() {
-			return nil, nil
-		}
-		rv = rv.Elem()
-	}
-	if rv.Kind() != reflect.Struct {
-		if containsDeferred(rv.Type()) {
-			return nil, fmt.Errorf("skgo: a load that defers a value must return a struct, not %s", rv.Type())
-		}
-		return nil, nil
-	}
-
-	found := map[string]*deferred{}
-	if err := collectDeferredFields(rv, found); err != nil {
-		return nil, err
-	}
-	return found, nil
-}
-
-func collectDeferredFields(rv reflect.Value, into map[string]*deferred) error {
-	rt := rv.Type()
-	for i := 0; i < rt.NumField(); i++ {
-		field := rt.Field(i)
-		if !field.IsExported() {
-			continue
-		}
-		tag, _, _ := strings.Cut(field.Tag.Get("json"), ",")
-		if tag == "-" && !strings.Contains(field.Tag.Get("json"), ",") {
-			continue
-		}
-
-		value := rv.Field(i)
-		if holder, ok := value.Interface().(deferredHolder); ok {
-			name := tag
-			if name == "" {
-				name = field.Name
-			}
-			d := holder.deferredValue()
-			if d == nil {
-				return fmt.Errorf("skgo: field %s is a zero Deferred; build one with skgo.Async or skgo.Resolved", field.Name)
-			}
-			into[name] = d
-			continue
-		}
-
-		// An embedded struct's fields are promoted into the same JSON object,
-		// so a Deferred inside one is still a field of the load's result.
-		if field.Anonymous && tag == "" {
-			embedded := value
-			for embedded.Kind() == reflect.Pointer {
-				if embedded.IsNil() {
-					embedded = reflect.Value{}
-					break
-				}
-				embedded = embedded.Elem()
-			}
-			if embedded.IsValid() && embedded.Kind() == reflect.Struct {
-				if err := collectDeferredFields(embedded, into); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-
-		if containsDeferred(field.Type) {
-			return fmt.Errorf("skgo: %s holds a Deferred below the top level of the load's result; kit's client only awaits promises the load returns directly", field.Name)
-		}
-	}
-	return nil
-}
-
-// containsDeferred reports whether a Deferred can occur anywhere inside t.
-func containsDeferred(t reflect.Type) bool {
-	return containsDeferredSeen(t, map[reflect.Type]bool{})
-}
-
-func containsDeferredSeen(t reflect.Type, seen map[reflect.Type]bool) bool {
-	if t == nil || seen[t] {
-		return false
-	}
-	seen[t] = true
-	if t.Implements(deferredHolderType) || reflect.PointerTo(t).Implements(deferredHolderType) {
-		return true
-	}
-	switch t.Kind() {
-	case reflect.Pointer, reflect.Slice, reflect.Array, reflect.Map:
-		return containsDeferredSeen(t.Elem(), seen)
-	case reflect.Struct:
-		for i := 0; i < t.NumField(); i++ {
-			if containsDeferredSeen(t.Field(i).Type, seen) {
-				return true
-			}
-		}
-	case reflect.Interface:
-		// An interface could hold anything, so it is treated as opaque; a
-		// remote function's result may not be an interface either.
-		return false
-	}
-	return false
+// isDeferred reports whether rt is a Deferred.
+func isDeferred(rt reflect.Type) bool {
+	return rt.Implements(deferredHolderType) || reflect.PointerTo(rt).Implements(deferredHolderType)
 }
 
 var _ json.Marshaler = Deferred[int]{}

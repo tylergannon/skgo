@@ -100,7 +100,7 @@ func TestTransportWalkAgreesWithEncodingJSON(t *testing.T) {
 				t.Fatalf("encodeValue: %v", err)
 			}
 
-			got, err := forceWalk().walk(reflect.ValueOf(tc.value))
+			got, err := treeEncoder{t: forceWalk()}.walk(reflect.ValueOf(tc.value))
 			if err != nil {
 				t.Fatalf("walk: %v", err)
 			}
