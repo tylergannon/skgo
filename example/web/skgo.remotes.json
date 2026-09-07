@@ -2,6 +2,7 @@
 	"remotes": [
 		"14q4me9/getMessages",
 		"14q4me9/sendMessage",
+		"1627chi/readSensor",
 		"16h93j5/addTodo",
 		"16h93j5/getTodo",
 		"16h93j5/getTodos",

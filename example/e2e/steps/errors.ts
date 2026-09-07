@@ -37,6 +37,19 @@ Then(
 	}
 );
 
+// The page's own heading, in the bytes. It is what separates a page that
+// handled its failure and kept rendering from one that was replaced by an error
+// page — both of which can carry the same error message.
+Then(
+	"the document already said the page's own heading is {string}",
+	async ({ documents, shot }, heading: string) => {
+		expect(await documentText(documents)).toContain(
+			`<h1 data-testid="title">${heading}</h1>`
+		);
+		await shot();
+	}
+);
+
 // An error page is rendered *inside* the layouts above it. Without this the
 // same assertions would pass over kit's static error page, which is a whole
 // document of its own and has no app in it.

@@ -167,11 +167,14 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 					t.Errorf("route %s: GET %s rendered the root layout, which is the layout that failed", route.ID, path)
 				}
 			} else {
-				if !strings.Contains(body, `data-testid="error-message"`) {
+				// A page that caught its own failure still rendered; only the
+				// status moved. Everything else is answered by an error page in
+				// the page's place.
+				if !want.rendered && !strings.Contains(body, `data-testid="error-message"`) {
 					t.Errorf("route %s: GET %s carries no rendered error page", route.ID, path)
 				}
 				if !strings.Contains(body, want.inside) {
-					t.Errorf("route %s: GET %s did not render the error page inside %s", route.ID, path, want.inside)
+					t.Errorf("route %s: GET %s did not render inside %s", route.ID, path, want.inside)
 				}
 			}
 			continue
@@ -256,6 +259,9 @@ var deliberateFailures = map[string]struct {
 	// static reports that kit's `error.html` is the answer, which carries no
 	// app markup and no script at all.
 	static bool
+	// rendered reports that the page itself rendered and only the status
+	// moved, which is what a boundary that caught its own failure produces.
+	rendered bool
 }{
 	// A load that throws error(402, ...) under /account, which declares its own
 	// +error.svelte: the account layout survives and its error page renders
@@ -275,6 +281,13 @@ var deliberateFailures = map[string]struct {
 	"/error/command": {
 		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
 		never: []string{"Cannot call a command"},
+	},
+	// A page that catches its own failure. It renders — its own heading is in
+	// the document — and kit's transformError still moves the whole document's
+	// status to the caught error's.
+	"/error/boundary": {
+		status: 409, says: "The sensor is being calibrated",
+		inside: `<h1 data-testid="title">Sensor</h1>`, rendered: true,
 	},
 	// A query that redirects while the page renders. Kit turns that into a
 	// redirect of the whole document, not into an error inside it.

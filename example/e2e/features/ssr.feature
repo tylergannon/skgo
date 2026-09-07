@@ -118,6 +118,20 @@ Feature: Pages arrive rendered
       And the account layout greets "ada"
       And the browser never asked for the page's data
 
+    Scenario: A page that catches its own failure still carries the failure's status
+      Kit installs one error transform for the whole render and Svelte calls it
+      for every boundary that has a `failed` snippet, the app's own included.
+      So a page that handles its failure gracefully renders — and the document
+      is still answered with the status the caught error had.
+      src/routes/error/boundary/boundary.remote.go refuses with 409.
+
+      Given I open "/error/boundary"
+      Then the document was answered with 409
+      And the document already said the page's own heading is "Sensor"
+      And the document already said "The sensor is being calibrated"
+      And I see "Sensor"
+      And the browser never asked for the page's data
+
     Scenario: A redirect thrown from a load answers with a 3xx and no body
       Given nobody has signed in
       When I visit "/account"
