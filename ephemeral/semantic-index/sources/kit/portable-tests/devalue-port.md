@@ -5,8 +5,9 @@
 devalue is the value codec under every kit wire format skgo must speak: `__data.json`
 nodes and chunks, `/_app/remote/*` results, remote-function arguments (`?payload=`,
 `payloads[]`, `refreshes[]` keys), and the binary form body header. This leaf
-characterises the pinned clone (`reference/devalue`, 5.9.2) so a Go `internal/devalue`
-package can be written from the source and validated against the upstream fixture table.
+characterises the pinned clone (`reference/devalue`, 5.9.2). The Go codec that
+answers to it is `github.com/tylergannon/polytype/devalue`, maintained in its own
+module; skgo anchors it in `devalue_wire_test.go`.
 
 ## Key facts (SOURCE-DERIVED)
 
@@ -161,7 +162,7 @@ and reference sharing/cycles. It does **not** need: uneval, Temporal, boxed prim
 
 ## Go port notes
 
-- Package `internal/devalue`. Value model: a small tagged `Value` type (or `any` with
+- Package `github.com/tylergannon/polytype/devalue`. Value model: a small tagged `Value` type (or `any` with
   documented dynamic types) — `Undefined` sentinel, `nil` for null, `float64`, `string`,
   `bool`, `*big.Int`, `time.Time` (+ invalid flag), `*OrderedMap` (plain object,
   insertion-ordered, with `NullProto bool`), `[]Value` with hole markers (`Hole` sentinel)

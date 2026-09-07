@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/internal/remotearg"
 )

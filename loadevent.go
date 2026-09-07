@@ -226,7 +226,17 @@ func Parent[T any](ctx context.Context) (T, error) {
 		if n.err != nil {
 			return out, n.err
 		}
-		fields, ok := n.data.(map[string]any)
+		// A load returns its raw Go value now — it is not encoded until the
+		// serializer, which is the only place the transport hook is known — so
+		// the merge has to flatten it here. encodeValue rather than the
+		// transport walk on purpose: this data is not going to the browser, it
+		// is going into T through encoding/json, which understands a custom
+		// type perfectly well without any transport.
+		tree, err := encodeValue(n.data)
+		if err != nil {
+			return out, Errorf(500, "skgo: encoding parent data: %v", err)
+		}
+		fields, ok := tree.(map[string]any)
 		if !ok {
 			continue
 		}

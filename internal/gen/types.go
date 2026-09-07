@@ -34,6 +34,10 @@ const declarationsFileName = "skgo_wiretypes_gen.go"
 type tsType struct {
 	expr string
 	deps []*types.Named
+	// transported are the app's own custom types the expression names. They
+	// are not projected by polytype — they are classes `src/hooks.ts`
+	// declares — so a file using the expression imports them from there.
+	transported []*types.Named
 }
 
 // skgoFilePkg is where skgo.File actually lives; the exported name is an
@@ -44,7 +48,7 @@ const skgoFilePkg = "github.com/tylergannon/skgo/internal/formdata"
 // travel. The rules are polytype's, because polytype is what has to emit the
 // declaration; skgo refuses the shapes polytype cannot express, and the ones it
 // expresses unfaithfully, rather than papering over them.
-func project(t types.Type) (tsType, error) {
+func (a *app) project(t types.Type) (tsType, error) {
 	// Since Go 1.23 an alias is its own node in the type graph rather than
 	// the type it names, so `skgo.File` arrives here as a *types.Alias and
 	// would fall past every case below. An alias is transparent by
@@ -73,6 +77,14 @@ func project(t types.Type) (tsType, error) {
 			// union of literals, or a plain alias it emits as itself.
 			return tsType{expr: obj.Name(), deps: []*types.Named{u}}, nil
 		}
+		// A transported type is not data on the client's side of the wire: it
+		// is the class `src/hooks.ts` builds in its `decode`, methods and all.
+		// polytype's TypeScript is structural by design and would describe the
+		// class's fields without its behaviour, so the class is named here and
+		// imported from the app's hooks instead of being declared.
+		if _, transported := a.transportedNamed(u); transported {
+			return tsType{expr: obj.Name(), transported: []*types.Named{u}}, nil
+		}
 		if st, isStruct := u.Underlying().(*types.Struct); isStruct {
 			// A struct carrying an upload is written out inline instead of
 			// being declared. polytype describes JSON, and a File is not a
@@ -81,8 +93,12 @@ func project(t types.Type) (tsType, error) {
 			// carries to Go. Asking polytype to declare it fails outright
 			// ("type byte not found" on the bytes), and any shape it could be
 			// talked into would describe something the client never sends.
-			if containsFile(u) {
-				return inlineStruct(st)
+			// Same reasoning for a struct that carries a transported type: if
+			// it were declared by polytype, its property would be typed as the
+			// transported type's *fields* and a page calling a method on it
+			// would not compile. Inlining keeps the reference to the class.
+			if containsFile(u) || a.containsTransported(u) {
+				return a.inlineStruct(st)
 			}
 			return tsType{expr: obj.Name(), deps: []*types.Named{u}}, nil
 		}
@@ -100,18 +116,18 @@ func project(t types.Type) (tsType, error) {
 		return tsType{}, fmt.Errorf("%s cannot travel over JSON", t)
 
 	case *types.Slice:
-		inner, err := project(u.Elem())
+		inner, err := a.project(u.Elem())
 		if err != nil {
 			return tsType{}, err
 		}
-		return tsType{expr: "Array<" + inner.expr + ">", deps: inner.deps}, nil
+		return tsType{expr: "Array<" + inner.expr + ">", deps: inner.deps, transported: inner.transported}, nil
 
 	case *types.Array:
-		inner, err := project(u.Elem())
+		inner, err := a.project(u.Elem())
 		if err != nil {
 			return tsType{}, err
 		}
-		return tsType{expr: "Array<" + inner.expr + ">", deps: inner.deps}, nil
+		return tsType{expr: "Array<" + inner.expr + ">", deps: inner.deps, transported: inner.transported}, nil
 
 	case *types.Pointer:
 		// polytype silently widens `*T` to a non-nullable `T`, while
@@ -306,7 +322,7 @@ func (a *app) typesDirFor(pkg *types.Package, dir string, foreign bool) (string,
 func (a *app) generateTypes() error {
 	for _, fn := range a.remotes {
 		if !isNone(fn.in) {
-			t, err := project(fn.in)
+			t, err := a.project(fn.in)
 			if err != nil {
 				return fmt.Errorf("skgo: %s: the argument of %s cannot cross to TypeScript: %v", fn.pos, fn.name, err)
 			}
@@ -316,7 +332,7 @@ func (a *app) generateTypes() error {
 				}
 			}
 		}
-		t, err := project(fn.out)
+		t, err := a.project(fn.out)
 		if err != nil {
 			return fmt.Errorf("skgo: %s: the result of %s cannot cross to TypeScript: %v", fn.pos, fn.name, err)
 		}
@@ -599,10 +615,11 @@ func findFile(t types.Type, seen map[types.Type]bool) bool {
 // The field names are encoding/json's, because that is what the runtime
 // decoder matches against, and a file field is optional because an
 // `<input type="file">` the visitor left alone sends nothing at all.
-func inlineStruct(st *types.Struct) (tsType, error) {
+func (a *app) inlineStruct(st *types.Struct) (tsType, error) {
 	var (
-		parts []string
-		deps  []*types.Named
+		parts       []string
+		deps        []*types.Named
+		transported []*types.Named
 	)
 	for i := 0; i < st.NumFields(); i++ {
 		f := st.Field(i)
@@ -618,11 +635,12 @@ func inlineStruct(st *types.Struct) (tsType, error) {
 			name = f.Name()
 		}
 
-		inner, err := project(f.Type())
+		inner, err := a.project(f.Type())
 		if err != nil {
 			return tsType{}, fmt.Errorf("field %s: %w", f.Name(), err)
 		}
 		deps = append(deps, inner.deps...)
+		transported = append(transported, inner.transported...)
 
 		optional := ""
 		if inner.expr == "File" || strings.Contains(opts, "omitempty") {
@@ -633,5 +651,59 @@ func inlineStruct(st *types.Struct) (tsType, error) {
 	if len(parts) == 0 {
 		return tsType{expr: "Record<string, never>"}, nil
 	}
-	return tsType{expr: "{ " + strings.Join(parts, "; ") + " }", deps: deps}, nil
+	return tsType{expr: "{ " + strings.Join(parts, "; ") + " }", deps: deps, transported: transported}, nil
+}
+
+// transportedNamed reports whether named is one of the app's transported types.
+func (a *app) transportedNamed(named *types.Named) (*transportedType, bool) {
+	if named == nil || named.Obj() == nil {
+		return nil, false
+	}
+	for _, entry := range a.transported {
+		if entry.named.Obj() == named.Obj() {
+			return entry, true
+		}
+	}
+	return nil, false
+}
+
+// containsTransported reports whether t reaches one of the app's transported
+// types, which is what decides that a struct is inlined rather than declared.
+func (a *app) containsTransported(t types.Type) bool {
+	if len(a.transported) == 0 {
+		return false
+	}
+	return a.findTransported(t, map[types.Type]bool{})
+}
+
+func (a *app) findTransported(t types.Type, seen map[types.Type]bool) bool {
+	if t == nil {
+		return false
+	}
+	t = types.Unalias(t)
+	if seen[t] {
+		return false
+	}
+	seen[t] = true
+
+	switch u := t.(type) {
+	case *types.Named:
+		if _, ok := a.transportedNamed(u); ok {
+			return true
+		}
+		return a.findTransported(u.Underlying(), seen)
+	case *types.Struct:
+		for i := range u.NumFields() {
+			if a.findTransported(u.Field(i).Type(), seen) {
+				return true
+			}
+		}
+	case *types.Slice:
+		return a.findTransported(u.Elem(), seen)
+	case *types.Array:
+		return a.findTransported(u.Elem(), seen)
+	case *types.Pointer:
+		return a.findTransported(u.Elem(), seen)
+	}
+	return false
 }

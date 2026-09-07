@@ -19,8 +19,8 @@ func __gen_jsonschema_panic(fname string, err error) {
 	panic(fmt.Sprintf("error reading %s from embedded FS: %s", fname, err.Error()))
 }
 
-func (Plan) Schema() json.RawMessage {
-	const fileName = "jsonschema/Plan.json"
+func (Quote) Schema() json.RawMessage {
+	const fileName = "jsonschema/Quote.json"
 	data, err := __gen_jsonschema_fs.ReadFile(fileName)
 	if err != nil {
 		__gen_jsonschema_panic(fileName, err)

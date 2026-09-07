@@ -66,14 +66,14 @@ func Run(cfg Config) error {
 		return err
 	}
 	if len(files) == 0 {
-		return fmt.Errorf("skgo: no *.remote.go, page.server.go, layout.server.go or server.go files under %s", filepath.Join(web, "src"))
+		return fmt.Errorf("skgo: no *.remote.go, page.server.go, layout.server.go, server.go or hooks.go files under %s", filepath.Join(web, "src"))
 	}
 
 	app, err := loadApp(cfg, files)
 	if err != nil {
 		return err
 	}
-	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.endpoints) == 0 {
+	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.endpoints) == 0 && len(app.transported) == 0 {
 		return fmt.Errorf("skgo: found %d source file(s) but no skgo.Query, skgo.Command, skgo.LiveQuery, skgo.Load or skgo.GET declaration in any of them", len(files))
 	}
 	if err := app.checkEndpointDuplicates(); err != nil {
@@ -101,6 +101,9 @@ func Run(cfg Config) error {
 	if err := app.writeEndpointStubs(); err != nil {
 		return err
 	}
+	if err := app.generateTransportCodecs(); err != nil {
+		return err
+	}
 	if err := app.writePackageBindings(); err != nil {
 		return err
 	}
@@ -124,6 +127,12 @@ var loadFileNames = map[string]string{
 	"page.server.go":   "+page.server.ts",
 	"layout.server.go": "+layout.server.ts",
 }
+
+// hooksFileName is the app's universal hooks, beside kit's own `src/hooks.ts`.
+// Kit's `transport` is a universal hook — the browser needs `decode` and the
+// server needs `encode` — so the Go half is declared where the TypeScript half
+// is, and one file per app is all kit allows.
+const hooksFileName = "hooks.go"
 
 // findSourceFiles collects every `*.remote.go`, `page.server.go`,
 // `layout.server.go` and `server.go` under `<web>/src`, skipping the
@@ -149,7 +158,7 @@ func findSourceFiles(web string) ([]string, error) {
 			return nil
 		}
 		_, isLoad := loadFileNames[name]
-		if !isLoad && name != serverFileName && !strings.HasSuffix(name, ".remote.go") {
+		if !isLoad && name != serverFileName && name != hooksFileName && !strings.HasSuffix(name, ".remote.go") {
 			return nil
 		}
 		found = append(found, path)

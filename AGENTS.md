@@ -16,21 +16,38 @@ the JavaScript kit requires is a generated stub that throws, so any real
 response proves Go answered. Running remote functions or server routes in
 TypeScript is not a supported mode.
 
-**CSR only, to start.** The app runs with `ssr = false`; the document is kit's
-own SPA fallback; kit's server bundle is built but never runs, and no JavaScript
-executes in production. If server-side rendering arrives, the intent is a
-runtime embedded in the Go binary — one process, one binary — not a supervised
-Node sidecar. That is unproven and conditional on the CSR base case proving out:
-do not design for it, plan around it, or describe the system as having it.
+**CSR today. SSR is decided, and being built.** What ships now runs with
+`ssr = false`: the document is kit's own SPA fallback, kit's server bundle is
+built but never runs, and no JavaScript executes in production.
+
+SSR is no longer conditional or unproven. The CSR base case proved out, and a
+spike server-rendered four pages of the example app inside goja — a pure-Go
+engine embedded in the binary — byte-identical to the same bundle under Node,
+with Go answering every remote function in-process. One process, one binary, no
+cgo, no Node at request time.
+
+The spike and its proposal are not on `main` yet: they live on the branch
+`claude/ssr-no-node-sidecar-9e3be4` as `internal/ssrspike/` and
+`ephemeral/brief/2026-09-06-ssr-in-process.md`. Read them there, on that
+branch, before planning an SSR slice — they answer issue #7 and they answer the
+AsyncLocalStorage question that issue named as the kill criterion.
+
+Build functionality first. The performance levers — a runtime pool, an engine
+swap — sit behind the same seam and are deferred, not forgotten; the pool is
+mandatory rather than optional, because a re-entrant render on one runtime
+returns empty with no error. A supervised Node sidecar is not on the table and
+that question is closed.
+
+Until a slice actually ships, do not describe the system as having SSR.
 
 To a Go developer: a real frontend framework for a Go monolith. To a Svelte
 developer: the app is still SvelteKit.
 
 One binary. One build gesture. Node is a build-time dependency only.
 
-We never reimplement kit, never write or maintain a JavaScript engine — should
-SSR ever need one, embedding an existing engine is a different thing — and never
-claim anything that hasn't been demonstrated running.
+We never reimplement kit, never write or maintain a JavaScript engine —
+embedding an existing one, as SSR does with goja, is a different thing — and
+never claim anything that hasn't been demonstrated running.
 
 ## Read this first
 

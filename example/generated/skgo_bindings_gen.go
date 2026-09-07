@@ -3,8 +3,11 @@
 package generated
 
 import (
+	"reflect"
+
 	"github.com/tylergannon/skgo"
 
+	skgotp0 "github.com/tylergannon/skgo/example/businesslogic"
 	skgo0 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizlt"
 	skgo1 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th"
 	skgo2 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf52g6zdpom"
@@ -15,7 +18,7 @@ import (
 	skgo7 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5rw63tumfrxi"
 	skgo8 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5"
 	skgo9 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
-	skgo10 "github.com/tylergannon/skgo/example/web/src/lib"
+	skgo11 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
 // Remotes returns every remote function declared in the app, ready to hand
@@ -32,7 +35,7 @@ func Remotes() []*skgo.Remote {
 	out = append(out, skgo7.SkgoRemotes()...)
 	out = append(out, skgo8.SkgoRemotes()...)
 	out = append(out, skgo9.SkgoRemotes()...)
-	out = append(out, skgo10.SkgoRemotes()...)
+	out = append(out, skgo11.SkgoRemotes()...)
 	return out
 }
 
@@ -50,7 +53,7 @@ func Loads() []*skgo.ServerLoad {
 	out = append(out, skgo7.SkgoLoads()...)
 	out = append(out, skgo8.SkgoLoads()...)
 	out = append(out, skgo9.SkgoLoads()...)
-	out = append(out, skgo10.SkgoLoads()...)
+	out = append(out, skgo11.SkgoLoads()...)
 	return out
 }
 
@@ -68,6 +71,23 @@ func Endpoints() []*skgo.Endpoint {
 	out = append(out, skgo7.SkgoEndpoints()...)
 	out = append(out, skgo8.SkgoEndpoints()...)
 	out = append(out, skgo9.SkgoEndpoints()...)
-	out = append(out, skgo10.SkgoEndpoints()...)
+	out = append(out, skgo11.SkgoEndpoints()...)
 	return out
+}
+
+// Transport is the app's `transport` hook: the Go half of the encode/decode
+// pairs src/hooks.ts declares. Hand it to skgo.RemoteConfig.Transport and
+// skgo.LoadConfig.Transport.
+//
+// Each key must be spelled the same here and in src/hooks.ts: it is what the
+// value travels under, and a client with no decoder for it cannot read the
+// response at all.
+func Transport() skgo.Transport {
+	return skgo.Transport{
+		"Money": {
+			Type:   reflect.TypeFor[skgotp0.Money](),
+			Encode: func(v any) (any, error) { return EncodeMoney(v.(skgotp0.Money)) },
+			Decode: func(raw any) (any, error) { return DecodeMoney(raw) },
+		},
+	}
 }
