@@ -262,12 +262,11 @@ func TestRemovingTheLastGoFileRemovesTheBoundary(t *testing.T) {
 	}
 }
 
-// TestGeneratedOutputStaysInsideTheRouteRootLink pins the reason the route
-// root behaves differently from every other route package. polytype emits a
-// `jsonschema_gen.go` that embeds the directory beside it, and `go:embed`
-// refuses a symlink outright — so that output has to live in the directory Go
-// compiles, and skgo must leave it there rather than tidying it away.
-func TestGeneratedOutputStaysInsideTheRouteRootLink(t *testing.T) {
+// TestTheRouteRootLinkHoldsOnlyLinks: the route root's link is a directory
+// skgo rebuilds from the route tree on every run, so whatever an earlier run
+// left in it — polytype's CLI output once lived there, because `go:embed`
+// cannot follow a symlink — is removed rather than compiled into the package.
+func TestTheRouteRootLinkHoldsOnlyLinks(t *testing.T) {
 	cfg := fakeApp(t, "src/routes")
 	tree := linksFor(t, cfg)
 	if err := tree.sync(); err != nil {
@@ -289,13 +288,13 @@ func TestGeneratedOutputStaysInsideTheRouteRootLink(t *testing.T) {
 		t.Fatalf("sync: %v", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(linkDir, "jsonschema_gen.go")); err != nil {
-		t.Fatalf("the embedding Go file was removed from the package: %v", err)
+	if _, err := os.Stat(filepath.Join(linkDir, "jsonschema_gen.go")); !os.IsNotExist(err) {
+		t.Fatalf("a stray Go file survived in the route root's link: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(linkDir, "jsonschema", "Item.json")); err != nil {
-		t.Fatalf("the embedded directory was removed from the package: %v", err)
+	if _, err := os.Stat(filepath.Join(linkDir, "jsonschema")); !os.IsNotExist(err) {
+		t.Fatalf("a stray directory survived in the route root's link: %v", err)
 	}
-	// The link to the developer's own file is still there beside it.
+	// The link to the developer's own file is still there.
 	if !sameDir(t, filepath.Join(linkDir, "data.remote.go"), filepath.Join(cfg.Web, "src", "routes", "data.remote.go")) {
 		t.Fatal("the authored source is no longer linked into the package")
 	}

@@ -1,1 +1,0 @@
-../../../web/src/routes/skgo_polytype_gen.go

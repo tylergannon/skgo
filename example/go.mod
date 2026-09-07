@@ -3,7 +3,7 @@ module github.com/tylergannon/skgo/example
 go 1.27.1
 
 require (
-	github.com/tylergannon/polytype v1.0.0-rc.10
+	github.com/tylergannon/polytype v1.0.0-rc.11
 	github.com/tylergannon/skgo v0.0.0
 )
 
@@ -22,7 +22,4 @@ require (
 
 replace github.com/tylergannon/skgo => ../
 
-tool (
-	github.com/tylergannon/polytype/polytype
-	github.com/tylergannon/skgo/cmd/skgo
-)
+tool github.com/tylergannon/skgo/cmd/skgo

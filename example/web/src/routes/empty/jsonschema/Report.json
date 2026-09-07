@@ -1,9 +1,0 @@
-{"type":"object",
-"description":"Report is what a parse produced. Both slices are `Array\u003c...\u003e` in the generated TypeScript and neither is optional, so neither may be null on the wire.","properties":{
-"title":{"type":"string","description":"Title says what happened."},
-"diagnostics":{"type":"array","description":"Diagnostics is what the parser complained about.","items":{"type":"object",
-"description":"Diagnostic is one thing the parser had to say.","properties":{
-"message":{"type":"string","description":"Message is the complaint, in the parser's own words."}
-},"required":["message"],"additionalProperties":false}},
-"models":{"type":"array","description":"Models is what it resolved.","items":{"type":"string"}}
-},"required":["title","diagnostics","models"],"additionalProperties":false}

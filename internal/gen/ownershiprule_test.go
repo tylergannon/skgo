@@ -1,25 +1,23 @@
 package gen
 
 import (
-	"go/types"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
-// The rule that decides where a type's declaration is written, on its own.
+// The rule that decides whether a wire type is the app's own, on its own.
 //
 // `declare` resolves whichever package *defines* a wire type. For the app's own
-// packages the declaration goes beside that source, which is where a developer
-// would look for it. For any type declared outside the app — a dependency in
-// the module cache, a shared internal module, another repository — that
-// directory belongs to somebody else and, for any real consumer, is read-only;
-// so the declaration comes to the app instead, exactly as `typesDirFor` already
-// brings a foreign package's types.ts to `src/lib/skgo/`.
+// packages polytype loads that package and its types.ts goes beside the
+// source, which is where a developer would look for it. For any type declared
+// outside the app — a dependency in the module cache, a shared internal
+// module, another repository — that directory belongs to somebody else, so
+// polytype is pointed at the app package importing it instead, and
+// `typesDirFor` brings its types.ts to `src/lib/skgo/` under its import path.
 //
 // The rule is therefore about the directory, decided before anything is
-// written, and never about whether that directory happens to be writable — a
+// loaded, and never about whether that directory happens to be writable — a
 // writable dependency is the case that hid this bug, not the case that excuses
 // it.
 
@@ -87,50 +85,5 @@ func TestOwnershipSurvivesASymlinkedPath(t *testing.T) {
 	}
 	if withinTree(link, t.TempDir()) {
 		t.Error("an unrelated directory was treated as the app's own")
-	}
-}
-
-// Where a relocated declaration lands. It has to be inside the app's own
-// module — that is what makes it compilable, nameable by Go, and a directory
-// `go:embed` can reach — and it has to be addressed by the foreign package's
-// import path, because package names are short, not unique, and not the app's
-// to change.
-func TestARelocatedDeclarationLandsInTheAppsOwnGeneratedTree(t *testing.T) {
-	a := &app{
-		cfg:        Config{Out: filepath.FromSlash("/app/generated")},
-		hostDir:    filepath.FromSlash("/app"),
-		hostModule: "example.com/app",
-	}
-
-	first, err := a.declarationDirFor(types.NewPackage("example.com/wire", "wire"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := filepath.FromSlash("/app/generated/wiretypes/example.com/wire"); first != want {
-		t.Fatalf("declarationDirFor = %q, want %q", first, want)
-	}
-	if !withinTree(a.hostDir, first) {
-		t.Fatalf("%s is not inside the app", first)
-	}
-	// It must not fall inside the route tree, whose own go.mod would put it in
-	// a different module from the bindings that use it.
-	if withinTree(filepath.FromSlash("/app/web/src/routes"), first) {
-		t.Fatalf("%s is behind the route tree's module boundary", first)
-	}
-
-	second, err := a.declarationDirFor(types.NewPackage("example.com/other/wire", "wire"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if second == first {
-		t.Fatalf("two packages both called wire were given the same directory %q", first)
-	}
-
-	// A path Go cannot name is refused rather than written into a directory
-	// the toolchain will then refuse to compile.
-	if _, err := a.declarationDirFor(types.NewPackage("example.com/wire/[id]", "wire")); err == nil {
-		t.Fatal("a package whose import path Go cannot name was accepted")
-	} else if !strings.Contains(err.Error(), "example.com/wire/[id]") {
-		t.Fatalf("the refusal does not name the package:\n%v", err)
 	}
 }

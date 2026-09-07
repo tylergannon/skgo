@@ -95,7 +95,6 @@ func TestTheProjectRequiresSkgoAsADependency(t *testing.T) {
 		"github.com/tylergannon/skgo " + scaffoldVersion,
 		"github.com/tylergannon/polytype ",
 		"github.com/tylergannon/skgo/cmd/skgo",
-		"github.com/tylergannon/polytype/polytype",
 	} {
 		if !strings.Contains(mod, want) {
 			t.Errorf("go.mod does not carry %q:\n%s", want, mod)
@@ -103,6 +102,12 @@ func TestTheProjectRequiresSkgoAsADependency(t *testing.T) {
 	}
 	if strings.Contains(mod, "replace") {
 		t.Errorf("go.mod has a replace directive:\n%s", mod)
+	}
+	// polytype is driven as a library from inside skgo; nothing in the project
+	// runs its CLI, and a tool directive would pull its dependencies into the
+	// project's go.sum for nothing.
+	if strings.Contains(mod, "github.com/tylergannon/polytype/polytype") {
+		t.Errorf("go.mod runs polytype as a tool:\n%s", mod)
 	}
 	// `go tool skgo` builds the generator from the module cache, where nothing
 	// is writable. A directive that assumed a checkout would work here and

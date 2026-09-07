@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	github.com/dop251/goja v0.0.0-20260906210903-70ad66ec7ce4
-	github.com/tylergannon/polytype v1.0.0-rc.10
+	github.com/tylergannon/polytype v1.0.0-rc.11
 	golang.org/x/mod v0.40.0
 	golang.org/x/tools v0.49.0
 )

@@ -107,7 +107,7 @@ type app struct {
 	// stubs groups the functions by the `.remote.ts` they land in.
 	stubs map[string][]*remoteFn
 	// typeSets records, per Go package that owns a named type used on the
-	// wire, the types to declare to polytype.
+	// wire, the types polytype projects for it.
 	typeSets map[*types.Package]*namedTypes
 	// hostModule is the module the generated bindings package belongs to.
 	hostModule string
@@ -132,35 +132,22 @@ type transportedType struct {
 
 type namedTypes struct {
 	pkg *types.Package
-	// dir is the directory the polytype registration file and its output go
-	// in. For a package of the app's own it is the authored directory, where
-	// the developer's source lives; for a foreign package it is the
-	// declaration package skgo writes into the app instead.
-	dir string
-	// loadDir is the address polytype is given, which for a route package is
-	// its link rather than its authored path.
+	// loadDir is the directory polytype loads to reach the types: the
+	// package's own, by the address Go names it — a route package's link
+	// rather than its authored path — or, for a foreign package, that of an
+	// app package importing it, since a dependency's source is not the app's
+	// to load from and polytype resolves an imported root on demand.
 	loadDir string
 	// names are the type names as the defining package spells them, which is
 	// also how they reach TypeScript.
 	names []string
 	seen  map[string]bool
-	// tsDir is where polytype writes types.ts for this package.
+	// tsDir is where the package's types.ts is written.
 	tsDir string
-	// foreign marks a package outside the app's own tree, whose types are
-	// declared again locally so that skgo never writes into source the app
-	// does not own.
+	// foreign marks a package outside the app's own tree. Its declarations
+	// are addressed by import path, because a dependency's package name is
+	// neither unique nor the app's to change.
 	foreign bool
-}
-
-// localName is the identifier a type is declared under in the package that
-// carries its polytype registration: its own name for the app's packages, and
-// a distinct one where the declaration was relocated. See
-// writeLocalDeclarations for why the two must differ.
-func (s *namedTypes) localName(name string) string {
-	if s.foreign {
-		return "Skgo" + name
-	}
-	return name
 }
 
 // loadApp resolves every package holding a `.remote.go` file and reads the

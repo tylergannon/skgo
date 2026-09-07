@@ -253,13 +253,10 @@ func (t *routeLinks) syncDirLink(link *routeLink) error {
 // symlinks. `go.mod` is deliberately left out: that file is the boundary, and a
 // package directory that contains one is a different module.
 //
-// Real files already in the link directory are left where they are. They are
-// polytype's output, and they have to stay: `go:embed` refuses a symlink
-// outright ("cannot embed irregular file"), so the generated `jsonschema_gen.go`
-// and the `jsonschema/` directory it embeds can only live in the directory Go
-// compiles. For every other route package the link *is* the authored directory,
-// so this is the one package whose polytype output does not sit beside its
-// source.
+// The directory holds the links and nothing else. Everything generated for
+// this package lands in its authored directory and is linked from there like
+// the developer's own files, so anything else found here is left over from an
+// earlier run and goes.
 func (t *routeLinks) syncPerFile(link *routeLink) error {
 	if fi, err := os.Lstat(link.linkDir); err == nil && (fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir()) {
 		if err := os.Remove(link.linkDir); err != nil {
@@ -299,12 +296,10 @@ func (t *routeLinks) syncPerFile(link *routeLink) error {
 		return err
 	}
 	for _, e := range entries {
-		// A stale link to a file the developer deleted goes; anything that is
-		// not a link was written here by a generator that needs it here.
-		if keep[e.Name()] || e.Type()&os.ModeSymlink == 0 {
+		if keep[e.Name()] {
 			continue
 		}
-		if err := os.Remove(filepath.Join(link.linkDir, e.Name())); err != nil {
+		if err := os.RemoveAll(filepath.Join(link.linkDir, e.Name())); err != nil {
 			return err
 		}
 	}
