@@ -63,6 +63,13 @@ func Run(cfg Config) error {
 		return fmt.Errorf("skgo: %s does not look like a vite root: no src/ directory", web)
 	}
 
+	// The adapter kit builds the frontend with comes out of this module, on
+	// every run, beside the stubs and the remote list. It is the same contract
+	// as those: what the adapter writes, this module's Go reads.
+	if err := writeAdapter(cfg); err != nil {
+		return err
+	}
+
 	files, err := findSourceFiles(web)
 	if err != nil {
 		return err

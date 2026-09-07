@@ -20,6 +20,16 @@ import (
 // Manifest is the build description written by the skgo SvelteKit adapter to
 // `skgo.manifest.json`. Only the fields the server needs are modelled.
 type Manifest struct {
+	// Skgo is the version of skgo whose adapter wrote this build, as the
+	// adapter stamped it: a released version, or "devel" for an adapter
+	// written by a skgo built from a checkout.
+	Skgo string `json:"skgo"`
+	// SkgoAdapter fingerprints the adapter itself, which is the half of the
+	// identity that is always meaningful — two checkouts both call themselves
+	// devel. ReadManifest refuses a build whose adapter is not the one this
+	// module carries, because the adapter and the Go that reads its output are
+	// one contract written in two languages.
+	SkgoAdapter string `json:"skgoAdapter"`
 	// AppDir is kit's `appDir` — the directory holding immutable assets,
 	// normally `_app`.
 	AppDir string `json:"appDir"`

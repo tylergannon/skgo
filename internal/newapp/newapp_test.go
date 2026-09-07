@@ -1,7 +1,6 @@
 package newapp_test
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -150,27 +149,23 @@ func TestItRefusesNamesTheProjectCannotCarry(t *testing.T) {
 	}
 }
 
-// TestTheTemplateAdapterIsTheExampleAdapter keeps the one piece of JavaScript
-// skgo owns from forking.
+// TestTheScaffoldVendorsNoAdapter states the rule that made the adapter a
+// generated file: a project never carries a copy of it.
 //
-// The adapter is what SvelteKit requires skgo to provide, and it is the only
-// place the two halves of a build are checked against each other. The example
-// is where it is exercised; a scaffolded project needs its own copy on disk for
-// vite to import. Two copies is one copy too many, so they have to be the same
-// bytes.
-func TestTheTemplateAdapterIsTheExampleAdapter(t *testing.T) {
-	root := checkoutRoot(t)
-	template, err := os.ReadFile(filepath.Join(root, "internal", "newapp", "template", "web", "skgo-adapter.js"))
-	if err != nil {
-		t.Fatal(err)
+// A vendored adapter is a second version of skgo living in the app, and it
+// drifts silently — the copy that reached the field was months behind the Go
+// beside it and failed the build with an unresolved esbuild import. `skgo
+// generate` writes the adapter out of the module the app's Go is built
+// against, so the scaffold ships the vite config that imports it and nothing
+// else.
+func TestTheScaffoldVendorsNoAdapter(t *testing.T) {
+	dir := scaffold(t, newapp.Options{})
+	if _, err := os.Stat(filepath.Join(dir, "web", "skgo-adapter.js")); err == nil {
+		t.Fatal("`skgo new` wrote web/skgo-adapter.js; the adapter belongs to the skgo module, " +
+			"and a copy in the project is the drift this was meant to end")
 	}
-	example, err := os.ReadFile(filepath.Join(root, "example", "web", "skgo-adapter.js"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(template, example) {
-		t.Fatal("internal/newapp/template/web/skgo-adapter.js and example/web/skgo-adapter.js have drifted apart; " +
-			"a scaffolded project ships the copy nobody runs here, so they must stay identical")
+	if config := read(t, dir, "web/vite.config.ts"); !strings.Contains(config, "./skgo-adapter.js") {
+		t.Fatalf("the scaffolded vite config does not import the adapter:\n%s", config)
 	}
 }
 

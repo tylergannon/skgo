@@ -12,6 +12,14 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as esbuild from 'esbuild';
 
+// The skgo this adapter came from. `skgo generate` writes this file into the
+// vite root out of the skgo module the app's Go is built against, and stamps
+// this line as it does. Do not edit it, and do not copy it between projects:
+// the Go that reads the manifest below checks what is stamped here against its
+// own, so a copy that has fallen behind is refused by name instead of failing
+// later as something unrelated.
+const SKGO = { version: 'devel', adapter: '56f17a75da56' };
+
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
  * the client bundle, kit's own SPA boot document, the SSR bundle the Go process
@@ -83,6 +91,10 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 				`${out}/skgo.manifest.json`,
 				JSON.stringify(
 					{
+						// Which skgo wrote this. `ReadManifest` refuses a build
+						// whose adapter is not the one the reading module carries.
+						skgo: SKGO.version,
+						skgoAdapter: SKGO.adapter,
 						appDir: builder.config.appDir,
 						base: builder.config.paths.base,
 						version: builder.config.version.name,
