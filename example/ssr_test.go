@@ -36,7 +36,6 @@ func TestTheProductionBundleRunsInAFreshRuntime(t *testing.T) {
 		t.Fatalf("building the remote registry: %v", err)
 	}
 	loadCfg := manifest.LoadConfig(prodOrigin)
-	loadCfg.Handle = example.Handle
 	loads, err := skgo.NewLoads(loadCfg, generated.Loads()...)
 	if err != nil {
 		t.Fatalf("building the load registry: %v", err)
