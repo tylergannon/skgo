@@ -47,14 +47,6 @@ export type Data = {
 	 * here.
 	 */
 	last: Response | null;
-	/**
-	 * Its body, read from the moment the response arrived.
-	 *
-	 * Not `last.text()` later: Chrome keeps a response body only until the
-	 * page moves on, and a fetch the client made during a navigation is
-	 * already past that by the time a Then step asks. Reading it here holds it.
-	 */
-	lastBody: Promise<string> | null;
 	/** Freeze the current count so `since` can measure a single interaction. */
 	mark(): void;
 	/** How many data requests were made since the last `mark()`. */
@@ -134,7 +126,6 @@ export const test = base.extend<{
 				count: 0,
 				urls: [],
 				last: null,
-				lastBody: null,
 				mark() {
 					marked = data.count;
 				},
@@ -154,10 +145,6 @@ export const test = base.extend<{
 			page.on('response', (response) => {
 				if (!response.url().includes('/__data.json')) return;
 				data.last = response;
-				data.lastBody = response.text();
-				// The body is read whether or not a scenario wants it, so an
-				// unwanted one must not become an unhandled rejection.
-				void data.lastBody.catch(() => {});
 			});
 
 			await use(data);

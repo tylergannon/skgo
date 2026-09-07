@@ -21,7 +21,7 @@ Feature: HTTP endpoints written in Go
     Given I open "/api"
     When I POST the todo "walk to the harbour"
     Then the endpoint answered POST with 201 and "application/json"
-    And the endpoint returned a todo saying "walk to the harbour"
+    And the todo the endpoint created is in its list, saying "walk to the harbour"
 
   Scenario: A method the route does not declare is refused, not answered with a page
     Given I open "/api"

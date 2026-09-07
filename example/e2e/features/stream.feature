@@ -51,17 +51,25 @@ Feature: A load can promise several values, and each one arrives when it is read
       | 1       | the second thing to arrive |
       | 3       | the last thing to arrive   |
 
-  Scenario: A client-side navigation streams the same three values in the same order
+  Scenario: A client-side navigation fills the page in exactly as a cold load does
+    There is no document here. The browser is already running kit's client, so
+    it asks for the page's data and reads it as it arrives — and the page has to
+    behave the same way it does on a cold load, right down to which value shows
+    up first.
+
     Given I open "/about"
+    And I note the data request count
     When I follow the "Stream" link
     Then the page says "Three promises, one response" and is waiting for all three values
+    And exactly 1 data request was made since
     When the ticker arrives
     Then the ticker says "the first thing to arrive"
     And the digest and the forecast are still pending
     When every promised value has arrived
     Then the digest reads "the second thing to arrive" and "and the rest of the digest"
     And the forecast says "the last thing to arrive"
-    And the data response carried these values, in this order
+    And that data response, asked for again, named three promises and carried none of their values
+    And it carried these values, in this order
       | promise | value                      |
       | 2       | the first thing to arrive  |
       | 1       | the second thing to arrive |

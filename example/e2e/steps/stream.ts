@@ -4,6 +4,17 @@ import { expect, test } from './fixtures';
 const { When, Then } = createBdd(test);
 
 /**
+ * The three strings src/routes/stream/page.server.go promises. Naming them here
+ * is what lets a step say which value a chunk carried; which order they come in
+ * is the scenario's business, and only the scenario's.
+ */
+const settledValues = [
+	'the first thing to arrive',
+	'the second thing to arrive',
+	'the last thing to arrive'
+];
+
+/**
  * Opens a page and comes back as soon as the response has started, rather than
  * when it has finished.
  *
@@ -152,11 +163,7 @@ Then(
 		for (const state of ['ticker-pending', 'digest-pending', 'forecast-pending']) {
 			expect(document, `the document had no ${state}`).toContain(`data-testid="${state}"`);
 		}
-		for (const value of [
-			'the first thing to arrive',
-			'the second thing to arrive',
-			'the last thing to arrive'
-		]) {
+		for (const value of settledValues) {
 			expect(
 				document,
 				`"${value}" was in the document, so the page never showed a loading state for it`
@@ -189,25 +196,61 @@ Then(
 );
 
 /**
- * The same claim about the response a client-side navigation gets. There is no
- * document there: kit's client asks for `__data.json` and reads it as it
- * arrives, one ndjson line per value
- * (`{"type":"chunk","id":<id>,"data":<value>}`).
+ * The bytes of the response the navigation just read — asked for a second time,
+ * over HTTP, rather than taken out of the browser.
+ *
+ * The browser will not give it up: Chrome does not keep the body of a streamed
+ * fetch the page has already consumed, and `response.text()` on it fails with
+ * `No data found for resource` however early it is called. So the claim about
+ * what the browser did with the response is the one above, in the DOM, and the
+ * claim about what was in it is this one.
+ *
+ * The URL is the one kit's client asks for, invalidation parameter and all: the
+ * client sends one digit per node in the branch, and a `__data.json` asked for
+ * without it is a different request.
  */
 Then(
-	'the data response carried these values, in this order',
-	async ({ data, shot }, table: { hashes(): Array<Record<string, string>> }) => {
+	'that data response, asked for again, named three promises and carried none of their values',
+	async ({ request, data, notes, shot }) => {
 		expect(data.last, 'the browser made no data request').not.toBeNull();
-		expect(new URL(data.last!.url()).pathname).toBe('/stream/__data.json');
-		const body = await data.lastBody!;
-		const lines = body.split('\n').filter(Boolean);
-		expect(lines.length, `the response had no chunks:\n${body}`).toBeGreaterThan(1);
-		expect(chunkOrder(lines.slice(1).join('\n'), /"type":"chunk","id":(\d+)/g, body)).toEqual(
-			expected(table)
+		const asked = new URL(data.last!.url());
+		expect(asked.pathname).toBe('/stream/__data.json');
+
+		const res = await request.get(asked.pathname + asked.search);
+		expect(res.status()).toBe(200);
+		expect(res.headers()['content-type']).toBe('text/sveltekit-data');
+		const body = await res.text();
+		dataResponses.set(notes, body);
+
+		const head = body.split('\n')[0];
+		expect(head.match(/\["Promise"/g) ?? [], `the head named no promises:\n${head}`).toHaveLength(
+			3
 		);
+		for (const value of settledValues) {
+			expect(head, `"${value}" was in the head, so it was not promised at all`).not.toContain(value);
+		}
 		await shot('data-stream');
 	}
 );
+
+Then(
+	'it carried these values, in this order',
+	async ({ notes }, table: { hashes(): Array<Record<string, string>> }) => {
+		const body = dataResponse(notes);
+		const chunks = body.split('\n').slice(1).join('\n');
+		expect(chunkOrder(chunks, /"type":"chunk","id":(\d+)/g, body)).toEqual(expected(table));
+	}
+);
+
+// The body the step above read. Notes hold numbers, so it lives beside them
+// rather than in them.
+const dataResponses = new WeakMap<object, string>();
+
+function dataResponse(notes: object): string {
+	const body = dataResponses.get(notes);
+	expect(body, 'the scenario asked for no data response').toBeTruthy();
+	return body!;
+}
 
 /** The table as `<id> <value>` pairs, in the order the scenario wrote them. */
 function expected(table: { hashes(): Array<Record<string, string>> }): string[] {
@@ -219,16 +262,11 @@ function expected(table: { hashes(): Array<Record<string, string>> }): string[] 
  * mismatch says what actually arrived instead of just that something did.
  */
 function chunkOrder(text: string, ids: RegExp, haystack: string): string[] {
-	const values = [
-		'the first thing to arrive',
-		'the second thing to arrive',
-		'the last thing to arrive'
-	];
 	const found = [...text.matchAll(ids)].map((match) => {
 		const from = match.index ?? 0;
 		const upTo = text.indexOf('\n', from + 1);
 		const chunk = text.slice(from, upTo === -1 ? undefined : upTo);
-		const value = values.find((v) => chunk.includes(v));
+		const value = settledValues.find((v) => chunk.includes(v));
 		return `${match[1]} ${value ?? `<no known value in ${chunk}>`}`;
 	});
 	expect(found.length, `expected three settled values in:\n${haystack}`).toBe(3);
