@@ -34,11 +34,16 @@ Feature: HTTP endpoints written in Go
     Then the response status was 308
     And the redirect location was "../todos"
 
+  @prod
   Scenario: A prerendered page is the file the build wrote, not a fresh render
     Every other page is rendered when it is asked for, so it can say who is
     asking. A prerendered page was written before anyone was. The same visitor
     asks for one of each, and the difference between the two documents is the
     difference between the two mechanisms.
+
+    `@prod`, because prerendering is something a build does: `vp dev` has no
+    files it wrote ahead of time and serves every page from the module graph, so
+    in dev there is no second mechanism for this to tell apart from the first.
 
     Given I have signed in as "ada"
     When I visit "/"

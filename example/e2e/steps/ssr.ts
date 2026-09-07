@@ -68,11 +68,16 @@ Then('the document carries no script', async ({ documents, page, shot }) => {
 // shell: none of the page is in it, and all of it is on screen once the client
 // has booted — which the step after this one asserts, so this is not a claim
 // about a page that simply never rendered.
-Then('the document carried no rendered page', async ({ documents, shot }) => {
+Then('the document carried no rendered page', async ({ documents, page, shot }) => {
 	const html = await documentText(documents);
 	expect(html).not.toContain('data-testid="title"');
 	expect(html).not.toContain('data-testid="site-name"');
 	expect(html, 'the shell still has to boot kit').toContain('kit.start(app, element');
+	// The claim is about bytes that have already been read, so the frame left
+	// behind can wait for the shell to have become a page. Without this it is a
+	// photograph of an empty document — true, and no use to anyone looking at
+	// it.
+	await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 15_000 });
 	await shot();
 });
 

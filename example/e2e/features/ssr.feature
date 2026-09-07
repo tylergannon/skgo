@@ -1,4 +1,15 @@
+@prod
 Feature: Pages arrive rendered
+
+  Everything here is about the document Go renders, so all of it is `@prod` and
+  none of it runs against `vp dev`. That is not a gap in the dev leg, it is what
+  dev is: kit's own server owns the document there, the only implementation it
+  can reach for a load or a remote function is the generated stub, and the stub
+  throws. So the app turns server rendering off in dev (web/src/routes/+layout.ts
+  — `ssr = !dev`, which is kit's own way of saying "the browser renders this"),
+  the document is kit's shell, and every value on every page still comes from Go
+  over `__data.json` and `/_app/remote/...`. dev.feature is the same pages seen
+  that way, claim for claim.
 
   A document leaves Go with its content already in it. The markup is rendered by
   SvelteKit's own renderer inside the Go process, every value in it was answered
