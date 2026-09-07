@@ -92,7 +92,7 @@ func (s *SSR) documentError(ctx context.Context, routeID string, fallback *HTTPE
 		fallback = &HTTPError{Status: http.StatusInternalServerError, Message: "Internal Error"}
 	}
 
-	hook := s.loads.cfg.HandleError
+	hook := s.handleError
 	if hook == nil {
 		return &ssr.Error{Status: fallback.Status, Message: fallback.Message}
 	}

@@ -9,10 +9,10 @@ import (
 )
 
 // hookSSR is a renderer with nothing but a handleError hook wired in — enough
-// to exercise documentError, which reads only s.loads.cfg.HandleError and
-// s.onError (through report, on a hook panic).
+// to exercise documentError, which reads only s.handleError and s.onError
+// (through report, on a hook panic).
 func hookSSR(hook HandleError) *SSR {
-	return &SSR{loads: &Loads{cfg: LoadConfig{HandleError: hook}}}
+	return &SSR{handleError: hook}
 }
 
 func TestDocumentErrorWithNoHookKeepsTheFallbackExactly(t *testing.T) {

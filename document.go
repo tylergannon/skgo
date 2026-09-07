@@ -49,6 +49,12 @@ type SSR struct {
 	base      string
 	version   string
 	onError   func(routeID string, err error)
+	// handleError is the app's `handleError` hook. It is a render concern
+	// rather than a Loads one — nothing about `__data.json` calls it today —
+	// so it lives here rather than on LoadConfig, the same way Handle lives on
+	// its own HandleConfig rather than being smuggled onto a registry that
+	// merely happens to also run during a request.
+	handleError HandleError
 }
 
 // SSROptions configures the renderer.
@@ -63,6 +69,10 @@ type SSROptions struct {
 	// to it — the error page, or `error.html` — which says nothing about the
 	// cause, so this is the only record. Leaving it nil logs.
 	OnError func(routeID string, err error)
+	// HandleError is the app's `handleError` hook: the one place it decides
+	// what a failed render's visitor is told beyond status and message. It is
+	// optional; see the HandleError type.
+	HandleError HandleError
 }
 
 // NewSSR builds a renderer over an adapter build. It fails if the build carries
@@ -106,14 +116,15 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		size = runtime.NumCPU()
 	}
 	s := &SSR{
-		loads:     loads,
-		remotes:   remotes,
-		info:      info,
-		template:  string(template),
-		errorPage: string(errorPage),
-		base:      strings.TrimSuffix(m.Base, "/"),
-		version:   m.Version,
-		onError:   opts.OnError,
+		loads:       loads,
+		remotes:     remotes,
+		info:        info,
+		template:    string(template),
+		errorPage:   string(errorPage),
+		base:        strings.TrimSuffix(m.Base, "/"),
+		version:     m.Version,
+		onError:     opts.OnError,
+		handleError: opts.HandleError,
 	}
 	// The engine is built after the SSR rather than into it because the bundle
 	// writes to `console` while it is coming up, and that line has to reach the
