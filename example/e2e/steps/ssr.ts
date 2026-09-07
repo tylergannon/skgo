@@ -82,13 +82,16 @@ Then('nothing on the page failed to load', async ({ page, shot }) => {
 });
 
 /** The two documents the concurrency scenario fetched, and their HTML. */
-const concurrent: { pages: Page[]; html: string[] } = { pages: [], html: [] };
+const concurrent: { second: Page | null; html: string[] } = { second: null, html: [] };
 
 When(
 	'{string} and {string} are asked for at the same moment',
-	async ({ browser }, first: string, second: string) => {
-		const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
-		const pages = await Promise.all(contexts.map((context) => context.newPage()));
+	async ({ page, browser }, first: string, second: string) => {
+		// The scenario's own page takes the first URL and a second browser
+		// takes the other, so every frame this scenario leaves behind is a page
+		// somebody actually looked at.
+		const context = await browser.newContext();
+		concurrent.second = await context.newPage();
 		const baseURL = process.env.BASE_URL ?? '';
 
 		// Both navigations are started before either is awaited, so the two
@@ -96,32 +99,25 @@ When(
 		// runtime the second would overwrite the first's render context and one
 		// of the documents would come back empty or carrying the other's page.
 		const responses = await Promise.all([
-			pages[0].goto(baseURL + first),
-			pages[1].goto(baseURL + second)
+			page.goto(baseURL + first),
+			concurrent.second.goto(baseURL + second)
 		]);
 
-		concurrent.pages = pages;
 		concurrent.html = await Promise.all(responses.map((response) => response!.text()));
 	}
 );
 
-Then(
-	'the first document says the item is named {string}',
-	async ({ shot }, name: string) => {
-		expect(concurrent.html[0]).toContain(`<p data-testid="item-name">${name}</p>`);
-		await shotOf(concurrent.pages[0], 'first');
-		await shot('first-live');
-	}
-);
+Then('the first document says the item is named {string}', async ({ shot }, name: string) => {
+	expect(concurrent.html[0]).toContain(`<p data-testid="item-name">${name}</p>`);
+	await shot('first');
+});
 
-Then(
-	'the second document says the item is named {string}',
-	async ({ shot }, name: string) => {
-		expect(concurrent.html[1]).toContain(`<p data-testid="item-name">${name}</p>`);
-		await shotOf(concurrent.pages[1], 'second');
-		await shot('second-live');
-	}
-);
+Then('the second document says the item is named {string}', async ({ page }, name: string) => {
+	expect(concurrent.html[1]).toContain(`<p data-testid="item-name">${name}</p>`);
+	await screenshot(concurrent.second!, 'two-pages-at-once-second');
+	// And the first page again, so the pair can be read side by side.
+	await screenshot(page, 'two-pages-at-once-first');
+});
 
 Then("neither document carries the other's item", async ({ shot }) => {
 	const names = concurrent.html.map((html) => {
@@ -134,15 +130,15 @@ Then("neither document carries the other's item", async ({ shot }) => {
 		expect(html).not.toContain(`>${names[1 - i]}</p>`);
 	}
 	await shot('distinct');
-	for (const page of concurrent.pages) await page.context().close();
-	concurrent.pages = [];
+	await concurrent.second!.context().close();
+	concurrent.second = null;
 });
 
-/** Photographs one of the concurrency scenario's own pages. */
-async function shotOf(page: Page, name: string) {
+/** Photographs a page this scenario opened itself. */
+async function screenshot(page: Page, name: string) {
 	const mode = process.env.EXPECTED_MODE ?? 'unknown';
 	await page.screenshot({
-		path: `../../ephemeral/screenshots/ssr/${mode}/two-pages-at-once-${name}.png`,
+		path: `../../ephemeral/screenshots/ssr/${mode}/${name}.png`,
 		fullPage: true
 	});
 }

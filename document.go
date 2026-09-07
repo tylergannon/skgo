@@ -155,9 +155,15 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 
 	for _, node := range nodes {
 		if node.redir != nil {
+			// Kit answers a redirect thrown by a load with a bare 3xx: a
+			// Location and no body at all (`runtime/server/utils.js`,
+			// `redirect_response`). net/http's own Redirect would write a
+			// courtesy anchor tag, which is a document skgo did not render.
 			h := w.Header()
 			shared.applyTo(h)
-			http.Redirect(w, r, node.redir.Location, node.redir.status())
+			h.Set("Location", node.redir.Location)
+			h.Set("Cache-Control", "private, no-store")
+			w.WriteHeader(node.redir.status())
 			return true
 		}
 	}
