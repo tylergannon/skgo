@@ -34,9 +34,17 @@ Feature: HTTP endpoints written in Go
     Then the response status was 308
     And the redirect location was "../todos"
 
-  Scenario: A prerendered page is served as the file the build wrote
-    Given I open "/about"
+  Scenario: A prerendered page is the file the build wrote, not a fresh render
+    Every other page is rendered when it is asked for, so it can say who is
+    asking. A prerendered page was written before anyone was. The same visitor
+    asks for one of each, and the difference between the two documents is the
+    difference between the two mechanisms.
+
+    Given I have signed in as "ada"
+    When I visit "/"
+    Then the document already said "Signed in as ada"
+    When I visit "/about"
     Then the document came from skgo in the expected mode
     And the document response status was 200
-    And the document is not the one every unprerendered route gets
+    And the document never mentions "Signed in as ada"
     And I see "About"

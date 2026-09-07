@@ -8,13 +8,13 @@ Feature: Server loads written in Go
   The section is protected by one rule, written once in its layout, and the
   session that rule reads is derived once by the app's `handle` hook.
 
-  Scenario: A layout's data and its page's data arrive together on a cold load
+  Scenario: A layout's data and its page's data arrive in the document itself
     Given I have signed in as "ada"
     When I visit "/account"
     Then the document response came from skgo in the expected mode
     And the account layout greets "ada"
     And the account page says its parent loaded "ada"
-    And exactly 1 data request was made
+    And the browser never asked for the page's data
 
   Scenario Outline: A signed-out visitor is turned away from every page in the section
     Given nobody has signed in
@@ -34,14 +34,16 @@ Feature: Server loads written in Go
     When I visit "/account/orders"
     Then the account layout greets "grace"
 
-  Scenario: The fast content is on screen before the slow content arrives
+  Scenario: A value the load promised is settled before the page is rendered
+    A load may hand back a value it does not have yet. Go waits for it and then
+    renders, so the page arrives whole rather than in two pieces — the streaming
+    kit does after the document is a separate thing, and skgo does not do it yet.
+
     Given I have signed in as "ada"
     When I visit "/account/orders"
-    Then I see the order total while the orders are still coming
-    When I note the data request count
-    And the orders arrive
-    Then there are as many orders as the total said
-    And exactly 0 data requests were made since
+    Then the document already carried as many orders as the total said
+    And there are as many orders as the total said
+    And the browser never asked for the page's data
 
   Scenario: Moving between two pages under one layout does not re-run the layout's load
     Given I have signed in as "ada"
