@@ -1,5 +1,0 @@
-2026/09/07 06:48:56 freshapp: skgo: the frontend build and this program come from different skgo versions.
-	the skgo-adapter.js that built it: an adapter too old to record which skgo it came from
-	this program:                      skgo devel (adapter 56f17a75da56)
-The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.
-`skgo generate` writes web/skgo-adapter.js out of the module it was built from, so run `go generate ./...` and build the frontend again.
