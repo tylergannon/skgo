@@ -60,6 +60,11 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			// function does, so the file a developer edits is the file that is
 			// served.
 			write(`${out}/app.html`, readFileSync(builder.config.files.appTemplate, 'utf-8'));
+			// Kit's last-resort document, for the request whose error cannot be
+			// rendered at all — an error in the root layout, or an engine that
+			// failed. `respond_with_error` falls to it and so does Go
+			// (`runtime/server/errors.js`, `static_error_page`).
+			write(`${out}/error.html`, readErrorTemplate(builder));
 			await buildServerBundle(builder, nodes, `${out}/ssr/bundle.js`);
 
 			// Kit's own `builder.compress` writes a `.br` and a `.gz` beside every
@@ -108,6 +113,18 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 										layouts: Array.from(
 											{ length: route.page.layouts.length },
 											(_, i) => route.page.layouts[i] ?? -1
+										),
+										// The `+error.svelte` declared at each layout
+										// depth, or -1 where none is. Kit walks this
+										// list outward from the node that failed to
+										// pick which error page renders and how much
+										// of the branch survives with it
+										// (`runtime/error-chain.js`). Without it every
+										// error would fall to the root error page and
+										// lose its layouts.
+										errors: Array.from(
+											{ length: route.page.layouts.length },
+											(_, i) => route.page.errors[i] ?? -1
 										),
 										leaf: route.page.leaf
 									}
@@ -450,6 +467,7 @@ function describeSSR(builder, kit, nodes) {
 	return {
 		bundle: 'ssr/bundle.js',
 		template: 'app.html',
+		errorTemplate: 'error.html',
 		target: SSR_TARGET,
 		globalName: globalName(builder.config),
 		assets: builder.config.paths.assets,
@@ -618,6 +636,28 @@ function checkServerLoads(nodes, loads) {
 }
 
 /**
+ * Kit's `error.html`: the document a request gets when even the error page
+ * cannot be rendered. Kit reads the app's own `src/error.html` when it exists
+ * and its bundled default otherwise (`core/config/index.js`,
+ * `load_error_page`), and Go substitutes `%sveltekit.status%` and
+ * `%sveltekit.error.message%` into whichever one this wrote.
+ *
+ * @param {import('@sveltejs/kit').Builder} builder
+ * @returns {string}
+ */
+function readErrorTemplate(builder) {
+	const file = builder.config.files.errorTemplate;
+	try {
+		return readFileSync(file, 'utf-8');
+	} catch {
+		// realpath for the same reason the SSR bundle needs it: pnpm links the
+		// package, and the default lives inside it.
+		const kit = realpathSync(join(process.cwd(), 'node_modules/@sveltejs/kit'));
+		return readFileSync(join(kit, 'src/core/config/default-error.html'), 'utf-8');
+	}
+}
+
+/**
  * @param {string} file
  * @param {string} contents
  */
@@ -739,6 +779,54 @@ if (typeof globalThis.atob === 'undefined') {
 			}
 		}
 		return out;
+	};
+}
+
+// Headers is reached by kit's own Redirect constructor
+// (exports/internal/shared.js), which builds one to reject a location that
+// could not survive an HTTP header — and does it inside a try/catch, so an
+// absent Headers would be reported as an invalid location rather than as a
+// missing global. Only the construction and the validation it performs are
+// needed; nothing in the engine sends a request.
+if (typeof globalThis.Headers === 'undefined') {
+	// RFC 9110 field-name and field-value rules, which is all the real
+	// constructor checks that matters here.
+	const NAME = /^[A-Za-z0-9!#$%&'*+.^_|~-]+$/;
+	const BAD_VALUE = /[\u0000\r\n]/;
+
+	globalThis.Headers = class Headers {
+		constructor(init) {
+			this._ = new Map();
+			if (init instanceof Headers) {
+				for (const [k, v] of init._) this._.set(k, v);
+			} else if (Array.isArray(init)) {
+				for (const [k, v] of init) this.set(k, v);
+			} else if (init && typeof init === 'object') {
+				for (const k of Object.keys(init)) this.set(k, init[k]);
+			}
+		}
+		set(name, value) {
+			const n = String(name);
+			const v = String(value).trim();
+			if (!NAME.test(n)) throw new TypeError('Invalid header name: ' + n);
+			if (BAD_VALUE.test(v)) throw new TypeError('Invalid header value');
+			this._.set(n.toLowerCase(), v);
+		}
+		append(name, value) {
+			const existing = this.get(name);
+			this.set(name, existing === null ? value : existing + ', ' + value);
+		}
+		get(name) {
+			const k = String(name).toLowerCase();
+			return this._.has(k) ? this._.get(k) : null;
+		}
+		has(name) { return this._.has(String(name).toLowerCase()); }
+		delete(name) { this._.delete(String(name).toLowerCase()); }
+		forEach(fn, thisArg) { for (const [k, v] of this._) fn.call(thisArg, v, k, this); }
+		keys() { return this._.keys(); }
+		values() { return this._.values(); }
+		entries() { return this._.entries(); }
+		[Symbol.iterator]() { return this._.entries(); }
 	};
 }
 
@@ -887,20 +975,28 @@ if (typeof globalThis.URL === 'undefined') {
 const SSR_APP_SERVER = String.raw`
 import * as real from 'skgo:kit/remote';
 import { stringify_remote_arg } from 'skgo:kit/shared';
+import { HttpError, Redirect } from '@sveltejs/kit/internal/server';
 
 export { getRequestEvent } from '@sveltejs/kit/internal/server';
 
 /**
  * Calls Go. Synchronous: Go has the answer in this process, so there is nothing
  * for an event loop to wait on.
+ *
+ * A refusal comes back as one of kit's own control objects rather than a bare
+ * Error, because everything downstream classifies by type: handle_error
+ * keeps an HttpError's body and replaces anything else with Internal Error,
+ * and transformError rethrows a Redirect so that the whole document becomes
+ * the 3xx kit answers with.
  */
 function host(id, payload) {
 	const raw = globalThis.__skgo_remote(id, payload);
 	const res = JSON.parse(raw);
+	if (res.r) {
+		throw new Redirect(res.r.status, res.r.location);
+	}
 	if (res.e) {
-		const err = new Error(res.e.message);
-		err.status = res.e.status ?? 500;
-		throw err;
+		throw new HttpError({ status: res.e.status ?? 500, message: res.e.message });
 	}
 	return res.v;
 }
@@ -954,8 +1050,28 @@ import 'skgo:polyfill';
 import { render } from 'svelte/server';
 import Root from 'skgo:kit/root';
 import { Props, RenderNode } from 'skgo:kit/props';
-import { with_request_store } from '@sveltejs/kit/internal/server';
+import {
+	with_request_store,
+	HttpError,
+	Redirect,
+	SvelteKitError,
+	ValidationError
+} from '@sveltejs/kit/internal/server';
 import { components } from 'skgo:nodes';
+
+/**
+ * kit's handle_error_and_jsonify (runtime/server/errors.js) with no
+ * handleError hook: an HttpError keeps the body the app chose, a framework
+ * error keeps its status and text, a validation failure is a Bad Request, and
+ * anything else is Internal Error with the real cause left on the server.
+ * skgo has no handleError hook, so there is nothing here to await or merge.
+ */
+function handle_error(error) {
+	if (error instanceof HttpError) return error.body;
+	if (error instanceof SvelteKitError) return { status: error.status, message: error.text };
+	if (error instanceof ValidationError) return { status: 400, message: 'Bad Request' };
+	return { status: 500, message: 'Internal Error' };
+}
 
 /**
  * A RequestState (packages/kit/src/types/internal.d.ts). Only the fields
@@ -1065,7 +1181,24 @@ function build_props(req, url) {
  * partial document.
  */
 globalThis.__skgo_render = function (req_json) {
-	const result = { done: false, error: '', head: '', body: '' };
+	const result = {
+		done: false,
+		// The message of a render that threw with nothing to catch it. Go turns
+		// it into a Go error and answers the request some other way; it is never
+		// part of a document.
+		failure: '',
+		// A redirect thrown during the render — by a remote function, say. Kit
+		// answers the whole document with a bare 3xx (render_page's catch), and
+		// so does Go.
+		redirect: null,
+		// The status and error the document is answered with. They start as the
+		// ones Go asked for and are replaced by transformError if a boundary
+		// catches something, which is where kit sets them too.
+		status: 200,
+		error: null,
+		head: '',
+		body: ''
+	};
 
 	try {
 		const req = JSON.parse(req_json);
@@ -1074,7 +1207,28 @@ globalThis.__skgo_render = function (req_json) {
 		const state = make_state();
 		const event = make_event(req, url);
 
-		const options = { context: new Map([['__request__', { page: props.page }]]) };
+		result.status = props.page.status;
+		result.error = req.error ?? null;
+
+		const options = {
+			context: new Map([['__request__', { page: props.page }]]),
+			// kit's own (page/render.js): the transform every error boundary's
+			// error passes through on its way to the failed snippet. It is
+			// what makes page.status and page.error inside a rendering
+			// component the values kit would give, and what turns an
+			// unexpected throw into Internal Error rather than a stack trace on
+			// the page. A redirect is rethrown, because a redirect is an answer
+			// for the whole document rather than for one boundary.
+			transformError: (e) => {
+				if (e instanceof Redirect) throw e;
+				const handled = handle_error(e);
+				result.error = handled;
+				result.status = handled.status;
+				props.page.error = handled;
+				props.page.status = handled.status;
+				return handled;
+			}
+		};
 		const promise = with_request_store({ event, state }, () => render(Root, { ...options, props }));
 
 		Promise.resolve(promise).then(
@@ -1084,12 +1238,20 @@ globalThis.__skgo_render = function (req_json) {
 				result.done = true;
 			},
 			(err) => {
-				result.error = (err && (err.stack || err.message)) || String(err);
+				if (err instanceof Redirect) {
+					result.redirect = { status: err.status, location: err.location };
+				} else {
+					result.failure = (err && (err.stack || err.message)) || String(err);
+				}
 				result.done = true;
 			}
 		);
 	} catch (err) {
-		result.error = (err && (err.stack || err.message)) || String(err);
+		if (err instanceof Redirect) {
+			result.redirect = { status: err.status, location: err.location };
+		} else {
+			result.failure = (err && (err.stack || err.message)) || String(err);
+		}
 		result.done = true;
 	}
 

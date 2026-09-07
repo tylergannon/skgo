@@ -1,6 +1,7 @@
 package skgo
 
 import (
+	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -15,8 +16,9 @@ import (
 // is assembled in kit's five buckets and in kit's order, the boot script is
 // kit's split-bundle form with kit's own indentation, and the template is
 // substituted the way the function kit compiles from `app.html` substitutes it.
-func (s *SSR) assemble(req dataRequest, indices []int, nodes []dataNode, result ssr.Result, csr bool, answers map[string]map[string]answered) (string, error) {
+func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, answers map[string]map[string]answered) (string, error) {
 	client := s.info.Client
+	indices, csr := plan.indices, plan.hydrate
 
 	base := s.base
 	assets := s.info.Assets
@@ -95,7 +97,7 @@ func (s *SSR) assemble(req dataRequest, indices []int, nodes []dataNode, result 
 		// is always empty and only its separator survives.
 		body += "\n\t\t\t"
 
-		script, err := s.bootScript(baseExpression, prefixed, indices, nodes, answers)
+		script, err := s.bootScript(baseExpression, prefixed, plan, answers)
 		if err != nil {
 			return "", err
 		}
@@ -108,8 +110,9 @@ func (s *SSR) assemble(req dataRequest, indices []int, nodes []dataNode, result 
 // bootScript is the one script a document carries: the object the client reads
 // its configuration out of, the element it mounts on, and the import that
 // starts kit.
-func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, indices []int, nodes []dataNode, answers map[string]map[string]answered) (string, error) {
+func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, plan documentPlan, answers map[string]map[string]answered) (string, error) {
 	global := s.info.GlobalName
+	indices, nodes := plan.indices, plan.nodes
 
 	properties := []string{
 		"base: " + baseExpression,
@@ -133,12 +136,29 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, in
 		nodeIDs[i] = s.info.Nodes[index].Index
 	}
 
-	arguments := []string{"element", indent6("{\n\t" + strings.Join([]string{
+	// `error` is the page's error serialised with devalue, and `status` is
+	// pushed only when the page is not a 200 *and* carries no error — kit's own
+	// rule (`render.js`), because an error already states its own status and
+	// the client would otherwise be told it twice.
+	serializedError := "null"
+	if plan.pageError != nil {
+		written, err := unevalJSON(plan.pageError)
+		if err != nil {
+			return "", err
+		}
+		serializedError = written
+	}
+	hydrate := []string{
 		"node_ids: [" + join(nodeIDs, ", ") + "]",
 		"data: " + hydration,
 		"form: null",
-		"error: null",
-	}, ",\n\t") + "\n}")}
+		"error: " + serializedError,
+	}
+	if plan.status != http.StatusOK && plan.pageError == nil {
+		hydrate = append(hydrate, "status: "+strconv.Itoa(plan.status))
+	}
+
+	arguments := []string{"element", indent6("{\n\t" + strings.Join(hydrate, ",\n\t") + "\n}")}
 
 	remote, err := s.remoteData(answers)
 	if err != nil {

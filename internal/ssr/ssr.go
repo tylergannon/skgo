@@ -15,6 +15,7 @@
 package ssr
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -79,10 +80,29 @@ type Result struct {
 	Done bool
 	// Err is the message a render that threw left behind.
 	Err string
+	// Redirect is set when the render threw a redirect rather than an error —
+	// a remote function called from a component, say. Kit answers the whole
+	// document with a bare 3xx when that happens (`page/index.js`, the
+	// `Redirect` arm of render_page's catch), so this is not a failure.
+	Redirect *Redirect
+	// Status is the status the document should be answered with. It is the one
+	// the caller asked for unless an error boundary caught something, in which
+	// case kit's `transformError` has replaced it with the caught error's.
+	Status int
+	// Error is `page.error` as the render left it: the error the caller passed
+	// in, or the one a boundary caught and transformError jsonified. It is
+	// what the boot script's `error:` carries.
+	Error *Error
 	// Head is what the components put in `<svelte:head>`.
 	Head string
 	// Body is the rendered markup.
 	Body string
+}
+
+// Redirect is a redirect thrown during a render.
+type Redirect struct {
+	Status   int    `json:"status"`
+	Location string `json:"location"`
 }
 
 // Engine is a pool of runtimes sharing one compiled program.
@@ -241,10 +261,17 @@ func (e *Engine) Render(request []byte, host Host) (Result, []Call, error) {
 
 	object := v.ToObject(rt.vm)
 	result := Result{
-		Done: object.Get("done").ToBoolean(),
-		Err:  object.Get("error").String(),
-		Head: object.Get("head").String(),
-		Body: object.Get("body").String(),
+		Done:   boolOf(object.Get("done")),
+		Err:    stringOf(object.Get("failure")),
+		Status: intOf(object.Get("status")),
+		Head:   stringOf(object.Get("head")),
+		Body:   stringOf(object.Get("body")),
+	}
+	if err := decodeInto(rt.vm, object.Get("redirect"), &result.Redirect); err != nil {
+		return result, rt.calls, err
+	}
+	if err := decodeInto(rt.vm, object.Get("error"), &result.Error); err != nil {
+		return result, rt.calls, err
 	}
 	if !result.Done {
 		// The one failure with no error attached: a render that was started
@@ -257,6 +284,46 @@ func (e *Engine) Render(request []byte, host Host) (Result, []Call, error) {
 		return result, rt.calls, fmt.Errorf("skgo: the page threw while rendering: %s", result.Err)
 	}
 	return result, rt.calls, nil
+}
+
+// stringOf, boolOf and intOf read a property that may be absent, without
+// turning an absent one into the word "undefined" or a nil dereference.
+func stringOf(v goja.Value) string {
+	if absent(v) {
+		return ""
+	}
+	return v.String()
+}
+
+func boolOf(v goja.Value) bool {
+	if absent(v) {
+		return false
+	}
+	return v.ToBoolean()
+}
+
+func intOf(v goja.Value) int {
+	if absent(v) {
+		return 0
+	}
+	return int(v.ToInteger())
+}
+
+func absent(v goja.Value) bool {
+	return v == nil || goja.IsUndefined(v) || goja.IsNull(v)
+}
+
+// decodeInto reads a structured property back out of the runtime through JSON,
+// which is the only shape both sides already agree on.
+func decodeInto(vm *goja.Runtime, v goja.Value, into any) error {
+	if absent(v) {
+		return nil
+	}
+	raw, err := json.Marshal(v.Export())
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(raw, into)
 }
 
 // acquire takes an idle runtime, or builds one while the pool is below its

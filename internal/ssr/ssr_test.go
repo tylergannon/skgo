@@ -21,7 +21,15 @@ globalThis.__skgo_render = function (json) {
 	var req = JSON.parse(json);
 	current = req.route_id;
 	var answer = JSON.parse(globalThis.__skgo_remote('fixture/get', req.route_id));
-	return { done: true, error: '', head: '', body: current + ':' + answer.v };
+	return {
+		done: true,
+		failure: '',
+		redirect: null,
+		status: req.status,
+		error: req.error,
+		head: '',
+		body: current + ':' + answer.v
+	};
 };
 `
 
@@ -31,7 +39,7 @@ globalThis.__skgo_render = function (json) {
 const neverSettles = `
 globalThis.__skgo_ping = function () { return 'ok'; };
 globalThis.__skgo_render = function () {
-	var result = { done: false, error: '', head: '', body: '' };
+	var result = { done: false, failure: '', redirect: null, status: 200, error: null, head: '', body: '' };
 	new Promise(function () {}).then(function () { result.done = true; });
 	return result;
 };
@@ -178,5 +186,80 @@ func TestTheEngineReusesItsRuntimes(t *testing.T) {
 	}
 	if created := engine.Created(); created != 1 {
 		t.Errorf("twenty sequential renders built %d runtimes, want 1", created)
+	}
+}
+
+// reporting is a bundle that reports back the three things a document's status
+// depends on: the status the page ended on, the error it ended with, and a
+// redirect thrown while it rendered.
+const reporting = `
+globalThis.__skgo_ping = function () { return 'ok'; };
+globalThis.__skgo_render = function (json) {
+	var req = JSON.parse(json);
+	if (req.route_id === '/go-away') {
+		return {
+			done: true,
+			failure: '',
+			redirect: { status: 307, location: '/elsewhere' },
+			status: 200,
+			error: null,
+			head: '',
+			body: ''
+		};
+	}
+	return {
+		done: true,
+		failure: '',
+		redirect: null,
+		status: 418,
+		error: { status: 418, message: 'I am a teapot' },
+		head: '',
+		body: 'brewed'
+	};
+};
+`
+
+// TestARenderReportsTheStatusAndErrorItEndedWith is what makes the response
+// status the one kit would give. `transformError` runs *during* the render, so
+// a boundary that catches something changes both after Go has already handed
+// the request over; a result that did not carry them back would answer a caught
+// error with 200.
+func TestARenderReportsTheStatusAndErrorItEndedWith(t *testing.T) {
+	engine, err := ssr.New("bundle.js", []byte(reporting), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, _, err := engine.Render(request(t, "/teapot"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != 418 {
+		t.Errorf("status = %d, want 418", result.Status)
+	}
+	if result.Error == nil || result.Error.Message != "I am a teapot" || result.Error.Status != 418 {
+		t.Errorf("error = %+v, want a 418 teapot", result.Error)
+	}
+	if result.Redirect != nil {
+		t.Errorf("redirect = %+v, want none", result.Redirect)
+	}
+	if result.Body != "brewed" {
+		t.Errorf("body = %q", result.Body)
+	}
+}
+
+// TestARedirectThrownDuringARenderIsNotAFailure keeps a redirect out of the
+// error path. Kit answers one with a bare 3xx and no document at all, so a
+// render that ends in a redirect must not look like a render that broke.
+func TestARedirectThrownDuringARenderIsNotAFailure(t *testing.T) {
+	engine, err := ssr.New("bundle.js", []byte(reporting), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, _, err := engine.Render(request(t, "/go-away"), nil)
+	if err != nil {
+		t.Fatalf("a redirect was reported as a failure: %v", err)
+	}
+	if result.Redirect == nil || result.Redirect.Status != 307 || result.Redirect.Location != "/elsewhere" {
+		t.Fatalf("redirect = %+v, want 307 to /elsewhere", result.Redirect)
 	}
 }

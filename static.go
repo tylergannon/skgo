@@ -71,6 +71,12 @@ type ManifestSSR struct {
 	// Template is the path of `app.html` inside the build, verbatim, with
 	// kit's `%sveltekit.*%` placeholders still in it.
 	Template string `json:"template"`
+	// ErrorTemplate is the path of kit's `error.html` inside the build: the
+	// document a request gets when even the error page cannot be rendered —
+	// an error in the root layout, or a render the engine could not finish.
+	// Kit calls it `static_error_page` (`runtime/server/errors.js`) and falls
+	// to it from exactly those two places.
+	ErrorTemplate string `json:"errorTemplate"`
 	// Target is the ECMAScript version the bundle was compiled to. It is
 	// recorded because it is a correctness claim, not a preference: below
 	// es2022 the bundle still runs and costs several times more.
@@ -174,8 +180,24 @@ type ManifestPage struct {
 	// Layouts holds the node index of each layout wrapping the page. -1 marks
 	// a slot no layout fills, which JSON cannot express as a hole.
 	Layouts []int `json:"layouts"`
+	// Errors holds the node index of the `+error.svelte` declared at each
+	// layout's depth, positionally aligned with Layouts, and -1 where a depth
+	// declares none. It is what decides which error page a failure renders and
+	// how many layouts survive with it: kit walks it outward from the node
+	// that failed (`runtime/error-chain.js`, `nearest_error_pages`) and the
+	// first depth that declares one wins, with every layout above that depth
+	// still rendered around it.
+	Errors []int `json:"errors,omitempty"`
 	// Leaf is the node index of the page itself.
 	Leaf int `json:"leaf"`
+}
+
+// ErrorPages is Errors, and nil for a route that has no page at all.
+func (p *ManifestPage) ErrorPages() []int {
+	if p == nil {
+		return nil
+	}
+	return p.Errors
 }
 
 // Branch is `[...layouts, leaf]`: the nodes of this route, outermost first.
@@ -526,14 +548,19 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The renderer is asked before the route table is consulted, because a path
+	// that matches no route is one of the documents it renders: kit answers
+	// that with the root layout and the root error page at 404
+	// (`respond.js`, `respond_with_error`), not with a shell that has to boot
+	// before it can say the page is missing.
+	//
+	// It declines a page it should not render — a branch that turns SSR off —
+	// and the boot document answers that, which is what answered every page
+	// before there was a renderer.
+	if h.ssr != nil && h.ssr.serve(w, r, urlPath) {
+		return
+	}
 	if h.matchesRoute(urlPath) {
-		// The renderer declines a page it cannot or should not render — a
-		// branch that turns SSR off, a load that failed — and the boot document
-		// answers it, which is what answered every page before there was a
-		// renderer.
-		if h.ssr != nil && h.ssr.serve(w, r, urlPath) {
-			return
-		}
 		h.serveDocument(w, r, http.StatusOK)
 		return
 	}
