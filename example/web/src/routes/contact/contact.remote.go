@@ -85,7 +85,7 @@ func getMessages(_ context.Context) ([]Message, error) {
 // The checks below are the form's validation. Returning a *skgo.Invalid puts
 // each message on the field it names, and kit's client leaves the page — and
 // therefore everything the visitor typed — exactly as it was.
-func sendMessage(_ context.Context, draft Draft) (Receipt, error) {
+func sendMessage(ctx context.Context, draft Draft) (Receipt, error) {
 	invalid := &skgo.Invalid{}
 
 	if strings.TrimSpace(draft.From) == "" {
@@ -118,7 +118,11 @@ func sendMessage(_ context.Context, draft Draft) (Receipt, error) {
 	inbox.messages = append(inbox.messages, message)
 	inbox.Unlock()
 
-	return Receipt{ID: message.ID, Summary: "Thanks, " + message.From + " — message " + message.ID + " is in."}, nil
+	// The page writes `form.submit().updates(getMessages())`; this is the half
+	// of that sentence the server gets a say in. A submission that ends in
+	// issues never reaches here, and kit's client leaves the page alone.
+	return Receipt{ID: message.ID, Summary: "Thanks, " + message.From + " — message " + message.ID + " is in."},
+		skgo.RefreshRequestedNoArg(ctx, getMessages)
 }
 
 var (

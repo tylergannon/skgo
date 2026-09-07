@@ -205,8 +205,8 @@ func TestARefreshedQueryCanRegisterAnother(t *testing.T) {
 	}
 }
 
-// The Go handler's own refresh is the server's instruction; a client that
-// asked for the same key does not get to duplicate it or re-run the query.
+// A handler's own refresh and a client request it accepted are one record
+// under one key, so a key named twice runs once and is answered once.
 func TestOneKeyNamedByBothChannelsIsAnsweredOnce(t *testing.T) {
 	runs := 0
 	var getTodo queryFn = func(ctx context.Context, id string) (todo, error) {
@@ -214,7 +214,10 @@ func TestOneKeyNamedByBothChannelsIsAnsweredOnce(t *testing.T) {
 		return todo{ID: id}, nil
 	}
 	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
-		return "renamed", Refresh(ctx, getTodo, "t1")
+		if err := Refresh(ctx, getTodo, "t1"); err != nil {
+			return "", err
+		}
+		return "renamed", RefreshRequested(ctx, getTodo, 4)
 	})
 	rs := testRemotes(t, RemoteConfig{}, NewQuery(testModule, "getTodo", getTodo), command)
 
@@ -227,14 +230,17 @@ func TestOneKeyNamedByBothChannelsIsAnsweredOnce(t *testing.T) {
 	}
 }
 
-// A command may still refresh a key the client did not name, and a client key
-// the handler said nothing about is still answered.
+// A command may refresh a key the client did not name, and accept one it did,
+// in the same response.
 func TestBothChannelsAreAnsweredTogether(t *testing.T) {
 	var getTodo queryFn = func(ctx context.Context, id string) (todo, error) {
 		return todo{ID: id}, nil
 	}
 	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
-		return "renamed", Refresh(ctx, getTodo, "t1")
+		if err := Refresh(ctx, getTodo, "t1"); err != nil {
+			return "", err
+		}
+		return "renamed", RefreshRequested(ctx, getTodo, 4)
 	})
 	rs := testRemotes(t, RemoteConfig{}, NewQuery(testModule, "getTodo", getTodo), command)
 

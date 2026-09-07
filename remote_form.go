@@ -207,7 +207,8 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 	}
 
 	ev := rs.newEvent(r, true)
-	ev.refreshes = newRefreshSet(rs)
+	// Indexed, not obeyed — see requested.go.
+	ev.refreshes = newRefreshSet(rs, meta.RemoteRefreshes)
 	ctx := withEvent(r.Context(), ev)
 
 	value, err := rs.call(ctx, fn, arg, true)
@@ -235,7 +236,7 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 	}
 
 	data := map[string]any{"_": devalue.NewObject("submission", true, "result", value)}
-	q, l := rs.collectRefreshes(r.Context(), ev, meta.RemoteRefreshes)
+	q, l := rs.collectRefreshes(r.Context(), ev)
 	if len(q) > 0 {
 		data["q"] = q
 	}

@@ -1,0 +1,6 @@
+{"type":"object",
+"description":"Write is the argument of the writeNotes command: everything the page changes in one go.","properties":{
+"left":{"type":"string","description":"Left is the new text of the left note."},
+"right":{"type":"string","description":"Right is the new text of the right note."},
+"banner":{"type":"string","description":"Banner is the new banner text."}
+},"required":["left","right","banner"],"additionalProperties":false}

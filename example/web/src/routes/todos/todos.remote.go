@@ -39,11 +39,17 @@ func getTodo(ctx context.Context, id string) (businesslogic.Todo, error) {
 }
 
 // addTodo appends a todo to the list.
+//
+// The page writes `addTodo(text).updates(getTodos())`, and the line below is
+// what makes that request mean anything: a command runs the queries it names
+// and no others, however many the browser asks for. There is no limit to
+// give: getTodos takes no argument, so kit's client keys it under the empty
+// payload and there is exactly one instance of it to ask for.
 func addTodo(ctx context.Context, text string) (businesslogic.Todo, error) {
 	if text == "" {
 		return businesslogic.Todo{}, skgo.Errorf(400, "A todo needs some text")
 	}
-	return businesslogic.Default.Add(text), nil
+	return businesslogic.Default.Add(text), skgo.RefreshRequestedNoArg(ctx, getTodos)
 }
 
 // Rename is the argument of the renameTodo command.
@@ -65,7 +71,11 @@ func renameTodo(ctx context.Context, arg Rename) (businesslogic.Todo, error) {
 	if !ok {
 		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", arg.ID)
 	}
-	return todo, nil
+	// A detail page shows one todo, so one instance is what a rename is asked
+	// for and one instance is what it accepts. A page that opened four of them
+	// and asked for all four would see the fourth refuse rather than the
+	// server run four queries because the browser said to.
+	return todo, skgo.RefreshRequested(ctx, getTodo, 1)
 }
 
 // Retitle is the argument of the retitleTodo command.
@@ -126,6 +136,24 @@ func watchCount(ctx context.Context, yield func(int) error) error {
 			}
 		}
 	}
+}
+
+// AcceptSessionRefreshes accepts the refreshes a page asks for when the
+// visitor's identity changes: the list re-runs, and the count — a live query,
+// whose event is a snapshot of the request that opened its stream — reconnects
+// on the command's own request so it reads the new cookie.
+//
+// It exists because the sign-in form is in the root layout, in src/lib, and a
+// command there cannot name a query in here: SvelteKit route directories are
+// spelled `[id]` and `(marketing)`, so skgo puts the whole route tree behind
+// its own Go module boundary. What this package is willing to re-run on a
+// client's say-so is this package's decision anyway, which is what the export
+// says out loud.
+func AcceptSessionRefreshes(ctx context.Context) error {
+	if err := skgo.RefreshRequestedNoArg(ctx, getTodos); err != nil {
+		return err
+	}
+	return skgo.ReconnectRequestedNoArg(ctx, watchCount)
 }
 
 var (
