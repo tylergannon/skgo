@@ -30,3 +30,21 @@ after every run, before the validator is dispatched.
 A branch cut before a sibling PR merged carries that PR's inverse in
 `git diff main`. Diff against `git merge-base main <branch>` to see what the
 branch actually did.
+
+## The mission template's own warning was not enough
+
+The first #39 run read AGENTS.md, mapped kit correctly, created its worktree,
+dispatched a background Opus builder "per Delegate missions, not methods", and
+returned in under four minutes to say the run was still in flight. Its exit
+killed the builder; the worktree had zero commits. The template's comment
+about this sits above the YAML where the agent never sees it, and the goal
+text said only "do not return while any subagent you dispatched is still
+running", which the agent read as a rule about reporting, not about exiting.
+The relaunched mission says it plainly: build in this turn; if you delegate,
+block. Watch for the same shape on any run that exits fast with a worktree
+and no commits.
+
+The failed run's kit map was worth keeping: for a remote form post kit leaves
+`form:` null and carries the submission in `<global>.data.f`, so the issue
+text's "form: instead of always null" was wrong. Recorded on #39, with the
+instruction to verify it from source.
