@@ -55,23 +55,14 @@ Feature: Server loads written in Go
     When I visit "/account/orders"
     Then the account layout greets "grace"
 
-  @prod
-  Scenario: A value the load promised is settled before the page is rendered
-    A load may hand back a value it does not have yet. Go waits for it and then
-    renders, so the page arrives whole rather than in two pieces — the streaming
-    kit does after the document is a separate thing, and skgo does not do it yet.
-
-    Given I have signed in as "ada"
-    When I visit "/account/orders"
-    Then the document already carried as many orders as the total said
-    And there are as many orders as the total said
-    And the browser never asked for the page's data
-
   @dev
-  Scenario: A value the load promised is settled before the data is answered
-    The same settling, seen from the other side. In dev there is no document to
-    carry the orders, so they are in the one data response Go sends — every row
-    of it, counted against the total the same response carried.
+  Scenario: A value the load promised arrives in the one data response
+    A load may hand back a value it does not have yet, and the two halves reach
+    the browser on the same response rather than on two. In dev there is no
+    document to carry them, so both are in the one data response Go sends: the
+    total in its first line and the rows in a chunk after it, counted against
+    each other. The prod half of this claim is in ssr.feature, where the same
+    two halves are the document and what Go appends to it.
 
     Given I have signed in as "ada"
     And I note the data request count

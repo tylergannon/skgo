@@ -201,3 +201,30 @@ Feature: Pages arrive rendered
       And the document already said the error page shows "Error 500" and "Internal Error"
       And the document never mentions "Cannot call a command"
       And the tally is nowhere on the page
+
+  Rule: A value the load only promised arrives on the same document
+
+    A load may return a value it does not have yet. Kit sends the document at
+    once, with the page's own loading state already in it, and appends the value
+    to the same response when it arrives: no second request, and nobody waits
+    for the slow half of a page before they can read the fast half. skgo's
+    document is assembled by Go and does the same thing, which is the only way
+    an `{#await}` in a page can mean anything on a cold load.
+
+    The fixture is the one load in the app that promises anything,
+    src/routes/account/orders/page.server.go. It says there are 2 orders
+    straight away and takes a second and a half to say that they are "a slow
+    parcel" and "a slower parcel" — two strings that appear nowhere else in the
+    app, beside a generated TypeScript load that throws "skgo: implemented in
+    Go".
+
+    Scenario: A cold load shows the loading state first and fills it in later
+      Given I have signed in as "ada"
+      And I note the remote request count
+      When I start loading "/account/orders"
+      Then the page says there are 2 orders and is still fetching them
+      When the orders arrive
+      Then the orders are "a slow parcel" and "a slower parcel"
+      And the document carried the loading state, and the orders after it ended
+      And the browser never asked for the page's data
+      And exactly 0 remote requests were made since

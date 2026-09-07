@@ -75,28 +75,6 @@ Then(
 	}
 );
 
-// The total is a field the load had in hand; the orders are a field it promised
-// for later. Both are in the document, because Go settles what a load promised
-// before it renders — and the two are compared against each other rather than
-// against a number written here, so a page that rendered nothing fails.
-Then(
-	'the document already carried as many orders as the total said',
-	async ({ documents, shot }) => {
-		expect(documents.last, 'no document response was observed').not.toBeNull();
-		const html = await documents.last!.text();
-
-		const total = Number(
-			/data-testid="order-total">(\d+)/.exec(html)?.[1] ?? NaN
-		);
-		expect(Number.isFinite(total), 'the document carried no order total').toBe(true);
-		expect(total, 'the order total was zero, so counting rows proves nothing').toBeGreaterThan(0);
-
-		const rows = html.match(/data-testid="order"/g)?.length ?? 0;
-		expect(rows).toBe(total);
-		await shot('in-the-document');
-	}
-);
-
 Then("the browser never asked for the page's data", async ({ page, data, shot }) => {
 	// A refetch would already be in flight; wait a beat so it lands and can be
 	// counted.
