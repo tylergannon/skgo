@@ -149,3 +149,13 @@ scraping `//#region` comments all worked once and broke on a clean rebuild, a
 minified build, or one extra entry (`from-built-output.md`). Two of the breaks
 were goja parse errors or wrong renders, not build errors. Address kit's output
 by module identity (resolver, source path) or not at all.
+
+## `reference/kit` was a dangling symlink, and is now a relative one
+
+`ephemeral/inspiration/reference/{kit,devalue,mrmime,sirv}` pointed into
+`/Users/tyler/src/sveltekit-adapter-go/reference/`, which no longer exists, so
+AGENTS.md's pointer resolved to nothing and every agent sent to "read kit"
+found an empty path. `kit` now links to the npm copy `kit@3.0.0-next.25` beside
+it (line numbers match the citations in `research/`); the other three had no
+copy to point at and were removed. `devalue` is reachable at
+`example/web/node_modules/devalue`.
