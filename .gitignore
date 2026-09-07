@@ -11,3 +11,6 @@ example/e2e/screenshots/
 
 # `just serve` copies the server's log here for the Gherkin suite to read.
 example/e2e/server.log
+
+# screenshots are local evidence to open and look at, never tracked (#56)
+ephemeral/screenshots/
