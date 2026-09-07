@@ -1,0 +1,55 @@
+name: skgo-issue-44
+goal: |
+  GitHub issue #44 in tylergannon/skgo (read it with `gh issue view 44`).
+
+  Capability when done: the adapter an app builds with is always the one from
+  the skgo module the app's Go code was built against. `skgo generate` writes
+  skgo-adapter.js into the web directory from the module it was built from,
+  the same way it already writes the .remote.ts stubs and skgo.remotes.json,
+  so nothing is vendored by hand and the two halves cannot drift. If an older
+  hand-copied adapter is still in play, ReadManifest refuses its manifest with
+  a message that names both versions instead of failing later with an
+  unrelated error.
+
+  Specification: kit's adapter API from the pinned source, and skgo's existing
+  generate/manifest contract as it stands on main.
+
+  Proof that will be believed: a fresh example app that builds and serves with
+  no hand-copied adapter, screenshot of a page served by that build; a Go test
+  that a manifest written by a mismatched adapter version is refused with a
+  message naming both versions. Open every screenshot and look at it.
+
+  Constraints: this run owns cmd/skgo generate, the adapter, the scaffold
+  template and manifest reading. Do not touch transport encoding (#45) or
+  document streaming (#38); other runs own those.
+
+  Read AGENTS.md first — it governs this project. Create the worktree with
+  `just worktree <branch>` from /Users/tyler/src/skgo; `just --list` is the rest
+  of the plumbing. The pinned kit source — the specification — is at the
+  absolute path /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit,
+  outside any worktree and reachable from anywhere. Work only in your worktree.
+  Pick a free port with `just ports` before binding one and kill your own
+  server by pid when done.
+
+  When the capability is demonstrated: open a PR against main whose body can
+  serve as the squash commit message, with the screenshots attached or linked
+  in the body, and say "Closes #N". Do not merge it. Append actionable
+  intelligence, not narrative, to a worklog under ephemeral/worklog/. Do not
+  return while any subagent you dispatched is still running.
+
+start: build
+
+defaults:
+  timeout: 3600s
+  max_retries: 1
+  model:
+    name: claude-opus-5
+    effort: high
+
+nodes:
+  - id: build
+    type: agent
+    max_visits: 1
+    prompt: $goal
+    edges:
+      - to: success

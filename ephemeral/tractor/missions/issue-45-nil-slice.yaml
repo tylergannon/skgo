@@ -1,0 +1,58 @@
+name: skgo-issue-45
+goal: |
+  GitHub issue #45 in tylergannon/skgo (read it with `gh issue view 45`).
+
+  Capability when done: a developer who returns a Go struct with a nil slice
+  field from any skgo surface — query result, command result, live query
+  value, form result, server load data — sees `[]` on the wire and in the
+  page, so the generated TypeScript declaration `Array<T>` is true of the
+  wire. No per-field initialisation in application code.
+
+  Specification: kit's devalue transport and polytype's projection of Go types
+  (polytype is the one devalue encoder here — skgo must never grow a local
+  devalue port; check whether the right fix belongs in polytype's encoder,
+  which is at github.com/tylergannon/polytype, or in skgo's use of it, and
+  check polytype's latest release before deciding). Map what kit and devalue
+  actually emit for an empty array so the wire matches kit byte for byte.
+
+  Proof that will be believed: a Go test that encodes a struct with a nil
+  slice and asserts the wire carries `[]` on every surface listed above; a
+  Gherkin scenario in example/e2e where a page renders a list from a remote
+  function that returns a nil slice and shows an explicit empty state, with a
+  screenshot of that page, both on a server-rendered cold load and after a
+  client-side navigation. Open every screenshot and look at it.
+
+  Constraints: this run owns transport encoding only. Do not touch
+  `skgo generate`'s adapter/manifest handling (#44) or document streaming
+  (#38); other runs own those.
+
+  Read AGENTS.md first — it governs this project. Create the worktree with
+  `just worktree <branch>` from /Users/tyler/src/skgo; `just --list` is the rest
+  of the plumbing. The pinned kit source — the specification — is at the
+  absolute path /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit,
+  outside any worktree and reachable from anywhere. Work only in your worktree.
+  Pick a free port with `just ports` before binding one and kill your own
+  server by pid when done.
+
+  When the capability is demonstrated: open a PR against main whose body can
+  serve as the squash commit message, with the screenshots attached or linked
+  in the body, and say "Closes #N". Do not merge it. Append actionable
+  intelligence, not narrative, to a worklog under ephemeral/worklog/. Do not
+  return while any subagent you dispatched is still running.
+
+start: build
+
+defaults:
+  timeout: 3600s
+  max_retries: 1
+  model:
+    name: claude-opus-5
+    effort: high
+
+nodes:
+  - id: build
+    type: agent
+    max_visits: 1
+    prompt: $goal
+    edges:
+      - to: success

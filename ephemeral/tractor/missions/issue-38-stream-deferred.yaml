@@ -1,0 +1,55 @@
+name: skgo-issue-38
+goal: |
+  GitHub issue #38 in tylergannon/skgo (read it with `gh issue view 38`).
+
+  Capability when done: a page whose server load returns a skgo.Deferred value
+  streams on a cold load exactly as kit streams a promise from a server load —
+  the document arrives with the shell and the {#await} pending branch, and the
+  deferred value resolves in the same document later — so /account/orders in
+  the example app shows its loading state on a cold load again. Client-side
+  navigations keep streaming through __data.json as they do now.
+
+  Specification: kit's runtime/server/page/data_serializer.js and render.js
+  in the pinned source, mirrored byte for byte in the document Go assembles,
+  including kit's own behaviour for status and etag on the streaming branch.
+
+  Proof that will be believed: a Gherkin scenario in example/e2e for a cold
+  load of /account/orders that asserts the loading state is visible before
+  the rows arrive and the rows arrive without a client fetch, with screenshots
+  of both states; a Go test on the assembled document. Open every screenshot
+  and look at it.
+
+  Constraints: this run owns document assembly for deferred values. Do not
+  touch form action rendering (#39), transport encoding (#45) or the adapter
+  (#44); other runs own those.
+
+  Read AGENTS.md first — it governs this project. Create the worktree with
+  `just worktree <branch>` from /Users/tyler/src/skgo; `just --list` is the rest
+  of the plumbing. The pinned kit source — the specification — is at the
+  absolute path /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit,
+  outside any worktree and reachable from anywhere. Work only in your worktree.
+  Pick a free port with `just ports` before binding one and kill your own
+  server by pid when done.
+
+  When the capability is demonstrated: open a PR against main whose body can
+  serve as the squash commit message, with the screenshots attached or linked
+  in the body, and say "Closes #N". Do not merge it. Append actionable
+  intelligence, not narrative, to a worklog under ephemeral/worklog/. Do not
+  return while any subagent you dispatched is still running.
+
+start: build
+
+defaults:
+  timeout: 3600s
+  max_retries: 1
+  model:
+    name: claude-opus-5
+    effort: high
+
+nodes:
+  - id: build
+    type: agent
+    max_visits: 1
+    prompt: $goal
+    edges:
+      - to: success
