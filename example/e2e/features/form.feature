@@ -45,3 +45,40 @@ Feature: Forms written in Go
     And I send the message
     Then the inbox shows a message from "Matsuo Basho" saying "A haiku is attached for your consideration."
     And the message saying "A haiku is attached for your consideration." reports the attachment "haiku.txt" of 72 bytes with digest "84cee680e822"
+
+  @prod
+  Scenario: A submission that bypasses kit's client hydrates to the state Go rendered
+    Given I open "/contact"
+    When the contact page has loaded
+    And I fill the contact form with name "Alan Turing", email "alan@example.com" and message "Machines take me by surprise with great frequency."
+    # `form.submit()` fires no submit event, so `enhance` never sees it: the
+    # browser makes the same POST a visitor with scripting off makes, and then
+    # boots kit's client over the document Go answered with.
+    And the browser submits the form itself, without kit's client
+    Then a new document answered the submission
+    And the receipt greets "Alan Turing"
+    # The inbox is rendered by kit's client running the query after hydration,
+    # so seeing the message here says two things at once: Go really recorded
+    # the submission, and the client booted over the answer without wiping the
+    # receipt above off the page.
+    And the inbox shows a message from "Alan Turing" saying "Machines take me by surprise with great frequency."
+
+  @prod
+  Scenario: The issues of a submission that bypasses kit's client survive hydration
+    Given I open "/contact"
+    When the contact page has loaded
+    And I fill the contact form with name "Katherine Johnson", email "katherine@example.com" and message "The numbers had to be checked by hand."
+    And I send the message
+    Then the inbox shows a message from "Katherine Johnson" saying "The numbers had to be checked by hand."
+    When I fill the contact form with name "Katherine Johnson", email "katherine-at-example" and message "nope"
+    And the browser submits the form itself, without kit's client
+    Then a new document answered the submission
+    # Proves hydration finished: nothing but kit's client puts the inbox on a
+    # freshly loaded document.
+    And the inbox shows a message from "Katherine Johnson" saying "The numbers had to be checked by hand."
+    # And the issues Go put in the document are still the form's, which they
+    # would not be if `<global>.data.f` were missing — the client would then
+    # start the form with no issues and re-render them away.
+    And the field "email" carries the message "\"katherine-at-example\" is not an email address"
+    And the field "body" carries the message "A message needs at least 10 characters; this one has 4"
+    And the form reports it was not sent

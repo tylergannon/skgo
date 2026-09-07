@@ -118,3 +118,67 @@ Then('the inbox has no message saying {string}', async ({ page }, body: string) 
 	await expect(page.getByTestId('message')).not.toHaveCount(0);
 	await expect(messageSaying(page, body)).toHaveCount(0);
 });
+
+When('the contact form is on the page', async ({ page }) => {
+	// The noscript counterpart of "the contact page has loaded". It cannot wait
+	// for the inbox: with scripting off the boundary around it never leaves its
+	// pending snippet, because Svelte's server renderer does not render the
+	// children of a boundary that has one.
+	await expect(page.getByTestId('title')).toHaveText('Contact');
+	await expect(page.getByTestId('contact-form')).toBeVisible();
+});
+
+When('the browser submits the form itself, without kit\'s client', async ({ page }) => {
+	// `HTMLFormElement.submit()` does not fire a submit event, so kit's
+	// `enhance` never sees it and the browser performs the form's own POST —
+	// the same request a visitor with scripting off makes, in a browser that
+	// will then hydrate the answer.
+	//
+	// The wait has to be armed first: `form.submit()` returns before the
+	// browser has even issued the request, and `waitForLoadState('load')` on a
+	// page that is still the old one resolves immediately — which is how this
+	// step first passed while asserting nothing had happened.
+	const navigated = page.waitForResponse(
+		(response) =>
+			response.request().resourceType() === 'document' &&
+			response.request().method() === 'POST'
+	);
+	await page.getByTestId('contact-form').evaluate((form: HTMLFormElement) => form.submit());
+	await navigated;
+	await page.waitForLoadState('load');
+});
+
+Then('a new document answered the submission', async ({ documents }) => {
+	// The visitor is looking at the response to their own POST — not at the
+	// page they were on with a patch applied to it, which is what the enhanced
+	// path produces and what this whole feature exists to be distinct from.
+	expect(documents.last, 'no document response was observed').not.toBeNull();
+	expect(documents.last!.request().method(), documents.log.join('\n')).toBe('POST');
+	expect(documents.last!.status()).toBe(200);
+});
+
+Then('the browser ran no script', async ({ page }) => {
+	// Positive evidence rather than an absence: the inbox sits inside a
+	// boundary whose pending snippet is what the server renders, and the only
+	// thing that ever replaces it is kit's client running the query. Still
+	// seeing "loading…" is that client not existing.
+	await expect(page.getByTestId('messages-pending')).toBeVisible();
+});
+
+Then('the form does not report it was not sent', async ({ page }) => {
+	await expect(page.getByTestId('rejected')).toHaveCount(0);
+});
+
+Then(
+	'the contact form still holds name {string} and email {string}',
+	async ({ page }, name: string, email: string) => {
+		// The two text inputs only. A submission that navigated leaves the
+		// message behind: kit's field proxy puts the value in a `value`
+		// attribute, which a <textarea> ignores — its value is its content —
+		// and with no client to assign the property there is nothing to put it
+		// back. That is kit's shape, and claiming otherwise here would be a
+		// scenario that fails for a reason skgo cannot fix.
+		await expect(page.getByTestId('field-from')).toHaveValue(name);
+		await expect(page.getByTestId('field-email')).toHaveValue(email);
+	}
+);

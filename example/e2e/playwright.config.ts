@@ -42,5 +42,22 @@ export default defineConfig({
 		trace: 'retain-on-failure',
 		screenshot: 'only-on-failure'
 	},
-	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }]
+	// Two projects, because one claim in the suite is about a browser that runs
+	// no JavaScript at all and that is a property of the context, not of a
+	// step. `form-noscript.feature` is the only feature that belongs to the
+	// second one, and it is excluded from the first — a scenario about the
+	// non-enhanced path would prove nothing in a browser where kit's client
+	// intercepts the submit.
+	projects: [
+		{
+			name: 'chromium',
+			use: { ...devices['Desktop Chrome'] },
+			testIgnore: /form-noscript/
+		},
+		{
+			name: 'noscript',
+			use: { ...devices['Desktop Chrome'], javaScriptEnabled: false },
+			testMatch: /form-noscript/
+		}
+	]
 });

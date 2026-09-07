@@ -489,7 +489,10 @@ func readVariant(build fs.FS, name, encoding string) (assetVariant, error) {
 }
 
 func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+	// A POST is a form submission to a page, and only the renderer can answer
+	// one — it has to run the form and then render the page again with the
+	// outcome in it. Everything else this handler serves is a file.
+	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -568,6 +571,14 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// and the boot document answers that, which is what answered every page
 	// before there was a renderer.
 	if h.ssr != nil && h.ssr.serve(w, r, urlPath) {
+		return
+	}
+	// Nothing but the renderer answers a POST. A page whose branch turns
+	// server rendering off has no way to show a submission's outcome, and kit
+	// says so with the same 405 a path that is not a page gets.
+	if r.Method == http.MethodPost {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	if h.matchesRoute(urlPath) {

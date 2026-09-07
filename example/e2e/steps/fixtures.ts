@@ -9,6 +9,8 @@ export type Documents = {
 	count: number;
 	/** The most recent document response. */
 	last: Response | null;
+	/** `<method> <url> -> <status>` for each, in order, to explain a failure. */
+	log: string[];
 };
 
 /**
@@ -64,13 +66,16 @@ export const test = base.extend<{
 	shot: Shot;
 }>({
 	documents: async ({ page }, use) => {
-		const documents: Documents = { count: 0, last: null };
+		const documents: Documents = { count: 0, last: null, log: [] };
 
 		page.on('request', (request) => {
 			if (request.resourceType() === 'document') documents.count++;
 		});
 		page.on('response', (response) => {
-			if (response.request().resourceType() === 'document') documents.last = response;
+			const request = response.request();
+			if (request.resourceType() !== 'document') return;
+			documents.last = response;
+			documents.log.push(`${request.method()} ${request.url()} -> ${response.status()}`);
 		});
 
 		await use(documents);
