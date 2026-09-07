@@ -16,7 +16,7 @@ import (
 // is assembled in kit's five buckets and in kit's order, the boot script is
 // kit's split-bundle form with kit's own indentation, and the template is
 // substituted the way the function kit compiles from `app.html` substitutes it.
-func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, answers map[string]map[string]answered) (string, error) {
+func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, answers map[string]map[string]answered) (string, *promiseTable, error) {
 	client := s.info.Client
 	indices, csr := plan.indices, plan.hydrate
 
@@ -90,6 +90,16 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 	// the components put in `<svelte:head>`, style tags, stylesheet links.
 	head := strings.Join(append(append(linkTags, result.Head), stylesheetLinks...), "\n\t\t")
 
+	// kit's `const { data, chunks } = data_serializer.get_data(csp)`, and in
+	// kit's place: before the boot script and outside the `csr` branch, so that
+	// which promises exist — and therefore whether the response streams — is
+	// decided by the loads and not by whether the page hydrates.
+	promises := &promiseTable{ids: map[*deferred]int{}}
+	hydration, err := s.hydrationData(plan.nodes, promises)
+	if err != nil {
+		return "", nil, err
+	}
+
 	body := result.Body
 	if csr {
 		// Kit appends the responses `event.fetch` collected here. skgo has no
@@ -97,22 +107,22 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 		// is always empty and only its separator survives.
 		body += "\n\t\t\t"
 
-		script, err := s.bootScript(baseExpression, prefixed, plan, answers)
+		script, err := s.bootScript(baseExpression, prefixed, plan, answers, hydration, promises)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		body += "<script>" + script + "</script>\n\t\t"
 	}
 
-	return s.substitute(head, body, assets), nil
+	return s.substitute(head, body, assets), promises, nil
 }
 
 // bootScript is the one script a document carries: the object the client reads
 // its configuration out of, the element it mounts on, and the import that
 // starts kit.
-func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, plan documentPlan, answers map[string]map[string]answered) (string, error) {
+func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, plan documentPlan, answers map[string]map[string]answered, hydration string, promises *promiseTable) (string, error) {
 	global := s.info.GlobalName
-	indices, nodes := plan.indices, plan.nodes
+	indices := plan.indices
 
 	properties := []string{
 		"base: " + baseExpression,
@@ -122,10 +132,17 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, pl
 		properties = append(properties, "assets: "+jsString(s.info.Assets))
 	}
 
-	hydration, err := s.hydrationData(nodes)
-	if err != nil {
-		return "", err
+	// A page waiting for something needs the two halves of kit's promise
+	// plumbing: `defer(id)`, which the hydration array calls to make a promise
+	// the page renders its pending branch against, and `resolve(id, fn)`, which
+	// each chunk calls to settle it. `deferred` is declared before the global,
+	// because the global's own properties close over it.
+	var blocks []string
+	if len(promises.order) > 0 {
+		blocks = append(blocks, "const deferred = new Map();")
+		properties = append(properties, deferProperty, s.resolveProperty(prefixed))
 	}
+
 	// `node_ids` are the numbers the client's own node table uses, which are
 	// the ones each node module declares rather than its position in the
 	// manifest. Kit renumbers a manifest's nodes and the client bundle is not
@@ -177,12 +194,54 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, pl
 		"\t\t\t\t\t\t" + serialized + "kit.start(app, " + strings.Join(arguments, ", ") + ");\n" +
 		"\t\t\t\t\t});"
 
-	blocks := []string{
-		global + " = {\n\t\t\t\t\t\t" + strings.Join(properties, ",\n\t\t\t\t\t\t") + "\n\t\t\t\t\t};",
+	blocks = append(blocks,
+		global+" = {\n\t\t\t\t\t\t"+strings.Join(properties, ",\n\t\t\t\t\t\t")+"\n\t\t\t\t\t};",
 		"const element = document.currentScript.parentElement;",
 		boot,
-	}
+	)
 	return "\n\t\t\t\t{\n\t\t\t\t\t" + strings.Join(blocks, "\n\n\t\t\t\t\t") + "\n\t\t\t\t}\n\t\t\t", nil
+}
+
+// deferProperty is kit's `defer` (`page/render.js`): the function the hydration
+// array calls to obtain the promise a page is rendering its pending branch
+// against, keeping the two halves of it where the chunk that settles it can
+// find them.
+const deferProperty = "defer: (id) => new Promise((fulfil, reject) => {\n" +
+	"\t\t\t\t\t\t\tdeferred.set(id, { fulfil, reject });\n" +
+	"\t\t\t\t\t\t})"
+
+// resolveProperty is kit's `resolve`: what a chunk calls when a value the
+// server promised has arrived.
+//
+// The retry loop is kit's own, and its comment says why: a chunk can be
+// evaluated before the hydration array that registered its id has been, so the
+// id is waited for rather than assumed. With a transport hook the client's app
+// module has to be in hand first, because the chunk's expression calls
+// `app.decode`; kit imports it here for exactly that reason
+// (`has_custom_transporters`), and skgo's app is always the split bundle.
+func (s *SSR) resolveProperty(prefixed func(string) string) string {
+	prelude := "const [data, error] = fn();"
+	if len(s.loads.cfg.Transport) > 0 {
+		prelude = "const kit = await import(" + jsString(prefixed(s.info.Client.Start)) + ");\n" +
+			"\t\t\t\t\t\t\tkit.init(" + s.info.GlobalName + ");\n" +
+			"\t\t\t\t\t\t\tconst app = await import(" + jsString(prefixed(s.info.Client.App)) + ");\n" +
+			"\t\t\t\t\t\t\tconst [data, error] = fn(app);"
+	}
+	return "resolve: async (id, fn) => {\n" +
+		"\t\t\t\t\t\t\t" + prelude + "\n" +
+		"\n" +
+		"\t\t\t\t\t\t\tconst try_to_resolve = () => {\n" +
+		"\t\t\t\t\t\t\t\tif (!deferred.has(id)) {\n" +
+		"\t\t\t\t\t\t\t\t\tsetTimeout(try_to_resolve, 0);\n" +
+		"\t\t\t\t\t\t\t\t\treturn;\n" +
+		"\t\t\t\t\t\t\t\t}\n" +
+		"\t\t\t\t\t\t\t\tconst { fulfil, reject } = deferred.get(id);\n" +
+		"\t\t\t\t\t\t\t\tdeferred.delete(id);\n" +
+		"\t\t\t\t\t\t\t\tif (error) reject(error);\n" +
+		"\t\t\t\t\t\t\t\telse fulfil(data);\n" +
+		"\t\t\t\t\t\t\t}\n" +
+		"\t\t\t\t\t\t\ttry_to_resolve();\n" +
+		"\t\t\t\t\t\t}"
 }
 
 // hydrationData is the array kit's client hydrates the branch from: one entry
@@ -193,8 +252,14 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, pl
 // The value written here is the same tree the engine rendered from, encoded
 // once in render() with the app's transport hook in hand, so the markup in the
 // document and the data the client hydrates it with cannot disagree.
-func (s *SSR) hydrationData(nodes []dataNode) (string, error) {
-	replacer := s.loads.cfg.Transport.unevalReplacer()
+//
+// A value the server has only promised is written as `<global>.defer(<id>)`,
+// which is the promise the page is already rendering its pending branch
+// against. Walking the nodes in order here is what numbers those ids, so the
+// numbering is kit's: `add_node` is called node by node and its replacer hands
+// out `promise_id++` on first encounter.
+func (s *SSR) hydrationData(nodes []dataNode, promises *promiseTable) (string, error) {
+	replacer := s.deferReplacer(promises)
 	parts := make([]string, 0, len(nodes))
 	for _, node := range nodes {
 		if node.kind != "data" {

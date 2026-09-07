@@ -77,6 +77,13 @@ type Node struct {
 	//
 	// "" is a node with no load.
 	Data string `json:"data"`
+	// Deferred names the load's fields that are values the server has
+	// promised rather than values it holds. Data carries null for each of
+	// them; the bundle puts a promise there instead, so an `{#await}` over one
+	// renders its pending branch and the value follows the document down as a
+	// chunk. Kit hands its renderer the promise itself, which is the same
+	// thing said in a language that has one.
+	Deferred []string `json:"deferred,omitempty"`
 }
 
 // Error is kit's `App.Error`.

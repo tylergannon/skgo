@@ -1,6 +1,7 @@
 package skgo
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -450,6 +451,59 @@ func (t *promiseTable) id(d *deferred) int {
 	t.ids[d] = id
 	t.order = append(t.order, d)
 	return id
+}
+
+// settled calls out with each promise as it settles, which is the order kit
+// sends them in: its iterator hands a settling promise the next free slot
+// rather than its own (`utils/streaming.js`), so the first value to arrive is
+// the first one written. The ids are what let the browser tell them apart, and
+// they travel with each chunk.
+//
+// The table may grow while this runs — a chunk kit writes can itself introduce
+// a promise — so the loop re-reads it rather than iterating a snapshot. It
+// returns when every promise the table holds has been written, or when ctx is
+// done, which is a visitor who closed the tab.
+func (t *promiseTable) settled(ctx context.Context, out func(id int, value any, err error)) {
+	type result struct {
+		id    int
+		value any
+		err   error
+	}
+	results := make(chan result)
+
+	started, written := 0, 0
+	for {
+		t.mu.Lock()
+		waiting := append([]*deferred(nil), t.order[started:]...)
+		ids := make([]int, len(waiting))
+		for i, d := range waiting {
+			ids[i] = t.ids[d]
+		}
+		started = len(t.order)
+		t.mu.Unlock()
+
+		for i, d := range waiting {
+			id := ids[i]
+			go func() {
+				value, err := d.wait(ctx)
+				select {
+				case results <- result{id: id, value: value, err: err}:
+				case <-ctx.Done():
+				}
+			}()
+		}
+
+		if written == started {
+			return
+		}
+		select {
+		case r := <-results:
+			written++
+			out(r.id, r.value, r.err)
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func flush(w http.ResponseWriter) {
