@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -170,7 +171,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		// `respond_with_error(new SvelteKitError(404, 'Not Found', ...))`, so
 		// the visitor gets the app's own error page inside the app's own root
 		// layout rather than a shell that has to boot before it can say so.
-		return s.respondWithError(w, r, req, "", map[string]string{}, &HTTPError{Status: http.StatusNotFound, Message: "Not Found"})
+		return s.respondWithError(w, r, req, "", map[string]string{}, &HTTPError{Status: http.StatusNotFound, Message: "Not Found"}, nil)
 	}
 	if !route.hasPage {
 		return false
@@ -192,7 +193,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 			return s.respondWithError(w, r, req, route.id, params, &HTTPError{
 				Status:  405,
 				Message: "POST method not allowed. No form actions exist for this page",
-			})
+			}, nil)
 		}
 		submitted, redirect, e := s.runFormAction(r, id)
 		if redirect != nil {
@@ -207,7 +208,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 				// that names no form the same way, `allow: 'GET'` included.
 				w.Header().Set("Allow", "GET")
 			}
-			return s.respondWithError(w, r, req, route.id, params, e)
+			return s.respondWithError(w, r, req, route.id, params, e, nil)
 		}
 		action = submitted
 	}
@@ -251,7 +252,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		if node.kind != "error" || node.err == nil {
 			continue
 		}
-		return s.serveLoadError(w, r, req, route, params, shared, filled, nodes, i, node.err)
+		return s.serveLoadError(w, r, req, route, params, shared, filled, nodes, i, node.err, node.raw)
 	}
 
 	// Kit renders `compact(branch)`: a slot that no layout fills is dropped,
@@ -330,7 +331,13 @@ func (s *SSR) pageOptions(route *dataRoute) (ssr bool, csr bool) {
 // layouts below that depth are dropped, and so is their data. A failure with no
 // error page above it happened in the root layout, and kit's answer to that is
 // `error.html`.
-func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataRequest, route *dataRoute, params map[string]string, shared *loadRequest, filled []bool, nodes []dataNode, at int, e *HTTPError) bool {
+func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataRequest, route *dataRoute, params map[string]string, shared *loadRequest, filled []bool, nodes []dataNode, at int, e *HTTPError, raw error) bool {
+	// The app's handleError hook, if it has one, is consulted here — kit's
+	// `handle_error_and_jsonify` runs for every error that reaches a rendered
+	// document, expected or not (`page/index.js`), and what it returns is
+	// merged over the load's own status and message before the error page
+	// ever sees either.
+	pageError := s.documentError(s.hookContext(r, shared), route.id, e, raw)
 	for _, candidate := range nearestErrorPages(at, filled, route.errors) {
 		if candidate.node < 0 || candidate.node >= len(s.info.Nodes) {
 			continue
@@ -338,8 +345,8 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 		plan := documentPlan{
 			routeID:   route.id,
 			params:    params,
-			status:    e.Status,
-			pageError: &ssr.Error{Status: e.Status, Message: e.Message},
+			status:    pageError.Status,
+			pageError: pageError,
 			// The page's own options are gone with the page. Kit reduces `ssr`
 			// and `csr` over the layouts that survive and nothing else
 			// (`new PageNodes(layouts.map(...))`), so a leaf that turned
@@ -367,8 +374,12 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 
 	// Nothing above the failing node declares an error page, which can only
 	// mean the root layout is where it failed.
-	s.report(route.id, e)
-	return s.staticErrorPage(w, r, e.Status, e.Message)
+	if raw != nil {
+		s.report(route.id, raw)
+	} else {
+		s.report(route.id, e)
+	}
+	return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 }
 
 // respondWithError is kit's `respond_with_error`: the root layout with the root
@@ -379,10 +390,25 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 // `generate_manifest` always keeps nodes 0 and 1, "as they are needed for 404
 // and root errors", so 0 is the root layout and 1 the root error page in every
 // manifest kit writes.
-func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, e *HTTPError) bool {
+func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, e *HTTPError, raw error) bool {
 	const rootLayout, rootError = 0, 1
+
+	// Kit consults the hook once, at the very top — "do this here first in
+	// case the awaits below before rendering themselves error"
+	// (`respond_with_error.js`) — and uses what it returns for every branch
+	// below, including the static page a further failure falls back to. The
+	// event it hands the hook is the request's own, built ahead of the root
+	// layout's `shared` because kit's is available before the layout ever
+	// runs too.
+	hookRequest := &loadRequest{
+		req: r,
+		jar: newCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev)),
+		url: req.url, routeID: routeID, params: params,
+	}
+	pageError := s.documentError(s.hookContext(r, hookRequest), routeID, e, raw)
+
 	if len(s.info.Nodes) <= rootError {
-		return s.staticErrorPage(w, r, e.Status, e.Message)
+		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
 	if v := s.info.Nodes[rootLayout].SSR; v != nil && !*v {
 		// An app whose root layout turns SSR off renders nothing anywhere, and
@@ -405,18 +431,18 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 	}
 	if nodes[0].kind == "error" {
 		s.report(routeID, nodes[0].err)
-		return s.staticErrorPage(w, r, e.Status, e.Message)
+		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
 	if err := s.encodeBranch(nodes); err != nil {
 		s.report(routeID, err)
-		return s.staticErrorPage(w, r, e.Status, e.Message)
+		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
 
 	plan := documentPlan{
 		routeID:   routeID,
 		params:    params,
-		status:    e.Status,
-		pageError: &ssr.Error{Status: e.Status, Message: e.Message},
+		status:    pageError.Status,
+		pageError: pageError,
 		hydrate:   hydrate,
 		indices:   []int{rootLayout, rootError},
 		nodes:     []dataNode{nodes[0], {}},
@@ -428,7 +454,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 	result, answers, err := s.renderPlan(r, req, plan)
 	if err != nil {
 		s.report(routeID, err)
-		return s.staticErrorPage(w, r, e.Status, e.Message)
+		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
 	if result.Redirect != nil {
 		s.writeRedirect(w, shared, result.Redirect.Status, result.Redirect.Location)
@@ -438,7 +464,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 	document, promises, err := s.assemble(req, plan, result, answers)
 	if err != nil {
 		s.report(routeID, err)
-		return s.staticErrorPage(w, r, e.Status, e.Message)
+		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
 	if len(promises.order) > 0 {
 		s.stream(w, r, shared, document, promises)
@@ -455,7 +481,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 // would give it, and never a blank or half-written one.
 func (s *SSR) failed(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, err error) bool {
 	s.report(routeID, err)
-	return s.respondWithError(w, r, req, routeID, params, asHTTPError(err))
+	return s.respondWithError(w, r, req, routeID, params, asHTTPError(err), err)
 }
 
 // report tells the app about a failure it will otherwise never see, because the
@@ -915,9 +941,13 @@ func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest
 	flush(w)
 
 	ctx := r.Context()
+	hookCtx := ctx
+	if shared != nil {
+		hookCtx = s.hookContext(r, shared)
+	}
 	replacer := s.deferReplacer(promises)
 	promises.settled(ctx, func(id int, value any, err error) {
-		_, _ = io.WriteString(w, s.chunkScript(id, value, err, replacer))
+		_, _ = io.WriteString(w, s.chunkScript(hookCtx, id, value, err, replacer))
 		flush(w)
 	})
 }
@@ -933,8 +963,8 @@ func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest
 // takes `app` rather than nothing when the value was written through the app's
 // transport hook, because `app.decode` is only in scope once the client's app
 // module is in hand.
-func (s *SSR) chunkScript(id int, value any, err error, replacer devalue.Replacer) string {
-	written := s.unevalChunk(value, err, replacer)
+func (s *SSR) chunkScript(ctx context.Context, id int, value any, err error, replacer devalue.Replacer) string {
+	written := s.unevalChunk(ctx, value, err, replacer)
 	arrow := "() => "
 	if strings.Contains(written, "app.decode") {
 		arrow = "(app) => "
@@ -943,10 +973,10 @@ func (s *SSR) chunkScript(id int, value any, err error, replacer devalue.Replace
 }
 
 // unevalChunk writes the pair a chunk carries. A value that cannot be written
-// becomes the same error kit's would: kit catches the failure, puts it through
-// `handle_error_and_jsonify` and writes `[, error]` instead, and with no
-// handleError hook that is Internal Error every time.
-func (s *SSR) unevalChunk(value any, err error, replacer devalue.Replacer) string {
+// becomes the same error kit's would: kit catches the failure and puts it
+// through `handle_error_and_jsonify`, consulting the app's handleError hook
+// exactly as every other error a render produces does.
+func (s *SSR) unevalChunk(ctx context.Context, value any, err error, replacer devalue.Replacer) string {
 	if err == nil {
 		// The Deferred held the raw Go value so that this is the first place it
 		// is encoded, with the transport hook in hand. encodeLoadValue rather
@@ -963,14 +993,34 @@ func (s *SSR) unevalChunk(value any, err error, replacer devalue.Replacer) strin
 		s.report("", encodeErr)
 		err = encodeErr
 	}
-	written, unevalErr := devalue.UnevalWith([]any{devalue.Hole, errorNode(asHTTPError(err))}, replacer)
+	pageErr := s.documentError(ctx, "", asHTTPError(err), err)
+	written, unevalErr := devalue.UnevalWith([]any{devalue.Hole, errorNodeExtra(pageErr)}, replacer)
 	if unevalErr != nil {
-		// The error itself is two numbers and a string, so this cannot happen
-		// with any error skgo produces; a document that has already been sent
-		// still has to say something.
+		// The error itself is a handful of JSON-safe scalars, so this cannot
+		// happen with any error skgo produces; a document that has already
+		// been sent still has to say something.
 		return "[, {status: 500, message: " + jsString("Internal Error") + "}]"
 	}
 	return written
+}
+
+// errorNodeExtra is errorNode (remote.go) widened for the extra properties
+// the app's handleError hook may have added: status and message first, kit's
+// own order, then everything else sorted, so a document that carries one
+// reads the same twice running.
+func errorNodeExtra(e *ssr.Error) *devalue.Object {
+	obj := &devalue.Object{}
+	obj.Set("status", float64(e.Status))
+	obj.Set("message", e.Message)
+	keys := make([]string, 0, len(e.Extra))
+	for k := range e.Extra {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		obj.Set(k, e.Extra[k])
+	}
+	return obj
 }
 
 // deferReplacer is kit's `get_replacer` (`page/data_serializer.js`): a promise

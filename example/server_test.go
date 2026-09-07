@@ -157,6 +157,16 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 					t.Errorf("route %s: GET %s leaked %q into the document", route.ID, path, leaked)
 				}
 			}
+			// example.HandleError adds this to every error the page-render
+			// path consults it on; a document that lacks it either skipped
+			// the hook or dropped what it returned.
+			const supportID = "case-1121"
+			if want.handled && !strings.Contains(body, supportID) {
+				t.Errorf("route %s: GET %s does not carry the handleError hook's support id %q", route.ID, path, supportID)
+			}
+			if !want.handled && strings.Contains(body, supportID) {
+				t.Errorf("route %s: GET %s carries the support id %q, but this failure is not supposed to reach the hook yet", route.ID, path, supportID)
+			}
 			if want.static {
 				// error.html is a whole document of its own: no app markup, and
 				// no script, so nothing boots and nothing tries again.
@@ -262,18 +272,39 @@ var deliberateFailures = map[string]struct {
 	// rendered reports that the page itself rendered and only the status
 	// moved, which is what a boundary that caught its own failure produces.
 	rendered bool
+	// handled reports that this failure reaches Go's own serveLoadError or
+	// respondWithError — the page-render path the app's handleError hook is
+	// wired into (example.HandleError) — so the document must carry the
+	// support id that hook adds to every error it sees. A failure caught by
+	// the SSR bundle's own error boundary (transformError) does not set this:
+	// that path does not consult the hook yet, so a document from it must
+	// NOT carry the support id either, or this check would stop meaning
+	// anything.
+	handled bool
 }{
 	// A load that throws error(402, ...) under /account, which declares its own
 	// +error.svelte: the account layout survives and its error page renders
 	// inside it.
-	"/account/statement": {status: 402, says: "Your account is in arrears", inside: `data-testid="account-user"`},
-	// The same thing with no error page nearer than the root's.
-	"/error/expected": {status: 418, says: "This page is a teapot", inside: `data-testid="app-nav"`},
-	// A load that fails with an ordinary error: 500 Internal Error, and not one
-	// word of what actually went wrong.
+	"/account/statement": {
+		status: 402, says: "Your account is in arrears", inside: `data-testid="account-user"`,
+		handled: true,
+	},
+	// The same thing with no error page nearer than the root's. The hook runs
+	// for this one too — kit's own `handleError` is not skipped for an error
+	// the app raised on purpose, only kept from overriding its message unless
+	// it chooses to.
+	"/error/expected": {
+		status: 418, says: "This page is a teapot", inside: `data-testid="app-nav"`,
+		handled: true,
+	},
+	// A load that fails with an ordinary error. Kit's own rule is that the
+	// visitor is told nothing about why; what they are told instead is now
+	// the app's own words, because example.HandleError decides an unknown
+	// error's message rather than leaving it at the generic default.
 	"/error/unexpected": {
-		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
-		never: []string{"hunter2", "postgres://"},
+		status: 500, says: "Something went wrong on our end.", inside: `data-testid="app-nav"`,
+		never:   []string{"hunter2", "postgres://", "Internal Error"},
+		handled: true,
 	},
 	// A command called while the page renders. Kit refuses it, transformError
 	// turns the refusal into Internal Error, and the boundary the root error
@@ -294,8 +325,13 @@ var deliberateFailures = map[string]struct {
 	"/error/redirect": {status: 307, location: "/about"},
 	// A throw in the root layout, which no error page can guard. Both the
 	// render and the retry through respond_with_error fail, and kit's static
-	// error.html is what is left.
-	"/error/render": {status: 500, says: "Internal Error", static: true},
+	// error.html is what is left — still with the app's own words on it,
+	// because respond_with_error consults the hook before it ever tries the
+	// retry (kit's own respond_with_error.js: "Do this here first in case the
+	// awaits below before rendering themselves error"). error.html has no
+	// slot for anything beyond status and message, though, so the support id
+	// the hook also returns never reaches this particular document.
+	"/error/render": {status: 500, says: "Something went wrong on our end.", static: true},
 }
 
 // TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage is kit's `respond.js`
