@@ -1,0 +1,57 @@
+name: skgo-issue-39
+goal: |
+  GitHub issue #39 in tylergannon/skgo (read it with `gh issue view 39`).
+
+  Capability when done: a form remote function works without JavaScript and
+  its result reaches the rendered document. A non-enhanced POST to a form
+  remote function (`?/remote=<id>`) is answered with the page re-rendered in
+  Go, carrying the submission's issues and result exactly where kit puts them
+  (`<global>.data.f`, and `form:` in the hydrate object instead of always
+  null), so the page shows validation issues or the result with scripting
+  off and hydrates to the same state with it on.
+
+  Specification: kit's handling of a form remote POST and
+  `uneval_action_response` in the pinned source, mirrored byte for byte in
+  the document Go assembles. Start from main, which now streams deferred
+  values into the document (#38); build on that assembly, do not fork it.
+
+  Proof that will be believed: Gherkin scenarios in example/e2e for a form
+  submitted with JavaScript disabled that (a) fails validation and shows the
+  issues in the re-rendered page and (b) succeeds and shows the result, with
+  screenshots of each; the same form with JavaScript on reaching the same
+  state; a Go test on the assembled document's form slot. Open every
+  screenshot and look at it.
+
+  Constraints: this run owns form action rendering in the document. Do not
+  touch transport encoding or the adapter.
+
+  Read AGENTS.md first — it governs this project. Create the worktree with
+  `just worktree <branch>` from /Users/tyler/src/skgo; `just --list` is the rest
+  of the plumbing. The pinned kit source — the specification — is at the
+  absolute path /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit,
+  outside any worktree and reachable from anywhere. Work only in your worktree.
+  Pick a free port with `just ports` before binding one and kill your own
+  server by pid when done.
+
+  When the capability is demonstrated: open a PR against main whose body can
+  serve as the squash commit message, with the screenshots attached or linked
+  in the body, and say "Closes #N". Do not merge it. Append actionable
+  intelligence, not narrative, to a worklog under ephemeral/worklog/. Do not
+  return while any subagent you dispatched is still running.
+
+start: build
+
+defaults:
+  timeout: 3600s
+  max_retries: 1
+  model:
+    name: claude-opus-5
+    effort: high
+
+nodes:
+  - id: build
+    type: agent
+    max_visits: 1
+    prompt: $goal
+    edges:
+      - to: success
