@@ -36,7 +36,8 @@
 		"src/routes/account/statement/+page.server.ts",
 		"src/routes/empty/+page.server.ts",
 		"src/routes/error/expected/+page.server.ts",
-		"src/routes/error/unexpected/+page.server.ts"
+		"src/routes/error/unexpected/+page.server.ts",
+		"src/routes/stream/+page.server.ts"
 	],
 	"endpoints": {
 		"/api/todos": [

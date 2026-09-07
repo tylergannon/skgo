@@ -74,6 +74,10 @@
 		{
 			"link": "generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu",
 			"target": "web/src/routes/items/[id]"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5zxi4tfmfwq",
+			"target": "web/src/routes/stream"
 		}
 	]
 }

@@ -84,15 +84,15 @@ type Node struct {
 	// object belongs to, and a method call on the object that arrived instead
 	// throws in the middle of a render.
 	//
-	// "" is a node with no load.
-	Data string `json:"data"`
-	// Deferred names the load's fields that are values the server has
-	// promised rather than values it holds. Data carries null for each of
-	// them; the bundle puts a promise there instead, so an `{#await}` over one
+	// A value the load promised crosses as kit's own promise placeholder,
+	// `["Promise", <id>]`, and the bundle reads it back with a `Promise`
+	// reviver into a promise that never settles — so an `{#await}` over one
 	// renders its pending branch and the value follows the document down as a
 	// chunk. Kit hands its renderer the promise itself, which is the same
 	// thing said in a language that has one.
-	Deferred []string `json:"deferred,omitempty"`
+	//
+	// "" is a node with no load.
+	Data string `json:"data"`
 }
 
 // Form is one non-enhanced form submission, on its way into the render.
@@ -154,6 +154,8 @@ type Redirect struct {
 // Engine is a pool of runtimes sharing one compiled program.
 type Engine struct {
 	program *goja.Program
+	// console is where every runtime's `console` reports.
+	console Console
 	// idle holds runtimes that are not rendering. A runtime is only ever
 	// checked out by one goroutine, which is what keeps a render from
 	// re-entering one.
@@ -180,6 +182,10 @@ type runtime struct {
 	// failed is set when a host call could not be answered, so that the
 	// failure surfaces as a Go error rather than as a rendered error message.
 	failed error
+	// route is the route id of the render in flight, so that a line the engine
+	// writes to `console` says which page wrote it. Like host, it is written
+	// and read by the one goroutine holding the runtime.
+	route string
 }
 
 // Call is one remote-function call a render made.
@@ -189,8 +195,9 @@ type Call struct {
 }
 
 // New compiles the bundle and returns an engine that will create at most size
-// runtimes. A size below one is one.
-func New(name string, source []byte, size int) (*Engine, error) {
+// runtimes. A size below one is one. console is told what the engine writes to
+// `console`; a nil one logs.
+func New(name string, source []byte, size int, console Console) (*Engine, error) {
 	program, err := goja.Compile(name, string(source), false)
 	if err != nil {
 		return nil, fmt.Errorf("skgo: the SSR bundle does not parse: %w", err)
@@ -198,8 +205,12 @@ func New(name string, source []byte, size int) (*Engine, error) {
 	if size < 1 {
 		size = 1
 	}
+	if console == nil {
+		console = defaultConsole
+	}
 	e := &Engine{
 		program: program,
+		console: console,
 		idle:    make(chan *runtime, size),
 		permits: make(chan struct{}, size),
 	}
@@ -231,6 +242,12 @@ func (e *Engine) Created() int {
 
 func (e *Engine) newRuntime() (*runtime, error) {
 	rt := &runtime{vm: goja.New()}
+
+	// Before the bundle, not after: the bundle's own top-level code calls
+	// console, and a bundle that cannot come up has to be able to say why.
+	if err := rt.installGlobals(e.console); err != nil {
+		return nil, err
+	}
 
 	if err := rt.vm.Set("__skgo_remote", func(id, payload string) (string, error) {
 		rt.calls = append(rt.calls, Call{ID: id, Payload: payload})
@@ -283,9 +300,11 @@ func (e *Engine) newRuntime() (*runtime, error) {
 }
 
 // Render renders one page, answering every remote function it asks for with
-// host. It returns the calls the render made, in order, so the caller can
-// serialise exactly the answers it gave into the document.
-func (e *Engine) Render(request []byte, host Host) (Result, []Call, error) {
+// host. routeID is kit's route id, and is only used to say which page a line
+// the engine wrote to `console` came from. It returns the calls the render
+// made, in order, so the caller can serialise exactly the answers it gave into
+// the document.
+func (e *Engine) Render(routeID string, request []byte, host Host) (Result, []Call, error) {
 	rt, err := e.acquire()
 	if err != nil {
 		return Result{}, nil, err
@@ -295,7 +314,8 @@ func (e *Engine) Render(request []byte, host Host) (Result, []Call, error) {
 	rt.host = host
 	rt.calls = nil
 	rt.failed = nil
-	defer func() { rt.host = nil }()
+	rt.route = routeID
+	defer func() { rt.host = nil; rt.route = "" }()
 
 	v, err := rt.render(goja.Undefined(), rt.vm.ToValue(string(request)))
 	if err != nil {

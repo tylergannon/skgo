@@ -8,6 +8,12 @@
 origin := env("ORIGIN", "http://127.0.0.1:8080")
 port := env("SKGO_PORT", "8080")
 
+# Where `just serve` copies the server's log. The Gherkin suite reads it,
+# because one claim in it is about a line only an operator ever sees: what the
+# rendering engine wrote to the console. A browser never sees that, so a
+# scenario about it has nowhere else to look.
+log := env("SKGO_LOG", justfile_directory() / "example/e2e/server.log")
+
 _default:
     @just --list --unsorted
 
@@ -40,7 +46,7 @@ test:
 
 # the example server, against the built frontend
 serve:
-    go run ./example/cmd -listen 127.0.0.1:{{port}}
+    go run ./example/cmd -listen 127.0.0.1:{{port}} 2>&1 | tee "{{log}}"
 
 # vite in dev, for the proxied path
 dev:
@@ -54,7 +60,7 @@ dev:
 
 # the Gherkin suite against a server you started
 e2e mode="prod":
-    cd example/e2e && BASE_URL="{{origin}}" EXPECTED_MODE={{mode}} mise x -- pnpm test
+    cd example/e2e && BASE_URL="{{origin}}" EXPECTED_MODE={{mode}} SKGO_LOG="{{log}}" mise x -- pnpm test
 
 # `git worktree add -b` has silently landed an agent on main once, so the
 # branch is confirmed rather than assumed. The pinned kit source is not copied

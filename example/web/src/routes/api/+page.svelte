@@ -7,6 +7,11 @@
 
 	let todos = $state<Todo[] | null>(null);
 	let draft = $state('');
+	// The record the endpoint said it created, out of the 201's own body. The
+	// list below is a separate GET, so naming the id here is what lets a
+	// caller say "the thing I created is in the list" rather than "something
+	// with that text is".
+	let created = $state<Todo | null>(null);
 	let last = $state<{ method: string; status: number; type: string; allow: string } | null>(null);
 
 	function record(method: string, response: Response) {
@@ -33,6 +38,7 @@
 		});
 		record('POST', response);
 		if (response.status === 201) {
+			created = await response.json();
 			draft = '';
 			await load(false);
 		}
@@ -66,10 +72,14 @@
 	<p data-testid="api-pending">calling the endpoint…</p>
 {/if}
 
+{#if created}
+	<p data-testid="api-created">created {created.id}</p>
+{/if}
+
 {#if todos}
 	<ul data-testid="api-todos">
 		{#each todos as todo (todo.id)}
-			<li data-testid="api-todo">{todo.text}</li>
+			<li data-testid="api-todo" data-id={todo.id}>{todo.text}</li>
 		{/each}
 	</ul>
 {/if}

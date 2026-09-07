@@ -40,6 +40,13 @@ export type Data = {
 	count: number;
 	/** Their URLs, in order — used to explain a failed count. */
 	urls: string[];
+	/**
+	 * The most recent data response. It is the other half of a streaming
+	 * claim: a client-side navigation gets the page's values on this response
+	 * rather than on a document, so the order they arrive in is only visible
+	 * here.
+	 */
+	last: Response | null;
 	/** Freeze the current count so `since` can measure a single interaction. */
 	mark(): void;
 	/** How many data requests were made since the last `mark()`. */
@@ -118,6 +125,7 @@ export const test = base.extend<{
 			const data: Data = {
 				count: 0,
 				urls: [],
+				last: null,
 				mark() {
 					marked = data.count;
 				},
@@ -133,6 +141,10 @@ export const test = base.extend<{
 				if (!request.url().includes('/__data.json')) return;
 				data.count++;
 				data.urls.push(`${request.method()} ${new URL(request.url()).pathname}`);
+			});
+			page.on('response', (response) => {
+				if (!response.url().includes('/__data.json')) return;
+				data.last = response;
 			});
 
 			await use(data);

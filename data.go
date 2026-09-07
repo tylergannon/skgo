@@ -300,16 +300,7 @@ func (ls *Loads) writeNodes(w http.ResponseWriter, r *http.Request, shared *load
 	// Nothing turns on it here (a *deferred is not a value any transporter
 	// claims), but the two sites that serialize towards the browser should not
 	// disagree about precedence.
-	reducers := append(ls.cfg.Transport.reducers(), devalue.Reducer{
-		Key: "Promise",
-		Fn: func(v any) (any, bool, error) {
-			holder, ok := v.(*deferred)
-			if !ok {
-				return nil, false, nil
-			}
-			return float64(promises.id(holder)), true, nil
-		},
-	})
+	reducers := append(ls.cfg.Transport.reducers(), promiseReducer(promises))
 
 	parts := make([]string, len(nodes))
 	for i, n := range nodes {
@@ -346,25 +337,27 @@ func (ls *Loads) writeNodes(w http.ResponseWriter, r *http.Request, shared *load
 
 	// The stream ends when every promise has settled, including any a chunk
 	// itself introduced. There is no terminator: the body simply closes.
-	ctx := r.Context()
-	for i := 0; i < len(promises.order); i++ {
-		d := promises.order[i]
-		id := promises.ids[d]
-		value, err := d.wait(ctx)
-		if ctx.Err() != nil {
-			return
-		}
+	//
+	// Settlement order, not id order: kit's iterator gives a settling promise
+	// the next free slot (`utils/streaming.js`), so a fast second value is
+	// never held behind a slow first one. A client-side navigation therefore
+	// fills the page in the same order a cold load does.
+	promises.settled(r.Context(), func(id int, value any, err error) {
 		w.Write([]byte(chunkLine(id, value, err, reducers, ls.cfg.Transport)))
 		flush(w)
-	}
+	})
 }
 
 func chunkLine(id int, value any, err error, reducers []devalue.Reducer, transport Transport) string {
 	key, payload := "data", any(nil)
 	if err == nil {
 		// The Deferred held the raw Go value so that this is the first place it
-		// is encoded, with the transport hook in hand.
-		payload, err = transport.encodeTree(value)
+		// is encoded, with the transport hook in hand. encodeLoadValue rather
+		// than encodeTree because a promised value may itself hold a promise:
+		// kit writes each chunk with the same reducers it wrote the first one
+		// with, so a nested promise is simply another chunk on the same
+		// response.
+		payload, err = transport.encodeLoadValue(value)
 	}
 	if err != nil {
 		key, payload = "error", errorNode(asHTTPError(err))
@@ -442,6 +435,23 @@ func (ls *Loads) header(w http.ResponseWriter) http.Header {
 		h.Set("X-Sveltekit-Version", ls.cfg.Version)
 	}
 	return h
+}
+
+// promiseReducer is kit's `Promise` reducer (`server_data_serializer_json`): a
+// promise becomes its id, and the id is what the client's own `Promise` reviver
+// keys the promise it makes on. devalue walks the whole tree, so a promised
+// value is found wherever the load left one.
+func promiseReducer(promises *promiseTable) devalue.Reducer {
+	return devalue.Reducer{
+		Key: "Promise",
+		Fn: func(v any) (any, bool, error) {
+			d, ok := v.(*deferred)
+			if !ok {
+				return nil, false, nil
+			}
+			return float64(promises.id(d)), true, nil
+		},
+	}
 }
 
 // promiseTable assigns kit's chunk ids. They start at 1: devalue's reducer loop

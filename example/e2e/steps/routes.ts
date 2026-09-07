@@ -32,8 +32,28 @@ Then(
 	}
 );
 
+// One of the endpoint's seeded records, in the list it answered with. Nothing
+// creates a second copy of a seeded todo, so the count is exact and stays that
+// way.
 Then('the endpoint returned a todo saying {string}', async ({ page, shot }, text: string) => {
 	await expect(page.getByTestId('api-todo').filter({ hasText: text })).toHaveCount(1);
+	await shot();
+});
+
+/**
+ * The record the endpoint said it created, found in the list the endpoint
+ * answers with — by its own id, not by its text.
+ *
+ * By id because the endpoint has no uniqueness rule and the store outlives a
+ * run: posting the same sentence twice creates two records, correctly, and a
+ * count of the rows saying it goes red on the second run against one server
+ * while nothing at all is wrong.
+ */
+Then('the todo the endpoint created is in its list, saying {string}', async ({ page, shot }, text: string) => {
+	await expect(page.getByTestId('api-created')).toBeVisible({ timeout: 15_000 });
+	const id = (await page.getByTestId('api-created').textContent())?.replace('created ', '').trim();
+	expect(id, 'the endpoint named no record it had created').toBeTruthy();
+	await expect(page.locator(`[data-testid="api-todo"][data-id="${id}"]`)).toHaveText(text);
 	await shot();
 });
 

@@ -18,23 +18,45 @@ import (
 // encoding/json's for every value in the app, transported or not; this file
 // only has to agree with encoding/json along the spine.
 func (t Transport) encodeTree(v any) (any, error) {
-	if len(t) == 0 {
-		return encodeValue(v)
-	}
-	return t.walk(reflect.ValueOf(v))
+	return treeEncoder{t: t}.walk(reflect.ValueOf(v))
+}
+
+// treeEncoder is encodeTree's state.
+//
+// promises is what separates a load's result from everything else. A Deferred
+// is a value the server has not got yet, and it survives the walk exactly as a
+// transported value does — left in place, as the Go value a devalue reducer is
+// watching for — so that the serializer can put kit's promise placeholder
+// where it sat. Everywhere else a Deferred is a mistake, and leaving promises
+// off is what makes it one.
+type treeEncoder struct {
+	t        Transport
+	promises bool
 }
 
 // walk is encodeTree's recursion. An invalid reflect.Value is an untyped nil.
-func (t Transport) walk(rv reflect.Value) (any, error) {
+func (e treeEncoder) walk(rv reflect.Value) (any, error) {
 	if !rv.IsValid() {
 		return nil, nil
 	}
-	if !t.reaches(rv.Type()) {
+	if !e.reaches(rv.Type()) {
 		return encodeValue(rv.Interface())
+	}
+	// A value the server only promised: hand it on as the Deferred itself.
+	// Kit puts a promise wherever its load left one — its serializer's reducer
+	// runs over the whole tree — so this is not confined to the top level.
+	if e.promises {
+		if holder, ok := rv.Interface().(deferredHolder); ok {
+			d := holder.deferredValue()
+			if d == nil {
+				return nil, fmt.Errorf("skgo: a zero %s reached the wire; build one with skgo.Async or skgo.Resolved", rv.Type())
+			}
+			return d, nil
+		}
 	}
 	// The value itself is transported: hand devalue the Go value, whose type
 	// its reducer is watching for.
-	if _, ok := t.byType(rv.Type()); ok {
+	if _, ok := e.t.byType(rv.Type()); ok {
 		return rv.Interface(), nil
 	}
 
@@ -43,7 +65,7 @@ func (t Transport) walk(rv reflect.Value) (any, error) {
 		if rv.IsNil() {
 			return nil, nil
 		}
-		return t.walk(rv.Elem())
+		return e.walk(rv.Elem())
 
 	case reflect.Slice, reflect.Array:
 		if rv.Kind() == reflect.Slice && rv.IsNil() {
@@ -57,7 +79,7 @@ func (t Transport) walk(rv reflect.Value) (any, error) {
 		}
 		out := make([]any, rv.Len())
 		for i := range out {
-			item, err := t.walk(rv.Index(i))
+			item, err := e.walk(rv.Index(i))
 			if err != nil {
 				return nil, err
 			}
@@ -75,7 +97,7 @@ func (t Transport) walk(rv reflect.Value) (any, error) {
 		out := make(map[string]any, rv.Len())
 		iter := rv.MapRange()
 		for iter.Next() {
-			value, err := t.walk(iter.Value())
+			value, err := e.walk(iter.Value())
 			if err != nil {
 				return nil, err
 			}
@@ -90,7 +112,7 @@ func (t Transport) walk(rv reflect.Value) (any, error) {
 		// Go field order while every other result stayed sorted, and the two
 		// would disagree about the same type.
 		obj := map[string]any{}
-		if err := t.structFields(rv, obj); err != nil {
+		if err := e.structFields(rv, obj); err != nil {
 			return nil, err
 		}
 		return obj, nil
@@ -107,13 +129,13 @@ func (t Transport) walk(rv reflect.Value) (any, error) {
 // collides with another; writing each promoted field as the walk passes it
 // would let the loser of a collision overwrite the winner, and would invent a
 // property for an ambiguous name that encoding/json writes for nobody.
-func (t Transport) structFields(rv reflect.Value, obj map[string]any) error {
+func (e treeEncoder) structFields(rv reflect.Value, obj map[string]any) error {
 	for _, f := range jsonFields(rv.Type()) {
 		value, reached := f.value(rv)
 		if !reached || f.omit(value) {
 			continue
 		}
-		encoded, err := t.walk(value)
+		encoded, err := e.walk(value)
 		if err != nil {
 			return err
 		}
@@ -139,23 +161,25 @@ var reachCache sync.Map // map[reachKey]bool
 
 type reachKey struct {
 	transport any // the map's identity, via a pointer-shaped key
+	promises  bool
 	rt        reflect.Type
 }
 
-// reaches reports whether a value of rt can hold a transported value anywhere
-// inside it. It is the whole reason the walk is cheap: a type that cannot reach
-// one is handed to encoding/json untouched.
+// reaches reports whether a value of rt can hold a transported value — or, in
+// a load's result, a promised one — anywhere inside it. It is the whole reason
+// the walk is cheap: a type that cannot reach one is handed to encoding/json
+// untouched.
 //
 // A type it cannot see through — an interface, whose dynamic type is not known
 // until there is a value — is reachable by assumption. Being wrong that way
 // costs a walk; being wrong the other way would silently drop a transported
 // value back to a plain object, which is the bug this whole file exists to fix.
-func (t Transport) reaches(rt reflect.Type) bool {
-	key := reachKey{transport: reflect.ValueOf(t).UnsafePointer(), rt: rt}
+func (e treeEncoder) reaches(rt reflect.Type) bool {
+	key := reachKey{transport: reflect.ValueOf(e.t).UnsafePointer(), promises: e.promises, rt: rt}
 	if cached, ok := reachCache.Load(key); ok {
 		return cached.(bool)
 	}
-	result := t.reachesWith(rt, map[reflect.Type]bool{})
+	result := e.reachesWith(rt, map[reflect.Type]bool{})
 	reachCache.Store(key, result)
 	return result
 }
@@ -164,11 +188,14 @@ func (t Transport) reaches(rt reflect.Type) bool {
 // recursive type terminates. A cycle is not a reason on its own: the answer for
 // a type already being decided is false, and any real reachability is found on
 // another branch.
-func (t Transport) reachesWith(rt reflect.Type, seen map[reflect.Type]bool) bool {
+func (e treeEncoder) reachesWith(rt reflect.Type, seen map[reflect.Type]bool) bool {
 	if rt == nil {
 		return false
 	}
-	if _, ok := t.byType(rt); ok {
+	if _, ok := e.t.byType(rt); ok {
+		return true
+	}
+	if e.promises && isDeferred(rt) {
 		return true
 	}
 	if seen[rt] {
@@ -179,9 +206,12 @@ func (t Transport) reachesWith(rt reflect.Type, seen map[reflect.Type]bool) bool
 
 	switch rt.Kind() {
 	case reflect.Interface:
-		return true
+		// Nothing to see through, and nothing to walk for either. With neither
+		// a transport nor a promise in play the whole value is encoding/json's
+		// anyway, and saying yes here would put every app on the slow path.
+		return len(e.t) > 0 || e.promises
 	case reflect.Pointer, reflect.Slice, reflect.Array, reflect.Map:
-		return t.reachesWith(rt.Elem(), seen)
+		return e.reachesWith(rt.Elem(), seen)
 	case reflect.Struct:
 		for i := range rt.NumField() {
 			field := rt.Field(i)
@@ -191,7 +221,7 @@ func (t Transport) reachesWith(rt reflect.Type, seen map[reflect.Type]bool) bool
 			if field.Tag.Get("json") == "-" {
 				continue
 			}
-			if t.reachesWith(field.Type, seen) {
+			if e.reachesWith(field.Type, seen) {
 				return true
 			}
 		}

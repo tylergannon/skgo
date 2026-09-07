@@ -184,20 +184,11 @@ func (a *app) collectLoadFields(load *loadFn, st *types.Struct, into *[]loadFiel
 	return nil
 }
 
-// projectLoadField is `project` plus the one type it does not know: a Deferred,
-// which reaches the browser as a promise.
+// projectLoadField is `project` where a promised value is allowed: a Deferred
+// reaches the browser as a promise, and kit lets one sit anywhere in the object
+// a load returns.
 func (a *app) projectLoadField(t types.Type) (string, []*types.Named, []*types.Named, error) {
-	if inner, ok := deferredElem(t); ok {
-		projected, err := a.project(inner)
-		if err != nil {
-			return "", nil, nil, fmt.Errorf("a deferred value's type cannot cross: %v", err)
-		}
-		return "Promise<" + projected.expr + ">", projected.deps, projected.transported, nil
-	}
-	if containsDeferred(t) {
-		return "", nil, nil, fmt.Errorf("%s holds a Deferred below the top level of the load's result; kit's client only awaits promises the load returns directly", t)
-	}
-	projected, err := a.project(t)
+	projected, err := a.projectType(t, true)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -220,9 +211,10 @@ func deferredElem(t types.Type) (types.Type, bool) {
 	return args.At(0), true
 }
 
-// containsDeferred reports whether a Deferred can occur anywhere inside t. The
-// generator refuses what the serializer cannot honour, so that the refusal
-// arrives at generate time rather than as a silent null on the wire.
+// containsDeferred reports whether a Deferred can occur anywhere inside t. It
+// is what decides that a named struct has to be written out inline rather than
+// declared by polytype, and — outside a load's result, where nothing streams —
+// what refuses one at generate time rather than as a silent null on the wire.
 func containsDeferred(t types.Type) bool {
 	return containsDeferredSeen(t, map[types.Type]bool{})
 }

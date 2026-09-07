@@ -25,7 +25,8 @@ import (
 	skgo14 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u"
 	skgo15 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa"
 	skgo16 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
-	skgo18 "github.com/tylergannon/skgo/example/web/src/lib"
+	skgo17 "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf5zxi4tfmfwq"
+	skgo19 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
 // Remotes returns every remote function declared in the app, ready to hand
@@ -49,7 +50,8 @@ func Remotes() []*skgo.Remote {
 	out = append(out, skgo14.SkgoRemotes()...)
 	out = append(out, skgo15.SkgoRemotes()...)
 	out = append(out, skgo16.SkgoRemotes()...)
-	out = append(out, skgo18.SkgoRemotes()...)
+	out = append(out, skgo17.SkgoRemotes()...)
+	out = append(out, skgo19.SkgoRemotes()...)
 	return out
 }
 
@@ -74,7 +76,8 @@ func Loads() []*skgo.ServerLoad {
 	out = append(out, skgo14.SkgoLoads()...)
 	out = append(out, skgo15.SkgoLoads()...)
 	out = append(out, skgo16.SkgoLoads()...)
-	out = append(out, skgo18.SkgoLoads()...)
+	out = append(out, skgo17.SkgoLoads()...)
+	out = append(out, skgo19.SkgoLoads()...)
 	return out
 }
 
@@ -99,7 +102,8 @@ func Endpoints() []*skgo.Endpoint {
 	out = append(out, skgo14.SkgoEndpoints()...)
 	out = append(out, skgo15.SkgoEndpoints()...)
 	out = append(out, skgo16.SkgoEndpoints()...)
-	out = append(out, skgo18.SkgoEndpoints()...)
+	out = append(out, skgo17.SkgoEndpoints()...)
+	out = append(out, skgo19.SkgoEndpoints()...)
 	return out
 }
 
