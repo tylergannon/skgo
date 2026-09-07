@@ -77,11 +77,22 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 	}
 
 	fn, ok := s.remotes.Lookup(id)
-	if !ok || fn.kind != kindForm {
-		// Kit's `method_not_allowed_result`: an id that names no form is a 405
-		// with an Allow header, and the page renders its error boundary at
-		// that status.
-		return nil, nil, &HTTPError{Status: 405, Message: "POST method not allowed. No form actions exist for this page"}
+	if !ok {
+		// Kit's `method_not_allowed_result`
+		// (`handle_remote_form_post_internal`, `if (!form)`): an id that
+		// resolves to nothing is a 405 and the page renders its error
+		// boundary at that status. The Allow header a 405 must carry is set
+		// by the caller, which holds the ResponseWriter; this is the only
+		// 405 this function returns.
+		return nil, nil, &HTTPError{Status: http.StatusMethodNotAllowed, Message: "POST method not allowed. No form actions exist for this page"}
+	}
+	if fn.kind != kindForm {
+		// Not a 405. Kit only checks that the name resolves; a query or
+		// command named here has no `__.fn`, the call throws, and
+		// `action_error_result` turns the throw into kit's opaque 500
+		// (`get_status` of anything but an HttpError). Mirror the status,
+		// not the accident: refuse before touching the body.
+		return nil, nil, &HTTPError{Status: http.StatusInternalServerError, Message: "Internal Error"}
 	}
 
 	entries, err := readFormEntries(r)

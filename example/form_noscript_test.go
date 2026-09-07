@@ -168,6 +168,45 @@ func TestAPostToAPageThatNamesNoFormIsNotAllowed(t *testing.T) {
 	}
 }
 
+// A POST whose `?/remote=` resolves to nothing is kit's other
+// `method_not_allowed_result`, in `handle_remote_form_post_internal`.
+func TestAPostThatNamesAMissingFormIsNotAllowed(t *testing.T) {
+	h := newProdHandler(t)
+
+	req := multipartRequest(t, "bogus/id", map[string]string{"from": "Ada"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want 405", rec.Code)
+	}
+	if got := rec.Header().Get("Allow"); got != "GET" {
+		t.Errorf(`Allow header = %q, want "GET"`, got)
+	}
+}
+
+// An id that resolves to a remote function that is not a form is not a 405 in
+// kit: `handle_remote_form_post_internal` only checks that the name resolves,
+// the call into a query throws, and `action_error_result` makes that the
+// opaque 500 of `get_status`. The contact page's `getMessages` is a query.
+func TestAPostThatNamesAQueryIsAnOpaqueError(t *testing.T) {
+	h := newProdHandler(t)
+
+	req := multipartRequest(t, remoteID(t, "getMessages"), map[string]string{"from": "Ada"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+	if got := rec.Header().Get("Allow"); got != "" {
+		t.Errorf("Allow header = %q on a response that is not a 405", got)
+	}
+	if !strings.Contains(rec.Body.String(), "Internal Error") {
+		t.Errorf("the error page does not carry kit's opaque message")
+	}
+}
+
 // submit is the POST a browser makes when the visitor presses the submit
 // button of `<form action="?/remote=<id>" method="POST"
 // enctype="multipart/form-data">` — the same encoding, the same field names,

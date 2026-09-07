@@ -198,6 +198,13 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 			return true
 		}
 		if e != nil {
+			if e.Status == http.StatusMethodNotAllowed {
+				// The other `method_not_allowed_result`: kit's
+				// `handle_remote_form_post_internal`
+				// (`runtime/server/remote-functions.js:551`) answers an id
+				// that names no form the same way, `allow: 'GET'` included.
+				w.Header().Set("Allow", "GET")
+			}
 			return s.respondWithError(w, r, req, route.id, params, e)
 		}
 		action = submitted
