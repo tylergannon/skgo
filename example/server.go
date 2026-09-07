@@ -41,14 +41,16 @@ func Handle(ctx context.Context) error {
 // proxy it forwards pages to a running `vp dev` server; otherwise it serves the
 // embedded build.
 //
-// The order is kit's own dispatch order, turned inside out into middleware. The
-// loads registry is outermost because kit runs `handle` before it dispatches to
-// anything, and because `__data.json` must never reach the static handler,
-// which would answer it with the boot document. Then remote functions, which
-// live under the app directory and are not routes at all. Then the server
-// routes, which own every path kit compiled a `+server.ts` for — in dev too,
-// where kit's own server would otherwise run the generated stub and throw.
-// Pages are last, because in kit they are what answers when nothing else did.
+// The order is kit's own dispatch order, turned inside out into middleware.
+// Handle is outermost because kit runs `handle` before it dispatches to
+// anything, for every kind of request — that is not the loads registry's
+// business even though this app also has one. Under it, the loads registry:
+// `__data.json` must never reach the static handler, which would answer it
+// with the boot document. Then remote functions, which live under the app
+// directory and are not routes at all. Then the server routes, which own
+// every path kit compiled a `+server.ts` for — in dev too, where kit's own
+// server would otherwise run the generated stub and throw. Pages are last,
+// because in kit they are what answers when nothing else did.
 func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) {
 	// The manifest is read in both modes: it is where appDir and base come
 	// from, and those decide the URL prefix remote calls arrive on.
@@ -59,8 +61,8 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 
 	remoteCfg := manifest.RemoteConfig(origin)
 	loadCfg := manifest.LoadConfig(origin)
-	loadCfg.Handle = Handle
 	endpointCfg := manifest.EndpointConfig(origin)
+	handleCfg := manifest.HandleConfig()
 
 	mode := "prod"
 	var pages http.Handler
@@ -81,6 +83,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		loadCfg.Version = ""
 		loadCfg.Dev = true
 		endpointCfg.Dev = true
+		handleCfg.Version = ""
 		mode, pages = "dev", skgo.NewDevProxy(target, log.Printf)
 	} else {
 		// The renderer needs the loads and the remote functions, and they need
@@ -124,5 +127,9 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 			return nil, "", err
 		}
 	}
-	return loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))), mode, nil
+	// Handle mounts outermost: kit runs `handle` before it dispatches to
+	// anything, and that is true of every registry below, not just the loads
+	// one that happens to also answer `__data.json`.
+	return skgo.Handle(Handle).Intercept(handleCfg,
+		loads.Intercept(remotes.Intercept(endpoints.Intercept(pages)))), mode, nil
 }

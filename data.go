@@ -33,42 +33,23 @@ func stripDataSuffix(pathname string) string {
 	return strings.TrimSuffix(pathname, dataSuffix)
 }
 
-// Intercept returns a handler that runs the app's `handle` hook, answers
-// `__data.json` itself, and passes everything else to next.
+// Intercept returns a handler that answers `__data.json` itself and passes
+// everything else to next.
 //
-// It must sit outermost: kit runs `handle` before it dispatches to a page, a
-// data request or a remote function, and in dev it must also sit in front of
-// the proxy, or kit's own dev server would run the generated stub and throw.
+// It must sit in front of whatever serves pages — the static handler in
+// production, the dev proxy in dev — so that `__data.json` never reaches
+// either of those, and in front of the remote registry too, since a `__data`
+// suffix and a remote call never share a path. Running the app's `handle`
+// hook is not this registry's business; see Handle, which mounts outermost
+// over this and everything else.
 func (ls *Loads) Intercept(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data := hasDataSuffix(r.URL.Path)
-
-		// Kit's `handle` never sees a static asset: its adapters answer those
-		// before the server does. skgo's equivalent is the app directory,
-		// which holds nothing but the immutable bundle — and the remote calls,
-		// which are requests the app answers and so must pass through.
-		if ls.handle != nil && !ls.isImmutableAsset(r.URL.Path) {
-			req, err := ls.runHandleGuarded(r, data)
-			if err != nil {
-				ls.refuse(w, r, err, data)
-				return
-			}
-			r = req
-		}
-
-		if data {
+		if hasDataSuffix(r.URL.Path) {
 			ls.ServeHTTP(w, r)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// isImmutableAsset reports that a path is part of the built bundle rather than
-// something the app answers.
-func (ls *Loads) isImmutableAsset(pathname string) bool {
-	prefix := ls.base + "/" + ls.cfg.AppDir + "/"
-	return strings.HasPrefix(pathname, prefix) && !strings.HasPrefix(pathname, prefix+"remote/")
 }
 
 // ServeHTTP answers one `__data.json` request.

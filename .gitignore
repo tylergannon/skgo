@@ -7,6 +7,7 @@ example/e2e/.features-gen/
 test-results/
 playwright-report/
 example/e2e/screenshots/
+/ephemeral/screenshots/
 .tractor/
 
 # `just serve` copies the server's log here for the Gherkin suite to read.

@@ -102,54 +102,6 @@ func TestAPanickingLoadDoesNotTakeItsSiblingsDown(t *testing.T) {
 	}
 }
 
-// The `handle` hook is application code on the same request, and it runs
-// before any load does — a panic there is the whole response.
-func TestAPanickingHandleHookAnswersInsteadOfResettingTheConnection(t *testing.T) {
-	srv, reported := silentLoads(t, func(cfg *LoadConfig) {
-		cfg.Handle = func(ctx context.Context) error { panic("nil locals") }
-	}, NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (pageData, error) {
-		return pageData{Greeting: "unreachable"}, nil
-	}))
-
-	resp, err := http.Get(srv.URL + "/a/__data.json?x-sveltekit-invalidated=111")
-	if err != nil {
-		t.Fatalf("the panicking hook killed the connection instead of answering: %v", err)
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-
-	// A hook that refuses answers in the shape the refused request expects;
-	// a panicking one must answer in exactly that same shape.
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("status = %d, want 500: %s", resp.StatusCode, body)
-	}
-	if got := strings.TrimSpace(string(body)); got != `{"status":500,"message":"Internal Error"}` {
-		t.Errorf("body = %s, want the opaque 500", got)
-	}
-	if strings.Contains(string(body), "unreachable") {
-		t.Errorf("the load ran even though the hook panicked: %s", body)
-	}
-	if len(*reported) != 1 || (*reported)[0] != "handle" {
-		t.Errorf("OnPanic saw %v, want the hook once", *reported)
-	}
-}
-
-// A page request is not a data request, but it goes through the same hook.
-func TestAPanickingHandleHookDoesNotResetAPageRequest(t *testing.T) {
-	srv, _ := silentLoads(t, func(cfg *LoadConfig) {
-		cfg.Handle = func(ctx context.Context) error { panic("nil locals") }
-	})
-
-	resp, err := http.Get(srv.URL + "/a")
-	if err != nil {
-		t.Fatalf("the panicking hook killed the connection instead of answering: %v", err)
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode == http.StatusTeapot {
-		t.Fatalf("the request reached the page handler even though the hook panicked")
-	}
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("status = %d, want 500: %s", resp.StatusCode, body)
-	}
-}
+// The `handle` hook's own panic behaviour is Handle's business, not the loads
+// registry's — see TestAPanickingHandleHookAnswersInsteadOfResettingTheConnection
+// and TestAPanickingHandleHookDoesNotResetAPageRequest in handle_panic_test.go.

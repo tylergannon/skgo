@@ -94,15 +94,14 @@ type LoadConfig struct {
 	// goes out as whatever encoding/json makes of it, which is a plain object
 	// with no methods on the other side. See the Transport type.
 	Transport Transport
-	// Handle is the app's `handle` hook: the one place it decides what a
-	// request may do. It is optional; see the Handle type.
-	Handle Handle
-	// OnPanic is called when a load or the `handle` hook panics, with the
-	// `+*.server.ts` module of the load (or "handle" for the hook), the
-	// recovered value, and the stack. The client is told nothing but an opaque
-	// 500, so this is the only record the panic leaves; leaving it nil logs
-	// the same three things to the standard logger, because a panicking
-	// handler that reports nowhere is a bug that cannot be found.
+	// OnPanic is called when a load panics, with the load's `+*.server.ts`
+	// module, the recovered value, and the stack. The client is told nothing
+	// but an opaque 500, so this is the only record the panic leaves; leaving
+	// it nil logs the same three things to the standard logger, because a
+	// panicking handler that reports nowhere is a bug that cannot be found.
+	//
+	// The `handle` hook has its own OnPanic, on HandleConfig: it is not a load
+	// concern and does not run through this registry. See Handle.
 	OnPanic func(id string, value any, stack []byte)
 	// Nodes and Routes come from the manifest.
 	Nodes  []string
@@ -132,7 +131,6 @@ type Loads struct {
 	cfg    LoadConfig
 	base   string
 	origin *url.URL
-	handle Handle
 
 	// byModule is every registered load, keyed by its `+*.server.ts` path.
 	byModule map[string]*ServerLoad
@@ -179,7 +177,7 @@ func NewLoads(cfg LoadConfig, loads ...*ServerLoad) (*Loads, error) {
 	}
 	cfg.Base = base
 
-	ls := &Loads{cfg: cfg, base: base, handle: cfg.Handle, byModule: make(map[string]*ServerLoad, len(loads))}
+	ls := &Loads{cfg: cfg, base: base, byModule: make(map[string]*ServerLoad, len(loads))}
 
 	if cfg.Origin != "" {
 		origin, err := url.Parse(cfg.Origin)
@@ -383,17 +381,6 @@ func execParams(path string, loc []int, params []ManifestParam) (map[string]stri
 func (ls *Loads) runLoad(ctx context.Context, load *ServerLoad) (v any, err error) {
 	defer func() { err = ls.recovered(load.module, recover(), err) }()
 	return load.run(ctx)
-}
-
-// runHandleGuarded is the same guard for the `handle` hook, which is
-// application code on the same request and runs before any load does.
-func (ls *Loads) runHandleGuarded(r *http.Request, isData bool) (req *http.Request, err error) {
-	defer func() {
-		if err = ls.recovered("handle", recover(), err); err != nil {
-			req = r
-		}
-	}()
-	return ls.runHandle(r, isData)
 }
 
 // recovered reports a panic and converts it to an error. It is a no-op when
