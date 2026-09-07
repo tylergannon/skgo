@@ -22,6 +22,7 @@
 package skgo
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"mime"
@@ -37,9 +38,16 @@ import (
 
 // formAction is one non-enhanced submission, once its Go handler has run.
 type formAction struct {
-	// id is the client-side action id — `<hash>/<name>` — which is both the
-	// key `<global>.data.f` uses and the id the engine looks the form instance
-	// up by when it seeds the render.
+	// id is the client-side action id: `<hash>/<name>`, or
+	// `<hash>/<name>/<key>` for a submission to a `form.for(key)` instance,
+	// with `<key>` the JSON text of the key exactly as `JSON.stringify(key)`
+	// produced it — no URL encoding. That is kit's own format
+	// (`runtime/app/server/remote/form.js`: `__.key ? \`${__.id}/${__.key}\` :
+	// __.id`) for two things this one string has to be, at once: the key
+	// `<global>.data.f` carries the submission under for kit's real client to
+	// find on hydration, and the id the engine's `seed_form` looks the form
+	// instance up by — calling `.for(key)` itself when there is one — so that
+	// `sendMessage.for(key)` reads the same cache entry during the render.
 	id string
 	// output is kit's form output object: `{submission, result}` for a
 	// submission that succeeded and `{submission, issues, input}` for one the
@@ -55,6 +63,55 @@ type formAction struct {
 // actionID is kit's `get_remote_action`: the `?/remote=<id>` a form's action
 // attribute carries, or "" for a POST that is not one.
 func actionID(u *url.URL) string { return u.Query().Get("/remote") }
+
+// splitActionID is kit's own split, from `handle_remote_form_post_internal`:
+//
+//	const [hash, name, ...rest] = id.split('/');
+//	const action_id = rest.join('/');
+//
+// A hash and a name never contain a "/", so the first two segments are the
+// form's own id; a `form.for(key)` instance's key can — its JSON text may
+// itself contain one, restored by url-decoding a "%2F" the browser's
+// `encodeURIComponent` put there — so whatever segments remain are rejoined
+// rather than the third one taken alone. hasKey is false for an id with no
+// third segment and for one whose third segment is empty, mirroring kit's own
+// `if (action_id)` on the rejoined (possibly "") string.
+func splitActionID(id string) (base, key string, hasKey bool) {
+	hash, rest, ok := strings.Cut(id, "/")
+	if !ok {
+		return id, "", false
+	}
+	name, tail, hasTail := strings.Cut(rest, "/")
+	base = hash + "/" + name
+	if !hasTail || tail == "" {
+		return base, "", false
+	}
+	return base, tail, true
+}
+
+// setFormKey is kit's own line, once a keyed submission's form is resolved:
+//
+//	if (action_id && !('id' in data)) data.id = JSON.parse(decodeURIComponent(action_id));
+//
+// keyJSON is JSON text — the decoded action id — so this is the `JSON.parse`
+// half; the `decodeURIComponent` half is already done by the time a caller
+// reads a query parameter's value in Go, the same as it is by the time kit
+// reads `URLSearchParams.get(...)` in JavaScript.
+func setFormKey(arg any, keyJSON string) error {
+	obj, ok := arg.(*devalue.Object)
+	if !ok {
+		return nil
+	}
+	if _, has := obj.Get("id"); has {
+		return nil
+	}
+	var key any
+	if err := json.Unmarshal([]byte(keyJSON), &key); err != nil {
+		return err
+	}
+	obj.Set("id", key)
+	return nil
+}
 
 // runFormAction runs the form the submission names and shapes its outcome the
 // way kit's own server shapes it.
@@ -76,7 +133,17 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 		}
 	}
 
-	fn, ok := s.remotes.Lookup(id)
+	// `id` is kit's own `[hash, name, ...rest]` split
+	// (`handle_remote_form_post_internal`): hash and name can never contain a
+	// "/", but the JSON-stringified key of a `form.for(key)` instance can —
+	// url-decoding a slash back out of `%2F` is exactly how it gets here — so
+	// the remaining segments are rejoined rather than the third one taken
+	// alone. baseID is what the form is registered under and what every field
+	// name is suffixed with, keyed or not; kit's client builds both a keyed
+	// and an unkeyed instance's controls with `action_id_without_key`.
+	baseID, actionKey, hasKey := splitActionID(id)
+
+	fn, ok := s.remotes.Lookup(baseID)
 	if !ok {
 		// Kit's `method_not_allowed_result`
 		// (`handle_remote_form_post_internal`, `if (!form)`): an id that
@@ -99,9 +166,19 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 	if err != nil {
 		return nil, nil, asHTTPError(err)
 	}
-	arg, err := formdata.Convert(id, entries)
+	arg, err := formdata.Convert(baseID, entries)
 	if err != nil {
 		return nil, nil, &HTTPError{Status: 400, Message: "Bad Request"}
+	}
+	if hasKey {
+		// Kit's own line, once the form is resolved: `if (action_id &&
+		// !('id' in data)) data.id = JSON.parse(decodeURIComponent(action_id))`.
+		// `actionKey` already went through the one round of percent-decoding
+		// `url.Query()` does — the same job `decodeURIComponent` does there —
+		// so it is JSON text, ready to parse.
+		if err := setFormKey(arg, actionKey); err != nil {
+			return nil, nil, &HTTPError{Status: 400, Message: "Bad Request"}
+		}
 	}
 
 	ev := s.remotes.newEvent(r, true)
@@ -113,7 +190,13 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 	// rendered again from the top, so every query on it runs regardless, which
 	// is what single-flight refreshes exist to avoid having to do.
 	ev.refreshes = newRefreshSet(s.remotes, nil)
-	action := &formAction{id: id, jar: ev.jar}
+	// The composite id kit's own key format uses — see formAction.id — built
+	// once, here, rather than recomputed at every place that needs it.
+	compositeID := baseID
+	if hasKey {
+		compositeID = baseID + "/" + actionKey
+	}
+	action := &formAction{id: compositeID, jar: ev.jar}
 
 	value, err := s.remotes.call(withEvent(r.Context(), ev), fn, arg, true)
 	if err != nil {
@@ -125,7 +208,7 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 			action.output = devalue.NewObject(
 				"submission", true,
 				"issues", issueNodes(invalid.Issues),
-				"input", submittedInput(id, entries),
+				"input", submittedInput(baseID, entries),
 			)
 			return action, nil, nil
 		}

@@ -46,4 +46,8 @@ export type Receipt = {
    * Summary is a sentence the page can show without re-reading the list.
    */
   "summary": string;
+  /**
+   * Key echoes Draft.ForKey, so a page can show that a `for(key)` submission carried its key all the way to the handler and back.
+   */
+  "key": string;
 };
