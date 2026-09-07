@@ -13,4 +13,4 @@ const unimplemented = (): never => {
 
 export const getMessages = query((): Array<Message> => unimplemented());
 
-export const sendMessage = form('unchecked', (_arg: { from: string; email: string; body: string; attachment?: File }): Receipt => unimplemented());
+export const sendMessage = form('unchecked', (_arg: { from: string; email: string; body: string; attachment?: File; id: string }): Receipt => unimplemented());

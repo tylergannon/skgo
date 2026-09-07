@@ -54,6 +54,14 @@ type Draft struct {
 	// receives an upload; the bytes are already in it by the time this
 	// function runs.
 	Attachment skgo.File `json:"attachment"`
+	// ForKey is set when the submission came from `sendMessage.for(key)`
+	// rather than from the bare `sendMessage` form. No control on the page
+	// puts it there: kit delivers a `form.for(key)` instance's key as the
+	// `id` field of the argument (`runtime/app/server/remote/form.js`), the
+	// same for a submission the browser posted itself as for one kit's
+	// client enhanced, which is the whole reason it needs a field here at
+	// all — this is Go's side of that json tag, not the page's.
+	ForKey string `json:"id"`
 }
 
 // Receipt is what a successful submission returns, which kit's client puts on
@@ -63,6 +71,9 @@ type Receipt struct {
 	ID string `json:"id"`
 	// Summary is a sentence the page can show without re-reading the list.
 	Summary string `json:"summary"`
+	// Key echoes Draft.ForKey, so a page can show that a `for(key)` submission
+	// carried its key all the way to the handler and back.
+	Key string `json:"key"`
 }
 
 var inbox = struct {
@@ -121,7 +132,11 @@ func sendMessage(ctx context.Context, draft Draft) (Receipt, error) {
 	// The page writes `form.submit().updates(getMessages())`; this is the half
 	// of that sentence the server gets a say in. A submission that ends in
 	// issues never reaches here, and kit's client leaves the page alone.
-	return Receipt{ID: message.ID, Summary: "Thanks, " + message.From + " — message " + message.ID + " is in."},
+	return Receipt{
+			ID:      message.ID,
+			Summary: "Thanks, " + message.From + " — message " + message.ID + " is in.",
+			Key:     draft.ForKey,
+		},
 		skgo.RefreshRequestedNoArg(ctx, getMessages)
 }
 
