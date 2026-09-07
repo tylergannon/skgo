@@ -17,7 +17,7 @@ type Site struct {
 	Colocated string `json:"colocated"`
 }
 
-func getSite(ctx context.Context, _ skgo.None) (Site, error) {
+func getSite(ctx context.Context) (Site, error) {
 	return Site{Name: "skgo", Colocated: "src/routes/site.remote.go"}, nil
 }
 

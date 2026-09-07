@@ -6,13 +6,15 @@
 // Go function in a `*.remote.go` file, colocated with the routes that use it,
 // and marks it:
 //
-//	func getTodos(ctx context.Context, _ skgo.None) ([]Todo, error) { ... }
+//	func getTodos(ctx context.Context) ([]Todo, error) { ... }
 //
 //	var _ = skgo.Query(getTodos)
 //
 // Nothing else is hand-written. `skgo generate` reads the marker with go/types
 // — never by matching source text — takes the argument and result types out of
-// the generic instantiation, and emits everything else.
+// the marked function's own signature, and emits everything else. The argument
+// is optional there because it is optional in kit: `query(fn)` accepts
+// `(arg?) => Output`, so a query that takes nothing is written taking nothing.
 package gen
 
 import (

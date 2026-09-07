@@ -14,9 +14,6 @@ import (
 	"golang.org/x/mod/module"
 )
 
-// noneType is the argument type of a remote function that takes no argument.
-const noneType = skgoPkg + ".None"
-
 // relocatedRootName is the directory, inside the generated bindings package,
 // that holds the declaration packages skgo writes for types belonging to
 // modules the app does not own.
@@ -156,16 +153,6 @@ func kindWord(t types.Type) string {
 		return "function"
 	}
 	return "type"
-}
-
-// isNone reports whether t is skgo.None, the argument type of a remote
-// function that takes no argument.
-func isNone(t types.Type) bool {
-	named, ok := t.(*types.Named)
-	if !ok || named.Obj().Pkg() == nil {
-		return false
-	}
-	return named.Obj().Pkg().Path()+"."+named.Obj().Name() == noneType
 }
 
 // declare records that a named type must be projected by polytype, and where
@@ -321,7 +308,7 @@ func (a *app) typesDirFor(pkg *types.Package, dir string, foreign bool) (string,
 // generator skgo runs and consumes; skgo never projects a named type itself.
 func (a *app) generateTypes() error {
 	for _, fn := range a.remotes {
-		if !isNone(fn.in) {
+		if fn.in != nil {
 			t, err := a.project(fn.in)
 			if err != nil {
 				return fmt.Errorf("skgo: %s: the argument of %s cannot cross to TypeScript: %v", fn.pos, fn.name, err)

@@ -239,7 +239,6 @@ func (d *typegrammarDefs) add(defs typegrammar.Definitions, roots []typegrammar.
 	d.roots = append(d.roots, roots...)
 }
 
-
 // bindingsImportPath is the import path of the generated bindings package,
 // which codegen needs so that a type declared there is spelled unqualified.
 func (a *app) bindingsImportPath() string {

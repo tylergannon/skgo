@@ -27,9 +27,6 @@ import (
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
 
-// None is the argument type of a remote function that takes no argument.
-type None struct{}
-
 // HTTPError is an error with a status kit's client understands. Returning one
 // from a remote function produces `{"type":"error","error":{...}}`; any other
 // error becomes an opaque 500, exactly as kit does for unexpected throws.
@@ -165,34 +162,51 @@ func newRemote(module, name string, kind remoteKind) *Remote {
 }
 
 // Marker is what the declaration helpers return. It carries nothing: Query,
-// Command, LiveQuery and Form exist to be read by `skgo generate`, and to make
-// a function with the wrong shape a compile error at the point of declaration.
+// Command, LiveQuery and Form exist to be read by `skgo generate`.
 type Marker struct{}
 
 // Query declares fn as a SvelteKit `query`. Write it beside the function, in a
 // file named `*.remote.go`:
 //
-//	func getTodos(ctx context.Context, _ skgo.None) ([]Todo, error) { ... }
+//	func getTodos(ctx context.Context) ([]Todo, error) { ... }
 //
 //	var _ = skgo.Query(getTodos)
+//
+// A query that takes an argument declares it as an ordinary second parameter:
+//
+//	func getTodo(ctx context.Context, id string) (Todo, error) { ... }
+//
+// Both are ordinary Go functions, which is kit's own rule rather than a
+// liberty taken here: `query(fn)` accepts `(arg?) => Output`, so the argument
+// is optional and there is no placeholder to name in its place.
+//
+// fn is `any` because the marker checks nothing. `skgo generate` reads the
+// function's real signature through go/types — it has to, since it projects
+// the argument and the result to TypeScript — and reports a shape it cannot
+// publish against the declaration's own position. The typed constructors the
+// generator emits are what the compiler checks.
 //
 // `skgo generate` emits the sibling `.remote.ts` kit compiles and the Go
 // registration that answers the calls. The request is reachable with
 // skgo.EventFrom(ctx); a query may read cookies but not write them, which is
 // the restriction kit places on its own queries.
-func Query[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
+func Query(fn any) Marker { _ = fn; return Marker{} }
 
 // Command declares fn as a SvelteKit `command`. A command's event may write
 // cookies; kit allows that in commands and forms and nowhere else.
-func Command[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
+//
+// Like a query, it takes `(ctx)` or `(ctx, arg)`. See Query for why fn is any.
+func Command(fn any) Marker { _ = fn; return Marker{} }
 
 // LiveQuery declares fn as a SvelteKit `query.live`. fn pushes values with
 // yield and returns when the subscription ends; its context is cancelled when
-// the client disconnects.
-func LiveQuery[In, Out any](fn func(context.Context, In, func(Out) error) error) Marker {
-	_ = fn
-	return Marker{}
-}
+// the client disconnects:
+//
+//	func watchCount(ctx context.Context, yield func(int) error) error { ... }
+//
+// An argument, when there is one, sits between the two. See Query for why fn
+// is any.
+func LiveQuery(fn any) Marker { _ = fn; return Marker{} }
 
 // NewQuery registers a `query` export. module is the module's vite-root-relative
 // path (for example "src/lib/todos.remote.ts") and name the export name.
@@ -204,10 +218,34 @@ func NewQuery[In, Out any](module, name string, fn func(context.Context, In) (Ou
 	return r
 }
 
+// NewQueryNoArg registers a `query` export whose Go function takes no
+// argument, which is most of them. Kit calls such a query with `undefined`,
+// whose payload is the empty string, so whatever the client sends is ignored
+// here rather than decoded into a placeholder.
+//
+// There is a constructor per arity because the marker no longer carries the
+// types: generated code is the one place an extra constructor costs nothing,
+// and it is where the compiler gets to check the function again.
+func NewQueryNoArg[Out any](module, name string, fn func(context.Context) (Out, error)) *Remote {
+	r := newRemote(module, name, kindQuery)
+	r.call = callAdapterNoArg(fn)
+	r.ptr = codePointer(fn)
+	return r
+}
+
 // NewCommand registers a `command` export.
 func NewCommand[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
 	r := newRemote(module, name, kindCommand)
 	r.call = callAdapter(fn)
+	r.ptr = codePointer(fn)
+	return r
+}
+
+// NewCommandNoArg registers a `command` export whose Go function takes no
+// argument. See NewQueryNoArg.
+func NewCommandNoArg[Out any](module, name string, fn func(context.Context) (Out, error)) *Remote {
+	r := newRemote(module, name, kindCommand)
+	r.call = callAdapterNoArg(fn)
 	r.ptr = codePointer(fn)
 	return r
 }
@@ -231,6 +269,18 @@ func NewLiveQuery[In, Out any](module, name string, fn func(context.Context, In,
 	return r
 }
 
+// NewLiveQueryNoArg registers a `query.live` export whose Go function takes no
+// argument. See NewQueryNoArg.
+func NewLiveQueryNoArg[Out any](module, name string, fn func(context.Context, func(Out) error) error) *Remote {
+	r := newRemote(module, name, kindLive)
+	r.ptr = codePointer(fn)
+	r.live = func(ctx context.Context, arg any, present bool, yield func(any) error) error {
+		// The raw Go value; see NewLiveQuery.
+		return fn(ctx, func(out Out) error { return yield(out) })
+	}
+	return r
+}
+
 func callAdapter[In, Out any](fn func(context.Context, In) (Out, error)) func(context.Context, any, bool) (any, error) {
 	return func(ctx context.Context, arg any, present bool) (any, error) {
 		in, err := decodeArg[In](arg, present)
@@ -238,6 +288,21 @@ func callAdapter[In, Out any](fn func(context.Context, In) (Out, error)) func(co
 			return nil, err
 		}
 		out, err := fn(ctx, in)
+		if err != nil {
+			return nil, err
+		}
+		// The raw Go value; see NewLiveQuery.
+		return out, nil
+	}
+}
+
+// callAdapterNoArg is callAdapter for a function that takes no argument. The
+// payload is not decoded at all: kit's client sends `undefined` for a query it
+// calls with no argument, and a function with no parameter has nothing to put
+// anything else into.
+func callAdapterNoArg[Out any](fn func(context.Context) (Out, error)) func(context.Context, any, bool) (any, error) {
+	return func(ctx context.Context, _ any, _ bool) (any, error) {
+		out, err := fn(ctx)
 		if err != nil {
 			return nil, err
 		}

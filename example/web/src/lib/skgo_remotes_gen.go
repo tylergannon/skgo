@@ -8,8 +8,8 @@ import "github.com/tylergannon/skgo"
 func SkgoRemotes() []*skgo.Remote {
 	return []*skgo.Remote{
 		skgo.NewCommand("src/lib/auth.remote.ts", "signIn", signIn),
-		skgo.NewCommand("src/lib/auth.remote.ts", "signOut", signOut),
-		skgo.NewQuery("src/lib/auth.remote.ts", "whoami", whoami),
+		skgo.NewCommandNoArg("src/lib/auth.remote.ts", "signOut", signOut),
+		skgo.NewQueryNoArg("src/lib/auth.remote.ts", "whoami", whoami),
 	}
 }
 

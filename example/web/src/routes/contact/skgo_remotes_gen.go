@@ -7,7 +7,7 @@ import "github.com/tylergannon/skgo"
 // SkgoRemotes returns the remote functions declared in this package.
 func SkgoRemotes() []*skgo.Remote {
 	return []*skgo.Remote{
-		skgo.NewQuery("src/routes/contact/contact.remote.ts", "getMessages", getMessages),
+		skgo.NewQueryNoArg("src/routes/contact/contact.remote.ts", "getMessages", getMessages),
 		skgo.NewForm("src/routes/contact/contact.remote.ts", "sendMessage", sendMessage),
 	}
 }
