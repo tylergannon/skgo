@@ -184,6 +184,9 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		if id == "" {
 			// Kit's `handle_action_request` with no `actions` export: a page
 			// that has no classic form action, which for skgo is every page.
+			// `method_not_allowed_result` (`runtime/server/page/actions.js:90-94`)
+			// sets `allow: 'GET'` — RFC 9110 requires a 405 to carry one.
+			w.Header().Set("Allow", "GET")
 			return s.respondWithError(w, r, req, route.id, params, &HTTPError{
 				Status:  405,
 				Message: "POST method not allowed. No form actions exist for this page",

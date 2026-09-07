@@ -71,6 +71,23 @@ func TestARefusedSubmissionComesBackAsThePageWithItsIssues(t *testing.T) {
 	if !strings.Contains(body, `f:{"`+id+`":{v:{submission:true,issues:[`) {
 		t.Errorf("the boot payload carries no `f` entry for %s", id)
 	}
+
+	// Kit's `render_page` only leaves the page for a `redirect` result
+	// (`runtime/server/page/index.js:71-78`); a refused submission renders
+	// again at the request URL, `?/remote=<id>` included, which is what the
+	// form's own `action` getter reads back out of `event.url.search`.
+	if !strings.Contains(body, `action="?/remote=`+id+`"`) {
+		t.Errorf("the re-rendered page's form no longer names %s in its action; the re-render URL was not the request URL", id)
+	}
+
+	// The untouched `<input type="file">` `submit` always includes is not a
+	// string, so kit's `handle_issues` filters it out of `form_data.getAll(name)`
+	// before taking `values[0]` — the field lands `undefined`, which
+	// `devalue.uneval` renders keeping the key (`attachment:void 0`), not as an
+	// empty string a text control could have produced.
+	if !strings.Contains(body, `attachment:void 0`) {
+		t.Errorf("an untouched file control's echoed input is not `void 0`:\n%s", body)
+	}
 	if !strings.Contains(body, "form: null") {
 		t.Error("the boot object does not carry `form: null`; a remote form never fills that slot")
 	}
@@ -143,6 +160,11 @@ func TestAPostToAPageThatNamesNoFormIsNotAllowed(t *testing.T) {
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want 405", rec.Code)
+	}
+	// RFC 9110 requires a 405 to carry an Allow header, and kit's own
+	// `method_not_allowed_result` sets `allow: 'GET'`.
+	if got := rec.Header().Get("Allow"); got != "GET" {
+		t.Errorf(`Allow header = %q, want "GET"`, got)
 	}
 }
 

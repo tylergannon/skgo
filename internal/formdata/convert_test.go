@@ -124,7 +124,7 @@ func TestConvertRefusesAPathTheFieldProxyCouldNotHaveMade(t *testing.T) {
 }
 
 // An empty number input is absent rather than zero, and an unparseable one is
-// NaN — `parseFloat('')` and `parseFloat('nope')` in kit's `coerce_form_value`.
+// NaN — `parseFloat(”)` and `parseFloat('nope')` in kit's `coerce_form_value`.
 func TestConvertAnEmptyNumberIsAbsentAndAnUnparseableOneIsNotANumber(t *testing.T) {
 	got := convert(t, "form", text("n:age/form", ""), text("n:weight/form", "nope"))
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/skgo/internal/formdata"
 )
 
 // The strings below were written out of kit's own source — `render.js`'s boot
@@ -100,6 +101,27 @@ func TestARefusedSubmissionCarriesItsIssuesAndInput(t *testing.T) {
 		`input:{from:"Grace Hopper",email:"grace-at-example"}}}}}`
 	if !strings.Contains(document, want) {
 		t.Fatalf("the document does not carry the issues where kit's client reads them.\nwant: %s\ngot:\n%s", want, document)
+	}
+}
+
+// An untouched `<input type="file">` is not a string, so kit's `handle_issues`
+// filters it out of `form_data.getAll(name)` before taking `values[0]` — the
+// field is `undefined`, not the empty string a text control would have left.
+// `submittedInput` used to rewrite a file entry into an empty text entry
+// before handing it to `ConvertRaw`, which defeated `ConvertRaw`'s own File
+// check and produced "" instead.
+func TestSubmittedInputLeavesAnUntouchedFileFieldUndefined(t *testing.T) {
+	got := submittedInput("14q4me9/sendMessage", []formdata.Entry{
+		{Name: "from/14q4me9/sendMessage", Value: "Ada Lovelace"},
+		{Name: "attachment/14q4me9/sendMessage", File: &formdata.File{}},
+	})
+
+	if from, _ := got.Get("from"); from != "Ada Lovelace" {
+		t.Fatalf("from = %#v, want \"Ada Lovelace\"", from)
+	}
+	attachment, _ := got.Get("attachment")
+	if _, undefined := attachment.(devalue.UndefinedValue); !undefined {
+		t.Errorf("an untouched file control's input is %#v, want devalue.Undefined", attachment)
 	}
 }
 

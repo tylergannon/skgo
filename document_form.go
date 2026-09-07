@@ -146,14 +146,12 @@ func submittedInput(formID string, entries []formdata.Entry) *devalue.Object {
 		if redactedFormKey(entry.Name) {
 			continue
 		}
-		if entry.File != nil {
-			// `.filter((value) => typeof value === 'string')`: a file is not
-			// echoed back, because its bytes are not something a control can
-			// be refilled with. The key still appears — with nothing under it
-			// — which is what kit's `values[0]` produces for it.
-			visible = append(visible, formdata.Entry{Name: entry.Name})
-			continue
-		}
+		// A file entry passes through unchanged. Kit's `form_data.getAll`
+		// still yields the File, and it is `handle_issues`'s own
+		// `.filter((value) => typeof value === 'string')` that drops it
+		// before `values[0]` is taken — an untouched file input answers
+		// undefined, not "". ConvertRaw's own File check reproduces exactly
+		// that filtering, so rewriting the entry here would only defeat it.
 		visible = append(visible, entry)
 	}
 
