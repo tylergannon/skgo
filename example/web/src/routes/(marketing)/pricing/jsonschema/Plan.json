@@ -1,8 +1,0 @@
-{"type":"object",
-"description":"Plan is one row of the pricing table.","properties":{
-"name":{"type":"string","description":"Name is the plan's name."},
-"price":{"type":"object",
-"description":"Price is what it costs per month. It is a domain type with a method, and it reaches the browser as one because the app declares a `transport` hook for it in src/hooks.go and src/hooks.ts.","properties":{
-"cents":{"type":"integer","description":"Cents is the amount, in cents."}
-},"required":["cents"],"additionalProperties":false}
-},"required":["name","price"],"additionalProperties":false}

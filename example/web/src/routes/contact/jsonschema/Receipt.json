@@ -1,5 +1,0 @@
-{"type":"object",
-"description":"Receipt is what a successful submission returns, which kit's client puts on `sendMessage.result`.","properties":{
-"id":{"type":"string","description":"ID is the new message's id."},
-"summary":{"type":"string","description":"Summary is a sentence the page can show without re-reading the list."}
-},"required":["id","summary"],"additionalProperties":false}

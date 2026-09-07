@@ -7,10 +7,7 @@ require (
 	github.com/tylergannon/skgo {{.SkgoVersion}}
 )
 
-// skgo generates the bindings and polytype projects the Go types that cross to
-// TypeScript. Both run through `go tool`, so they are built from the module
-// cache and neither has to be a writable checkout.
-tool (
-	github.com/tylergannon/polytype/polytype
-	github.com/tylergannon/skgo/cmd/skgo
-)
+// skgo generates the bindings, and projects the Go types that cross to
+// TypeScript through polytype's library. It runs through `go tool`, so it is
+// built from the module cache and does not have to be a writable checkout.
+tool github.com/tylergannon/skgo/cmd/skgo

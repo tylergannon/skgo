@@ -1,6 +1,0 @@
-{"type":"object",
-"description":"Todo is one item in the list.","properties":{
-"id":{"type":"string","description":"ID is the stable identifier the todo is addressed by."},
-"text":{"type":"string","description":"Text is what the visitor typed."},
-"private":{"type":"boolean","description":"Private reports that only a signed-in visitor may see this todo."}
-},"required":["id","text","private"],"additionalProperties":false}

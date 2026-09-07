@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -13,15 +14,16 @@ import (
 	"golang.org/x/mod/modfile"
 )
 
-// Projecting a named type means writing a polytype registration file into a Go
-// package, and then having polytype write `jsonschema_gen.go` and a
-// `jsonschema/` directory beside it. For a type the app declares, that package
-// is the app's own. For a type from a dependency it is the module cache: source
-// the app does not own and, for any real consumer, cannot write.
+// Projecting a named type means loading the Go package that declares it and
+// handing polytype the type. For a type the app declares, that package is the
+// app's own. For a type from a dependency it is the module cache: source the
+// app does not own and, for any real consumer, cannot write.
 //
 // These tests hold the line at the filesystem. A named type from another module
-// has to reach the browser, and nothing may appear outside the app's module
-// while it does.
+// has to reach the browser, nothing may appear outside the app's module while
+// it does, and nothing but the TypeScript may appear inside it either: the
+// declaration is polytype's to emit, and it emits it without leaving a marker,
+// a schema or a Go file behind.
 
 // foreignFixture lays out three modules in a temp dir: the app, a library it
 // depends on, and a stand-in for skgo at skgo's own import path. Markers are
@@ -162,9 +164,8 @@ const (
 }
 
 // fixtureModule builds the fixture app's go.mod out of the example app's, so
-// the fixture runs the polytype this repository actually pins rather than a
-// second copy of the version number. The generator shells out to `go tool
-// polytype`, so the fixture has to be a module that can run it.
+// the fixture resolves the polytype this repository actually pins rather than
+// a second copy of the version number.
 func fixtureModule(t *testing.T) (goMod, goSum string) {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "example", "go.mod"))
@@ -186,7 +187,6 @@ func fixtureModule(t *testing.T) (goMod, goSum string) {
 		fmt.Fprintf(&b, "\t%s %s\n", req.Mod.Path, req.Mod.Version)
 	}
 	fmt.Fprintf(&b, "\t%s v0.0.0\n)\n\n", skgoPkg)
-	b.WriteString("tool github.com/tylergannon/polytype/polytype\n\n")
 	b.WriteString("replace example.com/wire => ../wire\n\n")
 	fmt.Fprintf(&b, "replace %s => ../skgo\n", skgoPkg)
 
@@ -297,25 +297,56 @@ var _ = skgo.Query(getStatus)
 		}
 	}
 
-	// The generated app has to be a Go program, in both of the shapes it is
-	// ever built in: polytype's own output carries `//go:build !jsonschema`, so
-	// a declaration that exists only under the tag leaves an ordinary build
-	// broken.
-	app := filepath.Join(root, "app")
-	for _, args := range [][]string{{"build", "./..."}, {"build", "-tags", "jsonschema", "./..."}} {
-		cmd := exec.Command("go", args...)
-		cmd.Dir = app
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("`go %s` in the generated app: %v\n%s", strings.Join(args, " "), err, out)
+	// The route directory holds the developer's Go, the stub, the registration
+	// that names the handler — and nothing of polytype's. No marker file, no
+	// schema, no declaration package for the dependency anywhere in the app.
+	if got, want := filesUnder(t, filepath.Join(root, "app", "web", "src", "data")), []string{"data.remote.go", "data.remote.ts", "skgo_remotes_gen.go"}; !slices.Equal(got, want) {
+		t.Fatalf("the route directory holds %v, want %v", got, want)
+	}
+	for _, f := range filesUnder(t, filepath.Join(root, "app")) {
+		base := filepath.Base(f)
+		if strings.Contains(f, "jsonschema") || strings.Contains(f, "wiretypes") || base == "skgo_polytype_gen.go" {
+			t.Fatalf("polytype's CLI path left %s in the app", f)
 		}
 	}
+
+	// The generated app has to be a Go program.
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = filepath.Join(root, "app")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("`go build ./...` in the generated app: %v\n%s", err, out)
+	}
+}
+
+// filesUnder lists every regular file below dir, relative to it, sorted.
+func filesUnder(t *testing.T, dir string) []string {
+	t.Helper()
+	var out []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		out = append(out, filepath.ToSlash(rel))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // TestTwoDependenciesCalledTheSameThingAreKeptApart. Package names are short
 // and not unique, and a dependency's is not the app's to change. Import paths
-// are the only names guaranteed to differ, so they are what addresses both
-// halves of the projection: the declaration package in the app's module, and
-// the types.ts the stubs import.
+// are the only names guaranteed to differ, so they are what addresses the
+// types.ts the stubs import.
 func TestTwoDependenciesCalledTheSameThingAreKeptApart(t *testing.T) {
 	root, cfg := foreignFixture(t, `package data
 
@@ -363,17 +394,6 @@ var _ = skgo.Query(getOtherThing)
 	second := readFixtureFile(t, root, "app/web/src/lib/skgo/example.com/wire/other/wire/types.ts")
 	if !strings.Contains(second, `"label": string;`) {
 		t.Fatalf("example.com/wire/other/wire projected the wrong Thing:\n%s", second)
-	}
-
-	// And two declaration packages in the app, likewise addressed by import
-	// path rather than by the name both packages share.
-	for _, rel := range []string{
-		"app/generated/wiretypes/example.com/wire/skgo_wiretypes_gen.go",
-		"app/generated/wiretypes/example.com/wire/other/wire/skgo_wiretypes_gen.go",
-	} {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
-			t.Fatalf("no declaration package at %s: %v", rel, err)
-		}
 	}
 
 	cmd := exec.Command("go", "build", "./...")
@@ -424,12 +444,13 @@ var _ = skgo.Query(getOtherThing)
 	t.Logf("refused with:\n%v", err)
 }
 
-// TestADeclarationPackageGoesWithTheDependencyThatNeededIt. A declaration
-// package is ordinary Go source in the app's module, so one left behind for a
-// dependency that is no longer on the wire is a build failure rather than
-// clutter — it still imports a module the app may since have dropped.
-func TestADeclarationPackageGoesWithTheDependencyThatNeededIt(t *testing.T) {
-	root, cfg := foreignFixture(t, `package data
+// TestATypeThatReachesAnotherOfItsOwnNameIsRefused. polytype's identifiers are
+// collision-safe: when the definitions reachable from one package's roots hold
+// two types called Thing, one is emitted under a different name. The stubs
+// import a type by its Go name, so a stub for that package would name the
+// wrong declaration or none. Say so, naming the type, rather than emit it.
+func TestATypeThatReachesAnotherOfItsOwnNameIsRefused(t *testing.T) {
+	_, cfg := foreignFixture(t, `package data
 
 import (
 	"context"
@@ -438,44 +459,26 @@ import (
 	"github.com/tylergannon/skgo"
 )
 
-func getThing(ctx context.Context) (wire.Thing, error) {
-	return wire.Thing{}, nil
+// Thing wraps the dependency's Thing, under the same name.
+type Thing struct {
+	Inner wire.Thing `+"`json:\"inner\"`"+`
+}
+
+func getThing(ctx context.Context) (Thing, error) {
+	return Thing{}, nil
 }
 
 var _ = skgo.Query(getThing)
 `, nil)
 
-	if err := Run(cfg); err != nil {
-		t.Fatalf("first run: %v", err)
+	err := Run(cfg)
+	if err == nil {
+		t.Fatal("a package whose Thing reaches a second Thing was projected, and its stub imports whichever one kept the name")
 	}
-	declared := filepath.Join(root, "app", "generated", "wiretypes")
-	if _, err := os.Stat(declared); err != nil {
-		t.Fatalf("nothing was declared for the dependency: %v", err)
+	if !strings.Contains(err.Error(), "Thing") {
+		t.Fatalf("the refusal does not name the type:\n%v", err)
 	}
-
-	// The same app, with the dependency taken back off the wire.
-	if err := os.WriteFile(filepath.Join(root, "app", "web", "src", "data", "data.remote.go"), []byte(`package data
-
-import (
-	"context"
-
-	"github.com/tylergannon/skgo"
-)
-
-func getThing(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-var _ = skgo.Query(getThing)
-`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := Run(cfg); err != nil {
-		t.Fatalf("second run: %v", err)
-	}
-	if _, err := os.Stat(declared); !os.IsNotExist(err) {
-		t.Fatalf("the declaration package outlived the dependency that needed it: %v", err)
-	}
+	t.Logf("refused with:\n%v", err)
 }
 
 func readFixtureFile(t *testing.T, root, rel string) string {

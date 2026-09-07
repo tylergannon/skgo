@@ -41,14 +41,15 @@ var templateFS embed.FS
 // go.mod nobody can resolve.
 const skgoModule = "github.com/tylergannon/skgo"
 
-// polytypeModule projects the Go types that cross to TypeScript. skgo runs it
-// through `go tool`, so the generated project has to require it too.
+// polytypeModule projects the Go types that cross to TypeScript. skgo drives
+// it as a library, so the generated project requires it only to pin the
+// version.
 const polytypeModule = "github.com/tylergannon/polytype"
 
 // defaultPolytypeVersion is the polytype the example is built against. A
 // generated project pins the same one: the projection is what the browser
 // receives, so it is not a version to be casual about.
-const defaultPolytypeVersion = "v1.0.0-rc.10"
+const defaultPolytypeVersion = "v1.0.0-rc.11"
 
 // defaultOrigin is where a new app is served in development. It is the value
 // the frontend is built with and the value the binary trusts, and it appears

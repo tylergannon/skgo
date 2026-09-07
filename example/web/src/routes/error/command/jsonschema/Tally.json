@@ -1,4 +1,0 @@
-{"type":"object",
-"description":"Tally is how many times the command has run.","properties":{
-"runs":{"type":"integer","description":"Runs is the count."}
-},"required":["runs"],"additionalProperties":false}

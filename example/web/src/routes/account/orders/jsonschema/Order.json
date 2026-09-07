@@ -1,5 +1,0 @@
-{"type":"object",
-"description":"Order is one line of the visitor's order history.","properties":{
-"item":{"type":"string","description":"Item is what was bought."},
-"cents":{"type":"integer","description":"Cents is what it cost."}
-},"required":["item","cents"],"additionalProperties":false}

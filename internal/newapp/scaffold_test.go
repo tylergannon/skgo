@@ -14,6 +14,8 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -144,6 +146,23 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	binary := filepath.Join(dir, "bin", "myapp")
 	if _, err := os.Stat(binary); err != nil {
 		t.Fatalf("the build gesture did not produce %s: %v", binary, err)
+	}
+
+	// The route directory is the developer's, and the generator adds exactly
+	// three things beside a page: the stub kit compiles, the types its
+	// callers see, and the registration that names the handlers. The root
+	// also carries the go.mod that fences the route tree off from `go build
+	// ./...`. Nothing of polytype's — no marker, no schema, no build-tagged
+	// Go — lands anywhere in it.
+	routes := filepath.Join(dir, "web", "src", "routes")
+	want := []string{
+		"+error.svelte", "+layout.svelte", "+layout.ts", "+page.svelte",
+		"about/+page.svelte", "go.mod",
+		"hello.remote.go", "hello.remote.ts", "skgo_remotes_gen.go", "types.ts",
+	}
+	if got := filesUnder(t, routes); !slices.Equal(got, want) {
+		t.Fatalf("after the build gesture %s holds:\n  %s\nwant:\n  %s",
+			routes, strings.Join(got, "\n  "), strings.Join(want, "\n  "))
 	}
 
 	serve(t, binary, port)
@@ -551,6 +570,32 @@ func (f diskFile) Lstat() (os.FileInfo, error)  { return os.Lstat(f.abs()) }
 func (f diskFile) Open() (io.ReadCloser, error) { return os.Open(f.abs()) }
 func (f diskFile) abs() string {
 	return filepath.Join(f.root, filepath.FromSlash(f.rel))
+}
+
+// filesUnder lists every regular file below dir, relative to it and sorted,
+// so a directory's contents can be stated exactly.
+func filesUnder(t *testing.T, dir string) []string {
+	t.Helper()
+	var out []string
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, p)
+		if err != nil {
+			return err
+		}
+		out = append(out, filepath.ToSlash(rel))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // checkoutRoot is the module this test is compiled from.

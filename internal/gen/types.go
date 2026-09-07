@@ -5,24 +5,15 @@ import (
 	"go/types"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
 
-	"golang.org/x/mod/module"
+	"github.com/tylergannon/polytype/grammar"
+	"github.com/tylergannon/polytype/typegrammar"
+	"github.com/tylergannon/polytype/typescript"
 )
-
-// relocatedRootName is the directory, inside the generated bindings package,
-// that holds the declaration packages skgo writes for types belonging to
-// modules the app does not own.
-const relocatedRootName = "wiretypes"
-
-// declarationsFileName is the untagged file in a declaration package that
-// gives a foreign package's types a local Go declaration. It is also how a
-// declaration package is recognised when a later run has to remove it.
-const declarationsFileName = "skgo_wiretypes_gen.go"
 
 // tsType is a TypeScript type expression plus the named Go types it depends
 // on. skgo does not project Go types to TypeScript itself: every named type is
@@ -192,19 +183,20 @@ func (a *app) declare(named *types.Named) error {
 		}
 		foreign := !withinTree(a.hostDir, dir)
 		if foreign {
-			// The declaration cannot go where the type lives, so it comes to
-			// the app instead. dir and loadDir become the same real directory:
-			// nothing about it needs the route tree's links.
-			if dir, err = a.declarationDirFor(pkg); err != nil {
+			// The type's own package is source the app does not own — the
+			// module cache, for any real consumer — so it is lowered through
+			// the app package that imports it. polytype loads a root's
+			// package on demand from the importer's dependency graph, which
+			// is the same graph `go build` resolves.
+			if loadDir, err = a.importerOf(pkg); err != nil {
 				return err
 			}
-			loadDir = dir
 		}
 		tsDir, err := a.typesDirFor(pkg, dir, foreign)
 		if err != nil {
 			return err
 		}
-		set = &namedTypes{pkg: pkg, dir: dir, loadDir: loadDir, seen: map[string]bool{}, tsDir: tsDir, foreign: foreign}
+		set = &namedTypes{pkg: pkg, loadDir: loadDir, seen: map[string]bool{}, tsDir: tsDir, foreign: foreign}
 		a.typeSets[pkg] = set
 	}
 	if !set.seen[named.Obj().Name()] {
@@ -214,32 +206,18 @@ func (a *app) declare(named *types.Named) error {
 	return nil
 }
 
-// declarationDirFor is where a foreign package's declaration package is
-// written: a directory of the app's own module, named after the foreign
-// package's import path.
-//
-// Inside `Out` because everything there is already skgo's disposable output —
-// it is where the link tree lives — and because Out is documented to be in the
-// same module as the remote functions, which is what makes the directory
-// compilable, nameable by Go, and a place `go:embed` can reach. It is
-// deliberately not under the route tree, whose own `go.mod` would put it in a
-// different module.
-//
-// The import path is the directory name, not the package name. Two
-// dependencies called `wire` are an ordinary thing to have, and their import
-// paths are the only names that are guaranteed to differ.
-func (a *app) declarationDirFor(pkg *types.Package) (string, error) {
-	// Out is inside the host module by construction: it is the directory the
-	// host module was resolved from.
-	out, err := filepath.Rel(a.hostDir, a.cfg.Out)
-	if err != nil {
-		return "", err
+// importerOf is the load directory of an app package that imports pkg. A
+// foreign type reaches the wire through a marked signature in one of the
+// app's packages, and that package imports the type's, so one always exists.
+func (a *app) importerOf(pkg *types.Package) (string, error) {
+	for _, gp := range a.pkgs {
+		for _, imp := range gp.pkg.Types.Imports() {
+			if imp.Path() == pkg.Path() {
+				return gp.loadDir, nil
+			}
+		}
 	}
-	rel := path.Join(filepath.ToSlash(out), relocatedRootName, pkg.Path())
-	if err := module.CheckImportPath(a.hostModule + "/" + rel); err != nil {
-		return "", fmt.Errorf("skgo: %s puts a type on the wire, but Go cannot name a directory after its import path: %w", pkg.Path(), err)
-	}
-	return filepath.Join(a.hostDir, filepath.FromSlash(rel)), nil
+	return "", fmt.Errorf("skgo: %s puts a type on the wire, but no package declaring a remote function, load or route imports it", pkg.Path())
 }
 
 // withinTree reports whether dir is root or lives under it. It is the whole
@@ -328,9 +306,11 @@ func (a *app) typesDirFor(pkg *types.Package, dir string, foreign bool) (string,
 	return filepath.Join(a.cfg.Web, "src", "lib", "skgo", pkg.Name()), nil
 }
 
-// generateTypes writes the polytype declaration file for every package that
-// owns a type on the wire, then runs polytype over it. polytype is a code
-// generator skgo runs and consumes; skgo never projects a named type itself.
+// generateTypes projects every named type on the wire to TypeScript, one
+// types.ts per Go package that declares one. polytype is the projector — skgo
+// never spells a named type itself — and it is driven as a library: skgo
+// already knows every root, so nothing is discovered by marker, no file is
+// written into the package that declares the types, and no schema exists.
 func (a *app) generateTypes() error {
 	for _, fn := range a.remotes {
 		if fn.in != nil {
@@ -355,38 +335,11 @@ func (a *app) generateTypes() error {
 		}
 	}
 
-	sets := a.sortedTypeSets()
-	if err := a.pruneDeclarationPackages(sets); err != nil {
-		return err
-	}
-	for _, set := range sets {
+	for _, set := range a.sortedTypeSets() {
 		sort.Strings(set.names)
-		if err := a.writePolytypeMarkers(set); err != nil {
+		if err := a.projectTypes(set); err != nil {
 			return err
 		}
-	}
-	// The registration files just landed in authored directories, one of which
-	// may be the route root, whose link is a directory of per-file symlinks.
-	// polytype has to be able to see them through the link.
-	if err := a.links.sync(); err != nil {
-		return err
-	}
-
-	for _, set := range sets {
-		if err := os.MkdirAll(set.tsDir, 0o755); err != nil {
-			return err
-		}
-		// --target is the address Go can resolve, never the authored path: a
-		// route directory called `[id]` is not something the package loader can
-		// be handed at all.
-		cmd := exec.Command("go", "tool", "polytype", "--typescript", set.tsDir, "--target", set.loadDir)
-		cmd.Dir = a.hostDir
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("skgo: polytype could not project the types in %s: %w", set.pkg.Path(), err)
-		}
-		a.cfg.Logf("projected the types in %s to %s", set.pkg.Path(), filepath.Join(set.tsDir, "types.ts"))
 	}
 	return nil
 }
@@ -400,139 +353,72 @@ func (a *app) sortedTypeSets() []*namedTypes {
 	return out
 }
 
-// writePolytypeMarkers emits the registration file polytype expects the
-// developer to write. It has to live in the package that declares the type and
-// be behind the `jsonschema` build tag, so it never reaches the production
-// binary. For a foreign package that means the declaration package skgo wrote
-// into the app, and the local types it declares.
-func (a *app) writePolytypeMarkers(set *namedTypes) error {
+// projectTypes lowers one package's wire types through polytype's grammar and
+// writes the TypeScript it emits for them.
+//
+// The package is loaded by the address Go can resolve, never the authored
+// path: a route directory called `[id]` is not something the package loader
+// can be handed at all. Its roots are looked up by name in the loaded scope —
+// its own for a package of the app's, the imported package's for a foreign
+// one — so the types handed to polytype belong to the graph polytype loaded.
+func (a *app) projectTypes(set *namedTypes) error {
+	loaded, err := grammar.Load(set.loadDir)
+	if err != nil {
+		return fmt.Errorf("skgo: loading %s to project its types: %w", set.pkg.Path(), err)
+	}
+	scope := loaded.Types().Scope()
 	if set.foreign {
-		if err := a.writeLocalDeclarations(set); err != nil {
-			return err
-		}
-	}
-	var b strings.Builder
-	b.WriteString("//go:build jsonschema\n\n")
-	b.WriteString("// Code generated by skgo. DO NOT EDIT.\n\n")
-	fmt.Fprintf(&b, "package %s\n\n", set.pkg.Name())
-	b.WriteString("import (\n\t\"encoding/json\"\n\n\t\"github.com/tylergannon/polytype\"\n)\n\n")
-	b.WriteString("// Stubs so the package compiles before polytype has run.\n")
-	for _, name := range set.names {
-		fmt.Fprintf(&b, "func (%s) Schema() json.RawMessage { panic(\"not implemented\") }\n", set.localName(name))
-	}
-	b.WriteString("\nvar (\n")
-	for _, name := range set.names {
-		fmt.Fprintf(&b, "\t_ = polytype.Declare(%s.Schema)\n", set.localName(name))
-	}
-	b.WriteString(")\n")
-	return a.writeGo(filepath.Join(set.dir, "skgo_polytype_gen.go"), b.String())
-}
-
-// writeLocalDeclarations gives a foreign package's types a local declaration
-// polytype will accept, in the declaration package skgo writes into the app.
-//
-// polytype requires the type it is asked to project to be declared in the
-// target package (`undeclared local type found`), so there has to be a local
-// declaration whatever else is true. It is a defined type rather than an alias
-// because polytype emits its own entrypoint as a method on that type — even
-// for a registration written as a free function — and Go forbids a method on
-// an alias of a type from another package: the generated `jsonschema_gen.go`
-// simply does not compile.
-//
-// Losing the foreign method set across the definition costs nothing, and the
-// reason is worth knowing: polytype does not honour a custom marshaller, it
-// refuses the type outright — `rejectCustomWireType`, "defines MarshalJSON;
-// custom JSON/text wire mappings are not statically derivable" — and it
-// resolves *through* a defined type to find one, naming the underlying type in
-// the refusal. So a type whose Go encoding would contradict its declaration
-// cannot be smuggled past by relocating it. Measured against pinned rc.9, not
-// inferred. Otherwise the projection is structural, so both forms emit the
-// same TypeScript, and skgo's runtime encodes the foreign type itself and
-// never touches this declaration. The defined form also carries a foreign
-// enum, where an alias inherits the `enum()` marker without the constants that
-// give it meaning and polytype stops.
-//
-// This file carries no build tag. polytype's own output is `//go:build
-// !jsonschema` and refers to these names, so a declaration behind the
-// `jsonschema` tag would leave an ordinary build broken.
-//
-// The local name is not the foreign one. With both in scope polytype has two
-// types called `Thing` and disambiguates by hashing the identifier into the
-// TypeScript; with a distinct one it emits the foreign type under its own
-// name, which is the name the stubs use.
-func (a *app) writeLocalDeclarations(set *namedTypes) error {
-	var b strings.Builder
-	b.WriteString("// Code generated by skgo. DO NOT EDIT.\n//\n")
-	fmt.Fprintf(&b, "// Local declarations of the types %s puts on the wire, so polytype has\n", set.pkg.Path())
-	b.WriteString("// something in this package to project. Nothing but polytype reads them.\n\n")
-	fmt.Fprintf(&b, "package %s\n\n", set.pkg.Name())
-	fmt.Fprintf(&b, "import %s %q\n\n", set.pkg.Name(), set.pkg.Path())
-	for _, name := range set.names {
-		fmt.Fprintf(&b, "type %s %s.%s\n", set.localName(name), set.pkg.Name(), name)
-	}
-	return a.writeGo(filepath.Join(set.dir, declarationsFileName), b.String())
-}
-
-// pruneDeclarationPackages removes declaration packages a previous run left
-// behind. They are ordinary Go source in the app's module, so one for a
-// dependency that has since been dropped is a build failure rather than
-// clutter.
-func (a *app) pruneDeclarationPackages(sets []*namedTypes) error {
-	root := filepath.Join(a.cfg.Out, relocatedRootName)
-	keep := map[string]bool{}
-	for _, set := range sets {
-		if set.foreign {
-			keep[set.dir] = true
-		}
-	}
-	var stale []string
-	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || d.Name() != declarationsFileName {
-			return nil
-		}
-		if dir := filepath.Dir(p); !keep[dir] {
-			stale = append(stale, dir)
-		}
-		return nil
-	})
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	for _, dir := range stale {
-		if err := os.RemoveAll(dir); err != nil {
-			return err
-		}
-		a.cfg.Logf("removed %s: nothing on the wire comes from it any more", dir)
-	}
-	return removeEmptyDirs(root)
-}
-
-// removeEmptyDirs deletes every empty directory under root, and root itself if
-// it ends up empty. An import path is a directory tree, so dropping one
-// dependency's declaration package can leave several levels of nothing.
-func removeEmptyDirs(root string) error {
-	entries, err := os.ReadDir(root)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.IsDir() {
-			if err := removeEmptyDirs(filepath.Join(root, e.Name())); err != nil {
-				return err
+		scope = nil
+		for _, imp := range loaded.Types().Imports() {
+			if imp.Path() == set.pkg.Path() {
+				scope = imp.Scope()
+				break
 			}
 		}
+		if scope == nil {
+			return fmt.Errorf("skgo: %s does not import %s, whose types it puts on the wire", set.loadDir, set.pkg.Path())
+		}
 	}
-	if rest, err := os.ReadDir(root); err == nil && len(rest) == 0 {
-		return os.Remove(root)
+
+	roots := make([]grammar.Root, 0, len(set.names))
+	for _, name := range set.names {
+		obj := scope.Lookup(name)
+		if obj == nil {
+			return fmt.Errorf("skgo: %s is not declared in %s", name, set.pkg.Path())
+		}
+		roots = append(roots, grammar.Root{Type: obj.Type()})
+	}
+	defs, _, err := loaded.Lower(roots)
+	if err != nil {
+		return fmt.Errorf("skgo: polytype could not project the types in %s: %w", set.pkg.Path(), err)
+	}
+	result, err := typescript.Generate(defs, typescript.Options{})
+	if err != nil {
+		return fmt.Errorf("skgo: polytype could not declare the types in %s: %w", set.pkg.Path(), err)
+	}
+
+	// The stubs import a type by its Go name. polytype's identifiers are
+	// collision-safe, so a root that reaches two types of one name from two
+	// packages gets one of them renamed — and a stub importing the Go name
+	// would then name the wrong declaration, or none. Refuse that rather than
+	// emit it; the developer's fix is the one the stubs already demand for
+	// two same-named types in one module.
+	for _, name := range set.names {
+		if result.Names[typegrammar.Name{PackagePath: set.pkg.Path(), Name: name}] != name {
+			return fmt.Errorf("skgo: %s.%s reaches another type called %s from a different package; TypeScript can only have one %s in a module, so one of them has to be renamed",
+				set.pkg.Path(), name, name, name)
+		}
+	}
+
+	if err := os.MkdirAll(set.tsDir, 0o755); err != nil {
+		return err
+	}
+	for _, file := range result.Files {
+		path := filepath.Join(set.tsDir, file.Name)
+		if err := a.write(path, string(file.Content)); err != nil {
+			return err
+		}
+		a.cfg.Logf("projected the types in %s to %s", set.pkg.Path(), path)
 	}
 	return nil
 }

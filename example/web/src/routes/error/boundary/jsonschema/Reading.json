@@ -1,4 +1,0 @@
-{"type":"object",
-"description":"Reading is the value this query never produces.","properties":{
-"celsius":{"type":"integer","description":"Celsius is the temperature that would have been read."}
-},"required":["celsius"],"additionalProperties":false}

@@ -1,4 +1,0 @@
-{"type":"object",
-"description":"Session says who is signed in. An empty User means nobody.","properties":{
-"user":{"type":"string","description":"User is the signed-in visitor's name, or \"\" when signed out."}
-},"required":["user"],"additionalProperties":false}

@@ -1,5 +1,0 @@
-{"type":"object",
-"description":"Note is one panel's text. Two instances of getNote are on the page, told apart only by their argument, which is the key kit's client caches under.","properties":{
-"name":{"type":"string","description":"Name is which note this is: \"left\" or \"right\"."},
-"text":{"type":"string","description":"Text is what was last written to it."}
-},"required":["name","text"],"additionalProperties":false}
