@@ -143,8 +143,11 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 		result = "AsyncIterable<" + out.expr + ">"
 	}
 
-	if isNone(fn.in) {
-		// Kit's no-validator overload: a function taking no argument.
+	if fn.in == nil {
+		// Kit's no-validator overload: a function taking no argument. It is
+		// not cosmetic — `create_validator` reads the arity, and the one-
+		// argument form installs a validator that answers 400 to any argument
+		// but `undefined`, which is what a no-argument query must do.
 		return fmt.Sprintf("export const %s = %s((): %s => unimplemented());\n", fn.name, call, result), nil
 	}
 	in, err := a.project(fn.in)
@@ -159,7 +162,7 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 
 func (a *app) depsOf(fn *remoteFn) []*types.Named {
 	var deps []*types.Named
-	if !isNone(fn.in) {
+	if fn.in != nil {
 		if t, err := a.project(fn.in); err == nil {
 			deps = append(deps, t.deps...)
 		}
@@ -175,7 +178,7 @@ func (a *app) depsOf(fn *remoteFn) []*types.Named {
 // they are the classes the app declares there.
 func (a *app) transportedOf(fn *remoteFn) []*types.Named {
 	var out []*types.Named
-	if !isNone(fn.in) {
+	if fn.in != nil {
 		if t, err := a.project(fn.in); err == nil {
 			out = append(out, t.transported...)
 		}
@@ -229,7 +232,7 @@ func (a *app) writePackageBindings() error {
 		b.WriteString("// SkgoRemotes returns the remote functions declared in this package.\n")
 		b.WriteString("func SkgoRemotes() []*skgo.Remote {\n\treturn []*skgo.Remote{\n")
 		for _, fn := range fns {
-			fmt.Fprintf(&b, "\t\tskgo.%s(%q, %q, %s),\n", constructor(fn.kind), fn.module, fn.name, fn.name)
+			fmt.Fprintf(&b, "\t\tskgo.%s(%q, %q, %s),\n", constructor(fn), fn.module, fn.name, fn.name)
 		}
 		b.WriteString("\t}\n}\n\n")
 		b.WriteString("// SkgoLoads returns the server loads declared in this package.\n")
@@ -260,16 +263,26 @@ func endpointWireMethod(method string) string {
 	return method
 }
 
-func constructor(k remoteKind) string {
-	switch k {
+// constructor is the registration skgo publishes this function with. There is
+// one per kind and arity: the marker no longer carries the types, so the
+// generated call is where the compiler checks the function's real signature
+// against the shape skgo will call it with.
+func constructor(fn *remoteFn) string {
+	noArg := ""
+	if fn.in == nil {
+		noArg = "NoArg"
+	}
+	switch fn.kind {
 	case kindCommand:
-		return "NewCommand"
+		return "NewCommand" + noArg
 	case kindLive:
-		return "NewLiveQuery"
+		return "NewLiveQuery" + noArg
 	case kindForm:
+		// A form always receives the submission, so there is no no-argument
+		// form to register.
 		return "NewForm"
 	}
-	return "NewQuery"
+	return "NewQuery" + noArg
 }
 
 // writeAppBindings emits the one package the application imports.

@@ -20,7 +20,7 @@ type Plan struct {
 	Price businesslogic.Money `json:"price"`
 }
 
-func getPlans(ctx context.Context, _ skgo.None) ([]Plan, error) {
+func getPlans(ctx context.Context) ([]Plan, error) {
 	return []Plan{
 		{Name: "Hobby", Price: businesslogic.USD(0)},
 		{Name: "Team", Price: businesslogic.USD(20)},

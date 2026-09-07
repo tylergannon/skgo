@@ -25,7 +25,7 @@ func signedIn(ctx context.Context) bool {
 }
 
 // getTodos lists the todos this visitor may see.
-func getTodos(ctx context.Context, _ skgo.None) ([]businesslogic.Todo, error) {
+func getTodos(ctx context.Context) ([]businesslogic.Todo, error) {
 	return businesslogic.Default.Todos(signedIn(ctx)), nil
 }
 
@@ -109,7 +109,7 @@ func retitleTodo(ctx context.Context, arg Retitle) (businesslogic.Todo, error) {
 // await. When the cookie changes, kit's answer is not to re-read it but to
 // restart the stream: the command that wrote it reconnects the live query in
 // the same flight, which is what signIn and signOut do.
-func watchCount(ctx context.Context, _ skgo.None, yield func(int) error) error {
+func watchCount(ctx context.Context, yield func(int) error) error {
 	updates, unsubscribe, count := businesslogic.Default.Watch(signedIn(ctx))
 	defer unsubscribe()
 

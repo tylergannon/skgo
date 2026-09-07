@@ -56,7 +56,7 @@ func TestFormSubmissionAndSingleFlightRefresh(t *testing.T) {
 	var received draft
 	var sent []string
 
-	getMessages := NewQuery(testModule, "getMessages", func(ctx context.Context, _ None) ([]string, error) {
+	getMessages := NewQueryNoArg(testModule, "getMessages", func(ctx context.Context) ([]string, error) {
 		out := make([]string, len(sent))
 		copy(out, sent)
 		return out, nil
@@ -126,7 +126,7 @@ func TestFormReceivesFileBytes(t *testing.T) {
 // Kit's server returns before it collects refreshes precisely so the client
 // leaves the page — and the visitor's input — alone.
 func TestFormIssuesSuppressRefreshes(t *testing.T) {
-	getMessages := NewQuery(testModule, "getMessages", func(ctx context.Context, _ None) ([]string, error) {
+	getMessages := NewQueryNoArg(testModule, "getMessages", func(ctx context.Context) ([]string, error) {
 		t.Error("a rejected submission must not run the refreshes it asked for")
 		return nil, nil
 	})

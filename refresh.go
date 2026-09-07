@@ -64,17 +64,9 @@ import (
 // registered query, or an argument that cannot be encoded — and never about
 // what the query goes on to do.
 func Refresh[In, Out any](ctx context.Context, fn func(context.Context, In) (Out, error), arg In) error {
-	set := refreshSetFrom(ctx)
-	if set == nil {
-		return fmt.Errorf("skgo: Refresh(%s): a refresh can only be requested from a command or a form, because it rides back on that call's response", funcName(fn))
-	}
-
-	target, err := set.rs.lookupFunc(fn)
+	set, target, err := refreshTarget(ctx, "Refresh", fn)
 	if err != nil {
 		return err
-	}
-	if target.kind != kindQuery {
-		return fmt.Errorf("skgo: Refresh(%s): %s is a %s, and only a query can be refreshed", funcName(fn), target.id, target.kind)
 	}
 
 	payload, present, err := queryPayload(arg)
@@ -86,18 +78,46 @@ func Refresh[In, Out any](ctx context.Context, fn func(context.Context, In) (Out
 	return nil
 }
 
+// RefreshNoArg is Refresh for a query that takes no argument:
+//
+//	return todo, skgo.RefreshNoArg(ctx, getTodos)
+//
+// It exists because there is no argument to infer the query's parameter type
+// from, and it is not a variant of the key: kit's client calls a no-argument
+// query with `undefined`, whose payload is the empty string, so the key is the
+// query's id and nothing after the slash. That is the same key the client
+// stored the query under, which is what makes the value land on the open page.
+func RefreshNoArg[Out any](ctx context.Context, fn func(context.Context) (Out, error)) error {
+	set, target, err := refreshTarget(ctx, "RefreshNoArg", fn)
+	if err != nil {
+		return err
+	}
+
+	set.add(target.id+"/", refreshEntry{fn: target})
+	return nil
+}
+
+// refreshTarget resolves the registration a refresh names, and the set it will
+// be recorded in.
+func refreshTarget(ctx context.Context, who string, fn any) (*refreshSet, *Remote, error) {
+	set := refreshSetFrom(ctx)
+	if set == nil {
+		return nil, nil, fmt.Errorf("skgo: %s(%s): a refresh can only be requested from a command or a form, because it rides back on that call's response", who, funcName(fn))
+	}
+
+	target, err := set.rs.lookupFunc(fn)
+	if err != nil {
+		return nil, nil, err
+	}
+	if target.kind != kindQuery {
+		return nil, nil, fmt.Errorf("skgo: %s(%s): %s is a %s, and only a query can be refreshed", who, funcName(fn), target.id, target.kind)
+	}
+	return set, target, nil
+}
+
 // queryPayload builds the payload half of a refresh key: kit's
 // `stringify_remote_arg`, which is what the client used to key its cache.
-//
-// skgo.None is the Go spelling of a query that takes no argument, and kit's
-// client calls such a query with `undefined`, whose payload is the empty
-// string. Encoding None as the empty object it looks like in Go would build a
-// key nothing on the page is stored under, and the refresh would land nowhere
-// and report nothing.
 func queryPayload(arg any) (payload string, present bool, err error) {
-	if _, none := arg.(None); none {
-		return "", false, nil
-	}
 	tree, err := encodeValue(arg)
 	if err != nil {
 		return "", false, err

@@ -370,14 +370,10 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 
 	pos := p.Fset.Position(call.Pos())
 	inst := p.TypesInfo.Instances[ident]
-	if !isEndpoint {
-		// An endpoint marker takes an http.HandlerFunc, so it has no type
-		// parameters to read: the compiler has already checked the signature.
-		arity := 2
-		if isLoad {
-			arity = 1
-		}
-		if inst.TypeArgs == nil || inst.TypeArgs.Len() != arity {
+	if isLoad {
+		// A load marker is still generic — a load has no argument to make
+		// optional — so its result comes from the instantiation.
+		if inst.TypeArgs == nil || inst.TypeArgs.Len() != 1 {
 			return nil, nil, nil, fmt.Errorf("skgo: %s: cannot read the types of this skgo.%s declaration", pos, obj.Name())
 		}
 	}
@@ -423,16 +419,119 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 		}, nil, nil
 	}
 
+	in, out, err := remoteSignature(kind, target)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("skgo: %s: %s is declared as a %s, but %w", pos, target.Name(), kind, err)
+	}
+
 	return &remoteFn{
 		kind:   kind,
 		name:   target.Name(),
 		goPkg:  gp,
 		module: mod,
 		stub:   stub,
-		in:     inst.TypeArgs.At(0),
-		out:    inst.TypeArgs.At(1),
+		in:     in,
+		out:    out,
 		pos:    pos,
 	}, nil, nil, nil
+}
+
+// remoteSignature reads a marked function's argument and result types out of
+// its own declaration.
+//
+// The marker cannot carry them. `skgo.Query` takes `any`, because kit's
+// `query(fn)` accepts `(arg?) => Output` and a generic constraint spelled
+// `func(context.Context, In) (Out, error)` would force every no-argument
+// remote function to name a placeholder type that exists for no other reason.
+// So the shape is checked here, against the real signature, and reported at
+// the declaration's position — which is where a compiler would have reported
+// it.
+//
+// in is nil for a function that takes no argument. That is the same nil the
+// TypeScript stub reads as kit's no-validator overload, and it is why no skgo
+// type reaches the type projector.
+func remoteSignature(kind remoteKind, target *types.Func) (in, out types.Type, err error) {
+	sig, ok := target.Type().(*types.Signature)
+	if !ok {
+		return nil, nil, fmt.Errorf("it is not a function")
+	}
+	if sig.Variadic() {
+		return nil, nil, fmt.Errorf("its signature is %s: a %s cannot be variadic, because kit calls it with one argument at most", sig, kind)
+	}
+
+	want := shapeOf(kind)
+	params, results := sig.Params(), sig.Results()
+
+	if params.Len() == 0 || !isContext(params.At(0).Type()) {
+		return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+	}
+
+	if kind == kindLive {
+		// The yield is last, so the optional argument sits between it and the
+		// context, exactly where an argument sits for the other kinds.
+		if results.Len() != 1 || !isError(results.At(0).Type()) {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		if params.Len() < 2 || params.Len() > 3 {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		yielded, ok := yieldType(params.At(params.Len() - 1).Type())
+		if !ok {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		if params.Len() == 3 {
+			in = params.At(1).Type()
+		}
+		return in, yielded, nil
+	}
+
+	if params.Len() > 2 {
+		return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+	}
+	if results.Len() != 2 || !isError(results.At(1).Type()) {
+		return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+	}
+	if params.Len() == 2 {
+		in = params.At(1).Type()
+	}
+	return in, results.At(0).Type(), nil
+}
+
+// shapeOf is the sentence that says what the kind accepts. A form is the one
+// kind whose argument is not optional: kit hands its handler the submission,
+// and a form that ignores it is a form that ignores what the visitor typed.
+func shapeOf(kind remoteKind) string {
+	switch kind {
+	case kindLive:
+		return "A query.live is func(context.Context, func(Out) error) error, or func(context.Context, In, func(Out) error) error when it takes an argument."
+	case kindForm:
+		return "A form is func(context.Context, In) (Out, error): kit hands a form handler the submission, so its argument is not optional."
+	}
+	return fmt.Sprintf("A %s is func(context.Context) (Out, error), or func(context.Context, In) (Out, error) when it takes an argument.", kind)
+}
+
+// yieldType reads Out out of a `func(Out) error` parameter.
+func yieldType(t types.Type) (types.Type, bool) {
+	sig, ok := types.Unalias(t).(*types.Signature)
+	if !ok || sig.Variadic() {
+		return nil, false
+	}
+	if sig.Params().Len() != 1 || sig.Results().Len() != 1 || !isError(sig.Results().At(0).Type()) {
+		return nil, false
+	}
+	return sig.Params().At(0).Type(), true
+}
+
+func isContext(t types.Type) bool {
+	named, ok := types.Unalias(t).(*types.Named)
+	if !ok || named.Obj().Pkg() == nil {
+		return false
+	}
+	return named.Obj().Pkg().Path() == "context" && named.Obj().Name() == "Context"
+}
+
+func isError(t types.Type) bool {
+	return types.Identical(types.Unalias(t), types.Universe.Lookup("error").Type())
 }
 
 func calleeIdent(fun ast.Expr) *ast.Ident {

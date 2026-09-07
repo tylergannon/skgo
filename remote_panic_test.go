@@ -33,8 +33,8 @@ func silentServer(t *testing.T, rs *Remotes) *httptest.Server {
 }
 
 func TestAPanickingQueryAnswersInsteadOfResettingTheConnection(t *testing.T) {
-	rs := testRemotes(t, RemoteConfig{}, NewQuery(testModule, "boom",
-		func(ctx context.Context, _ None) (todo, error) {
+	rs := testRemotes(t, RemoteConfig{}, NewQueryNoArg(testModule, "boom",
+		func(ctx context.Context) (todo, error) {
 			panic("the database handle was nil")
 		}))
 	srv := silentServer(t, rs)
@@ -64,8 +64,8 @@ func TestAPanickingQueryAnswersInsteadOfResettingTheConnection(t *testing.T) {
 }
 
 func TestAPanickingCommandAnswersInsteadOfResettingTheConnection(t *testing.T) {
-	rs := testRemotes(t, RemoteConfig{}, NewCommand(testModule, "boom",
-		func(ctx context.Context, _ None) (todo, error) {
+	rs := testRemotes(t, RemoteConfig{}, NewCommandNoArg(testModule, "boom",
+		func(ctx context.Context) (todo, error) {
 			panic("nil map write")
 		}))
 	srv := silentServer(t, rs)
@@ -87,10 +87,10 @@ func TestAPanickingCommandAnswersInsteadOfResettingTheConnection(t *testing.T) {
 // A panic in a query a command refreshes must not take the command's own
 // answer down with it: the command already ran and may have written a cookie.
 func TestAPanickingRefreshDoesNotDestroyTheCommandsAnswer(t *testing.T) {
-	command := NewCommand(testModule, "act", func(ctx context.Context, _ None) (string, error) {
+	command := NewCommandNoArg(testModule, "act", func(ctx context.Context) (string, error) {
 		return "done", nil
 	})
-	query := NewQuery(testModule, "boom", func(ctx context.Context, _ None) (string, error) {
+	query := NewQueryNoArg(testModule, "boom", func(ctx context.Context) (string, error) {
 		panic("the refresh exploded")
 	})
 	rs := testRemotes(t, RemoteConfig{}, command, query)
@@ -120,8 +120,8 @@ func TestAPanickingRefreshDoesNotDestroyTheCommandsAnswer(t *testing.T) {
 // panic does not merely reset one connection — it takes the whole process
 // down, every other visitor with it.
 func TestAPanickingLiveQueryDoesNotTakeTheProcessDown(t *testing.T) {
-	rs := testRemotes(t, RemoteConfig{}, NewLiveQuery(testModule, "boom",
-		func(ctx context.Context, _ None, yield func(int) error) error {
+	rs := testRemotes(t, RemoteConfig{}, NewLiveQueryNoArg(testModule, "boom",
+		func(ctx context.Context, yield func(int) error) error {
 			if err := yield(1); err != nil {
 				return err
 			}
@@ -163,8 +163,8 @@ func TestAPanicIsReportedToTheServerWithItsStack(t *testing.T) {
 			seen = append(seen, s)
 		}
 	}}
-	rs := testRemotes(t, cfg, NewQuery(testModule, "boom",
-		func(ctx context.Context, _ None) (todo, error) {
+	rs := testRemotes(t, cfg, NewQueryNoArg(testModule, "boom",
+		func(ctx context.Context) (todo, error) {
 			panic("the database handle was nil")
 		}))
 	srv := silentServer(t, rs)

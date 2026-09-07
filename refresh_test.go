@@ -45,7 +45,7 @@ func TestRefreshKeyMatchesKitsForTheArgumentGiven(t *testing.T) {
 		return todo{ID: id, Text: "text for " + id}, nil
 	}
 	query := NewQuery(testModule, "getTodo", getTodo)
-	command := NewCommand(testModule, "renameTodo", func(ctx context.Context, _ None) (string, error) {
+	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
 		return "renamed", Refresh(ctx, getTodo, "t1")
 	})
 	rs := testRemotes(t, RemoteConfig{}, query, command)
@@ -75,7 +75,7 @@ func TestRefreshOfOneArgumentDoesNotTouchAnother(t *testing.T) {
 		return todo{ID: id}, nil
 	}
 	query := NewQuery(testModule, "getTodo", getTodo)
-	command := NewCommand(testModule, "renameTodo", func(ctx context.Context, _ None) (string, error) {
+	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
 		return "renamed", Refresh(ctx, getTodo, "t2")
 	})
 	rs := testRemotes(t, RemoteConfig{}, query, command)
@@ -86,16 +86,16 @@ func TestRefreshOfOneArgumentDoesNotTouchAnother(t *testing.T) {
 	}
 }
 
-// A query declared with skgo.None takes no argument, and kit's client calls it
-// with `undefined`, whose payload is empty. Encoding None as the empty object
-// it resembles in Go would key the refresh to something no page holds.
+// A query that takes no argument is called by kit's client with `undefined`,
+// whose payload is empty, so its key is the id and a trailing slash with
+// nothing after it. A key with anything after the slash is one no page holds.
 func TestRefreshOfANoArgumentQueryUsesTheEmptyPayload(t *testing.T) {
-	getTodos := func(ctx context.Context, _ None) ([]todo, error) {
+	getTodos := func(ctx context.Context) ([]todo, error) {
 		return []todo{{ID: "t1"}}, nil
 	}
-	query := NewQuery(testModule, "getTodos", getTodos)
-	command := NewCommand(testModule, "addTodo", func(ctx context.Context, _ None) (string, error) {
-		return "added", Refresh(ctx, getTodos, None{})
+	query := NewQueryNoArg(testModule, "getTodos", getTodos)
+	command := NewCommandNoArg(testModule, "addTodo", func(ctx context.Context) (string, error) {
+		return "added", RefreshNoArg(ctx, getTodos)
 	})
 	rs := testRemotes(t, RemoteConfig{}, query, command)
 
@@ -114,7 +114,7 @@ func TestRefreshRunsAfterTheHandlerBody(t *testing.T) {
 		return todo{ID: id, Text: stored}, nil
 	}
 	query := NewQuery(testModule, "getTodo", getTodo)
-	command := NewCommand(testModule, "renameTodo", func(ctx context.Context, _ None) (string, error) {
+	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
 		if err := Refresh(ctx, getTodo, "t1"); err != nil {
 			return "", err
 		}
@@ -139,7 +139,7 @@ func TestRefreshSeesACookieTheCommandJustWrote(t *testing.T) {
 		return todo{ID: id, Text: user}, nil
 	}
 	query := NewQuery(testModule, "getTodo", getTodo)
-	command := NewCommand(testModule, "signIn", func(ctx context.Context, _ None) (string, error) {
+	command := NewCommandNoArg(testModule, "signIn", func(ctx context.Context) (string, error) {
 		if err := EventFrom(ctx).SetCookie("who", "ada", CookieOptions{}); err != nil {
 			return "", err
 		}
@@ -160,7 +160,7 @@ func TestRefreshFailureDoesNotFailTheCommand(t *testing.T) {
 		return todo{}, Errorf(404, "No todo with id %q", id)
 	}
 	query := NewQuery(testModule, "getTodo", getTodo)
-	command := NewCommand(testModule, "renameTodo", func(ctx context.Context, _ None) (string, error) {
+	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
 		return "the command's own answer", Refresh(ctx, getTodo, "t1")
 	})
 	rs := testRemotes(t, RemoteConfig{}, query, command)
@@ -184,18 +184,18 @@ func TestRefreshFailureDoesNotFailTheCommand(t *testing.T) {
 // A refreshed query may itself ask for a refresh, so the drain has to keep
 // going until nothing new is registered — kit's re-entrant `drain()`.
 func TestARefreshedQueryCanRegisterAnother(t *testing.T) {
-	getTodos := func(ctx context.Context, _ None) ([]todo, error) {
+	getTodos := func(ctx context.Context) ([]todo, error) {
 		return []todo{{ID: "t1"}}, nil
 	}
 	var getTodo queryFn = func(ctx context.Context, id string) (todo, error) {
-		return todo{ID: id}, Refresh(ctx, getTodos, None{})
+		return todo{ID: id}, RefreshNoArg(ctx, getTodos)
 	}
-	command := NewCommand(testModule, "renameTodo", func(ctx context.Context, _ None) (string, error) {
+	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
 		return "renamed", Refresh(ctx, getTodo, "t1")
 	})
 	rs := testRemotes(t, RemoteConfig{},
 		NewQuery(testModule, "getTodo", getTodo),
-		NewQuery(testModule, "getTodos", getTodos),
+		NewQueryNoArg(testModule, "getTodos", getTodos),
 		command,
 	)
 
@@ -213,7 +213,7 @@ func TestOneKeyNamedByBothChannelsIsAnsweredOnce(t *testing.T) {
 		runs++
 		return todo{ID: id}, nil
 	}
-	command := NewCommand(testModule, "renameTodo", func(ctx context.Context, _ None) (string, error) {
+	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
 		return "renamed", Refresh(ctx, getTodo, "t1")
 	})
 	rs := testRemotes(t, RemoteConfig{}, NewQuery(testModule, "getTodo", getTodo), command)
@@ -233,7 +233,7 @@ func TestBothChannelsAreAnsweredTogether(t *testing.T) {
 	var getTodo queryFn = func(ctx context.Context, id string) (todo, error) {
 		return todo{ID: id}, nil
 	}
-	command := NewCommand(testModule, "renameTodo", func(ctx context.Context, _ None) (string, error) {
+	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
 		return "renamed", Refresh(ctx, getTodo, "t1")
 	})
 	rs := testRemotes(t, RemoteConfig{}, NewQuery(testModule, "getTodo", getTodo), command)
@@ -254,18 +254,18 @@ func TestRefreshRejectsWhatCannotBeRefreshed(t *testing.T) {
 	}
 	unregistered := func(ctx context.Context, id string) (todo, error) { return todo{}, nil }
 
-	var self func(context.Context, None) (string, error)
-	self = func(ctx context.Context, _ None) (string, error) {
-		return "", Refresh(ctx, self, None{})
+	var self func(context.Context) (string, error)
+	self = func(ctx context.Context) (string, error) {
+		return "", RefreshNoArg(ctx, self)
 	}
-	notAQuery := NewCommand(testModule, "notAQuery", self)
+	notAQuery := NewCommandNoArg(testModule, "notAQuery", self)
 
-	notRegistered := NewCommand(testModule, "notRegistered", func(ctx context.Context, _ None) (string, error) {
+	notRegistered := NewCommandNoArg(testModule, "notRegistered", func(ctx context.Context) (string, error) {
 		return "", Refresh(ctx, unregistered, "t1")
 	})
 	// A query has nowhere to put a refreshed value, so asking from one is a
 	// mistake rather than a no-op.
-	fromAQuery := NewQuery(testModule, "fromAQuery", func(ctx context.Context, _ None) (todo, error) {
+	fromAQuery := NewQueryNoArg(testModule, "fromAQuery", func(ctx context.Context) (todo, error) {
 		return todo{}, Refresh(ctx, getTodo, "t1")
 	})
 	rs := testRemotes(t, RemoteConfig{},
