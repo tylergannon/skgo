@@ -26,14 +26,16 @@ const (
 	kindQuery   remoteKind = "query"
 	kindCommand remoteKind = "command"
 	kindLive    remoteKind = "query.live"
+	kindBatch   remoteKind = "query.batch"
 	kindForm    remoteKind = "form"
 )
 
 var markerKinds = map[string]remoteKind{
-	"Query":     kindQuery,
-	"Command":   kindCommand,
-	"LiveQuery": kindLive,
-	"Form":      kindForm,
+	"Query":      kindQuery,
+	"Command":    kindCommand,
+	"LiveQuery":  kindLive,
+	"BatchQuery": kindBatch,
+	"Form":       kindForm,
 }
 
 // loadFn is one declared server load.
@@ -478,10 +480,44 @@ func remoteSignature(kind remoteKind, target *types.Func) (in, out types.Type, e
 	if results.Len() != 2 || !isError(results.At(1).Type()) {
 		return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
 	}
+
+	if kind == kindBatch {
+		// A batch takes the whole batch and answers all of it. Both sides are
+		// slices, and what the rest of the generator needs — the argument the
+		// page passes and the value one component renders — are their element
+		// types: kit's client still calls a batch query one argument at a time
+		// and gets one value back, which is the only shape the stub and the
+		// wire ever see.
+		if params.Len() != 2 {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		arg, ok := sliceElem(params.At(1).Type())
+		if !ok {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		result, ok := sliceElem(results.At(0).Type())
+		if !ok {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		return arg, result, nil
+	}
+
 	if params.Len() == 2 {
 		in = params.At(1).Type()
 	}
 	return in, results.At(0).Type(), nil
+}
+
+// sliceElem reads T out of []T. A named slice type is not one: the generated
+// constructor is instantiated with the element type and passes the function
+// straight through, so the parameter has to be a plain slice for the compiler
+// to accept it.
+func sliceElem(t types.Type) (types.Type, bool) {
+	slice, ok := types.Unalias(t).(*types.Slice)
+	if !ok {
+		return nil, false
+	}
+	return slice.Elem(), true
 }
 
 // shapeOf is the sentence that says what the kind accepts. A form is the one
@@ -491,6 +527,8 @@ func shapeOf(kind remoteKind) string {
 	switch kind {
 	case kindLive:
 		return "A query.live is func(context.Context, func(Out) error) error, or func(context.Context, In, func(Out) error) error when it takes an argument."
+	case kindBatch:
+		return "A query.batch is func(context.Context, []In) ([]Out, error): it is handed every argument in the batch and answers one result per argument, in the same order."
 	case kindForm:
 		return "A form is func(context.Context, In) (Out, error): kit hands a form handler the submission, so its argument is not optional."
 	}

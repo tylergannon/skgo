@@ -172,6 +172,14 @@ type Engine struct {
 type runtime struct {
 	vm     *goja.Runtime
 	render goja.Callable
+	// tick runs the next callback on the engine's macrotask queue and pending
+	// says how many are waiting. See globalsSource: kit's `query.batch` flushes
+	// with `setTimeout(..., 0)`, and this is the loop that lets it.
+	tick    goja.Callable
+	pending goja.Callable
+	// reset empties that queue. A runtime is pooled, and work the last render
+	// left behind is not this one's to run.
+	reset goja.Callable
 
 	// host is the answer function of the render currently in flight. It is
 	// written and read by the one goroutine holding the runtime.
@@ -293,6 +301,16 @@ func (e *Engine) newRuntime() (*runtime, error) {
 	}
 	rt.render = render
 
+	if rt.tick, ok = goja.AssertFunction(rt.vm.Get("__skgo_tick")); !ok {
+		return nil, errors.New("skgo: the engine's globals define no __skgo_tick")
+	}
+	if rt.pending, ok = goja.AssertFunction(rt.vm.Get("__skgo_pending")); !ok {
+		return nil, errors.New("skgo: the engine's globals define no __skgo_pending")
+	}
+	if rt.reset, ok = goja.AssertFunction(rt.vm.Get("__skgo_reset")); !ok {
+		return nil, errors.New("skgo: the engine's globals define no __skgo_reset")
+	}
+
 	e.mu.Lock()
 	e.created++
 	e.mu.Unlock()
@@ -317,9 +335,20 @@ func (e *Engine) Render(routeID string, request []byte, host Host) (Result, []Ca
 	rt.route = routeID
 	defer func() { rt.host = nil; rt.route = "" }()
 
+	// Whatever the last render left on the macrotask queue belongs to a request
+	// that is over. It is dropped rather than run: it would run against this
+	// render's state, and the value it produced would be recorded against this
+	// page.
+	if _, err := rt.reset(goja.Undefined()); err != nil {
+		return Result{}, nil, fmt.Errorf("skgo: clearing the runtime's pending work: %w", err)
+	}
+
 	v, err := rt.render(goja.Undefined(), rt.vm.ToValue(string(request)))
 	if err != nil {
 		return Result{}, rt.calls, fmt.Errorf("skgo: rendering: %w", err)
+	}
+	if err := rt.drain(v); err != nil {
+		return Result{}, rt.calls, err
 	}
 	if rt.failed != nil {
 		return Result{}, rt.calls, rt.failed
@@ -350,6 +379,40 @@ func (e *Engine) Render(routeID string, request []byte, host Host) (Result, []Ca
 		return result, rt.calls, fmt.Errorf("skgo: the page threw while rendering: %s", result.Err)
 	}
 	return result, rt.calls, nil
+}
+
+// maxTicks bounds the macrotask queue so a render that keeps rescheduling
+// itself fails instead of holding the runtime for ever. Nothing in kit's render
+// path schedules more than one callback per batch query, so the bound is far
+// above anything a real page reaches.
+const maxTicks = 10_000
+
+// drain runs the engine's macrotask queue until the render has finished or
+// nothing is left to run.
+//
+// goja drains the promise jobs a call queued when that call returns, so a
+// callback has to be entered from out here for its `await`s to make progress.
+// That is also what makes this the right moment: a `setTimeout(fn, 0)` runs
+// after the current turn's microtasks, and the current turn's microtasks are
+// exactly what has just finished.
+func (rt *runtime) drain(result goja.Value) error {
+	object := result.ToObject(rt.vm)
+	for ticks := 0; !boolOf(object.Get("done")); ticks++ {
+		if ticks == maxTicks {
+			return fmt.Errorf("skgo: the render is still scheduling work after %d turns; it will not finish", maxTicks)
+		}
+		waiting, err := rt.pending(goja.Undefined())
+		if err != nil {
+			return fmt.Errorf("skgo: reading the render's pending work: %w", err)
+		}
+		if waiting.ToInteger() == 0 {
+			return nil
+		}
+		if _, err := rt.tick(goja.Undefined()); err != nil {
+			return fmt.Errorf("skgo: running the render's pending work: %w", err)
+		}
+	}
+	return nil
 }
 
 // stringOf, boolOf and intOf read a property that may be absent, without

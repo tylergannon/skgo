@@ -194,3 +194,89 @@ var _ = skgo.LiveQuery(watchThing)`,
 		})
 	}
 }
+
+// A `query.batch` is the one kind whose Go signature is not the shape the page
+// calls. Go is handed the whole batch and answers all of it; kit's client still
+// calls it one argument at a time and gets one value back. So the projection
+// has to read the element types out of the two slices — those are what crosses
+// the wire per entry — and emit kit's own factory shape:
+// `(args: In[]) => (arg: In, idx: number) => Out`.
+func TestABatchQueryIsProjectedFromItsElementTypes(t *testing.T) {
+	root, cfg := foreignFixture(t, `package data
+
+import (
+	"context"
+
+	"github.com/tylergannon/skgo"
+)
+
+type Quote struct {
+	Symbol string ` + "`json:\"symbol\"`" + `
+}
+
+func getQuotes(ctx context.Context, symbols []string) ([]Quote, error) {
+	return nil, nil
+}
+
+var _ = skgo.BatchQuery(getQuotes)
+`, nil)
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("generating an app with a batch query: %v", err)
+	}
+
+	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.ts")
+	want := "export const getQuotes = query.batch('unchecked', (_args: string[]): ((arg: string, idx: number) => Quote) => unimplemented());"
+	if !strings.Contains(stub, want) {
+		t.Errorf("the stub does not carry %q:\n%s", want, stub)
+	}
+	// `query.batch` is a property of `query`, so that is the import.
+	if !strings.Contains(stub, "import { query } from '$app/server';") {
+		t.Errorf("the stub does not import query:\n%s", stub)
+	}
+
+	bindings := readFixtureFile(t, root, "app/web/src/data/skgo_remotes_gen.go")
+	if want := `skgo.NewBatchQuery("src/data/data.remote.ts", "getQuotes", getQuotes)`; !strings.Contains(bindings, want) {
+		t.Errorf("the registration file does not carry %q:\n%s", want, bindings)
+	}
+
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = filepath.Join(root, "app")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("`go build ./...` in the generated app: %v\n%s", err, out)
+	}
+}
+
+// The shapes a batch query is not. Kit's `batch(fn)` with no validator refuses
+// every argument, so there is nothing left to batch: a batch always takes one,
+// and both sides of it are slices.
+func TestABatchQueryThatIsNotABatchIsRefused(t *testing.T) {
+	for name, decl := range map[string]string{
+		"no argument at all": `func getQuotes(ctx context.Context) ([]string, error) { return nil, nil }`,
+		"a single argument":  `func getQuotes(ctx context.Context, symbol string) ([]string, error) { return nil, nil }`,
+		"a single result":    `func getQuotes(ctx context.Context, symbols []string) (string, error) { return "", nil }`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, cfg := foreignFixture(t, `package data
+
+import (
+	"context"
+
+	"github.com/tylergannon/skgo"
+)
+
+`+decl+`
+
+var _ = skgo.BatchQuery(getQuotes)
+`, nil)
+
+			err := Run(cfg)
+			if err == nil {
+				t.Fatal("the generator accepted a batch query that cannot be one")
+			}
+			if !strings.Contains(err.Error(), "A query.batch is func(context.Context, []In) ([]Out, error)") {
+				t.Errorf("the refusal does not say what a batch query is: %v", err)
+			}
+		})
+	}
+}

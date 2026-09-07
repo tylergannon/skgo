@@ -797,14 +797,21 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 404, Message: "Error: 404"}})
 	}
 
-	kind := map[remoteKind]string{kindQuery: "q", kindLive: "l", kindForm: "f"}[fn.kind]
+	if fn.kind == kindBatch {
+		return s.answerBatch(ctx, fn, payload, into)
+	}
+
+	kind := remoteLetters[fn.kind]
 
 	arg, present, err := remotearg.ParsePayload(payload)
 	if err != nil {
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 400, Message: "Bad Request"}})
 	}
 
-	value, err := s.remotes.call(ctx, fn, arg, present)
+	// A live query answers a render with its first value, which is what kit's
+	// `get_first_value` takes: it drives the generator once and closes it. The
+	// stream itself is the browser's business, and it opens after hydration.
+	value, err := s.remoteValue(ctx, fn, arg, present)
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
 			// A redirect thrown by a remote function during a render is a
@@ -837,6 +844,93 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 	}
 	s.record(into, kind, id+"/"+payload, answered{value: value})
 	return json.Marshal(remoteAnswer{V: serialized})
+}
+
+// remoteLetters is the bucket a kind's answers are filed under in a document's
+// remote data. They are kit's own: `internals.type[0]`, with `query_live`
+// special-cased to `l` (`collect_remote_data`,
+// runtime/server/remote-functions.js). A batch query is a `query` as far as the
+// browser's cache is concerned, so its answers go under `q` beside the plain
+// ones — the client resolves both through the same QueryProxy.
+var remoteLetters = map[remoteKind]string{
+	kindQuery: "q",
+	kindBatch: "q",
+	kindLive:  "l",
+	kindForm:  "f",
+}
+
+// remoteValue runs one remote function for a render. A live query is driven for
+// exactly one value; everything else is called once.
+func (s *SSR) remoteValue(ctx context.Context, fn *Remote, arg any, present bool) (any, error) {
+	if fn.kind == kindLive {
+		return s.remotes.firstValue(ctx, fn, arg, present)
+	}
+	return s.remotes.call(ctx, fn, arg, present)
+}
+
+// answerBatch runs a whole `query.batch` the render collected. The engine sends
+// every payload kit's own `enqueue` gathered in one macrotask, as a JSON array,
+// and the app's Go function is called once for all of them — which is the point
+// of a batch query and the only thing that distinguishes it from a query.
+//
+// Each entry is recorded under `q` and its own `<id>/<payload>` key, because
+// that is where the browser's query cache will look for it: kit files a
+// `query_batch` under the letter its type begins with, and its client holds
+// batch results in the ordinary query cache.
+func (s *SSR) answerBatch(ctx context.Context, fn *Remote, payload string, into map[string]map[string]answered) ([]byte, error) {
+	var payloads []string
+	if err := json.Unmarshal([]byte(payload), &payloads); err != nil {
+		return json.Marshal(batchAnswer{E: &ssr.Error{Status: 400, Message: "Bad Request"}})
+	}
+
+	args := make([]any, len(payloads))
+	present := make([]bool, len(payloads))
+	for i, one := range payloads {
+		arg, ok, err := remotearg.ParsePayload(one)
+		if err != nil {
+			return json.Marshal(batchAnswer{E: &ssr.Error{Status: 400, Message: "Bad Request"}})
+		}
+		args[i], present[i] = arg, ok
+	}
+
+	values, err := s.remotes.callBatch(ctx, fn, args, present)
+	if err != nil {
+		if redirect := asRedirect(err); redirect != nil {
+			return json.Marshal(batchAnswer{R: &ssr.Redirect{Status: redirect.status(), Location: redirect.Location}})
+		}
+		e := asHTTPError(err)
+		failure := &ssr.Error{Status: e.Status, Message: e.Message}
+		// The whole batch failed, so every argument in it failed. Each one is
+		// recorded under its own key, because that is where the client will
+		// look for it and a missing key hydrates as a value that was never
+		// fetched rather than as the failure the render saw.
+		for _, one := range payloads {
+			s.record(into, "q", fn.id+"/"+one, answered{err: failure})
+		}
+		return json.Marshal(batchAnswer{E: failure})
+	}
+
+	transport := s.remotes.cfg.Transport
+	nodes := make([]remoteAnswer, len(values))
+	for i, value := range values {
+		// callBatch has already taken each value through the transport hook,
+		// so what comes back is the tree devalue writes.
+		serialized, err := devalue.StringifyWith(value, transport.reducers())
+		if err != nil {
+			return json.Marshal(batchAnswer{E: &ssr.Error{Status: 500, Message: "Internal Error"}})
+		}
+		nodes[i] = remoteAnswer{V: serialized}
+		s.record(into, "q", fn.id+"/"+payloads[i], answered{tree: value})
+	}
+	return json.Marshal(batchAnswer{N: nodes})
+}
+
+// batchAnswer is the envelope a batch call gets back: one node per payload, in
+// the order they were sent, or a failure of the whole call.
+type batchAnswer struct {
+	N []remoteAnswer `json:"n,omitempty"`
+	E *ssr.Error     `json:"e,omitempty"`
+	R *ssr.Redirect  `json:"r,omitempty"`
 }
 
 // record files an answer under kit's own key: the single letter of the remote

@@ -19,7 +19,7 @@ import * as esbuild from 'esbuild';
 // the Go that reads the manifest below checks what is stamped here against its
 // own, so a copy that has fallen behind is refused by name instead of failing
 // later as something unrelated.
-const SKGO = { version: 'devel', adapter: 'e618303853ac' };
+const SKGO = { version: 'devel', adapter: 'f449d60d56c1' };
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
@@ -1028,23 +1028,71 @@ export function query(validate_or_fn, maybe_fn) {
 	return wrapper;
 }
 
-query.batch = (validate_or_fn, maybe_fn) => {
-	const fn = (args) => {
-		const results = args.map((arg) => host(wrapper.__.id, stringify_remote_arg(arg)));
-		return (_arg, i) => results[i];
+/**
+ * Calls Go once for a whole batch. Kit's own enqueue has already collected
+ * every call made to this function in one macrotask and deduplicated them by
+ * payload, so args is the batch — and the app's Go function is invoked once
+ * for all of it, which is the only thing that makes a batch query different
+ * from a query.
+ *
+ * The payloads travel as a JSON array in the place a single payload would
+ * occupy, and the answer is {n: [...]} — one envelope per payload, in the
+ * order they were sent, which is the order kit's client matches results to
+ * arguments by.
+ */
+function host_batch(id, args) {
+	const payloads = args.map((arg) => stringify_remote_arg(arg));
+	const raw = globalThis.__skgo_remote(id, JSON.stringify(payloads));
+	const res = JSON.parse(raw);
+	if (res.r) {
+		throw new Redirect(res.r.status, res.r.location);
+	}
+	if (res.e) {
+		throw new HttpError({ status: res.e.status ?? 500, message: res.e.message });
+	}
+	const nodes = res.n ?? [];
+	return (_arg, i) => {
+		const node = nodes[i];
+		if (!node) {
+			throw new HttpError({ status: 500, message: 'Internal Error' });
+		}
+		if (node.e) {
+			throw new HttpError({ status: node.e.status ?? 500, message: node.e.message });
+		}
+		return parse(node.v);
 	};
+}
+
+query.batch = (validate_or_fn, maybe_fn) => {
+	const fn = (args) => host_batch(wrapper.__.id, args);
 	const wrapper = maybe_fn ? real.query.batch(validate_or_fn, fn) : real.query.batch(fn);
 	return wrapper;
 };
 
 query.live = (validate_or_fn, maybe_fn) => {
-	// A live query is a stream and nothing in a render drives one. Declaring one
-	// at module scope has to keep working; awaiting one during a render is what
-	// fails, and it fails loudly.
-	const fn = function* () {
-		throw new Error('skgo: a live query cannot be awaited during server-side rendering');
+	// A live query awaited during a render resolves to its first value, which is
+	// what kit's get_first_value takes from the generator before closing it.
+	// Go drives the producer far enough to yield once and answers with that, so
+	// the value is in the markup before any script runs; the stream itself is
+	// the browser's, and it opens after hydration against the same endpoint.
+	//
+	// A plain iterator rather than a generator: to_iterator accepts anything
+	// with a next method, and there is nothing to suspend on — Go has the
+	// value in this process.
+	const fn = (arg) => {
+		const payload = stringify_remote_arg(arg);
+		let taken = false;
+		return {
+			next: () => {
+				if (taken) return { value: undefined, done: true };
+				taken = true;
+				return { value: host(wrapper.__.id, payload), done: false };
+			},
+			return: () => ({ value: undefined, done: true })
+		};
 	};
-	return maybe_fn ? real.query.live(validate_or_fn, fn) : real.query.live(fn);
+	const wrapper = maybe_fn ? real.query.live(validate_or_fn, fn) : real.query.live(fn);
+	return wrapper;
 };
 
 export function command(validate_or_fn, maybe_fn) {

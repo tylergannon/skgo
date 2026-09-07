@@ -341,3 +341,112 @@ globalThis.__skgo_render = function () {
 		t.Errorf("body = %q, want %q", result.Body, want)
 	}
 }
+
+// deferred is a bundle whose render finishes only after a macrotask runs. It is
+// the shape kit's `query.batch` has: the calls a render made are collected and
+// flushed from a `setTimeout(..., 0)`, deliberately a macrotask so that
+// everything awaited in the same turn ends up in one batch.
+const deferred = `
+globalThis.__skgo_ping = function () { return 'ok'; };
+globalThis.__skgo_render = function (json) {
+	var req = JSON.parse(json);
+	var result = { done: false, failure: '', redirect: null, status: 200, error: null, head: '', body: '' };
+	var collected = [];
+	// Two calls in the same turn, one flush: exactly what a batch query does.
+	collected.push(req.route_id + '/a');
+	collected.push(req.route_id + '/b');
+	setTimeout(function () {
+		var answer = JSON.parse(globalThis.__skgo_remote('fixture/batch', collected.join(',')));
+		result.body = answer.v;
+		result.done = true;
+	}, 0);
+	return result;
+};
+`
+
+// abandoned is a bundle that finishes without ever waiting for the macrotask it
+// scheduled — a component that reads `.loading` on a batch query and never
+// awaits it. The callback is left on the queue, and the runtime goes back to
+// the pool with it.
+const abandoned = `
+var ran = [];
+globalThis.__skgo_ping = function () { return 'ok'; };
+globalThis.__skgo_render = function (json) {
+	var req = JSON.parse(json);
+	if (req.route_id === '/abandon') {
+		setTimeout(function () { ran.push('stale'); }, 0);
+		return { done: true, failure: '', redirect: null, status: 200, error: null, head: '', body: 'abandoned' };
+	}
+	// The next page waits on a macrotask of its own, which is the only moment
+	// the queue is ever pumped — and so the only moment a callback left over
+	// from the last render could run.
+	var result = { done: false, failure: '', redirect: null, status: 200, error: null, head: '', body: '' };
+	setTimeout(function () {
+		result.body = 'ran:' + ran.join(',');
+		result.done = true;
+	}, 0);
+	return result;
+};
+`
+
+// A render that finishes only after its macrotask runs still finishes: the
+// engine drains the queue between turns of the microtask queue, which is
+// exactly when a real `setTimeout(fn, 0)` would fire.
+func TestARenderIsDrivenPastItsMacrotasks(t *testing.T) {
+	engine, err := ssr.New("bundle.js", []byte(deferred), 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var asked []string
+	result, _, err := engine.Render("/batch", request(t, "/batch"), func(id, payload string) ([]byte, error) {
+		asked = append(asked, id+" "+payload)
+		return answer("answered " + payload), nil
+	})
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if !result.Done {
+		t.Fatal("the render did not finish")
+	}
+	// One call carrying both, rather than one call each: the macrotask is what
+	// makes a batch a batch, so a queue that ran too early would show two.
+	if len(asked) != 1 {
+		t.Fatalf("the render made %d host calls, want 1: %v", len(asked), asked)
+	}
+	if asked[0] != "fixture/batch /batch/a,/batch/b" {
+		t.Errorf("host call = %q", asked[0])
+	}
+	if result.Body != "answered /batch/a,/batch/b" {
+		t.Errorf("body = %q", result.Body)
+	}
+}
+
+// A callback the last render scheduled and never waited for belongs to a
+// request that is over. The next render on that runtime must not run it: it
+// would execute against the new render's state, and whatever it produced would
+// be recorded against the wrong page.
+func TestWorkOneRenderAbandonedDoesNotRunInTheNext(t *testing.T) {
+	engine, err := ssr.New("bundle.js", []byte(abandoned), 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	host := func(id, payload string) ([]byte, error) { return answer(payload), nil }
+
+	first, _, err := engine.Render("/abandon", request(t, "/abandon"), host)
+	if err != nil {
+		t.Fatalf("first render: %v", err)
+	}
+	if first.Body != "abandoned" {
+		t.Fatalf("first body = %q", first.Body)
+	}
+
+	second, _, err := engine.Render("/after", request(t, "/after"), host)
+	if err != nil {
+		t.Fatalf("second render: %v", err)
+	}
+	if second.Body != "ran:" {
+		t.Errorf("body = %q, want ran: — the abandoned callback ran inside the next render", second.Body)
+	}
+}

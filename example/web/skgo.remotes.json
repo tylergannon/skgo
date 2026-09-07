@@ -26,7 +26,9 @@
 		"gu007f/getPlans",
 		"gu007f/quoteFor",
 		"nv8t2/bumpTally",
-		"nv8t2/getTally"
+		"nv8t2/getTally",
+		"wx3cst/watchBoard",
+		"x3uq7o/getQuotes"
 	],
 	"loads": [
 		"src/routes/(marketing)/pricing/+page.server.ts",

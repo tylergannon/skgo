@@ -314,6 +314,8 @@ func (k remoteKind) String() string {
 		return "command"
 	case kindLive:
 		return "live query"
+	case kindBatch:
+		return "batch query"
 	case kindForm:
 		return "form"
 	}
