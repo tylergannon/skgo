@@ -109,7 +109,7 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 		t.Fatalf("reading index.html: %v", err)
 	}
 
-	pages, rendered := 0, 0
+	pages, rendered, errored := 0, 0, 0
 	for _, route := range manifest.Routes {
 		if route.Page == nil {
 			// A route that is a `+server.ts` and nothing else has no page to
@@ -127,6 +127,44 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 		req.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
+
+		body := rec.Body.String()
+
+		if want, deliberate := deliberateFailures[route.ID]; deliberate {
+			errored++
+			if rec.Code != want.status {
+				t.Errorf("route %s: GET %s returned %d, want %d", route.ID, path, rec.Code, want.status)
+			}
+			if body == string(shell) {
+				t.Errorf("route %s: GET %s returned kit's shell rather than a rendered error document", route.ID, path)
+			}
+			if !strings.Contains(body, want.says) {
+				t.Errorf("route %s: GET %s does not say %q", route.ID, path, want.says)
+			}
+			for _, leaked := range want.never {
+				if strings.Contains(body, leaked) {
+					t.Errorf("route %s: GET %s leaked %q into the document", route.ID, path, leaked)
+				}
+			}
+			if want.static {
+				// error.html is a whole document of its own: no app markup, and
+				// no script, so nothing boots and nothing tries again.
+				if strings.Contains(body, "<script") {
+					t.Errorf("route %s: GET %s carries a script, so it is not kit's static error page", route.ID, path)
+				}
+				if strings.Contains(body, `data-testid="app-nav"`) {
+					t.Errorf("route %s: GET %s rendered the root layout, which is the layout that failed", route.ID, path)
+				}
+			} else {
+				if !strings.Contains(body, `data-testid="error-message"`) {
+					t.Errorf("route %s: GET %s carries no rendered error page", route.ID, path)
+				}
+				if !strings.Contains(body, want.inside) {
+					t.Errorf("route %s: GET %s did not render the error page inside %s", route.ID, path, want.inside)
+				}
+			}
+			continue
+		}
 
 		if rec.Code != http.StatusOK {
 			t.Errorf("route %s: GET %s returned %d, want 200", route.ID, path, rec.Code)
@@ -146,21 +184,18 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 			}
 		}
 
-		body := rec.Body.String()
 		switch {
 		case !ssr:
 			if body != string(shell) {
 				t.Errorf("route %s turns SSR off: GET %s did not return kit's shell", route.ID, path)
 			}
 		case body == string(shell):
-			// The one page that is still answered with the shell is one whose
-			// load failed: the error branch is not rendered here yet, so the
-			// client boots and renders `+error.svelte` off the same error the
-			// data endpoint gives it. Anything else getting the shell is a
-			// page that silently stopped being server-rendered.
-			if !dataRequestFails(t, h, path, session) {
-				t.Errorf("route %s: GET %s returned kit's shell rather than a rendered page", route.ID, path)
-			}
+			// Nothing is answered with the shell any more except a branch that
+			// turns SSR off. A page that quietly stopped rendering used to hide
+			// here, behind "its load failed"; a load that fails is now a
+			// rendered error document with the status it threw, and is listed
+			// in deliberateFailures above.
+			t.Errorf("route %s: GET %s returned kit's shell rather than a rendered page", route.ID, path)
 		case !strings.Contains(body, `data-testid="app-nav"`):
 			t.Errorf("route %s: GET %s carries no rendered markup from the root layout", route.ID, path)
 		default:
@@ -181,34 +216,83 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 	if rendered == 0 {
 		t.Fatal("not one page route was rendered, so this test asserted nothing about SSR")
 	}
-}
-
-// dataRequestFails reports that the loads of the page at path threw, by asking
-// the endpoint kit's own client would ask.
-func dataRequestFails(t *testing.T, h http.Handler, path, session string) bool {
-	t.Helper()
-	if path == "/" {
-		path = ""
+	if errored != len(deliberateFailures) {
+		t.Errorf("%d of the %d routes this app fails on purpose were visited; the manifest no longer carries the rest",
+			errored, len(deliberateFailures))
 	}
-	req := httptest.NewRequest(http.MethodGet, path+"/__data.json", nil)
-	req.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	return strings.Contains(rec.Body.String(), `{"type":"error"`)
 }
 
-// TestAnUnknownPathStillBootsKitsClient keeps the 404 half of the contract
-// honest: kit's client has to receive the document so it can render
-// +error.svelte, and it has to receive it with a 404.
-func TestAnUnknownPathStillBootsKitsClient(t *testing.T) {
+// deliberateFailures is what this app does wrong on purpose, and what kit's own
+// rules make of each one.
+//
+// The statuses are written here rather than read back off the response, because
+// the failure this guards against — a page falling back to kit's shell — is
+// answered with a perfectly ordinary 200 and a document that looks fine until
+// the browser boots. Every fixture named below exists for one scenario and has
+// exactly one source in the app.
+var deliberateFailures = map[string]struct {
+	status int
+	// says is text the document itself must carry.
+	says string
+	// inside is markup from the layout the error page must render within.
+	inside string
+	// never is text the document must not carry: what the error actually said,
+	// where kit's rules say the visitor is told nothing.
+	never []string
+	// static reports that kit's `error.html` is the answer, which carries no
+	// app markup and no script at all.
+	static bool
+}{
+	// A load that throws error(402, ...) under /account, which declares its own
+	// +error.svelte: the account layout survives and its error page renders
+	// inside it.
+	"/account/statement": {status: 402, says: "Your account is in arrears", inside: `data-testid="account-user"`},
+	// The same thing with no error page nearer than the root's.
+	"/error/expected": {status: 418, says: "This page is a teapot", inside: `data-testid="app-nav"`},
+	// A load that fails with an ordinary error: 500 Internal Error, and not one
+	// word of what actually went wrong.
+	"/error/unexpected": {
+		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
+		never: []string{"hunter2", "postgres://"},
+	},
+	// A command called while the page renders. Kit refuses it, transformError
+	// turns the refusal into Internal Error, and the boundary the root error
+	// page guards renders in the page's place.
+	"/error/command": {
+		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
+		never: []string{"Cannot call a command"},
+	},
+	// A throw in the root layout, which no error page can guard. Both the
+	// render and the retry through respond_with_error fail, and kit's static
+	// error.html is what is left.
+	"/error/render": {status: 500, says: "Internal Error", static: true},
+}
+
+// TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage is kit's `respond.js`
+// answer to a path that matched no route: `respond_with_error` renders the root
+// layout with the root error page inside it, at 404. The document says the page
+// is missing before a line of JavaScript has run, which a shell that has to boot
+// first cannot.
+func TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage(t *testing.T) {
 	h := newProdHandler(t)
 
 	rec := get(t, h, "/no-such-page")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("GET /no-such-page: status %d, want 404", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "<") {
-		t.Errorf("GET /no-such-page returned no document")
+	body := rec.Body.String()
+	for _, want := range []string{
+		// The root error page, showing the status and the message kit gives.
+		`<h1 data-testid="title">Error 404</h1>`,
+		`<p data-testid="error-message">Not Found</p>`,
+		// Inside the app's own root layout.
+		`data-testid="app-nav"`,
+		// And it still boots, so the client takes over from the same page.
+		"kit.start(app, element",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("GET /no-such-page: the document does not carry %q", want)
+		}
 	}
 }
 

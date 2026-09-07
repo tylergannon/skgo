@@ -18,14 +18,18 @@
 		"9lqpme/getPage",
 		"ezl04l/getSite",
 		"gu007f/getPlans",
-		"gu007f/quoteFor"
+		"gu007f/quoteFor",
+		"nv8t2/bumpTally",
+		"nv8t2/getTally"
 	],
 	"loads": [
 		"src/routes/(marketing)/pricing/+page.server.ts",
 		"src/routes/account/+layout.server.ts",
 		"src/routes/account/+page.server.ts",
 		"src/routes/account/orders/+page.server.ts",
-		"src/routes/account/statement/+page.server.ts"
+		"src/routes/account/statement/+page.server.ts",
+		"src/routes/error/expected/+page.server.ts",
+		"src/routes/error/unexpected/+page.server.ts"
 	],
 	"endpoints": {
 		"/api/todos": [

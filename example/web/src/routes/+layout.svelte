@@ -1,9 +1,26 @@
 <script lang="ts">
 	import { building } from '$app/env';
+	import { page } from '$app/state';
 	import SignIn from '#lib/SignIn.svelte';
 
 	let { children } = $props();
+
+	/**
+	 * The root layout is the one node in a branch that no `+error.svelte` can
+	 * guard: kit wraps the root error page *inside* this layout rather than
+	 * this layout inside it (`runtime/error-chain.js`), so the boundary around
+	 * it has no `failed` snippet and a throw here has nowhere to go. That makes
+	 * it the only place a page can be made to fail the way an engine failure
+	 * fails, and /error/render is the fixture that does it.
+	 */
+	const failTheWholeDocument = () => {
+		throw new Error('skgo: the root layout cannot render /error/render');
+	};
 </script>
+
+{#if page.route.id === '/error/render'}
+	{failTheWholeDocument()}
+{/if}
 
 <nav data-testid="app-nav">
 	<a href="/">Home</a>

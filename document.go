@@ -155,7 +155,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		// `respond_with_error(new SvelteKitError(404, 'Not Found', ...))`, so
 		// the visitor gets the app's own error page inside the app's own root
 		// layout rather than a shell that has to boot before it can say so.
-		return s.respondWithError(w, r, req, &HTTPError{Status: http.StatusNotFound, Message: "Not Found"})
+		return s.respondWithError(w, r, req, "", map[string]string{}, &HTTPError{Status: http.StatusNotFound, Message: "Not Found"})
 	}
 	if !route.hasPage {
 		return false
@@ -188,7 +188,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	// in a load's result reaches kit's client as a streamed chunk; a component
 	// that renders on the server needs the value itself.
 	if err := s.encodeBranch(r.Context(), nodes); err != nil {
-		return s.failed(w, r, req, route.id, err)
+		return s.failed(w, r, req, route.id, params, err)
 	}
 
 	// filled[i] is kit's `branch[i]` being truthy: a slot that some node
@@ -224,7 +224,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		plan.nodes = append(plan.nodes, nodes[i])
 	}
 	if len(plan.indices) == 0 {
-		return s.failed(w, r, req, route.id, errors.New("skgo: the route has no node to render"))
+		return s.failed(w, r, req, route.id, params, errors.New("skgo: the route has no node to render"))
 	}
 	return s.deliver(w, r, req, shared, plan)
 }
@@ -320,7 +320,7 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 // `generate_manifest` always keeps nodes 0 and 1, "as they are needed for 404
 // and root errors", so 0 is the root layout and 1 the root error page in every
 // manifest kit writes.
-func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataRequest, e *HTTPError) bool {
+func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, e *HTTPError) bool {
 	const rootLayout, rootError = 0, 1
 	if len(s.info.Nodes) <= rootError {
 		return s.staticErrorPage(w, r, e.Status, e.Message)
@@ -337,7 +337,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 
 	// The root layout's own load still runs: the error page renders inside it,
 	// and a layout without its data is not the layout.
-	shared, nodes := s.loads.runBranch(r, req, "", map[string]string{}, s.loads.rootBranch(), nil)
+	shared, nodes := s.loads.runBranch(r, req, routeID, params, s.loads.rootBranch(), nil)
 	if nodes[0].redir != nil {
 		// Kit's own noted edge case: the route is a 404 and the root layout
 		// redirects the visitor somewhere.
@@ -345,15 +345,17 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		return true
 	}
 	if nodes[0].kind == "error" {
-		s.report("", nodes[0].err)
+		s.report(routeID, nodes[0].err)
 		return s.staticErrorPage(w, r, e.Status, e.Message)
 	}
 	if err := s.encodeBranch(r.Context(), nodes); err != nil {
-		s.report("", err)
+		s.report(routeID, err)
 		return s.staticErrorPage(w, r, e.Status, e.Message)
 	}
 
 	plan := documentPlan{
+		routeID:   routeID,
+		params:    params,
 		status:    e.Status,
 		pageError: &ssr.Error{Status: e.Status, Message: e.Message},
 		hydrate:   hydrate,
@@ -366,7 +368,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 
 	result, answers, err := s.renderPlan(r, req, plan)
 	if err != nil {
-		s.report("", err)
+		s.report(routeID, err)
 		return s.staticErrorPage(w, r, e.Status, e.Message)
 	}
 	if result.Redirect != nil {
@@ -376,7 +378,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 	plan.status, plan.pageError = result.Status, result.Error
 	document, err := s.assemble(req, plan, result, answers)
 	if err != nil {
-		s.report("", err)
+		s.report(routeID, err)
 		return s.staticErrorPage(w, r, e.Status, e.Message)
 	}
 	s.write(w, r, shared, document, plan.status)
@@ -388,9 +390,9 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 // layout and the root error page, and falls to `error.html` if even that cannot
 // be produced. Either way the visitor gets a whole document with the status kit
 // would give it, and never a blank or half-written one.
-func (s *SSR) failed(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, err error) bool {
+func (s *SSR) failed(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, err error) bool {
 	s.report(routeID, err)
-	return s.respondWithError(w, r, req, asHTTPError(err))
+	return s.respondWithError(w, r, req, routeID, params, asHTTPError(err))
 }
 
 // report tells the app about a failure it will otherwise never see, because the
@@ -410,7 +412,7 @@ func (s *SSR) report(routeID string, err error) {
 func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, shared *loadRequest, plan documentPlan) bool {
 	result, answers, err := s.renderPlan(r, req, plan)
 	if err != nil {
-		return s.failed(w, r, req, plan.routeID, err)
+		return s.failed(w, r, req, plan.routeID, plan.params, err)
 	}
 	if result.Redirect != nil {
 		// A remote function called from a component threw a redirect. Kit turns
@@ -425,7 +427,7 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 	plan.status, plan.pageError = result.Status, result.Error
 	document, err := s.assemble(req, plan, result, answers)
 	if err != nil {
-		return s.failed(w, r, req, plan.routeID, err)
+		return s.failed(w, r, req, plan.routeID, plan.params, err)
 	}
 	s.write(w, r, shared, document, plan.status)
 	return true
