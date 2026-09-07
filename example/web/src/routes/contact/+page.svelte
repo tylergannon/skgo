@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { getMessages, sendMessage } from './contact.remote';
 
-	// The submission's outcome, so the page can say which of the two things
-	// happened without the test having to infer it from what is missing.
-	let outcome = $state<'idle' | 'sent' | 'rejected' | 'error'>('idle');
+	// Only the one thing the form instance cannot say for itself: an enhanced
+	// submission whose request never arrived. Whether the submission succeeded
+	// or was refused is read off `sendMessage` below, because a visitor with
+	// scripting off never runs this file at all and the page has to say the
+	// same thing either way.
+	let unreachable = $state(false);
 
 	const fields = sendMessage.fields;
 </script>
@@ -14,22 +17,19 @@
 	data-testid="contact-form"
 	enctype="multipart/form-data"
 	{...sendMessage.enhance(async (form) => {
-		outcome = 'idle';
+		unreachable = false;
 		try {
 			// Single flight: the submission asks the server to refresh the
 			// message list and send it back in the same response, so the page
 			// updates without a second round trip.
 			if (await form.submit().updates(getMessages())) {
-				outcome = 'sent';
 				form.element.reset();
-			} else {
-				// A rejected submission is deliberately left alone. Kit does
-				// not reset an enhanced form, so everything the visitor typed
-				// is still in the inputs.
-				outcome = 'rejected';
 			}
+			// A rejected submission is deliberately left alone. Kit does not
+			// reset an enhanced form, so everything the visitor typed is still
+			// in the inputs.
 		} catch {
-			outcome = 'error';
+			unreachable = true;
 		}
 	})}
 >
@@ -65,11 +65,22 @@
 	<button data-testid="send" type="submit">Send</button>
 </form>
 
-{#if outcome === 'sent' && sendMessage.result}
+<!--
+	Neither of these reads a client-side variable. The receipt is shown
+	whenever the form has a result and the refusal whenever it has issues,
+	and the server puts both of those on the form instance — so the page says
+	the same thing whether kit's client applied the submission or Go
+	re-rendered the page around it, which is what a visitor with scripting off
+	depends on.
+-->
+{#if sendMessage.result}
 	<p data-testid="receipt">{sendMessage.result.summary}</p>
 {/if}
-{#if outcome === 'rejected'}
+{#if (sendMessage.fields.allIssues() ?? []).length > 0}
 	<p data-testid="rejected">That message was not sent.</p>
+{/if}
+{#if unreachable}
+	<p data-testid="unreachable">The server could not be reached.</p>
 {/if}
 
 <h2>Inbox</h2>

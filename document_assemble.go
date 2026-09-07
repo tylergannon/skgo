@@ -323,6 +323,9 @@ func (s *SSR) remoteData(answers map[string]map[string]answered) (string, error)
 			if answer.err != nil {
 				written, err = unevalJSON(answer.err)
 				written = "{e:" + written + "}"
+			} else if answer.tree != nil {
+				written, err = devalue.UnevalWith(answer.tree, replacer)
+				written = "{v:" + written + "}"
 			} else {
 				// The registry answered with a Go value and kept it; this is
 				// where it is written, because this is where the transport

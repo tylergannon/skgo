@@ -141,7 +141,7 @@ const ssrTarget = "es2022"
 // document, a route that is an endpoint and nothing else, and a page whose
 // branch turns SSR off, which is answered with kit's SPA shell.
 func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
 		return false
 	}
 
@@ -174,12 +174,41 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		return false
 	}
 
+	// A POST to a page is a form submission, and it runs before anything is
+	// loaded: kit's `render_page` calls `handle_remote_form_post` first, then
+	// runs the loads, so the page the visitor gets back is rendered over the
+	// state the submission left behind rather than the state before it.
+	var action *formAction
+	if r.Method == http.MethodPost {
+		id := actionID(req.url)
+		if id == "" {
+			// Kit's `handle_action_request` with no `actions` export: a page
+			// that has no classic form action, which for skgo is every page.
+			// `method_not_allowed_result` (`runtime/server/page/actions.js:90-94`)
+			// sets `allow: 'GET'` — RFC 9110 requires a 405 to carry one.
+			w.Header().Set("Allow", "GET")
+			return s.respondWithError(w, r, req, route.id, params, &HTTPError{
+				Status:  405,
+				Message: "POST method not allowed. No form actions exist for this page",
+			})
+		}
+		submitted, redirect, e := s.runFormAction(r, id)
+		if redirect != nil {
+			s.writeRedirect(w, nil, redirect.status(), redirect.Location)
+			return true
+		}
+		if e != nil {
+			return s.respondWithError(w, r, req, route.id, params, e)
+		}
+		action = submitted
+	}
+
 	renderIt, hydrate := s.pageOptions(route)
 	if !renderIt {
 		return false
 	}
 
-	shared, nodes := s.loads.runBranch(r, req, route.id, params, route.branch, nil)
+	shared, nodes := s.loads.runBranchWith(r, req, route.id, params, route.branch, nil, jarOf(action))
 
 	for _, node := range nodes {
 		if node.redir != nil {
@@ -224,6 +253,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		status:  http.StatusOK,
 		hydrate: hydrate,
 		errors:  buildErrorChain(filled, route.errors),
+		action:  action,
 	}
 	for i, index := range route.nodes {
 		if !filled[i] {
@@ -259,6 +289,10 @@ type documentPlan struct {
 	status    int
 	pageError *ssr.Error
 	hydrate   bool
+	// action is the form submission this document is answering, or nil. It
+	// reaches the engine as the form's cached output and the document as the
+	// `f` entry of `<global>.data`.
+	action *formAction
 }
 
 // pageOptions reduces `ssr` and `csr` over a route's branch, outermost first,
@@ -516,6 +550,11 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 		cookies[cookie.Name] = cookie.Value
 	}
 
+	seed, err := s.seed(plan.action)
+	if err != nil {
+		return ssr.Result{}, nil, err
+	}
+
 	request, err := json.Marshal(ssr.Request{
 		URL:             req.url.String(),
 		RouteID:         plan.routeID,
@@ -526,6 +565,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 		ErrorComponents: plan.errors,
 		Cookies:         cookies,
 		ClientAddress:   clientAddress(r),
+		FormAction:      seed,
 	})
 	if err != nil {
 		return ssr.Result{}, nil, err
@@ -536,6 +576,13 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 	// cookie and may not write one.
 	event := s.remotes.newEvent(r, false).immutable()
 	answers := map[string]map[string]answered{}
+	if plan.action != nil {
+		// `collect_remote_data` files a form's output under `f`, keyed by the
+		// client-side action id *directly* rather than by
+		// `create_remote_key(id, payload)` — a form has no argument to key on,
+		// and `form.svelte.js` looks it up under exactly this string.
+		s.record(answers, "f", plan.action.id, answered{tree: plan.action.output})
+	}
 
 	result, _, err := s.engine.Render(request, func(id, payload string) ([]byte, error) {
 		return s.answer(withEvent(ctx, event), id, payload, answers)
@@ -779,7 +826,13 @@ func (s *SSR) record(into map[string]map[string]answered, kind, key string, answ
 // transport hook in hand.
 type answered struct {
 	value any
-	err   *ssr.Error
+	// tree is an answer that is already the tree devalue writes, rather than a
+	// Go value still to be taken through the transport hook. A form's output
+	// is built that way — the `result` inside it has been through the hook and
+	// the object around it is kit's own shape, which encoding again would
+	// flatten into a plain map.
+	tree any
+	err  *ssr.Error
 }
 
 // remoteAnswer is the envelope the SSR bundle parses: a value, an error, or a
@@ -959,4 +1012,14 @@ func splitHostPort(addr string) (string, string, error) {
 		return "", "", errors.New("no port")
 	}
 	return strings.Trim(addr[:i], "[]"), addr[i+1:], nil
+}
+
+// jarOf is the cookie jar a form submission wrote into, so the loads that run
+// after it and the document they produce share one. A request that is not a
+// submission has none and the branch makes its own.
+func jarOf(action *formAction) *cookieJar {
+	if action == nil {
+		return nil
+	}
+	return action.jar
 }

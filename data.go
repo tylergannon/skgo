@@ -213,11 +213,22 @@ func (ls *Loads) serveBranch(w http.ResponseWriter, r *http.Request, req dataReq
 // nodes into the page's hydration array, so both go through here and neither
 // can drift from the other.
 func (ls *Loads) runBranch(r *http.Request, req dataRequest, routeID string, params map[string]string, branch []*ServerLoad, invalidated []bool) (*loadRequest, []dataNode) {
+	return ls.runBranchWith(r, req, routeID, params, branch, invalidated, nil)
+}
+
+// runBranchWith is runBranch over a cookie jar that already exists. A form
+// submission runs before the loads and may write cookies; sharing its jar is
+// what makes a load that runs after it read what it wrote, which is what kit's
+// single `event.cookies` gives.
+func (ls *Loads) runBranchWith(r *http.Request, req dataRequest, routeID string, params map[string]string, branch []*ServerLoad, invalidated []bool, jar *cookieJar) (*loadRequest, []dataNode) {
 	ctx := r.Context()
 
+	if jar == nil {
+		jar = newCookieJar(r, secureCookieDefault(ls.cfg.Origin, ls.cfg.Dev))
+	}
 	shared := &loadRequest{
 		req:     r,
-		jar:     newCookieJar(r, secureCookieDefault(ls.cfg.Origin, ls.cfg.Dev)),
+		jar:     jar,
 		headers: http.Header{},
 		url:     req.url,
 		routeID: routeID,

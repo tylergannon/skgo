@@ -48,7 +48,16 @@ type Request struct {
 	// Error is the error a page is rendering, or nil.
 	Error *Error `json:"error"`
 	// Form is the value of `page.form`.
+	//
+	// It is null for a remote form. Kit's `handle_remote_form_post_internal`
+	// answers with `{type: 'success', status, location}` and no `data`, so
+	// `render.js` computes `form_value = null`; `page.form` is the classic
+	// `+page.server.js` actions slot, which skgo has no equivalent of. A
+	// remote submission travels in FormAction instead.
 	Form any `json:"form"`
+	// FormAction is a form submission that was posted without JavaScript, if
+	// this render is answering one.
+	FormAction *Form `json:"form_action,omitempty"`
 	// Branch is the route's nodes, outermost first, with the data each one's
 	// load produced.
 	Branch []Node `json:"branch"`
@@ -84,6 +93,23 @@ type Node struct {
 	// chunk. Kit hands its renderer the promise itself, which is the same
 	// thing said in a language that has one.
 	Deferred []string `json:"deferred,omitempty"`
+}
+
+// Form is one non-enhanced form submission, on its way into the render.
+//
+// The engine puts Output into the request's remote cache under the form
+// instance ID names, which is exactly what kit's own `form` wrapper does at the
+// end of a submission (`runtime/app/server/remote/form.js`). From there the
+// instance's `result`, `fields.<name>.issues()` and `fields.<name>.as(...)`
+// values are kit's own code reading kit's own cache, so the page renders the
+// submission without knowing one happened.
+type Form struct {
+	// ID is the client-side action id: `<hash>/<name>`.
+	ID string `json:"id"`
+	// Output is `{submission, result}` or `{submission, issues, input}` in
+	// devalue's flat form, encoded with the app's transport so a `result`
+	// carrying a custom type arrives as an instance of its class.
+	Output string `json:"output"`
 }
 
 // Error is kit's `App.Error`.

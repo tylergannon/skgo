@@ -18,7 +18,7 @@ import * as esbuild from 'esbuild';
 // the Go that reads the manifest below checks what is stamped here against its
 // own, so a copy that has fallen behind is refused by name instead of failing
 // later as something unrelated.
-const SKGO = { version: 'devel', adapter: '259f23a7073b' };
+const SKGO = { version: 'devel', adapter: 'e3a0bb10fcf9' };
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
@@ -1052,7 +1052,22 @@ export function command(validate_or_fn, maybe_fn) {
 	return wrapper;
 }
 
-export const form = real.form;
+/**
+ * Kit's own form wrapper, with the instance kept so that a submission the
+ * browser posted without JavaScript can be put back where the instance reads
+ * it.
+ *
+ * The generated stub still throws — Go runs the handler, not this module — so
+ * the register below never runs a form body. It only records which object is
+ * which, because the internals' id is assigned by the epilogue the bundler
+ * appends after this module has been evaluated, and that id is the only handle
+ * Go has.
+ */
+export function form(validate_or_fn, maybe_fn) {
+	const wrapper = maybe_fn === undefined ? real.form(validate_or_fn) : real.form(validate_or_fn, maybe_fn);
+	(globalThis.__skgo_forms ??= []).push(wrapper);
+	return wrapper;
+}
 export const prerender = real.prerender;
 export const requested = real.requested;
 `;
@@ -1233,6 +1248,36 @@ function build_props(req, url) {
 }
 
 /**
+ * Puts a non-enhanced submission's outcome where kit's form instance reads
+ * it: the request's remote cache, under the instance's own internals object
+ * and the empty-string key.
+ *
+ * That is the last thing kit's form wrapper does after it runs a submission
+ * (runtime/app/server/remote/form.js: get_cache(__, state)[''] ??= output),
+ * and it is what makes myForm.result, myForm.fields.x.issues() and the value
+ * of every control render the submission. Nothing here runs a form body — Go
+ * already ran it — so the stubs still throw and a rendered result is still
+ * proof that Go answered.
+ *
+ * The output arrives in devalue's flat form and is read back with the app's
+ * own decoders, for the same reason a load's data is: a result carrying a
+ * transported type has to reach the component as an instance of its class.
+ */
+function seed_form(req, state) {
+	const seed = req.form_action;
+	if (!seed) return;
+
+	for (const instance of globalThis.__skgo_forms ?? []) {
+		if (instance.__ && instance.__.id === seed.id) {
+			(state.remote.data ??= new Map()).set(instance.__, { '': parse(seed.output) });
+			return;
+		}
+	}
+
+	throw new Error('skgo: no form is registered as ' + seed.id);
+}
+
+/**
  * Renders one page. The result object is filled in as the promise chain
  * settles; the host drains the job queue when this call returns, so done is
  * true by then or the render never finished — which is a Go error, not a
@@ -1264,6 +1309,7 @@ globalThis.__skgo_render = function (req_json) {
 		const props = build_props(req, url);
 		const state = make_state();
 		const event = make_event(req, url);
+		seed_form(req, state);
 
 		result.status = props.page.status;
 		result.error = req.error ?? null;
