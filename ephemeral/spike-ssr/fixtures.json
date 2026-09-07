@@ -1,0 +1,194 @@
+{
+	"remotes": {
+		"ezl04l/getSite/": {
+			"v": {
+				"name": "Anvil and Ampersand",
+				"colocated": "site.remote.go answered this"
+			}
+		},
+		"4cga8b/whoami/": {
+			"v": {
+				"user": "marguerite-okonkwo"
+			}
+		},
+		"16h93j5/getTodos/": {
+			"v": [
+				{
+					"id": "td-8801",
+					"text": "Recalibrate the flux capacitor",
+					"private": false
+				},
+				{
+					"id": "td-8802",
+					"text": "Alphabetise the spice rack",
+					"private": true
+				}
+			]
+		}
+	},
+	"requests": {
+		"probe": {
+			"url": {
+				"href": "http://127.0.0.1:8080/ssr-probe",
+				"origin": "http://127.0.0.1:8080",
+				"protocol": "http:",
+				"host": "127.0.0.1:8080",
+				"pathname": "/ssr-probe",
+				"search": "",
+				"hash": ""
+			},
+			"route_id": "/ssr-probe",
+			"params": {},
+			"status": 200,
+			"error": null,
+			"form": null,
+			"branch": [
+				{
+					"node": 0,
+					"data": {}
+				},
+				{
+					"node": 13,
+					"data": {}
+				}
+			],
+			"error_components": [
+				1,
+				null
+			]
+		},
+		"home": {
+			"url": {
+				"href": "http://127.0.0.1:8080/",
+				"origin": "http://127.0.0.1:8080",
+				"protocol": "http:",
+				"host": "127.0.0.1:8080",
+				"pathname": "/",
+				"search": "",
+				"hash": ""
+			},
+			"route_id": "/",
+			"params": {},
+			"status": 200,
+			"error": null,
+			"form": null,
+			"branch": [
+				{
+					"node": 0,
+					"data": {}
+				},
+				{
+					"node": 3,
+					"data": {}
+				}
+			],
+			"error_components": [
+				1,
+				null
+			]
+		},
+		"account": {
+			"url": {
+				"href": "http://127.0.0.1:8080/account",
+				"origin": "http://127.0.0.1:8080",
+				"protocol": "http:",
+				"host": "127.0.0.1:8080",
+				"pathname": "/account",
+				"search": "",
+				"hash": ""
+			},
+			"route_id": "/account",
+			"params": {},
+			"status": 200,
+			"error": null,
+			"form": null,
+			"branch": [
+				{
+					"node": 0,
+					"data": {}
+				},
+				{
+					"node": 2,
+					"data": {
+						"accountUser": "Marguerite Okonkwo",
+						"accountSerial": 90210
+					}
+				},
+				{
+					"node": 6,
+					"data": {
+						"parentUser": "Marguerite Okonkwo (via the Go layout load)"
+					}
+				}
+			],
+			"error_components": [
+				1,
+				null,
+				null
+			]
+		},
+		"todos": {
+			"url": {
+				"href": "http://127.0.0.1:8080/todos",
+				"origin": "http://127.0.0.1:8080",
+				"protocol": "http:",
+				"host": "127.0.0.1:8080",
+				"pathname": "/todos",
+				"search": "",
+				"hash": ""
+			},
+			"route_id": "/todos",
+			"params": {},
+			"status": 200,
+			"error": null,
+			"form": null,
+			"branch": [
+				{
+					"node": 0,
+					"data": {}
+				},
+				{
+					"node": 14,
+					"data": {}
+				}
+			],
+			"error_components": [
+				1,
+				null
+			]
+		},
+		"error": {
+			"url": {
+				"href": "http://127.0.0.1:8080/account/statement",
+				"origin": "http://127.0.0.1:8080",
+				"protocol": "http:",
+				"host": "127.0.0.1:8080",
+				"pathname": "/account/statement",
+				"search": "",
+				"hash": ""
+			},
+			"route_id": "/account/statement",
+			"params": {},
+			"status": 503,
+			"error": {
+				"status": 503,
+				"message": "the ledger service is having a lie-down"
+			},
+			"form": null,
+			"branch": [
+				{
+					"node": 0,
+					"data": {}
+				},
+				{
+					"node": 1,
+					"data": null
+				}
+			],
+			"error_components": [
+				1,
+				null
+			]
+		}
+	}
+}
