@@ -354,6 +354,7 @@ async function readNodes(builder, source, kit) {
 		}
 
 		nodes.push({
+			index,
 			server: module.server_id ?? '',
 			component: module.component ? componentSource(file, dir) : null,
 			imports: module.imports ?? [],
@@ -369,6 +370,7 @@ async function readNodes(builder, source, kit) {
 
 /**
  * @typedef {{
+ *   index: number,
  *   server: string,
  *   component: string | null,
  *   imports: string[],
@@ -461,6 +463,13 @@ function describeSSR(builder, kit, nodes) {
 			usesEnvDynamicPublic: !!client.uses_env_dynamic_public
 		},
 		nodes: nodes.map((node) => ({
+			// The index the node's own module declares, which is *not* its
+			// position in this array: kit renumbers the nodes it puts in a
+			// manifest and keeps the original numbering in the client bundle.
+			// The boot script's `node_ids` are the original ones, and a
+			// document carrying the manifest's positions instead hydrates the
+			// wrong components — silently, because they are valid indices.
+			index: node.index,
 			component: !!node.component,
 			ssr: node.ssr,
 			csr: node.csr,

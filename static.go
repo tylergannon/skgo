@@ -108,6 +108,14 @@ type ManifestFont struct {
 
 // ManifestSSRNode is one node's contribution to a document.
 type ManifestSSRNode struct {
+	// Index is the number the node's own module declares, which is not its
+	// position in this array. Kit renumbers the nodes it writes into a
+	// manifest — a prerendered page's node is dropped and every later one
+	// shifts down — and keeps the original numbering in the client bundle. The
+	// boot script's `node_ids` are the original numbers, so a document built
+	// from the manifest's positions hydrates the wrong components, silently,
+	// because they are valid indices for other pages.
+	Index int `json:"index"`
 	// Component reports that kit compiled a component for this node. Kit omits
 	// one for a node that will never be server-rendered.
 	Component bool `json:"component"`

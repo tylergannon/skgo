@@ -124,8 +124,18 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, in
 	if err != nil {
 		return "", err
 	}
+	// `node_ids` are the numbers the client's own node table uses, which are
+	// the ones each node module declares rather than its position in the
+	// manifest. Kit renumbers a manifest's nodes and the client bundle is not
+	// renumbered with it, so a document carrying manifest positions hydrates
+	// whichever pages happen to live at those numbers.
+	nodeIDs := make([]int, len(indices))
+	for i, index := range indices {
+		nodeIDs[i] = s.info.Nodes[index].Index
+	}
+
 	arguments := []string{"element", indent6("{\n\t" + strings.Join([]string{
-		"node_ids: [" + join(indices, ", ") + "]",
+		"node_ids: [" + join(nodeIDs, ", ") + "]",
 		"data: " + hydration,
 		"form: null",
 		"error: null",
