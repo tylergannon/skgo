@@ -79,9 +79,10 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 	fn, ok := s.remotes.Lookup(id)
 	if !ok || fn.kind != kindForm {
 		// Kit's `method_not_allowed_result`: an id that names no form is a 405
-		// with an Allow header, and the page renders its error boundary at
-		// that status.
-		return nil, nil, &HTTPError{Status: 405, Message: "POST method not allowed. No form actions exist for this page"}
+		// and the page renders its error boundary at that status. The Allow
+		// header a 405 must carry is set by the caller, which holds the
+		// ResponseWriter; this is the only 405 this function returns.
+		return nil, nil, &HTTPError{Status: http.StatusMethodNotAllowed, Message: "POST method not allowed. No form actions exist for this page"}
 	}
 
 	entries, err := readFormEntries(r)

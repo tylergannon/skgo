@@ -168,6 +168,29 @@ func TestAPostToAPageThatNamesNoFormIsNotAllowed(t *testing.T) {
 	}
 }
 
+// A POST whose `?/remote=` names no form is kit's other
+// `method_not_allowed_result`, in `handle_remote_form_post_internal`: the id
+// may name nothing at all, or a remote function that is not a form.
+func TestAPostThatNamesAMissingFormIsNotAllowed(t *testing.T) {
+	h := newProdHandler(t)
+
+	for name, id := range map[string]string{
+		"an id nothing is registered under": "bogus/id",
+		"the id of a query":                 remoteID(t, "getMessages"),
+	} {
+		req := multipartRequest(t, id, map[string]string{"from": "Ada"})
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s: status = %d, want 405", name, rec.Code)
+		}
+		if got := rec.Header().Get("Allow"); got != "GET" {
+			t.Errorf(`%s: Allow header = %q, want "GET"`, name, got)
+		}
+	}
+}
+
 // submit is the POST a browser makes when the visitor presses the submit
 // button of `<form action="?/remote=<id>" method="POST"
 // enctype="multipart/form-data">` — the same encoding, the same field names,
