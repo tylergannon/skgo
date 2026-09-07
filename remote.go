@@ -223,13 +223,10 @@ func NewLiveQuery[In, Out any](module, name string, fn func(context.Context, In,
 		if err != nil {
 			return err
 		}
-		return fn(ctx, in, func(out Out) error {
-			v, err := encodeValue(out)
-			if err != nil {
-				return err
-			}
-			return yield(v)
-		})
+		// The raw Go value: encoding happens in Remotes.live, which is where
+		// the app's transport hook is known. A transported value has to reach
+		// devalue as itself, and encoding here would already have flattened it.
+		return fn(ctx, in, func(out Out) error { return yield(out) })
 	}
 	return r
 }
@@ -244,7 +241,8 @@ func callAdapter[In, Out any](fn func(context.Context, In) (Out, error)) func(co
 		if err != nil {
 			return nil, err
 		}
-		return encodeValue(out)
+		// The raw Go value; see NewLiveQuery.
+		return out, nil
 	}
 }
 
@@ -308,6 +306,11 @@ type RemoteConfig struct {
 	// CookieOrigin is the origin whose scheme and host decide the `secure`
 	// cookie default. It defaults to Origin.
 	CookieOrigin string
+	// Transport is the app's `transport` hook: the Go half of the encode/decode
+	// pairs `src/hooks.ts` declares. It is optional; without it a custom type
+	// goes out as whatever encoding/json makes of it, which is a plain object
+	// with no methods on the other side. See the Transport type.
+	Transport Transport
 	// Remotes is the set of `<hash>/<name>` ids the built frontend calls, as
 	// recorded in the manifest. NewRemotes refuses to build a registry that
 	// does not answer exactly these.
@@ -382,6 +385,10 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 	cookieOrigin := cfg.CookieOrigin
 	if cookieOrigin == "" {
 		cookieOrigin = cfg.Origin
+	}
+
+	if err := cfg.Transport.validate(); err != nil {
+		return nil, err
 	}
 
 	rs := &Remotes{
@@ -539,7 +546,7 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 	}
 
 	payload := rawPayload(r.URL)
-	arg, present, err := remotearg.ParsePayload(payload)
+	arg, present, err := remotearg.ParsePayloadWith(payload, rs.codecs())
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
 		return
@@ -585,7 +592,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 		return
 	}
 
-	arg, present, err := remotearg.ParsePayload(body.Payload)
+	arg, present, err := remotearg.ParsePayloadWith(body.Payload, rs.codecs())
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
 		return
@@ -651,7 +658,7 @@ func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) (q, l ma
 		if !ok || fn.kind == kindCommand {
 			continue
 		}
-		arg, present, err := remotearg.ParsePayload(payload)
+		arg, present, err := remotearg.ParsePayloadWith(payload, rs.codecs())
 		if err != nil {
 			continue
 		}
@@ -722,7 +729,11 @@ func rawPayload(u *url.URL) string {
 // *HTTPError as `{"status":500,"message":"Internal Error"}`.
 func (rs *Remotes) call(ctx context.Context, fn *Remote, arg any, present bool) (v any, err error) {
 	defer func() { err = rs.recovered(fn, recover(), err) }()
-	return fn.call(ctx, arg, present)
+	out, err := fn.call(ctx, arg, present)
+	if err != nil {
+		return nil, err
+	}
+	return rs.cfg.Transport.encodeTree(out)
 }
 
 // callLive is the same guard for a `query.live` producer. It matters more
@@ -731,7 +742,13 @@ func (rs *Remotes) call(ctx context.Context, fn *Remote, arg any, present bool) 
 // visitor with it.
 func (rs *Remotes) callLive(ctx context.Context, fn *Remote, arg any, present bool, yield func(any) error) (err error) {
 	defer func() { err = rs.recovered(fn, recover(), err) }()
-	return fn.live(ctx, arg, present, yield)
+	return fn.live(ctx, arg, present, func(v any) error {
+		encoded, err := rs.cfg.Transport.encodeTree(v)
+		if err != nil {
+			return err
+		}
+		return yield(encoded)
+	})
 }
 
 // recovered reports a panic and converts it to an error. It is a no-op when
@@ -782,7 +799,7 @@ func (rs *Remotes) header(w http.ResponseWriter) http.Header {
 }
 
 func (rs *Remotes) writeResult(w http.ResponseWriter, ev *Event, data map[string]any) {
-	serialized, err := devalue.Stringify(data)
+	serialized, err := devalue.StringifyWith(data, rs.cfg.Transport.reducers())
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 500, Message: "Internal Error"})
 		return

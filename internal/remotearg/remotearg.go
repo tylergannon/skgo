@@ -51,6 +51,25 @@ type File struct {
 	Data         []byte
 }
 
+// Codecs is the app's `transport` hook in the two forms devalue needs. It is
+// empty for an app that transports no custom types.
+//
+// Kit merges the two sets as `{ ...encoders, ...remote_fns_reducers }` in
+// create_remote_arg_reducers, so a transporter is tried *before* the
+// canonicalizing `__skrao`/`__skram`/`__skras` reducers. That order is
+// load-bearing rather than cosmetic: a custom type is usually a plain object to
+// `is_plain_object`, so with the order reversed `__skrao` would claim it first
+// and the value would go out as a sorted object under no tag at all — a
+// different payload from the one the client computed for the same argument, and
+// therefore a refresh key that never matches.
+type Codecs struct {
+	// Reducers encode custom types on the way out. They are tried in order,
+	// ahead of kit's own remote-argument reducers.
+	Reducers []devalue.Reducer
+	// Revivers decode custom types on the way in, keyed by transport key.
+	Revivers map[string]func(any) (any, error)
+}
+
 // ParsePayload decodes a base64url (no padding) devalue payload from a remote
 // request. present is false when payload is "" — kit's `undefined` — and when
 // the payload decodes to undefined.
@@ -63,6 +82,11 @@ type File struct {
 // Plain objects always come back as *devalue.Object, which preserves property
 // order, never as map[string]any.
 func ParsePayload(payload string) (value any, present bool, err error) {
+	return ParsePayloadWith(payload, Codecs{})
+}
+
+// ParsePayloadWith is ParsePayload for an app that declares a transport hook.
+func ParsePayloadWith(payload string, c Codecs) (value any, present bool, err error) {
 	if payload == "" {
 		return nil, false, nil
 	}
@@ -72,7 +96,7 @@ func ParsePayload(payload string) (value any, present bool, err error) {
 		return nil, false, err
 	}
 
-	v, err := devalue.Parse(string(data), revivers())
+	v, err := devalue.Parse(string(data), revivers(c))
 	if err != nil {
 		return nil, false, err
 	}
@@ -96,7 +120,13 @@ func ParsePayload(payload string) (value any, present bool, err error) {
 // Plain objects may be given as *devalue.Object (ordered) or map[string]any;
 // both work here, because the canonical form sorts keys anyway.
 func StringifyQueryArg(v any) (string, error) {
-	return stringifyArg(v, queryReducers())
+	return StringifyQueryArgWith(v, Codecs{})
+}
+
+// StringifyQueryArgWith is StringifyQueryArg for an app that declares a
+// transport hook.
+func StringifyQueryArgWith(v any, c Codecs) (string, error) {
+	return stringifyArg(v, queryReducers(c))
 }
 
 // StringifyCommandArg mirrors kit's stringify_command_arg: the same guards, but
@@ -110,7 +140,13 @@ func StringifyQueryArg(v any) (string, error) {
 // anywhere in the value is refused with ErrCommandMap rather than silently
 // serialized in sorted order.
 func StringifyCommandArg(v any) (string, error) {
-	return stringifyArg(v, commandReducers())
+	return StringifyCommandArgWith(v, Codecs{})
+}
+
+// StringifyCommandArgWith is StringifyCommandArg for an app that declares a
+// transport hook.
+func StringifyCommandArgWith(v any, c Codecs) (string, error) {
+	return stringifyArg(v, commandReducers(c))
 }
 
 func stringifyArg(v any, reducers []devalue.Reducer) (string, error) {
@@ -193,14 +229,14 @@ func mapGuard() devalue.Reducer {
 	}
 }
 
-func commandReducers() []devalue.Reducer {
-	return []devalue.Reducer{regexpGuard(), mapGuard(), fileReducer()}
+func commandReducers(c Codecs) []devalue.Reducer {
+	return append(append([]devalue.Reducer{}, c.Reducers...), regexpGuard(), mapGuard(), fileReducer())
 }
 
 // queryReducers builds the canonicalizing reducers. They share one clone table,
 // exactly as kit's create_remote_arg_reducers(true) does, so a cyclical object
 // graph clones each node once.
-func queryReducers() []devalue.Reducer {
+func queryReducers(c Codecs) []devalue.Reducer {
 	clones := make(map[any]*devalue.Object)
 	cloned := make(map[*devalue.Object]bool)
 
@@ -329,6 +365,15 @@ func queryReducers() []devalue.Reducer {
 		},
 	}
 
+	// The transport hook goes in front, which is where kit's spread puts it:
+	// `{ ...encoders, ...remote_fns_reducers }`. `stringify` above closes over
+	// the variable rather than this slice, so the nested documents `__skram`
+	// and `__skras` sort by are produced with the transporters too — kit's
+	// `stringify` is likewise built over `all_reducers`.
+	if len(c.Reducers) > 0 {
+		reducers = append(append([]devalue.Reducer{}, c.Reducers...), reducers...)
+	}
+
 	return reducers
 }
 
@@ -366,7 +411,7 @@ func identity(v any) (any, bool) {
 	return nil, false
 }
 
-func revivers() map[string]func(any) (any, error) {
+func revivers(c Codecs) map[string]func(any) (any, error) {
 	var all map[string]func(any) (any, error)
 
 	parse := func(s string) (any, error) {
@@ -452,6 +497,17 @@ func revivers() map[string]func(any) (any, error) {
 				Data:         []byte(data),
 			}, nil
 		},
+	}
+
+	// kit spreads the transport decoders in first — `{ ...decoders,
+	// ...remote_fns_revivers }` — so a transport key colliding with one of
+	// kit's own `__skra*` tags loses. Reviving is a keyed lookup rather than a
+	// chain, so this is the only place order can matter at all.
+	for key, decode := range c.Revivers {
+		if _, taken := all[key]; taken {
+			continue
+		}
+		all[key] = decode
 	}
 
 	return all

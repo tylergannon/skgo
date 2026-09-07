@@ -142,7 +142,9 @@ func formAdapter[In, Out any](fn func(context.Context, In) (Out, error)) func(co
 		if err != nil {
 			return nil, err
 		}
-		return encodeValue(out)
+		// The raw Go value; Remotes.call encodes it, where the transport hook
+		// is known.
+		return out, nil
 	}
 }
 
@@ -187,7 +189,7 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 		return
 	}
 
-	arg, meta, err := formdata.Parse(body)
+	arg, meta, err := formdata.ParseWith(body, rs.cfg.Transport.revivers())
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
 		return
