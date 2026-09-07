@@ -60,12 +60,6 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	remoteCfg := manifest.RemoteConfig(origin)
 	loadCfg := manifest.LoadConfig(origin)
 	loadCfg.Handle = Handle
-	// The `transport` hook, declared in web/src/hooks.go beside the
-	// web/src/hooks.ts that holds its browser half. Both registries get it:
-	// a custom type reaches the browser through a remote function and through
-	// a server load alike.
-	remoteCfg.Transport = generated.Transport()
-	loadCfg.Transport = generated.Transport()
 	endpointCfg := manifest.EndpointConfig(origin)
 
 	mode := "prod"
@@ -94,6 +88,18 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		}
 		pages = static
 	}
+
+	// The `transport` hook, declared in web/src/hooks.go beside the
+	// web/src/hooks.ts that holds its browser half. Both registries get it: a
+	// custom type reaches the browser through a remote function and through a
+	// server load alike.
+	//
+	// After the branch above, not before it: the dev arm replaces remoteCfg
+	// wholesale with a fresh manifest.RemoteConfig, so anything set earlier is
+	// dropped. Setting it above cost a run — the suite was green in prod and
+	// the pricing page threw `price.format is not a function` in dev.
+	remoteCfg.Transport = generated.Transport()
+	loadCfg.Transport = generated.Transport()
 
 	remotes, err := skgo.NewRemotes(remoteCfg, generated.Remotes()...)
 	if err != nil {

@@ -149,3 +149,23 @@ trap for whoever reads a failure screenshot of this page: Svelte's boundary
 renders `Internal Error` for both breaks. The message is generic and says
 nothing about the cause; the console does. Do not diagnose this page from the
 `failed` snippet alone.
+
+## trap: the dev arm replaces the whole config
+
+The suite was green in prod and red in dev on three scenarios, and the cause was
+in the example app's own wiring, not in skgo. `NewHandler` sets fields on
+`remoteCfg` and then, for the proxied path, does
+
+    remoteCfg = manifest.RemoteConfig("")
+
+which is a fresh value — every field set above it is gone. `Version`, `Dev` and
+`CookieOrigin` are re-set inside that arm and so survive by accident of order;
+`Transport` set above it did not. The wire silently lost its tag in dev only.
+
+The assignment now sits after the branch. Anything else an app sets on a config
+belongs there too, and a config that is rebuilt halfway through a constructor is
+a hazard worth removing rather than remembering — a `RemoteConfig` that took the
+dev flag as an argument could not have this shape.
+
+This is also the argument for running the suite in both modes rather than
+trusting one: the prod run was 37/37 over a page that was broken in dev.
