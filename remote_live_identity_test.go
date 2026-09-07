@@ -116,7 +116,7 @@ func newLiveApp(t *testing.T) *liveApp {
 	t.Helper()
 	data := newRows()
 
-	watchCount := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(int) error) error {
+	watchCount := NewLiveQueryNoArg(testModule, "watchCount", func(ctx context.Context, yield func(int) error) error {
 		// The identity is read once, here. Kit's event is a snapshot of the
 		// request that opened the stream and is never rebuilt for a later
 		// yield, so there is no later request to consult.
@@ -139,10 +139,10 @@ func newLiveApp(t *testing.T) *liveApp {
 		}
 	})
 
-	getRows := NewQuery(testModule, "getRows", func(ctx context.Context, _ None) (int, error) {
+	getRows := NewQueryNoArg(testModule, "getRows", func(ctx context.Context) (int, error) {
 		return data.count(liveSignedIn(ctx)), nil
 	})
-	addRow := NewCommand(testModule, "addRow", func(ctx context.Context, _ None) (int, error) {
+	addRow := NewCommandNoArg(testModule, "addRow", func(ctx context.Context) (int, error) {
 		data.add()
 		return data.count(liveSignedIn(ctx)), nil
 	})
@@ -152,7 +152,7 @@ func newLiveApp(t *testing.T) *liveApp {
 		}
 		return user, nil
 	})
-	signOut := NewCommand(testModule, "signOut", func(ctx context.Context, _ None) (string, error) {
+	signOut := NewCommandNoArg(testModule, "signOut", func(ctx context.Context) (string, error) {
 		if err := EventFrom(ctx).DeleteCookie(liveSessionCookie, CookieOptions{}); err != nil {
 			return "", err
 		}
@@ -459,10 +459,10 @@ func TestSeedingALiveQueryThatYieldsNothingReportsAnError(t *testing.T) {
 	// Kit reconnects a live query only when its `l` node carries a value; a
 	// node carrying an error is terminal, so a producer that yields nothing
 	// has to be reported as one rather than as an empty success.
-	silent := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(int) error) error {
+	silent := NewLiveQueryNoArg(testModule, "watchCount", func(ctx context.Context, yield func(int) error) error {
 		return nil
 	})
-	cmd := NewCommand(testModule, "signIn", func(ctx context.Context, _ None) (string, error) { return "ok", nil })
+	cmd := NewCommandNoArg(testModule, "signIn", func(ctx context.Context) (string, error) { return "ok", nil })
 	rs := testRemotes(t, RemoteConfig{}, silent, cmd)
 
 	body, err := json.Marshal(map[string]any{"payload": "", "refreshes": []string{liveKey(silent)}})

@@ -36,7 +36,7 @@ var (
 )
 
 // status answers the home page's query. Queries are GET requests.
-func status(ctx context.Context, _ skgo.None) (Status, error) {
+func status(ctx context.Context) (Status, error) {
 	mu.Lock()
 	defer mu.Unlock()
 	return Status{
@@ -57,7 +57,7 @@ func greet(ctx context.Context, name string) (Status, error) {
 	greetings++
 	lastGreeting = name
 	mu.Unlock()
-	return status(ctx, skgo.None{})
+	return status(ctx)
 }
 
 var (

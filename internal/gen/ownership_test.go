@@ -57,22 +57,22 @@ import (
 	"net/http"
 )
 
-type None struct{}
-
 type Marker struct{}
 
 type Remote struct{}
 
-func Query[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
+func Query(fn any) Marker { _ = fn; return Marker{} }
 
-func Command[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
+func Command(fn any) Marker { _ = fn; return Marker{} }
 
-func LiveQuery[In, Out any](fn func(context.Context, In, func(Out) error) error) Marker {
-	_ = fn
-	return Marker{}
-}
+func LiveQuery(fn any) Marker { _ = fn; return Marker{} }
 
 func NewQuery[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
+	_, _, _ = module, name, fn
+	return &Remote{}
+}
+
+func NewQueryNoArg[Out any](module, name string, fn func(context.Context) (Out, error)) *Remote {
 	_, _, _ = module, name, fn
 	return &Remote{}
 }
@@ -82,7 +82,17 @@ func NewCommand[In, Out any](module, name string, fn func(context.Context, In) (
 	return &Remote{}
 }
 
+func NewCommandNoArg[Out any](module, name string, fn func(context.Context) (Out, error)) *Remote {
+	_, _, _ = module, name, fn
+	return &Remote{}
+}
+
 func NewLiveQuery[In, Out any](module, name string, fn func(context.Context, In, func(Out) error) error) *Remote {
+	_, _, _ = module, name, fn
+	return &Remote{}
+}
+
+func NewLiveQueryNoArg[Out any](module, name string, fn func(context.Context, func(Out) error) error) *Remote {
 	_, _, _ = module, name, fn
 	return &Remote{}
 }
@@ -246,7 +256,7 @@ import (
 	"github.com/tylergannon/skgo"
 )
 
-func getThing(ctx context.Context, _ skgo.None) (wire.Thing, error) {
+func getThing(ctx context.Context) (wire.Thing, error) {
 	return wire.Thing{}, nil
 }
 
@@ -316,7 +326,7 @@ import (
 	"github.com/tylergannon/skgo"
 )
 
-func getThing(ctx context.Context, _ skgo.None) (wire.Thing, error) {
+func getThing(ctx context.Context) (wire.Thing, error) {
 	return wire.Thing{}, nil
 }
 
@@ -331,7 +341,7 @@ import (
 	"github.com/tylergannon/skgo"
 )
 
-func getOtherThing(ctx context.Context, _ skgo.None) (wire.Thing, error) {
+func getOtherThing(ctx context.Context) (wire.Thing, error) {
 	return wire.Thing{}, nil
 }
 
@@ -389,13 +399,13 @@ import (
 	"github.com/tylergannon/skgo"
 )
 
-func getThing(ctx context.Context, _ skgo.None) (wire.Thing, error) {
+func getThing(ctx context.Context) (wire.Thing, error) {
 	return wire.Thing{}, nil
 }
 
 var _ = skgo.Query(getThing)
 
-func getOtherThing(ctx context.Context, _ skgo.None) (otherwire.Thing, error) {
+func getOtherThing(ctx context.Context) (otherwire.Thing, error) {
 	return otherwire.Thing{}, nil
 }
 
@@ -428,7 +438,7 @@ import (
 	"github.com/tylergannon/skgo"
 )
 
-func getThing(ctx context.Context, _ skgo.None) (wire.Thing, error) {
+func getThing(ctx context.Context) (wire.Thing, error) {
 	return wire.Thing{}, nil
 }
 
@@ -452,7 +462,7 @@ import (
 	"github.com/tylergannon/skgo"
 )
 
-func getThing(ctx context.Context, _ skgo.None) (string, error) {
+func getThing(ctx context.Context) (string, error) {
 	return "", nil
 }
 

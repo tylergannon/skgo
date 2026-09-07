@@ -85,7 +85,7 @@ func node(t *testing.T, data any, key string) any {
 }
 
 func TestQueryWithoutArgument(t *testing.T) {
-	getTodos := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) ([]todo, error) {
+	getTodos := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) ([]todo, error) {
 		return []todo{{ID: "t1", Text: "write the adapter"}}, nil
 	})
 	rs := testRemotes(t, RemoteConfig{Version: "v1"}, getTodos)
@@ -193,7 +193,7 @@ func TestQueryErrorEnvelope(t *testing.T) {
 }
 
 func TestUnknownHashAndNameAre404(t *testing.T) {
-	known := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) (int, error) { return 1, nil })
+	known := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) (int, error) { return 1, nil })
 	rs := testRemotes(t, RemoteConfig{}, known)
 
 	for _, path := range []string{
@@ -247,7 +247,7 @@ func TestCrossOriginCommandIsForbidden(t *testing.T) {
 	}
 
 	// A GET is never cross-site-forbidden, whatever its Origin.
-	q := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) (int, error) { return 1, nil })
+	q := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) (int, error) { return 1, nil })
 	rs = testRemotes(t, RemoteConfig{Origin: "http://127.0.0.1:8080"}, q)
 	req = httptest.NewRequest(http.MethodGet, rs.Prefix()+q.ID(), nil)
 	req.Header.Set("Origin", "http://evil.example")
@@ -260,7 +260,7 @@ func TestCrossOriginCommandIsForbidden(t *testing.T) {
 
 func TestCommandRefreshes(t *testing.T) {
 	var texts []string
-	getTodos := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) ([]string, error) {
+	getTodos := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) ([]string, error) {
 		out := make([]string, len(texts))
 		copy(out, texts)
 		return out, nil
@@ -338,7 +338,7 @@ func TestCommandWithoutRefreshesOmitsQAndR(t *testing.T) {
 }
 
 func TestInterceptOnlyClaimsThePrefix(t *testing.T) {
-	q := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) (int, error) { return 7, nil })
+	q := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) (int, error) { return 7, nil })
 	rs := testRemotes(t, RemoteConfig{}, q)
 
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -388,16 +388,16 @@ func TestReadManifestAndRemoteConfig(t *testing.T) {
 }
 
 func TestDuplicateRegistrationIsAnError(t *testing.T) {
-	a := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) (int, error) { return 1, nil })
-	b := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) (int, error) { return 2, nil })
+	a := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) (int, error) { return 1, nil })
+	b := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) (int, error) { return 2, nil })
 	if _, err := NewRemotes(RemoteConfig{}, a, b); err == nil {
 		t.Fatal("registering the same id twice should fail")
 	}
 }
 
 func TestMethodMismatchIs405(t *testing.T) {
-	q := NewQuery(testModule, "getTodos", func(ctx context.Context, _ None) (int, error) { return 1, nil })
-	c := NewCommand(testModule, "addTodo", func(ctx context.Context, _ None) (int, error) { return 1, nil })
+	q := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) (int, error) { return 1, nil })
+	c := NewCommandNoArg(testModule, "addTodo", func(ctx context.Context) (int, error) { return 1, nil })
 	rs := testRemotes(t, RemoteConfig{}, q, c)
 
 	rec := httptest.NewRecorder()

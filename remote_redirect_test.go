@@ -62,8 +62,8 @@ func TestARedirectSaysWhichRedirectItIs(t *testing.T) {
 // and kit's client calls `goto()` with it. Emitting a status here would be
 // inventing a field kit's client does not read.
 func TestARemoteRedirectCarriesKitsLocationOnlyEnvelope(t *testing.T) {
-	rs := testRemotes(t, RemoteConfig{}, NewQuery(testModule, "gone",
-		func(ctx context.Context, _ None) (todo, error) {
+	rs := testRemotes(t, RemoteConfig{}, NewQueryNoArg(testModule, "gone",
+		func(ctx context.Context) (todo, error) {
 			r, err := NewRedirect(303, "/elsewhere")
 			if err != nil {
 				return todo{}, err

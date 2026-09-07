@@ -71,7 +71,7 @@ var inbox = struct {
 }{}
 
 // getMessages lists everything sent so far, newest last.
-func getMessages(_ context.Context, _ skgo.None) ([]Message, error) {
+func getMessages(_ context.Context) ([]Message, error) {
 	inbox.Lock()
 	defer inbox.Unlock()
 	// A copy: the caller serialises this after the lock is gone.

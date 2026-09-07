@@ -13,7 +13,7 @@ const sessionCookie = "skgo_session"
 
 // whoami reports who the caller is signed in as. A query may read cookies but
 // never write them, so this cannot accidentally start a session.
-func whoami(ctx context.Context, _ skgo.None) (businesslogic.Session, error) {
+func whoami(ctx context.Context) (businesslogic.Session, error) {
 	id, _ := skgo.EventFrom(ctx).Cookie(sessionCookie)
 	return businesslogic.Default.Session(id), nil
 }
@@ -33,7 +33,7 @@ func signIn(ctx context.Context, user string) (businesslogic.Session, error) {
 }
 
 // signOut ends the session and clears the cookie.
-func signOut(ctx context.Context, _ skgo.None) (businesslogic.Session, error) {
+func signOut(ctx context.Context) (businesslogic.Session, error) {
 	e := skgo.EventFrom(ctx)
 	id, _ := e.Cookie(sessionCookie)
 	businesslogic.Default.SignOut(id)

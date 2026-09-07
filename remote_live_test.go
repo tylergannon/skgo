@@ -99,7 +99,7 @@ func readFrame(t *testing.T, br *bufio.Reader) string {
 }
 
 func TestLiveFirstFrameIsGolden(t *testing.T) {
-	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
+	fn := NewLiveQueryNoArg(testModule, "watchCount", func(ctx context.Context, yield func(string) error) error {
 		if err := yield("initial"); err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func TestLiveFirstFrameIsGolden(t *testing.T) {
 }
 
 func TestLiveDedupesUnchangedFrames(t *testing.T) {
-	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
+	fn := NewLiveQueryNoArg(testModule, "watchCount", func(ctx context.Context, yield func(string) error) error {
 		for _, v := range []string{"a", "a", "b"} {
 			if err := yield(v); err != nil {
 				return err
@@ -146,7 +146,7 @@ func TestLiveSendsKeepAlive(t *testing.T) {
 	liveKeepAlive = 20 * time.Millisecond
 	t.Cleanup(func() { liveKeepAlive = previous })
 
-	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
+	fn := NewLiveQueryNoArg(testModule, "watchCount", func(ctx context.Context, yield func(string) error) error {
 		if err := yield("initial"); err != nil {
 			return err
 		}
@@ -169,7 +169,7 @@ func TestLiveCancellationTearsDownOnceAndDropsLateValues(t *testing.T) {
 	var cleanups atomic.Int32
 	lateYield := make(chan error, 1)
 
-	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
+	fn := NewLiveQueryNoArg(testModule, "watchCount", func(ctx context.Context, yield func(string) error) error {
 		defer cleanups.Add(1)
 		if err := yield("initial"); err != nil {
 			return err
@@ -211,7 +211,7 @@ func TestLiveCancellationTearsDownOnceAndDropsLateValues(t *testing.T) {
 }
 
 func TestLiveRejectsNonGet(t *testing.T) {
-	fn := NewLiveQuery(testModule, "watchCount", func(ctx context.Context, _ None, yield func(string) error) error {
+	fn := NewLiveQueryNoArg(testModule, "watchCount", func(ctx context.Context, yield func(string) error) error {
 		return nil
 	})
 	rs := testRemotes(t, RemoteConfig{}, fn)
