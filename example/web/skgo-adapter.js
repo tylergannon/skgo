@@ -1,12 +1,24 @@
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import {
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	statSync,
+	writeFileSync
+} from 'node:fs';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import * as esbuild from 'esbuild';
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
- * the client bundle, kit's own SPA boot document, and a manifest describing the
- * routes Go must answer with that document. No server bundle is copied, so no
- * JavaScript runs in production.
+ * the client bundle, kit's own SPA boot document, the SSR bundle the Go process
+ * renders pages with, and a manifest describing what Go must answer.
+ *
+ * The SSR bundle is the only JavaScript that runs in production, and it does no
+ * I/O: it is kit's own root component and Svelte's renderer, with every remote
+ * function's body replaced by a call back into Go.
  *
  * It also carries the remote-function ids and the server-load module paths
  * forward. `skgo generate` writes `skgo.remotes.json` beside this file when it
@@ -28,8 +40,9 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			const { manifest: kit, source } = await readKitManifest(builder);
 			const hashes = checkRemoteHashes(kit, generated.remotes);
 
-			const nodes = readNodes(builder, source, kit);
-			checkServerLoads(nodes, generated.loads);
+			const nodes = await readNodes(builder, source, kit);
+			const serverIds = nodes.map((node) => node.server);
+			checkServerLoads(serverIds, generated.loads);
 
 			const endpoints = checkEndpoints(builder, generated.endpoints);
 
@@ -38,7 +51,16 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 
 			builder.writePrerendered(`${out}/prerendered`);
 			const prerendered = readPrerendered(builder);
+			// The SPA shell is still emitted: it is what a page whose branch turns
+			// SSR off is answered with.
 			await builder.generateFallback(`${out}/index.html`);
+
+			// The document template, verbatim. Go substitutes `%sveltekit.head%`
+			// and `%sveltekit.body%` into it the way kit's compiled template
+			// function does, so the file a developer edits is the file that is
+			// served.
+			write(`${out}/app.html`, readFileSync(builder.config.files.appTemplate, 'utf-8'));
+			await buildServerBundle(builder, nodes, `${out}/ssr/bundle.js`);
 
 			// Kit's own `builder.compress` writes a `.br` and a `.gz` beside every
 			// file whose extension it compresses, and Go chooses one per request
@@ -63,7 +85,8 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 						// none. It is how Go finds the load that answers a slot of
 						// a route's branch, and it is the same key kit itself
 						// records in the node module it builds.
-						nodes,
+						nodes: serverIds,
+						ssr: describeSSR(builder, kit, nodes),
 						routes: kit._.routes.map((/** @type {any} */ route) => ({
 							id: route.id,
 							pattern: route.pattern.source,
@@ -288,18 +311,18 @@ async function readKitManifest(builder) {
  * @param {any} kit the same manifest, imported
  * @returns {string[]}
  */
-function readNodes(builder, source, kit) {
+async function readNodes(builder, source, kit) {
 	const dir = join(builder.getServerDirectory(), 'nodes');
 	/** @type {Map<number, string>} */
-	const serverIds = new Map();
+	const files = new Map();
 	for (const name of readdirSync(dir)) {
 		if (!name.endsWith('.js')) continue;
-		const module = readFileSync(join(dir, name), 'utf-8');
-		const index = Number(module.match(/^export const index = (\d+);$/m)?.[1]);
+		const file = join(dir, name);
+		const index = Number(readFileSync(file, 'utf-8').match(/^export const index = (\d+);$/m)?.[1]);
 		if (!Number.isInteger(index)) {
-			throw new Error(`skgo: ${join(dir, name)} does not declare a node index`);
+			throw new Error(`skgo: ${file} does not declare a node index`);
 		}
-		serverIds.set(index, module.match(/^export const server_id = "([^"]*)";$/m)?.[1] ?? '');
+		files.set(index, file);
 	}
 
 	const order = [...source.matchAll(/import\('[^']*\/nodes\/(\d+)\.js'\)/g)].map((m) =>
@@ -312,12 +335,138 @@ function readNodes(builder, source, kit) {
 		);
 	}
 
-	return order.map((index) => {
-		if (!serverIds.has(index)) {
+	/** @type {Node[]} */
+	const nodes = [];
+	for (const index of order) {
+		const file = files.get(index);
+		if (!file) {
 			throw new Error(`skgo: kit's manifest imports nodes/${index}.js, which the build did not write`);
 		}
-		return serverIds.get(index) ?? '';
-	});
+		const module = await import(pathToFileURL(file).href);
+
+		if (typeof module.universal?.load === 'function') {
+			throw new Error(
+				`skgo: ${module.universal_id} exports a \`load\`. Every load in a skgo app is written in Go; ` +
+					'a universal load would have to run in the browser and in the SSR engine, and skgo runs neither.'
+			);
+		}
+
+		nodes.push({
+			server: module.server_id ?? '',
+			component: module.component ? componentSource(file, dir) : null,
+			imports: module.imports ?? [],
+			stylesheets: module.stylesheets ?? [],
+			fonts: module.fonts ?? [],
+			ssr: option(module, 'ssr'),
+			csr: option(module, 'csr')
+		});
+	}
+
+	return nodes;
+}
+
+/**
+ * @typedef {{
+ *   server: string,
+ *   component: string | null,
+ *   imports: string[],
+ *   stylesheets: string[],
+ *   fonts: Array<{ file: string, filename: string }>,
+ *   ssr: boolean | null,
+ *   csr: boolean | null
+ * }} Node
+ */
+
+/**
+ * One of the two page options a node can set, from wherever it set it. Kit
+ * reads the universal module first and falls back to the server one
+ * (packages/kit/src/utils/page_nodes.js); Go does the reduction over the branch.
+ *
+ * @param {any} module
+ * @param {'ssr' | 'csr'} option
+ */
+function option(module, option) {
+	return module.universal?.[option] ?? module.server?.[option] ?? null;
+}
+
+/**
+ * The `.svelte` file a node's component was compiled from, vite-root-relative.
+ *
+ * It comes out of the sourcemap kit's own build wrote beside the compiled
+ * entry, because that is the record of what was compiled. Reversing kit's
+ * `[id]` -> `_id_` directory encoding by hand is a guess that breaks on
+ * `[...rest]`, and a wrong guess here renders the wrong page.
+ *
+ * @param {string} file the node module
+ * @param {string} dir the directory it lives in
+ */
+function componentSource(file, dir) {
+	const entry = readFileSync(file, 'utf-8').match(/import\('(\.\.\/entries\/[^']+)'\)/)?.[1];
+	if (!entry) {
+		throw new Error(`skgo: ${file} declares a component but does not import one`);
+	}
+	const map = resolve(dir, entry) + '.map';
+	const sources = JSON.parse(readFileSync(map, 'utf-8')).sources;
+	const own = resolve(dirname(map), sources[sources.length - 1]);
+	if (!/^\+(page|layout|error)\.svelte$/.test(basename(own))) {
+		throw new Error(
+			`skgo: ${map} names ${own} as the last source of ${entry}, which is not a page, layout or error component. ` +
+				'The sourcemap no longer says which component each node renders.'
+		);
+	}
+	return relative(process.cwd(), own);
+}
+
+/**
+ * Everything the Go process needs to render a document that is not already in
+ * the manifest: where the bundle and the template are, the global the boot
+ * script assigns, the client entry points and each node's client assets, and
+ * the `ssr`/`csr` options Go reduces over a route's branch.
+ *
+ * @param {import('@sveltejs/kit').Builder} builder
+ * @param {any} kit kit's own server manifest
+ * @param {Node[]} nodes
+ */
+function describeSSR(builder, kit, nodes) {
+	const client = kit._.client;
+	if (!client) {
+		throw new Error('skgo: kit built no client bundle, so there is nothing for a document to boot.');
+	}
+	if (client.inline) {
+		throw new Error(
+			"skgo: `output.bundleStrategy: 'inline'` is not supported. skgo assembles the boot script itself and only knows the split form."
+		);
+	}
+	if (client.routes) {
+		throw new Error(
+			"skgo: `router.resolution: 'server'` is not supported. skgo's routing is Go's, and the client resolves its own routes."
+		);
+	}
+
+	return {
+		bundle: 'ssr/bundle.js',
+		template: 'app.html',
+		target: SSR_TARGET,
+		globalName: globalName(builder.config),
+		assets: builder.config.paths.assets,
+		relative: builder.config.paths.relative,
+		client: {
+			start: client.start,
+			app: client.app ?? '',
+			imports: client.imports ?? [],
+			stylesheets: client.stylesheets ?? [],
+			fonts: client.fonts ?? [],
+			usesEnvDynamicPublic: !!client.uses_env_dynamic_public
+		},
+		nodes: nodes.map((node) => ({
+			component: !!node.component,
+			ssr: node.ssr,
+			csr: node.csr,
+			imports: node.imports,
+			stylesheets: node.stylesheets,
+			fonts: node.fonts
+		}))
+	};
 }
 
 /**
@@ -464,4 +613,724 @@ function checkServerLoads(nodes, loads) {
 function write(file, contents) {
 	mkdirSync(dirname(file), { recursive: true });
 	writeFileSync(file, contents);
+}
+/**
+ * The target the SSR bundle is compiled to. es2022 keeps native private class
+ * fields; downlevelling them rewrites Svelte's server `Renderer` into WeakMap
+ * lookups and costs between 2x and 7x. Anything lower is refused.
+ */
+const SSR_TARGET = 'es2022';
+
+/**
+ * The web globals kit's runtime reaches at module-evaluation time that a bare
+ * ECMAScript engine does not have. Deliberately small, and inside the bundle so
+ * that the engine and a Node run of the same file execute identical code.
+ *
+ * Forced by `runtime/utils.js`, which constructs a `TextEncoder` and a
+ * `TextDecoder` and calls `btoa`/`atob` on its top level, and by
+ * `utils/url.js`, which constructs a `URL` on its top level. The real request
+ * URL is parsed by Go; this parser exists so the modules evaluate.
+ */
+const SSR_POLYFILL = String.raw`
+if (typeof globalThis.TextEncoder === 'undefined') {
+	globalThis.TextEncoder = class TextEncoder {
+		get encoding() { return 'utf-8'; }
+		encode(str) {
+			const bytes = [];
+			for (let i = 0; i < str.length; i++) {
+				let code = str.charCodeAt(i);
+				if (code >= 0xd800 && code <= 0xdbff && i + 1 < str.length) {
+					const next = str.charCodeAt(i + 1);
+					if (next >= 0xdc00 && next <= 0xdfff) {
+						code = (code - 0xd800) * 0x400 + next - 0xdc00 + 0x10000;
+						i++;
+					}
+				}
+				if (code < 0x80) bytes.push(code);
+				else if (code < 0x800) bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+				else if (code < 0x10000)
+					bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+				else
+					bytes.push(
+						0xf0 | (code >> 18),
+						0x80 | ((code >> 12) & 0x3f),
+						0x80 | ((code >> 6) & 0x3f),
+						0x80 | (code & 0x3f)
+					);
+			}
+			return new Uint8Array(bytes);
+		}
+	};
+}
+
+if (typeof globalThis.TextDecoder === 'undefined') {
+	globalThis.TextDecoder = class TextDecoder {
+		get encoding() { return 'utf-8'; }
+		decode(input) {
+			const bytes =
+				input instanceof Uint8Array
+					? input
+					: new Uint8Array(input.buffer ?? input, input.byteOffset ?? 0, input.byteLength);
+			let out = '';
+			for (let i = 0; i < bytes.length; ) {
+				const b = bytes[i];
+				let code, len;
+				if (b < 0x80) (code = b), (len = 1);
+				else if (b < 0xe0) (code = b & 0x1f), (len = 2);
+				else if (b < 0xf0) (code = b & 0x0f), (len = 3);
+				else (code = b & 0x07), (len = 4);
+				for (let j = 1; j < len; j++) code = (code << 6) | (bytes[i + j] & 0x3f);
+				i += len;
+				if (code > 0xffff) {
+					code -= 0x10000;
+					out += String.fromCharCode(0xd800 + (code >> 10), 0xdc00 + (code & 0x3ff));
+				} else {
+					out += String.fromCharCode(code);
+				}
+			}
+			return out;
+		}
+	};
+}
+
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+if (typeof globalThis.btoa === 'undefined') {
+	globalThis.btoa = (binary) => {
+		let out = '';
+		for (let i = 0; i < binary.length; i += 3) {
+			const a = binary.charCodeAt(i);
+			const b = binary.charCodeAt(i + 1);
+			const c = binary.charCodeAt(i + 2);
+			out += B64[a >> 2];
+			out += B64[((a & 3) << 4) | (isNaN(b) ? 0 : b >> 4)];
+			out += isNaN(b) ? '=' : B64[((b & 15) << 2) | (isNaN(c) ? 0 : c >> 6)];
+			out += isNaN(c) ? '=' : B64[c & 63];
+		}
+		return out;
+	};
+}
+
+if (typeof globalThis.atob === 'undefined') {
+	globalThis.atob = (b64) => {
+		const clean = b64.replace(/=+$/, '');
+		let out = '';
+		let bits = 0;
+		let acc = 0;
+		for (const ch of clean) {
+			const v = B64.indexOf(ch);
+			if (v < 0) continue;
+			acc = (acc << 6) | v;
+			bits += 6;
+			if (bits >= 8) {
+				bits -= 8;
+				out += String.fromCharCode((acc >> bits) & 0xff);
+			}
+		}
+		return out;
+	};
+}
+
+if (typeof globalThis.URL === 'undefined') {
+	const ABS = /^([a-zA-Z][a-zA-Z0-9+.-]*:)\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/;
+	const SCHEME_ONLY = /^([a-zA-Z][a-zA-Z0-9+.-]*:)(.*)$/;
+
+	class SearchParams {
+		constructor(search) {
+			this._ = [];
+			for (const pair of String(search).replace(/^\?/, '').split('&')) {
+				if (!pair) continue;
+				const i = pair.indexOf('=');
+				const k = decodeURIComponent((i < 0 ? pair : pair.slice(0, i)).replace(/\+/g, ' '));
+				const v = i < 0 ? '' : decodeURIComponent(pair.slice(i + 1).replace(/\+/g, ' '));
+				this._.push([k, v]);
+			}
+		}
+		get(name) {
+			for (const [k, v] of this._) if (k === name) return v;
+			return null;
+		}
+		getAll(name) { return this._.filter(([k]) => k === name).map(([, v]) => v); }
+		has(name) { return this.get(name) !== null; }
+		keys() { return this._.map(([k]) => k)[Symbol.iterator](); }
+		values() { return this._.map(([, v]) => v)[Symbol.iterator](); }
+		entries() { return this._.map(([k, v]) => [k, v])[Symbol.iterator](); }
+		[Symbol.iterator]() { return this.entries(); }
+		toString() {
+			return this._.map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+		}
+	}
+
+	globalThis.URLSearchParams = SearchParams;
+
+	globalThis.URL = class URL {
+		constructor(input, base) {
+			let href = String(input);
+			if (base !== undefined && !SCHEME_ONLY.test(href)) {
+				const b = base instanceof URL ? base : new URL(String(base));
+				if (href.startsWith('//')) href = b.protocol + href;
+				else if (href.startsWith('/')) href = b.origin + href;
+				else {
+					const dir = b.pathname.slice(0, b.pathname.lastIndexOf('/') + 1);
+					const parts = (dir + href).split('/');
+					const out = [];
+					for (const p of parts) {
+						if (p === '.') continue;
+						if (p === '..') out.pop();
+						else out.push(p);
+					}
+					href = b.origin + out.join('/');
+				}
+			}
+
+			const m = ABS.exec(href);
+			if (m) {
+				this.protocol = m[1];
+				this.host = m[2];
+				this.hostname = m[2].split(':')[0];
+				this.port = m[2].includes(':') ? m[2].split(':')[1] : '';
+				this.pathname = m[3] || '/';
+				this.search = m[4] || '';
+				this.hash = m[5] || '';
+				this.origin = this.protocol + '//' + this.host;
+			} else {
+				const s = SCHEME_ONLY.exec(href);
+				if (!s) throw new TypeError('Invalid URL: ' + href);
+				this.protocol = s[1];
+				this.host = '';
+				this.hostname = '';
+				this.port = '';
+				this.pathname = s[2];
+				this.search = '';
+				this.hash = '';
+				this.origin = 'null';
+			}
+			this.searchParams = new SearchParams(this.search);
+		}
+		get href() {
+			return (this.origin === 'null' ? this.protocol : this.origin) + this.pathname + this.search + this.hash;
+		}
+		toString() { return this.href; }
+	};
+}
+`;
+
+/**
+ * The `$app/server` the SSR bundle sees.
+ *
+ * Kit's own `query`/`command`/`form` wrappers are kept: the argument-keyed
+ * cache, `state.remote.implicit`, the `<id>/<payload>` key, the rule that an
+ * argument needs a validator, the refusal to run a command during a render and
+ * the derived event whose `url`, `params` and `route` throw inside a query are
+ * all kit's, unchanged. The only substitution is the user function body —
+ * the generated stub that throws — which becomes a call into Go.
+ *
+ * That inversion is the proof: the generated `.remote.ts` still throws, and the
+ * host binding is the only path by which a value can reach the engine.
+ */
+const SSR_APP_SERVER = String.raw`
+import * as real from 'skgo:kit/remote';
+import { stringify_remote_arg } from 'skgo:kit/shared';
+
+export { getRequestEvent } from '@sveltejs/kit/internal/server';
+
+/**
+ * Calls Go. Synchronous: Go has the answer in this process, so there is nothing
+ * for an event loop to wait on.
+ */
+function host(id, payload) {
+	const raw = globalThis.__skgo_remote(id, payload);
+	const res = JSON.parse(raw);
+	if (res.e) {
+		const err = new Error(res.e.message);
+		err.status = res.e.status ?? 500;
+		throw err;
+	}
+	return res.v;
+}
+
+export function query(validate_or_fn, maybe_fn) {
+	const fn = (arg) => host(wrapper.__.id, stringify_remote_arg(arg));
+	const wrapper = maybe_fn ? real.query(validate_or_fn, fn) : real.query(fn);
+	return wrapper;
+}
+
+query.batch = (validate_or_fn, maybe_fn) => {
+	const fn = (args) => {
+		const results = args.map((arg) => host(wrapper.__.id, stringify_remote_arg(arg)));
+		return (_arg, i) => results[i];
+	};
+	const wrapper = maybe_fn ? real.query.batch(validate_or_fn, fn) : real.query.batch(fn);
+	return wrapper;
+};
+
+query.live = (validate_or_fn, maybe_fn) => {
+	// A live query is a stream and nothing in a render drives one. Declaring one
+	// at module scope has to keep working; awaiting one during a render is what
+	// fails, and it fails loudly.
+	const fn = function* () {
+		throw new Error('skgo: a live query cannot be awaited during server-side rendering');
+	};
+	return maybe_fn ? real.query.live(validate_or_fn, fn) : real.query.live(fn);
+};
+
+export function command(validate_or_fn, maybe_fn) {
+	const fn = (arg) => host(wrapper.__.id, stringify_remote_arg(arg));
+	const wrapper = maybe_fn ? real.command(validate_or_fn, fn) : real.command(fn);
+	return wrapper;
+}
+
+export const form = real.form;
+export const prerender = real.prerender;
+export const requested = real.requested;
+`;
+
+/**
+ * The entry point. It mirrors the one region of kit's `render_response` that
+ * executes code (packages/kit/src/runtime/server/page/render.js): build the
+ * `Props` linked list, call `render(Root, ...)` inside kit's request store, and
+ * hand back `{ head, body }`. Everything on either side of that call — the boot
+ * script, the hydration array, the remote data, the head buckets, the template
+ * — is string assembly Go does with data Go already has.
+ */
+const SSR_ENTRY = String.raw`
+import 'skgo:polyfill';
+import { render } from 'svelte/server';
+import Root from 'skgo:kit/root';
+import { Props, RenderNode } from 'skgo:kit/props';
+import { with_request_store } from '@sveltejs/kit/internal/server';
+import { components } from 'skgo:nodes';
+
+/**
+ * A RequestState (packages/kit/src/types/internal.d.ts). Only the fields
+ * kit's remote wrappers read during a render are populated. is_in_render is
+ * what makes kit refuse a command.
+ */
+function make_state() {
+	return {
+		getClientAddress: () => '127.0.0.1',
+		error: false,
+		rerouted_url: null,
+		depth: 0,
+		remote: {
+			data: null,
+			implicit: null,
+			explicit: null,
+			forms: null,
+			requested: null,
+			batches: null,
+			live_iterators: null
+		},
+		is_in_remote_function: false,
+		is_in_render: true
+	};
+}
+
+/**
+ * A RequestEvent stand-in. run_remote_function spreads it and derives the
+ * event a query actually sees, which is where kit makes url, params and
+ * route throw. Go owns the real request; nothing here does I/O.
+ */
+function make_event(req, url) {
+	return {
+		cookies: {
+			get: (name) => (req.cookies ?? {})[name],
+			getAll: () => Object.entries(req.cookies ?? {}).map(([name, value]) => ({ name, value })),
+			set: () => {},
+			delete: () => {},
+			serialize: () => ''
+		},
+		fetch: () => {
+			throw new Error('skgo: fetch is not available during server-side rendering; load the data in Go');
+		},
+		getClientAddress: () => req.client_address ?? '127.0.0.1',
+		locals: {},
+		params: req.params ?? {},
+		platform: undefined,
+		request: { headers: { get: () => null }, method: 'GET' },
+		route: { id: req.route_id ?? null },
+		setHeaders: () => {},
+		url,
+		isDataRequest: false,
+		isSubRequest: false,
+		isRemoteRequest: false,
+		tracing: { enabled: false }
+	};
+}
+
+function build_props(req, url) {
+	const page = {
+		error: req.error ?? null,
+		params: req.params ?? {},
+		route: { id: req.route_id ?? null },
+		status: req.status ?? 200,
+		url,
+		data: {},
+		form: req.form ?? null,
+		shallow: null,
+		state: {}
+	};
+
+	const branch = req.branch ?? [];
+	const error_components = (req.error_components ?? []).map((i) =>
+		i == null ? undefined : components[i]
+	);
+
+	const props = new Props({
+		page,
+		tree: new RenderNode(components[branch[0].node], undefined),
+		form: req.form ?? null,
+		error: req.error ?? undefined
+	});
+
+	let current_node = props.tree;
+	let data = props.page.data;
+
+	for (let i = 0; i < branch.length; i += 1) {
+		data = { ...data, ...branch[i].data };
+		current_node.data = data;
+
+		if (i < branch.length - 1) {
+			current_node = current_node.child = new RenderNode(
+				components[branch[i + 1].node],
+				error_components[i + 1]
+			);
+		}
+	}
+
+	props.page.data = data;
+	return props;
+}
+
+/**
+ * Renders one page. The result object is filled in as the promise chain
+ * settles; the host drains the job queue when this call returns, so done is
+ * true by then or the render never finished — which is a Go error, not a
+ * partial document.
+ */
+globalThis.__skgo_render = function (req_json) {
+	const result = { done: false, error: '', head: '', body: '' };
+
+	try {
+		const req = JSON.parse(req_json);
+		const url = new URL(req.url);
+		const props = build_props(req, url);
+		const state = make_state();
+		const event = make_event(req, url);
+
+		const options = { context: new Map([['__request__', { page: props.page }]]) };
+		const promise = with_request_store({ event, state }, () => render(Root, { ...options, props }));
+
+		Promise.resolve(promise).then(
+			(rendered) => {
+				result.head = rendered.head;
+				result.body = rendered.body;
+				result.done = true;
+			},
+			(err) => {
+				result.error = (err && (err.stack || err.message)) || String(err);
+				result.done = true;
+			}
+		);
+	} catch (err) {
+		result.error = (err && (err.stack || err.message)) || String(err);
+		result.done = true;
+	}
+
+	return result;
+};
+
+// A liveness check Go calls once, when it puts a fresh runtime into the pool.
+globalThis.__skgo_ping = function () {
+	return 'ok';
+};
+`;
+
+/**
+ * The SSR bundle: the only JavaScript skgo runs at request time.
+ *
+ * It is kit's own `Root` component, kit's `Props`/`RenderNode`, kit's remote
+ * function wrappers and Svelte's server renderer, bundled together with the
+ * app's own components into one es2022 IIFE that a bare ECMAScript engine can
+ * evaluate. Nothing in it does I/O: every remote function's body is a call back
+ * into Go, and there is no `fetch`, no timer and no file system.
+ *
+ * `target` must stay at es2022. Downlevelling private class fields turns
+ * Svelte's server `Renderer` into WeakMap lookups, which costs 2x to 7x and was
+ * measured; `supported` turns off the four syntaxes the engine's parser rejects.
+ *
+ * @param {import('@sveltejs/kit').Builder} builder
+ * @param {Node[]} nodes the node table, in the manifest's own order
+ * @param {string} outfile
+ */
+async function buildServerBundle(builder, nodes, outfile) {
+	const cwd = process.cwd();
+	// realpath: pnpm links the package, and esbuild would otherwise look for
+	// kit's own dependencies (devalue, cookie, ...) next to the symlink.
+	const kit = join(realpathSync(join(cwd, 'node_modules/@sveltejs/kit')), 'src');
+	const svelte = join(cwd, 'node_modules/svelte');
+	const { compile, compileModule } = await import(
+		pathToFileURL(join(svelte, 'src/compiler/index.js')).href
+	);
+
+	const config = builder.config;
+	const virtual = 'skgo-virtual';
+
+	/** kit's user-facing specifiers, which only vite normally resolves. */
+	const alias = {
+		'$app/state': join(kit, 'runtime/app/state/index.js'),
+		'$app/navigation': join(kit, 'runtime/app/navigation/index.js'),
+		'$app/env': join(kit, 'runtime/app/env/index.js'),
+		'$app/environment': join(kit, 'runtime/app/environment/index.js'),
+		'$app/forms': join(kit, 'runtime/app/forms/index.js'),
+		'$app/paths': join(kit, 'runtime/app/paths/index.js'),
+		// `$app/server` is the one substitution: kit's real `query`/`command`/
+		// `form` wrappers are kept, and only the user function body — the
+		// generated stub that throws — is replaced by the call into Go.
+		'$app/server': 'skgo:app-server',
+		'skgo:kit/remote': join(kit, 'runtime/app/server/remote/index.js'),
+		'skgo:kit/shared': join(kit, 'runtime/shared.js'),
+		'skgo:kit/props': join(kit, 'runtime/props.svelte.js'),
+		'skgo:kit/root': join(kit, 'runtime/components/root.svelte')
+	};
+
+	/** @type {Record<string, string>} */
+	const sources = {
+		'skgo:entry': SSR_ENTRY,
+		'skgo:polyfill': SSR_POLYFILL,
+		'skgo:app-server': SSR_APP_SERVER,
+		'skgo:nodes': nodeTable(cwd, nodes),
+		'skgo:esm-env': 'export const DEV = false; export const BROWSER = false;',
+		'skgo:generated': 'export const get_hooks = () => ({});',
+		// Neither kit nor Svelte can reach AsyncLocalStorage here, and neither
+		// needs to: the webcontainer flag in the banner selects Svelte's own
+		// supported fallback — a module-global render context and a serialised
+		// render queue — and flips the matching flag in kit.
+		'skgo:missing': 'throw new Error("skgo: node:async_hooks is unavailable in the SSR engine");'
+	};
+
+	const plugin = {
+		name: 'skgo',
+		/** @param {import('esbuild').PluginBuild} b */
+		setup(b) {
+			for (const [from, to] of Object.entries({ ...alias, ...Object.fromEntries(Object.keys(sources).map((k) => [k, k])) })) {
+				const pattern = new RegExp('^' + from.replace(/[$/:\\.]/g, '\\$&') + '$');
+				b.onResolve({ filter: pattern }, () =>
+					to in sources ? { path: to, namespace: virtual } : { path: to }
+				);
+			}
+
+			// esm-env's DEV/BROWSER are vite conditions; `<sveltekit:generated>`
+			// and `node:async_hooks` are a virtual module and a Node builtin that
+			// this bundle has neither of.
+			b.onResolve({ filter: /^esm-env$/ }, () => ({ path: 'skgo:esm-env', namespace: virtual }));
+			b.onResolve({ filter: /^<sveltekit:generated>/ }, () => ({
+				path: 'skgo:generated',
+				namespace: virtual
+			}));
+			b.onResolve({ filter: /^node:async_hooks$/ }, () => ({
+				path: 'skgo:missing',
+				namespace: virtual
+			}));
+
+			b.onLoad({ filter: /.*/, namespace: virtual }, (a) => ({
+				contents: sources[a.path],
+				loader: 'js',
+				resolveDir: cwd
+			}));
+
+			// A `.svelte` file becomes its server-mode JavaScript, with the
+			// TypeScript stripped out of `<script lang="ts">` first. This is the
+			// app's own Svelte compiler in the mode kit itself uses.
+			b.onLoad({ filter: /\.svelte$/ }, async (a) => {
+				const source = await stripTypeScript(readFileSync(a.path, 'utf-8'));
+				const { js, warnings } = compile(source, {
+					filename: a.path,
+					generate: 'server',
+					experimental: { async: !!config.compilerOptions?.experimental?.async }
+				});
+				for (const w of warnings) {
+					if (!/unused|a11y/.test(w.code)) builder.log.minor(`skgo: ${w.code}: ${w.message}`);
+				}
+				return { contents: js.code, loader: 'js', resolveDir: dirname(a.path) };
+			});
+
+			// `.svelte.js` modules carry runes — kit's own `props.svelte.js` uses
+			// `$state.raw` — so they go through the compiler too.
+			b.onLoad({ filter: /\.svelte\.js$/ }, (a) => {
+				const { js } = compileModule(readFileSync(a.path, 'utf-8'), {
+					filename: a.path,
+					generate: 'server'
+				});
+				return { contents: js.code, loader: 'js', resolveDir: dirname(a.path) };
+			});
+
+			// A `.remote.ts` gets exactly the epilogue kit's own vite plugin
+			// appends (packages/kit/src/exports/vite/index.js, `transform`), so
+			// each export carries the `<hash>/<name>` id the browser addresses it
+			// by and the Go host call is looked up under the same id.
+			b.onLoad({ filter: /\.remote\.ts$/ }, async (a) => {
+				const file = relative(cwd, a.path).replaceAll('\\', '/');
+				const hash = djb2(file);
+				const { code } = await esbuild.transform(readFileSync(a.path, 'utf-8'), {
+					loader: 'ts',
+					tsconfigRaw: { compilerOptions: { verbatimModuleSyntax: true } }
+				});
+				const epilogue = `
+import * as $$self from ${JSON.stringify('./' + basename(a.path))};
+import { init_remote_functions as $$init } from '@sveltejs/kit/internal/server';
+$$init($$self, ${JSON.stringify(file)}, ${JSON.stringify(hash)});
+for (const [$$name, $$fn] of Object.entries($$self)) {
+	$$fn.__.id = ${JSON.stringify(hash)} + '/' + $$name;
+	$$fn.__.name = $$name;
+}
+`;
+				return { contents: code + epilogue, loader: 'js', resolveDir: dirname(a.path) };
+			});
+		}
+	};
+
+	const result = await esbuild.build({
+		entryPoints: ['skgo:entry'],
+		bundle: true,
+		format: 'iife',
+		platform: 'neutral',
+		target: SSR_TARGET,
+		supported: {
+			// The engine's parser rejects these four. esbuild rewrites dynamic
+			// import and `import.meta`, and lowers `for await` and async
+			// generators, which kit's live-query and streaming paths use.
+			'dynamic-import': false,
+			'import-meta': false,
+			'for-await': false,
+			'async-generator': false
+		},
+		mainFields: ['module', 'main'],
+		// no 'browser' condition: kit's `#app/*` imports must resolve to the
+		// server variants.
+		conditions: [],
+		nodePaths: [join(cwd, 'node_modules')],
+		absWorkingDir: cwd,
+		define: ssrDefines(builder),
+		banner: {
+			js:
+				'var __skgo_track = function () {};' +
+				// Svelte's no-AsyncLocalStorage fallback is gated on exactly this
+				// check (svelte/src/internal/server/render-context.js), and kit
+				// reads the same flag (kit/src/constants.js) to stop nulling its
+				// synchronous request store. It is Svelte's own supported path;
+				// the cost is one render per runtime at a time, which the pool in
+				// Go pays.
+				"globalThis.process = { versions: { webcontainer: 'skgo' } };"
+		},
+		plugins: [plugin],
+		outfile,
+		logLevel: 'warning'
+	});
+
+	if (result.errors.length) {
+		throw new Error(`skgo: the SSR bundle did not build:\n${result.errors.map((e) => '  ' + e.text).join('\n')}`);
+	}
+}
+
+/**
+ * The compile-time constants kit's own vite plugin injects. They are read from
+ * the same config kit validated, so the bundle sees the app it was built for.
+ *
+ * @param {import('@sveltejs/kit').Builder} builder
+ */
+function ssrDefines(builder) {
+	const c = builder.config;
+	const s = JSON.stringify;
+	return {
+		__SVELTEKIT_ADAPTER_NAME__: s('skgo'),
+		__SVELTEKIT_APP_DIR__: s(c.appDir),
+		__SVELTEKIT_APP_VERSION__: s(c.version.name),
+		__SVELTEKIT_APP_VERSION_FILE__: s(`${c.appDir}/version.json`),
+		__SVELTEKIT_APP_VERSION_POLL_INTERVAL__: s(c.version.pollInterval),
+		__SVELTEKIT_APP_VERSION_CHECKS_ENABLED__: s(c.output.bundleStrategy !== 'inline'),
+		__SVELTEKIT_CLIENT_ROUTING__: s(c.router.resolution === 'client'),
+		__SVELTEKIT_CSRF_CHECK_ORIGIN__: s(!c.csrf.trustedOrigins.includes('*')),
+		__SVELTEKIT_DEV__: 'false',
+		__SVELTEKIT_EMBEDDED__: s(c.embedded),
+		__SVELTEKIT_FORK_PRELOADS__: s(c.experimental.forkPreloads),
+		__SVELTEKIT_GLOBAL_NAME__: s(globalName(c)),
+		__SVELTEKIT_HASH_ROUTING__: s(c.router.type === 'hash'),
+		__SVELTEKIT_LINK_HEADER_PRELOAD__: s(c.output.linkHeaderPreload),
+		__SVELTEKIT_PATHS_ASSETS__: s(c.paths.assets),
+		__SVELTEKIT_PATHS_BASE__: s(c.paths.base),
+		__SVELTEKIT_PATHS_ORIGIN__: s(c.paths.origin ?? ''),
+		__SVELTEKIT_PATHS_RELATIVE__: s(c.paths.relative),
+		__SVELTEKIT_SERVER_TRACING_ENABLED__: s(c.tracing.server),
+		__SVELTEKIT_SERVICE_WORKER__: 'false',
+		__SVELTEKIT_SUPPORTS_ASYNC__: s(!!c.compilerOptions?.experimental?.async),
+		__SVELTEKIT_TRACK__: '__skgo_track'
+	};
+}
+
+/**
+ * The `globalThis.__sveltekit_xxx` name the boot script assigns and the client
+ * reads, derived the way kit derives it (packages/kit/src/core/utils.js).
+ *
+ * @param {any} config
+ */
+function globalName(config) {
+	return `__sveltekit_${djb2(config.version.name)}`;
+}
+
+/**
+ * The node table the bundle renders through: one static import per component
+ * kit's build produced, in the manifest's own node order.
+ *
+ * @param {string} cwd
+ * @param {Node[]} nodes
+ */
+function nodeTable(cwd, nodes) {
+	const imports = [];
+	const table = [];
+	nodes.forEach((node, i) => {
+		if (!node.component) {
+			table.push('undefined');
+			return;
+		}
+		imports.push(`import N${i} from ${JSON.stringify(join(cwd, node.component))};`);
+		table.push(`N${i}`);
+	});
+	return `${imports.join('\n')}\nexport const components = [${table.join(', ')}];\n`;
+}
+
+/**
+ * Strips the TypeScript out of every `<script lang="ts">` in a component,
+ * leaving the markup untouched. Svelte's own compiler does not read TypeScript;
+ * vite normally does this with a preprocessor.
+ *
+ * @param {string} source
+ */
+async function stripTypeScript(source) {
+	const script = /<script([^>]*)>([\s\S]*?)<\/script>/g;
+	/** @type {Array<[number, number, string]>} */
+	const edits = [];
+	for (const m of source.matchAll(script)) {
+		if (!/lang=["']ts["']/.test(m[1])) continue;
+		const { code } = await esbuild.transform(m[2], {
+			loader: 'ts',
+			// keeps imports that are only referenced from the template
+			tsconfigRaw: { compilerOptions: { verbatimModuleSyntax: true } }
+		});
+		edits.push([m.index + m[0].indexOf(m[2]), m[2].length, code]);
+	}
+	for (const [at, len, code] of edits.reverse()) {
+		source = source.slice(0, at) + code + source.slice(at + len);
+	}
+	return source;
+}
+
+/** kit's djb2, packages/kit/src/utils/hash.js */
+function djb2(...values) {
+	let hash = 5381;
+	for (const value of values) {
+		let i = value.length;
+		while (i) hash = (hash * 33) ^ value.charCodeAt(--i);
+	}
+	return (hash >>> 0).toString(36);
 }
