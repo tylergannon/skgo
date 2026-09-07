@@ -45,7 +45,7 @@ func TestProjectSpellsTheShapesPolytypeSpells(t *testing.T) {
 		{"time.Time", named("time", "time", "Time", types.NewStruct(nil, nil)), "string", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := project(tc.in)
+			got, err := (&app{}).project(tc.in)
 			if err != nil {
 				t.Fatalf("project(%s): %v", tc.in, err)
 			}
@@ -83,7 +83,7 @@ func TestProjectRefusesWhatPolytypeCannotCarry(t *testing.T) {
 		{"channel", types.NewChan(types.SendRecv, types.Typ[types.Int]), "projection"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := project(tc.in)
+			got, err := (&app{}).project(tc.in)
 			if err == nil {
 				t.Fatalf("project(%s) = %q, want an error", tc.in, got.expr)
 			}

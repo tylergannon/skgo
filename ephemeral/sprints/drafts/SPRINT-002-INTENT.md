@@ -141,8 +141,9 @@ ephemeral/inspiration/reference/kit/packages/kit/src/
   runtime/app/server/remote/{query,command,shared}.js  factories, 'unchecked' validator
 ephemeral/inspiration/reference/devalue/src/{stringify,parse,utils,constants}.js + test/index.test.js
 ```
-Where new Go lives is a design point for the drafts (e.g. `internal/devalue`,
-`internal/remote`, public API in package `skgo`), as is whether the typed layer goes
+Where new Go lives is a design point for the drafts (e.g. `internal/remote`,
+public API in package `skgo`; the devalue codec itself is now
+`github.com/tylergannon/polytype/devalue`, outside this repo), as is whether the typed layer goes
 devalue → JSON → `json.Unmarshal` (junkyard, keeps polytype codecs and `ValidateJSON`
 working) or devalue → Go reflection directly.
 

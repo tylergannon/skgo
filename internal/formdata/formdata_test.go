@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 )
 
 // The envelopes in this file are goldens taken from kit itself, not built by

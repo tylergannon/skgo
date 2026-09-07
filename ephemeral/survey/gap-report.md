@@ -118,7 +118,7 @@ adjacent to what skgo does, they are close to it:
   (`runtime/server/respond.js:760-778`), or the error page loses its layout data.
 
 Everything skgo needs is already in the tree: a devalue encoder
-(`internal/devalue`), kit's route patterns in the manifest, and a cookie jar.
+(`polytype/devalue`), kit's route patterns in the manifest, and a cookie jar.
 
 ### 2. There is no server-side place to write a cookie during navigation
 

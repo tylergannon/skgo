@@ -14,7 +14,8 @@
 		"4rw8ae/getItem",
 		"9lqpme/getPage",
 		"ezl04l/getSite",
-		"gu007f/getPlans"
+		"gu007f/getPlans",
+		"gu007f/quoteFor"
 	],
 	"loads": [
 		"src/routes/account/+layout.server.ts",

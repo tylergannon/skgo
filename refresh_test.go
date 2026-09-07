@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 )
 
 // The keys below were produced by kit itself, not by this package: kit's

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tylergannon/skgo/internal/devalue"
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
 
@@ -48,7 +48,7 @@ func (rs *Remotes) serveLive(w http.ResponseWriter, r *http.Request, fn *Remote)
 		return
 	}
 
-	arg, present, err := remotearg.ParsePayload(rawPayload(r.URL))
+	arg, present, err := remotearg.ParsePayloadWith(rawPayload(r.URL), rs.codecs())
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
 		return
@@ -110,7 +110,7 @@ func (rs *Remotes) serveLive(w http.ResponseWriter, r *http.Request, fn *Remote)
 			keepAlive.Reset(liveKeepAlive)
 
 		case v := <-values:
-			serialized, err := devalue.Stringify(v)
+			serialized, err := devalue.StringifyWith(v, rs.cfg.Transport.reducers())
 			if err != nil {
 				rs.sendFrame(w, flusher, liveErrorFrame{Type: "error", Error: &HTTPError{Status: 500, Message: "Internal Error"}})
 				return
