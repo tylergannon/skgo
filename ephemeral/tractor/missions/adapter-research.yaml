@@ -1,0 +1,91 @@
+name: adapter-research
+goal: >
+  Read /Users/tyler/src/skgo/ephemeral/inspiration/research/BRIEF.md first;
+  it is the whole mission. The question is what the best current technology
+  is, in SvelteKit 3, Vite (vite-plus / rolldown) and the oxc toolchain, for
+  each responsibility of skgo's SvelteKit adapter and the four programs it
+  carries. Findings go to the research directory the brief names, with every
+  claim cited to a pinned source under reference/, and the sources you
+  consulted collected there.
+start: research
+
+defaults:
+  timeout: 5400s
+  fidelity: none
+  max_retries: 1
+
+nodes:
+  - id: research
+    type: fan_out
+    max_parallel: 2
+    branches:
+      - id: codex_toolchain
+        artifacts: [REPORT.md]
+        agent:
+          model:
+            name: gpt-5.6-terra
+            effort: high
+          prompt: >
+            $goal
+
+            Your slice, slug `codex-toolchain`: the oxc and rolldown toolchain
+            as vite-plus 0.3.0 ships it, judged against the engine constraints
+            in the brief. What Vite's builder and environment APIs let a
+            plugin do (a fourth environment beside client, ssr and
+            serviceWorker; per-environment resolveId and load; `consumer`;
+            `build.target` and output format), what oxc-transform can lower
+            and what it cannot (dynamic import, import.meta, for-await, async
+            generators, private fields left intact), what rolldown's
+            programmatic API offers for a single IIFE with a global banner, and
+            what vite-plus 0.3.0 changed relative to vite 7. Also: the best
+            current way to strip TypeScript from a `<script lang="ts">` block
+            and from a `.remote.ts` module without esbuild. Prefer running a
+            small spike that produces an es2022 IIFE from a Svelte component
+            through this toolchain and evaluating it, over describing what
+            should work. Leave REPORT.md in this workspace with the same
+            findings, condensed.
+      - id: codex_kit_surface
+        artifacts: [REPORT.md]
+        agent:
+          model:
+            name: gpt-5.6-terra
+            effort: high
+          prompt: >
+            $goal
+
+            Your slice, slug `codex-kit-surface`: read skgo's adapter at
+            internal/adapter/skgo-adapter.js beside the pinned kit source and
+            produce the list of everything the adapter reimplements that kit 3
+            already exports, provides through the Builder passed to adapt(),
+            or lets an adapter inject through adapter.vite.plugins, adapter
+            emulate() and adapter supports. For each of the four programs in
+            the brief, state kit's own mechanism for that responsibility with
+            its file path, where kit's mechanism diverges from the adapter's
+            port at the pinned commit, and whether the divergence is a defect
+            in the port or a deliberate consequence of the engine constraints.
+            Pay particular attention to how kit's remote-functions plugin
+            rewrites .remote modules per environment and resolves $app/server,
+            and to what kit's render_response does that the entry does not.
+            Leave REPORT.md in this workspace with the same findings,
+            condensed.
+    branch_edges:
+      - to: crosscheck
+
+  - id: crosscheck
+    type: fan_in
+    model:
+      name: claude-sonnet-5
+      effort: medium
+    prompt: >
+      Two research reports have been written under
+      /Users/tyler/src/skgo/ephemeral/inspiration/research/ with slugs
+      codex-toolchain and codex-kit-surface. Check their citations: open every
+      path each report cites and confirm it says what the report says it
+      says, and confirm every package the reports consulted was collected
+      under reference/ as the brief requires. Write
+      /Users/tyler/src/skgo/ephemeral/inspiration/research/codex-crosscheck.md
+      listing each claim you could not confirm, with the path and what you
+      found instead. Do not summarise the reports and do not add findings of
+      your own.
+    edges:
+      - to: success

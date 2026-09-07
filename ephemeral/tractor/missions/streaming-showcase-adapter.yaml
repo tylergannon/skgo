@@ -1,0 +1,515 @@
+# Four missions in sequence, each ending in a squash-merged PR: close the two
+# streaming gaps, make the example app show everything skgo does, then rebuild
+# the adapter on kit's own build. A mission is built by one agent, judged by a
+# fresh one that merges only what it has proved, and the walk moves on only
+# when origin/main has actually advanced.
+#
+# Dispatched 2026-09-07 from the adapter research; the decision record is
+# ephemeral/brief/2026-09-07-adapter-research-continuation.md.
+name: streaming-showcase-adapter
+goal: |
+  You are working on skgo, a SvelteKit application server written in Go.
+  AGENTS.md in the repository root governs this project; read it first and
+  invoke the agent-protocol skill as it says. Kit is the specification, and
+  the pinned kit source is at the absolute path
+  /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit (a link to
+  kit@3.0.0-next.25 beside it), outside any worktree and reachable from
+  anywhere. Svelte's source is in example/web/node_modules/svelte/src.
+
+  Work in a task worktree made with `just worktree <branch>` from the root
+  checkout /Users/tyler/src/skgo; `just --list` is the rest of the plumbing.
+  Do the work yourself in this session. You may use subagents for reading
+  and research, but never return while dispatched work is outstanding: your
+  process ending kills it.
+
+  What is believed: Gherkin scenarios in example/e2e against the running
+  example app, with screenshots taken at the moment each scenario asserts,
+  opened and looked at by you before you hand them to anyone. Each
+  expectation is anchored in something independent of the code under test (a
+  fixture, a number written in the scenario, rows visible on the page), never
+  in a value read off the thing being tested. Go tests for the Go. A passing
+  command is not evidence and there is no command that means done.
+
+  The work ends as a pull request against main from your task branch, whose
+  body is written to serve as the squash commit message, with the worklog
+  entry appended (traps and corrections only, nothing that is visible in the
+  diff). Write the PR URL to the state file the mission names, so the judge
+  can find it. Stop every server you started before you finish. Do not merge
+  the PR yourself; a judge in a fresh session does that.
+
+  If the state file's `.findings.md` sibling exists, it is the judge's
+  return from your previous attempt: address every finding on the same
+  branch and PR, then remove the findings file.
+
+start: sync_1
+
+defaults:
+  timeout: 14400s
+  max_retries: 1
+  fidelity: none
+  model:
+    name: claude-opus-5
+    effort: high
+
+nodes:
+  # ---------------------------------------------------------------- mission 1
+  - id: sync_1
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && mkdir -p .tractor/state
+      && git rev-parse origin/main > .tractor/state/mission-1.base
+    edges:
+      success: build_1
+      error: failure
+
+  - id: build_1
+    type: agent
+    max_visits: 3
+    prompt: |
+      $goal
+
+      Mission 1, streaming the data a load promised, on both of kit's wires.
+      State file: /Users/tyler/src/skgo/.tractor/state/mission-1.pr
+
+      Capability when done: a Go developer's load can promise a value
+      wherever kit's own client accepts a promise, and the value streams to
+      the browser on the page document and on the `__data.json` response
+      alike, in the order the promises settle, so a client-side navigation
+      behaves exactly as a cold load does. A render error inside the
+      JavaScript engine reaches Go's log; today it reaches nothing.
+
+      Kit as the specification: its server data serializer and streaming
+      helper, its `__data.json` handler, and its client's handling of
+      deferred chunks. The Go rule today confines a Deferred to a top-level
+      field of the load result and attributes that rule to kit; map kit 3's
+      actual rule from source and follow kit, whichever way it goes. GitHub
+      issue #57 records that the `__data.json` path yields chunks in id order
+      rather than settlement order while the document path already mirrors
+      kit; close it. The engine skgo renders in is goja, which lacks three
+      globals kit's runtime assumes: Symbol.asyncIterator,
+      Promise.withResolvers and console. Each runtime should have them from
+      the moment it is created, with console reporting into Go so that a
+      render error is finally logged where an operator will see it.
+
+      The example app must show this to a visitor: a page whose load promises
+      at least two values that settle out of order, with pending states that
+      are visibly replaced, reached both by a cold load and by a client-side
+      navigation from another page. If kit accepts a nested promise, one of
+      the promised values is nested.
+
+      Acceptance: scenarios in example/e2e that would fail if settlement
+      order regressed, if a promised value never arrived on either wire, or
+      if a render error went unlogged; screenshots of the pending and the
+      settled states; Go tests of the wire. The existing suite stays green in
+      both `just e2e` modes.
+
+      Ownership: the Go load, data and document paths, the Deferred type and
+      its generator checks, runtime creation in internal/ssr, the example
+      app's routes and its e2e suite. Not yours: how the adapter builds the
+      bundle (a later mission rebuilds it; touch skgo-adapter.js only where
+      a deferred slot or the three globals require it, and run `just
+      generate` as AGENTS.md says), and query.live or query.batch during a
+      render (the next mission).
+    edges:
+      - to: validate_1
+
+  - id: validate_1
+    type: agent
+    timeout: 7200s
+    max_visits: 3
+    prompt: |
+      You are judging a pull request for skgo, a SvelteKit application server
+      written in Go. AGENTS.md in /Users/tyler/src/skgo governs the project;
+      read it first. The PR's URL is in
+      /Users/tyler/src/skgo/.tractor/state/mission-1.pr. The pinned kit
+      source, which is the specification, is at
+      /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit.
+
+      The claim under judgement: a load's promised values stream to the
+      browser on the page document and on `__data.json` in settlement order,
+      wherever kit's client accepts a promise; a render error inside the
+      engine reaches Go's log; goja runtimes carry Symbol.asyncIterator,
+      Promise.withResolvers and console from creation; and the example app
+      shows the streaming to a visitor. Issue #57 is closed by it.
+
+      Do the judging yourself in this session; do not spawn agents. Check out
+      the PR's branch in its own worktree, build and run the real app, and
+      decide on evidence: whether each new scenario is load-bearing (break
+      the behaviour it claims to protect and confirm the scenario fails),
+      whether the whole suite passes in both modes against a server you
+      started, whether every screenshot the suite produced shows the state
+      the scenario claims when you open and look at it, whether the Go rule
+      for where a Deferred may sit matches kit 3's source, and whether the
+      PR is the software and nothing else (no ledgers, status documents or
+      acceptance scripts; a worklog entry only for traps). Distrust the PR
+      body; verify each claim by running it.
+
+      If it holds, squash-merge the PR with `gh pr merge --squash
+      --delete-branch`, fast-forward the root checkout
+      /Users/tyler/src/skgo on main, remove the task worktree, and close #57
+      if the merge did not. If it does not hold, write every finding with the
+      evidence to
+      /Users/tyler/src/skgo/.tractor/state/mission-1.findings.md and do not
+      merge. If what stands in the way is a decision that is the project
+      owner's to make rather than a defect, say so in the findings file and
+      take that route. Stop every server you started.
+    edges:
+      - to: merged_1
+        condition: The PR held up and has been squash-merged into main.
+      - to: build_1
+        condition: The PR has defects; findings were written for the builder.
+      - to: failure
+        condition: Something stands in the way that only the project owner can decide.
+
+  - id: merged_1
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && test "$(git rev-parse origin/main)" != "$(cat .tractor/state/mission-1.base)"
+    edges:
+      success: sync_2
+      error: validate_1
+
+  # ---------------------------------------------------------------- mission 2
+  - id: sync_2
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && git rev-parse origin/main > .tractor/state/mission-2.base
+    edges:
+      success: build_2
+      error: failure
+
+  - id: build_2
+    type: agent
+    max_visits: 3
+    prompt: |
+      $goal
+
+      Mission 2, live and batched queries during a render.
+      State file: /Users/tyler/src/skgo/.tractor/state/mission-2.pr
+
+      Capability when done: a page whose render touches a `query.live`
+      renders in Go with the value kit itself would render, the browser
+      hydrates it without refetching, and then receives updates over the
+      same server-sent event stream skgo already serves; a page whose render
+      touches `query.batch` behaves as kit's does. Today a live query during
+      a render throws on purpose, and batch at render time is untested.
+      GitHub issue #61 is this mission.
+
+      Kit as the specification: `$app/server`'s query module (live and
+      batch), the server's live-query response, the client's live-query
+      iterator and cache, and how kit hydrates remote data into the page.
+      Remember the rule the client is protected by: what the server puts in
+      the hydration payload is keyed the way the client keys its cache.
+
+      The example app must show this to a visitor: a page rendered in Go with
+      a live value already in the markup before any script runs, which then
+      changes on the page when a command elsewhere changes the underlying
+      data; and a page that batches queries during its render. The existing
+      todos live count is a natural starting point but the showcase must be
+      visible, not implied.
+
+      Acceptance: scenarios that would fail if the live value were missing
+      from the rendered document, if hydration refetched it, if an update
+      failed to arrive, or if a batch during render broke; screenshots of
+      the rendered document's state and of the state after an update; Go
+      tests. The existing suite stays green in both `just e2e` modes.
+
+      Ownership: remote dispatch in the Go root package, the render entry's
+      remote seam and hydration payload, runtime creation in internal/ssr,
+      the example app and its e2e suite. Not yours: how the adapter builds
+      the bundle (touch skgo-adapter.js only where the render entry requires
+      it, and run `just generate`), and the deferred-load wires, which the
+      previous mission finished.
+    edges:
+      - to: validate_2
+
+  - id: validate_2
+    type: agent
+    timeout: 7200s
+    max_visits: 3
+    prompt: |
+      You are judging a pull request for skgo, a SvelteKit application server
+      written in Go. AGENTS.md in /Users/tyler/src/skgo governs the project;
+      read it first. The PR's URL is in
+      /Users/tyler/src/skgo/.tractor/state/mission-2.pr. The pinned kit
+      source, which is the specification, is at
+      /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit.
+
+      The claim under judgement: a page that touches a `query.live` during
+      its render carries the live value in the markup Go produced, hydrates
+      without refetching, and updates over the event stream afterwards; a
+      `query.batch` during render behaves as kit's; the example app shows
+      both to a visitor. Issue #61 is closed by it.
+
+      Do the judging yourself in this session; do not spawn agents. Check out
+      the PR's branch in its own worktree, build and run the real app, and
+      decide on evidence: whether each new scenario is load-bearing (break
+      the behaviour it claims to protect and confirm the scenario fails),
+      whether the whole suite passes in both modes against a server you
+      started, whether every screenshot the suite produced shows the state
+      the scenario claims when you open and look at it, whether the
+      hydration payload is keyed the way kit's client keys its cache (read
+      kit's client source), and whether the PR is the software and nothing
+      else. Distrust the PR body; verify each claim by running it.
+
+      If it holds, squash-merge the PR with `gh pr merge --squash
+      --delete-branch`, fast-forward the root checkout
+      /Users/tyler/src/skgo on main, remove the task worktree, and close #61
+      if the merge did not. If it does not hold, write every finding with the
+      evidence to
+      /Users/tyler/src/skgo/.tractor/state/mission-2.findings.md and do not
+      merge. If what stands in the way is a decision that is the project
+      owner's to make rather than a defect, say so in the findings file and
+      take that route. Stop every server you started.
+    edges:
+      - to: merged_2
+        condition: The PR held up and has been squash-merged into main.
+      - to: build_2
+        condition: The PR has defects; findings were written for the builder.
+      - to: failure
+        condition: Something stands in the way that only the project owner can decide.
+
+  - id: merged_2
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && test "$(git rev-parse origin/main)" != "$(cat .tractor/state/mission-2.base)"
+    edges:
+      success: sync_3
+      error: validate_2
+
+  # ---------------------------------------------------------------- mission 3
+  - id: sync_3
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && git rev-parse origin/main > .tractor/state/mission-3.base
+    edges:
+      success: build_3
+      error: failure
+
+  - id: build_3
+    type: agent
+    max_visits: 3
+    prompt: |
+      $goal
+
+      Mission 3, the example app shows everything skgo does.
+      State file: /Users/tyler/src/skgo/.tractor/state/mission-3.pr
+
+      Capability when done: a visitor who opens the example app's front page
+      can see every capability skgo has and reach a page that demonstrates
+      each one visibly: server loads written in Go, values a load promised
+      streaming into the page, remote queries, commands, forms (with and
+      without JavaScript), live queries, batched queries, prerendered remote
+      functions, routes a `+server.ts` declares answered by Go, transported
+      custom types arriving in the browser with their methods, error
+      boundaries and expected and unexpected errors, redirects, the SPA
+      fallback for a branch with ssr off, and a page with csr off carrying
+      no script. Take inventory of what the Go module actually supports by
+      reading it and its tests, and of what the example app already has;
+      add what is missing, and make the front page an honest index of it,
+      each entry a link to a working demonstration. Where a capability
+      exists in Go but the example app has no page for it, the page is the
+      mission. Where a page exists but shows nothing a visitor could notice,
+      make the behaviour visible. Issue #63 lists two fixtures the app lacks;
+      include them.
+
+      Kit as the specification for how each feature is written on the
+      SvelteKit side; the app stays plain SvelteKit.
+
+      Acceptance: every capability on the index has at least one scenario
+      whose screenshot shows the behaviour, and the index page has a
+      scenario that would fail if an entry lost its demonstration. The whole
+      suite green in both `just e2e` modes.
+
+      Ownership: the example app and its e2e suite, and the Go module only
+      where a demonstration exposes a defect that is small and clearly in
+      scope; anything larger becomes a GitHub issue with a reproduction, not
+      a fix in this PR. Not yours: the adapter's build (the next mission).
+    edges:
+      - to: validate_3
+
+  - id: validate_3
+    type: agent
+    timeout: 7200s
+    max_visits: 3
+    prompt: |
+      You are judging a pull request for skgo, a SvelteKit application server
+      written in Go. AGENTS.md in /Users/tyler/src/skgo governs the project;
+      read it first. The PR's URL is in
+      /Users/tyler/src/skgo/.tractor/state/mission-3.pr. The pinned kit
+      source is at /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit.
+
+      The claim under judgement: the example app's front page is an honest
+      index of every capability skgo has, each entry linking to a page that
+      demonstrates it visibly, and every entry is covered by a scenario whose
+      screenshot shows the behaviour.
+
+      Do the judging yourself in this session; do not spawn agents. Check out
+      the PR's branch in its own worktree, build and run the real app, and
+      decide on evidence: take your own inventory of the Go module's
+      capabilities from its source and tests and compare it with the index,
+      naming anything missing or overstated; walk every demonstration in a
+      browser; break a few demonstrations and confirm their scenarios fail;
+      run the whole suite in both modes against a server you started; open
+      every screenshot and confirm it shows what its scenario claims; and
+      check that the PR is the software and nothing else. Distrust the PR
+      body; verify each claim by running it.
+
+      If it holds, squash-merge the PR with `gh pr merge --squash
+      --delete-branch`, fast-forward the root checkout
+      /Users/tyler/src/skgo on main, remove the task worktree, and close #63
+      if the merge did not. If it does not hold, write every finding with the
+      evidence to
+      /Users/tyler/src/skgo/.tractor/state/mission-3.findings.md and do not
+      merge. If what stands in the way is a decision that is the project
+      owner's to make rather than a defect, say so in the findings file and
+      take that route. Stop every server you started.
+    edges:
+      - to: merged_3
+        condition: The PR held up and has been squash-merged into main.
+      - to: build_3
+        condition: The PR has defects; findings were written for the builder.
+      - to: failure
+        condition: Something stands in the way that only the project owner can decide.
+
+  - id: merged_3
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && test "$(git rev-parse origin/main)" != "$(cat .tractor/state/mission-3.base)"
+    edges:
+      success: sync_4
+      error: validate_3
+
+  # ---------------------------------------------------------------- mission 4
+  - id: sync_4
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && git rev-parse origin/main > .tractor/state/mission-4.base
+    edges:
+      success: build_4
+      error: failure
+
+  - id: build_4
+    type: agent
+    max_visits: 3
+    prompt: |
+      $goal
+
+      Mission 4, the adapter is built from kit's own build.
+      State file: /Users/tyler/src/skgo/.tractor/state/mission-4.pr
+
+      Capability when done: the goja bundle skgo renders with is an output
+      of kit's own Vite build, so kit's remote-function epilogue, module ids,
+      defines, aliases and vite-plugin-svelte's server compile apply to it
+      because they are kit's, and the adapter reimplements none of them. The
+      adapter's runtime JavaScript is real files, not programs held in
+      strings. Polyfills that are pure data shaping are bound from Go at
+      runtime creation. The esbuild dependency, the alias table, the defines
+      table, the Svelte compile and the TypeScript strip are gone from
+      internal/adapter/skgo-adapter.js. Every page the example app has
+      renders byte-for-byte as it did before, in both modes.
+
+      The decision record is
+      ephemeral/brief/2026-09-07-adapter-research-continuation.md (on
+      main), and the research behind it, with runnable spikes, is under
+      /Users/tyler/src/skgo/ephemeral/inspiration/research/ (SYNTHESIS.md
+      first). The design there was chosen after two rounds and is the one to
+      build: a fourth Vite environment of kit's build, emitted as ordinary
+      modules and folded once into a single script by a second rolldown call
+      from adapt(), the polyfill in that fold's banner, per-module lowering
+      of only the modules whose syntax goja lacks, and a `$app/server`
+      substitute served as a virtual module to that environment only. Read
+      the record's traps before you begin; two of them (the banner rule and
+      kit's node numbering against skgo's manifest) cost a session each to
+      find. The record also says what was not done, including that the
+      two-pass build was proven on the home route only and that the
+      environment's behaviour under `vite dev` was never observed; both are
+      yours to settle.
+
+      Kit as the specification: its Vite plugin (the adapter's
+      `vite.plugins` hook, the remote plugin's emit, the environment
+      declarations), its adapters for how runtime files are located, and
+      kit's server runtime for anything the render entry borrows.
+
+      Acceptance: the whole existing suite green in both `just e2e` modes,
+      which after missions 1 to 3 covers deferred loads, live and batched
+      queries, forms with and without JavaScript, transported types, errors
+      and every route the index lists; a check that every route's rendered
+      markup is unchanged against the adapter on main, on every route, not
+      the home page (kit's node file numbering and skgo's manifest numbering
+      diverge after the first prerendered page, so a check on the home page
+      alone proves nothing); a fresh `skgo new` app builds and renders; and
+      `skgo generate` still writes the example's adapter with a matching
+      fingerprint. Screenshots come from the suite.
+
+      Ownership: internal/adapter, internal/ssr, the Go bindings for the
+      polyfills, the example app's Vite config and generated adapter copy,
+      and the `skgo new` scaffold's adapter. Not yours: the Go request
+      paths, the wire formats and the example app's pages, all of which the
+      suite now protects. Do not file anything upstream; note what should be
+      filed in the worklog instead.
+    edges:
+      - to: validate_4
+
+  - id: validate_4
+    type: agent
+    timeout: 7200s
+    max_visits: 3
+    prompt: |
+      You are judging a pull request for skgo, a SvelteKit application server
+      written in Go. AGENTS.md in /Users/tyler/src/skgo governs the project;
+      read it first. The PR's URL is in
+      /Users/tyler/src/skgo/.tractor/state/mission-4.pr. The pinned kit
+      source is at /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit,
+      and the decision record the PR implements is
+      ephemeral/brief/2026-09-07-adapter-research-continuation.md.
+
+      The claim under judgement: the adapter's goja bundle is now an output
+      of kit's own Vite build, folded once; the adapter no longer holds
+      programs in strings or reimplements kit's compile, aliases, defines or
+      remote epilogue; esbuild is gone; and every route renders exactly as it
+      did on main, in both modes, including a fresh `skgo new` app.
+
+      Do the judging yourself in this session; do not spawn agents. Check out
+      the PR's branch in its own worktree and also main, build both, and
+      decide on evidence: compare the rendered markup of every route between
+      the two, choosing routes past the first prerendered page in kit's node
+      order, not only the home page; run the whole suite in both modes
+      against servers you started; open every screenshot and confirm it
+      shows what its scenario claims; scaffold a fresh app with `skgo new`
+      and render it; read the adapter for anything it still reimplements
+      from kit and for any dependence on kit or Vite internals beyond the
+      hooks kit publishes; and check that the PR is the software and nothing
+      else. Distrust the PR body; verify each claim by running it.
+
+      If it holds, squash-merge the PR with `gh pr merge --squash
+      --delete-branch`, fast-forward the root checkout
+      /Users/tyler/src/skgo on main, and remove the task worktree. If it
+      does not hold, write every finding with the evidence to
+      /Users/tyler/src/skgo/.tractor/state/mission-4.findings.md and do not
+      merge. If what stands in the way is a decision that is the project
+      owner's to make rather than a defect, say so in the findings file and
+      take that route. Stop every server you started.
+    edges:
+      - to: merged_4
+        condition: The PR held up and has been squash-merged into main.
+      - to: build_4
+        condition: The PR has defects; findings were written for the builder.
+      - to: failure
+        condition: Something stands in the way that only the project owner can decide.
+
+  - id: merged_4
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && test "$(git rev-parse origin/main)" != "$(cat .tractor/state/mission-4.base)"
+    edges:
+      success: success
+      error: validate_4

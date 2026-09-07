@@ -1,0 +1,99 @@
+name: adapter-research-2
+goal: >
+  Read /Users/tyler/src/skgo/ephemeral/inspiration/research/BRIEF.md and then
+  /Users/tyler/src/skgo/ephemeral/inspiration/research/BRIEF-2.md; together
+  they are the whole mission. Round 1 showed that a fourth vite environment
+  can build skgo's goja bundle. This round asks whether anything beats it,
+  and the burden of proof is on the environment. Internet research is
+  expected: search GitHub, npm, the Vite and Rolldown repositories and their
+  discussions, and any project that builds a server-rendering bundle for an
+  embedded JavaScript engine. Every source you rely on is collected under
+  reference/ (cloned at a commit, or saved as text under
+  research/web/<your-slug>/ with its URL and fetch date). Findings go to
+  research/<your-slug>.md with every claim cited. Do the work yourself in
+  this session; do not spawn agents. Leave REPORT.md in this workspace with
+  the same findings, condensed.
+start: research
+
+defaults:
+  timeout: 5400s
+  fidelity: none
+  max_retries: 1
+
+nodes:
+  - id: research
+    type: fan_out
+    max_parallel: 2
+    branches:
+      - id: codex_adversarial
+        artifacts: [REPORT.md]
+        agent:
+          model:
+            name: gpt-5.6-terra
+            effort: high
+          prompt: >
+            $goal
+
+            Your slice, slug `codex-adversarial`: attack the round-1 spike at
+            research/spikes/build-pipeline/ (read its README, its plugin
+            skgo-goja-env.js, and research/build-pipeline.md). Assume it is
+            hiding something and find out what. Rebuild it in your own copy
+            and check: whether vite-plugin-svelte really compiled the
+            components or the plugin did; whether kit's prerender, dev server
+            and the ssr environment still behave with the plugin present;
+            every place the plugin relies on kit or vite internals beyond the
+            emitFile wrapper (plugin names, handler shapes, private fields,
+            ordering); what happens on a kit or vite minor upgrade; and
+            whether the "identical render" claim holds on more than the home
+            route (render other routes with the gojacheck program). Then try
+            the alternative the round-1 report did not: get the goja artifact
+            out of the existing ssr environment without declaring a fourth,
+            for instance a second rolldown output, a generateBundle hook that
+            rebundles the ssr chunks in memory into an iife, or an adapter
+            plugin that changes the ssr environment's own output. Report what
+            ran, what failed, and the exact errors.
+      - id: codex_prior_art
+        artifacts: [REPORT.md]
+        agent:
+          model:
+            name: gpt-5.6-terra
+            effort: high
+          prompt: >
+            $goal
+
+            Your slice, slug `codex-prior-art`: the internet. Find every
+            project you can that does one of these and record how its build
+            is wired: a Vite plugin or framework that declares a custom
+            environment for a non-Node runtime (Cloudflare's vite plugin and
+            workerd, Nitro, React Router, SolidStart, Astro, Qwik, TanStack
+            Start, others); a project that produces a single-file or iife
+            server-rendering bundle for an embedded engine (V8, QuickJS,
+            goja, JavaScriptCore) from Go, Rust, Ruby, PHP, Java or .NET;
+            any project running SvelteKit or Svelte SSR outside Node and
+            workerd; and Vite or Rolldown issues and discussions about
+            producing an iife from an environment or lowering specific
+            syntax while keeping private fields. For each: repository,
+            commit or version, the file where the build is configured, and
+            which of three shapes it uses (a second bundler config from
+            source, a second target of the same build, or post-processing
+            the normal server output). Convergent practice is the finding:
+            say which shape most projects use and why.
+    branch_edges:
+      - to: collect
+
+  - id: collect
+    type: fan_in
+    model:
+      name: claude-sonnet-5
+      effort: low
+    prompt: >
+      Two reports were written under
+      /Users/tyler/src/skgo/ephemeral/inspiration/research/ with slugs
+      codex-adversarial and codex-prior-art. Do this yourself in this session;
+      do not spawn agents. Confirm both files exist, and write
+      /Users/tyler/src/skgo/ephemeral/inspiration/research/round2-codex-index.md
+      listing each with its byte size, its first heading, and whether every
+      path it cites under reference/ or research/web/ exists on disk (list the
+      missing ones). Do not summarise the reports.
+    edges:
+      - to: success
