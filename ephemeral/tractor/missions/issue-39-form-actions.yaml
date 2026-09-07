@@ -6,9 +6,10 @@ goal: |
   its result reaches the rendered document. A non-enhanced POST to a form
   remote function (`?/remote=<id>`) is answered with the page re-rendered in
   Go, carrying the submission's issues and result exactly where kit puts them
-  (`<global>.data.f`, and `form:` in the hydrate object instead of always
-  null), so the page shows validation issues or the result with scripting
-  off and hydrates to the same state with it on.
+  for a remote form, so the page shows validation issues or the result with
+  scripting off and hydrates to the same state with it on. Read the comment
+  on the issue: it corrects the issue text about which slot kit uses, and it
+  must itself be verified against the pinned source, not trusted.
 
   Specification: kit's handling of a form remote POST and
   `uneval_action_response` in the pinned source, mirrored byte for byte in
@@ -37,7 +38,10 @@ goal: |
   serve as the squash commit message, with the screenshots attached or linked
   in the body, and say "Closes #N". Do not merge it. Append actionable
   intelligence, not narrative, to a worklog under ephemeral/worklog/. Do not
-  return while any subagent you dispatched is still running.
+  return while any subagent you dispatched is still running. The previous
+  run of this mission dispatched a background builder and returned; the
+  run's exit killed the builder and nothing was committed. Build in this
+  turn yourself. If you delegate at all, block on the result.
 
 start: build
 
