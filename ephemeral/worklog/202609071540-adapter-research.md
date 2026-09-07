@@ -133,3 +133,19 @@ until the links are repointed.
 External practice distinguishes a genuinely different runtime and build graph
 (a vite environment) from packaging already-built server output. Do not call
 the latter an alternative until the normal output proves it runs in the engine.
+
+## Kit's node numbering and skgo's differ; `/` is the one route where they agree
+
+`.svelte-kit/output/server/nodes/N.js` numbers every node; `skgo.manifest.json`
+renumbers after dropping prerendered nodes (`/about`), so from `/contact` on
+they are off by one. A bundle whose node table is read from kit's output
+renders the wrong component for every route but `/`, and a parity check on `/`
+alone passes. Check parity on a route past the first prerendered page.
+
+## Text patches on rolldown output fail after the build passes
+
+Rewriting a chunk's export clause, matching a chunk by generated file name, or
+scraping `//#region` comments all worked once and broke on a clean rebuild, a
+minified build, or one extra entry (`from-built-output.md`). Two of the breaks
+were goja parse errors or wrong renders, not build errors. Address kit's output
+by module identity (resolver, source path) or not at all.
