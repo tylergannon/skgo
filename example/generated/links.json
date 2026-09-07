@@ -20,6 +20,10 @@
 			"target": "web/src/routes/todos"
 		},
 		{
+			"link": "generated/links/onzggl3sn52xizltf52g6zdpomxwoylumu",
+			"target": "web/src/routes/todos/gate"
+		},
+		{
 			"link": "generated/links/onzggl3sn52xizltf5qwgy3povxhi",
 			"target": "web/src/routes/account"
 		},

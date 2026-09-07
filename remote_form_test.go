@@ -56,15 +56,16 @@ func TestFormSubmissionAndSingleFlightRefresh(t *testing.T) {
 	var received draft
 	var sent []string
 
-	getMessages := NewQueryNoArg(testModule, "getMessages", func(ctx context.Context) ([]string, error) {
+	getMessagesFn := func(ctx context.Context) ([]string, error) {
 		out := make([]string, len(sent))
 		copy(out, sent)
 		return out, nil
-	})
+	}
+	getMessages := NewQueryNoArg(testModule, "getMessages", getMessagesFn)
 	sendMessage := NewForm(testModule, "sendMessage", func(ctx context.Context, in draft) (receipt, error) {
 		received = in
 		sent = append(sent, in.Body)
-		return receipt{ID: "m1"}, nil
+		return receipt{ID: "m1"}, RefreshRequestedNoArg(ctx, getMessagesFn)
 	})
 	rs := testRemotes(t, RemoteConfig{}, getMessages, sendMessage)
 
@@ -126,11 +127,17 @@ func TestFormReceivesFileBytes(t *testing.T) {
 // Kit's server returns before it collects refreshes precisely so the client
 // leaves the page — and the visitor's input — alone.
 func TestFormIssuesSuppressRefreshes(t *testing.T) {
-	getMessages := NewQueryNoArg(testModule, "getMessages", func(ctx context.Context) ([]string, error) {
+	getMessagesFn := func(ctx context.Context) ([]string, error) {
 		t.Error("a rejected submission must not run the refreshes it asked for")
 		return nil, nil
-	})
+	}
+	getMessages := NewQueryNoArg(testModule, "getMessages", getMessagesFn)
 	sendMessage := NewForm(testModule, "sendMessage", func(ctx context.Context, in draft) (receipt, error) {
+		// Accepted first, so what suppresses the refresh is the submission
+		// having issues rather than the handler never having asked.
+		if err := RefreshRequestedNoArg(ctx, getMessagesFn); err != nil {
+			return receipt{}, err
+		}
 		return receipt{}, Invalidf("from", "Tell us who you are")
 	})
 	rs := testRemotes(t, RemoteConfig{}, getMessages, sendMessage)

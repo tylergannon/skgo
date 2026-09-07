@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"strings"
 
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
@@ -134,6 +135,10 @@ type refreshEntry struct {
 	fn      *Remote
 	arg     any
 	present bool
+	// err, when set, is this key's whole answer and the query is never run.
+	// It is how a refresh the handler would not accept reaches the client as
+	// that query's own error rather than as silence — see requested.go.
+	err error
 }
 
 // refreshSet is the per-request record of what the handler asked to refresh —
@@ -143,6 +148,12 @@ type refreshEntry struct {
 // refreshed reaches the same set.
 type refreshSet struct {
 	rs *Remotes
+	// requested is what the client asked for, grouped by query id and kept in
+	// the order it arrived — kit's `state.remote.requested`, built by
+	// `create_requested_map`. Nothing in here runs on its own: a handler has
+	// to name a query through RefreshRequested or ReconnectRequested before
+	// any of its payloads becomes an entry below.
+	requested map[string][]string
 	// order is registration order, so the response is built in the order the
 	// handler asked rather than in Go's map order.
 	order   []string
@@ -176,8 +187,19 @@ func refreshSetFrom(ctx context.Context) *refreshSet {
 	return ev.refreshes
 }
 
-// resolveExplicit runs the refreshes the handler registered and returns them in
-// the `q` shape kit's client reads.
+// resolveExplicit runs everything the handler registered — its own Refresh
+// calls and the client requests it accepted — and returns them in the two
+// shapes kit's client reads.
+//
+// Kit keeps one such record, `state.remote.explicit`, for both, and decides
+// between `q` and `l` from the registration's kind rather than from who asked;
+// so does this. The client reads them differently: a `q` entry replaces a
+// query's value, while an `l` entry seeds a live query's value and then tears
+// the stream down and reopens it
+// (`runtime/client/remote-functions/shared.svelte.js`). Reconnecting is the
+// only way a live query can pick up a cookie the command just wrote — its event
+// is a snapshot of the request that opened the stream and never refreshes — and
+// it is what kit documents for exactly that case.
 //
 // The queries run here rather than at the point of the Refresh call for kit's
 // own reason: a command that refreshes a query and then goes on to change more
@@ -185,10 +207,10 @@ func refreshSetFrom(ctx context.Context) *refreshSet {
 // read halfway through it. Running a refresh can register further refreshes —
 // nothing stops a query from calling Refresh — so the loop drains until the
 // set stops growing.
-func (rs *Remotes) resolveExplicit(ctx context.Context, set *refreshSet) map[string]any {
-	q := map[string]any{}
+func (rs *Remotes) resolveExplicit(ctx context.Context, set *refreshSet) (q, l map[string]any) {
+	q, l = map[string]any{}, map[string]any{}
 	if set == nil {
-		return q
+		return q, l
 	}
 	for keys := set.take(); len(keys) > 0; keys = set.take() {
 		for _, key := range keys {
@@ -198,19 +220,39 @@ func (rs *Remotes) resolveExplicit(ctx context.Context, set *refreshSet) map[str
 			set.drained[key] = true
 
 			entry := set.entries[key]
-			value, err := rs.call(ctx, entry.fn, entry.arg, entry.present)
-			if err != nil {
-				// A refresh runs after the command has already succeeded, so
-				// its failure is that query's business and not the command's.
-				// Kit reports it on the key and returns the command's own
-				// result unchanged.
-				q[key] = map[string]any{"e": errorNode(asHTTPError(err))}
+			into := q
+			if entry.fn.kind == kindLive {
+				into = l
+			}
+
+			// A refusal is already this key's answer; nothing runs.
+			if entry.err != nil {
+				into[key] = map[string]any{"e": errorNode(asHTTPError(entry.err))}
 				continue
 			}
-			q[key] = map[string]any{"v": value}
+
+			// A refresh runs after the command has already succeeded — and may
+			// already have written a cookie — so a panic in one of them becomes
+			// that entry's error and nothing more. The command keeps its answer:
+			// kit reports the failure on the key and returns the command's own
+			// result unchanged.
+			var (
+				value any
+				err   error
+			)
+			if entry.fn.kind == kindLive {
+				value, err = rs.firstValue(ctx, entry.fn, entry.arg, entry.present)
+			} else {
+				value, err = rs.call(ctx, entry.fn, entry.arg, entry.present)
+			}
+			if err != nil {
+				into[key] = map[string]any{"e": errorNode(asHTTPError(err))}
+				continue
+			}
+			into[key] = map[string]any{"v": value}
 		}
 	}
-	return q
+	return q, l
 }
 
 // lookupFunc finds the registration a Go function value belongs to.
@@ -268,45 +310,43 @@ func (k remoteKind) String() string {
 	return "query"
 }
 
-func newRefreshSet(rs *Remotes) *refreshSet {
+// newRefreshSet opens the record for one command or form. requested is the
+// list of keys the client posted, which is client input and is treated as
+// such: it is indexed here and read nowhere else but requested.go, where a
+// handler has to name a query before any of it runs.
+func newRefreshSet(rs *Remotes, requested []string) *refreshSet {
+	byID := map[string][]string{}
+	for _, key := range requested {
+		// The payload can itself contain no slash, but the id always holds
+		// exactly one, so the split is on the LAST slash.
+		i := strings.LastIndex(key, "/")
+		if i < 0 {
+			continue
+		}
+		id, payload := key[:i], key[i+1:]
+		byID[id] = append(byID[id], payload)
+	}
 	return &refreshSet{
-		rs:      rs,
-		entries: map[string]refreshEntry{},
-		drained: map[string]bool{},
+		rs:        rs,
+		requested: byID,
+		entries:   map[string]refreshEntry{},
+		drained:   map[string]bool{},
 	}
 }
 
 // collectRefreshes builds the `q` and `l` maps a command or form response
-// carries, from both of the things that can ask for one.
+// carries.
 //
-// The handler's own Refresh calls are drained first and win any key the client
-// also named. They are the server's instruction rather than a request, and the
-// distinction is load-bearing for a value the handler computed itself: a
-// client-requested re-run of the same key would replace it with whatever the
-// query returns now.
+// There is one source now: what the handler registered. Its own Refresh calls
+// and the client requests it accepted go into the same set under the same
+// keys, so a handler that computed a value itself and then accepted the
+// client's request for the same instance publishes one of them — the later
+// registration — rather than running the query twice.
 //
-// Both run on an event derived from the command's — immutable, sharing its
+// They run on an event derived from the command's — immutable, sharing its
 // cookie jar — so a query refreshed by a command that just signed the visitor
 // in reads the new cookie, which is what kit gets by keeping them on one
 // request.
-func (rs *Remotes) collectRefreshes(ctx context.Context, ev *Event, requested []string) (q, l map[string]any) {
-	derived := withEvent(ctx, ev.immutable())
-
-	q = rs.resolveExplicit(derived, ev.refreshes)
-
-	// A key the handler already answered is dropped from the client's list
-	// rather than merged afterwards: running the query a second time to throw
-	// the result away would run its side of the app twice per command.
-	remaining := make([]string, 0, len(requested))
-	for _, key := range requested {
-		if _, done := q[key]; !done {
-			remaining = append(remaining, key)
-		}
-	}
-
-	asked, l := rs.resolveRefreshes(derived, remaining)
-	for key, node := range asked {
-		q[key] = node
-	}
-	return q, l
+func (rs *Remotes) collectRefreshes(ctx context.Context, ev *Event) (q, l map[string]any) {
+	return rs.resolveExplicit(withEvent(ctx, ev.immutable()), ev.refreshes)
 }

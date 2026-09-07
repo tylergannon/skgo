@@ -664,7 +664,9 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 	}
 
 	ev := rs.newEvent(r, true)
-	ev.refreshes = newRefreshSet(rs)
+	// The list the browser posted is indexed, not obeyed: nothing in it runs
+	// until the handler names the query it belongs to. See requested.go.
+	ev.refreshes = newRefreshSet(rs, body.Refreshes)
 
 	value, err := rs.call(withEvent(r.Context(), ev), fn, arg, present)
 	if err != nil {
@@ -679,7 +681,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 	// query refreshed by a command that just signed the visitor in reads the
 	// new cookie — exactly as it does in kit, where both share one request.
 	data := map[string]any{"_": value}
-	q, l := rs.collectRefreshes(r.Context(), ev, body.Refreshes)
+	q, l := rs.collectRefreshes(r.Context(), ev)
 	if len(q) > 0 {
 		data["q"] = q
 	}
@@ -696,55 +698,6 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 		data["r"] = true
 	}
 	rs.writeResult(w, ev, data)
-}
-
-// resolveRefreshes runs every refresh key that names a registered query or live
-// query. Unrecognised keys are skipped in silence, as kit does.
-//
-// It returns two maps because kit's client reads them differently: a `q` entry
-// replaces a query's value, while an `l` entry seeds a live query's value and
-// then tears the stream down and reopens it
-// (`runtime/client/remote-functions/shared.svelte.js`). Reconnecting is the
-// only way a live query can pick up a cookie the command just wrote — kit's
-// event is a snapshot of the request that opened the stream and never
-// refreshes — and it is what kit documents for exactly that case.
-func (rs *Remotes) resolveRefreshes(ctx context.Context, keys []string) (q, l map[string]any) {
-	q, l = map[string]any{}, map[string]any{}
-	for _, key := range keys {
-		// The payload can itself contain no slash, but the id always holds
-		// exactly one, so the split is on the LAST slash.
-		i := strings.LastIndex(key, "/")
-		if i < 0 {
-			continue
-		}
-		id, payload := key[:i], key[i+1:]
-
-		fn, ok := rs.fns[id]
-		if !ok || fn.kind == kindCommand {
-			continue
-		}
-		arg, present, err := remotearg.ParsePayloadWith(payload, rs.codecs())
-		if err != nil {
-			continue
-		}
-
-		// A refresh runs after the command has already succeeded — and may
-		// already have written a cookie — so a panic in one of them becomes
-		// that entry's error and nothing more. The command keeps its answer.
-		into, result := q, any(nil)
-		if fn.kind == kindLive {
-			into = l
-			result, err = rs.firstValue(ctx, fn, arg, present)
-		} else {
-			result, err = rs.call(ctx, fn, arg, present)
-		}
-		if err != nil {
-			into[key] = map[string]any{"e": errorNode(asHTTPError(err))}
-			continue
-		}
-		into[key] = map[string]any{"v": result}
-	}
-	return q, l
 }
 
 // errFirstValueTaken stops a live producer once its first value is in hand. It

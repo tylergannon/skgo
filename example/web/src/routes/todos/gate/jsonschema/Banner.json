@@ -1,0 +1,4 @@
+{"type":"object",
+"description":"Banner is the page's third panel, and a different query entirely — not another instance of getNote. A handler's limit is per query function, so the only thing that keeps the banner from being refreshed is that nothing named it.","properties":{
+"text":{"type":"string","description":"Text is what was last written to the banner."}
+},"required":["text"],"additionalProperties":false}

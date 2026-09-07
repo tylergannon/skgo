@@ -260,14 +260,15 @@ func TestCrossOriginCommandIsForbidden(t *testing.T) {
 
 func TestCommandRefreshes(t *testing.T) {
 	var texts []string
-	getTodos := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) ([]string, error) {
+	getTodosFn := func(ctx context.Context) ([]string, error) {
 		out := make([]string, len(texts))
 		copy(out, texts)
 		return out, nil
-	})
+	}
+	getTodos := NewQueryNoArg(testModule, "getTodos", getTodosFn)
 	addTodo := NewCommand(testModule, "addTodo", func(ctx context.Context, text string) (todo, error) {
 		texts = append(texts, text)
-		return todo{ID: "t3", Text: text}, nil
+		return todo{ID: "t3", Text: text}, RefreshRequestedNoArg(ctx, getTodosFn)
 	})
 	rs := testRemotes(t, RemoteConfig{}, getTodos, addTodo)
 

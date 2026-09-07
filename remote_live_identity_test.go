@@ -116,7 +116,7 @@ func newLiveApp(t *testing.T) *liveApp {
 	t.Helper()
 	data := newRows()
 
-	watchCount := NewLiveQueryNoArg(testModule, "watchCount", func(ctx context.Context, yield func(int) error) error {
+	watchCountFn := func(ctx context.Context, yield func(int) error) error {
 		// The identity is read once, here. Kit's event is a snapshot of the
 		// request that opened the stream and is never rebuilt for a later
 		// yield, so there is no later request to consult.
@@ -137,11 +137,25 @@ func newLiveApp(t *testing.T) *liveApp {
 				}
 			}
 		}
-	})
+	}
+	watchCount := NewLiveQueryNoArg(testModule, "watchCount", watchCountFn)
 
-	getRows := NewQueryNoArg(testModule, "getRows", func(ctx context.Context) (int, error) {
+	getRowsFn := func(ctx context.Context) (int, error) {
 		return data.count(liveSignedIn(ctx)), nil
-	})
+	}
+	getRows := NewQueryNoArg(testModule, "getRows", getRowsFn)
+
+	// The two commands that change who is asking accept what a page asks for
+	// when the identity moves: the plain query re-runs, and the live query —
+	// which cannot re-read a cookie — reconnects. A command that named neither
+	// would refresh neither, however loudly the client asked.
+	identityChanged := func(ctx context.Context) error {
+		if err := RefreshRequestedNoArg(ctx, getRowsFn); err != nil {
+			return err
+		}
+		return ReconnectRequestedNoArg(ctx, watchCountFn)
+	}
+
 	addRow := NewCommandNoArg(testModule, "addRow", func(ctx context.Context) (int, error) {
 		data.add()
 		return data.count(liveSignedIn(ctx)), nil
@@ -150,13 +164,13 @@ func newLiveApp(t *testing.T) *liveApp {
 		if err := EventFrom(ctx).SetCookie(liveSessionCookie, user, CookieOptions{}); err != nil {
 			return "", err
 		}
-		return user, nil
+		return user, identityChanged(ctx)
 	})
 	signOut := NewCommandNoArg(testModule, "signOut", func(ctx context.Context) (string, error) {
 		if err := EventFrom(ctx).DeleteCookie(liveSessionCookie, CookieOptions{}); err != nil {
 			return "", err
 		}
-		return "", nil
+		return "", identityChanged(ctx)
 	})
 
 	app := &liveApp{
@@ -459,10 +473,13 @@ func TestSeedingALiveQueryThatYieldsNothingReportsAnError(t *testing.T) {
 	// Kit reconnects a live query only when its `l` node carries a value; a
 	// node carrying an error is terminal, so a producer that yields nothing
 	// has to be reported as one rather than as an empty success.
-	silent := NewLiveQueryNoArg(testModule, "watchCount", func(ctx context.Context, yield func(int) error) error {
+	silentFn := func(ctx context.Context, yield func(int) error) error {
 		return nil
+	}
+	silent := NewLiveQueryNoArg(testModule, "watchCount", silentFn)
+	cmd := NewCommandNoArg(testModule, "signIn", func(ctx context.Context) (string, error) {
+		return "ok", ReconnectRequestedNoArg(ctx, silentFn)
 	})
-	cmd := NewCommandNoArg(testModule, "signIn", func(ctx context.Context) (string, error) { return "ok", nil })
 	rs := testRemotes(t, RemoteConfig{}, silent, cmd)
 
 	body, err := json.Marshal(map[string]any{"payload": "", "refreshes": []string{liveKey(silent)}})
