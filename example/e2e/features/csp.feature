@@ -8,18 +8,20 @@ Feature: A document's Content-Security-Policy header matches what it renders
   resolves to is per page: `use_hashes = mode === 'hash' || (mode === 'auto'
   && prerender)` (`Csp`'s constructor, runtime/server/page/csp.js).
 
-  `/about` is prerendered (routes/about/+page.ts) — kit's own Node build
-  resolves `auto` to hash mode for it and bakes the result straight into the
-  static file, entirely before skgo's binary exists; Go never computes
-  anything for that page at all. Every other page is rendered by Go per
-  request, where the engine never prerenders anything, so `auto` resolves to
-  nonce mode unconditionally (csp.go's `newDocumentCSP`). `/live` and
-  `/stream` are both pages of this second kind.
+  Every page in this app is rendered by Go per request right now — none is
+  prerendered (see vite.config.ts's own comment: the root layout gained a Go
+  load for #81's fixture, and kit can only prerender a branch with nothing
+  Go-only in it). So `auto` resolves to nonce mode unconditionally here
+  (csp.go's `newDocumentCSP`); the other half of kit's ternary — a
+  prerendered page resolving to hash mode, baked into the static file as a
+  `<meta http-equiv>` tag — is proven at the Go test level instead
+  (`csp_test.go`'s `TestCSPAutoMode_DynamicIsNonceModePrerenderedWouldBeHashMode`),
+  anchored to the same kit source this feature is.
 
   A CSP violation does not fail a request — the browser just refuses to run
   the element it names and answers with the response it already had. A page
-  whose hash or nonce is wrong is a page that looks identical up to the
-  moment something needed the script that never ran: it never subscribes to
+  whose nonce is wrong is a page that looks identical up to the moment
+  something needed the script that never ran: it never subscribes to
   anything, never answers a click, and — for a value a load promised — never
   fills in, because the streamed chunk carrying it
   (`page/data_serializer.js:103`) is exactly the kind of inline script a
@@ -27,7 +29,7 @@ Feature: A document's Content-Security-Policy header matches what it renders
   The browser's own console is the only place that says why. So the proof
   here is the board on /live still updating live, a value /stream promised
   still filling in, and the console carrying no complaint about either — not
-  just a header or a meta tag that is present.
+  just a header that is present.
 
   Scenario: A page Go renders per request gets a nonce, and the page still hydrates under it
     Given another tab is open at "/todos"
@@ -38,11 +40,6 @@ Feature: A document's Content-Security-Policy header matches what it renders
     Then the board's newest todo is "nonced and still hydrated"
     And the board is on stream frame 2
     And every part of the page loaded
-    And the browser reported no CSP violations
-
-  Scenario: A page kit prerendered gets a hash, baked into the page itself
-    Given I open "/about"
-    Then the page carries a Content-Security-Policy meta tag naming the boot script's own hash
     And the browser reported no CSP violations
 
   Scenario: A value a load promised still fills in after the document streams under a nonce

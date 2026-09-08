@@ -352,6 +352,16 @@ globalThis.__skgo_render = function (req_json) {
 
 		const options = {
 			context: new Map([['__request__', { page: props.page }]]),
+			// kit's own \`csp.script_needs_nonce ? { nonce: csp.nonce } : {
+			// hash: csp.script_needs_hash }\` (page/render.js:198), passed to
+			// Svelte's own renderer so the one inline script Svelte can still
+			// emit on its own — its hydratable-async-block script
+			// (internal/server/renderer.js's #hydratable_block, for a
+			// component's own top-level await) — carries the same nonce or
+			// hash decision the boot script gets from Go (csp.go). Go decided
+			// which branch this request is in before the engine ever ran;
+			// req.csp carries only the answer.
+			csp: req.csp.nonce ? { nonce: req.csp.nonce } : { hash: !!req.csp.hash },
 			// kit's own (page/render.js): the transform every error boundary's
 			// error passes through on its way to the failed snippet. It is
 			// what makes page.status and page.error inside a rendering

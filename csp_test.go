@@ -499,9 +499,13 @@ func TestStreamedChunkCarriesNoAttributeInHashMode(t *testing.T) {
 // `mode: 'hash'` config already takes — the same branch
 // TestCSPHeaderMatchesKit_HashMode is anchored to. So the one build config
 // the example app now uses (`mode: 'auto'`, vite.config.ts) is provably safe
-// for kit's own separate prerendering pass to resolve on its own: whatever it
-// bakes into /about's static file is hash mode, indistinguishable from what
-// this test's "prerendered" case produces.
+// for kit's own separate prerendering pass to resolve on its own, whenever
+// this app has a prerenderable page again — none does right now: /about lost
+// prerendering when the root layout gained a Go load for #81's error.html
+// fixture (about/+page.ts's own doc comment), and the root layout sits in
+// every branch, so nothing here can be prerendered until skgo can answer a
+// server load while the build prerenders. This test is the whole proof of
+// the hash-mode half of `auto` until then.
 func TestCSPAutoMode_DynamicIsNonceModePrerenderedWouldBeHashMode(t *testing.T) {
 	const nonce = "AUTO7ovWlm6hFuylfFw=="
 	directives := map[string]CSPDirectiveValue{"script-src": sources("self")}
@@ -515,8 +519,9 @@ func TestCSPAutoMode_DynamicIsNonceModePrerenderedWouldBeHashMode(t *testing.T) 
 		t.Error("a dynamically rendered page under auto mode must need a nonce")
 	}
 
-	// Kit's own Node build takes this branch for /about, never Go: the same
-	// directives, the same formula, with prerender true instead of false.
+	// Kit's own Node build would take this branch for a prerendered page,
+	// never Go: the same directives, the same formula, with prerender true
+	// instead of false.
 	prerendered := newDocumentCSPWithNonce(&ManifestCSP{Mode: "hash", Directives: directives}, nonce)
 	prerendered.AddScript(bootScriptFixture)
 	if !prerendered.ScriptNeedsHash() || prerendered.ScriptNeedsNonce() {

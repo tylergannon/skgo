@@ -19,22 +19,31 @@ export default defineConfig({
 			// runtime/server/page/csp.js): a page kit prerenders gets a hash, a
 			// page it renders per-request gets a nonce.
 			//
-			// This app has both kinds of page under that one config. `/about` is
-			// prerendered (src/routes/about/+page.ts) — kit's own Node build
-			// resolves `auto` to hash mode for it and bakes the result straight
-			// into the static file, entirely before skgo's binary exists, the way
-			// prerendering always has. Every other page is rendered by Go per
-			// request, where `auto` resolves to nonce mode (newDocumentCSP,
-			// csp.go): the engine never prerenders anything — prerendering is
-			// kit's own build-time pass — so `prerender` is always false on
-			// skgo's side of the ternary, and `auto` is nonce mode there
-			// unconditionally. `/stream` and `/live` are both pages of this
-			// second kind, which is what makes them the two pages a
-			// CSP-and-streaming claim has to be checked against: a value a load
-			// promises arrives later, on the same response, as its own inline
-			// `<script>` (data_serializer.js:103) — and under a nonce policy that
-			// script has to carry the same nonce the boot script did, or the
-			// browser drops it and the promised value never fills in.
+			// Every page in this app is rendered by Go per request right now —
+			// none is prerendered. `/about` was, until the root layout gained a
+			// Go load (src/routes/layout.server.go, for #81's error.html
+			// fixture): kit can only prerender a branch with nothing Go-only in
+			// it, and the root layout sits in every branch, so nothing here can
+			// be prerendered until skgo can answer a server load while the build
+			// prerenders (see about/+page.ts's own doc comment). Go's own engine
+			// never prerenders anything either way — prerendering is kit's own
+			// build-time pass, entirely before skgo's binary exists — so
+			// `prerender` is always false on skgo's side of the ternary
+			// (newDocumentCSP, csp.go), and `auto` resolves to nonce mode for
+			// every page this build actually serves. The other half of the
+			// ternary — a prerendered page resolving `auto` to hash, and kit
+			// baking the result into the static file as a `<meta http-equiv>`
+			// tag rather than a header — is proven at the Go test level instead
+			// (csp_test.go's `TestCSPAutoMode_DynamicIsNonceModePrerenderedWouldBeHashMode`),
+			// anchored to kit's own `Csp` constructor and `render.js`'s
+			// prerendering branch, until a prerenderable page exists here again.
+			//
+			// `/stream` and `/live` are the two pages a CSP-and-streaming claim
+			// has to be checked against: a value a load promises arrives later,
+			// on the same response, as its own inline `<script>`
+			// (data_serializer.js:103) — and under a nonce policy that script has
+			// to carry the same nonce the boot script did, or the browser drops
+			// it and the promised value never fills in.
 			//
 			// Explicit `mode: 'hash'` stays exercised too, just no longer here:
 			// hash mode's own hashing (Go has to hash the *exact* bytes it is

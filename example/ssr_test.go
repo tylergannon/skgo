@@ -144,10 +144,17 @@ func TestTwoPagesRenderingAtOnceAreEachTheirOwn(t *testing.T) {
 	}
 }
 
-// TestARenderedPageDoesNotRepeatItself renders the same page twice and requires
-// the same bytes, because the document's ETag is a hash of itself: a map
-// iterated in a different order would make every reload a fresh 200 and every
-// conditional request a wasted round trip.
+// TestARenderedPageDoesNotRepeatItself renders the same page twice and
+// requires identical bytes once each render's own CSP nonce is stripped out:
+// a map iterated in a different order, or any other latent nondeterminism,
+// would still show up as a difference here. The nonce itself is required to
+// differ every render — kit draws it fresh per request (`csp.js`), and
+// reusing one would defeat CSP nonce's entire purpose — and kit's own ETag is
+// computed from the fully substituted HTML, nonce included
+// (`render.js:636`, `headers.set('etag', hash(transformed))`, after the
+// nonce lands in the markup), so a page under CSP nonce mode is *supposed* to
+// get a fresh ETag every render, and a conditional request against a stale
+// one is supposed to come back with a fresh 200, not a false 304.
 //
 // The page is one whose data does not change between requests. `/account` is
 // not: its layout hands out a fresh serial per load, on purpose, and two
@@ -155,25 +162,60 @@ func TestTwoPagesRenderingAtOnceAreEachTheirOwn(t *testing.T) {
 func TestARenderedPageDoesNotRepeatItself(t *testing.T) {
 	h := newProdHandler(t)
 
-	first, firstETag := get(t, h, "/items/42").Body.String(), get(t, h, "/items/42").Header().Get("ETag")
-	second := get(t, h, "/items/42").Body.String()
-	if first != second {
-		t.Error("the same page rendered twice produced different bytes")
+	firstRec := get(t, h, "/items/42")
+	first, firstETag := firstRec.Body.String(), firstRec.Header().Get("ETag")
+	secondRec := get(t, h, "/items/42")
+	second, secondETag := secondRec.Body.String(), secondRec.Header().Get("ETag")
+
+	firstNonce, firstStripped := extractAndStripNonce(t, first)
+	secondNonce, secondStripped := extractAndStripNonce(t, second)
+	if firstStripped != secondStripped {
+		t.Error("the same page rendered twice produced different bytes outside its CSP nonce")
+	}
+	if firstNonce == "" {
+		t.Fatal("a rendered page under CSP nonce mode carried no nonce")
+	}
+	if firstNonce == secondNonce {
+		t.Error("two renders under CSP nonce mode reused the same nonce")
 	}
 	if firstETag == "" {
 		t.Fatal("a rendered page carried no ETag")
+	}
+	if firstETag == secondETag {
+		t.Error("two renders with different nonces produced the same ETag")
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/items/42", nil)
 	req.Header.Set("If-None-Match", firstETag)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusNotModified {
-		t.Errorf("a conditional request for an unchanged page returned %d, want 304", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("a conditional request against a nonce-mode page's stale ETag returned %d, want a fresh 200", rec.Code)
 	}
-	if rec.Body.Len() != 0 {
-		t.Error("a 304 carried a body")
+}
+
+// extractAndStripNonce pulls the one `nonce="..."` a rendered document
+// carries — skgo's boot script never carries more than one — and returns it
+// alongside the body with that value blanked out, so two renders' bodies can
+// be compared for the nondeterminism this test actually guards against
+// without the nonce's own by-design freshness tripping it.
+func extractAndStripNonce(t *testing.T, body string) (nonce, stripped string) {
+	t.Helper()
+	const marker = `nonce="`
+	i := strings.Index(body, marker)
+	if i < 0 {
+		t.Fatalf("no CSP nonce in a document rendered under CSP nonce mode")
 	}
+	start := i + len(marker)
+	end := strings.Index(body[start:], `"`)
+	if end < 0 {
+		t.Fatalf("unterminated nonce attribute in body: %q", body[i:i+40])
+	}
+	nonce = body[start : start+end]
+	if strings.Contains(body[start+end+1:], marker) {
+		t.Fatalf("more than one CSP nonce in the rendered document")
+	}
+	return nonce, body[:start] + body[start+end:]
 }
 
 // TestALayoutsDataAndItsPagesDataArriveTogether checks the hydration array a

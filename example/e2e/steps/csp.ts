@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { createBdd } from 'playwright-bdd';
 import { expect, test } from './fixtures';
 
@@ -37,41 +36,6 @@ Then(
 
 		expect(header, `header did not name the boot script's own nonce ('nonce-${nonce}')`).toContain(
 			`'nonce-${nonce}'`
-		);
-		await shot();
-	}
-);
-
-/**
- * The other half of kit's own `auto` ternary: a page kit prerendered carries
- * no Content-Security-Policy response header at all — kit's own
- * `render.js` only sets one on the branch that is not prerendering — and the
- * policy lives in the document itself instead, as a `<meta http-equiv>` tag
- * kit's build baked in. This recomputes the hash from the exact bytes the
- * boot script carries and checks it against the exact bytes the meta tag
- * named, the same independence the header/nonce check above has.
- */
-Then(
-	"the page carries a Content-Security-Policy meta tag naming the boot script's own hash",
-	async ({ documents, shot }) => {
-		await expect
-			.poll(async () => (await documents.last?.text())?.includes('http-equiv="content-security-policy"'), {
-				timeout: 15_000,
-				message: 'no Content-Security-Policy meta tag was found in the document'
-			})
-			.toBe(true);
-		const html = await documents.last!.text();
-
-		const metaMatch = /<meta http-equiv="content-security-policy" content="([^"]*)">/.exec(html);
-		expect(metaMatch, 'no Content-Security-Policy meta tag was found in the document').not.toBeNull();
-		const content = metaMatch![1];
-
-		const scriptMatch = /<script>([\s\S]*?)<\/script>/.exec(html);
-		expect(scriptMatch, 'no boot script was found in the document').not.toBeNull();
-		const hash = createHash('sha256').update(scriptMatch![1]).digest('base64');
-
-		expect(content, `meta tag did not name the boot script's own hash (sha256-${hash})`).toContain(
-			`'sha256-${hash}'`
 		);
 		await shot();
 	}
