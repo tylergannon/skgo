@@ -181,8 +181,11 @@ func TestTheScaffoldVendorsNoAdapter(t *testing.T) {
 // any other one could not serve what it built.
 func TestTheScaffoldAsksForTheAdapterThatMatchesItsSkgo(t *testing.T) {
 	dir := scaffold(t, newapp.Options{SkgoVersion: "v9.4.2"})
-	if got := pin(t, read(t, dir, "web/package.json"), "@skgo/adapter"); got != "^9.4.2" {
-		t.Errorf("a project requiring skgo v9.4.2 asks npm for @skgo/adapter %q; want ^9.4.2", got)
+	// Not a registry range: nothing is on npm yet, so the spec names the same
+	// tag go.mod requires, in the repository's adapter subdirectory.
+	const want = "github:tylergannon/skgo#v9.4.2&path:internal/adapter"
+	if got := pin(t, read(t, dir, "web/package.json"), "@skgo/adapter"); got != want {
+		t.Errorf("a project requiring skgo v9.4.2 asks pnpm for @skgo/adapter %q; want %q", got, want)
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"strings"
 
 	"github.com/tylergannon/skgo/internal/adapter"
 )
@@ -48,12 +47,12 @@ func checkInstalledAdapter(cfg Config) error {
 	// fingerprint worth naming.
 	version, _ := adapter.VersionOf(dir)
 
-	// A checkout has no released version to name, and `@skgo/adapter@devel` is
-	// not a thing npm can install; the package it is paired with is the one in
-	// its own tree.
+	// A checkout has no released version to name; the package it is paired
+	// with is the one in its own tree. A released skgo names the tag, which is
+	// where pnpm installs the adapter from until it is on npm.
 	install := "`pnpm add -D " + adapter.Package + "`"
 	if v := adapter.Version(); v != "devel" {
-		install = "`pnpm add -D " + adapter.Package + "@" + strings.TrimPrefix(v, "v") + "`"
+		install = "`pnpm add -D \"" + adapter.GitSpec(v) + "\"`"
 	}
 
 	return fmt.Errorf(

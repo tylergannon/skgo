@@ -28,6 +28,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/tylergannon/skgo/internal/adapter"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
@@ -79,10 +80,10 @@ type Options struct {
 	SkgoVersion string
 	// PolytypeVersion is the version of polytype the project requires.
 	PolytypeVersion string
-	// AdapterSpec is what package.json asks npm for when it asks for
-	// `@skgo/adapter`. Empty means the caret range naming the same version
+	// AdapterSpec is what package.json asks pnpm for when it asks for
+	// `@skgo/adapter`. Empty means the GitHub tag naming the same version
 	// SkgoVersion does, which is the only pairing a project can serve. A test
-	// that has not published anything passes a `file:` tarball here.
+	// passes a `file:` tarball here.
 	AdapterSpec string
 	// GoVersion is the language version in go.mod. Defaults to the toolchain's.
 	GoVersion string
@@ -229,12 +230,12 @@ func resolve(o Options, dir string) (data, error) {
 		return data{}, fmt.Errorf("skgo: %q is not a version go.mod can require", d.SkgoVersion)
 	}
 	if d.AdapterSpec == "" {
-		// The adapter and the Go module are one contract released together, so
-		// the range npm is given is the one that names the same release. A
-		// caret, the way kit's own adapters ask for kit: the fingerprint in the
-		// manifest is the real gate, and a range tighter than that would make
-		// a patch release an edit in two files.
-		d.AdapterSpec = "^" + strings.TrimPrefix(d.SkgoVersion, "v")
+		// The adapter and the Go module are one contract released together by
+		// one tag, and until the package is on npm the tag is where pnpm gets
+		// it: the repository at that tag, the package in its subdirectory. The
+		// fingerprint in the manifest is the real gate; this only names the
+		// same release the go.mod line does.
+		d.AdapterSpec = adapter.GitSpec(d.SkgoVersion)
 	}
 	return d, nil
 }
