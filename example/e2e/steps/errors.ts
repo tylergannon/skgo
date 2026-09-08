@@ -37,6 +37,19 @@ Then(
 	}
 );
 
+// The support id example.HandleError adds to every error it sees, read back
+// from the client-rendered page rather than the raw document — the other
+// half of the same claim "the document already said" makes: kit hydrates
+// from the same page.error the server rendered, so the value the browser
+// shows after booting has to be the hook's, not just the bytes Go sent.
+Then(
+	'the error page shows the support id {string}',
+	async ({ page, shot }, id: string) => {
+		await expect(page.getByTestId('error-support-id')).toHaveText(id, { timeout: 15_000 });
+		await shot();
+	}
+);
+
 // The page's own heading, in the bytes. It is what separates a page that
 // handled its failure and kept rendering from one that was replaced by an error
 // page — both of which can carry the same error message.

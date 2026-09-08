@@ -104,6 +104,14 @@ Feature: Pages arrive rendered
     src/routes/error/redirect/redirect.remote.go redirects to "/about" instead
     of answering.
 
+    Every one of those failures also reaches the app's own `handleError` hook
+    — example.HandleError, in example/server.go — before the error page ever
+    renders. Kit's own contract runs that hook for expected and unexpected
+    errors alike, and only lets it add to or override what the visitor is
+    told; example.HandleError adds a support id, "case-1121", to everything it
+    sees, and additionally replaces an unknown error's own message, which kit
+    never lets reach the visitor unchanged, with words of its own.
+
     Scenario: A load that fails returns the error page with the status it threw
       Given I open "/error/expected"
       Then the document was answered with 418
@@ -112,12 +120,34 @@ Feature: Pages arrive rendered
       And the error message is "This page is a teapot"
       And the browser never asked for the page's data
 
-    Scenario: A load that fails unexpectedly is a 500 that says nothing about why
+    Scenario: The handleError hook runs for an error the app raised on purpose, not only an unexpected one
+      Kit's own hook contract makes no exception for an error thrown with
+      `error(status, message)`: only an error already run through the hook by
+      an earlier layer is skipped, and nothing on a cold render produces one
+      of those. So the app's hook still runs here, on the very failure the
+      previous scenario just showed keeps its own message — it only cannot
+      override it unless it chooses to.
+
+      Given I open "/error/expected"
+      Then the document already said the error page shows "Error 418" and "This page is a teapot"
+      And the document already said "case-1121"
+      And the error page shows the support id "case-1121"
+
+    Scenario: The handleError hook decides what an unexpected failure's visitor is told
+      Kit's own rule for an error nobody meant to happen is that its real text
+      never reaches the visitor — case: it names a database password. What
+      does reach them is now the app's own hook, not a generic default: it
+      replaces the message and adds a support id, and the error page shows
+      exactly that.
+
       Given I open "/error/unexpected"
       Then the document was answered with 500
-      And the document already said the error page shows "Error 500" and "Internal Error"
+      And the document already said the error page shows "Error 500" and "Something went wrong on our end."
+      And the document already said "case-1121"
+      And the document never mentions "Internal Error"
       And the document never mentions "hunter2"
       And the document never mentions "postgres://"
+      And the error page shows the support id "case-1121"
 
     Scenario: An unknown route returns the error page with 404
       Given I open "/no-such-page"
@@ -186,9 +216,16 @@ Feature: Pages arrive rendered
       there takes the render down and takes the retry down with it.
       src/routes/+layout.svelte throws for /error/render and nowhere else.
 
+      Kit's own respond_with_error consults the hook before it even tries the
+      retry, so the static page still carries the app's own words rather than
+      the generic default — but error.html has no slot for anything beyond
+      status and message, so the support id every other error page shows does
+      not reach this one.
+
       Given I open "/error/render"
       Then the document was answered with 500
-      And the document is kit's static error page saying 500 and "Internal Error"
+      And the document is kit's static error page saying 500 and "Something went wrong on our end."
+      And the document never mentions "case-1121"
 
     Scenario: A command called during render is refused
       src/routes/error/command/+page.svelte awaits a command in its markup.

@@ -164,10 +164,18 @@ func (ls *Loads) parseDataRequest(r *http.Request) (dataRequest, bool) {
 // node is one entry of the `nodes` array on the wire.
 type dataNode struct {
 	// kind is "", "skip", "error" or "data"; "" serializes as null.
-	kind  string
-	data  any
-	uses  *uses
-	err   *HTTPError
+	kind string
+	data any
+	uses *uses
+	err  *HTTPError
+	// raw is the error the load actually returned, before asHTTPError
+	// collapsed it — nil unless err is. It survives here so that the
+	// page-render path can tell an app's own Errorf apart from an ordinary Go
+	// error when it consults the app's handleError hook. __data.json's own
+	// response does not read it today: kit calls the same hook for that wire
+	// too, but wiring it there is a separate change from the page-render path
+	// this field exists for.
+	raw   error
 	redir *Redirect
 }
 
@@ -247,7 +255,7 @@ func (ls *Loads) runBranchWith(r *http.Request, req dataRequest, routeID string,
 				if redirect := asRedirect(err); redirect != nil {
 					return dataNode{kind: "error", redir: redirect}
 				}
-				return dataNode{kind: "error", err: asHTTPError(err)}
+				return dataNode{kind: "error", err: asHTTPError(err), raw: err}
 			}
 			return dataNode{kind: "data", data: value, uses: e.load.uses}
 		})
