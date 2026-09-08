@@ -68,8 +68,11 @@ jobs:
       # — `github:tylergannon/skgo#vX.Y.Z&path:internal/adapter`, which is what
       # `skgo new` writes — so the tag push alone is the whole release. This
       # step runs once the `skgo` npm org exists and NPM_TOKEN is set; until
-      # then it is skipped, not failed.
+      # then it is skipped. A configured token that still lacks the scope is a
+      # visible warning, but cannot turn the already-published Go/GitHub release
+      # into a failure.
       - name: npm publish
         if: env.NODE_AUTH_TOKEN != ''
+        continue-on-error: true
         working-directory: internal/adapter
         run: npm publish --access public --provenance
