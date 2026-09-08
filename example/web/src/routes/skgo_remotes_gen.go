@@ -8,4 +8,6 @@ package site
 var (
 	// Skgo_getSite is getSite, published as src/routes/site.remote.ts#getSite.
 	Skgo_getSite = getSite
+	// Skgo_layoutLoad is layoutLoad, published as the server load of src/routes/+layout.server.ts.
+	Skgo_layoutLoad = layoutLoad
 )

@@ -8,6 +8,8 @@ package pricing
 var (
 	// Skgo_getPlans is getPlans, published as src/routes/(marketing)/pricing/pricing.remote.ts#getPlans.
 	Skgo_getPlans = getPlans
+	// Skgo_getSpotlight is getSpotlight, published as src/routes/(marketing)/pricing/pricing.remote.ts#getSpotlight.
+	Skgo_getSpotlight = getSpotlight
 	// Skgo_quoteFor is quoteFor, published as src/routes/(marketing)/pricing/pricing.remote.ts#quoteFor.
 	Skgo_quoteFor = quoteFor
 	// Skgo_pageLoad is pageLoad, published as the server load of src/routes/(marketing)/pricing/+page.server.ts.
