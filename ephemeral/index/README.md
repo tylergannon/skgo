@@ -1,13 +1,16 @@
 # skgo index
 
 Where things are, so work starts in the first minute instead of the tenth.
-Written 2026-09-07 at main `bcf8b5d`. Absolute paths; line numbers are
+Written 2026-09-07 at main `bcf8b5d`; refreshed 2026-09-08 at `2016b50`
+after #76, #78, #79 and #80 landed. Absolute paths; line numbers are
 anchors, not gospel (functions move; `grep -n "^func Name"` finds them).
 The mission dossiers beside this file say what each mission touches.
 
-- `mission-live-batch.md` — #61, live and batch queries during render
-- `mission-showcase.md` — #63 and the example front page as an index of capability
-- `mission-adapter.md` — the adapter rebuilt on kit's own build
+- `mission-prerender-lint.md` — #83, refuse a Go server load above a prerendered page
+- `mission-handleerror-data.md` — #82, the handleError hook on the `__data.json` wire
+
+Done and deleted (git history has them): live/batch (#61, PR #76), showcase
+(#63, PR #79), adapter as a fourth Vite environment (PR #80).
 
 ## Repository shape
 
@@ -29,11 +32,14 @@ asks for is answered from these files:
 | `static.go` | kit's client output, immutable assets | |
 | `handle.go`, `event.go`, `requested.go`, `proxy.go` (dev proxy), `emptyarray.go`, `jsonfields.go` | | |
 
-`internal/ssr` is the goja engine: `ssr.go` `New`:200, `newRuntime`:243,
-`Render`:307, pool `acquire`/`release`:397/416; `globals.go`
-`installGlobals`:36 defines `Symbol.asyncIterator`, `Promise.withResolvers`
-and a `console` that calls back into Go. The pool is mandatory: a re-entrant
-render on one runtime hangs.
+`internal/ssr` is the goja engine: `ssr.go` (`New`, `newRuntime`, `Render`,
+the pool, a per-render macrotask drain so a render that leaves work queued
+cannot poison the next); `globals.go` `installGlobals` defines
+`Symbol.asyncIterator`, `Promise.withResolvers`, a `console` that calls back
+into Go, and the live/batch host protocol; `webglobals.go` binds `URL`,
+`URLSearchParams`, `TextEncoder`/`TextDecoder`, `btoa`/`atob` from Go
+(`installWebGlobals`:27). The pool is mandatory: a re-entrant render on one
+runtime hangs.
 
 `internal/gen` is `skgo generate`: `scan.go` (remote kinds incl. `kindLive`),
 `emit.go` (throwing stubs), `loads.go`, `links.go`, `types.go`,
@@ -41,8 +47,18 @@ render on one runtime hangs.
 `example/web/skgo-adapter.js` with a fingerprint). `cmd/skgo/main.go` is
 `skgo new` and `skgo generate`.
 
-`internal/adapter/skgo-adapter.js` (1,734 lines) is the SvelteKit adapter;
-its anatomy is in `mission-adapter.md`.
+`internal/adapter/skgo-adapter.js` (766 lines) is the SvelteKit adapter.
+Since #80 the goja bundle is a fourth environment of kit's own Vite build:
+`adapt()`:42 hands `gojaEnvironment()`'s plugin to kit via `vite.plugins`,
+`env.js` declares the environment and folds its esm output into one iife with
+a second `rolldown()` (banner = `polyfill.js`). The runtime JavaScript is real
+files under `internal/adapter/skgo-adapter/`: `entry.js` (render entry),
+`app-server.js` (the `$app/server` substitute, live and batch host protocol),
+`app-paths.js`, `env.js`, `polyfill.js` (Headers/Blob/File shims kit checks
+with `instanceof`). No esbuild, alias table, defines table, Svelte compile or
+TypeScript strip remain. `readKitManifest`:320 (`builder.generateManifest`),
+`option()`:436 parses a page option out of module source, `checkServerLoads`:649.
+`skgo generate` copies these files into `example/web/` with a fingerprint.
 
 `example/` is the example app: `server.go` and `cmd/` (the Go server),
 `businesslogic/store.go` (in-memory store with a Snapshot broadcast),
@@ -57,14 +73,17 @@ A Go file beside a `.remote.ts` or `+page.server.ts` is its implementation;
 
 | Route | Shows |
 |---|---|
-| `/` `+page.svelte` | Home: `Greeting`, `getSite()` in a boundary. Currently not an index of anything. |
-| `/about`, `/plain` | prerendered / universal-load pages (`+page.ts`) |
+| `/` `+page.svelte` | The index: 23 entries, one per capability, each linking to its page with a sentence saying what to look for; `showcase.feature` holds the list as a table. `?boom=root-layout` makes the root Go layout load (`layout.server.go`) refuse, which reaches kit's static `error.html`. |
+| `/about`, `/plain` | universal-load pages (`+page.ts`). `/about` is **no longer prerendered**: a root Go server load and a prerendered page cannot coexist (#81, lint in #83), so nothing in the example prerenders today. |
+| `/live` | `query.live` first value in the render, then SSE frames |
+| `/batch` | `query.batch`: four queries, one Go call, answered as one |
+| `/render-paths` | `event.fetch` and `$app/paths` during a render |
 | `/spa` | `ssr = false` branch, kit's SPA fallback |
 | `/items/[id]` | params |
 | `/todos` (+ `[id]`, `gate`, `pair`) | remote queries, commands, forms, refresh, `query.live` (`todos.remote.go`) |
 | `/empty` | nil slice → `[]` on the wire |
 | `/api`, `/api/todos` | `+server.ts` routes answered by Go |
-| `/(marketing)/pricing` | transported type (`types.ts`, `hooks.ts`/`hooks.go`) in a pending boundary |
+| `/(marketing)/pricing` | transported type (`types.ts`, `hooks.ts`/`hooks.go`): `getSpotlight` awaited in a boundary with no `pending` snippet so `Money.format()` runs inside the render; the plans list stays pending |
 | `/docs/[...rest]` | rest params |
 | `/account` (+ `orders`, `statement`) | layout server load, nested error page |
 | `/contact` | form remote function, works without JavaScript |
@@ -72,8 +91,9 @@ A Go file beside a `.remote.ts` or `+page.server.ts` is its implementation;
 | `/console` | render-time `console.error` reaching Go's log |
 | `/error/{boundary,command,expected,redirect,render,unexpected}` | each error path |
 
-Nav links: `+layout.svelte`:26-35. Root layout is `+layout.ts` (universal);
-there is no root `+layout.server.ts` today. Lib: `src/lib/{Greeting,SignIn}.svelte`,
+Nav links: `+layout.svelte`. Root layout has `+layout.ts` (universal) and,
+since #79, `+layout.server.ts` + `layout.server.go` (the `boom` refusal and
+the `skgo example` footer). Lib: `src/lib/{Greeting,SignIn}.svelte`,
 `auth.remote.*`. Kit 3 facts (no svelte.config.js, `#lib`, transport hook):
 `/Users/tyler/src/skgo/ephemeral/inspiration/junkyard/.agents/skills/sveltekit-current/SKILL.md`.
 
@@ -114,6 +134,10 @@ Kill servers by pid you own. The "listening on" line prints before the bind.
 (kit@3.0.0-next.25; line numbers match `example/web/node_modules/@sveltejs/kit/src`).
 Svelte's source: `example/web/node_modules/svelte/src`.
 
+- Node numbering: since #79 nothing in the example is prerendered, so kit's
+  `generate_manifest` never drops a node and the renumbering trap below is
+  unexercised by the suite; `engine-build.feature` covers node-table order
+  instead (a swap of two leaf nodes fails one named scenario).
 - Page streaming: `runtime/server/page/render.js`:662 (`stream_text`),
   `runtime/server/page/data_serializer.js` (`get_replacer`, iterators at 19 and
   133; promises deferred at any depth), `utils/streaming.js`:11
