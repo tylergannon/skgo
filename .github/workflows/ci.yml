@@ -36,7 +36,7 @@ jobs:
       # it does not.
       ORIGIN: http://127.0.0.1:8080
       SKGO_PORT: "8080"
-      VITE_PORT: "5173"
+      SKGO_DEV_PORT: "5173"
 
     steps:
       - uses: actions/checkout@v7
@@ -136,9 +136,9 @@ jobs:
       - name: just e2e prod
         id: e2e_prod
         run: |
-          bound=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$VITE_PORT" 2>/dev/null || true)
+          bound=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
           if [ -n "$bound" ]; then
-            echo "::error title=Port already bound::pid(s) $bound already listen on $SKGO_PORT or $VITE_PORT; the suite would test them instead of this build."
+            echo "::error title=Port already bound::pid(s) $bound already listen on $SKGO_PORT or $SKGO_DEV_PORT; the suite would test them instead of this build."
             exit 1
           fi
           just serve &
@@ -178,15 +178,12 @@ jobs:
       # owns every document, remote function, load and endpoint; its renderer
       # evaluates Vite's live module graph instead of the embedded build.
       #
-      # The recipes have no proxying server — `just serve` takes no --proxy — so
-      # the one gesture they do not cover is spelled out here rather than added
-      # to a Justfile this branch does not own.
-      #
-      # `vp dev` is addressed as `localhost`, not 127.0.0.1. It binds the name,
-      # which resolves to ::1 first on a developer's machine, and a 127.0.0.1
-      # proxy target then connects to nothing while vite sits there printing
-      # that it is ready. Both this wait and the --proxy flag use the same name
-      # `vp dev` prints, so the runner and a laptop behave alike.
+      # `just dev` owns both processes. Vite's document root is deliberately not
+      # a readiness endpoint: loading it directly executes generated server-load
+      # stubs, which throw because Go is the only supported application-I/O
+      # owner. The adapter control endpoint proves Vite has installed skgo's
+      # live module environment; the second probe proves Go can render through
+      # it.
       # Runs even when the prod leg went red, so one run says whether a
       # regression is mode-specific. Skipped only when the prod leg itself never
       # ran — a tree that did not build says nothing about either mode.
@@ -195,14 +192,13 @@ jobs:
         run: |
           just dev &
           for _ in $(seq 120); do
-            curl -sf -o /dev/null "http://localhost:$VITE_PORT/" && break
+            curl -sf -o /dev/null "http://127.0.0.1:$SKGO_DEV_PORT/__skgo_dev/info" && break
             sleep 1
           done
-          if ! curl -sf -o /dev/null "http://localhost:$VITE_PORT/"; then
-            echo "::error title=vp dev never came up::Nothing answered http://localhost:$VITE_PORT/ within 120s, so the proxied run never happened."
+          if ! curl -sf -o /dev/null "http://127.0.0.1:$SKGO_DEV_PORT/__skgo_dev/info"; then
+            echo "::error title=Dev adapter never came up::Nothing answered the adapter control endpoint on $SKGO_DEV_PORT within 120s, so the proxied run never happened."
             exit 1
           fi
-          go run ./example/cmd -listen "127.0.0.1:$SKGO_PORT" -proxy "http://localhost:$VITE_PORT" &
           for _ in $(seq 60); do
             curl -sf -o /dev/null "http://127.0.0.1:$SKGO_PORT/" && break
             sleep 1
@@ -228,11 +224,11 @@ jobs:
       - name: Release the ports
         if: always()
         run: |
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$VITE_PORT" 2>/dev/null || true)
+          pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
           [ -n "$pids" ] || exit 0
           kill $pids 2>/dev/null || true
           sleep 3
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$VITE_PORT" 2>/dev/null || true)
+          pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
           [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
           exit 0
 
