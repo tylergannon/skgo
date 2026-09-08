@@ -63,10 +63,12 @@ func Run(cfg Config) error {
 		return fmt.Errorf("skgo: %s does not look like a vite root: no src/ directory", web)
 	}
 
-	// The adapter kit builds the frontend with comes out of this module, on
-	// every run, beside the stubs and the remote list. It is the same contract
-	// as those: what the adapter writes, this module's Go reads.
-	if err := writeAdapter(cfg); err != nil {
+	// The adapter kit builds the frontend with is an ordinary npm package the
+	// app installed, and it is the same contract as the stubs and the remote
+	// list below: what the adapter writes, this module's Go reads. Generating
+	// against one this module cannot read the output of is the mistake worth
+	// catching before a full frontend build rather than after it.
+	if err := checkInstalledAdapter(cfg); err != nil {
 		return err
 	}
 

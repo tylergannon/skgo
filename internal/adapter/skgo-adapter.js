@@ -11,14 +11,14 @@ import {
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gojaEnvironment, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
+import { identity } from './skgo-adapter/identity.js';
 
-// The skgo this adapter came from. `skgo generate` writes this file into the
-// vite root out of the skgo module the app's Go is built against, and stamps
-// this line as it does. Do not edit it, and do not copy it between projects:
-// the Go that reads the manifest below checks what is stamped here against its
-// own, so a copy that has fallen behind is refused by name instead of failing
-// later as something unrelated.
-const SKGO = { version: 'unstamped', adapter: 'unstamped' };
+// Which skgo this adapter is: the version this package was published at, and a
+// fingerprint taken over its own files. The Go that reads the manifest below
+// takes the same fingerprint over the copy it embeds and refuses a build whose
+// adapter is not its own, so an install that has fallen behind the binary is
+// named at startup instead of failing later as something unrelated.
+const SKGO = identity();
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:

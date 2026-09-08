@@ -1,0 +1,42 @@
+{
+	"name": "@skgo/adapter",
+	"version": "0.0.0-dev",
+	"description": "SvelteKit adapter for skgo: builds a frontend that a Go binary renders and answers",
+	"keywords": [
+		"adapter",
+		"go",
+		"golang",
+		"skgo",
+		"svelte",
+		"sveltekit"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/tylergannon/skgo.git",
+		"directory": "internal/adapter"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/tylergannon/skgo",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./index.d.ts",
+			"import": "./skgo-adapter.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"types": "index.d.ts",
+	"files": [
+		"index.d.ts",
+		"skgo-adapter.js",
+		"skgo-adapter/app-paths.js",
+		"skgo-adapter/app-server.js",
+		"skgo-adapter/entry.js",
+		"skgo-adapter/env.js",
+		"skgo-adapter/identity.js",
+		"skgo-adapter/polyfill.js"
+	],
+	"peerDependencies": {
+		"@sveltejs/kit": "^3.0.0-next.0"
+	}
+}

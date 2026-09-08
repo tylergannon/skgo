@@ -1,6 +1,6 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite-plus';
-import skgo from './skgo-adapter.js';
+import skgo from '@skgo/adapter';
 
 export default defineConfig({
 	plugins: [
