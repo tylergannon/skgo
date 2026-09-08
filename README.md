@@ -1,77 +1,167 @@
 # skgo
 
-A SvelteKit application server written in Go.
+**SvelteKit on the frontend. Go on the server. One binary in production.**
 
-A Go program owns the socket and the process. Its Kit-facing interface is an
-ordinary SvelteKit adapter, so the frontend stays plain SvelteKit — kit's
-tooling, kit's conventions, no Go-isms. Go serves kit's client-rendered output
-natively, makes the trust decisions, and answers the endpoints kit's client
-already calls: remote functions (`/_app/remote/...`), server loads
-(`__data.json`) and the routes a `+server.ts` declares.
+skgo is a SvelteKit application server written in Go. You keep SvelteKit 3,
+Svelte 5, Vite+, routing, components, remote functions, server loads, and
+`+server.ts` conventions. Go owns the socket, trust decisions, application I/O,
+and every server endpoint. In production, Go also renders pages with Kit's own
+SSR bundle in an embedded JavaScript engine—there is no Node process or sidecar.
 
-To a Go developer: a real frontend framework for a Go monolith. To a Svelte
-developer: the app is still SvelteKit.
+> skgo is pre-1.0 and tracks the SvelteKit 3 prerelease pinned by this
+> repository. The [example app](example/) is the compatibility contract and the
+> best tour of what currently works.
 
-## What this means
+## Start an app
 
-**Every server endpoint is Go's.** Not "Go where you want it, kit otherwise" —
-all of them. Loads and remote functions are written in Go with end-to-end
-types, and a `+server.ts` route is an ordinary `net/http` handler written
-beside it; the JavaScript kit requires is a generated stub that throws, so any
-real response proves Go answered. Running remote functions or server routes in
-TypeScript is not a supported mode.
-
-**Pages are rendered in the Go process.** A page document leaves Go with its
-markup already in it, rendered by SvelteKit's own renderer inside an embedded
-JavaScript engine — one process, one binary, no Node at request time and no
-sidecar. A page whose branch sets `ssr = false` still gets kit's SPA fallback,
-and one that sets `csr = false` gets no script at all.
-
-**No application I/O executes in JavaScript.** That is narrower than "no
-JavaScript runs": the engine executes kit's root component, Svelte's renderer
-and the app's components, and nothing in it reads a file, opens a socket or
-sets a timer. Every remote function's body is still the generated stub that
-throws; the only path by which a value reaches the engine is a call back out
-to Go, which is what makes a rendered value proof that Go answered.
-
-The engine is [goja](https://github.com/dop251/goja), pure Go, embedded in the
-binary — no cgo. Renders are served from a pool of runtimes, which is
-mandatory rather than an optimisation: a re-entrant render on one runtime
-returns empty markup with no error.
-
-One binary. One build gesture. Node is a build-time dependency only.
-
-## Getting started
-
-The `example/` directory is a working SvelteKit app served by skgo — the best
-place to see the pieces fit together. The `Justfile` at the repo root holds
-the recipes that build and run it:
+You need Go, [mise](https://mise.jdx.dev/), and Node for the frontend build.
 
 ```sh
-just install    # node deps for the example app and its Gherkin suite
-just build      # build the frontend (run this first in a fresh tree)
-just vet        # go vet, both modules
-just test       # go test, both modules
-just serve      # the example server, against the built frontend
-just dev        # vite in dev, for the proxied path
-just e2e        # the Gherkin suite against a server you started
+go run github.com/tylergannon/skgo/cmd/skgo@latest new hello
+cd hello
+mise trust
+mise run build
+./bin/hello
 ```
 
-Run `just --list` for the full set, including `just generate` (regenerates the
-link tree, the throwing stubs, and the wire types) and `just ports` (what is
-already listening, before you bind one).
+Open <http://127.0.0.1:8080>. The generated project is small on purpose: an
+ordinary SvelteKit app in `web/`, Go beside the routes that use it, and a Go
+binary in `cmd/`.
 
-A fresh checkout needs `just build` before `just vet` or `just test` will
-succeed: `example/web/dist.go` embeds the built frontend, so nothing under
-`example/...` compiles until it exists once.
+For development, build once and run two terminals:
 
-## Requirements
+```sh
+mise run dev:web   # Vite+
+mise run dev:go    # Go, proxying pages to Vite+
+```
 
-- Go, at the version pinned in `go.mod`.
-- Node and [mise](https://mise.jdx.dev/), for the example app's frontend
-  toolchain (`example/mise.toml`) — Node is not required to run a built skgo
-  binary.
+Go still answers remote functions in dev. Production serves the built frontend
+and renders pages entirely inside the Go process.
 
-## License
+## The model
+
+| What you write | Where it lives | What happens |
+| --- | --- | --- |
+| Pages, layouts, components | `web/src/routes/**/*.svelte` | SvelteKit compiles and routes them normally |
+| Queries, commands, forms, live and batch queries | `*.remote.go` beside their callers | skgo generates the Kit-facing `.remote.ts`, types, codecs, and Go registration |
+| Server loads | `page.server.go` or `layout.server.go` beside Kit's generated `+page.server.ts` / `+layout.server.ts` stub | Go answers `__data.json` and render-time loads |
+| HTTP endpoints | `server.go` beside a generated `+server.ts` stub | An ordinary `net/http` handler answers the route |
+| Server composition | `server.go` in the app root | Go mounts loads, remotes, endpoints, SSR, static files, and hooks |
+
+The generated TypeScript server bodies always throw. They exist so Kit can
+compile its own client and manifests; a real response can only have come from
+Go.
+
+## Write a remote function
+
+Put an ordinary Go function beside the route that uses it and mark the kind of
+remote function Kit should expose:
+
+```go
+// web/src/routes/todos.remote.go
+package routes
+
+import (
+	"context"
+	"github.com/tylergannon/skgo"
+)
+
+type Todo struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+}
+
+func todos(context.Context) ([]Todo, error) {
+	return store.List(), nil
+}
+
+func addTodo(ctx context.Context, text string) (Todo, error) {
+	todo := store.Add(text)
+	return todo, skgo.RefreshRequestedNoArg(ctx, todos)
+}
+
+var (
+	_ = skgo.Query(todos)
+	_ = skgo.Command(addTodo)
+)
+```
+
+Use it exactly as a SvelteKit developer expects:
+
+```svelte
+<script lang="ts">
+	import { addTodo, todos } from './todos.remote';
+</script>
+
+{#each await todos() as todo}
+	<p>{todo.text}</p>
+{/each}
+
+<button onclick={() => addTodo('ship it').updates(todos())}>Add</button>
+```
+
+Run the normal build gesture:
+
+```sh
+mise run build
+```
+
+`skgo generate` discovers the marked Go functions, projects their Go types to
+TypeScript, writes strict codecs for the Kit wire format, and registers the Go
+closures the server invokes. Generated files say `DO NOT EDIT`; source remains
+the `.go` and `.svelte` files you authored.
+
+The available markers mirror Kit: `skgo.Query`, `skgo.Command`, `skgo.Form`,
+`skgo.LiveQuery`, and `skgo.BatchQuery`. Request state is available through
+`skgo.EventFrom(ctx)`. Commands can refresh or reconnect typed Go functions;
+see [`todos.remote.go`](example/web/src/routes/todos/todos.remote.go) for the
+full pattern.
+
+## Learn from the example
+
+The front page of the [example app](example/web/src/routes/+page.svelte) links
+to every capability it demonstrates and tells you what to look for. Good first
+stops are:
+
+| Route | Shows |
+| --- | --- |
+| `/todos` | queries, commands, forms, live updates, auth, and refresh |
+| `/account` | nested Go server loads and layout reuse |
+| `/api` | a `+server.ts` route implemented as `net/http` |
+| `/stream` | deferred load values streamed into an SSR document |
+| `/batch` | Kit's `query.batch` backed by one Go call |
+| `/pricing` | a custom Go type transported with its TypeScript methods |
+| `/plain` and `/spa` | Kit's `csr = false` and `ssr = false` branches |
+| `/error/*` | expected errors, unexpected errors, boundaries, and redirects |
+
+Run it from this repository:
+
+```sh
+just install
+just build
+just serve
+```
+
+Then open <http://127.0.0.1:8080>. `just --list` shows generation, tests, dev,
+and the browser suite. A fresh checkout must be built once before Go can compile
+the example because its binary intentionally embeds the frontend output.
+
+## Deploy
+
+The browser origin is part of a Kit build and skgo checks it on non-GET remote
+calls. A generated project writes the origin once in `mise.toml`; change
+`ORIGIN` there and rebuild the complete binary. The listen address and public
+origin may differ behind a reverse proxy, so do not infer one from the other.
+
+The result is a normal Go executable. Copy it to the target, run it, and put
+your usual TLS proxy or load balancer in front of it. Node is a build-time
+dependency only.
+
+## Reference
+
+- [One-page overview](https://tylergannon.github.io/skgo/)
+- [Go package documentation](https://pkg.go.dev/github.com/tylergannon/skgo)
+- [Example server composition](example/server.go)
+- [Agent skill](skills/skgo/SKILL.md)
 
 MIT. See [LICENSE](LICENSE).

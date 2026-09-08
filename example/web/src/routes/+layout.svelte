@@ -71,3 +71,25 @@
 	build carries. `/?boom=root-layout` is the fixture.
 -->
 <footer data-testid="deployment">{data.deployment}</footer>
+
+<style>
+	:global(:root) {
+		--ink: #13251f;
+		--paper: #f8f6ef;
+		--green: #174f3d;
+		--lime: #c7f36b;
+		--line: rgba(19, 37, 31, 0.16);
+		font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+		color: var(--ink);
+		background: var(--paper);
+	}
+	:global(*) { box-sizing: border-box; }
+	:global(body) { max-width: 76rem; margin: 0 auto; padding: 0 1.25rem; }
+	nav { display: flex; gap: 0.25rem; overflow-x: auto; padding: 1rem 0; border-bottom: 1px solid var(--line); }
+	nav a { flex: none; padding: 0.45rem 0.65rem; color: inherit; font-size: 0.8rem; font-weight: 700; text-decoration: none; }
+	nav a:hover { background: var(--lime); }
+	main { min-height: calc(100vh - 9rem); padding: 2rem 0 5rem; }
+	:global(footer[data-testid="deployment"]) { padding: 1.5rem 0; border-top: 1px solid var(--line); color: #687670; font: 700 0.75rem ui-monospace, monospace; }
+	:global(button), :global(input), :global(textarea) { font: inherit; }
+	:global(button) { cursor: pointer; }
+</style>
