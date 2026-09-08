@@ -110,9 +110,7 @@ func Run(cfg Config) error {
 	if err := app.writeEndpointStubs(); err != nil {
 		return err
 	}
-	if err := app.generateTransportCodecs(); err != nil {
-		return err
-	}
+	app.planNames()
 	if err := app.writePackageBindings(); err != nil {
 		return err
 	}
@@ -120,6 +118,15 @@ func Run(cfg Config) error {
 	// directories; the route root reaches Go only through per-file links, so
 	// the tree has to take one more pass before anything can compile.
 	if err := app.links.sync(); err != nil {
+		return err
+	}
+	// Codecs after the package bindings, and for the same reason the bindings
+	// come after the links: polytype loads each package that names a type on
+	// the wire, and what it loads is the tree as it now stands.
+	if err := app.planCodecs(); err != nil {
+		return err
+	}
+	if err := app.generateCodecs(); err != nil {
 		return err
 	}
 	if err := app.writeAppBindings(); err != nil {

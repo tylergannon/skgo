@@ -222,8 +222,22 @@ func (a *app) hooksSpecifier(dir string) (string, error) {
 	return spec, nil
 }
 
-// writePackageBindings emits, per Go package, the registration list for the
-// functions it declares.
+// writePackageBindings emits, per Go package, the app's own functions under
+// names another package can spell.
+//
+// The handlers that answer them are generated in the bindings package instead,
+// because that is where the codecs live: polytype's encoders and decoders are
+// written once for the whole app, in the one package that already imports
+// every package declaring a remote function. Nothing here can reach them —
+// the bindings package imports this one, so this one cannot import it back —
+// and a codec written per route would either be duplicated twenty times over
+// or land in the directory of the type it encodes, which for a type from a
+// dependency is not the app's directory to write into (#14).
+//
+// So each function is published as itself, not through a wrapper. skgo.Refresh
+// identifies a query by the code pointer of the Go function it names, and a
+// wrapper would carry a different one — `skgo.Refresh(ctx, getTodo, id)` would
+// stop finding getTodo.
 func (a *app) writePackageBindings() error {
 	byPkg := map[*goPackage][]*remoteFn{}
 	for _, fn := range a.remotes {
@@ -243,34 +257,123 @@ func (a *app) writePackageBindings() error {
 		if len(fns) == 0 && len(loads) == 0 && len(endpoints) == 0 {
 			continue
 		}
+		// The aliases are rendered first, because rendering them is what
+		// discovers the packages this file has to import.
+		var aliases strings.Builder
+		imports := &fileImports{self: gp.pkg.Types}
+		a.writeTypeAliases(&aliases, fns, imports)
+
 		var b strings.Builder
 		b.WriteString(goHeader)
 		fmt.Fprintf(&b, "package %s\n\n", gp.pkg.Name)
-		fmt.Fprintf(&b, "import %q\n\n", skgoPkg)
-		b.WriteString("// SkgoRemotes returns the remote functions declared in this package.\n")
-		b.WriteString("func SkgoRemotes() []*skgo.Remote {\n\treturn []*skgo.Remote{\n")
+		imports.writeTo(&b)
+		b.WriteString("// The functions this package declares, published under names the generated\n")
+		b.WriteString("// bindings package can spell. Each is the function itself and not a wrapper:\n")
+		b.WriteString("// skgo.Refresh finds a query by the code pointer of the function it names.\n")
+		b.WriteString("var (\n")
 		for _, fn := range fns {
-			fmt.Fprintf(&b, "\t\tskgo.%s(%q, %q, %s),\n", constructor(fn), fn.module, fn.name, fn.name)
+			fmt.Fprintf(&b, "\t// %s is %s, published as %s#%s.\n", exportedName(fn.name), fn.name, fn.module, fn.name)
+			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(fn.name), fn.name)
 		}
-		b.WriteString("\t}\n}\n\n")
-		b.WriteString("// SkgoLoads returns the server loads declared in this package.\n")
-		b.WriteString("func SkgoLoads() []*skgo.ServerLoad {\n\treturn []*skgo.ServerLoad{\n")
 		for _, load := range loads {
-			fmt.Fprintf(&b, "\t\tskgo.NewLoad(%q, %s),\n", load.module, load.name)
+			fmt.Fprintf(&b, "\t// %s is %s, published as the server load of %s.\n", exportedName(load.name), load.name, load.module)
+			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(load.name), load.name)
 		}
-		b.WriteString("\t}\n}\n\n")
-		b.WriteString("// SkgoEndpoints returns the server routes declared in this package.\n")
-		b.WriteString("func SkgoEndpoints() []*skgo.Endpoint {\n\treturn []*skgo.Endpoint{\n")
 		for _, ep := range endpoints {
-			fmt.Fprintf(&b, "\t\tskgo.NewEndpoint(%q, %q, %s),\n", ep.routeID, endpointWireMethod(ep.method), ep.name)
+			fmt.Fprintf(&b, "\t// %s is %s, published as %s %s.\n", exportedName(ep.name), ep.name, endpointWireMethod(ep.method), ep.routeID)
+			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(ep.name), ep.name)
 		}
-		b.WriteString("\t}\n}\n")
+		b.WriteString(")\n")
+		b.WriteString(aliases.String())
 		if err := a.writeGo(filepath.Join(gp.dir, "skgo_remotes_gen.go"), b.String()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
+// writeTypeAliases publishes the types the generated handler has to spell but
+// cannot infer: a form's argument and a batch's, which it declares a variable
+// of, and a live query's yielded value, which it writes a function literal for.
+// Go infers none of the three, and a name is what the bindings package can
+// reach across the package boundary — an alias, so each names the very type in
+// the signature and nothing is converted.
+func (a *app) writeTypeAliases(b *strings.Builder, fns []*remoteFn, imports *fileImports) {
+	var lines []string
+	for _, fn := range fns {
+		if fn.kind == kindForm || fn.kind == kindBatch {
+			lines = append(lines, fmt.Sprintf("\t// SkgoArg_%s is the type %s takes.\n\tSkgoArg_%s = %s\n",
+				fn.name, fn.name, fn.name, imports.typeExpr(fn.in)))
+		}
+		if fn.kind == kindLive {
+			lines = append(lines, fmt.Sprintf("\t// SkgoOut_%s is the type %s yields.\n\tSkgoOut_%s = %s\n",
+				fn.name, fn.name, fn.name, imports.typeExpr(fn.out)))
+		}
+	}
+	if len(lines) == 0 {
+		return
+	}
+	b.WriteString("\ntype (\n")
+	for _, line := range lines {
+		b.WriteString(line)
+	}
+	b.WriteString(")\n")
+}
+
+// fileImports spells Go types for one generated file and records the imports
+// that spelling needs. A generated file carries its own import block, so a type
+// the developer's own file already imports still has to be imported here.
+type fileImports struct {
+	self  *types.Package
+	byPkg map[*types.Package]string
+	used  map[string]bool
+	order []*types.Package
+}
+
+// typeExpr renders t, importing whatever it names.
+func (f *fileImports) typeExpr(t types.Type) string {
+	return types.TypeString(t, func(p *types.Package) string {
+		if p == nil || p == f.self {
+			return ""
+		}
+		if alias, ok := f.byPkg[p]; ok {
+			return alias
+		}
+		if f.byPkg == nil {
+			f.byPkg = map[*types.Package]string{}
+			f.used = map[string]bool{}
+		}
+		alias := p.Name()
+		for n := 2; f.used[alias]; n++ {
+			alias = fmt.Sprintf("%s%d", p.Name(), n)
+		}
+		f.used[alias] = true
+		f.byPkg[p] = alias
+		f.order = append(f.order, p)
+		return alias
+	})
+}
+
+func (f *fileImports) writeTo(b *strings.Builder) {
+	if len(f.order) == 0 {
+		return
+	}
+	specs := make([]string, 0, len(f.order))
+	for _, p := range f.order {
+		specs = append(specs, fmt.Sprintf("\t%s %q\n", f.byPkg[p], p.Path()))
+	}
+	sort.Strings(specs)
+	b.WriteString("import (\n")
+	for _, spec := range specs {
+		b.WriteString(spec)
+	}
+	b.WriteString(")\n\n")
+}
+
+// exportedName is the name a declaration is published under. The prefix is
+// unmistakably generated, and it keeps the developer's own spelling so that a
+// reader of the bindings package sees the function they wrote.
+func exportedName(name string) string { return "Skgo_" + name }
 
 // endpointWireMethod is how a method travels to the Go registry and to the
 // adapter: kit's own method names, and `"*"` for a fallback.
@@ -281,42 +384,29 @@ func endpointWireMethod(method string) string {
 	return method
 }
 
-// constructor is the registration skgo publishes this function with. There is
-// one per kind and arity: the marker no longer carries the types, so the
-// generated call is where the compiler checks the function's real signature
-// against the shape skgo will call it with.
-func constructor(fn *remoteFn) string {
-	noArg := ""
-	if fn.in == nil {
-		noArg = "NoArg"
-	}
-	switch fn.kind {
-	case kindCommand:
-		return "NewCommand" + noArg
-	case kindLive:
-		return "NewLiveQuery" + noArg
-	case kindBatch:
-		// A batch query is always given an argument, so there is no
-		// no-argument constructor to choose.
-		return "NewBatchQuery"
-	case kindForm:
-		// A form always receives the submission, so there is no no-argument
-		// form to register.
-		return "NewForm"
-	}
-	return "NewQuery" + noArg
-}
-
-// writeAppBindings emits the one package the application imports.
+// writeAppBindings emits the one package the application imports: a concrete
+// closure per remote function and per load, and the three lists an app hands
+// to skgo.
+//
+// This is where the wire meets Go. Each closure names the strict decoder
+// polytype generated for its function's own argument type, calls the app's
+// function, and names the encoder polytype generated for its result type.
+// Nothing here is generic and nothing carries a Go value of the app's types as
+// `any`: the types are known when this file is written, so they are spelled.
 func (a *app) writeAppBindings() error {
 	var b strings.Builder
 	b.WriteString(goHeader)
 	fmt.Fprintf(&b, "package %s\n\n", a.cfg.Package)
 	transportPkgs := a.transportImports()
 	b.WriteString("import (\n")
-	if len(transportPkgs) > 0 {
-		b.WriteString("\t\"reflect\"\n\n")
+	b.WriteString("\t\"context\"\n")
+	if a.hasBatch() {
+		b.WriteString("\t\"fmt\"\n")
 	}
+	if len(transportPkgs) > 0 {
+		b.WriteString("\t\"reflect\"\n")
+	}
+	b.WriteString("\n")
 	fmt.Fprintf(&b, "\t%q\n\n", skgoPkg)
 	for _, gp := range a.pkgs {
 		fmt.Fprintf(&b, "\t%s %q\n", gp.alias, gp.pkg.PkgPath)
@@ -324,30 +414,217 @@ func (a *app) writeAppBindings() error {
 	for _, imp := range transportPkgs {
 		fmt.Fprintf(&b, "\t%s %q\n", imp.alias, imp.path)
 	}
-	b.WriteString(")\n\n")
-	b.WriteString("// Remotes returns every remote function declared in the app, ready to hand\n")
+	b.WriteString(")\n")
+
+	for _, fn := range a.remotes {
+		a.writeHandler(&b, fn)
+	}
+
+	b.WriteString("\n// Remotes returns every remote function declared in the app, ready to hand\n")
 	b.WriteString("// to skgo.NewRemotes.\n")
-	b.WriteString("func Remotes() []*skgo.Remote {\n\tvar out []*skgo.Remote\n")
-	for _, gp := range a.pkgs {
-		fmt.Fprintf(&b, "\tout = append(out, %s.SkgoRemotes()...)\n", gp.alias)
+	b.WriteString("func Remotes() []*skgo.Remote {\n\treturn []*skgo.Remote{\n")
+	for _, fn := range a.remotes {
+		b.WriteString("\t\tskgo.NewRemote(skgo.RemoteSpec{\n")
+		fmt.Fprintf(&b, "\t\t\tKind:   skgo.%s,\n", specKind(fn.kind))
+		fmt.Fprintf(&b, "\t\t\tModule: %q,\n", fn.module)
+		fmt.Fprintf(&b, "\t\t\tName:   %q,\n", fn.name)
+		fmt.Fprintf(&b, "\t\t\tFn:     %s,\n", a.published(fn.goPkg, fn.name))
+		switch fn.kind {
+		case kindLive:
+			fmt.Fprintf(&b, "\t\t\tLive:   %s,\n", fn.handler)
+		case kindBatch:
+			fmt.Fprintf(&b, "\t\t\tBatch:  %s,\n", fn.handler)
+		default:
+			fmt.Fprintf(&b, "\t\t\tCall:   %s,\n", fn.handler)
+		}
+		if fn.requestedArg != "" {
+			fmt.Fprintf(&b, "\t\t\tDecodeArg: %s,\n", fn.requestedArg)
+		}
+		b.WriteString("\t\t}),\n")
 	}
-	b.WriteString("\treturn out\n}\n\n")
-	b.WriteString("// Loads returns every server load declared in the app, ready to hand to\n")
+	b.WriteString("\t}\n}\n")
+
+	for _, load := range a.loads {
+		fmt.Fprintf(&b, "\n// %s answers %s.\n", load.handler, load.module)
+		fmt.Fprintf(&b, "//\n")
+		fmt.Fprintf(&b, "// A load's result is the one value no generated encoder produces: it may\n")
+		fmt.Fprintf(&b, "// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go\n")
+		fmt.Fprintf(&b, "// type, so the value is encoded where a promise can still be recognised.\n")
+		fmt.Fprintf(&b, "func %s(ctx context.Context) (any, error) {\n\treturn %s(ctx)\n}\n", load.handler, a.published(load.goPkg, load.name))
+	}
+
+	b.WriteString("\n// Loads returns every server load declared in the app, ready to hand to\n")
 	b.WriteString("// skgo.NewLoads.\n")
-	b.WriteString("func Loads() []*skgo.ServerLoad {\n\tvar out []*skgo.ServerLoad\n")
-	for _, gp := range a.pkgs {
-		fmt.Fprintf(&b, "\tout = append(out, %s.SkgoLoads()...)\n", gp.alias)
+	b.WriteString("func Loads() []*skgo.ServerLoad {\n\treturn []*skgo.ServerLoad{\n")
+	for _, load := range a.loads {
+		fmt.Fprintf(&b, "\t\tskgo.NewServerLoad(skgo.LoadSpec{Module: %q, Run: %s}),\n", load.module, load.handler)
 	}
-	b.WriteString("\treturn out\n}\n\n")
-	b.WriteString("// Endpoints returns every server route declared in the app, ready to hand\n")
+	b.WriteString("\t}\n}\n")
+
+	b.WriteString("\n// Endpoints returns every server route declared in the app, ready to hand\n")
 	b.WriteString("// to skgo.NewEndpoints.\n")
-	b.WriteString("func Endpoints() []*skgo.Endpoint {\n\tvar out []*skgo.Endpoint\n")
-	for _, gp := range a.pkgs {
-		fmt.Fprintf(&b, "\tout = append(out, %s.SkgoEndpoints()...)\n", gp.alias)
+	b.WriteString("func Endpoints() []*skgo.Endpoint {\n\treturn []*skgo.Endpoint{\n")
+	for _, ep := range a.endpoints {
+		fmt.Fprintf(&b, "\t\tskgo.NewEndpoint(%q, %q, %s),\n", ep.routeID, endpointWireMethod(ep.method), a.published(ep.goPkg, ep.name))
 	}
-	b.WriteString("\treturn out\n}\n")
+	b.WriteString("\t}\n}\n")
+
 	a.writeTransportBinding(&b)
 	return a.writeGo(filepath.Join(a.cfg.Out, "skgo_bindings_gen.go"), b.String())
+}
+
+// published spells a declaration the way the bindings package reaches it.
+func (a *app) published(gp *goPackage, name string) string {
+	return gp.alias + "." + exportedName(name)
+}
+
+// specKind is the skgo.Kind constant for a marker kind.
+func specKind(k remoteKind) string {
+	switch k {
+	case kindCommand:
+		return "KindCommand"
+	case kindLive:
+		return "KindLive"
+	case kindBatch:
+		return "KindBatch"
+	case kindForm:
+		return "KindForm"
+	}
+	return "KindQuery"
+}
+
+func (a *app) hasBatch() bool {
+	for _, fn := range a.remotes {
+		if fn.kind == kindBatch {
+			return true
+		}
+	}
+	return false
+}
+
+// writeHandler emits the closure that answers one remote function.
+func (a *app) writeHandler(b *strings.Builder, fn *remoteFn) {
+	fmt.Fprintf(b, "\n// %s answers %s#%s, a %s.\n", fn.handler, fn.module, fn.name, fn.kind)
+	a.writeCodecNote(b, fn)
+	switch fn.kind {
+	case kindLive:
+		fmt.Fprintf(b, "func %s(ctx context.Context, call skgo.Call, yield func(any) error) error {\n", fn.handler)
+		a.writeArgument(b, fn, "\t", "return err")
+		fmt.Fprintf(b, "\treturn %s(ctx, %sfunc(out %s) error {\n", a.published(fn.goPkg, fn.name), liveArg(fn), a.outAlias(fn))
+		if fn.outCodec != "" {
+			fmt.Fprintf(b, "\t\ttree, err := Encode%s(out)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\treturn yield(tree)\n", fn.outCodec)
+		} else {
+			b.WriteString("\t\ttree, err := call.Transported(out)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\treturn yield(tree)\n")
+		}
+		b.WriteString("\t})\n}\n")
+
+	case kindBatch:
+		fmt.Fprintf(b, "func %s(ctx context.Context, calls []skgo.Call) ([]any, error) {\n", fn.handler)
+		fmt.Fprintf(b, "\tin := make([]%s, len(calls))\n", a.inAlias(fn))
+		b.WriteString("\tfor i, call := range calls {\n")
+		b.WriteString("\t\tif err := skgo.RequireArgument(call); err != nil {\n\t\t\treturn nil, err\n\t\t}\n")
+		fmt.Fprintf(b, "\t\tdecoded, err := Decode%s(call.Arg)\n", fn.inCodec)
+		b.WriteString("\t\tif err != nil {\n\t\t\treturn nil, skgo.BadRequest(err)\n\t\t}\n")
+		b.WriteString("\t\tin[i] = decoded\n\t}\n")
+		fmt.Fprintf(b, "\touts, err := %s(ctx, in)\n", a.published(fn.goPkg, fn.name))
+		b.WriteString("\tif err != nil {\n\t\treturn nil, err\n\t}\n")
+		b.WriteString("\tif len(outs) != len(in) {\n")
+		fmt.Fprintf(b, "\t\treturn nil, fmt.Errorf(\"skgo: batch query %s was given %%d arguments and answered %%d results\", len(in), len(outs))\n", fn.name)
+		b.WriteString("\t}\n")
+		b.WriteString("\tres := make([]any, len(outs))\n\tfor i, out := range outs {\n")
+		if fn.outCodec != "" {
+			fmt.Fprintf(b, "\t\ttree, err := Encode%s(out)\n", fn.outCodec)
+		} else {
+			b.WriteString("\t\ttree, err := calls[i].Transported(out)\n")
+		}
+		b.WriteString("\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tres[i] = tree\n\t}\n")
+		b.WriteString("\treturn res, nil\n}\n")
+
+	default:
+		fmt.Fprintf(b, "func %s(ctx context.Context, call skgo.Call) (any, error) {\n", fn.handler)
+		a.writeArgument(b, fn, "\t", "return nil, err")
+		fmt.Fprintf(b, "\tout, err := %s(ctx%s)\n", a.published(fn.goPkg, fn.name), callArg(fn))
+		b.WriteString("\tif err != nil {\n\t\treturn nil, err\n\t}\n")
+		if fn.outCodec != "" {
+			fmt.Fprintf(b, "\treturn Encode%s(out)\n}\n", fn.outCodec)
+		} else {
+			b.WriteString("\treturn call.Transported(out)\n}\n")
+		}
+	}
+
+	if fn.requestedArg != "" {
+		fmt.Fprintf(b, "\n// %s decodes one instance's argument for skgo.Requested, with the same\n", fn.requestedArg)
+		fmt.Fprintf(b, "// decoder %s uses.\n", fn.handler)
+		fmt.Fprintf(b, "func %s(arg any) (any, error) {\n", fn.requestedArg)
+		fmt.Fprintf(b, "\tin, err := Decode%s(arg)\n", fn.inCodec)
+		b.WriteString("\tif err != nil {\n\t\treturn nil, skgo.BadRequest(err)\n\t}\n\treturn in, nil\n}\n")
+	}
+}
+
+// writeCodecNote says which codecs a handler uses, so that a reader of the
+// generated file can find them without guessing.
+func (a *app) writeCodecNote(b *strings.Builder, fn *remoteFn) {
+	b.WriteString("//\n")
+	switch {
+	case fn.kind == kindForm:
+		b.WriteString("// A form's submission is assigned onto the handler's own argument type:\n")
+		b.WriteString("// kit posts a form as binary form data, which can carry an uploaded File,\n")
+		b.WriteString("// and a File is not a value polytype describes.\n")
+	case fn.inCodec != "":
+		fmt.Fprintf(b, "// The argument is decoded by Decode%s, generated by polytype for %s's\n", fn.inCodec, fn.name)
+		b.WriteString("// own parameter type: a shape it does not admit is a 400 naming the path,\n")
+		b.WriteString("// never a zero value.\n")
+	default:
+		b.WriteString("// It takes no argument, so any argument at all is refused — kit's own\n")
+		b.WriteString("// validator for a function declared without one answers 400 too.\n")
+	}
+	if fn.outCodec != "" {
+		fmt.Fprintf(b, "// The result is encoded by Encode%s, generated for its result type.\n", fn.outCodec)
+	} else {
+		b.WriteString("// The result can reach a type the app transports, so it goes to devalue as\n")
+		b.WriteString("// itself and the transport hook's reducer puts it on the wire.\n")
+	}
+}
+
+// writeArgument emits the decode step shared by every kind but batch.
+func (a *app) writeArgument(b *strings.Builder, fn *remoteFn, indent, fail string) {
+	switch {
+	case fn.kind == kindForm:
+		fmt.Fprintf(b, "%svar in %s\n", indent, a.inAlias(fn))
+		fmt.Fprintf(b, "%sif err := skgo.DecodeForm(call.Arg, &in); err != nil {\n%s\t%s\n%s}\n", indent, indent, fail, indent)
+	case fn.inCodec != "":
+		fmt.Fprintf(b, "%sif err := skgo.RequireArgument(call); err != nil {\n%s\t%s\n%s}\n", indent, indent, fail, indent)
+		fmt.Fprintf(b, "%sin, err := Decode%s(call.Arg)\n", indent, fn.inCodec)
+		fmt.Fprintf(b, "%sif err != nil {\n%s\t%s\n%s}\n", indent, indent, strings.Replace(fail, "err", "skgo.BadRequest(err)", 1), indent)
+	default:
+		fmt.Fprintf(b, "%sif err := skgo.RefuseArgument(call); err != nil {\n%s\t%s\n%s}\n", indent, indent, fail, indent)
+	}
+}
+
+// callArg is the argument list a handler passes the app's function.
+func callArg(fn *remoteFn) string {
+	if fn.in == nil {
+		return ""
+	}
+	return ", in"
+}
+
+func liveArg(fn *remoteFn) string {
+	if fn.in == nil {
+		return ""
+	}
+	return "in, "
+}
+
+// inAlias and outAlias are the type aliases the declaring package publishes for
+// the two positions the bindings package has to spell a Go type in: a form's
+// argument, a batch's argument slice, and a live query's yield.
+func (a *app) inAlias(fn *remoteFn) string {
+	return fn.goPkg.alias + ".SkgoArg_" + fn.name
+}
+
+func (a *app) outAlias(fn *remoteFn) string {
+	return fn.goPkg.alias + ".SkgoOut_" + fn.name
 }
 
 // writeTransportBinding emits the app's `transport` hook, wiring each key to

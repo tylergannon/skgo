@@ -18,13 +18,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"reflect"
 	"runtime/debug"
 	"sort"
 	"strings"
 
 	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/adapter"
+	"github.com/tylergannon/skgo/internal/formdata"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
@@ -115,33 +115,124 @@ func (r *Redirect) Error() string {
 	return fmt.Sprintf("redirect %d to %s", r.Status, r.Location)
 }
 
-type remoteKind int
+// Kind is which of kit's four remote-function kinds a registration publishes.
+// `query.batch` is a fifth constant rather than a query because the call shape
+// differs — one POST carrying every payload — even though everything
+// downstream files its results in the browser's ordinary query cache.
+type Kind int
 
 const (
-	kindQuery remoteKind = iota
-	kindCommand
-	kindLive
-	kindBatch
-	kindForm
+	KindQuery Kind = iota
+	KindCommand
+	KindLive
+	KindBatch
+	KindForm
 )
 
-// Remote is one registered remote function. Generated code builds these with
-// NewQuery, NewCommand, NewLiveQuery and NewForm; application code declares the
-// functions and marks them with Query, Command, LiveQuery and Form.
+// Call is one remote call as it reaches the generated closure that answers it.
+//
+// Arg is the argument exactly as it came off the wire: the devalue value model
+// tree kit's client sent, before anything has decided what Go type it is.
+// Deciding that is the job of the strict decoder polytype generated for this
+// function's own parameter type, and of nothing else. That decoder lives in the
+// generated bindings package with the closure that calls it, which is why there
+// is no type parameter here and no Go value of the app's own types passing
+// through this struct.
+type Call struct {
+	// Arg is the devalue value model tree the client sent — devalue's own
+	// shapes: nil, bool, float64, string, []any, *devalue.Object, and for a
+	// form submission the uploaded files kit's binary envelope carried.
+	Arg any
+	// Present reports that the client sent an argument at all. Kit's client
+	// calls a function declared without one with `undefined`, whose payload is
+	// the empty string, so absence is a value in its own right: kit's own
+	// `create_validator` answers 400 to an argument a no-argument function was
+	// never declared to take.
+	Present bool
+
+	// transport is the app's `transport` hook, for the one result a generated
+	// encoder cannot produce. See Transported.
+	transport Transport
+}
+
+// Transported encodes a result whose type can reach a type the app transports.
+//
+// It is not a fallback but kit's own rule: a transported value has to reach
+// devalue *as itself*, so that the reducer the `transport` hook installs still
+// recognises it and writes `["Money", …]`. polytype's generated encoder would
+// already have flattened it into an object, and the browser would be handed a
+// plain object with no methods — which is the bug the hook exists to prevent.
+// So a value that can hold one travels unflattened and devalue finishes it.
+//
+// `skgo generate` emits this call for exactly the functions whose result type
+// reaches a transported type, and a generated encoder for every other one.
+func (c Call) Transported(v any) (any, error) { return c.transport.encodeTree(v) }
+
+// RemoteFunc is the generated closure that answers one query, command or form:
+// it decodes call.Arg with the decoder polytype generated for the function's
+// own parameter type, calls the app's Go function, and returns the devalue
+// value model tree its generated encoder produced.
+type RemoteFunc func(ctx context.Context, call Call) (any, error)
+
+// LiveFunc is RemoteFunc for a `query.live`. Each value the app's function
+// yields is encoded by the generated encoder before it reaches yield, so the
+// frames this produces are the same bytes a query's response carries.
+type LiveFunc func(ctx context.Context, call Call, yield func(any) error) error
+
+// BatchFunc is RemoteFunc for a `query.batch`: every argument kit's client
+// collected in one macrotask, answered in one call, in order.
+type BatchFunc func(ctx context.Context, calls []Call) ([]any, error)
+
+// RemoteSpec is one generated registration. `skgo generate` writes these; an
+// application declares its functions with Query, Command, LiveQuery,
+// BatchQuery and Form and writes none of this by hand.
+type RemoteSpec struct {
+	// Kind is which of kit's remote-function kinds this publishes.
+	Kind Kind
+	// Module is the vite-root-relative path of the `.remote.ts` kit compiles,
+	// for example "src/routes/todos/todos.remote.ts". Kit hashes it into the
+	// id its client addresses the function by.
+	Module string
+	// Name is the export name within that module.
+	Name string
+	// Fn is the app's own function value. Nothing calls it through this field:
+	// it is here for its code pointer, which is the identity skgo.Refresh
+	// looks a query up by, and it is the same function value the closure below
+	// calls. That is what lets a refresh name `getTodo` rather than a string.
+	Fn any
+	// Call answers a query, command, batch-of-one or form. Required for every
+	// kind but KindLive.
+	Call RemoteFunc
+	// Live answers a `query.live`. Required for KindLive and nothing else.
+	Live LiveFunc
+	// Batch answers a `query.batch`. Required for KindBatch and nothing else.
+	Batch BatchFunc
+	// DecodeArg decodes one argument into the function's own parameter type,
+	// for skgo.Requested — the one place a handler is handed a client's
+	// argument rather than the server running it. The value it returns is of
+	// the function's parameter type; it is typed `any` because the caller's
+	// type parameter comes from the app's own function signature and this
+	// closure is generated beside the function, not here. It is nil for a
+	// function declared without an argument.
+	DecodeArg func(arg any) (any, error)
+}
+
+// Remote is one registered remote function. `skgo generate` builds these with
+// NewRemote; application code declares the functions and marks them with
+// Query, Command, LiveQuery, BatchQuery and Form.
 type Remote struct {
 	module string
 	name   string
 	hash   string
 	id     string
-	kind   remoteKind
+	kind   Kind
 
-	call func(ctx context.Context, arg any, present bool) (any, error)
-	live func(ctx context.Context, arg any, present bool, yield func(any) error) error
-	// batch answers a whole `query.batch` at once: one call to the app's
-	// function for however many arguments the page or the browser collected.
-	// The results come back in the order the arguments arrived, which is the
-	// order kit's client resolves its promises in.
-	batch func(ctx context.Context, args []any, present []bool) ([]any, error)
+	call  RemoteFunc
+	live  LiveFunc
+	batch BatchFunc
+	// argDecoder is RemoteSpec.DecodeArg. See its documentation for why the
+	// value it produces is spelled `any` here and typed at the caller.
+	argDecoder func(arg any) (any, error)
 
 	// ptr is the code pointer of the Go function this registration publishes.
 	// It is the identity skgo.Refresh looks a function up by, which is what
@@ -158,15 +249,60 @@ func (r *Remote) Module() string { return r.module }
 // Name is the export name within that module.
 func (r *Remote) Name() string { return r.name }
 
-func newRemote(module, name string, kind remoteKind) *Remote {
-	hash := kithash.Kit(module)
-	return &Remote{
-		module: module,
-		name:   name,
-		hash:   hash,
-		id:     hash + "/" + name,
-		kind:   kind,
+// Kind is which of kit's remote-function kinds this registration publishes.
+func (r *Remote) Kind() Kind { return r.kind }
+
+// NewRemote builds a registration from a generated spec.
+//
+// It panics on a spec that cannot answer a call, because a spec is generated
+// code: a missing closure is a bug in the generator, it is the same bug on
+// every request, and the first thing an app does at startup is build its
+// registry. Failing there names the function; failing later would be a nil
+// call in a handler.
+func NewRemote(spec RemoteSpec) *Remote {
+	hash := kithash.Kit(spec.Module)
+	r := &Remote{
+		module:     spec.Module,
+		name:       spec.Name,
+		hash:       hash,
+		id:         hash + "/" + spec.Name,
+		kind:       spec.Kind,
+		call:       spec.Call,
+		live:       spec.Live,
+		batch:      spec.Batch,
+		argDecoder: spec.DecodeArg,
+		ptr:        codePointer(spec.Fn),
 	}
+	switch spec.Kind {
+	case KindLive:
+		if spec.Live == nil {
+			panic("skgo: the generated registration for " + r.id + " has no Live closure")
+		}
+	case KindBatch:
+		if spec.Batch == nil {
+			panic("skgo: the generated registration for " + r.id + " has no Batch closure")
+		}
+		// One argument is a batch of one. It is the shape a Refresh of a
+		// single instance takes, and the shape kit's own `refresh()` takes
+		// too: it stores the resource's promise, which went through `enqueue`
+		// and became a batch with one entry in it.
+		batch := spec.Batch
+		r.call = func(ctx context.Context, call Call) (any, error) {
+			outs, err := batch(ctx, []Call{call})
+			if err != nil {
+				return nil, err
+			}
+			if len(outs) != 1 {
+				return nil, fmt.Errorf("skgo: batch query %s answered %d results for one argument", r.id, len(outs))
+			}
+			return outs[0], nil
+		}
+	default:
+		if spec.Call == nil {
+			panic("skgo: the generated registration for " + r.id + " has no Call closure")
+		}
+	}
+	return r
 }
 
 // Marker is what the declaration helpers return. It carries nothing: Query,
@@ -191,8 +327,10 @@ type Marker struct{}
 // fn is `any` because the marker checks nothing. `skgo generate` reads the
 // function's real signature through go/types — it has to, since it projects
 // the argument and the result to TypeScript — and reports a shape it cannot
-// publish against the declaration's own position. The typed constructors the
-// generator emits are what the compiler checks.
+// publish against the declaration's own position. What checks the function is
+// the generated closure that calls it, which names the argument's type and the
+// result's and is compiled beside the codecs polytype emitted for exactly
+// those two types.
 //
 // `skgo generate` emits the sibling `.remote.ts` kit compiles and the Go
 // registration that answers the calls. The request is reachable with
@@ -231,217 +369,69 @@ func LiveQuery(fn any) Marker { _ = fn; return Marker{} }
 // for why fn is any.
 func BatchQuery(fn any) Marker { _ = fn; return Marker{} }
 
-// NewQuery registers a `query` export. module is the module's vite-root-relative
-// path (for example "src/lib/todos.remote.ts") and name the export name.
-// Generated code calls this; application code uses Query.
-func NewQuery[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
-	r := newRemote(module, name, kindQuery)
-	r.call = callAdapter(fn)
-	r.ptr = codePointer(fn)
-	return r
-}
-
-// NewQueryNoArg registers a `query` export whose Go function takes no
-// argument, which is most of them. Kit calls such a query with `undefined`,
-// whose payload is the empty string, so whatever the client sends is ignored
-// here rather than decoded into a placeholder.
+// BadRequest turns a generated decoder's refusal into the answer kit gives.
 //
-// There is a constructor per arity because the marker no longer carries the
-// types: generated code is the one place an extra constructor costs nothing,
-// and it is where the compiler gets to check the function again.
-func NewQueryNoArg[Out any](module, name string, fn func(context.Context) (Out, error)) *Remote {
-	r := newRemote(module, name, kindQuery)
-	r.call = callAdapterNoArg(fn)
-	r.ptr = codePointer(fn)
-	return r
-}
-
-// NewCommand registers a `command` export.
-func NewCommand[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
-	r := newRemote(module, name, kindCommand)
-	r.call = callAdapter(fn)
-	r.ptr = codePointer(fn)
-	return r
-}
-
-// NewCommandNoArg registers a `command` export whose Go function takes no
-// argument. See NewQueryNoArg.
-func NewCommandNoArg[Out any](module, name string, fn func(context.Context) (Out, error)) *Remote {
-	r := newRemote(module, name, kindCommand)
-	r.call = callAdapterNoArg(fn)
-	r.ptr = codePointer(fn)
-	return r
-}
-
-// NewLiveQuery registers a `query.live` export. fn pushes values with yield and
-// returns when the subscription ends; its event's context is cancelled when the
-// client disconnects, and yield returns a non-nil error once that has happened.
-func NewLiveQuery[In, Out any](module, name string, fn func(context.Context, In, func(Out) error) error) *Remote {
-	r := newRemote(module, name, kindLive)
-	r.ptr = codePointer(fn)
-	r.live = func(ctx context.Context, arg any, present bool, yield func(any) error) error {
-		in, err := decodeArg[In](arg, present)
-		if err != nil {
-			return err
-		}
-		// The raw Go value: encoding happens in Remotes.live, which is where
-		// the app's transport hook is known. A transported value has to reach
-		// devalue as itself, and encoding here would already have flattened it.
-		return fn(ctx, in, func(out Out) error { return yield(out) })
-	}
-	return r
-}
-
-// NewLiveQueryNoArg registers a `query.live` export whose Go function takes no
-// argument. See NewQueryNoArg.
-func NewLiveQueryNoArg[Out any](module, name string, fn func(context.Context, func(Out) error) error) *Remote {
-	r := newRemote(module, name, kindLive)
-	r.ptr = codePointer(fn)
-	r.live = func(ctx context.Context, arg any, present bool, yield func(any) error) error {
-		// The raw Go value; see NewLiveQuery.
-		return fn(ctx, func(out Out) error { return yield(out) })
-	}
-	return r
-}
-
-// NewBatchQuery registers a `query.batch` export. fn is handed every argument
-// collected into one batch and answers them all at once, in order.
+// Kit's `create_validator` answers 400 to an argument its schema rejects, and
+// to any argument at all when the function was declared without one. skgo's
+// schema is the strict decoder polytype generated from the Go parameter type,
+// so this is the same refusal at the same moment.
 //
-// A batch query is a query as far as everything downstream is concerned: kit
-// files its results in the client's ordinary query cache, keyed per argument,
-// and `internals.type[0]` is what puts them under `q` in a document's remote
-// data. What differs is only how the call reaches the server — one POST
-// carrying every payload — so a batch query registered here also answers a
-// single call, which is what a Refresh of one instance is.
-func NewBatchQuery[In, Out any](module, name string, fn func(context.Context, []In) ([]Out, error)) *Remote {
-	r := newRemote(module, name, kindBatch)
-	r.ptr = codePointer(fn)
-	r.batch = func(ctx context.Context, args []any, present []bool) ([]any, error) {
-		in := make([]In, len(args))
-		for i := range args {
-			decoded, err := decodeArg[In](args[i], present[i])
-			if err != nil {
-				return nil, err
-			}
-			in[i] = decoded
-		}
-		outs, err := fn(ctx, in)
-		if err != nil {
-			return nil, err
-		}
-		if len(outs) != len(in) {
-			// The app answered a different number of results than it was
-			// asked questions, so there is no honest way to match them up.
-			// It is a bug in the app rather than something the caller did, so
-			// the caller gets kit's opaque 500 and the detail stays here.
-			return nil, fmt.Errorf("skgo: batch query %s was given %d arguments and answered %d results", r.id, len(in), len(outs))
-		}
-		// The raw Go values; see NewLiveQuery.
-		res := make([]any, len(outs))
-		for i := range outs {
-			res[i] = outs[i]
-		}
-		return res, nil
+// What the client is told is kit's opaque "Bad Request". The decoder's own
+// diagnostic — which names a JSON-pointer path into the argument — is kept on
+// the error for the server's logs and never put on the wire, because it
+// describes the shape the server expected and an unauthenticated caller has
+// not earned that.
+func BadRequest(detail error) error { return badRequest{detail: detail} }
+
+type badRequest struct{ detail error }
+
+func (b badRequest) Error() string {
+	if b.detail == nil {
+		return "skgo: bad request"
 	}
-	// One argument is a batch of one. It is the shape a Refresh of a single
-	// instance takes, and the shape kit's own `refresh()` takes too: it stores
-	// the resource's promise, which went through `enqueue` and became a batch
-	// with one entry in it.
-	r.call = func(ctx context.Context, arg any, present bool) (any, error) {
-		outs, err := r.batch(ctx, []any{arg}, []bool{present})
-		if err != nil {
-			return nil, err
-		}
-		return outs[0], nil
-	}
-	return r
+	return "skgo: bad request: " + b.detail.Error()
 }
 
-func callAdapter[In, Out any](fn func(context.Context, In) (Out, error)) func(context.Context, any, bool) (any, error) {
-	return func(ctx context.Context, arg any, present bool) (any, error) {
-		in, err := decodeArg[In](arg, present)
-		if err != nil {
-			return nil, err
-		}
-		out, err := fn(ctx, in)
-		if err != nil {
-			return nil, err
-		}
-		// The raw Go value; see NewLiveQuery.
-		return out, nil
+// Unwrap makes this the 400 every path here already knows how to answer, while
+// Error keeps the detail for whoever logs it.
+func (b badRequest) Unwrap() error { return &HTTPError{Status: 400, Message: "Bad Request"} }
+
+// RefuseArgument is the decode step for a function declared without an
+// argument, and it is kit's own `create_validator` with no schema: such a
+// function answers 400 to any argument at all. Generated code calls it so that
+// the refusal is written in the same place every other decode is.
+func RefuseArgument(call Call) error {
+	if call.Present {
+		return &HTTPError{Status: 400, Message: "Bad Request"}
 	}
+	return nil
 }
 
-// callAdapterNoArg is callAdapter for a function that takes no argument. The
-// payload is not decoded at all: kit's client sends `undefined` for a query it
-// calls with no argument, and a function with no parameter has nothing to put
-// anything else into.
-func callAdapterNoArg[Out any](fn func(context.Context) (Out, error)) func(context.Context, any, bool) (any, error) {
-	return func(ctx context.Context, _ any, _ bool) (any, error) {
-		out, err := fn(ctx)
-		if err != nil {
-			return nil, err
-		}
-		// The raw Go value; see NewLiveQuery.
-		return out, nil
+// RequireArgument is the other half of RefuseArgument: a function declared
+// *with* an argument was called without one, so there is nothing for its
+// decoder to admit and no zero value it would be honest to invent. Kit's
+// schema-validated functions refuse the same call.
+func RequireArgument(call Call) error {
+	if !call.Present {
+		return &HTTPError{Status: 400, Message: "Bad Request"}
 	}
+	return nil
 }
 
-// decodeArg turns a devalue tree into a typed Go value with an encoding/json
-// round-trip. That is deliberately the 90% solution: anything kit can send
-// that survives JSON survives this, and nothing else is supported.
-func decodeArg[In any](arg any, present bool) (In, error) {
-	var in In
-	if !present {
-		return in, nil
-	}
-	raw, err := json.Marshal(arg)
-	if err != nil {
-		// The argument came from the client, so a value JSON cannot carry —
-		// NaN, an infinity — is a bad request, not a server fault.
-		return in, Errorf(400, "Bad Request")
-	}
-	if err := json.Unmarshal(raw, &in); err != nil {
-		return in, Errorf(400, "Bad Request")
-	}
-	return in, nil
-}
-
-// encodeValue is the reverse round-trip: a typed Go value becomes the plain
-// tree devalue.Stringify expects.
+// DecodeForm assigns a form submission onto the handler's argument type.
 //
-// The one place it parts company with encoding/json is a nil slice, which json
-// writes as `null` and the generated `Array<T>` says is an array; see
-// emptyArrays.
-func encodeValue(v any) (any, error) {
-	tree, err := roundTripValue(v)
-	if err != nil {
-		return nil, err
+// A form is the one remote kind whose argument is not a devalue payload: a
+// hydrated kit page posts `application/x-sveltekit-formdata`, whose POJO can
+// carry an uploaded File. A File is not a JSON value and polytype does not
+// describe one, so the generated closure calls this instead of a generated
+// decoder; into is a pointer to the handler's own argument type, so the shape
+// is still fixed by the Go signature and never by a type parameter here.
+func DecodeForm(arg any, into any) error {
+	if err := formdata.Decode(arg, into); err != nil {
+		return &HTTPError{Status: 400, Message: "Bad Request"}
 	}
-	return emptyArrays(reflect.ValueOf(v), tree), nil
+	return nil
 }
-
-// roundTripValue is the round trip without that correction: encoding/json's
-// answer and nothing else, nil slices still spelled `null`.
-//
-// It is what a value the client *sent* goes back through. The empty-array
-// rewrite exists to make a Go zero value match a declaration Go generated, and
-// that is a claim about results; an argument was chosen by the browser, and
-// kit's client has already keyed its query cache on the bytes it sent. `null`
-// and `[]` are different values there, so correcting one into the other would
-// compute a key no page holds. See queryPayload in refresh.go.
-func roundTripValue(v any) (any, error) {
-	raw, err := json.Marshal(v)
-	if err != nil {
-		return nil, fmt.Errorf("skgo: encoding remote result: %w", err)
-	}
-	var tree any
-	if err := json.Unmarshal(raw, &tree); err != nil {
-		return nil, fmt.Errorf("skgo: encoding remote result: %w", err)
-	}
-	return tree, nil
-}
-
 // RemoteConfig describes the app the registry is serving. Everything but
 // Origin comes straight from the built manifest.
 type RemoteConfig struct {
@@ -693,15 +683,15 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch fn.kind {
-	case kindQuery:
+	case KindQuery:
 		rs.serveQuery(w, r, fn)
-	case kindLive:
+	case KindLive:
 		rs.serveLive(w, r, fn)
-	case kindBatch:
+	case KindBatch:
 		rs.serveBatch(w, r, fn)
-	case kindCommand:
+	case KindCommand:
 		rs.serveCommand(w, r, fn)
-	case kindForm:
+	case KindForm:
 		rs.serveForm(w, r, fn)
 	}
 }
@@ -727,7 +717,7 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 
 	ev := rs.newEvent(r, false)
 
-	value, err := rs.call(withEvent(r.Context(), ev), fn, arg, present)
+	value, err := rs.call(withEvent(r.Context(), ev), fn, rs.newCall(arg, present))
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
 			rs.writeResult(w, ev, map[string]any{"redirect": redirect.Location})
@@ -776,7 +766,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 	// until the handler names the query it belongs to. See requested.go.
 	ev.refreshes = newRefreshSet(rs, body.Refreshes)
 
-	value, err := rs.call(withEvent(r.Context(), ev), fn, arg, present)
+	value, err := rs.call(withEvent(r.Context(), ev), fn, rs.newCall(arg, present))
 	if err != nil {
 		// A redirect in a command response makes the client throw, so it is
 		// reported as an ordinary error instead. Cookies written before the
@@ -816,14 +806,14 @@ var errFirstValueTaken = errors.New("skgo: first value taken")
 // mirroring kit's `get_first_value`, which consumes a single value from the
 // generator and closes the iterator. The producer sees a cancelled context, so
 // a `select` on ctx.Done() unwinds exactly as it does on a client disconnect.
-func (rs *Remotes) firstValue(ctx context.Context, r *Remote, arg any, present bool) (value any, err error) {
+func (rs *Remotes) firstValue(ctx context.Context, r *Remote, call Call) (value any, err error) {
 	defer func() { err = rs.recovered(r, recover(), err) }()
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	var got bool
-	err = r.live(ctx, arg, present, func(v any) error {
+	err = r.live(ctx, call, func(v any) error {
 		value, got = v, true
 		cancel()
 		return errFirstValueTaken
@@ -853,28 +843,30 @@ func rawPayload(u *url.URL) string {
 // it gives any unexpected error, and so does this: the panic's text is the
 // server's business, and asHTTPError renders anything that is not an
 // *HTTPError as `{"status":500,"message":"Internal Error"}`.
-func (rs *Remotes) call(ctx context.Context, fn *Remote, arg any, present bool) (v any, err error) {
+func (rs *Remotes) call(ctx context.Context, fn *Remote, call Call) (v any, err error) {
 	defer func() { err = rs.recovered(fn, recover(), err) }()
-	out, err := fn.call(ctx, arg, present)
-	if err != nil {
-		return nil, err
-	}
-	return rs.cfg.Transport.encodeTree(out)
+	// What comes back is already the tree devalue serializes: the generated
+	// closure encoded it, with the codec polytype emitted for this function's
+	// own result type. Nothing here inspects a Go value of the app's types.
+	return fn.call(ctx, call)
+}
+
+// newCall packages one call's argument for the generated closure that answers
+// it, together with the app's transport hook — the one thing a closure needs
+// from the registry that its own types cannot give it. See Call.Transported.
+func (rs *Remotes) newCall(arg any, present bool) Call {
+	return Call{Arg: arg, Present: present, transport: rs.cfg.Transport}
 }
 
 // callLive is the same guard for a `query.live` producer. It matters more
 // there: the producer runs on its own goroutine, where an unrecovered panic
 // does not reset one connection but ends the process, taking every other
 // visitor with it.
-func (rs *Remotes) callLive(ctx context.Context, fn *Remote, arg any, present bool, yield func(any) error) (err error) {
+func (rs *Remotes) callLive(ctx context.Context, fn *Remote, call Call, yield func(any) error) (err error) {
 	defer func() { err = rs.recovered(fn, recover(), err) }()
-	return fn.live(ctx, arg, present, func(v any) error {
-		encoded, err := rs.cfg.Transport.encodeTree(v)
-		if err != nil {
-			return err
-		}
-		return yield(encoded)
-	})
+	// The generated closure encodes each value as it is yielded, so what
+	// reaches yield here is already the tree devalue serializes.
+	return fn.live(ctx, call, yield)
 }
 
 // recovered reports a panic and converts it to an error. It is a no-op when

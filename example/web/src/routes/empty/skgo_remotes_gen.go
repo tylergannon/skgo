@@ -2,26 +2,18 @@
 
 package empty
 
-import "github.com/tylergannon/skgo"
-
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{
-		skgo.NewQueryNoArg("src/routes/empty/empty.remote.ts", "getKnownReport", getKnownReport),
-		skgo.NewQueryNoArg("src/routes/empty/empty.remote.ts", "getModels", getModels),
-		skgo.NewQueryNoArg("src/routes/empty/empty.remote.ts", "getReport", getReport),
-		skgo.NewCommandNoArg("src/routes/empty/empty.remote.ts", "reparse", reparse),
-	}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{
-		skgo.NewLoad("src/routes/empty/+page.server.ts", pageLoad),
-	}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_getKnownReport is getKnownReport, published as src/routes/empty/empty.remote.ts#getKnownReport.
+	Skgo_getKnownReport = getKnownReport
+	// Skgo_getModels is getModels, published as src/routes/empty/empty.remote.ts#getModels.
+	Skgo_getModels = getModels
+	// Skgo_getReport is getReport, published as src/routes/empty/empty.remote.ts#getReport.
+	Skgo_getReport = getReport
+	// Skgo_reparse is reparse, published as src/routes/empty/empty.remote.ts#reparse.
+	Skgo_reparse = reparse
+	// Skgo_pageLoad is pageLoad, published as the server load of src/routes/empty/+page.server.ts.
+	Skgo_pageLoad = pageLoad
+)

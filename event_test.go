@@ -7,8 +7,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
+
+// noArg is what kit's client sends a command declared without an argument:
+// `undefined`, whose payload is the empty string. `null` is a *defined*
+// argument, and kit's own `create_validator` answers 400 to one.
+var noArg = devalue.Undefined
 
 // postCommand invokes a command the way kit's client does and returns the
 // recorder so a test can read both body and headers.
@@ -80,7 +86,7 @@ func TestCommandDeleteCookieExpiresIt(t *testing.T) {
 	})
 	rs := testRemotes(t, RemoteConfig{Origin: "http://localhost:8080"}, logout)
 
-	rec := postCommand(t, rs, logout, nil, nil, &http.Cookie{Name: "session", Value: "ada"})
+	rec := postCommand(t, rs, logout, noArg, nil, &http.Cookie{Name: "session", Value: "ada"})
 	got := rec.Header().Get("Set-Cookie")
 	// Kit deletes with `maxAge: 0` and an empty value; net/http spells a
 	// negative MaxAge as `Max-Age=0`.
@@ -162,7 +168,7 @@ func TestRelativeCookiePathIsRefused(t *testing.T) {
 	})
 	rs := testRemotes(t, RemoteConfig{}, bad)
 
-	rec := postCommand(t, rs, bad, nil, nil)
+	rec := postCommand(t, rs, bad, noArg, nil)
 	kind, _, httpErr := envelope(t, rec.Body.Bytes())
 	if kind != "error" {
 		t.Fatalf("envelope type = %q, want an error", kind)

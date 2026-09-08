@@ -2,21 +2,15 @@
 
 package batch
 
-import "github.com/tylergannon/skgo"
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_getQuotes is getQuotes, published as src/routes/batch/quotes.remote.ts#getQuotes.
+	Skgo_getQuotes = getQuotes
+)
 
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{
-		skgo.NewBatchQuery("src/routes/batch/quotes.remote.ts", "getQuotes", getQuotes),
-	}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+type (
+	// SkgoArg_getQuotes is the type getQuotes takes.
+	SkgoArg_getQuotes = string
+)

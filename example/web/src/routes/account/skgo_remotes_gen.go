@@ -2,22 +2,12 @@
 
 package account
 
-import "github.com/tylergannon/skgo"
-
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{
-		skgo.NewLoad("src/routes/account/+layout.server.ts", layoutLoad),
-		skgo.NewLoad("src/routes/account/+page.server.ts", pageLoad),
-	}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_layoutLoad is layoutLoad, published as the server load of src/routes/account/+layout.server.ts.
+	Skgo_layoutLoad = layoutLoad
+	// Skgo_pageLoad is pageLoad, published as the server load of src/routes/account/+page.server.ts.
+	Skgo_pageLoad = pageLoad
+)

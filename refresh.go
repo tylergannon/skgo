@@ -70,12 +70,23 @@ func Refresh[In, Out any](ctx context.Context, fn func(context.Context, In) (Out
 		return err
 	}
 
-	payload, present, err := queryPayload(arg)
+	payload, err := queryPayload(arg)
 	if err != nil {
 		return fmt.Errorf("skgo: Refresh(%s): encoding the argument: %w", funcName(fn), err)
 	}
 
-	set.add(target.id+"/"+payload, refreshEntry{fn: target, arg: any(arg), present: present})
+	// The query is re-run with the argument its own key names, decoded from
+	// that key's bytes by the generated decoder, exactly as it would be for a
+	// call the browser made. The key and the argument cannot disagree because
+	// there is only one of them: kit's client keys its cache on those same
+	// bytes, and a refresh computed from anything else would land on an
+	// instance no page holds.
+	call, err := set.rs.parsePayload(payload)
+	if err != nil {
+		return fmt.Errorf("skgo: Refresh(%s): the argument does not survive its own refresh key: %w", funcName(fn), err)
+	}
+
+	set.add(target.id+"/"+payload, refreshEntry{fn: target, call: call})
 	return nil
 }
 
@@ -94,7 +105,7 @@ func RefreshNoArg[Out any](ctx context.Context, fn func(context.Context) (Out, e
 		return err
 	}
 
-	set.add(target.id+"/", refreshEntry{fn: target})
+	set.add(target.id+"/", refreshEntry{fn: target, call: set.rs.newCall(nil, false)})
 	return nil
 }
 
@@ -110,7 +121,7 @@ func refreshTarget(ctx context.Context, who string, fn any) (*refreshSet, *Remot
 	if err != nil {
 		return nil, nil, err
 	}
-	if target.kind != kindQuery {
+	if target.kind != KindQuery {
 		return nil, nil, fmt.Errorf("skgo: %s(%s): %s is a %s, and only a query can be refreshed", who, funcName(fn), target.id, target.kind)
 	}
 	return set, target, nil
@@ -128,23 +139,20 @@ func refreshTarget(ctx context.Context, who string, fn any) (*refreshSet, *Remot
 // no page holds. The client would drop it as a pre-seed for a query nobody is
 // showing and the open page would never see the refresh, with nothing anywhere
 // reporting an error.
-func queryPayload(arg any) (payload string, present bool, err error) {
+func queryPayload(arg any) (payload string, err error) {
 	tree, err := roundTripValue(arg)
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
-	payload, err = remotearg.StringifyQueryArg(tree)
-	if err != nil {
-		return "", false, err
-	}
-	return payload, true, nil
+	return remotearg.StringifyQueryArg(tree)
 }
 
 // refreshEntry is one registered refresh, held until the handler returns.
 type refreshEntry struct {
-	fn      *Remote
-	arg     any
-	present bool
+	fn *Remote
+	// call is the argument as it came off the key this entry is filed under,
+	// ready for the generated closure that will answer it.
+	call Call
 	// err, when set, is this key's whole answer and the query is never run.
 	// It is how a refresh the handler would not accept reaches the client as
 	// that query's own error rather than as silence — see requested.go.
@@ -231,7 +239,7 @@ func (rs *Remotes) resolveExplicit(ctx context.Context, set *refreshSet) (q, l m
 
 			entry := set.entries[key]
 			into := q
-			if entry.fn.kind == kindLive {
+			if entry.fn.kind == KindLive {
 				into = l
 			}
 
@@ -250,10 +258,10 @@ func (rs *Remotes) resolveExplicit(ctx context.Context, set *refreshSet) (q, l m
 				value any
 				err   error
 			)
-			if entry.fn.kind == kindLive {
-				value, err = rs.firstValue(ctx, entry.fn, entry.arg, entry.present)
+			if entry.fn.kind == KindLive {
+				value, err = rs.firstValue(ctx, entry.fn, entry.call)
 			} else {
-				value, err = rs.call(ctx, entry.fn, entry.arg, entry.present)
+				value, err = rs.call(ctx, entry.fn, entry.call)
 			}
 			if err != nil {
 				into[key] = map[string]any{"e": errorNode(asHTTPError(err))}
@@ -308,15 +316,15 @@ func funcNameAt(ptr uintptr) string {
 	return "<unknown>"
 }
 
-func (k remoteKind) String() string {
+func (k Kind) String() string {
 	switch k {
-	case kindCommand:
+	case KindCommand:
 		return "command"
-	case kindLive:
+	case KindLive:
 		return "live query"
-	case kindBatch:
+	case KindBatch:
 		return "batch query"
-	case kindForm:
+	case KindForm:
 		return "form"
 	}
 	return "query"
