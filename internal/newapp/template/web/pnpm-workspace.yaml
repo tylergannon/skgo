@@ -1,2 +1,9 @@
+# esbuild is nothing this app imports any more — the engine's bundle is built
+# by kit's own vite build — but pnpm still installs it, as an optional
+# transitive dependency of @voidzero-dev/vite-plus-core, and refuses to finish
+# an install that leaves a build script unanswered. Its install script only
+# fetches or checks a platform binary nothing runs, so the answer is no.
+allowBuilds:
+  esbuild: false
 minimumReleaseAgeExclude:
   - '@types/node@26.4.1'

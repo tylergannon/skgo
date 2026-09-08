@@ -32,8 +32,14 @@ Kit derives `version.name` from `Date.now()`, so an A/B of two builds differs by
 that timestamp, by `__sveltekit_<djb2(version.name)>` (the boot global), and by
 the ETag over the bytes that hold them. Normalising those three — plus
 `accountSerial`, which increments per request — makes the comparison exact.
-Twenty-eight routes came out identical, signed in, statuses included. Anything
-*else* differing is a real difference.
+Every route came out identical, signed out and signed in, statuses included.
+Anything *else* differing is a real difference.
+
+One more thing does move, and it is not the build: `accountSerial` counts how
+many times the account load has run *in that process*, so a second capture run
+against a server that already answered one starts four higher and reads exactly
+like a regression. Give each side a freshly started server and the same request
+sequence.
 
 ## `vp dev` binds `[::1]`, not `127.0.0.1`
 
@@ -62,13 +68,40 @@ left to scope it to.
 ## goja_nodejs's `URL.origin` leaves the port out, and cannot be corrected
 
 `new URL('http://127.0.0.1:8080/').origin` is `http://127.0.0.1`. The accessor is
-defined `configurable: false` on `URL.prototype`
-(`url/url.go`'s `defineURLAccessorProp`), so it cannot be redefined from Go or
-from JavaScript. Nothing the engine runs reads an origin — kit compares origins
-in `csrf.js`, `fetch.js` and `load_data.js`, none of which execute there — so it
-is pinned by a test (`TestTheEngineOriginLeavesThePortOut`) instead of fixed. If
-a render path ever reaches an origin, two apps on one machine will look like the
-same site.
+defined `configurable: false` on `URL.prototype` (`url/url.go`'s
+`defineURLAccessorProp`), and the object the constructor returns is a Go host
+object, which goja will not let an own accessor shadow either
+(`TypeError: Host objects do not support accessor properties`). There is no way
+to correct it from Go or from JavaScript, and upstream `master` still says the
+same thing.
+
+**A render path reached it within the day.** #78's `event.fetch` guards the call
+into Go's own handler with `target.origin !== url.origin`, which was written
+against the hand-rolled JavaScript URL this branch deletes — that one built
+`origin` from `protocol + '//' + host`, port included. Carried across
+unchanged, the guard would have treated a page on :8080 and a URL on :9999 as
+the same site and dispatched a cross-origin fetch to this app's routes. The
+cross-origin scenario would still have passed: it differs by hostname too.
+
+So `same_origin` in `skgo-adapter/entry.js` compares protocol, hostname and port
+itself. Anything else in the engine that comes to want an origin has to do the
+same; `TestTheEngineOriginLeavesThePortOut` is where that is written down.
+
+Worth generalising: every polyfill this branch replaced with a Go binding is a
+place where a landed feature may have been written against the old one's
+behaviour, not against the standard. The diff being carried is where to look.
+
+## An `allowBuilds` line survives the dependency that explains it
+
+Dropping `esbuild` from `package.json` does not stop pnpm installing it: it is
+an optional transitive dependency of `@voidzero-dev/vite-plus-core`, so removing
+`allowBuilds: esbuild: false` from `pnpm-workspace.yaml` makes `pnpm install`
+exit 1 with `ERR_PNPM_IGNORED_BUILDS`, write its own placeholder back into the
+file, and — in CI, where `just install` is the first step — skip every step
+after it. The checks go red without a single test having run.
+
+`pnpm why esbuild` in the app's tree, not `package.json`, is what says whether
+the line can go.
 
 ## `pnpm test -- <name>` does not filter
 
@@ -80,6 +113,6 @@ total as an unfiltered one filtered nothing.
 ## The node-numbering trap, demonstrated
 
 Mutating the node table to kit's own numbering — identical up to the first
-prerendered node, one off after it — leaves `/` passing and fails all sixteen
-other rows of `engine-build.feature`. That is the shape the brief predicted, and
+prerendered node, one off after it — leaves `/` passing and fails every
+other row of `engine-build.feature`. That is the shape the brief predicted, and
 it is why a parity check that stops at the home page proves nothing.

@@ -18,7 +18,7 @@ import { gojaEnvironment, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 // the Go that reads the manifest below checks what is stamped here against its
 // own, so a copy that has fallen behind is refused by name instead of failing
 // later as something unrelated.
-const SKGO = { version: 'devel', adapter: '1664fdd26678' };
+const SKGO = { version: 'devel', adapter: 'a633c38b479a' };
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:

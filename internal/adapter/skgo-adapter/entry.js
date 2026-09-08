@@ -77,9 +77,95 @@ function make_state() {
 }
 
 /**
+ * event.fetch during a render. Kit's own (runtime/server/fetch.js) resolves a
+ * relative URL against the page's own origin, forwards the incoming cookies
+ * on a same-origin request unless credentials is "omit", and otherwise hands
+ * the request to a real fetch. This engine has no socket to hand a
+ * cross-origin request to — no application I/O executes in JavaScript here —
+ * so a same-origin URL is a call back into Go's own handler for it, exactly
+ * the shape a remote function's call is, and a cross-origin one is refused: a
+ * thrown TypeError, before anything is dispatched. (Kit's own version also
+ * forwards the page's own Authorization header on a same-origin request; this
+ * one does not, because the render's own request never reaches the engine
+ * with its headers — only its cookies, in req.cookies.)
+ *
+ * @param {any} req
+ * @param {URL} url
+ */
+function create_fetch(req, url) {
+	return function (input, init) {
+		const request = input instanceof Request ? input : new Request(input, init);
+		const target = new URL(request.url, url);
+
+		if (!same_origin(target, url)) {
+			throw new TypeError(
+				"skgo: event.fetch only reaches this app's own routes during server-side rendering (" +
+					origin_of(target) +
+					' is not ' +
+					origin_of(url) +
+					')'
+			);
+		}
+
+		const credentials = init?.credentials ?? request.credentials ?? 'same-origin';
+		if (credentials !== 'omit') {
+			const cookie = Object.entries(req.cookies ?? {})
+				.map(([name, value]) => name + '=' + value)
+				.join('; ');
+			if (cookie) request.headers.set('cookie', cookie);
+		}
+
+		const headers = {};
+		request.headers.forEach((value, name) => {
+			headers[name] = value;
+		});
+
+		const envelope = { method: request.method || 'GET', url: target.href, headers };
+		if (typeof request._body === 'string') envelope.body = request._body;
+
+		const raw = globalThis.__skgo_fetch(JSON.stringify(envelope));
+		const answer = JSON.parse(raw);
+		if (answer.error) throw new TypeError(answer.error);
+
+		return Promise.resolve(
+			new Response(answer.response.body ?? '', {
+				status: answer.response.status,
+				headers: answer.response.headers
+			})
+		);
+	};
+}
+
+/**
+ * Same-origin, spelled out rather than taken from `origin`. The engine's URL is
+ * Go's (goja_nodejs, over net/url) and its `origin` is scheme and hostname with
+ * the port left out, which would make a page on :8080 and a URL on :9999 look
+ * like the same site — and this is the one comparison standing between a
+ * cross-origin fetch and Go's own handler for the path. Protocol, hostname and
+ * port are each exactly what the standard compares.
+ *
+ * @param {URL} a
+ * @param {URL} b
+ */
+function same_origin(a, b) {
+	return a.protocol === b.protocol && a.hostname === b.hostname && a.port === b.port;
+}
+
+/**
+ * What `url.origin` would say if this engine's URL reported it the way the
+ * standard does. Only the refusal message above needs it.
+ *
+ * @param {URL} url
+ */
+function origin_of(url) {
+	return url.host ? url.protocol + '//' + url.host : 'null';
+}
+
+/**
  * A RequestEvent stand-in. run_remote_function spreads it and derives the
  * event a query actually sees, which is where kit makes url, params and
- * route throw. Go owns the real request; nothing here does I/O.
+ * route throw. Go owns the real request; the only I/O anything here performs
+ * is `fetch`'s in-process call back into Go for one of the app's own routes.
  */
 function make_event(req, url) {
 	return {
@@ -90,9 +176,7 @@ function make_event(req, url) {
 			delete: () => {},
 			serialize: () => ''
 		},
-		fetch: () => {
-			throw new Error('skgo: fetch is not available during server-side rendering; load the data in Go');
-		},
+		fetch: create_fetch(req, url),
 		getClientAddress: () => req.client_address ?? '127.0.0.1',
 		locals: {},
 		params: req.params ?? {},

@@ -68,11 +68,14 @@ func TestTheEngineParsesAURLTheWayTheWebDoes(t *testing.T) {
 // `http://127.0.0.1:8080`; goja_nodejs answers `http://127.0.0.1`, and defines
 // the accessor as non-configurable, so it cannot be corrected from outside.
 //
-// This is written down rather than fixed because nothing the engine runs reads
-// an origin: kit compares origins in `csrf.js`, `fetch.js` and `load_data.js`,
-// and skgo runs none of them — Go makes those decisions. The day a render path
-// does reach one, this test fails to be a curiosity and becomes the reason two
-// apps on one machine look like the same site.
+// It is written down rather than fixed because it cannot be fixed from here:
+// the object goja_nodejs's URL constructor returns is a Go host object, which
+// goja refuses to define an accessor property on, so there is no per-instance
+// shadow either. What reads an origin instead avoids the accessor: the one
+// render path that compares origins — `event.fetch`'s refusal to leave this
+// app, in skgo-adapter/entry.js — compares protocol, hostname and port itself,
+// with a comment pointing here. Anything else that comes to need an origin has
+// to do the same, which is what this test exists to say.
 func TestTheEngineOriginLeavesThePortOut(t *testing.T) {
 	const standard = "http://127.0.0.1:8080"
 	got := evaluate(t, `new URL('http://127.0.0.1:8080/a').origin`)
@@ -83,6 +86,36 @@ func TestTheEngineOriginLeavesThePortOut(t *testing.T) {
 	if got != "http://127.0.0.1" {
 		t.Fatalf("the engine's origin is %q, which is neither the standard %q "+
 			"nor the deviation this test was written against", got, standard)
+	}
+}
+
+// TestTheEngineSeesTwoPortsAsTwoSites is the substrate `event.fetch`'s refusal
+// to leave this app stands on. `same_origin` in skgo-adapter/entry.js compares
+// protocol, hostname and port because the origin accessor above cannot be
+// trusted, and a page on one port fetching a URL on another has to come out as
+// two sites.
+//
+// The last row is why that function exists at all: the two URLs report the
+// *same* origin, so the guard as it was first written — `target.origin !==
+// url.origin`, against a hand-rolled JavaScript URL that built origin from
+// protocol and host — would have dispatched a cross-origin fetch into this
+// app's own routes.
+func TestTheEngineSeesTwoPortsAsTwoSites(t *testing.T) {
+	const here = `new URL('http://127.0.0.1:8080/a')`
+	const there = `new URL('http://127.0.0.1:9999/a')`
+	for _, c := range []struct {
+		field string
+		want  string
+	}{
+		{"protocol", "http:|http:"},
+		{"hostname", "127.0.0.1|127.0.0.1"},
+		{"port", "8080|9999"},
+		{"origin", "http://127.0.0.1|http://127.0.0.1"},
+	} {
+		expression := "[" + here + "." + c.field + ", " + there + "." + c.field + "].join('|')"
+		if got := evaluate(t, expression); got != c.want {
+			t.Errorf("%s = %q, want %q", expression, got, c.want)
+		}
 	}
 }
 

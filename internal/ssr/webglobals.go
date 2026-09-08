@@ -44,12 +44,13 @@ func (rt *runtime) installWebGlobals() error {
 //
 // It departs from the standard in one place: its `origin` is the scheme and the
 // hostname, with the port left out, and it defines that accessor as
-// non-configurable so it cannot be corrected from outside. Nothing the engine
-// runs reads it — the origin comparisons in kit's runtime are in `csrf.js`,
-// `fetch.js` and `load_data.js`, none of which the engine executes, because Go
-// makes those decisions. webglobals_test.go pins the deviation so that a future
-// render path reaching an origin finds it written down rather than discovering
-// that two ports look like one host.
+// non-configurable — on a Go host object, which goja will not let a per-instance
+// accessor shadow — so it cannot be corrected from here at all. The one render
+// path that compares origins is `event.fetch`'s refusal to leave this app
+// (skgo-adapter/entry.js, `same_origin`), and it compares protocol, hostname and
+// port itself rather than reading the accessor. webglobals_test.go pins the
+// deviation so that the next render path to want an origin finds it written down
+// rather than discovering that two ports look like one host.
 func (rt *runtime) installURL() error {
 	module := rt.vm.NewObject()
 	if err := module.Set("exports", rt.vm.NewObject()); err != nil {

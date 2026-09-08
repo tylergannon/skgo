@@ -8,8 +8,11 @@
 //
 // URL, URLSearchParams, TextEncoder, TextDecoder, btoa and atob are not here:
 // Go binds those natively when it creates a runtime, before this text runs.
-// What is left is the three classes kit compares against with `instanceof`,
-// which a Go-backed constructor cannot satisfy.
+// What is left is what a Go-backed constructor could not stand in for: the
+// classes kit compares against with `instanceof` (Headers, Blob, File) and the
+// two a render's own `event.fetch` builds and hands back (Request, Response),
+// which are string and Map bookkeeping over a value that never leaves the
+// engine except through `__skgo_fetch`.
 
 // Svelte's no-AsyncLocalStorage fallback is gated on exactly this check
 // (svelte/src/internal/server/render-context.js), and kit reads the same flag
@@ -76,6 +79,55 @@ if (typeof globalThis.Headers === 'undefined') {
 		}
 		[Symbol.iterator]() {
 			return this._.entries();
+		}
+	};
+}
+
+// Request and Response back a render-time `event.fetch`. Kit's own
+// `normalize_fetch_input` (runtime/server/fetch.js) turns whatever a
+// component passed into a real Request before deciding what to do with it, and
+// the answer a render's fetch gets back has to be a real Response — `await
+// (await event.fetch(...)).json()` is what a page actually writes. Nothing
+// here sends bytes anywhere: building one is string and Map bookkeeping, and
+// the one call that leaves the engine is `__skgo_fetch` itself.
+if (typeof globalThis.Request === 'undefined') {
+	globalThis.Request = class Request {
+		constructor(input, init = {}) {
+			if (input instanceof Request) {
+				this.url = input.url;
+				this.method = (init.method ?? input.method ?? 'GET').toUpperCase();
+				this.headers = init.headers ? new Headers(init.headers) : new Headers(input.headers);
+				this._body = init.body !== undefined ? init.body : input._body;
+				this.credentials = init.credentials ?? input.credentials ?? 'same-origin';
+				this.mode = init.mode ?? input.mode ?? 'cors';
+			} else {
+				this.url = String(input);
+				this.method = (init.method ?? 'GET').toUpperCase();
+				this.headers = new Headers(init.headers);
+				this._body = init.body;
+				this.credentials = init.credentials ?? 'same-origin';
+				this.mode = init.mode ?? 'cors';
+			}
+		}
+		async text() { return this._body ?? ''; }
+		async json() { return JSON.parse(this._body ?? 'null'); }
+	};
+}
+
+if (typeof globalThis.Response === 'undefined') {
+	globalThis.Response = class Response {
+		constructor(body, init = {}) {
+			this._body = body ?? '';
+			this.status = init.status ?? 200;
+			this.statusText = init.statusText ?? '';
+			this.headers = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
+			this.ok = this.status >= 200 && this.status < 300;
+		}
+		async text() { return this._body; }
+		async json() { return JSON.parse(this._body); }
+		async arrayBuffer() { return new TextEncoder().encode(this._body).buffer; }
+		clone() {
+			return new Response(this._body, { status: this.status, statusText: this.statusText, headers: this.headers });
 		}
 	};
 }

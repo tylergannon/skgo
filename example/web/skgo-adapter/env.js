@@ -40,6 +40,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const ENTRY = join(here, 'entry.js');
 const APP_SERVER = join(here, 'app-server.js');
+const APP_PATHS = join(here, 'app-paths.js');
 const POLYFILL = join(here, 'polyfill.js');
 
 /**
@@ -77,6 +78,11 @@ function kitAliases(root) {
 		'skgo:kit/transport': join(runtime, 'app/internal/transport.js'),
 		'skgo:kit/props': join(runtime, 'props.svelte.js'),
 		'skgo:kit/root': join(runtime, 'components/root.svelte'),
+		// kit's own `$app/paths` server implementation, which app-paths.js
+		// re-exports `resolve` and `asset` out of, and the pathname decoder kit's
+		// own `match` prepares its argument with.
+		'skgo:kit/paths-server': join(runtime, 'app/paths/server.js'),
+		'skgo:kit/url': join(kit, 'src/utils/url.js'),
 		// devalue resolved from kit rather than from the app: kit is what
 		// depends on it, and under pnpm the app's own node_modules has no such
 		// directory. The entry needs it directly for the one thing kit's
@@ -208,9 +214,11 @@ export function gojaEnvironment() {
 				if (id in sources) return PREFIX + id;
 				if (id.startsWith(PREFIX)) return id;
 				if (id in aliases) return aliases[id];
-				// The one substitution. Kit aliases `$app/server` to its own
-				// runtime module; this gets there first, and only here.
+				// The two substitutions. Kit aliases `$app/server` and
+				// `$app/paths` to its own runtime modules; this gets there first,
+				// and only here.
 				if (id === '$app/server') return APP_SERVER;
+				if (id === '$app/paths') return APP_PATHS;
 				if (id === 'esm-env') return PREFIX + 'skgo:esm-env';
 				if (id === '<sveltekit:generated>') return PREFIX + 'skgo:generated';
 				if (id === 'node:async_hooks' || id === 'async_hooks') return PREFIX + 'skgo:missing';

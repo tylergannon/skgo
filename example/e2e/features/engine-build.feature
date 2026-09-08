@@ -66,6 +66,7 @@ Feature: The engine's JavaScript is SvelteKit's own build
       | /live                       | Live               |
       | /batch                      | Batch              |
       | /account/orders             | Orders             |
+      | /render-paths               | Render-time paths  |
 
   Scenario: A prerendered page is still the file kit's own server build wrote
     The engine is the only place `$app/server` means something different: kit's
