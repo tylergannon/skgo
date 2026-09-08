@@ -1,29 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
-// Which mode this run is for. It decides two things: what the suite tells the
-// server it expects to be answering (EXPECTED_MODE), and which scenarios exist
-// at all.
-//
-// A handful of claims are true in one mode and not the other, because the two
-// modes really do behave differently: in prod Go renders the document, and in
-// dev kit's own server owns it and the app turns server rendering off (see
-// web/src/routes/+layout.ts). Rather than let a step quietly mean two things,
-// each such scenario is written twice — `@prod` beside `@dev` — and the run
-// generates only the half that belongs to it. Everything untagged runs in both.
-const mode = process.env.EXPECTED_MODE === 'dev' ? 'dev' : 'prod';
+// The same scenarios run against the embedded production build and the live
+// Vite module graph. The label separates their reports and screenshots; it
+// never changes which scenarios exist or what they assert.
+const run = process.env.SKGO_E2E_RUN ?? 'run';
 
 const testDir = defineBddConfig({
 	features: 'features/**/*.feature',
 	steps: 'steps/**/*.ts',
-	tags: mode === 'dev' ? 'not @prod' : 'not @dev',
-	// Per mode, so a run cannot execute the spec files the other mode's
-	// generation left behind if bddgen ever fails to overwrite them.
-	outputDir: `.features-gen/${mode}`
+	outputDir: '.features-gen'
 });
 
-// The suite always targets an already-running server: BASE_URL points at Go,
-// and EXPECTED_MODE says which handler should be answering there.
+// The suite always targets an already-running Go server through BASE_URL.
 export default defineConfig({
 	testDir,
 	fullyParallel: false,
@@ -34,9 +23,9 @@ export default defineConfig({
 	// taking them.
 	reporter: [
 		['list'],
-		['html', { open: 'never', outputFolder: `playwright-report/${process.env.EXPECTED_MODE ?? 'unknown'}` }]
+		['html', { open: 'never', outputFolder: `playwright-report/${run}` }]
 	],
-	outputDir: `test-results/${process.env.EXPECTED_MODE ?? 'unknown'}`,
+	outputDir: `test-results/${run}`,
 	use: {
 		baseURL: process.env.BASE_URL,
 		trace: 'retain-on-failure',

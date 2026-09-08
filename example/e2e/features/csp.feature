@@ -1,4 +1,3 @@
-@prod
 Feature: A document's Content-Security-Policy header matches what it renders
 
   The app configures `csp: { mode: 'auto', directives: { 'script-src': ['self']

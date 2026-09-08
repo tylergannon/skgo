@@ -18,7 +18,6 @@ Feature: A live query is rendered by Go and then keeps arriving
   on. A page that quietly refetched a static value instead of listening would sit
   on 1 for ever, which is the difference this feature is about.
 
-  @prod
   Scenario: The board is in the document Go sent, before any script runs
     Given another tab is open at "/todos"
     When the other tab adds the todo "the board arrived rendered"
@@ -28,7 +27,6 @@ Feature: A live query is rendered by Go and then keeps arriving
     And the document never mentions "skgo: implemented in Go"
     And every part of the page loaded
 
-  @prod
   Scenario: Hydration listens rather than refetching
     The browser opens the stream — that is what subscribing is — and it does
     nothing else. If the value had not travelled with the document, the board
@@ -49,6 +47,7 @@ Feature: A live query is rendered by Go and then keeps arriving
     Given I open "/live"
     And another tab is open at "/todos"
     And the board is on stream frame 1
+    And the board's stream is open
     And I note the remote request count
     When the other tab adds the todo "a parcel from the other tab"
     Then the board's newest todo is "a parcel from the other tab"
@@ -70,7 +69,6 @@ Feature: A live query is rendered by Go and then keeps arriving
     And the board's count is the number of todos in the other tab
     And every part of the page loaded
 
-  @prod
   Scenario: The todos page carries its live count in the document too
     The count above the todo list is the same kind of function — a `query.live`
     awaited while the page renders — and it arrives the same way.

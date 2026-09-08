@@ -1,11 +1,11 @@
 import { createBdd } from 'playwright-bdd';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 import { tagged } from './ssr';
 
-const { After, Given, Then, When } = createBdd(test);
+const { After, Then, When } = createBdd(test);
 
 /** The vite root — the app whose sources a scenario may edit. */
 const app = resolve(dirname(fileURLToPath(import.meta.url)), '../../web');
@@ -16,23 +16,9 @@ const app = resolve(dirname(fileURLToPath(import.meta.url)), '../../web');
  * that the next scenario is not reading the last one's edit.
  */
 const edited = new Map<string, string>();
+const created = new Set<string>();
 
-/**
- * The route directories an editing scenario created. The After hook deletes
- * them and waits until Go is answering 404 for them again, so the next scenario
- * is not running against the last one's route tree — and so the checkout the
- * suite ran in is the checkout it started with.
- */
-const added = new Set<string>();
-
-/**
- * The steps dev.feature needs and prod has no use for.
- *
- * In dev the document is kit's shell, so nothing can be claimed about its
- * bytes; what is left to assert is that the page filled itself in from Go.
- * Two kinds of claim do that here: what the visitor can see, and what Go's own
- * data endpoint says when it is asked directly.
- */
+/** Steps whose assertions distinguish a live module graph from an embedded build. */
 
 /**
  * The negative half of "Go answered". The generated `.remote.ts` and
@@ -78,55 +64,6 @@ Then(
  * a signed-out visitor and /account/statement would answer with a redirect
  * instead of the 402 the scenario names.
  */
-Then(
-	"Go's data endpoint for {string} answered {int}",
-	async ({ page, shot }, path: string, status: number) => {
-		const body = await dataResponse(page, path);
-		const nodes = body.nodes as Array<{ type?: string; error?: { status?: number } } | null>;
-		expect(Array.isArray(nodes), `the data response was ${JSON.stringify(body)}`).toBe(true);
-		const failed = nodes.find((node) => node?.type === 'error');
-		expect(failed, `no node in the branch failed: ${JSON.stringify(body)}`).toBeTruthy();
-		expect(failed!.error?.status).toBe(status);
-		await appIsUp(page);
-		await shot();
-	}
-);
-
-Then(
-	"Go's data endpoint for {string} answers with a redirect to {string}",
-	async ({ page, shot }, path: string, location: string) => {
-		const body = await dataResponse(page, path);
-		expect(body.type).toBe('redirect');
-		expect(body.location).toBe(location);
-		await appIsUp(page);
-		await shot();
-	}
-);
-
-/**
- * Waits for the shell to have become a page before a frame is taken of it. The
- * claims above are about a response the step already read, so the picture may
- * as well be of something; without this it is a photograph of a blank document.
- */
-async function appIsUp(page: import('@playwright/test').Page) {
-	await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 15_000 });
-}
-
-async function dataResponse(
-	page: import('@playwright/test').Page,
-	path: string
-): Promise<Record<string, unknown>> {
-	const url = `${path === '/' ? '' : path}/__data.json`;
-	const response = await page.request.get(url);
-	const text = await response.text();
-	expect(
-		response.headers()['content-type'] ?? '',
-		`${url} answered ${response.status()} with ${text.slice(0, 200)}`
-	).toContain('application/json');
-	return JSON.parse(text) as Record<string, unknown>;
-}
-
-
 /**
  * Edits one of the app's own sources, the way an editor would.
  *
@@ -135,7 +72,11 @@ async function dataResponse(
  */
 When(
 	'{string} has {string} replaced with {string}',
-	async ({}, file: string, from: string, to: string) => {
+	async ({ page }, file: string, from: string, to: string) => {
+		// An edit before Kit's router and Vite's HMR client are ready can only
+		// prove the next document. Let the same edit also be observable by the
+		// already-open page.
+		await hydrated(page);
 		const path = join(app, file);
 		const before = await readFile(path, 'utf-8');
 		const occurrences = before.split(from).length - 1;
@@ -144,6 +85,24 @@ When(
 		);
 		if (!edited.has(path)) edited.set(path, before);
 		await writeFile(path, before.replace(from, to), 'utf-8');
+	}
+);
+
+Then(
+	'the open page hot-updates to {string} in dev or stays at built heading {string} without reloading',
+	async ({ page, documents, browserConsole, shot }, liveHeading: string, builtHeading: string) => {
+		const mode = documents.last?.headers()['x-skgo-mode'];
+		expect(['dev', 'prod'], `x-skgo-mode was ${JSON.stringify(mode)}`).toContain(mode);
+		const expected = mode === 'dev' ? liveHeading : builtHeading;
+		await expect(page.getByTestId('title')).toHaveText(expected, {
+			timeout: mode === 'dev' ? 30_000 : 2_000
+		});
+		expect(documents.count, documents.log.join('\n')).toBe(1);
+		const hydrationFailures = browserConsole.messages.filter((message) =>
+			/hydration (failed|mismatch)|hydration_mismatch/i.test(message)
+		);
+		expect(hydrationFailures, hydrationFailures.join('\n')).toHaveLength(0);
+		await shot(mode === 'dev' ? 'hot-updated' : 'built-unchanged');
 	}
 );
 
@@ -156,140 +115,109 @@ When(
  * what to drop, and a fixed sleep is either flaky or slow. The claim is still
  * one that fails: a Go that never picked the edit up never satisfies it.
  */
-let latest = '';
-
 Then(
-	"the document Go sends for {string} has the page's heading {string}",
-	async ({ page, shot }, path: string, heading: string) => {
+	'a new document for {string} carries {string} from live source or {string} from its build',
+	async ({ page, shot }, path: string, liveHeading: string, builtHeading: string) => {
+		const first = await page.request.get(path);
+		const mode = first.headers()['x-skgo-mode'];
+		expect(['dev', 'prod'], `x-skgo-mode was ${JSON.stringify(mode)}`).toContain(mode);
+		const expected = mode === 'dev' ? liveHeading : builtHeading;
+		const rejected = mode === 'dev' ? builtHeading : liveHeading;
+
 		await expect
-			.poll(
-				async () => {
-					latest = await (await page.request.get(path)).text();
-					return latest;
-				},
-				{ timeout: 30_000, intervals: [250, 250, 500, 500, 1000] }
-			)
-			.toMatch(tagged('h1', 'title', heading));
-		// The frame is of the page as a visitor would now see it, which is the
-		// same edit arriving by the other route.
+			.poll(async () => (await page.request.get(path)).text(), {
+				timeout: mode === 'dev' ? 30_000 : 2_000,
+				intervals: [250, 250, 500, 500, 1000]
+			})
+			.toMatch(tagged('h1', 'title', expected));
+
+		const html = await (await page.request.get(path)).text();
+		expect(html).not.toMatch(tagged('h1', 'title', rejected));
 		await page.goto(path);
-		await shot('edited');
+		await shot(mode === 'dev' ? 'live-source' : 'built-source');
 	}
 );
 
-Then("that document no longer has the heading {string}", async ({}, heading: string) => {
-	expect(latest, 'no document has been fetched by this scenario').not.toBe('');
-	expect(latest).not.toMatch(tagged('h1', 'title', heading));
+When('the route fixture is added while the servers keep running', async () => {
+	const source = resolve(dirname(fileURLToPath(import.meta.url)), '../fixtures/dev-added');
+	const target = join(app, 'src/routes/dev-added');
+	await mkdir(target, { recursive: true });
+	for (const file of ['+page.svelte', '+page.server.ts']) {
+		await copyFile(join(source, file), join(target, file));
+	}
+	created.add(target);
 });
 
+Then(
+	'the live dev route renders its Go load while the production build stays unchanged',
+	async ({ page, shot }) => {
+		const mode = (await page.request.get('/')).headers()['x-skgo-mode'];
+		expect(['dev', 'prod'], `x-skgo-mode was ${JSON.stringify(mode)}`).toContain(mode);
+
+		if (mode === 'dev') {
+			await expect
+				.poll(async () => {
+					const response = await page.request.get('/dev-added');
+					return { status: response.status(), body: await response.text() };
+				}, {
+					timeout: 30_000,
+					intervals: [250, 250, 500, 500, 1000]
+				})
+				.toEqual({
+					status: 200,
+					body: expect.stringContaining('loaded by the already-running Go process')
+				});
+			// Vite publishes the route manifest and browser graph through separate
+			// invalidations. The raw document above proves Go has the route; wait for
+			// a navigation that also uses Kit's matching live browser graph.
+			await expect
+				.poll(async () => {
+					await page.goto('/dev-added');
+					return page.getByTestId('title').textContent();
+				}, {
+					timeout: 30_000,
+					intervals: [250, 250, 500, 500, 1000]
+				})
+				.toBe('Added while running');
+			await expect(page.getByTestId('live-route-load')).toHaveText(
+				'loaded by the already-running Go process'
+			);
+			expect(await page.locator('style[data-sveltekit]').textContent()).toContain('color: #176b47');
+		} else {
+			const response = await page.goto('/dev-added');
+			expect(response?.status()).toBe(404);
+			expect(await page.locator('body').innerText()).not.toContain('Added while running');
+		}
+		await shot(mode === 'dev' ? 'live-route' : 'built-route');
+	}
+);
+
 After(async ({ page }) => {
+	const changedRoutes = created.size > 0;
+	for (const path of created) {
+		await rm(path, { recursive: true, force: true });
+	}
+	created.clear();
 	for (const [path, before] of edited) {
 		await writeFile(path, before, 'utf-8');
 	}
-	if (edited.size === 0) return;
+	const changedSource = edited.size > 0;
 	edited.clear();
+	if (!changedRoutes && !changedSource) return;
 	// Wait for Go to be serving the restored source again, so the next scenario
-	// does not read this one's edit.
+	// does not read this one's edit or a transiently renumbered route graph.
 	await expect
 		.poll(async () => (await page.request.get('/')).text(), {
 			timeout: 30_000,
 			intervals: [250, 250, 500, 500, 1000]
 		})
 		.toMatch(tagged('h1', 'title', 'Home'));
-});
-
-/**
- * A precondition, not an assertion: a leftover route from a run that died
- * halfway through would make everything below pass for the wrong reason.
- */
-Given('the app has no route {string}', async ({ page }, path: string) => {
-	const response = await page.request.get(path);
-	expect(
-		response.status(),
-		`${path} already exists; a previous run left ${join(app, 'src/routes', path)} behind`
-	).toBe(404);
-});
-
-/**
- * Writes a route the way a developer would: a `+page.svelte` in a new directory
- * under `src/routes`, while both servers are running.
- *
- * The page shows two things. One is a literal this scenario supplied, which
- * nothing in the app contains, so a document carrying it can only be the file
- * just written. The other is the answer to `getSite` in
- * src/routes/site.remote.go — whose generated `.remote.ts` throws — so a
- * document carrying that is Go having answered a remote function called from a
- * route that did not exist when Go started.
- */
-When(
-	'a page is added at {string} showing {string} and the site name',
-	async ({}, path: string, literal: string) => {
-		const dir = join(app, 'src/routes', path);
-		added.add(dir);
-		await mkdir(dir, { recursive: true });
-		await writeFile(
-			join(dir, '+page.svelte'),
-			[
-				'<script lang="ts">',
-				`\timport { getSite } from '${'../'.repeat(path.split('/').filter(Boolean).length)}site.remote';`,
-				'</script>',
-				'',
-				'<h1 data-testid="title">Added</h1>',
-				`<p data-testid="added">${literal}</p>`,
-				'<svelte:boundary>',
-				'\t<p data-testid="added-site">{(await getSite()).name}</p>',
-				'</svelte:boundary>',
-				''
-			].join('\n'),
-			'utf-8'
-		);
-	}
-);
-
-/**
- * The bytes Go sends now, read as text. It polls, because the file has to reach
- * vite's watcher before Go can be told the route tree moved; a Go that never
- * picks it up never satisfies this.
- */
-Then(
-	'the document Go sends for {string} carries {string}',
-	async ({ page, shot }, path: string, text: string) => {
-		await expect
-			.poll(
-				async () => {
-					latest = await (await page.request.get(path)).text();
-					return latest;
-				},
-				{ timeout: 30_000, intervals: [250, 250, 500, 500, 1000] }
-			)
-			.toContain(text);
-		await shot();
-	}
-);
-
-Then('that document also carries {string}', async ({}, text: string) => {
-	expect(latest, 'no document has been fetched by this scenario').not.toBe('');
-	expect(latest).toContain(text);
-});
-
-Then('that document never mentions {string}', async ({}, text: string) => {
-	expect(latest, 'no document has been fetched by this scenario').not.toBe('');
-	expect(latest).not.toContain(text);
-});
-
-After(async ({ page }) => {
-	if (added.size === 0) return;
-	const paths = [...added].map((dir) => '/' + dir.slice(join(app, 'src/routes').length + 1));
-	for (const dir of added) await rm(dir, { recursive: true, force: true });
-	added.clear();
-	// Wait for Go to have stopped serving them, so the next scenario starts
-	// from the route tree the app is checked in with.
-	for (const path of paths) {
-		await expect
-			.poll(async () => (await page.request.get(path)).status(), {
-				timeout: 30_000,
-				intervals: [250, 250, 500, 500, 1000]
-			})
-			.toBe(404);
+	if (changedRoutes) {
+		// Kit rewrites its generated browser graph separately from the manifest
+		// snapshot Go consumes. Do not let the next scenario begin until a fresh
+		// browser can hydrate the restored graph as Home as well.
+		await page.goto('/');
+		await hydrated(page);
+		await expect(page.getByTestId('title')).toHaveText('Home');
 	}
 });

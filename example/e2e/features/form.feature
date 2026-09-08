@@ -46,7 +46,6 @@ Feature: Forms written in Go
     Then the inbox shows a message from "Matsuo Basho" saying "A haiku is attached for your consideration."
     And the message saying "A haiku is attached for your consideration." reports the attachment "haiku.txt" of 72 bytes with digest "84cee680e822"
 
-  @prod
   Scenario: A submission that bypasses kit's client hydrates to the state Go rendered
     Given I open "/contact"
     When the contact page has loaded
@@ -63,7 +62,6 @@ Feature: Forms written in Go
     # receipt above off the page.
     And the inbox shows a message from "Alan Turing" saying "Machines take me by surprise with great frequency."
 
-  @prod
   Scenario: The issues of a submission that bypasses kit's client survive hydration
     Given I open "/contact"
     When the contact page has loaded

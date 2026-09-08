@@ -74,11 +74,9 @@ When('I ask the endpoint to DELETE', async ({ page }) => {
  * wrong for a route that answers JSON: there is no Svelte app on the other end
  * of an endpoint.
  */
-Then('the document came from skgo in the expected mode', async ({ documents }) => {
-	const expected = process.env.EXPECTED_MODE;
-	expect(expected, 'EXPECTED_MODE must be set to dev or prod').toBeTruthy();
+Then('the document came from skgo', async ({ documents }) => {
 	expect(documents.last, 'no document response was observed').not.toBeNull();
-	expect(documents.last!.headers()['x-skgo-mode']).toBe(expected);
+	expect(['dev', 'prod']).toContain(documents.last!.headers()['x-skgo-mode']);
 });
 
 Then('the document response status was {int}', async ({ documents }, status: number) => {

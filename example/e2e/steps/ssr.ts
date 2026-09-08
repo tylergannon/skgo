@@ -50,7 +50,7 @@ Then(
 Then(
 	'the document already said the item is named {string}',
 	async ({ documents, shot }, name: string) => {
-		expect(await documentText(documents)).toContain(`<p data-testid="item-name">${name}</p>`);
+		expect(await documentText(documents)).toMatch(tagged('p', 'item-name', name));
 		await shot();
 	}
 );
@@ -156,12 +156,12 @@ When(
 );
 
 Then('the first document says the item is named {string}', async ({ shot }, name: string) => {
-	expect(concurrent.html[0]).toContain(`<p data-testid="item-name">${name}</p>`);
+	expect(concurrent.html[0]).toMatch(tagged('p', 'item-name', name));
 	await shot('first');
 });
 
 Then('the second document says the item is named {string}', async ({ page }, name: string) => {
-	expect(concurrent.html[1]).toContain(`<p data-testid="item-name">${name}</p>`);
+	expect(concurrent.html[1]).toMatch(tagged('p', 'item-name', name));
 	await screenshot(concurrent.second!, 'two-pages-at-once-second');
 	// And the first page again, so the pair can be read side by side.
 	await screenshot(page, 'two-pages-at-once-first');
@@ -184,7 +184,7 @@ Then("neither document carries the other's item", async ({ shot }) => {
 
 /** Photographs a page this scenario opened itself. */
 async function screenshot(page: Page, name: string) {
-	const mode = process.env.EXPECTED_MODE ?? 'unknown';
+	const mode = process.env.SKGO_E2E_RUN ?? 'run';
 	await page.screenshot({
 		path: `../../ephemeral/screenshots/ssr/${mode}/${name}.png`,
 		fullPage: true

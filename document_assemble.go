@@ -68,7 +68,7 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 	stylesheets := newOrdered(client.Stylesheets)
 	fonts := append([]ManifestFont(nil), client.Fonts...)
 	for _, index := range indices {
-		node := s.nodes()[index]
+		node := s.info.Nodes[index]
 		modulepreloads.add(node.Imports...)
 		stylesheets.add(node.Stylesheets...)
 		fonts = append(fonts, node.Fonts...)
@@ -94,9 +94,29 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 		}
 	}
 
+	var styleTags []string
+	if s.dev != nil {
+		styles, err := s.dev.Styles(indices)
+		if err != nil {
+			return "", nil, documentHeaders{}, err
+		}
+		style := strings.Join(styles, "\n")
+		if style != "" {
+			csp.AddStyle(style)
+			attributes := ` data-sveltekit`
+			if csp.StyleNeedsNonce() {
+				attributes += ` nonce="` + csp.nonce + `"`
+			}
+			styleTags = append(styleTags, "<style"+attributes+">"+style+"</style>")
+		}
+	}
+
 	// Kit's five buckets, in kit's order: http-equiv tags, link tags, whatever
 	// the components put in `<svelte:head>`, style tags, stylesheet links.
-	head := strings.Join(append(append(linkTags, result.Head), stylesheetLinks...), "\n\t\t")
+	headItems := append(append([]string{}, linkTags...), result.Head)
+	headItems = append(headItems, styleTags...)
+	headItems = append(headItems, stylesheetLinks...)
+	head := strings.Join(headItems, "\n\t\t")
 
 	// kit's `const { data, chunks } = data_serializer.get_data(csp)`, and in
 	// kit's place: before the boot script and outside the `csr` branch, so that
@@ -174,7 +194,7 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, pl
 	// whichever pages happen to live at those numbers.
 	nodeIDs := make([]int, len(indices))
 	for i, index := range indices {
-		nodeIDs[i] = s.nodes()[index].Index
+		nodeIDs[i] = s.info.Nodes[index].Index
 	}
 
 	// `error` is the page's error serialised with devalue, and `status` is

@@ -8,17 +8,13 @@ Feature: Server loads written in Go
   The section is protected by one rule, written once in its layout, and the
   session that rule reads is derived once by the app's `handle` hook.
 
-  A scenario tagged `@prod` claims something about the document Go rendered from
-  the bundle the adapter built. Go renders in dev too now, from the modules
-  `vp dev` transforms, so the same claims hold there — dev.feature makes the
-  ones only dev can show, and the tags here are what is left of a split that
-  used to be a real difference.
+  The same claims run against the bundle the adapter built and the modules
+  `vp dev` transforms. Go renders the document and owns every load in both.
 
-  @prod
   Scenario: A layout's data and its page's data arrive in the document itself
     Given I have signed in as "ada"
     When I visit "/account"
-    Then the document response came from skgo in the expected mode
+    Then the document response came from skgo
     And the account layout greets "ada"
     And the account page says its parent loaded "ada"
     And the browser never asked for the page's data
@@ -55,13 +51,9 @@ Feature: Server loads written in Go
     Then the layout serial has changed
     And the account layout greets "ada"
 
-  @prod
   Scenario: A load that fails puts the visitor on an error page the document carried
-    The error page arrives rendered, with the status the load threw. It used to
-    arrive as kit's shell at 200 and be rendered by the client from the error
-    in `__data.json`; a shell would satisfy the last two steps below and none
-    of the first three. That older shape is what dev still is, and dev.feature's
-    "An expected error in a nested page renders inside its layout" is it.
+    The error page arrives rendered, with the status the load threw. A shell
+    would satisfy the last two steps below and none of the first three.
 
     Given I have signed in as "ada"
     When I visit "/account/statement"

@@ -26,9 +26,8 @@ Feature: A Go slice that was never filled is still a list
     Then every part of the page loaded
     And the report titled "Parsed" lists "unused import fmt" and "missing return"
 
-  @prod
   Scenario: The empty list was already in the document Go sent
-    Then the document response came from skgo in the expected mode
+    Then the document response came from skgo
     And the document already said '<p data-testid="report-count">0 diagnostics</p>'
     And the document already said '<li data-testid="report-empty">No diagnostics.</li>'
     And the document already said '<p data-testid="notes-count">0 notes</p>'

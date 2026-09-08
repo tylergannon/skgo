@@ -1,4 +1,3 @@
-@prod
 Feature: The engine's JavaScript is SvelteKit's own build
 
   The bundle the Go process renders pages with is an output of the app's
@@ -10,8 +9,8 @@ Feature: The engine's JavaScript is SvelteKit's own build
   that gives every remote function the id the browser addresses it by. None of
   that is skgo's any more, and this feature is how a developer can see it.
 
-  It is all `@prod` for the same reason ssr.feature is: the bundle exists only in
-  the built app. In dev, kit's own server owns the document.
+  Production evaluates the bundle; development evaluates Kit's live module
+  graph. The route/node identity and rendered behavior must agree.
 
   Nothing a visitor sees was supposed to change, so what is claimed here is that
   nothing did — stated as the two things a wrong build breaks quietly.

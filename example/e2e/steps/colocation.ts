@@ -15,8 +15,10 @@ Then('the answer came from {string}', async ({ page }, source: string) => {
 });
 
 Then('the plans are {string}', async ({ page }, names: string) => {
+	const expected = names.split(', ');
+	await expect(page.getByTestId('plan')).toHaveCount(expected.length, { timeout: 15_000 });
 	const plans = await page.getByTestId('plan').allTextContents();
-	expect(plans.map((plan) => plan.split(' — ')[0])).toEqual(names.split(', '));
+	expect(plans.map((plan) => plan.split(' — ')[0])).toEqual(expected);
 });
 
 Then('the doc is titled {string}', async ({ page }, title: string) => {

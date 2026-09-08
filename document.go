@@ -23,7 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/tylergannon/skgo/internal/adapter"
@@ -45,12 +45,6 @@ type SSR struct {
 	remotes  *Remotes
 	engine   *ssr.Engine
 	info     ManifestSSR
-	// ssrNodes is info.Nodes, held apart because under `vp dev` it describes a
-	// route tree a developer is editing while requests are in flight. Kit
-	// numbers the nodes of a dev server from the routes on disk, so a route
-	// added or removed renumbers every node after it and this table has to
-	// follow. Read it through nodes(), never off info.
-	ssrNodes atomic.Pointer[[]ManifestSSRNode]
 	template string
 	// errorPage is kit's `error.html`: the last-resort document, for a request
 	// whose error page cannot itself be rendered.
@@ -65,6 +59,14 @@ type SSR struct {
 	// recursing back into the SSR engine can starve the runtime pool it is
 	// still holding a runtime from. See SSROptions.Fetch.
 	fetch http.Handler
+	// dev is non-nil only for a renderer backed by a running Vite server. Its
+	// mutex serialises a live-manifest refresh with the page render that uses
+	// it, so node numbering cannot change halfway through a document.
+	dev          *vite.Dev
+	devBase      Manifest
+	devEndpoints *Endpoints
+	devVersion   int
+	devMu        sync.Mutex
 }
 
 // SSROptions configures the renderer.
@@ -94,20 +96,6 @@ type SSROptions struct {
 	// Fetch only ever sees a request for one of this app's own routes.
 	Fetch http.Handler
 }
-
-// nodes is the node table a render resolves a branch's indices through. It
-// falls back to info's own copy, which is where the pointer's first value comes
-// from, so that an SSR assembled as a struct literal still reads a table.
-func (s *SSR) nodes() []ManifestSSRNode {
-	if table := s.ssrNodes.Load(); table != nil {
-		return *table
-	}
-	return s.info.Nodes
-}
-
-// setNodes replaces the node table. It is how a `vp dev` server's renumbering
-// reaches a running renderer.
-func (s *SSR) setNodes(nodes []ManifestSSRNode) { s.ssrNodes.Store(&nodes) }
 
 // NewSSR builds a renderer over an adapter build. It fails if the build carries
 // no SSR bundle, if the bundle does not parse, or if it does not come up.
@@ -149,7 +137,6 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		onError:   opts.OnError,
 		fetch:     opts.Fetch,
 	}
-	s.setNodes(info.Nodes)
 	// The engine is built after the SSR rather than into it because the bundle
 	// writes to `console` while it is coming up, and that line has to reach the
 	// same place every other failure does.
@@ -180,9 +167,9 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 // stylesheet or font — vite serves a module's CSS through the module itself.
 // The boot global is `__sveltekit_dev` (`core/utils.js`, `get_global_name`).
 //
-// The route table and the node table are the dev server's own — see
-// DevManifest, which is what puts them in m before this runs and what keeps
-// them there while a developer edits the route tree.
+// Routes, nodes, templates and branch options are read from Kit's live dev
+// graph. Adding or removing a route, or changing its page/layout composition,
+// therefore takes effect without rebuilding or restarting the Go process.
 func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServer string, opts SSROptions) (*SSR, error) {
 	if m.SSR == nil {
 		return nil, errors.New("skgo: this build has no SSR description, so dev has no node table to render a branch through. Rebuild the frontend with an adapter that emits one.")
@@ -192,27 +179,30 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 	if err != nil {
 		return nil, err
 	}
-	info, err := devSSRInfo(m, dev, answer)
+	live, err := manifestFromDev(m, answer)
 	if err != nil {
 		return nil, err
 	}
-	template, errorPage, err := documentTemplates(build, info)
+	info := *live.SSR
+	template, errorPage, err := devDocumentTemplates(answer)
 	if err != nil {
 		return nil, err
 	}
 
 	s := &SSR{
-		loads:     loads,
-		remotes:   remotes,
-		info:      info,
-		template:  template,
-		errorPage: errorPage,
-		base:      strings.TrimSuffix(m.Base, "/"),
-		version:   m.Version,
-		onError:   opts.OnError,
-		fetch:     opts.Fetch,
+		loads:      loads,
+		remotes:    remotes,
+		info:       info,
+		template:   template,
+		errorPage:  errorPage,
+		base:       strings.TrimSuffix(m.Base, "/"),
+		version:    m.Version,
+		onError:    opts.OnError,
+		fetch:      opts.Fetch,
+		dev:        dev,
+		devBase:    m,
+		devVersion: answer.Manifest.Version,
 	}
-	s.setNodes(info.Nodes)
 	engine, err := ssr.NewDev(dev, answer.Entry, adapter.Polyfill(), poolSize(opts), s.console)
 	if err != nil {
 		return nil, err
@@ -221,36 +211,131 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 	return s, nil
 }
 
-// devSSRInfo is the build's SSR description with the four things dev states
-// differently substituted in. Everything it keeps — the `ssr` and `csr` options
-// each node sets, the base, the assets path — is a fact about the app rather
-// than about how it was served.
-func devSSRInfo(m Manifest, dev *vite.Dev, answer vite.Info) (ManifestSSR, error) {
-	if answer.Client.Start == "" || answer.Client.App == "" {
-		return ManifestSSR{}, fmt.Errorf("skgo: the dev server at %s named no client entry for a document to boot", dev.Base())
+// ReadDevManifest returns the route and node graph the running Kit dev server
+// is serving, overlaid only with build facts that cannot vary while that
+// server runs (the adapter identity and application version). It is the dev
+// counterpart of ReadManifest and lets registries be built from authored
+// source before the first document request.
+func ReadDevManifest(build fs.FS, devServer string) (Manifest, error) {
+	base, err := ReadManifest(build)
+	if err != nil {
+		return Manifest{}, err
 	}
+	answer, err := vite.NewDev(devServer).Await(devServerTimeout)
+	if err != nil {
+		return Manifest{}, err
+	}
+	return manifestFromDev(base, answer)
+}
 
-	info := *m.SSR
+func manifestFromDev(base Manifest, answer vite.Info) (Manifest, error) {
+	if answer.Client.Start == "" || answer.Client.App == "" {
+		return Manifest{}, errors.New("skgo: the dev server named no client entry for a document to boot")
+	}
+	live := base
+	live.Version = ""
+	live.Nodes = append([]string(nil), answer.Manifest.Nodes...)
+	if err := json.Unmarshal(answer.Manifest.Routes, &live.Routes); err != nil {
+		return Manifest{}, fmt.Errorf("skgo: reading Kit's live routes: %w", err)
+	}
+	var info ManifestSSR
+	if err := json.Unmarshal(answer.Manifest.SSR, &info); err != nil {
+		return Manifest{}, fmt.Errorf("skgo: reading Kit's live SSR nodes: %w", err)
+	}
 	info.Bundle = ""
+	info.Target = ssrTarget
 	info.GlobalName = answer.GlobalName
 	info.Client = ManifestClient{
 		Start:                answer.Client.Start,
 		App:                  answer.Client.App,
 		UsesEnvDynamicPublic: answer.Client.UsesEnvDynamicPublic,
 	}
-	// A node's client assets in dev are the module's own: vite serves a
-	// component's CSS through the JavaScript that imports it, so a document
-	// that linked the build's hashed files would be linking files the dev
-	// server does not have.
-	nodes := make([]ManifestSSRNode, len(info.Nodes))
-	for i, node := range info.Nodes {
-		node.Imports = nil
-		node.Stylesheets = nil
-		node.Fonts = nil
-		nodes[i] = node
+	if len(info.Nodes) != len(live.Nodes) {
+		return Manifest{}, fmt.Errorf("skgo: Kit's dev manifest describes %d render node(s) and %d load node(s)", len(info.Nodes), len(live.Nodes))
 	}
-	info.Nodes = nodes
-	return info, nil
+	live.SSR = &info
+	return live, nil
+}
+
+// serveDev binds one document to one live manifest snapshot. A route edit can
+// invalidate and renumber several nodes at once; holding this lock through the
+// render prevents another request from installing the next snapshot halfway
+// through the branch.
+func (s *SSR) serveDev(w http.ResponseWriter, r *http.Request, urlPath string) bool {
+	s.devMu.Lock()
+	defer s.devMu.Unlock()
+	if err := s.refreshDevLocked(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return true
+	}
+	return s.serve(w, r, urlPath)
+}
+
+func (s *SSR) refreshDev() error {
+	s.devMu.Lock()
+	defer s.devMu.Unlock()
+	return s.refreshDevLocked()
+}
+
+func (s *SSR) refreshDevLocked() error {
+	if s.dev == nil {
+		return nil
+	}
+	answer, err := s.dev.Info()
+	if err != nil {
+		return err
+	}
+	if answer.Manifest.Version == s.devVersion {
+		return nil
+	}
+	live, err := manifestFromDev(s.devBase, answer)
+	if err != nil {
+		return err
+	}
+	template, errorPage, err := devDocumentTemplates(answer)
+	if err != nil {
+		return err
+	}
+	if err := s.loads.updateManifest(live); err != nil {
+		return err
+	}
+	if s.devEndpoints != nil {
+		if err := s.devEndpoints.updateManifest(live); err != nil {
+			return err
+		}
+	}
+	s.info = *live.SSR
+	s.template = template
+	s.errorPage = errorPage
+	s.version = ""
+	s.devVersion = answer.Manifest.Version
+	return nil
+}
+
+func devDocumentTemplates(answer vite.Info) (string, string, error) {
+	template := answer.Manifest.Template
+	errorPage := answer.Manifest.ErrorTemplate
+	if errorPage == "" {
+		return "", "", errors.New("skgo: Kit's dev manifest names no error template")
+	}
+	for _, tag := range []string{"%sveltekit.head%", "%sveltekit.body%"} {
+		if !strings.Contains(template, tag) {
+			return "", "", fmt.Errorf("skgo: the live app template is missing %s", tag)
+		}
+	}
+	return template, errorPage, nil
+}
+
+// devSSRInfo is the build's SSR description with the four things dev states
+// differently substituted in. Everything it keeps — the `ssr` and `csr` options
+// each node sets, the base, the assets path — is a fact about the app rather
+// than about how it was served.
+func devSSRInfo(m Manifest, dev *vite.Dev, answer vite.Info) (ManifestSSR, error) {
+	live, err := manifestFromDev(m, answer)
+	if err != nil {
+		return ManifestSSR{}, fmt.Errorf("skgo: reading the dev manifest at %s: %w", dev.Base(), err)
+	}
+	return *live.SSR, nil
 }
 
 // devServerTimeout is how long Go waits for `vite dev` to answer at startup.
@@ -407,7 +492,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	// past it.
 	filled := make([]bool, len(route.nodes))
 	for i, index := range route.nodes {
-		filled[i] = index >= 0 && index < len(s.nodes())
+		filled[i] = index >= 0 && index < len(s.info.Nodes)
 	}
 
 	for i, node := range nodes {
@@ -471,15 +556,14 @@ type documentPlan struct {
 // with the last node that states an opinion winning (`utils/page_nodes.js`).
 func (s *SSR) pageOptions(route *dataRoute) (ssr bool, csr bool) {
 	ssr, csr = true, true
-	all := s.nodes()
 	for _, index := range route.nodes {
-		if index < 0 || index >= len(all) {
+		if index < 0 || index >= len(s.info.Nodes) {
 			continue
 		}
-		if v := all[index].SSR; v != nil {
+		if v := s.info.Nodes[index].SSR; v != nil {
 			ssr = *v
 		}
-		if v := all[index].CSR; v != nil {
+		if v := s.info.Nodes[index].CSR; v != nil {
 			csr = *v
 		}
 	}
@@ -502,7 +586,7 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 	// ever sees either.
 	pageError := s.documentError(hookContext(r, shared), route.id, e, raw)
 	for _, candidate := range nearestErrorPages(at, filled, route.errors) {
-		if candidate.node < 0 || candidate.node >= len(s.nodes()) {
+		if candidate.node < 0 || candidate.node >= len(s.info.Nodes) {
 			continue
 		}
 		plan := documentPlan{
@@ -520,7 +604,7 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 			if !filled[i] {
 				continue
 			}
-			if v := s.nodes()[route.nodes[i]].CSR; v != nil {
+			if v := s.info.Nodes[route.nodes[i]].CSR; v != nil {
 				plan.hydrate = *v
 			}
 			plan.indices = append(plan.indices, route.nodes[i])
@@ -570,17 +654,16 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 	}
 	pageError := s.documentError(hookContext(r, hookRequest), routeID, e, raw)
 
-	all := s.nodes()
-	if len(all) <= rootError {
+	if len(s.info.Nodes) <= rootError {
 		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
-	if v := all[rootLayout].SSR; v != nil && !*v {
+	if v := s.info.Nodes[rootLayout].SSR; v != nil && !*v {
 		// An app whose root layout turns SSR off renders nothing anywhere, and
 		// kit's shell is what answers this request too.
 		return false
 	}
 	hydrate := true
-	if v := all[rootLayout].CSR; v != nil {
+	if v := s.info.Nodes[rootLayout].CSR; v != nil {
 		hydrate = *v
 	}
 
@@ -1261,7 +1344,7 @@ func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest
 // module is in hand.
 //
 // nonceAttr is kit's own `csp.script_needs_nonce ? \` nonce="${csp.nonce}"\`
-// : ''` (`data_serializer.js:103`), computed once by stream and threaded
+// : ”` (`data_serializer.js:103`), computed once by stream and threaded
 // through unchanged: without it, a CSP that requires a nonce or hash on every
 // inline script blocks each chunk as it arrives, and a value a load promised
 // never fills in — the response looks identical up to the moment nothing

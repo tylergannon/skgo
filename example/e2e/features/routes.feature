@@ -6,13 +6,13 @@ Feature: HTTP endpoints written in Go
 
   Scenario: A page reads the endpoint and shows what it returned
     Given I open "/api"
-    Then the document response came from skgo in the expected mode
+    Then the document response came from skgo
     And the endpoint answered GET with 200 and "application/json"
     And the endpoint returned a todo saying "write the adapter"
 
   Scenario: A browser asking for the endpoint directly gets the endpoint
     Given I open "/api/todos"
-    Then the document came from skgo in the expected mode
+    Then the document came from skgo
     And the document response status was 200
     And the document content type was "application/json"
     And the document is JSON listing a todo saying "serve remote functions"

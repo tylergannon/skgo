@@ -12,7 +12,6 @@ Feature: A batch query answers several components in one call
   56.10 and SVLT 78.45 appear nowhere else in the app, and the generated
   src/routes/batch/quotes.remote.ts throws "skgo: implemented in Go".
 
-  @prod
   Scenario Outline: The quotes are in the document, answered in one call of four
     Given I open "/batch"
     Then the document already said the quote for "<symbol>" is "<price>", answered in a call of 4
@@ -25,7 +24,6 @@ Feature: A batch query answers several components in one call
       | KITX   | 56.10 |
       | SVLT   | 78.45 |
 
-  @prod
   Scenario: Hydration does not refetch what the batch already answered
     Given I note the remote request count
     When I visit "/batch"

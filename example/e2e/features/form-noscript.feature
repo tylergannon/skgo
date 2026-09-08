@@ -1,4 +1,3 @@
-@prod
 Feature: A form works without JavaScript
 
   The same `sendMessage` form as `form.feature`, submitted by a browser with
@@ -17,6 +16,24 @@ Feature: A form works without JavaScript
   render, so with scripting off it stays at "loading…" forever. That is the
   example page's shape and not this feature's subject; `form.feature` asserts
   the inbox with scripting on, where the same submission proves Go recorded it.
+
+  Scenario: The account layout and page data are already rendered without JavaScript
+    Given the no-script browser has a session for "ada"
+    When I visit "/account"
+    Then the account layout greets "ada"
+    And the account page says its parent loaded "ada"
+    And the browser never asked for the page's data
+
+  Scenario: Custom transported values render without JavaScript
+    Given I open "/pricing"
+    Then I see "Pricing"
+    And the featured plan costs "$45.00"
+    And the browser never asked for the page's data
+
+  Scenario: A deliberately clientless page is complete without JavaScript
+    Given I open "/plain"
+    Then I see "Plain"
+    And the document carries no script
 
   Scenario: A submission the browser posted itself comes back as the page, carrying its issues
     Given I open "/contact"

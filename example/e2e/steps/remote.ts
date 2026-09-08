@@ -108,7 +108,7 @@ Then('the todo count still matches the todos on the page', async ({ page }) => {
 
 async function countMatchesList(page: Page, shot: string): Promise<void> {
 	const path = `../../ephemeral/screenshots/${shot}-${await audience(page)}-${
-		process.env.EXPECTED_MODE ?? 'unknown'
+		process.env.SKGO_E2E_RUN ?? 'run'
 	}.png`;
 	try {
 		// Zero against zero is not agreement, it is two broken components

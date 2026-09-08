@@ -56,6 +56,12 @@ func (ls *Loads) Intercept(next http.Handler) http.Handler {
 
 // ServeHTTP answers one `__data.json` request.
 func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if ls.devRefresh != nil {
+		if err := ls.devRefresh(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -95,11 +101,12 @@ func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // rootBranch is the single-node branch kit uses for a path that matches no
 // route: node 0, the root layout.
 func (ls *Loads) rootBranch() []*ServerLoad {
-	nodes := ls.table.Load().nodes
-	if len(nodes) == 0 {
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
+	if len(ls.nodes) == 0 {
 		return []*ServerLoad{nil}
 	}
-	return []*ServerLoad{nodes[0]}
+	return []*ServerLoad{ls.nodes[0]}
 }
 
 // dataRequest is one parsed `__data.json` request.
