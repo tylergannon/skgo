@@ -177,7 +177,7 @@ Feature: Pages arrive rendered
     Scenario: An unknown route returns the error page with 404
       Given I open "/no-such-page"
       Then the document was answered with 404
-      And the document already said the error page shows "Error 404" and "Not Found"
+      And the document already showed kit's built-in error page saying 404 and "Not Found"
       And the document already carried the root layout
       And the browser never asked for the page's data
 

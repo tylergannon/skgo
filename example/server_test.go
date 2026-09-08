@@ -358,9 +358,9 @@ func TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		// The root error page, showing the status and the message kit gives.
-		`<h1 data-testid="title">Error 404</h1>`,
-		`<p data-testid="error-message">Not Found</p>`,
+		// Kit's built-in root error page, showing the status and message Kit gives.
+		`<h1>404</h1>`,
+		`<p>Not Found</p>`,
 		// Inside the app's own root layout.
 		`data-testid="app-nav"`,
 		// And it still boots, so the client takes over from the same page.
@@ -400,7 +400,7 @@ func TestAMissingImageIsNotAnsweredWithADocument(t *testing.T) {
 
 	// And the same path without the header is still the visitor's 404 page.
 	rec = get(t, h, "/no-such-image.png")
-	if !strings.Contains(rec.Body.String(), `<p data-testid="error-message">Not Found</p>`) {
+	if !strings.Contains(rec.Body.String(), `<p>Not Found</p>`) {
 		t.Errorf("a document request for the same path did not get the error page")
 	}
 }
@@ -828,4 +828,3 @@ func TestAServerRouteAnswersItsOwnMethods(t *testing.T) {
 		t.Errorf("POST /api/todos: Location %q", got)
 	}
 }
-

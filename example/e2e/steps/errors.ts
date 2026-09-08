@@ -38,6 +38,22 @@ Then(
 	}
 );
 
+// Kit supplies this component when the app authors no root `+error.svelte`.
+// Its markup deliberately has no app-owned test id, so assert the two literal
+// elements Kit's pinned component writes rather than making the fixture look
+// like the authored error boundary above.
+Then(
+	"the document already showed kit's built-in error page saying {int} and {string}",
+	async ({ documents, page, shot }, status: number, message: string) => {
+		const html = await documentText(documents);
+		expect(html).toContain(`<h1>${status}</h1>`);
+		expect(html).toContain(`<p>${message}</p>`);
+		await expect(page.getByRole('heading', { name: String(status) })).toBeVisible();
+		await expect(page.getByText(message, { exact: true })).toBeVisible();
+		await shot('kit-default-error');
+	}
+);
+
 // The support id example.HandleError adds to every error it sees, read back
 // from the client-rendered page rather than the raw document — the other
 // half of the same claim "the document already said" makes: kit hydrates
