@@ -89,7 +89,7 @@ func Run(cfg Config) (err error) {
 	// of what it finds them holding now, so blanking them first, before
 	// anything loads the package they are in, loses nothing a developer
 	// wrote — only what a previous run of this same generator wrote, which
-	// this run is already committed to replacing. restoreGeneratedFiles
+	// this run is already committed to replacing. The restore func below
 	// undoes it if this run fails before reaching that point, so a failed
 	// run leaves the tree exactly as it found it.
 	restore, err := resetStaleGeneratedFiles(files)
