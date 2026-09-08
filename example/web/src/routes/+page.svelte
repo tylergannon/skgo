@@ -39,6 +39,21 @@
 			look: 'The gate opens and closes from Go, and the query behind it re-runs because the command said which query to refresh.'
 		},
 		{
+			name: 'One query, one answer per argument',
+			href: '/todos/pair',
+			look: 'Both panels call the same Go function, told apart only by the id they pass. Retitle p1 and ask for p1 back: p2 does not move, because each argument has its own cached answer.'
+		},
+		{
+			name: 'A query that goes on answering',
+			href: '/live',
+			look: 'The number was already in the document before any script ran, and Go pushes every later value down the same open stream.'
+		},
+		{
+			name: 'Many calls answered by one',
+			href: '/batch',
+			look: 'Four rows each asked for one symbol on their own. One Go function was called once holding all four, and every row says how many were in the call that answered it.'
+		},
+		{
 			name: 'Server loads, section-wide',
 			href: '/account',
 			look: 'The layout and the page were both loaded in Go. Move between Overview and Orders: the serial does not change, because kit did not re-run the layout.'
@@ -69,6 +84,11 @@
 			look: 'The JSON on this page came from a +server.ts route whose handler is an ordinary net/http function.'
 		},
 		{
+			name: 'Links and asset URLs worked out while the page renders',
+			href: '/render-paths',
+			look: "Every href on the page was computed during the render by kit's own $app/paths, and match() asked Go's route table which route /items/77 belongs to."
+		},
+		{
 			name: 'A page with no client-side JavaScript',
 			href: '/plain',
 			look: 'csr = false, so the document carries no script at all. Everything on it had to be rendered on the server to be there.'
@@ -92,6 +112,16 @@
 			name: 'A load that refuses',
 			href: '/error/expected',
 			look: 'The load throws 418 and the visitor gets an error page at that status, rendered before it was sent.'
+		},
+		{
+			name: 'A failure the page catches itself',
+			href: '/error/boundary',
+			look: 'The query refuses, the boundary beside it renders what it said, and the rest of the page is untouched — at the status the error carried.'
+		},
+		{
+			name: 'An error that is a bug says nothing about itself',
+			href: '/error/unexpected',
+			look: 'The Go load fails with a database connection string in its message. The visitor gets an error page at 500 and no part of what it said — the original never leaves the process.'
 		},
 		{
 			name: 'A failure no error page can catch',

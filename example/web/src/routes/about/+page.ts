@@ -11,6 +11,6 @@
  * error.html: a load that fails there has no `+error.svelte` above it. That
  * makes every page in this app un-prerenderable, this one included. The two
  * cannot both be demonstrated by one app until skgo can answer a server load
- * while the build prerenders.
+ * while the build prerenders, which is #81.
  */
 export const prerender = false;
