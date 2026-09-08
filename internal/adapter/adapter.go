@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -57,6 +58,16 @@ const Package = "@skgo/adapter"
 
 // module is the module path the version is looked up under.
 const module = "github.com/tylergannon/skgo"
+
+// GitSpec is what a package.json asks pnpm for to install this adapter from a
+// tagged release on GitHub: the repository at that tag, the package in its
+// subdirectory. Nothing is published to npm yet — the tag is the release for
+// both halves, and pnpm installs a git subdirectory directly — so this is the
+// spec the scaffold writes and the one a mismatch message tells a developer to
+// install.
+func GitSpec(version string) string {
+	return "github:" + strings.TrimPrefix(module, "github.com/") + "#" + version + "&path:internal/adapter"
+}
 
 // Fingerprint identifies the adapter by its own bytes. It is the half of the
 // identity that is always meaningful: two skgo checkouts both call themselves

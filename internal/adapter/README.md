@@ -9,8 +9,13 @@ the Go process renders pages with, and a manifest naming the routes, remote
 functions and server loads Go must answer.
 
 ```sh
-pnpm add -D @skgo/adapter
+pnpm add -D "github:tylergannon/skgo#v0.2.0&path:internal/adapter"
 ```
+
+The tag is the skgo version your `go.mod` requires; pnpm installs the package
+straight from that tag's `internal/adapter`. A project made by `skgo new` has
+this line already. When the package is on npm the spec becomes
+`pnpm add -D @skgo/adapter`.
 
 ```js
 // vite.config.ts

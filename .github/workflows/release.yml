@@ -24,6 +24,8 @@ jobs:
     name: Publish @skgo/adapter
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
       - uses: actions/checkout@v7
@@ -55,8 +57,12 @@ jobs:
           npm pkg set version="$version"
           echo "publishing @skgo/adapter@$version"
 
+      # Nothing is on npm yet. Apps install the adapter from this tag on GitHub
+      # — `github:tylergannon/skgo#vX.Y.Z&path:internal/adapter`, which is what
+      # `skgo new` writes — so the tag push alone is the whole release. This
+      # step runs once the `skgo` npm org exists and NPM_TOKEN is set; until
+      # then it is skipped, not failed.
       - name: npm publish
+        if: env.NODE_AUTH_TOKEN != ''
         working-directory: internal/adapter
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --provenance

@@ -101,4 +101,6 @@ release version:
     esac
     git tag -a "{{version}}" -m "{{version}}"
     git push origin "{{version}}"
-    echo "pushed {{version}}; .github/workflows/release.yml publishes @skgo/adapter@$(echo "{{version}}" | cut -c2-)"
+    echo "pushed {{version}}; apps install the adapter from it with:"
+    echo "  pnpm add -D \"github:tylergannon/skgo#{{version}}&path:internal/adapter\""
+    echo "(.github/workflows/release.yml also publishes @skgo/adapter to npm once NPM_TOKEN is set)"
