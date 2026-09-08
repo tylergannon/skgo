@@ -95,10 +95,11 @@ func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // rootBranch is the single-node branch kit uses for a path that matches no
 // route: node 0, the root layout.
 func (ls *Loads) rootBranch() []*ServerLoad {
-	if len(ls.nodes) == 0 {
+	nodes := ls.table.Load().nodes
+	if len(nodes) == 0 {
 		return []*ServerLoad{nil}
 	}
-	return []*ServerLoad{ls.nodes[0]}
+	return []*ServerLoad{nodes[0]}
 }
 
 // dataRequest is one parsed `__data.json` request.

@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 // endpointMethods is kit's own ENDPOINT_METHODS (`src/constants.js`), in kit's
@@ -172,7 +173,10 @@ type Endpoints struct {
 	base   string
 	origin string
 
-	routes []*endpointRoute
+	// routes is the route table. It is replaced wholesale rather than mutated
+	// because under `vp dev` it describes a route tree a developer is editing
+	// while requests are in flight.
+	routes atomic.Pointer[[]*endpointRoute]
 	// byRoute is every registered method, keyed by route id then method.
 	byRoute map[string]map[string]http.HandlerFunc
 }
@@ -236,10 +240,25 @@ func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
 		byMethod[ep.method] = ep.handler
 	}
 
-	for _, route := range cfg.Routes {
+	if err := es.setRouting(cfg.Routes); err != nil {
+		return nil, err
+	}
+
+	if err := es.checkDrift(); err != nil {
+		return nil, err
+	}
+	return es, nil
+}
+
+// setRouting rebuilds the route table over the registered handlers. It is how a
+// `vp dev` server's route tree reaches a running registry; a build's reaches it
+// once, from NewEndpoints.
+func (es *Endpoints) setRouting(routes []ManifestRoute) error {
+	table := make([]*endpointRoute, 0, len(routes))
+	for _, route := range routes {
 		re, err := regexp.Compile(kitPattern(route.Pattern))
 		if err != nil {
-			return nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
+			return fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
 		}
 		er := &endpointRoute{
 			id:       route.ID,
@@ -254,13 +273,11 @@ func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
 				er.declared[method] = true
 			}
 		}
-		es.routes = append(es.routes, er)
+		table = append(table, er)
 	}
-
-	if err := es.checkDrift(); err != nil {
-		return nil, err
-	}
-	return es, nil
+	es.cfg.Routes = routes
+	es.routes.Store(&table)
+	return nil
 }
 
 func validEndpointMethod(method string) bool {
@@ -289,7 +306,7 @@ func (es *Endpoints) checkDrift() error {
 	}
 
 	declared := map[string]map[string]bool{}
-	for _, route := range es.routes {
+	for _, route := range *es.routes.Load() {
 		if route.declared != nil {
 			declared[route.id] = route.declared
 		}
@@ -491,7 +508,7 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 // match finds the route that serves routePath, which is the pathname with the
 // configured base already removed.
 func (es *Endpoints) match(routePath string) (*endpointRoute, map[string]string, bool) {
-	for _, route := range es.routes {
+	for _, route := range *es.routes.Load() {
 		loc := route.pattern.FindStringSubmatchIndex(routePath)
 		if loc == nil {
 			continue

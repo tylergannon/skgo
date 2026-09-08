@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/tylergannon/skgo/internal/adapter"
@@ -44,6 +45,12 @@ type SSR struct {
 	remotes  *Remotes
 	engine   *ssr.Engine
 	info     ManifestSSR
+	// ssrNodes is info.Nodes, held apart because under `vp dev` it describes a
+	// route tree a developer is editing while requests are in flight. Kit
+	// numbers the nodes of a dev server from the routes on disk, so a route
+	// added or removed renumbers every node after it and this table has to
+	// follow. Read it through nodes(), never off info.
+	ssrNodes atomic.Pointer[[]ManifestSSRNode]
 	template string
 	// errorPage is kit's `error.html`: the last-resort document, for a request
 	// whose error page cannot itself be rendered.
@@ -88,6 +95,13 @@ type SSROptions struct {
 	Fetch http.Handler
 }
 
+// nodes is the node table a render resolves a branch's indices through.
+func (s *SSR) nodes() []ManifestSSRNode { return *s.ssrNodes.Load() }
+
+// setNodes replaces the node table. It is how a `vp dev` server's renumbering
+// reaches a running renderer.
+func (s *SSR) setNodes(nodes []ManifestSSRNode) { s.ssrNodes.Store(&nodes) }
+
 // NewSSR builds a renderer over an adapter build. It fails if the build carries
 // no SSR bundle, if the bundle does not parse, or if it does not come up.
 func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROptions) (*SSR, error) {
@@ -128,6 +142,7 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		onError:   opts.OnError,
 		fetch:     opts.Fetch,
 	}
+	s.setNodes(info.Nodes)
 	// The engine is built after the SSR rather than into it because the bundle
 	// writes to `console` while it is coming up, and that line has to reach the
 	// same place every other failure does.
@@ -158,10 +173,9 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 // stylesheet or font — vite serves a module's CSS through the module itself.
 // The boot global is `__sveltekit_dev` (`core/utils.js`, `get_global_name`).
 //
-// What still comes from the last build is the route table and the node table,
-// which means a route added while both servers are running is invisible to Go
-// until the frontend is rebuilt. That is the same limitation dev has always
-// had here, and it is not this constructor's to fix.
+// The route table and the node table are the dev server's own — see
+// DevManifest, which is what puts them in m before this runs and what keeps
+// them there while a developer edits the route tree.
 func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServer string, opts SSROptions) (*SSR, error) {
 	if m.SSR == nil {
 		return nil, errors.New("skgo: this build has no SSR description, so dev has no node table to render a branch through. Rebuild the frontend with an adapter that emits one.")
@@ -191,6 +205,7 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 		onError:   opts.OnError,
 		fetch:     opts.Fetch,
 	}
+	s.setNodes(info.Nodes)
 	engine, err := ssr.NewDev(dev, answer.Entry, adapter.Polyfill(), poolSize(opts), s.console)
 	if err != nil {
 		return nil, err
@@ -385,7 +400,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	// past it.
 	filled := make([]bool, len(route.nodes))
 	for i, index := range route.nodes {
-		filled[i] = index >= 0 && index < len(s.info.Nodes)
+		filled[i] = index >= 0 && index < len(s.nodes())
 	}
 
 	for i, node := range nodes {
@@ -449,14 +464,15 @@ type documentPlan struct {
 // with the last node that states an opinion winning (`utils/page_nodes.js`).
 func (s *SSR) pageOptions(route *dataRoute) (ssr bool, csr bool) {
 	ssr, csr = true, true
+	all := s.nodes()
 	for _, index := range route.nodes {
-		if index < 0 || index >= len(s.info.Nodes) {
+		if index < 0 || index >= len(all) {
 			continue
 		}
-		if v := s.info.Nodes[index].SSR; v != nil {
+		if v := all[index].SSR; v != nil {
 			ssr = *v
 		}
-		if v := s.info.Nodes[index].CSR; v != nil {
+		if v := all[index].CSR; v != nil {
 			csr = *v
 		}
 	}
@@ -479,7 +495,7 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 	// ever sees either.
 	pageError := s.documentError(hookContext(r, shared), route.id, e, raw)
 	for _, candidate := range nearestErrorPages(at, filled, route.errors) {
-		if candidate.node < 0 || candidate.node >= len(s.info.Nodes) {
+		if candidate.node < 0 || candidate.node >= len(s.nodes()) {
 			continue
 		}
 		plan := documentPlan{
@@ -497,7 +513,7 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 			if !filled[i] {
 				continue
 			}
-			if v := s.info.Nodes[route.nodes[i]].CSR; v != nil {
+			if v := s.nodes()[route.nodes[i]].CSR; v != nil {
 				plan.hydrate = *v
 			}
 			plan.indices = append(plan.indices, route.nodes[i])
@@ -547,16 +563,17 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 	}
 	pageError := s.documentError(hookContext(r, hookRequest), routeID, e, raw)
 
-	if len(s.info.Nodes) <= rootError {
+	all := s.nodes()
+	if len(all) <= rootError {
 		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
-	if v := s.info.Nodes[rootLayout].SSR; v != nil && !*v {
+	if v := all[rootLayout].SSR; v != nil && !*v {
 		// An app whose root layout turns SSR off renders nothing anywhere, and
 		// kit's shell is what answers this request too.
 		return false
 	}
 	hydrate := true
-	if v := s.info.Nodes[rootLayout].CSR; v != nil {
+	if v := all[rootLayout].CSR; v != nil {
 		hydrate = *v
 	}
 

@@ -174,6 +174,10 @@ func (d *Dev) Changed(since int) (Changes, error) {
 	return out, nil
 }
 
+// Get asks the dev server for one of the adapter plugin's own endpoints and
+// decodes the JSON it answers with.
+func (d *Dev) Get(path string, into any) error { return d.get(path, into) }
+
 func (d *Dev) get(path string, into any) error {
 	if _, err := url.Parse(d.base + path); err != nil {
 		return err

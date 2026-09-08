@@ -522,43 +522,163 @@ function posix(p) {
 }
 
 /**
- * The node table in kit's own dev numbering.
+ * Kit's own route and node table, from kit's own function.
  *
- * Kit writes one module per node under `<outDir>/generated/dev/client/nodes/`
- * and rewrites them whenever a route is added or removed, so reading them is
- * reading kit's answer rather than deriving a second one. A node that renders
- * no component leaves a hole, exactly as the built table does.
+ * `create_manifest_data` is what kit's dev server calls on every route change
+ * (`exports/vite/dev/index.js`, `update_manifest`) and what its build calls
+ * before it compiles anything. It walks `src/routes`, numbers the nodes —
+ * layouts and error pages first, then leaves, in traversal order — and works
+ * out each route's branch. Everything dev needs to know about routing is that
+ * one object, so skgo asks for it rather than deriving a second answer from
+ * what kit happened to write to disk. A derived answer is how a route added
+ * while both servers run ends up rendering the component that used to hold its
+ * index.
  *
- * @param {string} outDir kit's `outDir`
+ * It is not on kit's `exports` map, so it is imported by absolute path from the
+ * installed package. That is a real coupling to kit's file layout, and the
+ * alternative — reimplementing the traversal, the numbering, the branch walk
+ * and the page-option analysis — is a second implementation of the thing that
+ * decides which component renders.
+ *
+ * @param {string} root the vite root
  */
-function devNodeTable(outDir) {
-	const dir = join(outDir, 'generated/dev/client/nodes');
-	if (!existsSync(dir)) {
+async function kitSync(root) {
+	const fromRoot = createRequire(join(root, 'package.json'));
+	/** @type {string} */
+	let dir;
+	try {
+		dir = dirname(fromRoot.resolve('@sveltejs/kit/package.json'));
+	} catch {
+		throw new Error(`skgo: @sveltejs/kit is not installed beside ${root}.`);
+	}
+	const load = async (/** @type {string} */ relative) => {
+		const file = join(dir, relative);
+		if (!existsSync(file)) {
+			throw new Error(
+				`skgo: ${file} does not exist. skgo reads the dev route table out of kit's own ` +
+					'`create_manifest_data`, which this version of SvelteKit keeps somewhere else.'
+			);
+		}
+		return import(pathToFileURL(file).href);
+	};
+	const [manifest, analysis, server] = await Promise.all([
+		load('src/core/sync/create_manifest_data/index.js'),
+		load('src/exports/vite/static_analysis/index.js'),
+		load('src/core/sync/write_server.js')
+	]);
+	return {
+		createManifestData: /** @type {any} */ (manifest.default),
+		getPageOptions: /** @type {any} */ (analysis.get_page_options),
+		writeServer: /** @type {any} */ (server.write_server)
+	};
+}
+
+/**
+ * Kit's `ValidatedConfig`, off the plugin that holds it. It is the same object
+ * kit's own dev server passes to `create_manifest_data`
+ * (`core/config/index.js`, `extract_svelte_config`), already resolved against
+ * the vite root, so asking for it here cannot answer a different question than
+ * kit asked.
+ *
+ * @param {import('vite').ViteDevServer} server
+ */
+function svelteConfig(server) {
+	const setup = server.config.plugins.find((p) => p.name === 'vite-plugin-sveltekit-setup');
+	const options = /** @type {any} */ (setup)?.api?.options;
+	if (!options?.files?.routes) {
 		throw new Error(
-			`skgo: ${dir} does not exist, so the engine has no node table. It is written by kit's own dev server; this environment was asked for a module before kit had synced.`
+			"skgo: kit's own Vite plugin did not expose its resolved configuration, so skgo cannot see which directory holds the routes. Is @sveltejs/kit in this app's Vite config?"
 		);
 	}
-	const indices = readdirSync(dir)
-		.filter((name) => name.endsWith('.js'))
-		.map((name) => Number(name.slice(0, -3)))
-		.filter((index) => Number.isInteger(index))
-		.sort((a, b) => a - b);
+	return options;
+}
 
-	/** @type {string[]} */
-	const imports = [];
-	/** @type {string[]} */
-	const table = [];
-	for (const index of indices) {
-		const source = readFileSync(join(dir, `${index}.js`), 'utf-8');
-		const component = /export \{ default as component \} from "(.+?)"/.exec(source);
-		if (!component) {
-			table.push('undefined');
-			continue;
+/**
+ * The node table the engine renders through, in kit's dev numbering: one static
+ * import per node that has a component, `undefined` where a node has none.
+ *
+ * It is `nodeTable`, the build's, over the nodes kit's own function numbered.
+ * The two tables therefore agree by construction with the route table Go
+ * matches against, which is the property that matters: a branch slot is a
+ * number, and a number that means one thing to Go and another to the engine
+ * renders the wrong page at HTTP 200.
+ *
+ * @param {string} root the vite root
+ * @param {any} data kit's manifest data
+ */
+function devNodeTable(root, data) {
+	return nodeTable(root, data.nodes);
+}
+
+/**
+ * The routing half of skgo's manifest, in kit's dev numbering.
+ *
+ * Same fields, same meanings and the same -1 for a branch slot no layout fills
+ * as the adapter writes into `skgo.manifest.json` from a build — Go reads one
+ * shape whichever served it. Two differences are dev's own:
+ *
+ *   - Kit renumbers a build's nodes and does not renumber dev's, so `index` is
+ *     the position here.
+ *   - A route's endpoint declares no methods. A build reads them off the
+ *     compiled module's exports (`core/postbuild/analyse.js`); nothing in dev
+ *     has imported the module, and kit's dev server does not enumerate them
+ *     either. Go only needs to know the route has one.
+ *
+ * @param {any} data kit's manifest data
+ * @param {(file: string, root: string) => any} getPageOptions
+ * @param {string} root the vite root
+ */
+function devRouting(data, getPageOptions, root) {
+	/** @param {any} node */
+	const options = (node) => {
+		// The build reads a node's own `ssr`/`csr` off the compiled module,
+		// universal first and server behind it (`skgo-adapter.js`, `option`).
+		// Dev has kit's static analyser instead, which reads the source and
+		// answers null for an option that is not a literal. Go reduces over the
+		// branch either way, so the shape is the same; a page option written as
+		// an expression is the one thing dev cannot see.
+		let merged = {};
+		for (const file of [node.server, node.universal]) {
+			if (!file) continue;
+			const analysed = getPageOptions(file, root);
+			if (analysed === null) return { ssr: null, csr: null };
+			merged = { ...merged, ...analysed };
 		}
-		imports.push(`import N${index} from ${JSON.stringify(resolve(dir, component[1]))};`);
-		table.push(`N${index}`);
-	}
-	return `${imports.join('\n')}\nexport const components = [${table.join(', ')}];\n`;
+		return {
+			ssr: typeof merged.ssr === 'boolean' ? merged.ssr : null,
+			csr: typeof merged.csr === 'boolean' ? merged.csr : null
+		};
+	};
+
+	return {
+		nodes: data.nodes.map((/** @type {any} */ node) => node.server ?? ''),
+		ssrNodes: data.nodes.map((/** @type {any} */ node, /** @type {number} */ index) => ({
+			index,
+			component: !!node.component,
+			...options(node)
+		})),
+		routes: data.routes
+			.filter((/** @type {any} */ route) => route.page || route.endpoint)
+			.map((/** @type {any} */ route) => ({
+				id: route.id,
+				pattern: route.pattern.source,
+				params: route.params,
+				endpoint: route.endpoint ? { methods: [] } : null,
+				page: route.page
+					? {
+							layouts: Array.from(
+								{ length: route.page.layouts.length },
+								(_, i) => route.page.layouts[i] ?? -1
+							),
+							errors: Array.from(
+								{ length: route.page.layouts.length },
+								(_, i) => route.page.errors[i] ?? -1
+							),
+							leaf: route.page.leaf
+						}
+					: null
+			}))
+	};
 }
 
 /**
@@ -594,9 +714,22 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 	const aliases = kitAliases(root);
 	const helpers = oxcHelpers(root);
 
+	// Kit's own route and node table, and the cursor Go reads it with. Both are
+	// filled in by configureServer, which is where kit's resolved configuration
+	// and its `create_manifest_data` become reachable; nothing asks for a
+	// module before then.
+	/** @type {null | (() => any)} */
+	let manifestData = null;
+	let routingVersion = 0;
+
 	/** @type {Record<string, () => string>} */
 	const sources = {
-		'skgo:nodes': () => devNodeTable(out),
+		'skgo:nodes': () => {
+			if (!manifestData) {
+				throw new Error('skgo: the dev server asked for the node table before it had started');
+			}
+			return devNodeTable(root, manifestData());
+		},
 		'skgo:hooks': () => hooksModule(root),
 		'skgo:esm-env': () => 'export const DEV = true; export const BROWSER = false;',
 		'skgo:generated': () => 'export const get_hooks = () => ({});',
@@ -633,7 +766,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 			};
 		},
 
-		configureServer(server) {
+		async configureServer(server) {
 			const environment = server.environments.goja;
 			if (!environment) {
 				throw new Error(
@@ -641,26 +774,77 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 				);
 			}
 
-			// The node table is the one module of this environment that is not
-			// compiled from a file, so nothing invalidates it: a route added
-			// while both servers are running leaves the engine holding the
-			// numbering the table had when it was first evaluated, and the
-			// document then renders whichever components happen to live at
-			// those indices — silently, because they are valid indices for
-			// other pages. Kit rewrites the directory below whenever the route
-			// tree changes, so watching it is watching kit's own answer.
-			const nodesDir = join(out, 'generated/dev/client/nodes');
-			server.watcher.add(nodesDir);
-			/** @param {string} file */
-			const renumbered = (file) => {
-				if (!normalize(file).startsWith(normalize(nodesDir))) return;
+			const kit = await kitSync(root);
+			const config = svelteConfig(server);
+			const kitRoot = posix(resolve(server.config.root || root));
+
+			/** @type {any} */
+			let data = null;
+			manifestData = () => (data ??= kit.createManifestData(config, kitRoot));
+
+			// Kit writes `<outDir>/generated/dev` lazily, on the first request
+			// its own dev middleware answers (`exports/vite/dev/index.js`,
+			// `init_manifest`). Go is not a browser: it boots the engine as
+			// soon as the dev server is listening, and kit's runtime resolves
+			// `<sveltekit:generated>/server.js` into that directory — so on a
+			// tree that has never run `vp dev`, the engine's first module fails
+			// to resolve and the Go process exits. Writing it here, with kit's
+			// own function, is what kit would have written a moment later.
+			kit.writeServer(config, join(config.outDir, 'generated/dev'), kitRoot);
+
+			// The node table and the route table are the two things in this
+			// environment that no file compiles to, so nothing invalidates
+			// them: a route added while both servers are running otherwise
+			// leaves the engine holding the numbering the table had when it
+			// was first evaluated, and Go matching against the last build's
+			// routes. The document then renders whichever components happen to
+			// live at those indices — silently, because they are valid indices
+			// for other pages.
+			//
+			// The files that decide either are kit's own watch set for the same
+			// job (`exports/vite/dev/index.js`, `watch`): anything appearing or
+			// disappearing under the routes directory, and any change to a
+			// route's module, which is where a page option is written.
+			const routes = normalize(config.files.routes);
+			/** @param {string} file @param {boolean} content */
+			const routingChanged = (file, content) => {
+				const path = normalize(file);
+				if (!path.startsWith(routes + '/')) return false;
+				return content ? /\/\+(page|layout|server)[^/]*\.(js|ts)$/.test(path) : true;
+			};
+			/** @param {string} file @param {boolean} content */
+			const renumbered = (file, content) => {
+				if (!routingChanged(file, content)) return;
+				data = null;
+				routingVersion += 1;
 				const module = environment.moduleGraph.getModuleById(PREFIX + 'skgo:nodes');
 				if (module) environment.moduleGraph.invalidateModule(module);
 				if (changed[changed.length - 1] !== NODE_TABLE_URL) changed.push(NODE_TABLE_URL);
 			};
-			for (const event of ['add', 'change', 'unlink']) {
-				server.watcher.on(event, renumbered);
-			}
+			server.watcher.on('add', (file) => renumbered(file, false));
+			server.watcher.on('unlink', (file) => renumbered(file, false));
+			server.watcher.on('change', (file) => renumbered(file, true));
+
+			// The routing half of skgo's manifest, in kit's dev numbering.
+			// `since` is the cursor from the last answer: an unchanged one is
+			// told so and nothing is recomputed, which is what makes this
+			// affordable once per request.
+			server.middlewares.use('/__skgo_dev/manifest', (req, res) => {
+				const since = new URL(req.url ?? '/', 'http://skgo').searchParams.get('since');
+				if (since !== null && Number(since) === routingVersion) {
+					json(res, 200, { version: routingVersion, changed: false });
+					return;
+				}
+				try {
+					json(res, 200, {
+						version: routingVersion,
+						changed: true,
+						...devRouting(/** @type {() => any} */ (manifestData)(), kit.getPageOptions, kitRoot)
+					});
+				} catch (e) {
+					json(res, 500, { error: errorText(e) });
+				}
+			});
 
 			// What Go needs to know before it can ask for anything: which
 			// module is the render entry, and what a dev document boots.

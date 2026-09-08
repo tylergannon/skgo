@@ -85,6 +85,19 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		return nil, "", err
 	}
 
+	// In dev the routing half of it is not this build's. `vp dev` serves a
+	// route tree a developer is editing, and kit numbers its nodes from the
+	// files on disk, so the last build's table describes routes that have
+	// moved. Everything else here is still the build's: the document
+	// templates, the app's CSP, kit's appDir and base.
+	var dev *skgo.DevManifest
+	if proxy != "" {
+		if dev, err = skgo.NewDevManifest(proxy, manifest, log.Printf); err != nil {
+			return nil, "", err
+		}
+		manifest = dev.Manifest()
+	}
+
 	remoteCfg := manifest.RemoteConfig(origin)
 	loadCfg := manifest.LoadConfig(origin)
 	endpointCfg := manifest.EndpointConfig(origin)
@@ -92,6 +105,10 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 
 	mode := "prod"
 	var pages http.Handler
+	// The renderer, which the dev arm has to reach after it is built: its node
+	// table is renumbered by the same route change that renumbers the
+	// registries'.
+	var renderer *skgo.SSR
 	// build makes the page handler once both registries exist: the renderer
 	// needs the loads and the remote functions, and they need the manifest.
 	// Both modes render, so both go through it.
@@ -132,6 +149,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 			if err != nil {
 				return nil, err
 			}
+			renderer = ssr
 			return skgo.NewDevPages(target, manifest, ssr, log.Printf), nil
 		}
 	} else {
@@ -183,6 +201,13 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	// Handle mounts outermost: kit runs `handle` before it dispatches to
 	// anything, and that is true of every registry below, not just the loads
 	// one that happens to also answer `__data.json`.
-	return skgo.Handle(Handle).Intercept(handleCfg,
-		loads.Intercept(remotes.Intercept(endpoints.Intercept(pages)))), mode, nil
+	handler := skgo.Handle(Handle).Intercept(handleCfg,
+		loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
+	if dev != nil {
+		// Outside even that: a route added while both servers run has to be
+		// visible to every one of them at once, and `handle` runs for requests
+		// none of them will answer.
+		handler = dev.Intercept(loads, endpoints, renderer, handler)
+	}
+	return handler, mode, nil
 }
