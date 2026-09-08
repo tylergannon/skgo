@@ -1,11 +1,11 @@
 import { createBdd } from 'playwright-bdd';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from './fixtures';
 import { tagged } from './ssr';
 
-const { After, Then, When } = createBdd(test);
+const { After, Given, Then, When } = createBdd(test);
 
 /** The vite root — the app whose sources a scenario may edit. */
 const app = resolve(dirname(fileURLToPath(import.meta.url)), '../../web');
@@ -16,6 +16,14 @@ const app = resolve(dirname(fileURLToPath(import.meta.url)), '../../web');
  * that the next scenario is not reading the last one's edit.
  */
 const edited = new Map<string, string>();
+
+/**
+ * The route directories an editing scenario created. The After hook deletes
+ * them and waits until Go is answering 404 for them again, so the next scenario
+ * is not running against the last one's route tree — and so the checkout the
+ * suite ran in is the checkout it started with.
+ */
+const added = new Set<string>();
 
 /**
  * The steps dev.feature needs and prod has no use for.
@@ -188,4 +196,100 @@ After(async ({ page }) => {
 			intervals: [250, 250, 500, 500, 1000]
 		})
 		.toMatch(tagged('h1', 'title', 'Home'));
+});
+
+/**
+ * A precondition, not an assertion: a leftover route from a run that died
+ * halfway through would make everything below pass for the wrong reason.
+ */
+Given('the app has no route {string}', async ({ page }, path: string) => {
+	const response = await page.request.get(path);
+	expect(
+		response.status(),
+		`${path} already exists; a previous run left ${join(app, 'src/routes', path)} behind`
+	).toBe(404);
+});
+
+/**
+ * Writes a route the way a developer would: a `+page.svelte` in a new directory
+ * under `src/routes`, while both servers are running.
+ *
+ * The page shows two things. One is a literal this scenario supplied, which
+ * nothing in the app contains, so a document carrying it can only be the file
+ * just written. The other is the answer to `getSite` in
+ * src/routes/site.remote.go — whose generated `.remote.ts` throws — so a
+ * document carrying that is Go having answered a remote function called from a
+ * route that did not exist when Go started.
+ */
+When(
+	'a page is added at {string} showing {string} and the site name',
+	async ({}, path: string, literal: string) => {
+		const dir = join(app, 'src/routes', path);
+		added.add(dir);
+		await mkdir(dir, { recursive: true });
+		await writeFile(
+			join(dir, '+page.svelte'),
+			[
+				'<script lang="ts">',
+				`\timport { getSite } from '${'../'.repeat(path.split('/').filter(Boolean).length)}site.remote';`,
+				'</script>',
+				'',
+				'<h1 data-testid="title">Added</h1>',
+				`<p data-testid="added">${literal}</p>`,
+				'<svelte:boundary>',
+				'\t<p data-testid="added-site">{(await getSite()).name}</p>',
+				'</svelte:boundary>',
+				''
+			].join('\n'),
+			'utf-8'
+		);
+	}
+);
+
+/**
+ * The bytes Go sends now, read as text. It polls, because the file has to reach
+ * vite's watcher before Go can be told the route tree moved; a Go that never
+ * picks it up never satisfies this.
+ */
+Then(
+	'the document Go sends for {string} carries {string}',
+	async ({ page, shot }, path: string, text: string) => {
+		await expect
+			.poll(
+				async () => {
+					latest = await (await page.request.get(path)).text();
+					return latest;
+				},
+				{ timeout: 30_000, intervals: [250, 250, 500, 500, 1000] }
+			)
+			.toContain(text);
+		await shot();
+	}
+);
+
+Then('that document also carries {string}', async ({}, text: string) => {
+	expect(latest, 'no document has been fetched by this scenario').not.toBe('');
+	expect(latest).toContain(text);
+});
+
+Then('that document never mentions {string}', async ({}, text: string) => {
+	expect(latest, 'no document has been fetched by this scenario').not.toBe('');
+	expect(latest).not.toContain(text);
+});
+
+After(async ({ page }) => {
+	if (added.size === 0) return;
+	const paths = [...added].map((dir) => '/' + dir.slice(join(app, 'src/routes').length + 1));
+	for (const dir of added) await rm(dir, { recursive: true, force: true });
+	added.clear();
+	// Wait for Go to have stopped serving them, so the next scenario starts
+	// from the route tree the app is checked in with.
+	for (const path of paths) {
+		await expect
+			.poll(async () => (await page.request.get(path)).status(), {
+				timeout: 30_000,
+				intervals: [250, 250, 500, 500, 1000]
+			})
+			.toBe(404);
+	}
 });
