@@ -250,7 +250,7 @@ func packageNameOf(dir string) (string, error) {
 	fset := token.NewFileSet()
 	for _, e := range entries {
 		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, generatedFileSuffix) {
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, generatedFileSuffix) || strings.HasSuffix(name, "_test.go") {
 			continue
 		}
 		f, err := parser.ParseFile(fset, filepath.Join(dir, name), nil, parser.PackageClauseOnly)
