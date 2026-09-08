@@ -19,8 +19,9 @@
  * server environment (`exports/vite/index.js`, the `emitFile` at 686), which
  * makes this environment a code-splitting build, and rolldown refuses `iife`
  * for those. So the environment emits esm and a second `rolldown()` call over
- * its entry chunk alone folds it into the one script Go evaluates; the emitted
- * chunks are unreachable from that entry and fall away.
+ * its entry chunk folds it into the one script Go evaluates. Kit's remote
+ * entries can share application modules with that entry, so the fold follows
+ * every imported emitted chunk while leaving unrelated entries behind.
  */
 
 import { createRequire } from 'node:module';
@@ -230,8 +231,16 @@ export function gojaEnvironment() {
 						resolve: {
 							noExternal: true,
 							external: [],
-							// deliberately no 'browser'
-							conditions: ['node', 'production', 'module', 'import', 'default']
+							// A server consumer gets Node builtins by default. This one
+							// executes in goja and has none: leaving them external can
+							// produce a successful build whose IIFE calls an undefined
+							// `node_module` global before the first render.
+							builtins: [],
+							// Deliberately neither `node` nor `browser`. Kit and Svelte's
+							// server entry points use their default exports, while an app
+							// dependency such as `yaml` can choose its portable default
+							// instead of a Node-only conditional export.
+							conditions: ['production', 'module', 'import', 'default']
 						},
 						build: {
 							outDir: GOJA_OUT,
@@ -245,6 +254,11 @@ export function gojaEnvironment() {
 							sourcemap: false,
 							target: SSR_TARGET,
 							rolldownOptions: {
+								// Vite otherwise gives every server consumer the Node
+								// platform, which may synthesize `createRequire` while
+								// linking a chunk shared with Kit's remote entry. The engine
+								// is a neutral JavaScript host, not Node.
+								platform: 'neutral',
 								input: { bundle: ENTRY },
 								preserveEntrySignatures: false,
 								output: {
@@ -333,9 +347,9 @@ export function gojaEnvironment() {
 	 * Builds the environment and folds it into the one script Go evaluates.
 	 *
 	 * The fold is a second `rolldown()` over the environment's own entry chunk.
-	 * It reaches only that chunk and what it imports, so the entry chunks kit's
-	 * remote plugin emitted are left behind, and `iife` is legal because what
-	 * is left is a single entry.
+	 * It reaches that chunk and everything it imports, including chunks shared
+	 * with entries emitted by kit's remote plugin. Unrelated entry chunks are
+	 * left behind, and `iife` is legal because the fold itself has one entry.
 	 *
 	 * The polyfill is the fold's banner rather than a module of the bundle: in
 	 * the folded file kit's shared chunk evaluates before the entry body, so a
@@ -629,8 +643,11 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 						resolve: {
 							noExternal: true,
 							external: [],
-							// deliberately no 'browser'
-							conditions: ['node', 'production', 'module', 'import', 'default']
+							// The dev module runner executes in the same neutral, no-builtins
+							// host as the production bundle. Keeping its resolver identical
+							// prevents a package from changing implementation between modes.
+							builtins: [],
+							conditions: ['production', 'module', 'import', 'default']
 						}
 					}
 				}

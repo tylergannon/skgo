@@ -20,6 +20,15 @@ import { identity } from './skgo-adapter/identity.js';
 // named at startup instead of failing later as something unrelated.
 const SKGO = identity();
 
+// Kit supplies these two components when an app does not author its own root
+// layout or error boundary (`create_manifest_data`, "fallback root layout and
+// root error components"). Their source names deliberately lack the route-file
+// `+` prefix, so recognise only the exact files from the app's installed Kit.
+const KIT_COMPONENTS = join(
+	realpathSync(join(process.cwd(), 'node_modules/@sveltejs/kit')),
+	'src/runtime/components'
+);
+
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
  * the client bundle, kit's own SPA boot document, the SSR bundle the Go process
@@ -462,7 +471,10 @@ function componentSource(file, dir) {
 	const map = resolve(dir, entry) + '.map';
 	const sources = JSON.parse(readFileSync(map, 'utf-8')).sources;
 	const own = resolve(dirname(map), sources[sources.length - 1]);
-	if (!/^\+(page|layout|error)\.svelte$/.test(basename(own))) {
+	const name = basename(own);
+	const authored = /^\+(page|layout|error)\.svelte$/.test(name);
+	const fallback = /^(layout|error)\.svelte$/.test(name) && own === join(KIT_COMPONENTS, name);
+	if (!authored && !fallback) {
 		throw new Error(
 			`skgo: ${map} names ${own} as the last source of ${entry}, which is not a page, layout or error component. ` +
 				'The sourcemap no longer says which component each node renders.'

@@ -10,6 +10,9 @@
 		"build": "vite build",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
 	},
+	"dependencies": {
+		"yaml": "2.9.0"
+	},
 	"devDependencies": {
 		"@skgo/adapter": "link:../../internal/adapter",
 		"@sveltejs/kit": "3.0.0-next.25",
