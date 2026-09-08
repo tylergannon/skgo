@@ -107,3 +107,17 @@ Given(
 		}
 	}
 );
+
+/**
+ * The tag kit's client is meant to find, in the bytes Go sent. Named for the
+ * attribute rather than the rules, because the attribute is the whole contract:
+ * without it the inlined copy stays on the page for the rest of the session.
+ */
+Then("the document carried a style tag marked for kit's client", async ({ documents }) => {
+	expect(await documentText(documents)).toContain('<style data-sveltekit>');
+});
+
+Then('the page no longer carries that style tag', async ({ page, shot }) => {
+	await expect(page.locator('style[data-sveltekit]')).toHaveCount(0, { timeout: 15_000 });
+	await shot('taken-away');
+});

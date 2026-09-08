@@ -201,6 +201,19 @@ Feature: In dev the document is Go's too, from the modules vite transformed
       And the browser console never said "Hydration failed"
       And the browser console reported no error
 
+    Scenario: The style tag Go inlined is the one kit's client takes away
+      The inlined copy exists to cover the moment before vite's own stylesheets
+      have loaded, and kit's client finds it by its `data-sveltekit` attribute
+      and removes it as it mounts (`runtime/client/client.js`). Both halves are
+      here: the tag was in the bytes, it is gone from the page, and the page is
+      still styled afterwards — by the stylesheets vite's modules brought.
+
+      Given I open "/"
+      Then the document carried a style tag marked for kit's client
+      When the client has hydrated
+      Then the page no longer carries that style tag
+      And the app's nav is more than 40 pixels tall
+
     Scenario: A page whose values arrive after the document hydrates over it
       Given I open "/pricing"
       When the client has hydrated
