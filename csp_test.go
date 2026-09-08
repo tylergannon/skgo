@@ -186,6 +186,42 @@ func TestCSPScriptSrcElemMergesSeparatelyFromScriptSrc(t *testing.T) {
 	}
 }
 
+func TestCSPInlineDevStyleMatchesKitHashMode(t *testing.T) {
+	const css = "h1{color:#176b47}"
+	cfg := &ManifestCSP{Mode: "hash", Directives: map[string]CSPDirectiveValue{
+		"style-src":      sources("self"),
+		"style-src-elem": sources("self", "https://styles.example"),
+	}}
+	doc := newDocumentCSPWithNonce(cfg, "unused")
+	doc.AddStyle(css)
+
+	hash := "sha256-" + sha256Base64(css)
+	want := "style-src 'self' '" + hash + "'; style-src-elem 'self' https://styles.example '" + hash + "'"
+	if got := doc.Header(); got != want {
+		t.Errorf("header\n got %q\nwant %q", got, want)
+	}
+	if doc.StyleNeedsNonce() {
+		t.Error("hash mode must not put a nonce on the dev style element")
+	}
+}
+
+func TestCSPInlineDevStyleUsesDefaultSrcAndNonce(t *testing.T) {
+	const nonce = "dev-style-nonce"
+	cfg := &ManifestCSP{Mode: "nonce", Directives: map[string]CSPDirectiveValue{
+		"default-src": sources("self"),
+	}}
+	doc := newDocumentCSPWithNonce(cfg, nonce)
+	doc.AddStyle("body{color:green}")
+
+	const want = "default-src 'self'; style-src 'self' 'nonce-dev-style-nonce'"
+	if got := doc.Header(); got != want {
+		t.Errorf("header\n got %q\nwant %q", got, want)
+	}
+	if !doc.StyleNeedsNonce() {
+		t.Error("nonce mode must put the policy's nonce on the dev style element")
+	}
+}
+
 // No csp configured at all: every directive is absent, the header is empty,
 // and nothing about the boot script changes. This is the build a developer
 // who never touches `csp` gets today, unaffected by this feature existing.

@@ -1,6 +1,6 @@
 import { expect, type Page, type Response } from '@playwright/test';
 import { createBdd, test as base } from 'playwright-bdd';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
 /** Records the document (top-level navigation) traffic of one scenario. */
@@ -78,6 +78,10 @@ export type BrowserConsole = {
  */
 export type Shot = (name?: string) => Promise<void>;
 
+type BrowserFrame = {
+	capture(file: string): Promise<void>;
+};
+
 export const test = base.extend<{
 	documents: Documents;
 	remotes: Remotes;
@@ -85,7 +89,42 @@ export const test = base.extend<{
 	notes: Notes;
 	shot: Shot;
 	browserConsole: BrowserConsole;
+	browserFrame: BrowserFrame;
 }>({
+	browserFrame: [
+		async ({ page }, use) => {
+			const session = await page.context().newCDPSession(page);
+			let latest = '';
+			let receive: (() => void) | undefined;
+			session.on('Page.screencastFrame', ({ data, sessionId }) => {
+				latest = data;
+				receive?.();
+				receive = undefined;
+				// Closing an error-page target can race the final compositor frame.
+				// The frame is already recorded; a rejected acknowledgement must not
+				// turn a successful browser scenario into a teardown failure.
+				void session.send('Page.screencastFrameAck', { sessionId }).catch(() => undefined);
+			});
+			await session.send('Page.startScreencast', { format: 'png', everyNthFrame: 1 });
+			await use({
+				async capture(file: string) {
+					if (!latest) {
+						await new Promise<void>((resolve, reject) => {
+							const timeout = setTimeout(() => reject(new Error('the browser produced no frame')), 5000);
+							receive = () => {
+								clearTimeout(timeout);
+								resolve();
+							};
+						});
+					}
+					writeFileSync(file, Buffer.from(latest, 'base64'));
+				}
+			});
+			await session.send('Page.stopScreencast').catch(() => undefined);
+			await session.detach().catch(() => undefined);
+		},
+		{ auto: true }
+	],
 	// `auto` so the listener is attached before the scenario's first
 	// navigation — a violation reported while the very first document loads
 	// would otherwise be missed.
@@ -183,7 +222,7 @@ export const test = base.extend<{
 		await use(new Map<string, number>());
 	},
 
-	shot: async ({ page }, use, testInfo) => {
+	shot: async ({ browserFrame }, use, testInfo) => {
 		// The title of a Scenario Outline's example is just "Example #1", so the
 		// scenario's own title has to come along or three redirects overwrite
 		// each other.
@@ -198,7 +237,7 @@ export const test = base.extend<{
 		// build and against `vp dev`, and a shared path means the second run
 		// silently overwrites the first — the tracked evidence then shows one
 		// mode while the claim is about two.
-		const mode = process.env.EXPECTED_MODE ?? 'unknown';
+		const mode = process.env.SKGO_E2E_RUN ?? 'run';
 		// And the feature, so the tracked evidence is not one heap named after
 		// whichever feature happened to need screenshots first.
 		const feature =
@@ -207,10 +246,9 @@ export const test = base.extend<{
 		const shot: Shot = async (name) => {
 			const suffix = name ? `-${name}` : taken > 0 ? `-${taken}` : '';
 			taken += 1;
-			await page.screenshot({
-				path: `../../ephemeral/screenshots/${feature}/${mode}/${slug}${suffix}.png`,
-				fullPage: true
-			});
+			const file = `../../ephemeral/screenshots/${feature}/${mode}/${slug}${suffix}.png`;
+			mkdirSync(dirname(file), { recursive: true });
+			await browserFrame.capture(file);
 		};
 		await use(shot);
 		// A scenario that took no shot of its own still leaves the state it
@@ -234,7 +272,7 @@ const { AfterStep } = createBdd(test);
  * Kept out of the step definitions on purpose: a screenshot nobody has to
  * remember to write cannot be forgotten from the next scenario somebody adds.
  */
-AfterStep(async ({ page, $step, $bddContext, $testInfo }) => {
+AfterStep(async ({ browserFrame, $step, $bddContext, $testInfo }) => {
 	const step = $bddContext.bddTestData?.steps?.[$bddContext.stepIndex];
 	if (step?.keywordType !== 'Outcome') return;
 
@@ -245,7 +283,7 @@ AfterStep(async ({ page, $step, $bddContext, $testInfo }) => {
 		`${String($bddContext.stepIndex + 1).padStart(2, '0')}-${slug(step.textWithKeyword ?? $step.title)}.png`
 	);
 	mkdirSync(dirname(file), { recursive: true });
-	await shoot(page, file);
+	await shoot(browserFrame, file);
 	await $testInfo.attach(step.textWithKeyword ?? $step.title, { path: file, contentType: 'image/png' });
 });
 
@@ -255,7 +293,7 @@ AfterStep(async ({ page, $step, $bddContext, $testInfo }) => {
  * the two sets are only useful side by side.
  */
 function screenshotDir(): string {
-	return join('screenshots', process.env.EXPECTED_MODE ?? 'unknown');
+	return join('screenshots', process.env.SKGO_E2E_RUN ?? 'run');
 }
 
 /**
@@ -263,9 +301,9 @@ function screenshotDir(): string {
  * photographed; that is worth recording as a note in the report rather than
  * failing a step that already passed.
  */
-async function shoot(page: Page, file: string) {
+async function shoot(browserFrame: BrowserFrame, file: string) {
 	try {
-		await page.screenshot({ path: file, fullPage: true, timeout: 10_000 });
+		await browserFrame.capture(file);
 	} catch (error) {
 		console.warn(`skgo e2e: could not photograph ${file}: ${(error as Error).message}`);
 	}

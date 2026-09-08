@@ -63,7 +63,16 @@ func isUpgrade(r *http.Request) bool {
 // files in `static/`, and the HMR socket the browser dials on the page's own
 // port. The browser only ever talks to Go, which is why the socket has to be
 // tunnelled here rather than reached directly.
-func NewDevPages(target *url.URL, m Manifest, renderer *SSR, logf func(format string, args ...any)) http.Handler {
+//
+// Pass the app's endpoint registry when it has one so route additions and
+// removals update endpoint matching with the rest of Kit's live graph. The
+// variadic form preserves the original call for apps with pages only.
+func NewDevPages(target *url.URL, m Manifest, renderer *SSR, logf func(format string, args ...any), endpointRegistries ...*Endpoints) http.Handler {
+	renderer.loads.devRefresh = renderer.refreshDev
+	if len(endpointRegistries) > 0 && endpointRegistries[0] != nil {
+		renderer.devEndpoints = endpointRegistries[0]
+		endpointRegistries[0].devRefresh = renderer.refreshDev
+	}
 	base := strings.TrimSuffix(m.Base, "/")
 	appDir := m.AppDir
 	if appDir == "" {
@@ -91,7 +100,7 @@ func (h *devPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// route: answered as a document it gets a 200 and an HTML body, and the
 	// browser falls back to talking to vite directly — which is exactly the
 	// arrangement the proxy exists to prevent.
-	if ok && !isUpgrade(r) && h.isDocument(urlPath) && h.renderer.serve(w, r, urlPath) {
+	if ok && !isUpgrade(r) && h.isDocument(urlPath) && h.renderer.serveDev(w, r, urlPath) {
 		return
 	}
 	// Everything the renderer did not answer is vite's, including the two it

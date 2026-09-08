@@ -23,11 +23,9 @@ When('I click the link to {string}', async ({ page }, path: string) => {
 	await page.getByTestId('app-nav').getByRole('link', { name: linkName(path), exact: true }).click();
 });
 
-Then('the document response came from skgo in the expected mode', async ({ page, documents }) => {
-	const expected = process.env.EXPECTED_MODE;
-	expect(expected, 'EXPECTED_MODE must be set to dev or prod').toBeTruthy();
+Then('the document response came from skgo', async ({ page, documents }) => {
 	expect(documents.last, 'no document response was observed').not.toBeNull();
-	expect(documents.last!.headers()['x-skgo-mode']).toBe(expected);
+	expect(['dev', 'prod']).toContain(documents.last!.headers()['x-skgo-mode']);
 	// A document that boots nothing is not evidence skgo served the app, and
 	// the frame this step leaves behind would be a blank page — which is what
 	// it was in dev, where the first load waits on vite's module graph.

@@ -18,11 +18,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // endpointMethods is kit's own ENDPOINT_METHODS (`src/constants.js`), in kit's
@@ -168,6 +170,7 @@ func (m Manifest) EndpointConfig(origin string) EndpointConfig {
 // answers (`runtime/server/respond.js`). Doing it anywhere else would leave
 // endpoint routes out of it or duplicate the route table.
 type Endpoints struct {
+	mu     sync.RWMutex
 	cfg    EndpointConfig
 	base   string
 	origin string
@@ -175,6 +178,9 @@ type Endpoints struct {
 	routes []*endpointRoute
 	// byRoute is every registered method, keyed by route id then method.
 	byRoute map[string]map[string]http.HandlerFunc
+	// devRefresh installs Kit's latest route graph before a route-shaped
+	// request is matched. Nil in production.
+	devRefresh func() error
 }
 
 // endpointRoute is one route of the manifest, with whatever Go answers on it.
@@ -236,7 +242,21 @@ func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
 		byMethod[ep.method] = ep.handler
 	}
 
-	for _, route := range cfg.Routes {
+	var err error
+	es.routes, err = endpointRouting(cfg.Routes, es.byRoute)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := es.checkDrift(); err != nil {
+		return nil, err
+	}
+	return es, nil
+}
+
+func endpointRouting(routes []ManifestRoute, byRoute map[string]map[string]http.HandlerFunc) ([]*endpointRoute, error) {
+	var out []*endpointRoute
+	for _, route := range routes {
 		re, err := regexp.Compile(kitPattern(route.Pattern))
 		if err != nil {
 			return nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
@@ -246,7 +266,7 @@ func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
 			pattern:  re,
 			params:   route.Params,
 			hasPage:  route.Page != nil,
-			handlers: es.byRoute[route.ID],
+			handlers: byRoute[route.ID],
 		}
 		if route.Endpoint != nil {
 			er.declared = map[string]bool{}
@@ -254,13 +274,24 @@ func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
 				er.declared[method] = true
 			}
 		}
-		es.routes = append(es.routes, er)
+		out = append(out, er)
 	}
+	return out, nil
+}
 
-	if err := es.checkDrift(); err != nil {
-		return nil, err
+func (es *Endpoints) updateManifest(m Manifest) error {
+	if !es.cfg.Dev {
+		return errors.New("skgo: refusing to replace a production endpoint manifest")
 	}
-	return es, nil
+	routes, err := endpointRouting(m.Routes, es.byRoute)
+	if err != nil {
+		return err
+	}
+	es.mu.Lock()
+	es.cfg.Routes = m.Routes
+	es.routes = routes
+	es.mu.Unlock()
+	return nil
 }
 
 func validEndpointMethod(method string) bool {
@@ -355,6 +386,12 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 	if kitSuffix(urlPath) != "" {
 		next.ServeHTTP(w, r)
 		return
+	}
+	if es.devRefresh != nil && path.Ext(urlPath) == "" {
+		if err := es.devRefresh(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
 	}
 
 	// Kit refuses a form-shaped cross-site mutation at the very top of
@@ -491,6 +528,8 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 // match finds the route that serves routePath, which is the pathname with the
 // configured base already removed.
 func (es *Endpoints) match(routePath string) (*endpointRoute, map[string]string, bool) {
+	es.mu.RLock()
+	defer es.mu.RUnlock()
 	for _, route := range es.routes {
 		loc := route.pattern.FindStringSubmatchIndex(routePath)
 		if loc == nil {

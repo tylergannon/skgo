@@ -81,7 +81,6 @@ Feature: The front page says what skgo can do
       | A load that refuses                                    | Error 418         |
       | An error that is a bug says nothing about itself       | Error 500         |
 
-  @prod
   Scenario: The entry for a failure no error page can catch is kit's static error page
     The root layout is the outermost node of every branch, so nothing above it
     can render an `+error.svelte` for it. Kit's answer to a load that fails
@@ -91,9 +90,8 @@ Feature: The front page says what skgo can do
     src/routes/layout.server.go refuses with 503 when the URL says
     `boom=root-layout`, and refuses for no other reason.
 
-    `@prod`, because the claim is about a document Go rendered. In dev the root
-    layout turns SSR off, the document is kit's shell, and the refusal reaches
-    the browser in `__data.json` instead.
+    The claim is about a document Go rendered, from either the embedded build or
+    Kit's live module graph.
 
     Given I have signed in as "ada"
     And I visit "/"
@@ -132,7 +130,6 @@ Feature: The front page says what skgo can do
     And the page never mentions "hunter2"
     And the page never mentions "postgres://ada"
 
-  @prod
   Scenario: Every other page carries the root layout's own load
     The same load, on the way through. It runs for every page in the app
     because the root layout is in every branch, and "skgo example" is a string

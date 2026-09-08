@@ -63,6 +63,20 @@ Then(
 		const message = messageSaying(page, body).first();
 		await expect(message).toBeVisible();
 		await expect(message.getByTestId('message-from')).toHaveText(name);
+		// The refreshed inbox and the enhance callback settle independently.
+		// When this assertion follows a successful enhanced submission, wait for
+		// Kit to finish the callback's reset before a later step types again.
+		// After a rejected submission `rejected` is present and preserving the
+		// fields is the behavior under test, so that path deliberately skips this.
+		if (
+			(await page.getByTestId('contact-form').count()) > 0 &&
+			(await page.getByTestId('rejected').count()) === 0
+		) {
+			await expect(page.getByTestId('receipt')).toBeVisible();
+			await expect(page.getByTestId('field-from')).toHaveValue('');
+			await expect(page.getByTestId('field-email')).toHaveValue('');
+			await expect(page.getByTestId('field-body')).toHaveValue('');
+		}
 	}
 );
 

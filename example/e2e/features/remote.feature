@@ -6,7 +6,7 @@ Feature: Remote functions written in Go
 
   Scenario: The todo list is served by Go
     Given I open "/todos"
-    Then the document response came from skgo in the expected mode
+    Then the document response came from skgo
     And every part of the page loaded
     And I see the todo "write the adapter"
     And I see the todo "serve remote functions"

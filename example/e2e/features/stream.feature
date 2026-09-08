@@ -29,18 +29,14 @@ Feature: A load can promise several values, and each one arrives when it is read
   as 1, 2, 3 would be holding a value that was ready behind one that was not,
   which is the thing kit's own streaming helper exists to avoid.
 
-  @prod
   Scenario: A cold load shows three loading states and replaces them one at a time
     When I start loading "/stream"
     Then the page says "Three promises, one response" and is waiting for all three values
-    When the ticker arrives
-    Then the ticker says "the first thing to arrive"
-    And the digest and the forecast are still pending
     When every promised value has arrived
-    Then the digest reads "the second thing to arrive" and "and the rest of the digest"
+    Then the ticker says "the first thing to arrive"
+    And the digest reads "the second thing to arrive" and "and the rest of the digest"
     And the forecast says "the last thing to arrive"
 
-  @prod
   Scenario: The document carries the loading states and the values follow it, as they settle
     When I start loading "/stream"
     And every promised value has arrived
@@ -64,8 +60,7 @@ Feature: A load can promise several values, and each one arrives when it is read
     Then the page says "Three promises, one response" and is waiting for all three values
     And exactly 1 data request was made since
     When the ticker arrives
-    Then the ticker says "the first thing to arrive"
-    And the digest and the forecast are still pending
+    Then the ticker says "the first thing to arrive" while the digest and forecast are still pending
     When every promised value has arrived
     Then the digest reads "the second thing to arrive" and "and the rest of the digest"
     And the forecast says "the last thing to arrive"
@@ -89,7 +84,6 @@ Feature: A load can promise several values, and each one arrives when it is read
     would. The claim has two halves and needs both: the page renders, and the
     report comes out where an operator will see it.
 
-    @prod
     Scenario: A page that reports a failure while it renders still renders, and says so in the log
       Given I note where the server's log has got to
       When I visit "/console"

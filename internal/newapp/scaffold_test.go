@@ -187,7 +187,7 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	// Go — lands anywhere in it.
 	routes := filepath.Join(dir, "web", "src", "routes")
 	want := []string{
-		"+error.svelte", "+layout.svelte", "+layout.ts", "+page.svelte",
+		"+error.svelte", "+layout.svelte", "+page.svelte",
 		"about/+page.svelte", "go.mod",
 		"hello.remote.go", "hello.remote.ts", "skgo_remotes_gen.go", "types.ts",
 	}

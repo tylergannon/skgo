@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
 import { expect, hydrated, test } from './fixtures';
+import { tagged } from './ssr';
 
 const { Given, When, Then } = createBdd(test);
 
@@ -22,14 +23,16 @@ Given('another tab is open at {string}', async ({ page }, path: string) => {
 When('the other tab adds the todo {string}', async ({}, text: string) => {
 	const tab = otherTab();
 	await hydrated(tab);
+	const matching = tab.getByTestId('todo').filter({ hasText: text });
+	const before = await matching.count();
 	await tab.getByTestId('new-todo').fill(text);
 	await tab.getByTestId('add-todo').click();
 	// The other tab's own list has to have taken the change before the scenario
 	// asks the watching tab about it; otherwise a board that had not moved yet
-	// and a board that never would look the same.
-	await expect(tab.getByTestId('todo').filter({ hasText: text }).first()).toBeVisible({
-		timeout: 15_000
-	});
+	// and a board that never would look the same. Count this named fixture's
+	// occurrences so rerunning against a long-lived server cannot satisfy the
+	// wait with an older row carrying the same text.
+	await expect(matching).toHaveCount(before + 1, { timeout: 15_000 });
 });
 
 Then('the board is on stream frame {int}', async ({ page, shot }, frame: number) => {
@@ -57,7 +60,7 @@ Then(
 	"the document already said the board's newest todo is {string}",
 	async ({ documents, shot }, text: string) => {
 		const html = await documentText(documents);
-		expect(html).toContain(`<strong data-testid="board-newest">${text}</strong>`);
+		expect(html).toMatch(tagged('strong', 'board-newest', text));
 		await shot();
 	}
 );
@@ -66,7 +69,7 @@ Then(
 	'the document already said the board is on stream frame {int}',
 	async ({ documents, shot }, frame: number) => {
 		const html = await documentText(documents);
-		expect(html).toContain(`<strong data-testid="board-push">${frame}</strong>`);
+		expect(html).toMatch(tagged('strong', 'board-push', String(frame)));
 		await shot();
 	}
 );

@@ -43,6 +43,19 @@ func Handle(ctx context.Context) error {
 // without asking the app what it just rendered.
 const supportID = "case-1121"
 
+// liveRouteData is compiled into the Go dev server before the corresponding
+// Svelte route exists. The browser proof adds that route while both processes
+// stay running; seeing this exact value in the new document proves that Kit's
+// live node numbering reached Go and that Go, not Kit's throwing stub, loaded
+// its data.
+type liveRouteData struct {
+	Message string `json:"message"`
+}
+
+func liveRouteLoad(context.Context) (any, error) {
+	return liveRouteData{Message: "loaded by the already-running Go process"}, nil
+}
+
 // HandleError is the app's `handleError` hook — kit's own contract, mirrored:
 // it runs for every error a page render raises, expected or not
 // (`exports/hooks/public.d.ts`: "runs for every error thrown ... except
@@ -83,6 +96,12 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	manifest, err := skgo.ReadManifest(dist)
 	if err != nil {
 		return nil, "", err
+	}
+	if proxy != "" {
+		manifest, err = skgo.ReadDevManifest(dist, proxy)
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
 	remoteCfg := manifest.RemoteConfig(origin)
@@ -132,7 +151,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 			if err != nil {
 				return nil, err
 			}
-			return skgo.NewDevPages(target, manifest, ssr, log.Printf), nil
+			return skgo.NewDevPages(target, manifest, ssr, log.Printf, endpoints), nil
 		}
 	} else {
 		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
@@ -169,7 +188,14 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
-	loads, err := skgo.NewLoads(loadCfg, generated.Loads()...)
+	loadRegistrations := generated.Loads()
+	if proxy != "" {
+		loadRegistrations = append(loadRegistrations, skgo.NewServerLoad(skgo.LoadSpec{
+			Module: "src/routes/dev-added/+page.server.ts",
+			Run:    liveRouteLoad,
+		}))
+	}
+	loads, err := skgo.NewLoads(loadCfg, loadRegistrations...)
 	if err != nil {
 		return nil, "", err
 	}

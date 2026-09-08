@@ -1,4 +1,5 @@
 import { createBdd } from 'playwright-bdd';
+import { readFileSync } from 'node:fs';
 import { expect, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
@@ -19,6 +20,20 @@ Given('I have signed in as {string}', async ({ page }, user: string) => {
 	await expect(page.getByTestId('session')).toHaveText(`Signed in as ${user}`, {
 		timeout: 15_000
 	});
+});
+
+Given('the no-script browser has a session for {string}', async ({ page }, user: string) => {
+	const manifest = JSON.parse(
+		readFileSync(new URL('../../web/skgo.remotes.json', import.meta.url), 'utf8')
+	) as { remotes: string[] };
+	const id = manifest.remotes.find((candidate) => candidate.endsWith('/signIn'));
+	expect(id, 'the generated remote list names no signIn command').toBeTruthy();
+	const payload = Buffer.from(JSON.stringify([user]), 'utf8').toString('base64url');
+	const response = await page.request.post(`/_app/remote/${id}`, {
+		headers: { origin: process.env.BASE_URL ?? '' },
+		data: { payload, refreshes: [] }
+	});
+	expect(response.status(), await response.text()).toBe(200);
 });
 
 When('I visit {string}', async ({ page }, path: string) => {

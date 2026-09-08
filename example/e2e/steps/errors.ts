@@ -32,8 +32,8 @@ Then(
 	'the document already said the error page shows {string} and {string}',
 	async ({ documents, shot }, title: string, message: string) => {
 		const html = await documentText(documents);
-		expect(html).toContain(`<h1 data-testid="title">${title}</h1>`);
-		expect(html).toContain(`<p data-testid="error-message">${message}</p>`);
+		expect(html).toMatch(tagged('h1', 'title', title));
+		expect(html).toMatch(tagged('p', 'error-message', message));
 		await shot();
 	}
 );

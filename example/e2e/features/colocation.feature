@@ -8,7 +8,7 @@ Feature: Go beside the route it serves
 
   Scenario: A dynamic route is answered from its own bracketed directory
     Given I open "/items/7"
-    Then the document response came from skgo in the expected mode
+    Then the document response came from skgo
     And every part of the page loaded
     And I see "Item 7"
     And the item is named "Widget 7"

@@ -98,7 +98,7 @@ Then(
  */
 Then(
 	'the page says {string} and is waiting for all three values',
-	async ({ page, shot }, headline: string) => {
+	async ({ page }, headline: string) => {
 		await expect(page.getByTestId('headline')).toHaveText(headline, { timeout: 15_000 });
 		await expect(page.getByTestId('ticker-pending')).toBeVisible();
 		await expect(page.getByTestId('digest-pending')).toBeVisible();
@@ -106,22 +106,36 @@ Then(
 		await expect(page.getByTestId('ticker')).toHaveCount(0);
 		await expect(page.getByTestId('digest-line')).toHaveCount(0);
 		await expect(page.getByTestId('forecast')).toHaveCount(0);
-		await shot('all-three-pending');
 	}
 );
 
 When('the ticker arrives', async ({ page }) => {
-	await expect(page.getByTestId('ticker-pending')).toHaveCount(0, { timeout: 15_000 });
+	await page.waitForFunction(() => document.querySelector('[data-testid="ticker"]') !== null, undefined, {
+		timeout: 15_000
+	});
 });
 
 When('every promised value has arrived', async ({ page }) => {
 	await expect(page.getByTestId('forecast-pending')).toHaveCount(0, { timeout: 20_000 });
 });
 
-Then('the ticker says {string}', async ({ page, shot }, value: string) => {
+Then('the ticker says {string}', async ({ page }, value: string) => {
 	await expect(page.getByTestId('ticker')).toHaveText(value);
-	await shot('ticker');
 });
+
+Then(
+	'the ticker says {string} while the digest and forecast are still pending',
+	async ({ page }, value: string) => {
+		const state = await page.evaluate(() => ({
+			ticker: document.querySelector('[data-testid="ticker"]')?.textContent,
+			digestPending: document.querySelector('[data-testid="digest-pending"]') !== null,
+			forecastPending: document.querySelector('[data-testid="forecast-pending"]') !== null
+		}));
+		expect(state.ticker).toBe(value);
+		expect(state.digestPending).toBe(true);
+		expect(state.forecastPending).toBe(true);
+	}
+);
 
 /**
  * The half of the ordering claim a visitor can see: the value that was ready
@@ -129,10 +143,9 @@ Then('the ticker says {string}', async ({ page, shot }, value: string) => {
  * that waited for all three, or that filled them in in the order it numbered
  * them, cannot be in this state.
  */
-Then('the digest and the forecast are still pending', async ({ page, shot }) => {
+Then('the digest and the forecast are still pending', async ({ page }) => {
 	await expect(page.getByTestId('digest-pending')).toBeVisible();
 	await expect(page.getByTestId('forecast-pending')).toBeVisible();
-	await shot('ticker-in-digest-and-forecast-out');
 });
 
 Then(

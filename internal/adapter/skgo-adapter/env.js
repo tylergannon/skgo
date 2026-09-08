@@ -63,7 +63,18 @@ const { transformSync } = await fromApp('vite/rolldown/experimental');
 // `fetchModule` operates on the app's own `DevEnvironment`, so it has to be
 // the app's copy for the same reason rolldown is: a second module realm's
 // vite does not recognise this one's environments.
-const { fetchModule } = await fromApp('vite');
+const { fetchModule, isCSSRequest } = await fromApp('vite');
+
+// These are the same two Kit functions its own dev server calls in
+// `update_manifest`: one derives the route/node graph from the authored tree,
+// and the other writes the generated client modules that graph describes.
+// The adapter reaches the app's installed Kit by absolute path because these
+// internals are intentionally not package exports.
+const kitRoot = realpathSync(join(process.cwd(), 'node_modules/@sveltejs/kit'));
+const createManifestData = (
+	await import(pathToFileURL(join(kitRoot, 'src/core/sync/create_manifest_data/index.js')).href)
+).default;
+const kitSync = await import(pathToFileURL(join(kitRoot, 'src/core/sync/sync.js')).href);
 
 /**
  * The runtime JavaScript, as files on disk beside this one — the way kit's own
@@ -524,38 +535,28 @@ function posix(p) {
 /**
  * The node table in kit's own dev numbering.
  *
- * Kit writes one module per node under `<outDir>/generated/dev/client/nodes/`
- * and rewrites them whenever a route is added or removed, so reading them is
- * reading kit's answer rather than deriving a second one. A node that renders
- * no component leaves a hole, exactly as the built table does.
+ * `create_manifest_data` is Kit's route scanner and `nodes` is its ordered
+ * output. Reading that snapshot directly matters: the generated numbered files
+ * are written one at a time and old high-numbered files can remain briefly
+ * after a route is removed, so enumerating that directory can combine two
+ * different route graphs. A node with no component leaves a hole, exactly as
+ * the built table does.
  *
- * @param {string} outDir kit's `outDir`
+ * @param {any} manifest Kit's current manifest data
+ * @param {string} root Vite's project root
  */
-function devNodeTable(outDir) {
-	const dir = join(outDir, 'generated/dev/client/nodes');
-	if (!existsSync(dir)) {
-		throw new Error(
-			`skgo: ${dir} does not exist, so the engine has no node table. It is written by kit's own dev server; this environment was asked for a module before kit had synced.`
-		);
-	}
-	const indices = readdirSync(dir)
-		.filter((name) => name.endsWith('.js'))
-		.map((name) => Number(name.slice(0, -3)))
-		.filter((index) => Number.isInteger(index))
-		.sort((a, b) => a - b);
-
+function devNodeTable(manifest, root) {
+	if (!manifest) throw new Error('skgo: the live Kit manifest is not ready');
 	/** @type {string[]} */
 	const imports = [];
 	/** @type {string[]} */
 	const table = [];
-	for (const index of indices) {
-		const source = readFileSync(join(dir, `${index}.js`), 'utf-8');
-		const component = /export \{ default as component \} from "(.+?)"/.exec(source);
-		if (!component) {
+	for (const [index, node] of manifest.nodes.entries()) {
+		if (!node.component) {
 			table.push('undefined');
 			continue;
 		}
-		imports.push(`import N${index} from ${JSON.stringify(resolve(dir, component[1]))};`);
+		imports.push(`import N${index} from ${JSON.stringify(resolve(root, node.component))};`);
 		table.push(`N${index}`);
 	}
 	return `${imports.join('\n')}\nexport const components = [${table.join(', ')}];\n`;
@@ -593,10 +594,11 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 	const out = resolve(root, outDir);
 	const aliases = kitAliases(root);
 	const helpers = oxcHelpers(root);
+	let manifestData;
 
 	/** @type {Record<string, () => string>} */
 	const sources = {
-		'skgo:nodes': () => devNodeTable(out),
+		'skgo:nodes': () => devNodeTable(manifestData, root),
 		'skgo:hooks': () => hooksModule(root),
 		'skgo:esm-env': () => 'export const DEV = true; export const BROWSER = false;',
 		'skgo:generated': () => 'export const get_hooks = () => ({});',
@@ -611,6 +613,8 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 	// and the module Go re-fetched would be the one it already had.
 	/** @type {string[]} */
 	const changed = [];
+	let manifestVersion = 0;
+	let manifestDirty = true;
 
 	/** @type {import('vite').Plugin} */
 	const plugin = {
@@ -641,35 +645,173 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 				);
 			}
 
-			// The node table is the one module of this environment that is not
-			// compiled from a file, so nothing invalidates it: a route added
-			// while both servers are running leaves the engine holding the
-			// numbering the table had when it was first evaluated, and the
-			// document then renders whichever components happen to live at
-			// those indices — silently, because they are valid indices for
-			// other pages. Kit rewrites the directory below whenever the route
-			// tree changes, so watching it is watching kit's own answer.
-			const nodesDir = join(out, 'generated/dev/client/nodes');
-			server.watcher.add(nodesDir);
-			/** @param {string} file */
-			const renumbered = (file) => {
-				if (!normalize(file).startsWith(normalize(nodesDir))) return;
+			const setup = server.config.plugins.find(
+				(candidate) => candidate.name === 'vite-plugin-sveltekit-setup'
+			);
+			const kit = setup?.api?.options;
+			if (!kit) {
+				throw new Error(
+					'skgo: Kit exposed no validated options on vite-plugin-sveltekit-setup; the dev manifest cannot mirror what Kit is serving.'
+				);
+			}
+
+			const generated = JSON.parse(readFileSync(join(root, 'skgo.remotes.json'), 'utf-8'));
+			const endpointMethods = generated.endpoints ?? {};
+
+			const refreshManifest = () => {
+				if (!manifestDirty && manifestData) return manifestData;
+				manifestData = createManifestData(kit, root);
+				// A skgo page request does not pass through Kit's SSR middleware, so
+				// it cannot rely on Kit's first request to write these modules. This
+				// is Kit's own sync.create call with the same arguments its dev
+				// update_manifest uses.
+				kitSync.create(kit, root, manifestData, false);
+				// Invalidate only after the complete manifest snapshot is installed.
+				// A watcher fires before this point and would make Vite cache a node
+				// table generated from the preceding snapshot.
 				const module = environment.moduleGraph.getModuleById(PREFIX + 'skgo:nodes');
 				if (module) environment.moduleGraph.invalidateModule(module);
-				if (changed[changed.length - 1] !== NODE_TABLE_URL) changed.push(NODE_TABLE_URL);
+				changed.push(NODE_TABLE_URL);
+				manifestDirty = false;
+				manifestVersion++;
+				return manifestData;
 			};
-			for (const event of ['add', 'change', 'unlink']) {
-				server.watcher.on(event, renumbered);
-			}
+
+			const devManifest = () => {
+				const data = refreshManifest();
+				return {
+					version: manifestVersion,
+					nodes: data.nodes.map((node) => node.server ?? ''),
+					routes: data.routes
+						.filter((route) => route.page || route.endpoint)
+						.map((route) => ({
+							id: route.id,
+							pattern: route.pattern.source,
+							params: route.params,
+							endpoint: route.endpoint
+								? { methods: endpointMethods[route.id] ?? [] }
+								: null,
+							page: route.page
+								? {
+										layouts: Array.from(
+											{ length: route.page.layouts.length },
+											(_, i) => route.page.layouts[i] ?? -1
+										),
+										errors: Array.from(
+											{ length: route.page.errors.length },
+											(_, i) => route.page.errors[i] ?? -1
+										),
+										leaf: route.page.leaf
+									}
+								: null
+						})),
+					ssr: {
+						assets: kit.paths.assets,
+						relative: kit.paths.relative,
+						csp: kit.csp,
+						nodes: data.nodes.map((node, index) => ({
+							index,
+							component: !!node.component,
+							ssr: node.page_options?.ssr ?? null,
+							csr: node.page_options?.csr ?? null
+						}))
+					},
+					template: readFileSync(kit.files.appTemplate, 'utf-8'),
+					errorTemplate: readDevErrorTemplate(kit)
+				};
+			};
+
+			// Do this before Go can observe `/info`. It closes the clean-worktree
+			// race where the server was listening but Kit had not yet received a
+			// page request and therefore had not written its dev client/node tree.
+			refreshManifest();
+
+			// A route being added or removed changes Kit's node numbering. Record
+			// the virtual table itself, not the generated client files Kit happens
+			// to rewrite: those files are not an atomic snapshot and old numbered
+			// files can remain while the tree is settling.
+			server.watcher.on('all', (event, file) => {
+				// `hotUpdate` is not dispatched for a custom environment until it
+				// has its own HMR transport. Go is that environment's consumer, so
+				// record and invalidate its graph directly from Vite's watcher.
+				// Generated client files are browser inputs and, more importantly,
+				// are rewritten by refreshManifest itself; feeding them back here
+				// creates a change storm with no Go module to invalidate.
+				if (normalize(file).startsWith(normalize(out) + '/')) return;
+				for (const module of environment.moduleGraph.getModulesByFile(file) ?? []) {
+					environment.moduleGraph.invalidateModule(module);
+				}
+				// Repeated edits are distinct cursor positions. In particular, an
+				// editor replacing text and a test restoring it can be consecutive
+				// events for the same path; collapsing them strands runtimes on the
+				// temporary version forever.
+				changed.push(file);
+
+				const routeFile = normalize(file).startsWith(normalize(kit.files.routes) + '/');
+				if (routeFile && (event === 'add' || event === 'unlink')) manifestDirty = true;
+				const name = relative(kit.files.routes, file).split(/[\\/]/).at(-1);
+				if (routeFile && /^\+(?:page|layout)(?:\.server)?\.[jt]s$/.test(name ?? '')) {
+					manifestDirty = true;
+				}
+			});
 
 			// What Go needs to know before it can ask for anything: which
 			// module is the render entry, and what a dev document boots.
 			server.middlewares.use('/__skgo_dev/info', (_req, res) => {
-				json(res, 200, {
-					entry: ENTRY,
-					client: devClient(root, out),
-					globalName: '__sveltekit_dev'
-				});
+				try {
+					json(res, 200, {
+						entry: ENTRY,
+						client: devClient(root, out),
+						globalName: '__sveltekit_dev',
+						manifest: devManifest()
+					});
+				} catch (e) {
+					json(res, 500, { error: errorText(e) });
+				}
+			});
+
+			// Kit's dev renderer inlines every CSS dependency of the nodes in the
+			// rendered branch. Go asks after it has evaluated those nodes, so the
+			// goja environment's module graph contains the same dependency edges
+			// Kit's renderer would walk.
+			server.middlewares.use('/__skgo_dev/styles', async (req, res) => {
+				let body = '';
+				for await (const chunk of req) body += chunk;
+				try {
+					const { nodes = [] } = JSON.parse(body || '{}');
+					const data = refreshManifest();
+					const deps = new Set();
+					for (const index of nodes) {
+						const node = data.nodes[index];
+						if (!node) continue;
+						for (const file of [node.component, node.universal]) {
+							if (!file) continue;
+							const id = resolve(root, file);
+							const module =
+								environment.moduleGraph.getModuleById(id) ??
+								(await environment.moduleGraph.getModuleByUrl('/' + posix(file)));
+							if (module) await findDevDeps(environment, module, deps);
+						}
+					}
+
+					const styles = [];
+					const runner = server.environments.ssr.runner;
+					for (const dep of deps) {
+						if (!isCSSRequest(dep.url) || VITE_CSS_QUERY.test(dep.url)) continue;
+						const inline = dep.url.includes('?')
+							? dep.url.replace('?', '?inline&')
+							: dep.url + '?inline';
+						try {
+							styles.push((await runner.import(inline)).default);
+						} catch {
+							// Kit deliberately ignores a CSS module that vanished from the
+							// graph between traversal and import (typically a dynamic import).
+						}
+					}
+					json(res, 200, { styles });
+				} catch (e) {
+					json(res, 500, { error: errorText(e) });
+				}
 			});
 
 			// One transformed module, exactly as vite's own module runner would
@@ -717,7 +859,10 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 		// for the file (`handleHMRUpdate`), which is the ordering the cursor
 		// above depends on.
 		hotUpdate({ file }) {
-			changed.push(file);
+			const name = relative(kit.files.routes, file).split(/[\\/]/).at(-1);
+			if (/^\+(?:page|layout)(?:\.server)?\.[jt]s$/.test(name ?? '')) {
+				manifestDirty = true;
+			}
 			return undefined;
 		},
 
@@ -776,6 +921,46 @@ const OXC_HELPERS = '@oxc-project/runtime/helpers/';
  * log carries this instead.
  */
 const NODE_TABLE_URL = '/@id/__x00__skgo:skgo:nodes';
+const VITE_CSS_QUERY = /(?:\?|&)(?:raw|url|inline)(?:&|$)/;
+
+/**
+ * Kit's dev `find_deps`, with the environment made explicit. Its own copy is
+ * closed over the `ssr` environment; skgo's component modules were evaluated
+ * in `goja`, so that is the graph whose transform-result URLs are authoritative.
+ *
+ * @param {import('vite').DevEnvironment} environment
+ * @param {import('vite').EnvironmentModuleNode} node
+ * @param {Set<import('vite').EnvironmentModuleNode>} deps
+ */
+async function findDevDeps(environment, node, deps) {
+	const branches = [];
+	const add = async (dependency) => {
+		if (deps.has(dependency)) return;
+		deps.add(dependency);
+		await findDevDeps(environment, dependency, deps);
+	};
+	const addByURL = async (url) => {
+		const dependency = await environment.moduleGraph.getModuleByUrl(url);
+		if (dependency) await add(dependency);
+	};
+
+	if (node.transformResult) {
+		for (const url of node.transformResult.deps ?? []) branches.push(addByURL(url));
+		for (const url of node.transformResult.dynamicDeps ?? []) branches.push(addByURL(url));
+	} else {
+		for (const dependency of node.importedModules) branches.push(add(dependency));
+	}
+	await Promise.all(branches);
+}
+
+/** @param {any} kit Kit's validated config */
+function readDevErrorTemplate(kit) {
+	try {
+		return readFileSync(kit.files.errorTemplate, 'utf-8');
+	} catch {
+		return readFileSync(join(kitRoot, 'src/core/config/default-error.html'), 'utf-8');
+	}
+}
 
 /** @param {string} p */
 function normalize(p) {

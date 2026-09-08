@@ -19,6 +19,7 @@ import (
 	"runtime/debug"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // Load declares fn as a SvelteKit server load. Write it beside the function, in
@@ -144,6 +145,7 @@ func (m Manifest) LoadConfig(origin string) LoadConfig {
 // Loads is a registry of server loads and the http.Handler that answers
 // `__data.json`.
 type Loads struct {
+	mu     sync.RWMutex
 	cfg    LoadConfig
 	base   string
 	origin *url.URL
@@ -155,6 +157,9 @@ type Loads struct {
 	nodes []*ServerLoad
 	// routes is the route table, in manifest order.
 	routes []*dataRoute
+	// devRefresh installs Kit's latest authored route/node graph before a
+	// data request is matched. Nil in production.
+	devRefresh func() error
 }
 
 // dataRoute is one page route: what to match, what to name the captures, and
@@ -214,35 +219,64 @@ func NewLoads(cfg LoadConfig, loads ...*ServerLoad) (*Loads, error) {
 		ls.byModule[load.module] = load
 	}
 
-	ls.nodes = make([]*ServerLoad, len(cfg.Nodes))
-	for i, module := range cfg.Nodes {
-		if module == "" {
-			continue
-		}
-		ls.nodes[i] = ls.byModule[module]
-	}
-
-	for _, route := range cfg.Routes {
-		re, err := regexp.Compile(kitPattern(route.Pattern))
-		if err != nil {
-			return nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
-		}
-		dr := &dataRoute{id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil, errors: route.Page.ErrorPages()}
-		for _, index := range route.Page.Branch() {
-			dr.nodes = append(dr.nodes, index)
-			if index < 0 || index >= len(ls.nodes) {
-				dr.branch = append(dr.branch, nil)
-				continue
-			}
-			dr.branch = append(dr.branch, ls.nodes[index])
-		}
-		ls.routes = append(ls.routes, dr)
+	var err error
+	ls.nodes, ls.routes, err = loadRouting(cfg, ls.byModule)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := ls.checkDrift(); err != nil {
 		return nil, err
 	}
 	return ls, nil
+}
+
+func loadRouting(cfg LoadConfig, byModule map[string]*ServerLoad) ([]*ServerLoad, []*dataRoute, error) {
+	nodes := make([]*ServerLoad, len(cfg.Nodes))
+	for i, module := range cfg.Nodes {
+		if module != "" {
+			nodes[i] = byModule[module]
+		}
+	}
+	var routes []*dataRoute
+	for _, route := range cfg.Routes {
+		re, err := regexp.Compile(kitPattern(route.Pattern))
+		if err != nil {
+			return nil, nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
+		}
+		dr := &dataRoute{id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil, errors: route.Page.ErrorPages()}
+		for _, index := range route.Page.Branch() {
+			dr.nodes = append(dr.nodes, index)
+			if index < 0 || index >= len(nodes) {
+				dr.branch = append(dr.branch, nil)
+				continue
+			}
+			dr.branch = append(dr.branch, nodes[index])
+		}
+		routes = append(routes, dr)
+	}
+	return nodes, routes, nil
+}
+
+// updateManifest atomically replaces the routing view in dev. Registrations
+// stay the compiled Go functions; only Kit's mapping from authored routes and
+// node numbers to those registrations changes.
+func (ls *Loads) updateManifest(m Manifest) error {
+	if !ls.cfg.Dev {
+		return errors.New("skgo: refusing to replace a production load manifest")
+	}
+	cfg := ls.cfg
+	cfg.Nodes = m.Nodes
+	cfg.Routes = m.Routes
+	nodes, routes, err := loadRouting(cfg, ls.byModule)
+	if err != nil {
+		return err
+	}
+	ls.mu.Lock()
+	ls.cfg.Nodes, ls.cfg.Routes = cfg.Nodes, cfg.Routes
+	ls.nodes, ls.routes = nodes, routes
+	ls.mu.Unlock()
+	return nil
 }
 
 // checkDrift refuses to build a registry whose loads are not the ones the built
@@ -290,6 +324,8 @@ func (ls *Loads) checkDrift() error {
 // match finds the route that serves routePath, which is the pathname with the
 // data suffix already stripped and the configured base already removed.
 func (ls *Loads) match(routePath string) (*dataRoute, map[string]string, bool) {
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
 	for _, route := range ls.routes {
 		loc := route.pattern.FindStringSubmatchIndex(routePath)
 		if loc == nil {
