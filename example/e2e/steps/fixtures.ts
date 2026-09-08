@@ -259,8 +259,15 @@ AfterStep(async ({ page, $step, $bddContext, $testInfo }) => {
 		`${String($bddContext.stepIndex + 1).padStart(2, '0')}-${slug(step.textWithKeyword ?? $step.title)}.png`
 	);
 	mkdirSync(dirname(file), { recursive: true });
-	await shoot(page, file);
-	await $testInfo.attach(step.textWithKeyword ?? $step.title, { path: file, contentType: 'image/png' });
+	// Only attached if it was actually taken. A page that is mid-reload cannot
+	// be photographed, and attaching a file that is not there turns a scenario
+	// that passed into a failure about its own evidence.
+	if (await shoot(page, file)) {
+		await $testInfo.attach(step.textWithKeyword ?? $step.title, {
+			path: file,
+			contentType: 'image/png'
+		});
+	}
 });
 
 /**
@@ -277,11 +284,13 @@ function screenshotDir(): string {
  * photographed; that is worth recording as a note in the report rather than
  * failing a step that already passed.
  */
-async function shoot(page: Page, file: string) {
+async function shoot(page: Page, file: string): Promise<boolean> {
 	try {
 		await page.screenshot({ path: file, fullPage: true, timeout: 10_000 });
+		return true;
 	} catch (error) {
 		console.warn(`skgo e2e: could not photograph ${file}: ${(error as Error).message}`);
+		return false;
 	}
 }
 

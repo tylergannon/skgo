@@ -890,17 +890,21 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 			// And the client half of the same tree, for the same reason: the
 			// document's boot script imports `generated/dev/client/app.js`, and
 			// on a tree that has never run `vp dev` there is no such file for
-			// the browser to fetch. `sync.create` writes both together
-			// (`core/sync/sync.js`); this writes both together too, and again
-			// whenever the route tree changes, because the file describes it.
-			const writeClient = () =>
-				kit.writeClientManifest(
-					config,
-					/** @type {() => any} */ (manifestData)(),
-					join(config.outDir, 'generated/dev/client'),
-					kitRoot
-				);
-			writeClient();
+			// the browser to fetch. `sync.create` writes the two together
+			// (`core/sync/sync.js`).
+			//
+			// Only here, and not on a route change: kit's own route watcher is
+			// not gated on a request the way `init_manifest` is
+			// (`exports/vite/dev/index.js`, `watch('add', ...)`), so from the
+			// first added or deleted route onwards kit keeps this tree current
+			// itself. Writing it a second time would only make vite reload the
+			// page for a file that already says what it says.
+			kit.writeClientManifest(
+				config,
+				/** @type {() => any} */ (manifestData)(),
+				join(config.outDir, 'generated/dev/client'),
+				kitRoot
+			);
 
 			// The node table and the route table are the two things in this
 			// environment that no file compiles to, so nothing invalidates
@@ -930,7 +934,6 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 				const module = environment.moduleGraph.getModuleById(PREFIX + 'skgo:nodes');
 				if (module) environment.moduleGraph.invalidateModule(module);
 				if (changed[changed.length - 1] !== NODE_TABLE_URL) changed.push(NODE_TABLE_URL);
-				writeClient();
 			};
 			server.watcher.on('add', (file) => renumbered(file, false));
 			server.watcher.on('unlink', (file) => renumbered(file, false));

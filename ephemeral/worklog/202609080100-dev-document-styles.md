@@ -1,21 +1,22 @@
 # The dev document's styles (#40, mission 2)
 
-## Kit writes its generated dev tree lazily, and under skgo nothing triggers it
+## Kit's generated dev tree has a client half too, and nothing was writing it
 
-`sync.create` — which writes `<outDir>/generated/dev/client/app.js` and
-`nodes/*.js` — runs from `update_manifest`, and `update_manifest` runs from
-`init_manifest ??= update_manifest()` inside kit's *own* dev middleware
-(`exports/vite/dev/index.js`). That middleware is last in the stack, so it only
-ever sees a request nothing else answered. Under `just dev` Go answers the
-documents and vite's own middlewares answer the modules, so kit's never runs:
-on a tree that has not had a bare `vite dev` in it, the node table is not on
-disk and the engine dies at boot, and the boot script's `client.app` would 404
-even if it did not. This is not a race; it never happens.
+Mission 3 found that kit writes `<outDir>/generated/dev` lazily, from
+`update_manifest`, which only runs when kit's *own* dev middleware answers a
+request — and under skgo it never does. It fixed the server half by calling
+kit's `write_server` directly. The client half is written by the same
+`sync.create` line and nobody was calling it, so on a tree that has never run a
+bare `vite dev` the boot script's `client.app`
+(`generated/dev/client/app.js`) is a 404 and the page never hydrates.
 
-`gojaDevEnvironment` now makes one request to the dev server before it answers
-`/__skgo_dev/info`, which is the only way to reach that middleware from inside
-the plugin. Kit's route watcher keeps the tree current afterwards, so it is a
-cold-start warm-up and nothing more.
+`gojaDevEnvironment` now calls kit's `write_client_manifest` beside its
+`write_server`, over the same `create_manifest_data` result — once, at startup.
+Not on a route change: kit's own route watcher is not gated on a request the way
+`init_manifest` is, so from the first added or deleted route onwards kit keeps
+that tree current itself. Writing it a second time only makes vite reload the
+page for a file that already says what it says, which was enough to make
+mission 3's added-route scenario fail on a screenshot taken mid-reload.
 
 ## Editing the adapter means rebuilding before `just dev`
 
