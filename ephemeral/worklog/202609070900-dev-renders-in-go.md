@@ -18,3 +18,25 @@
   `handleHMRUpdate` loops over every non-client environment and asks
   `getSortedHotUpdatePlugins(environment)`, so the plugin gets exactly its own
   environment's invalidations.
+
+## Traps the run found
+
+- **A rendered document is clickable before it is live, and in dev that window is
+  seconds wide.** The suite lost a `fill()` (Svelte's `bind:value` writes the
+  component's empty state over what was typed the moment it hydrates), lost
+  clicks entirely, and counted a live-query stream opening as the scenario's own
+  interaction. Prod's bundle closes the window, which is why nobody had seen it.
+  `steps/fixtures.ts` `hydrated()` waits on `history.scrollRestoration ===
+  'manual'` — kit's own `_start_router` sets it, and `_start_router` runs after
+  `_hydrate` resolves.
+- **Vite's HMR socket dials the page's own origin at `/`.** That is the app's
+  home route, and answering it as a document gives the browser a 200 and HTML,
+  which it reports as a failed handshake before falling back to talking to vite
+  directly. An upgrade is never a document, whatever path it names.
+- **A virtual module is invalidated by nothing.** The node table is generated,
+  not read from a file, so adding a route left the engine holding the old
+  numbering and rendering whichever components lived at those indices — with the
+  right route matched and the wrong page rendered. The dev plugin watches kit's
+  generated node directory and names the table's own URL in the change log.
+- **`go run` is the wrong way to hold a port.** Killing the `go run` pid leaves
+  its child listening. Build to a file and run that, so the pid is the server.

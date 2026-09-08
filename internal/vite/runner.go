@@ -288,18 +288,22 @@ func (r *Runner) enqueue(dep, importer string) goja.Value {
 	return r.vm.ToValue(promise)
 }
 
-// invalidate drops every module compiled from one of the given files, and
-// everything that imported one, transitively. The next import re-fetches
-// exactly those and leaves the rest of the graph in place.
-func (r *Runner) invalidate(files []string) int {
+// invalidate drops every module the dev server named, and everything that
+// imported one, transitively. The next import re-fetches exactly those and
+// leaves the rest of the graph in place.
+//
+// A name is a file for a module compiled from one, and a URL for a module that
+// has no file: the node table is generated rather than read, so nothing else
+// could attribute a change to it.
+func (r *Runner) invalidate(names []string) int {
 	changed := map[string]bool{}
-	for _, file := range files {
-		changed[file] = true
+	for _, name := range names {
+		changed[name] = true
 	}
 
 	var queue []string
 	for url, m := range r.mods {
-		if m.file != "" && changed[m.file] {
+		if changed[url] || (m.file != "" && changed[m.file]) {
 			queue = append(queue, url)
 		}
 	}

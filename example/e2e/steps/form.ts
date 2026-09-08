@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { createBdd } from 'playwright-bdd';
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -36,6 +36,7 @@ When('the contact page has loaded', async ({ page }) => {
 When(
 	'I fill the contact form with name {string}, email {string} and message {string}',
 	async ({ page }, name: string, email: string, body: string) => {
+		await hydrated(page);
 		await page.getByTestId('field-from').fill(name);
 		await page.getByTestId('field-email').fill(email);
 		await page.getByTestId('field-body').fill(body);
@@ -43,10 +44,12 @@ When(
 );
 
 When('I attach the fixture {string}', async ({ page }, name: string) => {
+	await hydrated(page);
 	await page.getByTestId('field-attachment').setInputFiles(fixture(name));
 });
 
 When('I send the message', async ({ page }) => {
+	await hydrated(page);
 	await page.getByTestId('send').click();
 });
 
@@ -196,6 +199,7 @@ When('the keyed contact form is on the page', async ({ page }) => {
 When(
 	'I fill the keyed contact form with name {string}, email {string} and message {string}',
 	async ({ page }, name: string, email: string, body: string) => {
+		await hydrated(page);
 		await page.getByTestId('keyed-field-from').fill(name);
 		await page.getByTestId('keyed-field-email').fill(email);
 		await page.getByTestId('keyed-field-body').fill(body);
@@ -203,6 +207,7 @@ When(
 );
 
 When('I send the keyed message', async ({ page }) => {
+	await hydrated(page);
 	await page.getByTestId('keyed-send').click();
 });
 

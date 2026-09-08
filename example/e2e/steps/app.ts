@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 
@@ -14,6 +14,12 @@ Given('I open {string}', async ({ page, documents }, path: string) => {
 // capability this app has, so a link named for a page exists twice on it — once
 // in the nav and once in the index — and an unscoped `getByRole` matches both.
 When('I click the link to {string}', async ({ page }, path: string) => {
+	// Kit's router has to be the thing that answers the click. Go renders the
+	// document in dev too, so the nav is on screen and clickable before the
+	// browser has the modules that make it live, and a click in that window is
+	// an ordinary anchor: a second document, which is the opposite of what
+	// every scenario using this step goes on to claim.
+	await hydrated(page);
 	await page.getByTestId('app-nav').getByRole('link', { name: linkName(path), exact: true }).click();
 });
 

@@ -86,7 +86,12 @@ type devPages struct {
 
 func (h *devPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	urlPath, ok := normalizePath(r.URL.Path)
-	if ok && h.isDocument(urlPath) && h.renderer.serve(w, r, urlPath) {
+	// An upgrade is never a document, whatever path it names. Vite's HMR
+	// client dials the page's own origin at `/`, which is the app's home
+	// route: answered as a document it gets a 200 and an HTML body, and the
+	// browser falls back to talking to vite directly — which is exactly the
+	// arrangement the proxy exists to prevent.
+	if ok && !isUpgrade(r) && h.isDocument(urlPath) && h.renderer.serve(w, r, urlPath) {
 		return
 	}
 	// Everything the renderer did not answer is vite's, including the two it

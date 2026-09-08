@@ -1,6 +1,6 @@
 import { createBdd } from 'playwright-bdd';
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -12,6 +12,7 @@ When('the gate page has loaded', async ({ page }) => {
 When(
 	'I write left {string}, right {string} and banner {string}',
 	async ({ page }, left: string, right: string, banner: string) => {
+		await hydrated(page);
 		await page.getByTestId('gate-left').fill(left);
 		await page.getByTestId('gate-right').fill(right);
 		await page.getByTestId('gate-banner').fill(banner);
@@ -24,6 +25,7 @@ When(
 );
 
 When('I reload all three panels', async ({ page }) => {
+	await hydrated(page);
 	await page.getByTestId('gate-reload').click();
 	await expect(page.getByTestId('gate-reload')).toBeEnabled({ timeout: 15_000 });
 });

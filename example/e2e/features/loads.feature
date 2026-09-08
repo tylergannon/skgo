@@ -8,11 +8,11 @@ Feature: Server loads written in Go
   The section is protected by one rule, written once in its layout, and the
   session that rule reads is derived once by the app's `handle` hook.
 
-  Where a scenario is tagged `@prod` it is claiming something about the document
-  Go rendered, which only exists in a built app; the `@dev` scenario beside it
-  is the same load seen through kit's dev server, where the document is a shell
-  and the values arrive in the one `__data.json` the client asks for. Everything
-  untagged is true in both.
+  A scenario tagged `@prod` claims something about the document Go rendered from
+  the bundle the adapter built. Go renders in dev too now, from the modules
+  `vp dev` transforms, so the same claims hold there — dev.feature makes the
+  ones only dev can show, and the tags here are what is left of a split that
+  used to be a real difference.
 
   @prod
   Scenario: A layout's data and its page's data arrive in the document itself
@@ -22,20 +22,6 @@ Feature: Server loads written in Go
     And the account layout greets "ada"
     And the account page says its parent loaded "ada"
     And the browser never asked for the page's data
-
-  @dev
-  Scenario: A layout's data and its page's data arrive from Go on one request
-    The same two values, in dev, where the document is kit's shell and kit's
-    client fetches the branch. One request, not none — and not two, which would
-    mean the page went back for something it had already been given.
-
-    Given I have signed in as "ada"
-    And I note the data request count
-    When I visit "/account"
-    Then the document response came from skgo in the expected mode
-    And the account layout greets "ada"
-    And the account page says its parent loaded "ada"
-    And exactly 1 data request was made since
 
   Scenario Outline: A signed-out visitor is turned away from every page in the section
     Given nobody has signed in
@@ -54,21 +40,6 @@ Feature: Server loads written in Go
     Given I have signed in as "grace"
     When I visit "/account/orders"
     Then the account layout greets "grace"
-
-  @dev
-  Scenario: A value the load promised arrives in the one data response
-    A load may hand back a value it does not have yet, and the two halves reach
-    the browser on the same response rather than on two. In dev there is no
-    document to carry them, so both are in the one data response Go sends: the
-    total in its first line and the rows in a chunk after it, counted against
-    each other. The prod half of this claim is in ssr.feature, where the same
-    two halves are the document and what Go appends to it.
-
-    Given I have signed in as "ada"
-    And I note the data request count
-    When I visit "/account/orders"
-    Then there are as many orders as the total said
-    And exactly 1 data request was made since
 
   Scenario: Moving between two pages under one layout does not re-run the layout's load
     Given I have signed in as "ada"

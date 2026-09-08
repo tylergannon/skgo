@@ -634,10 +634,31 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 		},
 
 		configureServer(server) {
-			if (!server.environments.goja) {
+			const environment = server.environments.goja;
+			if (!environment) {
 				throw new Error(
 					'skgo: vite created no `goja` environment for the dev server. The adapter declares one in a `config` hook; this build of vite did not take it.'
 				);
+			}
+
+			// The node table is the one module of this environment that is not
+			// compiled from a file, so nothing invalidates it: a route added
+			// while both servers are running leaves the engine holding the
+			// numbering the table had when it was first evaluated, and the
+			// document then renders whichever components happen to live at
+			// those indices — silently, because they are valid indices for
+			// other pages. Kit rewrites the directory below whenever the route
+			// tree changes, so watching it is watching kit's own answer.
+			const nodesDir = join(out, 'generated/dev/client/nodes');
+			server.watcher.add(nodesDir);
+			const renumbered = (file) => {
+				if (!normalize(file).startsWith(normalize(nodesDir))) return;
+				const module = environment.moduleGraph.getModuleById(PREFIX + 'skgo:nodes');
+				if (module) environment.moduleGraph.invalidateModule(module);
+				if (changed[changed.length - 1] !== NODE_TABLE_URL) changed.push(NODE_TABLE_URL);
+			};
+			for (const event of ['add', 'change', 'unlink']) {
+				server.watcher.on(event, renumbered);
 			}
 
 			// What Go needs to know before it can ask for anything: which
@@ -739,6 +760,18 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 }
 
 const OXC_HELPERS = '@oxc-project/runtime/helpers/';
+
+/**
+ * The URL vite gives the node table, which is how Go names it when it drops it.
+ * A virtual module has no file for a change to be attributed to, so the change
+ * log carries this instead.
+ */
+const NODE_TABLE_URL = '/@id/__x00__skgo:skgo:nodes';
+
+/** @param {string} p */
+function normalize(p) {
+	return posix(p);
+}
 
 /**
  * The module the engine reads the app's `transport` hook out of, in dev. The

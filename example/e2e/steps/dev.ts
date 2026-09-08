@@ -1,7 +1,20 @@
 import { createBdd } from 'playwright-bdd';
+import { readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from './fixtures';
 
-const { Then } = createBdd(test);
+const { After, Then, When } = createBdd(test);
+
+/** The vite root — the app whose sources a scenario may edit. */
+const app = resolve(dirname(fileURLToPath(import.meta.url)), '../../web');
+
+/**
+ * What an editing scenario changed, and what it was before. The After hook puts
+ * every one of them back and waits until Go is serving the original again, so
+ * that the next scenario is not reading the last one's edit.
+ */
+const edited = new Map<string, string>();
 
 /**
  * The steps dev.feature needs and prod has no use for.
@@ -103,3 +116,75 @@ async function dataResponse(
 	).toContain('application/json');
 	return JSON.parse(text) as Record<string, unknown>;
 }
+
+
+/**
+ * Edits one of the app's own sources, the way an editor would.
+ *
+ * The replacement has to be unambiguous: a `from` that appears twice would make
+ * the claim afterwards depend on which occurrence was hit.
+ */
+When(
+	'{string} has {string} replaced with {string}',
+	async ({}, file: string, from: string, to: string) => {
+		const path = join(app, file);
+		const before = await readFile(path, 'utf-8');
+		const occurrences = before.split(from).length - 1;
+		expect(occurrences, `${file} contains ${occurrences} copies of ${JSON.stringify(from)}`).toBe(
+			1
+		);
+		if (!edited.has(path)) edited.set(path, before);
+		await writeFile(path, before.replace(from, to), 'utf-8');
+	}
+);
+
+/**
+ * The bytes Go sends now, read as text rather than through a browser: a page
+ * that hot-reloaded in the browser would show the edit whether or not Go had
+ * it.
+ *
+ * It polls, because the edit has to reach vite's watcher before Go can be told
+ * what to drop, and a fixed sleep is either flaky or slow. The claim is still
+ * one that fails: a Go that never picked the edit up never satisfies it.
+ */
+let latest = '';
+
+Then(
+	'the document Go sends for {string} says {string}',
+	async ({ page, shot }, path: string, html: string) => {
+		await expect
+			.poll(
+				async () => {
+					latest = await (await page.request.get(path)).text();
+					return latest;
+				},
+				{ timeout: 30_000, intervals: [250, 250, 500, 500, 1000] }
+			)
+			.toContain(html);
+		// The frame is of the page as a visitor would now see it, which is the
+		// same edit arriving by the other route.
+		await page.goto(path);
+		await shot('edited');
+	}
+);
+
+Then('that document never said {string}', async ({}, html: string) => {
+	expect(latest, 'no document has been fetched by this scenario').not.toBe('');
+	expect(latest).not.toContain(html);
+});
+
+After(async ({ page }) => {
+	for (const [path, before] of edited) {
+		await writeFile(path, before, 'utf-8');
+	}
+	if (edited.size === 0) return;
+	edited.clear();
+	// Wait for Go to be serving the restored source again, so the next scenario
+	// does not read this one's edit.
+	await expect
+		.poll(async () => (await page.request.get('/')).text(), {
+			timeout: 30_000,
+			intervals: [250, 250, 500, 500, 1000]
+		})
+		.toContain('<h1 data-testid="title">Home</h1>');
+});

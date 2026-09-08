@@ -1,5 +1,5 @@
 import { createBdd, DataTable } from 'playwright-bdd';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -60,6 +60,7 @@ When('I open the capability {string}', async ({ page }, capability: string) => {
 	// before that response has arrived — without this the step after it looks
 	// at the document the visitor was on a moment ago.
 	const target = new URL((await link.getAttribute('href'))!, page.url());
+	await hydrated(page);
 	await link.click();
 	await page.waitForURL(
 		(url) => url.pathname === target.pathname && url.search === target.search,
