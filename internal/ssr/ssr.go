@@ -245,6 +245,11 @@ type runtime struct {
 	// host is the answer function of the render currently in flight. It is
 	// written and read by the one goroutine holding the runtime.
 	host Host
+	// fetch and match are the other two calls a render currently in flight may
+	// make back out to Go. Like host, they belong to the one goroutine holding
+	// the runtime.
+	fetch Fetch
+	match Match
 	// calls records the `<id>` and payload of every remote call the current
 	// render made, in order.
 	calls []Call
@@ -261,6 +266,65 @@ type runtime struct {
 type Call struct {
 	ID      string
 	Payload string
+}
+
+// Fetch answers one render-time `event.fetch` of the app's own routes. The
+// bytes in are a FetchRequest, JSON-encoded by the bundle's own polyfill; the
+// bytes out are a FetchAnswer, JSON-encoded, which the bundle turns into a
+// Response or throws as a TypeError. It is the only I/O a render's fetch ever
+// performs: an in-process call into Go, never a socket the engine opens.
+type Fetch func(request []byte) ([]byte, error)
+
+// FetchRequest is one render-time `event.fetch` call, on its way into Go.
+// Kit resolves a relative fetch against the page's own URL before this ever
+// leaves the engine (`runtime/server/fetch.js`, `normalize_fetch_input`), so
+// URL always carries an absolute, same-origin URL.
+type FetchRequest struct {
+	Method string `json:"method"`
+	URL    string `json:"url"`
+	// Headers is the request's headers, one value per name — the shape the
+	// bundle's own `Headers` polyfill stores them in.
+	Headers map[string]string `json:"headers,omitempty"`
+	// Body is the request body as text, or "" for none. A render-time fetch
+	// is for the app's own JSON and text endpoints; a binary body does not
+	// cross this boundary.
+	Body string `json:"body,omitempty"`
+}
+
+// FetchAnswer is what Go gave a render-time fetch: a response, or the message
+// of the TypeError a real `fetch` throws when it cannot reach the target.
+type FetchAnswer struct {
+	Response *FetchResponse `json:"response,omitempty"`
+	Error    string         `json:"error,omitempty"`
+}
+
+// FetchResponse is one answer to a render-time fetch.
+type FetchResponse struct {
+	Status  int               `json:"status"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Body    string            `json:"body,omitempty"`
+}
+
+// Match answers one render-time `$app/paths` `match(pathname)` call. pathname
+// is already decoded and stripped of the app's base, exactly as kit's own
+// `match` prepares it before it asks the manifest (`runtime/app/paths/
+// server.js`). Go answers from the same route table every page, load and
+// endpoint request matches against, so a render's match is a call back into
+// Go rather than a second router built for the engine — nil params means the
+// route takes none, and ok false is kit's own answer for a pathname nothing
+// matched: null.
+type Match func(pathname string) (routeID string, params map[string]string, ok bool)
+
+// Hosts is what Go answers a render's calls back out to it with. Each is
+// optional; leaving one nil means a render that reaches it gets a well-defined
+// refusal rather than a ReferenceError.
+type Hosts struct {
+	// Remote answers a remote-function call.
+	Remote Host
+	// Fetch answers a same-origin `event.fetch`.
+	Fetch Fetch
+	// Match answers a `$app/paths` `match()` lookup.
+	Match Match
 }
 
 // New compiles the bundle and returns an engine that will create at most size
@@ -335,6 +399,43 @@ func (e *Engine) newRuntime() (*runtime, error) {
 		return nil, err
 	}
 
+	if err := rt.vm.Set("__skgo_fetch", func(payload string) (string, error) {
+		if rt.fetch == nil {
+			err := errors.New("skgo: nothing is answering event.fetch for this render")
+			rt.failed = errors.Join(rt.failed, err)
+			return "", err
+		}
+		answer, err := rt.fetch([]byte(payload))
+		if err != nil {
+			rt.failed = errors.Join(rt.failed, err)
+			return "", err
+		}
+		return string(answer), nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := rt.vm.Set("__skgo_match", func(pathname string) (string, error) {
+		if rt.match == nil {
+			return "null", nil
+		}
+		routeID, params, ok := rt.match(pathname)
+		if !ok {
+			return "null", nil
+		}
+		raw, err := json.Marshal(struct {
+			ID     string            `json:"id"`
+			Params map[string]string `json:"params"`
+		}{ID: routeID, Params: params})
+		if err != nil {
+			rt.failed = errors.Join(rt.failed, err)
+			return "", err
+		}
+		return string(raw), nil
+	}); err != nil {
+		return nil, err
+	}
+
 	if _, err := rt.vm.RunProgram(e.program); err != nil {
 		return nil, fmt.Errorf("skgo: evaluating the SSR bundle: %w", err)
 	}
@@ -378,23 +479,25 @@ func (e *Engine) newRuntime() (*runtime, error) {
 	return rt, nil
 }
 
-// Render renders one page, answering every remote function it asks for with
-// host. routeID is kit's route id, and is only used to say which page a line
+// Render renders one page, answering every call it makes back out to Go with
+// hosts. routeID is kit's route id, and is only used to say which page a line
 // the engine wrote to `console` came from. It returns the calls the render
 // made, in order, so the caller can serialise exactly the answers it gave into
 // the document.
-func (e *Engine) Render(routeID string, request []byte, host Host) (Result, []Call, error) {
+func (e *Engine) Render(routeID string, request []byte, hosts Hosts) (Result, []Call, error) {
 	rt, err := e.acquire()
 	if err != nil {
 		return Result{}, nil, err
 	}
 	defer e.release(rt)
 
-	rt.host = host
+	rt.host = hosts.Remote
+	rt.fetch = hosts.Fetch
+	rt.match = hosts.Match
 	rt.calls = nil
 	rt.failed = nil
 	rt.route = routeID
-	defer func() { rt.host = nil; rt.route = "" }()
+	defer func() { rt.host = nil; rt.fetch = nil; rt.match = nil; rt.route = "" }()
 
 	// Whatever the last render left on the macrotask queue belongs to a request
 	// that is over. It is dropped rather than run: it would run against this
