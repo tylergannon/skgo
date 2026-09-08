@@ -154,23 +154,35 @@ func TestItRefusesNamesTheProjectCannotCarry(t *testing.T) {
 	}
 }
 
-// TestTheScaffoldVendorsNoAdapter states the rule that made the adapter a
-// generated file: a project never carries a copy of it.
+// TestTheScaffoldVendorsNoAdapter states the rule the adapter has always
+// obeyed: a project never carries a copy of it.
 //
 // A vendored adapter is a second version of skgo living in the app, and it
 // drifts silently — the copy that reached the field was months behind the Go
-// beside it and failed the build with an unresolved esbuild import. `skgo
-// generate` writes the adapter out of the module the app's Go is built
-// against, so the scaffold ships the vite config that imports it and nothing
-// else.
+// beside it and failed the build with an unresolved esbuild import. The adapter
+// is now an ordinary npm package, so the scaffold ships what a developer would
+// have typed: one devDependency line and the package import.
 func TestTheScaffoldVendorsNoAdapter(t *testing.T) {
-	dir := scaffold(t, newapp.Options{})
+	dir := scaffold(t, newapp.Options{AdapterSpec: "^1.2.3"})
 	if _, err := os.Stat(filepath.Join(dir, "web", "skgo-adapter.js")); err == nil {
 		t.Fatal("`skgo new` wrote web/skgo-adapter.js; the adapter belongs to the skgo module, " +
 			"and a copy in the project is the drift this was meant to end")
 	}
-	if config := read(t, dir, "web/vite.config.ts"); !strings.Contains(config, "./skgo-adapter.js") {
-		t.Fatalf("the scaffolded vite config does not import the adapter:\n%s", config)
+	if config := read(t, dir, "web/vite.config.ts"); !strings.Contains(config, `from '@skgo/adapter'`) {
+		t.Fatalf("the scaffolded vite config does not import the adapter package:\n%s", config)
+	}
+	if got := pin(t, read(t, dir, "web/package.json"), "@skgo/adapter"); got != "^1.2.3" {
+		t.Errorf("the scaffold asks npm for @skgo/adapter %q; want the spec it was given, ^1.2.3", got)
+	}
+}
+
+// TestTheScaffoldAsksForTheAdapterThatMatchesItsSkgo is the pairing rule: the
+// npm package and the Go module are one release, and a project that asked for
+// any other one could not serve what it built.
+func TestTheScaffoldAsksForTheAdapterThatMatchesItsSkgo(t *testing.T) {
+	dir := scaffold(t, newapp.Options{SkgoVersion: "v9.4.2"})
+	if got := pin(t, read(t, dir, "web/package.json"), "@skgo/adapter"); got != "^9.4.2" {
+		t.Errorf("a project requiring skgo v9.4.2 asks npm for @skgo/adapter %q; want ^9.4.2", got)
 	}
 }
 

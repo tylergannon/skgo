@@ -20,7 +20,7 @@ anything that renders is proof that Go answered.
 | | |
 | --- | --- |
 | `web/` | an ordinary SvelteKit app: kit's tooling, kit's conventions |
-| `web/skgo-adapter.js` | kit's adapter, written by `go generate` out of skgo itself; never edited or copied |
+| `@skgo/adapter` | kit's adapter, an ordinary devDependency; released with the skgo `go.mod` requires |
 | `web/src/routes/*.remote.go` | server logic, colocated with the routes that call it |
 | `generated/` | what `go generate ./...` writes; never edited by hand |
 | `cmd/` | the binary |
