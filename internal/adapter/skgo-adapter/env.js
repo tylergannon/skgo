@@ -651,6 +651,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 			// tree changes, so watching it is watching kit's own answer.
 			const nodesDir = join(out, 'generated/dev/client/nodes');
 			server.watcher.add(nodesDir);
+			/** @param {string} file */
 			const renumbered = (file) => {
 				if (!normalize(file).startsWith(normalize(nodesDir))) return;
 				const module = environment.moduleGraph.getModuleById(PREFIX + 'skgo:nodes');

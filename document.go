@@ -167,7 +167,11 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 		return nil, errors.New("skgo: this build has no SSR description, so dev has no node table to render a branch through. Rebuild the frontend with an adapter that emits one.")
 	}
 	dev := vite.NewDev(devServer)
-	info, err := devSSRInfo(m, dev)
+	answer, err := dev.Await(devServerTimeout)
+	if err != nil {
+		return nil, err
+	}
+	info, err := devSSRInfo(m, dev, answer)
 	if err != nil {
 		return nil, err
 	}
@@ -187,11 +191,7 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 		onError:   opts.OnError,
 		fetch:     opts.Fetch,
 	}
-	entry, err := dev.Info()
-	if err != nil {
-		return nil, err
-	}
-	engine, err := ssr.NewDev(dev, entry.Entry, adapter.Polyfill(), poolSize(opts), s.console)
+	engine, err := ssr.NewDev(dev, answer.Entry, adapter.Polyfill(), poolSize(opts), s.console)
 	if err != nil {
 		return nil, err
 	}
@@ -203,11 +203,7 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 // differently substituted in. Everything it keeps — the `ssr` and `csr` options
 // each node sets, the base, the assets path — is a fact about the app rather
 // than about how it was served.
-func devSSRInfo(m Manifest, dev *vite.Dev) (ManifestSSR, error) {
-	answer, err := dev.Await(devServerTimeout)
-	if err != nil {
-		return ManifestSSR{}, err
-	}
+func devSSRInfo(m Manifest, dev *vite.Dev, answer vite.Info) (ManifestSSR, error) {
 	if answer.Client.Start == "" || answer.Client.App == "" {
 		return ManifestSSR{}, fmt.Errorf("skgo: the dev server at %s named no client entry for a document to boot", dev.Base())
 	}

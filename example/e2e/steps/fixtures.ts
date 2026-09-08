@@ -298,17 +298,20 @@ function slug(text: string): string {
  * never boots never sets it.
  */
 export async function hydrated(page: Page): Promise<void> {
-	let boots: boolean;
+	// Two pages never hydrate and must not be waited on: one whose branch turns
+	// CSR off, which carries no boot script at all, and any page in the noscript
+	// project, whose context runs none of the script it was sent. Both are
+	// visible as the absence of the `__sveltekit_*` object the boot script
+	// assigns before it imports anything — the very first thing that runs.
 	try {
-		boots = await page.evaluate(() => !!document.querySelector('script'));
+		await page.waitForFunction(
+			() => Object.keys(globalThis).some((key) => key.startsWith('__sveltekit_')),
+			undefined,
+			{ timeout: 2_000 }
+		);
 	} catch {
-		// The noscript project's context runs no JavaScript at all, so there is
-		// no execution context to ask and nothing that will ever hydrate. The
-		// scenarios there are about the non-enhanced path by construction.
 		return;
 	}
-	// A page whose branch turns CSR off carries no script and never boots.
-	if (!boots) return;
 	await page.waitForFunction(() => history.scrollRestoration === 'manual', undefined, {
 		timeout: 30_000
 	});
