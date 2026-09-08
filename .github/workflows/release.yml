@@ -39,6 +39,13 @@ jobs:
           node-version: 24.16.0
           registry-url: https://registry.npmjs.org
 
+      # The adapter identity tests pack the exact package that will be
+      # published. They refuse to skip when pnpm is absent, so the release
+      # runner needs the same pinned package manager as the browser suite.
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+
       # The adapter the app installs and the adapter the Go binary embeds are
       # the same files, and every build is refused at startup if they are not.
       # These tests are what checks that the tarball leaving here really holds
