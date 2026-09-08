@@ -128,8 +128,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 			// `+server.ts` refuses rather than recursing back into the page
 			// renderer whose own render is what asked for this fetch.
 			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-				HandleError: HandleError,
-				Fetch:       endpoints.Intercept(http.NotFoundHandler()),
+				Fetch: endpoints.Intercept(http.NotFoundHandler()),
 			})
 			if err != nil {
 				return nil, err
@@ -149,6 +148,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	// the pricing page threw `price.format is not a function` in dev.
 	remoteCfg.Transport = generated.Transport()
 	loadCfg.Transport = generated.Transport()
+	loadCfg.HandleError = HandleError
 
 	remotes, err := skgo.NewRemotes(remoteCfg, generated.Remotes()...)
 	if err != nil {

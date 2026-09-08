@@ -201,7 +201,7 @@ func TestADeferredValueThatFailedStreamsAsAHoleAndAnError(t *testing.T) {
 func TestAssembledDocumentShowsWhatTheHandleErrorHookReturnedForADeferredFailure(t *testing.T) {
 	failed := pending()
 	s := streamer(nil)
-	s.handleError = func(ctx context.Context, caught CaughtError) map[string]any {
+	s.loads.cfg.HandleError = func(ctx context.Context, caught CaughtError) map[string]any {
 		if caught.Kind != "app" {
 			t.Errorf("hook saw kind %q, want %q", caught.Kind, "app")
 		}
