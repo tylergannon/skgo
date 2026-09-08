@@ -182,3 +182,70 @@ Then(
 		await expect(page.getByTestId('field-email')).toHaveValue(email);
 	}
 );
+
+// The keyed instance's own steps below. They exist to prove two things at
+// once: that `sendMessage.for("k1")`'s key reaches the Go handler exactly the
+// way kit's own client encodes it, and that its result/issues are its own —
+// never the bare `sendMessage` form's — because a keyed instance is cached
+// separately (`runtime/app/server/remote/form.js`, `state.remote.forms`).
+
+When('the keyed contact form is on the page', async ({ page }) => {
+	await expect(page.getByTestId('keyed-contact-form')).toBeVisible();
+});
+
+When(
+	'I fill the keyed contact form with name {string}, email {string} and message {string}',
+	async ({ page }, name: string, email: string, body: string) => {
+		await page.getByTestId('keyed-field-from').fill(name);
+		await page.getByTestId('keyed-field-email').fill(email);
+		await page.getByTestId('keyed-field-body').fill(body);
+	}
+);
+
+When('I send the keyed message', async ({ page }) => {
+	await page.getByTestId('keyed-send').click();
+});
+
+Then('the keyed receipt greets {string}', async ({ page }, name: string) => {
+	await expect(page.getByTestId('keyed-receipt')).toHaveText(new RegExp(`Thanks, ${name} — message m\\d+ is in\\.`));
+});
+
+Then('the keyed receipt carries the key {string}', async ({ page }, key: string) => {
+	// The key the page shows is `sendMessage.result.key` (contact.remote.go's
+	// `Receipt.Key`, set from `Draft.ForKey`) — Go's own record of what
+	// arrived on the `id` field of the argument, not a value this step
+	// invented or read off the URL itself.
+	await expect(page.getByTestId('keyed-receipt-key')).toHaveText(`carried key: ${key}`);
+});
+
+Then('the keyed form reports it was not sent', async ({ page }) => {
+	await expect(page.getByTestId('keyed-rejected')).toBeVisible();
+	await expect(page.getByTestId('keyed-receipt')).toHaveCount(0);
+});
+
+Then('the keyed form does not report it was not sent', async ({ page }) => {
+	await expect(page.getByTestId('keyed-rejected')).toHaveCount(0);
+});
+
+Then(
+	'the keyed field {string} carries the message {string}',
+	async ({ page }, field: string, message: string) => {
+		await expect(page.getByTestId(`keyed-issue-${field}`)).toHaveText(message);
+	}
+);
+
+Then(
+	'the keyed contact form still holds name {string} and email {string}',
+	async ({ page }, name: string, email: string) => {
+		await expect(page.getByTestId('keyed-field-from')).toHaveValue(name);
+		await expect(page.getByTestId('keyed-field-email')).toHaveValue(email);
+	}
+);
+
+Then('the bare contact form reports nothing sent and nothing refused', async ({ page }) => {
+	// The instance this scenario never touched. If the keyed submission's
+	// outcome leaked onto it — the two instances sharing a cache slot rather
+	// than each keeping its own — one of these would now show something.
+	await expect(page.getByTestId('receipt')).toHaveCount(0);
+	await expect(page.getByTestId('rejected')).toHaveCount(0);
+});

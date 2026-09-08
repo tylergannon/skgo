@@ -1,6 +1,7 @@
 package skgo
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -168,7 +169,7 @@ func TestATransportedValueStreamsThroughTheAppsDecoder(t *testing.T) {
 		promising(map[string]any{"price": price}),
 	))
 
-	chunk := s.chunkScript(promises.ids[price], cents(4500), nil, s.deferReplacer(promises))
+	chunk := s.chunkScript(context.Background(), promises.ids[price], cents(4500), nil, s.deferReplacer(promises))
 	const want = `<script>__sveltekit_test.resolve(1, (app) => [app.decode("Money", [4500])])</script>` + "\n"
 	if chunk != want {
 		t.Errorf("chunk\n got %q\nwant %q", chunk, want)
@@ -185,8 +186,34 @@ func TestADeferredValueThatFailedStreamsAsAHoleAndAnError(t *testing.T) {
 		promising(map[string]any{"orders": failed}),
 	))
 
-	chunk := s.chunkScript(promises.ids[failed], nil, Errorf(402, "Your account is in arrears"), s.deferReplacer(promises))
+	chunk := s.chunkScript(context.Background(), promises.ids[failed], nil, Errorf(402, "Your account is in arrears"), s.deferReplacer(promises))
 	const want = `<script>__sveltekit_test.resolve(1, () => [,{status:402,message:"Your account is in arrears"}])</script>` + "\n"
+	if chunk != want {
+		t.Errorf("chunk\n got %q\nwant %q", chunk, want)
+	}
+}
+
+// The assembled document proof: a deferred value that failed is one more
+// error an in-process render produces, and the app's handleError hook is
+// consulted for it exactly as it is for a load that fails before the render
+// starts — with whatever it returns, message override and extra field alike,
+// written into the chunk the browser receives.
+func TestAssembledDocumentShowsWhatTheHandleErrorHookReturnedForADeferredFailure(t *testing.T) {
+	failed := pending()
+	s := streamer(nil)
+	s.handleError = func(ctx context.Context, caught CaughtError) map[string]any {
+		if caught.Kind != "app" {
+			t.Errorf("hook saw kind %q, want %q", caught.Kind, "app")
+		}
+		return map[string]any{"supportId": "case-1121"}
+	}
+	_, promises := assembled(t, s, plannedPage(
+		promising(map[string]any{"who": "ada"}),
+		promising(map[string]any{"orders": failed}),
+	))
+
+	chunk := s.chunkScript(context.Background(), promises.ids[failed], nil, Errorf(402, "Your account is in arrears"), s.deferReplacer(promises))
+	const want = `<script>__sveltekit_test.resolve(1, () => [,{status:402,message:"Your account is in arrears",supportId:"case-1121"}])</script>` + "\n"
 	if chunk != want {
 		t.Errorf("chunk\n got %q\nwant %q", chunk, want)
 	}

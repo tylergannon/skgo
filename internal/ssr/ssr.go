@@ -112,10 +112,71 @@ type Form struct {
 	Output string `json:"output"`
 }
 
-// Error is kit's `App.Error`.
+// Error is kit's `App.Error`: status and message, plus whatever extra
+// properties the app's `handleError` hook added. Kit's own type has no fixed
+// shape beyond the two fields every error carries — an app may augment
+// `App.Error` with fields of its own — so this flattens to one JSON object
+// either way, which is what lets a component read `$page.error.someField`
+// without skgo committing to any field beyond the two kit's own type
+// guarantees.
 type Error struct {
-	Status  int    `json:"status,omitempty"`
-	Message string `json:"message"`
+	Status  int
+	Message string
+	// Extra is whatever else the hook returned: a merge target rather than a
+	// fixed struct, because kit's own hook contract is "return only the
+	// properties you want to override" against a shape the app itself defines.
+	Extra map[string]any
+}
+
+// MarshalJSON flattens Extra alongside status and message, so a value with
+// no extra properties round-trips exactly as the plain `{status, message}`
+// object kit itself writes.
+func (e *Error) MarshalJSON() ([]byte, error) {
+	if e == nil {
+		return []byte("null"), nil
+	}
+	out := make(map[string]any, len(e.Extra)+2)
+	for k, v := range e.Extra {
+		out[k] = v
+	}
+	if e.Status != 0 {
+		out["status"] = e.Status
+	}
+	out["message"] = e.Message
+	return json.Marshal(out)
+}
+
+// UnmarshalJSON reads status and message out by name and keeps everything
+// else as Extra, the inverse of MarshalJSON.
+func (e *Error) UnmarshalJSON(data []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if v, ok := raw["status"]; ok {
+		if err := json.Unmarshal(v, &e.Status); err != nil {
+			return err
+		}
+		delete(raw, "status")
+	}
+	if v, ok := raw["message"]; ok {
+		if err := json.Unmarshal(v, &e.Message); err != nil {
+			return err
+		}
+		delete(raw, "message")
+	}
+	if len(raw) == 0 {
+		return nil
+	}
+	e.Extra = make(map[string]any, len(raw))
+	for k, v := range raw {
+		var value any
+		if err := json.Unmarshal(v, &value); err != nil {
+			return err
+		}
+		e.Extra[k] = value
+	}
+	return nil
 }
 
 // Result is one render.

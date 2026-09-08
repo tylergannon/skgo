@@ -9,6 +9,16 @@
 	let unreachable = $state(false);
 
 	const fields = sendMessage.fields;
+
+	// A keyed instance of the very same form. `form.for(key)` gives each key
+	// its own `fields`/`result`/`issues`, cached separately from the bare
+	// `sendMessage` above — that is the whole reason a keyed instance exists,
+	// so a page can run several independent copies of one form at once. Go
+	// receives the key as `id` on the argument (contact.remote.go's
+	// `Draft.ForKey`), which is where kit's own `form.for(key)` delivers it,
+	// not as a control this markup puts on the page.
+	const keyed = sendMessage.for('k1');
+	const keyedFields = keyed.fields;
 </script>
 
 <h1 data-testid="title">Contact</h1>
@@ -81,6 +91,61 @@
 {/if}
 {#if unreachable}
 	<p data-testid="unreachable">The server could not be reached.</p>
+{/if}
+
+<h2>Reply (keyed)</h2>
+
+<form
+	data-testid="keyed-contact-form"
+	{...keyed.enhance(async (form) => {
+		unreachable = false;
+		try {
+			if (await form.submit().updates(getMessages())) {
+				form.element.reset();
+			}
+		} catch {
+			unreachable = true;
+		}
+	})}
+>
+	<label>
+		Your name
+		<input data-testid="keyed-field-from" {...keyedFields.from.as('text')} />
+	</label>
+	{#each keyedFields.from.issues() ?? [] as issue}
+		<p class="issue" data-testid="keyed-issue-from">{issue.message}</p>
+	{/each}
+
+	<label>
+		Email
+		<input data-testid="keyed-field-email" {...keyedFields.email.as('text')} />
+	</label>
+	{#each keyedFields.email.issues() ?? [] as issue}
+		<p class="issue" data-testid="keyed-issue-email">{issue.message}</p>
+	{/each}
+
+	<label>
+		Message
+		<textarea data-testid="keyed-field-body" {...keyedFields.body.as('text')}></textarea>
+	</label>
+	{#each keyedFields.body.issues() ?? [] as issue}
+		<p class="issue" data-testid="keyed-issue-body">{issue.message}</p>
+	{/each}
+
+	<button data-testid="keyed-send" type="submit">Send</button>
+</form>
+
+<!--
+	`keyed` is its own instance, cached under its own key — its `result` and
+	`fields` never reflect the bare `sendMessage` above and vice versa, which
+	is the property this whole section exists to demonstrate.
+-->
+{#if keyed.result}
+	<p data-testid="keyed-receipt">{keyed.result.summary}</p>
+	<p data-testid="keyed-receipt-key">carried key: {keyed.result.key}</p>
+{/if}
+{#if (keyed.fields.allIssues() ?? []).length > 0}
+	<p data-testid="keyed-rejected">That message was not sent.</p>
 {/if}
 
 <h2>Inbox</h2>

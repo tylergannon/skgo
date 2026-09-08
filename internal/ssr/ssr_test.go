@@ -264,6 +264,62 @@ func TestARedirectThrownDuringARenderIsNotAFailure(t *testing.T) {
 	}
 }
 
+// aPageErrorBundle echoes the request's error straight back as the render's
+// own, and folds one of its properties into the body, so the test can tell
+// whether a property `Request.Error` carries beyond status and message
+// actually reached the +error.svelte component's props — not merely that Go
+// serialized it — and that it survived the trip back out through
+// `Result.Error` too.
+const aPageErrorBundle = `
+globalThis.__skgo_ping = function () { return 'ok'; };
+globalThis.__skgo_render = function (json) {
+	var req = JSON.parse(json);
+	return {
+		done: true,
+		failure: '',
+		redirect: null,
+		status: req.status,
+		error: req.error,
+		head: '',
+		body: 'support id seen by the component: ' + (req.error ? req.error.supportId : '(none)')
+	};
+};
+`
+
+// TestAnExtraAppErrorFieldReachesTheComponentAndSurvivesTheRoundTrip is the
+// host-binding half of the handleError hook: kit's App.Error is not fixed to
+// status and message, an app may augment it with fields of its own, and
+// those fields have to cross into the engine exactly like any other request
+// data and come back out again with Result.Error.
+func TestAnExtraAppErrorFieldReachesTheComponentAndSurvivesTheRoundTrip(t *testing.T) {
+	engine, err := ssr.New("bundle.js", []byte(aPageErrorBundle), 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(ssr.Request{
+		URL:     "http://example.test/",
+		RouteID: "/error/unexpected",
+		Status:  500,
+		Error:   &ssr.Error{Status: 500, Message: "Something went wrong on our end.", Extra: map[string]any{"supportId": "case-1121"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, _, err := engine.Render("/error/unexpected", raw, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Body != "support id seen by the component: case-1121" {
+		t.Errorf("body = %q, the component never saw the extra field", result.Body)
+	}
+	if result.Error == nil || result.Error.Status != 500 || result.Error.Message != "Something went wrong on our end." {
+		t.Fatalf("error = %+v, want the same status and message sent in", result.Error)
+	}
+	if got := result.Error.Extra["supportId"]; got != "case-1121" {
+		t.Errorf("Extra[supportId] = %v, want it to have round-tripped through Result.Error too", got)
+	}
+}
+
 // A render that reports through `console` reaches Go. The engine is a bare
 // ECMAScript runtime and goja has no console at all, so before there was one
 // every such report was a ReferenceError thrown in the middle of a render —

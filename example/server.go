@@ -37,6 +37,32 @@ func Handle(ctx context.Context) error {
 	return skgo.SetLocal(ctx, businesslogic.Default.Session(id))
 }
 
+// supportID is the fixture value HandleError adds to every failure. It is a
+// literal on purpose, the same way businesslogic.Default's fixtures are:
+// something the Gherkin suite and the Go tests can both assert against
+// without asking the app what it just rendered.
+const supportID = "case-1121"
+
+// HandleError is the app's `handleError` hook — kit's own contract, mirrored:
+// it runs for every error a page render raises, expected or not
+// (`exports/hooks/public.d.ts`: "runs for every error thrown ... except
+// redirects"), and whatever it returns is merged over what the error already
+// carries.
+//
+// Every failure gets a support id, which is the one thing a real error page
+// almost always adds and kit's own default has no room for. An error nobody
+// meant to happen also loses its own message here: this app makes no promise
+// about what an arbitrary Go error's text might contain, so the visitor is
+// told something a person wrote instead of it. caught.Err still carries the
+// real one, for a hook that wants to log it before replacing it.
+func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
+	extra := map[string]any{"supportId": supportID}
+	if caught.Kind == "unknown" {
+		extra["message"] = "Something went wrong on our end."
+	}
+	return extra
+}
+
 // NewHandler builds the app's server over the build in dist. With a non-empty
 // proxy it forwards pages to a running `vp dev` server; otherwise it serves the
 // embedded build.
@@ -90,7 +116,9 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		// the manifest, so the page handler is built last — after both of the
 		// registries it renders with exist.
 		static = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
-			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{})
+			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+				HandleError: HandleError,
+			})
 			if err != nil {
 				return nil, err
 			}

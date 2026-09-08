@@ -1314,16 +1314,38 @@ function build_props(req, url) {
  * The output arrives in devalue's flat form and is read back with the app's
  * own decoders, for the same reason a load's data is: a result carrying a
  * transported type has to reach the component as an instance of its class.
+ *
+ * A keyed instance, one created by calling for(key) on a form, needs one more
+ * step than an unkeyed one. Go's req.form_action.id is kit's own composite
+ * id: the base hash/name, or that plus a slash and the key's JSON text — the
+ * same string kit's server files a form's output under in the page's remote
+ * data — and only the base half is registered anywhere: __skgo_forms holds
+ * the module-level instance kit's form factory created, with no key at all.
+ * That instance's own for method is kit's own code
+ * (runtime/app/server/remote/form.js) for turning a key into the actual
+ * per-key instance the page's own call to for(key) will return — it caches
+ * what it creates in the request's form cache, keyed by the base id and the
+ * key's JSON text together, so calling it here, before the page component
+ * runs, makes the page's later call resolve to the very instance seeded below
+ * rather than a fresh, empty one. Calling for reaches into the request
+ * store, which is why this function now has to run inside with_request_store
+ * rather than before it.
  */
 function seed_form(req, state) {
 	const seed = req.form_action;
 	if (!seed) return;
 
+	const first_slash = seed.id.indexOf('/');
+	const second_slash = seed.id.indexOf('/', first_slash + 1);
+	const base_id = second_slash === -1 ? seed.id : seed.id.slice(0, second_slash);
+	const key_json = second_slash === -1 ? undefined : seed.id.slice(second_slash + 1);
+
 	for (const instance of globalThis.__skgo_forms ?? []) {
-		if (instance.__ && instance.__.id === seed.id) {
-			(state.remote.data ??= new Map()).set(instance.__, { '': parse(seed.output) });
-			return;
-		}
+		if (!instance.__ || instance.__.id !== base_id) continue;
+
+		const target = key_json === undefined ? instance : instance.for(JSON.parse(key_json));
+		(state.remote.data ??= new Map()).set(target.__, { '': parse(seed.output) });
+		return;
 	}
 
 	throw new Error('skgo: no form is registered as ' + seed.id);
@@ -1361,7 +1383,6 @@ globalThis.__skgo_render = function (req_json) {
 		const props = build_props(req, url);
 		const state = make_state();
 		const event = make_event(req, url);
-		seed_form(req, state);
 
 		result.status = props.page.status;
 		result.error = req.error ?? null;
@@ -1385,7 +1406,13 @@ globalThis.__skgo_render = function (req_json) {
 				return handled;
 			}
 		};
-		const promise = with_request_store({ event, state }, () => render(Root, { ...options, props }));
+		// seed_form runs inside the request store rather than before it: a
+		// keyed submission's call to for(key) needs the request store, the
+		// same as the page component's own call to it does.
+		const promise = with_request_store({ event, state }, () => {
+			seed_form(req, state);
+			return render(Root, { ...options, props });
+		});
 
 		Promise.resolve(promise).then(
 			(rendered) => {
