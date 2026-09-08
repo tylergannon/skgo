@@ -9,3 +9,7 @@ discovery: `codegen.Gen` accepts executable `polytype.Configuration`, whose root
 decision: Until the merged commit receives its release tag, pin Polytype commit d17dc67 through Go's reproducible pseudo-version in the library, example, and new-app default. Replace it with the release tag when upstream publishes one.
 
 proof: `just test` passes both modules against d17dc67. A real `just generate` is idempotent and produces no `skgo_polytype_gen.go`, `jsonschema_gen.go`, or `jsonschema/` artifact.
+
+correction: Polytype v1.0.0-rc.12 was published at 2026-09-08T05:02:54Z after the pseudo-version checkpoint. Replace the temporary commit pin everywhere with the release tag; rc.12 also includes configurable sealed-union discriminator inflection from #114.
+
+proof: Focused generator and scaffold tests and the full two-module `just test` suite pass against the published v1.0.0-rc.12 tag.
