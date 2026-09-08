@@ -11,8 +11,10 @@ Feature: Pages arrive rendered
   them again.
 
   Every value named below is a fixture with exactly one source in the app:
-  `getSite` in src/routes/site.remote.go answers with the name "skgo" and its own
-  path; `getItem` in src/routes/items/[id]/item.remote.go answers "Widget <id>"
+  `getSite` reaches its generated remote through the ordinary application module
+  src/lib/site-api.ts; its Go implementation in src/routes/site.remote.go answers
+  with the name "skgo" and its own path. `getItem` in
+  src/routes/items/[id]/item.remote.go answers "Widget <id>"
   for the id in the URL; the loads under /account answer with the signed-in
   visitor's name; the load in src/routes/(marketing)/pricing/page.server.go
   answers with a featured plan priced at 4500 cents, an amount no other function

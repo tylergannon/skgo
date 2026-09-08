@@ -1,0 +1,4 @@
+friction: A one-hop TypeScript wrapper and even a `.svelte.ts` wrapper around a remote both build, so issue #106's current "one ordinary .ts module" acceptance does not reproduce the field failure -> keep a Tractor-shaped graph where a client-started store imports an API module and assert that the final bundle actually evaluates in goja.
+decision: Kit's extra remote entry can become the owner of modules shared with the goja bundle; folding only `bundle.js` is safe only if every imported emitted chunk resolves and the final IIFE has no external module globals.
+
+failure: With the fixture in place, restoring Vite's Node server conditions still lets `vp build` exit 0 after warning that `node:module` is external; the first production handler then fails while evaluating `ssr/bundle.js` because `node_module` is undefined -> engine startup, not build completion, is the load-bearing negative control.

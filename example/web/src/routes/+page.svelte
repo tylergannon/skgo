@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Greeting from '#lib/Greeting.svelte';
-	import { getSite } from './site.remote';
+	import { getSite } from '#lib/site-api.ts';
 
 	/**
 	 * What this app is for.
