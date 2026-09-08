@@ -1,5 +1,6 @@
 import { createBdd } from 'playwright-bdd';
 import { expect, test } from './fixtures';
+import { tagged } from './ssr';
 import type { Response } from '@playwright/test';
 
 const { When, Then } = createBdd(test);
@@ -56,9 +57,7 @@ Then(
 Then(
 	"the document already said the page's own heading is {string}",
 	async ({ documents, shot }, heading: string) => {
-		expect(await documentText(documents)).toContain(
-			`<h1 data-testid="title">${heading}</h1>`
-		);
+		expect(await documentText(documents)).toMatch(tagged('h1', 'title', heading));
 		await shot();
 	}
 );

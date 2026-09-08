@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -17,6 +17,7 @@ Then(
 );
 
 When('I ask Go about a price of {string}', async ({ page }, price: string) => {
+	await hydrated(page);
 	const button = page.getByTestId('ask');
 	await expect(button).toHaveText(`Ask Go about ${price}`);
 	await button.click();

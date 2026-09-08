@@ -1,12 +1,17 @@
 import { createBdd } from 'playwright-bdd';
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
 When('the todo list has loaded', async ({ page }) => {
 	// Both the list query and the live-count stream must have gone out before a
-	// scenario starts counting remote requests.
+	// scenario starts counting remote requests. The stream is opened while the
+	// page hydrates, so this has to outlast hydration: in dev the document is
+	// rendered and on screen long before the browser has the modules that make
+	// it live, and a count taken in that window catches the stream opening and
+	// blames the scenario's own interaction for it.
+	await hydrated(page);
 	await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);
 	await expect(page.getByTestId('todo').first()).toBeVisible();
 	await expect(page.getByTestId('count')).toBeVisible();
@@ -21,6 +26,7 @@ When('I note the live count as {string}', async ({ page, notes }, label: string)
 });
 
 When('I add the todo {string}', async ({ page }, text: string) => {
+	await hydrated(page);
 	await page.getByTestId('new-todo').fill(text);
 	await page.getByTestId('add-todo').click();
 });
@@ -30,10 +36,12 @@ When('the todo detail has loaded', async ({ page }) => {
 });
 
 When('I open the todo {string}', async ({ page }, text: string) => {
+	await hydrated(page);
 	await page.getByTestId('todos').getByRole('link', { name: text }).click();
 });
 
 When('I rename the open todo to {string}', async ({ page }, text: string) => {
+	await hydrated(page);
 	await page.getByTestId('rename-todo').fill(text);
 	await page.getByTestId('save-todo').click();
 });

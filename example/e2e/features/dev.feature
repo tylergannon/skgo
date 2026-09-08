@@ -1,111 +1,86 @@
 @dev
-Feature: In dev the document is kit's and the answers are still Go's
+Feature: In dev the document is Go's too, from the modules vite transformed
 
-  `vp dev` never runs the adapter, so there is no SSR bundle in dev and no
-  engine for Go to render a document with. Kit's own dev server owns the
-  document instead — and the only implementation it can reach for a load or a
-  remote function is the generated stub, which throws by design. So the app
-  turns server rendering off in dev (web/src/routes/+layout.ts: `ssr = !dev`),
-  which is kit's own switch for "the browser renders this"
-  (packages/kit/src/runtime/server/page/index.js returns the shell without
-  running a single load when `ssr === false`).
+  `vp dev` never runs an adapter — kit reaches `adapt()` only from the plugin
+  that finalises a build — so there is no SSR bundle in dev and there never will
+  be. What there is instead is the same `goja` environment the build compiles
+  the bundle in, declared in the dev server by the same adapter plugin, and
+  vite's own `fetchModule` over it. Go asks for one transformed module at a time,
+  evaluates it in the engine the built bundle runs in, and renders the document
+  itself. The browser still only talks to Go: modules, their CSS, the files in
+  `static/` and the HMR socket all go through to vite.
 
-  What is left is exactly the app skgo served before it had an engine: kit's
-  shell arrives, kit's client boots, and every value on every page comes from
-  Go — `__data.json` for a load and `/_app/remote/...` for a remote function.
-  That is what this file is for. Each scenario is the dev half of a claim
-  ssr.feature makes about the production document, in the same order, and none
-  of them can pass unless Go answered.
+  So a developer sees the document Go will send in production, over the sources
+  vite is serving, and an edit reaches it without a build. That is what this
+  file is for, and every scenario in it is about something only dev can show.
 
   The fixtures are ssr.feature's: `getSite` in src/routes/site.remote.go answers
-  with the name "skgo" and its own path, `getItem` in
-  src/routes/items/[id]/item.remote.go answers "Widget <id>", the loads under
-  /account answer with the signed-in visitor's name, and the load in
-  src/routes/(marketing)/pricing/page.server.go answers with a featured plan
-  priced at 4500 cents. The generated TypeScript beside each of those throws
-  "skgo: implemented in Go".
+  with the name "skgo" and its own path, and the loads under /account answer with
+  the signed-in visitor's name. The generated TypeScript beside each of those
+  throws "skgo: implemented in Go", so a value in the document is proof Go
+  answered.
 
-  Scenario: The home page arrives as kit's shell and Go names the site
+  Scenario: An edit to a component reaches the document Go sends, with no build
+    The claim is about the bytes, before a single line of JavaScript runs: the
+    page is fetched again and read as text. A browser that hot-reloaded would
+    show the edit whether or not Go had it, which is exactly what this
+    distinguishes.
+
     Given I open "/"
-    Then the document carried no rendered page
-    And the site is named "skgo"
-    And the page never mentions "skgo: implemented in Go"
+    Then the document already said the page's own heading is "Home"
+    When "src/routes/+page.svelte" has "Home" replaced with "Home, edited while running"
+    Then the document Go sends for "/" has the page's heading "Home, edited while running"
+    And that document no longer has the heading "Home"
 
-  Scenario: A page under a layout gets both loads from Go
-    Given I have signed in as "ada"
-    When I visit "/account"
-    Then the document carried no rendered page
-    And the account layout greets "ada"
-    And the account page says its parent loaded "ada"
+  Scenario: A component that can only fail on the server fails where a developer can see it
+    src/routes/error/server-only/+page.svelte throws while `document` is
+    undefined, which is true in the rendering engine and false in a browser. It
+    is the failure dev could not have before Go rendered in dev, and the one a
+    developer most needs to be shown: the visitor gets the app's error page at
+    the status of the failure, not a blank document that fills itself in.
 
-  Scenario: A remote query is answered by Go, not by the stub beside it
+    Given I open "/error/server-only"
+    Then the document was answered with 500
+    And the document already said the error page shows "Error 500" and "Internal Error"
+    And the document already carried the root layout
+    And the document never mentions "this page only renders in the browser"
+    And I see "Error 500"
+
+  Scenario: A Go query's answer is in the dev document, and the stub beside it still throws
     Given I open "/"
-    Then the answer came from "src/routes/site.remote.go"
+    Then the document already said the site is named "skgo"
+    And the document already said "src/routes/site.remote.go"
     And the page never mentions "skgo: implemented in Go"
     And nothing on the page failed to load
 
-  Scenario: A query with an argument is answered with the argument Go was given
-    Given I open "/items/93"
-    Then the item is named "Widget 93"
-    And the page never mentions "Widget 42"
-
-  Scenario: The shell asks Go for the page's data exactly once
-    A document that carries nothing has to be filled in, and kit's client does
-    that with one request per navigation. One, not none — the prod half of this
-    claim is that the number is zero — and never two, which would mean the app
-    went back for something it had already been given.
-
+  Scenario: A Go load's value is in the dev document, for a page under a layout
     Given I have signed in as "ada"
-    And I note the data request count
     When I visit "/account"
-    Then the account layout greets "ada"
-    And I am signed in as "ada"
-    And exactly 1 data request was made since
-
-  Scenario: A custom-typed value is rebuilt by the browser from what Go sent
-    "$45.00" is `Money.format()` in src/hooks.ts over 4500 cents. In prod the
-    engine has the app's transport and the price stands in the document; here
-    the cents travel to the browser under the transport key and kit's client
-    decodes them, so the method runs where the class is declared.
-
-    Given I open "/pricing"
-    Then the document carried no rendered page
-    And the featured plan costs "$45.00"
-
-  Scenario: A page that turns csr off has it back in dev
-    `csr = false` is a claim about a document somebody rendered, and in dev
-    nobody did: a branch with neither `ssr` nor `csr` leaves kit answering with
-    an empty shell that boots nothing, and the page is blank. So
-    web/src/routes/plain/+page.ts declares `csr = dev` and the page renders in
-    the browser here, the same way /spa does.
-
-    Given I open "/plain"
-    Then the document carried no rendered page
-    And the site is named "skgo"
+    Then the document response came from skgo in the expected mode
+    And the document already said "Account of ada"
+    And the account layout greets "ada"
+    And the account page says its parent loaded "ada"
+    And the browser never asked for the page's data
 
   Scenario: A page marked ssr = false is the same shell it is in prod
     Given I open "/spa"
     Then the document carried no rendered page
     And the site is named "skgo"
 
-  Rule: Errors and redirects reach the browser through Go's data endpoint
+  Rule: Go still answers the endpoints kit's client calls
 
-    A load that refuses puts its refusal in the branch `__data.json` carries,
-    and kit's client renders the nearest `+error.svelte` from it. The document
-    is a 200 shell in every case below, because kit's dev server wrote it before
-    any load ran; the status the load chose is in the data response instead.
-
-    The fixtures are ssr.feature's: 418 and "This page is a teapot" from
+    A rendered document does not stop the client asking Go for a branch on a
+    later navigation, and dev is where that is easiest to see directly. The
+    fixtures are ssr.feature's: 418 and "This page is a teapot" from
     src/routes/error/expected/page.server.go, an ordinary Go error naming a
     database password from src/routes/error/unexpected/page.server.go, 402 and
     "Your account is in arrears" from
     src/routes/account/statement/page.server.go, and the redirect to "/" from
     src/routes/account/layout.server.go.
 
-    Scenario: A load that fails puts the visitor on an error page
+    Scenario: A load that refuses answers the data endpoint with the status it threw
       Given I open "/error/expected"
-      Then the document carried no rendered page
-      And Go's data endpoint for "/error/expected" answered 418
+      Then Go's data endpoint for "/error/expected" answered 418
       And I see "Error 418"
       And the error message is "This page is a teapot"
 
@@ -118,12 +93,6 @@ Feature: In dev the document is kit's and the answers are still Go's
       And the page never mentions "hunter2"
       And the page never mentions "postgres://"
 
-    Scenario: An unknown route is an error page saying 404
-      Given I open "/no-such-page"
-      Then the document was answered with 404
-      And I see "Error 404"
-      And the error message is "Not Found"
-
     Scenario: An expected error in a nested page renders inside its layout
       Given I have signed in as "ada"
       When I visit "/account/statement"
@@ -131,15 +100,6 @@ Feature: In dev the document is kit's and the answers are still Go's
       And the account layout greets "ada"
       And I see "Account error 402"
       And the error message is "Your account is in arrears"
-
-    Scenario: A page that catches its own failure renders anyway
-      src/routes/error/boundary/boundary.remote.go refuses with 409, and the
-      page's own boundary shows the refusal rather than being replaced by an
-      error page.
-
-      Given I open "/error/boundary"
-      Then I see "Sensor"
-      And I see the words "The sensor is being calibrated"
 
     Scenario: A redirect thrown from a load reaches the browser
       Given nobody has signed in

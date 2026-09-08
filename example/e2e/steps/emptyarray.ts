@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -58,6 +58,7 @@ Then(
 );
 
 When('I press reparse', async ({ page }) => {
+	await hydrated(page);
 	await page.getByTestId('reparse').click();
 });
 

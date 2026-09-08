@@ -313,6 +313,16 @@ var deliberateFailures = map[string]struct {
 		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
 		never: []string{"Cannot call a command"},
 	},
+	// A component that can only fail on the server: it throws while `document`
+	// is undefined, which is true in the rendering engine and false in a
+	// browser. Kit's transformError turns the throw into Internal Error and the
+	// root error page renders in the page's place, at 500 — which is the whole
+	// point of the fixture, because a dev server that rendered nothing would
+	// have answered 200 with a shell and said nothing at all.
+	"/error/server-only": {
+		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
+		never: []string{"this page only renders in the browser"},
+	},
 	// A page that catches its own failure. It renders — its own heading is in
 	// the document — and kit's transformError still moves the whole document's
 	// status to the caught error's.

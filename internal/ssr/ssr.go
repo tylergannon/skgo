@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/dop251/goja"
+	"github.com/tylergannon/skgo/internal/vite"
 )
 
 // Host answers one remote-function call made during a render. id is
@@ -241,9 +242,22 @@ type Redirect struct {
 	Location string `json:"location"`
 }
 
-// Engine is a pool of runtimes sharing one compiled program.
+// Engine is a pool of runtimes sharing one source of application code.
+//
+// In a build that source is one compiled program: the bundle the adapter
+// emitted. Under `vite dev` there is no bundle — kit never runs an adapter
+// there — and the source is the dev server itself, which the runtimes pull one
+// transformed module at a time from. The engine is otherwise the same in both:
+// the same entry, the same host bindings, the same pool, the same drain.
 type Engine struct {
 	program *goja.Program
+	// dev is the running dev server the runtimes load their modules from, and
+	// is nil for a build. entry is the module it is asked for first, and
+	// prelude is the script every runtime evaluates before any module does —
+	// the polyfill a build carries as its bundle's banner.
+	dev     *vite.Dev
+	entry   string
+	prelude []byte
 	// console is where every runtime's `console` reports.
 	console Console
 	// idle holds runtimes that are not rendering. A runtime is only ever
@@ -270,6 +284,12 @@ type runtime struct {
 	// reset empties that queue. A runtime is pooled, and work the last render
 	// left behind is not this one's to run.
 	reset goja.Callable
+
+	// runner is the module runner this runtime's application code comes from
+	// under `vite dev`, and is nil for a build. Each runtime has its own,
+	// because each holds its own module instances and they are brought up to
+	// date as they are checked out of the pool.
+	runner *vite.Runner
 
 	// host is the answer function of the render currently in flight. It is
 	// written and read by the one goroutine holding the runtime.
@@ -370,17 +390,37 @@ func New(name string, source []byte, size int, console Console) (*Engine, error)
 	if console == nil {
 		console = defaultConsole
 	}
-	e := &Engine{
-		program: program,
-		console: console,
-		idle:    make(chan *runtime, size),
-		permits: make(chan struct{}, size),
+	return start(&Engine{program: program, console: console}, size)
+}
+
+// NewDev returns an engine whose application code is the running dev server's.
+//
+// `vite dev` never runs an adapter — kit reaches `adapt()` only from the
+// plugin that finalises a build — so there is no bundle here. The adapter
+// declares the same `goja` environment in the dev server instead, and each
+// runtime pulls the entry and everything it imports out of it through vite's
+// own `fetchModule`. prelude is the script a build carries as its bundle's
+// banner, run before any module evaluates; entry is the module the engine
+// comes up on.
+func NewDev(dev *vite.Dev, entry string, prelude []byte, size int, console Console) (*Engine, error) {
+	if size < 1 {
+		size = 1
 	}
+	if console == nil {
+		console = defaultConsole
+	}
+	return start(&Engine{dev: dev, entry: entry, prelude: prelude, console: console}, size)
+}
+
+// start fills in the pool and proves one runtime comes up.
+func start(e *Engine, size int) (*Engine, error) {
+	e.idle = make(chan *runtime, size)
+	e.permits = make(chan struct{}, size)
 	for range size {
 		e.permits <- struct{}{}
 	}
-	// One runtime is built now rather than on the first request, so that a
-	// bundle the engine cannot evaluate is a startup failure instead of a
+	// One runtime is built now rather than on the first request, so that an
+	// application the engine cannot evaluate is a startup failure instead of a
 	// broken page.
 	rt, err := e.newRuntime()
 	if err != nil {
@@ -472,17 +512,34 @@ func (e *Engine) newRuntime() (*runtime, error) {
 		return nil, err
 	}
 
-	if _, err := rt.vm.RunProgram(e.program); err != nil {
-		return nil, fmt.Errorf("skgo: evaluating the SSR bundle: %w", err)
-	}
-
-	// Kit and Svelte each install their AsyncLocalStorage from a `.then()` on a
-	// dynamic import, so neither is in place until the job queue has been
-	// drained once. goja drains it when the outermost call returns; this no-op
-	// run is that call. Without it the first async component fails with kit's
-	// "Could not get the request store" in the middle of a render.
-	if _, err := rt.vm.RunString("void 0"); err != nil {
-		return nil, err
+	if e.dev != nil {
+		// The polyfill is a build's bundle banner, and it has to keep that
+		// position: Svelte's no-AsyncLocalStorage fallback is selected by a
+		// flag it sets, and the first module that reads it would otherwise
+		// throw `async_local_storage_unavailable`.
+		if _, err := rt.vm.RunString(string(e.prelude)); err != nil {
+			return nil, fmt.Errorf("skgo: installing the engine's polyfill: %w", err)
+		}
+		if _, err := rt.vm.RunString(devGlobalsSource); err != nil {
+			return nil, fmt.Errorf("skgo: installing the dev engine's globals: %w", err)
+		}
+		rt.runner = vite.NewRunner(rt.vm, e.dev)
+		if err := rt.runner.Boot(e.entry); err != nil {
+			return nil, err
+		}
+	} else {
+		if _, err := rt.vm.RunProgram(e.program); err != nil {
+			return nil, fmt.Errorf("skgo: evaluating the SSR bundle: %w", err)
+		}
+		// Kit and Svelte each install their AsyncLocalStorage from a `.then()`
+		// on a dynamic import, so neither is in place until the job queue has
+		// been drained once. goja drains it when the outermost call returns;
+		// this no-op run is that call. Without it the first async component
+		// fails with kit's "Could not get the request store" in the middle of a
+		// render. The dev path does the same, in Runner.Boot.
+		if _, err := rt.vm.RunString("void 0"); err != nil {
+			return nil, err
+		}
 	}
 
 	ping, ok := goja.AssertFunction(rt.vm.Get("__skgo_ping"))
@@ -493,11 +550,9 @@ func (e *Engine) newRuntime() (*runtime, error) {
 		return nil, fmt.Errorf("skgo: the SSR bundle did not come up: %v", err)
 	}
 
-	render, ok := goja.AssertFunction(rt.vm.Get("__skgo_render"))
-	if !ok {
-		return nil, errors.New("skgo: the SSR bundle defines no __skgo_render")
+	if err := rt.bindRender(); err != nil {
+		return nil, err
 	}
-	rt.render = render
 
 	if rt.tick, ok = goja.AssertFunction(rt.vm.Get("__skgo_tick")); !ok {
 		return nil, errors.New("skgo: the engine's globals define no __skgo_tick")
@@ -526,6 +581,13 @@ func (e *Engine) Render(routeID string, request []byte, hosts Hosts) (Result, []
 		return Result{}, nil, err
 	}
 	defer e.release(rt)
+
+	// Under `vite dev` the application this runtime holds may be older than the
+	// files on disk. Dropping exactly what an edit invalidated is what makes
+	// the next document carry it.
+	if err := e.refresh(rt); err != nil {
+		return Result{}, nil, err
+	}
 
 	rt.host = hosts.Remote
 	rt.fetch = hosts.Fetch
@@ -601,6 +663,18 @@ func (rt *runtime) drain(result goja.Value) error {
 		if ticks == maxTicks {
 			return fmt.Errorf("skgo: the render is still scheduling work after %d turns; it will not finish", maxTicks)
 		}
+		// A dynamic import made during a render suspends on a promise only Go
+		// can resolve, the same way a module-scope one does. Under `vite dev`
+		// that is one more fetch from the dev server; a build has no such
+		// imports at all, and no runner to ask.
+		if rt.runner != nil {
+			if err := rt.runner.Settle(); err != nil {
+				return err
+			}
+			if boolOf(object.Get("done")) {
+				return nil
+			}
+		}
 		waiting, err := rt.pending(goja.Undefined())
 		if err != nil {
 			return fmt.Errorf("skgo: reading the render's pending work: %w", err)
@@ -653,6 +727,52 @@ func decodeInto(vm *goja.Runtime, v goja.Value, into any) error {
 		return err
 	}
 	return json.Unmarshal(raw, into)
+}
+
+// bindRender reads the entry's render function off the runtime. It is re-read
+// after every hot update: re-importing the entry assigns a new closure over new
+// module instances, and the old function would render the code that changed.
+func (rt *runtime) bindRender() error {
+	render, ok := goja.AssertFunction(rt.vm.Get("__skgo_render"))
+	if !ok {
+		return errors.New("skgo: the SSR bundle defines no __skgo_render")
+	}
+	rt.render = render
+	return nil
+}
+
+// devGlobalsSource is what kit's own dev server puts on the global object and a
+// build states as a define instead. `__SVELTEKIT_TRACK__` is kit's dev-only
+// feature check (`exports/vite/dev/index.js`), which has nothing to report in
+// an engine that is not kit's dev server; `__SVELTEKIT_PAYLOAD__` is the object
+// kit's client reads its payload out of, and no module in the engine writes to
+// it.
+const devGlobalsSource = `
+	globalThis.__SVELTEKIT_TRACK__ = function () {};
+	globalThis.__SVELTEKIT_PAYLOAD__ = {};
+	globalThis.process = globalThis.process || {};
+	globalThis.process.env = globalThis.process.env || {};
+`
+
+// refresh brings a runtime up to date with the dev server before it renders.
+// It is a no-op for a build, whose code cannot change while it is running.
+func (e *Engine) refresh(rt *runtime) error {
+	if rt.runner == nil {
+		return nil
+	}
+	dropped, err := rt.runner.Refresh()
+	if err != nil {
+		return err
+	}
+	if dropped == 0 {
+		return nil
+	}
+	if dropped < 0 {
+		e.console("", "info", fmt.Sprintf("skgo: the dev server restarted; reloaded %d module(s)", rt.runner.Modules()))
+	} else {
+		e.console("", "info", fmt.Sprintf("skgo: reloaded %d of %d module(s) after an edit", dropped, rt.runner.Modules()))
+	}
+	return rt.bindRender()
 }
 
 // acquire takes an idle runtime, or builds one while the pool is below its

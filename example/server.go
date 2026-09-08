@@ -92,7 +92,10 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 
 	mode := "prod"
 	var pages http.Handler
-	var static func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
+	// build makes the page handler once both registries exist: the renderer
+	// needs the loads and the remote functions, and they need the manifest.
+	// Both modes render, so both go through it.
+	var build func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
 	// Declared here, ahead of the closure below that reaches into it: the
 	// closure runs after NewEndpoints has filled this in, but a closure
 	// captures the variable itself and Go resolves the name when the literal
@@ -115,12 +118,24 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		loadCfg.Dev = true
 		endpointCfg.Dev = true
 		handleCfg.Version = ""
-		mode, pages = "dev", skgo.NewDevProxy(target, log.Printf)
+		mode = "dev"
+		// Go renders the document in dev too. `vp dev` never runs an adapter,
+		// so there is no bundle here; the engine pulls one module at a time
+		// out of the same `goja` environment the build compiles, which the
+		// adapter also declares in the dev server. Everything that is not a
+		// document — modules, their CSS, the files in static/, the HMR socket —
+		// still goes through to vite, so the browser only ever talks to Go.
+		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+			ssr, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
+				Fetch: endpoints.Intercept(http.NotFoundHandler()),
+			})
+			if err != nil {
+				return nil, err
+			}
+			return skgo.NewDevPages(target, manifest, ssr, log.Printf), nil
+		}
 	} else {
-		// The renderer needs the loads and the remote functions, and they need
-		// the manifest, so the page handler is built last — after both of the
-		// registries it renders with exist.
-		static = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			// A render-time `event.fetch` of the app's own routes is answered
 			// by the same server-route registry a real request to that path
 			// would reach — `endpoints`, filled in below before this closure
@@ -162,10 +177,8 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
-	if static != nil {
-		if pages, err = static(loads, remotes); err != nil {
-			return nil, "", err
-		}
+	if pages, err = build(loads, remotes); err != nil {
+		return nil, "", err
 	}
 	// Handle mounts outermost: kit runs `handle` before it dispatches to
 	// anything, and that is true of every registry below, not just the loads

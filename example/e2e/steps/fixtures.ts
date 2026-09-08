@@ -279,4 +279,42 @@ function slug(text: string): string {
 		.slice(0, 80);
 }
 
+/**
+ * Waits until kit's client has hydrated the document and started its router.
+ *
+ * It exists because Go now renders the document in dev too, and a rendered
+ * document is on screen — and clickable — before the browser has finished
+ * loading the several hundred unbundled modules `vp dev` serves. A step that
+ * typed into an input and clicked a button in that window lost both: Svelte's
+ * `bind:value` writes the component's own empty state over what was typed the
+ * moment it hydrates, and a click before that reaches a form with no handler on
+ * it. In dev the window is seconds wide; in prod the bundle closes it, which is
+ * why nobody had seen it.
+ *
+ * `history.scrollRestoration` is kit's own marker rather than one this suite
+ * invented: `_start_router` sets it to "manual" as its first statement
+ * (packages/kit/src/runtime/client/client.js), and `_start_router` is what runs
+ * after `_hydrate` resolves. It is still a claim that can fail — a page that
+ * never boots never sets it.
+ */
+export async function hydrated(page: Page): Promise<void> {
+	// Two pages never hydrate and must not be waited on: one whose branch turns
+	// CSR off, which carries no boot script at all, and any page in the noscript
+	// project, whose context runs none of the script it was sent. Both are
+	// visible as the absence of the `__sveltekit_*` object the boot script
+	// assigns before it imports anything — the very first thing that runs.
+	try {
+		await page.waitForFunction(
+			() => Object.keys(globalThis).some((key) => key.startsWith('__sveltekit_')),
+			undefined,
+			{ timeout: 2_000 }
+		);
+	} catch {
+		return;
+	}
+	await page.waitForFunction(() => history.scrollRestoration === 'manual', undefined, {
+		timeout: 30_000
+	});
+}
+
 export { expect };

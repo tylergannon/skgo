@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -58,11 +58,13 @@ Then('the todo the endpoint created is in its list, saying {string}', async ({ p
 });
 
 When('I POST the todo {string}', async ({ page }, text: string) => {
+	await hydrated(page);
 	await page.getByTestId('api-draft').fill(text);
 	await page.getByTestId('api-post').click();
 });
 
 When('I ask the endpoint to DELETE', async ({ page }) => {
+	await hydrated(page);
 	await page.getByTestId('api-delete').click();
 });
 

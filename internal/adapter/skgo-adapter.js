@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { gojaEnvironment, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
+import { gojaDevEnvironment, gojaEnvironment, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 import { identity } from './skgo-adapter/identity.js';
 
 // Which skgo this adapter is: the version this package was published at, and a
@@ -48,7 +48,13 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 
 	return {
 		name: 'skgo',
-		vite: { plugins: { post: [goja.plugin] } },
+		// Both halves of the same environment. Kit hands `vite.plugins.post` to
+		// vite unconditionally — it is a member of the plugin array kit returns
+		// whether it is building or serving — so the environment the build
+		// compiles the SSR bundle in is also declared in `vite dev`, where Go
+		// pulls one transformed module at a time out of it instead. Each plugin
+		// states its own `apply`, so only one of them is ever live.
+		vite: { plugins: { post: [goja.plugin, gojaDevEnvironment()] } },
 		async adapt(builder) {
 			rmSync(out, { force: true, recursive: true });
 

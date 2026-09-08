@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 
@@ -13,6 +13,7 @@ Given('nobody has signed in', async ({ page, shot }) => {
 
 Given('I have signed in as {string}', async ({ page }, user: string) => {
 	await page.goto('/todos');
+	await hydrated(page);
 	await page.getByTestId('user').fill(user);
 	await page.getByTestId('sign-in').click();
 	await expect(page.getByTestId('session')).toHaveText(`Signed in as ${user}`, {
@@ -25,10 +26,12 @@ When('I visit {string}', async ({ page }, path: string) => {
 });
 
 When('I follow the {string} link', async ({ page }, name: string) => {
+	await hydrated(page);
 	await page.getByRole('link', { name, exact: true }).click();
 });
 
 When('I refresh the account layout', async ({ page }) => {
+	await hydrated(page);
 	await page.getByTestId('refresh-account').click();
 });
 

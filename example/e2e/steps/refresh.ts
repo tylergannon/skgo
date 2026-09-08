@@ -1,6 +1,6 @@
 import { createBdd } from 'playwright-bdd';
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -15,6 +15,7 @@ When('the pair of todos has loaded', async ({ page }) => {
 When(
 	'I retitle {string} to {string} and refresh {string}',
 	async ({ page }, id: string, text: string, refreshId: string) => {
+		await hydrated(page);
 		await page.getByTestId('retitle-id').fill(id);
 		await page.getByTestId('retitle-text').fill(text);
 		await page.getByTestId('retitle-refresh').fill(refreshId);
@@ -26,6 +27,7 @@ When(
 			(response) =>
 				response.request().method() === 'POST' && response.url().includes('/retitleTodo')
 		);
+		await hydrated(page);
 		await page.getByTestId('retitle-save').click();
 		await landed;
 		// And a beat for the client to apply what came back, because half of

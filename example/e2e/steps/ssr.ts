@@ -16,6 +16,24 @@ async function documentText(documents: { last: import('@playwright/test').Respon
 	return await documents.last!.text();
 }
 
+/**
+ * One tagged element, as a matcher that survives the attributes a compiler adds
+ * around the claim.
+ *
+ * Svelte's dev compile keeps the scoping class on elements the build's compile
+ * prunes it from, so the same component is `<p data-testid="site-name">skgo</p>`
+ * in a built document and `<p data-testid="site-name" class="svelte-1uha8ag">skgo</p>`
+ * in a served one. Both say the thing the scenario means. What is still exact is
+ * everything the scenario is actually about: the element, its test id, and the
+ * whole of its text.
+ */
+export function tagged(name: string, testid: string, text: string): RegExp {
+	const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	return new RegExp(
+		`<${name} data-testid="${escape(testid)}"[^>]*>${escape(text)}</${name}>`
+	);
+}
+
 Then('the document already said {string}', async ({ documents, shot }, text: string) => {
 	expect(await documentText(documents)).toContain(text);
 	await shot();
@@ -24,7 +42,7 @@ Then('the document already said {string}', async ({ documents, shot }, text: str
 Then(
 	'the document already said the site is named {string}',
 	async ({ documents, shot }, name: string) => {
-		expect(await documentText(documents)).toContain(`<p data-testid="site-name">${name}</p>`);
+		expect(await documentText(documents)).toMatch(tagged('p', 'site-name', name));
 		await shot();
 	}
 );

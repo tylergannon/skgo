@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 
@@ -21,6 +21,7 @@ Given('another tab is open at {string}', async ({ page }, path: string) => {
 
 When('the other tab adds the todo {string}', async ({}, text: string) => {
 	const tab = otherTab();
+	await hydrated(tab);
 	await tab.getByTestId('new-todo').fill(text);
 	await tab.getByTestId('add-todo').click();
 	// The other tab's own list has to have taken the change before the scenario
