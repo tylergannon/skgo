@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strings"
 
 	"github.com/tylergannon/skgo/internal/adapter"
 )
@@ -46,16 +47,25 @@ func checkInstalledAdapter(cfg Config) error {
 	// read from disk — a package.json that cannot be read still leaves a
 	// fingerprint worth naming.
 	version, _ := adapter.VersionOf(dir)
+
+	// A checkout has no released version to name, and `@skgo/adapter@devel` is
+	// not a thing npm can install; the package it is paired with is the one in
+	// its own tree.
+	install := "`pnpm add -D " + adapter.Package + "`"
+	if v := adapter.Version(); v != "devel" {
+		install = "`pnpm add -D " + adapter.Package + "@" + strings.TrimPrefix(v, "v") + "`"
+	}
+
 	return fmt.Errorf(
 		"skgo: the %s installed in this app is not the one this skgo publishes.\n"+
 			"\tinstalled in %s: %s\n"+
 			"\tthis program:  %s\n"+
 			"They are one contract in two languages, released together, so the frontend this "+
 			"would build could not be served by the program that generated it.\n"+
-			"Install the matching one — `pnpm add -D %s@%s` — and run `go generate ./...` again.",
+			"Install the matching one — %s — and run `go generate ./...` again.",
 		adapter.Package,
 		dir,
 		adapter.Identity(version, installed),
 		adapter.Identity(adapter.Version(), adapter.Fingerprint()),
-		adapter.Package, adapter.Version())
+		install)
 }

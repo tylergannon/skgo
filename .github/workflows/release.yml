@@ -1,0 +1,62 @@
+name: Release
+
+# A `v*` tag is the release. Go needs nothing published — `go get` fetches the
+# tag — so this workflow exists for the half that npm cannot infer: it stamps
+# @skgo/adapter with the tag's version and uploads it.
+#
+# The tag is the gesture and the only gesture. Nothing here decides whether the
+# release is good; whether skgo works is a screenshot of the running app, looked
+# at, and that happens before anybody types `just release`.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  # npm provenance: the attestation is signed with the workflow's own OIDC
+  # token, which is what lets the registry say this tarball came from this tag
+  # of this repository rather than from somebody's laptop.
+  id-token: write
+
+jobs:
+  npm:
+    name: Publish @skgo/adapter
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          registry-url: https://registry.npmjs.org
+
+      # The adapter the app installs and the adapter the Go binary embeds are
+      # the same files, and every build is refused at startup if they are not.
+      # These tests are what checks that the tarball leaving here really holds
+      # them — a `files` list that forgot a runtime module publishes an adapter
+      # that names itself something no skgo will accept.
+      - name: The tarball is the adapter this module embeds
+        run: go test ./internal/adapter/
+
+      # The tag is the version. Writing it into package.json here rather than
+      # committing it means the tree never carries a version that is a promise
+      # about a release nobody has cut.
+      - name: Stamp the tag's version
+        working-directory: internal/adapter
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          npm pkg set version="$version"
+          echo "publishing @skgo/adapter@$version"
+
+      - name: npm publish
+        working-directory: internal/adapter
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance

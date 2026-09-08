@@ -40,3 +40,34 @@ This makes byte-identity structural rather than asserted. A package missing a
 runtime file, or carrying an edited one, produces a different fingerprint and is
 refused at startup naming both — which is what makes the `files` list in
 package.json load-bearing instead of decorative.
+
+## The `go generate` fast-fail fires inside the build gesture, before vite
+
+Measured with the mutation (`skgo-adapter/polyfill.js` removed from
+package.json's `files`, repacked, reinstalled, `mise run build`):
+
+    [build] $ go generate ./...
+    skgo: the @skgo/adapter installed in this app is not the one this skgo publishes.
+      installed in .../web/node_modules/@skgo/adapter: skgo 0.0.0-dev (adapter 4b90c39a6f01)
+      this program:  skgo devel (adapter 900e9faf6a76)
+
+`mise run build` installs before it generates, so a mismatched install never
+reaches `vp build`. The check is skipped entirely when nothing is installed —
+`go generate` before an install is the wrong order, not the wrong adapter, and
+refusing there would be a new reason a tree cannot be generated.
+
+## CI does not run `just generate`
+
+`ci.yml` goes install → build → vet → test → e2e. The generated tree is
+committed, so nothing regenerates on a runner and the fast-fail above is a
+local and scaffold-test path only. The startup gate is what CI exercises.
+
+## Release needs the owner first
+
+`@skgo/adapter` is unclaimed and the `skgo` npm org does not exist. Nothing here
+can publish; `.github/workflows/release.yml` waits on a `v*` tag and an
+`NPM_TOKEN` secret. Note for whoever cuts the first release: pnpm 11 enforces a
+minimum release age by default, so a freshly published `@skgo/adapter` may be
+refused by `pnpm install` for a day unless the app lists it under
+`minimumReleaseAgeExclude`. The example app and the scaffold test both install
+from a local path, so neither sees this.

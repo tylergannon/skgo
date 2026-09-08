@@ -81,3 +81,24 @@ worktree branch:
 # what is already listening, before you bind a port
 ports:
     lsof -nP -iTCP -sTCP:LISTEN
+
+# A release is a `v*` tag: `go get` fetches it, and the tag push is what makes
+# .github/workflows/release.yml stamp @skgo/adapter with the same version and
+# publish it. Both halves of the contract come out of one gesture because they
+# are one contract.
+#
+# This recipe tags and pushes. It does not decide whether the release is good —
+# nothing here does, and the thing that decides is a human who has looked at the
+# app running.
+
+# tag this commit as a release and push the tag
+release version:
+    #!/bin/sh
+    set -e
+    case "{{version}}" in
+      v[0-9]*) ;;
+      *) echo "a release is a v-prefixed semver, like v0.2.0; got {{version}}" >&2; exit 1;;
+    esac
+    git tag -a "{{version}}" -m "{{version}}"
+    git push origin "{{version}}"
+    echo "pushed {{version}}; .github/workflows/release.yml publishes @skgo/adapter@$(echo "{{version}}" | cut -c2-)"
