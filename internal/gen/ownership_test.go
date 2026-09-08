@@ -65,6 +65,8 @@ type Remote struct{}
 
 func Query(fn any) Marker { _ = fn; return Marker{} }
 
+func Load[Out any](fn func(context.Context) (Out, error)) Marker { _ = fn; return Marker{} }
+
 func Command(fn any) Marker { _ = fn; return Marker{} }
 
 func LiveQuery(fn any) Marker { _ = fn; return Marker{} }
