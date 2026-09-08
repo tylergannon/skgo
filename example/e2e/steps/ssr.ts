@@ -11,7 +11,7 @@ const { When, Then } = createBdd(test);
  * response: the same content appears in the DOM a moment later either way, so
  * asserting on the DOM alone cannot tell a rendered page from a hydrated one.
  */
-async function documentText(documents: { last: import('@playwright/test').Response | null }) {
+export async function documentText(documents: { last: import('@playwright/test').Response | null }) {
 	expect(documents.last, 'no document response was observed').not.toBeNull();
 	return await documents.last!.text();
 }

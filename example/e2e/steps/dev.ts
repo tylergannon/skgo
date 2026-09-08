@@ -2,7 +2,7 @@ import { createBdd } from 'playwright-bdd';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 import { tagged } from './ssr';
 
 const { After, Given, Then, When } = createBdd(test);
@@ -292,4 +292,54 @@ After(async ({ page }) => {
 			})
 			.toBe(404);
 	}
+});
+
+/**
+ * Waits for kit's client to have mounted over the document Go sent.
+ *
+ * It is a step of its own rather than something the assertions do quietly,
+ * because in dev it is the subject: the scenarios below are about what happened
+ * while the client took the document over, and a claim made before that has
+ * happened is a claim about nothing.
+ */
+When('the client has hydrated', async ({ page }) => {
+	await hydrated(page);
+});
+
+/**
+ * That the console being read is a live one, and that vite's dev client — the
+ * half of HMR that lives in the browser — is in the document Go wrote and has
+ * its socket open through Go's proxy.
+ *
+ * It is the positive half of the three claims that follow it, none of which any
+ * page could fail by doing nothing.
+ */
+Then("the browser console shows vite's dev client connected", async ({ browserConsole, shot }) => {
+	await expect
+		.poll(() => browserConsole.messages.join('\n'), {
+			timeout: 20_000,
+			message: 'vite’s dev client never announced itself'
+		})
+		.toMatch(/\[vite[^\]]*\]\s*connected/i);
+	await shot();
+});
+
+Then('the browser console never said {string}', async ({ browserConsole }, text: string) => {
+	const said = browserConsole.messages.filter((message) => message.includes(text));
+	expect(said, said.join('\n')).toHaveLength(0);
+});
+
+Then('the browser console reported no error', async ({ browserConsole, shot }) => {
+	expect(browserConsole.errors, browserConsole.errors.join('\n')).toHaveLength(0);
+	await shot('hydrated');
+});
+
+/**
+ * The edit arriving in the tab that is already open, which is vite's hot update
+ * and not a reload — the scenario counts documents immediately afterwards to
+ * say which of the two it was.
+ */
+Then('the open page shows the heading {string}', async ({ page, shot }, heading: string) => {
+	await expect(page.getByTestId('title')).toHaveText(heading, { timeout: 30_000 });
+	await shot('hot');
 });

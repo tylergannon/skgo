@@ -165,3 +165,64 @@ Feature: In dev the document is Go's too, from the modules vite transformed
       Then I land on "/"
       And I see "Home"
       And Go's data endpoint for "/account" answers with a redirect to "/"
+
+  Rule: A dev page hydrates over the document Go sent
+
+    Kit's client mounts over markup Go wrote, and a disagreement between the two
+    is the failure only this mode can produce: Svelte says so on the browser's
+    console and nowhere else, because the page still renders. So the console is
+    the only place to look, and each scenario below names the sentences that
+    would be there.
+
+    "X is absent" on its own is satisfied by a page that never ran anything, so
+    every scenario pairs it with two things that only a live client can do:
+    vite's own dev client announces itself on that same console — which is also
+    the HMR socket being open — and a click on the nav is answered without a
+    second document.
+
+    Scenario: The front page hydrates over the document Go sent
+      Given I open "/"
+      When the client has hydrated
+      And I click the link to "/about"
+      Then I see "About"
+      And exactly 1 document request was made
+      And the browser console shows vite's dev client connected
+      And the browser console never said "hydration_mismatch"
+      And the browser console never said "Hydration failed"
+      And the browser console reported no error
+
+    Scenario: A page under a layout, loaded in Go, hydrates over the document
+      Given I have signed in as "ada"
+      When I visit "/account"
+      And the client has hydrated
+      Then the account layout greets "ada"
+      And the browser console shows vite's dev client connected
+      And the browser console never said "hydration_mismatch"
+      And the browser console never said "Hydration failed"
+      And the browser console reported no error
+
+    Scenario: A page whose values arrive after the document hydrates over it
+      Given I open "/pricing"
+      When the client has hydrated
+      Then every part of the page loaded
+      And the browser console shows vite's dev client connected
+      And the browser console never said "hydration_mismatch"
+      And the browser console never said "Hydration failed"
+      And the browser console reported no error
+
+  Rule: An edit reaches the page a developer is looking at
+
+    Vite's dev client is in the document because kit's own client runtime
+    carries a bare `import.meta.hot`, which makes vite inject it as that
+    module's first dependency (`runtime/client/payload.js`). Go writing the
+    document instead of kit does not change that, so the tab a developer has
+    open updates itself while the same edit is also in the next document Go
+    sends.
+
+    Scenario: An edit updates the open tab without reloading it, and is in the next document
+      Given I open "/"
+      When the client has hydrated
+      And "src/routes/+page.svelte" has "Home" replaced with "Home, hot"
+      Then the open page shows the heading "Home, hot"
+      And exactly 1 document request was made
+      And the document Go sends for "/" has the page's heading "Home, hot"

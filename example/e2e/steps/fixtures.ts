@@ -69,6 +69,13 @@ export type Notes = Map<string, number>;
 export type BrowserConsole = {
 	/** Every message the page's console produced, in order. */
 	messages: string[];
+	/**
+	 * The subset of those the browser called a failure, plus every uncaught
+	 * exception. A page that threw while hydrating reports it here and nowhere
+	 * a step could catch it: the document is already on screen, so the
+	 * navigation succeeded and the visitor sees a page either way.
+	 */
+	errors: string[];
 };
 
 /**
@@ -91,8 +98,15 @@ export const test = base.extend<{
 	// would otherwise be missed.
 	browserConsole: [
 		async ({ page }, use) => {
-			const browserConsole: BrowserConsole = { messages: [] };
-			page.on('console', (msg) => browserConsole.messages.push(msg.text()));
+			const browserConsole: BrowserConsole = { messages: [], errors: [] };
+			page.on('console', (msg) => {
+				browserConsole.messages.push(msg.text());
+				if (msg.type() === 'error') browserConsole.errors.push(msg.text());
+			});
+			page.on('pageerror', (error) => {
+				browserConsole.messages.push(error.message);
+				browserConsole.errors.push(error.message);
+			});
 			await use(browserConsole);
 		},
 		{ auto: true }
