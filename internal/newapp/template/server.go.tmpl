@@ -17,10 +17,10 @@ import (
 )
 
 // NewHandler builds the server over the frontend build in dist. With a
-// non-empty proxy it forwards pages to a running `vp dev` server; otherwise it
-// serves the embedded build. Either way the remote registry sits in front of
-// whatever answers pages, because in dev kit's own server would otherwise run
-// the generated stub, whose every body throws.
+// non-empty proxy it renders pages from a running `vp dev` server; otherwise it
+// serves the embedded build. Loads, remote functions and server routes sit in
+// front of pages in both modes, so Kit's generated throwing stubs never answer
+// an application request.
 func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) {
 	// The manifest is read in both modes: it is where appDir and base come
 	// from, and those decide the URL prefix remote calls arrive on.
@@ -28,13 +28,24 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
+	if proxy != "" {
+		manifest, err = skgo.ReadDevManifest(dist, proxy)
+		if err != nil {
+			return nil, "", err
+		}
+	}
 
-	cfg := manifest.RemoteConfig(origin)
+	remoteCfg := manifest.RemoteConfig(origin)
 	loadCfg := manifest.LoadConfig(origin)
+	endpointCfg := manifest.EndpointConfig(origin)
 
 	mode := "prod"
 	var pages http.Handler
-	var static func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
+	// build makes the page handler once all three registries exist. The
+	// renderer needs the loads and remotes directly, and its event.fetch host
+	// needs the endpoint registry.
+	var build func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
+	var endpoints *skgo.Endpoints
 	if proxy != "" {
 		target, err := url.Parse(proxy)
 		if err != nil {
@@ -44,20 +55,32 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		// version differs from the manifest's — sending x-sveltekit-version
 		// would make it reload in a loop. Kit skips the remote origin check in
 		// dev too.
-		cfg = manifest.RemoteConfig("")
-		cfg.Version = ""
-		cfg.Dev = true
-		cfg.CookieOrigin = origin
+		remoteCfg = manifest.RemoteConfig("")
+		remoteCfg.Version = ""
+		remoteCfg.Dev = true
+		remoteCfg.CookieOrigin = origin
 		loadCfg.Version = ""
 		loadCfg.Dev = true
-		mode, pages = "dev", skgo.NewDevProxy(target, log.Printf)
+		endpointCfg.Dev = true
+		mode = "dev"
+		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+			ssr, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
+				Fetch: endpoints.Intercept(http.NotFoundHandler()),
+			})
+			if err != nil {
+				return nil, err
+			}
+			return skgo.NewDevPages(target, manifest, ssr, log.Printf, endpoints), nil
+		}
 	} else {
 		// Pages are rendered here, in this process, by the SSR bundle the
 		// adapter built. The renderer needs the loads and the remote functions
 		// it will answer during a render, so the page handler is built after
 		// both of them exist.
-		static = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
-			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{})
+		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+				Fetch: endpoints.Intercept(http.NotFoundHandler()),
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -65,7 +88,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		}
 	}
 
-	remotes, err := skgo.NewRemotes(cfg, generated.Remotes()...)
+	remotes, err := skgo.NewRemotes(remoteCfg, generated.Remotes()...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -73,12 +96,15 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
-	if static != nil {
-		if pages, err = static(loads, remotes); err != nil {
-			return nil, "", err
-		}
+	endpoints, err = skgo.NewEndpoints(endpointCfg, generated.Endpoints()...)
+	if err != nil {
+		return nil, "", err
 	}
-	return explainOriginRefusals(cfg, loads.Intercept(remotes.Intercept(pages))), mode, nil
+	if pages, err = build(loads, remotes); err != nil {
+		return nil, "", err
+	}
+	return explainOriginRefusals(remoteCfg,
+		loads.Intercept(remotes.Intercept(endpoints.Intercept(pages)))), mode, nil
 }
 
 // explainOriginRefusals turns the one failure a new app is most likely to hit

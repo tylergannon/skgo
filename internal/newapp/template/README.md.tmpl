@@ -22,6 +22,7 @@ anything that renders is proof that Go answered.
 | `web/` | an ordinary SvelteKit app: kit's tooling, kit's conventions |
 | `@skgo/adapter` | kit's adapter, an ordinary devDependency installed from the skgo tag `go.mod` requires |
 | `web/src/routes/*.remote.go` | server logic, colocated with the routes that call it |
+| `web/src/routes/**/server.go` | ordinary Go HTTP handlers for SvelteKit `+server.ts` routes |
 | `generated/` | what `go generate ./...` writes; never edited by hand |
 | `cmd/` | the binary |
 | `server.go` | the one composition the binary and any test both use |
@@ -30,6 +31,11 @@ Write a remote function by adding a Go function to a `*.remote.go` file beside
 the route that needs it and marking it with `skgo.Query` or `skgo.Command`, then
 run `mise run build`. skgo writes the `.remote.ts` module kit compiles, the
 TypeScript types its callers see, and the Go registration the server mounts.
+
+Write a server route with an ordinary `net/http` handler in `server.go` beside
+the route and mark it with `skgo.GET`, `skgo.POST` or another HTTP method. The
+same build gesture writes the throwing `+server.ts` stub Kit compiles and the Go
+registration the server answers in both production and development.
 
 ## The origin
 
@@ -48,13 +54,14 @@ says so in its log and in the response body if it happens.
 
 ```sh
 mise run dev:web   # vite, on 127.0.0.1:5173
-mise run dev:go    # the Go server, proxying pages to vite
+mise run dev:go    # the Go server, rendering from vite's modules
 ```
 
 `#lib` is a Node subpath import (`package.json` → `imports`), and TypeScript
 resolves those without probing for extensions: write `#lib/model.ts`, not
 `#lib/model`. Vite accepts both, so only the type check would tell you.
 
-Go answers the remote functions in both modes. In production the binary renders
-every page in the Go process and serves it with kit's client; in dev, pages come
-from vite and render in the browser (see `src/routes/+layout.ts`).
+Go answers loads, remote functions and server routes in both modes. In
+production the binary renders pages from the embedded frontend build. In
+development it still renders each document in Go, using modules transformed by
+Vite; modules, styles, static assets and HMR continue through to Vite.
