@@ -19,7 +19,7 @@ import * as esbuild from 'esbuild';
 // the Go that reads the manifest below checks what is stamped here against its
 // own, so a copy that has fallen behind is refused by name instead of failing
 // later as something unrelated.
-const SKGO = { version: 'devel', adapter: '71f6ae5ffa76' };
+const SKGO = { version: 'devel', adapter: '0b17d674576f' };
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
@@ -844,6 +844,55 @@ if (typeof globalThis.Headers === 'undefined') {
 	};
 }
 
+// Request and Response back a render-time \`event.fetch\`. Kit's own
+// \`normalize_fetch_input\` (runtime/server/fetch.js) turns whatever a
+// component passed into a real Request before deciding what to do with it, and
+// the answer a render's fetch gets back has to be a real Response — \`await
+// (await event.fetch(...)).json()\` is what a page actually writes. Nothing
+// here sends bytes anywhere: building one is string and Map bookkeeping, and
+// the one call that leaves the engine is \`__skgo_fetch\` itself.
+if (typeof globalThis.Request === 'undefined') {
+	globalThis.Request = class Request {
+		constructor(input, init = {}) {
+			if (input instanceof Request) {
+				this.url = input.url;
+				this.method = (init.method ?? input.method ?? 'GET').toUpperCase();
+				this.headers = init.headers ? new Headers(init.headers) : new Headers(input.headers);
+				this._body = init.body !== undefined ? init.body : input._body;
+				this.credentials = init.credentials ?? input.credentials ?? 'same-origin';
+				this.mode = init.mode ?? input.mode ?? 'cors';
+			} else {
+				this.url = String(input);
+				this.method = (init.method ?? 'GET').toUpperCase();
+				this.headers = new Headers(init.headers);
+				this._body = init.body;
+				this.credentials = init.credentials ?? 'same-origin';
+				this.mode = init.mode ?? 'cors';
+			}
+		}
+		async text() { return this._body ?? ''; }
+		async json() { return JSON.parse(this._body ?? 'null'); }
+	};
+}
+
+if (typeof globalThis.Response === 'undefined') {
+	globalThis.Response = class Response {
+		constructor(body, init = {}) {
+			this._body = body ?? '';
+			this.status = init.status ?? 200;
+			this.statusText = init.statusText ?? '';
+			this.headers = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
+			this.ok = this.status >= 200 && this.status < 300;
+		}
+		async text() { return this._body; }
+		async json() { return JSON.parse(this._body); }
+		async arrayBuffer() { return new TextEncoder().encode(this._body).buffer; }
+		clone() {
+			return new Response(this._body, { status: this.status, statusText: this.statusText, headers: this.headers });
+		}
+	};
+}
+
 // Blob and File are named by kit's form-field proxy, which asks whether a
 // field's value is a File before it decides how to describe it to the markup.
 // Nothing here ever holds one — an uploaded file's bytes are Go's, and they
@@ -1122,6 +1171,44 @@ export const requested = real.requested;
 `;
 
 /**
+ * `$app/paths` as the engine sees it: kit's own `resolve` and `asset`
+ * (runtime/app/paths/server.js), unchanged — they are pure string logic over
+ * the app's compiled-in base and assets path, needing nothing this engine
+ * lacks — with `match` replaced.
+ *
+ * Kit's own `match` asks a manifest for the route, through
+ * `get_hooks().reroute` and `manifest._.matchers()`/`find_route`
+ * (utils/routing.js). Neither exists here: skgo does its own routing in Go,
+ * and Go already owns the exact table every page, load and endpoint request
+ * matches against, so building a second one for the engine would be the
+ * reimplementation this project's own rules forbid. This mirrors kit's own
+ * preparation of the pathname — decode it, strip the base — and then asks Go
+ * for the match, the same way a query or a command asks Go to run it.
+ *
+ * skgo has no reroute hook (Go does the routing, so `get_hooks` is always
+ * `{}`) and no param matchers (a matcher is a JavaScript function and skgo
+ * runs none — Loads.match and Endpoints.match both already match on the
+ * pattern alone), so both of kit's other inputs to match() are empty in this
+ * engine too, not just unavailable.
+ */
+const SSR_APP_PATHS = String.raw`
+import { asset, resolve, base } from 'skgo:kit/paths-server';
+import { decode_pathname } from 'skgo:kit/url';
+
+export { asset, resolve };
+
+export async function match(url) {
+	const target = typeof url === 'string' ? new URL(url, 'https://skgo.internal/') : url;
+	let pathname = decode_pathname(target.pathname);
+	if (base && pathname.startsWith(base)) {
+		pathname = pathname.slice(base.length) || '/';
+	}
+	const raw = globalThis.__skgo_match(pathname);
+	return JSON.parse(raw);
+}
+`;
+
+/**
  * The entry point. It mirrors the one region of kit's `render_response` that
  * executes code (packages/kit/src/runtime/server/page/render.js): build the
  * `Props` linked list, call `render(Root, ...)` inside kit's request store, and
@@ -1198,9 +1285,67 @@ function make_state() {
 }
 
 /**
+ * event.fetch during a render. Kit's own (runtime/server/fetch.js) resolves a
+ * relative URL against the page's own origin, forwards the incoming cookies
+ * on a same-origin request unless credentials is "omit", and otherwise hands
+ * the request to a real fetch. This engine has no socket to hand a
+ * cross-origin request to — no application I/O executes in JavaScript here —
+ * so a same-origin URL is a call back into Go's own handler for it, exactly
+ * the shape a remote function's call is, and a cross-origin one is refused: a
+ * thrown TypeError, before anything is dispatched. (Kit's own version also
+ * forwards the page's own Authorization header on a same-origin request; this
+ * one does not, because the render's own request never reaches the engine
+ * with its headers — only its cookies, in req.cookies.)
+ */
+function create_fetch(req, url) {
+	return function (input, init) {
+		const request = input instanceof Request ? input : new Request(input, init);
+		const target = new URL(request.url, url);
+
+		if (target.origin !== url.origin) {
+			throw new TypeError(
+				"skgo: event.fetch only reaches this app's own routes during server-side rendering (" +
+					target.origin +
+					' is not ' +
+					url.origin +
+					')'
+			);
+		}
+
+		const credentials = init?.credentials ?? request.credentials ?? 'same-origin';
+		if (credentials !== 'omit') {
+			const cookie = Object.entries(req.cookies ?? {})
+				.map(([name, value]) => name + '=' + value)
+				.join('; ');
+			if (cookie) request.headers.set('cookie', cookie);
+		}
+
+		const headers = {};
+		request.headers.forEach((value, name) => {
+			headers[name] = value;
+		});
+
+		const envelope = { method: request.method || 'GET', url: target.href, headers };
+		if (typeof request._body === 'string') envelope.body = request._body;
+
+		const raw = globalThis.__skgo_fetch(JSON.stringify(envelope));
+		const answer = JSON.parse(raw);
+		if (answer.error) throw new TypeError(answer.error);
+
+		return Promise.resolve(
+			new Response(answer.response.body ?? '', {
+				status: answer.response.status,
+				headers: answer.response.headers
+			})
+		);
+	};
+}
+
+/**
  * A RequestEvent stand-in. run_remote_function spreads it and derives the
  * event a query actually sees, which is where kit makes url, params and
- * route throw. Go owns the real request; nothing here does I/O.
+ * route throw. Go owns the real request; the only I/O anything here performs
+ * is \`fetch\`'s in-process call back into Go for one of the app's own routes.
  */
 function make_event(req, url) {
 	return {
@@ -1211,9 +1356,7 @@ function make_event(req, url) {
 			delete: () => {},
 			serialize: () => ''
 		},
-		fetch: () => {
-			throw new Error('skgo: fetch is not available during server-side rendering; load the data in Go');
-		},
+		fetch: create_fetch(req, url),
 		getClientAddress: () => req.client_address ?? '127.0.0.1',
 		locals: {},
 		params: req.params ?? {},
@@ -1484,7 +1627,15 @@ async function buildServerBundle(builder, nodes, outfile) {
 		'$app/env': join(kit, 'runtime/app/env/index.js'),
 		'$app/environment': join(kit, 'runtime/app/environment/index.js'),
 		'$app/forms': join(kit, 'runtime/app/forms/index.js'),
-		'$app/paths': join(kit, 'runtime/app/paths/index.js'),
+		// `resolve` and `asset` are kit's own (runtime/app/paths/server.js) —
+		// pure string logic over the app's compiled-in base/assets, needing
+		// nothing this engine lacks. `match` is the one substitution: kit's own
+		// needs a manifest and a reroute hook this engine has neither of, so
+		// skgo-app-paths keeps kit's `resolve`/`asset` and answers `match` with
+		// a call back into Go's own route table instead. See SSR_APP_PATHS.
+		'$app/paths': 'skgo:app-paths',
+		'skgo:kit/paths-server': join(kit, 'runtime/app/paths/server.js'),
+		'skgo:kit/url': join(kit, 'utils/url.js'),
 		// `$app/server` is the one substitution: kit's real `query`/`command`/
 		// `form` wrappers are kept, and only the user function body — the
 		// generated stub that throws — is replaced by the call into Go.
@@ -1512,6 +1663,7 @@ async function buildServerBundle(builder, nodes, outfile) {
 		'skgo:entry': SSR_ENTRY,
 		'skgo:polyfill': SSR_POLYFILL,
 		'skgo:app-server': SSR_APP_SERVER,
+		'skgo:app-paths': SSR_APP_PATHS,
 		'skgo:nodes': nodeTable(cwd, nodes),
 		'skgo:esm-env': 'export const DEV = false; export const BROWSER = false;',
 		// The app's universal hooks, which is where kit keeps `transport`. Kit

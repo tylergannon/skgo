@@ -81,11 +81,11 @@ func TestConcurrentRendersDoNotShareARuntime(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			result, _, err := engine.Render(route, request(t, route), func(id, payload string) ([]byte, error) {
+			result, _, err := engine.Render(route, request(t, route), ssr.Hosts{Remote: func(id, payload string) ([]byte, error) {
 				both <- struct{}{}
 				<-release
 				return answer("answered " + payload), nil
-			})
+			}})
 			if err != nil {
 				t.Errorf("%s: %v", route, err)
 				return
@@ -118,9 +118,9 @@ func TestARenderThatNeverFinishesIsAnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = engine.Render("/", request(t, "/"), func(string, string) ([]byte, error) {
+	_, _, err = engine.Render("/", request(t, "/"), ssr.Hosts{Remote: func(string, string) ([]byte, error) {
 		return answer(""), nil
-	})
+	}})
 	if err == nil {
 		t.Fatal("a render that did not finish was reported as a success")
 	}
@@ -136,9 +136,9 @@ func TestAHostFailureIsAGoError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, calls, err := engine.Render("/", request(t, "/"), func(string, string) ([]byte, error) {
+	_, calls, err := engine.Render("/", request(t, "/"), ssr.Hosts{Remote: func(string, string) ([]byte, error) {
 		return nil, errNoAnswer
-	})
+	}})
 	if err == nil {
 		t.Fatal("a render whose host call failed was reported as a success")
 	}
@@ -178,14 +178,124 @@ func TestTheEngineReusesItsRuntimes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 20 {
-		if _, _, err := engine.Render("/", request(t, "/"), func(_, payload string) ([]byte, error) {
+		if _, _, err := engine.Render("/", request(t, "/"), ssr.Hosts{Remote: func(_, payload string) ([]byte, error) {
 			return answer(payload), nil
-		}); err != nil {
+		}}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if created := engine.Created(); created != 1 {
 		t.Errorf("twenty sequential renders built %d runtimes, want 1", created)
+	}
+}
+
+// fetching is a stand-in bundle that does what the real one's `event.fetch`
+// polyfill does: build a JSON envelope and hand it to `__skgo_fetch`, then
+// read back a response or throw the answer's error. It is the proof that the
+// engine's fetch never does its own I/O — everything it "does" is call this
+// one function and report what came back.
+const fetching = `
+globalThis.__skgo_ping = function () { return 'ok'; };
+globalThis.__skgo_render = function (json) {
+	var req = JSON.parse(json);
+	var raw = globalThis.__skgo_fetch(JSON.stringify({ method: 'GET', url: req.url + 'greeting' }));
+	var answer = JSON.parse(raw);
+	var body = answer.error ? 'error:' + answer.error : answer.response.status + ':' + answer.response.body;
+	return { done: true, failure: '', redirect: null, status: 200, error: null, head: '', body: body };
+};
+`
+
+// matching is a stand-in bundle that does what the real $app/paths wrapper's
+// match() does: hand a pathname to __skgo_match and report the route it
+// found, or "null" for one that matched nothing.
+const matching = `
+globalThis.__skgo_ping = function () { return 'ok'; };
+globalThis.__skgo_render = function (json) {
+	var req = JSON.parse(json);
+	var raw = globalThis.__skgo_match(req.route_id);
+	return { done: true, failure: '', redirect: null, status: 200, error: null, head: '', body: raw };
+};
+`
+
+// TestFetchIsACallBackIntoGoNeverASocket is the engine-level half of the
+// fetch proof: a render's `event.fetch`, exercised exactly the way the real
+// polyfill exercises it — a JSON envelope handed to `__skgo_fetch` — comes
+// back as the answer Go gave, with nothing in between that could have opened
+// a connection of its own.
+func TestFetchIsACallBackIntoGoNeverASocket(t *testing.T) {
+	engine, err := ssr.New("bundle.js", []byte(fetching), 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got ssr.FetchRequest
+	result, _, err := engine.Render("/", request(t, "/"), ssr.Hosts{
+		Fetch: func(payload []byte) ([]byte, error) {
+			if err := json.Unmarshal(payload, &got); err != nil {
+				t.Fatal(err)
+			}
+			return json.Marshal(ssr.FetchAnswer{
+				Response: &ssr.FetchResponse{Status: 200, Body: `{"message":"hello from Go"}`},
+			})
+		},
+	})
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if got.Method != "GET" || got.URL != "http://example.test/greeting" {
+		t.Errorf("Go saw %+v, want GET http://example.test/greeting", got)
+	}
+	if want := `200:{"message":"hello from Go"}`; result.Body != want {
+		t.Errorf("body = %q, want %q", result.Body, want)
+	}
+}
+
+// TestFetchWithNoHostRefuses is the engine-level half of the refusal: a
+// render that calls fetch with nothing answering it gets a clear error rather
+// than a ReferenceError, the same shape a remote call with no host gets.
+func TestFetchWithNoHostRefuses(t *testing.T) {
+	engine, err := ssr.New("bundle.js", []byte(fetching), 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := engine.Render("/", request(t, "/"), ssr.Hosts{}); err == nil {
+		t.Fatal("a render whose fetch had nothing to answer it was reported as a success")
+	}
+}
+
+// TestMatchIsACallBackIntoGo is the engine-level half of the match proof: a
+// render's `$app/paths` `match()`, exercised the way the real wrapper
+// exercises it — a pathname handed to `__skgo_match` — comes back with the
+// route Go's own table found, and "null" for one that matched nothing.
+func TestMatchIsACallBackIntoGo(t *testing.T) {
+	engine, err := ssr.New("bundle.js", []byte(matching), 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, _, err := engine.Render("/api/todos", request(t, "/api/todos"), ssr.Hosts{
+		Match: func(pathname string) (string, map[string]string, bool) {
+			if pathname == "/api/todos" {
+				return "/api/todos", map[string]string{}, true
+			}
+			return "", nil, false
+		},
+	})
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if want := `{"id":"/api/todos","params":{}}`; result.Body != want {
+		t.Errorf("body = %q, want %q", result.Body, want)
+	}
+
+	result, _, err = engine.Render("/no-such-route", request(t, "/no-such-route"), ssr.Hosts{
+		Match: func(string) (string, map[string]string, bool) { return "", nil, false },
+	})
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if result.Body != "null" {
+		t.Errorf("body = %q, want null", result.Body)
 	}
 }
 
@@ -229,7 +339,7 @@ func TestARenderReportsTheStatusAndErrorItEndedWith(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render("/teapot", request(t, "/teapot"), nil)
+	result, _, err := engine.Render("/teapot", request(t, "/teapot"), ssr.Hosts{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +365,7 @@ func TestARedirectThrownDuringARenderIsNotAFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render("/go-away", request(t, "/go-away"), nil)
+	result, _, err := engine.Render("/go-away", request(t, "/go-away"), ssr.Hosts{})
 	if err != nil {
 		t.Fatalf("a redirect was reported as a failure: %v", err)
 	}
@@ -305,7 +415,7 @@ func TestAnExtraAppErrorFieldReachesTheComponentAndSurvivesTheRoundTrip(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render("/error/unexpected", raw, nil)
+	result, _, err := engine.Render("/error/unexpected", raw, ssr.Hosts{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +455,7 @@ globalThis.__skgo_render = function (json) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := engine.Render("/checkout", request(t, "/checkout"), nil); err != nil {
+	if _, _, err := engine.Render("/checkout", request(t, "/checkout"), ssr.Hosts{}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 
@@ -389,7 +499,7 @@ globalThis.__skgo_render = function () {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render("/", request(t, "/"), nil)
+	result, _, err := engine.Render("/", request(t, "/"), ssr.Hosts{})
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
@@ -455,10 +565,10 @@ func TestARenderIsDrivenPastItsMacrotasks(t *testing.T) {
 	}
 
 	var asked []string
-	result, _, err := engine.Render("/batch", request(t, "/batch"), func(id, payload string) ([]byte, error) {
+	result, _, err := engine.Render("/batch", request(t, "/batch"), ssr.Hosts{Remote: func(id, payload string) ([]byte, error) {
 		asked = append(asked, id+" "+payload)
 		return answer("answered " + payload), nil
-	})
+	}})
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
@@ -488,7 +598,7 @@ func TestWorkOneRenderAbandonedDoesNotRunInTheNext(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	host := func(id, payload string) ([]byte, error) { return answer(payload), nil }
+	host := ssr.Hosts{Remote: func(id, payload string) ([]byte, error) { return answer(payload), nil }}
 
 	first, _, err := engine.Render("/abandon", request(t, "/abandon"), host)
 	if err != nil {

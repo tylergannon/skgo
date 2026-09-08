@@ -93,6 +93,11 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	mode := "prod"
 	var pages http.Handler
 	var static func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
+	// Declared here, ahead of the closure below that reaches into it: the
+	// closure runs after NewEndpoints has filled this in, but a closure
+	// captures the variable itself and Go resolves the name when the literal
+	// is written, not when it is called.
+	var endpoints *skgo.Endpoints
 	if proxy != "" {
 		target, err := url.Parse(proxy)
 		if err != nil {
@@ -116,8 +121,15 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		// the manifest, so the page handler is built last — after both of the
 		// registries it renders with exist.
 		static = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+			// A render-time `event.fetch` of the app's own routes is answered
+			// by the same server-route registry a real request to that path
+			// would reach — `endpoints`, filled in below before this closure
+			// ever runs — with nothing beneath it: a fetch that matches no
+			// `+server.ts` refuses rather than recursing back into the page
+			// renderer whose own render is what asked for this fetch.
 			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
 				HandleError: HandleError,
+				Fetch:       endpoints.Intercept(http.NotFoundHandler()),
 			})
 			if err != nil {
 				return nil, err
@@ -146,7 +158,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
-	endpoints, err := skgo.NewEndpoints(endpointCfg, generated.Endpoints()...)
+	endpoints, err = skgo.NewEndpoints(endpointCfg, generated.Endpoints()...)
 	if err != nil {
 		return nil, "", err
 	}

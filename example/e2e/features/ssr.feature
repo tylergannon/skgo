@@ -265,3 +265,42 @@ Feature: Pages arrive rendered
       And the document carried the loading state, and the orders after it ended
       And the browser never asked for the page's data
       And exactly 0 remote requests were made since
+
+  Rule: $app/paths answers the same during a render as it does everywhere else
+
+    `resolve`, `asset` and `match` are kit's own functions
+    (runtime/app/paths/server.js), called from src/routes/render-paths/+page.svelte
+    while Go renders that page. `resolve` and `asset` need nothing this engine
+    lacks — they are string logic over the app's compiled-in base and assets
+    path — so they run unmodified. `match` needs a manifest this engine has
+    none of, so it asks Go's own route table for the answer instead of
+    building a second router for the engine.
+
+    Every href below is a literal derived from kit's own rules, not from
+    skgo's output: `paths.relative` defaults to `true` in this kit version,
+    so during server rendering a same-depth link is prefixed `.` rather than
+    made absolute (runtime/app/paths/server.js, `resolve`) — /render-paths has
+    one path segment, the same depth as /api/todos, /items/42 and
+    /robots.txt, so the prefix is `.` for all three. /items/[id] is a real
+    route in this app; `resolve('/items/[id]', { id: '42' })` populates it the
+    same way kit's own `resolveRoute` example does. /items/77 is that same
+    route with a different id, so `match` finds it by `/items/[id]` with
+    `{id: "77"}` — the parameters a real request to /items/77 would carry.
+
+    Kit's own client-side `resolve`/`asset` (runtime/app/paths/client.js) are
+    documented to answer differently — always the absolute, base-prefixed
+    href, never the relative one server rendering gives — so a screenshot of
+    this page taken after the client has hydrated legitimately shows
+    `/api/todos` where the document this scenario checks said `./api/todos`.
+    That is kit's own designed difference between the two environments, not a
+    disagreement to resolve.
+
+    Scenario: resolve and asset produce the relative hrefs kit's own rules give this page
+      Given I open "/render-paths"
+      Then the document already said "resolve('/api/todos') = ./api/todos"
+      And the document already said "resolve('/items/[id]', id: '42') = ./items/42"
+      And the document already said "asset('robots.txt') = ./robots.txt"
+
+    Scenario: match finds the same route id a real request to it resolves
+      Given I open "/render-paths"
+      Then the document already said "match('/items/77') = /items/[id] {\"id\":\"77\"}"
