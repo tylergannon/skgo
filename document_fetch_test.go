@@ -1,9 +1,11 @@
 package skgo
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/tylergannon/skgo/internal/ssr"
 )
@@ -30,7 +32,7 @@ func fetchFixture() http.Handler {
 func TestFetchDispatchRunsInProcess(t *testing.T) {
 	s := &SSR{fetch: fetchFixture()}
 
-	answer := s.fetchAnswer(ssr.FetchRequest{
+	answer := s.fetchAnswer(context.Background(), ssr.FetchRequest{
 		Method:  "GET",
 		URL:     "http://example.test/render-fetch/greeting",
 		Headers: map[string]string{"Cookie": "skgo_session=abc123"},
@@ -58,7 +60,7 @@ func TestFetchDispatchRunsInProcess(t *testing.T) {
 func TestFetchDispatchWithNoRouteRefuses(t *testing.T) {
 	s := &SSR{}
 
-	answer := s.fetchAnswer(ssr.FetchRequest{Method: "GET", URL: "http://example.test/nowhere"})
+	answer := s.fetchAnswer(context.Background(), ssr.FetchRequest{Method: "GET", URL: "http://example.test/nowhere"})
 	if answer.Response != nil {
 		t.Fatalf("got a response with no Fetch handler configured: %+v", answer.Response)
 	}
@@ -74,7 +76,7 @@ func TestFetchDispatchWithNoRouteRefuses(t *testing.T) {
 func TestFetchDispatchCarriesA404Through(t *testing.T) {
 	s := &SSR{fetch: http.NotFoundHandler()}
 
-	answer := s.fetchAnswer(ssr.FetchRequest{Method: "GET", URL: "http://example.test/no-such-route"})
+	answer := s.fetchAnswer(context.Background(), ssr.FetchRequest{Method: "GET", URL: "http://example.test/no-such-route"})
 	if answer.Error != "" {
 		t.Fatalf("a 404 from the handler was reported as a fetch failure: %s", answer.Error)
 	}
@@ -111,5 +113,24 @@ func TestMatchDispatchFindsTheSameRouteEndpointsAnswers(t *testing.T) {
 
 	if _, _, ok := s.matchDispatch("/no-such-route"); ok {
 		t.Error("match(/no-such-route) matched something")
+	}
+}
+
+func TestRenderFetchCarriesCancellationToTheGoHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	entered := make(chan struct{})
+	done := make(chan struct{})
+	s := &SSR{fetch: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-r.Context().Done()
+		w.WriteHeader(http.StatusRequestTimeout)
+	})}
+	go func() { defer close(done); s.fetchAnswer(ctx, ssr.FetchRequest{URL: "http://example.test/wait"}) }()
+	<-entered
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("render fetch lost its cancellation context")
 	}
 }

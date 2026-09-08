@@ -40,6 +40,14 @@
 			"target": "web/src/routes/api/todos"
 		},
 		{
+			"link": "generated/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5",
+			"target": "web/src/routes/async-ssr/[mode]/[group]"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu",
+			"target": "web/src/routes/async-ssr/control/[group]"
+		},
+		{
 			"link": "generated/links/onzggl3sn52xizltf5rgc5ddna",
 			"target": "web/src/routes/batch"
 		},
