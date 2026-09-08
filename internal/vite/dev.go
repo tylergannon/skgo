@@ -153,6 +153,40 @@ func (d *Dev) Module(url, importer string) (Module, error) {
 	return out, nil
 }
 
+// Style is one stylesheet a page wears, as rule text rather than as a link:
+// the module it came from, and what importing that module with vite's
+// `?inline` gave back.
+type Style struct {
+	URL string `json:"url"`
+	CSS string `json:"css"`
+}
+
+// Styles asks what the given nodes' components wear, in the order kit collects
+// it. There is no hashed stylesheet to link in dev — vite serves a component's
+// CSS through the JavaScript that imports it — so a document that carried no
+// style at all would be unstyled until its modules had loaded, which is the
+// flash kit's own dev server inlines styles to avoid.
+func (d *Dev) Styles(nodes []int) ([]Style, error) {
+	body, err := json.Marshal(map[string][]int{"nodes": nodes})
+	if err != nil {
+		return nil, err
+	}
+	resp, err := d.client.Post(d.base+"/__skgo_dev/styles", "application/json", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("skgo: asking the dev server for the page's styles: %w", err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var styles []Style
+	if err := json.Unmarshal(raw, &styles); err != nil {
+		return nil, fmt.Errorf("skgo: the dev server answered %d for the page's styles with %s", resp.StatusCode, snippet(raw))
+	}
+	return styles, nil
+}
+
 // Changes is what the dev server has seen change since a cursor.
 type Changes struct {
 	// Version is the cursor to pass next time.

@@ -94,9 +94,14 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 		}
 	}
 
+	styleTags, err := s.inlineStyles(indices)
+	if err != nil {
+		return "", nil, documentHeaders{}, err
+	}
+
 	// Kit's five buckets, in kit's order: http-equiv tags, link tags, whatever
 	// the components put in `<svelte:head>`, style tags, stylesheet links.
-	head := strings.Join(append(append(linkTags, result.Head), stylesheetLinks...), "\n\t\t")
+	head := strings.Join(append(append(append(linkTags, result.Head), styleTags...), stylesheetLinks...), "\n\t\t")
 
 	// kit's `const { data, chunks } = data_serializer.get_data(csp)`, and in
 	// kit's place: before the boot script and outside the `csr` branch, so that
@@ -139,6 +144,37 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 		ScriptNeedsNonce: csp.ScriptNeedsNonce(),
 	}
 	return document, promises, headers, nil
+}
+
+// inlineStyles is kit's `node.inline_styles()` loop: in dev the document
+// carries the branch's CSS as rule text rather than as links, because there are
+// no built stylesheets to link and a page that waited for its modules to arrive
+// would paint unstyled first. A build links its hashed files and this is empty.
+//
+// The tag carries `data-sveltekit`, which is what kit's client finds it by and
+// removes once it has mounted (`runtime/client/client.js`), so the inlined
+// copy stops competing with the stylesheets vite's own module loading adds.
+//
+// Kit's `csp.add_style` is deliberately absent: `#style_needs_csp` is
+// `!__SVELTEKIT_DEV__ && ...` (`runtime/server/page/csp.js`), so in dev no
+// nonce or hash is added for the style tag at all — the policy is loosened
+// instead, once, when the renderer is built (devCSP).
+func (s *SSR) inlineStyles(indices []int) ([]string, error) {
+	if s.dev == nil {
+		return nil, nil
+	}
+	styles, err := s.dev.Styles(indices)
+	if err != nil {
+		return nil, err
+	}
+	if len(styles) == 0 {
+		return nil, nil
+	}
+	rules := make([]string, len(styles))
+	for i, style := range styles {
+		rules[i] = style.CSS
+	}
+	return []string{"<style data-sveltekit>" + strings.Join(rules, "\n") + "</style>"}, nil
 }
 
 // bootScript is the one script a document carries: the object the client reads

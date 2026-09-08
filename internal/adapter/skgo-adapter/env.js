@@ -63,7 +63,7 @@ const { transformSync } = await fromApp('vite/rolldown/experimental');
 // `fetchModule` operates on the app's own `DevEnvironment`, so it has to be
 // the app's copy for the same reason rolldown is: a second module realm's
 // vite does not recognise this one's environments.
-const { fetchModule } = await fromApp('vite');
+const { fetchModule, isCSSRequest, isRunnableDevEnvironment } = await fromApp('vite');
 
 /**
  * The runtime JavaScript, as files on disk beside this one — the way kit's own
@@ -522,6 +522,96 @@ function posix(p) {
 }
 
 /**
+ * A node's CSS, and its imports' CSS, as text to inline in the document.
+ *
+ * This is kit's `inline_styles` (`exports/vite/dev/index.js`), against this
+ * environment's module graph rather than kit's own SSR one: everything the
+ * node's component reaches is walked, and every CSS dep among them is
+ * re-imported with `?inline` so the document carries the rule text. Vite has no
+ * hashed stylesheet to link in dev — a component's CSS arrives through the
+ * JavaScript that imports it — so without this a page is unstyled until its
+ * modules have loaded.
+ *
+ * The `?raw|url|inline` exclusion is kit's: a dep that already asked for one of
+ * those is not a stylesheet the page wears.
+ *
+ * @param {import('vite').ViteDevServer} server
+ * @param {import('vite').DevEnvironment} environment
+ * @param {string} file the component's absolute path
+ * @param {Map<string, string>} styles keyed by module url, in first-seen order
+ */
+async function inlineStyles(server, environment, file, styles) {
+	const root = environment.moduleGraph.getModuleById(file);
+	if (!root) return;
+
+	const ssr = server.environments.ssr;
+	if (!isRunnableDevEnvironment(ssr)) {
+		throw new Error(
+			'skgo: the dev server has no runnable `ssr` environment to read a stylesheet through.'
+		);
+	}
+
+	/** @type {Set<any>} */
+	const deps = new Set();
+	await findDeps(environment, root, deps);
+
+	for (const dep of deps) {
+		if (!isCSSRequest(dep.url) || CSS_QUERY.test(dep.url)) continue;
+		const inlined = dep.url.includes('?')
+			? dep.url.replace('?', '?inline&')
+			: dep.url + '?inline';
+		// kit swallows this: a dep the module graph knows about is not always
+		// one that can be imported, and a missing rule is worse styling rather
+		// than a broken page.
+		try {
+			styles.set(dep.url, (await ssr.runner.import(inlined)).default);
+		} catch {
+			/* empty */
+		}
+	}
+}
+
+/** kit's `vite_css_query_regex`. */
+const CSS_QUERY = /(?:\?|&)(?:raw|url|inline)(?:&|$)/;
+
+/**
+ * kit's `find_deps`: everything a module reaches, transitively. A module vite
+ * has transformed names its deps by url, so they are resolved against the
+ * module graph rather than followed directly.
+ *
+ * @param {import('vite').DevEnvironment} environment
+ * @param {any} node
+ * @param {Set<any>} deps
+ */
+async function findDeps(environment, node, deps) {
+	/** @type {Promise<void>[]} */
+	const branches = [];
+
+	/** @param {any} next */
+	const add = async (next) => {
+		if (deps.has(next)) return;
+		deps.add(next);
+		await findDeps(environment, next, deps);
+	};
+
+	/** @param {string} url */
+	const addByUrl = async (url) => {
+		const next = await environment.moduleGraph.getModuleByUrl(url);
+		if (next) await add(next);
+	};
+
+	const transformed = node.transformResult;
+	if (transformed) {
+		for (const url of transformed.deps ?? []) branches.push(addByUrl(url));
+		for (const url of transformed.dynamicDeps ?? []) branches.push(addByUrl(url));
+	} else {
+		for (const next of node.importedModules) branches.push(add(next));
+	}
+
+	await Promise.all(branches);
+}
+
+/**
  * Kit's own route and node table, from kit's own function.
  *
  * `create_manifest_data` is what kit's dev server calls on every route change
@@ -561,15 +651,17 @@ async function kitSync(root) {
 		}
 		return import(pathToFileURL(file).href);
 	};
-	const [manifest, analysis, server] = await Promise.all([
+	const [manifest, analysis, server, client] = await Promise.all([
 		load('src/core/sync/create_manifest_data/index.js'),
 		load('src/exports/vite/static_analysis/index.js'),
-		load('src/core/sync/write_server.js')
+		load('src/core/sync/write_server.js'),
+		load('src/core/sync/write_client_manifest.js')
 	]);
 	return {
 		createManifestData: /** @type {any} */ (manifest.default),
 		getPageOptions: /** @type {any} */ (analysis.get_page_options),
-		writeServer: /** @type {any} */ (server.write_server)
+		writeServer: /** @type {any} */ (server.write_server),
+		writeClientManifest: /** @type {any} */ (client.write_client_manifest)
 	};
 }
 
@@ -795,6 +887,20 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 			// to resolve and the Go process exits. Writing it here, with kit's
 			// own function, is what kit would have written a moment later.
 			kit.writeServer(config, join(config.outDir, 'generated/dev'), kitRoot);
+			// And the client half of the same tree, for the same reason: the
+			// document's boot script imports `generated/dev/client/app.js`, and
+			// on a tree that has never run `vp dev` there is no such file for
+			// the browser to fetch. `sync.create` writes both together
+			// (`core/sync/sync.js`); this writes both together too, and again
+			// whenever the route tree changes, because the file describes it.
+			const writeClient = () =>
+				kit.writeClientManifest(
+					config,
+					/** @type {() => any} */ (manifestData)(),
+					join(config.outDir, 'generated/dev/client'),
+					kitRoot
+				);
+			writeClient();
 
 			// The node table and the route table are the two things in this
 			// environment that no file compiles to, so nothing invalidates
@@ -824,6 +930,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 				const module = environment.moduleGraph.getModuleById(PREFIX + 'skgo:nodes');
 				if (module) environment.moduleGraph.invalidateModule(module);
 				if (changed[changed.length - 1] !== NODE_TABLE_URL) changed.push(NODE_TABLE_URL);
+				writeClient();
 			};
 			server.watcher.on('add', (file) => renumbered(file, false));
 			server.watcher.on('unlink', (file) => renumbered(file, false));
@@ -858,6 +965,32 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 					client: devClient(root, out),
 					globalName: '__sveltekit_dev'
 				});
+			});
+
+			// The styles of one branch's nodes, in kit's order, for the
+			// document Go is about to send. See inlineStyles.
+			server.middlewares.use('/__skgo_dev/styles', async (req, res) => {
+				let body = '';
+				for await (const chunk of req) body += chunk;
+				try {
+					const { nodes = [] } = JSON.parse(body || '{}');
+					const table = /** @type {() => any} */ (manifestData)().nodes;
+					/** @type {Map<string, string>} */
+					const styles = new Map();
+					for (const index of nodes) {
+						const component = table[index]?.component;
+						if (component) {
+							await inlineStyles(server, environment, join(kitRoot, component), styles);
+						}
+					}
+					json(
+						res,
+						200,
+						[...styles].map(([url, css]) => ({ url, css }))
+					);
+				} catch (e) {
+					json(res, 500, { error: errorText(e) });
+				}
 			});
 
 			// One transformed module, exactly as vite's own module runner would

@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -65,6 +66,11 @@ type SSR struct {
 	// recursing back into the SSR engine can starve the runtime pool it is
 	// still holding a runtime from. See SSROptions.Fetch.
 	fetch http.Handler
+	// dev is the running `vite dev` a document is assembled against, or nil
+	// for a build. A build's stylesheets are hashed files the document links;
+	// in dev there are none, so the rule text is asked for per request and
+	// inlined the way kit's own dev document inlines it.
+	dev *vite.Dev
 }
 
 // SSROptions configures the renderer.
@@ -173,12 +179,14 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 // remote functions answer a query, the same document is assembled around the
 // same render.
 //
-// Three things a dev document says differently, and kit says all three
-// (`exports/vite/dev/index.js`, the dev manifest's `_.client`): the client
-// entry is served out of the installed package rather than out of a build, the
-// app module out of kit's generated dev tree, and neither carries an import,
-// stylesheet or font — vite serves a module's CSS through the module itself.
-// The boot global is `__sveltekit_dev` (`core/utils.js`, `get_global_name`).
+// Four things a dev document says differently, and kit says all four
+// (`exports/vite/dev/index.js`, the dev manifest's `_.client` and its per-node
+// `inline_styles`): the client entry is served out of the installed package
+// rather than out of a build, the app module out of kit's generated dev tree,
+// and neither carries an import, stylesheet or font — vite serves a module's
+// CSS through the module itself, so the page's styles ride in the document as
+// rule text instead. The boot global is `__sveltekit_dev` (`core/utils.js`,
+// `get_global_name`).
 //
 // The route table and the node table are the dev server's own — see
 // DevManifest, which is what puts them in m before this runs and what keeps
@@ -211,6 +219,7 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 		version:   m.Version,
 		onError:   opts.OnError,
 		fetch:     opts.Fetch,
+		dev:       dev,
 	}
 	s.setNodes(info.Nodes)
 	engine, err := ssr.NewDev(dev, answer.Entry, adapter.Polyfill(), poolSize(opts), s.console)
@@ -250,7 +259,64 @@ func devSSRInfo(m Manifest, dev *vite.Dev, answer vite.Info) (ManifestSSR, error
 		nodes[i] = node
 	}
 	info.Nodes = nodes
+	info.CSP = devCSP(info.CSP)
 	return info, nil
+}
+
+// devCSP is kit's dev branch in `BaseProvider`'s constructor
+// (`runtime/server/page/csp.js`): a dev document inlines every style to avoid a
+// flash of unstyled content, so `unsafe-inline` is added to whichever style
+// directives the app configured — with any nonce or hash source removed first,
+// because a browser ignores `unsafe-inline` in a list that carries one. Kit
+// clones the directives to do it; so does this, because the manifest they came
+// from is the build's and is read by everything else too.
+//
+// Kit's matching `#style_needs_csp = !__SVELTEKIT_DEV__ && ...` is why nothing
+// here adds a nonce or a hash for the style tag: in dev there is none to add.
+func devCSP(cfg *ManifestCSP) *ManifestCSP {
+	if cfg == nil {
+		return nil
+	}
+	out := *cfg
+	out.Directives = withUnsafeInlineStyles(cfg.Directives)
+	out.ReportOnly = withUnsafeInlineStyles(cfg.ReportOnly)
+	return &out
+}
+
+func withUnsafeInlineStyles(directives map[string]CSPDirectiveValue) map[string]CSPDirectiveValue {
+	if directives == nil {
+		return nil
+	}
+	out := make(map[string]CSPDirectiveValue, len(directives))
+	for key, value := range directives {
+		out[key] = value
+	}
+	// kit's `add_unsafe_inline`, over its own three keys — and over the
+	// `default-src` that `effective_style_src` falls back to, written back to
+	// `style-src` so that loosening the styles does not loosen everything else.
+	for _, key := range []string{"style-src", "style-src-attr", "style-src-elem"} {
+		sources, ok := presentSources(out, key)
+		if !ok && key == "style-src" {
+			sources, ok = presentSources(out, "default-src")
+		}
+		if !ok {
+			continue
+		}
+		if slices.Contains(sources, "unsafe-inline") {
+			continue
+		}
+		kept := make([]string, 0, len(sources)+1)
+		for _, source := range sources {
+			// A browser ignores `unsafe-inline` in a list that also carries a
+			// nonce or a hash, so kit drops those rather than adding to them.
+			if strings.HasPrefix(source, "sha256-") || strings.HasPrefix(source, "nonce-") {
+				continue
+			}
+			kept = append(kept, source)
+		}
+		out[key] = CSPDirectiveValue{Sources: append(kept, "unsafe-inline")}
+	}
+	return out
 }
 
 // devServerTimeout is how long Go waits for `vite dev` to answer at startup.
