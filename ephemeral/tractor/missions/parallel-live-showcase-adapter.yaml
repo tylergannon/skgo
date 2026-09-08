@@ -1,0 +1,302 @@
+# Three missions in parallel, each ending in a squash-merged PR: live and
+# batch queries during render (#61), the example front page as an index of
+# capability plus two fixtures (#63), and the adapter rebuilt on kit's own
+# build. Each is built by one agent and judged by a fresh one that merges
+# only what it has proved. Dispatched 2026-09-07, replacing the serial
+# streaming-showcase-adapter.yaml after its first mission merged (#70).
+name: parallel-live-showcase-adapter
+goal: |
+  skgo is a SvelteKit application server written in Go; the root checkout is
+  /Users/tyler/src/skgo and its AGENTS.md is already in your context. Kit is
+  the specification; the pinned source is
+  /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit (absolute path,
+  reachable from any worktree). Svelte's source is
+  example/web/node_modules/svelte/src.
+
+  Start with /Users/tyler/src/skgo/ephemeral/index/README.md and the mission
+  dossier it names for you. They hold the file and line anchors, the suite
+  gestures, kit's anchors and the traps already paid for; you should be
+  editing within five minutes, not searching. Do the work yourself; do not
+  return while dispatched subagents are outstanding.
+
+  What is believed: Gherkin scenarios in example/e2e against the running
+  example app, screenshots taken where each scenario asserts and opened by
+  you, expectations anchored in something independent of the code under test,
+  Go tests for the Go. Iterate on the one feature file you touched; run the
+  full suite once per mode at the end. Screenshots are never committed. A
+  passing command is not evidence and there is no command that means done.
+
+  Deliver a pull request against main whose body serves as the squash commit
+  message, with a worklog entry only if you hit a trap worth a future
+  agent's attention. Write the PR URL to the state file the mission names.
+  Rebase onto origin/main before opening the PR; two other missions are
+  landing concurrently and the dossier says where you collide. Stop every
+  server you started, by pid. Do not merge; a judge does.
+
+  If the state file's `.findings.md` sibling exists, it is the judge's
+  return from your previous attempt: address every finding on the same
+  branch and PR, then delete the findings file.
+
+start: sync
+
+defaults:
+  timeout: 10800s
+  max_retries: 1
+  fidelity: none
+  model:
+    name: claude-opus-5
+    effort: high
+
+nodes:
+  - id: sync
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && mkdir -p .tractor/state
+    edges:
+      success: missions
+      error: failure
+
+  - id: missions
+    type: fan_out
+    workspace: shared
+    branches: [build_live, build_show, build_adapter]
+
+  # ---------------------------------------------------------------- live/batch
+  - id: build_live
+    type: agent
+    max_visits: 3
+    prompt: |
+      $goal
+
+      Mission: live and batch queries during render (#61). Dossier:
+      /Users/tyler/src/skgo/ephemeral/index/mission-live-batch.md.
+      State file: /Users/tyler/src/skgo/.tractor/state/live.pr
+
+      The work is about 80% done, uncommitted, in the existing worktree
+      /Users/tyler/src/skgo/.claude/worktrees/mission-2-live-batch on branch
+      mission-2-live-batch. Use that worktree; do not make a new one. Rebase
+      it onto origin/main first (main moved; generated files may need `just
+      generate`), commit, then finish: the live and batch features green in
+      both modes, each behaviour broken once to see its scenario fail, Go
+      tests, full suite once per mode, PR closing #61.
+    edges:
+      - to: judge_live
+
+  - id: judge_live
+    type: agent
+    timeout: 5400s
+    max_visits: 3
+    prompt: |
+      You are judging a pull request for skgo (root checkout
+      /Users/tyler/src/skgo; AGENTS.md is in your context). The PR URL is in
+      /Users/tyler/src/skgo/.tractor/state/live.pr. Orientation:
+      /Users/tyler/src/skgo/ephemeral/index/README.md and
+      mission-live-batch.md beside it. Kit, the specification, is at
+      /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit.
+
+      Claim: a page whose render touches a query.live renders with the first
+      yielded value, and a page whose render touches query.batch queries has
+      them batched and answered as one, as kit does; the example app shows
+      both; #61 is closed.
+
+      Judge in this session, yourself: check out the PR branch in its own
+      worktree (`git worktree add` for an existing branch), build, run the
+      app. For each new scenario, break the behaviour it protects and run
+      that feature file only to see it fail; restore. Run the full suite once
+      per mode. Open the screenshots the new scenarios wrote and confirm they
+      show the claimed state. Check the render-time behaviour against kit's
+      query.js. Distrust the PR body.
+
+      If it holds: `gh pr merge --squash --delete-branch`, fast-forward the
+      root checkout on main, remove the PR's worktree, close #61 if the merge
+      did not. If not: write every finding with evidence to
+      /Users/tyler/src/skgo/.tractor/state/live.findings.md and do not merge.
+      If only the project owner can decide something, say so there. Stop
+      every server you started.
+    edges:
+      - to: merged_live
+        condition: The PR held up and has been squash-merged into main.
+      - to: build_live
+        condition: The PR has defects; findings were written for the builder.
+      - to: join
+        condition: Something stands in the way that only the project owner can decide; the findings file says what.
+
+  - id: merged_live
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin
+      && test "$(gh pr view "$(cat .tractor/state/live.pr)" --json state --jq .state)" = MERGED
+    edges:
+      success: join
+      error: judge_live
+
+  # ---------------------------------------------------------------- showcase
+  - id: build_show
+    type: agent
+    max_visits: 3
+    prompt: |
+      $goal
+
+      Mission: the example front page indexes every capability, and the two
+      fixtures #63 names exist with load-bearing scenarios. Dossier:
+      /Users/tyler/src/skgo/ephemeral/index/mission-showcase.md.
+      State file: /Users/tyler/src/skgo/.tractor/state/show.pr
+
+      Make a worktree with `just worktree showcase-index`. Capability when
+      done: a visitor on `/` sees one entry per capability skgo has, linking
+      to the page that demonstrates it with a line saying what to look for;
+      the existing scenarios that assert on the home page still hold or are
+      updated; a root-layout load failure reaches kit's static error.html and
+      a transported type is proven in server-rendered markup. Include the
+      live and batch pages if they are on main when you rebase. PR closes #63.
+    edges:
+      - to: judge_show
+
+  - id: judge_show
+    type: agent
+    timeout: 5400s
+    max_visits: 3
+    prompt: |
+      You are judging a pull request for skgo (root checkout
+      /Users/tyler/src/skgo; AGENTS.md is in your context). The PR URL is in
+      /Users/tyler/src/skgo/.tractor/state/show.pr. Orientation:
+      /Users/tyler/src/skgo/ephemeral/index/README.md and
+      mission-showcase.md beside it. Kit is at
+      /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit.
+
+      Claim: the example front page is an index of every capability skgo
+      demonstrates, each entry linking to a working page; a root-layout load
+      failure serves kit's static error.html; a transported type is present in
+      server-rendered markup; #63 is closed.
+
+      Judge in this session, yourself: check out the PR branch in its own
+      worktree, build, run the app. Open `/` and follow every link. For each
+      new scenario, break the behaviour it protects and run that feature file
+      only to see it fail; restore. Run the full suite once per mode. Open the
+      new screenshots and confirm they show the claimed state. Distrust the
+      PR body.
+
+      If it holds: `gh pr merge --squash --delete-branch`, fast-forward the
+      root checkout on main, remove the PR's worktree, close #63 if the merge
+      did not. If not: write every finding with evidence to
+      /Users/tyler/src/skgo/.tractor/state/show.findings.md and do not merge.
+      If only the project owner can decide something, say so there. Stop
+      every server you started.
+    edges:
+      - to: merged_show
+        condition: The PR held up and has been squash-merged into main.
+      - to: build_show
+        condition: The PR has defects; findings were written for the builder.
+      - to: join
+        condition: Something stands in the way that only the project owner can decide; the findings file says what.
+
+  - id: merged_show
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin
+      && test "$(gh pr view "$(cat .tractor/state/show.pr)" --json state --jq .state)" = MERGED
+    edges:
+      success: join
+      error: judge_show
+
+  # ---------------------------------------------------------------- adapter
+  - id: build_adapter
+    type: agent
+    timeout: 14400s
+    max_visits: 3
+    prompt: |
+      $goal
+
+      Mission: the adapter is built from kit's own build. Dossier:
+      /Users/tyler/src/skgo/ephemeral/index/mission-adapter.md, which names
+      the decision record and the spike that is the design; read those, in
+      that order, before touching code.
+      State file: /Users/tyler/src/skgo/.tractor/state/adapter.pr
+
+      Make a worktree with `just worktree adapter-environment`. Capability
+      when done: the goja bundle is a fourth environment of kit's Vite build,
+      emitted as esm and folded once by a second rolldown call from adapt(),
+      the polyfill in that fold's banner, per-module lowering of only the
+      modules goja cannot parse, a `$app/server` virtual module served to that
+      environment only; runtime JavaScript is real files; URL, TextEncoder,
+      TextDecoder, btoa and atob bound from Go at runtime creation; esbuild,
+      the alias table, the defines table, the Svelte compile and the
+      TypeScript strip gone. Every route renders as it did before, checked on
+      every route (node numbering diverges after the first prerendered page),
+      in both modes; a fresh `skgo new` app builds and renders; `skgo
+      generate` still writes a matching fingerprint. The live-batch mission
+      is changing the `$app/server` block and internal/ssr concurrently; the
+      dossier says how to see and carry its delta. Do not file anything
+      upstream.
+    edges:
+      - to: judge_adapter
+
+  - id: judge_adapter
+    type: agent
+    timeout: 7200s
+    max_visits: 3
+    prompt: |
+      You are judging a pull request for skgo (root checkout
+      /Users/tyler/src/skgo; AGENTS.md is in your context). The PR URL is in
+      /Users/tyler/src/skgo/.tractor/state/adapter.pr. Orientation:
+      /Users/tyler/src/skgo/ephemeral/index/README.md and mission-adapter.md
+      beside it; the decision record it names is the design that must have
+      been built. Kit is at
+      /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit.
+
+      Claim: the goja bundle is an output of kit's own Vite build (a fourth
+      environment, folded by one rolldown pass), the adapter reimplements
+      none of kit's compile, aliases, defines or remote epilogue, esbuild is
+      gone, runtime JavaScript is real files, and every route renders as
+      before in both modes, with a fresh `skgo new` app building and
+      rendering.
+
+      Judge in this session, yourself: check out the PR branch in its own
+      worktree, build, run the app. Confirm the build path is the one
+      claimed by reading adapt() and the vite plugin, not the PR body. Render
+      every route on the PR and on main and compare the markup. Run the full
+      suite once per mode. Scaffold a fresh app with `skgo new` and render
+      it. Open the screenshots the suite wrote for a sample of features and
+      confirm they show real pages.
+
+      If it holds: `gh pr merge --squash --delete-branch`, fast-forward the
+      root checkout on main, remove the PR's worktree. If not: write every
+      finding with evidence to
+      /Users/tyler/src/skgo/.tractor/state/adapter.findings.md and do not
+      merge. If only the project owner can decide something, say so there.
+      Stop every server you started.
+    edges:
+      - to: merged_adapter
+        condition: The PR held up and has been squash-merged into main.
+      - to: build_adapter
+        condition: The PR has defects; findings were written for the builder.
+      - to: join
+        condition: Something stands in the way that only the project owner can decide; the findings file says what.
+
+  - id: merged_adapter
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin
+      && test "$(gh pr view "$(cat .tractor/state/adapter.pr)" --json state --jq .state)" = MERGED
+    edges:
+      success: join
+      error: judge_adapter
+
+  # ---------------------------------------------------------------- join
+  - id: join
+    type: fan_in
+    timeout: 600s
+    prompt: |
+      Three missions ran in parallel for skgo. Report, per mission (live,
+      show, adapter), whether its PR was merged into main (check
+      /Users/tyler/src/skgo/.tractor/state/<name>.pr with `gh pr view --json
+      state`) and, if not, what its findings file
+      /Users/tyler/src/skgo/.tractor/state/<name>.findings.md says stands in
+      the way. Do not fix anything. The run succeeds only if all three PRs
+      are merged.
+    edges:
+      - to: success
+        condition: All three PRs are merged into main.
+      - to: failure
+        condition: At least one PR is not merged.
