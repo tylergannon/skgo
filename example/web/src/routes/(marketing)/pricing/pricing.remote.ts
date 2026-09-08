@@ -14,4 +14,6 @@ const unimplemented = (): never => {
 
 export const getPlans = query((): Array<{ name: string; price: Money }> => unimplemented());
 
+export const getSpotlight = query((): { name: string; price: Money } => unimplemented());
+
 export const quoteFor = command('unchecked', (_arg: Money): Quote => unimplemented());

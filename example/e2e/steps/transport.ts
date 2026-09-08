@@ -42,3 +42,13 @@ Then('the featured plan costs {string}', async ({ page, shot }, price: string) =
 	});
 	await shot();
 });
+
+// The spotlight is a remote function's answer, not a load's, and it was called
+// while the document was being rendered. Nothing on the wire spells "$7.50":
+// Go sends 750 cents, and only a real Money can write them that way.
+Then('the spotlight plan costs {string}', async ({ page, shot }, price: string) => {
+	await expect(page.getByTestId('spotlight')).toHaveText(`Student — ${price}`, {
+		timeout: 15_000
+	});
+	await shot();
+});

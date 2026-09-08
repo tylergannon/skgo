@@ -240,3 +240,82 @@ func TestATransportedValueReachesTheEngineWithItsType(t *testing.T) {
 		t.Error("the hydration array carries a formatted string where the client expects a Money")
 	}
 }
+
+// TestARemoteAnswersTransportedValueIsRenderedByItsOwnMethod is the other path
+// the same type takes into a document.
+//
+// The one above is a server load's value: a load always runs, so it travels
+// down inside the document by construction. This one is a remote function's,
+// called back out to Go from inside the engine while the page was being
+// rendered — decoded there by the app's own `transport` hook before the line
+// that formats it ran. 750 cents is an amount no other function in this app
+// returns, and `Money.format()` is a method, so a page handed a plain object
+// could not have written "$7.50".
+func TestARemoteAnswersTransportedValueIsRenderedByItsOwnMethod(t *testing.T) {
+	h := newProdHandler(t)
+
+	body := get(t, h, "/pricing").Body.String()
+
+	if !strings.Contains(body, `<p data-testid="spotlight">Student — $7.50</p>`) {
+		t.Error(`the document does not carry the spotlight plan formatted by Money.format(); the render did not see a Money`)
+	}
+	if !strings.Contains(body, `price:app.decode("Money", {cents:750})`) {
+		t.Error("the remote answer travelling with the document does not carry the price as a Money")
+	}
+	if strings.Contains(body, "skgo: implemented in Go") {
+		t.Error("the generated stub answered, which means Go did not")
+	}
+
+	// The plans beside it are in a boundary with a `pending` snippet, and
+	// Svelte's server compiler emits that snippet instead of the boundary's
+	// children — so this is a claim about one boundary rendering during SSR,
+	// not about the page as a whole.
+	if !strings.Contains(body, `data-testid="plans-pending"`) {
+		t.Error("the document does not carry the plans list as still loading")
+	}
+}
+
+// TestALoadThatFailsInTheRootLayoutIsKitsStaticErrorPage is the one load
+// failure no `+error.svelte` can catch.
+//
+// Kit wraps the root error page inside the root layout rather than the other
+// way round (`runtime/error-chain.js`), so nothing is declared above node 0.
+// Kit's answer to a failure there is `static_error_page`
+// (`runtime/server/errors.js`): the `error.html` the build carries, with the
+// status and the message substituted in, carrying no app markup and no script
+// so that nothing boots and nothing tries again.
+//
+// src/routes/layout.server.go refuses with 503 when the URL says
+// `boom=root-layout`, and for no other reason — the status and the sentence
+// below are that function's, and no other function in this app produces either.
+func TestALoadThatFailsInTheRootLayoutIsKitsStaticErrorPage(t *testing.T) {
+	h := newProdHandler(t)
+
+	rec := get(t, h, "/?boom=root-layout")
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("GET /?boom=root-layout: status %d, want 503", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `<span class="status">503</span>`) {
+		t.Error("the document is not kit's static error page")
+	}
+	if !strings.Contains(body, "<h1>The root layout could not reach the database</h1>") {
+		t.Error("the static error page does not carry the message the load refused with")
+	}
+	if strings.Contains(body, "<script") {
+		t.Error("the static error page carries a script, so the app would boot and try again")
+	}
+	if strings.Contains(body, `data-testid="app-nav"`) {
+		t.Error("the static error page carries the app's own layout, so an error page rendered instead")
+	}
+
+	// And the same URL without the trigger is the page it always was, so the
+	// refusal is the query parameter's doing and not the load's normal state.
+	fine := get(t, h, "/")
+	if fine.Code != http.StatusOK {
+		t.Errorf("GET /: status %d, want 200", fine.Code)
+	}
+	if !strings.Contains(fine.Body.String(), `<footer data-testid="deployment">skgo example</footer>`) {
+		t.Error("the home page does not carry the root layout load's value")
+	}
+}
