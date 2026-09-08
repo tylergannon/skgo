@@ -23,12 +23,43 @@
  * chunks are unreachable from that entry and fall away.
  */
 
-import { rolldown } from 'vite/rolldown';
-import { transformSync } from 'vite/rolldown/experimental';
 import { createRequire } from 'node:module';
 import { existsSync, readFileSync, realpathSync, rmSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+/**
+ * Rolldown, resolved from the app rather than from this package.
+ *
+ * A plain `import ... from 'vite/rolldown'` resolves beside this file, and this
+ * file is in `node_modules/@skgo/adapter`, whose own dependencies are not the
+ * app's. Two of them would be fatal even where both exist: kit checks its dev
+ * SSR environment with an `instanceof` against the project's resolved vite, so
+ * a build driven by a second copy carries classes from a different module realm
+ * and kit does not recognise them. The one rolldown that may build this app is
+ * the one the app's vite ships, and the app is where it is asked for — the same
+ * way kit's own internals are located, below.
+ *
+ * `process.cwd()` is the vite root: kit's build runs there, and the adapter
+ * already reads `skgo.remotes.json` out of it.
+ */
+const app = createRequire(join(process.cwd(), 'package.json'));
+
+/** @param {string} specifier */
+async function fromApp(specifier) {
+	try {
+		return await import(pathToFileURL(app.resolve(specifier)).href);
+	} catch (cause) {
+		throw new Error(
+			`skgo: the adapter builds the SSR bundle with the app's own vite, and ${specifier} ` +
+				`could not be resolved from ${process.cwd()}. Run the install first.`,
+			{ cause }
+		);
+	}
+}
+
+const { rolldown } = await fromApp('vite/rolldown');
+const { transformSync } = await fromApp('vite/rolldown/experimental');
 
 /**
  * The runtime JavaScript, as files on disk beside this one — the way kit's own
@@ -89,6 +120,24 @@ function kitAliases(root) {
 		// `parse` cannot do — read a promise placeholder back.
 		'skgo:devalue': createRequire(join(kit, 'package.json')).resolve('devalue')
 	};
+}
+
+/**
+ * Whether a module is one of this package's own runtime files.
+ *
+ * @param {string} file
+ */
+function ours(file) {
+	const rel = relative(here, file);
+	return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
+}
+
+/** Whether a specifier names a package rather than a path or a virtual module.
+ *
+ * @param {string} id
+ */
+function bare(id) {
+	return !id.startsWith('.') && !id.startsWith('\0') && !id.startsWith('/') && !isAbsolute(id);
 }
 
 /** The constructs goja's parser rejects, and the only reason to lower a module. */
@@ -210,7 +259,7 @@ export function gojaEnvironment() {
 
 		resolveId: {
 			order: 'pre',
-			handler(id) {
+			async handler(id, importer) {
 				if (id in sources) return PREFIX + id;
 				if (id.startsWith(PREFIX)) return id;
 				if (id in aliases) return aliases[id];
@@ -222,6 +271,18 @@ export function gojaEnvironment() {
 				if (id === 'esm-env') return PREFIX + 'skgo:esm-env';
 				if (id === '<sveltekit:generated>') return PREFIX + 'skgo:generated';
 				if (id === 'node:async_hooks' || id === 'async_hooks') return PREFIX + 'skgo:missing';
+				// A bare specifier in one of this package's own runtime files —
+				// `svelte/server`, `@sveltejs/kit/internal/server` — names a
+				// package the app depends on and this one does not. Resolving it
+				// beside these files looks in node_modules/@skgo/adapter and
+				// finds nothing; the app is where kit and Svelte are installed,
+				// and it is the copy of each that the rest of this build already
+				// uses. So the app asks on the file's behalf, through vite's own
+				// resolver, which is the only thing here that knows the
+				// conditions this environment resolves under.
+				if (importer && ours(importer) && bare(id)) {
+					return this.resolve(id, join(root, 'package.json'), { skipSelf: true });
+				}
 				return null;
 			}
 		},

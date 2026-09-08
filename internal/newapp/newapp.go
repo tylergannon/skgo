@@ -79,6 +79,11 @@ type Options struct {
 	SkgoVersion string
 	// PolytypeVersion is the version of polytype the project requires.
 	PolytypeVersion string
+	// AdapterSpec is what package.json asks npm for when it asks for
+	// `@skgo/adapter`. Empty means the caret range naming the same version
+	// SkgoVersion does, which is the only pairing a project can serve. A test
+	// that has not published anything passes a `file:` tarball here.
+	AdapterSpec string
 	// GoVersion is the language version in go.mod. Defaults to the toolchain's.
 	GoVersion string
 	// Logf receives one line per file written. It may be nil.
@@ -93,6 +98,7 @@ type data struct {
 	OriginHostPort  string
 	SkgoVersion     string
 	PolytypeVersion string
+	AdapterSpec     string
 	GoVersion       string
 }
 
@@ -185,6 +191,7 @@ func resolve(o Options, dir string) (data, error) {
 		Origin:          o.Origin,
 		SkgoVersion:     o.SkgoVersion,
 		PolytypeVersion: o.PolytypeVersion,
+		AdapterSpec:     o.AdapterSpec,
 		GoVersion:       o.GoVersion,
 	}
 	if d.App == "" {
@@ -220,6 +227,14 @@ func resolve(o Options, dir string) (data, error) {
 	}
 	if !semver.IsValid(d.SkgoVersion) {
 		return data{}, fmt.Errorf("skgo: %q is not a version go.mod can require", d.SkgoVersion)
+	}
+	if d.AdapterSpec == "" {
+		// The adapter and the Go module are one contract released together, so
+		// the range npm is given is the one that names the same release. A
+		// caret, the way kit's own adapters ask for kit: the fingerprint in the
+		// manifest is the real gate, and a range tighter than that would make
+		// a patch release an edit in two files.
+		d.AdapterSpec = "^" + strings.TrimPrefix(d.SkgoVersion, "v")
 	}
 	return d, nil
 }

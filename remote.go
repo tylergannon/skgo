@@ -506,10 +506,10 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 	if m.SkgoAdapter != adapter.Fingerprint() {
 		return Manifest{}, fmt.Errorf(
 			"skgo: the frontend build and this program come from different skgo versions.\n"+
-				"\tthe skgo-adapter.js that built it: %s\n"+
-				"\tthis program:                      %s\n"+
+				"\tthe @skgo/adapter that built it: %s\n"+
+				"\tthis program:                    %s\n"+
 				"The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.\n"+
-				"`skgo generate` writes web/skgo-adapter.js out of the module it was built from, so run `go generate ./...` and build the frontend again.",
+				"Install the one this program publishes — `pnpm add -D @skgo/adapter` at the version go.mod requires — then run `go generate ./...` and build the frontend again.",
 			adapter.Identity(m.Skgo, m.SkgoAdapter), adapter.Identity(adapter.Version(), adapter.Fingerprint()))
 	}
 	if m.AppDir == "" {

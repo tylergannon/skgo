@@ -71,10 +71,19 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	port := freePort(t)
 	origin := fmt.Sprintf("http://127.0.0.1:%d", port)
 
+	// The adapter is an npm package now, and nothing is on the registry yet, so
+	// the project installs the tarball `pnpm pack` produces from this
+	// checkout's package root. That tarball is the artifact a release would
+	// upload: if it is missing a file the adapter needs, this is where that
+	// shows up, rather than in a relative import that only works from inside
+	// this repository.
+	adapter := packAdapter(t, root)
+
 	if err := newapp.Create(newapp.Options{
 		Dir:         dir,
 		Origin:      origin,
 		SkgoVersion: scaffoldVersion,
+		AdapterSpec: "file:" + adapter,
 		Logf:        t.Logf,
 	}); err != nil {
 		t.Fatalf("scaffolding the project: %v", err)
@@ -112,13 +121,17 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 		"GOWORK=off",
 	)
 
-	// Nothing about the adapter is vendored either. It comes out of the skgo
-	// the project's Go is built against, written by `skgo generate` inside the
-	// build gesture, so a project cannot be building with one skgo's adapter
-	// and reading its manifest with another's.
-	adapterPath := filepath.Join(dir, "web", "skgo-adapter.js")
-	if _, err := os.Stat(adapterPath); err == nil {
-		t.Fatal("`skgo new` wrote web/skgo-adapter.js; the adapter is generated, not scaffolded")
+	// Nothing about the adapter is vendored. It is a devDependency and an
+	// import, the way every other kit adapter is, so nothing adapter-shaped
+	// ever appears in the developer's own directory.
+	planted := []string{
+		filepath.Join(dir, "web", "skgo-adapter.js"),
+		filepath.Join(dir, "web", "skgo-adapter"),
+	}
+	for _, at := range planted {
+		if _, err := os.Stat(at); err == nil {
+			t.Fatalf("`skgo new` wrote %s; the adapter is installed, not scaffolded", at)
+		}
 	}
 
 	// mise refuses to run a config file it has not been told to trust, and a
@@ -136,17 +149,29 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	// does not depend on a build having happened.
 	run(t, filepath.Join(dir, "web"), env, "mise", "x", "--", "vp", "run", "check")
 
-	written, err := os.ReadFile(adapterPath)
-	if err != nil {
-		t.Fatalf("the build gesture did not write web/skgo-adapter.js: %v", err)
+	// And the build did not put one there either. A file that materialises in
+	// the vite root after a build is still a file the developer did not ask
+	// for, and it is what this milestone exists to remove.
+	for _, at := range planted {
+		if _, err := os.Stat(at); err == nil {
+			t.Fatalf("the build gesture wrote %s into the developer's tree", at)
+		}
 	}
-	// It is the module's adapter, and it says which skgo it came from: the
-	// version this project requires, and the checksum of the adapter source
-	// published into the proxy under it — computed here rather than asked of
-	// the code that does the checking.
-	stampedWith := fingerprintOf(t, filepath.Join(checkoutRoot(t), "internal", "adapter"))
-	if want := "const SKGO = { version: '" + scaffoldVersion + "', adapter: '" + stampedWith + "' };"; !strings.Contains(string(written), want) {
-		t.Fatalf("the generated adapter is not stamped %s:\n%s", want, firstLines(string(written), 30))
+
+	// The build says which adapter made it. The fingerprint is computed here
+	// from the checkout's package root — the same bytes `pnpm pack` shipped —
+	// rather than asked of the code that does the checking, and the adapter
+	// that wrote the manifest computed its own from the installed copy. Two
+	// hashes over two copies of the same files, so they agree only if the
+	// tarball really is what this module embeds.
+	stamp := manifestStamp(t, dir)
+	if want := fingerprintOf(t, filepath.Join(checkoutRoot(t), "internal", "adapter")); stamp.Adapter != want {
+		t.Fatalf("the frontend was built by adapter %q; the checkout's adapter is %q",
+			stamp.Adapter, want)
+	}
+	if want := packageVersion(t, filepath.Join(checkoutRoot(t), "internal", "adapter")); stamp.Skgo != want {
+		t.Fatalf("the manifest names skgo %q; the package that built it is version %q",
+			stamp.Skgo, want)
 	}
 
 	binary := filepath.Join(dir, "bin", "myapp")
@@ -691,4 +716,63 @@ func firstLines(s string, n int) string {
 		lines = lines[:n]
 	}
 	return strings.Join(lines, "\n")
+}
+
+// packAdapter builds the npm package this checkout would publish and returns
+// the tarball's path.
+//
+// The scaffolded project installs that tarball rather than importing the
+// checkout by a relative path, because a relative import is a configuration
+// only this repository has: it would resolve files package.json's `files` list
+// never mentions, and pass over exactly the mistake — a runtime file that never
+// leaves for the registry — this test is the last chance to catch.
+func packAdapter(t *testing.T, into string) string {
+	t.Helper()
+	if _, err := exec.LookPath("pnpm"); err != nil {
+		t.Fatalf("pnpm is not on PATH, so this test cannot run — which is not the same as passing: %v", err)
+	}
+	source := filepath.Join(checkoutRoot(t), "internal", "adapter")
+	cmd := exec.Command("pnpm", "pack", "--pack-destination", into)
+	cmd.Dir = source
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("packing %s: %v\n%s", source, err, out)
+	}
+	found, err := filepath.Glob(filepath.Join(into, "*.tgz"))
+	if err != nil || len(found) != 1 {
+		t.Fatalf("packing %s produced %v (%v); want one tarball", source, found, err)
+	}
+	return found[0]
+}
+
+// packageVersion is the version the adapter package publishes at, read from
+// package.json — the value the adapter stamps into every manifest it writes.
+func packageVersion(t *testing.T, dir string) string {
+	t.Helper()
+	var pkg struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(readFile(t, filepath.Join(dir, "package.json")), &pkg); err != nil {
+		t.Fatal(err)
+	}
+	if pkg.Version == "" {
+		t.Fatalf("%s/package.json declares no version", dir)
+	}
+	return pkg.Version
+}
+
+// manifestStamp is the identity the adapter wrote into the build.
+func manifestStamp(t *testing.T, dir string) struct {
+	Skgo    string `json:"skgo"`
+	Adapter string `json:"skgoAdapter"`
+} {
+	t.Helper()
+	var stamp struct {
+		Skgo    string `json:"skgo"`
+		Adapter string `json:"skgoAdapter"`
+	}
+	raw := readFile(t, filepath.Join(dir, "web", "build", "skgo.manifest.json"))
+	if err := json.Unmarshal(raw, &stamp); err != nil {
+		t.Fatal(err)
+	}
+	return stamp
 }
