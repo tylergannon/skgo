@@ -186,7 +186,7 @@ func assembledWith(t *testing.T, s *SSR, plan documentPlan, answers map[string]m
 	req := dataRequest{url: mustURL(t, "http://127.0.0.1/contact?/remote=14q4me9/sendMessage")}
 	result := rendered()
 	result.Status = http.StatusOK
-	document, promises, err := s.assemble(req, plan, result, answers)
+	document, promises, _, err := s.assemble(req, plan, result, answers)
 	if err != nil {
 		t.Fatalf("assemble: %v", err)
 	}

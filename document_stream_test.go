@@ -72,7 +72,7 @@ func rendered() ssr.Result {
 func assembled(t *testing.T, s *SSR, plan documentPlan) (string, *promiseTable) {
 	t.Helper()
 	req := dataRequest{url: mustURL(t, "http://127.0.0.1/account/orders")}
-	document, promises, err := s.assemble(req, plan, rendered(), nil)
+	document, promises, _, err := s.assemble(req, plan, rendered(), nil)
 	if err != nil {
 		t.Fatalf("assemble: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestAStreamedDocumentCarriesNeitherTheStatusNorAnEtag(t *testing.T) {
 	}()
 
 	rec := httptest.NewRecorder()
-	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises)
+	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises, documentHeaders{})
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("status: got %d, want 200 — kit's streaming branch passes none", rec.Code)
@@ -287,7 +287,7 @@ func TestChunksAreSentInTheOrderTheySettle(t *testing.T) {
 	}()
 
 	rec := httptest.NewRecorder()
-	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises)
+	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises, documentHeaders{})
 
 	body := strings.TrimPrefix(rec.Body.String(), document+"\n")
 	want := `<script>__sveltekit_test.resolve(2, () => ["second in, first out"])</script>` + "\n" +

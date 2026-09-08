@@ -16,7 +16,17 @@ import (
 // is assembled in kit's five buckets and in kit's order, the boot script is
 // kit's split-bundle form with kit's own indentation, and the template is
 // substituted the way the function kit compiles from `app.html` substitutes it.
-func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, answers map[string]map[string]answered) (string, *promiseTable, error) {
+func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, answers map[string]map[string]answered) (string, *promiseTable, documentHeaders, error) {
+	// kit's `const csp = new Csp(options.csp, { prerender: ... })`, built here
+	// rather than closer to the boot script because kit's own placement is
+	// this early too: `csp.nonce` has to exist before `%sveltekit.nonce%` is
+	// substituted below, whether or not this document ever adds a script to
+	// it.
+	csp, err := newDocumentCSP(s.info.CSP)
+	if err != nil {
+		return "", nil, documentHeaders{}, err
+	}
+
 	client := s.info.Client
 	indices, csr := plan.indices, plan.hydrate
 
@@ -97,7 +107,7 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 	promises := &promiseTable{ids: map[*deferred]int{}}
 	hydration, err := s.hydrationData(plan.nodes, promises)
 	if err != nil {
-		return "", nil, err
+		return "", nil, documentHeaders{}, err
 	}
 
 	body := result.Body
@@ -109,12 +119,22 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 
 		script, err := s.bootScript(baseExpression, prefixed, plan, answers, hydration, promises)
 		if err != nil {
-			return "", nil, err
+			return "", nil, documentHeaders{}, err
 		}
-		body += "<script>" + script + "</script>\n\t\t"
+		// kit's `csp.add_script(init_app)` and the nonce attribute that
+		// follows it (`render.js`): the boot script is the one inline script
+		// a skgo document ever carries, so it is the only content either
+		// providers' nonce/hash bookkeeping ever sees.
+		csp.AddScript(script)
+		nonceAttr := ""
+		if csp.ScriptNeedsNonce() {
+			nonceAttr = ` nonce="` + csp.nonce + `"`
+		}
+		body += "<script" + nonceAttr + ">" + script + "</script>\n\t\t"
 	}
 
-	return s.substitute(head, body, assets), promises, nil
+	document := s.substitute(head, body, assets, csp.nonce)
+	return document, promises, documentHeaders{CSP: csp.Header(), CSPReportOnly: csp.ReportOnlyHeader()}, nil
 }
 
 // bootScript is the one script a document carries: the object the client reads
@@ -353,12 +373,18 @@ func (s *SSR) remoteData(answers map[string]map[string]answered) (string, error)
 // substitute fills the template in, the way the function kit compiles from
 // `app.html` does: `head` and `body` once each, `assets`, `nonce` and every
 // `env.X` everywhere they appear, and `version` as escaped text.
-func (s *SSR) substitute(head, body, assets string) string {
+//
+// nonce is this request's `csp.nonce`, kit's own rule for `%sveltekit.nonce%`
+// (`render.js`: `options.templates.app({ ..., nonce: csp.nonce, ... })`) —
+// substituted whether or not this policy's own script-src ends up needing a
+// nonce, because a developer may reference `%sveltekit.nonce%` in their own
+// hand-written `app.html` markup independently of what skgo's boot script
+// needs.
+func (s *SSR) substitute(head, body, assets, nonce string) string {
 	out := strings.Replace(s.template, "%sveltekit.head%", head, 1)
 	out = strings.Replace(out, "%sveltekit.body%", body, 1)
 	out = strings.ReplaceAll(out, "%sveltekit.assets%", assets)
-	// skgo sets no Content-Security-Policy, so there is no nonce to place.
-	out = strings.ReplaceAll(out, "%sveltekit.nonce%", "")
+	out = strings.ReplaceAll(out, "%sveltekit.nonce%", nonce)
 	out = strings.ReplaceAll(out, "%sveltekit.version%", escapeHTML(s.version))
 	// The app declares no public runtime environment variables, so every
 	// placeholder for one resolves to the empty string kit resolves it to.

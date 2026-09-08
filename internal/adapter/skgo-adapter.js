@@ -499,6 +499,15 @@ function describeSSR(builder, kit, nodes) {
 		globalName: globalName(builder.config),
 		assets: builder.config.paths.assets,
 		relative: builder.config.paths.relative,
+		// kit's own validated `csp` option (`core/config/options.js`), copied
+		// verbatim: `mode`, `directives` and `reportOnly` are plain data, and
+		// Go assembles the document's CSP header and boot-script nonce/hash
+		// itself (`csp.go`) rather than running kit's `render.js`/`csp.js` in
+		// the engine. A directive kit's schema left `undefined` is dropped by
+		// this JSON.stringify, exactly as it would be from kit's own — so an
+		// app that never sets `csp` gets a build that describes no policy at
+		// all, and Go sets no header.
+		csp: builder.config.csp,
 		client: {
 			start: client.start,
 			app: client.app ?? '',

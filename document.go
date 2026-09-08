@@ -110,6 +110,11 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	if len(info.Nodes) != len(m.Nodes) {
 		return nil, fmt.Errorf("skgo: the build describes %d node(s) for rendering and %d for loading", len(info.Nodes), len(m.Nodes))
 	}
+	if info.CSP != nil {
+		if err := validateReportOnly(info.CSP.ReportOnly); err != nil {
+			return nil, err
+		}
+	}
 
 	source, err := fs.ReadFile(build, info.Bundle)
 	if err != nil {
@@ -494,16 +499,16 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		return true
 	}
 	plan.status, plan.pageError = result.Status, result.Error
-	document, promises, err := s.assemble(req, plan, result, answers)
+	document, promises, headers, err := s.assemble(req, plan, result, answers)
 	if err != nil {
 		s.report(routeID, err)
 		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
 	if len(promises.order) > 0 {
-		s.stream(w, r, shared, document, promises)
+		s.stream(w, r, shared, document, promises, headers)
 		return true
 	}
-	s.write(w, r, shared, document, plan.status)
+	s.write(w, r, shared, document, plan.status, headers)
 	return true
 }
 
@@ -563,15 +568,15 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 	// boundary that caught something sets `page.status` and `page.error`, and
 	// the response carries what the page ended up showing.
 	plan.status, plan.pageError = result.Status, result.Error
-	document, promises, err := s.assemble(req, plan, result, answers)
+	document, promises, headers, err := s.assemble(req, plan, result, answers)
 	if err != nil {
 		return s.failed(w, r, req, plan.routeID, plan.params, err)
 	}
 	if len(promises.order) > 0 {
-		s.stream(w, r, shared, document, promises)
+		s.stream(w, r, shared, document, promises, headers)
 		return true
 	}
-	s.write(w, r, shared, document, plan.status)
+	s.write(w, r, shared, document, plan.status, headers)
 	return true
 }
 
@@ -686,7 +691,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 }
 
 // write sends a rendered document.
-func (s *SSR) write(w http.ResponseWriter, r *http.Request, shared *loadRequest, document string, status int) {
+func (s *SSR) write(w http.ResponseWriter, r *http.Request, shared *loadRequest, document string, status int, headers documentHeaders) {
 	if status <= 0 {
 		status = http.StatusOK
 	}
@@ -695,6 +700,7 @@ func (s *SSR) write(w http.ResponseWriter, r *http.Request, shared *loadRequest,
 	if shared != nil {
 		shared.applyTo(header)
 	}
+	setCSPHeaders(header, headers)
 	header.Set("Content-Type", "text/html; charset=utf-8")
 	header.Set("X-Sveltekit-Page", "true")
 	// A rendered document carries whatever the visitor is allowed to see, so it
@@ -1050,11 +1056,12 @@ type remoteAnswer struct {
 // streamed document is a 200 whatever the page's status was, and carries no
 // etag to revalidate against. Both are kit's, and skgo mirrors rather than
 // improves on them: the browser runs kit's client either way.
-func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest, document string, promises *promiseTable) {
+func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest, document string, promises *promiseTable, headers documentHeaders) {
 	header := w.Header()
 	if shared != nil {
 		shared.applyTo(header)
 	}
+	setCSPHeaders(header, headers)
 	header.Set("Content-Type", "text/html; charset=utf-8")
 	header.Set("X-Sveltekit-Page", "true")
 	header.Set("Cache-Control", "private, no-cache")
