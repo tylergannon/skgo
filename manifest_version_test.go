@@ -4,8 +4,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -44,17 +46,57 @@ func buildFrom(skgoVersion, adapterFingerprint string) fstest.MapFS {
 }
 
 // thisAdapter is the fingerprint of the adapter this module carries, computed
-// here from the file on disk rather than asked of the code under test: an
+// here from the files on disk rather than asked of the code under test: an
 // expectation read out of the thing being tested is satisfied by every wrong
 // answer.
+//
+// The adapter is more than one file. What builds the app is skgo-adapter.js;
+// what runs in the engine — the render entry, the `$app/server` it is compiled
+// against, the polyfill that becomes its banner — is a file each beside it, and
+// an app carrying last month's render entry is exactly as stale as one carrying
+// last month's adapter. So all of them go into the name, each under its own
+// slash-separated path, in sorted order.
 func thisAdapter(t *testing.T) string {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("internal", "adapter", "skgo-adapter.js"))
+	dir := filepath.Join("internal", "adapter")
+	sum := sha256.New()
+	sum.Write(readForFingerprint(t, filepath.Join(dir, "skgo-adapter.js")))
+
+	var names []string
+	err := filepath.WalkDir(filepath.Join(dir, "skgo-adapter"), func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() {
+			rel, err := filepath.Rel(dir, path)
+			if err != nil {
+				return err
+			}
+			names = append(names, filepath.ToSlash(rel))
+		}
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:])[:12]
+	if len(names) == 0 {
+		t.Fatal("internal/adapter/skgo-adapter holds no files; the adapter's runtime JavaScript is missing")
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		sum.Write([]byte(name + "\x00"))
+		sum.Write(readForFingerprint(t, filepath.Join(dir, filepath.FromSlash(name))))
+	}
+	return hex.EncodeToString(sum.Sum(nil))[:12]
+}
+
+func readForFingerprint(t *testing.T, path string) []byte {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }
 
 func TestAManifestFromAnotherSkgosAdapterIsRefused(t *testing.T) {

@@ -16,16 +16,34 @@ package adapter
 
 import (
 	"crypto/sha256"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
+	"path"
 	"regexp"
 	"runtime/debug"
+	"sort"
 	"sync"
 )
 
 //go:embed skgo-adapter.js
 var source []byte
+
+// The runtime JavaScript, as files rather than as strings inside the adapter:
+// the entry the engine's bundle is built from, the `$app/server` it is built
+// against, the polyfill that becomes its banner, and the vite plugin that
+// declares the environment kit builds it in. Kit's own adapters carry theirs
+// the same way, in a `files/` directory located from `import.meta.url`; skgo's
+// adapter is written into the vite root, so its files go in a directory beside
+// it and it finds them relative to itself.
+//
+//go:embed skgo-adapter
+var files embed.FS
+
+// filesDir is both the directory in this package and the directory the adapter
+// looks for its runtime files in, relative to wherever it was written.
+const filesDir = "skgo-adapter"
 
 // module is the module path the version is looked up under.
 const module = "github.com/tylergannon/skgo"
@@ -51,14 +69,66 @@ func Source() []byte {
 	return stamped
 }
 
+// Files is the adapter's runtime JavaScript, keyed by the path it should be
+// written to relative to the vite root. The adapter resolves them relative to
+// its own file, so the layout here is the layout an app gets.
+func Files() map[string][]byte {
+	out := map[string][]byte{}
+	for _, name := range fileNames() {
+		data, err := files.ReadFile(name)
+		if err != nil {
+			// Embedded: unreachable unless this package was built wrong.
+			panic("skgo: reading the embedded adapter file " + name + ": " + err.Error())
+		}
+		out[name] = data
+	}
+	return out
+}
+
+// fileNames is every embedded runtime file, in a stable order, so that the
+// fingerprint below is a fact about the bytes and not about directory order.
+func fileNames() []string {
+	var names []string
+	err := fs.WalkDir(files, filesDir, func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() {
+			names = append(names, name)
+		}
+		return nil
+	})
+	if err != nil {
+		panic("skgo: walking the embedded adapter files: " + err.Error())
+	}
+	sort.Strings(names)
+	return names
+}
+
 // Fingerprint identifies the adapter by its own bytes, before stamping. It is
 // the half of the identity that is always meaningful: two skgo checkouts both
 // call themselves devel, and the question a build manifest has to answer is
 // whether the adapter that wrote it is the adapter this module carries.
+//
+// Every file the adapter is made of goes into it, not only the entry: the
+// engine's own entry point and its `$app/server` moved out of the adapter into
+// files beside it, and a fingerprint that did not cover them would call an app
+// carrying last month's render entry current.
 func Fingerprint() string {
 	fingerprintOnce.Do(func() {
-		sum := sha256.Sum256(source)
-		fingerprint = hex.EncodeToString(sum[:])[:12]
+		sum := sha256.New()
+		sum.Write(source)
+		for _, name := range fileNames() {
+			data, err := files.ReadFile(name)
+			if err != nil {
+				panic("skgo: reading the embedded adapter file " + name + ": " + err.Error())
+			}
+			// The name is hashed too, so that moving a file between paths
+			// changes the fingerprint even when no byte of it does.
+			sum.Write([]byte(path.Clean(name) + "\x00"))
+			sum.Write(data)
+		}
+		fingerprint = hex.EncodeToString(sum.Sum(nil))[:12]
 	})
 	return fingerprint
 }
