@@ -1,0 +1,223 @@
+# Two missions in parallel on GPT, each ending in a squash-merged PR: the
+# generate-time refusal of a Go server load above a prerendered page (#83),
+# and the handleError hook on the __data.json wire (#82). Built by one agent,
+# judged by a fresh one that merges only what it has proved. Dispatched
+# 2026-09-08 while parallel-live-showcase-adapter.yaml's last two judges run.
+name: gpt-lint-handleerror
+goal: |
+  skgo is a SvelteKit application server written in Go; the root checkout is
+  /Users/tyler/src/skgo and its AGENTS.md is already in your context. Kit is
+  the specification; the pinned source is
+  /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit (absolute path,
+  reachable from any worktree). Svelte's source is
+  example/web/node_modules/svelte/src.
+
+  Start with /Users/tyler/src/skgo/ephemeral/index/README.md and the mission
+  dossier named below. They hold the file and line anchors, the suite
+  gestures, kit's anchors and the traps already paid for; you should be
+  editing within five minutes, not searching. Do the work yourself; do not
+  return while dispatched subagents are outstanding.
+
+  What is believed: Gherkin scenarios in example/e2e against the running
+  example app where the behaviour is visible to a browser, screenshots taken
+  where each scenario asserts and opened by you, expectations anchored in
+  something independent of the code under test, Go tests for the Go.
+  Iterate on the one feature file you touched; run the full suite once per
+  mode at the end. Screenshots are never committed. A passing command is not
+  evidence and there is no command that means done.
+
+  Deliver a pull request against main whose body serves as the squash commit
+  message, with a worklog entry under ephemeral/worklog/ only if you hit a
+  trap worth a future agent's attention. Write the PR URL to the state file
+  the mission names. Rebase onto origin/main before opening the PR; other
+  work is landing concurrently and the dossier says where you collide. Stop
+  every server you started, by its pid, never by process name: other agents
+  are running servers from other worktrees on this machine. Do not merge; a
+  judge does.
+
+  If the state file's `.findings.md` sibling exists, it is the judge's
+  return from your previous attempt: address every finding on the same
+  branch and PR, then delete the findings file.
+
+start: sync
+
+defaults:
+  timeout: 10800s
+  max_retries: 1
+  fidelity: none
+  model:
+    name: gpt-5.6-sol
+    effort: high
+
+nodes:
+  - id: sync
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin && git pull -q --ff-only
+      && mkdir -p .tractor/state
+    edges:
+      success: missions
+      error: failure
+
+  - id: missions
+    type: fan_out
+    workspace: shared
+    branches: [build_lint, build_hook]
+
+  # ---------------------------------------------------------------- lint (#83)
+  - id: build_lint
+    type: agent
+    max_visits: 3
+    prompt: |
+      $goal
+
+      Mission: refuse a Go server load above a prerendered page, with a
+      message that says why (#83). Dossier:
+      /Users/tyler/src/skgo/ephemeral/index/mission-prerender-lint.md.
+      State file: /Users/tyler/src/skgo/.tractor/state/lint.pr
+
+      Make a worktree with `just worktree prerender-lint`. Capability when
+      done: `skgo generate` refuses, naming the route, the Go load and the
+      rule with a pointer to #81, before any `vp build`; and the generated
+      stub's error says the same when kit's prerenderer calls it. Kit's own
+      inheritance rule for the prerender option is the one to mirror. The
+      example app as it stands on main must still generate. PR closes #83.
+    edges:
+      - to: judge_lint
+
+  - id: judge_lint
+    type: agent
+    timeout: 5400s
+    max_visits: 3
+    prompt: |
+      You are judging a pull request for skgo (root checkout
+      /Users/tyler/src/skgo; AGENTS.md is in your context). The PR URL is in
+      /Users/tyler/src/skgo/.tractor/state/lint.pr. Orientation:
+      /Users/tyler/src/skgo/ephemeral/index/README.md and
+      mission-prerender-lint.md beside it. Kit is at
+      /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit.
+
+      Claim: `skgo generate` refuses a Go server load in a branch that has a
+      prerendered page, naming route, load and rule, before `vp build`; the
+      generated stub says the same when kit prerenders through it; the rule
+      matches kit's own inheritance of the prerender option; the example app
+      on main still generates; #83 is closed.
+
+      Judge in this session, yourself: check out the PR branch in its own
+      worktree. Run the Go tests, then do the real thing by hand: generate
+      the example as is, then add a root Go layout load the way PR #79 did
+      and generate again, then run `vp build` with the lint bypassed to see
+      the stub's message. Break the lint once and see its test fail. Check
+      the inheritance rule against kit's analyse.js and prerender.js. Run
+      the full suite once per mode to be sure nothing else moved. Distrust
+      the PR body.
+
+      If it holds: `gh pr merge --squash --delete-branch`, fast-forward the
+      root checkout on main, remove the PR's worktree, close #83 if the merge
+      did not. If not: write every finding with evidence to
+      /Users/tyler/src/skgo/.tractor/state/lint.findings.md and do not merge.
+      If only the project owner can decide something, say so there. Stop
+      every server you started, by pid.
+    edges:
+      - to: merged_lint
+        condition: The PR held up and has been squash-merged into main.
+      - to: build_lint
+        condition: The PR has defects; findings were written for the builder.
+      - to: join
+        condition: Something stands in the way that only the project owner can decide; the findings file says what.
+
+  - id: merged_lint
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin
+      && test "$(gh pr view "$(cat .tractor/state/lint.pr)" --json state --jq .state)" = MERGED
+    edges:
+      success: join
+      error: judge_lint
+
+  # ---------------------------------------------------------------- hook (#82)
+  - id: build_hook
+    type: agent
+    max_visits: 3
+    prompt: |
+      $goal
+
+      Mission: the handleError hook runs for `__data.json`'s errors too
+      (#82). Dossier:
+      /Users/tyler/src/skgo/ephemeral/index/mission-handleerror-data.md.
+      State file: /Users/tyler/src/skgo/.tractor/state/hook.pr
+
+      Make a worktree with `just worktree handleerror-data`. Capability when
+      done: a visitor who reaches a failing page by a client-side navigation
+      sees the same hook-chosen message and support id as one who loads the
+      document, because Go consults the app's handleError hook on the
+      `__data.json` wire exactly where kit does; the example app shows it
+      and a scenario proves the wire it took. PR closes #82.
+    edges:
+      - to: judge_hook
+
+  - id: judge_hook
+    type: agent
+    timeout: 5400s
+    max_visits: 3
+    prompt: |
+      You are judging a pull request for skgo (root checkout
+      /Users/tyler/src/skgo; AGENTS.md is in your context). The PR URL is in
+      /Users/tyler/src/skgo/.tractor/state/hook.pr. Orientation:
+      /Users/tyler/src/skgo/ephemeral/index/README.md and
+      mission-handleerror-data.md beside it. Kit is at
+      /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit.
+
+      Claim: the app's handleError hook runs for errors on the `__data.json`
+      wire as kit's does, so a client-side navigation to a failing page shows
+      the same message and support id as a document load; the example app
+      shows it; #82 is closed.
+
+      Judge in this session, yourself: check out the PR branch in its own
+      worktree, build, run the app. Fetch `/error/unexpected` and its
+      `__data.json` with curl and compare the error fields. For each new
+      scenario, break the behaviour it protects and run that feature file
+      only to see it fail; restore. Run the full suite once per mode. Open
+      the new screenshots. Check the shape against kit's
+      handle_error_and_jsonify and data/index.js. Distrust the PR body.
+
+      If it holds: `gh pr merge --squash --delete-branch`, fast-forward the
+      root checkout on main, remove the PR's worktree, close #82 if the merge
+      did not. If not: write every finding with evidence to
+      /Users/tyler/src/skgo/.tractor/state/hook.findings.md and do not merge.
+      If only the project owner can decide something, say so there. Stop
+      every server you started, by pid.
+    edges:
+      - to: merged_hook
+        condition: The PR held up and has been squash-merged into main.
+      - to: build_hook
+        condition: The PR has defects; findings were written for the builder.
+      - to: join
+        condition: Something stands in the way that only the project owner can decide; the findings file says what.
+
+  - id: merged_hook
+    type: command
+    command: >
+      cd /Users/tyler/src/skgo && git fetch -q origin
+      && test "$(gh pr view "$(cat .tractor/state/hook.pr)" --json state --jq .state)" = MERGED
+    edges:
+      success: join
+      error: judge_hook
+
+  # ---------------------------------------------------------------- join
+  - id: join
+    type: fan_in
+    timeout: 600s
+    prompt: |
+      Two missions ran in parallel for skgo. Report, per mission (lint,
+      hook), whether its PR was merged into main (check
+      /Users/tyler/src/skgo/.tractor/state/<name>.pr with `gh pr view --json
+      state`) and, if not, what its findings file
+      /Users/tyler/src/skgo/.tractor/state/<name>.findings.md says stands in
+      the way. Do not fix anything. The run succeeds only if both PRs are
+      merged.
+    edges:
+      - to: success
+        condition: Both PRs are merged into main.
+      - to: failure
+        condition: At least one PR is not merged.
