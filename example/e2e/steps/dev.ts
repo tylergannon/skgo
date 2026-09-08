@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from './fixtures';
+import { tagged } from './ssr';
 
 const { After, Then, When } = createBdd(test);
 
@@ -150,8 +151,8 @@ When(
 let latest = '';
 
 Then(
-	'the document Go sends for {string} says {string}',
-	async ({ page, shot }, path: string, html: string) => {
+	"the document Go sends for {string} has the page's heading {string}",
+	async ({ page, shot }, path: string, heading: string) => {
 		await expect
 			.poll(
 				async () => {
@@ -160,7 +161,7 @@ Then(
 				},
 				{ timeout: 30_000, intervals: [250, 250, 500, 500, 1000] }
 			)
-			.toContain(html);
+			.toMatch(tagged('h1', 'title', heading));
 		// The frame is of the page as a visitor would now see it, which is the
 		// same edit arriving by the other route.
 		await page.goto(path);
@@ -168,9 +169,9 @@ Then(
 	}
 );
 
-Then('that document never said {string}', async ({}, html: string) => {
+Then("that document no longer has the heading {string}", async ({}, heading: string) => {
 	expect(latest, 'no document has been fetched by this scenario').not.toBe('');
-	expect(latest).not.toContain(html);
+	expect(latest).not.toMatch(tagged('h1', 'title', heading));
 });
 
 After(async ({ page }) => {
@@ -186,5 +187,5 @@ After(async ({ page }) => {
 			timeout: 30_000,
 			intervals: [250, 250, 500, 500, 1000]
 		})
-		.toContain('<h1 data-testid="title">Home</h1>');
+		.toMatch(tagged('h1', 'title', 'Home'));
 });

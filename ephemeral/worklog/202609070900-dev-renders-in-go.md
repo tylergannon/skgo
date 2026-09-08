@@ -55,3 +55,26 @@ Two mutations, each run against a real `just dev`, whole `dev.feature`:
   which is what makes that scenario the one that speaks for hot updates.
 
 So no single scenario covers both mechanisms, and neither is redundant.
+
+## Rebase onto #95 (`@skgo/adapter` as a package)
+
+- **The dev environment needs the build environment's app-side resolution.**
+  #95 moved the adapter out of the app and into `node_modules/@skgo/adapter`, so
+  `entry.js` no longer sits inside the vite root and its bare specifiers
+  (`@sveltejs/kit/internal/server`, `svelte/server`) resolve against a
+  `node_modules` that is not the app's. The build half already answers this by
+  re-asking through `this.resolve(id, join(root, 'package.json'))` for an
+  importer of ours; the dev half's `resolveId` had to grow the same branch, and
+  `fetchModule` has to come from the app's vite for the same module-realm reason
+  rolldown does.
+- **Svelte's dev compile keeps the scoping class the build's compile prunes.**
+  After #94 gave `+page.svelte` a `<style>` block, the served document says
+  `<h1 data-testid="title" class="svelte-1uha8ag">` where the built one says
+  `<h1 data-testid="title">`. Nothing to do with skgo — kit's own dev server
+  renders the same markup — but any scenario asserting a whole tag as a literal
+  is a scenario that means one thing in prod and another in dev. `tagged()` in
+  `steps/ssr.ts` is the shape that survives both, and mission 4 will want it
+  everywhere a `<tag data-testid=...>` literal is asserted today.
+- **Editing the adapter invalidates the built frontend.** The stamp Go checks is
+  a fingerprint over the adapter's own files, so every edit under
+  `internal/adapter/` needs `just build` again before the server will start.

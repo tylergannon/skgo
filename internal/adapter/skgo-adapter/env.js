@@ -723,7 +723,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 
 		resolveId: {
 			order: 'pre',
-			handler(id) {
+			async handler(id, importer) {
 				if (id in sources) return PREFIX + id;
 				if (id.startsWith(PREFIX)) return id;
 				if (id in aliases) return aliases[id];
@@ -734,6 +734,14 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 				if (id === 'node:async_hooks' || id === 'async_hooks') return PREFIX + 'skgo:missing';
 				if (id.startsWith(OXC_HELPERS)) {
 					return join(helpers, 'src/helpers/esm', id.slice(OXC_HELPERS.length) + '.js');
+				}
+				// The same question the build's environment answers, and for the
+				// same reason: this package's own runtime files name packages
+				// the app depends on and this one does not, and they are read
+				// from wherever `@skgo/adapter` is installed rather than from
+				// inside the app. The app asks on their behalf.
+				if (importer && ours(importer) && bare(id)) {
+					return this.resolve(id, join(root, 'package.json'), { skipSelf: true });
 				}
 				return null;
 			}

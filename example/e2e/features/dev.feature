@@ -27,10 +27,10 @@ Feature: In dev the document is Go's too, from the modules vite transformed
     distinguishes.
 
     Given I open "/"
-    Then the document already said '<h1 data-testid="title">Home</h1>'
+    Then the document already said the page's own heading is "Home"
     When "src/routes/+page.svelte" has "Home" replaced with "Home, edited while running"
-    Then the document Go sends for "/" says '<h1 data-testid="title">Home, edited while running</h1>'
-    And that document never said '<h1 data-testid="title">Home</h1>'
+    Then the document Go sends for "/" has the page's heading "Home, edited while running"
+    And that document no longer has the heading "Home"
 
   Scenario: A component that can only fail on the server fails where a developer can see it
     src/routes/error/server-only/+page.svelte throws while `document` is
