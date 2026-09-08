@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -138,6 +139,33 @@ Then(
 	}
 );
 
+/**
+ * Waits for the reloads a route change causes to stop. When the route tree
+ * moves, kit rewrites its generated client node files and vite broadcasts a
+ * full reload for each, in batches about a second apart, so a tab holding the
+ * dev client reloads once per batch and a navigation started between two of
+ * them is aborted by the second (`page.goto: net::ERR_ABORTED`, seen on CI
+ * three times and never on a fast machine). Resolves once the page has gone
+ * 1500 ms without navigating, or after 15 s.
+ */
+async function settled(page: Page) {
+	const quiet = 1_500;
+	const deadline = Date.now() + 15_000;
+	let last = Date.now();
+	const bump = () => {
+		last = Date.now();
+	};
+	page.on('framenavigated', bump);
+	try {
+		while (Date.now() < deadline) {
+			if (Date.now() - last >= quiet) return;
+			await page.waitForTimeout(100);
+		}
+	} finally {
+		page.off('framenavigated', bump);
+	}
+}
+
 When('the route fixture is added while the servers keep running', async () => {
 	const source = resolve(dirname(fileURLToPath(import.meta.url)), '../fixtures/dev-added');
 	const target = join(app, 'src/routes/dev-added');
@@ -169,10 +197,16 @@ Then(
 				});
 			// Vite publishes the route manifest and browser graph through separate
 			// invalidations. The raw document above proves Go has the route; wait for
-			// a navigation that also uses Kit's matching live browser graph.
+			// a navigation that also uses Kit's matching live browser graph. A
+			// navigation a reload batch aborts is retried, not failed.
+			await settled(page);
 			await expect
 				.poll(async () => {
-					await page.goto('/dev-added');
+					try {
+						await page.goto('/dev-added');
+					} catch {
+						return null;
+					}
 					return page.getByTestId('title').textContent();
 				}, {
 					timeout: 30_000,
@@ -216,6 +250,7 @@ After(async ({ page }) => {
 		// Kit rewrites its generated browser graph separately from the manifest
 		// snapshot Go consumes. Do not let the next scenario begin until a fresh
 		// browser can hydrate the restored graph as Home as well.
+		await settled(page);
 		await page.goto('/');
 		await hydrated(page);
 		await expect(page.getByTestId('title')).toHaveText('Home');
