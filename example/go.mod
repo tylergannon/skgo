@@ -7,7 +7,7 @@ go 1.27.1
 ignore ./web/node_modules
 
 require (
-	github.com/tylergannon/polytype v1.0.0-rc.11
+	github.com/tylergannon/polytype v1.0.0-rc.11.0.20260908041542-d17dc678d334
 	github.com/tylergannon/skgo v0.0.0
 )
 
