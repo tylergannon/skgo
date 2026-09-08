@@ -6,13 +6,9 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
-	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/tylergannon/polytype/devalue/codegen"
-	"github.com/tylergannon/polytype/grammar"
-	"github.com/tylergannon/polytype/typegrammar"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -121,85 +117,6 @@ func (a *app) checkTransportKeys(path string) error {
 	return nil
 }
 
-// devalueCodecsFile is the file the polytype-generated codecs land in.
-const devalueCodecsFile = "skgo_devalue_gen.go"
-
-// generateTransportCodecs emits the Go encoder and strict decoder for every
-// transported type, using polytype's devalue codegen.
-//
-// The codecs are generated rather than written by hand because the encoding is
-// a contract with `src/hooks.ts`: whatever `EncodeMoney` produces is exactly
-// what the browser's `decode` is handed, and whatever the browser's `encode`
-// produces has to satisfy `DecodeMoney`. polytype already knows how to project
-// a Go type into the devalue value model and how to reject a shape the type
-// does not admit, with a JSON-pointer path in the diagnostic; reimplementing
-// that here would be a second, worse answer to a question polytype has already
-// answered.
-func (a *app) generateTransportCodecs() error {
-	if len(a.transported) == 0 {
-		return nil
-	}
-
-	// Group by the directory polytype has to load, since a root is looked up
-	// in a loaded package's scope.
-	byDir := map[string][]*transportedType{}
-	for _, entry := range a.transported {
-		dir := entry.declDir()
-		if dir == "" {
-			return fmt.Errorf("skgo: %s: cannot find the source directory of %s", entry.pos, entry.named)
-		}
-		byDir[dir] = append(byDir[dir], entry)
-	}
-
-	dirs := make([]string, 0, len(byDir))
-	for dir := range byDir {
-		dirs = append(dirs, dir)
-	}
-	sort.Strings(dirs)
-
-	var defs typegrammarDefs
-	for _, dir := range dirs {
-		pkg, err := grammar.Load(dir)
-		if err != nil {
-			return fmt.Errorf("skgo: projecting transported types in %s: %w", dir, err)
-		}
-		var roots []grammar.Root
-		entries := byDir[dir]
-		sort.Slice(entries, func(i, j int) bool { return entries[i].key < entries[j].key })
-		for _, entry := range entries {
-			obj := pkg.Types().Scope().Lookup(entry.named.Obj().Name())
-			if obj == nil {
-				return fmt.Errorf("skgo: %s: %s is not declared in %s", entry.pos, entry.named, dir)
-			}
-			roots = append(roots, grammar.Root{Type: obj.Type(), Position: entry.pos})
-		}
-		lowered, rootNodes, err := pkg.Lower(roots)
-		if err != nil {
-			return fmt.Errorf("skgo: projecting transported types in %s: %w", dir, err)
-		}
-		defs.add(lowered, rootNodes)
-	}
-
-	out, err := codegen.Generate(defs.definitions, defs.roots, codegen.Options{
-		PackageName: a.cfg.Package,
-		ImportPath:  a.bindingsImportPath(),
-	})
-	if err != nil {
-		return fmt.Errorf("skgo: generating devalue codecs: %w", err)
-	}
-	return a.writeGo(filepath.Join(a.cfg.Out, devalueCodecsFile), string(out))
-}
-
-// declDir is the directory the type's declaration lives in, which is what
-// polytype's grammar loader is given.
-func (e *transportedType) declDir() string {
-	pos := e.goPkg.pkg.Fset.Position(e.named.Obj().Pos())
-	if pos.Filename == "" {
-		return ""
-	}
-	return filepath.Dir(pos.Filename)
-}
-
 // transportKeyOrder is the app's transport entries, sorted by key, so that
 // every generated artefact lists them the same way.
 func (a *app) transportKeyOrder() []*transportedType {
@@ -213,38 +130,4 @@ func (a *app) transportKeyOrder() []*transportedType {
 func codecName(entry *transportedType) string {
 	name := entry.named.Obj().Name()
 	return strings.ToUpper(name[:1]) + name[1:]
-}
-
-// typegrammarDefs accumulates the lowered definitions of every directory that
-// declares a transported type, into the single graph codegen is given.
-// Definitions are keyed by their resolved name, so a type two directories both
-// reach is added once.
-type typegrammarDefs struct {
-	definitions typegrammar.Definitions
-	roots       []typegrammar.Type
-	seen        map[typegrammar.Name]bool
-}
-
-func (d *typegrammarDefs) add(defs typegrammar.Definitions, roots []typegrammar.Type) {
-	if d.seen == nil {
-		d.seen = map[typegrammar.Name]bool{}
-	}
-	for _, def := range defs {
-		if d.seen[def.Name] {
-			continue
-		}
-		d.seen[def.Name] = true
-		d.definitions = append(d.definitions, def)
-	}
-	d.roots = append(d.roots, roots...)
-}
-
-// bindingsImportPath is the import path of the generated bindings package,
-// which codegen needs so that a type declared there is spelled unqualified.
-func (a *app) bindingsImportPath() string {
-	rel, err := filepath.Rel(a.hostDir, a.cfg.Out)
-	if err != nil || rel == "." {
-		return a.hostModule
-	}
-	return a.hostModule + "/" + filepath.ToSlash(rel)
 }

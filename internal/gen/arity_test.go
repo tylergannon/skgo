@@ -70,15 +70,40 @@ var (
 		}
 	}
 
-	bindings := readFixtureFile(t, root, "app/web/src/data/skgo_remotes_gen.go")
+	// The registration names the kind and the module; the handler beside it is
+	// where the arity shows, because that is where the argument is refused or
+	// required. Kit draws the same line: `create_validator` reads the arity and
+	// installs the refusal.
+	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
 	for _, want := range []string{
-		`skgo.NewQueryNoArg("src/data/data.remote.ts", "getThing", getThing)`,
-		`skgo.NewCommandNoArg("src/data/data.remote.ts", "doThing", doThing)`,
-		`skgo.NewLiveQueryNoArg("src/data/data.remote.ts", "watchThing", watchThing)`,
-		`skgo.NewQuery("src/data/data.remote.ts", "getNamed", getNamed)`,
+		`skgo.KindQuery,`,
+		`skgo.KindCommand,`,
+		`skgo.KindLive,`,
+		`"getThing",`,
+		`"doThing",`,
+		`"watchThing",`,
+		`"getNamed",`,
+		// No argument: any argument at all is refused.
+		"func remote_getThing(ctx context.Context, call skgo.Call) (any, error) {\n\tif err := skgo.RefuseArgument(call); err != nil {",
+		"func remote_doThing(ctx context.Context, call skgo.Call) (any, error) {\n\tif err := skgo.RefuseArgument(call); err != nil {",
+		// An argument: it is required, and decoded by the codec generated for
+		// its own type.
+		"func remote_getNamed(ctx context.Context, call skgo.Call) (any, error) {\n\tif err := skgo.RequireArgument(call); err != nil {",
 	} {
 		if !strings.Contains(bindings, want) {
-			t.Errorf("the registration file does not carry %q:\n%s", want, bindings)
+			t.Errorf("the bindings file does not carry %q:\n%s", want, bindings)
+		}
+	}
+	// Nothing in the declaring package but the functions themselves.
+	published := readFixtureFile(t, root, "app/web/src/data/skgo_remotes_gen.go")
+	for _, want := range []string{
+		"Skgo_getThing = getThing",
+		"Skgo_doThing = doThing",
+		"Skgo_watchThing = watchThing",
+		"Skgo_getNamed = getNamed",
+	} {
+		if !strings.Contains(published, want) {
+			t.Errorf("the declaring package does not publish %q:\n%s", want, published)
 		}
 	}
 
@@ -235,8 +260,8 @@ var _ = skgo.BatchQuery(getQuotes)
 		t.Errorf("the stub does not import query:\n%s", stub)
 	}
 
-	bindings := readFixtureFile(t, root, "app/web/src/data/skgo_remotes_gen.go")
-	if want := `skgo.NewBatchQuery("src/data/data.remote.ts", "getQuotes", getQuotes)`; !strings.Contains(bindings, want) {
+	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	if want := `skgo.KindBatch,`; !strings.Contains(bindings, want) {
 		t.Errorf("the registration file does not carry %q:\n%s", want, bindings)
 	}
 

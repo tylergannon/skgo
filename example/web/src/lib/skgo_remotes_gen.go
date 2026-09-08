@@ -2,23 +2,14 @@
 
 package lib
 
-import "github.com/tylergannon/skgo"
-
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{
-		skgo.NewCommand("src/lib/auth.remote.ts", "signIn", signIn),
-		skgo.NewCommandNoArg("src/lib/auth.remote.ts", "signOut", signOut),
-		skgo.NewQueryNoArg("src/lib/auth.remote.ts", "whoami", whoami),
-	}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_signIn is signIn, published as src/lib/auth.remote.ts#signIn.
+	Skgo_signIn = signIn
+	// Skgo_signOut is signOut, published as src/lib/auth.remote.ts#signOut.
+	Skgo_signOut = signOut
+	// Skgo_whoami is whoami, published as src/lib/auth.remote.ts#whoami.
+	Skgo_whoami = whoami
+)

@@ -47,10 +47,10 @@ func TestAServerRouteBecomesTheModuleKitCompiles(t *testing.T) {
 		t.Errorf("the generated +server.ts does not throw:\n%s", stub)
 	}
 
-	bindings := readFixtureFile(t, root, "app/web/src/routes/api/thing/skgo_remotes_gen.go")
+	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
 	for _, want := range []string{
-		`skgo.NewEndpoint("/api/thing", "GET", read)`,
-		`skgo.NewEndpoint("/api/thing", "POST", write)`,
+		`skgo.NewEndpoint("/api/thing", "GET", skgo0.Skgo_read)`,
+		`skgo.NewEndpoint("/api/thing", "POST", skgo0.Skgo_write)`,
 	} {
 		if !strings.Contains(bindings, want) {
 			t.Errorf("the registration file has no %q:\n%s", want, bindings)

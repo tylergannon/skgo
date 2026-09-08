@@ -5,7 +5,9 @@
 // `application/x-sveltekit-formdata`: kit's client turns the FormData into a
 // POJO first — coercing types, nesting dotted names — and appends any uploaded
 // file's bytes raw after the header. That is why a form cannot reuse
-// `decodeArg`: an encoding/json round-trip has no way to carry a File.
+// the generated devalue decoder every other kind uses: a File is not a JSON
+// value and polytype describes none, so the generated closure assigns the
+// submission onto the handler's own argument type with skgo.DecodeForm.
 //
 // The two things a form does that a command does not are both kit's design,
 // not additions here. Its handler may report validation failures against named
@@ -118,36 +120,6 @@ func (v *Invalid) Error() string {
 // and nowhere else. Return a *Invalid to put messages on specific fields.
 func Form[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
 
-// NewForm registers a `form` export. Generated code calls this; application
-// code uses Form.
-func NewForm[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
-	r := newRemote(module, name, kindForm)
-	r.call = formAdapter(fn)
-	r.ptr = codePointer(fn)
-	return r
-}
-
-// formAdapter is callAdapter's counterpart for a form. The difference is the
-// argument: a form's arrives as an already-parsed tree with File values in it,
-// so it is assigned onto the Go type directly instead of through JSON.
-func formAdapter[In, Out any](fn func(context.Context, In) (Out, error)) func(context.Context, any, bool) (any, error) {
-	return func(ctx context.Context, arg any, present bool) (any, error) {
-		var in In
-		if present {
-			if err := formdata.Decode(arg, &in); err != nil {
-				return nil, Errorf(400, "Bad Request")
-			}
-		}
-		out, err := fn(ctx, in)
-		if err != nil {
-			return nil, err
-		}
-		// The raw Go value; Remotes.call encodes it, where the transport hook
-		// is known.
-		return out, nil
-	}
-}
-
 func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote) {
 	if r.Method != http.MethodPost {
 		rs.writeErrorStatus(w, &HTTPError{
@@ -211,7 +183,7 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 	ev.refreshes = newRefreshSet(rs, meta.RemoteRefreshes)
 	ctx := withEvent(r.Context(), ev)
 
-	value, err := rs.call(ctx, fn, arg, true)
+	value, err := rs.call(ctx, fn, rs.newCall(arg, true))
 	if err != nil {
 		var invalid *Invalid
 		if errors.As(err, &invalid) {

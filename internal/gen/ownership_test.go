@@ -71,47 +71,58 @@ func LiveQuery(fn any) Marker { _ = fn; return Marker{} }
 
 func BatchQuery(fn any) Marker { _ = fn; return Marker{} }
 
-func NewQuery[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
-	_, _, _ = module, name, fn
-	return &Remote{}
+type Kind int
+
+const (
+	KindQuery Kind = iota
+	KindCommand
+	KindLive
+	KindBatch
+	KindForm
+)
+
+type Call struct {
+	Arg     any
+	Present bool
 }
 
-func NewQueryNoArg[Out any](module, name string, fn func(context.Context) (Out, error)) *Remote {
-	_, _, _ = module, name, fn
-	return &Remote{}
+func (c Call) Transported(v any) (any, error) { return v, nil }
+
+type RemoteFunc func(ctx context.Context, call Call) (any, error)
+
+type LiveFunc func(ctx context.Context, call Call, yield func(any) error) error
+
+type BatchFunc func(ctx context.Context, calls []Call) ([]any, error)
+
+type RemoteSpec struct {
+	Kind      Kind
+	Module    string
+	Name      string
+	Fn        any
+	Call      RemoteFunc
+	Live      LiveFunc
+	Batch     BatchFunc
+	DecodeArg func(arg any) (any, error)
 }
 
-func NewCommand[In, Out any](module, name string, fn func(context.Context, In) (Out, error)) *Remote {
-	_, _, _ = module, name, fn
-	return &Remote{}
-}
+func NewRemote(spec RemoteSpec) *Remote { _ = spec; return &Remote{} }
 
-func NewCommandNoArg[Out any](module, name string, fn func(context.Context) (Out, error)) *Remote {
-	_, _, _ = module, name, fn
-	return &Remote{}
-}
+func BadRequest(detail error) error { return detail }
 
-func NewLiveQuery[In, Out any](module, name string, fn func(context.Context, In, func(Out) error) error) *Remote {
-	_, _, _ = module, name, fn
-	return &Remote{}
-}
+func RefuseArgument(call Call) error { _ = call; return nil }
 
-func NewLiveQueryNoArg[Out any](module, name string, fn func(context.Context, func(Out) error) error) *Remote {
-	_, _, _ = module, name, fn
-	return &Remote{}
-}
+func RequireArgument(call Call) error { _ = call; return nil }
 
-func NewBatchQuery[In, Out any](module, name string, fn func(context.Context, []In) ([]Out, error)) *Remote {
-	_, _, _ = module, name, fn
-	return &Remote{}
-}
+func DecodeForm(arg any, into any) error { _, _ = arg, into; return nil }
 
 type ServerLoad struct{}
 
-func NewLoad[Out any](module string, fn func(context.Context) (Out, error)) *ServerLoad {
-	_, _ = module, fn
-	return &ServerLoad{}
+type LoadSpec struct {
+	Module string
+	Run    func(ctx context.Context) (any, error)
 }
+
+func NewServerLoad(spec LoadSpec) *ServerLoad { _ = spec; return &ServerLoad{} }
 
 type Endpoint struct{}
 

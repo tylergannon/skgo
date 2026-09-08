@@ -205,12 +205,46 @@ func (t Transport) revivers() map[string]func(any) (any, error) {
 	return out
 }
 
-// codecs is the registry's transport in the form internal/remotearg wants.
+// argumentRevivers is the transport as devalue revivers for a remote
+// function's *argument*, where the reviver resolves the tag and hands the
+// payload on unchanged.
+//
+// Kit's client tags a transported argument as `["Money", <payload>]`, and kit's
+// server revives it before its schema validates the result. skgo's schema is
+// the decoder polytype generated from the Go parameter type — and for a
+// transported type that decoder is the very function the `transport` hook's
+// Decode calls, because `skgo generate` emits both from one lowering. Reviving
+// here would run that decoder now and leave the generated decoder looking at a
+// Go value instead of the shape it validates; so the tag is resolved, the
+// payload is carried through, and the generated decoder does the one decode
+// there is. An unknown key still fails to parse, exactly as it does in kit.
+func (t Transport) argumentRevivers() map[string]func(any) (any, error) {
+	if len(t) == 0 {
+		return nil
+	}
+	out := make(map[string]func(any) (any, error), len(t))
+	for key := range t {
+		out[key] = func(v any) (any, error) { return v, nil }
+	}
+	return out
+}
+
+// codecs is the registry's transport in the form internal/remotearg wants for
+// an incoming argument.
 func (rs *Remotes) codecs() remotearg.Codecs {
 	return remotearg.Codecs{
 		Reducers: rs.cfg.Transport.reducers(),
-		Revivers: rs.cfg.Transport.revivers(),
+		Revivers: rs.cfg.Transport.argumentRevivers(),
 	}
+}
+
+// parsePayload turns one payload into the call a generated closure is handed.
+func (rs *Remotes) parsePayload(payload string) (Call, error) {
+	arg, present, err := remotearg.ParsePayloadWith(payload, rs.codecs())
+	if err != nil {
+		return Call{}, err
+	}
+	return rs.newCall(arg, present), nil
 }
 
 // Transported declares that T crosses the wire as a custom type under key, and

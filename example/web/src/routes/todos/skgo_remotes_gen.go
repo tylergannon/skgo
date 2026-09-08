@@ -2,26 +2,25 @@
 
 package todos
 
-import "github.com/tylergannon/skgo"
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_addTodo is addTodo, published as src/routes/todos/todos.remote.ts#addTodo.
+	Skgo_addTodo = addTodo
+	// Skgo_getTodo is getTodo, published as src/routes/todos/todos.remote.ts#getTodo.
+	Skgo_getTodo = getTodo
+	// Skgo_getTodos is getTodos, published as src/routes/todos/todos.remote.ts#getTodos.
+	Skgo_getTodos = getTodos
+	// Skgo_renameTodo is renameTodo, published as src/routes/todos/todos.remote.ts#renameTodo.
+	Skgo_renameTodo = renameTodo
+	// Skgo_retitleTodo is retitleTodo, published as src/routes/todos/todos.remote.ts#retitleTodo.
+	Skgo_retitleTodo = retitleTodo
+	// Skgo_watchCount is watchCount, published as src/routes/todos/todos.remote.ts#watchCount.
+	Skgo_watchCount = watchCount
+)
 
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{
-		skgo.NewCommand("src/routes/todos/todos.remote.ts", "addTodo", addTodo),
-		skgo.NewQuery("src/routes/todos/todos.remote.ts", "getTodo", getTodo),
-		skgo.NewQueryNoArg("src/routes/todos/todos.remote.ts", "getTodos", getTodos),
-		skgo.NewCommand("src/routes/todos/todos.remote.ts", "renameTodo", renameTodo),
-		skgo.NewCommand("src/routes/todos/todos.remote.ts", "retitleTodo", retitleTodo),
-		skgo.NewLiveQueryNoArg("src/routes/todos/todos.remote.ts", "watchCount", watchCount),
-	}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+type (
+	// SkgoOut_watchCount is the type watchCount yields.
+	SkgoOut_watchCount = int
+)

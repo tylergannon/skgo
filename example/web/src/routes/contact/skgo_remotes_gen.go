@@ -2,22 +2,17 @@
 
 package contact
 
-import "github.com/tylergannon/skgo"
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_getMessages is getMessages, published as src/routes/contact/contact.remote.ts#getMessages.
+	Skgo_getMessages = getMessages
+	// Skgo_sendMessage is sendMessage, published as src/routes/contact/contact.remote.ts#sendMessage.
+	Skgo_sendMessage = sendMessage
+)
 
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{
-		skgo.NewQueryNoArg("src/routes/contact/contact.remote.ts", "getMessages", getMessages),
-		skgo.NewForm("src/routes/contact/contact.remote.ts", "sendMessage", sendMessage),
-	}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+type (
+	// SkgoArg_sendMessage is the type sendMessage takes.
+	SkgoArg_sendMessage = Draft
+)
