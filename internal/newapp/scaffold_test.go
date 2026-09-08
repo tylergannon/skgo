@@ -144,7 +144,7 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	// version this project requires, and the checksum of the adapter source
 	// published into the proxy under it — computed here rather than asked of
 	// the code that does the checking.
-	stampedWith := fingerprintOf(t, filepath.Join(checkoutRoot(t), "internal", "adapter", "skgo-adapter.js"))
+	stampedWith := fingerprintOf(t, filepath.Join(checkoutRoot(t), "internal", "adapter"))
 	if want := "const SKGO = { version: '" + scaffoldVersion + "', adapter: '" + stampedWith + "' };"; !strings.Contains(string(written), want) {
 		t.Fatalf("the generated adapter is not stamped %s:\n%s", want, firstLines(string(written), 30))
 	}
@@ -631,15 +631,58 @@ func checkoutRoot(t *testing.T) string {
 }
 
 // fingerprintOf is how skgo names an adapter: the first 12 hex digits of the
-// SHA-256 of its source, before `skgo generate` stamps it.
-func fingerprintOf(t *testing.T, path string) string {
+// SHA-256 of everything it is made of, before `skgo generate` stamps it — the
+// entry the vite config imports, then each runtime file beside it under its own
+// slash-separated path, in sorted order.
+//
+// It is spelled out here rather than asked of `adapter.Fingerprint`, because a
+// test that asks the code under test what it expects passes however wrong that
+// code is.
+func fingerprintOf(t *testing.T, dir string) string {
+	t.Helper()
+	sum := sha256.New()
+	sum.Write(readFile(t, filepath.Join(dir, "skgo-adapter.js")))
+
+	filesDir := filepath.Join(dir, "skgo-adapter")
+	var names []string
+	if err := filepath.WalkDir(filesDir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() {
+			names = append(names, path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(names) == 0 {
+		t.Fatalf("%s holds no runtime files; the adapter is more than one file", filesDir)
+	}
+
+	relative := make([]string, len(names))
+	for i, path := range names {
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		relative[i] = filepath.ToSlash(rel)
+	}
+	sort.Strings(relative)
+	for _, name := range relative {
+		sum.Write([]byte(name + "\x00"))
+		sum.Write(readFile(t, filepath.Join(dir, filepath.FromSlash(name))))
+	}
+	return hex.EncodeToString(sum.Sum(nil))[:12]
+}
+
+func readFile(t *testing.T, path string) []byte {
 	t.Helper()
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:])[:12]
+	return raw
 }
 
 func firstLines(s string, n int) string {

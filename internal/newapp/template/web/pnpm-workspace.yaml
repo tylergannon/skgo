@@ -1,7 +1,8 @@
-# esbuild's install script only fetches or checks the platform binary, which
-# pnpm has already installed as an optional dependency. Nothing here needs it to
-# run, and a build step that runs no install scripts is one less thing between a
-# checkout and a binary.
+# esbuild is nothing this app imports any more — the engine's bundle is built
+# by kit's own vite build — but pnpm still installs it, as an optional
+# transitive dependency of @voidzero-dev/vite-plus-core, and refuses to finish
+# an install that leaves a build script unanswered. Its install script only
+# fetches or checks a platform binary nothing runs, so the answer is no.
 allowBuilds:
   esbuild: false
 minimumReleaseAgeExclude:

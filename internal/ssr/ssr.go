@@ -382,6 +382,13 @@ func (e *Engine) newRuntime() (*runtime, error) {
 		return nil, err
 	}
 
+	// URL, the text codecs and base64, natively. Kit's runtime constructs a
+	// URL and a TextEncoder while its modules are still evaluating, so these
+	// have to be in place before the bundle runs at all.
+	if err := rt.installWebGlobals(); err != nil {
+		return nil, err
+	}
+
 	if err := rt.vm.Set("__skgo_remote", func(id, payload string) (string, error) {
 		rt.calls = append(rt.calls, Call{ID: id, Payload: payload})
 		if rt.host == nil {

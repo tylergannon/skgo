@@ -216,9 +216,6 @@ importers:
       '@types/node':
         specifier: 26.4.1
         version: 26.4.1
-      esbuild:
-        specifier: 0.28.2
-        version: 0.28.2
       svelte:
         specifier: 5.56.10
         version: 5.56.10
@@ -2049,6 +2046,7 @@ snapshots:
       '@esbuild/win32-arm64': 0.28.2
       '@esbuild/win32-ia32': 0.28.2
       '@esbuild/win32-x64': 0.28.2
+    optional: true
 
   esm-env@1.2.2: {}
 
