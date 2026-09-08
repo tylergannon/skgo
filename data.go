@@ -2,6 +2,7 @@ package skgo
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/skgo/internal/ssr"
 )
 
 // dataSuffix and htmlDataSuffix are kit's own (`packages/kit/src/pathname.js`).
@@ -169,14 +171,15 @@ type dataNode struct {
 	uses *uses
 	err  *HTTPError
 	// raw is the error the load actually returned, before asHTTPError
-	// collapsed it — nil unless err is. It survives here so that the
-	// page-render path can tell an app's own Errorf apart from an ordinary Go
-	// error when it consults the app's handleError hook. __data.json's own
-	// response does not read it today: kit calls the same hook for that wire
-	// too, but wiring it there is a separate change from the page-render path
-	// this field exists for.
-	raw   error
-	redir *Redirect
+	// collapsed it — nil unless err is. It survives so both the document and
+	// `__data.json` paths can tell an app's own Errorf apart from an ordinary
+	// Go error when they consult the app's handleError hook.
+	raw error
+	// handled is the App.Error after the app's handleError hook. It is filled
+	// only while writing `__data.json`; the document path starts from the same
+	// raw error and consults the same hook immediately before rendering.
+	handled *ssr.Error
+	redir   *Redirect
 }
 
 // serveBranch runs a route's branch and writes the response.
@@ -193,7 +196,7 @@ func (ls *Loads) serveBranch(w http.ResponseWriter, r *http.Request, req dataReq
 		}
 	}
 
-	ls.writeNodes(w, r, shared, nodes)
+	ls.writeNodes(w, r, routeID, shared, nodes)
 }
 
 // runBranch runs a route's branch and returns what each node produced, without
@@ -282,7 +285,8 @@ func (ls *Loads) runBranchWith(r *http.Request, req dataRequest, routeID string,
 
 // writeNodes serializes the branch and writes it, streaming the deferred values
 // as they settle.
-func (ls *Loads) writeNodes(w http.ResponseWriter, r *http.Request, shared *loadRequest, nodes []dataNode) {
+func (ls *Loads) writeNodes(w http.ResponseWriter, r *http.Request, routeID string, shared *loadRequest, nodes []dataNode) {
+	hookCtx := hookContext(r, shared)
 	promises := &promiseTable{ids: map[*deferred]int{}}
 	// The app's transport hook first, then skgo's own Promise reducer for a
 	// deferred value — the order kit's `{ ...encoders, ... }` spread produces.
@@ -293,9 +297,13 @@ func (ls *Loads) writeNodes(w http.ResponseWriter, r *http.Request, shared *load
 
 	parts := make([]string, len(nodes))
 	for i, n := range nodes {
+		if n.kind == "error" && n.err != nil {
+			n.handled = ls.dataError(hookCtx, routeID, n.err, n.raw)
+		}
 		serialized, err := serializeNode(n, reducers, ls.cfg.Transport)
 		if err != nil {
-			serialized, _ = serializeNode(dataNode{kind: "error", err: Errorf(500, "Internal Error")}, nil, nil)
+			ls.writeFatalError(w, r, shared, ls.dataError(hookCtx, routeID, asHTTPError(err), err))
+			return
 		}
 		parts[i] = serialized
 	}
@@ -332,12 +340,12 @@ func (ls *Loads) writeNodes(w http.ResponseWriter, r *http.Request, shared *load
 	// never held behind a slow first one. A client-side navigation therefore
 	// fills the page in the same order a cold load does.
 	promises.settled(r.Context(), func(id int, value any, err error) {
-		w.Write([]byte(chunkLine(id, value, err, reducers, ls.cfg.Transport)))
+		w.Write([]byte(ls.chunkLine(hookCtx, routeID, id, value, err, reducers, ls.cfg.Transport)))
 		flush(w)
 	})
 }
 
-func chunkLine(id int, value any, err error, reducers []devalue.Reducer, transport Transport) string {
+func (ls *Loads) chunkLine(ctx context.Context, routeID string, id int, value any, err error, reducers []devalue.Reducer, transport Transport) string {
 	key, payload := "data", any(nil)
 	if err == nil {
 		// The Deferred held the raw Go value so that this is the first place it
@@ -349,14 +357,39 @@ func chunkLine(id int, value any, err error, reducers []devalue.Reducer, transpo
 		payload, err = transport.encodeLoadValue(value)
 	}
 	if err != nil {
-		key, payload = "error", errorNode(asHTTPError(err))
+		key, payload = "error", errorNodeExtra(ls.dataError(ctx, routeID, asHTTPError(err), err))
 	}
 	serialized, serr := devalue.StringifyWith(payload, reducers)
 	if serr != nil {
 		key = "error"
-		serialized, _ = devalue.StringifyWith(errorNode(Errorf(500, "Internal Error")), nil)
+		failure := fmt.Errorf("failed to serialize deferred value while rendering %s: %w", routeID, serr)
+		serialized, serr = devalue.StringifyWith(errorNodeExtra(ls.dataError(ctx, routeID, asHTTPError(failure), failure)), reducers)
+		if serr != nil {
+			serialized, _ = devalue.StringifyWith(errorNode(Errorf(500, "Internal Error")), nil)
+		}
 	}
 	return `{"type":"chunk","id":` + strconv.Itoa(id) + `,"` + key + `":` + serialized + "}\n"
+}
+
+// writeFatalError is kit's outer render_data catch: an error creating the
+// data envelope is itself passed through handleError and returned as App.Error
+// with its chosen status, rather than disguised as one of the branch's nodes.
+func (ls *Loads) writeFatalError(w http.ResponseWriter, r *http.Request, shared *loadRequest, e *ssr.Error) {
+	raw, err := jsonBytes(errorNodeExtra(e))
+	if err != nil {
+		e = &ssr.Error{Status: http.StatusInternalServerError, Message: "Internal Error"}
+		raw, _ = jsonBytes(errorNodeExtra(e))
+	}
+	h := ls.header(w)
+	if shared != nil {
+		shared.applyTo(h)
+	}
+	h.Set("Content-Type", "application/json")
+	h.Set("Content-Length", strconv.Itoa(len(raw)))
+	w.WriteHeader(e.Status)
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(raw)
+	}
 }
 
 func serializeNode(n dataNode, reducers []devalue.Reducer, transport Transport) (string, error) {
@@ -366,7 +399,11 @@ func serializeNode(n dataNode, reducers []devalue.Reducer, transport Transport) 
 	case "skip":
 		return `{"type":"skip"}`, nil
 	case "error":
-		raw, err := jsonBytes(errorNodeEnvelope{Type: "error", Error: n.err})
+		e := n.handled
+		if e == nil {
+			e = mergeCaughtError(n.err, nil)
+		}
+		raw, err := jsonBytes(errorNodeEnvelope{Type: "error", Error: errorNodeExtra(e)})
 		if err != nil {
 			return "", err
 		}
@@ -407,8 +444,8 @@ func (ls *Loads) writeRedirect(w http.ResponseWriter, shared *loadRequest, redir
 // The two envelopes kit's client parses out of a data response. They are
 // structs rather than maps so the fields land in kit's own order.
 type errorNodeEnvelope struct {
-	Type  string     `json:"type"`
-	Error *HTTPError `json:"error"`
+	Type  string          `json:"type"`
+	Error *devalue.Object `json:"error"`
 }
 
 type redirectEnvelope struct {

@@ -2,23 +2,14 @@
 
 package gate
 
-import "github.com/tylergannon/skgo"
-
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{
-		skgo.NewQueryNoArg("src/routes/todos/gate/gate.remote.ts", "getBanner", getBanner),
-		skgo.NewQuery("src/routes/todos/gate/gate.remote.ts", "getNote", getNote),
-		skgo.NewCommand("src/routes/todos/gate/gate.remote.ts", "writeNotes", writeNotes),
-	}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_getBanner is getBanner, published as src/routes/todos/gate/gate.remote.ts#getBanner.
+	Skgo_getBanner = getBanner
+	// Skgo_getNote is getNote, published as src/routes/todos/gate/gate.remote.ts#getNote.
+	Skgo_getNote = getNote
+	// Skgo_writeNotes is writeNotes, published as src/routes/todos/gate/gate.remote.ts#writeNotes.
+	Skgo_writeNotes = writeNotes
+)

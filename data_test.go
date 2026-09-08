@@ -247,6 +247,58 @@ func TestAnUnexpectedErrorSaysNothing(t *testing.T) {
 	}
 }
 
+func TestADataErrorConsultsTheAppsHandleErrorHook(t *testing.T) {
+	raw := errors.New("SECRET-INTERNAL-DETAIL: the database is on fire")
+	page := NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (pageData, error) {
+		return pageData{}, raw
+	})
+	var caught CaughtError
+	ls := mustLoads(t, func(cfg *LoadConfig) {
+		cfg.HandleError = func(ctx context.Context, got CaughtError) map[string]any {
+			caught = got
+			return map[string]any{
+				"message":   "Something went wrong on our end.",
+				"supportId": "case-1121",
+			}
+		}
+	}, page)
+
+	got := recorded(get(t, ls, "/a/__data.json?x-sveltekit-invalidated=111"))
+	want := `{"type":"error","error":{"status":500,"message":"Something went wrong on our end.","supportId":"case-1121"}}`
+	if !strings.Contains(got, want) {
+		t.Errorf("body = %s; want it to contain %s", got, want)
+	}
+	if caught.Kind != "unknown" || !errors.Is(caught.Err, raw) {
+		t.Errorf("hook caught %+v, want the original unknown error", caught)
+	}
+}
+
+func TestAnEnvelopeSerializationFailureConsultsHandleError(t *testing.T) {
+	type notSerializable struct {
+		Ch chan int `json:"ch"`
+	}
+	page := NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (notSerializable, error) {
+		return notSerializable{Ch: make(chan int)}, nil
+	})
+	ls := mustLoads(t, func(cfg *LoadConfig) {
+		cfg.HandleError = func(ctx context.Context, caught CaughtError) map[string]any {
+			if caught.Kind != "unknown" || caught.Err == nil {
+				t.Errorf("hook caught %+v, want the serialization failure as unknown", caught)
+			}
+			return map[string]any{"message": "The page could not be prepared.", "supportId": "case-1121"}
+		}
+	}, page)
+
+	rec := get(t, ls, "/a/__data.json?x-sveltekit-invalidated=111")
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", rec.Code)
+	}
+	want := `{"status":500,"message":"The page could not be prepared.","supportId":"case-1121"}`
+	if got := recorded(rec); got != want {
+		t.Errorf("body = %s, want %s", got, want)
+	}
+}
+
 func TestRedirectIsJSONAtHTTP200(t *testing.T) {
 	layout := NewLoad("src/routes/a/+layout.server.ts", func(ctx context.Context) (layoutData, error) {
 		return layoutData{}, &Redirect{Status: 307, Location: "/"}

@@ -2,21 +2,10 @@
 
 package item
 
-import "github.com/tylergannon/skgo"
-
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{
-		skgo.NewQuery("src/routes/items/[id]/item.remote.ts", "getItem", getItem),
-	}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_getItem is getItem, published as src/routes/items/[id]/item.remote.ts#getItem.
+	Skgo_getItem = getItem
+)

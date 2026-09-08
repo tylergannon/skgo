@@ -121,7 +121,7 @@
 		{
 			name: 'An error that is a bug says nothing about itself',
 			href: '/error/unexpected',
-			look: 'The Go load fails with a database connection string in its message. The visitor gets an error page at 500 and no part of what it said — the original never leaves the process.'
+			look: 'The Go load fails with a database connection string in its message. The visitor gets the message and support id chosen by handleError, and no part of the original leaves the process.'
 		},
 		{
 			name: 'A failure no error page can catch',

@@ -2,21 +2,15 @@
 
 package live
 
-import "github.com/tylergannon/skgo"
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_watchBoard is watchBoard, published as src/routes/live/board.remote.ts#watchBoard.
+	Skgo_watchBoard = watchBoard
+)
 
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{
-		skgo.NewLiveQueryNoArg("src/routes/live/board.remote.ts", "watchBoard", watchBoard),
-	}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+type (
+	// SkgoOut_watchBoard is the type watchBoard yields.
+	SkgoOut_watchBoard = Board
+)

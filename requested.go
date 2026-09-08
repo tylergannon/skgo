@@ -36,8 +36,6 @@ package skgo
 import (
 	"context"
 	"fmt"
-
-	"github.com/tylergannon/skgo/internal/remotearg"
 )
 
 // RequestedQuery is one instance of a query that the client asked the current
@@ -52,10 +50,10 @@ type RequestedQuery[In any] struct {
 	// some of what was asked for reads this to decide.
 	Arg In
 
-	set     *refreshSet
-	key     string
-	fn      *Remote
-	present bool
+	set  *refreshSet
+	key  string
+	fn   *Remote
+	call Call
 }
 
 // Refresh accepts this instance: the query is re-run after the handler returns
@@ -70,7 +68,7 @@ func (q RequestedQuery[In]) register() {
 	if q.set == nil {
 		return
 	}
-	q.set.add(q.key, refreshEntry{fn: q.fn, arg: any(q.Arg), present: q.present})
+	q.set.add(q.key, refreshEntry{fn: q.fn, call: q.call})
 }
 
 // Requested returns the instances of fn that the client asked this command or
@@ -104,7 +102,7 @@ func (q RequestedQuery[In]) register() {
 // response for a refresh to ride back on. It is never about what a query goes
 // on to do.
 func Requested[In, Out any](ctx context.Context, fn func(context.Context, In) (Out, error), limit int) ([]RequestedQuery[In], error) {
-	return requestedInstances(ctx, fn, limit, kindQuery, "Requested", "refresh", decodeArg[In])
+	return requestedInstances[In](ctx, fn, limit, KindQuery, "Requested", "refresh")
 }
 
 // RefreshRequested accepts up to limit of the instances of fn the client asked
@@ -119,7 +117,7 @@ func Requested[In, Out any](ctx context.Context, fn func(context.Context, In) (O
 // for. A handler that never mentions a query will not run it however loudly the
 // request asks.
 func RefreshRequested[In, Out any](ctx context.Context, fn func(context.Context, In) (Out, error), limit int) error {
-	requests, err := requestedInstances(ctx, fn, limit, kindQuery, "RefreshRequested", "refresh", decodeArg[In])
+	requests, err := requestedInstances[In](ctx, fn, limit, KindQuery, "RefreshRequested", "refresh")
 	if err != nil {
 		return err
 	}
@@ -150,7 +148,7 @@ func RefreshRequested[In, Out any](ctx context.Context, fn func(context.Context,
 // instance and nothing to pick by, and a handler that wants a say writes this
 // call under an `if`.
 func RefreshRequestedNoArg[Out any](ctx context.Context, fn func(context.Context) (Out, error)) error {
-	return acceptTheOneInstance(ctx, fn, kindQuery, "RefreshRequestedNoArg", "refresh")
+	return acceptTheOneInstance(ctx, fn, KindQuery, "RefreshRequestedNoArg", "refresh")
 }
 
 // ReconnectRequested is RefreshRequested for a live query, and it reconnects
@@ -162,7 +160,7 @@ func RefreshRequestedNoArg[Out any](ctx context.Context, fn func(context.Context
 // stream down and open it again on the command's own request, which is why
 // signing in reconnects the count rather than refreshing it.
 func ReconnectRequested[In, Out any](ctx context.Context, fn func(context.Context, In, func(Out) error) error, limit int) error {
-	requests, err := requestedInstances(ctx, fn, limit, kindLive, "ReconnectRequested", "reconnect", decodeArg[In])
+	requests, err := requestedInstances[In](ctx, fn, limit, KindLive, "ReconnectRequested", "reconnect")
 	if err != nil {
 		return err
 	}
@@ -180,13 +178,13 @@ func ReconnectRequested[In, Out any](ctx context.Context, fn func(context.Contex
 // See RefreshRequestedNoArg for why there is no limit, and ReconnectRequested
 // for why a live query reconnects rather than refreshes.
 func ReconnectRequestedNoArg[Out any](ctx context.Context, fn func(context.Context, func(Out) error) error) error {
-	return acceptTheOneInstance(ctx, fn, kindLive, "ReconnectRequestedNoArg", "reconnect")
+	return acceptTheOneInstance(ctx, fn, KindLive, "ReconnectRequestedNoArg", "reconnect")
 }
 
 // acceptTheOneInstance is the body the two no-argument forms share. The limit
 // is one because the key space is one: see the package comment.
-func acceptTheOneInstance(ctx context.Context, fn any, want remoteKind, call, verb string) error {
-	requests, err := requestedInstances(ctx, fn, 1, want, call, verb, refuseAnyArgument)
+func acceptTheOneInstance(ctx context.Context, fn any, want Kind, call, verb string) error {
+	requests, err := requestedInstances[noArgument](ctx, fn, 1, want, call, verb)
 	if err != nil {
 		return err
 	}
@@ -197,26 +195,50 @@ func acceptTheOneInstance(ctx context.Context, fn any, want remoteKind, call, ve
 }
 
 // noArgument stands in for the argument of a query that has none. It never
-// reaches the function: NewQueryNoArg's adapter ignores what it is handed.
+// reaches the function: the generated closure for such a query refuses any
+// argument and calls the app's function with none.
 type noArgument struct{}
 
-// refuseAnyArgument is the decode step for a query that takes no argument, and
-// it is kit's own `create_validator` with no schema: a remote function declared
-// without one errors 400 on any argument at all. Reaching that here means the
-// client sent a payload under a key its own copy of the query could not have
-// produced.
-func refuseAnyArgument(_ any, present bool) (noArgument, error) {
-	if present {
-		return noArgument{}, Errorf(400, "Bad Request")
+// decodeRequested turns one requested instance's argument into the query's own
+// parameter type, using the strict decoder `skgo generate` emitted for that
+// type and registered beside the function.
+//
+// The type assertion cannot be avoided and cannot be wrong: the decoder was
+// generated from the same Go signature the caller's type parameter comes from,
+// so In is the type it returns. It is checked rather than asserted blind
+// because a registry built some other way would otherwise corrupt a handler's
+// argument instead of failing.
+func decodeRequested[In any](target *Remote, call Call) (In, error) {
+	var zero In
+	if target.argDecoder == nil {
+		// Kit's `create_validator` with no schema: a remote function declared
+		// without an argument errors 400 on any argument at all. Reaching that
+		// here means the client sent a payload under a key its own copy of the
+		// query could not have produced.
+		return zero, RefuseArgument(call)
 	}
-	return noArgument{}, nil
+	if !call.Present {
+		// The other half of the same rule: a query declared *with* an argument
+		// was not called with one, so there is nothing for its decoder to
+		// admit.
+		return zero, &HTTPError{Status: 400, Message: "Bad Request"}
+	}
+	decoded, err := target.argDecoder(call.Arg)
+	if err != nil {
+		return zero, err
+	}
+	in, ok := decoded.(In)
+	if !ok {
+		return zero, fmt.Errorf("skgo: %s decodes its argument as %T, not %T", target.id, decoded, zero)
+	}
+	return in, nil
 }
 
 // requestedInstances is the body they all share: find the registration, take
-// the client's payloads for it, and split them at the limit. decode turns one
-// payload into the query's own argument, and is where a query that takes no
-// argument differs from one that does.
-func requestedInstances[In any](ctx context.Context, fn any, limit int, want remoteKind, call, verb string, decode func(any, bool) (In, error)) ([]RequestedQuery[In], error) {
+// the client's payloads for it, and split them at the limit. Each surviving
+// payload is decoded by the registration's own generated decoder, which is
+// where a query that takes no argument differs from one that does.
+func requestedInstances[In any](ctx context.Context, fn any, limit int, want Kind, call, verb string) ([]RequestedQuery[In], error) {
 	set := refreshSetFrom(ctx)
 	if set == nil {
 		return nil, fmt.Errorf("skgo: %s(%s): a client's %s request can only be accepted by a command or a form, because it rides back on that call's response", call, funcName(fn), verb)
@@ -248,22 +270,22 @@ func requestedInstances[In any](ctx context.Context, fn any, limit int, want rem
 			continue
 		}
 
-		tree, present, err := remotearg.ParsePayloadWith(payload, set.rs.codecs())
+		instance, err := set.rs.parsePayload(payload)
 		if err != nil {
 			set.add(key, refreshEntry{fn: target, err: Errorf(400, "Bad Request")})
 			continue
 		}
 		// Kit runs the query's own validator here and fails the entry when it
-		// rejects. skgo's validation is the decode into the Go parameter type,
-		// which is the same check at the same moment and the same answer: this
-		// instance is refused, and the rest are unaffected.
-		arg, err := decode(tree, present)
+		// rejects. skgo's validation is the generated decoder for the Go
+		// parameter type, which is the same check at the same moment and the
+		// same answer: this instance is refused, and the rest are unaffected.
+		arg, err := decodeRequested[In](target, instance)
 		if err != nil {
 			set.add(key, refreshEntry{fn: target, err: asHTTPError(err)})
 			continue
 		}
 
-		out = append(out, RequestedQuery[In]{Arg: arg, set: set, key: key, fn: target, present: present})
+		out = append(out, RequestedQuery[In]{Arg: arg, set: set, key: key, fn: target, call: instance})
 	}
 	return out, nil
 }

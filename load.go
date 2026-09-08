@@ -53,22 +53,32 @@ type ServerLoad struct {
 // answers for.
 func (l *ServerLoad) Module() string { return l.module }
 
-// NewLoad registers a server load for the module at path. Generated code calls
-// this; application code uses Load.
-func NewLoad[Out any](module string, fn func(context.Context) (Out, error)) *ServerLoad {
-	return &ServerLoad{
-		module: module,
-		run: func(ctx context.Context) (any, error) {
-			out, err := fn(ctx)
-			if err != nil {
-				return nil, err
-			}
-			// The raw Go value. Encoding happens in the serializer, which is
-			// where the app's transport hook is known; a transported value has
-			// to reach devalue as itself.
-			return out, nil
-		},
+// LoadSpec is one generated load registration. `skgo generate` writes these;
+// an application declares its loads with Load and writes none of this by hand.
+type LoadSpec struct {
+	// Module is the vite-root-relative path of the `+*.server.ts` kit
+	// compiled, which is the key kit itself records for the node.
+	Module string
+	// Run is the generated closure that calls the app's load.
+	//
+	// It answers with the load's own Go value rather than a devalue tree, and
+	// that is the one place a generated encoder does not appear. A load's
+	// result may hold a skgo.Deferred — kit lets a promise sit anywhere in the
+	// object a load returns, and each one becomes a chunk on the response as
+	// it settles — and there is no Go type polytype could project to
+	// `Promise<T>`, so nothing it could generate would describe the shape.
+	// The value is encoded where a promise can still be recognised: the
+	// serializer in data.go, which is also the only place the app's transport
+	// hook is known.
+	Run func(ctx context.Context) (any, error)
+}
+
+// NewServerLoad builds a load registration from a generated spec.
+func NewServerLoad(spec LoadSpec) *ServerLoad {
+	if spec.Run == nil {
+		panic("skgo: the generated registration for " + spec.Module + " has no Run closure")
 	}
+	return &ServerLoad{module: spec.Module, run: spec.Run}
 }
 
 // LoadConfig describes the app whose loads a registry answers. Everything but
@@ -94,6 +104,12 @@ type LoadConfig struct {
 	// goes out as whatever encoding/json makes of it, which is a plain object
 	// with no methods on the other side. See the Transport type.
 	Transport Transport
+	// HandleError is the app's `handleError` hook: the one place it decides
+	// what a failed load's visitor is told beyond status and message. The loads
+	// registry owns it because it answers the error on `__data.json`; the page
+	// renderer reads the same hook from this registry when the same load fails
+	// while rendering a document. It is optional; see the HandleError type.
+	HandleError HandleError
 	// OnPanic is called when a load panics, with the load's `+*.server.ts`
 	// module, the recovered value, and the stack. The client is told nothing
 	// but an opaque 500, so this is the only record the panic leaves; leaving

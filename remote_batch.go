@@ -38,7 +38,7 @@ func (rs *Remotes) serveBatch(w http.ResponseWriter, r *http.Request, fn *Remote
 		return
 	}
 
-	args, present, err := rs.parsePayloads(body.Payloads)
+	calls, err := rs.parsePayloads(body.Payloads)
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
 		return
@@ -47,7 +47,7 @@ func (rs *Remotes) serveBatch(w http.ResponseWriter, r *http.Request, fn *Remote
 	// A batch query is a query: it may read cookies and never write them.
 	ev := rs.newEvent(r, false)
 
-	values, err := rs.callBatch(withEvent(r.Context(), ev), fn, args, present)
+	values, err := rs.callBatch(withEvent(r.Context(), ev), fn, calls)
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
 			rs.writeResult(w, ev, map[string]any{"redirect": redirect.Location})
@@ -64,28 +64,27 @@ func (rs *Remotes) serveBatch(w http.ResponseWriter, r *http.Request, fn *Remote
 	rs.writeResult(w, ev, map[string]any{"_": nodes})
 }
 
-// parsePayloads decodes every payload in a batch, with the app's transport
-// decoders, keeping the "was there an argument at all" flag each one carries.
-func (rs *Remotes) parsePayloads(payloads []string) ([]any, []bool, error) {
-	args := make([]any, len(payloads))
-	present := make([]bool, len(payloads))
+// parsePayloads turns every payload in a batch into the call the generated
+// closure is handed, keeping the "was there an argument at all" flag each one
+// carries.
+func (rs *Remotes) parsePayloads(payloads []string) ([]Call, error) {
+	calls := make([]Call, len(payloads))
 	for i, payload := range payloads {
 		arg, ok, err := remotearg.ParsePayloadWith(payload, rs.codecs())
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		args[i], present[i] = arg, ok
+		calls[i] = rs.newCall(arg, ok)
 	}
-	return args, present, nil
+	return calls, nil
 }
 
 // callBatch runs a batch query's function, turning a panic into the error
-// every path here already knows how to answer, and takes each result through
-// the app's transport hook. See Remotes.call.
-func (rs *Remotes) callBatch(ctx context.Context, fn *Remote, args []any, present []bool) (out []any, err error) {
+// every path here already knows how to answer. See Remotes.call.
+func (rs *Remotes) callBatch(ctx context.Context, fn *Remote, calls []Call) (out []any, err error) {
 	defer func() { err = rs.recovered(fn, recover(), err) }()
 
-	values, err := fn.batch(ctx, args, present)
+	values, err := fn.batch(ctx, calls)
 	if err != nil {
 		// A length disagreement between the arguments and the results is the
 		// app's bug and says so on the server; the client gets kit's opaque
@@ -96,13 +95,8 @@ func (rs *Remotes) callBatch(ctx context.Context, fn *Remote, args []any, presen
 		return nil, err
 	}
 
-	encoded := make([]any, len(values))
-	for i, value := range values {
-		tree, err := rs.cfg.Transport.encodeTree(value)
-		if err != nil {
-			return nil, err
-		}
-		encoded[i] = tree
-	}
-	return encoded, nil
+	// The generated closure encoded each value with the codec polytype emitted
+	// for the function's own result type, so these are already the trees
+	// devalue serializes.
+	return values, nil
 }

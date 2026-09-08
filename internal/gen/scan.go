@@ -53,10 +53,15 @@ type loadFn struct {
 	module string
 	// stub is the absolute path of that file.
 	stub string
+	// source is the vite-root-relative path of the authored Go file. It names
+	// the load in diagnostics without exposing a machine-specific absolute path.
+	source string
 	// out is the load's result type, straight out of the marker's generic
 	// instantiation.
 	out types.Type
 	pos token.Position
+	// handler is the name of the generated closure that answers this load.
+	handler string
 }
 
 // remoteFn is one declared remote function.
@@ -72,9 +77,20 @@ type remoteFn struct {
 	// stub is the absolute path of that file.
 	stub string
 	// in and out are the argument and result types, straight out of the
-	// marker's generic instantiation.
+	// marked function's own signature.
 	in, out types.Type
 	pos     token.Position
+	// inCodec and outCodec are the base names of the codecs polytype
+	// generated for those two types — `Decode<inCodec>` and
+	// `Encode<outCodec>`. Either is empty when there is no generated codec for
+	// that half; see planCodecs for the three shapes that have none.
+	inCodec, outCodec string
+	// handler is the name of the generated closure that answers this function.
+	handler string
+	// requestedArg is the name of the generated wrapper skgo.Requested decodes
+	// one client-requested instance's argument with. It is empty for a
+	// function declared without an argument.
+	requestedArg string
 }
 
 // goPackage is one Go package that declares remote functions.
@@ -116,6 +132,9 @@ type app struct {
 	hostDir    string
 	// links gives the route tree's packages import paths Go can spell.
 	links *routeLinks
+	// codecSet is every type polytype emits an encoder and a strict decoder
+	// for, in the order it is given them.
+	codecSet codecSet
 }
 
 // transportedType is one entry of the app's transport hook: a Go type that
@@ -310,7 +329,7 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 				if !ok {
 					continue
 				}
-				fn, load, endpoint, err := a.readMarker(gp, p, call, mod, stub, routeID)
+				fn, load, endpoint, err := a.readMarker(gp, p, call, mod, stub, routeID, path)
 				if err != nil {
 					return nil, nil, nil, err
 				}
@@ -341,7 +360,7 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 
 // readMarker turns one call expression into a remoteFn, or returns nil if the
 // call is not a marker at all.
-func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr, mod, stub, routeID string) (*remoteFn, *loadFn, *endpointFn, error) {
+func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr, mod, stub, routeID, path string) (*remoteFn, *loadFn, *endpointFn, error) {
 	ident := calleeIdent(call.Fun)
 	if ident == nil {
 		return nil, nil, nil, nil
@@ -398,11 +417,16 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 	}
 
 	if isLoad {
+		source, err := webRel(a.cfg.Web, path)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return nil, &loadFn{
 			name:   target.Name(),
 			goPkg:  gp,
 			module: mod,
 			stub:   stub,
+			source: source,
 			out:    inst.TypeArgs.At(0),
 			pos:    pos,
 		}, nil, nil

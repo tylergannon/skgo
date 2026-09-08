@@ -153,7 +153,7 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 		// 405 this function returns.
 		return nil, nil, &HTTPError{Status: http.StatusMethodNotAllowed, Message: "POST method not allowed. No form actions exist for this page"}
 	}
-	if fn.kind != kindForm {
+	if fn.kind != KindForm {
 		// Not a 405. Kit only checks that the name resolves; a query or
 		// command named here has no `__.fn`, the call throws, and
 		// `action_error_result` turns the throw into kit's opaque 500
@@ -198,7 +198,7 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 	}
 	action := &formAction{id: compositeID, jar: ev.jar}
 
-	value, err := s.remotes.call(withEvent(r.Context(), ev), fn, arg, true)
+	value, err := s.remotes.call(withEvent(r.Context(), ev), fn, s.remotes.newCall(arg, true))
 	if err != nil {
 		var invalid *Invalid
 		if errors.As(err, &invalid) {
@@ -218,11 +218,8 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 		return nil, nil, asHTTPError(err)
 	}
 
-	tree, terr := s.remotes.cfg.Transport.encodeTree(value)
-	if terr != nil {
-		return nil, nil, asHTTPError(terr)
-	}
-	action.output = devalue.NewObject("submission", true, "result", tree)
+	// value is already the tree the form's generated encoder produced.
+	action.output = devalue.NewObject("submission", true, "result", value)
 	return action, nil, nil
 }
 

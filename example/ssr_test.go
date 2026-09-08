@@ -71,7 +71,7 @@ func TestARenderedPageCarriesGosAnswerToTheBrowser(t *testing.T) {
 	// `<hash>/<name>/<payload>`, with an empty payload for a query that takes
 	// no argument — kit's `create_remote_key`.
 	site := remoteID(t, "getSite")
-	if !strings.Contains(body, `"`+site+`/":{v:{colocated:"src/routes/site.remote.go",name:"skgo"}}`) {
+	if !strings.Contains(body, `"`+site+`/":{v:{name:"skgo",colocated:"src/routes/site.remote.go"}}`) {
 		t.Errorf("the boot payload does not carry %s's answer; the client would fetch it again", site)
 	}
 }

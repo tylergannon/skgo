@@ -1,6 +1,7 @@
 package skgo
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sync"
@@ -227,4 +228,44 @@ func (e treeEncoder) reachesWith(rt reflect.Type, seen map[reflect.Type]bool) bo
 		}
 	}
 	return false
+}
+
+// encodeValue turns a typed Go value into the plain tree devalue.Stringify
+// expects, with an encoding/json round trip.
+//
+// It is not on the remote-function path any more: a remote function's result
+// is encoded by the codec polytype generated for its own type. What is left
+// here is the walk's leaves — a load's result, a parent's merged data, and a
+// document's hydration values — none of which polytype can describe, because a
+// load may promise a value and `Promise<T>` is not a projection of any Go type.
+//
+// The one place it parts company with encoding/json is a nil slice, which json
+// writes as `null` and a generated `Array<T>` says is an array; see emptyArrays.
+func encodeValue(v any) (any, error) {
+	tree, err := roundTripValue(v)
+	if err != nil {
+		return nil, err
+	}
+	return emptyArrays(reflect.ValueOf(v), tree), nil
+}
+
+// roundTripValue is the round trip without that correction: encoding/json's
+// answer and nothing else, nil slices still spelled `null`.
+//
+// It is what builds a refresh key. The empty-array rewrite exists to make a Go
+// zero value match a declaration Go generated, and that is a claim about
+// results; an argument was chosen by the browser, and kit's client has already
+// keyed its query cache on the bytes it sent. `null` and `[]` are different
+// values there, so correcting one into the other would compute a key no page
+// holds. See queryPayload in refresh.go.
+func roundTripValue(v any) (any, error) {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("skgo: encoding a value for the wire: %w", err)
+	}
+	var tree any
+	if err := json.Unmarshal(raw, &tree); err != nil {
+		return nil, fmt.Errorf("skgo: encoding a value for the wire: %w", err)
+	}
+	return tree, nil
 }

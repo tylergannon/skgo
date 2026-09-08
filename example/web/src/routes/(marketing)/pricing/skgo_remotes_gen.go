@@ -2,25 +2,16 @@
 
 package pricing
 
-import "github.com/tylergannon/skgo"
-
-// SkgoRemotes returns the remote functions declared in this package.
-func SkgoRemotes() []*skgo.Remote {
-	return []*skgo.Remote{
-		skgo.NewQueryNoArg("src/routes/(marketing)/pricing/pricing.remote.ts", "getPlans", getPlans),
-		skgo.NewQueryNoArg("src/routes/(marketing)/pricing/pricing.remote.ts", "getSpotlight", getSpotlight),
-		skgo.NewCommand("src/routes/(marketing)/pricing/pricing.remote.ts", "quoteFor", quoteFor),
-	}
-}
-
-// SkgoLoads returns the server loads declared in this package.
-func SkgoLoads() []*skgo.ServerLoad {
-	return []*skgo.ServerLoad{
-		skgo.NewLoad("src/routes/(marketing)/pricing/+page.server.ts", pageLoad),
-	}
-}
-
-// SkgoEndpoints returns the server routes declared in this package.
-func SkgoEndpoints() []*skgo.Endpoint {
-	return []*skgo.Endpoint{}
-}
+// The functions this package declares, published under names the generated
+// bindings package can spell. Each is the function itself and not a wrapper:
+// skgo.Refresh finds a query by the code pointer of the function it names.
+var (
+	// Skgo_getPlans is getPlans, published as src/routes/(marketing)/pricing/pricing.remote.ts#getPlans.
+	Skgo_getPlans = getPlans
+	// Skgo_getSpotlight is getSpotlight, published as src/routes/(marketing)/pricing/pricing.remote.ts#getSpotlight.
+	Skgo_getSpotlight = getSpotlight
+	// Skgo_quoteFor is quoteFor, published as src/routes/(marketing)/pricing/pricing.remote.ts#quoteFor.
+	Skgo_quoteFor = quoteFor
+	// Skgo_pageLoad is pageLoad, published as the server load of src/routes/(marketing)/pricing/+page.server.ts.
+	Skgo_pageLoad = pageLoad
+)

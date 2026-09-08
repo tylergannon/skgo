@@ -26,7 +26,6 @@ import (
 
 	"github.com/tylergannon/skgo/internal/devalue"
 	"github.com/tylergannon/skgo/internal/kithash"
-	"github.com/tylergannon/skgo/internal/remotearg"
 	"github.com/tylergannon/skgo/internal/ssr"
 )
 
@@ -49,12 +48,6 @@ type SSR struct {
 	base      string
 	version   string
 	onError   func(routeID string, err error)
-	// handleError is the app's `handleError` hook. It is a render concern
-	// rather than a Loads one — nothing about `__data.json` calls it today —
-	// so it lives here rather than on LoadConfig, the same way Handle lives on
-	// its own HandleConfig rather than being smuggled onto a registry that
-	// merely happens to also run during a request.
-	handleError HandleError
 	// fetch answers a render-time `event.fetch` of the app's own routes. It is
 	// the server-route registry's own Intercept, with nothing beneath it: a
 	// fetch that matches no `+server.ts` refuses rather than falling through
@@ -76,10 +69,6 @@ type SSROptions struct {
 	// to it — the error page, or `error.html` — which says nothing about the
 	// cause, so this is the only record. Leaving it nil logs.
 	OnError func(routeID string, err error)
-	// HandleError is the app's `handleError` hook: the one place it decides
-	// what a failed render's visitor is told beyond status and message. It is
-	// optional; see the HandleError type.
-	HandleError HandleError
 	// Fetch answers a render-time `event.fetch` of the app's own routes: the
 	// registered `+server.ts` handlers, dispatched in-process rather than over
 	// a socket. Pass `endpoints.Intercept(http.NotFoundHandler())` — the same
@@ -142,16 +131,15 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		size = runtime.NumCPU()
 	}
 	s := &SSR{
-		loads:       loads,
-		remotes:     remotes,
-		info:        info,
-		template:    string(template),
-		errorPage:   string(errorPage),
-		base:        strings.TrimSuffix(m.Base, "/"),
-		version:     m.Version,
-		onError:     opts.OnError,
-		handleError: opts.HandleError,
-		fetch:       opts.Fetch,
+		loads:     loads,
+		remotes:   remotes,
+		info:      info,
+		template:  string(template),
+		errorPage: string(errorPage),
+		base:      strings.TrimSuffix(m.Base, "/"),
+		version:   m.Version,
+		onError:   opts.OnError,
+		fetch:     opts.Fetch,
 	}
 	// The engine is built after the SSR rather than into it because the bundle
 	// writes to `console` while it is coming up, and that line has to reach the
@@ -375,7 +363,7 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 	// document, expected or not (`page/index.js`), and what it returns is
 	// merged over the load's own status and message before the error page
 	// ever sees either.
-	pageError := s.documentError(s.hookContext(r, shared), route.id, e, raw)
+	pageError := s.documentError(hookContext(r, shared), route.id, e, raw)
 	for _, candidate := range nearestErrorPages(at, filled, route.errors) {
 		if candidate.node < 0 || candidate.node >= len(s.info.Nodes) {
 			continue
@@ -443,7 +431,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		jar: newCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev)),
 		url: req.url, routeID: routeID, params: params,
 	}
-	pageError := s.documentError(s.hookContext(r, hookRequest), routeID, e, raw)
+	pageError := s.documentError(hookContext(r, hookRequest), routeID, e, raw)
 
 	if len(s.info.Nodes) <= rootError {
 		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
@@ -899,13 +887,13 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 404, Message: "Error: 404"}})
 	}
 
-	if fn.kind == kindBatch {
+	if fn.kind == KindBatch {
 		return s.answerBatch(ctx, fn, payload, into)
 	}
 
 	kind := remoteLetters[fn.kind]
 
-	arg, present, err := remotearg.ParsePayload(payload)
+	call, err := s.remotes.parsePayload(payload)
 	if err != nil {
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 400, Message: "Bad Request"}})
 	}
@@ -913,7 +901,7 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 	// A live query answers a render with its first value, which is what kit's
 	// `get_first_value` takes: it drives the generator once and closes it. The
 	// stream itself is the browser's business, and it opens after hydration.
-	value, err := s.remoteValue(ctx, fn, arg, present)
+	value, err := s.remoteValue(ctx, fn, call)
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
 			// A redirect thrown by a remote function during a render is a
@@ -930,21 +918,17 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 	}
 
 	// The engine gets the same bytes `/_app/remote/...` would have sent the
-	// browser — devalue's flat form, encoded with the app's transport — so the
-	// component rendering here and the client hydrating it are looking at a
-	// value of the same type. The document gets the Go value, kept whole so
-	// that the transport hook can still see a custom type in it when the boot
-	// script is written.
+	// browser — devalue's flat form, written from the tree the generated
+	// encoder produced — so the component rendering here and the client
+	// hydrating it are looking at a value of the same type. The document gets
+	// that same tree, which still holds any transported value whole, so the
+	// transport hook can see it when the boot script is written.
 	transport := s.remotes.cfg.Transport
-	tree, err := transport.encodeTree(value)
+	serialized, err := devalue.StringifyWith(value, transport.reducers())
 	if err != nil {
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 500, Message: "Internal Error"}})
 	}
-	serialized, err := devalue.StringifyWith(tree, transport.reducers())
-	if err != nil {
-		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 500, Message: "Internal Error"}})
-	}
-	s.record(into, kind, id+"/"+payload, answered{value: value})
+	s.record(into, kind, id+"/"+payload, answered{tree: value})
 	return json.Marshal(remoteAnswer{V: serialized})
 }
 
@@ -954,20 +938,20 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 // runtime/server/remote-functions.js). A batch query is a `query` as far as the
 // browser's cache is concerned, so its answers go under `q` beside the plain
 // ones — the client resolves both through the same QueryProxy.
-var remoteLetters = map[remoteKind]string{
-	kindQuery: "q",
-	kindBatch: "q",
-	kindLive:  "l",
-	kindForm:  "f",
+var remoteLetters = map[Kind]string{
+	KindQuery: "q",
+	KindBatch: "q",
+	KindLive:  "l",
+	KindForm:  "f",
 }
 
 // remoteValue runs one remote function for a render. A live query is driven for
 // exactly one value; everything else is called once.
-func (s *SSR) remoteValue(ctx context.Context, fn *Remote, arg any, present bool) (any, error) {
-	if fn.kind == kindLive {
-		return s.remotes.firstValue(ctx, fn, arg, present)
+func (s *SSR) remoteValue(ctx context.Context, fn *Remote, call Call) (any, error) {
+	if fn.kind == KindLive {
+		return s.remotes.firstValue(ctx, fn, call)
 	}
-	return s.remotes.call(ctx, fn, arg, present)
+	return s.remotes.call(ctx, fn, call)
 }
 
 // answerBatch runs a whole `query.batch` the render collected. The engine sends
@@ -985,17 +969,12 @@ func (s *SSR) answerBatch(ctx context.Context, fn *Remote, payload string, into 
 		return json.Marshal(batchAnswer{E: &ssr.Error{Status: 400, Message: "Bad Request"}})
 	}
 
-	args := make([]any, len(payloads))
-	present := make([]bool, len(payloads))
-	for i, one := range payloads {
-		arg, ok, err := remotearg.ParsePayload(one)
-		if err != nil {
-			return json.Marshal(batchAnswer{E: &ssr.Error{Status: 400, Message: "Bad Request"}})
-		}
-		args[i], present[i] = arg, ok
+	calls, err := s.remotes.parsePayloads(payloads)
+	if err != nil {
+		return json.Marshal(batchAnswer{E: &ssr.Error{Status: 400, Message: "Bad Request"}})
 	}
 
-	values, err := s.remotes.callBatch(ctx, fn, args, present)
+	values, err := s.remotes.callBatch(ctx, fn, calls)
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
 			return json.Marshal(batchAnswer{R: &ssr.Redirect{Status: redirect.status(), Location: redirect.Location}})
@@ -1114,7 +1093,7 @@ func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest
 	ctx := r.Context()
 	hookCtx := ctx
 	if shared != nil {
-		hookCtx = s.hookContext(r, shared)
+		hookCtx = hookContext(r, shared)
 	}
 	// kit's `data_serializer.js:103` `get_data(csp)`: `<script${
 	// csp.script_needs_nonce ? \` nonce="${csp.nonce}"\` : ''}>` — computed

@@ -203,7 +203,7 @@ func TestBatchQueryAnswersASingleRefreshedInstance(t *testing.T) {
 	var seen [][]string
 	getQuotes := batchQuotes(&seen)
 	rs := testRemotes(t, RemoteConfig{}, getQuotes)
-	value, err := rs.call(context.Background(), getQuotes, "SKGO", true)
+	value, err := rs.call(context.Background(), getQuotes, rs.newCall("SKGO", true))
 	if err != nil {
 		t.Fatalf("call: %v", err)
 	}
