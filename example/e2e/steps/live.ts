@@ -40,6 +40,17 @@ Then('the board is on stream frame {int}', async ({ page, shot }, frame: number)
 	await shot();
 });
 
+Then("the board's stream is open", async ({ remotes }) => {
+	// Seeing frame 1 proves the document carried the initial value, but it does
+	// not prove a slower browser has opened the subscription yet. Wait for the
+	// request itself before establishing the no-refetch baseline below.
+	await expect
+		.poll(() => remotes.urls.some((url) => /GET \/_app\/remote\/[a-z0-9]+\/watchBoard$/.test(url)), {
+			timeout: 15_000
+		})
+		.toBe(true);
+});
+
 Then('the board\'s newest todo is {string}', async ({ page, shot }, text: string) => {
 	await expect(page.getByTestId('board-newest')).toHaveText(text, { timeout: 15_000 });
 	await shot();

@@ -47,6 +47,7 @@ Feature: A live query is rendered by Go and then keeps arriving
     Given I open "/live"
     And another tab is open at "/todos"
     And the board is on stream frame 1
+    And the board's stream is open
     And I note the remote request count
     When the other tab adds the todo "a parcel from the other tab"
     Then the board's newest todo is "a parcel from the other tab"
