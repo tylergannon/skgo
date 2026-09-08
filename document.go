@@ -95,8 +95,15 @@ type SSROptions struct {
 	Fetch http.Handler
 }
 
-// nodes is the node table a render resolves a branch's indices through.
-func (s *SSR) nodes() []ManifestSSRNode { return *s.ssrNodes.Load() }
+// nodes is the node table a render resolves a branch's indices through. It
+// falls back to info's own copy, which is where the pointer's first value comes
+// from, so that an SSR assembled as a struct literal still reads a table.
+func (s *SSR) nodes() []ManifestSSRNode {
+	if table := s.ssrNodes.Load(); table != nil {
+		return *table
+	}
+	return s.info.Nodes
+}
 
 // setNodes replaces the node table. It is how a `vp dev` server's renumbering
 // reaches a running renderer.
