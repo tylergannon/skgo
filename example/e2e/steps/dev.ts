@@ -1,4 +1,5 @@
 import { createBdd } from 'playwright-bdd';
+import type { Page } from '@playwright/test';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -155,10 +156,12 @@ Then(
 		expect(['dev', 'prod'], `x-skgo-mode was ${JSON.stringify(mode)}`).toContain(mode);
 
 		if (mode === 'dev') {
+			let document = '';
 			await expect
 				.poll(async () => {
 					const response = await page.request.get('/dev-added');
-					return { status: response.status(), body: await response.text() };
+					document = await response.text();
+					return { status: response.status(), body: document };
 				}, {
 					timeout: 30_000,
 					intervals: [250, 250, 500, 500, 1000]
@@ -170,19 +173,15 @@ Then(
 			// Vite publishes the route manifest and browser graph through separate
 			// invalidations. The raw document above proves Go has the route; wait for
 			// a navigation that also uses Kit's matching live browser graph.
-			await expect
-				.poll(async () => {
-					await page.goto('/dev-added');
-					return page.getByTestId('title').textContent();
-				}, {
-					timeout: 30_000,
-					intervals: [250, 250, 500, 500, 1000]
-				})
-				.toBe('Added while running');
+			await navigateThroughRouteUpdate(page, '/dev-added', 'Added while running');
 			await expect(page.getByTestId('live-route-load')).toHaveText(
 				'loaded by the already-running Go process'
 			);
-			expect(await page.locator('style[data-sveltekit]').textContent()).toContain('color: #176b47');
+			// The response bytes prove Go composed the route's CSS. After hydration,
+			// Vite may replace that server style tag with its HMR-managed stylesheet,
+			// so the browser-side claim is the resulting style, not tag ownership.
+			expect(document).toContain('color: #176b47');
+			await expect(page.getByTestId('title')).toHaveCSS('color', 'rgb(23, 107, 71)');
 		} else {
 			const response = await page.goto('/dev-added');
 			expect(response?.status()).toBe(404);
@@ -216,8 +215,38 @@ After(async ({ page }) => {
 		// Kit rewrites its generated browser graph separately from the manifest
 		// snapshot Go consumes. Do not let the next scenario begin until a fresh
 		// browser can hydrate the restored graph as Home as well.
-		await page.goto('/');
+		await navigateThroughRouteUpdate(page, '/', 'Home');
 		await hydrated(page);
 		await expect(page.getByTestId('title')).toHaveText('Home');
 	}
 });
+
+/**
+ * Kit invalidates the generated browser graph when a route is added or removed.
+ * If that invalidation lands during a navigation, Vite aborts it and reloads
+ * the client. Retry only that deliberate transient; every other navigation
+ * error remains a failure, and success still requires the expected live page.
+ */
+async function navigateThroughRouteUpdate(page: Page, path: string, title: string): Promise<void> {
+	await expect
+		.poll(
+			async () => {
+				try {
+					const response = await page.goto(path);
+					if (response?.status() !== 200) return null;
+					return await page.getByTestId('title').textContent();
+				} catch (error) {
+					const message = String(error);
+					if (
+						message.includes('net::ERR_ABORTED') ||
+						message.includes('is interrupted by another navigation')
+					) {
+						return null;
+					}
+					throw error;
+				}
+			},
+			{ timeout: 30_000, intervals: [250, 250, 500, 500, 1000] }
+		)
+		.toBe(title);
+}

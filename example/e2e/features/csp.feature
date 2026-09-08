@@ -35,6 +35,7 @@ Feature: A document's Content-Security-Policy header matches what it renders
     And I open "/live"
     Then the response carries a Content-Security-Policy header naming the boot script's own nonce
     And the board is on stream frame 1
+    And the board's stream is open
     When the other tab adds the todo "nonced and still hydrated"
     Then the board's newest todo is "nonced and still hydrated"
     And the board is on stream frame 2
