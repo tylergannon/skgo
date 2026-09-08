@@ -7,6 +7,7 @@
 
 origin := env("ORIGIN", "http://127.0.0.1:8080")
 port := env("SKGO_PORT", "8080")
+devport := env("SKGO_DEV_PORT", "5173")
 
 # Where `just serve` copies the server's log. The Gherkin suite reads it,
 # because one claim in it is about a line only an operator ever sees: what the
@@ -48,9 +49,25 @@ test:
 serve:
     go run ./example/cmd -listen 127.0.0.1:{{port}} 2>&1 | tee "{{log}}"
 
-# vite in dev, for the proxied path
+# The example app in dev: `vp dev` behind, Go in front. Go renders the document
+# — pulling one module at a time out of the `goja` environment the adapter
+# declares in the dev server — and forwards modules, assets and the HMR socket
+# to vite, so the browser only ever talks to Go.
+#
+# `vp` must be the project-local binary: kit checks the SSR environment with
+# `instanceof` against the project's own `vite`, and a mise-global copy of the
+# same version fails that check.
+
+# the example app in dev, both halves
 dev:
-    cd example/web && mise x -- vp dev
+    #!/bin/sh
+    set -e
+    cd "{{justfile_directory()}}/example/web"
+    mise x -- node_modules/.bin/vp dev --host 127.0.0.1 --port {{devport}} --strictPort &
+    vite=$!
+    trap 'kill "$vite" 2>/dev/null' EXIT INT TERM
+    cd "{{justfile_directory()}}"
+    go run ./example/cmd -listen 127.0.0.1:{{port}} -proxy http://127.0.0.1:{{devport}} -origin "{{origin}}" 2>&1 | tee "{{log}}"
 
 # Start the server yourself first: `just serve` for a production build, with
 # `just dev` alongside it for the proxied path. `pnpm test`, never `playwright

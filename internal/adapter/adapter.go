@@ -205,3 +205,21 @@ func Identity(version, fingerprint string) string {
 	}
 	return version + " (adapter " + fingerprint + ")"
 }
+
+// Polyfill is the engine's globals as a plain script: the classes kit compares
+// against with `instanceof` and the two a render's own `event.fetch` builds,
+// plus the webcontainer flag Svelte's no-AsyncLocalStorage path is gated on.
+//
+// A build makes it the SSR bundle's banner. Dev has no bundle, so Go runs it
+// in a fresh runtime before the first module evaluates — which is the same
+// position, and it has to be that position: the flag has to be set before any
+// module reads it, or the first async component throws
+// `async_local_storage_unavailable`.
+func Polyfill() []byte {
+	data, err := files.ReadFile(path.Join(filesDir, "polyfill.js"))
+	if err != nil {
+		// Embedded: unreachable unless this package was built wrong.
+		panic("skgo: reading the embedded polyfill: " + err.Error())
+	}
+	return data
+}

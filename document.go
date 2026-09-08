@@ -23,10 +23,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/tylergannon/skgo/internal/adapter"
 	"github.com/tylergannon/skgo/internal/devalue"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/internal/ssr"
+	"github.com/tylergannon/skgo/internal/vite"
 )
 
 // SSR renders page documents in this process.
@@ -109,33 +112,17 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	if err != nil {
 		return nil, fmt.Errorf("skgo: reading the SSR bundle: %w", err)
 	}
-	template, err := fs.ReadFile(build, info.Template)
+	template, errorPage, err := documentTemplates(build, info)
 	if err != nil {
-		return nil, fmt.Errorf("skgo: reading the document template: %w", err)
-	}
-	if info.ErrorTemplate == "" {
-		return nil, errors.New("skgo: this build names no error.html. Rebuild the frontend with an adapter that emits one.")
-	}
-	errorPage, err := fs.ReadFile(build, info.ErrorTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("skgo: reading the error document: %w", err)
-	}
-	for _, tag := range []string{"%sveltekit.head%", "%sveltekit.body%"} {
-		if !strings.Contains(string(template), tag) {
-			return nil, fmt.Errorf("skgo: %s is missing %s", info.Template, tag)
-		}
+		return nil, err
 	}
 
-	size := opts.Runtimes
-	if size <= 0 {
-		size = runtime.NumCPU()
-	}
 	s := &SSR{
 		loads:     loads,
 		remotes:   remotes,
 		info:      info,
-		template:  string(template),
-		errorPage: string(errorPage),
+		template:  template,
+		errorPage: errorPage,
 		base:      strings.TrimSuffix(m.Base, "/"),
 		version:   m.Version,
 		onError:   opts.OnError,
@@ -144,12 +131,143 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	// The engine is built after the SSR rather than into it because the bundle
 	// writes to `console` while it is coming up, and that line has to reach the
 	// same place every other failure does.
-	engine, err := ssr.New(info.Bundle, source, size, s.console)
+	engine, err := ssr.New(info.Bundle, source, poolSize(opts), s.console)
 	if err != nil {
 		return nil, err
 	}
 	s.engine = engine
 	return s, nil
+}
+
+// NewDevSSR builds a renderer that renders from a running `vite dev` server
+// rather than from a bundle.
+//
+// `vite dev` never runs an adapter — kit reaches `adapt()` only from the plugin
+// that finalises a build — so there is no SSR bundle in dev and never will be.
+// What there is instead is the same `goja` environment, declared in the dev
+// server by the same adapter plugin, and the engine pulls one transformed
+// module at a time out of it. Everything else on this side of the seam is the
+// production path, unchanged: the same loads answer the branch, the same
+// remote functions answer a query, the same document is assembled around the
+// same render.
+//
+// Three things a dev document says differently, and kit says all three
+// (`exports/vite/dev/index.js`, the dev manifest's `_.client`): the client
+// entry is served out of the installed package rather than out of a build, the
+// app module out of kit's generated dev tree, and neither carries an import,
+// stylesheet or font — vite serves a module's CSS through the module itself.
+// The boot global is `__sveltekit_dev` (`core/utils.js`, `get_global_name`).
+//
+// What still comes from the last build is the route table and the node table,
+// which means a route added while both servers are running is invisible to Go
+// until the frontend is rebuilt. That is the same limitation dev has always
+// had here, and it is not this constructor's to fix.
+func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServer string, opts SSROptions) (*SSR, error) {
+	if m.SSR == nil {
+		return nil, errors.New("skgo: this build has no SSR description, so dev has no node table to render a branch through. Rebuild the frontend with an adapter that emits one.")
+	}
+	dev := vite.NewDev(devServer)
+	info, err := devSSRInfo(m, dev)
+	if err != nil {
+		return nil, err
+	}
+	template, errorPage, err := documentTemplates(build, info)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &SSR{
+		loads:     loads,
+		remotes:   remotes,
+		info:      info,
+		template:  template,
+		errorPage: errorPage,
+		base:      strings.TrimSuffix(m.Base, "/"),
+		version:   m.Version,
+		onError:   opts.OnError,
+		fetch:     opts.Fetch,
+	}
+	entry, err := dev.Info()
+	if err != nil {
+		return nil, err
+	}
+	engine, err := ssr.NewDev(dev, entry.Entry, adapter.Polyfill(), poolSize(opts), s.console)
+	if err != nil {
+		return nil, err
+	}
+	s.engine = engine
+	return s, nil
+}
+
+// devSSRInfo is the build's SSR description with the four things dev states
+// differently substituted in. Everything it keeps — the `ssr` and `csr` options
+// each node sets, the base, the assets path — is a fact about the app rather
+// than about how it was served.
+func devSSRInfo(m Manifest, dev *vite.Dev) (ManifestSSR, error) {
+	answer, err := dev.Await(devServerTimeout)
+	if err != nil {
+		return ManifestSSR{}, err
+	}
+	if answer.Client.Start == "" || answer.Client.App == "" {
+		return ManifestSSR{}, fmt.Errorf("skgo: the dev server at %s named no client entry for a document to boot", dev.Base())
+	}
+
+	info := *m.SSR
+	info.Bundle = ""
+	info.GlobalName = answer.GlobalName
+	info.Client = ManifestClient{
+		Start:                answer.Client.Start,
+		App:                  answer.Client.App,
+		UsesEnvDynamicPublic: answer.Client.UsesEnvDynamicPublic,
+	}
+	// A node's client assets in dev are the module's own: vite serves a
+	// component's CSS through the JavaScript that imports it, so a document
+	// that linked the build's hashed files would be linking files the dev
+	// server does not have.
+	nodes := make([]ManifestSSRNode, len(info.Nodes))
+	for i, node := range info.Nodes {
+		node.Imports = nil
+		node.Stylesheets = nil
+		node.Fonts = nil
+		nodes[i] = node
+	}
+	info.Nodes = nodes
+	return info, nil
+}
+
+// devServerTimeout is how long Go waits for `vite dev` to answer at startup.
+// The two are started together and either may win; a cold vite has a config to
+// resolve and dependencies to scan before it listens.
+const devServerTimeout = 60 * time.Second
+
+// documentTemplates reads `app.html` and kit's `error.html` out of a build, and
+// refuses a template that has lost the two placeholders Go substitutes into.
+func documentTemplates(build fs.FS, info ManifestSSR) (string, string, error) {
+	template, err := fs.ReadFile(build, info.Template)
+	if err != nil {
+		return "", "", fmt.Errorf("skgo: reading the document template: %w", err)
+	}
+	if info.ErrorTemplate == "" {
+		return "", "", errors.New("skgo: this build names no error.html. Rebuild the frontend with an adapter that emits one.")
+	}
+	errorPage, err := fs.ReadFile(build, info.ErrorTemplate)
+	if err != nil {
+		return "", "", fmt.Errorf("skgo: reading the error document: %w", err)
+	}
+	for _, tag := range []string{"%sveltekit.head%", "%sveltekit.body%"} {
+		if !strings.Contains(string(template), tag) {
+			return "", "", fmt.Errorf("skgo: %s is missing %s", info.Template, tag)
+		}
+	}
+	return string(template), string(errorPage), nil
+}
+
+// poolSize is how many pages may render at once. Zero means one per CPU.
+func poolSize(opts SSROptions) int {
+	if opts.Runtimes > 0 {
+		return opts.Runtimes
+	}
+	return runtime.NumCPU()
 }
 
 // ssrTarget is the ECMAScript version skgo runs. It is a correctness claim
