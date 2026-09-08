@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -6,6 +7,32 @@ import { expect, hydrated, test } from './fixtures';
 import { tagged } from './ssr';
 
 const { After, Given, Then, When } = createBdd(test);
+
+/**
+ * Waits for the reloads a route change causes to stop. When the route tree
+ * moves, kit rewrites its generated client node files and vite broadcasts a
+ * full reload for each, so a tab with the dev client in it reloads once per
+ * batch, and a navigation started between two batches is aborted by the second
+ * (`page.goto: net::ERR_ABORTED`, seen twice in CI and never on a fast machine).
+ * Resolves once the page has gone 1500 ms without navigating, or after 15 s.
+ */
+async function settled(page: Page) {
+	const quiet = 1_500;
+	const deadline = Date.now() + 15_000;
+	let last = Date.now();
+	const bump = () => {
+		last = Date.now();
+	};
+	page.on('framenavigated', bump);
+	try {
+		while (Date.now() < deadline) {
+			if (Date.now() - last >= quiet) return;
+			await page.waitForTimeout(100);
+		}
+	} finally {
+		page.off('framenavigated', bump);
+	}
+}
 
 /** The vite root — the app whose sources a scenario may edit. */
 const app = resolve(dirname(fileURLToPath(import.meta.url)), '../../web');
@@ -170,6 +197,7 @@ Then(
 				{ timeout: 30_000, intervals: [250, 250, 500, 500, 1000] }
 			)
 			.toMatch(tagged('h1', 'title', heading));
+		await settled(page);
 		// The frame is of the page as a visitor would now see it, which is the
 		// same edit arriving by the other route.
 		await page.goto(path);
@@ -263,6 +291,7 @@ Then(
 				{ timeout: 30_000, intervals: [250, 250, 500, 500, 1000] }
 			)
 			.toContain(text);
+		await settled(page);
 		await shot();
 	}
 );
@@ -292,6 +321,7 @@ After(async ({ page }) => {
 			})
 			.toBe(404);
 	}
+	await settled(page);
 });
 
 /**
