@@ -112,6 +112,19 @@ Feature: In dev the document is Go's too, from the modules vite transformed
       And the account layout greets "ada"
       And the account page says its parent loaded "ada"
 
+    Scenario: A page option still belongs to the page that set it
+      /spa is the app's one page whose branch turns server rendering off, and
+      the node it set that on is one the added route has just renumbered. A
+      document with the page rendered into it would be the option having been
+      read off whichever node used to hold that index.
+
+      Given the app has no route "/aaa-added"
+      When a page is added at "/aaa-added" showing "tuna-9137" and the site name
+      Then the document Go sends for "/aaa-added" carries "tuna-9137"
+      When I visit "/spa"
+      Then the document carried no rendered page
+      And the site is named "skgo"
+
   Rule: Go still answers the endpoints kit's client calls
 
     A rendered document does not stop the client asking Go for a branch on a
