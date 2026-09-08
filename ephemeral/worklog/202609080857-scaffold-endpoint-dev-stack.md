@@ -8,4 +8,6 @@ doc_bug: The generated README and command comments still say development pages c
 
 doc_bug: AGENTS.md requires `/Users/tyler/src/skgo/ephemeral/inspiration/junkyard/.agents/skills/sveltekit-current/SKILL.md`, but the root inspiration tree's `junkyard` directory is empty and contains no `sveltekit-current` skill -> pinned Kit source remains available at `reference/kit@3.0.0-next.25`, but the required skill path needs repair in a separate housekeeping change.
 
+test_friction: `TestAScaffoldedProjectBuildsAndServes` publishes a synthetic module through shared Go module-cache state, so running a focused copy concurrently with `go test ./...` can race and transiently expose a half-published module -> never run duplicate scaffold tests in parallel; the full suite and the subsequent isolated focused rerun both passed.
+
 friction: Starting the scaffold's Vite server through `mise x -- vp dev` made the test own the mise wrapper rather than the Node child; cleanup orphaned Vite after the test -> launch the generated project's `node_modules/.bin/vp` directly and keep cleanup attached to the actual server process.
