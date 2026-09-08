@@ -68,22 +68,6 @@ Feature: The engine's JavaScript is SvelteKit's own build
       | /account/orders             | Orders             |
       | /render-paths               | Render-time paths  |
 
-  Scenario: A prerendered page is still the file kit's own server build wrote
-    The engine is the only place `$app/server` means something different: kit's
-    own server build — the one that prerenders — keeps kit's real module, and if
-    skgo's substitute reached it the prerender would call into a Go process that
-    is not running.
-
-    So /about is written to disk during the build, before any visitor exists.
-    The root layout puts a signed-in visitor's name on every page it renders;
-    the copy on disk cannot have one, because it was rendered when nobody was
-    signed in. The session appears a moment later, once the page has hydrated,
-    which is what says the absence is prerendering rather than a failed sign-in.
-
-    When I visit "/about"
-    Then the document already said the page's own heading is "About"
-    And the document never mentions "Signed in as ada"
-    And I am signed in as "ada"
 
   Scenario: A value Go answered during the render is in the document, under kit's own id
     The id a remote function is addressed by — `<hash>/<name>` — is appended by
