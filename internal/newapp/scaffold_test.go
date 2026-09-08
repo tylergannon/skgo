@@ -88,6 +88,7 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("scaffolding the project: %v", err)
 	}
+	writeEndpointFixture(t, dir)
 
 	// Nothing in the generated project may point back at this checkout: a
 	// replace directive or a workspace would make the whole test a
@@ -188,7 +189,9 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	routes := filepath.Join(dir, "web", "src", "routes")
 	want := []string{
 		"+error.svelte", "+layout.svelte", "+page.svelte",
-		"about/+page.svelte", "go.mod",
+		"about/+page.svelte",
+		"api/probe/+server.ts", "api/probe/server.go", "api/probe/skgo_remotes_gen.go",
+		"go.mod",
 		"hello.remote.go", "hello.remote.ts", "skgo_remotes_gen.go", "types.ts",
 	}
 	if got := filesUnder(t, routes); !slices.Equal(got, want) {
@@ -196,7 +199,7 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 			routes, strings.Join(got, "\n  "), strings.Join(want, "\n  "))
 	}
 
-	serve(t, binary, port)
+	serveBinary(t, binary, port)
 	client := &http.Client{Timeout: 20 * time.Second}
 	awaitServer(t, client, origin)
 
@@ -250,6 +253,10 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 		}
 	})
 
+	t.Run("Go answers the server route", func(t *testing.T) {
+		assertEndpoint(t, client, origin)
+	})
+
 	t.Run("a command from the wrong origin is refused with an explanation", func(t *testing.T) {
 		ids := remoteIDs(t, dir)
 		req := commandRequest(t, origin, ids["greet"])
@@ -274,6 +281,85 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 			}
 		}
 	})
+
+	devPort := freePort(t)
+	vitePort := freePort(t)
+	devOrigin := fmt.Sprintf("http://127.0.0.1:%d", devPort)
+	viteOrigin := fmt.Sprintf("http://127.0.0.1:%d", vitePort)
+	serveVite(t, filepath.Join(dir, "web"), env, vitePort)
+	awaitPort(t, vitePort)
+	serveBinary(t, binary, devPort, "--proxy", viteOrigin, "--origin", devOrigin)
+	awaitServer(t, client, devOrigin)
+
+	t.Run("development renders pages and intercepts server routes in Go", func(t *testing.T) {
+		body := getOK(t, client, devOrigin+"/")
+		for _, want := range []string{
+			`<h1 data-testid="title">myapp</h1>`,
+			`Served by go1.`,
+			`<strong data-testid="greetings">0</strong>`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("GET / was not rendered in Go during development; it lacks %q:\n%s", want, firstLines(body, 40))
+			}
+		}
+		assertEndpoint(t, client, devOrigin)
+	})
+}
+
+// writeEndpointFixture gives the freshly scaffolded app a route before its
+// documented build gesture runs. The generator must discover this authored Go
+// file, emit Kit's throwing +server.ts stub and publish the Go registration.
+func writeEndpointFixture(t *testing.T, dir string) {
+	t.Helper()
+	route := filepath.Join(dir, "web", "src", "routes", "api", "probe")
+	if err := os.MkdirAll(route, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const source = `package probe
+
+import (
+	"net/http"
+
+	"github.com/tylergannon/skgo"
+)
+
+func get(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/x-skgo-probe")
+	w.Header().Set("X-Skgo-Handler", "Go endpoint")
+	w.WriteHeader(http.StatusAccepted)
+	_, _ = w.Write([]byte("the scaffolded Go endpoint answered"))
+}
+
+var _ = skgo.GET(get)
+`
+	if err := os.WriteFile(filepath.Join(route, "server.go"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func assertEndpoint(t *testing.T, client *http.Client, origin string) {
+	t.Helper()
+	resp, err := client.Get(origin + "/api/probe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("GET /api/probe status %d; want 202: %s", resp.StatusCode, body)
+	}
+	if got := resp.Header.Get("Content-Type"); got != "text/x-skgo-probe" {
+		t.Fatalf("GET /api/probe Content-Type %q; want text/x-skgo-probe", got)
+	}
+	if got := resp.Header.Get("X-Skgo-Handler"); got != "Go endpoint" {
+		t.Fatalf("GET /api/probe X-Skgo-Handler %q; want Go endpoint", got)
+	}
+	if got := string(body); got != "the scaffolded Go endpoint answered" {
+		t.Fatalf("GET /api/probe body %q; want the scaffolded Go endpoint answer", got)
+	}
 }
 
 // Status mirrors the template's own wire type. It is written out here rather
@@ -420,14 +506,35 @@ func getOK(t *testing.T, client *http.Client, url string) string {
 	return string(body)
 }
 
-// serve starts the built binary and keeps it running for the rest of the test.
-func serve(t *testing.T, binary string, port int) {
+// serveBinary starts the built binary and keeps it running for the rest of the
+// test. extra holds the development proxy flags when this is the dev server.
+func serveBinary(t *testing.T, binary string, port int, extra ...string) {
 	t.Helper()
-	cmd := exec.Command(binary, "--listen", fmt.Sprintf("127.0.0.1:%d", port))
+	args := append([]string{"--listen", fmt.Sprintf("127.0.0.1:%d", port)}, extra...)
+	startProcess(t, "", nil, binary, args...)
+}
+
+func serveVite(t *testing.T, dir string, env []string, port int) {
+	t.Helper()
+	// Start the project-local executable itself. Starting it through `mise x`
+	// leaves Vite running after the wrapper is killed, which leaks both the
+	// process and its port out of this test.
+	vp := filepath.Join(dir, "node_modules", ".bin", "vp")
+	startProcess(t, dir, env, vp, "dev", "--host", "127.0.0.1",
+		"--port", strconv.Itoa(port), "--strictPort")
+}
+
+func startProcess(t *testing.T, dir string, env []string, name string, args ...string) {
+	t.Helper()
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	if env != nil {
+		cmd.Env = env
+	}
 	var log strings.Builder
 	cmd.Stdout, cmd.Stderr = &log, &log
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("starting %s: %v", binary, err)
+		t.Fatalf("starting %s: %v", name, err)
 	}
 	t.Cleanup(func() {
 		_ = cmd.Process.Kill()
@@ -436,6 +543,21 @@ func serve(t *testing.T, binary string, port int) {
 			t.Logf("the server said:\n%s", log.String())
 		}
 	})
+}
+
+func awaitPort(t *testing.T, port int) {
+	t.Helper()
+	address := fmt.Sprintf("127.0.0.1:%d", port)
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", address, 500*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("nothing listened on %s", address)
 }
 
 func awaitServer(t *testing.T, client *http.Client, origin string) {

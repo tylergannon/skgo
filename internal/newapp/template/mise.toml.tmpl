@@ -37,5 +37,5 @@ description = "The vite dev server. Run `mise run build` once first: the binary 
 run = "cd web && vp dev --host 127.0.0.1 --port 5173 --strictPort"
 
 [tasks."dev:go"]
-description = "The Go server, proxying pages to `vp dev`. Remote functions are still answered here."
+description = "The Go server, rendering pages from `vp dev`. Loads, remotes and server routes are answered here."
 run = "go run ./cmd --proxy http://127.0.0.1:5173"

@@ -1,10 +1,9 @@
 // Command {{.App}} serves the SvelteKit app in web/ from Go.
 //
-// With --proxy it forwards pages to a running `vp dev` server; without it, it
-// serves the build embedded at compile time and no Node process is involved at
-// all. Either way remote-function calls are answered by Go: the registry sits
-// in front of both the proxy and the static handler, because in dev kit's own
-// server would otherwise run the generated stub, whose every body throws.
+// With --proxy it renders pages in Go from modules transformed by a running
+// `vp dev` server; without it, it serves the build embedded at compile time and
+// no Node process is involved at all. Either way loads, remote functions and
+// server routes are answered by Go before a page is rendered.
 package main
 
 import (
@@ -31,7 +30,7 @@ var origin = "{{.Origin}}"
 func main() {
 	listen := flag.String("listen", hostPort(origin), "address to listen on")
 	trusted := flag.String("origin", origin, "the origin browsers reach this app at; non-GET remote calls from anywhere else are refused")
-	proxy := flag.String("proxy", "", "URL of a `vp dev` server to proxy pages to; empty serves the embedded build")
+	proxy := flag.String("proxy", "", "URL of a `vp dev` server supplying development modules and assets; empty serves the embedded build")
 	flag.Parse()
 
 	dist, err := fs.Sub(web.Build, "build")
@@ -48,7 +47,7 @@ func main() {
 	if mode == "prod" {
 		log.Printf("{{.App}}: listening on http://%s; commands are accepted from %s", *listen, *trusted)
 	} else {
-		log.Printf("{{.App}}: listening on http://%s in dev mode, proxying pages to %s; the origin check is off, as it is in kit", *listen, *proxy)
+		log.Printf("{{.App}}: listening on http://%s in dev mode, rendering from %s; the origin check is off, as it is in kit", *listen, *proxy)
 	}
 	if err := http.ListenAndServe(*listen, handler); err != nil {
 		log.Fatalf("{{.App}}: %v", err)
