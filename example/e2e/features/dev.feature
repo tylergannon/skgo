@@ -67,6 +67,64 @@ Feature: In dev the document is Go's too, from the modules vite transformed
     Then the document carried no rendered page
     And the site is named "skgo"
 
+  Rule: The routing Go serves with is the dev server's
+
+    `vp dev` serves a route tree a developer is editing, and kit numbers a node
+    by walking `src/routes` — layouts and error pages first, then leaves, in
+    traversal order (core/sync/create_manifest_data). So a page added anywhere
+    renumbers every leaf after it, and a route table Go read once at startup
+    does not merely miss the new route: it points the routes that were already
+    there at the wrong nodes, and the wrong page renders at 200. Both halves are
+    below, because the second one is the silent one.
+
+    The route each scenario names does not exist in the checkout. The scenario
+    writes it, and deletes it again afterwards. "tuna-9137" is a literal it
+    supplies and nothing in the app contains, so a document carrying it is the
+    file the scenario just wrote; "skgo" beside it is `getSite` in
+    src/routes/site.remote.go, whose generated `.remote.ts` throws, so a
+    document carrying that is Go answering a remote function called from a route
+    that did not exist when Go started.
+
+    Scenario: A route added while both servers run answers, with no rebuild and no restart
+      Given the app has no route "/aaa-added"
+      When a page is added at "/aaa-added" showing "tuna-9137" and the site name
+      Then the document Go sends for "/aaa-added" carries "tuna-9137"
+      And that document also carries "skgo"
+      When I visit "/aaa-added"
+      Then I see "Added"
+      And I see the words "tuna-9137"
+
+    Scenario: The pages already there keep their own components and their own data
+      The added route sorts ahead of every leaf in the app, so kit gives it an
+      index one of them used to have. /about is the cheap half — a page whose
+      whole content is its own heading. /account is the expensive one: a page
+      under a layout, both with Go loads, whose data only lands if the branch
+      still names the nodes those loads are registered against.
+
+      Given the app has no route "/aaa-added"
+      And I have signed in as "ada"
+      When a page is added at "/aaa-added" showing "tuna-9137" and the site name
+      Then the document Go sends for "/aaa-added" carries "tuna-9137"
+      And the document Go sends for "/about" has the page's heading "About"
+      And that document never mentions "tuna-9137"
+      When I visit "/account"
+      Then the document already said "Account of ada"
+      And the account layout greets "ada"
+      And the account page says its parent loaded "ada"
+
+    Scenario: A page option still belongs to the page that set it
+      /spa is the app's one page whose branch turns server rendering off, and
+      the node it set that on is one the added route has just renumbered. A
+      document with the page rendered into it would be the option having been
+      read off whichever node used to hold that index.
+
+      Given the app has no route "/aaa-added"
+      When a page is added at "/aaa-added" showing "tuna-9137" and the site name
+      Then the document Go sends for "/aaa-added" carries "tuna-9137"
+      When I visit "/spa"
+      Then the document carried no rendered page
+      And the site is named "skgo"
+
   Rule: Go still answers the endpoints kit's client calls
 
     A rendered document does not stop the client asking Go for a branch on a

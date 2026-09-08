@@ -68,7 +68,7 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 	stylesheets := newOrdered(client.Stylesheets)
 	fonts := append([]ManifestFont(nil), client.Fonts...)
 	for _, index := range indices {
-		node := s.info.Nodes[index]
+		node := s.nodes()[index]
 		modulepreloads.add(node.Imports...)
 		stylesheets.add(node.Stylesheets...)
 		fonts = append(fonts, node.Fonts...)
@@ -174,7 +174,7 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, pl
 	// whichever pages happen to live at those numbers.
 	nodeIDs := make([]int, len(indices))
 	for i, index := range indices {
-		nodeIDs[i] = s.info.Nodes[index].Index
+		nodeIDs[i] = s.nodes()[index].Index
 	}
 
 	// `error` is the page's error serialised with devalue, and `status` is

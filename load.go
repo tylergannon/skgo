@@ -19,6 +19,7 @@ import (
 	"runtime/debug"
 	"sort"
 	"strings"
+	"sync/atomic"
 )
 
 // Load declares fn as a SvelteKit server load. Write it beside the function, in
@@ -150,6 +151,16 @@ type Loads struct {
 
 	// byModule is every registered load, keyed by its `+*.server.ts` path.
 	byModule map[string]*ServerLoad
+	// table is the node and route tables the registry answers through. It is
+	// replaced wholesale rather than mutated because under `vp dev` it
+	// describes a route tree a developer is editing while requests are in
+	// flight: a reader holds one consistent table for the whole of a request.
+	table atomic.Pointer[loadTable]
+}
+
+// loadTable is what a manifest's nodes and routes become once the registered
+// loads are matched to them.
+type loadTable struct {
 	// nodes maps a kit node index to the load that answers it, nil when the
 	// node has no server file.
 	nodes []*ServerLoad
@@ -214,35 +225,49 @@ func NewLoads(cfg LoadConfig, loads ...*ServerLoad) (*Loads, error) {
 		ls.byModule[load.module] = load
 	}
 
-	ls.nodes = make([]*ServerLoad, len(cfg.Nodes))
-	for i, module := range cfg.Nodes {
-		if module == "" {
-			continue
-		}
-		ls.nodes[i] = ls.byModule[module]
-	}
-
-	for _, route := range cfg.Routes {
-		re, err := regexp.Compile(kitPattern(route.Pattern))
-		if err != nil {
-			return nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
-		}
-		dr := &dataRoute{id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil, errors: route.Page.ErrorPages()}
-		for _, index := range route.Page.Branch() {
-			dr.nodes = append(dr.nodes, index)
-			if index < 0 || index >= len(ls.nodes) {
-				dr.branch = append(dr.branch, nil)
-				continue
-			}
-			dr.branch = append(dr.branch, ls.nodes[index])
-		}
-		ls.routes = append(ls.routes, dr)
+	if err := ls.setRouting(cfg.Nodes, cfg.Routes); err != nil {
+		return nil, err
 	}
 
 	if err := ls.checkDrift(); err != nil {
 		return nil, err
 	}
 	return ls, nil
+}
+
+// setRouting rebuilds the node and route tables over the registered loads. It
+// is how a `vp dev` server's route tree reaches a running registry; a build's
+// reaches it once, from NewLoads.
+func (ls *Loads) setRouting(nodes []string, routes []ManifestRoute) error {
+	table := &loadTable{nodes: make([]*ServerLoad, len(nodes))}
+	for i, module := range nodes {
+		if module == "" {
+			continue
+		}
+		table.nodes[i] = ls.byModule[module]
+	}
+
+	for _, route := range routes {
+		re, err := regexp.Compile(kitPattern(route.Pattern))
+		if err != nil {
+			return fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
+		}
+		dr := &dataRoute{id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil, errors: route.Page.ErrorPages()}
+		for _, index := range route.Page.Branch() {
+			dr.nodes = append(dr.nodes, index)
+			if index < 0 || index >= len(table.nodes) {
+				dr.branch = append(dr.branch, nil)
+				continue
+			}
+			dr.branch = append(dr.branch, table.nodes[index])
+		}
+		table.routes = append(table.routes, dr)
+	}
+
+	ls.cfg.Nodes = nodes
+	ls.cfg.Routes = routes
+	ls.table.Store(table)
+	return nil
 }
 
 // checkDrift refuses to build a registry whose loads are not the ones the built
@@ -290,7 +315,7 @@ func (ls *Loads) checkDrift() error {
 // match finds the route that serves routePath, which is the pathname with the
 // data suffix already stripped and the configured base already removed.
 func (ls *Loads) match(routePath string) (*dataRoute, map[string]string, bool) {
-	for _, route := range ls.routes {
+	for _, route := range ls.table.Load().routes {
 		loc := route.pattern.FindStringSubmatchIndex(routePath)
 		if loc == nil {
 			continue
