@@ -720,6 +720,10 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 	// module before then.
 	/** @type {null | (() => any)} */
 	let manifestData = null;
+	// The root kit numbered the nodes against, which is vite's resolved root
+	// rather than the process's working directory. Node components are recorded
+	// relative to it.
+	let kitRoot = root;
 	let routingVersion = 0;
 
 	/** @type {Record<string, () => string>} */
@@ -728,7 +732,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 			if (!manifestData) {
 				throw new Error('skgo: the dev server asked for the node table before it had started');
 			}
-			return devNodeTable(root, manifestData());
+			return devNodeTable(kitRoot, manifestData());
 		},
 		'skgo:hooks': () => hooksModule(root),
 		'skgo:esm-env': () => 'export const DEV = true; export const BROWSER = false;',
@@ -776,7 +780,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 
 			const kit = await kitSync(root);
 			const config = svelteConfig(server);
-			const kitRoot = posix(resolve(server.config.root || root));
+			kitRoot = posix(resolve(server.config.root || root));
 
 			/** @type {any} */
 			let data = null;

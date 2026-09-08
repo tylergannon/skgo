@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,6 +58,10 @@ type DevManifest struct {
 	dev   *vite.Dev
 	build Manifest
 	logf  func(format string, args ...any)
+	// base and appPrefix are what a request has to be outside of for routing to
+	// be able to answer it. See consults.
+	base      string
+	appPrefix string
 
 	mu        sync.Mutex
 	version   int
@@ -74,7 +79,19 @@ func NewDevManifest(devServer string, build Manifest, logf func(format string, a
 	if build.SSR == nil {
 		return nil, errors.New("skgo: this build has no SSR description, so dev has no node table to render a branch through. Rebuild the frontend with an adapter that emits one.")
 	}
-	d := &DevManifest{dev: vite.NewDev(devServer), build: build, logf: logf, current: build}
+	base := strings.TrimSuffix(build.Base, "/")
+	appDir := build.AppDir
+	if appDir == "" {
+		appDir = "_app"
+	}
+	d := &DevManifest{
+		dev:       vite.NewDev(devServer),
+		build:     build,
+		logf:      logf,
+		base:      base,
+		appPrefix: base + "/" + appDir + "/",
+		current:   build,
+	}
 
 	deadline := time.Now().Add(devServerTimeout)
 	for {
@@ -118,9 +135,43 @@ func (d *DevManifest) Intercept(loads *Loads, endpoints *Endpoints, ssr *SSR, ne
 		d.report("skgo: dev routing: %v", err)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		d.sync()
+		if d.consults(r) {
+			d.sync()
+		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// consults reports whether routing can decide anything about this request.
+//
+// Most of what reaches Go under `vp dev` cannot: the several hundred modules a
+// page load pulls, their CSS, and the HMR socket are all vite's, addressed by
+// paths no route table is consulted for. Asking the dev server about the route
+// tree once for each of them would put a round trip and a lock in front of
+// every module a browser fetches, to answer a question none of them asks. What
+// is left — a document, a `__data.json`, a server route, a file out of
+// `static/` — is exactly what a moved route tree changes the answer to.
+//
+// The prefixes are `devPages`'s own: vite's endpoints, the app's sources, kit's
+// generated tree, and everything under the app directory.
+func (d *DevManifest) consults(r *http.Request) bool {
+	if isUpgrade(r) {
+		return false
+	}
+	urlPath, ok := normalizePath(r.URL.Path)
+	if !ok {
+		return false
+	}
+	if strings.HasPrefix(urlPath, d.appPrefix) {
+		return false
+	}
+	routePath := strings.TrimPrefix(urlPath, d.base)
+	for _, prefix := range viteOwned {
+		if strings.HasPrefix(routePath, prefix) {
+			return false
+		}
+	}
+	return true
 }
 
 // sync asks the dev server whether the route tree has moved and, if it has,
