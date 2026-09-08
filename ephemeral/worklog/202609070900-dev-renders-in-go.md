@@ -40,3 +40,18 @@
   generated node directory and names the table's own URL in the change log.
 - **`go run` is the wrong way to hold a port.** Killing the `go run` pid leaves
   its child listening. Build to a file and run that, so the pid is the server.
+
+## Which scenarios are load-bearing, measured
+
+Two mutations, each run against a real `just dev`, whole `dev.feature`:
+
+- **Go forwards the page GET to vite again** (`devPages.ServeHTTP` never calls
+  `renderer.serve`) — the four document scenarios fail (edit-reaches-bytes,
+  server-only failure, Go query in the document, Go load in the document); the
+  five endpoint scenarios still pass, because `__data.json` and the remote
+  endpoints are Go's either way.
+- **`Runner.Refresh` stops invalidating** (returns before `invalidate`) — only
+  the edit scenario fails, on its 30 s poll. Everything else is unaffected,
+  which is what makes that scenario the one that speaks for hot updates.
+
+So no single scenario covers both mechanisms, and neither is redundant.
