@@ -48,6 +48,13 @@ type SSR struct {
 	base      string
 	version   string
 	onError   func(routeID string, err error)
+	// fetch answers a render-time `event.fetch` of the app's own routes. It is
+	// the server-route registry's own Intercept, with nothing beneath it: a
+	// fetch that matches no `+server.ts` refuses rather than falling through
+	// to a page, because a page's own render is what asked for this fetch and
+	// recursing back into the SSR engine can starve the runtime pool it is
+	// still holding a runtime from. See SSROptions.Fetch.
+	fetch http.Handler
 }
 
 // SSROptions configures the renderer.
@@ -62,6 +69,20 @@ type SSROptions struct {
 	// to it — the error page, or `error.html` — which says nothing about the
 	// cause, so this is the only record. Leaving it nil logs.
 	OnError func(routeID string, err error)
+	// Fetch answers a render-time `event.fetch` of the app's own routes: the
+	// registered `+server.ts` handlers, dispatched in-process rather than over
+	// a socket. Pass `endpoints.Intercept(http.NotFoundHandler())` — the same
+	// registry the server itself answers `+server.ts` requests with, refusing
+	// rather than falling through to a page, because the page whose render
+	// asked for this fetch is itself holding a runtime out of the pool a
+	// recursive render would need. Leaving it nil refuses every render-time
+	// fetch, which is what an app with no server routes gets.
+	//
+	// Same-origin is enforced before Fetch is ever called: the bundle's own
+	// `event.fetch` refuses a cross-origin URL itself, mirroring kit's rule
+	// that a render-time fetch resolves against the page's own origin — so
+	// Fetch only ever sees a request for one of this app's own routes.
+	Fetch http.Handler
 }
 
 // NewSSR builds a renderer over an adapter build. It fails if the build carries
@@ -113,6 +134,7 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		base:      strings.TrimSuffix(m.Base, "/"),
 		version:   m.Version,
 		onError:   opts.OnError,
+		fetch:     opts.Fetch,
 	}
 	// The engine is built after the SSR rather than into it because the bundle
 	// writes to `console` while it is coming up, and that line has to reach the
@@ -616,8 +638,12 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 		s.record(answers, "f", plan.action.id, answered{tree: plan.action.output})
 	}
 
-	result, _, err := s.engine.Render(plan.routeID, request, func(id, payload string) ([]byte, error) {
-		return s.answer(withEvent(ctx, event), id, payload, answers)
+	result, _, err := s.engine.Render(plan.routeID, request, ssr.Hosts{
+		Remote: func(id, payload string) ([]byte, error) {
+			return s.answer(withEvent(ctx, event), id, payload, answers)
+		},
+		Fetch: s.fetchDispatch,
+		Match: s.matchDispatch,
 	})
 	return result, answers, err
 }
