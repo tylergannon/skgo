@@ -137,19 +137,34 @@
 	];
 </script>
 
-<h1 data-testid="title">Home</h1>
-<Greeting name="skgo" />
+<header class="showcase-hero">
+	<p class="eyebrow">The working reference</p>
+	<h1 data-testid="title">Home</h1>
+	<Greeting name="skgo" />
+	<p class="intro">
+		Every server answer in this ordinary SvelteKit app comes from Go. Pick a capability below,
+		try it, then follow the colocated <code>.go</code> and <code>.svelte</code> files.
+	</p>
 
-<svelte:boundary>
-	{@const site = await getSite()}
-	<p data-testid="site-name">{site.name}</p>
-	<p data-testid="colocated">{site.colocated}</p>
-	{#snippet failed(error)}
-		<p data-testid="site-failed">{(error as Error).message}</p>
-	{/snippet}
-</svelte:boundary>
+	<svelte:boundary>
+		{@const site = await getSite()}
+		<div class="provenance">
+			<p data-testid="site-name">{site.name}</p>
+			<p data-testid="colocated">{site.colocated}</p>
+		</div>
+		{#snippet failed(error)}
+			<p data-testid="site-failed">{(error as Error).message}</p>
+		{/snippet}
+	</svelte:boundary>
+</header>
 
-<h2>What this app demonstrates</h2>
+<div class="capability-heading">
+	<div>
+		<p class="eyebrow">The complete tour</p>
+		<h2>What this app demonstrates</h2>
+	</div>
+	<a href="https://github.com/tylergannon/skgo/tree/main/example" target="_blank">Read the source ↗</a>
+</div>
 
 <ul data-testid="capabilities">
 	{#each capabilities as capability (capability.href)}
@@ -163,3 +178,32 @@
 		</li>
 	{/each}
 </ul>
+
+<style>
+	.showcase-hero {
+		padding: clamp(2rem, 7vw, 5rem);
+		border: 1px solid var(--line);
+		background: linear-gradient(135deg, #eff9f4, #fff6ee);
+	}
+	.showcase-hero :global(h1[data-testid="title"]) { margin: 0; font-size: clamp(3rem, 9vw, 6.5rem); letter-spacing: -0.07em; }
+	.showcase-hero :global(h2) { margin-top: 0.4rem; color: var(--green); font-family: Georgia, serif; font-weight: 400; }
+	.eyebrow { margin: 0 0 0.6rem; color: var(--green); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+	.intro { max-width: 46rem; margin: 1.5rem 0; font-size: 1.08rem; line-height: 1.6; color: #52615b; }
+	.provenance { display: inline-flex; gap: 0.7rem; align-items: center; padding: 0.5rem 0.7rem; background: var(--ink); color: white; font-size: 0.78rem; }
+	.provenance :global(p) { margin: 0; }
+	.provenance :global(p:first-child) { color: var(--lime); font-weight: 800; }
+	.provenance :global(p:last-child) { font-family: ui-monospace, monospace; }
+	.capability-heading { display: flex; justify-content: space-between; gap: 2rem; align-items: end; margin: 5rem 0 1.5rem; }
+	.capability-heading h2 { margin: 0; font-size: clamp(2rem, 5vw, 3.4rem); letter-spacing: -0.05em; }
+	.capability-heading a { margin-bottom: 0.35rem; font-size: 0.86rem; font-weight: 800; }
+	ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 1px; list-style: none; background: var(--line); }
+	li { min-height: 12rem; padding: 1.5rem; background: var(--paper); }
+	li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+	li a { color: var(--green); font-size: 1.05rem; font-weight: 800; text-decoration-thickness: 1px; text-underline-offset: 0.25rem; }
+	li p { margin: 1rem 0 0; color: #62706b; line-height: 1.55; }
+	@media (max-width: 700px) {
+		ul { grid-template-columns: 1fr; }
+		li:last-child:nth-child(odd) { grid-column: auto; }
+		.capability-heading { display: block; }
+	}
+</style>

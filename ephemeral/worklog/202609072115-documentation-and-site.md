@@ -1,0 +1,5 @@
+decision: Documentation is organized around one mental model: SvelteKit owns frontend conventions while Go owns every server boundary and production rendering. Source is the current example and pinned Kit 3 behavior, not roadmap claims.
+decision: Publish as the repository project site at https://tylergannon.github.io/skgo/ because the repository owner is tylergannon and GitHub Pages is not yet configured.
+doc_bug: The example already demonstrates the product broadly, but the README does not map capabilities to example routes or show the authoring loop, so readers must reverse-engineer the repository.
+correction: The example SSR tests pin exact paragraph markup for Go-provided home-page values; presentation changes must wrap but preserve those elements so the example continues proving the initial document carries them.
+friction: `just serve` reported exit 0 after the Go server failed to bind because `go run ... | tee` does not propagate the left side's status -> make the recipe use pipefail or an equivalent status-preserving log path.

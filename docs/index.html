@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="skgo is a SvelteKit application server written in Go. SvelteKit on the frontend, Go on the server, one binary in production.">
+  <title>skgo — SvelteKit, served by Go</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="nav wrap">
+    <a class="mark" href="#top" aria-label="skgo home"><span>sk</span><i>/</i><b>go</b></a>
+    <nav aria-label="Primary">
+      <a href="#model">How it works</a>
+      <a href="#start">Start</a>
+      <a href="https://github.com/tylergannon/skgo">GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero wrap">
+      <p class="eyebrow">A SvelteKit application server written in Go</p>
+      <h1>SvelteKit on the frontend.<br><em>Go on the server.</em></h1>
+      <p class="lede">Keep SvelteKit 3, Svelte 5, Vite+, and the conventions you know. Go owns every server endpoint, renders pages, and ships the whole application as one binary.</p>
+      <div class="actions">
+        <a class="button primary" href="#start">Build an app</a>
+        <a class="button" href="https://github.com/tylergannon/skgo/tree/main/example">Explore the example</a>
+      </div>
+      <div class="terminal" role="img" aria-label="A terminal showing how to create and run a skgo application">
+        <div class="terminal-bar"><span></span><span></span><span></span><small>terminal</small></div>
+        <pre><code><span class="prompt">$</span> go run github.com/tylergannon/skgo/cmd/skgo@latest new hello
+<span class="prompt">$</span> cd hello && mise trust && mise run build
+<span class="prompt">$</span> ./bin/hello
+<span class="muted">hello: listening on http://127.0.0.1:8080</span></code></pre>
+      </div>
+      <div class="facts" aria-label="Key facts">
+        <p><strong>One process</strong><span>No Node sidecar</span></p>
+        <p><strong>One server</strong><span>Every endpoint is Go</span></p>
+        <p><strong>Kit semantics</strong><span>Not a Go-flavored imitation</span></p>
+      </div>
+    </section>
+
+    <section id="model" class="section wrap">
+      <div class="section-head">
+        <p class="eyebrow">The same app, a sharper boundary</p>
+        <h2>Write each part in its natural language.</h2>
+        <p>skgo is an ordinary SvelteKit adapter on one side and ordinary Go on the other. Code generation connects them without asking either community to pretend.</p>
+      </div>
+      <div class="split">
+        <article class="pane svelte">
+          <p class="label">web/src/routes/+page.svelte</p>
+          <h3>The Svelte side</h3>
+          <pre><code><span class="kw">&lt;script</span> lang=<span class="str">"ts"</span><span class="kw">&gt;</span>
+  <span class="kw">import</span> { addTodo, todos }
+    <span class="kw">from</span> <span class="str">'./todos.remote'</span>;
+<span class="kw">&lt;/script&gt;</span>
+
+{#each <span class="kw">await</span> todos() as todo}
+  <span class="kw">&lt;p&gt;</span>{todo.text}<span class="kw">&lt;/p&gt;</span>
+{/each}</code></pre>
+          <p>Components, routing, navigation, boundaries, and Kit's native remote-function client stay SvelteKit.</p>
+        </article>
+        <article class="pane go">
+          <p class="label">web/src/routes/todos.remote.go</p>
+          <h3>The Go side</h3>
+          <pre><code><span class="kw">func</span> todos(context.Context) ([]Todo, error) {
+  <span class="kw">return</span> store.List(), nil
+}
+
+<span class="kw">func</span> addTodo(ctx context.Context, text string) (Todo, error) {
+  todo := store.Add(text)
+  <span class="kw">return</span> todo, skgo.RefreshRequestedNoArg(ctx, todos)
+}
+
+<span class="kw">var</span> _ = skgo.Query(todos)</code></pre>
+          <p>Application I/O, trust, state, errors, loads, and HTTP handlers stay Go.</p>
+        </article>
+      </div>
+      <div class="generated">
+        <span>go generate</span>
+        <p>emits Kit-facing stubs, TypeScript types, strict wire codecs, route links, and Go registration</p>
+      </div>
+    </section>
+
+    <section class="dark">
+      <div class="section wrap">
+        <div class="section-head">
+          <p class="eyebrow">Not just remote functions</p>
+          <h2>A Go monolith with a real frontend framework.</h2>
+        </div>
+        <div class="grid">
+          <article><b>01</b><h3>Remote functions</h3><p>Typed queries, commands, forms, live queries, and batched queries use Kit's own browser protocol.</p></article>
+          <article><b>02</b><h3>Server loads</h3><p>Colocated Go functions answer layout and page data, including streamed promises and nested errors.</p></article>
+          <article><b>03</b><h3>HTTP routes</h3><p>A <code>+server.ts</code> route is implemented beside it as a normal <code>net/http</code> handler.</p></article>
+          <article><b>04</b><h3>In-process SSR</h3><p>Kit's renderer runs inside embedded goja. Pages leave Go with their markup already present.</p></article>
+          <article><b>05</b><h3>Kit behavior</h3><p>Route params, CSR-only pages, scriptless pages, hooks, transport, errors, redirects, and CSP keep Kit semantics.</p></article>
+          <article><b>06</b><h3>A Go deployment</h3><p>Frontend assets and the SSR bundle are embedded. Node is needed to build, never to run.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="start" class="section wrap start">
+      <div>
+        <p class="eyebrow">Five minutes to the useful part</p>
+        <h2>Generate the plumbing.<br>Own the application.</h2>
+        <p>The starter contains a query, command, generated types, server composition, dev proxy, embedded production build, and one shared origin setting.</p>
+        <ol>
+          <li><strong>Create</strong><span><code>skgo new</code> writes a standalone Go module and SvelteKit app.</span></li>
+          <li><strong>Build</strong><span><code>mise run build</code> installs, generates, builds, and links.</span></li>
+          <li><strong>Extend</strong><span>Add Go beside the route; consume the generated module from Svelte.</span></li>
+        </ol>
+      </div>
+      <aside>
+        <p class="label">What to read next</p>
+        <a href="https://github.com/tylergannon/skgo#readme"><strong>README</strong><span>The compact working guide →</span></a>
+        <a href="https://github.com/tylergannon/skgo/tree/main/example"><strong>Example app</strong><span>Every demonstrated capability →</span></a>
+        <a href="https://pkg.go.dev/github.com/tylergannon/skgo"><strong>Go package</strong><span>The API reference →</span></a>
+      </aside>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <a class="mark" href="#top"><span>sk</span><i>/</i><b>go</b></a>
+    <p>Open source under the MIT license. Pre-1.0 and tracking SvelteKit 3.</p>
+    <a href="https://github.com/tylergannon/skgo">View on GitHub ↗</a>
+  </footer>
+</body>
+</html>
