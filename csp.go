@@ -391,6 +391,19 @@ func (d *documentCSP) ScriptNeedsNonce() bool {
 	return d.provider.ScriptNeedsNonce || d.report.ScriptNeedsNonce
 }
 
+// ScriptNeedsHash is kit's `Csp.script_needs_hash`: true if either policy
+// needs one. Unlike ScriptNeedsNonce, this is decided entirely by the
+// build's configured directives (newCSPProvider computes it once, at
+// construction) — it never depends on which scripts AddScript has seen — so
+// it is safe to read before this request's render has produced any script
+// content at all, which is what lets Go tell the engine which branch of
+// kit's `csp.script_needs_nonce ? { nonce } : { hash: script_needs_hash }`
+// (render.js:198) a render is in before the engine ever calls Svelte's own
+// renderer.
+func (d *documentCSP) ScriptNeedsHash() bool {
+	return d.provider.ScriptNeedsHash || d.report.ScriptNeedsHash
+}
+
 // Header is the `content-security-policy` header value, or "" for none.
 func (d *documentCSP) Header() string { return d.provider.header() }
 
@@ -403,6 +416,16 @@ func (d *documentCSP) ReportOnlyHeader() string { return d.report.header() }
 type documentHeaders struct {
 	CSP           string
 	CSPReportOnly string
+	// Nonce and ScriptNeedsNonce are this request's csp.nonce and
+	// csp.script_needs_nonce, threaded to stream() so a streamed value's own
+	// `<script>` tag can carry the same nonce the boot script's did — kit's
+	// `data_serializer.js:103` `get_data(csp)`: `<script${
+	// csp.script_needs_nonce ? \` nonce="${csp.nonce}"\` : ''}>`. Hash mode
+	// gets nothing here, matching kit: a streamed chunk is never added to
+	// either provider's script-src sources, so hash mode and streaming stay
+	// exactly as incompatible in skgo as they are in kit itself.
+	Nonce            string
+	ScriptNeedsNonce bool
 }
 
 // setCSPHeaders is kit's own two `if (header) headers.set(...)` lines

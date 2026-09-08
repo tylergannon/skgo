@@ -4,10 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // sha256Base64 is used only to check that assemble() hashed the exact
@@ -293,7 +295,11 @@ func assembleWithCSP(t *testing.T, cfg *ManifestCSP) (string, documentHeaders) {
 	s.info.CSP = cfg
 	req := dataRequest{url: mustURL(t, "http://127.0.0.1/account/orders")}
 	plan := plannedPage(promising(map[string]any{"who": "ada"}))
-	document, promises, headers, err := s.assemble(req, plan, rendered(), nil)
+	csp, err := newDocumentCSP(cfg)
+	if err != nil {
+		t.Fatalf("newDocumentCSP: %v", err)
+	}
+	document, promises, headers, err := s.assemble(req, plan, rendered(), nil, csp)
 	if err != nil {
 		t.Fatalf("assemble: %v", err)
 	}
@@ -379,5 +385,151 @@ func TestSetCSPHeaders(t *testing.T) {
 	setCSPHeaders(rec.Header(), documentHeaders{})
 	if got := rec.Header().Get("Content-Security-Policy"); got != "" {
 		t.Errorf("Content-Security-Policy: got %q, want none", got)
+	}
+}
+
+// --- streaming under CSP ---
+//
+// kit's data_serializer.js:103, `get_data(csp)`:
+//
+//	const open = `<script${csp.script_needs_nonce ? ` nonce="${csp.nonce}"` : ''}>`;
+//
+// A document that computed a nonce for its own boot script has to hand that
+// same nonce to every chunk a load's promise settles into afterward — the
+// whole point of a nonce is that only script the server itself wrote carries
+// it, and a browser enforcing `script-src 'self' 'nonce-xxx'` silently drops
+// every `<script>` that doesn't, which is exactly what left the four
+// streaming scenarios unable to fill in under this PR before this fix.
+func TestStreamedChunkCarriesTheSameNonceAsTheBootScript(t *testing.T) {
+	const nonce = "STREAM7ovWlm6hFuylfFw=="
+	s := streamer(nil)
+	s.info.CSP = &ManifestCSP{Mode: "nonce", Directives: map[string]CSPDirectiveValue{"script-src": sources("self")}}
+
+	orders := pending()
+	plan := plannedPage(
+		promising(map[string]any{"who": "ada"}),
+		promising(map[string]any{"orders": orders}),
+	)
+	req := dataRequest{url: mustURL(t, "http://127.0.0.1/account/orders")}
+	csp := newDocumentCSPWithNonce(s.info.CSP, nonce)
+	document, promises, headers, err := s.assemble(req, plan, rendered(), nil, csp)
+	if err != nil {
+		t.Fatalf("assemble: %v", err)
+	}
+	if !headers.ScriptNeedsNonce || headers.Nonce != nonce {
+		t.Fatalf("headers: got %+v", headers)
+	}
+
+	go func() {
+		time.Sleep(10 * time.Millisecond)
+		fulfil(orders, []map[string]any{{"item": "a slow parcel"}})
+	}()
+
+	rec := httptest.NewRecorder()
+	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises, headers)
+
+	wantChunk := `<script nonce="` + nonce + `">__sveltekit_test.resolve(1, () => [[{item:"a slow parcel"}]])</script>` + "\n"
+	if !strings.Contains(rec.Body.String(), wantChunk) {
+		t.Errorf("streamed chunk did not carry the boot script's own nonce:\n got %q\nwant to contain %q", rec.Body.String(), wantChunk)
+	}
+	// The header and the chunk have to name the same nonce, or a browser
+	// enforcing the header still blocks the chunk even though the boot
+	// script itself hydrates fine.
+	if !strings.Contains(headers.CSP, "'nonce-"+nonce+"'") {
+		t.Errorf("header does not name the same nonce: %q", headers.CSP)
+	}
+}
+
+// Hash mode plus streaming is broken in kit too: `data_serializer.js`'s
+// `get_data` only ever tests `csp.script_needs_nonce`, and nothing in kit
+// ever adds a streamed chunk's content to either provider's script-src
+// sources (`add_script` is called exactly once, for the boot script,
+// `render.js:581`). skgo mirrors that limitation rather than papering over
+// it: a streamed chunk in hash mode carries no nonce and no hash source,
+// exactly like kit's own — which is why the example build uses `mode:
+// 'auto'` rather than `mode: 'hash'` (vite.config.ts).
+func TestStreamedChunkCarriesNoAttributeInHashMode(t *testing.T) {
+	s := streamer(nil)
+	s.info.CSP = &ManifestCSP{Mode: "hash", Directives: map[string]CSPDirectiveValue{"script-src": sources("self")}}
+
+	orders := pending()
+	plan := plannedPage(
+		promising(map[string]any{"who": "ada"}),
+		promising(map[string]any{"orders": orders}),
+	)
+	req := dataRequest{url: mustURL(t, "http://127.0.0.1/account/orders")}
+	csp := newDocumentCSPWithNonce(s.info.CSP, "unused-in-hash-mode")
+	document, promises, headers, err := s.assemble(req, plan, rendered(), nil, csp)
+	if err != nil {
+		t.Fatalf("assemble: %v", err)
+	}
+	if headers.ScriptNeedsNonce {
+		t.Fatal("hash mode must not need a nonce")
+	}
+
+	go func() {
+		time.Sleep(10 * time.Millisecond)
+		fulfil(orders, []map[string]any{{"item": "a slow parcel"}})
+	}()
+
+	rec := httptest.NewRecorder()
+	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises, headers)
+
+	wantChunk := `<script>__sveltekit_test.resolve(1, () => [[{item:"a slow parcel"}]])</script>` + "\n"
+	if !strings.Contains(rec.Body.String(), wantChunk) {
+		t.Errorf("streamed chunk:\n got %q\nwant to contain bare %q", rec.Body.String(), wantChunk)
+	}
+}
+
+// --- auto mode: a dynamic page and a prerendered page resolve differently ---
+//
+// kit's own rule (`Csp`'s constructor, csp.js): `use_hashes = mode ===
+// 'hash' || (mode === 'auto' && prerender)`. skgo's Go engine never renders a
+// prerendered route — kit's own Node build prerenders it, entirely before
+// skgo's binary exists, and writes the CSP kit computed straight into the
+// static file this render path never reaches (render.js: a prerendered
+// response gets `csp.csp_provider.get_meta()` as a `<meta http-equiv>` tag,
+// not a header) — so `newDocumentCSP` hardcodes `prerender: false` and "auto"
+// always resolves to nonce mode for every document Go assembles
+// (TestCSPAutoModeBehavesAsNonceBecauseSkgoNeverPrerenders, above).
+//
+// What this test anchors is the other half of that same formula: had Go ever
+// needed to answer for a prerendered page, kit's own rule collapses
+// `mode: 'auto'` to exactly the `use_hashes = true` branch that an explicit
+// `mode: 'hash'` config already takes — the same branch
+// TestCSPHeaderMatchesKit_HashMode is anchored to. So the one build config
+// the example app now uses (`mode: 'auto'`, vite.config.ts) is provably safe
+// for kit's own separate prerendering pass to resolve on its own: whatever it
+// bakes into /about's static file is hash mode, indistinguishable from what
+// this test's "prerendered" case produces.
+func TestCSPAutoMode_DynamicIsNonceModePrerenderedWouldBeHashMode(t *testing.T) {
+	const nonce = "AUTO7ovWlm6hFuylfFw=="
+	directives := map[string]CSPDirectiveValue{"script-src": sources("self")}
+
+	dynamic := newDocumentCSPWithNonce(&ManifestCSP{Mode: "auto", Directives: directives}, nonce)
+	dynamic.AddScript(bootScriptFixture)
+	if dynamic.ScriptNeedsHash() {
+		t.Error("a dynamically rendered page under auto mode must not need a hash")
+	}
+	if !dynamic.ScriptNeedsNonce() {
+		t.Error("a dynamically rendered page under auto mode must need a nonce")
+	}
+
+	// Kit's own Node build takes this branch for /about, never Go: the same
+	// directives, the same formula, with prerender true instead of false.
+	prerendered := newDocumentCSPWithNonce(&ManifestCSP{Mode: "hash", Directives: directives}, nonce)
+	prerendered.AddScript(bootScriptFixture)
+	if !prerendered.ScriptNeedsHash() || prerendered.ScriptNeedsNonce() {
+		t.Error("a prerendered page under auto mode must need a hash, not a nonce")
+	}
+
+	if dynamic.Header() == prerendered.Header() {
+		t.Errorf("the dynamic and prerendered headers must differ: both are %q", dynamic.Header())
+	}
+	if !strings.Contains(dynamic.Header(), "'nonce-"+nonce+"'") {
+		t.Errorf("dynamic header: got %q", dynamic.Header())
+	}
+	if !strings.Contains(prerendered.Header(), "'"+bootScriptFixtureHash+"'") {
+		t.Errorf("prerendered header: got %q", prerendered.Header())
 	}
 }

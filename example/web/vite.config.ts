@@ -10,34 +10,43 @@ export default defineConfig({
 			paths: { origin: process.env.ORIGIN ?? 'http://127.0.0.1:8080' },
 			experimental: { remoteFunctions: true },
 			compilerOptions: { experimental: { async: true } },
-			// "hash", not "nonce", and not the naive choice: nonce mode bakes a
-			// fresh random value into *every* render of a page, which fails two
-			// things at once. First, kit itself: `mode: 'nonce'` combined with
-			// prerendering — `/about` is prerendered
-			// (src/routes/about/+page.ts) — is refused outright at build time
-			// ("Cannot use prerendering if config.csp.mode === 'nonce'",
-			// render.js) before the build ever reaches Go. Second, and true even
-			// for a build with nothing prerendered at all: kit's own ETag is a
-			// hash of the transformed HTML *after* the nonce is substituted into
-			// it (render.js's `headers.set('etag', hash(transformed))`), so a
-			// nonced page's ETag changes on every single render — kit's own
-			// conditional-GET support quietly stops working for any page that
-			// needs one. skgo relies on exactly the guarantee nonce mode breaks
-			// (example/ssr_test.go's TestARenderedPageDoesNotRepeatItself: the
-			// same page rendered twice with unchanged data is byte-identical,
-			// which is what makes an ETag meaningful at all), so nonce mode is
-			// the wrong choice for a shared app config.
+			// `mode: 'auto'` is kit's own default (`list(['auto', 'hash',
+			// 'nonce'])`'s first option, core/config/options.js) — the config a
+			// SvelteKit developer gets without ever touching `csp.mode` at all, so
+			// it is the one a shared example app should demonstrate. Kit's own
+			// rule for what `auto` resolves to, per page, is `use_hashes = mode
+			// === 'hash' || (mode === 'auto' && prerender)` (`Csp`'s constructor,
+			// runtime/server/page/csp.js): a page kit prerenders gets a hash, a
+			// page it renders per-request gets a nonce.
 			//
-			// Hash mode has neither problem — the hash is a pure function of the
-			// boot script's own text, so it is as deterministic as the render
-			// itself — and it is still the harder path to get right: it requires
-			// Go to hash the *exact* bytes it is about to write into the
-			// `<script>` tag, and a single wrong byte (a mismatched sha256, a
-			// wrong base64 alphabet, a truncated string) fails silently in Go and
-			// loudly in the browser — the tag simply won't hydrate. Nonce mode's
-			// header/attribute pairing is exercised just as rigorously, but at
-			// the Go test level, anchored to kit's own `Csp` output (csp_test.go).
-			csp: { mode: 'hash', directives: { 'script-src': ['self'] } }
+			// This app has both kinds of page under that one config. `/about` is
+			// prerendered (src/routes/about/+page.ts) — kit's own Node build
+			// resolves `auto` to hash mode for it and bakes the result straight
+			// into the static file, entirely before skgo's binary exists, the way
+			// prerendering always has. Every other page is rendered by Go per
+			// request, where `auto` resolves to nonce mode (newDocumentCSP,
+			// csp.go): the engine never prerenders anything — prerendering is
+			// kit's own build-time pass — so `prerender` is always false on
+			// skgo's side of the ternary, and `auto` is nonce mode there
+			// unconditionally. `/stream` and `/live` are both pages of this
+			// second kind, which is what makes them the two pages a
+			// CSP-and-streaming claim has to be checked against: a value a load
+			// promises arrives later, on the same response, as its own inline
+			// `<script>` (data_serializer.js:103) — and under a nonce policy that
+			// script has to carry the same nonce the boot script did, or the
+			// browser drops it and the promised value never fills in.
+			//
+			// Explicit `mode: 'hash'` stays exercised too, just no longer here:
+			// hash mode's own hashing (Go has to hash the *exact* bytes it is
+			// about to write into the `<script>` tag, and a single wrong byte
+			// fails silently in Go and loudly in the browser) is anchored at the
+			// Go test level against kit's own `Csp` output (csp_test.go), and
+			// hash mode's one real limitation — kit never nonces or hashes a
+			// streamed chunk at all, so hash mode and streaming are exactly as
+			// incompatible in skgo as they are in kit itself — is proven there
+			// too, rather than baked into a shared app config that also needs to
+			// stream.
+			csp: { mode: 'auto', directives: { 'script-src': ['self'] } }
 		})
 	]
 });

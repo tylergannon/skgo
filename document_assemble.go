@@ -16,17 +16,15 @@ import (
 // is assembled in kit's five buckets and in kit's order, the boot script is
 // kit's split-bundle form with kit's own indentation, and the template is
 // substituted the way the function kit compiles from `app.html` substitutes it.
-func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, answers map[string]map[string]answered) (string, *promiseTable, documentHeaders, error) {
-	// kit's `const csp = new Csp(options.csp, { prerender: ... })`, built here
-	// rather than closer to the boot script because kit's own placement is
-	// this early too: `csp.nonce` has to exist before `%sveltekit.nonce%` is
-	// substituted below, whether or not this document ever adds a script to
-	// it.
-	csp, err := newDocumentCSP(s.info.CSP)
-	if err != nil {
-		return "", nil, documentHeaders{}, err
-	}
-
+//
+// csp is kit's `const csp = new Csp(options.csp, { prerender: ... })`, built
+// by the caller rather than here — kit builds it before `render_response` is
+// even called (`render_page`), because `csp.nonce` also has to exist before
+// the engine's own Svelte render call, which happens before assemble ever
+// runs (renderPlan). The same object flows through both, which is what makes
+// the boot script's nonce, the streamed chunks' nonce and any nonce Svelte's
+// own renderer added on its own all agree.
+func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, answers map[string]map[string]answered, csp *documentCSP) (string, *promiseTable, documentHeaders, error) {
 	client := s.info.Client
 	indices, csr := plan.indices, plan.hydrate
 
@@ -134,7 +132,13 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 	}
 
 	document := s.substitute(head, body, assets, csp.nonce)
-	return document, promises, documentHeaders{CSP: csp.Header(), CSPReportOnly: csp.ReportOnlyHeader()}, nil
+	headers := documentHeaders{
+		CSP:              csp.Header(),
+		CSPReportOnly:    csp.ReportOnlyHeader(),
+		Nonce:            csp.nonce,
+		ScriptNeedsNonce: csp.ScriptNeedsNonce(),
+	}
+	return document, promises, headers, nil
 }
 
 // bootScript is the one script a document carries: the object the client reads
