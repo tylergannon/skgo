@@ -58,6 +58,7 @@ func (a *app) writeLoadStubs() error {
 
 		var b strings.Builder
 		b.WriteString(tsHeader)
+		b.WriteString("import { building } from '$app/env';\n")
 
 		if len(transported) > 0 {
 			sort.Strings(transported)
@@ -81,15 +82,16 @@ func (a *app) writeLoadStubs() error {
 			sort.Strings(names)
 			fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(names, ", "), spec)
 		}
-		if len(specs) > 0 || len(transported) > 0 {
-			b.WriteString("\n")
-		}
+		b.WriteString("\n")
 
 		b.WriteString("// The body throws. This load is implemented in Go, and skgo answers\n")
 		b.WriteString("// __data.json itself, so anything that renders in the browser is proof the\n")
-		b.WriteString("// Go handler replied rather than this module. Kit reads the export to learn\n")
-		b.WriteString("// that the route has server data; it never calls it.\n")
-		b.WriteString("const unimplemented = (): never => {\n\tthrow new Error('skgo: implemented in Go');\n};\n\n")
+		b.WriteString("// Go handler replied rather than this module. Kit normally reads the export\n")
+		b.WriteString("// only to learn that the route has server data. Its prerenderer does call it,\n")
+		b.WriteString("// which is refused until Go loads can run during a build (#81).\n")
+		b.WriteString("const unimplemented = (route: string): never => {\n")
+		fmt.Fprintf(&b, "\tif (building) throw new Error('skgo: route ' + route + ' is prerendered, and its branch has a Go server load at ' + %q + '; skgo cannot answer a load while kit prerenders (#81). Remove the prerender or move the load');\n", load.source)
+		b.WriteString("\tthrow new Error('skgo: implemented in Go');\n};\n\n")
 
 		var parts []string
 		for _, field := range fields {
@@ -103,7 +105,7 @@ func (a *app) writeLoadStubs() error {
 		if len(parts) > 0 {
 			shape = "{ " + strings.Join(parts, "; ") + " }"
 		}
-		fmt.Fprintf(&b, "export const load = (): %s => unimplemented();\n", shape)
+		fmt.Fprintf(&b, "export const load = (event: { url: URL }): %s => unimplemented(event.url.pathname);\n", shape)
 
 		if err := a.write(load.stub, b.String()); err != nil {
 			return err

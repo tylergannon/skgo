@@ -53,6 +53,9 @@ type loadFn struct {
 	module string
 	// stub is the absolute path of that file.
 	stub string
+	// source is the vite-root-relative path of the authored Go file. It names
+	// the load in diagnostics without exposing a machine-specific absolute path.
+	source string
 	// out is the load's result type, straight out of the marker's generic
 	// instantiation.
 	out types.Type
@@ -326,7 +329,7 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 				if !ok {
 					continue
 				}
-				fn, load, endpoint, err := a.readMarker(gp, p, call, mod, stub, routeID)
+				fn, load, endpoint, err := a.readMarker(gp, p, call, mod, stub, routeID, path)
 				if err != nil {
 					return nil, nil, nil, err
 				}
@@ -357,7 +360,7 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 
 // readMarker turns one call expression into a remoteFn, or returns nil if the
 // call is not a marker at all.
-func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr, mod, stub, routeID string) (*remoteFn, *loadFn, *endpointFn, error) {
+func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr, mod, stub, routeID, path string) (*remoteFn, *loadFn, *endpointFn, error) {
 	ident := calleeIdent(call.Fun)
 	if ident == nil {
 		return nil, nil, nil, nil
@@ -414,11 +417,16 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 	}
 
 	if isLoad {
+		source, err := webRel(a.cfg.Web, path)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return nil, &loadFn{
 			name:   target.Name(),
 			goPkg:  gp,
 			module: mod,
 			stub:   stub,
+			source: source,
 			out:    inst.TypeArgs.At(0),
 			pos:    pos,
 		}, nil, nil

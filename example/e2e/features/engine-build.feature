@@ -16,14 +16,12 @@ Feature: The engine's JavaScript is SvelteKit's own build
   Nothing a visitor sees was supposed to change, so what is claimed here is that
   nothing did — stated as the two things a wrong build breaks quietly.
 
-  The first is which component renders. Kit numbers the nodes of a build twice:
-  once in the modules it writes, and again in the manifest it generates, from
-  which it has dropped the nodes of every page it prerendered. The two agree
-  only up to the first prerendered page — `/about` — and diverge by one for
-  every node after it. A bundle that read the wrong numbering renders the wrong
-  page's component, with the right layout around it and a 200 beside it, and the
-  home page looks perfect. So every route below is walked, and each is asked for
-  its own heading: the `<h1>` its own `+page.svelte` writes and no other page's.
+  The first is which component renders. Kit identifies every node in the build
+  and carries that identity into the manifest Go reads. A bundle that joins the
+  wrong node renders the wrong page's component, with the right layout around
+  it and a 200 beside it, and the home page can still look perfect. So every
+  route below is walked, and each is asked for its own heading: the `<h1>` its
+  own `+page.svelte` writes and no other page's.
 
   The second is the request URL. The engine has no web platform of its own; the
   `URL` it parses every request with is bound from Go when a runtime is created,
@@ -44,12 +42,12 @@ Feature: The engine's JavaScript is SvelteKit's own build
     And the document already carried the root layout
     And I see "<heading>"
 
-    Examples: pages before the first prerendered node
+    Examples: root and universal-load pages
       | path         | heading |
       | /            | Home    |
       | /plain       | Plain   |
 
-    Examples: pages after it, where the two numberings disagree
+    Examples: the remaining pages
       | path                        | heading            |
       | /items/93                   | Item 93            |
       | /items/93?from=nav          | Item 93            |
@@ -67,7 +65,6 @@ Feature: The engine's JavaScript is SvelteKit's own build
       | /batch                      | Batch              |
       | /account/orders             | Orders             |
       | /render-paths               | Render-time paths  |
-
 
   Scenario: A value Go answered during the render is in the document, under kit's own id
     The id a remote function is addressed by — `<hash>/<name>` — is appended by

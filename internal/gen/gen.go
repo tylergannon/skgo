@@ -92,6 +92,9 @@ func Run(cfg Config) error {
 	if err := app.checkFileUsage(); err != nil {
 		return err
 	}
+	if err := app.checkPrerenderedLoads(); err != nil {
+		return err
+	}
 
 	// Types first: the stubs import what polytype emits, so a type that
 	// cannot be projected must stop generation before any stub is written.
