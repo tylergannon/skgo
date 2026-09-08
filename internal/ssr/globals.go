@@ -27,8 +27,8 @@ func defaultConsole(routeID, level, text string) {
 	log.Printf("skgo: console.%s rendering %s: %s", level, routeID, text)
 }
 
-// installGlobals gives a fresh runtime the three globals kit's and Svelte's
-// runtime code assume and goja does not have.
+// installGlobals gives a fresh runtime the globals kit's and Svelte's runtime
+// code assume and goja does not have.
 //
 // It runs before the bundle is evaluated, so the bundle's own top-level code
 // gets them too — which is the point of `console` in particular: a bundle that
@@ -56,6 +56,17 @@ func (rt *runtime) installGlobals(console Console) error {
 //   - `console`, which kit's `log_handle_error_hook_failure` and Svelte's
 //     `unresolved_hydratable` call unconditionally, in a production build, on
 //     paths a render actually reaches.
+//   - `setTimeout`, which is a queue and not a timer. Kit's `query.batch`
+//     collects the calls a render made and flushes them with
+//     `setTimeout(..., 0)`, deliberately a macrotask so that everything awaited
+//     in the same turn ends up in one batch
+//     (`runtime/app/server/remote/query.js`). goja has no job queue beyond
+//     promises, so this one records the callbacks and Render drains them
+//     between microtask turns. It never waits: the delay is read only to keep
+//     the queue in the order a real one would run it, and a callback scheduled
+//     for later runs immediately after the ones scheduled for sooner. Nothing
+//     here sleeps, so the rule the engine obeys — no I/O, no clock — still
+//     holds.
 //
 // The formatting is done here rather than in Go so that an Error arrives as its
 // stack and an object as JSON, which is what makes the line worth reading.
@@ -77,6 +88,61 @@ const globalsSource = `
 			return { promise: promise, resolve: resolve, reject: reject };
 		};
 	}
+
+	// The macrotask queue. Render drains it after each turn of the microtask
+	// queue, which is exactly when a real setTimeout(fn, 0) would run.
+	var queue = [];
+	var next_id = 1;
+	globalThis.setTimeout = function (fn, delay) {
+		if (typeof fn !== 'function') return 0;
+		var args = Array.prototype.slice.call(arguments, 2);
+		var id = next_id++;
+		queue.push({ id: id, fn: fn, args: args, delay: delay > 0 ? delay : 0 });
+		return id;
+	};
+	globalThis.clearTimeout = function (id) {
+		for (var i = 0; i < queue.length; i++) {
+			if (queue[i].id === id) {
+				queue.splice(i, 1);
+				return;
+			}
+		}
+	};
+	globalThis.setInterval = function () {
+		throw new Error('skgo: setInterval is not available during server-side rendering');
+	};
+	globalThis.clearInterval = globalThis.clearTimeout;
+
+	// How many callbacks are waiting. Go reads this to decide whether a render
+	// that has not finished still has somewhere to go.
+	globalThis.__skgo_pending = function () {
+		return queue.length;
+	};
+
+	// Empties the queue. Go calls this as a render starts, because a runtime is
+	// pooled and reused: a callback the last render scheduled and never needed
+	// belongs to a request that is over, and running it inside the next render
+	// would be one visitor's work charged to another. It happens — a component
+	// that reads .loading on a batch query without awaiting it schedules a
+	// flush the render never waits for.
+	globalThis.__skgo_reset = function () {
+		queue.length = 0;
+	};
+
+	// Runs the callback that a real event loop would run next: the one with the
+	// shortest delay, and among equals the one scheduled first. Returns whether
+	// anything ran. Go calls this from the outside, so the promise jobs the
+	// callback queues are drained when it returns.
+	globalThis.__skgo_tick = function () {
+		if (queue.length === 0) return false;
+		var at = 0;
+		for (var i = 1; i < queue.length; i++) {
+			if (queue[i].delay < queue[at].delay) at = i;
+		}
+		var task = queue.splice(at, 1)[0];
+		task.fn.apply(undefined, task.args);
+		return true;
+	};
 
 	function show(value) {
 		if (typeof value === 'string') return value;

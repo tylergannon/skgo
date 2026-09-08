@@ -13,8 +13,8 @@ func TestTodosAndCountAgree(t *testing.T) {
 		_, unsubscribe, counted := s.Watch(signedIn)
 		unsubscribe()
 
-		if counted != listed {
-			t.Errorf("signedIn=%v: Watch reported %d, Todos listed %d", signedIn, counted, listed)
+		if counted.Count != listed {
+			t.Errorf("signedIn=%v: Watch reported %d, Todos listed %d", signedIn, counted.Count, listed)
 		}
 	}
 
@@ -34,19 +34,19 @@ func TestEachWatcherIsToldItsOwnCount(t *testing.T) {
 	in, stopIn, startIn := s.Watch(true)
 	defer stopIn()
 
-	if startOut != 4 || startIn != 5 {
-		t.Fatalf("opening counts = %d signed out, %d signed in; want 4 and 5", startOut, startIn)
+	if startOut.Count != 4 || startIn.Count != 5 {
+		t.Fatalf("opening counts = %d signed out, %d signed in; want 4 and 5", startOut.Count, startIn.Count)
 	}
 
 	// One added todo is public, so both watchers gain exactly one — and
 	// neither is told about the other's rows.
 	s.Add("a public todo")
 
-	if got := <-out; got != 5 {
-		t.Errorf("the signed-out watcher was sent %d, want 5", got)
+	if got := <-out; got.Count != 5 {
+		t.Errorf("the signed-out watcher was sent %d, want 5", got.Count)
 	}
-	if got := <-in; got != 6 {
-		t.Errorf("the signed-in watcher was sent %d, want 6", got)
+	if got := <-in; got.Count != 6 {
+		t.Errorf("the signed-in watcher was sent %d, want 6", got.Count)
 	}
 	if got := len(s.Todos(false)); got != 5 {
 		t.Errorf("a signed-out visitor now lists %d todos, want 5", got)
@@ -62,7 +62,7 @@ func TestUnsubscribingStopsTheUpdates(t *testing.T) {
 
 	select {
 	case v := <-ch:
-		t.Errorf("an unsubscribed watcher was sent %d", v)
+		t.Errorf("an unsubscribed watcher was sent %+v", v)
 	default:
 	}
 }
@@ -93,5 +93,40 @@ func TestRenameObeysTheSameRuleAsTheReaders(t *testing.T) {
 	}
 	if _, ok := s.Rename("t3", "renamed by ada", true); !ok {
 		t.Error("Rename refused the private todo to a signed-in visitor")
+	}
+}
+
+// The live board shows the newest todo a visitor may see beside the count, so
+// the two are one value: a board that paired a count from one moment with a
+// newest from another would be a page that never existed.
+func TestTheSnapshotNamesTheNewestTodoTheVisitorMaySee(t *testing.T) {
+	s := NewStore()
+
+	out, stopOut, startOut := s.Watch(false)
+	defer stopOut()
+	in, stopIn, startIn := s.Watch(true)
+	defer stopIn()
+
+	// The private todo is the newest of the five seeded rows only for a
+	// signed-in visitor; a signed-out one is never told it is there.
+	if startOut.Newest != "the right of the pair" {
+		t.Errorf("a signed-out visitor's newest is %q", startOut.Newest)
+	}
+	if startIn.Newest != "the right of the pair" {
+		t.Errorf("a signed-in visitor's newest is %q", startIn.Newest)
+	}
+
+	s.Add("the latest arrival")
+	if got := <-out; got.Newest != "the latest arrival" || got.Count != 5 {
+		t.Errorf("the signed-out watcher was sent %+v", got)
+	}
+	if got := <-in; got.Newest != "the latest arrival" || got.Count != 6 {
+		t.Errorf("the signed-in watcher was sent %+v", got)
+	}
+
+	// A rename changes what the newest todo says, and wakes the watchers too.
+	s.Rename("t6", "renamed after arriving", false)
+	if got := <-out; got.Newest != "renamed after arriving" {
+		t.Errorf("a rename left the board saying %q", got.Newest)
 	}
 }

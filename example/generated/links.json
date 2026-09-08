@@ -40,6 +40,10 @@
 			"target": "web/src/routes/api/todos"
 		},
 		{
+			"link": "generated/links/onzggl3sn52xizltf5rgc5ddna",
+			"target": "web/src/routes/batch"
+		},
+		{
 			"link": "generated/links/onzggl3sn52xizltf5rw63tumfrxi",
 			"target": "web/src/routes/contact"
 		},
@@ -74,6 +78,10 @@
 		{
 			"link": "generated/links/onzggl3sn52xizltf5uxizlnomxvw2lelu",
 			"target": "web/src/routes/items/[id]"
+		},
+		{
+			"link": "generated/links/onzggl3sn52xizltf5wgs5tf",
+			"target": "web/src/routes/live"
 		},
 		{
 			"link": "generated/links/onzggl3sn52xizltf5zxi4tfmfwq",

@@ -121,6 +121,7 @@ const (
 	kindQuery remoteKind = iota
 	kindCommand
 	kindLive
+	kindBatch
 	kindForm
 )
 
@@ -136,6 +137,11 @@ type Remote struct {
 
 	call func(ctx context.Context, arg any, present bool) (any, error)
 	live func(ctx context.Context, arg any, present bool, yield func(any) error) error
+	// batch answers a whole `query.batch` at once: one call to the app's
+	// function for however many arguments the page or the browser collected.
+	// The results come back in the order the arguments arrived, which is the
+	// order kit's client resolves its promises in.
+	batch func(ctx context.Context, args []any, present []bool) ([]any, error)
 
 	// ptr is the code pointer of the Go function this registration publishes.
 	// It is the identity skgo.Refresh looks a function up by, which is what
@@ -210,6 +216,21 @@ func Command(fn any) Marker { _ = fn; return Marker{} }
 // is any.
 func LiveQuery(fn any) Marker { _ = fn; return Marker{} }
 
+// BatchQuery declares fn as a SvelteKit `query.batch`. fn takes every argument
+// collected in one macrotask and answers them all in one call:
+//
+//	func getQuotes(ctx context.Context, symbols []string) ([]Quote, error) { ... }
+//
+// The page still calls it one argument at a time — `getQuotes('SKGO')` — and
+// kit's client collects those calls into a single POST, exactly as kit's own
+// `query.batch` does. fn must answer with one result per argument, in the same
+// order.
+//
+// A batch query always takes an argument: kit's `batch(fn)` with no validator
+// refuses any call that passes one, which leaves nothing to batch. See Query
+// for why fn is any.
+func BatchQuery(fn any) Marker { _ = fn; return Marker{} }
+
 // NewQuery registers a `query` export. module is the module's vite-root-relative
 // path (for example "src/lib/todos.remote.ts") and name the export name.
 // Generated code calls this; application code uses Query.
@@ -279,6 +300,59 @@ func NewLiveQueryNoArg[Out any](module, name string, fn func(context.Context, fu
 	r.live = func(ctx context.Context, arg any, present bool, yield func(any) error) error {
 		// The raw Go value; see NewLiveQuery.
 		return fn(ctx, func(out Out) error { return yield(out) })
+	}
+	return r
+}
+
+// NewBatchQuery registers a `query.batch` export. fn is handed every argument
+// collected into one batch and answers them all at once, in order.
+//
+// A batch query is a query as far as everything downstream is concerned: kit
+// files its results in the client's ordinary query cache, keyed per argument,
+// and `internals.type[0]` is what puts them under `q` in a document's remote
+// data. What differs is only how the call reaches the server — one POST
+// carrying every payload — so a batch query registered here also answers a
+// single call, which is what a Refresh of one instance is.
+func NewBatchQuery[In, Out any](module, name string, fn func(context.Context, []In) ([]Out, error)) *Remote {
+	r := newRemote(module, name, kindBatch)
+	r.ptr = codePointer(fn)
+	r.batch = func(ctx context.Context, args []any, present []bool) ([]any, error) {
+		in := make([]In, len(args))
+		for i := range args {
+			decoded, err := decodeArg[In](args[i], present[i])
+			if err != nil {
+				return nil, err
+			}
+			in[i] = decoded
+		}
+		outs, err := fn(ctx, in)
+		if err != nil {
+			return nil, err
+		}
+		if len(outs) != len(in) {
+			// The app answered a different number of results than it was
+			// asked questions, so there is no honest way to match them up.
+			// It is a bug in the app rather than something the caller did, so
+			// the caller gets kit's opaque 500 and the detail stays here.
+			return nil, fmt.Errorf("skgo: batch query %s was given %d arguments and answered %d results", r.id, len(in), len(outs))
+		}
+		// The raw Go values; see NewLiveQuery.
+		res := make([]any, len(outs))
+		for i := range outs {
+			res[i] = outs[i]
+		}
+		return res, nil
+	}
+	// One argument is a batch of one. It is the shape a Refresh of a single
+	// instance takes, and the shape kit's own `refresh()` takes too: it stores
+	// the resource's promise, which went through `enqueue` and became a batch
+	// with one entry in it.
+	r.call = func(ctx context.Context, arg any, present bool) (any, error) {
+		outs, err := r.batch(ctx, []any{arg}, []bool{present})
+		if err != nil {
+			return nil, err
+		}
+		return outs[0], nil
 	}
 	return r
 }
@@ -623,6 +697,8 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rs.serveQuery(w, r, fn)
 	case kindLive:
 		rs.serveLive(w, r, fn)
+	case kindBatch:
+		rs.serveBatch(w, r, fn)
 	case kindCommand:
 		rs.serveCommand(w, r, fn)
 	case kindForm:

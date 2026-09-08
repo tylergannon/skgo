@@ -143,6 +143,24 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 		result = "AsyncIterable<" + out.expr + ">"
 	}
 
+	if fn.kind == kindBatch {
+		// Kit's `query.batch` takes the whole batch and returns the lookup its
+		// caller reads each result out of: `(args: In[]) => (arg: In, idx:
+		// number) => Out`. The wrapper it produces is an ordinary
+		// `RemoteQueryFunction<In, Out>`, so the page still writes
+		// `getQuotes(symbol)` and gets one value.
+		//
+		// There is no no-argument form: kit's own `create_validator` refuses
+		// every argument when no validator is given, which leaves a batch with
+		// nothing to batch. The scanner rejects one before this is reached.
+		in, err := a.project(fn.in)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("export const %s = query.batch('unchecked', (_args: %s[]): ((arg: %s, idx: number) => %s) => unimplemented());\n",
+			fn.name, in.expr, in.expr, out.expr), nil
+	}
+
 	if fn.in == nil {
 		// Kit's no-validator overload: a function taking no argument. It is
 		// not cosmetic — `create_validator` reads the arity, and the one-
@@ -277,6 +295,10 @@ func constructor(fn *remoteFn) string {
 		return "NewCommand" + noArg
 	case kindLive:
 		return "NewLiveQuery" + noArg
+	case kindBatch:
+		// A batch query is always given an argument, so there is no
+		// no-argument constructor to choose.
+		return "NewBatchQuery"
 	case kindForm:
 		// A form always receives the submission, so there is no no-argument
 		// form to register.

@@ -8,9 +8,6 @@
 
 <svelte:boundary>
 	<TodoCount />
-	{#snippet pending()}
-		<p data-testid="count-pending">counting…</p>
-	{/snippet}
 	{#snippet failed(error)}
 		<p data-testid="count-failed">{(error as Error).message}</p>
 	{/snippet}
@@ -18,9 +15,6 @@
 
 <svelte:boundary>
 	<TodoList />
-	{#snippet pending()}
-		<p data-testid="todos-pending">loading…</p>
-	{/snippet}
 	{#snippet failed(error)}
 		<p data-testid="todos-failed">{(error as Error).message}</p>
 	{/snippet}

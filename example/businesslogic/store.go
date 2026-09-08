@@ -41,7 +41,7 @@ type Store struct {
 // because the count it is sent has to be the count that visitor may see — a
 // subscriber is never told about a todo it could not have listed.
 type subscriber struct {
-	ch       chan int
+	ch       chan Snapshot
 	signedIn bool
 }
 
@@ -89,6 +89,30 @@ func visible(todo Todo, signedIn bool) bool {
 	return signedIn || !todo.Private
 }
 
+// Snapshot is what a live subscriber is sent after every change: how many
+// todos this visitor may see, and the text of the newest one they may see.
+//
+// It is one value rather than two subscriptions because the two have to agree:
+// a board that showed a count from one moment beside a newest from another
+// would be a page that never existed.
+type Snapshot struct {
+	Count  int
+	Newest string
+}
+
+// snapshot is what a visitor may see right now. Callers hold s.mu.
+func (s *Store) snapshot(signedIn bool) Snapshot {
+	snap := Snapshot{}
+	for _, todo := range s.todos {
+		if !visible(todo, signedIn) {
+			continue
+		}
+		snap.Count++
+		snap.Newest = todo.Text
+	}
+	return snap
+}
+
 // count reports how many todos a visitor may see. Callers hold s.mu.
 func (s *Store) count(signedIn bool) int {
 	n := 0
@@ -118,14 +142,19 @@ func (s *Store) Add(text string) Todo {
 	todo := Todo{ID: fmt.Sprintf("t%d", s.next), Text: text}
 	s.next++
 	s.todos = append(s.todos, todo)
-	// Notify while still holding the lock so subscribers can never observe
-	// counts out of order. The channels are buffered and latest-wins, so this
-	// never blocks. Each subscriber is sent its own visitor's count.
-	for sub := range s.subs {
-		latest(sub.ch, s.count(sub.signedIn))
-	}
+	s.notify()
 	s.mu.Unlock()
 	return todo
+}
+
+// notify wakes every live subscriber with what its own visitor may now see.
+// Callers hold s.mu: notifying under the lock is what stops a subscriber from
+// ever observing two changes out of order. The channels are buffered and
+// latest-wins, so this never blocks.
+func (s *Store) notify() {
+	for sub := range s.subs {
+		latest(sub.ch, s.snapshot(sub.signedIn))
+	}
 }
 
 // Rename changes a todo's text in place, for a visitor allowed to see it.
@@ -141,29 +170,32 @@ func (s *Store) Rename(id, text string, signedIn bool) (Todo, bool) {
 	for i := range s.todos {
 		if s.todos[i].ID == id && visible(s.todos[i], signedIn) {
 			s.todos[i].Text = text
+			// A rename can change what the live board says the newest todo is,
+			// so it wakes subscribers exactly as an addition does.
+			s.notify()
 			return s.todos[i], true
 		}
 	}
 	return Todo{}, false
 }
 
-// Watch subscribes to the number of todos this visitor may see, now and after
-// every change. Call the returned function to unsubscribe.
+// Watch subscribes to what this visitor may see, now and after every change.
+// Call the returned function to unsubscribe.
 //
 // The visitor is fixed for the life of the subscription: the caller decides who
 // is watching when the stream opens, and a subscription that outlives a change
 // of identity has to be replaced rather than updated.
-func (s *Store) Watch(signedIn bool) (<-chan int, func(), int) {
+func (s *Store) Watch(signedIn bool) (<-chan Snapshot, func(), Snapshot) {
 	s.mu.Lock()
-	sub := &subscriber{ch: make(chan int, 1), signedIn: signedIn}
+	sub := &subscriber{ch: make(chan Snapshot, 1), signedIn: signedIn}
 	s.subs[sub] = struct{}{}
-	count := s.count(signedIn)
+	now := s.snapshot(signedIn)
 	s.mu.Unlock()
 	return sub.ch, func() {
 		s.mu.Lock()
 		delete(s.subs, sub)
 		s.mu.Unlock()
-	}, count
+	}, now
 }
 
 // SignIn opens a session and returns its id, which the caller stores in a
@@ -202,7 +234,7 @@ func newSessionID() string {
 }
 
 // latest pushes v onto a latest-wins buffered channel without ever blocking.
-func latest(ch chan int, v int) {
+func latest(ch chan Snapshot, v Snapshot) {
 	select {
 	case ch <- v:
 	default:
