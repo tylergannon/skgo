@@ -58,6 +58,7 @@ Feature: A load can promise several values, and each one arrives when it is read
     up first.
 
     Given I open "/about"
+    And the app says it is deployed as "skgo example"
     And I note the data request count
     When I follow the "Stream" link
     Then the page says "Three promises, one response" and is waiting for all three values

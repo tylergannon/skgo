@@ -51,6 +51,17 @@ Then(
 	}
 );
 
+// A boundary with a `pending` snippet renders the snippet instead of its
+// children while the document is built, so the query behind it is never called
+// there. This says the loading state was in the bytes — not merely that the
+// plans were absent, which a page that rendered nothing at all would satisfy.
+Then('the document carried the plans as still loading', async ({ documents, shot }) => {
+	const html = await documentText(documents);
+	expect(html).toContain('data-testid="plans-pending"');
+	expect(html).not.toContain('data-testid="plan"');
+	await shot();
+});
+
 Then('the document never mentions {string}', async ({ documents, shot }, text: string) => {
 	expect(await documentText(documents)).not.toContain(text);
 	await shot();

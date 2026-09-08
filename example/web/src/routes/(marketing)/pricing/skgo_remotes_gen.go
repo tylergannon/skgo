@@ -8,6 +8,7 @@ import "github.com/tylergannon/skgo"
 func SkgoRemotes() []*skgo.Remote {
 	return []*skgo.Remote{
 		skgo.NewQueryNoArg("src/routes/(marketing)/pricing/pricing.remote.ts", "getPlans", getPlans),
+		skgo.NewQueryNoArg("src/routes/(marketing)/pricing/pricing.remote.ts", "getSpotlight", getSpotlight),
 		skgo.NewCommand("src/routes/(marketing)/pricing/pricing.remote.ts", "quoteFor", quoteFor),
 	}
 }

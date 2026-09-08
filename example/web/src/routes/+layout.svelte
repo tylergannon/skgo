@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import SignIn from '#lib/SignIn.svelte';
 
-	let { children } = $props();
+	let { data, children } = $props();
 
 	/**
 	 * The root layout is the one node in a branch that no `+error.svelte` can
@@ -63,3 +63,11 @@
 <main>
 	{@render children()}
 </main>
+
+<!--
+	The root layout's own load, on every page in the app. It is the outermost
+	node in every branch, which makes it the one load whose failure no
+	`+error.svelte` can catch: kit answers that with the static error.html the
+	build carries. `/?boom=root-layout` is the fixture.
+-->
+<footer data-testid="deployment">{data.deployment}</footer>

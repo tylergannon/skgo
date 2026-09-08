@@ -10,8 +10,11 @@ Given('I open {string}', async ({ page, documents }, path: string) => {
 	await page.goto(path);
 });
 
+// The root layout's nav, by test id. The front page is an index of every
+// capability this app has, so a link named for a page exists twice on it — once
+// in the nav and once in the index — and an unscoped `getByRole` matches both.
 When('I click the link to {string}', async ({ page }, path: string) => {
-	await page.getByRole('link', { name: linkName(path) }).click();
+	await page.getByTestId('app-nav').getByRole('link', { name: linkName(path), exact: true }).click();
 });
 
 Then('the document response came from skgo in the expected mode', async ({ page, documents }) => {

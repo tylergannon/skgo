@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Money } from '../../../hooks';
-	import { getPlans, quoteFor } from './pricing.remote';
+	import { getPlans, getSpotlight, quoteFor } from './pricing.remote';
 
 	// The featured plan comes from the Go load, so it travelled down inside the
 	// document rather than in a request of its own.
@@ -28,6 +28,23 @@
      the price is already in the document. A plain object would throw here and
      the visitor would get the shell instead. -->
 <p data-testid="featured">{data.featured.name} — {data.featured.price.format()}</p>
+
+<!--
+	No `pending` snippet, deliberately: a boundary that has one renders the
+	snippet *instead of* its children while the document is built
+	(svelte/src/compiler/phases/3-transform/server/visitors/SvelteBoundary.js),
+	which is why the plans below are never asked for during a render. This one
+	is, so the engine calls back into Go mid-render and what comes back is a
+	Money the app's own transport decoder rebuilt — `format()` is a method, and
+	a plain object would throw here rather than write a price.
+-->
+<svelte:boundary>
+	{@const spotlight = await getSpotlight()}
+	<p data-testid="spotlight">{spotlight.name} — {spotlight.price.format()}</p>
+	{#snippet failed(error)}
+		<p data-testid="spotlight-failed">{(error as Error).message}</p>
+	{/snippet}
+</svelte:boundary>
 
 <svelte:boundary>
 	<ul data-testid="plans">

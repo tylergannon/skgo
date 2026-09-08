@@ -74,6 +74,38 @@ Feature: Pages arrive rendered
     And the featured plan costs "$45.00"
     And exactly 0 data requests were made since
 
+  Scenario: A custom-typed value in a remote answer is rendered by its own method
+    The one above is a server load's value, which travels down inside the
+    document because a load always runs. This one is a remote function's, called
+    back out to Go while the page was being rendered — a different path through
+    the engine, and the one the plans list below has never taken.
+
+    The plans sit in a boundary with a `pending` snippet, and Svelte's server
+    compiler emits that snippet instead of the boundary's children
+    (svelte/src/compiler/phases/3-transform/server/visitors/SvelteBoundary.js),
+    so `getPlans` is not called while the document is built. The spotlight is in
+    a boundary with no pending snippet, so it is.
+
+    750 cents is an amount no other function in this app returns, and "$7.50" is
+    what `Money.format()` makes of them. It is a method on the class in
+    src/hooks.ts, so a page handed a plain object could not have written it: the
+    engine was given a Money, rebuilt by the app's own transport decoder out of
+    what Go sent, before the line was rendered.
+
+    Given I open "/pricing"
+    Then the document already said "Student — $7.50"
+    And the document carried the price as a Money of 750 cents
+    And the document never mentions "skgo: implemented in Go"
+    And the spotlight plan costs "$7.50"
+
+  Scenario: The plans beside it were not asked for until the browser had the page
+    The other half of the same claim, so that the one above is about a boundary
+    that renders during SSR rather than about the page as a whole.
+
+    Given I open "/pricing"
+    Then the document carried the plans as still loading
+    And the plans are "Hobby, Team, Enterprise"
+
   Scenario: A page marked csr = false is plain HTML with no script tag
     Given I open "/plain"
     Then the document already said the site is named "skgo"
