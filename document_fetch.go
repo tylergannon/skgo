@@ -11,6 +11,7 @@
 package skgo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,12 +25,12 @@ import (
 // fetchDispatch answers one render-time `event.fetch`. It is the Fetch host
 // ssr.Engine.Render is given, so payload is a JSON-encoded ssr.FetchRequest
 // and the reply is a JSON-encoded ssr.FetchAnswer.
-func (s *SSR) fetchDispatch(payload []byte) ([]byte, error) {
+func (s *SSR) fetchDispatch(ctx context.Context, payload []byte) ([]byte, error) {
 	var req ssr.FetchRequest
 	if err := json.Unmarshal(payload, &req); err != nil {
 		return nil, fmt.Errorf("skgo: decoding a render-time fetch: %w", err)
 	}
-	answer := s.fetchAnswer(req)
+	answer := s.fetchAnswer(ctx, req)
 	return json.Marshal(answer)
 }
 
@@ -38,7 +39,7 @@ func (s *SSR) fetchDispatch(payload []byte) ([]byte, error) {
 // here opens a connection. httptest.NewRecorder is a ResponseWriter that
 // writes to memory; s.fetch.ServeHTTP is the same http.Handler a real request
 // to this path would reach.
-func (s *SSR) fetchAnswer(req ssr.FetchRequest) ssr.FetchAnswer {
+func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAnswer {
 	if s.fetch == nil {
 		return ssr.FetchAnswer{Error: "skgo: no server route is registered to answer event.fetch during a render"}
 	}
@@ -53,7 +54,7 @@ func (s *SSR) fetchAnswer(req ssr.FetchRequest) ssr.FetchAnswer {
 		body = strings.NewReader(req.Body)
 	}
 
-	httpReq, err := http.NewRequest(method, req.URL, body)
+	httpReq, err := http.NewRequestWithContext(ctx, method, req.URL, body)
 	if err != nil {
 		return ssr.FetchAnswer{Error: "Failed to fetch"}
 	}

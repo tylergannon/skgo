@@ -94,33 +94,15 @@ export const test = base.extend<{
 	browserFrame: [
 		async ({ page }, use) => {
 			const session = await page.context().newCDPSession(page);
-			let latest = '';
-			let receive: (() => void) | undefined;
-			session.on('Page.screencastFrame', ({ data, sessionId }) => {
-				latest = data;
-				receive?.();
-				receive = undefined;
-				// Closing an error-page target can race the final compositor frame.
-				// The frame is already recorded; a rejected acknowledgement must not
-				// turn a successful browser scenario into a teardown failure.
-				void session.send('Page.screencastFrameAck', { sessionId }).catch(() => undefined);
-			});
-			await session.send('Page.startScreencast', { format: 'png', everyNthFrame: 1 });
 			await use({
 				async capture(file: string) {
-					if (!latest) {
-						await new Promise<void>((resolve, reject) => {
-							const timeout = setTimeout(() => reject(new Error('the browser produced no frame')), 5000);
-							receive = () => {
-								clearTimeout(timeout);
-								resolve();
-							};
-						});
-					}
-					writeFileSync(file, Buffer.from(latest, 'base64'));
+					// Direct CDP capture avoids Playwright's navigation wait (which
+					// cannot finish while a streaming document is still open), and
+					// asks for the current frame instead of reusing a stale screencast.
+					const { data } = await session.send('Page.captureScreenshot', { format: 'png' });
+					writeFileSync(file, Buffer.from(data, 'base64'));
 				}
 			});
-			await session.send('Page.stopScreencast').catch(() => undefined);
 			await session.detach().catch(() => undefined);
 		},
 		{ auto: true }
@@ -297,15 +279,21 @@ function screenshotDir(): string {
 }
 
 /**
- * Takes the picture. A page that has navigated away or crashed cannot be
- * photographed; that is worth recording as a note in the report rather than
- * failing a step that already passed.
+ * Takes the picture. A page mid-navigation (a step that just swapped the
+ * document) can briefly refuse a screenshot, so a couple of retries cover
+ * that ordinary timing case. A capture that still fails after retrying is not
+ * swallowed: a missing screenshot is a missing screenshot, and the step it
+ * belongs to must fail rather than report a pass nobody can check.
  */
-async function shoot(browserFrame: BrowserFrame, file: string) {
-	try {
-		await browserFrame.capture(file);
-	} catch (error) {
-		console.warn(`skgo e2e: could not photograph ${file}: ${(error as Error).message}`);
+async function shoot(browserFrame: BrowserFrame, file: string): Promise<void> {
+	for (let attempt = 1; ; attempt++) {
+		try {
+			await browserFrame.capture(file);
+			return;
+		} catch (error) {
+			if (attempt >= 3) throw error;
+			await new Promise((resolve) => setTimeout(resolve, 150));
+		}
 	}
 }
 

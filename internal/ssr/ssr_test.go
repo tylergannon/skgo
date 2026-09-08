@@ -1,6 +1,7 @@
 package ssr_test
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"sync"
@@ -20,8 +21,10 @@ globalThis.__skgo_ping = function () { return 'ok'; };
 globalThis.__skgo_render = function (json) {
 	var req = JSON.parse(json);
 	current = req.route_id;
-	var answer = JSON.parse(globalThis.__skgo_remote('fixture/get', req.route_id));
-	return {
+	var result = { done: false };
+	globalThis.__skgo_remote('fixture/get', req.route_id).then(function(raw) {
+	var answer = JSON.parse(raw);
+	Object.assign(result, {
 		done: true,
 		failure: '',
 		redirect: null,
@@ -29,7 +32,9 @@ globalThis.__skgo_render = function (json) {
 		error: req.error,
 		head: '',
 		body: current + ':' + answer.v
-	};
+	});
+	}, function(e) { result.failure = String(e); result.done = true; });
+	return result;
 };
 `
 
@@ -81,7 +86,7 @@ func TestConcurrentRendersDoNotShareARuntime(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			result, _, err := engine.Render(route, request(t, route), ssr.Hosts{Remote: func(id, payload string) ([]byte, error) {
+			result, _, err := engine.Render(context.Background(), route, request(t, route), ssr.Hosts{Remote: func(_ context.Context, id, payload string) ([]byte, error) {
 				both <- struct{}{}
 				<-release
 				return answer("answered " + payload), nil
@@ -118,7 +123,7 @@ func TestARenderThatNeverFinishesIsAnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = engine.Render("/", request(t, "/"), ssr.Hosts{Remote: func(string, string) ([]byte, error) {
+	_, _, err = engine.Render(context.Background(), "/", request(t, "/"), ssr.Hosts{Remote: func(context.Context, string, string) ([]byte, error) {
 		return answer(""), nil
 	}})
 	if err == nil {
@@ -136,7 +141,7 @@ func TestAHostFailureIsAGoError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, calls, err := engine.Render("/", request(t, "/"), ssr.Hosts{Remote: func(string, string) ([]byte, error) {
+	_, calls, err := engine.Render(context.Background(), "/", request(t, "/"), ssr.Hosts{Remote: func(context.Context, string, string) ([]byte, error) {
 		return nil, errNoAnswer
 	}})
 	if err == nil {
@@ -178,7 +183,7 @@ func TestTheEngineReusesItsRuntimes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 20 {
-		if _, _, err := engine.Render("/", request(t, "/"), ssr.Hosts{Remote: func(_, payload string) ([]byte, error) {
+		if _, _, err := engine.Render(context.Background(), "/", request(t, "/"), ssr.Hosts{Remote: func(_ context.Context, _, payload string) ([]byte, error) {
 			return answer(payload), nil
 		}}); err != nil {
 			t.Fatal(err)
@@ -198,10 +203,13 @@ const fetching = `
 globalThis.__skgo_ping = function () { return 'ok'; };
 globalThis.__skgo_render = function (json) {
 	var req = JSON.parse(json);
-	var raw = globalThis.__skgo_fetch(JSON.stringify({ method: 'GET', url: req.url + 'greeting' }));
+	var result = { done: false };
+	globalThis.__skgo_fetch(JSON.stringify({ method: 'GET', url: req.url + 'greeting' })).then(function(raw) {
 	var answer = JSON.parse(raw);
 	var body = answer.error ? 'error:' + answer.error : answer.response.status + ':' + answer.response.body;
-	return { done: true, failure: '', redirect: null, status: 200, error: null, head: '', body: body };
+	Object.assign(result, { done: true, failure: '', redirect: null, status: 200, error: null, head: '', body: body });
+	}, function(e) { result.failure = String(e); result.done = true; });
+	return result;
 };
 `
 
@@ -229,8 +237,8 @@ func TestFetchIsACallBackIntoGoNeverASocket(t *testing.T) {
 	}
 
 	var got ssr.FetchRequest
-	result, _, err := engine.Render("/", request(t, "/"), ssr.Hosts{
-		Fetch: func(payload []byte) ([]byte, error) {
+	result, _, err := engine.Render(context.Background(), "/", request(t, "/"), ssr.Hosts{
+		Fetch: func(_ context.Context, payload []byte) ([]byte, error) {
 			if err := json.Unmarshal(payload, &got); err != nil {
 				t.Fatal(err)
 			}
@@ -258,7 +266,7 @@ func TestFetchWithNoHostRefuses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := engine.Render("/", request(t, "/"), ssr.Hosts{}); err == nil {
+	if _, _, err := engine.Render(context.Background(), "/", request(t, "/"), ssr.Hosts{}); err == nil {
 		t.Fatal("a render whose fetch had nothing to answer it was reported as a success")
 	}
 }
@@ -273,7 +281,7 @@ func TestMatchIsACallBackIntoGo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, _, err := engine.Render("/api/todos", request(t, "/api/todos"), ssr.Hosts{
+	result, _, err := engine.Render(context.Background(), "/api/todos", request(t, "/api/todos"), ssr.Hosts{
 		Match: func(pathname string) (string, map[string]string, bool) {
 			if pathname == "/api/todos" {
 				return "/api/todos", map[string]string{}, true
@@ -288,7 +296,7 @@ func TestMatchIsACallBackIntoGo(t *testing.T) {
 		t.Errorf("body = %q, want %q", result.Body, want)
 	}
 
-	result, _, err = engine.Render("/no-such-route", request(t, "/no-such-route"), ssr.Hosts{
+	result, _, err = engine.Render(context.Background(), "/no-such-route", request(t, "/no-such-route"), ssr.Hosts{
 		Match: func(string) (string, map[string]string, bool) { return "", nil, false },
 	})
 	if err != nil {
@@ -339,7 +347,7 @@ func TestARenderReportsTheStatusAndErrorItEndedWith(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render("/teapot", request(t, "/teapot"), ssr.Hosts{})
+	result, _, err := engine.Render(context.Background(), "/teapot", request(t, "/teapot"), ssr.Hosts{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,7 +373,7 @@ func TestARedirectThrownDuringARenderIsNotAFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render("/go-away", request(t, "/go-away"), ssr.Hosts{})
+	result, _, err := engine.Render(context.Background(), "/go-away", request(t, "/go-away"), ssr.Hosts{})
 	if err != nil {
 		t.Fatalf("a redirect was reported as a failure: %v", err)
 	}
@@ -415,7 +423,7 @@ func TestAnExtraAppErrorFieldReachesTheComponentAndSurvivesTheRoundTrip(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render("/error/unexpected", raw, ssr.Hosts{})
+	result, _, err := engine.Render(context.Background(), "/error/unexpected", raw, ssr.Hosts{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,7 +463,7 @@ globalThis.__skgo_render = function (json) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := engine.Render("/checkout", request(t, "/checkout"), ssr.Hosts{}); err != nil {
+	if _, _, err := engine.Render(context.Background(), "/checkout", request(t, "/checkout"), ssr.Hosts{}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 
@@ -499,7 +507,7 @@ globalThis.__skgo_render = function () {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, _, err := engine.Render("/", request(t, "/"), ssr.Hosts{})
+	result, _, err := engine.Render(context.Background(), "/", request(t, "/"), ssr.Hosts{})
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
@@ -522,9 +530,11 @@ globalThis.__skgo_render = function (json) {
 	collected.push(req.route_id + '/a');
 	collected.push(req.route_id + '/b');
 	setTimeout(function () {
-		var answer = JSON.parse(globalThis.__skgo_remote('fixture/batch', collected.join(',')));
+		globalThis.__skgo_remote('fixture/batch', collected.join(',')).then(function(raw) {
+		var answer = JSON.parse(raw);
 		result.body = answer.v;
 		result.done = true;
+		});
 	}, 0);
 	return result;
 };
@@ -565,7 +575,7 @@ func TestARenderIsDrivenPastItsMacrotasks(t *testing.T) {
 	}
 
 	var asked []string
-	result, _, err := engine.Render("/batch", request(t, "/batch"), ssr.Hosts{Remote: func(id, payload string) ([]byte, error) {
+	result, _, err := engine.Render(context.Background(), "/batch", request(t, "/batch"), ssr.Hosts{Remote: func(_ context.Context, id, payload string) ([]byte, error) {
 		asked = append(asked, id+" "+payload)
 		return answer("answered " + payload), nil
 	}})
@@ -598,9 +608,9 @@ func TestWorkOneRenderAbandonedDoesNotRunInTheNext(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	host := ssr.Hosts{Remote: func(id, payload string) ([]byte, error) { return answer(payload), nil }}
+	host := ssr.Hosts{Remote: func(_ context.Context, id, payload string) ([]byte, error) { return answer(payload), nil }}
 
-	first, _, err := engine.Render("/abandon", request(t, "/abandon"), host)
+	first, _, err := engine.Render(context.Background(), "/abandon", request(t, "/abandon"), host)
 	if err != nil {
 		t.Fatalf("first render: %v", err)
 	}
@@ -608,7 +618,7 @@ func TestWorkOneRenderAbandonedDoesNotRunInTheNext(t *testing.T) {
 		t.Fatalf("first body = %q", first.Body)
 	}
 
-	second, _, err := engine.Render("/after", request(t, "/after"), host)
+	second, _, err := engine.Render(context.Background(), "/after", request(t, "/after"), host)
 	if err != nil {
 		t.Fatalf("second render: %v", err)
 	}

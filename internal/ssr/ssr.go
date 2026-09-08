@@ -15,6 +15,7 @@
 package ssr
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ import (
 // `v` is a string rather than a value, and for the same reason Node.Data is:
 // it is devalue's flat form, so the bundle can hand it to the app's own
 // decoders and a custom type arrives in the render with its methods.
-type Host func(id, payload string) ([]byte, error)
+type Host func(ctx context.Context, id, payload string) ([]byte, error)
 
 // Request is what a render is given. It is marshalled straight to the bundle's
 // entry point, so the field names are the ones the entry reads.
@@ -266,7 +267,8 @@ type Engine struct {
 	idle chan *runtime
 	// permits bounds how many runtimes exist at once. Taking a permit is what
 	// a caller waits on when every runtime is busy.
-	permits chan struct{}
+	permits   chan struct{}
+	hostSlots chan struct{}
 
 	mu      sync.Mutex
 	created int
@@ -274,6 +276,7 @@ type Engine struct {
 
 // runtime is one goja Runtime with the bundle evaluated in it.
 type runtime struct {
+	work   *renderWork
 	vm     *goja.Runtime
 	render goja.Callable
 	// tick runs the next callback on the engine's macrotask queue and pending
@@ -322,7 +325,7 @@ type Call struct {
 // bytes out are a FetchAnswer, JSON-encoded, which the bundle turns into a
 // Response or throws as a TypeError. It is the only I/O a render's fetch ever
 // performs: an in-process call into Go, never a socket the engine opens.
-type Fetch func(request []byte) ([]byte, error)
+type Fetch func(ctx context.Context, request []byte) ([]byte, error)
 
 // FetchRequest is one render-time `event.fetch` call, on its way into Go.
 // Kit resolves a relative fetch against the page's own URL before this ever
@@ -415,6 +418,7 @@ func NewDev(dev *vite.Dev, entry string, prelude []byte, size int, console Conso
 // start fills in the pool and proves one runtime comes up.
 func start(e *Engine, size int) (*Engine, error) {
 	e.idle = make(chan *runtime, size)
+	e.hostSlots = make(chan struct{}, maxHostCalls)
 	e.permits = make(chan struct{}, size)
 	for range size {
 		e.permits <- struct{}{}
@@ -458,35 +462,26 @@ func (e *Engine) newRuntime() (*runtime, error) {
 		return nil, err
 	}
 
-	if err := rt.vm.Set("__skgo_remote", func(id, payload string) (string, error) {
+	if err := rt.vm.Set("__skgo_remote", func(id, payload string) *goja.Promise {
 		rt.calls = append(rt.calls, Call{ID: id, Payload: payload})
-		if rt.host == nil {
-			err := fmt.Errorf("skgo: nothing is answering remote functions for this render (%s)", id)
-			rt.failed = errors.Join(rt.failed, err)
-			return "", err
-		}
-		answer, err := rt.host(id, payload)
-		if err != nil {
-			rt.failed = errors.Join(rt.failed, err)
-			return "", err
-		}
-		return string(answer), nil
+		host := rt.host
+		return rt.promise(func(ctx context.Context) ([]byte, error) {
+			if host == nil {
+				return nil, fmt.Errorf("skgo: nothing is answering remote functions for this render (%s)", id)
+			}
+			return host(ctx, id, payload)
+		})
 	}); err != nil {
 		return nil, err
 	}
-
-	if err := rt.vm.Set("__skgo_fetch", func(payload string) (string, error) {
-		if rt.fetch == nil {
-			err := errors.New("skgo: nothing is answering event.fetch for this render")
-			rt.failed = errors.Join(rt.failed, err)
-			return "", err
-		}
-		answer, err := rt.fetch([]byte(payload))
-		if err != nil {
-			rt.failed = errors.Join(rt.failed, err)
-			return "", err
-		}
-		return string(answer), nil
+	if err := rt.vm.Set("__skgo_fetch", func(payload string) *goja.Promise {
+		fetch := rt.fetch
+		return rt.promise(func(ctx context.Context) ([]byte, error) {
+			if fetch == nil {
+				return nil, errors.New("skgo: nothing is answering event.fetch for this render")
+			}
+			return fetch(ctx, []byte(payload))
+		})
 	}); err != nil {
 		return nil, err
 	}
@@ -575,12 +570,29 @@ func (e *Engine) newRuntime() (*runtime, error) {
 // the engine wrote to `console` came from. It returns the calls the render
 // made, in order, so the caller can serialise exactly the answers it gave into
 // the document.
-func (e *Engine) Render(routeID string, request []byte, hosts Hosts) (Result, []Call, error) {
-	rt, err := e.acquire()
+func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hosts Hosts) (Result, []Call, error) {
+	rt, err := e.acquire(ctx)
 	if err != nil {
 		return Result{}, nil, err
 	}
-	defer e.release(rt)
+	ctx, cancel := context.WithCancel(ctx)
+	rt.work = &renderWork{ctx: ctx, slots: e.hostSlots, completed: make(chan hostCompletion, maxHostCalls)}
+	reusable := false
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() { rt.vm.Interrupt(ctx.Err()); close(interrupted) })
+	defer func() {
+		if !stop() {
+			<-interrupted
+		}
+		clean := reusable && ctx.Err() == nil && rt.work.outstanding == 0
+		cancel()
+		rt.work = nil
+		if clean {
+			e.release(rt)
+		} else {
+			e.permits <- struct{}{}
+		}
+	}()
 
 	// Under `vite dev` the application this runtime holds may be older than the
 	// files on disk. Dropping exactly what an edit invalidated is what makes
@@ -637,6 +649,7 @@ func (e *Engine) Render(routeID string, request []byte, hosts Hosts) (Result, []
 		// outermost call returns.
 		return result, rt.calls, errors.New("skgo: the render did not finish; nothing on this runtime resolved it")
 	}
+	reusable = true
 	if result.Err != "" {
 		return result, rt.calls, fmt.Errorf("skgo: the page threw while rendering: %s", result.Err)
 	}
@@ -659,14 +672,12 @@ const maxTicks = 10_000
 // exactly what has just finished.
 func (rt *runtime) drain(result goja.Value) error {
 	object := result.ToObject(rt.vm)
-	for ticks := 0; !boolOf(object.Get("done")); ticks++ {
-		if ticks == maxTicks {
-			return fmt.Errorf("skgo: the render is still scheduling work after %d turns; it will not finish", maxTicks)
+	ticks := 0
+	for !boolOf(object.Get("done")) {
+		w := rt.work
+		if err := w.ctx.Err(); err != nil {
+			return err
 		}
-		// A dynamic import made during a render suspends on a promise only Go
-		// can resolve, the same way a module-scope one does. Under `vite dev`
-		// that is one more fetch from the dev server; a build has no such
-		// imports at all, and no runner to ask.
 		if rt.runner != nil {
 			if err := rt.runner.Settle(); err != nil {
 				return err
@@ -675,15 +686,55 @@ func (rt *runtime) drain(result goja.Value) error {
 				return nil
 			}
 		}
+		// Launch every runnable Go operation before waiting for any one.
+		for len(w.queue) > 0 {
+			select {
+			case w.slots <- struct{}{}:
+				w.start()
+			default:
+				goto launched
+			}
+		}
+	launched:
+		// Give completed I/O a turn even when JS keeps scheduling macrotasks.
+		select {
+		case c := <-w.completed:
+			if err := rt.complete(c); err != nil {
+				return err
+			}
+			continue
+		default:
+		}
 		waiting, err := rt.pending(goja.Undefined())
 		if err != nil {
 			return fmt.Errorf("skgo: reading the render's pending work: %w", err)
 		}
-		if waiting.ToInteger() == 0 {
+		if waiting.ToInteger() > 0 {
+			if ticks == maxTicks {
+				return fmt.Errorf("skgo: the render is still scheduling work after %d turns; it will not finish", maxTicks)
+			}
+			ticks++
+			if _, err := rt.tick(goja.Undefined()); err != nil {
+				return fmt.Errorf("skgo: running the render's pending work: %w", err)
+			}
+			continue
+		}
+		if w.outstanding == 0 {
 			return nil
 		}
-		if _, err := rt.tick(goja.Undefined()); err != nil {
-			return fmt.Errorf("skgo: running the render's pending work: %w", err)
+		var available chan struct{}
+		if len(w.queue) > 0 {
+			available = w.slots
+		}
+		select {
+		case <-w.ctx.Done():
+			return w.ctx.Err()
+		case available <- struct{}{}:
+			w.start()
+		case c := <-w.completed:
+			if err := rt.complete(c); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -777,7 +828,10 @@ func (e *Engine) refresh(rt *runtime) error {
 
 // acquire takes an idle runtime, or builds one while the pool is below its
 // size, or waits for one to come back.
-func (e *Engine) acquire() (*runtime, error) {
+func (e *Engine) acquire(ctx context.Context) (*runtime, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	select {
 	case rt := <-e.idle:
 		return rt, nil
@@ -786,6 +840,8 @@ func (e *Engine) acquire() (*runtime, error) {
 	select {
 	case rt := <-e.idle:
 		return rt, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case <-e.permits:
 		rt, err := e.newRuntime()
 		if err != nil {

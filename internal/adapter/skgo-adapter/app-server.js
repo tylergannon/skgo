@@ -29,8 +29,8 @@ import { parse } from 'skgo:kit/transport';
 export * from 'skgo:kit/app-server';
 
 /**
- * Calls Go. Synchronous: Go has the answer in this process, so there is nothing
- * for an event loop to wait on.
+ * Calls Go asynchronously. Its I/O runs outside the runtime while other
+ * independent queries start; the runtime resumes when Go settles the promise.
  *
  * A refusal comes back as one of kit's own control objects rather than a bare
  * Error, because everything downstream classifies by type: handle_error
@@ -44,8 +44,8 @@ export * from 'skgo:kit/app-server';
  * the component an instance of the app's class, and a method call on it during
  * a render works for the same reason it works in the browser.
  */
-function host(id, payload) {
-	const raw = globalThis.__skgo_remote(id, payload);
+async function host(id, payload) {
+	const raw = await globalThis.__skgo_remote(id, payload);
 	const res = JSON.parse(raw);
 	if (res.r) {
 		throw new Redirect(res.r.status, res.r.location);
@@ -74,9 +74,9 @@ export function query(validate_or_fn, maybe_fn) {
  * order they were sent, which is the order kit's client matches results to
  * arguments by.
  */
-function host_batch(id, args) {
+async function host_batch(id, args) {
 	const payloads = args.map((arg) => stringify_remote_arg(arg));
-	const raw = globalThis.__skgo_remote(id, JSON.stringify(payloads));
+	const raw = await globalThis.__skgo_remote(id, JSON.stringify(payloads));
 	const res = JSON.parse(raw);
 	if (res.r) {
 		throw new Redirect(res.r.status, res.r.location);
@@ -110,17 +110,16 @@ query.live = (validate_or_fn, maybe_fn) => {
 	// the value is in the markup before any script runs; the stream itself is
 	// the browser's, and it opens after hydration against the same endpoint.
 	//
-	// A plain iterator rather than a generator: to_iterator accepts anything
-	// with a next method, and there is nothing to suspend on — Go has the
-	// value in this process.
+	// An asynchronous iterator: the first value waits for Go, and Kit closes
+	// the iterator after consuming it during SSR.
 	const fn = (arg) => {
 		const payload = stringify_remote_arg(arg);
 		let taken = false;
 		return {
-			next: () => {
+			next: async () => {
 				if (taken) return { value: undefined, done: true };
 				taken = true;
-				return { value: host(wrapper.__.id, payload), done: false };
+				return { value: await host(wrapper.__.id, payload), done: false };
 			},
 			return: () => ({ value: undefined, done: true })
 		};

@@ -59,14 +59,27 @@ type SSR struct {
 	// recursing back into the SSR engine can starve the runtime pool it is
 	// still holding a runtime from. See SSROptions.Fetch.
 	fetch http.Handler
-	// dev is non-nil only for a renderer backed by a running Vite server. Its
-	// mutex serialises a live-manifest refresh with the page render that uses
-	// it, so node numbering cannot change halfway through a document.
+	// dev is non-nil only for a renderer backed by a running Vite server.
+	// devRenderMu keeps dev page renders serialised one at a time, as they
+	// always were: each engine runtime tracks its own cursor into vite's
+	// change log (vite.Runner.Refresh) entirely independently of devMu, so two
+	// renders in flight together could pick up different runtimes refreshed to
+	// different vite generations while sharing one frozen Go manifest snapshot
+	// -- an old Go node/route table paired with a runtime that already loaded
+	// the new one. Serialising renders is what keeps the pair moving together,
+	// exactly as before this render could pend on slow Go I/O. devMu's RWMutex
+	// then only has to pin that one render's snapshot against a concurrent
+	// refresh (RLock) while a refresh applies under an exclusive TryLock,
+	// skipping rather than blocking when the render holds it -- the next
+	// devRefresh call (from a Go endpoint or load, which touch no runtime and
+	// so carry none of this hazard) retries it instead of queuing behind the
+	// render. See serveDev/refreshDev.
 	dev          *vite.Dev
 	devBase      Manifest
 	devEndpoints *Endpoints
 	devVersion   int
-	devMu        sync.Mutex
+	devRenderMu  sync.Mutex
+	devMu        sync.RWMutex
 }
 
 // SSROptions configures the renderer.
@@ -257,22 +270,55 @@ func manifestFromDev(base Manifest, answer vite.Info) (Manifest, error) {
 	return live, nil
 }
 
-// serveDev binds one document to one live manifest snapshot. A route edit can
-// invalidate and renumber several nodes at once; holding this lock through the
-// render prevents another request from installing the next snapshot halfway
-// through the branch.
+// serveDev binds one document to the live manifest snapshot current when its
+// render starts. Only one dev render runs at a time (devRenderMu): a route
+// edit can invalidate and renumber several nodes at once, and each engine
+// runtime refreshes itself against vite independently of the Go manifest, so
+// letting a second render start on a different runtime while this one still
+// pends on Go I/O could pair an old Go node table with a runtime that already
+// picked up the new one. Serialising renders keeps that pair moving together.
+// It does not affect Go endpoints or loads, which never touch a runtime and
+// so carry none of that hazard -- see refreshDev.
 func (s *SSR) serveDev(w http.ResponseWriter, r *http.Request, urlPath string) bool {
-	s.devMu.Lock()
-	defer s.devMu.Unlock()
-	if err := s.refreshDevLocked(); err != nil {
+	end, err := s.beginDevRender()
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return true
 	}
+	defer end()
 	return s.serve(w, r, urlPath)
 }
 
+// beginDevRender acquires the two locks a dev render holds for its whole
+// duration -- devRenderMu, then a refreshed devMu.RLock -- and returns the
+// func that releases them in reverse order. Split out from serveDev so the
+// exact sequence a render depends on is what a test exercises directly.
+func (s *SSR) beginDevRender() (end func(), err error) {
+	s.devRenderMu.Lock()
+	if err := s.refreshDev(); err != nil {
+		s.devRenderMu.Unlock()
+		return nil, err
+	}
+	s.devMu.RLock()
+	return func() {
+		s.devMu.RUnlock()
+		s.devRenderMu.Unlock()
+	}, nil
+}
+
+// refreshDev installs Kit's latest dev manifest before a route-shaped request
+// proceeds. It must never block behind an in-flight render: TryLock only
+// applies the update when no render currently holds the snapshot, and skips
+// otherwise, leaving the next devRefresh call (from any request) to retry.
+// That keeps Go endpoints and loads responsive while a page is pending on
+// Go I/O. Dev page renders remain serialized by devRenderMu.
 func (s *SSR) refreshDev() error {
-	s.devMu.Lock()
+	if s.dev == nil {
+		return nil
+	}
+	if !s.devMu.TryLock() {
+		return nil
+	}
 	defer s.devMu.Unlock()
 	return s.refreshDevLocked()
 }
@@ -922,13 +968,29 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 		s.record(answers, "f", plan.action.id, answered{tree: plan.action.output})
 	}
 
-	result, _, err := s.engine.Render(plan.routeID, request, ssr.Hosts{
-		Remote: func(id, payload string) ([]byte, error) {
-			return s.answer(withEvent(ctx, event), id, payload, answers)
+	var answersMu sync.Mutex
+	finished := false
+	result, _, err := s.engine.Render(ctx, plan.routeID, request, ssr.Hosts{
+		Remote: func(ctx context.Context, id, payload string) ([]byte, error) {
+			local := map[string]map[string]answered{}
+			raw, err := s.answer(withEvent(ctx, event), id, payload, local)
+			answersMu.Lock()
+			defer answersMu.Unlock()
+			if !finished {
+				for kind, entries := range local {
+					for key, value := range entries {
+						s.record(answers, kind, key, value)
+					}
+				}
+			}
+			return raw, err
 		},
 		Fetch: s.fetchDispatch,
 		Match: s.matchDispatch,
 	})
+	answersMu.Lock()
+	finished = true
+	answersMu.Unlock()
 	return result, answers, err
 }
 

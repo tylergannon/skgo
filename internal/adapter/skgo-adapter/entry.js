@@ -93,7 +93,7 @@ function make_state() {
  * @param {URL} url
  */
 function create_fetch(req, url) {
-	return function (input, init) {
+	return async function (input, init) {
 		const request = input instanceof Request ? input : new Request(input, init);
 		const target = new URL(request.url, url);
 
@@ -123,7 +123,7 @@ function create_fetch(req, url) {
 		const envelope = { method: request.method || 'GET', url: target.href, headers };
 		if (typeof request._body === 'string') envelope.body = request._body;
 
-		const raw = globalThis.__skgo_fetch(JSON.stringify(envelope));
+		const raw = await globalThis.__skgo_fetch(JSON.stringify(envelope));
 		const answer = JSON.parse(raw);
 		if (answer.error) throw new TypeError(answer.error);
 
