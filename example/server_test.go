@@ -637,6 +637,56 @@ func TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument(t *testing.T) {
 	}
 }
 
+// TestADataErrorCarriesWhatTheAppsHandleErrorHookChose asks the production
+// stack for the wire kit's client uses during navigation. The expectation is
+// anchored in the app's literal support id and hook message, not in a document
+// rendered from the same error object.
+func TestADataErrorCarriesWhatTheAppsHandleErrorHookChose(t *testing.T) {
+	rec := get(t, newProdHandler(t), "/error/unexpected/__data.json")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /error/unexpected/__data.json: status %d, want 200", rec.Code)
+	}
+
+	var envelope struct {
+		Type  string `json:"type"`
+		Nodes []struct {
+			Type  string `json:"type"`
+			Error struct {
+				Status    int    `json:"status"`
+				Message   string `json:"message"`
+				SupportID string `json:"supportId"`
+			} `json:"error"`
+		} `json:"nodes"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("data response is not JSON: %v\n%s", err, rec.Body.String())
+	}
+	if envelope.Type != "data" {
+		t.Fatalf("response type = %q, want data", envelope.Type)
+	}
+	for _, node := range envelope.Nodes {
+		if node.Type != "error" {
+			continue
+		}
+		if node.Error.Status != 500 {
+			t.Errorf("error status = %d, want 500", node.Error.Status)
+		}
+		if node.Error.Message != "Something went wrong on our end." {
+			t.Errorf("error message = %q, want the hook's own words", node.Error.Message)
+		}
+		if node.Error.SupportID != "case-1121" {
+			t.Errorf("error supportId = %q, want case-1121", node.Error.SupportID)
+		}
+		for _, secret := range []string{"hunter2", "postgres://"} {
+			if strings.Contains(rec.Body.String(), secret) {
+				t.Errorf("data response leaked %q: %s", secret, rec.Body.String())
+			}
+		}
+		return
+	}
+	t.Fatalf("no error node in data response: %s", rec.Body.String())
+}
+
 // The static handler answers a page with an ETag and honours a conditional
 // request against it. A data URL is not that page, and the two live one
 // `Intercept` apart: if a data request ever reached the static handler it would

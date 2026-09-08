@@ -104,6 +104,12 @@ type LoadConfig struct {
 	// goes out as whatever encoding/json makes of it, which is a plain object
 	// with no methods on the other side. See the Transport type.
 	Transport Transport
+	// HandleError is the app's `handleError` hook: the one place it decides
+	// what a failed load's visitor is told beyond status and message. The loads
+	// registry owns it because it answers the error on `__data.json`; the page
+	// renderer reads the same hook from this registry when the same load fails
+	// while rendering a document. It is optional; see the HandleError type.
+	HandleError HandleError
 	// OnPanic is called when a load panics, with the load's `+*.server.ts`
 	// module, the recovered value, and the stack. The client is told nothing
 	// but an opaque 500, so this is the only record the panic leaves; leaving

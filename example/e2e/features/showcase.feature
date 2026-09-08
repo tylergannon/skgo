@@ -113,17 +113,22 @@ Feature: The front page says what skgo can do
     Then I see "Sensor"
     And I see the words "The sensor is being calibrated"
 
-  Scenario: The entry for an error that is a bug shows nothing of what the error said
+  Scenario: Client-side navigation shows what the handleError hook chose
     src/routes/error/unexpected/page.server.go fails with an ordinary Go error
-    reading "the connection string is postgres://ada:hunter2@db". Both strings
-    below are read from that file rather than from the page, so a page that let
-    either through would fail here — and the heading is asserted alongside them,
-    because a page that rendered nothing at all mentions nothing at all.
+    reading "the connection string is postgres://ada:hunter2@db". The expected
+    message and support id below are literals from example.HandleError, not
+    values read from the document path. Starting on the index and following its
+    link proves exactly one `__data.json` response carried that choice.
 
     Given I have signed in as "ada"
     And I visit "/"
+    And I see "Home"
+    And I note the data request count
     When I open the capability "An error that is a bug says nothing about itself"
     Then I see "Error 500"
+    And the error message is "Something went wrong on our end."
+    And the error page shows the support id "case-1121"
+    And exactly 1 data request was made since
     And the page never mentions "hunter2"
     And the page never mentions "postgres://ada"
 

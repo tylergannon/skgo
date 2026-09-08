@@ -113,7 +113,8 @@ Feature: In dev the document is kit's and the answers are still Go's
       Given I open "/error/unexpected"
       Then Go's data endpoint for "/error/unexpected" answered 500
       And I see "Error 500"
-      And the error message is "Internal Error"
+      And the error message is "Something went wrong on our end."
+      And the error page shows the support id "case-1121"
       And the page never mentions "hunter2"
       And the page never mentions "postgres://"
 

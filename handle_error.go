@@ -1,27 +1,29 @@
 // Server hook: the Go side of SvelteKit's `handleError`.
 //
 // Kit's `handle_error_and_jsonify` (runtime/server/errors.js) runs the app's
-// `handleError` hook for every error that reaches a rendered document —
+// `handleError` hook for every error that reaches a page response —
 // whatever kind it is, `error()` thrown on purpose or an ordinary bug — and
 // merges what the hook returns over the error's own status and message. The
 // same function was ported into the SSR bundle with the hook removed (see
 // `internal/adapter/skgo-adapter.js`'s `handle_error`), because the hook is
 // application code and application code is Go, not JavaScript. This file is
-// where Go answers that call for the page-render path: a load that fails
-// before the engine runs, and the last-resort root-layout render.
+// where Go answers that call for both page wires: a load that fails while Go
+// renders a document or while `Loads` answers a client navigation's
+// `__data.json`, and the last-resort root-layout render.
 package skgo
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"runtime/debug"
 
 	"github.com/tylergannon/skgo/internal/ssr"
 )
 
-// CaughtError is the error a render's `handleError` hook is told about — kit's
+// CaughtError is the error a page's `handleError` hook is told about — kit's
 // own discriminated `CaughtError` (`exports/hooks/public.d.ts`), narrowed to
 // what a Go port can express without modelling kit's `SvelteKitError` and
 // `ValidationError` classes as distinct Go types the way skgo's `HTTPError`
@@ -48,9 +50,9 @@ type CaughtError struct {
 
 // HandleError is skgo's mirror of kit's `handleError` hook
 // (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app
-// decides what a failed render's visitor is told, beyond status and message.
+// decides what a failed page's visitor is told, beyond status and message.
 //
-// It runs for every error that reaches a rendered document except a
+// It runs for every error that reaches a page response except a
 // redirect, which is not a failure and never reaches it — the same rule
 // kit's own doc comment states ("runs for every error thrown while
 // responding to a request, except redirects"). That includes an error the
@@ -76,9 +78,9 @@ type CaughtError struct {
 // that failed to run is not a hook whose omissions can be trusted.
 type HandleError func(ctx context.Context, caught CaughtError) map[string]any
 
-// documentError is kit's `handle_error_and_jsonify`, narrowed to the render
-// path: there is no async `handleError` here — a synchronous Go function
-// cannot be one — and nothing on skgo's render path produces kit's
+// handleErrorAndJSONify is kit's `handle_error_and_jsonify`, narrowed to Go's
+// synchronous hook: there is no async `handleError` here — a synchronous Go
+// function cannot be one — and nothing on skgo's page paths produces kit's
 // `HandledHttpError` fast path (an error already run through the hook by an
 // earlier layer), so both are simply absent.
 //
@@ -88,11 +90,21 @@ type HandleError func(ctx context.Context, caught CaughtError) map[string]any
 // fallback itself (a framework failure skgo manufactured, such as a 404 for
 // an unmatched route).
 func (s *SSR) documentError(ctx context.Context, routeID string, fallback *HTTPError, raw error) *ssr.Error {
+	return handleErrorAndJSONify(ctx, routeID, s.loads.cfg.HandleError, fallback, raw, s.report)
+}
+
+// dataError is the same handle_error_and_jsonify call on kit's data path.
+// Keeping the implementation shared is load-bearing: kit's client consumes
+// App.Error identically whether it came in a rendered document or a data node.
+func (ls *Loads) dataError(ctx context.Context, routeID string, fallback *HTTPError, raw error) *ssr.Error {
+	return handleErrorAndJSONify(ctx, routeID, ls.cfg.HandleError, fallback, raw, nil)
+}
+
+func handleErrorAndJSONify(ctx context.Context, routeID string, hook HandleError, fallback *HTTPError, raw error, report func(string, error)) *ssr.Error {
 	if fallback == nil {
 		fallback = &HTTPError{Status: http.StatusInternalServerError, Message: "Internal Error"}
 	}
 
-	hook := s.handleError
 	if hook == nil {
 		return &ssr.Error{Status: fallback.Status, Message: fallback.Message}
 	}
@@ -104,15 +116,20 @@ func (s *SSR) documentError(ctx context.Context, routeID string, fallback *HTTPE
 		caught.Err = raw
 	}
 
-	return mergeCaughtError(fallback, s.runHandleError(ctx, routeID, hook, caught))
+	return mergeCaughtError(fallback, runHandleError(ctx, routeID, hook, caught, report))
 }
 
 // runHandleError calls the hook and turns a panic into kit's own
 // hook-failure fallback.
-func (s *SSR) runHandleError(ctx context.Context, routeID string, hook HandleError, caught CaughtError) (result map[string]any) {
+func runHandleError(ctx context.Context, routeID string, hook HandleError, caught CaughtError, report func(string, error)) (result map[string]any) {
 	defer func() {
 		if v := recover(); v != nil {
-			s.report(routeID, fmt.Errorf("skgo: the handleError hook panicked: %v\n%s", v, debug.Stack()))
+			err := fmt.Errorf("skgo: the handleError hook panicked: %v\n%s", v, debug.Stack())
+			if report != nil {
+				report(routeID, err)
+			} else {
+				log.Printf("skgo: route %s: %v", routeID, err)
+			}
 			// Kit's own catch: the status stays the fallback's, but the
 			// message is forced back to "Internal Error" — a hook that just
 			// panicked is not one the app can vouch for, app-kind fallback or
@@ -150,11 +167,11 @@ func mergeCaughtError(fallback *HTTPError, hookReturn map[string]any) *ssr.Error
 	return result
 }
 
-// hookContext derives the context a render's `handleError` hook runs with: a
+// hookContext derives the context a page's `handleError` hook runs with: a
 // read-only event, on kit's own rule that the hook may inspect the request
 // but not act on it — nothing it does is tracked either, because the hook is
 // not a load.
-func (s *SSR) hookContext(r *http.Request, shared *loadRequest) context.Context {
+func hookContext(r *http.Request, shared *loadRequest) context.Context {
 	e := shared.event(0, nil)
 	e.mutable = false
 	e.load.uses.tracking = false

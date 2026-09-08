@@ -8,11 +8,10 @@ import (
 	"github.com/tylergannon/skgo/internal/ssr"
 )
 
-// hookSSR is a renderer with nothing but a handleError hook wired in — enough
-// to exercise documentError, which reads only s.handleError and s.onError
-// (through report, on a hook panic).
+// hookSSR is a renderer whose loads registry owns a handleError hook — enough
+// to exercise documentError, which reads the same setting as the data path.
 func hookSSR(hook HandleError) *SSR {
-	return &SSR{handleError: hook}
+	return &SSR{loads: &Loads{cfg: LoadConfig{HandleError: hook}}}
 }
 
 func TestDocumentErrorWithNoHookKeepsTheFallbackExactly(t *testing.T) {

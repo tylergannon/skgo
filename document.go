@@ -48,12 +48,6 @@ type SSR struct {
 	base      string
 	version   string
 	onError   func(routeID string, err error)
-	// handleError is the app's `handleError` hook. It is a render concern
-	// rather than a Loads one — nothing about `__data.json` calls it today —
-	// so it lives here rather than on LoadConfig, the same way Handle lives on
-	// its own HandleConfig rather than being smuggled onto a registry that
-	// merely happens to also run during a request.
-	handleError HandleError
 	// fetch answers a render-time `event.fetch` of the app's own routes. It is
 	// the server-route registry's own Intercept, with nothing beneath it: a
 	// fetch that matches no `+server.ts` refuses rather than falling through
@@ -75,10 +69,6 @@ type SSROptions struct {
 	// to it — the error page, or `error.html` — which says nothing about the
 	// cause, so this is the only record. Leaving it nil logs.
 	OnError func(routeID string, err error)
-	// HandleError is the app's `handleError` hook: the one place it decides
-	// what a failed render's visitor is told beyond status and message. It is
-	// optional; see the HandleError type.
-	HandleError HandleError
 	// Fetch answers a render-time `event.fetch` of the app's own routes: the
 	// registered `+server.ts` handlers, dispatched in-process rather than over
 	// a socket. Pass `endpoints.Intercept(http.NotFoundHandler())` — the same
@@ -136,16 +126,15 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		size = runtime.NumCPU()
 	}
 	s := &SSR{
-		loads:       loads,
-		remotes:     remotes,
-		info:        info,
-		template:    string(template),
-		errorPage:   string(errorPage),
-		base:        strings.TrimSuffix(m.Base, "/"),
-		version:     m.Version,
-		onError:     opts.OnError,
-		handleError: opts.HandleError,
-		fetch:       opts.Fetch,
+		loads:     loads,
+		remotes:   remotes,
+		info:      info,
+		template:  string(template),
+		errorPage: string(errorPage),
+		base:      strings.TrimSuffix(m.Base, "/"),
+		version:   m.Version,
+		onError:   opts.OnError,
+		fetch:     opts.Fetch,
 	}
 	// The engine is built after the SSR rather than into it because the bundle
 	// writes to `console` while it is coming up, and that line has to reach the
@@ -369,7 +358,7 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 	// document, expected or not (`page/index.js`), and what it returns is
 	// merged over the load's own status and message before the error page
 	// ever sees either.
-	pageError := s.documentError(s.hookContext(r, shared), route.id, e, raw)
+	pageError := s.documentError(hookContext(r, shared), route.id, e, raw)
 	for _, candidate := range nearestErrorPages(at, filled, route.errors) {
 		if candidate.node < 0 || candidate.node >= len(s.info.Nodes) {
 			continue
@@ -437,7 +426,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		jar: newCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev)),
 		url: req.url, routeID: routeID, params: params,
 	}
-	pageError := s.documentError(s.hookContext(r, hookRequest), routeID, e, raw)
+	pageError := s.documentError(hookContext(r, hookRequest), routeID, e, raw)
 
 	if len(s.info.Nodes) <= rootError {
 		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
@@ -1064,7 +1053,7 @@ func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest
 	ctx := r.Context()
 	hookCtx := ctx
 	if shared != nil {
-		hookCtx = s.hookContext(r, shared)
+		hookCtx = hookContext(r, shared)
 	}
 	replacer := s.deferReplacer(promises)
 	promises.settled(ctx, func(id int, value any, err error) {
