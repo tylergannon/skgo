@@ -59,6 +59,19 @@ export type Data = {
 export type Notes = Map<string, number>;
 
 /**
+ * The browser's own console, for the one claim only it can make: that a CSP
+ * the app configured did not block anything. A blocked inline script does not
+ * throw where a `Then` step could catch it — the browser silently drops the
+ * element and reports the refusal to the console instead, so this is the only
+ * place a false CSP header (or a real one the boot script's own hash does not
+ * satisfy) would be visible at all.
+ */
+export type BrowserConsole = {
+	/** Every message the page's console produced, in order. */
+	messages: string[];
+};
+
+/**
  * Screenshots the page in whatever state the scenario left it, named after the
  * scenario. Every loads scenario leaves one behind, because the sprint's
  * acceptance is somebody looking at all of them.
@@ -71,7 +84,20 @@ export const test = base.extend<{
 	data: Data;
 	notes: Notes;
 	shot: Shot;
+	browserConsole: BrowserConsole;
 }>({
+	// `auto` so the listener is attached before the scenario's first
+	// navigation — a violation reported while the very first document loads
+	// would otherwise be missed.
+	browserConsole: [
+		async ({ page }, use) => {
+			const browserConsole: BrowserConsole = { messages: [] };
+			page.on('console', (msg) => browserConsole.messages.push(msg.text()));
+			await use(browserConsole);
+		},
+		{ auto: true }
+	],
+
 	documents: async ({ page }, use) => {
 		const documents: Documents = { count: 0, last: null, log: [] };
 

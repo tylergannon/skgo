@@ -99,6 +99,11 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	if len(info.Nodes) != len(m.Nodes) {
 		return nil, fmt.Errorf("skgo: the build describes %d node(s) for rendering and %d for loading", len(info.Nodes), len(m.Nodes))
 	}
+	if info.CSP != nil {
+		if err := validateReportOnly(info.CSP.ReportOnly); err != nil {
+			return nil, err
+		}
+	}
 
 	source, err := fs.ReadFile(build, info.Bundle)
 	if err != nil {
@@ -472,7 +477,15 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		errors: []*int{nil, nil},
 	}
 
-	result, answers, err := s.renderPlan(r, req, plan)
+	// kit builds `csp` before it ever calls `render_page` — the nonce has to
+	// exist before Svelte's own render call, which runs inside renderPlan,
+	// before assemble does. The same object is handed to both, below.
+	csp, err := newDocumentCSP(s.info.CSP)
+	if err != nil {
+		s.report(routeID, err)
+		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
+	}
+	result, answers, err := s.renderPlan(r, req, plan, csp)
 	if err != nil {
 		s.report(routeID, err)
 		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
@@ -482,16 +495,16 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		return true
 	}
 	plan.status, plan.pageError = result.Status, result.Error
-	document, promises, err := s.assemble(req, plan, result, answers)
+	document, promises, headers, err := s.assemble(req, plan, result, answers, csp)
 	if err != nil {
 		s.report(routeID, err)
 		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
 	if len(promises.order) > 0 {
-		s.stream(w, r, shared, document, promises)
+		s.stream(w, r, shared, document, promises, headers)
 		return true
 	}
-	s.write(w, r, shared, document, plan.status)
+	s.write(w, r, shared, document, plan.status, headers)
 	return true
 }
 
@@ -536,7 +549,15 @@ func (s *SSR) report(routeID string, err error) {
 
 // deliver renders a plan and writes the document it produced.
 func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, shared *loadRequest, plan documentPlan) bool {
-	result, answers, err := s.renderPlan(r, req, plan)
+	// Built before renderPlan, not assemble: the nonce has to exist before
+	// the engine's own Svelte render call, and the same object is what
+	// assemble later hashes/nonces the boot script against — see
+	// respondWithError's identical comment.
+	csp, err := newDocumentCSP(s.info.CSP)
+	if err != nil {
+		return s.failed(w, r, req, plan.routeID, plan.params, err)
+	}
+	result, answers, err := s.renderPlan(r, req, plan, csp)
 	if err != nil {
 		return s.failed(w, r, req, plan.routeID, plan.params, err)
 	}
@@ -551,15 +572,15 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 	// boundary that caught something sets `page.status` and `page.error`, and
 	// the response carries what the page ended up showing.
 	plan.status, plan.pageError = result.Status, result.Error
-	document, promises, err := s.assemble(req, plan, result, answers)
+	document, promises, headers, err := s.assemble(req, plan, result, answers, csp)
 	if err != nil {
 		return s.failed(w, r, req, plan.routeID, plan.params, err)
 	}
 	if len(promises.order) > 0 {
-		s.stream(w, r, shared, document, promises)
+		s.stream(w, r, shared, document, promises, headers)
 		return true
 	}
-	s.write(w, r, shared, document, plan.status)
+	s.write(w, r, shared, document, plan.status, headers)
 	return true
 }
 
@@ -587,7 +608,18 @@ func (s *SSR) encodeBranch(nodes []dataNode) error {
 }
 
 // renderPlan runs the engine over one plan.
-func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (ssr.Result, map[string]map[string]answered, error) {
+//
+// csp is this request's already-built documentCSP (see respondWithError and
+// deliver): its ScriptNeedsNonce/ScriptNeedsHash are decided entirely by the
+// build's configured directives, so they are known — and the request payload
+// below carries them — before this render has produced any script content at
+// all. That is kit's own `csp: csp.script_needs_nonce ? { nonce: csp.nonce }
+// : { hash: csp.script_needs_hash }` (render.js:198), passed to Svelte's own
+// render call so the one inline script Svelte can still emit on its own — a
+// hydratable-async-block script (Svelte's `internal/server/renderer.js`, for
+// a component's own top-level `await`) — gets nonced or hashed the same way
+// the boot script skgo assembles itself does.
+func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, csp *documentCSP) (ssr.Result, map[string]map[string]answered, error) {
 	ctx := r.Context()
 
 	// Each node's data crosses into the engine in devalue's flat form, which
@@ -634,6 +666,11 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 		return ssr.Result{}, nil, err
 	}
 
+	requestCSP := ssr.RequestCSP{Hash: csp.ScriptNeedsHash()}
+	if csp.ScriptNeedsNonce() {
+		requestCSP.Nonce = csp.nonce
+	}
+
 	request, err := json.Marshal(ssr.Request{
 		URL:             req.url.String(),
 		RouteID:         plan.routeID,
@@ -645,6 +682,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 		Cookies:         cookies,
 		ClientAddress:   clientAddress(r),
 		FormAction:      seed,
+		CSP:             requestCSP,
 	})
 	if err != nil {
 		return ssr.Result{}, nil, err
@@ -674,7 +712,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan) (s
 }
 
 // write sends a rendered document.
-func (s *SSR) write(w http.ResponseWriter, r *http.Request, shared *loadRequest, document string, status int) {
+func (s *SSR) write(w http.ResponseWriter, r *http.Request, shared *loadRequest, document string, status int, headers documentHeaders) {
 	if status <= 0 {
 		status = http.StatusOK
 	}
@@ -683,6 +721,7 @@ func (s *SSR) write(w http.ResponseWriter, r *http.Request, shared *loadRequest,
 	if shared != nil {
 		shared.applyTo(header)
 	}
+	setCSPHeaders(header, headers)
 	header.Set("Content-Type", "text/html; charset=utf-8")
 	header.Set("X-Sveltekit-Page", "true")
 	// A rendered document carries whatever the visitor is allowed to see, so it
@@ -1029,11 +1068,12 @@ type remoteAnswer struct {
 // streamed document is a 200 whatever the page's status was, and carries no
 // etag to revalidate against. Both are kit's, and skgo mirrors rather than
 // improves on them: the browser runs kit's client either way.
-func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest, document string, promises *promiseTable) {
+func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest, document string, promises *promiseTable, headers documentHeaders) {
 	header := w.Header()
 	if shared != nil {
 		shared.applyTo(header)
 	}
+	setCSPHeaders(header, headers)
 	header.Set("Content-Type", "text/html; charset=utf-8")
 	header.Set("X-Sveltekit-Page", "true")
 	header.Set("Cache-Control", "private, no-cache")
@@ -1055,9 +1095,17 @@ func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest
 	if shared != nil {
 		hookCtx = hookContext(r, shared)
 	}
+	// kit's `data_serializer.js:103` `get_data(csp)`: `<script${
+	// csp.script_needs_nonce ? \` nonce="${csp.nonce}"\` : ''}>` — computed
+	// once, outside the settle loop, because it is the same for every chunk
+	// this response ever writes.
+	nonceAttr := ""
+	if headers.ScriptNeedsNonce {
+		nonceAttr = ` nonce="` + headers.Nonce + `"`
+	}
 	replacer := s.deferReplacer(promises)
 	promises.settled(ctx, func(id int, value any, err error) {
-		_, _ = io.WriteString(w, s.chunkScript(hookCtx, id, value, err, replacer))
+		_, _ = io.WriteString(w, s.chunkScript(hookCtx, id, value, err, replacer, nonceAttr))
 		flush(w)
 	})
 }
@@ -1066,20 +1114,30 @@ func (s *SSR) stream(w http.ResponseWriter, r *http.Request, shared *loadRequest
 // (`page/data_serializer.js`): a script element of its own, appended to a
 // document the browser has already started rendering.
 //
-//	<script>__sveltekit_1a2b3c.resolve(1, () => [<value>])</script>
+//	<script nonce="...">__sveltekit_1a2b3c.resolve(1, () => [<value>])</script>
 //
 // The array is the pair the boot script destructures — `[value]` fulfils the
 // promise and `[, error]`, a hole then the error, rejects it — and the arrow
 // takes `app` rather than nothing when the value was written through the app's
 // transport hook, because `app.decode` is only in scope once the client's app
 // module is in hand.
-func (s *SSR) chunkScript(ctx context.Context, id int, value any, err error, replacer devalue.Replacer) string {
+//
+// nonceAttr is kit's own `csp.script_needs_nonce ? \` nonce="${csp.nonce}"\`
+// : ''` (`data_serializer.js:103`), computed once by stream and threaded
+// through unchanged: without it, a CSP that requires a nonce or hash on every
+// inline script blocks each chunk as it arrives, and a value a load promised
+// never fills in — the response looks identical up to the moment nothing
+// happens. Hash mode gets no attribute here at all, matching kit: a streamed
+// chunk's content is never added to either policy's script-src sources, so
+// hash mode and streaming remain exactly as incompatible in skgo as they are
+// in kit itself.
+func (s *SSR) chunkScript(ctx context.Context, id int, value any, err error, replacer devalue.Replacer, nonceAttr string) string {
 	written := s.unevalChunk(ctx, value, err, replacer)
 	arrow := "() => "
 	if strings.Contains(written, "app.decode") {
 		arrow = "(app) => "
 	}
-	return "<script>" + s.info.GlobalName + ".resolve(" + strconv.Itoa(id) + ", " + arrow + written + ")</script>\n"
+	return "<script" + nonceAttr + ">" + s.info.GlobalName + ".resolve(" + strconv.Itoa(id) + ", " + arrow + written + ")</script>\n"
 }
 
 // unevalChunk writes the pair a chunk carries. A value that cannot be written

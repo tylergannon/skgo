@@ -72,7 +72,10 @@ func rendered() ssr.Result {
 func assembled(t *testing.T, s *SSR, plan documentPlan) (string, *promiseTable) {
 	t.Helper()
 	req := dataRequest{url: mustURL(t, "http://127.0.0.1/account/orders")}
-	document, promises, err := s.assemble(req, plan, rendered(), nil)
+	// No csp configured for this fixture — these tests are about the
+	// streaming plumbing, not csp.go, which has its own tests.
+	csp := newDocumentCSPWithNonce(s.info.CSP, "test-nonce")
+	document, promises, _, err := s.assemble(req, plan, rendered(), nil, csp)
 	if err != nil {
 		t.Fatalf("assemble: %v", err)
 	}
@@ -169,7 +172,7 @@ func TestATransportedValueStreamsThroughTheAppsDecoder(t *testing.T) {
 		promising(map[string]any{"price": price}),
 	))
 
-	chunk := s.chunkScript(context.Background(), promises.ids[price], cents(4500), nil, s.deferReplacer(promises))
+	chunk := s.chunkScript(context.Background(), promises.ids[price], cents(4500), nil, s.deferReplacer(promises), "")
 	const want = `<script>__sveltekit_test.resolve(1, (app) => [app.decode("Money", [4500])])</script>` + "\n"
 	if chunk != want {
 		t.Errorf("chunk\n got %q\nwant %q", chunk, want)
@@ -186,7 +189,7 @@ func TestADeferredValueThatFailedStreamsAsAHoleAndAnError(t *testing.T) {
 		promising(map[string]any{"orders": failed}),
 	))
 
-	chunk := s.chunkScript(context.Background(), promises.ids[failed], nil, Errorf(402, "Your account is in arrears"), s.deferReplacer(promises))
+	chunk := s.chunkScript(context.Background(), promises.ids[failed], nil, Errorf(402, "Your account is in arrears"), s.deferReplacer(promises), "")
 	const want = `<script>__sveltekit_test.resolve(1, () => [,{status:402,message:"Your account is in arrears"}])</script>` + "\n"
 	if chunk != want {
 		t.Errorf("chunk\n got %q\nwant %q", chunk, want)
@@ -212,7 +215,7 @@ func TestAssembledDocumentShowsWhatTheHandleErrorHookReturnedForADeferredFailure
 		promising(map[string]any{"orders": failed}),
 	))
 
-	chunk := s.chunkScript(context.Background(), promises.ids[failed], nil, Errorf(402, "Your account is in arrears"), s.deferReplacer(promises))
+	chunk := s.chunkScript(context.Background(), promises.ids[failed], nil, Errorf(402, "Your account is in arrears"), s.deferReplacer(promises), "")
 	const want = `<script>__sveltekit_test.resolve(1, () => [,{status:402,message:"Your account is in arrears",supportId:"case-1121"}])</script>` + "\n"
 	if chunk != want {
 		t.Errorf("chunk\n got %q\nwant %q", chunk, want)
@@ -243,7 +246,7 @@ func TestAStreamedDocumentCarriesNeitherTheStatusNorAnEtag(t *testing.T) {
 	}()
 
 	rec := httptest.NewRecorder()
-	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises)
+	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises, documentHeaders{})
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("status: got %d, want 200 — kit's streaming branch passes none", rec.Code)
@@ -287,7 +290,7 @@ func TestChunksAreSentInTheOrderTheySettle(t *testing.T) {
 	}()
 
 	rec := httptest.NewRecorder()
-	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises)
+	s.stream(rec, httptest.NewRequest(http.MethodGet, "/account/orders", nil), nil, document, promises, documentHeaders{})
 
 	body := strings.TrimPrefix(rec.Body.String(), document+"\n")
 	want := `<script>__sveltekit_test.resolve(2, () => ["second in, first out"])</script>` + "\n" +

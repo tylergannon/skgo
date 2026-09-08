@@ -103,6 +103,12 @@ type ManifestSSR struct {
 	Client ManifestClient `json:"client"`
 	// Nodes describes each node of the table `Nodes` indexes, positionally.
 	Nodes []ManifestSSRNode `json:"nodes"`
+	// CSP is the app's `csp` option (`core/config/options.js`), or nil for a
+	// build made before the adapter carried it — an absent field, not an
+	// absent policy: a build whose app never set `csp` still gets one, with
+	// every directive empty, because kit validates the option whether or not
+	// a developer wrote it.
+	CSP *ManifestCSP `json:"csp,omitempty"`
 }
 
 // ManifestClient is kit's own `manifest._.client`: the entry points a document

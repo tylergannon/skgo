@@ -68,6 +68,35 @@ type Request struct {
 	Cookies map[string]string `json:"cookies"`
 	// ClientAddress is what `getClientAddress()` returns.
 	ClientAddress string `json:"client_address"`
+	// CSP is this render's Svelte-facing csp option, kit's own
+	// `csp.script_needs_nonce ? { nonce: csp.nonce } : { hash:
+	// csp.script_needs_hash }` (`page/render.js:198`), passed to Svelte's
+	// own `render(Root, options)` call. Go's csp.go decides both booleans
+	// before the engine ever runs — they depend only on the build's
+	// configured directives, never on what a render produces — so this is
+	// always the same answer the boot script's own nonce/hash attribute
+	// (assembled separately, in Go, after the render) will use. It governs
+	// the one other inline `<script>` a rendered document can carry:
+	// Svelte's own hydratable-async-block script
+	// (`internal/server/renderer.js`'s `#hydratable_block`), emitted when a
+	// component's own top-level `await` needs to hand the client a value it
+	// already resolved during SSR.
+	CSP RequestCSP `json:"csp"`
+}
+
+// RequestCSP is one render's Svelte-facing csp option. Svelte's own renderer
+// checks `csp.nonce` first and falls back to `csp.hash` only when that is
+// empty, so carrying both fields is harmless — but Nonce and Hash are never
+// both meaningful at once, mirroring kit's own ternary: documentCSP's
+// ScriptNeedsNonce and ScriptNeedsHash cannot both be true for the same
+// request.
+type RequestCSP struct {
+	// Nonce is this request's nonce, set only when the build's csp needs
+	// one. "" is Svelte's own default (`csp = { hash: false }`,
+	// `internal/server/renderer.js`).
+	Nonce string `json:"nonce,omitempty"`
+	// Hash is kit's `csp.script_needs_hash`.
+	Hash bool `json:"hash"`
 }
 
 // Node is one slot of a route's branch.

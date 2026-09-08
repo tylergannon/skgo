@@ -18,7 +18,7 @@ import { gojaEnvironment, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 // the Go that reads the manifest below checks what is stamped here against its
 // own, so a copy that has fallen behind is refused by name instead of failing
 // later as something unrelated.
-const SKGO = { version: 'devel', adapter: 'a633c38b479a' };
+const SKGO = { version: 'devel', adapter: '336f0a4724e8' };
 
 /**
  * The skgo adapter. It emits everything the Go binary embeds and nothing else:
@@ -499,6 +499,15 @@ function describeSSR(builder, kit, nodes) {
 		globalName: globalName(builder.config),
 		assets: builder.config.paths.assets,
 		relative: builder.config.paths.relative,
+		// kit's own validated `csp` option (`core/config/options.js`), copied
+		// verbatim: `mode`, `directives` and `reportOnly` are plain data, and
+		// Go assembles the document's CSP header and boot-script nonce/hash
+		// itself (`csp.go`) rather than running kit's `render.js`/`csp.js` in
+		// the engine. A directive kit's schema left `undefined` is dropped by
+		// this JSON.stringify, exactly as it would be from kit's own — so an
+		// app that never sets `csp` gets a build that describes no policy at
+		// all, and Go sets no header.
+		csp: builder.config.csp,
 		client: {
 			start: client.start,
 			app: client.app ?? '',
