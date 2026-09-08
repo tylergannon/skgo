@@ -78,3 +78,13 @@ So no single scenario covers both mechanisms, and neither is redundant.
 - **Editing the adapter invalidates the built frontend.** The stamp Go checks is
   a fingerprint over the adapter's own files, so every edit under
   `internal/adapter/` needs `just build` again before the server will start.
+
+## One flake, unreproduced
+
+`dev.feature`'s "A page marked ssr = false is the same shell it is in prod"
+failed once in five full dev runs and passed in every other, including a run
+against a cold `vp dev` with `node_modules/.vite` deleted and a run of that
+scenario alone. Nothing about it is skgo's dev renderer — Go declines that
+branch and vite answers it — so it is either kit's dev shell arriving late or
+vite reloading the page under the step. Worth a `page.on('framenavigated')`
+trace next time it shows up rather than a blind timeout bump.
