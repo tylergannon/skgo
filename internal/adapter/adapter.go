@@ -8,7 +8,7 @@
 // months earlier. That failure does not announce itself as a version skew —
 // the one seen in the field surfaced as `Could not resolve 'esbuild'`.
 //
-// The JavaScript beside this file is the `@skgo/adapter` npm package: this
+// The JavaScript beside this file is the `sveltekit-adapter-skgo` npm package: this
 // directory is its package root, so what a developer installs and what Go
 // embeds are literally the same files. The adapter fingerprints itself at build
 // time the same way Fingerprint does here, over the same bytes in the same
@@ -54,19 +54,15 @@ const (
 )
 
 // Package is the npm package this directory publishes as.
-const Package = "@skgo/adapter"
+const Package = "sveltekit-adapter-skgo"
 
 // module is the module path the version is looked up under.
 const module = "github.com/tylergannon/skgo"
 
-// GitSpec is what a package.json asks pnpm for to install this adapter from a
-// tagged release on GitHub: the repository at that tag, the package in its
-// subdirectory. Nothing is published to npm yet — the tag is the release for
-// both halves, and pnpm installs a git subdirectory directly — so this is the
-// spec the scaffold writes and the one a mismatch message tells a developer to
-// install.
-func GitSpec(version string) string {
-	return "github:" + strings.TrimPrefix(module, "github.com/") + "#" + version + "&path:internal/adapter"
+// RegistrySpec is the exact npm version paired with a Go module release. Go
+// tags carry a leading v, while npm package versions do not.
+func RegistrySpec(version string) string {
+	return strings.TrimPrefix(version, "v")
 }
 
 // Fingerprint identifies the adapter by its own bytes. It is the half of the
@@ -95,7 +91,7 @@ var (
 	fingerprintOnce sync.Once
 )
 
-// FingerprintOf names the adapter installed in dir — an `@skgo/adapter` package
+// FingerprintOf names the adapter installed in dir — a `sveltekit-adapter-skgo` package
 // in an app's `node_modules` — by the same bytes in the same order, so that it
 // can be compared with Fingerprint.
 func FingerprintOf(dir string) (string, error) {

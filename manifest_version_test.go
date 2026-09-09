@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/tylergannon/skgo/internal/adapter"
 )
 
 // The adapter writes skgo.manifest.json and this package reads it: one contract
@@ -111,7 +113,7 @@ func TestAManifestFromAnotherSkgosAdapterIsRefused(t *testing.T) {
 	}
 	// The message has to name both halves, because the developer's next move
 	// depends on knowing which one is behind.
-	for _, want := range []string{theirVersion, theirAdapter, thisAdapter(t), "go generate"} {
+	for _, want := range []string{theirVersion, theirAdapter, thisAdapter(t), adapter.Package, "go generate"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the refusal does not name %q:\n%v", want, err)
 		}

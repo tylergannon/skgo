@@ -1,0 +1,3 @@
+decision: The public adapter package is `sveltekit-adapter-skgo`, not `@skgo/adapter`. The user confirmed there is only one foreseeable package, so an npm organization scope would add ownership setup without serving a package-family or team-management need.
+correction: A green release run previously masked npm publication failure with `continue-on-error`; publishing the package is now part of the release contract and must be visible as a failure.
+decision: The first registry publish uses a read-only Doppler service token to inject the time-limited npm token only into `npm publish`; after the package exists, npm trusted publishing replaces both credentials.

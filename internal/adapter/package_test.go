@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-// The adapter is published to npm as @skgo/adapter and embedded in this module,
+// The adapter is published to npm as sveltekit-adapter-skgo and embedded in this module,
 // and the two have to be the same bytes. Not "the same source, built twice" —
 // the same bytes, because the fingerprint the adapter stamps into every
 // manifest is a hash of the files it finds on disk at build time, and the
@@ -29,7 +29,7 @@ import (
 // what actually leaves for the registry, and nothing about editing a runtime
 // file makes anyone remember it. These tests are what remembers.
 
-// packageFiles is what a developer who runs `pnpm add -D @skgo/adapter` must
+// packageFiles is what a developer who runs `pnpm add -D sveltekit-adapter-skgo` must
 // receive, written out here rather than read from the package: the entry vite
 // imports, every runtime file the SSR build reaches for, the types the app's
 // `vite.config.ts` is checked against, and the three files npm carries for any
@@ -133,7 +133,7 @@ func TestThePublishedPackageDeclaresWhatAnAdapterDeclares(t *testing.T) {
 		t.Errorf("package.json = %+v; want an ESM package with types and a license", pkg)
 	}
 	if _, ok := pkg.Exports["."]; !ok {
-		t.Errorf("the package has no `.` export, so `import skgo from '@skgo/adapter'` resolves nothing")
+		t.Errorf("the package has no `.` export, so `import skgo from 'sveltekit-adapter-skgo'` resolves nothing")
 	}
 	if pkg.PeerDependencies["@sveltejs/kit"] == "" {
 		t.Errorf("the adapter does not declare @sveltejs/kit as a peer dependency; every kit adapter does")
