@@ -1,0 +1,4 @@
+doc_bug: AGENTS.md requires `/Users/tyler/src/skgo/ephemeral/inspiration/junkyard/.agents/skills/sveltekit-current/SKILL.md`, but the `junkyard` symlink target no longer contains that file -> restore or update the required pinned Kit 3 guidance path.
+friction: a fresh worktree's `just install` cannot let mise create its trusted-config symlink under the sandbox -> run the documented install gesture with filesystem approval.
+decision: keep the batch cell styling with `Ticker.svelte`, which owns the rendered `td` elements; parent-scoped CSS cannot match elements created inside the child component and Svelte correctly warns about it.
+friction: the example server logs `listening on ...` before the bind has succeeded, so an occupied-port failure prints a premature success-like line before the accurate bind error -> keep exit status plus the bind diagnostic as the issue #124 contract and address the earlier log separately if desired.
