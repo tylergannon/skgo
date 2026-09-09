@@ -53,9 +53,10 @@ const polytypeModule = "github.com/tylergannon/polytype"
 const defaultPolytypeVersion = "v1.0.0-rc.11"
 
 // defaultOrigin is where a new app is served in development. It is the value
-// the frontend is built with and the value the binary trusts, and it appears
-// in exactly one place a developer edits — ORIGIN in mise.toml.
+// the frontend is built with and the value the binary trusts.
 const defaultOrigin = "http://127.0.0.1:8080"
+
+const defaultBuildTool = "mise"
 
 // appName is what a project may be called: the name becomes a binary, a Go
 // string literal and half a package.json, so it stays boring on purpose.
@@ -87,6 +88,9 @@ type Options struct {
 	AdapterSpec string
 	// GoVersion is the language version in go.mod. Defaults to the toolchain's.
 	GoVersion string
+	// BuildTool selects the generated build entry point: mise, just, or scripts.
+	// Empty preserves the original scaffold behavior and selects mise.
+	BuildTool string
 	// Logf receives one line per file written. It may be nil.
 	Logf func(format string, args ...any)
 }
@@ -101,6 +105,12 @@ type data struct {
 	PolytypeVersion string
 	AdapterSpec     string
 	GoVersion       string
+	BuildTool       string
+	BuildCommand    string
+	DevWebCommand   string
+	DevGoCommand    string
+	BuildConfig     string
+	ToolRequirement string
 }
 
 // Create writes the project described by o.
@@ -132,6 +142,9 @@ func Create(o Options) error {
 		if err != nil || entry.IsDir() {
 			return err
 		}
+		if !templateForBuildTool(p, d.BuildTool) {
+			return nil
+		}
 		target := filepath.Join(dir, filepath.FromSlash(outputPath(p)))
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
@@ -145,7 +158,11 @@ func Create(o Options) error {
 				return err
 			}
 		}
-		if err := os.WriteFile(target, body, 0o644); err != nil {
+		mode := fs.FileMode(0o644)
+		if strings.HasPrefix(p, "scripts/") {
+			mode = 0o755
+		}
+		if err := os.WriteFile(target, body, mode); err != nil {
 			return err
 		}
 		o.Logf("wrote %s", outputPath(p))
@@ -155,6 +172,19 @@ func Create(o Options) error {
 		return err
 	}
 	return nil
+}
+
+func templateForBuildTool(p, buildTool string) bool {
+	switch {
+	case p == "mise.toml.tmpl":
+		return buildTool == "mise"
+	case p == "Justfile.tmpl":
+		return buildTool == "just"
+	case strings.HasPrefix(p, "scripts/"):
+		return buildTool == "scripts"
+	default:
+		return true
+	}
 }
 
 // outputPath is the path a template file is written to: `.tmpl` is a marker for
@@ -194,6 +224,32 @@ func resolve(o Options, dir string) (data, error) {
 		PolytypeVersion: o.PolytypeVersion,
 		AdapterSpec:     o.AdapterSpec,
 		GoVersion:       o.GoVersion,
+		BuildTool:       o.BuildTool,
+	}
+	if d.BuildTool == "" {
+		d.BuildTool = defaultBuildTool
+	}
+	switch d.BuildTool {
+	case "mise":
+		d.BuildCommand = "mise run build"
+		d.DevWebCommand = "mise run dev:web"
+		d.DevGoCommand = "mise run dev:go"
+		d.BuildConfig = "mise.toml"
+		d.ToolRequirement = "mise (it installs the pinned Node and Vite+ versions)"
+	case "just":
+		d.BuildCommand = "just build"
+		d.DevWebCommand = "just dev-web"
+		d.DevGoCommand = "just dev-go"
+		d.BuildConfig = "Justfile"
+		d.ToolRequirement = "Node 24, pnpm 11, and just"
+	case "scripts":
+		d.BuildCommand = "./scripts/build.sh"
+		d.DevWebCommand = "./scripts/dev-web.sh"
+		d.DevGoCommand = "./scripts/dev-go.sh"
+		d.BuildConfig = "scripts/env.sh"
+		d.ToolRequirement = "Node 24 and pnpm 11"
+	default:
+		return data{}, fmt.Errorf("skgo: %q is not a build tool: choose mise, just, or scripts", d.BuildTool)
 	}
 	if d.App == "" {
 		d.App = filepath.Base(dir)

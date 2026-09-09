@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")/.."
+. ./scripts/env.sh
+exec go run ./cmd --proxy http://127.0.0.1:5173 --origin "$ORIGIN"

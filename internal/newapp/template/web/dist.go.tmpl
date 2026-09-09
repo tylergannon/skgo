@@ -1,6 +1,6 @@
 // Package web embeds the SvelteKit build the skgo adapter writes.
 //
-// The tree does not compile until `mise run build` has run the frontend build
+// The tree does not compile until `{{.BuildCommand}}` has run the frontend build
 // at least once: a missing frontend fails loudly here rather than producing a
 // binary that serves nothing.
 package web

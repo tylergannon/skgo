@@ -18,7 +18,7 @@ import (
 )
 
 // origin is the app's origin: the URL a browser reaches it at. It is baked in
-// at link time by `mise run build`, from the single ORIGIN in mise.toml that
+// at link time by `{{.BuildCommand}}`, from the single ORIGIN in {{.BuildConfig}} that
 // the frontend build also reads, so the two halves cannot disagree by
 // accident. The value here is only the fallback for `go run ./cmd`.
 //

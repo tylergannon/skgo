@@ -74,6 +74,7 @@ func newProject(args []string) {
 	origin := fs.String("origin", "", "the URL a browser reaches the app at; defaults to http://127.0.0.1:8080")
 	version := fs.String("skgo-version", "", "the version of skgo the project requires; defaults to this skgo's own, or the latest release")
 	polytype := fs.String("polytype-version", "", "the version of polytype the project requires")
+	buildTool := fs.String("build-tool", "mise", "generated build entry point: mise, just, or scripts")
 	quiet := fs.Bool("quiet", false, "do not list the files written")
 	fs.Usage = func() {
 		fmt.Fprint(os.Stderr, "usage: skgo new [flags] DIR\n\n")
@@ -93,6 +94,7 @@ func newProject(args []string) {
 		Origin:          *origin,
 		SkgoVersion:     *version,
 		PolytypeVersion: *polytype,
+		BuildTool:       *buildTool,
 	}
 	if !*quiet {
 		opts.Logf = logf
@@ -102,8 +104,19 @@ func newProject(args []string) {
 		os.Exit(1)
 	}
 	if !*quiet {
-		fmt.Fprintf(os.Stderr, "\nskgo: built the project in %s. Now:\n\n\tcd %s\n\tmise run build\n\t./bin/%s\n\n",
-			fs.Arg(0), fs.Arg(0), name(opts, fs.Arg(0)))
+		fmt.Fprintf(os.Stderr, "\nskgo: built the project in %s. Now:\n\n\tcd %s\n\t%s\n\t./bin/%s\n\n",
+			fs.Arg(0), fs.Arg(0), buildCommand(*buildTool), name(opts, fs.Arg(0)))
+	}
+}
+
+func buildCommand(buildTool string) string {
+	switch buildTool {
+	case "just":
+		return "just build"
+	case "scripts":
+		return "./scripts/build.sh"
+	default:
+		return "mise run build"
 	}
 }
 
