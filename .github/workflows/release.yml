@@ -2,7 +2,7 @@ name: Release
 
 # A `v*` tag is the release. Go needs nothing published — `go get` fetches the
 # tag — so this workflow exists for the half that npm cannot infer: it stamps
-# sveltekit-adapter-skgo with the tag's version and uploads it.
+# @skgo/sveltekit-adapter with the tag's version and uploads it.
 #
 # The tag is the gesture and the only gesture. Nothing here decides whether the
 # release is good; whether skgo works is a screenshot of the running app, looked
@@ -11,14 +11,6 @@ on:
   push:
     tags:
       - 'v*'
-  # Temporary bootstrap escape hatch. It can publish only the failed v0.2.6
-  # tag, and is removed once that package is verified in the registry.
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "The failed release tag to recover (v0.2.6 only)"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -29,14 +21,12 @@ permissions:
 
 jobs:
   npm:
-    name: Publish sveltekit-adapter-skgo
+    name: Publish @skgo/sveltekit-adapter
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-go@v7
         with:
@@ -67,17 +57,10 @@ jobs:
       # about a release nobody has cut.
       - name: Stamp the tag's version
         working-directory: internal/adapter
-        env:
-          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-          RECOVERY_PUBLISH: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          if [ "$RECOVERY_PUBLISH" = true ] && [ "$RELEASE_TAG" != v0.2.6 ]; then
-            echo "the temporary recovery trigger accepts only v0.2.6" >&2
-            exit 1
-          fi
-          version="${RELEASE_TAG#v}"
+          version="${GITHUB_REF_NAME#v}"
           npm pkg set version="$version"
-          echo "publishing sveltekit-adapter-skgo@$version"
+          echo "publishing @skgo/sveltekit-adapter@$version"
 
       # The adapter and Go module are released together. A tag is not a complete
       # release until this exact adapter version reaches npm. The bootstrap npm
@@ -90,10 +73,4 @@ jobs:
         working-directory: internal/adapter
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-          NPM_OTP: ${{ secrets.NPM_OTP }}
-        run: |
-          if [ -n "$NPM_OTP" ]; then
-            doppler run -- sh -c 'NODE_AUTH_TOKEN="$NPM_TOKEN" npm publish --access public --provenance --otp="$NPM_OTP"'
-          else
-            doppler run -- sh -c 'NODE_AUTH_TOKEN="$NPM_TOKEN" npm publish --access public --provenance'
-          fi
+        run: doppler run -- sh -c 'NODE_AUTH_TOKEN="$NPM_TOKEN" npm publish --access public --provenance'

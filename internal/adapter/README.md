@@ -9,13 +9,13 @@ the Go process renders pages with, and a manifest naming the routes, remote
 functions and server loads Go must answer.
 
 ```sh
-pnpm add -D "github:tylergannon/skgo#v0.2.0&path:internal/adapter"
+pnpm add -D @skgo/sveltekit-adapter@<matching-skgo-version>
 ```
 
-The tag is the skgo version your `go.mod` requires; pnpm installs the package
-straight from that tag's `internal/adapter`. A project made by `skgo new` has
-this line already. When the package is on npm the spec becomes
-`pnpm add -D @skgo/sveltekit-adapter`.
+Use the same version as the `github.com/tylergannon/skgo` requirement in your
+`go.mod`; for example, skgo `v0.2.8` pairs with
+`@skgo/sveltekit-adapter@0.2.8`. A project made by `skgo new` writes that
+matching dependency already.
 
 ```js
 // vite.config.ts
