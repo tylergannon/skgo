@@ -136,7 +136,7 @@ func explainOriginRefusals(cfg skgo.RemoteConfig, next http.Handler) http.Handle
 			quoteOrigin(got) + ", so it was refused.\n\n" +
 			"The origin is fixed when the frontend is built and checked again when the\n" +
 			"binary runs. Either browse the app at " + cfg.Origin + ", or set ORIGIN in\n" +
-			"mise.toml to the origin you are using and run `mise run build` again.\n"
+			"{{.BuildConfig}} to the origin you are using and run `{{.BuildCommand}}` again.\n"
 		log.Printf("skgo: refused %s %s: Origin %s, want %s. Rebuild with ORIGIN=%s or browse the app at %s",
 			r.Method, r.URL.Path, quoteOrigin(got), cfg.Origin, quoteOrigin(got), cfg.Origin)
 		http.Error(w, msg, http.StatusForbidden)

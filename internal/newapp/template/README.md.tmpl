@@ -5,8 +5,10 @@ build-time dependency only.
 
 ## Build and run
 
+This project uses {{.BuildConfig}} for its build commands. It requires {{.ToolRequirement}}.
+
 ```sh
-mise run build
+{{.BuildCommand}}
 ./bin/{{.App}}
 ```
 
@@ -14,6 +16,16 @@ Then open {{.Origin}}. The page's heading, the Go version below it, and the
 greeting counter all come from `web/src/routes/hello.remote.go` — the
 `hello.remote.ts` beside it is generated and every one of its bodies throws, so
 anything that renders is proof that Go answered.
+
+For development, build once and run these in separate terminals:
+
+```sh
+{{.DevWebCommand}}
+{{.DevGoCommand}}
+```
+
+The public origin is set once in `{{.BuildConfig}}`. Change it there and rebuild
+before serving the application at a different origin.
 
 ## Where things are
 
@@ -29,7 +41,7 @@ anything that renders is proof that Go answered.
 
 Write a remote function by adding a Go function to a `*.remote.go` file beside
 the route that needs it and marking it with `skgo.Query` or `skgo.Command`, then
-run `mise run build`. skgo writes the `.remote.ts` module kit compiles, the
+run `{{.BuildCommand}}`. skgo writes the `.remote.ts` module kit compiles, the
 TypeScript types its callers see, and the Go registration the server mounts.
 
 Write a server route with an ordinary `net/http` handler in `server.go` beside
@@ -41,20 +53,20 @@ registration the server answers in both production and development.
 
 The app's origin is fixed when the frontend is built, and the server checks it
 on every non-GET remote call — that is kit's own rule, and a command is a POST.
-It is written once, as `ORIGIN` in `mise.toml`, and both halves read it from
+It is written once, as `ORIGIN` in `{{.BuildConfig}}`, and both halves read it from
 there.
 
-To serve the app somewhere else, change `ORIGIN` and run `mise run build`
+To serve the app somewhere else, change `ORIGIN` and run `{{.BuildCommand}}`
 again. Changing only one half makes every command fail with 403; the server
 says so in its log and in the response body if it happens.
 
 ## Development
 
-`mise run build` once, then two terminals:
+`{{.BuildCommand}}` once, then two terminals:
 
 ```sh
-mise run dev:web   # vite, on 127.0.0.1:5173
-mise run dev:go    # the Go server, rendering from vite's modules
+{{.DevWebCommand}}   # vite, on 127.0.0.1:5173
+{{.DevGoCommand}}    # the Go server, rendering from vite's modules
 ```
 
 `#lib` is a Node subpath import (`package.json` → `imports`), and TypeScript

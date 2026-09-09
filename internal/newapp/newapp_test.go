@@ -34,6 +34,60 @@ func read(t *testing.T, dir, rel string) string {
 	return string(body)
 }
 
+func exists(dir, rel string) bool {
+	_, err := os.Stat(filepath.Join(dir, filepath.FromSlash(rel)))
+	return err == nil
+}
+
+func TestTheBuildToolIsSelectedExplicitly(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		buildTool   string
+		entry       string
+		originFile  string
+		command     string
+		notWritten  []string
+		executables []string
+	}{
+		{name: "mise remains the default", entry: "mise.toml", originFile: "mise.toml", command: "mise run build", notWritten: []string{"Justfile", "scripts/build.sh"}},
+		{name: "just", buildTool: "just", entry: "Justfile", originFile: "Justfile", command: "just build", notWritten: []string{"mise.toml", "scripts/build.sh"}},
+		{name: "scripts", buildTool: "scripts", entry: "scripts/build.sh", originFile: "scripts/env.sh", command: "./scripts/build.sh", notWritten: []string{"mise.toml", "Justfile"}, executables: []string{"scripts/build.sh", "scripts/dev-web.sh", "scripts/dev-go.sh"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := scaffold(t, newapp.Options{BuildTool: tc.buildTool})
+			if !exists(dir, tc.entry) {
+				t.Fatalf("selected build entry %s was not generated", tc.entry)
+			}
+			for _, rel := range tc.notWritten {
+				if exists(dir, rel) {
+					t.Errorf("unselected build entry %s was generated", rel)
+				}
+			}
+			if readme := read(t, dir, "README.md"); !strings.Contains(readme, tc.command) {
+				t.Errorf("README does not document %q:\n%s", tc.command, readme)
+			}
+			entry := read(t, dir, tc.entry)
+			for _, want := range []string{"go generate ./...", "vp build", "go build"} {
+				if !strings.Contains(entry, want) {
+					t.Errorf("%s does not contain %q:\n%s", tc.entry, want, entry)
+				}
+			}
+			if origin := read(t, dir, tc.originFile); !strings.Contains(origin, "http://127.0.0.1:8080") {
+				t.Errorf("%s does not contain the default origin:\n%s", tc.originFile, origin)
+			}
+			for _, rel := range tc.executables {
+				info, err := os.Stat(filepath.Join(dir, rel))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if info.Mode()&0o111 == 0 {
+					t.Errorf("%s is not executable", rel)
+				}
+			}
+		})
+	}
+}
+
 // TestTheOriginIsWrittenDownOnce is the trap this template exists to close.
 //
 // The origin is fixed when the frontend is built and checked again on every
@@ -42,25 +96,32 @@ func read(t *testing.T, dir, rel string) string {
 // takes the origin once and puts the same string everywhere it is needed; if
 // one of those places is ever filled in by hand, this test is what notices.
 func TestTheOriginIsWrittenDownOnce(t *testing.T) {
-	const origin = "https://app.example.com"
-	dir := scaffold(t, newapp.Options{Origin: origin})
+	for _, tc := range []struct {
+		buildTool string
+		config    string
+	}{{"mise", "mise.toml"}, {"just", "Justfile"}, {"scripts", "scripts/env.sh"}} {
+		t.Run(tc.buildTool, func(t *testing.T) {
+			const origin = "https://app.example.com"
+			dir := scaffold(t, newapp.Options{Origin: origin, BuildTool: tc.buildTool})
 
-	// The frontend is built with it, the binary is linked with it, and the
-	// developer edits it in exactly one file.
-	for _, file := range []string{"mise.toml", "web/vite.config.ts", "cmd/main.go", "README.md"} {
-		if !strings.Contains(read(t, dir, file), origin) {
-			t.Errorf("%s does not carry the app's origin", file)
-		}
-	}
-	if def := read(t, dir, "cmd/main.go"); !strings.Contains(def, `"app.example.com"`) {
-		t.Error("cmd/main.go does not default its listen address to the origin's host and port")
-	}
-	// The default has to be gone, not merely outvoted: a leftover
-	// 127.0.0.1:8080 in one of the two halves is the failure itself.
-	for _, file := range []string{"mise.toml", "web/vite.config.ts", "cmd/main.go"} {
-		if strings.Contains(read(t, dir, file), "127.0.0.1:8080") {
-			t.Errorf("%s still carries the default origin as well as %s", file, origin)
-		}
+			// The frontend is built with it, the binary is linked with it, and the
+			// developer edits it in exactly one selected build file.
+			for _, file := range []string{tc.config, "web/vite.config.ts", "cmd/main.go", "README.md"} {
+				if !strings.Contains(read(t, dir, file), origin) {
+					t.Errorf("%s does not carry the app's origin", file)
+				}
+			}
+			if def := read(t, dir, "cmd/main.go"); !strings.Contains(def, `"app.example.com"`) {
+				t.Error("cmd/main.go does not default its listen address to the origin's host and port")
+			}
+			// The default has to be gone, not merely outvoted: a leftover
+			// 127.0.0.1:8080 in one of the two halves is the failure itself.
+			for _, file := range []string{tc.config, "web/vite.config.ts", "cmd/main.go"} {
+				if strings.Contains(read(t, dir, file), "127.0.0.1:8080") {
+					t.Errorf("%s still carries the default origin as well as %s", file, origin)
+				}
+			}
+		})
 	}
 }
 
@@ -140,6 +201,7 @@ func TestItRefusesNamesTheProjectCannotCarry(t *testing.T) {
 		{"an origin with a path", newapp.Options{Origin: "http://127.0.0.1:8080/app"}},
 		{"an origin with no scheme", newapp.Options{Origin: "127.0.0.1:8080"}},
 		{"a version go.mod cannot require", newapp.Options{SkgoVersion: "main"}},
+		{"an unknown build tool", newapp.Options{BuildTool: "make"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			o := tc.o

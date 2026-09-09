@@ -10,8 +10,9 @@ frontend contract; Go owns all server behavior and the production process.
 
 ## Orient first
 
-Read the app's `README.md`, `mise.toml`, `web/vite.config.ts`, root `server.go`,
-and the nearest working route before changing it. Check the exact skgo and
+Read the app's `README.md`, selected build file (`mise.toml`, `Justfile`, or
+`scripts/env.sh`), `web/vite.config.ts`, root `server.go`, and the nearest
+working route before changing it. Check the exact skgo and
 SvelteKit versions in `go.mod` and `web/package.json`; pre-1.0 skgo follows a
 pinned SvelteKit 3 prerelease, so do not substitute behavior remembered from
 Kit 2 or a different Kit 3 build.
@@ -24,6 +25,9 @@ cd myapp
 mise trust
 mise run build
 ```
+
+Use `--build-tool=just` or `--build-tool=scripts` when the application should
+not depend on mise. Follow the generated README for the selected commands.
 
 ## Keep the ownership boundary clear
 
@@ -55,8 +59,8 @@ becoming a second server implementation.
 
 ## Generate and compose
 
-Use the project's build gesture, normally `mise run build`. It installs the
-frontend, runs `go generate`, builds through Vite+, and links the binary. Files
+Use the build gesture in the project's README. It installs the frontend, runs
+`go generate`, builds through Vite+, and links the binary. Files
 marked generated are outputs, not authoring surfaces.
 
 The root server composition should mount one production stack in Kit's dispatch
@@ -70,8 +74,8 @@ still intercept every server load, remote call, and endpoint before the proxy.
 ## Preserve Kit's invariants
 
 - The app's public origin is fixed at frontend build time and checked again by
-  Go for non-GET remote calls. Change the single `ORIGIN` in `mise.toml` and
-  rebuild both halves together.
+  Go for non-GET remote calls. Change the single `ORIGIN` in the selected build
+  file and rebuild both halves together.
 - Keep SvelteKit route syntax and path identity intact, including `[params]`,
   `[...rest]`, route groups, and `#lib` imports.
 - A query may read request state but not mutate cookies. Commands and forms may

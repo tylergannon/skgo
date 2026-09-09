@@ -1,0 +1,14 @@
+origin := env("ORIGIN", "{{.Origin}}")
+
+build:
+    go mod tidy
+    cd web && pnpm install
+    go generate ./...
+    cd web && ORIGIN='{{"{{origin}}"}}' pnpm exec vp build
+    go build -ldflags '-X main.origin={{"{{origin}}"}}' -o bin/{{.App}} ./cmd
+
+dev-web:
+    cd web && ORIGIN='{{"{{origin}}"}}' pnpm exec vp dev --host 127.0.0.1 --port 5173 --strictPort
+
+dev-go:
+    go run ./cmd --proxy http://127.0.0.1:5173

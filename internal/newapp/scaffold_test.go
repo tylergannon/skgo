@@ -310,6 +310,53 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	})
 }
 
+// TestAlternativeBuildToolsBuild proves the two new public gestures execute
+// the same generated project build as the original mise task. This is kept
+// separate from the browser journey above: the runtime artifact is identical,
+// while the behavior under test here is the selected build entry point.
+func TestAlternativeBuildToolsBuild(t *testing.T) {
+	root := t.TempDir()
+	proxy := publish(t, filepath.Join(root, "proxy"))
+	adapter := packAdapter(t, root)
+	env := append(os.Environ(),
+		"GOPROXY=file://"+filepath.ToSlash(proxy)+",https://proxy.golang.org,direct",
+		"GOPRIVATE=",
+		"GONOPROXY=none",
+		"GONOSUMDB=none",
+		"GOSUMDB=off",
+		"GOFLAGS=-mod=mod",
+		"GOWORK=off",
+	)
+
+	for _, tc := range []struct {
+		buildTool string
+		command   []string
+	}{
+		{"just", []string{"just", "build"}},
+		{"scripts", []string{"./scripts/build.sh"}},
+	} {
+		t.Run(tc.buildTool, func(t *testing.T) {
+			dir := filepath.Join(root, tc.buildTool)
+			if err := newapp.Create(newapp.Options{
+				Dir:         dir,
+				BuildTool:   tc.buildTool,
+				SkgoVersion: scaffoldVersion,
+				AdapterSpec: "file:" + adapter,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			command := tc.command[0]
+			if strings.HasPrefix(command, "./") {
+				command = filepath.Join(dir, filepath.FromSlash(strings.TrimPrefix(command, "./")))
+			}
+			run(t, dir, env, command, tc.command[1:]...)
+			if _, err := os.Stat(filepath.Join(dir, "bin", tc.buildTool)); err != nil {
+				t.Fatalf("documented %s build did not produce its binary: %v", tc.buildTool, err)
+			}
+		})
+	}
+}
+
 // writeEndpointFixture gives the freshly scaffolded app a route before its
 // documented build gesture runs. The generator must discover this authored Go
 // file, emit Kit's throwing +server.ts stub and publish the Go registration.

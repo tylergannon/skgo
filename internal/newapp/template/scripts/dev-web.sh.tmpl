@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")/.."
+. ./scripts/env.sh
+cd web
+exec pnpm exec vp dev --host 127.0.0.1 --port 5173 --strictPort

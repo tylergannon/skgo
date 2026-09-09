@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")/.."
+. ./scripts/env.sh
+
+go mod tidy
+(cd web && pnpm install)
+go generate ./...
+(cd web && pnpm exec vp build)
+go build -ldflags "-X main.origin=$ORIGIN" -o bin/{{.App}} ./cmd
