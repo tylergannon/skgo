@@ -1,0 +1,2 @@
+doc_bug: AGENTS.md requires `/Users/tyler/src/skgo/ephemeral/inspiration/junkyard/.agents/skills/sveltekit-current/SKILL.md`, but the root checkout has no `junkyard/` directory -> restore the pinned guidance or update the mandatory path.
+decision: The starter command must explicitly accept its page's `status()` refresh with `RefreshRequestedNoArg`; pinned Kit treats `.updates(...)` as untrusted requested keys and runs none until the handler names an allowed query.

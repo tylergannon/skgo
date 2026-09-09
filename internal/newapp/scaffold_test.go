@@ -244,7 +244,11 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 		}
 
 		// One command, from the test, with the name the test chose.
-		greet(t, client, origin, ids["greet"])
+		refreshed := greet(t, client, origin, ids["greet"], ids["status"])
+		if refreshed.Greetings != 1 || refreshed.LastGreeting != greeted {
+			t.Fatalf("the command response refreshed the page's status query to %d greeting(s), last %q; want 1 and %q",
+				refreshed.Greetings, refreshed.LastGreeting, greeted)
+		}
 
 		after := status(t, client, origin, ids["status"])
 		if after.Greetings != 1 || after.LastGreeting != greeted {
@@ -418,9 +422,10 @@ func status(t *testing.T, client *http.Client, origin, id string) Status {
 	return s
 }
 
-func greet(t *testing.T, client *http.Client, origin, id string) {
+func greet(t *testing.T, client *http.Client, origin, id, statusID string) Status {
 	t.Helper()
-	req := commandRequest(t, origin, id)
+	refreshKey := statusID + "/"
+	req := commandRequest(t, origin, id, refreshKey)
 	req.Header.Set("Origin", origin)
 	resp, err := client.Do(req)
 	if err != nil {
@@ -431,19 +436,49 @@ func greet(t *testing.T, client *http.Client, origin, id string) {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("commanding %s: status %d: %s", id, resp.StatusCode, body)
 	}
+	data := resultData(t, resp)
+	q, ok := data.Get("q")
+	if !ok {
+		t.Fatalf("the command response carries no refreshed queries: keys are %v", data.Keys())
+	}
+	queries, ok := q.(*devalue.Object)
+	if !ok {
+		t.Fatalf("the command response's q is %T, want an object", q)
+	}
+	node, ok := queries.Get(refreshKey)
+	if !ok {
+		t.Fatalf("the command response refreshed %v, not the page's status query %q", queries.Keys(), refreshKey)
+	}
+	answer, ok := node.(*devalue.Object)
+	if !ok {
+		t.Fatalf("the refreshed status node is %T, want an object", node)
+	}
+	value, ok := answer.Get("v")
+	if !ok {
+		t.Fatalf("the refreshed status node carries no value: keys are %v", answer.Keys())
+	}
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var refreshed Status
+	if err := json.Unmarshal(raw, &refreshed); err != nil {
+		t.Fatal(err)
+	}
+	return refreshed
 }
 
 // commandRequest is the POST kit's client makes: a devalue-encoded argument in
 // a base64url payload. The encoder is skgo's own, and it is checked against
 // kit's goldens in internal/remotearg; what this test asserts is what the app
 // does with the argument, not how it travelled.
-func commandRequest(t *testing.T, origin, id string) *http.Request {
+func commandRequest(t *testing.T, origin, id string, refreshes ...string) *http.Request {
 	t.Helper()
 	payload, err := remotearg.StringifyCommandArg(greeted)
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, err := json.Marshal(map[string]any{"payload": payload})
+	body, err := json.Marshal(map[string]any{"payload": payload, "refreshes": refreshes})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,6 +493,20 @@ func commandRequest(t *testing.T, origin, id string) *http.Request {
 // result pulls a remote function's value out of the envelope kit's client
 // reads: `{"type":"result","data":"<devalue>"}`, whose `_` holds the value.
 func result(t *testing.T, resp *http.Response) []byte {
+	t.Helper()
+	object := resultData(t, resp)
+	inner, ok := object.Get("_")
+	if !ok {
+		t.Fatalf("the response has no `_`: keys are %v", object.Keys())
+	}
+	raw, err := json.Marshal(inner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+func resultData(t *testing.T, resp *http.Response) *devalue.Object {
 	t.Helper()
 	var envelope struct {
 		Type  string          `json:"type"`
@@ -478,15 +527,7 @@ func result(t *testing.T, resp *http.Response) []byte {
 	if !ok {
 		t.Fatalf("the response is a %T, not an object", value)
 	}
-	inner, ok := object.Get("_")
-	if !ok {
-		t.Fatalf("the response has no `_`: %s", envelope.Data)
-	}
-	raw, err := json.Marshal(inner)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
+	return object
 }
 
 func getOK(t *testing.T, client *http.Client, url string) string {

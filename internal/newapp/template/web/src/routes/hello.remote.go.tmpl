@@ -57,7 +57,15 @@ func greet(ctx context.Context, name string) (Status, error) {
 	greetings++
 	lastGreeting = name
 	mu.Unlock()
-	return status(ctx)
+
+	result, err := status(ctx)
+	if err != nil {
+		return Status{}, err
+	}
+	// `.updates(status())` is a request from the browser, not permission to
+	// run arbitrary queries. Accept this starter's one no-argument status
+	// instance so its refreshed value rides back on the command response.
+	return result, skgo.RefreshRequestedNoArg(ctx, status)
 }
 
 var (
