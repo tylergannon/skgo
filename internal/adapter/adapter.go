@@ -8,7 +8,7 @@
 // months earlier. That failure does not announce itself as a version skew —
 // the one seen in the field surfaced as `Could not resolve 'esbuild'`.
 //
-// The JavaScript beside this file is the `sveltekit-adapter-skgo` npm package: this
+// The JavaScript beside this file is the `@skgo/sveltekit-adapter` npm package: this
 // directory is its package root, so what a developer installs and what Go
 // embeds are literally the same files. The adapter fingerprints itself at build
 // time the same way Fingerprint does here, over the same bytes in the same
