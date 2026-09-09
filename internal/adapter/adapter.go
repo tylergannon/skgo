@@ -54,7 +54,7 @@ const (
 )
 
 // Package is the npm package this directory publishes as.
-const Package = "sveltekit-adapter-skgo"
+const Package = "@skgo/sveltekit-adapter"
 
 // module is the module path the version is looked up under.
 const module = "github.com/tylergannon/skgo"
@@ -91,7 +91,7 @@ var (
 	fingerprintOnce sync.Once
 )
 
-// FingerprintOf names the adapter installed in dir — a `sveltekit-adapter-skgo` package
+// FingerprintOf names the adapter installed in dir — an `@skgo/sveltekit-adapter` package
 // in an app's `node_modules` — by the same bytes in the same order, so that it
 // can be compared with Fingerprint.
 func FingerprintOf(dir string) (string, error) {

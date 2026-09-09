@@ -511,7 +511,7 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 		}
 		return Manifest{}, fmt.Errorf(
 			"skgo: the frontend build and this program come from different skgo versions.\n"+
-				"\tthe sveltekit-adapter-skgo that built it: %s\n"+
+				"\tthe @skgo/sveltekit-adapter that built it: %s\n"+
 				"\tthis program:                    %s\n"+
 				"The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.\n"+
 				"Install the one this program publishes — `pnpm add -D %s` — then run `go generate ./...` and build the frontend again.",

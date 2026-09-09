@@ -19,7 +19,7 @@ import (
 // takes seconds, and the alternative is finding out after a frontend build and
 // a server start.
 
-// installAdapter writes a `sveltekit-adapter-skgo` into a vite root's node_modules and
+// installAdapter writes an `@skgo/sveltekit-adapter` into a vite root's node_modules and
 // returns the root. The files are the test's own, so what the check reports has
 // to come from what the test put there and not from anything skgo carries.
 func installAdapter(t *testing.T, version string, contents map[string]string) string {
@@ -53,7 +53,7 @@ func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
 
 	err := Run(Config{Web: web, Out: filepath.Join(web, "generated")})
 	if err == nil {
-		t.Fatal("generated against a sveltekit-adapter-skgo from a different skgo")
+		t.Fatal("generated against an @skgo/sveltekit-adapter from a different skgo")
 	}
 	// Both halves, because the developer's next move depends on knowing which
 	// one is behind — and the fingerprint, because two installs can call
@@ -70,7 +70,7 @@ func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
 // TestGeneratingWithNothingInstalledIsNotAMismatch keeps the check from
 // becoming a reason `go generate` cannot run first. An app with no
 // node_modules is in the wrong order, not paired with the wrong adapter, and
-// the vite build says `Cannot find package 'sveltekit-adapter-skgo'` perfectly well.
+// the vite build says `Cannot find package '@skgo/sveltekit-adapter'` perfectly well.
 func TestGeneratingWithNothingInstalledIsNotAMismatch(t *testing.T) {
 	web := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(web, "src"), 0o755); err != nil {

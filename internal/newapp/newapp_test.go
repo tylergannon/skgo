@@ -168,11 +168,11 @@ func TestTheScaffoldVendorsNoAdapter(t *testing.T) {
 		t.Fatal("`skgo new` wrote web/skgo-adapter.js; the adapter belongs to the skgo module, " +
 			"and a copy in the project is the drift this was meant to end")
 	}
-	if config := read(t, dir, "web/vite.config.ts"); !strings.Contains(config, `from 'sveltekit-adapter-skgo'`) {
+	if config := read(t, dir, "web/vite.config.ts"); !strings.Contains(config, `from '@skgo/sveltekit-adapter'`) {
 		t.Fatalf("the scaffolded vite config does not import the adapter package:\n%s", config)
 	}
-	if got := pin(t, read(t, dir, "web/package.json"), "sveltekit-adapter-skgo"); got != "^1.2.3" {
-		t.Errorf("the scaffold asks npm for sveltekit-adapter-skgo %q; want the spec it was given, ^1.2.3", got)
+	if got := pin(t, read(t, dir, "web/package.json"), "@skgo/sveltekit-adapter"); got != "^1.2.3" {
+		t.Errorf("the scaffold asks npm for @skgo/sveltekit-adapter %q; want the spec it was given, ^1.2.3", got)
 	}
 }
 
@@ -182,8 +182,8 @@ func TestTheScaffoldVendorsNoAdapter(t *testing.T) {
 func TestTheScaffoldAsksForTheAdapterThatMatchesItsSkgo(t *testing.T) {
 	dir := scaffold(t, newapp.Options{SkgoVersion: "v9.4.2"})
 	const want = "9.4.2"
-	if got := pin(t, read(t, dir, "web/package.json"), "sveltekit-adapter-skgo"); got != want {
-		t.Errorf("a project requiring skgo v9.4.2 asks pnpm for sveltekit-adapter-skgo %q; want %q", got, want)
+	if got := pin(t, read(t, dir, "web/package.json"), "@skgo/sveltekit-adapter"); got != want {
+		t.Errorf("a project requiring skgo v9.4.2 asks pnpm for @skgo/sveltekit-adapter %q; want %q", got, want)
 	}
 }
 

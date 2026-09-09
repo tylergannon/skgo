@@ -33,7 +33,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
  * Rolldown, resolved from the app rather than from this package.
  *
  * A plain `import ... from 'vite/rolldown'` resolves beside this file, and this
- * file is in `node_modules/sveltekit-adapter-skgo`, whose own dependencies are not the
+ * file is in `node_modules/@skgo/sveltekit-adapter`, whose own dependencies are not the
  * app's. Two of them would be fatal even where both exist: kit checks its dev
  * SSR environment with an `instanceof` against the project's resolved vite, so
  * a build driven by a second copy carries classes from a different module realm
@@ -308,7 +308,7 @@ export function gojaEnvironment() {
 				// A bare specifier in one of this package's own runtime files —
 				// `svelte/server`, `@sveltejs/kit/internal/server` — names a
 				// package the app depends on and this one does not. Resolving it
-				// beside these files looks in node_modules/sveltekit-adapter-skgo and
+				// beside these files looks in node_modules/@skgo/sveltekit-adapter and
 				// finds nothing; the app is where kit and Svelte are installed,
 				// and it is the copy of each that the rest of this build already
 				// uses. So the app asks on the file's behalf, through vite's own
@@ -900,7 +900,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 				// The same question the build's environment answers, and for the
 				// same reason: this package's own runtime files name packages
 				// the app depends on and this one does not, and they are read
-				// from wherever `sveltekit-adapter-skgo` is installed rather than from
+				// from wherever `@skgo/sveltekit-adapter` is installed rather than from
 				// inside the app. The app asks on their behalf.
 				if (importer && ours(importer) && bare(id)) {
 					return this.resolve(id, join(root, 'package.json'), { skipSelf: true });

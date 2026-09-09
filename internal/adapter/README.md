@@ -1,4 +1,4 @@
-# sveltekit-adapter-skgo
+# @skgo/sveltekit-adapter
 
 The SvelteKit adapter for [skgo](https://github.com/tylergannon/skgo), a
 SvelteKit application server written in Go.
@@ -15,13 +15,13 @@ pnpm add -D "github:tylergannon/skgo#v0.2.0&path:internal/adapter"
 The tag is the skgo version your `go.mod` requires; pnpm installs the package
 straight from that tag's `internal/adapter`. A project made by `skgo new` has
 this line already. When the package is on npm the spec becomes
-`pnpm add -D sveltekit-adapter-skgo`.
+`pnpm add -D @skgo/sveltekit-adapter`.
 
 ```js
 // vite.config.ts
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import skgo from 'sveltekit-adapter-skgo';
+import skgo from '@skgo/sveltekit-adapter';
 
 export default defineConfig({
 	plugins: [sveltekit({ adapter: skgo(), experimental: { remoteFunctions: true } })]
