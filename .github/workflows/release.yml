@@ -60,17 +60,12 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           npm pkg set version="$version"
+          sed -i "s/<matching-skgo-version>/$version/g" README.md
           echo "publishing @skgo/sveltekit-adapter@$version"
 
-      # The adapter and Go module are released together. A tag is not a complete
-      # release until this exact adapter version reaches npm. The bootstrap npm
-      # token lives only in Doppler and reaches this one command through its
-      # read-only service token; a later release switches this to npm trusted
-      # publishing and removes both long-lived credentials.
-      - uses: dopplerhq/cli-action@v3
-
+      # npm binds this direct publish to the repository, this release.yml file,
+      # and this GitHub-hosted runner through the trusted publisher configured
+      # on the package. No static npm or Doppler credential reaches the runner.
       - name: npm publish
         working-directory: internal/adapter
-        env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-        run: doppler run -- sh -c 'NODE_AUTH_TOKEN="$NPM_TOKEN" npm publish --access public --provenance'
+        run: npm publish --access public

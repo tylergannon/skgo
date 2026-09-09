@@ -1,0 +1,2 @@
+decision: The package owner configured npm trusted publishing for tylergannon/skgo release.yml, with direct npm publish allowed. Replace Doppler token publication with GitHub Actions OIDC and verify it by publishing a new tagged release before the owner deletes the bootstrap API key.
+correction: The package README's matching-version placeholder must be stamped with the release version in the packaging workflow so the public install snippet remains directly copyable for each published version.
