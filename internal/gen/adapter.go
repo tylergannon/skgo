@@ -9,7 +9,7 @@ import (
 	"github.com/tylergannon/skgo/internal/adapter"
 )
 
-// checkInstalledAdapter refuses to generate against an `@skgo/adapter` that is
+// checkInstalledAdapter refuses to generate against a `sveltekit-adapter-skgo` that is
 // not this module's.
 //
 // The unbypassable gate is at startup: the manifest the adapter writes names
@@ -25,7 +25,7 @@ import (
 // of the mistake.
 //
 // An app with nothing installed yet is not a mismatch and is not reported: the
-// vite build says `Cannot find package '@skgo/adapter'` perfectly well, and a
+// vite build says `Cannot find package 'sveltekit-adapter-skgo'` perfectly well, and a
 // `go generate` that refused to run before an install would be wrong about a
 // tree that is merely in the wrong order.
 func checkInstalledAdapter(cfg Config) error {
@@ -48,11 +48,11 @@ func checkInstalledAdapter(cfg Config) error {
 	version, _ := adapter.VersionOf(dir)
 
 	// A checkout has no released version to name; the package it is paired
-	// with is the one in its own tree. A released skgo names the tag, which is
-	// where pnpm installs the adapter from until it is on npm.
+	// with is the one in its own tree. A released skgo names the exact npm
+	// package version paired with its Go module version.
 	install := "`pnpm add -D " + adapter.Package + "`"
 	if v := adapter.Version(); v != "devel" {
-		install = "`pnpm add -D \"" + adapter.GitSpec(v) + "\"`"
+		install = "`pnpm add -D " + adapter.Package + "@" + adapter.RegistrySpec(v) + "`"
 	}
 
 	return fmt.Errorf(

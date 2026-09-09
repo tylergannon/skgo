@@ -432,6 +432,7 @@ func DecodeForm(arg any, into any) error {
 	}
 	return nil
 }
+
 // RemoteConfig describes the app the registry is serving. Everything but
 // Origin comes straight from the built manifest.
 type RemoteConfig struct {
@@ -504,13 +505,17 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 		return m, fmt.Errorf("skgo: parsing skgo.manifest.json: %w", err)
 	}
 	if m.SkgoAdapter != adapter.Fingerprint() {
+		install := adapter.Package
+		if version := adapter.Version(); version != "devel" {
+			install += "@" + adapter.RegistrySpec(version)
+		}
 		return Manifest{}, fmt.Errorf(
 			"skgo: the frontend build and this program come from different skgo versions.\n"+
-				"\tthe @skgo/adapter that built it: %s\n"+
+				"\tthe sveltekit-adapter-skgo that built it: %s\n"+
 				"\tthis program:                    %s\n"+
 				"The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.\n"+
-				"Install the one this program publishes — `pnpm add -D @skgo/adapter` at the version go.mod requires — then run `go generate ./...` and build the frontend again.",
-			adapter.Identity(m.Skgo, m.SkgoAdapter), adapter.Identity(adapter.Version(), adapter.Fingerprint()))
+				"Install the one this program publishes — `pnpm add -D %s` — then run `go generate ./...` and build the frontend again.",
+			adapter.Identity(m.Skgo, m.SkgoAdapter), adapter.Identity(adapter.Version(), adapter.Fingerprint()), install)
 	}
 	if m.AppDir == "" {
 		m.AppDir = "_app"

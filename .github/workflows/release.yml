@@ -2,7 +2,7 @@ name: Release
 
 # A `v*` tag is the release. Go needs nothing published — `go get` fetches the
 # tag — so this workflow exists for the half that npm cannot infer: it stamps
-# @skgo/adapter with the tag's version and uploads it.
+# sveltekit-adapter-skgo with the tag's version and uploads it.
 #
 # The tag is the gesture and the only gesture. Nothing here decides whether the
 # release is good; whether skgo works is a screenshot of the running app, looked
@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   npm:
-    name: Publish @skgo/adapter
+    name: Publish sveltekit-adapter-skgo
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -62,17 +62,11 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           npm pkg set version="$version"
-          echo "publishing @skgo/adapter@$version"
+          echo "publishing sveltekit-adapter-skgo@$version"
 
-      # Nothing is on npm yet. Apps install the adapter from this tag on GitHub
-      # — `github:tylergannon/skgo#vX.Y.Z&path:internal/adapter`, which is what
-      # `skgo new` writes — so the tag push alone is the whole release. This
-      # step runs once the `skgo` npm org exists and NPM_TOKEN is set; until
-      # then it is skipped. A configured token that still lacks the scope is a
-      # visible warning, but cannot turn the already-published Go/GitHub release
-      # into a failure.
+      # The adapter and Go module are released together. A tag is not a complete
+      # release until this exact adapter version reaches npm, so a missing or
+      # unauthorized NPM_TOKEN is a release failure rather than a warning.
       - name: npm publish
-        if: env.NODE_AUTH_TOKEN != ''
-        continue-on-error: true
         working-directory: internal/adapter
         run: npm publish --access public --provenance

@@ -211,9 +211,6 @@ importers:
         specifier: 2.9.0
         version: 2.9.0
     devDependencies:
-      '@skgo/adapter':
-        specifier: link:../../internal/adapter
-        version: link:../../internal/adapter
       '@sveltejs/kit':
         specifier: 3.0.0-next.25
         version: 3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.3.0(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.2)(typescript@6.0.3)(yaml@2.9.0))(svelte@5.56.10))(@voidzero-dev/vite-plus-core@0.3.0(@types/node@26.4.1)(esbuild@0.28.2)(typescript@6.0.3)(yaml@2.9.0))(svelte@5.56.10)(typescript@6.0.3)
@@ -229,6 +226,9 @@ importers:
       svelte-check:
         specifier: 4.7.6
         version: 4.7.6(picomatch@4.0.7)(svelte@5.56.10)(typescript@6.0.3)
+      sveltekit-adapter-skgo:
+        specifier: link:../../internal/adapter
+        version: link:../../internal/adapter
       typescript:
         specifier: 6.0.3
         version: 6.0.3

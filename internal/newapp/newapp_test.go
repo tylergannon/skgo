@@ -168,11 +168,11 @@ func TestTheScaffoldVendorsNoAdapter(t *testing.T) {
 		t.Fatal("`skgo new` wrote web/skgo-adapter.js; the adapter belongs to the skgo module, " +
 			"and a copy in the project is the drift this was meant to end")
 	}
-	if config := read(t, dir, "web/vite.config.ts"); !strings.Contains(config, `from '@skgo/adapter'`) {
+	if config := read(t, dir, "web/vite.config.ts"); !strings.Contains(config, `from 'sveltekit-adapter-skgo'`) {
 		t.Fatalf("the scaffolded vite config does not import the adapter package:\n%s", config)
 	}
-	if got := pin(t, read(t, dir, "web/package.json"), "@skgo/adapter"); got != "^1.2.3" {
-		t.Errorf("the scaffold asks npm for @skgo/adapter %q; want the spec it was given, ^1.2.3", got)
+	if got := pin(t, read(t, dir, "web/package.json"), "sveltekit-adapter-skgo"); got != "^1.2.3" {
+		t.Errorf("the scaffold asks npm for sveltekit-adapter-skgo %q; want the spec it was given, ^1.2.3", got)
 	}
 }
 
@@ -181,11 +181,9 @@ func TestTheScaffoldVendorsNoAdapter(t *testing.T) {
 // any other one could not serve what it built.
 func TestTheScaffoldAsksForTheAdapterThatMatchesItsSkgo(t *testing.T) {
 	dir := scaffold(t, newapp.Options{SkgoVersion: "v9.4.2"})
-	// Not a registry range: nothing is on npm yet, so the spec names the same
-	// tag go.mod requires, in the repository's adapter subdirectory.
-	const want = "github:tylergannon/skgo#v9.4.2&path:internal/adapter"
-	if got := pin(t, read(t, dir, "web/package.json"), "@skgo/adapter"); got != want {
-		t.Errorf("a project requiring skgo v9.4.2 asks pnpm for @skgo/adapter %q; want %q", got, want)
+	const want = "9.4.2"
+	if got := pin(t, read(t, dir, "web/package.json"), "sveltekit-adapter-skgo"); got != want {
+		t.Errorf("a project requiring skgo v9.4.2 asks pnpm for sveltekit-adapter-skgo %q; want %q", got, want)
 	}
 }
 

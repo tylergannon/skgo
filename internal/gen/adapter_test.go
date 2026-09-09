@@ -19,7 +19,7 @@ import (
 // takes seconds, and the alternative is finding out after a frontend build and
 // a server start.
 
-// installAdapter writes an `@skgo/adapter` into a vite root's node_modules and
+// installAdapter writes a `sveltekit-adapter-skgo` into a vite root's node_modules and
 // returns the root. The files are the test's own, so what the check reports has
 // to come from what the test put there and not from anything skgo carries.
 func installAdapter(t *testing.T, version string, contents map[string]string) string {
@@ -28,8 +28,8 @@ func installAdapter(t *testing.T, version string, contents map[string]string) st
 	if err := os.MkdirAll(filepath.Join(web, "src"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	pkg := filepath.Join(web, "node_modules", "@skgo", "adapter")
-	contents["package.json"] = `{"name":"@skgo/adapter","version":"` + version + `"}`
+	pkg := filepath.Join(web, "node_modules", filepath.FromSlash(adapter.Package))
+	contents["package.json"] = `{"name":"` + adapter.Package + `","version":"` + version + `"}`
 	for name, body := range contents {
 		at := filepath.Join(pkg, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(at), 0o755); err != nil {
@@ -53,13 +53,13 @@ func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
 
 	err := Run(Config{Web: web, Out: filepath.Join(web, "generated")})
 	if err == nil {
-		t.Fatal("generated against an @skgo/adapter from a different skgo")
+		t.Fatal("generated against a sveltekit-adapter-skgo from a different skgo")
 	}
 	// Both halves, because the developer's next move depends on knowing which
 	// one is behind — and the fingerprint, because two installs can call
 	// themselves the same version.
 	for _, want := range []string{
-		theirVersion, adapter.Fingerprint(), adapter.Version(), "@skgo/adapter", "pnpm add",
+		theirVersion, adapter.Fingerprint(), adapter.Version(), adapter.Package, "pnpm add",
 	} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the refusal does not name %q:\n%v", want, err)
@@ -70,7 +70,7 @@ func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
 // TestGeneratingWithNothingInstalledIsNotAMismatch keeps the check from
 // becoming a reason `go generate` cannot run first. An app with no
 // node_modules is in the wrong order, not paired with the wrong adapter, and
-// the vite build says `Cannot find package '@skgo/adapter'` perfectly well.
+// the vite build says `Cannot find package 'sveltekit-adapter-skgo'` perfectly well.
 func TestGeneratingWithNothingInstalledIsNotAMismatch(t *testing.T) {
 	web := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(web, "src"), 0o755); err != nil {
@@ -78,7 +78,7 @@ func TestGeneratingWithNothingInstalledIsNotAMismatch(t *testing.T) {
 	}
 
 	err := Run(Config{Web: web, Out: filepath.Join(web, "generated")})
-	if err == nil || strings.Contains(err.Error(), "@skgo/adapter") {
+	if err == nil || strings.Contains(err.Error(), adapter.Package) {
 		t.Fatalf("generating in an uninstalled app reported an adapter problem: %v", err)
 	}
 }
@@ -118,7 +118,7 @@ func TestGeneratingAgainstThisModulesAdapterIsAllowed(t *testing.T) {
 
 	web := installAdapter(t, "0.0.0-dev", contents)
 	err = Run(Config{Web: web, Out: filepath.Join(web, "generated")})
-	if err == nil || strings.Contains(err.Error(), "@skgo/adapter") {
+	if err == nil || strings.Contains(err.Error(), adapter.Package) {
 		t.Fatalf("generating against this module's own adapter was refused: %v", err)
 	}
 }
