@@ -9,7 +9,7 @@ import (
 	"github.com/tylergannon/skgo/internal/adapter"
 )
 
-// checkInstalledAdapter refuses to generate against a `sveltekit-adapter-skgo` that is
+// checkInstalledAdapter refuses to generate against an `@skgo/sveltekit-adapter` that is
 // not this module's.
 //
 // The unbypassable gate is at startup: the manifest the adapter writes names
@@ -25,7 +25,7 @@ import (
 // of the mistake.
 //
 // An app with nothing installed yet is not a mismatch and is not reported: the
-// vite build says `Cannot find package 'sveltekit-adapter-skgo'` perfectly well, and a
+// vite build says `Cannot find package '@skgo/sveltekit-adapter'` perfectly well, and a
 // `go generate` that refused to run before an install would be wrong about a
 // tree that is merely in the wrong order.
 func checkInstalledAdapter(cfg Config) error {

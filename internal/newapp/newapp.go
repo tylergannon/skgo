@@ -81,7 +81,7 @@ type Options struct {
 	// PolytypeVersion is the version of polytype the project requires.
 	PolytypeVersion string
 	// AdapterSpec is what package.json asks pnpm for when it asks for
-	// `sveltekit-adapter-skgo`. Empty means the exact npm version paired with
+	// `@skgo/sveltekit-adapter`. Empty means the exact npm version paired with
 	// SkgoVersion, which is the only pairing a project can serve. A test passes
 	// a `file:` tarball here.
 	AdapterSpec string

@@ -1,6 +1,6 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite-plus';
-import skgo from 'sveltekit-adapter-skgo';
+import skgo from '@skgo/sveltekit-adapter';
 
 // The app's origin is fixed here, at build time, and the Go server checks it on
 // every non-GET remote-function call. The two halves must agree, so both read

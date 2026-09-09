@@ -1,5 +1,5 @@
 {
-	"name": "sveltekit-adapter-skgo",
+	"name": "@skgo/sveltekit-adapter",
 	"version": "0.0.0-dev",
 	"description": "SvelteKit adapter for skgo: builds a frontend that a Go binary renders and answers",
 	"keywords": [

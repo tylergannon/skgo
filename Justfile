@@ -100,7 +100,7 @@ ports:
     lsof -nP -iTCP -sTCP:LISTEN
 
 # A release is a `v*` tag: `go get` fetches it, and the tag push is what makes
-# .github/workflows/release.yml stamp sveltekit-adapter-skgo with the same version and
+# .github/workflows/release.yml stamp @skgo/sveltekit-adapter with the same version and
 # publish it. Both halves of the contract come out of one gesture because they
 # are one contract.
 #
@@ -121,4 +121,4 @@ release version:
     npm_version={{version}}
     npm_version=${npm_version#v}
     echo "pushed {{version}}; the release workflow publishes the matching adapter as:"
-    echo "  pnpm add -D sveltekit-adapter-skgo@$npm_version"
+    echo "  pnpm add -D @skgo/sveltekit-adapter@$npm_version"

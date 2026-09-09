@@ -8,7 +8,7 @@
 // months earlier. That failure does not announce itself as a version skew —
 // the one seen in the field surfaced as `Could not resolve 'esbuild'`.
 //
-// The JavaScript beside this file is the `sveltekit-adapter-skgo` npm package: this
+// The JavaScript beside this file is the `@skgo/sveltekit-adapter` npm package: this
 // directory is its package root, so what a developer installs and what Go
 // embeds are literally the same files. The adapter fingerprints itself at build
 // time the same way Fingerprint does here, over the same bytes in the same
@@ -54,7 +54,7 @@ const (
 )
 
 // Package is the npm package this directory publishes as.
-const Package = "sveltekit-adapter-skgo"
+const Package = "@skgo/sveltekit-adapter"
 
 // module is the module path the version is looked up under.
 const module = "github.com/tylergannon/skgo"
@@ -91,7 +91,7 @@ var (
 	fingerprintOnce sync.Once
 )
 
-// FingerprintOf names the adapter installed in dir — a `sveltekit-adapter-skgo` package
+// FingerprintOf names the adapter installed in dir — an `@skgo/sveltekit-adapter` package
 // in an app's `node_modules` — by the same bytes in the same order, so that it
 // can be compared with Fingerprint.
 func FingerprintOf(dir string) (string, error) {
