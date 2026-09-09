@@ -47,6 +47,8 @@ test:
 
 # the example server, against the built frontend
 serve:
+    #!/usr/bin/env bash
+    set -o pipefail
     go run ./example/cmd -listen 127.0.0.1:{{port}} 2>&1 | tee "{{log}}"
 
 # The example app in dev: `vp dev` behind, Go in front. Go renders the document

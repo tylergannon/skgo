@@ -31,7 +31,7 @@
 </svelte:boundary>
 
 <style>
-	td,
+	:global(td),
 	th {
 		padding: 0.15rem 1rem 0.15rem 0;
 		text-align: left;
