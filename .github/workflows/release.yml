@@ -24,8 +24,6 @@ jobs:
     name: Publish sveltekit-adapter-skgo
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
       - uses: actions/checkout@v7
@@ -65,8 +63,14 @@ jobs:
           echo "publishing sveltekit-adapter-skgo@$version"
 
       # The adapter and Go module are released together. A tag is not a complete
-      # release until this exact adapter version reaches npm, so a missing or
-      # unauthorized NPM_TOKEN is a release failure rather than a warning.
+      # release until this exact adapter version reaches npm. The bootstrap npm
+      # token lives only in Doppler and reaches this one command through its
+      # read-only service token; a later release switches this to npm trusted
+      # publishing and removes both long-lived credentials.
+      - uses: dopplerhq/cli-action@v3
+
       - name: npm publish
         working-directory: internal/adapter
-        run: npm publish --access public --provenance
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: doppler run -- sh -c 'NODE_AUTH_TOKEN="$NPM_TOKEN" npm publish --access public --provenance'
