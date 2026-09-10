@@ -12,3 +12,8 @@ dev-web:
 
 dev-go:
     go run ./cmd --proxy http://127.0.0.1:5173
+
+e2e run="run":
+    cd e2e && pnpm install
+    cd e2e && pnpm exec playwright install chromium
+    cd e2e && BASE_URL="{{"{{origin}}"}}" SKGO_E2E_RUN={{"{{run}}"}} pnpm test

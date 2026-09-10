@@ -109,6 +109,7 @@ type data struct {
 	BuildCommand    string
 	DevWebCommand   string
 	DevGoCommand    string
+	E2ECommand      string
 	BuildConfig     string
 	ToolRequirement string
 }
@@ -234,18 +235,21 @@ func resolve(o Options, dir string) (data, error) {
 		d.BuildCommand = "mise run build"
 		d.DevWebCommand = "mise run dev:web"
 		d.DevGoCommand = "mise run dev:go"
+		d.E2ECommand = "mise run e2e"
 		d.BuildConfig = "mise.toml"
 		d.ToolRequirement = "mise (it installs the pinned Node and Vite+ versions)"
 	case "just":
 		d.BuildCommand = "just build"
 		d.DevWebCommand = "just dev-web"
 		d.DevGoCommand = "just dev-go"
+		d.E2ECommand = "just e2e"
 		d.BuildConfig = "Justfile"
 		d.ToolRequirement = "Node 24, pnpm 11, and just"
 	case "scripts":
 		d.BuildCommand = "./scripts/build.sh"
 		d.DevWebCommand = "./scripts/dev-web.sh"
 		d.DevGoCommand = "./scripts/dev-go.sh"
+		d.E2ECommand = "./scripts/e2e.sh"
 		d.BuildConfig = "scripts/env.sh"
 		d.ToolRequirement = "Node 24 and pnpm 11"
 	default:
