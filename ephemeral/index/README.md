@@ -112,7 +112,7 @@ Justfile variables (lines 8-15): `SKGO_PORT` (8080), `ORIGIN`, `SKGO_LOG`
 just ports                  # what is listening already; pick a free SKGO_PORT
 just build                  # fresh tree: builds the frontend
 SKGO_PORT=8123 just serve   # Go server on the built frontend, log tees to SKGO_LOG
-ORIGIN=http://127.0.0.1:8123 just e2e         # prod mode
+ORIGIN=http://127.0.0.1:8123 just e2e prod    # prod mode
 just dev + ORIGIN=... just e2e dev            # dev mode (vite dev behind the Go proxy)
 just test                   # go test, both modules
 ```
@@ -120,7 +120,7 @@ just test                   # go test, both modules
 One feature only, while iterating (playwright filters by path substring):
 
 ```
-cd example/e2e && BASE_URL=$ORIGIN EXPECTED_MODE=prod SKGO_LOG=$LOG mise x -- pnpm test -- live
+cd example/e2e && BASE_URL=$ORIGIN SKGO_EXPECTED_MODE=prod SKGO_E2E_RUN=prod SKGO_LOG=$LOG mise x -- pnpm test -- live
 ```
 
 Full suite once per mode at the end. A run is about two minutes per mode;

@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, hydrated, test } from './fixtures';
+import { expect, expectMode, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 
@@ -25,7 +25,7 @@ When('I click the link to {string}', async ({ page }, path: string) => {
 
 Then('the document response came from skgo', async ({ page, documents }) => {
 	expect(documents.last, 'no document response was observed').not.toBeNull();
-	expect(['dev', 'prod']).toContain(documents.last!.headers()['x-skgo-mode']);
+	expectMode(documents.last!);
 	// A document that boots nothing is not evidence skgo served the app, and
 	// the frame this step leaves behind would be a blank page — which is what
 	// it was in dev, where the first load waits on vite's module graph.

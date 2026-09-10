@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, hydrated, test } from './fixtures';
+import { expect, expectMode, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -76,7 +76,7 @@ When('I ask the endpoint to DELETE', async ({ page }) => {
  */
 Then('the document came from skgo', async ({ documents }) => {
 	expect(documents.last, 'no document response was observed').not.toBeNull();
-	expect(['dev', 'prod']).toContain(documents.last!.headers()['x-skgo-mode']);
+	expectMode(documents.last!);
 });
 
 Then('the document response status was {int}', async ({ documents }, status: number) => {

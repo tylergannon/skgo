@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, hydrated, test } from './fixtures';
+import { expect, expectMode, hydrated, test } from './fixtures';
 import { tagged } from './ssr';
 
 const { After, Then, When } = createBdd(test);
@@ -92,8 +92,8 @@ When(
 Then(
 	'the open page hot-updates to {string} in dev or stays at built heading {string} without reloading',
 	async ({ page, documents, browserConsole, shot }, liveHeading: string, builtHeading: string) => {
-		const mode = documents.last?.headers()['x-skgo-mode'];
-		expect(['dev', 'prod'], `x-skgo-mode was ${JSON.stringify(mode)}`).toContain(mode);
+		expect(documents.last, 'no document response was observed').not.toBeNull();
+		const mode = expectMode(documents.last!);
 		const expected = mode === 'dev' ? liveHeading : builtHeading;
 		await expect(page.getByTestId('title')).toHaveText(expected, {
 			timeout: mode === 'dev' ? 30_000 : 2_000
@@ -120,8 +120,7 @@ Then(
 	'a new document for {string} carries {string} from live source or {string} from its build',
 	async ({ page, shot }, path: string, liveHeading: string, builtHeading: string) => {
 		const first = await page.request.get(path);
-		const mode = first.headers()['x-skgo-mode'];
-		expect(['dev', 'prod'], `x-skgo-mode was ${JSON.stringify(mode)}`).toContain(mode);
+		const mode = expectMode(first);
 		const expected = mode === 'dev' ? liveHeading : builtHeading;
 		const rejected = mode === 'dev' ? builtHeading : liveHeading;
 
@@ -152,8 +151,7 @@ When('the route fixture is added while the servers keep running', async () => {
 Then(
 	'the live dev route renders its Go load while the production build stays unchanged',
 	async ({ page, shot }) => {
-		const mode = (await page.request.get('/')).headers()['x-skgo-mode'];
-		expect(['dev', 'prod'], `x-skgo-mode was ${JSON.stringify(mode)}`).toContain(mode);
+		const mode = expectMode(await page.request.get('/'));
 
 		if (mode === 'dev') {
 			let document = '';

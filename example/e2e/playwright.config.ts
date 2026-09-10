@@ -15,6 +15,7 @@ const testDir = defineBddConfig({
 // The suite always targets an already-running Go server through BASE_URL.
 export default defineConfig({
 	testDir,
+	globalSetup: './global-setup.ts',
 	fullyParallel: false,
 	workers: 1,
 	retries: 0,

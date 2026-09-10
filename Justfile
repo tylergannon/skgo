@@ -78,8 +78,8 @@ dev:
 # sprint's scenarios.
 
 # the Gherkin suite against a server you started
-e2e run="run":
-    cd example/e2e && BASE_URL="{{origin}}" SKGO_E2E_RUN={{run}} SKGO_LOG="{{log}}" mise x -- pnpm test
+e2e mode run=mode:
+    cd example/e2e && BASE_URL="{{origin}}" SKGO_EXPECTED_MODE={{mode}} SKGO_E2E_RUN={{run}} SKGO_LOG="{{log}}" mise x -- pnpm test
 
 # `git worktree add -b` has silently landed an agent on main once, so the
 # branch is confirmed rather than assumed. The pinned kit source is not copied
