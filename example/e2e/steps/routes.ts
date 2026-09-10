@@ -1,7 +1,17 @@
-import { createBdd } from 'playwright-bdd';
+import { createBdd, DataTable } from 'playwright-bdd';
 import { expect, expectMode, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
+
+Then('the Kit route manifest lists exactly:', async ({ page, shot }, table: DataTable) => {
+	const expected = table.hashes();
+	const rows = page.getByTestId('api-manifest-route');
+	await expect(rows).toHaveCount(expected.length);
+	expect((await rows.allTextContents()).map((line) => line.trim())).toEqual(
+		expected.map(({ id, page, endpoint }) => `${id} — page: ${page}, endpoint: ${endpoint}`)
+	);
+	await shot();
+});
 
 /**
  * The `/api` page prints one line per call it made: the method, the status, the
@@ -66,6 +76,18 @@ When('I POST the todo {string}', async ({ page }, text: string) => {
 When('I ask the endpoint to DELETE', async ({ page }) => {
 	await hydrated(page);
 	await page.getByTestId('api-delete').click();
+});
+
+When('I QUERY the endpoint for todos containing {string}', async ({ page }, text: string) => {
+	await hydrated(page);
+	await expect(page.getByTestId('api-query')).toContainText(text);
+	await page.getByTestId('api-query').click();
+});
+
+Then('the QUERY result is exactly {string}', async ({ page, shot }, text: string) => {
+	await expect(page.getByTestId('api-query-result')).toHaveCount(1);
+	await expect(page.getByTestId('api-query-result')).toHaveText(text);
+	await shot();
 });
 
 /**

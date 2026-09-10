@@ -48,8 +48,8 @@
 
 <p>
 	Writing changes both notes and the banner, and asks for all three back. The
-	handler accepts one instance of <code>getNote</code> and never mentions
-	<code>getBanner</code>.
+	handler accepts one instance of <code>getNote</code> and explicitly ignores
+	<code>getBanner</code>, leaving its current value alone.
 </p>
 
 <div class="panels">

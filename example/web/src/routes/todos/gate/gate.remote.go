@@ -4,13 +4,13 @@
 // A page asks by writing `.updates(...)`, and kit's client posts the keys of
 // the query instances it wants back. That list is client input — it is in the
 // network tab, and anyone can post a longer one. So a command runs the queries
-// its handler named and only those: `writeNotes` names `getNote` and accepts
-// one instance of it, and says nothing at all about `getBanner`.
+// its handler accepts or explicitly ignores: `writeNotes` refreshes one
+// instance of `getNote` and deliberately leaves `getBanner` stale.
 //
 // The page below asks for three things on every write. One is honoured, one is
-// past the limit and comes back refused, and one was never named and is not
-// run — which is why the banner on screen goes stale while the value behind it
-// has already changed. The reload button proves the difference.
+// past the limit and comes back refused, and one is explicitly ignored — which
+// is why the banner on screen goes stale while the value behind it has already
+// changed. The reload button proves the difference.
 package gate
 
 import (
@@ -31,8 +31,7 @@ type Note struct {
 
 // Banner is the page's third panel, and a different query entirely — not
 // another instance of getNote. A handler's limit is per query function, so the
-// only thing that keeps the banner from being refreshed is that nothing named
-// it.
+// handler explicitly ignores it.
 type Banner struct {
 	// Text is what was last written to the banner.
 	Text string `json:"text"`
@@ -92,11 +91,12 @@ type Ack struct {
 //
 // The page asks for three instances back — both notes and the banner. One line
 // of this handler decides what that request is worth: getNote is named, with a
-// limit of one, and getBanner is not named at all.
+// limit of one, and each requested getBanner instance is explicitly ignored.
 //
 // So the left note comes back refreshed; the right note, being the second
 // instance of getNote the page asked for, comes back refused with the reason
-// on it; and the banner is not run, which the page shows by going stale.
+// on it; and the banner is deliberately not run, which the page shows by going
+// stale without making Kit reject the command as unhandled.
 func writeNotes(ctx context.Context, arg Write) (Ack, error) {
 	store.Lock()
 	store.notes["left"] = arg.Left
@@ -104,7 +104,13 @@ func writeNotes(ctx context.Context, arg Write) (Ack, error) {
 	store.banner = arg.Banner
 	store.Unlock()
 
-	return Ack{Wrote: 3}, skgo.RefreshRequested(ctx, getNote, 1)
+	if err := skgo.RefreshRequested(ctx, getNote, 1); err != nil {
+		return Ack{}, err
+	}
+	if err := skgo.IgnoreRequestedNoArg(ctx, getBanner); err != nil {
+		return Ack{}, err
+	}
+	return Ack{Wrote: 3}, nil
 }
 
 var (

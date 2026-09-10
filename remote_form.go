@@ -215,6 +215,9 @@ func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote)
 	if len(l) > 0 {
 		data["l"] = l
 	}
+	if len(ev.refreshes.ignored) > 0 {
+		data["i"] = ev.refreshes.ignored
+	}
 	if len(q) > 0 || len(l) > 0 {
 		// `r` is the one flag only a form reads. It tells `form.svelte.js`
 		// that the server already performed the single-flight updates, so the

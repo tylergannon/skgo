@@ -10,4 +10,6 @@ var (
 	Skgo_list = list
 	// Skgo_add is add, published as POST /api/todos.
 	Skgo_add = add
+	// Skgo_search is search, published as QUERY /api/todos.
+	Skgo_search = search
 )

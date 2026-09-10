@@ -1295,6 +1295,7 @@ func Endpoints() []*skgo.Endpoint {
 	return []*skgo.Endpoint{
 		skgo.NewEndpoint("/api/todos", "GET", skgo7.Skgo_list),
 		skgo.NewEndpoint("/api/todos", "POST", skgo7.Skgo_add),
+		skgo.NewEndpoint("/api/todos", "QUERY", skgo7.Skgo_search),
 		skgo.NewEndpoint("/async-ssr/control/[group]", "GET", skgo9.Skgo_status),
 		skgo.NewEndpoint("/async-ssr/control/[group]", "POST", skgo9.Skgo_release),
 	}

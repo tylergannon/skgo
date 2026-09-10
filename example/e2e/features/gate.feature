@@ -1,20 +1,21 @@
-Feature: A command refreshes only the queries its handler named
+Feature: A command handles every refresh its client requested
 
   A page asks for a single-flight refresh by writing `.updates(...)`, and kit's
   client posts the keys of the query instances it wants back. That list is
   client input: it is in the network tab, and anyone can post a longer one. So
   the server does not act on it — a command runs the queries its Go handler
-  named, up to the number of instances it said it would accept, and nothing
-  else.
+  named, up to the number of instances it said it would accept. With SvelteKit
+  3.0.0-next.27 it must explicitly ignore any requested query it deliberately
+  leaves stale, or the client rejects the command response.
 
   `/todos/gate` is that rule with the lid off. `writeNotes` in
   `src/routes/todos/gate/gate.remote.go` changes both notes and the banner, and
   the page asks for all three back on every write. The handler names `getNote`
-  and accepts one instance of it; it never mentions `getBanner` at all.
+  and accepts one instance of it; it explicitly ignores `getBanner`.
 
   So of the three the page asks for: the left note comes back refreshed, the
   right note — the second instance of `getNote` — comes back refused with the
-  reason on it, and the banner is not run and goes stale. Every text below is
+  reason on it, and the banner is deliberately not run and goes stale. Every text below is
   one this scenario typed into the page, and the reload button is what shows
   that a stale panel is a refresh that did not happen rather than a write that
   did not land.
@@ -29,7 +30,7 @@ Feature: A command refreshes only the queries its handler named
     And exactly 1 remote request was made since
     And every part of the page loaded
 
-  Scenario: A query the handler never named is not run, and the write happened anyway
+  Scenario: A query the handler explicitly ignored is not run, and the write happened anyway
     Given I open "/todos/gate"
     And the gate page has loaded
 
@@ -50,7 +51,7 @@ Feature: A command refreshes only the queries its handler named
     And the command reported writing 3 values
 
     # And the banner did change on the server: what the page was showing was a
-    # refresh nobody asked the handler for, not a write that failed.
+    # refresh the handler explicitly ignored, not a write that failed.
     When I reload all three panels
     Then the panel "banner" shows "six weeks of frost"
 

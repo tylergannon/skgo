@@ -52,7 +52,8 @@
 	"endpoints": {
 		"/api/todos": [
 			"GET",
-			"POST"
+			"POST",
+			"QUERY"
 		],
 		"/async-ssr/control/[group]": [
 			"GET",

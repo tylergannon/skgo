@@ -11,7 +11,7 @@ export type Ack = {
 };
 
 /**
- * Banner is the page's third panel, and a different query entirely — not another instance of getNote. A handler's limit is per query function, so the only thing that keeps the banner from being refreshed is that nothing named it.
+ * Banner is the page's third panel, and a different query entirely — not another instance of getNote. A handler's limit is per query function, so the handler explicitly ignores it.
  */
 export type Banner = {
   /**

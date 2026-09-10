@@ -104,6 +104,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 				},
 				`${out}/ssr/bundle.js`
 			);
+			writeAppManifest(`${out}/ssr/bundle.js`, builder.manifest);
 
 			// Kit's own `builder.compress` writes a `.br` and a `.gz` beside every
 			// file whose extension it compresses, and Go chooses one per request
@@ -114,7 +115,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 				await builder.compress(`${out}/prerendered`);
 			}
 
-			// `builder` has no writeJson in kit 3.0.0-next.25 (it existed on the
+			// `builder` has no writeJson in kit 3.0.0-next.27 (it existed on the
 			// kit 2 line); write the manifest ourselves.
 			write(
 				`${out}/skgo.manifest.json`,
@@ -323,11 +324,41 @@ function readPrerendered(builder) {
 }
 
 /**
- * Kit's own server manifest, as an object *and* as text. `generateManifest`
- * returns the source of a module whose only imports sit inside lazy thunks, so
- * importing it resolves nothing and runs no application code — but the source
- * is worth keeping, because the thunks carry information the imported object
- * has already hidden inside closures. See readNodes.
+ * Kit replaces `$app/manifest`'s generated identifiers in its client and
+ * server environments. The Goja renderer is an adapter-owned fourth
+ * environment, so apply the same values after its chunks have been folded into
+ * the one script Go evaluates.
+ *
+ * @param {string} file
+ * @param {typeof import('$app/manifest')} manifest
+ */
+function writeAppManifest(file, manifest) {
+	let source = readFileSync(file, 'utf8');
+	const replacements = {
+		__SVELTEKIT_MANIFEST_ASSETS__: manifest.assets,
+		__SVELTEKIT_MANIFEST_IMMUTABLE__: manifest.immutable,
+		__SVELTEKIT_MANIFEST_PRERENDERED__: manifest.prerendered,
+		__SVELTEKIT_MANIFEST_ROUTES__: manifest.routes
+	};
+	for (const [identifier, value] of Object.entries(replacements)) {
+		source = source.replaceAll(identifier, JSON.stringify(value));
+	}
+	if (source.includes('__SVELTEKIT_MANIFEST_')) {
+		throw new Error(
+			'skgo: the Goja bundle contains a SvelteKit app-manifest value the adapter did not replace'
+		);
+	}
+	writeFileSync(file, source);
+}
+
+/**
+ * Kit's own server manifest, as an object *and* as text. Kit 3 generates a
+ * complete server-instance module instead of returning manifest source. We
+ * remove its eager Server import and constructor and export the manifest it
+ * wrote; every remaining import sits inside a lazy thunk, so importing the
+ * result resolves nothing and runs no application code. The source is worth
+ * keeping because those thunks carry information the imported object has
+ * already hidden inside closures. See readNodes.
  *
  * @param {import('@sveltejs/kit').Builder} builder
  * @returns {Promise<{ manifest: any, source: string }>}
@@ -335,12 +366,44 @@ function readPrerendered(builder) {
 async function readKitManifest(builder) {
 	const dir = builder.getBuildDirectory('skgo');
 	const file = join(dir, 'kit-manifest.js');
-	const source = builder.generateManifest({ relativePath: '.' });
 	mkdirSync(dir, { recursive: true });
-	writeFileSync(file, `export const manifest = ${source};\n`);
+	builder.generateServerInstance(file);
+	let source = readFileSync(file, 'utf8');
+	const original = source;
+	source = source
+		.replace(/^import \{ Server \} from '[^']+';\n/, '')
+		.replace(/^const manifest = /m, 'export const manifest = ')
+		.replace(/\nexport const server = new Server\(manifest\);\n?$/, '\n');
+	if (source === original || !source.includes('export const manifest = ')) {
+		throw new Error(
+			'skgo: kit generated a server instance in an unknown shape; refusing to guess where its manifest is'
+		);
+	}
+	writeFileSync(file, source);
 	try {
 		// The cache buster matters: `vp build` can run twice in one process.
-		return { manifest: (await import(`${pathToFileURL(file).href}?t=${Date.now()}`)).manifest, source };
+		const raw = (await import(`${pathToFileURL(file).href}?t=${Date.now()}`)).manifest;
+		return {
+			// Kit 3.0.0-next.27 made SSRManifest private and flattened its
+			// previous `_` payload. Keep the adapter's consumers on one shape so
+			// their fail-closed checks remain readable while the public generation
+			// API changes underneath them.
+			manifest: raw._
+				? raw
+				: {
+						appDir: raw.app_dir,
+						appPath: raw.app_path,
+						assets: raw.assets,
+						mimeTypes: raw.mime_types,
+						_: {
+							client: raw.client,
+							nodes: raw.nodes,
+							remotes: raw.remotes,
+							routes: raw.routes
+						}
+					},
+			source
+		};
 	} finally {
 		rmSync(file, { force: true });
 	}

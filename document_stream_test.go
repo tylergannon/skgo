@@ -16,7 +16,7 @@ import (
 
 // The strings this file compares against were written out of kit's own source
 // (`packages/kit/src/runtime/server/page/render.js` and `data_serializer.js` at
-// @sveltejs/kit 3.0.0-next.25), not read back off skgo's output. That is the
+// @sveltejs/kit 3.0.0-next.27), not read back off skgo's output. That is the
 // point of them: a document skgo assembles differently from kit's is a document
 // kit's client is not the client for.
 

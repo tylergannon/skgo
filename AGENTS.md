@@ -157,8 +157,7 @@ and nothing else.
   gitignored and read-only. `reference/` holds kit, devalue, sirv, mrmime and
   polytype at their pinned commits; `junkyard/` is an earlier attempt that never
   produced a working server. Mine the junkyard: the
-  Playwright task suite, the guestbook app, and the kit-3 facts in
-  `.agents/skills/sveltekit-current/SKILL.md` were all paid for. Take any idea
+  Playwright task suite and guestbook app were both paid for. Take any idea
   that earns its place. What does not come across is the process — its ledgers,
   sprint contracts, proof harnesses, review rounds and evidence directories are
   what it built *instead of* the product.
@@ -167,7 +166,6 @@ and nothing else.
 
 Kit 3 breaks most model priors: `svelte.config.js` is gone, `transport` is a
 universal hook, `$lib` became `#lib`, the app's origin is fixed at build time,
-and TypeScript 7 cannot build it. Read
-`/Users/tyler/src/skgo/ephemeral/inspiration/junkyard/.agents/skills/sveltekit-current/SKILL.md`
-before writing SvelteKit code, and check pinned kit source over any
-documentation site.
+and TypeScript 7 cannot build it. Read the tracked
+`ephemeral/sveltekit-current/SKILL.md` before writing SvelteKit code, and check
+the pinned kit source it names over any documentation site.

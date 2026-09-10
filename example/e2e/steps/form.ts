@@ -43,6 +43,20 @@ When(
 	}
 );
 
+Then('no contact fields are dirty', async ({ page }) => {
+	await expect(page.getByTestId('contact-dirty')).toHaveText('Changed fields: none');
+});
+
+When('I fill the contact name with {string}', async ({ page }, name: string) => {
+	await hydrated(page);
+	await page.getByTestId('field-from').fill(name);
+});
+
+Then('only the contact name is dirty', async ({ page, shot }) => {
+	await expect(page.getByTestId('contact-dirty')).toHaveText('Changed fields: name');
+	await shot();
+});
+
 When('I attach the fixture {string}', async ({ page }, name: string) => {
 	await hydrated(page);
 	await page.getByTestId('field-attachment').setInputFiles(fixture(name));

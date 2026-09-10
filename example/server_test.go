@@ -804,8 +804,8 @@ func TestAServerRouteAnswersItsOwnMethods(t *testing.T) {
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Errorf("DELETE /api/todos: status %d, want 405", rec.Code)
 	}
-	if got := rec.Header().Get("Allow"); got != "GET, POST, HEAD" {
-		t.Errorf("DELETE /api/todos: Allow %q, want %q", got, "GET, POST, HEAD")
+	if got := rec.Header().Get("Allow"); got != "GET, POST, QUERY, HEAD" {
+		t.Errorf("DELETE /api/todos: Allow %q, want %q", got, "GET, POST, QUERY, HEAD")
 	}
 
 	// POST is one of the methods the route declares, and it used to be a 405.

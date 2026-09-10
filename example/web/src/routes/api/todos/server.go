@@ -10,6 +10,7 @@ package todosapi
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
@@ -49,6 +50,28 @@ func add(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, todo)
 }
 
+// search answers the HTTP QUERY method added in SvelteKit 3. The request body
+// names a substring and the response contains only matching todos. QUERY is a
+// raw endpoint method; it is unrelated to a skgo remote query.
+func search(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Contains string `json:"contains"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"message": "expected a JSON object with a contains property"})
+		return
+	}
+
+	session, _ := skgo.LocalOf[businesslogic.Session](r.Context())
+	var matches []businesslogic.Todo
+	for _, todo := range businesslogic.Default.Todos(session.User != "") {
+		if strings.Contains(strings.ToLower(todo.Text), strings.ToLower(body.Contains)) {
+			matches = append(matches, todo)
+		}
+	}
+	writeJSON(w, http.StatusOK, matches)
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -58,4 +81,5 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 var (
 	_ = skgo.GET(list)
 	_ = skgo.POST(add)
+	_ = skgo.QUERY(search)
 )
