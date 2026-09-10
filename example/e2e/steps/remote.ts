@@ -1,6 +1,6 @@
 import { createBdd } from 'playwright-bdd';
 import type { Page } from '@playwright/test';
-import { expect, hydrated, test } from './fixtures';
+import { capturesAllScreenshots, expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -121,7 +121,7 @@ async function countMatchesList(page: Page, shot: string): Promise<void> {
 			expect(counted, `the counter says ${counted}; the page lists ${listed} todos`).toBe(listed);
 		}).toPass({ timeout: 15_000 });
 	} finally {
-		await page.screenshot({ path, fullPage: true });
+		if (capturesAllScreenshots()) await page.screenshot({ path, fullPage: true });
 	}
 }
 

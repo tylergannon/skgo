@@ -18,6 +18,10 @@ jobs:
       SKGO_PORT: "8080"
       SKGO_DEV_PORT: "5173"
       SKGO_QUALIFICATION_ARTIFACTS: ${{ github.workspace }}/qualification-artifacts
+      # The full suite still asserts every scenario. Release evidence is a
+      # deliberately small visual sample: two example frames plus the fresh
+      # generated application's eight prod/dev outcome frames.
+      SKGO_E2E_SCREENSHOTS: curated
 
     steps:
       - uses: actions/checkout@v7
@@ -114,7 +118,7 @@ jobs:
           pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
           [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
 
-      - name: Preserve inspectable browser evidence
+      - name: Preserve ten inspectable release frames
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -122,8 +126,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           path: |
-            qualification-artifacts
-            example/e2e/screenshots
-            example/e2e/playwright-report
-            example/e2e/test-results
-            ephemeral/screenshots
+            qualification-artifacts/generated/screenshots/prod/*.png
+            qualification-artifacts/generated/screenshots/dev/*.png
+            ephemeral/screenshots/zz-source-update/prod/*-built-unchanged.png
+            ephemeral/screenshots/zz-source-update/dev/*-hot-updated.png
