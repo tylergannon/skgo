@@ -102,4 +102,4 @@ ports:
     lsof -nP -iTCP -sTCP:LISTEN
 
 # Releases have no local recipe. A Conventional Commit merged to main starts
-# release-gate.yml; only its browser-qualified SHA is tagged and published.
+# release.yml; only its browser-qualified SHA is published and tagged.

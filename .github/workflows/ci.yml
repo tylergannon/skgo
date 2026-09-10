@@ -1,7 +1,7 @@
 name: CI
 
 # Pull requests get the comparatively fast structural checks. Browser-level
-# product qualification belongs to release-gate.yml after a commit reaches
+# product qualification belongs to release.yml after a commit reaches
 # main, where a ten-minute run does not block review iteration.
 on:
   push:
