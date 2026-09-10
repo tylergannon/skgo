@@ -46,12 +46,13 @@ func TestTheBuildToolIsSelectedExplicitly(t *testing.T) {
 		entry       string
 		originFile  string
 		command     string
+		e2eCommand  string
 		notWritten  []string
 		executables []string
 	}{
-		{name: "mise remains the default", entry: "mise.toml", originFile: "mise.toml", command: "mise run build", notWritten: []string{"Justfile", "scripts/build.sh"}},
-		{name: "just", buildTool: "just", entry: "Justfile", originFile: "Justfile", command: "just build", notWritten: []string{"mise.toml", "scripts/build.sh"}},
-		{name: "scripts", buildTool: "scripts", entry: "scripts/build.sh", originFile: "scripts/env.sh", command: "./scripts/build.sh", notWritten: []string{"mise.toml", "Justfile"}, executables: []string{"scripts/build.sh", "scripts/dev-web.sh", "scripts/dev-go.sh"}},
+		{name: "mise remains the default", entry: "mise.toml", originFile: "mise.toml", command: "mise run build", e2eCommand: "mise run e2e", notWritten: []string{"Justfile", "scripts/build.sh"}},
+		{name: "just", buildTool: "just", entry: "Justfile", originFile: "Justfile", command: "just build", e2eCommand: "just e2e", notWritten: []string{"mise.toml", "scripts/build.sh"}},
+		{name: "scripts", buildTool: "scripts", entry: "scripts/build.sh", originFile: "scripts/env.sh", command: "./scripts/build.sh", e2eCommand: "./scripts/e2e.sh", notWritten: []string{"mise.toml", "Justfile"}, executables: []string{"scripts/build.sh", "scripts/dev-web.sh", "scripts/dev-go.sh", "scripts/e2e.sh"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := scaffold(t, newapp.Options{BuildTool: tc.buildTool})
@@ -63,8 +64,11 @@ func TestTheBuildToolIsSelectedExplicitly(t *testing.T) {
 					t.Errorf("unselected build entry %s was generated", rel)
 				}
 			}
-			if readme := read(t, dir, "README.md"); !strings.Contains(readme, tc.command) {
-				t.Errorf("README does not document %q:\n%s", tc.command, readme)
+			readme := read(t, dir, "README.md")
+			for _, command := range []string{tc.command, tc.e2eCommand} {
+				if !strings.Contains(readme, command) {
+					t.Errorf("README does not document %q:\n%s", command, readme)
+				}
 			}
 			entry := read(t, dir, tc.entry)
 			for _, want := range []string{"go generate ./...", "vp build", "go build"} {
@@ -85,6 +89,29 @@ func TestTheBuildToolIsSelectedExplicitly(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestTheProjectCarriesItsBrowserAcceptanceContract(t *testing.T) {
+	dir := scaffold(t, newapp.Options{App: "guestbook"})
+
+	for _, rel := range []string{
+		"e2e/package.json",
+		"e2e/playwright.config.ts",
+		"e2e/tsconfig.json",
+		"e2e/features/generated-app.feature",
+		"e2e/steps/app.ts",
+		"e2e/steps/fixtures.ts",
+	} {
+		if !exists(dir, rel) {
+			t.Errorf("generated project lacks %s", rel)
+		}
+	}
+	feature := read(t, dir, "e2e/features/generated-app.feature")
+	for _, want := range []string{"heading is \"guestbook\"", "without a document reload", "direct deep link"} {
+		if !strings.Contains(feature, want) {
+			t.Errorf("generated acceptance contract lacks %q:\n%s", want, feature)
+		}
 	}
 }
 

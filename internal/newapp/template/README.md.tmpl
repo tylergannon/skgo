@@ -77,3 +77,18 @@ Go answers loads, remote functions and server routes in both modes. In
 production the binary renders pages from the embedded frontend build. In
 development it still renders each document in Go, using modules transformed by
 Vite; modules, styles, static assets and HMR continue through to Vite.
+
+## Browser acceptance
+
+The generated Playwright-BDD suite in `e2e/` is the starter application's
+executable contract. Start either the production binary or both development
+processes, then run:
+
+```sh
+{{.E2ECommand}}
+```
+
+The same scenarios run in both modes. They prove that Go rendered the initial
+document, a greeting visibly refreshes without reloading, and client navigation
+and a direct deep link both reach the About route. Each outcome leaves a
+screenshot under `e2e/screenshots/` so a successful run can be inspected.

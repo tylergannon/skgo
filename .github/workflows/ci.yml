@@ -1,14 +1,8 @@
 name: CI
 
-# Regression detection between sessions: it says something that used to work
-# stopped working. It does not say the software works — that is screenshots of
-# the running app, looked at by a human.
-#
-# A conflicting pull request produces no `pull_request` run at all: GitHub runs
-# that event against a merge commit it cannot build, so the checks tab stays
-# empty and reads exactly like a repository with no CI. Measured on this branch.
-# So the trigger is `push`, which always fires, and `pull_request` only for
-# forks, whose pushes this repository never sees. One run per commit either way.
+# Pull requests get the comparatively fast structural checks. Browser-level
+# product qualification belongs to release-gate.yml after a commit reaches
+# main, where a ten-minute run does not block review iteration.
 on:
   push:
   pull_request:
@@ -22,28 +16,16 @@ permissions:
 
 jobs:
   checks:
-    name: Go tests and the browser suite
+    name: Build, tests, and Conventional Commit
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     env:
-      # mise refuses to run a config it has not been told to trust, and there is
-      # no prompt to answer on a runner.
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-      # The Justfile's own defaults, written down because the app's origin is
-      # fixed when vite builds: the same value has to reach `vp build`, `vp dev`
-      # and the suite's BASE_URL, or the browser is told the app lives somewhere
-      # it does not.
-      ORIGIN: http://127.0.0.1:8080
-      SKGO_PORT: "8080"
-      SKGO_DEV_PORT: "5173"
 
     steps:
       - uses: actions/checkout@v7
 
-      # go.mod pins the exact patch release. Reading it here rather than writing
-      # a version down twice means a toolchain bump is one edit, and a version
-      # that does not exist fails this step rather than silently falling back.
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
@@ -52,197 +34,33 @@ jobs:
             go.work.sum
             example/go.sum
 
-      # node and the bootstrap `vp`, from example/mise.toml — the same file a
-      # developer's shell reads. export_path is off because it would put
-      # example/web/node_modules/.bin on PATH before that directory exists; the
-      # recipes reach the project-local `vp` through `mise x --` instead.
       - uses: jdx/mise-action@v4
         with:
           working_directory: example
           export_path: false
 
-      # The version example/e2e/package.json declares under devEngines.
       - uses: pnpm/action-setup@v6
         with:
           version: 11.25.0
 
       - uses: extractions/setup-just@v4
 
-      - name: just install
+      # Push CI is the same-repository PR gate, so HEAD is the commit whose
+      # subject will drive an eventual release. Squash PR titles must follow
+      # the same form or the resulting main commit immediately goes red.
+      - name: HEAD uses a Conventional Commit subject
+        run: go run ./cmd/skgo-release-version --check HEAD
+
+      - name: Install build dependencies
         run: just install
 
-      # Playwright's browser and the system libraries it links against. Without
-      # this the suite does not fail, it errors on launch — which is the same
-      # unread exit code as a skip.
-      - name: playwright install chromium
-        working-directory: example/e2e
-        run: pnpm exec playwright install --with-deps chromium
-
-      # Everything above either succeeded or failed the job, so this can only
-      # report a tool missing for a reason those steps did not see. It exists so
-      # that "this could not run" is a distinct, named failure rather than a red
-      # suite somebody spends an hour reading code over.
-      - name: The toolchain the recipes need
-        run: |
-          missing=
-          for tool in go mise just lsof curl pnpm node; do
-            if command -v "$tool" >/dev/null 2>&1; then
-              printf '%-6s %s\n' "$tool" "$(command -v "$tool")"
-            else
-              missing="$missing $tool"
-            fi
-          done
-          go version
-          mise --version
-          just --version
-          pnpm --version
-          (cd example/e2e && pnpm exec playwright --version)
-          # The project-local `vp`, not the bootstrap one: a dev server created
-          # by the mise-global copy carries classes from a different module
-          # realm and kit's RunnableDevEnvironment check fails.
-          test -x example/web/node_modules/.bin/vp \
-            || missing="$missing example/web/node_modules/.bin/vp"
-          if [ -n "$missing" ]; then
-            echo "::error title=Toolchain missing::Not on PATH:$missing. Nothing below could run, so nothing below says anything about the code."
-            exit 1
-          fi
-
-      # First, and on its own: example/web/dist.go embeds `all:build`, so in a
-      # tree that has never built, `go vet ./... ./example/...` fails with
-      # "pattern all:build: no matching files found" — which reads exactly like
-      # broken code and is not.
-      - name: just build
+      - name: Build
         run: just build
 
-      - name: just vet
+      - name: Vet
         run: just vet
 
-      # Both modules. This is also where the scaffold test runs: `skgo new` into
-      # an empty directory, published through a throwaway file module proxy, and
-      # `mise run build` on the result — so it needs the network and several
-      # minutes, and it is deliberately not skippable.
-      - name: just test
+      # Includes the existing external scaffold build against candidate Go and
+      # npm artifacts, but not the release-only tagged browser test.
+      - name: Unit and focused integration tests
         run: just test
-
-      # The suite against the embedded build, with nothing else listening. If
-      # vite were up, the prod run would be testing the proxy path under the
-      # name of the production one.
-      #
-      # Every check on a port reads lsof's output, never its exit code: given
-      # two -i selectors lsof exits 1 whenever *either* address matched nothing,
-      # so `if lsof -t -i a -i b` is false while it is printing the pid of the
-      # process holding a. A guard written that way passes silently over exactly
-      # the situation it exists to catch. Measured, not assumed.
-      - name: just e2e prod
-        id: e2e_prod
-        run: |
-          bound=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
-          if [ -n "$bound" ]; then
-            echo "::error title=Port already bound::pid(s) $bound already listen on $SKGO_PORT or $SKGO_DEV_PORT; the suite would test them instead of this build."
-            exit 1
-          fi
-          just serve &
-          # Readiness is an HTTP response, not an open socket: a server that
-          # binds and then fails to answer would otherwise send the suite at a
-          # port that returns nothing, and 27 scenarios would fail as if the
-          # code were broken.
-          for _ in $(seq 60); do
-            curl -sf -o /dev/null "http://127.0.0.1:$SKGO_PORT/" && break
-            sleep 1
-          done
-          if ! curl -sf -o /dev/null "http://127.0.0.1:$SKGO_PORT/"; then
-            echo "::error title=Server never came up::Nothing answered http://127.0.0.1:$SKGO_PORT/ within 60s, so the suite below never ran against this build."
-            exit 1
-          fi
-          mode=$(curl -sI "http://127.0.0.1:$SKGO_PORT/" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-skgo-mode"{print $2}')
-          echo "X-Skgo-Mode: ${mode:-<absent>}"
-          if [ "$mode" != "prod" ]; then
-            echo "::error title=Wrong handler::The server on $SKGO_PORT answers in '${mode:-<absent>}' mode, not prod. This leg is not testing the embedded build."
-            exit 1
-          fi
-          status=0
-          just e2e prod || status=$?
-          # `just serve` runs `go run`, which forks: the pid `&` reports is a
-          # launcher and killing it leaves the compiled child holding the
-          # socket. Stop whoever actually owns the port, and wait for it to go —
-          # a still-bound port would fail the dev leg as if the code were broken.
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" 2>/dev/null || true)
-          [ -n "$pids" ] && kill $pids 2>/dev/null || true
-          for _ in $(seq 30); do
-            [ -z "$(lsof -t -i tcp:"$SKGO_PORT" 2>/dev/null || true)" ] && break
-            sleep 1
-          done
-          exit $status
-
-      # The same suite again with kit's dev server behind the Go one. Go still
-      # owns every document, remote function, load and endpoint; its renderer
-      # evaluates Vite's live module graph instead of the embedded build.
-      #
-      # `just dev` owns both processes. Vite's document root is deliberately not
-      # a readiness endpoint: loading it directly executes generated server-load
-      # stubs, which throw because Go is the only supported application-I/O
-      # owner. The adapter control endpoint proves Vite has installed skgo's
-      # live module environment; the second probe proves Go can render through
-      # it.
-      # Runs even when the prod leg went red, so one run says whether a
-      # regression is mode-specific. Skipped only when the prod leg itself never
-      # ran — a tree that did not build says nothing about either mode.
-      - name: just e2e dev
-        if: ${{ !cancelled() && steps.e2e_prod.outcome != 'skipped' }}
-        run: |
-          just dev &
-          for _ in $(seq 120); do
-            curl -sf -o /dev/null "http://127.0.0.1:$SKGO_DEV_PORT/__skgo_dev/info" && break
-            sleep 1
-          done
-          if ! curl -sf -o /dev/null "http://127.0.0.1:$SKGO_DEV_PORT/__skgo_dev/info"; then
-            echo "::error title=Dev adapter never came up::Nothing answered the adapter control endpoint on $SKGO_DEV_PORT within 120s, so the proxied run never happened."
-            exit 1
-          fi
-          for _ in $(seq 60); do
-            curl -sf -o /dev/null "http://127.0.0.1:$SKGO_PORT/" && break
-            sleep 1
-          done
-          if ! curl -sf -o /dev/null "http://127.0.0.1:$SKGO_PORT/"; then
-            echo "::error title=Server never came up::Nothing answered http://127.0.0.1:$SKGO_PORT/ within 60s, so the proxied run never happened."
-            exit 1
-          fi
-          # Which handler is actually answering, checked against the word
-          # written here rather than against anything the server reported
-          # earlier. A proxy that quietly fell back to the embedded build would
-          # otherwise run the prod leg a second time under the dev leg's name.
-          mode=$(curl -sI "http://127.0.0.1:$SKGO_PORT/" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-skgo-mode"{print $2}')
-          echo "X-Skgo-Mode: ${mode:-<absent>}"
-          if [ "$mode" != "dev" ]; then
-            echo "::error title=Wrong handler::The server on $SKGO_PORT answers in '${mode:-<absent>}' mode, not dev. Pages are not coming from vp dev, so this leg says nothing about the proxied path."
-            exit 1
-          fi
-          just e2e dev
-
-      # Stop whatever the legs left holding a port, so the job ends instead of
-      # waiting on a dev server that is still running.
-      - name: Release the ports
-        if: always()
-        run: |
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
-          [ -n "$pids" ] || exit 0
-          kill $pids 2>/dev/null || true
-          sleep 3
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
-          [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
-          exit 0
-
-      # The frames each scenario left behind, in both modes. They are what a
-      # human looks at; the exit code above is only the regression signal.
-      - name: Keep what the run looked like
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: browser-suite-frames
-          if-no-files-found: warn
-          retention-days: 14
-          path: |
-            example/e2e/screenshots
-            example/e2e/playwright-report
-            example/e2e/test-results
-            ephemeral/screenshots

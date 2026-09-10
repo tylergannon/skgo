@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")/.."
+. ./scripts/env.sh
+
+(cd e2e && pnpm install)
+(cd e2e && pnpm exec playwright install chromium)
+(cd e2e && BASE_URL="${BASE_URL:-$ORIGIN}" SKGO_E2E_RUN="${SKGO_E2E_RUN:-run}" pnpm test)

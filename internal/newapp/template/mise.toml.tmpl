@@ -39,3 +39,11 @@ run = "cd web && vp dev --host 127.0.0.1 --port 5173 --strictPort"
 [tasks."dev:go"]
 description = "The Go server, rendering pages from `vp dev`. Loads, remotes and server routes are answered here."
 run = "go run ./cmd --proxy http://127.0.0.1:5173"
+
+[tasks.e2e]
+description = "Run the generated browser acceptance contract against an already-running Go server."
+run = [
+	"cd e2e && pnpm install",
+	"cd e2e && pnpm exec playwright install chromium",
+	"cd e2e && BASE_URL=${BASE_URL:-$ORIGIN} SKGO_E2E_RUN=${SKGO_E2E_RUN:-run} pnpm test",
+]

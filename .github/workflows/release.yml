@@ -1,16 +1,15 @@
 name: Release
 
-# A `v*` tag is the release. Go needs nothing published — `go get` fetches the
-# tag — so this workflow exists for the half that npm cannot infer: it stamps
-# @skgo/sveltekit-adapter with the tag's version and uploads it.
-#
-# The tag is the gesture and the only gesture. Nothing here decides whether the
-# release is good; whether skgo works is a screenshot of the running app, looked
-# at, and that happens before anybody types `just release`.
+# Called only after release-gate.yml qualifies and tags an exact main SHA. Go
+# needs nothing else published; this workflow stamps the npm half of that same
+# release and uploads it with trusted provenance.
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_call:
+    inputs:
+      version:
+        description: The already-created v-prefixed release tag
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -57,8 +56,10 @@ jobs:
       # about a release nobody has cut.
       - name: Stamp the tag's version
         working-directory: internal/adapter
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_VERSION#v}"
           npm pkg set version="$version"
           sed -i "s/<matching-skgo-version>/$version/g" README.md
           echo "publishing @skgo/sveltekit-adapter@$version"
