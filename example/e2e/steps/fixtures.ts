@@ -239,6 +239,23 @@ export const test = base.extend<{
 	}
 });
 
+/** The mode named by the test invocation, independent of the server under test. */
+export function expectedMode(): 'dev' | 'prod' {
+	const mode = process.env.SKGO_EXPECTED_MODE;
+	expect(['dev', 'prod'], `SKGO_EXPECTED_MODE was ${JSON.stringify(mode)}`).toContain(mode);
+	return mode as 'dev' | 'prod';
+}
+
+/** Refuses a server other than the one this test leg intended to exercise. */
+export function expectMode(response: { headers(): Record<string, string> }): 'dev' | 'prod' {
+	const expected = expectedMode();
+	const observed = response.headers()['x-skgo-mode'];
+	expect(observed, `expected ${expected} mode, X-Skgo-Mode was ${JSON.stringify(observed)}`).toBe(
+		expected
+	);
+	return expected;
+}
+
 const { AfterStep } = createBdd(test);
 
 /**

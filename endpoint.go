@@ -130,12 +130,12 @@ type EndpointConfig struct {
 	Base string
 	// Origin is the app's configured origin. It is the "self" origin of kit's
 	// CSRF check on form-shaped mutations; leaving it empty turns that check
-	// off, which is what dev does.
+	// off. Dev skips the check without discarding the configured origin.
 	Origin string
 	// TrustedOrigins are the extra origins kit's `csrf.trustedOrigins` allows
 	// to submit forms to this app.
 	TrustedOrigins []string
-	// Dev relaxes the checks that only describe a production build.
+	// Dev skips Kit's production-only CSRF and build-drift checks.
 	Dev bool
 	// OnPanic is called when an endpoint handler panics, with the route id and
 	// method, the recovered value, and the stack. Leaving it nil logs the same
@@ -578,7 +578,7 @@ func (es *Endpoints) normalize(urlPath string, u *url.URL) (location string, red
 // form-shaped mutation from another origin is refused before the handler runs.
 // Kit applies it to every non-remote request, which includes every endpoint.
 func (es *Endpoints) csrfForbidden(r *http.Request) bool {
-	if es.origin == "" {
+	if es.cfg.Dev || es.origin == "" {
 		return false
 	}
 	switch r.Method {
