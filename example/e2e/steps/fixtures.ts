@@ -228,6 +228,7 @@ export const test = base.extend<{
 		const shot: Shot = async (name) => {
 			const suffix = name ? `-${name}` : taken > 0 ? `-${taken}` : '';
 			taken += 1;
+			if (!captureScenarioFrame(feature, mode, name)) return;
 			const file = `../../ephemeral/screenshots/${feature}/${mode}/${slug}${suffix}.png`;
 			mkdirSync(dirname(file), { recursive: true });
 			await browserFrame.capture(file);
@@ -272,6 +273,7 @@ const { AfterStep } = createBdd(test);
  * remember to write cannot be forgotten from the next scenario somebody adds.
  */
 AfterStep(async ({ browserFrame, $step, $bddContext, $testInfo }) => {
+	if (screenshotPolicy() !== 'all') return;
 	const step = $bddContext.bddTestData?.steps?.[$bddContext.stepIndex];
 	if (step?.keywordType !== 'Outcome') return;
 
@@ -285,6 +287,37 @@ AfterStep(async ({ browserFrame, $step, $bddContext, $testInfo }) => {
 	await shoot(browserFrame, file);
 	await $testInfo.attach(step.textWithKeyword ?? $step.title, { path: file, contentType: 'image/png' });
 });
+
+type ScreenshotPolicy = 'all' | 'curated' | 'none';
+
+function screenshotPolicy(): ScreenshotPolicy {
+	const policy = process.env.SKGO_E2E_SCREENSHOTS ?? 'all';
+	if (policy === 'all' || policy === 'curated' || policy === 'none') return policy;
+	throw new Error(`SKGO_E2E_SCREENSHOTS must be all, curated, or none; got ${JSON.stringify(policy)}`);
+}
+
+export function capturesAllScreenshots(): boolean {
+	return screenshotPolicy() === 'all';
+}
+
+/**
+ * Release qualification keeps one production control and one development HMR
+ * result. The generated-project contract contributes the other eight frames.
+ */
+function captureScenarioFrame(feature: string, mode: string, name?: string): boolean {
+	switch (screenshotPolicy()) {
+		case 'all':
+			return true;
+		case 'none':
+			return false;
+		case 'curated':
+			return (
+				feature === 'zz-source-update' &&
+				((mode === 'prod' && name === 'built-unchanged') ||
+					(mode === 'dev' && name === 'hot-updated'))
+			);
+	}
+}
 
 /**
  * Where this run's frames go. The mode is part of the path because the same

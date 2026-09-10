@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
-import { expect, test } from './fixtures';
+import { capturesAllScreenshots, expect, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -184,6 +184,7 @@ Then("neither document carries the other's item", async ({ shot }) => {
 
 /** Photographs a page this scenario opened itself. */
 async function screenshot(page: Page, name: string) {
+	if (!capturesAllScreenshots()) return;
 	const mode = process.env.SKGO_E2E_RUN ?? 'run';
 	await page.screenshot({
 		path: `../../ephemeral/screenshots/ssr/${mode}/${name}.png`,

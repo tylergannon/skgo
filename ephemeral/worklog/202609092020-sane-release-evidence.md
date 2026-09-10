@@ -1,0 +1,2 @@
+decision: release qualification keeps at most ten intentionally selected screenshots; the behavioral suite remains comprehensive, while duplicated per-assertion frames and report copies are not release evidence.
+friction: one qualified SHA produced two roughly 120 MB archives containing 2,757 PNG entries but only 157 unique image hashes -> separate assertion breadth from a small human-inspectable visual proof surface.
