@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -596,23 +597,23 @@ func getOK(t *testing.T, client *http.Client, url string) string {
 
 // serveBinary starts the built binary and keeps it running for the rest of the
 // test. extra holds the development proxy flags when this is the dev server.
-func serveBinary(t *testing.T, binary string, port int, extra ...string) {
+func serveBinary(t *testing.T, binary string, port int, extra ...string) func() {
 	t.Helper()
 	args := append([]string{"--listen", fmt.Sprintf("127.0.0.1:%d", port)}, extra...)
-	startProcess(t, "", nil, binary, args...)
+	return startProcess(t, "", nil, binary, args...)
 }
 
-func serveVite(t *testing.T, dir string, env []string, port int) {
+func serveVite(t *testing.T, dir string, env []string, port int) func() {
 	t.Helper()
 	// Start the project-local executable itself. Starting it through `mise x`
 	// leaves Vite running after the wrapper is killed, which leaks both the
 	// process and its port out of this test.
 	vp := filepath.Join(dir, "node_modules", ".bin", "vp")
-	startProcess(t, dir, env, vp, "dev", "--host", "127.0.0.1",
+	return startProcess(t, dir, env, vp, "dev", "--host", "127.0.0.1",
 		"--port", strconv.Itoa(port), "--strictPort")
 }
 
-func startProcess(t *testing.T, dir string, env []string, name string, args ...string) {
+func startProcess(t *testing.T, dir string, env []string, name string, args ...string) func() {
 	t.Helper()
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
@@ -624,13 +625,18 @@ func startProcess(t *testing.T, dir string, env []string, name string, args ...s
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("starting %s: %v", name, err)
 	}
-	t.Cleanup(func() {
-		_ = cmd.Process.Kill()
-		_, _ = cmd.Process.Wait()
-		if t.Failed() {
-			t.Logf("the server said:\n%s", log.String())
-		}
-	})
+	var once sync.Once
+	stop := func() {
+		once.Do(func() {
+			_ = cmd.Process.Kill()
+			_, _ = cmd.Process.Wait()
+			if t.Failed() {
+				t.Logf("the server said:\n%s", log.String())
+			}
+		})
+	}
+	t.Cleanup(stop)
+	return stop
 }
 
 func awaitPort(t *testing.T, port int) {

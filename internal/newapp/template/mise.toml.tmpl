@@ -45,5 +45,5 @@ description = "Run the generated browser acceptance contract against an already-
 run = [
 	"cd e2e && pnpm install",
 	"cd e2e && pnpm exec playwright install chromium",
-	"cd e2e && BASE_URL=$ORIGIN SKGO_E2E_RUN=${SKGO_E2E_RUN:-run} pnpm test",
+	"cd e2e && BASE_URL=${BASE_URL:-$ORIGIN} SKGO_E2E_RUN=${SKGO_E2E_RUN:-run} pnpm test",
 ]

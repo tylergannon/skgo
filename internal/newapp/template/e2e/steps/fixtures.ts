@@ -32,7 +32,11 @@ const { AfterStep } = createBdd(test);
 AfterStep(async ({ page, $bddContext, $testInfo }) => {
 	const step = $bddContext.bddTestData?.steps?.[$bddContext.stepIndex];
 	if (step?.keywordType !== 'Outcome') return;
-	const directory = join('screenshots', process.env.SKGO_E2E_RUN ?? 'run');
+	const directory = join(
+		process.env.SKGO_E2E_ARTIFACTS ?? '.',
+		'screenshots',
+		process.env.SKGO_E2E_RUN ?? 'run'
+	);
 	mkdirSync(directory, { recursive: true });
 	const file = join(
 		directory,
