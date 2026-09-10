@@ -49,7 +49,8 @@ jobs:
       # subject will drive an eventual release. Squash PR titles must follow
       # the same form or the resulting main commit immediately goes red.
       - name: HEAD uses a Conventional Commit subject
-        run: go run ./cmd/skgo-release-version --check HEAD
+        run: |
+          git log -1 --format=%s | grep -Eq '^[a-z][a-z0-9-]*(\([^()]+\))?!?: .+'
 
       - name: Install build dependencies
         run: just install

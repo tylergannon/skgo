@@ -15,6 +15,7 @@ Feature: The document follows the source being served
     When "src/routes/+page.svelte" has "Home" replaced with "Home, edited while running"
     Then a new document for "/" carries "Home, edited while running" from live source or "Home" from its build
 
+  @release
   Scenario: The already-open page accepts the same document without a hydration mismatch and keeps Vite HMR
     Given I open "/"
     When "src/routes/+page.svelte" has "Home" replaced with "Home, hot updated"

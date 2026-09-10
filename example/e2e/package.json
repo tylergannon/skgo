@@ -3,7 +3,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"test": "bddgen && playwright test"
+		"test": "bddgen && playwright test",
+		"test:release": "bddgen && playwright test --grep @release"
 	},
 	"devDependencies": {
 		"@playwright/test": "1.63.0",
