@@ -81,7 +81,7 @@
 		{
 			name: 'HTTP endpoints written in Go',
 			href: '/api',
-			look: 'The JSON on this page came from a +server.ts route whose handler is an ordinary net/http function.'
+			look: 'Kit 3 identifies the route through $app/manifest and sends its new HTTP QUERY method to an ordinary net/http function.'
 		},
 		{
 			name: 'Links and asset URLs worked out while the page renders',

@@ -75,6 +75,16 @@
 	<button data-testid="send" type="submit">Send</button>
 </form>
 
+<p data-testid="contact-dirty" aria-live="polite">
+	Changed fields:
+	{[
+		fields.from.dirty() && 'name',
+		fields.email.dirty() && 'email',
+		fields.body.dirty() && 'message',
+		fields.attachment.dirty() && 'attachment'
+	].filter(Boolean).join(', ') || 'none'}
+</p>
+
 <!--
 	Neither of these reads a client-side variable. The receipt is shown
 	whenever the form has a result and the refusal whenever it has issues,

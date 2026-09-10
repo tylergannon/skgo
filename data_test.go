@@ -14,7 +14,7 @@ import (
 )
 
 // The golden bodies below were taken from kit's own dev server answering the
-// same shapes (`@sveltejs/kit` 3.0.0-next.25, `packages/kit/src/runtime/server/data`),
+// same shapes (`@sveltejs/kit` 3.0.0-next.27, `packages/kit/src/runtime/server/data`),
 // not from this implementation.
 
 // section is the route table the tests serve: a root layout with no server

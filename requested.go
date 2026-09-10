@@ -8,7 +8,10 @@
 // in exactly one place — `requested(fn, limit)` in
 // `runtime/app/server/remote/requested.js` — which a command or form handler
 // has to call, naming the query it is willing to run and how many instances of
-// it. A handler that says nothing refreshes nothing.
+// it. A handler that says nothing refreshes nothing. Since Kit
+// 3.0.0-next.27 it must also explicitly ignore anything it deliberately leaves
+// stale; the client rejects a mutation response with requested keys left
+// unhandled.
 //
 // That gate is the whole point, and kit's own documentation says why: the list
 // is in the network tab. Without a gate, a visitor who has seen the app once
@@ -63,6 +66,19 @@ type RequestedQuery[In any] struct {
 // The key is the one the client sent, not one recomputed from Arg, so the value
 // lands on the instance the browser is actually showing.
 func (q RequestedQuery[In]) Refresh() { q.register() }
+
+// Ignore explicitly declines this instance. Its current client-side value is
+// left alone, and the instance's key is returned in Kit's `i` response field
+// so the client knows the handler handled the request deliberately.
+//
+// Kit 3.0.0-next.27 made this distinction load-bearing: a requested key that
+// is neither refreshed, reconnected nor ignored makes the mutation fail.
+func (q RequestedQuery[In]) Ignore() {
+	if q.set == nil {
+		return
+	}
+	q.set.ignore(q.key)
+}
 
 func (q RequestedQuery[In]) register() {
 	if q.set == nil {
@@ -127,6 +143,21 @@ func RefreshRequested[In, Out any](ctx context.Context, fn func(context.Context,
 	return nil
 }
 
+// IgnoreRequested explicitly declines up to limit of the instances of fn the
+// client asked this command or form to refresh. Kit returns those keys in `i`,
+// leaving their current client-side values untouched. A requested key that is
+// neither accepted nor ignored makes Kit 3.0.0-next.27 reject the mutation.
+func IgnoreRequested[In, Out any](ctx context.Context, fn func(context.Context, In) (Out, error), limit int) error {
+	requests, err := requestedInstances[In](ctx, fn, limit, KindQuery, "IgnoreRequested", "refresh")
+	if err != nil {
+		return err
+	}
+	for _, request := range requests {
+		request.Ignore()
+	}
+	return nil
+}
+
 // RefreshRequestedNoArg is RefreshRequested for a query that takes no argument:
 //
 //	func addTodo(ctx context.Context, text string) (businesslogic.Todo, error) {
@@ -149,6 +180,19 @@ func RefreshRequested[In, Out any](ctx context.Context, fn func(context.Context,
 // call under an `if`.
 func RefreshRequestedNoArg[Out any](ctx context.Context, fn func(context.Context) (Out, error)) error {
 	return acceptTheOneInstance(ctx, fn, KindQuery, "RefreshRequestedNoArg", "refresh")
+}
+
+// IgnoreRequestedNoArg is IgnoreRequested for the sole instance of a query
+// that takes no argument. It mirrors Kit's `requested(fn, 1).ignoreAll()`.
+func IgnoreRequestedNoArg[Out any](ctx context.Context, fn func(context.Context) (Out, error)) error {
+	requests, err := requestedInstances[noArgument](ctx, fn, 1, KindQuery, "IgnoreRequestedNoArg", "refresh")
+	if err != nil {
+		return err
+	}
+	for _, request := range requests {
+		request.Ignore()
+	}
+	return nil
 }
 
 // ReconnectRequested is RefreshRequested for a live query, and it reconnects

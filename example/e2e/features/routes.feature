@@ -10,6 +10,19 @@ Feature: HTTP endpoints written in Go
     And the endpoint answered GET with 200 and "application/json"
     And the endpoint returned a todo saying "write the adapter"
 
+  Scenario: SvelteKit 3 exposes page and endpoint capabilities in its route manifest
+    Given I open "/api"
+    Then the Kit route manifest lists exactly:
+      | id         | page  | endpoint |
+      | /api       | true  | false    |
+      | /api/todos | false | true     |
+
+  Scenario: SvelteKit 3 routes the HTTP QUERY method to Go
+    Given I open "/api"
+    When I QUERY the endpoint for todos containing "adapter"
+    Then the endpoint answered QUERY with 200 and "application/json"
+    And the QUERY result is exactly "write the adapter"
+
   Scenario: A browser asking for the endpoint directly gets the endpoint
     Given I open "/api/todos"
     Then the document came from skgo
@@ -27,7 +40,7 @@ Feature: HTTP endpoints written in Go
     Given I open "/api"
     When I ask the endpoint to DELETE
     Then the endpoint answered DELETE with 405 and "text/plain"
-    And the endpoint said the methods it allows are "GET, POST, HEAD"
+    And the endpoint said the methods it allows are "GET, POST, QUERY, HEAD"
 
   Scenario: A trailing slash is redirected rather than served twice
     When I request "/api/todos/" without following redirects

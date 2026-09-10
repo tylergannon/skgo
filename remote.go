@@ -791,6 +791,9 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 	if len(l) > 0 {
 		data["l"] = l
 	}
+	if len(ev.refreshes.ignored) > 0 {
+		data["i"] = ev.refreshes.ignored
+	}
 	if len(q) > 0 || len(l) > 0 {
 		// `r` says the server performed explicit single-flight updates. Kit's
 		// server sets it for any refresh, so skgo does too, but it is inert on

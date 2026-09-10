@@ -19,6 +19,13 @@ Feature: Forms written in Go
     And the inbox shows a message from "Ada Lovelace" saying "The analytical engine weaves algebraic patterns."
     And exactly 1 remote request was made since
 
+  Scenario: SvelteKit 3 reports which remote form fields are dirty
+    Given I open "/contact"
+    When the contact page has loaded
+    Then no contact fields are dirty
+    When I fill the contact name with "Ada Lovelace"
+    Then only the contact name is dirty
+
   Scenario: A rejected submission puts each message on its own field and keeps what was typed
     Given I open "/contact"
     When the contact page has loaded

@@ -14,7 +14,7 @@ import (
 
 // The strings below were written out of kit's own source — `render.js`'s boot
 // script, `collect_remote_data`'s `f` bucket and `form.svelte.js`'s read of it
-// (@sveltejs/kit 3.0.0-next.25) — rather than read back off skgo's output. A
+// (@sveltejs/kit 3.0.0-next.27) — rather than read back off skgo's output. A
 // document that carries a form's outcome in a different slot, or under a
 // different key, is a document kit's client will start the form empty over.
 

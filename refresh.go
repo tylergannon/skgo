@@ -172,6 +172,12 @@ type refreshSet struct {
 	// to name a query through RefreshRequested or ReconnectRequested before
 	// any of its payloads becomes an entry below.
 	requested map[string][]string
+	// ignored is the ordered set of client-requested keys the handler
+	// explicitly declined. Kit 3.0.0-next.27 returns these as `i`, allowing
+	// the client to distinguish a deliberate stale value from a refresh the
+	// handler forgot to handle.
+	ignored     []any
+	ignoredKeys map[string]bool
 	// order is registration order, so the response is built in the order the
 	// handler asked rather than in Go's map order.
 	order   []string
@@ -186,6 +192,14 @@ func (s *refreshSet) add(key string, e refreshEntry) {
 		s.order = append(s.order, key)
 	}
 	s.entries[key] = e
+}
+
+func (s *refreshSet) ignore(key string) {
+	if s.ignoredKeys[key] {
+		return
+	}
+	s.ignoredKeys[key] = true
+	s.ignored = append(s.ignored, key)
 }
 
 // take removes and returns everything registered since the last call. The
@@ -347,10 +361,11 @@ func newRefreshSet(rs *Remotes, requested []string) *refreshSet {
 		byID[id] = append(byID[id], payload)
 	}
 	return &refreshSet{
-		rs:        rs,
-		requested: byID,
-		entries:   map[string]refreshEntry{},
-		drained:   map[string]bool{},
+		rs:          rs,
+		requested:   byID,
+		entries:     map[string]refreshEntry{},
+		drained:     map[string]bool{},
+		ignoredKeys: map[string]bool{},
 	}
 }
 

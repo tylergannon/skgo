@@ -10,3 +10,5 @@ const unimplemented = (): never => {
 export const GET = (): never => unimplemented();
 
 export const POST = (): never => unimplemented();
+
+export const QUERY = (): never => unimplemented();

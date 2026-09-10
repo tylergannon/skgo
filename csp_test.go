@@ -25,7 +25,7 @@ func sha256Base64(content string) string {
 // `core/config/options.js`'s `validate_options` (the exact function a real
 // `vite build` runs a developer's `csp` config through before handing it to
 // the adapter as `builder.config.csp`) and `runtime/server/page/csp.js`'s
-// `Csp` class — directly under Node, against @sveltejs/kit 3.0.0-next.25
+// `Csp` class — directly under Node, against @sveltejs/kit 3.0.0-next.27
 // pinned source, never against skgo's own output. See
 // ephemeral/worklog/csp-ground-truth.md for the script and full transcript.
 //

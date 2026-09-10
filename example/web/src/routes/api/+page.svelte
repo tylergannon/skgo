@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { routes } from '$app/manifest';
+
 	// This page talks to /api/todos with `fetch`, the way anything outside kit
 	// would. Nothing here is a remote function: the route is raw HTTP, and what
 	// arrives is whatever the Go handler in src/routes/api/todos/server.go
@@ -12,7 +14,9 @@
 	// caller say "the thing I created is in the list" rather than "something
 	// with that text is".
 	let created = $state<Todo | null>(null);
+	let matches = $state<Todo[] | null>(null);
 	let last = $state<{ method: string; status: number; type: string; allow: string } | null>(null);
+	const apiRoutes = routes.filter((route) => route.id.startsWith('/api'));
 
 	function record(method: string, response: Response) {
 		last = {
@@ -50,6 +54,16 @@
 		record('DELETE', await fetch('/api/todos', { method: 'DELETE' }));
 	}
 
+	async function query() {
+		const response = await fetch('/api/todos', {
+			method: 'QUERY',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ contains: 'adapter' })
+		});
+		record('QUERY', response);
+		if (response.ok) matches = await response.json();
+	}
+
 	$effect(() => {
 		void load(true);
 	});
@@ -61,6 +75,15 @@
 	Everything below came from <code>/api/todos</code>, an ordinary Go HTTP handler written in
 	<code>src/routes/api/todos/server.go</code> beside the route it serves.
 </p>
+
+<h2>SvelteKit 3 route manifest</h2>
+<ul data-testid="api-manifest">
+	{#each apiRoutes as route (route.id)}
+		<li data-testid="api-manifest-route">
+			<code>{route.id}</code> — page: {route.page}, endpoint: {route.endpoint}
+		</li>
+	{/each}
+</ul>
 
 {#if last}
 	<p data-testid="api-response">
@@ -95,3 +118,13 @@
 <button data-testid="api-delete" type="button" onclick={tryDelete}>
 	DELETE it (a method this route does not declare)
 </button>
+
+<button data-testid="api-query" type="button" onclick={query}>QUERY for “adapter”</button>
+
+{#if matches}
+	<ul data-testid="api-query-results">
+		{#each matches as todo (todo.id)}
+			<li data-testid="api-query-result">{todo.text}</li>
+		{/each}
+	</ul>
+{/if}

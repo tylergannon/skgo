@@ -151,6 +151,49 @@ func TestRequestedRefreshesNothingUntilTheHandlerSaysSo(t *testing.T) {
 	}
 }
 
+// Kit 3.0.0-next.27 distinguishes a deliberate stale value from a forgotten
+// requested update. Ignore returns the exact remote key in `i`, without
+// running the query or claiming a refresh was performed.
+func TestRequestedQueryCanBeExplicitlyIgnored(t *testing.T) {
+	runs := 0
+	var getTodo queryFn = func(ctx context.Context, id string) (todo, error) {
+		runs++
+		return todo{ID: id}, nil
+	}
+	command := NewCommandNoArg(testModule, "renameTodo", func(ctx context.Context) (string, error) {
+		requests, err := Requested(ctx, getTodo, 1)
+		if err != nil {
+			return "", err
+		}
+		for _, request := range requests {
+			request.Ignore()
+			request.Ignore() // `i` is a set in Kit, so duplicates collapse.
+		}
+		return "renamed", nil
+	})
+	rs := testRemotes(t, RemoteConfig{}, NewQuery(testModule, "getTodo", getTodo), command)
+
+	_, data, _ := envelope(t, postCommand(t, rs, command, devalue.Undefined,
+		[]string{keyGetTodoT1}).Body.Bytes())
+
+	if runs != 0 {
+		t.Errorf("the explicitly ignored query ran %d times, want 0", runs)
+	}
+	ignored, ok := field(t, data, "i").([]any)
+	if !ok || len(ignored) != 1 || ignored[0] != keyGetTodoT1 {
+		t.Errorf("i = %#v, want exactly [%s]", ignored, keyGetTodoT1)
+	}
+	if got := refreshedKeys(t, data); len(got) != 0 {
+		t.Errorf("q holds %v, want nothing", got)
+	}
+	if has(t, data, "r") {
+		t.Error("r is set, but ignoring a request performs no refresh")
+	}
+	if got := field(t, data, "_"); got != "renamed" {
+		t.Errorf("`_` = %#v, want the command's own result", got)
+	}
+}
+
 // An instance whose payload will not decode into the query's parameter type is
 // refused on its own key, and the instances beside it are unaffected.
 func TestAnUndecodableInstanceFailsAloneAndTheRestRun(t *testing.T) {

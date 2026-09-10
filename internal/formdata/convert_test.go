@@ -11,7 +11,7 @@ import (
 
 // The cases below are kit's own, from
 // `packages/kit/src/runtime/form-utils.spec.js` at @sveltejs/kit
-// 3.0.0-next.25. A submission a browser makes on its own has to arrive at a Go
+// 3.0.0-next.27. A submission a browser makes on its own has to arrive at a Go
 // handler as the object kit's client would have built from the same controls,
 // or the handler answers two different arguments depending on whether the
 // visitor had scripting on.
