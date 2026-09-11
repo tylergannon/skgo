@@ -103,13 +103,11 @@ jobs:
       # about a release nobody has cut.
       - name: Stamp the tag's version
         if: steps.changed.outputs.publish == 'true'
-        working-directory: internal/adapter
         env:
           RELEASE_VERSION: ${{ needs.version.outputs.version }}
         run: |
-          version="${RELEASE_VERSION#v}"
-          npm pkg set version="$version"
-          echo "publishing @skgo/sveltekit-adapter@$version"
+          go run ./cmd/skgo-adapter-changed -stamp "$RELEASE_VERSION"
+          echo "publishing @skgo/sveltekit-adapter@${RELEASE_VERSION#v}"
 
       # npm binds this direct publish to the repository, this release.yml file,
       # and this GitHub-hosted runner through the trusted publisher configured
