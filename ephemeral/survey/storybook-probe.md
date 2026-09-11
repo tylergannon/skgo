@@ -1,5 +1,7 @@
 # Storybook on a scaffolded skgo app — probe
 
+> **Superseded:** skgo and generated apps make zero `npm`/`npx` calls. `devEngines` with `onFail: "download"` stays; recommendations here to replace it or to run `npx sv` are withdrawn. Run sv as `vp dlx sv@next`. Current state: `ephemeral/plans/skgo-new-addons.md`.
+
 Probe at main `9ea9336`, 2026-09-10. Scratch app and logs:
 `/private/tmp/claude-501/-Users-tyler-src-skgo--claude-worktrees-vitest-storybook-integration-8f75ec/d10e1823-f728-46e1-b1d5-6a351e08e282/scratchpad/sbprobe/`
 (`sbapp/` is a git repo; one commit per stage: baseline → A1 → stock `sv add storybook` → fixes).

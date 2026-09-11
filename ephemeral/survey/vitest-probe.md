@@ -1,5 +1,7 @@
 # Vitest on a scaffolded skgo app — probe
 
+> **Superseded:** skgo and generated apps make zero `npm`/`npx` calls. `devEngines` with `onFail: "download"` stays; recommendations here to replace it or to run `npx sv` are withdrawn. Run sv as `vp dlx sv@next`. Current state: `ephemeral/plans/skgo-new-addons.md`.
+
 Probe at main `9ea9336`, 2026-09-10. sv mapped: `sv@1.0.0-next.7` (newest release
 tag; Kit-3 era — its snapshots use `@sveltejs/kit ^3.0.0-next.0`, `#lib`, config in
 vite.config). Pinned at `/Users/tyler/src/skgo/ephemeral/inspiration/reference/sv@1.0.0-next.7`.

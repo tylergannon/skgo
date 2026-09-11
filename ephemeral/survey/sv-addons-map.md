@@ -1,5 +1,7 @@
 # sv add-ons, mapped for `skgo new`
 
+> **Superseded:** skgo and generated apps make zero `npm`/`npx` calls. `devEngines` with `onFail: "download"` stays; recommendations here to replace it or to run `npx sv` are withdrawn. Run sv as `vp dlx sv@next`. Current state: `ephemeral/plans/skgo-new-addons.md`.
+
 sv version: **1.0.0-next.7** — npm dist-tag `next`, and the newest GitHub release
 of sveltejs/cli (2026-09-04). `latest` on npm is 0.17.0, the Kit 2 line; the
 1.0.0-next line is Kit 3's (its CHANGELOG: "use `#lib` instead of `$lib`",
