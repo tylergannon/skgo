@@ -25,7 +25,7 @@ install:
 
 # the link tree, the throwing stubs, and the wire types
 generate:
-    cd example/generated && go generate ./...
+    cd example/internal/skgo && go generate ./...
 
 # example/web/dist.go embeds `all:build`; its tracked placeholder keeps a fresh
 # checkout compilable before the frontend build has run.

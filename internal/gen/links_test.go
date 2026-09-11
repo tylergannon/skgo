@@ -1,10 +1,15 @@
 package gen
 
 import (
+	"archive/zip"
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/mod/module"
+	modzip "golang.org/x/mod/zip"
 )
 
 // fakeApp lays out a vite root inside a Go module, with Go files in the route
@@ -44,19 +49,6 @@ func linksFor(t *testing.T, cfg Config) *routeLinks {
 	return tree
 }
 
-func sameDir(t *testing.T, a, b string) bool {
-	t.Helper()
-	ra, err := filepath.EvalSymlinks(a)
-	if err != nil {
-		t.Fatalf("resolving %s: %v", a, err)
-	}
-	rb, err := filepath.EvalSymlinks(b)
-	if err != nil {
-		t.Fatalf("resolving %s: %v", b, err)
-	}
-	return ra == rb
-}
-
 // TestEveryRouteDirectoryBecomesAnImportableGoPackage is the whole point of the
 // link tree: a developer puts a `.remote.go` wherever the route lives, brackets
 // and parentheses included, and Go gets an address it can spell.
@@ -91,13 +83,9 @@ func TestEveryRouteDirectoryBecomesAnImportableGoPackage(t *testing.T) {
 			t.Fatalf("importPath(%s) = %q, want %q", rel, path, want)
 		}
 		linkDir := filepath.Join(cfg.Out, linkRootName, encodeLinkName(rel))
-		// The route root is linked file by file — see the next test — so only
-		// the nested directories resolve as a whole.
-		if rel != "src/routes" && !sameDir(t, linkDir, dir) {
-			t.Fatalf("%s does not resolve to %s", linkDir, dir)
-		}
-		if !sameDir(t, filepath.Join(linkDir, "data.remote.go"), filepath.Join(dir, "data.remote.go")) {
-			t.Fatalf("%s does not reach the authored source", linkDir)
+		generated, err := os.ReadFile(filepath.Join(linkDir, "data.remote.go"))
+		if err != nil || string(generated) != "package p\n" {
+			t.Fatalf("%s does not contain the authored source: %q, %v", linkDir, generated, err)
 		}
 		if got := tree.authoredDir(linkDir); got != dir {
 			t.Fatalf("authoredDir(%s) = %s, want %s", linkDir, got, dir)
@@ -109,10 +97,9 @@ func TestEveryRouteDirectoryBecomesAnImportableGoPackage(t *testing.T) {
 	}
 }
 
-// TestTheRouteRootIsLinkedFileByFile guards the one case a directory symlink
-// cannot serve: the route root holds the module boundary, and a package
-// directory containing a `go.mod` is a different module.
-func TestTheRouteRootIsLinkedFileByFile(t *testing.T) {
+// TestGeneratedRoutePackagesContainFilesNotSymlinks proves the generated tree
+// survives a Go module archive, which never includes symlink contents.
+func TestGeneratedRoutePackagesContainFilesNotSymlinks(t *testing.T) {
 	cfg := fakeApp(t, "src/routes", "src/routes/todos")
 	tree := linksFor(t, cfg)
 	if err := tree.sync(); err != nil {
@@ -124,8 +111,8 @@ func TestTheRouteRootIsLinkedFileByFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fi.Mode()&os.ModeSymlink != 0 {
-		t.Fatal("the route root was linked as a directory; it would import the boundary go.mod with it")
+	if fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() {
+		t.Fatal("the generated route package is not a real directory")
 	}
 	entries, err := os.ReadDir(linkDir)
 	if err != nil {
@@ -133,8 +120,8 @@ func TestTheRouteRootIsLinkedFileByFile(t *testing.T) {
 	}
 	var names []string
 	for _, e := range entries {
-		if e.Type()&os.ModeSymlink == 0 {
-			t.Fatalf("%s is not a symlink", e.Name())
+		if e.Type()&os.ModeSymlink != 0 || e.IsDir() {
+			t.Fatalf("%s is not a regular file", e.Name())
 		}
 		names = append(names, e.Name())
 	}
@@ -144,6 +131,28 @@ func TestTheRouteRootIsLinkedFileByFile(t *testing.T) {
 	if _, err := os.Lstat(filepath.Join(linkDir, "go.mod")); err == nil {
 		t.Fatal("the boundary go.mod was linked into the package")
 	}
+}
+
+func TestGeneratedRoutePackagesSurviveAModuleArchive(t *testing.T) {
+	cfg := fakeApp(t, "src/routes/todos/[id]")
+	if err := linksFor(t, cfg).sync(); err != nil {
+		t.Fatal(err)
+	}
+	var archive bytes.Buffer
+	if err := modzip.CreateFromDir(&archive, module.Version{Path: "example.com/app", Version: "v1.0.0"}, filepath.Dir(cfg.Web)); err != nil {
+		t.Fatal(err)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(archive.Bytes()), int64(archive.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "example.com/app@v1.0.0/generated/links/" + encodeLinkName("src/routes/todos/[id]") + "/data.remote.go"
+	for _, file := range zr.File {
+		if file.Name == want {
+			return
+		}
+	}
+	t.Fatalf("module archive omitted generated route source %s", want)
 }
 
 // TestTheBoundaryStopsTheParentModuleWalkingIn checks the file whose absence
@@ -262,11 +271,11 @@ func TestRemovingTheLastGoFileRemovesTheBoundary(t *testing.T) {
 	}
 }
 
-// TestTheRouteRootLinkHoldsOnlyLinks: the route root's link is a directory
+// TestTheRoutePackageHoldsOnlyGeneratedCopies: the route package is a directory
 // skgo rebuilds from the route tree on every run, so whatever an earlier run
 // left in it — polytype's CLI output once lived there, because `go:embed`
 // cannot follow a symlink — is removed rather than compiled into the package.
-func TestTheRouteRootLinkHoldsOnlyLinks(t *testing.T) {
+func TestTheRoutePackageHoldsOnlyGeneratedCopies(t *testing.T) {
 	cfg := fakeApp(t, "src/routes")
 	tree := linksFor(t, cfg)
 	if err := tree.sync(); err != nil {
@@ -294,9 +303,9 @@ func TestTheRouteRootLinkHoldsOnlyLinks(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(linkDir, "jsonschema")); !os.IsNotExist(err) {
 		t.Fatalf("a stray directory survived in the route root's link: %v", err)
 	}
-	// The link to the developer's own file is still there.
-	if !sameDir(t, filepath.Join(linkDir, "data.remote.go"), filepath.Join(cfg.Web, "src", "routes", "data.remote.go")) {
-		t.Fatal("the authored source is no longer linked into the package")
+	generated, err := os.ReadFile(filepath.Join(linkDir, "data.remote.go"))
+	if err != nil || string(generated) != "package p\n" {
+		t.Fatalf("the authored source was not restored: %q, %v", generated, err)
 	}
 }
 

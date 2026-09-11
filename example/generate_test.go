@@ -79,7 +79,7 @@ func TestNothingGeneratedWasWrittenByHand(t *testing.T) {
 		sort.Strings(stale)
 		t.Fatalf("`go generate ./...` does not reproduce these files:\n  %s\n"+
 			"Either they were edited by hand — remote functions are written in Go, not in .remote.ts —\n"+
-			"or the generator has not been run since the Go source changed. Run `go generate ./...` in example/generated.",
+			"or the generator has not been run since the Go source changed. Run `go generate ./...` in example/internal/skgo.",
 			strings.Join(stale, "\n  "))
 	}
 }

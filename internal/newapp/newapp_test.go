@@ -135,6 +135,32 @@ func TestTheProjectCarriesOnlyATrackableFrontendBuildPlaceholder(t *testing.T) {
 	}
 }
 
+func TestGeneratedImplementationPackageIsInternalAndConfigurable(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		bindings string
+		want     string
+	}{
+		{name: "default", want: "internal/skgo"},
+		{name: "configured", bindings: "internal/app/generated", want: "internal/app/generated"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := scaffold(t, newapp.Options{Module: "example.com/app", Bindings: tc.bindings})
+			config := read(t, dir, tc.want+"/config.go")
+			if !strings.Contains(config, "go:generate go tool skgo generate --web ") {
+				t.Fatalf("generated package has no generator directive:\n%s", config)
+			}
+			server := read(t, dir, "server.go")
+			if !strings.Contains(server, `generated "example.com/app/`+tc.want+`"`) {
+				t.Fatalf("server does not import the selected implementation package:\n%s", server)
+			}
+			if exists(dir, "generated") {
+				t.Fatal("scaffold exposed a top-level generated implementation package")
+			}
+		})
+	}
+}
+
 // TestTheOriginIsWrittenDownOnce is the trap this template exists to close.
 //
 // The origin is fixed when the frontend is built and checked again on every
@@ -220,8 +246,8 @@ func TestTheProjectRequiresSkgoAsADependency(t *testing.T) {
 	// `go tool skgo` builds the generator from the module cache, where nothing
 	// is writable. A directive that assumed a checkout would work here and
 	// only here.
-	if gen := read(t, dir, "generated/config.go"); !strings.Contains(gen, "go:generate go tool skgo generate") {
-		t.Errorf("generated/config.go does not invoke skgo through `go tool`:\n%s", gen)
+	if gen := read(t, dir, "internal/skgo/config.go"); !strings.Contains(gen, "go:generate go tool skgo generate") {
+		t.Errorf("internal/skgo/config.go does not invoke skgo through `go tool`:\n%s", gen)
 	}
 }
 
@@ -247,6 +273,8 @@ func TestItRefusesNamesTheProjectCannotCarry(t *testing.T) {
 		{"a module path Go cannot resolve", newapp.Options{Module: "not a module"}},
 		{"an origin with a path", newapp.Options{Origin: "http://127.0.0.1:8080/app"}},
 		{"an origin with no scheme", newapp.Options{Origin: "127.0.0.1:8080"}},
+		{"an absolute generated package", newapp.Options{Bindings: "/tmp/generated"}},
+		{"a generated package outside the module", newapp.Options{Bindings: "../generated"}},
 		{"a version go.mod cannot require", newapp.Options{SkgoVersion: "main"}},
 		{"an unknown build tool", newapp.Options{BuildTool: "make"}},
 	} {

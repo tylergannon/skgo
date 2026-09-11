@@ -1,0 +1,3 @@
+decision: Generated route packages are real copied Go files rather than symlinks because Go module archives omit symlink contents; the authored route tree remains the source and regeneration replaces the copies deterministically.
+decision: New scaffolds place skgo implementation under internal/skgo by default and accept an explicit module-relative Bindings directory for applications that need another location.
+friction: Moving the example's legacy symlink tree left broken per-file symlinks during the first regeneration -> package sync must remove legacy symlink entries before writing regular generated copies.

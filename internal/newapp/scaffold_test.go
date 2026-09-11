@@ -807,7 +807,7 @@ func newScaffoldVersion() string {
 // moduleFiles is what a consumer of skgo gets: the library, the command, the
 // internal packages the two are built from, and nothing else. The example app
 // is a module of its own and ephemeral/ is working material; neither is part of
-// what anyone imports, and both hold symbolic links a module zip cannot carry.
+// what anyone imports.
 func moduleFiles(t *testing.T, root string) []zip.File {
 	t.Helper()
 	var files []zip.File

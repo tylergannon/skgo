@@ -35,7 +35,7 @@ before serving the application at a different origin.
 | `@skgo/sveltekit-adapter` | kit's adapter, an ordinary devDependency paired with the skgo version `go.mod` requires |
 | `web/src/routes/*.remote.go` | server logic, colocated with the routes that call it |
 | `web/src/routes/**/server.go` | ordinary Go HTTP handlers for SvelteKit `+server.ts` routes |
-| `generated/` | what `go generate ./...` writes; never edited by hand |
+| `{{.BindingsDir}}/` | skgo's generated Go implementation; never edited by hand |
 | `cmd/` | the binary |
 | `server.go` | the one composition the binary and any test both use |
 

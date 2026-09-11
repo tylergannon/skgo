@@ -74,6 +74,7 @@ func newProject(args []string) {
 	origin := fs.String("origin", "", "the URL a browser reaches the app at; defaults to http://127.0.0.1:8080")
 	version := fs.String("skgo-version", "", "the version of skgo the project requires; defaults to this skgo's own, or the latest release")
 	polytype := fs.String("polytype-version", "", "the version of polytype the project requires")
+	bindings := fs.String("bindings", "", "generated Go implementation package; defaults to internal/skgo")
 	buildTool := fs.String("build-tool", "mise", "generated build entry point: mise, just, or scripts")
 	quiet := fs.Bool("quiet", false, "do not list the files written")
 	fs.Usage = func() {
@@ -94,6 +95,7 @@ func newProject(args []string) {
 		Origin:          *origin,
 		SkgoVersion:     *version,
 		PolytypeVersion: *polytype,
+		Bindings:        *bindings,
 		BuildTool:       *buildTool,
 	}
 	if !*quiet {
