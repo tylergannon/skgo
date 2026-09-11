@@ -175,6 +175,55 @@ func TestABundleTheEngineCannotRunIsRefusedAtStartup(t *testing.T) {
 	}
 }
 
+// classFieldDerived is what Svelte 5.56 emits on the server for a runes class
+// with a class-field `$derived.by` that reads `this`, constructed by a
+// component. Components are functions with parameters, which is what matters:
+// goja used to run field initialisers with the argument count of whichever
+// function was executing `new`, and a private field whose initialiser
+// captures `this` then panicked the process when constructed from inside one
+// (#117, fixed upstream by dop251/goja#737).
+const classFieldDerived = `
+function derived(fn) {
+	return function (value) { return arguments.length === 0 ? fn() : value; };
+}
+var Editor = class {
+	words = 'one two three four five'.split(' ');
+	rev = 0;
+	#count = derived(() => {
+		void this.rev;
+		return this.words.length;
+	});
+	get count() { return this.#count(); }
+	set count($$value) { return this.#count($$value); }
+};
+function Page($$renderer, $$props) {
+	return 'Words: ' + new Editor().count;
+}
+globalThis.__skgo_ping = function () { return 'ok'; };
+globalThis.__skgo_render = function (json) {
+	return { done: true, failure: '', redirect: null, status: 200, error: null, head: '', body: Page({}, {}) };
+};
+`
+
+func TestAClassFieldDerivedRendersInsideAComponent(t *testing.T) {
+	engine, err := ssr.New("bundle.js", []byte(classFieldDerived), 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if p := recover(); p != nil {
+			t.Fatalf("render panicked: %v", p)
+		}
+	}()
+	result, _, err := engine.Render(context.Background(), "/", request(t, "/"), ssr.Hosts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Body != "Words: 5" {
+		t.Errorf("body = %q, want %q", result.Body, "Words: 5")
+	}
+}
+
 // TestTheEngineReusesItsRuntimes checks that a pool is a pool: renders that do
 // not overlap are served by runtimes that already exist.
 func TestTheEngineReusesItsRuntimes(t *testing.T) {

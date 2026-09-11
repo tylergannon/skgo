@@ -14,7 +14,7 @@ require (
 require (
 	github.com/dave/dst v0.27.4 // indirect
 	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
-	github.com/dop251/goja v0.0.0-20260906210903-70ad66ec7ce4 // indirect
+	github.com/dop251/goja v0.0.0-20260911104922-fabc3b8078ad // indirect
 	github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/google/pprof v0.0.0-20260906184651-6331bc6350fe // indirect

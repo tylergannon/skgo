@@ -99,9 +99,10 @@ func TestAQueryWithAnArgumentIsRenderedWithTheArgumentGoWasGiven(t *testing.T) {
 
 // TestARunesClassWithAClassFieldDerivedRenders renders a component that builds
 // a runes class whose `$derived` is a class field. Svelte compiles that to a
-// private field initialised by an arrow reading `this`, which goja mishandles
-// when the class is constructed inside a function with parameters — every
-// component — and the render panicked (#117).
+// private field initialised by an arrow reading `this`; goja used to run
+// field initialisers with the argument count of the function executing `new`,
+// so constructing such a class inside a component — a function with
+// parameters — panicked the render (#117, fixed upstream by dop251/goja#737).
 //
 // Five is the number of words in the text src/routes/runes-class/+page.svelte
 // hands the class; only a `$derived` that actually ran can put it on the page.
