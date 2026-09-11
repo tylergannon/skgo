@@ -19,7 +19,7 @@ import (
 // `go test -tags=qualification ./internal/newapp -run TestGeneratedProjectBrowserContract`.
 func TestGeneratedProjectBrowserContract(t *testing.T) {
 	root := t.TempDir()
-	proxy := publish(t, filepath.Join(root, "proxy"))
+	proxy, version := publish(t, filepath.Join(root, "proxy"))
 	dir := filepath.Join(root, "release-candidate")
 	port := freePort(t)
 	origin := fmt.Sprintf("http://127.0.0.1:%d", port)
@@ -29,7 +29,7 @@ func TestGeneratedProjectBrowserContract(t *testing.T) {
 		Dir:         dir,
 		App:         "release-candidate",
 		Origin:      origin,
-		SkgoVersion: scaffoldVersion,
+		SkgoVersion: version,
 		AdapterSpec: "file:" + adapter,
 		Logf:        t.Logf,
 	}); err != nil {

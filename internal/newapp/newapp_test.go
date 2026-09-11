@@ -9,6 +9,11 @@ import (
 	"github.com/tylergannon/skgo/internal/newapp"
 )
 
+// scaffoldVersion is the skgo version the scaffolds here require. Nothing in
+// this file builds them, so no proxy has to serve it; the tests that do build
+// publish the checkout under a version of their own.
+const scaffoldVersion = "v0.0.0-scaffoldtest"
+
 // scaffold writes a project with everything pinned, so a test can look at the
 // files without a toolchain, a network or a build.
 func scaffold(t *testing.T, o newapp.Options) string {
