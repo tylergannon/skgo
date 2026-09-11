@@ -27,10 +27,8 @@ install:
 generate:
     cd example/generated && go generate ./...
 
-# example/web/dist.go embeds `all:build`, so nothing under example/... compiles
-# until this has run once. In a tree that has never built, `go vet` fails with
-# "pattern all:build: no matching files found", which reads exactly like broken
-# code and is not.
+# example/web/dist.go embeds `all:build`; its tracked placeholder keeps a fresh
+# checkout compilable before the frontend build has run.
 
 # build the frontend (do this first in a fresh tree)
 build:

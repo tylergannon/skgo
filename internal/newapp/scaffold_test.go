@@ -132,6 +132,11 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	// If `mise run build` stops being the one thing a developer types, this
 	// test is the thing that notices.
 	run(t, dir, env, "mise", "run", "build")
+	if info, err := os.Stat(filepath.Join(dir, "web", "build", ".gitkeep")); err != nil {
+		t.Fatalf("the frontend build removed its tracked embed placeholder: %v", err)
+	} else if info.Size() != 0 {
+		t.Fatalf("the frontend build wrote %d bytes to .gitkeep; want an empty placeholder", info.Size())
+	}
 
 	// The type check is the second thing a developer types, and the scaffold is
 	// where a kit-3 rule they cannot see (a `#lib` import of a `.ts` module
@@ -297,6 +302,43 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 		}
 		assertEndpoint(t, client, devOrigin)
 	})
+}
+
+// TestAFreshScaffoldCompilesWithoutAFrontendBuild proves the generated Go
+// application is valid before Node or Vite has had any opportunity to create
+// the SvelteKit bundle. The placeholder under web/build is the only embedded
+// file at this point; generated bindings are Go source and therefore still run
+// before compilation, just as they do in the documented build gesture.
+func TestAFreshScaffoldCompilesWithoutAFrontendBuild(t *testing.T) {
+	root := t.TempDir()
+	proxy, version := publish(t, filepath.Join(root, "proxy"))
+	dir := filepath.Join(root, "myapp")
+	if err := newapp.Create(newapp.Options{
+		Dir:         dir,
+		SkgoVersion: version,
+		Logf:        t.Logf,
+	}); err != nil {
+		t.Fatalf("scaffolding the project: %v", err)
+	}
+
+	if got := filesUnder(t, filepath.Join(dir, "web", "build")); !slices.Equal(got, []string{".gitkeep"}) {
+		t.Fatalf("the unbuilt frontend tree holds %v; want only the embed placeholder", got)
+	}
+	env := append(os.Environ(),
+		"GOPROXY=file://"+filepath.ToSlash(proxy)+",https://proxy.golang.org,direct",
+		"GOPRIVATE=",
+		"GONOPROXY=none",
+		"GONOSUMDB=none",
+		"GOSUMDB=off",
+		"GOFLAGS=-mod=mod",
+		"GOWORK=off",
+	)
+	run(t, dir, env, "go", "mod", "tidy")
+	run(t, dir, env, "go", "generate", "./...")
+	run(t, dir, env, "go", "build", "-o", filepath.Join("bin", "myapp"), "./cmd")
+	if got := filesUnder(t, filepath.Join(dir, "web", "build")); !slices.Equal(got, []string{".gitkeep"}) {
+		t.Fatalf("Go compilation materialised a frontend build: %v", got)
+	}
 }
 
 // TestAlternativeBuildToolsBuild proves the two new public gestures execute

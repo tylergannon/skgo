@@ -181,6 +181,11 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 					'\t'
 				)
 			);
+			// The generated app tracks this one empty file so its all:build embed
+			// pattern matches in a fresh checkout. adapt() clears the output tree,
+			// so restore the placeholder rather than making every frontend build
+			// appear to delete tracked source.
+			write(`${out}/.gitkeep`, '');
 
 			builder.log.minor(`skgo: wrote ${out}/`);
 		}

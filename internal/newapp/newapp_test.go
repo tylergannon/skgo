@@ -3,6 +3,7 @@ package newapp_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -116,6 +117,20 @@ func TestTheProjectCarriesItsBrowserAcceptanceContract(t *testing.T) {
 	for _, want := range []string{"heading is \"guestbook\"", "without a document reload", "direct deep link"} {
 		if !strings.Contains(feature, want) {
 			t.Errorf("generated acceptance contract lacks %q:\n%s", want, feature)
+		}
+	}
+}
+
+func TestTheProjectCarriesOnlyATrackableFrontendBuildPlaceholder(t *testing.T) {
+	dir := scaffold(t, newapp.Options{})
+
+	if got := filesUnder(t, filepath.Join(dir, "web", "build")); !slices.Equal(got, []string{".gitkeep"}) {
+		t.Fatalf("the unbuilt frontend tree holds %v; want only the tracked embed placeholder", got)
+	}
+	ignore := read(t, dir, ".gitignore")
+	for _, want := range []string{"/bin/", "web/build/*", "!web/build/.gitkeep"} {
+		if !strings.Contains(ignore, want+"\n") {
+			t.Errorf("the generated .gitignore does not carry %q:\n%s", want, ignore)
 		}
 	}
 }
