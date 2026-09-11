@@ -5,5 +5,9 @@
 # fetches or checks a platform binary nothing runs, so the answer is no.
 allowBuilds:
   esbuild: false
+# The adapter is asked for as the newest version at or below this app's skgo,
+# and that is the only one skgo accepts. Held to a minimum release age, pnpm
+# would install an older one for a day after every release that changes it.
 minimumReleaseAgeExclude:
   - '@types/node@22.20.1'
+  - '@skgo/sveltekit-adapter'

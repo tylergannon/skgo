@@ -82,9 +82,9 @@ type Options struct {
 	// PolytypeVersion is the version of polytype the project requires.
 	PolytypeVersion string
 	// AdapterSpec is what package.json asks pnpm for when it asks for
-	// `@skgo/sveltekit-adapter`. Empty means the exact npm version paired with
-	// SkgoVersion, which is the only pairing a project can serve. A test passes
-	// a `file:` tarball here.
+	// `@skgo/sveltekit-adapter`. Empty means the npm range paired with
+	// SkgoVersion (adapter.RegistrySpec), the only pairing a project can serve.
+	// A test passes a `file:` tarball here.
 	AdapterSpec string
 	// GoVersion is the language version in go.mod. Defaults to the toolchain's.
 	GoVersion string
@@ -291,8 +291,8 @@ func resolve(o Options, dir string) (data, error) {
 	}
 	if d.AdapterSpec == "" {
 		// The adapter and the Go module are one contract released together. The
-		// fingerprint in the manifest is the real gate; this exact npm version
-		// only names the same release the go.mod line does.
+		// fingerprint in the manifest is the real gate; this range only names
+		// the package that carries the release the go.mod line does.
 		d.AdapterSpec = adapter.RegistrySpec(d.SkgoVersion)
 	}
 	return d, nil

@@ -9,13 +9,17 @@ the Go process renders pages with, and a manifest naming the routes, remote
 functions and server loads Go must answer.
 
 ```sh
-pnpm add -D @skgo/sveltekit-adapter@<matching-skgo-version>
+pnpm add -D '@skgo/sveltekit-adapter@<=VERSION'
 ```
 
-Use the same version as the `github.com/tylergannon/skgo` requirement in your
-`go.mod`; for example, skgo `v0.2.8` pairs with
-`@skgo/sveltekit-adapter@0.2.8`. A project made by `skgo new` writes that
-matching dependency already.
+`VERSION` is the `github.com/tylergannon/skgo` requirement in your `go.mod`
+without its `v`: for skgo `v0.3.4`, ask for `<=0.3.4`. A skgo release publishes
+this package only when the package itself changes, so the newest version at or
+below yours is the one carrying your skgo's adapter, and skgo refuses to start
+with any other. A project made by `skgo new` writes that dependency already,
+and lists the package under pnpm's `minimumReleaseAgeExclude`: held to a
+minimum release age, pnpm would quietly install an older version for a day
+after a release that changes this one.
 
 ```js
 // vite.config.ts

@@ -48,11 +48,11 @@ func checkInstalledAdapter(cfg Config) error {
 	version, _ := adapter.VersionOf(dir)
 
 	// A checkout has no released version to name; the package it is paired
-	// with is the one in its own tree. A released skgo names the exact npm
-	// package version paired with its Go module version.
+	// with is the one in its own tree. A released skgo names the npm package
+	// paired with its Go module version.
 	install := "`pnpm add -D " + adapter.Package + "`"
 	if v := adapter.Version(); v != "devel" {
-		install = "`pnpm add -D " + adapter.Package + "@" + adapter.RegistrySpec(v) + "`"
+		install = "`" + adapter.InstallCommand(v) + "`"
 	}
 
 	return fmt.Errorf(
