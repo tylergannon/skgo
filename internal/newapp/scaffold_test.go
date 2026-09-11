@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -592,17 +593,19 @@ func serveBinary(t *testing.T, binary string, port int, extra ...string) func() 
 
 func serveVite(t *testing.T, dir string, env []string, port int) func() {
 	t.Helper()
-	// Start the project-local executable itself. Starting it through `mise x`
-	// leaves Vite running after the wrapper is killed, which leaks both the
-	// process and its port out of this test.
 	vp := filepath.Join(dir, "node_modules", ".bin", "vp")
 	return startProcess(t, dir, env, vp, "dev", "--host", "127.0.0.1",
 		"--port", strconv.Itoa(port), "--strictPort")
 }
 
+// startProcess runs name in a process group of its own and stops the whole
+// group. Killing only the process it started is not enough: `vp dev` is node
+// running vite-plus's CLI, which spawns Vite as a second node process, and that
+// one outlives a killed parent, still holding its port.
 func startProcess(t *testing.T, dir string, env []string, name string, args ...string) func() {
 	t.Helper()
 	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Dir = dir
 	if env != nil {
 		cmd.Env = env
@@ -615,7 +618,7 @@ func startProcess(t *testing.T, dir string, env []string, name string, args ...s
 	var once sync.Once
 	stop := func() {
 		once.Do(func() {
-			_ = cmd.Process.Kill()
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 			_, _ = cmd.Process.Wait()
 			if t.Failed() {
 				t.Logf("the server said:\n%s", log.String())
