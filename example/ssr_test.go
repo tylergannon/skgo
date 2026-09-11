@@ -97,6 +97,27 @@ func TestAQueryWithAnArgumentIsRenderedWithTheArgumentGoWasGiven(t *testing.T) {
 	}
 }
 
+// TestARunesClassWithAClassFieldDerivedRenders renders a component that builds
+// a runes class whose `$derived` is a class field. Svelte compiles that to a
+// private field initialised by an arrow reading `this`, which goja mishandles
+// when the class is constructed inside a function with parameters — every
+// component — and the render panicked (#117).
+//
+// Five is the number of words in the text src/routes/runes-class/+page.svelte
+// hands the class; only a `$derived` that actually ran can put it on the page.
+func TestARunesClassWithAClassFieldDerivedRenders(t *testing.T) {
+	h := newProdHandler(t)
+
+	rec := get(t, h, "/runes-class")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d", rec.Code)
+	}
+	if want := `<p data-testid="word-count">Words: 5</p>`; !strings.Contains(rec.Body.String(), want) {
+		t.Errorf("the document does not contain %s", want)
+	}
+}
+
 // TestTwoPagesRenderingAtOnceAreEachTheirOwn puts the pool under real HTTP.
 // Two documents rendered at the same time on one runtime would each carry the
 // other's module state, and the symptom is a page that is silently somebody
