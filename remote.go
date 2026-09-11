@@ -505,16 +505,16 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 		return m, fmt.Errorf("skgo: parsing skgo.manifest.json: %w", err)
 	}
 	if m.SkgoAdapter != adapter.Fingerprint() {
-		install := adapter.Package
+		install := "pnpm add -D " + adapter.Package
 		if version := adapter.Version(); version != "devel" {
-			install += "@" + adapter.RegistrySpec(version)
+			install = adapter.InstallCommand(version)
 		}
 		return Manifest{}, fmt.Errorf(
 			"skgo: the frontend build and this program come from different skgo versions.\n"+
 				"\tthe @skgo/sveltekit-adapter that built it: %s\n"+
 				"\tthis program:                    %s\n"+
 				"The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.\n"+
-				"Install the one this program publishes — `pnpm add -D %s` — then run `go generate ./...` and build the frontend again.",
+				"Install the one this program publishes — `%s` — then run `go generate ./...` and build the frontend again.",
 			adapter.Identity(m.Skgo, m.SkgoAdapter), adapter.Identity(adapter.Version(), adapter.Fingerprint()), install)
 	}
 	if m.AppDir == "" {

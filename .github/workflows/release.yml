@@ -85,23 +85,37 @@ jobs:
       - name: The tarball is the adapter this module embeds
         run: go test ./internal/adapter/
 
+      # A release whose package is byte-for-byte the newest one on the registry
+      # publishes nothing: skgo pairs with the newest adapter at or below its
+      # own version, which is that one. The Go tag is still cut below.
+      - name: Is the package any different from the published one?
+        id: changed
+        run: |
+          result=$(go run ./cmd/skgo-adapter-changed)
+          case "$result" in
+            changed) echo "publish=true" >> "$GITHUB_OUTPUT" ;;
+            unchanged) echo "publish=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "skgo-adapter-changed answered '$result'"; exit 1 ;;
+          esac
+
       # The tag is the version. Writing it into package.json here rather than
       # committing it means the tree never carries a version that is a promise
       # about a release nobody has cut.
       - name: Stamp the tag's version
+        if: steps.changed.outputs.publish == 'true'
         working-directory: internal/adapter
         env:
           RELEASE_VERSION: ${{ needs.version.outputs.version }}
         run: |
           version="${RELEASE_VERSION#v}"
           npm pkg set version="$version"
-          sed -i "s/<matching-skgo-version>/$version/g" README.md
           echo "publishing @skgo/sveltekit-adapter@$version"
 
       # npm binds this direct publish to the repository, this release.yml file,
       # and this GitHub-hosted runner through the trusted publisher configured
       # on the package. No static npm or Doppler credential reaches the runner.
       - name: npm publish
+        if: steps.changed.outputs.publish == 'true'
         working-directory: internal/adapter
         run: npm publish --access public
 

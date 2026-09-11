@@ -272,12 +272,18 @@ func TestTheScaffoldVendorsNoAdapter(t *testing.T) {
 
 // TestTheScaffoldAsksForTheAdapterThatMatchesItsSkgo is the pairing rule: the
 // npm package and the Go module are one release, and a project that asked for
-// any other one could not serve what it built.
+// any other one could not serve what it built. A release publishes the package
+// only when it changes, so the one it carries is the newest at or below its
+// version — and pnpm must not hold that one back for being new.
 func TestTheScaffoldAsksForTheAdapterThatMatchesItsSkgo(t *testing.T) {
 	dir := scaffold(t, newapp.Options{SkgoVersion: "v9.4.2"})
-	const want = "9.4.2"
+	const want = "<=9.4.2"
 	if got := pin(t, read(t, dir, "web/package.json"), "@skgo/sveltekit-adapter"); got != want {
 		t.Errorf("a project requiring skgo v9.4.2 asks pnpm for @skgo/sveltekit-adapter %q; want %q", got, want)
+	}
+	if workspace := read(t, dir, "web/pnpm-workspace.yaml"); !strings.Contains(workspace, "  - '@skgo/sveltekit-adapter'\n") {
+		t.Errorf("the scaffold leaves @skgo/sveltekit-adapter under pnpm's minimum release age, so the "+
+			"version a release just published would be passed over for an older one:\n%s", workspace)
 	}
 }
 

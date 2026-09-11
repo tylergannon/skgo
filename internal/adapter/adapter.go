@@ -59,10 +59,20 @@ const Package = "@skgo/sveltekit-adapter"
 // module is the module path the version is looked up under.
 const module = "github.com/tylergannon/skgo"
 
-// RegistrySpec is the exact npm version paired with a Go module release. Go
-// tags carry a leading v, while npm package versions do not.
+// RegistrySpec is the npm range that names the package paired with a Go
+// module release: the newest version at or below it. A release publishes the
+// package only when its files differ from the last published version
+// (cmd/skgo-adapter-changed), so that version holds exactly the files this
+// release carries, and the fingerprint in the manifest still refuses anything
+// else. Go tags carry a leading v, while npm package versions do not.
 func RegistrySpec(version string) string {
-	return strings.TrimPrefix(version, "v")
+	return "<=" + strings.TrimPrefix(version, "v")
+}
+
+// InstallCommand is the shell command that installs the package paired with a
+// Go module release, quoted because the range starts with a redirect.
+func InstallCommand(version string) string {
+	return "pnpm add -D '" + Package + "@" + RegistrySpec(version) + "'"
 }
 
 // Fingerprint identifies the adapter by its own bytes. It is the half of the
