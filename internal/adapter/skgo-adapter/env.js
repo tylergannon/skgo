@@ -61,6 +61,7 @@ async function fromApp(specifier) {
 
 const { rolldown } = await fromApp('vite/rolldown');
 const { transformSync } = await fromApp('vite/rolldown/experimental');
+const { parseAst } = await fromApp('vite/rolldown/parseAst');
 // `fetchModule` operates on the app's own `DevEnvironment`, so it has to be
 // the app's copy for the same reason rolldown is: a second module realm's
 // vite does not recognise this one's environments.
@@ -480,6 +481,7 @@ function engineTransform(code, id, { lowered, helpers } = {}) {
 			'=> Promise.reject(new Error("skgo: no dynamic import in the SSR engine"))'
 		);
 	}
+	out = wrapFieldInitialisers(out, id);
 	if (!UNPARSEABLE.test(out)) {
 		return out === code ? null : { code: out, map: null };
 	}
@@ -493,6 +495,128 @@ function engineTransform(code, id, { lowered, helpers } = {}) {
 		);
 	}
 	return { code: lower, map: null };
+}
+
+/**
+ * Wraps every class field initialiser that closes over `this` in a plain
+ * function called with the instance, so the initialiser itself only reads
+ * `this` and the closure is made inside an ordinary call.
+ *
+ * goja runs field initialisers with the argument count of whichever function
+ * is executing `new`, and an initialiser that closes over `this` derives its
+ * stack base from that count. Constructed inside a function with parameters —
+ * every component is one — such a class panics the render or throws "Value is
+ * not an Object". Svelte emits exactly that for a class-field `$derived`:
+ * `#graph = derived(() => this.doc.toGraph())`. The engine fix is
+ * dop251/goja#737; once skgo requires a goja carrying it, this goes.
+ *
+ * `(function () { return VALUE; }).call(this)` evaluates VALUE at the same
+ * moment with the same `this` and `new.target`, and an initialiser can hold no
+ * `arguments`, `await` or `yield` for the function to capture instead. An
+ * anonymous function keeps the name the field would have given it by being
+ * defined as a property of that name. `super` cannot move into a plain
+ * function, so an initialiser that reaches it is left alone.
+ *
+ * @param {string} code
+ * @param {string} id
+ */
+function wrapFieldInitialisers(code, id) {
+	const evals = code.includes('eval(');
+	if (!evals && !(code.includes('=>') && /\bthis\b/.test(code))) return code;
+
+	/** @type {Array<{ at: number, text: string, closes: boolean, order: number }>} */
+	const inserts = [];
+	visit(parseAst(code, undefined, id.replace(/\0/g, '_')), (node) => {
+		if (node.type !== 'PropertyDefinition' || !node.value) return;
+		const found = captures(node.value);
+		if (!found.this || found.super) return;
+		const { start, end } = node.value;
+		const order = inserts.length;
+		if (!node.computed && anonymousDefinition(node.value)) {
+			const name = JSON.stringify(node.key.type === 'PrivateIdentifier' ? '#' + node.key.name : String(node.key.name ?? node.key.value));
+			inserts.push({ at: start, text: `(function () { return { ${name}: `, closes: false, order });
+			inserts.push({ at: end, text: ` }[${name}]; }).call(this)`, closes: true, order });
+		} else {
+			inserts.push({ at: start, text: '(function () { return (', closes: false, order });
+			inserts.push({ at: end, text: '); }).call(this)', closes: true, order });
+		}
+	});
+	if (!inserts.length) return code;
+
+	// Fields nest (a class inside an initialiser), so one offset can take several
+	// inserts: whatever closes goes before whatever opens, an inner field closes
+	// before its outer one, and an outer one opens before its inner one. Visit
+	// order is outer first.
+	inserts.sort((a, b) => a.at - b.at || Number(b.closes) - Number(a.closes) || (a.closes ? b.order - a.order : a.order - b.order));
+	let out = '';
+	let from = 0;
+	for (const { at, text } of inserts) {
+		out += code.slice(from, at) + text;
+		from = at;
+	}
+	return out + code.slice(from);
+}
+
+/**
+ * Whether an initialiser closes over `this` — inside an arrow, or through a
+ * direct `eval` — and whether it reaches `super`. Neither crosses an ordinary
+ * function, which has its own of both.
+ *
+ * @param {any} value
+ * @returns {{ this: boolean, super: boolean }}
+ */
+function captures(value) {
+	const found = { this: false, super: false };
+	(function walk(node, arrow) {
+		switch (node.type) {
+			case 'ThisExpression':
+				if (arrow) found.this = true;
+				return;
+			case 'Super':
+				found.super = true;
+				return;
+			case 'FunctionExpression':
+			case 'FunctionDeclaration':
+				return;
+			case 'CallExpression':
+				if (node.callee.type === 'Identifier' && node.callee.name === 'eval') found.this = true;
+				break;
+			case 'ArrowFunctionExpression':
+				arrow = true;
+				break;
+		}
+		for (const child of children(node)) walk(child, arrow);
+	})(value, false);
+	return found;
+}
+
+/** @param {any} node */
+function anonymousDefinition(node) {
+	return (
+		node.type === 'ArrowFunctionExpression' ||
+		((node.type === 'FunctionExpression' || node.type === 'ClassExpression') && !node.id)
+	);
+}
+
+/**
+ * @param {any} node
+ * @param {(node: any) => void} fn
+ */
+function visit(node, fn) {
+	fn(node);
+	for (const child of children(node)) visit(child, fn);
+}
+
+/** @param {any} node */
+function* children(node) {
+	for (const key in node) {
+		const value = node[key];
+		if (Array.isArray(value)) {
+			for (const item of value) if (item && typeof item.type === 'string') yield item;
+		} else if (value && typeof value.type === 'string') {
+			yield value;
+		}
+	}
 }
 
 /**
