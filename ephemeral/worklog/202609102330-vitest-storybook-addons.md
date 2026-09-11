@@ -1,4 +1,6 @@
-trap: `devEngines.packageManager: pnpm` in the generated `web/package.json` makes npm 11 refuse every command in `web/` (`EBADDEVENGINES`). That is `npx sv`, sv's hardcoded `npm run test:unit` script, and Storybook's init (`npm config get registry`). `"packageManager": "pnpm@11.25.0"` keeps the pin and lets them run.
+trap: `devEngines.packageManager` with `onFail: "download"` in the generated `web/package.json` makes npm 11 refuse every command in `web/` (`EBADDEVENGINES`). That is `npx sv`, sv's hardcoded `npm run test:unit` script, and Storybook's init (`npm config get registry`). correction: do not drop `devEngines` — it is Vite+'s pin target. Run sv as `vp dlx sv@next …` (resolves to `pnpm dlx`), and set `onFail: "warn"`: npm maps `download` to `error` (`npm-install-checks/lib/dev-engines.js`), while `vp` downloads the pinned pnpm regardless of `onFail`. Measured: `vp dlx sv add storybook` fails under `download` at Storybook's deliberate `npm config get registry` (PNPMProxy.ts:173), completes under `warn`.
+
+trap: `CI=1` makes sv's closing install use a frozen lockfile and fail after the add-on applied. sv also refuses a dirty tree (and, without a TTY, exits 0 at that prompt) — `vp install` edits the lockfile, so commit before `sv add`.
 
 trap: `sv` exits 0 having done nothing when an add-on option is missing and stdin is not a TTY, and exits 0 after `ERR_PNPM_IGNORED_BUILDS` under pnpm 11. Never read sv's exit code as evidence an add-on landed.
 

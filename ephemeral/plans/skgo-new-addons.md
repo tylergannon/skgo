@@ -27,8 +27,17 @@ Capability: in a fresh `skgo new` app, `npx sv add vitest` and
 `npx sv add storybook` (run by a developer, by hand) apply and install, and the
 results run.
 
-- pnpm pinned through `packageManager`, not `devEngines` (which makes npm 11
-  refuse to run anything in `web/`, including sv and Storybook's init).
+- Keep `devEngines.packageManager` (it is Vite+'s own pin target,
+  `vite-plus@0.3.0/rfcs/dev-engines.md`) and run sv as `vp dlx sv@next …`.
+  Change only `onFail: "download"` → `"warn"`: npm treats `download` as
+  `error`, and two npm calls sit inside what sv applies — Storybook's
+  `PNPMProxy.getRegistryURL` shells to `npm config get registry` on purpose
+  (`storybook@10.6.0/code/core/src/common/js-package-manager/PNPMProxy.ts:173`)
+  and sv's vitest `test` script is `npm run test:unit`. Measured on a clean
+  scaffold: `vp dlx sv add storybook` dies with `download`, completes with
+  `warn`; `vp` still runs pnpm 11.25.0 (it downloads regardless of `onFail`).
+  Cost: the `just`/`scripts` build entry points call bare `pnpm install`,
+  which under `warn` warns on a different pnpm instead of switching to it.
 - Vitest kept on the version vite-plus bundles regardless of what sv or
   Storybook's init asks for (pnpm `overrides` in the template's workspace file
   is the candidate; prove it).
@@ -80,7 +89,8 @@ the interactive menu captured and looked at beside sv's.
 
 ## Decisions for Tyler
 
-1. `packageManager` replacing `devEngines`.
+1. `devEngines.packageManager.onFail` → `"warn"` (and whether the `just`/`scripts`
+   entry points should call `vp install` so the pin still holds there).
 2. huh themed, or clack-exact prompts on bubbletea.
 3. Which add-ons are on the menu (is sv's playwright redundant with the
    generated BDD suite?).
