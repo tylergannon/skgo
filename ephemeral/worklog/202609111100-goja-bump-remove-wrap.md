@@ -1,0 +1,5 @@
+finding: dop251/goja#737 merged 2026-09-11 (fabc3b8). Bumped skgo to that commit (go mod tidy in both modules), deleted the adapter's temporary wrapFieldInitialisers workaround (#141) and its call site, imports, and helper functions in internal/adapter/skgo-adapter/env.js — restored to exactly its pre-#141 shape.
+
+decision: kept both regression tests rather than deleting either. internal/ssr/ssr_test.go's TestAClassFieldDerivedRendersInsideAComponent proves the engine itself against a minimal bundle; example/ssr_test.go's TestARunesClassWithAClassFieldDerivedRenders proves it through the real adapter-built bundle and /runes-class page. Full `just test` passes on both; verified with a browser screenshot against the real upstream goja with no wrap in the built bundle (9 modules lowered, same as before #141 — only for-await/async-generator modules).
+
+trap: bumping goja alone left go.mod/go.sum stale in both modules ("go: updates to go.mod needed") until `go mod tidy` ran in root and example/.
