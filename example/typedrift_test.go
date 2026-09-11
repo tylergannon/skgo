@@ -76,7 +76,7 @@ func TestChangingAGoTypeBreaksTheComponentThatUsesIt(t *testing.T) {
 // go.mod carries an absolute replace back to the real skgo module instead.
 func generate(app string) (string, error) {
 	cmd := exec.Command("go", "generate", "./...")
-	cmd.Dir = filepath.Join(app, "generated")
+	cmd.Dir = filepath.Join(app, "internal", "skgo")
 	cmd.Env = append(os.Environ(), "GOWORK=off")
 	out, err := cmd.CombinedOutput()
 	return string(out), err

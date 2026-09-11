@@ -18,7 +18,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
-	"github.com/tylergannon/skgo/example/generated"
+	generated "github.com/tylergannon/skgo/example/internal/skgo"
 )
 
 // SessionCookie is the cookie the session id travels in. This is the one place

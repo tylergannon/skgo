@@ -14,7 +14,7 @@ import (
 	// boundary and gives each route package a Go-nameable address under
 	// generated/links. That address is the only way to reach one, and it is
 	// base32 of the directory: this one is "src/routes/todos".
-	todos "github.com/tylergannon/skgo/example/generated/links/onzggl3sn52xizltf52g6zdpom"
+	todos "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom"
 )
 
 // sessionCookie is the cookie the session id travels in.

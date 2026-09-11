@@ -16,7 +16,7 @@ import (
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example"
 	"github.com/tylergannon/skgo/example/businesslogic"
-	"github.com/tylergannon/skgo/example/generated"
+	generated "github.com/tylergannon/skgo/example/internal/skgo"
 	"github.com/tylergannon/skgo/example/web"
 )
 

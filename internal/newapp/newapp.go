@@ -57,6 +57,7 @@ const defaultPolytypeVersion = "v1.0.0-rc.11"
 const defaultOrigin = "http://127.0.0.1:8080"
 
 const defaultBuildTool = "mise"
+const defaultBindings = "internal/skgo"
 
 // appName is what a project may be called: the name becomes a binary, a Go
 // string literal and half a package.json, so it stays boring on purpose.
@@ -91,6 +92,9 @@ type Options struct {
 	// BuildTool selects the generated build entry point: mise, just, or scripts.
 	// Empty preserves the original scaffold behavior and selects mise.
 	BuildTool string
+	// Bindings is the module-relative directory for skgo's generated Go
+	// implementation package. It defaults to internal/skgo.
+	Bindings string
 	// Logf receives one line per file written. It may be nil.
 	Logf func(format string, args ...any)
 }
@@ -112,6 +116,10 @@ type data struct {
 	E2ECommand      string
 	BuildConfig     string
 	ToolRequirement string
+	BindingsDir     string
+	BindingsImport  string
+	BindingsPackage string
+	BindingsWeb     string
 }
 
 // Create writes the project described by o.
@@ -146,7 +154,11 @@ func Create(o Options) error {
 		if !templateForBuildTool(p, d.BuildTool) {
 			return nil
 		}
-		target := filepath.Join(dir, filepath.FromSlash(outputPath(p)))
+		rel := outputPath(p)
+		if p == "internal/skgo/config.go.tmpl" {
+			rel = path.Join(d.BindingsDir, "config.go")
+		}
+		target := filepath.Join(dir, filepath.FromSlash(rel))
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
@@ -226,6 +238,7 @@ func resolve(o Options, dir string) (data, error) {
 		AdapterSpec:     o.AdapterSpec,
 		GoVersion:       o.GoVersion,
 		BuildTool:       o.BuildTool,
+		BindingsDir:     o.Bindings,
 	}
 	if d.BuildTool == "" {
 		d.BuildTool = defaultBuildTool
@@ -267,6 +280,24 @@ func resolve(o Options, dir string) (data, error) {
 	if err := module.CheckImportPath(d.Module); err != nil {
 		return data{}, fmt.Errorf("skgo: %q is not a usable module path: %w", d.Module, err)
 	}
+	if d.BindingsDir == "" {
+		d.BindingsDir = defaultBindings
+	}
+	if filepath.IsAbs(d.BindingsDir) || filepath.Clean(d.BindingsDir) != filepath.FromSlash(d.BindingsDir) || d.BindingsDir == "." || strings.HasPrefix(d.BindingsDir, "..") {
+		return data{}, fmt.Errorf("skgo: %q is not a module-relative generated package directory", d.BindingsDir)
+	}
+	if err := module.CheckImportPath(d.Module + "/" + filepath.ToSlash(d.BindingsDir)); err != nil {
+		return data{}, fmt.Errorf("skgo: %q is not a usable generated package directory: %w", d.BindingsDir, err)
+	}
+	d.BindingsDir = filepath.ToSlash(d.BindingsDir)
+	d.BindingsImport = d.Module + "/" + d.BindingsDir
+	d.BindingsPackage = path.Base(d.BindingsDir)
+	bindingsAbs := filepath.Join(dir, filepath.FromSlash(d.BindingsDir))
+	webRel, err := filepath.Rel(bindingsAbs, filepath.Join(dir, "web"))
+	if err != nil {
+		return data{}, err
+	}
+	d.BindingsWeb = filepath.ToSlash(webRel)
 	if d.Origin == "" {
 		d.Origin = defaultOrigin
 	}

@@ -1,0 +1,98 @@
+{
+	"schemaVersion": 1,
+	"linkRoot": "internal/skgo/links",
+	"boundary": {
+		"path": "web/src/routes/go.mod",
+		"owned": true
+	},
+	"links": [
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizlt",
+			"target": "web/src/routes"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th",
+			"target": "web/src/routes/(marketing)/pricing"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf52g6zdpom",
+			"target": "web/src/routes/todos"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu",
+			"target": "web/src/routes/todos/gate"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi",
+			"target": "web/src/routes/account"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt",
+			"target": "web/src/routes/account/orders"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi",
+			"target": "web/src/routes/account/statement"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t",
+			"target": "web/src/routes/api/todos"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5",
+			"target": "web/src/routes/async-ssr/[mode]/[group]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu",
+			"target": "web/src/routes/async-ssr/control/[group]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5rgc5ddna",
+			"target": "web/src/routes/batch"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi",
+			"target": "web/src/routes/contact"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5",
+			"target": "web/src/routes/docs/[...rest]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5sw24dupe",
+			"target": "web/src/routes/empty"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz",
+			"target": "web/src/routes/error/boundary"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za",
+			"target": "web/src/routes/error/command"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle",
+			"target": "web/src/routes/error/expected"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u",
+			"target": "web/src/routes/error/redirect"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa",
+			"target": "web/src/routes/error/unexpected"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu",
+			"target": "web/src/routes/items/[id]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5wgs5tf",
+			"target": "web/src/routes/live"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq",
+			"target": "web/src/routes/stream"
+		}
+	]
+}

@@ -47,7 +47,7 @@ func TestGenerateRecoversFromAStaleGeneratedFile(t *testing.T) {
 			len(staleFiles), staleSkgoSymbol, err, out)
 	}
 
-	if out, err := runGoBuild(filepath.Join(app, "generated")); err != nil {
+	if out, err := runGoBuild(filepath.Join(app, "internal", "skgo")); err != nil {
 		t.Fatalf("go build ./... failed on the tree generation just rewrote:\n%v\n%s", err, out)
 	}
 }
@@ -129,7 +129,7 @@ func corruptGeneratedFile(t *testing.T, path string) {
 // go:generate directive lives.
 func runGoGenerate(app string) (string, error) {
 	cmd := exec.Command("go", "generate", "./...")
-	cmd.Dir = filepath.Join(app, "generated")
+	cmd.Dir = filepath.Join(app, "internal", "skgo")
 	cmd.Env = append(os.Environ(), "GOWORK=off")
 	out, err := cmd.CombinedOutput()
 	return string(out), err
