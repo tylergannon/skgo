@@ -1,6 +1,7 @@
 package newapp_test
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -30,21 +31,6 @@ import (
 	"github.com/tylergannon/skgo/internal/remotearg"
 )
 
-// scaffoldVersion is the version this checkout is published under, into the
-// module proxy the scaffolded project fetches skgo from. It is a prerelease of
-// v0.0.0 so that it can never be confused with a released one.
-// It carries the run's start time because the go command treats the module
-// cache as immutable and indexes it by version: publish twice under one version
-// and the second run compiles the first run's source, silently. That is not
-// hypothetical — this test was green for a checkout it had never compiled until
-// a change to the adapter made the stale copy fail out loud.
-var scaffoldVersion = "v0.0.0-scaffoldtest" + strconv.FormatInt(time.Now().UnixNano(), 10)
-
-// scaffoldVersionPrefix is what every run of this test publishes under, so that
-// a run can clear the ones before it out of the module cache rather than
-// leaving a copy of the checkout there for good.
-const scaffoldVersionPrefix = "v0.0.0-scaffoldtest"
-
 // greeted is the name the test sends to the app's command. It is the whole
 // point of the fixture: the value the page ends up showing has to be one the
 // test supplied, not one read back out of the app before the call.
@@ -67,7 +53,7 @@ const greeted = "scaffold-acceptance"
 // exit code as a passing one.
 func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	root := t.TempDir()
-	proxy := publish(t, filepath.Join(root, "proxy"))
+	proxy, version := publish(t, filepath.Join(root, "proxy"))
 	dir := filepath.Join(root, "myapp")
 	port := freePort(t)
 	origin := fmt.Sprintf("http://127.0.0.1:%d", port)
@@ -83,7 +69,7 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 	if err := newapp.Create(newapp.Options{
 		Dir:         dir,
 		Origin:      origin,
-		SkgoVersion: scaffoldVersion,
+		SkgoVersion: version,
 		AdapterSpec: "file:" + adapter,
 		Logf:        t.Logf,
 	}); err != nil {
@@ -117,7 +103,8 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 		"GOPRIVATE=",
 		"GONOPROXY=none",
 		"GONOSUMDB=none",
-		// scaffoldVersion is not in any checksum database, and never will be.
+		// The published version is not in any checksum database, and never
+		// will be.
 		"GOSUMDB=off",
 		"GOFLAGS=-mod=mod",
 		"GOWORK=off",
@@ -317,7 +304,7 @@ func TestAScaffoldedProjectBuildsAndServes(t *testing.T) {
 // while the behavior under test here is the selected build entry point.
 func TestAlternativeBuildToolsBuild(t *testing.T) {
 	root := t.TempDir()
-	proxy := publish(t, filepath.Join(root, "proxy"))
+	proxy, version := publish(t, filepath.Join(root, "proxy"))
 	adapter := packAdapter(t, root)
 	env := append(os.Environ(),
 		"GOPROXY=file://"+filepath.ToSlash(proxy)+",https://proxy.golang.org,direct",
@@ -341,7 +328,7 @@ func TestAlternativeBuildToolsBuild(t *testing.T) {
 			if err := newapp.Create(newapp.Options{
 				Dir:         dir,
 				BuildTool:   tc.buildTool,
-				SkgoVersion: scaffoldVersion,
+				SkgoVersion: version,
 				AdapterSpec: "file:" + adapter,
 			}); err != nil {
 				t.Fatal(err)
@@ -695,24 +682,50 @@ func run(t *testing.T, dir string, env []string, name string, args ...string) {
 }
 
 // publish writes this checkout into a module proxy on disk, so the scaffolded
-// project can require it by version like any other dependency.
+// project can require it by version like any other dependency, and returns the
+// proxy and the version it is published under.
 //
 // The alternative — a replace directive, or a go.work — is the configuration
 // this test exists to avoid: skgo lands in the module cache read-only, and
 // anything the generator does that needs its own source tree to be writable
 // fails here and only here.
-func publish(t *testing.T, dir string) string {
+//
+// Every call publishes under a version of its own. The go command treats the
+// module cache as immutable and indexes it by version: publish twice under one
+// version and the second build compiles the first one's source, silently. That
+// is not hypothetical — this test was green for a checkout it had never
+// compiled until a change to the adapter made the stale copy fail out loud.
+//
+// The module cache is shared with every other go command on the machine,
+// including another run of this test, so the version is removed from it when
+// the test ends and nothing else ever is. An earlier cleanup that cleared every
+// scaffold version at once deleted a concurrent run's copy of skgo out from
+// under its go:generate.
+func publish(t *testing.T, dir string) (proxy, version string) {
 	t.Helper()
 	source := checkoutRoot(t)
-	mv := module.Version{Path: "github.com/tylergannon/skgo", Version: scaffoldVersion}
-	purgeFromModuleCache(t, mv.Path)
+	mv := module.Version{Path: "github.com/tylergannon/skgo", Version: newScaffoldVersion()}
+
+	out, err := exec.Command("go", "env", "GOMODCACHE").Output()
+	if err != nil {
+		t.Fatalf("locating the module cache: %v", err)
+	}
+	cache := strings.TrimSpace(string(out))
+	if cache == "" {
+		t.Fatal("go env GOMODCACHE is empty")
+	}
+	t.Cleanup(func() {
+		if err := removeFromModuleCache(cache, mv); err != nil {
+			t.Errorf("removing %s from the module cache: %v", mv, err)
+		}
+	})
 
 	at := filepath.Join(dir, filepath.FromSlash(mv.Path), "@v")
 	if err := os.MkdirAll(at, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	archive, err := os.Create(filepath.Join(at, scaffoldVersion+".zip"))
+	archive, err := os.Create(filepath.Join(at, mv.Version+".zip"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -730,55 +743,20 @@ func publish(t *testing.T, dir string) string {
 			t.Fatal(err)
 		}
 	}
-	write(scaffoldVersion+".mod", gomod)
-	write(scaffoldVersion+".info", []byte(fmt.Sprintf(`{"Version":%q,"Time":%q}`,
-		scaffoldVersion, time.Now().UTC().Format(time.RFC3339))))
-	write("list", []byte(scaffoldVersion+"\n"))
-	return dir
+	write(mv.Version+".mod", gomod)
+	write(mv.Version+".info", []byte(fmt.Sprintf(`{"Version":%q,"Time":%q}`,
+		mv.Version, time.Now().UTC().Format(time.RFC3339))))
+	write("list", []byte(mv.Version+"\n"))
+	return dir, mv.Version
 }
 
-// purgeFromModuleCache removes what earlier runs of this test left behind.
-//
-// Every run publishes under a fresh version, so nothing here is load-bearing
-// for correctness — it just keeps the module cache from accumulating one copy
-// of the checkout per run. The cache is deliberately read-only, so the
-// permissions come back first.
-func purgeFromModuleCache(t *testing.T, path string) {
-	t.Helper()
-	out, err := exec.Command("go", "env", "GOMODCACHE").Output()
-	if err != nil {
-		t.Fatalf("locating the module cache: %v", err)
-	}
-	cache := strings.TrimSpace(string(out))
-	if cache == "" {
-		return
-	}
-
-	remove := func(name string) {
-		_ = filepath.WalkDir(name, func(p string, d fs.DirEntry, err error) error {
-			if err == nil {
-				_ = os.Chmod(p, 0o755)
-			}
-			return nil
-		})
-		_ = os.RemoveAll(name)
-	}
-
-	dir := filepath.Dir(filepath.Join(cache, filepath.FromSlash(path)))
-	entries, _ := os.ReadDir(dir)
-	for _, entry := range entries {
-		if strings.HasPrefix(entry.Name(), "skgo@"+scaffoldVersionPrefix) {
-			remove(filepath.Join(dir, entry.Name()))
-		}
-	}
-
-	downloads := filepath.Join(cache, "cache", "download", filepath.FromSlash(path), "@v")
-	entries, _ = os.ReadDir(downloads)
-	for _, entry := range entries {
-		if strings.HasPrefix(entry.Name(), scaffoldVersionPrefix) {
-			remove(filepath.Join(downloads, entry.Name()))
-		}
-	}
+// newScaffoldVersion names one publish: a prerelease of v0.0.0, so it can never
+// be confused with a released version, unique to this call. The random part is
+// lower-case hex so the module cache stores it under its own name, unescaped.
+func newScaffoldVersion() string {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	return "v0.0.0-scaffoldtest-" + hex.EncodeToString(b[:])
 }
 
 // moduleFiles is what a consumer of skgo gets: the library, the command, the
