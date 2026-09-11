@@ -1,8 +1,9 @@
 // Package web embeds the SvelteKit build produced by the skgo adapter.
 //
-// A fresh checkout does not compile until `vp build` has run in this
-// directory: a missing frontend should fail loudly at build time rather than
-// produce a binary that serves nothing.
+// A fresh checkout embeds only build/.gitkeep so Go can compile before `vp
+// build` has built the frontend. Starting that binary still fails loudly when
+// it cannot read the adapter manifest; the placeholder is not a runnable
+// frontend.
 package web
 
 import "embed"

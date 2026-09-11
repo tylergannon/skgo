@@ -1,8 +1,9 @@
 // Package web embeds the SvelteKit build the skgo adapter writes.
 //
-// The tree does not compile until `{{.BuildCommand}}` has run the frontend build
-// at least once: a missing frontend fails loudly here rather than producing a
-// binary that serves nothing.
+// A fresh checkout embeds only build/.gitkeep so Go can compile before
+// `{{.BuildCommand}}` has built the frontend. Starting that binary still fails
+// loudly when it cannot read the adapter manifest; the placeholder is not a
+// runnable frontend.
 package web
 
 import "embed"
