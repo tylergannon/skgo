@@ -50,7 +50,7 @@ const polytypeModule = "github.com/tylergannon/polytype"
 // defaultPolytypeVersion is the polytype the example is built against. A
 // generated project pins the same one: the projection is what the browser
 // receives, so it is not a version to be casual about.
-const defaultPolytypeVersion = "v1.0.0-rc.11"
+const defaultPolytypeVersion = "v1.0.0"
 
 // defaultOrigin is where a new app is served in development. It is the value
 // the frontend is built with and the value the binary trusts.
