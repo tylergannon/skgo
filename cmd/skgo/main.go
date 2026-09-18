@@ -1,5 +1,6 @@
 // Command skgo is the tooling for a SvelteKit app served by Go.
 //
+//	skgo new --starter examples myapp
 //	skgo generate --web ../web
 //
 // generates the glue between the two. Run it from the generated bindings
@@ -18,9 +19,11 @@ import (
 	"os"
 
 	"github.com/tylergannon/skgo/internal/gen"
+	"github.com/tylergannon/skgo/internal/newapp"
 )
 
 const usage = `usage:
+	skgo new [flags] DIR      create a SvelteKit application served by Go
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
 `
 
@@ -30,12 +33,46 @@ func main() {
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "new":
+		newProject(os.Args[2:])
 	case "generate":
 		generate(os.Args[2:])
 	default:
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
 	}
+}
+
+func newProject(args []string) {
+	fs := flag.NewFlagSet("new", flag.ExitOnError)
+	module := fs.String("module", "", "Go module path; defaults to the project name")
+	name := fs.String("name", "", "application name; defaults to the target directory name")
+	origin := fs.String("origin", "http://127.0.0.1:8080", "public browser origin")
+	starter := fs.String("starter", "minimal", "starting point: minimal or examples")
+	version := fs.String("skgo-version", "", "skgo module version; defaults to this command's release")
+	adapter := fs.String("adapter", "", "adapter/add-on package spec; intended for checkout qualification")
+	replace := fs.String("skgo-replace", "", "local skgo module replacement; intended for checkout qualification")
+	fs.Usage = func() {
+		fmt.Fprintln(os.Stderr, "usage: skgo new [flags] DIR")
+		fmt.Fprintln(os.Stderr, "\nVitePlus delegates the frontend to sv; skgo adds the Go application server.")
+		fs.PrintDefaults()
+	}
+	_ = fs.Parse(args)
+	if fs.NArg() != 1 {
+		fs.Usage()
+		os.Exit(2)
+	}
+
+	result, err := newapp.Create(newapp.Options{
+		Dir: fs.Arg(0), Module: *module, App: *name, Origin: *origin, Starter: *starter,
+		SkgoVersion: *version, AdapterSpec: *adapter, SkgoReplace: *replace,
+		Stdout: os.Stdout, Stderr: os.Stderr,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	fmt.Fprint(os.Stderr, "\n"+result.Instructions())
 }
 
 func generate(args []string) {

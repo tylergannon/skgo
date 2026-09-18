@@ -18,17 +18,22 @@
 	"license": "MIT",
 	"homepage": "https://github.com/tylergannon/skgo",
 	"type": "module",
+	"scripts": {
+		"build:addon": "tsdown sv-addon.source.js --format esm --platform node --external sv --out-dir dist --no-clean --target node22 --no-dts && mv dist/sv-addon.source.mjs sv-addon.js && rmdir dist"
+	},
 	"exports": {
 		".": {
 			"types": "./index.d.ts",
 			"import": "./skgo-adapter.js"
 		},
+		"./sv": "./sv-addon.js",
 		"./package.json": "./package.json"
 	},
 	"types": "index.d.ts",
 	"files": [
 		"index.d.ts",
 		"skgo-adapter.js",
+		"sv-addon.js",
 		"skgo-adapter/app-paths.js",
 		"skgo-adapter/app-server.js",
 		"skgo-adapter/entry.js",
@@ -37,6 +42,16 @@
 		"skgo-adapter/polyfill.js"
 	],
 	"peerDependencies": {
-		"@sveltejs/kit": "^3.0.0-next.0"
+		"@sveltejs/kit": "^3.0.0-next.0",
+		"sv": "^1.0.0-0"
+	},
+	"peerDependenciesMeta": {
+		"sv": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@sveltejs/sv-utils": "1.0.0-next.4",
+		"tsdown": "0.17.2"
 	}
 }

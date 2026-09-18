@@ -1,0 +1,37 @@
+origin := env("ORIGIN", "{{.Origin}}")
+dev_port := env("SKGO_DEV_PORT", "5173")
+
+_default:
+    @just --list --unsorted
+
+# Run VitePlus and the Go application together.
+dev:
+    #!/bin/sh
+    set -eu
+    go generate ./...
+    cd web
+    ORIGIN="{{"{{origin}}"}}" node_modules/.bin/vp dev --host 127.0.0.1 --port "{{"{{dev_port}}"}}" --strictPort &
+    vite=$!
+    trap 'kill "$vite" 2>/dev/null || true' EXIT INT TERM
+    cd ..
+    go run ./cmd --proxy "http://127.0.0.1:{{"{{dev_port}}"}}" --origin "{{"{{origin}}"}}"
+
+# Build the frontend and the standalone Go binary.
+build:
+    go generate ./...
+    cd web && ORIGIN="{{"{{origin}}"}}" node_modules/.bin/vp build
+    mkdir -p bin
+    go build -ldflags "-X main.origin={{"{{origin}}"}}" -o bin/{{.App}} ./cmd
+
+# Run the standalone binary. Node is not involved.
+serve: build
+    ./bin/{{.App}}
+
+# Run the upstream-installed Vitest suite.
+test:
+    cd web && pnpm test
+
+# Open the upstream-installed Storybook.
+storybook:
+    cd web && pnpm storybook -- --host 127.0.0.1
+

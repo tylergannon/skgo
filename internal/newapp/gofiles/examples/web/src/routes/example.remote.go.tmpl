@@ -1,0 +1,45 @@
+package routes
+
+import (
+	"context"
+	"fmt"
+	"sync"
+
+	"github.com/tylergannon/skgo"
+)
+
+type Status struct {
+	Message string `json:"message"`
+	Writes  int    `json:"writes"`
+}
+
+var (
+	mu     sync.Mutex
+	writes int
+)
+
+func status(context.Context) (Status, error) {
+	mu.Lock()
+	defer mu.Unlock()
+	return Status{Message: "This value came from a Go query.", Writes: writes}, nil
+}
+
+func record(ctx context.Context, name string) (Status, error) {
+	if name == "" {
+		return Status{}, skgo.Errorf(400, "enter a name")
+	}
+	mu.Lock()
+	writes++
+	mu.Unlock()
+	result, err := status(ctx)
+	if err != nil {
+		return Status{}, err
+	}
+	result.Message = fmt.Sprintf("Go recorded a greeting for %s.", name)
+	return result, skgo.RefreshRequestedNoArg(ctx, status)
+}
+
+var (
+	_ = skgo.Query(status)
+	_ = skgo.Command(record)
+)

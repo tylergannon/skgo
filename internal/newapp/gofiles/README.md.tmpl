@@ -1,0 +1,47 @@
+# {{.App}}
+
+A SvelteKit application served by Go. VitePlus and `sv` created the frontend;
+skgo added the Go server and bindings. Node is a build-time and development
+dependency, not a production runtime dependency.
+
+## Prerequisites
+
+- Go {{.GoVersion}} or newer
+- Node 22.17 or newer
+- pnpm and `just`
+
+The generator has already installed frontend dependencies and Chromium for the
+generated Vitest component test.
+
+## Development
+
+```sh
+just dev
+```
+
+Open {{.Origin}}. Edit a Svelte component under `web/src/` and the normal
+VitePlus development workflow updates the page.
+
+Storybook and Vitest are ready to run:
+
+```sh
+just storybook
+just test
+```
+
+## Production
+
+```sh
+just build
+./bin/{{.App}}
+```
+
+The resulting binary embeds the frontend build and serves it without Node.
+{{if .Examples}}
+## Go examples
+
+The home page calls the query and command in
+`web/src/routes/example.remote.go`. `skgo generate` creates the matching
+TypeScript module with throwing server stubs, so the displayed status and the
+write interaction can only be answered by Go.
+{{end}}

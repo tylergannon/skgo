@@ -1,5 +1,11 @@
 # @skgo/sveltekit-adapter
 
+Its `./sv` export is the native Svelte CLI add-on used by `skgo new`. The
+add-on is the sole owner of frontend integration: it selects this adapter,
+enables Kit remote functions, and installs the selected starter's frontend.
+VitePlus invokes it while `sv` still owns project creation and the upstream
+Vitest and Storybook add-ons.
+
 The SvelteKit adapter for [skgo](https://github.com/tylergannon/skgo), a
 SvelteKit application server written in Go.
 

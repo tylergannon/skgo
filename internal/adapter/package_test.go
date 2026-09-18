@@ -46,6 +46,7 @@ var packageFiles = []string{
 	"skgo-adapter/env.js",
 	"skgo-adapter/identity.js",
 	"skgo-adapter/polyfill.js",
+	"sv-addon.js",
 }
 
 func TestThePublishedPackageHoldsExactlyWhatTheAdapterNeeds(t *testing.T) {

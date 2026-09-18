@@ -1,0 +1,12 @@
+module {{.Module}}
+
+go {{.GoVersion}}
+
+ignore ./web/node_modules
+
+require github.com/tylergannon/skgo {{.SkgoVersion}}
+
+tool github.com/tylergannon/skgo/cmd/skgo
+{{if .SkgoReplace}}
+replace github.com/tylergannon/skgo => {{.SkgoReplace}}
+{{end}}

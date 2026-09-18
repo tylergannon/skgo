@@ -1,0 +1,44 @@
+// Command {{.App}} serves the SvelteKit application from Go.
+package main
+
+import (
+	"flag"
+	"io/fs"
+	"log"
+	"net/http"
+	"net/url"
+
+	app "{{.Module}}"
+	"{{.Module}}/web"
+)
+
+var origin = "{{.Origin}}"
+
+func main() {
+	listen := flag.String("listen", hostPort(origin), "address to listen on")
+	trusted := flag.String("origin", origin, "public browser origin")
+	proxy := flag.String("proxy", "", "URL of a running VitePlus development server")
+	flag.Parse()
+
+	dist, err := fs.Sub(web.Build, "build")
+	if err != nil {
+		log.Fatal(err)
+	}
+	handler, mode, err := app.NewHandler(dist, *proxy, *trusted)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("{{.App}}: listening on http://%s (%s)", *listen, mode)
+	if err := http.ListenAndServe(*listen, handler); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func hostPort(value string) string {
+	u, err := url.Parse(value)
+	if err != nil || u.Host == "" {
+		return "{{.OriginHostPort}}"
+	}
+	return u.Host
+}
+
