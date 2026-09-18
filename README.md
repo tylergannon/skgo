@@ -32,16 +32,25 @@ Install VitePlus, then let `skgo new` delegate the frontend to VitePlus and
 Svelte's own `sv` creator:
 
 ```sh
-skgo new --starter minimal myapp
-# or: skgo new --starter examples myapp
+skgo new myapp
+# or, with no questions asked:
+skgo new myapp -- --template demo --types jsdoc --add tailwindcss=plugins:none
 ```
 
-`skgo new` resolves independent, exact compatible versions of the native
-`@skgo/sv` add-on and the runtime-only `@skgo/sveltekit-adapter`. Both starting
-points include Vitest through its upstream `sv` add-on and Storybook through
-the upstream `create-storybook` installer. `minimal` leaves SvelteKit's
-upstream minimal page in place; `examples` adds a focused Go-backed query and
-command. The generated instructions use `just dev`, `just storybook`, and
+In a terminal the questions are `sv`'s own: template, type checking and
+add-ons. Everything after `--` is handed to `sv create` as written, and
+without a terminal whatever is left open is the minimal TypeScript application.
+`sv`'s minimal template is left as it is. Its demo template is a JavaScript
+server application, so choosing it gives the skgo example instead: a focused
+Go-backed query and command. The library and add-on templates are packages,
+not applications, and are refused, as is an add-on selection that writes a
+JavaScript server. pnpm stays the package manager, through VitePlus.
+
+`skgo new` then resolves independent, exact compatible versions of the native
+`@skgo/sv` add-on and the runtime-only `@skgo/sveltekit-adapter`, and has `sv`
+add them. Every project gets Vitest through its upstream `sv` add-on and
+Storybook through the upstream `create-storybook` installer, unless that was
+already chosen. The generated instructions use `just dev`, `just storybook`, and
 `just test`. Production is a standalone Go binary; Node is not needed while it
 serves requests.
 
