@@ -67,19 +67,33 @@ func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
 	}
 }
 
-// TestGeneratingWithNothingInstalledIsNotAMismatch keeps the check from
-// becoming a reason `go generate` cannot run first. An app with no
-// node_modules is in the wrong order, not paired with the wrong adapter, and
-// the vite build says `Cannot find package '@skgo/sveltekit-adapter'` perfectly well.
-func TestGeneratingWithNothingInstalledIsNotAMismatch(t *testing.T) {
+// TestGeneratingAnEmptyAppNeedsNoInstalledAdapter keeps the compatibility
+// check from inventing frontend work when there are no Go-facing bindings.
+func TestGeneratingAnEmptyAppNeedsNoInstalledAdapter(t *testing.T) {
 	web := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(web, "src"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	err := Run(Config{Web: web, Out: filepath.Join(web, "generated")})
-	if err == nil || strings.Contains(err.Error(), adapter.Package) {
-		t.Fatalf("generating in an uninstalled app reported an adapter problem: %v", err)
+	out := filepath.Join(web, "generated")
+	if err := Run(Config{Web: web, Out: out}); err != nil {
+		t.Fatalf("generating empty bindings: %v", err)
+	}
+	bindings, err := os.ReadFile(filepath.Join(out, "skgo_bindings_gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"func Remotes()", "func Loads()", "func Endpoints()"} {
+		if !strings.Contains(string(bindings), want) {
+			t.Errorf("empty bindings do not contain %q:\n%s", want, bindings)
+		}
+	}
+	list, err := os.ReadFile(filepath.Join(web, "skgo.remotes.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(list), "{\n\t\"remotes\": [],\n\t\"loads\": [],\n\t\"endpoints\": {}\n}\n"; got != want {
+		t.Errorf("empty remote list = %q, want %q", got, want)
 	}
 }
 
@@ -118,7 +132,7 @@ func TestGeneratingAgainstThisModulesAdapterIsAllowed(t *testing.T) {
 
 	web := installAdapter(t, "0.0.0-dev", contents)
 	err = Run(Config{Web: web, Out: filepath.Join(web, "generated")})
-	if err == nil || strings.Contains(err.Error(), adapter.Package) {
+	if err != nil {
 		t.Fatalf("generating against this module's own adapter was refused: %v", err)
 	}
 }

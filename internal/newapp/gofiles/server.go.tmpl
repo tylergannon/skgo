@@ -1,0 +1,87 @@
+// Package app composes the generated Go handlers with SvelteKit pages.
+package app
+
+import (
+	"io/fs"
+	"log"
+	"net/http"
+	"net/url"
+
+	"github.com/tylergannon/skgo"
+	generated "{{.BindingsImport}}"
+)
+
+// NewHandler builds the same Go-owned application stack in development and
+// production. VitePlus supplies modules and assets in development; Go still
+// owns the socket, endpoints, remote functions, loads, and page rendering.
+func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) {
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		return nil, "", err
+	}
+	if proxy != "" {
+		manifest, err = skgo.ReadDevManifest(dist, proxy)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+
+	remoteConfig := manifest.RemoteConfig(origin)
+	loadConfig := manifest.LoadConfig(origin)
+	endpointConfig := manifest.EndpointConfig(origin)
+	mode := "production"
+
+	var endpoints *skgo.Endpoints
+	var pages func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
+	if proxy == "" {
+		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+			renderer, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+				Fetch: endpoints.Intercept(http.NotFoundHandler()),
+			})
+			if err != nil {
+				return nil, err
+			}
+			return skgo.NewStaticHandler(dist, skgo.WithSSR(renderer))
+		}
+	} else {
+		mode = "development"
+		target, err := url.Parse(proxy)
+		if err != nil {
+			return nil, "", err
+		}
+		remoteConfig = manifest.RemoteConfig("")
+		remoteConfig.Version = ""
+		remoteConfig.Dev = true
+		remoteConfig.CookieOrigin = origin
+		loadConfig.Version = ""
+		loadConfig.Dev = true
+		endpointConfig.Dev = true
+		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+			renderer, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
+				Fetch: endpoints.Intercept(http.NotFoundHandler()),
+			})
+			if err != nil {
+				return nil, err
+			}
+			return skgo.NewDevPages(target, manifest, renderer, log.Printf, endpoints), nil
+		}
+	}
+
+	remotes, err := skgo.NewRemotes(remoteConfig, generated.Remotes()...)
+	if err != nil {
+		return nil, "", err
+	}
+	loads, err := skgo.NewLoads(loadConfig, generated.Loads()...)
+	if err != nil {
+		return nil, "", err
+	}
+	endpoints, err = skgo.NewEndpoints(endpointConfig, generated.Endpoints()...)
+	if err != nil {
+		return nil, "", err
+	}
+	pageHandler, err := pages(loads, remotes)
+	if err != nil {
+		return nil, "", err
+	}
+	return loads.Intercept(remotes.Intercept(endpoints.Intercept(pageHandler))), mode, nil
+}

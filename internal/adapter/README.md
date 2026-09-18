@@ -1,6 +1,6 @@
 # @skgo/sveltekit-adapter
 
-The SvelteKit adapter for [skgo](https://github.com/tylergannon/skgo), a
+The runtime SvelteKit adapter for [skgo](https://github.com/tylergannon/skgo), a
 SvelteKit application server written in Go.
 
 The app stays plain SvelteKit. This adapter builds it into the shape a skgo

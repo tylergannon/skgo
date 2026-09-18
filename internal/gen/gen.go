@@ -79,7 +79,16 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	if len(files) == 0 {
-		return fmt.Errorf("skgo: no *.remote.go, page.server.go, layout.server.go, server.go or hooks.go files under %s", filepath.Join(web, "src"))
+		// An application does not need demo or placeholder server behavior. The
+		// empty bindings are still a real contract: the Go server imports these
+		// lists, and the adapter compares skgo.remotes.json with the frontend it
+		// built. When the developer later adds a Go endpoint, the ordinary path
+		// below overwrites both files with its generated registration.
+		empty := &app{cfg: cfg}
+		if err := empty.writeAppBindings(); err != nil {
+			return err
+		}
+		return empty.writeRemoteList()
 	}
 
 	// A skgo_remotes_gen.go left by an older skgo can call a runtime symbol

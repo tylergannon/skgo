@@ -399,7 +399,9 @@ func (a *app) writeAppBindings() error {
 	fmt.Fprintf(&b, "package %s\n\n", a.cfg.Package)
 	transportPkgs := a.transportImports()
 	b.WriteString("import (\n")
-	b.WriteString("\t\"context\"\n")
+	if len(a.remotes) > 0 || len(a.loads) > 0 {
+		b.WriteString("\t\"context\"\n")
+	}
 	if a.hasBatch() {
 		b.WriteString("\t\"fmt\"\n")
 	}

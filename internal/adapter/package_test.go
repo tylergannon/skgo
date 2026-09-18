@@ -135,8 +135,14 @@ func TestThePublishedPackageDeclaresWhatAnAdapterDeclares(t *testing.T) {
 	if _, ok := pkg.Exports["."]; !ok {
 		t.Errorf("the package has no `.` export, so `import skgo from '@skgo/sveltekit-adapter'` resolves nothing")
 	}
+	if _, ok := pkg.Exports["./sv"]; ok {
+		t.Error("the runtime adapter still exports the installer add-on; that belongs only to @skgo/sv")
+	}
 	if pkg.PeerDependencies["@sveltejs/kit"] == "" {
 		t.Errorf("the adapter does not declare @sveltejs/kit as a peer dependency; every kit adapter does")
+	}
+	if pkg.PeerDependencies["sv"] != "" {
+		t.Error("the runtime adapter declares an sv peer; installer dependencies belong only to @skgo/sv")
 	}
 	// The adapter builds with the app's vite, kit and Svelte, deliberately: a
 	// second copy of any of them is a second module realm, and kit's own

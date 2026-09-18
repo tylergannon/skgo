@@ -26,6 +26,25 @@ The generated TypeScript server bodies always throw. They exist so Kit can
 compile its own client and manifests; a real response can only have come from
 Go.
 
+## Start a project
+
+Install VitePlus, then let `skgo new` delegate the frontend to VitePlus and
+Svelte's own `sv` creator:
+
+```sh
+skgo new --starter minimal myapp
+# or: skgo new --starter examples myapp
+```
+
+`skgo new` resolves independent, exact compatible versions of the native
+`@skgo/sv` add-on and the runtime-only `@skgo/sveltekit-adapter`. Both starting
+points include Vitest through its upstream `sv` add-on and Storybook through
+the upstream `create-storybook` installer. `minimal` leaves SvelteKit's
+upstream minimal page in place; `examples` adds a focused Go-backed query and
+command. The generated instructions use `just dev`, `just storybook`, and
+`just test`. Production is a standalone Go binary; Node is not needed while it
+serves requests.
+
 ## Write a remote function
 
 Put an ordinary Go function beside the route that uses it and mark the kind of
