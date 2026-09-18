@@ -10,8 +10,11 @@ dependency, not a production runtime dependency.
 - Node 22.17 or newer
 - pnpm and `just`
 
-The generator has already installed frontend dependencies and Chromium for the
-generated Vitest component test.
+The generator installed frontend dependencies, Chromium for the generated
+Vitest component test, and an initial frontend build. None of those are
+committed. In a fresh clone `just dev` installs the dependencies and makes that
+build once, when it finds them missing; the component test additionally needs
+`pnpm --dir web exec playwright install chromium`.
 
 ## Development
 

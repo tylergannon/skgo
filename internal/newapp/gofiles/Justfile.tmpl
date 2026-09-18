@@ -4,12 +4,16 @@ dev_port := env("SKGO_DEV_PORT", "5173")
 _default:
     @just --list --unsorted
 
-# Run VitePlus and the Go application together.
+# Run VitePlus and the Go application together. A fresh clone has neither
+# frontend dependencies nor the adapter manifest the Go server reads at startup,
+# so each is produced once, only while it is missing.
 dev:
     #!/bin/sh
     set -eu
     go generate ./...
     cd web
+    [ -x node_modules/.bin/vp ] || pnpm install --frozen-lockfile
+    [ -f build/skgo.manifest.json ] || ORIGIN="{{"{{origin}}"}}" node_modules/.bin/vp build
     ORIGIN="{{"{{origin}}"}}" node_modules/.bin/vp dev --host 127.0.0.1 --port "{{"{{dev_port}}"}}" --strictPort &
     vite=$!
     trap 'kill "$vite" 2>/dev/null || true' EXIT INT TERM

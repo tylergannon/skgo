@@ -50,7 +50,7 @@ func newProject(args []string) {
 	origin := fs.String("origin", "http://127.0.0.1:8080", "public browser origin")
 	starter := fs.String("starter", "minimal", "starting point: minimal or examples")
 	version := fs.String("skgo-version", "", "skgo module version; defaults to this command's release")
-	svAddon := fs.String("sv-addon", "", "sv add-on package spec; intended for checkout qualification")
+	svAddon := fs.String("sv-addon", "", "sv add-on package spec; a file: directory is packed into an isolated copy, for checkout qualification")
 	adapter := fs.String("adapter", "", "runtime adapter package spec; intended for checkout qualification")
 	replace := fs.String("skgo-replace", "", "local skgo module replacement; intended for checkout qualification")
 	fs.Usage = func() {

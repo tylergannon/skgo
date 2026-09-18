@@ -7,6 +7,8 @@
 package newapp
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -53,8 +55,9 @@ type Options struct {
 	Starter     string
 	SkgoVersion string
 
-	// SVAddonSpec overrides registry selection for the add-on. It is primarily
-	// useful when qualifying a checkout with file:/path/to/internal/sv.
+	// SVAddonSpec overrides registry selection for the add-on. A file: spec
+	// qualifies a checkout such as file:/path/to/internal/sv; sv never sees that
+	// directory, only an isolated copy of what pnpm would pack from it.
 	SVAddonSpec string
 	// AdapterSpec independently overrides registry selection for the runtime
 	// adapter the add-on installs.
@@ -69,6 +72,7 @@ type Options struct {
 	Stdout      io.Writer
 	Stderr      io.Writer
 	run         func(command) error
+	addonStage  string
 }
 
 type command struct {
@@ -132,6 +136,13 @@ func Create(options Options) (Result, error) {
 	run := options.run
 	if run == nil {
 		run = realRunner(options.Stdout, options.Stderr)
+	}
+	if source, ok := strings.CutPrefix(p.SVAddonSpec, "file:"); ok {
+		staged, err := stageAddon(run, source, options.addonStage)
+		if err != nil {
+			return Result{}, fmt.Errorf("skgo: staging the sv add-on from %s failed: %w", source, err)
+		}
+		p.SVAddonSpec = "file:" + staged
 	}
 
 	addonArg := p.SVAddonSpec + "=starter:" + escapeAddonOption(p.Starter) +
@@ -200,6 +211,97 @@ func Create(options Options) (Result, error) {
 		return Result{}, fmt.Errorf("skgo: creating the initial frontend build failed: %w", err)
 	}
 	return Result{Dir: p.Dir, App: p.App, Origin: p.Origin, Starter: p.Starter}, nil
+}
+
+// stageAddon packs a local add-on directory the way a publication would and
+// unpacks it somewhere sv may safely link. sv installs a file: add-on as a
+// symlink inside its own shared pnpm-store directory and later extracts registry
+// add-ons through whatever is already there, so a link to a live checkout lets
+// an unrelated `skgo new` overwrite tracked files. The stage is a fixed
+// per-user directory rather than a temporary one: a dangling link would break
+// that later extraction instead.
+func stageAddon(run func(command) error, source, stage string) (string, error) {
+	source, err := filepath.Abs(source)
+	if err != nil {
+		return "", err
+	}
+	if stage == "" {
+		cache, err := os.UserCacheDir()
+		if err != nil {
+			return "", err
+		}
+		stage = filepath.Join(cache, "skgo", "sv-addon-qualification")
+	}
+	if err := os.RemoveAll(stage); err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(stage, 0o755); err != nil {
+		return "", err
+	}
+	if err := run(command{Dir: source, Name: "pnpm", Args: []string{"pack", "--pack-destination", stage}, Env: os.Environ()}); err != nil {
+		return "", err
+	}
+	tarballs, err := filepath.Glob(filepath.Join(stage, "*.tgz"))
+	if err != nil {
+		return "", err
+	}
+	if len(tarballs) != 1 {
+		return "", fmt.Errorf("pnpm pack left %d tarballs in %s, want 1", len(tarballs), stage)
+	}
+	if err := unpackTarball(tarballs[0], stage); err != nil {
+		return "", err
+	}
+	// npm tarballs hold their files under package/.
+	addon := filepath.Join(stage, "package")
+	// Node resolves the add-on's imports from the link's target, not from sv's
+	// directory, so the staged copy needs its own sv peer.
+	if err := run(command{Dir: addon, Name: "pnpm", Args: []string{"install", "--prod", "--ignore-workspace"}, Env: os.Environ()}); err != nil {
+		return "", err
+	}
+	return addon, nil
+}
+
+func unpackTarball(tarball, dir string) error {
+	file, err := os.Open(tarball)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	zr, err := gzip.NewReader(file)
+	if err != nil {
+		return err
+	}
+	tr := tar.NewReader(zr)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+		if !filepath.IsLocal(header.Name) {
+			return fmt.Errorf("%s contains the non-local path %q", tarball, header.Name)
+		}
+		target := filepath.Join(dir, filepath.FromSlash(header.Name))
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		out, err := os.Create(target)
+		if err != nil {
+			return err
+		}
+		if _, err := io.Copy(out, tr); err != nil {
+			out.Close()
+			return err
+		}
+		if err := out.Close(); err != nil {
+			return err
+		}
+	}
 }
 
 func realRunner(stdout, stderr io.Writer) func(command) error {
