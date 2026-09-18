@@ -60,6 +60,10 @@
 	{/snippet}
 </svelte:boundary>
 
+{#if data.scriptSafe}
+	<p data-testid="script-safe">{data.scriptSafe}</p>
+{/if}
+
 <main>
 	{@render children()}
 </main>
@@ -90,6 +94,7 @@
 	nav a:hover { background: var(--lime); }
 	main { min-height: calc(100vh - 9rem); padding: 2rem 0 5rem; }
 	:global(footer[data-testid="deployment"]) { padding: 1.5rem 0; border-top: 1px solid var(--line); color: #687670; font: 700 0.75rem ui-monospace, monospace; }
+	[data-testid="script-safe"] { overflow-wrap: anywhere; font-family: ui-monospace, monospace; }
 	:global(button), :global(input), :global(textarea) { font: inherit; }
 	:global(button) { cursor: pointer; }
 </style>

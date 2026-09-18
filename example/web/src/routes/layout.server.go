@@ -13,7 +13,12 @@ type RootLayoutData struct {
 	// no remote function answers, so a page showing it is a page whose root
 	// layout load ran.
 	Deployment string `json:"deployment"`
+	// ScriptSafe is a hostile hydration value used only by the browser proof.
+	// It is empty unless the proof query parameter asks for it.
+	ScriptSafe string `json:"scriptSafe"`
 }
+
+const scriptSafeFixture = `</script><script>globalThis.__skgo_injected=true</script>&<>`
 
 // layoutLoad is the app's outermost load, and the one place a failure has
 // nowhere to go.
@@ -27,10 +32,15 @@ type RootLayoutData struct {
 // The refusal is on a query parameter rather than on anything ambient, so a
 // scenario can ask for it and no other request can stumble into it.
 func layoutLoad(ctx context.Context) (RootLayoutData, error) {
-	if boom, _ := skgo.EventFrom(ctx).SearchParam("boom"); boom == "root-layout" {
+	event := skgo.EventFrom(ctx)
+	if boom, _ := event.SearchParam("boom"); boom == "root-layout" {
 		return RootLayoutData{}, skgo.Errorf(503, "The root layout could not reach the database")
 	}
-	return RootLayoutData{Deployment: "skgo example"}, nil
+	data := RootLayoutData{Deployment: "skgo example"}
+	if proof, _ := event.SearchParam("proof"); proof == "script-safe" {
+		data.ScriptSafe = scriptSafeFixture
+	}
+	return data, nil
 }
 
 var _ = skgo.Load(layoutLoad)

@@ -61,6 +61,11 @@ Feature: Pages arrive rendered
     And exactly 0 data requests were made since
     And exactly 0 remote requests were made since
 
+  Scenario: Hydration strings cannot terminate their script element
+    Given I open "/?proof=script-safe"
+    Then the script-safe data is exactly "</script><script>globalThis.__skgo_injected=true</script>&<>"
+    And no injected script ran
+
   Scenario: A custom-typed value is rendered by its own method on the server
     Given I note the data request count
     When I open "/pricing"

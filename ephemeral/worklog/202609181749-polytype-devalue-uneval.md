@@ -1,0 +1,2 @@
+friction: `go test ./...` under the Codex workspace sandbox panics when existing `httptest` cases bind loopback sockets -> run the unchanged suite with network binding allowed; do not classify the sandbox denial as a product failure.
+friction: `pnpm test -- --grep ...` expands to `playwright test -- --grep ...`, and the literal separator makes Playwright ignore the filter -> run `pnpm exec bddgen` and `pnpm exec playwright test --grep ...` directly for a focused scenario set.

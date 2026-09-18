@@ -5,6 +5,11 @@ package skgo
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"slices"
+	"strconv"
+	"time"
+
 	devalue "github.com/tylergannon/polytype/devalue"
 	pkg_businesslogic "github.com/tylergannon/skgo/example/businesslogic"
 	pkg_onzggl3sn52xizlt "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt"
@@ -21,10 +26,6 @@ import (
 	pkg_onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u"
 	pkg_onzggl3sn52xizltf5uxizlnomxvw2lelu "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
 	pkg_onzggl3sn52xizltf5wgs5tf "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf"
-	"math"
-	"slices"
-	"strconv"
-	"time"
 )
 
 // dvAt renders a JSON-pointer-style path for a diagnostic. The root value has
