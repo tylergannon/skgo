@@ -60,7 +60,5 @@ jobs:
       - name: Vet
         run: just vet
 
-      # Includes the existing external scaffold build against candidate Go and
-      # npm artifacts, but not the release-only tagged browser test.
       - name: Unit and focused integration tests
         run: just test

@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   qualification:
-    name: Fresh-application qualification
+    name: Example qualification
     uses: ./.github/workflows/qualification.yml
 
   version:

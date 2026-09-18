@@ -12,7 +12,6 @@
     <a class="mark" href="#top" aria-label="skgo home"><span>sk</span><i>/</i><b>go</b></a>
     <nav aria-label="Primary">
       <a href="#model">How it works</a>
-      <a href="#start">Start</a>
       <a href="https://github.com/tylergannon/skgo">GitHub ↗</a>
     </nav>
   </header>
@@ -23,15 +22,7 @@
       <h1>SvelteKit on the frontend.<br><em>Go on the server.</em></h1>
       <p class="lede">Keep SvelteKit 3, Svelte 5, Vite+, and the conventions you know. Go owns every server endpoint, renders pages, and ships the whole application as one binary.</p>
       <div class="actions">
-        <a class="button primary" href="#start">Build an app</a>
         <a class="button" href="https://github.com/tylergannon/skgo/tree/main/example">Explore the example</a>
-      </div>
-      <div class="terminal" role="img" aria-label="A terminal showing how to create and run a skgo application">
-        <div class="terminal-bar"><span></span><span></span><span></span><small>terminal</small></div>
-        <pre><code><span class="prompt">$</span> go run github.com/tylergannon/skgo/cmd/skgo@latest new hello
-<span class="prompt">$</span> cd hello && mise trust && mise run build
-<span class="prompt">$</span> ./bin/hello
-<span class="muted">hello: listening on http://127.0.0.1:8080</span></code></pre>
       </div>
       <div class="facts" aria-label="Key facts">
         <p><strong>One process</strong><span>No Node sidecar</span></p>
@@ -97,25 +88,6 @@
           <article><b>06</b><h3>A Go deployment</h3><p>Frontend assets and the SSR bundle are embedded. Node is needed to build, never to run.</p></article>
         </div>
       </div>
-    </section>
-
-    <section id="start" class="section wrap start">
-      <div>
-        <p class="eyebrow">Five minutes to the useful part</p>
-        <h2>Generate the plumbing.<br>Own the application.</h2>
-        <p>The starter contains a query, command, generated types, server composition, dev proxy, embedded production build, and one shared origin setting. Choose mise, Just, or plain shell scripts for its build entry point.</p>
-        <ol>
-          <li><strong>Create</strong><span><code>skgo new</code> writes a standalone Go module and SvelteKit app.</span></li>
-          <li><strong>Build</strong><span>The selected mise, Just, or shell command installs, generates, builds, and links.</span></li>
-          <li><strong>Extend</strong><span>Add Go beside the route; consume the generated module from Svelte.</span></li>
-        </ol>
-      </div>
-      <aside>
-        <p class="label">What to read next</p>
-        <a href="https://github.com/tylergannon/skgo#readme"><strong>README</strong><span>The compact working guide →</span></a>
-        <a href="https://github.com/tylergannon/skgo/tree/main/example"><strong>Example app</strong><span>Every demonstrated capability →</span></a>
-        <a href="https://pkg.go.dev/github.com/tylergannon/skgo"><strong>Go package</strong><span>The API reference →</span></a>
-      </aside>
     </section>
   </main>
 

@@ -16,10 +16,9 @@ pnpm add -D '@skgo/sveltekit-adapter@<=VERSION'
 without its `v`: for skgo `v0.3.4`, ask for `<=0.3.4`. A skgo release publishes
 this package only when the package itself changes, so the newest version at or
 below yours is the one carrying your skgo's adapter, and skgo refuses to start
-with any other. A project made by `skgo new` writes that dependency already,
-and lists the package under pnpm's `minimumReleaseAgeExclude`: held to a
-minimum release age, pnpm would quietly install an older version for a day
-after a release that changes this one.
+with any other. If pnpm's minimum release age is enabled, exclude this package;
+otherwise pnpm may quietly install an older adapter immediately after a release
+that changes it.
 
 ```js
 // vite.config.ts
