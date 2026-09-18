@@ -108,6 +108,16 @@ type project struct {
 	SVVersion         string
 }
 
+const storybookVersion = "10.6.0"
+
+// escapeAddonOption produces an sv community add-on option value. sv uses "+"
+// between options, while JavaScript's decodeURIComponent does not translate
+// QueryEscape's space spelling back from "+". Keep literal plus signs and
+// spaces percent-encoded so neither can become an option separator.
+func escapeAddonOption(value string) string {
+	return strings.ReplaceAll(url.QueryEscape(value), "+", "%20")
+}
+
 // Create asks VitePlus to create an sv project, verifies the required upstream
 // add-ons completed, then writes and initializes skgo's Go-specific files.
 func Create(options Options) (Result, error) {
@@ -124,9 +134,9 @@ func Create(options Options) (Result, error) {
 		run = realRunner(options.Stdout, options.Stderr)
 	}
 
-	addonArg := p.SVAddonSpec + "=starter:" + url.PathEscape(p.Starter) +
-		"+adapter:" + url.QueryEscape(p.AdapterDependency) +
-		"+name:" + url.QueryEscape(p.App)
+	addonArg := p.SVAddonSpec + "=starter:" + escapeAddonOption(p.Starter) +
+		"+adapter:" + escapeAddonOption(p.AdapterDependency) +
+		"+name:" + escapeAddonOption(p.App)
 	vp := options.VP
 	if vp == "" {
 		vp = "vp"
@@ -148,13 +158,17 @@ func Create(options Options) (Result, error) {
 	}
 	if err := run(command{
 		Dir: filepath.Join(p.Dir, "web"), Name: "pnpm",
-		Args: []string{"dlx", "--allow-build", "esbuild", "create-storybook@latest", "--package-manager", "pnpm", "--skip-install", "--no-dev", "--no-features", "--yes", "--disable-telemetry"},
-		// create-storybook falls back to `npm config get registry` when its
-		// framework package is not installed yet. VitePlus correctly declares
-		// pnpm in devEngines, so npm rejects even that read-only lookup unless
-		// its documented force setting downgrades the package-manager mismatch.
-		// The installer itself remains explicitly pinned to pnpm above.
-		Env: append(os.Environ(), "CI=1", "npm_config_force=true"),
+		Args: []string{
+			"dlx", "--allow-build", "esbuild",
+			"--package", "create-storybook@" + storybookVersion,
+			"--package", "@storybook/sveltekit@" + storybookVersion,
+			"create-storybook", "--package-manager", "pnpm", "--skip-install",
+			"--no-dev", "--no-features", "--yes", "--disable-telemetry",
+		},
+		// Supplying the exact framework package in pnpm's isolated dlx
+		// environment lets create-storybook resolve its own templates locally,
+		// instead of falling back to an npm registry lookup from the project.
+		Env: append(os.Environ(), "CI=1"),
 	}); err != nil {
 		return Result{}, fmt.Errorf("skgo: Storybook's upstream installer failed: %w", err)
 	}
@@ -184,6 +198,12 @@ func Create(options Options) (Result, error) {
 		Args: []string{"build"}, Env: append(os.Environ(), "ORIGIN="+p.Origin),
 	}); err != nil {
 		return Result{}, fmt.Errorf("skgo: creating the initial frontend build failed: %w", err)
+	}
+	// The adapter cleans web/build before writing its output. Restore the
+	// tracked file that keeps go:embed valid after generated output is ignored
+	// and a project is committed and cloned.
+	if err := os.WriteFile(filepath.Join(p.Dir, "web", "build", "placeholder"), []byte("\n"), 0o644); err != nil {
+		return Result{}, fmt.Errorf("skgo: restoring the embedded build placeholder: %w", err)
 	}
 
 	return Result{Dir: p.Dir, App: p.App, Origin: p.Origin, Starter: p.Starter}, nil

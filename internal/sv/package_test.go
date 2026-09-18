@@ -69,6 +69,18 @@ func TestPublishedPackageIsASelfContainedNativeAddon(t *testing.T) {
 	}
 }
 
+func TestAddonKeepsTheGoEmbedPlaceholderTrackable(t *testing.T) {
+	for _, name := range []string{"sv-addon.source.js", "sv-addon.js"} {
+		body, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Contains(body, []byte("!/build/placeholder")) {
+			t.Errorf("%s does not preserve the generated Go embed placeholder", name)
+		}
+	}
+}
+
 func pack(t *testing.T) map[string][]byte {
 	t.Helper()
 	if _, err := exec.LookPath("pnpm"); err != nil {

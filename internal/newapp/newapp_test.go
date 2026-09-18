@@ -34,6 +34,11 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 		if c.Name == "vp-test" {
 			writeFrontendFixture(t, c.Dir, true)
 		}
+		if filepath.Base(c.Name) == "vp" && slices.Equal(c.Args, []string{"build"}) {
+			if err := os.Remove(filepath.Join(c.Dir, "build", "placeholder")); err != nil {
+				t.Fatal(err)
+			}
+		}
 		return nil
 	}
 
@@ -72,8 +77,11 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 			t.Errorf("VitePlus args do not contain %q:\n%s", want, joined)
 		}
 	}
-	if got := strings.Join(commands[1].Args, " "); !strings.Contains(got, "dlx --allow-build esbuild create-storybook@latest") {
+	if got := strings.Join(commands[1].Args, " "); !strings.Contains(got, "dlx --allow-build esbuild --package create-storybook@10.6.0 --package @storybook/sveltekit@10.6.0 create-storybook") {
 		t.Fatalf("Storybook did not use its upstream installer with pnpm approval: %s", got)
+	}
+	if joined := strings.Join(commands[1].Env, "\n"); strings.Contains(joined, "npm_config_force=") {
+		t.Fatalf("Storybook installer received broad npm force override:\n%s", joined)
 	}
 	if filepath.Base(commands[1].Dir) != "web" {
 		t.Fatalf("Storybook installer ran outside the generated frontend: %s", commands[1].Dir)
@@ -102,6 +110,16 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 	}
 	if !strings.Contains(string(justfile), "pnpm storybook --host 127.0.0.1") {
 		t.Fatalf("generated Storybook instruction does not pass its host option correctly:\n%s", justfile)
+	}
+}
+
+func TestEscapeAddonOptionRoundTripsSpacesAndPlusSigns(t *testing.T) {
+	got := escapeAddonOption("file:/tmp/adapter with+plus")
+	if got != "file%3A%2Ftmp%2Fadapter%20with%2Bplus" {
+		t.Fatalf("escapeAddonOption = %q", got)
+	}
+	if strings.Contains(got, "+") {
+		t.Fatalf("escaped add-on option contains sv's separator: %q", got)
 	}
 }
 

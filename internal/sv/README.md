@@ -16,6 +16,34 @@ not this installer bundle.
 This package is invoked by `skgo new`; it is not a runtime dependency of a
 generated application.
 
+## First publication
+
+The first `@skgo/sv` release is a manual bootstrap. Do not publish the checked-in
+`0.0.0-dev` manifest and do not let the release workflow attempt to create the
+package for the first time.
+
+From the repository root, after choosing the real skgo release tag as
+`vX.Y.Z`:
+
+```sh
+go run ./cmd/skgo-adapter-changed -dir internal/sv -package @skgo/sv -stamp vX.Y.Z
+pnpm --dir internal/sv install --frozen-lockfile
+pnpm --dir internal/sv run build
+mkdir -p /tmp/skgo-sv-first-release
+pnpm --dir internal/sv pack --pack-destination /tmp/skgo-sv-first-release
+```
+
+Inspect the resulting tarball before publishing: its `package/package.json`
+must name the real `X.Y.Z` version, and its file list must contain only the
+package contract tested by `internal/sv/package_test.go`. Then publish that
+exact tarball manually with `npm publish <tarball> --access public`.
+
+Only after the manual publication succeeds, configure and verify npm trusted
+publishing for `.github/workflows/release.yml`. Subsequent releases may use the
+workflow. This ordering makes the first published version participate in
+`skgo new`'s exact, not-newer-than-skgo package pairing instead of leaving
+`0.0.0-dev` as the selectable package.
+
 ## License
 
 [MIT](LICENSE)

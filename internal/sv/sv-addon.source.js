@@ -28,13 +28,15 @@ const examplesPage = `<script lang="ts">
 
 	let name = $state('Svelte developer');
 	let saving = $state(false);
+	let greeting = $state('');
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		if (saving) return;
 		saving = true;
 		try {
-			await record(name).updates(status());
+			const result = await record(name).updates(status());
+			greeting = result.message;
 		} finally {
 			saving = false;
 		}
@@ -50,6 +52,7 @@ const examplesPage = `<script lang="ts">
 		{@const current = await status()}
 		<p data-testid="go-message">{current.message}</p>
 		<p>Writes handled by Go: <strong data-testid="write-count">{current.writes}</strong></p>
+		{#if greeting}<p data-testid="go-greeting">{greeting}</p>{/if}
 		{#snippet failed(error)}<p class="error">{(error as Error).message}</p>{/snippet}
 	</svelte:boundary>
 	<form onsubmit={submit}>
@@ -88,12 +91,13 @@ export default defineAddon({
 	},
 	run: ({ sv, file, cwd, options }) => {
 		const adapterVersion = decodeURIComponent(options.adapter);
+		const applicationName = decodeURIComponent(options.name);
 		if (!adapterVersion) throw new Error('skgo requires an explicit adapter version');
 
 		sv.file(
 			file.package,
 			transforms.json(({ data }) => {
-				data.name = options.name;
+				data.name = applicationName;
 				// Vitest's upstream add-on writes `npm run`, but VitePlus records
 				// pnpm as the only valid package manager in devEngines.
 				data.scripts.test = 'pnpm run test:unit -- --run';
@@ -111,6 +115,13 @@ export default defineAddon({
 				throw new Error('skgo expected sv to create pnpm-workspace.yaml after add-ons run');
 			}
 			return 'allowBuilds:\n  esbuild: true\n';
+		});
+		sv.file('.gitignore', (content) => {
+			const outputRule = '\n/build\n';
+			if (!content.includes(outputRule)) {
+				throw new Error('skgo expected sv to ignore the SvelteKit build directory');
+			}
+			return content.replace(outputRule, '\n/build/*\n!/build/placeholder\n');
 		});
 
 		svelteConfig.edit({ sv, cwd }, ({ ast, override, js }) => {
