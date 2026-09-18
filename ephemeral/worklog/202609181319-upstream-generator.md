@@ -30,3 +30,5 @@ correction: a non-hidden generated placeholder survived the initial clone but th
 correction: never populate an independent-validator artifact by copying an earlier review; verify reviewer session identity and provenance, not merely that the file is nonempty.
 friction: Codex's command sandbox hides host npm credentials and blocks registry DNS -> run every authentication, build, pack, inspection, and publish step for a release in the host context.
 decision: bootstrap @skgo/sv@0.5.0 manually from this candidate branch before merge; the merge must retain a feat title so its computed Go release remains v0.5.0.
+decision: @skgo/sv@0.5.0 was manually published as the initial public package; a fresh-cache download was byte-identical to the inspected tarball, and npm trusted publisher 23eaf615-d90d-4ed9-bc05-80c5f6024ba6 binds direct and staged publishing to tylergannon/skgo release.yml.
+friction: npm's registry metadata endpoint briefly retained a pre-publication 404 after the package page and access API showed the successful public release -> require a fresh consumer cache and byte comparison before calling an npm bootstrap complete.
