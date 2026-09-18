@@ -48,6 +48,7 @@ func main() {
 	dir := flag.String("dir", "internal/adapter", "the package root this tree would publish")
 	packageName := flag.String("package", defaultPackage, "the npm package name")
 	stamp := flag.String("stamp", "", "write this version into the package root's package.json instead")
+	requirePublished := flag.Bool("require-published", false, "refuse an automatic first publication")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		flag.Usage()
@@ -59,7 +60,7 @@ func main() {
 		}
 		return
 	}
-	changed, err := run(*dir, *packageName)
+	changed, err := run(*dir, *packageName, *requirePublished)
 	if err != nil {
 		fail(err)
 	}
@@ -75,12 +76,15 @@ func fail(err error) {
 	os.Exit(1)
 }
 
-func run(dir, packageName string) (bool, error) {
+func run(dir, packageName string, requirePublished bool) (bool, error) {
 	latest, err := latestPublished(packageName)
 	if err != nil {
 		return false, err
 	}
 	if latest == nil {
+		if err := unpublishedError(packageName, requirePublished); err != nil {
+			return false, err
+		}
 		fmt.Fprintf(os.Stderr, "%s has never been published\n", packageName)
 		return true, nil
 	}
@@ -105,6 +109,13 @@ func run(dir, packageName string) (bool, error) {
 		fmt.Fprintln(os.Stderr, "\t"+d)
 	}
 	return true, nil
+}
+
+func unpublishedError(packageName string, requirePublished bool) error {
+	if !requirePublished {
+		return nil
+	}
+	return fmt.Errorf("%s has never been published; automatic release cannot perform its first publication; follow First publication in internal/sv/README.md", packageName)
 }
 
 type release struct {

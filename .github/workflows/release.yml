@@ -160,7 +160,7 @@ jobs:
       - name: Is the package any different from the published one?
         id: changed
         run: |
-          result=$(go run ./cmd/skgo-adapter-changed -dir internal/sv -package @skgo/sv)
+          result=$(go run ./cmd/skgo-adapter-changed -dir internal/sv -package @skgo/sv -require-published)
           case "$result" in
             changed) echo "publish=true" >> "$GITHUB_OUTPUT" ;;
             unchanged) echo "publish=false" >> "$GITHUB_OUTPUT" ;;
