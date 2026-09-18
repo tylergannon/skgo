@@ -56,8 +56,8 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 	if result.Starter != "examples" || !strings.Contains(result.Instructions(), "just dev") {
 		t.Fatalf("result = %+v; instructions = %q", result, result.Instructions())
 	}
-	if len(commands) != 6 {
-		t.Fatalf("commands = %#v; want VitePlus create, Storybook, VitePlus install, Playwright, go mod tidy, go generate", commands)
+	if len(commands) != 7 {
+		t.Fatalf("commands = %#v; want VitePlus create, Storybook, VitePlus install, Playwright, go mod tidy, go generate, initial VitePlus build", commands)
 	}
 	if got := commands[0].Args[1]; got != "svelte@1.0.0-next.7" {
 		t.Fatalf("VitePlus template = %q", got)
@@ -81,7 +81,10 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 	if commands[2].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[2].Dir) != "web" || commands[2].Args[0] != "install" {
 		t.Fatalf("Storybook dependencies were not installed by local VitePlus: %#v", commands[2])
 	}
-	for _, name := range []string{"go.mod", "server.go", "cmd/main.go", "internal/skgo/config.go", "web/dist.go", "web/src/routes/example.remote.go"} {
+	if commands[6].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[6].Dir) != "web" || commands[6].Args[0] != "build" {
+		t.Fatalf("initial frontend build did not use generated project VitePlus: %#v", commands[6])
+	}
+	for _, name := range []string{"go.mod", "server.go", "cmd/main.go", "internal/skgo/config.go", "web/dist.go", "web/build/placeholder", "web/src/routes/example.remote.go"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
 			t.Errorf("generated %s: %v", name, err)
 		}
@@ -92,6 +95,13 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 	}
 	if string(page) != "owned by the sv add-on\n" {
 		t.Fatalf("Go rewrote the frontend page: %q", page)
+	}
+	justfile, err := os.ReadFile(filepath.Join(dir, "Justfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(justfile), "pnpm storybook --host 127.0.0.1") {
+		t.Fatalf("generated Storybook instruction does not pass its host option correctly:\n%s", justfile)
 	}
 }
 
