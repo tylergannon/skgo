@@ -240,8 +240,16 @@ func finish(p project, run func(command) error) (Result, error) {
 	if err := verifyFrontend(p.Dir); err != nil {
 		return Result{}, fmt.Errorf("skgo: upstream frontend setup was incomplete: %w", err)
 	}
-	if err := run(command{Dir: p.Dir, Name: "pnpm", Args: []string{"--dir", "web", "exec", "playwright", "install", "chromium"}, Env: os.Environ()}); err != nil {
-		return Result{}, fmt.Errorf("skgo: installing the browser required by Vitest failed: %w", err)
+	// sv's Vitest add-on depends on Playwright only for component testing; a
+	// developer who chose unit testing alone has no browser to install.
+	pkg, err := readPackage(filepath.Join(p.Dir, "web"))
+	if err != nil {
+		return Result{}, err
+	}
+	if pkg.DevDependencies["playwright"] != "" {
+		if err := run(command{Dir: p.Dir, Name: "pnpm", Args: []string{"--dir", "web", "exec", "playwright", "install", "chromium"}, Env: os.Environ()}); err != nil {
+			return Result{}, fmt.Errorf("skgo: installing the browser required by Vitest failed: %w", err)
+		}
 	}
 	if err := writeGoFiles(p); err != nil {
 		return Result{}, err

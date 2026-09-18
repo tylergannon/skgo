@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -59,6 +60,12 @@ func (u *upstream) run(c command) error {
 		if strings.Contains(joined, "vitest=") {
 			u.devDeps["vitest"] = "^4.1.8"
 			u.scripts["test:unit"] = "vitest"
+			// sv's vitest add-on: Playwright comes with component testing only.
+			if usages := regexp.MustCompile(`vitest=usages:(\S+)`).FindStringSubmatch(joined); usages != nil && slices.Contains(strings.Split(usages[1], ","), "component") {
+				u.devDeps["@vitest/browser-playwright"] = "^4.1.8"
+				u.devDeps["playwright"] = "^1.60.0"
+				writeFiles(u.t, c.Dir, map[string]string{"node_modules/.bin/playwright": ""})
+			}
 			writeFiles(u.t, c.Dir, map[string]string{"src/lib/vitest-examples/greet.spec.ts": "test", "node_modules/.bin/vitest": ""})
 		}
 		u.devDeps[adapterPackage] = "file:/candidate/adapter"
@@ -69,6 +76,12 @@ func (u *upstream) run(c command) error {
 			writeFiles(u.t, c.Dir, map[string]string{"src/routes/+page.svelte": "import { status } from './example.remote';\n"})
 		}
 		u.writePackage(c.Dir)
+	case c.Name == "pnpm" && slices.Contains(c.Args, "playwright"):
+		// What pnpm does for real: there is no such binary unless upstream
+		// declared the dependency.
+		if u.devDeps["playwright"] == "" {
+			return fmt.Errorf(`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "playwright" not found`)
+		}
 	case c.Name == "pnpm" && slices.Contains(c.Args, "create-storybook") && !u.skipBook:
 		u.scripts["storybook"] = "storybook dev -p 6006"
 		writeFiles(u.t, c.Dir, map[string]string{".storybook/main.ts": "export default {}", "src/stories/Button.stories.svelte": "story", "node_modules/.bin/storybook": ""})
@@ -127,6 +140,9 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	commands := u.commands
 	if len(commands) != 8 {
 		t.Fatalf("commands = %#v; want VitePlus create, sv add, Storybook, VitePlus install, Playwright, go mod tidy, go generate, initial VitePlus build", commands)
+	}
+	if got := strings.Join(commands[4].Args, " "); got != "--dir web exec playwright install chromium" {
+		t.Fatalf("the mandatory component tests need Chromium; command 5 = %q", got)
 	}
 	if got := commands[0].Args[1]; got != "svelte@1.0.0-next.7" {
 		t.Fatalf("VitePlus template = %q", got)
@@ -232,6 +248,9 @@ func TestCreatePassesExplicitChoicesThroughAndAppliesNothingTwice(t *testing.T) 
 			t.Errorf("Storybook was installed again over the developer's selection: %#v", c)
 		}
 	}
+	if browserInstalls(u.commands) != 0 {
+		t.Errorf("unit-only Vitest has no Playwright dependency, yet a browser install was asked for: %#v", u.commands)
+	}
 	if _, err := os.Stat(filepath.Join(dir, "web", "src", "routes", "example.remote.go")); err != nil {
 		t.Errorf("the example's Go remote functions: %v", err)
 	}
@@ -241,6 +260,43 @@ func TestCreatePassesExplicitChoicesThroughAndAppliesNothingTwice(t *testing.T) 
 	}
 	if pkg.DevDependencies["tailwindcss"] != "^4.3.0" {
 		t.Errorf("the developer's tailwindcss selection did not survive: %#v", pkg.DevDependencies)
+	}
+}
+
+func browserInstalls(commands []command) int {
+	n := 0
+	for _, c := range commands {
+		if c.Name == "pnpm" && slices.Contains(c.Args, "playwright") {
+			n++
+		}
+	}
+	return n
+}
+
+// A developer who chose component testing got Playwright from sv, and its
+// browser still has to be installed although Vitest is not applied again.
+func TestCreateInstallsChromiumForAChosenComponentVitest(t *testing.T) {
+	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
+	u := &upstream{
+		t: t,
+		created: map[string]string{
+			"src/lib/vitest-examples/greet.spec.ts": "test",
+			"node_modules/.bin/vitest":              "",
+			"node_modules/.bin/playwright":          "",
+		},
+		devDeps: map[string]string{"vitest": "^4.1.8", "@vitest/browser-playwright": "^4.1.8", "playwright": "^1.60.0"},
+		scripts: map[string]string{"test:unit": "vitest"},
+	}
+	o := u.options(filepath.Join(t.TempDir(), "component"), registry)
+	o.SvArgs = []string{"--add", "vitest=usages:unit,component"}
+	if _, err := Create(o); err != nil {
+		t.Fatal(err)
+	}
+	if add := strings.Join(u.commands[1].Args, " "); strings.Contains(add, "vitest") {
+		t.Errorf("Vitest was applied again over the developer's selection: %s", add)
+	}
+	if browserInstalls(u.commands) != 1 {
+		t.Errorf("component Vitest needs Chromium installed exactly once: %#v", u.commands)
 	}
 }
 
