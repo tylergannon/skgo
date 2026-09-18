@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   qualification:
-    name: Fresh application and example BDD
+    name: Example BDD
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -17,10 +17,8 @@ jobs:
       ORIGIN: http://127.0.0.1:8080
       SKGO_PORT: "8080"
       SKGO_DEV_PORT: "5173"
-      SKGO_QUALIFICATION_ARTIFACTS: ${{ github.workspace }}/qualification-artifacts
       # The full suite still asserts every scenario. Release evidence is a
-      # deliberately small visual sample: two example frames plus the fresh
-      # generated application's eight prod/dev outcome frames.
+      # deliberately small visual sample of two example frames.
       SKGO_E2E_SCREENSHOTS: curated
 
     steps:
@@ -56,12 +54,6 @@ jobs:
           just build
           just vet
           just test
-
-      # This publishes the checkout to an isolated Go module proxy, packs the
-      # candidate adapter, generates a new application, and lets that generated
-      # application's own BDD contract drive fresh prod and dev processes.
-      - name: A fresh generated application works in prod and dev
-        run: go test -tags=qualification -count=1 -timeout=30m -v ./internal/newapp -run '^TestGeneratedProjectBrowserContract$'
 
       - name: Example BDD against the production build
         id: example_prod
@@ -118,7 +110,7 @@ jobs:
           pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
           [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
 
-      - name: Preserve ten inspectable release frames
+      - name: Preserve inspectable release frames
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -126,7 +118,5 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           path: |
-            qualification-artifacts/generated/screenshots/prod/*.png
-            qualification-artifacts/generated/screenshots/dev/*.png
             ephemeral/screenshots/zz-source-update/prod/*-built-unchanged.png
             ephemeral/screenshots/zz-source-update/dev/*-hot-updated.png

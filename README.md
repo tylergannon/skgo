@@ -12,46 +12,6 @@ SSR bundle in an embedded JavaScript engine—there is no Node process or sideca
 > repository. The [example app](example/) is the compatibility contract and the
 > best tour of what currently works.
 
-## Start an app
-
-The default scaffold uses Go and [mise](https://mise.jdx.dev/); mise installs
-the pinned Node and Vite+ versions used for the frontend build.
-
-```sh
-go run github.com/tylergannon/skgo/cmd/skgo@latest new hello
-cd hello
-mise trust
-mise run build
-./bin/hello
-```
-
-Open <http://127.0.0.1:8080>. The generated project is small on purpose: an
-ordinary SvelteKit app in `web/`, Go beside the routes that use it, and a Go
-binary in `cmd/`.
-
-For development, build once and run two terminals:
-
-```sh
-mise run dev:web   # Vite+
-mise run dev:go    # Go, proxying pages to Vite+
-```
-
-Go still answers remote functions in dev. Production serves the built frontend
-and renders pages entirely inside the Go process.
-
-`mise` is the default build entry point for compatibility, not a requirement of
-skgo. Choose the style you want when generating the app:
-
-```sh
-skgo new --build-tool=mise hello      # mise.toml; Node and Vite+ are pinned for you
-skgo new --build-tool=just hello      # Justfile; bring Node 24, pnpm 11, and just
-skgo new --build-tool=scripts hello   # scripts/*.sh; bring Node 24 and pnpm 11
-```
-
-Each choice exposes the same build and two-process development workflow. The
-generated README gives the exact commands for the selected style; only that
-style's files are written.
-
 ## The model
 
 | What you write | Where it lives | What happens |
@@ -114,12 +74,8 @@ Use it exactly as a SvelteKit developer expects:
 <button onclick={() => addTodo('ship it').updates(todos())}>Add</button>
 ```
 
-Run the generated project's build gesture (`mise run build`, `just build`, or
-`./scripts/build.sh`, according to `--build-tool`):
-
-```sh
-mise run build
-```
+Run `skgo generate` from the bindings package, with `--web` pointing to the
+SvelteKit application.
 
 `skgo generate` discovers the marked Go functions, projects their Go types to
 TypeScript, writes strict codecs for the Kit wire format, and registers the Go
@@ -164,10 +120,9 @@ the example because its binary intentionally embeds the frontend output.
 ## Deploy
 
 The browser origin is part of a Kit build and skgo checks it on non-GET remote
-calls. A generated project writes the origin once in its selected build file;
-change `ORIGIN` there and rebuild the complete binary. The listen address and
-public origin may differ behind a reverse proxy, so do not infer one from the
-other.
+calls. Configure the frontend build and Go server with the same public origin,
+and rebuild the complete binary when it changes. The listen address and public
+origin may differ behind a reverse proxy, so do not infer one from the other.
 
 The result is a normal Go executable. Copy it to the target, run it, and put
 your usual TLS proxy or load balancer in front of it. Node is a build-time

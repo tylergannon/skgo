@@ -1,6 +1,6 @@
 ---
 name: skgo
-description: Build and maintain SvelteKit 3 applications served by Go with skgo. Use for project setup, Go remote functions, server loads, route handlers, server composition, generation, development, and deployment. Do not use for ordinary SvelteKit apps whose server runs in JavaScript.
+description: Build and maintain SvelteKit 3 applications served by Go with skgo. Use for Go remote functions, server loads, route handlers, server composition, generation, development, and deployment. Do not use for ordinary SvelteKit apps whose server runs in JavaScript.
 ---
 
 # skgo
@@ -16,18 +16,6 @@ working route before changing it. Check the exact skgo and
 SvelteKit versions in `go.mod` and `web/package.json`; pre-1.0 skgo follows a
 pinned SvelteKit 3 prerelease, so do not substitute behavior remembered from
 Kit 2 or a different Kit 3 build.
-
-For a new application, prefer the generator:
-
-```sh
-go run github.com/tylergannon/skgo/cmd/skgo@latest new myapp
-cd myapp
-mise trust
-mise run build
-```
-
-Use `--build-tool=just` or `--build-tool=scripts` when the application should
-not depend on mise. Follow the generated README for the selected commands.
 
 ## Keep the ownership boundary clear
 
