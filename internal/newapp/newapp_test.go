@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -42,6 +43,7 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 		Starter:     "examples",
 		SkgoVersion: "v0.4.1",
 		SkgoReplace: t.TempDir(),
+		SVAddonSpec: "file:/candidate/sv",
 		AdapterSpec: "file:/candidate/adapter",
 		RegistryURL: registry.URL,
 		Client:      registry.Client(),
@@ -54,17 +56,30 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 	if result.Starter != "examples" || !strings.Contains(result.Instructions(), "just dev") {
 		t.Fatalf("result = %+v; instructions = %q", result, result.Instructions())
 	}
-	if len(commands) != 4 {
-		t.Fatalf("commands = %#v; want VitePlus, Playwright, go mod tidy, go generate", commands)
+	if len(commands) != 6 {
+		t.Fatalf("commands = %#v; want VitePlus create, Storybook, VitePlus install, Playwright, go mod tidy, go generate", commands)
 	}
 	if got := commands[0].Args[1]; got != "svelte@1.0.0-next.7" {
 		t.Fatalf("VitePlus template = %q", got)
 	}
+	separator := slices.Index(commands[0].Args, "--")
+	if separator < 0 || commands[0].Args[separator+1] != "web" {
+		t.Fatalf("sv target must precede variadic --add: %#v", commands[0].Args)
+	}
 	joined := strings.Join(commands[0].Args, " ")
-	for _, want := range []string{"--template minimal", "vitest=usages:unit,component", "storybook", "starter:examples", "adapter:file%3A%2Fcandidate%2Fadapter"} {
+	for _, want := range []string{"--template minimal", "vitest=usages:unit,component", "file:/candidate/sv=starter:examples", "adapter:file%3A%2Fcandidate%2Fadapter"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("VitePlus args do not contain %q:\n%s", want, joined)
 		}
+	}
+	if got := strings.Join(commands[1].Args, " "); !strings.Contains(got, "dlx --allow-build esbuild create-storybook@latest") {
+		t.Fatalf("Storybook did not use its upstream installer with pnpm approval: %s", got)
+	}
+	if filepath.Base(commands[1].Dir) != "web" {
+		t.Fatalf("Storybook installer ran outside the generated frontend: %s", commands[1].Dir)
+	}
+	if commands[2].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[2].Dir) != "web" || commands[2].Args[0] != "install" {
+		t.Fatalf("Storybook dependencies were not installed by local VitePlus: %#v", commands[2])
 	}
 	for _, name := range []string{"go.mod", "server.go", "cmd/main.go", "internal/skgo/config.go", "web/dist.go", "web/src/routes/example.remote.go"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
@@ -90,7 +105,7 @@ func TestCreateRefusesSwallowedStorybookFailure(t *testing.T) {
 		return nil
 	}
 	_, err := Create(Options{
-		Dir: dir, Starter: "minimal", SkgoVersion: "v0.4.1", AdapterSpec: "file:/candidate/adapter",
+		Dir: dir, Starter: "minimal", SkgoVersion: "v0.4.1", SVAddonSpec: "file:/candidate/sv", AdapterSpec: "file:/candidate/adapter",
 		RegistryURL: registry.URL, Client: registry.Client(), VP: "vp-test", run: runner,
 	})
 	if err == nil || !strings.Contains(err.Error(), "Storybook") {
@@ -105,12 +120,43 @@ func TestCreateReportsVitePlusCancellation(t *testing.T) {
 	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
 	dir := filepath.Join(t.TempDir(), "cancelled")
 	_, err := Create(Options{
-		Dir: dir, SkgoVersion: "v0.4.1", AdapterSpec: "file:/candidate/adapter",
+		Dir: dir, SkgoVersion: "v0.4.1", SVAddonSpec: "file:/candidate/sv", AdapterSpec: "file:/candidate/adapter",
 		RegistryURL: registry.URL, Client: registry.Client(), VP: "vp-test",
 		run: func(command) error { return errors.New("cancelled") },
 	})
 	if err == nil || !strings.Contains(err.Error(), "VitePlus project creation failed") {
 		t.Fatalf("Create error = %v", err)
+	}
+}
+
+func TestResolveSelectsExactIndependentCompatiblePackageVersions(t *testing.T) {
+	registry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		switch r.URL.Path {
+		case "/sv":
+			fmt.Fprint(w, `{"versions":{"1.0.0-next.7":{},"2.0.0":{}}}`)
+		case "/@skgo/sv":
+			fmt.Fprint(w, `{"versions":{"0.3.0":{},"0.4.0":{},"0.5.0":{}}}`)
+		case "/@skgo/sveltekit-adapter":
+			fmt.Fprint(w, `{"versions":{"0.3.7":{},"0.4.2":{},"0.5.0":{}}}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(registry.Close)
+
+	p, err := resolve(Options{
+		Dir: filepath.Join(t.TempDir(), "paired"), SkgoVersion: "v0.4.1",
+		RegistryURL: registry.URL, Client: registry.Client(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.SVAddonSpec != "@skgo/sv@0.4.0" {
+		t.Errorf("add-on = %q; want exact newest compatible @skgo/sv version", p.SVAddonSpec)
+	}
+	if p.AdapterDependency != "0.3.7" {
+		t.Errorf("adapter option = %q; want its independently selected exact compatible version", p.AdapterDependency)
 	}
 }
 

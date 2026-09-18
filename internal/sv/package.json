@@ -1,0 +1,39 @@
+{
+	"name": "@skgo/sv",
+	"version": "0.0.0-dev",
+	"description": "Native Svelte CLI add-on for skgo projects",
+	"keywords": [
+		"addon",
+		"go",
+		"golang",
+		"skgo",
+		"sv",
+		"svelte",
+		"sveltekit"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/tylergannon/skgo.git",
+		"directory": "internal/sv"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/tylergannon/skgo",
+	"type": "module",
+	"scripts": {
+		"build": "tsdown sv-addon.source.js --format esm --platform node --external sv --out-dir dist --no-clean --target node22 --no-dts --minify && mv dist/sv-addon.source.mjs sv-addon.js && rmdir dist"
+	},
+	"exports": {
+		".": "./sv-addon.js",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"sv-addon.js"
+	],
+	"peerDependencies": {
+		"sv": "^1.0.0-0"
+	},
+	"devDependencies": {
+		"@sveltejs/sv-utils": "1.0.0-next.4",
+		"tsdown": "0.17.2"
+	}
+}

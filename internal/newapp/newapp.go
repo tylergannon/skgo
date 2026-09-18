@@ -1,9 +1,9 @@
 // Package newapp orchestrates upstream project creation and adds skgo's Go half.
 //
 // SvelteKit project files are created by VitePlus through sv. Frontend
-// integration is owned by the native sv add-on shipped in the skgo adapter
-// package. This package deliberately owns only orchestration and Go-specific
-// project files.
+// integration is owned by the separately published native @skgo/sv add-on.
+// This package deliberately owns only orchestration and Go-specific project
+// files.
 package newapp
 
 import (
@@ -34,6 +34,7 @@ import (
 const (
 	skgoModule      = "github.com/tylergannon/skgo"
 	adapterPackage  = "@skgo/sveltekit-adapter"
+	svAddonPackage  = "@skgo/sv"
 	defaultRegistry = "https://registry.npmjs.org"
 	defaultOrigin   = "http://127.0.0.1:8080"
 )
@@ -52,8 +53,11 @@ type Options struct {
 	Starter     string
 	SkgoVersion string
 
-	// AdapterSpec overrides registry selection. It is primarily useful when
-	// qualifying a checkout with file:/path/to/internal/adapter.
+	// SVAddonSpec overrides registry selection for the add-on. It is primarily
+	// useful when qualifying a checkout with file:/path/to/internal/sv.
+	SVAddonSpec string
+	// AdapterSpec independently overrides registry selection for the runtime
+	// adapter the add-on installs.
 	AdapterSpec string
 	// SkgoReplace adds a local replace directive to the generated go.mod. It is
 	// useful when qualifying a checkout; released generators leave it empty.
@@ -99,7 +103,7 @@ type project struct {
 	GoVersion         string
 	BindingsImport    string
 	Examples          bool
-	AdapterAddon      string
+	SVAddonSpec       string
 	AdapterDependency string
 	SVVersion         string
 }
@@ -120,7 +124,7 @@ func Create(options Options) (Result, error) {
 		run = realRunner(options.Stdout, options.Stderr)
 	}
 
-	addonArg := p.AdapterAddon + "=starter:" + url.PathEscape(p.Starter) +
+	addonArg := p.SVAddonSpec + "=starter:" + url.PathEscape(p.Starter) +
 		"+adapter:" + url.QueryEscape(p.AdapterDependency) +
 		"+name:" + url.QueryEscape(p.App)
 	vp := options.VP
@@ -134,15 +138,31 @@ func Create(options Options) (Result, error) {
 			"create", "svelte@" + p.SVVersion,
 			"--no-interactive", "--no-git", "--no-agent", "--no-editor", "--no-hooks",
 			"--approve-builds", "--package-manager", "pnpm", "--",
-			"--template", "minimal", "--types", "ts", "--add",
-			"vitest=usages:unit,component", "storybook", addonArg, "web",
+			"web", "--template", "minimal", "--types", "ts", "--add",
+			"vitest=usages:unit,component", addonArg, "--no-download-check",
 		},
-		// pnpm 12 otherwise refuses esbuild's install script inside the nested
-		// create-storybook invocation before VitePlus can approve project builds.
-		Env: append(os.Environ(), "PNPM_DANGEROUSLY_ALLOW_ALL_BUILDS=true", "CI=1"),
+		Env: append(os.Environ(), "CI=1"),
 	}
 	if err := run(create); err != nil {
 		return Result{}, fmt.Errorf("skgo: VitePlus project creation failed: %w", err)
+	}
+	if err := run(command{
+		Dir: filepath.Join(p.Dir, "web"), Name: "pnpm",
+		Args: []string{"dlx", "--allow-build", "esbuild", "create-storybook@latest", "--package-manager", "pnpm", "--skip-install", "--no-dev", "--no-features", "--yes", "--disable-telemetry"},
+		// create-storybook falls back to `npm config get registry` when its
+		// framework package is not installed yet. VitePlus correctly declares
+		// pnpm in devEngines, so npm rejects even that read-only lookup unless
+		// its documented force setting downgrades the package-manager mismatch.
+		// The installer itself remains explicitly pinned to pnpm above.
+		Env: append(os.Environ(), "CI=1", "npm_config_force=true"),
+	}); err != nil {
+		return Result{}, fmt.Errorf("skgo: Storybook's upstream installer failed: %w", err)
+	}
+	if err := run(command{
+		Dir: filepath.Join(p.Dir, "web"), Name: filepath.Join("node_modules", ".bin", "vp"),
+		Args: []string{"install"}, Env: os.Environ(),
+	}); err != nil {
+		return Result{}, fmt.Errorf("skgo: VitePlus could not install Storybook's dependencies: %w", err)
 	}
 	if err := verifyFrontend(p.Dir); err != nil {
 		return Result{}, fmt.Errorf("skgo: upstream frontend setup was incomplete: %w", err)
@@ -259,18 +279,24 @@ func resolve(o Options) (project, error) {
 	if err != nil {
 		return project{}, fmt.Errorf("skgo: selecting sv 1.x: %w", err)
 	}
+	max := strings.TrimPrefix(p.SkgoVersion, "v")
+	compatible := func(v string) bool { return semver.Compare("v"+v, "v"+max) <= 0 }
+	if o.SVAddonSpec != "" {
+		p.SVAddonSpec = o.SVAddonSpec
+	} else {
+		addonVersion, err := highestVersion(client, registry, svAddonPackage, compatible)
+		if err != nil {
+			return project{}, fmt.Errorf("skgo: selecting the sv add-on for %s: %w", p.SkgoVersion, err)
+		}
+		p.SVAddonSpec = svAddonPackage + "@" + addonVersion
+	}
 	if o.AdapterSpec != "" {
-		p.AdapterAddon = o.AdapterSpec
 		p.AdapterDependency = o.AdapterSpec
 	} else {
-		max := strings.TrimPrefix(p.SkgoVersion, "v")
-		adapterVersion, err := highestVersion(client, registry, adapterPackage, func(v string) bool {
-			return semver.Compare("v"+v, "v"+max) <= 0
-		})
+		adapterVersion, err := highestVersion(client, registry, adapterPackage, compatible)
 		if err != nil {
 			return project{}, fmt.Errorf("skgo: selecting the adapter for %s: %w", p.SkgoVersion, err)
 		}
-		p.AdapterAddon = adapterPackage + "@" + adapterVersion
 		p.AdapterDependency = adapterVersion
 	}
 	return p, nil

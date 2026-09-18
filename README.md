@@ -36,11 +36,14 @@ skgo new --starter minimal myapp
 # or: skgo new --starter examples myapp
 ```
 
-Both starting points include Storybook and Vitest through their upstream `sv`
-add-ons. `minimal` leaves SvelteKit's upstream minimal page in place;
-`examples` adds a focused Go-backed query and command. The generated
-instructions use `just dev`, `just storybook`, and `just test`. Production is a
-standalone Go binary; Node is not needed while it serves requests.
+`skgo new` resolves independent, exact compatible versions of the native
+`@skgo/sv` add-on and the runtime-only `@skgo/sveltekit-adapter`. Both starting
+points include Vitest through its upstream `sv` add-on and Storybook through
+the upstream `create-storybook` installer. `minimal` leaves SvelteKit's
+upstream minimal page in place; `examples` adds a focused Go-backed query and
+command. The generated instructions use `just dev`, `just storybook`, and
+`just test`. Production is a standalone Go binary; Node is not needed while it
+serves requests.
 
 ## Write a remote function
 

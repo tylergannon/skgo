@@ -85,7 +85,6 @@ export default defineAddon({
 	setup: ({ isKit, unsupported, runsAfter }) => {
 		if (!isKit) unsupported('Requires SvelteKit');
 		runsAfter('vitest');
-		runsAfter('storybook');
 	},
 	run: ({ sv, file, cwd, options }) => {
 		const adapterVersion = decodeURIComponent(options.adapter);
@@ -95,12 +94,24 @@ export default defineAddon({
 			file.package,
 			transforms.json(({ data }) => {
 				data.name = options.name;
+				// Vitest's upstream add-on writes `npm run`, but VitePlus records
+				// pnpm as the only valid package manager in devEngines.
+				data.scripts.test = 'pnpm run test:unit -- --run';
 				for (const dependency of Object.keys(data.devDependencies ?? {})) {
 					if (dependency.startsWith('@sveltejs/adapter-')) delete data.devDependencies[dependency];
 				}
 			})
 		);
 		sv.devDependency('@skgo/sveltekit-adapter', adapterVersion);
+		// VitePlus preserves this native pnpm project policy when it adds its
+		// catalog. It applies only to the generated project's installs; the
+		// separate Storybook dlx environment receives its own explicit flag.
+		sv.file('pnpm-workspace.yaml', (content) => {
+			if (content.trim()) {
+				throw new Error('skgo expected sv to create pnpm-workspace.yaml after add-ons run');
+			}
+			return 'allowBuilds:\n  esbuild: true\n';
+		});
 
 		svelteConfig.edit({ sv, cwd }, ({ ast, override, js }) => {
 			const adapterImport = ast.body
@@ -125,6 +136,7 @@ export default defineAddon({
 			override(
 				{
 					adapter: js.functions.createCall({ name: adapterName, args: [], useIdentifiers: true }),
+					compilerOptions: { experimental: { async: true } },
 					experimental: { remoteFunctions: true }
 				},
 				{ dropLeadingComments: ['adapter'] }

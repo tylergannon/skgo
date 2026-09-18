@@ -46,7 +46,7 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-  npm:
+  adapter-npm:
     name: Publish @skgo/sveltekit-adapter
     needs: version
     if: needs.version.outputs.version != ''
@@ -117,9 +117,72 @@ jobs:
         working-directory: internal/adapter
         run: npm publish --access public
 
+  sv-npm:
+    name: Publish @skgo/sv
+    needs: version
+    if: needs.version.outputs.version != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          registry-url: https://registry.npmjs.org
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+
+      - name: Install the add-on's build-only dependencies
+        working-directory: internal/sv
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and verify the published add-on
+        working-directory: internal/sv
+        run: pnpm run build
+
+      - name: The tarball is the self-contained native add-on
+        run: go test ./internal/sv/
+
+      # Both sparse npm packages use the Go release version whenever they
+      # change. `skgo new` can therefore select each independently as the
+      # newest exact version not newer than its own module version.
+      - name: Is the package any different from the published one?
+        id: changed
+        run: |
+          result=$(go run ./cmd/skgo-adapter-changed -dir internal/sv -package @skgo/sv)
+          case "$result" in
+            changed) echo "publish=true" >> "$GITHUB_OUTPUT" ;;
+            unchanged) echo "publish=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "skgo-adapter-changed answered '$result'"; exit 1 ;;
+          esac
+
+      - name: Stamp the tag's version
+        if: steps.changed.outputs.publish == 'true'
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          go run ./cmd/skgo-adapter-changed -dir internal/sv -package @skgo/sv -stamp "$RELEASE_VERSION"
+          echo "publishing @skgo/sv@${RELEASE_VERSION#v}"
+
+      - name: npm publish
+        if: steps.changed.outputs.publish == 'true'
+        working-directory: internal/sv
+        run: npm publish --access public
+
   tag:
     name: Tag the published, qualified commit
-    needs: [version, npm]
+    needs: [version, adapter-npm, sv-npm]
     if: needs.version.outputs.version != ''
     runs-on: ubuntu-latest
     permissions:

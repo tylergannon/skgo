@@ -1,6 +1,6 @@
-// Command skgo-adapter-changed reports whether the npm package this tree would
-// publish differs from the newest one already on the registry, so a release
-// whose adapter is byte-for-byte the last one publishes no new version of it.
+// Command skgo-adapter-changed reports whether an npm package in this tree
+// differs from the newest one already on the registry, so a release whose
+// package is byte-for-byte the last one publishes no new version of it.
 //
 // It prints "changed" or "unchanged", and lists the differences on stderr. The
 // published tarball comes straight from the registry and is checked against
@@ -37,14 +37,16 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/tylergannon/skgo/internal/adapter"
 )
 
-const registry = "https://registry.npmjs.org/"
+const (
+	registry       = "https://registry.npmjs.org/"
+	defaultPackage = "@skgo/sveltekit-adapter"
+)
 
 func main() {
 	dir := flag.String("dir", "internal/adapter", "the package root this tree would publish")
+	packageName := flag.String("package", defaultPackage, "the npm package name")
 	stamp := flag.String("stamp", "", "write this version into the package root's package.json instead")
 	flag.Parse()
 	if flag.NArg() != 0 {
@@ -57,7 +59,7 @@ func main() {
 		}
 		return
 	}
-	changed, err := run(*dir)
+	changed, err := run(*dir, *packageName)
 	if err != nil {
 		fail(err)
 	}
@@ -73,13 +75,13 @@ func fail(err error) {
 	os.Exit(1)
 }
 
-func run(dir string) (bool, error) {
-	latest, err := latestPublished()
+func run(dir, packageName string) (bool, error) {
+	latest, err := latestPublished(packageName)
 	if err != nil {
 		return false, err
 	}
 	if latest == nil {
-		fmt.Fprintf(os.Stderr, "%s has never been published\n", adapter.Package)
+		fmt.Fprintf(os.Stderr, "%s has never been published\n", packageName)
 		return true, nil
 	}
 	published, err := latest.files()
@@ -95,10 +97,10 @@ func run(dir string) (bool, error) {
 		return false, err
 	}
 	if len(differences) == 0 {
-		fmt.Fprintf(os.Stderr, "the package is identical to %s@%s\n", adapter.Package, latest.Version)
+		fmt.Fprintf(os.Stderr, "the package is identical to %s@%s\n", packageName, latest.Version)
 		return false, nil
 	}
-	fmt.Fprintf(os.Stderr, "the package differs from %s@%s:\n", adapter.Package, latest.Version)
+	fmt.Fprintf(os.Stderr, "the package differs from %s@%s:\n", packageName, latest.Version)
 	for _, d := range differences {
 		fmt.Fprintln(os.Stderr, "\t"+d)
 	}
@@ -118,8 +120,8 @@ var client = &http.Client{Timeout: time.Minute}
 // latestPublished is the registry's newest version of the package, or nil when
 // it has none. Any other failure is an error: a release that cannot tell
 // whether the package changed must not guess.
-func latestPublished() (*release, error) {
-	req, err := http.NewRequest(http.MethodGet, registry+strings.Replace(adapter.Package, "/", "%2f", 1), nil)
+func latestPublished(packageName string) (*release, error) {
+	req, err := http.NewRequest(http.MethodGet, registry+strings.Replace(packageName, "/", "%2f", 1), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -133,19 +135,19 @@ func latestPublished() (*release, error) {
 		return nil, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("the registry answered %s for %s", resp.Status, adapter.Package)
+		return nil, fmt.Errorf("the registry answered %s for %s", resp.Status, packageName)
 	}
 	var doc struct {
 		DistTags map[string]string  `json:"dist-tags"`
 		Versions map[string]release `json:"versions"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
-		return nil, fmt.Errorf("reading the registry's answer for %s: %w", adapter.Package, err)
+		return nil, fmt.Errorf("reading the registry's answer for %s: %w", packageName, err)
 	}
 	version := doc.DistTags["latest"]
 	r, ok := doc.Versions[version]
 	if version == "" || !ok || r.Dist.Tarball == "" {
-		return nil, fmt.Errorf("the registry names no latest tarball for %s", adapter.Package)
+		return nil, fmt.Errorf("the registry names no latest tarball for %s", packageName)
 	}
 	r.Version = version
 	return &r, nil
