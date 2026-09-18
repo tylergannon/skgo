@@ -75,7 +75,7 @@ func TestAddonKeepsTheGoEmbedPlaceholderTrackable(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !bytes.Contains(body, []byte("!/build/placeholder")) {
+		if !bytes.Contains(body, []byte("!/build/.gitkeep")) {
 			t.Errorf("%s does not preserve the generated Go embed placeholder", name)
 		}
 	}

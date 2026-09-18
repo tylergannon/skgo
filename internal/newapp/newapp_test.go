@@ -34,11 +34,6 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 		if c.Name == "vp-test" {
 			writeFrontendFixture(t, c.Dir, true)
 		}
-		if filepath.Base(c.Name) == "vp" && slices.Equal(c.Args, []string{"build"}) {
-			if err := os.Remove(filepath.Join(c.Dir, "build", "placeholder")); err != nil {
-				t.Fatal(err)
-			}
-		}
 		return nil
 	}
 
@@ -92,7 +87,7 @@ func TestCreateDelegatesFrontendAndWritesOnlyGoOwnedSetup(t *testing.T) {
 	if commands[6].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[6].Dir) != "web" || commands[6].Args[0] != "build" {
 		t.Fatalf("initial frontend build did not use generated project VitePlus: %#v", commands[6])
 	}
-	for _, name := range []string{"go.mod", "server.go", "cmd/main.go", "internal/skgo/config.go", "web/dist.go", "web/build/placeholder", "web/src/routes/example.remote.go"} {
+	for _, name := range []string{"go.mod", "server.go", "cmd/main.go", "internal/skgo/config.go", "web/dist.go", "web/build/.gitkeep", "web/src/routes/example.remote.go"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
 			t.Errorf("generated %s: %v", name, err)
 		}
@@ -219,6 +214,37 @@ func writeFrontendFixture(t *testing.T, root string, complete bool) {
 		}
 		if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
 			t.Fatal(err)
+		}
+	}
+}
+
+// The generated project's go:embed needs one tracked file in web/build. Three
+// parties must name the same file: the generator tracks it, the add-on exempts
+// it from sv's ignore rule, and the adapter restores it after clearing the
+// output tree. When they disagreed, the documented production build deleted a
+// tracked file and the next commit produced a clone that did not compile.
+func TestGeneratorAddonAndAdapterAgreeOnTheEmbedKeepFile(t *testing.T) {
+	const keep = ".gitkeep"
+	if _, err := goFiles.ReadFile("gofiles/web/build/dot-gitkeep"); err != nil {
+		t.Errorf("generator does not track web/build/%s: %v", keep, err)
+	}
+	entries, err := goFiles.ReadDir("gofiles/web/build")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("generator tracks %d files in web/build, want only %s", len(entries), keep)
+	}
+	for file, want := range map[string]string{
+		"../adapter/skgo-adapter.js": "write(`${out}/" + keep + "`, '')",
+		"../sv/sv-addon.source.js":   `\n/build/*\n!/build/` + keep + `\n`,
+	} {
+		body, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), want) {
+			t.Errorf("%s does not contain %q", file, want)
 		}
 	}
 }

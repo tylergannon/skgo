@@ -199,13 +199,6 @@ func Create(options Options) (Result, error) {
 	}); err != nil {
 		return Result{}, fmt.Errorf("skgo: creating the initial frontend build failed: %w", err)
 	}
-	// The adapter cleans web/build before writing its output. Restore the
-	// tracked file that keeps go:embed valid after generated output is ignored
-	// and a project is committed and cloned.
-	if err := os.WriteFile(filepath.Join(p.Dir, "web", "build", "placeholder"), []byte("\n"), 0o644); err != nil {
-		return Result{}, fmt.Errorf("skgo: restoring the embedded build placeholder: %w", err)
-	}
-
 	return Result{Dir: p.Dir, App: p.App, Origin: p.Origin, Starter: p.Starter}, nil
 }
 
@@ -512,8 +505,8 @@ func writeGoFiles(p project) error {
 		}
 		targetName := strings.TrimPrefix(name, "examples/")
 		targetName = strings.TrimSuffix(targetName, ".tmpl")
-		if path.Base(targetName) == "dot-gitignore" {
-			targetName = path.Join(path.Dir(targetName), ".gitignore")
+		if base, ok := strings.CutPrefix(path.Base(targetName), "dot-"); ok {
+			targetName = path.Join(path.Dir(targetName), "."+base)
 		}
 		target := filepath.Join(p.Dir, filepath.FromSlash(targetName))
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {

@@ -463,7 +463,7 @@ $&`).replace(/(?:^|\n)([\t ].*)(?:([\n\t ]*)\n(?![\n\t ]))?/g,`$1$2`).replace(/\
 /build
 `;if(!e.includes(t))throw Error(`skgo expected sv to ignore the SvelteKit build directory`);return e.replace(t,`
 /build/*
-!/build/placeholder
+!/build/.gitkeep
 `)}),gx.edit({sv:e,cwd:n},({ast:e,override:t,js:n})=>{let r=e.body.filter(e=>e.type===`ImportDeclaration`).find(e=>typeof e.source.value==`string`&&e.source.value.startsWith(`@sveltejs/adapter-`)&&e.importKind===`value`),i=`skgo`;if(r){r.source.value=`@skgo/sveltekit-adapter`,r.source.raw=void 0;let e=r.specifiers?.find(e=>e.type===`ImportDefaultSpecifier`);e&&(i=e.local.name)}else n.imports.addDefault(e,{from:`@skgo/sveltekit-adapter`,as:i});t({adapter:n.functions.createCall({name:i,args:[],useIdentifiers:!0}),compilerOptions:{experimental:{async:!0}},experimental:{remoteFunctions:!0}},{dropLeadingComments:[`adapter`]})}),r.starter===`examples`&&e.file(`src/routes/+page.svelte`,()=>`<script lang="ts">
 	import { record, status } from './example.remote';
 

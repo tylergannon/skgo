@@ -121,7 +121,7 @@ export default defineAddon({
 			if (!content.includes(outputRule)) {
 				throw new Error('skgo expected sv to ignore the SvelteKit build directory');
 			}
-			return content.replace(outputRule, '\n/build/*\n!/build/placeholder\n');
+			return content.replace(outputRule, '\n/build/*\n!/build/.gitkeep\n');
 		});
 
 		svelteConfig.edit({ sv, cwd }, ({ ast, override, js }) => {

@@ -22,7 +22,22 @@ The first `@skgo/sv` release is a manual bootstrap. Do not publish the checked-i
 `0.0.0-dev` manifest and do not let the release workflow attempt to create the
 package for the first time.
 
-From the repository root, after choosing the real skgo release tag as
+Publish before merging, from the candidate branch that introduces this
+package. The release workflow runs on every push to `main`, refuses to create
+`@skgo/sv` for the first time, and cuts no Go tag until the package exists, so
+merging first leaves `main` with a failed release and a `skgo new` that cannot
+select its add-on.
+
+The version to publish is the exact one the pending merge will release, not
+the latest existing tag: an add-on stamped with an older skgo version claims
+compatibility with a release that predates it. The workflow derives that
+version from the squash commit's Conventional Commit subject — the PR title —
+applied to the latest `v*` tag (`fix` is a patch, `feat` a minor), so settle the
+PR title first and do not change it, or let another release land, between
+publishing and merging. If either happens, publish again at the new version
+before merging.
+
+From the root of the candidate branch's checkout, with that version as
 `vX.Y.Z`:
 
 ```sh
@@ -39,8 +54,9 @@ package contract tested by `internal/sv/package_test.go`. Then publish that
 exact tarball manually with `npm publish <tarball> --access public`.
 
 Only after the manual publication succeeds, configure and verify npm trusted
-publishing for `.github/workflows/release.yml`. Subsequent releases may use the
-workflow. This ordering makes the first published version participate in
+publishing for `.github/workflows/release.yml`, and only then merge the
+candidate branch. That merge and subsequent releases use the workflow. This
+ordering makes the first published version participate in
 `skgo new`'s exact, not-newer-than-skgo package pairing instead of leaving
 `0.0.0-dev` as the selectable package.
 
