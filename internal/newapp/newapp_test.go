@@ -144,6 +144,9 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if got := strings.Join(commands[4].Args, " "); got != "--dir web exec playwright install chromium" {
 		t.Fatalf("the mandatory component tests need Chromium; command 5 = %q", got)
 	}
+	if readme := readFile(t, filepath.Join(dir, "README.md")); !strings.Contains(readme, "pnpm --dir web exec playwright install chromium") {
+		t.Errorf("the README does not tell a fresh clone how to get the component tests' browser:\n%s", readme)
+	}
 	if got := commands[0].Args[1]; got != "svelte@1.0.0-next.7" {
 		t.Fatalf("VitePlus template = %q", got)
 	}
@@ -247,6 +250,10 @@ func TestCreatePassesExplicitChoicesThroughAndAppliesNothingTwice(t *testing.T) 
 		if slices.Contains(c.Args, "create-storybook") {
 			t.Errorf("Storybook was installed again over the developer's selection: %#v", c)
 		}
+	}
+	readme := readFile(t, filepath.Join(dir, "README.md"))
+	if !strings.Contains(readme, "installed the frontend dependencies") || strings.Contains(strings.ToLower(readme), "chromium") {
+		t.Errorf("a unit-only project's README must describe the install without a browser:\n%s", readme)
 	}
 	if browserInstalls(u.commands) != 0 {
 		t.Errorf("unit-only Vitest has no Playwright dependency, yet a browser install was asked for: %#v", u.commands)
@@ -671,4 +678,13 @@ func writeTarball(t *testing.T, name string, files map[string]string) {
 	if err := os.WriteFile(name, buffer.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func readFile(t *testing.T, name string) string {
+	t.Helper()
+	raw, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
 }

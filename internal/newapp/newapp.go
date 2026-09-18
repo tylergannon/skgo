@@ -114,6 +114,7 @@ type project struct {
 	GoVersion         string
 	BindingsImport    string
 	Examples          bool
+	ComponentTests    bool // the chosen Vitest setup drives a browser
 	SVAddonSpec       string
 	AdapterDependency string
 	SVVersion         string
@@ -246,7 +247,8 @@ func finish(p project, run func(command) error) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if pkg.DevDependencies["playwright"] != "" {
+	p.ComponentTests = pkg.DevDependencies["playwright"] != ""
+	if p.ComponentTests {
 		if err := run(command{Dir: p.Dir, Name: "pnpm", Args: []string{"--dir", "web", "exec", "playwright", "install", "chromium"}, Env: os.Environ()}); err != nil {
 			return Result{}, fmt.Errorf("skgo: installing the browser required by Vitest failed: %w", err)
 		}
