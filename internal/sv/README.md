@@ -2,11 +2,13 @@
 
 The native Svelte CLI add-on used by `skgo new`.
 
-VitePlus delegates SvelteKit project creation to `sv`, which runs this add-on.
-The add-on is the sole owner of skgo's frontend integration: it installs the
+VitePlus delegates SvelteKit project creation to `sv`, where the developer
+makes `sv`'s own choices; `skgo new` then has `sv add` run this add-on on the
+result. The add-on is the sole owner of skgo's frontend integration: it installs the
 exact `@skgo/sveltekit-adapter` version selected by the Go command, configures
-SvelteKit remote functions, and applies the chosen `minimal` or `examples`
-starting point. Vitest and Storybook still come through their own upstream
+SvelteKit remote functions, and applies the `minimal` or `examples` starting
+point. `examples` replaces `sv`'s demo template, a JavaScript server
+application, and keeps what other add-ons put in its layout. Vitest and Storybook still come through their own upstream
 setup paths.
 
 The published add-on bundles its build-only `@sveltejs/sv-utils` code. Normal

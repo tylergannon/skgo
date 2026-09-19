@@ -1,5 +1,7 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { defineAddon, defineAddonOptions } from 'sv';
-import { svelteConfig, transforms } from '@sveltejs/sv-utils';
+import { pnpm, svelteConfig, transforms } from '@sveltejs/sv-utils';
 
 const options = defineAddonOptions()
 	.add('starter', {
@@ -23,14 +25,14 @@ const options = defineAddonOptions()
 	})
 	.build();
 
-const examplesPage = `<script lang="ts">
+const examplesPage = (ts) => `<script${ts ? ' lang="ts"' : ''}>
 	import { record, status } from './example.remote';
 
 	let name = $state('Svelte developer');
 	let saving = $state(false);
 	let greeting = $state('');
 
-	async function submit(event: SubmitEvent) {
+	async function submit(event${ts ? ': SubmitEvent' : ''}) {
 		event.preventDefault();
 		if (saving) return;
 		saving = true;
@@ -53,7 +55,7 @@ const examplesPage = `<script lang="ts">
 		<p data-testid="go-message">{current.message}</p>
 		<p>Writes handled by Go: <strong data-testid="write-count">{current.writes}</strong></p>
 		{#if greeting}<p data-testid="go-greeting">{greeting}</p>{/if}
-		{#snippet failed(error)}<p class="error">{(error as Error).message}</p>{/snippet}
+		{#snippet failed(error)}<p class="error">{${ts ? '(error as Error)' : 'error'}.message}</p>{/snippet}
 	</svelte:boundary>
 	<form onsubmit={submit}>
 		<label for="name">Who should Go greet?</label>
@@ -80,6 +82,20 @@ const examplesPage = `<script lang="ts">
 </style>
 `;
 
+// Everything sv's demo template puts on top of the minimal one. The demo is a
+// JavaScript server application (Sverdle's form actions and cookies); the skgo
+// examples starting point replaces it rather than shipping routes Go cannot answer.
+const demoPaths = [
+	'src/routes/sverdle',
+	'src/routes/about',
+	'src/routes/Header.svelte',
+	'src/routes/Counter.svelte',
+	'src/routes/+page.js',
+	'src/routes/+page.ts',
+	'src/lib/images'
+];
+const demoDependencies = ['@fontsource/fira-mono', '@neoconfetti/svelte'];
+
 export default defineAddon({
 	id: 'skgo',
 	shortDescription: 'Go application server integration',
@@ -89,7 +105,7 @@ export default defineAddon({
 		if (!isKit) unsupported('Requires SvelteKit');
 		runsAfter('vitest');
 	},
-	run: ({ sv, file, cwd, options }) => {
+	run: ({ sv, file, cwd, options, language }) => {
 		const adapterVersion = decodeURIComponent(options.adapter);
 		const applicationName = decodeURIComponent(options.name);
 		if (!adapterVersion) throw new Error('skgo requires an explicit adapter version');
@@ -100,9 +116,12 @@ export default defineAddon({
 				data.name = applicationName;
 				// Vitest's upstream add-on writes `npm run`, but VitePlus records
 				// pnpm as the only valid package manager in devEngines.
-				data.scripts.test = 'pnpm run test:unit -- --run';
+				data.scripts.test = 'pnpm run test:unit --run';
 				for (const dependency of Object.keys(data.devDependencies ?? {})) {
 					if (dependency.startsWith('@sveltejs/adapter-')) delete data.devDependencies[dependency];
+					if (options.starter === 'examples' && demoDependencies.includes(dependency)) {
+						delete data.devDependencies[dependency];
+					}
 				}
 			})
 		);
@@ -110,14 +129,10 @@ export default defineAddon({
 		// VitePlus preserves this native pnpm project policy when it adds its
 		// catalog. It applies only to the generated project's installs; the
 		// separate Storybook dlx environment receives its own explicit flag.
-		sv.file('pnpm-workspace.yaml', (content) => {
-			if (content.trim()) {
-				throw new Error('skgo expected sv to create pnpm-workspace.yaml after add-ons run');
-			}
-			return 'allowBuilds:\n  esbuild: true\n';
-		});
+		sv.file('pnpm-workspace.yaml', pnpm.allowBuilds('esbuild'));
 		sv.file('.gitignore', (content) => {
 			const outputRule = '\n/build\n';
+			if (content.includes('!/build/.gitkeep')) return false;
 			if (!content.includes(outputRule)) {
 				throw new Error('skgo expected sv to ignore the SvelteKit build directory');
 			}
@@ -155,7 +170,30 @@ export default defineAddon({
 		});
 
 		if (options.starter === 'examples') {
-			sv.file('src/routes/+page.svelte', () => examplesPage);
+			if (fs.existsSync(path.resolve(cwd, 'src/routes/Header.svelte'))) {
+				// The demo's layout and stylesheet are also where other add-ons put
+				// theirs (Tailwind's import), so they are reduced, not removed.
+				let stylesheet = false;
+				sv.file('src/routes/layout.css', (content) => {
+					const kept = content
+						.split('\n')
+						.filter((line) => /^@(import|plugin)\s+['"](tailwindcss|@tailwindcss\/)/.test(line));
+					stylesheet = kept.length > 0;
+					return stylesheet ? kept.join('\n') + '\n' : false;
+				});
+				if (!stylesheet) fs.rmSync(path.resolve(cwd, 'src/routes/layout.css'), { force: true });
+				sv.file(
+					'src/routes/+layout.svelte',
+					() =>
+						`<script${language === 'ts' ? ' lang="ts"' : ''}>\n` +
+						(stylesheet ? "\timport './layout.css';\n\n" : '') +
+						'\tlet { children } = $props();\n</script>\n\n{@render children()}\n'
+				);
+			}
+			for (const demoPath of demoPaths) {
+				fs.rmSync(path.resolve(cwd, demoPath), { recursive: true, force: true });
+			}
+			sv.file('src/routes/+page.svelte', () => examplesPage(language === 'ts'));
 		}
 	},
 	nextSteps: () => []

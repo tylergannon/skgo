@@ -1,6 +1,7 @@
 // Command skgo is the tooling for a SvelteKit app served by Go.
 //
-//	skgo new --starter examples myapp
+//	skgo new myapp
+//	skgo new myapp -- --template demo --types jsdoc --add tailwindcss=plugins:none
 //	skgo generate --web ../web
 //
 // generates the glue between the two. Run it from the generated bindings
@@ -18,12 +19,15 @@ import (
 	"fmt"
 	"os"
 
+	"golang.org/x/term"
+
 	"github.com/tylergannon/skgo/internal/gen"
 	"github.com/tylergannon/skgo/internal/newapp"
 )
 
 const usage = `usage:
-	skgo new [flags] DIR      create a SvelteKit application served by Go
+	skgo new [flags] DIR [-- SV_CREATE_OPTIONS]
+	                          create a SvelteKit application served by Go
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
 `
 
@@ -48,24 +52,35 @@ func newProject(args []string) {
 	module := fs.String("module", "", "Go module path; defaults to the project name")
 	name := fs.String("name", "", "application name; defaults to the target directory name")
 	origin := fs.String("origin", "http://127.0.0.1:8080", "public browser origin")
-	starter := fs.String("starter", "minimal", "starting point: minimal or examples")
 	version := fs.String("skgo-version", "", "skgo module version; defaults to this command's release")
 	svAddon := fs.String("sv-addon", "", "sv add-on package spec; a file: directory is packed into an isolated copy, for checkout qualification")
 	adapter := fs.String("adapter", "", "runtime adapter package spec; intended for checkout qualification")
 	replace := fs.String("skgo-replace", "", "local skgo module replacement; intended for checkout qualification")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: skgo new [flags] DIR")
+		fmt.Fprintln(os.Stderr, "usage: skgo new [flags] DIR [-- SV_CREATE_OPTIONS]")
 		fmt.Fprintln(os.Stderr, "\nVitePlus delegates the frontend to sv; skgo adds the Go application server.")
+		fmt.Fprintln(os.Stderr, "In a terminal sv asks its own questions. Options after -- are handed to")
+		fmt.Fprintln(os.Stderr, "`sv create` as written, for example:")
+		fmt.Fprintln(os.Stderr, "\n\tskgo new myapp -- --template demo --types jsdoc --add tailwindcss=plugins:none")
+		fmt.Fprintln(os.Stderr, "\nsv's demo template becomes the skgo remote-function example. Without a")
+		fmt.Fprintln(os.Stderr, "terminal, what is left open is the minimal TypeScript application.")
+		fmt.Fprintln(os.Stderr)
 		fs.PrintDefaults()
 	}
 	_ = fs.Parse(args)
-	if fs.NArg() != 1 {
+	if fs.NArg() < 1 || (fs.NArg() > 1 && fs.Arg(1) != "--") {
 		fs.Usage()
 		os.Exit(2)
 	}
+	var svArgs []string
+	if fs.NArg() > 1 {
+		svArgs = fs.Args()[2:]
+	}
+	// VitePlus applies the same rule to decide whether it may prompt.
+	interactive := os.Getenv("CI") == "" && term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 
 	result, err := newapp.Create(newapp.Options{
-		Dir: fs.Arg(0), Module: *module, App: *name, Origin: *origin, Starter: *starter,
+		Dir: fs.Arg(0), Module: *module, App: *name, Origin: *origin, SvArgs: svArgs, Interactive: interactive,
 		SkgoVersion: *version, SVAddonSpec: *svAddon, AdapterSpec: *adapter, SkgoReplace: *replace,
 		Stdout: os.Stdout, Stderr: os.Stderr,
 	})

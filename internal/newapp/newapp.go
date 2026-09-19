@@ -52,8 +52,15 @@ type Options struct {
 	Module      string
 	App         string
 	Origin      string
-	Starter     string
 	SkgoVersion string
+
+	// SvArgs are `sv create` options handed to sv through VitePlus unchanged.
+	// What they leave open sv asks about when Interactive, and is otherwise
+	// settled as the minimal TypeScript application with no optional add-ons.
+	SvArgs []string
+	// Interactive leaves VitePlus and sv attached to the terminal so sv asks its
+	// own template, type-checking and add-on questions.
+	Interactive bool
 
 	// SVAddonSpec overrides registry selection for the add-on. A file: spec
 	// qualifies a checkout such as file:/path/to/internal/sv; sv never sees that
@@ -107,6 +114,7 @@ type project struct {
 	GoVersion         string
 	BindingsImport    string
 	Examples          bool
+	ComponentTests    bool // the chosen Vitest setup drives a browser
 	SVAddonSpec       string
 	AdapterDependency string
 	SVVersion         string
@@ -125,6 +133,10 @@ func escapeAddonOption(value string) string {
 // Create asks VitePlus to create an sv project, verifies the required upstream
 // add-ons completed, then writes and initializes skgo's Go-specific files.
 func Create(options Options) (Result, error) {
+	svArgs, err := svCreateArgs(options.SvArgs, options.Interactive)
+	if err != nil {
+		return Result{}, err
+	}
 	p, err := resolve(options)
 	if err != nil {
 		return Result{}, err
@@ -145,27 +157,58 @@ func Create(options Options) (Result, error) {
 		p.SVAddonSpec = "file:" + staged
 	}
 
-	addonArg := p.SVAddonSpec + "=starter:" + escapeAddonOption(p.Starter) +
-		"+adapter:" + escapeAddonOption(p.AdapterDependency) +
-		"+name:" + escapeAddonOption(p.App)
 	vp := options.VP
 	if vp == "" {
 		vp = "vp"
 	}
-	create := command{
-		Dir:  p.Dir,
-		Name: vp,
-		Args: []string{
-			"create", "svelte@" + p.SVVersion,
-			"--no-interactive", "--no-git", "--no-agent", "--no-editor", "--no-hooks",
-			"--approve-builds", "--package-manager", "pnpm", "--",
-			"web", "--template", "minimal", "--types", "ts", "--add",
-			"vitest=usages:unit,component", addonArg, "--no-download-check",
-		},
-		Env: append(os.Environ(), "CI=1"),
+	// VitePlus's own questions are answered here; sv's are not. Without
+	// --no-interactive VitePlus leaves sv on the terminal, and sv asks about
+	// whatever svArgs does not already settle.
+	vpArgs := []string{"create", "svelte@" + p.SVVersion}
+	env := os.Environ()
+	if !options.Interactive {
+		vpArgs = append(vpArgs, "--no-interactive")
+		env = append(env, "CI=1")
 	}
-	if err := run(create); err != nil {
+	vpArgs = append(vpArgs, "--no-git", "--no-agent", "--no-editor", "--no-hooks",
+		"--approve-builds", "--package-manager", "pnpm", "--", "web")
+	if err := run(command{Dir: p.Dir, Name: vp, Args: append(vpArgs, svArgs...), Env: env}); err != nil {
 		return Result{}, fmt.Errorf("skgo: VitePlus project creation failed: %w", err)
+	}
+	web := filepath.Join(p.Dir, "web")
+	chosen, err := inspectChoices(web)
+	if err != nil {
+		return Result{}, err
+	}
+	p.Examples = chosen.demo
+	p.Starter = "minimal"
+	if p.Examples {
+		p.Starter = "examples"
+	}
+
+	// The integration every skgo application has is added by sv itself, after
+	// the developer's own choices and only where they did not already make it.
+	var required []string
+	if !chosen.vitest {
+		required = append(required, "vitest=usages:unit,component")
+	}
+	required = append(required, p.SVAddonSpec+"=starter:"+escapeAddonOption(p.Starter)+
+		"+adapter:"+escapeAddonOption(p.AdapterDependency)+
+		"+name:"+escapeAddonOption(p.App))
+	localVP := filepath.Join("node_modules", ".bin", "vp")
+	if err := run(command{
+		Dir: web, Name: localVP,
+		Args: append(append([]string{"dlx", "sv@" + p.SVVersion, "add"}, required...),
+			"--no-git-check", "--no-download-check", "--no-install"),
+		Env: append(os.Environ(), "CI=1"),
+	}); err != nil {
+		return Result{}, fmt.Errorf("skgo: adding the skgo integration through sv failed: %w", err)
+	}
+	if err := verifyIntegration(web, p.Examples); err != nil {
+		return Result{}, fmt.Errorf("skgo: sv did not apply the skgo integration: %w", err)
+	}
+	if chosen.storybook {
+		return finish(p, run)
 	}
 	if err := run(command{
 		Dir: filepath.Join(p.Dir, "web"), Name: "pnpm",
@@ -183,6 +226,12 @@ func Create(options Options) (Result, error) {
 	}); err != nil {
 		return Result{}, fmt.Errorf("skgo: Storybook's upstream installer failed: %w", err)
 	}
+	return finish(p, run)
+}
+
+// finish installs what the installers declared, proves they took, and adds the
+// Go half.
+func finish(p project, run func(command) error) (Result, error) {
 	if err := run(command{
 		Dir: filepath.Join(p.Dir, "web"), Name: filepath.Join("node_modules", ".bin", "vp"),
 		Args: []string{"install"}, Env: os.Environ(),
@@ -192,8 +241,17 @@ func Create(options Options) (Result, error) {
 	if err := verifyFrontend(p.Dir); err != nil {
 		return Result{}, fmt.Errorf("skgo: upstream frontend setup was incomplete: %w", err)
 	}
-	if err := run(command{Dir: p.Dir, Name: "pnpm", Args: []string{"--dir", "web", "exec", "playwright", "install", "chromium"}, Env: os.Environ()}); err != nil {
-		return Result{}, fmt.Errorf("skgo: installing the browser required by Vitest failed: %w", err)
+	// sv's Vitest add-on depends on Playwright only for component testing; a
+	// developer who chose unit testing alone has no browser to install.
+	pkg, err := readPackage(filepath.Join(p.Dir, "web"))
+	if err != nil {
+		return Result{}, err
+	}
+	p.ComponentTests = pkg.DevDependencies["playwright"] != ""
+	if p.ComponentTests {
+		if err := run(command{Dir: p.Dir, Name: "pnpm", Args: []string{"--dir", "web", "exec", "playwright", "install", "chromium"}, Env: os.Environ()}); err != nil {
+			return Result{}, fmt.Errorf("skgo: installing the browser required by Vitest failed: %w", err)
+		}
 	}
 	if err := writeGoFiles(p); err != nil {
 		return Result{}, err
@@ -211,6 +269,163 @@ func Create(options Options) (Result, error) {
 		return Result{}, fmt.Errorf("skgo: creating the initial frontend build failed: %w", err)
 	}
 	return Result{Dir: p.Dir, App: p.App, Origin: p.Origin, Starter: p.Starter}, nil
+}
+
+// svCreateArgs validates the `sv create` options a developer passed through and,
+// when nobody is there to be asked, settles the ones they left open.
+func svCreateArgs(args []string, interactive bool) ([]string, error) {
+	var template, types, addOns bool
+	variadic := false
+	for i := 0; i < len(args); i++ {
+		name, value, inline := strings.Cut(args[i], "=")
+		if !strings.HasPrefix(name, "-") {
+			if variadic {
+				continue
+			}
+			return nil, fmt.Errorf("skgo: %q names a target, but the frontend is always created in web", args[i])
+		}
+		variadic = false
+		takeValue := func() string {
+			if !inline && i+1 < len(args) {
+				i++
+				return args[i]
+			}
+			return value
+		}
+		switch name {
+		case "--template":
+			template = true
+			switch chosen := takeValue(); chosen {
+			case "library", "addon":
+				return nil, fmt.Errorf("skgo: sv's %s template is a package, not an application Go can serve; choose minimal or demo", chosen)
+			}
+		case "--types":
+			types = true
+			takeValue()
+		case "--no-types":
+			types = true
+		case "--add":
+			addOns, variadic = true, !inline
+		case "--no-add-ons":
+			addOns = true
+		case "--install", "--no-install":
+			return nil, fmt.Errorf("skgo: %s is not available: VitePlus installs the project with pnpm", name)
+		case "--from-playground", "--addon-name":
+			return nil, fmt.Errorf("skgo: %s does not describe an application skgo generates", name)
+		}
+	}
+	out := slices.Clone(args)
+	if interactive {
+		return out, nil
+	}
+	// Defaults go in front: --add is variadic and swallows what follows it.
+	var defaults []string
+	if !template {
+		defaults = append(defaults, "--template", "minimal")
+	}
+	if !types {
+		defaults = append(defaults, "--types", "ts")
+	}
+	if !addOns {
+		defaults = append(defaults, "--no-add-ons")
+	}
+	return append(defaults, out...), nil
+}
+
+// choices is what the developer settled with sv, read back from the project sv
+// wrote: an interactive run never tells skgo what was answered.
+type choices struct {
+	demo      bool
+	vitest    bool
+	storybook bool
+}
+
+func inspectChoices(web string) (choices, error) {
+	pkg, err := readPackage(web)
+	if err != nil {
+		return choices{}, err
+	}
+	if pkg.DevDependencies["@sveltejs/package"] != "" {
+		return choices{}, fmt.Errorf("skgo: sv's library template is a package, not an application Go can serve; choose minimal or demo")
+	}
+	if pkg.DevDependencies["@sveltejs/kit"] == "" {
+		return choices{}, fmt.Errorf("skgo: sv did not create a SvelteKit application in %s", web)
+	}
+	var c choices
+	demo := filepath.Join(web, "src", "routes", "sverdle")
+	if _, err := os.Stat(demo); err == nil {
+		c.demo = true
+	}
+	c.vitest = pkg.DevDependencies["vitest"] != "" && pkg.Scripts["test:unit"] != ""
+	main, err := doublestar(web, filepath.Join(web, ".storybook", "main.*"))
+	if err != nil {
+		return choices{}, err
+	}
+	c.storybook = len(main) != 0 && pkg.Scripts["storybook"] != ""
+
+	// Every server endpoint is Go's. An add-on that wrote a JavaScript server
+	// (drizzle, better-auth, paraglide's middleware) made an application skgo
+	// cannot serve; the demo's own server routes are replaced below.
+	var server []string
+	src := filepath.Join(web, "src")
+	err = filepath.WalkDir(src, func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if name == demo {
+			return filepath.SkipDir
+		}
+		rel, _ := filepath.Rel(web, name)
+		if entry.IsDir() {
+			if rel == filepath.Join("src", "lib", "server") {
+				server = append(server, rel)
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		base := entry.Name()
+		if strings.HasPrefix(base, "hooks.server.") || strings.HasPrefix(base, "+server.") ||
+			strings.HasPrefix(base, "+page.server.") || strings.HasPrefix(base, "+layout.server.") {
+			server = append(server, rel)
+		}
+		return nil
+	})
+	if err != nil {
+		return choices{}, err
+	}
+	if len(server) != 0 {
+		return choices{}, fmt.Errorf("skgo: the selected add-ons wrote JavaScript server code (%s); a skgo application's server is Go, so create it again without them", strings.Join(server, ", "))
+	}
+	return c, nil
+}
+
+// verifyIntegration exists because sv exits 0 when it reached the end of its
+// input before applying an add-on.
+func verifyIntegration(web string, examples bool) error {
+	pkg, err := readPackage(web)
+	if err != nil {
+		return err
+	}
+	if pkg.DevDependencies[adapterPackage] == "" {
+		return fmt.Errorf("the skgo sv add-on did not add %s", adapterPackage)
+	}
+	if pkg.DevDependencies["vitest"] == "" || pkg.Scripts["test:unit"] == "" {
+		return fmt.Errorf("the upstream Vitest setup did not add the %q script", "test:unit")
+	}
+	if !examples {
+		return nil
+	}
+	if _, err := os.Stat(filepath.Join(web, "src", "routes", "sverdle")); err == nil {
+		return fmt.Errorf("sv's demo server routes are still present")
+	}
+	page, err := os.ReadFile(filepath.Join(web, "src", "routes", "+page.svelte"))
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(string(page), "./example.remote") {
+		return fmt.Errorf("src/routes/+page.svelte is not the skgo remote-function example")
+	}
+	return nil
 }
 
 // stageAddon packs a local add-on directory the way a publication would and
@@ -337,7 +552,7 @@ func resolve(o Options) (project, error) {
 	if err != nil {
 		return project{}, err
 	}
-	p := project{Dir: dir, App: o.App, Module: o.Module, Origin: o.Origin, Starter: o.Starter, SkgoVersion: o.SkgoVersion, SkgoReplace: o.SkgoReplace}
+	p := project{Dir: dir, App: o.App, Module: o.Module, Origin: o.Origin, SkgoVersion: o.SkgoVersion, SkgoReplace: o.SkgoReplace}
 	if p.App == "" {
 		p.App = filepath.Base(dir)
 	}
@@ -358,16 +573,6 @@ func resolve(o Options) (project, error) {
 		return project{}, fmt.Errorf("skgo: %q is not an origin like %s", p.Origin, defaultOrigin)
 	}
 	p.OriginHostPort = origin.Host
-	if p.Starter == "" {
-		p.Starter = "minimal"
-	}
-	switch p.Starter {
-	case "minimal":
-	case "examples":
-		p.Examples = true
-	default:
-		return project{}, fmt.Errorf("skgo: %q is not a starting point: choose minimal or examples", p.Starter)
-	}
 	if p.SkgoVersion == "" {
 		p.SkgoVersion, err = currentSkgoVersion()
 		if err != nil {
@@ -499,15 +704,23 @@ type packageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-func verifyFrontend(root string) error {
-	web := filepath.Join(root, "web")
+func readPackage(web string) (packageJSON, error) {
+	var pkg packageJSON
 	raw, err := os.ReadFile(filepath.Join(web, "package.json"))
 	if err != nil {
-		return fmt.Errorf("VitePlus did not produce web/package.json: %w", err)
+		return pkg, fmt.Errorf("VitePlus did not produce web/package.json: %w", err)
 	}
-	var pkg packageJSON
 	if err := json.Unmarshal(raw, &pkg); err != nil {
-		return fmt.Errorf("reading web/package.json: %w", err)
+		return pkg, fmt.Errorf("reading web/package.json: %w", err)
+	}
+	return pkg, nil
+}
+
+func verifyFrontend(root string) error {
+	web := filepath.Join(root, "web")
+	pkg, err := readPackage(web)
+	if err != nil {
+		return err
 	}
 	for _, script := range []string{"dev", "build", "test:unit", "storybook"} {
 		if pkg.Scripts[script] == "" {
@@ -521,7 +734,7 @@ func verifyFrontend(root string) error {
 		claim string
 		glob  string
 	}{
-		{"Vitest", filepath.Join(web, "src", "**", "*.spec.ts")},
+		{"Vitest", filepath.Join(web, "src", "**", "*.spec.*")},
 		{"Storybook configuration", filepath.Join(web, ".storybook", "main.*")},
 		{"Storybook stories", filepath.Join(web, "src", "**", "*.stories.*")},
 	}
