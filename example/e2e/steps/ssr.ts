@@ -85,6 +85,22 @@ Then('the document never mentions {string}', async ({ documents, shot }, text: s
 	await shot();
 });
 
+Then(
+	'the script-safe data is exactly {string}',
+	async ({ documents, page, shot }, expected: string) => {
+		const html = await documentText(documents);
+		expect(html).not.toContain(expected);
+		expect(html).toContain('\\u003C/script>');
+		await expect(page.getByTestId('script-safe')).toHaveText(expected);
+		await shot();
+	}
+);
+
+Then('no injected script ran', async ({ page, shot }) => {
+	expect(await page.evaluate(() => '__skgo_injected' in globalThis)).toBe(false);
+	await shot('hydrated');
+});
+
 // A document with no script is the whole claim of `csr = false`: kit leaves the
 // boot script out, so what arrived is all there will ever be.
 Then('the document carries no script', async ({ documents, page, shot }) => {

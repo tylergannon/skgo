@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo/internal/adapter"
-	"github.com/tylergannon/skgo/internal/devalue"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/internal/ssr"
 	"github.com/tylergannon/skgo/internal/vite"

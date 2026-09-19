@@ -11,4 +11,4 @@ const unimplemented = (route: string): never => {
 	throw new Error('skgo: implemented in Go');
 };
 
-export const load = (event: { url: URL }): { deployment: string } => unimplemented(event.url.pathname);
+export const load = (event: { url: URL }): { deployment: string; scriptSafe: string } => unimplemented(event.url.pathname);
