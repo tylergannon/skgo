@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tylergannon/polytype"
 	"github.com/tylergannon/skgo/internal/formdata"
 )
 
@@ -27,6 +28,15 @@ const (
 
 	// What `form.validate()` posts as the visitor types.
 	formGoldenValidateOnly = "AC4AAAAAAFtbMSwzXSx7ImZyb20iOjJ9LCIiLHsidmFsaWRhdGVfb25seSI6NH0sdHJ1ZV0="
+
+	// Produced with the pinned Kit 3.0.0-next.27 convert_formdata and
+	// serialize_binary_form, using controls named name/id, n:count/id,
+	// b:enabled/id, and label/id. The expectations below are literal fixture
+	// values, independent of the parsed submission.
+	formGoldenOptionalAbsent   = "AB8AAAAAAFtbMSwzXSx7Im5hbWUiOjJ9LCJmaXh0dXJlIix7fV0="
+	formGoldenOptionalZeroes   = "AEoAAAAAAFtbMSw2XSx7Im5hbWUiOjIsImNvdW50IjozLCJlbmFibGVkIjo0LCJsYWJlbCI6NX0sImZpeHR1cmUiLDAsZmFsc2UsIiIse31d"
+	formGoldenOptionalInvalid  = "ACoAAAAAAFtbMSwzXSx7Im5hbWUiOjIsImNvdW50IjotM30sImZpeHR1cmUiLHt9XQ=="
+	formGoldenOptionalValidate = "AEEAAAAAAFtbMSw0XSx7Im5hbWUiOjIsImNvdW50IjozfSwiZml4dHVyZSIsMCx7InZhbGlkYXRlX29ubHkiOjV9LHRydWVd"
 )
 
 type draft struct {
@@ -239,6 +249,74 @@ func TestFormValidateOnlyDoesNotRunTheHandler(t *testing.T) {
 	list, ok := field(t, data, "_").([]any)
 	if !ok || len(list) != 0 {
 		t.Errorf("_ = %#v, want an empty issue list", field(t, data, "_"))
+	}
+}
+
+func TestFormOptionalScalarsFromKit(t *testing.T) {
+	type input struct {
+		Name    string                    `json:"name"`
+		Count   polytype.Optional[int]    `json:"count,omitzero"`
+		Enabled polytype.Optional[bool]   `json:"enabled,omitzero"`
+		Label   polytype.Optional[string] `json:"label,omitzero"`
+	}
+	var received []input
+	form := NewForm(testModule, "optional", func(_ context.Context, in input) (receipt, error) {
+		received = append(received, in)
+		return receipt{ID: "accepted"}, nil
+	})
+	rs := testRemotes(t, RemoteConfig{}, form)
+
+	for _, tc := range []struct {
+		name   string
+		golden string
+		want   input
+	}{
+		{"omitted", formGoldenOptionalAbsent, input{Name: "fixture"}},
+		{"explicit zeroes", formGoldenOptionalZeroes, input{
+			Name:    "fixture",
+			Count:   polytype.Optional[int]{Present: true, Value: 0},
+			Enabled: polytype.Optional[bool]{Present: true, Value: false},
+			Label:   polytype.Optional[string]{Present: true, Value: ""},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := formRequest(t, rs, form, tc.golden)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
+			if len(received) == 0 || received[len(received)-1] != tc.want {
+				t.Fatalf("handler received %+v, want %+v", received, tc.want)
+			}
+			kind, data, _ := envelope(t, rec.Body.Bytes())
+			if kind != "result" || field(t, field(t, field(t, data, "_"), "result"), "id") != "accepted" {
+				t.Fatalf("response = %s, want accepted result", rec.Body.String())
+			}
+		})
+	}
+
+	before := len(received)
+	rec := formRequest(t, rs, form, formGoldenOptionalInvalid)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("invalid status = %d, want Kit's 200 error envelope", rec.Code)
+	}
+	kind, _, httpErr := envelope(t, rec.Body.Bytes())
+	if kind != "error" || httpErr["status"] != float64(400) {
+		t.Fatalf("invalid response = %s, want a 400 error envelope", rec.Body.String())
+	}
+	if len(received) != before {
+		t.Fatal("invalid scalar invoked the operation")
+	}
+
+	rec = formRequest(t, rs, form, formGoldenOptionalValidate)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("validation status = %d, want 200", rec.Code)
+	}
+	_, data, _ := envelope(t, rec.Body.Bytes())
+	if list, ok := field(t, data, "_").([]any); !ok || len(list) != 0 {
+		t.Fatalf("validation response = %s, want empty issues", rec.Body.String())
+	}
+	if len(received) != before {
+		t.Fatal("validation-only request invoked the operation")
 	}
 }
 

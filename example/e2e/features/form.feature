@@ -9,6 +9,44 @@ Feature: Forms written in Go
   envelope with any uploaded file's bytes appended raw — which is why a form
   cannot go down the JSON path the other kinds use.
 
+  Scenario: Optional scalar controls distinguish omission from explicit zero, false, and empty
+    Given I open "/optional"
+    When the optional form is ready
+    And I submit the optional form as "fixture"
+    Then the optional result for "fixture" shows count "absent", enabled "absent" and label "absent"
+    When I include zero, false and empty optional values
+    And I submit the optional form as "fixture"
+    Then the optional result for "fixture" shows count "present: 0", enabled "present: false" and label "present: \"\""
+
+  Scenario: A browser and the generated Go client share the running Optional Form
+    Given I open "/optional"
+    When the optional form is ready
+    And I submit the optional form as "interop-shared-form"
+    Then the optional result for "interop-shared-form" shows count "absent", enabled "absent" and label "absent"
+    And the operation count for that name is exactly 1
+    When the generated Go client submits "interop-shared-form" with omitted optionals
+    Then its typed result shows count "absent", enabled "absent", label "absent" and operation 2
+    When I include zero, false and empty optional values
+    And I submit the optional form as "interop-shared-form"
+    Then the optional result for "interop-shared-form" shows count "present: 0", enabled "present: false" and label "present: \"\""
+    And the operation count for that name is exactly 3
+    When the generated Go client submits "interop-shared-form" with explicit zero, false and empty
+    Then its typed result shows count "present: 0", enabled "present: false", label "present: \"\"" and operation 4
+    When the generated Go client submits "interop-shared-form" with negative count
+    Then it reports the count issue "Count must be zero or greater"
+    When I submit the optional form as "interop-shared-form"
+    Then the operation count for that name is exactly 5
+    When I set the optional count to -1
+    And I submit the optional form as "interop-shared-form"
+    Then the browser reports the count issue "Count must be zero or greater"
+    When I set the optional count to 0
+    And I submit the optional form as "interop-shared-form"
+    Then the operation count for that name is exactly 6
+    When I validate the optional form without submitting
+    Then the browser reports validation completed
+    When I submit the optional form as "interop-shared-form"
+    Then the operation count for that name is exactly 7
+
   Scenario: A form submission reaches Go and updates the page
     Given I open "/contact"
     When the contact page has loaded

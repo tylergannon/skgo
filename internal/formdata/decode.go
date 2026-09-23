@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tylergannon/polytype"
 	"github.com/tylergannon/polytype/devalue"
 )
 
@@ -65,6 +66,23 @@ func assign(node any, dst reflect.Value, path string) error {
 		return assign(node, dst.Elem(), path)
 	}
 
+	// Polytype's Optional is a property wrapper, not an object in the form
+	// data. A missing key never reaches assign; a present scalar sets Present
+	// even when its value is zero, false, or empty.
+	if isOptional(dst.Type()) {
+		valueType := dst.FieldByName("Value").Type()
+		if !isScalar(valueType.Kind()) {
+			return typeError(path, fmt.Sprintf("%T", node), dst.Type())
+		}
+		value := reflect.New(valueType).Elem()
+		if err := assign(node, value, path); err != nil {
+			return err
+		}
+		dst.FieldByName("Value").Set(value)
+		dst.FieldByName("Present").SetBool(true)
+		return nil
+	}
+
 	switch value := node.(type) {
 	case string:
 		return assignString(value, dst, path)
@@ -83,6 +101,23 @@ func assign(node any, dst reflect.Value, path string) error {
 	default:
 		return typeError(path, fmt.Sprintf("%T", node), dst.Type())
 	}
+}
+
+var optionalPackage = reflect.TypeOf(polytype.Optional[int]{}).PkgPath()
+
+func isOptional(t reflect.Type) bool {
+	return t.Kind() == reflect.Struct && t.PkgPath() == optionalPackage && strings.HasPrefix(t.Name(), "Optional[")
+}
+
+func isScalar(kind reflect.Kind) bool {
+	switch kind {
+	case reflect.String, reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return true
+	}
+	return false
 }
 
 var fileType = reflect.TypeOf(File{})

@@ -91,6 +91,10 @@
 			"target": "web/src/routes/live"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a",
+			"target": "web/src/routes/optional"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq",
 			"target": "web/src/routes/stream"
 		}

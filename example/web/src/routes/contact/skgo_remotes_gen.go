@@ -15,4 +15,6 @@ var (
 type (
 	// SkgoArg_sendMessage is the type sendMessage takes.
 	SkgoArg_sendMessage = Draft
+	// SkgoOut_sendMessage is the type sendMessage returns.
+	SkgoOut_sendMessage = Receipt
 )

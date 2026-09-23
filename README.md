@@ -110,6 +110,35 @@ TypeScript, writes strict codecs for the Kit wire format, and registers the Go
 closures the server invokes. Generated files say `DO NOT EDIT`; source remains
 the `.go` and `.svelte` files you authored.
 
+For Forms with flat scalar fields (including `polytype.Optional[T]` scalar
+fields) and results made from scalars, generation also writes an importable Go package at
+`<bindings>/client`. It exposes a typed method per supported Form. For example,
+the example app's optional Form can be submitted over HTTP:
+
+```go
+forms := client.Client{FormClient: skgo.FormClient{BaseURL: "http://127.0.0.1:8080"}}
+result, err := forms.Submit(ctx, optional.Input{Name: "Ada"})
+```
+
+Set `FormClient.HTTPClient` to an `*http.Client` with a Unix socket
+`Transport.DialContext` to use UDS; the `BaseURL` may then be `http://skgo`:
+
+```go
+transport := &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+	return (&net.Dialer{}).DialContext(ctx, "unix", socketPath)
+}}
+forms := client.Client{FormClient: skgo.FormClient{
+	BaseURL: "http://skgo", HTTPClient: &http.Client{Transport: transport},
+}}
+```
+
+The call returns the declared result type, `*skgo.Invalid` for field issues,
+`*skgo.HTTPError` for server error envelopes, or the underlying transport
+error. A caller's context cancels the request. Each submission sends one POST:
+redirects, including 307 and 308, are returned as errors and never replayed.
+Forms with files or nested data continue to generate their existing browser
+and server bindings but are outside this Go client support.
+
 The available markers mirror Kit: `skgo.Query`, `skgo.Command`, `skgo.Form`,
 `skgo.LiveQuery`, and `skgo.BatchQuery`. Request state is available through
 `skgo.EventFrom(ctx)`. Commands can refresh or reconnect typed Go functions;

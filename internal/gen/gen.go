@@ -88,6 +88,9 @@ func Run(cfg Config) (err error) {
 		if err := empty.writeAppBindings(); err != nil {
 			return err
 		}
+		if err := empty.writeFormClients(); err != nil {
+			return err
+		}
 		return empty.writeRemoteList()
 	}
 
@@ -168,6 +171,9 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	if err := app.writeAppBindings(); err != nil {
+		return err
+	}
+	if err := app.writeFormClients(); err != nil {
 		return err
 	}
 	return app.writeRemoteList()

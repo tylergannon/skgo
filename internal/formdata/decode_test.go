@@ -4,6 +4,9 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/tylergannon/polytype"
+	"github.com/tylergannon/polytype/devalue"
 )
 
 // The goldens are real kit envelopes (see formdata_test.go); the values
@@ -165,5 +168,50 @@ func TestDecodeRequiresPointerTarget(t *testing.T) {
 	var notAPointer struct{}
 	if err := Decode(nil, notAPointer); err == nil {
 		t.Fatal("Decode accepted a non-pointer target")
+	}
+}
+
+func TestDecodeOptionalScalarPresence(t *testing.T) {
+	type input struct {
+		Required string                    `json:"required"`
+		Count    polytype.Optional[int]    `json:"count,omitzero"`
+		Enabled  polytype.Optional[bool]   `json:"enabled,omitzero"`
+		Label    polytype.Optional[string] `json:"label,omitzero"`
+	}
+	for _, tc := range []struct {
+		name string
+		data *devalue.Object
+		want input
+	}{
+		{"omitted", devalue.NewObject("required", "fixture"), input{Required: "fixture"}},
+		{"explicit zeroes", devalue.NewObject("required", "fixture", "count", float64(0), "enabled", false, "label", ""), input{
+			Required: "fixture",
+			Count:    polytype.Optional[int]{Present: true, Value: 0},
+			Enabled:  polytype.Optional[bool]{Present: true, Value: false},
+			Label:    polytype.Optional[string]{Present: true, Value: ""},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got input
+			if err := Decode(tc.data, &got); err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("got %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestDecodeInvalidOptionalScalarDoesNotBecomePresent(t *testing.T) {
+	var got struct {
+		Count polytype.Optional[int] `json:"count,omitzero"`
+	}
+	err := Decode(devalue.NewObject("count", "not a number"), &got)
+	if !errors.Is(err, ErrBadRequest) || !strings.Contains(err.Error(), "count") {
+		t.Fatalf("Decode error = %v, want a count field bad request", err)
+	}
+	if got.Count.Present {
+		t.Fatal("invalid input marked count present")
 	}
 }
