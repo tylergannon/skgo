@@ -305,6 +305,10 @@ func (a *app) writeTypeAliases(b *strings.Builder, fns []*remoteFn, imports *fil
 			lines = append(lines, fmt.Sprintf("\t// SkgoArg_%s is the type %s takes.\n\tSkgoArg_%s = %s\n",
 				fn.name, fn.name, fn.name, imports.typeExpr(fn.in)))
 		}
+		if fn.kind == kindForm {
+			lines = append(lines, fmt.Sprintf("\t// SkgoOut_%s is the type %s returns.\n\tSkgoOut_%s = %s\n",
+				fn.name, fn.name, fn.name, imports.typeExpr(fn.out)))
+		}
 		if fn.kind == kindLive {
 			lines = append(lines, fmt.Sprintf("\t// SkgoOut_%s is the type %s yields.\n\tSkgoOut_%s = %s\n",
 				fn.name, fn.name, fn.name, imports.typeExpr(fn.out)))

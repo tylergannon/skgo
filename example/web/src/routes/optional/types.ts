@@ -12,4 +12,5 @@ export type Result = {
   "count": string;
   "enabled": string;
   "label": string;
+  "operations": number;
 };

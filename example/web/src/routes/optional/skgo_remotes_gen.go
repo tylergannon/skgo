@@ -13,4 +13,6 @@ var (
 type (
 	// SkgoArg_submit is the type submit takes.
 	SkgoArg_submit = Input
+	// SkgoOut_submit is the type submit returns.
+	SkgoOut_submit = Result
 )

@@ -1,9 +1,33 @@
 import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createBdd } from 'playwright-bdd';
 import type { Locator, Page } from '@playwright/test';
 import { expect, hydrated, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
+const run = promisify(execFile);
+const exampleDir = fileURLToPath(new URL('../../', import.meta.url));
+let clientResult: Record<string, unknown> | null = null;
+let clientIssues: Array<{ Field: string; Message: string }> | null = null;
+
+async function submitWithGoClient(origin: string, name: string, mode: 'omitted' | 'explicit' | 'negative') {
+	const args = ['run', './cmd/form-client', '-base-url', origin, '-name', name];
+	if (mode === 'explicit') args.push('-count', '0', '-enabled', 'false', '-label', '');
+	if (mode === 'negative') args.push('-count', '-1');
+	try {
+		const { stdout } = await run('go', args, { cwd: exampleDir });
+		clientResult = JSON.parse(stdout) as Record<string, unknown>;
+		clientIssues = null;
+	} catch (error) {
+		const failure = error as Error & { code?: number; stdout?: string; stderr?: string };
+		// `go run` reports the child's exit 2 in stderr and itself exits 1.
+		expect(failure.code, `Go client failed: ${failure.message}`).toBe(1);
+		expect(failure.stderr).toContain('exit status 2');
+		clientResult = null;
+		clientIssues = JSON.parse(failure.stdout ?? '') as Array<{ Field: string; Message: string }>;
+	}
+}
 
 const fixture = (name: string) =>
 	fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url));
@@ -24,6 +48,58 @@ When('I include zero, false and empty optional values', async ({ page }) => {
 	await page.getByTestId('include-enabled').check();
 	await page.getByTestId('include-label').check();
 	await page.getByTestId('optional-label').fill('');
+});
+
+When('I set the optional count to {int}', async ({ page }, count: number) => {
+	await page.getByTestId('optional-count').fill(String(count));
+});
+
+When('the generated Go client submits {string} with omitted optionals', async ({ page }, name: string) => {
+	await submitWithGoClient(new URL(page.url()).origin, name, 'omitted');
+});
+
+When('the generated Go client submits {string} with explicit zero, false and empty', async ({ page }, name: string) => {
+	await submitWithGoClient(new URL(page.url()).origin, name, 'explicit');
+});
+
+When('the generated Go client submits {string} with negative count', async ({ page }, name: string) => {
+	await submitWithGoClient(new URL(page.url()).origin, name, 'negative');
+});
+
+Then('its typed result shows count {string}, enabled {string}, label {string} and operation {int}',
+	async ({ page }, count: string, enabled: string, label: string, operation: number) => {
+		await expect(page.getByTestId('optional-form')).toBeVisible();
+		expect(clientResult).toEqual({
+			name: 'interop-shared-form', count, enabled, label, operations: operation
+		});
+	});
+
+Then('it reports the count issue {string}', async ({ page }, message: string) => {
+	await expect(page.getByTestId('optional-form')).toBeVisible();
+	expect(clientIssues).toEqual([{ Field: 'count', Message: message }]);
+});
+
+Then('the operation count for that name is exactly {int}', async ({ page }, count: number) => {
+	await expect(page.getByTestId('optional-result-name')).toHaveText('Name: interop-shared-form');
+	await expect(page.getByTestId('optional-result-operations')).toHaveText(
+		`Operations for interop-shared-form: ${count}`
+	);
+});
+
+Then('the browser reports the count issue {string}', async ({ page }, message: string) => {
+	await expect(page.getByTestId('optional-rejected')).toBeVisible();
+	await expect(page.getByTestId('optional-count-issue')).toHaveText(message);
+});
+
+When('I validate the optional form without submitting', async ({ page, remotes }) => {
+	remotes.mark();
+	await page.getByTestId('optional-validate').click();
+});
+
+Then('the browser reports validation completed', async ({ page, remotes }) => {
+	await expect(page.getByTestId('optional-validated')).toHaveText('Validation completed without submission.');
+	expect(remotes.since, remotes.urlsSince.join('\n')).toBe(1);
+	expect(remotes.urlsSince[0]).toMatch(/^POST \/_app\/remote\/83n4w1\/submit$/);
 });
 
 Then(

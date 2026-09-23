@@ -1884,6 +1884,8 @@ func encResult(v pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result, at string) (any, er
 	enc1.Set("enabled", enc4)
 	var enc5 any = string(v.Label)
 	enc1.Set("label", enc5)
+	var enc6 any = float64(v.Operations)
+	enc1.Set("operations", enc6)
 	return enc1, nil
 }
 
@@ -1894,7 +1896,7 @@ func decResult(raw any, at string) (pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result, 
 	if err != nil {
 		return dvZero, err
 	}
-	if err := dvKnown(obj2, at, "name", "count", "enabled", "label"); err != nil {
+	if err := dvKnown(obj2, at, "name", "count", "enabled", "label", "operations"); err != nil {
 		return dvZero, err
 	}
 	raw3, err := dvRequired(obj2, "name", at+"/name")
@@ -1933,6 +1935,16 @@ func decResult(raw any, at string) (pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result, 
 		return dvZero, err
 	}
 	dec1.Label = dec10
+	raw11, err := dvRequired(obj2, "operations", at+"/operations")
+	if err != nil {
+		return dvZero, err
+	}
+	num13, err := dvInteger(raw11, at+"/operations", math.MinInt, math.MaxInt)
+	if err != nil {
+		return dvZero, err
+	}
+	dec12 := int(num13)
+	dec1.Operations = dec12
 	return dec1, nil
 }
 
