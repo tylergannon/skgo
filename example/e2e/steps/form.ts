@@ -8,6 +8,36 @@ const { When, Then } = createBdd(test);
 const fixture = (name: string) =>
 	fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url));
 
+When('the optional form is ready', async ({ page }) => {
+	await hydrated(page);
+	await expect(page.getByTestId('optional-form')).toBeVisible();
+});
+
+When('I submit the optional form as {string}', async ({ page }, name: string) => {
+	await page.getByTestId('optional-name').fill(name);
+	await page.getByTestId('optional-submit').click();
+});
+
+When('I include zero, false and empty optional values', async ({ page }) => {
+	await page.getByTestId('include-count').check();
+	await page.getByTestId('optional-count').fill('0');
+	await page.getByTestId('include-enabled').check();
+	await page.getByTestId('include-label').check();
+	await page.getByTestId('optional-label').fill('');
+});
+
+Then(
+	'the optional result for {string} shows count {string}, enabled {string} and label {string}',
+	async ({ page, shot }, name: string, count: string, enabled: string, label: string) => {
+		await expect(page.getByTestId('optional-result')).toBeVisible();
+		await expect(page.getByTestId('optional-result-name')).toHaveText(`Name: ${name}`);
+		await expect(page.getByTestId('optional-result-count')).toHaveText(`Count: ${count}`);
+		await expect(page.getByTestId('optional-result-enabled')).toHaveText(`Enabled: ${enabled}`);
+		await expect(page.getByTestId('optional-result-label')).toHaveText(`Label: ${label}`);
+		await shot(count === 'absent' ? 'omitted' : 'supplied');
+	}
+);
+
 /**
  * The messages in the inbox whose body is exactly `body`. A scenario always
  * looks its own message up by what it sent, never by position, so it cannot

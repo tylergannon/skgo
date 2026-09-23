@@ -1,0 +1,3 @@
+decision: Gimble's browser and Go CLI will use the same generated SKGO Form endpoint. This task adds supported typed Go clients and the scalar/Optional binding those forms require; no workflow framework or general upload client is needed.
+friction: The first implement run validated its Optional-binding task and stopped despite unimplemented client-generation tasks in its plan. Treat terminal success as evidence only for observed capabilities; submit the remaining client and interoperability capabilities as separate ordered outcomes.
+decision: Use the pinned Kit serializer for independent request fixtures. An initial browser check used document submission; the worker changed the example to enhanced Form submission and repeated the relevant observations.

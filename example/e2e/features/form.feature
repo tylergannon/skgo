@@ -9,6 +9,15 @@ Feature: Forms written in Go
   envelope with any uploaded file's bytes appended raw — which is why a form
   cannot go down the JSON path the other kinds use.
 
+  Scenario: Optional scalar controls distinguish omission from explicit zero, false, and empty
+    Given I open "/optional"
+    When the optional form is ready
+    And I submit the optional form as "fixture"
+    Then the optional result for "fixture" shows count "absent", enabled "absent" and label "absent"
+    When I include zero, false and empty optional values
+    And I submit the optional form as "fixture"
+    Then the optional result for "fixture" shows count "present: 0", enabled "present: false" and label "present: \"\""
+
   Scenario: A form submission reaches Go and updates the page
     Given I open "/contact"
     When the contact page has loaded
