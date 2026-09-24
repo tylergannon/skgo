@@ -39,7 +39,7 @@ Gimble input: `ephemeral/plans/2026-09-24-agent-toolkit-outcomes.json`.
   preserves supported syntax, semantics, project policy, and idempotence;
   otherwise use Prettier. Choose once during setup and report that choice.
   Exactly one formatter owns each file. No broad native-tool bake-off.
-- Go formatting/import organization uses standard Go tooling. Include Go
+- Go formatting/import organization uses gofmt/goimports. Include Go
   type checking, vet, and Staticcheck correctness checks, with project-pinned
   tools/configuration. Respect existing configured equivalent tooling.
 - Checks do not rewrite authored or committed generated files. Fix mode may
@@ -256,3 +256,80 @@ Scenario: An agent can repair and demonstrate the application
     and the reviewed screenshot shows that exact result
     and the repair does not move server behavior into JavaScript
 ```
+
+## Expanded Go and integration direction — user steering, September 24
+
+The user explicitly asked for ambitious Go linting and checks that establish
+the application is wired together correctly, without stopping the current run.
+This augments the existing outcomes, not their execution order. Continue the
+current task; incorporate these checks into the relevant diagnostic/build/fix
+outcomes. The supervising caller owns this amendment.
+
+For outcome 1, make the Go preset concrete: goimports formatting/imports,
+vet and Staticcheck correctness, unchecked errors (errcheck), wrapped-error
+misuse (errorlint), mistaken nil error returns (nilerr or equivalent), discarded
+assignments, context propagation (contextcheck/noctx), unclosed HTTP bodies
+(bodyclose), and SQL resource/iteration mistakes (sqlclosecheck/rowserrcheck).
+Use a pinned compatible golangci-lint configuration or equivalent upstream
+analyzers; reuse existing equivalent project configuration and avoid duplicate
+diagnostics. Evaluate selected correctness-oriented gosec checks as well.
+Qualify applicability and false positives on concrete bad/good fixtures before
+enabling a rule by default. Explicitly report unsupported Go/tool versions;
+this project currently requires Go 1.27. Do not enable all style/opinion rules.
+
+For outcome 2, mechanical upstream fixes remain the only automatic edits.
+Choosing how an application handles an ignored error or whether it intentionally
+detaches background work is an agent/developer decision, not a formatting fix.
+Keep the everyday check/fix gesture and explicitly show active/disabled rules.
+
+For outcome 3, prioritize complete connections where authoritative evidence
+exists: authored Go declarations -> registrations -> Kit IDs/methods -> emitted
+frontend calls; Go wire types -> generated TS/form fields -> consuming code;
+layout/load ancestry and generated route types; transport keys; and build output
+actually loaded by Go. Cross-file diagnostics should name both ends and the
+broken connection. Resolve Kit semantics from pinned source. An arbitrary Go
+startup branch or dynamically built route/context cannot be certified by source
+inspection; report unresolved relationships and use actual build/runtime checks
+where necessary. Do not invent auth rules or claim static security proof.
+
+Provide a discoverable deeper check mode for expensive integration/build work
+and govulncheck's reachable dependency findings, including database freshness and
+unavailability. Keep local everyday checks usable offline. The existing explicit
+build mode can remain as a narrower operation. Ordinary tests, race testing,
+transport round trips, request isolation and browser scenarios remain distinct
+behavioral evidence; a deeper static-check result is not a software verdict.
+
+```gherkin
+Scenario: Catch Go defects beyond compilation
+  Given independently planted unchecked errors, lost contexts, and HTTP or SQL resource mistakes
+  When I run the normal project check with its applicable preset
+  Then findings identify the concrete mistakes and authored locations
+    and corresponding intentional/correct examples do not produce those findings
+
+Scenario: Explain both ends of broken wiring
+  Given a component calls a generated binding whose Go registration no longer matches
+  When I request the applicable integration check
+  Then the diagnostic identifies the frontend call and Go declaration or missing registration
+    and tells me which authored input or generation step needs repair
+
+Scenario: Deeper checks stay honest
+  Given vulnerability data is unavailable or the build cannot complete
+  When I request deeper checks
+  Then the affected operation reports incomplete or failed coverage
+    and successful local checks remain separately visible
+```
+
+Longer-range candidates to investigate when evidence warrants them: declared
+package import boundaries, unused application exports with SvelteKit entrypoints
+understood, async Promise misuse, import cycles, and contract-specific runtime
+checks for cancellation/stream cleanup and cross-request isolation. These are
+direction, not permission to add speculative generic analysis machinery or to
+replace the official Svelte compiler. Implement a specific rule when its failure
+and valid counterpart can be independently demonstrated.
+
+Primary references:
+- https://golangci-lint.run/docs/linters/
+- https://pkg.go.dev/golang.org/x/tools/cmd/goimports
+- https://pkg.go.dev/golang.org/x/tools/go/analysis
+- https://go.dev/doc/tutorial/govulncheck
+- https://go.dev/doc/articles/race_detector
