@@ -1,8 +1,8 @@
 [tools]
-node = "24.16.0"
+node = "24.21.0"
 # Bootstrap copy of `vp`, used only before `web/node_modules` exists. Once the
 # project is installed, `_.path` below makes the project-local `vp` win.
-"npm:vite-plus" = "0.3.1"
+"npm:vite-plus" = "0.3.3"
 
 [env]
 # SvelteKit checks the dev server's SSR environment with `isRunnableDevEnvironment`,

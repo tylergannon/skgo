@@ -424,6 +424,9 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 		next.ServeHTTP(w, r)
 		return
 	}
+	if rejectReservedQuery(w, r, false, false) {
+		return
+	}
 
 	// Kit normalizes the trailing slash of every route it matches, before it
 	// decides whether a page or an endpoint answers, and answers a mismatch
