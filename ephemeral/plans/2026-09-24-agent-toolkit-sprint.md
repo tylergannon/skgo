@@ -257,7 +257,7 @@ Scenario: An agent can repair and demonstrate the application
     and the repair does not move server behavior into JavaScript
 ```
 
-## Advice-driven analyzers — latest user direction, September 24
+## Approved initial eight analyzers — September 24
 
 This replaces the preceding broad Go-linter expansion. The user clarified:
 "The idea is let's try to think up the advice that we would give to developers
@@ -267,31 +267,41 @@ priority is useful skgo-specific developer guidance enforced by analysis, not a
 large generic lint preset. goimports, vet and Staticcheck remain the baseline;
 additional generic rule families are not mandatory sprint acceptance.
 
-For outcomes 1 and 3, derive a small set of actionable rules from skgo's public
-API guidance, real misuse examples, and pinned Kit constraints. Implement
+The user approved the eight rules below for implementation. Outcomes 1 and 3
+own their analysis and integration; outcome 4 owns the matching developer advice
+and outcome 5 exposes them through the shared MCP check capability. Implement
 skgo-owned Go rules as ordinary golang.org/x/tools/go/analysis analyzers, sharing
 existing generator checks and type information where appropriate. Reuse an
 upstream analyzer when it already provides the desired advice. Do not create
 an analyzer framework or duplicate enforcement logic just for this interface.
 
-The rule begins with a sentence a helpful skgo reviewer would say. Establish
-why the mistake breaks behavior, its detectable shape, a valid counterpart,
-and the repair. The initial candidates, to map independently before coding:
+Each rule encodes developer advice, identifies a concrete consequence and names
+the repair. Independently map the applicable skgo API and pinned Kit behavior
+before coding; do not weaken the contract to match a convenient detector.
 
-| Advice | Detectable misuse to qualify |
-| --- | --- |
-| Put cookie changes in a command or form; queries cannot apply them. | SetCookie/DeleteCookie on the skgo event inside a known query declaration, including known read-only variants where upstream enforces that rule. |
-| Pass page-dependent inputs into a query as arguments. | Calling load-only Event.URL/Param/SearchParam/RouteID from a known query. Kit's argument-keyed cache is the reason; legitimate request headers/cookie reads are not prohibited. |
-| Carry the handler's context when accessing its skgo event. | EventFrom fed a demonstrably fresh Background/TODO context inside a declared handler, losing the event. This is not a general ban on intentional detached background work. |
-| Refresh a query and reconnect a live query through the typed helper. | A statically resolved refresh/reconnect target whose declaration kind contradicts the helper's accepted kind. Do not guess arbitrary dynamic registration. |
-| Let Go declarations own the wire shape and generated bindings. | Existing declaration, wire-shape and stale-binding checks surfaced as advice with the authored location and specific remedy, reusing generation's rules. |
+| Rule | Advice and detectable misuse | Valid counterpart required |
+| --- | --- | --- |
+| 1. Queries cannot change cookies | Detect SetCookie/DeleteCookie on the request event in a known read-only query context. Explain that the cookie change belongs in a command or form. Include the query variants covered by Kit's actual restriction. | The same cookie operation in a command/form is accepted; legitimate cookie reads are accepted. |
+| 2. Page inputs belong in query arguments | Detect load-only Event.Param/URL/SearchParam/RouteID use inside a known query. Explain that page-dependent inputs must be arguments so the query cache identity includes them. | Passing the value as a typed query argument works; request header/authentication-cookie reads remain valid. |
+| 3. Preserve the request context | Detect EventFrom fed a demonstrably fresh Background/TODO context inside a declared handler. Explain that the fresh context lost the skgo request event. | The supplied handler context and contexts correctly derived from it are accepted; unrelated intentional background work is not prohibited. |
+| 4. Handle skgo operation failures | Detect discarded errors from skgo operations such as cookie writes, refreshes and live-query yield callbacks. Explain the specific lost operation or disconnect signal. Reuse upstream unchecked-error analysis where it fits. | Propagation or real handling is accepted; do not invent recovery logic or insert blank assignments as fixes. |
+| 5. Refresh the right kind of function | Detect statically resolved refresh/reconnect targets whose known registration kind contradicts the typed helper's contract. Explain ordinary-query refresh versus live-query reconnect. | Correctly matched targets work; unknown dynamic registrations are not asserted invalid. |
+| 6. Validation errors must name real fields | Detect literal Invalidf/Issue.Field paths inconsistent with the form's declared input shape. Explain a misspelled field with its matching declared field when unambiguous. | Whole-form errors, valid nested paths, valid array paths and nonliteral unresolved paths are handled correctly. |
+| 7. Only supported values cross the wire | Surface existing generator rules for unsupported wire types, duplicate serialized names, file results and Deferred outside loads. Identify the authored offending field and a supported representation. | Supported value/nullable/form-upload/load-deferred patterns pass under the existing generator contract. |
+| 8. Route parameters must exist | Detect a literal parameter name inconsistent with a statically known applicable route. For example reading id from a route that declares customerID. | Declared parameters and valid rest/optional parameters pass; shared layouts/helpers are judged only when their complete applicable route context is known. |
 
-These are bounded candidates, not permission to invent restrictions or pretend
-arbitrary call paths are statically knowable. Prioritize verified, high-confidence
-misuses; show unresolved analysis as such. Shared helpers can run under multiple
-handler kinds, so reachability alone must not make a legitimate helper invalid.
-Any new rule needs both an independently planted bad example and valid examples
-that stay quiet. Suggestions based on uncertain intent must not fail the build.
+All eight belong to the initial implementation; the analyzer must report the
+limits of its static knowledge instead of guessing intent. Shared helpers may
+run under multiple handler kinds: mere reachability must not make valid uses
+invalid. Hard failures require demonstrated contract violations. Uncertain
+advice must not fail a build. Do not expand this into a general whole-program
+analyzer to erase those limits.
+
+For each rule, ordinary Go analysis tests must plant an independent misuse and
+its valid counterparts and verify source locations and explanatory diagnostics.
+Exercise the real skgo check command as well; a directly called analyzer alone
+is not proof that the user-facing toolkit runs it. The independent validator
+must check that removing each rule makes its accepted bad-case scenario fail.
 
 A useful diagnostic says what goes wrong and how to fix it, for example:
 "This query cannot set cookies. Move the cookie change into a command or form."
@@ -319,6 +329,11 @@ Scenario: Developer advice and diagnostics agree
   Then it receives the corresponding advice, reason, and valid repair example
     for the installed version
 ```
+
+Explicitly deferred: load reads bypassing dependency tracking; requested
+refreshes left without a decision; and request state escaping into shared globals.
+Do not implement those three in this initial set. The user said to start here
+and grow later.
 
 Keep the original cross-language build/registration checks and runtime evidence
 boundaries. Broader security presets, extra dependency-scanning modes, generic
