@@ -100,8 +100,10 @@ func (h *devPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// route: answered as a document it gets a 200 and an HTML body, and the
 	// browser falls back to talking to vite directly — which is exactly the
 	// arrangement the proxy exists to prevent.
-	if ok && !isUpgrade(r) && h.isDocument(urlPath) && h.renderer.serveDev(w, r, urlPath) {
-		return
+	if ok && !isUpgrade(r) && h.isDocument(urlPath) {
+		if rejectReservedQuery(w, r, false, false) || h.renderer.serveDev(w, r, urlPath) {
+			return
+		}
 	}
 	// Everything the renderer did not answer is vite's, including the two it
 	// declines on purpose: a branch that turns server rendering off, which kit's

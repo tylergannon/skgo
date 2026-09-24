@@ -522,6 +522,9 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// `/todos/__data.json` was answered 200 with the boot document and kit's
 	// client parsed HTML as JSON.
 	if suffix := kitSuffix(urlPath); suffix != "" {
+		if rejectReservedQuery(w, r, suffix == dataSuffix || suffix == htmlDataSuffix, false) {
+			return
+		}
 		h.refuseInternalRequest(w, r, suffix)
 		return
 	}
@@ -564,6 +567,9 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Location", location)
 		w.WriteHeader(http.StatusPermanentRedirect)
+		return
+	}
+	if rejectReservedQuery(w, r, false, false) {
 		return
 	}
 
