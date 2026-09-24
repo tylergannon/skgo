@@ -51,9 +51,8 @@ h1, h2 { text-wrap: balance; }
 .nav nav { display: flex; gap: 24px; font-size: .9rem; }
 .nav nav a { color: var(--muted); text-decoration: none; }
 .nav nav a:hover { color: var(--ink); }
-.mark { display: inline-flex; align-items: baseline; text-decoration: none; font-size: 1.3rem; font-weight: 800; letter-spacing: -.04em; }
-.mark span { color: #ff3e00; }
-.mark b { color: #00add8; }
+.mark { display: inline-flex; align-items: center; text-decoration: none; }
+.mark img { display: block; height: 30px; width: auto; }
 
 .hero { padding: 72px 0 24px; }
 h1 { margin: 0 0 24px; font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05; letter-spacing: -.035em; }
