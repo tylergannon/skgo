@@ -60,11 +60,28 @@ h1 { margin: 0 0 24px; font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05; l
 .lede { max-width: 68ch; margin: 0 0 20px; font-size: 1.12rem; line-height: 1.65; }
 .status { max-width: 68ch; margin: 0 0 32px; padding-left: 14px; border-left: 3px solid var(--rule); color: var(--muted); font-size: .95rem; }
 .status strong { color: var(--ink); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 40px; align-items: start; }
+.hero-grid > div > .lede { max-width: none; }
 .actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .button { display: inline-flex; padding: 10px 16px; border: 1px solid var(--ink); border-radius: 6px; color: var(--ink); text-decoration: none; font-size: .92rem; font-weight: 600; }
 .button.primary { background: var(--ink); color: var(--ground); }
 .button:hover { opacity: .85; }
 .button:focus-visible, .nav a:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
+
+.skills { padding: 20px 22px 22px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+.skills h2 { margin: 0 0 8px; font-size: 1.15rem; }
+.skills > p { margin: 0 0 14px; color: var(--muted); font-size: .93rem; }
+.prompt { border: 1px solid var(--rule); border-radius: 8px; background: var(--code); overflow: hidden; }
+.prompt-bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--rule); font-size: .75rem; font-weight: 600; color: var(--muted); }
+.copy { padding: 4px 10px; border: 1px solid var(--rule); border-radius: 5px; background: var(--surface); color: var(--ink); font: 600 .78rem/1.4 var(--sans); cursor: pointer; }
+.copy:hover { border-color: var(--muted); }
+.copy:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
+.prompt pre { padding: 14px; white-space: pre-wrap; overflow-x: auto; font-size: .8rem; line-height: 1.55; }
+.prompt .cmd { white-space: pre; }
+.skill-links { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.skill-links li { display: grid; gap: 1px; font-size: .9rem; }
+.skill-links a { font-weight: 600; }
+.skill-links span { color: var(--muted); font-size: .85rem; }
 
 .section { padding: 56px 0 0; }
 h2 { margin: 0 0 20px; font-size: 1.6rem; line-height: 1.2; letter-spacing: -.02em; }
@@ -105,7 +122,10 @@ footer p { margin: 0 auto 0 0; color: var(--muted); }
 @media (max-width: 760px) {
   .wrap { width: calc(100% - 32px); }
   .nav nav { gap: 16px; }
-  .nav nav a:first-child, .nav nav a:nth-child(2) { display: none; }
+  .nav nav a:nth-child(2), .nav nav a:nth-child(3), .nav nav a:nth-child(4) { display: none; }
+  .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+  .skills { padding: 16px; }
+  .prompt pre { padding: 12px; font-size: .72rem; }
   .hero { padding-top: 48px; }
   .split, .audiences, .steps { grid-template-columns: 1fr; }
   .audiences, .steps { gap: 40px; }
