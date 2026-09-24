@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 104" role="img" aria-label="sk/go">
+  <style>
+    .slash { fill: #54616b; }
+    @media (prefers-color-scheme: dark) { .slash { fill: #a9b5bb; } }
+  </style>
+  <text x="170" y="80" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="86" font-weight="700" letter-spacing="2"><tspan fill="#ff6500">sk</tspan><tspan class="slash"> / </tspan><tspan fill="#00add8">go</tspan></text>
+</svg>
