@@ -499,6 +499,9 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// one — it has to run the form and then render the page again with the
 	// outcome in it. Everything else this handler serves is a file.
 	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
+		if rejectReservedQuery(w, r, hasDataSuffix(r.URL.Path), false) {
+			return
+		}
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return

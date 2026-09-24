@@ -102,3 +102,10 @@ func TestRouteResolutionRequestChecksReservedQueryBeforeItsFallback(t *testing.T
 		t.Errorf("route resolution: got %d %q", rec.Code, recorded(rec))
 	}
 }
+
+func TestReservedQueryPrecedesPageMethodResolution(t *testing.T) {
+	resp := do(t, newTestHandler(t), http.MethodPut, "/about?x-sveltekit-private=1", nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("page PUT: got %d, want reserved-query 400", resp.StatusCode)
+	}
+}
