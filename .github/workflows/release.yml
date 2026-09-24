@@ -75,7 +75,7 @@ jobs:
       # runner needs the same pinned package manager as the browser suite.
       - uses: pnpm/action-setup@v6
         with:
-          version: 11.25.0
+          version: 11.27.1
 
       # The adapter the app installs and the adapter the Go binary embeds are
       # the same files, and every build is refused at startup if they are not.
@@ -141,7 +141,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 11.25.0
+          version: 11.27.1
 
       - name: Install the add-on's build-only dependencies
         working-directory: internal/sv

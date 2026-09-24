@@ -20,7 +20,7 @@
 	"homepage": "https://github.com/tylergannon/skgo",
 	"type": "module",
 	"scripts": {
-		"build": "tsdown sv-addon.source.js --format esm --platform node --external sv --out-dir dist --no-clean --target node22 --no-dts --minify && mv dist/sv-addon.source.mjs sv-addon.js && rmdir dist"
+		"build": "tsdown sv-addon.source.js --format esm --platform node --deps.never-bundle sv --deps.only-bundle @sveltejs/sv-utils --out-dir dist --no-clean --target node22 --no-dts --minify && mv dist/sv-addon.source.mjs sv-addon.js && rmdir dist"
 	},
 	"exports": {
 		".": "./sv-addon.js",
@@ -34,6 +34,6 @@
 	},
 	"devDependencies": {
 		"@sveltejs/sv-utils": "1.0.0-next.4",
-		"tsdown": "0.17.2"
+		"tsdown": "0.23.0"
 	}
 }

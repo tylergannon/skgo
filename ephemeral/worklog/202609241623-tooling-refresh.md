@@ -1,0 +1,5 @@
+decision: Keep Vite+ on the latest 0.3 stable line (0.3.3) while Kit remains on 3.0.0-next.28; Vite+ 1.0.0-rc.0 changes its bundled Vitest major from 4 to 5, while the current scaffold's browser-test add-ons are aligned with Vitest 4.
+friction: tsdown 0.23 deprecates --external -> use --deps.never-bundle for the sv add-on build.
+friction: A separate Codex task replaced port 8080 with /tmp/skgo-actions-server during the 157-scenario production browser run; the final three screenshots were blank after this run's Go server was terminated -> use a task-specific port and log for live proof.
+friction: `vp check` reports formatting issues in the same 55 files under both Vite+ 0.3.1 and 0.3.3. This is a pre-existing optional formatting baseline, not an upgrade regression or a CI gate; the configured Svelte check reports zero errors and warnings.
+correction: Kit 3.0.0-next.28 rejects query keys starting with x-sveltekit- after stripping its own data-request keys; skgo still returns a page for /?x-sveltekit-custom=1. This is a runtime mirror gap, separate from the toolchain upgrade.

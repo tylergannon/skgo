@@ -7,7 +7,7 @@ description: Map SvelteKit 3 behavior from skgo's pinned Kit source before chang
 
 Treat Kit as the specification. Before changing a mirrored feature, read its
 implementation in the pinned package under
-`/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.27` and
+`/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28` and
 refresh that package when skgo's `@sveltejs/kit` pin advances. Use the official
 GitHub release for the target tag to identify migrations since the prior pin.
 
@@ -15,7 +15,7 @@ Kit 3 facts that overturn older SvelteKit assumptions:
 
 - Configuration is passed to `sveltekit(...)` in `vite.config.ts`; there is no
   app-owned `svelte.config.js` in this repository.
-- Kit requires Node 22.17+, Vite 8.0.12+, Svelte 5.56.4+, and TypeScript 6.
+- Kit requires Node 22.17+, Vite 8.0.12+, Svelte 5.57.1+, and TypeScript 6.
   TypeScript 7 is not a compatible substitute for the `typescript` package.
 - `kit.paths.origin` fixes the application origin at build time.
 - The application alias is `#lib`, declared through package imports; `$lib`
@@ -36,6 +36,12 @@ Kit 3 facts that overturn older SvelteKit assumptions:
 - A command or form must fulfill every client-requested single-flight update or
   explicitly ignore it. The server returns ignored remote keys as `i`, and the
   next.27 client rejects a response with requested keys left unhandled.
+- After internal data-request parameters are removed, Kit next.28 rejects any
+  remaining query parameter beginning with `x-sveltekit-` with HTTP 400 before
+  it runs hooks or resolves a route.
+- `builder.generateServerInstance` now writes a `server` object made by
+  `create_server`. `Server` is deprecated; the generated instance still exposes
+  `init` and `respond`.
 
 When the dependency pin advances, update the pinned-source path and this list
 only for facts verified in that source or the official release notes.
