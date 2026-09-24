@@ -67,7 +67,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 24.16.0
+          node-version: 24.21.0
           registry-url: https://registry.npmjs.org
 
       # The adapter identity tests pack the exact package that will be
@@ -136,7 +136,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 24.16.0
+          node-version: 24.21.0
           registry-url: https://registry.npmjs.org
 
       - uses: pnpm/action-setup@v6
