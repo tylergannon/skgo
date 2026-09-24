@@ -257,79 +257,80 @@ Scenario: An agent can repair and demonstrate the application
     and the repair does not move server behavior into JavaScript
 ```
 
-## Expanded Go and integration direction — user steering, September 24
+## Advice-driven analyzers — latest user direction, September 24
 
-The user explicitly asked for ambitious Go linting and checks that establish
-the application is wired together correctly, without stopping the current run.
-This augments the existing outcomes, not their execution order. Continue the
-current task; incorporate these checks into the relevant diagnostic/build/fix
-outcomes. The supervising caller owns this amendment.
+This replaces the preceding broad Go-linter expansion. The user clarified:
+"The idea is let's try to think up the advice that we would give to developers
+using this thing, and then set up Go analyzers that can detect the anti-patterns
+and barf on them." Continue the current run and keep its six outcomes. The
+priority is useful skgo-specific developer guidance enforced by analysis, not a
+large generic lint preset. goimports, vet and Staticcheck remain the baseline;
+additional generic rule families are not mandatory sprint acceptance.
 
-For outcome 1, make the Go preset concrete: goimports formatting/imports,
-vet and Staticcheck correctness, unchecked errors (errcheck), wrapped-error
-misuse (errorlint), mistaken nil error returns (nilerr or equivalent), discarded
-assignments, context propagation (contextcheck/noctx), unclosed HTTP bodies
-(bodyclose), and SQL resource/iteration mistakes (sqlclosecheck/rowserrcheck).
-Use a pinned compatible golangci-lint configuration or equivalent upstream
-analyzers; reuse existing equivalent project configuration and avoid duplicate
-diagnostics. Evaluate selected correctness-oriented gosec checks as well.
-Qualify applicability and false positives on concrete bad/good fixtures before
-enabling a rule by default. Explicitly report unsupported Go/tool versions;
-this project currently requires Go 1.27. Do not enable all style/opinion rules.
+For outcomes 1 and 3, derive a small set of actionable rules from skgo's public
+API guidance, real misuse examples, and pinned Kit constraints. Implement
+skgo-owned Go rules as ordinary golang.org/x/tools/go/analysis analyzers, sharing
+existing generator checks and type information where appropriate. Reuse an
+upstream analyzer when it already provides the desired advice. Do not create
+an analyzer framework or duplicate enforcement logic just for this interface.
 
-For outcome 2, mechanical upstream fixes remain the only automatic edits.
-Choosing how an application handles an ignored error or whether it intentionally
-detaches background work is an agent/developer decision, not a formatting fix.
-Keep the everyday check/fix gesture and explicitly show active/disabled rules.
+The rule begins with a sentence a helpful skgo reviewer would say. Establish
+why the mistake breaks behavior, its detectable shape, a valid counterpart,
+and the repair. The initial candidates, to map independently before coding:
 
-For outcome 3, prioritize complete connections where authoritative evidence
-exists: authored Go declarations -> registrations -> Kit IDs/methods -> emitted
-frontend calls; Go wire types -> generated TS/form fields -> consuming code;
-layout/load ancestry and generated route types; transport keys; and build output
-actually loaded by Go. Cross-file diagnostics should name both ends and the
-broken connection. Resolve Kit semantics from pinned source. An arbitrary Go
-startup branch or dynamically built route/context cannot be certified by source
-inspection; report unresolved relationships and use actual build/runtime checks
-where necessary. Do not invent auth rules or claim static security proof.
+| Advice | Detectable misuse to qualify |
+| --- | --- |
+| Put cookie changes in a command or form; queries cannot apply them. | SetCookie/DeleteCookie on the skgo event inside a known query declaration, including known read-only variants where upstream enforces that rule. |
+| Pass page-dependent inputs into a query as arguments. | Calling load-only Event.URL/Param/SearchParam/RouteID from a known query. Kit's argument-keyed cache is the reason; legitimate request headers/cookie reads are not prohibited. |
+| Carry the handler's context when accessing its skgo event. | EventFrom fed a demonstrably fresh Background/TODO context inside a declared handler, losing the event. This is not a general ban on intentional detached background work. |
+| Refresh a query and reconnect a live query through the typed helper. | A statically resolved refresh/reconnect target whose declaration kind contradicts the helper's accepted kind. Do not guess arbitrary dynamic registration. |
+| Let Go declarations own the wire shape and generated bindings. | Existing declaration, wire-shape and stale-binding checks surfaced as advice with the authored location and specific remedy, reusing generation's rules. |
 
-Provide a discoverable deeper check mode for expensive integration/build work
-and govulncheck's reachable dependency findings, including database freshness and
-unavailability. Keep local everyday checks usable offline. The existing explicit
-build mode can remain as a narrower operation. Ordinary tests, race testing,
-transport round trips, request isolation and browser scenarios remain distinct
-behavioral evidence; a deeper static-check result is not a software verdict.
+These are bounded candidates, not permission to invent restrictions or pretend
+arbitrary call paths are statically knowable. Prioritize verified, high-confidence
+misuses; show unresolved analysis as such. Shared helpers can run under multiple
+handler kinds, so reachability alone must not make a legitimate helper invalid.
+Any new rule needs both an independently planted bad example and valid examples
+that stay quiet. Suggestions based on uncertain intent must not fail the build.
+
+A useful diagnostic says what goes wrong and how to fix it, for example:
+"This query cannot set cookies. Move the cookie change into a command or form."
+Its code links to the same versioned advice served by the documentation/MCP
+outcome. CLI, MCP and editor-compatible Go analysis should not teach conflicting
+rules. Automatic fixes remain limited to changes with an unambiguous meaning.
 
 ```gherkin
-Scenario: Catch Go defects beyond compilation
-  Given independently planted unchecked errors, lost contexts, and HTTP or SQL resource mistakes
-  When I run the normal project check with its applicable preset
-  Then findings identify the concrete mistakes and authored locations
-    and corresponding intentional/correct examples do not produce those findings
+Scenario: Advice catches a real skgo misuse
+  Given a registered query attempts to change a cookie on its request event
+  When I check the project
+  Then the diagnostic identifies the query and cookie call
+    and explains the command or form alternative
+    and the same cookie operation in a valid command is accepted
 
-Scenario: Explain both ends of broken wiring
-  Given a component calls a generated binding whose Go registration no longer matches
-  When I request the applicable integration check
-  Then the diagnostic identifies the frontend call and Go declaration or missing registration
-    and tells me which authored input or generation step needs repair
+Scenario: The checker explains lost request context
+  Given a declared handler obtains its skgo event from a fresh background context
+  When I check the project
+  Then the diagnostic explains that the new context has lost the request event
+    and obtaining the event from the supplied handler context is accepted
 
-Scenario: Deeper checks stay honest
-  Given vulnerability data is unavailable or the build cannot complete
-  When I request deeper checks
-  Then the affected operation reports incomplete or failed coverage
-    and successful local checks remain separately visible
+Scenario: Developer advice and diagnostics agree
+  Given a skgo-specific diagnostic
+  When an agent requests its explanation through the documentation tool
+  Then it receives the corresponding advice, reason, and valid repair example
+    for the installed version
 ```
 
-Longer-range candidates to investigate when evidence warrants them: declared
-package import boundaries, unused application exports with SvelteKit entrypoints
-understood, async Promise misuse, import cycles, and contract-specific runtime
-checks for cancellation/stream cleanup and cross-request isolation. These are
-direction, not permission to add speculative generic analysis machinery or to
-replace the official Svelte compiler. Implement a specific rule when its failure
-and valid counterpart can be independently demonstrated.
+Keep the original cross-language build/registration checks and runtime evidence
+boundaries. Broader security presets, extra dependency-scanning modes, generic
+resource/style rules, import-policy frameworks, and whole-program intent analysis
+are not newly required by this clarification. The ambition is to encode valuable
+framework expertise and catch real broken connections, without pedantic noise.
 
-Primary references:
-- https://golangci-lint.run/docs/linters/
-- https://pkg.go.dev/golang.org/x/tools/cmd/goimports
+Starting evidence, not a substitute for independent mapping:
+- skills/skgo/SKILL.md (developer guidance)
+- event.go and loadevent.go (request event and query/load constraints)
+- refresh.go, requested.go, and remote_live.go (typed refresh/reconnect contracts)
+- internal/gen (existing declaration and wire-shape enforcement)
+- /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.27/src/runtime/app/server/remote/shared.js
+- /Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.27/src/runtime/app/server/remote/requested.js
 - https://pkg.go.dev/golang.org/x/tools/go/analysis
-- https://go.dev/doc/tutorial/govulncheck
-- https://go.dev/doc/articles/race_detector
