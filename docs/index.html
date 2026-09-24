@@ -3,98 +3,148 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="skgo is a SvelteKit application server written in Go. SvelteKit on the frontend, Go on the server, one binary in production.">
-  <title>skgo — SvelteKit, served by Go</title>
+  <meta name="description" content="skgo is a Go backend for SvelteKit. Write remote functions, server loads and API routes in Go, call them from Svelte with generated types, and deploy the app as one Go binary.">
+  <title>skgo: a Go backend for SvelteKit</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="nav wrap">
-    <a class="mark" href="#top" aria-label="skgo home"><span>sk</span><i>/</i><b>go</b></a>
+    <a class="mark" href="#top" aria-label="skgo home"><span>sk</span><b>go</b></a>
     <nav aria-label="Primary">
-      <a href="#model">How it works</a>
-      <a href="https://github.com/tylergannon/skgo">GitHub ↗</a>
+      <a href="#example">Example</a>
+      <a href="#start">Start</a>
+      <a href="https://pkg.go.dev/github.com/tylergannon/skgo">Go docs</a>
+      <a href="https://github.com/tylergannon/skgo">GitHub</a>
     </nav>
   </header>
 
   <main id="top">
     <section class="hero wrap">
-      <p class="eyebrow">A SvelteKit application server written in Go</p>
-      <h1>SvelteKit on the frontend.<br><em>Go on the server.</em></h1>
-      <p class="lede">Keep SvelteKit 3, Svelte 5, Vite+, and the conventions you know. Go owns every server endpoint, renders pages, and ships the whole application as one binary.</p>
+      <h1>A Go backend for SvelteKit.</h1>
+      <p class="lede">skgo lets you write the server side of a SvelteKit app in Go. Remote functions, server loads and API routes are Go code that sits next to the Svelte files that use them. skgo generates TypeScript types and bindings from that code, so you write a function in Go and await it in Svelte, the same way you would call any SvelteKit remote function. Pages are rendered by SvelteKit's own renderer running inside the Go process, and the app deploys as a single Go binary. Node is only needed to build it.</p>
+      <p class="status"><strong>Status:</strong> pre-1.0. skgo tracks the SvelteKit 3 prerelease pinned in its repository. All server code is written in Go: TypeScript remote functions, loads and API routes are not supported. The <a href="https://github.com/tylergannon/skgo/tree/main/example">example app</a> shows what works today.</p>
       <div class="actions">
-        <a class="button" href="https://github.com/tylergannon/skgo/tree/main/example">Explore the example</a>
-      </div>
-      <div class="facts" aria-label="Key facts">
-        <p><strong>One process</strong><span>No Node sidecar</span></p>
-        <p><strong>One server</strong><span>Every endpoint is Go</span></p>
-        <p><strong>Kit semantics</strong><span>Not a Go-flavored imitation</span></p>
+        <a class="button primary" href="#start">Start a project</a>
+        <a class="button" href="https://github.com/tylergannon/skgo/tree/main/example">Example app</a>
       </div>
     </section>
 
-    <section id="model" class="section wrap">
-      <div class="section-head">
-        <p class="eyebrow">The same app, a sharper boundary</p>
-        <h2>Write each part in its natural language.</h2>
-        <p>skgo is an ordinary SvelteKit adapter on one side and ordinary Go on the other. Code generation connects them without asking either community to pretend.</p>
-      </div>
+    <section id="example" class="section wrap">
+      <h2>Example</h2>
       <div class="split">
-        <article class="pane svelte">
-          <p class="label">web/src/routes/+page.svelte</p>
-          <h3>The Svelte side</h3>
-          <pre><code><span class="kw">&lt;script</span> lang=<span class="str">"ts"</span><span class="kw">&gt;</span>
-  <span class="kw">import</span> { addTodo, todos }
-    <span class="kw">from</span> <span class="str">'./todos.remote'</span>;
-<span class="kw">&lt;/script&gt;</span>
+        <figure class="pane">
+          <figcaption><i class="tag go">Go</i>web/src/routes/todos/todos.remote.go</figcaption>
+          <pre><code><span class="kw">package</span> todos
 
-{#each <span class="kw">await</span> todos() as todo}
-  <span class="kw">&lt;p&gt;</span>{todo.text}<span class="kw">&lt;/p&gt;</span>
-{/each}</code></pre>
-          <p>Components, routing, navigation, boundaries, and Kit's native remote-function client stay SvelteKit.</p>
-        </article>
-        <article class="pane go">
-          <p class="label">web/src/routes/todos.remote.go</p>
-          <h3>The Go side</h3>
-          <pre><code><span class="kw">func</span> todos(context.Context) ([]Todo, error) {
-  <span class="kw">return</span> store.List(), nil
+<span class="kw">import</span> (
+	<span class="str">"context"</span>
+
+	<span class="str">"github.com/tylergannon/skgo"</span>
+)
+
+<span class="kw">type</span> Todo <span class="kw">struct</span> {
+	ID   string <span class="str">`json:"id"`</span>
+	Text string <span class="str">`json:"text"`</span>
 }
 
-<span class="kw">func</span> addTodo(ctx context.Context, text string) (Todo, error) {
-  todo := store.Add(text)
-  <span class="kw">return</span> todo, skgo.RefreshRequestedNoArg(ctx, todos)
+<span class="kw">func</span> todos(ctx context.Context) ([]Todo, error) {
+	<span class="kw">return</span> store.List(ctx)
 }
 
 <span class="kw">var</span> _ = skgo.Query(todos)</code></pre>
-          <p>Application I/O, trust, state, errors, loads, and HTTP handlers stay Go.</p>
-        </article>
+        </figure>
+        <figure class="pane">
+          <figcaption><i class="tag sk">Svelte</i>web/src/routes/todos/+page.svelte</figcaption>
+          <pre><code>&lt;<span class="kw">script</span> lang=<span class="str">"ts"</span>&gt;
+	<span class="kw">import</span> { todos } <span class="kw">from</span> <span class="str">'./todos.remote'</span>;
+&lt;/<span class="kw">script</span>&gt;
+
+{<span class="kw">#each await</span> todos() <span class="kw">as</span> todo}
+	&lt;<span class="kw">p</span>&gt;{todo.text}&lt;/<span class="kw">p</span>&gt;
+{<span class="kw">/each</span>}</code></pre>
+        </figure>
       </div>
-      <div class="generated">
-        <span>go generate</span>
-        <p>emits Kit-facing stubs, TypeScript types, strict wire codecs, route links, and Go registration</p>
+      <p class="note"><code>skgo generate</code> writes <code>todos.remote.ts</code> next to the Go file. The query runs in Go, and <code>todo</code> has the type of the <code>Todo</code> struct.</p>
+    </section>
+
+    <section class="section wrap">
+      <h2>What you write and what skgo generates</h2>
+      <div class="table">
+        <table>
+          <thead><tr><th>You write, in Go</th><th>skgo generates</th><th>SvelteKit sees</th></tr></thead>
+          <tbody>
+            <tr><td><code>todos.remote.go</code>, using <code>skgo.Query</code>, <code>Command</code>, <code>Form</code>, <code>LiveQuery</code> or <code>BatchQuery</code></td><td><code>todos.remote.ts</code>, its TypeScript types, the wire codecs and the Go registration</td><td>A remote function, imported from <code>./todos.remote</code></td></tr>
+            <tr><td><code>page.server.go</code> or <code>layout.server.go</code></td><td>A typed <code>+page.server.ts</code> or <code>+layout.server.ts</code></td><td>A server load. <code>data</code> is typed from the Go result.</td></tr>
+            <tr><td><code>server.go</code>, a <code>net/http</code> handler</td><td>A <code>+server.ts</code></td><td>An API route</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">The generated TypeScript function bodies throw an error. They exist so SvelteKit can build its client and manifests, which means every response comes from Go.</p>
+    </section>
+
+    <section class="section wrap audiences">
+      <div>
+        <h2>For Go developers</h2>
+        <ul>
+          <li>The build embeds the frontend, its assets and the server-rendering bundle in one binary. Node runs at build time only.</li>
+          <li>A remote function is an ordinary Go function that takes a <code>context.Context</code> and returns <code>(T, error)</code>. A one-line marker such as <code>skgo.Query(todos)</code> registers it.</li>
+          <li>API routes are <code>http.Handler</code>s. You assemble loads, remote functions, API routes and page rendering into your own <code>net/http</code> server (see <a href="https://github.com/tylergannon/skgo/blob/main/example/server.go">example/server.go</a>).</li>
+          <li>The request and its cookies are available from <code>skgo.EventFrom(ctx)</code>.</li>
+          <li>The JSON shape of your Go types becomes the TypeScript types. After you change a type, regenerate, and the TypeScript checker reports every component that still uses the old shape.</li>
+          <li>There is no cgo. The JavaScript engine, <a href="https://github.com/dop251/goja">goja</a>, is written in Go.</li>
+          <li>Generated files are ordinary Go and TypeScript, marked <code>DO NOT EDIT</code>.</li>
+        </ul>
+      </div>
+      <div>
+        <h2>For SvelteKit developers</h2>
+        <ul>
+          <li>Components are ordinary Svelte 5.</li>
+          <li>Routing, layouts, error pages, navigation and the remote-function client are SvelteKit's own code, not a reimplementation.</li>
+          <li>Queries, commands, forms, live queries and batch queries are imported and called as in any SvelteKit app. Only the implementation is Go.</li>
+          <li>A Go load's result type becomes the page's <code>data</code> type.</li>
+          <li>Pages are rendered on the server. Streamed promises, <code>ssr = false</code> and <code>csr = false</code> work.</li>
+          <li>Remote forms still work when JavaScript is disabled.</li>
+          <li>In development, <code>just dev</code> runs <code>vp dev</code> behind the Go server. The Go server renders pages and forwards modules and hot reloading.</li>
+          <li><code>skgo new</code> creates the project with <code>sv create</code>, then adds Vitest and Storybook.</li>
+        </ul>
       </div>
     </section>
 
-    <section class="dark">
-      <div class="section wrap">
-        <div class="section-head">
-          <p class="eyebrow">Not just remote functions</p>
-          <h2>A Go monolith with a real frontend framework.</h2>
-        </div>
-        <div class="grid">
-          <article><b>01</b><h3>Remote functions</h3><p>Typed queries, commands, forms, live queries, and batched queries use Kit's own browser protocol.</p></article>
-          <article><b>02</b><h3>Server loads</h3><p>Colocated Go functions answer layout and page data, including streamed promises and nested errors.</p></article>
-          <article><b>03</b><h3>HTTP routes</h3><p>A <code>+server.ts</code> route is implemented beside it as a normal <code>net/http</code> handler.</p></article>
-          <article><b>04</b><h3>In-process SSR</h3><p>Kit's renderer runs inside embedded goja. Pages leave Go with their markup already present.</p></article>
-          <article><b>05</b><h3>Kit behavior</h3><p>Route params, CSR-only pages, scriptless pages, hooks, transport, errors, redirects, and CSP keep Kit semantics.</p></article>
-          <article><b>06</b><h3>A Go deployment</h3><p>Frontend assets and the SSR bundle are embedded. Node is needed to build, never to run.</p></article>
-        </div>
+    <section class="section wrap">
+      <h2>Not supported</h2>
+      <ul class="limits">
+        <li>TypeScript server code. Remote functions, loads and API routes must be written in Go.</li>
+        <li>Classic form actions (<code>actions</code> in <code>+page.server.ts</code>). Use a remote <code>form</code> instead.</li>
+        <li>Prerendering a page whose route has a Go server load.</li>
+        <li>Pointer, map and interface types in remote function signatures. Use value types, named structs or <code>polytype.Nullable</code>.</li>
+        <li><code>output.bundleStrategy: 'inline'</code> and <code>router.resolution: 'server'</code>.</li>
+        <li><code>sv</code> library templates, and add-ons that write JavaScript server code. <code>skgo new</code> refuses them.</li>
+      </ul>
+    </section>
+
+    <section id="start" class="section wrap steps">
+      <div>
+        <h2>Start a project</h2>
+        <p>You need Go, <a href="https://viteplus.dev">VitePlus</a> (<code>vp</code>) and <a href="https://just.systems">just</a>.</p>
+        <pre class="shell"><code>go install github.com/tylergannon/skgo/cmd/skgo@latest
+skgo new myapp
+cd myapp
+just dev</code></pre>
+        <p><code>skgo new</code> runs <code>sv create</code> through VitePlus and asks <code>sv</code>'s usual questions. Anything after <code>--</code> is passed to <code>sv create</code>.</p>
+      </div>
+      <div>
+        <h2>Build and deploy</h2>
+        <pre class="shell"><code>just build    <span class="com"># go generate, vp build, go build → bin/myapp</span>
+./bin/myapp</code></pre>
+        <p>The build compiles in the app's public origin, and skgo checks it on non-GET remote calls. If the origin changes, rebuild. Behind a reverse proxy the listen address can differ from the origin. Put your usual TLS proxy or load balancer in front.</p>
       </div>
     </section>
   </main>
 
   <footer class="wrap">
-    <a class="mark" href="#top"><span>sk</span><i>/</i><b>go</b></a>
-    <p>Open source under the MIT license. Pre-1.0 and tracking SvelteKit 3.</p>
-    <a href="https://github.com/tylergannon/skgo">View on GitHub ↗</a>
+    <a class="mark" href="#top" aria-label="skgo home"><span>sk</span><b>go</b></a>
+    <p>skgo is pronounced "skay-go". MIT licensed.</p>
+    <a href="https://github.com/tylergannon/skgo">github.com/tylergannon/skgo</a>
   </footer>
 </body>
 </html>

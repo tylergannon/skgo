@@ -40,6 +40,40 @@ Import the generated sibling `.remote` module from Svelte and use Kit's native
 client API, including `.updates(...)`. When refresh policy belongs to the
 server, use the typed Go refresh and reconnect helpers instead of string IDs.
 
+## Call a Form from Go
+
+For a Form whose fields are flat scalars (including `polytype.Optional[T]`
+scalars) and whose result is made of scalars, generation also writes an
+importable Go package at `<bindings>/client` with one typed method per
+supported Form. Forms with files or nested data keep their browser and server
+bindings but get no Go client method.
+
+```go
+forms := client.Client{FormClient: skgo.FormClient{BaseURL: "http://127.0.0.1:8080"}}
+result, err := forms.Submit(ctx, optional.Input{Name: "Ada"})
+```
+
+To reach the server over a Unix socket, give `FormClient.HTTPClient` a
+transport that dials the socket. `BaseURL` can then name any `http://` host,
+such as `http://skgo`:
+
+```go
+transport := &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+	return (&net.Dialer{}).DialContext(ctx, "unix", socketPath)
+}}
+forms := client.Client{FormClient: skgo.FormClient{
+	BaseURL: "http://skgo", HTTPClient: &http.Client{Transport: transport},
+}}
+```
+
+A call returns the declared result, `*skgo.Invalid` for field issues,
+`*skgo.HTTPError` for a server error envelope, or the transport error. The
+caller's context cancels the request. Each submission is one POST: redirects,
+including 307 and 308, come back as errors and are never replayed. The
+example's `cmd/form-client` is a working caller.
+
+## Loads and routes
+
 Server loads live in `page.server.go` and `layout.server.go`. HTTP routes live
 in `server.go` and are ordinary `http.Handler` functions. Keep the generated
 Kit stubs beside them; their failure is what prevents JavaScript from silently
@@ -72,7 +106,11 @@ still intercept every server load, remote call, and endpoint before the proxy.
   the command is allowed to refresh, and bound client-requested refreshes.
 - Preserve `ssr = false`, `csr = false`, prerender, errors, redirects, and
   transport hooks as Kit defines them; skgo mirrors Kit rather than inventing
-  parallel semantics.
+  parallel semantics. A page whose branch has a Go server load cannot be
+  prerendered, and generation refuses one that asks to be.
+- There are no classic `+page.server.ts` form actions; use a remote `form`.
+  Remote function signatures cannot use pointer, map or interface types; use
+  value types, named structs, or `polytype.Nullable`.
 
 ## Verify the real boundary
 
