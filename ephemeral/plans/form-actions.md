@@ -3,6 +3,24 @@
 Design for upgrading the existing `./example` application. The feature is not
 implemented or proved by this document.
 
+Design consensus reached with Claude Fable 5.1 on 2026-09-24 after three
+rounds: [final review](../reviews/form-actions-round-03.md), outcome **only
+nitpicks remain**. Its wording clarifications were incorporated in commit
+`380697d`. Earlier rounds remain beside that artifact. This is design
+consensus, not implementation or runtime acceptance.
+
+The work is on branch `codex/form-actions-proof`. Implementation has not
+started; when requested, begin with stage 1 below. No application code,
+executable action scenarios, generated action bindings, or runtime screenshots
+were produced during planning. All review processes have finished.
+
+Actions belong in the route's `page.server.go`, beside its page load, with
+generated `actions` and `load` exports sharing `+page.server.ts`. `server.go`
+continues to represent `+server.ts` endpoints. The earlier conversation's Go
+function and generic-result signatures were illustrative; the exact public Go
+API remains an implementation decision constrained by Kit, generated types,
+and the acceptance scenarios below.
+
 ## What a visitor gets
 
 The home page's existing capability tour gains **Page form actions**, linking

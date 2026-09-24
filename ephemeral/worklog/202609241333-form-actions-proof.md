@@ -17,3 +17,5 @@ decision: The first vertical slice must carry a transported Money result through
 correction: During external review, the user asked to wait quietly for completion rather than repeatedly narrating that a verdict had not arrived.
 
 friction: Fable's third review found that the current native remote-form CSRF check compares only the app origin. The classic-action acceptance follows Kit's trusted-origin support; copying the existing remote-form check would fail that requirement. Missing Content-Type also counts as form-shaped in Kit's CSRF check.
+
+decision: At context close the user requested a durable plan handoff. The plan now links the completed design consensus, identifies stage 1 as the implementation entry point, and distinguishes the agreed route-file layout from the still-illustrative Go API sketches. Implementation was not requested or started in this context.
