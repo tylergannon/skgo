@@ -15,6 +15,23 @@ is only needed to build it.
 > loads and API routes are not supported. The [example app](example/) shows what
 > works today.
 
+## Agent skills
+
+skgo publishes skills that teach a coding agent how to build with it: the
+[skgo skill](skills/skgo/SKILL.md) and the
+[polytype skill](https://github.com/tylergannon/polytype/tree/main/skills/polytype)
+for the Go types that cross the wire. Paste this prompt into Claude Code, Codex
+or any other agent that reads skills:
+
+```text
+Install the agent skills for skgo (a Go backend for SvelteKit) and polytype (which generates its Go-to-TypeScript types):
+
+vp dlx skills add tylergannon/skgo -y
+vp dlx skills add tylergannon/polytype -y
+
+Without vp (VitePlus), use pnpm dlx instead, not npx: skgo projects use pnpm. Add -g to install them for all projects. Then read the skgo skill before writing skgo code.
+```
+
 ## Example
 
 A query, written in Go:
@@ -162,6 +179,6 @@ just install && just build && just serve    # http://127.0.0.1:8080
 
 - [Overview](https://tylergannon.github.io/skgo/)
 - [Go package documentation](https://pkg.go.dev/github.com/tylergannon/skgo)
-- [Agent skill](skills/skgo/SKILL.md)
+- [Agent skills](#agent-skills)
 
 skgo is pronounced "skay-go". MIT licensed; see [LICENSE](LICENSE).
