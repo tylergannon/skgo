@@ -22,6 +22,7 @@ import (
 // it.
 
 func TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	mkdir := func(rel string) string {
 		t.Helper()
@@ -67,6 +68,7 @@ func TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace(t *testing.T) {
 // app's own root may still hold one — /var against /private/var is the
 // everyday macOS case, and it would relocate every package in the app.
 func TestOwnershipSurvivesASymlinkedPath(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	real := filepath.Join(root, "real")
 	if err := os.MkdirAll(filepath.Join(real, "pkg"), 0o755); err != nil {
@@ -74,7 +76,7 @@ func TestOwnershipSurvivesASymlinkedPath(t *testing.T) {
 	}
 	link := filepath.Join(root, "link")
 	if err := os.Symlink(real, link); err != nil {
-		t.Skipf("this filesystem does not do symlinks: %v", err)
+		t.Fatalf("this filesystem does not do symlinks, so the claim cannot be checked: %v", err)
 	}
 
 	if !withinTree(link, filepath.Join(real, "pkg")) {

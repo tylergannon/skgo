@@ -20,6 +20,7 @@ import (
 // no-argument constructor, which is where the compiler checks the function
 // again.
 func TestANoArgumentRemoteFunctionIsAnOrdinaryGoFunction(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, `package data
 
 import (
@@ -120,6 +121,7 @@ var (
 // like any other — and a placeholder that has to be projected is a placeholder
 // that can fail to be.
 func TestNoArgumentMeansNothingToProject(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, `package data
 
 import (
@@ -153,6 +155,7 @@ var _ = skgo.Query(getThing)
 // the shape should have been. A message that only says "cannot read the types"
 // leaves the developer to guess.
 func TestAFunctionSkgoCannotPublishIsRefusedByName(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		decl    string
@@ -227,6 +230,7 @@ var _ = skgo.LiveQuery(watchThing)`,
 // the wire per entry — and emit kit's own factory shape:
 // `(args: In[]) => (arg: In, idx: number) => Out`.
 func TestABatchQueryIsProjectedFromItsElementTypes(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, `package data
 
 import (
@@ -276,6 +280,7 @@ var _ = skgo.BatchQuery(getQuotes)
 // every argument, so there is nothing left to batch: a batch always takes one,
 // and both sides of it are slices.
 func TestABatchQueryThatIsNotABatchIsRefused(t *testing.T) {
+	t.Parallel()
 	for name, decl := range map[string]string{
 		"no argument at all": `func getQuotes(ctx context.Context) ([]string, error) { return nil, nil }`,
 		"a single argument":  `func getQuotes(ctx context.Context, symbol string) ([]string, error) { return nil, nil }`,

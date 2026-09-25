@@ -13,6 +13,7 @@ import (
 )
 
 func TestCheckReportsRefreshAndRouteAdviceAtAuthoredLocations(t *testing.T) {
+	t.Parallel()
 	repo, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -63,10 +64,7 @@ func TestCheckReportsRefreshAndRouteAdviceAtAuthoredLocations(t *testing.T) {
 	if output, err := command(root, "go", "mod", "tidy"); err != nil {
 		t.Fatalf("prepare CLI fixture: %v\n%s", err, output)
 	}
-	bin := filepath.Join(root, "skgo")
-	if output, err := command(repo, "go", "build", "-o", bin, "./cmd/skgo"); err != nil {
-		t.Fatalf("build real CLI: %v\n%s", err, output)
-	}
+	bin := skgoBin
 	output, runErr := command(root, bin, "check", "--root", root, "--json")
 	var report check.Report
 	if err := json.Unmarshal(output, &report); err != nil {

@@ -26,6 +26,7 @@ var _ = skgo.DefaultAction(submit)
 `
 
 func TestActionDeclarationsMatchKit(t *testing.T) {
+	t.Parallel()
 	const path = "app/web/src/routes/profile/page.server.go"
 	tests := []struct {
 		name  string

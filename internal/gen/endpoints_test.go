@@ -27,6 +27,7 @@ var (
 // marker, named exactly as kit names them — kit dispatches by looking the
 // request's method up on the module's exports, so the names are the interface.
 func TestAServerRouteBecomesTheModuleKitCompiles(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/api/thing/server.go": endpointSource,
 	})
@@ -67,6 +68,7 @@ func TestAServerRouteBecomesTheModuleKitCompiles(t *testing.T) {
 // group segments and parameter segments are part of it, because kit reads the
 // directory back with `path.join(cwd, routes_base, id)`.
 func TestARouteIdIsTheDirectoryPathVerbatim(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"src/routes/+server.ts":                      "/",
 		"src/routes/api/thing/+server.ts":            "/api/thing",
@@ -94,6 +96,7 @@ func TestARouteIdIsTheDirectoryPathVerbatim(t *testing.T) {
 // The markers are per file, because the file name is what decides which module
 // kit compiles beside it. A marker in the wrong file is a stub nobody generates.
 func TestAServerRouteMarkerBelongsInServerGo(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/api/thing/thing.remote.go": endpointSource,
 	})
@@ -109,6 +112,7 @@ func TestAServerRouteMarkerBelongsInServerGo(t *testing.T) {
 
 // A module has one export per name, so a route cannot answer one method twice.
 func TestARouteCannotAnswerAMethodTwice(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/api/thing/server.go": `package thing
 
