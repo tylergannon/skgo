@@ -217,6 +217,57 @@ func (t *routeLinks) sync() error {
 	return t.writeInventory()
 }
 
+// overlay lets go/packages type-check current authored route files through the
+// generated import addresses without changing their committed copies.
+func (t *routeLinks) overlay() (map[string][]byte, error) {
+	overlay := map[string][]byte{}
+	for _, link := range t.links {
+		names, err := goFileNames(link.dir)
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range names {
+			source := filepath.Join(link.dir, name)
+			copy := filepath.Join(link.linkDir, name)
+			a, err := os.ReadFile(source)
+			if err != nil {
+				return nil, err
+			}
+			if name == generatedRemotesFileName {
+				pkg, err := packageNameOf(link.dir)
+				if err != nil {
+					return nil, err
+				}
+				a = []byte("package " + pkg + "\n")
+			}
+			overlay[copy] = a
+		}
+	}
+	return overlay, nil
+}
+
+func (t *routeLinks) verify() error {
+	for _, link := range t.links {
+		names, err := goFileNames(link.dir)
+		if err != nil {
+			return err
+		}
+		for _, name := range names {
+			source := filepath.Join(link.dir, name)
+			copy := filepath.Join(link.linkDir, name)
+			a, err := os.ReadFile(source)
+			if err != nil {
+				return err
+			}
+			b, err := os.ReadFile(copy)
+			if err != nil || string(a) != string(b) {
+				return fmt.Errorf("skgo: %s: generated route link is missing or stale; run skgo generate", source)
+			}
+		}
+	}
+	return nil
+}
+
 // syncPackage copies the Go source that makes one authored route package into
 // its Go-nameable generated address. `go.mod` is deliberately not copied: it
 // is only the boundary that keeps the parent module from walking the route

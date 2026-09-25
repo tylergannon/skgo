@@ -1,0 +1,2 @@
+decision: SKGO005 follows skgo's actual runtime gate: Refresh and RefreshRequested accept KindQuery, while ReconnectRequested accepts KindLive. Kit's requested API also recognizes query.batch, but skgo currently rejects a registered BatchQuery as a refresh target; the advice must report that mismatch until the runtime contract changes.
+decision: A page load function can live in a sibling Go file; route knowledge comes from its top-level skgo.Load declaration in page.server.go, not the function definition's filename. Shared helpers and layout declarations remain unresolved.
