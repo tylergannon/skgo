@@ -15,9 +15,10 @@ not know how it is judged.
   actions; a domain type crosses via transport; and so on. Each cell names
   the place on the site where it is in use.
 - Three levels of granularity, each derived from the one below it:
-  1. **The meter.** One number on the status page: percent of the matrix
-     proven at this point in time. Derived from the cells. This is what the
-     owner sees first and often the only thing.
+  1. **The glance.** The status page shows at a glance how the matrix is
+     doing, derived from the cells. Not a deliverable and not a numeric
+     project: no weighting rule, no percent to optimise. If a plain count of
+     pass/fail/unknown cells does the job, that is the whole design.
   2. **The matrix.** Cells are SvelteKit features. The set of cells is fixed
      by what kit does and by the SvelteKit survey; bugs, findings and test
      additions never add or remove a cell. Each cell shows one of:
@@ -96,8 +97,7 @@ it, and the agents that hammer it live where the intent lives.
 - **What counts as a check.** The schema decision everything else hangs
   from. Proposal: a bucket entry names a Go test ID in `skgo`, a Gherkin
   scenario ID, or a gimble workload. The runner resolves each name to a
-  result. A name that resolves to nothing is a fail, not unknown. How the
-  meter weights cells (equal, or by some notion of size) is part of this.
+  result. A name that resolves to nothing is a fail, not unknown.
 
 ## To-do, not now
 
