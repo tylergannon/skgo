@@ -53,6 +53,7 @@ func linksFor(t *testing.T, cfg Config) *routeLinks {
 // link tree: a developer puts a `.remote.go` wherever the route lives, brackets
 // and parentheses included, and Go gets an address it can spell.
 func TestEveryRouteDirectoryBecomesAnImportableGoPackage(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t,
 		"src/routes",
 		"src/routes/todos",
@@ -100,6 +101,7 @@ func TestEveryRouteDirectoryBecomesAnImportableGoPackage(t *testing.T) {
 // TestGeneratedRoutePackagesContainFilesNotSymlinks proves the generated tree
 // survives a Go module archive, which never includes symlink contents.
 func TestGeneratedRoutePackagesContainFilesNotSymlinks(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t, "src/routes", "src/routes/todos")
 	tree := linksFor(t, cfg)
 	if err := tree.sync(); err != nil {
@@ -134,6 +136,7 @@ func TestGeneratedRoutePackagesContainFilesNotSymlinks(t *testing.T) {
 }
 
 func TestGeneratedRoutePackagesSurviveAModuleArchive(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t, "src/routes/todos/[id]")
 	if err := linksFor(t, cfg).sync(); err != nil {
 		t.Fatal(err)
@@ -158,6 +161,7 @@ func TestGeneratedRoutePackagesSurviveAModuleArchive(t *testing.T) {
 // TestTheBoundaryStopsTheParentModuleWalkingIn checks the file whose absence
 // turns `go build ./...` into `invalid char '['`.
 func TestTheBoundaryStopsTheParentModuleWalkingIn(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t, "src/routes/todos/[id]")
 	tree := linksFor(t, cfg)
 	if err := tree.sync(); err != nil {
@@ -182,6 +186,7 @@ func TestTheBoundaryStopsTheParentModuleWalkingIn(t *testing.T) {
 // TestAnAuthoredBoundaryIsLeftAlone: an app that wants its route tree to be a
 // real module of its own keeps it.
 func TestAnAuthoredBoundaryIsLeftAlone(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t, "src/routes/todos/[id]")
 	path := filepath.Join(cfg.Web, "src", "routes", "go.mod")
 	authored := "module example.com/routes\n\ngo 1.27.1\n"
@@ -209,6 +214,7 @@ func TestAnAuthoredBoundaryIsLeftAlone(t *testing.T) {
 // disposable: two runs produce the same bytes, and a route directory that goes
 // away takes its link with it.
 func TestTheLinkTreeRegeneratesDeterministically(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t, "src/routes/todos", "src/routes/todos/[id]")
 	if err := linksFor(t, cfg).sync(); err != nil {
 		t.Fatal(err)
@@ -249,6 +255,7 @@ func TestTheLinkTreeRegeneratesDeterministically(t *testing.T) {
 // rather than leaving a module boundary in an app that no longer has one Go
 // file under its routes.
 func TestRemovingTheLastGoFileRemovesTheBoundary(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t, "src/routes/todos/[id]")
 	if err := linksFor(t, cfg).sync(); err != nil {
 		t.Fatal(err)
@@ -276,6 +283,7 @@ func TestRemovingTheLastGoFileRemovesTheBoundary(t *testing.T) {
 // left in it — polytype's CLI output once lived there, because `go:embed`
 // cannot follow a symlink — is removed rather than compiled into the package.
 func TestTheRoutePackageHoldsOnlyGeneratedCopies(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t, "src/routes")
 	tree := linksFor(t, cfg)
 	if err := tree.sync(); err != nil {
@@ -312,6 +320,7 @@ func TestTheRoutePackageHoldsOnlyGeneratedCopies(t *testing.T) {
 // TestAStaleLinkInTheRouteRootGoes: a file the developer deleted must not keep
 // a dangling link, which would stop the package compiling altogether.
 func TestAStaleLinkInTheRouteRootGoes(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t, "src/routes")
 	if err := linksFor(t, cfg).sync(); err != nil {
 		t.Fatal(err)
@@ -341,6 +350,7 @@ func TestAStaleLinkInTheRouteRootGoes(t *testing.T) {
 // TestPruningRefusesToDeleteSomethingItDidNotCreate keeps a misconfigured
 // output directory from costing anybody their source.
 func TestPruningRefusesToDeleteSomethingItDidNotCreate(t *testing.T) {
+	t.Parallel()
 	cfg := fakeApp(t, "src/routes/todos")
 	tree := linksFor(t, cfg)
 	if err := tree.sync(); err != nil {
@@ -366,6 +376,7 @@ func TestPruningRefusesToDeleteSomethingItDidNotCreate(t *testing.T) {
 // name is what the generated bindings import: change it silently and every
 // checked-in bindings file stops compiling.
 func TestLinkNamesAreTheDocumentedEncoding(t *testing.T) {
+	t.Parallel()
 	for rel, want := range map[string]string{
 		"src/routes":            "onzggl3sn52xizlt",
 		"src/routes/todos":      "onzggl3sn52xizltf52g6zdpom",

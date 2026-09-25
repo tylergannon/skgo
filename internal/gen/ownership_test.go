@@ -37,7 +37,7 @@ func foreignFixture(t *testing.T, remote string, extra map[string]string) (root 
 	t.Helper()
 	// The fixture is not a member of this repository's workspace, so the go
 	// commands the generator runs have to see the fixture's own go.mod.
-	t.Setenv("GOWORK", "off")
+	// GOWORK is off for the whole package (TestMain).
 
 	root = t.TempDir()
 	write := func(path, content string) {
@@ -281,6 +281,7 @@ func requireNothingWrittenOutsideTheApp(t *testing.T, root string, before []stri
 // and it has to reach the browser with its real name on it, without the
 // generator touching the dependency's own source.
 func TestATypeFromAnotherModuleCrossesTheWire(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, `package data
 
 import (
@@ -382,6 +383,7 @@ func filesUnder(t *testing.T, dir string) []string {
 // are the only names guaranteed to differ, so they are what addresses the
 // types.ts the stubs import.
 func TestTwoDependenciesCalledTheSameThingAreKeptApart(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, `package data
 
 import (
@@ -443,6 +445,7 @@ var _ = skgo.Query(getOtherThing)
 // package gave it. Say so rather than emitting a module that declares `Thing`
 // twice.
 func TestOneStubCannotImportTwoTypesOfTheSameName(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, `package data
 
 import (
@@ -484,6 +487,7 @@ var _ = skgo.Query(getOtherThing)
 // import a type by its Go name, so a stub for that package would name the
 // wrong declaration or none. Say so, naming the type, rather than emit it.
 func TestATypeThatReachesAnotherOfItsOwnNameIsRefused(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, `package data
 
 import (

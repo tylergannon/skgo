@@ -31,6 +31,9 @@ var (
 // what the load returned, it is a field of the weather panel inside it, which
 // is where kit lets a promise sit.
 func TestTheDocumentCarriesTheLoadingStatesAndTheValuesFollowIt(t *testing.T) {
+	// Parallel: it spends seconds waiting on the stream page's deliberately
+	// slow loads, and changes nothing another test asserts on.
+	t.Parallel()
 	h := newProdHandler(t)
 	body := get(t, h, "/stream").Body.String()
 
@@ -61,6 +64,9 @@ func TestTheDocumentCarriesTheLoadingStatesAndTheValuesFollowIt(t *testing.T) {
 // the browser fills the page in — and it has to be the order a cold load fills
 // it in, or the same page behaves differently depending on how it was reached.
 func TestTheDataResponseCarriesTheValuesInTheOrderTheySettle(t *testing.T) {
+	// Parallel: it spends seconds waiting on the stream page's deliberately
+	// slow loads, and changes nothing another test asserts on.
+	t.Parallel()
 	h := newProdHandler(t)
 	rec := get(t, h, "/stream/__data.json?x-sveltekit-invalidated=01")
 

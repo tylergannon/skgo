@@ -22,6 +22,7 @@ var _ = skgo.Load(site)
 `
 
 func TestAPrerenderedPageCannotHaveAGoLayoutLoadInItsBranch(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/layout.server.go":   loadSource,
 		"app/web/src/routes/about/+page.svelte": "<h1>About</h1>\n",
@@ -36,6 +37,7 @@ func TestAPrerenderedPageCannotHaveAGoLayoutLoadInItsBranch(t *testing.T) {
 }
 
 func TestPrerenderInheritanceMatchesKit(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		files map[string]string
@@ -113,6 +115,7 @@ func TestPrerenderInheritanceMatchesKit(t *testing.T) {
 }
 
 func TestLoadsOutsideThePrerenderedBranchAreAccepted(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/private/layout.server.go": loadSource,
 		"app/web/src/routes/private/+page.svelte":     "<h1>Private</h1>\n",
@@ -125,6 +128,7 @@ func TestLoadsOutsideThePrerenderedBranchAreAccepted(t *testing.T) {
 }
 
 func TestAPrerenderedPageCannotHaveItsOwnGoLoad(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/about/page.server.go": loadSource,
 		"app/web/src/routes/about/+page.svelte":   "<h1>About</h1>\n",
@@ -136,6 +140,7 @@ func TestAPrerenderedPageCannotHaveItsOwnGoLoad(t *testing.T) {
 }
 
 func TestANamedLayoutResetExcludesLoadsOutsideKitsBranch(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/+layout.svelte":            "<slot />\n",
 		"app/web/src/routes/+layout.ts":                "export const prerender = true;\n",
@@ -149,6 +154,7 @@ func TestANamedLayoutResetExcludesLoadsOutsideKitsBranch(t *testing.T) {
 }
 
 func TestTheLoadStubExplainsAPrerenderCall(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/account/page.server.go": loadSource,
 		"app/web/src/routes/account/+page.svelte":   "<h1>Account</h1>\n",
@@ -170,6 +176,7 @@ func TestTheLoadStubExplainsAPrerenderCall(t *testing.T) {
 }
 
 func TestOptionExamplesInCommentsAndStringsAreIgnored(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"// export const prerender = true;\nexport const nope = false;\n",
 		"const example = 'export const prerender = true';\n",

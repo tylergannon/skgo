@@ -43,6 +43,7 @@ func installAdapter(t *testing.T, version string, contents map[string]string) st
 }
 
 func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
+	t.Parallel()
 	// A version and an adapter no skgo has ever published.
 	const theirVersion = "0.1.7"
 	web := installAdapter(t, theirVersion, map[string]string{
@@ -70,6 +71,7 @@ func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
 // TestGeneratingAnEmptyAppNeedsNoInstalledAdapter keeps the compatibility
 // check from inventing frontend work when there are no Go-facing bindings.
 func TestGeneratingAnEmptyAppNeedsNoInstalledAdapter(t *testing.T) {
+	t.Parallel()
 	web := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(web, "src"), 0o755); err != nil {
 		t.Fatal(err)
@@ -102,6 +104,7 @@ func TestGeneratingAnEmptyAppNeedsNoInstalledAdapter(t *testing.T) {
 // Without it the check could be refusing everything and both other tests would
 // still pass.
 func TestGeneratingAgainstThisModulesAdapterIsAllowed(t *testing.T) {
+	t.Parallel()
 	contents := map[string]string{}
 	source := filepath.Join("..", "adapter")
 	err := filepath.WalkDir(source, func(at string, d fs.DirEntry, err error) error {

@@ -16,16 +16,12 @@ import (
 )
 
 func TestCLIAndInitializedStdioMCPExposeSameAdviceAndFailedCheck(t *testing.T) {
+	t.Parallel()
 	repo, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	bin := filepath.Join(t.TempDir(), "skgo")
-	build := exec.Command("go", "build", "-o", bin, "./cmd/skgo")
-	build.Dir = repo
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build skgo: %v\n%s", err, output)
-	}
+	bin := skgoBin
 	output, err := exec.Command(bin, "advice", "--json").CombinedOutput()
 	if err != nil {
 		t.Fatalf("CLI advice: %v\n%s", err, output)

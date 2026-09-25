@@ -24,6 +24,7 @@ func todoStruct() *types.Struct {
 // TestProjectSpellsTheShapesPolytypeSpells covers the types skgo renders
 // itself: everything else is a named type, which polytype declares.
 func TestProjectSpellsTheShapesPolytypeSpells(t *testing.T) {
+	t.Parallel()
 	todo := named("app/todos", "todos", "Todo", todoStruct())
 	status := named("app/todos", "todos", "Status", types.Typ[types.String])
 
@@ -68,6 +69,7 @@ func TestProjectSpellsTheShapesPolytypeSpells(t *testing.T) {
 // encoding/json would then contradict — and a declaration that lies is worse
 // than a build that stops.
 func TestProjectRefusesWhatPolytypeCannotCarry(t *testing.T) {
+	t.Parallel()
 	todo := named("app/todos", "todos", "Todo", todoStruct())
 
 	for _, tc := range []struct {
@@ -98,6 +100,7 @@ func TestProjectRefusesWhatPolytypeCannotCarry(t *testing.T) {
 // route directories, whose names SvelteKit chooses. Anywhere else the developer
 // chose the name, and Go's rules apply.
 func TestImportPathOutsideTheRouteTreeStillHasToBeNameable(t *testing.T) {
+	t.Parallel()
 	a := &app{
 		cfg:        Config{Web: filepath.Join("/app", "web")},
 		hostDir:    "/app",

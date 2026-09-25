@@ -12,14 +12,12 @@ import (
 
 const optionalLinkImport = "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
 
+// The evolved example (evolution_test.go) changed Input.Enabled from
+// Optional[bool] to Optional[string].
 func TestFormClientInputContractEvolution(t *testing.T) {
-	app := sandboxExample(t)
-	source := filepath.Join(app, "web", "src", "routes", "optional", "optional.remote.go")
-	replaceFixture(t, source,
-		"Enabled polytype.Optional[bool]   `json:\"enabled,omitzero\"`",
-		"Enabled polytype.Optional[string] `json:\"enabled,omitzero\"`")
-	replaceFixture(t, source, "present: %t", "present: %q")
-	assertGeneratedContract(t, app, "input", `"enabled"?: string;`, `"enabled"?: boolean;`,
+	t.Parallel()
+	e := requireEvolved(t)
+	assertGeneratedContract(t, e, "input", `"enabled"?: string;`, `"enabled"?: boolean;`,
 		`Enabled polytype.Optional[string]`, `Enabled polytype.Optional[bool]`)
 
 	consumer := `package contractconsumer
@@ -33,18 +31,18 @@ func use(c client.Client) {
 	_, _ = c.Submit(context.Background(), optional.Input{Name: "Ada", Enabled: polytype.Optional[%s]{Present: true, Value: %s}})
 }
 `
-	assertConsumerCompiles(t, app, fmt.Sprintf(consumer, "string", `"yes"`))
-	assertStaleConsumerRejected(t, app, fmt.Sprintf(consumer, "bool", "true"), "Optional[bool]", "Optional[string]")
+	assertConsumerCompiles(t, e.first.dir, "input", fmt.Sprintf(consumer, "string", `"yes"`))
+	assertStaleConsumerRejected(t, e.first.dir, "input", fmt.Sprintf(consumer, "bool", "true"), "Optional[bool]", "Optional[string]")
 }
 
+// The evolved example (evolution_test.go) changed Result.Operations from int
+// to string.
 func TestFormClientResultContractEvolution(t *testing.T) {
-	app := sandboxExample(t)
-	source := filepath.Join(app, "web", "src", "routes", "optional", "optional.remote.go")
-	replaceFixture(t, source, "Operations int    `json:\"operations\"`", "Operations string `json:\"operations\"`")
-	replaceFixture(t, source, "result.Operations = operations.byName[in.Name]", "result.Operations = fmt.Sprint(operations.byName[in.Name])")
-	assertGeneratedContract(t, app, "result", `"operations": string;`, `"operations": number;`,
+	t.Parallel()
+	e := requireEvolved(t)
+	assertGeneratedContract(t, e, "result", `"operations": string;`, `"operations": number;`,
 		`Operations string`, `Operations int`)
-	codec := readGenerated(t, filepath.Join(app, "internal", "skgo", "client", "skgo_client_devalue_gen.go"))
+	codec := e.first.clients[1]
 	if !regexp.MustCompile(`dvString\(raw\d+, at\+"/operations"\)`).Match(codec) ||
 		regexp.MustCompile(`dvInteger\(raw\d+, at\+"/operations"`).Match(codec) {
 		t.Fatal("generated Go client did not decode operations as the fixture's new string type")
@@ -61,19 +59,8 @@ func use(c client.Client) {
 	var _ %s = result.Operations
 }
 `
-	assertConsumerCompiles(t, app, fmt.Sprintf(consumer, "string"))
-	assertStaleConsumerRejected(t, app, fmt.Sprintf(consumer, "int"), "result.Operations", "string", "int")
-}
-
-func replaceFixture(t *testing.T, path, old, replacement string) {
-	t.Helper()
-	raw := readGenerated(t, path)
-	if strings.Count(string(raw), old) != 1 {
-		t.Fatalf("fixture %s must contain exactly one %q", path, old)
-	}
-	if err := os.WriteFile(path, []byte(strings.Replace(string(raw), old, replacement, 1)), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	assertConsumerCompiles(t, e.first.dir, "result", fmt.Sprintf(consumer, "string"))
+	assertStaleConsumerRejected(t, e.first.dir, "result", fmt.Sprintf(consumer, "int"), "result.Operations", "string", "int")
 }
 
 func readGenerated(t *testing.T, path string) []byte {
@@ -85,11 +72,9 @@ func readGenerated(t *testing.T, path string) []byte {
 	return raw
 }
 
-func assertGeneratedContract(t *testing.T, app, caseName, browserWant, browserOld, linkWant, linkOld string) {
+func assertGeneratedContract(t *testing.T, e *evolvedApp, caseName, browserWant, browserOld, linkWant, linkOld string) {
 	t.Helper()
-	if out, err := runGoGenerate(app); err != nil {
-		t.Fatalf("generate changed %s contract: %v\n%s", caseName, err, out)
-	}
+	app := e.first.dir
 	base := filepath.Join(app, "web", "src", "routes", "optional")
 	types := readGenerated(t, filepath.Join(base, "types.ts"))
 	if !bytes.Contains(types, []byte(browserWant)) || bytes.Contains(types, []byte(browserOld)) {
@@ -114,27 +99,34 @@ func assertGeneratedContract(t *testing.T, app, caseName, browserWant, browserOl
 		!bytes.Contains(submitHandler, []byte("EncodeRoot")) {
 		t.Fatalf("server Form binding does not decode, call, and encode the changed %s contract", caseName)
 	}
-	client := readGenerated(t, filepath.Join(app, "internal", "skgo", "client", "skgo_client_gen.go"))
+	client := e.first.clients[0]
 	if !bytes.Contains(client, []byte("func (c Client) Submit(")) || !bytes.Contains(client, []byte("return skgo.SubmitForm(")) {
 		t.Fatalf("Go client lacks the %s Form submission binding", caseName)
 	}
-	if out, err := runGoBuild(filepath.Join(app, "internal", "skgo")); err != nil {
-		t.Fatalf("changed %s bindings do not compile: %v\n%s", caseName, err, out)
+	if e.first.buildErr != nil {
+		t.Fatalf("changed %s bindings do not compile: %v\n%s", caseName, e.first.buildErr, e.first.buildOut)
 	}
 }
 
-func assertConsumerCompiles(t *testing.T, app, source string) {
+// Consumers live outside internal/skgo, so the `go build ./...` the fixture
+// runs over the bindings never sees one, and each test has its own directory
+// so the two can build at once.
+func consumerDir(app, name string) string {
+	return filepath.Join(app, "contractconsumer", name)
+}
+
+func assertConsumerCompiles(t *testing.T, app, name, source string) {
 	t.Helper()
-	writeConsumer(t, app, source)
-	if out, err := runGoBuild(filepath.Join(app, "internal", "skgo", "contractconsumer")); err != nil {
+	writeConsumer(t, app, name, source)
+	if out, err := runGoBuild(consumerDir(app, name)); err != nil {
 		t.Fatalf("updated consumer did not compile: %v\n%s", err, out)
 	}
 }
 
-func assertStaleConsumerRejected(t *testing.T, app, source string, diagnostics ...string) {
+func assertStaleConsumerRejected(t *testing.T, app, name, source string, diagnostics ...string) {
 	t.Helper()
-	writeConsumer(t, app, source)
-	out, err := runGoBuild(filepath.Join(app, "internal", "skgo", "contractconsumer"))
+	writeConsumer(t, app, name, source)
+	out, err := runGoBuild(consumerDir(app, name))
 	if err == nil {
 		t.Fatalf("stale consumer unexpectedly compiled:\n%s", out)
 	}
@@ -145,9 +137,9 @@ func assertStaleConsumerRejected(t *testing.T, app, source string, diagnostics .
 	}
 }
 
-func writeConsumer(t *testing.T, app, source string) {
+func writeConsumer(t *testing.T, app, name, source string) {
 	t.Helper()
-	dir := filepath.Join(app, "internal", "skgo", "contractconsumer")
+	dir := consumerDir(app, name)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -156,92 +148,63 @@ func writeConsumer(t *testing.T, app, source string) {
 	}
 }
 
+// The evolved example (evolution_test.go) added a second supported Form,
+// submitAgain, and a field to the Form result, and its first generation
+// started with the Go client deleted.
 func TestFormClientGenerationRecoversAndTracksContract(t *testing.T) {
-	app := sandboxExample(t)
-	source := filepath.Join(app, "web", "src", "routes", "optional", "optional.remote.go")
-	raw, err := os.ReadFile(source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second := string(raw) + "\nfunc submitAgain(ctx context.Context, in Input) (Result, error) { return submit(ctx, in) }\nvar _ = skgo.Form(submitAgain)\n"
-	if err := os.WriteFile(source, []byte(second), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	dir := filepath.Join(app, "internal", "skgo", "client")
-	files := []string{filepath.Join(dir, "skgo_client_gen.go"), filepath.Join(dir, "skgo_client_devalue_gen.go")}
-	for _, file := range files {
-		if err := os.Remove(file); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if out, err := runGoGenerate(app); err != nil {
-		t.Fatalf("generate missing clients: %v\n%s", err, out)
-	}
-	first := make([][]byte, len(files))
-	for i, file := range files {
-		var err error
-		first[i], err = os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
+	t.Parallel()
+	e := requireEvolved(t)
+	first := e.first.clients
 	if !bytes.Contains(first[0], []byte("SubmitAgain")) {
 		t.Fatal("second supported Form has no generated client")
 	}
 	if bytes.Contains(first[0], []byte("SendMessage")) {
 		t.Fatal("file-upload Form unexpectedly gained a scalar client")
 	}
-	if out, err := runGoGenerate(app); err != nil {
-		t.Fatalf("repeat generation: %v\n%s", err, out)
+
+	// Repeat generation: the example's committed client is generation's own
+	// output, so generating over it again must leave it byte for byte.
+	root, err := repoRoot()
+	if err != nil {
+		t.Fatal(err)
 	}
-	for i, file := range files {
-		again, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(again, first[i]) {
-			t.Fatalf("%s changed on repeat generation", file)
-		}
-		if err := os.WriteFile(file, []byte("stale generated client\n"), 0o644); err != nil {
-			t.Fatal(err)
+	again := regenerated()
+	if again.err != nil {
+		t.Fatalf("repeat generation: %v\n%s", again.err, again.out)
+	}
+	for i, file := range clientFiles {
+		committed := readGenerated(t, filepath.Join(root, "example", filepath.FromSlash(file)))
+		if !bytes.Equal(again.clients[i], committed) {
+			t.Fatalf("%s changed on repeat generation (or the example's committed copy is stale; see TestNothingGeneratedWasWrittenByHand)", file)
 		}
 	}
-	if out, err := runGoGenerate(app); err != nil {
-		t.Fatalf("replace stale clients: %v\n%s", err, out)
+
+	stale := e.stale()
+	if stale.err != nil {
+		t.Fatalf("replace stale clients: %v\n%s", stale.err, stale.out)
 	}
-	for i, file := range files {
-		restored, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(restored, first[i]) {
+	for i, file := range clientFiles {
+		if !bytes.Equal(stale.clients[i], first[i]) {
 			t.Fatalf("%s was not restored", file)
 		}
 	}
 
-	changed := strings.Replace(second, "type Result struct {", "type Result struct {\n\tExtra string `json:\"extra\"`", 1)
-	if changed == second {
-		t.Fatal("fixture result contract changed; update test")
+	// The evolved Result gained Extra, so its decoder is not the one the
+	// example commits, which was generated before that field existed.
+	before := readGenerated(t, filepath.Join(root, "example", filepath.FromSlash(clientFiles[1])))
+	if bytes.Contains(before, []byte("extra")) {
+		t.Fatal("the example's committed client decoder already mentions extra; pick another field name")
 	}
-	if err := os.WriteFile(source, []byte(changed), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if out, err := runGoGenerate(app); err != nil {
-		t.Fatalf("generate changed result contract: %v\n%s", err, out)
-	}
-	codec, err := os.ReadFile(files[1])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if bytes.Equal(codec, first[1]) || !bytes.Contains(codec, []byte("extra")) {
+	if codec := first[1]; bytes.Equal(codec, before) || !bytes.Contains(codec, []byte("extra")) {
 		t.Fatal("changed Form result was not projected into client decoder")
 	}
-	if out, err := runGoBuild(filepath.Join(app, "internal", "skgo")); err != nil {
-		t.Fatalf("changed client does not compile: %v\n%s", err, out)
+	if e.first.buildErr != nil {
+		t.Fatalf("changed client does not compile: %v\n%s", e.first.buildErr, e.first.buildOut)
 	}
 }
 
 func TestEmptyAppRemovesOldFormClient(t *testing.T) {
+	t.Parallel()
 	web := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(web, "src"), 0o755); err != nil {
 		t.Fatal(err)

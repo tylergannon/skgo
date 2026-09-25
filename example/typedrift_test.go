@@ -9,8 +9,144 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
+
+// The frontend type checks here and the generator check in generate_test.go
+// share three sandboxes, each a copy of this module built once and read by
+// every test that needs its state. `go generate` and `svelte-check` are the
+// expensive steps, so each runs once per distinct source state and never
+// again:
+//
+//   - regenerated: the untouched module, regenerated. TestNothingGeneratedWasWrittenByHand
+//     compares it with the tree; TestGeneratedActionTypesRejectWrongUses reads
+//     the action stub out of it.
+//   - checked: the untouched module, type-checked. It is the passing baseline
+//     both type-check tests start from: the check has to be able to fail.
+//   - drifted: the module with every wrong use this file plants planted at
+//     once — the Go wire field renamed and regenerated, and each suppressed
+//     action-type error unsuppressed — type-checked once. Each diagnostic is
+//     in its own file and line, and svelte-check reports every error in every
+//     file, so one run answers for all of them.
+//
+// The three start together the first time any test asks for one.
+//
+// Everything happens in throwaway copies of this module. The tests used to
+// edit the developer's own source and put it back in t.Cleanup, which meant a
+// SIGKILL, a `-timeout` abort or a panic in the restore path left the checkout
+// holding a type nobody wrote.
+
+// actionTypeDirectives are the `@ts-expect-error` lines in
+// action-types.check.ts, each guarding one wrong use of the generated action
+// contract, and the diagnostic TypeScript gives once the directive is gone.
+var actionTypeDirectives = []struct{ label, directive, diagnostic string }{
+	{"success", "// @ts-expect-error validation fields exist only in failure data\n", "Property 'emailError' does not exist"},
+	{"failure", "// @ts-expect-error receipts exist only in success data\n", "Property 'receipt' does not exist"},
+}
+
+const actionTypesCheck = "web/src/routes/actions/action-types.check.ts"
+
+type generatedSandbox struct {
+	app      string
+	setupErr error
+	out      string
+	err      error
+}
+
+type checkedSandbox struct {
+	setupErr error
+	out      string
+	err      error
+}
+
+type driftedSandbox struct {
+	setupErr    error
+	generateOut string
+	generateErr error
+	// types is the generated TypeScript for businesslogic after the rename.
+	types []byte
+	// missingDirectives lists directives action-types.check.ts no longer
+	// carries, so nothing was unsuppressed for them.
+	missingDirectives []string
+	checkOut          string
+	checkErr          error
+}
+
+var startSandboxes = sync.OnceFunc(func() {
+	go regenerated()
+	go checked()
+	go drifted()
+})
+
+var regenerated = sync.OnceValue(func() generatedSandbox {
+	app := filepath.Join(packageTemp, "generated")
+	if err := newSandbox(app); err != nil {
+		return generatedSandbox{setupErr: err}
+	}
+	out, err := generate(app)
+	return generatedSandbox{app: app, out: out, err: err}
+})
+
+var checked = sync.OnceValue(func() checkedSandbox {
+	app := filepath.Join(packageTemp, "checked")
+	if err := newSandbox(app); err != nil {
+		return checkedSandbox{setupErr: err}
+	}
+	out, err := svelteCheck(app)
+	return checkedSandbox{out: out, err: err}
+})
+
+var drifted = sync.OnceValue(func() driftedSandbox {
+	app := filepath.Join(packageTemp, "drifted")
+	if err := newSandbox(app); err != nil {
+		return driftedSandbox{setupErr: err}
+	}
+	var d driftedSandbox
+
+	// The json tag of businesslogic.Todo.Text is renamed on the wire.
+	source := filepath.Join(app, "businesslogic", "store.go")
+	original, err := os.ReadFile(source)
+	if err != nil {
+		return driftedSandbox{setupErr: err}
+	}
+	const tag = "`json:\"text\"`"
+	if !bytes.Contains(original, []byte(tag)) {
+		return driftedSandbox{setupErr: fmt.Errorf("businesslogic/store.go no longer contains %s; update this test", tag)}
+	}
+	if err := os.WriteFile(source, bytes.Replace(original, []byte(tag), []byte("`json:\"label\"`"), 1), 0o644); err != nil {
+		return driftedSandbox{setupErr: err}
+	}
+	d.generateOut, d.generateErr = generate(app)
+	if d.generateErr != nil {
+		return d
+	}
+	if d.types, err = os.ReadFile(filepath.Join(app, "web", "src", "lib", "skgo", "businesslogic", "types.ts")); err != nil {
+		d.setupErr = fmt.Errorf("reading the generated types: %w", err)
+		return d
+	}
+
+	// Every action-type directive is removed.
+	path := filepath.Join(app, filepath.FromSlash(actionTypesCheck))
+	checks, err := os.ReadFile(path)
+	if err != nil {
+		d.setupErr = err
+		return d
+	}
+	for _, tc := range actionTypeDirectives {
+		if !bytes.Contains(checks, []byte(tc.directive)) {
+			d.missingDirectives = append(d.missingDirectives, tc.directive)
+			continue
+		}
+		checks = bytes.Replace(checks, []byte(tc.directive), nil, 1)
+	}
+	if err := os.WriteFile(path, checks, 0o644); err != nil {
+		d.setupErr = err
+		return d
+	}
+	d.checkOut, d.checkErr = svelteCheck(app)
+	return d
+})
 
 // TestChangingAGoTypeBreaksTheComponentThatUsesIt is the end-to-end types
 // claim, checked rather than asserted.
@@ -20,65 +156,57 @@ import (
 // component that reads the old field. Without generated TypeScript coming from
 // the Go type, the change would sail through to the browser and show up as an
 // empty todo.
-//
-// Everything happens in a throwaway copy of this module. The test used to edit
-// the developer's own source and put it back in t.Cleanup, which meant a
-// SIGKILL, a `-timeout` abort or a panic in the restore path left the checkout
-// holding a type nobody wrote.
 func TestChangingAGoTypeBreaksTheComponentThatUsesIt(t *testing.T) {
-	app := sandbox(t)
-
-	source := filepath.Join(app, "businesslogic", "store.go")
-	original, err := os.ReadFile(source)
-	if err != nil {
-		t.Fatalf("reading %s: %v", source, err)
-	}
+	t.Parallel()
+	requireFrontendToolchain(t)
+	startSandboxes()
 
 	// The check has to be able to fail, so start from a passing state.
-	if out, err := svelteCheck(app); err != nil {
-		t.Fatalf("the app does not type-check before the change: %v\n%s", err, out)
+	base := checked()
+	if base.setupErr != nil {
+		t.Fatal(base.setupErr)
+	}
+	if base.err != nil {
+		t.Fatalf("the app does not type-check before the change: %v\n%s", base.err, base.out)
 	}
 
-	const tag = "`json:\"text\"`"
-	if !bytes.Contains(original, []byte(tag)) {
-		t.Fatalf("%s no longer contains %s; update this test", source, tag)
+	d := drifted()
+	if d.setupErr != nil {
+		t.Fatal(d.setupErr)
 	}
-	changed := bytes.Replace(original, []byte(tag), []byte("`json:\"label\"`"), 1)
-	if err := os.WriteFile(source, changed, 0o644); err != nil {
-		t.Fatalf("writing %s: %v", source, err)
+	if d.generateErr != nil {
+		t.Fatalf("regenerating after the change: %v\n%s", d.generateErr, d.generateOut)
 	}
-
-	if out, err := generate(app); err != nil {
-		t.Fatalf("regenerating after the change: %v\n%s", err, out)
+	if !bytes.Contains(d.types, []byte(`"label": string`)) {
+		t.Fatalf("the generated TypeScript did not follow the Go type:\n%s", d.types)
 	}
-
-	types, err := os.ReadFile(filepath.Join(app, "web", "src", "lib", "skgo", "businesslogic", "types.ts"))
-	if err != nil {
-		t.Fatalf("reading the generated types: %v", err)
-	}
-	if !bytes.Contains(types, []byte(`"label": string`)) {
-		t.Fatalf("the generated TypeScript did not follow the Go type:\n%s", types)
-	}
-
-	out, err := svelteCheck(app)
-	if err == nil {
+	if d.checkErr == nil {
 		t.Fatal("the app still type-checks after the Go type changed; the components are not typed by Go")
 	}
-	if !strings.Contains(out, "TodoList.svelte") || !strings.Contains(out, "'text'") {
-		t.Fatalf("the type check failed, but not on the component that reads the renamed field:\n%s", out)
+	if !diagnosed(d.checkOut, "TodoList.svelte", "'text'") {
+		t.Fatalf("the type check failed, but not on the component that reads the renamed field:\n%s", d.checkOut)
 	}
-	t.Logf("caught before the browser:\n%s", out)
+	t.Logf("caught before the browser:\n%s", d.checkOut)
 }
 
-// Each suppressed error is tested in isolation. This proves the annotations
-// guard real type errors in the generated action contract, while the passing
-// baseline checks the valid success, failure and Money uses beside them.
+// Each suppressed error is proved by removing its directive. This proves the
+// annotations guard real type errors in the generated action contract, while
+// the passing baseline checks the valid success, failure and Money uses
+// beside them. Each diagnostic has to be reported against the check file, on
+// its own, so one type check with every directive removed answers for each.
 func TestGeneratedActionTypesRejectWrongUses(t *testing.T) {
-	app := sandbox(t)
-	if out, err := generate(app); err != nil {
-		t.Fatalf("generating action types: %v\n%s", err, out)
+	t.Parallel()
+	requireFrontendToolchain(t)
+	startSandboxes()
+
+	g := regenerated()
+	if g.setupErr != nil {
+		t.Fatal(g.setupErr)
 	}
-	stub, err := os.ReadFile(filepath.Join(app, "web", "src", "routes", "actions", "+page.server.ts"))
+	if g.err != nil {
+		t.Fatalf("generating action types: %v\n%s", g.err, g.out)
+	}
+	stub, err := os.ReadFile(filepath.Join(g.app, "web", "src", "routes", "actions", "+page.server.ts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,35 +215,45 @@ func TestGeneratedActionTypesRejectWrongUses(t *testing.T) {
 			t.Fatalf("generated action export lacks %q:\n%s", want, stub)
 		}
 	}
-	path := filepath.Join(app, "web", "src", "routes", "actions", "action-types.check.ts")
-	original, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
+
+	base := checked()
+	if base.setupErr != nil {
+		t.Fatal(base.setupErr)
 	}
-	if out, err := svelteCheck(app); err != nil {
-		t.Fatalf("valid generated action types did not compile: %v\n%s", err, out)
+	if base.err != nil {
+		t.Fatalf("valid generated action types did not compile: %v\n%s", base.err, base.out)
 	}
-	for _, tc := range []struct{ label, directive, diagnostic string }{
-		{"success", "// @ts-expect-error validation fields exist only in failure data\n", "Property 'emailError' does not exist"},
-		{"failure", "// @ts-expect-error receipts exist only in success data\n", "Property 'receipt' does not exist"},
-	} {
+
+	d := drifted()
+	if d.setupErr != nil {
+		t.Fatal(d.setupErr)
+	}
+	for _, tc := range actionTypeDirectives {
 		t.Run(tc.label, func(t *testing.T) {
-			if !bytes.Contains(original, []byte(tc.directive)) {
-				t.Fatalf("missing %q", tc.directive)
+			for _, missing := range d.missingDirectives {
+				if missing == tc.directive {
+					t.Fatalf("missing %q", tc.directive)
+				}
 			}
-			changed := bytes.Replace(original, []byte(tc.directive), nil, 1)
-			if err := os.WriteFile(path, changed, 0o644); err != nil {
-				t.Fatal(err)
-			}
-			out, err := svelteCheck(app)
-			if err == nil || !strings.Contains(out, "action-types.check.ts") || !strings.Contains(out, tc.diagnostic) {
-				t.Fatalf("wrong %s use was not rejected for the intended reason: %v\n%s", tc.label, err, out)
-			}
-			if err := os.WriteFile(path, original, 0o644); err != nil {
-				t.Fatal(err)
+			if d.checkErr == nil || !diagnosed(d.checkOut, filepath.Base(actionTypesCheck), tc.diagnostic) {
+				t.Fatalf("wrong %s use was not rejected for the intended reason: %v\n%s", tc.label, d.checkErr, d.checkOut)
 			}
 		})
 	}
+}
+
+// diagnosed reports whether svelte-check's human output carries an error
+// against file whose message contains message. The human format writes each
+// diagnostic as its location on one line and "Error: <message>" on the next,
+// so both have to be in the same diagnostic, not merely somewhere in the run.
+func diagnosed(out, file, message string) bool {
+	lines := strings.Split(out, "\n")
+	for i := 0; i+1 < len(lines); i++ {
+		if strings.Contains(lines[i], file) && strings.HasPrefix(strings.TrimSpace(lines[i+1]), "Error") && strings.Contains(lines[i+1], message) {
+			return true
+		}
+	}
+	return false
 }
 
 // generate runs the app's own `go generate` inside a sandbox.
@@ -141,26 +279,17 @@ func svelteCheck(app string) (string, error) {
 	return string(out), err
 }
 
-// sandbox copies this module into t.TempDir() and returns the copy, so a test
-// that has to mutate application source can do so without touching the tree
-// the developer is working in. Nothing it writes survives the test, whatever
-// kills it.
-//
-// A missing frontend toolchain is a broken environment, not a reason to pass:
-// this fails rather than skipping, because in a summary a skip and a pass look
-// the same and the guarantee this file exists to make would go unmade.
-func sandbox(t *testing.T) string {
-	t.Helper()
-	requireFrontendToolchain(t)
-
+// newSandbox copies this module into app, so a test that has to mutate
+// application source can do so without touching the tree the developer is
+// working in.
+func newSandbox(app string) error {
 	root, err := filepath.Abs("..")
 	if err != nil {
-		t.Fatalf("locating the repository root: %v", err)
+		return fmt.Errorf("locating the repository root: %w", err)
 	}
-	app := filepath.Join(t.TempDir(), "example")
 
 	// node_modules is 166MB of pnpm store links and e2e is a second browser
-	// install; neither is an input to what this test changes. .svelte-kit's
+	// install; neither is an input to what these tests change. .svelte-kit's
 	// build output is regenerated by vite, not read by svelte-check.
 	skip := map[string]bool{
 		filepath.Join("web", "node_modules"):          true,
@@ -169,15 +298,15 @@ func sandbox(t *testing.T) string {
 		"tmp": true,
 	}
 	if err := copyTree(".", app, skip); err != nil {
-		t.Fatalf("copying the module into %s: %v", app, err)
+		return fmt.Errorf("copying the module into %s: %w", app, err)
 	}
 	if err := linkNodeModules(filepath.Join("web", "node_modules"), filepath.Join(app, "web", "node_modules")); err != nil {
-		t.Fatalf("linking node_modules into the sandbox: %v", err)
+		return fmt.Errorf("linking node_modules into the sandbox: %w", err)
 	}
 	if err := absoluteReplace(filepath.Join(app, "go.mod"), root); err != nil {
-		t.Fatalf("rewriting the sandbox go.mod: %v", err)
+		return fmt.Errorf("rewriting the sandbox go.mod: %w", err)
 	}
-	return app
+	return nil
 }
 
 // copyTree copies src to dst, skipping the src-relative paths in skip.

@@ -10,6 +10,7 @@ import (
 )
 
 func TestSerializedFieldNames(t *testing.T) {
+	t.Parallel()
 	const source = `package fixture
 type bad struct {
 	A string ` + "`json:\"same\"`" + `
