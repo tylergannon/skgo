@@ -7,6 +7,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
+	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
 
 // sessionCookie is the name of the cookie the auth functions in src/lib set.
@@ -37,7 +38,7 @@ func watchBoard(ctx context.Context, yield func(Board) error) error {
 	id, _ := skgo.EventFrom(ctx).Cookie(sessionCookie)
 	signedIn := businesslogic.Default.Session(id).User != ""
 
-	updates, unsubscribe, now := businesslogic.Default.Watch(signedIn)
+	updates, unsubscribe, now := visitor.Store(ctx).Watch(signedIn)
 	defer unsubscribe()
 
 	push := 1

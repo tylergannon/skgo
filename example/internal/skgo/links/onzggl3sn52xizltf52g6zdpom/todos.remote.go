@@ -11,6 +11,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
+	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
 
 // sessionCookie is the name of the cookie the auth functions in src/lib set.
@@ -26,12 +27,12 @@ func signedIn(ctx context.Context) bool {
 
 // getTodos lists the todos this visitor may see.
 func getTodos(ctx context.Context) ([]businesslogic.Todo, error) {
-	return businesslogic.Default.Todos(signedIn(ctx)), nil
+	return visitor.Store(ctx).Todos(signedIn(ctx)), nil
 }
 
 // getTodo looks one todo up by id.
 func getTodo(ctx context.Context, id string) (businesslogic.Todo, error) {
-	todo, ok := businesslogic.Default.Todo(id, signedIn(ctx))
+	todo, ok := visitor.Store(ctx).Todo(id, signedIn(ctx))
 	if !ok {
 		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", id)
 	}
@@ -49,7 +50,7 @@ func addTodo(ctx context.Context, text string) (businesslogic.Todo, error) {
 	if text == "" {
 		return businesslogic.Todo{}, skgo.Errorf(400, "A todo needs some text")
 	}
-	return businesslogic.Default.Add(text), skgo.RefreshRequestedNoArg(ctx, getTodos)
+	return visitor.Store(ctx).Add(text), skgo.RefreshRequestedNoArg(ctx, getTodos)
 }
 
 // Rename is the argument of the renameTodo command.
@@ -67,7 +68,7 @@ type Rename struct {
 // that reached a todo the matching query refuses would disclose the row it
 // returns.
 func renameTodo(ctx context.Context, arg Rename) (businesslogic.Todo, error) {
-	todo, ok := businesslogic.Default.Rename(arg.ID, arg.Text, signedIn(ctx))
+	todo, ok := visitor.Store(ctx).Rename(arg.ID, arg.Text, signedIn(ctx))
 	if !ok {
 		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", arg.ID)
 	}
@@ -100,7 +101,7 @@ type Retitle struct {
 // server's doing, and it names the Go function and the argument rather than a
 // string — getTodo's own parameter type is what RefreshID has to satisfy.
 func retitleTodo(ctx context.Context, arg Retitle) (businesslogic.Todo, error) {
-	todo, ok := businesslogic.Default.Rename(arg.ID, arg.Text, signedIn(ctx))
+	todo, ok := visitor.Store(ctx).Rename(arg.ID, arg.Text, signedIn(ctx))
 	if !ok {
 		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", arg.ID)
 	}
@@ -120,7 +121,7 @@ func retitleTodo(ctx context.Context, arg Retitle) (businesslogic.Todo, error) {
 // restart the stream: the command that wrote it reconnects the live query in
 // the same flight, which is what signIn and signOut do.
 func watchCount(ctx context.Context, yield func(int) error) error {
-	updates, unsubscribe, now := businesslogic.Default.Watch(signedIn(ctx))
+	updates, unsubscribe, now := visitor.Store(ctx).Watch(signedIn(ctx))
 	defer unsubscribe()
 
 	if err := yield(now.Count); err != nil {

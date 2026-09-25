@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
 
 // Note is one panel's text. Two instances of getNote are on the page, told
@@ -40,17 +41,38 @@ type Banner struct {
 // unwritten is what every panel reads before anything has been written to it.
 const unwritten = "nothing written yet"
 
-var store = struct {
+// panels is what one visitor's three panels hold. Each visitor has their own,
+// the way each has their own todos: a page that asserts what it just wrote is
+// only asserting something if nobody else can write it in between.
+type panels struct {
 	sync.Mutex
 	notes  map[string]string
 	banner string
-}{
-	notes:  map[string]string{"left": unwritten, "right": unwritten},
-	banner: unwritten,
+}
+
+var byVisitor = struct {
+	sync.Mutex
+	m map[string]*panels
+}{m: map[string]*panels{}}
+
+// store is the panels of the visitor this request belongs to, unwritten the
+// first time that visitor is seen. A request that names no visitor shares one
+// set with every other such request.
+func store(ctx context.Context) *panels {
+	who := visitor.Of(ctx)
+	byVisitor.Lock()
+	defer byVisitor.Unlock()
+	p, ok := byVisitor.m[who]
+	if !ok {
+		p = &panels{notes: map[string]string{"left": unwritten, "right": unwritten}, banner: unwritten}
+		byVisitor.m[who] = p
+	}
+	return p
 }
 
 // getNote reads one note.
-func getNote(_ context.Context, name string) (Note, error) {
+func getNote(ctx context.Context, name string) (Note, error) {
+	store := store(ctx)
 	store.Lock()
 	defer store.Unlock()
 	text, ok := store.notes[name]
@@ -61,7 +83,8 @@ func getNote(_ context.Context, name string) (Note, error) {
 }
 
 // getBanner reads the banner.
-func getBanner(_ context.Context) (Banner, error) {
+func getBanner(ctx context.Context) (Banner, error) {
+	store := store(ctx)
 	store.Lock()
 	defer store.Unlock()
 	return Banner{Text: store.banner}, nil
@@ -98,6 +121,7 @@ type Ack struct {
 // on it; and the banner is deliberately not run, which the page shows by going
 // stale without making Kit reject the command as unhandled.
 func writeNotes(ctx context.Context, arg Write) (Ack, error) {
+	store := store(ctx)
 	store.Lock()
 	store.notes["left"] = arg.Left
 	store.notes["right"] = arg.Right

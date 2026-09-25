@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
 
 // RootLayoutData is what every page in the app is handed before it renders,
@@ -35,6 +36,12 @@ func layoutLoad(ctx context.Context) (RootLayoutData, error) {
 	event := skgo.EventFrom(ctx)
 	if boom, _ := event.SearchParam("boom"); boom == "root-layout" {
 		return RootLayoutData{}, skgo.Errorf(503, "The root layout could not reach the database")
+	}
+	// Every page is under this layout, so this is where a browser is given
+	// the visitor id its todos are kept under: on the first page it asks for,
+	// before anything on that page reads them.
+	if err := visitor.Start(ctx); err != nil {
+		return RootLayoutData{}, err
 	}
 	data := RootLayoutData{Deployment: "skgo example"}
 	if proof, _ := event.SearchParam("proof"); proof == "script-safe" {

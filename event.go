@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -152,7 +153,14 @@ func (e *Event) mayWriteCookies(verb string) error {
 // cookieJar collects the cookies one call writes and answers reads with the
 // same precedence kit's `get_cookies` does: a cookie set during the request
 // wins over the request header, and a deleted one reads as absent.
+//
+// One jar is shared by every load of a branch, and kit runs those loads
+// concurrently (`load_server_data` is started for every node at once, each
+// awaiting `parent()` only if it asks), so two of them may write cookies at the
+// same moment. mu is what lets them.
 type cookieJar struct {
+	mu sync.Mutex
+
 	// header holds what the browser sent.
 	header map[string]string
 	// written holds what this call wrote, keyed by name. Kit keys by
@@ -180,6 +188,8 @@ func newCookieJar(r *http.Request, secureDefault bool) *cookieJar {
 }
 
 func (j *cookieJar) get(name string) (string, bool) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	if c, ok := j.written[name]; ok {
 		if c.MaxAge < 0 {
 			return "", false
@@ -229,6 +239,8 @@ func (j *cookieJar) set(name, value string, opts CookieOptions, del bool) error 
 		c.Value = ""
 	}
 
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	if _, seen := j.written[name]; !seen {
 		j.order = append(j.order, name)
 	}
@@ -239,6 +251,8 @@ func (j *cookieJar) set(name, value string, opts CookieOptions, del bool) error 
 // writeTo appends a Set-Cookie header for every cookie this call wrote. Kit
 // does the same in `add_cookies_to_headers` once the response exists.
 func (j *cookieJar) writeTo(h http.Header) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	for _, name := range j.order {
 		if v := j.written[name].String(); v != "" {
 			h.Add("Set-Cookie", v)

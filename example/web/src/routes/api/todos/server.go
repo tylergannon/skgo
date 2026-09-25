@@ -14,6 +14,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
+	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
 
 // list answers `GET /api/todos` with the todos this visitor may see.
@@ -23,7 +24,7 @@ import (
 // than parsing the cookie again.
 func list(w http.ResponseWriter, r *http.Request) {
 	session, _ := skgo.LocalOf[businesslogic.Session](r.Context())
-	writeJSON(w, http.StatusOK, businesslogic.Default.Todos(session.User != ""))
+	writeJSON(w, http.StatusOK, visitor.Store(r.Context()).Todos(session.User != ""))
 }
 
 // newTodo is the body `POST /api/todos` accepts.
@@ -45,7 +46,7 @@ func add(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todo := businesslogic.Default.Add(body.Text)
+	todo := visitor.Store(r.Context()).Add(body.Text)
 	w.Header().Set("Location", "/api/todos/"+todo.ID)
 	writeJSON(w, http.StatusCreated, todo)
 }
@@ -64,7 +65,7 @@ func search(w http.ResponseWriter, r *http.Request) {
 
 	session, _ := skgo.LocalOf[businesslogic.Session](r.Context())
 	var matches []businesslogic.Todo
-	for _, todo := range businesslogic.Default.Todos(session.User != "") {
+	for _, todo := range visitor.Store(r.Context()).Todos(session.User != "") {
 		if strings.Contains(strings.ToLower(todo.Text), strings.ToLower(body.Contains)) {
 			matches = append(matches, todo)
 		}

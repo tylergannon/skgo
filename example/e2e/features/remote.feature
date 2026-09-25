@@ -4,6 +4,11 @@ Feature: Remote functions written in Go
   `todos.remote.go` and every body throws, so anything that renders below
   proves the Go server answered.
 
+  Each browser is its own visitor with its own list, seeded from the store's
+  fixtures: four todos anyone may see and one private one. So a visitor who
+  has not signed in starts every scenario on a count of 4, and every number
+  below is that fixture plus what the scenario itself added.
+
   Scenario: Adding a todo refreshes the list in a single flight
     Given I open "/todos"
     When the todo list has loaded
@@ -19,13 +24,13 @@ Feature: Remote functions written in Go
   Scenario: Commands drive the live count, one todo at a time
     Given I open "/todos"
     When the todo list has loaded
-    And I note the live count as "before"
-    And I add the todo "the first of two"
-    Then the live count is 1 more than "before"
+    Then the live count is 4
+    When I add the todo "the first of two"
+    Then the live count is 5
     And the todo count still matches the todos on the page
     And every part of the page loaded
     When I add the todo "the second of two"
-    Then the live count is 2 more than "before"
+    Then the live count is 6
     And the todo count still matches the todos on the page
     And every part of the page loaded
 

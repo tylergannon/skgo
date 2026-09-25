@@ -25,9 +25,9 @@ Feature: Signing in
 
   Scenario: A signed-in visitor sees a todo a signed-out visitor cannot
     Nothing on the page may tell a signed-out visitor that the private todo is
-    there — not the list, and not the count above it. The count is pinned to
-    the list rather than to a literal because the list grows as the suite runs;
-    a count that is ever one more than the rows is the leak.
+    there — not the list, and not the count above it. The count is checked
+    against the rows on the page, two answers from two endpoints; a count that
+    is ever one more than the rows is the leak.
 
     Given I open "/todos"
     When the todo list has loaded
@@ -41,24 +41,28 @@ Feature: Signing in
     And the todo count is the number of todos on the page
 
   Scenario: The todo count counts only the todos the visitor can see
+    The store's fixtures are four todos anyone may see and one private one, and
+    this browser's list is its own, so the count is 4 signed out and 5 signed
+    in whatever else the suite is doing.
+
     Given I open "/todos"
     When the todo list has loaded
-    And I note the live count as "signed out"
-    Then I do not see the todo "ship the private roadmap"
+    Then the live count is 4
+    And I do not see the todo "ship the private roadmap"
     And the todo count is the number of todos on the page
     And every part of the page loaded
     When I sign in as "ada"
     Then I see the todo "ship the private roadmap"
-    And the live count is 1 more than "signed out"
+    And the live count is 5
     And the todo count is the number of todos on the page
     When I reload the page
     And the todo list has loaded
     Then I see the todo "ship the private roadmap"
-    And the live count is 1 more than "signed out"
+    And the live count is 5
     And the todo count is the number of todos on the page
     And every part of the page loaded
     When I sign out
     Then I do not see the todo "ship the private roadmap"
-    And the live count is the same as "signed out"
+    And the live count is 4
     And the todo count is the number of todos on the page
     And every part of the page loaded

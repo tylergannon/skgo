@@ -1,3 +1,4 @@
+import { availableParallelism } from 'node:os';
 import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
@@ -6,8 +7,6 @@ import { defineBddConfig } from 'playwright-bdd';
 // it never changes which scenarios exist or what they assert.
 const run = process.env.SKGO_E2E_RUN ?? 'run';
 
-const TODOS_STORE = /\/(auth|remote|live|csp|refresh)\.feature/;
-const FILE_SERIAL = /\/gate\.feature/;
 // Edits source under the running dev server, whose hot updates reach every
 // open page, so it runs alone after everything else has finished.
 const SOURCE_EDIT = /\/zz-source-update\.feature/;
@@ -22,12 +21,16 @@ const testDir = defineBddConfig({
 export default defineConfig({
 	testDir,
 	globalSetup: './global-setup.ts',
-	// Scenarios run in parallel. A browser scenario that cannot share the
-	// server with its neighbours is a test that derives its expectation from
-	// state it did not set up; the two lanes below hold the ones that still do,
-	// until the example scopes that state per visitor and the lanes go away.
+	// Scenarios run in parallel. Each gets a fresh browser context, and the
+	// example gives each browser its own todos, gate panels and account serial
+	// (example/businesslogic/visitor), so no scenario can move a number another
+	// one asserts. A scenario that cannot share the server with its neighbours
+	// is a test that derives its expectation from state it did not set up.
 	fullyParallel: true,
-	workers: 4,
+	// One worker per core, up to six, in both modes. A 4-vCPU CI runner was
+	// fastest at four and no faster past it; a 10-core machine gains little
+	// beyond six. Dev scales like prod, so it needs no lower count.
+	workers: Math.min(availableParallelism(), 6),
 	retries: 0,
 	// `list` for the terminal; the HTML report carries a failed scenario's
 	// trace and its screenshot at the moment it failed. A passing scenario
@@ -49,37 +52,22 @@ export default defineConfig({
 	// non-enhanced path would prove nothing in a browser where kit's client
 	// intercepts the submit.
 	//
-	// Temporary lanes for scenarios that race on the example's shared stores.
-	// `todos-store`: auth, remote, live, csp and refresh all write to or count the one
-	// global todo list (a rename pushes a live-board frame too), across files, so
-	// they run one at a time. `file-serial`: gate races only with itself, so it runs its
-	// scenarios in order beside everything else. Delete
-	// both lanes when the stores are scoped per visitor.
+	// A third, `source-edit`, is not about shared state but about the dev
+	// server itself: editing a component or adding a route makes Vite update or
+	// reload every open page, whichever scenario it belongs to. It runs its two
+	// scenarios in order, after everything else.
 	projects: [
 		{
 			name: 'chromium',
 			use: { ...devices['Desktop Chrome'] },
-			testIgnore: [/form-noscript/, TODOS_STORE, FILE_SERIAL, SOURCE_EDIT]
-		},
-		{
-			name: 'todos-store',
-			use: { ...devices['Desktop Chrome'] },
-			testMatch: TODOS_STORE,
-			fullyParallel: false,
-			workers: 1
-		},
-		{
-			name: 'file-serial',
-			use: { ...devices['Desktop Chrome'] },
-			testMatch: FILE_SERIAL,
-			fullyParallel: false
+			testIgnore: [/form-noscript/, SOURCE_EDIT]
 		},
 		{
 			name: 'source-edit',
 			use: { ...devices['Desktop Chrome'] },
 			testMatch: SOURCE_EDIT,
 			fullyParallel: false,
-			dependencies: ['chromium', 'todos-store', 'file-serial', 'noscript']
+			dependencies: ['chromium', 'noscript']
 		},
 		{
 			name: 'noscript',
