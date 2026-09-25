@@ -1,4 +1,4 @@
-# skgo validation: three tiers, one of them visual
+# skgo validation: one test command, one browser run, one occasional look
 
 Proposal, 2026-09-25. Revised once after an adversarial review by Codex
 (gpt-6-sol, high); the review's surviving objections are folded in below and
@@ -57,9 +57,11 @@ a Go test. `transport.feature`'s first scenario is not, even though its wire
 bytes are already asserted in `wire_test.go`: its claim is that the page
 called a method on a value the browser reconstructed.
 
-## Tier 0: seconds, on every save
+## `just test`: the gate, locally and on PRs
 
-The split already exists in the code; it is not exposed. Per-test timing:
+There is one Go gate, and it is the same command on a laptop and in PR CI.
+It is slow today for one reason, and that reason is fixable without adding a
+second way to run tests:
 
 | Bucket | Examples | Time |
 | --- | --- | --- |
@@ -69,30 +71,8 @@ The split already exists in the code; it is not exposed. Per-test timing:
 | Toolchain: `go generate` and `svelte-check` via mise | `TestGeneratedActionTypesRejectWrongUses` 10s, `TestChangingAGoTypeBreaksTheComponentThatUsesIt` 9s, `TestNothingGeneratedWasWrittenByHand` 6s | ~25s of `example/`'s 45s |
 | Streaming tests with real settle delays | three `stream` tests at 3.6s | ~11s |
 
-- **`just test` stays the full run.** Codex's objection holds: if the default
-  recipe silently skips compiler and `svelte-check` failures, agents learn
-  that green means ready and CI becomes the only place those fail.
-- **Add `just test-fast`**: `go test -short` in both modules. Toolchain tests
-  call `t.Skip` under `testing.Short()` and only there. This is Go's own
-  convention, and it is not the forbidden "toolchain missing" skip: a
-  toolchain test that finds its toolchain absent still fails, in both
-  recipes. The recipe's help line states its claim: "real-handler and unit
-  tests; does not build fixture apps or run svelte-check."
-- Prerequisite: `example/` tests read the embedded build, so `just build` must
-  have run since the last frontend change. Build cost, not test cost.
-- Prediction, to be measured after the change: with `-short`, root drops from
-  2m10s to under 10s and `example/` from 45s to about 15s with the streaming
-  tests as the floor. Without `-short`, the once-not-many rule below should
-  take the full run well under a minute.
-- Every scenario the classification rule moves out of the browser suite gets
-  one Go assertion at the real handler if none exists. One per distinct
-  contract, not a matrix.
-
-### Run the toolchain once, assert many times
-
-The toolchain tests are slow mostly because they pay for the same expensive
-process once per assertion instead of once per package. Counted on the
-branch:
+The toolchain tests pay for the same expensive process once per assertion
+instead of once per package. Counted on the branch:
 
 | Expensive step | Times per full run | Where |
 | --- | --- | --- |
@@ -104,45 +84,47 @@ branch:
 | `svelte-check` over the example | 5 | `example/typedrift_test.go` |
 | In-process `Run`/`Check`, each a full `packages.Load` of the example | 8 in one test | `TestNamedDeferredPayloadSerializedNames`, 33s on its own |
 
-The rule going forward: **an expensive command runs the minimum number of
-times the assertions genuinely require, and its output is captured once and
-asserted against many times.** Concretely:
+The rule: **an expensive command runs the minimum number of times the
+assertions genuinely require, and its output is captured once and asserted
+against many times.**
 
 - One `skgo` binary per package, built in `TestMain` or behind a
-  `sync.Once`, shared by every test in that package. Four builds become two,
-  and two only because `internal/gen` and `cmd/skgo` are separate packages.
-- One sandbox copy of the example per package, with mutation tests applying
-  their edits in sequence on that copy and restoring between cases, instead
-  of copying the tree per test. Four copies become one.
-- One `svelte-check` run per distinct source state, not per assertion. The
-  typedrift tests want to prove "this Go change breaks this component"; that
-  is one baseline run plus one run per planted change, with every assertion
-  about a run reading its captured output.
-- `Run`/`Check` in-process tests plant all the valid representations at
-  once where the assertions do not interfere, so one load answers several
-  questions, and reserve a separate load for the cases that must fail.
+  `sync.Once`, shared by every test in that package.
+- One sandbox copy of the example per package; mutation tests edit it in
+  sequence and restore between cases.
+- One `svelte-check` per distinct source state: a baseline run plus one run
+  per planted change, every assertion reading captured output.
+- In-process `Run`/`Check` tests plant every valid representation at once
+  where the assertions do not interfere, so one load answers several
+  questions, with a separate load only for the cases that must fail.
 - Golden outputs where the assertion is about generated text: generate once,
   compare many files against fixtures the test supplied.
 
-The `-short` tier and this rule are independent. `-short` decides which
-tests run locally; this rule makes the full run cheap enough that CI and
-`just test` stop being the thing agents wait on. Both are measured after,
-not promised.
+Target, to be measured: the full `just test` in both modules under a minute
+on a laptop. If it lands there, there is no fast tier and no `-short`, and
+the proposal ends here for Go. Only if it does not is a `-short` split worth
+its cost, and that decision waits for the measurement.
 
-## Tier 1: PR CI, minutes
+Prerequisite that stays: `example/` tests read the embedded build, so
+`just build` must have run since the last frontend change. Build cost, not
+test cost.
 
-`ci.yml` already runs the commit-subject check, build, vet, and `just test`.
-Keep `just test` there as the full run. No browser on PRs.
+Every scenario the classification rule moves out of the browser suite gets
+one Go assertion at the real handler if none exists. One per distinct
+contract, not a matrix.
 
-The argument is not "a Go-only PR cannot break kit's client"; it can, by
-changing a wire answer. The argument is that `release.yml` gates tagging and
-publishing on the browser run, so a merge to `main` that breaks the client
-cannot ship, and the fix is one more PR. PR iteration speed is worth more
-than catching that one merge early. If that trade turns out wrong, the
-remedy is a small tagged browser check on PRs, added then and measured, not
-now.
+### PR CI
 
-## Tier 2: release gate on `main`, no success images
+`ci.yml` already runs the commit-subject check, `just build`, `just vet` and
+`just test`. Nothing changes there except that `just test` gets fast. The
+minutes it takes today are GitHub overhead (`setup-go`, mise, `pnpm install`,
+`playwright` is not involved) plus the redundant subprocesses above; the
+overhead is a couple of minutes and the rest disappears with them. No
+browser on PRs. A merge to `main` that breaks kit's client cannot ship,
+because `release.yml` gates tagging on the browser run, and the fix is one
+more PR.
+
+## The browser run: on `main`, no success images
 
 `qualification.yml` and the suite:
 
@@ -168,11 +150,11 @@ now.
   shell. The defence here is the assertion discipline issue #183 already
   requires: every retained scenario asserts positive, literal, visible
   content, and a `Then` whose only content is "X is absent" is rejected in
-  review. The visual catch moves to Tier 3.
+  review. The visual catch moves to the occasional look.
 - Prediction, to be measured: wall clock dominated by `pnpm install` and
   `playwright install --with-deps`, not by scenarios.
 
-## Tier 3: occasional product look, by a cheap eye
+## The occasional look: `gimble run validate-product`
 
 This is exploratory product testing, not regression validation. Codex is
 right that `gimble run validate-product` is a focus-group tool; that is what
@@ -216,8 +198,8 @@ future agent will re-derive the screenshot dossier from. So the mechanism is
 deleted, not made optional, and the text is rewritten, not softened.
 
 - `AGENTS.md` and `CLAUDE.md`, "A passing command is not evidence": replace
-  the per-assertion screenshot requirement with the three tiers and the
-  per-scenario classification rule. Keep "skips are failures" and "never
+  the per-assertion screenshot requirement with the three parts above and
+  the per-scenario classification rule. Keep "skips are failures" and "never
   derive the expectation from the thing under test" verbatim; both are
   correct and neither is about images.
 - `Justfile` header: the codex branch's "captures its meaningful outcomes for
@@ -232,9 +214,9 @@ deleted, not made optional, and the text is rewritten, not softened.
 
 ## What this does not claim
 
-- Tier 0 does not prove hydration or dev rendering. Only Tier 2 does.
+- `just test` does not prove hydration or dev rendering. Only the browser run does.
 - Post-change timings above are predictions until measured on the branch.
-- Tier 3 is not a regression gate and produces findings, not a verdict.
+- The occasional look is not a regression gate and produces findings, not a verdict.
 
 ## Codex objections that did not survive
 
@@ -244,6 +226,6 @@ deleted, not made optional, and the text is rewritten, not softened.
   The substantive residue of the objection, the blank-page catch, is kept
   above under Tier 2.
 - "Build tags or a separate package would be a better split than `-short`."
-  Build tags hide tests from ordinary `go test`; a separate package is a
-  restructuring with no measured need. `-short` with `just test` kept full
-  resolves the actual concern.
+  Moot: after the owner's review the split is gone entirely. The full run is
+  made fast instead, and a `-short` tier is deferred until a measurement
+  shows it is needed.
