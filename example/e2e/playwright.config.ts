@@ -1,3 +1,4 @@
+import { availableParallelism } from 'node:os';
 import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
@@ -26,7 +27,10 @@ export default defineConfig({
 	// one asserts. A scenario that cannot share the server with its neighbours
 	// is a test that derives its expectation from state it did not set up.
 	fullyParallel: true,
-	workers: process.env.SKGO_E2E_WORKERS ? Number(process.env.SKGO_E2E_WORKERS) : 4,
+	// One worker per core, up to six, in both modes. A 4-vCPU CI runner was
+	// fastest at four and no faster past it; a 10-core machine gains little
+	// beyond six. Dev scales like prod, so it needs no lower count.
+	workers: Math.min(availableParallelism(), 6),
 	retries: 0,
 	// `list` for the terminal; the HTML report carries a failed scenario's
 	// trace and its screenshot at the moment it failed. A passing scenario
