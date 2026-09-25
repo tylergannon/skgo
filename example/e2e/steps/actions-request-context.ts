@@ -42,16 +42,14 @@ When(/^I remember the action cookie with (Kit enhancement|native form)$/, async 
 	}
 });
 
-Then('the submitting response and page show the immediate cookie', async ({ page, shot, notes }) => {
+Then('the submitting response and page show the immediate cookie', async ({ page, notes }) => {
 	expect(notes.get('context-cookie-status')).toBe(200);
 	await ada(page);
 	await expect(page.getByTestId('action-cookie-value')).toHaveText('violet-42');
 	await expect(page.getByTestId('action-receipt')).toHaveText('Remembered violet-42');
-	await page.evaluate(() => window.scrollTo(0, 260));
-	await shot('immediate-cookie');
 });
 
-Then('a later editor GET still shows the literal cookie and Ada fixture', async ({ page, shot, $testInfo }) => {
+Then('a later editor GET still shows the literal cookie and Ada fixture', async ({ page, $testInfo }) => {
 	const response = await page.goto('/actions');
 	expectMode(response!);
 	expect(response?.status()).toBe(200);
@@ -59,8 +57,6 @@ Then('a later editor GET still shows the literal cookie and Ada fixture', async 
 	await expect(page.getByTestId('action-cookie-value')).toHaveText('violet-42');
 	await expect(page.getByTestId('action-receipt')).toHaveCount(0);
 	if ($testInfo.project.name === 'noscript') await expect(page.getByTestId('actions-noscript')).toBeVisible();
-	await page.evaluate(() => window.scrollTo(0, 260));
-	await shot('later-cookie-get');
 });
 
 When(/^I save Grace and inspect the action header with (Kit enhancement|native form)$/, async ({ page, notes }, submission: Submission) => {
@@ -77,7 +73,7 @@ When(/^I save Grace and inspect the action header with (Kit enhancement|native f
 	expect(body).toContain('Saved Grace Hopper');
 });
 
-Then("the response has the fixed header and the page has Grace's saved profile", async ({ page, shot, notes }) => {
+Then("the response has the fixed header and the page has Grace's saved profile", async ({ page, notes }) => {
 	expect(notes.get('context-header-status')).toBe(200);
 	await expect(page.getByTestId('title')).toHaveText('Actions');
 	await expect(page.getByTestId('action-receipt')).toHaveText('Saved Grace Hopper');
@@ -85,8 +81,6 @@ Then("the response has the fixed header and the page has Grace's saved profile",
 	await expect(page.getByTestId('saved-email')).toHaveText('grace@example.test');
 	await expect(page.getByTestId('saved-biography')).toHaveText('Compiler pioneer');
 	await expect(page.getByTestId('saved-state')).toHaveText('Active');
-	await page.evaluate(() => window.scrollTo(0, 0));
-	await shot('fixed-header-and-profile');
 });
 
 When(/^I attempt the guarded sign-in with (Kit enhancement|native form)$/, async ({ page, notes }, submission: Submission) => {
@@ -101,13 +95,11 @@ When(/^I attempt the guarded sign-in with (Kit enhancement|native form)$/, async
 	}
 });
 
-Then("the hook redirect has Kit's response and the sign-in destination", async ({ page, shot, notes }) => {
+Then("the hook redirect has Kit's response and the sign-in destination", async ({ page, notes }) => {
 	expect(notes.has('hook-redirect-enhanced')).toBe(true);
 	await expect(page).toHaveURL(/\/actions\/signed-in\?required=1$/);
 	await expect(page.getByTestId('hook-sign-in-title')).toHaveText('Sign in required');
 	await expect(page.getByTestId('hook-sign-in-message')).toHaveText('The request was intercepted before the profile action ran.');
-	await page.evaluate(() => window.scrollTo(0, 0));
-	await shot('hook-sign-in');
 });
 
 When(/^I attempt the guarded forbidden edit with (Kit enhancement|native form)$/, async ({ page, notes }, submission: Submission) => {
@@ -128,7 +120,7 @@ When(/^I attempt the guarded forbidden edit with (Kit enhancement|native form)$/
 	}
 });
 
-Then("the hook refusal has Kit's response and visible page behavior", async ({ page, shot, notes }) => {
+Then("the hook refusal has Kit's response and visible page behavior", async ({ page, notes }) => {
 	if (notes.get('hook-error-enhanced') === 1) {
 		await expect(page.getByTestId('action-error-title')).toHaveText('Action error 403');
 		await expect(page.getByTestId('action-error-message')).toHaveText('Hook denied this edit');
@@ -138,16 +130,13 @@ Then("the hook refusal has Kit's response and visible page behavior", async ({ p
 		await expect(page.locator('body')).toContainText('Hook denied this edit');
 		await expect(page.getByTestId('action-error-title')).toHaveCount(0);
 	}
-	await page.evaluate(() => window.scrollTo(0, 0));
-	await shot('hook-refusal');
 });
 
-Then('a later editor GET still has every Ada fixture field', async ({ page, shot, $testInfo }) => {
+Then('a later editor GET still has every Ada fixture field', async ({ page, $testInfo }) => {
 	const response = await page.goto('/actions');
 	expectMode(response!);
 	expect(response?.status()).toBe(200);
 	await ada(page);
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
 	if ($testInfo.project.name === 'noscript') await expect(page.getByTestId('actions-noscript')).toBeVisible();
-	await shot('unchanged-ada');
 });

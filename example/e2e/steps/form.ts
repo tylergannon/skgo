@@ -104,13 +104,12 @@ Then('the browser reports validation completed', async ({ page, remotes }) => {
 
 Then(
 	'the optional result for {string} shows count {string}, enabled {string} and label {string}',
-	async ({ page, shot }, name: string, count: string, enabled: string, label: string) => {
+	async ({ page }, name: string, count: string, enabled: string, label: string) => {
 		await expect(page.getByTestId('optional-result')).toBeVisible();
 		await expect(page.getByTestId('optional-result-name')).toHaveText(`Name: ${name}`);
 		await expect(page.getByTestId('optional-result-count')).toHaveText(`Count: ${count}`);
 		await expect(page.getByTestId('optional-result-enabled')).toHaveText(`Enabled: ${enabled}`);
 		await expect(page.getByTestId('optional-result-label')).toHaveText(`Label: ${label}`);
-		await shot(count === 'absent' ? 'omitted' : 'supplied');
 	}
 );
 
@@ -158,9 +157,8 @@ When('I fill the contact name with {string}', async ({ page }, name: string) => 
 	await page.getByTestId('field-from').fill(name);
 });
 
-Then('only the contact name is dirty', async ({ page, shot }) => {
+Then('only the contact name is dirty', async ({ page }) => {
 	await expect(page.getByTestId('contact-dirty')).toHaveText('Changed fields: name');
-	await shot();
 });
 
 When('I attach the fixture {string}', async ({ page }, name: string) => {

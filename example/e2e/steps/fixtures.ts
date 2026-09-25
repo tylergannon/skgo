@@ -1,7 +1,5 @@
 import { expect, type Page, type Response } from '@playwright/test';
-import { createBdd, test as base } from 'playwright-bdd';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { test as base } from 'playwright-bdd';
 
 /** Records the document (top-level navigation) traffic of one scenario. */
 export type Documents = {
@@ -71,42 +69,13 @@ export type BrowserConsole = {
 	messages: string[];
 };
 
-/**
- * Screenshots the page in whatever state the scenario left it, named after the
- * scenario. Every loads scenario leaves one behind, because the sprint's
- * acceptance is somebody looking at all of them.
- */
-export type Shot = (name?: string) => Promise<void>;
-
-type BrowserFrame = {
-	capture(file: string): Promise<void>;
-};
-
 export const test = base.extend<{
 	documents: Documents;
 	remotes: Remotes;
 	data: Data;
 	notes: Notes;
-	shot: Shot;
 	browserConsole: BrowserConsole;
-	browserFrame: BrowserFrame;
 }>({
-	browserFrame: [
-		async ({ page }, use) => {
-			const session = await page.context().newCDPSession(page);
-			await use({
-				async capture(file: string) {
-					// Direct CDP capture avoids Playwright's navigation wait (which
-					// cannot finish while a streaming document is still open), and
-					// asks for the current frame instead of reusing a stale screencast.
-					const { data } = await session.send('Page.captureScreenshot', { format: 'png' });
-					writeFileSync(file, Buffer.from(data, 'base64'));
-				}
-			});
-			await session.detach().catch(() => undefined);
-		},
-		{ auto: true }
-	],
 	// `auto` so the listener is attached before the scenario's first
 	// navigation — a violation reported while the very first document loads
 	// would otherwise be missed.
@@ -202,41 +171,6 @@ export const test = base.extend<{
 	// eslint-disable-next-line no-empty-pattern -- Playwright infers fixture deps from this pattern.
 	notes: async ({}, use) => {
 		await use(new Map<string, number>());
-	},
-
-	shot: async ({ browserFrame }, use, testInfo) => {
-		// The title of a Scenario Outline's example is just "Example #1", so the
-		// scenario's own title has to come along or three redirects overwrite
-		// each other.
-		const slug = testInfo.titlePath
-			.slice(-2)
-			.join('-')
-			.replace(/[^a-z0-9]+/gi, '-')
-			.replace(/^-|-$/g, '')
-			.toLowerCase();
-		// The mode is part of the path for the same reason it is part of the
-		// AfterStep frames': the same scenarios run twice, against the embedded
-		// build and against `vp dev`, and a shared path means the second run
-		// silently overwrites the first — the tracked evidence then shows one
-		// mode while the claim is about two.
-		const mode = process.env.SKGO_E2E_RUN ?? 'run';
-		// And the feature, so the tracked evidence is not one heap named after
-		// whichever feature happened to need screenshots first.
-		const feature =
-			basename(testInfo.file).replace(/\.feature\.spec\.[jt]s$/, '') || 'unknown';
-		let taken = 0;
-		const shot: Shot = async (name) => {
-			const suffix = name ? `-${name}` : taken > 0 ? `-${taken}` : '';
-			taken += 1;
-			if (!captureScenarioFrame(feature, mode, name)) return;
-			const file = `../../ephemeral/screenshots/${feature}/${mode}/${slug}${suffix}.png`;
-			mkdirSync(dirname(file), { recursive: true });
-			await browserFrame.capture(file);
-		};
-		await use(shot);
-		// A scenario that took no shot of its own still leaves the state it
-		// finished in.
-		if (taken === 0) await shot('final');
 	}
 });
 
@@ -255,104 +189,6 @@ export function expectMode(response: { headers(): Record<string, string> }): 'de
 		expected
 	);
 	return expected;
-}
-
-const { AfterStep } = createBdd(test);
-
-/**
- * Photographs the page the instant a scenario asserts.
- *
- * An exit code says a scenario passed; it does not say what the visitor was
- * looking at when it did. Every step Gherkin classifies as an outcome — Then,
- * and the And/But that continue it — leaves a frame of the real page in the
- * real state the sentence claims, so the run can be checked by looking rather
- * than by rerunning it. The same frames are taken when a step fails, which is
- * the moment they are worth most.
- *
- * Kept out of the step definitions on purpose: a screenshot nobody has to
- * remember to write cannot be forgotten from the next scenario somebody adds.
- */
-AfterStep(async ({ browserFrame, $step, $bddContext, $testInfo }) => {
-	if (screenshotPolicy() !== 'all') return;
-	const step = $bddContext.bddTestData?.steps?.[$bddContext.stepIndex];
-	if (step?.keywordType !== 'Outcome') return;
-
-	const file = join(
-		screenshotDir(),
-		slug($bddContext.featureUri.replace(/^features\//, '').replace(/\.feature$/, '')),
-		slug($testInfo.title),
-		`${String($bddContext.stepIndex + 1).padStart(2, '0')}-${slug(step.textWithKeyword ?? $step.title)}.png`
-	);
-	mkdirSync(dirname(file), { recursive: true });
-	await shoot(browserFrame, file);
-	await $testInfo.attach(step.textWithKeyword ?? $step.title, { path: file, contentType: 'image/png' });
-});
-
-type ScreenshotPolicy = 'all' | 'curated' | 'none';
-
-function screenshotPolicy(): ScreenshotPolicy {
-	const policy = process.env.SKGO_E2E_SCREENSHOTS ?? 'all';
-	if (policy === 'all' || policy === 'curated' || policy === 'none') return policy;
-	throw new Error(`SKGO_E2E_SCREENSHOTS must be all, curated, or none; got ${JSON.stringify(policy)}`);
-}
-
-export function capturesAllScreenshots(): boolean {
-	return screenshotPolicy() === 'all';
-}
-
-/**
- * Release qualification keeps one production control and one development HMR
- * result. The generated-project contract contributes the other eight frames.
- */
-function captureScenarioFrame(feature: string, mode: string, name?: string): boolean {
-	switch (screenshotPolicy()) {
-		case 'all':
-			return true;
-		case 'none':
-			return false;
-		case 'curated':
-			return (
-				feature === 'zz-source-update' &&
-				((mode === 'prod' && name === 'built-unchanged') ||
-					(mode === 'dev' && name === 'hot-updated'))
-			);
-	}
-}
-
-/**
- * Where this run's frames go. The mode is part of the path because the same
- * scenarios run twice — against the embedded build and against `vp dev` — and
- * the two sets are only useful side by side.
- */
-function screenshotDir(): string {
-	return join('screenshots', process.env.SKGO_E2E_RUN ?? 'run');
-}
-
-/**
- * Takes the picture. A page mid-navigation (a step that just swapped the
- * document) can briefly refuse a screenshot, so a couple of retries cover
- * that ordinary timing case. A capture that still fails after retrying is not
- * swallowed: a missing screenshot is a missing screenshot, and the step it
- * belongs to must fail rather than report a pass nobody can check.
- */
-async function shoot(browserFrame: BrowserFrame, file: string): Promise<void> {
-	for (let attempt = 1; ; attempt++) {
-		try {
-			await browserFrame.capture(file);
-			return;
-		} catch (error) {
-			if (attempt >= 3) throw error;
-			await new Promise((resolve) => setTimeout(resolve, 150));
-		}
-	}
-}
-
-function slug(text: string): string {
-	return text
-		.replace(/[^\w\s.-]/g, '')
-		.trim()
-		.replace(/\s+/g, '-')
-		.slice(0, 80);
 }
 
 /**
@@ -391,6 +227,25 @@ export async function hydrated(page: Page): Promise<void> {
 	await page.waitForFunction(() => history.scrollRestoration === 'manual', undefined, {
 		timeout: 30_000
 	});
+}
+
+/**
+ * Requires kit's client to have booted, rather than waiting for it if it might.
+ *
+ * `hydrated` gives up quietly on a page with no boot script, which is right for
+ * a step that only needs to wait. A claim that kit's client did or did not do
+ * something — "no second request was made", "the error page booted its own
+ * client" — is satisfied by a page whose client never started at all, so it
+ * has to establish first that the client is there. Same marker as `hydrated`:
+ * `_start_router` sets it, and nothing else does.
+ */
+export async function booted(page: Page): Promise<void> {
+	await expect
+		.poll(() => page.evaluate(() => history.scrollRestoration), {
+			timeout: 30_000,
+			message: "kit's client never started its router on this page"
+		})
+		.toBe('manual');
 }
 
 export { expect };

@@ -20,7 +20,6 @@ Then('the shared route offers classic and remote forms', async ({ page }) => {
 	await expect(page.getByTestId('native-remote-note')).toBeVisible();
 	await expect(page.getByTestId('enhanced-remote-note')).toBeVisible();
 	await expect(page.getByTestId('endpoint-post')).toBeVisible();
-	await page.getByTestId('native-remote-note').scrollIntoViewIfNeeded();
 });
 
 Then('the shared route offers native forms with scripting disabled', async ({ page, $testInfo }) => {
@@ -29,7 +28,6 @@ Then('the shared route offers native forms with scripting disabled', async ({ pa
 	await expect(page.getByTestId('coexist-noscript')).toBeVisible();
 	await expect(page.getByTestId('native-save-form')).toBeVisible();
 	await expect(page.getByTestId('native-remote-note')).toBeVisible();
-	await page.getByTestId('native-remote-note').scrollIntoViewIfNeeded();
 });
 
 When(/^I save Grace through the classic form with (Kit enhancement|native form)$/, async ({ page, $testInfo }, submission: Submission) => {
@@ -63,7 +61,6 @@ Then('the page shows the classic Grace receipt and saved profile', async ({ page
 	await expect(page.getByTestId('saved-email')).toHaveText('grace@example.test');
 	await expect(page.getByTestId('saved-biography')).toHaveText('Compiler pioneer');
 	await expect(page.getByTestId('saved-state')).toHaveText('Active');
-	await page.getByTestId('action-receipt').scrollIntoViewIfNeeded();
 });
 
 When('I ask the sibling endpoint at that route', async ({ page }) => {
@@ -79,41 +76,6 @@ Then('the endpoint answer is distinct and the classic receipt remains', async ({
 	await expect(page.getByTestId('title')).toHaveText('Actions');
 	await expect(page.getByTestId('endpoint-answer')).toHaveText('Endpoint POST answered by Go');
 	await expect(page.getByTestId('action-receipt')).toHaveText('Saved Grace Hopper');
-	await page.getByTestId('endpoint-answer').scrollIntoViewIfNeeded();
-});
-
-Then('the GET-only sibling answers a JSON GET', async ({ page }) => {
-	await expect(page.getByTestId('default-title')).toHaveText('Default action, no page load');
-	const response = await page.context().request.get('/actions/default', { headers: { Accept: 'application/json' } });
-	expectMode(response);
-	expect(response.status()).toBe(200);
-	expect(await response.json()).toEqual({ answer: 'Default sibling GET answered by Go' });
-});
-
-Then('a JSON POST without an action header still reaches the default action', async ({ page }) => {
-	const response = await page.context().request.post('/actions/default', {
-		headers: { Accept: 'application/json', Origin: new URL(page.url()).origin, 'Content-Type': 'application/x-www-form-urlencoded' },
-		data: 'name=Grace+Hopper&email=grace%40example.test&biography=Compiler+pioneer'
-	});
-	expectMode(response);
-	expect(response.status()).toBe(200);
-	expect((await response.json()).type).toBe('success');
-	expect(await response.text()).toContain('Saved Grace Hopper');
-	await expect(page.getByTestId('default-title')).toHaveText('Default action, no page load');
-	await expect(page.getByTestId('default-receipt')).toHaveText('Saved Grace Hopper');
-});
-
-Then('Accept prefers an HTML action document when JSON has zero quality', async ({ page }) => {
-	const response = await page.context().request.post('/actions/default', {
-		headers: { Accept: 'text/html, application/json;q=0', Origin: new URL(page.url()).origin, 'Content-Type': 'application/x-www-form-urlencoded' },
-		data: 'name=Grace+Hopper&email=grace%40example.test&biography=Compiler+pioneer'
-	});
-	expectMode(response);
-	expect(response.status()).toBe(200);
-	expect(response.headers()['content-type']).toContain('text/html');
-	expect(await response.text()).toContain('Saved Grace Hopper');
-	await expect(page.getByTestId('default-title')).toHaveText('Default action, no page load');
-	await expect(page.getByTestId('default-receipt')).toHaveText('Saved Grace Hopper');
 });
 
 When('I submit the native remote form', async ({ page, $testInfo }) => {
@@ -133,21 +95,6 @@ Then('the remote Go receipt appears without a classic receipt', async ({ page })
 	await expect(page.getByTestId('title')).toHaveText('Actions');
 	await expect(page.getByTestId('remote-note-receipt')).toHaveText('Remote Go form received Grace Hopper');
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
-	await page.getByTestId('remote-note-receipt').scrollIntoViewIfNeeded();
-});
-
-Then('a JSON action POST to that same selector reaches the classic remote-named action', async ({ page }) => {
-	const action = await page.getByTestId('native-remote-note').getAttribute('action');
-	expect(action).toMatch(/\/remote=.+/);
-	const response = await page.context().request.post(`/actions${action}`, {
-		headers: { Accept: 'application/json', Origin: new URL(page.url()).origin, 'x-sveltekit-action': 'true', 'Content-Type': 'application/x-www-form-urlencoded' },
-		data: 'name=Grace+Hopper'
-	});
-	expectMode(response);
-	expect(response.status()).toBe(200);
-	expect((await response.json()).type).toBe('success');
-	expect(await response.text()).toContain('Classic remote-named action answered by Go');
-	await expect(page.getByTestId('remote-note-receipt')).toHaveText('Remote Go form received Grace Hopper');
 });
 
 When('I submit the enhanced remote form', async ({ page }) => {
@@ -163,5 +110,4 @@ Then('its remote Go receipt appears from the remote protocol', async ({ page }) 
 	await expect(page.getByTestId('title')).toHaveText('Actions');
 	await expect(page.getByTestId('remote-note-receipt')).toHaveText('Remote Go form received Grace Hopper');
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
-	await page.getByTestId('remote-note-receipt').scrollIntoViewIfNeeded();
 });

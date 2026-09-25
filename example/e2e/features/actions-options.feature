@@ -1,14 +1,9 @@
 Feature: Page rendering options govern native Go action documents
 
-  Scenario: A page without client JavaScript renders a successful action
-    Given I open the Actions page without client JavaScript
-    When I save Grace on the no-client page
-    Then the no-client response is a script-free 200 receipt with the exact saved Grace profile
-
-  Scenario: A page without client JavaScript retains a rejected edit
-    Given I open the Actions page without client JavaScript
-    When I submit the invalid Grace edit on the no-client page
-    Then the no-client response is script-free 422 with the exact edit and unchanged Ada profile
+  Kit's client is what differs between these pages: one turns it off for the
+  page and back on for its error branch, the other renders nothing on the server
+  and draws everything after boot. The documents Go answers for the same posts
+  are asserted in example/contracts_test.go.
 
   Scenario: A no-client leaf error uses its surviving error branch options
     Given I open the Actions page without client JavaScript
@@ -32,13 +27,8 @@ Feature: Page rendering options govern native Go action documents
     And after boot the ordinary client-rendered page shows <profile> without an action outcome
 
     Examples:
-      | outcome    | profile |
-      | success    | Grace   |
-      | validation | Ada     |
-      | forbidden  | Ada     |
-      | unavailable | Ada    |
-
-  Scenario: A native redirect from a client-rendered page reaches its destination
-    Given I open the client-rendered Actions page after boot
-    When I submit native sign-in on the client-rendered page
-    Then the native action redirects to the signed-in destination with its Go cookie
+      | outcome     | profile |
+      | success     | Grace   |
+      | validation  | Ada     |
+      | forbidden   | Ada     |
+      | unavailable | Ada     |

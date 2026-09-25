@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, expectMode, hydrated, test } from './fixtures';
+import { expect, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 
@@ -23,19 +23,6 @@ When('I click the link to {string}', async ({ page }, path: string) => {
 	await page.getByTestId('app-nav').getByRole('link', { name: linkName(path), exact: true }).click();
 });
 
-Then('the document response came from skgo', async ({ page, documents }) => {
-	expect(documents.last, 'no document response was observed').not.toBeNull();
-	expectMode(documents.last!);
-	// A document that boots nothing is not evidence skgo served the app, and
-	// the frame this step leaves behind would be a blank page — which is what
-	// it was in dev, where the first load waits on vite's module graph.
-	//
-	// The root layout's own nav, by test id rather than by role: a section
-	// layout may have a nav of its own, and `getByRole('navigation')` then
-	// matches two elements and fails on a page that rendered perfectly.
-	await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 15_000 });
-});
-
 Then('every part of the page loaded', async ({ page }) => {
 	// Every remote call on a page sits inside a `<svelte:boundary>` that renders
 	// a `*-pending` test id while it is in flight and a `*-failed` one when it
@@ -54,12 +41,6 @@ Then('every part of the page loaded', async ({ page }) => {
 	await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 15_000 });
 	await expect(page.locator('[data-testid$="-pending"]')).toHaveCount(0, { timeout: 15_000 });
 	await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);
-});
-
-Then('I see the greeting component', async ({ page }) => {
-	await expect(page.getByTestId('greeting')).toHaveText(
-		'Hello, skgo! This is Svelte, served by Go.'
-	);
 });
 
 Then('I see {string}', async ({ page }, text: string) => {

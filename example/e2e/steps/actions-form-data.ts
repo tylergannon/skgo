@@ -43,7 +43,7 @@ When(/^I send the haiku with (Kit enhancement|native then hydration|native form)
 	notes.set('form-data-native-hydration', submission === 'native then hydration' ? 1 : 0);
 });
 
-Then('Go reports haiku.txt, 72 bytes, its SHA-256 prefix, and both interests', async ({ page, shot }) => {
+Then('Go reports haiku.txt, 72 bytes, its SHA-256 prefix, and both interests', async ({ page }) => {
 	await expect(page.getByTestId('title')).toHaveText('Actions');
 	await expect(page.getByTestId('upload-name')).toHaveText('haiku.txt');
 	await expect(page.getByTestId('upload-bytes')).toHaveText('72 bytes');
@@ -51,11 +51,9 @@ Then('Go reports haiku.txt, 72 bytes, its SHA-256 prefix, and both interests', a
 	await expect(page.getByTestId('upload-interests')).toHaveText('math, computing');
 	await expect(page.getByTestId('upload-submitter')).toHaveText('uploadButton=send-poem');
 	await expect(page.getByTestId('action-money')).toHaveText('$7.50');
-	await page.getByTestId('upload-name').scrollIntoViewIfNeeded();
-	await shot('upload-assertion');
 });
 
-Then("the upload's Money survives the required browser path", async ({ page, notes, shot }) => {
+Then("the upload's Money survives the required browser path", async ({ page, notes }) => {
 	if (notes.get('form-data-native-hydration') === 1) {
 		await page.getByTestId('client-interaction').click();
 		await expect(page.getByTestId('client-interaction-done')).toHaveText('Client interaction complete');
@@ -63,8 +61,6 @@ Then("the upload's Money survives the required browser path", async ({ page, not
 		await expect(page.getByTestId('upload-hash')).toHaveText('SHA-256 prefix 84cee680e822');
 	}
 	await expect(page.getByTestId('action-money')).toHaveText('$7.50');
-	await page.getByTestId('action-money').scrollIntoViewIfNeeded();
-	await shot('money-assertion');
 });
 
 When(/^I submit the (standard|multipart) encoding button with (Kit enhancement|native then hydration|native form)$/, async ({ page, notes, $testInfo }, encoding: Encoding, submission: Submission) => {
@@ -84,19 +80,16 @@ When(/^I submit the (standard|multipart) encoding button with (Kit enhancement|n
 	notes.set('form-data-native-hydration', submission === 'native then hydration' ? 1 : 0);
 });
 
-Then(/^Go reports the chosen (standard|multipart) button and ordered interests$/, async ({ page, notes, shot }, encoding: Encoding) => {
+Then(/^Go reports the chosen (standard|multipart) button and ordered interests$/, async ({ page, notes }, encoding: Encoding) => {
 	await expect(page.getByTestId('title')).toHaveText('Actions');
 	await expect(page.getByTestId('encoding-interests')).toHaveText('math, computing');
 	await expect(page.getByTestId('encoding-submitter')).toHaveText(`encodingButton=${encoding}`);
 	await expect(page.getByTestId('encoding-type')).toHaveText(encoding === 'standard' ? 'application/x-www-form-urlencoded' : 'multipart/form-data');
 	await expect(page.getByTestId('action-money')).toHaveText('$7.50');
-	await page.getByTestId('encoding-interests').scrollIntoViewIfNeeded();
-	await shot('encoding-assertion');
 	if (notes.get('form-data-native-hydration') === 1) {
 		await page.getByTestId('client-interaction').click();
 		await expect(page.getByTestId('client-interaction-done')).toHaveText('Client interaction complete');
 		await expect(page.getByTestId('encoding-interests')).toHaveText('math, computing');
 		await expect(page.getByTestId('action-money')).toHaveText('$7.50');
-		await shot('encoding-hydrated');
 	}
 });
