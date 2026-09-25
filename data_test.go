@@ -5,10 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -657,6 +661,61 @@ func TestALoadMayWriteCookiesAndHeaders(t *testing.T) {
 	// Cookies are the one header a load may not set directly.
 	if err := (&Event{load: &loadState{shared: &loadRequest{headers: http.Header{}}}}).SetHeader("set-cookie", "x=1"); err == nil {
 		t.Error("SetHeader accepted set-cookie")
+	}
+}
+
+// Kit starts every server load of a branch at once, so a layout and its page
+// can both be writing cookies at the same moment. The example app does exactly
+// that — its root layout hands out a visitor id while the Actions page hands
+// out a workspace — and before the jar was locked the pair took the whole
+// server down with `fatal error: concurrent map writes`.
+func TestTwoLoadsOfOneBranchMayWriteCookiesAtOnce(t *testing.T) {
+	// Each load waits for the other to have started before it writes, so the
+	// writes overlap for as long as the loads really do run side by side.
+	var arrived sync.WaitGroup
+	arrived.Add(2)
+	together := func() {
+		arrived.Done()
+		done := make(chan struct{})
+		go func() { arrived.Wait(); close(done) }()
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Error("the two loads of one branch did not run at the same time")
+		}
+	}
+	const writes = 500
+	write := func(ctx context.Context, name string) error {
+		together()
+		e := EventFrom(ctx)
+		for i := range writes {
+			if err := e.SetCookie(name, strconv.Itoa(i), CookieOptions{}); err != nil {
+				return err
+			}
+			if _, ok := e.Cookie(name); !ok {
+				return fmt.Errorf("%s was written and then not read back", name)
+			}
+		}
+		return nil
+	}
+	layout := NewLoad("src/routes/a/+layout.server.ts", func(ctx context.Context) (layoutData, error) {
+		return layoutData{Who: "ada"}, write(ctx, "layout")
+	})
+	page := NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (pageData, error) {
+		return pageData{Greeting: "hello"}, write(ctx, "page")
+	})
+	ls := mustLoads(t, nil, layout, page)
+
+	rec := get(t, ls, "/a/__data.json?x-sveltekit-invalidated=111")
+	if strings.Contains(recorded(rec), `"error"`) {
+		t.Fatalf("body = %s", recorded(rec))
+	}
+	got := rec.Header().Values("Set-Cookie")
+	last := strconv.Itoa(writes - 1)
+	for _, want := range []string{"layout=" + last + ";", "page=" + last + ";"} {
+		if !slices.ContainsFunc(got, func(c string) bool { return strings.HasPrefix(c, want) }) {
+			t.Errorf("Set-Cookie = %v, want one starting %q", got, want)
+		}
 	}
 }
 

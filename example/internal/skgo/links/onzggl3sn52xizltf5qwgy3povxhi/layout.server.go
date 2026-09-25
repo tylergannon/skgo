@@ -9,10 +9,11 @@ package account
 
 import (
 	"context"
-	"sync/atomic"
+	"sync"
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
+	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
 
 // LayoutData is what every page under /account gets, whether it asks or not.
@@ -25,7 +26,20 @@ type LayoutData struct {
 	AccountSerial int `json:"accountSerial"`
 }
 
-var serial atomic.Int64
+// serials counts per visitor, so the number a visitor sees is the number of
+// times this load has run for them, and nobody else can move it.
+var serials = struct {
+	sync.Mutex
+	byVisitor map[string]int
+}{byVisitor: map[string]int{}}
+
+func nextSerial(ctx context.Context) int {
+	who := visitor.Of(ctx)
+	serials.Lock()
+	defer serials.Unlock()
+	serials.byVisitor[who]++
+	return serials.byVisitor[who]
+}
 
 // layoutLoad is the section's guard and its shared data.
 //
@@ -46,7 +60,7 @@ func layoutLoad(ctx context.Context) (LayoutData, error) {
 
 	return LayoutData{
 		AccountUser:   session.User,
-		AccountSerial: int(serial.Add(1)),
+		AccountSerial: nextSerial(ctx),
 	}, nil
 }
 

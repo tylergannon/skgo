@@ -60,35 +60,21 @@ Then("the browser never asked for the page's data", async ({ page, data }) => {
 	expect(data.count, `data requests: ${data.urls.join(', ') || 'none'}`).toBe(0);
 });
 
-When('I note the layout serial', async ({ page, notes }) => {
-	notes.set('layout serial', await layoutSerial(page));
+// The serial counts this visitor's runs of the layout load, so the number is
+// the scenario's to state, not one it read off the page a step earlier.
+Then('the layout serial is {int}', async ({ page }, expected: number) => {
+	await expect(page.getByTestId('account-serial')).toHaveText(String(expected), {
+		timeout: 15_000
+	});
 });
 
-Then('the layout serial is unchanged', async ({ page, notes }) => {
+// The same claim after a navigation that must not have re-run the load. A
+// re-run would already be on its way; give it a beat to land.
+Then('the layout serial is still {int}', async ({ page }, expected: number) => {
 	await page.waitForTimeout(300);
-	expect(await layoutSerial(page)).toBe(noted(notes, 'layout serial'));
-});
-
-Then('the layout serial has changed', async ({ page, notes }) => {
-	const before = noted(notes, 'layout serial');
-	await expect
-		.poll(async () => await layoutSerial(page), { timeout: 15_000 })
-		.not.toBe(before);
+	await expect(page.getByTestId('account-serial')).toHaveText(String(expected));
 });
 
 Then('the error message is {string}', async ({ page }, message: string) => {
 	await expect(page.getByTestId('error-message')).toHaveText(message, { timeout: 15_000 });
 });
-
-async function layoutSerial(page: import('@playwright/test').Page): Promise<number> {
-	const text = await page.getByTestId('account-serial').innerText();
-	const value = Number(text.trim());
-	expect(Number.isFinite(value), `the layout serial was ${JSON.stringify(text)}`).toBe(true);
-	return value;
-}
-
-function noted(notes: Map<string, number>, label: string): number {
-	const value = notes.get(label);
-	expect(value, `${JSON.stringify(label)} was never noted`).not.toBeUndefined();
-	return value!;
-}

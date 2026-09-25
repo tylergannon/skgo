@@ -21,10 +21,6 @@ When('I note the remote request count', async ({ remotes }) => {
 	remotes.mark();
 });
 
-When('I note the live count as {string}', async ({ page, notes }, label: string) => {
-	notes.set(label, await liveCount(page));
-});
-
 When('I add the todo {string}', async ({ page }, text: string) => {
 	await hydrated(page);
 	await page.getByTestId('new-todo').fill(text);
@@ -81,15 +77,11 @@ Then(
 	}
 );
 
-Then(
-	'the live count is {int} more than {string}',
-	async ({ page, notes }, by: number, label: string) => {
-		await expectLiveCount(page, noted(notes, label) + by);
-	}
-);
-
-Then('the live count is the same as {string}', async ({ page, notes }, label: string) => {
-	await expectLiveCount(page, noted(notes, label));
+// A number the scenario wrote down, not one read off the page earlier: the
+// visitor's list starts from the store's fixtures, so what the count should be
+// is known before the page is opened.
+Then('the live count is {int}', async ({ page }, expected: number) => {
+	await expectLiveCount(page, expected);
 });
 
 // The number on screen is the live query's answer; the list beside it is the
@@ -119,12 +111,6 @@ async function countMatchesList(page: Page): Promise<void> {
 
 async function expectLiveCount(page: Page, expected: number): Promise<void> {
 	await expect(page.getByTestId('count')).toHaveText(String(expected), { timeout: 15_000 });
-}
-
-function noted(notes: Map<string, number>, label: string): number {
-	const value = notes.get(label);
-	expect(value, `the live count was never noted as ${JSON.stringify(label)}`).not.toBeUndefined();
-	return value!;
 }
 
 async function liveCount(page: Page): Promise<number> {
