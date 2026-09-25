@@ -86,6 +86,9 @@ func TestTheEmbeddedBuildProducesAWorkingServer(t *testing.T) {
 // kit's shell, one that turns CSR off is answered with a document carrying no
 // script at all, and everything else is rendered and boots.
 func TestEveryRouteInTheManifestIsServed(t *testing.T) {
+	// Parallel: it spends seconds waiting on the stream page's deliberately
+	// slow loads, and changes nothing another test asserts on.
+	t.Parallel()
 	h := newProdHandler(t)
 	session := businesslogic.Default.SignIn("ada")
 
@@ -589,6 +592,9 @@ func errorStatus(t *testing.T, body []byte) int {
 // `__route.js` is a different case — kit's own 400 for the client-side route
 // resolution skgo serves — and is pinned here beside it.
 func TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument(t *testing.T) {
+	// Parallel: it spends seconds waiting on the stream page's deliberately
+	// slow loads, and changes nothing another test asserts on.
+	t.Parallel()
 	h := newProdHandler(t)
 
 	document, err := fs.ReadFile(prodDist(t), "index.html")

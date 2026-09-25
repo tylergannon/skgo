@@ -21,14 +21,21 @@ import (
 // while the app stops being one whose server logic is written in Go. The same
 // failure catches generated output that is merely stale.
 //
-// Generation happens in the sandbox, so a stale tree is reported and never
-// silently rewritten under the developer.
+// Generation happens in a sandbox (the generated one in typedrift_test.go),
+// so a stale tree is reported and never silently rewritten under the
+// developer.
 func TestNothingGeneratedWasWrittenByHand(t *testing.T) {
-	app := sandbox(t)
-
-	if out, err := generate(app); err != nil {
-		t.Fatalf("running the generator: %v\n%s", err, out)
+	t.Parallel()
+	requireFrontendToolchain(t)
+	startSandboxes()
+	g := regenerated()
+	if g.setupErr != nil {
+		t.Fatal(g.setupErr)
 	}
+	if g.err != nil {
+		t.Fatalf("running the generator: %v\n%s", g.err, g.out)
+	}
+	app := g.app
 
 	// go.mod is rewritten by the sandbox itself; node_modules is linked, not
 	// copied, and .svelte-kit is vite's output rather than skgo's.
