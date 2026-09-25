@@ -219,6 +219,7 @@ function node_data(node) {
 }
 
 function build_props(req, url) {
+	const form = req.form ? devalue.parse(req.form, decoders) : null;
 	const page = {
 		error: req.error ?? null,
 		params: req.params ?? {},
@@ -226,7 +227,7 @@ function build_props(req, url) {
 		status: req.status ?? 200,
 		url,
 		data: {},
-		form: req.form ?? null,
+		form,
 		shallow: null,
 		state: {}
 	};
@@ -239,7 +240,7 @@ function build_props(req, url) {
 	const props = new Props({
 		page,
 		tree: new RenderNode(components[branch[0].node], undefined),
-		form: req.form ?? null,
+		form,
 		error: req.error ?? undefined
 	});
 

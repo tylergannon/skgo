@@ -98,6 +98,9 @@ type LoadConfig struct {
 	// is resolved against it, exactly as kit resolves it against the request
 	// URL, so that the identifier the client matches on is the same one.
 	Origin string
+	// TrustedOrigins are the extra origins Kit permits for form-shaped page
+	// submissions. They follow the same CSRF rule as endpoint submissions.
+	TrustedOrigins []string
 	// Dev relaxes the checks that only describe a production build.
 	Dev bool
 	// Transport is the app's `transport` hook: the Go half of the encode/decode
@@ -121,8 +124,9 @@ type LoadConfig struct {
 	// concern and does not run through this registry. See Handle.
 	OnPanic func(id string, value any, stack []byte)
 	// Nodes and Routes come from the manifest.
-	Nodes  []string
-	Routes []ManifestRoute
+	Nodes       []string
+	LoadModules []string
+	Routes      []ManifestRoute
 
 	// manifest reports that this config came from a build manifest, which is
 	// what makes the drift check meaningful.
@@ -132,13 +136,15 @@ type LoadConfig struct {
 // LoadConfig derives a load-registry configuration from a build manifest.
 func (m Manifest) LoadConfig(origin string) LoadConfig {
 	return LoadConfig{
-		AppDir:   m.AppDir,
-		Base:     m.Base,
-		Version:  m.Version,
-		Origin:   origin,
-		Nodes:    m.Nodes,
-		Routes:   m.Routes,
-		manifest: true,
+		AppDir:         m.AppDir,
+		Base:           m.Base,
+		Version:        m.Version,
+		Origin:         origin,
+		TrustedOrigins: m.TrustedOrigins,
+		Nodes:          m.Nodes,
+		LoadModules:    m.Loads,
+		Routes:         m.Routes,
+		manifest:       true,
 	}
 }
 
@@ -287,7 +293,11 @@ func (ls *Loads) checkDrift() error {
 	}
 
 	built := map[string]bool{}
-	for _, module := range ls.cfg.Nodes {
+	modules := ls.cfg.LoadModules
+	if modules == nil {
+		modules = ls.cfg.Nodes
+	}
+	for _, module := range modules {
 		if module != "" {
 			built[module] = true
 		}

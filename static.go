@@ -37,10 +37,19 @@ type Manifest struct {
 	Base string `json:"base"`
 	// Version is kit's build version name.
 	Version string `json:"version"`
+	// TrustedOrigins is Kit's csrf.trustedOrigins, applied to form-shaped
+	// page actions and endpoints in production.
+	TrustedOrigins []string `json:"trustedOrigins,omitempty"`
 	// Nodes gives, per kit node index, the vite-root-relative path of that
 	// node's `+page.server.ts` or `+layout.server.ts`, or "" when it has
 	// none. It is the key a Go load is registered under.
 	Nodes []string `json:"nodes"`
+	// Loads names the modules with a load export; an action-only page still
+	// appears in Nodes, but has no load handler to register.
+	Loads []string `json:"loads"`
+	// Actions names page server modules that export Go-backed actions, including
+	// action-only pages with no load export.
+	Actions []string `json:"actions,omitempty"`
 	// Routes lists every route kit knows about, with the regular expression
 	// kit's own router uses to match it.
 	Routes []ManifestRoute `json:"routes"`
@@ -499,6 +508,11 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// one — it has to run the form and then render the page again with the
 	// outcome in it. Everything else this handler serves is a file.
 	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
+		if h.ssr != nil {
+			if urlPath, ok := normalizePath(r.URL.Path); ok && h.ssr.servePageMethod(w, r, urlPath) {
+				return
+			}
+		}
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return

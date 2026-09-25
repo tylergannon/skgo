@@ -318,6 +318,34 @@ func TestACrossSiteFormPostIsRefused(t *testing.T) {
 	}
 }
 
+func TestTrustedOriginsUseKitsFormCSRFRule(t *testing.T) {
+	cfg := endpointFixture(nil, []string{"POST"}, nil)
+	cfg.TrustedOrigins = []string{"https://trusted.test"}
+	calls := 0
+	h := newEndpoints(t, cfg, NewEndpoint("/api/thing", "POST", func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	for _, tc := range []struct {
+		origin, contentType string
+		status              int
+		calls               int
+	}{
+		{"https://example.test", "application/x-www-form-urlencoded", 204, 1},
+		{"https://trusted.test", "multipart/form-data; boundary=fixture", 204, 2},
+		{"https://evil.test", "text/plain", 403, 2},
+		{"", "application/x-www-form-urlencoded", 403, 2},
+		{"https://evil.test", "application/json", 204, 3},
+	} {
+		resp := request(t, h, http.MethodPost, "/api/thing", http.Header{
+			"Origin": {tc.origin}, "Content-Type": {tc.contentType},
+		})
+		if resp.StatusCode != tc.status || calls != tc.calls {
+			t.Errorf("origin %q, type %q: status %d, calls %d; want %d, %d", tc.origin, tc.contentType, resp.StatusCode, calls, tc.status, tc.calls)
+		}
+	}
+}
+
 // Kit skips its form-shaped cross-site mutation check in development mode.
 // The endpoint must run even though it retains the app origin for the rest of
 // its request context.

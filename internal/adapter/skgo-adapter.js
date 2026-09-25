@@ -73,7 +73,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 
 			const nodes = await readNodes(builder, source, kit);
 			const serverIds = nodes.map((node) => node.server);
-			checkServerLoads(serverIds, generated.loads);
+			checkServerLoads(serverIds, generated.loads, generated.actions);
 
 			const endpoints = checkEndpoints(builder, generated.endpoints);
 
@@ -128,12 +128,15 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 						appDir: builder.config.appDir,
 						base: builder.config.paths.base,
 						version: builder.config.version.name,
+						trustedOrigins: builder.config.csrf.trustedOrigins,
 						// One entry per node, positionally: the vite-root-relative
 						// path of its `+*.server.ts`, or "" for a node that has
 						// none. It is how Go finds the load that answers a slot of
 						// a route's branch, and it is the same key kit itself
 						// records in the node module it builds.
 						nodes: serverIds,
+						loads: generated.loads,
+						actions: [...new Set(generated.actions)].sort(),
 						ssr: describeSSR(builder, kit, nodes),
 						routes: kit._.routes.map((/** @type {any} */ route) => ({
 							id: route.id,
@@ -199,7 +202,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
  * quietly compares nothing to nothing reports success for an app whose two
  * halves were never checked against each other.
  *
- * @returns {{ remotes: string[], loads: string[], endpoints: Record<string, string[]> }}
+ * @returns {{ remotes: string[], loads: string[], actions: string[], endpoints: Record<string, string[]> }}
  */
 function readGenerated() {
 	let raw;
@@ -235,6 +238,14 @@ function readGenerated() {
 			);
 		}
 	}
+	if (!Array.isArray(parsed.actions)) {
+		throw new Error('skgo: skgo.remotes.json has no `actions` array. Run `go generate ./...` before building the frontend.');
+	}
+	for (const module of parsed.actions) {
+		if (typeof module !== 'string' || !/\/\+page\.server\.ts$/.test(module)) {
+			throw new Error(`skgo: skgo.remotes.json lists ${JSON.stringify(module)}, which is not a +page.server.ts action path.`);
+		}
+	}
 	if (typeof parsed.endpoints !== 'object' || parsed.endpoints === null || Array.isArray(parsed.endpoints)) {
 		throw new Error(
 			'skgo: skgo.remotes.json has no `endpoints` object. Run `go generate ./...` before building the frontend.'
@@ -247,7 +258,7 @@ function readGenerated() {
 			);
 		}
 	}
-	return { remotes: parsed.remotes, loads: parsed.loads, endpoints: parsed.endpoints };
+	return { remotes: parsed.remotes, loads: parsed.loads, actions: parsed.actions, endpoints: parsed.endpoints };
 }
 
 /**
@@ -740,10 +751,11 @@ function* walk(dir) {
  *
  * @param {string[]} nodes
  * @param {string[]} loads
+ * @param {string[]} actions
  */
-function checkServerLoads(nodes, loads) {
+function checkServerLoads(nodes, loads, actions) {
 	const built = new Set(nodes.filter(Boolean));
-	const declared = new Set(loads);
+	const declared = new Set([...loads, ...actions]);
 
 	const missing = [...declared].filter((id) => !built.has(id));
 	const extra = [...built].filter((id) => !declared.has(id));

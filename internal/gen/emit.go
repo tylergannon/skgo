@@ -247,14 +247,19 @@ func (a *app) writePackageBindings() error {
 	for _, load := range a.loads {
 		loadsByPkg[load.goPkg] = append(loadsByPkg[load.goPkg], load)
 	}
+	actionsByPkg := map[*goPackage][]*actionFn{}
+	for _, action := range a.actions {
+		actionsByPkg[action.goPkg] = append(actionsByPkg[action.goPkg], action)
+	}
 
 	endpointsByPkg := a.endpointsByPackage()
 
 	for _, gp := range a.pkgs {
 		fns := byPkg[gp]
 		loads := loadsByPkg[gp]
+		actions := actionsByPkg[gp]
 		endpoints := endpointsByPkg[gp]
-		if len(fns) == 0 && len(loads) == 0 && len(endpoints) == 0 {
+		if len(fns) == 0 && len(loads) == 0 && len(actions) == 0 && len(endpoints) == 0 {
 			continue
 		}
 		// The aliases are rendered first, because rendering them is what
@@ -278,6 +283,9 @@ func (a *app) writePackageBindings() error {
 		for _, load := range loads {
 			fmt.Fprintf(&b, "\t// %s is %s, published as the server load of %s.\n", exportedName(load.name), load.name, load.module)
 			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(load.name), load.name)
+		}
+		for _, action := range actions {
+			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(action.fnName), action.fnName)
 		}
 		for _, ep := range endpoints {
 			fmt.Fprintf(&b, "\t// %s is %s, published as %s %s.\n", exportedName(ep.name), ep.name, endpointWireMethod(ep.method), ep.routeID)
@@ -403,7 +411,7 @@ func (a *app) writeAppBindings() error {
 	fmt.Fprintf(&b, "package %s\n\n", a.cfg.Package)
 	transportPkgs := a.transportImports()
 	b.WriteString("import (\n")
-	if len(a.remotes) > 0 || len(a.loads) > 0 {
+	if len(a.remotes) > 0 || len(a.loads) > 0 || len(a.actions) > 0 {
 		b.WriteString("\t\"context\"\n")
 	}
 	if a.hasBatch() {
@@ -466,6 +474,20 @@ func (a *app) writeAppBindings() error {
 		fmt.Fprintf(&b, "\t\tskgo.NewServerLoad(skgo.LoadSpec{Module: %q, Run: %s}),\n", load.module, load.handler)
 	}
 	b.WriteString("\t}\n}\n")
+	if len(a.actions) > 0 {
+		for _, action := range a.actions {
+			if action.noData {
+				fmt.Fprintf(&b, "\nfunc %s(ctx context.Context) (any, error) { return nil, %s(ctx) }\n", action.handler, a.published(action.goPkg, action.fnName))
+			} else {
+				fmt.Fprintf(&b, "\nfunc %s(ctx context.Context) (any, error) { return %s(ctx) }\n", action.handler, a.published(action.goPkg, action.fnName))
+			}
+		}
+		b.WriteString("\n// Actions returns the Go handlers for classic page actions.\nfunc Actions() []*skgo.PageAction {\n\treturn []*skgo.PageAction{\n")
+		for _, action := range a.actions {
+			fmt.Fprintf(&b, "\t\tskgo.NewPageAction(skgo.ActionSpec{Module: %q, Name: %q, Run: %s}),\n", action.module, action.name, action.handler)
+		}
+		b.WriteString("\t}\n}\n")
+	}
 
 	b.WriteString("\n// Endpoints returns every server route declared in the app, ready to hand\n")
 	b.WriteString("// to skgo.NewEndpoints.\n")
@@ -709,7 +731,8 @@ type remoteList struct {
 	Remotes []string `json:"remotes"`
 	// Loads names the `+*.server.ts` modules skgo generated, which is the key
 	// kit itself records for a node that has a server load.
-	Loads []string `json:"loads"`
+	Loads   []string `json:"loads"`
+	Actions []string `json:"actions"`
 	// Endpoints names, per kit route id, the methods skgo generated an export
 	// for. Kit's build reports the same list for every route it compiled a
 	// `+server.ts` into, so the adapter can compare the two literally.
@@ -717,15 +740,19 @@ type remoteList struct {
 }
 
 func (a *app) writeRemoteList() error {
-	list := remoteList{Remotes: []string{}, Loads: []string{}, Endpoints: a.endpointList()}
+	list := remoteList{Remotes: []string{}, Loads: []string{}, Actions: []string{}, Endpoints: a.endpointList()}
 	for _, fn := range a.remotes {
 		list.Remotes = append(list.Remotes, kithash.Kit(fn.module)+"/"+fn.name)
 	}
 	for _, load := range a.loads {
 		list.Loads = append(list.Loads, load.module)
 	}
+	for _, action := range a.actions {
+		list.Actions = append(list.Actions, action.module)
+	}
 	sort.Strings(list.Remotes)
 	sort.Strings(list.Loads)
+	sort.Strings(list.Actions)
 	raw, err := json.MarshalIndent(list, "", "\t")
 	if err != nil {
 		return err

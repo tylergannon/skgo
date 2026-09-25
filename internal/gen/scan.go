@@ -64,6 +64,20 @@ type loadFn struct {
 	handler string
 }
 
+// actionFn is a named Go action exported by a page's +page.server.ts.
+type actionFn struct {
+	fnName  string
+	name    string
+	goPkg   *goPackage
+	module  string
+	stub    string
+	out     types.Type
+	failure types.Type
+	noData  bool
+	pos     token.Position
+	handler string
+}
+
 // remoteFn is one declared remote function.
 type remoteFn struct {
 	kind remoteKind
@@ -116,6 +130,7 @@ type app struct {
 
 	remotes   []*remoteFn
 	loads     []*loadFn
+	actions   []*actionFn
 	endpoints []*endpointFn
 	// transported are the app's `transport` hook entries, from src/hooks.go.
 	transported []*transportedType
@@ -244,15 +259,16 @@ func loadApp(cfg Config, files []string) (*app, error) {
 			if !wanted[path] {
 				continue
 			}
-			fns, loads, endpoints, err := a.scanFile(gp, p, file, path)
+			fns, loads, actions, endpoints, err := a.scanFile(gp, p, file, path)
 			if err != nil {
 				return nil, err
 			}
-			if len(fns) > 0 || len(loads) > 0 || len(endpoints) > 0 {
+			if len(fns) > 0 || len(loads) > 0 || len(actions) > 0 || len(endpoints) > 0 {
 				found = true
 			}
 			a.remotes = append(a.remotes, fns...)
 			a.loads = append(a.loads, loads...)
+			a.actions = append(a.actions, actions...)
 			a.endpoints = append(a.endpoints, endpoints...)
 		}
 		if found {
@@ -270,6 +286,12 @@ func loadApp(cfg Config, files []string) (*app, error) {
 		a.stubs[fn.stub] = append(a.stubs[fn.stub], fn)
 	}
 	sort.Slice(a.loads, func(i, j int) bool { return a.loads[i].module < a.loads[j].module })
+	sort.Slice(a.actions, func(i, j int) bool {
+		if a.actions[i].module != a.actions[j].module {
+			return a.actions[i].module < a.actions[j].module
+		}
+		return a.actions[i].name < a.actions[j].name
+	})
 	sort.Slice(a.endpoints, func(i, j int) bool {
 		if a.endpoints[i].module != a.endpoints[j].module {
 			return a.endpoints[i].module < a.endpoints[j].module
@@ -282,14 +304,14 @@ func loadApp(cfg Config, files []string) (*app, error) {
 // scanFile reads the markers in one `.remote.go`, `page.server.go`,
 // `layout.server.go` or `server.go` file. The file's name decides which markers
 // may appear in it, because it also decides what kit compiles beside it.
-func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path string) ([]*remoteFn, []*loadFn, []*endpointFn, error) {
+func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path string) ([]*remoteFn, []*loadFn, []*actionFn, []*endpointFn, error) {
 	base := filepath.Base(path)
 	_, isLoadFile := loadFileNames[base]
 	isServerFile := base == serverFileName
 	isHooksFile := base == hooksFileName
 
 	if isHooksFile {
-		return nil, nil, nil, a.scanHooks(gp, p, file, path)
+		return nil, nil, nil, nil, a.scanHooks(gp, p, file, path)
 	}
 
 	stub := strings.TrimSuffix(path, ".go") + ".ts"
@@ -301,18 +323,19 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 	}
 	mod, err := webRel(a.cfg.Web, stub)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	routeID := ""
 	if isServerFile {
 		if routeID, err = routeIDFor(mod); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 	}
 
 	var remotes []*remoteFn
 	var loads []*loadFn
+	var actions []*actionFn
 	var endpoints []*endpointFn
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)
@@ -329,15 +352,18 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 				if !ok {
 					continue
 				}
-				fn, load, endpoint, err := a.readMarker(gp, p, call, mod, stub, routeID, path)
+				fn, load, action, endpoint, err := a.readMarker(gp, p, call, mod, stub, routeID, path)
 				if err != nil {
-					return nil, nil, nil, err
+					return nil, nil, nil, nil, err
 				}
 				if fn != nil {
 					remotes = append(remotes, fn)
 				}
 				if load != nil {
 					loads = append(loads, load)
+				}
+				if action != nil {
+					actions = append(actions, action)
 				}
 				if endpoint != nil {
 					endpoints = append(endpoints, endpoint)
@@ -347,65 +373,77 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 	}
 
 	if (isLoadFile || isServerFile) && len(remotes) > 0 {
-		return nil, nil, nil, fmt.Errorf("skgo: %s declares a remote function; a remote function belongs in a *.remote.go file", path)
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s declares a remote function; a remote function belongs in a *.remote.go file", path)
 	}
 	if !isLoadFile && len(loads) > 0 {
-		return nil, nil, nil, fmt.Errorf("skgo: %s declares a server load; a load belongs in page.server.go or layout.server.go", path)
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s declares a server load; a load belongs in page.server.go or layout.server.go", path)
+	}
+	if base != "page.server.go" && len(actions) > 0 {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s declares a page action; an action belongs in page.server.go", path)
 	}
 	if !isServerFile && len(endpoints) > 0 {
-		return nil, nil, nil, fmt.Errorf("skgo: %s declares a server route; a server route belongs in %s, which is where kit's +server.ts is generated", path, serverFileName)
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s declares a server route; a server route belongs in %s, which is where kit's +server.ts is generated", path, serverFileName)
 	}
-	return remotes, loads, endpoints, nil
+	return remotes, loads, actions, endpoints, nil
 }
 
 // readMarker turns one call expression into a remoteFn, or returns nil if the
 // call is not a marker at all.
-func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr, mod, stub, routeID, path string) (*remoteFn, *loadFn, *endpointFn, error) {
+func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr, mod, stub, routeID, path string) (*remoteFn, *loadFn, *actionFn, *endpointFn, error) {
 	ident := calleeIdent(call.Fun)
 	if ident == nil {
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, nil
 	}
 	obj, _ := p.TypesInfo.Uses[ident].(*types.Func)
 	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != skgoPkg {
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, nil
 	}
 	kind, isRemote := markerKinds[obj.Name()]
 	isLoad := obj.Name() == "Load"
+	isAction := obj.Name() == "Action" || obj.Name() == "DefaultAction" || obj.Name() == "ActionWithFailure" || obj.Name() == "ActionNoData"
 	method, isEndpoint := endpointMarkers[obj.Name()]
-	if !isRemote && !isLoad && !isEndpoint {
-		return nil, nil, nil, nil
+	if !isRemote && !isLoad && !isAction && !isEndpoint {
+		return nil, nil, nil, nil, nil
 	}
 
 	pos := p.Fset.Position(call.Pos())
 	inst := p.TypesInfo.Instances[ident]
-	if isLoad {
+	if isLoad || (isAction && obj.Name() != "ActionNoData") {
 		// A load marker is still generic — a load has no argument to make
 		// optional — so its result comes from the instantiation.
-		if inst.TypeArgs == nil || inst.TypeArgs.Len() != 1 {
-			return nil, nil, nil, fmt.Errorf("skgo: %s: cannot read the types of this skgo.%s declaration", pos, obj.Name())
+		want := 1
+		if obj.Name() == "ActionWithFailure" {
+			want = 2
+		}
+		if inst.TypeArgs == nil || inst.TypeArgs.Len() != want {
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: cannot read the types of this skgo.%s declaration", pos, obj.Name())
 		}
 	}
-	if len(call.Args) != 1 {
-		return nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s takes exactly one argument, the function to publish", pos, obj.Name())
+	wantArgs := 1
+	if obj.Name() == "ActionWithFailure" {
+		wantArgs = 2
+	}
+	if len(call.Args) != wantArgs {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s takes exactly one argument, the function to publish", pos, obj.Name())
 	}
 
 	arg, ok := call.Args[0].(*ast.Ident)
 	if !ok {
-		return nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s needs a named function, not an expression — declare the function and pass its name", pos, obj.Name())
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s needs a named function, not an expression — declare the function and pass its name", pos, obj.Name())
 	}
 	target, _ := p.TypesInfo.Uses[arg].(*types.Func)
 	if target == nil {
-		return nil, nil, nil, fmt.Errorf("skgo: %s: %s is not a function", pos, arg.Name)
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s is not a function", pos, arg.Name)
 	}
 	if target.Pkg() != p.Types {
-		return nil, nil, nil, fmt.Errorf("skgo: %s: %s is declared in another package; it must live in the file that publishes it", pos, arg.Name)
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s is declared in another package; it must live in the file that publishes it", pos, arg.Name)
 	}
 
 	if isEndpoint {
 		if routeID == "" {
-			return nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s declares a server route, which belongs in %s", pos, obj.Name(), serverFileName)
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s declares a server route, which belongs in %s", pos, obj.Name(), serverFileName)
 		}
-		return nil, nil, &endpointFn{
+		return nil, nil, nil, &endpointFn{
 			method:  method,
 			name:    target.Name(),
 			goPkg:   gp,
@@ -419,7 +457,7 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 	if isLoad {
 		source, err := webRel(a.cfg.Web, path)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		return nil, &loadFn{
 			name:   target.Name(),
@@ -429,12 +467,27 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 			source: source,
 			out:    inst.TypeArgs.At(0),
 			pos:    pos,
-		}, nil, nil
+		}, nil, nil, nil
+	}
+	if isAction {
+		action := &actionFn{name: target.Name(), fnName: target.Name(), goPkg: gp, module: mod, stub: stub, pos: pos}
+		if obj.Name() == "DefaultAction" {
+			action.name = "default"
+		}
+		if obj.Name() == "ActionNoData" {
+			action.noData = true
+		} else {
+			action.out = inst.TypeArgs.At(0)
+			if obj.Name() == "ActionWithFailure" {
+				action.failure = inst.TypeArgs.At(1)
+			}
+		}
+		return nil, nil, action, nil, nil
 	}
 
 	in, out, err := remoteSignature(kind, target)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("skgo: %s: %s is declared as a %s, but %w", pos, target.Name(), kind, err)
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s is declared as a %s, but %w", pos, target.Name(), kind, err)
 	}
 
 	return &remoteFn{
@@ -446,7 +499,7 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 		in:     in,
 		out:    out,
 		pos:    pos,
-	}, nil, nil, nil
+	}, nil, nil, nil, nil
 }
 
 // remoteSignature reads a marked function's argument and result types out of
@@ -612,6 +665,23 @@ func (a *app) checkDuplicates() error {
 			return fmt.Errorf("skgo: %s has two server loads, at %s and %s", load.module, prev.pos, load.pos)
 		}
 		loads[load.module] = load
+	}
+	actions := map[string]*actionFn{}
+	byModule := map[string]map[string]*actionFn{}
+	for _, action := range a.actions {
+		key := action.module + "#" + action.name
+		if prev := actions[key]; prev != nil {
+			return fmt.Errorf("skgo: action %s is declared twice, at %s and %s", key, prev.pos, action.pos)
+		}
+		actions[key] = action
+		if byModule[action.module] == nil {
+			byModule[action.module] = map[string]*actionFn{}
+		}
+		if action.name == "default" && len(byModule[action.module]) != 0 ||
+			action.name != "default" && byModule[action.module]["default"] != nil {
+			return fmt.Errorf("skgo: default action cannot be used with named actions in %s", action.module)
+		}
+		byModule[action.module][action.name] = action
 	}
 	return nil
 }

@@ -2,10 +2,14 @@ package skgo
 
 import (
 	"context"
+	"encoding/json"
+	"html"
 	"log"
 	"net/http"
 	"reflect"
+	"regexp"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -57,6 +61,11 @@ type HandleConfig struct {
 	// data or remote response carries, so a client watching for a new
 	// deployment sees it either way.
 	Version string
+	// HandleError shapes errors raised by the handle hook as Kit's App.Error.
+	HandleError HandleError
+	// ErrorTemplate is Kit's error.html, used for a fatal native hook error.
+	ErrorTemplate string
+	pagePatterns  []string
 	// OnPanic is called when the hook panics, with "handle", the recovered
 	// value, and the stack. The client is told nothing but an opaque 500, so
 	// this is the only record the panic leaves; leaving it nil logs the same
@@ -67,7 +76,13 @@ type HandleConfig struct {
 
 // HandleConfig derives a Handle's configuration from a build manifest.
 func (m Manifest) HandleConfig() HandleConfig {
-	return HandleConfig{AppDir: m.AppDir, Base: m.Base, Version: m.Version}
+	cfg := HandleConfig{AppDir: m.AppDir, Base: m.Base, Version: m.Version}
+	for _, route := range m.Routes {
+		if route.Page != nil {
+			cfg.pagePatterns = append(cfg.pagePatterns, route.Pattern)
+		}
+	}
+	return cfg
 }
 
 type localsKey struct{}
@@ -136,6 +151,12 @@ func (h Handle) Intercept(cfg HandleConfig, next http.Handler) http.Handler {
 	}
 	assetPrefix := base + "/" + appDir + "/"
 	remotePrefix := assetPrefix + "remote/"
+	var pages []*regexp.Regexp
+	for _, pattern := range cfg.pagePatterns {
+		if compiled, err := regexp.Compile(pattern); err == nil {
+			pages = append(pages, compiled)
+		}
+	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
@@ -158,7 +179,15 @@ func (h Handle) Intercept(cfg HandleConfig, next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, localsKey{}, &locals{values: map[reflect.Type]any{}})
 
 		if err := h.runGuarded(ctx, cfg); err != nil {
-			cfg.refuse(w, r, err, isData, isRemote)
+			isPage := false
+			pagePath := strings.TrimPrefix(path, base)
+			for _, pattern := range pages {
+				if pattern.MatchString(pagePath) {
+					isPage = true
+					break
+				}
+			}
+			cfg.refuse(w, r, ctx, err, isData, isRemote, isPage)
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -194,11 +223,11 @@ func (h Handle) runGuarded(ctx context.Context, cfg HandleConfig) (err error) {
 	return h(ctx)
 }
 
-// refuse writes the hook's refusal in the shape the request it refused
-// expects. The three shapes are kit's own: a data request or a remote call is
-// answered at HTTP 200 with a redirect or error envelope, and a page request
-// with a real HTTP redirect or a plain error.
-func (cfg HandleConfig) refuse(w http.ResponseWriter, r *http.Request, err error, isData, isRemote bool) {
+// refuse writes the hook's refusal in the shape the request expects. Kit sends
+// JSON for data and remote requests and enhanced page action redirects, a real
+// redirect for native navigation, and App.Error JSON or fatal HTML for errors
+// according to Accept.
+func (cfg HandleConfig) refuse(w http.ResponseWriter, r *http.Request, ctx context.Context, err error, isData, isRemote, isPage bool) {
 	h := w.Header()
 	h.Set("Cache-Control", "private, no-store")
 	if cfg.Version != "" {
@@ -206,8 +235,9 @@ func (cfg HandleConfig) refuse(w http.ResponseWriter, r *http.Request, err error
 	}
 
 	redirect := asRedirect(err)
+	isActionJSON := isPage && isActionJSON(r)
 
-	if isData || isRemote {
+	if isData || isRemote || (redirect != nil && isActionJSON) {
 		h.Set("Content-Type", "application/json")
 		if redirect != nil {
 			w.WriteHeader(http.StatusOK)
@@ -229,8 +259,25 @@ func (cfg HandleConfig) refuse(w http.ResponseWriter, r *http.Request, err error
 		http.Redirect(w, r, redirect.Location, redirect.status())
 		return
 	}
-	e := asHTTPError(err)
+	e := handleErrorAndJSONify(ctx, "", cfg.HandleError, asHTTPError(err), err, nil)
+	if isActionJSON || strings.Contains(r.Header.Get("Accept"), "application/json") {
+		h.Set("Content-Type", "application/json")
+		w.WriteHeader(e.Status)
+		_ = json.NewEncoder(w).Encode(e)
+		return
+	}
+	if cfg.ErrorTemplate != "" {
+		page := strings.ReplaceAll(cfg.ErrorTemplate, "%sveltekit.status%", strconv.Itoa(e.Status))
+		page = strings.ReplaceAll(page, "%sveltekit.error.message%", html.EscapeString(e.Message))
+		h.Set("Content-Type", "text/html; charset=utf-8")
+		h.Set("Content-Length", strconv.Itoa(len(page)))
+		w.WriteHeader(e.Status)
+		if r.Method != http.MethodHead {
+			_, _ = w.Write([]byte(page))
+		}
+		return
+	}
 	h.Set("Content-Type", "application/json")
 	w.WriteHeader(e.Status)
-	writeJSON(w, e)
+	_ = json.NewEncoder(w).Encode(e)
 }

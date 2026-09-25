@@ -126,6 +126,20 @@ type LoadSpec struct {
 
 func NewServerLoad(spec LoadSpec) *ServerLoad { _ = spec; return &ServerLoad{} }
 
+func ActionNoData(fn func(context.Context) error) Marker { _ = fn; return Marker{} }
+
+func DefaultAction[Out any](fn func(context.Context) (Out, error)) Marker { _ = fn; return Marker{} }
+
+type PageAction struct{}
+
+type ActionSpec struct {
+	Module string
+	Name string
+	Run func(context.Context) (any, error)
+}
+
+func NewPageAction(spec ActionSpec) *PageAction { _ = spec; return &PageAction{} }
+
 type Endpoint struct{}
 
 func GET(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }

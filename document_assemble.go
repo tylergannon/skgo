@@ -197,29 +197,40 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, pl
 		nodeIDs[i] = s.info.Nodes[index].Index
 	}
 
-	// `error` is the page's error serialised with devalue, and `status` is
-	// pushed only when the page is not a 200 *and* carries no error — kit's own
-	// rule (`render.js`), because an error already states its own status and
-	// the client would otherwise be told it twice.
-	serializedError := "null"
-	if plan.pageError != nil {
-		written, err := unevalJSON(plan.pageError)
-		if err != nil {
-			return "", err
+	arguments := []string{"element"}
+	if !plan.shell {
+		// `error` is the page's error serialised with devalue, and `status` is
+		// pushed only when the page is not a 200 *and* carries no error — kit's own
+		// rule (`render.js`), because an error already states its own status and
+		// the client would otherwise be told it twice.
+		serializedError := "null"
+		if plan.pageError != nil {
+			written, err := unevalJSON(plan.pageError)
+			if err != nil {
+				return "", err
+			}
+			serializedError = written
 		}
-		serializedError = written
-	}
-	hydrate := []string{
-		"node_ids: [" + join(nodeIDs, ", ") + "]",
-		"data: " + hydration,
-		"form: null",
-		"error: " + serializedError,
-	}
-	if plan.status != http.StatusOK && plan.pageError == nil {
-		hydrate = append(hydrate, "status: "+strconv.Itoa(plan.status))
-	}
+		hydrate := []string{
+			"node_ids: [" + join(nodeIDs, ", ") + "]",
+			"data: " + hydration,
+			"error: " + serializedError,
+		}
+		form := "null"
+		if plan.classic != nil && plan.classic.tree != nil {
+			var err error
+			form, err = devalue.UnevalWith(plan.classic.tree, s.loads.cfg.Transport.unevalReplacer())
+			if err != nil {
+				return "", err
+			}
+		}
+		hydrate = append(hydrate, "form: "+form)
+		if plan.status != http.StatusOK && plan.pageError == nil {
+			hydrate = append(hydrate, "status: "+strconv.Itoa(plan.status))
+		}
 
-	arguments := []string{"element", indent6("{\n\t" + strings.Join(hydrate, ",\n\t") + "\n}")}
+		arguments = append(arguments, indent6("{\n\t"+strings.Join(hydrate, ",\n\t")+"\n}"))
+	}
 
 	remote, err := s.remoteData(answers)
 	if err != nil {

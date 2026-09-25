@@ -35,6 +35,9 @@ func (a *app) planNames() {
 	for _, load := range a.loads {
 		load.handler = claim("load_" + loadSlug(load.module))
 	}
+	for _, action := range a.actions {
+		action.handler = claim("action_" + loadSlug(action.module) + "_" + action.name)
+	}
 }
 
 // loadSlug turns a `+*.server.ts` path into a readable identifier fragment:

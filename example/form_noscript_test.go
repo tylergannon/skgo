@@ -244,5 +244,6 @@ func multipartRequest(t *testing.T, id string, fields map[string]string) *http.R
 	req := httptest.NewRequest(http.MethodPost, "/contact?/remote="+id, &body)
 	req.Header.Set("Content-Type", form.FormDataContentType())
 	req.Header.Set("Origin", prodOrigin)
+	req.Header.Set("Accept", "text/html")
 	return req
 }

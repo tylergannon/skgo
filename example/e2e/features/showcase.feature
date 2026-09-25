@@ -35,6 +35,7 @@ Feature: The front page says what skgo can do
       | Values a load promises but does not have yet           | /stream                     |
       | Custom types that keep their methods                   | /pricing                    |
       | A form that works with JavaScript switched off         | /contact                    |
+      | Page form actions                                       | /actions                    |
       | HTTP endpoints written in Go                           | /api                        |
       | Links and asset URLs worked out while the page renders | /render-paths               |
       | A page with no client-side JavaScript                  | /plain                      |
@@ -72,6 +73,7 @@ Feature: The front page says what skgo can do
       | Values a load promises but does not have yet           | Stream            |
       | Custom types that keep their methods                   | Pricing           |
       | A form that works with JavaScript switched off         | Contact           |
+      | Page form actions                                       | Actions           |
       | HTTP endpoints written in Go                           | API               |
       | Links and asset URLs worked out while the page renders | Render-time paths |
       | A page with no client-side JavaScript                  | Plain             |

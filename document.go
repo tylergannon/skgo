@@ -43,6 +43,7 @@ import (
 type SSR struct {
 	loads    *Loads
 	remotes  *Remotes
+	actions  *Actions
 	engine   *ssr.Engine
 	info     ManifestSSR
 	template string
@@ -82,8 +83,13 @@ type SSR struct {
 	devMu        sync.RWMutex
 }
 
+// ErrorTemplate returns the Kit error.html used for fatal errors before page dispatch.
+func (s *SSR) ErrorTemplate() string { return s.errorPage }
+
 // SSROptions configures the renderer.
 type SSROptions struct {
+	// Actions are the Go handlers generated for classic page form actions.
+	Actions *Actions
 	// Runtimes bounds how many pages may render at once. Zero means one per
 	// CPU. Each runtime holds its own copy of the app's module state, so this
 	// is a memory-for-throughput dial and nothing else.
@@ -142,6 +148,7 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	s := &SSR{
 		loads:     loads,
 		remotes:   remotes,
+		actions:   opts.Actions,
 		info:      info,
 		template:  template,
 		errorPage: errorPage,
@@ -205,6 +212,7 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 	s := &SSR{
 		loads:      loads,
 		remotes:    remotes,
+		actions:    opts.Actions,
 		info:       info,
 		template:   template,
 		errorPage:  errorPage,
@@ -424,6 +432,49 @@ func poolSize(opts SSROptions) int {
 // lookups and Svelte's server renderer costs several times more.
 const ssrTarget = "es2022"
 
+// servePageMethod answers methods Kit handles on a page without rendering it.
+// Endpoint routes reach their endpoint registry before this page handler.
+func (s *SSR) servePageMethod(w http.ResponseWriter, r *http.Request, urlPath string) bool {
+	if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodPost {
+		return false
+	}
+	routePath := strings.TrimPrefix(urlPath, s.base)
+	if routePath == "" {
+		routePath = "/"
+	}
+	route, _, matched := s.loads.match(routePath)
+	if !matched || !route.hasPage {
+		return false
+	}
+	allowed := []string{"GET", "HEAD", "OPTIONS"}
+	if len(route.nodes) > 0 {
+		leaf := route.nodes[len(route.nodes)-1]
+		s.loads.mu.RLock()
+		module := ""
+		if leaf >= 0 && leaf < len(s.loads.cfg.Nodes) {
+			module = s.loads.cfg.Nodes[leaf]
+		}
+		s.loads.mu.RUnlock()
+		if s.actions != nil && len(s.actions.byModule[module]) > 0 {
+			allowed = append(allowed, "POST")
+		}
+	}
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Allow", strings.Join(allowed, ", "))
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		// Kit builds a synthetic module for this branch. Its 405 helper lists
+		// methods in ENDPOINT_METHODS order, unlike OPTIONS' insertion order.
+		methodAllowed := []string{"GET"}
+		if len(allowed) == 4 {
+			methodAllowed = append(methodAllowed, "POST")
+		}
+		methodAllowed = append(methodAllowed, "OPTIONS", "HEAD")
+		methodNotAllowed(w, methodAllowed, r.Method)
+	}
+	return true
+}
+
 // serve answers one document request, and reports whether it did.
 //
 // It mirrors `render_page` (packages/kit/src/runtime/server/page/index.js): a
@@ -440,7 +491,6 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
 		return false
 	}
-
 	routePath := strings.TrimPrefix(urlPath, s.base)
 	if routePath == "" {
 		routePath = "/"
@@ -469,50 +519,103 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	if !route.hasPage {
 		return false
 	}
-
 	// A POST to a page is a form submission, and it runs before anything is
 	// loaded: kit's `render_page` calls `handle_remote_form_post` first, then
 	// runs the loads, so the page the visitor gets back is rendered over the
 	// state the submission left behind rather than the state before it.
 	var action *formAction
+	var classic *classicResult
 	if r.Method == http.MethodPost {
 		id := actionID(req.url)
-		if id == "" {
-			// Kit's `handle_action_request` with no `actions` export: a page
-			// that has no classic form action, which for skgo is every page.
-			// `method_not_allowed_result` (`runtime/server/page/actions.js:90-94`)
-			// sets `allow: 'GET'` — RFC 9110 requires a 405 to carry one.
-			w.Header().Set("Allow", "GET")
-			return s.respondWithError(w, r, req, route.id, params, &HTTPError{
-				Status:  405,
-				Message: "POST method not allowed. No form actions exist for this page",
-			}, nil)
-		}
-		submitted, redirect, e := s.runFormAction(r, id)
-		if redirect != nil {
-			s.writeRedirect(w, nil, redirect.status(), redirect.Location)
-			return true
-		}
-		if e != nil {
-			if e.Status == http.StatusMethodNotAllowed {
-				// The other `method_not_allowed_result`: kit's
-				// `handle_remote_form_post_internal`
-				// (`runtime/server/remote-functions.js:551`) answers an id
-				// that names no form the same way, `allow: 'GET'` included.
-				w.Header().Set("Allow", "GET")
+		if isActionJSON(r) || id == "" {
+			var actionError *HTTPError
+			classic, actionError = s.runClassicAction(r, route, params)
+			if actionError != nil {
+				if actionError.Status == 405 {
+					w.Header().Set("Allow", "GET")
+				}
+				return s.respondWithError(w, r, req, route.id, params, actionError, nil)
 			}
-			return s.respondWithError(w, r, req, route.id, params, e, nil)
+			if classic.actionErr != nil && asHTTPError(classic.actionErr).Status == http.StatusMethodNotAllowed {
+				classic.headers.Set("Allow", "GET")
+			}
+			if isActionJSON(r) {
+				s.writeActionJSON(w, r, req, route, params, classic)
+				return true
+			}
+			if classic.redirect != nil {
+				classic.jar.writeTo(w.Header())
+				for name, values := range classic.headers {
+					w.Header()[name] = append([]string(nil), values...)
+				}
+				s.writeRedirect(w, nil, classic.redirect.status(), classic.redirect.Location)
+				return true
+			}
+		} else {
+			submitted, redirect, e := s.runFormAction(r, id)
+			if redirect != nil {
+				s.writeRedirect(w, nil, redirect.status(), redirect.Location)
+				return true
+			}
+			if e != nil {
+				if e.Status == http.StatusMethodNotAllowed {
+					// The other `method_not_allowed_result`: kit's
+					// `handle_remote_form_post_internal`
+					// (`runtime/server/remote-functions.js:551`) answers an id
+					// that names no form the same way, `allow: 'GET'` included.
+					w.Header().Set("Allow", "GET")
+				}
+				return s.respondWithError(w, r, req, route.id, params, e, nil)
+			}
+			action = submitted
 		}
-		action = submitted
 	}
 
 	renderIt, hydrate := s.pageOptions(route)
 	if !renderIt {
-		return false
+		status := http.StatusOK
+		if classic != nil {
+			if classic.failure {
+				status = classic.status
+			} else if classic.actionErr != nil {
+				status = asHTTPError(classic.actionErr).Status
+			}
+			if s.loads.cfg.Dev && classic.actionErr != nil {
+				s.report(route.id, errors.New("The form action returned an error, but +error.svelte wasn't rendered because SSR is off. To get the error page with CSR, enhance your form with `use:enhance`. See https://svelte.dev/docs/kit/form-actions#progressive-enhancement-use-enhance"))
+			} else if s.loads.cfg.Dev && classic.tree != nil {
+				s.report(route.id, errors.New("The form action returned a value, but it isn't available in `page.form`, because SSR is off. To handle the returned value in CSR, enhance your form with `use:enhance`. See https://svelte.dev/docs/kit/form-actions#progressive-enhancement-use-enhance"))
+			}
+		}
+		plan := documentPlan{routeID: route.id, params: params, status: status, hydrate: hydrate, shell: true}
+		for _, index := range route.nodes {
+			if index >= 0 && index < len(s.info.Nodes) {
+				plan.indices = append(plan.indices, index)
+				plan.nodes = append(plan.nodes, dataNode{})
+			}
+		}
+		jar := jarOf(action)
+		if classic != nil {
+			jar = classic.jar
+		}
+		if jar == nil {
+			jar = newCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev))
+		}
+		shared := &loadRequest{req: r, jar: jar, url: req.url, routeID: route.id, params: params}
+		if classic != nil {
+			shared.headers = classic.headers
+		}
+		return s.deliverShell(w, r, req, shared, plan)
 	}
 
-	shared, nodes := s.loads.runBranchWith(r, req, route.id, params, route.branch, nil, jarOf(action))
-
+	jar := jarOf(action)
+	if classic != nil {
+		jar = classic.jar
+	}
+	var actionHeaders http.Header
+	if classic != nil {
+		actionHeaders = classic.headers
+	}
+	shared, nodes := s.loads.runBranchWith(r, req, route.id, params, route.branch, nil, jar, actionHeaders)
 	for _, node := range nodes {
 		if node.redir != nil {
 			// Kit answers a redirect thrown by a load with a bare 3xx: a
@@ -540,6 +643,9 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	for i, index := range route.nodes {
 		filled[i] = index >= 0 && index < len(s.info.Nodes)
 	}
+	if classic != nil && classic.actionErr != nil {
+		return s.serveLoadError(w, r, req, route, params, shared, filled, nodes, len(route.nodes)-1, asHTTPError(classic.actionErr), classic.actionErr)
+	}
 
 	for i, node := range nodes {
 		if node.kind != "error" || node.err == nil {
@@ -557,6 +663,10 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		hydrate: hydrate,
 		errors:  buildErrorChain(filled, route.errors),
 		action:  action,
+		classic: classic,
+	}
+	if classic != nil && classic.failure {
+		plan.status = classic.status
 	}
 	for i, index := range route.nodes {
 		if !filled[i] {
@@ -595,7 +705,9 @@ type documentPlan struct {
 	// action is the form submission this document is answering, or nil. It
 	// reaches the engine as the form's cached output and the document as the
 	// `f` entry of `<global>.data`.
-	action *formAction
+	action  *formAction
+	classic *classicResult
+	shell   bool
 }
 
 // pageOptions reduces `ssr` and `csr` over a route's branch, outermost first,
@@ -851,6 +963,21 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 	return true
 }
 
+// deliverShell uses the same document assembly as a rendered page, so the
+// branch's styles and Kit boot script still reach a visitor with SSR disabled.
+func (s *SSR) deliverShell(w http.ResponseWriter, r *http.Request, req dataRequest, shared *loadRequest, plan documentPlan) bool {
+	csp, err := newDocumentCSP(s.info.CSP)
+	if err != nil {
+		return s.failed(w, r, req, plan.routeID, plan.params, err)
+	}
+	document, _, headers, err := s.assemble(req, plan, ssr.Result{}, nil, csp)
+	if err != nil {
+		return s.failed(w, r, req, plan.routeID, plan.params, err)
+	}
+	s.write(w, r, shared, document, plan.status, headers)
+	return true
+}
+
 // encodeBranch takes every node's load result through the app's transport hook,
 // in place.
 //
@@ -949,6 +1076,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 		Cookies:         cookies,
 		ClientAddress:   clientAddress(r),
 		FormAction:      seed,
+		Form:            classicFormWire(plan.classic),
 		CSP:             requestCSP,
 	})
 	if err != nil {

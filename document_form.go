@@ -123,14 +123,12 @@ func setFormKey(arg any, keyJSON string) error {
 func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect, *HTTPError) {
 	// Kit refuses a cross-site form submission before it looks anything up
 	// (`runtime/server/csrf.js`, `is_csrf_forbidden`): a mutating method with
-	// a form content type whose Origin is not the app's own. The remote
+	// a form content type whose Origin is neither the app's own nor trusted.
+	// Development skips the check. The remote
 	// endpoint's own check does not cover this request — that one is keyed on
 	// the `/_app/remote/` pathname, and this arrives on the page's URL.
-	if s.loads.origin != nil && r.Header.Get("Origin") != s.loads.origin.String() {
-		media := mediaType(r.Header.Get("Content-Type"))
-		if media == "" || isFormContentType(media) {
-			return nil, nil, &HTTPError{Status: 403, Message: "Cross-site POST form submissions are forbidden"}
-		}
+	if s.loads.origin != nil && csrfFormForbidden(r, s.loads.origin.String(), s.loads.cfg.TrustedOrigins, s.loads.cfg.Dev) {
+		return nil, nil, &HTTPError{Status: 403, Message: "Cross-site POST form submissions are forbidden"}
 	}
 
 	// `id` is kit's own `[hash, name, ...rest]` split

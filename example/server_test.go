@@ -121,7 +121,13 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 		pages++
 
 		path := samplePath(t, route.ID)
+		if route.ID == "/actions/profiles/[profile]" {
+			path = "/actions/profiles/ada"
+		}
 		req := httptest.NewRequest(http.MethodGet, path, nil)
+		// A browser navigation asks for HTML. With a shared +server route,
+		// Kit sends an unconstrained */* request to the endpoint instead.
+		req.Header.Set("Accept", "text/html")
 		// Signed in, because a section of this app turns a signed-out visitor
 		// away and a redirect is not what this test is about.
 		req.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
@@ -210,8 +216,11 @@ func TestEveryRouteInTheManifestIsServed(t *testing.T) {
 
 		switch {
 		case !ssr:
-			if body != string(shell) {
-				t.Errorf("route %s turns SSR off: GET %s did not return kit's shell", route.ID, path)
+			if strings.Contains(body, `data-testid="app-nav"`) || strings.Contains(body, `data-testid="no-ssr-title"`) {
+				t.Errorf("route %s turns SSR off: GET %s rendered page content in its shell", route.ID, path)
+			}
+			if !strings.Contains(body, "<script") || !strings.Contains(body, "stylesheet") || !strings.Contains(body, "<!doctype html>") {
+				t.Errorf("route %s turns SSR off: GET %s omitted Kit's boot or branch styles", route.ID, path)
 			}
 		case body == string(shell):
 			// Nothing is answered with the shell any more except a branch that

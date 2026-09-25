@@ -70,6 +70,54 @@ func TestChangingAGoTypeBreaksTheComponentThatUsesIt(t *testing.T) {
 	t.Logf("caught before the browser:\n%s", out)
 }
 
+// Each suppressed error is tested in isolation. This proves the annotations
+// guard real type errors in the generated action contract, while the passing
+// baseline checks the valid success, failure and Money uses beside them.
+func TestGeneratedActionTypesRejectWrongUses(t *testing.T) {
+	app := sandbox(t)
+	if out, err := generate(app); err != nil {
+		t.Fatalf("generating action types: %v\n%s", err, out)
+	}
+	stub, err := os.ReadFile(filepath.Join(app, "web", "src", "routes", "actions", "+page.server.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"ActionFailure<", "price: Money", "throw new Error('skgo: action implemented in Go')"} {
+		if !bytes.Contains(stub, []byte(want)) {
+			t.Fatalf("generated action export lacks %q:\n%s", want, stub)
+		}
+	}
+	path := filepath.Join(app, "web", "src", "routes", "actions", "action-types.check.ts")
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, err := svelteCheck(app); err != nil {
+		t.Fatalf("valid generated action types did not compile: %v\n%s", err, out)
+	}
+	for _, tc := range []struct{ label, directive, diagnostic string }{
+		{"success", "// @ts-expect-error validation fields exist only in failure data\n", "Property 'emailError' does not exist"},
+		{"failure", "// @ts-expect-error receipts exist only in success data\n", "Property 'receipt' does not exist"},
+	} {
+		t.Run(tc.label, func(t *testing.T) {
+			if !bytes.Contains(original, []byte(tc.directive)) {
+				t.Fatalf("missing %q", tc.directive)
+			}
+			changed := bytes.Replace(original, []byte(tc.directive), nil, 1)
+			if err := os.WriteFile(path, changed, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			out, err := svelteCheck(app)
+			if err == nil || !strings.Contains(out, "action-types.check.ts") || !strings.Contains(out, tc.diagnostic) {
+				t.Fatalf("wrong %s use was not rejected for the intended reason: %v\n%s", tc.label, err, out)
+			}
+			if err := os.WriteFile(path, original, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 // generate runs the app's own `go generate` inside a sandbox.
 //
 // GOWORK is off because the sandbox is not part of the workspace; the copied

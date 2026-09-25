@@ -100,12 +100,7 @@ func TestTheServerRefusesABuildItCannotServe(t *testing.T) {
 // a server load for: the key kit itself records for each node.
 func serverLoadModules(t *testing.T) []string {
 	t.Helper()
-	var modules []string
-	for _, module := range buildManifest(t).Nodes {
-		if module != "" {
-			modules = append(modules, module)
-		}
-	}
+	modules := slices.Clone(buildManifest(t).Loads)
 	slices.Sort(modules)
 	return modules
 }
@@ -159,9 +154,15 @@ func TestTheServerRefusesABuildWhoseLoadsItCannotAnswer(t *testing.T) {
 
 	stale := manifest
 	stale.Nodes = slices.Clone(manifest.Nodes)
+	stale.Loads = slices.Clone(manifest.Loads)
 	for i, module := range stale.Nodes {
 		if module != "" {
 			stale.Nodes[i] = "src/routes/renamed/+page.server.ts"
+			for j, load := range stale.Loads {
+				if load == module {
+					stale.Loads[j] = "src/routes/renamed/+page.server.ts"
+				}
+			}
 			break
 		}
 	}

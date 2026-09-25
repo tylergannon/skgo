@@ -23,6 +23,38 @@
 			"target": "web/src/routes/todos/gate"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg",
+			"target": "web/src/routes/actions"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq",
+			"target": "web/src/routes/actions/cross/receive"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq",
+			"target": "web/src/routes/actions/default"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa",
+			"target": "web/src/routes/actions/default/saved"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq",
+			"target": "web/src/routes/actions/options/no-client"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe",
+			"target": "web/src/routes/actions/options/no-ssr"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq",
+			"target": "web/src/routes/actions/profiles/[profile]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4",
+			"target": "web/src/routes/actions/signed-in"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi",
 			"target": "web/src/routes/account"
 		},

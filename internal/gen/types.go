@@ -464,6 +464,11 @@ func (a *app) checkFileUsage() error {
 			return fmt.Errorf("skgo: %s: %s returns a skgo.File, which cannot be serialised into a load's data", load.pos, load.name)
 		}
 	}
+	for _, action := range a.actions {
+		if action.out != nil && containsFile(action.out) || action.failure != nil && containsFile(action.failure) {
+			return fmt.Errorf("skgo: %s: %s returns a skgo.File, which cannot be serialised into action data", action.pos, action.name)
+		}
+	}
 	return nil
 }
 
