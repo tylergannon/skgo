@@ -3,17 +3,6 @@ import { expect, test } from './fixtures';
 
 const { Then } = createBdd(test);
 
-Then('the item is named {string}', async ({ page }, name: string) => {
-	await expect(page.getByTestId('item-name')).toHaveText(name);
-});
-
-// Every colocated page renders the path of the Go file that answered it, so a
-// scenario can say which directory the answer came out of rather than trusting
-// that it came out of the right one.
-Then('the answer came from {string}', async ({ page }, source: string) => {
-	await expect(page.getByTestId('colocated')).toHaveText(source);
-});
-
 Then('the plans are {string}', async ({ page }, names: string) => {
 	const expected = names.split(', ');
 	await expect(page.getByTestId('plan')).toHaveCount(expected.length, { timeout: 15_000 });

@@ -9,17 +9,21 @@ permissions:
 
 jobs:
   qualification:
-    name: Example BDD
+    # One runner per mode, at the same time. Dev is where kit's client meets an
+    # unbundled module graph and a seconds-wide window before hydration, so it
+    # is a mode of its own and not a repeat of prod.
+    name: Example BDD (${{ matrix.mode }})
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [prod, dev]
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
       ORIGIN: http://127.0.0.1:8080
       SKGO_PORT: "8080"
       SKGO_DEV_PORT: "5173"
-      # The full suite still asserts every scenario. Release evidence is a
-      # deliberately small visual sample of two example frames.
-      SKGO_E2E_SCREENSHOTS: curated
 
     steps:
       - uses: actions/checkout@v7
@@ -49,14 +53,18 @@ jobs:
           cd example/e2e
           pnpm exec playwright install --with-deps chromium
 
-      - name: Build and test the candidate
+      - name: Build the candidate
+        run: just build
+
+      # The Go suite is the same in both modes, so one runner carries it.
+      - name: Vet and test the candidate
+        if: matrix.mode == 'prod'
         run: |
-          just build
           just vet
           just test
 
       - name: Example BDD against the production build
-        id: example_prod
+        if: matrix.mode == 'prod'
         run: |
           bound=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
           if [ -n "$bound" ]; then
@@ -73,16 +81,12 @@ jobs:
             echo "::error title=Wrong handler::Expected prod, got '${mode:-<absent>}'."
             exit 1
           fi
-          result=0
-          just e2e prod || result=$?
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" 2>/dev/null || true)
-          [ -n "$pids" ] && kill $pids 2>/dev/null || true
-          exit $result
+          just e2e prod
 
       # The example owns the richer development claims, including editing an
       # already-open page and proving it hot-updates without a document reload.
       - name: Example BDD against development, including HMR
-        if: ${{ !cancelled() && steps.example_prod.outcome != 'skipped' }}
+        if: matrix.mode == 'dev'
         run: |
           just dev &
           for _ in $(seq 120); do
@@ -110,13 +114,17 @@ jobs:
           pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
           [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
 
-      - name: Preserve inspectable release frames
-        if: always()
+      # A green run leaves nothing to look at. A red one leaves Playwright's
+      # own trace and screenshot of each failed scenario, its HTML report, and
+      # what the server logged while it ran.
+      - name: Keep the failure diagnostics
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: release-qualification-${{ github.sha }}
-          if-no-files-found: error
-          retention-days: 30
+          name: qualification-${{ matrix.mode }}-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
           path: |
-            ephemeral/screenshots/zz-source-update/prod/*-built-unchanged.png
-            ephemeral/screenshots/zz-source-update/dev/*-hot-updated.png
+            example/e2e/test-results/
+            example/e2e/playwright-report/
+            example/e2e/server.log

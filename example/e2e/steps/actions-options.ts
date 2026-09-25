@@ -1,7 +1,7 @@
 import { createBdd } from 'playwright-bdd';
 import type { Page, Response } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { expect, expectMode, expectedMode, hydrated, test } from './fixtures';
+import { booted, expect, expectMode, expectedMode, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 const lastPost = new WeakMap<Page, Response>();
@@ -133,6 +133,10 @@ Then('the no-client error branch renders the 403 section error with its own clie
 	await expect(page.getByTestId('action-error-title')).toHaveText('Action error 403');
 	await expect(page.getByTestId('action-error-message')).toHaveText('You cannot edit this profile');
 	await expect(page.getByTestId('action-error-return')).toBeVisible();
+	// The leaf turned the client off; its error branch did not. So Kit's client
+	// boots over this error page, and the page it hydrated still says the same.
+	await booted(page);
+	await expect(page.getByTestId('action-error-title')).toHaveText('Action error 403');
 });
 
 When('I submit the unavailable no-client action', async ({ page }) => {
@@ -151,6 +155,9 @@ Then('the no-client error branch renders the safe 500 section error with its own
 	expect(body).toContain('<script');
 	await expect(page.getByTestId('action-error-title')).toHaveText('Action error 500');
 	await expect(page.getByTestId('action-error-message')).toHaveText('Something went wrong on our end.');
+	await expect(page.getByTestId('action-error-support-id')).toHaveText('case-1121');
+	await booted(page);
+	await expect(page.getByTestId('action-error-title')).toHaveText('Action error 500');
 	await expect(page.getByTestId('action-error-support-id')).toHaveText('case-1121');
 });
 
@@ -213,44 +220,9 @@ Then(/^after boot the ordinary client-rendered page shows (Grace|Ada) without an
 	await expect(page.getByTestId('no-ssr-email-error')).toHaveCount(0);
 });
 
-When('I submit native sign-in on the client-rendered page', async ({ page }) => {
-	await post(page, paths.ssr, () => page.getByRole('button', { name: 'Native sign in' }).click());
-});
-
-Then('the native action redirects to the signed-in destination with its Go cookie', async ({ page }) => {
-	const response = posted(page);
-	assertNative(response);
-	expect(response.status()).toBe(303);
-	expect(response.headers()['location']).toBe('/actions/signed-in');
-	await expect(page).toHaveURL(/\/actions\/signed-in$/);
-	await expect(page.getByTestId('signed-in-title')).toHaveText('Signed in as ada');
-});
-
 Then('the browser has scripting disabled and the no-client form is visible', async ({ page, $testInfo }) => {
 	expect($testInfo.project.name).toBe('noscript');
 	await expect(page.getByTestId('no-client-noscript')).toBeVisible();
 	await expect(page.getByTestId('no-client-form').getByRole('button', { name: 'Save profile' })).toBeVisible();
 });
 
-Given('I request the client-rendered Actions page without scripting', async ({ page, $testInfo }) => {
-	expect($testInfo.project.name).toBe('noscript');
-	const response = await page.goto(paths.ssr);
-	expectMode(response!);
-	expect(response!.status()).toBe(200);
-	await assertShell(response!, 'success');
-	await expect(page.getByTestId('no-ssr-title')).toHaveCount(0);
-	await page.goto(paths.client);
-	await expect(page.getByTestId('no-client-title')).toHaveText('Actions without client JavaScript');
-});
-
-When(/^I post (success|validation|forbidden|unavailable) to the client-rendered page without scripting$/, async ({ page }, outcome: Outcome) => {
-	const label = outcome === 'success' ? 'Post valid client-rendered edit' : outcome === 'validation' ? 'Post invalid client-rendered edit' : outcome === 'forbidden' ? 'Post forbidden client-rendered edit' : 'Post unavailable client-rendered edit';
-	await post(page, paths.ssr, () => page.getByRole('button', { name: label }).click());
-});
-
-Then('the page still has no rendered action or profile without scripting', async ({ page }) => {
-	await expect(page.getByTestId('no-ssr-title')).toHaveCount(0);
-	await expect(page.getByTestId('no-ssr-receipt')).toHaveCount(0);
-	await expect(page.getByTestId('no-ssr-saved-name')).toHaveCount(0);
-	await expect(page.getByTestId('action-error-title')).toHaveCount(0);
-});

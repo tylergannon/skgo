@@ -14,7 +14,7 @@ const { Then } = createBdd(test);
  */
 Then(
 	"the response carries a Content-Security-Policy header naming the boot script's own nonce",
-	async ({ documents, shot }) => {
+	async ({ documents }) => {
 		// `documents.last` is filled in by a `page.on('response', ...)` listener
 		// (fixtures.ts), which fires asynchronously relative to `page.goto`
 		// returning — every other assertion in this suite that depends on
@@ -37,7 +37,6 @@ Then(
 		expect(header, `header did not name the boot script's own nonce ('nonce-${nonce}')`).toContain(
 			`'nonce-${nonce}'`
 		);
-		await shot();
 	}
 );
 
@@ -49,10 +48,9 @@ Then(
  * place that would be visible at all, which is why every scenario that
  * exercises a CSP-configured page ends by checking it.
  */
-Then('the browser reported no CSP violations', async ({ browserConsole, shot }) => {
+Then('the browser reported no CSP violations', async ({ browserConsole }) => {
 	const violations = browserConsole.messages.filter((message) =>
 		/content security policy/i.test(message)
 	);
 	expect(violations, `the browser reported: ${violations.join('; ')}`).toHaveLength(0);
-	await shot();
 });

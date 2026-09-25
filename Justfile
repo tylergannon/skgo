@@ -3,7 +3,8 @@
 # Every recipe here DOES something. None of them decides whether the software
 # works. There is deliberately no `just check` and no `just acceptance`: a
 # single command that exits 0 becomes what agents build toward, and it cannot
-# see the app. Whether skgo works is a screenshot of the running app, looked at.
+# see the app. Whether skgo works is `just test` green in seconds, `just e2e`
+# green on main, and a person who opened the box.
 
 origin := env("ORIGIN", "http://127.0.0.1:8080")
 port := env("SKGO_PORT", "8080")

@@ -1,5 +1,18 @@
 # Form actions: the example is the proof
 
+**Historical proof requirements.** The feature shipped in `c0e0119`. Its
+"Acceptance scenarios" matrix, its screenshot policy, its four fault probes and
+"Completion that a person can verify" below describe how the original feature
+was to be proved, and are not standing gates.
+[validation.md](validation.md) replaces them: every server contract the tables
+name (status, headers, cookies, redirects, dispatch, the native document) is a
+Go test at the real handler in `example/action_protocol_test.go` and
+`example/contracts_test.go`; the Gherkin suite keeps the scenarios whose claim
+needs kit's client (enhanced submit, hydration of a native answer, client
+rendering after boot) or a browser with scripting off posting a real form; a
+passing scenario takes no screenshot. The visitor-facing outcomes in the tables
+are still the product.
+
 Design for upgrading the existing `./example` application. The feature is not
 implemented or proved by this document.
 

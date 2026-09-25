@@ -31,28 +31,25 @@ const created = new Set<string>();
  * same page: on its own, "this text is absent" is satisfied by a page that
  * rendered nothing at all.
  */
-Then('the page never mentions {string}', async ({ page, shot }, text: string) => {
+Then('the page never mentions {string}', async ({ page }, text: string) => {
 	await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 15_000 });
 	expect(await page.locator('body').innerText()).not.toContain(text);
-	await shot();
 });
 
 /** Something the visitor can read, by its text rather than by a test id. */
-Then('I see the words {string}', async ({ page, shot }, text: string) => {
+Then('I see the words {string}', async ({ page }, text: string) => {
 	await expect(page.getByText(text, { exact: false }).first()).toBeVisible({
 		timeout: 15_000
 	});
-	await shot();
 });
 
 Then(
 	'exactly {int} data request was made since',
-	async ({ page, data, shot }, expected: number) => {
+	async ({ page, data }, expected: number) => {
 		// A second round trip would already be in flight; wait a beat so it
 		// lands and can be counted.
 		await page.waitForTimeout(500);
 		expect(data.since, `data requests: ${data.urlsSince.join(', ') || 'none'}`).toBe(expected);
-		await shot('resolved');
 	}
 );
 
@@ -91,7 +88,7 @@ When(
 
 Then(
 	'the open page hot-updates to {string} in dev or stays at built heading {string} without reloading',
-	async ({ page, documents, browserConsole, shot }, liveHeading: string, builtHeading: string) => {
+	async ({ page, documents, browserConsole }, liveHeading: string, builtHeading: string) => {
 		expect(documents.last, 'no document response was observed').not.toBeNull();
 		const mode = expectMode(documents.last!);
 		const expected = mode === 'dev' ? liveHeading : builtHeading;
@@ -103,7 +100,6 @@ Then(
 			/hydration (failed|mismatch)|hydration_mismatch/i.test(message)
 		);
 		expect(hydrationFailures, hydrationFailures.join('\n')).toHaveLength(0);
-		await shot(mode === 'dev' ? 'hot-updated' : 'built-unchanged');
 	}
 );
 
@@ -118,7 +114,7 @@ Then(
  */
 Then(
 	'a new document for {string} carries {string} from live source or {string} from its build',
-	async ({ page, shot }, path: string, liveHeading: string, builtHeading: string) => {
+	async ({ page }, path: string, liveHeading: string, builtHeading: string) => {
 		const first = await page.request.get(path);
 		const mode = expectMode(first);
 		const expected = mode === 'dev' ? liveHeading : builtHeading;
@@ -134,7 +130,6 @@ Then(
 		const html = await (await page.request.get(path)).text();
 		expect(html).not.toMatch(tagged('h1', 'title', rejected));
 		await page.goto(path);
-		await shot(mode === 'dev' ? 'live-source' : 'built-source');
 	}
 );
 
@@ -150,7 +145,7 @@ When('the route fixture is added while the servers keep running', async () => {
 
 Then(
 	'the live dev route renders its Go load while the production build stays unchanged',
-	async ({ page, shot }) => {
+	async ({ page }) => {
 		const mode = expectMode(await page.request.get('/'));
 
 		if (mode === 'dev') {
@@ -185,7 +180,6 @@ Then(
 			expect(response?.status()).toBe(404);
 			expect(await page.locator('body').innerText()).not.toContain('Added while running');
 		}
-		await shot(mode === 'dev' ? 'live-route' : 'built-route');
 	}
 );
 
