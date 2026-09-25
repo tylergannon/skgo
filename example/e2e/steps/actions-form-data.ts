@@ -55,6 +55,9 @@ Then('Go reports haiku.txt, 72 bytes, its SHA-256 prefix, and both interests', a
 
 Then("the upload's Money survives the required browser path", async ({ page, notes }) => {
 	if (notes.get('form-data-native-hydration') === 1) {
+		// The native POST answered with a new document; its client must boot
+		// before the button does anything.
+		await hydrated(page);
 		await page.getByTestId('client-interaction').click();
 		await expect(page.getByTestId('client-interaction-done')).toHaveText('Client interaction complete');
 		await expect(page.getByTestId('upload-name')).toHaveText('haiku.txt');
@@ -87,6 +90,9 @@ Then(/^Go reports the chosen (standard|multipart) button and ordered interests$/
 	await expect(page.getByTestId('encoding-type')).toHaveText(encoding === 'standard' ? 'application/x-www-form-urlencoded' : 'multipart/form-data');
 	await expect(page.getByTestId('action-money')).toHaveText('$7.50');
 	if (notes.get('form-data-native-hydration') === 1) {
+		// The native POST answered with a new document; its client must boot
+		// before the button does anything.
+		await hydrated(page);
 		await page.getByTestId('client-interaction').click();
 		await expect(page.getByTestId('client-interaction-done')).toHaveText('Client interaction complete');
 		await expect(page.getByTestId('encoding-interests')).toHaveText('math, computing');
