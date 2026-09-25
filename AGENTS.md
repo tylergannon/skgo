@@ -84,22 +84,32 @@ transmit the dispatcher's unverified assumptions as fact. Sprint documents obey
 the same rule: mission, acceptance, ownership. No file lists, no prescribed
 designs, no step-by-step.
 
-**Acceptance is the Gherkin suite.** Behaviour written in business language is
-the contract, and it exists so nobody has to read code to decide whether the
-software works. Define what winning looks like as scenarios; let the builder
-choose how. Validate by dispatching an agent that checks the scenarios are
-load-bearing — would each one actually fail if the feature were broken or
-removed — and then runs them. Do not audit diffs or re-derive claims from
-source as a substitute; a passing load-bearing suite is the answer.
+**Contracts are Go tests at the real handler; the Gherkin suite is for what only
+kit's client can prove.** skgo's claim is that the bytes Go sends are the bytes
+kit's own server would send, and the browser runs kit's own client over them.
+So a status, a header, a cookie, a body, a redirect or a rendered document is a
+Go test against the handler the binary serves, with literal fixtures, in
+milliseconds. A scenario belongs in `example/e2e` only when some part of its
+claim needs kit's client to have acted — hydration, an enhanced submit, a
+client navigation, `invalidate`, a streamed value landing in the page, a
+transported class rebuilt with its methods, calls coalesced into one batch — or
+when it is a browser with scripting off posting a real form and getting a usable
+page back. A scenario whose whole claim is HTTP is a Go test and nothing else.
+Define what winning looks like as those tests and scenarios; let the builder
+choose how. Validate by dispatching an agent that checks they are load-bearing —
+would each one actually fail if the feature were broken or removed — and then
+runs them. Do not audit diffs or re-derive claims from source as a substitute.
 
-**A passing command is not evidence.** An exit code of zero is exactly what a
-silently skipped test prints. Validation has to produce artifacts a human can
-look at without reading code or rerunning anything: screenshots of the running
-app at the moment each scenario asserts, and they have to be good — the actual
-page, showing the actual state the scenario claims, legible enough to tell
-whether it is real. A scenario that cannot produce one is a scenario nobody can
-check. Skips are failures: a check that cannot run because its toolchain is
-missing has not passed, and must not be able to report that it did.
+**A passing command is not evidence on its own.** Whether skgo works is three
+things, and each catches what the other two cannot: `just test` green in
+seconds, which is every contract at the real handler; `just e2e` green in both
+modes on `main`, which is kit's client using Go's bytes; and a person who opened
+the box. An exit code of zero is exactly what a silently skipped test prints, so
+skips are failures: a check that cannot run because its toolchain is missing has
+not passed, and must not be able to report that it did. An expensive command
+runs the minimum number of times its assertions require, and its captured output
+is asserted against many times. A slow suite is fixed by more of that, never by
+a second, faster command beside the real one.
 
 **Never derive what you expect from the thing you are testing.** The one leak
 this project has shipped got past an assertion that was already exact — the live
@@ -114,13 +124,15 @@ Assert at the granularity the behaviour deserves, and tighten one when it lets a
 real bug through. A suite tightened *a priori* is brittle, and brittle scenarios
 get deleted rather than fixed.
 
-Then **open every screenshot and look at it.** Producing them is half the job;
-an unexamined screenshot is the same unread artifact as an exit code. A green
-suite over a screenshot showing an error boundary, an empty list, a stack trace
-or a blank page means the suite is wrong, and that is the single most valuable
-thing an agent can find. Never hand a human a screenshot you have not looked at,
-and never hand them one that obviously shows a failure — if it does, the finding
-is the failure, not the file.
+Then **open the box.** A green suite does not say what a visitor sees. When
+behaviour changed substantially, before a release someone cares about, or when a
+browser failure on `main` needs a human-shaped explanation, use the example app
+the way a person does and look at it — or have something other than the agent
+that changed it read the pictures. A green suite beside a page showing an error
+boundary, an empty list, a stack trace or a blank screen means the suite is
+wrong, and that is the single most valuable thing an agent can find. A passing
+scenario leaves no screenshot; Playwright's trace and screenshot of a failing
+one are diagnostics. Never hand a human a picture you have not looked at.
 
 **Wake yourself.** Every dispatched run gets a watcher started in the same
 breath — a backgrounded `until ! kill -0 <pid>; do sleep 20; done` on its
