@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
-	"time"
 )
 
 // packageTemp holds what more than one test in this package reads: the skgo
@@ -22,6 +21,11 @@ func TestMain(m *testing.M) {
 	// go.mod. Set once for the process because t.Setenv forbids t.Parallel, and
 	// the toolchain-heavy tests here are only affordable run in parallel.
 	os.Setenv("GOWORK", "off")
+	// Every go command and skgo binary these tests start is one of a dozen
+	// running at once. Left at one P per core, each spends most of its CPU in
+	// the kernel on runtime threads with nothing to do: a single `go generate`
+	// of the example measured 21s of system time for 5s of wall clock at the
+	// default, 4s at two, with the same wall clock.
 	os.Setenv("GOMAXPROCS", "2")
 	dir, err := os.MkdirTemp("", "skgo-gen-test-")
 	if err != nil {
@@ -73,14 +77,4 @@ func sharedSandbox(name string) (string, error) {
 		return "", err
 	}
 	return copyExample(root, filepath.Join(packageTemp, name))
-}
-
-// TEMPTIMING
-var tstart = time.Now()
-
-func tlog(what string) func() {
-	s := time.Since(tstart)
-	return func() {
-		fmt.Fprintf(os.Stderr, "TIMING %5.1f-%5.1f %s\n", s.Seconds(), time.Since(tstart).Seconds(), what)
-	}
 }

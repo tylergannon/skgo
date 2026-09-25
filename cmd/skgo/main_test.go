@@ -14,6 +14,9 @@ import (
 var skgoBin string
 
 func TestMain(m *testing.M) {
+	// The CLI runs and go commands these tests start run beside a dozen
+	// others under `just test`; see internal/gen's TestMain.
+	os.Setenv("GOMAXPROCS", "2")
 	dir, err := os.MkdirTemp("", "skgo-cmd-test-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

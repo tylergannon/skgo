@@ -14,43 +14,87 @@ import (
 	"testing"
 )
 
+// checkLane is one copy of the example that the in-process Check tests below
+// plant their wire errors in, one test at a time, each putting the file back
+// before it lets go. Check type-checks every route package, and in a fresh
+// copy every one of them compiles cold; in the same copy, only the one file a
+// test changed does.
+var checkLane struct {
+	sync.Mutex
+	app string
+}
+
+var checkLaneSandbox = sync.OnceValues(func() (string, error) { return sharedSandbox("check") })
+
+// lockCheckLane waits for the lane and returns its app. The caller restores
+// what it planted before calling unlock.
+func lockCheckLane(t *testing.T) (app string, unlock func()) {
+	t.Helper()
+	app, err := checkLaneSandbox()
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkLane.Lock()
+	return app, checkLane.Unlock
+}
+
+// plantInLane writes planted over path for the rest of the test's hold on the
+// lane, and puts original back when the test ends, before the lane is
+// released.
+func plantInLane(t *testing.T, path string, original, planted []byte, unlock func()) {
+	t.Helper()
+	t.Cleanup(func() {
+		if err := os.WriteFile(path, original, 0o644); err != nil {
+			t.Errorf("restoring %s in the check lane: %v", path, err)
+		}
+		unlock()
+	})
+	if err := os.WriteFile(path, planted, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink(t *testing.T) {
 	t.Parallel()
-	app := sandboxExample(t)
-	web := filepath.Join(app, "web")
-	out := filepath.Join(app, "internal", "skgo")
-	target := filepath.Join(web, "src", "routes", "todos", "todos.remote.go")
-	original, err := os.ReadFile(target)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const declaration = "type Rename struct {"
-	if !bytes.Contains(original, []byte(declaration)) {
-		t.Fatal("example no longer declares Rename; update the test")
-	}
-	broken := []byte(strings.Replace(string(original), declaration, declaration+"\n\tCallback func() `json:\"callback\"`", 1))
-	if err := os.WriteFile(target, broken, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	links, err := filepath.Glob(filepath.Join(out, "links", "*", "todos.remote.go"))
-	if err != nil || len(links) != 1 {
-		t.Fatalf("expected one committed todos route copy, got %v: %v", links, err)
-	}
-	link := links[0]
-	beforeLink, err := os.ReadFile(link)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = Check(Config{Web: web, Out: out})
-	if err == nil || !strings.Contains(err.Error(), "field Callback cannot cross the wire") {
-		t.Fatalf("current authored wire field was missed before stale-link check: %v", err)
-	}
-	if after, err := os.ReadFile(link); err != nil || !bytes.Equal(after, beforeLink) {
-		t.Fatalf("generated route link changed: %v", err)
-	}
-	if after, err := os.ReadFile(target); err != nil || !bytes.Equal(after, broken) {
-		t.Fatalf("authored file changed: %v", err)
-	}
+	// The planted half holds the check lane, and gives it back before waiting
+	// on the valid counterpart.
+	t.Run("planted", func(t *testing.T) {
+		app, unlock := lockCheckLane(t)
+		web := filepath.Join(app, "web")
+		out := filepath.Join(app, "internal", "skgo")
+		target := filepath.Join(web, "src", "routes", "todos", "todos.remote.go")
+		original, err := os.ReadFile(target)
+		if err != nil {
+			unlock()
+			t.Fatal(err)
+		}
+		const declaration = "type Rename struct {"
+		if !bytes.Contains(original, []byte(declaration)) {
+			unlock()
+			t.Fatal("example no longer declares Rename; update the test")
+		}
+		broken := []byte(strings.Replace(string(original), declaration, declaration+"\n\tCallback func() `json:\"callback\"`", 1))
+		plantInLane(t, target, original, broken, unlock)
+		links, err := filepath.Glob(filepath.Join(out, "links", "*", "todos.remote.go"))
+		if err != nil || len(links) != 1 {
+			t.Fatalf("expected one committed todos route copy, got %v: %v", links, err)
+		}
+		link := links[0]
+		beforeLink, err := os.ReadFile(link)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = Check(Config{Web: web, Out: out})
+		if err == nil || !strings.Contains(err.Error(), "field Callback cannot cross the wire") {
+			t.Fatalf("current authored wire field was missed before stale-link check: %v", err)
+		}
+		if after, err := os.ReadFile(link); err != nil || !bytes.Equal(after, beforeLink) {
+			t.Fatalf("generated route link changed: %v", err)
+		}
+		if after, err := os.ReadFile(target); err != nil || !bytes.Equal(after, broken) {
+			t.Fatalf("authored file changed: %v", err)
+		}
+	})
 	// The valid counterpart is the untouched example, which pristineCheck
 	// checks once for every test that needs it.
 	if err := pristineCheck(); err != nil {
@@ -78,27 +122,114 @@ type cliRun struct {
 }
 
 func runCheckCLI(bin, app string) cliRun {
-	defer tlog("cli " + app)()
 	cmd := exec.Command(bin, "check", "--root", app, "--json")
 	cmd.Dir = app
 	output, err := cmd.CombinedOutput()
 	return cliRun{output, err}
 }
 
-// pristineCLI is `skgo check` over an untouched copy of the example, run once.
-// TestRealCheckReportsWireAdviceAtAuthoredLocations asserts the whole report;
-// pristineCheck reads the generator's own check out of it.
-var pristineCLI = sync.OnceValues(func() (cliRun, error) {
+// plantedWireError is one unsupported wire value planted in the example for
+// the CLI to report. field names the case.
+type plantedWireError struct {
+	file, anchor, insertion, field, reason, repair string
+}
+
+var cliWireErrors = []plantedWireError{
+	{"todos/todos.remote.go", "type Rename struct {", "\n\tDetail []map[string]string `json:\"detail\"`", "Detail", "map", "named struct"},
+	{"todos/todos.remote.go", "ID string `json:\"id\"`", "\n\tAlias string `json:\"id\"`", "Alias", "duplicate serialized name", "distinct json name"},
+	{"todos/todos.remote.go", "type Rename struct {", "\n\tLater skgo.Deferred[string] `json:\"later\"`", "Later", "Deferred", "server load"},
+	{"contact/contact.remote.go", "type Receipt struct {", "\n\tUpload skgo.File `json:\"upload\"`", "sendMessage", "skgo.File", "download URL"},
+}
+
+// plantedRun is the CLI over one planted wire error, and the line the planted
+// field landed on.
+type plantedRun struct {
+	cliRun
+	setupErr error
+	wantLine int
+}
+
+// cliLane is `skgo check` over copies of the example: untouched, then with
+// each of cliWireErrors planted in turn and taken out again. A copy is run in
+// sequence rather than one copy per state, because the CLI builds, vets and
+// statically checks the whole module: in a fresh directory every package is
+// cold, while in the same directory only the one file each case changes is.
+type cliLaneRuns struct {
+	setupErr error
+	pristine func() cliRun
+	planted  []func() plantedRun
+}
+
+var cliLane = sync.OnceValue(func() *cliLaneRuns {
+	lane := &cliLaneRuns{}
 	bin, err := skgoBinary()
 	if err != nil {
-		return cliRun{}, err
+		lane.setupErr = err
+		return lane
 	}
-	app, err := sharedSandbox("pristine")
-	if err != nil {
-		return cliRun{}, err
+	// Two copies, so the chain is not all five runs long: the untouched run
+	// and the first planted case in one, the other three in the other.
+	first, err := sharedSandbox("cli-1")
+	if err == nil {
+		var second string
+		second, err = sharedSandbox("cli-2")
+		if err == nil {
+			pristine := make(chan cliRun, 1)
+			planted := make([]chan plantedRun, len(cliWireErrors))
+			for i := range planted {
+				planted[i] = make(chan plantedRun, 1)
+			}
+			go func() {
+				pristine <- runCheckCLI(bin, first)
+				planted[0] <- plantAndCheck(bin, first, cliWireErrors[0])
+			}()
+			go func() {
+				for i := 1; i < len(cliWireErrors); i++ {
+					planted[i] <- plantAndCheck(bin, second, cliWireErrors[i])
+				}
+			}()
+			lane.pristine = sync.OnceValue(func() cliRun { return <-pristine })
+			for _, c := range planted {
+				lane.planted = append(lane.planted, sync.OnceValue(func() plantedRun { return <-c }))
+			}
+		}
 	}
-	return runCheckCLI(bin, app), nil
+	lane.setupErr = err
+	return lane
 })
+
+// plantAndCheck plants tc in app, runs the CLI, and puts the file back.
+func plantAndCheck(bin, app string, tc plantedWireError) plantedRun {
+	path := filepath.Join(app, "web", "src", "routes", filepath.FromSlash(tc.file))
+	original, err := os.ReadFile(path)
+	if err != nil {
+		return plantedRun{setupErr: err}
+	}
+	planted := strings.Replace(string(original), tc.anchor, tc.anchor+tc.insertion, 1)
+	if planted == string(original) {
+		return plantedRun{setupErr: fmt.Errorf("%s: fixture anchor %q missing", tc.file, tc.anchor)}
+	}
+	wantLine := strings.Count(planted[:strings.Index(planted, tc.anchor)+len(tc.anchor)], "\n") + 2
+	if err := os.WriteFile(path, []byte(planted), 0o644); err != nil {
+		return plantedRun{setupErr: err}
+	}
+	run := runCheckCLI(bin, app)
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		return plantedRun{setupErr: fmt.Errorf("restoring %s: %w", tc.file, err)}
+	}
+	return plantedRun{cliRun: run, wantLine: wantLine}
+}
+
+// pristineCLI is `skgo check` over the untouched example, the lane's first
+// run. TestRealCheckReportsWireAdviceAtAuthoredLocations asserts the whole
+// report; pristineCheck reads the generator's own check out of it.
+func pristineCLI() (cliRun, error) {
+	lane := cliLane()
+	if lane.setupErr != nil {
+		return cliRun{}, lane.setupErr
+	}
+	return lane.pristine(), nil
+}
 
 // pristineCheck is the generator's Check over the untouched example: the
 // valid counterpart every test that plants a wire error needs to check
@@ -127,8 +258,10 @@ func pristineCheck() error {
 
 func TestRealCheckReportsWireAdviceAtAuthoredLocations(t *testing.T) {
 	t.Parallel()
-	bin := requireSkgoBinary(t)
-	go pristineCLI() // started now; the supported case below waits for it
+	lane := cliLane()
+	if lane.setupErr != nil {
+		t.Fatal(lane.setupErr)
+	}
 	parse := func(t *testing.T, run cliRun, expectWireFailure bool) cliReport {
 		t.Helper()
 		output, runErr := run.output, run.err
@@ -150,48 +283,16 @@ func TestRealCheckReportsWireAdviceAtAuthoredLocations(t *testing.T) {
 		}
 		return got
 	}
-	// Each planted state is its own sandbox, and every CLI run — one per
-	// distinct source state, since the generator stops at the first wire error
-	// — starts before any is waited for, so they run at once rather than each
-	// queueing for one of the test runner's parallel slots.
-	type planted struct {
-		file, reason, repair string
-		wantLine             int
-		run                  func() cliRun
-	}
-	var cases []planted
-	var names []string
-	for _, tc := range []struct {
-		file, anchor, insertion, field, reason, repair string
-	}{
-		{"todos/todos.remote.go", "type Rename struct {", "\n\tDetail []map[string]string `json:\"detail\"`", "Detail", "map", "named struct"},
-		{"todos/todos.remote.go", "ID string `json:\"id\"`", "\n\tAlias string `json:\"id\"`", "Alias", "duplicate serialized name", "distinct json name"},
-		{"todos/todos.remote.go", "type Rename struct {", "\n\tLater skgo.Deferred[string] `json:\"later\"`", "Later", "Deferred", "server load"},
-		{"contact/contact.remote.go", "type Receipt struct {", "\n\tUpload skgo.File `json:\"upload\"`", "sendMessage", "skgo.File", "download URL"},
-	} {
-		app := sandboxExample(t)
-		path := filepath.Join(app, "web", "src", "routes", tc.file)
-		original, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		plantedSource := strings.Replace(string(original), tc.anchor, tc.anchor+tc.insertion, 1)
-		if plantedSource == string(original) {
-			t.Fatalf("%s: fixture anchor missing", tc.field)
-		}
-		wantLine := strings.Count(plantedSource[:strings.Index(plantedSource, tc.anchor)+len(tc.anchor)], "\n") + 2
-		if err := os.WriteFile(path, []byte(plantedSource), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		names = append(names, tc.field)
-		cases = append(cases, planted{tc.file, tc.reason, tc.repair, wantLine, start(func() cliRun { return runCheckCLI(bin, app) })})
-	}
-	for i, tc := range cases {
-		t.Run(names[i], func(t *testing.T) {
-			got := parse(t, tc.run(), true)
+	for i, tc := range cliWireErrors {
+		t.Run(tc.field, func(t *testing.T) {
+			run := lane.planted[i]()
+			if run.setupErr != nil {
+				t.Fatal(run.setupErr)
+			}
+			got := parse(t, run.cliRun, true)
 			found := false
 			for _, d := range got.Diagnostics {
-				if d.Code == "SKGO007" && strings.Contains(d.Message, tc.reason) && strings.Contains(d.Message, tc.repair) && d.Location != nil && d.Location.File == filepath.ToSlash(filepath.Join("web", "src", "routes", tc.file)) && d.Location.Line == tc.wantLine {
+				if d.Code == "SKGO007" && strings.Contains(d.Message, tc.reason) && strings.Contains(d.Message, tc.repair) && d.Location != nil && d.Location.File == filepath.ToSlash(filepath.Join("web", "src", "routes", tc.file)) && d.Location.Line == run.wantLine {
 					found = true
 				}
 			}
@@ -236,20 +337,20 @@ func TestCheckWireAdviceUsesAuthoredDeclarations(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			app := sandboxExample(t)
+			app, unlock := lockCheckLane(t)
 			web := filepath.Join(app, "web")
 			file := filepath.Join(web, "src", "routes", filepath.FromSlash(tc.file))
 			original, err := os.ReadFile(file)
 			if err != nil {
+				unlock()
 				t.Fatal(err)
 			}
 			if !bytes.Contains(original, []byte(tc.anchor)) {
+				unlock()
 				t.Fatalf("missing fixture anchor %q", tc.anchor)
 			}
 			planted := strings.Replace(string(original), tc.anchor, tc.anchor+tc.insertion, 1)
-			if err := os.WriteFile(file, []byte(planted), 0o644); err != nil {
-				t.Fatal(err)
-			}
+			plantInLane(t, file, original, []byte(planted), unlock)
 			err = Check(Config{Web: web, Out: filepath.Join(app, "internal", "skgo")})
 			if err == nil || !strings.Contains(err.Error(), tc.consequence) || !strings.Contains(err.Error(), tc.repair) || !strings.Contains(err.Error(), filepath.Base(file)+":") {
 				t.Fatalf("wanted authored wire advice with consequence and repair, got %v", err)

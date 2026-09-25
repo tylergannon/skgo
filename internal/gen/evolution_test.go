@@ -171,7 +171,6 @@ var evolved = sync.OnceValue(func() *evolvedApp {
 		return e
 	}
 	e.check = start(func() error {
-		defer tlog("evolved check")()
 		return Check(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")})
 	})
 	e.first.buildOut, e.first.buildErr = runGoBuild(filepath.Join(app, "internal", "skgo"))

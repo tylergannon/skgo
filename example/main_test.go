@@ -13,6 +13,12 @@ import (
 var packageTemp string
 
 func TestMain(m *testing.M) {
+	// The go commands these tests start (go generate, and the go list calls
+	// the generator makes) run beside a dozen others under `just test`. At
+	// one P per core each spends most of its CPU in the kernel on idle runtime
+	// threads; two keeps the same wall clock for a fraction of the CPU. See
+	// internal/gen's TestMain for the measurement.
+	os.Setenv("GOMAXPROCS", "2")
 	dir, err := os.MkdirTemp("", "skgo-example-test-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

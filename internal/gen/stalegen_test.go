@@ -125,7 +125,6 @@ func corruptGeneratedFileAt(path string) error {
 // promises stays the same, from the generated bindings package where its
 // go:generate directive lives.
 func runGoGenerate(app string) (string, error) {
-	defer tlog("generate " + app)()
 	cmd := exec.Command("go", "generate", "./...")
 	cmd.Dir = filepath.Join(app, "internal", "skgo")
 	cmd.Env = append(os.Environ(), "GOWORK=off")
@@ -139,7 +138,6 @@ func runGoGenerate(app string) (string, error) {
 // example app's frontend be built — example/web embeds `all:build`, which is
 // no part of what this test is checking.
 func runGoBuild(dir string) (string, error) {
-	defer tlog("build " + dir)()
 	cmd := exec.Command("go", "build", "./...")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GOWORK=off")
