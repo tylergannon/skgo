@@ -275,6 +275,9 @@ func svelteCheck(app string) (string, error) {
 		"node", filepath.Join("node_modules", "svelte-check", "bin", "svelte-check"),
 		"--tsconfig", "./tsconfig.json", "--output", "human")
 	cmd.Dir = filepath.Join(app, "web")
+	// svelte-check colours its file names whenever CI is set, and the
+	// diagnostics are matched against plain paths.
+	cmd.Env = append(os.Environ(), "NO_COLOR=1")
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
