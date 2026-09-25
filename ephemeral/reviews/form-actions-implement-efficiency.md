@@ -13,6 +13,8 @@ Gimble run: `01M3AJSZ430H9JX3GDX4TKPY4N.implement`, started 2026-09-24 20:48:10 
 
 These are stage wall times from Gimble's run record, not estimates of avoidable time. The portion attributable to each inefficiency still needs a separate audit; the entire Stage 3 duration must not be called waste.
 
+Candidate implementation commit: `8c23f65`. It changes 137 files, with 6,894 added and 643 removed lines. A rough path-based breakdown of added lines is 619 in root Go runtime, 335 in generator/adapter, 1,416 in the one example application's authored source, 1,916 in generated bindings and stubs, 2,548 in tests and Gherkin scenarios, and 60 in this report and actionable worklogs. This explains the diff's size; the classification is not a judgment that every added line is necessary.
+
 ## Confirmed findings
 
 1. **Broad outcomes caused repeated planning and validation.** The temporary Gimble input described each plan stage as one outcome, but the workflow validates one selected task at a time. Stage 2 advanced after the archive task passed, before redirect and error actions existed. Stage 3 had to backfill those actions. To avoid another premature advance, the QA session after each later task was steered to assess the entire stage. This kept missing work visible, but repeatedly ran already-proved journeys: Stage 3 QA eventually reran 46 existing composition scenarios per mode, then 62 scenarios per mode once rendering options were added. The same broad-outcome issue repeated in Stage 4. **Next time:** give the implement workflow outcomes small enough that a task-level QA pass can legitimately close them, then run one full-stage regression at the end.
