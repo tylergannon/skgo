@@ -14,11 +14,21 @@ not know how it is judged.
   status feed is a `+server` route in Go; forms on the site are form
   actions; a domain type crosses via transport; and so on. Each cell names
   the place on the site where it is in use.
-- Each cell carries named validation and one of three states:
-  - **pass**: every named check ran and passed in the latest cycle
-  - **fail**: at least one named check ran and failed, or was skipped
-  - **unknown**: no check is named, so we do not have it and cannot say
-  A cell may also be marked planned, which is unknown with a stated intent.
+- Three levels of granularity, each derived from the one below it:
+  1. **The meter.** One number on the status page: percent of the matrix
+     proven at this point in time. Derived from the cells. This is what the
+     owner sees first and often the only thing.
+  2. **The matrix.** Cells are SvelteKit features. The set of cells is fixed
+     by what kit does and by the SvelteKit survey; bugs, findings and test
+     additions never add or remove a cell. Each cell shows one of:
+     - **pass**: every check in its bucket ran and passed in the latest cycle
+     - **fail**: at least one check in its bucket failed or was skipped
+     - **unknown**: the bucket is empty, so we do not have it and cannot say
+     A planned cell is unknown with a stated intent.
+  3. **The bucket.** Click a cell and see its checks as individual green and
+     red boxes: Go test IDs in `skgo`, Gherkin scenario IDs, gimble
+     workloads, and checks added from red-team findings. This is the only
+     level that grows over time.
 - The site works with JavaScript off because graceful degradation is a
   premise of SvelteKit, and skgo inherits kit's premises. Not because it is
   documentation.
@@ -67,9 +77,9 @@ it, and the agents that hammer it live where the intent lives.
   seed), sessions, uploads, streaming. The site grows features partly so the
   red team has something to break.
 - Output is findings filed as issues against `skgo`, with screenshots read
-  by a cheap model first. Findings do not flip matrix cells; cells are
-  driven by named checks. A finding that reveals a missing check becomes a
-  new named check, and then the cell can fail honestly.
+  by a cheap model first. A finding lands under the cell for the feature
+  the bug falls under, as a new check in that cell's bucket, and the cell
+  goes red until the check passes. Findings never add cells.
 - Runs on a cadence or after a substantial change, from `skgo-project`'s own
   workflows. Never from `skgo`'s CI.
 
@@ -83,10 +93,11 @@ it, and the agents that hammer it live where the intent lives.
 - **Where the status records live.** Simplest: a directory of JSON files the
   runner commits or uploads, read by the site's load. A database only if
   history or trends are wanted.
-- **What counts as a cell's validation.** The schema decision everything
-  else hangs from. Proposal: a cell names Go test IDs in `skgo`, Gherkin
-  scenario IDs, and optionally one gimble workload. The runner resolves each
-  name to a result. A name that resolves to nothing is a fail, not unknown.
+- **What counts as a check.** The schema decision everything else hangs
+  from. Proposal: a bucket entry names a Go test ID in `skgo`, a Gherkin
+  scenario ID, or a gimble workload. The runner resolves each name to a
+  result. A name that resolves to nothing is a fail, not unknown. How the
+  meter weights cells (equal, or by some notion of size) is part of this.
 
 ## To-do, not now
 
