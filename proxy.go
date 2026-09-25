@@ -101,7 +101,21 @@ func (h *devPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// browser falls back to talking to vite directly — which is exactly the
 	// arrangement the proxy exists to prevent.
 	if ok && !isUpgrade(r) && h.isDocument(urlPath) {
-		if rejectReservedQuery(w, r, false, false) || h.renderer.serveDev(w, r, urlPath) {
+		if rejectReservedQuery(w, r, false, false) {
+			return
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
+			end, err := h.renderer.beginDevRender()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadGateway)
+				return
+			}
+			answered := h.renderer.servePageMethod(w, r, urlPath)
+			end()
+			if answered {
+				return
+			}
+		} else if h.renderer.serveDev(w, r, urlPath) {
 			return
 		}
 	}

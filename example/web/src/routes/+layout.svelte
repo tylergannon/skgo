@@ -30,6 +30,7 @@
 	<a href="/empty">Empty</a>
 	<a href="/api">API</a>
 	<a href="/pricing">Pricing</a>
+	<a href="/actions">Actions</a>
 	<a href="/docs/guide/getting-started">Docs</a>
 	<a href="/account">Account</a>
 	<a href="/stream">Stream</a>

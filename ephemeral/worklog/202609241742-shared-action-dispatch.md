@@ -1,0 +1,3 @@
+decision: Pinned Kit negotiates Accept before native remote selection; an absent Accept header behaves like */* and chooses JSON. In-process tests modeling browser document requests must send Accept: text/html, especially when a sibling endpoint exists.
+friction: Running the example generated-file test while rebuilding the frontend made it report transient compressed-asset differences -> run build and generation before that test, without overlap.
+friction: Batch image display showed white placeholders for duplicate screenshot payloads, although the PNGs matched the preceding live frame byte-for-byte and contained hundreds of colors -> inspect suspect files individually and compare their pixels before treating a displayed placeholder as a capture failure.

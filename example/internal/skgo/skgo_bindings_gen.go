@@ -14,26 +14,34 @@ import (
 	skgo1 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th"
 	skgo2 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom"
 	skgo3 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu"
-	skgo4 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi"
-	skgo5 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt"
-	skgo6 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi"
-	skgo7 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t"
-	skgo8 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5"
-	skgo9 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu"
-	skgo10 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna"
-	skgo11 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi"
-	skgo12 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5"
-	skgo13 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe"
-	skgo14 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz"
-	skgo15 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za"
-	skgo16 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle"
-	skgo17 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u"
-	skgo18 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa"
-	skgo19 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
-	skgo20 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf"
-	skgo21 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
-	skgo22 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq"
-	skgo24 "github.com/tylergannon/skgo/example/web/src/lib"
+	skgo4 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
+	skgo5 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq"
+	skgo6 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq"
+	skgo7 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa"
+	skgo8 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq"
+	skgo9 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe"
+	skgo10 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq"
+	skgo11 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4"
+	skgo12 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi"
+	skgo13 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt"
+	skgo14 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi"
+	skgo15 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t"
+	skgo16 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5"
+	skgo17 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu"
+	skgo18 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna"
+	skgo19 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi"
+	skgo20 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5"
+	skgo21 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe"
+	skgo22 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz"
+	skgo23 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za"
+	skgo24 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle"
+	skgo25 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u"
+	skgo26 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa"
+	skgo27 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
+	skgo28 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf"
+	skgo29 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
+	skgo30 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq"
+	skgo32 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
 // remote_signIn answers src/lib/auth.remote.ts#signIn, a command.
@@ -50,7 +58,7 @@ func remote_signIn(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	out, err := skgo24.Skgo_signIn(ctx, in)
+	out, err := skgo32.Skgo_signIn(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +84,7 @@ func remote_signOut(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo24.Skgo_signOut(ctx)
+	out, err := skgo32.Skgo_signOut(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +100,7 @@ func remote_whoami(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo24.Skgo_whoami(ctx)
+	out, err := skgo32.Skgo_whoami(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -164,25 +172,43 @@ func requestedArg_quoteFor(arg any) (any, error) {
 	return in, nil
 }
 
+// remote_sendRemoteNote answers src/routes/actions/coexist.remote.ts#sendRemoteNote, a form.
+//
+// A form's submission is assigned onto the handler's own argument type:
+// kit posts a form as binary form data, which can carry an uploaded File,
+// and a File is not a value polytype describes.
+// The result is encoded by EncodeRoot4, generated for its result type.
+func remote_sendRemoteNote(ctx context.Context, call skgo.Call) (any, error) {
+	var in skgo4.SkgoArg_sendRemoteNote
+	if err := skgo.DecodeForm(call.Arg, &in); err != nil {
+		return nil, err
+	}
+	out, err := skgo4.Skgo_sendRemoteNote(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot4(out)
+}
+
 // remote_getBatch answers src/routes/async-ssr/[mode]/[group]/probe.remote.ts#getBatch, a query.batch.
 //
-// The argument is decoded by DecodeRoot4, generated by polytype for getBatch's
+// The argument is decoded by DecodeRoot5, generated by polytype for getBatch's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
 // The result is encoded by EncodeRoot0, generated for its result type.
 func remote_getBatch(ctx context.Context, calls []skgo.Call) ([]any, error) {
-	in := make([]skgo8.SkgoArg_getBatch, len(calls))
+	in := make([]skgo16.SkgoArg_getBatch, len(calls))
 	for i, call := range calls {
 		if err := skgo.RequireArgument(call); err != nil {
 			return nil, err
 		}
-		decoded, err := DecodeRoot4(call.Arg)
+		decoded, err := DecodeRoot5(call.Arg)
 		if err != nil {
 			return nil, skgo.BadRequest(err)
 		}
 		in[i] = decoded
 	}
-	outs, err := skgo8.Skgo_getBatch(ctx, in)
+	outs, err := skgo16.Skgo_getBatch(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +229,7 @@ func remote_getBatch(ctx context.Context, calls []skgo.Call) ([]any, error) {
 // requestedArg_getBatch decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_getBatch uses.
 func requestedArg_getBatch(arg any) (any, error) {
-	in, err := DecodeRoot4(arg)
+	in, err := DecodeRoot5(arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -224,7 +250,7 @@ func remote_getDependent(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	out, err := skgo8.Skgo_getDependent(ctx, in)
+	out, err := skgo16.Skgo_getDependent(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +269,7 @@ func requestedArg_getDependent(arg any) (any, error) {
 
 // remote_getHeld answers src/routes/async-ssr/[mode]/[group]/probe.remote.ts#getHeld, a query.
 //
-// The argument is decoded by DecodeRoot4, generated by polytype for getHeld's
+// The argument is decoded by DecodeRoot5, generated by polytype for getHeld's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
 // The result is encoded by EncodeRoot0, generated for its result type.
@@ -251,11 +277,11 @@ func remote_getHeld(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
-	in, err := DecodeRoot4(call.Arg)
+	in, err := DecodeRoot5(call.Arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	out, err := skgo8.Skgo_getHeld(ctx, in)
+	out, err := skgo16.Skgo_getHeld(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +291,7 @@ func remote_getHeld(ctx context.Context, call skgo.Call) (any, error) {
 // requestedArg_getHeld decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_getHeld uses.
 func requestedArg_getHeld(arg any) (any, error) {
-	in, err := DecodeRoot4(arg)
+	in, err := DecodeRoot5(arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -286,7 +312,7 @@ func remote_getSeed(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	out, err := skgo8.Skgo_getSeed(ctx, in)
+	out, err := skgo16.Skgo_getSeed(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +331,7 @@ func requestedArg_getSeed(arg any) (any, error) {
 
 // remote_getValue answers src/routes/async-ssr/[mode]/[group]/probe.remote.ts#getValue, a query.
 //
-// The argument is decoded by DecodeRoot4, generated by polytype for getValue's
+// The argument is decoded by DecodeRoot5, generated by polytype for getValue's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
 // The result is encoded by EncodeRoot0, generated for its result type.
@@ -313,11 +339,11 @@ func remote_getValue(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
-	in, err := DecodeRoot4(call.Arg)
+	in, err := DecodeRoot5(call.Arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	out, err := skgo8.Skgo_getValue(ctx, in)
+	out, err := skgo16.Skgo_getValue(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +353,7 @@ func remote_getValue(ctx context.Context, call skgo.Call) (any, error) {
 // requestedArg_getValue decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_getValue uses.
 func requestedArg_getValue(arg any) (any, error) {
-	in, err := DecodeRoot4(arg)
+	in, err := DecodeRoot5(arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -336,7 +362,7 @@ func requestedArg_getValue(arg any) (any, error) {
 
 // remote_watchValue answers src/routes/async-ssr/[mode]/[group]/probe.remote.ts#watchValue, a query.live.
 //
-// The argument is decoded by DecodeRoot4, generated by polytype for watchValue's
+// The argument is decoded by DecodeRoot5, generated by polytype for watchValue's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
 // The result is encoded by EncodeRoot0, generated for its result type.
@@ -344,11 +370,11 @@ func remote_watchValue(ctx context.Context, call skgo.Call, yield func(any) erro
 	if err := skgo.RequireArgument(call); err != nil {
 		return err
 	}
-	in, err := DecodeRoot4(call.Arg)
+	in, err := DecodeRoot5(call.Arg)
 	if err != nil {
 		return skgo.BadRequest(err)
 	}
-	return skgo8.Skgo_watchValue(ctx, in, func(out skgo8.SkgoOut_watchValue) error {
+	return skgo16.Skgo_watchValue(ctx, in, func(out skgo16.SkgoOut_watchValue) error {
 		tree, err := EncodeRoot0(out)
 		if err != nil {
 			return err
@@ -360,7 +386,7 @@ func remote_watchValue(ctx context.Context, call skgo.Call, yield func(any) erro
 // requestedArg_watchValue decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_watchValue uses.
 func requestedArg_watchValue(arg any) (any, error) {
-	in, err := DecodeRoot4(arg)
+	in, err := DecodeRoot5(arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -372,9 +398,9 @@ func requestedArg_watchValue(arg any) (any, error) {
 // The argument is decoded by DecodeRoot0, generated by polytype for getQuotes's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot5, generated for its result type.
+// The result is encoded by EncodeRoot6, generated for its result type.
 func remote_getQuotes(ctx context.Context, calls []skgo.Call) ([]any, error) {
-	in := make([]skgo10.SkgoArg_getQuotes, len(calls))
+	in := make([]skgo18.SkgoArg_getQuotes, len(calls))
 	for i, call := range calls {
 		if err := skgo.RequireArgument(call); err != nil {
 			return nil, err
@@ -385,7 +411,7 @@ func remote_getQuotes(ctx context.Context, calls []skgo.Call) ([]any, error) {
 		}
 		in[i] = decoded
 	}
-	outs, err := skgo10.Skgo_getQuotes(ctx, in)
+	outs, err := skgo18.Skgo_getQuotes(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -394,7 +420,7 @@ func remote_getQuotes(ctx context.Context, calls []skgo.Call) ([]any, error) {
 	}
 	res := make([]any, len(outs))
 	for i, out := range outs {
-		tree, err := EncodeRoot5(out)
+		tree, err := EncodeRoot6(out)
 		if err != nil {
 			return nil, err
 		}
@@ -417,16 +443,16 @@ func requestedArg_getQuotes(arg any) (any, error) {
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot6, generated for its result type.
+// The result is encoded by EncodeRoot7, generated for its result type.
 func remote_getMessages(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo11.Skgo_getMessages(ctx)
+	out, err := skgo19.Skgo_getMessages(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot6(out)
+	return EncodeRoot7(out)
 }
 
 // remote_sendMessage answers src/routes/contact/contact.remote.ts#sendMessage, a form.
@@ -434,17 +460,17 @@ func remote_getMessages(ctx context.Context, call skgo.Call) (any, error) {
 // A form's submission is assigned onto the handler's own argument type:
 // kit posts a form as binary form data, which can carry an uploaded File,
 // and a File is not a value polytype describes.
-// The result is encoded by EncodeRoot7, generated for its result type.
+// The result is encoded by EncodeRoot8, generated for its result type.
 func remote_sendMessage(ctx context.Context, call skgo.Call) (any, error) {
-	var in skgo11.SkgoArg_sendMessage
+	var in skgo19.SkgoArg_sendMessage
 	if err := skgo.DecodeForm(call.Arg, &in); err != nil {
 		return nil, err
 	}
-	out, err := skgo11.Skgo_sendMessage(ctx, in)
+	out, err := skgo19.Skgo_sendMessage(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot7(out)
+	return EncodeRoot8(out)
 }
 
 // remote_getPage answers src/routes/docs/[...rest]/docs.remote.ts#getPage, a query.
@@ -452,7 +478,7 @@ func remote_sendMessage(ctx context.Context, call skgo.Call) (any, error) {
 // The argument is decoded by DecodeRoot0, generated by polytype for getPage's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot8, generated for its result type.
+// The result is encoded by EncodeRoot9, generated for its result type.
 func remote_getPage(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
@@ -461,11 +487,11 @@ func remote_getPage(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	out, err := skgo12.Skgo_getPage(ctx, in)
+	out, err := skgo20.Skgo_getPage(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot8(out)
+	return EncodeRoot9(out)
 }
 
 // requestedArg_getPage decodes one instance's argument for skgo.Requested, with the same
@@ -482,128 +508,128 @@ func requestedArg_getPage(arg any) (any, error) {
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot9, generated for its result type.
+// The result is encoded by EncodeRoot10, generated for its result type.
 func remote_getKnownReport(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo13.Skgo_getKnownReport(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return EncodeRoot9(out)
-}
-
-// remote_getModels answers src/routes/empty/empty.remote.ts#getModels, a query.
-//
-// It takes no argument, so any argument at all is refused — kit's own
-// validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot10, generated for its result type.
-func remote_getModels(ctx context.Context, call skgo.Call) (any, error) {
-	if err := skgo.RefuseArgument(call); err != nil {
-		return nil, err
-	}
-	out, err := skgo13.Skgo_getModels(ctx)
+	out, err := skgo21.Skgo_getKnownReport(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return EncodeRoot10(out)
 }
 
-// remote_getReport answers src/routes/empty/empty.remote.ts#getReport, a query.
-//
-// It takes no argument, so any argument at all is refused — kit's own
-// validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot9, generated for its result type.
-func remote_getReport(ctx context.Context, call skgo.Call) (any, error) {
-	if err := skgo.RefuseArgument(call); err != nil {
-		return nil, err
-	}
-	out, err := skgo13.Skgo_getReport(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return EncodeRoot9(out)
-}
-
-// remote_reparse answers src/routes/empty/empty.remote.ts#reparse, a command.
-//
-// It takes no argument, so any argument at all is refused — kit's own
-// validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot9, generated for its result type.
-func remote_reparse(ctx context.Context, call skgo.Call) (any, error) {
-	if err := skgo.RefuseArgument(call); err != nil {
-		return nil, err
-	}
-	out, err := skgo13.Skgo_reparse(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return EncodeRoot9(out)
-}
-
-// remote_readSensor answers src/routes/error/boundary/boundary.remote.ts#readSensor, a query.
+// remote_getModels answers src/routes/empty/empty.remote.ts#getModels, a query.
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
 // The result is encoded by EncodeRoot11, generated for its result type.
-func remote_readSensor(ctx context.Context, call skgo.Call) (any, error) {
+func remote_getModels(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo14.Skgo_readSensor(ctx)
+	out, err := skgo21.Skgo_getModels(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return EncodeRoot11(out)
 }
 
-// remote_bumpTally answers src/routes/error/command/command.remote.ts#bumpTally, a command.
+// remote_getReport answers src/routes/empty/empty.remote.ts#getReport, a query.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot10, generated for its result type.
+func remote_getReport(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := skgo21.Skgo_getReport(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot10(out)
+}
+
+// remote_reparse answers src/routes/empty/empty.remote.ts#reparse, a command.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot10, generated for its result type.
+func remote_reparse(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := skgo21.Skgo_reparse(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot10(out)
+}
+
+// remote_readSensor answers src/routes/error/boundary/boundary.remote.ts#readSensor, a query.
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
 // The result is encoded by EncodeRoot12, generated for its result type.
-func remote_bumpTally(ctx context.Context, call skgo.Call) (any, error) {
+func remote_readSensor(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo15.Skgo_bumpTally(ctx)
+	out, err := skgo22.Skgo_readSensor(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return EncodeRoot12(out)
+}
+
+// remote_bumpTally answers src/routes/error/command/command.remote.ts#bumpTally, a command.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot13, generated for its result type.
+func remote_bumpTally(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := skgo23.Skgo_bumpTally(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot13(out)
 }
 
 // remote_getTally answers src/routes/error/command/command.remote.ts#getTally, a query.
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot12, generated for its result type.
+// The result is encoded by EncodeRoot13, generated for its result type.
 func remote_getTally(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo15.Skgo_getTally(ctx)
+	out, err := skgo23.Skgo_getTally(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot12(out)
+	return EncodeRoot13(out)
 }
 
 // remote_whereTo answers src/routes/error/redirect/redirect.remote.ts#whereTo, a query.
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot13, generated for its result type.
+// The result is encoded by EncodeRoot14, generated for its result type.
 func remote_whereTo(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo17.Skgo_whereTo(ctx)
+	out, err := skgo25.Skgo_whereTo(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot13(out)
+	return EncodeRoot14(out)
 }
 
 // remote_getItem answers src/routes/items/[id]/item.remote.ts#getItem, a query.
@@ -611,7 +637,7 @@ func remote_whereTo(ctx context.Context, call skgo.Call) (any, error) {
 // The argument is decoded by DecodeRoot0, generated by polytype for getItem's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot14, generated for its result type.
+// The result is encoded by EncodeRoot15, generated for its result type.
 func remote_getItem(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
@@ -620,11 +646,11 @@ func remote_getItem(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	out, err := skgo19.Skgo_getItem(ctx, in)
+	out, err := skgo27.Skgo_getItem(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot14(out)
+	return EncodeRoot15(out)
 }
 
 // requestedArg_getItem decodes one instance's argument for skgo.Requested, with the same
@@ -641,13 +667,13 @@ func requestedArg_getItem(arg any) (any, error) {
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot15, generated for its result type.
+// The result is encoded by EncodeRoot16, generated for its result type.
 func remote_watchBoard(ctx context.Context, call skgo.Call, yield func(any) error) error {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return err
 	}
-	return skgo20.Skgo_watchBoard(ctx, func(out skgo20.SkgoOut_watchBoard) error {
-		tree, err := EncodeRoot15(out)
+	return skgo28.Skgo_watchBoard(ctx, func(out skgo28.SkgoOut_watchBoard) error {
+		tree, err := EncodeRoot16(out)
 		if err != nil {
 			return err
 		}
@@ -660,24 +686,24 @@ func remote_watchBoard(ctx context.Context, call skgo.Call, yield func(any) erro
 // A form's submission is assigned onto the handler's own argument type:
 // kit posts a form as binary form data, which can carry an uploaded File,
 // and a File is not a value polytype describes.
-// The result is encoded by EncodeRoot16, generated for its result type.
+// The result is encoded by EncodeRoot17, generated for its result type.
 func remote_submit(ctx context.Context, call skgo.Call) (any, error) {
-	var in skgo21.SkgoArg_submit
+	var in skgo29.SkgoArg_submit
 	if err := skgo.DecodeForm(call.Arg, &in); err != nil {
 		return nil, err
 	}
-	out, err := skgo21.Skgo_submit(ctx, in)
+	out, err := skgo29.Skgo_submit(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot16(out)
+	return EncodeRoot17(out)
 }
 
 // remote_getSite answers src/routes/site.remote.ts#getSite, a query.
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot17, generated for its result type.
+// The result is encoded by EncodeRoot18, generated for its result type.
 func remote_getSite(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
@@ -686,14 +712,14 @@ func remote_getSite(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot17(out)
+	return EncodeRoot18(out)
 }
 
 // remote_getBanner answers src/routes/todos/gate/gate.remote.ts#getBanner, a query.
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot18, generated for its result type.
+// The result is encoded by EncodeRoot19, generated for its result type.
 func remote_getBanner(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
@@ -702,7 +728,7 @@ func remote_getBanner(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot18(out)
+	return EncodeRoot19(out)
 }
 
 // remote_getNote answers src/routes/todos/gate/gate.remote.ts#getNote, a query.
@@ -710,7 +736,7 @@ func remote_getBanner(ctx context.Context, call skgo.Call) (any, error) {
 // The argument is decoded by DecodeRoot0, generated by polytype for getNote's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot19, generated for its result type.
+// The result is encoded by EncodeRoot20, generated for its result type.
 func remote_getNote(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
@@ -723,7 +749,7 @@ func remote_getNote(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot19(out)
+	return EncodeRoot20(out)
 }
 
 // requestedArg_getNote decodes one instance's argument for skgo.Requested, with the same
@@ -738,15 +764,15 @@ func requestedArg_getNote(arg any) (any, error) {
 
 // remote_writeNotes answers src/routes/todos/gate/gate.remote.ts#writeNotes, a command.
 //
-// The argument is decoded by DecodeRoot20, generated by polytype for writeNotes's
+// The argument is decoded by DecodeRoot21, generated by polytype for writeNotes's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot21, generated for its result type.
+// The result is encoded by EncodeRoot22, generated for its result type.
 func remote_writeNotes(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
-	in, err := DecodeRoot20(call.Arg)
+	in, err := DecodeRoot21(call.Arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -754,13 +780,13 @@ func remote_writeNotes(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot21(out)
+	return EncodeRoot22(out)
 }
 
 // requestedArg_writeNotes decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_writeNotes uses.
 func requestedArg_writeNotes(arg any) (any, error) {
-	in, err := DecodeRoot20(arg)
+	in, err := DecodeRoot21(arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -772,7 +798,7 @@ func requestedArg_writeNotes(arg any) (any, error) {
 // The argument is decoded by DecodeRoot0, generated by polytype for addTodo's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot22, generated for its result type.
+// The result is encoded by EncodeRoot23, generated for its result type.
 func remote_addTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
@@ -785,7 +811,7 @@ func remote_addTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot22(out)
+	return EncodeRoot23(out)
 }
 
 // requestedArg_addTodo decodes one instance's argument for skgo.Requested, with the same
@@ -803,7 +829,7 @@ func requestedArg_addTodo(arg any) (any, error) {
 // The argument is decoded by DecodeRoot0, generated by polytype for getTodo's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot22, generated for its result type.
+// The result is encoded by EncodeRoot23, generated for its result type.
 func remote_getTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
@@ -816,7 +842,7 @@ func remote_getTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot22(out)
+	return EncodeRoot23(out)
 }
 
 // requestedArg_getTodo decodes one instance's argument for skgo.Requested, with the same
@@ -833,7 +859,7 @@ func requestedArg_getTodo(arg any) (any, error) {
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot23, generated for its result type.
+// The result is encoded by EncodeRoot24, generated for its result type.
 func remote_getTodos(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
@@ -842,20 +868,20 @@ func remote_getTodos(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot23(out)
+	return EncodeRoot24(out)
 }
 
 // remote_renameTodo answers src/routes/todos/todos.remote.ts#renameTodo, a command.
 //
-// The argument is decoded by DecodeRoot24, generated by polytype for renameTodo's
+// The argument is decoded by DecodeRoot25, generated by polytype for renameTodo's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot22, generated for its result type.
+// The result is encoded by EncodeRoot23, generated for its result type.
 func remote_renameTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
-	in, err := DecodeRoot24(call.Arg)
+	in, err := DecodeRoot25(call.Arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -863,13 +889,13 @@ func remote_renameTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot22(out)
+	return EncodeRoot23(out)
 }
 
 // requestedArg_renameTodo decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_renameTodo uses.
 func requestedArg_renameTodo(arg any) (any, error) {
-	in, err := DecodeRoot24(arg)
+	in, err := DecodeRoot25(arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -878,15 +904,15 @@ func requestedArg_renameTodo(arg any) (any, error) {
 
 // remote_retitleTodo answers src/routes/todos/todos.remote.ts#retitleTodo, a command.
 //
-// The argument is decoded by DecodeRoot25, generated by polytype for retitleTodo's
+// The argument is decoded by DecodeRoot26, generated by polytype for retitleTodo's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot22, generated for its result type.
+// The result is encoded by EncodeRoot23, generated for its result type.
 func remote_retitleTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
-	in, err := DecodeRoot25(call.Arg)
+	in, err := DecodeRoot26(call.Arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -894,13 +920,13 @@ func remote_retitleTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot22(out)
+	return EncodeRoot23(out)
 }
 
 // requestedArg_retitleTodo decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_retitleTodo uses.
 func requestedArg_retitleTodo(arg any) (any, error) {
-	in, err := DecodeRoot25(arg)
+	in, err := DecodeRoot26(arg)
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
@@ -911,13 +937,13 @@ func requestedArg_retitleTodo(arg any) (any, error) {
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot26, generated for its result type.
+// The result is encoded by EncodeRoot27, generated for its result type.
 func remote_watchCount(ctx context.Context, call skgo.Call, yield func(any) error) error {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return err
 	}
 	return skgo2.Skgo_watchCount(ctx, func(out skgo2.SkgoOut_watchCount) error {
-		tree, err := EncodeRoot26(out)
+		tree, err := EncodeRoot27(out)
 		if err != nil {
 			return err
 		}
@@ -933,7 +959,7 @@ func Remotes() []*skgo.Remote {
 			Kind:      skgo.KindCommand,
 			Module:    "src/lib/auth.remote.ts",
 			Name:      "signIn",
-			Fn:        skgo24.Skgo_signIn,
+			Fn:        skgo32.Skgo_signIn,
 			Call:      remote_signIn,
 			DecodeArg: requestedArg_signIn,
 		}),
@@ -941,14 +967,14 @@ func Remotes() []*skgo.Remote {
 			Kind:   skgo.KindCommand,
 			Module: "src/lib/auth.remote.ts",
 			Name:   "signOut",
-			Fn:     skgo24.Skgo_signOut,
+			Fn:     skgo32.Skgo_signOut,
 			Call:   remote_signOut,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindQuery,
 			Module: "src/lib/auth.remote.ts",
 			Name:   "whoami",
-			Fn:     skgo24.Skgo_whoami,
+			Fn:     skgo32.Skgo_whoami,
 			Call:   remote_whoami,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -974,10 +1000,17 @@ func Remotes() []*skgo.Remote {
 			DecodeArg: requestedArg_quoteFor,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:   skgo.KindForm,
+			Module: "src/routes/actions/coexist.remote.ts",
+			Name:   "sendRemoteNote",
+			Fn:     skgo4.Skgo_sendRemoteNote,
+			Call:   remote_sendRemoteNote,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:      skgo.KindBatch,
 			Module:    "src/routes/async-ssr/[mode]/[group]/probe.remote.ts",
 			Name:      "getBatch",
-			Fn:        skgo8.Skgo_getBatch,
+			Fn:        skgo16.Skgo_getBatch,
 			Batch:     remote_getBatch,
 			DecodeArg: requestedArg_getBatch,
 		}),
@@ -985,7 +1018,7 @@ func Remotes() []*skgo.Remote {
 			Kind:      skgo.KindQuery,
 			Module:    "src/routes/async-ssr/[mode]/[group]/probe.remote.ts",
 			Name:      "getDependent",
-			Fn:        skgo8.Skgo_getDependent,
+			Fn:        skgo16.Skgo_getDependent,
 			Call:      remote_getDependent,
 			DecodeArg: requestedArg_getDependent,
 		}),
@@ -993,7 +1026,7 @@ func Remotes() []*skgo.Remote {
 			Kind:      skgo.KindQuery,
 			Module:    "src/routes/async-ssr/[mode]/[group]/probe.remote.ts",
 			Name:      "getHeld",
-			Fn:        skgo8.Skgo_getHeld,
+			Fn:        skgo16.Skgo_getHeld,
 			Call:      remote_getHeld,
 			DecodeArg: requestedArg_getHeld,
 		}),
@@ -1001,7 +1034,7 @@ func Remotes() []*skgo.Remote {
 			Kind:      skgo.KindQuery,
 			Module:    "src/routes/async-ssr/[mode]/[group]/probe.remote.ts",
 			Name:      "getSeed",
-			Fn:        skgo8.Skgo_getSeed,
+			Fn:        skgo16.Skgo_getSeed,
 			Call:      remote_getSeed,
 			DecodeArg: requestedArg_getSeed,
 		}),
@@ -1009,7 +1042,7 @@ func Remotes() []*skgo.Remote {
 			Kind:      skgo.KindQuery,
 			Module:    "src/routes/async-ssr/[mode]/[group]/probe.remote.ts",
 			Name:      "getValue",
-			Fn:        skgo8.Skgo_getValue,
+			Fn:        skgo16.Skgo_getValue,
 			Call:      remote_getValue,
 			DecodeArg: requestedArg_getValue,
 		}),
@@ -1017,7 +1050,7 @@ func Remotes() []*skgo.Remote {
 			Kind:      skgo.KindLive,
 			Module:    "src/routes/async-ssr/[mode]/[group]/probe.remote.ts",
 			Name:      "watchValue",
-			Fn:        skgo8.Skgo_watchValue,
+			Fn:        skgo16.Skgo_watchValue,
 			Live:      remote_watchValue,
 			DecodeArg: requestedArg_watchValue,
 		}),
@@ -1025,7 +1058,7 @@ func Remotes() []*skgo.Remote {
 			Kind:      skgo.KindBatch,
 			Module:    "src/routes/batch/quotes.remote.ts",
 			Name:      "getQuotes",
-			Fn:        skgo10.Skgo_getQuotes,
+			Fn:        skgo18.Skgo_getQuotes,
 			Batch:     remote_getQuotes,
 			DecodeArg: requestedArg_getQuotes,
 		}),
@@ -1033,21 +1066,21 @@ func Remotes() []*skgo.Remote {
 			Kind:   skgo.KindQuery,
 			Module: "src/routes/contact/contact.remote.ts",
 			Name:   "getMessages",
-			Fn:     skgo11.Skgo_getMessages,
+			Fn:     skgo19.Skgo_getMessages,
 			Call:   remote_getMessages,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindForm,
 			Module: "src/routes/contact/contact.remote.ts",
 			Name:   "sendMessage",
-			Fn:     skgo11.Skgo_sendMessage,
+			Fn:     skgo19.Skgo_sendMessage,
 			Call:   remote_sendMessage,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:      skgo.KindQuery,
 			Module:    "src/routes/docs/[...rest]/docs.remote.ts",
 			Name:      "getPage",
-			Fn:        skgo12.Skgo_getPage,
+			Fn:        skgo20.Skgo_getPage,
 			Call:      remote_getPage,
 			DecodeArg: requestedArg_getPage,
 		}),
@@ -1055,63 +1088,63 @@ func Remotes() []*skgo.Remote {
 			Kind:   skgo.KindQuery,
 			Module: "src/routes/empty/empty.remote.ts",
 			Name:   "getKnownReport",
-			Fn:     skgo13.Skgo_getKnownReport,
+			Fn:     skgo21.Skgo_getKnownReport,
 			Call:   remote_getKnownReport,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindQuery,
 			Module: "src/routes/empty/empty.remote.ts",
 			Name:   "getModels",
-			Fn:     skgo13.Skgo_getModels,
+			Fn:     skgo21.Skgo_getModels,
 			Call:   remote_getModels,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindQuery,
 			Module: "src/routes/empty/empty.remote.ts",
 			Name:   "getReport",
-			Fn:     skgo13.Skgo_getReport,
+			Fn:     skgo21.Skgo_getReport,
 			Call:   remote_getReport,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindCommand,
 			Module: "src/routes/empty/empty.remote.ts",
 			Name:   "reparse",
-			Fn:     skgo13.Skgo_reparse,
+			Fn:     skgo21.Skgo_reparse,
 			Call:   remote_reparse,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindQuery,
 			Module: "src/routes/error/boundary/boundary.remote.ts",
 			Name:   "readSensor",
-			Fn:     skgo14.Skgo_readSensor,
+			Fn:     skgo22.Skgo_readSensor,
 			Call:   remote_readSensor,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindCommand,
 			Module: "src/routes/error/command/command.remote.ts",
 			Name:   "bumpTally",
-			Fn:     skgo15.Skgo_bumpTally,
+			Fn:     skgo23.Skgo_bumpTally,
 			Call:   remote_bumpTally,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindQuery,
 			Module: "src/routes/error/command/command.remote.ts",
 			Name:   "getTally",
-			Fn:     skgo15.Skgo_getTally,
+			Fn:     skgo23.Skgo_getTally,
 			Call:   remote_getTally,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindQuery,
 			Module: "src/routes/error/redirect/redirect.remote.ts",
 			Name:   "whereTo",
-			Fn:     skgo17.Skgo_whereTo,
+			Fn:     skgo25.Skgo_whereTo,
 			Call:   remote_whereTo,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:      skgo.KindQuery,
 			Module:    "src/routes/items/[id]/item.remote.ts",
 			Name:      "getItem",
-			Fn:        skgo19.Skgo_getItem,
+			Fn:        skgo27.Skgo_getItem,
 			Call:      remote_getItem,
 			DecodeArg: requestedArg_getItem,
 		}),
@@ -1119,14 +1152,14 @@ func Remotes() []*skgo.Remote {
 			Kind:   skgo.KindLive,
 			Module: "src/routes/live/board.remote.ts",
 			Name:   "watchBoard",
-			Fn:     skgo20.Skgo_watchBoard,
+			Fn:     skgo28.Skgo_watchBoard,
 			Live:   remote_watchBoard,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindForm,
 			Module: "src/routes/optional/optional.remote.ts",
 			Name:   "submit",
-			Fn:     skgo21.Skgo_submit,
+			Fn:     skgo29.Skgo_submit,
 			Call:   remote_submit,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -1232,7 +1265,7 @@ func load_layout(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_layout(ctx context.Context) (any, error) {
-	return skgo4.Skgo_layoutLoad(ctx)
+	return skgo12.Skgo_layoutLoad(ctx)
 }
 
 // load_account_page answers src/routes/account/+page.server.ts.
@@ -1241,7 +1274,7 @@ func load_account_layout(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_page(ctx context.Context) (any, error) {
-	return skgo4.Skgo_pageLoad(ctx)
+	return skgo12.Skgo_pageLoad(ctx)
 }
 
 // load_account_orders_page answers src/routes/account/orders/+page.server.ts.
@@ -1250,7 +1283,7 @@ func load_account_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_orders_page(ctx context.Context) (any, error) {
-	return skgo5.Skgo_pageLoad(ctx)
+	return skgo13.Skgo_pageLoad(ctx)
 }
 
 // load_account_statement_page answers src/routes/account/statement/+page.server.ts.
@@ -1259,7 +1292,70 @@ func load_account_orders_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_statement_page(ctx context.Context) (any, error) {
-	return skgo6.Skgo_pageLoad(ctx)
+	return skgo14.Skgo_pageLoad(ctx)
+}
+
+// load_actions_page answers src/routes/actions/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_actions_page(ctx context.Context) (any, error) {
+	return skgo4.Skgo_pageLoad(ctx)
+}
+
+// load_actions_cross_receive_page answers src/routes/actions/cross/receive/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_actions_cross_receive_page(ctx context.Context) (any, error) {
+	return skgo5.Skgo_pageLoad(ctx)
+}
+
+// load_actions_default_saved_page answers src/routes/actions/default/saved/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_actions_default_saved_page(ctx context.Context) (any, error) {
+	return skgo7.Skgo_pageLoad(ctx)
+}
+
+// load_actions_options_noclient_page answers src/routes/actions/options/no-client/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_actions_options_noclient_page(ctx context.Context) (any, error) {
+	return skgo8.Skgo_pageLoad(ctx)
+}
+
+// load_actions_options_nossr_page answers src/routes/actions/options/no-ssr/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_actions_options_nossr_page(ctx context.Context) (any, error) {
+	return skgo9.Skgo_pageLoad(ctx)
+}
+
+// load_actions_profiles_profile_page answers src/routes/actions/profiles/[profile]/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_actions_profiles_profile_page(ctx context.Context) (any, error) {
+	return skgo10.Skgo_pageLoad(ctx)
+}
+
+// load_actions_signedin_page answers src/routes/actions/signed-in/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_actions_signedin_page(ctx context.Context) (any, error) {
+	return skgo11.Skgo_pageLoad(ctx)
 }
 
 // load_empty_page answers src/routes/empty/+page.server.ts.
@@ -1268,7 +1364,7 @@ func load_account_statement_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_empty_page(ctx context.Context) (any, error) {
-	return skgo13.Skgo_pageLoad(ctx)
+	return skgo21.Skgo_pageLoad(ctx)
 }
 
 // load_error_expected_page answers src/routes/error/expected/+page.server.ts.
@@ -1277,7 +1373,7 @@ func load_empty_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_error_expected_page(ctx context.Context) (any, error) {
-	return skgo16.Skgo_pageLoad(ctx)
+	return skgo24.Skgo_pageLoad(ctx)
 }
 
 // load_error_unexpected_page answers src/routes/error/unexpected/+page.server.ts.
@@ -1286,7 +1382,7 @@ func load_error_expected_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_error_unexpected_page(ctx context.Context) (any, error) {
-	return skgo18.Skgo_pageLoad(ctx)
+	return skgo26.Skgo_pageLoad(ctx)
 }
 
 // load_stream_page answers src/routes/stream/+page.server.ts.
@@ -1295,7 +1391,7 @@ func load_error_unexpected_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_stream_page(ctx context.Context) (any, error) {
-	return skgo22.Skgo_pageLoad(ctx)
+	return skgo30.Skgo_pageLoad(ctx)
 }
 
 // Loads returns every server load declared in the app, ready to hand to
@@ -1308,6 +1404,13 @@ func Loads() []*skgo.ServerLoad {
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/+page.server.ts", Run: load_account_page}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/orders/+page.server.ts", Run: load_account_orders_page}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/statement/+page.server.ts", Run: load_account_statement_page}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/+page.server.ts", Run: load_actions_page}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/cross/receive/+page.server.ts", Run: load_actions_cross_receive_page}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/default/saved/+page.server.ts", Run: load_actions_default_saved_page}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/options/no-client/+page.server.ts", Run: load_actions_options_noclient_page}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/options/no-ssr/+page.server.ts", Run: load_actions_options_nossr_page}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/profiles/[profile]/+page.server.ts", Run: load_actions_profiles_profile_page}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/signed-in/+page.server.ts", Run: load_actions_signedin_page}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/empty/+page.server.ts", Run: load_empty_page}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/expected/+page.server.ts", Run: load_error_expected_page}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/unexpected/+page.server.ts", Run: load_error_unexpected_page}),
@@ -1315,15 +1418,121 @@ func Loads() []*skgo.ServerLoad {
 	}
 }
 
+func action_actions_page_archive(ctx context.Context) (any, error) {
+	return nil, skgo4.Skgo_archive(ctx)
+}
+
+func action_actions_page_forbidden(ctx context.Context) (any, error) {
+	return nil, skgo4.Skgo_forbidden(ctx)
+}
+
+func action_actions_page_inspect(ctx context.Context) (any, error) { return skgo4.Skgo_inspect(ctx) }
+
+func action_actions_page_remember(ctx context.Context) (any, error) { return skgo4.Skgo_remember(ctx) }
+
+func action_actions_page_remote(ctx context.Context) (any, error) { return skgo4.Skgo_remote(ctx) }
+
+func action_actions_page_save(ctx context.Context) (any, error) { return skgo4.Skgo_save(ctx) }
+
+func action_actions_page_signIn(ctx context.Context) (any, error) { return nil, skgo4.Skgo_signIn(ctx) }
+
+func action_actions_page_unavailable(ctx context.Context) (any, error) {
+	return nil, skgo4.Skgo_unavailable(ctx)
+}
+
+func action_actions_page_upload(ctx context.Context) (any, error) { return skgo4.Skgo_upload(ctx) }
+
+func action_actions_cross_receive_page_forbidden(ctx context.Context) (any, error) {
+	return nil, skgo5.Skgo_forbidden(ctx)
+}
+
+func action_actions_cross_receive_page_save(ctx context.Context) (any, error) {
+	return skgo5.Skgo_save(ctx)
+}
+
+func action_actions_cross_receive_page_signIn(ctx context.Context) (any, error) {
+	return nil, skgo5.Skgo_signIn(ctx)
+}
+
+func action_actions_cross_receive_page_unavailable(ctx context.Context) (any, error) {
+	return nil, skgo5.Skgo_unavailable(ctx)
+}
+
+func action_actions_default_page_default(ctx context.Context) (any, error) {
+	return skgo6.Skgo_save(ctx)
+}
+
+func action_actions_options_noclient_page_forbidden(ctx context.Context) (any, error) {
+	return nil, skgo8.Skgo_forbidden(ctx)
+}
+
+func action_actions_options_noclient_page_save(ctx context.Context) (any, error) {
+	return skgo8.Skgo_save(ctx)
+}
+
+func action_actions_options_noclient_page_unavailable(ctx context.Context) (any, error) {
+	return nil, skgo8.Skgo_unavailable(ctx)
+}
+
+func action_actions_options_nossr_page_forbidden(ctx context.Context) (any, error) {
+	return nil, skgo9.Skgo_forbidden(ctx)
+}
+
+func action_actions_options_nossr_page_save(ctx context.Context) (any, error) {
+	return skgo9.Skgo_save(ctx)
+}
+
+func action_actions_options_nossr_page_signIn(ctx context.Context) (any, error) {
+	return nil, skgo9.Skgo_signIn(ctx)
+}
+
+func action_actions_options_nossr_page_unavailable(ctx context.Context) (any, error) {
+	return nil, skgo9.Skgo_unavailable(ctx)
+}
+
+func action_actions_profiles_profile_page_save(ctx context.Context) (any, error) {
+	return skgo10.Skgo_save(ctx)
+}
+
+// Actions returns the Go handlers for classic page actions.
+func Actions() []*skgo.PageAction {
+	return []*skgo.PageAction{
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/+page.server.ts", Name: "archive", Run: action_actions_page_archive}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/+page.server.ts", Name: "forbidden", Run: action_actions_page_forbidden}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/+page.server.ts", Name: "inspect", Run: action_actions_page_inspect}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/+page.server.ts", Name: "remember", Run: action_actions_page_remember}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/+page.server.ts", Name: "remote", Run: action_actions_page_remote}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/+page.server.ts", Name: "save", Run: action_actions_page_save}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/+page.server.ts", Name: "signIn", Run: action_actions_page_signIn}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/+page.server.ts", Name: "unavailable", Run: action_actions_page_unavailable}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/+page.server.ts", Name: "upload", Run: action_actions_page_upload}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/cross/receive/+page.server.ts", Name: "forbidden", Run: action_actions_cross_receive_page_forbidden}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/cross/receive/+page.server.ts", Name: "save", Run: action_actions_cross_receive_page_save}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/cross/receive/+page.server.ts", Name: "signIn", Run: action_actions_cross_receive_page_signIn}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/cross/receive/+page.server.ts", Name: "unavailable", Run: action_actions_cross_receive_page_unavailable}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/default/+page.server.ts", Name: "default", Run: action_actions_default_page_default}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/options/no-client/+page.server.ts", Name: "forbidden", Run: action_actions_options_noclient_page_forbidden}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/options/no-client/+page.server.ts", Name: "save", Run: action_actions_options_noclient_page_save}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/options/no-client/+page.server.ts", Name: "unavailable", Run: action_actions_options_noclient_page_unavailable}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/options/no-ssr/+page.server.ts", Name: "forbidden", Run: action_actions_options_nossr_page_forbidden}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/options/no-ssr/+page.server.ts", Name: "save", Run: action_actions_options_nossr_page_save}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/options/no-ssr/+page.server.ts", Name: "signIn", Run: action_actions_options_nossr_page_signIn}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/options/no-ssr/+page.server.ts", Name: "unavailable", Run: action_actions_options_nossr_page_unavailable}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/profiles/[profile]/+page.server.ts", Name: "save", Run: action_actions_profiles_profile_page_save}),
+	}
+}
+
 // Endpoints returns every server route declared in the app, ready to hand
 // to skgo.NewEndpoints.
 func Endpoints() []*skgo.Endpoint {
 	return []*skgo.Endpoint{
-		skgo.NewEndpoint("/api/todos", "GET", skgo7.Skgo_list),
-		skgo.NewEndpoint("/api/todos", "POST", skgo7.Skgo_add),
-		skgo.NewEndpoint("/api/todos", "QUERY", skgo7.Skgo_search),
-		skgo.NewEndpoint("/async-ssr/control/[group]", "GET", skgo9.Skgo_status),
-		skgo.NewEndpoint("/async-ssr/control/[group]", "POST", skgo9.Skgo_release),
+		skgo.NewEndpoint("/actions", "POST", skgo4.Skgo_endpointPost),
+		skgo.NewEndpoint("/actions/default", "GET", skgo6.Skgo_endpointGet),
+		skgo.NewEndpoint("/api/todos", "GET", skgo15.Skgo_list),
+		skgo.NewEndpoint("/api/todos", "POST", skgo15.Skgo_add),
+		skgo.NewEndpoint("/api/todos", "QUERY", skgo15.Skgo_search),
+		skgo.NewEndpoint("/async-ssr/control/[group]", "GET", skgo17.Skgo_status),
+		skgo.NewEndpoint("/async-ssr/control/[group]", "POST", skgo17.Skgo_release),
 	}
 }
 

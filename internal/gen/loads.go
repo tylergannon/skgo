@@ -33,13 +33,55 @@ func (a *app) declareLoadTypes() error {
 // never calls it. So the body throws, and a page that renders data is proof the
 // Go handler answered.
 func (a *app) writeLoadStubs() error {
+	byModule := map[string]*loadFn{}
+	actions := map[string][]*actionFn{}
 	for _, load := range a.loads {
-		fields, err := a.loadFields(load)
-		if err != nil {
-			return err
+		byModule[load.module] = load
+	}
+	for _, action := range a.actions {
+		actions[action.module] = append(actions[action.module], action)
+	}
+	var modules []string
+	for module := range byModule {
+		modules = append(modules, module)
+	}
+	for module := range actions {
+		if byModule[module] == nil {
+			modules = append(modules, module)
+		}
+	}
+	sort.Strings(modules)
+	for _, module := range modules {
+		load := byModule[module]
+		var fields []loadField
+		var err error
+		if load != nil {
+			fields, err = a.loadFields(load)
+			if err != nil {
+				return err
+			}
+		}
+		loadFields := append([]loadField(nil), fields...)
+		for _, action := range actions[module] {
+			for _, typ := range []types.Type{action.out, action.failure} {
+				if typ == nil {
+					continue
+				}
+				actionFields, e := a.loadFields(&loadFn{out: typ, pos: action.pos})
+				if e != nil {
+					return fmt.Errorf("skgo: action %s: %w", action.name, e)
+				}
+				fields = append(fields, actionFields...)
+			}
 		}
 
-		dir := filepath.Dir(load.stub)
+		stub := ""
+		if load != nil {
+			stub = load.stub
+		} else {
+			stub = actions[module][0].stub
+		}
+		dir := filepath.Dir(stub)
 		imports := map[string][]string{}
 		var transported []string
 		for _, field := range fields {
@@ -58,7 +100,9 @@ func (a *app) writeLoadStubs() error {
 
 		var b strings.Builder
 		b.WriteString(tsHeader)
-		b.WriteString("import { building } from '$app/env';\n")
+		if load != nil {
+			b.WriteString("import { building } from '$app/env';\n")
+		}
 
 		if len(transported) > 0 {
 			sort.Strings(transported)
@@ -84,30 +128,75 @@ func (a *app) writeLoadStubs() error {
 		}
 		b.WriteString("\n")
 
-		b.WriteString("// The body throws. This load is implemented in Go, and skgo answers\n")
-		b.WriteString("// __data.json itself, so anything that renders in the browser is proof the\n")
-		b.WriteString("// Go handler replied rather than this module. Kit normally reads the export\n")
-		b.WriteString("// only to learn that the route has server data. Its prerenderer does call it,\n")
-		b.WriteString("// which is refused until Go loads can run during a build (#81).\n")
-		b.WriteString("const unimplemented = (route: string): never => {\n")
-		fmt.Fprintf(&b, "\tif (building) throw new Error('skgo: route ' + route + ' is prerendered, and its branch has a Go server load at ' + %q + '; skgo cannot answer a load while kit prerenders (#81). Remove the prerender or move the load');\n", load.source)
-		b.WriteString("\tthrow new Error('skgo: implemented in Go');\n};\n\n")
+		if load != nil {
+			b.WriteString("// The body throws. This load is implemented in Go, and skgo answers\n")
+			b.WriteString("// __data.json itself, so anything that renders in the browser is proof the\n")
+			b.WriteString("// Go handler replied rather than this module. Kit normally reads the export\n")
+			b.WriteString("// only to learn that the route has server data. Its prerenderer does call it,\n")
+			b.WriteString("// which is refused until Go loads can run during a build (#81).\n")
+			b.WriteString("const unimplemented = (route: string): never => {\n")
+			fmt.Fprintf(&b, "\tif (building) throw new Error('skgo: route ' + route + ' is prerendered, and its branch has a Go server load at ' + %q + '; skgo cannot answer a load while kit prerenders (#81). Remove the prerender or move the load');\n", load.source)
+			b.WriteString("\tthrow new Error('skgo: implemented in Go');\n};\n\n")
 
-		var parts []string
-		for _, field := range fields {
-			optional := ""
-			if field.optional {
-				optional = "?"
+			var parts []string
+			for _, field := range loadFields {
+				optional := ""
+				if field.optional {
+					optional = "?"
+				}
+				parts = append(parts, fmt.Sprintf("%s%s: %s", field.name, optional, field.expr))
 			}
-			parts = append(parts, fmt.Sprintf("%s%s: %s", field.name, optional, field.expr))
+			shape := "Record<string, never>"
+			if len(parts) > 0 {
+				shape = "{ " + strings.Join(parts, "; ") + " }"
+			}
+			fmt.Fprintf(&b, "export const load = (event: { url: URL }): %s => unimplemented(event.url.pathname);\n", shape)
 		}
-		shape := "Record<string, never>"
-		if len(parts) > 0 {
-			shape = "{ " + strings.Join(parts, "; ") + " }"
+		if len(actions[module]) > 0 {
+			b.WriteString("\n// Kit reads these exports for action typing; Go answers every submission.\n")
+			b.WriteString("export const actions = {\n")
+			for _, action := range actions[module] {
+				if action.out != nil && containsDeferred(action.out) {
+					return fmt.Errorf("skgo: action %s cannot return a Deferred", action.name)
+				}
+				shapeFor := func(typ types.Type) (string, error) {
+					if typ == nil {
+						return "void", nil
+					}
+					actionFields, e := a.loadFields(&loadFn{out: typ, pos: action.pos})
+					if e != nil {
+						return "", e
+					}
+					var parts []string
+					for _, field := range actionFields {
+						optional := ""
+						if field.optional {
+							optional = "?"
+						}
+						parts = append(parts, fmt.Sprintf("%s%s: %s", field.name, optional, field.expr))
+					}
+					if len(parts) == 0 {
+						return "Record<string, never>", nil
+					}
+					return "{ " + strings.Join(parts, "; ") + " }", nil
+				}
+				shape, e := shapeFor(action.out)
+				if e != nil {
+					return e
+				}
+				if action.failure != nil {
+					failureShape, e := shapeFor(action.failure)
+					if e != nil {
+						return e
+					}
+					shape += " | import('@sveltejs/kit').ActionFailure<" + failureShape + ">"
+				}
+				fmt.Fprintf(&b, "\t%s: async (_event: { request: Request }): Promise<%s> => { throw new Error('skgo: action implemented in Go'); },\n", action.name, shape)
+			}
+			b.WriteString("};\n")
 		}
-		fmt.Fprintf(&b, "export const load = (event: { url: URL }): %s => unimplemented(event.url.pathname);\n", shape)
 
-		if err := a.write(load.stub, b.String()); err != nil {
+		if err := a.write(stub, b.String()); err != nil {
 			return err
 		}
 	}

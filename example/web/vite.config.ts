@@ -8,6 +8,7 @@ export default defineConfig({
 			adapter: skgo(),
 			// Kit 3 fixes the app's origin at build time.
 			paths: { origin: process.env.ORIGIN ?? 'http://127.0.0.1:8080' },
+			csrf: { trustedOrigins: ['https://trusted.test'] },
 			experimental: { remoteFunctions: true },
 			compilerOptions: { experimental: { async: true } },
 			// `mode: 'auto'` is kit's own default (`list(['auto', 'hash',

@@ -92,7 +92,7 @@ func TestGeneratingAnEmptyAppNeedsNoInstalledAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(list), "{\n\t\"remotes\": [],\n\t\"loads\": [],\n\t\"endpoints\": {}\n}\n"; got != want {
+	if got, want := string(list), "{\n\t\"remotes\": [],\n\t\"loads\": [],\n\t\"actions\": [],\n\t\"endpoints\": {}\n}\n"; got != want {
 		t.Errorf("empty remote list = %q, want %q", got, want)
 	}
 }

@@ -1,0 +1,4 @@
+friction: A compiled `+page.server.ts` can contain only actions; treating every compiled server module as a Go load prevented the action-only page from building and starting. Record load exports separately from action modules in generated/build metadata.
+friction: In development, filling a native form before Kit hydration can concatenate the prerendered input value with the typed replacement (`Ada LovelaceGrace Hopper`). Wait for hydration before typing in scripting-enabled native scenarios; keep the literal receipt assertion.
+correction: A default action receipt did not prove persistence. Read the stored value on a later GET through a separate Go load while keeping the action page itself load-free.
+friction: Playwright leaves the viewport near the clicked lower form. Scroll to the asserted result before the screenshot hook or the image will omit a passing DOM assertion.

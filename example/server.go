@@ -33,7 +33,17 @@ const SessionCookie = "skgo_session"
 // web/src/routes/account/layout.server.go, which turns a signed-out visitor
 // away from every page under /account without any of those pages knowing.
 func Handle(ctx context.Context) error {
-	id, _ := skgo.EventFrom(ctx).Cookie(SessionCookie)
+	event := skgo.EventFrom(ctx)
+	request := event.Request()
+	if request.Method == http.MethodPost && request.URL.Path == "/actions" {
+		switch request.URL.Query().Get("hook") {
+		case "sign-in":
+			return &skgo.Redirect{Status: http.StatusSeeOther, Location: "/actions/signed-in?required=1"}
+		case "forbidden":
+			return skgo.Errorf(http.StatusForbidden, "Hook denied this edit")
+		}
+	}
+	id, _ := event.Cookie(SessionCookie)
 	return skgo.SetLocal(ctx, businesslogic.Default.Session(id))
 }
 
@@ -120,6 +130,10 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	// captures the variable itself and Go resolves the name when the literal
 	// is written, not when it is called.
 	var endpoints *skgo.Endpoints
+	actions, err := skgo.NewActions(generated.Actions()...)
+	if err != nil {
+		return nil, "", err
+	}
 	if proxy != "" {
 		target, err := url.Parse(proxy)
 		if err != nil {
@@ -146,11 +160,13 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		// still goes through to vite, so the browser only ever talks to Go.
 		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			ssr, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
-				Fetch: endpoints.Intercept(http.NotFoundHandler()),
+				Fetch:   endpoints.Intercept(http.NotFoundHandler()),
+				Actions: actions,
 			})
 			if err != nil {
 				return nil, err
 			}
+			handleCfg.ErrorTemplate = ssr.ErrorTemplate()
 			return skgo.NewDevPages(target, manifest, ssr, log.Printf, endpoints), nil
 		}
 	} else {
@@ -162,11 +178,13 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 			// `+server.ts` refuses rather than recursing back into the page
 			// renderer whose own render is what asked for this fetch.
 			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-				Fetch: endpoints.Intercept(http.NotFoundHandler()),
+				Fetch:   endpoints.Intercept(http.NotFoundHandler()),
+				Actions: actions,
 			})
 			if err != nil {
 				return nil, err
 			}
+			handleCfg.ErrorTemplate = ssr.ErrorTemplate()
 			return skgo.NewStaticHandler(dist, skgo.WithSSR(ssr))
 		}
 	}
@@ -183,6 +201,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	remoteCfg.Transport = generated.Transport()
 	loadCfg.Transport = generated.Transport()
 	loadCfg.HandleError = HandleError
+	handleCfg.HandleError = HandleError
 
 	remotes, err := skgo.NewRemotes(remoteCfg, generated.Remotes()...)
 	if err != nil {

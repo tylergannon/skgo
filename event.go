@@ -19,6 +19,8 @@ import (
 type Event struct {
 	req *http.Request
 	jar *cookieJar
+	// A page action shares response headers with the loads that follow it.
+	actionResponse *loadRequest
 	// mutable reports that this call may write cookies, which is true of a
 	// command and of a server load. A query refreshed by a command shares the
 	// command's cookie jar but gets its own immutable event, exactly as kit
@@ -30,6 +32,9 @@ type Event struct {
 	// navigation. Outside a load, the methods that need it answer as they do
 	// on a nil event, because kit forbids reading any of it from a query.
 	load *loadState
+	// A classic page action receives the matched route parameters without
+	// becoming a server load or recording client invalidation dependencies.
+	params map[string]string
 	// endpoint marks the event of a server route. An endpoint owns the
 	// http.ResponseWriter, so it writes cookies and headers with net/http; the
 	// setters here refuse rather than accept something nothing would apply.

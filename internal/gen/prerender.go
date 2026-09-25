@@ -84,6 +84,49 @@ func prerenderLoadMessage(route, source string) string {
 	return fmt.Sprintf("skgo: route %s is prerendered, and its branch has a Go server load at %s; skgo cannot answer a load while kit prerenders (#81). Remove the prerender or move the load", route, source)
 }
 
+// Kit refuses a page with actions whenever the selected branch resolves to a
+// prerenderable value. The leaf alone owns actions; a layout cannot export them.
+func (a *app) checkPrerenderedActions() error {
+	routes := filepath.Join(a.cfg.Web, filepath.FromSlash(routesDir))
+	loadMap := make(map[string]*loadFn, len(a.loads))
+	for _, load := range a.loads {
+		loadMap[filepath.Clean(load.stub)] = load
+	}
+	for _, action := range a.actions {
+		page := filepath.Dir(action.stub)
+		branch, err := selectedLayouts(routes, page, loadMap)
+		if err != nil {
+			return err
+		}
+		value := prerenderFalse
+		for _, dir := range branch {
+			if option, ok, err := nodePrerender(dir, "+layout"); err != nil {
+				return err
+			} else if ok {
+				value = option
+			}
+		}
+		if option, ok, err := nodePrerender(page, "+page"); err != nil {
+			return err
+		} else if ok {
+			value = option
+		}
+		if value == prerenderTrue || value == prerenderAuto {
+			route, err := filepath.Rel(routes, page)
+			if err != nil {
+				return err
+			}
+			if route == "." {
+				route = "/"
+			} else {
+				route = "/" + filepath.ToSlash(route)
+			}
+			return fmt.Errorf("skgo: cannot prerender page %s with actions at %s", route, action.pos)
+		}
+	}
+	return nil
+}
+
 // pageDirs finds kit page nodes, including pages whose component selects a
 // named layout. Module-only pages are page nodes too.
 func pageDirs(routes string) ([]string, error) {

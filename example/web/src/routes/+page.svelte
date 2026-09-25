@@ -79,6 +79,11 @@
 			look: 'The form posts to Go and the page comes back with the answer in it. Disable JavaScript and it still works.'
 		},
 		{
+			name: 'Page form actions',
+			href: '/actions',
+			look: 'Save a profile, reject an invalid edit, and follow a redirect. Try every outcome with and without JavaScript.'
+		},
+		{
 			name: 'HTTP endpoints written in Go',
 			href: '/api',
 			look: 'Kit 3 identifies the route through $app/manifest and sends its new HTTP QUERY method to an ordinary net/http function.'

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"os"
 	"path/filepath"
 	"sort"
@@ -123,7 +124,7 @@ func Run(cfg Config) (err error) {
 	if err != nil {
 		return err
 	}
-	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.endpoints) == 0 && len(app.transported) == 0 {
+	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.actions) == 0 && len(app.endpoints) == 0 && len(app.transported) == 0 {
 		return fmt.Errorf("skgo: found %d source file(s) but no skgo.Query, skgo.Command, skgo.LiveQuery, skgo.Load or skgo.GET declaration in any of them", len(files))
 	}
 	if err := app.checkEndpointDuplicates(); err != nil {
@@ -139,11 +140,27 @@ func Run(cfg Config) (err error) {
 	if err := app.checkPrerenderedLoads(); err != nil {
 		return err
 	}
+	if err := app.checkPrerenderedActions(); err != nil {
+		return err
+	}
 
 	// Types first: the stubs import what polytype emits, so a type that
 	// cannot be projected must stop generation before any stub is written.
 	if err := app.declareLoadTypes(); err != nil {
 		return err
+	}
+	for _, action := range app.actions {
+		if action.out != nil && containsDeferred(action.out) {
+			return fmt.Errorf("skgo: %s: action %s cannot return a Deferred", action.pos, action.name)
+		}
+		for _, typ := range []types.Type{action.out, action.failure} {
+			if typ == nil {
+				continue
+			}
+			if _, err := app.loadFields(&loadFn{out: typ, pos: action.pos}); err != nil {
+				return fmt.Errorf("skgo: action %s: %w", action.name, err)
+			}
+		}
 	}
 	if err := app.generateTypes(); err != nil {
 		return err

@@ -2,6 +2,7 @@ package skgo
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -187,5 +188,38 @@ func TestDevProxyUnreachableTargetIs502(t *testing.T) {
 	}
 	if got := body(t, resp); !strings.Contains(got, "skgo") {
 		t.Errorf("body = %q, want it to name skgo", got)
+	}
+}
+
+func TestDevPageOnlyMethodsAreAnsweredByGo(t *testing.T) {
+	loads := mustLoads(t, nil)
+	actions, err := NewActions(NewPageAction(ActionSpec{
+		Module: "src/routes/a/+page.server.ts", Name: "save",
+		Run: func(ctx context.Context) (any, error) { return nil, nil },
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxied := 0
+	h := &devPages{
+		renderer: &SSR{loads: loads, actions: actions},
+		proxy: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			proxied++
+			w.WriteHeader(http.StatusTeapot)
+		}),
+		appPrefix: "/_app/",
+	}
+	for _, tc := range []struct {
+		method, allow string
+		status        int
+	}{
+		{"OPTIONS", "GET, HEAD, OPTIONS, POST", 204},
+		{"PUT", "GET, POST, OPTIONS, HEAD", 405},
+	} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(tc.method, "/a", nil))
+		if rec.Code != tc.status || rec.Header().Get("Allow") != tc.allow || proxied != 0 {
+			t.Errorf("%s: status %d, Allow %q, proxied %d", tc.method, rec.Code, rec.Header().Get("Allow"), proxied)
+		}
 	}
 }

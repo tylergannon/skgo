@@ -48,7 +48,7 @@ Then('every entry says what to look for', async ({ page, shot }) => {
 
 // By its own name, inside the index — the root layout's nav carries links of its
 // own and several of them name the same pages.
-When('I open the capability {string}', async ({ page }, capability: string) => {
+When('I open the capability {string}', async ({ page, $testInfo }, capability: string) => {
 	const link = page
 		.getByTestId('capabilities')
 		.getByRole('link', { name: capability, exact: true });
@@ -60,7 +60,7 @@ When('I open the capability {string}', async ({ page }, capability: string) => {
 	// before that response has arrived — without this the step after it looks
 	// at the document the visitor was on a moment ago.
 	const target = new URL((await link.getAttribute('href'))!, page.url());
-	await hydrated(page);
+	if ($testInfo.project.name !== 'noscript') await hydrated(page);
 	await link.click();
 	await page.waitForURL(
 		(url) => url.pathname === target.pathname && url.search === target.search,

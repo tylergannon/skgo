@@ -154,11 +154,12 @@ type EndpointConfig struct {
 // manifest.
 func (m Manifest) EndpointConfig(origin string) EndpointConfig {
 	return EndpointConfig{
-		AppDir:   m.AppDir,
-		Base:     m.Base,
-		Origin:   origin,
-		Routes:   m.Routes,
-		manifest: true,
+		AppDir:         m.AppDir,
+		Base:           m.Base,
+		Origin:         origin,
+		TrustedOrigins: m.TrustedOrigins,
+		Routes:         m.Routes,
+		manifest:       true,
 	}
 }
 
@@ -581,7 +582,11 @@ func (es *Endpoints) normalize(urlPath string, u *url.URL) (location string, red
 // form-shaped mutation from another origin is refused before the handler runs.
 // Kit applies it to every non-remote request, which includes every endpoint.
 func (es *Endpoints) csrfForbidden(r *http.Request) bool {
-	if es.cfg.Dev || es.origin == "" {
+	return csrfFormForbidden(r, es.origin, es.cfg.TrustedOrigins, es.cfg.Dev)
+}
+
+func csrfFormForbidden(r *http.Request, origin string, trustedOrigins []string, dev bool) bool {
+	if dev || origin == "" {
 		return false
 	}
 	switch r.Method {
@@ -594,13 +599,13 @@ func (es *Endpoints) csrfForbidden(r *http.Request) bool {
 		return false
 	}
 	requestOrigin := r.Header.Get("Origin")
-	if requestOrigin == es.origin {
+	if requestOrigin == origin {
 		return false
 	}
 	if requestOrigin == "" {
 		return true
 	}
-	for _, trusted := range es.cfg.TrustedOrigins {
+	for _, trusted := range trustedOrigins {
 		if requestOrigin == trusted {
 			return false
 		}

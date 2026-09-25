@@ -86,8 +86,11 @@ func (e *Event) URL() *url.URL {
 
 // Param returns a route parameter, and records that this load depends on it.
 func (e *Event) Param(name string) string {
-	if e == nil || e.load == nil {
+	if e == nil {
 		return ""
+	}
+	if e.load == nil {
+		return e.params[name]
 	}
 	e.load.uses.add(&e.load.uses.params, name)
 	return e.load.shared.params[name]
@@ -165,8 +168,8 @@ func (e *Event) Untrack(fn func()) {
 // SetCookie, and a header may not be set twice — except `server-timing`, which
 // accumulates.
 func (e *Event) SetHeader(name, value string) error {
-	if e == nil || e.load == nil {
-		return Errorf(500, "skgo: response headers can only be set from a server load")
+	if e == nil || (e.load == nil && e.actionResponse == nil) {
+		return Errorf(500, "skgo: response headers can only be set from a server load or page action")
 	}
 	if e.endpoint {
 		return Errorf(500, "skgo: a server route writes its own response — set headers on the http.ResponseWriter")
@@ -176,7 +179,10 @@ func (e *Event) SetHeader(name, value string) error {
 		return Errorf(500, "skgo: use SetCookie to set cookies, not SetHeader")
 	}
 
-	lr := e.load.shared
+	lr := e.actionResponse
+	if e.load != nil {
+		lr = e.load.shared
+	}
 	lr.mu.Lock()
 	defer lr.mu.Unlock()
 	if lr.sealed {
