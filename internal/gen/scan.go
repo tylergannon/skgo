@@ -7,6 +7,7 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -189,7 +190,13 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	if a.links, err = newRouteLinks(cfg, a.hostDir, a.hostModule); err != nil {
 		return nil, err
 	}
-	if err := a.links.sync(); err != nil {
+	var overlay map[string][]byte
+	if cfg.ReadOnly {
+		overlay, err = a.links.overlay()
+		if err != nil {
+			return nil, err
+		}
+	} else if err := a.links.sync(); err != nil {
 		return nil, err
 	}
 
@@ -210,7 +217,7 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	loaded, err := packages.Load(&packages.Config{
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
 			packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
-		Dir: a.hostDir,
+		Dir: a.hostDir, Overlay: overlay,
 	}, patterns...)
 	if err != nil {
 		return nil, fmt.Errorf("skgo: loading remote packages: %w", err)
@@ -219,7 +226,19 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	packages.Visit(loaded, nil, func(p *packages.Package) {
 		for _, e := range p.Errors {
 			if loadErr == nil {
-				loadErr = fmt.Errorf("skgo: %s: %v", p.PkgPath, e)
+				if cfg.ReadOnly {
+					for _, link := range a.links.links {
+						if p.PkgPath == link.importPath {
+							if m := overlayError.FindStringSubmatch(e.Error()); m != nil {
+								loadErr = fmt.Errorf("skgo: %s:%s:%s: %s", filepath.Join(link.dir, m[1]), m[2], m[3], m[4])
+								break
+							}
+						}
+					}
+				}
+				if loadErr == nil {
+					loadErr = fmt.Errorf("skgo: %s: %v", p.PkgPath, e)
+				}
 			}
 		}
 	})
@@ -278,6 +297,8 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	})
 	return a, a.checkDuplicates()
 }
+
+var overlayError = regexp.MustCompile(`(?m)(?:^|/)\d+-([^/\n:]+\.go):(\d+):(\d+): ([^\n]+)`)
 
 // scanFile reads the markers in one `.remote.go`, `page.server.go`,
 // `layout.server.go` or `server.go` file. The file's name decides which markers
