@@ -1,6 +1,6 @@
 # Form actions implementation workflow: inefficiencies
 
-This report is being written while the final proof stage runs. It records work that consumed time without adding required product behavior. Final timings and disposition will be added after the run finishes.
+This report records work that consumed time without adding required product behavior. The Gimble run completed successfully; its elapsed times measure whole stages, not the time wasted within them.
 
 Gimble run: `01M3AJSZ430H9JX3GDX4TKPY4N.implement`, started 2026-09-24 20:48:10 UTC. There is one application under `example/`; the Playwright “projects” below are browser test configurations within that application.
 
@@ -10,8 +10,9 @@ Gimble run: `01M3AJSZ430H9JX3GDX4TKPY4N.implement`, started 2026-09-24 20:48:10 
 | 2 | 18.2 min | Validation and archive; redirect and errors carried into Stage 3 |
 | 3 | 178.8 min | Six composition tasks with repeated stage-wide QA |
 | 4 | 68.5 min | Four form-data, protocol, declaration, and trusted-origin tasks |
+| 5 | 67.8 min | Four fault probes, showcase framing, complete two-mode qualification, and independent QA |
 
-These are stage wall times from Gimble's run record, not estimates of avoidable time. The portion attributable to each inefficiency still needs a separate audit; the entire Stage 3 duration must not be called waste.
+The total run wall time was 371.1 minutes (6 hours 11 minutes). These are stage wall times from Gimble's run record, not estimates of avoidable time. The run record does not isolate the minutes attributable to each inefficiency; the entire Stage 3 duration must not be called waste.
 
 Candidate implementation commit: `8c23f65`. It changes 137 files, with 6,894 added and 643 removed lines. A rough path-based breakdown of added lines is 619 in root Go runtime, 335 in generator/adapter, 1,416 in the one example application's authored source, 1,916 in generated bindings and stubs, 2,548 in tests and Gherkin scenarios, and 60 in this report and actionable worklogs. This explains the diff's size; the classification is not a judgment that every added line is necessary.
 
@@ -33,13 +34,16 @@ Candidate implementation commit: `8c23f65`. It changes 137 files, with 6,894 add
 
 8. **Visible-result framing was deferred until the final stage.** Earlier Stage 3 QA recorded screenshots that scrolled the saved-profile panel out of frame as a small gap. Final fault-probe QA found several passing frames that cropped the receipt or saved state, so the showcase had to be rearranged late. The affected 18 core scenarios then ran in both modes, followed by a 15-scenario upload/shared-route regression in both modes. The page change was necessary to satisfy the plan; deferring the known visual gap caused the extra late regression cycle. **Next time:** fix a screenshot that cannot show the assertion’s claimed state before accepting that slice’s visual proof.
 
+9. **The final development qualification needed two avoidable reruns.** The first complete run reached browser assertions but timed out while saving a screenshot for a newly added route. A focused rerun showed the page state was correct. A later run passed 246 of 247 scenarios because the same Go server process retained a process-global Optional Form counter from a prior run: the scenario expected its independent fixture value of 1 and observed 8. Starting the final development run with a fresh Go process yielded 247 of 247; the built-mode run likewise used a fresh process and yielded 247 of 247. These were capture/process-isolation costs, not defects in the action behavior. **Next time:** start each complete acceptance run on a fresh application process and treat screenshot write failures separately from failed assertions.
+
+10. **Evidence review had both duplication and two retention gaps.** Screenshot policy `all` produced 1,196 PNGs per server mode (781 assertion/report attachments and 415 scene images), but exact hashing reduced the final visual audit to 244 distinct frames across both modes; all attachments were checked against those inspected hashes. That duplicate capture is required by the current plan, so it is not counted as avoidable work here. The four fault probes all had recorded nonzero failures followed by passing restored scenarios, but dedicated HTML reports were retained only for the mutation and native-hydration probes. Independent final QA could not re-open dedicated failure-data and redirect-cookie probe reports. **Next time:** retain the existing Playwright report for each required fault probe at probe time, without adding a new proof system.
+
 ## Required work that was not redundant
 
-The plan explicitly calls for all 36 core journeys, applicable edge scenarios in development and built modes, individual screenshot inspection, and four break-and-restore probes. Those are product acceptance requirements. The probes have now made all four selected scenarios fail for their intended broken behavior and pass after exact restoration. The final full-suite qualification remains in progress.
+The plan explicitly calls for all 36 core journeys, applicable edge scenarios in development and built modes, individual screenshot inspection, and four break-and-restore probes. Those are product acceptance requirements. The probes made all four selected scenarios fail for their intended broken behavior and pass after exact restoration. The one existing example application is the proof surface; no additional example app, browser configuration, fault framework, runner, dashboard, or evidence manifest was added.
 
-## Final audit pending
+## Final disposition
 
-- Add measured elapsed time and the final Gimble run result.
-- Confirm whether the last showcase review found a concrete visual defect or only optional polish.
-- Record final suite counts, screenshots inspected, and any unresolved claim.
-- Separate implementation defects from tool, fixture, and workflow costs in the delivery summary.
+Gimble ended with a passing independent QA verdict on implementation commit `8c23f6557a17b1ae3eb2c8a6eb437ff46d01df65`. The final development and built-Go reports each recorded 247 passed, 0 skipped, including all 36 core journeys across the two configured Playwright projects and three submission paths. The final validator checked every attachment, examined the distinct frames, opened key frames at full size, and exercised native save, validation, and redirect against the built Go server. Go tests, vet, build, and generated Svelte type checking passed.
+
+No behavioral acceptance scenario remains unmet. The remaining small visual gap is that some upload and encoding screenshots show the receipt and saved profile while the originating controls are below the viewport. The two missing dedicated fault-probe HTML reports limit later independent inspection of those prior nonzero runs; they do not undo the recorded break-and-restore results. The final QA found no substantial gap. The final Playwright reports are under `example/e2e/playwright-report/actions-final-qual-{dev,prod}-clean/`; their assertion screenshots are under `example/e2e/screenshots/actions-final-qual-{dev,prod}-clean/`.
