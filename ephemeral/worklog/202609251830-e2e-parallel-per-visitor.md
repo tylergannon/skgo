@@ -21,3 +21,13 @@ workspace) killed the server with `concurrent map writes`. Fixed in event.go;
 finding: kit runs a skipped parent server load when a child calls `parent()`
 (`runtime/server/data/index.js`), so /account → Orders → Overview → refresh is
 serial 3, not 2. The old "serial has changed" assertion hid this.
+
+trap: local timings are worthless while another session runs a suite on the
+same machine. Load average 17-20 turned dev at 4 workers from 56s into 78-93s
+and made dev look like it stopped scaling. Check `pgrep -f "playwright/test/cli.js"`
+and `uptime` before trusting a number.
+
+finding: GitHub's 4-vCPU runners are fastest at 4 workers and no faster at 6
+(prod 70/69s vs 73/60s; dev 116/99s vs 95/120s). `gh workflow run
+qualification.yml --ref <throwaway branch>` with a worker matrix measured it in
+one dispatch.
