@@ -19,9 +19,26 @@ not know how it is judged.
   - **fail**: at least one named check ran and failed, or was skipped
   - **unknown**: no check is named, so we do not have it and cannot say
   A cell may also be marked planned, which is unknown with a stated intent.
-- Live Go server, not a static build. The matrix reflects the most recent
-  validation run regardless of the site's own release cycle. The runner
-  writes one status record per cell; the site's Go load reads them.
+- The site works with JavaScript off because graceful degradation is a
+  premise of SvelteKit, and skgo inherits kit's premises. Not because it is
+  documentation.
+- The site is a live skgo server whose docs pages are prerendered and whose
+  matrix, forms and status feed are dynamic. Both halves are cells.
+  "Static export of a whole site" is its own cell; today the matrix says
+  prerendering is Limited (a branch with a Go server load cannot be
+  prerendered, prerendered redirects are refused, no build-time remote
+  execution). Whether skgo can build a purely static site is therefore a
+  matrix question with a current answer of partly, and the site should make
+  that answer visible rather than assume it.
+- The matrix reflects the most recent validation run regardless of the
+  site's own release cycle. The runner writes one status record per cell;
+  the site's Go load reads them.
+- Cells demonstrate unhappy paths too, in place: a form that rejects bad
+  input and keeps the fields, a 404, an error boundary, a forbidden action, a
+  redirect after a submit. The site is not limited to the happy path; the
+  example app already shows failure modes and the site shows them the same
+  way. What the site cannot do is exhaustive contract coverage; that is what
+  the named tests are for.
 - Headline widens from "A Go backend for SvelteKit" toward full Go tooling
   for SvelteKit, because `skgo check`, the advice analyzers and the MCP
   server exist. Every word still has to be demonstrable; the tooling cells
