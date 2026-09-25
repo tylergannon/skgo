@@ -48,6 +48,31 @@ not know how it is judged.
   moves is interpretation: `skgo-project` reads results and turns them into
   cell status.
 
+## Red team
+
+`skgo-project` hosts agent loops that use the site as a black box and try
+to break it. They never see, read, or are told about `skgo`'s source; they
+get the running site, its user documentation, and a brief. This is the
+reason the two repos are separate: `skgo` stays narrow and has no agents in
+it, and the agents that hammer it live where the intent lives.
+
+- Same rule `gimble run validate-product` already enforces: testers never
+  inspect the implementation of the product under test. The red team is
+  that rule made standing rather than occasional.
+- Not a mapped pathway suite. Exploratory: load it up, turn JavaScript off,
+  submit garbage, race two tabs, resubmit a form, hit back after a redirect,
+  poke the JSON routes directly, whatever a hostile or clumsy user would do.
+- Requires enough surface to be worth attacking: real actions, a database
+  behind something (the junkyard guestbook was paid for and is the obvious
+  seed), sessions, uploads, streaming. The site grows features partly so the
+  red team has something to break.
+- Output is findings filed as issues against `skgo`, with screenshots read
+  by a cheap model first. Findings do not flip matrix cells; cells are
+  driven by named checks. A finding that reveals a missing check becomes a
+  new named check, and then the cell can fail honestly.
+- Runs on a cadence or after a substantial change, from `skgo-project`'s own
+  workflows. Never from `skgo`'s CI.
+
 ## Open questions
 
 - **Hosting.** For now: serve from Tyler's machine behind a Cloudflare tunnel.
