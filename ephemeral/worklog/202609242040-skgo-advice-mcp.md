@@ -1,0 +1,2 @@
+decision: The stdio MCP check tool returns the same structured report as skgo check --json and sets isError when report.ok is false; missing tools or incomplete checkers must remain visible in both fields.
+decision: Rule guidance is bundled with the binary and identifies its skgo build version plus the pinned Kit version that grounded its examples; diagnostic documentation points to skgo advice CODE.

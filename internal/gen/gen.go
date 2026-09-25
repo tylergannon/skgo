@@ -43,6 +43,9 @@ type Config struct {
 	Package string
 	// Logf receives one line per file written. It may be nil.
 	Logf func(format string, args ...any)
+	// ReadOnly makes package loading verify generated route links instead of
+	// synchronizing them. It is used only by Check.
+	ReadOnly bool
 }
 
 // Run scans, generates, and reports what it wrote.
@@ -129,6 +132,9 @@ func Run(cfg Config) (err error) {
 	}
 
 	if err := app.checkFileUsage(); err != nil {
+		return err
+	}
+	if err := app.checkWireFields(); err != nil {
 		return err
 	}
 	if err := app.checkPrerenderedLoads(); err != nil {

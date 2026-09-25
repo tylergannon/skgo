@@ -173,6 +173,9 @@ func (h Handle) Intercept(cfg HandleConfig, next http.Handler) http.Handler {
 
 		isData := hasDataSuffix(path)
 		isRemote := strings.HasPrefix(path, remotePrefix)
+		if rejectReservedQuery(w, r, isData, isRemote) {
+			return
+		}
 
 		e := &Event{req: r, jar: newCookieJar(r, false)}
 		ctx := withEvent(r.Context(), e)

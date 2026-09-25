@@ -673,6 +673,9 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"message": "Cross-site remote requests are forbidden"})
 		return
 	}
+	if rejectReservedQuery(w, r, false, true) {
+		return
+	}
 
 	rest := strings.TrimPrefix(r.URL.Path, rs.prefix)
 	parts := strings.Split(rest, "/")

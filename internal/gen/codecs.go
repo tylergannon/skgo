@@ -163,6 +163,9 @@ func (a *app) generateCodecs() error {
 	if err != nil {
 		return fmt.Errorf("skgo: generating devalue codecs: %w", err)
 	}
+	if a.cfg.ReadOnly {
+		return nil
+	}
 	return a.writeGo(filepath.Join(a.cfg.Out, devalueCodecsFile), string(out))
 }
 

@@ -56,6 +56,9 @@ func (ls *Loads) Intercept(next http.Handler) http.Handler {
 
 // ServeHTTP answers one `__data.json` request.
 func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if rejectReservedQuery(w, r, true, false) {
+		return
+	}
 	if ls.devRefresh != nil {
 		if err := ls.devRefresh(); err != nil {
 			http.Error(w, err.Error(), http.StatusBadGateway)

@@ -15,12 +15,18 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"golang.org/x/term"
+	"golang.org/x/tools/go/analysis/unitchecker"
 
+	"github.com/tylergannon/skgo/internal/advice"
+	"github.com/tylergannon/skgo/internal/check"
 	"github.com/tylergannon/skgo/internal/gen"
 	"github.com/tylergannon/skgo/internal/newapp"
 )
@@ -29,9 +35,18 @@ const usage = `usage:
 	skgo new [flags] DIR [-- SV_CREATE_OPTIONS]
 	                          create a SvelteKit application served by Go
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
+	skgo check [flags]        check Go, Svelte, lint and formatting without edits
+	skgo advice [--json] [SKGO001..SKGO008]
+	                          show installed rule guidance and repair examples
+	skgo mcp                 serve check and advice tools over stdio MCP
 `
 
 func main() {
+	// go vet invokes this binary as an analysis driver with leading flags.
+	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "-") {
+		unitchecker.Main(advice.Analyzer)
+		return
+	}
 	if len(os.Args) < 2 {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
@@ -41,9 +56,74 @@ func main() {
 		newProject(os.Args[2:])
 	case "generate":
 		generate(os.Args[2:])
+	case "check":
+		checkProject(os.Args[2:])
+	case "advice":
+		showAdvice(os.Args[2:])
+	case "mcp":
+		if len(os.Args) != 2 {
+			fmt.Fprint(os.Stderr, usage)
+			os.Exit(2)
+		}
+		if err := serveMCP(os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
+	}
+}
+
+func showAdvice(args []string) {
+	fs := flag.NewFlagSet("advice", flag.ExitOnError)
+	jsonOutput := fs.Bool("json", false, "write structured JSON guidance")
+	_ = fs.Parse(args)
+	if fs.NArg() > 1 {
+		fs.Usage()
+		os.Exit(2)
+	}
+	entries := advice.Catalog()
+	if fs.NArg() == 1 {
+		entry, ok := advice.Lookup(fs.Arg(0))
+		if !ok {
+			fmt.Fprintf(os.Stderr, "unknown skgo advice code %q\n", fs.Arg(0))
+			os.Exit(2)
+		}
+		entries = []advice.Entry{entry}
+	}
+	if *jsonOutput {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		_ = encoder.Encode(entries)
+		return
+	}
+	for _, entry := range entries {
+		fmt.Printf("%s: %s (skgo %s; Kit %s)\n%s\nRepair: %s\nExample:\n%s\n\n", entry.Code, entry.Title, entry.Version, entry.KitVersion, entry.Consequence, entry.Repair, entry.Example)
+	}
+}
+
+func checkProject(args []string) {
+	fs := flag.NewFlagSet("check", flag.ExitOnError)
+	root := fs.String("root", ".", "project root containing go.mod")
+	web := fs.String("web", "web", "frontend root, relative to --root")
+	out := fs.String("out", "", "generated Go bindings directory, relative to --root; detected when omitted")
+	jsonOutput := fs.Bool("json", false, "write a structured JSON report")
+	_ = fs.Parse(args)
+	if fs.NArg() != 0 {
+		fs.Usage()
+		os.Exit(2)
+	}
+	report := check.Run(context.Background(), check.Options{Root: *root, Web: *web, Out: *out})
+	if *jsonOutput {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		_ = encoder.Encode(report)
+	} else {
+		fmt.Print(check.RenderHuman(report))
+	}
+	if !report.OK {
+		os.Exit(1)
 	}
 }
 

@@ -508,6 +508,9 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// one — it has to run the form and then render the page again with the
 	// outcome in it. Everything else this handler serves is a file.
 	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
+		if rejectReservedQuery(w, r, hasDataSuffix(r.URL.Path), false) {
+			return
+		}
 		if h.ssr != nil {
 			if urlPath, ok := normalizePath(r.URL.Path); ok && h.ssr.servePageMethod(w, r, urlPath) {
 				return
@@ -536,6 +539,9 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// `/todos/__data.json` was answered 200 with the boot document and kit's
 	// client parsed HTML as JSON.
 	if suffix := kitSuffix(urlPath); suffix != "" {
+		if rejectReservedQuery(w, r, suffix == dataSuffix || suffix == htmlDataSuffix, false) {
+			return
+		}
 		h.refuseInternalRequest(w, r, suffix)
 		return
 	}
@@ -578,6 +584,9 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Location", location)
 		w.WriteHeader(http.StatusPermanentRedirect)
+		return
+	}
+	if rejectReservedQuery(w, r, false, false) {
 		return
 	}
 

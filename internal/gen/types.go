@@ -47,7 +47,7 @@ func (a *app) project(t types.Type) (tsType, error) {
 func (a *app) projectType(t types.Type, promises bool) (tsType, error) {
 	if inner, ok := deferredElem(t); ok {
 		if !promises {
-			return tsType{}, fmt.Errorf("%s is a Deferred; only a load's result may promise a value", t)
+			return tsType{}, fmt.Errorf("%s is a Deferred; only a load's result may promise a value. Return a resolved value here, or move deferred work into a server load", t)
 		}
 		projected, err := a.projectType(inner, true)
 		if err != nil {
@@ -56,7 +56,7 @@ func (a *app) projectType(t types.Type, promises bool) (tsType, error) {
 		return tsType{expr: "Promise<" + projected.expr + ">", deps: projected.deps, transported: projected.transported}, nil
 	}
 	if !promises && containsDeferred(t) {
-		return tsType{}, fmt.Errorf("%s holds a Deferred; only a load's result may promise a value", t)
+		return tsType{}, fmt.Errorf("%s holds a Deferred; only a load's result may promise a value. Return resolved values here, or move deferred work into a server load", t)
 	}
 
 	// Since Go 1.23 an alias is its own node in the type graph rather than
@@ -410,6 +410,9 @@ func (a *app) projectTypes(set *namedTypes) error {
 		}
 	}
 
+	if a.cfg.ReadOnly {
+		return nil
+	}
 	if err := os.MkdirAll(set.tsDir, 0o755); err != nil {
 		return err
 	}
@@ -452,7 +455,7 @@ func importSpecifier(fromDir, tsDir string) (string, error) {
 func (a *app) checkFileUsage() error {
 	for _, fn := range a.remotes {
 		if containsFile(fn.out) {
-			return fmt.Errorf("skgo: %s: %s returns a skgo.File. A File travels from the browser to a form only; a result is serialised as JSON and cannot carry one", fn.pos, fn.name)
+			return fmt.Errorf("skgo: %s: %s returns a skgo.File%s. A File travels from the browser to a form only; a result is serialised as JSON and cannot carry one. Return file metadata or a download URL instead", fn.pos, fn.name, fileFieldLocation(fn.out, fn.goPkg.pkg.Fset))
 		}
 		if fn.kind == kindForm || !containsFile(fn.in) {
 			continue
@@ -461,7 +464,7 @@ func (a *app) checkFileUsage() error {
 	}
 	for _, load := range a.loads {
 		if containsFile(load.out) {
-			return fmt.Errorf("skgo: %s: %s returns a skgo.File, which cannot be serialised into a load's data", load.pos, load.name)
+			return fmt.Errorf("skgo: %s: %s returns a skgo.File%s, which cannot be serialised into a load's data. Return file metadata or a download URL instead", load.pos, load.name, fileFieldLocation(load.out, load.goPkg.pkg.Fset))
 		}
 	}
 	for _, action := range a.actions {
@@ -487,6 +490,9 @@ func findFile(t types.Type, seen map[types.Type]bool) bool {
 		return false
 	}
 	seen[t] = true
+	if inner, ok := deferredElem(t); ok {
+		return findFile(inner, seen)
+	}
 
 	switch u := t.(type) {
 	case *types.Named:
@@ -496,7 +502,7 @@ func findFile(t types.Type, seen map[types.Type]bool) bool {
 		return findFile(u.Underlying(), seen)
 	case *types.Struct:
 		for i := 0; i < u.NumFields(); i++ {
-			if findFile(u.Field(i).Type(), seen) {
+			if u.Field(i).Exported() && reflect.StructTag(u.Tag(i)).Get("json") != "-" && findFile(u.Field(i).Type(), seen) {
 				return true
 			}
 		}

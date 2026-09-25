@@ -101,6 +101,9 @@ func (h *devPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// browser falls back to talking to vite directly — which is exactly the
 	// arrangement the proxy exists to prevent.
 	if ok && !isUpgrade(r) && h.isDocument(urlPath) {
+		if rejectReservedQuery(w, r, false, false) {
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
 			end, err := h.renderer.beginDevRender()
 			if err != nil {

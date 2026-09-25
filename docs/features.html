@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="SvelteKit server feature support in skgo, including routing, loads, remote functions, deployment, and developer tooling.">
+  <title>SvelteKit feature support · skgo</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="nav wrap">
+    <a class="mark" href="./index.html" aria-label="skgo home"><img src="./wordmark-warm.svg" alt=""></a>
+    <nav aria-label="Primary">
+      <a href="./index.html">Overview</a>
+      <a href="#pages-and-routing">Pages</a>
+      <a href="#mutations-and-remote-functions">Remotes</a>
+      <a href="#build-and-developer-tooling">Tooling</a>
+      <a href="https://github.com/tylergannon/skgo">GitHub</a>
+    </nav>
+  </header>
+  <main>
+    <section class="hero wrap feature-intro">
+      <p class="eyebrow">skgo compatibility</p>
+      <h1>SvelteKit feature support</h1>
+      <p class="lede">The server features you can use today, their limits, and what is being built next.</p>
+      <p>These rows cover SvelteKit's server-facing features and the tooling needed to build a skgo app. <strong>Available</strong> means the current Go implementation has a working example or focused test; it does not promise every edge case of the upstream API. <strong>Limited</strong> names a narrower supported case. <strong>WIP</strong> is active work, not a released feature. <strong>Not supported</strong> means skgo has no compatible implementation. <strong>Not verified</strong> means this repository does not yet establish the behavior.</p>
+      <p class="status">The upstream links describe SvelteKit generally. skgo follows the <a href="https://github.com/tylergannon/skgo/blob/main/example/web/package.json">pinned Kit 3 prerelease</a>, which may differ from the public documentation. Application I/O and every server endpoint belong in Go.</p>
+      <nav class="feature-jump" aria-label="Feature categories">
+        <a href="#pages-and-routing">Pages and routing</a>
+        <a href="#requests-and-server-behavior">Requests and server behavior</a>
+        <a href="#mutations-and-remote-functions">Mutations and remotes</a>
+        <a href="#build-and-developer-tooling">Build and tooling</a>
+      </nav>
+    </section>
+<section id="pages-and-routing" class="section wrap feature-group">
+  <h2>Pages and routing</h2>
+  <div class="table feature-table"><table>
+    <thead><tr><th scope="col">SvelteKit feature</th><th scope="col">skgo</th><th scope="col">Boundary or example</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/routing">Svelte 5 pages, server rendering and hydration</a></th><td><span class="feature-status available">Available</span></td><td>Kit&#x27;s renderer runs in Go; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/ssr.feature">cold HTML and hydration</a> are exercised.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/routing">Client-side navigation</a></th><td><span class="feature-status available">Available</span></td><td>Kit&#x27;s client navigates without a document reload; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/app.feature">browser scenario</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/routing">Layouts, route groups and nested error pages</a></th><td><span class="feature-status available">Available</span></td><td><a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/colocation.feature">Grouped routes</a>, <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/loads.feature">nested loads</a> and <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/showcase.feature">error boundaries</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/advanced-routing">Dynamic and rest route parameters</a></th><td><span class="feature-status available">Available</span></td><td>Parameters reach colocated Go handlers; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/colocation.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/advanced-routing">Optional parameters and parameter matchers</a></th><td><span class="feature-status limited">Limited</span></td><td>Optional captures are decoded; JavaScript parameter matcher functions are not run by Go.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/load">Page and layout server loads</a></th><td><span class="feature-status available">Available</span></td><td>Go loads produce typed <code>data</code> in documents and <code>__data.json</code>; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/loads.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/load#Universal-vs-server">Universal JavaScript loads</a></th><td><span class="feature-status unverified">Not verified</span></td><td>Page options in <code>+page.ts</code> work, but there is no demonstrated universal <code>load</code>; application I/O in JavaScript is outside skgo&#x27;s contract.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/load">Parent load data, URL, params and route ID</a></th><td><span class="feature-status available">Available</span></td><td>Go exposes <code>Parent</code> and request data through <code>EventFrom</code>; <a href="https://github.com/tylergannon/skgo/blob/main/example/web/src/routes/account/page.server.go">nested example</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/load#Rerunning-load-functions">Load dependencies, invalidation and untrack</a></th><td><span class="feature-status limited">Limited</span></td><td>Go has <code>Depends</code> and <code>Untrack</code>; the <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/loads.feature">browser suite</a> proves reuse of a layout load, not every invalidation path.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/load#Streaming-with-promises">Streaming load promises</a></th><td><span class="feature-status available">Available</span></td><td>Deferred Go values stream into HTML and client navigation; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/stream.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/errors">Expected errors, redirects and error pages</a></th><td><span class="feature-status available">Available</span></td><td>Go load and remote outcomes use Kit&#x27;s page/error behavior; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/ssr.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/page-options"><code>ssr = false</code> and <code>csr = false</code></a></th><td><span class="feature-status available">Available</span></td><td>SPA fallback and script-free HTML are <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/ssr.feature">browser exercised</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/page-options#prerender">Prerendering</a></th><td><span class="feature-status limited">Limited</span></td><td>Kit-built static files are served; a branch with a Go server load cannot be prerendered, and prerendered redirects are refused.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/page-options#entries">Dynamic prerender entries</a></th><td><span class="feature-status unverified">Not verified</span></td><td>There is no demonstrated <code>entries</code> generator in the example.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/page-options">Trailing slash and route config options</a></th><td><span class="feature-status limited">Limited</span></td><td>Default trailing-slash redirect is <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/routes.feature">exercised</a>; other per-route options are not established.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<section id="requests-and-server-behavior" class="section wrap feature-group">
+  <h2>Requests and server behavior</h2>
+  <div class="table feature-table"><table>
+    <thead><tr><th scope="col">SvelteKit feature</th><th scope="col">skgo</th><th scope="col">Boundary or example</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/routing#+server"><code>+server</code> endpoints and HTTP methods</a></th><td><span class="feature-status available">Available</span></td><td><code>net/http</code> handlers serve Kit routes, including <code>QUERY</code>; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/routes.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/routing#+server">Page, endpoint and action on one route</a></th><td><span class="feature-status wip">WIP</span></td><td>Shared dispatch with a classic action is in the form-actions work.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/load#Cookies">Cookies and request-local state</a></th><td><span class="feature-status available">Available</span></td><td><code>EventFrom</code>, <code>SetCookie</code> and typed locals support the <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/auth.feature">sign-in example</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/load#Headers">Response headers from loads</a></th><td><span class="feature-status available">Available</span></td><td>Go <code>Event.SetHeader</code> follows Kit&#x27;s duplicate-header and cookie rules; <a href="https://github.com/tylergannon/skgo/blob/main/loadevent.go">implementation</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/hooks"><code>handle</code> and <code>handleError</code> hooks</a></th><td><span class="feature-status available">Available</span></td><td>Go hooks cover requests and public errors; <a href="https://github.com/tylergannon/skgo/blob/main/example/server.go">example</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/hooks"><code>handleFetch</code>, <code>handleValidationError</code>, <code>reroute</code> and server <code>init</code> hooks</a></th><td><span class="feature-status unsupported">Not supported</span></td><td>No Go equivalents are exposed.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/load#Making-fetch-requests">Server-side <code>fetch</code></a></th><td><span class="feature-status limited">Limited</span></td><td>Rendering can call back to Go for same-origin endpoints; general application network I/O from JavaScript is not supported.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/hooks#Universal-hooks">Custom transport types</a></th><td><span class="feature-status available">Available</span></td><td>Paired Go and Kit transport hooks preserve methods; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/transport.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/auth">Authentication and authorization</a></th><td><span class="feature-status available">Available</span></td><td>A Go <code>handle</code> hook supplies session locals and a layout load guards routes; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/auth.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/configuration#csp">Content Security Policy</a></th><td><span class="feature-status available">Available</span></td><td>Nonces cover rendered and streamed documents; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/csp.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/configuration#csrf">CSRF and origin checks</a></th><td><span class="feature-status limited">Limited</span></td><td>Remote mutations check the build-time origin; <a href="https://github.com/tylergannon/skgo/blob/main/remote.go">remote implementation</a>. Classic action rules are WIP.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/environment-variables">Environment variables and platform context</a></th><td><span class="feature-status limited">Limited</span></td><td>Go server code uses Go environment and request context; Kit&#x27;s JavaScript server env modules and host-specific <code>platform</code> adapters are not skgo APIs.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/server-only-modules">Server-only module isolation</a></th><td><span class="feature-status limited">Limited</span></td><td>Kit&#x27;s frontend build keeps its client/server module rules; application server logic belongs in Go, not JavaScript modules.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/$app-server#read">Server asset <code>read</code></a></th><td><span class="feature-status unverified">Not verified</span></td><td>The Kit export is present in the SSR bundle, but there is no demonstrated asset read through skgo&#x27;s Go renderer. Application I/O belongs in Go.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/observability">Server instrumentation and tracing</a></th><td><span class="feature-status unsupported">Not supported</span></td><td>Kit&#x27;s <code>instrumentation.server</code> JavaScript hook is not a Go hook. Use Go instrumentation in the host application.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<section id="mutations-and-remote-functions" class="section wrap feature-group">
+  <h2>Mutations and remote functions</h2>
+  <div class="table feature-table"><table>
+    <thead><tr><th scope="col">SvelteKit feature</th><th scope="col">skgo</th><th scope="col">Boundary or example</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/remote-functions#query">Remote queries and arguments</a></th><td><span class="feature-status available">Available</span></td><td>Typed Go queries render on the server and answer client requests; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/remote.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/remote-functions#query.batch">Batch queries</a></th><td><span class="feature-status available">Available</span></td><td>Calls combine into one Go batch; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/batch.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/remote-functions#query.live">Live queries</a></th><td><span class="feature-status available">Available</span></td><td>Initial SSR value and subsequent pushes are <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/live.feature">browser exercised</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/remote-functions#command">Commands and single-flight refresh</a></th><td><span class="feature-status available">Available</span></td><td>Go commands refresh requested queries in the same response; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/refresh.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/remote-functions#form">Remote forms, validation and file uploads</a></th><td><span class="feature-status available">Available</span></td><td>Typed fields, issues, dirty state and upload bytes are <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/form.feature">browser exercised</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/remote-functions#form">Remote forms without JavaScript</a></th><td><span class="feature-status available">Available</span></td><td>Native POST returns a rendered page and survives hydration; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/form-noscript.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/form-actions">Classic page form actions</a></th><td><span class="feature-status wip">WIP</span></td><td>Go <code>+page.server</code> default/named actions, <code>use:enhance</code> and their route behavior are being built in a separate task.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/remote-functions#prerender">Remote prerender functions</a></th><td><span class="feature-status unsupported">Not supported</span></td><td>There is no Go build-time remote-function execution path.</td></tr>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/routing">TypeScript server implementations</a></th><td><span class="feature-status unsupported">Not supported</span></td><td>Remote bodies, server loads, actions and endpoints must be Go; generated TypeScript stubs throw.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<section id="build-and-developer-tooling" class="section wrap feature-group">
+  <h2>Build and developer tooling</h2>
+  <div class="table feature-table"><table>
+    <thead><tr><th scope="col">Capability</th><th scope="col">skgo</th><th scope="col">Boundary or example</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><a href="https://svelte.dev/docs/kit/creating-a-project">Create a project with <code>sv</code></a></th><td><span class="feature-status available">Available</span></td><td><code>skgo new</code> delegates to <code>sv create</code> and adds the Go adapter, Vitest and Storybook.</td></tr>
+      <tr><th scope="row">Generate Go registrations and TypeScript types</th><td><span class="feature-status available">Available</span></td><td><code>skgo generate</code> produces typed bindings and throwing Kit stubs; <a href="https://github.com/tylergannon/skgo/blob/main/internal/gen/gen.go">generator</a>.</td></tr>
+      <tr><th scope="row">Development server and hot updates</th><td><span class="feature-status available">Available</span></td><td>Go serves documents while Vite serves modules and HMR; <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features/zz-source-update.feature">browser scenarios</a>.</td></tr>
+      <tr><th scope="row">Single-binary build and static assets</th><td><span class="feature-status available">Available</span></td><td>The generated project&#x27;s <a href="https://github.com/tylergannon/skgo/blob/main/internal/newapp/gofiles/Justfile.tmpl">build recipe</a> embeds the client, assets and SSR bundle in a Go binary. Node is a build-time dependency.</td></tr>
+      <tr><th scope="row">Go tests and browser scenarios</th><td><span class="feature-status available">Available</span></td><td><code>go test</code> and the <a href="https://github.com/tylergannon/skgo/blob/main/example/e2e/features">Gherkin/Playwright suite</a> cover the example; run both development and built-server modes.</td></tr>
+      <tr><th scope="row">Svelte and TypeScript checking</th><td><span class="feature-status available">Available</span></td><td>The example has <code>svelte-kit sync &amp;&amp; svelte-check</code>; <a href="https://github.com/tylergannon/skgo/blob/main/example/web/package.json">package script</a>. This is not yet an integrated skgo command.</td></tr>
+      <tr><th scope="row">Vitest component tests and Storybook</th><td><span class="feature-status available">Available</span></td><td><code>skgo new</code> provisions both through upstream tooling; <a href="https://github.com/tylergannon/skgo/blob/main/internal/newapp/newapp.go">scaffolder</a>.</td></tr>
+      <tr><th scope="row">Unified checking, linting and formatting</th><td><span class="feature-status wip">WIP</span></td><td>The separate agent-tooling task is developing a single skgo command; no <code>skgo check --fix</code> is released.</td></tr>
+      <tr><th scope="row">skgo MCP tools and versioned documentation server</th><td><span class="feature-status wip">WIP</span></td><td>The separate agent-tooling task is designing and implementing these; they are not shipped here.</td></tr>
+      <tr><th scope="row">Host-specific adapters and Node runtime deployment</th><td><span class="feature-status unsupported">Not supported</span></td><td>skgo uses its own adapter and a Go process; Kit&#x27;s Node, serverless and edge adapters are different deployment targets.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+  </main>
+  <footer class="wrap">
+    <a class="mark" href="./index.html" aria-label="skgo home"><img src="./wordmark-warm.svg" alt=""></a>
+    <p>skgo is pronounced "skay-go". MIT licensed.</p>
+    <a href="https://github.com/tylergannon/skgo">github.com/tylergannon/skgo</a>
+  </footer>
+</body>
+</html>
