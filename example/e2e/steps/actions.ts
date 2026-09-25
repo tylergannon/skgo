@@ -169,6 +169,7 @@ Then('the Actions page shows the Grace receipt and saved profile', async ({ page
 });
 
 When('I exercise the hydrated Actions client', async ({ page, documents, data, remotes, notes }) => {
+	await hydrated(page);
 	const before = [documents.count, data.count, remotes.count];
 	await page.getByTestId('client-interaction').click();
 	await expect(page.getByTestId('client-interaction-done')).toHaveText('Client interaction complete');
