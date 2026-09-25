@@ -44,7 +44,7 @@ A screenshot proves the product renders. It cannot prove an API contract, and
 skgo's contracts are HTTP: status, headers, body shape, cookies, the rendered
 document's markup. Those are asserted exactly, in Go, against the real handler,
 in milliseconds. A browser adds one thing: kit's own client acting on Go's
-answers. That is what the browser tier is for.
+answers. That is what the browser run is for.
 
 Classification rule for a browser scenario, applied **per scenario by its
 complete claim**, never per feature file: if the whole claim could be made
@@ -145,7 +145,7 @@ more PR.
   is a later cut, made after the reduced suite's dev time is measured and
   with a per-page coverage argument, not before.
 - What is lost, stated plainly: a green run whose page is visually blank but
-  whose assertions pass will not be seen at this tier. The worklog records
+  whose assertions pass will not be seen by the browser run. The worklog records
   that screenshots caught exactly that once, on a noscript `ssr = false`
   shell. The defence here is the assertion discipline issue #183 already
   requires: every retained scenario asserts positive, literal, visible
@@ -224,7 +224,7 @@ deleted, not made optional, and the text is rewritten, not softened.
   it cites is the codex agent's own worklog overriding an agent-written issue.
   The owner's decision is this session's instruction to remove the dossier.
   The substantive residue of the objection, the blank-page catch, is kept
-  above under Tier 2.
+  above under the browser run.
 - "Build tags or a separate package would be a better split than `-short`."
   Moot: after the owner's review the split is gone entirely. The full run is
   made fast instead, and a `-short` tier is deferred until a measurement
