@@ -88,14 +88,13 @@ async function receipt(page: Page) {
 	await expect(page.getByTestId('action-status')).toHaveText('Status 200');
 	await expect(page.getByTestId('action-receipt')).toHaveText('Saved Grace Hopper');
 	await expect(page.getByTestId('action-money')).toHaveText('$7.50');
-	await page.evaluate(() => window.scrollTo(0, 0));
 }
 
 function saveResponse(response: Response) {
 	return response.request().method() === 'POST' && new URL(response.url()).searchParams.has('/save');
 }
 
-Then('the Actions editor shows the Ada fixture', async ({ page, shot }) => {
+Then('the Actions editor shows the Ada fixture', async ({ page }) => {
 	await profile(page, {
 		name: 'Ada Lovelace',
 		email: 'ada@example.test',
@@ -105,7 +104,6 @@ Then('the Actions editor shows the Ada fixture', async ({ page, shot }) => {
 	await expect(page.getByTestId('native-save-form')).toBeVisible();
 	await expect(page.getByTestId('enhanced-save-form')).toBeVisible();
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
-	await shot('ada-fixture');
 });
 
 When('I save Grace with Kit enhancement', async ({ page, documents, notes }) => {
@@ -129,7 +127,6 @@ Then('Kit receives a typed save result without a new document', async ({ page, d
 	expect(documents.count).toBe(notes.get('before-save-documents'));
 	await expect(page).toHaveURL(/\/actions(?:\?.*)?$/);
 	await expect(page.getByTestId('action-money')).toHaveText('$7.50');
-	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
 When('I save Grace with the native form', async ({ page, documents, notes, $testInfo }) => {
@@ -167,9 +164,8 @@ Then('the native response already contains the Grace receipt and saved profile',
 	expect(documents.last?.request().method()).toBe('POST');
 });
 
-Then('the Actions page shows the Grace receipt and saved profile', async ({ page, shot }) => {
+Then('the Actions page shows the Grace receipt and saved profile', async ({ page }) => {
 	await receipt(page);
-	await shot('grace-save');
 });
 
 When('I exercise the hydrated Actions client', async ({ page, documents, data, remotes, notes }) => {
@@ -180,19 +176,17 @@ When('I exercise the hydrated Actions client', async ({ page, documents, data, r
 	notes.set('hydration-observed', 1);
 });
 
-Then('the Grace receipt and saved profile survive hydration', async ({ page, notes, shot }) => {
+Then('the Grace receipt and saved profile survive hydration', async ({ page, notes }) => {
 	expect(notes.get('hydration-observed')).toBe(1);
 	await receipt(page);
-	await shot('after-hydration');
 });
 
-Then('a later Actions GET retains the Grace profile', async ({ page, shot }) => {
+Then('a later Actions GET retains the Grace profile', async ({ page }) => {
 	const response = await page.goto('/actions');
 	expect(response?.request().method()).toBe('GET');
 	expectMode(response!);
 	await profile(page, { ...grace, state: 'Active' });
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
-	await shot('later-get');
 });
 
 Then('the Actions browser has JavaScript disabled', async ({ page, $testInfo }) => {
@@ -225,7 +219,6 @@ Then('Kit receives a validation failure without a new document', async ({ page, 
 	expect(documents.count).toBe(notes.get('before-action-documents'));
 	await expect(page).toHaveURL(/\/actions(?:\?.*)?$/);
 	await expect(page.getByTestId('page-status')).toHaveText('Page status 422');
-	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
 When('I submit an invalid Grace edit with the native form', async ({ page, documents, notes, $testInfo }) => {
@@ -250,27 +243,22 @@ Then('the native failure response already contains the retained fields and Ada p
 	expect(documents.last?.status()).toBe(422);
 });
 
-Then('the Actions page retains the invalid Grace fields and Ada profile', async ({ page, shot }) => {
+Then('the Actions page retains the invalid Grace fields and Ada profile', async ({ page }) => {
 	await rejected(page);
-	await page.evaluate(() => window.scrollTo(0, 0));
-	await shot('validation-failure');
 });
 
-Then('the retained failure and Ada profile survive hydration', async ({ page, notes, shot }) => {
+Then('the retained failure and Ada profile survive hydration', async ({ page, notes }) => {
 	expect(notes.get('hydration-observed')).toBe(1);
 	await rejected(page);
-	await page.evaluate(() => window.scrollTo(0, 0));
-	await shot('validation-after-hydration');
 });
 
-Then('a later Actions GET retains the Ada profile', async ({ page, shot }) => {
+Then('a later Actions GET retains the Ada profile', async ({ page }) => {
 	const response = await page.goto('/actions');
 	expect(response?.request().method()).toBe('GET');
 	expectMode(response!);
 	await profile(page, ada);
 	await expect(page.getByTestId('page-status')).toHaveText('Page status 200');
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
-	await shot('later-get-ada');
 });
 
 function archiveResponse(response: Response) {
@@ -300,7 +288,6 @@ Then('Kit receives a no-data success without a new document', async ({ page, doc
 	expect(documents.count).toBe(notes.get('before-action-documents'));
 	await expect(page).toHaveURL(/\/actions(?:\?.*)?$/);
 	await archived(page, 204);
-	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
 When('I archive with the native form', async ({ page, documents, notes, $testInfo }) => {
@@ -326,25 +313,20 @@ Then('the native archive response already contains Ada Archived and null form da
 	expect(documents.last?.status()).toBe(200);
 });
 
-Then('the Actions page shows Ada Archived without a receipt', async ({ page, notes, shot }) => {
+Then('the Actions page shows Ada Archived without a receipt', async ({ page, notes }) => {
 	await archived(page, notes.get('archive-enhanced') === 1 ? 204 : 200);
-	await page.evaluate(() => window.scrollTo(0, 0));
-	await shot('archive');
 });
 
-Then('Ada Archived without a receipt survives hydration', async ({ page, notes, shot }) => {
+Then('Ada Archived without a receipt survives hydration', async ({ page, notes }) => {
 	expect(notes.get('hydration-observed')).toBe(1);
 	await archived(page);
-	await page.evaluate(() => window.scrollTo(0, 0));
-	await shot('archive-after-hydration');
 });
 
-Then('a later Actions GET retains Ada Archived', async ({ page, shot }) => {
+Then('a later Actions GET retains Ada Archived', async ({ page }) => {
 	const response = await page.goto('/actions');
 	expect(response?.request().method()).toBe('GET');
 	expectMode(response!);
 	await archived(page);
-	await shot('later-get-archived');
 });
 
 type Submission = 'Kit enhancement' | 'native then hydration' | 'native without JavaScript';
@@ -399,24 +381,21 @@ Then('the submitting action redirects separately to the signed-in page', async (
 	await expect(page.getByTestId('signed-in-title')).toHaveText('Signed in as ada');
 });
 
-Then('the destination reads the session cookie and greets ada', async ({ page, shot }) => {
+Then('the destination reads the session cookie and greets ada', async ({ page }) => {
 	await expect(page.getByTestId('signed-in-title')).toHaveText('Signed in as ada');
 	await expect(page.getByTestId('signed-in-cookie')).toBeVisible();
-	await shot('redirect-destination');
 });
 
-Then('the signed-in greeting survives hydration', async ({ page, notes, shot }) => {
+Then('the signed-in greeting survives hydration', async ({ page, notes }) => {
 	expect(notes.get('hydration-observed')).toBe(1);
 	await expect(page.getByTestId('signed-in-title')).toHaveText('Signed in as ada');
-	await shot('redirect-after-hydration');
 });
 
-Then('a later signed-in GET still greets ada', async ({ page, shot }) => {
+Then('a later signed-in GET still greets ada', async ({ page }) => {
 	const response = await page.goto('/actions/signed-in');
 	expectMode(response!);
 	expect(response?.request().method()).toBe('GET');
 	await expect(page.getByTestId('signed-in-title')).toHaveText('Signed in as ada');
-	await shot('redirect-later-get');
 });
 
 async function extraError(page: Page, documents: { count: number }, notes: Map<string, number>, action: ExtraAction, submission: Submission, status: number) {
@@ -471,32 +450,27 @@ async function boundary(page: Page, status: number) {
 	await expect(page.locator('body')).not.toContainText('private-actions-database-token-4731');
 }
 
-Then('the Actions boundary shows the permission error', async ({ page, shot }) => {
+Then('the Actions boundary shows the permission error', async ({ page }) => {
 	await boundary(page, 403);
-	await shot('forbidden-boundary');
 });
 
-Then('the Actions boundary shows the public message and support ID', async ({ page, shot }) => {
+Then('the Actions boundary shows the public message and support ID', async ({ page }) => {
 	await boundary(page, 500);
-	await shot('unexpected-boundary');
 });
 
-Then('the permission error survives hydration', async ({ page, notes, shot }) => {
+Then('the permission error survives hydration', async ({ page, notes }) => {
 	expect(notes.get('hydration-observed')).toBe(1);
 	await boundary(page, 403);
-	await shot('forbidden-after-hydration');
 });
 
-Then('the safe failure survives hydration', async ({ page, notes, shot }) => {
+Then('the safe failure survives hydration', async ({ page, notes }) => {
 	expect(notes.get('hydration-observed')).toBe(1);
 	await boundary(page, 500);
-	await shot('unexpected-after-hydration');
 });
 
-Then('returning from the error leaves the Ada fixture unchanged', async ({ page, shot }) => {
+Then('returning from the error leaves the Ada fixture unchanged', async ({ page }) => {
 	await page.getByTestId('action-error-return').click();
 	await expect(page).toHaveURL(/\/actions$/);
 	await profile(page, ada);
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
-	await shot('error-return-ada');
 });

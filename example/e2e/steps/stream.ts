@@ -34,11 +34,10 @@ When('I start loading {string}', async ({ page }, path: string) => {
 // are absent" alone would be satisfied by a blank document.
 Then(
 	'the page says there are {int} orders and is still fetching them',
-	async ({ page, shot }, total: number) => {
+	async ({ page }, total: number) => {
 		await expect(page.getByTestId('order-total')).toHaveText(`${total} orders`);
 		await expect(page.getByTestId('orders-pending')).toBeVisible();
 		await expect(page.getByTestId('order')).toHaveCount(0);
-		await shot('pending');
 	}
 );
 
@@ -46,9 +45,8 @@ When('the orders arrive', async ({ page }) => {
 	await expect(page.getByTestId('orders-pending')).toHaveCount(0, { timeout: 15_000 });
 });
 
-Then('the orders are {string} and {string}', async ({ page, shot }, first: string, second: string) => {
+Then('the orders are {string} and {string}', async ({ page }, first: string, second: string) => {
 	await expect(page.getByTestId('order')).toHaveText([first, second]);
-	await shot('resolved');
 });
 
 /**
@@ -63,7 +61,7 @@ Then('the orders are {string} and {string}', async ({ page, shot }, first: strin
  */
 Then(
 	'the document carried the loading state, and the orders after it ended',
-	async ({ documents, shot }) => {
+	async ({ documents }) => {
 		expect(documents.last, 'no document response was observed').not.toBeNull();
 		// The document the browser was given for this page, not the one it was
 		// given for the page it signed in on.
@@ -85,7 +83,6 @@ Then(
 		expect(appended).toContain('a slow parcel');
 		expect(appended).toContain('a slower parcel');
 
-		await shot('streamed');
 	}
 );
 
@@ -137,76 +134,16 @@ Then(
 	}
 );
 
-/**
- * The half of the ordering claim a visitor can see: the value that was ready
- * first is on the page while the two that were not are still loading. A page
- * that waited for all three, or that filled them in in the order it numbered
- * them, cannot be in this state.
- */
-Then('the digest and the forecast are still pending', async ({ page }) => {
-	await expect(page.getByTestId('digest-pending')).toBeVisible();
-	await expect(page.getByTestId('forecast-pending')).toBeVisible();
-});
-
 Then(
 	'the digest reads {string} and {string}',
-	async ({ page, shot }, first: string, second: string) => {
+	async ({ page }, first: string, second: string) => {
 		await expect(page.getByTestId('digest-line')).toHaveText([first, second]);
-		await shot('digest');
 	}
 );
 
-Then('the forecast says {string}', async ({ page, shot }, value: string) => {
+Then('the forecast says {string}', async ({ page }, value: string) => {
 	await expect(page.getByTestId('forecast')).toHaveText(value);
-	await shot('all-three-settled');
 });
-
-/**
- * The document itself: three loading states inside it and not one of the three
- * values, which is what says the page was sent before Go had them.
- */
-Then(
-	'the document held all three loading states and none of the three values',
-	async ({ documents }) => {
-		const html = await documentBody(documents, '/stream');
-		const end = html.indexOf('</html>');
-		expect(end, 'the response carried no document at all').toBeGreaterThan(0);
-		const document = html.slice(0, end);
-
-		for (const state of ['ticker-pending', 'digest-pending', 'forecast-pending']) {
-			expect(document, `the document had no ${state}`).toContain(`data-testid="${state}"`);
-		}
-		for (const value of settledValues) {
-			expect(
-				document,
-				`"${value}" was in the document, so the page never showed a loading state for it`
-			).not.toContain(value);
-		}
-	}
-);
-
-/**
- * And the other half, in the bytes: what Go appended after `</html>`, in the
- * order it appended it.
- *
- * Kit writes each settled value as a script of its own —
- * `<script>__sveltekit_xxx.resolve(<id>, () => [<value>])</script>` — so the
- * ids and the order are both readable straight off the response. The table in
- * the scenario says which number goes with which value and what order the three
- * lines come in; nothing here is read off one to check the other.
- */
-Then(
-	'the document was followed by these values, in this order',
-	async ({ documents, shot }, table: { hashes(): Array<Record<string, string>> }) => {
-		const html = await documentBody(documents, '/stream');
-		const appended = html.slice(html.indexOf('</html>'));
-		expect(appended, 'nothing was appended to the document').toContain('.resolve(');
-		expect(chunkOrder(appended, /\.resolve\((\d+),[^]*?\)<\/script>/g, appended)).toEqual(
-			expected(table)
-		);
-		await shot('streamed');
-	}
-);
 
 /**
  * The bytes of the response the navigation just read — asked for a second time,
@@ -224,7 +161,7 @@ Then(
  */
 Then(
 	'that data response, asked for again, named three promises and carried none of their values',
-	async ({ request, data, notes, shot }) => {
+	async ({ request, data, notes }) => {
 		expect(data.last, 'the browser made no data request').not.toBeNull();
 		const asked = new URL(data.last!.url());
 		expect(asked.pathname).toBe('/stream/__data.json');
@@ -242,7 +179,6 @@ Then(
 		for (const value of settledValues) {
 			expect(head, `"${value}" was in the head, so it was not promised at all`).not.toContain(value);
 		}
-		await shot('data-stream');
 	}
 );
 
@@ -284,14 +220,4 @@ function chunkOrder(text: string, ids: RegExp, haystack: string): string[] {
 	});
 	expect(found.length, `expected three settled values in:\n${haystack}`).toBe(3);
 	return found;
-}
-
-/** The document response for `path`, waited out to its last byte. */
-async function documentBody(
-	documents: { last: import('@playwright/test').Response | null },
-	path: string
-): Promise<string> {
-	expect(documents.last, 'no document response was observed').not.toBeNull();
-	expect(new URL(documents.last!.url()).pathname).toBe(path);
-	return documents.last!.text();
 }

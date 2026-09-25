@@ -78,7 +78,6 @@ Then('the default action shows the exact Grace receipt and profile', async ({ pa
 	await expect(page.getByTestId('default-saved-email')).toHaveText('grace@example.test');
 	await expect(page.getByTestId('default-saved-biography')).toHaveText('Compiler pioneer');
 	await expect(page.getByTestId('default-saved-state')).toHaveText('Active');
-	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
 Then('a later Go load reads the stored default Grace profile', async ({ page }) => {
@@ -91,7 +90,6 @@ Then('a later Go load reads the stored default Grace profile', async ({ page }) 
 	await expect(page.getByTestId('default-stored-biography')).toHaveText('Compiler pioneer');
 	await expect(page.getByTestId('default-stored-state')).toHaveText('Active');
 	await expect(page.getByTestId('default-receipt')).toHaveCount(0);
-	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
 When(/^I choose (save|archive) using (Kit enhancement|native form)$/, async ({ page, $testInfo }, choice: 'save' | 'archive', submission: Submission) => {
@@ -131,7 +129,6 @@ Then(/^the chosen (save|archive) action shows its matching saved state$/, async 
 		await expect(page.getByTestId('saved-state')).toHaveText('Archived');
 		await expect(page.getByTestId('no-receipt')).toBeVisible();
 	}
-	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
 When(/^I follow the two profile editor for (ada|grace)$/, async ({ page }, selected: Selected) => {
@@ -146,7 +143,6 @@ Then('both profiles show their independent fixtures', async ({ page, $testInfo }
 	await assertRecord(page, 'ada', fixtures.ada);
 	await assertRecord(page, 'grace', fixtures.grace);
 	if ($testInfo.project.name === 'noscript') await expect(page.getByTestId('profiles-noscript')).toBeVisible();
-	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
 When(/^I save the selected profile with (Kit enhancement|native form)$/, async ({ page, $testInfo }, submission: Submission) => {
@@ -172,7 +168,6 @@ Then(/^only (ada|grace) has the literal edited values$/, async ({ page }, select
 	await expect(page.getByTestId('profile-receipt')).toHaveText(`Saved ${edits[selected].name}`);
 	await assertRecord(page, selected, edits[selected]);
 	await assertRecord(page, selected === 'ada' ? 'grace' : 'ada', fixtures[selected === 'ada' ? 'grace' : 'ada']);
-	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
 Then('a later profile GET retains both literal records', async ({ page }) => {
@@ -184,5 +179,4 @@ Then('a later profile GET retains both literal records', async ({ page }) => {
 	await assertRecord(page, selected, edits[selected]);
 	await assertRecord(page, selected === 'ada' ? 'grace' : 'ada', fixtures[selected === 'ada' ? 'grace' : 'ada']);
 	await expect(page.getByTestId('profile-receipt')).toHaveCount(0);
-	await page.evaluate(() => window.scrollTo(0, 0));
 });

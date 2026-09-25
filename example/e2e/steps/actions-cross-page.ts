@@ -34,21 +34,12 @@ Given('I open the cross-page action sender', async ({ page, $testInfo }) => {
 	if ($testInfo.project.name !== 'noscript') await hydrated(page);
 });
 
-Then('the sender offers the destination actions', async ({ page, shot, $testInfo }) => {
+Then('the sender offers the destination actions', async ({ page, $testInfo }) => {
 	await expect(page.getByTestId('cross-source-title')).toHaveText('Submit to another page');
 	for (const action of Object.values(controls)) {
 		await expect(page.getByTestId(`native-cross-${action}`)).toBeVisible();
 		await expect(page.getByTestId(`enhanced-cross-${action}`)).toBeVisible();
 	}
-	await page.evaluate(() => window.scrollTo(0, 0));
-	await shot('sender-top');
-	await page.getByTestId('native-cross-unavailable').scrollIntoViewIfNeeded();
-	await shot('sender-native-bottom');
-	await page.getByRole('heading', { name: 'Enhanced forms' }).evaluate((heading) => heading.scrollIntoView({ block: 'start' }));
-	await shot('sender-enhanced');
-	await page.getByTestId('enhanced-cross-unavailable').scrollIntoViewIfNeeded();
-	await shot('sender-bottom');
-	await page.evaluate(() => window.scrollTo(0, 0));
 	if ($testInfo.project.name === 'noscript') {
 		expect($testInfo.project.use.javaScriptEnabled).toBe(false);
 		await expect(page.getByTestId('cross-noscript')).toBeVisible();
@@ -155,7 +146,6 @@ Then(/^the cross-page (success|validation|redirect|forbidden|unavailable) destin
 		if (outcome === 'success') await expect(page.getByTestId('cross-money')).toHaveText('$7.50');
 	}
 	if (notes.get('cross-enhanced') === 1) expect(documents.count).toBe(notes.get('cross-documents-before'));
-	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
 Then(/^the cross-page (success|validation|redirect|forbidden|unavailable) fixture remains correct on a later GET$/, async ({ page }, outcome: Outcome) => {

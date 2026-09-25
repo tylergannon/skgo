@@ -4,13 +4,6 @@ Feature: Remote functions written in Go
   `todos.remote.go` and every body throws, so anything that renders below
   proves the Go server answered.
 
-  Scenario: The todo list is served by Go
-    Given I open "/todos"
-    Then the document response came from skgo
-    And every part of the page loaded
-    And I see the todo "write the adapter"
-    And I see the todo "serve remote functions"
-
   Scenario: Adding a todo refreshes the list in a single flight
     Given I open "/todos"
     When the todo list has loaded

@@ -1,42 +1,38 @@
 Feature: Go page actions compose with ordinary pages
 
-  Scenario Outline: An action-only page saves Grace through its unnamed action with <submission>
+  Each scenario submits through Kit's `enhance`, so the page it lands on is the
+  one Kit's client updated in place. The same forms posted natively, with no
+  client at all, are in actions-composition-form-noscript.feature; the bytes Go
+  answers either way are asserted in example/contracts_test.go.
+
+  Scenario: An action-only page saves Grace through its unnamed action with Kit enhancement
     Given I open "/actions"
     When I follow the default action example
     Then the default page has no load and offers the Grace form
-    When I submit the unnamed Grace action with <submission>
+    When I submit the unnamed Grace action with Kit enhancement
     Then the default action shows the exact Grace receipt and profile
     And a later Go load reads the stored default Grace profile
 
-    Examples:
-      | submission      |
-      | Kit enhancement |
-      | native form     |
-
-  Scenario Outline: The <choice> button selects its Go action with <submission>
+  Scenario Outline: The <choice> button selects its Go action with Kit enhancement
     Given I open "/actions"
     Then the Actions editor shows the Ada fixture
-    When I choose <choice> using <submission>
+    When I choose <choice> using Kit enhancement
     Then the chosen <choice> action shows its matching saved state
 
     Examples:
-      | choice  | submission      |
-      | save    | Kit enhancement |
-      | save    | native form     |
-      | archive | Kit enhancement |
-      | archive | native form     |
+      | choice  |
+      | save    |
+      | archive |
 
-  Scenario Outline: Editing <selected> changes only that profile with <submission>
+  Scenario Outline: Editing <selected> changes only that profile with Kit enhancement
     Given I open "/actions"
     When I follow the two profile editor for <selected>
     Then both profiles show their independent fixtures
-    When I save the selected profile with <submission>
+    When I save the selected profile with Kit enhancement
     Then only <selected> has the literal edited values
     And a later profile GET retains both literal records
 
     Examples:
-      | selected | submission      |
-      | ada      | Kit enhancement |
-      | ada      | native form     |
-      | grace    | Kit enhancement |
-      | grace    | native form     |
+      | selected |
+      | ada      |
+      | grace    |

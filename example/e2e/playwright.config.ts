@@ -2,8 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
 // The same scenarios run against the embedded production build and the live
-// Vite module graph. The label separates their reports and screenshots; it
-// never changes which scenarios exist or what they assert.
+// Vite module graph. The label separates their reports and failure artifacts;
+// it never changes which scenarios exist or what they assert.
 const run = process.env.SKGO_E2E_RUN ?? 'run';
 
 const testDir = defineBddConfig({
@@ -19,9 +19,9 @@ export default defineConfig({
 	fullyParallel: false,
 	workers: 1,
 	retries: 0,
-	// `list` for the terminal; the HTML report is where the frames each
-	// scenario left behind can be looked at afterwards, which is the point of
-	// taking them.
+	// `list` for the terminal; the HTML report carries a failed scenario's
+	// trace and its screenshot at the moment it failed. A passing scenario
+	// leaves nothing behind.
 	reporter: [
 		['list'],
 		['html', { open: 'never', outputFolder: `playwright-report/${run}` }]
