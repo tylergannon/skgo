@@ -1,5 +1,15 @@
 # Form actions: the example is the proof
 
+Validation and completion requirements below describe the original feature
+plan. [Issue #183](https://github.com/tylergannon/skgo/issues/183) supersedes
+its fixed browser matrix and four fault probes. The current contract keeps the
+example and user-visible outcomes, checks server contracts through the real Go
+handler, and runs the selected Gherkin suite in full against both production
+and development. CI runs those suites in parallel on separate checkouts.
+Each retained browser scenario captures its meaningful visible outcome, with
+extra frames only for distinct states; inspect the screenshots and the final
+running example. Scenario and screenshot counts are not completion targets.
+
 Design for upgrading the existing `./example` application. The feature is not
 implemented or proved by this document.
 

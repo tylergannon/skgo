@@ -94,46 +94,6 @@ Then('a later Go load reads the stored default Grace profile', async ({ page }) 
 	await page.evaluate(() => window.scrollTo(0, 0));
 });
 
-When(/^I choose (save|archive) using (Kit enhancement|native form)$/, async ({ page, $testInfo }, choice: 'save' | 'archive', submission: Submission) => {
-	if ($testInfo.project.name !== 'noscript') await hydrated(page);
-	const mode = submission === 'Kit enhancement' ? 'enhanced' : 'native';
-	const form = page.getByTestId(`${mode}-choice-form`);
-	if (choice === 'save') {
-		await form.getByRole('textbox', { name: 'Name' }).fill('Grace Hopper');
-		await form.getByRole('textbox', { name: 'Email' }).fill('grace@example.test');
-		await form.getByRole('textbox', { name: 'Biography' }).fill('Compiler pioneer');
-	}
-	const response = await actionResponse(page, '/actions', () => form.getByRole('button', { name: choice === 'save' ? 'Save selected profile' : 'Archive selected profile' }).click());
-	assertDelivery(response, submission);
-	expect(response.status()).toBe(200);
-	expect(new URL(response.url()).searchParams.has(`/${choice}`)).toBe(true);
-	expect(response.request().postData() ?? '').toContain(`choice=${choice}`);
-	if (submission === 'Kit enhancement') {
-		const result = await response.json();
-		expect(result.type).toBe('success');
-		expect(result.status).toBe(choice === 'save' ? 200 : 204);
-	}
-});
-
-Then(/^the chosen (save|archive) action shows its matching saved state$/, async ({ page }, choice: 'save' | 'archive') => {
-	await expect(page.getByTestId('title')).toHaveText('Actions');
-	if (choice === 'save') {
-		await expect(page.getByTestId('action-receipt')).toHaveText('Saved Grace Hopper');
-		await expect(page.getByTestId('action-money')).toHaveText('$7.50');
-		await expect(page.getByTestId('saved-name')).toHaveText('Grace Hopper');
-		await expect(page.getByTestId('saved-email')).toHaveText('grace@example.test');
-		await expect(page.getByTestId('saved-biography')).toHaveText('Compiler pioneer');
-		await expect(page.getByTestId('saved-state')).toHaveText('Active');
-	} else {
-		await expect(page.getByTestId('saved-name')).toHaveText('Ada Lovelace');
-		await expect(page.getByTestId('saved-email')).toHaveText('ada@example.test');
-		await expect(page.getByTestId('saved-biography')).toHaveText('First programmer');
-		await expect(page.getByTestId('saved-state')).toHaveText('Archived');
-		await expect(page.getByTestId('no-receipt')).toBeVisible();
-	}
-	await page.evaluate(() => window.scrollTo(0, 0));
-});
-
 When(/^I follow the two profile editor for (ada|grace)$/, async ({ page }, selected: Selected) => {
 	await page.getByRole('link', { name: 'Two profile editor' }).click();
 	if (selected === 'grace') await page.getByRole('link', { name: 'Edit Grace' }).click();

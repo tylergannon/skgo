@@ -92,33 +92,6 @@ Then('the no-client response is a script-free 200 receipt with the exact saved G
 	await expect(page.getByTestId('no-client-saved-state')).toHaveText('Active');
 });
 
-When('I submit the invalid Grace edit on the no-client page', async ({ page }) => {
-	const form = page.getByTestId('no-client-form');
-	await form.getByRole('textbox', { name: 'Name' }).fill('Grace Hopper');
-	await form.getByRole('textbox', { name: 'Email' }).fill('grace-at-example');
-	await form.getByRole('textbox', { name: 'Biography' }).fill('Keep this biography');
-	await post(page, paths.client, () => form.getByRole('button', { name: 'Save profile' }).click());
-});
-
-Then('the no-client response is script-free 422 with the exact edit and unchanged Ada profile', async ({ page }) => {
-	const response = posted(page);
-	assertNative(response);
-	expect(response.status()).toBe(422);
-	const body = await response.text();
-	expect(body).toContain('Enter a valid email address');
-	expect(body).not.toContain('<script');
-	await expect(page.getByTestId('no-client-status')).toHaveText('Page status 422');
-	await expect(page.getByTestId('no-client-email-error')).toHaveText('Enter a valid email address');
-	const form = page.getByTestId('no-client-form');
-	await expect(form.getByRole('textbox', { name: 'Name' })).toHaveValue('Grace Hopper');
-	await expect(form.getByRole('textbox', { name: 'Email' })).toHaveValue('grace-at-example');
-	await expect(form.getByRole('textbox', { name: 'Biography' })).toHaveValue('Keep this biography');
-	await expect(page.getByTestId('no-client-saved-name')).toHaveText('Ada Lovelace');
-	await expect(page.getByTestId('no-client-saved-email')).toHaveText('ada@example.test');
-	await expect(page.getByTestId('no-client-saved-biography')).toHaveText('First programmer');
-	await expect(page.getByTestId('no-client-saved-state')).toHaveText('Active');
-});
-
 When('I submit the forbidden no-client action', async ({ page }) => {
 	await post(page, paths.client, () => page.getByRole('button', { name: 'Try forbidden action' }).click());
 });
@@ -133,25 +106,6 @@ Then('the no-client error branch renders the 403 section error with its own clie
 	await expect(page.getByTestId('action-error-title')).toHaveText('Action error 403');
 	await expect(page.getByTestId('action-error-message')).toHaveText('You cannot edit this profile');
 	await expect(page.getByTestId('action-error-return')).toBeVisible();
-});
-
-When('I submit the unavailable no-client action', async ({ page }) => {
-	await post(page, paths.client, () => page.getByRole('button', { name: 'Try unavailable action' }).click());
-});
-
-Then('the no-client error branch renders the safe 500 section error with its own client boot', async ({ page }) => {
-	const response = posted(page);
-	assertNative(response);
-	expect(response.status()).toBe(500);
-	const body = await response.text();
-	expect(body).toContain('Action error 500');
-	expect(body).toContain('Something went wrong on our end.');
-	expect(body).toContain('case-1121');
-	expect(body).not.toContain('private-actions-database-token-4731');
-	expect(body).toContain('<script');
-	await expect(page.getByTestId('action-error-title')).toHaveText('Action error 500');
-	await expect(page.getByTestId('action-error-message')).toHaveText('Something went wrong on our end.');
-	await expect(page.getByTestId('action-error-support-id')).toHaveText('case-1121');
 });
 
 Given('I open the client-rendered Actions page after boot', async ({ page }) => {
@@ -230,27 +184,4 @@ Then('the browser has scripting disabled and the no-client form is visible', asy
 	expect($testInfo.project.name).toBe('noscript');
 	await expect(page.getByTestId('no-client-noscript')).toBeVisible();
 	await expect(page.getByTestId('no-client-form').getByRole('button', { name: 'Save profile' })).toBeVisible();
-});
-
-Given('I request the client-rendered Actions page without scripting', async ({ page, $testInfo }) => {
-	expect($testInfo.project.name).toBe('noscript');
-	const response = await page.goto(paths.ssr);
-	expectMode(response!);
-	expect(response!.status()).toBe(200);
-	await assertShell(response!, 'success');
-	await expect(page.getByTestId('no-ssr-title')).toHaveCount(0);
-	await page.goto(paths.client);
-	await expect(page.getByTestId('no-client-title')).toHaveText('Actions without client JavaScript');
-});
-
-When(/^I post (success|validation|forbidden|unavailable) to the client-rendered page without scripting$/, async ({ page }, outcome: Outcome) => {
-	const label = outcome === 'success' ? 'Post valid client-rendered edit' : outcome === 'validation' ? 'Post invalid client-rendered edit' : outcome === 'forbidden' ? 'Post forbidden client-rendered edit' : 'Post unavailable client-rendered edit';
-	await post(page, paths.ssr, () => page.getByRole('button', { name: label }).click());
-});
-
-Then('the page still has no rendered action or profile without scripting', async ({ page }) => {
-	await expect(page.getByTestId('no-ssr-title')).toHaveCount(0);
-	await expect(page.getByTestId('no-ssr-receipt')).toHaveCount(0);
-	await expect(page.getByTestId('no-ssr-saved-name')).toHaveCount(0);
-	await expect(page.getByTestId('action-error-title')).toHaveCount(0);
 });

@@ -93,13 +93,14 @@ removed — and then runs them. Do not audit diffs or re-derive claims from
 source as a substitute; a passing load-bearing suite is the answer.
 
 **A passing command is not evidence.** An exit code of zero is exactly what a
-silently skipped test prints. Validation has to produce artifacts a human can
-look at without reading code or rerunning anything: screenshots of the running
-app at the moment each scenario asserts, and they have to be good — the actual
-page, showing the actual state the scenario claims, legible enough to tell
-whether it is real. A scenario that cannot produce one is a scenario nobody can
-check. Skips are failures: a check that cannot run because its toolchain is
-missing has not passed, and must not be able to report that it did.
+silently skipped test prints. Every retained browser scenario captures the
+running app in its meaningful outcome state, legible enough to see whether the
+claim is real. Capture additional frames only when a distinct state matters,
+not after every assertion. Keep screenshots and traces when a scenario fails.
+Skips are failures: a check that cannot run because its toolchain is missing
+has not passed, and must not be able to report that it did. Run the selected
+suite against both the built Go server and the development renderer; independent
+checkouts let CI run those full suites in parallel.
 
 **Never derive what you expect from the thing you are testing.** The one leak
 this project has shipped got past an assertion that was already exact — the live

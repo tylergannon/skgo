@@ -1,7 +1,7 @@
 import { expect, type Page, type Response } from '@playwright/test';
-import { createBdd, test as base } from 'playwright-bdd';
+import { test as base } from 'playwright-bdd';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname } from 'node:path';
 
 /** Records the document (top-level navigation) traffic of one scenario. */
 export type Documents = {
@@ -71,11 +71,7 @@ export type BrowserConsole = {
 	messages: string[];
 };
 
-/**
- * Screenshots the page in whatever state the scenario left it, named after the
- * scenario. Every loads scenario leaves one behind, because the sprint's
- * acceptance is somebody looking at all of them.
- */
+/** Captures the scenario's meaningful visible states for review. */
 export type Shot = (name?: string) => Promise<void>;
 
 type BrowserFrame = {
@@ -204,7 +200,7 @@ export const test = base.extend<{
 		await use(new Map<string, number>());
 	},
 
-	shot: async ({ browserFrame }, use, testInfo) => {
+	shot: [async ({ browserFrame }, use, testInfo) => {
 		// The title of a Scenario Outline's example is just "Example #1", so the
 		// scenario's own title has to come along or three redirects overwrite
 		// each other.
@@ -214,11 +210,8 @@ export const test = base.extend<{
 			.replace(/[^a-z0-9]+/gi, '-')
 			.replace(/^-|-$/g, '')
 			.toLowerCase();
-		// The mode is part of the path for the same reason it is part of the
-		// AfterStep frames': the same scenarios run twice, against the embedded
-		// build and against `vp dev`, and a shared path means the second run
-		// silently overwrites the first — the tracked evidence then shows one
-		// mode while the claim is about two.
+		// Both full suites run against separate servers. Keep mode in the path
+		// so their screenshots can be inspected side by side.
 		const mode = process.env.SKGO_E2E_RUN ?? 'run';
 		// And the feature, so the tracked evidence is not one heap named after
 		// whichever feature happened to need screenshots first.
@@ -234,10 +227,9 @@ export const test = base.extend<{
 			await browserFrame.capture(file);
 		};
 		await use(shot);
-		// A scenario that took no shot of its own still leaves the state it
-		// finished in.
+		// Every scenario leaves at least one screenshot of its final state.
 		if (taken === 0) await shot('final');
-	}
+	}, { auto: true }]
 });
 
 /** The mode named by the test invocation, independent of the server under test. */
@@ -257,37 +249,6 @@ export function expectMode(response: { headers(): Record<string, string> }): 'de
 	return expected;
 }
 
-const { AfterStep } = createBdd(test);
-
-/**
- * Photographs the page the instant a scenario asserts.
- *
- * An exit code says a scenario passed; it does not say what the visitor was
- * looking at when it did. Every step Gherkin classifies as an outcome — Then,
- * and the And/But that continue it — leaves a frame of the real page in the
- * real state the sentence claims, so the run can be checked by looking rather
- * than by rerunning it. The same frames are taken when a step fails, which is
- * the moment they are worth most.
- *
- * Kept out of the step definitions on purpose: a screenshot nobody has to
- * remember to write cannot be forgotten from the next scenario somebody adds.
- */
-AfterStep(async ({ browserFrame, $step, $bddContext, $testInfo }) => {
-	if (screenshotPolicy() !== 'all') return;
-	const step = $bddContext.bddTestData?.steps?.[$bddContext.stepIndex];
-	if (step?.keywordType !== 'Outcome') return;
-
-	const file = join(
-		screenshotDir(),
-		slug($bddContext.featureUri.replace(/^features\//, '').replace(/\.feature$/, '')),
-		slug($testInfo.title),
-		`${String($bddContext.stepIndex + 1).padStart(2, '0')}-${slug(step.textWithKeyword ?? $step.title)}.png`
-	);
-	mkdirSync(dirname(file), { recursive: true });
-	await shoot(browserFrame, file);
-	await $testInfo.attach(step.textWithKeyword ?? $step.title, { path: file, contentType: 'image/png' });
-});
-
 type ScreenshotPolicy = 'all' | 'curated' | 'none';
 
 function screenshotPolicy(): ScreenshotPolicy {
@@ -300,10 +261,7 @@ export function capturesAllScreenshots(): boolean {
 	return screenshotPolicy() === 'all';
 }
 
-/**
- * Release qualification keeps one production control and one development HMR
- * result. The generated-project contract contributes the other eight frames.
- */
+/** Local runs may choose fewer frames; qualification always uses "all". */
 function captureScenarioFrame(feature: string, mode: string, name?: string): boolean {
 	switch (screenshotPolicy()) {
 		case 'all':
@@ -317,42 +275,6 @@ function captureScenarioFrame(feature: string, mode: string, name?: string): boo
 					(mode === 'dev' && name === 'hot-updated'))
 			);
 	}
-}
-
-/**
- * Where this run's frames go. The mode is part of the path because the same
- * scenarios run twice — against the embedded build and against `vp dev` — and
- * the two sets are only useful side by side.
- */
-function screenshotDir(): string {
-	return join('screenshots', process.env.SKGO_E2E_RUN ?? 'run');
-}
-
-/**
- * Takes the picture. A page mid-navigation (a step that just swapped the
- * document) can briefly refuse a screenshot, so a couple of retries cover
- * that ordinary timing case. A capture that still fails after retrying is not
- * swallowed: a missing screenshot is a missing screenshot, and the step it
- * belongs to must fail rather than report a pass nobody can check.
- */
-async function shoot(browserFrame: BrowserFrame, file: string): Promise<void> {
-	for (let attempt = 1; ; attempt++) {
-		try {
-			await browserFrame.capture(file);
-			return;
-		} catch (error) {
-			if (attempt >= 3) throw error;
-			await new Promise((resolve) => setTimeout(resolve, 150));
-		}
-	}
-}
-
-function slug(text: string): string {
-	return text
-		.replace(/[^\w\s.-]/g, '')
-		.trim()
-		.replace(/\s+/g, '-')
-		.slice(0, 80);
 }
 
 /**

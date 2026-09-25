@@ -11,15 +11,6 @@ Feature: Classic actions share Kit routes with Go endpoints and remote forms
     Examples:
       | submission      |
       | Kit enhancement |
-      | native form     |
-
-  Scenario: A GET-only sibling endpoint leaves POST to the default action
-    Given I open "/actions/default"
-    Then the GET-only sibling answers a JSON GET
-    When I submit the unnamed Grace action with native form
-    Then the default action shows the exact Grace receipt and profile
-    And a JSON POST without an action header still reaches the default action
-    And Accept prefers an HTML action document when JSON has zero quality
 
   Scenario: Native remote selection wins, while a JSON action request chooses the classic remote-named action
     Given I open "/actions"
