@@ -1,10 +1,13 @@
 package example_test
 
 import (
+	"bytes"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
@@ -22,6 +25,128 @@ func actionRequest(h http.Handler, method, target, body string, headers http.Hea
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec
+}
+
+func TestPageActionOutcomesThroughRealHandler(t *testing.T) {
+	h := newProdHandler(t)
+	jsonHeaders := http.Header{"Accept": {"application/json"}, "X-Sveltekit-Action": {"true"}, "Content-Type": {"application/x-www-form-urlencoded"}, "Origin": {prodOrigin}}
+	start := func(t *testing.T) []*http.Cookie {
+		t.Helper()
+		page := actionRequest(h, http.MethodGet, "/actions", "", http.Header{"Accept": {"text/html"}})
+		if page.Code != 200 || !strings.Contains(page.Body.String(), `value="Ada Lovelace"`) {
+			t.Fatalf("Ada fixture: %d %s", page.Code, page.Body.String())
+		}
+		return page.Result().Cookies()
+	}
+	post := func(t *testing.T, target, form string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+		t.Helper()
+		return actionRequest(h, http.MethodPost, target, form, jsonHeaders, cookies...)
+	}
+	getProfile := func(t *testing.T, cookies []*http.Cookie, want string) {
+		t.Helper()
+		page := actionRequest(h, http.MethodGet, "/actions", "", http.Header{"Accept": {"text/html"}}, cookies...)
+		if page.Code != 200 || !strings.Contains(page.Body.String(), `value="`+want+`"`) {
+			t.Fatalf("profile %q: %d %s", want, page.Code, page.Body.String())
+		}
+	}
+
+	t.Run("validation retains fields and does not save", func(t *testing.T) {
+		cookies := start(t)
+		form := url.Values{"name": {"Grace Hopper"}, "email": {"grace-at-example"}, "biography": {"Keep this biography"}}.Encode()
+		rec := post(t, "/actions?/save", form, cookies...)
+		if rec.Code != 422 || !strings.Contains(rec.Body.String(), `"type":"failure"`) || !strings.Contains(rec.Body.String(), `"status":422`) || !strings.Contains(rec.Body.String(), "grace-at-example") || !strings.Contains(rec.Body.String(), "Enter a valid email address") {
+			t.Fatalf("validation result: %d %s", rec.Code, rec.Body.String())
+		}
+		getProfile(t, cookies, "Ada Lovelace")
+	})
+
+	t.Run("archive returns no data and changes stored state", func(t *testing.T) {
+		cookies := start(t)
+		rec := post(t, "/actions?/archive", "", cookies...)
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"type":"success"`) || !strings.Contains(rec.Body.String(), `"status":204`) {
+			t.Fatalf("archive result: %d %s", rec.Code, rec.Body.String())
+		}
+		page := actionRequest(h, http.MethodGet, "/actions", "", http.Header{"Accept": {"text/html"}}, cookies...)
+		if page.Code != 200 || !strings.Contains(page.Body.String(), "Archived") || !strings.Contains(page.Body.String(), "Ada Lovelace") {
+			t.Fatalf("archived profile: %d %s", page.Code, page.Body.String())
+		}
+	})
+
+	t.Run("redirect sets a cookie that the destination loads", func(t *testing.T) {
+		cookies := start(t)
+		rec := post(t, "/actions?/signIn", "username=ada", cookies...)
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"type":"redirect"`) || !strings.Contains(rec.Body.String(), `"status":303`) || !strings.Contains(rec.Body.String(), `"location":"/actions/signed-in"`) {
+			t.Fatalf("redirect result: %d %s", rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(rec.Header().Get("Set-Cookie"), "skgo_actions_signin=ada") {
+			t.Fatalf("redirect cookie: %q", rec.Header().Get("Set-Cookie"))
+		}
+		destination := actionRequest(h, http.MethodGet, "/actions/signed-in", "", http.Header{"Accept": {"text/html"}}, append(cookies, rec.Result().Cookies()...)...)
+		if destination.Code != 200 || !strings.Contains(destination.Body.String(), "Signed in as ada") {
+			t.Fatalf("signed-in page: %d %s", destination.Code, destination.Body.String())
+		}
+	})
+
+	t.Run("action cookie reaches the following page load", func(t *testing.T) {
+		cookies := start(t)
+		rec := post(t, "/actions?/remember", "", cookies...)
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), "Remembered violet-42") || !strings.Contains(rec.Header().Get("Set-Cookie"), "skgo_actions_feedback=violet-42") {
+			t.Fatalf("cookie action: %d %s", rec.Code, rec.Body.String())
+		}
+		page := actionRequest(h, http.MethodGet, "/actions", "", http.Header{"Accept": {"text/html"}}, append(cookies, rec.Result().Cookies()...)...)
+		if page.Code != 200 || !strings.Contains(page.Body.String(), `data-testid="action-cookie-value"`) || !strings.Contains(page.Body.String(), "violet-42") {
+			t.Fatalf("cookie load: %d %s", page.Code, page.Body.String())
+		}
+	})
+
+	t.Run("safe errors do not mutate the fixture", func(t *testing.T) {
+		for _, tc := range []struct{ action, marker string }{{"forbidden", "You cannot edit this profile"}, {"unavailable", "Something went wrong on our end."}} {
+			t.Run(tc.action, func(t *testing.T) {
+				cookies := start(t)
+				rec := post(t, "/actions?/"+tc.action, "", cookies...)
+				if rec.Code != map[string]int{"forbidden": 403, "unavailable": 500}[tc.action] || !strings.Contains(rec.Body.String(), tc.marker) || strings.Contains(rec.Body.String(), "private-actions-database-token-4731") {
+					t.Fatalf("safe error: %d %s", rec.Code, rec.Body.String())
+				}
+				getProfile(t, cookies, "Ada Lovelace")
+			})
+		}
+	})
+
+	t.Run("form data and repeated fields reach Go", func(t *testing.T) {
+		cookies := start(t)
+		file, err := os.ReadFile("e2e/fixtures/haiku.txt")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var body bytes.Buffer
+		form := multipart.NewWriter(&body)
+		for _, value := range []string{"math", "computing"} {
+			if err := form.WriteField("interest", value); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := form.WriteField("uploadButton", "send-poem"); err != nil {
+			t.Fatal(err)
+		}
+		part, err := form.CreateFormFile("upload", "haiku.txt")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := part.Write(file); err != nil {
+			t.Fatal(err)
+		}
+		if err := form.Close(); err != nil {
+			t.Fatal(err)
+		}
+		headers := jsonHeaders.Clone()
+		headers.Set("Content-Type", form.FormDataContentType())
+		rec := actionRequest(h, http.MethodPost, "/actions?/upload", body.String(), headers, cookies...)
+		for _, want := range []string{`"type":"success"`, "haiku.txt", "84cee680e822", "math", "computing", "send-poem"} {
+			if rec.Code != 200 || !strings.Contains(rec.Body.String(), want) {
+				t.Fatalf("upload missing %q: %d %s", want, rec.Code, rec.Body.String())
+			}
+		}
+	})
 }
 
 func TestPageActionRequestProtocol(t *testing.T) {
