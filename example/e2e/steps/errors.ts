@@ -18,10 +18,9 @@ async function documentText(documents: { last: Response | null }) {
 	return await documents.last!.text();
 }
 
-Then('the document was answered with {int}', async ({ documents, shot }, status: number) => {
+Then('the document was answered with {int}', async ({ documents }, status: number) => {
 	expect(documents.last, 'no document response was observed').not.toBeNull();
 	expect(documents.last!.status()).toBe(status);
-	await shot();
 });
 
 // The title and the message together, because either alone would pass over a

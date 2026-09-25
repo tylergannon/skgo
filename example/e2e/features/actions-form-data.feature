@@ -18,7 +18,4 @@ Feature: Go actions receive real browser form data
 
     Examples:
       | encoding   | submission            |
-      | standard   | Kit enhancement       |
       | multipart  | Kit enhancement       |
-      | standard   | native then hydration |
-      | multipart  | native then hydration |

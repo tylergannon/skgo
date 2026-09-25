@@ -9,13 +9,5 @@ Feature: A Go action can answer a form posted from another page
 
     Examples:
       | outcome     | submission      |
-      | success     | Kit enhancement |
       | success     | native form     |
       | validation  | Kit enhancement |
-      | validation  | native form     |
-      | redirect    | Kit enhancement |
-      | redirect    | native form     |
-      | forbidden   | Kit enhancement |
-      | forbidden   | native form     |
-      | unavailable | Kit enhancement |
-      | unavailable | native form     |

@@ -3,7 +3,9 @@
 # Every recipe here DOES something. None of them decides whether the software
 # works. There is deliberately no `just check` and no `just acceptance`: a
 # single command that exits 0 becomes what agents build toward, and it cannot
-# see the app. Whether skgo works is a screenshot of the running app, looked at.
+# see the app. The browser suite captures its meaningful outcomes for inspection;
+# CI runs the full selected suite in both modes on separate runners in parallel.
+# Final validation also means using and looking at the running example.
 
 origin := env("ORIGIN", "http://127.0.0.1:8080")
 port := env("SKGO_PORT", "8080")
@@ -72,8 +74,8 @@ dev:
 # Start the server yourself first: `just serve` for a production build, with
 # `just dev` alongside it for the proxied path. `pnpm test`, never `playwright
 # test`: bddgen compiles the feature files in a separate step, and playwright
-# alone happily reruns whatever .features-gen/ already holds, which is last
-# sprint's scenarios.
+# alone happily reruns whatever .features-gen/ already holds, which can be
+# stale scenarios.
 
 # the Gherkin suite against a server you started
 e2e mode run=mode:

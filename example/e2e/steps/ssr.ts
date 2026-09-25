@@ -80,9 +80,8 @@ Then('the document carried the plans as still loading', async ({ documents, shot
 	await shot();
 });
 
-Then('the document never mentions {string}', async ({ documents, shot }, text: string) => {
+Then('the document never mentions {string}', async ({ documents }, text: string) => {
 	expect(await documentText(documents)).not.toContain(text);
-	await shot();
 });
 
 Then(

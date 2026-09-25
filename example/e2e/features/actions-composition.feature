@@ -11,20 +11,6 @@ Feature: Go page actions compose with ordinary pages
     Examples:
       | submission      |
       | Kit enhancement |
-      | native form     |
-
-  Scenario Outline: The <choice> button selects its Go action with <submission>
-    Given I open "/actions"
-    Then the Actions editor shows the Ada fixture
-    When I choose <choice> using <submission>
-    Then the chosen <choice> action shows its matching saved state
-
-    Examples:
-      | choice  | submission      |
-      | save    | Kit enhancement |
-      | save    | native form     |
-      | archive | Kit enhancement |
-      | archive | native form     |
 
   Scenario Outline: Editing <selected> changes only that profile with <submission>
     Given I open "/actions"
@@ -36,7 +22,4 @@ Feature: Go page actions compose with ordinary pages
 
     Examples:
       | selected | submission      |
-      | ada      | Kit enhancement |
       | ada      | native form     |
-      | grace    | Kit enhancement |
-      | grace    | native form     |

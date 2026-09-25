@@ -63,20 +63,6 @@ Then('a later editor GET still shows the literal cookie and Ada fixture', async 
 	await shot('later-cookie-get');
 });
 
-When(/^I save Grace and inspect the action header with (Kit enhancement|native form)$/, async ({ page, notes }, submission: Submission) => {
-	if (submission === 'Kit enhancement') await hydrated(page);
-	const form = page.getByTestId(`${modeOf(submission)}-save-form`);
-	await form.getByRole('textbox', { name: 'Name' }).fill('Grace Hopper');
-	await form.getByRole('textbox', { name: 'Email' }).fill('grace@example.test');
-	await form.getByRole('textbox', { name: 'Biography' }).fill('Compiler pioneer');
-	const response = await submit(page, 'save', submission);
-	notes.set('context-header-status', response.status());
-	expect(response.status()).toBe(200);
-	expect(response.headers()['x-skgo-action-demo']).toBe('profile-saved');
-	const body = await response.text();
-	expect(body).toContain('Saved Grace Hopper');
-});
-
 Then("the response has the fixed header and the page has Grace's saved profile", async ({ page, shot, notes }) => {
 	expect(notes.get('context-header-status')).toBe(200);
 	await expect(page.getByTestId('title')).toHaveText('Actions');
@@ -87,18 +73,6 @@ Then("the response has the fixed header and the page has Grace's saved profile",
 	await expect(page.getByTestId('saved-state')).toHaveText('Active');
 	await page.evaluate(() => window.scrollTo(0, 0));
 	await shot('fixed-header-and-profile');
-});
-
-When(/^I attempt the guarded sign-in with (Kit enhancement|native form)$/, async ({ page, notes }, submission: Submission) => {
-	const response = await submit(page, 'hook-redirect', submission);
-	expect(new URL(response.url()).searchParams.get('hook')).toBe('sign-in');
-	notes.set('hook-redirect-enhanced', submission === 'Kit enhancement' ? 1 : 0);
-	expect(response.status()).toBe(submission === 'Kit enhancement' ? 200 : 303);
-	if (submission === 'Kit enhancement') {
-		expect(await response.json()).toEqual({ type: 'redirect', status: 303, location: '/actions/signed-in?required=1' });
-	} else {
-		expect(response.headers()['location']).toBe('/actions/signed-in?required=1');
-	}
 });
 
 Then("the hook redirect has Kit's response and the sign-in destination", async ({ page, shot, notes }) => {

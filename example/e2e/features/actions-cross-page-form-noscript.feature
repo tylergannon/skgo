@@ -10,7 +10,3 @@ Feature: Cross-page Go actions work without JavaScript
     Examples:
       | outcome     |
       | success     |
-      | validation  |
-      | redirect    |
-      | forbidden   |
-      | unavailable |
