@@ -14,6 +14,12 @@ Gimble run: `01M3AJSZ430H9JX3GDX4TKPY4N.implement`, started 2026-09-24 20:48:10 
 
 The total run wall time was 371.1 minutes (6 hours 11 minutes). These are stage wall times from Gimble's run record, not estimates of avoidable time. The run record does not isolate the minutes attributable to each inefficiency; the entire Stage 3 duration must not be called waste.
 
+## User impact and orchestration failure
+
+The user expected roughly one to two hours of work. Gimble alone ran for 6 hours 11 minutes. PR #181 merged at 2026-09-25 03:30:25 UTC, 6 hours 42 minutes after the run began, and report cleanup continued toward the seven-hour mark. I did not surface the growing gap against the user's expectation early enough or clearly mark when Gimble had finished and my own merge and report work began. The user had to ask repeatedly whether help was needed, whether the run was over-engineered, what was actually being tested, and why I was still editing files. That interruption and loss of confidence are part of the failure, not just an unfortunate presentation of a successful build.
+
+I owned the workflow input that made stages too broad, allowed repeated stage-wide validation to continue, opened the PR before refreshing `main`, and found two fault-probe reports only during post-merge cleanup. The last mistake created a separate report correction and CI cycle. Next time I should report elapsed time and repeated work as soon as they become material, correct workflow scope while it is still running, identify Gimble's completion as a distinct handoff, and finish evidence inventory before merging. The completed feature and green checks do not erase this cost.
+
 Candidate implementation commit: `8c23f65`. It changes 137 files, with 6,894 added and 643 removed lines. A rough path-based breakdown of added lines is 619 in root Go runtime, 335 in generator/adapter, 1,416 in the one example application's authored source, 1,916 in generated bindings and stubs, 2,548 in tests and Gherkin scenarios, and 60 in this report and actionable worklogs. This explains the diff's size; the classification is not a judgment that every added line is necessary.
 
 ## Confirmed findings
