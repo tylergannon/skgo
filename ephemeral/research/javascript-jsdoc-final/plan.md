@@ -1,6 +1,6 @@
 # JavaScript/JSDoc generation: project plan
 
-The completed Gimbal [`research-document` findings](findings.md) and [five-topic semantic index](corpus/INDEX.md) cover the pinned Kit source, skgo, Polytype v1.1.0, and disposable JavaScript app probes. This plan distinguishes source contracts, observed behavior, and work still to prove.
+The completed Gimbal [`research-document` findings](findings.md) and [five-topic semantic index](corpus/INDEX.md) cover the pinned Kit source, skgo, Polytype v1.1.0, and disposable JavaScript app probes. [Polytype draft PR #160](https://github.com/tylergannon/polytype/pull/160) now proposes the missing projection; its integration update is below. This plan distinguishes source contracts, observed behavior, and work still to prove.
 
 ## Desired result
 
@@ -9,7 +9,7 @@ A developer who chooses JavaScript with JSDoc in `skgo new` receives skgo-owned 
 ## What Kit already permits
 
 - Pinned Kit `3.0.0-next.28` recognizes `[/.]remote\.[^/]+$`, which includes `.remote.js` ([`src/exports/vite/utils.js:144-164`](/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28/src/exports/vite/utils.js)). Its remote plugin hashes the Vite-root-relative source path, including the extension, then uses that hash for the compiled chunk and `<hash>/<name>` remote ID ([`src/exports/vite/plugins/remote.js:97-136`](/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28/src/exports/vite/plugins/remote.js)). Thus `.remote.ts` to `.remote.js` changes the ID even when the export name stays the same. See [`topic-001/INDEX.md`](corpus/topic-001/INDEX.md).
-- Kit reads *runtime* exports to register remote functions. A JavaScript JSDoc type must not become a runtime export from a remote module; `export type` has no JavaScript syntax and a plain `export` of a type would violate Kit's remote-export contract ([`plugins/remote.js:110-136`](/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28/src/exports/vite/plugins/remote.js)).
+- Kit reads *runtime* exports to register remote functions. A JavaScript JSDoc type must not become a runtime export from a remote module; `export type` has no JavaScript syntax and a plain `export` of a type would violate Kit's remote-export contract ([`remote-functions.js:11-27`](/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28/src/exports/internal/server/remote-functions.js)).
 - Kit's generated config enables `allowJs` and `checkJs`, and its route-type writer explicitly handles JSDoc in JavaScript route modules ([`write_tsconfig/utils.js:24-25`](/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28/src/core/sync/write_tsconfig/utils.js), [`write_types/index.js:703-863`](/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28/src/core/sync/write_types/index.js)). This is a supported Kit mode, not a new Kit feature.
 
 ## What skgo currently emits
@@ -17,7 +17,7 @@ A developer who chooses JavaScript with JSDoc in `skgo new` receives skgo-owned 
 | Output | Current source | JavaScript mode requirement |
 | --- | --- | --- |
 | Remote functions | `internal/gen/scan.go:338`, `internal/gen/emit.go:25-179` | Emit `.remote.js` with JSDoc above each exported declaration; keep exact Kit factory call shapes for query, command, form, live, batch and no-argument functions. Preserve throwing bodies. |
-| Named wire types | `internal/gen/types.go:364-425` | Emit `types.js` from Polytype's admitted type grammar with exported JSDoc typedefs and stable collision-safe names. No runtime type values. |
+| Named wire types | `internal/gen/types.go:364-425` | Once Polytype #160 is released, call `javascript.Generate` and emit its `types.js` only. Use `Result.Names` for JSDoc references or preserve skgo's explicit collision refusal; emitted identifiers cannot be assumed to equal Go names. No runtime type values or `index.js` barrel. |
 | Server loads and actions | `internal/gen/gen.go:309-312`, `internal/gen/loads.go:27-199` | Emit `.server.js` with typed `load` and `actions` declarations, including optional/nullable fields, transported classes, deferred `Promise<T>` fields, and action failure unions. Keep throwing bodies. |
 | Endpoints | `internal/gen/endpoints.go:78-116,166-168` | Emit `+server.js` with typed method exports, including `QUERY` and `fallback`, whose bodies throw. |
 | Build contract | `internal/gen/emit.go:728-760`, `internal/adapter/skgo-adapter.js:198-262` | Make Go module paths, `skgo.remotes.json`, Kit's compiled paths and adapter comparisons agree on `.js`. Accept `.server.js` in adapter load/action path validation. |
@@ -28,11 +28,13 @@ The current generator has no language field in `gen.Config` ([`internal/gen/gen.
 
 ## Dependency and release boundary
 
-`go.mod` uses **Polytype v1.1.0**. Its `typescript.Generate` validates `typegrammar.Definitions`, allocates stable names, and emits `types.ts` plus optional `index.ts`; there is no JavaScript/JSDoc output option ([`typescript/generate.go:39-93`](/Users/tyler/go/pkg/mod/github.com/tylergannon/polytype@v1.1.0/typescript/generate.go)). The pinned `reference/polytype` symlink points to older `v1.0.0-rc.9`, so capability claims here use the actual v1.1.0 dependency. [Polytype issue #157](https://github.com/tylergannon/polytype/issues/157) requests a grammar-faithful JSDoc projection and checked-JavaScript proof. skgo should consume that projection rather than invent a second wire-type grammar. See [`topic-003/INDEX.md`](corpus/topic-003/INDEX.md).
+`go.mod` uses **Polytype v1.1.0**. Its `typescript.Generate` validates `typegrammar.Definitions`, allocates stable names, and emits `types.ts` plus optional `index.ts`; there is no JavaScript/JSDoc output option ([`typescript/generate.go:39-93`](/Users/tyler/go/pkg/mod/github.com/tylergannon/polytype@v1.1.0/typescript/generate.go)). The pinned `reference/polytype` symlink points to older `v1.0.0-rc.9`, so current dependency claims use v1.1.0. [Draft PR #160](https://github.com/tylergannon/polytype/pull/160), at head `5920146` when checked, proposes [`javascript.Generate(defs, javascript.Options{})`](https://github.com/tylergannon/polytype/blob/5920146062fc1a42c1ec5bd123b118154be1385d/javascript/generate.go#L64) returning `types.js` and [`Result.Names`](https://github.com/tylergannon/polytype/blob/5920146062fc1a42c1ec5bd123b118154be1385d/javascript/generate.go#L52), plus CLI `--javascript DIR`. It has no JavaScript barrel. skgo should consume a released version containing that API rather than invent a second wire-type grammar. See [`topic-003/INDEX.md`](corpus/topic-003/INDEX.md).
 
 The adapter's load/action validation currently names `.server.ts` only ([`skgo-adapter.js:234-246`](/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/skgo-adapter.js)). The adapter also compares generated remote hashes and routes with Kit's build, so changing a suffix on only one side fails. Adapter files have a fingerprint used at generation and startup; changing the adapter therefore requires a matching Go module/npm adapter release, not merely a source edit ([`internal/adapter/adapter.go:87-164`](/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/adapter.go), [`topic-004/INDEX.md`](corpus/topic-004/INDEX.md)). Kit itself does not appear to need a dependency change for `.remote.js` on the pinned version.
 
 For the required full JSDoc check, the JavaScript app still needs TypeScript as a **development checker**: pinned Kit declares an optional `typescript: ^6.0.0` peer and the disposable JS app uses TypeScript 6.0.3 with `svelte-check --tsconfig ./jsconfig.json` ([`kit/package.json:46-59`](/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28/package.json), [`probe package.json`](/tmp/skgo-jsdoc-jsproof-20260926/web/package.json)). The dependency change is Polytype's new projection and its skgo version bump, not removing TypeScript from tooling.
+
+PR #160 tests `types.js` with pinned `tsgo` native preview ([`javascript/consumer_test.go:215`](https://github.com/tylergannon/polytype/blob/5920146062fc1a42c1ec5bd123b118154be1385d/javascript/consumer_test.go#L215)). That validates its wire-type output; skgo still needs its own Kit/TypeScript 6 `svelte-check` fixtures for remote factories, loads, actions, and endpoints.
 
 ## What the disposable apps proved
 
@@ -46,7 +48,7 @@ The manual probe did not exercise automatic JS generation, server loads/actions/
 
 ```mermaid
 flowchart LR
-  K["Pinned Kit source and JS probe"] --> P["Polytype #157<br/>JSDoc wire types"]
+  K["Pinned Kit source and JS probe"] --> P["Polytype PR #160<br/>merge and release"]
   K --> S["skgo language choice<br/>and JS stubs"]
   P --> S
   S --> A["Adapter paths, hashes<br/>and JS check"]
@@ -54,7 +56,7 @@ flowchart LR
   V --> R["TypeScript regression<br/>paired Go/npm release"]
 ```
 
-1. **Polytype projection** — resolve #157 with checked-JavaScript consumer tests over the same admitted grammar as the TypeScript backend. Assert correct values and negative diagnostics for nested fields, enum/discriminator values, recursion and naming collisions.
+1. **Polytype release gate** — track draft PR #160 through merge and publication, then bump skgo's Polytype dependency to that release. Its own checked consumer covers named wire types; skgo consumes `javascript.Generate` and the returned `Result.Names`. No skgo wire-type projector is needed.
 2. **skgo language selection and emitters** — make the `jsdoc` choice durable for regenerate/check; emit only skgo-owned `.js` frontend artifacts in that mode, with JSDoc on every public declaration. Preserve Go handler ownership and the exact Kit factory/export semantics. Switching modes removes only obsolete generator-owned files and leaves authored files alone.
 3. **Adapter and check integration** — accept the generated `.js` route paths, keep remote IDs derived from the exact compiled path, select the app's JS config, and pair the adapter package with the Go release.
 4. **Consumer proof** — generate a fresh JS app with named wire types, every remote kind, load/action/endpoint, and an imported transported class. `pnpm run check` has zero errors; deliberately wrong calls produce specific diagnostics. `just test` proves Go handler bytes; `just e2e` exercises Kit's client in both modes where browser behavior matters; inspect the rendered page. Repeat the existing TypeScript path to catch regressions.
