@@ -1,0 +1,119 @@
+MULTI-EXCERPT SOURCE: the prerender scanner's recognition of authored .js route files
+repo: https://github.com/tylergannon/skgo.git
+commit: 657656d1161edf832eb99b69cc1636e37877144b
+retrieved: 2026-09-26
+form: verbatim line spans from each origin file.
+
+===== BEGIN EXCERPT origin: internal/gen/prerender.go lines 150-260 =====
+		return nil, err
+	}
+	pages := make([]string, 0, len(seen))
+	for page := range seen {
+		pages = append(pages, page)
+	}
+	sort.Strings(pages)
+	return pages, nil
+}
+
+func isPageFile(name string) bool {
+	if name == "+page.ts" || name == "+page.js" || name == "+page.server.ts" || name == "+page.server.js" {
+		return true
+	}
+	return strings.HasPrefix(name, "+page") && strings.HasSuffix(name, ".svelte") && (name == "+page.svelte" || strings.HasPrefix(name, "+page@"))
+}
+
+// selectedLayouts follows kit's named-layout parent links before applying the
+// option reduction. With no @ selector this is simply every ancestor layout.
+func selectedLayouts(routes, page string, loads map[string]*loadFn) ([]string, error) {
+	var ancestors []string
+	for dir := page; ; dir = filepath.Dir(dir) {
+		ancestors = append(ancestors, dir)
+		if dir == routes {
+			break
+		}
+		if !withinTree(routes, dir) || dir == filepath.Dir(dir) {
+			return nil, fmt.Errorf("skgo: page %s is outside the route tree %s", page, routes)
+		}
+	}
+
+	parent, err := layoutSelector(page, "+page")
+	if err != nil {
+		return nil, err
+	}
+	var selected []string
+	for _, dir := range ancestors {
+		segment := filepath.Base(dir)
+		if dir == routes {
+			segment = ""
+		}
+		if parent != nil && segment != *parent {
+			continue
+		}
+		if hasLayout(dir, loads) {
+			selected = append(selected, dir)
+			parent, err = layoutSelector(dir, "+layout")
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			parent = nil
+		}
+	}
+	for i, j := 0, len(selected)-1; i < j; i, j = i+1, j-1 {
+		selected[i], selected[j] = selected[j], selected[i]
+	}
+	return selected, nil
+}
+
+func hasLayout(dir string, loads map[string]*loadFn) bool {
+	if loads[filepath.Join(dir, "+layout.server.ts")] != nil {
+		return true
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == "+layout.ts" || name == "+layout.js" || name == "+layout.server.ts" || name == "+layout.server.js" ||
+			name == "+layout.svelte" || strings.HasPrefix(name, "+layout@") && strings.HasSuffix(name, ".svelte") {
+			return true
+		}
+	}
+	return false
+}
+
+func layoutSelector(dir, prefix string) (*string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".svelte") || !strings.HasPrefix(name, prefix+"@") {
+			continue
+		}
+		selector := strings.TrimSuffix(strings.TrimPrefix(name, prefix+"@"), ".svelte")
+		return &selector, nil
+	}
+	return nil, nil
+}
+
+// nodePrerender follows kit's within-node precedence: universal first, then
+// server. A missing export is inherited from the preceding branch node.
+func nodePrerender(dir, prefix string) (prerenderValue, bool, error) {
+	for _, suffix := range []string{".ts", ".js", ".server.ts", ".server.js"} {
+		value, ok, err := sourcePrerender(filepath.Join(dir, prefix+suffix))
+		if err != nil {
+			return "", false, err
+		}
+		if ok {
+			return value, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+func sourcePrerender(path string) (prerenderValue, bool, error) {
+	raw, err := os.ReadFile(path)
+===== END EXCERPT =====

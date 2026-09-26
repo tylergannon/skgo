@@ -1,0 +1,139 @@
+# s06 — where the manifest is written during a build, and where the runtime reads it
+
+# origin: /Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/skgo-adapter.js (lines 44-56, 118-140), /Users/tyler/.codex/worktrees/ef7a/skgo/example/cmd/main.go (lines 33-43), /Users/tyler/.codex/worktrees/ef7a/skgo/example/web/dist.go (lines 1-16), /Users/tyler/.codex/worktrees/ef7a/skgo/example/server.go (lines 89-113), /Users/tyler/.codex/worktrees/ef7a/skgo/static.go (lines 316-346)
+# version: skgo worktree at git 657656d1161edf832eb99b69cc1636e37877144b (main)
+# retrieved: 2026-09-26
+# location: skgo-adapter.js lines 44-56, 118-140; example/cmd/main.go lines 33-43; example/web/dist.go lines 1-16; example/server.go lines 89-113; static.go lines 316-346
+# --- verbatim begins ---
+
+== internal/adapter/skgo-adapter.js lines 44-56 (out defaults to 'build') ==
+ * checks that kit really compiled those modules and copies the lists into the
+ * build, so the Go binary can refuse to serve a frontend that was built from a
+ * different set of Go functions than it answers.
+ *
+ * @param {{ out?: string, precompress?: boolean }} [options]
+ * @returns {import('@sveltejs/kit').Adapter}
+ */
+export default function skgo({ out = 'build', precompress = true } = {}) {
+	// The engine's bundle is a fourth environment of kit's own build. Kit reads
+	// `vite.plugins.post` while it assembles its config, long before `adapt`
+	// runs, so the plugin that declares the environment has to exist here; the
+	// build itself waits until adapt() knows the node table.
+	const goja = gojaEnvironment();
+
+== internal/adapter/skgo-adapter.js lines 118-140 (write(`${out}/skgo.manifest.json`)) ==
+			// `builder` has no writeJson in kit 3.0.0-next.27 (it existed on the
+			// kit 2 line); write the manifest ourselves.
+			write(
+				`${out}/skgo.manifest.json`,
+				JSON.stringify(
+					{
+						// Which skgo wrote this. `ReadManifest` refuses a build
+						// whose adapter is not the one the reading module carries.
+						skgo: SKGO.version,
+						skgoAdapter: SKGO.adapter,
+						appDir: builder.config.appDir,
+						base: builder.config.paths.base,
+						version: builder.config.version.name,
+						trustedOrigins: builder.config.csrf.trustedOrigins,
+						// One entry per node, positionally: the vite-root-relative
+						// path of its `+*.server.ts`, or "" for a node that has
+						// none. It is how Go finds the load that answers a slot of
+						// a route's branch, and it is the same key kit itself
+						// records in the node module it builds.
+						nodes: serverIds,
+						loads: generated.loads,
+						actions: [...new Set(generated.actions)].sort(),
+						ssr: describeSSR(builder, kit, nodes),
+
+== example/cmd/main.go lines 33-43 (embed root read as dist) ==
+	}
+
+	dist, err := fs.Sub(web.Build, "build")
+	if err != nil {
+		log.Fatalf("skgo-example: %v", err)
+	}
+	handler, mode, err := example.NewHandler(dist, *proxy, *origin)
+	if err != nil {
+		log.Fatalf("skgo-example: %v", err)
+	}
+
+
+== example/web/dist.go lines 1-16 (go:embed all:build) ==
+// Package web embeds the SvelteKit build produced by the skgo adapter.
+//
+// A fresh checkout embeds only build/.gitkeep so Go can compile before `vp
+// build` has built the frontend. Starting that binary still fails loudly when
+// it cannot read the adapter manifest; the placeholder is not a runnable
+// frontend.
+package web
+
+import "embed"
+
+// Build holds the adapter output rooted at build/. The `all:` prefix is
+// mandatory — without it Go silently omits `_app/`, because its default
+// patterns skip names starting with `_` or `.`.
+//
+//go:embed all:build
+var Build embed.FS
+
+== example/server.go lines 89-113 (NewHandler -> skgo.ReadManifest) ==
+// NewHandler builds the app's server over the build in dist. With a non-empty
+// proxy it forwards pages to a running `vp dev` server; otherwise it serves the
+// embedded build.
+//
+// The order is kit's own dispatch order, turned inside out into middleware.
+// Handle is outermost because kit runs `handle` before it dispatches to
+// anything, for every kind of request — that is not the loads registry's
+// business even though this app also has one. Under it, the loads registry:
+// `__data.json` must never reach the static handler, which would answer it
+// with the boot document. Then remote functions, which live under the app
+// directory and are not routes at all. Then the server routes, which own
+// every path kit compiled a `+server.ts` for — in dev too, where kit's own
+// server would otherwise run the generated stub and throw. Pages are last,
+// because in kit they are what answers when nothing else did.
+func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) {
+	// The manifest is read in both modes: it is where appDir and base come
+	// from, and those decide the URL prefix remote calls arrive on.
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		return nil, "", err
+	}
+	if proxy != "" {
+		manifest, err = skgo.ReadDevManifest(dist, proxy)
+		if err != nil {
+			return nil, "", err
+
+== static.go lines 316-346 (NewStaticHandler reads skgo.manifest.json; no identity comparison here) ==
+// `skgo.manifest.json` and `client/` are at its top level.
+//
+// Requests are answered in this order: an exact file under `client/`; a 404
+// with an empty body for any other miss below the app directory; a page the
+// build prerendered; a page rendered by the renderer, if one was given and the
+// route's branch does not turn SSR off; kit's boot document with status 200 for
+// a path matching a route from the manifest; and the boot document with status
+// 404 for anything else, so kit's client router can render `+error.svelte`.
+func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error) {
+	document, err := fs.ReadFile(build, "index.html")
+	if err != nil {
+		return nil, fmt.Errorf("skgo: reading index.html from the build: %w", err)
+	}
+
+	raw, err := fs.ReadFile(build, "skgo.manifest.json")
+	if err != nil {
+		return nil, fmt.Errorf("skgo: reading skgo.manifest.json from the build: %w", err)
+	}
+
+	var manifest Manifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		return nil, fmt.Errorf("skgo: parsing skgo.manifest.json: %w", err)
+	}
+	if manifest.AppDir == "" {
+		manifest.AppDir = "_app"
+	}
+
+	base := strings.TrimSuffix(manifest.Base, "/")
+	if base != "" && !strings.HasPrefix(base, "/") {
+		base = "/" + base
+	}
+# --- verbatim ends ---

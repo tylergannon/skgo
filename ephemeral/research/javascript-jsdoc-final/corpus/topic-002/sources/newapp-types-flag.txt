@@ -1,0 +1,72 @@
+MULTI-EXCERPT SOURCE: where a "jsdoc" language choice exists today
+repo: https://github.com/tylergannon/skgo.git
+commit: 657656d1161edf832eb99b69cc1636e37877144b
+retrieved: 2026-09-26
+form: verbatim line spans from each origin file.
+
+===== BEGIN EXCERPT origin: internal/newapp/newapp.go lines 295-333 =====
+		switch name {
+		case "--template":
+			template = true
+			switch chosen := takeValue(); chosen {
+			case "library", "addon":
+				return nil, fmt.Errorf("skgo: sv's %s template is a package, not an application Go can serve; choose minimal or demo", chosen)
+			}
+		case "--types":
+			types = true
+			takeValue()
+		case "--no-types":
+			types = true
+		case "--add":
+			addOns, variadic = true, !inline
+		case "--no-add-ons":
+			addOns = true
+		case "--install", "--no-install":
+			return nil, fmt.Errorf("skgo: %s is not available: VitePlus installs the project with pnpm", name)
+		case "--from-playground", "--addon-name":
+			return nil, fmt.Errorf("skgo: %s does not describe an application skgo generates", name)
+		}
+	}
+	out := slices.Clone(args)
+	if interactive {
+		return out, nil
+	}
+	// Defaults go in front: --add is variadic and swallows what follows it.
+	var defaults []string
+	if !template {
+		defaults = append(defaults, "--template", "minimal")
+	}
+	if !types {
+		defaults = append(defaults, "--types", "ts")
+	}
+	if !addOns {
+		defaults = append(defaults, "--no-add-ons")
+	}
+	return append(defaults, out...), nil
+}
+===== END EXCERPT =====
+
+===== BEGIN EXCERPT origin: cmd/skgo/main.go lines 1-10 =====
+// Command skgo is the tooling for a SvelteKit app served by Go.
+//
+//	skgo new myapp
+//	skgo new myapp -- --template demo --types jsdoc --add tailwindcss=plugins:none
+//	skgo generate --web ../web
+//
+// generates the glue between the two. Run it from the generated bindings
+// package with a `go:generate` directive:
+//
+//	//go:generate go tool skgo generate --web ../web
+===== END EXCERPT =====
+
+===== BEGIN EXCERPT origin: cmd/skgo/main.go lines 140-148 =====
+		fmt.Fprintln(os.Stderr, "usage: skgo new [flags] DIR [-- SV_CREATE_OPTIONS]")
+		fmt.Fprintln(os.Stderr, "\nVitePlus delegates the frontend to sv; skgo adds the Go application server.")
+		fmt.Fprintln(os.Stderr, "In a terminal sv asks its own questions. Options after -- are handed to")
+		fmt.Fprintln(os.Stderr, "`sv create` as written, for example:")
+		fmt.Fprintln(os.Stderr, "\n\tskgo new myapp -- --template demo --types jsdoc --add tailwindcss=plugins:none")
+		fmt.Fprintln(os.Stderr, "\nsv's demo template becomes the skgo remote-function example. Without a")
+		fmt.Fprintln(os.Stderr, "terminal, what is left open is the minimal TypeScript application.")
+		fmt.Fprintln(os.Stderr)
+		fs.PrintDefaults()
+===== END EXCERPT =====

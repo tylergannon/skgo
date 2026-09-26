@@ -1,0 +1,134 @@
+# s09 — how generated app files are covered: comparison checks, not the fingerprint
+
+# origin: /Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/skgo-adapter.js (lines 198-262, 428-444, 496-506, 745-770)
+# version: skgo worktree at git 657656d1161edf832eb99b69cc1636e37877144b (main)
+# retrieved: 2026-09-26
+# location: skgo-adapter.js lines 198-262, 428-444, 496-506, 745-770
+# --- verbatim begins ---
+
+== internal/adapter/skgo-adapter.js lines 198-262 (readGenerated: validation of the generated skgo.remotes.json, incl. the .server.ts extension tests) ==
+/**
+ * Reads what `skgo generate` emitted.
+ *
+ * A missing or shapeless file is a failure, not an empty list: an adapter that
+ * quietly compares nothing to nothing reports success for an app whose two
+ * halves were never checked against each other.
+ *
+ * @returns {{ remotes: string[], loads: string[], actions: string[], endpoints: Record<string, string[]> }}
+ */
+function readGenerated() {
+	let raw;
+	try {
+		raw = readFileSync('skgo.remotes.json', 'utf-8');
+	} catch {
+		throw new Error(
+			'skgo: skgo.remotes.json is missing. Run `go generate ./...` before building the frontend.'
+		);
+	}
+	const parsed = JSON.parse(raw);
+	if (!Array.isArray(parsed.remotes)) {
+		throw new Error(
+			'skgo: skgo.remotes.json has no `remotes` array. Run `go generate ./...` before building the frontend.'
+		);
+	}
+	for (const id of parsed.remotes) {
+		if (typeof id !== 'string' || !/^[^/]+\/[^/]+$/.test(id)) {
+			throw new Error(
+				`skgo: skgo.remotes.json lists ${JSON.stringify(id)}, which is not a <hash>/<name> id.`
+			);
+		}
+	}
+	if (!Array.isArray(parsed.loads)) {
+		throw new Error(
+			'skgo: skgo.remotes.json has no `loads` array. Run `go generate ./...` before building the frontend.'
+		);
+	}
+	for (const module of parsed.loads) {
+		if (typeof module !== 'string' || !/\/\+(page|layout)\.server\.ts$/.test(module)) {
+			throw new Error(
+				`skgo: skgo.remotes.json lists ${JSON.stringify(module)}, which is not a +page.server.ts or +layout.server.ts path.`
+			);
+		}
+	}
+	if (!Array.isArray(parsed.actions)) {
+		throw new Error('skgo: skgo.remotes.json has no `actions` array. Run `go generate ./...` before building the frontend.');
+	}
+	for (const module of parsed.actions) {
+		if (typeof module !== 'string' || !/\/\+page\.server\.ts$/.test(module)) {
+			throw new Error(`skgo: skgo.remotes.json lists ${JSON.stringify(module)}, which is not a +page.server.ts action path.`);
+		}
+	}
+	if (typeof parsed.endpoints !== 'object' || parsed.endpoints === null || Array.isArray(parsed.endpoints)) {
+		throw new Error(
+			'skgo: skgo.remotes.json has no `endpoints` object. Run `go generate ./...` before building the frontend.'
+		);
+	}
+	for (const [id, methods] of Object.entries(parsed.endpoints)) {
+		if (!id.startsWith('/') || !Array.isArray(methods) || methods.length === 0) {
+			throw new Error(
+				`skgo: skgo.remotes.json maps ${JSON.stringify(id)} to ${JSON.stringify(methods)}, which is not a route id and its methods.`
+			);
+		}
+	}
+	return { remotes: parsed.remotes, loads: parsed.loads, actions: parsed.actions, endpoints: parsed.endpoints };
+}
+
+== internal/adapter/skgo-adapter.js lines 745-770 (checkServerLoads: generated lists compared against kit's compiled nodes) ==
+/**
+ * The same check for server loads. Kit decides whether its client asks for
+ * `__data.json` at all by looking for a `load` export in the *built*
+ * `+*.server.js`, so a stub that did not reach the build is a page whose Go load
+ * is never called, and a compiled stub with no Go load behind it is a page whose
+ * data nobody answers.
+ *
+ * @param {string[]} nodes
+ * @param {string[]} loads
+ * @param {string[]} actions
+ */
+function checkServerLoads(nodes, loads, actions) {
+	const built = new Set(nodes.filter(Boolean));
+	const declared = new Set([...loads, ...actions]);
+
+	const missing = [...declared].filter((id) => !built.has(id));
+	const extra = [...built].filter((id) => !declared.has(id));
+	if (missing.length === 0 && extra.length === 0) return;
+
+	throw new Error(
+		'skgo: skgo.remotes.json does not describe the server loads kit just compiled.\n' +
+			(missing.length ? `  generated but not compiled: ${missing.join(', ')}\n` : '') +
+			(extra.length ? `  compiled but not generated: ${extra.join(', ')}\n` : '') +
+			'  Every server load is written in Go. Run `go generate ./...`.'
+	);
+}
+
+== internal/adapter/skgo-adapter.js lines 428-444 and 496-506 (readNodes doc; manifest `nodes` value is kit's `server_id`) ==
+/**
+ * The node table, in the positions the manifest's own route branches point at:
+ * for each node, the vite-root-relative path of its `+*.server.ts`, the
+ * component it renders, the client assets it needs and the page options it
+ * sets. Kit records the server path as `server_id` in the node modules it
+ * builds, and that is the only place the mapping from a branch slot back to an
+ * authored file survives the build.
+ *
+ * The positions are the trap. Kit *renumbers* nodes when it writes a manifest:
+ * `generate_manifest` collects the nodes the surviving routes use and hands each
+ * one a fresh consecutive index, so a route's `leaf` is a position in the
+ * manifest's node array and not the number the node's own module declares. The
+ * two agree only while every node is used — and prerendering a single page drops
+ * that page's node and shifts every later one down by one.
+ *
+ * It shows up as a page whose Go load never runs while the layout above it works
+ * perfectly, which reads like a bug in the load rather than in the manifest.
+...
+			server: module.server_id ?? '',
+			component: module.component ? componentSource(file, dir) : null,
+			imports: module.imports ?? [],
+			stylesheets: module.stylesheets ?? [],
+			fonts: module.fonts ?? [],
+			ssr: option(module, 'ssr'),
+			csr: option(module, 'csr')
+		});
+	}
+
+	return nodes;
+# --- verbatim ends ---

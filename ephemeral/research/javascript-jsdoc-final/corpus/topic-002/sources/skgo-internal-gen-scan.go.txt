@@ -1,0 +1,764 @@
+SOURCE METADATA (catalog header, not part of the source text)
+origin-path: internal/gen/scan.go
+origin-absolute: /Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/scan.go
+repo: https://github.com/tylergannon/skgo.git
+commit: 657656d1161edf832eb99b69cc1636e37877144b
+branch: codex/javascript-generation-research
+retrieved: 2026-09-26
+form: verbatim full-file copy; line numbers cited in INDEX.md are the
+      original file's. This catalog header is exactly 11 lines, so original
+line L appears at copy line L+11. Origin line numbers are quoted in INDEX.md.
+--- BEGIN SOURCE ---
+package gen
+
+import (
+	"fmt"
+	"go/ast"
+	"go/token"
+	"go/types"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
+	"golang.org/x/tools/go/packages"
+)
+
+// skgoPkg is the import path of the marker API. Markers are recognised by the
+// package a resolved identifier belongs to, never by the text `skgo.Query`, so
+// an aliased import or a local function of the same name behaves correctly.
+const skgoPkg = "github.com/tylergannon/skgo"
+
+type remoteKind string
+
+const (
+	kindQuery   remoteKind = "query"
+	kindCommand remoteKind = "command"
+	kindLive    remoteKind = "query.live"
+	kindBatch   remoteKind = "query.batch"
+	kindForm    remoteKind = "form"
+)
+
+var markerKinds = map[string]remoteKind{
+	"Query":      kindQuery,
+	"Command":    kindCommand,
+	"LiveQuery":  kindLive,
+	"BatchQuery": kindBatch,
+	"Form":       kindForm,
+}
+
+// loadFn is one declared server load.
+type loadFn struct {
+	// name is the Go identifier. It is not `load`: a route directory holds
+	// both `+page.server.ts` and `+layout.server.ts`, so their two Go files
+	// are one Go package and cannot both declare a function of that name. The
+	// file the marker sits in is what says which stub it generates.
+	name string
+	// goPkg is the package that declares it.
+	goPkg *goPackage
+	// module is the vite-root-relative path of the `+*.server.ts` that will
+	// carry it, e.g. "src/routes/account/+layout.server.ts". Kit records the
+	// same string for the node, which is what joins the two halves.
+	module string
+	// stub is the absolute path of that file.
+	stub string
+	// source is the vite-root-relative path of the authored Go file. It names
+	// the load in diagnostics without exposing a machine-specific absolute path.
+	source string
+	// out is the load's result type, straight out of the marker's generic
+	// instantiation.
+	out types.Type
+	pos token.Position
+	// handler is the name of the generated closure that answers this load.
+	handler string
+}
+
+// actionFn is a named Go action exported by a page's +page.server.ts.
+type actionFn struct {
+	fnName  string
+	name    string
+	goPkg   *goPackage
+	module  string
+	stub    string
+	out     types.Type
+	failure types.Type
+	noData  bool
+	pos     token.Position
+	handler string
+}
+
+// remoteFn is one declared remote function.
+type remoteFn struct {
+	kind remoteKind
+	// name is the Go identifier, which is also the TypeScript export name.
+	name string
+	// goPkg is the package that declares it.
+	goPkg *goPackage
+	// module is the vite-root-relative path of the `.remote.ts` that will
+	// carry it, e.g. "src/routes/todos/todos.remote.ts".
+	module string
+	// stub is the absolute path of that file.
+	stub string
+	// in and out are the argument and result types, straight out of the
+	// marked function's own signature.
+	in, out types.Type
+	pos     token.Position
+	// inCodec and outCodec are the base names of the codecs polytype
+	// generated for those two types — `Decode<inCodec>` and
+	// `Encode<outCodec>`. Either is empty when there is no generated codec for
+	// that half; see planCodecs for the three shapes that have none.
+	inCodec, outCodec string
+	// handler is the name of the generated closure that answers this function.
+	handler string
+	// requestedArg is the name of the generated wrapper skgo.Requested decodes
+	// one client-requested instance's argument with. It is empty for a
+	// function declared without an argument.
+	requestedArg string
+}
+
+// goPackage is one Go package that declares remote functions.
+//
+// A package under the route tree has two directories, and confusing them is
+// the classic way to get this wrong: `dir` is where the developer's source
+// lives and where everything generated for a human to see must land, while
+// `loadDir` is the link Go compiled it through. `go list` reports the link
+// unresolved, so every path that comes back from `packages.Load` is a loadDir
+// path until it is translated.
+type goPackage struct {
+	pkg *packages.Package
+	dir string
+	// loadDir is the directory Go named the package by. It equals dir for a
+	// package Go can already name.
+	loadDir string
+	// alias is the import alias the generated bindings file uses.
+	alias string
+}
+
+type app struct {
+	cfg Config
+
+	remotes   []*remoteFn
+	loads     []*loadFn
+	actions   []*actionFn
+	endpoints []*endpointFn
+	// transported are the app's `transport` hook entries, from src/hooks.go.
+	transported []*transportedType
+	// pkgs is every package that declares remote functions, loads or server
+	// routes, in load order.
+	pkgs []*goPackage
+	// stubs groups the functions by the `.remote.ts` they land in.
+	stubs map[string][]*remoteFn
+	// typeSets records, per Go package that owns a named type used on the
+	// wire, the types polytype projects for it.
+	typeSets map[*types.Package]*namedTypes
+	// hostModule is the module the generated bindings package belongs to.
+	hostModule string
+	hostDir    string
+	// links gives the route tree's packages import paths Go can spell.
+	links *routeLinks
+	// codecSet is every type polytype emits an encoder and a strict decoder
+	// for, in the order it is given them.
+	codecSet codecSet
+}
+
+// transportedType is one entry of the app's transport hook: a Go type that
+// crosses the wire as a custom type, under the key kit's client looks it up by.
+type transportedType struct {
+	// key is the property name in kit's transport object, and the tag the
+	// value travels under.
+	key string
+	// named is the Go type, which must be a named type: the generated codec
+	// and the TypeScript class both need a name to be spelled by.
+	named *types.Named
+	// goPkg is the package src/hooks.go lives in.
+	goPkg *goPackage
+	pos   token.Position
+}
+
+type namedTypes struct {
+	pkg *types.Package
+	// loadDir is the directory polytype loads to reach the types: the
+	// package's own, by the address Go names it — a route package's link
+	// rather than its authored path — or, for a foreign package, that of an
+	// app package importing it, since a dependency's source is not the app's
+	// to load from and polytype resolves an imported root on demand.
+	loadDir string
+	// names are the type names as the defining package spells them, which is
+	// also how they reach TypeScript.
+	names []string
+	seen  map[string]bool
+	// tsDir is where the package's types.ts is written.
+	tsDir string
+	// foreign marks a package outside the app's own tree. Its declarations
+	// are addressed by import path, because a dependency's package name is
+	// neither unique nor the app's to change.
+	foreign bool
+}
+
+// loadApp resolves every package holding a `.remote.go` file and reads the
+// markers out of it.
+func loadApp(cfg Config, files []string) (*app, error) {
+	a := &app{
+		cfg:      cfg,
+		stubs:    map[string][]*remoteFn{},
+		typeSets: map[*types.Package]*namedTypes{},
+	}
+
+	var err error
+	a.hostDir, a.hostModule, err = moduleOf(cfg.Out)
+	if err != nil {
+		return nil, err
+	}
+
+	if a.links, err = newRouteLinks(cfg, a.hostDir, a.hostModule); err != nil {
+		return nil, err
+	}
+	var overlay map[string][]byte
+	if cfg.ReadOnly {
+		overlay, err = a.links.overlay()
+		if err != nil {
+			return nil, err
+		}
+	} else if err := a.links.sync(); err != nil {
+		return nil, err
+	}
+
+	dirs := map[string]bool{}
+	for _, f := range files {
+		dirs[filepath.Dir(f)] = true
+	}
+	var patterns []string
+	for dir := range dirs {
+		path, err := a.importPath(dir)
+		if err != nil {
+			return nil, err
+		}
+		patterns = append(patterns, path)
+	}
+	sort.Strings(patterns)
+
+	loaded, err := packages.Load(&packages.Config{
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
+			packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
+		Dir: a.hostDir, Overlay: overlay,
+	}, patterns...)
+	if err != nil {
+		return nil, fmt.Errorf("skgo: loading remote packages: %w", err)
+	}
+	var loadErr error
+	packages.Visit(loaded, nil, func(p *packages.Package) {
+		for _, e := range p.Errors {
+			if loadErr == nil {
+				if cfg.ReadOnly {
+					for _, link := range a.links.links {
+						if p.PkgPath == link.importPath {
+							if m := overlayError.FindStringSubmatch(e.Error()); m != nil {
+								loadErr = fmt.Errorf("skgo: %s:%s:%s: %s", filepath.Join(link.dir, m[1]), m[2], m[3], m[4])
+								break
+							}
+						}
+					}
+				}
+				if loadErr == nil {
+					loadErr = fmt.Errorf("skgo: %s: %v", p.PkgPath, e)
+				}
+			}
+		}
+	})
+	if loadErr != nil {
+		return nil, loadErr
+	}
+
+	wanted := map[string]bool{}
+	for _, f := range files {
+		wanted[f] = true
+	}
+
+	for i, p := range loaded {
+		gp := &goPackage{pkg: p, alias: fmt.Sprintf("skgo%d", i)}
+		if len(p.GoFiles) > 0 {
+			gp.loadDir = filepath.Dir(p.GoFiles[0])
+			gp.dir = a.links.authoredDir(gp.loadDir)
+		}
+		found := false
+		for _, file := range p.Syntax {
+			path := a.links.authoredPath(p.Fset.Position(file.Pos()).Filename)
+			if !wanted[path] {
+				continue
+			}
+			fns, loads, actions, endpoints, err := a.scanFile(gp, p, file, path)
+			if err != nil {
+				return nil, err
+			}
+			if len(fns) > 0 || len(loads) > 0 || len(actions) > 0 || len(endpoints) > 0 {
+				found = true
+			}
+			a.remotes = append(a.remotes, fns...)
+			a.loads = append(a.loads, loads...)
+			a.actions = append(a.actions, actions...)
+			a.endpoints = append(a.endpoints, endpoints...)
+		}
+		if found {
+			a.pkgs = append(a.pkgs, gp)
+		}
+	}
+
+	sort.Slice(a.remotes, func(i, j int) bool {
+		if a.remotes[i].module != a.remotes[j].module {
+			return a.remotes[i].module < a.remotes[j].module
+		}
+		return a.remotes[i].name < a.remotes[j].name
+	})
+	for _, fn := range a.remotes {
+		a.stubs[fn.stub] = append(a.stubs[fn.stub], fn)
+	}
+	sort.Slice(a.loads, func(i, j int) bool { return a.loads[i].module < a.loads[j].module })
+	sort.Slice(a.actions, func(i, j int) bool {
+		if a.actions[i].module != a.actions[j].module {
+			return a.actions[i].module < a.actions[j].module
+		}
+		return a.actions[i].name < a.actions[j].name
+	})
+	sort.Slice(a.endpoints, func(i, j int) bool {
+		if a.endpoints[i].module != a.endpoints[j].module {
+			return a.endpoints[i].module < a.endpoints[j].module
+		}
+		return a.endpoints[i].method < a.endpoints[j].method
+	})
+	return a, a.checkDuplicates()
+}
+
+var overlayError = regexp.MustCompile(`(?m)(?:^|/)\d+-([^/\n:]+\.go):(\d+):(\d+): ([^\n]+)`)
+
+// scanFile reads the markers in one `.remote.go`, `page.server.go`,
+// `layout.server.go` or `server.go` file. The file's name decides which markers
+// may appear in it, because it also decides what kit compiles beside it.
+func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path string) ([]*remoteFn, []*loadFn, []*actionFn, []*endpointFn, error) {
+	base := filepath.Base(path)
+	_, isLoadFile := loadFileNames[base]
+	isServerFile := base == serverFileName
+	isHooksFile := base == hooksFileName
+
+	if isHooksFile {
+		return nil, nil, nil, nil, a.scanHooks(gp, p, file, path)
+	}
+
+	stub := strings.TrimSuffix(path, ".go") + ".ts"
+	if tsName, isLoad := loadFileNames[base]; isLoad {
+		stub = filepath.Join(filepath.Dir(path), tsName)
+	}
+	if isServerFile {
+		stub = endpointStubPath(path)
+	}
+	mod, err := webRel(a.cfg.Web, stub)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	routeID := ""
+	if isServerFile {
+		if routeID, err = routeIDFor(mod); err != nil {
+			return nil, nil, nil, nil, err
+		}
+	}
+
+	var remotes []*remoteFn
+	var loads []*loadFn
+	var actions []*actionFn
+	var endpoints []*endpointFn
+	for _, decl := range file.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.VAR {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			for _, value := range vs.Values {
+				call, ok := value.(*ast.CallExpr)
+				if !ok {
+					continue
+				}
+				fn, load, action, endpoint, err := a.readMarker(gp, p, call, mod, stub, routeID, path)
+				if err != nil {
+					return nil, nil, nil, nil, err
+				}
+				if fn != nil {
+					remotes = append(remotes, fn)
+				}
+				if load != nil {
+					loads = append(loads, load)
+				}
+				if action != nil {
+					actions = append(actions, action)
+				}
+				if endpoint != nil {
+					endpoints = append(endpoints, endpoint)
+				}
+			}
+		}
+	}
+
+	if (isLoadFile || isServerFile) && len(remotes) > 0 {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s declares a remote function; a remote function belongs in a *.remote.go file", path)
+	}
+	if !isLoadFile && len(loads) > 0 {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s declares a server load; a load belongs in page.server.go or layout.server.go", path)
+	}
+	if base != "page.server.go" && len(actions) > 0 {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s declares a page action; an action belongs in page.server.go", path)
+	}
+	if !isServerFile && len(endpoints) > 0 {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s declares a server route; a server route belongs in %s, which is where kit's +server.ts is generated", path, serverFileName)
+	}
+	return remotes, loads, actions, endpoints, nil
+}
+
+// readMarker turns one call expression into a remoteFn, or returns nil if the
+// call is not a marker at all.
+func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr, mod, stub, routeID, path string) (*remoteFn, *loadFn, *actionFn, *endpointFn, error) {
+	ident := calleeIdent(call.Fun)
+	if ident == nil {
+		return nil, nil, nil, nil, nil
+	}
+	obj, _ := p.TypesInfo.Uses[ident].(*types.Func)
+	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != skgoPkg {
+		return nil, nil, nil, nil, nil
+	}
+	kind, isRemote := markerKinds[obj.Name()]
+	isLoad := obj.Name() == "Load"
+	isAction := obj.Name() == "Action" || obj.Name() == "DefaultAction" || obj.Name() == "ActionWithFailure" || obj.Name() == "ActionNoData"
+	method, isEndpoint := endpointMarkers[obj.Name()]
+	if !isRemote && !isLoad && !isAction && !isEndpoint {
+		return nil, nil, nil, nil, nil
+	}
+
+	pos := p.Fset.Position(call.Pos())
+	inst := p.TypesInfo.Instances[ident]
+	if isLoad || (isAction && obj.Name() != "ActionNoData") {
+		// A load marker is still generic — a load has no argument to make
+		// optional — so its result comes from the instantiation.
+		want := 1
+		if obj.Name() == "ActionWithFailure" {
+			want = 2
+		}
+		if inst.TypeArgs == nil || inst.TypeArgs.Len() != want {
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: cannot read the types of this skgo.%s declaration", pos, obj.Name())
+		}
+	}
+	wantArgs := 1
+	if obj.Name() == "ActionWithFailure" {
+		wantArgs = 2
+	}
+	if len(call.Args) != wantArgs {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s takes exactly one argument, the function to publish", pos, obj.Name())
+	}
+
+	arg, ok := call.Args[0].(*ast.Ident)
+	if !ok {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s needs a named function, not an expression — declare the function and pass its name", pos, obj.Name())
+	}
+	target, _ := p.TypesInfo.Uses[arg].(*types.Func)
+	if target == nil {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s is not a function", pos, arg.Name)
+	}
+	if target.Pkg() != p.Types {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s is declared in another package; it must live in the file that publishes it", pos, arg.Name)
+	}
+
+	if isEndpoint {
+		if routeID == "" {
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s declares a server route, which belongs in %s", pos, obj.Name(), serverFileName)
+		}
+		return nil, nil, nil, &endpointFn{
+			method:  method,
+			name:    target.Name(),
+			goPkg:   gp,
+			module:  mod,
+			stub:    stub,
+			routeID: routeID,
+			pos:     pos,
+		}, nil
+	}
+
+	if isLoad {
+		source, err := webRel(a.cfg.Web, path)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		return nil, &loadFn{
+			name:   target.Name(),
+			goPkg:  gp,
+			module: mod,
+			stub:   stub,
+			source: source,
+			out:    inst.TypeArgs.At(0),
+			pos:    pos,
+		}, nil, nil, nil
+	}
+	if isAction {
+		action := &actionFn{name: target.Name(), fnName: target.Name(), goPkg: gp, module: mod, stub: stub, pos: pos}
+		if obj.Name() == "DefaultAction" {
+			action.name = "default"
+		}
+		if obj.Name() == "ActionNoData" {
+			action.noData = true
+		} else {
+			action.out = inst.TypeArgs.At(0)
+			if obj.Name() == "ActionWithFailure" {
+				action.failure = inst.TypeArgs.At(1)
+			}
+		}
+		return nil, nil, action, nil, nil
+	}
+
+	in, out, err := remoteSignature(kind, target)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s is declared as a %s, but %w", pos, target.Name(), kind, err)
+	}
+
+	return &remoteFn{
+		kind:   kind,
+		name:   target.Name(),
+		goPkg:  gp,
+		module: mod,
+		stub:   stub,
+		in:     in,
+		out:    out,
+		pos:    pos,
+	}, nil, nil, nil, nil
+}
+
+// remoteSignature reads a marked function's argument and result types out of
+// its own declaration.
+//
+// The marker cannot carry them. `skgo.Query` takes `any`, because kit's
+// `query(fn)` accepts `(arg?) => Output` and a generic constraint spelled
+// `func(context.Context, In) (Out, error)` would force every no-argument
+// remote function to name a placeholder type that exists for no other reason.
+// So the shape is checked here, against the real signature, and reported at
+// the declaration's position — which is where a compiler would have reported
+// it.
+//
+// in is nil for a function that takes no argument. That is the same nil the
+// TypeScript stub reads as kit's no-validator overload, and it is why no skgo
+// type reaches the type projector.
+func remoteSignature(kind remoteKind, target *types.Func) (in, out types.Type, err error) {
+	sig, ok := target.Type().(*types.Signature)
+	if !ok {
+		return nil, nil, fmt.Errorf("it is not a function")
+	}
+	if sig.Variadic() {
+		return nil, nil, fmt.Errorf("its signature is %s: a %s cannot be variadic, because kit calls it with one argument at most", sig, kind)
+	}
+
+	want := shapeOf(kind)
+	params, results := sig.Params(), sig.Results()
+
+	if params.Len() == 0 || !isContext(params.At(0).Type()) {
+		return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+	}
+
+	if kind == kindLive {
+		// The yield is last, so the optional argument sits between it and the
+		// context, exactly where an argument sits for the other kinds.
+		if results.Len() != 1 || !isError(results.At(0).Type()) {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		if params.Len() < 2 || params.Len() > 3 {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		yielded, ok := yieldType(params.At(params.Len() - 1).Type())
+		if !ok {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		if params.Len() == 3 {
+			in = params.At(1).Type()
+		}
+		return in, yielded, nil
+	}
+
+	if params.Len() > 2 {
+		return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+	}
+	if results.Len() != 2 || !isError(results.At(1).Type()) {
+		return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+	}
+
+	if kind == kindBatch {
+		// A batch takes the whole batch and answers all of it. Both sides are
+		// slices, and what the rest of the generator needs — the argument the
+		// page passes and the value one component renders — are their element
+		// types: kit's client still calls a batch query one argument at a time
+		// and gets one value back, which is the only shape the stub and the
+		// wire ever see.
+		if params.Len() != 2 {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		arg, ok := sliceElem(params.At(1).Type())
+		if !ok {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		result, ok := sliceElem(results.At(0).Type())
+		if !ok {
+			return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
+		}
+		return arg, result, nil
+	}
+
+	if params.Len() == 2 {
+		in = params.At(1).Type()
+	}
+	return in, results.At(0).Type(), nil
+}
+
+// sliceElem reads T out of []T. A named slice type is not one: the generated
+// constructor is instantiated with the element type and passes the function
+// straight through, so the parameter has to be a plain slice for the compiler
+// to accept it.
+func sliceElem(t types.Type) (types.Type, bool) {
+	slice, ok := types.Unalias(t).(*types.Slice)
+	if !ok {
+		return nil, false
+	}
+	return slice.Elem(), true
+}
+
+// shapeOf is the sentence that says what the kind accepts. A form is the one
+// kind whose argument is not optional: kit hands its handler the submission,
+// and a form that ignores it is a form that ignores what the visitor typed.
+func shapeOf(kind remoteKind) string {
+	switch kind {
+	case kindLive:
+		return "A query.live is func(context.Context, func(Out) error) error, or func(context.Context, In, func(Out) error) error when it takes an argument."
+	case kindBatch:
+		return "A query.batch is func(context.Context, []In) ([]Out, error): it is handed every argument in the batch and answers one result per argument, in the same order."
+	case kindForm:
+		return "A form is func(context.Context, In) (Out, error): kit hands a form handler the submission, so its argument is not optional."
+	}
+	return fmt.Sprintf("A %s is func(context.Context) (Out, error), or func(context.Context, In) (Out, error) when it takes an argument.", kind)
+}
+
+// yieldType reads Out out of a `func(Out) error` parameter.
+func yieldType(t types.Type) (types.Type, bool) {
+	sig, ok := types.Unalias(t).(*types.Signature)
+	if !ok || sig.Variadic() {
+		return nil, false
+	}
+	if sig.Params().Len() != 1 || sig.Results().Len() != 1 || !isError(sig.Results().At(0).Type()) {
+		return nil, false
+	}
+	return sig.Params().At(0).Type(), true
+}
+
+func isContext(t types.Type) bool {
+	named, ok := types.Unalias(t).(*types.Named)
+	if !ok || named.Obj().Pkg() == nil {
+		return false
+	}
+	return named.Obj().Pkg().Path() == "context" && named.Obj().Name() == "Context"
+}
+
+func isError(t types.Type) bool {
+	return types.Identical(types.Unalias(t), types.Universe.Lookup("error").Type())
+}
+
+func calleeIdent(fun ast.Expr) *ast.Ident {
+	switch f := fun.(type) {
+	case *ast.Ident:
+		return f
+	case *ast.SelectorExpr:
+		return f.Sel
+	case *ast.IndexExpr: // explicit type argument
+		return calleeIdent(f.X)
+	case *ast.IndexListExpr:
+		return calleeIdent(f.X)
+	}
+	return nil
+}
+
+func (a *app) checkDuplicates() error {
+	seen := map[string]*remoteFn{}
+	for _, fn := range a.remotes {
+		key := fn.module + "#" + fn.name
+		if prev, dup := seen[key]; dup {
+			return fmt.Errorf("skgo: %s is declared twice, at %s and %s", key, prev.pos, fn.pos)
+		}
+		seen[key] = fn
+	}
+	loads := map[string]*loadFn{}
+	for _, load := range a.loads {
+		if prev, dup := loads[load.module]; dup {
+			return fmt.Errorf("skgo: %s has two server loads, at %s and %s", load.module, prev.pos, load.pos)
+		}
+		loads[load.module] = load
+	}
+	actions := map[string]*actionFn{}
+	byModule := map[string]map[string]*actionFn{}
+	for _, action := range a.actions {
+		key := action.module + "#" + action.name
+		if prev := actions[key]; prev != nil {
+			return fmt.Errorf("skgo: action %s is declared twice, at %s and %s", key, prev.pos, action.pos)
+		}
+		actions[key] = action
+		if byModule[action.module] == nil {
+			byModule[action.module] = map[string]*actionFn{}
+		}
+		if action.name == "default" && len(byModule[action.module]) != 0 ||
+			action.name != "default" && byModule[action.module]["default"] != nil {
+			return fmt.Errorf("skgo: default action cannot be used with named actions in %s", action.module)
+		}
+		byModule[action.module][action.name] = action
+	}
+	return nil
+}
+
+// importPath names the Go package in dir. A route directory is called `[id]`
+// or `(app)` and cannot be spelled in an import path at all, so the answer is
+// the link tree: the package is compiled through an address Go can name.
+func (a *app) importPath(dir string) (string, error) {
+	if link := a.links.linkFor(dir); link != nil {
+		return link.importPath, nil
+	}
+	rel, err := filepath.Rel(a.hostDir, dir)
+	if err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(rel, "..") {
+		return "", fmt.Errorf("skgo: %s is outside the Go module rooted at %s", dir, a.hostDir)
+	}
+	path := a.hostModule + "/" + filepath.ToSlash(rel)
+	if err := module.CheckImportPath(path); err != nil {
+		return "", fmt.Errorf("skgo: Go cannot name a package in %s, so a remote function cannot live there.\n"+
+			"  Only directories under %s get a generated import path; anywhere else, the directory name\n"+
+			"  has to be one Go can spell", dir, filepath.Join(a.cfg.Web, "src", "routes"))
+	}
+	return path, nil
+}
+
+// moduleOf finds the Go module containing dir by walking up to its go.mod.
+// `go list -m` is not used: inside a workspace it reports every main module,
+// not the one that owns this directory.
+func moduleOf(dir string) (root, path string, err error) {
+	for cur := dir; ; {
+		candidate := filepath.Join(cur, "go.mod")
+		if raw, err := os.ReadFile(candidate); err == nil {
+			path := modfile.ModulePath(raw)
+			if path == "" {
+				return "", "", fmt.Errorf("skgo: %s declares no module path", candidate)
+			}
+			return cur, path, nil
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return "", "", fmt.Errorf("skgo: no go.mod above %s", dir)
+		}
+		cur = parent
+	}
+}
+--- END SOURCE ---

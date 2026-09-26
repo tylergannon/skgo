@@ -1,0 +1,145 @@
+RECORDED COMMAND OUTPUT (not source text): git-tracked generated files in the
+skgo example app
+repo: https://github.com/tylergannon/skgo.git
+commit: 657656d1161edf832eb99b69cc1636e37877144b
+retrieved: 2026-09-26
+commands:
+  git ls-files 'example/**' | grep -E "_gen[.]go$|[.]remote[.]ts$|types[.]ts$|[+]server[.]ts$|[+]page[.]server[.]ts$|[+]layout[.]server[.]ts$"
+  git ls-files 'example/**' | grep -c "skgo_remotes_gen.go"
+
+===== BEGIN OUTPUT =====
+example/e2e/fixtures/dev-added/+page.server.ts
+example/internal/skgo/client/skgo_client_devalue_gen.go
+example/internal/skgo/client/skgo_client_gen.go
+example/internal/skgo/links/onzggl3sn52xizlt/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a/skgo_remotes_gen.go
+example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq/skgo_remotes_gen.go
+example/internal/skgo/skgo_bindings_gen.go
+example/internal/skgo/skgo_devalue_gen.go
+example/web/src/lib/auth.remote.ts
+example/web/src/lib/skgo/actiondemo/types.ts
+example/web/src/lib/skgo/businesslogic/types.ts
+example/web/src/lib/skgo_remotes_gen.go
+example/web/src/routes/(marketing)/pricing/+page.server.ts
+example/web/src/routes/(marketing)/pricing/pricing.remote.ts
+example/web/src/routes/(marketing)/pricing/skgo_remotes_gen.go
+example/web/src/routes/(marketing)/pricing/types.ts
+example/web/src/routes/+layout.server.ts
+example/web/src/routes/account/+layout.server.ts
+example/web/src/routes/account/+page.server.ts
+example/web/src/routes/account/orders/+page.server.ts
+example/web/src/routes/account/orders/skgo_remotes_gen.go
+example/web/src/routes/account/orders/types.ts
+example/web/src/routes/account/skgo_remotes_gen.go
+example/web/src/routes/account/statement/+page.server.ts
+example/web/src/routes/account/statement/skgo_remotes_gen.go
+example/web/src/routes/actions/+page.server.ts
+example/web/src/routes/actions/+server.ts
+example/web/src/routes/actions/coexist.remote.ts
+example/web/src/routes/actions/cross/receive/+page.server.ts
+example/web/src/routes/actions/cross/receive/skgo_remotes_gen.go
+example/web/src/routes/actions/default/+page.server.ts
+example/web/src/routes/actions/default/+server.ts
+example/web/src/routes/actions/default/saved/+page.server.ts
+example/web/src/routes/actions/default/saved/skgo_remotes_gen.go
+example/web/src/routes/actions/default/skgo_remotes_gen.go
+example/web/src/routes/actions/options/no-client/+page.server.ts
+example/web/src/routes/actions/options/no-client/skgo_remotes_gen.go
+example/web/src/routes/actions/options/no-ssr/+page.server.ts
+example/web/src/routes/actions/options/no-ssr/skgo_remotes_gen.go
+example/web/src/routes/actions/profiles/[profile]/+page.server.ts
+example/web/src/routes/actions/profiles/[profile]/skgo_remotes_gen.go
+example/web/src/routes/actions/signed-in/+page.server.ts
+example/web/src/routes/actions/signed-in/skgo_remotes_gen.go
+example/web/src/routes/actions/skgo_remotes_gen.go
+example/web/src/routes/actions/types.ts
+example/web/src/routes/api/todos/+server.ts
+example/web/src/routes/api/todos/skgo_remotes_gen.go
+example/web/src/routes/async-ssr/[mode]/[group]/probe.remote.ts
+example/web/src/routes/async-ssr/[mode]/[group]/skgo_remotes_gen.go
+example/web/src/routes/async-ssr/[mode]/[group]/types.ts
+example/web/src/routes/async-ssr/control/[group]/+server.ts
+example/web/src/routes/async-ssr/control/[group]/skgo_remotes_gen.go
+example/web/src/routes/batch/quotes.remote.ts
+example/web/src/routes/batch/skgo_remotes_gen.go
+example/web/src/routes/batch/types.ts
+example/web/src/routes/contact/contact.remote.ts
+example/web/src/routes/contact/skgo_remotes_gen.go
+example/web/src/routes/contact/types.ts
+example/web/src/routes/docs/[...rest]/docs.remote.ts
+example/web/src/routes/docs/[...rest]/skgo_remotes_gen.go
+example/web/src/routes/docs/[...rest]/types.ts
+example/web/src/routes/empty/+page.server.ts
+example/web/src/routes/empty/empty.remote.ts
+example/web/src/routes/empty/skgo_remotes_gen.go
+example/web/src/routes/empty/types.ts
+example/web/src/routes/error/boundary/boundary.remote.ts
+example/web/src/routes/error/boundary/skgo_remotes_gen.go
+example/web/src/routes/error/boundary/types.ts
+example/web/src/routes/error/command/command.remote.ts
+example/web/src/routes/error/command/skgo_remotes_gen.go
+example/web/src/routes/error/command/types.ts
+example/web/src/routes/error/expected/+page.server.ts
+example/web/src/routes/error/expected/skgo_remotes_gen.go
+example/web/src/routes/error/redirect/redirect.remote.ts
+example/web/src/routes/error/redirect/skgo_remotes_gen.go
+example/web/src/routes/error/redirect/types.ts
+example/web/src/routes/error/unexpected/+page.server.ts
+example/web/src/routes/error/unexpected/skgo_remotes_gen.go
+example/web/src/routes/items/[id]/item.remote.ts
+example/web/src/routes/items/[id]/skgo_remotes_gen.go
+example/web/src/routes/items/[id]/types.ts
+example/web/src/routes/live/board.remote.ts
+example/web/src/routes/live/skgo_remotes_gen.go
+example/web/src/routes/live/types.ts
+example/web/src/routes/optional/optional.remote.ts
+example/web/src/routes/optional/skgo_remotes_gen.go
+example/web/src/routes/optional/types.ts
+example/web/src/routes/site.remote.ts
+example/web/src/routes/skgo_remotes_gen.go
+example/web/src/routes/stream/+page.server.ts
+example/web/src/routes/stream/skgo_remotes_gen.go
+example/web/src/routes/todos/gate/gate.remote.ts
+example/web/src/routes/todos/gate/skgo_remotes_gen.go
+example/web/src/routes/todos/gate/types.ts
+example/web/src/routes/todos/skgo_remotes_gen.go
+example/web/src/routes/todos/todos.remote.ts
+example/web/src/routes/todos/types.ts
+example/web/src/routes/types.ts
+===== END OUTPUT =====
+
+count of git-tracked skgo_remotes_gen.go under example/: 63
+count of git-tracked *.remote.ts under example/: 17
+count of git-tracked types.ts under example/: 19
+
+===== BEGIN OUTPUT (counts) =====
+git-tracked files under example/ matching _gen.go|*.remote.ts|types.ts|+server.ts|+page.server.ts|+layout.server.ts : 126
+===== END OUTPUT =====
