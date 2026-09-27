@@ -112,18 +112,33 @@ func Run(ctx context.Context, o Options) Report {
 
 	c, ds := checkGoImports(ctx, root, out)
 	add(c, ds...)
-	// The formatter's own file selection and ignore rules are authoritative.
-	if bin := localBin(web, "prettier"); bin != "" {
-		c, ds := checkPrettier(ctx, root, web, bin)
+	// Use the project's checker and its own file selection and ignore rules.
+	if bin := localBin(web, "vp"); bin != "" {
+		c, ds := checkVitePlus(ctx, root, web, bin)
 		add(c, ds...)
+		// Vite+ 0.3 excludes .svelte files from formatting. Keep that
+		// coverage explicit rather than treating a clean vp check as enough.
+		if hasSvelteFiles(web) {
+			if prettier := localBin(web, "prettier"); prettier != "" {
+				c, ds := checkSvelteFormatting(ctx, root, web, prettier)
+				add(c, ds...)
+			} else {
+				add(Check{Name: "svelte-format", Status: "failed", Message: "project Prettier and prettier-plugin-svelte are required to format Svelte files"})
+			}
+		}
 	} else {
-		add(Check{Name: "prettier", Status: "failed", Message: "project Prettier is missing; install/configure prettier and prettier-plugin-svelte"})
-	}
-	if bin := localBin(web, "eslint"); bin != "" {
-		c, ds := checkESLint(ctx, root, web, bin)
-		add(c, ds...)
-	} else {
-		add(Check{Name: "eslint", Status: "failed", Message: "project ESLint is missing; install/configure eslint and eslint-plugin-svelte"})
+		if bin := localBin(web, "prettier"); bin != "" {
+			c, ds := checkPrettier(ctx, root, web, bin)
+			add(c, ds...)
+		} else {
+			add(Check{Name: "prettier", Status: "failed", Message: "project Prettier is missing; install/configure prettier and prettier-plugin-svelte"})
+		}
+		if bin := localBin(web, "eslint"); bin != "" {
+			c, ds := checkESLint(ctx, root, web, bin)
+			add(c, ds...)
+		} else {
+			add(Check{Name: "eslint", Status: "failed", Message: "project ESLint is missing; install/configure eslint and eslint-plugin-svelte"})
+		}
 	}
 	if bin := localBin(web, "svelte-check"); bin != "" {
 		// Kit 3's generated $app tsconfig is supplied by its sync command. This
