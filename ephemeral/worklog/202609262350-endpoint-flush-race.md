@@ -1,0 +1,2 @@
+correction: A stalled test package is a measurement failure, not evidence that every later named behavior regressed; skgo-project must keep this distinction visible.
+friction: The streaming endpoint test changed a channel variable after closing it, racing the handler's receive; race detection reproduced it, and deferred server shutdown ran before the channel-release cleanup on early failure. Keep the release channel stable and release before server shutdown.
