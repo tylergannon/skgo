@@ -54,9 +54,9 @@ func loadSlug(module string) string {
 	for i, part := range parts {
 		if i == len(parts)-1 {
 			switch part {
-			case "+page.server.ts":
+			case "+page.server.ts", "+page.server.js":
 				out = append(out, "page")
-			case "+layout.server.ts":
+			case "+layout.server.ts", "+layout.server.js":
 				out = append(out, "layout")
 			default:
 				out = append(out, sanitizeIdent(part))

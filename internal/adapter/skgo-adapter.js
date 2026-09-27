@@ -12,6 +12,7 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gojaDevEnvironment, gojaEnvironment, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 import { identity } from './skgo-adapter/identity.js';
+import { validateGenerated } from './skgo-adapter/generated.js';
 
 // Which skgo this adapter is: the version this package was published at, and a
 // fingerprint taken over its own files. The Go that reads the manifest below
@@ -40,10 +41,11 @@ const KIT_COMPONENTS = join(
  *
  * It also carries the remote-function ids and the server-load module paths
  * forward. `skgo generate` writes `skgo.remotes.json` beside this file when it
- * emits the `.remote.ts` modules and the `+*.server.ts` stubs; the adapter
- * checks that kit really compiled those modules and copies the lists into the
- * build, so the Go binary can refuse to serve a frontend that was built from a
- * different set of Go functions than it answers.
+ * emits the `.remote.ts`/`.remote.js` modules and the `+*.server.ts`/
+ * `+*.server.js` stubs; the adapter checks that kit really compiled those
+ * modules and copies the lists into the build, so the Go binary can refuse to
+ * serve a frontend that was built from a different set of Go functions than it
+ * answers.
  *
  * @param {{ out?: string, precompress?: boolean }} [options]
  * @returns {import('@sveltejs/kit').Adapter}
@@ -200,7 +202,8 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
  *
  * A missing or shapeless file is a failure, not an empty list: an adapter that
  * quietly compares nothing to nothing reports success for an app whose two
- * halves were never checked against each other.
+ * halves were never checked against each other. The shape checks themselves
+ * live in `skgo-adapter/generated.js`, beside the paths they validate.
  *
  * @returns {{ remotes: string[], loads: string[], actions: string[], endpoints: Record<string, string[]> }}
  */
@@ -213,52 +216,7 @@ function readGenerated() {
 			'skgo: skgo.remotes.json is missing. Run `go generate ./...` before building the frontend.'
 		);
 	}
-	const parsed = JSON.parse(raw);
-	if (!Array.isArray(parsed.remotes)) {
-		throw new Error(
-			'skgo: skgo.remotes.json has no `remotes` array. Run `go generate ./...` before building the frontend.'
-		);
-	}
-	for (const id of parsed.remotes) {
-		if (typeof id !== 'string' || !/^[^/]+\/[^/]+$/.test(id)) {
-			throw new Error(
-				`skgo: skgo.remotes.json lists ${JSON.stringify(id)}, which is not a <hash>/<name> id.`
-			);
-		}
-	}
-	if (!Array.isArray(parsed.loads)) {
-		throw new Error(
-			'skgo: skgo.remotes.json has no `loads` array. Run `go generate ./...` before building the frontend.'
-		);
-	}
-	for (const module of parsed.loads) {
-		if (typeof module !== 'string' || !/\/\+(page|layout)\.server\.ts$/.test(module)) {
-			throw new Error(
-				`skgo: skgo.remotes.json lists ${JSON.stringify(module)}, which is not a +page.server.ts or +layout.server.ts path.`
-			);
-		}
-	}
-	if (!Array.isArray(parsed.actions)) {
-		throw new Error('skgo: skgo.remotes.json has no `actions` array. Run `go generate ./...` before building the frontend.');
-	}
-	for (const module of parsed.actions) {
-		if (typeof module !== 'string' || !/\/\+page\.server\.ts$/.test(module)) {
-			throw new Error(`skgo: skgo.remotes.json lists ${JSON.stringify(module)}, which is not a +page.server.ts action path.`);
-		}
-	}
-	if (typeof parsed.endpoints !== 'object' || parsed.endpoints === null || Array.isArray(parsed.endpoints)) {
-		throw new Error(
-			'skgo: skgo.remotes.json has no `endpoints` object. Run `go generate ./...` before building the frontend.'
-		);
-	}
-	for (const [id, methods] of Object.entries(parsed.endpoints)) {
-		if (!id.startsWith('/') || !Array.isArray(methods) || methods.length === 0) {
-			throw new Error(
-				`skgo: skgo.remotes.json maps ${JSON.stringify(id)} to ${JSON.stringify(methods)}, which is not a route id and its methods.`
-			);
-		}
-	}
-	return { remotes: parsed.remotes, loads: parsed.loads, actions: parsed.actions, endpoints: parsed.endpoints };
+	return validateGenerated(JSON.parse(raw));
 }
 
 /**

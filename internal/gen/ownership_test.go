@@ -73,6 +73,8 @@ func LiveQuery(fn any) Marker { _ = fn; return Marker{} }
 
 func BatchQuery(fn any) Marker { _ = fn; return Marker{} }
 
+func Form[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
+
 type Kind int
 
 const (
@@ -119,6 +121,10 @@ func DecodeForm(arg any, into any) error { _, _ = arg, into; return nil }
 
 type ServerLoad struct{}
 
+type Deferred[T any] struct{}
+
+func Transported[T any](tag string) Marker { _ = tag; return Marker{} }
+
 type LoadSpec struct {
 	Module string
 	Run    func(ctx context.Context) (any, error)
@@ -127,6 +133,13 @@ type LoadSpec struct {
 func NewServerLoad(spec LoadSpec) *ServerLoad { _ = spec; return &ServerLoad{} }
 
 func ActionNoData(fn func(context.Context) error) Marker { _ = fn; return Marker{} }
+
+func Action[Out any](fn func(context.Context) (Out, error)) Marker { _ = fn; return Marker{} }
+
+func ActionWithFailure[Out, Failure any](fn func(context.Context) (Out, error), failure Failure) Marker {
+	_, _ = fn, failure
+	return Marker{}
+}
 
 func DefaultAction[Out any](fn func(context.Context) (Out, error)) Marker { _ = fn; return Marker{} }
 

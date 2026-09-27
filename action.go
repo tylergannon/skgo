@@ -73,8 +73,8 @@ func NewActions(actions ...*PageAction) (*Actions, error) {
 		if action == nil || action.module == "" || action.name == "" || action.run == nil {
 			return nil, errors.New("skgo: incomplete page action")
 		}
-		if !strings.HasSuffix(action.module, "/+page.server.ts") {
-			return nil, fmt.Errorf("skgo: action %s belongs in +page.server.ts", action.name)
+		if !strings.HasSuffix(action.module, "/+page.server.ts") && !strings.HasSuffix(action.module, "/+page.server.js") {
+			return nil, fmt.Errorf("skgo: action %s belongs in +page.server.ts or +page.server.js", action.name)
 		}
 		if out.byModule[action.module] == nil {
 			out.byModule[action.module] = map[string]*PageAction{}

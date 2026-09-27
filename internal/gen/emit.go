@@ -71,43 +71,79 @@ func (a *app) writeStubs() error {
 		b.WriteString(tsHeader)
 		fmt.Fprintf(&b, "import { %s } from '$app/server';\n", strings.Join(kinds, ", "))
 
-		if len(transported) > 0 {
-			sort.Strings(transported)
-			spec, err := a.hooksSpecifier(dir)
-			if err != nil {
-				return err
+		if a.cfg.Language.JavaScript() {
+			// A JavaScript module has no `import type` or `export type`, and a
+			// runtime type export would break kit: `init_remote_functions`
+			// walks the module's runtime exports and throws on anything that
+			// is not a remote function. A top-level JSDoc typedef declares the
+			// name in the module's type space without creating a binding, so a
+			// consumer reaches it as `import('./data.remote.js').Thing` and
+			// kit sees only the functions.
+			if len(transported) > 0 {
+				sort.Strings(transported)
+				spec, err := a.hooksSpecifier(dir)
+				if err != nil {
+					return err
+				}
+				for _, name := range transported {
+					fmt.Fprintf(&b, "/** @typedef {import('%s%s').%s} %s */\n", spec, a.cfg.Language.ext(), name, name)
+				}
 			}
-			// From src/hooks.ts, not from a projected types.ts: these are the
-			// classes the app's `transport` hook builds, and their methods are
-			// the reason the hook exists.
-			fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(transported, ", "), spec)
-		}
+			var specs []string
+			for spec := range imports {
+				specs = append(specs, spec)
+			}
+			sort.Strings(specs)
+			for _, spec := range specs {
+				names := imports[spec]
+				sort.Strings(names)
+				for _, name := range names {
+					fmt.Fprintf(&b, "/** @typedef {import('%s%s').%s} %s */\n", spec, a.cfg.Language.ext(), name, name)
+				}
+			}
+		} else {
+			if len(transported) > 0 {
+				sort.Strings(transported)
+				spec, err := a.hooksSpecifier(dir)
+				if err != nil {
+					return err
+				}
+				// From src/hooks.ts, not from a projected types.ts: these are the
+				// classes the app's `transport` hook builds, and their methods are
+				// the reason the hook exists.
+				fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(transported, ", "), spec)
+			}
 
-		var specs []string
-		for spec := range imports {
-			specs = append(specs, spec)
-		}
-		sort.Strings(specs)
-		var reexport []string
-		for _, spec := range specs {
-			names := imports[spec]
-			sort.Strings(names)
-			fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(names, ", "), spec)
-			reexport = append(reexport, names...)
-		}
-		if len(reexport) > 0 {
-			sort.Strings(reexport)
-			// Re-exported as types only: `init_remote_functions` walks the
-			// module's runtime exports and throws on anything that is not a
-			// remote function, and a type export is erased before it gets
-			// there.
-			fmt.Fprintf(&b, "\nexport type { %s };\n", strings.Join(reexport, ", "))
+			var specs []string
+			for spec := range imports {
+				specs = append(specs, spec)
+			}
+			sort.Strings(specs)
+			var reexport []string
+			for _, spec := range specs {
+				names := imports[spec]
+				sort.Strings(names)
+				fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(names, ", "), spec)
+				reexport = append(reexport, names...)
+			}
+			if len(reexport) > 0 {
+				sort.Strings(reexport)
+				// Re-exported as types only: `init_remote_functions` walks the
+				// module's runtime exports and throws on anything that is not a
+				// remote function, and a type export is erased before it gets
+				// there.
+				fmt.Fprintf(&b, "\nexport type { %s };\n", strings.Join(reexport, ", "))
+			}
 		}
 
 		b.WriteString("\n// Every body throws. These functions are implemented in Go, and skgo\n")
 		b.WriteString("// answers their endpoints itself, so anything that renders in the browser\n")
 		b.WriteString("// is proof the Go handler replied rather than this module.\n")
-		b.WriteString("const unimplemented = (): never => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
+		if a.cfg.Language.JavaScript() {
+			b.WriteString("const unimplemented = () => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
+		} else {
+			b.WriteString("const unimplemented = (): never => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
+		}
 
 		for _, fn := range fns {
 			expr, err := a.stubSignature(fn)
@@ -119,12 +155,29 @@ func (a *app) writeStubs() error {
 		if err := a.write(stub, b.String()); err != nil {
 			return err
 		}
+		if err := a.removeObsoleteStub(stub); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
+// removeObsoleteStub deletes the module the other language mode wrote for the
+// same declaration. It only touches a file carrying a generated header, so an
+// authored module beside a generated one is never removed.
+func (a *app) removeObsoleteStub(stub string) error {
+	other := ".js"
+	if a.cfg.Language.JavaScript() {
+		other = ".ts"
+	}
+	return removeGeneratedArtifact(strings.TrimSuffix(stub, a.cfg.Language.ext()) + other)
+}
+
 // stubSignature renders one export.
 func (a *app) stubSignature(fn *remoteFn) (string, error) {
+	if a.cfg.Language.JavaScript() {
+		return a.stubSignatureJS(fn)
+	}
 	out, err := a.project(fn.out)
 	if err != nil {
 		return "", err
@@ -176,6 +229,60 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 	// rejects every argument with a 400.
 	return fmt.Sprintf("export const %s = %s('unchecked', (_arg: %s): %s => unimplemented());\n",
 		fn.name, call, in.expr, result), nil
+}
+
+// stubSignatureJS renders one remote export as JavaScript with a JSDoc @type
+// annotation. That annotation is what carries the signature into consumers:
+// the factory call itself infers `unknown` for an unannotated parameter and
+// `never` for a throwing body, so without it a page's wrong calls would
+// type-check. The annotation names kit's own remote-function type for the
+// factory, and its arguments are the same projections the TypeScript stub
+// spells. TypeScript uses the target type to infer the factory's own type
+// arguments, so the arrow needs no second annotation.
+//
+// A form names `RemoteForm`, whose input kit constrains to a form payload; a
+// batch stays an ordinary `RemoteQueryFunction` because that is what
+// `query.batch` produces. A no-argument function is `void`, the same generic
+// kit's no-validator overload uses.
+func (a *app) stubSignatureJS(fn *remoteFn) (string, error) {
+	out, err := a.project(fn.out)
+	if err != nil {
+		return "", err
+	}
+
+	remoteType, call := "RemoteQueryFunction", "query"
+	switch fn.kind {
+	case kindCommand:
+		remoteType, call = "RemoteCommand", "command"
+	case kindForm:
+		remoteType, call = "RemoteForm", "form"
+	case kindLive:
+		remoteType, call = "RemoteLiveQueryFunction", "query.live"
+	}
+
+	var typeArgs, invocation string
+	switch {
+	case fn.kind == kindBatch:
+		in, err := a.project(fn.in)
+		if err != nil {
+			return "", err
+		}
+		typeArgs = in.expr + ", " + out.expr
+		invocation = "query.batch('unchecked', (_args) => unimplemented())"
+	case fn.in == nil:
+		typeArgs = "void, " + out.expr
+		invocation = call + "(() => unimplemented())"
+	default:
+		in, err := a.project(fn.in)
+		if err != nil {
+			return "", err
+		}
+		typeArgs = in.expr + ", " + out.expr
+		invocation = call + "('unchecked', (_arg) => unimplemented())"
+	}
+
+	return fmt.Sprintf("/** @type {import('$app/server').%s<%s>} */\nexport const %s = %s;\n",
+		remoteType, typeArgs, fn.name, invocation), nil
 }
 
 func (a *app) depsOf(fn *remoteFn) []*types.Named {
@@ -729,8 +836,8 @@ func (a *app) transportGoType(entry *transportedType) string {
 // different set of remote functions than the one it answers.
 type remoteList struct {
 	Remotes []string `json:"remotes"`
-	// Loads names the `+*.server.ts` modules skgo generated, which is the key
-	// kit itself records for a node that has a server load.
+	// Loads names the `+*.server.ts` or `+*.server.js` modules skgo generated,
+	// which is the key kit itself records for a node that has a server load.
 	Loads   []string `json:"loads"`
 	Actions []string `json:"actions"`
 	// Endpoints names, per kit route id, the methods skgo generated an export

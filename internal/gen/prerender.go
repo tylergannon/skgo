@@ -49,7 +49,7 @@ func (a *app) checkPrerenderedLoads() error {
 			} else if ok {
 				value = option
 			}
-			if load := loads[filepath.Join(dir, "+layout.server.ts")]; load != nil {
+			if load := loadAt(loads, dir, "+layout.server"); load != nil {
 				branchLoads = append(branchLoads, load)
 			}
 		}
@@ -58,7 +58,7 @@ func (a *app) checkPrerenderedLoads() error {
 		} else if ok {
 			value = option
 		}
-		if load := loads[filepath.Join(page, "+page.server.ts")]; load != nil {
+		if load := loadAt(loads, page, "+page.server"); load != nil {
 			branchLoads = append(branchLoads, load)
 		}
 
@@ -208,7 +208,7 @@ func selectedLayouts(routes, page string, loads map[string]*loadFn) ([]string, e
 }
 
 func hasLayout(dir string, loads map[string]*loadFn) bool {
-	if loads[filepath.Join(dir, "+layout.server.ts")] != nil {
+	if loadAt(loads, dir, "+layout.server") != nil {
 		return true
 	}
 	entries, err := os.ReadDir(dir)
@@ -223,6 +223,18 @@ func hasLayout(dir string, loads map[string]*loadFn) bool {
 		}
 	}
 	return false
+}
+
+// loadAt finds the Go load registered for dir's +*.server module, whichever
+// extension the app's language writes. The map is keyed by the generated
+// module path, which is .ts in a TypeScript app and .js in a JavaScript one.
+func loadAt(loads map[string]*loadFn, dir, base string) *loadFn {
+	for _, ext := range []string{".ts", ".js"} {
+		if load := loads[filepath.Join(dir, base+ext)]; load != nil {
+			return load
+		}
+	}
+	return nil
 }
 
 func layoutSelector(dir, prefix string) (*string, error) {

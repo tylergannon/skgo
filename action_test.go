@@ -18,12 +18,14 @@ func TestNewActionsEnforcesKitDeclarationRules(t *testing.T) {
 		want    string
 	}{
 		{"named actions", []*PageAction{action(page, "save"), action(page, "archive")}, ""},
+		{"a JavaScript page", []*PageAction{action("src/routes/profile/+page.server.js", "save")}, ""},
 		{"default only", []*PageAction{action(page, "default")}, ""},
 		{"same names on different pages", []*PageAction{action(page, "save"), action("src/routes/other/+page.server.ts", "save")}, ""},
 		{"duplicate name", []*PageAction{action(page, "save"), action(page, "save")}, "duplicate action"},
 		{"default then named", []*PageAction{action(page, "default"), action(page, "save")}, "default action cannot be used with named actions"},
 		{"named then default", []*PageAction{action(page, "save"), action(page, "default")}, "default action cannot be used with named actions"},
 		{"layout placement", []*PageAction{action("src/routes/+layout.server.ts", "save")}, "belongs in +page.server.ts"},
+		{"JavaScript layout placement", []*PageAction{action("src/routes/+layout.server.js", "save")}, "belongs in +page.server.ts"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

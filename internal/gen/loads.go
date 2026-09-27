@@ -24,8 +24,8 @@ func (a *app) declareLoadTypes() error {
 	return nil
 }
 
-// writeLoadStubs emits one `+page.server.ts` or `+layout.server.ts` per Go
-// load.
+// writeLoadStubs emits one `+page.server.ts`/`+layout.server.ts` (or their
+// `.js` counterparts in a JavaScript app) per Go load.
 //
 // The export has to be named `load`, and it has to survive being imported: kit
 // decides whether its client ever asks for `__data.json` by importing the built
@@ -104,27 +104,56 @@ func (a *app) writeLoadStubs() error {
 			b.WriteString("import { building } from '$app/env';\n")
 		}
 
-		if len(transported) > 0 {
-			sort.Strings(transported)
-			spec, err := a.hooksSpecifier(dir)
-			if err != nil {
-				return err
+		if a.cfg.Language.JavaScript() {
+			// A JavaScript module has no `import type`, so a named wire type or
+			// an app-transported class reaches it as a top-level JSDoc typedef:
+			// a type-space declaration with no runtime binding for kit to mistake
+			// for an export.
+			if len(transported) > 0 {
+				sort.Strings(transported)
+				spec, err := a.hooksSpecifier(dir)
+				if err != nil {
+					return err
+				}
+				for _, name := range transported {
+					fmt.Fprintf(&b, "/** @typedef {import('%s%s').%s} %s */\n", spec, a.cfg.Language.ext(), name, name)
+				}
 			}
-			// From src/hooks.ts, not from a projected types.ts: these are the
-			// classes the app's `transport` hook builds, and their methods are
-			// the reason a load bothers to send one.
-			fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(transported, ", "), spec)
-		}
+			var specs []string
+			for spec := range imports {
+				specs = append(specs, spec)
+			}
+			sort.Strings(specs)
+			for _, spec := range specs {
+				names := imports[spec]
+				sort.Strings(names)
+				for _, name := range names {
+					fmt.Fprintf(&b, "/** @typedef {import('%s%s').%s} %s */\n", spec, a.cfg.Language.ext(), name, name)
+				}
+			}
+		} else {
+			if len(transported) > 0 {
+				sort.Strings(transported)
+				spec, err := a.hooksSpecifier(dir)
+				if err != nil {
+					return err
+				}
+				// From src/hooks.ts, not from a projected types.ts: these are the
+				// classes the app's `transport` hook builds, and their methods are
+				// the reason a load bothers to send one.
+				fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(transported, ", "), spec)
+			}
 
-		var specs []string
-		for spec := range imports {
-			specs = append(specs, spec)
-		}
-		sort.Strings(specs)
-		for _, spec := range specs {
-			names := imports[spec]
-			sort.Strings(names)
-			fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(names, ", "), spec)
+			var specs []string
+			for spec := range imports {
+				specs = append(specs, spec)
+			}
+			sort.Strings(specs)
+			for _, spec := range specs {
+				names := imports[spec]
+				sort.Strings(names)
+				fmt.Fprintf(&b, "import type { %s } from '%s';\n", strings.Join(names, ", "), spec)
+			}
 		}
 		b.WriteString("\n")
 
@@ -134,7 +163,11 @@ func (a *app) writeLoadStubs() error {
 			b.WriteString("// Go handler replied rather than this module. Kit normally reads the export\n")
 			b.WriteString("// only to learn that the route has server data. Its prerenderer does call it,\n")
 			b.WriteString("// which is refused until Go loads can run during a build (#81).\n")
-			b.WriteString("const unimplemented = (route: string): never => {\n")
+			if a.cfg.Language.JavaScript() {
+				b.WriteString("/**\n * @param {string} route\n * @returns {never}\n */\nconst unimplemented = (route) => {\n")
+			} else {
+				b.WriteString("const unimplemented = (route: string): never => {\n")
+			}
 			fmt.Fprintf(&b, "\tif (building) throw new Error('skgo: route ' + route + ' is prerendered, and its branch has a Go server load at ' + %q + '; skgo cannot answer a load while kit prerenders (#81). Remove the prerender or move the load');\n", load.source)
 			b.WriteString("\tthrow new Error('skgo: implemented in Go');\n};\n\n")
 
@@ -150,7 +183,15 @@ func (a *app) writeLoadStubs() error {
 			if len(parts) > 0 {
 				shape = "{ " + strings.Join(parts, "; ") + " }"
 			}
-			fmt.Fprintf(&b, "export const load = (event: { url: URL }): %s => unimplemented(event.url.pathname);\n", shape)
+			if a.cfg.Language.JavaScript() {
+				// `@param`/`@returns` rather than an `@type` cast: kit's type
+				// writer rewrites an `@type` on an exported function into a
+				// `@param`, which would leave the body's `never` as the load's
+				// return type and erase the data a page consumes.
+				fmt.Fprintf(&b, "/**\n * @param {{ url: URL }} event\n * @returns {%s}\n */\nexport const load = (event) => unimplemented(event.url.pathname);\n", shape)
+			} else {
+				fmt.Fprintf(&b, "export const load = (event: { url: URL }): %s => unimplemented(event.url.pathname);\n", shape)
+			}
 		}
 		if len(actions[module]) > 0 {
 			b.WriteString("\n// Kit reads these exports for action typing; Go answers every submission.\n")
@@ -191,12 +232,19 @@ func (a *app) writeLoadStubs() error {
 					}
 					shape += " | import('@sveltejs/kit').ActionFailure<" + failureShape + ">"
 				}
-				fmt.Fprintf(&b, "\t%s: async (_event: { request: Request }): Promise<%s> => { throw new Error('skgo: action implemented in Go'); },\n", action.name, shape)
+				if a.cfg.Language.JavaScript() {
+					fmt.Fprintf(&b, "\t/** @type {(event: { request: Request }) => Promise<%s>} */\n\t%s: async (_event) => { throw new Error('skgo: action implemented in Go'); },\n", shape, action.name)
+				} else {
+					fmt.Fprintf(&b, "\t%s: async (_event: { request: Request }): Promise<%s> => { throw new Error('skgo: action implemented in Go'); },\n", action.name, shape)
+				}
 			}
 			b.WriteString("};\n")
 		}
 
 		if err := a.write(stub, b.String()); err != nil {
+			return err
+		}
+		if err := a.removeObsoleteStub(stub); err != nil {
 			return err
 		}
 	}
@@ -243,6 +291,11 @@ func (a *app) collectLoadFields(load *loadFn, st *types.Struct, into *[]loadFiel
 		name, optional, skip := jsonName(field, reflectTag(st.Tag(i)))
 		if skip {
 			continue
+		}
+		if _, isOptional := optionalElem(field.Type()); isOptional {
+			// The wrapper is the semantic signal; the json tag only controls
+			// whether encoding/json omits the field.
+			optional = true
 		}
 
 		// An embedded struct's properties are promoted into the same object,

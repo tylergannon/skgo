@@ -229,8 +229,25 @@ func localBin(web, name string) string {
 }
 
 func needsKitConfig(web string) bool {
-	b, err := os.ReadFile(filepath.Join(web, "tsconfig.json"))
-	return err == nil && bytes.Contains(b, []byte("$app/tsconfig"))
+	for _, name := range []string{"tsconfig.json", "jsconfig.json"} {
+		b, err := os.ReadFile(filepath.Join(web, name))
+		if err == nil && bytes.Contains(b, []byte("$app/tsconfig")) {
+			return true
+		}
+	}
+	return false
+}
+
+// svelteConfig is the config svelte-check reads for this app. A JavaScript app
+// created with `sv --types jsdoc` has a jsconfig.json and no tsconfig.json;
+// both extend kit's generated `$app/tsconfig`. Prefer the app's own file so a
+// JavaScript app is checked as JavaScript rather than against a file that does
+// not exist.
+func svelteConfig(web string) string {
+	if _, err := os.Stat(filepath.Join(web, "tsconfig.json")); err == nil {
+		return "tsconfig.json"
+	}
+	return "jsconfig.json"
 }
 
 func checkGoImports(ctx context.Context, root, out string) (Check, []Diagnostic) {

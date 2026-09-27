@@ -1,9 +1,27 @@
 package check
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// svelte-check is pointed at the config the app actually has. A JavaScript app
+// created with `sv --types jsdoc` has a jsconfig.json; running svelte-check
+// with a tsconfig.json it does not have would report the wrong thing entirely.
+func TestSvelteConfigSelectsTheAppsOwnFile(t *testing.T) {
+	web := t.TempDir()
+	if got := svelteConfig(web); got != "jsconfig.json" {
+		t.Fatalf("config for a jsconfig-only app = %q, want jsconfig.json", got)
+	}
+	if err := os.WriteFile(filepath.Join(web, "tsconfig.json"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := svelteConfig(web); got != "tsconfig.json" {
+		t.Fatalf("config for an app with tsconfig.json = %q, want tsconfig.json", got)
+	}
+}
 
 func TestSvelteCompletionRequiresSummaryAndCount(t *testing.T) {
 	root := t.TempDir()

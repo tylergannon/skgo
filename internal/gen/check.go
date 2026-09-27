@@ -18,6 +18,9 @@ func Check(cfg Config) error {
 		return err
 	}
 	cfg.Web, cfg.Out, cfg.ReadOnly = web, out, true
+	if cfg.Language == LanguageAuto {
+		cfg.Language = detectLanguage(web)
+	}
 	if cfg.Package == "" {
 		cfg.Package = filepath.Base(out)
 	}
