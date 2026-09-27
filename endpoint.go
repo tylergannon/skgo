@@ -486,7 +486,23 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 		return
 	}
 
+	if r.Method == http.MethodHead && method == http.MethodGet {
+		// Kit cancels the GET response body before writing a synthesized HEAD
+		// response. Letting net/http see those bytes would infer a length that
+		// Kit's response does not have.
+		w = headFallbackWriter{ResponseWriter: w}
+	}
 	es.run(w, r, route, params, method, handler)
+}
+
+type headFallbackWriter struct{ http.ResponseWriter }
+
+func (w headFallbackWriter) Write(p []byte) (int, error) { return len(p), nil }
+
+func (w headFallbackWriter) Flush() {
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
 }
 
 // appPrefix is the app directory with the configured base, e.g. "/_app/".

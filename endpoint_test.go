@@ -116,6 +116,74 @@ func TestHeadIsAnsweredByTheGetHandler(t *testing.T) {
 	}
 }
 
+// Kit drops the GET response body for a synthesized HEAD response before its
+// Node writer sees it. The HTTP layer must not infer a length from those bytes.
+func TestHeadFallbackDoesNotInferContentLength(t *testing.T) {
+	for _, tc := range []struct {
+		name, explicitLength string
+	}{
+		{name: "implicit"},
+		{name: "explicit", explicitLength: "5"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newEndpoints(t, endpointFixture(nil, []string{"GET"}, nil),
+				NewEndpoint("/api/thing", "GET", func(w http.ResponseWriter, r *http.Request) {
+					if _, ok := w.(http.Flusher); !ok {
+						t.Error("HEAD fallback lost the server writer's Flush capability")
+					}
+					w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+					if tc.explicitLength != "" {
+						w.Header().Set("Content-Length", tc.explicitLength)
+					}
+					_, _ = w.Write([]byte("thing"))
+				}),
+			)
+			server := httptest.NewServer(h)
+			defer server.Close()
+			resp, err := server.Client().Head(server.URL + "/api/thing")
+			if err != nil {
+				t.Fatalf("HEAD: %v", err)
+			}
+			if resp.StatusCode != http.StatusOK {
+				t.Errorf("status = %d, want 200", resp.StatusCode)
+			}
+			if got := body(t, resp); got != "" {
+				t.Errorf("body = %q, want empty", got)
+			}
+			if got := resp.Header.Get("Content-Length"); got != tc.explicitLength {
+				t.Errorf("Content-Length = %q, want %q", got, tc.explicitLength)
+			}
+		})
+	}
+}
+
+func TestExplicitHeadStillWinsOverGet(t *testing.T) {
+	h := newEndpoints(t, endpointFixture(nil, []string{"GET", "HEAD"}, nil),
+		NewEndpoint("/api/thing", "GET", echo("thing")),
+		NewEndpoint("/api/thing", "HEAD", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Handler", "head")
+			w.Header().Set("Content-Length", "7")
+			w.WriteHeader(http.StatusAccepted)
+		}),
+	)
+	server := httptest.NewServer(h)
+	defer server.Close()
+	resp, err := server.Client().Head(server.URL + "/api/thing")
+	if err != nil {
+		t.Fatalf("HEAD: %v", err)
+	}
+	if resp.StatusCode != http.StatusAccepted || resp.Header.Get("X-Handler") != "head" || resp.Header.Get("Content-Length") != "7" || body(t, resp) != "" {
+		t.Errorf("explicit HEAD = status %d, headers %v; want 202, X-Handler head, Content-Length 7, and no body", resp.StatusCode, resp.Header)
+	}
+	get, err := server.Client().Get(server.URL + "/api/thing")
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	if get.StatusCode != http.StatusOK || body(t, get) != "thing" {
+		t.Errorf("GET status = %d; want 200 with body thing", get.StatusCode)
+	}
+}
+
 func TestAnUndeclaredMethodGetsKitsMethodNotAllowed(t *testing.T) {
 	h := newEndpoints(t, endpointFixture(nil, []string{"GET", "PUT"}, nil),
 		NewEndpoint("/api/thing", "GET", echo("thing")),
