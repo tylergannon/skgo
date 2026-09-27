@@ -1,0 +1,2 @@
+decision: A formatting diagnostic already makes Report.OK false, but leaving the named svelte-format check complete gives the dashboard a contradictory green check. Set the named status to failed when Prettier lists authored Svelte files.
+friction: Reusing another site's node_modules through a symlink made Kit 3's generated $app/tsconfig rootDirs resolve against the original site, so a copied-site check reported false missing-$types errors. Clone node_modules into the scratch site before using it as full-check evidence.
