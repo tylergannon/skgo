@@ -130,6 +130,7 @@ func checkSvelteFormatting(ctx context.Context, root, web, bin string) (Check, [
 		c.Message = strings.TrimSpace(string(output))
 		return c, nil
 	}
+	c.Status = "failed"
 	c.Message = "unformatted Svelte files"
 	return c, ds
 }

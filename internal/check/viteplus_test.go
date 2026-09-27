@@ -1,9 +1,58 @@
 package check
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestSvelteFormattingResultStatus(t *testing.T) {
+	root := t.TempDir()
+	web := filepath.Join(root, "web")
+	page := filepath.Join(web, "src", "routes", "+page.svelte")
+	if err := os.MkdirAll(filepath.Dir(page), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(page, []byte("<h1>Hello</h1>\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		name, output, status string
+		exit                 int
+	}{
+		{name: "clean", status: "complete"},
+		{name: "unformatted", output: "src/routes/+page.svelte", status: "failed", exit: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bin := filepath.Join(t.TempDir(), "prettier")
+			script := "#!/bin/sh\n"
+			if tc.output != "" {
+				script += "printf '%s\\n' '" + tc.output + "'\n"
+			}
+			if tc.exit == 1 {
+				script += "exit 1\n"
+			}
+			if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			check, diagnostics := checkSvelteFormatting(context.Background(), root, web, bin)
+			if check.Status != tc.status {
+				t.Fatalf("status=%q, want %q; message=%q diagnostics=%+v", check.Status, tc.status, check.Message, diagnostics)
+			}
+			if tc.exit == 0 {
+				if len(diagnostics) != 0 {
+					t.Fatalf("clean file produced diagnostics: %+v", diagnostics)
+				}
+				return
+			}
+			if len(diagnostics) != 1 || diagnostics[0].Severity != "error" || diagnostics[0].Location == nil || diagnostics[0].Location.File != "web/src/routes/+page.svelte" {
+				t.Fatalf("formatting difference lost its authored location: %+v", diagnostics)
+			}
+		})
+	}
+}
 
 func TestVitePlusLintDiagnosticFromRealCLIShape(t *testing.T) {
 	root := t.TempDir()
