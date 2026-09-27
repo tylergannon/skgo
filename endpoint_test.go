@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -542,11 +543,8 @@ func TestAPanickingEndpointNegotiatesJSONAndErrorTemplate(t *testing.T) {
 
 func TestEndpointFlushReachesClientBeforeTheLastChunk(t *testing.T) {
 	finish := make(chan struct{})
-	defer func() {
-		if finish != nil {
-			close(finish)
-		}
-	}()
+	var release sync.Once
+	releaseLastChunk := func() { release.Do(func() { close(finish) }) }
 	h := newEndpoints(t, endpointFixture(nil, []string{"GET"}, nil),
 		NewEndpoint("/api/thing", "GET", func(w http.ResponseWriter, r *http.Request) {
 			flusher, ok := w.(http.Flusher)
@@ -562,6 +560,7 @@ func TestEndpointFlushReachesClientBeforeTheLastChunk(t *testing.T) {
 		}))
 	server := httptest.NewServer(h)
 	defer server.Close()
+	defer releaseLastChunk()
 	first := make(chan string, 1)
 	remaining := make(chan string, 1)
 	go func() {
@@ -594,8 +593,7 @@ func TestEndpointFlushReachesClientBeforeTheLastChunk(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("the client did not receive the first chunk while the last was held")
 	}
-	close(finish)
-	finish = nil
+	releaseLastChunk()
 	select {
 	case got := <-remaining:
 		if got != "last\n" {
