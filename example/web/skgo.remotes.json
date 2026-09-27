@@ -89,6 +89,9 @@
 		"/actions/default": [
 			"GET"
 		],
+		"/api/fatal": [
+			"GET"
+		],
 		"/api/todos": [
 			"GET",
 			"POST",

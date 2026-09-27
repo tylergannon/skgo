@@ -843,3 +843,46 @@ func TestAServerRouteAnswersItsOwnMethods(t *testing.T) {
 		t.Errorf("POST /api/todos: Location %q", got)
 	}
 }
+
+// The endpoint registry is assembled before the renderer. A fatal response
+// must still receive the renderer's error.html when the real app is composed.
+func TestAFatalServerRouteUsesTheAppsErrorTemplate(t *testing.T) {
+	server := httptest.NewServer(newProdHandler(t))
+	defer server.Close()
+
+	for _, tc := range []struct {
+		accept      string
+		contentType string
+		bodyPart    string
+	}{
+		{"application/json", "application/json", `"message":"Something went wrong on our end."`},
+		{"text/html", "text/html; charset=utf-8", "<html"},
+	} {
+		req, err := http.NewRequest(http.MethodGet, server.URL+"/api/fatal", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Accept", tc.accept)
+		resp, err := server.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		payload, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusInternalServerError {
+			t.Errorf("Accept %q: status %d, want 500", tc.accept, resp.StatusCode)
+		}
+		if got := resp.Header.Get("Content-Type"); got != tc.contentType {
+			t.Errorf("Accept %q: Content-Type %q, want %q", tc.accept, got, tc.contentType)
+		}
+		if !strings.Contains(string(payload), tc.bodyPart) || !strings.Contains(string(payload), "Something went wrong on our end.") {
+			t.Errorf("Accept %q: response does not contain the app's public error message: %s", tc.accept, payload)
+		}
+		if strings.Contains(string(payload), "private endpoint failure") {
+			t.Errorf("Accept %q: panic text leaked: %s", tc.accept, payload)
+		}
+	}
+}

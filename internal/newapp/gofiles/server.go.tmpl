@@ -41,6 +41,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 			if err != nil {
 				return nil, err
 			}
+			endpoints.SetErrorTemplate(renderer.ErrorTemplate())
 			return skgo.NewStaticHandler(dist, skgo.WithSSR(renderer))
 		}
 	} else {
@@ -63,6 +64,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 			if err != nil {
 				return nil, err
 			}
+			endpoints.SetErrorTemplate(renderer.ErrorTemplate())
 			return skgo.NewDevPages(target, manifest, renderer, log.Printf, endpoints), nil
 		}
 	}

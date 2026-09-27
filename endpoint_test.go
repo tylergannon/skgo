@@ -1,10 +1,13 @@
 package skgo
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 // endpointFixture is a two-route app: `/api/thing` is an endpoint and nothing
@@ -441,6 +444,128 @@ func TestAPanickingEndpointBecomesA500(t *testing.T) {
 	}
 	if got := body(t, resp); strings.Contains(got, "boom") {
 		t.Errorf("the panic reached the client: %q", got)
+	}
+}
+
+func TestAPanickingEndpointNegotiatesJSONAndErrorTemplate(t *testing.T) {
+	cfg := endpointFixture(nil, []string{"GET"}, nil)
+	cfg.ErrorTemplate = `<html><title>Error %sveltekit.status%</title><p>%sveltekit.error.message%</p></html>`
+	cfg.OnPanic = func(string, string, any, []byte) {}
+	h := newEndpoints(t, cfg, NewEndpoint("/api/thing", "GET", func(http.ResponseWriter, *http.Request) {
+		panic("private failure detail")
+	}))
+	server := httptest.NewServer(h)
+	defer server.Close()
+
+	for _, tc := range []struct {
+		accept string
+		json   bool
+	}{
+		{accept: "application/json", json: true},
+		{accept: "text/html", json: false},
+	} {
+		req, err := http.NewRequest(http.MethodGet, server.URL+"/api/thing", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Accept", tc.accept)
+		resp, err := server.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusInternalServerError || strings.Contains(string(body), "private failure detail") {
+			t.Errorf("Accept %q: status %d, body %q", tc.accept, resp.StatusCode, body)
+		}
+		if tc.json {
+			if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
+				t.Errorf("JSON Content-Type = %q", ct)
+			}
+			var payload struct {
+				Status  int    `json:"status"`
+				Message string `json:"message"`
+			}
+			if err := json.Unmarshal(body, &payload); err != nil || payload.Status != 500 || payload.Message != "Internal Error" {
+				t.Errorf("JSON fatal response = %q, %v", body, err)
+			}
+		} else {
+			if ct := resp.Header.Get("Content-Type"); ct != "text/html; charset=utf-8" {
+				t.Errorf("HTML Content-Type = %q", ct)
+			}
+			if got := string(body); got != `<html><title>Error 500</title><p>Internal Error</p></html>` {
+				t.Errorf("HTML fatal response = %q", got)
+			}
+		}
+	}
+}
+
+func TestEndpointFlushReachesClientBeforeTheLastChunk(t *testing.T) {
+	finish := make(chan struct{})
+	defer func() {
+		if finish != nil {
+			close(finish)
+		}
+	}()
+	h := newEndpoints(t, endpointFixture(nil, []string{"GET"}, nil),
+		NewEndpoint("/api/thing", "GET", func(w http.ResponseWriter, r *http.Request) {
+			flusher, ok := w.(http.Flusher)
+			if !ok {
+				t.Error("endpoint writer does not support flush")
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain")
+			_, _ = io.WriteString(w, "first\n")
+			flusher.Flush()
+			<-finish
+			_, _ = io.WriteString(w, "last\n")
+		}))
+	server := httptest.NewServer(h)
+	defer server.Close()
+	first := make(chan string, 1)
+	remaining := make(chan string, 1)
+	go func() {
+		client := server.Client()
+		client.Timeout = 5 * time.Second
+		resp, err := client.Get(server.URL + "/api/thing")
+		if err != nil {
+			first <- err.Error()
+			return
+		}
+		defer resp.Body.Close()
+		chunk := make([]byte, len("first\n"))
+		if _, err := io.ReadFull(resp.Body, chunk); err != nil {
+			first <- err.Error()
+			return
+		}
+		first <- string(chunk)
+		rest, err := io.ReadAll(resp.Body)
+		if err != nil {
+			remaining <- err.Error()
+			return
+		}
+		remaining <- string(rest)
+	}()
+	select {
+	case got := <-first:
+		if got != "first\n" {
+			t.Errorf("first chunk = %q", got)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the client did not receive the first chunk while the last was held")
+	}
+	close(finish)
+	finish = nil
+	select {
+	case got := <-remaining:
+		if got != "last\n" {
+			t.Errorf("remaining chunk = %q", got)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the client did not receive the last chunk")
 	}
 }
 

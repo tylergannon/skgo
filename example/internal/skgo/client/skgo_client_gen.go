@@ -6,7 +6,7 @@ import (
 	"context"
 	"github.com/tylergannon/skgo"
 	skgo4 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
-	skgo29 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
+	skgo30 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
 )
 
 // Client uses the same enhanced Form endpoint as the browser.
@@ -18,6 +18,6 @@ func (c Client) SendRemoteNote(ctx context.Context, in skgo4.SkgoArg_sendRemoteN
 }
 
 // Submit submits src/routes/optional/optional.remote.ts#submit once.
-func (c Client) Submit(ctx context.Context, in skgo29.SkgoArg_submit) (skgo29.SkgoOut_submit, error) {
+func (c Client) Submit(ctx context.Context, in skgo30.SkgoArg_submit) (skgo30.SkgoOut_submit, error) {
 	return skgo.SubmitForm(ctx, c.FormClient, "83n4w1/submit", in, DecodeRoot1)
 }
