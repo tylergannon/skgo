@@ -159,6 +159,20 @@ func GET(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
 
 func POST(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
 
+func PUT(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
+
+func PATCH(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
+
+func DELETE(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
+
+func OPTIONS(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
+
+func HEAD(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
+
+func QUERY(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
+
+func Fallback(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
+
 func NewEndpoint(routeID, method string, fn http.HandlerFunc) *Endpoint {
 	_, _, _ = routeID, method, fn
 	return &Endpoint{}
