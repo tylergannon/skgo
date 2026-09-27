@@ -1,0 +1,2 @@
+decision: Keep the all-placeholder proof at document assembly: a single built site fixes its asset base, version and CSP mode, while `assemble` can receive literal alternate values without adding product configuration. Kit's pinned `core/sync/write_server.js` defines the exact replacement shape.
+proof: Temporarily removing the version substitution made the named test fail on its literal head receipt and unresolved-placeholder assertion; restoring it made the test pass.
