@@ -51,7 +51,7 @@ func (u *upstream) run(c command) error {
 	switch {
 	case c.Name == "vp-test":
 		u.devDeps = merge(map[string]string{"@sveltejs/kit": "^3.0.0-next.0"}, u.devDeps)
-		u.scripts = merge(map[string]string{"dev": "vp dev", "build": "vp build"}, u.scripts)
+		u.scripts = merge(map[string]string{"dev": "vp dev", "build": "vp build", "preview": "vp preview"}, u.scripts)
 		files := merge(map[string]string{"src/routes/+page.svelte": "sv's page\n", "node_modules/.bin/vp": ""}, u.created)
 		writeFiles(u.t, filepath.Join(c.Dir, "web"), files)
 		u.writePackage(filepath.Join(c.Dir, "web"))
@@ -177,7 +177,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if filepath.Base(commands[2].Dir) != "web" {
 		t.Fatalf("Storybook installer ran outside the generated frontend: %s", commands[2].Dir)
 	}
-	if commands[3].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[3].Dir) != "web" || commands[3].Args[0] != "install" {
+	if commands[3].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[3].Dir) != "web" || !slices.Equal(commands[3].Args, []string{"install", "--no-frozen-lockfile"}) {
 		t.Fatalf("Storybook dependencies were not installed by local VitePlus: %#v", commands[3])
 	}
 	if commands[7].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[7].Dir) != "web" || commands[7].Args[0] != "build" {
@@ -204,6 +204,21 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	}
 	if !strings.Contains(string(justfile), "pnpm storybook --host 127.0.0.1") {
 		t.Fatalf("generated Storybook instruction does not pass its host option correctly:\n%s", justfile)
+	}
+	pkg, err := readPackage(filepath.Join(dir, "web"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pkg.Scripts["preview"] != "cd .. && just serve" {
+		t.Fatalf("generated preview starts %q, want the Go production build", pkg.Scripts["preview"])
+	}
+	for _, name := range []string{"dev", "build", "test:unit", "storybook"} {
+		if pkg.Scripts[name] == "" {
+			t.Errorf("preview rewrite removed the %s script", name)
+		}
+	}
+	if !strings.Contains(readFile(t, filepath.Join(dir, "README.md")), "pnpm preview") {
+		t.Error("generated README does not explain the Go-backed preview")
 	}
 }
 
