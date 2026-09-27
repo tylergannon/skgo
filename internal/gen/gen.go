@@ -46,6 +46,11 @@ type Config struct {
 	// ReadOnly makes package loading verify generated route links instead of
 	// synchronizing them. It is used only by Check.
 	ReadOnly bool
+	// Language selects the frontend language of the modules skgo writes. The
+	// zero value asks Run to choose from the app: a tsconfig.json means
+	// TypeScript, a jsconfig.json JavaScript, and neither defaults to
+	// TypeScript. TypeScript is the default, and its output does not change.
+	Language Language
 }
 
 // Run scans, generates, and reports what it wrote.
@@ -62,6 +67,9 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	cfg.Web, cfg.Out = web, out
+	if cfg.Language == LanguageAuto {
+		cfg.Language = detectLanguage(web)
+	}
 	if cfg.Package == "" {
 		cfg.Package = filepath.Base(out)
 	}

@@ -1,0 +1,60 @@
+RECORDED COMMAND OUTPUT (not source text): every file-writing call site in
+internal/gen and internal/adapter, to answer "does any path emit a .js file?"
+repo: https://github.com/tylergannon/skgo.git
+commit: 657656d1161edf832eb99b69cc1636e37877144b
+retrieved: 2026-09-26
+commands:
+  rg -n 'a\.write\(|writeGo\(|os\.WriteFile\(' internal/gen --glob '!*_test.go'
+  rg -n 'WriteFile|os\.Create|\.js' internal/adapter --glob '*.go'
+  rg -n 'remote\.js|\+server\.js|\.remote\.js' internal cmd --glob '*.go'
+
+===== OUTPUT 1: file-writing call sites in internal/gen (non-test) =====
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/emit.go:119:		if err := a.write(stub, b.String()); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/emit.go:296:		if err := a.writeGo(filepath.Join(gp.dir, "skgo_remotes_gen.go"), b.String()); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/emit.go:501:	return a.writeGo(filepath.Join(a.cfg.Out, "skgo_bindings_gen.go"), b.String())
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/emit.go:760:	return a.write(filepath.Join(a.cfg.Web, "skgo.remotes.json"), string(raw)+"\n")
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/emit.go:772:func (a *app) writeGo(path, content string) error {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/emit.go:777:	return a.write(path, string(formatted))
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/emit.go:794:	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/endpoints.go:116:		if err := a.write(stub, b.String()); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/clients.go:122:	if err := a.writeGo(filepath.Join(dir, "skgo_client_gen.go"), b.String()); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/clients.go:125:	return a.writeGo(filepath.Join(dir, "skgo_client_devalue_gen.go"), string(codecs))
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/loads.go:199:		if err := a.write(stub, b.String()); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/codecs.go:169:	return a.writeGo(filepath.Join(a.cfg.Out, devalueCodecsFile), string(out))
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/links.go:307:		if err := os.WriteFile(path, content, 0o644); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/links.go:419:	if err := os.WriteFile(path, []byte(want), 0o644); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/links.go:472:	return os.WriteFile(path, []byte(content), 0o644)
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/types.go:421:		if err := a.write(path, string(file.Content)); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/gen.go:247:			_ = os.WriteFile(s.path, s.content, s.mode)
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/gen.go:272:		if writeErr := os.WriteFile(path, []byte(placeholder), info.Mode()); writeErr != nil {
+===== END OUTPUT 1 =====
+
+===== OUTPUT 2: .js mentions inside internal/adapter Go code =====
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:28:// wrong. What can still be wrong is package.json's `files` list, which decides
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:41:	"package.json",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:42:	"skgo-adapter.js",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:43:	"skgo-adapter/app-paths.js",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:44:	"skgo-adapter/app-server.js",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:45:	"skgo-adapter/entry.js",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:46:	"skgo-adapter/env.js",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:47:	"skgo-adapter/identity.js",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:48:	"skgo-adapter/polyfill.js",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:62:			"package.json's `files` decides this.",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:124:	if err := json.Unmarshal(pack(t)["package.json"], &pkg); err != nil {
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:133:		t.Errorf("package.json = %+v; want an ESM package with types and a license", pkg)
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go:156:// what actually left: `pnpm pack` obeys package.json's `files` exactly as `npm
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/adapter.go:4:// The adapter writes `skgo.manifest.json` and the Go in this same module reads
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/adapter.go:44://go:embed skgo-adapter.js skgo-adapter
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/adapter.go:52:	entryFile = "skgo-adapter.js"
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/adapter.go:112:// package.json.
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/adapter.go:114:	raw, err := os.ReadFile(filepath.Join(dir, "package.json"))
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/adapter.go:130:// identity.js computes the same thing over the same tree in JavaScript.
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/adapter.go:225:	data, err := files.ReadFile(path.Join(filesDir, "polyfill.js"))
+===== END OUTPUT 2 =====
+
+===== OUTPUT 3: any .js stub-path literal anywhere in internal/ or cmd/ Go code =====
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/newapp/newapp_test.go:219:			"src/routes/sverdle/+page.server.js":    "export const actions = {}",
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/kithash/kithash_test.go:16:		{"src/routes/data.remote.js", "mxe8u8"},
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/ssr/ssr.go:57:	// `+page.server.js` actions slot, which skgo has no equivalent of. A
+/Users/tyler/.codex/worktrees/ef7a/skgo/internal/gen/prerender.go:161:	if name == "+page.ts" || name == "+page.js" || name == "+page.server.ts" || name == "+page.server.js" {
+===== END OUTPUT 3 (empty means no matches) =====

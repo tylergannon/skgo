@@ -114,7 +114,7 @@ var machinePrefix = regexp.MustCompile(`^\d+ (.*)$`)
 var completion = regexp.MustCompile(`^COMPLETED (\d+) FILES (\d+) ERRORS (\d+) WARNINGS (\d+) FILES_WITH_PROBLEMS$`)
 
 func checkSvelte(ctx context.Context, root, web, bin string) (Check, []Diagnostic) {
-	output, err := command(ctx, web, nil, bin, "--output", "machine-verbose", "--tsconfig", "./tsconfig.json")
+	output, err := command(ctx, web, nil, bin, "--output", "machine-verbose", "--tsconfig", "./"+svelteConfig(web))
 	exitCode := 0
 	if err != nil {
 		var exit *exec.ExitError

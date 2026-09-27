@@ -170,6 +170,43 @@ func TestAFallbackAnswersEveryOtherMethod(t *testing.T) {
 	}
 }
 
+// QUERY is one of kit's ENDPOINT_METHODS, and the fallback answers every
+// method a route does not declare. Both are ordinary dispatch on the real
+// endpoint handler. The generated `+server.js` only tells kit which methods
+// exist and would throw if it were ever called, so the handler's own status,
+// headers and body are what prove Go answered rather than the stub.
+func TestQueryAndTheFallbackReachTheGoHandlers(t *testing.T) {
+	h := newEndpoints(t, endpointFixture(nil, []string{"GET", "QUERY", "*"}, nil),
+		NewEndpoint("/api/thing", "GET", echo("get")),
+		NewEndpoint("/api/thing", "QUERY", echo("query")),
+		NewEndpoint("/api/thing", "*", echo("fallback")),
+	)
+
+	resp := request(t, h, "QUERY", "/api/thing", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("QUERY /api/thing: status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Content-Type"); got != "text/plain; charset=utf-8" {
+		t.Errorf("QUERY /api/thing: Content-Type = %q, want the handler's", got)
+	}
+	if got := body(t, resp); got != "query" {
+		t.Errorf("QUERY /api/thing: body = %q, want the QUERY handler's", got)
+	}
+
+	// MOVE is no endpoint method at all, and OPTIONS is one this route does not
+	// declare: both take the fallback rather than a synthesized reply.
+	for _, method := range []string{"MOVE", http.MethodOptions} {
+		resp := request(t, h, method, "/api/thing", nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("%s /api/thing: status = %d, want the fallback's 200", method, resp.StatusCode)
+			continue
+		}
+		if got := body(t, resp); got != "fallback" {
+			t.Errorf("%s /api/thing: body = %q, want the fallback's", method, got)
+		}
+	}
+}
+
 // A route with both a `+page` and a `+server` is decided by the Accept header,
 // with kit's own preference: `*/*` — a curl, a fetch with no Accept — takes the
 // endpoint, and a browser navigation takes the page.

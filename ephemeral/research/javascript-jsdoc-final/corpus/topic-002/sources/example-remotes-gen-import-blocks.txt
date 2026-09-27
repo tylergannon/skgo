@@ -1,0 +1,10 @@
+RECORDED COMMAND OUTPUT (not source text): git-tracked skgo_remotes_gen.go
+files that contain a Go import block
+repo: https://github.com/tylergannon/skgo.git
+commit: 657656d1161edf832eb99b69cc1636e37877144b
+retrieved: 2026-09-26
+command:
+  git ls-files 'example/**' | grep skgo_remotes_gen.go | xargs grep -l '^import ('
+
+===== BEGIN OUTPUT (empty means none) =====
+===== END OUTPUT =====

@@ -1,0 +1,174 @@
+# s07 — what the fingerprint covers, and the separate checks that cover generated app files
+
+# origin: /Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package.json, /Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/package_test.go (lines 20-40), /Users/tyler/.codex/worktrees/ef7a/skgo/internal/adapter/skgo-adapter.js (lines 640-735)
+# version: skgo worktree at git 657656d1161edf832eb99b69cc1636e37877144b (main)
+# retrieved: 2026-09-26
+# location: internal/adapter/package.json (whole file); internal/adapter/package_test.go lines 20-40; internal/adapter/skgo-adapter.js lines 640-735
+# --- verbatim begins ---
+
+== internal/adapter/package.json (whole file: what npm ships; not hashed, see identity.js) ==
+{
+	"name": "@skgo/sveltekit-adapter",
+	"version": "0.0.0-dev",
+	"description": "SvelteKit adapter for skgo: builds a frontend that a Go binary renders and answers",
+	"keywords": [
+		"adapter",
+		"go",
+		"golang",
+		"skgo",
+		"svelte",
+		"sveltekit"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/tylergannon/skgo.git",
+		"directory": "internal/adapter"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/tylergannon/skgo",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./index.d.ts",
+			"import": "./skgo-adapter.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"types": "index.d.ts",
+	"files": [
+		"index.d.ts",
+		"skgo-adapter.js",
+		"skgo-adapter/app-paths.js",
+		"skgo-adapter/app-server.js",
+		"skgo-adapter/entry.js",
+		"skgo-adapter/env.js",
+		"skgo-adapter/identity.js",
+		"skgo-adapter/polyfill.js"
+	],
+	"peerDependencies": {
+		"@sveltejs/kit": "^3.0.0-next.0"
+	}
+}
+
+== internal/adapter/package_test.go lines 20-40 (packageFiles list) ==
+// and the two have to be the same bytes. Not "the same source, built twice" —
+// the same bytes, because the fingerprint the adapter stamps into every
+// manifest is a hash of the files it finds on disk at build time, and the
+// fingerprint the Go server checks it against is a hash of the files below.
+// A package that shipped one file fewer would name itself something else and be
+// refused by every binary it was installed beside.
+//
+// So this directory is the npm package root: there is no copy step to get
+// wrong. What can still be wrong is package.json's `files` list, which decides
+// what actually leaves for the registry, and nothing about editing a runtime
+// file makes anyone remember it. These tests are what remembers.
+
+// packageFiles is what a developer who runs `pnpm add -D @skgo/sveltekit-adapter` must
+// receive, written out here rather than read from the package: the entry vite
+// imports, every runtime file the SSR build reaches for, the types the app's
+// `vite.config.ts` is checked against, and the three files npm carries for any
+// package.
+var packageFiles = []string{
+	"LICENSE",
+	"README.md",
+	"index.d.ts",
+
+== internal/adapter/skgo-adapter.js lines 640-735 (checkRemoteHashes / checkRemoteIds: generated files checked by comparison, not by the fingerprint) ==
+ * Modules are as far as this check can reach. `generate_manifest` in kit's
+ * packages/kit/src/core/generate_manifest/index.js emits
+ * `'<hash>': __memo(() => import('./chunks/remote-<hash>.js'))` and nothing
+ * else; kit resolves the function half of an id at *runtime*, by looking the
+ * name up on the imported module namespace
+ * (packages/kit/src/runtime/server/remote-functions.js). There is no
+ * per-function list in the manifest to compare against. checkRemoteIds below
+ * reads the other build artifact that does carry the names.
+ *
+ * @param {any} kit kit's own server manifest
+ * @param {string[]} remotes
+ * @returns {Set<string>} the module hashes kit compiled
+ */
+function checkRemoteHashes(kit, remotes) {
+	if (!kit._ || typeof kit._.remotes !== 'object' || kit._.remotes === null) {
+		throw new Error(
+			"skgo: kit's generated manifest has no `remotes` map. The adapter cannot tell which remote modules were compiled, so it cannot check them; this build of SvelteKit is not one skgo has been taught to read."
+		);
+	}
+	const built = new Set(Object.keys(kit._.remotes));
+	const declared = new Set(remotes.map((id) => id.split('/')[0]));
+
+	const missing = [...declared].filter((hash) => !built.has(hash));
+	const extra = [...built].filter((hash) => !declared.has(hash));
+	if (missing.length || extra.length) {
+		throw new Error(
+			'skgo: skgo.remotes.json does not describe the remote modules kit just compiled.\n' +
+				(missing.length ? `  generated but not compiled: ${missing.join(', ')}\n` : '') +
+				(extra.length ? `  compiled but not generated: ${extra.join(', ')}\n` : '') +
+				'  A generated .remote.ts only reaches the build once app code imports it. Run `go generate ./...`.'
+		);
+	}
+	return built;
+}
+
+/**
+ * Checks the remote functions the shipped bundle can actually call.
+ *
+ * The module-level check above is blind to an extra export added by hand to an
+ * already-generated `.remote.ts`: the module's hash does not change, so both
+ * sides still agree, the bundle calls `<hash>/<newName>`, and the Go binary —
+ * which was never told about it — answers 404 in the browser.
+ *
+ * Kit's client carries the full id as a literal. Its vite plugin rewrites every
+ * remote module's client half into one `export const <name> =
+ * __remote.<type>('<hash>/<name>')` per export
+ * (packages/kit/src/exports/vite/index.js), and the client runtime pastes that
+ * id straight into `${base}/${app_dir}/remote/${id}`
+ * (packages/kit/src/runtime/client/remote-functions/query/index.js). So the ids
+ * survive bundling and minification as string literals, and the set of them in
+ * the client we are about to ship is exactly the set of remote calls the
+ * browser can make.
+ *
+ * Every one of those must be a function `skgo generate` declared. The reverse
+ * is not required: a declared function no component imports is treeshaken out
+ * of the client, and Go serving a function nobody calls yet breaks nothing.
+ *
+ * @param {string} clientDir the client bundle this build will ship
+ * @param {string[]} remotes
+ * @param {Set<string>} hashes the module hashes kit compiled
+ */
+function checkRemoteIds(clientDir, remotes, hashes) {
+	const declared = new Set(remotes);
+	const called = new Map();
+
+	for (const file of walk(clientDir)) {
+		if (!file.endsWith('.js')) continue;
+		const source = readFileSync(file, 'utf-8');
+		for (const [, hash, name] of source.matchAll(
+			/['"`]([A-Za-z0-9]{1,16})\/([A-Za-z_$][A-Za-z0-9_$]*)['"`]/g
+		)) {
+			if (!hashes.has(hash)) continue;
+			called.set(`${hash}/${name}`, file);
+		}
+	}
+
+	if (called.size === 0 && hashes.size > 0) {
+		throw new Error(
+			`skgo: kit compiled ${hashes.size} remote module(s) but no remote-function id appears in ${clientDir}. Either nothing imports them, or the ids no longer survive bundling as literals and this check has stopped meaning anything.`
+		);
+	}
+
+	const undeclared = [...called].filter(([id]) => !declared.has(id));
+	if (undeclared.length) {
+		throw new Error(
+			'skgo: the built frontend calls remote functions that `skgo generate` did not write.\n' +
+				undeclared.map(([id, file]) => `  ${id} (in ${file})`).join('\n') +
+				'\n  Go answers only the generated ids, so every one of these would 404 in the browser.\n' +
+				'  A remote function written by hand in a .remote.ts is not a supported mode: write it in the matching .remote.go and run `go generate ./...`.'
+		);
+	}
+}
+
+/**
+ * @param {string} dir
+ * @returns {Generator<string>}
+
+# --- verbatim ends ---

@@ -39,6 +39,7 @@ const routesDir = "src/routes"
 // serverFileName is the Go file a server route is written in. It is
 // `+server.ts` minus the `+`, which Go refuses in a file name, exactly as
 // page.server.go and layout.server.go are named for the files they generate.
+// The app's language decides whether it generates `+server.ts` or `+server.js`.
 const serverFileName = "server.go"
 
 // endpointFn is one declared method of one server route.
@@ -48,8 +49,8 @@ type endpointFn struct {
 	// name is the Go identifier of the handler.
 	name  string
 	goPkg *goPackage
-	// module is the vite-root-relative path of the `+server.ts` that will carry
-	// it, e.g. "src/routes/haiku/+server.ts".
+	// module is the vite-root-relative path of the `+server.ts`/`+server.js`
+	// that will carry it, e.g. "src/routes/haiku/+server.ts".
 	module string
 	// stub is the absolute path of that file.
 	stub string
@@ -58,8 +59,8 @@ type endpointFn struct {
 	pos     token.Position
 }
 
-// routeIDFor turns the vite-root-relative path of a `+server.ts` into kit's
-// route id.
+// routeIDFor turns the vite-root-relative path of a `+server.ts` — or its
+// `+server.js` counterpart in a JavaScript app — into kit's route id.
 //
 // Kit's own walk builds the id by joining directory names below `src/routes`
 // and then reads that directory back with `path.join(cwd, routes_base, id)`
@@ -70,14 +71,17 @@ func routeIDFor(module string) (string, error) {
 	if !strings.HasPrefix(module, routesDir+"/") {
 		return "", fmt.Errorf("skgo: a server route must live under %s, but %s does not", routesDir, module)
 	}
-	dir := strings.TrimSuffix(strings.TrimPrefix(module, routesDir), "/+server.ts")
+	dir := strings.TrimPrefix(module, routesDir)
+	dir = strings.TrimSuffix(dir, "/+server.ts")
+	dir = strings.TrimSuffix(dir, "/+server.js")
 	if dir == "" {
 		return "/", nil
 	}
 	return dir, nil
 }
 
-// writeEndpointStubs emits one `+server.ts` per `server.go`.
+// writeEndpointStubs emits one `+server.ts` per `server.go` — or one
+// `+server.js` whose declarations carry JSDoc types when the app is JavaScript.
 //
 // The exports have to be named as kit names them and they have to survive being
 // imported: kit's build reads the compiled module's exports to learn which
@@ -103,17 +107,32 @@ func (a *app) writeEndpointStubs() error {
 		b.WriteString("// itself, so any real response is proof the Go handler replied rather than\n")
 		b.WriteString("// this module. Kit reads the export names to learn which methods the route\n")
 		b.WriteString("// answers; it never calls them.\n")
-		b.WriteString("const unimplemented = (): never => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
+		if a.cfg.Language.JavaScript() {
+			// A JavaScript module has no return-type syntax, so the body's
+			// `never` is declared in JSDoc. Kit's `RequestHandler` is the same
+			// type a `.ts` stub is checked against, so every export — including
+			// `QUERY` and `fallback` — type-checks as one.
+			b.WriteString("/**\n * @returns {never}\n */\nconst unimplemented = () => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
+		} else {
+			b.WriteString("const unimplemented = (): never => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
+		}
 
 		for _, method := range endpointMethodOrder {
 			for _, ep := range byStub[stub] {
 				if ep.method != method {
 					continue
 				}
-				fmt.Fprintf(&b, "\nexport const %s = (): never => unimplemented();\n", method)
+				if a.cfg.Language.JavaScript() {
+					fmt.Fprintf(&b, "\n/** @type {import('@sveltejs/kit').RequestHandler} */\nexport const %s = () => unimplemented();\n", method)
+				} else {
+					fmt.Fprintf(&b, "\nexport const %s = (): never => unimplemented();\n", method)
+				}
 			}
 		}
 		if err := a.write(stub, b.String()); err != nil {
+			return err
+		}
+		if err := a.removeObsoleteStub(stub); err != nil {
 			return err
 		}
 	}
@@ -162,7 +181,9 @@ func (a *app) endpointsByPackage() map[*goPackage][]*endpointFn {
 	return byPkg
 }
 
-// endpointStubPath is the `+server.ts` a `server.go` generates.
-func endpointStubPath(path string) string {
-	return filepath.Join(filepath.Dir(path), "+server.ts")
+// endpointStubPath is the `+server.ts` — or `+server.js` in a JavaScript app —
+// that a `server.go` generates. The app's language decides the extension, the
+// same way it decides a remote or load stub's.
+func endpointStubPath(path string, lang Language) string {
+	return filepath.Join(filepath.Dir(path), "+server"+lang.ext())
 }

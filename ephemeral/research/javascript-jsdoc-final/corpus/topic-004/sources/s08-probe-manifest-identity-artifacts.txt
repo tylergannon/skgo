@@ -1,0 +1,41 @@
+# s08 — observed identity fields in the two probe apps' built manifests
+
+# origin: probe artifacts: /tmp/skgo-jsdoc-probe-20260926 and /tmp/skgo-jsdoc-demo-probe-20260926 (already built; files inspected only)
+# version: skgo worktree at git 657656d1161edf832eb99b69cc1636e37877144b (main)
+# retrieved: 2026-09-26
+# location: web/build/skgo.manifest.json (identity fields); web/node_modules/@skgo/sveltekit-adapter/package.json; web/node_modules/@skgo/sveltekit-adapter/skgo-adapter/ directory listing
+# --- verbatim begins ---
+
+== /tmp/skgo-jsdoc-probe-20260926/web/build/skgo.manifest.json — identity fields, verbatim ==
+{
+	"skgo": "0.9.0",
+	"skgoAdapter": "17f12e0497d6",
+	"appDir": "_app",
+	"base": "",
+	"version": "1790441565252"
+}
+
+== /tmp/skgo-jsdoc-demo-probe-20260926/web/build/skgo.manifest.json — identity fields, verbatim ==
+{
+	"skgo": "0.9.0",
+	"skgoAdapter": "17f12e0497d6",
+	"appDir": "_app",
+	"base": "",
+	"version": "1790441725089"
+}
+
+== installed package identity, from /tmp/skgo-jsdoc-probe-20260926/web/node_modules/@skgo/sveltekit-adapter/package.json ==
+{
+	"name": "@skgo/sveltekit-adapter",
+	"version": "0.9.0"
+}
+
+== installed runtime file list under .../sveltekit-adapter/skgo-adapter/ (ls) ==
+app-paths.js
+app-server.js
+entry.js
+env.js
+identity.js
+polyfill.js
+
+# --- verbatim ends ---

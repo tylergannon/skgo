@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/tylergannon/polytype/grammar"
+	"github.com/tylergannon/polytype/javascript"
 	"github.com/tylergannon/polytype/typegrammar"
 	"github.com/tylergannon/polytype/typescript"
 )
@@ -31,6 +32,11 @@ type tsType struct {
 // skgoFilePkg is where skgo.File actually lives; the exported name is an
 // alias, so go/types reports the underlying package.
 const skgoFilePkg = "github.com/tylergannon/skgo/internal/formdata"
+
+// polytypePkg is the projector's own package. Its Optional[T] and Nullable[T]
+// are wire wrappers, not data shapes, and are unwrapped before a field is
+// projected by hand.
+const polytypePkg = "github.com/tylergannon/polytype"
 
 // project returns the TypeScript for t, or an error explaining why it cannot
 // travel. The rules are polytype's, because polytype is what has to emit the
@@ -94,6 +100,24 @@ func (a *app) projectType(t types.Type, promises bool) (tsType, error) {
 		// imported from the app's hooks instead of being declared.
 		if _, transported := a.transportedNamed(u); transported {
 			return tsType{expr: obj.Name(), transported: []*types.Named{u}}, nil
+		}
+		// polytype.Optional[T] and polytype.Nullable[T] are wrappers, not data
+		// shapes: a property whose type is Optional is absent-able, and one
+		// whose type is Nullable is `T | null`. polytype unwraps them when it
+		// declares a struct whole, but a load's result is projected field by
+		// field (a Deferred has no Go type), so unwrap them here. Optionalness
+		// itself is applied by the field's own caller.
+		if obj.Pkg().Path() == polytypePkg && u.TypeArgs() != nil && u.TypeArgs().Len() == 1 {
+			switch obj.Name() {
+			case "Optional":
+				return a.projectType(u.TypeArgs().At(0), promises)
+			case "Nullable":
+				inner, err := a.projectType(u.TypeArgs().At(0), promises)
+				if err != nil {
+					return tsType{}, err
+				}
+				return tsType{expr: inner.expr + " | null", deps: inner.deps, transported: inner.transported}, nil
+			}
 		}
 		if st, isStruct := u.Underlying().(*types.Struct); isStruct {
 			// A struct carrying an upload is written out inline instead of
@@ -392,9 +416,32 @@ func (a *app) projectTypes(set *namedTypes) error {
 	if err != nil {
 		return fmt.Errorf("skgo: polytype could not project the types in %s: %w", set.pkg.Path(), err)
 	}
-	result, err := typescript.Generate(defs, typescript.Options{})
-	if err != nil {
-		return fmt.Errorf("skgo: polytype could not declare the types in %s: %w", set.pkg.Path(), err)
+
+	// polytype is the projector in both languages. The TypeScript backend and
+	// the JavaScript backend share identifier allocation, so the collision
+	// refusal below and the names a stub refers to behave identically.
+	var (
+		names map[typegrammar.Name]string
+		files []projectedFile
+	)
+	if a.cfg.Language.JavaScript() {
+		result, err := javascript.Generate(defs, javascript.Options{})
+		if err != nil {
+			return fmt.Errorf("skgo: polytype could not declare the types in %s: %w", set.pkg.Path(), err)
+		}
+		names = result.Names
+		for _, file := range result.Files {
+			files = append(files, projectedFile{name: file.Name, content: file.Content})
+		}
+	} else {
+		result, err := typescript.Generate(defs, typescript.Options{})
+		if err != nil {
+			return fmt.Errorf("skgo: polytype could not declare the types in %s: %w", set.pkg.Path(), err)
+		}
+		names = result.Names
+		for _, file := range result.Files {
+			files = append(files, projectedFile{name: file.Name, content: file.Content})
+		}
 	}
 
 	// The stubs import a type by its Go name. polytype's identifiers are
@@ -404,7 +451,7 @@ func (a *app) projectTypes(set *namedTypes) error {
 	// emit it; the developer's fix is the one the stubs already demand for
 	// two same-named types in one module.
 	for _, name := range set.names {
-		if result.Names[typegrammar.Name{PackagePath: set.pkg.Path(), Name: name}] != name {
+		if names[typegrammar.Name{PackagePath: set.pkg.Path(), Name: name}] != name {
 			return fmt.Errorf("skgo: %s.%s reaches another type called %s from a different package; TypeScript can only have one %s in a module, so one of them has to be renamed",
 				set.pkg.Path(), name, name, name)
 		}
@@ -416,14 +463,28 @@ func (a *app) projectTypes(set *namedTypes) error {
 	if err := os.MkdirAll(set.tsDir, 0o755); err != nil {
 		return err
 	}
-	for _, file := range result.Files {
-		path := filepath.Join(set.tsDir, file.Name)
-		if err := a.write(path, string(file.Content)); err != nil {
+	for _, file := range files {
+		path := filepath.Join(set.tsDir, file.name)
+		if err := a.write(path, string(file.content)); err != nil {
 			return err
 		}
 		a.cfg.Logf("projected the types in %s to %s", set.pkg.Path(), path)
 	}
-	return nil
+	// Switching languages replaces the wire-type module; the other mode's copy
+	// is obsolete. Only a generated file is removed, so an authored one stays.
+	other := "types.js"
+	if a.cfg.Language.JavaScript() {
+		other = "types.ts"
+	}
+	return removeGeneratedArtifact(filepath.Join(set.tsDir, other))
+}
+
+// projectedFile is one module a polytype backend produced, independent of the
+// backend's own File type: the two backends declare different named types for
+// the same shape.
+type projectedFile struct {
+	name    string
+	content []byte
 }
 
 // importSpecifier is the module specifier a stub uses to reach a package's
@@ -524,6 +585,24 @@ func findFile(t types.Type, seen map[types.Type]bool) bool {
 // The field names are encoding/json's, because that is what the runtime
 // decoder matches against, and a file field is optional because an
 // `<input type="file">` the visitor left alone sends nothing at all.
+// optionalElem reports whether t is polytype.Optional[T], and returns T. A
+// field of this type is absent-able even when its json tag does not say
+// `omitzero`, because that is what the wrapper means.
+func optionalElem(t types.Type) (types.Type, bool) {
+	named, ok := types.Unalias(t).(*types.Named)
+	if !ok || named.Obj().Pkg() == nil {
+		return nil, false
+	}
+	if named.Obj().Pkg().Path() != polytypePkg || named.Obj().Name() != "Optional" {
+		return nil, false
+	}
+	args := named.TypeArgs()
+	if args == nil || args.Len() != 1 {
+		return nil, false
+	}
+	return args.At(0), true
+}
+
 func (a *app) inlineStruct(st *types.Struct, promises bool) (tsType, error) {
 	var (
 		parts       []string
@@ -552,7 +631,7 @@ func (a *app) inlineStruct(st *types.Struct, promises bool) (tsType, error) {
 		transported = append(transported, inner.transported...)
 
 		optional := ""
-		if inner.expr == "File" || strings.Contains(opts, "omitempty") {
+		if _, isOptional := optionalElem(f.Type()); isOptional || inner.expr == "File" || strings.Contains(opts, "omitempty") || strings.Contains(opts, "omitzero") {
 			optional = "?"
 		}
 		parts = append(parts, fmt.Sprintf("%s%s: %s", name, optional, inner.expr))

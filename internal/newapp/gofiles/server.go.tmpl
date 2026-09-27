@@ -32,11 +32,16 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	mode := "production"
 
 	var endpoints *skgo.Endpoints
+	actions, err := skgo.NewActions(generated.Actions()...)
+	if err != nil {
+		return nil, "", err
+	}
 	var pages func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
 	if proxy == "" {
 		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			renderer, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-				Fetch: endpoints.Intercept(http.NotFoundHandler()),
+				Fetch:   endpoints.Intercept(http.NotFoundHandler()),
+				Actions: actions,
 			})
 			if err != nil {
 				return nil, err
@@ -59,7 +64,8 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		endpointConfig.Dev = true
 		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			renderer, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
-				Fetch: endpoints.Intercept(http.NotFoundHandler()),
+				Fetch:   endpoints.Intercept(http.NotFoundHandler()),
+				Actions: actions,
 			})
 			if err != nil {
 				return nil, err

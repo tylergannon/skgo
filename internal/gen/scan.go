@@ -335,12 +335,14 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 		return nil, nil, nil, nil, a.scanHooks(gp, p, file, path)
 	}
 
-	stub := strings.TrimSuffix(path, ".go") + ".ts"
+	stub := strings.TrimSuffix(path, ".go") + a.cfg.Language.ext()
 	if tsName, isLoad := loadFileNames[base]; isLoad {
-		stub = filepath.Join(filepath.Dir(path), tsName)
+		// loadFileNames names the TypeScript module; the app's language decides
+		// the extension it is actually written with.
+		stub = filepath.Join(filepath.Dir(path), strings.TrimSuffix(tsName, ".ts")+a.cfg.Language.ext())
 	}
 	if isServerFile {
-		stub = endpointStubPath(path)
+		stub = endpointStubPath(path, a.cfg.Language)
 	}
 	mod, err := webRel(a.cfg.Web, stub)
 	if err != nil {
