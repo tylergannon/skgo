@@ -361,6 +361,9 @@ func (s *SSR) refreshDevLocked() error {
 	s.info = *live.SSR
 	s.template = template
 	s.errorPage = errorPage
+	if s.devEndpoints != nil {
+		s.devEndpoints.SetErrorTemplate(errorPage)
+	}
 	s.version = ""
 	s.devVersion = answer.Manifest.Version
 	return nil

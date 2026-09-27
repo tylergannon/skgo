@@ -15,6 +15,7 @@ package skgo
 import (
 	"errors"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"net/url"
@@ -142,6 +143,11 @@ type EndpointConfig struct {
 	// three things, because a panicking handler that reports nowhere is a bug
 	// that cannot be found.
 	OnPanic func(routeID, method string, value any, stack []byte)
+	// HandleError shapes a fatal endpoint error as Kit's App.Error.
+	HandleError HandleError
+	// ErrorTemplate is Kit's error.html, used for fatal endpoint errors when
+	// the request accepts HTML. The application sets it from its renderer.
+	ErrorTemplate string
 	// Routes is the route table, from the manifest.
 	Routes []ManifestRoute
 
@@ -175,6 +181,8 @@ type Endpoints struct {
 	cfg    EndpointConfig
 	base   string
 	origin string
+	// The dev renderer can refresh error.html after the registry is built.
+	errorTemplate string
 
 	routes []*endpointRoute
 	// byRoute is every registered method, keyed by route id then method.
@@ -215,10 +223,11 @@ func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
 	cfg.Base = base
 
 	es := &Endpoints{
-		cfg:     cfg,
-		base:    base,
-		origin:  cfg.Origin,
-		byRoute: map[string]map[string]http.HandlerFunc{},
+		cfg:           cfg,
+		base:          base,
+		origin:        cfg.Origin,
+		errorTemplate: cfg.ErrorTemplate,
+		byRoute:       map[string]map[string]http.HandlerFunc{},
 	}
 
 	for _, ep := range eps {
@@ -253,6 +262,15 @@ func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
 		return nil, err
 	}
 	return es, nil
+}
+
+// SetErrorTemplate installs Kit's error.html after the renderer has read it.
+// The renderer is built after the endpoint registry because its internal fetch
+// dispatches through that registry. Dev may call this again after a refresh.
+func (es *Endpoints) SetErrorTemplate(template string) {
+	es.mu.Lock()
+	es.errorTemplate = template
+	es.mu.Unlock()
 }
 
 func endpointRouting(routes []ManifestRoute, byRoute map[string]map[string]http.HandlerFunc) ([]*endpointRoute, error) {
@@ -508,6 +526,7 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 	e.mutable = false
 	e.endpoint = true
 	e.load.uses.tracking = false
+	r = r.WithContext(withEvent(r.Context(), e))
 
 	defer func() {
 		value := recover()
@@ -523,10 +542,44 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 		} else {
 			log.Printf("skgo: the %s handler for %s panicked: %v\n%s", method, route.id, value, stack)
 		}
-		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		es.fatalError(w, r, route.id, fmt.Errorf("endpoint panic: %v", value))
 	}()
 
-	handler(w, r.WithContext(withEvent(r.Context(), e)))
+	handler(w, r)
+}
+
+// fatalError mirrors Kit's handle_fatal_error: JSON when preferred by Accept,
+// otherwise the app's error.html. The panic value reaches HandleError and the
+// server log, never the default client response.
+func (es *Endpoints) fatalError(w http.ResponseWriter, r *http.Request, routeID string, raw error) {
+	e := handleErrorAndJSONify(r.Context(), routeID, es.cfg.HandleError, nil, raw, nil)
+	accept := r.Header.Get("Accept")
+	if accept == "" {
+		accept = "text/html"
+	}
+	if negotiate(accept, "application/json", "text/html") == "application/json" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(e.Status)
+		writeJSON(w, e)
+		return
+	}
+	es.mu.RLock()
+	template := es.errorTemplate
+	es.mu.RUnlock()
+	if template == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(e.Status)
+		writeJSON(w, e)
+		return
+	}
+	page := strings.ReplaceAll(template, "%sveltekit.status%", strconv.Itoa(e.Status))
+	page = strings.ReplaceAll(page, "%sveltekit.error.message%", html.EscapeString(e.Message))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Length", strconv.Itoa(len(page)))
+	w.WriteHeader(e.Status)
+	if r.Method != http.MethodHead {
+		_, _ = w.Write([]byte(page))
+	}
 }
 
 // match finds the route that serves routePath, which is the pathname with the

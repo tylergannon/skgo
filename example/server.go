@@ -167,6 +167,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 				return nil, err
 			}
 			handleCfg.ErrorTemplate = ssr.ErrorTemplate()
+			endpoints.SetErrorTemplate(ssr.ErrorTemplate())
 			return skgo.NewDevPages(target, manifest, ssr, log.Printf, endpoints), nil
 		}
 	} else {
@@ -185,6 +186,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 				return nil, err
 			}
 			handleCfg.ErrorTemplate = ssr.ErrorTemplate()
+			endpoints.SetErrorTemplate(ssr.ErrorTemplate())
 			return skgo.NewStaticHandler(dist, skgo.WithSSR(ssr))
 		}
 	}
@@ -201,6 +203,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	remoteCfg.Transport = generated.Transport()
 	loadCfg.Transport = generated.Transport()
 	loadCfg.HandleError = HandleError
+	endpointCfg.HandleError = HandleError
 	handleCfg.HandleError = HandleError
 
 	remotes, err := skgo.NewRemotes(remoteCfg, generated.Remotes()...)
