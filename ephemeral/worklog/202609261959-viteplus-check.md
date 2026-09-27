@@ -1,0 +1,4 @@
+decision: A project-local `vp` selects VitePlus's built-in `check`, which runs the project's configured formatting, lint and type checks; `vpr check` would invoke the package's unrelated npm script. Keep standalone Prettier/ESLint for projects without `vp`.
+decision: VitePlus 0.3.1 and 0.3.3 exclude `.svelte` from formatting; a clean `vp check` does not prove Svelte formatting. Require project Prettier with prettier-plugin-svelte for Svelte files alongside VitePlus.
+friction: VitePlus 0.3.3 reports clean single-file checks as "All 1 file" and "Found no warnings or lint errors" rather than the 0.3.1 plural/count form -> recognize both observed completion receipts, fail closed on unfamiliar output.
+friction: `just test` in a fresh skgo worktree failed because the example frontend's build manifest was absent -> run `just build` first, as CI does, before judging handler tests.
