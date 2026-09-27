@@ -32,6 +32,7 @@ const examplesPage = (ts) => `<script${ts ? ' lang="ts"' : ''}>
 	let saving = $state(false);
 	let greeting = $state('');
 
+	${ts ? '' : '/** @param {SubmitEvent} event */\n\t'}
 	async function submit(event${ts ? ': SubmitEvent' : ''}) {
 		event.preventDefault();
 		if (saving) return;
@@ -55,7 +56,7 @@ const examplesPage = (ts) => `<script${ts ? ' lang="ts"' : ''}>
 		<p data-testid="go-message">{current.message}</p>
 		<p>Writes handled by Go: <strong data-testid="write-count">{current.writes}</strong></p>
 		{#if greeting}<p data-testid="go-greeting">{greeting}</p>{/if}
-		{#snippet failed(error)}<p class="error">{${ts ? '(error as Error)' : 'error'}.message}</p>{/snippet}
+		{#snippet failed(error)}<p class="error">{${ts ? '(error as Error).message' : 'error instanceof Error ? error.message : String(error)'}}</p>{/snippet}
 	</svelte:boundary>
 	<form onsubmit={submit}>
 		<label for="name">Who should Go greet?</label>
@@ -126,6 +127,13 @@ export default defineAddon({
 			})
 		);
 		sv.devDependency('@skgo/sveltekit-adapter', adapterVersion);
+		if (language !== 'ts' && fs.existsSync(path.resolve(cwd, 'src/lib/vitest-examples/greet.js'))) {
+			// sv's Vitest fixture has an untyped parameter under a JS app's
+			// strict checkJs config. Keep the app's initial check green.
+			sv.file('src/lib/vitest-examples/greet.js', (content) =>
+				content.replace('export function greet(name) {', '/** @param {string} name */\nexport function greet(name) {')
+			);
+		}
 		// VitePlus preserves this native pnpm project policy when it adds its
 		// catalog. It applies only to the generated project's installs; the
 		// separate Storybook dlx environment receives its own explicit flag.

@@ -492,6 +492,8 @@ Object.prototype.hasOwnProperty.call(e,s)&&i.push(s);for(i.sort(),a=0;a<i.length
 	let saving = $state(false);
 	let greeting = $state('');
 
+	${e?``:`/** @param {SubmitEvent} event */
+	`}
 	async function submit(event${e?`: SubmitEvent`:``}) {
 		event.preventDefault();
 		if (saving) return;
@@ -515,7 +517,7 @@ Object.prototype.hasOwnProperty.call(e,s)&&i.push(s);for(i.sort(),a=0;a<i.length
 		<p data-testid="go-message">{current.message}</p>
 		<p>Writes handled by Go: <strong data-testid="write-count">{current.writes}</strong></p>
 		{#if greeting}<p data-testid="go-greeting">{greeting}</p>{/if}
-		{#snippet failed(error)}<p class="error">{${e?`(error as Error)`:`error`}.message}</p>{/snippet}
+		{#snippet failed(error)}<p class="error">{${e?`(error as Error).message`:`error instanceof Error ? error.message : String(error)`}}</p>{/snippet}
 	</svelte:boundary>
 	<form onsubmit={submit}>
 		<label for="name">Who should Go greet?</label>
@@ -540,7 +542,8 @@ Object.prototype.hasOwnProperty.call(e,s)&&i.push(s);for(i.sort(),a=0;a<i.length
 	button:disabled { opacity: .6; }
 	.error { color: #9d2d24; }
 </style>
-`,Cx=[`src/routes/sverdle`,`src/routes/about`,`src/routes/Header.svelte`,`src/routes/Counter.svelte`,`src/routes/+page.js`,`src/routes/+page.ts`,`src/lib/images`],wx=[`@fontsource/fira-mono`,`@neoconfetti/svelte`];var Tx=r({id:`skgo`,shortDescription:`Go application server integration`,homepage:`https://github.com/tylergannon/skgo`,options:xx,setup:({isKit:e,unsupported:t,runsAfter:n})=>{e||t(`Requires SvelteKit`),n(`vitest`)},run:({sv:e,file:r,cwd:i,options:a,language:o})=>{let s=decodeURIComponent(a.adapter),c=decodeURIComponent(a.name);if(!s)throw Error(`skgo requires an explicit adapter version`);if(e.file(r.package,Ab.json(({data:e})=>{e.name=c,e.scripts.test=`pnpm run test:unit --run`;for(let t of Object.keys(e.devDependencies??{}))t.startsWith(`@sveltejs/adapter-`)&&delete e.devDependencies[t],a.starter===`examples`&&wx.includes(t)&&delete e.devDependencies[t]})),e.devDependency(`@skgo/sveltekit-adapter`,s),e.file(`pnpm-workspace.yaml`,jb.allowBuilds(`esbuild`)),e.file(`.gitignore`,e=>{let t=`
+`,Cx=[`src/routes/sverdle`,`src/routes/about`,`src/routes/Header.svelte`,`src/routes/Counter.svelte`,`src/routes/+page.js`,`src/routes/+page.ts`,`src/lib/images`],wx=[`@fontsource/fira-mono`,`@neoconfetti/svelte`];var Tx=r({id:`skgo`,shortDescription:`Go application server integration`,homepage:`https://github.com/tylergannon/skgo`,options:xx,setup:({isKit:e,unsupported:t,runsAfter:n})=>{e||t(`Requires SvelteKit`),n(`vitest`)},run:({sv:e,file:r,cwd:i,options:a,language:o})=>{let s=decodeURIComponent(a.adapter),c=decodeURIComponent(a.name);if(!s)throw Error(`skgo requires an explicit adapter version`);if(e.file(r.package,Ab.json(({data:e})=>{e.name=c,e.scripts.test=`pnpm run test:unit --run`;for(let t of Object.keys(e.devDependencies??{}))t.startsWith(`@sveltejs/adapter-`)&&delete e.devDependencies[t],a.starter===`examples`&&wx.includes(t)&&delete e.devDependencies[t]})),e.devDependency(`@skgo/sveltekit-adapter`,s),o!==`ts`&&t.existsSync(n.resolve(i,`src/lib/vitest-examples/greet.js`))&&e.file(`src/lib/vitest-examples/greet.js`,e=>e.replace(`export function greet(name) {`,`/** @param {string} name */
+export function greet(name) {`)),e.file(`pnpm-workspace.yaml`,jb.allowBuilds(`esbuild`)),e.file(`.gitignore`,e=>{let t=`
 /build
 `;if(e.includes(`!/build/.gitkeep`))return!1;if(!e.includes(t))throw Error(`skgo expected sv to ignore the SvelteKit build directory`);return e.replace(t,`
 /build/*
