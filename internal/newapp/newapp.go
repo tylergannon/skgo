@@ -234,12 +234,17 @@ func Create(options Options) (Result, error) {
 func finish(p project, run func(command) error) (Result, error) {
 	if err := run(command{
 		Dir: filepath.Join(p.Dir, "web"), Name: filepath.Join("node_modules", ".bin", "vp"),
-		Args: []string{"install"}, Env: os.Environ(),
+		// sv and Storybook have just changed package.json; the lockfile sv
+		// produced before those add-ons is intentionally stale, even in CI.
+		Args: []string{"install", "--no-frozen-lockfile"}, Env: os.Environ(),
 	}); err != nil {
 		return Result{}, fmt.Errorf("skgo: VitePlus could not install Storybook's dependencies: %w", err)
 	}
 	if err := verifyFrontend(p.Dir); err != nil {
 		return Result{}, fmt.Errorf("skgo: upstream frontend setup was incomplete: %w", err)
+	}
+	if err := setPreviewScript(filepath.Join(p.Dir, "web")); err != nil {
+		return Result{}, err
 	}
 	// sv's Vitest add-on depends on Playwright only for component testing; a
 	// developer who chose unit testing alone has no browser to install.
@@ -702,6 +707,41 @@ func emptyDir(dir string) error {
 type packageJSON struct {
 	Scripts         map[string]string `json:"scripts"`
 	DevDependencies map[string]string `json:"devDependencies"`
+}
+
+// Kit's Vite preview starts Kit's Node server, whose generated skgo routes
+// intentionally throw. The familiar frontend preview command must reach the
+// Go binary instead.
+func setPreviewScript(web string) error {
+	filename := filepath.Join(web, "package.json")
+	raw, err := os.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("reading web/package.json for preview: %w", err)
+	}
+	var pkg map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &pkg); err != nil {
+		return fmt.Errorf("reading web/package.json for preview: %w", err)
+	}
+	var scripts map[string]string
+	if err := json.Unmarshal(pkg["scripts"], &scripts); err != nil {
+		return fmt.Errorf("reading web/package.json scripts for preview: %v", err)
+	}
+	if scripts == nil {
+		return fmt.Errorf("web/package.json has no scripts for preview")
+	}
+	scripts["preview"] = "cd .. && just serve"
+	pkg["scripts"], err = json.Marshal(scripts)
+	if err != nil {
+		return err
+	}
+	var output strings.Builder
+	encoder := json.NewEncoder(&output)
+	encoder.SetIndent("", "  ")
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(pkg); err != nil {
+		return err
+	}
+	return os.WriteFile(filename, []byte(output.String()), 0o644)
 }
 
 func readPackage(web string) (packageJSON, error) {
