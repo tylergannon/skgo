@@ -58,6 +58,7 @@
 		"src/routes/error/expected/+page.server.ts",
 		"src/routes/error/unexpected/+page.server.ts",
 		"src/routes/invoices/+page.server.ts",
+		"src/routes/prerender/[slug]/+page.server.ts",
 		"src/routes/stream/+page.server.ts"
 	],
 	"actions": [

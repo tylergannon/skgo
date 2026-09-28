@@ -98,6 +98,46 @@ func TestEveryPrerenderedPathIsServedFromItsFile(t *testing.T) {
 	}
 }
 
+func TestDynamicPrerenderEntriesAreServedFromFiles(t *testing.T) {
+	dist := prodDist(t)
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := newProdHandler(t)
+	for _, slug := range []string{"atlas", "beacon"} {
+		path := "/prerender/" + slug
+		if !slices.Contains(manifest.Prerendered, path) || !slices.Contains(manifest.Prerendered, path+"/__data.json") {
+			t.Fatalf("Kit did not record both files for %s", path)
+		}
+		written, err := fs.ReadFile(dist, "prerendered/prerender/"+slug+".html")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(written), "Go entry load: "+slug) {
+			t.Errorf("Kit's %s file lacks the Go load's literal receipt", path)
+		}
+		rec := get(t, h, path)
+		if rec.Code != http.StatusOK || rec.Body.String() != string(written) {
+			t.Errorf("%s: status %d, Go did not serve Kit's file", path, rec.Code)
+		}
+		data, err := fs.ReadFile(dist, "prerendered/prerender/"+slug+"/__data.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		rec = get(t, h, path+"/__data.json")
+		if rec.Code != http.StatusOK || rec.Body.String() != string(data) {
+			t.Errorf("%s/__data.json: status %d, Go did not serve Kit's file", path, rec.Code)
+		}
+	}
+	if slices.Contains(manifest.Prerendered, "/prerender/third") {
+		t.Error("the build listed a path entries() never returned")
+	}
+	if rec := get(t, h, "/prerender/third"); rec.Code != http.StatusNotFound {
+		t.Errorf("an unlisted entry returned status %d, want 404", rec.Code)
+	}
+}
+
 func TestUniversalInvoiceLoadRendersFilteredDocument(t *testing.T) {
 	h := newProdHandler(t)
 	rec := get(t, h, "/invoices?overdue=1")

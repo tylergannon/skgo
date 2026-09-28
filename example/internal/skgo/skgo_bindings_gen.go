@@ -43,8 +43,9 @@ import (
 	skgo30 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
 	skgo31 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf"
 	skgo32 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
-	skgo33 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq"
-	skgo35 "github.com/tylergannon/skgo/example/web/src/lib"
+	skgo33 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq"
+	skgo34 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq"
+	skgo36 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
 // remote_signIn answers src/lib/auth.remote.ts#signIn, a command.
@@ -61,7 +62,7 @@ func remote_signIn(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	out, err := skgo35.Skgo_signIn(ctx, in)
+	out, err := skgo36.Skgo_signIn(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +88,7 @@ func remote_signOut(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo35.Skgo_signOut(ctx)
+	out, err := skgo36.Skgo_signOut(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +104,7 @@ func remote_whoami(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo35.Skgo_whoami(ctx)
+	out, err := skgo36.Skgo_whoami(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -962,7 +963,7 @@ func Remotes() []*skgo.Remote {
 			Kind:      skgo.KindCommand,
 			Module:    "src/lib/auth.remote.ts",
 			Name:      "signIn",
-			Fn:        skgo35.Skgo_signIn,
+			Fn:        skgo36.Skgo_signIn,
 			Call:      remote_signIn,
 			DecodeArg: requestedArg_signIn,
 		}),
@@ -970,14 +971,14 @@ func Remotes() []*skgo.Remote {
 			Kind:   skgo.KindCommand,
 			Module: "src/lib/auth.remote.ts",
 			Name:   "signOut",
-			Fn:     skgo35.Skgo_signOut,
+			Fn:     skgo36.Skgo_signOut,
 			Call:   remote_signOut,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindQuery,
 			Module: "src/lib/auth.remote.ts",
 			Name:   "whoami",
-			Fn:     skgo35.Skgo_whoami,
+			Fn:     skgo36.Skgo_whoami,
 			Call:   remote_whoami,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -1406,13 +1407,22 @@ func load_invoices_page(ctx context.Context) (any, error) {
 	return skgo29.Skgo_pageLoad(ctx)
 }
 
+// load_prerender_slug_page answers src/routes/prerender/[slug]/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_prerender_slug_page(ctx context.Context) (any, error) {
+	return skgo33.Skgo_load(ctx)
+}
+
 // load_stream_page answers src/routes/stream/+page.server.ts.
 //
 // A load's result is the one value no generated encoder produces: it may
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_stream_page(ctx context.Context) (any, error) {
-	return skgo33.Skgo_pageLoad(ctx)
+	return skgo34.Skgo_pageLoad(ctx)
 }
 
 // Loads returns every server load declared in the app, ready to hand to
@@ -1437,6 +1447,7 @@ func Loads() []*skgo.ServerLoad {
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/expected/+page.server.ts", Run: load_error_expected_page}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/unexpected/+page.server.ts", Run: load_error_unexpected_page}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/invoices/+page.server.ts", Run: load_invoices_page}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/prerender/[slug]/+page.server.ts", Run: load_prerender_slug_page}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/stream/+page.server.ts", Run: load_stream_page}),
 	}
 }
