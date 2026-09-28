@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tylergannon/skgo/internal/envspec"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 	"golang.org/x/tools/go/packages"
@@ -127,6 +128,8 @@ type goPackage struct {
 }
 
 type app struct {
+	environment *envspec.Schema
+
 	cfg Config
 
 	remotes   []*remoteFn
@@ -420,6 +423,9 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 	obj, _ := p.TypesInfo.Uses[ident].(*types.Func)
 	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != skgoPkg {
 		return nil, nil, nil, nil, nil
+	}
+	if obj.Name() == "Environment" {
+		return nil, nil, nil, nil, a.readEnvironment(p, call, ident, path)
 	}
 	kind, isRemote := markerKinds[obj.Name()]
 	isLoad := obj.Name() == "Load"

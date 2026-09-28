@@ -43,6 +43,7 @@ var packageFiles = []string{
 	"skgo-adapter/app-paths.js",
 	"skgo-adapter/app-server.js",
 	"skgo-adapter/entry.js",
+	"skgo-adapter/env-private.js",
 	"skgo-adapter/env.js",
 	"skgo-adapter/generated.js",
 	"skgo-adapter/identity.js",

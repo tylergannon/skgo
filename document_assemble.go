@@ -176,6 +176,18 @@ func (s *SSR) bootScript(baseExpression string, prefixed func(string) string, pl
 		properties = append(properties, "assets: "+jsString(s.info.Assets))
 	}
 
+	if s.info.Client.UsesEnvDynamicPublic {
+		values := map[string]any{}
+		if s.environment != nil {
+			values = s.environment.DynamicPublic()
+		}
+		env, err := unevalJSON(values)
+		if err != nil {
+			return "", err
+		}
+		properties = append(properties, "env: "+env)
+	}
+
 	// A page waiting for something needs the two halves of kit's promise
 	// plumbing: `defer(id)`, which the hydration array calls to make a promise
 	// the page renders its pending branch against, and `resolve(id, fn)`, which
@@ -421,9 +433,17 @@ func (s *SSR) substitute(head, body, assets, nonce string) string {
 	out = strings.ReplaceAll(out, "%sveltekit.assets%", assets)
 	out = strings.ReplaceAll(out, "%sveltekit.nonce%", nonce)
 	out = strings.ReplaceAll(out, "%sveltekit.version%", escapeHTML(s.version))
-	// The app declares no public runtime environment variables, so every
-	// placeholder for one resolves to the empty string kit resolves it to.
-	return envPlaceholder.ReplaceAllString(out, "")
+	values := map[string]any{}
+	if s.environment != nil {
+		values = s.environment.Public()
+	}
+	return envPlaceholder.ReplaceAllStringFunc(out, func(token string) string {
+		name := strings.TrimSuffix(strings.TrimPrefix(token, "%sveltekit.env."), "%")
+		if value, ok := values[name]; ok && value != nil {
+			return environmentText(value)
+		}
+		return ""
+	})
 }
 
 var envPlaceholder = regexp.MustCompile(`%sveltekit\.env\.[^%]+%`)

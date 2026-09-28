@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/dop251/goja"
@@ -251,7 +252,8 @@ type Redirect struct {
 // transformed module at a time from. The engine is otherwise the same in both:
 // the same entry, the same host bindings, the same pool, the same drain.
 type Engine struct {
-	program *goja.Program
+	program     *goja.Program
+	environment []byte
 	// dev is the running dev server the runtimes load their modules from, and
 	// is nil for a build. entry is the module it is asked for first, and
 	// prelude is the script every runtime evaluates before any module does —
@@ -382,7 +384,7 @@ type Hosts struct {
 // New compiles the bundle and returns an engine that will create at most size
 // runtimes. A size below one is one. console is told what the engine writes to
 // `console`; a nil one logs.
-func New(name string, source []byte, size int, console Console) (*Engine, error) {
+func New(name string, source []byte, size int, console Console, environment ...[]byte) (*Engine, error) {
 	program, err := goja.Compile(name, string(source), false)
 	if err != nil {
 		return nil, fmt.Errorf("skgo: the SSR bundle does not parse: %w", err)
@@ -393,7 +395,7 @@ func New(name string, source []byte, size int, console Console) (*Engine, error)
 	if console == nil {
 		console = defaultConsole
 	}
-	return start(&Engine{program: program, console: console}, size)
+	return start(&Engine{program: program, console: console, environment: firstEnvironment(environment)}, size)
 }
 
 // NewDev returns an engine whose application code is the running dev server's.
@@ -405,14 +407,21 @@ func New(name string, source []byte, size int, console Console) (*Engine, error)
 // own `fetchModule`. prelude is the script a build carries as its bundle's
 // banner, run before any module evaluates; entry is the module the engine
 // comes up on.
-func NewDev(dev *vite.Dev, entry string, prelude []byte, size int, console Console) (*Engine, error) {
+func NewDev(dev *vite.Dev, entry string, prelude []byte, size int, console Console, environment ...[]byte) (*Engine, error) {
 	if size < 1 {
 		size = 1
 	}
 	if console == nil {
 		console = defaultConsole
 	}
-	return start(&Engine{dev: dev, entry: entry, prelude: prelude, console: console}, size)
+	return start(&Engine{dev: dev, entry: entry, prelude: prelude, console: console, environment: firstEnvironment(environment)}, size)
+}
+
+func firstEnvironment(values [][]byte) []byte {
+	if len(values) == 0 {
+		return nil
+	}
+	return append([]byte(nil), values[0]...)
 }
 
 // start fills in the pool and proves one runtime comes up.
@@ -448,6 +457,13 @@ func (e *Engine) Created() int {
 
 func (e *Engine) newRuntime() (*runtime, error) {
 	rt := &runtime{vm: goja.New()}
+	if len(e.environment) > 0 {
+		// Parse into a fresh JS object for every runtime; never share mutable
+		// Go maps between pooled JavaScript engines.
+		if _, err := rt.vm.RunString("globalThis.__skgo_environment = JSON.parse(" + strconv.Quote(string(e.environment)) + ");"); err != nil {
+			return nil, fmt.Errorf("skgo: initializing renderer environment: %w", err)
+		}
+	}
 
 	// Before the bundle, not after: the bundle's own top-level code calls
 	// console, and a bundle that cannot come up has to be able to say why.

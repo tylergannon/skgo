@@ -97,6 +97,9 @@ func Run(cfg Config) (err error) {
 		// built. When the developer later adds a Go endpoint, the ordinary path
 		// below overwrites both files with its generated registration.
 		empty := &app{cfg: cfg}
+		if err := empty.writeEnvironment(); err != nil {
+			return err
+		}
 		if err := empty.writeAppBindings(); err != nil {
 			return err
 		}
@@ -132,8 +135,11 @@ func Run(cfg Config) (err error) {
 	if err != nil {
 		return err
 	}
-	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.actions) == 0 && len(app.endpoints) == 0 && len(app.transported) == 0 {
+	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.actions) == 0 && len(app.endpoints) == 0 && len(app.transported) == 0 && app.environment == nil {
 		return fmt.Errorf("skgo: found %d source file(s) but no skgo.Query, skgo.Command, skgo.LiveQuery, skgo.Load or skgo.GET declaration in any of them", len(files))
+	}
+	if err := app.writeEnvironment(); err != nil {
+		return err
 	}
 	if err := app.checkEndpointDuplicates(); err != nil {
 		return err
@@ -349,7 +355,7 @@ func findSourceFiles(web string) ([]string, error) {
 			return nil
 		}
 		_, isLoad := loadFileNames[name]
-		if !isLoad && name != serverFileName && name != hooksFileName && !strings.HasSuffix(name, ".remote.go") {
+		if !isLoad && name != serverFileName && name != hooksFileName && path != filepath.Join(src, "env.go") && !strings.HasSuffix(name, ".remote.go") {
 			return nil
 		}
 		found = append(found, path)

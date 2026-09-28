@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { gojaDevEnvironment, gojaEnvironment, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
+import { gojaDevEnvironment, gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 import { identity } from './skgo-adapter/identity.js';
 import { checkEndpoints, validateGenerated } from './skgo-adapter/generated.js';
 
@@ -56,6 +56,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 	// runs, so the plugin that declares the environment has to exist here; the
 	// build itself waits until adapt() knows the node table.
 	const goja = gojaEnvironment();
+	const environment = goEnvironmentValues(out);
 
 	return {
 		name: 'skgo',
@@ -65,10 +66,11 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 		// compiles the SSR bundle in is also declared in `vite dev`, where Go
 		// pulls one transformed module at a time out of it instead. Each plugin
 		// states its own `apply`, so only one of them is ever live.
-		vite: { plugins: { post: [goja.plugin, gojaDevEnvironment()] } },
+		vite: { plugins: { post: [environment.plugin, goja.plugin, gojaDevEnvironment()] } },
 		async adapt(builder) {
 			rmSync(out, { force: true, recursive: true });
 
+			write(`${out}/env.json`, JSON.stringify(environment.artifact()));
 			const generated = readGenerated();
 			const { manifest: kit, source } = await readKitManifest(builder);
 			const hashes = checkRemoteHashes(kit, generated.remotes);

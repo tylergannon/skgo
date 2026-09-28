@@ -52,6 +52,11 @@ func main() {
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "env":
+		if err := environmentCommand(os.Args[2:], os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "new":
 		newProject(os.Args[2:])
 	case "generate":

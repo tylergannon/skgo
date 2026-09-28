@@ -32,14 +32,20 @@ import (
 // Dev is a running `vite dev` server, addressed over the endpoints the skgo
 // adapter's dev plugin adds to it.
 type Dev struct {
+	token  string
 	base   string
 	client *http.Client
 }
 
 // NewDev addresses the dev server at base, e.g. "http://127.0.0.1:5173".
-func NewDev(base string) *Dev {
+func NewDev(base string, token ...string) *Dev {
+	value := ""
+	if len(token) > 0 {
+		value = token[0]
+	}
 	return &Dev{
-		base: strings.TrimSuffix(base, "/"),
+		token: value,
+		base:  strings.TrimSuffix(base, "/"),
 		// No timeout: a cold `vite dev` compiles the module it is asked for,
 		// and the first request for Svelte's server renderer can take seconds.
 		client: &http.Client{},
@@ -96,7 +102,7 @@ func (d *Dev) Styles(nodes []int) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := d.client.Post(d.base+"/__skgo_dev/styles", "application/json", bytes.NewReader(body))
+	resp, err := d.post("/__skgo_dev/styles", body)
 	if err != nil {
 		return nil, fmt.Errorf("skgo: asking the dev server for inline styles: %w", err)
 	}
@@ -176,7 +182,7 @@ func (d *Dev) Module(url, importer string) (Module, error) {
 	if err != nil {
 		return Module{}, err
 	}
-	resp, err := d.client.Post(d.base+"/__skgo_dev/module", "application/json", bytes.NewReader(body))
+	resp, err := d.post("/__skgo_dev/module", body)
 	if err != nil {
 		return Module{}, fmt.Errorf("skgo: asking the dev server for %s: %w", url, err)
 	}
@@ -251,4 +257,16 @@ func snippet(raw []byte) string {
 		return "an empty body"
 	}
 	return text
+}
+
+func (d *Dev) post(path string, body []byte) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodPost, d.base+path, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if d.token != "" {
+		req.Header.Set("X-Skgo-Dev-Token", d.token)
+	}
+	return d.client.Do(req)
 }

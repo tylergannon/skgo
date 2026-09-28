@@ -41,12 +41,13 @@ import (
 // page rendered here and the same page rendered by kit's client from those two
 // endpoints are the same page by construction.
 type SSR struct {
-	loads    *Loads
-	remotes  *Remotes
-	actions  *Actions
-	engine   *ssr.Engine
-	info     ManifestSSR
-	template string
+	environment *EnvironmentSnapshot
+	loads       *Loads
+	remotes     *Remotes
+	actions     *Actions
+	engine      *ssr.Engine
+	info        ManifestSSR
+	template    string
 	// errorPage is kit's `error.html`: the last-resort document, for a request
 	// whose error page cannot itself be rendered.
 	errorPage string
@@ -88,6 +89,8 @@ func (s *SSR) ErrorTemplate() string { return s.errorPage }
 
 // SSROptions configures the renderer.
 type SSROptions struct {
+	// Environment is the Go-validated startup snapshot shared by Go and Kit.
+	Environment *EnvironmentSnapshot
 	// Actions are the Go handlers generated for classic page form actions.
 	Actions *Actions
 	// Runtimes bounds how many pages may render at once. Zero means one per
@@ -119,6 +122,9 @@ type SSROptions struct {
 // NewSSR builds a renderer over an adapter build. It fails if the build carries
 // no SSR bundle, if the bundle does not parse, or if it does not come up.
 func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROptions) (*SSR, error) {
+	if err := requireEnvironment(build, opts.Environment); err != nil {
+		return nil, err
+	}
 	if m.SSR == nil {
 		return nil, errors.New("skgo: this build has no SSR bundle. Rebuild the frontend with an adapter that emits one.")
 	}
@@ -146,21 +152,22 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	}
 
 	s := &SSR{
-		loads:     loads,
-		remotes:   remotes,
-		actions:   opts.Actions,
-		info:      info,
-		template:  template,
-		errorPage: errorPage,
-		base:      strings.TrimSuffix(m.Base, "/"),
-		version:   m.Version,
-		onError:   opts.OnError,
-		fetch:     opts.Fetch,
+		environment: opts.Environment,
+		loads:       loads,
+		remotes:     remotes,
+		actions:     opts.Actions,
+		info:        info,
+		template:    template,
+		errorPage:   errorPage,
+		base:        strings.TrimSuffix(m.Base, "/"),
+		version:     m.Version,
+		onError:     opts.OnError,
+		fetch:       opts.Fetch,
 	}
 	// The engine is built after the SSR rather than into it because the bundle
 	// writes to `console` while it is coming up, and that line has to reach the
 	// same place every other failure does.
-	engine, err := ssr.New(info.Bundle, source, poolSize(opts), s.console)
+	engine, err := ssr.New(info.Bundle, source, poolSize(opts), s.console, environmentJSON(opts.Environment))
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +201,11 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 	if m.SSR == nil {
 		return nil, errors.New("skgo: this build has no SSR description, so dev has no node table to render a branch through. Rebuild the frontend with an adapter that emits one.")
 	}
-	dev := vite.NewDev(devServer)
+	token := ""
+	if opts.Environment != nil {
+		token = opts.Environment.devToken
+	}
+	dev := vite.NewDev(devServer, token)
 	answer, err := dev.Await(devServerTimeout)
 	if err != nil {
 		return nil, err
@@ -210,21 +221,22 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 	}
 
 	s := &SSR{
-		loads:      loads,
-		remotes:    remotes,
-		actions:    opts.Actions,
-		info:       info,
-		template:   template,
-		errorPage:  errorPage,
-		base:       strings.TrimSuffix(m.Base, "/"),
-		version:    m.Version,
-		onError:    opts.OnError,
-		fetch:      opts.Fetch,
-		dev:        dev,
-		devBase:    m,
-		devVersion: answer.Manifest.Version,
+		environment: opts.Environment,
+		loads:       loads,
+		remotes:     remotes,
+		actions:     opts.Actions,
+		info:        info,
+		template:    template,
+		errorPage:   errorPage,
+		base:        strings.TrimSuffix(m.Base, "/"),
+		version:     m.Version,
+		onError:     opts.OnError,
+		fetch:       opts.Fetch,
+		dev:         dev,
+		devBase:     m,
+		devVersion:  answer.Manifest.Version,
 	}
-	engine, err := ssr.NewDev(dev, answer.Entry, adapter.Polyfill(), poolSize(opts), s.console)
+	engine, err := ssr.NewDev(dev, answer.Entry, adapter.Polyfill(), poolSize(opts), s.console, environmentJSON(opts.Environment))
 	if err != nil {
 		return nil, err
 	}

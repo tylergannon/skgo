@@ -504,6 +504,12 @@ func readVariant(build fs.FS, name, encoding string) (assetVariant, error) {
 }
 
 func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Runtime public values take precedence over the build-time env.js that
+	// Kit may have emitted while prerendering.
+	if path, ok := normalizePath(r.URL.Path); ok && path == h.appPrefix+"env.js" && h.ssr != nil {
+		h.ssr.serveEnvironment(w, r)
+		return
+	}
 	// A POST is a form submission to a page, and only the renderer can answer
 	// one — it has to run the form and then render the page again with the
 	// outcome in it. Everything else this handler serves is a file.
