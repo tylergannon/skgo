@@ -32,7 +32,7 @@ func TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch(t *testing.T) {
 	if err := Run(cfg); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if command := readFixtureFile(t, root, "app/generated/prerender/main_gen.go"); !strings.Contains(command, "generated.Loads()") {
+	if command := readFixtureFile(t, root, "app/generated/prerender/main_gen.go"); !strings.Contains(command, "nil, generated.Loads()") {
 		t.Fatalf("build command omits generated loads:\n%s", command)
 	}
 }

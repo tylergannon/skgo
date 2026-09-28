@@ -1,0 +1,1 @@
+friction: The first real site build against v0.12.0 failed because its generated prerender command called generated.Transport(), which exists only when the app declares a transported type. The example carried Money and could not expose this. Generate nil for apps without transport and keep a test for both generator branches.
