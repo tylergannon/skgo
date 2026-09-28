@@ -168,7 +168,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if commands[1].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[1].Dir) != "web" {
 		t.Fatalf("the skgo integration was not added through the project's VitePlus: %#v", commands[1])
 	}
-	if got := strings.Join(commands[2].Args, " "); !strings.Contains(got, "dlx --allow-build esbuild --package create-storybook@10.6.0 --package @storybook/sveltekit@10.6.0 create-storybook") {
+	if got := strings.Join(commands[2].Args, " "); !strings.Contains(got, "dlx --allow-build=esbuild --package create-storybook@10.6.0 --package @storybook/sveltekit@10.6.0 create-storybook") {
 		t.Fatalf("Storybook did not use its upstream installer with pnpm approval: %s", got)
 	}
 	if joined := strings.Join(commands[2].Env, "\n"); strings.Contains(joined, "npm_config_force=") {

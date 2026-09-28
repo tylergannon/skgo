@@ -504,7 +504,7 @@ func endpointWireMethod(method string) string {
 }
 
 // writeAppBindings emits the one package the application imports: a concrete
-// closure per remote function and per load, and the three lists an app hands
+// closure per remote function and per load, and the lists an app hands
 // to skgo.
 //
 // This is where the wire meets Go. Each closure names the strict decoder
@@ -589,12 +589,12 @@ func (a *app) writeAppBindings() error {
 				fmt.Fprintf(&b, "\nfunc %s(ctx context.Context) (any, error) { return %s(ctx) }\n", action.handler, a.published(action.goPkg, action.fnName))
 			}
 		}
-		b.WriteString("\n// Actions returns the Go handlers for classic page actions.\nfunc Actions() []*skgo.PageAction {\n\treturn []*skgo.PageAction{\n")
-		for _, action := range a.actions {
-			fmt.Fprintf(&b, "\t\tskgo.NewPageAction(skgo.ActionSpec{Module: %q, Name: %q, Run: %s}),\n", action.module, action.name, action.handler)
-		}
-		b.WriteString("\t}\n}\n")
 	}
+	b.WriteString("\n// Actions returns the Go handlers for classic page actions.\nfunc Actions() []*skgo.PageAction {\n\treturn []*skgo.PageAction{\n")
+	for _, action := range a.actions {
+		fmt.Fprintf(&b, "\t\tskgo.NewPageAction(skgo.ActionSpec{Module: %q, Name: %q, Run: %s}),\n", action.module, action.name, action.handler)
+	}
+	b.WriteString("\t}\n}\n")
 
 	b.WriteString("\n// Endpoints returns every server route declared in the app, ready to hand\n")
 	b.WriteString("// to skgo.NewEndpoints.\n")

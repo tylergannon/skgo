@@ -213,7 +213,7 @@ func Create(options Options) (Result, error) {
 	if err := run(command{
 		Dir: filepath.Join(p.Dir, "web"), Name: "pnpm",
 		Args: []string{
-			"dlx", "--allow-build", "esbuild",
+			"dlx", "--allow-build=esbuild",
 			"--package", "create-storybook@" + storybookVersion,
 			"--package", "@storybook/sveltekit@" + storybookVersion,
 			"create-storybook", "--package-manager", "pnpm", "--skip-install",
