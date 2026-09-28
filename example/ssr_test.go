@@ -88,6 +88,9 @@ func TestAQueryWithAnArgumentIsRenderedWithTheArgumentGoWasGiven(t *testing.T) {
 	if !strings.Contains(body, `<p data-testid="item-name">Widget 93</p>`) {
 		t.Error(`the document does not name the item Go was asked for ("Widget 93")`)
 	}
+	if !strings.Contains(body, `<p data-testid="load-item-name">Widget 93</p>`) {
+		t.Error(`the universal load did not render Go's answer for "Widget 93"`)
+	}
 	if strings.Contains(body, "Widget 42") {
 		t.Error("the document names an item nobody asked for")
 	}

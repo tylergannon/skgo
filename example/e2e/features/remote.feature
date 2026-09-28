@@ -21,6 +21,18 @@ Feature: Remote functions written in Go
     Given I open "/todos/t2"
     Then the todo detail shows "serve remote functions"
 
+  Scenario: A universal load shares its remote query with the component at hydration
+    Given I open "/items/93"
+    Then the item load and component both show "Widget 93"
+    And no remote request was made during hydration
+
+  Scenario: A universal load fetches its remote query once on client navigation
+    Given I open "/"
+    When I note the remote request count
+    And I click the link to "/items/42"
+    Then the item load and component both show "Widget 42"
+    And exactly 1 remote request was made since
+
   Scenario: Commands drive the live count, one todo at a time
     Given I open "/todos"
     When the todo list has loaded

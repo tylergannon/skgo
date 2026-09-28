@@ -2,10 +2,11 @@
 	import type { PageProps } from './$types';
 	import { getItem } from './item.remote';
 
-	let { params }: PageProps = $props();
+	let { data, params }: PageProps = $props();
 </script>
 
 <h1 data-testid="title">Item {params.id}</h1>
+<p data-testid="load-item-name">{data.loadedItem.name}</p>
 
 <svelte:boundary>
 	{#if params.id}

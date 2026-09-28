@@ -1,0 +1,4 @@
+correction: Universal-load remote queries are supported by Kit and central to the user's workflow; the fetch bridge is independent and should not be used as a prerequisite.
+discovery: SKGo currently invokes universal loads before `with_request_store`, while Kit runs those loads inside that store. A real item-page query call will test the missing context and existing Go callback together.
+friction: A direct `pnpm test` dev run omitted `SKGO_LOG`, and retrying on the same long-lived server reused an operation counter fixture -> invoke the `just e2e` recipe or supply its environment, and restart the server before a full rerun.
+friction: `vp fmt` from the example web directory used defaults that reformatted unrelated existing lines -> do not apply it to adapter files without the repo's formatting configuration.
