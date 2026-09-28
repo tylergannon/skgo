@@ -59,6 +59,11 @@
 			look: 'The layout and the page were both loaded in Go. Move between Overview and Orders: the serial does not change, because kit did not re-run the layout.'
 		},
 		{
+			name: 'Universal load over Go invoice data',
+			href: '/invoices?overdue=1',
+			look: 'Go supplies invoices; the authored universal load filters, sorts and totals them during the first render and again in Kit navigation.'
+		},
+		{
 			name: 'A nested error page',
 			href: '/account/statement',
 			look: 'A load refuses with 402, and the error page renders inside the account layout rather than replacing it.'

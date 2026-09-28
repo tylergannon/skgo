@@ -59,6 +59,37 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	return rec
 }
 
+func TestUniversalInvoiceLoadRendersFilteredDocument(t *testing.T) {
+	h := newProdHandler(t)
+	rec := get(t, h, "/invoices?overdue=1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	listStart := strings.Index(body, `<ul data-testid="invoices">`)
+	if listStart < 0 {
+		t.Fatalf("rendered document has no invoice list: %s", body)
+	}
+	listEnd := strings.Index(body[listStart:], "</ul>")
+	if listEnd < 0 {
+		t.Fatal("rendered invoice list was not closed")
+	}
+	list := body[listStart : listStart+listEnd]
+	for _, want := range []string{"INV-100", "2026-09-10", "12500 cents"} {
+		if !strings.Contains(list, want) {
+			t.Errorf("rendered invoice list lacks %q", want)
+		}
+	}
+	if !strings.Contains(body, `data-testid="invoice-total">Total: 12500 cents`) {
+		t.Error("rendered document lacks the filtered total")
+	}
+	for _, absent := range []string{"INV-200", "INV-300", "Total: 19900 cents"} {
+		if strings.Contains(list, absent) {
+			t.Errorf("filtered document contains %q", absent)
+		}
+	}
+}
+
 // TestTheEmbeddedBuildProducesAWorkingServer is the check the developer
 // otherwise only performs by running the binary and looking at a browser.
 //
