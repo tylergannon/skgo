@@ -1,5 +1,6 @@
 import {
 	existsSync,
+	mkdtempSync,
 	mkdirSync,
 	readdirSync,
 	readFileSync,
@@ -8,11 +9,33 @@ import {
 	statSync,
 	writeFileSync
 } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gojaDevEnvironment, gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 import { identity } from './skgo-adapter/identity.js';
 import { checkEndpoints, validateGenerated } from './skgo-adapter/generated.js';
+import { authorizePrerenderedScripts } from './skgo-adapter/prerender-csp.js';
+
+function runPrerenderCommand(command, args, cwd, input = '') {
+	return new Promise((resolve, reject) => {
+		const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'] });
+		let stdout = '';
+		let stderr = '';
+		child.stdout.setEncoding('utf8');
+		child.stderr.setEncoding('utf8');
+		child.stdout.on('data', (chunk) => (stdout += chunk));
+		child.stderr.on('data', (chunk) => (stderr += chunk));
+		child.on('error', reject);
+		child.on('close', (code) => {
+			if (code === 0) resolve(stdout);
+			else reject(new Error(`skgo prerender command exited ${code}: ${stderr}`));
+		});
+		child.stdin.end(input);
+	});
+}
 
 // Which skgo this adapter is: the version this package was published at, and a
 // fingerprint taken over its own files. The Go that reads the manifest below
@@ -57,9 +80,95 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 	// build itself waits until adapt() knows the node table.
 	const goja = gojaEnvironment();
 	const environment = goEnvironmentValues(out);
+	let prerenderBinary;
+	let prerenderRoot;
+	let prerenderBuild;
+	let unflatten;
+	let transportDecoders = {};
+	async function buildPrerenderBinary() {
+		if (!prerenderBuild) {
+			prerenderBuild = (async () => {
+				const generated = readGenerated();
+				if (!generated.prerender) throw new Error('skgo: generated prerender command is missing');
+				prerenderRoot = resolve(process.cwd(), generated.prerender.root);
+				const dir = mkdtempSync(join(tmpdir(), 'skgo-prerender-'));
+				prerenderBinary = join(dir, 'loads');
+				await runPrerenderCommand('go', ['build', '-o', prerenderBinary, generated.prerender.package], prerenderRoot);
+				process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
+				const fromKit = createRequire(realpathSync(join(process.cwd(), 'node_modules/@sveltejs/kit/package.json')));
+				({ unflatten } = await import(pathToFileURL(fromKit.resolve('devalue')).href));
+				const hooks = join(process.cwd(), '.svelte-kit/output/server/entries/hooks.universal.js');
+				if (existsSync(hooks)) {
+					const { transport = {} } = await import(pathToFileURL(hooks).href);
+					transportDecoders = Object.fromEntries(Object.entries(transport).map(([key, entry]) => [key, entry.decode]));
+				}
+			})();
+		}
+		await prerenderBuild;
+	}
 
 	return {
 		name: 'skgo',
+		emulate() {
+			return {
+				platform: () => ({
+					async skgoPrerenderLoad(module, event) {
+						await buildPrerenderBinary();
+						const headers = Object.fromEntries(
+							[...event.request.headers].map(([name, value]) => [name, [value]])
+						);
+						const cookies = event.cookies.getAll();
+						if (cookies.length) {
+							headers.cookie = [cookies.map(({ name, value }) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join('; ')];
+						}
+						const request = {
+							module,
+							url: event.url.href,
+							routeId: event.route.id,
+							params: Object.fromEntries(Object.entries(event.params)),
+							parent: await event.parent(),
+							headers
+						};
+						const raw = await runPrerenderCommand(prerenderBinary, [], prerenderRoot, JSON.stringify(request));
+						const answer = JSON.parse(raw);
+						for (const [name, values] of Object.entries(answer.headers ?? {})) {
+							event.setHeaders({ [name]: values.join(', ') });
+						}
+						for (const cookie of answer.cookies ?? []) {
+							event.cookies.set(cookie.name, cookie.value, {
+								path: cookie.path,
+								...(cookie.domain ? { domain: cookie.domain } : {}),
+								...(cookie.maxAge ? { maxAge: cookie.maxAge } : {}),
+								httpOnly: cookie.httpOnly,
+								secure: cookie.secure,
+								sameSite: ['lax', 'lax', 'strict', 'none'][cookie.sameSite] ?? 'lax'
+							});
+						}
+						if (answer.data) {
+							const pending = new Map();
+							const revivers = {
+								...transportDecoders,
+								Promise: (id) => {
+									let resolve;
+									let reject;
+									const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+									pending.set(id, { promise, resolve, reject });
+									return promise;
+								}
+							};
+							answer.data = unflatten(answer.data, revivers);
+							for (const chunk of answer.chunks ?? []) {
+								const deferred = pending.get(chunk.id);
+								if (!deferred) throw new Error(`skgo: unknown prerender deferred id ${chunk.id}`);
+								if (chunk.error) deferred.reject(new Error(chunk.error));
+								else deferred.resolve(unflatten(chunk.data, revivers));
+							}
+						}
+						return answer;
+					}
+				})
+			};
+		},
 		// Both halves of the same environment. Kit hands `vite.plugins.post` to
 		// vite unconditionally — it is a member of the plugin array kit returns
 		// whether it is building or serving — so the environment the build
@@ -75,9 +184,9 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			const { manifest: kit, source } = await readKitManifest(builder);
 			const hashes = checkRemoteHashes(kit, generated.remotes);
 
-			const nodes = await readNodes(builder, source, kit);
+			const { nodes, allServerIds } = await readNodes(builder, source, kit);
 			const serverIds = nodes.map((node) => node.server);
-			checkServerLoads(serverIds, generated.loads, generated.actions);
+			checkServerLoads(allServerIds, generated.loads, generated.actions);
 
 			const endpoints = checkEndpoints(builder, generated.endpoints);
 
@@ -85,6 +194,9 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			checkRemoteIds(`${out}/client`, generated.remotes, hashes);
 
 			builder.writePrerendered(`${out}/prerendered`);
+			for (const file of walk(`${out}/prerendered`)) {
+				if (file.endsWith('.html')) authorizePrerenderedScripts(file);
+			}
 			const prerendered = readPrerendered(builder);
 			// The SPA shell is still emitted: it is what a page whose branch turns
 			// SSR off is answered with.
@@ -207,7 +319,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
  * halves were never checked against each other. The shape checks themselves
  * live in `skgo-adapter/generated.js`, beside the paths they validate.
  *
- * @returns {{ remotes: string[], loads: string[], actions: string[], endpoints: Record<string, string[]> }}
+ * @returns {{ remotes: string[], loads: string[], actions: string[], endpoints: Record<string, string[]>, prerender?: { root: string, package: string } }}
  */
 function readGenerated() {
 	let raw;
@@ -356,7 +468,7 @@ async function readKitManifest(builder) {
  * @param {import('@sveltejs/kit').Builder} builder
  * @param {string} source kit's generated manifest, as text
  * @param {any} kit the same manifest, imported
- * @returns {Promise<Node[]>}
+ * @returns {Promise<{ nodes: Node[], allServerIds: string[] }>}
  */
 async function readNodes(builder, source, kit) {
 	const dir = join(builder.getServerDirectory(), 'nodes');
@@ -384,6 +496,11 @@ async function readNodes(builder, source, kit) {
 
 	/** @type {Node[]} */
 	const nodes = [];
+	const allServerIds = [];
+	for (const file of files.values()) {
+		const module = await import(pathToFileURL(file).href);
+		if (module.server_id) allServerIds.push(module.server_id);
+	}
 	for (const index of order) {
 		const file = files.get(index);
 		if (!file) {
@@ -404,7 +521,7 @@ async function readNodes(builder, source, kit) {
 		});
 	}
 
-	return nodes;
+	return { nodes, allServerIds };
 }
 
 /**
@@ -647,9 +764,8 @@ function* walk(dir) {
 /**
  * The same check for server loads. Kit decides whether its client asks for
  * `__data.json` at all by looking for a `load` export in the *built*
- * `+*.server.js`, so a stub that did not reach the build is a page whose Go load
- * is never called, and a compiled stub with no Go load behind it is a page whose
- * data nobody answers.
+ * `+*.server.js`. A prerendered leaf is removed from the final manifest, so
+ * check all node modules Kit compiled, including the removed leaves.
  *
  * @param {string[]} nodes
  * @param {string[]} loads

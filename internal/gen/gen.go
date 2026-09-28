@@ -151,9 +151,6 @@ func Run(cfg Config) (err error) {
 	if err := app.checkWireFields(); err != nil {
 		return err
 	}
-	if err := app.checkPrerenderedLoads(); err != nil {
-		return err
-	}
 	if err := app.checkPrerenderedActions(); err != nil {
 		return err
 	}
@@ -208,6 +205,9 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	if err := app.writeAppBindings(); err != nil {
+		return err
+	}
+	if err := app.writePrerenderCommand(); err != nil {
 		return err
 	}
 	if err := app.writeFormClients(); err != nil {

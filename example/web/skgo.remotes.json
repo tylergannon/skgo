@@ -42,6 +42,7 @@
 	"loads": [
 		"src/routes/(marketing)/pricing/+page.server.ts",
 		"src/routes/+layout.server.ts",
+		"src/routes/about/+page.server.ts",
 		"src/routes/account/+layout.server.ts",
 		"src/routes/account/+page.server.ts",
 		"src/routes/account/orders/+page.server.ts",
@@ -102,5 +103,9 @@
 			"GET",
 			"POST"
 		]
+	},
+	"prerender": {
+		"root": "..",
+		"package": "./internal/skgo/prerender"
 	}
 }

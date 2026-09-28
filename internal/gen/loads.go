@@ -27,11 +27,9 @@ func (a *app) declareLoadTypes() error {
 // writeLoadStubs emits one `+page.server.ts`/`+layout.server.ts` (or their
 // `.js` counterparts in a JavaScript app) per Go load.
 //
-// The export has to be named `load`, and it has to survive being imported: kit
-// decides whether its client ever asks for `__data.json` by importing the built
-// module and looking for that name (`utils/routing.js`, `has_server_load`). It
-// never calls it. So the body throws, and a page that renders data is proof the
-// Go handler answered.
+// The export has to be named `load`: kit inspects it to decide whether its
+// client asks for `__data.json`, and calls it during prerendering. At request
+// time Go answers the load; during the build the adapter's Go bridge answers.
 func (a *app) writeLoadStubs() error {
 	byModule := map[string]*loadFn{}
 	actions := map[string][]*actionFn{}
@@ -102,6 +100,7 @@ func (a *app) writeLoadStubs() error {
 		b.WriteString(tsHeader)
 		if load != nil {
 			b.WriteString("import { building } from '$app/env';\n")
+			b.WriteString("import { error, redirect } from '@sveltejs/kit';\n")
 		}
 
 		if a.cfg.Language.JavaScript() {
@@ -158,18 +157,27 @@ func (a *app) writeLoadStubs() error {
 		b.WriteString("\n")
 
 		if load != nil {
-			b.WriteString("// The body throws. This load is implemented in Go, and skgo answers\n")
-			b.WriteString("// __data.json itself, so anything that renders in the browser is proof the\n")
-			b.WriteString("// Go handler replied rather than this module. Kit normally reads the export\n")
-			b.WriteString("// only to learn that the route has server data. Its prerenderer does call it,\n")
-			b.WriteString("// which is refused until Go loads can run during a build (#81).\n")
+			b.WriteString("// Go answers this load at runtime. Kit calls it during prerendering,\n")
+			b.WriteString("// when the adapter's build-only Go process supplies its result.\n")
 			if a.cfg.Language.JavaScript() {
 				b.WriteString("/**\n * @param {string} route\n * @returns {never}\n */\nconst unimplemented = (route) => {\n")
 			} else {
 				b.WriteString("const unimplemented = (route: string): never => {\n")
 			}
-			fmt.Fprintf(&b, "\tif (building) throw new Error('skgo: route ' + route + ' is prerendered, and its branch has a Go server load at ' + %q + '; skgo cannot answer a load while kit prerenders (#81). Remove the prerender or move the load');\n", load.source)
 			b.WriteString("\tthrow new Error('skgo: implemented in Go');\n};\n\n")
+			if a.cfg.Language.JavaScript() {
+				b.WriteString("/**\n * @param {string} module\n * @param {import('@sveltejs/kit').RequestEvent} event\n * @returns {Promise<any>}\n */\nconst buildLoad = async (module, event) => {\n")
+				b.WriteString("\tconst bridge = /** @type {{ skgoPrerenderLoad?: (module: string, event: import('@sveltejs/kit').RequestEvent) => Promise<any> } | undefined} */ (event.platform)?.skgoPrerenderLoad;\n")
+			} else {
+				b.WriteString("const buildLoad = async (module: string, event: import('@sveltejs/kit').RequestEvent): Promise<any> => {\n")
+				b.WriteString("\tconst bridge = (event.platform as { skgoPrerenderLoad?: (module: string, event: import('@sveltejs/kit').RequestEvent) => Promise<any> } | undefined)?.skgoPrerenderLoad;\n")
+			}
+			b.WriteString("\tif (!bridge) throw new Error('skgo: prerender Go load bridge unavailable');\n")
+			b.WriteString("\tconst answer = await bridge(module, event);\n")
+			b.WriteString("\tif (answer.redirect) redirect(answer.redirect.status, answer.redirect.location);\n")
+			b.WriteString("\tif (answer.error) error(answer.error.status, answer.error.message);\n")
+			b.WriteString("\tif (answer.data === undefined) throw new Error('skgo: prerender Go load returned no data');\n")
+			b.WriteString("\treturn answer.data;\n};\n\n")
 
 			var parts []string
 			for _, field := range loadFields {
@@ -188,9 +196,9 @@ func (a *app) writeLoadStubs() error {
 				// writer rewrites an `@type` on an exported function into a
 				// `@param`, which would leave the body's `never` as the load's
 				// return type and erase the data a page consumes.
-				fmt.Fprintf(&b, "/**\n * @param {{ url: URL }} event\n * @returns {%s}\n */\nexport const load = (event) => unimplemented(event.url.pathname);\n", shape)
+				fmt.Fprintf(&b, "/**\n * @param {import('@sveltejs/kit').RequestEvent} event\n * @returns {Promise<%s>}\n */\nexport const load = async (event) => building ? buildLoad(%q, event) : unimplemented(event.url.pathname);\n", shape, load.module)
 			} else {
-				fmt.Fprintf(&b, "export const load = (event: { url: URL }): %s => unimplemented(event.url.pathname);\n", shape)
+				fmt.Fprintf(&b, "export const load = async (event: import('@sveltejs/kit').RequestEvent): Promise<%s> => building ? buildLoad(%q, event) : unimplemented(event.url.pathname);\n", shape, load.module)
 			}
 		}
 		if len(actions[module]) > 0 {

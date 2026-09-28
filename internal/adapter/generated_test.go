@@ -117,6 +117,7 @@ validateGenerated(JSON.parse(readFileSync(0, 'utf-8')));
 	good := `{
 		"remotes": ["2b61k/status"],
 		"loads": ["src/routes/a/+page.server.js", "src/routes/a/+layout.server.ts", "src/routes/b/+layout.server.js"],
+		"prerender": {"root": "..", "package": "./internal/skgo/prerender"},
 		"actions": ["src/routes/a/+page.server.js", "src/routes/b/+page.server.ts"],
 		"endpoints": {"/api/thing": ["GET", "POST"]}
 	}`

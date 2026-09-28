@@ -15,9 +15,8 @@ Feature: The front page says what skgo can do
   its own: /todos/[id] and /account/orders are read by the entries above them,
   and /error/render makes the same claim as "A failure no error page can catch"
   by a different route. /error/command and /error/redirect are kit's rules about
-  what a render may do rather than things skgo offers a developer. /about is not
-  listed because the app cannot prerender while its root layout has a Go load —
-  see the PR that added this page, and #81.
+  what a render may do rather than things skgo offers a developer. /about's
+  prerendered Go loads are checked in engine-build.feature.
 
   Scenario Outline: An entry opens the page it names
     Signed in, because two of the entries point into a section that turns a

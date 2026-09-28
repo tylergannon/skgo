@@ -21,18 +21,19 @@ func site(context.Context) (Data, error) { return Data{Message: "hello"}, nil }
 var _ = skgo.Load(site)
 `
 
-func TestAPrerenderedPageCannotHaveAGoLayoutLoadInItsBranch(t *testing.T) {
+func TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch(t *testing.T) {
 	t.Parallel()
-	_, cfg := foreignFixture(t, "", map[string]string{
+	root, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/layout.server.go":   loadSource,
 		"app/web/src/routes/about/+page.svelte": "<h1>About</h1>\n",
 		"app/web/src/routes/about/+page.ts":     "export const prerender = true;\n",
 	})
 
-	err := Run(cfg)
-	want := "skgo: route /about is prerendered, and its branch has a Go server load at src/routes/layout.server.go; skgo cannot answer a load while kit prerenders (#81). Remove the prerender or move the load"
-	if err == nil || err.Error() != want {
-		t.Fatalf("Run error = %v, want exactly:\n%s", err, want)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if command := readFixtureFile(t, root, "app/generated/prerender/main_gen.go"); !strings.Contains(command, "generated.Loads()") {
+		t.Fatalf("build command omits generated loads:\n%s", command)
 	}
 }
 
@@ -41,7 +42,6 @@ func TestPrerenderInheritanceMatchesKit(t *testing.T) {
 	tests := []struct {
 		name  string
 		files map[string]string
-		fails bool
 	}{
 		{
 			name: "a leaf inherits true from its layout",
@@ -50,7 +50,6 @@ func TestPrerenderInheritanceMatchesKit(t *testing.T) {
 				"app/web/src/routes/+layout.ts":         "export const prerender = true;\n",
 				"app/web/src/routes/about/+page.svelte": "<h1>About</h1>\n",
 			},
-			fails: true,
 		},
 		{
 			name: "a leaf false overrides a layout true",
@@ -69,7 +68,6 @@ func TestPrerenderInheritanceMatchesKit(t *testing.T) {
 				"app/web/src/routes/about/+page.svelte": "<h1>About</h1>\n",
 				"app/web/src/routes/about/+page.ts":     "export const prerender = true;\n",
 			},
-			fails: true,
 		},
 		{
 			name: "a universal option wins over the same node server option",
@@ -87,7 +85,6 @@ func TestPrerenderInheritanceMatchesKit(t *testing.T) {
 				"app/web/src/routes/about/+page.svelte": "<h1>About</h1>\n",
 				"app/web/src/routes/about/+page.ts":     "export const prerender: boolean | 'auto' = 'auto';\n",
 			},
-			fails: true,
 		},
 		{
 			name: "an unknown universal option does not fall back to the server option",
@@ -103,11 +100,7 @@ func TestPrerenderInheritanceMatchesKit(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			_, cfg := foreignFixture(t, "", test.files)
-			err := Run(cfg)
-			if test.fails && (err == nil || !strings.Contains(err.Error(), "cannot answer a load while kit prerenders (#81)")) {
-				t.Fatalf("Run error = %v, want prerender refusal", err)
-			}
-			if !test.fails && err != nil {
+			if err := Run(cfg); err != nil {
 				t.Fatalf("Run: %v", err)
 			}
 		})
@@ -127,15 +120,15 @@ func TestLoadsOutsideThePrerenderedBranchAreAccepted(t *testing.T) {
 	}
 }
 
-func TestAPrerenderedPageCannotHaveItsOwnGoLoad(t *testing.T) {
+func TestAPrerenderedPageCanHaveItsOwnGoLoad(t *testing.T) {
 	t.Parallel()
 	_, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/about/page.server.go": loadSource,
 		"app/web/src/routes/about/+page.svelte":   "<h1>About</h1>\n",
 		"app/web/src/routes/about/+page.ts":       "export const prerender = true;\n",
 	})
-	if err := Run(cfg); err == nil || !strings.Contains(err.Error(), "src/routes/about/page.server.go") {
-		t.Fatalf("Run error = %v, want refusal naming the page load", err)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run: %v", err)
 	}
 }
 
@@ -153,7 +146,7 @@ func TestANamedLayoutResetExcludesLoadsOutsideKitsBranch(t *testing.T) {
 	}
 }
 
-func TestTheLoadStubExplainsAPrerenderCall(t *testing.T) {
+func TestTheLoadStubBridgesAPrerenderCall(t *testing.T) {
 	t.Parallel()
 	root, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/account/page.server.go": loadSource,
@@ -165,9 +158,9 @@ func TestTheLoadStubExplainsAPrerenderCall(t *testing.T) {
 	stub := readFixtureFile(t, root, "app/web/src/routes/account/+page.server.ts")
 	for _, want := range []string{
 		"import { building } from '$app/env'",
+		"skgoPrerenderLoad",
+		"src/routes/account/+page.server.ts",
 		"event.url.pathname",
-		"src/routes/account/page.server.go",
-		"skgo cannot answer a load while kit prerenders (#81)",
 	} {
 		if !strings.Contains(stub, want) {
 			t.Errorf("stub does not contain %q:\n%s", want, stub)

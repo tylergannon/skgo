@@ -23,6 +23,10 @@
 			"target": "web/src/routes/todos/gate"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qwe33voq",
+			"target": "web/src/routes/about"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg",
 			"target": "web/src/routes/actions"
 		},

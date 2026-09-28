@@ -10,7 +10,7 @@
  * first-class.
  *
  * @param {any} parsed the parsed contents of `skgo.remotes.json`
- * @returns {{ remotes: string[], loads: string[], actions: string[], endpoints: Record<string, string[]> }}
+ * @returns {{ remotes: string[], loads: string[], actions: string[], endpoints: Record<string, string[]>, prerender?: { root: string, package: string } }}
  */
 export function validateGenerated(parsed) {
 	if (!Array.isArray(parsed.remotes)) {
@@ -37,6 +37,13 @@ export function validateGenerated(parsed) {
 			);
 		}
 	}
+	if (parsed.loads.length > 0 && (
+		typeof parsed.prerender?.root !== 'string' ||
+		typeof parsed.prerender?.package !== 'string' ||
+		!parsed.prerender.package.startsWith('./')
+	)) {
+		throw new Error('skgo: generated Go loads need a build-time prerender command; run `go generate ./...`.');
+	}
 	if (!Array.isArray(parsed.actions)) {
 		throw new Error('skgo: skgo.remotes.json has no `actions` array. Run `go generate ./...` before building the frontend.');
 	}
@@ -57,7 +64,7 @@ export function validateGenerated(parsed) {
 			);
 		}
 	}
-	return { remotes: parsed.remotes, loads: parsed.loads, actions: parsed.actions, endpoints: parsed.endpoints };
+	return { remotes: parsed.remotes, loads: parsed.loads, actions: parsed.actions, endpoints: parsed.endpoints, prerender: parsed.prerender };
 }
 
 /**

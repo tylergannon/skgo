@@ -7,15 +7,9 @@ Feature: A document's Content-Security-Policy header matches what it renders
   resolves to is per page: `use_hashes = mode === 'hash' || (mode === 'auto'
   && prerender)` (`Csp`'s constructor, runtime/server/page/csp.js).
 
-  Every page in this app is rendered by Go per request right now — none is
-  prerendered (see vite.config.ts's own comment: the root layout gained a Go
-  load for #81's fixture, and kit can only prerender a branch with nothing
-  Go-only in it). So `auto` resolves to nonce mode unconditionally here
-  (csp.go's `newDocumentCSP`); the other half of kit's ternary — a
-  prerendered page resolving to hash mode, baked into the static file as a
-  `<meta http-equiv>` tag — is proven at the Go test level instead
-  (`csp_test.go`'s `TestCSPAutoMode_DynamicIsNonceModePrerenderedWouldBeHashMode`),
-  anchored to the same kit source this feature is.
+  Dynamic pages resolve `auto` to nonce mode (`csp.go`'s `newDocumentCSP`).
+  The build now prerenders `/about` with Go loads; Kit writes its hash-mode
+  policy into that page's static file.
 
   A CSP violation does not fail a request — the browser just refuses to run
   the element it names and answers with the response it already had. A page

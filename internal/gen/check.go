@@ -47,9 +47,6 @@ func Check(cfg Config) error {
 	if err := a.checkWireFields(); err != nil {
 		return err
 	}
-	if err := a.checkPrerenderedLoads(); err != nil {
-		return err
-	}
 	if err := a.declareLoadTypes(); err != nil {
 		return err
 	}

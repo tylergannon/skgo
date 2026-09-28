@@ -844,10 +844,27 @@ type remoteList struct {
 	// for. Kit's build reports the same list for every route it compiled a
 	// `+server.ts` into, so the adapter can compare the two literally.
 	Endpoints map[string][]string `json:"endpoints"`
+	Prerender *prerenderCommandLocation `json:"prerender,omitempty"`
+}
+
+type prerenderCommandLocation struct {
+	Root    string `json:"root"`
+	Package string `json:"package"`
 }
 
 func (a *app) writeRemoteList() error {
 	list := remoteList{Remotes: []string{}, Loads: []string{}, Actions: []string{}, Endpoints: a.endpointList()}
+	if len(a.loads) > 0 {
+		root, err := filepath.Rel(a.cfg.Web, a.hostDir)
+		if err != nil {
+			return err
+		}
+		pkg, err := filepath.Rel(a.hostDir, filepath.Join(a.cfg.Out, "prerender"))
+		if err != nil {
+			return err
+		}
+		list.Prerender = &prerenderCommandLocation{Root: filepath.ToSlash(root), Package: "./" + filepath.ToSlash(pkg)}
+	}
 	for _, fn := range a.remotes {
 		list.Remotes = append(list.Remotes, kithash.Kit(fn.module)+"/"+fn.name)
 	}

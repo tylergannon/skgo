@@ -10,6 +10,17 @@ Feature: The engine's JavaScript is SvelteKit's own build
   it. What only a browser can show is that kit's client agrees with the engine
   about the name every remote function is addressed by.
 
+  Scenario: A prerendered page still uses its Go layout and page loads
+    The production build writes /about to a file. The Go test compares that
+    file byte for byte with the Go server's response; this browser checks the
+    result after Kit hydrates it, including a transported class and a promise.
+
+    When I visit "/about"
+    Then I see "About"
+    And the prerendered Go values are visible
+    And every part of the page loaded
+    And the browser reported no CSP violations
+
   Scenario: A value Go answered during the render is in the document, under kit's own id
     The id a remote function is addressed by — `<hash>/<name>` — is appended by
     kit's build, not derived a second time by the adapter. The engine looks the

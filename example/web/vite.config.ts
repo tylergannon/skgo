@@ -20,24 +20,9 @@ export default defineConfig({
 			// runtime/server/page/csp.js): a page kit prerenders gets a hash, a
 			// page it renders per-request gets a nonce.
 			//
-			// Every page in this app is rendered by Go per request right now —
-			// none is prerendered. `/about` was, until the root layout gained a
-			// Go load (src/routes/layout.server.go, for #81's error.html
-			// fixture): kit can only prerender a branch with nothing Go-only in
-			// it, and the root layout sits in every branch, so nothing here can
-			// be prerendered until skgo can answer a server load while the build
-			// prerenders (see about/+page.ts's own doc comment). Go's own engine
-			// never prerenders anything either way — prerendering is kit's own
-			// build-time pass, entirely before skgo's binary exists — so
-			// `prerender` is always false on skgo's side of the ternary
-			// (newDocumentCSP, csp.go), and `auto` resolves to nonce mode for
-			// every page this build actually serves. The other half of the
-			// ternary — a prerendered page resolving `auto` to hash, and kit
-			// baking the result into the static file as a `<meta http-equiv>`
-			// tag rather than a header — is proven at the Go test level instead
-			// (csp_test.go's `TestCSPAutoMode_DynamicIsNonceModePrerenderedWouldBeHashMode`),
-			// anchored to kit's own `Csp` constructor and `render.js`'s
-			// prerendering branch, until a prerenderable page exists here again.
+			// Kit prerenders /about with its Go loads through the build bridge,
+			// so that static file uses hash mode. Go renders other pages per
+			// request, where `newDocumentCSP` resolves auto to nonce mode.
 			//
 			// `/stream` and `/live` are the two pages a CSP-and-streaming claim
 			// has to be checked against: a value a load promises arrives later,
