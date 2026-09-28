@@ -65,6 +65,17 @@ Then('the todo detail shows {string}', async ({ page }, text: string) => {
 	});
 });
 
+Then('the item load and component both show {string}', async ({ page }, text: string) => {
+	await expect(page.getByTestId('load-item-name')).toHaveText(text);
+	await expect(page.getByTestId('item-name')).toHaveText(text);
+});
+
+Then('no remote request was made during hydration', async ({ page, remotes }) => {
+	await hydrated(page);
+	await page.waitForTimeout(500);
+	expect(remotes.count, `remote requests: ${remotes.urls.join(', ') || 'none'}`).toBe(0);
+});
+
 Then(
 	'exactly {int} remote request was made since',
 	async ({ page, remotes }, expected: number) => {

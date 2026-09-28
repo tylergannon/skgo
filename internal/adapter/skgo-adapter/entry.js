@@ -218,7 +218,7 @@ function node_data(node) {
 	});
 }
 
-async function build_props(req, url) {
+async function build_props(req, url, event, state) {
 	const form = req.form ? devalue.parse(req.form, decoders) : null;
 	const page = {
 		error: req.error ?? null,
@@ -252,21 +252,23 @@ async function build_props(req, url) {
 		const load = universalLoads[branch[i].node];
 		const parent_data = data;
 		const result = load
-			? await load.call(null, {
-				url,
-				params: req.params ?? {},
-				data: server_data,
-				route: { id: req.route_id ?? null },
-				parent: async () => parent_data,
-				depends: () => {},
-				untrack: (fn) => fn(),
-				fetch: () => {
-					throw new Error('skgo: universal load fetch is not supported during rendering');
-				},
-				setHeaders: () => {
-					throw new Error('skgo: universal load setHeaders is not supported during rendering');
-				}
-			})
+			? await with_request_store({ event, state }, () =>
+				load.call(null, {
+					url,
+					params: req.params ?? {},
+					data: server_data,
+					route: { id: req.route_id ?? null },
+					parent: async () => parent_data,
+					depends: () => {},
+					untrack: (fn) => fn(),
+					fetch: () => {
+						throw new Error('skgo: universal load fetch is not supported during rendering');
+					},
+					setHeaders: () => {
+						throw new Error('skgo: universal load setHeaders is not supported during rendering');
+					}
+				})
+			)
 			: server_data;
 		if (result != null && Object.getPrototypeOf(result) !== Object.prototype) {
 			throw new Error('skgo: universal load must return a plain object');
@@ -367,9 +369,9 @@ globalThis.__skgo_render = function (req_json) {
 	try {
 		const req = JSON.parse(req_json);
 		const url = new URL(req.url);
-		const props_promise = build_props(req, url);
 		const state = make_state();
 		const event = make_event(req, url);
+		const props_promise = build_props(req, url, event, state);
 		const promise = props_promise.then((props) => {
 			result.status = props.page.status;
 			result.error = req.error ?? null;
