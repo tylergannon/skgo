@@ -5,19 +5,19 @@ package client
 import (
 	"context"
 	"github.com/tylergannon/skgo"
-	skgo4 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
-	skgo31 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
+	skgo5 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
+	skgo32 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
 )
 
 // Client uses the same enhanced Form endpoint as the browser.
 type Client struct{ skgo.FormClient }
 
 // SendRemoteNote submits src/routes/actions/coexist.remote.ts#sendRemoteNote once.
-func (c Client) SendRemoteNote(ctx context.Context, in skgo4.SkgoArg_sendRemoteNote) (skgo4.SkgoOut_sendRemoteNote, error) {
+func (c Client) SendRemoteNote(ctx context.Context, in skgo5.SkgoArg_sendRemoteNote) (skgo5.SkgoOut_sendRemoteNote, error) {
 	return skgo.SubmitForm(ctx, c.FormClient, "1klskj7/sendRemoteNote", in, DecodeRoot0)
 }
 
 // Submit submits src/routes/optional/optional.remote.ts#submit once.
-func (c Client) Submit(ctx context.Context, in skgo31.SkgoArg_submit) (skgo31.SkgoOut_submit, error) {
+func (c Client) Submit(ctx context.Context, in skgo32.SkgoArg_submit) (skgo32.SkgoOut_submit, error) {
 	return skgo.SubmitForm(ctx, c.FormClient, "83n4w1/submit", in, DecodeRoot1)
 }

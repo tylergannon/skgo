@@ -546,10 +546,11 @@ func prerenderedBuildFS() fstest.MapFS {
 			{ "id": "/", "pattern": "^\\/$" },
 			{ "id": "/items/[id]", "pattern": "^\\/items\\/([^/]+?)\\/?$" }
 		],
-		"prerendered": ["/about", "/guide/", "/feed.xml"],
+		"prerendered": ["/about", "/about/__data.json", "/guide/", "/feed.xml"],
 		"precompressed": true
 	}`)}
 	build["prerendered/about.html"] = &fstest.MapFile{Data: []byte("<!doctype html><p>about</p>")}
+	build["prerendered/about/__data.json"] = &fstest.MapFile{Data: []byte(`{"type":"data","nodes":[]}`)}
 	build["prerendered/about.html.gz"] = &fstest.MapFile{Data: []byte("gzipped about")}
 	build["prerendered/about.html.br"] = &fstest.MapFile{Data: []byte("brotlied about")}
 	build["prerendered/guide/index.html"] = &fstest.MapFile{Data: []byte("<!doctype html><p>guide</p>")}
@@ -573,9 +574,10 @@ func TestAPrerenderedPageIsServedFromItsFile(t *testing.T) {
 	h := newPrerenderedHandler(t)
 
 	cases := map[string]string{
-		"/about":    "<!doctype html><p>about</p>",
-		"/guide/":   "<!doctype html><p>guide</p>",
-		"/feed.xml": "<rss/>",
+		"/about":             "<!doctype html><p>about</p>",
+		"/about/__data.json": `{"type":"data","nodes":[]}`,
+		"/guide/":            "<!doctype html><p>guide</p>",
+		"/feed.xml":          "<rss/>",
 	}
 	for path, want := range cases {
 		resp := do(t, h, http.MethodGet, path, nil)

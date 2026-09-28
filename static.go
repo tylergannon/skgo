@@ -544,6 +544,15 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// therefore matches its own page route. Left to fall through,
 	// `/todos/__data.json` was answered 200 with the boot document and kit's
 	// client parsed HTML as JSON.
+	if hasDataSuffix(urlPath) && h.prerendered[urlPath] {
+		if rejectReservedQuery(w, r, true, false) {
+			return
+		}
+		if meta, _, ok := h.prerenderedFile(urlPath); ok {
+			h.serveFile(w, r, meta, false)
+			return
+		}
+	}
 	if suffix := kitSuffix(urlPath); suffix != "" {
 		if rejectReservedQuery(w, r, suffix == dataSuffix || suffix == htmlDataSuffix, false) {
 			return

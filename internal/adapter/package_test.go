@@ -48,6 +48,7 @@ var packageFiles = []string{
 	"skgo-adapter/generated.js",
 	"skgo-adapter/identity.js",
 	"skgo-adapter/polyfill.js",
+	"skgo-adapter/prerender-csp.js",
 }
 
 func TestThePublishedPackageHoldsExactlyWhatTheAdapterNeeds(t *testing.T) {

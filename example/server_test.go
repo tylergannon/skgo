@@ -59,6 +59,45 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	return rec
 }
 
+func TestEveryPrerenderedPathIsServedFromItsFile(t *testing.T) {
+	dist := prodDist(t)
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := newProdHandler(t)
+	if len(manifest.Prerendered) == 0 {
+		t.Fatal("the real build has no prerendered paths")
+	}
+	for _, path := range manifest.Prerendered {
+		name := "prerendered" + path
+		if !strings.HasSuffix(path, "/__data.json") {
+			name += ".html"
+		}
+		written, err := fs.ReadFile(dist, strings.TrimPrefix(name, "/"))
+		if err != nil {
+			t.Fatalf("Kit did not write %s: %v", path, err)
+		}
+		rec := get(t, h, path)
+		if rec.Code != http.StatusOK || rec.Body.String() != string(written) {
+			t.Errorf("%s: status %d, server did not return Kit's file", path, rec.Code)
+		}
+	}
+	page, err := fs.ReadFile(dist, "prerendered/about.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`data-testid="prerender-parent">skgo example`,
+		`data-testid="prerender-price">$7.50`,
+		`GO_PRERENDER_DEFERRED`,
+	} {
+		if !strings.Contains(string(page), want) {
+			t.Errorf("Kit's /about file lacks %q", want)
+		}
+	}
+}
+
 func TestUniversalInvoiceLoadRendersFilteredDocument(t *testing.T) {
 	h := newProdHandler(t)
 	rec := get(t, h, "/invoices?overdue=1")

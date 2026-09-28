@@ -2,10 +2,9 @@
 // `+layout.server.ts`.
 //
 // Kit's client asks for `${base}/<route>/__data.json` once per navigation — it
-// is the only endpoint it calls on its own initiative — and Go answers it. The
-// JavaScript kit needs is a generated `+page.server.ts` whose `load` throws;
-// kit never calls it, it only reads the export to decide that the route has
-// server data at all.
+// is the only endpoint it calls on its own initiative — and Go answers it.
+// The generated `+page.server.ts` load calls Go during Kit's prerender build;
+// at request time Kit reads the export to know the route has server data.
 package skgo
 
 import (
@@ -126,6 +125,7 @@ type LoadConfig struct {
 	// Nodes and Routes come from the manifest.
 	Nodes       []string
 	LoadModules []string
+	Prerendered []string
 	Routes      []ManifestRoute
 
 	// manifest reports that this config came from a build manifest, which is
@@ -143,6 +143,7 @@ func (m Manifest) LoadConfig(origin string) LoadConfig {
 		TrustedOrigins: m.TrustedOrigins,
 		Nodes:          m.Nodes,
 		LoadModules:    m.Loads,
+		Prerendered:    m.Prerendered,
 		Routes:         m.Routes,
 		manifest:       true,
 	}
@@ -157,7 +158,8 @@ type Loads struct {
 	origin *url.URL
 
 	// byModule is every registered load, keyed by its `+*.server.ts` path.
-	byModule map[string]*ServerLoad
+	byModule    map[string]*ServerLoad
+	prerendered map[string]bool
 	// nodes maps a kit node index to the load that answers it, nil when the
 	// node has no server file.
 	nodes []*ServerLoad
@@ -204,7 +206,10 @@ func NewLoads(cfg LoadConfig, loads ...*ServerLoad) (*Loads, error) {
 	}
 	cfg.Base = base
 
-	ls := &Loads{cfg: cfg, base: base, byModule: make(map[string]*ServerLoad, len(loads))}
+	ls := &Loads{cfg: cfg, base: base, byModule: make(map[string]*ServerLoad, len(loads)), prerendered: map[string]bool{}}
+	for _, path := range cfg.Prerendered {
+		ls.prerendered[path] = true
+	}
 
 	if cfg.Origin != "" {
 		origin, err := url.Parse(cfg.Origin)
