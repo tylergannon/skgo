@@ -139,6 +139,10 @@
 			"target": "web/src/routes/optional"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq",
+			"target": "web/src/routes/prerender/[slug]"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq",
 			"target": "web/src/routes/stream"
 		}

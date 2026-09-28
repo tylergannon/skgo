@@ -3,6 +3,10 @@ import { expect, hydrated, test } from './fixtures';
 
 const { Then } = createBdd(test);
 
+Then('the entry receipt is {string}', async ({ page }, receipt: string) => {
+	await expect(page.getByTestId('entry-receipt')).toHaveText(receipt);
+});
+
 Then('the prerendered Go values are visible', async ({ page }) => {
 	await hydrated(page);
 	await expect(page.getByTestId('prerender-parent')).toHaveText('skgo example');

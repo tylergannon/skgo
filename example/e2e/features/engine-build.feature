@@ -21,6 +21,19 @@ Feature: The engine's JavaScript is SvelteKit's own build
     And every part of the page loaded
     And the browser reported no CSP violations
 
+  Scenario Outline: A dynamic prerender entry uses its Go page load
+    Kit's entries() returns exactly atlas and beacon. The production Go test
+    compares each HTML and data response with the files Kit wrote.
+
+    When I visit "/prerender/<slug>"
+    Then I see "Prerendered <slug>"
+    And the entry receipt is "Go entry load: <slug>"
+
+    Examples:
+      | slug   |
+      | atlas  |
+      | beacon |
+
   Scenario: A value Go answered during the render is in the document, under kit's own id
     The id a remote function is addressed by — `<hash>/<name>` — is appended by
     kit's build, not derived a second time by the adapter. The engine looks the

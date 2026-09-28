@@ -1,0 +1,2 @@
+decision: Test Kit's existing `+page.ts` entries() export first. Issue #162 asks for explicit dynamic paths and files served by Go; a separate Go marker is only needed if Kit cannot analyze those entries alongside a Go page load.
+discovery: Kit analyzed `entries()` in a universal `+page.ts` before prerendering, then the Go load bridge answered both parameterized routes. The build wrote HTML and `__data.json` files for atlas and beacon, and the Go server served those files. No new Go marker or prerender protocol is needed for issue #162's acceptance.
