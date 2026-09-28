@@ -428,14 +428,21 @@ function basenameOf(file) {
  * kit's build produced, in the manifest's own node order.
  *
  * @param {string} root
- * @param {Array<{ component: string | null }>} nodes
+ * @param {Array<{ component: string | null, universal: string | null }>} nodes
  */
 export function nodeTable(root, nodes) {
 	/** @type {string[]} */
 	const imports = [];
 	/** @type {string[]} */
 	const table = [];
+	const loads = [];
 	nodes.forEach((node, i) => {
+		if (node.universal) {
+			imports.push(`import * as U${i} from ${JSON.stringify(join(root, node.universal))};`);
+			loads.push(`U${i}.load`);
+		} else {
+			loads.push('undefined');
+		}
 		if (!node.component) {
 			table.push('undefined');
 			return;
@@ -443,7 +450,7 @@ export function nodeTable(root, nodes) {
 		imports.push(`import N${i} from ${JSON.stringify(join(root, node.component))};`);
 		table.push(`N${i}`);
 	});
-	return `${imports.join('\n')}\nexport const components = [${table.join(', ')}];\n`;
+	return `${imports.join('\n')}\nexport const components = [${table.join(', ')}];\nexport const universalLoads = [${loads.join(', ')}];\n`;
 }
 
 /**
@@ -565,7 +572,14 @@ function devNodeTable(manifest, root) {
 	const imports = [];
 	/** @type {string[]} */
 	const table = [];
+	const loads = [];
 	for (const [index, node] of manifest.nodes.entries()) {
+		if (node.universal) {
+			imports.push(`import * as U${index} from ${JSON.stringify(resolve(root, node.universal))};`);
+			loads.push(`U${index}.load`);
+		} else {
+			loads.push('undefined');
+		}
 		if (!node.component) {
 			table.push('undefined');
 			continue;
@@ -573,7 +587,7 @@ function devNodeTable(manifest, root) {
 		imports.push(`import N${index} from ${JSON.stringify(resolve(root, node.component))};`);
 		table.push(`N${index}`);
 	}
-	return `${imports.join('\n')}\nexport const components = [${table.join(', ')}];\n`;
+	return `${imports.join('\n')}\nexport const components = [${table.join(', ')}];\nexport const universalLoads = [${loads.join(', ')}];\n`;
 }
 
 /**

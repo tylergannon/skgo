@@ -389,16 +389,10 @@ async function readNodes(builder, source, kit) {
 		}
 		const module = await import(pathToFileURL(file).href);
 
-		if (typeof module.universal?.load === 'function') {
-			throw new Error(
-				`skgo: ${module.universal_id} exports a \`load\`. Every load in a skgo app is written in Go; ` +
-					'a universal load would have to run in the browser and in the SSR engine, and skgo runs neither.'
-			);
-		}
-
 		nodes.push({
 			index,
 			server: module.server_id ?? '',
+			universal: typeof module.universal?.load === 'function' ? module.universal_id : null,
 			component: module.component ? componentSource(file, dir) : null,
 			imports: module.imports ?? [],
 			stylesheets: module.stylesheets ?? [],
@@ -415,6 +409,7 @@ async function readNodes(builder, source, kit) {
  * @typedef {{
  *   index: number,
  *   server: string,
+ *   universal: string | null,
  *   component: string | null,
  *   imports: string[],
  *   stylesheets: string[],

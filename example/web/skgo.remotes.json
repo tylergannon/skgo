@@ -56,6 +56,7 @@
 		"src/routes/empty/+page.server.ts",
 		"src/routes/error/expected/+page.server.ts",
 		"src/routes/error/unexpected/+page.server.ts",
+		"src/routes/invoices/+page.server.ts",
 		"src/routes/stream/+page.server.ts"
 	],
 	"actions": [

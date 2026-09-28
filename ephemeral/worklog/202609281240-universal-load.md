@@ -1,0 +1,5 @@
+decision: Kit's page/index.js runs server loads and universal loads separately; its render branch uses universal results while hydration serializes server results. The goja entry must reproduce that split, leaving the Go __data wire unchanged.
+decision: Kit's client tracks url.searchParams keys read by a universal load, so a query-only navigation reruns that load and can reuse server data when the Go server load did not read the key.
+friction: A document embeds all authorized Go server data in its hydration script even when the universal load filters visible rows. Assert absence inside rendered list markup, not the entire HTML response.
+friction: The generator's fixture-copying tests use tracked files, so a new generated route link must be staged before they can check it; running `go generate` before `gofmt` also leaves its copied link stale.
+friction: The full browser suite's source-edit scenario restores file contents but changes modification times, so the embedded-build freshness test needs a rebuild after e2e.

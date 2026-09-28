@@ -119,6 +119,10 @@
 			"target": "web/src/routes/error/unexpected"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y",
+			"target": "web/src/routes/invoices"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu",
 			"target": "web/src/routes/items/[id]"
 		},

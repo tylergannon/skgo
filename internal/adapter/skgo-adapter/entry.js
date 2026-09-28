@@ -22,7 +22,7 @@ import {
 } from '@sveltejs/kit/internal/server';
 import * as devalue from 'skgo:devalue';
 import { decoders, init_transport, parse } from 'skgo:kit/transport';
-import { components } from 'skgo:nodes';
+import { components, universalLoads } from 'skgo:nodes';
 import { transport } from 'skgo:hooks';
 
 /**
@@ -218,7 +218,7 @@ function node_data(node) {
 	});
 }
 
-function build_props(req, url) {
+async function build_props(req, url) {
 	const form = req.form ? devalue.parse(req.form, decoders) : null;
 	const page = {
 		error: req.error ?? null,
@@ -248,7 +248,30 @@ function build_props(req, url) {
 	let data = props.page.data;
 
 	for (let i = 0; i < branch.length; i += 1) {
-		data = { ...data, ...node_data(branch[i]) };
+		const server_data = node_data(branch[i]);
+		const load = universalLoads[branch[i].node];
+		const parent_data = data;
+		const result = load
+			? await load.call(null, {
+				url,
+				params: req.params ?? {},
+				data: server_data,
+				route: { id: req.route_id ?? null },
+				parent: async () => parent_data,
+				depends: () => {},
+				untrack: (fn) => fn(),
+				fetch: () => {
+					throw new Error('skgo: universal load fetch is not supported during rendering');
+				},
+				setHeaders: () => {
+					throw new Error('skgo: universal load setHeaders is not supported during rendering');
+				}
+			})
+			: server_data;
+		if (result != null && Object.getPrototypeOf(result) !== Object.prototype) {
+			throw new Error('skgo: universal load must return a plain object');
+		}
+		data = { ...data, ...result };
 		current_node.data = data;
 
 		if (i < branch.length - 1) {
@@ -344,48 +367,48 @@ globalThis.__skgo_render = function (req_json) {
 	try {
 		const req = JSON.parse(req_json);
 		const url = new URL(req.url);
-		const props = build_props(req, url);
+		const props_promise = build_props(req, url);
 		const state = make_state();
 		const event = make_event(req, url);
-
-		result.status = props.page.status;
-		result.error = req.error ?? null;
-
-		const options = {
-			context: new Map([['__request__', { page: props.page }]]),
-			// kit's own \`csp.script_needs_nonce ? { nonce: csp.nonce } : {
-			// hash: csp.script_needs_hash }\` (page/render.js:198), passed to
-			// Svelte's own renderer so the one inline script Svelte can still
-			// emit on its own — its hydratable-async-block script
-			// (internal/server/renderer.js's #hydratable_block, for a
-			// component's own top-level await) — carries the same nonce or
-			// hash decision the boot script gets from Go (csp.go). Go decided
-			// which branch this request is in before the engine ever ran;
-			// req.csp carries only the answer.
-			csp: req.csp.nonce ? { nonce: req.csp.nonce } : { hash: !!req.csp.hash },
-			// kit's own (page/render.js): the transform every error boundary's
-			// error passes through on its way to the failed snippet. It is
-			// what makes page.status and page.error inside a rendering
-			// component the values kit would give, and what turns an
-			// unexpected throw into Internal Error rather than a stack trace on
-			// the page. A redirect is rethrown, because a redirect is an answer
-			// for the whole document rather than for one boundary.
-			transformError: (e) => {
-				if (e instanceof Redirect) throw e;
-				const handled = handle_error(e);
-				result.error = handled;
-				result.status = handled.status;
-				props.page.error = handled;
-				props.page.status = handled.status;
-				return handled;
-			}
-		};
-		// seed_form runs inside the request store rather than before it: a
-		// keyed submission's call to for(key) needs the request store, the
-		// same as the page component's own call to it does.
-		const promise = with_request_store({ event, state }, () => {
-			seed_form(req, state);
-			return render(Root, { ...options, props });
+		const promise = props_promise.then((props) => {
+			result.status = props.page.status;
+			result.error = req.error ?? null;
+			const options = {
+				context: new Map([['__request__', { page: props.page }]]),
+				// kit's own \`csp.script_needs_nonce ? { nonce: csp.nonce } : {
+				// hash: csp.script_needs_hash }\` (page/render.js:198), passed to
+				// Svelte's own renderer so the one inline script Svelte can still
+				// emit on its own — its hydratable-async-block script
+				// (internal/server/renderer.js's #hydratable_block, for a
+				// component's own top-level await) — carries the same nonce or
+				// hash decision the boot script gets from Go (csp.go). Go decided
+				// which branch this request is in before the engine ever ran;
+				// req.csp carries only the answer.
+				csp: req.csp.nonce ? { nonce: req.csp.nonce } : { hash: !!req.csp.hash },
+				// kit's own (page/render.js): the transform every error boundary's
+				// error passes through on its way to the failed snippet. It is
+				// what makes page.status and page.error inside a rendering
+				// component the values kit would give, and what turns an
+				// unexpected throw into Internal Error rather than a stack trace on
+				// the page. A redirect is rethrown, because a redirect is an answer
+				// for the whole document rather than for one boundary.
+				transformError: (e) => {
+					if (e instanceof Redirect) throw e;
+					const handled = handle_error(e);
+					result.error = handled;
+					result.status = handled.status;
+					props.page.error = handled;
+					props.page.status = handled.status;
+					return handled;
+				}
+			};
+			// seed_form runs inside the request store rather than before it: a
+			// keyed submission's call to for(key) needs the request store, the
+			// same as the page component's own call to it does.
+			return with_request_store({ event, state }, () => {
+				seed_form(req, state);
+				return render(Root, { ...options, props });
+			});
 		});
 
 		Promise.resolve(promise).then(
