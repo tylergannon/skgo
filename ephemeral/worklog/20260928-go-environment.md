@@ -1,0 +1,4 @@
+correction: User chose Go-owned environment declarations and type-directed parsing; numeric-looking strings remain strings, booleans accept true/false and yes/no. The earlier TS-owned proposal is superseded.
+decision: Kit next.28 snapshots dynamic export bindings during module evaluation, so renderer environment initialization must precede component imports. Kit validates dynamic declarations during build as well as startup; runtime-only required values cannot silently bypass build validation.
+friction: pnpm build in the isolated example resolved a globally installed Vite 6 because the app uses Vite+; use the app's node_modules/.bin/vp build, as the repository Justfile already does.
+decision: Development uses Vite's resolved .env inputs in a private mode-0600 snapshot, parsed in Go. Both Vite and Go must restart after .env changes so their snapshots and private module-transport token agree.

@@ -25,7 +25,10 @@
  */
 
 import { createRequire } from 'node:module';
-import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
+import { protectEnvironmentFiles } from './env-private.js';
+import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -64,7 +67,7 @@ const { transformSync } = await fromApp('vite/rolldown/experimental');
 // `fetchModule` operates on the app's own `DevEnvironment`, so it has to be
 // the app's copy for the same reason rolldown is: a second module realm's
 // vite does not recognise this one's environments.
-const { fetchModule, isCSSRequest } = await fromApp('vite');
+const { fetchModule, isCSSRequest, loadEnv } = await fromApp('vite');
 
 // These are the same two Kit functions its own dev server calls in
 // `update_manifest`: one derives the route/node graph from the authored tree,
@@ -324,6 +327,11 @@ export function gojaEnvironment() {
 		load: {
 			order: 'pre',
 			handler(id) {
+				if (/\/\.svelte-kit\/skgo-env-(?:values\.js|runtime\.json)(?:\?|$)/.test(id)) {
+					throw new Error('skgo: environment build inputs are private');
+				}
+				const environment = goEnvironmentModule(id);
+				if (environment !== null) return environment;
 				if (!id.startsWith(PREFIX)) return null;
 				const make = sources[id.slice(PREFIX.length)];
 				if (!make) throw new Error('skgo: no virtual module ' + id.slice(PREFIX.length));
@@ -926,6 +934,11 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 		load: {
 			order: 'pre',
 			handler(id) {
+				if (/\/\.svelte-kit\/skgo-env-(?:values\.js|runtime\.json)(?:\?|$)/.test(id)) {
+					throw new Error('skgo: environment build inputs are private');
+				}
+				const environment = goEnvironmentModule(id);
+				if (environment !== null) return environment;
 				if (!id.startsWith(PREFIX)) return null;
 				const make = sources[id.slice(PREFIX.length)];
 				if (!make) throw new Error('skgo: no virtual module ' + id.slice(PREFIX.length));
@@ -1055,4 +1068,76 @@ function json(res, status, body) {
 function errorText(e) {
 	if (e instanceof Error) return e.stack ?? e.message;
 	return String(e);
+}
+
+
+// Values are validated by Go once before Kit loads its environment declaration.
+// This must be a real file: Kit imports env.ts in a separate Vite server with
+// configFile:false, where this adapter's virtual modules do not exist.
+export function goEnvironmentValues(output = 'build') {
+	let token = '';
+	let kitOut = '.svelte-kit';
+	let fields = [];
+	let values = {};
+	return {
+		plugin: {
+			name: 'skgo-environment-values',
+			configureServer(server) {
+				// A server-only build input can contain private values. Vite's
+				// filesystem endpoint must not make it downloadable in development.
+				server.middlewares.use(protectEnvironmentFiles({
+					root: server.config.root, kitOut, output, base: server.config.base, token
+				}));
+			},
+			configResolved(config) {
+				const schema = join(config.root, 'skgo.env.json');
+				if (!existsSync(schema)) return;
+				fields = JSON.parse(readFileSync(schema, 'utf8')).fields;
+				const setup = config.plugins.find((p) => p.name === 'vite-plugin-sveltekit-setup');
+				const kit = setup?.api?.options;
+				if (!kit) throw new Error('skgo: Kit environment configuration is unavailable');
+				kitOut = kit.outDir;
+				const raw = loadEnv(config.mode, resolve(config.root, kit.env.dir), '');
+				// Pass only declared values; diagnostics never echo the full process env.
+				const input = Object.fromEntries(fields.filter((f) => f.name in raw).map((f) => [f.name, raw[f.name]]));
+				try {
+					values = JSON.parse(execFileSync('go', ['tool', 'skgo', 'env', '--schema', schema], {
+						cwd: config.root, input: JSON.stringify(input), encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe']
+					}));
+				} catch (error) {
+					throw new Error('skgo: Go environment validation failed\n' + String(error.stderr || error.message));
+				}
+				const file = join(config.root, '.svelte-kit/skgo-env-values.js');
+				mkdirSync(dirname(file), { recursive: true });
+				writeFileSync(file, 'export const values = ' + JSON.stringify(values) + ';\n', { mode: 0o600 });
+				chmodSync(file, 0o600);
+
+				if (config.command === 'serve') {
+					token = randomBytes(32).toString('hex');
+					const artifact = { token, fields, static: Object.fromEntries(fields.filter((f) => f.static && f.name in values).map((f) => [f.name, values[f.name]])), values: input };
+					const runtimeFile = join(config.root, '.svelte-kit/skgo-env-runtime.json');
+					writeFileSync(runtimeFile, JSON.stringify(artifact), { mode: 0o600 });
+					chmodSync(runtimeFile, 0o600);
+				}
+			},
+		},
+		artifact() {
+			return { fields, static: Object.fromEntries(fields.filter((f) => f.static && f.name in values).map((f) => [f.name, values[f.name]])) };
+		}
+	};
+}
+
+// Kit's public/private modules snapshot these properties during evaluation.
+// Go installs the snapshot before loading any application module. In particular,
+// importing Kit's original config here would re-run JavaScript validators and
+// bake the development/build environment into newly-created renderer runtimes.
+function goEnvironmentModule(id) {
+	if (!existsSync(join(process.cwd(), 'skgo.env.json'))) return null;
+	if (!/\/generated\/(?:build|dev)\/env\/config\.js$/.test(id.replaceAll('\\', '/'))) return null;
+	return `const snapshot = globalThis.__skgo_environment || {};
+export const dynamic_private_env = snapshot.private || {};
+export const explicit_public_env = snapshot.public || {};
+export const rendered_env = snapshot.dynamicPublic || {};
+export const variables = {};
+export function set_env() {}`;
 }

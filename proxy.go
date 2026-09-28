@@ -32,6 +32,11 @@ func NewDevProxy(target *url.URL, logf func(format string, args ...any)) http.Ha
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The module transport is for the Go renderer, never the browser.
+		if strings.HasPrefix(r.URL.Path, "/__skgo_dev/") {
+			http.NotFound(w, r)
+			return
+		}
 		if logf != nil && isUpgrade(r) {
 			logf("ws upgrade %s (%s)", r.URL.Path, r.Header.Get("Upgrade"))
 		}
@@ -95,6 +100,10 @@ type devPages struct {
 
 func (h *devPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	urlPath, ok := normalizePath(r.URL.Path)
+	if ok && urlPath == h.appPrefix+"env.js" && !isUpgrade(r) {
+		h.renderer.serveEnvironment(w, r)
+		return
+	}
 	// An upgrade is never a document, whatever path it names. Vite's HMR
 	// client dials the page's own origin at `/`, which is the app's home
 	// route: answered as a document it gets a 200 and an HTML body, and the
