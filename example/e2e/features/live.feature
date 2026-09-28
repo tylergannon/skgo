@@ -31,6 +31,7 @@ Feature: A live query is rendered by Go and then keeps arriving
     Then the document already said the board's newest todo is "hydration listened"
     And the board's newest todo is "hydration listened"
     And the board is on stream frame 1
+    And the board's stream is open
     And exactly 1 remote request was made since
     And the only remote request since was the board's stream
 
