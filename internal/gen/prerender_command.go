@@ -27,7 +27,11 @@ func (a *app) writePrerenderCommand() error {
 	fmt.Fprintf(&b, "\t%q\n", skgoPkg)
 	fmt.Fprintf(&b, "\tgenerated %q\n", importPath)
 	b.WriteString(")\n\nfunc main() {\n")
-	b.WriteString("\tif err := skgo.RunPrerenderLoad(os.Stdin, os.Stdout, generated.Transport(), generated.Loads()...); err != nil {\n")
+	transport := "nil"
+	if len(a.transportKeyOrder()) != 0 {
+		transport = "generated.Transport()"
+	}
+	fmt.Fprintf(&b, "\tif err := skgo.RunPrerenderLoad(os.Stdin, os.Stdout, %s, generated.Loads()...); err != nil {\n", transport)
 	b.WriteString("\t\tlog.Fatal(err)\n\t}\n}\n")
 	return a.writeGo(filepath.Join(a.cfg.Out, "prerender", "main_gen.go"), b.String())
 }
