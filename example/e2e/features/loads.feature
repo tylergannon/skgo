@@ -33,3 +33,35 @@ Feature: Server loads written in Go
     When I refresh the account layout
     Then the layout serial is 3
     And the account layout greets "ada"
+
+  Scenario: Kit reruns only the Go load whose tracked inputs changed
+    The page reads slug and x but not y. Its per-visitor serial starts at one,
+    while the account layout has its own serial. Changing y cannot rerun the
+    page. A refresh reruns both, and the page component keeps local state.
+
+    Given I have signed in as "ada"
+    When I visit "/account/reruns/one?x=1"
+    Then the rerun page shows slug "one" and filter "1" at serial 1
+    And the layout serial is 1
+    When I follow the "Slug two" link
+    Then the rerun page shows slug "two" and filter "1" at serial 2
+    And the layout serial is still 1
+    When I follow the "Tracked x" link
+    Then the rerun page shows slug "two" and filter "2" at serial 3
+    And the layout serial is still 1
+    When I increment the rerun page's local count
+    And I follow the "Untracked y" link
+    Then the rerun page URL is "/account/reruns/two?x=2&y=1"
+    Then the rerun page serial is still 3
+    And the rerun page's local count is 1
+    And the layout serial is still 1
+    When I refresh all loads on the rerun page
+    Then the rerun page shows slug "two" and filter "2" at serial 4
+    And the layout serial is 2
+    And the rerun page's local count is 1
+    When I invalidate the rerun page's dependency by predicate
+    Then the rerun page shows slug "two" and filter "2" at serial 5
+    And the layout serial is still 2
+    When I refresh all loads on the rerun page
+    Then the rerun page shows slug "two" and filter "2" at serial 6
+    And the layout serial is 3
