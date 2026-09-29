@@ -9,3 +9,4 @@
 {#await data.later then value}
 	<p data-testid="prerender-deferred">{value}</p>
 {/await}
+<p data-testid="prerender-remote">{data.remoteReceipt}</p>

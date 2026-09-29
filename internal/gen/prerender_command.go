@@ -10,7 +10,7 @@ import (
 // application's own generated load registrations. It has no dependency on the
 // final frontend manifest, which does not exist until after prerendering.
 func (a *app) writePrerenderCommand() error {
-	if len(a.loads) == 0 {
+	if len(a.loads) == 0 && !a.hasPrerenderRemote() {
 		return nil
 	}
 	rel, err := filepath.Rel(a.hostDir, a.cfg.Out)
@@ -31,7 +31,16 @@ func (a *app) writePrerenderCommand() error {
 	if len(a.transportKeyOrder()) != 0 {
 		transport = "generated.Transport()"
 	}
-	fmt.Fprintf(&b, "\tif err := skgo.RunPrerenderLoad(os.Stdin, os.Stdout, %s, generated.Loads()...); err != nil {\n", transport)
+	fmt.Fprintf(&b, "\tif err := skgo.RunPrerenderBuild(os.Stdin, os.Stdout, %s, generated.Loads(), generated.Remotes()); err != nil {\n", transport)
 	b.WriteString("\t\tlog.Fatal(err)\n\t}\n}\n")
 	return a.writeGo(filepath.Join(a.cfg.Out, "prerender", "main_gen.go"), b.String())
+}
+
+func (a *app) hasPrerenderRemote() bool {
+	for _, fn := range a.remotes {
+		if fn.kind == kindPrerender {
+			return true
+		}
+	}
+	return false
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	if err := skgo.RunPrerenderLoad(os.Stdin, os.Stdout, generated.Transport(), generated.Loads()...); err != nil {
+	if err := skgo.RunPrerenderBuild(os.Stdin, os.Stdout, generated.Transport(), generated.Loads(), generated.Remotes()); err != nil {
 		log.Fatal(err)
 	}
 }

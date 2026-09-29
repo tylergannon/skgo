@@ -18,7 +18,7 @@
 // host binding is the only path by which a value can reach the engine.
 //
 // Everything this file does not name is kit's, by `export *`: `read`,
-// `getRequestEvent`, `prerender` and `requested` come from kit's own module,
+// `getRequestEvent` and `requested` come from kit's own module,
 // and an export kit adds arrives without an edit here. An explicit export
 // below shadows the star, which is how the four substitutions take effect.
 import * as real from 'skgo:kit/remote';
@@ -59,6 +59,14 @@ async function host(id, payload) {
 export function query(validate_or_fn, maybe_fn) {
 	const fn = (arg) => host(wrapper.__.id, stringify_remote_arg(arg));
 	const wrapper = maybe_fn ? real.query(validate_or_fn, fn) : real.query(fn);
+	return wrapper;
+}
+
+export function prerender(validate_or_fn, maybe_fn, options) {
+	const fn = (arg) => host(wrapper.__.id, stringify_remote_arg(arg));
+	const wrapper = typeof maybe_fn === 'function'
+		? real.prerender(validate_or_fn, fn, options)
+		: real.prerender(fn, maybe_fn);
 	return wrapper;
 }
 

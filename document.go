@@ -1365,10 +1365,11 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 // browser's cache is concerned, so its answers go under `q` beside the plain
 // ones — the client resolves both through the same QueryProxy.
 var remoteLetters = map[Kind]string{
-	KindQuery: "q",
-	KindBatch: "q",
-	KindLive:  "l",
-	KindForm:  "f",
+	KindQuery:     "q",
+	KindBatch:     "q",
+	KindLive:      "l",
+	KindForm:      "f",
+	KindPrerender: "p",
 }
 
 // remoteValue runs one remote function for a render. A live query is driven for

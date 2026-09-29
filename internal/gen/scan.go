@@ -25,11 +25,12 @@ const skgoPkg = "github.com/tylergannon/skgo"
 type remoteKind string
 
 const (
-	kindQuery   remoteKind = "query"
-	kindCommand remoteKind = "command"
-	kindLive    remoteKind = "query.live"
-	kindBatch   remoteKind = "query.batch"
-	kindForm    remoteKind = "form"
+	kindQuery     remoteKind = "query"
+	kindCommand   remoteKind = "command"
+	kindLive      remoteKind = "query.live"
+	kindBatch     remoteKind = "query.batch"
+	kindForm      remoteKind = "form"
+	kindPrerender remoteKind = "prerender"
 )
 
 var markerKinds = map[string]remoteKind{
@@ -38,6 +39,7 @@ var markerKinds = map[string]remoteKind{
 	"LiveQuery":  kindLive,
 	"BatchQuery": kindBatch,
 	"Form":       kindForm,
+	"Prerender":  kindPrerender,
 }
 
 // loadFn is one declared server load.

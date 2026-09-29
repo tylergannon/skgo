@@ -569,6 +569,16 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Kit writes prerendered remote responses under the app directory, not
+	// the client asset tree. Serve only paths the build actually recorded.
+	if strings.HasPrefix(urlPath, h.appPrefix+"remote/") && h.prerendered[urlPath] {
+		if meta, _, ok := h.prerenderedFile(urlPath); ok {
+			meta.contentType = "application/json"
+			h.serveFile(w, r, meta, false)
+			return
+		}
+	}
+
 	// Anything else below the app directory is a genuine miss. It must never
 	// fall through to the boot document: a page shell served with a .js
 	// content type would confuse the browser, and one served as HTML would
