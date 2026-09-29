@@ -207,8 +207,10 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			checkRemoteIds(`${out}/client`, generated.remotes, hashes);
 
 			builder.writePrerendered(`${out}/prerendered`);
-			for (const file of walk(`${out}/prerendered`)) {
-				if (file.endsWith('.html')) authorizePrerenderedScripts(file);
+			if (existsSync(`${out}/prerendered`)) {
+				for (const file of walk(`${out}/prerendered`)) {
+					if (file.endsWith('.html')) authorizePrerenderedScripts(file);
+				}
 			}
 			const prerendered = readPrerendered(builder);
 			// The SPA shell is still emitted: it is what a page whose branch turns
@@ -241,7 +243,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			// `precompress: true` default.
 			if (precompress) {
 				await builder.compress(`${out}/client`);
-				await builder.compress(`${out}/prerendered`);
+				if (existsSync(`${out}/prerendered`)) await builder.compress(`${out}/prerendered`);
 			}
 
 			// `builder` has no writeJson in kit 3.0.0-next.27 (it existed on the
