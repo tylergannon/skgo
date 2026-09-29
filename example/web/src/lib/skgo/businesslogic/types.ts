@@ -7,7 +7,7 @@ export type Session = {
   /**
    * User is the signed-in visitor's name, or "" when signed out.
    */
-  "user": string;
+  user: string;
 };
 
 /**
@@ -17,13 +17,13 @@ export type Todo = {
   /**
    * ID is the stable identifier the todo is addressed by.
    */
-  "id": string;
+  id: string;
   /**
    * Text is what the visitor typed.
    */
-  "text": string;
+  text: string;
   /**
    * Private reports that only a signed-in visitor may see this todo.
    */
-  "private": boolean;
+  private: boolean;
 };

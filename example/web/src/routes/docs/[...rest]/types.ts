@@ -7,13 +7,13 @@ export type Page = {
   /**
    * Path is the rest parameter as SvelteKit matched it.
    */
-  "path": string;
+  path: string;
   /**
    * Title is what the page shows.
    */
-  "title": string;
+  title: string;
   /**
    * Depth is how many segments deep the request went.
    */
-  "depth": number;
+  depth: number;
 };

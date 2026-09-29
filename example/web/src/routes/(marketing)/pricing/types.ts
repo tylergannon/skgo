@@ -7,9 +7,9 @@ export type Quote = {
   /**
    * Heard is the amount Go read back out of the argument, formatted by Go's own method rather than the browser's. If the transport hook were not working this function would never see a Money at all.
    */
-  "heard": string;
+  heard: string;
   /**
    * Doubled is that amount doubled, formatted the same way. It is arithmetic only a real Money can do, which is the point: a plain object could not have been doubled.
    */
-  "doubled": string;
+  doubled: string;
 };

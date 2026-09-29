@@ -7,14 +7,14 @@ export type Quote = {
   /**
    * Symbol is the symbol that was asked for.
    */
-  "symbol": string;
+  symbol: string;
   /**
    * Cents is what it costs.
    */
-  "cents": number;
+  cents: number;
   /**
    * BatchSize is how many symbols the Go function was handed in the call that answered this one.
    * It is what makes batching visible rather than implied. Four components each asking for one symbol should each be answered "4": one call, four arguments. If every call carried a single argument the page would say "1" four times, which is a page that works and a feature that does not.
    */
-  "batchSize": number;
+  batchSize: number;
 };

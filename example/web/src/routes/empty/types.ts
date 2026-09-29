@@ -7,15 +7,15 @@ export type Report = {
   /**
    * Title says what happened.
    */
-  "title": string;
+  title: string;
   /**
    * Diagnostics is what the parser complained about.
    */
-  "diagnostics": Array<Diagnostic>;
+  diagnostics: Array<Diagnostic>;
   /**
    * Models is what it resolved.
    */
-  "models": Array<string>;
+  models: Array<string>;
 };
 
 /**
@@ -25,5 +25,5 @@ export type Diagnostic = {
   /**
    * Message is the complaint, in the parser's own words.
    */
-  "message": string;
+  message: string;
 };

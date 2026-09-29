@@ -7,9 +7,9 @@ export type Order = {
   /**
    * Item is what was bought.
    */
-  "item": string;
+  item: string;
   /**
    * Cents is what it cost.
    */
-  "cents": number;
+  cents: number;
 };

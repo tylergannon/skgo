@@ -4,7 +4,7 @@
 // this module. Kit reads the export names to learn which methods the route
 // answers; it never calls them.
 const unimplemented = (): never => {
-	throw new Error('skgo: implemented in Go');
+  throw new Error("skgo: implemented in Go");
 };
 
 export const GET = (): never => unimplemented();
