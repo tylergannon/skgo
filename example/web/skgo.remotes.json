@@ -47,6 +47,7 @@
 		"src/routes/account/+layout.server.ts",
 		"src/routes/account/+page.server.ts",
 		"src/routes/account/orders/+page.server.ts",
+		"src/routes/account/reruns/[slug]/+page.server.ts",
 		"src/routes/account/statement/+page.server.ts",
 		"src/routes/actions/+page.server.ts",
 		"src/routes/actions/cross/receive/+page.server.ts",

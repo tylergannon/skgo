@@ -27,6 +27,21 @@ When('I refresh the account layout', async ({ page }) => {
 	await page.getByTestId('refresh-account').click();
 });
 
+When("I increment the rerun page's local count", async ({ page }) => {
+	await booted(page);
+	await page.getByTestId('rerun-local-increment').click();
+});
+
+When('I refresh all loads on the rerun page', async ({ page }) => {
+	await booted(page);
+	await page.getByTestId('rerun-refresh-all').click();
+});
+
+When("I invalidate the rerun page's dependency by predicate", async ({ page }) => {
+	await booted(page);
+	await page.getByTestId('rerun-invalidate-predicate').click();
+});
+
 When('I note the data request count', async ({ data }) => {
 	data.mark();
 });
@@ -73,6 +88,32 @@ Then('the layout serial is {int}', async ({ page }, expected: number) => {
 Then('the layout serial is still {int}', async ({ page }, expected: number) => {
 	await page.waitForTimeout(300);
 	await expect(page.getByTestId('account-serial')).toHaveText(String(expected));
+});
+
+Then(
+	'the rerun page shows slug {string} and filter {string} at serial {int}',
+	async ({ page }, slug: string, filter: string, serial: number) => {
+		await expect(page.getByTestId('rerun-slug')).toHaveText(slug);
+		await expect(page.getByTestId('rerun-filter')).toHaveText(filter);
+		await expect(page.getByTestId('rerun-serial')).toHaveText(String(serial));
+	}
+);
+
+Then('the rerun page serial is still {int}', async ({ page }, serial: number) => {
+	await booted(page);
+	await page.waitForTimeout(300);
+	await expect(page.getByTestId('rerun-serial')).toHaveText(String(serial));
+});
+
+Then('the rerun page URL is {string}', async ({ page }, path: string) => {
+	await expect.poll(() => {
+		const url = new URL(page.url());
+		return url.pathname + url.search;
+	}).toBe(path);
+});
+
+Then("the rerun page's local count is {int}", async ({ page }, count: number) => {
+	await expect(page.getByTestId('rerun-local-count')).toHaveText(String(count));
 });
 
 Then('the error message is {string}', async ({ page }, message: string) => {
