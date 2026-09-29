@@ -77,6 +77,10 @@ jobs:
         with:
           version: 11.27.1
 
+      - name: Install example dependencies for adapter tests
+        working-directory: example/web
+        run: pnpm install --frozen-lockfile
+
       # The adapter the app installs and the adapter the Go binary embeds are
       # the same files, and every build is refused at startup if they are not.
       # These tests are what checks that the tarball leaving here really holds
