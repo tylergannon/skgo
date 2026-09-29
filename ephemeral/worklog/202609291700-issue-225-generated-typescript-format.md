@@ -1,0 +1,2 @@
+decision: When an app has its own VitePlus installation, format generated .ts/.js through `vp fmt --stdin-filepath` before comparing/writing; preserve generation without VitePlus when it is absent. This uses the app's configured formatter and keeps repeat generation idempotent.
+friction: The fresh-site proof initially resolved the copy's parent modules and installed adapter instead of its local app state -> make the fixture a disposable site under a copied project root, link VitePlus dependencies, and install the worktree adapter package locally.

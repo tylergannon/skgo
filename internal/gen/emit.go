@@ -6,7 +6,9 @@ import (
 	"go/format"
 	"go/types"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -948,6 +950,13 @@ func (a *app) write(path, content string) error {
 // re-running the generator does not disturb file timestamps and, with them,
 // vite's dev server.
 func write(cfg Config, path, content string) error {
+	if isFrontendSource(path) {
+		formatted, err := formatFrontendSource(cfg.Web, path, content)
+		if err != nil {
+			return err
+		}
+		content = formatted
+	}
 	if existing, err := os.ReadFile(path); err == nil && string(existing) == content {
 		return nil
 	}
@@ -959,6 +968,48 @@ func write(cfg Config, path, content string) error {
 	}
 	cfg.Logf("wrote %s", path)
 	return nil
+}
+
+func isFrontendSource(path string) bool {
+	return filepath.Ext(path) == ".ts" || filepath.Ext(path) == ".js"
+}
+
+// formatFrontendSource uses the app's VitePlus formatter when the app has one
+// installed. It is optional: generation still works for ordinary SvelteKit
+// projects that do not use VitePlus. Formatting through stdin keeps the
+// generated file untouched until the formatter has produced its final bytes,
+// preserving write's timestamp behavior when a build repeats.
+func formatFrontendSource(web, path, content string) (string, error) {
+	vp := filepath.Join(web, "node_modules", ".bin", "vp")
+	if runtime.GOOS == "windows" {
+		if _, err := os.Stat(vp); err != nil {
+			vp += ".cmd"
+		}
+	}
+	if _, err := os.Stat(vp); err != nil {
+		if os.IsNotExist(err) {
+			return content, nil
+		}
+		return "", err
+	}
+
+	args := []string{"fmt", "--stdin-filepath", path}
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" && strings.HasSuffix(vp, ".cmd") {
+		cmd = exec.Command("cmd.exe", append([]string{"/c", vp}, args...)...)
+	} else {
+		cmd = exec.Command(vp, args...)
+	}
+	cmd.Dir = web
+	cmd.Stdin = strings.NewReader(content)
+	output, err := cmd.Output()
+	if err != nil {
+		if exit, ok := err.(*exec.ExitError); ok && len(exit.Stderr) > 0 {
+			return "", fmt.Errorf("skgo: formatting generated %s with vp fmt: %w: %s", path, err, strings.TrimSpace(string(exit.Stderr)))
+		}
+		return "", fmt.Errorf("skgo: formatting generated %s with vp fmt: %w", path, err)
+	}
+	return string(output), nil
 }
 
 func appendUnique(list []string, v string) []string {
