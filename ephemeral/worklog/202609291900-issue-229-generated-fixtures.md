@@ -1,0 +1,1 @@
+decision: Keep generator snapshot coverage byte-exact by regenerating checked-in example outputs with the configured VitePlus formatter installed; make type-drift assertions care about property/type and throw/message semantics while accepting formatter-owned quotes and layout.

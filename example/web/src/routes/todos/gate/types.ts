@@ -7,7 +7,7 @@ export type Ack = {
   /**
    * Wrote is how many values the command changed. It is always three, which is the point: everything was written, and what the page shows afterwards is a question about refreshes rather than about writes.
    */
-  "wrote": number;
+  wrote: number;
 };
 
 /**
@@ -17,7 +17,7 @@ export type Banner = {
   /**
    * Text is what was last written to the banner.
    */
-  "text": string;
+  text: string;
 };
 
 /**
@@ -27,11 +27,11 @@ export type Note = {
   /**
    * Name is which note this is: "left" or "right".
    */
-  "name": string;
+  name: string;
   /**
    * Text is what was last written to it.
    */
-  "text": string;
+  text: string;
 };
 
 /**
@@ -41,13 +41,13 @@ export type Write = {
   /**
    * Left is the new text of the left note.
    */
-  "left": string;
+  left: string;
   /**
    * Right is the new text of the right note.
    */
-  "right": string;
+  right: string;
   /**
    * Banner is the new banner text.
    */
-  "banner": string;
+  banner: string;
 };

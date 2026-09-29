@@ -7,5 +7,5 @@ export type Tally = {
   /**
    * Runs is the count.
    */
-  "runs": number;
+  runs: number;
 };

@@ -7,9 +7,9 @@ export type Site = {
   /**
    * Name is the application's name.
    */
-  "name": string;
+  name: string;
   /**
    * Colocated says which directory the Go that answered lives in.
    */
-  "colocated": string;
+  colocated: string;
 };

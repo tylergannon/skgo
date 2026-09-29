@@ -7,13 +7,13 @@ export type Item = {
   /**
    * ID is the value SvelteKit matched into the `[id]` segment.
    */
-  "id": string;
+  id: string;
   /**
    * Name is what the page shows.
    */
-  "name": string;
+  name: string;
   /**
    * Colocated says where the Go that answered lives, so the page can show that a bracketed directory really is the source of the answer.
    */
-  "colocated": string;
+  colocated: string;
 };

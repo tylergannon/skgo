@@ -7,14 +7,14 @@ export type Board = {
   /**
    * Count is how many todos this visitor may see.
    */
-  "count": number;
+  count: number;
   /**
    * Newest is the text of the newest one, or "" when there are none.
    */
-  "newest": string;
+  newest: string;
   /**
    * Push is which value of this stream this is: 1 for the one the render was answered with, 2 for the first update after it, and so on.
    * It is the difference between "the board shows a number" and "the board was pushed a new one". A page that quietly refetched instead of listening would show push 1 for ever.
    */
-  "push": number;
+  push: number;
 };

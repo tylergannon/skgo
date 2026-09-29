@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -177,7 +178,7 @@ func TestChangingAGoTypeBreaksTheComponentThatUsesIt(t *testing.T) {
 	if d.generateErr != nil {
 		t.Fatalf("regenerating after the change: %v\n%s", d.generateErr, d.generateOut)
 	}
-	if !bytes.Contains(d.types, []byte(`"label": string`)) {
+	if !regexp.MustCompile(`(?m)^\s*(?:"label"|label)\s*:\s*string;\s*$`).Match(d.types) {
 		t.Fatalf("the generated TypeScript did not follow the Go type:\n%s", d.types)
 	}
 	if d.checkErr == nil {
@@ -210,10 +211,13 @@ func TestGeneratedActionTypesRejectWrongUses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"ActionFailure<", "price: Money", "throw new Error('skgo: action implemented in Go')"} {
+	for _, want := range []string{"ActionFailure<", "price: Money"} {
 		if !bytes.Contains(stub, []byte(want)) {
 			t.Fatalf("generated action export lacks %q:\n%s", want, stub)
 		}
+	}
+	if !regexp.MustCompile(`(?s)\bsave:\s*async\b.*?throw new Error\(["']skgo: action implemented in Go["']\);\s*\}`).Match(stub) {
+		t.Fatalf("generated save action does not throw the Go-owned action message:\n%s", stub)
 	}
 
 	base := checked()

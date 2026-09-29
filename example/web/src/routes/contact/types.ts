@@ -7,31 +7,31 @@ export type Message = {
   /**
    * ID is the message's number in the order it arrived.
    */
-  "id": string;
+  id: string;
   /**
    * From is the sender's name.
    */
-  "from": string;
+  from: string;
   /**
    * Email is the address they gave.
    */
-  "email": string;
+  email: string;
   /**
    * Body is what they wrote.
    */
-  "body": string;
+  body: string;
   /**
    * Attachment is the uploaded file's name, or empty when there was none.
    */
-  "attachment": string;
+  attachment: string;
   /**
    * AttachmentBytes is how many bytes of it reached Go.
    */
-  "attachmentBytes": number;
+  attachmentBytes: number;
   /**
    * AttachmentDigest is the first twelve hex digits of the SHA-256 of those bytes. It is on the page because a byte count alone cannot tell an upload that arrived from one that arrived scrambled — the digest changes if a single byte moved, which is exactly the failure kit's smallest-file-first body ordering invites.
    */
-  "attachmentDigest": string;
+  attachmentDigest: string;
 };
 
 /**
@@ -41,13 +41,13 @@ export type Receipt = {
   /**
    * ID is the new message's id.
    */
-  "id": string;
+  id: string;
   /**
    * Summary is a sentence the page can show without re-reading the list.
    */
-  "summary": string;
+  summary: string;
   /**
    * Key echoes Draft.ForKey, so a page can show that a `for(key)` submission carried its key all the way to the handler and back.
    */
-  "key": string;
+  key: string;
 };

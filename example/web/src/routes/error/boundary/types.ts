@@ -7,5 +7,5 @@ export type Reading = {
   /**
    * Celsius is the temperature that would have been read.
    */
-  "celsius": number;
+  celsius: number;
 };

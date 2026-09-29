@@ -7,5 +7,5 @@ export type Destination = {
   /**
    * Where is the path the visitor is sent to.
    */
-  "where": string;
+  where: string;
 };
