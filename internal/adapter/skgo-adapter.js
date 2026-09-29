@@ -84,6 +84,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 	let prerenderRoot;
 	let prerenderBuild;
 	let unflatten;
+	let stringify;
 	let transportDecoders = {};
 	async function buildPrerenderBinary() {
 		if (!prerenderBuild) {
@@ -92,11 +93,11 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 				if (!generated.prerender) throw new Error('skgo: generated prerender command is missing');
 				prerenderRoot = resolve(process.cwd(), generated.prerender.root);
 				const dir = mkdtempSync(join(tmpdir(), 'skgo-prerender-'));
-				prerenderBinary = join(dir, 'loads');
+				prerenderBinary = join(dir, 'build');
 				await runPrerenderCommand('go', ['build', '-o', prerenderBinary, generated.prerender.package], prerenderRoot);
 				process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
 				const fromKit = createRequire(realpathSync(join(process.cwd(), 'node_modules/@sveltejs/kit/package.json')));
-				({ unflatten } = await import(pathToFileURL(fromKit.resolve('devalue')).href));
+				({ unflatten, stringify } = await import(pathToFileURL(fromKit.resolve('devalue')).href));
 				const hooks = join(process.cwd(), '.svelte-kit/output/server/entries/hooks.universal.js');
 				if (existsSync(hooks)) {
 					const { transport = {} } = await import(pathToFileURL(hooks).href);
@@ -122,6 +123,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 							headers.cookie = [cookies.map(({ name, value }) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join('; ')];
 						}
 						const request = {
+							kind: 'load',
 							module,
 							url: event.url.href,
 							routeId: event.route.id,
@@ -165,6 +167,17 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 							}
 						}
 						return answer;
+					},
+					async skgoPrerenderRemote(module, name, arg, event) {
+						await buildPrerenderBinary();
+						const payload = arg === undefined ? '' : Buffer.from(stringify(arg)).toString('base64url');
+						const request = {
+							kind: 'remote', module, name, payload, url: event.url.href,
+							headers: Object.fromEntries([...event.request.headers].map(([key, value]) => [key, [value]]))
+						};
+						const raw = await runPrerenderCommand(prerenderBinary, [], prerenderRoot, JSON.stringify(request));
+						const answer = JSON.parse(raw);
+						return unflatten(JSON.parse(answer.data), transportDecoders)._;
 					}
 				})
 			};

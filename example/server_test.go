@@ -71,7 +71,7 @@ func TestEveryPrerenderedPathIsServedFromItsFile(t *testing.T) {
 	}
 	for _, path := range manifest.Prerendered {
 		name := "prerendered" + path
-		if !strings.HasSuffix(path, "/__data.json") {
+		if !strings.HasSuffix(path, "/__data.json") && !strings.HasPrefix(path, "/_app/remote/") {
 			name += ".html"
 		}
 		written, err := fs.ReadFile(dist, strings.TrimPrefix(name, "/"))
@@ -91,10 +91,40 @@ func TestEveryPrerenderedPathIsServedFromItsFile(t *testing.T) {
 		`data-testid="prerender-parent">skgo example`,
 		`data-testid="prerender-price">$7.50`,
 		`GO_PRERENDER_DEFERRED`,
+		`Go prerender remote: atlas`,
 	} {
 		if !strings.Contains(string(page), want) {
 			t.Errorf("Kit's /about file lacks %q", want)
 		}
+	}
+}
+
+func TestPrerenderedGoRemoteIsAStaticAnswer(t *testing.T) {
+	manifest, err := skgo.ReadManifest(prodDist(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := newProdHandler(t)
+	var remotePath string
+	for _, path := range manifest.Prerendered {
+		if strings.HasPrefix(path, "/_app/remote/") && strings.Contains(path, "/buildReceipt/") {
+			remotePath = path
+			break
+		}
+	}
+	if remotePath == "" {
+		t.Fatal("Kit did not write the fixed-argument Go prerender remote answer")
+	}
+	rec := get(t, h, remotePath)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Go prerender remote: atlas") {
+		t.Fatalf("static prerender remote: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Header().Get("Content-Type"), "application/json") {
+		t.Errorf("content type = %q", rec.Header().Get("Content-Type"))
+	}
+	missing := remotePath + "-missing"
+	if rec := get(t, h, missing); rec.Code != http.StatusNotFound {
+		t.Errorf("missing prerender remote returned %d, want 404", rec.Code)
 	}
 }
 

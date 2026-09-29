@@ -6,6 +6,8 @@ package about
 // bindings package can spell. Each is the function itself and not a wrapper:
 // skgo.Refresh finds a query by the code pointer of the function it names.
 var (
+	// Skgo_buildReceipt is buildReceipt, published as src/routes/about/about.remote.ts#buildReceipt.
+	Skgo_buildReceipt = buildReceipt
 	// Skgo_pageLoad is pageLoad, published as the server load of src/routes/about/+page.server.ts.
 	Skgo_pageLoad = pageLoad
 )

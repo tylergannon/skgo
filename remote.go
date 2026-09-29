@@ -127,6 +127,7 @@ const (
 	KindLive
 	KindBatch
 	KindForm
+	KindPrerender
 )
 
 // Call is one remote call as it reaches the generated closure that answers it.
@@ -337,6 +338,10 @@ type Marker struct{}
 // skgo.EventFrom(ctx); a query may read cookies but not write them, which is
 // the restriction kit places on its own queries.
 func Query(fn any) Marker { _ = fn; return Marker{} }
+
+// Prerender declares a remote function whose result Kit writes during its
+// build. Its Go body runs through the adapter's build-time Go bridge.
+func Prerender(fn any) Marker { _ = fn; return Marker{} }
 
 // Command declares fn as a SvelteKit `command`. A command's event may write
 // cookies; kit allows that in commands and forms and nowhere else.
@@ -656,6 +661,18 @@ func (rs *Remotes) Lookup(id string) (*Remote, bool) {
 func (rs *Remotes) Intercept(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, rs.prefix) {
+			// Kit's prerender function writes a static response at this path.
+			// The static handler owns it, including a missing asset's 404.
+			if r.Method == http.MethodGet || r.Method == http.MethodHead {
+				rest := strings.TrimPrefix(r.URL.Path, rs.prefix)
+				parts := strings.Split(rest, "/")
+				if len(parts) >= 2 {
+					if fn := rs.fns[parts[0]+"/"+parts[1]]; fn != nil && fn.kind == KindPrerender && !rs.cfg.Dev {
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
+			}
 			rs.ServeHTTP(w, r)
 			return
 		}
@@ -701,7 +718,35 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		rs.serveCommand(w, r, fn)
 	case KindForm:
 		rs.serveForm(w, r, fn)
+	case KindPrerender:
+		rs.servePrerender(w, r, fn, parts)
 	}
+}
+
+// In development Kit has no prerendered file yet. Its client still calls the
+// same path, so Go answers it from the registered function. Production serves
+// the file Kit wrote during the build instead.
+func (rs *Remotes) servePrerender(w http.ResponseWriter, r *http.Request, fn *Remote, parts []string) {
+	if !rs.cfg.Dev || r.Method != http.MethodGet || len(parts) > 3 {
+		rs.writeError(w, notFound())
+		return
+	}
+	payload := ""
+	if len(parts) == 3 {
+		payload = parts[2]
+	}
+	arg, present, err := remotearg.ParsePayloadWith(payload, rs.codecs())
+	if err != nil {
+		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
+		return
+	}
+	ev := rs.newEvent(r, false)
+	value, err := rs.call(withEvent(r.Context(), ev), fn, rs.newCall(arg, present))
+	if err != nil {
+		rs.writeError(w, asHTTPError(err))
+		return
+	}
+	rs.writeResult(w, ev, map[string]any{"_": value})
 }
 
 // notFound reproduces the body kit's `error(404)` produces.

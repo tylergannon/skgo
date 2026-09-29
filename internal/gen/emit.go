@@ -36,6 +36,7 @@ func (a *app) writeStubs() error {
 		declaredBy := map[string]*types.Package{}
 		var transported []string
 		var kinds []string
+		hasPrerender := false
 		for _, fn := range fns {
 			for _, custom := range a.transportedOf(fn) {
 				transported = appendUnique(transported, custom.Obj().Name())
@@ -61,6 +62,10 @@ func (a *app) writeStubs() error {
 				kinds = appendUnique(kinds, "command")
 			case kindForm:
 				kinds = appendUnique(kinds, "form")
+			case kindPrerender:
+				hasPrerender = true
+				kinds = appendUnique(kinds, "prerender")
+				kinds = appendUnique(kinds, "getRequestEvent")
 			default:
 				kinds = appendUnique(kinds, "query")
 			}
@@ -136,13 +141,25 @@ func (a *app) writeStubs() error {
 			}
 		}
 
-		b.WriteString("\n// Every body throws. These functions are implemented in Go, and skgo\n")
-		b.WriteString("// answers their endpoints itself, so anything that renders in the browser\n")
-		b.WriteString("// is proof the Go handler replied rather than this module.\n")
+		if hasPrerender {
+			b.WriteString("\n// Application bodies stay in Go. Runtime stubs throw; the prerender\n")
+			b.WriteString("// callback reaches Go only through the adapter's build bridge.\n")
+		} else {
+			b.WriteString("\n// Every body throws. These functions are implemented in Go, and skgo\n")
+			b.WriteString("// answers their endpoints itself, so anything that renders in the browser\n")
+			b.WriteString("// is proof the Go handler replied rather than this module.\n")
+		}
 		if a.cfg.Language.JavaScript() {
 			b.WriteString("const unimplemented = () => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
 		} else {
 			b.WriteString("const unimplemented = (): never => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
+		}
+		if hasPrerender {
+			if a.cfg.Language.JavaScript() {
+				b.WriteString("\n/**\n * @param {string} module\n * @param {string} name\n * @param {unknown} arg\n */\nconst prerenderFromGo = (module, name, arg) => {\n\tconst event = getRequestEvent();\n\t/** @type {any} */ const platform = event.platform;\n\treturn platform?.skgoPrerenderRemote?.(module, name, arg, event) ?? unimplemented();\n};\n")
+			} else {
+				b.WriteString("\nconst prerenderFromGo = (module: string, name: string, arg: unknown): Promise<any> => {\n\tconst event = getRequestEvent();\n\tconst bridge = (event.platform as { skgoPrerenderRemote?: (module: string, name: string, arg: unknown, event: import('@sveltejs/kit').RequestEvent) => Promise<any> } | undefined)?.skgoPrerenderRemote;\n\treturn bridge?.(module, name, arg, event) ?? unimplemented();\n};\n")
+			}
 		}
 
 		for _, fn := range fns {
@@ -181,6 +198,16 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 	out, err := a.project(fn.out)
 	if err != nil {
 		return "", err
+	}
+	if fn.kind == kindPrerender {
+		if fn.in == nil {
+			return fmt.Sprintf("export const %s = prerender(async (): Promise<%s> => prerenderFromGo(%q, %q, undefined));\n", fn.name, out.expr, fn.module, fn.name), nil
+		}
+		in, err := a.project(fn.in)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("export const %s = prerender('unchecked', async (arg: %s): Promise<%s> => prerenderFromGo(%q, %q, arg));\n", fn.name, in.expr, out.expr, fn.module, fn.name), nil
 	}
 
 	call := "query"
@@ -248,6 +275,16 @@ func (a *app) stubSignatureJS(fn *remoteFn) (string, error) {
 	out, err := a.project(fn.out)
 	if err != nil {
 		return "", err
+	}
+	if fn.kind == kindPrerender {
+		if fn.in == nil {
+			return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<void, %s>} */\nexport const %s = prerender(async () => prerenderFromGo(%q, %q, undefined));\n", out.expr, fn.name, fn.module, fn.name), nil
+		}
+		in, err := a.project(fn.in)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<%s, %s>} */\nexport const %s = prerender('unchecked', async (arg) => prerenderFromGo(%q, %q, arg));\n", in.expr, out.expr, fn.name, fn.module, fn.name), nil
 	}
 
 	remoteType, call := "RemoteQueryFunction", "query"
@@ -624,6 +661,8 @@ func specKind(k remoteKind) string {
 		return "KindBatch"
 	case kindForm:
 		return "KindForm"
+	case kindPrerender:
+		return "KindPrerender"
 	}
 	return "KindQuery"
 }
@@ -843,7 +882,7 @@ type remoteList struct {
 	// Endpoints names, per kit route id, the methods skgo generated an export
 	// for. Kit's build reports the same list for every route it compiled a
 	// `+server.ts` into, so the adapter can compare the two literally.
-	Endpoints map[string][]string `json:"endpoints"`
+	Endpoints map[string][]string       `json:"endpoints"`
 	Prerender *prerenderCommandLocation `json:"prerender,omitempty"`
 }
 
@@ -854,7 +893,7 @@ type prerenderCommandLocation struct {
 
 func (a *app) writeRemoteList() error {
 	list := remoteList{Remotes: []string{}, Loads: []string{}, Actions: []string{}, Endpoints: a.endpointList()}
-	if len(a.loads) > 0 {
+	if len(a.loads) > 0 || a.hasPrerenderRemote() {
 		root, err := filepath.Rel(a.cfg.Web, a.hostDir)
 		if err != nil {
 			return err

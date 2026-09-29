@@ -14,6 +14,8 @@ Feature: The engine's JavaScript is SvelteKit's own build
     The production build writes /about to a file. The Go test compares that
     file byte for byte with the Go server's response; this browser checks the
     result after Kit hydrates it, including a transported class and a promise.
+    A fixed-argument Go prerender remote also reached the file through the
+    universal load; Kit's client must boot without requesting it again.
 
     When I visit "/about"
     Then I see "About"
