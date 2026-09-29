@@ -1,0 +1,3 @@
+decision: Kit's pinned Vite guard owns the client/server import boundary. Prove it through an SKGo adapter build; do not duplicate the filename and import-chain rules in Go.
+friction: A minimal valid app with no prerendered routes failed adapter finalization on `walk(build/prerendered)` because Kit writes no directory for an empty set. Guard the walk and compression when that directory is absent; tracked as skgo #220.
+friction: Symlinking all of `node_modules` into a Vite fixture lets Kit overwrite the real app's generated `$app` types, making concurrent type checks fail against the fixture's route set. Give `$app` a fixture-local directory and link the other dependencies individually.
