@@ -99,7 +99,7 @@ func (a *app) writeFormClients() error {
 	var defs typegrammarDefs
 	nodes := make([]typegrammar.Type, len(forms))
 	for i, fn := range forms {
-		loaded, err := grammar.Load(fn.goPkg.loadDir)
+		loaded, err := a.loadGrammar(fn.goPkg.loadDir)
 		if err != nil {
 			return fmt.Errorf("skgo: loading Form client result: %w", err)
 		}

@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tylergannon/polytype/grammar"
 	"github.com/tylergannon/skgo/internal/envspec"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
@@ -156,6 +157,9 @@ type app struct {
 	// codecSet is every type polytype emits an encoder and a strict decoder
 	// for, in the order it is given them.
 	codecSet codecSet
+	// A generation run projects the same authored types into declarations,
+	// server codecs and Form clients. Share each package load across them.
+	grammarPackages map[string]*grammar.Package
 }
 
 // transportedType is one entry of the app's transport hook: a Go type that
