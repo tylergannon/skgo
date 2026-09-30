@@ -39,9 +39,9 @@ if (typeof globalThis.Headers === 'undefined') {
 			if (init instanceof Headers) {
 				for (const [k, v] of init._) this._.set(k, v);
 			} else if (Array.isArray(init)) {
-				for (const [k, v] of init) this.set(k, v);
+				for (const [k, v] of init) this.append(k, v);
 			} else if (init && typeof init === 'object') {
-				for (const k of Object.keys(init)) this.set(k, init[k]);
+				for (const k of Object.keys(init)) this.append(k, init[k]);
 			}
 		}
 		set(name, value) {
@@ -66,19 +66,19 @@ if (typeof globalThis.Headers === 'undefined') {
 			this._.delete(String(name).toLowerCase());
 		}
 		forEach(fn, thisArg) {
-			for (const [k, v] of this._) fn.call(thisArg, v, k, this);
+			for (const [k, v] of this.entries()) fn.call(thisArg, v, k, this);
 		}
 		keys() {
-			return this._.keys();
+			return Array.from(this.entries(), ([k]) => k)[Symbol.iterator]();
 		}
 		values() {
-			return this._.values();
+			return Array.from(this.entries(), ([, v]) => v)[Symbol.iterator]();
 		}
 		entries() {
-			return this._.entries();
+			return Array.from(this._).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)[Symbol.iterator]();
 		}
 		[Symbol.iterator]() {
-			return this._.entries();
+			return this.entries();
 		}
 	};
 }
@@ -111,6 +111,7 @@ if (typeof globalThis.Request === 'undefined') {
 		}
 		async text() { return this._body ?? ''; }
 		async json() { return JSON.parse(this._body ?? 'null'); }
+        clone() { return new Request(this); }
 	};
 }
 
@@ -123,11 +124,11 @@ if (typeof globalThis.Response === 'undefined') {
 			this.headers = init.headers instanceof Headers ? init.headers : new Headers(init.headers);
 			this.ok = this.status >= 200 && this.status < 300;
 		}
-		async text() { return this._body; }
-		async json() { return JSON.parse(this._body); }
-		async arrayBuffer() { return new TextEncoder().encode(this._body).buffer; }
+		async text() { return typeof this._body === 'string' ? this._body : new TextDecoder().decode(this._body); }
+        async json() { return JSON.parse(await this.text()); }
+        async arrayBuffer() { return (typeof this._body === 'string' ? new TextEncoder().encode(this._body) : new Uint8Array(this._body)).buffer; }
 		clone() {
-			return new Response(this._body, { status: this.status, statusText: this.statusText, headers: this.headers });
+			return new Response(this._body, { status: this.status, statusText: this.statusText, headers: new Headers(this.headers) });
 		}
 	};
 }

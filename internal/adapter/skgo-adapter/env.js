@@ -132,6 +132,7 @@ function kitAliases(root) {
 		'skgo:kit/remote': join(runtime, 'app/server/remote/index.js'),
 		'skgo:kit/shared': join(runtime, 'shared.js'),
 		'skgo:kit/transport': join(runtime, 'app/internal/transport.js'),
+		'skgo:kit/serialize-data': join(runtime, 'server/page/serialize_data.js'),
 		'skgo:kit/props': join(runtime, 'props.svelte.js'),
 		'skgo:kit/root': join(runtime, 'components/root.svelte'),
 		// kit's own `$app/paths` server implementation, which app-paths.js
