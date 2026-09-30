@@ -29,6 +29,7 @@
 	<a href="/todos">Todos</a>
 	<a href="/empty">Empty</a>
 	<a href="/api">API</a>
+	<a href="/fetch">Server fetch</a>
 	<a href="/pricing">Pricing</a>
 	<a href="/actions">Actions</a>
 	<a href="/docs/guide/getting-started">Docs</a>

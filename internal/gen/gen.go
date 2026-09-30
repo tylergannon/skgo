@@ -30,6 +30,7 @@ import (
 
 // Config describes one app.
 type Config struct {
+	frontendFiles map[string]struct{}
 	// Web is the vite root: the directory holding `src/` and the app's
 	// package.json. Every `.remote.ts` path is relative to it, because that is
 	// what kit hashes into a remote function's id.
@@ -67,6 +68,7 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	cfg.Web, cfg.Out = web, out
+	cfg.frontendFiles = map[string]struct{}{}
 	if cfg.Language == LanguageAuto {
 		cfg.Language = detectLanguage(web)
 	}
@@ -106,7 +108,10 @@ func Run(cfg Config) (err error) {
 		if err := empty.writeFormClients(); err != nil {
 			return err
 		}
-		return empty.writeRemoteList()
+		if err := empty.writeRemoteList(); err != nil {
+			return err
+		}
+		return flushFrontendSources(cfg)
 	}
 
 	// A skgo_remotes_gen.go left by an older skgo can call a runtime symbol
@@ -213,7 +218,10 @@ func Run(cfg Config) (err error) {
 	if err := app.writeFormClients(); err != nil {
 		return err
 	}
-	return app.writeRemoteList()
+	if err := app.writeRemoteList(); err != nil {
+		return err
+	}
+	return flushFrontendSources(cfg)
 }
 
 // generatedFileSuffix marks a file this module writes and overwrites on every

@@ -41,7 +41,8 @@ type Host func(ctx context.Context, id, payload string) ([]byte, error)
 // entry point, so the field names are the ones the entry reads.
 type Request struct {
 	// URL is the absolute URL of the page being rendered.
-	URL string `json:"url"`
+	URL    string `json:"url"`
+	Method string `json:"method,omitempty"`
 	// RouteID is kit's route id, or "" for a request that matched no route.
 	RouteID string `json:"route_id"`
 	// Params are the route's parameters.
@@ -69,6 +70,8 @@ type Request struct {
 	ErrorComponents []*int `json:"error_components"`
 	// Cookies are the request's cookies, by name.
 	Cookies map[string]string `json:"cookies"`
+	Headers map[string]string `json:"headers"`
+	CSR     bool              `json:"csr"`
 	// ClientAddress is what `getClientAddress()` returns.
 	ClientAddress string `json:"client_address"`
 	// CSP is this render's Svelte-facing csp option, kit's own
@@ -236,6 +239,8 @@ type Result struct {
 	Head string
 	// Body is the rendered markup.
 	Body string
+	// Fetched is Kit's serialized universal-fetch cache for hydration.
+	Fetched string
 }
 
 // Redirect is a redirect thrown during a render.
@@ -334,8 +339,10 @@ type Fetch func(ctx context.Context, request []byte) ([]byte, error)
 // leaves the engine (`runtime/server/fetch.js`, `normalize_fetch_input`), so
 // URL always carries an absolute, same-origin URL.
 type FetchRequest struct {
-	Method string `json:"method"`
-	URL    string `json:"url"`
+	Credentials string `json:"credentials,omitempty"`
+	Mode        string `json:"mode,omitempty"`
+	Method      string `json:"method"`
+	URL         string `json:"url"`
 	// Headers is the request's headers, one value per name — the shape the
 	// bundle's own `Headers` polyfill stores them in.
 	Headers map[string]string `json:"headers,omitempty"`
@@ -354,9 +361,12 @@ type FetchAnswer struct {
 
 // FetchResponse is one answer to a render-time fetch.
 type FetchResponse struct {
-	Status  int               `json:"status"`
-	Headers map[string]string `json:"headers,omitempty"`
-	Body    string            `json:"body,omitempty"`
+	Status            int               `json:"status"`
+	StatusText        string            `json:"statusText"`
+	SerializedHeaders map[string]string `json:"serializedHeaders,omitempty"`
+	BodyBase64        string            `json:"bodyBase64,omitempty"`
+	Headers           map[string]string `json:"headers,omitempty"`
+	Body              string            `json:"body,omitempty"`
 }
 
 // Match answers one render-time `$app/paths` `match(pathname)` call. pathname
@@ -646,11 +656,12 @@ func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hos
 
 	object := v.ToObject(rt.vm)
 	result := Result{
-		Done:   boolOf(object.Get("done")),
-		Err:    stringOf(object.Get("failure")),
-		Status: intOf(object.Get("status")),
-		Head:   stringOf(object.Get("head")),
-		Body:   stringOf(object.Get("body")),
+		Done:    boolOf(object.Get("done")),
+		Err:     stringOf(object.Get("failure")),
+		Status:  intOf(object.Get("status")),
+		Head:    stringOf(object.Get("head")),
+		Body:    stringOf(object.Get("body")),
+		Fetched: stringOf(object.Get("fetched")),
 	}
 	if err := decodeInto(rt.vm, object.Get("redirect"), &result.Redirect); err != nil {
 		return result, rt.calls, err

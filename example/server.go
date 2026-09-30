@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
@@ -160,8 +161,10 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		// still goes through to vite, so the browser only ever talks to Go.
 		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			ssr, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
-				Fetch:   endpoints.Intercept(http.NotFoundHandler()),
-				Actions: actions,
+				Fetch:                           skgo.Handle(Handle).Intercept(handleCfg, endpoints.Intercept(http.NotFoundHandler())),
+				HandleFetch:                     handleFetch,
+				FilterSerializedResponseHeaders: func(name, value string) bool { return name == "x-fetch-hook" },
+				Actions:                         actions,
 			})
 			if err != nil {
 				return nil, err
@@ -179,8 +182,10 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 			// `+server.ts` refuses rather than recursing back into the page
 			// renderer whose own render is what asked for this fetch.
 			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-				Fetch:   endpoints.Intercept(http.NotFoundHandler()),
-				Actions: actions,
+				Fetch:                           skgo.Handle(Handle).Intercept(handleCfg, endpoints.Intercept(http.NotFoundHandler())),
+				HandleFetch:                     handleFetch,
+				FilterSerializedResponseHeaders: func(name, value string) bool { return name == "x-fetch-hook" },
+				Actions:                         actions,
 			})
 			if err != nil {
 				return nil, err
@@ -233,4 +238,21 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	// one that happens to also answer `__data.json`.
 	return skgo.Handle(Handle).Intercept(handleCfg,
 		loads.Intercept(remotes.Intercept(endpoints.Intercept(pages)))), mode, nil
+}
+
+// The example hook rewrites an API alias query before dispatch and marks the
+// response. Fetching this API in a universal load still reuses its response
+// during hydration; the hook itself only runs in Go.
+func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*http.Response, error) {
+	request = request.Clone(ctx)
+	if request.URL.Path == "/api/todos" {
+		query := request.URL.Query()
+		query.Del("via")
+		request.URL.RawQuery = query.Encode()
+	}
+	response, err := next(request)
+	if err == nil && strings.HasPrefix(request.URL.Path, "/api/") {
+		response.Header.Set("X-Fetch-Hook", "Go")
+	}
+	return response, err
 }

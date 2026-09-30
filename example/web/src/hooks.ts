@@ -1,4 +1,4 @@
-import type { Transport } from '@sveltejs/kit/hooks';
+import type { Transport } from "@sveltejs/kit/hooks";
 
 /**
  * Money is the browser's half of the domain type. It is a class, not an
@@ -8,17 +8,17 @@ import type { Transport } from '@sveltejs/kit/hooks';
  * The Go half is `businesslogic.Money`, declared in `src/hooks.go`.
  */
 export class Money {
-	readonly cents: number;
+  readonly cents: number;
 
-	constructor(cents: number) {
-		this.cents = cents;
-	}
+  constructor(cents: number) {
+    this.cents = cents;
+  }
 
-	format(): string {
-		const sign = this.cents < 0 ? '-' : '';
-		const cents = Math.abs(this.cents);
-		return `${sign}$${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
-	}
+  format(): string {
+    const sign = this.cents < 0 ? "-" : "";
+    const cents = Math.abs(this.cents);
+    return `${sign}$${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, "0")}`;
+  }
 }
 
 /**
@@ -31,8 +31,8 @@ export class Money {
  * receives when a Money travels the other way, in a remote function's argument.
  */
 export const transport: Transport = {
-	Money: {
-		encode: (value) => value instanceof Money && { cents: value.cents },
-		decode: (data: { cents: number }) => new Money(data.cents)
-	}
+  Money: {
+    encode: (value) => value instanceof Money && { cents: value.cents },
+    decode: (data: { cents: number }) => new Money(data.cents),
+  },
 };

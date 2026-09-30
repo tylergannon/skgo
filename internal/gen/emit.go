@@ -946,10 +946,13 @@ func (a *app) write(path, content string) error {
 	return write(a.cfg, path, content)
 }
 
-// write is idempotent: a file whose content already matches is left alone, so
-// re-running the generator does not disturb file timestamps and, with them,
-// vite's dev server.
+// write emits a file. Run collects frontend paths for one formatter invocation
+// after generation; other files are compared with their existing content.
 func write(cfg Config, path, content string) error {
+	if cfg.frontendFiles != nil && (isFrontendSource(path) || path == filepath.Join(cfg.Web, "skgo.remotes.json")) {
+		cfg.frontendFiles[path] = struct{}{}
+		return writeContent(cfg, path, content)
+	}
 	if isFrontendSource(path) {
 		formatted, err := formatFrontendSource(cfg.Web, path, content)
 		if err != nil {
@@ -957,6 +960,10 @@ func write(cfg Config, path, content string) error {
 		}
 		content = formatted
 	}
+	return writeContent(cfg, path, content)
+}
+
+func writeContent(cfg Config, path, content string) error {
 	if existing, err := os.ReadFile(path); err == nil && string(existing) == content {
 		return nil
 	}
@@ -980,17 +987,12 @@ func isFrontendSource(path string) bool {
 // generated file untouched until the formatter has produced its final bytes,
 // preserving write's timestamp behavior when a build repeats.
 func formatFrontendSource(web, path, content string) (string, error) {
-	vp := filepath.Join(web, "node_modules", ".bin", "vp")
-	if runtime.GOOS == "windows" {
-		if _, err := os.Stat(vp); err != nil {
-			vp += ".cmd"
-		}
-	}
-	if _, err := os.Stat(vp); err != nil {
-		if os.IsNotExist(err) {
-			return content, nil
-		}
+	vp, err := frontendFormatter(web)
+	if err != nil {
 		return "", err
+	}
+	if vp == "" {
+		return content, nil
 	}
 
 	args := []string{"fmt", "--stdin-filepath", path}

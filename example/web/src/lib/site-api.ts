@@ -1,5 +1,5 @@
-import { parse } from 'yaml';
-import { getSite as getSiteQuery, type Site } from '../routes/site.remote';
+import { parse } from "yaml";
+import { getSite as getSiteQuery, type Site } from "../routes/site.remote";
 
 // This ordinary application module is deliberately between the component and
 // the generated remote. The schema is parsed at module evaluation time so the
@@ -12,9 +12,9 @@ required:
 `) as { required: Array<keyof Site> };
 
 export async function getSite(): Promise<Site> {
-	const site = await getSiteQuery();
-	for (const field of schema.required) {
-		if (!site[field]) throw new Error(`site remote omitted ${field}`);
-	}
-	return site;
+  const site = await getSiteQuery();
+  for (const field of schema.required) {
+    if (!site[field]) throw new Error(`site remote omitted ${field}`);
+  }
+  return site;
 }

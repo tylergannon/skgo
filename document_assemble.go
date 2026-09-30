@@ -130,10 +130,8 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 
 	body := result.Body
 	if csr {
-		// Kit appends the responses `event.fetch` collected here. skgo has no
-		// `fetch` during a render — the data a page needs is Go's — so the list
-		// is always empty and only its separator survives.
-		body += "\n\t\t\t"
+		// Kit's own serializer supplies the universal-load response cache.
+		body += "\n\t\t\t" + result.Fetched
 
 		script, err := s.bootScript(baseExpression, prefixed, plan, answers, hydration, promises)
 		if err != nil {

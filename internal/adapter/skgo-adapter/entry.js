@@ -24,6 +24,7 @@ import * as devalue from 'skgo:devalue';
 import { decoders, init_transport, parse } from 'skgo:kit/transport';
 import { components, universalLoads } from 'skgo:nodes';
 import { transport } from 'skgo:hooks';
+import { serialize_data } from 'skgo:kit/serialize-data';
 
 /**
  * The app's transport hook, installed the way kit installs it
@@ -76,89 +77,140 @@ function make_state() {
 	};
 }
 
-/**
- * event.fetch during a render. Kit's own (runtime/server/fetch.js) resolves a
- * relative URL against the page's own origin, forwards the incoming cookies
- * on a same-origin request unless credentials is "omit", and otherwise hands
- * the request to a real fetch. This engine has no socket to hand a
- * cross-origin request to — no application I/O executes in JavaScript here —
- * so a same-origin URL is a call back into Go's own handler for it, exactly
- * the shape a remote function's call is, and a cross-origin one is refused: a
- * thrown TypeError, before anything is dispatched. (Kit's own version also
- * forwards the page's own Authorization header on a same-origin request; this
- * one does not, because the render's own request never reaches the engine
- * with its headers — only its cookies, in req.cookies.)
- *
- * @param {any} req
- * @param {URL} url
- */
+/** All render-time I/O is dispatched by Go, including the handleFetch hook. */
 function create_fetch(req, url) {
 	return async function (input, init) {
-		const request = input instanceof Request ? input : new Request(input, init);
+		const request = input instanceof Request ? input : new Request(new URL(input, url).href, init);
 		const target = new URL(request.url, url);
-
-		if (!same_origin(target, url)) {
-			throw new TypeError(
-				"skgo: event.fetch only reaches this app's own routes during server-side rendering (" +
-					origin_of(target) +
-					' is not ' +
-					origin_of(url) +
-					')'
-			);
-		}
-
-		const credentials = init?.credentials ?? request.credentials ?? 'same-origin';
-		if (credentials !== 'omit') {
-			const cookie = Object.entries(req.cookies ?? {})
-				.map(([name, value]) => name + '=' + value)
-				.join('; ');
-			if (cookie) request.headers.set('cookie', cookie);
-		}
-
 		const headers = {};
-		request.headers.forEach((value, name) => {
-			headers[name] = value;
-		});
-
-		const envelope = { method: request.method || 'GET', url: target.href, headers };
+		request.headers.forEach((value, name) => { headers[name] = value; });
+		const envelope = {
+			method: request.method || 'GET', url: target.href, headers,
+			credentials: request.credentials, mode: request.mode
+		};
 		if (typeof request._body === 'string') envelope.body = request._body;
-
-		const raw = await globalThis.__skgo_fetch(JSON.stringify(envelope));
-		const answer = JSON.parse(raw);
+		else if (request._body != null) throw new TypeError('skgo: render-time fetch request bodies must be text');
+		const answer = JSON.parse(await globalThis.__skgo_fetch(JSON.stringify(envelope)));
 		if (answer.error) throw new TypeError(answer.error);
-
-		return Promise.resolve(
-			new Response(answer.response.body ?? '', {
-				status: answer.response.status,
-				headers: answer.response.headers
-			})
-		);
+		const value = answer.response;
+		const body = value.bodyBase64
+			? Uint8Array.from(atob(value.bodyBase64), (c) => c.charCodeAt(0))
+			: value.body ?? '';
+		const response = new Response(body, { status: value.status, statusText: value.statusText, headers: value.headers });
+		response._serializedHeaders = value.serializedHeaders ?? {};
+		return response;
 	};
 }
+
+/**
+ * Kit's universal-load fetch contract (server/page/load_data.js): record bodies
+ * when consumed, hash the author's headers/body rather than inherited cookies,
+ * and reject access to headers hydration will not receive. The final HTML is
+ * emitted by Kit's own serialize_data, including escaping, hashes and TTLs.
+ */
+function create_universal_fetch(event, req, fetched) {
+	return async (input, init) => {
+		const request_headers = input instanceof Request
+			? ([...input.headers].length ? new Headers(input.headers) : undefined)
+			: init?.headers;
+		const request_body = input instanceof Request ? input._body : init?.body;
+		const url = new URL(input instanceof Request ? input.url : input, event.url);
+		let response = await event.fetch(input, init);
+		if (!same_origin(url, event.url) && (url.protocol === 'http:' || url.protocol === 'https:')) {
+			const mode = input instanceof Request ? input.mode : init?.mode ?? 'cors';
+			if (mode === 'no-cors') {
+				const allowed = response._serializedHeaders;
+				response = new Response('', { status: response.status, statusText: response.statusText, headers: response.headers });
+				response._serializedHeaders = allowed;
+			} else {
+				const acao = response.headers.get('access-control-allow-origin');
+				if (!acao || (acao !== '*' && acao !== origin_of(event.url))) {
+					throw new Error("CORS error: incorrect or missing 'Access-Control-Allow-Origin' header");
+				}
+			}
+		}
+		const cache_url = same_origin(url, event.url)
+			? url.pathname + url.search
+			: url.href;
+		const allowed = response._serializedHeaders;
+		const wrap = (target) => {
+			const record = (body, is_b64) => {
+				fetched.push({
+					url: cache_url, method: event.request.method,
+					request_headers, request_body, response: target,
+					response_body: body, is_b64, allowed
+				});
+			};
+			const text = async () => {
+				const body = await target.text();
+				if (body === '' && [101, 204, 205, 304].includes(target.status)) {
+					record(undefined, false);
+					return undefined;
+				}
+				record(body, false);
+				return body;
+			};
+			const headers = new Headers(target.headers);
+			const get = headers.get.bind(headers);
+			if (req.csr) {
+				headers.get = (key) => {
+					const lower = key.toLowerCase();
+					const value = get(lower);
+					if (value && !lower.startsWith('x-sveltekit-') && !(lower in allowed)) {
+						throw new Error(`Failed to get response header "${lower}" — it must be included by the filterSerializedResponseHeaders option (at ${event.route.id})`);
+					}
+					return value;
+				};
+			}
+			return new Proxy(target, {
+				get(target, key) {
+					if (key === 'headers') return headers;
+					if (key === 'text') return text;
+					if (key === 'json') return async () => { const body = await text(); return body ? JSON.parse(body) : undefined; };
+					if (key === 'arrayBuffer') return async () => {
+						const buffer = await target.arrayBuffer();
+						let binary = '';
+						for (const byte of new Uint8Array(buffer)) binary += String.fromCharCode(byte);
+						record(btoa(binary), true);
+						return buffer;
+					};
+					if (key === 'clone') return () => wrap(target.clone());
+					const value = Reflect.get(target, key, target);
+					return typeof value === 'function' ? value.bind(target) : value;
+				}
+			});
+		};
+		return wrap(response);
+	};
+}
+
 
 /**
  * Same-origin, spelled out rather than taken from `origin`. The engine's URL is
  * Go's (goja_nodejs, over net/url) and its `origin` is scheme and hostname with
  * the port left out, which would make a page on :8080 and a URL on :9999 look
  * like the same site — and this is the one comparison standing between a
- * cross-origin fetch and Go's own handler for the path. Protocol, hostname and
- * port are each exactly what the standard compares.
+ * cached response and a foreign response. Protocol, hostname and
+ * port are each exactly what the standard compares. Go enforces dispatch separately.
  *
  * @param {URL} a
  * @param {URL} b
  */
 function same_origin(a, b) {
-	return a.protocol === b.protocol && a.hostname === b.hostname && a.port === b.port;
+	const port = (url) => url.port || (url.protocol === 'https:' ? '443' : '80');
+	return a.protocol === b.protocol && a.hostname === b.hostname && port(a) === port(b);
 }
 
 /**
  * What `url.origin` would say if this engine's URL reported it the way the
- * standard does. Only the refusal message above needs it.
+ * standard does, used for CORS validation.
  *
  * @param {URL} url
  */
 function origin_of(url) {
-	return url.host ? url.protocol + '//' + url.host : 'null';
+	const default_port = (url.protocol === 'http:' && url.port === '80') || (url.protocol === 'https:' && url.port === '443');
+	const host = default_port ? url.host.replace(/:(80|443)$/, '') : url.host;
+	return host ? url.protocol + '//' + host : 'null';
 }
 
 /**
@@ -181,7 +233,7 @@ function make_event(req, url) {
 		locals: {},
 		params: req.params ?? {},
 		platform: undefined,
-		request: { headers: { get: () => null }, method: 'GET' },
+		request: { headers: new Headers(req.headers), method: req.method ?? 'GET' },
 		route: { id: req.route_id ?? null },
 		setHeaders: () => {},
 		url,
@@ -218,7 +270,7 @@ function node_data(node) {
 	});
 }
 
-async function build_props(req, url, event, state) {
+async function build_props(req, url, event, state, fetched) {
 	const form = req.form ? devalue.parse(req.form, decoders) : null;
 	const page = {
 		error: req.error ?? null,
@@ -261,9 +313,7 @@ async function build_props(req, url, event, state) {
 					parent: async () => parent_data,
 					depends: () => {},
 					untrack: (fn) => fn(),
-					fetch: () => {
-						throw new Error('skgo: universal load fetch is not supported during rendering');
-					},
+					fetch: create_universal_fetch(event, req, fetched),
 					setHeaders: () => {
 						throw new Error('skgo: universal load setHeaders is not supported during rendering');
 					}
@@ -363,7 +413,8 @@ globalThis.__skgo_render = function (req_json) {
 		status: 200,
 		error: null,
 		head: '',
-		body: ''
+		body: '',
+		fetched: ''
 	};
 
 	try {
@@ -371,7 +422,8 @@ globalThis.__skgo_render = function (req_json) {
 		const url = new URL(req.url);
 		const state = make_state();
 		const event = make_event(req, url);
-		const props_promise = build_props(req, url, event, state);
+		const fetched = [];
+		const props_promise = build_props(req, url, event, state, fetched);
 		const promise = props_promise.then((props) => {
 			result.status = props.page.status;
 			result.error = req.error ?? null;
@@ -417,6 +469,7 @@ globalThis.__skgo_render = function (req_json) {
 			(rendered) => {
 				result.head = rendered.head;
 				result.body = rendered.body;
+				result.fetched = fetched.map((item) => serialize_data(item, (key) => key in item.allowed)).join("\n\t\t\t");
 				result.done = true;
 			},
 			(err) => {

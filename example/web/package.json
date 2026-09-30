@@ -1,34 +1,34 @@
 {
-	"name": "skgo-example-web",
-	"private": true,
-	"type": "module",
-	"imports": {
-		"#lib/*": "./src/lib/*"
-	},
-	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
-	},
-	"dependencies": {
-		"yaml": "2.9.1"
-	},
-	"devDependencies": {
-		"@skgo/sveltekit-adapter": "link:../../internal/adapter",
-		"@sveltejs/kit": "3.0.0-next.28",
-		"@sveltejs/vite-plugin-svelte": "7.3.1",
-		"@types/node": "24.13.6",
-		"svelte": "5.57.1",
-		"svelte-check": "4.7.6",
-		"typescript": "6.0.3",
-		"vite": "npm:@voidzero-dev/vite-plus-core@0.3.3",
-		"vite-plus": "0.3.3"
-	},
-	"devEngines": {
-		"packageManager": {
-			"name": "pnpm",
-			"version": "11.27.1",
-			"onFail": "download"
-		}
-	}
+  "name": "skgo-example-web",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@skgo/sveltekit-adapter": "link:../../internal/adapter",
+    "@sveltejs/kit": "3.0.0-next.28",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@types/node": "24.13.6",
+    "svelte": "5.57.1",
+    "svelte-check": "4.7.6",
+    "typescript": "6.0.3",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.3",
+    "vite-plus": "0.3.3"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.27.1",
+      "onFail": "download"
+    }
+  }
 }
