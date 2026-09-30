@@ -133,7 +133,7 @@ func (a *app) generateCodecs() error {
 	var defs typegrammarDefs
 	nodes := make([]typegrammar.Type, len(a.codecSet.roots))
 	for _, dir := range dirs {
-		loaded, err := grammar.Load(dir)
+		loaded, err := a.loadGrammar(dir)
 		if err != nil {
 			return fmt.Errorf("skgo: loading %s to generate its codecs: %w", dir, err)
 		}

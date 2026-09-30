@@ -386,7 +386,7 @@ func (a *app) sortedTypeSets() []*namedTypes {
 // its own for a package of the app's, the imported package's for a foreign
 // one — so the types handed to polytype belong to the graph polytype loaded.
 func (a *app) projectTypes(set *namedTypes) error {
-	loaded, err := grammar.Load(set.loadDir)
+	loaded, err := a.loadGrammar(set.loadDir)
 	if err != nil {
 		return fmt.Errorf("skgo: loading %s to project its types: %w", set.pkg.Path(), err)
 	}
