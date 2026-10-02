@@ -1,7 +1,7 @@
 import { createBdd } from 'playwright-bdd';
 import type { Browser, Page, Response } from '@playwright/test';
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, expectedMode, expectMode, hydrated, booted, test } from './fixtures';
@@ -20,18 +20,6 @@ const app = resolve(dirname(fileURLToPath(import.meta.url)), '../../web');
 const edited = new Map<string, string>();
 const created = new Set<string>();
 const createdFiles = new Set<string>();
-
-// Editors save a complete replacement. In-place writeFile truncates the live
-// template before writing it, letting Kit's watcher read a missing head tag.
-async function replaceSource(path: string, source: string): Promise<void> {
-	const pending = `${path}.skgo-e2e-${process.pid}.tmp`;
-	try {
-		await writeFile(pending, source, 'utf-8');
-		await rename(pending, path);
-	} finally {
-		await rm(pending, { force: true });
-	}
-}
 
 /** Steps whose assertions distinguish a live module graph from an embedded build. */
 
@@ -96,7 +84,7 @@ When(
 			1
 		);
 		if (!edited.has(path)) edited.set(path, before);
-		await replaceSource(path, before.replace(from, to));
+		await writeFile(path, before.replace(from, to), 'utf-8');
 	}
 );
 
@@ -343,9 +331,9 @@ Then(
 /**
  * Kit reloads app-template edits and Vite reloads its generated route graph.
  * HTTP readiness does not mean the open browser has consumed either event:
- * its reload can replace our navigation. Await the committed document response
- * rather than a load event that a same-URL reload can replace. The callers
- * assert the visible document and, for scripted pages, Kit's hydration.
+ * its reload can replace our navigation. Require the full load event with a
+ * bounded timeout: a stalled module request is a failure, not readiness. Only
+ * explicit navigation interruptions are retried; callers assert visible state.
  */
 async function editedDocument(page: Page, path: string, live: boolean): Promise<Response> {
 	if (!live) {
@@ -358,14 +346,14 @@ async function editedDocument(page: Page, path: string, live: boolean): Promise<
 		.poll(async () => {
 			response = await tryDocumentNavigation(page, path);
 			return response !== null;
-		}, { timeout: developmentTimeout, intervals, message: `no committed document navigation to ${path}` })
+		}, { timeout: developmentTimeout, intervals, message: `no completed document navigation to ${path}` })
 		.toBe(true);
 	return response!;
 }
 
 async function tryDocumentNavigation(page: Page, path: string): Promise<Response | null> {
 	try {
-		return await page.goto(path, { waitUntil: 'commit' });
+		return await page.goto(path, { waitUntil: 'load', timeout: 15_000 });
 	} catch (error) {
 		if (/net::ERR_ABORTED|is interrupted by another navigation/.test(String(error))) return null;
 		throw error;
@@ -409,9 +397,9 @@ Then(
 			expect(await scripts()).toBeGreaterThan(0);
 		}
 		await editedDocument(page, path, mode === 'dev');
+		await expect(page.getByTestId('go-dev-load')).toHaveText('Go revision one');
 		if (mode === 'dev') expect(await page.locator('script').count()).toBe(0);
 		else expect(await page.locator('script').count()).toBeGreaterThan(0);
-		await expect(page.getByTestId('go-dev-load')).toHaveText('Go revision one');
 	}
 );
 
@@ -631,8 +619,14 @@ Then(
 		const response = await editedDocument(page, path, mode === 'dev');
 		expect(response.status()).toBe(expected);
 		await expect(page).toHaveURL(path);
-		await booted(page);
-		if (expected === 404) await expect(page.getByRole('heading', { name: '404', exact: true })).toBeVisible();
+		if (path === '/go-dev-endpoint' && expected === 200) {
+			expect(response.headers()['content-type']).toMatch(/^text\/plain/);
+			expect(response.headers()['x-go-revision']).toBe('new-one');
+			await expect(page.locator('body')).toHaveText('New Go endpoint revision one');
+		} else {
+			await booted(page);
+			if (expected === 404) await expect(page.getByRole('heading', { name: '404', exact: true })).toBeVisible();
+		}
 	}
 );
 
@@ -683,7 +677,7 @@ After(async ({ page }) => {
 	created.clear();
 	const restored = [...edited.keys()];
 	for (const [path, before] of edited) {
-		await replaceSource(path, before);
+		await writeFile(path, before, 'utf-8');
 	}
 	const changedSource = edited.size > 0;
 	edited.clear();

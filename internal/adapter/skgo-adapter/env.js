@@ -1072,6 +1072,22 @@ export function gojaDevUnchangedFiles({ out = 'build' } = {}) {
 				if (now !== null) known.set(key, now);
 				return same;
 			};
+			// Kit validates templates synchronously from its watcher. An in-place
+			// save can expose truncated bytes; report that validation error but
+			// keep the watcher alive so the completed save can regenerate Kit.
+			const notify = (receiver, event, args, file) => {
+				try {
+					return emit.call(receiver, event, ...args);
+				} catch (error) {
+					const authored = typeof file === 'string' ? relative(server.config.root, file) : null;
+					if (!(error instanceof Error) || authored === null ||
+						!['%sveltekit.head%', '%sveltekit.body%'].some(tag => error.message === `${authored} is missing ${tag}`)) throw error;
+					known.delete(posix(file));
+					server.config.logger.error(error.stack ?? error.message);
+					server.ws.send({ type: 'error', err: { message: error.message, stack: error.stack ?? '', plugin: 'skgo-dev-unchanged-files' } });
+					return false;
+				}
+			};
 			watcher.emit = function (event, ...args) {
 				const all = event === 'all';
 				const kind = all ? args[0] : event;
@@ -1089,10 +1105,10 @@ export function gojaDevUnchangedFiles({ out = 'build' } = {}) {
 						if (verdict.same) return false;
 					}
 				}
-				if (all) return emit.call(this, event, ...args);
+				if (all) return notify(this, event, args, file);
 				depth++;
 				try {
-					return emit.call(this, event, ...args);
+					return notify(this, event, args, file);
 				} finally {
 					depth--;
 				}
