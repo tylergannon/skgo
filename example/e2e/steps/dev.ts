@@ -329,8 +329,9 @@ Then(
 );
 
 /**
- * Kit sends full-reload for template and route-graph edits. HTTP readiness does
- * not mean that the open browser has consumed that event: its reload can
+ * Kit reloads app-template edits and Vite reloads its generated route graph.
+ * HTTP readiness does not mean the open browser has consumed either event:
+ * its reload can
  * replace our navigation. Require a completed navigation, retrying only that
  * dev interruption, before asserting the new document's contents or status.
  */
@@ -343,16 +344,20 @@ async function editedDocument(page: Page, path: string, live: boolean): Promise<
 	let response: Response | null = null;
 	await expect
 		.poll(async () => {
-			try {
-				response = await page.goto(path);
-				return response !== null;
-			} catch (error) {
-				if (/net::ERR_ABORTED|is interrupted by another navigation/.test(String(error))) return false;
-				throw error;
-			}
+			response = await tryDocumentNavigation(page, path);
+			return response !== null;
 		}, { timeout: developmentTimeout, intervals, message: `no completed document navigation to ${path}` })
 		.toBe(true);
 	return response!;
+}
+
+async function tryDocumentNavigation(page: Page, path: string): Promise<Response | null> {
+	try {
+		return await page.goto(path);
+	} catch (error) {
+		if (/net::ERR_ABORTED|is interrupted by another navigation/.test(String(error))) return null;
+		throw error;
+	}
 }
 
 async function templateMarker(page: Page, path: string): Promise<string> {
@@ -373,8 +378,10 @@ Then(
 			.toBe(mode === 'dev' ? live : built);
 		const response = await editedDocument(page, path, mode === 'dev');
 		expect(response.status()).toBe(200);
+		await expect(page).toHaveURL(path);
 		await expect(page.locator('meta[name="go-template"]')).toHaveAttribute('content', mode === 'dev' ? live : built);
-		await expect(page.getByTestId('go-dev-load')).toHaveText('Go revision one');
+		await expect(page.getByTestId('app-nav')).toBeVisible();
+		if (path === '/go-dev') await expect(page.getByTestId('go-dev-load')).toHaveText('Go revision one');
 	}
 );
 
@@ -388,7 +395,7 @@ Then(
 		} else {
 			expect(await scripts()).toBeGreaterThan(0);
 		}
-		await page.goto(path);
+		await editedDocument(page, path, mode === 'dev');
 		if (mode === 'dev') expect(await page.locator('script').count()).toBe(0);
 		else expect(await page.locator('script').count()).toBeGreaterThan(0);
 		await expect(page.getByTestId('go-dev-load')).toHaveText('Go revision one');
@@ -455,7 +462,7 @@ async function coldDocument(page: Page, path: string, testid: string, expected: 
 			intervals
 		})
 		.toBe(expected);
-	await page.goto(path);
+	await editedDocument(page, path, live);
 	await expect(page.getByTestId(testid)).toHaveText(expected);
 	await hydrated(page);
 	await expect(page.getByTestId(testid)).toHaveText(expected);
@@ -610,7 +617,7 @@ Then(
 			.toBe(expected);
 		const response = await editedDocument(page, path, mode === 'dev');
 		expect(response.status()).toBe(expected);
-		await expect(page).toHaveURL(response.url());
+		await expect(page).toHaveURL(path);
 		if (expected === 404) await expect(page.getByRole('heading', { name: '404', exact: true })).toBeVisible();
 	}
 );
@@ -743,20 +750,9 @@ async function navigateThroughRouteUpdate(page: Page, path: string, title: strin
 	await expect
 		.poll(
 			async () => {
-				try {
-					const response = await page.goto(path);
-					if (response?.status() !== 200) return null;
-					return await page.getByTestId('title').textContent();
-				} catch (error) {
-					const message = String(error);
-					if (
-						message.includes('net::ERR_ABORTED') ||
-						message.includes('is interrupted by another navigation')
-					) {
-						return null;
-					}
-					throw error;
-				}
+				const response = await tryDocumentNavigation(page, path);
+				if (response?.status() !== 200) return null;
+				return await page.getByTestId('title').textContent();
 			},
 			{ timeout: 30_000, intervals: [250, 250, 500, 500, 1000] }
 		)

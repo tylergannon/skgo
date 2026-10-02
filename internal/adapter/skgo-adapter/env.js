@@ -530,8 +530,9 @@ function needsLowering(code, id) {
 			node.async && node.generator) return true;
 		for (const value of Object.values(node)) {
 			if (value && typeof value === 'object') {
-				if (Array.isArray(value)) nodes.push(...value);
-				else nodes.push(value);
+				if (Array.isArray(value)) {
+					for (const child of value) nodes.push(child);
+				} else nodes.push(value);
 			}
 		}
 	}

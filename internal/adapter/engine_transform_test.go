@@ -29,7 +29,8 @@ const native = [
  '// for await (const row of rows)\nclass Renderer { #out = []; }',
  'const message = "async function* and for await ("; class Renderer { #out = []; }',
  'const pattern = /async\\s*\\*/; class Renderer { #out = []; }',
- 'const message = ` + "`async * and for await (`" + `; class Renderer { #out = []; }'
+ 'const message = ` + "`async * and for await (`" + `; class Renderer { #out = []; }',
+ '// async\nconst table = [' + Array(200_000).fill('0').join(',') + ']; class Renderer { #out = []; }'
 ];
 for (const code of native) {
  const lowered = new Set();
