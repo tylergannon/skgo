@@ -1,0 +1,30 @@
+$ bddgen && playwright test --project=source-edit --no-deps --workers=1 --repeat-each=3 --grep 'A template marker edited|A route whose Go load'
+
+Running 6 tests using 1 worker
+
+(node:29169) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+PROOF controlled browser reload interrupts /go-dev-added
+PROOF caught Error: page.goto: net::ERR_ABORTED at http://127.0.0.1:8080/go-dev-added
+  ✓  1 [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:40:3 › The document follows the source being served › A route whose Go load and component did not exist at launch is served, navigated to and removed again (10.7s)
+PROOF controlled browser reload interrupts /go-dev
+PROOF caught Error: page.goto: net::ERR_ABORTED at http://127.0.0.1:8080/go-dev
+  ✓  2 [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:86:3 › The document follows the source being served › A template marker edited while the servers run reaches the next dev document, and not the build prod embeds (945ms)
+(node:29531) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+PROOF controlled browser reload interrupts /go-dev-added
+PROOF caught Error: page.goto: net::ERR_ABORTED at http://127.0.0.1:8080/go-dev-added
+  ✓  3 [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:40:3 › The document follows the source being served › A route whose Go load and component did not exist at launch is served, navigated to and removed again (10.8s)
+PROOF controlled browser reload interrupts /go-dev
+PROOF caught Error: page.goto: net::ERR_ABORTED at http://127.0.0.1:8080/go-dev
+  ✓  4 [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:86:3 › The document follows the source being served › A template marker edited while the servers run reaches the next dev document, and not the build prod embeds (993ms)
+(node:29882) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+PROOF controlled browser reload interrupts /go-dev-added
+PROOF caught Error: page.goto: net::ERR_ABORTED at http://127.0.0.1:8080/go-dev-added
+  ✓  5 [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:40:3 › The document follows the source being served › A route whose Go load and component did not exist at launch is served, navigated to and removed again (10.5s)
+PROOF controlled browser reload interrupts /go-dev
+PROOF caught Error: page.goto: net::ERR_ABORTED at http://127.0.0.1:8080/go-dev
+  ✓  6 [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:86:3 › The document follows the source being served › A template marker edited while the servers run reaches the next dev document, and not the build prod embeds (1.1s)
+
+  6 passed (36.2s)

@@ -1,0 +1,63 @@
+diff --git a/example/e2e/steps/dev.ts b/example/e2e/steps/dev.ts
+index 2e9fa1c..bfe7735 100644
+--- a/example/e2e/steps/dev.ts
++++ b/example/e2e/steps/dev.ts
+@@ -334,7 +334,30 @@ Then(
+  * replace our navigation. Require a completed navigation, retrying only that
+  * dev interruption, before asserting the new document's contents or status.
+  */
+-async function editedDocument(page: Page, path: string, live: boolean): Promise<Response> {
++async function editedDocument(page: Page, path: string, live: boolean, proof = false): Promise<Response> {
++	// Temporary proof: hold one real document request, then request a browser
++	// document reload before the held navigation commits.
++	if (live && proof && process.env.SKGO_RELOAD_PROOF) {
++		const cdp = await page.context().newCDPSession(page);
++		if (process.env.SKGO_RELOAD_PROOF?.startsWith('wrong-')) {
++			await page.route(new URL(path, page.url()).href, async (route) => {
++				const response = await route.fetch();
++				const body = (await response.text()).replace('content="Go template revision two"', 'content="WRONG proof marker"');
++				console.log(`PROOF corrupt browser document ${path}: ${process.env.SKGO_RELOAD_PROOF}`);
++				await route.fulfill({ response, body: process.env.SKGO_RELOAD_PROOF === 'wrong-marker' ? body : await response.text(), status: process.env.SKGO_RELOAD_PROOF === 'wrong-status' ? 200 : response.status() });
++			});
++		}
++		await page.route(new URL(path, page.url()).href, async (route) => {
++			console.log(`PROOF controlled browser reload interrupts ${path}`);
++			await cdp.send('Page.reload');
++			await route.continue().catch(() => {});
++		}, { times: 1 });
++		if (process.env.SKGO_RELOAD_PROOF === 'old') {
++			const response = await page.goto(path);
++			expect(response).not.toBeNull();
++			return response!;
++		}
++	}
+ 	if (!live) {
+ 		const response = await page.goto(path);
+ 		expect(response, `no document response for ${path}`).not.toBeNull();
+@@ -347,7 +370,7 @@ async function editedDocument(page: Page, path: string, live: boolean): Promise<
+ 				response = await page.goto(path);
+ 				return response !== null;
+ 			} catch (error) {
+-				if (/net::ERR_ABORTED|is interrupted by another navigation/.test(String(error))) return false;
++				if (/net::ERR_ABORTED|is interrupted by another navigation/.test(String(error))) { console.log(`PROOF caught ${String(error).split('\n')[0]}`); return false; }
+ 				throw error;
+ 			}
+ 		}, { timeout: developmentTimeout, intervals, message: `no completed document navigation to ${path}` })
+@@ -371,7 +394,7 @@ Then(
+ 				intervals
+ 			})
+ 			.toBe(mode === 'dev' ? live : built);
+-		const response = await editedDocument(page, path, mode === 'dev');
++		const response = await editedDocument(page, path, mode === 'dev', live === 'Go template revision two');
+ 		expect(response.status()).toBe(200);
+ 		await expect(page.locator('meta[name="go-template"]')).toHaveAttribute('content', mode === 'dev' ? live : built);
+ 		await expect(page.getByTestId('go-dev-load')).toHaveText('Go revision one');
+@@ -608,7 +631,7 @@ Then(
+ 				intervals
+ 			})
+ 			.toBe(expected);
+-		const response = await editedDocument(page, path, mode === 'dev');
++		const response = await editedDocument(page, path, mode === 'dev', expected === 404 && new URL(page.url()).pathname === path);
+ 		expect(response.status()).toBe(expected);
+ 		await expect(page).toHaveURL(response.url());
+ 		if (expected === 404) await expect(page.getByRole('heading', { name: '404', exact: true })).toBeVisible();
