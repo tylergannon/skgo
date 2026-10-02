@@ -3,6 +3,8 @@ package skgo
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -26,13 +28,20 @@ func fetchFixture() http.Handler {
 	})
 }
 
+// renderParent is the page request every render-time fetch in these tests
+// belongs to; a fetch with no originating request is refused.
+func renderParent(ctx context.Context) context.Context {
+	page, _ := url.Parse("http://example.test/page")
+	return context.WithValue(ctx, fetchParentKey{}, fetchParent{request: httptest.NewRequest("GET", "http://example.test/page", nil), url: page})
+}
+
 // TestFetchDispatchRunsInProcess is the proof that a render-time fetch never
 // opens a socket: the same http.Handler a real request would reach answers
 // one built from a JSON envelope, with no listener anywhere in the test.
 func TestFetchDispatchRunsInProcess(t *testing.T) {
 	s := &SSR{fetch: fetchFixture()}
 
-	answer := s.fetchAnswer(context.Background(), ssr.FetchRequest{
+	answer := s.fetchAnswer(renderParent(context.Background()), ssr.FetchRequest{
 		Method:  "GET",
 		URL:     "http://example.test/render-fetch/greeting",
 		Headers: map[string]string{"Cookie": "skgo_session=abc123"},
@@ -50,7 +59,7 @@ func TestFetchDispatchRunsInProcess(t *testing.T) {
 	if !strings.Contains(answer.Response.Body, `"message":"hello from Go"`) {
 		t.Errorf("body = %q", answer.Response.Body)
 	}
-	if got := answer.Response.Headers["X-Saw-Cookie"]; got != "skgo_session=abc123" {
+	if got := responseHeader(answer.Response, "x-saw-cookie"); got != "skgo_session=abc123" {
 		t.Errorf("the dispatched request did not carry the cookie the render sent; handler saw %q", got)
 	}
 }
@@ -60,7 +69,7 @@ func TestFetchDispatchRunsInProcess(t *testing.T) {
 func TestFetchDispatchWithNoRouteRefuses(t *testing.T) {
 	s := &SSR{}
 
-	answer := s.fetchAnswer(context.Background(), ssr.FetchRequest{Method: "GET", URL: "http://example.test/nowhere"})
+	answer := s.fetchAnswer(renderParent(context.Background()), ssr.FetchRequest{Method: "GET", URL: "http://example.test/nowhere"})
 	if answer.Response != nil {
 		t.Fatalf("got a response with no Fetch handler configured: %+v", answer.Response)
 	}
@@ -76,7 +85,7 @@ func TestFetchDispatchWithNoRouteRefuses(t *testing.T) {
 func TestFetchDispatchCarriesA404Through(t *testing.T) {
 	s := &SSR{fetch: http.NotFoundHandler()}
 
-	answer := s.fetchAnswer(context.Background(), ssr.FetchRequest{Method: "GET", URL: "http://example.test/no-such-route"})
+	answer := s.fetchAnswer(renderParent(context.Background()), ssr.FetchRequest{Method: "GET", URL: "http://example.test/no-such-route"})
 	if answer.Error != "" {
 		t.Fatalf("a 404 from the handler was reported as a fetch failure: %s", answer.Error)
 	}
@@ -125,7 +134,10 @@ func TestRenderFetchCarriesCancellationToTheGoHandler(t *testing.T) {
 		<-r.Context().Done()
 		w.WriteHeader(http.StatusRequestTimeout)
 	})}
-	go func() { defer close(done); s.fetchAnswer(ctx, ssr.FetchRequest{URL: "http://example.test/wait"}) }()
+	go func() {
+		defer close(done)
+		s.fetchAnswer(renderParent(ctx), ssr.FetchRequest{URL: "http://example.test/wait"})
+	}()
 	<-entered
 	cancel()
 	select {
@@ -133,4 +145,15 @@ func TestRenderFetchCarriesCancellationToTheGoHandler(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("render fetch lost its cancellation context")
 	}
+}
+
+// responseHeader is the value the answer carries for a header name, lowercase
+// as the standard's Headers lists it.
+func responseHeader(response *ssr.FetchResponse, name string) string {
+	for _, h := range response.Headers {
+		if h.Name == name {
+			return h.Value
+		}
+	}
+	return ""
 }

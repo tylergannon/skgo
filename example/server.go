@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/tylergannon/skgo"
@@ -44,8 +45,68 @@ func Handle(ctx context.Context) error {
 			return skgo.Errorf(http.StatusForbidden, "Hook denied this edit")
 		}
 	}
+	if run := request.URL.Query().Get("run"); run != "" && request.URL.Path != "/api/replay-count" {
+		businesslogic.Replays.Record(run, request.Method+" "+request.URL.Path)
+	}
 	id, _ := event.Cookie(SessionCookie)
 	return skgo.SetLocal(ctx, businesslogic.Default.Session(id))
+}
+
+// VisitMiddleware is the part of the app's `handle` hook that wraps the
+// response. For the /middleware pages it establishes a visit before anything
+// answers — refreshing the visit cookie when it is missing or stale, so the
+// load that runs next reads the token from the same cookie jar the visitor
+// receives it from — and marks the response it gets back with what it
+// observed on the matched event.
+func VisitMiddleware(ctx context.Context, event *skgo.Event, resolve skgo.Resolve) (*http.Response, error) {
+	route := event.RouteID()
+	if route == "/stream" {
+		response, err := resolve(ctx, skgo.ResolveOptions{TransformPageChunk: markTransformed})
+		if err != nil {
+			return nil, err
+		}
+		response.Header.Set("X-Skgo-Middleware", route+" data="+strconv.FormatBool(event.IsDataRequest()))
+		return response, nil
+	}
+	if route != "/middleware" && !strings.HasPrefix(route, "/middleware/") {
+		return resolve(ctx)
+	}
+	token, _ := event.Cookie(businesslogic.VisitCookie)
+	if !strings.HasPrefix(token, "visit-") {
+		token = businesslogic.FreshVisitToken
+		if err := event.SetCookie(businesslogic.VisitCookie, token, skgo.CookieOptions{}); err != nil {
+			return nil, err
+		}
+	}
+	err := skgo.SetLocal(ctx, businesslogic.Visit{
+		Token: token, Route: route, Slug: event.Params()["slug"], Data: event.IsDataRequest(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	response, err := resolve(ctx, skgo.ResolveOptions{TransformPageChunk: markTransformed})
+	if err != nil {
+		return nil, err
+	}
+	response.Header.Set("X-Skgo-Middleware", route+" data="+strconv.FormatBool(event.IsDataRequest()))
+	return response, nil
+}
+
+// markTransformed is the document transform of the /middleware pages and of
+// /stream, whose deferred values must still reach kit's client behind a
+// transformed shell: the one place a middleware chooses to rewrite the
+// assembled document, here by marking the root element so a scenario can see
+// kit's client hydrate a transformed page.
+func markTransformed(_ context.Context, html string, _ bool) (string, error) {
+	return strings.Replace(html, `<html lang="en">`, `<html lang="en" data-middleware-transformed="yes">`, 1), nil
+}
+
+// SerializedHeaders is the app's choice of which headers a universal load's
+// hydration data carries. It is made here, per request, rather than on the
+// renderer, so the whole universal-fetch suite runs through the request-local
+// path.
+func SerializedHeaders(ctx context.Context, _ *skgo.Event, resolve skgo.Resolve) (*http.Response, error) {
+	return resolve(ctx, skgo.ResolveOptions{FilterSerializedResponseHeaders: filterSerializedResponseHeaders})
 }
 
 // supportID is the fixture value HandleError adds to every failure. It is a
@@ -53,19 +114,6 @@ func Handle(ctx context.Context) error {
 // something the Gherkin suite and the Go tests can both assert against
 // without asking the app what it just rendered.
 const supportID = "case-1121"
-
-// liveRouteData is compiled into the Go dev server before the corresponding
-// Svelte route exists. The browser proof adds that route while both processes
-// stay running; seeing this exact value in the new document proves that Kit's
-// live node numbering reached Go and that Go, not Kit's throwing stub, loaded
-// its data.
-type liveRouteData struct {
-	Message string `json:"message"`
-}
-
-func liveRouteLoad(context.Context) (any, error) {
-	return liveRouteData{Message: "loaded by the already-running Go process"}, nil
-}
 
 // HandleError is the app's `handleError` hook — kit's own contract, mirrored:
 // it runs for every error a page render raises, expected or not
@@ -102,6 +150,12 @@ func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 // server would otherwise run the generated stub and throw. Pages are last,
 // because in kit they are what answers when nothing else did.
 func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) {
+	return NewHandlerSized(dist, proxy, origin, 0)
+}
+
+// NewHandlerSized is NewHandler with the number of page renders that may run
+// at once. Zero is the renderer's default, one per CPU.
+func NewHandlerSized(dist fs.FS, proxy, origin string, runtimes int) (http.Handler, string, error) {
 	// The manifest is read in both modes: it is where appDir and base come
 	// from, and those decide the URL prefix remote calls arrive on.
 	manifest, err := skgo.ReadManifest(dist)
@@ -119,6 +173,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	loadCfg := manifest.LoadConfig(origin)
 	endpointCfg := manifest.EndpointConfig(origin)
 	handleCfg := manifest.HandleConfig()
+	handleCfg.Origin = origin
 
 	mode := "prod"
 	var pages http.Handler
@@ -131,6 +186,12 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	// captures the variable itself and Go resolves the name when the literal
 	// is written, not when it is called.
 	var endpoints *skgo.Endpoints
+	// app is the whole stack below FetchConfig, and what `event.fetch` answers
+	// from: a subrequest reaches every page, data route, remote function,
+	// server route, asset and prerendered file the visitor's own request would.
+	// It is assigned last, after the renderer that fetches through it exists.
+	var app http.Handler
+	internal := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.ServeHTTP(w, r) })
 	actions, err := skgo.NewActions(generated.Actions()...)
 	if err != nil {
 		return nil, "", err
@@ -152,6 +213,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		loadCfg.Dev = true
 		endpointCfg.Dev = true
 		handleCfg.Version = ""
+		handleCfg.Dev = true
 		mode = "dev"
 		// Go renders the document in dev too. `vp dev` never runs an adapter,
 		// so there is no bundle here; the engine pulls one module at a time
@@ -161,10 +223,10 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		// still goes through to vite, so the browser only ever talks to Go.
 		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			ssr, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
-				Fetch:                           skgo.Handle(Handle).Intercept(handleCfg, endpoints.Intercept(http.NotFoundHandler())),
-				HandleFetch:                     handleFetch,
-				FilterSerializedResponseHeaders: func(name, value string) bool { return name == "x-fetch-hook" },
-				Actions:                         actions,
+				Runtimes:    runtimes,
+				Fetch:       internal,
+				HandleFetch: handleFetch,
+				Actions:     actions,
 			})
 			if err != nil {
 				return nil, err
@@ -176,16 +238,12 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	} else {
 		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			// A render-time `event.fetch` of the app's own routes is answered
-			// by the same server-route registry a real request to that path
-			// would reach — `endpoints`, filled in below before this closure
-			// ever runs — with nothing beneath it: a fetch that matches no
-			// `+server.ts` refuses rather than recursing back into the page
-			// renderer whose own render is what asked for this fetch.
+			// by the whole stack, pages included; see `app`.
 			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-				Fetch:                           skgo.Handle(Handle).Intercept(handleCfg, endpoints.Intercept(http.NotFoundHandler())),
-				HandleFetch:                     handleFetch,
-				FilterSerializedResponseHeaders: func(name, value string) bool { return name == "x-fetch-hook" },
-				Actions:                         actions,
+				Runtimes:    runtimes,
+				Fetch:       internal,
+				HandleFetch: handleFetch,
+				Actions:     actions,
 			})
 			if err != nil {
 				return nil, err
@@ -215,14 +273,7 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
-	loadRegistrations := generated.Loads()
-	if proxy != "" {
-		loadRegistrations = append(loadRegistrations, skgo.NewServerLoad(skgo.LoadSpec{
-			Module: "src/routes/dev-added/+page.server.ts",
-			Run:    liveRouteLoad,
-		}))
-	}
-	loads, err := skgo.NewLoads(loadCfg, loadRegistrations...)
+	loads, err := skgo.NewLoads(loadCfg, generated.Loads()...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -233,11 +284,25 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if pages, err = build(loads, remotes); err != nil {
 		return nil, "", err
 	}
+	handleCfg.Loads = loads
+	handleCfg.Static = skgo.ServedAsFile(pages)
 	// Handle mounts outermost: kit runs `handle` before it dispatches to
 	// anything, and that is true of every registry below, not just the loads
 	// one that happens to also answer `__data.json`.
-	return skgo.Handle(Handle).Intercept(handleCfg,
-		loads.Intercept(remotes.Intercept(endpoints.Intercept(pages)))), mode, nil
+	//
+	// Event.Fetch — what a Go load or endpoint calls to reach this app's own
+	// routes — is mounted outside Handle so the hook's own event can fetch too.
+	// It answers in-process through the same stack, and each subrequest runs
+	// Handle again with fresh locals.
+	app = skgo.Sequence(skgo.Handle(Handle).Middleware(), SerializedHeaders, VisitMiddleware).Intercept(handleCfg,
+		loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
+	return skgo.FetchConfig{
+		Origin:      origin,
+		Base:        manifest.Base,
+		Handler:     internal,
+		HandleFetch: handleFetch,
+		Prerendered: manifest.Prerendered,
+	}.Intercept(app), mode, nil
 }
 
 // The example hook rewrites an API alias query before dispatch and marks the
@@ -250,9 +315,28 @@ func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*
 		query.Del("via")
 		request.URL.RawQuery = query.Encode()
 	}
+	if strings.HasPrefix(request.URL.Path, "/api/replay/") && request.URL.Query().Has("alias") {
+		query := request.URL.Query()
+		query.Del("alias")
+		query.Set("step", "rewritten")
+		request.URL.RawQuery = query.Encode()
+	}
 	response, err := next(request)
 	if err == nil && strings.HasPrefix(request.URL.Path, "/api/") {
 		response.Header.Set("X-Fetch-Hook", "Go")
 	}
 	return response, err
+}
+
+// The headers a universal fetch's replay may carry into the document. The
+// answer depends on the value as well as the name, as Kit's own contract
+// allows: of the cookies an answer sets, only the one named lamp is replayed.
+func filterSerializedResponseHeaders(name, value string) bool {
+	switch name {
+	case "x-fetch-hook", "x-replay-allowed":
+		return true
+	case "set-cookie":
+		return strings.HasPrefix(value, "lamp=")
+	}
+	return false
 }

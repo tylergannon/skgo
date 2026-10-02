@@ -949,6 +949,9 @@ func (a *app) write(path, content string) error {
 // write emits a file. Run collects frontend paths for one formatter invocation
 // after generation; other files are compared with their existing content.
 func write(cfg Config, path, content string) error {
+	if cfg.produced != nil {
+		cfg.produced[path] = struct{}{}
+	}
 	if cfg.frontendFiles != nil && (isFrontendSource(path) || path == filepath.Join(cfg.Web, "skgo.remotes.json")) {
 		cfg.frontendFiles[path] = struct{}{}
 		return writeContent(cfg, path, content)

@@ -956,3 +956,42 @@ func contentTypeFor(name string) string {
 	}
 	return "application/octet-stream"
 }
+
+// ServedAsFile returns the predicate HandleConfig.Static wants for pages: a
+// request the handler answers from a file of the build (a client asset, a
+// prerendered page) or, under `vite dev`, hands to vite as a module or static
+// file. Kit's adapters answer those before `handle` runs, so the hook must
+// not see them. It returns nil for a handler that is neither.
+func ServedAsFile(pages http.Handler) func(*http.Request) bool {
+	switch h := pages.(type) {
+	case *staticHandler:
+		return h.servesFile
+	case *devPages:
+		return h.servedByVite
+	}
+	return nil
+}
+
+func (h *staticHandler) servesFile(r *http.Request) bool {
+	urlPath, ok := normalizePath(r.URL.Path)
+	if !ok {
+		return false
+	}
+	if h.base != "" && urlPath != h.base && !strings.HasPrefix(urlPath, h.base+"/") {
+		return false
+	}
+	if rel := strings.TrimPrefix(strings.TrimPrefix(urlPath, h.base), "/"); rel != "" {
+		if _, found := h.assets[rel]; found {
+			return true
+		}
+	}
+	if h.prerendered[urlPath] {
+		if _, _, ok := h.prerenderedFile(urlPath); ok {
+			return true
+		}
+	}
+	if inverted, ok := invertTrailingSlash(urlPath); ok && h.prerendered[inverted] {
+		return true
+	}
+	return false
+}

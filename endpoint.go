@@ -150,6 +150,10 @@ type EndpointConfig struct {
 	ErrorTemplate string
 	// Routes is the route table, from the manifest.
 	Routes []ManifestRoute
+	// Prerendered is the build's list of prerendered pathnames. Kit's adapters
+	// answer a GET of one from its file before any dynamic route is consulted,
+	// so a server route that would also match it does not run for it.
+	Prerendered []string
 
 	// manifest reports that this config came from a build manifest, which is
 	// what makes the drift check meaningful.
@@ -165,6 +169,7 @@ func (m Manifest) EndpointConfig(origin string) EndpointConfig {
 		Origin:         origin,
 		TrustedOrigins: m.TrustedOrigins,
 		Routes:         m.Routes,
+		Prerendered:    m.Prerendered,
 		manifest:       true,
 	}
 }
@@ -183,6 +188,7 @@ type Endpoints struct {
 	origin string
 	// The dev renderer can refresh error.html after the registry is built.
 	errorTemplate string
+	prerendered   map[string]bool
 
 	routes []*endpointRoute
 	// byRoute is every registered method, keyed by route id then method.
@@ -228,6 +234,7 @@ func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
 		origin:        cfg.Origin,
 		errorTemplate: cfg.ErrorTemplate,
 		byRoute:       map[string]map[string]http.HandlerFunc{},
+		prerendered:   prerenderedSet(cfg.Prerendered),
 	}
 
 	for _, ep := range eps {
@@ -399,6 +406,12 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 		next.ServeHTTP(w, r)
 		return
 	}
+	// A prerendered file shadows whatever dynamic route would match its path,
+	// as it does in every Kit adapter; the static handler serves it.
+	if (r.Method == http.MethodGet || r.Method == http.MethodHead) && es.prerendered[urlPath] {
+		next.ServeHTTP(w, r)
+		return
+	}
 	// Kit's own internal suffixes are not routes. `__data.json` is answered
 	// upstream by the loads registry; anything still carrying a suffix here is
 	// the static handler's to refuse.
@@ -511,12 +524,12 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 	}
 
 	shared := &loadRequest{
-		req:     r,
-		jar:     newCookieJar(r, secureCookieDefault(es.cfg.Origin, es.cfg.Dev)),
-		headers: http.Header{},
-		url:     &pageURL,
-		routeID: route.id,
-		params:  params,
+		req:           r,
+		jar:           requestCookieJar(r, secureCookieDefault(es.cfg.Origin, es.cfg.Dev)),
+		responseState: newResponseState(r),
+		url:           &pageURL,
+		routeID:       route.id,
+		params:        params,
 	}
 	e := shared.event(0, nil)
 	// An endpoint owns the ResponseWriter, so it writes cookies and headers
@@ -527,6 +540,9 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 	e.endpoint = true
 	e.load.uses.tracking = false
 	r = r.WithContext(withEvent(r.Context(), e))
+	// A fetch the handler makes may bring cookies back for the visitor, and
+	// Kit adds them to the response whoever built it.
+	w = &cookieWriter{ResponseWriter: w, jar: shared.jar}
 
 	defer func() {
 		value := recover()

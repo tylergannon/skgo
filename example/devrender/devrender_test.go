@@ -11,6 +11,7 @@ package devrender_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net"
@@ -270,6 +271,313 @@ func TestASourceEditReachesTheNextDevDocument(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	t.Fatalf("GET / still does not carry the edited heading 20s after the edit:\n%s", body)
+}
+
+// TestATemplateEditReachesTheNextDevDocument: app.html is not a route and has
+// no module, so nothing in the module graph carries its edit to Go. The marker
+// is written into the test before and after.
+func TestATemplateEditReachesTheNextDevDocument(t *testing.T) {
+	const (
+		file   = "src/app.html"
+		before = `<meta name="go-template" content="Go template revision one" />`
+		after  = `<meta name="go-template" content="Go template revision two" />`
+	)
+	if body := get("/go-dev").Body.String(); !strings.Contains(body, before) {
+		t.Fatalf("GET /go-dev does not carry %s before the edit:\n%s", before, body)
+	}
+	path := filepath.Join(webRoot, filepath.FromSlash(file))
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := bytes.Count(raw, []byte(before)); n != 1 {
+		t.Fatalf("%s carries %d copies of %s", file, n, before)
+	}
+	defer os.WriteFile(path, raw, 0o644)
+	if err := os.WriteFile(path, bytes.Replace(raw, []byte(before), []byte(after), 1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(20 * time.Second)
+	var body string
+	for time.Now().Before(deadline) {
+		body = get("/go-dev").Body.String()
+		if strings.Contains(body, after) {
+			if strings.Contains(body, before) {
+				t.Fatalf("GET /go-dev carries both template markers:\n%s", body)
+			}
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("GET /go-dev still carries the old template 20s after the edit:\n%s", body)
+}
+
+// TestAFileTouchedWithoutBeingChangedIsNotAnEdit is the dev server's other
+// half: it must tell an edit from a file that merely had its metadata touched.
+// Something on a developer's machine — a sync client, a scanner — does touch
+// generated files, and vite's watcher (chokidar) reports a file nobody has
+// read since it was written as changed on any such event. Vite answers a
+// change to a module with a hot update or a full page reload, so each touch
+// reloads every open page and drops what a visitor typed, and the same change
+// lands in the cursor Go invalidates its modules by. Rewriting a file's own
+// mtime to the value it already has is that touch: it changes nothing a build
+// or a browser could see, and leaves the file in the state chokidar reports.
+func TestAFileTouchedWithoutBeingChangedIsNotAnEdit(t *testing.T) {
+	const file = "src/lib/metadata-touch.ts"
+	path := filepath.Join(webRoot, filepath.FromSlash(file))
+
+	changesSince := func(since int) (int, []string) { return changeLog(t, since) }
+	named := func(since int) int { return namedChanges(t, file, since) }
+	settle := func(since int) { settleChanges(t, file, since) }
+
+	if err := os.WriteFile(path, []byte("export const probe = 1;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path)
+	// Served once, the way a browser would ask for it, so vite has loaded it.
+	resp, err := http.Get(devServer + "/" + file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /%s: status %d", file, resp.StatusCode)
+	}
+	cursor, _ := changesSince(0)
+	settle(0)
+	cursor, _ = changesSince(0)
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		// Same mtime, access time pulled back to it: the file as chokidar
+		// reports it changed, with the bytes it had.
+		if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	settle(cursor)
+	if n := named(cursor); n != 0 {
+		t.Fatalf("a metadata-only touch of %s reached the change log %d time(s); vite would reload every open page for a file nobody edited\n--- vp dev ---\n%s", file, n, viteLog.String())
+	}
+
+	// And an edit that does change the bytes still arrives, so the filter has
+	// not simply silenced the file.
+	if err := os.WriteFile(path, []byte("export const probe = 2;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for named(cursor) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatalf("an edit to %s never reached the change log", file)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	// Putting the original bytes back is a second edit, not a repeat of one
+	// the filter has already seen.
+	after := named(cursor)
+	if err := os.WriteFile(path, []byte("export const probe = 1;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(10 * time.Second)
+	for named(cursor) <= after {
+		if time.Now().After(deadline) {
+			t.Fatalf("restoring the original bytes of %s never reached the change log", file)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// TestDistinctInvalidUTF8BytesAreAnEdit: the unchanged-file filter compares a
+// file's bytes, not the text vite decodes from them. 0xff and 0xfe are both
+// invalid UTF-8 and both decode to U+FFFD, so a filter that digests decoded
+// text calls one the other and silences a real edit.
+func TestDistinctInvalidUTF8BytesAreAnEdit(t *testing.T) {
+	const file = "src/lib/invalid-bytes.ts"
+	path := filepath.Join(webRoot, filepath.FromSlash(file))
+	write := func(b byte) {
+		t.Helper()
+		if err := os.WriteFile(path, append(append([]byte(`export const probe = "`), b), []byte("\";\n")...), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(0xff)
+	defer os.Remove(path)
+	resp, err := http.Get(devServer + "/" + file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /%s: status %d", file, resp.StatusCode)
+	}
+	settleChanges(t, file, 0)
+	cursor, _ := changeLog(t, 0)
+
+	write(0xfe)
+	deadline := time.Now().Add(10 * time.Second)
+	for namedChanges(t, file, cursor) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatalf("changing %s from byte 0xff to 0xfe never reached the change log; both decode to U+FFFD, but they are different files", file)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// TestFilesTheBuildEmitsAreNotDevInputs: the adapter writes its own output
+// into build/, and something on a developer's machine touches those files.
+// Vite answers a change to an html file it holds no module for with a full
+// reload of every open page, so a file written, rewritten or touched there
+// must never be reported to it. Authored files are inputs still: the control
+// below is the same kind of file outside build/, and vite does say so.
+func TestFilesTheBuildEmitsAreNotDevInputs(t *testing.T) {
+	emitted := []string{"build/prerendered/emit-probe.html", "build/error.html", "build/app 3.html"}
+	authored := "src/emit-control.html"
+	for _, file := range append(emitted, authored) {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(webRoot, filepath.FromSlash(file))), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write := func(file, text string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(webRoot, filepath.FromSlash(file)), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	defer os.RemoveAll(filepath.Join(webRoot, "build"))
+	defer os.Remove(filepath.Join(webRoot, filepath.FromSlash(authored)))
+
+	for _, text := range []string{"<p>one</p>", "<p>two</p>"} {
+		for _, file := range emitted {
+			write(file, text)
+		}
+		time.Sleep(700 * time.Millisecond)
+	}
+	for i := 0; i < 2; i++ {
+		for _, file := range emitted {
+			now := time.Now()
+			if err := os.Chtimes(filepath.Join(webRoot, filepath.FromSlash(file)), now, now); err != nil {
+				t.Fatal(err)
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	write(authored, "<p>one</p>")
+	time.Sleep(700 * time.Millisecond)
+	write(authored, "<p>two</p>")
+
+	deadline := time.Now().Add(10 * time.Second)
+	for !strings.Contains(viteLog.String(), authored) {
+		if time.Now().After(deadline) {
+			t.Fatalf("vite never reported the authored %s, so this test cannot tell a silenced watcher from a quiet one\n--- vp dev ---\n%s", authored, viteLog.String())
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	time.Sleep(time.Second)
+	if log := viteLog.String(); strings.Contains(log, "build/") {
+		t.Fatalf("vite reported a file the build emitted; it reloads every open page for each\n--- vp dev ---\n%s", log)
+	}
+}
+
+// TestADependencyEditReachesTheNextDevDocumentWhileTheImporterIsUnchanged: a
+// filter that skips what has not changed must not skip what depends on what
+// has. The page imports the literal's module and its own bytes are the same
+// before and after; only the dependency is written.
+func TestADependencyEditReachesTheNextDevDocumentWhileTheImporterIsUnchanged(t *testing.T) {
+	const (
+		dependency = "src/lib/go-dev-dependency.ts"
+		importer   = "src/routes/go-dev/+page.svelte"
+		before     = "Dependency revision one"
+		after      = "Dependency revision two"
+	)
+	if body := get("/go-dev").Body.String(); !strings.Contains(body, before) {
+		t.Fatalf("GET /go-dev does not carry %q before the edit:\n%s", before, body)
+	}
+	dependencyPath := filepath.Join(webRoot, filepath.FromSlash(dependency))
+	importerPath := filepath.Join(webRoot, filepath.FromSlash(importer))
+	source, err := os.ReadFile(dependencyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	importerBefore, err := os.ReadFile(importerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := bytes.Count(source, []byte(before)); n != 1 {
+		t.Fatalf("%s carries %d copies of %q", dependency, n, before)
+	}
+	defer os.WriteFile(dependencyPath, source, 0o644)
+	if err := os.WriteFile(dependencyPath, bytes.Replace(source, []byte(before), []byte(after), 1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(20 * time.Second)
+	var body string
+	for time.Now().Before(deadline) {
+		body = get("/go-dev").Body.String()
+		if strings.Contains(body, after) {
+			if strings.Contains(body, before) {
+				t.Fatalf("GET /go-dev carries both revisions:\n%s", body)
+			}
+			if importerNow, err := os.ReadFile(importerPath); err != nil || !bytes.Equal(importerNow, importerBefore) {
+				t.Fatalf("%s changed during the test, so it did not isolate the dependency", importer)
+			}
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("GET /go-dev still carries %q 20s after only %s changed:\n%s", before, dependency, body)
+}
+
+// changeLog reads the dev server's change log after a cursor: the files whose
+// content changed, and the cursor Go invalidates its modules by.
+func changeLog(t *testing.T, since int) (version int, files []string) {
+	t.Helper()
+	resp, err := http.Get(devServer + "/__skgo_dev/changed?since=" + strconv.Itoa(since))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out struct {
+		Version int      `json:"version"`
+		Files   []string `json:"files"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	return out.Version, out.Files
+}
+
+// namedChanges counts the log entries for one source file after a cursor.
+func namedChanges(t *testing.T, file string, since int) int {
+	t.Helper()
+	_, files := changeLog(t, since)
+	n := 0
+	for _, f := range files {
+		if strings.HasSuffix(filepath.ToSlash(f), "/"+file) {
+			n++
+		}
+	}
+	return n
+}
+
+// settleChanges waits until the watcher has delivered everything it is going
+// to for this file, so a count taken after it is final.
+func settleChanges(t *testing.T, file string, since int) {
+	t.Helper()
+	last, quiet := -1, 0
+	for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
+		n := namedChanges(t, file, since)
+		if n == last {
+			if quiet++; quiet >= 5 {
+				return
+			}
+			continue
+		}
+		last, quiet = n, 0
+	}
 }
 
 func get(path string) *httptest.ResponseRecorder {

@@ -16,6 +16,11 @@ devport := env("SKGO_DEV_PORT", "5173")
 # scenario about it has nowhere else to look.
 log := env("SKGO_LOG", justfile_directory() / "example/e2e/server.log")
 
+# Every recipe's child processes resolve Staticcheck from this tree first:
+# the one on PATH was built for an older Go and cannot read this toolchain's
+# export data, which makes `skgo check` report it incomplete.
+export PATH := justfile_directory() / ".tools/bin" + ":" + env("PATH")
+
 _default:
     @just --list --unsorted
 
@@ -39,8 +44,16 @@ build:
 vet:
     go vet ./... ./example/...
 
+# a Staticcheck that can read this Go toolchain's export data, kept in .tools/
+tools:
+    #!/usr/bin/env bash
+    set -eu
+    if [ "$(.tools/bin/staticcheck -version 2>/dev/null | cut -d' ' -f1-2)" != "staticcheck 2026.2.1" ]; then
+        GOBIN="{{justfile_directory()}}/.tools/bin" go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
+    fi
+
 # go test, both modules, in one invocation so their packages run side by side
-test:
+test: tools
     go test -count=1 ./... ./example/...
 
 # the example server, against the built frontend
@@ -49,25 +62,26 @@ serve:
     set -o pipefail
     go run ./example/cmd -listen 127.0.0.1:{{port}} 2>&1 | tee "{{log}}"
 
-# The example app in dev: `vp dev` behind, Go in front. Go renders the document
-# — pulling one module at a time out of the `goja` environment the adapter
-# declares in the dev server — and forwards modules, assets and the HMR socket
-# to vite, so the browser only ever talks to Go.
+# The example app in dev, launched once: `skgo dev` starts `vp dev`, builds and
+# runs the Go application, and serves the public address itself. Go renders the
+# document — pulling one module at a time out of the `goja` environment the
+# adapter declares in the dev server — and forwards modules, assets and the HMR
+# socket to vite, so the browser only ever talks to Go. Editing Go source,
+# signatures or routes regenerates the bindings, rebuilds the application and
+# replaces it behind the same address; a build error is the response to every
+# request until it is fixed.
 #
 # `vp` must be the project-local binary: kit checks the SSR environment with
 # `instanceof` against the project's own `vite`, and a mise-global copy of the
 # same version fails that check.
 
-# the example app in dev, both halves
+# the example app in dev: vite, the generator and the Go application, kept current
 dev:
-    #!/bin/sh
-    set -e
-    cd "{{justfile_directory()}}/example/web"
-    mise x -- node_modules/.bin/vp dev --host 127.0.0.1 --port {{devport}} --strictPort &
-    vite=$!
-    trap 'kill "$vite" 2>/dev/null' EXIT INT TERM
-    cd "{{justfile_directory()}}"
-    go run ./example/cmd -listen 127.0.0.1:{{port}} -proxy http://127.0.0.1:{{devport}} -origin "{{origin}}" 2>&1 | tee "{{log}}"
+    #!/usr/bin/env bash
+    set -o pipefail
+    go run ./cmd/skgo dev --root example --web web --cmd ./cmd \
+        --listen 127.0.0.1:{{port}} --origin "{{origin}}" \
+        --vite-port {{devport}} --vite "mise x -- node_modules/.bin/vp dev" 2>&1 | tee "{{log}}"
 
 # Start the server yourself first: `just serve` for a production build, with
 # `just dev` alongside it for the proxied path. `pnpm test`, never `playwright

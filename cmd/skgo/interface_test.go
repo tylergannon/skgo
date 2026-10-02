@@ -179,6 +179,9 @@ func TestCLIAndInitializedStdioMCPExposeSameAdviceAndFailedCheck(t *testing.T) {
 		if c.Name == "skgo-advice" {
 			complete = c.Status == "complete"
 		}
+		if c.Name == "staticcheck" && c.Status != "complete" {
+			t.Fatalf("Staticcheck did not analyze the fixture: %+v", c)
+		}
 		if (c.Name == "prettier" || c.Name == "eslint") && c.Status == "failed" {
 			missingTools[c.Name] = true
 		}

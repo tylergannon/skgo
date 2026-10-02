@@ -16,3 +16,6 @@ example/e2e/server.log
 
 # screenshots are local evidence to open and look at, never tracked (#56)
 ephemeral/screenshots/
+
+# task-local analyzers `just tools` installs
+.tools/

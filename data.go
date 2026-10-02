@@ -231,15 +231,15 @@ func (ls *Loads) runBranchWith(r *http.Request, req dataRequest, routeID string,
 	ctx := r.Context()
 
 	if jar == nil {
-		jar = newCookieJar(r, secureCookieDefault(ls.cfg.Origin, ls.cfg.Dev))
+		jar = requestCookieJar(r, secureCookieDefault(ls.cfg.Origin, ls.cfg.Dev))
 	}
 	shared := &loadRequest{
-		req:     r,
-		jar:     jar,
-		headers: http.Header{},
-		url:     req.url,
-		routeID: routeID,
-		params:  params,
+		req:           r,
+		jar:           jar,
+		responseState: newResponseState(r),
+		url:           req.url,
+		routeID:       routeID,
+		params:        params,
 	}
 	for name, values := range actionHeaders {
 		shared.headers[name] = append([]string(nil), values...)

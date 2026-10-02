@@ -79,6 +79,18 @@
 			"target": "web/src/routes/api/fatal"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a",
+			"target": "web/src/routes/api/replay-count"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2",
+			"target": "web/src/routes/api/replay/[kind]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq",
+			"target": "web/src/routes/api/request-fetch"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t",
 			"target": "web/src/routes/api/todos"
 		},
@@ -101,6 +113,10 @@
 		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5",
 			"target": "web/src/routes/docs/[...rest]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg",
+			"target": "web/src/routes/destinations"
 		},
 		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5sw24dupe",
@@ -127,6 +143,14 @@
 			"target": "web/src/routes/error/unexpected"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5tw6llemv3a",
+			"target": "web/src/routes/go-dev"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5tw6llemv3c6zlomryg62looq",
+			"target": "web/src/routes/go-dev/endpoint"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y",
 			"target": "web/src/routes/invoices"
 		},
@@ -139,12 +163,28 @@
 			"target": "web/src/routes/live"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu",
+			"target": "web/src/routes/middleware"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2",
+			"target": "web/src/routes/middleware/[slug]"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a",
 			"target": "web/src/routes/optional"
 		},
 		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq",
 			"target": "web/src/routes/prerender/[slug]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a",
+			"target": "web/src/routes/request-fetch"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq",
+			"target": "web/src/routes/shadow/[...rest]"
 		},
 		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq",

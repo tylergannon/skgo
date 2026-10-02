@@ -76,30 +76,27 @@ func TestTheEngineParsesAURLTheWayTheWebDoes(t *testing.T) {
 // app, in skgo-adapter/entry.js — compares protocol, hostname and port itself,
 // with a comment pointing here. Anything else that comes to need an origin has
 // to do the same, which is what this test exists to say.
-func TestTheEngineOriginLeavesThePortOut(t *testing.T) {
-	const standard = "http://127.0.0.1:8080"
-	got := evaluate(t, `new URL('http://127.0.0.1:8080/a').origin`)
-	if got == standard {
-		t.Fatalf("the engine's URL now gives the standard origin %q; "+
-			"delete this test and assert the standard in the table above", standard)
-	}
-	if got != "http://127.0.0.1" {
-		t.Fatalf("the engine's origin is %q, which is neither the standard %q "+
-			"nor the deviation this test was written against", got, standard)
+func TestTheEngineOriginIsTheStandardsOrigin(t *testing.T) {
+	for _, c := range []struct{ expression, want string }{
+		{`new URL('http://127.0.0.1:8080/a').origin`, "http://127.0.0.1:8080"},
+		{`new URL('https://example.com/a?b#c').origin`, "https://example.com"},
+		{`new URL('http://example.com:80/a').origin`, "http://example.com"},
+		{`new URL('https://example.com:443/a').origin`, "https://example.com"},
+		{`new URL('https://example.com:8443/a').origin`, "https://example.com:8443"},
+		{`new URL('/x', 'http://127.0.0.1:8080/a').origin`, "http://127.0.0.1:8080"},
+		{`new URL('a://thing/x').origin`, "null"},
+		{`new URL('http://127.0.0.1:8080/a') instanceof URL`, "true"},
+	} {
+		if got := evaluate(t, c.expression); got != c.want {
+			t.Errorf("%s = %q, want %q", c.expression, got, c.want)
+		}
 	}
 }
 
 // TestTheEngineSeesTwoPortsAsTwoSites is the substrate `event.fetch`'s refusal
-// to leave this app stands on. `same_origin` in skgo-adapter/entry.js compares
-// protocol, hostname and port because the origin accessor above cannot be
-// trusted, and a page on one port fetching a URL on another has to come out as
-// two sites.
-//
-// The last row is why that function exists at all: the two URLs report the
-// *same* origin, so the guard as it was first written — `target.origin !==
-// url.origin`, against a hand-rolled JavaScript URL that built origin from
-// protocol and host — would have dispatched a cross-origin fetch into this
-// app's own routes.
+// to leave this app stands on: kit's universal fetch compares `url.origin`s, and
+// a page on one port fetching a URL on another has to come out as two sites.
+// The last row is the one a hostname-only origin gets wrong.
 func TestTheEngineSeesTwoPortsAsTwoSites(t *testing.T) {
 	const here = `new URL('http://127.0.0.1:8080/a')`
 	const there = `new URL('http://127.0.0.1:9999/a')`
@@ -110,7 +107,7 @@ func TestTheEngineSeesTwoPortsAsTwoSites(t *testing.T) {
 		{"protocol", "http:|http:"},
 		{"hostname", "127.0.0.1|127.0.0.1"},
 		{"port", "8080|9999"},
-		{"origin", "http://127.0.0.1|http://127.0.0.1"},
+		{"origin", "http://127.0.0.1:8080|http://127.0.0.1:9999"},
 	} {
 		expression := "[" + here + "." + c.field + ", " + there + "." + c.field + "].join('|')"
 		if got := evaluate(t, expression); got != c.want {

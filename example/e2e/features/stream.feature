@@ -37,6 +37,25 @@ Feature: A load can promise several values, and each one arrives when it is read
     And the digest reads "the second thing to arrive" and "and the rest of the digest"
     And the forecast says "the last thing to arrive"
 
+  Scenario: A cold load through middleware that transforms the document still streams into kit's client
+    The app's Go middleware rewrites the assembled document of this page before
+    it is sent (example.VisitMiddleware marks the root element). Kit's rule is
+    that the transform sees the document once and that the values appended
+    after it are not touched, so the page must still hydrate and still be filled
+    in one value at a time. The bytes are asserted in example/stream_test.go;
+    only kit's client can show the values landing.
+
+    When I start loading "/stream"
+    Then the document root carries the middleware's mark and the page says "Three promises, one response" and is waiting for all three values
+    When the ticker arrives
+    Then the ticker says "the first thing to arrive" while the digest and forecast are still pending
+    When every promised value has arrived
+    Then the digest reads "the second thing to arrive" and "and the rest of the digest"
+    And the forecast says "the last thing to arrive"
+    And the document was transformed by middleware and kit still hydrated it
+    And the document response was marked "/stream data=false"
+    And the browser reported no CSP violations
+
   Scenario: A client-side navigation fills the page in exactly as a cold load does
     There is no document here. The browser is already running kit's client, so
     it asks for the page's data and reads it as it arrives — and the page has to
@@ -49,6 +68,7 @@ Feature: A load can promise several values, and each one arrives when it is read
     When I follow the "Stream" link
     Then the page says "Three promises, one response" and is waiting for all three values
     And exactly 1 data request was made since
+    And the data response was marked "/stream data=true"
     When the ticker arrives
     Then the ticker says "the first thing to arrive" while the digest and forecast are still pending
     When every promised value has arrived

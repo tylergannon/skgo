@@ -952,7 +952,7 @@ func (rs *Remotes) recovered(fn *Remote, value any, err error) error {
 // refreshed query reads the cookie the command just wrote — kit resolves both
 // on one request, and so does this.
 func (rs *Remotes) newEvent(r *http.Request, mutable bool) *Event {
-	return &Event{req: r, jar: newCookieJar(r, rs.secureCookies), mutable: mutable}
+	return &Event{req: r, jar: requestCookieJar(r, rs.secureCookies), mutable: mutable}
 }
 
 // immutable derives the event a query gets, mirroring kit's

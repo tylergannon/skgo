@@ -14,7 +14,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { gojaDevEnvironment, gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
+import { gojaDevEnvironment, gojaDevUnchangedFiles, gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 import { identity } from './skgo-adapter/identity.js';
 import { checkEndpoints, validateGenerated } from './skgo-adapter/generated.js';
 import { authorizePrerenderedScripts } from './skgo-adapter/prerender-csp.js';
@@ -188,7 +188,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 		// compiles the SSR bundle in is also declared in `vite dev`, where Go
 		// pulls one transformed module at a time out of it instead. Each plugin
 		// states its own `apply`, so only one of them is ever live.
-		vite: { plugins: { post: [environment.plugin, goja.plugin, gojaDevEnvironment()] } },
+		vite: { plugins: { post: [environment.plugin, goja.plugin, gojaDevEnvironment(), gojaDevUnchangedFiles({ out })] } },
 		async adapt(builder) {
 			rmSync(out, { force: true, recursive: true });
 

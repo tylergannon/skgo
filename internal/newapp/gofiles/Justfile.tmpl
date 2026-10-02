@@ -4,9 +4,12 @@ dev_port := env("SKGO_DEV_PORT", "5173")
 _default:
     @just --list --unsorted
 
-# Run VitePlus and the Go application together. A fresh clone has neither
+# Run VitePlus and the Go application together, once. A fresh clone has neither
 # frontend dependencies nor the adapter manifest the Go server reads at startup,
-# so each is produced once, only while it is missing.
+# so each is produced once, only while it is missing. `skgo dev` then keeps the
+# session current: editing Go source, signatures or routes regenerates the
+# bindings, rebuilds the application and replaces it behind the same address,
+# and a build error is the response to every request until it is fixed.
 dev:
     #!/bin/sh
     set -eu
@@ -14,11 +17,8 @@ dev:
     cd web
     [ -x node_modules/.bin/vp ] || pnpm install --frozen-lockfile
     [ -f build/skgo.manifest.json ] || ORIGIN="{{"{{origin}}"}}" node_modules/.bin/vp build
-    ORIGIN="{{"{{origin}}"}}" node_modules/.bin/vp dev --host 127.0.0.1 --port "{{"{{dev_port}}"}}" --strictPort &
-    vite=$!
-    trap 'kill "$vite" 2>/dev/null || true' EXIT INT TERM
     cd ..
-    go run ./cmd --proxy "http://127.0.0.1:{{"{{dev_port}}"}}" --origin "{{"{{origin}}"}}"
+    exec go tool skgo dev --listen "{{.OriginHostPort}}" --origin "{{"{{origin}}"}}" --vite-port "{{"{{dev_port}}"}}"
 
 # Build the frontend and the standalone Go binary.
 build:

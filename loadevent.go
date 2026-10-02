@@ -19,9 +19,27 @@ type loadRequest struct {
 	routeID string
 	params  map[string]string
 
+	*responseState
+}
+
+// responseState is what one request's response is made of besides its body:
+// the headers a load or action asked for, and whether the response has been
+// generated yet. The hook and every registry beneath it share one, so a header
+// the hook set is "already set" to a load and a header a load set is seen by
+// the hook's after-logic.
+type responseState struct {
 	mu      sync.Mutex
 	headers http.Header
 	sealed  bool
+}
+
+// newResponseState is the request's shared response state when a hook is
+// mounted, and a fresh one otherwise.
+func newResponseState(r *http.Request) *responseState {
+	if s := hookStateOf(r.Context()); s != nil {
+		return s.response.responseState
+	}
+	return &responseState{headers: http.Header{}}
 }
 
 // event derives the per-node event. Each node gets its own `uses` record,
@@ -76,6 +94,10 @@ type loadState struct {
 // parameter matters, SearchParam is cheaper: it records only that parameter,
 // exactly as kit's own `url.searchParams.get` does.
 func (e *Event) URL() *url.URL {
+	if e != nil && e.hook != nil {
+		copied := *e.hook.url
+		return &copied
+	}
 	if e == nil || e.load == nil {
 		return nil
 	}
@@ -89,6 +111,9 @@ func (e *Event) Param(name string) string {
 	if e == nil {
 		return ""
 	}
+	if e.hook != nil {
+		return e.hook.params[name]
+	}
 	if e.load == nil {
 		return e.params[name]
 	}
@@ -99,6 +124,13 @@ func (e *Event) Param(name string) string {
 // SearchParam returns a query parameter, and records that this load depends on
 // that one parameter and no other.
 func (e *Event) SearchParam(name string) (string, bool) {
+	if e != nil && e.hook != nil {
+		values, ok := e.hook.url.Query()[name]
+		if !ok || len(values) == 0 {
+			return "", false
+		}
+		return values[0], true
+	}
 	if e == nil || e.load == nil {
 		return "", false
 	}
@@ -113,6 +145,9 @@ func (e *Event) SearchParam(name string) (string, bool) {
 // RouteID is the id of the route being served, e.g. "/account/orders", and
 // records that this load depends on which route it is.
 func (e *Event) RouteID() string {
+	if e != nil && e.hook != nil {
+		return e.hook.routeID
+	}
 	if e == nil || e.load == nil {
 		return ""
 	}

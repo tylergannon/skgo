@@ -106,6 +106,25 @@ Then(
 	}
 );
 
+Then(
+	'the document root carries the middleware\'s mark and the page says {string} and is waiting for all three values',
+	async ({ page }, headline: string) => {
+		await expect(page.locator('html')).toHaveAttribute('data-middleware-transformed', 'yes', { timeout: 15_000 });
+		await expect(page.getByTestId('headline')).toHaveText(headline, { timeout: 15_000 });
+		await expect(page.getByTestId('ticker-pending')).toBeVisible();
+		await expect(page.getByTestId('digest-pending')).toBeVisible();
+		await expect(page.getByTestId('forecast-pending')).toBeVisible();
+		await expect(page.getByTestId('ticker')).toHaveCount(0);
+		await expect(page.getByTestId('digest-line')).toHaveCount(0);
+		await expect(page.getByTestId('forecast')).toHaveCount(0);
+	}
+);
+
+Then('the document response was marked {string}', async ({ documents }, marker: string) => {
+	expect(documents.last, 'no document response was observed').not.toBeNull();
+	expect(documents.last!.headers()['x-skgo-middleware']).toBe(marker);
+});
+
 When('the ticker arrives', async ({ page }) => {
 	await page.waitForFunction(() => document.querySelector('[data-testid="ticker"]') !== null, undefined, {
 		timeout: 15_000
