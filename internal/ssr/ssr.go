@@ -268,21 +268,74 @@ type Engine struct {
 	prelude []byte
 	// console is where every runtime's `console` reports.
 	console Console
-	// idle holds runtimes that are not rendering. A runtime is only ever
+	// pools[d] serves renders nested d levels deep. A runtime is only ever
 	// checked out by one goroutine, which is what keeps a render from
-	// re-entering one.
-	idle chan *runtime
-	// permits bounds how many runtimes exist at once. Taking a permit is what
-	// a caller waits on when every runtime is busy.
-	permits   chan struct{}
+	// re-entering one. A render that asks Go for another page's document holds
+	// its own runtime while it waits, so the nested render needs one that is
+	// not in the same pool: with every runtime of one pool held by a render
+	// that is waiting for another, nothing could ever finish. Each level is
+	// bounded by the same size, and the number of levels by MaxRenderDepth.
+	size      int
+	pools     []*pool
 	hostSlots chan struct{}
 
 	mu      sync.Mutex
 	created int
 }
 
+// MaxRenderDepth is how many renders may wait on one another. Kit gives up on
+// a page that fetches pages beyond ten requests deep, so no render the app
+// can legitimately make nests further.
+const MaxRenderDepth = 12
+
+// pool is one level's runtimes.
+type pool struct {
+	// idle holds runtimes that are not rendering.
+	idle chan *runtime
+	// permits bounds how many runtimes exist at once. Taking a permit is what
+	// a caller waits on when every runtime is busy.
+	permits chan struct{}
+}
+
+func newPool(size int) *pool {
+	p := &pool{idle: make(chan *runtime, size), permits: make(chan struct{}, size)}
+	for range size {
+		p.permits <- struct{}{}
+	}
+	return p
+}
+
+type depthKey struct{}
+
+// Depth is how many renders on this call chain are waiting for the one about
+// to start.
+func Depth(ctx context.Context) int {
+	d, _ := ctx.Value(depthKey{}).(int)
+	return d
+}
+
+// CarryDepth makes ctx's render depth the same as from's. A subrequest does not
+// inherit anything else a render's context holds, but it has to know how many
+// renders are waiting on it.
+func CarryDepth(ctx, from context.Context) context.Context {
+	if d := Depth(from); d > 0 {
+		return context.WithValue(ctx, depthKey{}, d)
+	}
+	return ctx
+}
+
+func (e *Engine) pool(depth int) *pool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for len(e.pools) <= depth {
+		e.pools = append(e.pools, newPool(e.size))
+	}
+	return e.pools[depth]
+}
+
 // runtime is one goja Runtime with the bundle evaluated in it.
 type runtime struct {
+	pool   *pool
 	work   *renderWork
 	vm     *goja.Runtime
 	render goja.Callable
@@ -346,10 +399,11 @@ type FetchRequest struct {
 	// Headers is the request's headers, one value per name — the shape the
 	// bundle's own `Headers` polyfill stores them in.
 	Headers map[string]string `json:"headers,omitempty"`
-	// Body is the request body as text, or "" for none. A render-time fetch
-	// is for the app's own JSON and text endpoints; a binary body does not
-	// cross this boundary.
-	Body string `json:"body,omitempty"`
+	// Body is the request body as text, or "" for none; BodyBase64 is the same
+	// for a body that is bytes. A render's fetch sends whichever it has — the
+	// bundle always sends the bytes, since a Request's body may be either.
+	Body       string `json:"body,omitempty"`
+	BodyBase64 string `json:"bodyBase64,omitempty"`
 }
 
 // FetchAnswer is what Go gave a render-time fetch: a response, or the message
@@ -361,12 +415,28 @@ type FetchAnswer struct {
 
 // FetchResponse is one answer to a render-time fetch.
 type FetchResponse struct {
-	Status            int               `json:"status"`
-	StatusText        string            `json:"statusText"`
-	SerializedHeaders map[string]string `json:"serializedHeaders,omitempty"`
-	BodyBase64        string            `json:"bodyBase64,omitempty"`
-	Headers           map[string]string `json:"headers,omitempty"`
-	Body              string            `json:"body,omitempty"`
+	Status     int    `json:"status"`
+	StatusText string `json:"statusText"`
+	// Headers is every response header in the order the standard's Headers
+	// iterates them: a repeated name joined with ", ", except Set-Cookie, which
+	// is one entry per value.
+	Headers    []FetchHeader `json:"headers,omitempty"`
+	BodyBase64 string        `json:"bodyBase64,omitempty"`
+	Body       string        `json:"body,omitempty"`
+}
+
+// FetchHeader is one response header and whether the app's
+// FilterSerializedResponseHeaders lets a universal load's hydration data carry
+// it. Go decides, so the filter stays an ordinary Go function.
+type FetchHeader struct {
+	Name, Value string
+	Serialized  bool
+}
+
+// MarshalJSON writes the header as the [name, value, serialized] triple the
+// bundle reads.
+func (h FetchHeader) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]any{h.Name, h.Value, h.Serialized})
 }
 
 // Match answers one render-time `$app/paths` `match(pathname)` call. pathname
@@ -436,12 +506,9 @@ func firstEnvironment(values [][]byte) []byte {
 
 // start fills in the pool and proves one runtime comes up.
 func start(e *Engine, size int) (*Engine, error) {
-	e.idle = make(chan *runtime, size)
+	e.size = size
+	e.pools = []*pool{newPool(size)}
 	e.hostSlots = make(chan struct{}, maxHostCalls)
-	e.permits = make(chan struct{}, size)
-	for range size {
-		e.permits <- struct{}{}
-	}
 	// One runtime is built now rather than on the first request, so that an
 	// application the engine cannot evaluate is a startup failure instead of a
 	// broken page.
@@ -449,13 +516,14 @@ func start(e *Engine, size int) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	<-e.permits
-	e.idle <- rt
+	rt.pool = e.pools[0]
+	<-rt.pool.permits
+	rt.pool.idle <- rt
 	return e, nil
 }
 
 // Size is how many runtimes the engine may hold.
-func (e *Engine) Size() int { return cap(e.idle) }
+func (e *Engine) Size() int { return e.size }
 
 // Created is how many runtimes the engine has actually built. It is what a test
 // reads to see that concurrent renders did not share one.
@@ -597,11 +665,16 @@ func (e *Engine) newRuntime() (*runtime, error) {
 // made, in order, so the caller can serialise exactly the answers it gave into
 // the document.
 func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hosts Hosts) (Result, []Call, error) {
-	rt, err := e.acquire(ctx)
+	depth := Depth(ctx)
+	if depth >= MaxRenderDepth {
+		return Result{}, nil, fmt.Errorf("skgo: %d renders are waiting on one another; the pages fetch each other in a cycle", depth)
+	}
+	rt, err := e.acquire(ctx, e.pool(depth))
 	if err != nil {
 		return Result{}, nil, err
 	}
-	ctx, cancel := context.WithCancel(ctx)
+	// Everything this render asks Go for runs one level deeper.
+	ctx, cancel := context.WithCancel(context.WithValue(ctx, depthKey{}, depth+1))
 	rt.work = &renderWork{ctx: ctx, slots: e.hostSlots, completed: make(chan hostCompletion, maxHostCalls)}
 	reusable := false
 	interrupted := make(chan struct{})
@@ -614,9 +687,9 @@ func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hos
 		cancel()
 		rt.work = nil
 		if clean {
-			e.release(rt)
+			rt.pool.idle <- rt
 		} else {
-			e.permits <- struct{}{}
+			rt.pool.permits <- struct{}{}
 		}
 	}()
 
@@ -855,28 +928,27 @@ func (e *Engine) refresh(rt *runtime) error {
 
 // acquire takes an idle runtime, or builds one while the pool is below its
 // size, or waits for one to come back.
-func (e *Engine) acquire(ctx context.Context) (*runtime, error) {
+func (e *Engine) acquire(ctx context.Context, p *pool) (*runtime, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	select {
-	case rt := <-e.idle:
+	case rt := <-p.idle:
 		return rt, nil
 	default:
 	}
 	select {
-	case rt := <-e.idle:
+	case rt := <-p.idle:
 		return rt, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-e.permits:
+	case <-p.permits:
 		rt, err := e.newRuntime()
 		if err != nil {
-			e.permits <- struct{}{}
+			p.permits <- struct{}{}
 			return nil, err
 		}
+		rt.pool = p
 		return rt, nil
 	}
 }
-
-func (e *Engine) release(rt *runtime) { e.idle <- rt }

@@ -1,0 +1,19 @@
+package godev
+
+import (
+	"context"
+
+	"github.com/tylergannon/skgo"
+)
+
+// Revision is the wire value.
+type Revision struct {
+	Message  string `json:"message"`
+	Revision int    `json:"revision"`
+}
+
+func getRevision(ctx context.Context) (Revision, error) {
+	return Revision{Message: "Go wire revision two", Revision: 2}, nil
+}
+
+var _ = skgo.Query(getRevision)

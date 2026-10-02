@@ -1,0 +1,17 @@
+package godevadded
+
+import (
+	"context"
+
+	"github.com/tylergannon/skgo"
+)
+
+type PageData struct {
+	Revision string `json:"revision"`
+}
+
+func pageLoad(ctx context.Context) (PageData, error) {
+	return PageData{Revision: "New Go route revision one"}, nil
+}
+
+var _ = skgo.Load(pageLoad)

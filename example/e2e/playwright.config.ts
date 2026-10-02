@@ -7,14 +7,30 @@ import { defineBddConfig } from 'playwright-bdd';
 // it never changes which scenarios exist or what they assert.
 const run = process.env.SKGO_E2E_RUN ?? 'run';
 
+const outputDir = '.features-gen';
+
+// Every project collects canonical generated names and nothing else:
+// `<outputDir>/features/**/<name>.feature.spec.js`, exactly what bddgen writes
+// for each authored feature. Playwright's own default and a bare substring
+// pattern both match a Finder-style copy (`x.feature 2.spec.js`, a sibling
+// `features 2/` directory), which then runs a second time — and for the
+// source-edit project, races a duplicate of the scenario that edits the app.
+// Each project's pattern is therefore the canonical shape with its own stem,
+// and a file that is not canonical belongs to no project.
+const canonical = (stem: string) =>
+	new RegExp(`/${outputDir.replace('.', '\\.')}/features/(?:[^/]+/)*${stem}\\.feature\\.spec\\.js$`);
+
+const ANY_FEATURE = canonical('[^/]+');
+const NOSCRIPT = canonical('[^/]*form-noscript');
+
 // Edits source under the running dev server, whose hot updates reach every
 // open page, so it runs alone after everything else has finished.
-const SOURCE_EDIT = /\/zz-source-update\.feature/;
+const SOURCE_EDIT = canonical('zz-source-update');
 
 const testDir = defineBddConfig({
 	features: 'features/**/*.feature',
 	steps: 'steps/**/*.ts',
-	outputDir: '.features-gen'
+	outputDir
 });
 
 // The suite always targets an already-running Go server through BASE_URL.
@@ -60,7 +76,8 @@ export default defineConfig({
 		{
 			name: 'chromium',
 			use: { ...devices['Desktop Chrome'] },
-			testIgnore: [/form-noscript/, SOURCE_EDIT]
+			testMatch: ANY_FEATURE,
+			testIgnore: [NOSCRIPT, SOURCE_EDIT]
 		},
 		{
 			name: 'source-edit',
@@ -72,7 +89,7 @@ export default defineConfig({
 		{
 			name: 'noscript',
 			use: { ...devices['Desktop Chrome'], javaScriptEnabled: false },
-			testMatch: /form-noscript/
+			testMatch: NOSCRIPT
 		}
 	]
 });

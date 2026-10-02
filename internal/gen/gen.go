@@ -31,6 +31,9 @@ import (
 // Config describes one app.
 type Config struct {
 	frontendFiles map[string]struct{}
+	// produced is every path this run wrote or confirmed unchanged, so that
+	// pruneStaleArtifacts can tell what is left over.
+	produced map[string]struct{}
 	// Web is the vite root: the directory holding `src/` and the app's
 	// package.json. Every `.remote.ts` path is relative to it, because that is
 	// what kit hashes into a remote function's id.
@@ -69,6 +72,7 @@ func Run(cfg Config) (err error) {
 	}
 	cfg.Web, cfg.Out = web, out
 	cfg.frontendFiles = map[string]struct{}{}
+	cfg.produced = map[string]struct{}{}
 	if cfg.Language == LanguageAuto {
 		cfg.Language = detectLanguage(web)
 	}
@@ -219,6 +223,9 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	if err := app.writeRemoteList(); err != nil {
+		return err
+	}
+	if err := pruneStaleArtifacts(cfg); err != nil {
 		return err
 	}
 	return flushFrontendSources(cfg)

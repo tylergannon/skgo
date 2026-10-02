@@ -69,7 +69,15 @@ export type BrowserConsole = {
 	messages: string[];
 };
 
+/**
+ * The name one scenario's requests are counted under. The server counts the
+ * endpoints a request names with `?run=`, so a scenario that picks its own run
+ * reads only its own traffic, whatever else shares the server.
+ */
+export type ReplayRun = { id: string };
+
 export const test = base.extend<{
+	replayRun: ReplayRun;
 	documents: Documents;
 	remotes: Remotes;
 	data: Data;
@@ -167,6 +175,11 @@ export const test = base.extend<{
 		},
 		{ auto: true }
 	],
+
+	// eslint-disable-next-line no-empty-pattern -- Playwright infers fixture deps from this pattern.
+	replayRun: async ({}, use) => {
+		await use({ id: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}` });
+	},
 
 	// eslint-disable-next-line no-empty-pattern -- Playwright infers fixture deps from this pattern.
 	notes: async ({}, use) => {

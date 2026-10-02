@@ -44,13 +44,12 @@ func (rt *runtime) installWebGlobals() error {
 //
 // It departs from the standard in one place: its `origin` is the scheme and the
 // hostname, with the port left out, and it defines that accessor as
-// non-configurable — on a Go host object, which goja will not let a per-instance
-// accessor shadow — so it cannot be corrected from here at all. The one render
-// path that compares origins is `event.fetch`'s refusal to leave this app
-// (skgo-adapter/entry.js, `same_origin`), and it compares protocol, hostname and
-// port itself rather than reading the accessor. webglobals_test.go pins the
-// deviation so that the next render path to want an origin finds it written down
-// rather than discovering that two ports look like one host.
+// non-configurable on a Go host object, so no per-instance accessor can shadow
+// it. A subclass can: the `URL` installed here extends goja_nodejs's with the
+// standard's `origin` (a special scheme's scheme, "//" and host, "null" for
+// any other), because kit compares origins to decide whether a universal fetch
+// left the app — `url.origin === event.url.origin` — and a page on :8080
+// fetching :9999 must not look like the same site.
 func (rt *runtime) installURL() error {
 	module := rt.vm.NewObject()
 	if err := module.Set("exports", rt.vm.NewObject()); err != nil {
@@ -68,8 +67,24 @@ func (rt *runtime) installURL() error {
 			return err
 		}
 	}
-	return nil
+	_, err := rt.vm.RunString(urlOriginScript)
+	return err
 }
+
+// urlOriginScript replaces the global URL with a subclass whose origin is the
+// standard's.
+const urlOriginScript = `(() => {
+	const GoURL = globalThis.URL;
+	const special = ['http:', 'https:', 'ws:', 'wss:', 'ftp:'];
+	const defaults = { 'http:': '80', 'https:': '443', 'ws:': '80', 'wss:': '443', 'ftp:': '21' };
+	globalThis.URL = class URL extends GoURL {
+		get origin() {
+			if (!special.includes(this.protocol)) return 'null';
+			const port = this.port === defaults[this.protocol] ? '' : this.port;
+			return this.protocol + '//' + this.hostname + (port ? ':' + port : '');
+		}
+	};
+})()`
 
 // installTextCodecs binds `TextEncoder` and `TextDecoder`. Only UTF-8 exists
 // here, which is all kit asks for: `runtime/utils.js` constructs both with no

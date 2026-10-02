@@ -619,8 +619,8 @@ func TestGeneratedDevRecipeBootstrapsAFreshCloneOnce(t *testing.T) {
 	bin := filepath.Join(root, "bin")
 	vp := "#!/bin/sh\necho \"vp $1\" >> " + log + "\nif [ \"$1\" = build ]; then mkdir -p build && echo '{}' > build/skgo.manifest.json; fi\n"
 	writeFiles(t, bin, map[string]string{
-		// go run stands in for the server: it returns once vite has started.
-		"go":   "#!/bin/sh\necho \"go $1\" >> " + log + "\nif [ \"$1\" = run ]; then for i in 1 2 3 4 5 6 7 8 9 10; do grep -q 'vp dev' " + log + " && exit 0; sleep 0.2; done; exit 1; fi\n",
+		// go tool skgo dev stands in for the supervisor, which is what starts vite.
+		"go":   "#!/bin/sh\necho \"go $*\" >> " + log + "\n",
 		"pnpm": "#!/bin/sh\necho \"pnpm $*\" >> " + log + "\nmkdir -p node_modules/.bin\ncat > node_modules/.bin/vp <<'VP'\n" + vp + "VP\nchmod +x node_modules/.bin/vp\n",
 	})
 	for _, name := range []string{"go", "pnpm"} {
@@ -646,15 +646,14 @@ func TestGeneratedDevRecipeBootstrapsAFreshCloneOnce(t *testing.T) {
 		return strings.Split(strings.TrimSpace(string(body)), "\n")
 	}
 
+	supervisor := "go tool skgo dev --listen 127.0.0.1:8080 --origin " + defaultOrigin + " --vite-port 5173"
 	first := dev()
-	slices.Sort(first[3:]) // vite runs beside the server; their order is not the contract
-	if want := []string{"go generate", "pnpm install --frozen-lockfile", "vp build", "go run", "vp dev"}; !slices.Equal(first, want) {
+	if want := []string{"go generate ./...", "pnpm install --frozen-lockfile", "vp build", supervisor}; !slices.Equal(first, want) {
 		t.Fatalf("first start in a fresh clone ran %q, want %q", first, want)
 	}
 	second := dev()
-	slices.Sort(second[1:])
-	if want := []string{"go generate", "go run", "vp dev"}; !slices.Equal(second, want) {
-		t.Fatalf("second start ran %q, want %q: nothing was missing, so nothing is reinstalled or rebuilt", second, want)
+	if want := []string{"go generate ./...", supervisor}; !slices.Equal(second, want) {
+		t.Fatalf("second start ran %q, want %q: nothing was missing, so nothing is reinstalled or rebuilt, and the one long-running command is the supervisor that rebuilds Go itself", second, want)
 	}
 }
 

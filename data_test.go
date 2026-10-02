@@ -659,7 +659,7 @@ func TestALoadMayWriteCookiesAndHeaders(t *testing.T) {
 		t.Errorf("Set-Cookie = %q", c)
 	}
 	// Cookies are the one header a load may not set directly.
-	if err := (&Event{load: &loadState{shared: &loadRequest{headers: http.Header{}}}}).SetHeader("set-cookie", "x=1"); err == nil {
+	if err := (&Event{load: &loadState{shared: &loadRequest{responseState: &responseState{headers: http.Header{}}}}}).SetHeader("set-cookie", "x=1"); err == nil {
 		t.Error("SetHeader accepted set-cookie")
 	}
 }

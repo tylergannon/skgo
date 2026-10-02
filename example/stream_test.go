@@ -1,8 +1,11 @@
 package example_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The three values src/routes/stream/page.server.go promises, and the strings
@@ -149,4 +152,92 @@ func equal(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// The /stream page is wrapped by the app's Go middleware with a page transform
+// (example.VisitMiddleware marks the root element). Kit's rule is that the
+// transform runs once over the assembled document, with done:true, and that the
+// scripts appended for each promise afterwards are not touched by it. The page
+// must also still be sent at once: a transform that waited for the slowest
+// promise would hold the shell back until everything had settled.
+func TestTheTransformedStreamedShellArrivesBeforeAnyDeferredValueAndTheChunksAreUntouched(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewServer(newProdHandler(t))
+	defer server.Close()
+
+	started := time.Now()
+	res, err := http.Get(server.URL + "/stream")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if got := res.Header.Get("X-Skgo-Middleware"); got != "/stream data=false" {
+		t.Errorf("X-Skgo-Middleware = %q, want the header the middleware set on the streamed response", got)
+	}
+
+	const marker = `data-middleware-transformed="yes"`
+	var body strings.Builder
+	var shellAt, firstValueAt time.Duration
+	buf := make([]byte, 4096)
+	for {
+		n, err := res.Body.Read(buf)
+		body.Write(buf[:n])
+		got := body.String()
+		if shellAt == 0 && strings.Contains(got, "</html>") {
+			shellAt = time.Since(started)
+			if !strings.Contains(got, `<html lang="en" `+marker+`>`) {
+				t.Errorf("the shell was sent without the page transform:\n%.400s", got)
+			}
+			if !strings.Contains(got, `data-testid="headline"`) || !strings.Contains(got, "Three promises, one response") {
+				t.Errorf("the shell lacks the headline:\n%.1200s", got)
+			}
+			for _, state := range []string{"ticker-pending", "digest-pending", "forecast-pending"} {
+				if !strings.Contains(got, `data-testid="`+state+`"`) {
+					t.Errorf("the shell has no %s", state)
+				}
+			}
+			for _, value := range promisedInOrderOfArrival {
+				if strings.Contains(got, value) {
+					t.Errorf("%q was in the shell", value)
+				}
+			}
+		}
+		if firstValueAt == 0 && strings.Contains(got, promisedInOrderOfArrival[0]) {
+			firstValueAt = time.Since(started)
+		}
+		if err != nil {
+			break
+		}
+	}
+	whole := body.String()
+	end := strings.Index(whole, "</html>")
+	if end < 0 || shellAt == 0 || firstValueAt == 0 {
+		t.Fatalf("shell at %v, first value at %v, document end %d:\n%s", shellAt, firstValueAt, end, whole)
+	}
+	// The ticker settles 800ms after the load; a shell that waited for it, or for
+	// anything slower, would arrive together with it.
+	if firstValueAt-shellAt < 400*time.Millisecond {
+		t.Errorf("the shell arrived at %v and the first value at %v: delivery waited for the deferred values", shellAt, firstValueAt)
+	}
+	if n := strings.Count(whole, marker); n != 1 {
+		t.Errorf("the page transform marked the response %d times, want once, in the shell", n)
+	}
+	appended := whole[end:]
+	if strings.Contains(appended, marker) || strings.Contains(appended, "data-middleware") {
+		t.Errorf("a deferred script was transformed:\n%s", appended)
+	}
+	if got := arrivals(appended, promisedInOrderOfArrival); !equal(got, idsInOrderOfArrival) {
+		t.Errorf("the transformed document's chunks arrived as %v, want %v\n%s", got, idsInOrderOfArrival, appended)
+	}
+}
+
+func TestTheStreamDataResponseIsNotTransformedButIsMarkedByTheMiddleware(t *testing.T) {
+	t.Parallel()
+	rec := get(t, newProdHandler(t), "/stream/__data.json?x-sveltekit-invalidated=01")
+	if strings.Contains(rec.Body.String(), "data-middleware-transformed") {
+		t.Errorf("a data response was transformed:\n%s", rec.Body.String())
+	}
+	if got := rec.Header().Get("X-Skgo-Middleware"); got != "/stream data=true" {
+		t.Errorf("X-Skgo-Middleware = %q", got)
+	}
 }

@@ -26,7 +26,7 @@
 
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { protectEnvironmentFiles } from './env-private.js';
 import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
@@ -133,6 +133,9 @@ function kitAliases(root) {
 		'skgo:kit/shared': join(runtime, 'shared.js'),
 		'skgo:kit/transport': join(runtime, 'app/internal/transport.js'),
 		'skgo:kit/serialize-data': join(runtime, 'server/page/serialize_data.js'),
+		// kit's own universal fetch, which the entry hands every universal load
+		// rather than keeping a second copy of its CORS, replay and header rules.
+		'skgo:kit/load-data': join(runtime, 'server/page/load_data.js'),
 		'skgo:kit/props': join(runtime, 'props.svelte.js'),
 		'skgo:kit/root': join(runtime, 'components/root.svelte'),
 		// kit's own `$app/paths` server implementation, which app-paths.js
@@ -787,6 +790,13 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 				// temporary version forever.
 				changed.push(file);
 
+				// The document templates are read afresh for every `/info`, but Go
+				// installs them only when the version moves. Nothing else moves it
+				// for a template, which is not a route and has no module to drop.
+				if ([kit.files.appTemplate, kit.files.errorTemplate].some((t) => normalize(t) === normalize(file))) {
+					manifestVersion++;
+				}
+
 				const routeFile = normalize(file).startsWith(normalize(kit.files.routes) + '/');
 				if (routeFile && (event === 'add' || event === 'unlink')) manifestDirty = true;
 				const name = relative(kit.files.routes, file).split(/[\\/]/).at(-1);
@@ -956,6 +966,122 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 	};
 
 	return plugin;
+}
+
+/**
+ * A watcher event for a file whose bytes are the ones vite already has is not an edit.
+ *
+ * chokidar reports a file nobody has read since it was written as changed on
+ * any filesystem event, metadata-only ones included, and something on a
+ * developer's machine (a sync client, a scanner) touches generated files that
+ * way. Kit's own dev server has no answer to it: vite turns each report into a
+ * hot update or a full page reload, and a reload throws away what a visitor
+ * had typed and aborts the documents Go was rendering for them. So the dev
+ * server remembers the content it last loaded or was told about, and lets
+ * through only the reports whose content differs.
+ *
+ * Content means the file's bytes, not the text vite decoded from them: two
+ * different invalid byte sequences decode to the same replacement characters,
+ * and an edit between them is still an edit. What vite loaded is therefore
+ * remembered only when the file's bytes decode to exactly it; a file a plugin
+ * generated or rewrote on the way in has no such bytes, and its first report
+ * is let through.
+ *
+ * The adapter's own output directory is not an input at all. It is where the
+ * build writes the documents Go embeds, vite holds no module for any of them,
+ * and vite answers a report for an html file it holds no module for by
+ * reloading every open page. It is excluded from the watcher the way kit
+ * excludes its own `.svelte-kit` output (kit/exports/vite/index.js, the
+ * `server.watch.ignored` it sets), so nothing written there is ever reported.
+ *
+ * chokidar emits one report twice, `change` and then `all`, and the first
+ * verdict stands for both. A `change` emitted from inside a `change` listener
+ * is a plugin's own (vite-plugin-svelte re-emits it for a preprocessor's
+ * dependants, whose bytes are unchanged); those always pass.
+ *
+ * @param {{ out?: string }} [options] the adapter's output directory, relative to the vite root
+ * @returns {import('vite').Plugin}
+ */
+export function gojaDevUnchangedFiles({ out = 'build' } = {}) {
+	/** What vite last loaded for a file, or last reported changed: its byte digest. */
+	const known = new Map();
+	const digest = (/** @type {Uint8Array} */ bytes) => createHash('sha256').update(bytes).digest('base64');
+	const read = (/** @type {string} */ file) => {
+		try {
+			return digest(readFileSync(file));
+		} catch {
+			return null;
+		}
+	};
+	/** Remember a file by the bytes vite decoded `code` from, if they are the ones on disk now. */
+	const remember = (/** @type {string} */ file, /** @type {string} */ code) => {
+		try {
+			const bytes = readFileSync(file);
+			if (bytes.toString('utf8') === code) known.set(posix(file), digest(bytes));
+			else known.delete(posix(file));
+		} catch {
+			known.delete(posix(file));
+		}
+	};
+
+	return {
+		name: 'skgo-dev-unchanged-files',
+		apply: 'serve',
+
+		config(config) {
+			const emitted = posix(resolve(config.root ?? process.cwd(), out));
+			return { server: { watch: { ignored: [emitted, `${emitted}/**`] } } };
+		},
+
+		configureServer(server) {
+			const watcher = server.watcher;
+			const emit = watcher.emit;
+			let depth = 0;
+			/** @type {{ file: string, same: boolean } | null} */
+			let verdict = null;
+			/** @type {(file: string) => boolean} */
+			const unchanged = (file) => {
+				const key = posix(file);
+				const now = read(file);
+				const same = now !== null && known.get(key) === now;
+				if (now !== null) known.set(key, now);
+				return same;
+			};
+			watcher.emit = function (event, ...args) {
+				const all = event === 'all';
+				const kind = all ? args[0] : event;
+				const file = all ? args[1] : args[0];
+				if (typeof file === 'string' && kind === 'add' && !all) {
+					const now = read(file);
+					if (now !== null) known.set(posix(file), now);
+				} else if (typeof file === 'string' && kind === 'change') {
+					if (all) {
+						const reported = verdict && verdict.file === file ? verdict : null;
+						verdict = null;
+						if (reported ? reported.same : unchanged(file)) return false;
+					} else if (depth === 0) {
+						verdict = { file, same: unchanged(file) };
+						if (verdict.same) return false;
+					}
+				}
+				if (all) return emit.call(this, event, ...args);
+				depth++;
+				try {
+					return emit.call(this, event, ...args);
+				} finally {
+					depth--;
+				}
+			};
+		},
+
+		transform: {
+			order: 'pre',
+			handler(code, id) {
+				if (!id.includes('?') && !id.startsWith('\0') && isAbsolute(id)) remember(id, code);
+				return null;
+			}
+		}
+	};
 }
 
 const OXC_HELPERS = '@oxc-project/runtime/helpers/';

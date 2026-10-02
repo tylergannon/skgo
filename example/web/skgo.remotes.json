@@ -38,7 +38,8 @@
     "toba7i/getValue",
     "toba7i/watchValue",
     "wx3cst/watchBoard",
-    "x3uq7o/getQuotes"
+    "x3uq7o/getQuotes",
+    "zwa0ht/getRevision"
   ],
   "loads": [
     "src/routes/(marketing)/pricing/+page.server.ts",
@@ -56,11 +57,16 @@
     "src/routes/actions/options/no-ssr/+page.server.ts",
     "src/routes/actions/profiles/[profile]/+page.server.ts",
     "src/routes/actions/signed-in/+page.server.ts",
+    "src/routes/destinations/+page.server.ts",
     "src/routes/empty/+page.server.ts",
     "src/routes/error/expected/+page.server.ts",
     "src/routes/error/unexpected/+page.server.ts",
+    "src/routes/go-dev/+page.server.ts",
     "src/routes/invoices/+page.server.ts",
+    "src/routes/middleware/+page.server.ts",
+    "src/routes/middleware/[slug]/+page.server.ts",
     "src/routes/prerender/[slug]/+page.server.ts",
+    "src/routes/request-fetch/+page.server.ts",
     "src/routes/stream/+page.server.ts"
   ],
   "actions": [
@@ -85,14 +91,21 @@
     "src/routes/actions/options/no-ssr/+page.server.ts",
     "src/routes/actions/options/no-ssr/+page.server.ts",
     "src/routes/actions/options/no-ssr/+page.server.ts",
-    "src/routes/actions/profiles/[profile]/+page.server.ts"
+    "src/routes/actions/profiles/[profile]/+page.server.ts",
+    "src/routes/go-dev/+page.server.ts",
+    "src/routes/middleware/+page.server.ts"
   ],
   "endpoints": {
     "/actions": ["POST"],
     "/actions/default": ["GET"],
     "/api/fatal": ["GET"],
+    "/api/replay-count": ["GET"],
+    "/api/replay/[kind]": ["GET", "POST"],
+    "/api/request-fetch": ["GET"],
     "/api/todos": ["GET", "POST", "QUERY"],
-    "/async-ssr/control/[group]": ["GET", "POST"]
+    "/async-ssr/control/[group]": ["GET", "POST"],
+    "/go-dev/endpoint": ["GET"],
+    "/shadow/[...rest]": ["GET"]
   },
   "prerender": {
     "root": "..",

@@ -60,5 +60,7 @@ function linkName(path: string): string {
 	if (path === '/docs/guide/getting-started') return 'Docs';
 	if (path === '/live') return 'Live';
 	if (path === '/batch') return 'Batch';
+	if (path === '/nested-universal') return 'Nested fetch';
+	if (path === '/destinations') return 'Destinations';
 	throw new Error(`no nav link for ${path}`);
 }

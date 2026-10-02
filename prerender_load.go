@@ -125,14 +125,11 @@ func RunPrerenderLoad(in io.Reader, out io.Writer, transport Transport, loads ..
 			return chunkErr
 		}
 	}
-	shared.jar.mu.Lock()
-	for _, name := range shared.jar.order {
-		c := shared.jar.written[name]
+	for _, c := range shared.jar.snapshot() {
 		answer.Cookies = append(answer.Cookies, prerenderCookie{
 			Name: c.Name, Value: c.Value, Path: c.Path, Domain: c.Domain,
 			MaxAge: c.MaxAge, HTTPOnly: c.HttpOnly, Secure: c.Secure, SameSite: int(c.SameSite),
 		})
 	}
-	shared.jar.mu.Unlock()
 	return json.NewEncoder(out).Encode(answer)
 }

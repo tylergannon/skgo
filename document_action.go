@@ -34,7 +34,7 @@ func classicFormWire(result *classicResult) any {
 func (s *SSR) runClassicAction(r *http.Request, route *dataRoute, params map[string]string) (result *classicResult, problem *HTTPError) {
 	location := actionLocation(r.URL)
 	actionError := func(err error) (*classicResult, *HTTPError) {
-		return &classicResult{location: location, jar: newCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev)), headers: http.Header{}, actionErr: err}, nil
+		return &classicResult{location: location, jar: requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev)), headers: requestResponseHeaders(r), actionErr: err}, nil
 	}
 	if len(route.nodes) == 0 {
 		return actionError(&HTTPError{Status: 405, Message: "POST method not allowed. No form actions exist for this page"})
@@ -72,8 +72,8 @@ func (s *SSR) runClassicAction(r *http.Request, route *dataRoute, params map[str
 		}
 		return actionError(&HTTPError{Status: 415, Message: "Form actions expect form-encoded data — received " + contentType})
 	}
-	jar := newCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev))
-	response := &loadRequest{headers: http.Header{}}
+	jar := requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev))
+	response := &loadRequest{responseState: newResponseState(r)}
 	ctx := withEvent(r.Context(), &Event{req: r, jar: jar, mutable: true, params: params, actionResponse: response})
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -161,7 +161,7 @@ func (s *SSR) writeActionJSON(w http.ResponseWriter, r *http.Request, req dataRe
 		response = actionJSON{Type: "redirect", Status: result.redirect.status(), Location: result.redirect.Location}
 	} else if result.actionErr != nil {
 		fallback := asHTTPError(result.actionErr)
-		shared := &loadRequest{req: r, jar: result.jar, url: req.url, routeID: route.id, params: params}
+		shared := &loadRequest{responseState: newResponseState(r), req: r, jar: result.jar, url: req.url, routeID: route.id, params: params}
 		public := s.documentError(hookContext(r, shared), route.id, fallback, result.actionErr)
 		response = actionJSON{Type: "error", Location: result.location, Error: public}
 		w.WriteHeader(public.Status)

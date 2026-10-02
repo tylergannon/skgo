@@ -78,19 +78,30 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 	for _, dep := range stylesheets.items {
 		stylesheetLinks = append(stylesheetLinks, linkTag(prefixed(dep), `rel="stylesheet"`))
 	}
+	preload := plan.preload
+	if preload == nil {
+		preload = defaultPreload
+	}
 	seenFont := map[string]bool{}
 	for _, font := range fonts {
 		if seenFont[font.File] {
 			continue
 		}
 		seenFont[font.File] = true
+		path := prefixed(font.File)
+		if !preload(PreloadInput{Type: "font", Path: path, Filename: font.Filename}) {
+			continue
+		}
 		ext := font.File[strings.LastIndex(font.File, ".")+1:]
-		linkTags = append(linkTags, linkTag(prefixed(font.File),
+		linkTags = append(linkTags, linkTag(path,
 			`rel="preload"`, `as="font"`, `type="font/`+ext+`"`, "crossorigin"))
 	}
 	if csr {
 		for _, dep := range modulepreloads.items {
-			linkTags = append(linkTags, linkTag(prefixed(dep), `rel="modulepreload"`))
+			path := prefixed(dep)
+			if preload(PreloadInput{Type: "js", Path: path}) {
+				linkTags = append(linkTags, linkTag(path, `rel="modulepreload"`))
+			}
 		}
 	}
 

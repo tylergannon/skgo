@@ -62,6 +62,7 @@ type SSR struct {
 	// still holding a runtime from. See SSROptions.Fetch.
 	fetch                           http.Handler
 	handleFetch                     HandleFetch
+	prerendered                     map[string]bool
 	filterSerializedResponseHeaders func(name, value string) bool
 	// dev is non-nil only for a renderer backed by a running Vite server.
 	// devRenderMu keeps dev page renders serialised one at a time, as they
@@ -105,19 +106,18 @@ type SSROptions struct {
 	// to it — the error page, or `error.html` — which says nothing about the
 	// cause, so this is the only record. Leaving it nil logs.
 	OnError func(routeID string, err error)
-	// Fetch answers a render-time `event.fetch` of the app's own routes: the
-	// registered `+server.ts` handlers, dispatched in-process rather than over
-	// a socket. Pass `endpoints.Intercept(http.NotFoundHandler())`, wrapped
-	// by the app's Handle hook when endpoints use locals for authentication — the same
-	// registry the server itself answers `+server.ts` requests with, refusing
-	// rather than falling through to a page, because the page whose render
-	// asked for this fetch is itself holding a runtime out of the pool a
-	// recursive render would need. Leaving it nil refuses every render-time
-	// fetch, which is what an app with no server routes gets.
+	// Fetch answers a render-time `event.fetch` of the app's own routes,
+	// dispatched in-process rather than over a socket. Pass the handler the
+	// app serves with, from Handle inwards, so a fetch reaches every page,
+	// `__data.json`, remote function, server route, asset and prerendered file
+	// as a request would. It is only known once the page handler exists, so
+	// hand it over by reference. A page it renders runs on a runtime of its
+	// own: the engine keeps a separate bounded pool for each level of nesting.
+	// Leaving it nil refuses every render-time fetch.
 	//
-	// The Go dispatcher enforces the page's origin after HandleFetch runs,
-	// so a hook can rewrite a URL but this handler only ever sees requests
-	// for this app. Foreign requests are refused rather than opening sockets.
+	// The Go dispatcher decides after HandleFetch runs: this handler only ever
+	// sees requests for this app, and any other URL goes out over HTTP with
+	// Kit's rules for which credentials leave with it.
 	Fetch http.Handler
 	// HandleFetch intercepts render-time fetches before credential inheritance.
 	// It may return a response or call next with a rewritten request.
@@ -172,6 +172,7 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		onError:                         opts.OnError,
 		fetch:                           opts.Fetch,
 		handleFetch:                     opts.HandleFetch,
+		prerendered:                     prerenderedSet(m.Prerendered),
 		filterSerializedResponseHeaders: opts.FilterSerializedResponseHeaders,
 	}
 	// The engine is built after the SSR rather than into it because the bundle
@@ -243,6 +244,7 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 		onError:                         opts.OnError,
 		fetch:                           opts.Fetch,
 		handleFetch:                     opts.HandleFetch,
+		prerendered:                     prerenderedSet(m.Prerendered),
 		filterSerializedResponseHeaders: opts.FilterSerializedResponseHeaders,
 		dev:                             dev,
 		devBase:                         m,
@@ -312,13 +314,41 @@ func manifestFromDev(base Manifest, answer vite.Info) (Manifest, error) {
 // It does not affect Go endpoints or loads, which never touch a runtime and
 // so carry none of that hazard -- see refreshDev.
 func (s *SSR) serveDev(w http.ResponseWriter, r *http.Request, urlPath string) bool {
-	end, err := s.beginDevRender()
+	end, r, err := s.beginDevRenderFor(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return true
 	}
 	defer end()
 	return s.serve(w, r, urlPath)
+}
+
+type devRenderHeldKey struct{}
+
+// beginDevRenderFor is beginDevRender for a request. A page that fetches
+// another page is waiting inside a render that already holds both locks, and
+// its subrequest is part of that render: taking them again would wait for
+// itself, so the subrequest runs under the ones its ancestor holds and sees the
+// same manifest snapshot. The request it returns is marked as holding them, so
+// anything it fetches in turn does the same.
+func (s *SSR) beginDevRenderFor(r *http.Request) (func(), *http.Request, error) {
+	if r.Context().Value(devRenderHeldKey{}) != nil {
+		return func() {}, r, nil
+	}
+	end, err := s.beginDevRender()
+	if err != nil {
+		return nil, r, err
+	}
+	return end, r.WithContext(context.WithValue(r.Context(), devRenderHeldKey{}, true)), nil
+}
+
+// carryDevRender passes the mark beginDevRenderFor made on to a subrequest's
+// context, which otherwise inherits nothing.
+func carryDevRender(to, from context.Context) context.Context {
+	if from.Value(devRenderHeldKey{}) != nil {
+		return context.WithValue(to, devRenderHeldKey{}, true)
+	}
+	return to
 }
 
 // beginDevRender acquires the two locks a dev render holds for its whole
@@ -546,6 +576,11 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	if !route.hasPage {
 		return false
 	}
+	if fetchDepthOf(r.Context()) > maxFetchDepth {
+		// Kit's `render_page`: a page fetching pages this deep is stuck in a loop.
+		http.Error(w, "Not found: "+r.URL.Path, http.StatusNotFound)
+		return true
+	}
 	// A POST to a page is a form submission, and it runs before anything is
 	// loaded: kit's `render_page` calls `handle_remote_form_post` first, then
 	// runs the loads, so the page the visitor gets back is rendered over the
@@ -625,9 +660,9 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 			jar = classic.jar
 		}
 		if jar == nil {
-			jar = newCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev))
+			jar = requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev))
 		}
-		shared := &loadRequest{req: r, jar: jar, url: req.url, routeID: route.id, params: params}
+		shared := &loadRequest{responseState: newResponseState(r), req: r, jar: jar, url: req.url, routeID: route.id, params: params}
 		if classic != nil {
 			shared.headers = classic.headers
 		}
@@ -735,6 +770,12 @@ type documentPlan struct {
 	action  *formAction
 	classic *classicResult
 	shell   bool
+	// jar is the page request's cookies, which a render-time `event.fetch`
+	// reads from and writes to.
+	jar *cookieJar
+	// preload answers "is this file preloaded" for this request; nil means
+	// kit's default, which is JavaScript and CSS but not fonts.
+	preload func(PreloadInput) bool
 }
 
 // pageOptions reduces `ssr` and `csr` over a route's branch, outermost first,
@@ -833,9 +874,10 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 	// layout's `shared` because kit's is available before the layout ever
 	// runs too.
 	hookRequest := &loadRequest{
-		req: r,
-		jar: newCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev)),
-		url: req.url, routeID: routeID, params: params,
+		responseState: newResponseState(r),
+		req:           r,
+		jar:           requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev)),
+		url:           req.url, routeID: routeID, params: params,
 	}
 	pageError := s.documentError(hookContext(r, hookRequest), routeID, e, raw)
 
@@ -891,6 +933,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		s.report(routeID, err)
 		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
 	}
+	plan.jar = shared.jar
 	result, answers, err := s.renderPlan(r, req, plan, csp)
 	if err != nil {
 		s.report(routeID, err)
@@ -901,7 +944,12 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 		return true
 	}
 	plan.status, plan.pageError = result.Status, result.Error
+	options := s.documentOptions(r)
+	plan.preload = options.preload
 	document, promises, headers, err := s.assemble(req, plan, result, answers, csp)
+	if err == nil {
+		document, err = options.transformed(r.Context(), document)
+	}
 	if err != nil {
 		s.report(routeID, err)
 		return s.staticErrorPage(w, r, pageError.Status, pageError.Message)
@@ -953,6 +1001,38 @@ func (s *SSR) report(routeID string, err error) {
 	log.Printf("skgo: rendering %s: %v", routeID, err)
 }
 
+// documentOptions is what one request's document is rendered with: the handle
+// hook's [ResolveOptions] over the renderer's own defaults. It is built per
+// request from values and never written back, so no request can see another's.
+type documentOptions struct {
+	transform func(ctx context.Context, html string, done bool) (string, error)
+	filter    func(name, value string) bool
+	preload   func(PreloadInput) bool
+}
+
+func (s *SSR) documentOptions(r *http.Request) documentOptions {
+	o := documentOptions{filter: s.filterSerializedResponseHeaders, preload: defaultPreload}
+	if chosen := requestResolveOptions(r.Context()); chosen != nil {
+		o.transform = chosen.TransformPageChunk
+		if chosen.FilterSerializedResponseHeaders != nil {
+			o.filter = chosen.FilterSerializedResponseHeaders
+		}
+		if chosen.Preload != nil {
+			o.preload = chosen.Preload
+		}
+	}
+	return o
+}
+
+// transformed is kit's `transformPageChunk({ html, done: true })` over the
+// assembled document, run once and before the document's ETag exists.
+func (o documentOptions) transformed(ctx context.Context, document string) (string, error) {
+	if o.transform == nil {
+		return document, nil
+	}
+	return o.transform(ctx, document, true)
+}
+
 // deliver renders a plan and writes the document it produced.
 func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, shared *loadRequest, plan documentPlan) bool {
 	// Built before renderPlan, not assemble: the nonce has to exist before
@@ -963,6 +1043,7 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 	if err != nil {
 		return s.failed(w, r, req, plan.routeID, plan.params, err)
 	}
+	plan.jar = shared.jar
 	result, answers, err := s.renderPlan(r, req, plan, csp)
 	if err != nil {
 		return s.failed(w, r, req, plan.routeID, plan.params, err)
@@ -978,7 +1059,12 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 	// boundary that caught something sets `page.status` and `page.error`, and
 	// the response carries what the page ended up showing.
 	plan.status, plan.pageError = result.Status, result.Error
+	options := s.documentOptions(r)
+	plan.preload = options.preload
 	document, promises, headers, err := s.assemble(req, plan, result, answers, csp)
+	if err == nil {
+		document, err = options.transformed(r.Context(), document)
+	}
 	if err != nil {
 		return s.failed(w, r, req, plan.routeID, plan.params, err)
 	}
@@ -997,7 +1083,12 @@ func (s *SSR) deliverShell(w http.ResponseWriter, r *http.Request, req dataReque
 	if err != nil {
 		return s.failed(w, r, req, plan.routeID, plan.params, err)
 	}
+	options := s.documentOptions(r)
+	plan.preload = options.preload
 	document, _, headers, err := s.assemble(req, plan, ssr.Result{}, nil, csp)
+	if err == nil {
+		document, err = options.transformed(r.Context(), document)
+	}
 	if err != nil {
 		return s.failed(w, r, req, plan.routeID, plan.params, err)
 	}
@@ -1126,6 +1217,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 		s.record(answers, "f", plan.action.id, answered{tree: plan.action.output})
 	}
 
+	filter := s.documentOptions(r).filter
 	var answersMu sync.Mutex
 	finished := false
 	result, _, err := s.engine.Render(ctx, plan.routeID, request, ssr.Hosts{
@@ -1145,7 +1237,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 		},
 		Fetch: func(ctx context.Context, payload []byte) ([]byte, error) {
 			ctx = withEvent(ctx, event)
-			ctx = context.WithValue(ctx, fetchParentKey{}, fetchParent{r, req.url})
+			ctx = context.WithValue(ctx, fetchParentKey{}, fetchParent{request: r, url: req.url, jar: plan.jar, filter: filter})
 			return s.fetchDispatch(ctx, payload)
 		},
 		Match: s.matchDispatch,

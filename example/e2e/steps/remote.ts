@@ -2,7 +2,7 @@ import { createBdd } from 'playwright-bdd';
 import type { Page } from '@playwright/test';
 import { expect, hydrated, test } from './fixtures';
 
-const { When, Then } = createBdd(test);
+const { Given, When, Then } = createBdd(test);
 
 When('the todo list has loaded', async ({ page }) => {
 	// Both the list query and the live-count stream must have gone out before a
@@ -15,6 +15,17 @@ When('the todo list has loaded', async ({ page }) => {
 	await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);
 	await expect(page.getByTestId('todo').first()).toBeVisible();
 	await expect(page.getByTestId('count')).toBeVisible();
+});
+
+// Kit evicts a query's cache entry when the last proxy for it is garbage
+// collected, so how long a request is in flight decides whether a second
+// proxy finds the entry. A held response is how a scenario makes that
+// deterministic instead of waiting for a collection to land in the window.
+Given('every remote response is held for {int} ms', async ({ page }, ms: number) => {
+	await page.route('**/_app/remote/**', async (route) => {
+		await new Promise((resolve) => setTimeout(resolve, ms));
+		await route.continue();
+	});
 });
 
 When('I note the remote request count', async ({ remotes }) => {

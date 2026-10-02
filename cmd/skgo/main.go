@@ -35,6 +35,7 @@ const usage = `usage:
 	skgo new [flags] DIR [-- SV_CREATE_OPTIONS]
 	                          create a SvelteKit application served by Go
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
+	skgo dev [flags]          run Vite and the Go application, rebuilding Go as it changes
 	skgo check [flags]        check Go, Svelte, lint and formatting without edits
 	skgo advice [--json] [SKGO001..SKGO008]
 	                          show installed rule guidance and repair examples
@@ -61,6 +62,8 @@ func main() {
 		newProject(os.Args[2:])
 	case "generate":
 		generate(os.Args[2:])
+	case "dev":
+		os.Exit(devCommand(os.Args[2:]))
 	case "check":
 		checkProject(os.Args[2:])
 	case "advice":

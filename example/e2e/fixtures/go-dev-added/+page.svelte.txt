@@ -1,0 +1,6 @@
+<script lang="ts">
+	let { data } = $props();
+</script>
+
+<h1 data-testid="title">Added Go route</h1>
+<p data-testid="go-dev-added-load">{data.revision}</p>

@@ -114,7 +114,7 @@ func (h *devPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
-			end, err := h.renderer.beginDevRender()
+			end, r, err := h.renderer.beginDevRenderFor(r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadGateway)
 				return
@@ -169,4 +169,21 @@ func (h *devPages) isDocument(urlPath string) bool {
 		return true
 	}
 	return path.Ext(routePath) == ""
+}
+
+// servedByVite reports a request vite answers on its own — a module, a file out
+// of `static/`, the HMR socket. Data and remote requests are the app's, whatever
+// their path looks like.
+func (h *devPages) servedByVite(r *http.Request) bool {
+	if isUpgrade(r) {
+		return true
+	}
+	urlPath, ok := normalizePath(r.URL.Path)
+	if !ok {
+		return false
+	}
+	if hasDataSuffix(urlPath) || strings.HasPrefix(urlPath, h.appPrefix+"remote/") {
+		return false
+	}
+	return !h.isDocument(urlPath)
 }

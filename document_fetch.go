@@ -11,15 +11,14 @@
 package skgo
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -39,11 +38,9 @@ func (s *SSR) fetchDispatch(ctx context.Context, payload []byte) ([]byte, error)
 	return json.Marshal(answer)
 }
 
-// fetchAnswer runs one render-time fetch against the app's own server-route
-// registry, exactly as if the browser had asked for it — except that nothing
-// here opens a connection. httptest.NewRecorder is a ResponseWriter that
-// writes to memory; s.fetch.ServeHTTP is the same http.Handler a real request
-// to this path would reach.
+// fetchAnswer runs one render-time fetch through the same requestFetcher
+// Event.Fetch uses: the app's own routes are answered in-process by s.fetch,
+// everything else goes out over HTTP, and Kit's credential rules apply.
 func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAnswer {
 
 	method := req.Method
@@ -52,7 +49,14 @@ func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAn
 	}
 
 	var body io.Reader
-	if req.Body != "" {
+	switch {
+	case req.BodyBase64 != "":
+		raw, err := base64.StdEncoding.DecodeString(req.BodyBase64)
+		if err != nil {
+			return ssr.FetchAnswer{Error: "Failed to fetch"}
+		}
+		body = bytes.NewReader(raw)
+	case req.Body != "":
 		body = strings.NewReader(req.Body)
 	}
 
@@ -64,69 +68,25 @@ func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAn
 		httpReq.Header.Set(name, value)
 	}
 
-	parent, hasParent := ctx.Value(fetchParentKey{}).(fetchParent)
-	dispatch := func(request *http.Request) (*http.Response, error) {
-		if s.fetch == nil {
-			return nil, fmt.Errorf("skgo: no server route is registered to answer event.fetch during a render")
-		}
-		// A subrequest has its own locals; only the fetch hook sees the
-		// originating request's locals. Mount Handle over Fetch to populate
-		// the endpoint's locals from the inherited request credentials.
-		request = request.Clone(context.WithValue(ctx, localsKey{}, &locals{values: map[reflect.Type]any{}}))
-		if hasParent {
-			target := request.URL
-			if target == nil || !sameFetchOrigin(target, parent.url) {
-				return nil, fmt.Errorf("skgo: event.fetch only reaches this app's own routes during server-side rendering")
-			}
-			// Kit inherits credentials only after handleFetch rewrites the URL.
-			if req.Credentials != "omit" {
-				cookies := map[string]string{}
-				for _, cookie := range parent.request.Cookies() {
-					cookies[cookie.Name] = cookie.Value
-				}
-				for _, cookie := range request.Cookies() {
-					cookies[cookie.Name] = cookie.Value
-				}
-				request.Header.Del("Cookie")
-				names := make([]string, 0, len(cookies))
-				for name := range cookies {
-					names = append(names, name)
-				}
-				sort.Strings(names)
-				for _, name := range names {
-					request.AddCookie(&http.Cookie{Name: name, Value: cookies[name]})
-				}
-				if !hasFetchHeader(request.Header, "Authorization") {
-					if value := parent.request.Header.Get("Authorization"); value != "" {
-						request.Header.Set("Authorization", value)
-					}
-				}
-			}
-			if !hasFetchHeader(request.Header, "Origin") {
-				request.Header.Set("Origin", parent.url.Scheme+"://"+parent.url.Host)
-			}
-			if request.Method == http.MethodGet || request.Method == http.MethodHead {
-				request.Header.Del("Origin")
-			}
-			if !hasFetchHeader(request.Header, "Accept") {
-				request.Header.Set("Accept", "*/*")
-			}
-			if !hasFetchHeader(request.Header, "Accept-Language") {
-				if value := parent.request.Header.Get("Accept-Language"); value != "" {
-					request.Header.Set("Accept-Language", value)
-				}
-			}
-		}
-		rec := httptest.NewRecorder()
-		s.fetch.ServeHTTP(rec, request)
-		return rec.Result(), nil
+	parent, ok := ctx.Value(fetchParentKey{}).(fetchParent)
+	if !ok {
+		return ssr.FetchAnswer{Error: "skgo: a render-time fetch needs the request being rendered"}
 	}
-	var response *http.Response
-	if s.handleFetch != nil {
-		response, err = s.handleFetch(ctx, httpReq, dispatch)
-	} else {
-		response, err = dispatch(httpReq)
+	filter := parent.filter
+	if filter == nil {
+		filter = s.filterSerializedResponseHeaders
 	}
+	fetcher := &requestFetcher{handler: s.fetch, hook: s.handleFetch, base: s.base, prerendered: s.prerendered}
+	source := fetchSource{url: parent.url, request: parent.request, jar: parent.jar}
+	if source.jar == nil {
+		if event := EventFrom(ctx); event != nil {
+			source.jar = event.jar
+		}
+	}
+	response, err := fetcher.fetch(ctx, source, httpReq, fetchOptions{
+		credentials: FetchCredentials(req.Credentials),
+		mode:        FetchMode(req.Mode),
+	})
 	if err != nil {
 		return ssr.FetchAnswer{Error: err.Error()}
 	}
@@ -141,17 +101,11 @@ func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAn
 			return ssr.FetchAnswer{Error: err.Error()}
 		}
 	}
-	headers := map[string]string{}
-	serialized := map[string]string{}
-	for name := range response.Header {
-		value := response.Header.Get(name)
-		headers[name] = value
-		lower := strings.ToLower(name)
-		if s.filterSerializedResponseHeaders != nil && s.filterSerializedResponseHeaders(lower, value) {
-			serialized[lower] = value
-		}
+	answer := &ssr.FetchResponse{
+		Status:     response.StatusCode,
+		StatusText: http.StatusText(response.StatusCode),
+		Headers:    fetchHeaders(response.Header, filter),
 	}
-	answer := &ssr.FetchResponse{Status: response.StatusCode, StatusText: http.StatusText(response.StatusCode), Headers: headers, SerializedHeaders: serialized}
 	if utf8.Valid(raw) {
 		answer.Body = string(raw)
 	} else {
@@ -159,6 +113,41 @@ func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAn
 	}
 	return ssr.FetchAnswer{Response: answer}
 
+}
+
+// fetchHeaders lists a response's headers the way the standard's Headers
+// iterates them — lowercase names in order, a repeated name joined with ", ",
+// Set-Cookie once per value — and marks the ones the app's
+// filter lets a universal load's hydration data carry.
+// Kit applies that filter to what `get` returns as well as to what iteration
+// yields, so a Set-Cookie that has several values is also judged joined.
+func fetchHeaders(header http.Header, filter func(name, value string) bool) []ssr.FetchHeader {
+	allowed := func(name, value string) bool {
+		return filter != nil && filter(name, value)
+	}
+	names := make([]string, 0, len(header))
+	for name := range header {
+		names = append(names, name)
+	}
+	sort.Slice(names, func(i, j int) bool { return strings.ToLower(names[i]) < strings.ToLower(names[j]) })
+	var out []ssr.FetchHeader
+	for _, name := range names {
+		lower := strings.ToLower(name)
+		values := header[name]
+		if lower != "set-cookie" {
+			joined := strings.Join(values, ", ")
+			out = append(out, ssr.FetchHeader{Name: lower, Value: joined, Serialized: allowed(lower, joined)})
+			continue
+		}
+		for _, value := range values {
+			out = append(out, ssr.FetchHeader{Name: lower, Value: value, Serialized: allowed(lower, value)})
+		}
+		if len(values) > 1 {
+			joined := strings.Join(values, ", ")
+			out = append(out, ssr.FetchHeader{Name: lower, Value: joined, Serialized: allowed(lower, joined)})
+		}
+	}
+	return out
 }
 
 // matchDispatch answers one render-time `$app/paths` `match()` lookup. It is

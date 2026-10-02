@@ -45,15 +45,22 @@ func TestHandleDoesNotRunForTheBundle(t *testing.T) {
 	}
 }
 
-func TestHandleMayNotWriteCookies(t *testing.T) {
+// Kit's `handle` writes `event.cookies` like anything else, and the cookie
+// reaches the visitor on the response `resolve` produced — here a 404 from the
+// application, which kit decorates the same as a 200.
+func TestHandleWritesCookiesThatReachTheVisitor(t *testing.T) {
 	var got error
 	hook := Handle(func(ctx context.Context) error {
-		got = EventFrom(ctx).SetCookie("x", "1", CookieOptions{})
+		got = EventFrom(ctx).SetCookie("refreshed", "token-7", CookieOptions{})
 		return nil
 	})
-	get(t, hook.Intercept(HandleConfig{}, http.NotFoundHandler()), "/a")
-	if got == nil {
-		t.Error("the hook was allowed to write a cookie; a navigation writes one from a load and a mutation from a command")
+	rec := get(t, hook.Intercept(HandleConfig{}, http.NotFoundHandler()), "/a")
+	if got != nil {
+		t.Fatalf("the hook could not write a cookie: %v", got)
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != "refreshed" || cookies[0].Value != "token-7" {
+		t.Errorf("visitor cookies = %v, want exactly refreshed=token-7", cookies)
 	}
 }
 
