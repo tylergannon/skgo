@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, expectedMode, expectMode, hydrated, test } from './fixtures';
+import { expect, expectedMode, expectMode, hydrated, booted, test } from './fixtures';
 import { tagged } from './ssr';
 
 const { After, Then, When } = createBdd(test);
@@ -393,7 +393,7 @@ Then(
 		await expect(page).toHaveURL(path);
 		await expect(page.locator('meta[name="go-template"]')).toHaveAttribute('content', mode === 'dev' ? live : built);
 		await expect(page.getByTestId('app-nav')).toBeVisible();
-		await hydrated(page);
+		await booted(page);
 		if (path === '/go-dev') await expect(page.getByTestId('go-dev-load')).toHaveText('Go revision one');
 	}
 );
@@ -631,7 +631,7 @@ Then(
 		const response = await editedDocument(page, path, mode === 'dev');
 		expect(response.status()).toBe(expected);
 		await expect(page).toHaveURL(path);
-		await hydrated(page);
+		await booted(page);
 		if (expected === 404) await expect(page.getByRole('heading', { name: '404', exact: true })).toBeVisible();
 	}
 );
