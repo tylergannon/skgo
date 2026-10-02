@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import type { Browser, Page } from '@playwright/test';
+import type { Browser, Page, Response } from '@playwright/test';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -328,6 +328,33 @@ Then(
 	}
 );
 
+/**
+ * Kit sends full-reload for template and route-graph edits. HTTP readiness does
+ * not mean that the open browser has consumed that event: its reload can
+ * replace our navigation. Require a completed navigation, retrying only that
+ * dev interruption, before asserting the new document's contents or status.
+ */
+async function editedDocument(page: Page, path: string, live: boolean): Promise<Response> {
+	if (!live) {
+		const response = await page.goto(path);
+		expect(response, `no document response for ${path}`).not.toBeNull();
+		return response!;
+	}
+	let response: Response | null = null;
+	await expect
+		.poll(async () => {
+			try {
+				response = await page.goto(path);
+				return response !== null;
+			} catch (error) {
+				if (/net::ERR_ABORTED|is interrupted by another navigation/.test(String(error))) return false;
+				throw error;
+			}
+		}, { timeout: developmentTimeout, intervals, message: `no completed document navigation to ${path}` })
+		.toBe(true);
+	return response!;
+}
+
 async function templateMarker(page: Page, path: string): Promise<string> {
 	const response = await page.request.get(path);
 	const match = (await response.text()).match(/<meta name="go-template" content="([^"]*)"/);
@@ -344,8 +371,10 @@ Then(
 				intervals
 			})
 			.toBe(mode === 'dev' ? live : built);
-		await page.goto(path);
+		const response = await editedDocument(page, path, mode === 'dev');
+		expect(response.status()).toBe(200);
 		await expect(page.locator('meta[name="go-template"]')).toHaveAttribute('content', mode === 'dev' ? live : built);
+		await expect(page.getByTestId('go-dev-load')).toHaveText('Go revision one');
 	}
 );
 
@@ -570,7 +599,7 @@ Then(
 
 Then(
 	'a cold request for {string} is answered {int} in dev and {int} in prod',
-	async ({ page, documents }, path: string, live: number, built: number) => {
+	async ({ page }, path: string, live: number, built: number) => {
 		const mode = expectedMode();
 		const expected = mode === 'dev' ? live : built;
 		await expect
@@ -579,8 +608,10 @@ Then(
 				intervals
 			})
 			.toBe(expected);
-		await page.goto(path);
-		expect(documents.last?.status()).toBe(expected);
+		const response = await editedDocument(page, path, mode === 'dev');
+		expect(response.status()).toBe(expected);
+		await expect(page).toHaveURL(response.url());
+		if (expected === 404) await expect(page.getByRole('heading', { name: '404', exact: true })).toBeVisible();
 	}
 );
 

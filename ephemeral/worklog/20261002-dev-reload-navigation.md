@@ -1,0 +1,2 @@
+friction: Release 37035887961 DEV template-marker and removed-route checks navigated after HTTP readiness while Kit full-reload was still pending; traces show 7.6 ms aborted navigation and 19.9 ms same-URL replacement. Retry only these navigation interruptions and assert the completed browser document, never sleep for the reload.
+correction: Migration moved pinned Kit to /Users/tyler/Codex/2026-10-01/task-2/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28; the formerly prescribed /Users/tyler/src/skgo path is absent.
