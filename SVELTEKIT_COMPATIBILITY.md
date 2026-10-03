@@ -158,6 +158,14 @@ build so restored files could not invalidate the frontend freshness check.
   `stable-js-final-local-actions.png`; they visibly show the literal input
   `Tyler final local 2026-10-03`, distinct from earlier captures.
 
+The working-tree code checked above was committed as `5d3e1a0`. The independent
+[whole-change review](ephemeral/reviews/20261003-stable-js-main-round-03.md)
+ran `just test` again at that committed head (21 packages passed), verified the
+addon distribution against a fresh build, and inspected both screenshots. Its
+outcome was **only nitpicks remain**. No code changed after those runs; later
+edits clarify the installation command and this record. Committing already
+checked content does not require repeating the checks.
+
 An old global VitePlus bootstrap, stale CORS expectations, an existing manifest
 extraction bug, browser readiness/form-completion races and stale build inputs
 were found and resolved; no known failing contract was waived. The manual

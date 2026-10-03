@@ -219,6 +219,7 @@ You need Go, [VitePlus](https://viteplus.dev) **1.0.0** (`vp`) and
 `skgo new` refuses other bootstrap versions before project creation.
 
 ```sh
+npm install --global vite-plus@1.0.0
 go install github.com/tylergannon/skgo/cmd/skgo@latest
 skgo new myapp
 cd myapp
