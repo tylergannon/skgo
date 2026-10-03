@@ -148,8 +148,8 @@
   {
     "name": "vite",
     "latest": "8.3.2",
-    "selected": "8.3.2",
-    "time": "2026-10-01T10:17:44.767Z",
+    "selected": "8.3.1",
+    "time": "2026-09-24T12:26:19.940Z",
     "engines": {
       "node": "^20.19.0 || >=22.12.0"
     },
@@ -169,33 +169,33 @@
     },
     "dependencies": {
       "postcss": "^8.5.28",
-      "rolldown": "~1.2.11",
+      "rolldown": "~1.2.9",
       "picomatch": "^4.0.7",
       "tinyglobby": "^0.2.17",
       "lightningcss": "^1.33.0"
     },
     "dist": {
-      "shasum": "391d1e62761b343435b8e4b512e449a4f90670a3",
-      "tarball": "https://registry.npmjs.org/vite/-/vite-8.3.2.tgz",
+      "shasum": "aa1099a4ccaf104a8c32492951497fa1781d9fce",
+      "tarball": "https://registry.npmjs.org/vite/-/vite-8.3.1.tgz",
       "fileCount": 37,
-      "integrity": "sha512-SQr1x6W5vVSbROg7vsyXIaxK9b0G7zsT68acdWWRmnBUsgDieLCRG+Rep9WdZgcposvv/GSnr4GUUBqB3vXq6w==",
+      "integrity": "sha512-/bvH9E9tmCXRGp2uXY3WbOldqpTwFkbha/8ANaEQ6VkxhH60KyqLwgZq6lG2y+4uT55x9+9eUHMpQ7uGnOCKjA==",
       "signatures": [
         {
-          "sig": "MEUCIDRyJ0oCTApxHzpji4V1tMk6RP8QObK5M97EgjbqtxCrAiEApp9GKD31PA9YCNdNCGWyUas9XBS4h+GF5btID2Q/9Qk=",
+          "sig": "MEQCIFCSTBguqp+xbAC2qZmuUSij49FgljuCRTTeyL1XkpnNAiAGifXtIBjTCgh++fODfr9E6/28L4ATJDBkR1m9NF7InQ==",
           "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
         },
         {
-          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
-          "sig": "MEUCIQDvZM4Bjpou5XEbQ5Cnt94ULPTQyAINHSgQLxmIVRZaXgIgAfG4fvQedEEGafW9vyG5gmfhtrSj2VeIN+n5JFpAxR8="
+          "sig": "MEUCIFn8kwCcxORlWzME11H1Qc7ie0cw9EpEMET51ewNZePrAiEAmqhogJZs3JnbI7D50IkJMkxc7cUC/QWJXk+lQp4yjpU=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
         }
       ],
       "attestations": {
-        "url": "https://registry.npmjs.org/-/npm/v1/attestations/vite@8.3.2",
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/vite@8.3.1",
         "provenance": {
           "predicateType": "https://slsa.dev/provenance/v1"
         }
       },
-      "unpackedSize": 2368132
+      "unpackedSize": 2375009
     },
     "registryURL": "https://registry.npmjs.org/vite",
     "reason": "Standalone latest is recorded for comparison; the app uses the VitePlus core alias, which exports Vite 8.3.1."
@@ -237,7 +237,7 @@
       "unpackedSize": 873971
     },
     "registryURL": "https://registry.npmjs.org/rolldown",
-    "reason": "Standalone latest 1.2.12 is installed for the sv build; VitePlus owns its embedded 1.2.11."
+    "reason": "tsdown 0.23.0 resolves standalone Rolldown 1.2.12 in its separate build-time lock. VitePlus core 1.0.0 embeds its own Rolldown 1.2.11; that managed runtime is retained."
   },
   {
     "name": "vite-plus",
@@ -773,8 +773,8 @@
   {
     "name": "vitest",
     "latest": "5.0.3",
-    "selected": "5.0.3",
-    "time": "2026-09-30T11:30:42.429Z",
+    "selected": "5.0.1",
+    "time": "2026-09-15T08:49:35.830Z",
     "engines": {
       "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
     },
@@ -782,49 +782,49 @@
       "vite": "^6.4.0 || ^7.0.0 || ^8.0.0",
       "jsdom": "*",
       "happy-dom": "*",
-      "@vitest/ui": "5.0.3",
+      "@vitest/ui": "5.0.1",
       "@types/node": "^22.0.0 || >=24.0.0",
       "@edge-runtime/vm": "*",
       "@opentelemetry/api": "^1.9.0",
-      "@vitest/coverage-v8": "5.0.3",
-      "@vitest/browser-preview": "5.0.3",
-      "@vitest/coverage-istanbul": "5.0.3",
-      "@vitest/browser-playwright": "5.0.3",
+      "@vitest/coverage-v8": "5.0.1",
+      "@vitest/browser-preview": "5.0.1",
+      "@vitest/coverage-istanbul": "5.0.1",
+      "@vitest/browser-playwright": "5.0.1",
       "@vitest/browser-webdriverio": "^5.0.0-beta.5 || >=5.0.0"
     },
     "dependencies": {
       "chai": "^6.2.2",
       "obug": "^2.1.4",
       "std-env": "^4.2.0",
-      "tinyexec": "^1.3.0",
+      "tinyexec": "1.3.0",
       "picomatch": "^4.0.7",
-      "tinybench": "^6.1.4",
+      "tinybench": "6.1.4",
       "tinyglobby": "^0.2.17",
       "@types/chai": "^5.2.2",
       "expect-type": "^1.4.0",
       "magic-string": "^1.2.3",
-      "@vitest/mocker": "5.0.3",
+      "@vitest/mocker": "5.0.1",
       "es-module-lexer": "^2.3.2",
-      "why-is-node-running": "3.2.1"
+      "why-is-node-running": "^2.3.0"
     },
     "dist": {
-      "shasum": "0d07cdc353bb0da4ff936e4471c1aa55f34c42ed",
-      "tarball": "https://registry.npmjs.org/vitest/-/vitest-5.0.3.tgz",
-      "integrity": "sha512-xMw97S3rjdtj5dkVat7jCsqWBpvchs3RlpQctUqwJD0KkERk40vz2fJ77lDwW/Vzh/pk18eItYAzkodhSes3jQ==",
+      "shasum": "22505b6481ed0e692b3f6d4fed179da8487d252c",
+      "tarball": "https://registry.npmjs.org/vitest/-/vitest-5.0.1.tgz",
       "fileCount": 103,
-      "unpackedSize": 2759444,
+      "integrity": "sha512-iA95lQbKEkvrtTkdAgnWbXfbipWiiWe/hDl2P5tMi6WFwD76G0NxXAGp/M9EOcYupeGJRr6wppMc7CoA41TQjg==",
+      "signatures": [
+        {
+          "sig": "MEUCIAdhfWS0gjWnhFRMrahSe+7QO4gFu5E/IdMPENdDDE9vAiEAh+IaVYGvUpfZinhweEX3yLqm9wI9UEEyTZaAoAE7hbc=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
       "attestations": {
-        "url": "https://registry.npmjs.org/-/npm/v1/attestations/vitest@5.0.3",
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/vitest@5.0.1",
         "provenance": {
           "predicateType": "https://slsa.dev/provenance/v1"
         }
       },
-      "signatures": [
-        {
-          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
-          "sig": "MEUCIEKg6A4v1/3T/dV60WT589wBM/REifuLf/GjsguvoI6kAiEAwoblCSNq2cKMTTHwVyYQi4I38jpfeAw8tSKbBYZLp3c="
-        }
-      ]
+      "unpackedSize": 2736905
     },
     "registryURL": "https://registry.npmjs.org/vitest",
     "reason": "Standalone latest is recorded for comparison; VitePlus owns its managed Vitest/browser family at 5.0.1."
@@ -859,5 +859,40 @@
       "unpackedSize": 4090106
     },
     "registryURL": "https://registry.npmjs.org/pnpm"
+  },
+  {
+    "name": "vitest-browser-svelte",
+    "latest": "3.1.0",
+    "selected": "3.1.0",
+    "time": "2026-09-04T07:55:38.388Z",
+    "engines": null,
+    "peers": {
+      "svelte": "^3 || ^4 || ^5 || ^5.0.0-next.0",
+      "vitest": "^4.0.0 || ^5.0.0"
+    },
+    "dependencies": {
+      "@testing-library/svelte-core": "^1.1.3"
+    },
+    "dist": {
+      "shasum": "7dc69d85ae6f2c7705def08cdcfb7a6f8aeaa579",
+      "tarball": "https://registry.npmjs.org/vitest-browser-svelte/-/vitest-browser-svelte-3.1.0.tgz",
+      "integrity": "sha512-+EBXSed6NArmzOC2DY4v9sI5n9TMIyfkMnewbXNQ7sR5IckQTCx7g1BbLdkH7kzm/tkgG/eEbRYlMWSbVfBtWA==",
+      "fileCount": 13,
+      "unpackedSize": 18768,
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/vitest-browser-svelte@3.1.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "signatures": [
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEQCIFM6zyMAJpCClKq5e3O56quJT4QsNAyuCdqsvM8tc6TuAiBZ6zXxn5F36vY6JFb+JnslkV2HgkFt0fMYI2Urq3eJiw=="
+        }
+      ]
+    },
+    "registryURL": "https://registry.npmjs.org/vitest-browser-svelte",
+    "reason": "sv 1.0.1 emits ^2.1.1, whose peers require Vitest 4; stable 3.1.0 supports VitePlus 1.0.0 bundled Vitest 5.0.1."
   }
 ]

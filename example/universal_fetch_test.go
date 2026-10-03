@@ -278,8 +278,8 @@ func TestAnExternalFetchIsHeldToCorsAndNoCorsHidesTheBody(t *testing.T) {
 		name, path, mode string
 		want             probeResult
 	}{
-		{"no allow-origin header", "/none", "cors", probeResult{Error: "CORS error: No 'Access-Control-Allow-Origin' header is present on the requested resource"}},
-		{"another origin allowed", "/wrong", "cors", probeResult{Error: "CORS error: Incorrect 'Access-Control-Allow-Origin' header is present on the requested resource"}},
+		{"no allow-origin header", "/none", "cors", probeResult{Error: "load_fetch_cors\nCORS error: No `Access-Control-Allow-Origin` header is present on the requested resource\nhttps://svelte.dev/e/kit/load_fetch_cors"}},
+		{"another origin allowed", "/wrong", "cors", probeResult{Error: "load_fetch_cors\nCORS error: Incorrect `Access-Control-Allow-Origin` header is present on the requested resource\nhttps://svelte.dev/e/kit/load_fetch_cors"}},
 		{"this origin allowed", "/ok", "cors", probeResult{Status: 200, Body: "external-ok"}},
 		{"any origin allowed", "/star", "cors", probeResult{Status: 200, Body: "external-star"}},
 		// A no-cors fetch succeeds whatever the header says, and the page

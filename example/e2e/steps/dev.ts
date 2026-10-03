@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, expectedMode, expectMode, hydrated, booted, test } from './fixtures';
+import { expect, expectedMode, expectMode, hydrated, interactive, booted, test } from './fixtures';
 import { tagged } from './ssr';
 
 const { After, Then, When } = createBdd(test);
@@ -199,6 +199,7 @@ Then(
 					try {
 						await page.goto('/go-dev');
 						await hydrated(page);
+						await interactive(page, 'go-dev-endpoint-button');
 						const before = documents.count;
 						await page.getByTestId('enhanced-go-dev-form').getByRole('button').click();
 						await expect(page.getByTestId('go-dev-action')).toBeVisible({ timeout: 10_000 });
@@ -313,6 +314,7 @@ Then(
 					try {
 						await page.goto('/go-dev');
 						await hydrated(page);
+						await interactive(page, 'go-dev-endpoint-button');
 						await page.getByTestId('go-dev-endpoint-button').click();
 						await expect(page.getByTestId('go-dev-endpoint')).not.toHaveText('No endpoint request yet.', { timeout: 10_000 });
 						return JSON.parse((await page.getByTestId('go-dev-endpoint').textContent()) ?? 'null');

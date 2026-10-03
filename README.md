@@ -10,8 +10,8 @@ SvelteKit remote function. Pages are rendered by SvelteKit's own renderer
 running inside the Go process, and the app deploys as a single Go binary. Node
 is only needed to build it.
 
-> **Status:** pre-1.0. skgo tracks the SvelteKit 3 prerelease pinned in this
-> repository. All server code is written in Go: TypeScript remote functions,
+> **Status:** pre-1.0. skgo uses SvelteKit 3.0.0, reviewed in the
+> [compatibility journal](SVELTEKIT_COMPATIBILITY.md). All server code is written in Go: TypeScript remote functions,
 > loads and API routes are not supported. The [example app](example/) shows what
 > works today.
 

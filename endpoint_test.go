@@ -310,6 +310,24 @@ func TestTheTrailingSlashIsNormalizedBeforeAnythingAnswers(t *testing.T) {
 	}
 }
 
+func TestABasedRootRedirectCannotTurnAColonIntoAURLScheme(t *testing.T) {
+	cfg := EndpointConfig{AppDir: "_app", Base: "/foo:bar", Origin: "https://example.test", Routes: []ManifestRoute{
+		{ID: "/", Pattern: `^\/$`, Endpoint: &ManifestEndpoint{Methods: []string{"GET"}}},
+	}, manifest: true}
+	h := newEndpoints(t, cfg, NewEndpoint("/", "GET", echo("based root")))
+	resp := request(t, h, http.MethodGet, "/foo:bar?q=1", nil)
+	if resp.StatusCode != http.StatusPermanentRedirect {
+		t.Fatalf("status %d, want 308", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Location"); got != "./foo:bar/?q=1" {
+		t.Fatalf("Location %q, want ./foo:bar/?q=1", got)
+	}
+	resp = request(t, h, http.MethodGet, "/foo:bar/?q=1", nil)
+	if resp.StatusCode != http.StatusOK || body(t, resp) != "based root" {
+		t.Fatal("redirect target did not reach the Go endpoint")
+	}
+}
+
 // Kit refuses a form-shaped mutation from another origin before the handler
 // runs (`runtime/server/csrf.js`), and it applies that check to endpoints, not
 // only to form actions.

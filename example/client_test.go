@@ -24,7 +24,7 @@ import (
 	optional "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
 )
 
-// Captured from the pinned Kit 3.0.0-next.27 serialize_binary_form function
+// Captured from Kit 3.0.0-next.27 serialize_binary_form function
 // with devalue 5.9.2, not from skgo's encoder.
 const kitOptionalOmitted = "ADYAAAAAAFtbMSwzXSx7Im5hbWUiOjJ9LCJmaXh0dXJlIix7InJlbW90ZV9yZWZyZXNoZXMiOjR9LFtdXQ=="
 const kitOptionalExplicit = "AGEAAAAAAFtbMSw2XSx7Im5hbWUiOjIsImNvdW50IjozLCJlbmFibGVkIjo0LCJsYWJlbCI6NX0sImZpeHR1cmUiLDAsZmFsc2UsIiIseyJyZW1vdGVfcmVmcmVzaGVzIjo3fSxbXV0="

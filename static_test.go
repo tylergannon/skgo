@@ -613,8 +613,30 @@ func TestTheOtherTrailingSlashFormOfAPrerenderedPageRedirects(t *testing.T) {
 	if resp.StatusCode != http.StatusPermanentRedirect {
 		t.Fatalf("/guide: status %d, want 308", resp.StatusCode)
 	}
-	if got := resp.Header.Get("Location"); got != "guide/?q=1" {
-		t.Errorf("/guide: Location %q, want guide/?q=1", got)
+	if got := resp.Header.Get("Location"); got != "./guide/?q=1" {
+		t.Errorf("/guide: Location %q, want ./guide/?q=1", got)
+	}
+}
+
+// Kit 3 prefixes a relative segment with ./ so a colon stays in the path.
+func TestAPrerenderedColonPathRedirectStaysOnTheSameOrigin(t *testing.T) {
+	build := testBuildFS()
+	build["skgo.manifest.json"] = &fstest.MapFile{Data: []byte(`{"appDir":"_app","routes":[],"prerendered":["/foo:bar/"]}`)}
+	build["prerendered/foo:bar/index.html"] = &fstest.MapFile{Data: []byte("<!doctype html><p>colon page</p>")}
+	h, err := NewStaticHandler(build)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp := do(t, h, http.MethodGet, "/foo:bar?q=1", nil)
+	if resp.StatusCode != http.StatusPermanentRedirect {
+		t.Fatalf("status %d, want 308", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Location"); got != "./foo:bar/?q=1" {
+		t.Fatalf("Location %q, want ./foo:bar/?q=1", got)
+	}
+	resp = do(t, h, http.MethodGet, "/foo:bar/?q=1", nil)
+	if resp.StatusCode != http.StatusOK || body(t, resp) != "<!doctype html><p>colon page</p>" {
+		t.Fatal("redirect target did not serve the fixture page")
 	}
 }
 

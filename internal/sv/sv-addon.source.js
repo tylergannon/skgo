@@ -111,6 +111,14 @@ export default defineAddon({
 		const applicationName = decodeURIComponent(options.name);
 		if (!adapterVersion) throw new Error('skgo requires an explicit adapter version');
 
+		// VitePlus resolves the test runtime from its own dependencies. sv's
+		// standalone Vitest add-on must share that version after it is added.
+		const vitePlusPackage = path.resolve(cwd, 'node_modules/vite-plus/package.json');
+		const vitePlus = fs.existsSync(vitePlusPackage)
+			? JSON.parse(fs.readFileSync(vitePlusPackage, 'utf8'))
+			: undefined;
+		const vitestVersion = vitePlus?.dependencies?.vitest;
+
 		sv.file(
 			file.package,
 			transforms.json(({ data }) => {
@@ -118,6 +126,17 @@ export default defineAddon({
 				// Vitest's upstream add-on writes `npm run`, but VitePlus records
 				// pnpm as the only valid package manager in devEngines.
 				data.scripts.test = 'pnpm run test:unit --run';
+				if (vitestVersion) {
+					if (data.devDependencies?.['vitest-browser-svelte']) {
+						data.devDependencies['vitest-browser-svelte'] = '3.1.0';
+					}
+					for (const dependency of Object.keys(data.devDependencies ?? {})) {
+						if (dependency === 'vitest' || dependency.startsWith('@vitest/')) {
+							data.devDependencies[dependency] = vitestVersion;
+						}
+					}
+				}
+
 				for (const dependency of Object.keys(data.devDependencies ?? {})) {
 					if (dependency.startsWith('@sveltejs/adapter-')) delete data.devDependencies[dependency];
 					if (options.starter === 'examples' && demoDependencies.includes(dependency)) {
@@ -137,7 +156,19 @@ export default defineAddon({
 		// VitePlus preserves this native pnpm project policy when it adds its
 		// catalog. It applies only to the generated project's installs; the
 		// separate Storybook dlx environment receives its own explicit flag.
-		sv.file('pnpm-workspace.yaml', pnpm.allowBuilds('esbuild'));
+		sv.file('pnpm-workspace.yaml', pnpm.allowBuilds({ cwd, packages: ['esbuild'] }));
+		if (vitePlus?.version === '1.0.0') {
+			// Storybook 10.6.1's optional peer predates VitePlus 1.0. The
+			// generated Storybook build is qualified with this exact pair.
+			sv.file('pnpm-workspace.yaml', transforms.yaml(({ data }) => {
+				const rules = data.get('peerDependencyRules');
+				const value = rules?.toJSON?.() ?? rules ?? {};
+				value.allowedVersions ??= {};
+				value.allowedVersions['storybook@10.6.1>vite-plus'] = '1.0.0';
+				data.set('peerDependencyRules', value);
+			}));
+		}
+
 		sv.file('.gitignore', (content) => {
 			const outputRule = '\n/build\n';
 			if (content.includes('!/build/.gitkeep')) return false;

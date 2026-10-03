@@ -107,6 +107,9 @@ When('I submit the enhanced remote form', async ({ page }) => {
 });
 
 Then('its remote Go receipt appears from the remote protocol', async ({ page }) => {
+	// Kit publishes result before its default refreshAll finishes. The next
+	// form edit starts only once the submission's pending state has cleared.
+	await expect(page.getByTestId('enhanced-remote-note').getByRole('button')).toBeEnabled();
 	await expect(page.getByTestId('title')).toHaveText('Actions');
 	await expect(page.getByTestId('remote-note-receipt')).toHaveText('Remote Go form received Grace Hopper');
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
