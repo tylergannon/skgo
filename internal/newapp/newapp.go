@@ -120,7 +120,7 @@ type project struct {
 	SVVersion         string
 }
 
-const storybookVersion = "10.6.0"
+const storybookVersion = "10.6.1"
 
 // escapeAddonOption produces an sv community add-on option value. sv uses "+"
 // between options, while JavaScript's decodeURIComponent does not translate
@@ -605,7 +605,7 @@ func resolve(o Options) (project, error) {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
 	p.SVVersion, err = highestVersion(client, registry, "sv", func(v string) bool {
-		return semver.Major("v"+v) == "v1"
+		return semver.Major("v"+v) == "v1" && semver.Prerelease("v"+v) == ""
 	})
 	if err != nil {
 		return project{}, fmt.Errorf("skgo: selecting sv 1.x: %w", err)

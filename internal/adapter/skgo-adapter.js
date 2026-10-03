@@ -404,7 +404,7 @@ function writeAppManifest(file, manifest) {
 /**
  * Kit's own server manifest, as an object *and* as text. Kit 3 generates a
  * complete server-instance module instead of returning manifest source. We
- * remove its eager Server import and constructor and export the manifest it
+ * remove its eager create_server import and call and export the manifest it
  * wrote; every remaining import sits inside a lazy thunk, so importing the
  * result resolves nothing and runs no application code. The source is worth
  * keeping because those thunks carry information the imported object has
@@ -413,22 +413,27 @@ function writeAppManifest(file, manifest) {
  * @param {import('@sveltejs/kit').Builder} builder
  * @returns {Promise<{ manifest: any, source: string }>}
  */
-async function readKitManifest(builder) {
+export async function readKitManifest(builder) {
 	const dir = builder.getBuildDirectory('skgo');
 	const file = join(dir, 'kit-manifest.js');
 	mkdirSync(dir, { recursive: true });
 	builder.generateServerInstance(file);
-	let source = readFileSync(file, 'utf8');
-	const original = source;
-	source = source
-		.replace(/^import \{ Server \} from '[^']+';\n/, '')
-		.replace(/^const manifest = /m, 'export const manifest = ')
-		.replace(/\nexport const server = new Server\(manifest\);\n?$/, '\n');
-	if (source === original || !source.includes('export const manifest = ')) {
+	const original = readFileSync(file, 'utf8');
+	// Kit 3's builder writes this wrapper around its lazy manifest. Strip both
+	// sides before importing it: importing Kit's server would execute its module
+	// graph, while this read should only discover what the Go binary must serve.
+	const serverImport = /^import \{ create_server \} from '[^']+';\n/;
+	const serverCall = /\nexport const server = create_server\(manifest\);\n?$/;
+	if (!serverImport.test(original) || !serverCall.test(original) ||
+		!original.replace(serverImport, '').startsWith('const manifest = ')) {
 		throw new Error(
 			'skgo: kit generated a server instance in an unknown shape; refusing to guess where its manifest is'
 		);
 	}
+	const source = original
+		.replace(serverImport, '')
+		.replace(/^const manifest = /, 'export const manifest = ')
+		.replace(serverCall, '\n');
 	writeFileSync(file, source);
 	try {
 		// The cache buster matters: `vp build` can run twice in one process.

@@ -14,7 +14,7 @@ type Entry struct {
 	Example     string `json:"example"`
 }
 
-const kitVersion = "3.0.0-next.27"
+const kitVersion = "3.0.0"
 
 func Version() string {
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {

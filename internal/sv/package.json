@@ -30,10 +30,10 @@
 		"sv-addon.js"
 	],
 	"peerDependencies": {
-		"sv": "^1.0.0-0"
+		"sv": "^1.0.1"
 	},
 	"devDependencies": {
-		"@sveltejs/sv-utils": "1.0.0-next.4",
+		"@sveltejs/sv-utils": "1.0.0",
 		"tsdown": "0.23.0"
 	}
 }
