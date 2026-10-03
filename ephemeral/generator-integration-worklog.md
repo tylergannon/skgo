@@ -3,3 +3,7 @@ The producer's aggregate test log contains a failure from stale embedded fronten
 Use source-only producer commit 32a874e, not checkpoint 9fe67c0: their internal/gen trees are identical, while the checkpoint also carries operating artifacts. The performance percentage describes the five-state generator diagnostic fixture and permits unrelated frontend/tool diagnostics; it does not establish whole-CLI health.
 
 Keep dependency delivery after this follow-on's merged main SHA; the dependency owner must rebase and qualify combined behavior rather than assume its earlier isolated proof covers the new Go checker.
+
+Compiler replacement keys must include caller, physical, and logical-working-directory-relative spellings. Caller plus EvalSymlinks alone exported stale dependency types on macOS aliases. The `%d-<authored basename>` backing filename must match scan.go's overlayError regex; bare numbered filenames leak removed temporary paths into diagnostics.
+
+Export-data fields retain authored file/line but use column 1, as generate mode already does. The reported CPU reduction is one adjacent matched pair; non-adjacent records drifted in the opposite direction. Largest-process RSS fell in both recorded pairs. Do not promise a universal CPU percentage or exact dependency-field columns.
