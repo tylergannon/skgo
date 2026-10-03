@@ -238,11 +238,17 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	}
 	sort.Strings(patterns)
 
-	loaded, err := packages.Load(&packages.Config{
+	loadCfg := &packages.Config{
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
 			packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
 		Dir: a.hostDir, Overlay: overlay,
-	}, patterns...)
+	}
+	cleanup, err := preserveDependencyExports(loadCfg)
+	if err != nil {
+		return nil, fmt.Errorf("skgo: preparing remote package overlay: %w", err)
+	}
+	defer cleanup()
+	loaded, err := packages.Load(loadCfg, patterns...)
 	if err != nil {
 		return nil, fmt.Errorf("skgo: loading remote packages: %w", err)
 	}
