@@ -1,0 +1,23 @@
+{"alloc_bytes":33099408,"cpu_ms":63.44,"cpus":10,"gomaxprocs":10,"mode":"prod","phase":"startup","wall_ms":32.588083}
+{"cpu_ms":4.392,"phase":"idle","seconds":2}
+{"cpu_ms":5.5,"path":"/","phase":"first","wall_ms":4.919042}
+{"allocs_request":22417,"bytes_request":2598624,"cpu_ms_request":4.1757965,"p95_ms":2.828,"path":"/","phase":"warm","requests":2000,"wall_ms_request":1.456816354}
+{"gc_cycles":104,"heap_bytes":270113592,"heap_objects":2563403,"path":"/","phase":"retained"}
+        5.72 real         9.03 user         0.21 sys
+           537608192  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               33167  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                2726  signals received
+                 649  voluntary context switches
+               33292  involuntary context switches
+         83902580080  instructions retired
+         34031014506  cycles elapsed
+           521733128  peak memory footprint

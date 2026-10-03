@@ -1,0 +1,26 @@
+File: gen.test
+Type: cpu
+Time: 2026-10-02 10:01:49 PDT
+Duration: 26.03s, Total samples = 18.93s (72.72%)
+Showing nodes accounting for 15.41s, 81.41% of 18.93s total
+Dropped 715 nodes (cum <= 0.09s)
+Showing top 18 nodes out of 317
+      flat  flat%   sum%        cum   cum%
+     3.02s 15.95% 15.95%      3.02s 15.95%  runtime.memclrNoHeapPointers
+     2.88s 15.21% 31.17%      2.88s 15.21%  syscall.rawsyscalln
+     2.75s 14.53% 45.69%      2.75s 14.53%  runtime.madvise
+     2.75s 14.53% 60.22%      2.94s 15.53%  runtime.tryDeferToSpanScan
+     0.88s  4.65% 64.87%      0.88s  4.65%  runtime.(*spanInlineMarkBits).init
+     0.51s  2.69% 67.56%      0.51s  2.69%  runtime.memmove
+     0.47s  2.48% 70.05%      0.47s  2.48%  runtime.kevent
+     0.40s  2.11% 72.16%      2.18s 11.52%  runtime.scanObjectsSmall
+     0.36s  1.90% 74.06%      1.69s  8.93%  runtime.mallocgcSmallScanNoHeaderSC6
+     0.31s  1.64% 75.70%      0.31s  1.64%  runtime.(*mspan).init
+     0.17s   0.9% 76.60%      1.07s  5.65%  runtime.scanObject
+     0.15s  0.79% 77.39%      0.17s   0.9%  runtime.mallocgcSmallScanNoHeaderSC2
+     0.15s  0.79% 78.18%      1.15s  6.08%  runtime.mapassign
+     0.13s  0.69% 78.87%      0.13s  0.69%  internal/runtime/atomic.(*UnsafePointer).StoreNoWB (inline)
+     0.13s  0.69% 79.56%      0.31s  1.64%  runtime.mallocgcSmallScanNoHeaderSC4
+     0.13s  0.69% 80.24%      0.59s  3.12%  runtime.mallocgcSmallScanNoHeaderSC5
+     0.11s  0.58% 80.82%      0.66s  3.49%  go/parser.(*resolver).Visit
+     0.11s  0.58% 81.41%      0.12s  0.63%  runtime.(*mspan).refillAllocCache

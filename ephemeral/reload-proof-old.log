@@ -1,0 +1,90 @@
+$ bddgen && playwright test --project=source-edit --no-deps --workers=1 --repeat-each=1 --grep 'A template marker edited|A route whose Go load'
+
+Running 2 tests using 1 worker
+
+(node:28700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+PROOF controlled browser reload interrupts /go-dev-added
+  ✘  1 [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:40:3 › The document follows the source being served › A route whose Go load and component did not exist at launch is served, navigated to and removed again (10.0s)
+(node:29060) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+PROOF controlled browser reload interrupts /go-dev
+  ✘  2 [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:86:3 › The document follows the source being served › A template marker edited while the servers run reaches the next dev document, and not the build prod embeds (765ms)
+
+
+  1) [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:40:3 › The document follows the source being served › A route whose Go load and component did not exist at launch is served, navigated to and removed again › Then a cold request for "/go-dev-added" is answered 404 in dev and 404 in prod 
+
+    Error: page.goto: net::ERR_ABORTED at http://127.0.0.1:8080/go-dev-added
+    Call log:
+      - navigating to "http://127.0.0.1:8080/go-dev-added", waiting until "load"
+
+
+       at ../steps/dev.ts:348
+
+      346 | 		}, { times: 1 });
+      347 | 		if (process.env.SKGO_RELOAD_PROOF === 'old') {
+    > 348 | 			const response = await page.goto(path);
+          | 			                            ^
+      349 | 			expect(response).not.toBeNull();
+      350 | 			return response!;
+      351 | 		}
+        at editedDocument (/Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/steps/dev.ts:348:32)
+        at Object.<anonymous> (/Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/steps/dev.ts:626:20)
+        at BddStepInvoker.runWithAfterStepHooks (/Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:82:16)
+        at BddStepInvoker.invoke (/Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:55:5)
+        at /Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/.features-gen/features/zz-source-update.feature.spec.js:48:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/reload-proof-old/features-zz-source-update.-f864d-igated-to-and-removed-again-source-edit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/reload-proof-old/features-zz-source-update.-f864d-igated-to-and-removed-again-source-edit/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/reload-proof-old/features-zz-source-update.-f864d-igated-to-and-removed-again-source-edit/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/reload-proof-old/features-zz-source-update.-f864d-igated-to-and-removed-again-source-edit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:86:3 › The document follows the source being served › A template marker edited while the servers run reaches the next dev document, and not the build prod embeds › Then a cold document for "/go-dev" has the template marker "Go template revision two" in dev or "Go template revision one" in prod 
+
+    Error: page.goto: net::ERR_ABORTED at http://127.0.0.1:8080/go-dev
+    Call log:
+      - navigating to "http://127.0.0.1:8080/go-dev", waiting until "load"
+
+
+       at ../steps/dev.ts:348
+
+      346 | 		}, { times: 1 });
+      347 | 		if (process.env.SKGO_RELOAD_PROOF === 'old') {
+    > 348 | 			const response = await page.goto(path);
+          | 			                            ^
+      349 | 			expect(response).not.toBeNull();
+      350 | 			return response!;
+      351 | 		}
+        at editedDocument (/Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/steps/dev.ts:348:32)
+        at Object.<anonymous> (/Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/steps/dev.ts:389:20)
+        at BddStepInvoker.runWithAfterStepHooks (/Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:82:16)
+        at BddStepInvoker.invoke (/Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/node_modules/.pnpm/playwright-bdd@9.2.1_@playwright+test@1.63.0/node_modules/playwright-bdd/src/runtime/bddStepInvoker.ts:55:5)
+        at /Users/tyler/Codex/2026-10-02/task-10/skgo-release-reload/example/e2e/.features-gen/features/zz-source-update.feature.spec.js:90:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/reload-proof-old/features-zz-source-update.-49a55-d-not-the-build-prod-embeds-source-edit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/reload-proof-old/features-zz-source-update.-49a55-d-not-the-build-prod-embeds-source-edit/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/reload-proof-old/features-zz-source-update.-49a55-d-not-the-build-prod-embeds-source-edit/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/reload-proof-old/features-zz-source-update.-49a55-d-not-the-build-prod-embeds-source-edit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:40:3 › The document follows the source being served › A route whose Go load and component did not exist at launch is served, navigated to and removed again 
+    [source-edit] › .features-gen/features/zz-source-update.feature.spec.js:86:3 › The document follows the source being served › A template marker edited while the servers run reaches the next dev document, and not the build prod embeds 
+[ELIFECYCLE] Test failed. See above for more details.

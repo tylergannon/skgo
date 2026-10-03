@@ -1,0 +1,22 @@
+File: gen.test
+Type: cpu
+Time: 2026-10-02 10:04:07 PDT
+Duration: 33.13s, Total samples = 11.65s (35.16%)
+Showing nodes accounting for 9.33s, 80.09% of 11.65s total
+Dropped 477 nodes (cum <= 0.06s)
+Showing top 14 nodes out of 334
+      flat  flat%   sum%        cum   cum%
+     2.75s 23.61% 23.61%      2.75s 23.61%  runtime.madvise
+     2.06s 17.68% 41.29%      2.06s 17.68%  syscall.rawsyscalln
+     1.84s 15.79% 57.08%      1.84s 15.79%  runtime.memclrNoHeapPointers
+     0.91s  7.81% 64.89%      1.05s  9.01%  runtime.tryDeferToSpanScan
+     0.41s  3.52% 68.41%      0.41s  3.52%  runtime.(*spanInlineMarkBits).init
+     0.29s  2.49% 70.90%      1.10s  9.44%  runtime.scanObjectsSmall
+     0.18s  1.55% 72.45%      0.18s  1.55%  runtime.kevent
+     0.17s  1.46% 73.91%      0.17s  1.46%  internal/runtime/atomic.(*UnsafePointer).StoreNoWB
+     0.16s  1.37% 75.28%      0.16s  1.37%  runtime.usleep
+     0.15s  1.29% 76.57%      0.15s  1.29%  runtime.memmove
+     0.12s  1.03% 77.60%      0.81s  6.95%  runtime.mapassign
+     0.10s  0.86% 78.45%      0.12s  1.03%  runtime.(*mspan).refillAllocCache
+     0.10s  0.86% 79.31%      0.10s  0.86%  runtime.pthread_cond_wait
+     0.09s  0.77% 80.09%      0.09s  0.77%  runtime.(*mspan).init

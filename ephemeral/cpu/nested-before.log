@@ -1,0 +1,23 @@
+{"alloc_bytes":33094528,"cpu_ms":49.546,"cpus":10,"gomaxprocs":10,"mode":"prod","phase":"startup","wall_ms":34.930791}
+{"cpu_ms":3.616,"phase":"idle","seconds":2}
+{"cpu_ms":22.07,"path":"/nested-universal","phase":"first","wall_ms":18.217833}
+{"allocs_request":29232,"bytes_request":2508470,"cpu_ms_request":5.03299,"p95_ms":3.739875,"path":"/nested-universal","phase":"warm","requests":1000,"wall_ms_request":1.891483875}
+{"gc_cycles":68,"heap_bytes":194644488,"heap_objects":2112757,"path":"/nested-universal","phase":"retained"}
+        4.27 real         5.60 user         0.19 sys
+           389562368  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               23259  page reclaims
+                 845  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                1916  signals received
+                 486  voluntary context switches
+               39507  involuntary context switches
+         52036236913  instructions retired
+         21456260712  cycles elapsed
+           373359504  peak memory footprint

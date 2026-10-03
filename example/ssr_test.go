@@ -3,6 +3,7 @@ package example_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -384,5 +385,30 @@ func TestALoadThatFailsInTheRootLayoutIsKitsStaticErrorPage(t *testing.T) {
 	}
 	if !strings.Contains(fine.Body.String(), `<footer data-testid="deployment">skgo example</footer>`) {
 		t.Error("the home page does not carry the root layout load's value")
+	}
+}
+
+// A successful pooled render must release its component tree. Downlevelling
+// Svelte's private fields to WeakMaps retained a cycle through the field value
+// back to its key: 500 home documents kept over 60 MiB live. The independent
+// ceiling includes the compiled bundle, runtime and ordinary app state, rather
+// than measuring a baseline from the same renderer and adding a tolerance.
+func TestSuccessfulDocumentsDoNotRetainTheirRenderTrees(t *testing.T) {
+	h := newProdHandler(t)
+	for range 500 {
+		rec := get(t, h, "/")
+		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `<p data-testid="site-name">skgo</p>`) {
+			t.Fatalf("home document: status %d, missing Go's rendered site name", rec.Code)
+		}
+	}
+	for range 3 {
+		runtime.GC()
+	}
+	var heap runtime.MemStats
+	runtime.ReadMemStats(&heap)
+	runtime.KeepAlive(h)
+	const limit = 32 << 20
+	if heap.HeapAlloc > limit {
+		t.Fatalf("500 successful home documents retained %d bytes, want at most %d", heap.HeapAlloc, limit)
 	}
 }

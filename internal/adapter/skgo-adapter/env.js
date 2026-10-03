@@ -63,7 +63,7 @@ async function fromApp(specifier) {
 }
 
 const { rolldown } = await fromApp('vite/rolldown');
-const { transformSync } = await fromApp('vite/rolldown/experimental');
+const { parseSync, transformSync } = await fromApp('vite/rolldown/experimental');
 // `fetchModule` operates on the app's own `DevEnvironment`, so it has to be
 // the app's copy for the same reason rolldown is: a second module realm's
 // vite does not recognise this one's environments.
@@ -169,8 +169,9 @@ function bare(id) {
 	return !id.startsWith('.') && !id.startsWith('\0') && !id.startsWith('/') && !isAbsolute(id);
 }
 
-/** The constructs goja's parser rejects, and the only reason to lower a module. */
-const UNPARSEABLE = /for\s+await\s*\(|async\s+function\s*\*|async\s*\*/;
+// A conservative prefilter: comments may separate an unsupported construct's
+// tokens. The syntax tree, not their spelling or surrounding text, decides.
+const MAY_NEED_LOWERING = /\b(?:async|await)\b/;
 
 /**
  * The goja environment: the vite plugin that declares it, and the call that
@@ -488,7 +489,7 @@ export function nodeTable(root, nodes) {
  * @param {string} id
  * @param {{ lowered?: Set<string>, helpers?: string }} options
  */
-function engineTransform(code, id, { lowered, helpers } = {}) {
+export function engineTransform(code, id, { lowered, helpers } = {}) {
 	let out = code;
 	// svelte/src/internal/server/crypto.js hides a `node:crypto` import behind
 	// a variable so bundlers cannot resolve it. goja rejects the syntax
@@ -499,7 +500,7 @@ function engineTransform(code, id, { lowered, helpers } = {}) {
 			'=> Promise.reject(new Error("skgo: no dynamic import in the SSR engine"))'
 		);
 	}
-	if (!UNPARSEABLE.test(out)) {
+	if (!needsLowering(out, id)) {
 		return out === code ? null : { code: out, map: null };
 	}
 	lowered?.add(id);
@@ -512,6 +513,30 @@ function engineTransform(code, id, { lowered, helpers } = {}) {
 		);
 	}
 	return { code: lower, map: null };
+}
+
+// A text match is only a cheap prefilter. Svelte's renderer has a JSDoc
+// parameter named `render_async` immediately before `*/`, which looks like
+// an async generator to the old regexp. Lowering that comment rewrote all of its
+// private fields to WeakMaps and retained whole render trees in the engine.
+function needsLowering(code, id) {
+	if (!MAY_NEED_LOWERING.test(code)) return false;
+	const nodes = [parseSync(id.replace(/\0/g, '_'), code).program];
+	while (nodes.length) {
+		const node = nodes.pop();
+		if (!node || typeof node !== 'object') continue;
+		if (node.type === 'ForOfStatement' && node.await) return true;
+		if ((node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') &&
+			node.async && node.generator) return true;
+		for (const value of Object.values(node)) {
+			if (value && typeof value === 'object') {
+				if (Array.isArray(value)) {
+					for (const child of value) nodes.push(child);
+				} else nodes.push(value);
+			}
+		}
+	}
+	return false;
 }
 
 /**
@@ -1047,6 +1072,22 @@ export function gojaDevUnchangedFiles({ out = 'build' } = {}) {
 				if (now !== null) known.set(key, now);
 				return same;
 			};
+			// Kit validates templates synchronously from its watcher. An in-place
+			// save can expose truncated bytes; report that validation error but
+			// keep the watcher alive so the completed save can regenerate Kit.
+			const notify = (receiver, event, args, file) => {
+				try {
+					return emit.call(receiver, event, ...args);
+				} catch (error) {
+					const authored = typeof file === 'string' ? relative(server.config.root, file) : null;
+					if (!(error instanceof Error) || authored === null ||
+						!['%sveltekit.head%', '%sveltekit.body%'].some(tag => error.message === `${authored} is missing ${tag}`)) throw error;
+					known.delete(posix(file));
+					server.config.logger.error(error.stack ?? error.message);
+					server.ws.send({ type: 'error', err: { message: error.message, stack: error.stack ?? '', plugin: 'skgo-dev-unchanged-files' } });
+					return false;
+				}
+			};
 			watcher.emit = function (event, ...args) {
 				const all = event === 'all';
 				const kind = all ? args[0] : event;
@@ -1064,10 +1105,10 @@ export function gojaDevUnchangedFiles({ out = 'build' } = {}) {
 						if (verdict.same) return false;
 					}
 				}
-				if (all) return emit.call(this, event, ...args);
+				if (all) return notify(this, event, args, file);
 				depth++;
 				try {
-					return emit.call(this, event, ...args);
+					return notify(this, event, args, file);
 				} finally {
 					depth--;
 				}

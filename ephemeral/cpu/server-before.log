@@ -1,0 +1,36 @@
+{"alloc_bytes":33103824,"cpu_ms":56.253,"cpus":10,"gomaxprocs":10,"mode":"prod","phase":"startup","wall_ms":27.190583}
+{"cpu_ms":0.146,"phase":"idle","seconds":2}
+{"cpu_ms":15.092,"path":"/","phase":"first","wall_ms":6.731875}
+{"allocs_request":22431,"bytes_request":2615404,"cpu_ms_request":4.181695,"p95_ms":2.881,"path":"/","phase":"warm","requests":200,"wall_ms_request":1.57009854}
+{"cpu_ms":1.351,"path":"/items/93","phase":"first","wall_ms":1.322292}
+{"allocs_request":22006,"bytes_request":1652029,"cpu_ms_request":2.95451,"p95_ms":2.533583,"path":"/items/93","phase":"warm","requests":200,"wall_ms_request":1.189023125}
+{"cpu_ms":0.05,"path":"/api/request-fetch","phase":"first","wall_ms":0.046208}
+{"allocs_request":90,"bytes_request":44685,"cpu_ms_request":0.012275,"p95_ms":0.012375,"path":"/api/request-fetch","phase":"warm","requests":200,"wall_ms_request":0.009596875}
+{"cpu_ms":0.013,"path":"/robots.txt","phase":"first","wall_ms":0.013334}
+{"allocs_request":33,"bytes_request":7105,"cpu_ms_request":0.002255,"p95_ms":0.002375,"path":"/robots.txt","phase":"warm","requests":200,"wall_ms_request":0.00225771}
+{"cpu_ms":0.163,"path":"/request-fetch/__data.json?x-sveltekit-invalidated=01","phase":"first","wall_ms":0.132875}
+{"allocs_request":310,"bytes_request":95557,"cpu_ms_request":0.05976,"p95_ms":0.050209,"path":"/request-fetch/__data.json?x-sveltekit-invalidated=01","phase":"warm","requests":200,"wall_ms_request":0.041881875}
+{"cpu_ms":0.802,"path":"/request-fetch","phase":"first","wall_ms":0.765834}
+{"allocs_request":13060,"bytes_request":1087079,"cpu_ms_request":1.868815,"p95_ms":1.423,"path":"/request-fetch","phase":"warm","requests":200,"wall_ms_request":0.775962705}
+{"cpu_ms":3.303,"path":"/nested-universal","phase":"first","wall_ms":3.237458}
+{"allocs_request":29230,"bytes_request":2502536,"cpu_ms_request":4.859355,"p95_ms":3.475958,"path":"/nested-universal","phase":"warm","requests":200,"wall_ms_request":1.821703335}
+{"cpu_ms":2.03,"path":"/destinations","phase":"first","wall_ms":1.893459}
+{"allocs_request":29589,"bytes_request":3559703,"cpu_ms_request":6.77266,"p95_ms":4.841417,"path":"/destinations","phase":"warm","requests":200,"wall_ms_request":2.350260625}
+        4.31 real         4.48 user         0.16 sys
+           317145088  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               19660  page reclaims
+                  13  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                1678  signals received
+                 405  voluntary context switches
+               37366  involuntary context switches
+         43559048230  instructions retired
+         17346364067  cycles elapsed
+           301695816  peak memory footprint

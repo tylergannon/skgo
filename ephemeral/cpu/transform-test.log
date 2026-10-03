@@ -1,0 +1,19 @@
+ok  	github.com/tylergannon/skgo/internal/adapter	0.940s
+        1.42 real         0.40 user         0.33 sys
+           165314560  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               25998  page reclaims
+                9172  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                 407  signals received
+                4908  voluntary context switches
+               13048  involuntary context switches
+          1941556149  instructions retired
+           991171939  cycles elapsed
+            18858632  peak memory footprint
