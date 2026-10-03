@@ -214,8 +214,9 @@ the public documentation.
 
 ## Start a project
 
-You need Go, [VitePlus](https://viteplus.dev) (`vp`) and
-[just](https://just.systems).
+You need Go, [VitePlus](https://viteplus.dev) **1.0.0** (`vp`) and
+[just](https://just.systems). This release qualifies that exact VitePlus toolchain;
+`skgo new` refuses other bootstrap versions before project creation.
 
 ```sh
 go install github.com/tylergannon/skgo/cmd/skgo@latest

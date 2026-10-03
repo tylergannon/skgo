@@ -117,6 +117,9 @@ export default defineAddon({
 		const vitePlus = fs.existsSync(vitePlusPackage)
 			? JSON.parse(fs.readFileSync(vitePlusPackage, 'utf8'))
 			: undefined;
+		if (vitePlus && vitePlus.version !== '1.0.0') {
+			throw new Error(`skgo qualifies VitePlus 1.0.0; found ${vitePlus.version}. Install the qualified version before adding skgo.`);
+		}
 		const vitestVersion = vitePlus?.dependencies?.vitest;
 
 		sv.file(

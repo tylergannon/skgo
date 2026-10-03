@@ -83,10 +83,11 @@ type Options struct {
 }
 
 type command struct {
-	Dir  string
-	Name string
-	Args []string
-	Env  []string
+	VitePlusVersion string
+	Dir             string
+	Name            string
+	Args            []string
+	Env             []string
 }
 
 // Result contains the instructions printed only after every setup stage has
@@ -172,7 +173,7 @@ func Create(options Options) (Result, error) {
 	}
 	vpArgs = append(vpArgs, "--no-git", "--no-agent", "--no-editor", "--no-hooks",
 		"--approve-builds", "--package-manager", "pnpm", "--", "web")
-	if err := run(command{Dir: p.Dir, Name: vp, Args: append(vpArgs, svArgs...), Env: env}); err != nil {
+	if err := run(command{Dir: p.Dir, Name: vp, Args: append(vpArgs, svArgs...), Env: env, VitePlusVersion: "1.0.0"}); err != nil {
 		return Result{}, fmt.Errorf("skgo: VitePlus project creation failed: %w", err)
 	}
 	web := filepath.Join(p.Dir, "web")
@@ -532,6 +533,19 @@ func realRunner(stdout, stderr io.Writer) func(command) error {
 		stderr = os.Stderr
 	}
 	return func(c command) error {
+		if c.VitePlusVersion != "" {
+			probe := exec.Command(c.Name, "--version")
+			probe.Dir, probe.Env = c.Dir, c.Env
+			output, err := probe.CombinedOutput()
+			if err != nil {
+				return fmt.Errorf("checking VitePlus version: %w", err)
+			}
+			fields := strings.Fields(string(output))
+			if len(fields) < 2 || fields[0] != "vp" || fields[1] != "v"+c.VitePlusVersion {
+				firstLine := strings.SplitN(strings.TrimSpace(string(output)), "\n", 2)[0]
+				return fmt.Errorf("project creation requires qualified VitePlus %s; %s --version reported %q. Install that version before running skgo new", c.VitePlusVersion, c.Name, firstLine)
+			}
+		}
 		cmd := exec.Command(c.Name, c.Args...)
 		cmd.Dir = c.Dir
 		cmd.Env = c.Env

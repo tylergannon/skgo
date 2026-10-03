@@ -36,11 +36,10 @@ This is a manual maintenance procedure; it creates no scheduled task.
 
 ## 3.0.0 — reviewed 2026-10-03
 
-**Status:** local delivery candidate; final combined qualification in progress.
-Initial validation and the first released-main integration are recorded below.
-The final base is main `bfea45a`, including PR235 and PR236. No publication or
-merge of the dependency update has occurred. This review does not claim full
-Kit parity.
+**Status:** locally validated candidate on released main `bfea45a` (PR235 and
+PR236); the dependency update has not been merged or published. This review does
+not claim full Kit parity. External delivery is paused by the coordinating
+session's automatic approval review; local artifacts remain ready for review.
 
 **Verified release:** GitHub published `@sveltejs/kit@3.0.0` on
 2026-10-01 at 17:21:04 UTC; npm published it at 17:22:34.593 UTC.
@@ -52,15 +51,10 @@ was compared with
 the actual prior pin. Registry timestamps, peer constraints and tarball integrity
 are recorded in [registry.json](ephemeral/js-dependencies/registry.json).
 
-**Baseline history:** the initial candidate `21573e1` used published PR235
-head `e9081881810928308a052854538545104c6f089d`; main had been inspected at
-`69cf454f1932bd452a11ba2da716ddd1782c4882`. At that point the unpublished repair
-`8ee7a34` and generator change `32a874e` were excluded. Delivery was subsequently
-rebased onto released main `49cc2ea3d3fdbcc288e088f719ed135a42575927` (PR235,
-v0.15.0), and then onto `bfea45a9dc5be011f9e4f37204f3b37eea350fde` (PR236).
-Those reviewed merges supply the release repairs and generator optimization;
-no uncoordinated cherry-pick was used. The native private fields from performance
-fix `972ea684` remain intact.
+**Baseline:** reviewed from PR235's published head, then reconciled onto released
+main `bfea45a9dc5be011f9e4f37204f3b37eea350fde`, which includes the release repairs
+and PR236 generator optimization. No separate pending change was cherry-picked.
+The native private fields from performance fix `972ea684` remain intact.
 
 ### Changes and backend assessment
 
@@ -90,82 +84,91 @@ clean installations rather than keeping stale transitive selections.
 | SvelteKit / adapter peer | `3.0.0` / `^3.0.0` | Replaces `3.0.0-next.28`; installed source is the authoritative adapter reference. |
 | Svelte; Vite plugin; svelte-check | `5.57.1`; `7.3.1`; `4.7.6` | Current verified stable versions. |
 | VitePlus / aliased Vite core | `1.0.0` / `1.0.0` | Exports Vite `8.3.1` and Rolldown `1.2.11`. Standalone latest `8.3.2` / `1.2.12` are not substituted into the managed runtime: module identity matters to Kit's SSR environment. Exact alias override avoids duplicate Vite cores. |
-| Managed Vitest family | `5.0.1` | Standalone latest is `5.0.3`; generated direct Vitest/browser packages follow VitePlus's bundled family to keep compatible shared instances. |
+| Managed Vitest / browser-playwright family | `5.0.1` | Standalone latest is `5.0.3`; generated direct Vitest/browser packages follow VitePlus's bundled family to keep compatible shared instances. |
 | vitest-browser-svelte | `3.1.0` | Stable sv emits `2.1.1`, whose peer requires Vitest 4. Version 3.1.0 supports managed Vitest 5 and passed real Chromium tests. |
 | TypeScript | `6.0.3` | Retained despite stable `7.0.2`: Kit requires `^6.0.0`, and svelte-check accepts only 5/6. |
 | Node types | `24.19.1` | Updated within 24.x to match pinned Node `24.21.0`; latest `26.6.4` describes another runtime major. |
 | Playwright; playwright-bdd; yaml | `1.63.0`; `9.2.1`; `2.9.1` | Current verified stable versions retained. |
 | sv; sv-utils; tsdown | `1.0.1`; `1.0.0`; `0.23.0` | Stable-only generator selection replaces prerelease selection; adapt `pnpm.allowBuilds` to `{ cwd, packages }`. Rebuilt the distributed addon. tsdown's separate lock resolves Rolldown `1.2.12`. |
 | Storybook / create-storybook / SvelteKit integration | `10.6.1` | Upgrade matching packages together. Storybook's optional VitePlus peer range is stale; permit only `storybook@10.6.1>vite-plus: 1.0.0` after an actual Storybook build passes. |
+| Extra generated-template packages | `@storybook/addon-svelte-csf 5.1.5`; `@sveltejs/enhanced-img 1.0.0`; `playwright 1.63.0` | Actual generated installations match verified stable registry versions. Upstream sv ranges resolve these versions; no additional pin was needed. |
 | pnpm | `12.8.1` | Update example/tooling/CI pins together. The aliased Vite package's own version is 1.0.0, so its narrow peer exception records that version, not exported Vite 8.3.1. |
 
 Sources for each selection are the official registry URLs and metadata in
 `registry.json`; managed tool versions were verified in installed packages and
 against the [VitePlus 1.0.0 release](https://github.com/voidzero-dev/vite-plus/releases/tag/v1.0.0).
 The peer exceptions are explicit compatibility decisions, not upstream range
-satisfaction. Future version changes require reviewing or removing them.
+satisfaction. Future version changes require reviewing or removing them. `skgo new` requires
+bootstrap VitePlus exactly 1.0.0, and the addon refuses any other installed
+VitePlus version. This deliberately prevents an older global executable from
+silently generating its older managed family or a newer unqualified combination;
+the README names the required version. Plain Vite projects have no VitePlus
+version prerequisite. VitePlus itself emits broader wildcard Vite peer rules in
+generated projects; those upstream rules are retained there. The example's own
+alias exception is exact. A successful peer check includes those explicit
+exceptions and is not a claim that upstream semver ranges accept the aliases.
 
-### Initial validation (checkpoint `21573e1`)
+### Local validation on the combined released-main base
 
-All runs use this isolated branch, bounded Go concurrency (`GOMAXPROCS=2`,
-`GOFLAGS=-p=2`) and two main browser workers. Source-edit dev scenarios must
-finish before the final production build: they touch generated stubs and would
-otherwise invalidate the independent build-freshness check.
+All browser runs used two workers and Go runs used `GOMAXPROCS=2` and
+`GOFLAGS=-p=2`. Dev source-edit scenarios completed before the final production
+build so restored files could not invalidate the frontend freshness check.
 
-- Adapter manifest contracts, native-private-field syntax-lowering contracts,
-  fresh production runtime startup and 500-document renderer retention passed.
-  Independent mutations prove the extraction/lowering regressions fail. The
-  native candidate retained 6,444,872 bytes; lowering its private fields in a
-  temporary production copy retained 72,350,880 bytes and failed the 33,554,432
-  byte ceiling. Performance code and its assertions remain unchanged.
-- Actual CLI-created TypeScript minimal and JSDoc demo projects completed Go
-  generation and production builds. Both passed `pnpm check` with zero errors
-  and warnings, and `pnpm test` with two tests (unit and Chromium), no skips.
-  A wrong literal heading failed the generated TypeScript browser test. The
-  JSDoc demo's Storybook build passed before the narrow peer rule was added; a
-  separate fresh generated app was peer-checked after the rule was added.
-- The generated JSDoc Go binary served SSR with Node excluded from its runtime
-  PATH. A Chromium command interaction updated the exact greeting and write
-  count from 0 to 1; its screenshot was inspected.
-- Main-example browser suite: all 174 scenarios passed in dev (4.8 minutes)
-  and all 174 passed in production (1.2 minutes), with no skips. Production ran
-  against the Go binary with Node excluded from PATH. A separate cold-page
-  Chromium inspection verified Home and an enhanced remote form, the literal
-  receipt `Remote Go form received Tyler`, re-enabled submission and no page
-  errors. Both screenshots were inspected.
-- Example `pnpm check` passed with zero errors and warnings; `just vet` passed.
-  `just test` passed for both modules, including production SSR, retention with native
-  private fields and frontend build freshness. No test toolchain was missing;
-  the only conditional skip in the suite is Windows-only and was not applicable
-  to this macOS run. The final embedded frontend was rebuilt after both modes'
-  source-edit scenarios restored their sources.
+- Main-example browser suite: **174 dev scenarios and 174 production scenarios
+  passed**, with no skips, on the combined `bfea45a` base. Production ran against
+  a task-owned Go binary with Node excluded from its runtime PATH. Logs:
+  `final-dev-bdd.log` and `final-prod-bdd.log` under
+  `ephemeral/js-dependencies/logs/`.
+- Fresh production build, `just test` for both modules, `just vet`, and example
+  type checking passed. The Go suite includes literal handler contracts,
+  startup of the production SSR runtime, 500-document renderer retention with
+  native private fields and frontend build freshness. Type checking reported
+  zero errors and warnings. The only platform-conditional skip is Windows-only
+  and was not applicable on this macOS host. Logs: `local-final-prod-build-fresh.log`,
+  `local-final-go-test.log`, `local-final-vet.log`, `final-svelte-check.log`.
+- Real CLI-created TypeScript minimal and JSDoc demo projects using VitePlus
+  1.0.0 were regenerated with the merged Go generator, production-built and
+  type-checked (zero errors and warnings); each passed two unit/Chromium tests
+  with no skips. The **same JSDoc app** also passed its Storybook build and
+  `pnpm peers check` with the narrow exact peer exception. Logs:
+  `final-generated-ts-*` and `final-generated-jsdoc-*`.
+- After adding the bootstrap prerequisite, the real CLI rejected installed
+  global VitePlus 0.3.3 before it created an app, and fresh VitePlus 1.0.0
+  TypeScript and JSDoc app creation succeeded. Literal Go fixtures also reject
+  prerelease, newer patch and newer major versions before creation; an
+  independent mutation without the prerequisite fails those regressions. Both
+  post-fix fresh apps also passed type checks (zero errors/warnings), two
+  unit/Chromium tests each and clean peer checks. Logs: `local-old-vp-rejection.log`,
+  `local-qualified-ts-*`, `local-qualified-jsdoc-*` and
+  `local-bootstrap-independent-*`.
+- An independent temporary production mutation lowering native private fields
+  failed the fixed 33,554,432-byte retention ceiling (72,350,880 bytes retained,
+  versus 6,444,872 in the native candidate). Manifest extraction and redirect
+  regressions also fail independent mutations. This negative proof was run
+  before released-main reconciliation; the performance code and tests are
+  unchanged from that candidate and released main, and the final full suite
+  rechecks retention.
+- Fresh Chromium inspection of the final local production build exercised a
+  sign-in command and enhanced remote form with a distinctive literal input.
+  It verified Go's resulting session and receipt, re-enabled submission and no
+  page errors. Home and Actions screenshots were captured and inspected;
+  capture details are in `local-final-browser-inspection.log` (2026-10-03
+  15:17:34–15:17:36 UTC). The images are
+  `ephemeral/screenshots/stable-js-final-local-home.png` and
+  `stable-js-final-local-actions.png`; they visibly show the literal input
+  `Tyler final local 2026-10-03`, distinct from earlier captures.
 
-### Delivery integration
+An old global VitePlus bootstrap, stale CORS expectations, an existing manifest
+extraction bug, browser readiness/form-completion races and stale build inputs
+were found and resolved; no known failing contract was waived. The manual
+inspection initially used an incorrect bundle path and guessed a remote input's
+HTML name; the corrected run used the actual artifact and accessible control.
+The readiness fixture intentionally depends on pinned Svelte's delegated event
+symbol; a future event implementation change requires reviewing that fixture.
+Dev form readiness uses a handler in the same component and is not a general
+form-readiness API. Executor
+interruptions delayed local qualification but are not passing evidence.
 
-On released main `49cc2ea`, candidate `f1d0618` passed a fresh production build,
-all 174 DEV scenarios (4.8 minutes), all 174 PROD scenarios (1.2 minutes),
-`just test` for both modules, `just vet`, and example type checking (zero errors
-and warnings). The first dev launch refused old adapter identity metadata;
-rebuilding the frontend resolved that refusal before qualification. The final
-Go suite followed a fresh build after both source-edit suites restored files.
-
-The primary agent inspected new post-rebase Home and Actions screenshots after
-Chromium verified the literal Go greeting, enhanced remote-form receipt for
-Tyler, re-enabled submission and no page errors. Production had Node excluded
-from PATH. Local operating logs are `main-dev-bdd-fresh.log`,
-`main-prod-bdd.log`, `main-go-test.log`, `main-vet.log` and
-`main-svelte-check.log` under `ephemeral/js-dependencies/logs/`.
-
-Qualification on final main `bfea45a`, generated projects using VitePlus 1.0.0,
-whole-change review, and exact-head cloud qualification: **in progress**.
-
-Earlier attempts exposed stale literal CORS diagnostics, an existing manifest
-extraction bug, browser readiness/form-completion races, and stale build inputs
-after dev generation. Those were fixed or resolved before the final green runs;
-no known failing contract was waived. Executor disconnection interrupted an
-earlier run; resumed qualification used fresh task-owned servers.
-
-Remaining limits are listed per contract above. Ordinary successful flows do
-not prove every upstream edge case. Adoption on main, integration with separately
-merged generator/release fixes and any publication require their recorded
-combined qualification.
+Remaining coverage limits are listed per contract above. Cloud qualification,
+adoption on main and publication have **not** occurred for this dependency
+update; update this status after any separately authorized integration.

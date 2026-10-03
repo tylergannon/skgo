@@ -894,5 +894,224 @@
     },
     "registryURL": "https://registry.npmjs.org/vitest-browser-svelte",
     "reason": "sv 1.0.1 emits ^2.1.1, whose peers require Vitest 4; stable 3.1.0 supports VitePlus 1.0.0 bundled Vitest 5.0.1."
+  },
+  {
+    "name": "storybook",
+    "latest": "10.6.1",
+    "selected": "10.6.1",
+    "time": "2026-09-29T17:20:05.303Z",
+    "engines": {},
+    "peers": {
+      "prettier": "^2 || ^3",
+      "vite-plus": "^0.1.15 || ^0.2.0",
+      "@types/react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+    },
+    "dependencies": {
+      "ws": "^8.21.1",
+      "open": "^10.2.0",
+      "recast": "^0.23.5",
+      "semver": "^7.7.3",
+      "esbuild": "^0.18.0 || ^0.19.0 || ^0.20.0 || ^0.21.0 || ^0.22.0 || ^0.23.0 || ^0.24.0 || ^0.25.0 || ^0.26.0 || ^0.27.0 || ^0.28.0",
+      "oxc-parser": "^0.127.0",
+      "@vitest/spy": "3.2.4",
+      "jsonc-parser": "^3.3.1",
+      "oxc-resolver": "11.21.2",
+      "@vitest/expect": "3.2.4",
+      "@storybook/icons": "^2.0.2",
+      "@storybook/global": "^5.0.0",
+      "@webcontainer/env": "^1.1.1",
+      "@testing-library/dom": "^10.4.1",
+      "use-sync-external-store": "^1.5.0",
+      "@testing-library/jest-dom": "6.9.1",
+      "@testing-library/user-event": "^14.6.3"
+    },
+    "dist": {
+      "shasum": "57bb8fb2dbe549743db7d9ab672006633cac6971",
+      "tarball": "https://registry.npmjs.org/storybook/-/storybook-10.6.1.tgz",
+      "fileCount": 275,
+      "integrity": "sha512-NeEmukMWPA5OqHizUkQtxCIhGt7MUZLPY4FFgpC0LNiipjrac/oKpH0TxI+9Zc+vI5+IoN+NiskOmBP7gtYfmA==",
+      "signatures": [
+        {
+          "sig": "MEUCIQC9lnRtWHEsvIjmoBzAaeu8PRBUqwl6qhTlxMKlYVNbmwIgGxxb1ovucCPzRsRn/JR2F3stGLqUb72qmhTC8o/aJMA=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEQCIDnYsmrcDNLLV1eaYoGVpXBX7tnpZuS5sdgV96R4rxclAiBstODrMZKuPITm/X/BQhBTIyESUVARfS1KGEa2IhgrPw=="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/storybook@10.6.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 22208748
+    },
+    "source": "https://registry.npmjs.org/storybook"
+  },
+  {
+    "name": "@storybook/addon-svelte-csf",
+    "latest": "5.1.5",
+    "selected": "5.1.5",
+    "time": "2026-09-28T19:41:51.348Z",
+    "engines": {},
+    "peers": {
+      "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
+      "svelte": "^5.0.0",
+      "storybook": "^0.0.0-0 || ^8.2.0 || ^9.0.0 || ^9.1.0-0 || ^10.0.0-0 || ^10.1.0-0 || ^10.2.0-0 || ^10.3.0-0 || ^10.4.0-0 || ^10.5.0-0 || ^10.6.0-0 || ^11.0.0-0",
+      "@storybook/svelte": "^0.0.0-0 || ^8.2.0 || ^9.0.0 || ^9.1.0-0 || ^10.0.0-0 || ^10.1.0-0 || ^10.2.0-0 || ^10.3.0-0 || ^10.4.0-0 || ^10.5.0-0 || ^10.6.0-0 || ^11.0.0-0",
+      "@sveltejs/vite-plugin-svelte": "^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0"
+    },
+    "dependencies": {
+      "esrap": "^1.2.2",
+      "dedent": "^1.5.3",
+      "es-toolkit": "^1.26.1",
+      "zimmerframe": "^1.1.2",
+      "magic-string": "^0.30.12",
+      "@storybook/csf": "^0.1.13",
+      "svelte-ast-print": "^0.4.0"
+    },
+    "dist": {
+      "shasum": "67832d2a227f9504899e4f9061fbc34a000ba7ab",
+      "tarball": "https://registry.npmjs.org/@storybook/addon-svelte-csf/-/addon-svelte-csf-5.1.5.tgz",
+      "fileCount": 192,
+      "integrity": "sha512-lYc9tyFIowXtd/hlapngtGhw6YUZMSU5KezHqJl84lRkahsNtmtqHl/mJjRRJG2ZQIWgw6xBUi4PvVvTxPwqzQ==",
+      "signatures": [
+        {
+          "sig": "MEUCIQDAejZWPqSvcc/rwakGepT5x3ZYRSsCdQyaL7ckXV9rxgIgRwL4A2uT7rjjIyjzAfz1sUJJ1q8/Dy4oWkQH/M2ASwI=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIQDUI8msjnaMV6oe8zFxtk0GMC1Xya4R2PrAcuvkeX6KCwIgMR2A/aNwEZR5d4bgM95/VIojln/XlBN2jIo895Wzy4w=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@storybook%2faddon-svelte-csf@5.1.5",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 375616
+    },
+    "source": "https://registry.npmjs.org/@storybook%2Faddon-svelte-csf"
+  },
+  {
+    "name": "@sveltejs/enhanced-img",
+    "latest": "1.0.0",
+    "selected": "1.0.0",
+    "time": "2026-10-01T17:22:27.324Z",
+    "engines": {
+      "node": ">=22"
+    },
+    "peers": {
+      "vite": ">=8.0.12",
+      "svelte": "^5.0.0",
+      "@sveltejs/vite-plugin-svelte": "^7.0.0"
+    },
+    "dependencies": {
+      "sharp": "^0.35.3",
+      "zimmerframe": "^1.1.4",
+      "magic-string": "^1.2.3",
+      "vite-imagetools": "^12.0.0"
+    },
+    "dist": {
+      "shasum": "5a9d266eea3a97a7473c2a8dd875d596acc7196f",
+      "tarball": "https://registry.npmjs.org/@sveltejs/enhanced-img/-/enhanced-img-1.0.0.tgz",
+      "fileCount": 8,
+      "integrity": "sha512-MVY2SNj1NE/DW7yrAePFfOeEnj/PfkHPQvWfeL23h/a0i7r1qEF5qj3iIyxqCF5Vu+akskQ/h5eEEM7hjvFmrQ==",
+      "signatures": [
+        {
+          "sig": "MEUCIH9IhNSkoVvUFILeeH8kfx/g/tSYVKcfQr2XgN10aVgIAiEAm5HGHIcKQlmnXc6YqyzRzoTOUIHFXIJP8ilAf4RJveI=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIQCfdvbdvLDvyC9ADXkWeYK/IVL69Psuz1YMm4IpjmqZZgIgI/V5R6Jg2ckw3+Hf5orgC41CVtyrrzm4kjRi8hCCHV8="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@sveltejs%2fenhanced-img@1.0.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 24525
+    },
+    "source": "https://registry.npmjs.org/@sveltejs%2Fenhanced-img"
+  },
+  {
+    "name": "playwright",
+    "latest": "1.63.0",
+    "selected": "1.63.0",
+    "time": "2026-09-04T22:45:21.732Z",
+    "engines": {
+      "node": ">=20"
+    },
+    "peers": {},
+    "dependencies": {
+      "playwright-core": "1.63.0"
+    },
+    "dist": {
+      "shasum": "99b56f9f69b1b70c44f00bf84b2fe52348ae2511",
+      "tarball": "https://registry.npmjs.org/playwright/-/playwright-1.63.0.tgz",
+      "fileCount": 62,
+      "integrity": "sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==",
+      "signatures": [
+        {
+          "sig": "MEQCIFn72Uq9JNdpz1rV1lvXHFkN/RVw2SRE69/WaPi8+JVpAiBylqLY4s2V2Ykl102NEUg56SIXh9Ig1vzaxWMY+6phYw==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEYCIQDbhaeMgqrXvUZ8VnMwwCDWzJT2LAkJoad5xAQLowOEXQIhAI7AM5/Z5BCB4ChADMQtg5y2yUhs6LzrHzREhmKgiFpZ",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/playwright@1.63.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 5094512
+    },
+    "source": "https://registry.npmjs.org/playwright"
+  },
+  {
+    "name": "@vitest/browser-playwright",
+    "latest": "5.0.3",
+    "selected": "5.0.1",
+    "time": "2026-09-15T08:49:44.906Z",
+    "engines": {},
+    "peers": {
+      "vitest": "5.0.1",
+      "playwright": "*"
+    },
+    "dependencies": {
+      "tinyrainbow": "^3.1.1",
+      "@vitest/mocker": "5.0.1",
+      "@vitest/browser": "5.0.1"
+    },
+    "dist": {
+      "shasum": "73b50c71c740f4096a46477dac1057b6ce7a5bbf",
+      "tarball": "https://registry.npmjs.org/@vitest/browser-playwright/-/browser-playwright-5.0.1.tgz",
+      "fileCount": 7,
+      "integrity": "sha512-BlknN81ZeoCyP5CSm5u7+1BTlS7d0cDU5DfndNSjEC3SmbzOESGrp+DQpNhQmTlggawWc+yKVEM03mM/aBynqg==",
+      "signatures": [
+        {
+          "sig": "MEQCIGVPp5AhWaaUfnHC6w7Ocrg0aMTt2/cS7HI4UPJe2lfJAiAF1dYtnz1jJCIGE31/ofB6SvqAYUKL+f5+yZh8hVDr+w==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@vitest%2fbrowser-playwright@5.0.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 53893
+    },
+    "source": "https://registry.npmjs.org/@vitest%2Fbrowser-playwright"
   }
 ]
