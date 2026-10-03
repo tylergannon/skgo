@@ -15,6 +15,10 @@ func TestDevTemplateWatcherReportsAndRecoversFromPartialSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	app, err := filepath.Abs("../../example/web")
+	if err != nil {
+		t.Fatal(err)
+	}
 	root := t.TempDir()
 	const source = `
 import { EventEmitter } from 'node:events';
@@ -58,6 +62,7 @@ watcher.on('all', () => { throw new Error('unrelated watcher failure'); });
 assert.throws(() => save('%sveltekit.head% next %sveltekit.body%'), /unrelated watcher failure/);
 `
 	cmd := exec.Command(node, "--input-type=module", "-e", source, module, root)
+	cmd.Dir = app
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("dev template watcher: %v\n%s", err, out)
 	}

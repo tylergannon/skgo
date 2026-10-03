@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -373,4 +374,64 @@ func TestDevHoldsARequestThatArrivesBeforeThePollSeesTheEdit(t *testing.T) {
 	if pidOf(t, got.body) == firstPID {
 		t.Fatalf("the replaced application, pid %d, answered after the edit", firstPID)
 	}
+}
+
+func TestDevDrainsAnAssignedResponseBeforeRetiringItsApplication(t *testing.T) {
+	entered, release := make(chan struct{}), make(chan struct{})
+	gate := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-release
+		fmt.Fprint(w, "released")
+	}))
+	defer gate.Close()
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}()
+	s := startSession(t)
+	s.until("/", startsWith("revision one "), "initial build")
+	s.write("cmd/register.go", `package main
+import ("fmt"; "net/http"; "os"; "fixture/answer")
+func register(mux *http.ServeMux) {
+ mux.HandleFunc("/held", func(w http.ResponseWriter, r *http.Request) {
+  _, err := http.Get(`+strconv.Quote(gate.URL)+`)
+  if err != nil { panic(err) }
+  fmt.Fprintf(w, "%s pid=%d held complete", answer.Text(), os.Getpid())
+ })
+}
+`)
+	old := s.until("/", startsWith("revision one "), "held handler build")
+	// Wait until the authored handler is registered, then start its response.
+	// The source fingerprint makes the next request wait for that build.
+	result := make(chan reply, 1)
+	go func() { result <- s.get("/held") }()
+	select {
+	case <-entered:
+	case <-time.After(30 * time.Second):
+		t.Fatal("held handler did not start")
+	}
+	oldPID := pidOf(t, old.body)
+	s.write("answer/answer.go", answerSource("revision two"))
+	s.until("/", startsWith("revision two "), "replacement build")
+	select {
+	case response := <-result:
+		t.Fatalf("held response ended before its gate opened: %d %q", response.status, response.body)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if !alive(oldPID) {
+		t.Fatal("application was retired with an assigned response still open")
+	}
+	close(release)
+	select {
+	case response := <-result:
+		if response.status != 200 || !strings.HasPrefix(response.body, "revision one ") || !strings.HasSuffix(response.body, "held complete") {
+			t.Fatalf("assigned response was interrupted: %d %q", response.status, response.body)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("held response did not complete")
+	}
+	waitDead(t, oldPID, "the drained application")
 }

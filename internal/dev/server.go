@@ -87,6 +87,7 @@ type Server struct {
 
 	builds   int
 	children sync.WaitGroup
+	stopping chan struct{}
 }
 
 // generation is what answers requests between two source changes: a running
@@ -96,6 +97,7 @@ type generation struct {
 	proc       *Process
 	diagnostic string
 	pid        int
+	requests   sync.WaitGroup
 }
 
 // New prepares a session. Nothing is started until Run.
@@ -131,7 +133,7 @@ func New(cfg Config) (*Server, error) {
 	if cfg.StartTimeout == 0 {
 		cfg.StartTimeout = 90 * time.Second
 	}
-	s := &Server{cfg: cfg, in: inputs{root: cfg.Root, web: cfg.Web, out: cfg.Out}, building: true, settled: make(chan struct{})}
+	s := &Server{cfg: cfg, in: inputs{root: cfg.Root, web: cfg.Web, out: cfg.Out}, building: true, settled: make(chan struct{}), stopping: make(chan struct{})}
 	if cfg.Vite != nil {
 		s.vite = &httputil.ReverseProxy{
 			Rewrite: func(p *httputil.ProxyRequest) {
@@ -188,6 +190,7 @@ func (s *Server) Run(ctx context.Context) error {
 			return err
 		}
 	}
+	close(s.stopping)
 	<-loopDone
 	shutdown, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -295,6 +298,18 @@ func (s *Server) settle(next *generation) {
 		s.children.Add(1)
 		go func() {
 			defer s.children.Done()
+			// A module or streaming response already assigned to this process
+			// must finish before it is retired. New requests use next.
+			drained := make(chan struct{})
+			go func() { previous.requests.Wait(); close(drained) }()
+			timer := time.NewTimer(30 * time.Second)
+			select {
+			case <-drained:
+			case <-timer.C:
+				s.logf("application pid %d did not drain within 30s", previous.pid)
+			case <-s.stopping:
+			}
+			timer.Stop()
 			s.logf("stopping application pid %d", previous.pid)
 			previous.proc.Stop(3 * time.Second)
 		}()
@@ -417,6 +432,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case g.diagnostic != "":
 		writeDiagnostic(w, g.diagnostic)
 	default:
+		defer g.requests.Done()
 		g.proxy.ServeHTTP(w, r)
 	}
 }
@@ -452,6 +468,9 @@ func (s *Server) awaitSettled(ctx context.Context) *generation {
 		s.mu.Lock()
 		if !s.building {
 			g := s.current
+			if g != nil && g.proxy != nil {
+				g.requests.Add(1)
+			}
 			s.mu.Unlock()
 			return g
 		}
