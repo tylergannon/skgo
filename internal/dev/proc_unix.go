@@ -16,7 +16,10 @@ func signalGroup(cmd *exec.Cmd, kill bool) {
 	}
 	// A negative pid addresses the whole group, which Setpgid made this
 	// child's own.
-	if syscall.Kill(-cmd.Process.Pid, sig) != nil {
-		_ = cmd.Process.Signal(sig)
-	}
+	_ = syscall.Kill(-cmd.Process.Pid, sig)
+}
+
+func processGroupExists(cmd *exec.Cmd) bool {
+	err := syscall.Kill(-cmd.Process.Pid, 0)
+	return err == nil || err == syscall.EPERM
 }

@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+const (
+	// Bound Cmd.Wait when descendants keep inherited stdout/stderr pipes open.
+	processPipeWaitDelay = 250 * time.Millisecond
+	processKillWait      = time.Second
+)
+
 // Process is one child this package started and owns by PID. It has its own
 // process group, so stopping it stops what it spawned (a package manager
 // launcher, Vite's workers) and nothing else on the machine.
@@ -16,8 +22,9 @@ type Process struct {
 	done chan struct{}
 	tail *tailBuffer
 
-	mu  sync.Mutex
-	err error
+	mu   sync.Mutex
+	err  error
+	stop sync.Once
 }
 
 func StartProcess(cmd *exec.Cmd, stdout, stderr io.Writer) (*Process, error) {
@@ -25,6 +32,9 @@ func StartProcess(cmd *exec.Cmd, stdout, stderr io.Writer) (*Process, error) {
 	cmd.Stdout = io.MultiWriter(stdout, tail)
 	cmd.Stderr = io.MultiWriter(stderr, tail)
 	ownGroup(cmd)
+	if cmd.WaitDelay == 0 {
+		cmd.WaitDelay = processPipeWaitDelay
+	}
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
@@ -61,19 +71,51 @@ func (p *Process) ExitError() error {
 	return p.err
 }
 
-// Stop asks the process group to terminate and kills it if it does not.
+// Stop asks the owned process group to terminate and kills it if it does not.
+// Done and ExitError describe only the leader; Stop observes the group through
+// its grace period and bounded post-kill settlement.
 func (p *Process) Stop(grace time.Duration) {
-	if p.exited() {
-		return
+	p.stop.Do(func() {
+		if p.exited() && !processGroupExists(p.cmd) {
+			return
+		}
+		signalGroup(p.cmd, false)
+		graceTimer := time.NewTimer(grace)
+		defer graceTimer.Stop()
+		poll := time.NewTicker(10 * time.Millisecond)
+		defer poll.Stop()
+
+		for {
+			if p.exited() && !processGroupExists(p.cmd) {
+				return
+			}
+
+			select {
+			case <-poll.C:
+			case <-graceTimer.C:
+				if !p.exited() || processGroupExists(p.cmd) {
+					signalGroup(p.cmd, true)
+				}
+				<-p.done
+				waitForProcessGroupExit(p.cmd, processKillWait)
+				return
+			}
+		}
+	})
+}
+
+func waitForProcessGroupExit(cmd *exec.Cmd, timeout time.Duration) {
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	poll := time.NewTicker(10 * time.Millisecond)
+	defer poll.Stop()
+	for processGroupExists(cmd) {
+		select {
+		case <-poll.C:
+		case <-deadline.C:
+			return
+		}
 	}
-	signalGroup(p.cmd, false)
-	select {
-	case <-p.done:
-		return
-	case <-time.After(grace):
-	}
-	signalGroup(p.cmd, true)
-	<-p.done
 }
 
 // tailBuffer keeps the last limit bytes written to it.
