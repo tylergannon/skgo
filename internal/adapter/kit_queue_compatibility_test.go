@@ -45,14 +45,19 @@ func TestKitQueueCompatibilityAssetsAreCanonical(t *testing.T) {
 }
 
 func TestPrerenderInputsRejectsUnpatchedPinnedKitBeforeIPC(t *testing.T) {
+	metadata, patch, err := KitQueueCompatibility()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stock := pinnedStockQueue(t, metadata, patch)
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatalf("Node is required to execute the prerender queue guard: %v", err)
 	}
-	appRoot, err := filepath.Abs("../../example/web")
-	if err != nil {
-		t.Fatal(err)
-	}
+	appRoot := filepath.Join(t.TempDir(), "app")
+	kitRoot := filepath.Join(appRoot, "node_modules", "@sveltejs", "kit")
+	writeQueueFixture(t, filepath.Join(kitRoot, "package.json"), []byte(`{"name":"@sveltejs/kit","version":"3.0.0"}`))
+	writeQueueFixture(t, filepath.Join(kitRoot, filepath.FromSlash(metadata.QueuePath)), stock)
 	program := `
 import { pathToFileURL } from 'node:url';
 const { remoteInputs } = await import(pathToFileURL(process.env.SKGO_PRERENDER_MODULE).href);
@@ -216,8 +221,14 @@ if (mode === 'stock') {
 
   const recursive = queue(1);
   let child;
-  const parent = recursive.add(async () => { child = recursive.add(async () => 'child'); return 'parent'; });
+  let announceParent;
+  let releaseParent;
+  const parentStarted = new Promise((resolve) => { announceParent = resolve; });
+  const parentRelease = new Promise((resolve) => { releaseParent = resolve; });
+  const parent = recursive.add(async () => { announceParent(); await parentRelease; child = recursive.add(async () => 'child'); return 'parent'; });
+  await parentStarted;
   const recursiveDone = recursive.done();
+  releaseParent();
   if (await parent !== 'parent') fail('active task value changed');
   await recursiveDone;
   if (!child || await child !== 'child') fail('active task could not enqueue after done()');
@@ -267,6 +278,58 @@ func writeQueueFixture(t *testing.T, path string, contents []byte) {
 	}
 	if err := os.WriteFile(path, contents, 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func pinnedStockQueue(t *testing.T, metadata KitQueueMetadata, patch []byte) []byte {
+	t.Helper()
+	kitRoot, err := filepath.Abs(filepath.Join("../../example/web/node_modules", metadata.Package))
+	if err != nil {
+		t.Fatal(err)
+	}
+	packageBytes, err := os.ReadFile(filepath.Join(kitRoot, "package.json"))
+	if err != nil {
+		t.Fatalf("read installed pinned Kit package: %v", err)
+	}
+	var pkg struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(packageBytes, &pkg); err != nil {
+		t.Fatal(err)
+	}
+	if pkg.Name != metadata.Package || pkg.Version != metadata.Version {
+		t.Fatalf("installed Kit = %s@%s; expected %s@%s", pkg.Name, pkg.Version, metadata.Package, metadata.Version)
+	}
+	installed, err := os.ReadFile(filepath.Join(kitRoot, filepath.FromSlash(metadata.QueuePath)))
+	if err != nil {
+		t.Fatalf("read installed Kit queue source: %v", err)
+	}
+	switch got := sha256Hex(installed); got {
+	case metadata.StockSHA256:
+		return installed
+	case metadata.CorrectedSHA256:
+		stockRoot := t.TempDir()
+		stockPath := filepath.Join(stockRoot, filepath.FromSlash(metadata.QueuePath))
+		patchPath := filepath.Join(t.TempDir(), "kit-3.0.0-queue.patch")
+		writeQueueFixture(t, stockPath, installed)
+		writeQueueFixture(t, patchPath, patch)
+		apply := exec.Command("git", "apply", "--reverse", patchPath)
+		apply.Dir = stockRoot
+		if output, err := apply.CombinedOutput(); err != nil {
+			t.Fatalf("recover stock pinned Kit queue in disposable fixture: %v\n%s", err, output)
+		}
+		stock, err := os.ReadFile(stockPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := sha256Hex(stock); got != metadata.StockSHA256 {
+			t.Fatalf("recovered stock queue SHA-256 = %s, want %s", got, metadata.StockSHA256)
+		}
+		return stock
+	default:
+		t.Fatalf("installed Kit queue SHA-256 %s is neither stock %s nor corrected %s", got, metadata.StockSHA256, metadata.CorrectedSHA256)
+		return nil
 	}
 }
 
