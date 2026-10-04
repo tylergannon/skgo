@@ -11,11 +11,13 @@ import (
 func TestPrerenderRemotePreservesNativeErrorOrigin(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name    string
-		call    RemoteFunc
-		kind    string
-		status  int
-		message string
+		name           string
+		call           RemoteFunc
+		kind           string
+		status         int
+		message        string
+		diagnostic     string
+		wantDiagnostic bool
 	}{
 		{
 			name: "explicit HTTP error is an app error",
@@ -25,12 +27,17 @@ func TestPrerenderRemotePreservesNativeErrorOrigin(t *testing.T) {
 		{
 			name: "ordinary error remains unknown",
 			call: func(context.Context, Call) (any, error) { return nil, errors.New("private detail") },
-			kind: "unknown", status: 500, message: "Internal Error",
+			kind: "unknown", status: 500, message: "Internal Error", diagnostic: "private detail", wantDiagnostic: true,
 		},
 		{
 			name: "recovered panic remains unknown",
 			call: func(context.Context, Call) (any, error) { panic("private panic") },
-			kind: "unknown", status: 500, message: "Internal Error",
+			kind: "unknown", status: 500, message: "Internal Error", diagnostic: "private panic", wantDiagnostic: true,
+		},
+		{
+			name: "empty ordinary error retains an empty diagnostic",
+			call: func(context.Context, Call) (any, error) { return nil, errors.New("") },
+			kind: "unknown", status: 500, message: "Internal Error", diagnostic: "", wantDiagnostic: true,
 		},
 	}
 	for _, test := range tests {
@@ -45,15 +52,20 @@ func TestPrerenderRemotePreservesNativeErrorOrigin(t *testing.T) {
 				t.Fatalf("RunPrerenderBuild: %v", err)
 			}
 			var got struct {
-				Type  string    `json:"type"`
-				Kind  string    `json:"kind"`
-				Error HTTPError `json:"error"`
+				Type       string    `json:"type"`
+				Kind       string    `json:"kind"`
+				Error      HTTPError `json:"error"`
+				Diagnostic *string   `json:"diagnostic"`
 			}
 			if err := json.Unmarshal([]byte(output.String()), &got); err != nil {
 				t.Fatalf("decode response: %v", err)
 			}
-			if got.Type != "error" || got.Kind != test.kind || got.Error.Status != test.status || got.Error.Message != test.message {
-				t.Fatalf("response = %#v, want error kind=%q status=%d message=%q", got, test.kind, test.status, test.message)
+			gotDiagnostic := ""
+			if got.Diagnostic != nil {
+				gotDiagnostic = *got.Diagnostic
+			}
+			if got.Type != "error" || got.Kind != test.kind || got.Error.Status != test.status || got.Error.Message != test.message || gotDiagnostic != test.diagnostic || (got.Diagnostic != nil) != test.wantDiagnostic {
+				t.Fatalf("response = %#v, want error kind=%q status=%d message=%q diagnostic=%q", got, test.kind, test.status, test.message, test.diagnostic)
 			}
 		})
 	}

@@ -118,7 +118,7 @@ func runPrerenderRemote(raw []byte, out io.Writer, transport Transport, remotes 
 	if err != nil {
 		return fmt.Errorf("skgo: decode prerender argument for %s: %w", fn.id, err)
 	}
-	value, err, panicked := callPrerenderRemote(registry, fn, withEvent(request.Context(), registry.newEvent(request, false)), registry.newCall(arg, present))
+	value, err, panicked, diagnostic := callPrerenderRemote(registry, fn, withEvent(request.Context(), registry.newEvent(request, false)), registry.newCall(arg, present))
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
 			return json.NewEncoder(out).Encode(struct {
@@ -138,10 +138,14 @@ func runPrerenderRemote(raw []byte, out io.Writer, transport Transport, remotes 
 			kind = "app"
 		}
 		response := struct {
-			Type  string     `json:"type"`
-			Kind  string     `json:"kind"`
-			Error *HTTPError `json:"error"`
+			Type       string     `json:"type"`
+			Kind       string     `json:"kind"`
+			Error      *HTTPError `json:"error"`
+			Diagnostic *string    `json:"diagnostic,omitempty"`
 		}{Type: "error", Kind: kind, Error: asHTTPError(err)}
+		if kind == "unknown" {
+			response.Diagnostic = &diagnostic
+		}
 		return json.NewEncoder(out).Encode(response)
 	}
 	data, err := devalue.StringifyWith(map[string]any{"_": value}, transport.reducers())
@@ -158,13 +162,17 @@ func runPrerenderRemote(raw []byte, out io.Writer, transport Transport, remotes 
 // error or a recovered panic. The production remote path intentionally folds
 // both to an HTTP 500; Kit's build crawler needs the origin so its own native
 // handleError path can distinguish app errors from unknown throws.
-func callPrerenderRemote(registry *Remotes, fn *Remote, ctx context.Context, call Call) (value any, err error, panicked bool) {
+func callPrerenderRemote(registry *Remotes, fn *Remote, ctx context.Context, call Call) (value any, err error, panicked bool, diagnostic string) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			panicked = true
+			diagnostic = fmt.Sprint(recovered)
 			err = registry.recovered(fn, recovered, nil)
 		}
 	}()
 	value, err = fn.call(ctx, call)
+	if err != nil {
+		diagnostic = err.Error()
+	}
 	return
 }

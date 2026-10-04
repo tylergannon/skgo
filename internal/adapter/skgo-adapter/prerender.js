@@ -47,7 +47,8 @@ function validateEnvelope(request, raw) {
 		if (typeof value.inputs !== 'string') throw makeError('skgo prerender inputs response has no devalue payload');
 	} else if (request.kind === 'remote') {
 		if (value.type === 'result' && typeof value.data === 'string') return;
-		if (value.type === 'error' && ['app', 'unknown'].includes(value.kind) && value.error && Number.isInteger(value.error.status) && typeof value.error.message === 'string') return;
+		if (value.type === 'error' && value.kind === 'app' && value.error && Number.isInteger(value.error.status) && typeof value.error.message === 'string') return;
+		if (value.type === 'error' && value.kind === 'unknown' && value.error && Number.isInteger(value.error.status) && typeof value.error.message === 'string' && typeof value.diagnostic === 'string') return;
 		if (value.type === 'redirect' && Number.isInteger(value.redirect?.status) && value.redirect.status >= 300 && value.redirect.status <= 308 && typeof value.redirect.location === 'string') return;
 		throw makeError('skgo prerender remote response has an invalid envelope');
 	} else if (request.kind === 'load') {
@@ -123,6 +124,11 @@ function beginTermination(job) {
 	}, 150));
 }
 
+function startDrain(job) {
+	if (!job.drainPromise) job.drainPromise = beginTermination(job);
+	return job.drainPromise;
+}
+
 function createJob(session, command, args, options = {}) {
 	const detached = process.platform !== 'win32';
 	const child = spawn(command, args, {
@@ -143,6 +149,7 @@ function createJob(session, command, args, options = {}) {
 		settled: false,
 		closePromise: null,
 		resolveClose: null,
+		drainPromise: null,
 		done: null,
 		resolve: null,
 		reject: null
@@ -168,6 +175,10 @@ function createJob(session, command, args, options = {}) {
 	child.on('error', (error) => {
 		settle(makeError(`skgo prerender process failed to start: ${error.message}`));
 	});
+	// Do not wait for inherited stdout/stderr pipes to close before starting
+	// descendant termination: a child which inherited either pipe can hold the
+	// leader's `close` event open after the Go process itself has exited.
+	child.on('exit', () => { void startDrain(job); });
 	child.stdout.setEncoding('utf8');
 	child.stderr.setEncoding('utf8');
 	child.stdout.on('data', (chunk) => { job.stdout += chunk; });
@@ -187,6 +198,7 @@ function createJob(session, command, args, options = {}) {
 		let treeError;
 		// A successful leader can leave compiler or application descendants in
 		// its process group. Drain them before any request or outer build settles.
+		await startDrain(job);
 		await stopGroup(job).catch((error) => { treeError = error; });
 		session.jobs.delete(job);
 		job.resolveClose();
@@ -301,7 +313,7 @@ function makeSession(root) {
 			session.closing = true;
 			session.cleanupPromise = (async () => {
 				const jobs = [...session.jobs];
-				const escalations = jobs.map(beginTermination);
+				const escalations = jobs.map(startDrain);
 				// Start TERM-to-KILL escalation before waiting for children to close.
 				await Promise.allSettled([...jobs.map((job) => job.closePromise), ...escalations]);
 				for (const job of session.groups) await stopGroup(job).catch(() => {});
@@ -442,7 +454,12 @@ export function installPrerenderFailureBoundary(config, owner) {
 		if (existing) return existing;
 		const wrapped = async function (...args) {
 			try {
-				return await handler.apply(this, args);
+				const result = await handler.apply(this, args);
+				if (owner.failed) {
+					await owner.cleanup();
+					throw owner.failed;
+				}
+				return result;
 			} catch (error) {
 				try { await owner.fail(error); } catch {}
 				throw error;
@@ -583,7 +600,9 @@ export async function remoteInputs(module, name) {
 		const answer = JSON.parse(raw);
 		if (typeof answer.inputs !== 'string') throw makeError('skgo prerender inputs response has no devalue payload');
 		const { transport } = await runtime();
-		return transport.parse(answer.inputs);
+		const values = transport.parse(answer.inputs);
+		if (!Array.isArray(values)) throw makeError('skgo prerender inputs response did not decode to an array');
+		return values;
 	} catch (error) {
 		return reportWorkerFatal(error);
 	}
@@ -657,9 +676,15 @@ export async function remoteFunction(module, name, arg, event) {
 	});
 	const answer = JSON.parse(raw);
 	if (answer.type === 'error' && answer.kind === 'app') throw new internal.HttpError(answer.error);
-	if (answer.type === 'error' && answer.kind === 'unknown') throw new Error(answer.error.message);
+	if (answer.type === 'error' && answer.kind === 'unknown') throw new Error(answer.diagnostic);
 	if (answer.type === 'redirect') throw new internal.Redirect(answer.redirect.status, answer.redirect.location);
 	if (answer.type !== 'result' || typeof answer.data !== 'string') throw makeError('skgo prerender remote response is malformed');
-	try { return transport.parse(answer.data)._ ; }
+	try {
+		const result = transport.parse(answer.data);
+		if (!result || typeof result !== 'object' || !Object.hasOwn(result, '_')) {
+			throw makeError('skgo prerender remote result omitted its value member');
+		}
+		return result._;
+	}
 	catch (error) { return reportWorkerFatal(error); }
 }
