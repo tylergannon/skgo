@@ -165,8 +165,17 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 	if err := os.Remove(patchPath); err != nil {
 		t.Fatal(err)
 	}
-	if err := Verify(opts); err == nil || !strings.Contains(err.Error(), "patch is missing") {
+	var missingPatchCalls int
+	missingPatchOpts := opts
+	missingPatchOpts.run = func(string, string, ...string) ([]byte, error) {
+		missingPatchCalls++
+		return nil, errors.New("unexpected pnpm invocation for missing patch")
+	}
+	if err := Verify(missingPatchOpts); err == nil || !strings.Contains(err.Error(), "patch is missing") {
 		t.Fatalf("check accepted a missing canonical patch with corrected installed bytes: %v", err)
+	}
+	if missingPatchCalls != 0 {
+		t.Fatalf("missing-patch Verify invoked pnpm %d times", missingPatchCalls)
 	}
 	if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
 		t.Fatal(err)
@@ -177,8 +186,17 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := Verify(opts); err == nil || !strings.Contains(err.Error(), "missing") {
+	var missingMapCalls int
+	missingMapOpts := opts
+	missingMapOpts.run = func(string, string, ...string) ([]byte, error) {
+		missingMapCalls++
+		return nil, errors.New("unexpected pnpm invocation for missing map")
+	}
+	if err := Verify(missingMapOpts); err == nil || !strings.Contains(err.Error(), "missing") {
 		t.Fatalf("check accepted missing project map entry with corrected installed bytes: %v", err)
+	}
+	if missingMapCalls != 0 {
+		t.Fatalf("missing-map Verify invoked pnpm %d times", missingMapCalls)
 	}
 	if err := Configure(opts); err != nil {
 		t.Fatalf("restore owned patch config: %v", err)
@@ -193,8 +211,17 @@ func TestConfigureConfiguredButUninstalledFailsCheck(t *testing.T) {
 	if err := Configure(f.options()); err != nil {
 		t.Fatal(err)
 	}
-	if err := Verify(f.options()); err == nil || !strings.Contains(err.Error(), "configured but installed Kit could not be verified") {
+	var nativeCalls int
+	opts := f.options()
+	opts.run = func(string, string, ...string) ([]byte, error) {
+		nativeCalls++
+		return nil, errors.New("unexpected pnpm invocation")
+	}
+	if err := Verify(opts); err == nil || !strings.Contains(err.Error(), "configured but installed Kit could not be verified") {
 		t.Fatalf("check accepted configured-but-uninstalled project: %v", err)
+	}
+	if nativeCalls != 0 {
+		t.Fatalf("Verify invoked pnpm %d times before refusing an absent installed Kit", nativeCalls)
 	}
 }
 
@@ -284,8 +311,17 @@ func TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites(t *testin
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := Configure(f.options()); err == nil {
+			options := f.options()
+			var nativeCalls int
+			options.run = func(string, string, ...string) ([]byte, error) {
+				nativeCalls++
+				return nil, errors.New("unexpected native pnpm invocation for malformed YAML")
+			}
+			if err := Configure(options); err == nil {
 				t.Fatal("malformed or ambiguous YAML configuration was accepted")
+			}
+			if nativeCalls != 0 {
+				t.Fatalf("malformed YAML invoked pnpm %d times", nativeCalls)
 			}
 			assertBytesUnchanged(t, workspace, beforeWorkspace)
 			assertBytesUnchanged(t, manifestPath, beforeManifest)
@@ -310,7 +346,7 @@ func TestConfigureRefusesNativeAndRawPatchedDependenciesDisagreement(t *testing.
 	}
 	options := f.options()
 	options.run = func(_ string, _ string, args ...string) ([]byte, error) {
-		if len(args) == 1 && args[0] == "--version" {
+		if len(args) == 2 && args[0] == "--pm-on-fail=ignore" && args[1] == "--version" {
 			return []byte(pnpmVersion), nil
 		}
 		return []byte(`{"external@1.0.0":"/outside/patch.patch"}`), nil
@@ -325,6 +361,74 @@ func TestConfigureRefusesNativeAndRawPatchedDependenciesDisagreement(t *testing.
 	}
 }
 
+func TestNativeEnvironmentAmbiguityDoesNotMutateSelectedTree(t *testing.T) {
+	t.Run("configure", func(t *testing.T) {
+		f := newFixture(t, false)
+		before := snapshotFixtureTree(t, f.web)
+		t.Setenv("PNPM_CONFIG_PATCHED_DEPENDENCIES", `{"external@1.0.0":"patches/external.patch"}`)
+		if err := Configure(f.options()); err == nil || !strings.Contains(err.Error(), "configuration is ambiguous") {
+			t.Fatalf("environment/native disagreement was not refused: %v", err)
+		}
+		assertFixtureTreeUnchanged(t, f.web, before)
+	})
+	t.Run("verify", func(t *testing.T) {
+		f := newFixture(t, true)
+		metadata, patch, err := adapter.KitQueueCompatibility()
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"3.0.0"}}`)
+		if err := os.WriteFile(filepath.Join(f.web, "package.json"), manifest, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		patchPath := filepath.Join(f.web, "patches", ownedPatchName)
+		if err := os.MkdirAll(filepath.Dir(patchPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		workspace := fmt.Sprintf("packages: [.]\npatchedDependencies:\n  %q: patches/%s\n", metadata.Package+"@"+metadata.Version, ownedPatchName)
+		if err := os.WriteFile(filepath.Join(f.web, "pnpm-workspace.yaml"), []byte(workspace), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := applyPatchToInstalledKit(t, f, patchPath); err != nil {
+			t.Fatal(err)
+		}
+		before := snapshotFixtureTree(t, f.web)
+		t.Setenv("PNPM_CONFIG_PATCHED_DEPENDENCIES", `{"external@1.0.0":"patches/external.patch"}`)
+		if err := Verify(f.options()); err == nil || !strings.Contains(err.Error(), "configuration is ambiguous") {
+			t.Fatalf("environment/native disagreement was not refused: %v", err)
+		}
+		assertFixtureTreeUnchanged(t, f.web, before)
+	})
+}
+
+func TestRunPnpmUsesNonBootstrappingNativeReads(t *testing.T) {
+	var calls [][]string
+	options := Options{run: func(_ string, _ string, args ...string) ([]byte, error) {
+		calls = append(calls, append([]string(nil), args...))
+		if len(args) == 2 && args[1] == "--version" {
+			return []byte(pnpmVersion), nil
+		}
+		return []byte("null\n"), nil
+	}}
+	_, err := runPnpm(options, t.TempDir(), "config", "get", "patchedDependencies", "--location=project", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := [][]string{
+		{"--pm-on-fail=ignore", "--version"},
+		{"--pm-on-fail=ignore", "config", "get", "patchedDependencies", "--location=project", "--json"},
+	}
+	if fmt.Sprint(calls) != fmt.Sprint(want) {
+		t.Fatalf("native read commands = %#v, want %#v", calls, want)
+	}
+	if !equalStringMap(map[string]string{"": ""}, map[string]string{"": ""}) || equalStringMap(map[string]string{"": ""}, map[string]string{"other": ""}) {
+		t.Fatal("raw/native comparison did not require literal key equality")
+	}
+}
+
 func TestConfigureRefusesDuplicateKitJSONKeysWithoutRewritingPackage(t *testing.T) {
 	f := newFixture(t, true)
 	manifestPath := filepath.Join(f.web, "package.json")
@@ -332,8 +436,17 @@ func TestConfigureRefusesDuplicateKitJSONKeysWithoutRewritingPackage(t *testing.
 	if err := os.WriteFile(manifestPath, manifest, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := Configure(f.options()); err == nil || !strings.Contains(err.Error(), "duplicate JSON object key") {
+	options := f.options()
+	var nativeCalls int
+	options.run = func(string, string, ...string) ([]byte, error) {
+		nativeCalls++
+		return nil, errors.New("unexpected native pnpm invocation for duplicate package key")
+	}
+	if err := Configure(options); err == nil || !strings.Contains(err.Error(), "duplicate JSON object key") {
 		t.Fatalf("duplicate Kit dependency key was not refused: %v", err)
+	}
+	if nativeCalls != 0 {
+		t.Fatalf("duplicate package JSON invoked pnpm %d times", nativeCalls)
 	}
 	assertBytesUnchanged(t, manifestPath, manifest)
 	if _, err := os.Stat(filepath.Join(f.web, "patches")); !errors.Is(err, os.ErrNotExist) {
@@ -538,9 +651,18 @@ func assertConfigureRefusesWithoutWrites(t *testing.T, f fixture, wantError stri
 	beforeConfig, configErr := os.ReadFile(configPath)
 	patchPath := filepath.Join(f.web, "patches", ownedPatchName)
 	beforePatch, patchErr := os.ReadFile(patchPath)
-	err = Configure(f.options())
+	options := f.options()
+	var nativeCalls int
+	options.run = func(string, string, ...string) ([]byte, error) {
+		nativeCalls++
+		return nil, errors.New("unexpected native pnpm invocation for local refusal")
+	}
+	err = Configure(options)
 	if err == nil || !strings.Contains(err.Error(), wantError) {
 		t.Fatalf("Configure error = %v; want substring %q", err, wantError)
+	}
+	if nativeCalls != 0 {
+		t.Fatalf("Configure invoked pnpm %d times before local refusal %q", nativeCalls, wantError)
 	}
 	assertBytesUnchanged(t, manifestPath, beforeManifest)
 	if configErr == nil {
@@ -703,5 +825,63 @@ func assertBytesUnchanged(t *testing.T, path string, want []byte) {
 	got, err := os.ReadFile(path)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("%s changed or became unreadable: %v\n got %q\nwant %q", path, err, got, want)
+	}
+}
+
+type fixtureTree map[string]string
+
+func snapshotFixtureTree(t *testing.T, root string) fixtureTree {
+	t.Helper()
+	snapshot := fixtureTree{}
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		if rel == "." {
+			return nil
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		key := filepath.ToSlash(rel)
+		switch {
+		case info.IsDir():
+			snapshot[key] = "<directory>"
+		case info.Mode()&os.ModeSymlink != 0:
+			link, err := os.Readlink(path)
+			if err != nil {
+				return err
+			}
+			snapshot[key] = "<symlink>" + link
+		default:
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			snapshot[key] = string(data)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return snapshot
+}
+
+func assertFixtureTreeUnchanged(t *testing.T, root string, before fixtureTree) {
+	t.Helper()
+	after := snapshotFixtureTree(t, root)
+	if len(after) != len(before) {
+		t.Fatalf("selected tree entry count changed: before=%#v after=%#v", before, after)
+	}
+	for path, data := range before {
+		if after[path] != data {
+			t.Fatalf("selected tree entry %s changed: before=%q after=%q", path, data, after[path])
+		}
 	}
 }

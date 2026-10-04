@@ -64,6 +64,9 @@ func Configure(options Options) error {
 	if err := checkPatchMap(p); err != nil {
 		return err
 	}
+	if err := validateNativePatchedDependencies(options, p); err != nil {
+		return err
+	}
 	if err := writePatch(p); err != nil {
 		return err
 	}
@@ -108,6 +111,9 @@ func Verify(options Options) error {
 	if err := checkInstalledCorrected(p); err != nil {
 		return err
 	}
+	if err := validateNativePatchedDependencies(options, p); err != nil {
+		return err
+	}
 	if options.Out != nil {
 		fmt.Fprintf(options.Out, "Verified %s %s and its installed prerender queue patch in %s.\n", kitPackageName, p.metadata.Version, p.web)
 	}
@@ -142,7 +148,7 @@ func prepare(options Options) (*project, error) {
 		return nil, err
 	}
 	path := filepath.Join(web, "patches", ownedPatchName)
-	patched, err := getPatchedDependencies(options, web)
+	patched, err := readRawPatchedDependencies(web)
 	if err != nil {
 		return nil, err
 	}
@@ -150,11 +156,6 @@ func prepare(options Options) (*project, error) {
 		web: web, root: web, packagePath: packagePath, packageBytes: packageBytes,
 		packageUpdate: update, metadata: metadata, patch: patch, patchPath: path,
 		patched: patched, kitVersion: currentVersion,
-	}
-	if value, configured := patched[patchKey(p)]; configured && sameConfiguredPath(p.root, value, p.patchPath) {
-		if value != relativePatchValue(p) {
-			return nil, fmt.Errorf("existing %s entry must use the portable relative path %q; found %q", patchKey(p), relativePatchValue(p), value)
-		}
 	}
 	return p, nil
 }
@@ -369,7 +370,10 @@ func checkPatchMap(p *project) error {
 	wantKey := patchKey(p)
 	for key, value := range p.patched {
 		if key == wantKey {
-			if filepath.IsAbs(value) || !sameConfiguredPath(p.root, value, p.patchPath) {
+			if sameConfiguredPath(p.root, value, p.patchPath) && value != relativePatchValue(p) {
+				return fmt.Errorf("existing %s entry must use the portable relative path %q; found %q", key, relativePatchValue(p), value)
+			}
+			if value != relativePatchValue(p) {
 				return fmt.Errorf("conflicting %s patch entry points to %q; expected %s", key, value, relativePatchValue(p))
 			}
 			continue
@@ -386,7 +390,7 @@ func requirePatchMap(p *project) error {
 	if !ok {
 		return fmt.Errorf("project pnpm config is missing %s; run `go tool skgo kit-patch --web %s --apply`", patchKey(p), p.web)
 	}
-	if filepath.IsAbs(value) || !sameConfiguredPath(p.root, value, p.patchPath) {
+	if value != relativePatchValue(p) || !sameConfiguredPath(p.root, value, p.patchPath) {
 		return fmt.Errorf("project pnpm config maps %s to %q; expected %s", patchKey(p), value, relativePatchValue(p))
 	}
 	return nil
@@ -554,6 +558,34 @@ func getPatchedDependencies(options Options, web string) (map[string]string, err
 	return raw, nil
 }
 
+// validateNativePatchedDependencies runs only after all local workspace,
+// package, installed-source, destination, and raw-map checks have succeeded.
+// Some pnpm versions bootstrap project files even when a config query fails,
+// so those deterministic refusals must not launch the package manager.
+func validateNativePatchedDependencies(options Options, p *project) error {
+	current, err := getPatchedDependencies(options, p.web)
+	if err != nil {
+		return err
+	}
+	if !equalStringMap(current, p.patched) {
+		return fmt.Errorf("selected pnpm workspace patchedDependencies changed during preflight")
+	}
+	return nil
+}
+
+func equalStringMap(left, right map[string]string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for key, value := range left {
+		other, ok := right[key]
+		if !ok || other != value {
+			return false
+		}
+	}
+	return true
+}
+
 // readRawPatchedDependencies decodes the selected workspace file without
 // rewriting it. pnpm's JSON getter resolves patch paths to absolute paths;
 // keeping this decoded source map lets config set preserve unrelated authored
@@ -626,14 +658,15 @@ func runPnpm(options Options, dir string, args ...string) ([]byte, error) {
 	if name == "" {
 		name = "pnpm"
 	}
-	versionOutput, err := runner(dir, name, "--version")
+	const bootstrapMode = "--pm-on-fail=ignore"
+	versionOutput, err := runner(dir, name, bootstrapMode, "--version")
 	if err != nil {
 		return versionOutput, fmt.Errorf("pnpm is required (install VitePlus/pnpm 12.9.1): %w%s", err, formatOutput(versionOutput))
 	}
 	if strings.TrimSpace(string(versionOutput)) != pnpmVersion {
 		return versionOutput, fmt.Errorf("pnpm %s is required, found %q", pnpmVersion, strings.TrimSpace(string(versionOutput)))
 	}
-	return runner(dir, name, args...)
+	return runner(dir, name, append([]string{bootstrapMode}, args...)...)
 }
 
 func formatOutput(output []byte) string {
