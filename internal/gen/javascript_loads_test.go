@@ -194,7 +194,7 @@ func TestTypeScriptModeLoadStubCarriesTheBuildBridge(t *testing.T) {
 		"import type { Item } from './types';",
 		"skgoPrerenderLoad",
 		"Promise<{ message: string; note?: string; parent: string | null; later: Promise<Item> }>",
-		"building ? buildLoad(\"src/routes/account/+page.server.ts\", event)",
+		"building ? buildLoad(\"src/routes/account/+page.server.ts\", \"src/routes/account/page.server.go\", event)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("TypeScript load stub omits %q:\n%s", want, got)

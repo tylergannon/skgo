@@ -113,7 +113,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 		emulate() {
 			return {
 				platform: () => ({
-					async skgoPrerenderLoad(module, event) {
+					async skgoPrerenderLoad(module, source, event) {
 						await buildPrerenderBinary();
 						const headers = Object.fromEntries(
 							[...event.request.headers].map(([name, value]) => [name, [value]])
@@ -133,6 +133,11 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 						};
 						const raw = await runPrerenderCommand(prerenderBinary, [], prerenderRoot, JSON.stringify(request));
 						const answer = JSON.parse(raw);
+						if (typeof answer.failure === 'string') {
+							throw new Error(
+								`skgo: Go load failed during prerender: route ID ${event.route.id}, path ${event.url.pathname}, source ${source}: ${answer.failure}`
+							);
+						}
 						for (const [name, values] of Object.entries(answer.headers ?? {})) {
 							event.setHeaders({ [name]: values.join(', ') });
 						}
