@@ -1,0 +1,51 @@
+# Production SSR prerender artifact reuse — implementation review, round 01
+
+Outcome: **material findings remain**.
+
+Reviewed immutable **765b58bd6f4f6eab8df42811be8c80d89e484b7d**, comprising the complete implementation diff from **7803f6439ad4200c560f8482501f5a19467e51d3** to **bcb2c5361fba38b1e432876e94c95fbb752d776a**, plus the single maintained generator regression added by 765b58b. The latter changes no runtime or other public-consumer source. I read committed source through `git show` in `/Users/tyler/Codex/2026-10-03/task-8/skgo-prerender-ssr-control`, rather than treating the proof worker's concurrent private fixture mutations as candidate changes. This artifact is the only reviewer write; I performed no product edits, tests, builds, servers, commits, network calls or delegation.
+
+Authority is the repository `AGENTS.md`, mandatory agent-protocol and adversarial-review skills, the committed `ephemeral/worklog/20261004-prerender-ssr-artifact.md`, preceding extension boundaries (particularly its client priority and production-wrapper ordering), and both immutable SSR design reviews. The authorized goal is reuse of existing Go prerender declarations' built results on otherwise dynamic production SSR pages, aligned to site **R-remote-44**. Inputs, dynamic options, parameter implementation, remote HTTP interception changes and broad URI decoding are excluded implementation capabilities, not exclusions from considering material defects. No expected verdict or restriction on findings was adopted.
+
+## Evidence inspected
+
+I read every changed runtime file and new maintained test/consumer surface, including the complete new `prerender_artifact.go` and tests; surrounding static indexing, file mapping, compression, manifest ownership and method/slash handling; production/dev constructors; remote argument parsing and result transport; document failure/error-page assembly and hydration serialization; and Goja result decoding, host completion and pooled-runtime cleanup. The additional generator test uses an authored noarg Go declaration and an actual component calling `noargValue(null)`, a real project-local `vp build`, and the ordinary production Go handler with a literal 500 and body-counter zero.
+
+The installed primary package at `skgo-prerender-ssr/example/web/node_modules/@sveltejs/kit/package.json` is **3.0.0**. I checked `runtime/app/server/remote/prerender.js:69–125`, `exports/vite/build/remote.js:72–89`, the native validator/cache context, result transport and client hydration path, `exports/internal/shared.js:3–24`, `runtime/server/errors.js:20–24`, `src/types/internal.d.ts:357–368` and `types/index.d.ts:3983–3986`. I also inspected the pinned Go devalue parser and the actual Go transport reducers/revivers. Native production lookup precedes original validation/body execution; production non-dynamic declarations become unchecked; an already-handled built error bypasses the hook; a valid supplied redirect envelope with `data:[{}]` yields true undefined rather than a document redirect.
+
+Actual raw receipts inspected are under `/Users/tyler/Codex/2026-10-03/task-8/prerender-ssr-logs`:
+
+- `baseline-compiled-oracles.log` and retained native/client/dev controls establish the frozen baseline discrepancy: static built value/calls zero, SSR live value/calls three, and different missing/null/error/redirect behavior. The initial malformed redirect and failed noarg build remain separately retained; neither was substituted for a valid native oracle.
+- `candidate-positive-oracles.log` establishes compiled SSR `build:atlas`, `$23.00` and `build:noarg` with calls zero; missing and explicit-null production 500/calls zero; valid redirect 200/undefined/no Location; built error 409 with its native marker; client-first HTTP/SSR both with and without prerender membership; unlisted-file refusal; and static-versus-SSR constructor behavior for missing files, malformed wire, dangling references, unknown tags and a throwing result decoder.
+- `candidate-raw-key.log` establishes the supplied distinct raw key `WyJhdGxhcyIgXQ`, literal `raw:spaced`, calls zero and the original `p` key, rather than reconstruction to `WyJhdGxhcyJd`.
+- `noarg-gen-final2.log` and its exit-zero file show the maintained compiled-component regression's real build and production handler pass. Its explicit removal control was still pending at review completion.
+- `candidate-build`, `candidate-vet` and `candidate-test` logs/exit files report zero. The test log includes root, generator, dev, SSR, example and devrender packages. The frozen source's sole `t.Skip` is the existing Windows-only formatter guard; it is inactive on the reported macOS execution target.
+- I parsed the complete native `candidate-prod.json`: **175 expected, 0 skipped, 0 unexpected, 0 flaky**, comprising **135 chromium, 29 noscript and 11 source-edit** tests; all 175 results passed at retry zero, with no report errors. This is the available production run, not an invented development/main/CI qualification.
+- `candidate-browser.log` and `candidate-browser-stdout.log` show actual Go HTTP 200 in both scripting modes with the three independent literals, requests `[]`, page errors `[]` and Go calls `0`. I personally opened both `candidate-built-ssr-script.png` and `candidate-built-ssr-noscript.png`: each shows the clean visible heading and all three expected values. The captured browser source performs an initial document navigation; the still-pending hydration removal control is not inferred from network-idle alone.
+
+## Finding
+
+### 1. Issue — corrupt required error-body fields are accepted and rewritten instead of refusing construction
+
+**Evidence:** `prerender_artifact.go:102–106` validates only that an error body is a non-null JSON object. `prerender_artifact.go:239–261` then defaults a missing or non-numeric status to 500, takes a message through an unchecked string assertion, and discards the original reserved fields when collecting extras. `newSSRPrerenderArtifactStore` caches that rewritten body at lines 197–211. This violates the authorized missing/corrupt-artifact startup refusal and already-handled-body preservation obligations.
+
+The exact recorded artifact
+
+```json
+{"type":"error","error":{"status":"409","message":7,"marker":"corrupt"}}
+```
+
+is accepted by **both `NewStaticHandler` and `NewSSR`**. Static HTTP retains those corrupt original wire bytes, while SSR materializes a different body equivalent to `{"status":500,"message":"","marker":"corrupt"}`. An object containing only the marker, or either missing required field, is also accepted. This is not recovery from an absent optional error property: native `App.Error` requires `status:number` and `message:string`; `HandledHttpError` stores the supplied body, and native `handle_error_and_jsonify` returns it unchanged.
+
+**Actual reproduction:** `candidate-corrupt-error-original-gap.log` records `TestIndependentCorruptHandledErrorBodyRefusesConstruction` returning `static=<nil> SSR=<nil>` for both wrong types, both missing fields, each missing field separately, string status, and numeric message. Each constructor-refusal assertion failed; the ordinary independent test exits **1**. The previously passing valid 409/native-marker control remains separately retained. No runtime Go body fallback is needed to trigger the defect: it occurs during construction.
+
+**Bounded correction obligation:** validate the required error-body fields' presence and types before accepting/caching the recorded envelope, preserving valid body extras and the codec-independent static boundary. A malformed envelope must identify its artifact and fail construction instead of manufacturing a replacement body. The existing passing constructor controls do not cover these field cases.
+
+**Numeric source limit:** line 252 additionally converts every numeric status to Go `int`, so a supplied 409.5 loses information. The retained control labels this a Go integer-representation boundary. Kit's fresh `error()` implementation at `exports/index.js:83–86` has a NaN/range check but **no integer check**; its already-handled path does not perform that fresh-error validation. This review does not claim that native Kit rejects fractional statuses or authorize an extra HTTP range validator. Exact native fractional-body/document behavior has not been demonstrated in the inspected controls. Supported Go-owned `HTTPError.Status` is integer-valued; any representation restriction must be stated honestly and must not silently coerce an unsupported artifact while claiming native body parity.
+
+## Remaining disposition
+
+The inspected implementation otherwise preserves the relevant source contracts: it looks up the original raw key before Go argument decoding; selects client assets before recorded prerendered assets, including client-only authority; rejects unlisted prerender files; uses result revivers for SSR semantic construction while standalone static accepts transported wire syntax; keeps production noarg validation unchecked while dev remains authored; records successful/error/undefined results under the original `p` key; and carries the built already-handled signal through the JS entry, Goja result and Go error-page path without introducing JavaScript I/O or a Node runtime. Existing method/slash/compression, safe physical-file and private-query machinery was inspected and remains outside the runtime diff.
+
+No second material source defect was established. Several requested independent removal controls, refreshed dev/browser qualification and exact repaired-head CI/main publication were still pending; this report does not convert them into passes. In particular, positive wire/body tests do not by themselves establish that removal of the handled signal, production normalizer, result transport or hydration data will fail the corresponding real compiled/browser control. Those proof obligations remain, along with the deliberately unclaimed inputs/dynamic/cache extensions and retained broader URI-decoding limitation.
+
+The demonstrated malformed-field startup defect is sufficient to leave **material findings remain** against immutable 765b58b. Any subsequent repair requires a new immutable review round; it does not alter this artifact's target or result.
