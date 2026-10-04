@@ -201,6 +201,7 @@ function createJob(session, command, args, options = {}) {
 		await startDrain(job);
 		await stopGroup(job).catch((error) => { treeError = error; });
 		session.jobs.delete(job);
+		if (!treeError) session.groups.delete(job);
 		job.resolveClose();
 		if (treeError) {
 			settle(treeError);
@@ -246,7 +247,10 @@ function makeSession(root) {
 		fail(error) {
 			if (!session.failed) session.failed = error;
 			session.closing = true;
-			return session.cleanup();
+			return session.cleanup().catch((cleanupError) => {
+				session.cleanupFailure = cleanupError;
+				if (session.failed && typeof session.failed === 'object') session.failed.cleanupError = cleanupError;
+			});
 		},
 		async ensureCompiled() {
 			if (session.closing) throw session.failed ?? makeError('skgo prerender owner is closed');
@@ -311,12 +315,26 @@ function makeSession(root) {
 		async cleanup() {
 			if (session.cleanupPromise) return session.cleanupPromise;
 			session.closing = true;
-			session.cleanupPromise = (async () => {
+			const cleanupPromise = (async () => {
 				const jobs = [...session.jobs];
 				const escalations = jobs.map(startDrain);
 				// Start TERM-to-KILL escalation before waiting for children to close.
 				await Promise.allSettled([...jobs.map((job) => job.closePromise), ...escalations]);
-				for (const job of session.groups) await stopGroup(job).catch(() => {});
+				const drainErrors = [];
+				for (const job of [...session.groups]) {
+					try {
+						await stopGroup(job);
+						session.groups.delete(job);
+					} catch (error) {
+						drainErrors.push(error);
+					}
+				}
+				if (drainErrors.length) {
+					const error = new AggregateError(drainErrors, 'skgo could not drain every owned prerender process tree');
+					session.cleanupFailure = error;
+					if (session.failed && typeof session.failed === 'object') session.failed.cleanupError = error;
+					throw error;
+				}
 				for (const workerRecord of session.workers.values()) {
 					for (const requestId of workerRecord.handshakes) {
 						try { workerRecord.worker.postMessage({ tag: TAG, type: 'failed', appRoot: root, session: session.id, requestId, error: session.failed?.message ?? 'owner closed' }); } catch {}
@@ -341,7 +359,15 @@ function makeSession(root) {
 				session.groups.clear();
 				ownerByRoot.delete(root);
 			})();
-			return session.cleanupPromise;
+			session.cleanupPromise = cleanupPromise;
+			try {
+				await cleanupPromise;
+			} catch (error) {
+				// Retain listeners, directories and failed group records so later
+				// cleanup attempts can retry rather than forgetting live ownership.
+				session.cleanupPromise = null;
+				throw error;
+			}
 		}
 	};
 	return session;
@@ -456,13 +482,17 @@ export function installPrerenderFailureBoundary(config, owner) {
 			try {
 				const result = await handler.apply(this, args);
 				if (owner.failed) {
-					await owner.cleanup();
+					try { await owner.cleanup(); }
+					catch (cleanupError) {
+						if (typeof owner.failed === 'object') owner.failed.cleanupError = cleanupError;
+					}
 					throw owner.failed;
 				}
 				return result;
 			} catch (error) {
-				try { await owner.fail(error); } catch {}
-				throw error;
+				const primary = owner.failed ?? error;
+				await owner.fail(primary);
+				throw primary;
 			}
 		};
 		boundary.wrappedHandlers.set(handler, wrapped);
@@ -495,7 +525,13 @@ export function installPrerenderFailureBoundary(config, owner) {
 
 /** Wait for cleanup only when a native failure or signal has begun draining. */
 export async function joinFailedPrerenderOwner(owner) {
-	if (owner?.closing) await owner.cleanup();
+	if (owner?.closing) {
+		try { await owner.cleanup(); }
+		catch (cleanupError) {
+			if (owner.failed && typeof owner.failed === 'object') owner.failed.cleanupError = cleanupError;
+			throw owner.failed ?? cleanupError;
+		}
+	}
 }
 
 function receiveWorkerMessage(message) {
