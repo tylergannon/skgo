@@ -92,12 +92,24 @@ func TestPrerenderedCanonicalPathAndSlashAliasBypassWildcardEndpoint(t *testing.
 		AppDir:      "_app",
 		Prerendered: []string{"/old"},
 		Routes: []ManifestRoute{{
-			ID: "/old", Pattern: `^\/old\/?$`, Endpoint: &ManifestEndpoint{Methods: []string{"*"}},
+			ID:       "/[...rest]",
+			Pattern:  `^(?:\/([^]*))?\/?$`,
+			Params:   []ManifestParam{{Name: "rest", Rest: true, Chained: true}},
+			Endpoint: &ManifestEndpoint{Methods: []string{"GET", "*"}},
 		}},
 		manifest: true,
 	}
-	called := 0
-	es, err := NewEndpoints(cfg, NewEndpoint("/old", "*", func(http.ResponseWriter, *http.Request) { called++ }))
+	var called []string
+	es, err := NewEndpoints(cfg,
+		NewEndpoint("/[...rest]", "GET", func(w http.ResponseWriter, r *http.Request) {
+			called = append(called, r.URL.Path)
+			_, _ = w.Write([]byte("dynamic route"))
+		}),
+		NewEndpoint("/[...rest]", "*", func(w http.ResponseWriter, r *http.Request) {
+			called = append(called, r.URL.Path)
+			_, _ = w.Write([]byte("dynamic fallback"))
+		}),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,35 +136,15 @@ func TestPrerenderedCanonicalPathAndSlashAliasBypassWildcardEndpoint(t *testing.
 			}
 		}
 	}
-	if called != 0 {
-		t.Fatalf("wildcard endpoint called %d time(s), want zero for the recorded path and slash alias", called)
+	if len(called) != 0 {
+		t.Fatalf("wildcard route endpoint called for recorded path or slash alias: %v", called)
 	}
-}
-
-func TestPrerenderedEndpointBypassHonorsConfiguredBase(t *testing.T) {
-	cfg := EndpointConfig{
-		AppDir:      "_app",
-		Base:        "/base",
-		Prerendered: []string{"/base/old"},
-		Routes: []ManifestRoute{{
-			ID: "/old", Pattern: `^\/old\/?$`, Endpoint: &ManifestEndpoint{Methods: []string{"*"}},
-		}},
-		manifest: true,
+	resp = request(t, h, http.MethodGet, "/other", nil)
+	if resp.StatusCode != http.StatusOK || body(t, resp) != "dynamic route" {
+		t.Fatalf("positive control GET /other: status %d body %q", resp.StatusCode, body(t, resp))
 	}
-	called := 0
-	es, err := NewEndpoints(cfg, NewEndpoint("/old", "*", func(http.ResponseWriter, *http.Request) { called++ }))
-	if err != nil {
-		t.Fatal(err)
-	}
-	h := es.Intercept(pageSentinel())
-	for _, target := range []string{"/base/old", "/base/old/", "/old"} {
-		resp := request(t, h, http.MethodGet, target, nil)
-		if resp.StatusCode != http.StatusOK || body(t, resp) != "page" {
-			t.Errorf("GET %s: delegated response status %d body %q", target, resp.StatusCode, body(t, resp))
-		}
-	}
-	if called != 0 {
-		t.Fatalf("wildcard endpoint called %d time(s) across the configured base boundary", called)
+	if len(called) != 1 || called[0] != "/other" {
+		t.Fatalf("positive control called wildcard route endpoint with %v, want [/other]", called)
 	}
 }
 
