@@ -534,21 +534,31 @@ export function installPrerenderFailureBoundary(config, owner) {
 		const existing = boundary.wrappedHandlers.get(handler);
 		if (existing) return existing;
 		const wrapped = async function (...args) {
+			let result;
 			try {
-				const result = await handler.apply(this, args);
-				if (owner.failed) {
-					try { await owner.cleanup(); }
-					catch (cleanupError) {
-						if (typeof owner.failed === 'object') owner.failed.cleanupError = cleanupError;
-					}
-					throw owner.failed;
-				}
-				return result;
+				result = await handler.apply(this, args);
 			} catch (error) {
-				const primary = owner.failed ?? error;
-				await owner.fail(primary);
-				throw primary;
+				try {
+					await owner.fail(error);
+				} catch (failure) {
+					const cleanupFailure = owner.cleanupFailure ?? failure?.cleanupError ?? failure;
+					if (error && typeof error === 'object') {
+						try { error.cleanupError = cleanupFailure; }
+						catch { reportOwnerFailure({ message: 'could not attach prerender cleanup failure to the native build error', cleanupError: cleanupFailure }); }
+					} else {
+						reportOwnerFailure({ message: `native build error: ${String(error)}`, cleanupError: cleanupFailure });
+					}
+				}
+				throw error;
 			}
+			if (owner.failed) {
+				try { await owner.cleanup(); }
+				catch (cleanupError) {
+					if (typeof owner.failed === 'object') owner.failed.cleanupError = cleanupError;
+				}
+				throw owner.failed;
+			}
+			return result;
 		};
 		boundary.wrappedHandlers.set(handler, wrapped);
 		boundary.wrappers.add(wrapped);
