@@ -1,0 +1,36 @@
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/parent-workspace-explicit-false
+    delivery_test.go:713: owned command pid/group=50129 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/parent-workspace-explicit-false-sdk-c512e83-controls-individual/web" "--apply"]
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/parent-workspace-explicit-true
+    delivery_test.go:713: owned command pid/group=50134 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/parent-workspace-explicit-true-sdk-c512e83-controls-individual/web" "--apply" "--workspace" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/parent-workspace-explicit-true-sdk-c512e83-controls-individual"]
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/different-destination
+    delivery_test.go:738: owned command pid/group=50139 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/different-destination-sdk-c512e83-controls-individual/web" "--apply"]
+    delivery_test.go:738: different-destination authored file/directory count changed5=>6
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/incompatible-patch
+    delivery_test.go:736: owned command pid/group=50158 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/incompatible-patch-sdk-c512e83-controls-individual/web args=["pnpm" "config" "set" "patchedDependencies" "{\"@sveltejs/kit@^3.0.0\":\"patches/authored-kit.patch\"}" "--location=project" "--json"]
+    delivery_test.go:738: owned command pid/group=50166 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/incompatible-patch-sdk-c512e83-controls-individual/web" "--apply"]
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/malformed-yaml
+    delivery_test.go:746: owned command pid/group=50183 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/malformed-yaml-sdk-c512e83-controls-individual/web" "--apply"]
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/duplicate-yaml
+    delivery_test.go:746: owned command pid/group=50201 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/duplicate-yaml-sdk-c512e83-controls-individual/web" "--apply"]
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/nonstring-yaml-key
+    delivery_test.go:746: owned command pid/group=50212 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/nonstring-yaml-key-sdk-c512e83-controls-individual/web" "--apply"]
+    delivery_test.go:746: nonstring-yaml-key authored file/directory count changed3=>4
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/nonstring-yaml-value
+    delivery_test.go:746: owned command pid/group=50231 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/nonstring-yaml-value-sdk-c512e83-controls-individual/web" "--apply"]
+    delivery_test.go:746: nonstring-yaml-value authored file/directory count changed3=>4
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/complex-yaml-key
+    delivery_test.go:746: owned command pid/group=50250 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/complex-yaml-key-sdk-c512e83-controls-individual/web" "--apply"]
+--- FAIL: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites (1.44s)
+    --- PASS: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/parent-workspace-explicit-false (0.12s)
+    --- PASS: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/parent-workspace-explicit-true (0.12s)
+    --- FAIL: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/different-destination (0.19s)
+    --- PASS: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/incompatible-patch (0.20s)
+    --- PASS: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/malformed-yaml (0.15s)
+    --- PASS: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/duplicate-yaml (0.14s)
+    --- FAIL: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/nonstring-yaml-key (0.19s)
+    --- FAIL: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/nonstring-yaml-value (0.18s)
+    --- PASS: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites/complex-yaml-key (0.15s)
+FAIL
+FAIL	example.com/prerender-delivery-proof	1.684s
+FAIL

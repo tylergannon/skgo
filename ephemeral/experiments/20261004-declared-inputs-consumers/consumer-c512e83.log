@@ -1,0 +1,114 @@
+=== RUN   TestDeliveryNativeWorkerGuardJoinsBlockedOwnedGoLoad
+    delivery_test.go:242: owned command pid/group=37749 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83/internal/adapter args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/guard-sdk-c512e83/adapter"]
+    delivery_test.go:242: owned command pid/group=37755 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83/internal/sv args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/guard-sdk-c512e83/sv"]
+    delivery_test.go:263: owned command pid/group=37761 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/guard-native-worker-sdk-c512e83/web args=["pnpm" "install" "--no-frozen-lockfile"]
+    delivery_test.go:265: owned command pid/group=37842 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/guard-native-worker-sdk-c512e83 args=["go" "generate" "./..."]
+    delivery_test.go:265: [go generate ./...]: exit status 1
+        go: updates to go.mod needed; to update it:
+        	go mod tidy
+        internal/skgo/config.go:4: running "go": exit status 1
+--- FAIL: TestDeliveryNativeWorkerGuardJoinsBlockedOwnedGoLoad (1.67s)
+=== RUN   TestDeliveryFreshPackedTypeScriptAndJavaScript
+    delivery_test.go:407: owned command pid/group=37844 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83/internal/adapter args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83/adapter"]
+    delivery_test.go:407: owned command pid/group=37850 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83/internal/sv args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83/sv"]
+=== RUN   TestDeliveryFreshPackedTypeScriptAndJavaScript/fresh-ts
+    delivery_test.go:410: owned command pid/group=37857 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83 args=["go" "test" "-count=1" "-run" "^TestIndependentPackedCreateFinish$" "-v" "./internal/newapp"]
+    delivery_test.go:411: native installed @skgo/sveltekit-adapter resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83/web/node_modules/.pnpm/@skgo+sveltekit-adapter@file+..+..+..+delivery+packages+sdk-c512e83+adapter+skgo-svelte_f99025c7a44e04a1cc132960286e8e38/node_modules/@skgo/sveltekit-adapter
+    delivery_test.go:411: native installed @sveltejs/kit resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_bf4611d0b9c269fdaa49de61a97a97b8/node_modules/@sveltejs/kit
+    delivery_test.go:411: native installed vite-plus resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83/web/node_modules/.pnpm/vite-plus@1.0.0_@vitest+ui@5.0.1_esbuild@0.28.2_svelte@5.57.1_typescript@6.0.3/node_modules/vite-plus
+    delivery_test.go:411: owned command pid/group=38674 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83 args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--check"]
+    delivery_test.go:413: owned command pid/group=38751 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83 args=["go" "generate" "./..."]
+    delivery_test.go:413: owned command pid/group=38789 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83 args=["just" "build"]
+    delivery_test.go:413: owned command pid/group=39185 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83 args=["go" "test" "-count=1" "-run" "^TestIndependentPackedCompiledHTTPAndSSR$" "-v" "."]
+    delivery_test.go:414: owned command pid/group=39213 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83-relocated-frozen/web args=["pnpm" "install" "--frozen-lockfile" "--store-dir" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/independent-store-fresh-ts-sdk-c512e83"]
+    delivery_test.go:414: native installed @skgo/sveltekit-adapter resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83-relocated-frozen/web/node_modules/.pnpm/@skgo+sveltekit-adapter@file+..+..+..+delivery+packages+sdk-c512e83+adapter+skgo-svelte_f99025c7a44e04a1cc132960286e8e38/node_modules/@skgo/sveltekit-adapter
+    delivery_test.go:414: native installed @sveltejs/kit resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83-relocated-frozen/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_bf4611d0b9c269fdaa49de61a97a97b8/node_modules/@sveltejs/kit
+    delivery_test.go:414: native installed vite-plus resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83-relocated-frozen/web/node_modules/.pnpm/vite-plus@1.0.0_@vitest+ui@5.0.1_esbuild@0.28.2_svelte@5.57.1_typescript@6.0.3/node_modules/vite-plus
+    delivery_test.go:414: owned command pid/group=39359 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83-relocated-frozen args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--check"]
+    delivery_test.go:415: owned command pid/group=39376 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83-relocated-frozen args=["go" "generate" "./..."]
+    delivery_test.go:415: owned command pid/group=39415 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83-relocated-frozen args=["just" "build"]
+    delivery_test.go:415: owned command pid/group=39597 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-ts-sdk-c512e83-relocated-frozen args=["go" "test" "-count=1" "-run" "^TestIndependentPackedCompiledHTTPAndSSR$" "-v" "."]
+=== RUN   TestDeliveryFreshPackedTypeScriptAndJavaScript/fresh-js
+    delivery_test.go:410: owned command pid/group=39610 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83 args=["go" "test" "-count=1" "-run" "^TestIndependentPackedCreateFinish$" "-v" "./internal/newapp"]
+    delivery_test.go:411: native installed @skgo/sveltekit-adapter resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83/web/node_modules/.pnpm/@skgo+sveltekit-adapter@file+..+..+..+delivery+packages+sdk-c512e83+adapter+skgo-svelte_b2a7f61cee709d24e5a4079134b02e4e/node_modules/@skgo/sveltekit-adapter
+    delivery_test.go:411: native installed @sveltejs/kit resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_dffc6a59c6b85f9679d50a7dfcd2657c/node_modules/@sveltejs/kit
+    delivery_test.go:411: native installed vite-plus resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83/web/node_modules/.pnpm/vite-plus@1.0.0_@types+node@24.19.1_@vitest+browser-playwright@5.0.1_@vitest+coverage-v_7c39ddc568e36650050bba16d6fba461/node_modules/vite-plus
+    delivery_test.go:411: owned command pid/group=40414 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83 args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--check"]
+    delivery_test.go:413: owned command pid/group=40432 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83 args=["go" "generate" "./..."]
+    delivery_test.go:413: owned command pid/group=40474 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83 args=["just" "build"]
+    delivery_test.go:413: owned command pid/group=40691 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83 args=["go" "test" "-count=1" "-run" "^TestIndependentPackedCompiledHTTPAndSSR$" "-v" "."]
+    delivery_test.go:414: owned command pid/group=40733 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83-relocated-frozen/web args=["pnpm" "install" "--frozen-lockfile" "--store-dir" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/independent-store-fresh-js-sdk-c512e83"]
+    delivery_test.go:414: native installed @skgo/sveltekit-adapter resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83-relocated-frozen/web/node_modules/.pnpm/@skgo+sveltekit-adapter@file+..+..+..+delivery+packages+sdk-c512e83+adapter+skgo-svelte_b2a7f61cee709d24e5a4079134b02e4e/node_modules/@skgo/sveltekit-adapter
+    delivery_test.go:414: native installed @sveltejs/kit resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83-relocated-frozen/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_dffc6a59c6b85f9679d50a7dfcd2657c/node_modules/@sveltejs/kit
+    delivery_test.go:414: native installed vite-plus resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83-relocated-frozen/web/node_modules/.pnpm/vite-plus@1.0.0_@types+node@24.19.1_@vitest+browser-playwright@5.0.1_@vitest+coverage-v_7c39ddc568e36650050bba16d6fba461/node_modules/vite-plus
+    delivery_test.go:414: owned command pid/group=40913 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83-relocated-frozen args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--check"]
+    delivery_test.go:415: owned command pid/group=40930 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83-relocated-frozen args=["go" "generate" "./..."]
+    delivery_test.go:415: owned command pid/group=40977 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83-relocated-frozen args=["just" "build"]
+    delivery_test.go:415: owned command pid/group=41205 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/fresh-js-sdk-c512e83-relocated-frozen args=["go" "test" "-count=1" "-run" "^TestIndependentPackedCompiledHTTPAndSSR$" "-v" "."]
+--- PASS: TestDeliveryFreshPackedTypeScriptAndJavaScript (73.35s)
+    --- PASS: TestDeliveryFreshPackedTypeScriptAndJavaScript/fresh-ts (31.29s)
+    --- PASS: TestDeliveryFreshPackedTypeScriptAndJavaScript/fresh-js (41.98s)
+=== RUN   TestDeliveryExistingConsumerUpgradeApplyCheckAndFrozenReinstall
+    delivery_test.go:578: owned command pid/group=41222 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83/internal/adapter args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83/adapter"]
+    delivery_test.go:578: owned command pid/group=41228 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83/internal/sv args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83/sv"]
+    delivery_test.go:600: owned command pid/group=41234 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83/independent-sentinel-package args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83/independent-packed-sentinel"]
+    delivery_test.go:600: owned command pid/group=41240 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83/web args=["pnpm" "config" "set" "patchedDependencies" "{\"inputs-delivery-sentinel@1.0.0\":\"patches/independent-sentinel.patch\"}" "--location=project" "--json"]
+    delivery_test.go:600: owned command pid/group=41246 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83/independent-absolute-package args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83/independent-packed-absolute"]
+    delivery_test.go:600: owned command pid/group=41252 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83/web args=["pnpm" "config" "set" "patchedDependencies" "{\"inputs-delivery-absolute-sentinel@1.0.0\":\"/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83/web/patches/independent-absolute.patch\",\"inputs-delivery-sentinel@1.0.0\":\"patches/independent-sentinel.patch\"}" "--location=project" "--json"]
+    delivery_test.go:603: owned command pid/group=41259 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83/web args=["pnpm" "install" "--no-frozen-lockfile"]
+    delivery_test.go:608: owned command pid/group=41322 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83 args=["go" "generate" "./..."]
+    delivery_test.go:608: [go generate ./...]: exit status 1
+        go: updates to go.mod needed; to update it:
+        	go mod tidy
+        internal/skgo/config.go:4: running "go": exit status 1
+--- FAIL: TestDeliveryExistingConsumerUpgradeApplyCheckAndFrozenReinstall (1.52s)
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites
+    delivery_test.go:705: owned command pid/group=41325 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83 args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/parent-workspace-explicit-false-sdk-c512e83/web" "--apply"]
+    delivery_test.go:705: parent-workspace-explicit-false expected nonzerorefusing to modify parent pnpm workspace gotexit status 1:go: updates to go.mod needed; to update it:
+        	go mod tidy
+--- FAIL: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites (0.03s)
+=== RUN   TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites
+=== RUN   TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites/unsupported-version
+    delivery_test.go:768: owned command pid/group=41327 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/unsupported-version-sdk-c512e83/pre-install-kit args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/unsupported-version-sdk-c512e83/packed-kit"]
+    delivery_test.go:776: owned command pid/group=41335 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/unsupported-version-sdk-c512e83/web args=["pnpm" "install" "--no-frozen-lockfile"]
+    delivery_test.go:776: [pnpm install --no-frozen-lockfile]: exit status 1
+        Error: ERR_PNPM_UNRECOGNIZED_WORKSPACE_SETTINGS
+        
+          × The following settings in pnpm-workspace.yaml are not recognized by this
+          │ version of pnpm: "independentSentinel" (did you mean
+          │ "onlyBuiltDependenciesFile"?).
+          help: The project pins pnpm to a version the running pnpm satisfies, so
+                these settings cannot be meant for a different pnpm version. Remove
+                them from pnpm-workspace.yaml or fix their spelling.
+        
+=== RUN   TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites/altered-source
+    delivery_test.go:768: owned command pid/group=41382 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/altered-source-sdk-c512e83/pre-install-kit args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/altered-source-sdk-c512e83/packed-kit"]
+    delivery_test.go:776: owned command pid/group=41438 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/altered-source-sdk-c512e83/web args=["pnpm" "install" "--no-frozen-lockfile"]
+    delivery_test.go:776: [pnpm install --no-frozen-lockfile]: exit status 1
+        Error: ERR_PNPM_UNRECOGNIZED_WORKSPACE_SETTINGS
+        
+          × The following settings in pnpm-workspace.yaml are not recognized by this
+          │ version of pnpm: "independentSentinel" (did you mean
+          │ "onlyBuiltDependenciesFile"?).
+          help: The project pins pnpm to a version the running pnpm satisfies, so
+                these settings cannot be meant for a different pnpm version. Remove
+                them from pnpm-workspace.yaml or fix their spelling.
+        
+--- FAIL: TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites (0.20s)
+    --- FAIL: TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites/unsupported-version (0.11s)
+    --- FAIL: TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites/altered-source (0.09s)
+=== RUN   TestDeliveryRemovedOwnedPatchRestoresNamedStockFailure
+    delivery_test.go:791: owned command pid/group=41498 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/removal-control-sdk-c512e83/web args=["pnpm" "config" "set" "patchedDependencies" "{\"inputs-delivery-absolute-sentinel@1.0.0\":\"/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83/web/patches/independent-absolute.patch\",\"inputs-delivery-sentinel@1.0.0\":\"patches/independent-sentinel.patch\"}" "--location=project" "--json"]
+    delivery_test.go:793: remove /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/removal-control-sdk-c512e83/web/patches/skgo-kit-3.0.0-queue.patch: no such file or directory
+--- FAIL: TestDeliveryRemovedOwnedPatchRestoresNamedStockFailure (0.03s)
+=== RUN   TestDeliveryCorrectedNativeDelayedAsyncInputs
+    delivery_test.go:837: owned command pid/group=41568 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/corrected-native-async-sdk-c512e83/web args=["pnpm" "install" "--frozen-lockfile"]
+    delivery_test.go:838: native installed @skgo/sveltekit-adapter resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/corrected-native-async-sdk-c512e83/web/node_modules/.pnpm/@skgo+sveltekit-adapter@file+..+..+..+delivery+packages+sdk-c512e83+adapter+skgo-svelte_f99025c7a44e04a1cc132960286e8e38/node_modules/@skgo/sveltekit-adapter
+    delivery_test.go:838: native installed @sveltejs/kit resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/corrected-native-async-sdk-c512e83/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_bf4611d0b9c269fdaa49de61a97a97b8/node_modules/@sveltejs/kit
+    delivery_test.go:838: native installed vite-plus resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/corrected-native-async-sdk-c512e83/web/node_modules/.pnpm/vite-plus@1.0.0_@vitest+ui@5.0.1_esbuild@0.28.2_svelte@5.57.1_typescript@6.0.3/node_modules/vite-plus
+    delivery_test.go:838: owned command pid/group=41904 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/corrected-native-async-sdk-c512e83 args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--check"]
+    delivery_test.go:839: owned command pid/group=41921 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/corrected-native-async-sdk-c512e83/web args=["node_modules/.bin/vp" "build"]
+--- PASS: TestDeliveryCorrectedNativeDelayedAsyncInputs (3.14s)
+FAIL
+FAIL	example.com/prerender-delivery-proof	80.040s
+FAIL

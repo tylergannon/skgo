@@ -1,0 +1,751 @@
+package productproof
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"testing"
+	"time"
+)
+
+const base = "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof"
+
+func implementation() string {
+	if root := os.Getenv("SKGO_PROOF_IMPL"); root != "" {
+		return root
+	}
+	return filepath.Join(base, "implementation-80e05ea")
+}
+func put(t *testing.T, root, name, body string) {
+	t.Helper()
+	p := filepath.Join(root, name)
+	if e := os.MkdirAll(filepath.Dir(p), 0755); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.WriteFile(p, []byte(body), 0644); e != nil {
+		t.Fatal(e)
+	}
+}
+func read(t *testing.T, root, name string) string {
+	t.Helper()
+	b, e := os.ReadFile(filepath.Join(root, name))
+	if e != nil {
+		t.Fatal(e)
+	}
+	return string(b)
+}
+func exact(t *testing.T, got, want string) {
+	t.Helper()
+	if got != want {
+		t.Fatalf("got %q; want independent literal %q", got, want)
+	}
+}
+func copyTree(t *testing.T, source, dest string) {
+	t.Helper()
+	e := filepath.WalkDir(source, func(path string, d fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		rel, e := filepath.Rel(source, path)
+		if e != nil {
+			return e
+		}
+		if rel == "web/node_modules" || rel == "web/.svelte-kit" || rel == "web/build" || rel == "web/dist" {
+			return filepath.SkipDir
+		}
+		target := filepath.Join(dest, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0755)
+		}
+		info, e := d.Info()
+		if e != nil {
+			return e
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			link, e := os.Readlink(path)
+			if e != nil {
+				return e
+			}
+			return os.Symlink(link, target)
+		}
+		b, e := os.ReadFile(path)
+		if e != nil {
+			return e
+		}
+		return os.WriteFile(target, b, info.Mode().Perm())
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+}
+func fixture(t *testing.T, name string) string {
+	t.Helper()
+	root := filepath.Join(base, "product-fixtures", name)
+	if e := os.RemoveAll(root); e != nil {
+		t.Fatal(e)
+	}
+	copyTree(t, filepath.Join(implementation(), "example"), filepath.Join(root, "example"))
+	put(t, root, "Justfile", read(t, implementation(), "Justfile"))
+	app := filepath.Join(root, "example")
+	mod := read(t, app, "go.mod")
+	mod = strings.Replace(mod, "replace github.com/tylergannon/skgo => ../", "replace github.com/tylergannon/skgo => "+implementation(), 1)
+	put(t, app, "go.mod", mod)
+	if packed := os.Getenv("SKGO_PROOF_ADAPTER_TARBALL"); packed != "" {
+		var manifest map[string]any
+		if e := json.Unmarshal([]byte(read(t, app, "web/package.json")), &manifest); e != nil {
+			t.Fatal(e)
+		}
+		manifest["devDependencies"].(map[string]any)["@skgo/sveltekit-adapter"] = "file:" + packed
+		body, e := json.MarshalIndent(manifest, "", "  ")
+		if e != nil {
+			t.Fatal(e)
+		}
+		put(t, app, "web/package.json", string(body)+"\n")
+		env := []string{"PNPM_HOME=" + base + "/delivery/regression-pnpm-home", "XDG_DATA_HOME=" + base + "/delivery/regression-data", "XDG_CACHE_HOME=" + base + "/delivery/regression-cache", "PATH=" + base + "/delivery/tools/node_modules/.bin:" + os.Getenv("PATH")}
+		if out, e := run(t, filepath.Join(app, "web"), "independent-native-install.log", env, "pnpm", "install", "--no-frozen-lockfile", "--store-dir", base+"/delivery/regression-store"); e != nil {
+			t.Fatalf("actual packed regression install:%v\n%s", e, out)
+		}
+		return root
+	}
+	deps := filepath.Join(app, "web/node_modules")
+	if e := os.MkdirAll(deps, 0755); e != nil {
+		t.Fatal(e)
+	}
+	cmd := exec.Command("cp", "-cR", filepath.Join(base, "deps/web/node_modules")+"/.", deps)
+	if b, e := cmd.CombinedOutput(); e != nil {
+		t.Fatalf("clone owned deps: %v %s", e, b)
+	}
+	if e := os.RemoveAll(filepath.Join(deps, "@skgo/sveltekit-adapter")); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Symlink(filepath.Join(implementation(), "internal/adapter"), filepath.Join(deps, "@skgo/sveltekit-adapter")); e != nil {
+		t.Fatal(e)
+	}
+	return root
+}
+func run(t *testing.T, root, log string, env []string, args ...string) (string, error) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), append([]string{"GO111MODULE=on", "GOWORK=off", "GOCACHE=/tmp/skgo-inputs-proof-go-cache", "MISE_STATE_DIR=" + base + "/mise-state", "MISE_CACHE_DIR=" + base + "/mise-cache", "MISE_TRUSTED_CONFIG_PATHS=" + base, "MISE_YES=1"}, env...)...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if e := cmd.Start(); e != nil {
+		t.Fatal(e)
+	}
+	t.Logf("command pid/group=%d cwd=%s command=%v", cmd.Process.Pid, root, args)
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	var e error
+	select {
+	case e = <-done:
+	case <-ctx.Done():
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		e = <-done
+		t.Errorf("command exceeded 60s deadline")
+	}
+	put(t, root, log, out.String())
+	return out.String(), e
+}
+func generate(t *testing.T, root string, env []string) {
+	t.Helper()
+	if b, e := run(t, filepath.Join(root, "example"), "generate.log", env, "go", "generate", "./..."); e != nil {
+		t.Fatalf("generate: %v\n%s", e, b)
+	}
+}
+
+const authoredRemote = `package lib
+import (
+ "context"
+ "fmt"
+ "os"
+ "github.com/tylergannon/polytype/devalue"
+ "github.com/tylergannon/skgo"
+ "github.com/tylergannon/skgo/example/businesslogic"
+)
+func note(line string) { if path:=os.Getenv("SKGO_INPUTS_RECEIPT");path!="" { f,e:=os.OpenFile(path,os.O_CREATE|os.O_WRONLY|os.O_APPEND,0644);if e!=nil {panic(e)};defer f.Close();fmt.Fprintln(f,line) } }
+func catalogInputs()([]string,error){note("inputs:catalog");return []string{"atlas","beacon"},nil}
+func catalog(ctx context.Context,name string)(string,error){note("body:catalog:"+name);return "build:"+name,nil}
+var _ = skgo.Prerender(catalog,skgo.PrerenderOptions{Inputs:catalogInputs})
+func duplicateInputs()([]string,error){note("inputs:duplicate");return []string{"atlas","atlas"},nil}
+func duplicate(ctx context.Context,name string)(string,error){note("body:duplicate:"+name);return "build:"+name,nil}
+var _ = skgo.Prerender(duplicate,skgo.PrerenderOptions{Inputs:duplicateInputs})
+func moneyInputs()([]businesslogic.Money,error){note("inputs:money");return []businesslogic.Money{{Cents:125}},nil}
+func amount(ctx context.Context,money businesslogic.Money)(string,error){note(fmt.Sprintf("body:amount:%d",money.Cents));return fmt.Sprintf("money:%d",money.Cents),nil}
+var _ = skgo.Prerender(amount,skgo.PrerenderOptions{Inputs:moneyInputs})
+func emptyInputs()([]devalue.UndefinedValue,error){note("inputs:empty");return []devalue.UndefinedValue{},nil}
+func empty(ctx context.Context)(string,error){note("body:empty");return "build:empty",nil}
+var _ = skgo.Prerender(empty,skgo.PrerenderOptions{Inputs:emptyInputs})
+`
+const moneyKey = "W1siTW9uZXkiLDFdLFsiX19za3JhbyIsMl0seyJjZW50cyI6M30sMTI1XQ"
+
+func installCombined(t *testing.T, root string) {
+	app := filepath.Join(root, "example")
+	put(t, app, "web/src/lib/fixture.remote.go", authoredRemote)
+	for _, page := range []string{"one", "two"} {
+		put(t, app, "web/src/routes/inputs-duplicate/"+page+"/+page.ts", "export const prerender = true;\n")
+		put(t, app, "web/src/routes/inputs-duplicate/"+page+"/+page.svelte", `<script lang="ts">import { duplicate } from '../../../lib/fixture.remote'; const answer = await duplicate('atlas');</script><h1>`+page+`:{answer}</h1>`)
+	}
+	put(t, app, "web/src/routes/inputs-consumer/+page.svelte", `<script lang="ts">import {catalog,amount,empty} from '../../lib/fixture.remote'; import {Money} from '../../hooks'; const a=await catalog('atlas'); const b=await amount(new Money(125)); const c=await empty();</script><p data-testid="inputs-catalog">{a}</p><p data-testid="inputs-money">{b}</p><p data-testid="inputs-empty">{c}</p>`)
+}
+func TestIndependentNoPageInputsNativeArtifactsCountsAndCompiledSSR(t *testing.T) {
+	name := os.Getenv("SKGO_PROOF_NAME")
+	if name == "" {
+		name = "combined-80e05ea"
+	}
+	root := fixture(t, name)
+	installCombined(t, root)
+	receipt := filepath.Join(root, "build-calls.log")
+	env := []string{"SKGO_INPUTS_RECEIPT=" + receipt}
+	generate(t, root, env)
+	if b, e := os.ReadFile(receipt); !os.IsNotExist(e) {
+		t.Fatalf("producer/body ran during generate: %v %s", e, b)
+	}
+	if b, e := run(t, root, "build.log", env, "just", "build"); e != nil {
+		t.Fatalf("real just build: %v\n%s", e, b)
+	}
+	artifact := filepath.Join(root, "example/web/build/prerendered/_app/remote/3215r6")
+	for _, tc := range []struct{ name, key, want string }{{"catalog", "WyJhdGxhcyJd", "build:atlas"}, {"catalog", "WyJiZWFjb24iXQ", "build:beacon"}, {"amount", moneyKey, "money:125"}} {
+		want := fmt.Sprintf(`{"type":"result","data":"[{\"_\":1,\"p\":2},\"%s\",{\"3215r6/%s/%s\":3},{\"v\":1}]"}`, tc.want, tc.name, tc.key)
+		exact(t, read(t, artifact, tc.name+"/"+tc.key), want)
+	}
+	exact(t, read(t, artifact, "empty"), `{"type":"result","data":"[{\"_\":1,\"p\":2},\"build:empty\",{\"3215r6/empty/\":3},{\"v\":1}]"}`)
+	calls := read(t, root, "build-calls.log")
+	for _, line := range []string{"inputs:catalog", "inputs:duplicate", "inputs:money", "inputs:empty", "body:catalog:atlas", "body:catalog:beacon", "body:duplicate:atlas", "body:amount:125", "body:empty"} {
+		if n := strings.Count(calls, line+"\n"); n != 1 {
+			t.Errorf("%s count=%d want literal1; calls=%s", line, n, calls)
+		}
+	}
+	entries, e := os.ReadDir(filepath.Join(artifact, "catalog"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	var raw int
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".gz") && !strings.HasSuffix(entry.Name(), ".br") {
+			raw++
+		}
+	}
+	if raw != 2 {
+		t.Errorf("catalog raw artifacts=%d; want literal2", raw)
+	}
+	put(t, root, "example/independent_inputs_artifact_test.go", compiledSSRTest)
+	runtimeReceipt := filepath.Join(root, "runtime-calls.log")
+	if b, e := run(t, filepath.Join(root, "example"), "compiled-handler.log", []string{"SKGO_INPUTS_RECEIPT=" + runtimeReceipt}, "go", "test", "-count=1", "-run", "TestIndependentInputsCompiledArtifactHTTPAndSSR|TestPrerenderedGoRemoteIsReusedByProductionSSR|TestTheProductionBundleRunsInAFreshRuntime|TestPrerenderedGoRemoteIsAStaticAnswer|TestDynamicPrerenderEntriesAreServedFromFiles|TestEveryPrerenderedPathIsServedFromItsFile", "-v", "."); e != nil {
+		t.Fatalf("compiled Go artifact handler: %v\n%s", e, b)
+	}
+	if b, e := os.ReadFile(runtimeReceipt); !os.IsNotExist(e) {
+		t.Fatalf("producer/body runtime calls; want literal0: %v %s", e, b)
+	}
+}
+
+const compiledSSRTest = `package example_test
+import("net/http";"net/http/httptest";"os";"strings";"testing";"github.com/tylergannon/skgo/example")
+func TestIndependentInputsCompiledArtifactHTTPAndSSR(t *testing.T){h,mode,e:=example.NewHandler(os.DirFS("web/build"),"","http://127.0.0.1:8080");if e!=nil{t.Fatal(e)};if mode!="prod"{t.Fatal(mode)};for _,tc:=range []struct{path,want string}{{"/_app/remote/3215r6/catalog/WyJhdGxhcyJd", "build:atlas"},{"/_app/remote/3215r6/catalog/WyJiZWFjb24iXQ","build:beacon"},{"/_app/remote/3215r6/amount/W1siTW9uZXkiLDFdLFsiX19za3JhbyIsMl0seyJjZW50cyI6M30sMTI1XQ","money:125"},{"/_app/remote/3215r6/empty","build:empty"}}{w:=httptest.NewRecorder();h.ServeHTTP(w,httptest.NewRequest("GET",tc.path,nil));if w.Code!=http.StatusOK||!strings.Contains(w.Body.String(),tc.want){t.Fatalf("%s: %d %s",tc.path,w.Code,w.Body)}};w:=httptest.NewRecorder();h.ServeHTTP(w,httptest.NewRequest("GET","/inputs-consumer",nil));if w.Code!=http.StatusOK{t.Fatalf("SSR status%d:%s",w.Code,w.Body)};for _,want:=range []string{"<p data-testid=\"inputs-catalog\">build:atlas</p>","<p data-testid=\"inputs-money\">money:125</p>","<p data-testid=\"inputs-empty\">build:empty</p>","3215r6/catalog/WyJhdGxhcyJd","3215r6/amount/W1siTW9uZXkiLDFdLFsiX19za3JhbyIsMl0seyJjZW50cyI6M30sMTI1XQ","3215r6/empty/"}{if !strings.Contains(w.Body.String(),want){t.Errorf("SSR missing independent literal %q:%s",want,w.Body)}}}
+`
+
+const faultCommand = `package main
+import("bytes";"encoding/json";"fmt";"io";"log";"os";"os/exec";"os/signal";"path/filepath";"syscall";"time";"github.com/tylergannon/skgo";generated "github.com/tylergannon/skgo/example/internal/skgo")
+func main(){mode:=os.Getenv("SKGO_FAULT_MODE");if trace:=os.Getenv("SKGO_FAULT_TRACE");trace!=""{f,_:=os.OpenFile(trace,os.O_CREATE|os.O_WRONLY|os.O_APPEND,0644);fmt.Fprintln(f,mode);f.Close()};if len(os.Args)>1&&os.Args[1]=="proof-child"{signal.Ignore(syscall.SIGTERM);f,_:=os.OpenFile(os.Getenv("SKGO_FAULT_PID"),os.O_CREATE|os.O_WRONLY|os.O_APPEND,0644);fmt.Fprintf(f,"%d %s\n",os.Getpid(),filepath.Dir(os.Args[0]));f.Close();for{time.Sleep(time.Second)}};if mode=="early-stdin"{os.Stdin.Close();fmt.Fprintln(os.Stderr,"fixture closed stdin before request");os.Exit(9)};raw,e:=io.ReadAll(os.Stdin);if e!=nil{log.Fatal(e)};var request struct{Kind,Module,Name string};if e=json.Unmarshal(raw,&request);e!=nil{log.Fatal(e)};if request.Module=="src/lib/fixture.remote.ts"&&request.Name=="catalog" {var answer string;switch mode{case "bad-json":if request.Kind=="remote"{answer="not json"};case "bad-envelope":if request.Kind=="remote"{answer="{}"};case "bad-devalue":if request.Kind=="remote"{answer="{\"type\":\"result\",\"data\":\"[999]\"}"};case "missing-result":if request.Kind=="remote"{answer="{\"type\":\"result\",\"data\":\"[{}]\"}"};case "null-inputs":if request.Kind=="remote-inputs"{answer="{\"inputs\":\"[null]\"}"};case "json-nonzero":if request.Kind=="remote"{fmt.Print("{\"type\":\"result\",\"data\":\"[{\\\"_\\\":1},\\\"build:atlas\\\"]\"}");fmt.Fprintln(os.Stderr,"fixture valid JSON then exit7");os.Exit(7)};case "leader-open-pipes":if request.Kind=="remote-inputs"{f,_:=os.OpenFile(os.Getenv("SKGO_FAULT_PID"),os.O_CREATE|os.O_WRONLY|os.O_APPEND,0644);fmt.Fprintf(f,"%d %s\n",os.Getpid(),filepath.Dir(os.Args[0]));f.Close();child:=exec.Command(os.Args[0],"proof-child");child.Stdout=os.Stdout;child.Stderr=os.Stderr;if e=child.Start();e!=nil{log.Fatal(e)};time.Sleep(100*time.Millisecond);fmt.Print("{\"inputs\":\"[[1],\\\"atlas\\\"]\"}");return}};if answer!=""{fmt.Print(answer);return}};if e:=skgo.RunPrerenderBuild(bytes.NewReader(raw),os.Stdout,generated.Transport(),generated.Loads(),generated.Remotes());e!=nil{log.Fatal(e)}}`
+
+func TestIndependentMalformedResponsesRemainFatalUnderIgnorePolicy(t *testing.T) {
+	root := fixture(t, "malformed-"+filepath.Base(implementation()))
+	installCombined(t, root)
+	generate(t, root, nil)
+	app := filepath.Join(root, "example")
+	config := read(t, app, "web/vite.config.ts")
+	config = strings.Replace(config, "experimental: { remoteFunctions: true },", "experimental: { remoteFunctions: true },\n      prerender: { handleHttpError: 'ignore' },", 1)
+	put(t, app, "web/vite.config.ts", config)
+	put(t, app, "internal/skgo/prerender/main_gen.go", faultCommand)
+	for _, mode := range []string{"bad-json", "bad-envelope", "bad-devalue", "missing-result", "null-inputs", "json-nonzero", "early-stdin"} {
+		t.Run(mode, func(t *testing.T) {
+			b, e := run(t, root, "build-"+mode+".log", []string{"SKGO_FAULT_MODE=" + mode, "SKGO_FAULT_TRACE=" + filepath.Join(root, mode+".trace")}, "just", "build")
+			if trace := read(t, root, mode+".trace"); !strings.Contains(trace, mode+"\n") {
+				t.Fatalf("fault command did not execute: %s", trace)
+			}
+			if e == nil {
+				t.Fatalf("real native build succeeded under ignore500 after %s; want nonzero\n%s", mode, b)
+			}
+			if strings.Contains(b, "SKIP") {
+				t.Fatal("unexpected skip")
+			}
+			t.Logf("real native build rejected %s: %v", mode, e)
+		})
+	}
+}
+
+const blockedRemote = `package lib
+import("context";"fmt";"os";"os/signal";"path/filepath";"syscall";"time";"github.com/tylergannon/skgo")
+func aaBlockInputs()([]string,error){return []string{"hold"},nil}
+func aaBlock(ctx context.Context,name string)(string,error){signal.Ignore(syscall.SIGTERM);exe,_:=os.Executable();os.WriteFile(os.Getenv("SKGO_BLOCK_READY"),[]byte(fmt.Sprintf("%d %s\nself pid=%d ppid=%d pgid=%d exec=%s",os.Getpid(),filepath.Dir(exe),os.Getpid(),os.Getppid(),func()int{g,_:=syscall.Getpgid(0);return g}(),exe)),0644);for {f,_:=os.OpenFile(os.Getenv("SKGO_BLOCK_LATE"),os.O_CREATE|os.O_APPEND|os.O_WRONLY,0644);fmt.Fprintln(f,"owned live body");f.Close();time.Sleep(25*time.Millisecond)}}
+var _=skgo.Prerender(aaBlock,skgo.PrerenderOptions{Inputs:aaBlockInputs})
+func zzFailInputs()([]string,error){deadline:=time.Now().Add(10*time.Second);for time.Now().Before(deadline){if _,e:=os.Stat(os.Getenv("SKGO_BLOCK_READY"));e==nil{return nil,fmt.Errorf("inputs fixture failed")};time.Sleep(10*time.Millisecond)};return nil,fmt.Errorf("blocked body never became ready")}
+func zzFail(ctx context.Context,name string)(string,error){return name,nil}
+var _=skgo.Prerender(zzFail,skgo.PrerenderOptions{Inputs:zzFailInputs})
+`
+const programmaticBuild = `(async()=>{const {createBuilder}=await import('vite');const {existsSync,readFileSync,writeFileSync}=await import('node:fs');
+const builder=await createBuilder({configFile:'vite.config.ts'});let original;
+try {await builder.buildApp();throw new Error('native build unexpectedly succeeded');} catch(error){original=error;}
+if(!String(original).includes('inputs fixture failed')) throw new Error('wrong native rejection: '+original);
+const [pidText,dir]=readFileSync(process.env.SKGO_BLOCK_READY,'utf8').trim().split(/\s+/);const pid=Number(pidText);const alive=()=>{try{process.kill(-pid,0);return true;}catch(e){if(e.code==='ESRCH')return false;throw e}};
+const receipt={original:String(original),childrenAtRejection:alive()?1:0,tempDirAtRejection:existsSync(dir),pid,dir};
+const before=readFileSync(process.env.SKGO_BLOCK_LATE,'utf8');await new Promise(r=>setTimeout(r,250));const after=readFileSync(process.env.SKGO_BLOCK_LATE,'utf8');receipt.lateIO=after===before?0:1;writeFileSync(process.env.SKGO_BLOCK_RESULT,JSON.stringify(receipt));
+if(receipt.childrenAtRejection!==0||receipt.tempDirAtRejection||receipt.lateIO!==0)throw new Error('native outer promise rejected before owned cleanup: '+JSON.stringify(receipt));
+console.log('PROGRAMMATIC_NATIVE_REJECTION_JOINED '+JSON.stringify(receipt));})().catch(e=>{console.error(e);process.exitCode=1});`
+
+func TestIndependentProgrammaticNativeProducerFailureJoinsBlockedOwnedBody(t *testing.T) {
+	root := fixture(t, "native-owner-"+filepath.Base(implementation()))
+	app := filepath.Join(root, "example")
+	put(t, app, "web/src/lib/fixture.remote.go", blockedRemote)
+	put(t, app, "web/src/routes/inputs-discovery/+page.svelte", `<script lang="ts">import '../../lib/fixture.remote';</script><h1>Discovery only</h1>`)
+	ready := filepath.Join(root, "body.ready")
+	late := filepath.Join(root, "late.log")
+	result := filepath.Join(root, "rejection.json")
+	env := []string{"SKGO_BLOCK_READY=" + ready, "SKGO_BLOCK_LATE=" + late, "SKGO_BLOCK_RESULT=" + result}
+	generate(t, root, env)
+	b, e := run(t, filepath.Join(app, "web"), "programmatic.log", env, "node", "-e", programmaticBuild)
+	if e != nil {
+		cleanupRecorded(t, ready)
+		t.Fatalf("real programmatic buildApp: %v\n%s", e, b)
+	}
+	if !strings.Contains(b, "PROGRAMMATIC_NATIVE_REJECTION_JOINED") {
+		t.Fatalf("programmatic receipt missing: %s", b)
+	}
+	t.Logf("immediate outer rejection receipt: %s", read(t, root, "rejection.json"))
+}
+func cleanupRecorded(t *testing.T, ready string) {
+	t.Helper()
+	b, e := os.ReadFile(ready)
+	if e != nil {
+		return
+	}
+	var pid int
+	var dir string
+	if _, e = fmt.Sscanf(string(b), "%d %s", &pid, &dir); e == nil && pid > 0 {
+		_ = syscall.Kill(-pid, syscall.SIGKILL)
+		if strings.HasPrefix(dir, os.TempDir()) || strings.Contains(dir, "/skgo-prerender-") {
+			_ = os.RemoveAll(dir)
+		}
+	}
+}
+
+func nativeFailureFixture(t *testing.T, name string) (string, []string) {
+	root := fixture(t, name)
+	app := filepath.Join(root, "example")
+	source := strings.Replace(blockedRemote, `return nil,fmt.Errorf("inputs fixture failed")`, `return nil,nil`, 1)
+	put(t, app, "web/src/lib/fixture.remote.go", source)
+	put(t, app, "web/src/routes/inputs-discovery/+page.svelte", `<script lang="ts">import '../../lib/fixture.remote';</script><h1>Discovery only</h1>`)
+	env := []string{"SKGO_BLOCK_READY=" + filepath.Join(root, "body.ready"), "SKGO_BLOCK_LATE=" + filepath.Join(root, "late.log"), "SKGO_BLOCK_RESULT=" + filepath.Join(root, "rejection.json")}
+	generate(t, root, env)
+	stub := read(t, app, "web/src/lib/fixture.remote.ts")
+	stub += `
+// Independent native failure control: Kit's actual producer throws outside Go IPC.
+import {prerender as nativePrerender} from '$app/server';
+import {existsSync as nativeExists} from 'node:fs';
+export const zzNativeFailure=nativePrerender('unchecked',(_name:string)=>'unused',{inputs:async()=>{const deadline=Date.now()+10000;while(Date.now()<deadline){if(nativeExists(process.env.SKGO_BLOCK_READY!))throw new Error('native inputs fixture failed');await new Promise(r=>setTimeout(r,10));}throw new Error('native blocked body readiness missing');}});
+`
+	put(t, app, "web/src/lib/fixture.remote.ts", stub)
+	return root, env
+}
+func TestIndependentProgrammaticNativeFailureJoinsBlockedOwnedBody(t *testing.T) {
+	root, env := nativeFailureFixture(t, "native-outside-ipc-"+filepath.Base(implementation()))
+	b, e := run(t, filepath.Join(root, "example/web"), "programmatic.log", env, "node", "-e", programmaticBuild)
+	if e != nil {
+		cleanupRecorded(t, filepath.Join(root, "body.ready"))
+		t.Fatalf("native producer outer promise: %v\n%s", e, b)
+	}
+	if !strings.Contains(b, "PROGRAMMATIC_NATIVE_REJECTION_JOINED") {
+		t.Fatal("native rejection receipt missing")
+	}
+	t.Logf("native failure immediate outer rejection receipt: %s", read(t, root, "rejection.json"))
+}
+
+func TestIndependentSIGTERMJoinsBlockedOwnedBody(t *testing.T) {
+	fixtureName := "signal-" + filepath.Base(implementation())
+	if os.Getenv("SKGO_SIGNAL_OUTER") == "1" {
+		fixtureName = "outer-vp-" + filepath.Base(implementation())
+	}
+	root := fixture(t, fixtureName)
+	app := filepath.Join(root, "example")
+	source := strings.Replace(blockedRemote, `return nil,fmt.Errorf("inputs fixture failed")`, `return nil,nil`, 1)
+	put(t, app, "web/src/lib/fixture.remote.go", source)
+	put(t, app, "web/src/routes/inputs-discovery/+page.svelte", `<script lang="ts">import '../../lib/fixture.remote';</script><h1>Discovery only</h1>`)
+	ready := filepath.Join(root, "body.ready")
+	late := filepath.Join(root, "late.log")
+	mainPID := filepath.Join(root, "main.pid")
+	env := []string{"SKGO_BLOCK_READY=" + ready, "SKGO_BLOCK_LATE=" + late, "SKGO_MAIN_PID=" + mainPID}
+	generate(t, root, env)
+	config := read(t, app, "web/vite.config.ts")
+	config = `import {isMainThread,threadId} from 'node:worker_threads';import {writeFileSync,realpathSync} from 'node:fs';import {createRequire} from 'node:module';import {dirname,join} from 'node:path';const ownRequire=createRequire(process.cwd()+'/package.json');const ownVite=ownRequire.resolve('vite');writeFileSync(process.env.SKGO_MAIN_PID!,String(process.pid));const ownerSelfReceipt=()=>{if(isMainThread)writeFileSync(process.env.SKGO_MAIN_PID!+'.info',JSON.stringify({isMainThread,threadId,pid:process.pid,ppid:process.ppid,execPath:process.execPath,argv:process.argv,packageManager:process.env.NODE_PACKAGE_MANAGER??null,vite:ownVite,viteCLI:realpathSync(join(dirname(ownVite),'cli.js'))}));};if(isMainThread){ownerSelfReceipt();setInterval(ownerSelfReceipt,50).unref();}` + "\n" + config
+	put(t, app, "web/vite.config.ts", config)
+	cmd := exec.Command("just", "build")
+	cmd.Dir = root
+	if os.Getenv("SKGO_SIGNAL_OUTER") == "1" {
+		cmd = exec.Command(filepath.Join(app, "web/node_modules/.bin/vp"), "build")
+		cmd.Dir = filepath.Join(app, "web")
+	}
+	cmd.Env = append(os.Environ(), append([]string{"GO111MODULE=on", "GOWORK=off", "GOCACHE=/tmp/skgo-inputs-proof-go-cache", "MISE_STATE_DIR=" + base + "/mise-state", "MISE_CACHE_DIR=" + base + "/mise-cache", "MISE_TRUSTED_CONFIG_PATHS=" + base, "MISE_YES=1"}, env...)...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if e := cmd.Start(); e != nil {
+		t.Fatal(e)
+	}
+	defer func() { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); cleanupRecorded(t, ready) }()
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	deadline := time.Now().Add(35 * time.Second)
+	for {
+		if _, e := os.Stat(ready); e == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("actual blocked Go body not ready before signal deadline")
+		}
+		select {
+		case e := <-done:
+			t.Fatalf("build ended before blocked readiness: %v\n%s", e, out.String())
+		default:
+		}
+		time.Sleep(15 * time.Millisecond)
+	}
+	var nativePID int
+	if _, e := fmt.Sscanf(read(t, root, "main.pid"), "%d", &nativePID); e != nil {
+		t.Fatal(e)
+	}
+	var recordedBodyPID int
+	var recordedDir string
+	fmt.Sscanf(read(t, root, "body.ready"), "%d %s", &recordedBodyPID, &recordedDir)
+	ps := exec.Command("ps", "-o", "pid=,ppid=,pgid=,stat=,comm=", "-p", fmt.Sprintf("%d,%d,%d", cmd.Process.Pid, nativePID, recordedBodyPID))
+	tree, _ := ps.CombinedOutput()
+	put(t, root, "tree-before.log", string(tree))
+	put(t, root, "node-before.json", read(t, root, "main.pid.info"))
+	signalPID := nativePID
+	if os.Getenv("SKGO_SIGNAL_OUTER") == "1" {
+		signalPID = cmd.Process.Pid
+	}
+	t.Logf("signal target%d outer%d nativeNode%d blockedGo%d", signalPID, cmd.Process.Pid, nativePID, recordedBodyPID)
+	if e := syscall.Kill(signalPID, syscall.SIGTERM); e != nil {
+		t.Fatal(e)
+	}
+	select {
+	case e := <-done:
+		if e == nil {
+			t.Fatal("SIGTERM build returned success")
+		}
+	case <-time.After(20 * time.Second):
+		ps = exec.Command("ps", "-o", "pid=,ppid=,pgid=,stat=,comm=", "-p", fmt.Sprintf("%d,%d,%d", cmd.Process.Pid, nativePID, recordedBodyPID))
+		tree, _ = ps.CombinedOutput()
+		put(t, root, "tree-after-timeout.log", string(tree))
+		put(t, root, "build.log", out.String())
+		put(t, root, "node-after.json", read(t, root, "main.pid.info"))
+		outerAlive := syscall.Kill(cmd.Process.Pid, 0)
+		t.Logf("outer alive probe after TERM: %v; native before%s after%s; Go%s", outerAlive, read(t, root, "node-before.json"), read(t, root, "node-after.json"), read(t, root, "body.ready"))
+		t.Fatal("SIGTERM target did not join within20s deadline")
+	}
+	put(t, root, "build.log", out.String())
+	var bodyPID int
+	var dir string
+	if _, e := fmt.Sscanf(read(t, root, "body.ready"), "%d %s", &bodyPID, &dir); e != nil {
+		t.Fatal(e)
+	}
+	if e := syscall.Kill(-bodyPID, 0); e != syscall.ESRCH {
+		t.Fatalf("owned Go group alive after main signal exit: pid%d err%v", bodyPID, e)
+	}
+	if _, e := os.Stat(dir); !os.IsNotExist(e) {
+		t.Fatalf("private compile dir exists after main exit: %s %v", dir, e)
+	}
+	before := read(t, root, "late.log")
+	time.Sleep(250 * time.Millisecond)
+	exact(t, read(t, root, "late.log"), before)
+	t.Logf("SIGTERM main PID%d joined body group%d; owned children0, tempdirgone, lateIO0", nativePID, bodyPID)
+}
+
+func TestIndependentLeaderExitWithInheritedOutputPipesDrains(t *testing.T) {
+	root := fixture(t, "inherited-pipes-"+filepath.Base(implementation()))
+	installCombined(t, root)
+	generate(t, root, nil)
+	app := filepath.Join(root, "example")
+	put(t, app, "internal/skgo/prerender/main_gen.go", faultCommand)
+	ready := filepath.Join(root, "owned-pids.log")
+	defer cleanupRecorded(t, ready)
+	start := time.Now()
+	b, e := run(t, root, "build.log", []string{"SKGO_FAULT_MODE=leader-open-pipes", "SKGO_FAULT_PID=" + ready, "SKGO_FAULT_TRACE=" + filepath.Join(root, "executed.trace")}, "just", "build")
+	if e != nil {
+		t.Fatalf("leader exit with inherited output pipes: %v\n%s", e, b)
+	}
+	if time.Since(start) > 25*time.Second {
+		t.Fatal("inherited output pipe exceeded explicit25s no-hang bound")
+	}
+	var leader int
+	var dir string
+	if _, e := fmt.Sscanf(read(t, root, "owned-pids.log"), "%d %s", &leader, &dir); e != nil {
+		t.Fatal(e)
+	}
+	if e := syscall.Kill(-leader, 0); e != syscall.ESRCH {
+		t.Fatalf("owned inherited-pipe descendant alive: group%d err%v", leader, e)
+	}
+	if _, e := os.Stat(dir); !os.IsNotExist(e) {
+		t.Fatalf("private temp compile directory retained: %s", dir)
+	}
+	t.Logf("actual inherited-pipe leader/group%d drained; compiled tempdirgone; elapsed%s", leader, time.Since(start))
+}
+func TestIndependentActualGoCompilerErrorFailsWithoutHanging(t *testing.T) {
+	root := fixture(t, "compiler-failure-"+filepath.Base(implementation()))
+	installCombined(t, root)
+	generate(t, root, nil)
+	app := filepath.Join(root, "example")
+	put(t, app, "internal/skgo/prerender/broken.go", "package main\nfunc proofBroken(){ undefinedProofCompilerSymbol() }\n")
+	b, e := run(t, root, "build.log", nil, "just", "build")
+	if e == nil || !strings.Contains(b, "undefined: undefinedProofCompilerSymbol") {
+		t.Fatalf("actual Go compiler failure must reject native build: %v\n%s", e, b)
+	}
+}
+
+func TestIndependentJavaScriptInputsBuildAndCompiledSSR(t *testing.T) {
+	root := fixture(t, "javascript-"+filepath.Base(implementation()))
+	installCombined(t, root)
+	app := filepath.Join(root, "example")
+	if e := os.Remove(filepath.Join(app, "web/tsconfig.json")); e != nil {
+		t.Fatal(e)
+	}
+	put(t, app, "web/jsconfig.json", `{"extends":"$app/tsconfig","compilerOptions":{"checkJs":true}}`)
+	receipt := filepath.Join(root, "build-calls.log")
+	env := []string{"SKGO_INPUTS_RECEIPT=" + receipt}
+	generate(t, root, env)
+	if _, e := os.Stat(filepath.Join(app, "web/src/lib/fixture.remote.js")); e != nil {
+		t.Fatalf("actual JS generator output: %v", e)
+	}
+	if b, e := run(t, root, "build.log", env, "just", "build"); e != nil {
+		t.Fatalf("real JavaScript just build: %v\n%s", e, b)
+	}
+	artifact := filepath.Join(app, "web/build/prerendered/_app/remote/1vhm2m4")
+	for _, tc := range []struct{ name, key, value string }{{"catalog", "WyJhdGxhcyJd", "build:atlas"}, {"catalog", "WyJiZWFjb24iXQ", "build:beacon"}, {"amount", moneyKey, "money:125"}} {
+		want := fmt.Sprintf(`{"type":"result","data":"[{\"_\":1,\"p\":2},\"%s\",{\"1vhm2m4/%s/%s\":3},{\"v\":1}]"}`, tc.value, tc.name, tc.key)
+		exact(t, read(t, artifact, tc.name+"/"+tc.key), want)
+	}
+	put(t, app, "independent_inputs_artifact_test.go", strings.ReplaceAll(compiledSSRTest, "3215r6", "1vhm2m4"))
+	runtimeReceipt := filepath.Join(root, "runtime-calls.log")
+	if b, e := run(t, app, "compiled-handler.log", []string{"SKGO_INPUTS_RECEIPT=" + runtimeReceipt}, "go", "test", "-count=1", "-run", "TestIndependentInputsCompiledArtifactHTTPAndSSR|TestTheProductionBundleRunsInAFreshRuntime", "-v", "."); e != nil {
+		t.Fatalf("JS compiled HTTP/SSR: %v\n%s", e, b)
+	}
+	if b, e := os.ReadFile(runtimeReceipt); !os.IsNotExist(e) {
+		t.Fatalf("JS runtime producer/body calls; want literal0: %v %s", e, b)
+	}
+}
+func TestIndependentProgrammaticNativeCrawlerFailureJoinsBlockedOwnedBody(t *testing.T) {
+	root := fixture(t, "native-crawler-"+filepath.Base(implementation()))
+	app := filepath.Join(root, "example")
+	source := strings.Replace(blockedRemote, `return nil,fmt.Errorf("inputs fixture failed")`, `return []string{"deny"},nil`, 1)
+	source = strings.Replace(source, `return name,nil`, `return "",skgo.Errorf(418,"native crawler fixture denied")`, 1)
+	put(t, app, "web/src/lib/fixture.remote.go", source)
+	put(t, app, "web/src/routes/inputs-discovery/+page.svelte", `<script lang="ts">import '../../lib/fixture.remote';</script><h1>Discovery only</h1>`)
+	env := []string{"SKGO_BLOCK_READY=" + filepath.Join(root, "body.ready"), "SKGO_BLOCK_LATE=" + filepath.Join(root, "late.log"), "SKGO_BLOCK_RESULT=" + filepath.Join(root, "rejection.json"), "SKGO_EXPECT_ERROR=Prerendering failed"}
+	generate(t, root, env)
+	config := read(t, app, "web/vite.config.ts")
+	config = strings.Replace(config, "experimental: { remoteFunctions: true },", "experimental: { remoteFunctions: true },prerender:{concurrency:2},", 1)
+	put(t, app, "web/vite.config.ts", config)
+	driver := strings.Replace(programmaticBuild, "includes('inputs fixture failed')", "includes(process.env.SKGO_EXPECT_ERROR)", 1)
+	b, e := run(t, filepath.Join(app, "web"), "programmatic.log", env, "node", "-e", driver)
+	if e != nil {
+		cleanupRecorded(t, filepath.Join(root, "body.ready"))
+		t.Fatalf("native crawler outer promise: %v\n%s", e, b)
+	}
+	if !strings.Contains(b, "418") || !strings.Contains(b, "zzFail") {
+		t.Fatalf("actual native crawler418 receipt missing: %s", b)
+	}
+	t.Logf("native crawler immediate outer rejection: %s", read(t, root, "rejection.json"))
+}
+
+func TestIndependentOuterVPSIGTERMJoinsBlockedOwnedBody(t *testing.T) {
+	t.Setenv("SKGO_SIGNAL_OUTER", "1")
+	TestIndependentSIGTERMJoinsBlockedOwnedBody(t)
+}
+
+const originRemotes = `package lib
+import("context";"fmt";"github.com/tylergannon/skgo")
+func deniedInputs()([]string,error){return []string{"blocked"},nil}
+func denied(context.Context,string)(string,error){return "",skgo.Errorf(418,"fixture denied")}
+var _=skgo.Prerender(denied,skgo.PrerenderOptions{Inputs:deniedInputs})
+func unknownInputs()([]string,error){return []string{"unknown"},nil}
+func unknown(context.Context,string)(string,error){return "",fmt.Errorf("Go private fixture failure")}
+var _=skgo.Prerender(unknown,skgo.PrerenderOptions{Inputs:unknownInputs})
+func panickedInputs()([]string,error){return []string{"panic"},nil}
+func panicked(context.Context,string)(string,error){panic("Go private fixture panic")}
+var _=skgo.Prerender(panicked,skgo.PrerenderOptions{Inputs:panickedInputs})
+func movedInputs()([]string,error){return []string{"move"},nil}
+func moved(context.Context,string)(string,error){return "",&skgo.Redirect{Status:307,Location:"/target"}}
+var _=skgo.Prerender(moved,skgo.PrerenderOptions{Inputs:movedInputs})
+`
+
+func TestIndependentGoErrorOriginsHooksAndNativeCrawlerPolicy(t *testing.T) {
+	root := fixture(t, "go-error-origin-"+filepath.Base(implementation()))
+	app := filepath.Join(root, "example")
+	put(t, app, "web/src/lib/fixture.remote.go", originRemotes)
+	put(t, app, "web/src/routes/inputs-discovery/+page.svelte", `<script lang="ts">import '../../lib/fixture.remote';</script><h1>Discovery only</h1>`)
+	put(t, app, "web/src/hooks.server.ts", `export const handleError=({kind,error})=>{console.log('GO_NATIVE_ORIGIN:'+kind+':'+(error?.status??'none')+':'+error.message);return {message:'hook:'+kind,marker:'hooked-'+kind};};export const handle=async({event,resolve})=>{const response=await resolve(event);if(event.isRemoteRequest)console.log('GO_NATIVE_HTTP:'+JSON.stringify({path:new URL(event.request.url).pathname,status:response.status,body:await response.clone().text()}));return response;};`)
+	config := read(t, app, "web/vite.config.ts")
+	config = strings.Replace(config, "experimental: { remoteFunctions: true },", "experimental: { remoteFunctions: true },prerender:{handleHttpError:({status,path})=>console.log('GO_NATIVE_POLICY:'+status+':'+path)},", 1)
+	put(t, app, "web/vite.config.ts", config)
+	generate(t, root, nil)
+	b, e := run(t, root, "build.log", nil, "just", "build")
+	if e != nil {
+		t.Fatalf("native origin transformed build: %v\n%s", e, b)
+	}
+	for _, tc := range []struct {
+		needle string
+		count  int
+	}{{"GO_NATIVE_ORIGIN:app:418:fixture denied", 1}, {"GO_NATIVE_ORIGIN:unknown:none:Go private fixture failure", 1}, {"GO_NATIVE_ORIGIN:unknown:none:Go private fixture panic", 1}, {"GO_NATIVE_POLICY:418:/_app/remote/3215r6/denied/WyJibG9ja2VkIl0", 1}, {"GO_NATIVE_POLICY:500:/_app/remote/3215r6/unknown/WyJ1bmtub3duIl0", 1}, {"GO_NATIVE_POLICY:500:/_app/remote/3215r6/panicked/WyJwYW5pYyJd", 1}, {`\"message\":\"hook:app\",\"marker\":\"hooked-app\"`, 1}, {`\"message\":\"hook:unknown\",\"marker\":\"hooked-unknown\"`, 2}} {
+		if got := strings.Count(b, tc.needle); got != tc.count {
+			t.Errorf("native hook/policy literal%s count%d want%d", tc.needle, got, tc.count)
+		}
+	}
+	exact(t, read(t, app, "web/build/prerendered/_app/remote/3215r6/moved/WyJtb3ZlIl0"), `{"type":"result","data":"[{\"redirect\":1},\"/target\"]"}`)
+}
+
+func minimalInputsFixture(t *testing.T, name string) string {
+	root := fixture(t, name)
+	app := filepath.Join(root, "example")
+	entries, e := os.ReadDir(app)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, entry := range entries {
+		switch entry.Name() {
+		case "web", "go.mod", "go.sum", "mise.toml":
+		default:
+			if e := os.RemoveAll(filepath.Join(app, entry.Name())); e != nil {
+				t.Fatal(e)
+			}
+		}
+	}
+	put(t, app, "internal/skgo/config.go", "package skgo\n//go:generate go tool skgo generate --web ../../web\n")
+	os.Remove(filepath.Join(app, "web/skgo.remotes.json"))
+	os.Remove(filepath.Join(app, "web/skgo.loads.json"))
+	if e := os.RemoveAll(filepath.Join(app, "web/src")); e != nil {
+		t.Fatal(e)
+	}
+	put(t, app, "web/src/app.html", `<!doctype html><html><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>`)
+	put(t, app, "web/src/routes/+page.svelte", `<h1>Declared inputs minimal fixture</h1>`)
+	return root
+}
+func TestIndependentNoArgumentOnlyBuildAndNativeArtifact(t *testing.T) {
+	root := minimalInputsFixture(t, "noarg-only-"+filepath.Base(implementation()))
+	app := filepath.Join(root, "example")
+	put(t, app, "web/src/lib/fixture.remote.go", `package lib
+import("context";"os";"fmt";"github.com/tylergannon/polytype/devalue";"github.com/tylergannon/skgo")
+func note(line string){f,_:=os.OpenFile(os.Getenv("SKGO_INPUTS_RECEIPT"),os.O_CREATE|os.O_APPEND|os.O_WRONLY,0644);fmt.Fprintln(f,line);f.Close()}
+func emptyInputs()([]devalue.UndefinedValue,error){note("inputs:empty");return []devalue.UndefinedValue{},nil}
+func empty(context.Context)(string,error){note("body:empty");return "build:empty",nil}
+var _=skgo.Prerender(empty,skgo.PrerenderOptions{Inputs:emptyInputs})`)
+	put(t, app, "web/src/routes/+layout.ts", `import '../lib/fixture.remote';export const prerender=true;`)
+	receipt := filepath.Join(root, "calls.log")
+	env := []string{"SKGO_INPUTS_RECEIPT=" + receipt}
+	generate(t, root, env)
+	if b, e := os.ReadFile(receipt); !os.IsNotExist(e) {
+		t.Fatalf("noarg-only producer ran during generation: %v %s", e, b)
+	}
+	if b, e := run(t, root, "build.log", env, "just", "build"); e != nil {
+		t.Fatalf("noarg-only actual build: %v\n%s", e, b)
+	}
+	exact(t, read(t, app, "web/build/prerendered/_app/remote/3215r6/empty"), `{"type":"result","data":"[{\"_\":1,\"p\":2},\"build:empty\",{\"3215r6/empty/\":3},{\"v\":1}]"}`)
+	exact(t, read(t, root, "calls.log"), "inputs:empty\nbody:empty\n")
+	put(t, app, "cmd/inputsprobe/main.go", `package main
+import("net/http/httptest";"os";"strings";"github.com/tylergannon/skgo")
+func main(){h,e:=skgo.NewStaticHandler(os.DirFS("web/build"));if e!=nil{panic(e)};w:=httptest.NewRecorder();h.ServeHTTP(w,httptest.NewRequest("GET","/_app/remote/3215r6/empty",nil));if w.Code!=200||!strings.Contains(w.Body.String(),"build:empty"){panic(w.Body.String())}}`)
+	runtimeReceipt := filepath.Join(root, "runtime.log")
+	if b, e := run(t, app, "handler.log", []string{"SKGO_INPUTS_RECEIPT=" + runtimeReceipt}, "go", "run", "./cmd/inputsprobe"); e != nil {
+		t.Fatalf("noarg compiled artifact handler: %v\n%s", e, b)
+	}
+	if b, e := os.ReadFile(runtimeReceipt); !os.IsNotExist(e) {
+		t.Fatalf("noarg runtime producer/body expected0: %v %s", e, b)
+	}
+}
+func TestIndependentSameExportAcrossPackagesProducesBothNativeArtifacts(t *testing.T) {
+	root := minimalInputsFixture(t, "same-export-"+filepath.Base(implementation()))
+	app := filepath.Join(root, "example")
+	put(t, app, "web/src/alpha/alpha.remote.go", `package alpha
+import("context";"github.com/tylergannon/skgo")
+func item(_ context.Context,stringArg string)(string,error){return "alpha:"+stringArg,nil}
+func names()([]string,error){return []string{"atlas"},nil}
+var _=skgo.Prerender(item,skgo.PrerenderOptions{Inputs:names})`)
+	put(t, app, "web/src/beta/beta.remote.go", `package beta
+import("context";"github.com/tylergannon/skgo")
+func item(_ context.Context,intArg int)(int,error){return intArg+20,nil}
+func names()([]int,error){return []int{5},nil}
+var _=skgo.Prerender(item,skgo.PrerenderOptions{Inputs:names})`)
+	put(t, app, "web/src/routes/+layout.ts", `import '../alpha/alpha.remote';import '../beta/beta.remote';export const prerender=true;`)
+	generate(t, root, nil)
+	if b, e := run(t, root, "build.log", nil, "just", "build"); e != nil {
+		t.Fatalf("same-export actual native build: %v\n%s", e, b)
+	}
+	exact(t, read(t, app, "web/build/prerendered/_app/remote/1vyw5d0/item/WyJhdGxhcyJd"), `{"type":"result","data":"[{\"_\":1,\"p\":2},\"alpha:atlas\",{\"1vyw5d0/item/WyJhdGxhcyJd\":3},{\"v\":1}]"}`)
+	exact(t, read(t, app, "web/build/prerendered/_app/remote/1h38tvo/item/WzVd"), `{"type":"result","data":"[{\"_\":1,\"p\":2},25,{\"1h38tvo/item/WzVd\":3},{\"v\":1}]"}`)
+}
+
+// Bounded variation of the existing origin fixture: remove only handleError.
+// Native errors.js supplies the literal default unknown fallback below.
+func TestIndependentGoUnknownAndPanicUseNativeDefaultOpaqueFallback(t *testing.T) {
+	root := fixture(t, "go-default-error-"+filepath.Base(implementation()))
+	app := filepath.Join(root, "example")
+	put(t, app, "web/src/lib/fixture.remote.go", originRemotes)
+	put(t, app, "web/src/routes/inputs-discovery/+page.svelte", `<script lang="ts">import '../../lib/fixture.remote';</script><h1>Discovery only</h1>`)
+	put(t, app, "web/src/hooks.server.ts", `export const handle=async({event,resolve})=>{const response=await resolve(event);if(event.isRemoteRequest)console.log('GO_NATIVE_HTTP:'+JSON.stringify({path:new URL(event.request.url).pathname,status:response.status,body:await response.clone().text()}));return response;};`)
+	config := read(t, app, "web/vite.config.ts")
+	config = strings.Replace(config, "experimental: { remoteFunctions: true },", "experimental: { remoteFunctions: true },prerender:{handleHttpError:({status,path})=>console.log('GO_NATIVE_POLICY:'+status+':'+path)},", 1)
+	put(t, app, "web/vite.config.ts", config)
+	generate(t, root, nil)
+	b, e := run(t, root, "build.log", nil, "just", "build")
+	if e != nil {
+		t.Fatalf("native default opaque build: %v\n%s", e, b)
+	}
+	type response struct {
+		Path   string `json:"path"`
+		Status int    `json:"status"`
+		Body   string `json:"body"`
+	}
+	responses := map[string][]response{}
+	for _, line := range strings.Split(b, "\n") {
+		const prefix = "GO_NATIVE_HTTP:"
+		if i := strings.Index(line, prefix); i >= 0 {
+			var r response
+			if e := json.Unmarshal([]byte(line[i+len(prefix):]), &r); e != nil {
+				t.Fatal(e)
+			}
+			responses[r.Path] = append(responses[r.Path], r)
+		}
+	}
+	const opaque = `{"type":"error","error":{"status":500,"message":"Internal Error"}}`
+	for _, path := range []string{"/_app/remote/3215r6/unknown/WyJ1bmtub3duIl0", "/_app/remote/3215r6/panicked/WyJwYW5pYyJd"} {
+		rs := responses[path]
+		if len(rs) != 1 {
+			t.Fatalf("native default response %s count%d want1", path, len(rs))
+		}
+		if rs[0].Status != 500 {
+			t.Fatalf("native default response %s status%d want500", path, rs[0].Status)
+		}
+		exact(t, rs[0].Body, opaque)
+		if strings.Contains(rs[0].Body, "Go private fixture") {
+			t.Fatal("private Go diagnostic leaked in native default HTTP body")
+		}
+		t.Logf("actual native no-handleError %s status500 body%s", path, rs[0].Body)
+	}
+	const appPath = "/_app/remote/3215r6/denied/WyJibG9ja2VkIl0"
+	if rs := responses[appPath]; len(rs) != 1 || rs[0].Status != 418 {
+		t.Fatalf("native default freshapp418 response=%v", rs)
+	} else {
+		exact(t, rs[0].Body, `{"type":"error","error":{"status":418,"message":"fixture denied"}}`)
+	}
+}

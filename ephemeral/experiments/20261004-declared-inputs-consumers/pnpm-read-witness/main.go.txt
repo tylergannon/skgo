@@ -1,0 +1,44 @@
+package main
+
+import (
+ "crypto/sha256"
+ "encoding/json"
+ "fmt"
+ "io/fs"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "reflect"
+ "strings"
+)
+
+func must(err error) { if err != nil { panic(err) } }
+func tree(root string) map[string]string {
+ result:=map[string]string{}
+ must(filepath.WalkDir(root,func(path string,d fs.DirEntry,err error)error{
+  if err!=nil{return err}; rel,err:=filepath.Rel(root,path);if err!=nil{return err}
+  if d.IsDir(){result[rel]="dir";return nil}; b,err:=os.ReadFile(path);if err!=nil{return err};result[rel]=fmt.Sprintf("%x",sha256.Sum256(b));return nil
+ }));return result
+}
+func run(root,label string,extra []string,args ...string) string {
+ cmd:=exec.Command("/Users/tyler/.vite-plus/bin/pnpm",args...);cmd.Dir=root
+ for _,value:=range os.Environ(){if !strings.HasPrefix(value,"PNPM_CONFIG_PATCHED_DEPENDENCIES="){cmd.Env=append(cmd.Env,value)}}
+ cmd.Env=append(cmd.Env,extra...)
+ out,err:=cmd.CombinedOutput();fmt.Printf("%s args=%q exit=%v output=%s\n",label,args,err,out);must(err);return strings.TrimSpace(string(out))
+}
+func main(){
+ base:="/Users/tyler/Codex/2026-10-03/task-8/tmp/pnpm-read-review"
+ root:=filepath.Join(base,"selected")
+ if _,err:=os.Stat(root);!os.IsNotExist(err){panic("fixture already exists")}
+ must(os.Mkdir(root,0755));must(os.WriteFile(filepath.Join(root,"package.json"),[]byte(`{"name":"readonly-getter-witness","private":true,"packageManager":"pnpm@12.9.1","devDependencies":{"@sveltejs/kit":"^3.0.0"}}`),0644))
+ must(os.WriteFile(filepath.Join(root,"pnpm-workspace.yaml"),[]byte("patchedDependencies:\n  unrelated@1.0.0: patches/authored.patch\n"),0644))
+ before:=tree(root); encoded,_:=json.Marshal(before);fmt.Printf("before=%s\n",encoded)
+ env:=[]string{"PNPM_HOME="+filepath.Join(base,"home"),"XDG_DATA_HOME="+filepath.Join(base,"data"),"XDG_CACHE_HOME="+filepath.Join(base,"cache")}
+ version:=run(root,"version",env,"--pm-on-fail=ignore","--version");if version!="12.9.1"{panic("wrong version:"+version)}
+ native:=run(root,"get",env,"--pm-on-fail=ignore","config","get","patchedDependencies","--location=project","--json")
+ var got map[string]string;must(json.Unmarshal([]byte(native),&got));if got["unrelated@1.0.0"]!=filepath.Join(root,"patches/authored.patch")||len(got)!=1{panic("unexpected normal config:"+native)}
+ ambiguous:=run(root,"ambiguous-get",append(env,`PNPM_CONFIG_PATCHED_DEPENDENCIES={"other@1.0.0":"patches/other.patch"}`),"--pm-on-fail=ignore","config","get","patchedDependencies","--location=project","--json")
+ var other map[string]string;must(json.Unmarshal([]byte(ambiguous),&other));if reflect.DeepEqual(got,other){panic("override did not create ambiguity")}
+ after:=tree(root);encoded,_=json.Marshal(after);fmt.Printf("after=%s\n",encoded);if !reflect.DeepEqual(before,after){panic("selected authored tree mutated")}
+ fmt.Println("PASS: VP shim version12.9.1 and native getter/ambiguous getter preserve complete lockless selected tree")
+}
