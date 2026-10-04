@@ -80,7 +80,8 @@ func TestSSRPrerenderMissIsOpaqueAndNeverCallsGo(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := &SSR{remotes: remotes}
-	raw, err := s.answer(context.Background(), fn.ID(), "[\"missing\"]", map[string]map[string]answered{})
+	answers := map[string]map[string]answered{}
+	raw, err := s.answer(context.Background(), fn.ID(), "[\"missing\"]", answers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,6 +91,39 @@ func TestSSRPrerenderMissIsOpaqueAndNeverCallsGo(t *testing.T) {
 	}
 	if calls != 0 || answer.E == nil || answer.E.Status != 500 || answer.E.Message != "Internal Error" {
 		t.Fatalf("missing artifact answer=%s Go body calls=%d", raw, calls)
+	}
+	if got := answers["p"][fn.ID()+"/[\"missing\"]"].err; got == nil || got.Status != 500 || got.Message != "Internal Error" {
+		t.Fatalf("missing artifact p answer = %#v", got)
+	}
+}
+
+func TestMergePrerenderAnswersRetainsPageCacheAndPrefersErrorRenderEntries(t *testing.T) {
+	prior := map[string]map[string]answered{
+		"p": {"id/original": {err: &ssr.Error{Status: 409, Message: "original", Extra: map[string]any{"marker": "native"}}}, "id/shared": {tree: "prior"}},
+		"q": {"prior-query": {tree: "unrelated"}},
+	}
+	current := map[string]map[string]answered{
+		"p": {"id/shared": {tree: "error-render"}},
+		"q": {"error-query": {tree: "kept"}},
+	}
+	merged := mergePrerenderAnswers(current, prior)
+	if got := merged["p"]["id/original"].err; got == nil || got.Status != 409 || got.Extra["marker"] != "native" {
+		t.Fatalf("original p error = %#v", got)
+	}
+	if got := merged["p"]["id/shared"].tree; got != "error-render" {
+		t.Fatalf("same-key error render value = %#v, want its own answer", got)
+	}
+	if got := merged["q"]["error-query"].tree; got != "kept" {
+		t.Fatalf("error render's unrelated query = %#v", got)
+	}
+	if _, exists := merged["q"]["prior-query"]; exists {
+		t.Fatal("prior non-prerender answer escaped the bounded p-only carry")
+	}
+	if _, exists := current["p"]["id/original"]; exists {
+		t.Fatal("merge mutated the error render's answer map")
+	}
+	if _, exists := prior["p"]["id/shared"]; !exists {
+		t.Fatal("merge mutated the original render's answer map")
 	}
 }
 
@@ -115,7 +149,8 @@ func TestMalformedClientPrerenderErrorIsOpaqueAndNeverCallsGo(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := &SSR{remotes: remotes, artifacts: store}
-	raw, err := s.answer(context.Background(), fn.ID(), "payload", map[string]map[string]answered{})
+	answers := map[string]map[string]answered{}
+	raw, err := s.answer(context.Background(), fn.ID(), "payload", answers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,6 +160,9 @@ func TestMalformedClientPrerenderErrorIsOpaqueAndNeverCallsGo(t *testing.T) {
 	}
 	if calls != 0 || answer.E == nil || answer.E.Status != http.StatusInternalServerError || answer.E.Message != "Internal Error" {
 		t.Fatalf("malformed client artifact answer=%s Go body calls=%d", raw, calls)
+	}
+	if got := answers["p"][fn.ID()+"/payload"].err; got == nil || got.Status != http.StatusInternalServerError || got.Message != "Internal Error" {
+		t.Fatalf("malformed client artifact p answer = %#v", got)
 	}
 }
 

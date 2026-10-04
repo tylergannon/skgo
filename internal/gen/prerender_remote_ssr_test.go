@@ -1,9 +1,11 @@
 package gen
 
 import (
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -66,6 +68,30 @@ var _ = skgo.Prerender(noargValue)
 `)
 	write("src/routes/prerender-contract/+page.svelte", `<script>import { noargValue } from './fixture.remote';const value=await noargValue(null);</script><h1>Prerender contract</h1><p>{value}</p>`)
 	write("src/routes/prerender-contract/+error.svelte", `<script>let { error, status } = $props();</script><h1>{status}</h1><p>{error.message}</p>`)
+	write("src/routes/prerender-contract-seed/+page.ts", `import { noargValue } from '../prerender-contract/fixture.remote';
+
+export const prerender = true;
+
+export async function load() {
+	return { value: await noargValue() };
+}
+`)
+	write("src/routes/prerender-contract-seed/+page.svelte", `<script>let { data } = $props();</script><h1>Prerender seed</h1><p>{data.value}</p>`)
+	write("src/routes/prerender-contract-error/+page.ts", `import { noargValue } from '../prerender-contract/fixture.remote';
+
+export async function load() {
+	return { value: await noargValue() };
+}
+`)
+	write("src/routes/prerender-contract-error/+page.svelte", `<script>let { data } = $props();</script><h1>Prerender error consumer</h1><p>{data.value}</p>`)
+	write("src/routes/prerender-contract-missing/+page.ts", `import { noargValue } from '../prerender-contract/fixture.remote';
+
+export async function load() {
+	// @ts-expect-error exercise the production null-key artifact miss
+	return { value: await noargValue(null) };
+}
+`)
+	write("src/routes/prerender-contract-missing/+page.svelte", `<script>let { data } = $props();</script><h1>Prerender missing consumer</h1><p>{data.value}</p>`)
 	if output, err := runGoGenerate(app); err != nil {
 		t.Fatalf("go generate ./...: %v\n%s", err, output)
 	}
@@ -76,6 +102,34 @@ var _ = skgo.Prerender(noargValue)
 	t.Logf("vp build exit: %d\n%s", exitCode(err), output)
 	if err != nil {
 		t.Fatalf("vp build: %v", err)
+	}
+	var noargArtifacts []string
+	if err := filepath.WalkDir(filepath.Join(ui, "build"), func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || filepath.Base(path) != "noargValue" {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if strings.Contains(string(data), "live no-argument body ran") {
+			noargArtifacts = append(noargArtifacts, path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("locate native noargValue result artifact: %v", err)
+	}
+	if len(noargArtifacts) != 1 {
+		t.Fatalf("found %d noargValue result artifacts, want exactly one: %v", len(noargArtifacts), noargArtifacts)
+	}
+	nativeRemoteID, err := filepath.Rel(filepath.Join(ui, "build", "prerendered", "_app", "remote"), noargArtifacts[0])
+	if err != nil {
+		t.Fatalf("locate native remote ID from its artifact path: %v", err)
+	}
+	nativeRemoteID = filepath.ToSlash(nativeRemoteID)
+	const builtError = `{"type":"error","error":{"status":409,"message":"built no-argument failure","marker":"native-prerender-error"}}`
+	if err := os.WriteFile(noargArtifacts[0], []byte(builtError), 0o644); err != nil {
+		t.Fatalf("replace native noargValue result with recorded error: %v", err)
 	}
 	fixture := filepath.Join(app, "cmd", "prerender-fixture")
 	if err := os.MkdirAll(fixture, 0o755); err != nil {
@@ -101,6 +155,24 @@ func TestProductionNoArgumentNullUsesArtifactMiss(t *testing.T) {
 	handler, mode, err := example.NewHandler(dist, "", "http://127.0.0.1:8080")
 	if err != nil { t.Fatal(err) }
 	if mode != "prod" { t.Fatalf("mode = %q", mode) }
+	remoteID := "__NATIVE_REMOTE_ID__"
+	assertPEntry := func(document, key string, required ...string) {
+		t.Helper()
+		marker := "\"" + key + "\":"
+		start := strings.Index(document, marker)
+		if start < 0 {
+			t.Fatalf("document omitted original p answer %q: %s", key, document)
+		}
+		tail := document[start:]
+		if end := strings.Index(tail, "}}"); end >= 0 {
+			tail = tail[:end+2]
+		}
+		for _, text := range required {
+			if !strings.Contains(tail, text) {
+				t.Fatalf("p answer %q omitted %q: %s", key, text, document)
+			}
+		}
+	}
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/prerender-contract", nil))
 	if recorder.Code != http.StatusInternalServerError {
@@ -112,8 +184,26 @@ func TestProductionNoArgumentNullUsesArtifactMiss(t *testing.T) {
 	if strings.Contains(recorder.Body.String(), "live no-argument body ran") {
 		t.Fatal("the missing artifact fell back to the Go body")
 	}
+	assertPEntry(recorder.Body.String(), remoteID+"/W251bGxd", "message:\"Internal Error\"", "status:500")
+	missingRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(missingRecorder, httptest.NewRequest(http.MethodGet, "/prerender-contract-missing", nil))
+	if missingRecorder.Code != http.StatusInternalServerError {
+		t.Fatalf("universal-load missing null-key status = %d, want opaque 500: %s", missingRecorder.Code, missingRecorder.Body.String())
+	}
+	assertPEntry(missingRecorder.Body.String(), remoteID+"/W251bGxd", "message:\"Internal Error\"", "status:500")
+	errorRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(errorRecorder, httptest.NewRequest(http.MethodGet, "/prerender-contract-error", nil))
+	errorHTML := errorRecorder.Body.String()
+	if errorRecorder.Code != 409 || !strings.Contains(errorHTML, "built no-argument failure") || !strings.Contains(errorHTML, "native-prerender-error") {
+		t.Fatalf("handled remote error document status=%d body=%s", errorRecorder.Code, errorHTML)
+	}
+	assertPEntry(errorHTML, remoteID+"/", "status:409", "message:\"built no-argument failure\"", "marker:\"native-prerender-error\"")
+	if got := prerendercontract.Calls(); got != 0 {
+		t.Fatalf("the Go body ran %d times while serving the recorded error", got)
+	}
 }
 `
+	fixtureTest = strings.Replace(fixtureTest, "__NATIVE_REMOTE_ID__", nativeRemoteID, 1)
 	if err := os.WriteFile(filepath.Join(fixture, "ssr_test.go"), []byte(fixtureTest), 0o644); err != nil {
 		t.Fatal(err)
 	}
