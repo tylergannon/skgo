@@ -130,6 +130,20 @@ var (
 	"context"`, `import (
 	"context"
 	"os"`, 1)
+	pageSourceText = strings.Replace(pageSourceText, `var _ = skgo.Prerender(buildReceipt)`, `func buildReceiptInputs() ([]string, error) {
+	if receipt := os.Getenv("SKGO_PAGE_INPUTS_RECEIPT"); receipt != "" {
+		file, err := os.OpenFile(receipt, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil { return nil, err }
+		if _, err := file.WriteString("called\n"); err != nil { file.Close(); return nil, err }
+		if err := file.Close(); err != nil { return nil, err }
+	}
+	return []string{"atlas"}, nil
+}
+
+var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptInputs})`, 1)
+	if !strings.Contains(pageSourceText, "PrerenderOptions{Inputs: buildReceiptInputs}") {
+		t.Fatal("could not add a declared input for the duplicate page remote")
+	}
 	if err := os.WriteFile(pageRemote, []byte(pageSourceText), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -144,13 +158,14 @@ export const handle: Handle = async ({ event, resolve }) => resolve(event);
 	inputReceipt := filepath.Join(fixture, "inputs-called")
 	emptyReceipt := filepath.Join(fixture, "empty-inputs-called")
 	moneyReceipt := filepath.Join(fixture, "money-inputs-called")
+	pageInputsReceipt := filepath.Join(fixture, "page-inputs-called")
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir = fixture
-	generate.Env = append(os.Environ(), "GOWORK=off", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt)
+	generate.Env = append(os.Environ(), "GOWORK=off", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt)
 	if output, err := generate.CombinedOutput(); err != nil {
 		t.Fatalf("go generate: %v\n%s", err, output)
 	}
-	for _, receipt := range []string{inputReceipt, emptyReceipt, moneyReceipt} {
+	for _, receipt := range []string{inputReceipt, emptyReceipt, moneyReceipt, pageInputsReceipt} {
 		if _, err := os.Stat(receipt); !os.IsNotExist(err) {
 			t.Fatalf("producer ran during generation: %s (%v)", receipt, err)
 		}
@@ -171,7 +186,7 @@ export const handle: Handle = async ({ event, resolve }) => resolve(event);
 	remoteReceipt := filepath.Join(fixture, "remotes-called")
 	pageRemoteReceipt := filepath.Join(fixture, "page-remotes-called")
 	lateReceipt := filepath.Join(fixture, "late-descendant-write")
-	build.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_REMOTE_RECEIPT="+remoteReceipt, "SKGO_PAGE_REMOTE_RECEIPT="+pageRemoteReceipt, "SKGO_LATE_RECEIPT="+lateReceipt)
+	build.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_REMOTE_RECEIPT="+remoteReceipt, "SKGO_PAGE_REMOTE_RECEIPT="+pageRemoteReceipt, "SKGO_LATE_RECEIPT="+lateReceipt)
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("vp build: %v\n%s", err, output)
 	}
@@ -183,6 +198,9 @@ export const handle: Handle = async ({ event, resolve }) => resolve(event);
 	}
 	if receipt, err := os.ReadFile(moneyReceipt); err != nil || string(receipt) != "called\n" {
 		t.Fatalf("transported Money input producer receipt = %q, %v", receipt, err)
+	}
+	if receipt, err := os.ReadFile(pageInputsReceipt); err != nil || string(receipt) != "called\n" {
+		t.Fatalf("duplicate page remote producer receipt = %q, %v", receipt, err)
 	}
 	if calls, err := os.ReadFile(remoteReceipt); err != nil || string(calls) != "atlas\nbeacon\n" {
 		t.Fatalf("unique Go body calls = %q, %v; want one call for atlas and beacon despite duplicate declared atlas input", calls, err)
