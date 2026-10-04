@@ -75,7 +75,7 @@ jobs:
       # runner needs the same pinned package manager as the browser suite.
       - uses: pnpm/action-setup@v6
         with:
-          version: 11.27.1
+          version: 12.9.1
 
       - name: Install example dependencies for adapter tests
         working-directory: example/web
@@ -145,7 +145,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 11.27.1
+          version: 12.9.1
 
       - name: Install the add-on's build-only dependencies
         working-directory: internal/sv

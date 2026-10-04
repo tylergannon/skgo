@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -50,7 +51,7 @@ func (u *upstream) run(c command) error {
 	localVP := filepath.Join("node_modules", ".bin", "vp")
 	switch {
 	case c.Name == "vp-test":
-		u.devDeps = merge(map[string]string{"@sveltejs/kit": "^3.0.0-next.0"}, u.devDeps)
+		u.devDeps = merge(map[string]string{"@sveltejs/kit": "^3.0.0"}, u.devDeps)
 		u.scripts = merge(map[string]string{"dev": "vp dev", "build": "vp build", "preview": "vp preview"}, u.scripts)
 		files := merge(map[string]string{"src/routes/+page.svelte": "sv's page\n", "node_modules/.bin/vp": ""}, u.created)
 		writeFiles(u.t, filepath.Join(c.Dir, "web"), files)
@@ -127,7 +128,7 @@ func (u *upstream) options(dir string, registry *httptest.Server) Options {
 }
 
 func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing.T) {
-	registry := registryServer(t, `{"versions":{"1.0.0-next.6":{},"1.0.0-next.7":{},"2.0.0":{}}}`)
+	registry := registryServer(t, `{"versions":{"1.0.0-next.6":{},"1.0.1":{},"1.1.0-beta.2":{},"2.0.0":{}}}`)
 	dir := filepath.Join(t.TempDir(), "hello-go")
 	u := &upstream{t: t}
 	result, err := Create(u.options(dir, registry))
@@ -147,7 +148,10 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if readme := readFile(t, filepath.Join(dir, "README.md")); !strings.Contains(readme, "pnpm --dir web exec playwright install chromium") {
 		t.Errorf("the README does not tell a fresh clone how to get the component tests' browser:\n%s", readme)
 	}
-	if got := commands[0].Args[1]; got != "svelte@1.0.0-next.7" {
+	if got := commands[0].VitePlusVersion; got != "1.0.0" {
+		t.Fatalf("qualified VitePlus bootstrap = %q, want 1.0.0", got)
+	}
+	if got := commands[0].Args[1]; got != "svelte@1.0.1" {
 		t.Fatalf("VitePlus template = %q", got)
 	}
 	if !slices.Contains(commands[0].Args, "--no-interactive") || !slices.Contains(commands[0].Env, "CI=1") {
@@ -160,7 +164,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 		t.Fatalf("sv create options = %q, want %q", got, want)
 	}
 	add := strings.Join(commands[1].Args, " ")
-	for _, want := range []string{"dlx sv@1.0.0-next.7 add vitest=usages:unit,component @skgo/sv@0.4.0=starter:minimal+adapter:file%3A%2Fcandidate%2Fadapter+name:hello-go", "--no-install"} {
+	for _, want := range []string{"dlx sv@1.0.1 add vitest=usages:unit,component @skgo/sv@0.4.0=starter:minimal+adapter:file%3A%2Fcandidate%2Fadapter+name:hello-go", "--no-install"} {
 		if !strings.Contains(add, want) {
 			t.Errorf("sv add args do not contain %q:\n%s", want, add)
 		}
@@ -168,7 +172,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if commands[1].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[1].Dir) != "web" {
 		t.Fatalf("the skgo integration was not added through the project's VitePlus: %#v", commands[1])
 	}
-	if got := strings.Join(commands[2].Args, " "); !strings.Contains(got, "dlx --allow-build=esbuild --package create-storybook@10.6.0 --package @storybook/sveltekit@10.6.0 create-storybook") {
+	if got := strings.Join(commands[2].Args, " "); !strings.Contains(got, "dlx --allow-build=esbuild --package create-storybook@10.6.1 --package @storybook/sveltekit@10.6.1 create-storybook") {
 		t.Fatalf("Storybook did not use its upstream installer with pnpm approval: %s", got)
 	}
 	if joined := strings.Join(commands[2].Env, "\n"); strings.Contains(joined, "npm_config_force=") {
@@ -226,7 +230,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 // and Storybook selections are not applied a second time, and sv's demo becomes
 // the skgo example rather than a JavaScript server application.
 func TestCreatePassesExplicitChoicesThroughAndAppliesNothingTwice(t *testing.T) {
-	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	dir := filepath.Join(t.TempDir(), "chosen")
 	u := &upstream{
 		t: t,
@@ -298,7 +302,7 @@ func browserInstalls(commands []command) int {
 // A developer who chose component testing got Playwright from sv, and its
 // browser still has to be installed although Vitest is not applied again.
 func TestCreateInstallsChromiumForAChosenComponentVitest(t *testing.T) {
-	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	u := &upstream{
 		t: t,
 		created: map[string]string{
@@ -325,7 +329,7 @@ func TestCreateInstallsChromiumForAChosenComponentVitest(t *testing.T) {
 // In a terminal the questions are sv's. skgo answers none of them in advance,
 // because sv shows its add-on picker only when no add-on was named.
 func TestCreateInATerminalLeavesEveryChoiceToSv(t *testing.T) {
-	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	u := &upstream{t: t}
 	o := u.options(filepath.Join(t.TempDir(), "asked"), registry)
 	o.Interactive = true
@@ -355,7 +359,7 @@ func TestCreateInATerminalLeavesEveryChoiceToSv(t *testing.T) {
 }
 
 func TestCreateRejectsWhatIsNotASkgoApplication(t *testing.T) {
-	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	for name, tc := range map[string]struct {
 		args []string
 		want string
@@ -411,7 +415,7 @@ func TestCreateRejectsWhatIsNotASkgoApplication(t *testing.T) {
 
 // sv exits 0 when it reaches the end of its input before applying an add-on.
 func TestCreateRefusesAnSvAddThatAppliedNothing(t *testing.T) {
-	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	u := &upstream{t: t, skipAdd: true, created: map[string]string{"src/routes/sverdle/+page.server.ts": ""}}
 	dir := filepath.Join(t.TempDir(), "unapplied")
 	_, err := Create(u.options(dir, registry))
@@ -434,7 +438,7 @@ func TestEscapeAddonOptionRoundTripsSpacesAndPlusSigns(t *testing.T) {
 }
 
 func TestCreateRefusesSwallowedStorybookFailure(t *testing.T) {
-	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	dir := filepath.Join(t.TempDir(), "incomplete")
 	u := &upstream{t: t, skipBook: true}
 	_, err := Create(u.options(dir, registry))
@@ -447,7 +451,7 @@ func TestCreateRefusesSwallowedStorybookFailure(t *testing.T) {
 }
 
 func TestCreateReportsVitePlusCancellation(t *testing.T) {
-	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	dir := filepath.Join(t.TempDir(), "cancelled")
 	_, err := Create(Options{
 		Dir: dir, SkgoVersion: "v0.4.1", SVAddonSpec: "@skgo/sv@0.4.0", AdapterSpec: "file:/candidate/adapter",
@@ -464,7 +468,7 @@ func TestResolveSelectsExactIndependentCompatiblePackageVersions(t *testing.T) {
 		w.Header().Set("content-type", "application/json")
 		switch r.URL.Path {
 		case "/sv":
-			fmt.Fprint(w, `{"versions":{"1.0.0-next.7":{},"2.0.0":{}}}`)
+			fmt.Fprint(w, `{"versions":{"1.0.1":{},"2.0.0":{}}}`)
 		case "/@skgo/sv":
 			fmt.Fprint(w, `{"versions":{"0.3.0":{},"0.4.0":{},"0.5.0":{}}}`)
 		case "/@skgo/sveltekit-adapter":
@@ -536,7 +540,7 @@ func TestGeneratorAddonAndAdapterAgreeOnTheEmbedKeepFile(t *testing.T) {
 // is there. A link to the live checkout therefore let an ordinary `skgo new`
 // overwrite tracked files in it. The checkout may be packed from, never linked.
 func TestCreateHandsSvAnIsolatedPackedAddonNotTheCheckout(t *testing.T) {
-	registry := registryServer(t, `{"versions":{"1.0.0-next.7":{}}}`)
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	checkout := filepath.Join(t.TempDir(), "internal", "sv")
 	writeFiles(t, checkout, map[string]string{"sv-addon.js": "live checkout bytes", "package.json": `{"name":"@skgo/sv"}`})
 	stage := filepath.Join(t.TempDir(), "stage")
@@ -701,4 +705,40 @@ func readFile(t *testing.T, name string) string {
 		t.Fatal(err)
 	}
 	return string(raw)
+}
+
+// The bootstrap's version determines the managed family it puts in the app.
+// An unsupported executable must not get as far as writing the project.
+func TestProjectCreationRejectsAnUnqualifiedVitePlusBeforeItRuns(t *testing.T) {
+	for _, version := range []string{"v0.3.3", "v1.0.0-beta.1", "v1.0.1", "v2.0.0", "v1.0.0"} {
+		t.Run(version, func(t *testing.T) {
+			root := t.TempDir()
+			vp := filepath.Join(root, "vp")
+			marker := filepath.Join(root, "created")
+			body := "#!/bin/sh\nif [ \"$1\" = --version ]; then printf 'vp %s\\nLocal vite-plus:\\n' \"$FIXTURE_VP_VERSION\"; exit 0; fi\nprintf 'created' > \"$FIXTURE_VP_MARKER\"\n"
+			if err := os.WriteFile(vp, []byte(body), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			err := realRunner(io.Discard, io.Discard)(command{
+				Dir: root, Name: vp, Args: []string{"create", "svelte@1.0.1"},
+				Env:             append(os.Environ(), "FIXTURE_VP_VERSION="+version, "FIXTURE_VP_MARKER="+marker),
+				VitePlusVersion: "1.0.0",
+			})
+			if version == "v1.0.0" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got := readFile(t, marker); got != "created" {
+					t.Fatalf("creator marker = %q", got)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), "requires qualified VitePlus 1.0.0") {
+				t.Fatalf("unqualified bootstrap error = %v", err)
+			}
+			if _, err := os.Stat(marker); !os.IsNotExist(err) {
+				t.Fatalf("unqualified bootstrap created a project: %v", err)
+			}
+		})
+	}
 }

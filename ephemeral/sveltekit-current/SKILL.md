@@ -6,10 +6,11 @@ description: Map SvelteKit 3 behavior from skgo's pinned Kit source before chang
 # Current SvelteKit
 
 Treat Kit as the specification. Before changing a mirrored feature, read its
-implementation in the pinned package under
-`/Users/tyler/src/skgo/ephemeral/inspiration/reference/kit@3.0.0-next.28` and
-refresh that package when skgo's `@sveltejs/kit` pin advances. Use the official
-GitHub release for the target tag to identify migrations since the prior pin.
+implementation in the installed `example/web/node_modules/@sveltejs/kit`
+package, verified as version `3.0.0` against the frozen lockfile. Each worktree
+installs its own pinned package; do not depend on another checkout's ignored
+reference directory. Use the official GitHub release for the target tag to
+identify migrations since the prior pin.
 
 Kit 3 facts that overturn older SvelteKit assumptions:
 
@@ -36,12 +37,12 @@ Kit 3 facts that overturn older SvelteKit assumptions:
 - A command or form must fulfill every client-requested single-flight update or
   explicitly ignore it. The server returns ignored remote keys as `i`, and the
   next.27 client rejects a response with requested keys left unhandled.
-- After internal data-request parameters are removed, Kit next.28 rejects any
+- After internal data-request parameters are removed, Kit 3.0.0 rejects any
   remaining query parameter beginning with `x-sveltekit-` with HTTP 400 before
   it runs hooks or resolves a route.
 - `builder.generateServerInstance` now writes a `server` object made by
   `create_server`. `Server` is deprecated; the generated instance still exposes
   `init` and `respond`.
 
-When the dependency pin advances, update the pinned-source path and this list
+When the dependency pin advances, update the verified version and this list
 only for facts verified in that source or the official release notes.

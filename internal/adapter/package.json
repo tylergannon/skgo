@@ -40,6 +40,6 @@
 		"skgo-adapter/prerender-csp.js"
 	],
 	"peerDependencies": {
-		"@sveltejs/kit": "^3.0.0-next.0"
+		"@sveltejs/kit": "^3.0.0"
 	}
 }

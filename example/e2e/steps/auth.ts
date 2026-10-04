@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, hydrated, test } from './fixtures';
+import { expect, hydrated, interactive, test } from './fixtures';
 
 const { When, Then } = createBdd(test);
 
@@ -11,6 +11,7 @@ When('I sign in as {string}', async ({ page }, user: string) => {
 
 When('I sign out', async ({ page }) => {
 	await hydrated(page);
+	await interactive(page, 'sign-out');
 	await page.getByTestId('sign-out').click();
 });
 

@@ -141,13 +141,12 @@ does not announce itself. Without a watcher the work finishes and sits there,
 and the human ends up asking whether anything is happening, which is the one
 question a lead should never make someone ask.
 
-**The pinned sources live at one absolute path.** `ephemeral/inspiration` is
-gitignored, so it exists only in the root checkout — a worktree does not have
-it, and an agent dispatched into one and told to read kit finds an empty
-directory and proceeds on priors, silently, on the one thing that was supposed
-to be non-negotiable. Refer to it as
-`/Users/tyler/src/skgo/ephemeral/inspiration`, which is reachable from any tree
-and cannot be committed by accident. Do not copy or symlink it into a worktree.
+**Read Kit from the installed pin.** Each worktree's
+`example/web/node_modules/@sveltejs/kit` contains the authoritative package
+source installed by its frozen lockfile. Follow
+`ephemeral/sveltekit-current/SKILL.md` and verify the package version before
+mapping Kit behavior. The older ignored inspiration directory may be absent in
+new execution environments; do not infer Kit behavior from a missing source.
 
 **There is no command that means "done."** The `Justfile` holds recipes that do
 things — build, test, serve, run the suite — and not one of them returns a
@@ -165,14 +164,12 @@ and nothing else.
 
 - `ephemeral/` — tracked working material: worklogs, plans, downloaded
   artifacts. Never write to `docs/` without express permission.
-- `/Users/tyler/src/skgo/ephemeral/inspiration/` — the pinned upstream sources,
-  gitignored and read-only. `reference/` holds kit, devalue, sirv, mrmime and
-  polytype at their pinned commits; `junkyard/` is an earlier attempt that never
-  produced a working server. Mine the junkyard: the
-  Playwright task suite and guestbook app were both paid for. Take any idea
-  that earns its place. What does not come across is the process — its ledgers,
-  sprint contracts, proof harnesses, review rounds and evidence directories are
-  what it built *instead of* the product.
+- `example/web/node_modules/@sveltejs/kit/` — authoritative Kit source at the
+  example's installed pin. Resolve Kit's transitive package sources from its
+  real package directory under pnpm.
+- `/Users/tyler/src/skgo/ephemeral/inspiration/` — optional historical source
+  references and the earlier junkyard attempt, when present. These are
+  gitignored and read-only, and do not replace the current installed Kit pin.
 
 ## SvelteKit facts
 

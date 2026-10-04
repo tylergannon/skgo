@@ -1,0 +1,1117 @@
+[
+  {
+    "name": "@sveltejs/kit",
+    "latest": "3.0.0",
+    "selected": "3.0.0",
+    "time": "2026-10-01T17:22:34.593Z",
+    "engines": {
+      "node": ">=22.17"
+    },
+    "peers": {
+      "vite": "^8.0.12",
+      "svelte": "^5.57.1",
+      "typescript": "^6.0.0",
+      "@opentelemetry/api": "^1.0.0",
+      "@sveltejs/vite-plugin-svelte": "^7.0.0"
+    },
+    "dependencies": {
+      "sirv": "^3.0.2",
+      "cookie": "^2.0.1",
+      "mrmime": "^2.0.1",
+      "devalue": "^5.9.4",
+      "esm-env": "^1.2.2",
+      "magic-string": "^1.2.3",
+      "@rolldown/pluginutils": "^1.0.1",
+      "@standard-schema/spec": "^1.1.0"
+    },
+    "dist": {
+      "shasum": "90f53df291c0f667fb43123cd585e7eaaee34377",
+      "tarball": "https://registry.npmjs.org/@sveltejs/kit/-/kit-3.0.0.tgz",
+      "fileCount": 246,
+      "integrity": "sha512-dmP6gjz41DAT7erONGW8FdTWjmsmOJ/SaWVEsuEc1MXDcpH6YV+Pt98biZFPuinH4LldJPmScxDqiHwCDLRCrg==",
+      "signatures": [
+        {
+          "sig": "MEQCIHJYedrLEb2r8lQArtmPTi8e6AH4mrMD1QbWAXtRtZ09AiBdI8aqcdScVJHkPoEs+cEuToGa0yCXaccUgtm4BR0gLQ==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIC9MTASkeXk0EAvKXzkQzuGL7tuScSnICWiz5sTSMLaoAiEAnI872B5U7OkaobRmjG2H10wiX83zUKMaMZAvwBLfUGY="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@sveltejs%2fkit@3.0.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 1545936
+    },
+    "registryURL": "https://registry.npmjs.org/@sveltejs/kit",
+    "reason": "Replace prerelease next.28 with verified stable 3.0.0; adapter peer requires stable 3.x.",
+    "releaseURL": "https://github.com/sveltejs/kit/releases/tag/%40sveltejs%2Fkit%403.0.0"
+  },
+  {
+    "name": "svelte",
+    "latest": "5.57.1",
+    "selected": "5.57.1",
+    "time": "2026-09-18T23:52:47.113Z",
+    "engines": {
+      "node": ">=18"
+    },
+    "peers": null,
+    "dependencies": {
+      "clsx": "^2.1.1",
+      "acorn": "^8.18.0",
+      "esrap": "^2.3.6",
+      "devalue": "^5.9.2",
+      "esm-env": "^1.2.1",
+      "aria-query": "5.3.1",
+      "zimmerframe": "^1.1.2",
+      "is-reference": "^3.0.3",
+      "magic-string": "^0.30.11",
+      "@types/estree": "^1.0.9",
+      "axobject-query": "^4.1.0",
+      "locate-character": "^3.0.0",
+      "@jridgewell/remapping": "^2.3.5",
+      "@sveltejs/acorn-typescript": "^1.0.13",
+      "@jridgewell/sourcemap-codec": "^1.6.0"
+    },
+    "dist": {
+      "shasum": "57f287fa7872652ae762dba70599d662a549af15",
+      "tarball": "https://registry.npmjs.org/svelte/-/svelte-5.57.1.tgz",
+      "fileCount": 388,
+      "integrity": "sha512-Uqj49lWKB+iSSnneuwiYYJ7MZgkB+eXr0LXBhv4uDuAkXqnWmq65Sxflfvp0Lc6MdKjMUxGaeOKWJqz5SNiVIA==",
+      "signatures": [
+        {
+          "sig": "MEYCIQDcgcpa5pAcs8TqyWc/r2A3qBh9tb5+E11lB416vSVBFgIhANxvWnZPAeoRcwlOByMonj6VBATBN/NZah1oee9cdW1o",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEYCIQDEYlZOXab0Ygm80BBEvrSbdQfL2Hrv05sJ4oXyghKh+AIhALo8CJrmHNurQvH9Qnc6CqYdWGAoibuSwIBMZjg2TSYD"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/svelte@5.57.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 2941384
+    },
+    "registryURL": "https://registry.npmjs.org/svelte"
+  },
+  {
+    "name": "@sveltejs/vite-plugin-svelte",
+    "latest": "7.3.1",
+    "selected": "7.3.1",
+    "time": "2026-09-23T10:38:42.922Z",
+    "engines": {
+      "node": "^20.19 || ^22.12 || >=24"
+    },
+    "peers": {
+      "vite": "^8.0.0-beta.7 || ^8.0.0",
+      "svelte": "^5.46.4"
+    },
+    "dependencies": {
+      "obug": "^2.1.0",
+      "vitefu": "^1.1.2",
+      "deepmerge": "^4.3.1",
+      "magic-string": "^1.0.0"
+    },
+    "dist": {
+      "shasum": "93f642883e09ef234325fb043a50821723f7fffc",
+      "tarball": "https://registry.npmjs.org/@sveltejs/vite-plugin-svelte/-/vite-plugin-svelte-7.3.1.tgz",
+      "fileCount": 39,
+      "integrity": "sha512-ZPsLN8B1e/En+Ak5s4V7srFDT532oS0qieLsQwu63NGKsS+iAjoO2Js1BochlHlglcU+Pt7WAO3C5Ee+4f6gVA==",
+      "signatures": [
+        {
+          "sig": "MEQCIG54N3bN7tmXXmYJlZ2iQ55c+4XOAbAj5JIZo8Eh5o/XAiARQtyEocu0ym97a0KdvYvgVFkYk7HlhHxnV3eJXSulNQ==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIFwyeEj9yee7VIc0aubeiUAocTzEETS6Qg6JXGUW6e52AiEA6ipxgwZejf3biRu7lO7IM+sz+nFG1MANZr0HeZ+AMA4="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@sveltejs%2fvite-plugin-svelte@7.3.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 148026
+    },
+    "registryURL": "https://registry.npmjs.org/@sveltejs/vite-plugin-svelte"
+  },
+  {
+    "name": "vite",
+    "latest": "8.3.2",
+    "selected": "8.3.1",
+    "time": "2026-09-24T12:26:19.940Z",
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    },
+    "peers": {
+      "tsx": "^4.8.1",
+      "jiti": ">=1.21.0",
+      "less": "^4.0.0",
+      "sass": "^1.70.0",
+      "yaml": "^2.4.2",
+      "stylus": ">=0.54.8",
+      "terser": "^5.16.0",
+      "esbuild": "^0.27.0 || ^0.28.0",
+      "sugarss": "^5.0.0",
+      "@types/node": "^20.19.0 || >=22.12.0",
+      "sass-embedded": "^1.70.0",
+      "@vitejs/devtools": "^0.7.1"
+    },
+    "dependencies": {
+      "postcss": "^8.5.28",
+      "rolldown": "~1.2.9",
+      "picomatch": "^4.0.7",
+      "tinyglobby": "^0.2.17",
+      "lightningcss": "^1.33.0"
+    },
+    "dist": {
+      "shasum": "aa1099a4ccaf104a8c32492951497fa1781d9fce",
+      "tarball": "https://registry.npmjs.org/vite/-/vite-8.3.1.tgz",
+      "fileCount": 37,
+      "integrity": "sha512-/bvH9E9tmCXRGp2uXY3WbOldqpTwFkbha/8ANaEQ6VkxhH60KyqLwgZq6lG2y+4uT55x9+9eUHMpQ7uGnOCKjA==",
+      "signatures": [
+        {
+          "sig": "MEQCIFCSTBguqp+xbAC2qZmuUSij49FgljuCRTTeyL1XkpnNAiAGifXtIBjTCgh++fODfr9E6/28L4ATJDBkR1m9NF7InQ==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIFn8kwCcxORlWzME11H1Qc7ie0cw9EpEMET51ewNZePrAiEAmqhogJZs3JnbI7D50IkJMkxc7cUC/QWJXk+lQp4yjpU=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/vite@8.3.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 2375009
+    },
+    "registryURL": "https://registry.npmjs.org/vite",
+    "reason": "Standalone latest is recorded for comparison; the app uses the VitePlus core alias, which exports Vite 8.3.1."
+  },
+  {
+    "name": "rolldown",
+    "latest": "1.2.12",
+    "selected": "1.2.12",
+    "time": "2026-09-30T14:43:47.669Z",
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    },
+    "peers": null,
+    "dependencies": {
+      "@oxc-project/types": "=0.152.0",
+      "@rolldown/pluginutils": "^1.0.0"
+    },
+    "dist": {
+      "shasum": "75215a6b55a2a9e8f577ac937a4fe42d9682ae0c",
+      "tarball": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.12.tgz",
+      "fileCount": 52,
+      "integrity": "sha512-8wafseiaG80xmXSfqidUNqZcylTlhmPZZt+za2m+js2sFZ8dTNlhIOV2WcbIPx2hgwPBJpEUGFAMZ9bgBBLTSQ==",
+      "signatures": [
+        {
+          "sig": "MEYCIQCOVR48wxGF3XDkdb23J1xu2PsDBtbUdrsIrwhEne3fIgIhAP/VXGejn3338UqsQQJOuLa9kdrCDxnWPE2RJmPJN4Rc",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEYCIQDhOv/xmfv8lJhusrFw/l/dq7zI/3eYLwCqbHJOsdGo0wIhANhbg67Ho9QEV7g2J8LkucZqf1rXtBIdTcUfsf4APj+G"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/rolldown@1.2.12",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 873971
+    },
+    "registryURL": "https://registry.npmjs.org/rolldown",
+    "reason": "tsdown 0.23.0 resolves standalone Rolldown 1.2.12 in its separate build-time lock. VitePlus core 1.0.0 embeds its own Rolldown 1.2.11; that managed runtime is retained."
+  },
+  {
+    "name": "vite-plus",
+    "latest": "1.0.0",
+    "selected": "1.0.0",
+    "time": "2026-09-28T05:37:20.027Z",
+    "engines": {
+      "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
+    },
+    "peers": {
+      "@vitest/browser-playwright": "5.0.1",
+      "@vitest/browser-webdriverio": "^5.0.0-beta.5 || >=5.0.0"
+    },
+    "dependencies": {
+      "vite": "npm:@voidzero-dev/vite-plus-core@1.0.0",
+      "oxfmt": "=0.70.0",
+      "oxlint": "=1.85.0",
+      "vitest": "5.0.1",
+      "@vitest/spy": "5.0.1",
+      "@vitest/utils": "5.0.1",
+      "@vitest/mocker": "5.0.1",
+      "@oxlint/plugins": "=1.79.0",
+      "@vitest/browser": "5.0.1",
+      "oxlint-tsgolint": "=7.0.2003",
+      "@vitest/snapshot": "5.0.1",
+      "@oxc-project/types": "=0.151.0",
+      "@vitest/pretty-format": "5.0.1",
+      "@vitest/browser-preview": "5.0.1"
+    },
+    "dist": {
+      "shasum": "b1faca00676f1f52631332753dd797190f6bfc0d",
+      "tarball": "https://registry.npmjs.org/vite-plus/-/vite-plus-1.0.0.tgz",
+      "fileCount": 274,
+      "integrity": "sha512-2ezzBWt+AVO+I2F9Cpb2Of0J12Lat35kWZ/FRL2monMnKZuACKfkYAA/nMqdDo1KwB8sWjTKzmD9mRCh1Q1n+g==",
+      "signatures": [
+        {
+          "sig": "MEYCIQCbOVKc7i2diMOU15i1P8C2ZDPlQZzAWK08GBUnfYPdSwIhALGVYTVWC+GMlsSl07KFybH/sxVbVA/riSXS0VSMvqBa",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEQCIBgsFPlyfVonBi2Qo15MzyscV1Z6w5QmIXsN/qHWnwuEAiBIE33pvgh/cYZcrKFt6XFdq7wBXUX8OdHwHofmcpklww=="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/vite-plus@1.0.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 2971453
+    },
+    "registryURL": "https://registry.npmjs.org/vite-plus",
+    "releaseURL": "https://github.com/voidzero-dev/vite-plus/releases/tag/v1.0.0"
+  },
+  {
+    "name": "@voidzero-dev/vite-plus-core",
+    "latest": "1.0.0",
+    "selected": "1.0.0",
+    "time": "2026-09-28T05:31:52.032Z",
+    "engines": {
+      "node": "^20.19.0 || ^22.18.0 || >=24.11.0"
+    },
+    "peers": {
+      "tsx": "^4.8.1",
+      "jiti": ">=1.21.0",
+      "less": "^4.0.0",
+      "sass": "^1.70.0",
+      "yaml": "^2.4.2",
+      "unrun": "*",
+      "stylus": ">=0.54.8",
+      "terser": "^5.16.0",
+      "esbuild": "^0.27.0 || ^0.28.0",
+      "publint": "^0.3.8",
+      "sugarss": "^5.0.0",
+      "typescript": "^5.0.0 || ^6.0.0 || ^7.0.0",
+      "@types/node": "^20.19.0 || >=22.12.0",
+      "sass-embedded": "^1.70.0",
+      "unplugin-unused": ">=0.5.0",
+      "@vitejs/devtools": "^0.7.1",
+      "@arethetypeswrong/core": "^0.18.1"
+    },
+    "dependencies": {
+      "postcss": "^8.5.6",
+      "yuku-parser": "^0.9.3",
+      "lightningcss": "^1.33.0",
+      "yuku-codegen": "^0.9.3",
+      "@oxc-project/types": "=0.151.0",
+      "@oxc-project/runtime": "=0.151.0"
+    },
+    "dist": {
+      "shasum": "5d4d05423ad5a86904167a4e6c6f113f1712cf6c",
+      "tarball": "https://registry.npmjs.org/@voidzero-dev/vite-plus-core/-/vite-plus-core-1.0.0.tgz",
+      "fileCount": 114,
+      "integrity": "sha512-GHCd6d7h3JVojI/yxe/EAHwX5gn+OI7G932VBnYoTiwATLJrvHOs+okx7Ek2LGEJ57NJRENwCFgVYefjwPLfFA==",
+      "signatures": [
+        {
+          "sig": "MEUCIHh9ezzOI+PvBDY2o9kaBEhL7x8Q8bUwE+Cj1EDjwxl9AiEA/djjTOP2tPZK/LfTc7hZ+lrDLj9xDpZI4Ie+s+SJwlA=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIQCVPv82i5D5ikM0lgt5QspWjsUTOsCd5v8WWSA0K/vqpwIgFOLjzhBIPVP2Bnqhc0IeO2/S3LshHaiAFmtlLZNmtfk="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@voidzero-dev%2fvite-plus-core@1.0.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 4423971
+    },
+    "registryURL": "https://registry.npmjs.org/@voidzero-dev/vite-plus-core"
+  },
+  {
+    "name": "@types/node",
+    "latest": "26.6.4",
+    "selected": "24.19.1",
+    "time": "2026-10-01T22:38:02.894Z",
+    "engines": null,
+    "peers": {},
+    "dependencies": {
+      "undici-types": ">=7.24.0 <7.24.7"
+    },
+    "dist": {
+      "shasum": "3a1c3ed9e9fc94fe48d4a72d83dfd0bfcf379c62",
+      "tarball": "https://registry.npmjs.org/@types/node/-/node-24.19.1.tgz",
+      "fileCount": 88,
+      "integrity": "sha512-aS3/DG0oM05K0RIXXP+hKjinGG5IgSSVGzswZxW3O0sS3pH4/fycXundUC9XsszgKCk4gHXylTEK6hyFxVxnoQ==",
+      "signatures": [
+        {
+          "sig": "MEYCIQD+48ykmov9T0Rnzoihncc5ifqeYIbW81WS6kyoRo6TXgIhAO5tAL9r+d1M1nKOuX/xQxyWEMw4ASvexlK8cb4jkmJ6",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEYCIQCE7DgGRyKheaUKRNTFbtz1zCPHoaCG9aS8GjOICyO5KwIhAIIT8hMbSlUiy0nFQJ7nhbN884gU6D0GRH7zONUcStrt",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "unpackedSize": 2613546
+    },
+    "registryURL": "https://registry.npmjs.org/@types/node",
+    "reason": "Latest stable Node 24 typings match the pinned Node 24.21.0 runtime; latest major 26 targets a different runtime."
+  },
+  {
+    "name": "svelte-check",
+    "latest": "4.7.6",
+    "selected": "4.7.6",
+    "time": "2026-08-13T05:47:23.067Z",
+    "engines": {
+      "node": ">= 18.0.0"
+    },
+    "peers": {
+      "svelte": "^4.0.0 || ^5.0.0-next.0",
+      "typescript": "^5.0.0 || ^6.0.0"
+    },
+    "dependencies": {
+      "fdir": "^6.2.0",
+      "sade": "^1.7.4",
+      "chokidar": "^4.0.1",
+      "picocolors": "^1.0.0",
+      "@sveltejs/load-config": "^0.2.3",
+      "@jridgewell/trace-mapping": "^0.3.25"
+    },
+    "dist": {
+      "shasum": "63cba2ab096d3c96b6b483575815f1f88acfe039",
+      "tarball": "https://registry.npmjs.org/svelte-check/-/svelte-check-4.7.6.tgz",
+      "fileCount": 11,
+      "integrity": "sha512-t2scM//ZuVbSY/T2w6FSBw1v9s2NEmh/g+sy1lqtosW5ylBV5AF4wFb1Ts9Kf3MbfPDUDJDZ9L436YT0SPTdvw==",
+      "signatures": [
+        {
+          "sig": "MEUCIQCx7tF8y/qxNvqZ5Wh3UpRl67JZBeQUwFcPmSkeO0xe4AIgKhch1L+Qan71eJacP8zELKDrjfy3vMr0+ecZ2sHz7bU=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIQDm/EGmd4KD5dM22zVDPwAIqsGtMua3NPcMQ/DfxmfJxgIgGGrkme9naYNR4DZESCoBLPxtXXhvTj3Yrui1en4uhWM="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/svelte-check@4.7.6",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 5485151
+    },
+    "registryURL": "https://registry.npmjs.org/svelte-check"
+  },
+  {
+    "name": "typescript",
+    "latest": "7.0.2",
+    "selected": "6.0.3",
+    "time": "2026-04-16T23:38:27.905Z",
+    "engines": {
+      "node": ">=14.17"
+    },
+    "peers": null,
+    "dependencies": null,
+    "dist": {
+      "shasum": "90251dc007916e972786cb94d74d15b185577d21",
+      "tarball": "https://registry.npmjs.org/typescript/-/typescript-6.0.3.tgz",
+      "fileCount": 140,
+      "integrity": "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==",
+      "signatures": [
+        {
+          "sig": "MEYCIQDv8tVB8x5z1EeS+UHLgSqOywErEEFERRmMNef6kTXsPQIhAMO+L+ktR6FwCDSc+z0KD68md8mvKukeVzgjuBhoie9i",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "unpackedSize": 24346827
+    },
+    "registryURL": "https://registry.npmjs.org/typescript",
+    "reason": "Latest stable 6.x satisfies Kit ^6.0.0 and svelte-check ^5 || ^6; latest 7.0.2 does not."
+  },
+  {
+    "name": "@playwright/test",
+    "latest": "1.63.0",
+    "selected": "1.63.0",
+    "time": "2026-09-04T22:44:00.304Z",
+    "engines": {
+      "node": ">=20"
+    },
+    "peers": null,
+    "dependencies": {
+      "playwright": "1.63.0"
+    },
+    "dist": {
+      "shasum": "808020c46e8b6b91f9d628cd0ebcbb32bdfd8b6c",
+      "tarball": "https://registry.npmjs.org/@playwright/test/-/test-1.63.0.tgz",
+      "fileCount": 11,
+      "integrity": "sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==",
+      "signatures": [
+        {
+          "sig": "MEYCIQDUH4a4V6wkW8vZKOHi60EtVScpadXG/qpWxl0HkScehwIhALwx8bC8oCgXeZQI6mjJ+bZJAjZIowIiLS5jEK8g5md0",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIQDbceOr8IFZs4Y1etJqfQV6K1O4zduy8yn9ngl8996WfwIgcNc6YXDqCpPA781bx9peX5wboqICx5KngcccBzk7Vq0=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@playwright%2ftest@1.63.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 28544
+    },
+    "registryURL": "https://registry.npmjs.org/@playwright/test"
+  },
+  {
+    "name": "playwright-bdd",
+    "latest": "9.2.1",
+    "selected": "9.2.1",
+    "time": "2026-09-06T18:31:45.617Z",
+    "engines": {
+      "node": ">=20"
+    },
+    "peers": {
+      "@playwright/test": ">=1.44"
+    },
+    "dependencies": {
+      "commander": "^13.1.0",
+      "cli-table3": "0.6.5",
+      "mime-types": "^3.0.2",
+      "tinyglobby": "0.2.17",
+      "@cucumber/query": "^15.0.1",
+      "@cucumber/gherkin": "^39.1.0",
+      "@cucumber/messages": "^32.3.1",
+      "@cucumber/gherkin-utils": "^11.0.0",
+      "@cucumber/ci-environment": "^13.0.0",
+      "@cucumber/html-formatter": "^23.1.0",
+      "@cucumber/tag-expressions": "^9.1.0",
+      "@cucumber/junit-xml-formatter": "^0.13.3",
+      "@cucumber/cucumber-expressions": "19.0.0"
+    },
+    "dist": {
+      "shasum": "b4bbd053dd503ab038dbfb0e86d6b0875cf95130",
+      "tarball": "https://registry.npmjs.org/playwright-bdd/-/playwright-bdd-9.2.1.tgz",
+      "fileCount": 688,
+      "integrity": "sha512-gi7LTeat3ar1mPO53UBqQIv0HYHaw+GXq7P3stxGLPVlRpbW1ZmWre/yQBV/mtInJgEmKwBrJ/V1zT8NmJOuzg==",
+      "signatures": [
+        {
+          "sig": "MEYCIQC5ikvNd5skd/HztO7ylx9SVhmP7P2Smwt4PyCIaI1ynwIhAP4oZqz3H27wmnxj1SWLybcyk7f9dLkPyyJVwW5S6viE",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/playwright-bdd@9.2.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 1195387
+    },
+    "registryURL": "https://registry.npmjs.org/playwright-bdd"
+  },
+  {
+    "name": "yaml",
+    "latest": "2.9.1",
+    "selected": "2.9.1",
+    "time": "2026-09-11T20:30:10.905Z",
+    "engines": {
+      "node": ">= 14.6"
+    },
+    "peers": null,
+    "dependencies": null,
+    "dist": {
+      "shasum": "c16233fb31944e705cfefaff38795587f57588ce",
+      "tarball": "https://registry.npmjs.org/yaml/-/yaml-2.9.1.tgz",
+      "fileCount": 233,
+      "integrity": "sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==",
+      "signatures": [
+        {
+          "sig": "MEYCIQCXweoDJonUiEWYTyxwNhwkcM8EXhvt9mDlbSZLSz5y+AIhANjA4bIT0WVdnUVFH8/fMfgste4HrAyiPTXuCIhRWrwO",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEQCIH44ZynxSWIsGoaau+xjdzwJYPox6tD96SXMBvb2bdD1AiA16ZB3In4BqY1xyaT9TLO1cFCFGDZ8ovTGdN6yzjMcpA==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "unpackedSize": 686297
+    },
+    "registryURL": "https://registry.npmjs.org/yaml"
+  },
+  {
+    "name": "@sveltejs/sv-utils",
+    "latest": "1.0.0",
+    "selected": "1.0.0",
+    "time": "2026-10-01T17:50:26.018Z",
+    "engines": null,
+    "peers": null,
+    "dependencies": null,
+    "dist": {
+      "shasum": "4fd060d51225bab06ebcecc7454a9d60b5ac97ab",
+      "tarball": "https://registry.npmjs.org/@sveltejs/sv-utils/-/sv-utils-1.0.0.tgz",
+      "fileCount": 8,
+      "integrity": "sha512-nK6hcTMF9Iffu3zHS6+1bE7yDROFPvraKGvzjUy7aBQkzoccKse6WSWhpMvPLMP2tOC9+el4+HI+RhfA1OPFpQ==",
+      "signatures": [
+        {
+          "sig": "MEUCIQCDMq8GXLfKQphfQcmT1cx29+6TNYlYDifsQjzoO4qDYwIgHaYSB4YutLIxUAxd9zcpOsuPlvwN2yA/S/8C+5guC9I=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIQCPFbYEK89Uzms76dTPtWVz5xNaxxs62eEzr/dQMM5+AQIgNNy0IWFAcarQMAWc6Mx12AjZ/ZVO7CqIrXBJ+FyoIVw="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@sveltejs%2fsv-utils@1.0.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 1500428
+    },
+    "registryURL": "https://registry.npmjs.org/@sveltejs/sv-utils"
+  },
+  {
+    "name": "tsdown",
+    "latest": "0.23.0",
+    "selected": "0.23.0",
+    "time": "2026-09-03T17:46:20.147Z",
+    "engines": {
+      "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
+    },
+    "peers": {
+      "tsx": "*",
+      "unrun": "*",
+      "publint": "^0.3.8",
+      "typescript": "^5.0.0 || ^6.0.0 || ^7.0.0",
+      "@tsdown/css": "0.23.0",
+      "@tsdown/exe": "0.23.0",
+      "unplugin-unused": ">=0.5.0",
+      "@vitejs/devtools": "*",
+      "@arethetypeswrong/core": "^0.18.1"
+    },
+    "dependencies": {
+      "cac": "^7.0.0",
+      "defu": "^6.1.7",
+      "obug": "^2.1.4",
+      "verkit": "^0.4.0",
+      "empathic": "^2.0.1",
+      "hookable": "^6.1.1",
+      "rolldown": "~1.2.7",
+      "tinyexec": "^1.3.1",
+      "picomatch": "^4.0.7",
+      "tree-kill": "^1.2.2",
+      "tinyglobby": "^0.2.17",
+      "unconfig-core": "^7.5.0",
+      "rolldown-plugin-dts": "^0.28.5",
+      "import-without-cache": "^0.4.0"
+    },
+    "dist": {
+      "shasum": "62310aee342daa88ec8367f0f8ac0cab8605f44e",
+      "tarball": "https://registry.npmjs.org/tsdown/-/tsdown-0.23.0.tgz",
+      "integrity": "sha512-BaT+ep1xnj5hdyICLd5r5SYYE+TXnI1ATePLykv9vcKpHpFTWUWRH+x1AF/E2qcu3YB6+vI8IdyxIIIffEqw5Q==",
+      "fileCount": 27,
+      "unpackedSize": 181713,
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/tsdown@0.23.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "signatures": [
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEQCIHZwdL7CiHqafm/cUVIasWKO+pTLVVKmS5eRofqYo0caAiBSigw0zcJctVakQJrzPFrKQFkKO6w6Vt+ViQo3Su64xg=="
+        }
+      ]
+    },
+    "registryURL": "https://registry.npmjs.org/tsdown"
+  },
+  {
+    "name": "sv",
+    "latest": "1.0.1",
+    "selected": "1.0.1",
+    "time": "2026-10-01T18:18:46.805Z",
+    "engines": null,
+    "peers": null,
+    "dependencies": {
+      "@sveltejs/sv-utils": "1.0.0"
+    },
+    "dist": {
+      "shasum": "403062dd3ff082f25eaae927f92865b16be62b03",
+      "tarball": "https://registry.npmjs.org/sv/-/sv-1.0.1.tgz",
+      "fileCount": 69,
+      "integrity": "sha512-w0Us7C+4JsTLVW42NjMnyFBIeEEjwSEv2URDThUtv53jHYe1k7eaqXrP23JoeGcCxfEL86TVCWfuI8pqJjnbRQ==",
+      "signatures": [
+        {
+          "sig": "MEUCID76s8zcKE6e6ncJJ1hD+a9Tc2eYBPEXYw5Qaid+AFZ7AiEAvrYLzQYpZBupXcZ7XrMMhOoOc5EdB0xzmnHmXCEXnjQ=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIFxxE4WanvRni8FSwRsX+IfufSfypRg7TYQR6Uxs39a4AiEAiNfC8pQHnWM6+LIQjCm280YlsnIRxzoRVFNg7wWN7pA="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/sv@1.0.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 1573085
+    },
+    "registryURL": "https://registry.npmjs.org/sv",
+    "reason": "Generator selects released stable 1.x only; latest verified is 1.0.1."
+  },
+  {
+    "name": "create-storybook",
+    "latest": "10.6.1",
+    "selected": "10.6.1",
+    "time": "2026-09-29T17:15:59.584Z",
+    "engines": null,
+    "peers": null,
+    "dependencies": {
+      "semver": "^7.7.3",
+      "storybook": "10.6.1"
+    },
+    "dist": {
+      "shasum": "f53acfbf1f9ee8f263c1f8080278ac4849a4989e",
+      "tarball": "https://registry.npmjs.org/create-storybook/-/create-storybook-10.6.1.tgz",
+      "fileCount": 42,
+      "integrity": "sha512-I3T9fJtqTo13p/VczkFLf/XQn/OF/J8EvKMs+7kAEB31haLrg0ZlqCRUlpQ9EUONuUI8yKSR+QteWriMKMzrVQ==",
+      "signatures": [
+        {
+          "sig": "MEYCIQDy36JCJzGMzC9vsC2noC9VoqTamPuJLeiYoZvOQ5LW6AIhAJinu3dUjzN+C7BjOr6gO6UQNV/R/FVeR1xpEL4CKGTo",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIAweTc5HexY7WWyip+otJqGhV7uTTDaH7C3HKPJVtvLKAiEA58b9VFsKeCz4Nw7l3hH5JDigOnohfX+IA1Pz3Kl/2yk="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/create-storybook@10.6.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 1088167
+    },
+    "registryURL": "https://registry.npmjs.org/create-storybook",
+    "reason": "Generator installs exact 10.6.1 with matching @storybook/sveltekit 10.6.1."
+  },
+  {
+    "name": "@storybook/sveltekit",
+    "latest": "10.6.1",
+    "selected": "10.6.1",
+    "time": "2026-09-29T17:17:40.205Z",
+    "engines": null,
+    "peers": {
+      "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
+      "svelte": "^5.0.0",
+      "storybook": "^10.6.1"
+    },
+    "dependencies": {
+      "@storybook/svelte": "10.6.1",
+      "@storybook/svelte-vite": "10.6.1",
+      "@storybook/builder-vite": "10.6.1"
+    },
+    "dist": {
+      "shasum": "0ba3707515ea1206befb24f470dece4b532e5dd4",
+      "tarball": "https://registry.npmjs.org/@storybook/sveltekit/-/sveltekit-10.6.1.tgz",
+      "fileCount": 46,
+      "integrity": "sha512-tdShbIIsMXu4B+6uecknvyLsqNAYGMrx99OXZJ+Ziy+2AQX/L077TwYZkrmnMLtCHS0J7U5xcQP7heTQXMPAAw==",
+      "signatures": [
+        {
+          "sig": "MEUCIECuEJf4z6YTGk8biHfjIZeZZNZQeSCyCVYwgQz5PD0HAiEA10O0LYJwvqaVArirmCr9/Orh2KKPe3wdj2cPbW+AlvM=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIHpGhCT4uA1cE/LBMB1sCraw4/EmcsP9ZxvT4uDVY9ltAiEArovf+rTk5pMQiRnfal9lesaH4QcCHWhusRR5bNOemIM=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@storybook%2fsveltekit@10.6.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 55830
+    },
+    "registryURL": "https://registry.npmjs.org/@storybook/sveltekit"
+  },
+  {
+    "name": "vitest",
+    "latest": "5.0.3",
+    "selected": "5.0.1",
+    "time": "2026-09-15T08:49:35.830Z",
+    "engines": {
+      "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+    },
+    "peers": {
+      "vite": "^6.4.0 || ^7.0.0 || ^8.0.0",
+      "jsdom": "*",
+      "happy-dom": "*",
+      "@vitest/ui": "5.0.1",
+      "@types/node": "^22.0.0 || >=24.0.0",
+      "@edge-runtime/vm": "*",
+      "@opentelemetry/api": "^1.9.0",
+      "@vitest/coverage-v8": "5.0.1",
+      "@vitest/browser-preview": "5.0.1",
+      "@vitest/coverage-istanbul": "5.0.1",
+      "@vitest/browser-playwright": "5.0.1",
+      "@vitest/browser-webdriverio": "^5.0.0-beta.5 || >=5.0.0"
+    },
+    "dependencies": {
+      "chai": "^6.2.2",
+      "obug": "^2.1.4",
+      "std-env": "^4.2.0",
+      "tinyexec": "1.3.0",
+      "picomatch": "^4.0.7",
+      "tinybench": "6.1.4",
+      "tinyglobby": "^0.2.17",
+      "@types/chai": "^5.2.2",
+      "expect-type": "^1.4.0",
+      "magic-string": "^1.2.3",
+      "@vitest/mocker": "5.0.1",
+      "es-module-lexer": "^2.3.2",
+      "why-is-node-running": "^2.3.0"
+    },
+    "dist": {
+      "shasum": "22505b6481ed0e692b3f6d4fed179da8487d252c",
+      "tarball": "https://registry.npmjs.org/vitest/-/vitest-5.0.1.tgz",
+      "fileCount": 103,
+      "integrity": "sha512-iA95lQbKEkvrtTkdAgnWbXfbipWiiWe/hDl2P5tMi6WFwD76G0NxXAGp/M9EOcYupeGJRr6wppMc7CoA41TQjg==",
+      "signatures": [
+        {
+          "sig": "MEUCIAdhfWS0gjWnhFRMrahSe+7QO4gFu5E/IdMPENdDDE9vAiEAh+IaVYGvUpfZinhweEX3yLqm9wI9UEEyTZaAoAE7hbc=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/vitest@5.0.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 2736905
+    },
+    "registryURL": "https://registry.npmjs.org/vitest",
+    "reason": "Standalone latest is recorded for comparison; VitePlus owns its managed Vitest/browser family at 5.0.1."
+  },
+  {
+    "name": "pnpm",
+    "latest": "12.9.1",
+    "selected": "12.9.1",
+    "time": "2026-10-03T20:48:16.304Z",
+    "engines": {
+      "node": ">=18.*"
+    },
+    "peers": {},
+    "dependencies": {},
+    "dist": {
+      "shasum": "3431acab44b8aee29ca1b92e5042bd1b694d5d7a",
+      "tarball": "https://registry.npmjs.org/pnpm/-/pnpm-12.9.1.tgz",
+      "fileCount": 449,
+      "integrity": "sha512-BrBV//XNINwSeB3hc87TMQzglRvy7GICEaFgRdVETVyTpmMhB2TvKaZTphBFm6A2jw50+E2AxUcjz5Wq57wNbQ==",
+      "signatures": [
+        {
+          "sig": "MEUCIEpHkCW6yqESc+WQvKAWZp34AAdiYXWebZUwiOLoBWnTAiEAhS1n5b9YvEwex4QtEk1S+Gw7t6HAZpYIOk2Q7VVlap0=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/pnpm@12.9.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 4107858
+    },
+    "registryURL": "https://registry.npmjs.org/pnpm"
+  },
+  {
+    "name": "vitest-browser-svelte",
+    "latest": "3.1.0",
+    "selected": "3.1.0",
+    "time": "2026-09-04T07:55:38.388Z",
+    "engines": null,
+    "peers": {
+      "svelte": "^3 || ^4 || ^5 || ^5.0.0-next.0",
+      "vitest": "^4.0.0 || ^5.0.0"
+    },
+    "dependencies": {
+      "@testing-library/svelte-core": "^1.1.3"
+    },
+    "dist": {
+      "shasum": "7dc69d85ae6f2c7705def08cdcfb7a6f8aeaa579",
+      "tarball": "https://registry.npmjs.org/vitest-browser-svelte/-/vitest-browser-svelte-3.1.0.tgz",
+      "integrity": "sha512-+EBXSed6NArmzOC2DY4v9sI5n9TMIyfkMnewbXNQ7sR5IckQTCx7g1BbLdkH7kzm/tkgG/eEbRYlMWSbVfBtWA==",
+      "fileCount": 13,
+      "unpackedSize": 18768,
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/vitest-browser-svelte@3.1.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "signatures": [
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEQCIFM6zyMAJpCClKq5e3O56quJT4QsNAyuCdqsvM8tc6TuAiBZ6zXxn5F36vY6JFb+JnslkV2HgkFt0fMYI2Urq3eJiw=="
+        }
+      ]
+    },
+    "registryURL": "https://registry.npmjs.org/vitest-browser-svelte",
+    "reason": "sv 1.0.1 emits ^2.1.1, whose peers require Vitest 4; stable 3.1.0 supports VitePlus 1.0.0 bundled Vitest 5.0.1."
+  },
+  {
+    "name": "storybook",
+    "latest": "10.6.1",
+    "selected": "10.6.1",
+    "time": "2026-09-29T17:20:05.303Z",
+    "engines": {},
+    "peers": {
+      "prettier": "^2 || ^3",
+      "vite-plus": "^0.1.15 || ^0.2.0",
+      "@types/react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+    },
+    "dependencies": {
+      "ws": "^8.21.1",
+      "open": "^10.2.0",
+      "recast": "^0.23.5",
+      "semver": "^7.7.3",
+      "esbuild": "^0.18.0 || ^0.19.0 || ^0.20.0 || ^0.21.0 || ^0.22.0 || ^0.23.0 || ^0.24.0 || ^0.25.0 || ^0.26.0 || ^0.27.0 || ^0.28.0",
+      "oxc-parser": "^0.127.0",
+      "@vitest/spy": "3.2.4",
+      "jsonc-parser": "^3.3.1",
+      "oxc-resolver": "11.21.2",
+      "@vitest/expect": "3.2.4",
+      "@storybook/icons": "^2.0.2",
+      "@storybook/global": "^5.0.0",
+      "@webcontainer/env": "^1.1.1",
+      "@testing-library/dom": "^10.4.1",
+      "use-sync-external-store": "^1.5.0",
+      "@testing-library/jest-dom": "6.9.1",
+      "@testing-library/user-event": "^14.6.3"
+    },
+    "dist": {
+      "shasum": "57bb8fb2dbe549743db7d9ab672006633cac6971",
+      "tarball": "https://registry.npmjs.org/storybook/-/storybook-10.6.1.tgz",
+      "fileCount": 275,
+      "integrity": "sha512-NeEmukMWPA5OqHizUkQtxCIhGt7MUZLPY4FFgpC0LNiipjrac/oKpH0TxI+9Zc+vI5+IoN+NiskOmBP7gtYfmA==",
+      "signatures": [
+        {
+          "sig": "MEUCIQC9lnRtWHEsvIjmoBzAaeu8PRBUqwl6qhTlxMKlYVNbmwIgGxxb1ovucCPzRsRn/JR2F3stGLqUb72qmhTC8o/aJMA=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEQCIDnYsmrcDNLLV1eaYoGVpXBX7tnpZuS5sdgV96R4rxclAiBstODrMZKuPITm/X/BQhBTIyESUVARfS1KGEa2IhgrPw=="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/storybook@10.6.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 22208748
+    },
+    "source": "https://registry.npmjs.org/storybook"
+  },
+  {
+    "name": "@storybook/addon-svelte-csf",
+    "latest": "5.1.5",
+    "selected": "5.1.5",
+    "time": "2026-09-28T19:41:51.348Z",
+    "engines": {},
+    "peers": {
+      "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
+      "svelte": "^5.0.0",
+      "storybook": "^0.0.0-0 || ^8.2.0 || ^9.0.0 || ^9.1.0-0 || ^10.0.0-0 || ^10.1.0-0 || ^10.2.0-0 || ^10.3.0-0 || ^10.4.0-0 || ^10.5.0-0 || ^10.6.0-0 || ^11.0.0-0",
+      "@storybook/svelte": "^0.0.0-0 || ^8.2.0 || ^9.0.0 || ^9.1.0-0 || ^10.0.0-0 || ^10.1.0-0 || ^10.2.0-0 || ^10.3.0-0 || ^10.4.0-0 || ^10.5.0-0 || ^10.6.0-0 || ^11.0.0-0",
+      "@sveltejs/vite-plugin-svelte": "^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0"
+    },
+    "dependencies": {
+      "esrap": "^1.2.2",
+      "dedent": "^1.5.3",
+      "es-toolkit": "^1.26.1",
+      "zimmerframe": "^1.1.2",
+      "magic-string": "^0.30.12",
+      "@storybook/csf": "^0.1.13",
+      "svelte-ast-print": "^0.4.0"
+    },
+    "dist": {
+      "shasum": "67832d2a227f9504899e4f9061fbc34a000ba7ab",
+      "tarball": "https://registry.npmjs.org/@storybook/addon-svelte-csf/-/addon-svelte-csf-5.1.5.tgz",
+      "fileCount": 192,
+      "integrity": "sha512-lYc9tyFIowXtd/hlapngtGhw6YUZMSU5KezHqJl84lRkahsNtmtqHl/mJjRRJG2ZQIWgw6xBUi4PvVvTxPwqzQ==",
+      "signatures": [
+        {
+          "sig": "MEUCIQDAejZWPqSvcc/rwakGepT5x3ZYRSsCdQyaL7ckXV9rxgIgRwL4A2uT7rjjIyjzAfz1sUJJ1q8/Dy4oWkQH/M2ASwI=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIQDUI8msjnaMV6oe8zFxtk0GMC1Xya4R2PrAcuvkeX6KCwIgMR2A/aNwEZR5d4bgM95/VIojln/XlBN2jIo895Wzy4w=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@storybook%2faddon-svelte-csf@5.1.5",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 375616
+    },
+    "source": "https://registry.npmjs.org/@storybook%2Faddon-svelte-csf"
+  },
+  {
+    "name": "@sveltejs/enhanced-img",
+    "latest": "1.0.0",
+    "selected": "1.0.0",
+    "time": "2026-10-01T17:22:27.324Z",
+    "engines": {
+      "node": ">=22"
+    },
+    "peers": {
+      "vite": ">=8.0.12",
+      "svelte": "^5.0.0",
+      "@sveltejs/vite-plugin-svelte": "^7.0.0"
+    },
+    "dependencies": {
+      "sharp": "^0.35.3",
+      "zimmerframe": "^1.1.4",
+      "magic-string": "^1.2.3",
+      "vite-imagetools": "^12.0.0"
+    },
+    "dist": {
+      "shasum": "5a9d266eea3a97a7473c2a8dd875d596acc7196f",
+      "tarball": "https://registry.npmjs.org/@sveltejs/enhanced-img/-/enhanced-img-1.0.0.tgz",
+      "fileCount": 8,
+      "integrity": "sha512-MVY2SNj1NE/DW7yrAePFfOeEnj/PfkHPQvWfeL23h/a0i7r1qEF5qj3iIyxqCF5Vu+akskQ/h5eEEM7hjvFmrQ==",
+      "signatures": [
+        {
+          "sig": "MEUCIH9IhNSkoVvUFILeeH8kfx/g/tSYVKcfQr2XgN10aVgIAiEAm5HGHIcKQlmnXc6YqyzRzoTOUIHFXIJP8ilAf4RJveI=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEUCIQCfdvbdvLDvyC9ADXkWeYK/IVL69Psuz1YMm4IpjmqZZgIgI/V5R6Jg2ckw3+Hf5orgC41CVtyrrzm4kjRi8hCCHV8="
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@sveltejs%2fenhanced-img@1.0.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 24525
+    },
+    "source": "https://registry.npmjs.org/@sveltejs%2Fenhanced-img"
+  },
+  {
+    "name": "playwright",
+    "latest": "1.63.0",
+    "selected": "1.63.0",
+    "time": "2026-09-04T22:45:21.732Z",
+    "engines": {
+      "node": ">=20"
+    },
+    "peers": {},
+    "dependencies": {
+      "playwright-core": "1.63.0"
+    },
+    "dist": {
+      "shasum": "99b56f9f69b1b70c44f00bf84b2fe52348ae2511",
+      "tarball": "https://registry.npmjs.org/playwright/-/playwright-1.63.0.tgz",
+      "fileCount": 62,
+      "integrity": "sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==",
+      "signatures": [
+        {
+          "sig": "MEQCIFn72Uq9JNdpz1rV1lvXHFkN/RVw2SRE69/WaPi8+JVpAiBylqLY4s2V2Ykl102NEUg56SIXh9Ig1vzaxWMY+6phYw==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEYCIQDbhaeMgqrXvUZ8VnMwwCDWzJT2LAkJoad5xAQLowOEXQIhAI7AM5/Z5BCB4ChADMQtg5y2yUhs6LzrHzREhmKgiFpZ",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/playwright@1.63.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 5094512
+    },
+    "source": "https://registry.npmjs.org/playwright"
+  },
+  {
+    "name": "@vitest/browser-playwright",
+    "latest": "5.0.3",
+    "selected": "5.0.1",
+    "time": "2026-09-15T08:49:44.906Z",
+    "engines": {},
+    "peers": {
+      "vitest": "5.0.1",
+      "playwright": "*"
+    },
+    "dependencies": {
+      "tinyrainbow": "^3.1.1",
+      "@vitest/mocker": "5.0.1",
+      "@vitest/browser": "5.0.1"
+    },
+    "dist": {
+      "shasum": "73b50c71c740f4096a46477dac1057b6ce7a5bbf",
+      "tarball": "https://registry.npmjs.org/@vitest/browser-playwright/-/browser-playwright-5.0.1.tgz",
+      "fileCount": 7,
+      "integrity": "sha512-BlknN81ZeoCyP5CSm5u7+1BTlS7d0cDU5DfndNSjEC3SmbzOESGrp+DQpNhQmTlggawWc+yKVEM03mM/aBynqg==",
+      "signatures": [
+        {
+          "sig": "MEQCIGVPp5AhWaaUfnHC6w7Ocrg0aMTt2/cS7HI4UPJe2lfJAiAF1dYtnz1jJCIGE31/ofB6SvqAYUKL+f5+yZh8hVDr+w==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@vitest%2fbrowser-playwright@5.0.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 53893
+    },
+    "source": "https://registry.npmjs.org/@vitest%2Fbrowser-playwright"
+  }
+]

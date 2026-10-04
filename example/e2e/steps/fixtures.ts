@@ -204,6 +204,19 @@ export function expectMode(response: { headers(): Record<string, string> }): 'de
 	return expected;
 }
 
+/** Waits for a real delegated handler, which inert SSR markup cannot have. */
+export async function interactive(page: Page, testid: string): Promise<void> {
+	// Svelte's pinned events.js stores delegated handlers under Symbol('events').
+	// Kit can set scrollRestoration before hydration when restoring a reload.
+	await page.waitForFunction((testid) => {
+		const element = document.querySelector(`[data-testid="${testid}"]`);
+		return element && Object.getOwnPropertySymbols(element).some((symbol) =>
+			symbol.description === 'events' &&
+			Boolean((element as unknown as Record<symbol, { click?: unknown }>)[symbol]?.click)
+		);
+	}, testid);
+}
+
 /**
  * Waits until kit's client has hydrated the document and started its router.
  *
@@ -219,8 +232,9 @@ export function expectMode(response: { headers(): Record<string, string> }): 'de
  * `history.scrollRestoration` is kit's own marker rather than one this suite
  * invented: `_start_router` sets it to "manual" as its first statement
  * (packages/kit/src/runtime/client/client.js), and `_start_router` is what runs
- * after `_hydrate` resolves. It is still a claim that can fail — a page that
- * never boots never sets it.
+ * after `_hydrate` resolves on a cold document. Kit also sets it earlier when
+ * restoring reload scroll, so use interactive() before a critical click on a
+ * revisited document.
  */
 export async function hydrated(page: Page): Promise<void> {
 	// Two pages never hydrate and must not be waited on: one whose branch turns
@@ -248,9 +262,9 @@ export async function hydrated(page: Page): Promise<void> {
  * `hydrated` gives up quietly on a page with no boot script, which is right for
  * a step that only needs to wait. A claim that kit's client did or did not do
  * something — "no second request was made", "the error page booted its own
- * client" — is satisfied by a page whose client never started at all, so it
- * has to establish first that the client is there. Same marker as `hydrated`:
- * `_start_router` sets it, and nothing else does.
+ * client" — needs to establish that the client is there. This uses the same
+ * scroll marker as `hydrated`; it is not sufficient for a critical interaction
+ * after a reload. Use `interactive` for those clicks.
  */
 export async function booted(page: Page): Promise<void> {
 	await expect

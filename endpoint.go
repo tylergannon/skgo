@@ -632,15 +632,7 @@ func (es *Endpoints) normalize(urlPath string, u *url.URL) (location string, red
 
 	// Relative, exactly as kit sends it, so that a path prefix the app cannot
 	// see — a reverse proxy's, say — is preserved.
-	segment := strings.TrimSuffix(normalized, "/")
-	if i := strings.LastIndex(segment, "/"); i >= 0 {
-		segment = segment[i+1:]
-	}
-	if strings.HasSuffix(urlPath, "/") {
-		location = "../" + segment
-	} else {
-		location = segment + "/"
-	}
+	location = relativePathname(urlPath, normalized)
 	if u.RawQuery != "" {
 		location += "?" + u.RawQuery
 	}

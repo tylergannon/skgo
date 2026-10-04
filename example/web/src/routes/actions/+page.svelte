@@ -152,7 +152,7 @@
 				<form data-testid="enhanced-remote-note" {...sendRemoteNote.enhance(async (submission) => { await submission.submit(); })}>
 					<h3>Enhanced remote form</h3>
 					<label>Name <input {...remoteFields.name.as('text')} value="Grace Hopper" /></label>
-					<button type="submit">Send enhanced remote note</button>
+					<button type="submit" disabled={sendRemoteNote.pending > 0}>Send enhanced remote note</button>
 				</form>
 				{#if sendRemoteNote.result}<p data-testid="remote-note-receipt">{sendRemoteNote.result.message}</p>{/if}
 			</section>

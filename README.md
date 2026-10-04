@@ -10,8 +10,8 @@ SvelteKit remote function. Pages are rendered by SvelteKit's own renderer
 running inside the Go process, and the app deploys as a single Go binary. Node
 is only needed to build it.
 
-> **Status:** pre-1.0. skgo tracks the SvelteKit 3 prerelease pinned in this
-> repository. All server code is written in Go: TypeScript remote functions,
+> **Status:** pre-1.0. skgo uses SvelteKit 3.0.0, reviewed in the
+> [compatibility journal](SVELTEKIT_COMPATIBILITY.md). All server code is written in Go: TypeScript remote functions,
 > loads and API routes are not supported. The [example app](example/) shows what
 > works today.
 
@@ -214,10 +214,12 @@ the public documentation.
 
 ## Start a project
 
-You need Go, [VitePlus](https://viteplus.dev) (`vp`) and
-[just](https://just.systems).
+You need Go, [VitePlus](https://viteplus.dev) **1.0.0** (`vp`) and
+[just](https://just.systems). This release qualifies that exact VitePlus toolchain;
+`skgo new` refuses other bootstrap versions before project creation.
 
 ```sh
+npm install --global vite-plus@1.0.0
 go install github.com/tylergannon/skgo/cmd/skgo@latest
 skgo new myapp
 cd myapp

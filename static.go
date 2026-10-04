@@ -684,7 +684,7 @@ func relativePathname(from, to string) string {
 	if strings.HasSuffix(from, "/") {
 		return "../" + segment
 	}
-	return segment + "/"
+	return "./" + segment + "/"
 }
 
 // Kit's route-resolution suffixes, from `src/pathname.js`: `__route.js` is the
