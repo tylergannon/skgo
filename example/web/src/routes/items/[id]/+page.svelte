@@ -10,7 +10,7 @@
 
 <svelte:boundary>
 	{#if params.id}
-		{@const item = await getItem(params.id)}
+		{@const item = await (data.item ?? getItem(params.id))}
 		<p data-testid="item-name">{item.name}</p>
 		<p data-testid="colocated">{item.colocated}</p>
 	{/if}

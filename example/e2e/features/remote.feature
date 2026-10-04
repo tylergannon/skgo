@@ -26,20 +26,21 @@ Feature: Remote functions written in Go
     Then the item load and component both show "Widget 93"
     And no remote request was made during hydration
 
-  Scenario: A universal load fetches its remote query once on client navigation
+  Scenario: A universal load's resolved value and component work on client navigation
     Given I open "/"
     When I note the remote request count
     And I click the link to "/items/42"
     Then the item load and component both show "Widget 42"
-    And exactly 1 remote request was made since
+    And exactly 1 document request was made
 
-  Scenario: A universal load's query is still requested once when the response is slow
+  Scenario: A retained universal-load query is shared with the component under a slow response
     Given I open "/"
     And every remote response is held for 200 ms
     When I note the remote request count
-    And I click the link to "/items/42"
+    And I click the link to "/items/42?retain=1"
     Then the item load and component both show "Widget 42"
     And exactly 1 remote request was made since
+    And exactly 1 document request was made
 
   Scenario: Commands drive the live count, one todo at a time
     Given I open "/todos"
