@@ -65,7 +65,7 @@ func Calls() int32 { return calls.Load() }
 var _ = skgo.Prerender(noargValue)
 `)
 	write("src/routes/prerender-contract/+page.svelte", `<script>import { noargValue } from './fixture.remote';const value=await noargValue(null);</script><h1>Prerender contract</h1><p>{value}</p>`)
-write("src/routes/prerender-contract/+error.svelte", `<script>let { error, status } = $props();</script><h1>{status}</h1><p>{error.message}</p>`)
+	write("src/routes/prerender-contract/+error.svelte", `<script>let { error, status } = $props();</script><h1>{status}</h1><p>{error.message}</p>`)
 	if output, err := runGoGenerate(app); err != nil {
 		t.Fatalf("go generate ./...: %v\n%s", err, output)
 	}
