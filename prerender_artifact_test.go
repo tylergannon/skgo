@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -37,6 +38,70 @@ func artifactBytes(t *testing.T, kind string, value any) []byte {
 		t.Fatal(err)
 	}
 	return raw
+}
+
+func prerenderErrorBuild(t *testing.T, body string) (fstest.MapFS, Manifest, *Remotes, *Remote, string) {
+	t.Helper()
+	fn := NewRemote(RemoteSpec{Kind: KindPrerender, Module: "src/routes/prerender-error/error.remote.ts", Name: "fail", Call: func(context.Context, Call) (any, error) { return nil, nil }})
+	remotePath := "_app/remote/" + fn.ID() + "/payload"
+	manifest := Manifest{
+		AppDir:      "_app",
+		Prerendered: []string{"/" + remotePath},
+		SSR: &ManifestSSR{
+			Bundle:        "bundle.js",
+			Template:      "template.html",
+			ErrorTemplate: "error.html",
+			Target:        ssrTarget,
+			GlobalName:    "__sveltekit_test",
+		},
+	}
+	rawManifest, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remotes, err := NewRemotes(RemoteConfig{}, fn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	build := fstest.MapFS{
+		"index.html":                {Data: []byte(testIndexHTML)},
+		"skgo.manifest.json":        {Data: rawManifest},
+		"client/.keep":              {Data: []byte("client")},
+		"prerendered/" + remotePath: {Data: []byte(`{"type":"error","error":` + body + `}`)},
+		"bundle.js":                 {Data: []byte(`globalThis.__skgo_ping=()=>"ok";globalThis.__skgo_render=()=>({done:true,status:200,body:"",head:""});`)},
+		"template.html":             {Data: []byte("<!doctype html><html><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>")},
+		"error.html":                {Data: []byte("<!doctype html>%sveltekit.status% %sveltekit.error.message%")},
+	}
+	return build, manifest, remotes, fn, remotePath
+}
+
+func TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors(t *testing.T) {
+	for name, body := range map[string]string{
+		"missing status":     `{"message":"broken"}`,
+		"string status":      `{"status":"409","message":"broken"}`,
+		"missing message":    `{"status":409}`,
+		"non-string message": `{"status":409,"message":7}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			build, manifest, remotes, _, remotePath := prerenderErrorBuild(t, body)
+			if _, err := NewStaticHandler(build); err == nil || !strings.Contains(err.Error(), remotePath) {
+				t.Fatalf("NewStaticHandler error = %v, want invalid artifact identified by %q", err, remotePath)
+			}
+			if _, err := NewSSR(build, manifest, nil, remotes, SSROptions{Runtimes: 1}); err == nil || !strings.Contains(err.Error(), remotePath) {
+				t.Fatalf("NewSSR error = %v, want invalid artifact identified by %q", err, remotePath)
+			}
+		})
+	}
+
+	// Static startup checks only Kit's JSON wire types. An integer-backed SSR
+	// status decoder then refuses an unrepresentable fraction without truncating.
+	build, manifest, remotes, _, remotePath := prerenderErrorBuild(t, `{"status":409.5,"message":"fraction"}`)
+	if _, err := NewStaticHandler(build); err != nil {
+		t.Fatalf("static handler rejected numeric App.Error status: %v", err)
+	}
+	if _, err := NewSSR(build, manifest, nil, remotes, SSROptions{Runtimes: 1}); err == nil || !strings.Contains(err.Error(), remotePath) {
+		t.Fatalf("NewSSR error = %v, want unrepresentable status identified by %q", err, remotePath)
+	}
 }
 
 func TestPrerenderArtifactLookupUsesClientFirstAndManifestAuthority(t *testing.T) {

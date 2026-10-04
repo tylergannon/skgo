@@ -3,6 +3,7 @@ package skgo
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -92,21 +93,56 @@ func TestSSRPrerenderMissIsOpaqueAndNeverCallsGo(t *testing.T) {
 	}
 }
 
-func TestSSRPrerenderErrorIsAlreadyHandled(t *testing.T) {
-	const module = "src/routes/prerender-error/error.remote.ts"
-	fn := NewRemote(RemoteSpec{Kind: KindPrerender, Module: module, Name: "fail", Call: func(context.Context, Call) (any, error) { return nil, nil }})
-	rel := "_app/remote/" + fn.ID() + "/payload"
-	build := fstest.MapFS{"client/.keep": {Data: []byte("x")}, "prerendered/" + rel: {Data: artifactBytes(t, "error", map[string]any{"status": float64(409), "message": "built error", "marker": "native-body"})}}
-	manifest := Manifest{AppDir: "_app", Prerendered: []string{"/" + rel}}
+func TestMalformedClientPrerenderErrorIsOpaqueAndNeverCallsGo(t *testing.T) {
+	const module = "src/routes/consumer/consumer.remote.ts"
+	var calls int
+	fn := NewRemote(RemoteSpec{Kind: KindPrerender, Module: module, Name: "value", Call: func(context.Context, Call) (any, error) {
+		calls++
+		return "live", nil
+	}})
+	logical := "_app/remote/" + fn.ID() + "/payload"
+	build := fstest.MapFS{"client/" + logical: {Data: []byte(`{"type":"error","error":{"status":"409","message":"broken"}}`)}}
+	client, err := indexTree(build, "client")
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := newPrerenderArtifactStore(build, Manifest{AppDir: "_app"}, client, map[string]assetMeta{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	remotes, err := NewRemotes(RemoteConfig{}, fn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := newSSRPrerenderArtifactStore(build, manifest, remotes, nil)
+	s := &SSR{remotes: remotes, artifacts: store}
+	raw, err := s.answer(context.Background(), fn.ID(), "payload", map[string]map[string]answered{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := &SSR{remotes: remotes, artifacts: store}
+	var answer remoteAnswer
+	if err := json.Unmarshal(raw, &answer); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 0 || answer.E == nil || answer.E.Status != http.StatusInternalServerError || answer.E.Message != "Internal Error" {
+		t.Fatalf("malformed client artifact answer=%s Go body calls=%d", raw, calls)
+	}
+}
+
+func TestSSRPrerenderErrorIsAlreadyHandled(t *testing.T) {
+	const errorBody = `{"status":409,"message":"built error","marker":"native-body"}`
+	build, manifest, remotes, fn, rel := prerenderErrorBuild(t, errorBody)
+	static, err := NewStaticHandler(build)
+	if err != nil {
+		t.Fatalf("NewStaticHandler for native App.Error: %v", err)
+	}
+	resp := do(t, static, http.MethodGet, "/"+rel, nil)
+	if got := body(t, resp); resp.StatusCode != http.StatusOK || got != `{"type":"error","error":`+errorBody+`}` {
+		t.Fatalf("HTTP remote artifact status=%d body=%q", resp.StatusCode, got)
+	}
+	s, err := NewSSR(build, manifest, nil, remotes, SSROptions{Runtimes: 1})
+	if err != nil {
+		t.Fatalf("NewSSR for native App.Error: %v", err)
+	}
 	answers := map[string]map[string]answered{}
 	raw, err := s.answer(context.Background(), fn.ID(), "payload", answers)
 	if err != nil {

@@ -1,6 +1,7 @@
 package skgo
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -100,12 +101,37 @@ func validatePrerenderArtifactSyntax(data []byte, identifier string) error {
 			return fmt.Errorf("skgo: invalid prerendered remote artifact %q: result has invalid data", identifier)
 		}
 	case "error":
-		var body map[string]any
-		if len(envelope.Error) == 0 || json.Unmarshal(envelope.Error, &body) != nil || body == nil {
-			return fmt.Errorf("skgo: invalid prerendered remote artifact %q: error has invalid body", identifier)
+		if err := validatePrerenderErrorBody(envelope.Error); err != nil {
+			return fmt.Errorf("skgo: invalid prerendered remote artifact %q: error has invalid body: %w", identifier, err)
 		}
 	default:
 		return fmt.Errorf("skgo: invalid prerendered remote artifact %q: unknown type %q", identifier, envelope.Type)
+	}
+	return nil
+}
+
+// validatePrerenderErrorBody enforces Kit's required App.Error fields without
+// imposing an HTTP status range or converting its number. Static serving only
+// validates the wire shape; SSR's int-backed Error decoder separately rejects
+// a fractional or otherwise unrepresentable status rather than truncating it.
+func validatePrerenderErrorBody(raw json.RawMessage) error {
+	if len(raw) == 0 {
+		return errors.New("error body is missing")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var body map[string]any
+	if err := decoder.Decode(&body); err != nil {
+		return err
+	}
+	if body == nil {
+		return errors.New("error body is not an object")
+	}
+	if _, ok := body["status"].(json.Number); !ok {
+		return errors.New("error body has no numeric status")
+	}
+	if _, ok := body["message"].(string); !ok {
+		return errors.New("error body has no string message")
 	}
 	return nil
 }
@@ -240,25 +266,14 @@ func decodePrerenderArtifact(data []byte, identifier string, revivers map[string
 		if len(envelope.Error) == 0 || string(envelope.Error) == "null" {
 			return prerenderArtifact{}, fmt.Errorf("skgo: invalid prerendered remote artifact %q: error has no body", identifier)
 		}
-		var body map[string]any
-		if err := json.Unmarshal(envelope.Error, &body); err != nil || body == nil {
-			if err == nil {
-				err = errors.New("error body is not an object")
-			}
+		if err := validatePrerenderErrorBody(envelope.Error); err != nil {
+			return prerenderArtifact{}, fmt.Errorf("skgo: invalid prerendered remote artifact %q: error has invalid body: %w", identifier, err)
+		}
+		var body ssr.Error
+		if err := json.Unmarshal(envelope.Error, &body); err != nil {
 			return prerenderArtifact{}, fmt.Errorf("skgo: invalid prerendered remote artifact %q: %w", identifier, err)
 		}
-		status := 500
-		if number, ok := body["status"].(float64); ok {
-			status = int(number)
-		}
-		message, _ := body["message"].(string)
-		extra := map[string]any{}
-		for key, value := range body {
-			if key != "status" && key != "message" {
-				extra[key] = value
-			}
-		}
-		return prerenderArtifact{err: &ssr.Error{Status: status, Message: message, Extra: extra}}, nil
+		return prerenderArtifact{err: &body}, nil
 	default:
 		return prerenderArtifact{}, fmt.Errorf("skgo: invalid prerendered remote artifact %q: unknown type %q", identifier, envelope.Type)
 	}
