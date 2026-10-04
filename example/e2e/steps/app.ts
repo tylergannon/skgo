@@ -55,6 +55,7 @@ function linkName(path: string): string {
 	if (path === '/') return 'Home';
 	if (path === '/about') return 'About';
 	if (path === '/items/42') return 'Item 42';
+	if (path === '/items/42?retain=1') return 'Item 42 retained';
 	if (path === '/pricing') return 'Pricing';
 	if (path === '/empty') return 'Empty';
 	if (path === '/docs/guide/getting-started') return 'Docs';

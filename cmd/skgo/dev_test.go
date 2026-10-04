@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -164,6 +165,29 @@ var _ = skgo.Action(revise)
 var _ = skgo.Action(added)
 `
 
+const devFakeVite = `package main
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"time"
+)
+
+func main() {
+	if os.Getenv("SKGO_FAKE_VITE_MODE") == "stay" {
+		fmt.Fprintln(os.Stdout, "FAKE_VITE_READY")
+		for {
+			time.Sleep(time.Hour)
+		}
+	}
+	fmt.Fprintln(os.Stderr, "FAKE_VITE_FAILURE_CAUSE")
+	time.Sleep(250 * time.Millisecond)
+	code, _ := strconv.Atoi(os.Getenv("SKGO_FAKE_VITE_EXIT"))
+	os.Exit(code)
+}
+`
+
 type devApp struct {
 	t    *testing.T
 	root string
@@ -284,6 +308,74 @@ func freeHostPort(t *testing.T) string {
 }
 
 func processAlive(pid int) bool { return syscall.Kill(pid, 0) == nil }
+
+func buildDevFakeVite(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	source := filepath.Join(dir, "main.go")
+	if err := os.WriteFile(source, []byte(devFakeVite), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(dir, "fake-vite")
+	build := exec.Command("go", "build", "-o", bin, source)
+	build.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build fake Vite child: %v\n%s", err, output)
+	}
+	return bin
+}
+
+func launchDevWithVite(t *testing.T, app *devApp, vite, mode, exit string) (*exec.Cmd, *lockedBuffer, <-chan struct{}, *error) {
+	t.Helper()
+	addr := freeHostPort(t)
+	base := "http://" + addr
+	log := &lockedBuffer{}
+	dev := exec.Command(skgoBin, "dev", "--root", app.root, "--web", "web", "--cmd", "./cmd",
+		"--listen", addr, "--origin", base, "--vite", vite, "--vite-port", "0")
+	dev.Env = append(app.env, "SKGO_FAKE_VITE_MODE="+mode, "SKGO_FAKE_VITE_EXIT="+exit)
+	dev.Stdout, dev.Stderr = log, log
+	if err := dev.Start(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	var waitErr error
+	go func() {
+		waitErr = dev.Wait()
+		close(done)
+	}()
+	t.Cleanup(func() {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		_ = dev.Process.Signal(syscall.SIGINT)
+		select {
+		case <-done:
+		case <-time.After(20 * time.Second):
+			_ = dev.Process.Kill()
+			<-done
+		}
+	})
+	return dev, log, done, &waitErr
+}
+
+func awaitDevLog(t *testing.T, done <-chan struct{}, log *lockedBuffer, want string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if strings.Contains(log.String(), want) {
+			return
+		}
+		select {
+		case <-done:
+			t.Fatalf("skgo dev exited before logging %q:\n%s", want, log.String())
+		default:
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %q in skgo dev output:\n%s", want, log.String())
+}
 
 // One `skgo dev` launch, the command the scaffold's recipe runs, over an app
 // whose Go endpoint and action are edited, added and removed while it runs. A
@@ -436,5 +528,61 @@ func TestSkgoDevAdoptsAuthoredEndpointsAndActionsInOneLaunch(t *testing.T) {
 	}
 	if r := builtSays(); r.status != 200 {
 		t.Fatalf("stopping the session stopped the built binary: %d %q", r.status, r.body)
+	}
+}
+
+func TestSkgoDevUnexpectedViteExitReturnsFailure(t *testing.T) {
+	for _, exitCode := range []string{"0", "7"} {
+		t.Run("exit-"+exitCode, func(t *testing.T) {
+			app := newDevApp(t)
+			vite := buildDevFakeVite(t)
+			_, log, done, waitErr := launchDevWithVite(t, app, vite, "exit", exitCode)
+			select {
+			case <-done:
+			case <-time.After(30 * time.Second):
+				t.Fatalf("skgo dev did not stop after Vite exited:\n%s", log.String())
+			}
+			if *waitErr == nil {
+				t.Fatalf("skgo dev succeeded after its Vite child exited unexpectedly:\n%s", log.String())
+			}
+			var exitErr *exec.ExitError
+			if !errors.As(*waitErr, &exitErr) || exitErr.ExitCode() == 0 {
+				t.Fatalf("skgo dev returned %v, want nonzero process exit:\n%s", *waitErr, log.String())
+			}
+			if !strings.Contains(log.String(), "FAKE_VITE_FAILURE_CAUSE") {
+				t.Fatalf("the child failure cause was not preserved in output:\n%s", log.String())
+			}
+			if !strings.Contains(log.String(), "skgo dev: vite exited unexpectedly:") {
+				t.Fatalf("the supervisor did not report the unexpected Vite exit:\n%s", log.String())
+			}
+			if exitCode == "0" && !strings.Contains(log.String(), "process exited successfully") {
+				t.Fatalf("a clean but unexpected Vite exit had no cause in the supervisor log:\n%s", log.String())
+			}
+			if exitCode != "0" && !strings.Contains(log.String(), "exit status "+exitCode) {
+				t.Fatalf("the Vite exit status was lost:\n%s", log.String())
+			}
+		})
+	}
+}
+
+func TestSkgoDevExternalCancellationRemainsCleanWithViteChild(t *testing.T) {
+	app := newDevApp(t)
+	vite := buildDevFakeVite(t)
+	dev, log, done, waitErr := launchDevWithVite(t, app, vite, "stay", "0")
+	awaitDevLog(t, done, log, "FAKE_VITE_READY")
+	awaitDevLog(t, done, log, "skgo dev: serving http://")
+	if err := dev.Process.Signal(syscall.SIGINT); err != nil {
+		t.Fatalf("send clean cancellation: %v (exit %v):\n%s", err, *waitErr, log.String())
+	}
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatalf("skgo dev did not stop after external cancellation:\n%s", log.String())
+	}
+	if *waitErr != nil {
+		t.Fatalf("external cancellation returned %v, want clean exit:\n%s", *waitErr, log.String())
+	}
+	if strings.Contains(log.String(), "vite exited unexpectedly:") {
+		t.Fatalf("intentional Vite shutdown was reported as unexpected:\n%s", log.String())
 	}
 }

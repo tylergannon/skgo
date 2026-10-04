@@ -3,6 +3,7 @@ package skgo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,6 +38,7 @@ type prerenderLoadOutput struct {
 	Data     json.RawMessage    `json:"data,omitempty"`
 	Chunks   []prerenderChunk   `json:"chunks,omitempty"`
 	Error    *HTTPError         `json:"error,omitempty"`
+	Failure  *string            `json:"failure,omitempty"`
 	Redirect *prerenderRedirect `json:"redirect,omitempty"`
 	Headers  http.Header        `json:"headers,omitempty"`
 	Cookies  []prerenderCookie  `json:"cookies,omitempty"`
@@ -91,6 +93,11 @@ func RunPrerenderLoad(in io.Reader, out io.Writer, transport Transport, loads ..
 		answer.Redirect = &prerenderRedirect{Status: node.redir.status(), Location: node.redir.Location}
 	} else if node.err != nil {
 		answer.Error = node.err
+		var authored *HTTPError
+		if node.raw != nil && !errors.As(node.raw, &authored) {
+			message := node.raw.Error()
+			answer.Failure = &message
+		}
 	} else {
 		promises := &promiseTable{ids: map[*deferred]int{}}
 		tree, err := transport.encodeLoadValue(node.data)

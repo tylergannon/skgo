@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -53,6 +54,9 @@ func TestPrerenderLoadReceivesKitsEventAndReturnsGoEffects(t *testing.T) {
 		Params: map[string]string{"id": "42"}, Parent: map[string]any{"name": "parent"},
 		Headers: http.Header{"Cookie": {"incoming=hello"}},
 	}, load)
+	if answer.Failure != nil {
+		t.Fatalf("successful Go load acquired a build failure diagnostic: %q", *answer.Failure)
+	}
 	value, err := devalue.Parse(string(answer.Data), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -87,9 +91,29 @@ func TestPrerenderLoadReturnsGoErrorAndRedirect(t *testing.T) {
 			if test.name == "error" && (answer.Error == nil || answer.Error.Status != 403 || answer.Error.Message != "forbidden") {
 				t.Errorf("Go error = %+v", answer.Error)
 			}
+			if answer.Failure != nil {
+				t.Errorf("intentional %s acquired an unexpected build failure diagnostic: %q", test.name, *answer.Failure)
+			}
 			if test.name == "redirect" && (answer.Redirect == nil || answer.Redirect.Status != 303 || answer.Redirect.Location != "/elsewhere") {
 				t.Errorf("Go redirect = %+v", answer.Redirect)
 			}
 		})
+	}
+}
+
+func TestPrerenderLoadPreservesUnexpectedFailureForBuildDiagnostic(t *testing.T) {
+	const module = "src/routes/decide/+page.server.ts"
+	const message = "inventory database unavailable"
+	load := NewServerLoad(LoadSpec{Module: module, Run: func(context.Context) (any, error) {
+		return nil, errors.New(message)
+	}})
+	answer := callPrerenderLoad(t, PrerenderLoadInput{
+		Module: module, URL: "http://example.test/decide", RouteID: "/decide",
+	}, load)
+	if answer.Error == nil || answer.Error.Status != http.StatusInternalServerError || answer.Error.Message != "Internal Error" {
+		t.Fatalf("unexpected Go failure changed the Kit error payload: %+v", answer.Error)
+	}
+	if answer.Failure == nil || *answer.Failure != message {
+		t.Fatalf("build diagnostic failure = %v, want %q", answer.Failure, message)
 	}
 }
