@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"syscall"
 )
@@ -650,10 +651,27 @@ func resolveFrom(base, value string) (string, error) {
 }
 
 func retainBlobReports(paths []string) (string, error) {
+	return retainBlobReportsInTempDir(paths, persistentMergeInputTempDir())
+}
+
+// persistentMergeInputTempDir deliberately ignores TMPDIR on macOS and Linux.
+// The merge input must survive native HTML/blob reporters that clear
+// cwd/test-results, even when a caller places TMPDIR beneath that tree. Keep
+// Go's platform-specific temp semantics everywhere else, including Android.
+func persistentMergeInputTempDir() string {
+	switch runtime.GOOS {
+	case "darwin", "linux":
+		return "/tmp"
+	default:
+		return os.TempDir()
+	}
+}
+
+func retainBlobReportsInTempDir(paths []string, tempDir string) (string, error) {
 	if len(paths) != len(stages) {
 		return "", fmt.Errorf("got %d Playwright blob reports, want %d", len(paths), len(stages))
 	}
-	retainedDir, err := os.MkdirTemp("", "skgo-e2e-merge-input-")
+	retainedDir, err := os.MkdirTemp(tempDir, "skgo-e2e-merge-input-")
 	if err != nil {
 		return "", fmt.Errorf("create native merge-input directory: %w", err)
 	}

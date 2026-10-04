@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -194,6 +195,165 @@ func TestFailedRegularStageStillMergesBothBlobsOnce(t *testing.T) {
 	}
 	if workingDir == "" {
 		t.Fatal("working directory not initialized")
+	}
+}
+
+func TestPersistentMergeInputIgnoresCallerTMPDIRInsideArtifactTree(t *testing.T) {
+	for _, useSymlink := range []bool{false, true} {
+		name := "nested"
+		if useSymlink {
+			name = "nested-symlink"
+		}
+		t.Run(name, func(t *testing.T) {
+			workingDir := chdirTemp(t)
+			artifactRoot := filepath.Join(workingDir, "test-results")
+			physicalTempDir := filepath.Join(artifactRoot, "temporary")
+			if err := os.MkdirAll(physicalTempDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			callerTempDir := physicalTempDir
+			if useSymlink {
+				callerTempDir = filepath.Join(artifactRoot, "temporary-link")
+				if err := os.Symlink(physicalTempDir, callerTempDir); err != nil {
+					t.Skipf("create temporary symlink control: %v", err)
+				}
+			}
+			t.Setenv("TMPDIR", callerTempDir)
+			callerEnv := []string{"TMPDIR=" + callerTempDir}
+			var stageBlobDirs []string
+			var mergeInput string
+			calls := 0
+			err := runWithCleanup(t, context.Background(), nil, callerEnv, func(_ context.Context, _ string, args, environ []string) error {
+				if envValue(environ, "TMPDIR") != callerTempDir {
+					t.Fatalf("child TMPDIR = %q, want caller value %q", envValue(environ, "TMPDIR"), callerTempDir)
+				}
+				if args[0] == "test" {
+					calls++
+					blob := envValue(environ, blobOutputFileEnv)
+					if err := os.WriteFile(blob, []byte("blob-"+envValue(environ, "SKGO_E2E_STAGE")), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					stageBlobDirs = append(stageBlobDirs, filepath.Dir(blob))
+					if !pathIsWithin(filepath.Dir(blob), callerTempDir) {
+						t.Fatalf("stage scratch %q is not under caller TMPDIR %q", filepath.Dir(blob), callerTempDir)
+					}
+					return nil
+				}
+				if args[0] != "merge-reports" {
+					t.Fatalf("unexpected command %v", args)
+				}
+				mergeInput = args[1]
+				if !filepath.IsAbs(mergeInput) || pathIsWithin(mergeInput, artifactRoot) || pathIsWithin(mergeInput, callerTempDir) {
+					t.Fatalf("persistent merge input %q is inside removable artifact/TMPDIR tree", mergeInput)
+				}
+				for _, stageDir := range stageBlobDirs {
+					if pathIsWithin(mergeInput, stageDir) || pathIsWithin(stageDir, mergeInput) {
+						t.Fatalf("merge input %q overlaps stage scratch %q", mergeInput, stageDir)
+					}
+				}
+				for _, stage := range []string{"regular", "source-edit"} {
+					data, readErr := os.ReadFile(filepath.Join(mergeInput, stage+".zip"))
+					if readErr != nil || string(data) != "blob-"+stage {
+						t.Fatalf("%s input blob = %q, err=%v", stage, data, readErr)
+					}
+				}
+				resource := filepath.Join(mergeInput, "resources", "attached.txt")
+				if err := os.MkdirAll(filepath.Dir(resource), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(resource, []byte("literal attachment bytes"), 0o640); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(mergeInput, "report.jsonl"), []byte("native report bytes"), 0o640); err != nil {
+					t.Fatal(err)
+				}
+				// Simulate HTML/blob reporters deleting their configured output folder.
+				if err := os.RemoveAll(artifactRoot); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.MkdirAll(artifactRoot, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				return os.WriteFile(filepath.Join(artifactRoot, "index.html"), []byte("final reporter"), 0o640)
+			})
+			if err != nil {
+				t.Fatalf("run failed: %v", err)
+			}
+			if calls != 2 {
+				t.Fatalf("stage calls = %d, want regular and source-edit", calls)
+			}
+			if mergeInput == "" {
+				t.Fatal("merge input was not captured")
+			}
+			if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+				if filepath.Dir(mergeInput) != "/tmp" {
+					t.Fatalf("merge input parent = %q, want documented system temp /tmp", filepath.Dir(mergeInput))
+				}
+			}
+			for _, stageDir := range stageBlobDirs {
+				if _, statErr := os.Lstat(stageDir); !os.IsNotExist(statErr) {
+					t.Fatalf("stage scratch %q survived return, stat error=%v", stageDir, statErr)
+				}
+			}
+			for relative, want := range map[string]string{
+				"regular.zip":     "blob-regular",
+				"source-edit.zip": "blob-source-edit",
+				"report.jsonl":    "native report bytes",
+				filepath.Join("resources", "attached.txt"): "literal attachment bytes",
+			} {
+				data, readErr := os.ReadFile(filepath.Join(mergeInput, relative))
+				if readErr != nil || string(data) != want {
+					t.Fatalf("persistent %s = %q, err=%v, want %q", relative, data, readErr, want)
+				}
+			}
+			archives, globErr := filepath.Glob(filepath.Join(artifactRoot, "skgo-e2e-blobs-*"))
+			if globErr != nil || len(archives) != 1 {
+				t.Fatalf("archive directories=%v err=%v, want one", archives, globErr)
+			}
+			for relative, want := range map[string]string{
+				"regular.zip":     "blob-regular",
+				"source-edit.zip": "blob-source-edit",
+				"report.jsonl":    "native report bytes",
+				filepath.Join("resources", "attached.txt"): "literal attachment bytes",
+			} {
+				data, readErr := os.ReadFile(filepath.Join(archives[0], relative))
+				if readErr != nil || string(data) != want {
+					t.Fatalf("archived %s = %q, err=%v, want %q", relative, data, readErr, want)
+				}
+			}
+			if data, readErr := os.ReadFile(filepath.Join(artifactRoot, "index.html")); readErr != nil || string(data) != "final reporter" {
+				t.Fatalf("final reporter output = %q, err=%v", data, readErr)
+			}
+		})
+	}
+}
+
+func TestRetainBlobReportsAllocationFailureDoesNotFallbackToTMPDIR(t *testing.T) {
+	workingDir := chdirTemp(t)
+	callerTempDir := filepath.Join(workingDir, "caller-temp")
+	if err := os.MkdirAll(callerTempDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", callerTempDir)
+	invalidParent := filepath.Join(workingDir, "not-a-directory")
+	if err := os.WriteFile(invalidParent, []byte("file"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	blobPaths := []string{filepath.Join(workingDir, "regular.zip"), filepath.Join(workingDir, "source-edit.zip")}
+	for _, path := range blobPaths {
+		if err := os.WriteFile(path, []byte("blob"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := retainBlobReportsInTempDir(blobPaths, invalidParent); err == nil {
+		t.Fatal("retaining blobs unexpectedly succeeded under a file parent")
+	}
+	entries, err := os.ReadDir(callerTempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("failed explicit allocation fell back into TMPDIR: %v", entries)
 	}
 }
 
