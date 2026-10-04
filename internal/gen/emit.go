@@ -39,6 +39,7 @@ func (a *app) writeStubs() error {
 		var transported []string
 		var kinds []string
 		hasPrerender := false
+		hasPrerenderInputs := false
 		for _, fn := range fns {
 			for _, custom := range a.transportedOf(fn) {
 				transported = appendUnique(transported, custom.Obj().Name())
@@ -66,6 +67,9 @@ func (a *app) writeStubs() error {
 				kinds = appendUnique(kinds, "form")
 			case kindPrerender:
 				hasPrerender = true
+				if fn.inputs != "" {
+					hasPrerenderInputs = true
+				}
 				kinds = appendUnique(kinds, "prerender")
 				kinds = appendUnique(kinds, "getRequestEvent")
 			default:
@@ -77,6 +81,9 @@ func (a *app) writeStubs() error {
 		var b strings.Builder
 		b.WriteString(tsHeader)
 		fmt.Fprintf(&b, "import { %s } from '$app/server';\n", strings.Join(kinds, ", "))
+		if hasPrerenderInputs {
+			b.WriteString("import { remoteInputs as skgoRemoteInputs } from '@skgo/sveltekit-adapter/prerender';\n")
+		}
 
 		if a.cfg.Language.JavaScript() {
 			// A JavaScript module has no `import type` or `export type`, and a
@@ -202,14 +209,15 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 		return "", err
 	}
 	if fn.kind == kindPrerender {
+		options := prerenderInputOptions(fn)
 		if fn.in == nil {
-			return fmt.Sprintf("export const %s = prerender(async (): Promise<%s> => prerenderFromGo(%q, %q, undefined));\n", fn.name, out.expr, fn.module, fn.name), nil
+			return fmt.Sprintf("export const %s = prerender(async (): Promise<%s> => prerenderFromGo(%q, %q, undefined)%s);\n", fn.name, out.expr, fn.module, fn.name, options), nil
 		}
 		in, err := a.project(fn.in)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("export const %s = prerender('unchecked', async (arg: %s): Promise<%s> => prerenderFromGo(%q, %q, arg));\n", fn.name, in.expr, out.expr, fn.module, fn.name), nil
+		return fmt.Sprintf("export const %s = prerender('unchecked', async (arg: %s): Promise<%s> => prerenderFromGo(%q, %q, arg)%s);\n", fn.name, in.expr, out.expr, fn.module, fn.name, options), nil
 	}
 
 	call := "query"
@@ -279,14 +287,15 @@ func (a *app) stubSignatureJS(fn *remoteFn) (string, error) {
 		return "", err
 	}
 	if fn.kind == kindPrerender {
+		options := prerenderInputOptions(fn)
 		if fn.in == nil {
-			return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<void, %s>} */\nexport const %s = prerender(async () => prerenderFromGo(%q, %q, undefined));\n", out.expr, fn.name, fn.module, fn.name), nil
+			return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<void, %s>} */\nexport const %s = prerender(async () => prerenderFromGo(%q, %q, undefined)%s);\n", out.expr, fn.name, fn.module, fn.name, options), nil
 		}
 		in, err := a.project(fn.in)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<%s, %s>} */\nexport const %s = prerender('unchecked', async (arg) => prerenderFromGo(%q, %q, arg));\n", in.expr, out.expr, fn.name, fn.module, fn.name), nil
+		return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<%s, %s>} */\nexport const %s = prerender('unchecked', async (arg) => prerenderFromGo(%q, %q, arg)%s);\n", in.expr, out.expr, fn.name, fn.module, fn.name, options), nil
 	}
 
 	remoteType, call := "RemoteQueryFunction", "query"
@@ -322,6 +331,13 @@ func (a *app) stubSignatureJS(fn *remoteFn) (string, error) {
 
 	return fmt.Sprintf("/** @type {import('$app/server').%s<%s>} */\nexport const %s = %s;\n",
 		remoteType, typeArgs, fn.name, invocation), nil
+}
+
+func prerenderInputOptions(fn *remoteFn) string {
+	if fn.inputs == "" {
+		return ""
+	}
+	return fmt.Sprintf(", { inputs: () => skgoRemoteInputs(%q, %q) }", fn.module, fn.name)
 }
 
 func (a *app) depsOf(fn *remoteFn) []*types.Named {
@@ -425,6 +441,9 @@ func (a *app) writePackageBindings() error {
 		for _, fn := range fns {
 			fmt.Fprintf(&b, "\t// %s is %s, published as %s#%s.\n", exportedName(fn.name), fn.name, fn.module, fn.name)
 			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(fn.name), fn.name)
+			if fn.kind == kindPrerender && fn.inputs != "" {
+				fmt.Fprintf(&b, "\t%s = %s\n", prerenderInputsPublishedName(fn), fn.inputs)
+			}
 		}
 		for _, load := range loads {
 			fmt.Fprintf(&b, "\t// %s is %s, published as the server load of %s.\n", exportedName(load.name), load.name, load.module)
@@ -560,7 +579,7 @@ func (a *app) writeAppBindings() error {
 	if len(a.remotes) > 0 || len(a.loads) > 0 || len(a.actions) > 0 {
 		b.WriteString("\t\"context\"\n")
 	}
-	if a.hasBatch() {
+	if a.hasBatch() || a.hasPrerenderInputs() {
 		b.WriteString("\t\"fmt\"\n")
 	}
 	if len(transportPkgs) > 0 {
@@ -578,6 +597,9 @@ func (a *app) writeAppBindings() error {
 
 	for _, fn := range a.remotes {
 		a.writeHandler(&b, fn)
+		if fn.kind == kindPrerender && fn.inputs != "" {
+			a.writePrerenderInputs(&b, fn)
+		}
 	}
 
 	b.WriteString("\n// Remotes returns every remote function declared in the app, ready to hand\n")
@@ -599,6 +621,9 @@ func (a *app) writeAppBindings() error {
 		}
 		if fn.requestedArg != "" {
 			fmt.Fprintf(&b, "\t\t\tDecodeArg: %s,\n", fn.requestedArg)
+		}
+		if fn.kind == kindPrerender && fn.inputs != "" {
+			fmt.Fprintf(&b, "\t\t\tInputs:  %s,\n", prerenderInputsHandler(fn))
 		}
 		b.WriteString("\t\t}),\n")
 	}
@@ -645,6 +670,44 @@ func (a *app) writeAppBindings() error {
 
 	a.writeTransportBinding(&b)
 	return a.writeGo(filepath.Join(a.cfg.Out, "skgo_bindings_gen.go"), b.String())
+}
+
+func (a *app) hasPrerenderInputs() bool {
+	for _, fn := range a.remotes {
+		if fn.kind == kindPrerender && fn.inputs != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func prerenderInputsHandler(fn *remoteFn) string { return "inputs_" + fn.name }
+
+func prerenderInputsPublishedName(fn *remoteFn) string { return "SkgoPrerenderInputs_" + fn.name }
+
+// writePrerenderInputs emits a lazy runtime closure. Producers never execute
+// during generation; Kit's build invokes this closure through remote-inputs.
+func (a *app) writePrerenderInputs(b *strings.Builder, fn *remoteFn) {
+	name := prerenderInputsHandler(fn)
+	fmt.Fprintf(b, "\n// %s encodes declared build-time inputs for %s#%s.\n", name, fn.module, fn.name)
+	callArg := "_ skgo.Call"
+	if fn.in != nil && fn.inCodec == "" {
+		callArg = "call skgo.Call"
+	}
+	fmt.Fprintf(b, "func %s(_ context.Context, %s) ([]any, error) {\n", name, callArg)
+	if fn.in == nil {
+		fmt.Fprintf(b, "\tvalues, err := %s.%s()\n\tif err != nil { return nil, err }\n", fn.goPkg.alias, prerenderInputsPublishedName(fn))
+		b.WriteString("\tencoded := make([]any, len(values))\n\tfor i, value := range values { encoded[i] = value }\n\treturn encoded, nil\n}\n")
+		return
+	}
+	fmt.Fprintf(b, "\tvalues, err := %s.%s()\n\tif err != nil { return nil, err }\n", fn.goPkg.alias, prerenderInputsPublishedName(fn))
+	b.WriteString("\tencoded := make([]any, len(values))\n\tfor i, value := range values {\n")
+	if fn.inCodec != "" {
+		fmt.Fprintf(b, "\t\ttree, err := Encode%s(value)\n", fn.inCodec)
+	} else {
+		b.WriteString("\t\ttree, err := call.Transported(value)\n")
+	}
+	b.WriteString("\t\tif err != nil { return nil, fmt.Errorf(\"skgo: encode prerender input %d: %w\", i, err) }\n\t\tencoded[i] = tree\n\t}\n\treturn encoded, nil\n}\n")
 }
 
 // published spells a declaration the way the bindings package reaches it.

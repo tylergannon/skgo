@@ -56,10 +56,17 @@ func foreignFixture(t *testing.T, remote string, extra map[string]string) (root 
 
 import (
 	"context"
+	"io"
 	"net/http"
 )
 
 type Marker struct{}
+
+type PrerenderOptions struct {
+	Inputs any
+	Dynamic bool
+	Validate any
+}
 
 type Remote struct{}
 
@@ -73,6 +80,8 @@ func LiveQuery(fn any) Marker { _ = fn; return Marker{} }
 
 func BatchQuery(fn any) Marker { _ = fn; return Marker{} }
 
+func Prerender(fn any, options ...PrerenderOptions) Marker { _, _ = fn, options; return Marker{} }
+
 func Form[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
 
 type Kind int
@@ -83,6 +92,7 @@ const (
 	KindLive
 	KindBatch
 	KindForm
+	KindPrerender
 )
 
 type Call struct {
@@ -98,6 +108,8 @@ type LiveFunc func(ctx context.Context, call Call, yield func(any) error) error
 
 type BatchFunc func(ctx context.Context, calls []Call) ([]any, error)
 
+type RemoteInputsFunc func(ctx context.Context, call Call) ([]any, error)
+
 type RemoteSpec struct {
 	Kind      Kind
 	Module    string
@@ -107,9 +119,12 @@ type RemoteSpec struct {
 	Live      LiveFunc
 	Batch     BatchFunc
 	DecodeArg func(arg any) (any, error)
+	Inputs    RemoteInputsFunc
 }
 
 func NewRemote(spec RemoteSpec) *Remote { _ = spec; return &Remote{} }
+
+func RunPrerenderBuild(io.Reader, io.Writer, any, []*ServerLoad, []*Remote) error { return nil }
 
 func BadRequest(detail error) error { return detail }
 

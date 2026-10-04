@@ -175,6 +175,11 @@ func (c Call) Transported(v any) (any, error) { return c.transport.encodeTree(v)
 // value model tree its generated encoder produced.
 type RemoteFunc func(ctx context.Context, call Call) (any, error)
 
+// RemoteInputsFunc returns the build-time inputs for a prerender remote. The
+// context is framework-owned and has no request event; Call provides the
+// application's transport encoder when an input is a transported type.
+type RemoteInputsFunc func(ctx context.Context, call Call) ([]any, error)
+
 // LiveFunc is RemoteFunc for a `query.live`. Each value the app's function
 // yields is encoded by the generated encoder before it reaches yield, so the
 // frames this produces are the same bytes a query's response carries.
@@ -208,6 +213,9 @@ type RemoteSpec struct {
 	Live LiveFunc
 	// Batch answers a `query.batch`. Required for KindBatch and nothing else.
 	Batch BatchFunc
+	// Inputs returns the arguments Kit should enqueue during a prerender build.
+	// It is set only for KindPrerender when the declaration supplied Inputs.
+	Inputs RemoteInputsFunc
 	// DecodeArg decodes one argument into the function's own parameter type,
 	// for skgo.Requested — the one place a handler is handed a client's
 	// argument rather than the server running it. The value it returns is of
@@ -228,9 +236,10 @@ type Remote struct {
 	id     string
 	kind   Kind
 
-	call  RemoteFunc
-	live  LiveFunc
-	batch BatchFunc
+	call   RemoteFunc
+	live   LiveFunc
+	batch  BatchFunc
+	inputs RemoteInputsFunc
 	// argDecoder is RemoteSpec.DecodeArg. See its documentation for why the
 	// value it produces is spelled `any` here and typed at the caller.
 	argDecoder func(arg any) (any, error)
@@ -271,6 +280,7 @@ func NewRemote(spec RemoteSpec) *Remote {
 		call:       spec.Call,
 		live:       spec.Live,
 		batch:      spec.Batch,
+		inputs:     spec.Inputs,
 		argDecoder: spec.DecodeArg,
 		ptr:        codePointer(spec.Fn),
 	}
@@ -339,9 +349,20 @@ type Marker struct{}
 // the restriction kit places on its own queries.
 func Query(fn any) Marker { _ = fn; return Marker{} }
 
+// PrerenderOptions configures build-time inputs for a prerender remote.
+// Dynamic and Validate are reserved for follow-up implementations; the
+// generator currently reports either authored key as unsupported.
+type PrerenderOptions struct {
+	Inputs   any
+	Dynamic  bool
+	Validate any
+}
+
 // Prerender declares a remote function whose result Kit writes during its
-// build. Its Go body runs through the adapter's build-time Go bridge.
-func Prerender(fn any) Marker { _ = fn; return Marker{} }
+// build. Its Go body runs through the adapter's build-time Go bridge. Inputs,
+// when supplied, names a local `func() ([]In, error)` producer where In is the
+// body's existing argument type.
+func Prerender(fn any, options ...PrerenderOptions) Marker { _ = fn; _ = options; return Marker{} }
 
 // Command declares fn as a SvelteKit `command`. A command's event may write
 // cookies; kit allows that in commands and forms and nowhere else.

@@ -97,6 +97,116 @@ func TestPrerenderGoLoadFailureNamesAuthoredRoute(t *testing.T) {
 	}
 }
 
+func TestPrerenderInputsGenerateLazyTypedProducerAndNoArgumentUndefined(t *testing.T) {
+	t.Parallel()
+	root, cfg := foreignFixture(t, `package data
+
+import (
+	"context"
+
+	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/skgo"
+)
+
+func build(ctx context.Context, name string) (string, error) { return name, nil }
+func noArgument(ctx context.Context) (string, error) { return "empty", nil }
+func names() ([]string, error) { return []string{"atlas", "beacon"}, nil }
+func empty() ([]devalue.UndefinedValue, error) { return []devalue.UndefinedValue{{}}, nil }
+
+var (
+	_ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: names})
+	_ = skgo.Prerender(noArgument, skgo.PrerenderOptions{Inputs: empty})
+)
+`, nil)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	for _, want := range []string{
+		"func inputs_build(_ context.Context, _ skgo.Call) ([]any, error)",
+		"values, err := skgo0.SkgoPrerenderInputs_build()",
+		"tree, err := EncodeRoot0(value)",
+		"Inputs:    inputs_build,",
+		"func inputs_noArgument(_ context.Context, _ skgo.Call) ([]any, error)",
+		"values, err := skgo0.SkgoPrerenderInputs_noArgument()",
+		"encoded[i] = value",
+		"Inputs: inputs_noArgument,",
+	} {
+		if !strings.Contains(bindings, want) {
+			t.Errorf("generated bindings omit %q:\n%s", want, bindings)
+		}
+	}
+	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.ts")
+	for _, want := range []string{
+		"import { remoteInputs as skgoRemoteInputs } from '@skgo/sveltekit-adapter/prerender';",
+		"inputs: () => skgoRemoteInputs(\"src/data/data.remote.ts\", \"build\")",
+	} {
+		if !strings.Contains(stub, want) {
+			t.Errorf("generated remote module omits %q:\n%s", want, stub)
+		}
+	}
+	command := readFixtureFile(t, root, "app/generated/prerender/main_gen.go")
+	if !strings.Contains(command, "generated.Remotes()") {
+		t.Fatalf("generated build command omits remote registrations:\n%s", command)
+	}
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = filepath.Join(root, "app")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("generated app does not compile: %v\n%s", err, out)
+	}
+}
+
+func TestPrerenderOptionsFailuresArePositioned(t *testing.T) {
+	t.Parallel()
+	for name, options := range map[string]string{
+		"dynamic false": `{Dynamic: false}`,
+		"validate nil":  `{Validate: nil}`,
+		"unknown":       `{Inputs: producer, Other: true}`,
+		"variable":      `options`,
+		"anonymous":     `{Inputs: func() ([]string, error) { return nil, nil }}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			optionExpr := "skgo.PrerenderOptions" + options
+			if name == "variable" {
+				optionExpr = options
+			}
+			_, cfg := foreignFixture(t, `package data
+
+import (
+	"context"
+	"github.com/tylergannon/skgo"
+)
+func build(ctx context.Context, name string) (string, error) { return name, nil }
+func producer() ([]string, error) { return nil, nil }
+var options = skgo.PrerenderOptions{Inputs: producer}
+var _ = skgo.Prerender(build, `+optionExpr+`)
+`, nil)
+			err := Run(cfg)
+			if err == nil || !strings.Contains(err.Error(), "data.remote.go:") {
+				t.Fatalf("Run error = %v; want positioned diagnostic", err)
+			}
+		})
+	}
+}
+
+func TestPrerenderInputProducerMustMatchBodyArgument(t *testing.T) {
+	t.Parallel()
+	_, cfg := foreignFixture(t, `package data
+
+import (
+	"context"
+	"github.com/tylergannon/skgo"
+)
+func build(ctx context.Context, name string) (string, error) { return name, nil }
+func wrongInputs() ([]int, error) { return nil, nil }
+var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: wrongInputs})
+`, nil)
+	err := Run(cfg)
+	if err == nil || !strings.Contains(err.Error(), "data.remote.go:") || !strings.Contains(err.Error(), "matching the published argument") {
+		t.Fatalf("Run error = %v; want positioned producer type mismatch", err)
+	}
+}
+
 func linkExampleFrontendDependencies(t *testing.T, root, app string) {
 	t.Helper()
 	source := filepath.Join(root, "example", "web", "node_modules")

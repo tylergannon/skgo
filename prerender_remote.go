@@ -2,6 +2,7 @@ package skgo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,9 +32,51 @@ func RunPrerenderBuild(in io.Reader, out io.Writer, transport Transport, loads [
 		return RunPrerenderLoad(bytes.NewReader(raw), out, transport, loads...)
 	case "remote":
 		return runPrerenderRemote(raw, out, transport, remotes)
+	case "remote-inputs":
+		return runPrerenderInputs(raw, out, transport, remotes)
 	default:
 		return fmt.Errorf("skgo: unknown prerender request kind %q", target.Kind)
 	}
+}
+
+// runPrerenderInputs evaluates a declared input producer without constructing
+// a request or event. The serialized array is decoded by the adapter before
+// Kit computes the canonical remote argument keys.
+func runPrerenderInputs(raw []byte, out io.Writer, transport Transport, remotes []*Remote) error {
+	var input struct {
+		Kind   string `json:"kind"`
+		Module string `json:"module"`
+		Name   string `json:"name"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&input); err != nil {
+		return fmt.Errorf("skgo: decode prerender remote inputs: %w", err)
+	}
+	if input.Kind != "remote-inputs" {
+		return fmt.Errorf("skgo: invalid prerender inputs request kind %q", input.Kind)
+	}
+	var fn *Remote
+	for _, remote := range remotes {
+		if remote.module == input.Module && remote.name == input.Name {
+			fn = remote
+			break
+		}
+	}
+	if fn == nil || fn.kind != KindPrerender || fn.inputs == nil {
+		return fmt.Errorf("skgo: no generated Go prerender inputs for %s#%s", input.Module, input.Name)
+	}
+	values, err := fn.inputs(context.Background(), Call{transport: transport})
+	if err != nil {
+		return fmt.Errorf("skgo: prerender inputs %s#%s: %w", input.Module, input.Name, err)
+	}
+	encoded, err := devalue.StringifyWith(values, transport.reducers())
+	if err != nil {
+		return fmt.Errorf("skgo: serialize prerender inputs %s#%s: %w", input.Module, input.Name, err)
+	}
+	return json.NewEncoder(out).Encode(struct {
+		Inputs string `json:"inputs"`
+	}{Inputs: encoded})
 }
 
 func runPrerenderRemote(raw []byte, out io.Writer, transport Transport, remotes []*Remote) error {
