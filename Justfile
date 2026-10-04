@@ -88,9 +88,11 @@ dev:
 # package script, which regenerates BDD tests before the Go runner starts
 # Playwright in two ordered stages.
 
+e2e_json_reporter := if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_FILE", "") != "" { " --add-reporter=json" } else if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_NAME", "") != "" { " --add-reporter=json" } else { "" }
+
 # the Gherkin suite against a server you started
 e2e mode run=mode:
-    cd example/e2e && BASE_URL="{{origin}}" SKGO_EXPECTED_MODE={{mode}} SKGO_E2E_RUN={{run}} SKGO_LOG="{{log}}" mise x -- ../web/node_modules/.bin/vp run --no-cache test
+    cd example/e2e && BASE_URL="{{origin}}" SKGO_EXPECTED_MODE={{mode}} SKGO_E2E_RUN={{run}} SKGO_LOG="{{log}}" mise x -- ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}}
 
 # `git worktree add -b` has silently landed an agent on main once, so the
 # branch is confirmed rather than assumed. Each worktree installs its own

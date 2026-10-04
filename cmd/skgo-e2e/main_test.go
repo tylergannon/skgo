@@ -5,289 +5,393 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
 
-func TestRegularFailureStillMergesBothNativeBlobReports(t *testing.T) {
+func TestFailedRegularStageStillMergesBothBlobsOnce(t *testing.T) {
 	workingDir := chdirTemp(t)
-	output := filepath.Join(t.TempDir(), "playwright.json")
-	callerBlobFile := filepath.Join(t.TempDir(), "caller-blob.zip")
-	if err := os.WriteFile(output, []byte(`{"stale":true}`), 0o600); err != nil {
+	config := filepath.Join(t.TempDir(), "external", "playwright.config.js")
+	callerBlob := filepath.Join(t.TempDir(), "caller.zip")
+	jsonFile := filepath.Join(t.TempDir(), "current.json")
+	if err := os.MkdirAll(filepath.Dir(config), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	regularFailure := errors.New("regular stage failed")
-	var calls []string
-	var retainedDir string
-	err := run(context.Background(), []string{"--reporter=json", "--grep", "literal", "--project=source-edit"}, []string{
-		jsonOutputFileEnv + "=" + output,
-		jsonOutputDirEnv + "=" + filepath.Join(t.TempDir(), "ignored"),
+	if err := os.WriteFile(jsonFile, []byte("stale"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	regularFailure := errors.New("regular assertion failed")
+	args := []string{
+		"-c", config,
+		"--grep", "--reporter=json", // required value must not be parsed as a reporter flag
+		"--grep-invert=route|module",
+		"--reporter=dot", "--reporter", "json",
+		"--add-reporter=list", "--add-reporter=json",
+		"--project=source-edit", "--project", "chromium", "noscript",
+	}
+	environ := []string{
+		jsonOutputFileEnv + "=" + jsonFile,
+		jsonOutputDirEnv + "=ignored",
 		jsonOutputEnv + "=ignored.json",
-		blobOutputFileEnv + "=" + callerBlobFile,
-		blobOutputDirEnv + "=" + filepath.Join(t.TempDir(), "caller-blob-dir"),
-		blobOutputEnv + "=caller-blob.zip",
+		blobOutputFileEnv + "=" + callerBlob,
+		blobOutputDirEnv + "=" + filepath.Dir(callerBlob),
+		blobOutputEnv + "=caller-name.zip",
 		"SKGO_E2E_RUN=proof",
-	}, func(_ context.Context, name string, args, environ []string) error {
+	}
+	var stageNames []string
+	mergeCalls := 0
+	var retainedDir string
+	err := run(context.Background(), args, environ, func(_ context.Context, name string, commandArgs, commandEnv []string) error {
 		if name != "./node_modules/.bin/playwright" {
-			t.Fatalf("command = %q, want the local Playwright binary", name)
+			t.Fatalf("playwright path = %q", name)
 		}
-		if len(args) == 0 {
-			t.Fatal("Playwright subcommand is missing")
-		}
-		calls = append(calls, args[0])
-		switch args[0] {
+		switch commandArgs[0] {
 		case "test":
-			stageName := envValue(environ, "SKGO_E2E_STAGE")
-			if got := envValue(environ, "SKGO_E2E_RUN"); got != "proof-"+stageName {
-				t.Fatalf("SKGO_E2E_RUN = %q for %s", got, stageName)
+			stage := envValue(commandEnv, "SKGO_E2E_STAGE")
+			stageNames = append(stageNames, stage)
+			if got := envValue(commandEnv, "SKGO_E2E_RUN"); got != "proof-"+stage {
+				t.Fatalf("stage run label = %q for %s", got, stage)
 			}
-			if !contains(args, "--reporter=blob") || hasJSONReporter(args) {
-				t.Fatalf("stage must use only the owned blob reporter: %v", args)
+			if !contains(commandArgs, "--reporter=blob") || count(commandArgs, "--reporter=blob") != 1 {
+				t.Fatalf("stage reporter = %v, want only owned blob", commandArgs)
 			}
-			if !contains(args, "--grep") || !contains(args, "literal") {
-				t.Fatalf("test filter was not preserved: %v", args)
-			}
-			if stageName == "regular" && contains(args, "--project=source-edit") {
-				t.Fatalf("caller project selection must not expand the mutation stage: %v", args)
-			}
-			if stageName == "regular" && (!contains(args, "--project=chromium") || !contains(args, "--project=noscript")) {
-				t.Fatalf("regular projects missing: %v", args)
-			}
-			if stageName == "source-edit" && !contains(args, "--project=source-edit") {
-				t.Fatalf("source-edit project missing: %v", args)
-			}
-			stageBlob := envValue(environ, blobOutputFileEnv)
-			if stageBlob == "" || !filepath.IsAbs(stageBlob) || stageBlob == callerBlobFile {
-				t.Fatalf("stage blob destination = %q, want a private absolute path", stageBlob)
-			}
-			if envValue(environ, blobOutputDirEnv) != filepath.Dir(stageBlob) {
-				t.Fatalf("stage blob directory = %q, want %q", envValue(environ, blobOutputDirEnv), filepath.Dir(stageBlob))
-			}
-			for _, key := range jsonOutputEnvs {
-				if value := envValue(environ, key); value != "" {
-					t.Fatalf("caller JSON destination %s leaked into stage: %q", key, value)
+			for _, arg := range commandArgs {
+				if arg == "--reporter" || arg == "--add-reporter" || strings.HasPrefix(arg, "--add-reporter=") {
+					t.Fatalf("caller reporter selection leaked into stage: %v", commandArgs)
 				}
 			}
-			if envValue(environ, blobOutputEnv) != "" {
-				t.Fatalf("caller blob name leaked into stage: %q", envValue(environ, blobOutputEnv))
+			if !contains(commandArgs, "--grep") || !contains(commandArgs, "--reporter=json") || !contains(commandArgs, "--grep-invert=route|module") {
+				t.Fatalf("native filter operands were changed: %v", commandArgs)
 			}
-			if envValue(environ, blobOutputFileEnv) == callerBlobFile {
-				t.Fatalf("caller blob file leaked into stage: %q", envValue(environ, blobOutputFileEnv))
+			if contains(commandArgs, "--project=source-edit") && stage != "source-edit" {
+				t.Fatalf("caller project escaped wrapper ownership: %v", commandArgs)
 			}
-			if err := os.WriteFile(stageBlob, []byte("blob-"+stageName), 0o600); err != nil {
+			for _, key := range blobOutputEnvs {
+				if key == blobOutputEnv && envValue(commandEnv, key) != "" {
+					t.Fatalf("caller blob name leaked into stage: %q", envValue(commandEnv, key))
+				}
+			}
+			if envValue(commandEnv, playwrightHookEnv) != "" {
+				t.Fatalf("internal reporter hook leaked into stage: %v", commandEnv)
+			}
+			blob := envValue(commandEnv, blobOutputFileEnv)
+			if !filepath.IsAbs(blob) || blob == callerBlob || filepath.Dir(blob) != envValue(commandEnv, blobOutputDirEnv) {
+				t.Fatalf("stage blob output is not isolated: %v", commandEnv)
+			}
+			if err := os.WriteFile(blob, []byte("blob-"+stage), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if stageName == "regular" {
+			if stage == "regular" {
 				return regularFailure
 			}
 			return nil
 		case "merge-reports":
-			if len(args) < 2 {
-				t.Fatalf("merge command lacks blob directory: %v", args)
+			mergeCalls++
+			if len(commandArgs) < 2 {
+				t.Fatalf("merge has no retained blob directory: %v", commandArgs)
 			}
-			retainedDir = args[1]
-			if !filepath.IsAbs(retainedDir) || !strings.Contains(retainedDir, string(filepath.Join("test-results", "skgo-e2e-blobs-"))) {
-				t.Fatalf("merged blob directory = %q, want retained test-results directory", retainedDir)
+			retainedDir = commandArgs[1]
+			if !filepath.IsAbs(retainedDir) || !strings.Contains(retainedDir, filepath.Join("test-results", "skgo-e2e-blobs-")) {
+				t.Fatalf("retained report path = %q", retainedDir)
 			}
-			if got := envValue(environ, jsonOutputFileEnv); got != output {
-				t.Fatalf("merge JSON output env = %q, want caller destination %q", got, output)
+			if !contains(commandArgs, "--config") || !contains(commandArgs, config) || !contains(commandArgs, "--reporter") || !contains(commandArgs, "json,json") {
+				t.Fatalf("final reporter/config selection = %v", commandArgs)
 			}
-			if envValue(environ, jsonOutputDirEnv) == "" || envValue(environ, jsonOutputEnv) != "ignored.json" {
-				t.Fatalf("final merge lost caller reporter environment: %v", environ)
+			if envValue(commandEnv, playwrightHookEnv) != "" {
+				t.Fatalf("replacement reporter should not use internal hook: %v", commandEnv)
 			}
-			if envValue(environ, "SKGO_E2E_RUN") != "proof" || envValue(environ, "SKGO_E2E_STAGE") != "" {
-				t.Fatalf("merge environment should be caller-owned, not stage-owned: %v", environ)
+			if envValue(commandEnv, jsonOutputFileEnv) != jsonFile || envValue(commandEnv, blobOutputFileEnv) != callerBlob {
+				t.Fatalf("final merge did not retain caller environment: %v", commandEnv)
 			}
-			if got := envValue(environ, blobOutputFileEnv); got != callerBlobFile {
-				t.Fatalf("final merge blob env = %q, want caller value %q", got, callerBlobFile)
+			if _, err := os.Stat(jsonFile); !os.IsNotExist(err) {
+				t.Fatalf("stale known JSON FILE remains before native merge, stat error = %v", err)
 			}
-			if !contains(args, "--config") || !contains(args, workingDir) || !contains(args, "--reporter") || !contains(args, "json") {
-				t.Fatalf("merge did not preserve cwd config and JSON selection: %v", args)
-			}
-			if _, err := os.Stat(output); !os.IsNotExist(err) {
-				t.Fatalf("stale JSON report should be removed before merge, stat error = %v", err)
-			}
-			for _, stageName := range []string{"regular", "source-edit"} {
-				blob, err := os.ReadFile(filepath.Join(retainedDir, stageName+".zip"))
-				if err != nil || string(blob) != "blob-"+stageName {
-					t.Fatalf("retained %s blob = %q, err=%v", stageName, blob, err)
+			for _, stage := range []string{"regular", "source-edit"} {
+				data, err := os.ReadFile(filepath.Join(retainedDir, stage+".zip"))
+				if err != nil || string(data) != "blob-"+stage {
+					t.Fatalf("retained %s blob = %q, err=%v", stage, data, err)
 				}
 			}
-			if err := os.WriteFile(output, []byte(`{"merged":true}`), 0o600); err != nil {
-				t.Fatal(err)
-			}
-			return nil
+			return os.WriteFile(jsonFile, []byte("merged"), 0o600)
 		default:
-			t.Fatalf("unexpected Playwright command: %v", args)
+			t.Fatalf("unexpected Playwright subcommand: %v", commandArgs)
 			return nil
 		}
 	})
-	if err == nil || !strings.Contains(err.Error(), "regular Playwright stage failed") || !errors.Is(err, regularFailure) {
-		t.Fatalf("run error = %v, want retained regular stage failure", err)
+	if err == nil || !errors.Is(err, regularFailure) || !strings.Contains(err.Error(), "regular Playwright stage failed") {
+		t.Fatalf("run error = %v, want retained regular failure", err)
 	}
-	if strings.Join(calls, ",") != "test,test,merge-reports" {
-		t.Fatalf("Playwright commands = %v, want both stages then native merge", calls)
+	if !reflect.DeepEqual(stageNames, []string{"regular", "source-edit"}) || mergeCalls != 1 {
+		t.Fatalf("stages=%v merges=%d; want ordered stages and one merge", stageNames, mergeCalls)
 	}
 	if retainedDir != "" {
 		t.Cleanup(func() { _ = os.RemoveAll(retainedDir) })
 	}
-	data, err := os.ReadFile(output)
-	if err != nil || string(data) != `{"merged":true}` {
-		t.Fatalf("native merged output = %q, err=%v", data, err)
+	if data, err := os.ReadFile(jsonFile); err != nil || string(data) != "merged" {
+		t.Fatalf("final file = %q, err=%v", data, err)
+	}
+	if workingDir == "" {
+		t.Fatal("working directory not initialized")
 	}
 }
 
-func TestNativeJSONDestinationsAreUsedOnlyByFinalMerge(t *testing.T) {
-	workingDir := chdirTemp(t)
-	temp := t.TempDir()
-	configDir := filepath.Join(temp, "config")
+func TestConfiguredBaseUsesNativeHookForOneAddedReporter(t *testing.T) {
+	chdirTemp(t)
+	configDir := filepath.Join(t.TempDir(), "external-config")
+	config := filepath.Join(configDir, "playwright.config.js")
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	configFile := filepath.Join(configDir, "playwright.config.js")
-	if err := os.WriteFile(configFile, []byte("export default {};\n"), 0o600); err != nil {
+	if err := os.WriteFile(config, []byte("export default {};\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	relativeOutputDir, err := os.MkdirTemp(workingDir, ".skgo-json-output-dir-")
-	if err != nil {
-		t.Fatal(err)
+	mergeCalls := 0
+	err := run(context.Background(), []string{"-c" + config, "--add-reporter=json"}, []string{jsonOutputEnv + "=env-name.json"}, writeBlobRunner(t, func(args, environ []string) {
+		if args[0] != "merge-reports" {
+			return
+		}
+		mergeCalls++
+		if contains(args, "--reporter") {
+			t.Fatalf("configured reporter base was replaced: %v", args)
+		}
+		if got := envValue(environ, playwrightHookEnv); got != "json" {
+			t.Fatalf("PW_TEST_REPORTER = %q, want json", got)
+		}
+		if envValue(environ, jsonOutputEnv) != "env-name.json" {
+			t.Fatalf("native JSON destination env was changed: %v", environ)
+		}
+		if !contains(args, config) {
+			t.Fatalf("selected external config not passed to merge: %v", args)
+		}
+	}))
+	if err != nil || mergeCalls != 1 {
+		t.Fatalf("run error=%v, merge calls=%d", err, mergeCalls)
 	}
-	t.Cleanup(func() { _ = os.RemoveAll(relativeOutputDir) })
-	absoluteName := filepath.Join(temp, "absolute-name.json")
-	for _, test := range []struct {
-		name string
-		args []string
-		env  []string
-		want string
-	}{
-		{
-			name: "absolute output file takes precedence",
-			args: nil,
-			env: []string{
-				jsonOutputFileEnv + "=" + filepath.Join(relativeOutputDir, "file.json"),
-				jsonOutputDirEnv + "=" + filepath.Join(temp, "ignored"),
-				jsonOutputEnv + "=ignored.json",
-			},
-			want: filepath.Join(relativeOutputDir, "file.json"),
-		},
-		{
-			name: "relative output file resolves from working directory",
-			env:  []string{jsonOutputFileEnv + "=" + filepath.Join(filepath.Base(relativeOutputDir), "relative-file.json")},
-			want: filepath.Join(relativeOutputDir, "relative-file.json"),
-		},
-		{
-			name: "relative name uses relative output directory from working directory",
-			env: []string{
-				jsonOutputDirEnv + "=" + filepath.Base(relativeOutputDir),
-				jsonOutputEnv + "=directory-name.json",
-			},
-			want: filepath.Join(relativeOutputDir, "directory-name.json"),
-		},
-		{
-			name: "relative name without output directory uses config directory",
-			args: []string{"--config", configFile},
-			env:  []string{jsonOutputEnv + "=config-name.json"},
-			want: filepath.Join(configDir, "config-name.json"),
-		},
-		{
-			name: "attached short config value uses config directory",
-			args: []string{"-c" + configFile},
-			env:  []string{jsonOutputEnv + "=attached-short-name.json"},
-			want: filepath.Join(configDir, "attached-short-name.json"),
-		},
-		{
-			name: "separated short config value uses config directory",
-			args: []string{"-c", configFile},
-			env:  []string{jsonOutputEnv + "=separated-short-name.json"},
-			want: filepath.Join(configDir, "separated-short-name.json"),
-		},
-		{
-			name: "long config equals value uses config directory",
-			args: []string{"--config=" + configFile},
-			env:  []string{jsonOutputEnv + "=equals-long-name.json"},
-			want: filepath.Join(configDir, "equals-long-name.json"),
-		},
-		{
-			name: "absolute name overrides output directory",
-			env: []string{
-				jsonOutputDirEnv + "=" + filepath.Join(temp, "ignored"),
-				jsonOutputEnv + "=" + absoluteName,
-			},
-			want: absoluteName,
-		},
+}
+
+func TestJSONEnvironmentAloneDoesNotSelectOrReplaceReporter(t *testing.T) {
+	for _, env := range [][]string{
+		{jsonOutputFileEnv + "=report.json"},
+		{jsonOutputDirEnv + "=reports", jsonOutputEnv + "=report.json"},
+		{jsonOutputEnv + "=report.json"},
+		{jsonOutputDirEnv + "=reports"},
+		{jsonOutputFileEnv + "=", jsonOutputDirEnv + "=", jsonOutputEnv + "="},
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			if err := os.MkdirAll(filepath.Dir(test.want), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(test.want, []byte(`{"old":true}`), 0o600); err != nil {
-				t.Fatal(err)
-			}
-			calls := 0
-			var retainedDir string
-			err := run(context.Background(), append(test.args, "--grep", "literal"), test.env, func(_ context.Context, _ string, args, environ []string) error {
-				calls++
-				if args[0] == "test" {
-					if !contains(args, "--reporter=blob") || !contains(args, "--grep") || !contains(args, "literal") {
-						t.Fatalf("stage flags = %v, want blob plus preserved test selection", args)
-					}
-					if !filepath.IsAbs(envValue(environ, blobOutputFileEnv)) || envValue(environ, blobOutputDirEnv) == "" {
-						t.Fatalf("stage blob destination is not private: %v", environ)
-					}
-					for _, key := range jsonOutputEnvs {
-						if envValue(environ, key) != "" {
-							t.Fatalf("caller JSON output %s leaked to stage: %v", key, environ)
-						}
-					}
-					return os.WriteFile(envValue(environ, blobOutputFileEnv), []byte("blob"), 0o600)
-				}
+		t.Run(strings.Join(env, ";"), func(t *testing.T) {
+			chdirTemp(t)
+			mergeCalls := 0
+			err := run(context.Background(), nil, env, writeBlobRunner(t, func(args, environ []string) {
 				if args[0] != "merge-reports" {
-					t.Fatalf("unexpected command: %v", args)
+					return
 				}
-				retainedDir = args[1]
-				for _, entry := range test.env {
+				mergeCalls++
+				if contains(args, "--reporter") || envValue(environ, playwrightHookEnv) != "" {
+					t.Fatalf("JSON env selected a replacement reporter: args=%v env=%v", args, environ)
+				}
+				for _, entry := range env {
 					key, value, ok := strings.Cut(entry, "=")
 					if ok && envValue(environ, key) != value {
-						t.Fatalf("final merge %s = %q, want caller value %q", key, envValue(environ, key), value)
+						t.Fatalf("merge env %s = %q, want %q", key, envValue(environ, key), value)
 					}
 				}
-				if !contains(args, "--reporter") || !contains(args, "json") {
-					t.Fatalf("env-only destination must select native JSON reporter on merge: %v", args)
-				}
-				if _, err := os.Stat(test.want); !os.IsNotExist(err) {
-					t.Fatalf("stale native report remains before merge, stat error = %v", err)
-				}
-				if err := os.WriteFile(test.want, []byte(`{"fresh":true}`), 0o600); err != nil {
-					t.Fatal(err)
-				}
-				return nil
-			})
-			if err != nil {
-				t.Fatalf("run failed: %v", err)
-			}
-			if calls != 3 {
-				t.Fatalf("Playwright invocation count = %d, want two stages and one merge", calls)
-			}
-			if retainedDir != "" {
-				t.Cleanup(func() { _ = os.RemoveAll(retainedDir) })
-			}
-			data, err := os.ReadFile(test.want)
-			if err != nil || string(data) != `{"fresh":true}` {
-				t.Fatalf("native report at %q = %q, err=%v", test.want, data, err)
-			}
-			mergeArgs := mergeConfigArgs(append(test.args, "--grep", "literal"), workingDir)
-			if !contains(mergeArgs, workingDir) && !contains(mergeArgs, configFile) {
-				t.Fatalf("merge config selection not preserved: %v", mergeArgs)
+			}))
+			if err != nil || mergeCalls != 1 {
+				t.Fatalf("run error=%v, merge calls=%d", err, mergeCalls)
 			}
 		})
 	}
 }
 
-func TestStageAndMergeFailuresRemainAggregate(t *testing.T) {
+func TestConfiguredBaseAdditionBoundsAndInternalHookOwnership(t *testing.T) {
+	chdirTemp(t)
+	for _, test := range []struct {
+		name string
+		env  []string
+		args []string
+		want string
+	}{
+		{name: "caller hook rejected", env: []string{playwrightHookEnv + "=html"}},
+		{name: "multiple configured-base additions rejected", args: []string{"--add-reporter=json,dot"}},
+		{name: "bare package addition rejected", args: []string{"--add-reporter=example-reporter"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			calls := 0
+			err := run(context.Background(), test.args, test.env, func(context.Context, string, []string, []string) error {
+				calls++
+				return nil
+			})
+			if err == nil || calls != 0 {
+				t.Fatalf("error=%v calls=%d, want a pre-stage compatibility error", err, calls)
+			}
+		})
+	}
+
+	localReporter := filepath.Join("reporter", "custom.cjs")
+	if err := os.MkdirAll(filepath.Dir(localReporter), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(localReporter, []byte("module.exports = class {};\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := parseWrapperArgs([]string{"--add-reporter", localReporter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, hook, err := finalReporter(parsed, mustGetwd(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := filepath.Abs(localReporter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hook != want {
+		t.Fatalf("local hook path = %q, want absolute %q", hook, want)
+	}
+	combined, hook, err := finalReporter(parsedInvocation{reporter: "json,json", addedReporter: "dot,json"}, mustGetwd(t))
+	if err != nil || combined != "json,json,dot,json" || hook != "" {
+		t.Fatalf("combined reporter=%q hook=%q error=%v", combined, hook, err)
+	}
+}
+
+func TestNativeTokenRolesAndBoundaries(t *testing.T) {
+	args := []string{
+		"--grep", "--reporter=json",
+		"--grep-invert=left|right",
+		"--reporter=json", "--reporter=",
+		"--add-reporter=html", "--add-reporter", "",
+		"-c", "first.config.js", "--config=",
+		"--project", "chromium", "noscript", "--project=source-edit", "literal-file.regex",
+		"--", "--reporter=json", "--config=after-boundary", "--project", "source-edit",
+	}
+	parsed, err := parseWrapperArgs(args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.reporter != "" || parsed.addedReporter != "" {
+		t.Fatalf("last empty reporter values did not clear prior values: %+v", parsed)
+	}
+	if !parsed.configSpecified || parsed.config != "" {
+		t.Fatalf("last empty config did not restore cwd discovery: %+v", parsed)
+	}
+	want := []string{
+		"--grep", "--reporter=json",
+		"--grep-invert=left|right",
+		"-c", "first.config.js", "--config=",
+		"literal-file.regex",
+		"--", "--reporter=json", "--config=after-boundary", "--project", "source-edit",
+	}
+	if !reflect.DeepEqual(parsed.stageArgs, want) {
+		t.Fatalf("stage args = %#v, want %#v", parsed.stageArgs, want)
+	}
+	got := testArgsWithReporter(parsed.stageArgs, "blob")
+	gotDash, wantDash := indexOf(got, "--"), indexOf(want, "--")
+	if gotDash < 0 || wantDash < 0 || !reflect.DeepEqual(got[gotDash+1:], want[wantDash+1:]) {
+		t.Fatalf("native separator suffix changed after owned reporter insertion: %v", got)
+	}
+}
+
+func TestSeparatedAndEqualsProjectOperandsFollowNativeArity(t *testing.T) {
+	parsed, err := parseWrapperArgs([]string{
+		"--project", "chromium", "noscript", "--grep", "a|b",
+		"--project=source-edit", "fixture.*",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"--grep", "a|b", "fixture.*"}
+	if !reflect.DeepEqual(parsed.stageArgs, want) {
+		t.Fatalf("stage args = %#v, want %#v", parsed.stageArgs, want)
+	}
+	for _, args := range [][]string{
+		{"--project"},
+		{"--project="},
+		{"--project", ""},
+		{"--project", "--reporter=json"},
+		{"--project", "chromium", "--project"},
+	} {
+		if _, err := parseWrapperArgs(args); err == nil {
+			t.Errorf("parseWrapperArgs(%q) unexpectedly succeeded", args)
+		}
+	}
+	for _, alias := range [][]string{{"-p"}, {"-p=chromium"}, {"-r=json"}} {
+		parsed, err := parseWrapperArgs(alias)
+		if err != nil || !reflect.DeepEqual(parsed.stageArgs, alias) || parsed.reporter != "" {
+			t.Errorf("unsupported native alias %q was accepted or rewritten: parsed=%+v err=%v", alias, parsed, err)
+		}
+	}
+}
+
+func TestRequiredOperandsCannotBeFilledByOwnedArguments(t *testing.T) {
+	for _, args := range [][]string{
+		{"--reporter"}, {"--add-reporter"}, {"--config"}, {"-c"}, {"--grep"}, {"--project"},
+		{"--reporter", "--"}, {"--add-reporter", "--"}, {"--config", "--"}, {"--grep", "--"},
+	} {
+		if _, err := parseWrapperArgs(args); err == nil {
+			t.Errorf("parseWrapperArgs(%q) unexpectedly succeeded", args)
+		}
+	}
+	parsed, err := parseWrapperArgs([]string{"--grep", "--config=/literal", "--config", "--reporter=json"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.reporter != "" || parsed.config != "--reporter=json" {
+		t.Fatalf("required flag-looking operands were scanned as options: %+v", parsed)
+	}
+	parsed, err = parseWrapperArgs([]string{"-xg", "--reporter=json"})
+	if err != nil || parsed.reporter != "" || !reflect.DeepEqual(parsed.stageArgs, []string{"-xg", "--reporter=json"}) {
+		t.Fatalf("boolean short cluster lost its required grep operand: parsed=%+v err=%v", parsed, err)
+	}
+	parsed, err = parseWrapperArgs([]string{"-xc/path/playwright.config.js"})
+	if err != nil || parsed.config != "/path/playwright.config.js" || !reflect.DeepEqual(parsed.stageArgs, []string{"-xc/path/playwright.config.js"}) {
+		t.Fatalf("short cluster config operand was not retained: parsed=%+v err=%v", parsed, err)
+	}
+}
+
+func TestMergeConfigAndReporterNativeComposition(t *testing.T) {
+	workingDir := filepath.Join(string(filepath.Separator), "task", "fixture")
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{args: []string{"-c/path/config.js"}, want: filepath.Join(string(filepath.Separator), "path", "config.js")},
+		{args: []string{"-c", "/path/config.js"}, want: filepath.Join(string(filepath.Separator), "path", "config.js")},
+		{args: []string{"--config", "/path/config.js"}, want: filepath.Join(string(filepath.Separator), "path", "config.js")},
+		{args: []string{"--config=/path/config.js"}, want: filepath.Join(string(filepath.Separator), "path", "config.js")},
+		{args: []string{"-c=literal"}, want: filepath.Join(workingDir, "=literal")},
+	} {
+		parsed, err := parseWrapperArgs(test.args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := mergeConfigArgs(parsed.config, parsed.configSpecified, workingDir)
+		if err != nil || !reflect.DeepEqual(got, []string{"--config", test.want}) {
+			t.Errorf("merge config for %q = %v, err=%v; want %q", test.args, got, err, test.want)
+		}
+	}
+	parsed, err := parseWrapperArgs([]string{"--reporter=json,json", "--add-reporter=dot,json"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, hook, err := finalReporter(parsed, workingDir)
+	if err != nil || got != "json,json,dot,json" || hook != "" {
+		t.Fatalf("CSV composition = %q, hook=%q, err=%v", got, hook, err)
+	}
+	parsed, err = parseWrapperArgs([]string{"--add-reporter=json,dot"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := finalReporter(parsed, workingDir); err == nil || !strings.Contains(err.Error(), "multiple reporters") {
+		t.Fatalf("multi-addition on config base error = %v", err)
+	}
+}
+
+func TestStageAndMergeErrorsRemainAggregate(t *testing.T) {
 	chdirTemp(t)
 	regularFailure := errors.New("regular")
 	sourceFailure := errors.New("source-edit")
-	mergeFailure := errors.New("native merge failed")
+	mergeFailure := errors.New("native merge")
 	for _, test := range []struct {
 		name       string
 		regularErr error
@@ -300,44 +404,195 @@ func TestStageAndMergeFailuresRemainAggregate(t *testing.T) {
 		{name: "source-edit fails", sourceErr: sourceFailure, wantError: true},
 		{name: "both stages fail", regularErr: regularFailure, sourceErr: sourceFailure, wantError: true},
 		{name: "stage and merge fail", regularErr: regularFailure, mergeErr: mergeFailure, wantError: true},
+		{name: "merge alone fails", mergeErr: mergeFailure, wantError: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			var stagesRun []string
+			var ranStages []string
 			mergeCalls := 0
-			got := run(context.Background(), nil, nil, func(_ context.Context, _ string, args, environ []string) error {
+			err := run(context.Background(), nil, nil, func(_ context.Context, _ string, args, environ []string) error {
 				if args[0] == "test" {
-					stageName := envValue(environ, "SKGO_E2E_STAGE")
-					stagesRun = append(stagesRun, stageName)
-					if err := os.WriteFile(envValue(environ, blobOutputFileEnv), []byte("blob-"+stageName), 0o600); err != nil {
-						t.Fatal(err)
+					stage := envValue(environ, "SKGO_E2E_STAGE")
+					ranStages = append(ranStages, stage)
+					if writeErr := os.WriteFile(envValue(environ, blobOutputFileEnv), []byte(stage), 0o600); writeErr != nil {
+						t.Fatal(writeErr)
 					}
-					if stageName == "regular" {
+					if stage == "regular" {
 						return test.regularErr
 					}
 					return test.sourceErr
 				}
 				mergeCalls++
-				if args[0] != "merge-reports" {
-					t.Fatalf("unexpected command: %v", args)
-				}
 				return test.mergeErr
 			})
-			if strings.Join(stagesRun, ",") != "regular,source-edit" || mergeCalls != 1 {
-				t.Fatalf("stages=%v mergeCalls=%d, want both stages and one merge", stagesRun, mergeCalls)
+			if !reflect.DeepEqual(ranStages, []string{"regular", "source-edit"}) || mergeCalls != 1 {
+				t.Fatalf("stages=%v mergeCalls=%d", ranStages, mergeCalls)
 			}
-			if (got != nil) != test.wantError {
-				t.Fatalf("run error = %v, wantError=%v", got, test.wantError)
+			if (err != nil) != test.wantError {
+				t.Fatalf("run error=%v wantError=%v", err, test.wantError)
 			}
 			for _, want := range []error{test.regularErr, test.sourceErr, test.mergeErr} {
-				if want != nil && !errors.Is(got, want) {
-					t.Fatalf("aggregate error lost %v: %v", want, got)
+				if want != nil && !errors.Is(err, want) {
+					t.Fatalf("aggregate error lost %v: %v", want, err)
 				}
 			}
 		})
 	}
 }
 
-func TestInterruptStopsBeforeSourceEditOrMerge(t *testing.T) {
+func TestMissingCurrentBlobDoesNotMergeStaleJsonFile(t *testing.T) {
+	chdirTemp(t)
+	stale := filepath.Join(t.TempDir(), "report.json")
+	if err := os.WriteFile(stale, []byte("stale"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stageCalls, mergeCalls := 0, 0
+	err := run(context.Background(), []string{"--reporter=json"}, []string{jsonOutputFileEnv + "=" + stale}, func(_ context.Context, _ string, args, environ []string) error {
+		if args[0] == "test" {
+			stageCalls++
+			return nil // Native command did not emit its required fresh blob.
+		}
+		mergeCalls++
+		return nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "retain Playwright blob reports") || stageCalls != 2 || mergeCalls != 0 {
+		t.Fatalf("err=%v stages=%d merges=%d", err, stageCalls, mergeCalls)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Fatalf("known stale JSON FILE remains, stat error=%v", err)
+	}
+}
+
+func TestKnownJSONNameIsClearedAtNativeDestination(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		args []string
+		env  func(cwd, configDir, absoluteName string) []string
+		want string
+	}{
+		{
+			name: "csv reporter contains exact json id and config file supplies directory",
+			args: []string{"--reporter=dot,json", "--config", "external/playwright.config.js"},
+			env: func(_, _, _ string) []string {
+				return []string{jsonOutputEnv + "=report.json"}
+			},
+			want: "config",
+		},
+		{
+			name: "DIR applies to relative NAME",
+			args: []string{"--reporter=json"},
+			env: func(_, _, _ string) []string {
+				return []string{jsonOutputDirEnv + "=reports", jsonOutputEnv + "=report.json"}
+			},
+			want: "dir",
+		},
+		{
+			name: "absolute NAME overrides DIR",
+			args: []string{"--add-reporter=json"},
+			env: func(_, _, absoluteName string) []string {
+				return []string{jsonOutputDirEnv + "=ignored", jsonOutputEnv + "=" + absoluteName}
+			},
+			want: "absolute",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cwd := chdirTemp(t)
+			configDir := filepath.Join(cwd, "external")
+			if err := os.MkdirAll(configDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			config := filepath.Join(configDir, "playwright.config.js")
+			if err := os.WriteFile(config, []byte("export default {};\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			absoluteName := filepath.Join(t.TempDir(), "absolute-report.json")
+			values := test.env(cwd, configDir, absoluteName)
+			var target string
+			switch test.want {
+			case "config":
+				target = filepath.Join(configDir, "report.json")
+			case "dir":
+				target = filepath.Join(cwd, "reports", "report.json")
+			case "absolute":
+				target = absoluteName
+			}
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(target, []byte("stale"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			args := append([]string(nil), test.args...)
+			for i := range args {
+				if args[i] == "external/playwright.config.js" {
+					args[i] = config
+				}
+			}
+			stageCalls, mergeCalls := 0, 0
+			err := run(context.Background(), args, values, func(_ context.Context, _ string, commandArgs, commandEnv []string) error {
+				if commandArgs[0] == "test" {
+					stageCalls++
+					if stageCalls == 1 {
+						if _, err := os.Stat(target); !os.IsNotExist(err) {
+							t.Fatalf("stale known JSON NAME remains before stages, stat error=%v", err)
+						}
+					}
+					return os.WriteFile(envValue(commandEnv, blobOutputFileEnv), []byte("blob"), 0o600)
+				}
+				mergeCalls++
+				return nil
+			})
+			if err != nil || stageCalls != 2 || mergeCalls != 1 {
+				t.Fatalf("run err=%v stages=%d merges=%d", err, stageCalls, mergeCalls)
+			}
+		})
+	}
+}
+
+func TestKnownJSONDirectoryIsPreservedAndRejected(t *testing.T) {
+	chdirTemp(t)
+	destination := filepath.Join(t.TempDir(), "report.json")
+	if err := os.Mkdir(destination, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	err := run(context.Background(), []string{"--reporter=json"}, []string{jsonOutputFileEnv + "=" + destination}, func(context.Context, string, []string, []string) error {
+		calls++
+		return nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "is a directory") || calls != 0 {
+		t.Fatalf("directory destination err=%v calls=%d, want a pre-stage error", err, calls)
+	}
+	info, err := os.Stat(destination)
+	if err != nil || !info.IsDir() {
+		t.Fatalf("invalid JSON destination was removed: stat=%v info=%v", err, info)
+	}
+}
+
+func TestOpaqueConfiguredJSONDestinationIsNotDeleted(t *testing.T) {
+	chdirTemp(t)
+	stale := filepath.Join(t.TempDir(), "configured.json")
+	if err := os.WriteFile(stale, []byte("configured stale"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stageCalls, mergeCalls := 0, 0
+	err := run(context.Background(), nil, []string{jsonOutputFileEnv + "=" + stale}, func(_ context.Context, _ string, args, environ []string) error {
+		if args[0] == "test" {
+			stageCalls++
+			return os.WriteFile(envValue(environ, blobOutputFileEnv), []byte("blob"), 0o600)
+		}
+		mergeCalls++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(stale)
+	if err != nil || string(data) != "configured stale" || stageCalls != 2 || mergeCalls != 1 {
+		t.Fatalf("opaque configured output was changed: data=%q err=%v stages=%d merges=%d", data, err, stageCalls, mergeCalls)
+	}
+}
+
+func TestCancellationStopsFollowingStageAndMerge(t *testing.T) {
 	chdirTemp(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	calls := 0
@@ -346,108 +601,23 @@ func TestInterruptStopsBeforeSourceEditOrMerge(t *testing.T) {
 		cancel()
 		return errors.New("interrupted regular process")
 	})
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("run error = %v, want context cancellation", err)
-	}
-	if calls != 1 {
-		t.Fatalf("Playwright invocation count = %d, want source-edit and merge stopped after interrupt", calls)
+	if !errors.Is(err, context.Canceled) || calls != 1 {
+		t.Fatalf("err=%v calls=%d; want cancellation and no later stage/merge", err, calls)
 	}
 }
 
-func TestMissingStageBlobDoesNotReusePriorEnvironmentJSON(t *testing.T) {
-	chdirTemp(t)
-	output := filepath.Join(t.TempDir(), "playwright.json")
-	if err := os.WriteFile(output, []byte(`{"stale":true}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	ignoredOutput := filepath.Join(t.TempDir(), "ignored", "name.json")
-	if err := os.MkdirAll(filepath.Dir(ignoredOutput), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(ignoredOutput, []byte(`{"ignored-stale":true}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	stageCalls, mergeCalls := 0, 0
-	err := run(context.Background(), nil, []string{
-		jsonOutputFileEnv + "=" + output,
-		jsonOutputDirEnv + "=" + filepath.Dir(ignoredOutput),
-		jsonOutputEnv + "=" + filepath.Base(ignoredOutput),
-	}, func(_ context.Context, _ string, args, _ []string) error {
+func writeBlobRunner(t *testing.T, after func(args, environ []string)) commandRunner {
+	t.Helper()
+	return func(_ context.Context, _ string, args, environ []string) error {
 		if args[0] == "test" {
-			stageCalls++
-			return nil // Simulate Playwright exiting without producing a blob.
+			if err := os.WriteFile(envValue(environ, blobOutputFileEnv), []byte(envValue(environ, "SKGO_E2E_STAGE")), 0o600); err != nil {
+				t.Fatal(err)
+			}
 		}
-		mergeCalls++
+		if after != nil {
+			after(args, environ)
+		}
 		return nil
-	})
-	if err == nil || !strings.Contains(err.Error(), "retain Playwright blob reports") {
-		t.Fatalf("run error = %v, want missing blob report error", err)
-	}
-	if stageCalls != 2 || mergeCalls != 0 {
-		t.Fatalf("stageCalls=%d mergeCalls=%d, want both stages and no incomplete merge", stageCalls, mergeCalls)
-	}
-	if _, err := os.Stat(output); !os.IsNotExist(err) {
-		t.Fatalf("stale environment JSON remains, stat error = %v", err)
-	}
-	if _, err := os.Stat(ignoredOutput); err != nil {
-		t.Fatalf("lower-precedence caller output should not be treated as destination: %v", err)
-	}
-}
-
-func TestReporterSelectionIsOwnedByMergeAndStageBlob(t *testing.T) {
-	for _, test := range []struct {
-		args       []string
-		wantSelect string
-		wantFound  bool
-		wantStage  string
-	}{
-		{args: []string{"--reporter=json"}, wantSelect: "json", wantFound: true, wantStage: "--reporter=blob"},
-		{args: []string{"--reporter", "list,json"}, wantSelect: "list,json", wantFound: true, wantStage: "--reporter=blob"},
-		{args: []string{"-r=dot"}, wantSelect: "dot", wantFound: true, wantStage: "--reporter=blob"},
-		{args: []string{"--", "fixture.spec.js"}, wantFound: false, wantStage: "--reporter=blob"},
-	} {
-		got, found := reporterSelection(test.args)
-		if got != test.wantSelect || found != test.wantFound {
-			t.Fatalf("reporterSelection(%v) = %q, %v", test.args, got, found)
-		}
-		stageArgs := testArgsWithReporter(test.args, "blob")
-		if !contains(stageArgs, test.wantStage) {
-			t.Fatalf("stage arguments = %v, want owned blob reporter", stageArgs)
-		}
-		if test.wantFound && hasJSONReporter(stageArgs) {
-			t.Fatalf("original reporter leaked into stage: %v", stageArgs)
-		}
-	}
-}
-
-func TestProjectSelectionCannotExpandMutationStage(t *testing.T) {
-	got, err := withoutProjectSelection([]string{"--", "--project=source-edit", "--grep", "route", "--project", "chromium"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Join(got, " ") != "--grep route" {
-		t.Fatalf("arguments = %v, want only non-project filters forwarded", got)
-	}
-	if _, err := withoutProjectSelection([]string{"--project"}); err == nil {
-		t.Fatal("missing project argument should fail")
-	}
-}
-
-func TestConfigOptionFormsArePassedToNativeMerge(t *testing.T) {
-	workingDir := filepath.Join(string(filepath.Separator), "work")
-	for _, args := range [][]string{
-		{"-c/path/config.js"},
-		{"-c", "/path/config.js"},
-		{"--config", "/path/config.js"},
-		{"--config=/path/config.js"},
-	} {
-		got := mergeConfigArgs(args, workingDir)
-		if strings.Join(got, " ") != "--config /path/config.js" {
-			t.Fatalf("mergeConfigArgs(%v) = %v", args, got)
-		}
-	}
-	if got := mergeConfigArgs(nil, workingDir); strings.Join(got, " ") != "--config "+workingDir {
-		t.Fatalf("default merge config args = %v, want cwd discovery", got)
 	}
 }
 
@@ -473,6 +643,15 @@ func chdirTemp(t *testing.T) string {
 	return workingDir
 }
 
+func mustGetwd(t *testing.T) string {
+	t.Helper()
+	path, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 func contains(values []string, expected string) bool {
 	for _, value := range values {
 		if value == expected {
@@ -480,4 +659,23 @@ func contains(values []string, expected string) bool {
 		}
 	}
 	return false
+}
+
+func count(values []string, expected string) int {
+	n := 0
+	for _, value := range values {
+		if value == expected {
+			n++
+		}
+	}
+	return n
+}
+
+func indexOf(values []string, expected string) int {
+	for i, value := range values {
+		if value == expected {
+			return i
+		}
+	}
+	return -1
 }
