@@ -138,9 +138,9 @@ var (
 	}
 	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.ts")
 	for _, want := range []string{
-		"import { remoteInputs as skgoRemoteInputs } from '@skgo/sveltekit-adapter/prerender';",
-		"inputs: () => skgoRemoteInputs<string>(\"src/data/data.remote.ts\", \"build\")",
-		"inputs: () => skgoRemoteInputs<void>(\"src/data/data.remote.ts\", \"noArgument\")",
+		"import { remoteInputs as $skgoRemoteInputs } from '@skgo/sveltekit-adapter/prerender';",
+		"inputs: () => $skgoRemoteInputs<string>(\"src/data/data.remote.ts\", \"build\")",
+		"inputs: () => $skgoRemoteInputs<void>(\"src/data/data.remote.ts\", \"noArgument\")",
 	} {
 		if !strings.Contains(stub, want) {
 			t.Errorf("generated remote module omits %q:\n%s", want, stub)

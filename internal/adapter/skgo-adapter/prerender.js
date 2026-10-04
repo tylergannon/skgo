@@ -32,7 +32,9 @@ function kitQueueFailure(detail) {
 function verifyKitQueue(root) {
 	let metadata;
 	try {
-		metadata = JSON.parse(readFileSync(new URL('./compat/kit-3.0.0-queue.json', import.meta.url), 'utf8'));
+		const appRequire = createRequire(join(root, 'package.json'));
+		const adapterPackage = appRequire.resolve('@skgo/sveltekit-adapter/package.json');
+		metadata = JSON.parse(readFileSync(join(dirname(adapterPackage), 'skgo-adapter/compat/kit-3.0.0-queue.json'), 'utf8'));
 	} catch (error) {
 		throw kitQueueFailure(`adapter compatibility metadata could not be read: ${error.message}`);
 	}

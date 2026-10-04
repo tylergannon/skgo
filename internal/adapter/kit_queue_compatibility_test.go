@@ -58,6 +58,13 @@ func TestPrerenderInputsRejectsUnpatchedPinnedKitBeforeIPC(t *testing.T) {
 	kitRoot := filepath.Join(appRoot, "node_modules", "@sveltejs", "kit")
 	writeQueueFixture(t, filepath.Join(kitRoot, "package.json"), []byte(`{"name":"@sveltejs/kit","version":"3.0.0"}`))
 	writeQueueFixture(t, filepath.Join(kitRoot, filepath.FromSlash(metadata.QueuePath)), stock)
+	adapterRoot := filepath.Join(appRoot, "node_modules", "@skgo", "sveltekit-adapter")
+	writeQueueFixture(t, filepath.Join(adapterRoot, "package.json"), []byte(`{"name":"@skgo/sveltekit-adapter","exports":{"./package.json":"./package.json"}}`))
+	metadataBytes, err := json.Marshal(metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeQueueFixture(t, filepath.Join(adapterRoot, "skgo-adapter", "compat", "kit-3.0.0-queue.json"), metadataBytes)
 	program := `
 import { pathToFileURL } from 'node:url';
 const { remoteInputs } = await import(pathToFileURL(process.env.SKGO_PRERENDER_MODULE).href);
@@ -66,6 +73,8 @@ try {
   throw new Error('remoteInputs unexpectedly accepted the incompatible Kit queue');
 } catch (error) {
   if (error.name !== 'SKGO_KIT_PRERENDER_QUEUE' || error.code !== 'SKGO_KIT_PRERENDER_QUEUE') throw error;
+  if (!error.message.includes(process.env.SKGO_STOCK_SHA256) || !error.message.includes(process.env.SKGO_CORRECTED_SHA256)) throw error;
+  if (!error.message.includes('@sveltejs/kit@3.0.0')) throw error;
   if (!error.message.includes('kit-patch --web web --apply') || !error.message.includes('kit-patch --web web --check')) throw error;
   console.log('incompatible Kit queue rejected before IPC with setup guidance');
 }
@@ -76,7 +85,9 @@ try {
 	}
 	cmd := exec.Command(node, "--input-type=module", "-e", program)
 	cmd.Dir = appRoot
-	cmd.Env = append(os.Environ(), "SKGO_PRERENDER_MODULE="+modulePath)
+	cmd.Env = append(os.Environ(), "SKGO_PRERENDER_MODULE="+modulePath,
+		"SKGO_STOCK_SHA256="+metadata.StockSHA256,
+		"SKGO_CORRECTED_SHA256="+metadata.CorrectedSHA256)
 	output, err := cmd.CombinedOutput()
 	if err != nil || !strings.Contains(string(output), "incompatible Kit queue rejected before IPC with setup guidance") {
 		t.Fatalf("prerender queue guard: err=%v output=%s", err, output)

@@ -82,7 +82,7 @@ func (a *app) writeStubs() error {
 		b.WriteString(tsHeader)
 		fmt.Fprintf(&b, "import { %s } from '$app/server';\n", strings.Join(kinds, ", "))
 		if hasPrerenderInputs {
-			b.WriteString("import { remoteInputs as skgoRemoteInputs } from '@skgo/sveltekit-adapter/prerender';\n")
+			b.WriteString("import { remoteInputs as $skgoRemoteInputs } from '@skgo/sveltekit-adapter/prerender';\n")
 		}
 
 		if a.cfg.Language.JavaScript() {
@@ -352,9 +352,9 @@ func (a *app) prerenderInputOptions(fn *remoteFn) (string, error) {
 		inType = projected.expr
 	}
 	if a.cfg.Language.JavaScript() {
-		return fmt.Sprintf(", { inputs: /** @type {() => Promise<%s[]>} */ (() => skgoRemoteInputs(%q, %q)) }", inType, fn.module, fn.name), nil
+		return fmt.Sprintf(", { inputs: /** @type {() => Promise<%s[]>} */ (() => $skgoRemoteInputs(%q, %q)) }", inType, fn.module, fn.name), nil
 	}
-	return fmt.Sprintf(", { inputs: () => skgoRemoteInputs<%s>(%q, %q) }", inType, fn.module, fn.name), nil
+	return fmt.Sprintf(", { inputs: () => $skgoRemoteInputs<%s>(%q, %q) }", inType, fn.module, fn.name), nil
 }
 
 func (a *app) depsOf(fn *remoteFn) []*types.Named {
