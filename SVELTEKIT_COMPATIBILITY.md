@@ -38,8 +38,8 @@ This is a manual maintenance procedure; it creates no scheduled task.
 
 **Status:** locally validated candidate on released main `bfea45a` (PR235 and
 PR236); the dependency update has not been merged or published. This review does
-not claim full Kit parity. External delivery is paused by the coordinating
-session's automatic approval review; local artifacts remain ready for review.
+not claim full Kit parity. Delivery was explicitly authorized on 2026-10-04; exact-head CI and the normal
+release workflow are the remaining adoption gates.
 
 **Verified release:** GitHub published `@sveltejs/kit@3.0.0` on
 2026-10-01 at 17:21:04 UTC; npm published it at 17:22:34.593 UTC.
@@ -92,7 +92,7 @@ clean installations rather than keeping stale transitive selections.
 | sv; sv-utils; tsdown | `1.0.1`; `1.0.0`; `0.23.0` | Stable-only generator selection replaces prerelease selection; adapt `pnpm.allowBuilds` to `{ cwd, packages }`. Rebuilt the distributed addon. tsdown's separate lock resolves Rolldown `1.2.12`. |
 | Storybook / create-storybook / SvelteKit integration | `10.6.1` | Upgrade matching packages together. Storybook's optional VitePlus peer range is stale; permit only `storybook@10.6.1>vite-plus: 1.0.0` after an actual Storybook build passes. |
 | Extra generated-template packages | `@storybook/addon-svelte-csf 5.1.5`; `@sveltejs/enhanced-img 1.0.0`; `playwright 1.63.0` | Actual generated installations match verified stable registry versions. Upstream sv ranges resolve these versions; no additional pin was needed. |
-| pnpm | `12.8.1` | Update example/tooling/CI pins together. The aliased Vite package's own version is 1.0.0, so its narrow peer exception records that version, not exported Vite 8.3.1. |
+| pnpm | `12.9.1` | Released after initial qualification; official registry/release verified on 2026-10-04. Update example/tooling/CI pins together. The aliased Vite package's own version is 1.0.0, so its narrow peer exception records that version, not exported Vite 8.3.1. |
 
 Sources for each selection are the official registry URLs and metadata in
 `registry.json`; managed tool versions were verified in installed packages and
@@ -178,5 +178,13 @@ form-readiness API. Executor
 interruptions delayed local qualification but are not passing evidence.
 
 Remaining coverage limits are listed per contract above. Cloud qualification,
-adoption on main and publication have **not** occurred for this dependency
-update; update this status after any separately authorized integration.
+adoption on main and publication have **not yet** occurred for this dependency
+update; update this status after the authorized integration.
+
+The 2026-10-04 registry recheck found only pnpm had advanced since this review
+(to 12.9.1). Its [official release](https://github.com/pnpm/pnpm/releases/tag/v12.9.1)
+is stable and fixes frozen catalog-peer installs, trust checks and lifecycle
+handling. All three frozen installs with 12.9.1 passed; only the lockfiles' package-manager
+documents changed, and the application dependency graphs remained byte-identical.
+Exact-head CI and the normal release gates will qualify this update; previous
+runtime evidence covers unchanged application code.

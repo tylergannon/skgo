@@ -831,32 +831,32 @@
   },
   {
     "name": "pnpm",
-    "latest": "12.8.1",
-    "selected": "12.8.1",
-    "time": "2026-09-28T17:38:17.288Z",
+    "latest": "12.9.1",
+    "selected": "12.9.1",
+    "time": "2026-10-03T20:48:16.304Z",
     "engines": {
       "node": ">=18.*"
     },
-    "peers": null,
-    "dependencies": null,
+    "peers": {},
+    "dependencies": {},
     "dist": {
-      "shasum": "162a874a11ccdeada2f9d36c6997845326286965",
-      "tarball": "https://registry.npmjs.org/pnpm/-/pnpm-12.8.1.tgz",
+      "shasum": "3431acab44b8aee29ca1b92e5042bd1b694d5d7a",
+      "tarball": "https://registry.npmjs.org/pnpm/-/pnpm-12.9.1.tgz",
       "fileCount": 449,
-      "integrity": "sha512-9kupB1B/XOr+BsjTjmBS0BeURFgOwSed3Vv8EctIqoomRLZlmOB+dh2oSHKp/FfV+QK4f6SdAkGY1VhhKqu+RQ==",
+      "integrity": "sha512-BrBV//XNINwSeB3hc87TMQzglRvy7GICEaFgRdVETVyTpmMhB2TvKaZTphBFm6A2jw50+E2AxUcjz5Wq57wNbQ==",
       "signatures": [
         {
-          "sig": "MEUCIGw5t2o9NeAJ8fv7s27IIiIz5V/HVZQNoymrfQQG47qQAiEAk8ud8nUDkdJHdpWfFph5gJf9ZIalGcZXDGYTWqR6KuU=",
+          "sig": "MEUCIEpHkCW6yqESc+WQvKAWZp34AAdiYXWebZUwiOLoBWnTAiEAhS1n5b9YvEwex4QtEk1S+Gw7t6HAZpYIOk2Q7VVlap0=",
           "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
         }
       ],
       "attestations": {
-        "url": "https://registry.npmjs.org/-/npm/v1/attestations/pnpm@12.8.1",
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/pnpm@12.9.1",
         "provenance": {
           "predicateType": "https://slsa.dev/provenance/v1"
         }
       },
-      "unpackedSize": 4090106
+      "unpackedSize": 4107858
     },
     "registryURL": "https://registry.npmjs.org/pnpm"
   },
