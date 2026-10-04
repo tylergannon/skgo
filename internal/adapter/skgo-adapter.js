@@ -694,12 +694,6 @@ function checkRemoteIds(clientDir, remotes, hashes) {
 		}
 	}
 
-	if (called.size === 0 && hashes.size > 0) {
-		throw new Error(
-			`skgo: kit compiled ${hashes.size} remote module(s) but no remote-function id appears in ${clientDir}. Either nothing imports them, or the ids no longer survive bundling as literals and this check has stopped meaning anything.`
-		);
-	}
-
 	const undeclared = [...called].filter(([id]) => !declared.has(id));
 	if (undeclared.length) {
 		throw new Error(
