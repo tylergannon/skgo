@@ -1,0 +1,2 @@
+decision: Resolve Playwright JSON env destinations with the installed 1.63.0 precedence (OUTPUT_FILE, then OUTPUT_DIR, then OUTPUT_NAME under OUTPUT_DIR or configDir); assign each stage its own absolute OUTPUT_FILE and clear inherited OUTPUT_DIR/OUTPUT_NAME so later stages cannot overwrite earlier results.
+friction: The delegated review path was absent from the assigned worktree; the parent supplied its authoritative location in the integration worktree, which was read-only and required no checkout changes.

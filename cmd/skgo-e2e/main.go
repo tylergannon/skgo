@@ -17,7 +17,11 @@ import (
 	"syscall"
 )
 
-const jsonOutputEnv = "PLAYWRIGHT_JSON_OUTPUT_NAME"
+const (
+	jsonOutputEnv     = "PLAYWRIGHT_JSON_OUTPUT_NAME"
+	jsonOutputDirEnv  = "PLAYWRIGHT_JSON_OUTPUT_DIR"
+	jsonOutputFileEnv = "PLAYWRIGHT_JSON_OUTPUT_FILE"
+)
 
 type stage struct {
 	name     string
@@ -55,16 +59,23 @@ func run(ctx context.Context, args, environ []string, invoke commandRunner) erro
 	if baseRun == "" {
 		baseRun = "run"
 	}
-	jsonPath := envValue(environ, jsonOutputEnv)
-	jsonToStdout := jsonPath == "" && hasJSONReporter(args)
-	if jsonPath != "" && !hasJSONReporter(args) {
+	jsonPath, nativeJSONOutput, err := resolveJSONOutputPath(args, environ)
+	if err != nil {
+		return err
+	}
+	jsonToStdout := !nativeJSONOutput && hasJSONReporter(args)
+	if nativeJSONOutput && !hasJSONReporter(args) {
 		// Supplying Playwright's JSON output path is an explicit request for the
 		// JSON reporter; the config's normal list/HTML reporters otherwise
-		// ignore PLAYWRIGHT_JSON_OUTPUT_NAME.
+		// ignore the PLAYWRIGHT_JSON_OUTPUT_* environment variables.
 		args = append(args, "--reporter=json")
 	}
 	if jsonToStdout {
 		jsonPath = filepath.Join("playwright-report", fmt.Sprintf("combined-%d.json", os.Getpid()))
+		jsonPath, err = filepath.Abs(jsonPath)
+		if err != nil {
+			return fmt.Errorf("resolve combined Playwright JSON report path: %w", err)
+		}
 	}
 	if jsonPath != "" {
 		if err := os.MkdirAll(filepath.Dir(jsonPath), 0o755); err != nil {
@@ -91,7 +102,9 @@ func run(ctx context.Context, args, environ []string, invoke commandRunner) erro
 				return fmt.Errorf("remove prior %s Playwright report: %w", current.name, err)
 			}
 			stageReports = append(stageReports, path)
-			stageEnv = setEnv(stageEnv, jsonOutputEnv, path)
+			stageEnv = unsetEnv(stageEnv, jsonOutputDirEnv)
+			stageEnv = unsetEnv(stageEnv, jsonOutputEnv)
+			stageEnv = setEnv(stageEnv, jsonOutputFileEnv, path)
 		}
 
 		commandArgs := []string{"test"}
@@ -151,6 +164,98 @@ func setEnv(environ []string, key, value string) []string {
 		}
 	}
 	return append(result, key+"="+value)
+}
+
+func unsetEnv(environ []string, key string) []string {
+	result := make([]string, 0, len(environ))
+	for _, entry := range environ {
+		name, _, ok := strings.Cut(entry, "=")
+		if !ok || name != key {
+			result = append(result, entry)
+		}
+	}
+	return result
+}
+
+// resolveJSONOutputPath mirrors Playwright's resolveOutputFile environment
+// precedence for the JSON reporter. Relative FILE and DIR values are resolved
+// from the process working directory; relative NAME values are resolved from
+// DIR or, when no DIR is supplied, the resolved Playwright config directory.
+func resolveJSONOutputPath(args, environ []string) (string, bool, error) {
+	workingDir, err := filepath.Abs(".")
+	if err != nil {
+		return "", false, fmt.Errorf("resolve Playwright working directory: %w", err)
+	}
+	if outputFile := envValue(environ, jsonOutputFileEnv); outputFile != "" {
+		path, err := resolveFrom(workingDir, outputFile)
+		if err != nil {
+			return "", false, fmt.Errorf("resolve Playwright JSON output file: %w", err)
+		}
+		return path, true, nil
+	}
+	outputName := envValue(environ, jsonOutputEnv)
+	if outputName == "" {
+		return "", false, nil
+	}
+	outputDir := envValue(environ, jsonOutputDirEnv)
+	if outputDir == "" {
+		outputDir, err = playwrightConfigDir(args, workingDir)
+		if err != nil {
+			return "", false, fmt.Errorf("resolve Playwright config directory for JSON output: %w", err)
+		}
+	} else {
+		outputDir, err = resolveFrom(workingDir, outputDir)
+		if err != nil {
+			return "", false, fmt.Errorf("resolve Playwright JSON output directory: %w", err)
+		}
+	}
+	path, err := resolveFrom(outputDir, outputName)
+	if err != nil {
+		return "", false, fmt.Errorf("resolve Playwright JSON output name: %w", err)
+	}
+	return path, true, nil
+}
+
+// resolveFrom matches Node's path.resolve(base, value) for the current host:
+// an absolute value overrides base, while a relative value is joined to it.
+func resolveFrom(base, value string) (string, error) {
+	if filepath.IsAbs(value) {
+		return filepath.Clean(value), nil
+	}
+	return filepath.Abs(filepath.Join(base, value))
+}
+
+// Playwright's configDir is the config file's directory, or the selected
+// config directory when no config file is present there. Without --config,
+// Playwright starts discovery in the process working directory.
+func playwrightConfigDir(args []string, workingDir string) (string, error) {
+	configLocation := ""
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "-c" || arg == "--config" {
+			if i+1 < len(args) {
+				i++
+				configLocation = args[i]
+			}
+			continue
+		}
+		if value, ok := strings.CutPrefix(arg, "--config="); ok {
+			configLocation = value
+		} else if value, ok := strings.CutPrefix(arg, "-c="); ok {
+			configLocation = value
+		}
+	}
+	if configLocation == "" {
+		return workingDir, nil
+	}
+	resolved, err := resolveFrom(workingDir, configLocation)
+	if err != nil {
+		return "", err
+	}
+	if info, err := os.Stat(resolved); err == nil && info.IsDir() {
+		return resolved, nil
+	}
+	return filepath.Dir(resolved), nil
 }
 
 func stageReportPath(path, name string, pid int) string {

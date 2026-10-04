@@ -16,7 +16,9 @@ func TestRegularFailureStillRunsSourceEditAndCombinesReports(t *testing.T) {
 	regularFailure := errors.New("regular stage failed")
 	var calls []string
 	err := run(context.Background(), []string{"--reporter=json"}, []string{
-		jsonOutputEnv + "=" + output,
+		jsonOutputFileEnv + "=" + output,
+		jsonOutputDirEnv + "=" + filepath.Join(temp, "ignored"),
+		jsonOutputEnv + "=ignored.json",
 		"SKGO_E2E_RUN=proof",
 	}, func(_ context.Context, name string, args, environ []string) error {
 		if name != "./node_modules/.bin/playwright" {
@@ -36,6 +38,13 @@ func TestRegularFailureStillRunsSourceEditAndCombinesReports(t *testing.T) {
 		if !contains(args, "--project=source-edit") && stageName == "source-edit" {
 			t.Fatalf("source-edit project missing: %v", args)
 		}
+		stageOutput := envValue(environ, jsonOutputFileEnv)
+		if stageOutput == "" || stageOutput == output || !filepath.IsAbs(stageOutput) {
+			t.Fatalf("stage JSON file = %q, want a distinct absolute path", stageOutput)
+		}
+		if envValue(environ, jsonOutputDirEnv) != "" || envValue(environ, jsonOutputEnv) != "" {
+			t.Fatalf("caller JSON directory/name leaked into %s stage: %v", stageName, environ)
+		}
 		report := map[string]any{
 			"config": map[string]any{"workers": 6},
 			"suites": []any{map[string]any{"title": stageName}},
@@ -49,7 +58,7 @@ func TestRegularFailureStillRunsSourceEditAndCombinesReports(t *testing.T) {
 		if marshalErr != nil {
 			t.Fatal(marshalErr)
 		}
-		if writeErr := os.WriteFile(envValue(environ, jsonOutputEnv), data, 0o600); writeErr != nil {
+		if writeErr := os.WriteFile(stageOutput, data, 0o600); writeErr != nil {
 			t.Fatal(writeErr)
 		}
 		if stageName == "regular" {
@@ -91,6 +100,121 @@ func TestRegularFailureStillRunsSourceEditAndCombinesReports(t *testing.T) {
 		if _, err := os.Stat(stageReportPath(output, stageName, os.Getpid())); !os.IsNotExist(err) {
 			t.Fatalf("temporary %s report should be folded into combined report, stat error = %v", stageName, err)
 		}
+	}
+}
+
+func TestNativeJSONDestinationsFollowPlaywrightResolution(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	temp := t.TempDir()
+	configDir := filepath.Join(temp, "config")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	configFile := filepath.Join(configDir, "playwright.config.js")
+	if err := os.WriteFile(configFile, []byte("export default {};\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	relativeOutputDir, err := os.MkdirTemp(".", ".skgo-json-output-dir-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(relativeOutputDir)
+
+	absoluteName := filepath.Join(temp, "absolute-name.json")
+	for _, test := range []struct {
+		name string
+		args []string
+		env  []string
+		want string
+	}{
+		{
+			name: "output file takes precedence",
+			args: []string{"--reporter=json"},
+			env: []string{
+				jsonOutputFileEnv + "=" + filepath.Join(relativeOutputDir, "file.json"),
+				jsonOutputDirEnv + "=" + filepath.Join(temp, "ignored"),
+				jsonOutputEnv + "=ignored.json",
+			},
+			want: filepath.Join(workingDir, relativeOutputDir, "file.json"),
+		},
+		{
+			name: "relative name uses relative output directory from working directory",
+			args: []string{"--reporter=json"},
+			env: []string{
+				jsonOutputDirEnv + "=" + relativeOutputDir,
+				jsonOutputEnv + "=directory-name.json",
+			},
+			want: filepath.Join(workingDir, relativeOutputDir, "directory-name.json"),
+		},
+		{
+			name: "relative name without output directory uses config directory",
+			args: []string{"--config", configFile, "--reporter=json"},
+			env:  []string{jsonOutputEnv + "=config-name.json"},
+			want: filepath.Join(configDir, "config-name.json"),
+		},
+		{
+			name: "absolute name overrides output directory",
+			args: []string{"--reporter=json"},
+			env: []string{
+				jsonOutputDirEnv + "=" + filepath.Join(temp, "ignored"),
+				jsonOutputEnv + "=" + absoluteName,
+			},
+			want: absoluteName,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			calls := 0
+			err := run(context.Background(), test.args, test.env, func(_ context.Context, _ string, args, environ []string) error {
+				calls++
+				if !contains(args, "--reporter=json") {
+					t.Fatalf("native JSON destination must activate the reporter: %v", args)
+				}
+				stagePath := envValue(environ, jsonOutputFileEnv)
+				if stagePath == "" || stagePath == test.want || !filepath.IsAbs(stagePath) {
+					t.Fatalf("stage JSON file = %q, want a distinct absolute path from %q", stagePath, test.want)
+				}
+				if envValue(environ, jsonOutputDirEnv) != "" || envValue(environ, jsonOutputEnv) != "" {
+					t.Fatalf("caller JSON destination leaked into stage environment: %v", environ)
+				}
+				data, err := json.Marshal(map[string]any{
+					"suites": []any{map[string]any{"title": envValue(environ, "SKGO_E2E_STAGE")}},
+					"errors": []any{},
+					"stats":  map[string]any{"expected": 1, "unexpected": 0},
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return os.WriteFile(stagePath, data, 0o600)
+			})
+			if err != nil {
+				t.Fatalf("run failed: %v", err)
+			}
+			if calls != 2 {
+				t.Fatalf("invocation count = %d, want both stages", calls)
+			}
+			data, err := os.ReadFile(test.want)
+			if err != nil {
+				t.Fatalf("combined report missing at native destination %q: %v", test.want, err)
+			}
+			var report struct {
+				Suites []struct {
+					Title string `json:"title"`
+				} `json:"suites"`
+				Stats map[string]float64 `json:"stats"`
+			}
+			if err := json.Unmarshal(data, &report); err != nil {
+				t.Fatalf("combined report is not JSON: %v", err)
+			}
+			if len(report.Suites) != 2 || report.Suites[0].Title != "regular" || report.Suites[1].Title != "source-edit" {
+				t.Fatalf("combined suites = %+v, want both stages in order", report.Suites)
+			}
+			if report.Stats["expected"] != 2 || report.Stats["unexpected"] != 0 {
+				t.Fatalf("combined stats = %+v, want both stage results", report.Stats)
+			}
+		})
 	}
 }
 
@@ -154,14 +278,28 @@ func TestMissingStageReportDoesNotReusePriorCombinedJSON(t *testing.T) {
 	if err := os.WriteFile(output, []byte(`{"stale":true}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	ignoredOutput := filepath.Join(t.TempDir(), "ignored", "name.json")
+	if err := os.MkdirAll(filepath.Dir(ignoredOutput), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ignoredOutput, []byte(`{"ignored-stale":true}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	calls := 0
-	err := run(context.Background(), nil, []string{jsonOutputEnv + "=" + output}, func(_ context.Context, _ string, args, environ []string) error {
+	err := run(context.Background(), nil, []string{
+		jsonOutputFileEnv + "=" + output,
+		jsonOutputDirEnv + "=" + filepath.Dir(ignoredOutput),
+		jsonOutputEnv + "=" + filepath.Base(ignoredOutput),
+	}, func(_ context.Context, _ string, args, environ []string) error {
 		calls++
 		if !contains(args, "--reporter=json") {
 			t.Fatalf("JSON output path must activate the reporter: %v", args)
 		}
-		if envValue(environ, jsonOutputEnv) == output {
-			t.Fatal("stage must write to its own report path")
+		if envValue(environ, jsonOutputFileEnv) == "" || envValue(environ, jsonOutputFileEnv) == output {
+			t.Fatal("stage must write to its own JSON file path")
+		}
+		if envValue(environ, jsonOutputDirEnv) != "" || envValue(environ, jsonOutputEnv) != "" {
+			t.Fatalf("caller JSON destination leaked into stage environment: %v", environ)
 		}
 		return nil // Simulate a successful command that failed to produce its report.
 	})
@@ -173,6 +311,9 @@ func TestMissingStageReportDoesNotReusePriorCombinedJSON(t *testing.T) {
 	}
 	if _, err := os.Stat(output); !os.IsNotExist(err) {
 		t.Fatalf("stale combined report remains, stat error = %v", err)
+	}
+	if _, err := os.Stat(ignoredOutput); err != nil {
+		t.Fatalf("ignored output name should not be treated as the native destination: %v", err)
 	}
 }
 
