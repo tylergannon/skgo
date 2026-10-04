@@ -42,7 +42,8 @@ func TestFailedRegularStageStillMergesBothBlobsOnce(t *testing.T) {
 	var stageNames []string
 	mergeCalls := 0
 	var retainedDir string
-	err := run(context.Background(), args, environ, func(_ context.Context, name string, commandArgs, commandEnv []string) error {
+	stageBlobDirs := map[string]string{}
+	err := runWithCleanup(t, context.Background(), args, environ, func(_ context.Context, name string, commandArgs, commandEnv []string) error {
 		if name != "./node_modules/.bin/playwright" {
 			t.Fatalf("playwright path = %q", name)
 		}
@@ -79,6 +80,7 @@ func TestFailedRegularStageStillMergesBothBlobsOnce(t *testing.T) {
 			if !filepath.IsAbs(blob) || blob == callerBlob || filepath.Dir(blob) != envValue(commandEnv, blobOutputDirEnv) {
 				t.Fatalf("stage blob output is not isolated: %v", commandEnv)
 			}
+			stageBlobDirs[stage] = filepath.Dir(blob)
 			if err := os.WriteFile(blob, []byte("blob-"+stage), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -92,8 +94,13 @@ func TestFailedRegularStageStillMergesBothBlobsOnce(t *testing.T) {
 				t.Fatalf("merge has no retained blob directory: %v", commandArgs)
 			}
 			retainedDir = commandArgs[1]
-			if !filepath.IsAbs(retainedDir) || !strings.Contains(retainedDir, filepath.Join("test-results", "skgo-e2e-blobs-")) {
-				t.Fatalf("retained report path = %q", retainedDir)
+			if !filepath.IsAbs(retainedDir) || !strings.Contains(retainedDir, "skgo-e2e-merge-input-") || pathIsWithin(retainedDir, filepath.Join(workingDir, "test-results")) {
+				t.Fatalf("native merge-input path = %q; it must be unique OS temp, outside cwd/test-results", retainedDir)
+			}
+			for _, stage := range []string{"regular", "source-edit"} {
+				if pathIsWithin(retainedDir, stageBlobDirs[stage]) || pathIsWithin(stageBlobDirs[stage], retainedDir) {
+					t.Fatalf("stage scratch and native merge input overlap: stage=%q stageDir=%q mergeDir=%q", stage, stageBlobDirs[stage], retainedDir)
+				}
 			}
 			if !contains(commandArgs, "--config") || !contains(commandArgs, config) || !contains(commandArgs, "--reporter") || !contains(commandArgs, "json,json") {
 				t.Fatalf("final reporter/config selection = %v", commandArgs)
@@ -113,6 +120,26 @@ func TestFailedRegularStageStillMergesBothBlobsOnce(t *testing.T) {
 					t.Fatalf("retained %s blob = %q, err=%v", stage, data, err)
 				}
 			}
+			resource := filepath.Join(retainedDir, "resources", "attached.txt")
+			if err := os.MkdirAll(filepath.Dir(resource), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(resource, []byte("native attachment bytes"), 0o640); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(retainedDir, "report.jsonl"), []byte("native report events"), 0o640); err != nil {
+				t.Fatal(err)
+			}
+			// A final HTML/blob reporter is allowed to clear cwd/test-results.
+			if err := os.RemoveAll("test-results"); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll("test-results", 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join("test-results", "index.html"), []byte("final reporter output"), 0o640); err != nil {
+				t.Fatal(err)
+			}
 			return os.WriteFile(jsonFile, []byte("merged"), 0o600)
 		default:
 			t.Fatalf("unexpected Playwright subcommand: %v", commandArgs)
@@ -125,8 +152,42 @@ func TestFailedRegularStageStillMergesBothBlobsOnce(t *testing.T) {
 	if !reflect.DeepEqual(stageNames, []string{"regular", "source-edit"}) || mergeCalls != 1 {
 		t.Fatalf("stages=%v merges=%d; want ordered stages and one merge", stageNames, mergeCalls)
 	}
-	if retainedDir != "" {
-		t.Cleanup(func() { _ = os.RemoveAll(retainedDir) })
+	for _, stage := range []string{"regular", "source-edit"} {
+		if _, err := os.Stat(stageBlobDirs[stage]); !os.IsNotExist(err) {
+			t.Fatalf("stage scratch %q survived return, stat error=%v", stageBlobDirs[stage], err)
+		}
+	}
+	if retainedDir == "" {
+		t.Fatal("native merge-input directory was not captured")
+	}
+	for relative, want := range map[string]string{
+		"regular.zip":     "blob-regular",
+		"source-edit.zip": "blob-source-edit",
+		"report.jsonl":    "native report events",
+		filepath.Join("resources", "attached.txt"): "native attachment bytes",
+	} {
+		original, err := os.ReadFile(filepath.Join(retainedDir, relative))
+		if err != nil || string(original) != want {
+			t.Fatalf("original merge input %s = %q err=%v want %q", relative, original, err, want)
+		}
+	}
+	archives, err := filepath.Glob(filepath.Join(workingDir, "test-results", "skgo-e2e-blobs-*"))
+	if err != nil || len(archives) != 1 {
+		t.Fatalf("retained artifact directories=%v err=%v, want one post-reporter copy", archives, err)
+	}
+	for relative, want := range map[string]string{
+		"regular.zip":     "blob-regular",
+		"source-edit.zip": "blob-source-edit",
+		"report.jsonl":    "native report events",
+		filepath.Join("resources", "attached.txt"): "native attachment bytes",
+	} {
+		archived, err := os.ReadFile(filepath.Join(archives[0], relative))
+		if err != nil || string(archived) != want {
+			t.Fatalf("archived artifact %s = %q err=%v want %q", relative, archived, err, want)
+		}
+	}
+	if data, err := os.ReadFile(filepath.Join(workingDir, "test-results", "index.html")); err != nil || string(data) != "final reporter output" {
+		t.Fatalf("final reporter output was lost during post-merge archive: %q err=%v", data, err)
 	}
 	if data, err := os.ReadFile(jsonFile); err != nil || string(data) != "merged" {
 		t.Fatalf("final file = %q, err=%v", data, err)
@@ -147,7 +208,7 @@ func TestConfiguredBaseUsesNativeHookForOneAddedReporter(t *testing.T) {
 		t.Fatal(err)
 	}
 	mergeCalls := 0
-	err := run(context.Background(), []string{"-c" + config, "--add-reporter=json"}, []string{jsonOutputEnv + "=env-name.json"}, writeBlobRunner(t, func(args, environ []string) {
+	err := runWithCleanup(t, context.Background(), []string{"-c" + config, "--add-reporter=json"}, []string{jsonOutputEnv + "=env-name.json"}, writeBlobRunner(t, func(args, environ []string) {
 		if args[0] != "merge-reports" {
 			return
 		}
@@ -181,7 +242,7 @@ func TestJSONEnvironmentAloneDoesNotSelectOrReplaceReporter(t *testing.T) {
 		t.Run(strings.Join(env, ";"), func(t *testing.T) {
 			chdirTemp(t)
 			mergeCalls := 0
-			err := run(context.Background(), nil, env, writeBlobRunner(t, func(args, environ []string) {
+			err := runWithCleanup(t, context.Background(), nil, env, writeBlobRunner(t, func(args, environ []string) {
 				if args[0] != "merge-reports" {
 					return
 				}
@@ -217,7 +278,7 @@ func TestConfiguredBaseAdditionBoundsAndInternalHookOwnership(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			calls := 0
-			err := run(context.Background(), test.args, test.env, func(context.Context, string, []string, []string) error {
+			err := runWithCleanup(t, context.Background(), test.args, test.env, func(context.Context, string, []string, []string) error {
 				calls++
 				return nil
 			})
@@ -409,7 +470,8 @@ func TestStageAndMergeErrorsRemainAggregate(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var ranStages []string
 			mergeCalls := 0
-			err := run(context.Background(), nil, nil, func(_ context.Context, _ string, args, environ []string) error {
+			var mergeInput string
+			err := runWithCleanup(t, context.Background(), nil, nil, func(_ context.Context, _ string, args, environ []string) error {
 				if args[0] == "test" {
 					stage := envValue(environ, "SKGO_E2E_STAGE")
 					ranStages = append(ranStages, stage)
@@ -422,6 +484,19 @@ func TestStageAndMergeErrorsRemainAggregate(t *testing.T) {
 					return test.sourceErr
 				}
 				mergeCalls++
+				mergeInput = args[1]
+				if writeErr := os.WriteFile(filepath.Join(mergeInput, "report.jsonl"), []byte("merged events"), 0o600); writeErr != nil {
+					t.Fatal(writeErr)
+				}
+				if writeErr := os.RemoveAll("test-results"); writeErr != nil {
+					t.Fatal(writeErr)
+				}
+				if writeErr := os.MkdirAll("test-results", 0o755); writeErr != nil {
+					t.Fatal(writeErr)
+				}
+				if writeErr := os.WriteFile(filepath.Join("test-results", "final-output"), []byte("reporter finished"), 0o600); writeErr != nil {
+					t.Fatal(writeErr)
+				}
 				return test.mergeErr
 			})
 			if !reflect.DeepEqual(ranStages, []string{"regular", "source-edit"}) || mergeCalls != 1 {
@@ -429,6 +504,19 @@ func TestStageAndMergeErrorsRemainAggregate(t *testing.T) {
 			}
 			if (err != nil) != test.wantError {
 				t.Fatalf("run error=%v wantError=%v", err, test.wantError)
+			}
+			archives, globErr := filepath.Glob(filepath.Join("test-results", "skgo-e2e-blobs-*"))
+			if globErr != nil || len(archives) != 1 {
+				t.Fatalf("post-merge archives=%v globErr=%v", archives, globErr)
+			}
+			if data, readErr := os.ReadFile(filepath.Join(archives[0], "report.jsonl")); readErr != nil || string(data) != "merged events" {
+				t.Fatalf("archived native events=%q readErr=%v", data, readErr)
+			}
+			if data, readErr := os.ReadFile(filepath.Join("test-results", "final-output")); readErr != nil || string(data) != "reporter finished" {
+				t.Fatalf("final reporter output=%q readErr=%v", data, readErr)
+			}
+			if data, readErr := os.ReadFile(filepath.Join(mergeInput, "report.jsonl")); readErr != nil || string(data) != "merged events" {
+				t.Fatalf("native merge input did not persist: %q readErr=%v", data, readErr)
 			}
 			for _, want := range []error{test.regularErr, test.sourceErr, test.mergeErr} {
 				if want != nil && !errors.Is(err, want) {
@@ -439,6 +527,55 @@ func TestStageAndMergeErrorsRemainAggregate(t *testing.T) {
 	}
 }
 
+func TestArchiveFailureKeepsStageAndMergeFailures(t *testing.T) {
+	chdirTemp(t)
+	regularFailure := errors.New("regular stage failed")
+	mergeFailure := errors.New("native merge failed")
+	var stagesRun []string
+	err := runWithCleanup(t, context.Background(), nil, nil, func(_ context.Context, _ string, args, environ []string) error {
+		if args[0] == "test" {
+			stage := envValue(environ, "SKGO_E2E_STAGE")
+			stagesRun = append(stagesRun, stage)
+			if writeErr := os.WriteFile(envValue(environ, blobOutputFileEnv), []byte(stage), 0o600); writeErr != nil {
+				t.Fatal(writeErr)
+			}
+			if stage == "regular" {
+				return regularFailure
+			}
+			return nil
+		}
+		if writeErr := os.WriteFile("test-results", []byte("blocks archive parent"), 0o600); writeErr != nil {
+			t.Fatal(writeErr)
+		}
+		return mergeFailure
+	})
+	if !reflect.DeepEqual(stagesRun, []string{"regular", "source-edit"}) {
+		t.Fatalf("stages=%v, want both ordered invocations", stagesRun)
+	}
+	if !errors.Is(err, regularFailure) || !errors.Is(err, mergeFailure) || !strings.Contains(err.Error(), "archive Playwright blob reports") {
+		t.Fatalf("aggregate error=%v; want stage, native merge and archive failures", err)
+	}
+}
+
+func TestArchiveFailureMakesSuccessfulNativeRunNonzero(t *testing.T) {
+	chdirTemp(t)
+	var stagesRun []string
+	err := runWithCleanup(t, context.Background(), nil, nil, func(_ context.Context, _ string, args, environ []string) error {
+		if args[0] == "test" {
+			stage := envValue(environ, "SKGO_E2E_STAGE")
+			stagesRun = append(stagesRun, stage)
+			return os.WriteFile(envValue(environ, blobOutputFileEnv), []byte(stage), 0o600)
+		}
+		return os.WriteFile("test-results", []byte("blocks archive parent"), 0o600)
+	})
+	if !reflect.DeepEqual(stagesRun, []string{"regular", "source-edit"}) {
+		t.Fatalf("stages=%v, want both ordered invocations", stagesRun)
+	}
+	if err == nil || !strings.Contains(err.Error(), "archive Playwright blob reports") {
+		t.Fatalf("run error=%v; successful native reporting with failed archive must be nonzero", err)
+	}
+}
+
 func TestMissingCurrentBlobDoesNotMergeStaleJsonFile(t *testing.T) {
 	chdirTemp(t)
 	stale := filepath.Join(t.TempDir(), "report.json")
@@ -446,7 +583,7 @@ func TestMissingCurrentBlobDoesNotMergeStaleJsonFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	stageCalls, mergeCalls := 0, 0
-	err := run(context.Background(), []string{"--reporter=json"}, []string{jsonOutputFileEnv + "=" + stale}, func(_ context.Context, _ string, args, environ []string) error {
+	err := runWithCleanup(t, context.Background(), []string{"--reporter=json"}, []string{jsonOutputFileEnv + "=" + stale}, func(_ context.Context, _ string, args, environ []string) error {
 		if args[0] == "test" {
 			stageCalls++
 			return nil // Native command did not emit its required fresh blob.
@@ -528,7 +665,7 @@ func TestKnownJSONNameIsClearedAtNativeDestination(t *testing.T) {
 				}
 			}
 			stageCalls, mergeCalls := 0, 0
-			err := run(context.Background(), args, values, func(_ context.Context, _ string, commandArgs, commandEnv []string) error {
+			err := runWithCleanup(t, context.Background(), args, values, func(_ context.Context, _ string, commandArgs, commandEnv []string) error {
 				if commandArgs[0] == "test" {
 					stageCalls++
 					if stageCalls == 1 {
@@ -555,7 +692,7 @@ func TestKnownJSONDirectoryIsPreservedAndRejected(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	err := run(context.Background(), []string{"--reporter=json"}, []string{jsonOutputFileEnv + "=" + destination}, func(context.Context, string, []string, []string) error {
+	err := runWithCleanup(t, context.Background(), []string{"--reporter=json"}, []string{jsonOutputFileEnv + "=" + destination}, func(context.Context, string, []string, []string) error {
 		calls++
 		return nil
 	})
@@ -575,7 +712,7 @@ func TestOpaqueConfiguredJSONDestinationIsNotDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 	stageCalls, mergeCalls := 0, 0
-	err := run(context.Background(), nil, []string{jsonOutputFileEnv + "=" + stale}, func(_ context.Context, _ string, args, environ []string) error {
+	err := runWithCleanup(t, context.Background(), nil, []string{jsonOutputFileEnv + "=" + stale}, func(_ context.Context, _ string, args, environ []string) error {
 		if args[0] == "test" {
 			stageCalls++
 			return os.WriteFile(envValue(environ, blobOutputFileEnv), []byte("blob"), 0o600)
@@ -596,7 +733,7 @@ func TestCancellationStopsFollowingStageAndMerge(t *testing.T) {
 	chdirTemp(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	calls := 0
-	err := run(ctx, nil, nil, func(context.Context, string, []string, []string) error {
+	err := runWithCleanup(t, ctx, nil, nil, func(context.Context, string, []string, []string) error {
 		calls++
 		cancel()
 		return errors.New("interrupted regular process")
@@ -619,6 +756,25 @@ func writeBlobRunner(t *testing.T, after func(args, environ []string)) commandRu
 		}
 		return nil
 	}
+}
+
+func runWithCleanup(t *testing.T, ctx context.Context, args, environ []string, invoke commandRunner) error {
+	t.Helper()
+	return run(ctx, args, environ, func(ctx context.Context, name string, commandArgs, commandEnv []string) error {
+		if len(commandArgs) > 1 && commandArgs[0] == "merge-reports" {
+			mergeInput := commandArgs[1]
+			t.Cleanup(func() { _ = os.RemoveAll(mergeInput) })
+		}
+		return invoke(ctx, name, commandArgs, commandEnv)
+	})
+}
+
+func pathIsWithin(path, parent string) bool {
+	relative, err := filepath.Rel(parent, path)
+	if err != nil || filepath.IsAbs(relative) {
+		return false
+	}
+	return relative == "." || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 func chdirTemp(t *testing.T) string {

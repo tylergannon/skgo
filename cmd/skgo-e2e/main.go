@@ -89,7 +89,7 @@ func run(ctx context.Context, args, environ []string, invoke commandRunner) erro
 		}
 	}
 
-	scratchDir, err := os.MkdirTemp("", "skgo-e2e-report-scratch-")
+	scratchDir, err := os.MkdirTemp("", "skgo-e2e-stage-scratch-")
 	if err != nil {
 		return fmt.Errorf("create temporary Playwright report directory: %w", err)
 	}
@@ -131,17 +131,16 @@ func run(ctx context.Context, args, environ []string, invoke commandRunner) erro
 		}
 	}
 
-	retainedDir, err := retainBlobReports(blobPaths)
-	if err != nil {
-		failures = append(failures, fmt.Errorf("retain Playwright blob reports: %w", err))
-		return errors.Join(failures...)
-	}
-
 	configArgs, err := mergeConfigArgs(parsed.config, parsed.configSpecified, workingDir)
 	if err != nil {
 		return errors.Join(append(failures, err)...)
 	}
-	mergeArgs := []string{"merge-reports", retainedDir}
+	mergeInputDir, err := retainBlobReports(blobPaths)
+	if err != nil {
+		failures = append(failures, fmt.Errorf("retain Playwright blob reports: %w", err))
+		return errors.Join(failures...)
+	}
+	mergeArgs := []string{"merge-reports", mergeInputDir}
 	mergeArgs = append(mergeArgs, configArgs...)
 	mergeEnv := unsetEnv(environ, playwrightHookEnv)
 	if hookReporter != "" {
@@ -159,6 +158,9 @@ func run(ctx context.Context, args, environ []string, invoke commandRunner) erro
 		} else {
 			failures = append(failures, fmt.Errorf("merge Playwright reports failed: %w", err))
 		}
+	}
+	if _, err := archiveBlobReports(mergeInputDir, workingDir); err != nil {
+		failures = append(failures, fmt.Errorf("archive Playwright blob reports: %w", err))
 	}
 	return errors.Join(failures...)
 }
@@ -651,33 +653,90 @@ func retainBlobReports(paths []string) (string, error) {
 	if len(paths) != len(stages) {
 		return "", fmt.Errorf("got %d Playwright blob reports, want %d", len(paths), len(stages))
 	}
-	if err := os.MkdirAll("test-results", 0o755); err != nil {
-		return "", fmt.Errorf("create test-results directory: %w", err)
-	}
-	retainedDir, err := os.MkdirTemp("test-results", "skgo-e2e-blobs-")
+	retainedDir, err := os.MkdirTemp("", "skgo-e2e-merge-input-")
 	if err != nil {
-		return "", fmt.Errorf("create retained blob directory: %w", err)
-	}
-	retainedDir, err = filepath.Abs(retainedDir)
-	if err != nil {
-		return "", fmt.Errorf("resolve retained blob directory: %w", err)
+		return "", fmt.Errorf("create native merge-input directory: %w", err)
 	}
 	for index, source := range paths {
 		destination := filepath.Join(retainedDir, stages[index].name+".zip")
 		if err := copyFile(destination, source); err != nil {
-			return retainedDir, fmt.Errorf("copy %s blob report: %w", stages[index].name, err)
+			_ = os.RemoveAll(retainedDir)
+			return "", fmt.Errorf("copy %s blob report: %w", stages[index].name, err)
 		}
 	}
 	return retainedDir, nil
 }
 
+// archiveBlobReports copies the native merge input only after final reporters
+// have returned. HTML and blob reporters may clear their configured outputDir,
+// so the source must live outside cwd/test-results and remain at the paths
+// native JSON/HTML reporters emit. The archive is an additional byte-identical
+// copy for the repository's failure-artifact collection.
+func archiveBlobReports(sourceDir, workingDir string) (string, error) {
+	sourceInfo, err := os.Lstat(sourceDir)
+	if err != nil {
+		return "", fmt.Errorf("inspect native merge input: %w", err)
+	}
+	if !sourceInfo.IsDir() {
+		return "", fmt.Errorf("native merge input %q is not a directory", sourceDir)
+	}
+	artifactRoot := filepath.Join(workingDir, "test-results")
+	if err := os.MkdirAll(artifactRoot, 0o755); err != nil {
+		return "", fmt.Errorf("create test-results artifact directory: %w", err)
+	}
+	archiveDir, err := os.MkdirTemp(artifactRoot, "skgo-e2e-blobs-")
+	if err != nil {
+		return "", fmt.Errorf("create retained artifact directory: %w", err)
+	}
+	if err := copyDirectoryTree(sourceDir, archiveDir); err != nil {
+		_ = os.RemoveAll(archiveDir)
+		return "", fmt.Errorf("copy native merge input: %w", err)
+	}
+	return archiveDir, nil
+}
+
+func copyDirectoryTree(sourceDir, destinationDir string) error {
+	return filepath.WalkDir(sourceDir, func(source string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relative, err := filepath.Rel(sourceDir, source)
+		if err != nil {
+			return err
+		}
+		if relative == "." {
+			return nil
+		}
+		destination := filepath.Join(destinationDir, relative)
+		info, err := os.Lstat(source)
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return os.MkdirAll(destination, info.Mode().Perm())
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("unsupported native merge artifact %q with mode %s", source, info.Mode())
+		}
+		return copyFileMode(destination, source, info.Mode().Perm())
+	})
+}
+
 func copyFile(destination, source string) error {
+	info, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+	return copyFileMode(destination, source, info.Mode().Perm())
+}
+
+func copyFileMode(destination, source string, mode os.FileMode) error {
 	input, err := os.Open(source)
 	if err != nil {
 		return err
 	}
 	defer input.Close()
-	output, err := os.OpenFile(destination, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	output, err := os.OpenFile(destination, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 	if err != nil {
 		return err
 	}
