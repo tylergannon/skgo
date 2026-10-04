@@ -165,6 +165,9 @@ settings:
 overrides:
   vite@*: npm:@voidzero-dev/vite-plus-core@1.0.0
 
+patchedDependencies:
+  '@sveltejs/kit@3.0.0': 0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf6e0106c4
+
 importers:
 
   .:
@@ -178,7 +181,7 @@ importers:
         version: link:../../internal/adapter
       '@sveltejs/kit':
         specifier: 3.0.0
-        version: 3.0.0(@sveltejs/vite-plugin-svelte@7.3.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.19.1)(typescript@6.0.3)(yaml@2.9.1))(svelte@5.57.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.19.1)(typescript@6.0.3)(yaml@2.9.1))(svelte@5.57.1)(typescript@6.0.3)
+        version: 3.0.0(patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf6e0106c4)(@sveltejs/vite-plugin-svelte@7.3.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.19.1)(typescript@6.0.3)(yaml@2.9.1))(svelte@5.57.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.19.1)(typescript@6.0.3)(yaml@2.9.1))(svelte@5.57.1)(typescript@6.0.3)
       '@sveltejs/vite-plugin-svelte':
         specifier: 7.3.1
         version: 7.3.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.19.1)(typescript@6.0.3)(yaml@2.9.1))(svelte@5.57.1)
@@ -1484,7 +1487,7 @@ snapshots:
     dependencies:
       acorn: 8.18.0
 
-  '@sveltejs/kit@3.0.0(@sveltejs/vite-plugin-svelte@7.3.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.19.1)(typescript@6.0.3)(yaml@2.9.1))(svelte@5.57.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.19.1)(typescript@6.0.3)(yaml@2.9.1))(svelte@5.57.1)(typescript@6.0.3)':
+  '@sveltejs/kit@3.0.0(patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf6e0106c4)(@sveltejs/vite-plugin-svelte@7.3.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.19.1)(typescript@6.0.3)(yaml@2.9.1))(svelte@5.57.1))(@voidzero-dev/vite-plus-core@1.0.0(@types/node@24.19.1)(typescript@6.0.3)(yaml@2.9.1))(svelte@5.57.1)(typescript@6.0.3)':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
       '@standard-schema/spec': 1.1.0
