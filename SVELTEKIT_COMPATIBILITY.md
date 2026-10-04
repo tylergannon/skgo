@@ -204,6 +204,9 @@ The from-scratch [CI run on `4dbcc11`](https://github.com/tylergannon/skgo/actio
 passed install, build, vet and all Go tests with pnpm 12.9.1. The local frozen
 installs above were up-to-date checks, not clean relinks; CI is the clean-install
 evidence. Review caught the local embedded build predating the refreshed
-manager lockfile; it was rebuilt before further local assertions. Final PR-head
+manager lockfile. A local `pnpm run build` attempt then failed because the
+example script names `vite`, while the managed installation exposes `vp`.
+CI's `just build` uses `vp` and passed; the package script and local freshness
+need repair and validation before merge. Final PR-head
 CI remains the merge gate, and the merged-head browser gates remain the release
 gate. Release receipts are the workflow, npm versions and annotated Go tag.
