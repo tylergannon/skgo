@@ -9,6 +9,7 @@ require (
 	golang.org/x/mod v0.41.0
 	golang.org/x/term v0.46.0
 	golang.org/x/tools v0.50.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -16,6 +17,7 @@ require (
 	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/google/pprof v0.0.0-20260906184651-6331bc6350fe // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tylergannon/structtag v0.1.0 // indirect
 	golang.org/x/net v0.59.0 // indirect

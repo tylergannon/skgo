@@ -16,6 +16,14 @@ committed. In a fresh clone `just dev` installs the dependencies and makes that
 build once, when it finds them missing{{if .ComponentTests}}; the component tests additionally need
 `pnpm --dir web exec playwright install chromium`{{end}}.
 
+The project includes skgo's Kit 3.0.0 prerender queue correction in its pnpm
+configuration. `just dev` and the native VitePlus install apply it during a
+fresh install. To set it up in an existing application, run `go tool skgo
+kit-patch --web web --apply` from the Go app root, then run
+`node_modules/.bin/vp install --no-frozen-lockfile` from `web/`, followed by
+`go tool skgo kit-patch --web web --check` from the app root. The check confirms
+the correction is present in the installed Kit package.
+
 ## Development
 
 ```sh

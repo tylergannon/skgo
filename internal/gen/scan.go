@@ -98,7 +98,9 @@ type remoteFn struct {
 	// in and out are the argument and result types, straight out of the
 	// marked function's own signature.
 	in, out types.Type
-	pos     token.Position
+	// inputs is the named local producer declared in PrerenderOptions.
+	inputs string
+	pos    token.Position
 	// inCodec and outCodec are the base names of the codecs polytype
 	// generated for those two types — `Decode<inCodec>` and
 	// `Encode<outCodec>`. Either is empty when there is no generated codec for
@@ -106,6 +108,9 @@ type remoteFn struct {
 	inCodec, outCodec string
 	// handler is the name of the generated closure that answers this function.
 	handler string
+	// inputsHandler is the uniquely allocated closure that answers Kit's
+	// declared-inputs request for this function.
+	inputsHandler string
 	// requestedArg is the name of the generated wrapper skgo.Requested decodes
 	// one client-requested instance's argument with. It is empty for a
 	// function declared without an argument.
@@ -463,8 +468,15 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 	wantArgs := 1
 	if obj.Name() == "ActionWithFailure" {
 		wantArgs = 2
+	} else if obj.Name() == "Prerender" {
+		if len(call.Args) < 1 || len(call.Args) > 2 {
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: skgo.Prerender takes a function and at most one keyed PrerenderOptions literal", pos)
+		}
+		wantArgs = 1
+	} else {
+		wantArgs = 1
 	}
-	if len(call.Args) != wantArgs {
+	if len(call.Args) != wantArgs && obj.Name() != "Prerender" {
 		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: skgo.%s takes exactly one argument, the function to publish", pos, obj.Name())
 	}
 
@@ -478,6 +490,14 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 	}
 	if target.Pkg() != p.Types {
 		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s is declared in another package; it must live in the file that publishes it", pos, arg.Name)
+	}
+	inputsName := ""
+	if obj.Name() == "Prerender" && len(call.Args) == 2 {
+		var err error
+		inputsName, err = a.readPrerenderOptions(p, call.Args[1])
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
 	}
 
 	if isEndpoint {
@@ -530,6 +550,19 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s is declared as a %s, but %w", pos, target.Name(), kind, err)
 	}
+	if inputsName != "" {
+		producer := p.Types.Scope().Lookup(inputsName)
+		producerFn, ok := producer.(*types.Func)
+		if !ok {
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: PrerenderOptions.Inputs %q is not a function", pos, inputsName)
+		}
+		if producerFn.Pkg() != p.Types {
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: PrerenderOptions.Inputs %q is declared in another package; it must live in the file that publishes it", pos, inputsName)
+		}
+		if err := prerenderInputsSignature(producerFn, in); err != nil {
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: invalid PrerenderOptions.Inputs %s: %w", pos, inputsName, err)
+		}
+	}
 
 	return &remoteFn{
 		kind:   kind,
@@ -539,8 +572,90 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 		stub:   stub,
 		in:     in,
 		out:    out,
+		inputs: inputsName,
 		pos:    pos,
 	}, nil, nil, nil, nil
+}
+
+// readPrerenderOptions accepts only the keyed literal form so authored
+// behavior is visible at the declaration and diagnostics can point at the
+// exact unsupported or misspelled field.
+func (a *app) readPrerenderOptions(p *packages.Package, expr ast.Expr) (string, error) {
+	literal, ok := expr.(*ast.CompositeLit)
+	if !ok {
+		return "", fmt.Errorf("skgo: %s: Prerender options must be a keyed skgo.PrerenderOptions literal", p.Fset.Position(expr.Pos()))
+	}
+	typ, ok := literal.Type.(*ast.SelectorExpr)
+	if !ok || typ.Sel.Name != "PrerenderOptions" {
+		return "", fmt.Errorf("skgo: %s: Prerender options must be a keyed skgo.PrerenderOptions literal", p.Fset.Position(literal.Type.Pos()))
+	}
+	typeIdent, ok := typ.X.(*ast.Ident)
+	if !ok {
+		return "", fmt.Errorf("skgo: %s: Prerender options must be a keyed skgo.PrerenderOptions literal", p.Fset.Position(literal.Type.Pos()))
+	}
+	typeObj, _ := p.TypesInfo.Uses[typeIdent].(*types.PkgName)
+	if typeObj == nil || typeObj.Imported().Path() != skgoPkg {
+		return "", fmt.Errorf("skgo: %s: Prerender options must be a keyed skgo.PrerenderOptions literal", p.Fset.Position(literal.Type.Pos()))
+	}
+	inputs := ""
+	seen := map[string]bool{}
+	for _, elt := range literal.Elts {
+		kv, ok := elt.(*ast.KeyValueExpr)
+		if !ok {
+			return "", fmt.Errorf("skgo: %s: PrerenderOptions fields must use keyed syntax", p.Fset.Position(elt.Pos()))
+		}
+		key, ok := kv.Key.(*ast.Ident)
+		if !ok {
+			return "", fmt.Errorf("skgo: %s: PrerenderOptions field key must be an identifier", p.Fset.Position(kv.Key.Pos()))
+		}
+		keyPos := p.Fset.Position(key.Pos())
+		if seen[key.Name] {
+			return "", fmt.Errorf("skgo: %s: duplicate PrerenderOptions field %q", keyPos, key.Name)
+		}
+		seen[key.Name] = true
+		switch key.Name {
+		case "Inputs":
+			id, ok := kv.Value.(*ast.Ident)
+			if !ok {
+				return "", fmt.Errorf("skgo: %s: PrerenderOptions.Inputs must name a local function", p.Fset.Position(kv.Value.Pos()))
+			}
+			inputs = id.Name
+		case "Dynamic", "Validate":
+			return "", fmt.Errorf("skgo: %s: PrerenderOptions.%s is not supported yet", keyPos, key.Name)
+		default:
+			return "", fmt.Errorf("skgo: %s: unknown PrerenderOptions field %q", keyPos, key.Name)
+		}
+	}
+	return inputs, nil
+}
+
+func prerenderInputsSignature(fn *types.Func, inputType types.Type) error {
+	sig, ok := fn.Type().(*types.Signature)
+	if !ok || sig.Recv() != nil || sig.Variadic() || sig.Params().Len() != 0 || sig.Results().Len() != 2 {
+		return prerenderInputsShapeError(inputType)
+	}
+	list, ok := sig.Results().At(0).Type().(*types.Slice)
+	if !ok {
+		return prerenderInputsShapeError(inputType)
+	}
+	if inputType == nil {
+		if named, ok := types.Unalias(list.Elem()).(*types.Named); !ok || named.Obj().Pkg() == nil || named.Obj().Pkg().Path() != "github.com/tylergannon/polytype/devalue" || named.Obj().Name() != "UndefinedValue" {
+			return fmt.Errorf("a no-argument prerender remote requires func() ([]devalue.UndefinedValue, error)")
+		}
+	} else if !types.Identical(list.Elem(), inputType) {
+		return prerenderInputsShapeError(inputType)
+	}
+	if !types.Identical(sig.Results().At(1).Type(), types.Universe.Lookup("error").Type()) {
+		return prerenderInputsShapeError(inputType)
+	}
+	return nil
+}
+
+func prerenderInputsShapeError(inputType types.Type) error {
+	if inputType == nil {
+		return fmt.Errorf("want func() ([]devalue.UndefinedValue, error)")
+	}
+	return fmt.Errorf("want func() ([]%s, error), matching the published argument", types.TypeString(inputType, func(pkg *types.Package) string { return pkg.Name() }))
 }
 
 // remoteSignature reads a marked function's argument and result types out of

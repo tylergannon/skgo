@@ -1,0 +1,14 @@
+=== RUN   TestDeliveryNativeUniversalImportNeedsNoClientID
+=== RUN   TestDeliveryNativeUniversalImportNeedsNoClientID/noarg-false
+    delivery_test.go:874: owned command pid/group=19771 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/native-universal-caller-free-A0ab6303-noarg-false args=["pnpm" "install" "--frozen-lockfile" "--store-dir" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/native-correction-store"]
+    delivery_test.go:875: owned command pid/group=19791 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/native-universal-caller-free-A0ab6303-noarg-false args=["node_modules/.bin/vp" "build"]
+    delivery_test.go:916: actual native universal import/no component caller: clientJSfiles12 exact3215r6/catalog IDs0; literal native artifacts and authored root present
+=== RUN   TestDeliveryNativeUniversalImportNeedsNoClientID/noarg-true
+    delivery_test.go:874: owned command pid/group=19816 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/native-universal-caller-free-A0ab6303-noarg-true args=["pnpm" "install" "--frozen-lockfile" "--store-dir" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/native-correction-store"]
+    delivery_test.go:875: owned command pid/group=19824 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/native-universal-caller-free-A0ab6303-noarg-true args=["node_modules/.bin/vp" "build"]
+    delivery_test.go:916: actual native universal import/no component caller: clientJSfiles12 exact3215r6/empty IDs0; literal native artifacts and authored root present
+--- PASS: TestDeliveryNativeUniversalImportNeedsNoClientID (5.02s)
+    --- PASS: TestDeliveryNativeUniversalImportNeedsNoClientID/noarg-false (2.63s)
+    --- PASS: TestDeliveryNativeUniversalImportNeedsNoClientID/noarg-true (2.39s)
+PASS
+ok  	example.com/prerender-delivery-proof	5.344s

@@ -1,0 +1,9 @@
+{
+  "package": "@sveltejs/kit",
+  "version": "3.0.0",
+  "queuePath": "src/core/postbuild/queue.js",
+  "stockSHA256": "dbe8bbacab35cbd119d6f5bcf9b527ce0f7a1bfa63954b5ebe047df49f46c6d5",
+  "correctedSHA256": "400bf34544e2b3c5512e489eb5a0ca99a7483f0b6d733f70cab9e81e28f3a0f5",
+  "patchSHA256": "0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf6e0106c4",
+  "correctionID": "skgo-kit-3.0.0-prerender-queue-v1"
+}

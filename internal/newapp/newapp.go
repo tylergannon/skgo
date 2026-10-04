@@ -29,6 +29,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/tylergannon/skgo/internal/kitpatch"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
@@ -73,13 +74,15 @@ type Options struct {
 	// useful when qualifying a checkout; released generators leave it empty.
 	SkgoReplace string
 
-	RegistryURL string
-	VP          string
-	Client      *http.Client
-	Stdout      io.Writer
-	Stderr      io.Writer
-	run         func(command) error
-	addonStage  string
+	RegistryURL       string
+	VP                string
+	Client            *http.Client
+	Stdout            io.Writer
+	Stderr            io.Writer
+	run               func(command) error
+	addonStage        string
+	configureKitQueue func(web string, out io.Writer) error
+	verifyKitQueue    func(web string) error
 }
 
 type command struct {
@@ -119,6 +122,9 @@ type project struct {
 	SVAddonSpec       string
 	AdapterDependency string
 	SVVersion         string
+	stdout            io.Writer
+	configureKitQueue func(web string, out io.Writer) error
+	verifyKitQueue    func(web string) error
 }
 
 const storybookVersion = "10.6.1"
@@ -233,18 +239,35 @@ func Create(options Options) (Result, error) {
 // finish installs what the installers declared, proves they took, and adds the
 // Go half.
 func finish(p project, run func(command) error) (Result, error) {
+	web := filepath.Join(p.Dir, "web")
+	configureQueue := p.configureKitQueue
+	if configureQueue == nil {
+		configureQueue = func(web string, out io.Writer) error {
+			return kitpatch.Configure(kitpatch.Options{Web: web, Out: out})
+		}
+	}
+	if err := configureQueue(web, p.stdout); err != nil {
+		return Result{}, fmt.Errorf("skgo: configuring the Kit prerender queue correction failed: %w", err)
+	}
 	if err := run(command{
-		Dir: filepath.Join(p.Dir, "web"), Name: filepath.Join("node_modules", ".bin", "vp"),
+		Dir: web, Name: filepath.Join("node_modules", ".bin", "vp"),
 		// sv and Storybook have just changed package.json; the lockfile sv
 		// produced before those add-ons is intentionally stale, even in CI.
 		Args: []string{"install", "--no-frozen-lockfile"}, Env: os.Environ(),
 	}); err != nil {
-		return Result{}, fmt.Errorf("skgo: VitePlus could not install Storybook's dependencies: %w", err)
+		return Result{}, fmt.Errorf("skgo: VitePlus could not install frontend dependencies: %w", err)
+	}
+	verifyQueue := p.verifyKitQueue
+	if verifyQueue == nil {
+		verifyQueue = func(web string) error { return kitpatch.Verify(kitpatch.Options{Web: web}) }
+	}
+	if err := verifyQueue(web); err != nil {
+		return Result{}, fmt.Errorf("skgo: installed Kit prerender queue correction could not be verified: %w", err)
 	}
 	if err := verifyFrontend(p.Dir); err != nil {
 		return Result{}, fmt.Errorf("skgo: upstream frontend setup was incomplete: %w", err)
 	}
-	if err := setPreviewScript(filepath.Join(p.Dir, "web")); err != nil {
+	if err := setPreviewScript(web); err != nil {
 		return Result{}, err
 	}
 	// sv's Vitest add-on depends on Playwright only for component testing; a
@@ -580,7 +603,11 @@ func resolve(o Options) (project, error) {
 	if err != nil {
 		return project{}, err
 	}
-	p := project{Dir: dir, App: o.App, Module: o.Module, Origin: o.Origin, SkgoVersion: o.SkgoVersion, SkgoReplace: o.SkgoReplace}
+	p := project{
+		Dir: dir, App: o.App, Module: o.Module, Origin: o.Origin,
+		SkgoVersion: o.SkgoVersion, SkgoReplace: o.SkgoReplace, stdout: o.Stdout,
+		configureKitQueue: o.configureKitQueue, verifyKitQueue: o.verifyKitQueue,
+	}
 	if p.App == "" {
 		p.App = filepath.Base(dir)
 	}

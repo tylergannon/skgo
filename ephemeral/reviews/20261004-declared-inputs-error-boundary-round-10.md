@@ -1,0 +1,33 @@
+# Declared Inputs error boundary and lifecycle review — round 10
+
+Outcome: **material findings remain**.
+
+Target: product commit `3d399b8b23facfce4733923cb4f96d53587b997a`, compared with `4763e22154a02559125b0e90e34f5916c1ec41fd`, and the current untracked `internal/adapter/prerender_inputs_lifecycle_test.go`, SHA-256 `930e8d90cdb9acf607ced7f78bfd64ed3b8d0f171b99860f3741a391ee9b57eb`. The adapter helper SHA-256 is `203e53949a1a1949dfbf9cd2cb5390afdefbf8e72f5d57835bf7f70f85e6f022`. Review remains against the whole authoritative Inputs assignment and seven acceptance groups; requested focus did not exclude other material defects. No product, test or dependency edits and no new test execution were performed by this reviewer. This artifact is not merge or release approval.
+
+## Evidence and corrected error boundary
+
+Read the complete 476-to-3d product diff, surrounding owner failure/cleanup and worker listeners, the corrected lifecycle harness and assertions, current worklog, prior immutable review rounds 08–09, and installed Kit 3.0.0 queue, prerender and native build error handling. The independent earlier `../prerender-inputs-proof/product-final-39d7218.log` records the actual crawler counterexample: the outer build rejected with `__handled__` instead of Kit's final public error. This is earlier-checkpoint evidence, not a claimed 3d test result.
+
+Kit `src/exports/vite/build/index.js:807–813` deliberately replaces its worker `__handled__` sentinel with the stackless `Prerendering failed` error. The adapter worker error listener at `prerender.js:452` may already have latched the sentinel. Therefore the former wrapper's `owner.failed ?? error` incorrectly replaced the error caught from the native handler.
+
+The bounded correction at `prerender.js:536–561` addresses that defect. Only the native handler invocation is inside its rejection catch. The catch awaits owner failure/drain, reports or attaches the actual cleanup failure if draining rejects, and rethrows the exact caught handler value. It does not substitute the earlier owner latch. This remains correct when `owner.fail()` itself rethrows the older sentinel: `session.fail` at lines 292–299 retains the first failure but records cleanup failure separately, and the wrapper uses that separate metadata. Metadata attachment is guarded so a frozen object or primitive native rejection does not become a different attachment error.
+
+The successful-handler branch remains separate at lines 554–559: a latched infrastructure failure still awaits cleanup and rejects. Native crawler policy accepting an HTTP 500 therefore cannot silently turn a failed producer/protocol session into build success. The correction does not require replacing the owner latch, native worker plumbing, native policy, or hook metadata/receiver/arguments. No additional product defect was identified in this correction.
+
+## Corrected lifecycle proof harness
+
+The round-09 harness defect is addressed in the inspected source. Lines 563–578 register rescue cleanup before starting the command, give `cmd.Wait` one goroutine owner and a completion channel, and set `WaitDelay`. Lines 581–617 terminate the recorded Go group, recorded Vite owner and direct command before joining; both joins are bounded. Lines 546–560 protect output reads/writes with a mutex. These changes remove the earlier inherited-pipe cleanup ordering and concurrent-Wait problems.
+
+An intermediate revision returned deadline failure as an ordinary process error. That could falsely pass tests expecting rejection after a hung process had already printed a rejection receipt. The inspected final `runInputsBuildApp` at lines 398–408 explicitly calls `t.Fatalf` on timeout; signal and controlled-drain callers also fail their timeout branches. Rescue cannot count as successful product cleanup. The native crawler test at lines 79–80 now requires `BUILD_APP_REJECTED:Prerendering failed`, in addition to native route diagnostics and the existing observation that the group and private directory were gone when the outer promise rejected. This preserves the original regression rather than accepting the sentinel.
+
+These are source-review conclusions. Parent-reported successful runs are not recast here as tests executed by this reviewer. Exact-checkpoint validation remains independently required.
+
+## 1. Issue: the native async Inputs queue blocker remains unresolved
+
+**Requirement:** declared Inputs must work in minimal real builds, including noarg-only and same-export/two-package declarations, while preserving valid overlap between asynchronous producers and native route/remote bodies. Acceptance groups 1–3 and 6 remain authoritative.
+
+Installed Kit `src/core/postbuild/queue.js:42–44` closes the queue as soon as active work becomes idle, before explicit seeding completion; line 52 rejects any subsequent addition. But `src/core/postbuild/prerender.js:708–724` awaits legal async Inputs producers before adding remote work, and only calls `q.done()` at line 728. Early route completion can close the queue while a producer is awaiting Go compilation or other asynchronous work. Later argument and noarg additions then throw `Cannot add tasks to a queue that has ended`.
+
+The independently reproduced stock-native negative and minimal product failures are recorded in round 08, `../prerender-inputs-proof/native/native-async-queue.log`, and the retained repository experiment `ephemeral/experiments/20261004-native-async-inputs-queue/`. The stock native fixture contains no Go adapter workaround: its async producer starts and finishes, while no declared body runs. The maintained minimal regression retains positive artifact expectations and is expected to expose the current feature failure. Full-example positive builds with unrelated work keeping the queue active cannot satisfy this requirement.
+
+The 3d error-boundary correction does not affect queue seeding. No semantics-preserving bridge-only repair has been established. Eager producer execution before native bodies start would change ordering and deadlock the required producer/body overlap control; synthetic held work would conceal the problem. The bounded actual repair belongs to native queue seeding/closure, allowing additions until explicit seeding completion and resolving when idle while retaining early rejection. That needs an upstream/dependency correction or an explicitly authorized exception to the current no-native-patch constraint. This review authorizes neither. Keep the feature draft and retain the original failing minimal and overlap oracles until that boundary is adjudicated and all seven groups pass.

@@ -1,0 +1,121 @@
+=== RUN   TestDeliveryNativeWorkerGuardJoinsBlockedOwnedGoLoad
+    delivery_test.go:242: owned command pid/group=46233 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83-controls/internal/adapter args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/guard-sdk-c512e83-controls/adapter"]
+    delivery_test.go:242: owned command pid/group=46239 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83-controls/internal/sv args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/guard-sdk-c512e83-controls/sv"]
+    delivery_test.go:247: owned command pid/group=46245 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/guard-native-worker-sdk-c512e83-controls args=["go" "mod" "tidy"]
+    delivery_test.go:264: owned command pid/group=46249 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/guard-native-worker-sdk-c512e83-controls/web args=["pnpm" "install" "--no-frozen-lockfile"]
+    delivery_test.go:266: owned command pid/group=46304 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/guard-native-worker-sdk-c512e83-controls args=["go" "generate" "./..."]
+    delivery_test.go:274: owned command pid/group=46369 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/guard-native-worker-sdk-c512e83-controls/web args=["node" "-e" "(async()=>{const {createBuilder}=await import('vite');const {existsSync,readFileSync,writeFileSync}=await import('node:fs');const builder=await createBuilder({configFile:'vite.config.ts'});let rejected;try{await builder.buildApp()}catch(error){rejected=error}if(!rejected||!String(rejected).includes('SKGO_KIT_PRERENDER_QUEUE'))throw new Error('wrong guarded native rejection:'+rejected);const [text,dir]=readFileSync(process.env.SKGO_BLOCK_READY,'utf8').trim().split(/\\s+/);const pid=Number(text);let alive=false;try{process.kill(-pid,0);alive=true}catch(error){if(error.code!=='ESRCH')throw error}const receipt={original:String(rejected),pid,dir,childrenAtRejection:alive?1:0,tempDirAtRejection:existsSync(dir)};const before=readFileSync(process.env.SKGO_BLOCK_LATE,'utf8');await new Promise(r=>setTimeout(r,250));receipt.lateIO=before===readFileSync(process.env.SKGO_BLOCK_LATE,'utf8')?0:1;writeFileSync(process.env.SKGO_BLOCK_RESULT,JSON.stringify(receipt));if(receipt.childrenAtRejection||receipt.tempDirAtRejection||receipt.lateIO)throw new Error('guard rejected before owner cleanup:'+JSON.stringify(receipt));console.log('GUARD_NATIVE_WORKER_JOINED '+JSON.stringify(receipt));process.exitCode=19})().catch(error=>{console.error(error);process.exitCode=1});"]
+    delivery_test.go:285: guarded native build nonzero/drain:exit status 1:transforming...
+        ✓ 154 modules transformed.
+        rendering chunks...
+        computing gzip size...
+        .svelte-kit/output/server/.vite/manifest.json                  4.95 kB │ gzip:  0.69 kB
+        .svelte-kit/output/server/entries/pages/_layout.ts.js          0.05 kB │ gzip:  0.06 kB
+        .svelte-kit/output/server/entries/pages/_page.ts.js            0.12 kB │ gzip:  0.12 kB │ map:   0.17 kB
+        .svelte-kit/output/server/remote-entry.js                      0.16 kB │ gzip:  0.12 kB
+        .svelte-kit/output/server/entries/pages/_page.svelte.js        0.23 kB │ gzip:  0.19 kB │ map:   0.16 kB
+        .svelte-kit/output/server/chunks/remote-3215r6.js              0.23 kB │ gzip:  0.14 kB
+        .svelte-kit/output/server/env.js                               0.31 kB │ gzip:  0.19 kB │ map:   0.57 kB
+        .svelte-kit/output/server/chunks/server.js                     0.49 kB │ gzip:  0.29 kB │ map:   0.74 kB
+        .svelte-kit/output/server/entries/pages/_page.server.ts.js     0.94 kB │ gzip:  0.44 kB │ map:   2.09 kB
+        .svelte-kit/output/server/entries/fallbacks/error.svelte.js    1.34 kB │ gzip:  0.51 kB │ map:   2.87 kB
+        .svelte-kit/output/server/chunks/fixture.remote.js             1.84 kB │ gzip:  0.90 kB │ map:   2.41 kB
+        .svelte-kit/output/server/index.js                             2.44 kB │ gzip:  1.00 kB │ map:   3.47 kB
+        .svelte-kit/output/server/entries/pages/_layout.svelte.js      2.62 kB │ gzip:  1.08 kB │ map:   2.75 kB
+        .svelte-kit/output/server/chunks/uneval.js                    19.41 kB │ gzip:  5.37 kB │ map:  40.87 kB
+        .svelte-kit/output/server/chunks/server-errors.js             24.28 kB │ gzip:  4.60 kB │ map:  35.02 kB
+        .svelte-kit/output/server/chunks/server2.js                   44.50 kB │ gzip: 12.24 kB │ map: 128.26 kB
+        .svelte-kit/output/server/chunks/remote.js                    55.37 kB │ gzip: 11.93 kB │ map:  90.78 kB
+        .svelte-kit/output/server/chunks/internal.js                 106.02 kB │ gzip: 27.83 kB │ map: 229.33 kB
+        .svelte-kit/output/server/chunks/instance.js                 130.98 kB │ gzip: 34.72 kB │ map: 268.06 kB
+        
+        ✓ built in 51ms
+        Analysing routes
+        (node:46369) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        Building app
+        transforming...
+        ✓ 197 modules transformed.
+        rendering chunks...
+        computing gzip size...
+        .svelte-kit/output/client/_app/version.json                          0.02 kB │ gzip:  0.04 kB
+        .svelte-kit/output/client/.vite/manifest.json                        4.87 kB │ gzip:  0.71 kB
+        .svelte-kit/output/client/_app/immutable/entry/payload.DSmR2FwN.js   0.06 kB │ gzip:  0.07 kB
+        .svelte-kit/output/client/_app/immutable/chunks/D9_BHbpu.js          0.07 kB │ gzip:  0.08 kB
+        .svelte-kit/output/client/_app/immutable/chunks/DK3Fl9T5.js          0.15 kB │ gzip:  0.15 kB
+        .svelte-kit/output/client/_app/immutable/nodes/2.DicrMwzx.js         0.22 kB │ gzip:  0.19 kB
+        .svelte-kit/output/client/_app/immutable/nodes/1.3XiNwf1o.js         0.32 kB │ gzip:  0.24 kB
+        .svelte-kit/output/client/_app/immutable/entry/start.BkYlPxEG.js     0.54 kB │ gzip:  0.32 kB
+        .svelte-kit/output/client/_app/immutable/entry/app.Ixb34UHC.js       1.12 kB │ gzip:  0.56 kB
+        .svelte-kit/output/client/_app/immutable/chunks/uBIymjUX.js          1.23 kB │ gzip:  0.68 kB
+        .svelte-kit/output/client/_app/immutable/chunks/Bjy-W4x2.js          1.36 kB │ gzip:  0.65 kB
+        .svelte-kit/output/client/_app/immutable/nodes/0.BYJtNgT-.js         3.65 kB │ gzip:  1.63 kB
+        .svelte-kit/output/client/_app/immutable/chunks/rU1fW449.js          4.74 kB │ gzip:  2.09 kB
+        .svelte-kit/output/client/_app/immutable/chunks/B14RL7zQ.js         35.01 kB │ gzip: 13.50 kB
+        .svelte-kit/output/client/_app/immutable/chunks/COrMqP9O.js         43.90 kB │ gzip: 16.14 kB
+        
+        ✓ built in 78ms
+        (node:46369) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        Prerendering
+        Error: wrong guarded native rejection:ReferenceError: $ is not defined
+            at [eval]:1:335
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+--- FAIL: TestDeliveryNativeWorkerGuardJoinsBlockedOwnedGoLoad (4.55s)
+=== RUN   TestDeliveryExistingConsumerUpgradeApplyCheckAndFrozenReinstall
+    delivery_test.go:580: owned command pid/group=46377 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83-controls/internal/adapter args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83-controls/adapter"]
+    delivery_test.go:580: owned command pid/group=46383 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83-controls/internal/sv args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83-controls/sv"]
+    delivery_test.go:599: owned command pid/group=46389 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "mod" "tidy"]
+    delivery_test.go:603: owned command pid/group=46390 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/independent-sentinel-package args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/independent-packed-sentinel"]
+    delivery_test.go:603: owned command pid/group=46396 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/web args=["pnpm" "config" "set" "patchedDependencies" "{\"inputs-delivery-sentinel@1.0.0\":\"patches/independent-sentinel.patch\"}" "--location=project" "--json"]
+    delivery_test.go:603: owned command pid/group=46402 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/independent-absolute-package args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/independent-packed-absolute"]
+    delivery_test.go:603: owned command pid/group=46408 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/web args=["pnpm" "config" "set" "patchedDependencies" "{\"inputs-delivery-absolute-sentinel@1.0.0\":\"/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/web/patches/independent-absolute.patch\",\"inputs-delivery-sentinel@1.0.0\":\"patches/independent-sentinel.patch\"}" "--location=project" "--json"]
+    delivery_test.go:606: owned command pid/group=46414 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/web args=["pnpm" "install" "--no-frozen-lockfile"]
+    delivery_test.go:611: owned command pid/group=46468 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "generate" "./..."]
+    delivery_test.go:612: owned command pid/group=46501 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["just" "build"]
+    delivery_test.go:618: owned command pid/group=46594 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--apply"]
+    delivery_test.go:619: owned command pid/group=46629 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--check"]
+    delivery_test.go:629: owned command pid/group=46646 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/web args=["node_modules/.bin/vp" "install" "--no-frozen-lockfile"]
+    delivery_test.go:630: native installed @skgo/sveltekit-adapter resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/web/node_modules/.pnpm/@skgo+sveltekit-adapter@file+..+..+..+delivery+packages+sdk-c512e83-controls+adapter+sk_5952770a54d3dea04cd335e2bbe44855/node_modules/@skgo/sveltekit-adapter
+    delivery_test.go:630: native installed @sveltejs/kit resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_bf4611d0b9c269fdaa49de61a97a97b8/node_modules/@sveltejs/kit
+    delivery_test.go:630: native installed vite-plus resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/web/node_modules/.pnpm/vite-plus@1.0.0_@vitest+ui@5.0.1_esbuild@0.28.2_svelte@5.57.1_typescript@6.0.3/node_modules/vite-plus
+    delivery_test.go:630: owned command pid/group=46700 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--check"]
+    delivery_test.go:633: owned command pid/group=46717 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--apply"]
+    delivery_test.go:643: owned command pid/group=46734 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "generate" "./..."]
+    delivery_test.go:643: owned command pid/group=46761 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["just" "build"]
+    delivery_test.go:643: owned command pid/group=46950 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "test" "-count=1" "-run" "^TestIndependentPackedCompiledHTTPAndSSR$" "-v" "."]
+    delivery_test.go:644: owned command pid/group=46971 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls-relocated-frozen/web args=["pnpm" "install" "--frozen-lockfile" "--store-dir" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/independent-store-existing-sdk-c512e83-controls"]
+    delivery_test.go:644: native installed @skgo/sveltekit-adapter resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls-relocated-frozen/web/node_modules/.pnpm/@skgo+sveltekit-adapter@file+..+..+..+delivery+packages+sdk-c512e83-controls+adapter+sk_5952770a54d3dea04cd335e2bbe44855/node_modules/@skgo/sveltekit-adapter
+    delivery_test.go:644: native installed @sveltejs/kit resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls-relocated-frozen/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_bf4611d0b9c269fdaa49de61a97a97b8/node_modules/@sveltejs/kit
+    delivery_test.go:644: native installed vite-plus resolves /Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls-relocated-frozen/web/node_modules/.pnpm/vite-plus@1.0.0_@vitest+ui@5.0.1_esbuild@0.28.2_svelte@5.57.1_typescript@6.0.3/node_modules/vite-plus
+    delivery_test.go:644: owned command pid/group=47046 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls-relocated-frozen args=["go" "tool" "skgo" "kit-patch" "--web" "web" "--check"]
+    delivery_test.go:646: owned command pid/group=47069 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls-relocated-frozen args=["go" "generate" "./..."]
+    delivery_test.go:646: owned command pid/group=47101 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls-relocated-frozen args=["just" "build"]
+    delivery_test.go:646: owned command pid/group=47288 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls-relocated-frozen args=["go" "test" "-count=1" "-run" "^TestIndependentPackedCompiledHTTPAndSSR$" "-v" "."]
+--- PASS: TestDeliveryExistingConsumerUpgradeApplyCheckAndFrozenReinstall (22.91s)
+=== RUN   TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites
+    delivery_test.go:708: owned command pid/group=47308 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/parent-workspace-explicit-false-sdk-c512e83-controls/web" "--apply"]
+    delivery_test.go:708: owned command pid/group=47313 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/parent-workspace-explicit-true-sdk-c512e83-controls/web" "--apply" "--workspace" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/parent-workspace-explicit-true-sdk-c512e83-controls"]
+    delivery_test.go:731: owned command pid/group=47318 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/different-destination-sdk-c512e83-controls/web" "--apply"]
+    delivery_test.go:731: different-destination authored file/directory count changed5=>6
+--- FAIL: TestDeliveryParentWorkspaceAndConflictRefuseBeforeWrites (0.45s)
+=== RUN   TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites
+=== RUN   TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites/unsupported-version
+    delivery_test.go:771: owned command pid/group=47337 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/unsupported-version-sdk-c512e83-controls/pre-install-kit args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/unsupported-version-sdk-c512e83-controls/packed-kit"]
+    delivery_test.go:779: owned command pid/group=47343 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/unsupported-version-sdk-c512e83-controls/web args=["pnpm" "install" "--no-frozen-lockfile"]
+    delivery_test.go:782: owned command pid/group=47363 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/unsupported-version-sdk-c512e83-controls/web" "--apply"]
+=== RUN   TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites/altered-source
+    delivery_test.go:771: owned command pid/group=47380 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/altered-source-sdk-c512e83-controls/pre-install-kit args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/altered-source-sdk-c512e83-controls/packed-kit"]
+    delivery_test.go:779: owned command pid/group=47388 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/altered-source-sdk-c512e83-controls/web args=["pnpm" "install" "--no-frozen-lockfile"]
+    delivery_test.go:782: owned command pid/group=47407 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls args=["go" "tool" "skgo" "kit-patch" "--web" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/altered-source-sdk-c512e83-controls/web" "--apply"]
+--- PASS: TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites (1.48s)
+    --- PASS: TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites/unsupported-version (1.14s)
+    --- PASS: TestDeliveryUnsupportedInstalledSourceRefusesBeforeWrites/altered-source (0.35s)
+=== RUN   TestDeliveryRemovedOwnedPatchRestoresNamedStockFailure
+    delivery_test.go:794: owned command pid/group=47428 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/removal-control-sdk-c512e83-controls/web args=["pnpm" "config" "set" "patchedDependencies" "{\"inputs-delivery-absolute-sentinel@1.0.0\":\"/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/existing-upgrade-sdk-c512e83-controls/web/patches/independent-absolute.patch\",\"inputs-delivery-sentinel@1.0.0\":\"patches/independent-sentinel.patch\"}" "--location=project" "--json"]
+    delivery_test.go:798: owned command pid/group=47436 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/removal-control-sdk-c512e83-controls/web args=["pnpm" "install" "--no-frozen-lockfile"]
+    delivery_test.go:804: owned command pid/group=47494 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/removal-control-sdk-c512e83-controls args=["just" "build"]
+--- PASS: TestDeliveryRemovedOwnedPatchRestoresNamedStockFailure (3.36s)
+FAIL
+FAIL	example.com/prerender-delivery-proof	32.927s
+FAIL

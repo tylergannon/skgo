@@ -1,0 +1,59 @@
+transforming...
+✓ 152 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/server/.vite/manifest.json                   5.00 kB │ gzip:  0.70 kB
+.svelte-kit/output/server/remote-entry.js                       0.16 kB │ gzip:  0.12 kB
+.svelte-kit/output/server/entries/pages/_layout.ts.js           0.16 kB │ gzip:  0.14 kB │ map:   0.21 kB
+.svelte-kit/output/server/entries/pages/_page.svelte.js         0.23 kB │ gzip:  0.19 kB │ map:   0.16 kB
+.svelte-kit/output/server/chunks/remote-3215r6.js               0.23 kB │ gzip:  0.14 kB
+.svelte-kit/output/server/env.js                                0.31 kB │ gzip:  0.19 kB │ map:   0.57 kB
+.svelte-kit/output/server/entries/hooks.universal.js            0.35 kB │ gzip:  0.23 kB │ map:   0.59 kB
+.svelte-kit/output/server/entries/fallbacks/layout.svelte.js    0.45 kB │ gzip:  0.33 kB │ map:   0.49 kB
+.svelte-kit/output/server/chunks/fixture.remote.js              1.20 kB │ gzip:  0.59 kB │ map:   0.66 kB
+.svelte-kit/output/server/entries/fallbacks/error.svelte.js     1.34 kB │ gzip:  0.53 kB │ map:   2.87 kB
+.svelte-kit/output/server/index.js                              2.40 kB │ gzip:  1.02 kB │ map:   3.47 kB
+.svelte-kit/output/server/chunks/uneval.js                     19.41 kB │ gzip:  5.37 kB │ map:  40.87 kB
+.svelte-kit/output/server/chunks/server-errors.js              24.28 kB │ gzip:  4.63 kB │ map:  35.02 kB
+.svelte-kit/output/server/chunks/server.js                     44.14 kB │ gzip: 12.13 kB │ map: 128.09 kB
+.svelte-kit/output/server/chunks/remote.js                     55.34 kB │ gzip: 11.95 kB │ map:  90.78 kB
+.svelte-kit/output/server/chunks/internal.js                  106.20 kB │ gzip: 27.89 kB │ map: 229.93 kB
+.svelte-kit/output/server/chunks/instance.js                  130.81 kB │ gzip: 34.70 kB │ map: 267.84 kB
+
+✓ built in 48ms
+Analysing routes
+(node:19832) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Building app
+transforming...
+✓ 198 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/client/_app/version.json                          0.02 kB │ gzip:  0.04 kB
+.svelte-kit/output/client/.vite/manifest.json                        4.72 kB │ gzip:  0.69 kB
+.svelte-kit/output/client/_app/immutable/entry/payload.DSmR2FwN.js   0.06 kB │ gzip:  0.07 kB
+.svelte-kit/output/client/_app/immutable/chunks/D1UE1En6.js          0.07 kB │ gzip:  0.08 kB
+.svelte-kit/output/client/_app/immutable/nodes/2.-eiviz6a.js         0.15 kB │ gzip:  0.15 kB
+.svelte-kit/output/client/_app/immutable/nodes/1.J1G31d7G.js         0.32 kB │ gzip:  0.24 kB
+.svelte-kit/output/client/_app/immutable/entry/start.Bt1518Ym.js     0.54 kB │ gzip:  0.32 kB
+.svelte-kit/output/client/_app/immutable/entry/app.B2W74xNw.js       1.21 kB │ gzip:  0.62 kB
+.svelte-kit/output/client/_app/immutable/chunks/uBIymjUX.js          1.23 kB │ gzip:  0.68 kB
+.svelte-kit/output/client/_app/immutable/chunks/Bjy-W4x2.js          1.36 kB │ gzip:  0.65 kB
+.svelte-kit/output/client/_app/immutable/nodes/0.jakCHUFv.js         1.54 kB │ gzip:  0.84 kB
+.svelte-kit/output/client/_app/immutable/chunks/D2crdB6-.js          4.74 kB │ gzip:  2.09 kB
+.svelte-kit/output/client/_app/immutable/chunks/D_kgpL75.js         34.00 kB │ gzip: 13.14 kB
+.svelte-kit/output/client/_app/immutable/chunks/BbIVK8fD.js         41.29 kB │ gzip: 15.17 kB
+
+✓ built in 81ms
+(node:19832) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Prerendering
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+✓ built in 5ms
+
+Run npm run preview to preview your production build locally.
+
+> Using native-inputs-proof
+✔ done

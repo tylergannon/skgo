@@ -1,0 +1,55 @@
+transforming...
+✓ 152 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/server/.vite/manifest.json                   5.19 kB │ gzip:  0.69 kB
+.svelte-kit/output/server/remote-entry.js                       0.16 kB │ gzip:  0.12 kB
+.svelte-kit/output/server/entries/pages/_layout.server.ts.js    0.18 kB │ gzip:  0.15 kB │ map:   0.22 kB
+.svelte-kit/output/server/entries/pages/_page.svelte.js         0.23 kB │ gzip:  0.19 kB │ map:   0.16 kB
+.svelte-kit/output/server/chunks/remote-3215r6.js               0.23 kB │ gzip:  0.14 kB
+.svelte-kit/output/server/env.js                                0.31 kB │ gzip:  0.19 kB │ map:   0.57 kB
+.svelte-kit/output/server/entries/hooks.universal.js            0.35 kB │ gzip:  0.23 kB │ map:   0.59 kB
+.svelte-kit/output/server/entries/fallbacks/layout.svelte.js    0.47 kB │ gzip:  0.33 kB │ map:   0.50 kB
+.svelte-kit/output/server/chunks/fixture.remote.js              1.29 kB │ gzip:  0.63 kB │ map:   0.80 kB
+.svelte-kit/output/server/entries/fallbacks/error.svelte.js     1.37 kB │ gzip:  0.52 kB │ map:   2.90 kB
+.svelte-kit/output/server/index.js                              2.42 kB │ gzip:  1.01 kB │ map:   3.49 kB
+.svelte-kit/output/server/chunks/uneval.js                     19.46 kB │ gzip:  5.38 kB │ map:  40.92 kB
+.svelte-kit/output/server/chunks/server-errors.js              24.31 kB │ gzip:  4.62 kB │ map:  35.05 kB
+.svelte-kit/output/server/chunks/server.js                     44.41 kB │ gzip: 12.15 kB │ map: 128.41 kB
+.svelte-kit/output/server/chunks/remote.js                     55.45 kB │ gzip: 11.94 kB │ map:  90.89 kB
+.svelte-kit/output/server/chunks/internal.js                  106.58 kB │ gzip: 27.89 kB │ map: 230.34 kB
+.svelte-kit/output/server/chunks/instance.js                  131.27 kB │ gzip: 34.74 kB │ map: 268.35 kB
+
+✓ built in 53ms
+Analysing routes
+(node:18371) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Building app
+transforming...
+✓ 176 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/client/_app/version.json                          0.02 kB │ gzip:  0.04 kB
+.svelte-kit/output/client/.vite/manifest.json                        4.69 kB │ gzip:  0.65 kB
+.svelte-kit/output/client/_app/immutable/entry/payload.DSmR2FwN.js   0.06 kB │ gzip:  0.07 kB
+.svelte-kit/output/client/_app/immutable/nodes/0.fZFr_Dvb.js         0.14 kB │ gzip:  0.13 kB
+.svelte-kit/output/client/_app/immutable/nodes/2.DJ5tgRCd.js         0.15 kB │ gzip:  0.15 kB
+.svelte-kit/output/client/_app/immutable/nodes/1.Dh1Y4wjq.js         0.32 kB │ gzip:  0.24 kB
+.svelte-kit/output/client/_app/immutable/entry/start.C1E6G2fR.js     0.52 kB │ gzip:  0.30 kB
+.svelte-kit/output/client/_app/immutable/entry/app.uJ4Rzti-.js       1.18 kB │ gzip:  0.61 kB
+.svelte-kit/output/client/_app/immutable/chunks/uBIymjUX.js          1.23 kB │ gzip:  0.68 kB
+.svelte-kit/output/client/_app/immutable/chunks/Bjy-W4x2.js          1.36 kB │ gzip:  0.65 kB
+.svelte-kit/output/client/_app/immutable/chunks/BdIg83yu.js          4.29 kB │ gzip:  1.93 kB
+.svelte-kit/output/client/_app/immutable/chunks/DNoNN6N-.js         33.93 kB │ gzip: 13.11 kB
+.svelte-kit/output/client/_app/immutable/chunks/1sIhrbxb.js         39.65 kB │ gzip: 14.62 kB
+
+✓ built in 43ms
+(node:18371) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Prerendering
+error during build:
+Error: Cannot add tasks to a queue that has ended
+    at Object.add (file:///Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/deps/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_@sveltejs+vite-plugin-svelte@7.3.1_@voidzero-dev+vite-plus-core@1.0_7f49b14597cf9abd08d26dc4e4877269/node_modules/@sveltejs/kit/src/core/postbuild/queue.js:52:22)
+    at enqueue (file:///Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/deps/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_@sveltejs+vite-plugin-svelte@7.3.1_@voidzero-dev+vite-plus-core@1.0_7f49b14597cf9abd08d26dc4e4877269/node_modules/@sveltejs/kit/src/core/postbuild/prerender.js:367:12)
+    at prerender (file:///Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/deps/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_@sveltejs+vite-plugin-svelte@7.3.1_@voidzero-dev+vite-plus-core@1.0_7f49b14597cf9abd08d26dc4e4877269/node_modules/@sveltejs/kit/src/core/postbuild/prerender.js:721:10)
+    at async MessagePort.<anonymous> (file:///Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/deps/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_@sveltejs+vite-plugin-svelte@7.3.1_@voidzero-dev+vite-plus-core@1.0_7f49b14597cf9abd08d26dc4e4877269/node_modules/@sveltejs/kit/src/utils/fork.js:21:22)

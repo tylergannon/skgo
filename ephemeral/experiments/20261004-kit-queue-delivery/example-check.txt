@@ -1,0 +1,1 @@
+Verified @sveltejs/kit 3.0.0 and its installed prerender queue patch in /Users/tyler/Codex/2026-10-03/task-8/skgo-prerender-inputs/example/web.

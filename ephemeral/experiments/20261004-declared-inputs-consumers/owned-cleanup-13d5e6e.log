@@ -1,0 +1,5 @@
+=== RUN   TestDeliveryOwnedReceiptCleanup
+    cleanup_test.go:66: direct owned checks: command/body groups226 absent; private temporary directories7 absent; receipts7
+--- PASS: TestDeliveryOwnedReceiptCleanup (0.01s)
+PASS
+ok  	example.com/prerender-delivery-proof	0.203s

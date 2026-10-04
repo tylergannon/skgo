@@ -36,14 +36,17 @@ func TestHighestVersionIncludesPrereleasesButNotAnotherMajor(t *testing.T) {
 // what the real installer leaves, so Create is judged on what it asks for and
 // on what it concludes from the project it finds.
 type upstream struct {
-	t         *testing.T
-	created   map[string]string // what `vp create` leaves in web/, beyond package.json
-	devDeps   map[string]string
-	scripts   map[string]string
-	skipAdd   bool // sv add exits 0 having applied nothing
-	skipBook  bool // create-storybook exits 0 having applied nothing
-	failCheck bool
-	commands  []command
+	t                 *testing.T
+	created           map[string]string // what `vp create` leaves in web/, beyond package.json
+	devDeps           map[string]string
+	scripts           map[string]string
+	skipAdd           bool // sv add exits 0 having applied nothing
+	skipBook          bool // create-storybook exits 0 having applied nothing
+	failCheck         bool
+	commands          []command
+	queueEvents       []string
+	queueConfigureErr error
+	queueVerifyErr    error
 }
 
 func (u *upstream) run(c command) error {
@@ -78,6 +81,8 @@ func (u *upstream) run(c command) error {
 			writeFiles(u.t, c.Dir, map[string]string{"src/routes/+page.svelte": "import { status } from './example.remote';\n"})
 		}
 		u.writePackage(c.Dir)
+	case c.Name == localVP && slices.Equal(c.Args, []string{"install", "--no-frozen-lockfile"}):
+		u.queueEvents = append(u.queueEvents, "install")
 	case c.Name == "pnpm" && slices.Contains(c.Args, "playwright"):
 		// What pnpm does for real: there is no such binary unless upstream
 		// declared the dependency.
@@ -134,6 +139,20 @@ func (u *upstream) options(dir string, registry *httptest.Server) Options {
 		Dir: dir, Module: "example.com/hello-go", SkgoVersion: "v0.4.1", SkgoReplace: u.t.TempDir(),
 		SVAddonSpec: "@skgo/sv@0.4.0", AdapterSpec: "file:/candidate/adapter",
 		RegistryURL: registry.URL, Client: registry.Client(), VP: "vp-test", run: u.run,
+		configureKitQueue: func(web string, _ io.Writer) error {
+			u.queueEvents = append(u.queueEvents, "configure")
+			if filepath.Base(web) != "web" {
+				u.t.Errorf("queue correction configured %s, want generated web root", web)
+			}
+			return u.queueConfigureErr
+		},
+		verifyKitQueue: func(web string) error {
+			u.queueEvents = append(u.queueEvents, "verify")
+			if filepath.Base(web) != "web" {
+				u.t.Errorf("queue correction verified %s, want generated web root", web)
+			}
+			return u.queueVerifyErr
+		},
 	}
 }
 
@@ -149,6 +168,9 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 		t.Fatalf("result = %+v; instructions = %q", result, result.Instructions())
 	}
 	commands := u.commands
+	if got, want := strings.Join(u.queueEvents, " "), "configure install verify"; got != want {
+		t.Fatalf("Kit queue setup events = %q, want %q", got, want)
+	}
 	if len(commands) != 9 {
 		t.Fatalf("commands = %#v; want VitePlus create, sv add, Storybook, VitePlus install, Playwright, go mod tidy, go generate, VitePlus check --fix, initial VitePlus build", commands)
 	}
@@ -257,6 +279,40 @@ func TestCreateSurfacesVitePlusFrontendCheckFailure(t *testing.T) {
 	}
 }
 
+func TestCreateRequiresKitQueueCorrectionBeforeAndAfterNativeInstall(t *testing.T) {
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
+	t.Run("configuration failure stops before install", func(t *testing.T) {
+		u := &upstream{t: t, queueConfigureErr: errors.New("refused parent workspace")}
+		_, err := Create(u.options(filepath.Join(t.TempDir(), "configure-failure"), registry))
+		if err == nil || !strings.Contains(err.Error(), "refused parent workspace") {
+			t.Fatalf("Create error = %v; want the queue configuration refusal", err)
+		}
+		if got, want := strings.Join(u.queueEvents, " "), "configure"; got != want {
+			t.Fatalf("queue setup events = %q, want %q", got, want)
+		}
+		for _, c := range u.commands {
+			if slices.Equal(c.Args, []string{"install", "--no-frozen-lockfile"}) {
+				t.Fatalf("native install ran after queue configuration failed: %#v", u.commands)
+			}
+		}
+	})
+	t.Run("verification failure stops before Go generation", func(t *testing.T) {
+		u := &upstream{t: t, queueVerifyErr: errors.New("installed queue does not match")}
+		_, err := Create(u.options(filepath.Join(t.TempDir(), "verify-failure"), registry))
+		if err == nil || !strings.Contains(err.Error(), "installed queue does not match") {
+			t.Fatalf("Create error = %v; want the installed queue verification failure", err)
+		}
+		if got, want := strings.Join(u.queueEvents, " "), "configure install verify"; got != want {
+			t.Fatalf("queue setup events = %q, want %q", got, want)
+		}
+		for _, c := range u.commands {
+			if c.Name == "go" || slices.Contains(c.Args, "check") || slices.Contains(c.Args, "build") {
+				t.Fatalf("scaffold continued after installed queue verification failed: %#v", u.commands)
+			}
+		}
+	})
+}
+
 // The developer's explicit sv options reach sv as written, their own Vitest
 // and Storybook selections are not applied a second time, and sv's demo becomes
 // the skgo example rather than a JavaScript server application.
@@ -285,6 +341,9 @@ func TestCreatePassesExplicitChoicesThroughAndAppliesNothingTwice(t *testing.T) 
 	}
 	if result.Starter != "examples" {
 		t.Fatalf("sv's demo did not become the skgo example: %+v", result)
+	}
+	if got, want := strings.Join(u.queueEvents, " "), "configure install verify"; got != want {
+		t.Fatalf("selected-Storybook finish queue setup events = %q, want %q", got, want)
 	}
 	if got := svArgs(t, u.create()); !slices.Equal(got, chosen) {
 		t.Fatalf("sv create options = %q, want exactly the developer's %q", got, chosen)
@@ -596,6 +655,8 @@ func TestCreateHandsSvAnIsolatedPackedAddonNotTheCheckout(t *testing.T) {
 		Dir: filepath.Join(t.TempDir(), "qualified"), SkgoVersion: "v0.4.1",
 		SVAddonSpec: "file:" + checkout, AdapterSpec: "0.3.7",
 		RegistryURL: registry.URL, Client: registry.Client(), VP: "vp-test", run: runner, addonStage: stage,
+		configureKitQueue: func(string, io.Writer) error { return nil },
+		verifyKitQueue:    func(string) error { return nil },
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -42,6 +42,8 @@ var packageFiles = []string{
 	"skgo-adapter.js",
 	"skgo-adapter/app-paths.js",
 	"skgo-adapter/app-server.js",
+	"skgo-adapter/compat/kit-3.0.0-queue.json",
+	"skgo-adapter/compat/kit-3.0.0-queue.patch",
 	"skgo-adapter/entry.js",
 	"skgo-adapter/env-private.js",
 	"skgo-adapter/env.js",
@@ -49,6 +51,8 @@ var packageFiles = []string{
 	"skgo-adapter/identity.js",
 	"skgo-adapter/polyfill.js",
 	"skgo-adapter/prerender-csp.js",
+	"skgo-adapter/prerender.d.ts",
+	"skgo-adapter/prerender.js",
 }
 
 func TestThePublishedPackageHoldsExactlyWhatTheAdapterNeeds(t *testing.T) {

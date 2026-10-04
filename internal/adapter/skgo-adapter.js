@@ -12,33 +12,19 @@ import {
 	writeFileSync
 } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { spawn } from 'node:child_process';
-import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {
+	createPrerenderOwner,
+	installPrerenderFailureBoundary,
+	joinFailedPrerenderOwner,
+	remoteFunction,
+	remoteLoad
+} from './skgo-adapter/prerender.js';
 import { gojaDevEnvironment, gojaDevUnchangedFiles, gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 import { identity } from './skgo-adapter/identity.js';
 import { checkEndpoints, validateGenerated } from './skgo-adapter/generated.js';
 import { authorizePrerenderedScripts } from './skgo-adapter/prerender-csp.js';
-
-function runPrerenderCommand(command, args, cwd, input = '') {
-	return new Promise((resolve, reject) => {
-		const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'] });
-		let stdout = '';
-		let stderr = '';
-		child.stdout.setEncoding('utf8');
-		child.stderr.setEncoding('utf8');
-		child.stdout.on('data', (chunk) => (stdout += chunk));
-		child.stderr.on('data', (chunk) => (stderr += chunk));
-		child.on('error', reject);
-		child.on('close', (code) => {
-			if (code === 0) resolve(stdout);
-			else reject(new Error(`skgo prerender command exited ${code}: ${stderr}`));
-		});
-		child.stdin.end(input);
-	});
-}
 
 // Which skgo this adapter is: the version this package was published at, and a
 // fingerprint taken over its own files. The Go that reads the manifest below
@@ -83,33 +69,21 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 	// build itself waits until adapt() knows the node table.
 	const goja = gojaEnvironment();
 	const environment = goEnvironmentValues(out);
-	let prerenderBinary;
-	let prerenderRoot;
-	let prerenderBuild;
-	let unflatten;
-	let stringify;
-	let transportDecoders = {};
-	async function buildPrerenderBinary() {
-		if (!prerenderBuild) {
-			prerenderBuild = (async () => {
-				const generated = readGenerated();
-				if (!generated.prerender) throw new Error('skgo: generated prerender command is missing');
-				prerenderRoot = resolve(process.cwd(), generated.prerender.root);
-				const dir = mkdtempSync(join(tmpdir(), 'skgo-prerender-'));
-				prerenderBinary = join(dir, 'build');
-				await runPrerenderCommand('go', ['build', '-o', prerenderBinary, generated.prerender.package], prerenderRoot);
-				process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
-				const fromKit = createRequire(realpathSync(join(process.cwd(), 'node_modules/@sveltejs/kit/package.json')));
-				({ unflatten, stringify } = await import(pathToFileURL(fromKit.resolve('devalue')).href));
-				const hooks = join(process.cwd(), '.svelte-kit/output/server/entries/hooks.universal.js');
-				if (existsSync(hooks)) {
-					const { transport = {} } = await import(pathToFileURL(hooks).href);
-					transportDecoders = Object.fromEntries(Object.entries(transport).map(([key, entry]) => [key, entry.decode]));
-				}
-			})();
+	let prerenderOwner;
+	const prerenderOwnerPlugin = {
+		name: 'skgo-prerender-main-owner',
+		apply: 'build',
+		configResolved(config) {
+			prerenderOwner = createPrerenderOwner(process.cwd());
+			installPrerenderFailureBoundary(config, prerenderOwner);
+		},
+		buildEnd(error) {
+			if (error && prerenderOwner) return prerenderOwner.fail(error);
+		},
+		async closeBundle() {
+			await joinFailedPrerenderOwner(prerenderOwner);
 		}
-		await prerenderBuild;
-	}
+	};
 
 	return {
 		name: 'skgo',
@@ -117,75 +91,10 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			return {
 				platform: () => ({
 					async skgoPrerenderLoad(module, source, event) {
-						await buildPrerenderBinary();
-						const headers = Object.fromEntries(
-							[...event.request.headers].map(([name, value]) => [name, [value]])
-						);
-						const cookies = event.cookies.getAll();
-						if (cookies.length) {
-							headers.cookie = [cookies.map(({ name, value }) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join('; ')];
-						}
-						const request = {
-							kind: 'load',
-							module,
-							url: event.url.href,
-							routeId: event.route.id,
-							params: Object.fromEntries(Object.entries(event.params)),
-							parent: await event.parent(),
-							headers
-						};
-						const raw = await runPrerenderCommand(prerenderBinary, [], prerenderRoot, JSON.stringify(request));
-						const answer = JSON.parse(raw);
-						if (typeof answer.failure === 'string') {
-							throw new Error(
-								`skgo: Go load failed during prerender: route ID ${event.route.id}, path ${event.url.pathname}, source ${source}: ${answer.failure}`
-							);
-						}
-						for (const [name, values] of Object.entries(answer.headers ?? {})) {
-							event.setHeaders({ [name]: values.join(', ') });
-						}
-						for (const cookie of answer.cookies ?? []) {
-							event.cookies.set(cookie.name, cookie.value, {
-								path: cookie.path,
-								...(cookie.domain ? { domain: cookie.domain } : {}),
-								...(cookie.maxAge ? { maxAge: cookie.maxAge } : {}),
-								httpOnly: cookie.httpOnly,
-								secure: cookie.secure,
-								sameSite: ['lax', 'lax', 'strict', 'none'][cookie.sameSite] ?? 'lax'
-							});
-						}
-						if (answer.data) {
-							const pending = new Map();
-							const revivers = {
-								...transportDecoders,
-								Promise: (id) => {
-									let resolve;
-									let reject;
-									const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
-									pending.set(id, { promise, resolve, reject });
-									return promise;
-								}
-							};
-							answer.data = unflatten(answer.data, revivers);
-							for (const chunk of answer.chunks ?? []) {
-								const deferred = pending.get(chunk.id);
-								if (!deferred) throw new Error(`skgo: unknown prerender deferred id ${chunk.id}`);
-								if (chunk.error) deferred.reject(new Error(chunk.error));
-								else deferred.resolve(unflatten(chunk.data, revivers));
-							}
-						}
-						return answer;
+						return remoteLoad(module, source, event);
 					},
 					async skgoPrerenderRemote(module, name, arg, event) {
-						await buildPrerenderBinary();
-						const payload = arg === undefined ? '' : Buffer.from(stringify(arg)).toString('base64url');
-						const request = {
-							kind: 'remote', module, name, payload, url: event.url.href,
-							headers: Object.fromEntries([...event.request.headers].map(([key, value]) => [key, [value]]))
-						};
-						const raw = await runPrerenderCommand(prerenderBinary, [], prerenderRoot, JSON.stringify(request));
-						const answer = JSON.parse(raw);
-						return unflatten(JSON.parse(answer.data), transportDecoders)._;
+						return remoteFunction(module, name, arg, event);
 					}
 				})
 			};
@@ -196,8 +105,9 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 		// compiles the SSR bundle in is also declared in `vite dev`, where Go
 		// pulls one transformed module at a time out of it instead. Each plugin
 		// states its own `apply`, so only one of them is ever live.
-		vite: { plugins: { post: [environment.plugin, goja.plugin, gojaDevEnvironment(), gojaDevUnchangedFiles({ out })] } },
+		vite: { plugins: { pre: [prerenderOwnerPlugin], post: [environment.plugin, goja.plugin, gojaDevEnvironment(), gojaDevUnchangedFiles({ out })] } },
 		async adapt(builder) {
+			try {
 			rmSync(out, { force: true, recursive: true });
 
 			write(`${out}/env.json`, JSON.stringify(environment.artifact()));
@@ -332,6 +242,9 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			write(`${out}/.gitkeep`, '');
 
 			builder.log.minor(`skgo: wrote ${out}/`);
+			} finally {
+				await prerenderOwner?.cleanup();
+			}
 		}
 	};
 }
@@ -779,12 +692,6 @@ function checkRemoteIds(clientDir, remotes, hashes) {
 			if (!hashes.has(hash)) continue;
 			called.set(`${hash}/${name}`, file);
 		}
-	}
-
-	if (called.size === 0 && hashes.size > 0) {
-		throw new Error(
-			`skgo: kit compiled ${hashes.size} remote module(s) but no remote-function id appears in ${clientDir}. Either nothing imports them, or the ids no longer survive bundling as literals and this check has stopped meaning anything.`
-		);
 	}
 
 	const undeclared = [...called].filter(([id]) => !declared.has(id));

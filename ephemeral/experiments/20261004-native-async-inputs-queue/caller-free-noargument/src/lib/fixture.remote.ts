@@ -1,0 +1,1 @@
+import {prerender} from '$app/server';import {appendFileSync} from 'node:fs';export const empty=prerender(()=>{appendFileSync('async.log','body:empty\n');return 'build:empty';},{inputs:async()=>{appendFileSync('async.log','inputs:empty\n');await new Promise(resolve=>setTimeout(resolve,500));return [];}});

@@ -1,0 +1,7 @@
+=== RUN   TestDeliveryPackImmutableCandidate
+    delivery_test.go:195: owned command pid/group=27720 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83/internal/adapter args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83/adapter"]
+    delivery_test.go:195: owned command pid/group=27727 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83/internal/sv args=["pnpm" "pack" "--pack-destination" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83/sv"]
+    delivery_test.go:196: actual native packed candidate SDK=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/sdk-c512e83 adapter=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83/adapter/skgo-sveltekit-adapter-0.0.0-dev.tgz addon=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/packages/sdk-c512e83/sv/skgo-sv-0.0.0-dev.tgz
+--- PASS: TestDeliveryPackImmutableCandidate (0.11s)
+PASS
+ok  	example.com/prerender-delivery-proof	0.262s

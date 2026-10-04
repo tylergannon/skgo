@@ -23,6 +23,10 @@
 			"types": "./index.d.ts",
 			"import": "./skgo-adapter.js"
 		},
+		"./prerender": {
+			"types": "./skgo-adapter/prerender.d.ts",
+			"import": "./skgo-adapter/prerender.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"types": "index.d.ts",
@@ -31,13 +35,17 @@
 		"skgo-adapter.js",
 		"skgo-adapter/app-paths.js",
 		"skgo-adapter/app-server.js",
+		"skgo-adapter/compat/kit-3.0.0-queue.json",
+		"skgo-adapter/compat/kit-3.0.0-queue.patch",
 		"skgo-adapter/entry.js",
 		"skgo-adapter/env-private.js",
 		"skgo-adapter/env.js",
 		"skgo-adapter/generated.js",
 		"skgo-adapter/identity.js",
 		"skgo-adapter/polyfill.js",
-		"skgo-adapter/prerender-csp.js"
+		"skgo-adapter/prerender-csp.js",
+		"skgo-adapter/prerender.js",
+		"skgo-adapter/prerender.d.ts"
 	],
 	"peerDependencies": {
 		"@sveltejs/kit": "^3.0.0"

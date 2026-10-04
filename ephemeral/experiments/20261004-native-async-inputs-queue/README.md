@@ -1,0 +1,13 @@
+# Stock Kit 3.0.0 asynchronous Inputs queue counterexample
+
+Actual retained source and output from the independent Go-owned native reference. No Go bridge, adapter emulation, installed-native-source patch, or queue modification is present. The fixture uses the frozen Kit 3.0.0 and VitePlus 1.0.0 installation from this task. Its adapter is a native noop.
+
+The ordinary prerendered root completes positively. The supported asynchronous producer then returns atlas/beacon after 500 milliseconds; its exact trace is `inputs:start\ninputs:end\n`, with zero body calls. Native `core/postbuild/prerender.js:721` rejects enqueue because `queue.js:40–44` closed the initially idle queue before the Inputs-seeding loop reached its explicit `q.done()` at prerender.js:728.
+
+`go-test.log` PASS means the negative counterexample was reproduced and its literal trace/root output asserted; **the native build failed**, as `build.log` records. Independent driver remains at `../prerender-inputs-proof/native/native_test.go`, test `TestNativeDelayedAsyncInputsExposeClosedCrawlerQueue`. Maintained product regressions assert successful minimal builds and exact assets, so they currently fail honestly.
+
+The constrained bridge cannot repair this without changing native queue lifetime or producer/body overlap. See the immutable round-08 review. Do not add unrelated page work, preload producers ahead of bodies, weaken assertions, or claim this negative as feature completion.
+
+The original failing stock receipt above is retained unchanged. Parent subsequently authorized the canonical bounded queue correction shipped through native pnpm; the earlier no-native-patch scope assumption was agent-authored and has been corrected. `native-correction-A0ab6303.log` records the corrected queue accepting the same delayed native producer and producing literal atlas/beacon artifacts.
+
+`caller-free-argument/` and `caller-free-noargument/` preserve separately installed native universal import-only variations and actual artifact bytes. Their actual native builds rendered the fixture root and emitted 12 client JavaScript files containing zero exact `3215r6/catalog` or `3215r6/empty` IDs. The async argument producer/body trace and empty no-argument producer/default body trace are positively asserted in `native-universal-caller-free-A0ab6303.log`. These true native cases disprove the adapter's unconditional empty-client-ID rejection. The bounded validation repair removes only that rejection; strict remote-module equality and the client-called undeclared-ID refusal remain, with a real build negative anchored to literal `3215r6/declared` and `3215r6/manual`.

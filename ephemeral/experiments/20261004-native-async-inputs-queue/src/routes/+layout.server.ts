@@ -1,0 +1,1 @@
+import '../lib/fixture.remote'; export const prerender = true;

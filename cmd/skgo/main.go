@@ -37,6 +37,8 @@ const usage = `usage:
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
 	skgo dev [flags]          run Vite and the Go application, rebuilding Go as it changes
 	skgo check [flags]        check Go, Svelte, lint and formatting without edits
+	skgo kit-patch [--web web] (--apply | --check)
+	                          configure or verify Kit 3.0.0's declared-Inputs queue correction
 	skgo advice [--json] [SKGO001..SKGO008]
 	                          show installed rule guidance and repair examples
 	skgo mcp                 serve check and advice tools over stdio MCP
@@ -66,6 +68,8 @@ func main() {
 		os.Exit(devCommand(os.Args[2:]))
 	case "check":
 		checkProject(os.Args[2:])
+	case "kit-patch":
+		kitPatchCommand(os.Args[2:])
 	case "advice":
 		showAdvice(os.Args[2:])
 	case "mcp":
