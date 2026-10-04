@@ -37,6 +37,18 @@ skgo binary refuses a build written by a different one, naming both — so an
 install that has fallen behind fails at startup with something a developer can
 act on rather than as an unrelated error later.
 
+## Kit prerender queue compatibility
+
+Declared prerender `Inputs` require the Kit 3.0.0 queue correction shipped with
+skgo. New projects receive the project-local patch configuration during
+scaffolding. For an existing project, run `go tool skgo kit-patch --web web
+--apply` from the Go application root, then install with the frontend's native
+VitePlus command, `cd web && node_modules/.bin/vp install
+--no-frozen-lockfile`. Finish by running `go tool skgo kit-patch --web web
+--check` from the application root. The check verifies the actual installed
+Kit queue source as well as the committed configuration; applying the patch
+alone does not install dependencies.
+
 ## License
 
 [MIT](LICENSE)

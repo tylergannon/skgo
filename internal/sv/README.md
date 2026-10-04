@@ -11,6 +11,14 @@ point. `examples` replaces `sv`'s demo template, a JavaScript server
 application, and keeps what other add-ons put in its layout. Vitest and Storybook still come through their own upstream
 setup paths.
 
+After the add-on finishes, `skgo new` configures the project-local Kit 3.0.0
+prerender queue correction, runs VitePlus's native dependency install, and
+verifies the installed queue bytes before it generates the Go application.
+The add-on itself does not edit pnpm workspace configuration or install
+dependencies for existing projects; use `go tool skgo kit-patch --web web
+--apply`, the frontend's VitePlus install, and `go tool skgo kit-patch --web
+web --check` when updating one.
+
 The published add-on bundles its build-only `@sveltejs/sv-utils` code. Normal
 users of `@skgo/sveltekit-adapter` therefore download only the runtime adapter,
 not this installer bundle.
