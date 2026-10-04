@@ -33,9 +33,27 @@ function generatedConfig(root) {
 	};
 }
 
+function vitePlusBuildParent(root) {
+	if (!isMainThread || process.env.NODE_PACKAGE_MANAGER !== 'vite-plus' || process.argv[2] !== 'build' || !process.argv[1]) return null;
+	try {
+		const appRequire = createRequire(join(root, 'package.json'));
+		const vpRequire = createRequire(appRequire.resolve('vite-plus/package.json'));
+		const expected = realpathSync(join(dirname(vpRequire.resolve('vite')), 'cli.js'));
+		return realpathSync(process.argv[1]) === expected && process.ppid > 1 ? process.ppid : null;
+	} catch {
+		return null;
+}
+}
+
 function makeError(message) {
 	const error = new Error(message);
 	return error;
+}
+
+function reportOwnerFailure(error) {
+	const primary = error?.message ?? String(error);
+	const cleanup = error?.cleanupError ? `; cleanup failed: ${error.cleanupError.message ?? error.cleanupError}` : '';
+	try { process.stderr.write(`skgo prerender owner failure: ${primary}${cleanup}\n`); } catch {}
 }
 
 function validateEnvelope(request, raw) {
@@ -227,7 +245,7 @@ function createJob(session, command, args, options = {}) {
 	return job;
 }
 
-function makeSession(root) {
+function makeSession(root, ownerParentPid) {
 	const session = {
 		id: randomUUID(),
 		root,
@@ -243,13 +261,41 @@ function makeSession(root) {
 		closing: false,
 		failed: null,
 		cleanupPromise: null,
+		ownerParentPid,
+		parentObserver: null,
+		parentLossStarted: false,
 		signalHandlers: new Map(),
+		watchParent() {
+			if (session.ownerParentPid === null || session.parentObserver) return;
+			session.parentObserver = setInterval(() => {
+				if (process.ppid === session.ownerParentPid && process.ppid > 1) return;
+				clearInterval(session.parentObserver);
+				session.parentObserver = null;
+				if (session.parentLossStarted) return;
+				session.parentLossStarted = true;
+				void (async () => {
+					try {
+						await session.fail(makeError('skgo prerender Vite build parent exited'));
+						for (const [signal, handler] of session.signalHandlers) process.off(signal, handler);
+						session.signalHandlers.clear();
+						process.exitCode = 1;
+						try { process.kill(process.pid, 'SIGTERM'); }
+						catch { process.exit(1); }
+					} catch (error) {
+						process.exitCode = 1;
+						reportOwnerFailure(error);
+					}
+				})();
+			}, 50);
+			session.parentObserver.unref();
+		},
 		fail(error) {
 			if (!session.failed) session.failed = error;
 			session.closing = true;
 			return session.cleanup().catch((cleanupError) => {
 				session.cleanupFailure = cleanupError;
 				if (session.failed && typeof session.failed === 'object') session.failed.cleanupError = cleanupError;
+				throw session.failed ?? cleanupError;
 			});
 		},
 		async ensureCompiled() {
@@ -268,9 +314,15 @@ function makeSession(root) {
 				session.exitHandler = onExit;
 				for (const signal of ['SIGINT', 'SIGTERM']) {
 					const handler = async () => {
-						await session.fail(makeError(`skgo prerender build interrupted by ${signal}`));
-						process.off(signal, handler);
-						try { process.kill(process.pid, signal); } catch { process.exitCode = 1; }
+						try {
+							await session.fail(makeError(`skgo prerender build interrupted by ${signal}`));
+							process.off(signal, handler);
+							try { process.kill(process.pid, signal); } catch { process.exitCode = 1; }
+						} catch (error) {
+							process.exitCode = 1;
+							reportOwnerFailure(error);
+							process.once(signal, handler);
+						}
 					};
 					session.signalHandlers.set(signal, handler);
 					process.once(signal, handler);
@@ -353,6 +405,8 @@ function makeSession(root) {
 				session.workers.clear();
 				if (session.dir) rmSync(session.dir, { recursive: true, force: true });
 				if (session.exitHandler) process.off('exit', session.exitHandler);
+				if (session.parentObserver) clearInterval(session.parentObserver);
+				session.parentObserver = null;
 				for (const [signal, handler] of session.signalHandlers) process.off(signal, handler);
 				process.off('worker', session.onWorker);
 				session.jobs.clear();
@@ -393,14 +447,14 @@ async function connectWorker(session, worker, message) {
 				record.handshakes.delete(next.requestId);
 				return;
 			}
-			void handleWorkerRequest(session, record, next);
+			void handleWorkerRequest(session, record, next).catch(reportOwnerFailure);
 		};
-		record.onError = (error) => { void session.fail(error); };
+		record.onError = (error) => { void session.fail(error).catch(reportOwnerFailure); };
 		record.onExit = (code) => {
 			record.exited = true;
 			if (record.pending.size > 0 || record.handshakes.size > 0 || code !== 0) {
 				session.closing = true;
-				void session.fail(makeError(`Kit prerender worker exited ${code} with ${record.pending.size} pending Go requests and ${record.handshakes.size} pending handshakes`));
+				void session.fail(makeError(`Kit prerender worker exited ${code} with ${record.pending.size} pending Go requests and ${record.handshakes.size} pending handshakes`)).catch(reportOwnerFailure);
 			}
 		};
 		worker.on('message', record.onMessage);
@@ -451,13 +505,14 @@ export function createPrerenderOwner(root = appRoot()) {
 	root = resolve(root);
 	const existing = ownerByRoot.get(root);
 	if (existing) return existing;
-	const session = makeSession(root);
+	const session = makeSession(root, vitePlusBuildParent(root));
 	ownerByRoot.set(root, session);
+	session.watchParent();
 	session.onWorker = (worker) => {
 		const listener = (message) => {
 			if (!message || message.tag !== TAG || message.type !== 'connect' || message.appRoot !== root) return;
 			if (message.session !== undefined && message.session !== session.id) return;
-			void connectWorker(session, worker, message);
+			void connectWorker(session, worker, message).catch(reportOwnerFailure);
 		};
 		session.observedWorkers.set(worker, listener);
 		worker.on('message', listener);
