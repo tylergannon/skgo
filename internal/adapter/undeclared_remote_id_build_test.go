@@ -37,15 +37,11 @@ var _ = skgo.Query(declared)
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	const declaredID = "/declared"
-	if len(manifest.Remotes) != 1 || !strings.HasSuffix(manifest.Remotes[0], declaredID) {
-		t.Fatalf("Go registration manifest = %v; want only the declared function", manifest.Remotes)
+	const declaredID = "3215r6/declared"
+	if len(manifest.Remotes) != 1 || manifest.Remotes[0] != declaredID {
+		t.Fatalf("Go registration manifest = %v; want exactly %q", manifest.Remotes, declaredID)
 	}
-	moduleHash := strings.TrimSuffix(manifest.Remotes[0], declaredID)
-	if moduleHash == manifest.Remotes[0] || moduleHash == "" {
-		t.Fatalf("could not derive registered remote module hash from %q", manifest.Remotes[0])
-	}
-	manualID := moduleHash + "/manual"
+	const manualID = "3215r6/manual"
 	remoteModule := filepath.Join(app, "src", "lib", "fixture.remote.ts")
 	generatedStub, err := os.ReadFile(remoteModule)
 	if err != nil {
