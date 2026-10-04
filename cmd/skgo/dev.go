@@ -133,6 +133,15 @@ func devCommand(args []string) int {
 			}
 		}()
 	}
+	if viteProc != nil {
+		// The owned Vite process starts before the public listener and server
+		// setup. Stop it on every later return path, including startup errors.
+		defer func() {
+			cancel()
+			fmt.Fprintf(os.Stderr, "skgo dev: stopping vite pid %d\n", viteProc.PID())
+			viteProc.Stop(5 * time.Second)
+		}()
+	}
 
 	self, err := os.Executable()
 	if err != nil {
@@ -177,10 +186,6 @@ func devCommand(args []string) int {
 	case <-viteFailure:
 		code = 1
 	default:
-	}
-	if viteProc != nil {
-		fmt.Fprintf(os.Stderr, "skgo dev: stopping vite pid %d\n", viteProc.PID())
-		viteProc.Stop(5 * time.Second)
 	}
 	return code
 }
