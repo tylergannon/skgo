@@ -828,7 +828,7 @@ func TestMappedQueryPrerenderedFilesPreservePathnameSelectionAndCompression(t *t
 			t.Fatalf("mapped %q Content-Type %q", tc.accept, got)
 		}
 	}
-	for _, target := range []string{"/stray", "/prerendered-files/" + mappedPhysicalName("target?from=atlas.html")} {
+	for _, target := range []string{"/stray", "/" + mappedPhysicalName("target?from=atlas.html")} {
 		resp := do(t, h, http.MethodGet, target, nil)
 		if resp.StatusCode != http.StatusNotFound {
 			t.Errorf("unlisted mapped storage %q answered with status %d, want 404", target, resp.StatusCode)
