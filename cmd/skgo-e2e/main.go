@@ -241,8 +241,11 @@ func playwrightConfigDir(args []string, workingDir string) (string, error) {
 		}
 		if value, ok := strings.CutPrefix(arg, "--config="); ok {
 			configLocation = value
-		} else if value, ok := strings.CutPrefix(arg, "-c="); ok {
-			configLocation = value
+		} else if strings.HasPrefix(arg, "-c") && len(arg) > len("-c") {
+			// Playwright accepts a value attached directly to -c. An equals
+			// sign in -c=<path> is part of that value; only the long option uses
+			// an equals delimiter.
+			configLocation = strings.TrimPrefix(arg, "-c")
 		}
 	}
 	if configLocation == "" {

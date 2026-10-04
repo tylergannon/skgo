@@ -156,6 +156,24 @@ func TestNativeJSONDestinationsFollowPlaywrightResolution(t *testing.T) {
 			want: filepath.Join(configDir, "config-name.json"),
 		},
 		{
+			name: "attached short config value uses config directory",
+			args: []string{"-c" + configFile, "--reporter=json"},
+			env:  []string{jsonOutputEnv + "=attached-short-name.json"},
+			want: filepath.Join(configDir, "attached-short-name.json"),
+		},
+		{
+			name: "separated short config value uses config directory",
+			args: []string{"-c", configFile, "--reporter=json"},
+			env:  []string{jsonOutputEnv + "=separated-short-name.json"},
+			want: filepath.Join(configDir, "separated-short-name.json"),
+		},
+		{
+			name: "long config equals value uses config directory",
+			args: []string{"--config=" + configFile, "--reporter=json"},
+			env:  []string{jsonOutputEnv + "=equals-long-name.json"},
+			want: filepath.Join(configDir, "equals-long-name.json"),
+		},
+		{
 			name: "absolute name overrides output directory",
 			args: []string{"--reporter=json"},
 			env: []string{
