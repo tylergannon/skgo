@@ -91,6 +91,7 @@ func devCommand(args []string) int {
 
 	var vite *url.URL
 	var viteProc *dev.Process
+	viteFailure := make(chan error, 1)
 	if *viteURL != "" {
 		if vite, err = url.Parse(*viteURL); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -122,9 +123,23 @@ func devCommand(args []string) int {
 		go func() {
 			<-viteProc.Done()
 			if ctx.Err() == nil {
-				fmt.Fprintf(os.Stderr, "skgo dev: vite exited: %v\n", viteProc.ExitError())
+				failure := viteProc.ExitError()
+				if failure == nil {
+					failure = fmt.Errorf("process exited successfully")
+				}
+				fmt.Fprintf(os.Stderr, "skgo dev: vite exited unexpectedly: %v\n", failure)
+				viteFailure <- failure
 				cancel()
 			}
+		}()
+	}
+	if viteProc != nil {
+		// The owned Vite process starts before the public listener and server
+		// setup. Stop it on every later return path, including startup errors.
+		defer func() {
+			cancel()
+			fmt.Fprintf(os.Stderr, "skgo dev: stopping vite pid %d\n", viteProc.PID())
+			viteProc.Stop(5 * time.Second)
 		}()
 	}
 
@@ -167,9 +182,10 @@ func devCommand(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		code = 1
 	}
-	if viteProc != nil {
-		fmt.Fprintf(os.Stderr, "skgo dev: stopping vite pid %d\n", viteProc.PID())
-		viteProc.Stop(5 * time.Second)
+	select {
+	case <-viteFailure:
+		code = 1
+	default:
 	}
 	return code
 }

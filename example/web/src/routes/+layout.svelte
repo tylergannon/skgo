@@ -26,6 +26,7 @@
 	<a href="/">Home</a>
 	<a href="/about">About</a>
 	<a href="/items/42">Item 42</a>
+	<a href="/items/42?retain=1">Item 42 retained</a>
 	<a href="/todos">Todos</a>
 	<a href="/empty">Empty</a>
 	<a href="/api">API</a>

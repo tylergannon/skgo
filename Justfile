@@ -84,14 +84,15 @@ dev:
         --vite-port {{devport}} --vite "mise x -- node_modules/.bin/vp dev" 2>&1 | tee "{{log}}"
 
 # Start the server yourself first: `just serve` for a production build, with
-# `just dev` alongside it for the proxied path. `pnpm test`, never `playwright
-# test`: bddgen compiles the feature files in a separate step, and playwright
-# alone happily reruns whatever .features-gen/ already holds, which is last
-# sprint's scenarios.
+# `just dev` alongside it for the proxied path. `vp run test` invokes the e2e
+# package script, which regenerates BDD tests before the Go runner starts
+# Playwright in two ordered stages.
+
+e2e_json_reporter := if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_FILE", "") != "" { " --add-reporter=json" } else if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_NAME", "") != "" { " --add-reporter=json" } else { "" }
 
 # the Gherkin suite against a server you started
 e2e mode run=mode:
-    cd example/e2e && BASE_URL="{{origin}}" SKGO_EXPECTED_MODE={{mode}} SKGO_E2E_RUN={{run}} SKGO_LOG="{{log}}" mise x -- pnpm test
+    cd example/e2e && BASE_URL="{{origin}}" SKGO_EXPECTED_MODE={{mode}} SKGO_E2E_RUN={{run}} SKGO_LOG="{{log}}" mise x -- ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}}
 
 # `git worktree add -b` has silently landed an agent on main once, so the
 # branch is confirmed rather than assumed. Each worktree installs its own

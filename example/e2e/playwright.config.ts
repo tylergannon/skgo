@@ -6,6 +6,7 @@ import { defineBddConfig } from 'playwright-bdd';
 // Vite module graph. The label separates their reports and failure artifacts;
 // it never changes which scenarios exist or what they assert.
 const run = process.env.SKGO_E2E_RUN ?? 'run';
+const sourceEditStage = process.env.SKGO_E2E_STAGE === 'source-edit';
 
 const outputDir = '.features-gen';
 
@@ -24,7 +25,8 @@ const ANY_FEATURE = canonical('[^/]+');
 const NOSCRIPT = canonical('[^/]*form-noscript');
 
 // Edits source under the running dev server, whose hot updates reach every
-// open page, so it runs alone after everything else has finished.
+// open page. The Go e2e runner invokes this project only after the regular
+// chromium and noscript projects have completed.
 const SOURCE_EDIT = canonical('zz-source-update');
 
 const testDir = defineBddConfig({
@@ -70,8 +72,9 @@ export default defineConfig({
 	//
 	// A third, `source-edit`, is not about shared state but about the dev
 	// server itself: editing a component or adding a route makes Vite update or
-	// reload every open page, whichever scenario it belongs to. It runs its two
-	// scenarios in order, after everything else.
+	// reload every open page, whichever scenario it belongs to. The Go e2e runner
+	// runs this project in a second Playwright invocation so failures in the
+	// regular projects cannot cause Playwright's dependency scheduler to skip it.
 	projects: [
 		{
 			name: 'chromium',
@@ -84,7 +87,10 @@ export default defineConfig({
 			use: { ...devices['Desktop Chrome'] },
 			testMatch: SOURCE_EDIT,
 			fullyParallel: false,
-			dependencies: ['chromium', 'noscript']
+			// Keep direct Playwright runs safe. The Go runner selects this project
+			// in its independent second invocation, where dependencies would
+			// schedule regular scenarios again in the same process.
+			...(sourceEditStage ? {} : { dependencies: ['chromium', 'noscript'] })
 		},
 		{
 			name: 'noscript',

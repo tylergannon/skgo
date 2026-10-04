@@ -11,6 +11,7 @@ const unimplemented = (route: string): never => {
 
 const buildLoad = async (
   module: string,
+  source: string,
   event: import("@sveltejs/kit").RequestEvent,
 ): Promise<any> => {
   const bridge = (
@@ -18,13 +19,14 @@ const buildLoad = async (
       | {
           skgoPrerenderLoad?: (
             module: string,
+            source: string,
             event: import("@sveltejs/kit").RequestEvent,
           ) => Promise<any>;
         }
       | undefined
   )?.skgoPrerenderLoad;
   if (!bridge) throw new Error("skgo: prerender Go load bridge unavailable");
-  const answer = await bridge(module, event);
+  const answer = await bridge(module, source, event);
   if (answer.redirect) redirect(answer.redirect.status, answer.redirect.location);
   if (answer.error) error(answer.error.status, answer.error.message);
   if (answer.data === undefined) throw new Error("skgo: prerender Go load returned no data");
@@ -35,7 +37,11 @@ export const load = async (
   event: import("@sveltejs/kit").RequestEvent,
 ): Promise<{ selected: string; ada: Profile; grace: Profile }> =>
   building
-    ? buildLoad("src/routes/actions/profiles/[profile]/+page.server.ts", event)
+    ? buildLoad(
+        "src/routes/actions/profiles/[profile]/+page.server.ts",
+        "src/routes/actions/profiles/[profile]/page.server.go",
+        event,
+      )
     : unimplemented(event.url.pathname);
 
 // Kit reads these exports for action typing; Go answers every submission.

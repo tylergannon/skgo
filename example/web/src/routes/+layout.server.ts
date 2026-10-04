@@ -10,6 +10,7 @@ const unimplemented = (route: string): never => {
 
 const buildLoad = async (
   module: string,
+  source: string,
   event: import("@sveltejs/kit").RequestEvent,
 ): Promise<any> => {
   const bridge = (
@@ -17,13 +18,14 @@ const buildLoad = async (
       | {
           skgoPrerenderLoad?: (
             module: string,
+            source: string,
             event: import("@sveltejs/kit").RequestEvent,
           ) => Promise<any>;
         }
       | undefined
   )?.skgoPrerenderLoad;
   if (!bridge) throw new Error("skgo: prerender Go load bridge unavailable");
-  const answer = await bridge(module, event);
+  const answer = await bridge(module, source, event);
   if (answer.redirect) redirect(answer.redirect.status, answer.redirect.location);
   if (answer.error) error(answer.error.status, answer.error.message);
   if (answer.data === undefined) throw new Error("skgo: prerender Go load returned no data");
@@ -33,4 +35,6 @@ const buildLoad = async (
 export const load = async (
   event: import("@sveltejs/kit").RequestEvent,
 ): Promise<{ deployment: string; scriptSafe: string }> =>
-  building ? buildLoad("src/routes/+layout.server.ts", event) : unimplemented(event.url.pathname);
+  building
+    ? buildLoad("src/routes/+layout.server.ts", "src/routes/layout.server.go", event)
+    : unimplemented(event.url.pathname);

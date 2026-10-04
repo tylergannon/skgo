@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -164,6 +165,61 @@ var _ = skgo.Action(revise)
 var _ = skgo.Action(added)
 `
 
+const devFakeVite = `package main
+
+import (
+	"fmt"
+	"net"
+	"os"
+	"strconv"
+	"syscall"
+	"time"
+)
+
+func main() {
+	if os.Getenv("SKGO_FAKE_VITE_MODE") == "stay" {
+		if os.Getenv("SKGO_FAKE_VITE_DETACH_STDIO") == "1" {
+			if discard, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0); err == nil {
+				_ = syscall.Dup2(int(discard.Fd()), 1)
+				_ = syscall.Dup2(int(discard.Fd()), 2)
+			}
+		}
+		var host, port string
+		for i := 1; i+1 < len(os.Args); i++ {
+			switch os.Args[i] {
+			case "--host":
+				host = os.Args[i+1]
+			case "--port":
+				port = os.Args[i+1]
+			}
+		}
+		listener, err := net.Listen("tcp", net.JoinHostPort(host, port))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		defer listener.Close()
+		go func() {
+			for {
+				conn, err := listener.Accept()
+				if err != nil {
+					return
+				}
+				_ = conn.Close()
+			}
+		}()
+		fmt.Fprintf(os.Stdout, "FAKE_VITE_READY pid=%d pgid=%d listener=%s\n", os.Getpid(), syscall.Getpgrp(), listener.Addr())
+		for {
+			time.Sleep(time.Hour)
+		}
+	}
+	fmt.Fprintln(os.Stderr, "FAKE_VITE_FAILURE_CAUSE")
+	time.Sleep(250 * time.Millisecond)
+	code, _ := strconv.Atoi(os.Getenv("SKGO_FAKE_VITE_EXIT"))
+	os.Exit(code)
+}
+`
+
 type devApp struct {
 	t    *testing.T
 	root string
@@ -284,6 +340,118 @@ func freeHostPort(t *testing.T) string {
 }
 
 func processAlive(pid int) bool { return syscall.Kill(pid, 0) == nil }
+
+func processOrGroupAlive(id int, group bool) bool {
+	if id <= 1 {
+		return false
+	}
+	if group {
+		id = -id
+	}
+	err := syscall.Kill(id, 0)
+	return err == nil || !errors.Is(err, syscall.ESRCH)
+}
+
+var fakeViteReadyLine = regexp.MustCompile(`FAKE_VITE_READY pid=(\d+) pgid=(\d+) listener=([^\s]+)`)
+var startedViteLine = regexp.MustCompile(`skgo dev: started vite pid (\d+) on ([^\s]+)`)
+
+func fakeViteIdentity(log string) (pid, pgid int, listener string, ok bool) {
+	match := fakeViteReadyLine.FindStringSubmatch(log)
+	if match == nil {
+		return 0, 0, "", false
+	}
+	pid, _ = strconv.Atoi(match[1])
+	pgid, _ = strconv.Atoi(match[2])
+	return pid, pgid, match[3], pid > 1 && pgid > 1
+}
+
+func startedViteIdentity(log string) (pid int, listener string, ok bool) {
+	match := startedViteLine.FindStringSubmatch(log)
+	if match == nil {
+		return 0, "", false
+	}
+	pid, _ = strconv.Atoi(match[1])
+	return pid, match[2], pid > 1
+}
+
+func fakeViteGroupCleanup(log string) {
+	pid, pgid, _, ok := fakeViteIdentity(log)
+	if !ok {
+		pid, _, ok = startedViteIdentity(log)
+		pgid = pid
+	}
+	if ok && pid == pgid {
+		_ = syscall.Kill(-pgid, syscall.SIGKILL)
+	}
+}
+
+func buildDevFakeVite(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	source := filepath.Join(dir, "main.go")
+	if err := os.WriteFile(source, []byte(devFakeVite), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(dir, "fake-vite")
+	build := exec.Command("go", "build", "-o", bin, source)
+	build.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build fake Vite child: %v\n%s", err, output)
+	}
+	return bin
+}
+
+func launchDevWithVite(t *testing.T, app *devApp, vite, mode, exit string) (*exec.Cmd, *lockedBuffer, <-chan struct{}, *error) {
+	t.Helper()
+	addr := freeHostPort(t)
+	base := "http://" + addr
+	log := &lockedBuffer{}
+	dev := exec.Command(skgoBin, "dev", "--root", app.root, "--web", "web", "--cmd", "./cmd",
+		"--listen", addr, "--origin", base, "--vite", vite, "--vite-port", "0")
+	dev.Env = append(app.env, "SKGO_FAKE_VITE_MODE="+mode, "SKGO_FAKE_VITE_EXIT="+exit)
+	dev.Stdout, dev.Stderr = log, log
+	if err := dev.Start(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	var waitErr error
+	go func() {
+		waitErr = dev.Wait()
+		close(done)
+	}()
+	t.Cleanup(func() {
+		select {
+		case <-done:
+		default:
+			_ = dev.Process.Signal(syscall.SIGINT)
+			select {
+			case <-done:
+			case <-time.After(20 * time.Second):
+				_ = dev.Process.Kill()
+				<-done
+			}
+		}
+		fakeViteGroupCleanup(log.String())
+	})
+	return dev, log, done, &waitErr
+}
+
+func awaitDevLog(t *testing.T, done <-chan struct{}, log *lockedBuffer, want string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if strings.Contains(log.String(), want) {
+			return
+		}
+		select {
+		case <-done:
+			t.Fatalf("skgo dev exited before logging %q:\n%s", want, log.String())
+		default:
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %q in skgo dev output:\n%s", want, log.String())
+}
 
 // One `skgo dev` launch, the command the scaffold's recipe runs, over an app
 // whose Go endpoint and action are edited, added and removed while it runs. A
@@ -437,4 +605,157 @@ func TestSkgoDevAdoptsAuthoredEndpointsAndActionsInOneLaunch(t *testing.T) {
 	if r := builtSays(); r.status != 200 {
 		t.Fatalf("stopping the session stopped the built binary: %d %q", r.status, r.body)
 	}
+}
+
+func TestSkgoDevUnexpectedViteExitReturnsFailure(t *testing.T) {
+	for _, exitCode := range []string{"0", "7"} {
+		t.Run("exit-"+exitCode, func(t *testing.T) {
+			app := newDevApp(t)
+			vite := buildDevFakeVite(t)
+			_, log, done, waitErr := launchDevWithVite(t, app, vite, "exit", exitCode)
+			select {
+			case <-done:
+			case <-time.After(30 * time.Second):
+				t.Fatalf("skgo dev did not stop after Vite exited:\n%s", log.String())
+			}
+			if *waitErr == nil {
+				t.Fatalf("skgo dev succeeded after its Vite child exited unexpectedly:\n%s", log.String())
+			}
+			var exitErr *exec.ExitError
+			if !errors.As(*waitErr, &exitErr) || exitErr.ExitCode() == 0 {
+				t.Fatalf("skgo dev returned %v, want nonzero process exit:\n%s", *waitErr, log.String())
+			}
+			if !strings.Contains(log.String(), "FAKE_VITE_FAILURE_CAUSE") {
+				t.Fatalf("the child failure cause was not preserved in output:\n%s", log.String())
+			}
+			if !strings.Contains(log.String(), "skgo dev: vite exited unexpectedly:") {
+				t.Fatalf("the supervisor did not report the unexpected Vite exit:\n%s", log.String())
+			}
+			if exitCode == "0" && !strings.Contains(log.String(), "process exited successfully") {
+				t.Fatalf("a clean but unexpected Vite exit had no cause in the supervisor log:\n%s", log.String())
+			}
+			if exitCode != "0" && !strings.Contains(log.String(), "exit status "+exitCode) {
+				t.Fatalf("the Vite exit status was lost:\n%s", log.String())
+			}
+		})
+	}
+}
+
+func TestSkgoDevExternalCancellationRemainsCleanWithViteChild(t *testing.T) {
+	app := newDevApp(t)
+	vite := buildDevFakeVite(t)
+	dev, log, done, waitErr := launchDevWithVite(t, app, vite, "stay", "0")
+	awaitDevLog(t, done, log, "FAKE_VITE_READY")
+	awaitDevLog(t, done, log, "skgo dev: serving http://")
+	pid, pgid, listener, ok := fakeViteIdentity(log.String())
+	if !ok {
+		t.Fatalf("the fake Vite child did not report its owned process and listener:\n%s", log.String())
+	}
+	if pid != pgid {
+		t.Fatalf("fake Vite pid %d did not own its process group %d", pid, pgid)
+	}
+	if !processAlive(pid) || !processOrGroupAlive(pgid, true) {
+		t.Fatalf("fake Vite child was not alive in its owned group before cancellation: pid=%d group=%d\n%s", pid, pgid, log.String())
+	}
+	conn, err := net.DialTimeout("tcp", listener, time.Second)
+	if err != nil {
+		t.Fatalf("fake Vite listener %s was not accepting connections before cancellation: %v\n%s", listener, err, log.String())
+	}
+	_ = conn.Close()
+	if err := dev.Process.Signal(syscall.SIGINT); err != nil {
+		t.Fatalf("send clean cancellation: %v (exit %v):\n%s", err, *waitErr, log.String())
+	}
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatalf("skgo dev did not stop after external cancellation:\n%s", log.String())
+	}
+	if *waitErr != nil {
+		t.Fatalf("external cancellation returned %v, want clean exit:\n%s", *waitErr, log.String())
+	}
+	if strings.Contains(log.String(), "vite exited unexpectedly:") {
+		t.Fatalf("intentional Vite shutdown was reported as unexpected:\n%s", log.String())
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for processOrGroupAlive(pgid, true) && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	groupAlive := processOrGroupAlive(pgid, true)
+	pidAlive := processOrGroupAlive(pid, false)
+	conn, dialErr := net.DialTimeout("tcp", listener, 200*time.Millisecond)
+	listenerAlive := dialErr == nil
+	if conn != nil {
+		_ = conn.Close()
+	}
+	if pidAlive || groupAlive || listenerAlive {
+		t.Fatalf("owned Vite resources survived clean external cancellation: pid=%d alive=%t group=%d alive=%t listener=%s open=%t\n%s", pid, pidAlive, pgid, groupAlive, listener, listenerAlive, log.String())
+	}
+	t.Logf("cancellation proof: supervisor exit=0; Vite pid=%d alive=false; process group=%d alive=false; listener=%s open=false", pid, pgid, listener)
+}
+
+func TestSkgoDevListenFailureStopsStartedViteChild(t *testing.T) {
+	app := newDevApp(t)
+	vite := buildDevFakeVite(t)
+	log := &lockedBuffer{}
+	dev := exec.Command(skgoBin, "dev", "--root", app.root, "--web", "web", "--cmd", "./cmd",
+		"--listen", "invalid-listen-address", "--origin", "http://127.0.0.1:8080", "--vite", vite, "--vite-port", "0")
+	dev.Env = append(app.env, "SKGO_FAKE_VITE_MODE=stay", "SKGO_FAKE_VITE_EXIT=0", "SKGO_FAKE_VITE_DETACH_STDIO=1")
+	dev.Stdout, dev.Stderr = log, log
+	if err := dev.Start(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	var waitErr error
+	go func() {
+		waitErr = dev.Wait()
+		close(done)
+	}()
+	t.Cleanup(func() {
+		select {
+		case <-done:
+		default:
+			_ = dev.Process.Signal(syscall.SIGINT)
+			select {
+			case <-done:
+			case <-time.After(20 * time.Second):
+				_ = dev.Process.Kill()
+				<-done
+			}
+		}
+		fakeViteGroupCleanup(log.String())
+	})
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatalf("skgo dev did not return after the invalid public address:\n%s", log.String())
+	}
+	if waitErr == nil {
+		t.Fatalf("skgo dev succeeded with an invalid public listen address:\n%s", log.String())
+	}
+	var exitErr *exec.ExitError
+	if !errors.As(waitErr, &exitErr) || exitErr.ExitCode() == 0 {
+		t.Fatalf("invalid public listen address returned %v, want nonzero process exit:\n%s", waitErr, log.String())
+	}
+	pid, listener, ok := startedViteIdentity(log.String())
+	if !ok {
+		t.Fatalf("skgo dev did not report its started Vite child:\n%s", log.String())
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for processOrGroupAlive(pid, true) && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	pidAlive := processOrGroupAlive(pid, false)
+	groupAlive := processOrGroupAlive(pid, true)
+	conn, dialErr := net.DialTimeout("tcp", listener, 200*time.Millisecond)
+	listenerAlive := dialErr == nil
+	if conn != nil {
+		_ = conn.Close()
+	}
+	if pidAlive || groupAlive || listenerAlive {
+		t.Fatalf("owned Vite resources survived startup failure: pid=%d alive=%t group=%d alive=%t listener=%s open=%t\n%s", pid, pidAlive, pid, groupAlive, listener, listenerAlive, log.String())
+	}
+	if strings.Contains(log.String(), "vite exited unexpectedly:") {
+		t.Fatalf("intentional Vite shutdown during startup failure was reported as unexpected:\n%s", log.String())
+	}
+	t.Logf("startup failure proof: supervisor exited nonzero; Vite pid=%d alive=false; process group=%d alive=false; listener=%s open=false", pid, pid, listener)
 }

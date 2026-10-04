@@ -1,0 +1,4 @@
+correction: external-cancellation proof must observe the owned Vite PID, process group, and TCP listener; supervisor exit 0 alone does not prove child cleanup.
+decision: once Vite starts, defer its process-group Stop across every later return path; cancel the supervisor context before stopping it so intentional cleanup is not reported as an unexpected exit.
+friction: the test harness connects child output through a pipe, so an unowned fake process can die from broken stdout after its supervisor exits and make a no-Stop negative control pass vacuously -> detach the startup-failure fake's stdio and assert PID, group, and port before test cleanup.
+friction: on a fresh tree, `just dev` can start Vite before the Go app fails to read the missing embedded build manifest -> run the documented `just build` prerequisite before collecting runtime proof.
