@@ -1,0 +1,2 @@
+patchedDependencies:
+  '@sveltejs/kit@3.0.0': patches/skgo-kit-3.0.0-queue.patch
