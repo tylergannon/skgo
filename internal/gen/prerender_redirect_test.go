@@ -34,6 +34,9 @@ func TestGoPagePrerenderRedirectBuildsKitsNativeArtifact(t *testing.T) {
 	if err := replaceOnce(goMod, "ignore ./web/node_modules", "ignore ./ui/node_modules"); err != nil {
 		t.Fatal(err)
 	}
+	if err := replaceOnce(filepath.Join(app, "cmd", "main.go"), "github.com/tylergannon/skgo/example/web", "github.com/tylergannon/skgo/example/ui"); err != nil {
+		t.Fatal(err)
+	}
 	linkExampleFrontendDependencies(t, root, app)
 
 	write := func(name, content string) {
@@ -64,7 +67,6 @@ var _ = skgo.Load(pageLoad)
 `)
 	write("src/routes/old/+page.ts", "export const prerender = true;\n")
 	write("src/routes/old/+page.svelte", "<h1>Old route</h1>\n")
-	write("src/routes/target/+page.ts", "export const prerender = true;\n")
 	write("src/routes/target/+page.svelte", "<h1>Target route</h1>\n")
 
 	if output, err := runGoGenerate(app); err != nil {
@@ -103,6 +105,13 @@ var _ = skgo.Load(pageLoad)
 		if !strings.Contains(string(artifact), want) {
 			t.Errorf("native redirect artifact lacks %q: %s", want, artifact)
 		}
+	}
+
+	build := exec.Command("go", "build", "-o", filepath.Join(t.TempDir(), "skgo-example"), "./cmd")
+	build.Dir = app
+	build.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("go build ./cmd: %v\n%s", err, output)
 	}
 }
 
