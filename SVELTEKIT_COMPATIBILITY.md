@@ -211,6 +211,10 @@ The canonical `ORIGIN=http://127.0.0.1:18018 just build` completed and refreshed
 `build/`, including `build/skgo.manifest.json` and `build/ssr/bundle.js`, so Go's
 embedded frontend freshness is current. Direct project-local `vp dev` also
 started on `127.0.0.1:51731`; its read-only `@vite/client` response identified
-VitePlus core 1.0.0. Final local `just test` passed. Final PR-head CI remains
-the merge gate, and the merged-head browser gates remain the release gate.
+VitePlus core 1.0.0. Final local `just test` passed in captured tool output;
+the saved final dev/Go log files contain the earlier restricted-socket failures,
+not those successful retries. The exact-head [CI run on `f572a58`](https://github.com/tylergannon/skgo/actions/runs/37168579712)
+passed install, canonical build, vet and all 21 Go test packages; it is the saved
+final Go/build evidence. Final PR-head CI remains the merge gate, and the
+merged-head browser gates remain the release gate.
 Release receipts are the workflow, npm versions and annotated Go tag.
