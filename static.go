@@ -366,8 +366,9 @@ func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error
 	for _, p := range manifest.Prerendered {
 		// Kit also records query-bearing crawl destinations in the same list as
 		// HTTP pathnames. They remain in the manifest and file index, and are
-		// validated below, but cannot claim a request by URL.Path: the query is
-		// not part of adapter-node's static file-map key.
+		// validated below, but cannot claim a request by URL.Path: adapter-node
+		// splits the request search before URI decoding, so these crawl keys are
+		// not HTTP pathnames.
 		if !strings.Contains(p, "?") {
 			h.prerendered[p] = true
 		}
