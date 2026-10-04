@@ -101,6 +101,10 @@ func (ls *Loads) dataError(ctx context.Context, routeID string, fallback *HTTPEr
 }
 
 func handleErrorAndJSONify(ctx context.Context, routeID string, hook HandleError, fallback *HTTPError, raw error, report func(string, error)) *ssr.Error {
+	var handled *ssr.HandledError
+	if errors.As(raw, &handled) && handled.Body != nil {
+		return handled.Body
+	}
 	if fallback == nil {
 		fallback = &HTTPError{Status: http.StatusInternalServerError, Message: "Internal Error"}
 	}

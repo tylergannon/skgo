@@ -63,6 +63,7 @@ type SSR struct {
 	fetch                           http.Handler
 	handleFetch                     HandleFetch
 	prerendered                     map[string]bool
+	artifacts                       *prerenderArtifactStore
 	filterSerializedResponseHeaders func(name, value string) bool
 	// dev is non-nil only for a renderer backed by a running Vite server.
 	// devRenderMu keeps dev page renders serialised one at a time, as they
@@ -158,6 +159,10 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	if err != nil {
 		return nil, err
 	}
+	artifacts, err := newSSRPrerenderArtifactStore(build, m, remotes, remoteTransport(remotes))
+	if err != nil {
+		return nil, err
+	}
 
 	s := &SSR{
 		environment:                     opts.Environment,
@@ -173,6 +178,7 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		fetch:                           opts.Fetch,
 		handleFetch:                     opts.HandleFetch,
 		prerendered:                     prerenderedSet(m.Prerendered),
+		artifacts:                       artifacts,
 		filterSerializedResponseHeaders: opts.FilterSerializedResponseHeaders,
 	}
 	// The engine is built after the SSR rather than into it because the bundle
@@ -1424,6 +1430,26 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 404, Message: "Error: 404"}})
 	}
 
+	if fn.kind == KindPrerender && s.dev == nil {
+		artifact, found, err := s.artifacts.lookup(id, payload, s.remotes.cfg.Transport)
+		if err != nil {
+			return json.Marshal(remoteAnswer{E: &ssr.Error{Status: http.StatusInternalServerError, Message: "Internal Error"}})
+		}
+		if !found {
+			return json.Marshal(remoteAnswer{E: &ssr.Error{Status: http.StatusInternalServerError, Message: "Internal Error"}})
+		}
+		if artifact.err != nil {
+			s.record(into, "p", id+"/"+payload, answered{err: artifact.err})
+			return json.Marshal(remoteAnswer{H: artifact.err})
+		}
+		serialized, err := devalue.StringifyWith(artifact.result, s.remotes.cfg.Transport.reducers())
+		if err != nil {
+			return json.Marshal(remoteAnswer{E: &ssr.Error{Status: http.StatusInternalServerError, Message: "Internal Error"}})
+		}
+		s.record(into, "p", id+"/"+payload, answered{tree: artifact.result})
+		return json.Marshal(remoteAnswer{V: serialized})
+	}
+
 	if fn.kind == KindBatch {
 		return s.answerBatch(ctx, fn, payload, into)
 	}
@@ -1590,6 +1616,7 @@ type remoteAnswer struct {
 	V string        `json:"v,omitempty"`
 	E *ssr.Error    `json:"e,omitempty"`
 	R *ssr.Redirect `json:"r,omitempty"`
+	H *ssr.Error    `json:"h,omitempty"`
 }
 
 // stream sends a document that is still waiting for something: the document

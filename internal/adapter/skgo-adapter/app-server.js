@@ -23,7 +23,8 @@
 // below shadows the star, which is how the four substitutions take effect.
 import * as real from 'skgo:kit/remote';
 import { stringify_remote_arg } from 'skgo:kit/shared';
-import { HttpError, Redirect } from '@sveltejs/kit/internal/server';
+import { HandledHttpError, HttpError, Redirect } from '@sveltejs/kit/internal';
+import { DEV } from 'esm-env';
 import { parse } from 'skgo:kit/transport';
 
 export * from 'skgo:kit/app-server';
@@ -47,6 +48,9 @@ export * from 'skgo:kit/app-server';
 async function host(id, payload) {
 	const raw = await globalThis.__skgo_remote(id, payload);
 	const res = JSON.parse(raw);
+	if (res.h) {
+		throw new HandledHttpError(res.h);
+	}
 	if (res.r) {
 		throw new Redirect(res.r.status, res.r.location);
 	}
@@ -64,9 +68,13 @@ export function query(validate_or_fn, maybe_fn) {
 
 export function prerender(validate_or_fn, maybe_fn, options) {
 	const fn = (arg) => host(wrapper.__.id, stringify_remote_arg(arg));
-	const wrapper = typeof maybe_fn === 'function'
-		? real.prerender(validate_or_fn, fn, options)
-		: real.prerender(fn, maybe_fn);
+	const hasValidator = typeof maybe_fn === 'function';
+	const normalizedOptions = options ?? (hasValidator ? undefined : maybe_fn);
+	const wrapper = !DEV && !normalizedOptions?.dynamic
+		? real.prerender('unchecked', fn, normalizedOptions)
+		: hasValidator
+			? real.prerender(validate_or_fn, fn, options)
+			: real.prerender(fn, maybe_fn);
 	return wrapper;
 }
 

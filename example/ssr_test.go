@@ -1,6 +1,8 @@
 package example_test
 
 import (
+	"encoding/json"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -8,11 +10,90 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example"
 	"github.com/tylergannon/skgo/example/businesslogic"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
+	"testing/fstest"
 )
+
+type oneFileOverlay struct {
+	fs.FS
+	name string
+	data []byte
+}
+
+func (o oneFileOverlay) Open(name string) (fs.File, error) {
+	if name == o.name {
+		return (fstest.MapFS{"artifact": {Data: o.data}}).Open("artifact")
+	}
+	return o.FS.Open(name)
+}
+
+func TestPrerenderedGoRemoteIsReusedByProductionSSR(t *testing.T) {
+	dist := prodDist(t)
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := remoteID(t, "buildReceipt")
+	prefix := "/" + manifest.AppDir + "/remote/" + id + "/"
+	var nativePath, payload string
+	for _, candidate := range manifest.Prerendered {
+		if !strings.HasPrefix(candidate, prefix) {
+			continue
+		}
+		name := "prerendered" + candidate
+		data, err := fs.ReadFile(dist, name)
+		if err != nil {
+			continue
+		}
+		var envelope struct {
+			Type string `json:"type"`
+			Data string `json:"data"`
+		}
+		if json.Unmarshal(data, &envelope) == nil && envelope.Type == "result" && strings.Contains(envelope.Data, "Go prerender remote: atlas") {
+			nativePath = name
+			payload = strings.TrimPrefix(candidate, prefix)
+			break
+		}
+	}
+	if nativePath == "" || payload == "" {
+		t.Fatalf("the Kit build has no recorded atlas artifact for %s", id)
+	}
+	data, err := devalue.Stringify(devalue.NewObject("_", "build:atlas"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement, err := json.Marshal(map[string]string{"type": "result", "data": data})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, mode, err := example.NewHandler(oneFileOverlay{FS: dist, name: nativePath, data: replacement}, "", prodOrigin)
+	if err != nil {
+		t.Fatalf("assembling production handler with an independent artifact literal: %v", err)
+	}
+	if mode != "prod" {
+		t.Fatalf("mode = %q", mode)
+	}
+	response := get(t, h, "/prerender-consumer")
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", response.Code, response.Body)
+	}
+	for _, want := range []string{
+		`<p data-testid="prerender-consumer-receipt">build:atlas</p>`,
+		`"` + id + "/" + payload + `"`,
+		"build:atlas",
+	} {
+		if !strings.Contains(response.Body.String(), want) {
+			t.Errorf("SSR document does not contain %q: %s", want, response.Body.String())
+		}
+	}
+	if strings.Contains(response.Body.String(), "Go prerender remote: atlas") {
+		t.Fatal("the live Go body answered instead of Kit's independent built artifact")
+	}
+}
 
 // TestTheProductionBundleRunsInAFreshRuntime is the check that turns a
 // SvelteKit or Svelte upgrade skgo's engine cannot run into a red build rather

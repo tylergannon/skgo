@@ -20,6 +20,7 @@ import {
 	SvelteKitError,
 	ValidationError
 } from '@sveltejs/kit/internal/server';
+import { HandledHttpError } from '@sveltejs/kit/internal';
 import * as devalue from 'skgo:devalue';
 import { decoders, init_transport, parse } from 'skgo:kit/transport';
 import { components, universalLoads } from 'skgo:nodes';
@@ -47,6 +48,7 @@ init_transport(transport ?? {});
  * skgo has no handleError hook, so there is nothing here to await or merge.
  */
 function handle_error(error) {
+	if (error instanceof HandledHttpError) return error.body;
 	if (error instanceof HttpError) return error.body;
 	if (error instanceof SvelteKitError) return { status: error.status, message: error.text };
 	if (error instanceof ValidationError) return { status: 400, message: 'Bad Request' };
@@ -418,6 +420,8 @@ globalThis.__skgo_render = function (req_json) {
 			(err) => {
 				if (err instanceof Redirect) {
 					result.redirect = { status: err.status, location: err.location };
+				} else if (err instanceof HandledHttpError) {
+					result.handled_error = err.body;
 				} else {
 					result.failure = (err && (err.stack || err.message)) || String(err);
 				}
@@ -427,6 +431,8 @@ globalThis.__skgo_render = function (req_json) {
 	} catch (err) {
 		if (err instanceof Redirect) {
 			result.redirect = { status: err.status, location: err.location };
+		} else if (err instanceof HandledHttpError) {
+			result.handled_error = err.body;
 		} else {
 			result.failure = (err && (err.stack || err.message)) || String(err);
 		}

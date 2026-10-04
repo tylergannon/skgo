@@ -91,6 +91,43 @@ func TestStaticHandlerServesExactClientFile(t *testing.T) {
 	}
 }
 
+func TestClientRemoteAssetShadowsRecordedPrerenderForHTTP(t *testing.T) {
+	const id = "abc123/buildReceipt"
+	const payload = "atlas"
+	rel := "_app/remote/" + id + "/" + payload
+	client := artifactBytes(t, "result", "client:atlas")
+	build := fstest.MapFS{
+		"index.html":             {Data: []byte(testIndexHTML)},
+		"skgo.manifest.json":     {Data: []byte(`{"appDir":"_app","routes":[],"prerendered":["/` + rel + `"]}`)},
+		"client/" + rel:          {Data: client},
+		"client/.keep":           {Data: []byte("client")},
+		"prerendered/" + rel:     {Data: artifactBytes(t, "result", "build:atlas")},
+		"prerendered/index.html": {Data: []byte("page")},
+	}
+	h, err := NewStaticHandler(build)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp := do(t, h, http.MethodGet, "/"+rel, nil)
+	if resp.StatusCode != http.StatusOK || body(t, resp) != string(client) {
+		t.Fatalf("HTTP did not serve the higher-priority client bytes: status=%d body=%q", resp.StatusCode, resp.Body)
+	}
+}
+
+func TestStaticHandlerRejectsMalformedRecordedRemoteArtifactAtStartup(t *testing.T) {
+	const rel = "_app/remote/abc123/buildReceipt/payload"
+	build := fstest.MapFS{
+		"index.html":             {Data: []byte(testIndexHTML)},
+		"skgo.manifest.json":     {Data: []byte(`{"appDir":"_app","routes":[],"prerendered":["/` + rel + `"]}`)},
+		"client/.keep":           {Data: []byte("client")},
+		"prerendered/" + rel:     {Data: []byte(`{"type":"result","data":"["}`)},
+		"prerendered/index.html": {Data: []byte("page")},
+	}
+	if _, err := NewStaticHandler(build); err == nil || !strings.Contains(err.Error(), rel) {
+		t.Fatalf("malformed recorded remote startup error = %v", err)
+	}
+}
+
 func TestStaticHandlerImmutableCacheHeader(t *testing.T) {
 	h := newTestHandler(t)
 

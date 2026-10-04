@@ -163,6 +163,20 @@ type Error struct {
 	Extra map[string]any
 }
 
+// HandledError is a Kit remote-prerender error whose response body has already
+// passed through Kit's error handling. Document handling must render that body
+// without running the app's HandleError hook again.
+type HandledError struct {
+	Body *Error
+}
+
+func (e *HandledError) Error() string {
+	if e == nil || e.Body == nil {
+		return "skgo: handled remote error"
+	}
+	return fmt.Sprintf("skgo: handled remote error (%d %s)", e.Body.Status, e.Body.Message)
+}
+
 // MarshalJSON flattens Extra alongside status and message, so a value with
 // no extra properties round-trips exactly as the plain `{status, message}`
 // object kit itself writes.
@@ -235,6 +249,9 @@ type Result struct {
 	// in, or the one a boundary caught and transformError jsonified. It is
 	// what the boot script's `error:` carries.
 	Error *Error
+	// HandledError is set only when a built remote error escaped every page
+	// error boundary. Its body has already been handled by Kit.
+	HandledError *Error `json:"handled_error"`
 	// Head is what the components put in `<svelte:head>`.
 	Head string
 	// Body is the rendered markup.
@@ -736,6 +753,9 @@ func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hos
 		Body:    stringOf(object.Get("body")),
 		Fetched: stringOf(object.Get("fetched")),
 	}
+	if err := decodeInto(rt.vm, object.Get("handled_error"), &result.HandledError); err != nil {
+		return result, rt.calls, err
+	}
 	if err := decodeInto(rt.vm, object.Get("redirect"), &result.Redirect); err != nil {
 		return result, rt.calls, err
 	}
@@ -750,6 +770,9 @@ func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hos
 		return result, rt.calls, errors.New("skgo: the render did not finish; nothing on this runtime resolved it")
 	}
 	reusable = true
+	if result.HandledError != nil {
+		return result, rt.calls, &HandledError{Body: result.HandledError}
+	}
 	if result.Err != "" {
 		return result, rt.calls, fmt.Errorf("skgo: the page threw while rendering: %s", result.Err)
 	}

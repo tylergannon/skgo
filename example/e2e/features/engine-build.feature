@@ -23,6 +23,15 @@ Feature: The engine's JavaScript is SvelteKit's own build
     And every part of the page loaded
     And the browser reported no CSP violations
 
+  Scenario: A dynamic page reuses a built Go remote artifact
+    The built about page has already recorded buildReceipt("atlas"). This
+    dynamic page asks for the same key during server rendering; the response
+    must carry Kit's build value and hydrate without another remote request.
+
+    When I note the remote request count
+    And I visit "/prerender-consumer"
+    Then the prerender consumer shows the built receipt without fetching it
+
   Scenario Outline: A dynamic prerender entry uses its Go page load
     Kit's entries() returns exactly atlas and beacon. The production Go test
     compares each HTML and data response with the files Kit wrote.

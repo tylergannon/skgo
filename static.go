@@ -272,6 +272,7 @@ type staticHandler struct {
 	// manifest. It carries the base and is percent-decoded, because that is how
 	// kit records it.
 	prerendered map[string]bool
+	artifacts   *prerenderArtifactStore
 }
 
 // assetMeta is one file of the build, with every encoding of it the build
@@ -430,6 +431,10 @@ func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error
 		if _, _, ok := h.prerenderedFile(p); !ok {
 			return nil, fmt.Errorf("skgo: the manifest says %s was prerendered, but the build has no file for it", p)
 		}
+	}
+	h.artifacts, err = newPrerenderArtifactStore(build, manifest, h.assets, h.prerenderedFiles)
+	if err != nil {
+		return nil, err
 	}
 
 	return h, nil
