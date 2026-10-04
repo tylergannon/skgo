@@ -364,7 +364,13 @@ func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error
 		option(h)
 	}
 	for _, p := range manifest.Prerendered {
-		h.prerendered[p] = true
+		// Kit also records query-bearing crawl destinations in the same list as
+		// HTTP pathnames. They remain in the manifest and file index, and are
+		// validated below, but cannot claim a request by URL.Path: the query is
+		// not part of adapter-node's static file-map key.
+		if !strings.Contains(p, "?") {
+			h.prerendered[p] = true
+		}
 	}
 
 	for _, route := range manifest.Routes {
@@ -777,6 +783,9 @@ func invertTrailingSlash(urlPath string) (string, bool) {
 // isPrerenderedPath reports whether urlPath is a canonical path the build
 // recorded or the other trailing-slash form handled by Kit's static adapter.
 func isPrerenderedPath(paths map[string]bool, urlPath string) bool {
+	if strings.Contains(urlPath, "?") {
+		return false
+	}
 	if paths[urlPath] {
 		return true
 	}

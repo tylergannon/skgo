@@ -851,6 +851,75 @@ func TestMappedOnlyPrerenderedTreeAndLegacyBuild(t *testing.T) {
 	}
 }
 
+func TestQueryOnlyPrerenderedInventoryDoesNotClaimHTTPPathnames(t *testing.T) {
+	build := testBuildFS()
+	logical := "only?query.html"
+	physical := mappedPhysicalName(logical)
+	build["skgo.manifest.json"] = &fstest.MapFile{Data: []byte(`{"appDir":"_app","routes":[],"prerendered":["/only?query"],"prerenderedFiles":{"` + logical + `":"` + physical + `"}}`)}
+	build[physical] = &fstest.MapFile{Data: []byte("private crawl artifact")}
+	pages, err := NewStaticHandler(build)
+	if err != nil {
+		t.Fatalf("NewStaticHandler: %v", err)
+	}
+	static := pages.(*staticHandler)
+	if len(static.manifest.Prerendered) != 1 || static.manifest.Prerendered[0] != "/only?query" {
+		t.Fatalf("native inventory changed: %v", static.manifest.Prerendered)
+	}
+	if _, ok := static.prerenderedFiles[logical]; !ok {
+		t.Fatalf("native query artifact %q was not indexed", logical)
+	}
+	if static.prerendered["/only?query"] {
+		t.Fatal("private query crawl entry was added to HTTP pathname ownership")
+	}
+
+	servedAsFile := ServedAsFile(pages)
+	for _, target := range []string{"/only%3Fquery", "/only%3Fquery/"} {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			resp := do(t, pages, method, target, nil)
+			if resp.StatusCode != http.StatusNotFound {
+				t.Errorf("%s %s: status %d, want native static miss 404", method, target, resp.StatusCode)
+			}
+			if got := body(t, resp); strings.Contains(got, "private crawl artifact") {
+				t.Errorf("%s %s exposed private crawl artifact bytes", method, target)
+			}
+			req := httptest.NewRequest(method, "http://example.test"+target, nil)
+			if servedAsFile(req) {
+				t.Errorf("ServedAsFile claims private query path %s", target)
+			}
+		}
+	}
+
+	missing := testBuildFS()
+	missing["skgo.manifest.json"] = build["skgo.manifest.json"]
+	if _, err := NewStaticHandler(missing); err == nil {
+		t.Fatal("startup accepted a missing artifact still named by native query inventory")
+	}
+
+	cfg := EndpointConfig{
+		AppDir:      "_app",
+		Prerendered: static.manifest.Prerendered,
+		Routes: []ManifestRoute{{
+			ID:       "/[...rest]",
+			Pattern:  `^(?:\/([^]*))?\/?$`,
+			Params:   []ManifestParam{{Name: "rest", Rest: true, Chained: true}},
+			Endpoint: &ManifestEndpoint{Methods: []string{"GET"}},
+		}},
+		manifest: true,
+	}
+	calls := 0
+	endpoints, err := NewEndpoints(cfg, NewEndpoint("/[...rest]", "GET", func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		_, _ = w.Write([]byte("dynamic wildcard endpoint"))
+	}))
+	if err != nil {
+		t.Fatalf("NewEndpoints: %v", err)
+	}
+	resp := do(t, endpoints.Intercept(pages), http.MethodGet, "/only%3Fquery", nil)
+	if resp.StatusCode != http.StatusOK || body(t, resp) != "dynamic wildcard endpoint" || calls != 1 {
+		t.Fatalf("private inventory blocked dynamic endpoint: status %d calls %d", resp.StatusCode, calls)
+	}
+}
+
 func TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings(t *testing.T) {
 	cases := []struct {
 		name     string
