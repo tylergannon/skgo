@@ -546,7 +546,7 @@ func prerenderedBuildFS() fstest.MapFS {
 			{ "id": "/", "pattern": "^\\/$" },
 			{ "id": "/items/[id]", "pattern": "^\\/items\\/([^/]+?)\\/?$" }
 		],
-		"prerendered": ["/about", "/about/__data.json", "/guide/", "/feed.xml"],
+		"prerendered": ["/about", "/about/__data.json", "/guide/", "/feed.xml", "/old"],
 		"precompressed": true
 	}`)}
 	build["prerendered/about.html"] = &fstest.MapFile{Data: []byte("<!doctype html><p>about</p>")}
@@ -555,6 +555,8 @@ func prerenderedBuildFS() fstest.MapFS {
 	build["prerendered/about.html.br"] = &fstest.MapFile{Data: []byte("brotlied about")}
 	build["prerendered/guide/index.html"] = &fstest.MapFile{Data: []byte("<!doctype html><p>guide</p>")}
 	build["prerendered/feed.xml"] = &fstest.MapFile{Data: []byte("<rss/>")}
+	build["prerendered/old.html"] = &fstest.MapFile{Data: []byte(`<script>location.href="/target?from=atlas";</script><meta http-equiv="refresh" content="0;url=/target?from=atlas">`)}
+	build["prerendered/stray.html"] = &fstest.MapFile{Data: []byte("not recorded")}
 	build["client/_app/immutable/entry/start.DWsVriQH.js.br"] = &fstest.MapFile{Data: []byte("brotlied start")}
 	return build
 }
@@ -592,6 +594,44 @@ func TestAPrerenderedPageIsServedFromItsFile(t *testing.T) {
 
 	if ct := do(t, h, http.MethodGet, "/feed.xml", nil).Header.Get("Content-Type"); !strings.Contains(ct, "xml") {
 		t.Errorf("/feed.xml: Content-Type %q, want an XML type", ct)
+	}
+}
+
+func TestAPrerenderedRedirectUsesKitsCanonicalHTMLArtifact(t *testing.T) {
+	h := newPrerenderedHandler(t)
+	want := `<script>location.href="/target?from=atlas";</script><meta http-equiv="refresh" content="0;url=/target?from=atlas">`
+
+	resp := do(t, h, http.MethodGet, "/old", nil)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Location") != "" {
+		t.Fatalf("canonical redirect artifact: status %d, Location %q", resp.StatusCode, resp.Header.Get("Location"))
+	}
+	if got := resp.Header.Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
+		t.Fatalf("canonical redirect artifact Content-Type %q, want text/html", got)
+	}
+	if got := body(t, resp); got != want {
+		t.Fatalf("canonical redirect artifact body %q, want %q", got, want)
+	}
+
+	resp = do(t, h, http.MethodHead, "/old", nil)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Location") != "" || body(t, resp) != "" {
+		t.Fatalf("HEAD redirect artifact: status %d, Location %q, body %q", resp.StatusCode, resp.Header.Get("Location"), body(t, resp))
+	}
+
+	resp = do(t, h, http.MethodGet, "/old/?q=1", nil)
+	if resp.StatusCode != http.StatusPermanentRedirect || resp.Header.Get("Location") != "../old?q=1" {
+		t.Fatalf("slash alias: status %d, Location %q, want 308 ../old?q=1", resp.StatusCode, resp.Header.Get("Location"))
+	}
+}
+
+func TestPrerenderedRedirectRejectsMutatingAndUnknownMethods(t *testing.T) {
+	h := newPrerenderedHandler(t)
+	for _, method := range []string{http.MethodPost, http.MethodOptions} {
+		for _, target := range []string{"/old", "/old/"} {
+			resp := do(t, h, method, target, nil)
+			if resp.StatusCode != http.StatusMethodNotAllowed || resp.Header.Get("Allow") != "GET, HEAD" {
+				t.Errorf("%s %s: status %d Allow %q, want 405 and GET, HEAD", method, target, resp.StatusCode, resp.Header.Get("Allow"))
+			}
+		}
 	}
 }
 
@@ -651,6 +691,40 @@ func TestAPrerenderedPathWithNoFileRefusesToStart(t *testing.T) {
 		t.Fatal("a build whose prerendered page is missing was accepted")
 	} else if !strings.Contains(err.Error(), "/about") {
 		t.Errorf("the error does not name the missing page: %v", err)
+	}
+}
+
+func TestUnlistedPrerenderedFileDoesNotBecomeAStaticRoute(t *testing.T) {
+	h := newPrerenderedHandler(t)
+	resp := do(t, h, http.MethodGet, "/stray", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("unlisted file answered with status %d, want 404", resp.StatusCode)
+	}
+	resp = do(t, h, http.MethodGet, "/about", nil)
+	if resp.StatusCode != http.StatusOK || body(t, resp) != "<!doctype html><p>about</p>" {
+		t.Fatalf("listed file did not remain servable: status %d, body %q", resp.StatusCode, body(t, resp))
+	}
+}
+
+func TestBasePrerenderedRedirectKeepsItsNativePathBoundary(t *testing.T) {
+	build := testBuildFS()
+	build["skgo.manifest.json"] = &fstest.MapFile{Data: []byte(`{"appDir":"_app","base":"/base","routes":[],"prerendered":["/base/old"]}`)}
+	build["prerendered/old.html"] = &fstest.MapFile{Data: []byte(`<script>location.href="/base/target?from=atlas";</script><meta http-equiv="refresh" content="0;url=/base/target?from=atlas">`)}
+	h, err := NewStaticHandler(build)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp := do(t, h, http.MethodGet, "/base/old", nil)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Location") != "" {
+		t.Fatalf("base canonical artifact: status %d, Location %q", resp.StatusCode, resp.Header.Get("Location"))
+	}
+	resp = do(t, h, http.MethodGet, "/base/old/?q=1", nil)
+	if resp.StatusCode != http.StatusPermanentRedirect || resp.Header.Get("Location") != "../old?q=1" {
+		t.Fatalf("base slash alias: status %d, Location %q", resp.StatusCode, resp.Header.Get("Location"))
+	}
+	resp = do(t, h, http.MethodGet, "/old", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("path outside base answered with status %d, want 404", resp.StatusCode)
 	}
 }
 

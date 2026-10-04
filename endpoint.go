@@ -407,8 +407,9 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 		return
 	}
 	// A prerendered file shadows whatever dynamic route would match its path,
-	// as it does in every Kit adapter; the static handler serves it.
-	if (r.Method == http.MethodGet || r.Method == http.MethodHead) && es.prerendered[urlPath] {
+	// for every method and both trailing-slash forms. The static handler owns
+	// the eventual response, including its method rejection and slash redirect.
+	if isPrerenderedPath(es.prerendered, urlPath) {
 		next.ServeHTTP(w, r)
 		return
 	}

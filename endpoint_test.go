@@ -87,6 +87,67 @@ func TestAnEndpointRouteNeverGetsThePageHandler(t *testing.T) {
 	}
 }
 
+func TestPrerenderedCanonicalPathAndSlashAliasBypassWildcardEndpoint(t *testing.T) {
+	cfg := EndpointConfig{
+		AppDir:      "_app",
+		Prerendered: []string{"/old"},
+		Routes: []ManifestRoute{{
+			ID:       "/[...rest]",
+			Pattern:  `^(?:\/([^]*))?\/?$`,
+			Params:   []ManifestParam{{Name: "rest", Rest: true, Chained: true}},
+			Endpoint: &ManifestEndpoint{Methods: []string{"GET", "*"}},
+		}},
+		manifest: true,
+	}
+	var called []string
+	es, err := NewEndpoints(cfg,
+		NewEndpoint("/[...rest]", "GET", func(w http.ResponseWriter, r *http.Request) {
+			called = append(called, r.URL.Path)
+			_, _ = w.Write([]byte("dynamic route"))
+		}),
+		NewEndpoint("/[...rest]", "*", func(w http.ResponseWriter, r *http.Request) {
+			called = append(called, r.URL.Path)
+			_, _ = w.Write([]byte("dynamic fallback"))
+		}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := es.Intercept(newPrerenderedHandler(t))
+	want := `<script>location.href="/target?from=atlas";</script><meta http-equiv="refresh" content="0;url=/target?from=atlas">`
+
+	resp := request(t, h, http.MethodGet, "/old", nil)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Location") != "" || body(t, resp) != want {
+		t.Errorf("GET /old: status %d, Location %q, body %q", resp.StatusCode, resp.Header.Get("Location"), body(t, resp))
+	}
+	resp = request(t, h, http.MethodHead, "/old", nil)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Location") != "" || body(t, resp) != "" {
+		t.Errorf("HEAD /old: status %d, Location %q, body %q", resp.StatusCode, resp.Header.Get("Location"), body(t, resp))
+	}
+	resp = request(t, h, http.MethodGet, "/old/?q=1", nil)
+	if resp.StatusCode != http.StatusPermanentRedirect || resp.Header.Get("Location") != "../old?q=1" {
+		t.Errorf("GET /old/?q=1: status %d, Location %q", resp.StatusCode, resp.Header.Get("Location"))
+	}
+	for _, method := range []string{http.MethodPost, http.MethodOptions} {
+		for _, target := range []string{"/old", "/old/"} {
+			resp := request(t, h, method, target, nil)
+			if resp.StatusCode != http.StatusMethodNotAllowed || resp.Header.Get("Allow") != "GET, HEAD" {
+				t.Errorf("%s %s: status %d Allow %q, want 405 and GET, HEAD", method, target, resp.StatusCode, resp.Header.Get("Allow"))
+			}
+		}
+	}
+	if len(called) != 0 {
+		t.Fatalf("wildcard route endpoint called for recorded path or slash alias: %v", called)
+	}
+	resp = request(t, h, http.MethodGet, "/other", nil)
+	if resp.StatusCode != http.StatusOK || body(t, resp) != "dynamic route" {
+		t.Fatalf("positive control GET /other: status %d body %q", resp.StatusCode, body(t, resp))
+	}
+	if len(called) != 1 || called[0] != "/other" {
+		t.Fatalf("positive control called wildcard route endpoint with %v, want [/other]", called)
+	}
+}
+
 // Kit answers HEAD with the GET handler when the module exports no HEAD of its
 // own (`runtime/server/endpoint.js`), and lists the synthesized HEAD in `Allow`
 // (`allowed_methods`).

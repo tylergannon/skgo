@@ -49,7 +49,7 @@ func TestOwnedProcessFixture(t *testing.T) {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(122)
 		}
-		if err := os.WriteFile(os.Getenv(processFixtureEnv+"READY"), data, 0o600); err != nil {
+		if err := publishFixtureInfo(os.Getenv(processFixtureEnv+"READY"), data); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(123)
 		}
@@ -278,6 +278,52 @@ func boolString(value bool) string {
 		return "1"
 	}
 	return "0"
+}
+
+// publishFixtureInfo writes beside the final pathname, closes the complete JSON
+// file, then renames it into place. On this Unix-only fixture, readers see no
+// readiness path until the full document is ready to read.
+func publishFixtureInfo(path string, data []byte) error {
+	temporary, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("create readiness temp file beside %q: %w", path, err)
+	}
+	temporaryPath := temporary.Name()
+	defer func() { _ = os.Remove(temporaryPath) }()
+
+	n, err := temporary.Write(data)
+	if err != nil {
+		_ = temporary.Close()
+		return fmt.Errorf("write readiness temp file for %q: %w", path, err)
+	}
+	if n != len(data) {
+		_ = temporary.Close()
+		return fmt.Errorf("write readiness temp file for %q: %w", path, io.ErrShortWrite)
+	}
+	if err := temporary.Close(); err != nil {
+		return fmt.Errorf("close readiness temp file for %q: %w", path, err)
+	}
+	if err := os.Rename(temporaryPath, path); err != nil {
+		return fmt.Errorf("publish readiness file %q: %w", path, err)
+	}
+	return nil
+}
+
+func TestAwaitFixtureInfoStillRejectsMalformedJSON(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ready.json")
+	if err := os.WriteFile(path, []byte(`{"pid":`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := awaitFixtureInfo(path, time.Second); err == nil || !strings.Contains(err.Error(), "unexpected end of JSON input") {
+		t.Fatalf("malformed readiness error = %v, want the JSON parse failure", err)
+	}
+}
+
+func TestPublishFixtureInfoPreservesSetupErrors(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing", "ready.json")
+	if err := publishFixtureInfo(path, []byte(`{"pid":1}`)); err == nil || !strings.Contains(err.Error(), "create readiness temp file") {
+		t.Fatalf("readiness setup error = %v, want a contextual temp-file creation failure", err)
+	}
 }
 
 func awaitFixtureInfo(path string, timeout time.Duration) (processFixtureInfo, error) {
