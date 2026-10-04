@@ -90,6 +90,7 @@ const kitSync = await import(pathToFileURL(join(kitRoot, 'src/core/sync/sync.js'
 const here = dirname(fileURLToPath(import.meta.url));
 const ENTRY = join(here, 'entry.js');
 const APP_SERVER = join(here, 'app-server.js');
+const PRERENDER_HELPER = '@skgo/sveltekit-adapter/prerender';
 const APP_PATHS = join(here, 'app-paths.js');
 const POLYFILL = join(here, 'polyfill.js');
 
@@ -211,6 +212,10 @@ export function gojaEnvironment() {
 		// `get_hooks` carries `reroute` and nothing else the engine needs; Go
 		// does the routing.
 		'skgo:generated': () => 'export const get_hooks = () => ({});',
+		// The Goja renderer cannot call back into the build-time process owner.
+		// Keep this module inert so its Node process dependencies never enter the
+		// renderer bundle.
+		'skgo:prerender': () => 'export async function remoteInputs() { throw new Error("skgo: declared prerender inputs are build-only"); }',
 		// Neither kit nor Svelte can reach AsyncLocalStorage here, and neither
 		// needs to: the webcontainer flag in the banner selects Svelte's own
 		// supported fallback — a module-global render context and a serialised
@@ -302,6 +307,7 @@ export function gojaEnvironment() {
 		resolveId: {
 			order: 'pre',
 			async handler(id, importer) {
+				if (id === PRERENDER_HELPER) return PREFIX + 'skgo:prerender';
 				if (id in sources) return PREFIX + id;
 				if (id.startsWith(PREFIX)) return id;
 				if (id in aliases) return aliases[id];
@@ -667,6 +673,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 		'skgo:hooks': () => hooksModule(root),
 		'skgo:esm-env': () => 'export const DEV = true; export const BROWSER = false;',
 		'skgo:generated': () => 'export const get_hooks = () => ({});',
+		'skgo:prerender': () => 'export async function remoteInputs() { throw new Error("skgo: declared prerender inputs are build-only"); }',
 		'skgo:missing': () =>
 			'throw new Error("skgo: node:async_hooks is unavailable in the SSR engine");'
 	};
@@ -944,6 +951,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 		resolveId: {
 			order: 'pre',
 			async handler(id, importer) {
+				if (id === PRERENDER_HELPER) return PREFIX + 'skgo:prerender';
 				if (id in sources) return PREFIX + id;
 				if (id.startsWith(PREFIX)) return id;
 				if (id in aliases) return aliases[id];

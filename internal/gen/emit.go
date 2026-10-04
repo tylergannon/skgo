@@ -209,7 +209,10 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 		return "", err
 	}
 	if fn.kind == kindPrerender {
-		options := prerenderInputOptions(fn)
+		options, err := a.prerenderInputOptions(fn)
+		if err != nil {
+			return "", err
+		}
 		if fn.in == nil {
 			return fmt.Sprintf("export const %s = prerender(async (): Promise<%s> => prerenderFromGo(%q, %q, undefined)%s);\n", fn.name, out.expr, fn.module, fn.name, options), nil
 		}
@@ -287,7 +290,10 @@ func (a *app) stubSignatureJS(fn *remoteFn) (string, error) {
 		return "", err
 	}
 	if fn.kind == kindPrerender {
-		options := prerenderInputOptions(fn)
+		options, err := a.prerenderInputOptions(fn)
+		if err != nil {
+			return "", err
+		}
 		if fn.in == nil {
 			return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<void, %s>} */\nexport const %s = prerender(async () => prerenderFromGo(%q, %q, undefined)%s);\n", out.expr, fn.name, fn.module, fn.name, options), nil
 		}
@@ -333,11 +339,22 @@ func (a *app) stubSignatureJS(fn *remoteFn) (string, error) {
 		remoteType, typeArgs, fn.name, invocation), nil
 }
 
-func prerenderInputOptions(fn *remoteFn) string {
+func (a *app) prerenderInputOptions(fn *remoteFn) (string, error) {
 	if fn.inputs == "" {
-		return ""
+		return "", nil
 	}
-	return fmt.Sprintf(", { inputs: () => skgoRemoteInputs(%q, %q) }", fn.module, fn.name)
+	inType := "void"
+	if fn.in != nil {
+		projected, err := a.project(fn.in)
+		if err != nil {
+			return "", err
+		}
+		inType = projected.expr
+	}
+	if a.cfg.Language.JavaScript() {
+		return fmt.Sprintf(", { inputs: /** @type {() => Promise<%s[]>} */ (() => skgoRemoteInputs(%q, %q)) }", inType, fn.module, fn.name), nil
+	}
+	return fmt.Sprintf(", { inputs: () => skgoRemoteInputs<%s>(%q, %q) }", inType, fn.module, fn.name), nil
 }
 
 func (a *app) depsOf(fn *remoteFn) []*types.Named {

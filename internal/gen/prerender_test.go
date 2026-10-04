@@ -139,7 +139,8 @@ var (
 	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.ts")
 	for _, want := range []string{
 		"import { remoteInputs as skgoRemoteInputs } from '@skgo/sveltekit-adapter/prerender';",
-		"inputs: () => skgoRemoteInputs(\"src/data/data.remote.ts\", \"build\")",
+		"inputs: () => skgoRemoteInputs<string>(\"src/data/data.remote.ts\", \"build\")",
+		"inputs: () => skgoRemoteInputs<void>(\"src/data/data.remote.ts\", \"noArgument\")",
 	} {
 		if !strings.Contains(stub, want) {
 			t.Errorf("generated remote module omits %q:\n%s", want, stub)
@@ -153,6 +154,34 @@ var (
 	cmd.Dir = filepath.Join(root, "app")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("generated app does not compile: %v\n%s", err, out)
+	}
+}
+
+func TestJavaScriptPrerenderInputCallbackCarriesProducerElementType(t *testing.T) {
+	t.Parallel()
+	root, cfg := foreignFixture(t, `package data
+
+import (
+	"context"
+	"github.com/tylergannon/skgo"
+)
+
+func build(context.Context, string) (string, error) { return "", nil }
+func inputs() ([]string, error) { return []string{"atlas"}, nil }
+var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: inputs})
+`, nil)
+	cfg.Language = LanguageJavaScript
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.js")
+	if !strings.Contains(stub, "@type {() => Promise<string[]>}") {
+		t.Fatalf("generated JavaScript callback lost its concrete input type:\n%s", stub)
+	}
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = filepath.Join(root, "app")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("generated JavaScript-mode app does not compile: %v\n%s", err, out)
 	}
 }
 
