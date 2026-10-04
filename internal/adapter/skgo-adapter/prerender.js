@@ -1,5 +1,5 @@
 import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import process from 'node:process';
@@ -20,6 +20,35 @@ function appRoot() {
 
 function kitRootFor(root) {
 	return realpathSync(join(root, 'node_modules/@sveltejs/kit'));
+}
+
+function kitQueueFailure(detail) {
+	const error = makeError(`SKGO_KIT_PRERENDER_QUEUE: ${detail}. Run "go tool skgo kit-patch --web web --apply" from the Go app root, then "cd web && node_modules/.bin/vp install --no-frozen-lockfile", then "go tool skgo kit-patch --web web --check".`);
+	error.name = 'SKGO_KIT_PRERENDER_QUEUE';
+	error.code = 'SKGO_KIT_PRERENDER_QUEUE';
+	return error;
+}
+
+function verifyKitQueue(root) {
+	let metadata;
+	try {
+		metadata = JSON.parse(readFileSync(new URL('./compat/kit-3.0.0-queue.json', import.meta.url), 'utf8'));
+	} catch (error) {
+		throw kitQueueFailure(`adapter compatibility metadata could not be read: ${error.message}`);
+	}
+	try {
+		const kitRoot = kitRootFor(root);
+		const pkg = JSON.parse(readFileSync(join(kitRoot, 'package.json'), 'utf8'));
+		const queuePath = join(kitRoot, metadata.queuePath);
+		const queue = readFileSync(queuePath);
+		const digest = createHash('sha256').update(queue).digest('hex');
+		if (pkg.name !== metadata.package || pkg.version !== metadata.version || digest !== metadata.correctedSHA256) {
+			throw kitQueueFailure(`resolved ${pkg.name ?? 'unknown'}@${pkg.version ?? 'unknown'} queue SHA-256 ${digest}; expected ${metadata.package}@${metadata.version} with SHA-256 ${metadata.correctedSHA256}`);
+		}
+	} catch (error) {
+		if (error?.code === 'SKGO_KIT_PRERENDER_QUEUE') throw error;
+		throw kitQueueFailure(`resolved Kit queue could not be verified: ${error.message}`);
+	}
 }
 
 function generatedConfig(root) {
@@ -696,6 +725,8 @@ function runtime() {
 
 /** Called by the generated native Kit input producer. */
 export async function remoteInputs(module, name) {
+	try { verifyKitQueue(appRoot()); }
+	catch (error) { return reportWorkerFatal(error); }
 	const raw = await invokeWorker({ kind: 'remote-inputs', module, name });
 	try {
 		const answer = JSON.parse(raw);

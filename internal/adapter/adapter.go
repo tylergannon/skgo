@@ -56,6 +56,38 @@ const (
 // Package is the npm package this directory publishes as.
 const Package = "@skgo/sveltekit-adapter"
 
+// KitQueueMetadata names the one bounded Kit queue correction this adapter
+// carries. It is intentionally data, rather than a version range: an
+// installation is compatible only when its physical queue bytes match.
+type KitQueueMetadata struct {
+	Package         string `json:"package"`
+	Version         string `json:"version"`
+	QueuePath       string `json:"queuePath"`
+	StockSHA256     string `json:"stockSHA256"`
+	CorrectedSHA256 string `json:"correctedSHA256"`
+	PatchSHA256     string `json:"patchSHA256"`
+	CorrectionID    string `json:"correctionID"`
+}
+
+// KitQueueCompatibility returns the metadata and canonical patch shipped by
+// this adapter. Both are embedded/published runtime assets; callers must not
+// keep independent copies of the patch or its hashes.
+func KitQueueCompatibility() (KitQueueMetadata, []byte, error) {
+	var metadata KitQueueMetadata
+	metadataBytes, err := files.ReadFile(path.Join(filesDir, "compat/kit-3.0.0-queue.json"))
+	if err != nil {
+		return metadata, nil, err
+	}
+	if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
+		return KitQueueMetadata{}, nil, err
+	}
+	patch, err := files.ReadFile(path.Join(filesDir, "compat/kit-3.0.0-queue.patch"))
+	if err != nil {
+		return KitQueueMetadata{}, nil, err
+	}
+	return metadata, patch, nil
+}
+
 // module is the module path the version is looked up under.
 const module = "github.com/tylergannon/skgo"
 
