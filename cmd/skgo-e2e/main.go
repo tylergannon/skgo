@@ -90,7 +90,7 @@ func run(ctx context.Context, args, environ []string, invoke commandRunner) erro
 		}
 	}
 
-	scratchDir, err := os.MkdirTemp("", "skgo-e2e-stage-scratch-")
+	scratchDir, err := os.MkdirTemp(reportTransportTempDir(), "skgo-e2e-stage-scratch-")
 	if err != nil {
 		return fmt.Errorf("create temporary Playwright report directory: %w", err)
 	}
@@ -651,14 +651,14 @@ func resolveFrom(base, value string) (string, error) {
 }
 
 func retainBlobReports(paths []string) (string, error) {
-	return retainBlobReportsInTempDir(paths, persistentMergeInputTempDir())
+	return retainBlobReportsInTempDir(paths, reportTransportTempDir())
 }
 
-// persistentMergeInputTempDir deliberately ignores TMPDIR on macOS and Linux.
-// The merge input must survive native HTML/blob reporters that clear
+// reportTransportTempDir deliberately ignores TMPDIR on macOS and Linux.
+// Both stage scratch and persistent merge input must survive native removal of
 // cwd/test-results, even when a caller places TMPDIR beneath that tree. Keep
 // Go's platform-specific temp semantics everywhere else, including Android.
-func persistentMergeInputTempDir() string {
+func reportTransportTempDir() string {
 	switch runtime.GOOS {
 	case "darwin", "linux":
 		return "/tmp"

@@ -198,7 +198,7 @@ func TestFailedRegularStageStillMergesBothBlobsOnce(t *testing.T) {
 	}
 }
 
-func TestPersistentMergeInputIgnoresCallerTMPDIRInsideArtifactTree(t *testing.T) {
+func TestReportTransportIgnoresCallerTMPDIRInsideArtifactTree(t *testing.T) {
 	for _, useSymlink := range []bool{false, true} {
 		name := "nested"
 		if useSymlink {
@@ -215,27 +215,52 @@ func TestPersistentMergeInputIgnoresCallerTMPDIRInsideArtifactTree(t *testing.T)
 			if useSymlink {
 				callerTempDir = filepath.Join(artifactRoot, "temporary-link")
 				if err := os.Symlink(physicalTempDir, callerTempDir); err != nil {
-					t.Skipf("create temporary symlink control: %v", err)
+					t.Fatalf("create temporary symlink control: %v", err)
 				}
 			}
 			t.Setenv("TMPDIR", callerTempDir)
 			callerEnv := []string{"TMPDIR=" + callerTempDir}
 			var stageBlobDirs []string
+			var stageScratchDirs []string
 			var mergeInput string
 			calls := 0
+			var stageNames []string
 			err := runWithCleanup(t, context.Background(), nil, callerEnv, func(_ context.Context, _ string, args, environ []string) error {
 				if envValue(environ, "TMPDIR") != callerTempDir {
 					t.Fatalf("child TMPDIR = %q, want caller value %q", envValue(environ, "TMPDIR"), callerTempDir)
 				}
 				if args[0] == "test" {
 					calls++
-					blob := envValue(environ, blobOutputFileEnv)
-					if err := os.WriteFile(blob, []byte("blob-"+envValue(environ, "SKGO_E2E_STAGE")), 0o600); err != nil {
+					stage := envValue(environ, "SKGO_E2E_STAGE")
+					stageNames = append(stageNames, stage)
+					// Native Playwright clears every selected project's outputDir
+					// before a stage starts. The default outputDir is test-results.
+					if err := os.RemoveAll(artifactRoot); err != nil {
 						t.Fatal(err)
 					}
-					stageBlobDirs = append(stageBlobDirs, filepath.Dir(blob))
-					if !pathIsWithin(filepath.Dir(blob), callerTempDir) {
-						t.Fatalf("stage scratch %q is not under caller TMPDIR %q", filepath.Dir(blob), callerTempDir)
+					if err := os.MkdirAll(artifactRoot, 0o755); err != nil {
+						t.Fatal(err)
+					}
+					blob := envValue(environ, blobOutputFileEnv)
+					stageBlobDir := filepath.Dir(blob)
+					stageScratchDir := filepath.Dir(stageBlobDir)
+					stageBlobDirs = append(stageBlobDirs, stageBlobDir)
+					stageScratchDirs = append(stageScratchDirs, stageScratchDir)
+					if filepath.Dir(stageScratchDir) != reportTransportTempDir() {
+						t.Fatalf("stage scratch parent = %q, want %q", filepath.Dir(stageScratchDir), reportTransportTempDir())
+					}
+					if (runtime.GOOS == "darwin" || runtime.GOOS == "linux") &&
+						(pathIsWithin(stageScratchDir, artifactRoot) || pathIsWithin(stageScratchDir, callerTempDir)) {
+						t.Fatalf("stage scratch %q overlaps caller artifact/TMPDIR tree", stageScratchDir)
+					}
+					if stage == "source-edit" {
+						regular, readErr := os.ReadFile(filepath.Join(stageBlobDirs[0], "regular.zip"))
+						if readErr != nil || string(regular) != "blob-regular" {
+							t.Fatalf("regular blob did not survive source-edit outputDir cleanup: %q, err=%v", regular, readErr)
+						}
+					}
+					if err := os.WriteFile(blob, []byte("blob-"+stage), 0o600); err != nil {
+						t.Fatal(err)
 					}
 					return nil
 				}
@@ -282,17 +307,21 @@ func TestPersistentMergeInputIgnoresCallerTMPDIRInsideArtifactTree(t *testing.T)
 			if calls != 2 {
 				t.Fatalf("stage calls = %d, want regular and source-edit", calls)
 			}
+			if !reflect.DeepEqual(stageNames, []string{"regular", "source-edit"}) {
+				t.Fatalf("stage order = %v, want regular then source-edit", stageNames)
+			}
 			if mergeInput == "" {
 				t.Fatal("merge input was not captured")
 			}
-			if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
-				if filepath.Dir(mergeInput) != "/tmp" {
-					t.Fatalf("merge input parent = %q, want documented system temp /tmp", filepath.Dir(mergeInput))
-				}
+			if filepath.Dir(mergeInput) != reportTransportTempDir() {
+				t.Fatalf("merge input parent = %q, want %q", filepath.Dir(mergeInput), reportTransportTempDir())
 			}
-			for _, stageDir := range stageBlobDirs {
-				if _, statErr := os.Lstat(stageDir); !os.IsNotExist(statErr) {
-					t.Fatalf("stage scratch %q survived return, stat error=%v", stageDir, statErr)
+			for index, scratchDir := range stageScratchDirs {
+				if pathIsWithin(mergeInput, scratchDir) || pathIsWithin(scratchDir, mergeInput) {
+					t.Fatalf("stage scratch %q overlaps persistent merge input %q", scratchDir, mergeInput)
+				}
+				if _, statErr := os.Lstat(scratchDir); !os.IsNotExist(statErr) {
+					t.Fatalf("stage scratch %q survived return (stage blob dir %q), stat error=%v", scratchDir, stageBlobDirs[index], statErr)
 				}
 			}
 			for relative, want := range map[string]string{
