@@ -36,13 +36,14 @@ func TestHighestVersionIncludesPrereleasesButNotAnotherMajor(t *testing.T) {
 // what the real installer leaves, so Create is judged on what it asks for and
 // on what it concludes from the project it finds.
 type upstream struct {
-	t        *testing.T
-	created  map[string]string // what `vp create` leaves in web/, beyond package.json
-	devDeps  map[string]string
-	scripts  map[string]string
-	skipAdd  bool // sv add exits 0 having applied nothing
-	skipBook bool // create-storybook exits 0 having applied nothing
-	commands []command
+	t         *testing.T
+	created   map[string]string // what `vp create` leaves in web/, beyond package.json
+	devDeps   map[string]string
+	scripts   map[string]string
+	skipAdd   bool // sv add exits 0 having applied nothing
+	skipBook  bool // create-storybook exits 0 having applied nothing
+	failCheck bool
+	commands  []command
 }
 
 func (u *upstream) run(c command) error {
@@ -87,6 +88,15 @@ func (u *upstream) run(c command) error {
 		u.scripts["storybook"] = "storybook dev -p 6006"
 		writeFiles(u.t, c.Dir, map[string]string{".storybook/main.ts": "export default {}", "src/stories/Button.stories.svelte": "story", "node_modules/.bin/storybook": ""})
 		u.writePackage(c.Dir)
+	case c.Name == localVP && slices.Equal(c.Args, []string{"check", "--fix"}):
+		for _, name := range []string{"go.mod", "web/dist.go", "Justfile"} {
+			if _, err := os.Stat(filepath.Join(filepath.Dir(c.Dir), name)); err != nil {
+				u.t.Errorf("VitePlus checked the frontend before skgo wrote %s: %v", name, err)
+			}
+		}
+		if u.failCheck {
+			return errors.New("formatting or lint diagnostics remain")
+		}
 	}
 	return nil
 }
@@ -139,8 +149,8 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 		t.Fatalf("result = %+v; instructions = %q", result, result.Instructions())
 	}
 	commands := u.commands
-	if len(commands) != 8 {
-		t.Fatalf("commands = %#v; want VitePlus create, sv add, Storybook, VitePlus install, Playwright, go mod tidy, go generate, initial VitePlus build", commands)
+	if len(commands) != 9 {
+		t.Fatalf("commands = %#v; want VitePlus create, sv add, Storybook, VitePlus install, Playwright, go mod tidy, go generate, VitePlus check --fix, initial VitePlus build", commands)
 	}
 	if got := strings.Join(commands[4].Args, " "); got != "--dir web exec playwright install chromium" {
 		t.Fatalf("the mandatory component tests need Chromium; command 5 = %q", got)
@@ -184,8 +194,11 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if commands[3].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[3].Dir) != "web" || !slices.Equal(commands[3].Args, []string{"install", "--no-frozen-lockfile"}) {
 		t.Fatalf("Storybook dependencies were not installed by local VitePlus: %#v", commands[3])
 	}
-	if commands[7].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[7].Dir) != "web" || commands[7].Args[0] != "build" {
-		t.Fatalf("initial frontend build did not use generated project VitePlus: %#v", commands[7])
+	if commands[7].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[7].Dir) != "web" || !slices.Equal(commands[7].Args, []string{"check", "--fix"}) {
+		t.Fatalf("initial frontend did not use generated project VitePlus to repair and check its native rules: %#v", commands[7])
+	}
+	if commands[8].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[8].Dir) != "web" || commands[8].Args[0] != "build" {
+		t.Fatalf("initial frontend build did not use generated project VitePlus: %#v", commands[8])
 	}
 	for _, name := range []string{"go.mod", "server.go", "cmd/main.go", "internal/skgo/config.go", "web/dist.go", "web/build/.gitkeep"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
@@ -223,6 +236,24 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	}
 	if !strings.Contains(readFile(t, filepath.Join(dir, "README.md")), "pnpm preview") {
 		t.Error("generated README does not explain the Go-backed preview")
+	}
+}
+
+func TestCreateSurfacesVitePlusFrontendCheckFailure(t *testing.T) {
+	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
+	u := &upstream{t: t, failCheck: true}
+	dir := filepath.Join(t.TempDir(), "frontend-check-failure")
+	_, err := Create(u.options(dir, registry))
+	if err == nil || !strings.Contains(err.Error(), "formatting and checking the initial frontend failed") || !strings.Contains(err.Error(), "formatting or lint diagnostics remain") {
+		t.Fatalf("frontend check failure = %v; want the native diagnostics surfaced by skgo new", err)
+	}
+	if len(u.commands) != 8 || !slices.Equal(u.commands[7].Args, []string{"check", "--fix"}) {
+		t.Fatalf("setup continued past its failed frontend check: %#v", u.commands)
+	}
+	for _, c := range u.commands {
+		if slices.Contains(c.Args, "build") {
+			t.Fatalf("initial frontend build ran after a failed VitePlus check: %#v", c)
+		}
 	}
 }
 

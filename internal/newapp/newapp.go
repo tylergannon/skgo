@@ -268,6 +268,15 @@ func finish(p project, run func(command) error) (Result, error) {
 	if err := run(command{Dir: p.Dir, Name: "go", Args: []string{"generate", "./..."}, Env: os.Environ()}); err != nil {
 		return Result{}, fmt.Errorf("skgo: generating the Go bindings failed: %w", err)
 	}
+	// The native upstream installers leave some generated files outside Vite+'s
+	// formatting and import rules. Let the project's own VitePlus repair what it
+	// can after every generator write, then fail if any configured check remains.
+	if err := run(command{
+		Dir: filepath.Join(p.Dir, "web"), Name: filepath.Join("node_modules", ".bin", "vp"),
+		Args: []string{"check", "--fix"}, Env: os.Environ(),
+	}); err != nil {
+		return Result{}, fmt.Errorf("skgo: formatting and checking the initial frontend failed: %w", err)
+	}
 	if err := run(command{
 		Dir: filepath.Join(p.Dir, "web"), Name: filepath.Join("node_modules", ".bin", "vp"),
 		Args: []string{"build"}, Env: append(os.Environ(), "ORIGIN="+p.Origin),
