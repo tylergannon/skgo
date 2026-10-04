@@ -63,7 +63,10 @@ func getDeclaredSite(ctx context.Context, name string) (string, error) {
 
 func siteInputs() ([]string, error) {
 	if receipt := os.Getenv("SKGO_INPUTS_RECEIPT"); receipt != "" {
-		if err := os.WriteFile(receipt, []byte("called"), 0o600); err != nil { return nil, err }
+	file, err := os.OpenFile(receipt, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil { return nil, err }
+		if _, err := file.WriteString("called\n"); err != nil { file.Close(); return nil, err }
+		if err := file.Close(); err != nil { return nil, err }
 	}
 	if late := os.Getenv("SKGO_LATE_RECEIPT"); late != "" && runtime.GOOS != "windows" {
 		cmd := exec.Command("/bin/sh", "-c", "sleep 1; printf late > \"$1\"", "sh", late)
@@ -73,12 +76,21 @@ func siteInputs() ([]string, error) {
 }
 
 func moneyInputs() ([]businesslogic.Money, error) {
+	if receipt := os.Getenv("SKGO_MONEY_INPUTS_RECEIPT"); receipt != "" {
+		file, err := os.OpenFile(receipt, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil { return nil, err }
+		if _, err := file.WriteString("called\n"); err != nil { file.Close(); return nil, err }
+		if err := file.Close(); err != nil { return nil, err }
+	}
 	return []businesslogic.Money{{Cents: 125}}, nil
 }
 
 func emptyInputs() ([]devalue.UndefinedValue, error) {
 	if receipt := os.Getenv("SKGO_EMPTY_INPUTS_RECEIPT"); receipt != "" {
-		if err := os.WriteFile(receipt, []byte("called"), 0o600); err != nil { return nil, err }
+	file, err := os.OpenFile(receipt, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil { return nil, err }
+		if _, err := file.WriteString("called\n"); err != nil { file.Close(); return nil, err }
+		if err := file.Close(); err != nil { return nil, err }
 	}
 	return []devalue.UndefinedValue{}, nil
 }
@@ -95,19 +107,53 @@ var (
 	if err := os.WriteFile(remote, []byte(declaredSource), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	pageRemote := filepath.Join(fixture, "web", "src", "routes", "about", "about.remote.go")
+	pageSource, err := os.ReadFile(pageRemote)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pageSourceText := strings.Replace(string(pageSource), `func buildReceipt(_ context.Context, name string) (string, error) {
+	return "Go prerender remote: " + name, nil
+}`, `func buildReceipt(ctx context.Context, name string) (string, error) {
+	if receipt := os.Getenv("SKGO_PAGE_REMOTE_RECEIPT"); receipt != "" {
+		file, err := os.OpenFile(receipt, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil { return "", err }
+		if _, err := file.WriteString(name + "\n"); err != nil { file.Close(); return "", err }
+		if err := file.Close(); err != nil { return "", err }
+	}
+	return "Go prerender remote: " + name, nil
+}`, 1)
+	if pageSourceText == string(pageSource) {
+		t.Fatal("could not instrument duplicate page remote calls")
+	}
+	pageSourceText = strings.Replace(pageSourceText, `import (
+	"context"`, `import (
+	"context"
+	"os"`, 1)
+	if err := os.WriteFile(pageRemote, []byte(pageSourceText), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	serverHook := filepath.Join(fixture, "web", "src", "hooks.server.ts")
 	if err := os.WriteFile(serverHook, []byte(`import { getDeclaredSite, moneyRemote, noArgumentRemote } from "./routes/declared.remote";
-import type { Handle } from "@sveltejs/kit";
+import type { Handle } from "@sveltejs/kit/hooks";
 void [getDeclaredSite, moneyRemote, noArgumentRemote];
 export const handle: Handle = async ({ event, resolve }) => resolve(event);
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	inputReceipt := filepath.Join(fixture, "inputs-called")
+	emptyReceipt := filepath.Join(fixture, "empty-inputs-called")
+	moneyReceipt := filepath.Join(fixture, "money-inputs-called")
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir = fixture
-	generate.Env = append(os.Environ(), "GOWORK=off")
+	generate.Env = append(os.Environ(), "GOWORK=off", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt)
 	if output, err := generate.CombinedOutput(); err != nil {
 		t.Fatalf("go generate: %v\n%s", err, output)
+	}
+	for _, receipt := range []string{inputReceipt, emptyReceipt, moneyReceipt} {
+		if _, err := os.Stat(receipt); !os.IsNotExist(err) {
+			t.Fatalf("producer ran during generation: %s (%v)", receipt, err)
+		}
 	}
 	for _, command := range [][]string{
 		{filepath.Join(fixture, "web", "node_modules", ".bin", "svelte-kit"), "sync"},
@@ -122,22 +168,27 @@ export const handle: Handle = async ({ event, resolve }) => resolve(event);
 	}
 	build := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "vp"), "build")
 	build.Dir = filepath.Join(fixture, "web")
-	inputReceipt := filepath.Join(fixture, "inputs-called")
-	emptyReceipt := filepath.Join(fixture, "empty-inputs-called")
 	remoteReceipt := filepath.Join(fixture, "remotes-called")
+	pageRemoteReceipt := filepath.Join(fixture, "page-remotes-called")
 	lateReceipt := filepath.Join(fixture, "late-descendant-write")
-	build.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_REMOTE_RECEIPT="+remoteReceipt, "SKGO_LATE_RECEIPT="+lateReceipt)
+	build.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_REMOTE_RECEIPT="+remoteReceipt, "SKGO_PAGE_REMOTE_RECEIPT="+pageRemoteReceipt, "SKGO_LATE_RECEIPT="+lateReceipt)
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("vp build: %v\n%s", err, output)
 	}
-	if receipt, err := os.ReadFile(inputReceipt); err != nil || string(receipt) != "called" {
+	if receipt, err := os.ReadFile(inputReceipt); err != nil || string(receipt) != "called\n" {
 		t.Fatalf("declared input producer receipt = %q, %v", receipt, err)
 	}
-	if receipt, err := os.ReadFile(emptyReceipt); err != nil || string(receipt) != "called" {
+	if receipt, err := os.ReadFile(emptyReceipt); err != nil || string(receipt) != "called\n" {
 		t.Fatalf("empty no-argument input producer receipt = %q, %v", receipt, err)
+	}
+	if receipt, err := os.ReadFile(moneyReceipt); err != nil || string(receipt) != "called\n" {
+		t.Fatalf("transported Money input producer receipt = %q, %v", receipt, err)
 	}
 	if calls, err := os.ReadFile(remoteReceipt); err != nil || string(calls) != "atlas\nbeacon\n" {
 		t.Fatalf("unique Go body calls = %q, %v; want one call for atlas and beacon despite duplicate declared atlas input", calls, err)
+	}
+	if calls, err := os.ReadFile(pageRemoteReceipt); err != nil || string(calls) != "atlas\n" {
+		t.Fatalf("duplicate page remote calls = %q, %v; want one build response for two atlas calls", calls, err)
 	}
 	if runtime.GOOS != "windows" {
 		time.Sleep(1200 * time.Millisecond)
