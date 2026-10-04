@@ -52,13 +52,12 @@ type CaughtError struct {
 // (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app
 // decides what a failed page's visitor is told, beyond status and message.
 //
-// It runs for every error that reaches a page response except a
-// redirect, which is not a failure and never reaches it — the same rule
-// kit's own doc comment states ("runs for every error thrown while
-// responding to a request, except redirects"). That includes an error the
-// app raised on purpose with Errorf: kit's own type never exempts an
-// "app"-kind error from the hook, only from having its message replaced by
-// default.
+// It runs for every error that reaches a page response except a redirect,
+// which is not a failure and never reaches it, and an already-handled
+// built-prerender error whose recorded App.Error body is reused without
+// running the hook again. That includes an error the app raised on purpose
+// with Errorf: kit's own type never exempts an "app"-kind error from the
+// hook, only from having its message replaced by default.
 //
 // Returning nil keeps kit's own defaults exactly: an "app" error's message
 // survives untouched, and an "unknown" error's stays the generic "Internal
@@ -80,9 +79,9 @@ type HandleError func(ctx context.Context, caught CaughtError) map[string]any
 
 // handleErrorAndJSONify is kit's `handle_error_and_jsonify`, narrowed to Go's
 // synchronous hook: there is no async `handleError` here — a synchronous Go
-// function cannot be one — and nothing on skgo's page paths produces kit's
-// `HandledHttpError` fast path (an error already run through the hook by an
-// earlier layer), so both are simply absent.
+// function cannot be one. A built-prerender error can reach this function as
+// an already-handled body; that body takes kit's `HandledHttpError` fast path
+// and is returned without running the hook again.
 //
 // fallback is the error already reduced to a status and a message, e.g. by
 // asHTTPError; raw is the original error skgo caught, if one better than
@@ -101,6 +100,10 @@ func (ls *Loads) dataError(ctx context.Context, routeID string, fallback *HTTPEr
 }
 
 func handleErrorAndJSONify(ctx context.Context, routeID string, hook HandleError, fallback *HTTPError, raw error, report func(string, error)) *ssr.Error {
+	var handled *ssr.HandledError
+	if errors.As(raw, &handled) && handled.Body != nil {
+		return handled.Body
+	}
 	if fallback == nil {
 		fallback = &HTTPError{Status: http.StatusInternalServerError, Message: "Internal Error"}
 	}

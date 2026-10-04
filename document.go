@@ -63,6 +63,7 @@ type SSR struct {
 	fetch                           http.Handler
 	handleFetch                     HandleFetch
 	prerendered                     map[string]bool
+	artifacts                       *prerenderArtifactStore
 	filterSerializedResponseHeaders func(name, value string) bool
 	// dev is non-nil only for a renderer backed by a running Vite server.
 	// devRenderMu keeps dev page renders serialised one at a time, as they
@@ -158,6 +159,10 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	if err != nil {
 		return nil, err
 	}
+	artifacts, err := newSSRPrerenderArtifactStore(build, m, remotes, remoteTransport(remotes))
+	if err != nil {
+		return nil, err
+	}
 
 	s := &SSR{
 		environment:                     opts.Environment,
@@ -173,6 +178,7 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		fetch:                           opts.Fetch,
 		handleFetch:                     opts.HandleFetch,
 		prerendered:                     prerenderedSet(m.Prerendered),
+		artifacts:                       artifacts,
 		filterSerializedResponseHeaders: opts.FilterSerializedResponseHeaders,
 	}
 	// The engine is built after the SSR rather than into it because the bundle
@@ -864,6 +870,13 @@ func (s *SSR) serveLoadError(w http.ResponseWriter, r *http.Request, req dataReq
 // and root errors", so 0 is the root layout and 1 the root error page in every
 // manifest kit writes.
 func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, e *HTTPError, raw error) bool {
+	return s.respondWithErrorAnswers(w, r, req, routeID, params, e, raw, nil)
+}
+
+// respondWithErrorAnswers is `respond_with_error` with one bounded extension:
+// a built prerender error that escaped the page render has already populated
+// Kit's request-local `p` cache, which its error document serializes too.
+func (s *SSR) respondWithErrorAnswers(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, e *HTTPError, raw error, priorAnswers map[string]map[string]answered) bool {
 	const rootLayout, rootError = 0, 1
 
 	// Kit consults the hook once, at the very top — "do this here first in
@@ -946,7 +959,7 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 	plan.status, plan.pageError = result.Status, result.Error
 	options := s.documentOptions(r)
 	plan.preload = options.preload
-	document, promises, headers, err := s.assemble(req, plan, result, answers, csp)
+	document, promises, headers, err := s.assemble(req, plan, result, mergePrerenderAnswers(answers, priorAnswers), csp)
 	if err == nil {
 		document, err = options.transformed(r.Context(), document)
 	}
@@ -970,6 +983,45 @@ func (s *SSR) respondWithError(w http.ResponseWriter, r *http.Request, req dataR
 func (s *SSR) failed(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, err error) bool {
 	s.report(routeID, err)
 	return s.respondWithError(w, r, req, routeID, params, asHTTPError(err), err)
+}
+
+// failedAfterRender retains the production request's prerender cache when a
+// render fails after recording a prerender answer. Every other failure keeps
+// failed's existing response path and state boundary.
+func (s *SSR) failedAfterRender(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, err error, answers map[string]map[string]answered) bool {
+	if s.dev != nil || len(answers["p"]) == 0 {
+		return s.failed(w, r, req, routeID, params, err)
+	}
+	s.report(routeID, err)
+	return s.respondWithErrorAnswers(w, r, req, routeID, params, asHTTPError(err), err, answers)
+}
+
+// mergePrerenderAnswers copies the error render's answer sets and fills only
+// missing `p` entries from the page that failed. Kit serializes the same
+// request-local cache in the error document; the error render remains the
+// winner if it answered a key itself. Neither input map is mutated.
+func mergePrerenderAnswers(current, prior map[string]map[string]answered) map[string]map[string]answered {
+	priorP := prior["p"]
+	if len(priorP) == 0 {
+		return current
+	}
+	merged := make(map[string]map[string]answered, len(current)+1)
+	for kind, answers := range current {
+		copyOfKind := make(map[string]answered, len(answers))
+		for key, answer := range answers {
+			copyOfKind[key] = answer
+		}
+		merged[kind] = copyOfKind
+	}
+	if merged["p"] == nil {
+		merged["p"] = make(map[string]answered, len(priorP))
+	}
+	for key, answer := range priorP {
+		if _, alreadyAnswered := merged["p"][key]; !alreadyAnswered {
+			merged["p"][key] = answer
+		}
+	}
+	return merged
 }
 
 // report tells the app about a failure it will otherwise never see, because the
@@ -1046,7 +1098,7 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 	plan.jar = shared.jar
 	result, answers, err := s.renderPlan(r, req, plan, csp)
 	if err != nil {
-		return s.failed(w, r, req, plan.routeID, plan.params, err)
+		return s.failedAfterRender(w, r, req, plan.routeID, plan.params, err, answers)
 	}
 	if result.Redirect != nil {
 		// A remote function called from a component threw a redirect. Kit turns
@@ -1066,7 +1118,7 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 		document, err = options.transformed(r.Context(), document)
 	}
 	if err != nil {
-		return s.failed(w, r, req, plan.routeID, plan.params, err)
+		return s.failedAfterRender(w, r, req, plan.routeID, plan.params, err, answers)
 	}
 	if len(promises.order) > 0 {
 		s.stream(w, r, shared, document, promises, headers)
@@ -1424,6 +1476,32 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 404, Message: "Error: 404"}})
 	}
 
+	if fn.kind == KindPrerender && s.dev == nil {
+		artifact, found, err := s.artifacts.lookup(id, payload, s.remotes.cfg.Transport)
+		if err != nil {
+			failure := &ssr.Error{Status: http.StatusInternalServerError, Message: "Internal Error"}
+			s.record(into, "p", id+"/"+payload, answered{err: failure})
+			return json.Marshal(remoteAnswer{E: failure})
+		}
+		if !found {
+			failure := &ssr.Error{Status: http.StatusInternalServerError, Message: "Internal Error"}
+			s.record(into, "p", id+"/"+payload, answered{err: failure})
+			return json.Marshal(remoteAnswer{E: failure})
+		}
+		if artifact.err != nil {
+			s.record(into, "p", id+"/"+payload, answered{err: artifact.err})
+			return json.Marshal(remoteAnswer{H: artifact.err})
+		}
+		serialized, err := devalue.StringifyWith(artifact.result, s.remotes.cfg.Transport.reducers())
+		if err != nil {
+			failure := &ssr.Error{Status: http.StatusInternalServerError, Message: "Internal Error"}
+			s.record(into, "p", id+"/"+payload, answered{err: failure})
+			return json.Marshal(remoteAnswer{E: failure})
+		}
+		s.record(into, "p", id+"/"+payload, answered{tree: artifact.result})
+		return json.Marshal(remoteAnswer{V: serialized})
+	}
+
 	if fn.kind == KindBatch {
 		return s.answerBatch(ctx, fn, payload, into)
 	}
@@ -1590,6 +1668,7 @@ type remoteAnswer struct {
 	V string        `json:"v,omitempty"`
 	E *ssr.Error    `json:"e,omitempty"`
 	R *ssr.Redirect `json:"r,omitempty"`
+	H *ssr.Error    `json:"h,omitempty"`
 }
 
 // stream sends a document that is still waiting for something: the document

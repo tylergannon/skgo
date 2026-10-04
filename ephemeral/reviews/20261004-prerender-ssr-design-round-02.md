@@ -1,0 +1,21 @@
+# Production SSR prerender artifact reuse — design review, round 02
+
+Outcome: **no findings**.
+
+Reviewed immutable design checkpoint **ae898d28921aba10fdcece093f2e056f32833532** in `/Users/tyler/Codex/2026-10-03/task-8/skgo-prerender-ssr`, including the complete committed `ephemeral/worklog/20261004-prerender-ssr-artifact.md`, its diff from 172712a, and the immutable round-one review. Repository/agent-protocol authority and the preceding reviewed extension design remain applicable. The focused recheck wording was treated as prioritization, not an exclusion of other material defects. Concurrent dirty product files are outside this frozen design checkpoint and were not treated as reviewed implementation.
+
+I performed the review independently without delegation, product edits, commits, builds, servers or network calls. I rechecked the relevant installed Kit **3.0.0** source: `runtime/app/server/remote/prerender.js:97–125`, `runtime/server/errors.js:21–24`, the production replacement in `exports/vite/build/remote.js:72–89`, existing static client-first selection and constructor/transport context inspected in round one, and the Go devalue parser's custom-tag/reviver behavior. Parent/site alignment is limited to **R-remote-44**; no inputs, dynamic declaration or cache-extension capability is inferred.
+
+## Material findings rechecked
+
+1. **Client authority is now explicit.** The amended worklog requires client-first selection for a known registered remote URL, including a client asset without prerender membership. It keeps unlisted prerender files unauthorized and requires a supplied `client:atlas` versus `build:atlas` HTTP/SSR result with Go body calls zero, plus a failing reversed-priority control. This resolves the missing prerequisite identified in round one. It matches native reuse of the successful public URL response before validation/body execution and preserves existing public client authority. Required inventory validation still applies independently of which asset wins HTTP selection.
+
+2. **Static syntax validation and SSR semantic revival now have distinct owners.** The shared store validates file/map/inventory authority, remote envelopes and devalue JSON syntax. Standalone `NewStaticHandler` remains codec-independent, accepts a valid Money-tag payload and serves its exact bytes. `NewSSR` performs semantic reference/tag/result-decoder validation with result `Transport.revivers()`, identifies the broken artifact and fails construction without calling Go as recovery. Dangling references and unknown tags target SSR construction; malformed JSON targets the shared store/static constructor. The contract explicitly declines application-semantic validation in a static-only constructor. This resolves the previously ambiguous corruption guarantee without a generic parser, opaque custom-tag workaround, argument decoding or new public API.
+
+No additional material defect or genuine nitpick was identified in the amended design. Original raw-key authority, successful `p` hydration, production noarg unchecked ordering, missing non-dynamic refusal, dev execution, already-handled built errors and built redirect-as-undefined behavior remain source-correct obligations. The existing declaration subset has no newly unresolved dependency on Inputs, dynamic options or parameter implementation.
+
+## Proof disposition
+
+This is a **design-only** outcome. The two corrections specify behavior and proof; they have not been established by this review's runtime execution. Implementation review must inspect the frozen product and actual literal/removal controls, including both client-membership cases, transported standalone static construction, result/reference/decoder constructor failures, actual compiled production/dev noarg components, error hook bypass and undefined/hydration behavior. Existing static/slash/compression/private-query boundaries and retained legacy encoded-path limits remain relevant regressions.
+
+Ordinary tests, native/app builds, independent load-bearing controls, relevant browser hydration/navigation proof, viewed rendered pages and exact-head publication remain subsequent obligations. This report does not approve concurrent implementation, claim the combined remote-prerender bucket complete, or convert the broader excluded capabilities into passes.
