@@ -579,7 +579,7 @@ func (a *app) writeAppBindings() error {
 	if len(a.remotes) > 0 || len(a.loads) > 0 || len(a.actions) > 0 {
 		b.WriteString("\t\"context\"\n")
 	}
-	if a.hasBatch() || a.hasPrerenderInputs() {
+	if a.hasBatch() || a.hasPrerenderInputWithArgument() {
 		b.WriteString("\t\"fmt\"\n")
 	}
 	if len(transportPkgs) > 0 {
@@ -681,7 +681,16 @@ func (a *app) hasPrerenderInputs() bool {
 	return false
 }
 
-func prerenderInputsHandler(fn *remoteFn) string { return "inputs_" + fn.name }
+func (a *app) hasPrerenderInputWithArgument() bool {
+	for _, fn := range a.remotes {
+		if fn.kind == kindPrerender && fn.inputs != "" && fn.in != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func prerenderInputsHandler(fn *remoteFn) string { return fn.inputsHandler }
 
 func prerenderInputsPublishedName(fn *remoteFn) string { return "SkgoPrerenderInputs_" + fn.name }
 
@@ -691,7 +700,7 @@ func (a *app) writePrerenderInputs(b *strings.Builder, fn *remoteFn) {
 	name := prerenderInputsHandler(fn)
 	fmt.Fprintf(b, "\n// %s encodes declared build-time inputs for %s#%s.\n", name, fn.module, fn.name)
 	callArg := "_ skgo.Call"
-	if fn.in != nil && fn.inCodec == "" {
+	if fn.in != nil && (fn.inCodec == "" || a.containsTransported(fn.in)) {
 		callArg = "call skgo.Call"
 	}
 	fmt.Fprintf(b, "func %s(_ context.Context, %s) ([]any, error) {\n", name, callArg)
@@ -702,7 +711,7 @@ func (a *app) writePrerenderInputs(b *strings.Builder, fn *remoteFn) {
 	}
 	fmt.Fprintf(b, "\tvalues, err := %s.%s()\n\tif err != nil { return nil, err }\n", fn.goPkg.alias, prerenderInputsPublishedName(fn))
 	b.WriteString("\tencoded := make([]any, len(values))\n\tfor i, value := range values {\n")
-	if fn.inCodec != "" {
+	if !a.containsTransported(fn.in) {
 		fmt.Fprintf(b, "\t\ttree, err := Encode%s(value)\n", fn.inCodec)
 	} else {
 		b.WriteString("\t\ttree, err := call.Transported(value)\n")

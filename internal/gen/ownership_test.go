@@ -58,6 +58,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"reflect"
 )
 
 type Marker struct{}
@@ -69,6 +70,14 @@ type PrerenderOptions struct {
 }
 
 type Remote struct{}
+
+type Transporter struct {
+	Type reflect.Type
+	Encode func(any) (any, error)
+	Decode func(any) (any, error)
+}
+
+type Transport map[string]Transporter
 
 func Query(fn any) Marker { _ = fn; return Marker{} }
 

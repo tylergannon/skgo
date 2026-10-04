@@ -108,6 +108,9 @@ type remoteFn struct {
 	inCodec, outCodec string
 	// handler is the name of the generated closure that answers this function.
 	handler string
+	// inputsHandler is the uniquely allocated closure that answers Kit's
+	// declared-inputs request for this function.
+	inputsHandler string
 	// requestedArg is the name of the generated wrapper skgo.Requested decodes
 	// one client-requested instance's argument with. It is empty for a
 	// function declared without an argument.

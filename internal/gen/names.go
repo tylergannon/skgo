@@ -28,6 +28,9 @@ func (a *app) planNames() {
 	}
 	for _, fn := range a.remotes {
 		fn.handler = claim("remote_" + fn.name)
+		if fn.kind == kindPrerender && fn.inputs != "" {
+			fn.inputsHandler = claim("inputs_" + fn.name)
+		}
 		if fn.in != nil && fn.kind != kindForm {
 			fn.requestedArg = claim("requestedArg_" + fn.name)
 		}

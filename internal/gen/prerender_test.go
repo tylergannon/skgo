@@ -207,6 +207,111 @@ var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: wrongInputs})
 	}
 }
 
+func TestNoArgumentPrerenderInputsCompileWithoutFmtImport(t *testing.T) {
+	t.Parallel()
+	root, cfg := foreignFixture(t, `package data
+
+import (
+	"context"
+	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/skgo"
+)
+
+func build(context.Context) (string, error) { return "empty", nil }
+func inputs() ([]devalue.UndefinedValue, error) { return []devalue.UndefinedValue{{}}, nil }
+var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: inputs})
+`, nil)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	if strings.Contains(bindings, `"fmt"`) {
+		t.Fatalf("no-argument producer unnecessarily imports fmt:\n%s", bindings)
+	}
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = filepath.Join(root, "app")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("generated no-argument app does not compile: %v\n%s", err, out)
+	}
+}
+
+func TestPrerenderInputHandlersHaveUniqueNamesAcrossModules(t *testing.T) {
+	t.Parallel()
+	root, cfg := foreignFixture(t, `package data
+
+import (
+	"context"
+	"github.com/tylergannon/skgo"
+)
+
+func item(context.Context, string) (string, error) { return "data", nil }
+func inputs() ([]string, error) { return []string{"data"}, nil }
+var _ = skgo.Prerender(item, skgo.PrerenderOptions{Inputs: inputs})
+`, map[string]string{
+		"app/web/src/other/other.remote.go": `package other
+
+import (
+	"context"
+	"github.com/tylergannon/skgo"
+)
+
+func item(context.Context, string) (string, error) { return "other", nil }
+func inputs() ([]string, error) { return []string{"other"}, nil }
+var _ = skgo.Prerender(item, skgo.PrerenderOptions{Inputs: inputs})
+`,
+	})
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	for _, want := range []string{"func inputs_item(", "func inputs_item_2(", "Inputs:    inputs_item,", "Inputs:    inputs_item_2,"} {
+		if !strings.Contains(bindings, want) {
+			t.Errorf("generated bindings omit %q:\n%s", want, bindings)
+		}
+	}
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = filepath.Join(root, "app")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("generated multi-module app does not compile: %v\n%s", err, out)
+	}
+}
+
+func TestTransportedPrerenderInputsUseRuntimeTransportEncoding(t *testing.T) {
+	t.Parallel()
+	root, cfg := foreignFixture(t, `package data
+
+import (
+	"context"
+	hooks "example.com/app/web/src"
+	"github.com/tylergannon/skgo"
+)
+
+func build(context.Context, hooks.Money) (string, error) { return "money", nil }
+func inputs() ([]hooks.Money, error) { return []hooks.Money{{Cents: 125}}, nil }
+var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: inputs})
+`, map[string]string{
+		"app/web/src/hooks.go": `package hooks
+
+import "github.com/tylergannon/skgo"
+
+type Money struct { Cents int ` + "`json:\"cents\"`" + ` }
+var _ = skgo.Transported[Money]("Money")
+`,
+	})
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	if !strings.Contains(bindings, "tree, err := call.Transported(value)") {
+		t.Fatalf("transported input does not reach the app's native transport encoder:\n%s", bindings)
+	}
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = filepath.Join(root, "app")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("generated transported-input app does not compile: %v\n%s", err, out)
+	}
+}
+
 func linkExampleFrontendDependencies(t *testing.T, root, app string) {
 	t.Helper()
 	source := filepath.Join(root, "example", "web", "node_modules")
