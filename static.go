@@ -504,9 +504,22 @@ func readVariant(build fs.FS, name, encoding string) (assetVariant, error) {
 }
 
 func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	urlPath, ok := normalizePath(r.URL.Path)
+	if !ok {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	// Kit's static middleware claims recorded prerendered files, including the
+	// opposite trailing-slash form, before the dynamic handler. Keep that
+	// ownership for every method so mutations cannot reach a matching route.
+	if isPrerenderedPath(h.prerendered, urlPath) && r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	// Runtime public values take precedence over the build-time env.js that
 	// Kit may have emitted while prerendering.
-	if path, ok := normalizePath(r.URL.Path); ok && path == h.appPrefix+"env.js" && h.ssr != nil {
+	if urlPath == h.appPrefix+"env.js" && h.ssr != nil {
 		h.ssr.serveEnvironment(w, r)
 		return
 	}
@@ -524,12 +537,6 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	urlPath, ok := normalizePath(r.URL.Path)
-	if !ok {
-		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
@@ -672,6 +679,18 @@ func invertTrailingSlash(urlPath string) (string, bool) {
 		return strings.TrimSuffix(urlPath, "/"), true
 	}
 	return urlPath + "/", true
+}
+
+// isPrerenderedPath reports whether urlPath is a canonical path the build
+// recorded or the other trailing-slash form handled by Kit's static adapter.
+func isPrerenderedPath(paths map[string]bool, urlPath string) bool {
+	if paths[urlPath] {
+		return true
+	}
+	if canonical, ok := invertTrailingSlash(urlPath); ok && paths[canonical] {
+		return true
+	}
+	return false
 }
 
 // relativePathname is kit's own (`utils/url.js`): a relative Location, so that
@@ -985,7 +1004,7 @@ func (h *staticHandler) servesFile(r *http.Request) bool {
 			return true
 		}
 	}
-	if h.prerendered[urlPath] {
+	if isPrerenderedPath(h.prerendered, urlPath) {
 		if _, _, ok := h.prerenderedFile(urlPath); ok {
 			return true
 		}

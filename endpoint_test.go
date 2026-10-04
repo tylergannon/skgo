@@ -87,6 +87,75 @@ func TestAnEndpointRouteNeverGetsThePageHandler(t *testing.T) {
 	}
 }
 
+func TestPrerenderedCanonicalPathAndSlashAliasBypassWildcardEndpoint(t *testing.T) {
+	cfg := EndpointConfig{
+		AppDir:      "_app",
+		Prerendered: []string{"/old"},
+		Routes: []ManifestRoute{{
+			ID: "/old", Pattern: `^\/old\/?$`, Endpoint: &ManifestEndpoint{Methods: []string{"*"}},
+		}},
+		manifest: true,
+	}
+	called := 0
+	es, err := NewEndpoints(cfg, NewEndpoint("/old", "*", func(http.ResponseWriter, *http.Request) { called++ }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := es.Intercept(newPrerenderedHandler(t))
+	want := `<script>location.href="/target?from=atlas";</script><meta http-equiv="refresh" content="0;url=/target?from=atlas">`
+
+	resp := request(t, h, http.MethodGet, "/old", nil)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Location") != "" || body(t, resp) != want {
+		t.Errorf("GET /old: status %d, Location %q, body %q", resp.StatusCode, resp.Header.Get("Location"), body(t, resp))
+	}
+	resp = request(t, h, http.MethodHead, "/old", nil)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Location") != "" || body(t, resp) != "" {
+		t.Errorf("HEAD /old: status %d, Location %q, body %q", resp.StatusCode, resp.Header.Get("Location"), body(t, resp))
+	}
+	resp = request(t, h, http.MethodGet, "/old/?q=1", nil)
+	if resp.StatusCode != http.StatusPermanentRedirect || resp.Header.Get("Location") != "../old?q=1" {
+		t.Errorf("GET /old/?q=1: status %d, Location %q", resp.StatusCode, resp.Header.Get("Location"))
+	}
+	for _, method := range []string{http.MethodPost, http.MethodOptions} {
+		for _, target := range []string{"/old", "/old/"} {
+			resp := request(t, h, method, target, nil)
+			if resp.StatusCode != http.StatusMethodNotAllowed || resp.Header.Get("Allow") != "GET, HEAD" {
+				t.Errorf("%s %s: status %d Allow %q, want 405 and GET, HEAD", method, target, resp.StatusCode, resp.Header.Get("Allow"))
+			}
+		}
+	}
+	if called != 0 {
+		t.Fatalf("wildcard endpoint called %d time(s), want zero for the recorded path and slash alias", called)
+	}
+}
+
+func TestPrerenderedEndpointBypassHonorsConfiguredBase(t *testing.T) {
+	cfg := EndpointConfig{
+		AppDir:      "_app",
+		Base:        "/base",
+		Prerendered: []string{"/base/old"},
+		Routes: []ManifestRoute{{
+			ID: "/old", Pattern: `^\/old\/?$`, Endpoint: &ManifestEndpoint{Methods: []string{"*"}},
+		}},
+		manifest: true,
+	}
+	called := 0
+	es, err := NewEndpoints(cfg, NewEndpoint("/old", "*", func(http.ResponseWriter, *http.Request) { called++ }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := es.Intercept(pageSentinel())
+	for _, target := range []string{"/base/old", "/base/old/", "/old"} {
+		resp := request(t, h, http.MethodGet, target, nil)
+		if resp.StatusCode != http.StatusOK || body(t, resp) != "page" {
+			t.Errorf("GET %s: delegated response status %d body %q", target, resp.StatusCode, body(t, resp))
+		}
+	}
+	if called != 0 {
+		t.Fatalf("wildcard endpoint called %d time(s) across the configured base boundary", called)
+	}
+}
+
 // Kit answers HEAD with the GET handler when the module exports no HEAD of its
 // own (`runtime/server/endpoint.js`), and lists the synthesized HEAD in `Allow`
 // (`allowed_methods`).

@@ -359,22 +359,10 @@ function readGenerated() {
  * tree off this list and issues the trailing-slash 308 off it, which is what
  * adapter-node does with the same array.
  *
- * A prerendered *redirect* is refused rather than dropped. Kit records one when
- * a page it rendered redirected somewhere, and skgo has nothing that would
- * replay it — an app that produced one would silently lose it.
- *
  * @param {import('@sveltejs/kit').Builder} builder
  * @returns {string[]}
  */
 function readPrerendered(builder) {
-	if (builder.prerendered.redirects.size > 0) {
-		throw new Error(
-			'skgo: the build prerendered a redirect, which skgo does not serve:\n' +
-				[...builder.prerendered.redirects]
-					.map(([from, { status, location }]) => `  ${from} -> ${status} ${location}`)
-					.join('\n')
-		);
-	}
 	return [...builder.prerendered.paths].sort();
 }
 
