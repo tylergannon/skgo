@@ -440,6 +440,14 @@ export const handleError = ({ error, kind }: { error: unknown; kind: string }) =
 		t.Fatalf("permissive native HTTP policy accepted malformed Go Inputs shape: err=%v\n%s", malformedErr, malformedOutput)
 	}
 	jsconfig := filepath.Join(fixture, "web", "jsconfig.json")
+	tsconfig := filepath.Join(fixture, "web", "tsconfig.json")
+	tsconfigData, err := os.ReadFile(tsconfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(tsconfig); err != nil {
+		t.Fatalf("remove TypeScript config before JavaScript-mode generation: %v", err)
+	}
 	if err := os.WriteFile(jsconfig, []byte(`{
   "extends": "$app/tsconfig",
   "compilerOptions": { "allowJs": true, "checkJs": true, "strict": true }
@@ -453,13 +461,9 @@ export const handleError = ({ error, kind }: { error: unknown; kind: string }) =
 	if output, err := jsGenerate.CombinedOutput(); err != nil {
 		t.Fatalf("JavaScript-mode go generate: %v\n%s", err, output)
 	}
-	if err := os.Remove(jsconfig); err != nil {
-		t.Fatal(err)
-	}
-	tsconfig := filepath.Join(fixture, "web", "tsconfig.json")
-	tsconfigData, err := os.ReadFile(tsconfig)
-	if err != nil {
-		t.Fatal(err)
+	jsRemote := filepath.Join(fixture, "web", "src", "routes", "declared.remote.js")
+	if _, err := os.Stat(jsRemote); err != nil {
+		t.Fatalf("JavaScript-mode go generate did not emit the JavaScript remote: %v", err)
 	}
 	var tsconfigObject map[string]any
 	if err := json.Unmarshal(tsconfigData, &tsconfigObject); err != nil {
@@ -496,7 +500,27 @@ export const handleError = ({ error, kind }: { error: unknown; kind: string }) =
 	if err != nil {
 		t.Fatalf("JavaScript-mode vp build: %v\n%s", err, jsBuildOutput)
 	}
-	jsDeclaredArtifact := filepath.Join(fixture, "web", "build", "prerendered", "_app", "remote", moduleParts[0], moduleParts[1], "WyJhdGxhcyJd")
+	jsManifest, err := os.ReadFile(filepath.Join(fixture, "web", "skgo.remotes.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var jsGenerated struct {
+		Remotes []string `json:"remotes"`
+	}
+	if err := json.Unmarshal(jsManifest, &jsGenerated); err != nil {
+		t.Fatal(err)
+	}
+	jsDeclaredModule := ""
+	for _, remote := range jsGenerated.Remotes {
+		if strings.HasSuffix(remote, "/getDeclaredSite") {
+			jsDeclaredModule = remote
+		}
+	}
+	if jsDeclaredModule == "" {
+		t.Fatalf("JavaScript-mode manifest omitted declared-only remote: %s", jsManifest)
+	}
+	jsModuleParts := strings.SplitN(jsDeclaredModule, "/", 2)
+	jsDeclaredArtifact := filepath.Join(fixture, "web", "build", "prerendered", "_app", "remote", jsModuleParts[0], jsModuleParts[1], "WyJhdGxhcyJd")
 	jsDeclaredData, err := os.ReadFile(jsDeclaredArtifact)
 	if err != nil || !strings.Contains(string(jsDeclaredData), "build:atlas") {
 		t.Fatalf("JavaScript-mode native declared-input artifact = %q, %v", jsDeclaredData, err)
