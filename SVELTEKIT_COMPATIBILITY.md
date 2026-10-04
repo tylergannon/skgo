@@ -205,8 +205,12 @@ passed install, build, vet and all Go tests with pnpm 12.9.1. The local frozen
 installs above were up-to-date checks, not clean relinks; CI is the clean-install
 evidence. Review caught the local embedded build predating the refreshed
 manager lockfile. A local `pnpm run build` attempt then failed because the
-example script names `vite`, while the managed installation exposes `vp`.
-CI's `just build` uses `vp` and passed; the package script and local freshness
-need repair and validation before merge. Final PR-head
-CI remains the merge gate, and the merged-head browser gates remain the release
-gate. Release receipts are the workflow, npm versions and annotated Go tag.
+example script named `vite`, while the managed installation exposes `vp`.
+The package's `build` and `dev` entries now invoke the installed `vp` built-ins.
+The canonical `ORIGIN=http://127.0.0.1:18018 just build` completed and refreshed
+`build/`, including `build/skgo.manifest.json` and `build/ssr/bundle.js`, so Go's
+embedded frontend freshness is current. Direct project-local `vp dev` also
+started on `127.0.0.1:51731`; its read-only `@vite/client` response identified
+VitePlus core 1.0.0. Final local `just test` passed. Final PR-head CI remains
+the merge gate, and the merged-head browser gates remain the release gate.
+Release receipts are the workflow, npm versions and annotated Go tag.

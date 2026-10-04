@@ -6,8 +6,8 @@
     "#lib/*": "./src/lib/*"
   },
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
+    "dev": "vp dev",
+    "build": "vp build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
