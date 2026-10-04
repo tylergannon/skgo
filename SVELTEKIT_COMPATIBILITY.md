@@ -36,10 +36,18 @@ This is a manual maintenance procedure; it creates no scheduled task.
 
 ## 3.0.0 — reviewed 2026-10-03
 
-**Status:** locally validated candidate on released main `bfea45a` (PR235 and
-PR236); the dependency update has not been merged or published. This review does
-not claim full Kit parity. Delivery was explicitly authorized on 2026-10-04; exact-head CI and the normal
-release workflow are the remaining adoption gates.
+**Adoption:** this change moves skgo's committed toolchain from next.28 to
+released Kit 3.0.0, with main integration through
+[PR #237](https://github.com/tylergannon/skgo/pull/237). Runtime qualification on
+released base `bfea45a` is recorded below. This review does not claim full Kit
+parity. Publication uses the existing Release gate: both browser modes qualify
+the merged commit before npm publication and tagging.
+
+**Consumer compatibility:** the adapter now requires stable Kit `^3.0.0`, the
+addon requires sv `^1.0.1`, and new project creation requires VitePlus exactly
+1.0.0. Existing prerelease/older-bootstrap consumers must upgrade those tools.
+The Conventional Commit feature increment signals these changes as a pre-1.0
+minor release (`v0.16.0`), rather than a patch or a premature 1.0 release.
 
 **Verified release:** GitHub published `@sveltejs/kit@3.0.0` on
 2026-10-01 at 17:21:04 UTC; npm published it at 17:22:34.593 UTC.
@@ -162,9 +170,10 @@ The working-tree code checked above was committed as `5d3e1a0`. The independent
 [whole-change review](ephemeral/reviews/20261003-stable-js-main-round-03.md)
 ran `just test` again at that committed head (21 packages passed), verified the
 addon distribution against a fresh build, and inspected both screenshots. Its
-outcome was **only nitpicks remain**. No code changed after those runs; later
-edits clarify the installation command and this record. Committing already
-checked content does not require repeating the checks.
+outcome was **only nitpicks remain**. No Go or browser implementation changed after those runs; later edits clarify
+the installation command and this record, and update the package manager as
+described below. Committing already checked content alone does not require
+repeating the checks.
 
 An old global VitePlus bootstrap, stale CORS expectations, an existing manifest
 extraction bug, browser readiness/form-completion races and stale build inputs
@@ -177,9 +186,11 @@ Dev form readiness uses a handler in the same component and is not a general
 form-readiness API. Executor
 interruptions delayed local qualification but are not passing evidence.
 
-Remaining coverage limits are listed per contract above. Cloud qualification,
-adoption on main and publication have **not yet** occurred for this dependency
-update; update this status after the authorized integration.
+Remaining coverage limits are listed per contract above. The published version
+and merged commit are determined by the existing
+[Release gate](https://github.com/tylergannon/skgo/actions/workflows/release.yml);
+it qualifies and tags the exact main SHA, without a separate manual tag or
+publication path.
 
 The 2026-10-04 registry recheck found only pnpm had advanced since this review
 (to 12.9.1). Its [official release](https://github.com/pnpm/pnpm/releases/tag/v12.9.1)
@@ -188,3 +199,11 @@ handling. All three frozen installs with 12.9.1 passed; only the lockfiles' pack
 documents changed, and the application dependency graphs remained byte-identical.
 Exact-head CI and the normal release gates will qualify this update; previous
 runtime evidence covers unchanged application code.
+
+The from-scratch [CI run on `4dbcc11`](https://github.com/tylergannon/skgo/actions/runs/37167486860)
+passed install, build, vet and all Go tests with pnpm 12.9.1. The local frozen
+installs above were up-to-date checks, not clean relinks; CI is the clean-install
+evidence. Review caught the local embedded build predating the refreshed
+manager lockfile; it was rebuilt before further local assertions. Final PR-head
+CI remains the merge gate, and the merged-head browser gates remain the release
+gate. Release receipts are the workflow, npm versions and annotated Go tag.
