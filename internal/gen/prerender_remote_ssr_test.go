@@ -46,6 +46,19 @@ func TestCompiledProductionNoArgumentNullReachesTheArtifactLookup(t *testing.T) 
 			t.Fatal(err)
 		}
 	}
+	if err := replaceOnce(filepath.Join(app, "server.go"),
+		"skgo.Sequence(skgo.Handle(Handle).Middleware(), SerializedHeaders, VisitMiddleware).Intercept",
+		"skgo.Sequence(skgo.Handle(Handle).Middleware(), SerializedHeaders, VisitMiddleware, PrerenderTransformFixture).Intercept"); err != nil {
+		t.Fatalf("install isolated transform middleware in copied app: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(app, "prerender_transform_fixture.go"), []byte(`package example
+
+import "github.com/tylergannon/skgo"
+
+var PrerenderTransformFixture skgo.Middleware
+`), 0o644); err != nil {
+		t.Fatalf("write isolated transform middleware slot: %v", err)
+	}
 	write("src/routes/prerender-contract/fixture.remote.go", `package prerendercontract
 
 import (
@@ -84,6 +97,15 @@ export async function load() {
 }
 `)
 	write("src/routes/prerender-contract-error/+page.svelte", `<script>let { data } = $props();</script><h1>Prerender error consumer</h1><p>{data.value}</p>`)
+	write("src/routes/prerender-contract-transform/+page.ts", `import { noargValue } from '../prerender-contract/fixture.remote';
+
+export const prerender = false;
+
+export async function load() {
+	return { value: await noargValue() };
+}
+`)
+	write("src/routes/prerender-contract-transform/+page.svelte", `<script>let { data } = $props();</script><h1>Prerender transform consumer</h1><p>{data.value}</p>`)
 	write("src/routes/prerender-contract-missing/+page.ts", `import { noargValue } from '../prerender-contract/fixture.remote';
 
 export async function load() {
@@ -127,6 +149,11 @@ export async function load() {
 		t.Fatalf("locate native remote ID from its artifact path: %v", err)
 	}
 	nativeRemoteID = filepath.ToSlash(nativeRemoteID)
+	nativeArtifactPath, err := filepath.Rel(filepath.Join(ui, "build"), noargArtifacts[0])
+	if err != nil {
+		t.Fatalf("locate native artifact in build FS: %v", err)
+	}
+	nativeArtifactPath = filepath.ToSlash(nativeArtifactPath)
 	const builtError = `{"type":"error","error":{"status":409,"message":"built no-argument failure","marker":"native-prerender-error"}}`
 	if err := os.WriteFile(noargArtifacts[0], []byte(builtError), 0o644); err != nil {
 		t.Fatalf("replace native noargValue result with recorded error: %v", err)
@@ -138,16 +165,33 @@ export async function load() {
 	fixtureTest := `package prerenderfixture_test
 
 import (
+	"context"
+	"errors"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/fstest"
 
+	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example"
 	prerendercontract "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsfvrw63tuojqwg5a"
 	ui "github.com/tylergannon/skgo/example/ui"
 )
+
+type oneFileOverlay struct {
+	fs.FS
+	name string
+	data []byte
+}
+
+func (o oneFileOverlay) Open(name string) (fs.File, error) {
+	if name == o.name {
+		return (fstest.MapFS{"artifact": {Data: o.data}}).Open("artifact")
+	}
+	return o.FS.Open(name)
+}
 
 func TestProductionNoArgumentNullUsesArtifactMiss(t *testing.T) {
 	dist, err := fs.Sub(ui.Build, "build")
@@ -156,6 +200,7 @@ func TestProductionNoArgumentNullUsesArtifactMiss(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	if mode != "prod" { t.Fatalf("mode = %q", mode) }
 	remoteID := "__NATIVE_REMOTE_ID__"
+	nativeArtifactPath := "__NATIVE_ARTIFACT_PATH__"
 	assertPEntry := func(document, key string, required ...string) {
 		t.Helper()
 		marker := "\"" + key + "\":"
@@ -201,9 +246,42 @@ func TestProductionNoArgumentNullUsesArtifactMiss(t *testing.T) {
 	if got := prerendercontract.Calls(); got != 0 {
 		t.Fatalf("the Go body ran %d times while serving the recorded error", got)
 	}
+	transformFS := oneFileOverlay{
+		FS:   dist,
+		name: nativeArtifactPath,
+		data: []byte("{\"type\":\"result\",\"data\":\"[{\\\"_\\\":1},\\\"built transform value\\\"]\"}"),
+	}
+	transformCalls := 0
+	example.PrerenderTransformFixture = skgo.Middleware(func(ctx context.Context, _ *skgo.Event, resolve skgo.Resolve) (*http.Response, error) {
+		return resolve(ctx, skgo.ResolveOptions{TransformPageChunk: func(_ context.Context, html string, _ bool) (string, error) {
+			transformCalls++
+			if transformCalls == 1 {
+				return "", errors.New("one-shot transform failure")
+			}
+			return html, nil
+		}})
+	})
+	transformHandler, transformMode, err := example.NewHandler(transformFS, "", "http://127.0.0.1:8080")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if transformMode != "prod" {
+		t.Fatalf("transform handler mode = %q", transformMode)
+	}
+	transformRecorder := httptest.NewRecorder()
+	transformHandler.ServeHTTP(transformRecorder, httptest.NewRequest(http.MethodGet, "/prerender-contract-transform", nil))
+	transformHTML := transformRecorder.Body.String()
+	if transformRecorder.Code != http.StatusInternalServerError || transformCalls != 2 {
+		t.Fatalf("transform fallback status=%d calls=%d body=%s", transformRecorder.Code, transformCalls, transformHTML)
+	}
+	assertPEntry(transformHTML, remoteID+"/", "built transform value")
+	if got := prerendercontract.Calls(); got != 0 {
+		t.Fatalf("the Go body ran %d times while serving the transform error", got)
+	}
 }
 `
 	fixtureTest = strings.Replace(fixtureTest, "__NATIVE_REMOTE_ID__", nativeRemoteID, 1)
+	fixtureTest = strings.Replace(fixtureTest, "__NATIVE_ARTIFACT_PATH__", nativeArtifactPath, 1)
 	if err := os.WriteFile(filepath.Join(fixture, "ssr_test.go"), []byte(fixtureTest), 0o644); err != nil {
 		t.Fatal(err)
 	}

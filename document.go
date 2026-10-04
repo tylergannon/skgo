@@ -1118,7 +1118,7 @@ func (s *SSR) deliver(w http.ResponseWriter, r *http.Request, req dataRequest, s
 		document, err = options.transformed(r.Context(), document)
 	}
 	if err != nil {
-		return s.failed(w, r, req, plan.routeID, plan.params, err)
+		return s.failedAfterRender(w, r, req, plan.routeID, plan.params, err, answers)
 	}
 	if len(promises.order) > 0 {
 		s.stream(w, r, shared, document, promises, headers)
