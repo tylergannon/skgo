@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -75,6 +76,10 @@ type Manifest struct {
 	// Precompressed reports that the build wrote `.br` and `.gz` siblings for
 	// the files kit's own `builder.compress` compresses.
 	Precompressed bool `json:"precompressed,omitempty"`
+	// PrerenderedFiles maps Kit's logical paths below prerendered/ to safe
+	// build-relative paths when the native logical filename cannot be embedded
+	// directly (currently, query-bearing filenames).
+	PrerenderedFiles map[string]string `json:"prerenderedFiles,omitempty"`
 	// SSR describes the server-rendering half of the build: the bundle the Go
 	// process renders pages with, the document template, and everything kit's
 	// own `render_response` reads out of its manifest to assemble a document.
@@ -359,7 +364,14 @@ func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error
 		option(h)
 	}
 	for _, p := range manifest.Prerendered {
-		h.prerendered[p] = true
+		// Kit also records query-bearing crawl destinations in the same list as
+		// HTTP pathnames. They remain in the manifest and file index, and are
+		// validated below, but cannot claim a request by URL.Path: adapter-node
+		// splits the request search before URI decoding, so these crawl keys are
+		// not HTTP pathnames.
+		if !strings.Contains(p, "?") {
+			h.prerendered[p] = true
+		}
 	}
 
 	for _, route := range manifest.Routes {
@@ -380,6 +392,34 @@ func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error
 		if h.prerenderedFiles, err = indexTree(build, "prerendered"); err != nil {
 			return nil, err
 		}
+	} else {
+		h.prerenderedFiles = map[string]assetMeta{}
+	}
+	if len(manifest.PrerenderedFiles) > 0 {
+		mapped, err := indexMappedPrerenderedFiles(build, manifest.PrerenderedFiles)
+		if err != nil {
+			return nil, err
+		}
+		for logical, meta := range mapped {
+			if _, exists := h.prerenderedFiles[logical]; exists {
+				return nil, fmt.Errorf("skgo: prerendered file mapping conflicts with prerendered/%s", logical)
+			}
+			base := logical
+			if ext := path.Ext(logical); contentEncodings[ext] != "" {
+				base = strings.TrimSuffix(logical, ext)
+			}
+			if _, exists := h.prerenderedFiles[base]; exists {
+				return nil, fmt.Errorf("skgo: prerendered file mapping conflicts with prerendered/%s", base)
+			}
+			if ext := path.Ext(logical); contentEncodings[ext] == "" {
+				for encodingExt := range contentEncodings {
+					if _, exists := h.prerenderedFiles[logical+encodingExt]; exists {
+						return nil, fmt.Errorf("skgo: prerendered file mapping conflicts with prerendered/%s", logical+encodingExt)
+					}
+				}
+			}
+			h.prerenderedFiles[logical] = meta
+		}
 	}
 
 	// A prerendered path with no file behind it is a build that lost something
@@ -393,6 +433,66 @@ func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error
 	}
 
 	return h, nil
+}
+
+var safePrerenderedPhysicalPath = regexp.MustCompile(`^prerendered-files/[0-9a-f]{64}$`)
+
+// indexMappedPrerenderedFiles indexes adapter-relocated files by their native
+// logical names. The physical namespace is deliberately closed: it is never a
+// general-purpose manifest path.
+func indexMappedPrerenderedFiles(build fs.FS, mapping map[string]string) (map[string]assetMeta, error) {
+	logicalNames := make([]string, 0, len(mapping))
+	for logical := range mapping {
+		logicalNames = append(logicalNames, logical)
+	}
+	sort.Strings(logicalNames)
+
+	physicalNames := map[string]string{}
+	variants := map[string]assetVariant{}
+	for _, logical := range logicalNames {
+		physical := mapping[logical]
+		if !fs.ValidPath(logical) || logical == "." {
+			return nil, fmt.Errorf("skgo: invalid logical prerendered file path %q", logical)
+		}
+		if !safePrerenderedPhysicalPath.MatchString(physical) {
+			return nil, fmt.Errorf("skgo: unsafe physical prerendered file path %q for %q", physical, logical)
+		}
+		if previous, exists := physicalNames[physical]; exists {
+			return nil, fmt.Errorf("skgo: prerendered files %q and %q map to the same physical file %q", previous, logical, physical)
+		}
+		physicalNames[physical] = logical
+		variant, err := readVariant(build, physical, "")
+		if err != nil {
+			return nil, fmt.Errorf("skgo: reading mapped prerendered file %q: %w", logical, err)
+		}
+		variants[logical] = variant
+	}
+
+	files := map[string]assetMeta{}
+	for _, logical := range logicalNames {
+		if ext := path.Ext(logical); contentEncodings[ext] != "" {
+			continue
+		}
+		files[logical] = assetMeta{contentType: contentTypeFor(logical), variants: []assetVariant{variants[logical]}}
+	}
+	for _, logical := range logicalNames {
+		ext := path.Ext(logical)
+		encoding := contentEncodings[ext]
+		if encoding == "" {
+			continue
+		}
+		base := strings.TrimSuffix(logical, ext)
+		meta, hasIdentity := files[base]
+		if !hasIdentity {
+			files[logical] = assetMeta{contentType: contentTypeFor(logical), variants: []assetVariant{variants[logical]}}
+			continue
+		}
+		variant := variants[logical]
+		variant.encoding = encoding
+		meta.variants = append(meta.variants, variant)
+		files[base] = meta
+	}
+	return files, nil
 }
 
 // kitPattern rewrites the source of kit's own route regular expression into one
@@ -684,6 +784,9 @@ func invertTrailingSlash(urlPath string) (string, bool) {
 // isPrerenderedPath reports whether urlPath is a canonical path the build
 // recorded or the other trailing-slash form handled by Kit's static adapter.
 func isPrerenderedPath(paths map[string]bool, urlPath string) bool {
+	if strings.Contains(urlPath, "?") {
+		return false
+	}
 	if paths[urlPath] {
 		return true
 	}

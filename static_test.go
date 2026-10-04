@@ -1,6 +1,8 @@
 package skgo
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"io/fs"
@@ -725,6 +727,230 @@ func TestBasePrerenderedRedirectKeepsItsNativePathBoundary(t *testing.T) {
 	resp = do(t, h, http.MethodGet, "/old", nil)
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("path outside base answered with status %d, want 404", resp.StatusCode)
+	}
+}
+
+func mappedPrerenderedBuildFS() fstest.MapFS {
+	build := testBuildFS()
+	logical := []string{
+		"target.html",
+		"target?from=atlas.html",
+		"target?from=beacon.html",
+		"synthetic.html",
+		"synthetic.html.br",
+		"synthetic.html.gz",
+		"stray.html",
+	}
+	mapping := make(map[string]string, len(logical))
+	for _, name := range logical {
+		physical := mappedPhysicalName(name)
+		mapping[name] = physical
+	}
+	manifest := map[string]any{
+		"appDir":           "_app",
+		"routes":           []any{},
+		"prerendered":      []string{"/target", "/target?from=atlas", "/target?from=beacon", "/target%3Ffrom=atlas", "/synthetic"},
+		"prerenderedFiles": mapping,
+	}
+	raw, _ := json.Marshal(manifest)
+	build["skgo.manifest.json"] = &fstest.MapFile{Data: raw}
+	build[mapping["target.html"]] = &fstest.MapFile{Data: []byte("canonical pathname bytes")}
+	build[mapping["target?from=atlas.html"]] = &fstest.MapFile{Data: []byte("atlas query artifact bytes")}
+	build[mapping["target?from=beacon.html"]] = &fstest.MapFile{Data: []byte("beacon query artifact bytes")}
+	build["prerendered/target%3Ffrom=atlas.html"] = &fstest.MapFile{Data: []byte("encoded question artifact bytes")}
+	build[mapping["synthetic.html"]] = &fstest.MapFile{Data: []byte("synthetic identity")}
+	build[mapping["synthetic.html.br"]] = &fstest.MapFile{Data: []byte("synthetic brotli")}
+	build[mapping["synthetic.html.gz"]] = &fstest.MapFile{Data: []byte("synthetic gzip")}
+	build[mapping["stray.html"]] = &fstest.MapFile{Data: []byte("unlisted mapped file")}
+	return build
+}
+
+func mappedPhysicalName(logical string) string {
+	sum := sha256.Sum256([]byte(logical))
+	return "prerendered-files/" + hex.EncodeToString(sum[:])
+}
+
+func TestMappedQueryPrerenderedFilesPreservePathnameSelectionAndCompression(t *testing.T) {
+	build := mappedPrerenderedBuildFS()
+	h, err := NewStaticHandler(build)
+	if err != nil {
+		t.Fatalf("NewStaticHandler: %v", err)
+	}
+
+	// The request query is deliberately present, but Kit's static middleware
+	// looks up by URL pathname. Distinct bytes make accidental query routing
+	// observable.
+	resp := do(t, h, http.MethodGet, "/target?from=atlas", nil)
+	if resp.StatusCode != http.StatusOK || body(t, resp) != "canonical pathname bytes" {
+		t.Fatalf("query request selected a noncanonical artifact: status %d body %q", resp.StatusCode, body(t, resp))
+	}
+	if got := do(t, h, http.MethodGet, "/target", nil).Header.Get("Content-Type"); got != "text/html; charset=utf-8" {
+		t.Fatalf("canonical Content-Type %q", got)
+	}
+
+	for logical, want := range map[string]string{
+		"target?from=atlas.html":  "atlas query artifact bytes",
+		"target?from=beacon.html": "beacon query artifact bytes",
+	} {
+		meta, ok := h.(*staticHandler).prerenderedFiles[logical]
+		if !ok || len(meta.variants) != 1 {
+			t.Fatalf("query artifact %q was not indexed: %#v", logical, meta)
+		}
+		got, err := fs.ReadFile(build, meta.variants[0].name)
+		if err != nil || string(got) != want {
+			t.Fatalf("query artifact %q physical content = %q, err %v", logical, got, err)
+		}
+		if meta.contentType != "text/html; charset=utf-8" {
+			t.Errorf("query artifact %q Content-Type = %q", logical, meta.contentType)
+		}
+	}
+	encodedMeta, ok := h.(*staticHandler).prerenderedFiles["target%3Ffrom=atlas.html"]
+	if !ok || encodedMeta.variants[0].name != "prerendered/target%3Ffrom=atlas.html" {
+		t.Fatalf("literal encoded question filename was not kept in the ordinary tree: %#v", encodedMeta)
+	}
+	encodedBytes, err := fs.ReadFile(build, encodedMeta.variants[0].name)
+	if err != nil || string(encodedBytes) != "encoded question artifact bytes" {
+		t.Fatalf("literal encoded question artifact = %q, err %v", encodedBytes, err)
+	}
+
+	for _, tc := range []struct {
+		accept, encoding, want string
+	}{
+		{"", "", "synthetic identity"},
+		{"br", "br", "synthetic brotli"},
+		{"gzip", "gzip", "synthetic gzip"},
+	} {
+		resp = do(t, h, http.MethodGet, "/synthetic", http.Header{"Accept-Encoding": {tc.accept}})
+		if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Encoding") != tc.encoding || body(t, resp) != tc.want {
+			t.Fatalf("mapped %q response: status %d encoding %q body %q", tc.accept, resp.StatusCode, resp.Header.Get("Content-Encoding"), body(t, resp))
+		}
+		if got := resp.Header.Get("Content-Type"); got != "text/html; charset=utf-8" {
+			t.Fatalf("mapped %q Content-Type %q", tc.accept, got)
+		}
+	}
+	for _, target := range []string{"/stray", "/" + mappedPhysicalName("target?from=atlas.html")} {
+		resp := do(t, h, http.MethodGet, target, nil)
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("unlisted mapped storage %q answered with status %d, want 404", target, resp.StatusCode)
+		}
+	}
+}
+
+func TestMappedOnlyPrerenderedTreeAndLegacyBuild(t *testing.T) {
+	queryOnly := testBuildFS()
+	physical := mappedPhysicalName("only?query.html")
+	queryOnly["skgo.manifest.json"] = &fstest.MapFile{Data: []byte(`{"appDir":"_app","prerendered":["/only?query"],"prerenderedFiles":{"only?query.html":"` + physical + `"}}`)}
+	queryOnly[physical] = &fstest.MapFile{Data: []byte("only query artifact")}
+	if _, err := NewStaticHandler(queryOnly); err != nil {
+		t.Fatalf("all-query mapped-only build: %v", err)
+	}
+
+	legacy := prerenderedBuildFS()
+	if _, err := NewStaticHandler(legacy); err != nil {
+		t.Fatalf("legacy build without mapping: %v", err)
+	}
+}
+
+func TestQueryOnlyPrerenderedInventoryDoesNotClaimHTTPPathnames(t *testing.T) {
+	build := testBuildFS()
+	logical := "only?query.html"
+	physical := mappedPhysicalName(logical)
+	build["skgo.manifest.json"] = &fstest.MapFile{Data: []byte(`{"appDir":"_app","routes":[],"prerendered":["/only?query"],"prerenderedFiles":{"` + logical + `":"` + physical + `"}}`)}
+	build[physical] = &fstest.MapFile{Data: []byte("private crawl artifact")}
+	pages, err := NewStaticHandler(build)
+	if err != nil {
+		t.Fatalf("NewStaticHandler: %v", err)
+	}
+	static := pages.(*staticHandler)
+	if len(static.manifest.Prerendered) != 1 || static.manifest.Prerendered[0] != "/only?query" {
+		t.Fatalf("native inventory changed: %v", static.manifest.Prerendered)
+	}
+	if _, ok := static.prerenderedFiles[logical]; !ok {
+		t.Fatalf("native query artifact %q was not indexed", logical)
+	}
+	if static.prerendered["/only?query"] {
+		t.Fatal("private query crawl entry was added to HTTP pathname ownership")
+	}
+
+	servedAsFile := ServedAsFile(pages)
+	for _, target := range []string{"/only%3Fquery", "/only%3Fquery/"} {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			resp := do(t, pages, method, target, nil)
+			if resp.StatusCode != http.StatusNotFound {
+				t.Errorf("%s %s: status %d, want native static miss 404", method, target, resp.StatusCode)
+			}
+			if got := body(t, resp); strings.Contains(got, "private crawl artifact") {
+				t.Errorf("%s %s exposed private crawl artifact bytes", method, target)
+			}
+			req := httptest.NewRequest(method, "http://example.test"+target, nil)
+			if servedAsFile(req) {
+				t.Errorf("ServedAsFile claims private query path %s", target)
+			}
+		}
+	}
+
+	missing := testBuildFS()
+	missing["skgo.manifest.json"] = build["skgo.manifest.json"]
+	if _, err := NewStaticHandler(missing); err == nil {
+		t.Fatal("startup accepted a missing artifact still named by native query inventory")
+	}
+
+	cfg := EndpointConfig{
+		AppDir:      "_app",
+		Prerendered: static.manifest.Prerendered,
+		Routes: []ManifestRoute{{
+			ID:       "/[...rest]",
+			Pattern:  `^(?:\/([^]*))?\/?$`,
+			Params:   []ManifestParam{{Name: "rest", Rest: true, Chained: true}},
+			Endpoint: &ManifestEndpoint{Methods: []string{"GET"}},
+		}},
+		manifest: true,
+	}
+	calls := 0
+	endpoints, err := NewEndpoints(cfg, NewEndpoint("/[...rest]", "GET", func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		_, _ = w.Write([]byte("dynamic wildcard endpoint"))
+	}))
+	if err != nil {
+		t.Fatalf("NewEndpoints: %v", err)
+	}
+	resp := do(t, endpoints.Intercept(pages), http.MethodGet, "/only%3Fquery", nil)
+	if resp.StatusCode != http.StatusOK || body(t, resp) != "dynamic wildcard endpoint" || calls != 1 {
+		t.Fatalf("private inventory blocked dynamic endpoint: status %d calls %d", resp.StatusCode, calls)
+	}
+}
+
+func TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings(t *testing.T) {
+	cases := []struct {
+		name     string
+		manifest string
+		files    map[string]string
+		want     string
+	}{
+		{"absolute logical", `{"appDir":"_app","prerenderedFiles":{"/bad.html":"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000"}}`, map[string]string{"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000": "present"}, "invalid logical prerendered file path"},
+		{"traversing logical", `{"appDir":"_app","prerenderedFiles":{"../bad.html":"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000"}}`, map[string]string{"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000": "present"}, "invalid logical prerendered file path"},
+		{"unsafe physical", `{"appDir":"_app","prerenderedFiles":{"safe.html":"client/favicon.svg"}}`, nil, "unsafe physical prerendered file path"},
+		{"missing physical", `{"appDir":"_app","prerenderedFiles":{"safe.html":"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000"}}`, nil, "reading mapped prerendered file"},
+		{"duplicate physical", `{"appDir":"_app","prerenderedFiles":{"one.html":"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000","two.html":"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000"}}`, map[string]string{"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000": "present"}, "same physical file"},
+		{"unmapped conflict", `{"appDir":"_app","prerenderedFiles":{"about.html":"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000"}}`, map[string]string{"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000": "mapped"}, "conflicts with prerendered"},
+		{"encoded sibling conflict", `{"appDir":"_app","prerenderedFiles":{"about.html.br":"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000"}}`, map[string]string{"prerendered-files/0000000000000000000000000000000000000000000000000000000000000000": "mapped"}, "conflicts with prerendered"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			build := testBuildFS()
+			build["skgo.manifest.json"] = &fstest.MapFile{Data: []byte(tc.manifest)}
+			for physical, content := range tc.files {
+				build[physical] = &fstest.MapFile{Data: []byte(content)}
+			}
+			if strings.Contains(tc.name, "conflict") {
+				build["prerendered/about.html"] = &fstest.MapFile{Data: []byte("ordinary")}
+			}
+			if _, err := NewStaticHandler(build); err == nil {
+				t.Fatal("invalid mapped build was accepted")
+			} else if !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error %q does not identify %q", err, tc.want)
+			}
+		})
 	}
 }
 

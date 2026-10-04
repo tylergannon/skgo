@@ -1,4 +1,5 @@
 import {
+	linkSync,
 	existsSync,
 	mkdtempSync,
 	mkdirSync,
@@ -7,12 +8,14 @@ import {
 	realpathSync,
 	rmSync,
 	statSync,
+	unlinkSync,
 	writeFileSync
 } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gojaDevEnvironment, gojaDevUnchangedFiles, gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 import { identity } from './skgo-adapter/identity.js';
@@ -250,6 +253,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 				await builder.compress(`${out}/client`);
 				if (existsSync(`${out}/prerendered`)) await builder.compress(`${out}/prerendered`);
 			}
+			const prerenderedFiles = relocateQueryPrerenderedFiles(`${out}/prerendered`, out);
 
 			// `builder` has no writeJson in kit 3.0.0-next.27 (it existed on the
 			// kit 2 line); write the manifest ourselves.
@@ -314,6 +318,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 						})),
 						remotes: generated.remotes,
 						prerendered,
+						...(Object.keys(prerenderedFiles).length > 0 ? { prerenderedFiles } : {}),
 						precompressed: precompress
 					},
 					null,
@@ -329,6 +334,37 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			builder.log.minor(`skgo: wrote ${out}/`);
 		}
 	};
+}
+
+/**
+ * Kit's native prerender filenames include query strings. Move only the
+ * adapter-owned copy of those files to safe build paths so Go's embed patterns
+ * can include them, while retaining the exact Kit filename as the manifest key.
+ * Hard-link-then-unlink publishes without replacing an existing destination.
+ *
+ * @param {string} root
+ * @param {string} out
+ * @returns {Record<string, string>}
+ */
+function relocateQueryPrerenderedFiles(root, out) {
+	if (!existsSync(root)) return {};
+	const mapping = {};
+	for (const file of walk(root)) {
+		const logical = relative(root, file).split(sep).join('/');
+		if (!logical.includes('?')) continue;
+		const digest = createHash('sha256').update(logical, 'utf8').digest('hex');
+		const physical = `prerendered-files/${digest}`;
+		const destination = join(out, physical);
+		mkdirSync(dirname(destination), { recursive: true });
+		try {
+			linkSync(file, destination);
+		} catch (error) {
+			throw new Error(`skgo: cannot publish query prerendered file ${logical} at ${physical}: ${error}`);
+		}
+		unlinkSync(file);
+		mapping[logical] = physical;
+	}
+	return mapping;
 }
 
 /**
