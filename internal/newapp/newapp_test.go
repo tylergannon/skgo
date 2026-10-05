@@ -32,6 +32,45 @@ func TestHighestVersionIncludesPrereleasesButNotAnotherMajor(t *testing.T) {
 	}
 }
 
+type versionResponseTransport struct{}
+
+func (versionResponseTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(`{"versions":{"1.0.1":{}}}`)),
+		Request:    request,
+	}, nil
+}
+
+func TestCreatePassesCustomOriginToNativeAddon(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "custom-origin")
+	u := &upstream{t: t}
+	options := Options{
+		Dir: dir, Module: "example.com/custom-origin", App: "custom-origin",
+		Origin: "http://127.0.0.1:19080", SkgoVersion: "v0.4.1",
+		SvArgs:      []string{"--types", "ts", "--no-add-ons"},
+		SVAddonSpec: "@skgo/sv@0.4.0", AdapterSpec: "file:/candidate/adapter",
+		RegistryURL: "https://registry.invalid", Client: &http.Client{Transport: versionResponseTransport{}},
+		VP: "vp-test", run: u.run,
+		configureKitQueue: func(string, io.Writer) error { return nil },
+		verifyKitQueue:    func(string) error { return nil },
+	}
+	if _, err := Create(options); err != nil {
+		t.Fatal(err)
+	}
+	if len(u.commands) < 2 {
+		t.Fatalf("Create ran %d commands, want creation and native add-on commands", len(u.commands))
+	}
+	add := strings.Join(u.commands[1].Args, " ")
+	if !strings.Contains(add, "@skgo/sv@0.4.0=starter:minimal+adapter:file%3A%2Fcandidate%2Fadapter+name:custom-origin+origin:http%3A%2F%2F127.0.0.1%3A19080") {
+		t.Fatalf("native add-on did not receive validated custom origin: %s", add)
+	}
+	if !slices.Contains(u.commands[0].Args, "--no-add-ons") {
+		t.Fatalf("optional upstream add-ons were not left absent: %v", u.commands[0].Args)
+	}
+}
+
 // upstream stands in for VitePlus, sv and create-storybook: each step leaves
 // what the real installer leaves, so Create is judged on what it asks for and
 // on what it concludes from the project it finds.
@@ -196,7 +235,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 		t.Fatalf("sv create options = %q, want %q", got, want)
 	}
 	add := strings.Join(commands[1].Args, " ")
-	for _, want := range []string{"dlx sv@1.0.1 add vitest=usages:unit,component @skgo/sv@0.4.0=starter:minimal+adapter:file%3A%2Fcandidate%2Fadapter+name:hello-go", "--no-install"} {
+	for _, want := range []string{"dlx sv@1.0.1 add vitest=usages:unit,component @skgo/sv@0.4.0=starter:minimal+adapter:file%3A%2Fcandidate%2Fadapter+name:hello-go+origin:http%3A%2F%2F127.0.0.1%3A8080", "--no-install"} {
 		if !strings.Contains(add, want) {
 			t.Errorf("sv add args do not contain %q:\n%s", want, add)
 		}
