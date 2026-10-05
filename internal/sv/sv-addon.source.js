@@ -74,8 +74,9 @@ const setExpressionProperty = (object, name, expression, js) => {
 	object.properties.push(added);
 };
 
-const findDefaultConfig = (ast, js) => {
-	const { value } = js.exports.createDefault(ast, { fallback: null });
+
+const findDefaultConfig = (ast) => {
+	const value = ast.body.find((node) => node.type === 'ExportDefaultDeclaration')?.declaration;
 	if (value?.type === 'ObjectExpression') return value;
 	if (
 		value?.type === 'CallExpression' &&
@@ -102,7 +103,7 @@ const repairPlaywright = (sv, cwd, language, origin) => {
 	const file = `playwright.config.${language}`;
 	if (!fs.existsSync(path.resolve(cwd, file))) return;
 	sv.file(file, transforms.script(({ ast, js, content }) => {
-		const config = findDefaultConfig(ast, js);
+		const config = findDefaultConfig(ast);
 		if (!config) {
 			if (content.includes('npm run build && npm run preview')) {
 				throw new Error(`skgo cannot repair ${file}: the upstream Playwright launcher is present, but its default export is not a direct object or a single-argument imported defineConfig(object); rewrite the export before adding skgo`);

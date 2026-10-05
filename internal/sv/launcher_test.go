@@ -102,6 +102,15 @@ function rejectUnchanged(source, expected) {
   assert.throws(apply, expected);
   assert.equal(fs.readFileSync(configPath,'utf8'), source, 'unsupported config changed before the diagnostic');
 }
+const directConfig = "export default { webServer: { command: 'npm run build && npm run preview', port: 4173 } };";
+const configPath = path.join(root,'web/playwright.config.ts');
+fs.writeFileSync(configPath, directConfig);
+apply();
+config = fs.readFileSync(configPath,'utf8');
+assert.match(config, /command:\s*["']cd \.\. && just serve["']/);
+assert.match(config, /url:\s*Reflect\.get\(globalThis, ["']process["']\)\?\.env\?\.ORIGIN/);
+assert.match(config, /baseURL:\s*Reflect\.get\(globalThis, ["']process["']\)\?\.env\?\.ORIGIN/);
+rejectUnchanged("const config = { webServer: { command: 'npm run build && npm run preview', port: 4173 } }; config.webServer.command = 'custom'; export default config;", /direct object or a single-argument imported defineConfig\(object\)/);
 rejectUnchanged("import { defineConfig } from '@playwright/test'; export default customFactory({ webServer: { command: 'npm run build && npm run preview', port: 4173 } });", /single-argument imported defineConfig\(object\)/);
 rejectUnchanged("import { defineConfig } from '@playwright/test'; export default defineConfig({ webServer: { command: 'npm run build && npm run preview', port: 4173 } }, { webServer: { command: 'custom' } });", /single-argument imported defineConfig\(object\)/);
 rejectUnchanged("import { defineConfig } from '@playwright/test'; export default defineConfig({ webServer: { command: 'npm run build && npm run preview', port: 4173, ...customServer } });", /spread, computed, or duplicate launcher property/);
