@@ -201,7 +201,8 @@ func Create(options Options) (Result, error) {
 	}
 	required = append(required, p.SVAddonSpec+"=starter:"+escapeAddonOption(p.Starter)+
 		"+adapter:"+escapeAddonOption(p.AdapterDependency)+
-		"+name:"+escapeAddonOption(p.App))
+		"+name:"+escapeAddonOption(p.App)+
+		"+origin:"+escapeAddonOption(p.Origin))
 	localVP := filepath.Join("node_modules", ".bin", "vp")
 	if err := run(command{
 		Dir: web, Name: localVP,

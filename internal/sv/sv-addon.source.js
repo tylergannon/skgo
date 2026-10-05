@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { defineAddon, defineAddonOptions } from 'sv';
 import { pnpm, svelteConfig, transforms } from '@sveltejs/sv-utils';
 
@@ -23,7 +24,187 @@ const options = defineAddonOptions()
 		question: 'What is the application name?',
 		default: 'skgo-app'
 	})
+	.add('origin', {
+		type: 'string',
+		question: 'What is the Go application origin?',
+		default: 'http://127.0.0.1:8080'
+	})
 	.build();
+
+const propertyName = (property) => {
+	if (property.type !== 'Property' || property.computed) return undefined;
+	if (property.key.type === 'Identifier') return property.key.name;
+	if (property.key.type === 'Literal' || property.key.type === 'StringLiteral') return property.key.value;
+	return undefined;
+};
+
+const getProperty = (object, name) =>
+	object?.type === 'ObjectExpression'
+		? object.properties.find((property) => propertyName(property) === name)
+		: undefined;
+
+const hasSpread = (object) =>
+	object?.type === 'ObjectExpression' &&
+	object.properties.some((property) => property.type === 'SpreadElement');
+
+const hasComputedProperty = (object) =>
+	object?.type === 'ObjectExpression' &&
+	object.properties.some((property) => property.type === 'Property' && property.computed);
+
+const hasDuplicateProperties = (object, names) =>
+	object?.type === 'ObjectExpression' &&
+	names.some((name) => object.properties.filter((property) => propertyName(property) === name).length > 1);
+
+const setProperty = (object, name, value, js) => {
+	const property = getProperty(object, name);
+	if (property) {
+		property.value = js.common.parseExpression(JSON.stringify(value));
+		return;
+	}
+	js.object.overrideProperties(object, { [name]: value });
+};
+
+const setExpressionProperty = (object, name, expression, js) => {
+	const property = getProperty(object, name);
+	if (property) {
+		property.value = js.common.parseExpression(expression);
+		return;
+	}
+	const added = js.common.parseExpression(`({ ${name}: ${expression} })`).properties[0];
+	object.properties.push(added);
+};
+
+const findDefaultConfig = (ast, js) => {
+	const { value } = js.exports.createDefault(ast, { fallback: null });
+	if (value?.type === 'ObjectExpression') return value;
+	if (
+		value?.type === 'CallExpression' &&
+		value.arguments.length === 1 &&
+		value.arguments[0]?.type === 'ObjectExpression'
+	) {
+		const callee = value.callee;
+		if (callee?.type !== 'Identifier') return null;
+		const fromPlaywright = ast.body.some((node) =>
+			node.type === 'ImportDeclaration' &&
+			node.source.value === '@playwright/test' &&
+			node.specifiers.some((specifier) =>
+				specifier.type === 'ImportSpecifier' &&
+				(specifier.imported?.name ?? specifier.imported?.value) === 'defineConfig' &&
+				specifier.local?.name === callee.name
+			)
+		);
+		if (fromPlaywright) return value.arguments[0];
+	}
+	return null;
+};
+
+const repairPlaywright = (sv, cwd, language, origin) => {
+	const file = `playwright.config.${language}`;
+	if (!fs.existsSync(path.resolve(cwd, file))) return;
+	sv.file(file, transforms.script(({ ast, js, content }) => {
+		const config = findDefaultConfig(ast, js);
+		if (!config) {
+			if (content.includes('npm run build && npm run preview')) {
+				throw new Error(`skgo cannot repair ${file}: the upstream Playwright launcher is present, but its default export is not a direct object or a single-argument imported defineConfig(object); rewrite the export before adding skgo`);
+			}
+			return false;
+		}
+		const webServer = getProperty(config, 'webServer')?.value;
+		const command = getProperty(webServer, 'command')?.value;
+		const port = getProperty(webServer, 'port')?.value;
+		if (command?.type !== 'Literal' && command?.type !== 'StringLiteral') {
+			if (content.includes('npm run build && npm run preview')) {
+				throw new Error(`skgo cannot repair ${file}: the upstream Playwright launcher is present outside a literal webServer object; rewrite that configuration before adding skgo`);
+			}
+			return false;
+		}
+		if (command.value !== 'npm run build && npm run preview') return false;
+		const usePropertyCount = config.properties.filter((property) => propertyName(property) === 'use').length;
+		if (
+			hasSpread(config) ||
+			hasComputedProperty(config) ||
+			hasDuplicateProperties(config, ['webServer', 'use']) ||
+			hasSpread(webServer) ||
+			hasComputedProperty(webServer) ||
+			hasDuplicateProperties(webServer, ['command', 'port', 'url']) ||
+			usePropertyCount > 1
+		) {
+			throw new Error(`skgo cannot repair ${file}: the upstream Playwright launcher has a spread, computed, or duplicate launcher property, so its effective server settings are ambiguous; simplify that configuration before adding skgo`);
+		}
+		if (webServer?.type !== 'ObjectExpression' || port?.value !== 4173) {
+			throw new Error(`skgo cannot repair ${file}: the upstream Playwright launcher command is present, but its server configuration is not the stock npm/4173 shape`);
+		}
+
+		setProperty(webServer, 'command', 'cd .. && just serve', js);
+		webServer.properties = webServer.properties.filter((property) => propertyName(property) !== 'port');
+		const selectedOrigin = `Reflect.get(globalThis, 'process')?.env?.ORIGIN || ${JSON.stringify(origin)}`;
+		setExpressionProperty(webServer, 'url', selectedOrigin, js);
+		let use = getProperty(config, 'use')?.value;
+		if (!use) {
+			use = js.common.parseExpression('defineConfig({})').arguments[0];
+			js.object.overrideProperties(config, { use });
+		}
+		if (
+			use.type !== 'ObjectExpression' ||
+			hasSpread(use) ||
+			hasComputedProperty(use) ||
+			hasDuplicateProperties(use, ['baseURL'])
+		) {
+			throw new Error(`skgo cannot repair ${file}: its "use" configuration is not a plain object or has a spread/computed/duplicate baseURL; simplify it before adding skgo`);
+		}
+		setExpressionProperty(use, 'baseURL', selectedOrigin, js);
+	}));
+};
+
+const repairMCP = (sv, cwd, file, serversKey) => {
+	if (!fs.existsSync(path.resolve(cwd, file))) return;
+	sv.file(file, transforms.json(({ data }) => {
+		const servers = data[serversKey];
+		const svelte = servers?.svelte;
+		if (
+			svelte?.command !== 'npx' ||
+			!Array.isArray(svelte.args) ||
+			svelte.args.length !== 2 ||
+			svelte.args[0] !== '-y' ||
+			svelte.args[1] !== '@sveltejs/mcp' ||
+			svelte.url
+		) return;
+		svelte.command = './node_modules/.bin/vp';
+		svelte.args = ['dlx', '@sveltejs/mcp'];
+	}));
+};
+
+const repairSvelteFallbacks = (sv, cwd) => {
+	// Fingerprints are computed from the untouched SV 1.1.0 output. They keep
+	// this repair off edited skill and agent instructions.
+	const upstream = {
+		skill: 'ccd435bc524f1bdc38f7ca34a3ff279de1e855d3e5165151345d08b85706e95f',
+		agent: '50d8ad485802d3ca15a2cf17e50effb1d8707f59edc4466cda5944441b0e181a'
+	};
+	const files = [
+		'.claude/skills/svelte-code-writer/SKILL.md',
+		'.cursor/skills/svelte-code-writer/SKILL.md',
+		'.gemini/skills/svelte-code-writer/SKILL.md',
+		'.github/skills/svelte-code-writer/SKILL.md',
+		'.claude/agents/svelte-file-editor.md',
+		'.cursor/agents/svelte-file-editor.md',
+		'.gemini/agents/svelte-file-editor.md',
+		'.github/agents/svelte-file-editor.agent.md'
+	];
+	for (const file of files) {
+		if (!fs.existsSync(path.resolve(cwd, file))) continue;
+		const expected = file.includes('/skills/') ? upstream.skill : upstream.agent;
+		sv.file(file, (content) => {
+			if (!content?.includes('npx @sveltejs/mcp')) return false;
+			const digest = createHash('sha256').update(content).digest('hex');
+			if (digest !== expected) return false;
+			return content
+				.replaceAll('npx @sveltejs/mcp', './node_modules/.bin/vp dlx @sveltejs/mcp')
+				.replace('Use these commands via `npx`:', 'Use these commands via `./node_modules/.bin/vp dlx`:')
+				.replace(/(\/node_modules\/\.bin\/vp dlx @sveltejs\/mcp@latest) -y(?=\s)/g, '$1');
+		});
+	}
+};
 
 const examplesPage = (ts) => `<script${ts ? ' lang="ts"' : ''}>
 	import { record, status } from './example.remote';
@@ -105,10 +286,13 @@ export default defineAddon({
 	setup: ({ isKit, unsupported, runsAfter }) => {
 		if (!isKit) unsupported('Requires SvelteKit');
 		runsAfter('vitest');
+		runsAfter('playwright');
+		runsAfter('ai-tools');
 	},
 	run: ({ sv, file, cwd, options, language }) => {
 		const adapterVersion = decodeURIComponent(options.adapter);
 		const applicationName = decodeURIComponent(options.name);
+		const origin = decodeURIComponent(options.origin || 'http://127.0.0.1:8080');
 		if (!adapterVersion) throw new Error('skgo requires an explicit adapter version');
 
 		// VitePlus resolves the test runtime from its own dependencies. sv's
@@ -237,6 +421,13 @@ export default defineAddon({
 			}
 			sv.file('src/routes/+page.svelte', () => examplesPage(language === 'ts'));
 		}
+
+		repairPlaywright(sv, cwd, language, origin);
+		repairMCP(sv, cwd, '.mcp.json', 'mcpServers');
+		repairMCP(sv, cwd, '.cursor/mcp.json', 'mcpServers');
+		repairMCP(sv, cwd, '.gemini/settings.json', 'mcpServers');
+		repairMCP(sv, cwd, '.vscode/mcp.json', 'servers');
+		repairSvelteFallbacks(sv, cwd);
 	},
 	nextSteps: () => []
 });
