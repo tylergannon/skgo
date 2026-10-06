@@ -25,19 +25,18 @@ import (
 // a file named `page.server.go` or `layout.server.go` in the route's own
 // directory:
 //
-//	func load(ctx context.Context) (Data, error) { ... }
+//	func load(event RequestEvent) (Data, error) { ... }
 //
 //	var _ = skgo.Load(load)
 //
 // `skgo generate` emits the `+page.server.ts` or `+layout.server.ts` kit
 // compiles — the file name says which — and the Go registration that answers
-// the route's `__data.json`. The request is reachable with skgo.EventFrom(ctx),
-// which inside a load may read the URL, the route parameters and the route id,
-// and may write cookies and response headers.
+// the route's `__data.json`. RequestEvent is the generated route-local alias of
+// skgo.RequestEvent[RouteParams]; its Params retain Go matcher result types.
 //
 // Out must be a struct: kit requires a load to return a plain object, and
 // refuses anything else.
-func Load[Out any](fn func(context.Context) (Out, error)) Marker { _ = fn; return Marker{} }
+func Load[P, Out any](fn func(RequestEvent[P]) (Out, error)) Marker { _ = fn; return Marker{} }
 
 // ServerLoad is one registered server load. Generated code builds these with
 // NewLoad; application code declares the functions and marks them with Load.
@@ -45,8 +44,9 @@ type ServerLoad struct {
 	// module is the vite-root-relative path of the `+*.server.ts` kit
 	// compiled, e.g. "src/routes/account/+layout.server.ts". It is the key kit
 	// itself records for the node, and so the key the manifest joins on.
-	module string
-	run    func(ctx context.Context) (any, error)
+	module   string
+	run      func(ctx context.Context) (any, error)
+	matchers map[string]ParamMatcher
 }
 
 // Module is the vite-root-relative path of the `+*.server.ts` this load
@@ -71,6 +71,8 @@ type LoadSpec struct {
 	// serializer in data.go, which is also the only place the app's transport
 	// hook is known.
 	Run func(ctx context.Context) (any, error)
+	// Matchers are the app's Go parameter matchers, emitted by generation.
+	Matchers map[string]ParamMatcher
 }
 
 // NewServerLoad builds a load registration from a generated spec.
@@ -78,7 +80,7 @@ func NewServerLoad(spec LoadSpec) *ServerLoad {
 	if spec.Run == nil {
 		panic("skgo: the generated registration for " + spec.Module + " has no Run closure")
 	}
-	return &ServerLoad{module: spec.Module, run: spec.Run}
+	return &ServerLoad{module: spec.Module, run: spec.Run, matchers: spec.Matchers}
 }
 
 // LoadConfig describes the app whose loads a registry answers. Everything but
@@ -122,6 +124,8 @@ type LoadConfig struct {
 	// The `handle` hook has its own OnPanic, on HandleConfig: it is not a load
 	// concern and does not run through this registry. See Handle.
 	OnPanic func(id string, value any, stack []byte)
+	// Matchers contains the app route matchers, including routes without loads.
+	Matchers map[string]ParamMatcher
 	// Nodes and Routes come from the manifest.
 	Nodes       []string
 	LoadModules []string
@@ -164,7 +168,8 @@ type Loads struct {
 	// node has no server file.
 	nodes []*ServerLoad
 	// routes is the route table, in manifest order.
-	routes []*dataRoute
+	routes   []*dataRoute
+	matchers map[string]ParamMatcher
 	// devRefresh installs Kit's latest authored route/node graph before a
 	// data request is matched. Nil in production.
 	devRefresh func() error
@@ -206,7 +211,10 @@ func NewLoads(cfg LoadConfig, loads ...*ServerLoad) (*Loads, error) {
 	}
 	cfg.Base = base
 
-	ls := &Loads{cfg: cfg, base: base, byModule: make(map[string]*ServerLoad, len(loads)), prerendered: map[string]bool{}}
+	ls := &Loads{cfg: cfg, base: base, byModule: make(map[string]*ServerLoad, len(loads)), prerendered: map[string]bool{}, matchers: map[string]ParamMatcher{}}
+	for name, matcher := range cfg.Matchers {
+		ls.matchers[name] = matcher
+	}
 	for _, path := range cfg.Prerendered {
 		ls.prerendered[path] = true
 	}
@@ -228,8 +236,14 @@ func NewLoads(cfg LoadConfig, loads ...*ServerLoad) (*Loads, error) {
 			return nil, fmt.Errorf("skgo: two server loads claim %s", load.module)
 		}
 		ls.byModule[load.module] = load
+		for name, matcher := range load.matchers {
+			ls.matchers[name] = matcher
+		}
 	}
 
+	if err := validateRouteMatchers(cfg.Routes, ls.matchers); err != nil {
+		return nil, err
+	}
 	var err error
 	ls.nodes, ls.routes, err = loadRouting(cfg, ls.byModule)
 	if err != nil {
@@ -339,6 +353,11 @@ func (ls *Loads) checkDrift() error {
 // match finds the route that serves routePath, which is the pathname with the
 // data suffix already stripped and the configured base already removed.
 func (ls *Loads) match(routePath string) (*dataRoute, map[string]string, bool) {
+	route, raw, _, ok := ls.matchValues(routePath)
+	return route, raw, ok
+}
+
+func (ls *Loads) matchValues(routePath string) (*dataRoute, map[string]string, map[string]any, bool) {
 	ls.mu.RLock()
 	defer ls.mu.RUnlock()
 	for _, route := range ls.routes {
@@ -346,26 +365,29 @@ func (ls *Loads) match(routePath string) (*dataRoute, map[string]string, bool) {
 		if loc == nil {
 			continue
 		}
-		params, ok := execParams(routePath, loc, route.params)
+		params, converted, ok := execMatchedParams(routePath, loc, route.params, ls.matchers)
 		if !ok {
 			continue
 		}
-		return route, params, true
+		return route, params, converted, true
 	}
-	return nil, nil, false
+	return nil, nil, nil, false
 }
 
-// execParams names a route pattern's captures, a port of kit's own `exec`
-// (`utils/routing.js`). Matchers are deliberately absent: a matcher is a
-// JavaScript function and skgo runs none, so a route whose parameter has one
-// matches on the pattern alone — which is kit's pattern minus the matcher's own
-// opinion, never more permissive about the shape of the path.
+// execParams names captures for the existing string-parameter consumers.
+// Loads use execMatchedParams with the generated Go matchers instead.
 //
 // It works from submatch *indexes* rather than strings because JavaScript
 // distinguishes a group that did not participate (`undefined`) from one that
 // matched nothing (`”`), and Go's FindStringSubmatch collapses both to "".
 func execParams(path string, loc []int, params []ManifestParam) (map[string]string, bool) {
+	raw, _, ok := execMatchedParams(path, loc, params, nil)
+	return raw, ok
+}
+
+func execMatchedParams(path string, loc []int, params []ManifestParam, matchers map[string]ParamMatcher) (map[string]string, map[string]any, bool) {
 	result := map[string]string{}
+	converted := map[string]any{}
 
 	// group i is capture i+1 of the pattern, which is values[i] in kit.
 	count := len(loc)/2 - 1
@@ -416,6 +438,23 @@ func execParams(path string, loc []int, params []ManifestParam) (map[string]stri
 		if err != nil {
 			decoded = raw
 		}
+		if param.Matcher != "" && matchers != nil {
+			matcher := matchers[param.Matcher]
+			if matcher == nil {
+				return nil, nil, false
+			}
+			parsed, accepted := matcher(decoded)
+			if !accepted {
+				if param.Optional && param.Chained {
+					buffered++
+					continue
+				}
+				return nil, nil, false
+			}
+			converted[param.Name] = parsed
+		} else {
+			converted[param.Name] = decoded
+		}
 		result[param.Name] = decoded
 
 		hasNext := i+1 < len(params)
@@ -431,9 +470,9 @@ func execParams(path string, loc []int, params []ManifestParam) (map[string]stri
 	}
 
 	if buffered > 0 {
-		return nil, false
+		return nil, nil, false
 	}
-	return result, true
+	return result, converted, true
 }
 
 // runLoad runs one load, turning a panic into the error the branch already
@@ -470,4 +509,15 @@ func (ls *Loads) recovered(id string, value any, err error) error {
 		log.Printf("skgo: server load %s panicked: %v\n%s", id, value, stack)
 	}
 	return &HTTPError{Status: 500, Message: "Internal Error"}
+}
+
+func validateRouteMatchers(routes []ManifestRoute, matchers map[string]ParamMatcher) error {
+	for _, route := range routes {
+		for _, param := range route.Params {
+			if param.Matcher != "" && matchers[param.Matcher] == nil {
+				return fmt.Errorf("skgo: route %s requires matcher %q in the app matcher registry", route.ID, param.Matcher)
+			}
+		}
+	}
+	return nil
 }

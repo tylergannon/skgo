@@ -609,10 +609,16 @@ func readVariant(build fs.FS, name, encoding string) (assetVariant, error) {
 }
 
 func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	urlPath, ok := normalizePath(r.URL.Path)
+	routingPath, ok := requestRoutingPath(r.URL)
 	if !ok {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
+	}
+	// Files are indexed by their decoded names, but an encoded slash in a
+	// dynamic parameter is not a path separator until after route matching.
+	urlPath := r.URL.Path
+	if urlPath == "" {
+		urlPath = "/"
 	}
 	// Kit's static middleware claims recorded prerendered files, including the
 	// opposite trailing-slash form, before the dynamic handler. Keep that
@@ -636,7 +642,7 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if h.ssr != nil {
-			if urlPath, ok := normalizePath(r.URL.Path); ok && h.ssr.servePageMethod(w, r, urlPath) {
+			if h.ssr.servePageMethod(w, r, routingPath) {
 				return
 			}
 		}
@@ -747,7 +753,7 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if h.matchesRoute(urlPath) {
+	if h.matchesRoute(routingPath) {
 		h.serveDocument(w, r, http.StatusOK)
 		return
 	}

@@ -7,6 +7,8 @@ import (
 
 type Marker struct{}
 type Event struct{}
+type RequestEvent[P any] struct { *Event; Params P }
+func (e RequestEvent[P]) Context() context.Context { return context.Background() }
 type CookieOptions struct{}
 type Invalid struct{}
 type Issue struct {

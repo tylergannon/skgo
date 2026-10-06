@@ -10,15 +10,11 @@ import (
 
 const loadSource = `package routes
 
-import (
-	"context"
-
-	"github.com/tylergannon/skgo"
-)
+import "github.com/tylergannon/skgo"
 
 type Data struct { Message string ` + "`json:\"message\"`" + ` }
 
-func site(context.Context) (Data, error) { return Data{Message: "hello"}, nil }
+func site(RequestEvent) (Data, error) { return Data{Message: "hello"}, nil }
 
 var _ = skgo.Load(site)
 `
@@ -64,8 +60,8 @@ func TestPrerenderGoLoadFailureNamesAuthoredRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	broken := strings.Replace(string(source), "\t\"context\"", "\t\"context\"\n\t\"errors\"", 1)
-	broken = strings.Replace(broken, "func layoutLoad(ctx context.Context) (RootLayoutData, error) {", "func layoutLoad(ctx context.Context) (RootLayoutData, error) {\n\treturn RootLayoutData{}, errors.New(\""+failure+"\")", 1)
+	broken := strings.Replace(string(source), "import (", "import (\n\t\"errors\"", 1)
+	broken = strings.Replace(broken, "func layoutLoad(event RequestEvent) (RootLayoutData, error) {", "func layoutLoad(event RequestEvent) (RootLayoutData, error) {\n\treturn RootLayoutData{}, errors.New(\""+failure+"\")", 1)
 	if broken == string(source) || !strings.Contains(broken, failure) {
 		t.Fatal("failed to install the literal Go load failure in the fixture")
 	}
@@ -348,6 +344,11 @@ func linkExampleFrontendDependencies(t *testing.T, root, app string) {
 		t.Fatalf("example web dependencies are missing, so the real vp build cannot run: %v; install the pinned dependencies first", err)
 	}
 	destination := filepath.Join(app, "ui", "node_modules")
+	// copyExample's generation-only Kit link moves with web -> ui. Replace
+	// that small dependency tree with the complete installed build toolchain.
+	if err := os.RemoveAll(filepath.Join(destination, "@sveltejs")); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(destination, "@skgo"), 0o755); err != nil {
 		t.Fatal(err)
 	}

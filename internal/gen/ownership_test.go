@@ -81,7 +81,14 @@ type Transport map[string]Transporter
 
 func Query(fn any) Marker { _ = fn; return Marker{} }
 
-func Load[Out any](fn func(context.Context) (Out, error)) Marker { _ = fn; return Marker{} }
+type Event struct{}
+type RequestEvent[P any] struct { *Event; Params P }
+type ParamMatcher func(string) (any, bool)
+func EventFrom(context.Context) *Event { return &Event{} }
+func TrackLoadParam(*Event, string) {}
+func LoadParamValue[T any](*Event, string) T { var zero T; return zero }
+func OptionalLoadParamValue[T any](*Event, string) *T { return nil }
+func Load[P, Out any](fn func(RequestEvent[P]) (Out, error)) Marker { _ = fn; return Marker{} }
 
 func Command(fn any) Marker { _ = fn; return Marker{} }
 
@@ -152,6 +159,7 @@ func Transported[T any](tag string) Marker { _ = tag; return Marker{} }
 type LoadSpec struct {
 	Module string
 	Run    func(ctx context.Context) (any, error)
+	Matchers map[string]ParamMatcher
 }
 
 func NewServerLoad(spec LoadSpec) *ServerLoad { _ = spec; return &ServerLoad{} }
@@ -239,6 +247,21 @@ const (
 	}
 	if remote != "" {
 		write("app/web/src/data/data.remote.go", remote)
+	}
+	kitRoot, err := repoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	kit := filepath.Join(kitRoot, "example", "web", "node_modules", "@sveltejs", "kit")
+	if _, err := os.Stat(filepath.Join(kit, "src", "utils", "routing.js")); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "app", "web", "node_modules", "@sveltejs", "kit")
+	if err := os.MkdirAll(filepath.Dir(link), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(kit, link); err != nil {
+		t.Fatal(err)
 	}
 
 	return root, Config{

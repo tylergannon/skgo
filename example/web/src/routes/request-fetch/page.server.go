@@ -1,7 +1,6 @@
 package requestfetch
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,12 +17,13 @@ type PageData struct {
 // pageLoad calls /api/request-fetch the way a load calls any service: with
 // Event.Fetch, a relative URL, and no socket. The visitor's session cookie
 // travels with the subrequest, so the endpoint knows who is asking.
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
 	request, err := http.NewRequest(http.MethodGet, "/api/request-fetch", nil)
 	if err != nil {
 		return PageData{}, err
 	}
-	response, err := skgo.EventFrom(ctx).Fetch(ctx, request)
+	response, err := event.Fetch(ctx, request)
 	if err != nil {
 		return PageData{}, err
 	}

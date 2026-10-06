@@ -31,8 +31,14 @@ func Check(cfg Config) error {
 		return err
 	}
 	files, err := findSourceFiles(web)
-	if err != nil || len(files) == 0 {
+	if err != nil {
 		return err
+	}
+	if cfg.loadParams, err = prepareLoadParams(&cfg, files); err != nil {
+		return err
+	}
+	if len(files) == 0 {
+		return nil
 	}
 	a, err := loadApp(cfg, files)
 	if err != nil {

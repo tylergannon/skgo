@@ -58,7 +58,7 @@ func pruneStaleArtifacts(cfg Config) error {
 }
 
 func generatedModuleName(name string) bool {
-	if name == generatedRemotesFileName {
+	if name == generatedRemotesFileName || name == loadParamsFile {
 		return true
 	}
 	for _, ext := range []string{".ts", ".js"} {

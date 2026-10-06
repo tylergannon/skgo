@@ -13,11 +13,12 @@ import (
 // shares: the request, the cookie jar, the response headers, and the page the
 // visitor asked for.
 type loadRequest struct {
-	req     *http.Request
-	jar     *cookieJar
-	url     *url.URL
-	routeID string
-	params  map[string]string
+	req       *http.Request
+	jar       *cookieJar
+	url       *url.URL
+	routeID   string
+	params    map[string]string
+	converted map[string]any
 
 	*responseState
 }
@@ -187,12 +188,13 @@ func (e *Event) Untrack(fn func()) {
 	}
 	u := e.load.uses
 	u.mu.Lock()
-	was := u.tracking
 	u.tracking = false
 	u.mu.Unlock()
 	defer func() {
 		u.mu.Lock()
-		u.tracking = was
+		// Kit's synchronous untrack finally enables tracking, including when
+		// nested. Reads after an inner callback therefore track again.
+		u.tracking = true
 		u.mu.Unlock()
 	}()
 	fn()

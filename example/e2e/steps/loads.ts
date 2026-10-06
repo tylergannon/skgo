@@ -3,6 +3,27 @@ import { booted, expect, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 
+Then('the typed load says {string}', async ({ page }, label: string) => {
+	await expect(page.getByTestId('typed-load-label')).toHaveText(label);
+});
+
+Then(
+	'the typed dependency load says {string} with ignored {string} at serial {int}',
+	async ({ page }, label: string, ignored: string, serial: number) => {
+		await booted(page);
+		await expect(page.getByTestId('typed-dependency-label')).toHaveText(label);
+		await expect(page.getByTestId('typed-dependency-ignored')).toHaveText(ignored);
+		await expect(page.getByTestId('typed-dependency-serial')).toHaveText(String(serial));
+	}
+);
+
+Then('the typed dependency URL is {string}', async ({ page }, path: string) => {
+	await expect.poll(() => {
+		const url = new URL(page.url());
+		return url.pathname + url.search;
+	}).toBe(path);
+});
+
 Given('I have signed in as {string}', async ({ page }, user: string) => {
 	await page.goto('/todos');
 	await hydrated(page);

@@ -3,7 +3,6 @@
 package middlewareslug
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/tylergannon/skgo"
@@ -18,7 +17,8 @@ type PageData struct {
 	Data  bool   `json:"data"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
 	visit, ok := skgo.LocalOf[businesslogic.Visit](ctx)
 	if !ok {
 		return PageData{}, skgo.Errorf(http.StatusInternalServerError, "the middleware established no visit")

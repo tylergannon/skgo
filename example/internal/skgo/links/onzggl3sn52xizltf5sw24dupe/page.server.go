@@ -1,8 +1,6 @@
 package empty
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 )
 
@@ -14,7 +12,7 @@ type PageData struct {
 	Notes []string `json:"notes"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
 	return PageData{}, nil
 }
 

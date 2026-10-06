@@ -172,9 +172,9 @@ func copyExample(root, app string) (string, error) {
 	if _, err := os.Stat(filepath.Join(src, "go.mod")); err != nil {
 		return "", fmt.Errorf("locating the example app at %s: %w", src, err)
 	}
-	// node_modules, .svelte-kit and web/build are frontend build output;
-	// nothing these tests do reads them, and none of the three is committed to
-	// this checkout in the first place. e2e and tmp are the Gherkin suite and
+	// Do not copy the frontend build or dependency tree. Typed load generation
+	// reads Kit's installed route parser through the package link below.
+	// e2e and tmp are the Gherkin suite and
 	// its scratch space, also untouched here.
 	skip := map[string]bool{
 		filepath.Join("web", "node_modules"): true,
@@ -189,7 +189,26 @@ func copyExample(root, app string) (string, error) {
 	if err := rewriteSkgoReplace(filepath.Join(app, "go.mod"), root); err != nil {
 		return "", fmt.Errorf("rewriting the sandbox go.mod: %w", err)
 	}
+	if err := linkGeneratorKit(root, app); err != nil {
+		return "", err
+	}
 	return app, nil
+}
+
+func linkGeneratorKit(root, app string) error {
+	src := filepath.Join(root, "example")
+	kit := filepath.Join(src, "web", "node_modules", "@sveltejs", "kit")
+	if _, err := os.Stat(filepath.Join(kit, "src", "utils", "routing.js")); err != nil {
+		return fmt.Errorf("generator example fixtures require the installed pinned Kit source: %w", err)
+	}
+	link := filepath.Join(app, "web", "node_modules", "@sveltejs", "kit")
+	if err := os.MkdirAll(filepath.Dir(link), 0755); err != nil {
+		return err
+	}
+	if err := os.Symlink(kit, link); err != nil {
+		return err
+	}
+	return nil
 }
 
 // copySandboxTree copies src to dst, skipping the src-relative paths in skip.

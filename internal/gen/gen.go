@@ -30,6 +30,8 @@ import (
 
 // Config describes one app.
 type Config struct {
+	matchers      map[string]goParamMatcher
+	loadParams    map[string]*routeLoadParams
 	frontendFiles map[string]struct{}
 	// produced is every path this run wrote or confirmed unchanged, so that
 	// pruneStaleArtifacts can tell what is left over.
@@ -94,6 +96,9 @@ func Run(cfg Config) (err error) {
 
 	files, err := findSourceFiles(web)
 	if err != nil {
+		return err
+	}
+	if cfg.loadParams, err = prepareLoadParams(&cfg, files); err != nil {
 		return err
 	}
 	if len(files) == 0 {

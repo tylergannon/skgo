@@ -60,6 +60,10 @@ func (ls *Loads) Intercept(next http.Handler) http.Handler {
 
 // ServeHTTP answers one `__data.json` request.
 func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requestRoutingPath(r.URL); !ok {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
 	if rejectReservedQuery(w, r, true, false) {
 		return
 	}
@@ -81,7 +85,8 @@ func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	route, params, matched := ls.match(req.routePath)
+	route, params, converted, matched := ls.matchValues(req.routePath)
+	req.converted = converted
 	if !matched {
 		// An unmatched path is still asked for the root layout's data, so that
 		// the error page kit is about to render has its layout
@@ -118,11 +123,13 @@ func (ls *Loads) rootBranch() []*ServerLoad {
 
 // dataRequest is one parsed `__data.json` request.
 type dataRequest struct {
+	converted map[string]any
 	// url is the URL the *page* was asked for: the data suffix removed, the
 	// trailing slash restored, and kit's two private query parameters deleted.
 	// It is what a load sees, exactly as kit deletes them before running one.
 	url *url.URL
-	// routePath is url.Path with the configured base removed.
+	// routePath is Kit's decoded pathname with the base removed. Reserved
+	// escapes survive here until captures are decoded after route matching.
 	routePath string
 	// invalidated is one entry per branch slot; nil when the client sent no
 	// `x-sveltekit-invalidated`, which means every node runs.
@@ -130,7 +137,7 @@ type dataRequest struct {
 }
 
 func (ls *Loads) parseDataRequest(r *http.Request) (dataRequest, bool) {
-	urlPath, ok := normalizePath(r.URL.Path)
+	urlPath, ok := requestRoutingPath(r.URL)
 	if !ok {
 		return dataRequest{}, false
 	}
@@ -164,10 +171,16 @@ func (ls *Loads) parseDataRequest(r *http.Request) (dataRequest, bool) {
 			page.Scheme = "https"
 		}
 	}
+	escaped := stripDataSuffix(r.URL.EscapedPath())
+	if r.URL.Query().Get(trailingSlashParam) == "1" {
+		escaped += "/"
+	}
+	decoded, _ := url.PathUnescape(escaped)
 	pageURL := &url.URL{
 		Scheme:   page.Scheme,
 		Host:     page.Host,
-		Path:     pathname,
+		Path:     decoded,
+		RawPath:  escaped,
 		RawQuery: query.Encode(),
 	}
 
@@ -240,6 +253,7 @@ func (ls *Loads) runBranchWith(r *http.Request, req dataRequest, routeID string,
 		url:           req.url,
 		routeID:       routeID,
 		params:        params,
+		converted:     req.converted,
 	}
 	for name, values := range actionHeaders {
 		shared.headers[name] = append([]string(nil), values...)

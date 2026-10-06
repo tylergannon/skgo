@@ -526,26 +526,28 @@ type fileImports struct {
 
 // typeExpr renders t, importing whatever it names.
 func (f *fileImports) typeExpr(t types.Type) string {
-	return types.TypeString(t, func(p *types.Package) string {
-		if p == nil || p == f.self {
-			return ""
-		}
-		if alias, ok := f.byPkg[p]; ok {
-			return alias
-		}
-		if f.byPkg == nil {
-			f.byPkg = map[*types.Package]string{}
-			f.used = map[string]bool{}
-		}
-		alias := p.Name()
-		for n := 2; f.used[alias]; n++ {
-			alias = fmt.Sprintf("%s%d", p.Name(), n)
-		}
-		f.used[alias] = true
-		f.byPkg[p] = alias
-		f.order = append(f.order, p)
+	return types.TypeString(t, f.packageAlias)
+}
+
+func (f *fileImports) packageAlias(p *types.Package) string {
+	if p == nil || p == f.self {
+		return ""
+	}
+	if alias, ok := f.byPkg[p]; ok {
 		return alias
-	})
+	}
+	if f.byPkg == nil {
+		f.byPkg = map[*types.Package]string{}
+		f.used = map[string]bool{}
+	}
+	alias := p.Name()
+	for n := 2; f.used[alias]; n++ {
+		alias = fmt.Sprintf("%s%d", p.Name(), n)
+	}
+	f.used[alias] = true
+	f.byPkg[p] = alias
+	f.order = append(f.order, p)
+	return alias
 }
 
 func (f *fileImports) writeTo(b *strings.Builder) {
@@ -610,7 +612,37 @@ func (a *app) writeAppBindings() error {
 	for _, imp := range transportPkgs {
 		fmt.Fprintf(&b, "\t%s %q\n", imp.alias, imp.path)
 	}
+	matcherAliases := map[string]string{}
+	var matcherNames []string
+	for name := range a.cfg.matchers {
+		matcherNames = append(matcherNames, name)
+	}
+	sort.Strings(matcherNames)
+	for _, name := range matcherNames {
+		path := a.cfg.matchers[name].pkg.Path()
+		if matcherAliases[path] != "" {
+			continue
+		}
+		for _, gp := range a.pkgs {
+			if gp.pkg.PkgPath == path {
+				matcherAliases[path] = gp.alias
+				break
+			}
+		}
+		if matcherAliases[path] == "" {
+			alias := fmt.Sprintf("skgoMatcher%d", len(matcherAliases))
+			matcherAliases[path] = alias
+			fmt.Fprintf(&b, "\t%s %q\n", alias, path)
+		}
+	}
 	b.WriteString(")\n")
+
+	b.WriteString("\n// Matchers returns the app's route matchers, including routes without server loads.\nfunc Matchers() map[string]skgo.ParamMatcher {\n return map[string]skgo.ParamMatcher{\n")
+	for _, name := range matcherNames {
+		matcher := a.cfg.matchers[name]
+		fmt.Fprintf(&b, "%q: func(value string) (any, bool) { return %s.%s(value) },\n", name, matcherAliases[matcher.pkg.Path()], name)
+	}
+	b.WriteString("}\n}\n")
 
 	for _, fn := range a.remotes {
 		a.writeHandler(&b, fn)
@@ -652,14 +684,14 @@ func (a *app) writeAppBindings() error {
 		fmt.Fprintf(&b, "// A load's result is the one value no generated encoder produces: it may\n")
 		fmt.Fprintf(&b, "// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go\n")
 		fmt.Fprintf(&b, "// type, so the value is encoded where a promise can still be recognised.\n")
-		fmt.Fprintf(&b, "func %s(ctx context.Context) (any, error) {\n\treturn %s(ctx)\n}\n", load.handler, a.published(load.goPkg, load.name))
+		fmt.Fprintf(&b, "func %s(ctx context.Context) (any, error) {\n\treturn %s(%s.SkgoRequestEvent(skgo.EventFrom(ctx)))\n}\n", load.handler, a.published(load.goPkg, load.name), load.goPkg.alias)
 	}
 
 	b.WriteString("\n// Loads returns every server load declared in the app, ready to hand to\n")
 	b.WriteString("// skgo.NewLoads.\n")
 	b.WriteString("func Loads() []*skgo.ServerLoad {\n\treturn []*skgo.ServerLoad{\n")
 	for _, load := range a.loads {
-		fmt.Fprintf(&b, "\t\tskgo.NewServerLoad(skgo.LoadSpec{Module: %q, Run: %s}),\n", load.module, load.handler)
+		fmt.Fprintf(&b, "\t\tskgo.NewServerLoad(skgo.LoadSpec{Module: %q, Run: %s, Matchers: %s.SkgoParamMatchers()}),\n", load.module, load.handler, load.goPkg.alias)
 	}
 	b.WriteString("\t}\n}\n")
 	if len(a.actions) > 0 {

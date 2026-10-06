@@ -6,10 +6,35 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"testing"
 
 	"github.com/tylergannon/polytype/devalue"
 )
+
+func TestPrerenderTypedLoadConvertsRawPathToNamedMatcherResult(t *testing.T) {
+	const module = "src/routes/orders/[n=Number]/+page.server.ts"
+	load := NewServerLoad(LoadSpec{Module: module, Matchers: map[string]ParamMatcher{
+		"Number": func(raw string) (any, bool) {
+			n, err := strconv.ParseInt(raw, 10, 64)
+			return fixtureNumber(n), err == nil
+		},
+	}, Run: func(ctx context.Context) (any, error) {
+		return struct {
+			Label string `json:"label"`
+		}{LoadParamValue[fixtureNumber](EventFrom(ctx), "n").Label()}, nil
+	}})
+	answer := callPrerenderLoad(t, PrerenderLoadInput{Module: module, URL: "http://example.test/orders/00042", RouteID: "/orders/[n=Number]",
+		RoutePath: "/orders/00042", RoutePattern: `^/orders/([^/]+?)/?$`, RouteParams: []ManifestParam{{Name: "n", Matcher: "Number"}},
+	}, load)
+	value, err := devalue.Parse(string(answer.Data), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := field(t, value, "label"); got != "number:42" {
+		t.Fatalf("named matcher method = %v, want number:42", got)
+	}
+}
 
 func callPrerenderLoad(t *testing.T, input PrerenderLoadInput, load *ServerLoad) prerenderLoadOutput {
 	t.Helper()

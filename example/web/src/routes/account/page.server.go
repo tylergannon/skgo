@@ -1,8 +1,6 @@
 package account
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 )
 
@@ -14,7 +12,8 @@ type PageData struct {
 	ParentUser string `json:"parentUser"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
 	parent, err := skgo.Parent[LayoutData](ctx)
 	if err != nil {
 		return PageData{}, err

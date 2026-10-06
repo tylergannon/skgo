@@ -83,7 +83,15 @@ func (o *eventOrigins) event(expr ast.Expr, seen map[types.Object]bool) bool {
 	case *ast.ParenExpr:
 		return o.event(x.X, seen)
 	case *ast.Ident:
+		obj := o.pass.TypesInfo.Uses[x]
+		if obj != nil && obj == o.context && o.writes[obj] == 0 {
+			if named, ok := types.Unalias(obj.Type()).(*types.Named); ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == skgoPath && named.Obj().Name() == "RequestEvent" {
+				return true
+			}
+		}
 		return o.binding(x, seen, o.event)
+	case *ast.SelectorExpr:
+		return x.Sel.Name == "Event" && o.event(x.X, seen)
 	case *ast.CallExpr:
 		return skgoCall(o.pass, x) == "EventFrom" && len(x.Args) == 1 && o.ctx(x.Args[0], seen)
 	}
@@ -101,6 +109,12 @@ func (o *eventOrigins) ctx(expr ast.Expr, seen map[types.Object]bool) bool {
 		}
 		return o.binding(x, seen, o.ctx)
 	case *ast.CallExpr:
+		if sel, ok := x.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Context" && len(x.Args) == 0 {
+			fn := calledFunc(o.pass, x.Fun)
+			if fn != nil && fn.Pkg() != nil && fn.Pkg().Path() == skgoPath {
+				return o.event(sel.X, seen)
+			}
+		}
 		fn := calledFunc(o.pass, x.Fun)
 		if fn != nil && fn.Pkg() != nil && fn.Pkg().Path() == "context" && len(x.Args) > 0 {
 			switch fn.Name() {

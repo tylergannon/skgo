@@ -624,6 +624,8 @@ func samplePath(t *testing.T, id string) string {
 	for _, segment := range strings.Split(strings.TrimPrefix(id, "/"), "/") {
 		switch {
 		case groupSegment.MatchString(segment):
+		case segment == "[number=Order]", segment == "[a=Order]", segment == "[b=Order]":
+			out = append(out, "42")
 		case restSegment.MatchString(segment):
 			out = append(out, "deep", "rest", "path")
 		case paramSegment.MatchString(segment):

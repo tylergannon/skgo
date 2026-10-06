@@ -18,16 +18,16 @@ type SaveResult struct {
 	Receipt string `json:"receipt"`
 }
 
-func selected(ctx context.Context) (string, error) {
-	name := skgo.EventFrom(ctx).Param("profile")
+func selected(name string) (string, error) {
 	if name != "ada" && name != "grace" {
 		return "", skgo.Errorf(http.StatusNotFound, "Profile not found")
 	}
 	return name, nil
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
-	name, err := selected(ctx)
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
+	name, err := selected(event.Params.Profile())
 	if err != nil {
 		return PageData{}, err
 	}
@@ -40,7 +40,7 @@ func pageLoad(ctx context.Context) (PageData, error) {
 }
 
 func save(ctx context.Context) (SaveResult, error) {
-	name, err := selected(ctx)
+	name, err := selected(skgo.EventFrom(ctx).Param("profile"))
 	if err != nil {
 		return SaveResult{}, err
 	}

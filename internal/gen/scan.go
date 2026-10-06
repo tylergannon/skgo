@@ -454,7 +454,7 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 
 	pos := p.Fset.Position(call.Pos())
 	inst := p.TypesInfo.Instances[ident]
-	if isLoad || (isAction && obj.Name() != "ActionNoData") {
+	if isAction && obj.Name() != "ActionNoData" {
 		// A load marker is still generic — a load has no argument to make
 		// optional — so its result comes from the instantiation.
 		want := 1
@@ -516,6 +516,20 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 	}
 
 	if isLoad {
+		sig := target.Type().(*types.Signature)
+		if sig.Variadic() || sig.Params().Len() != 1 || sig.Results().Len() != 2 || !isError(sig.Results().At(1).Type()) {
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: load must be func(RequestEvent) (Data, error)", pos)
+		}
+		{
+			t, ok := types.Unalias(sig.Params().At(0).Type()).(*types.Named)
+			if !ok || t.Obj().Pkg() == nil || t.Obj().Pkg().Path() != skgoPkg || t.Obj().Name() != "RequestEvent" || a.cfg.loadParams[gp.dir] == nil {
+				return nil, nil, nil, nil, fmt.Errorf("skgo: %s: load must receive this route's generated RequestEvent", pos)
+			}
+			local := p.Types.Scope().Lookup("RequestEvent")
+			if local == nil || !types.Identical(sig.Params().At(0).Type(), local.Type()) {
+				return nil, nil, nil, nil, fmt.Errorf("skgo: %s: load must receive this route's generated RequestEvent", pos)
+			}
+		}
 		source, err := webRel(a.cfg.Web, path)
 		if err != nil {
 			return nil, nil, nil, nil, err
@@ -526,7 +540,7 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 			module: mod,
 			stub:   stub,
 			source: source,
-			out:    inst.TypeArgs.At(0),
+			out:    sig.Results().At(0).Type(),
 			pos:    pos,
 		}, nil, nil, nil
 	}

@@ -6,7 +6,6 @@
 package destinations
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -39,14 +38,15 @@ var paths = []string{
 	"/api/request-fetch",
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
 	var data PageData
 	for _, path := range paths {
 		request, err := http.NewRequest(http.MethodGet, path, nil)
 		if err != nil {
 			return PageData{}, err
 		}
-		response, err := skgo.EventFrom(ctx).Fetch(ctx, request)
+		response, err := event.Fetch(ctx, request)
 		if err != nil {
 			return PageData{}, fmt.Errorf("fetching %s: %w", path, err)
 		}

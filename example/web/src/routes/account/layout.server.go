@@ -47,7 +47,8 @@ func nextSerial(ctx context.Context) int {
 // hook filled in; nothing here reads a cookie or knows how a session is
 // spelled. Turning a signed-out visitor away here turns them away from every
 // page below, so adding another one needs no new guard.
-func layoutLoad(ctx context.Context) (LayoutData, error) {
+func layoutLoad(event RequestEvent) (LayoutData, error) {
+	ctx := event.Context()
 	session, _ := skgo.LocalOf[businesslogic.Session](ctx)
 	if session.User == "" {
 		return LayoutData{}, &skgo.Redirect{Status: 307, Location: "/"}
@@ -56,7 +57,7 @@ func layoutLoad(ctx context.Context) (LayoutData, error) {
 	// The visitor can ask for this section's data again without navigating;
 	// `invalidate('app:account')` in the browser is what makes kit's client ask
 	// for this node and no other.
-	skgo.EventFrom(ctx).Depends("app:account")
+	event.Depends("app:account")
 
 	return LayoutData{
 		AccountUser:   session.User,

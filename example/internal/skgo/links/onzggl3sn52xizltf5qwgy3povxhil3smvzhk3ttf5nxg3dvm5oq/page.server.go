@@ -1,7 +1,6 @@
 package slug
 
 import (
-	"context"
 	"sync"
 
 	"github.com/tylergannon/skgo"
@@ -19,9 +18,9 @@ var runs = struct {
 	byVisitor map[string]int
 }{byVisitor: map[string]int{}}
 
-func pageLoad(ctx context.Context) (PageData, error) {
-	event := skgo.EventFrom(ctx)
-	slug := event.Param("slug")
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
+	slug := event.Params.Slug()
 	filter, _ := event.SearchParam("x")
 	event.Depends("app:reruns")
 	who := visitor.Of(ctx)

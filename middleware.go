@@ -164,7 +164,15 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 
 		// Kit answers a path outside the configured base before it matches a
 		// route or runs the hook.
-		routePath := pageURL.Path
+		pathname := pageURL.EscapedPath()
+		if isRemote && !skipRoute {
+			pathname = r.Header.Get("x-sveltekit-pathname")
+		}
+		routePath, err := decodePathname(pathname)
+		if err != nil {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
 		if base != "" {
 			if !strings.HasPrefix(routePath, base) {
 				w.Header().Set("Content-Type", "text/plain;charset=UTF-8")
@@ -249,7 +257,7 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 // and a route-resolution suffix is stripped. skipRoute is true for a remote call
 // that names no page: kit resolves no route for it.
 func (cfg HandleConfig) eventURL(r *http.Request, origin *url.URL, base string, isData, isRemote bool) (u *url.URL, skipRoute bool) {
-	pathname, rawQuery := r.URL.Path, r.URL.RawQuery
+	pathname, rawQuery := r.URL.EscapedPath(), r.URL.RawQuery
 	switch {
 	case isData:
 		pathname = stripDataSuffix(pathname)
@@ -278,7 +286,11 @@ func (cfg HandleConfig) eventURL(r *http.Request, origin *url.URL, base string, 
 			pathname = strings.TrimSuffix(pathname, htmlRouteSuffix) + ".html"
 		}
 	}
-	u = &url.URL{Path: pathname, RawQuery: rawQuery}
+	decoded, err := url.PathUnescape(pathname)
+	if err != nil {
+		decoded = pathname // The routing decoder refuses malformed caller headers before hooks.
+	}
+	u = &url.URL{Path: decoded, RawPath: pathname, RawQuery: rawQuery}
 	if origin != nil {
 		u.Scheme, u.Host = origin.Scheme, origin.Host
 	} else {

@@ -1,8 +1,6 @@
 package prerender
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 )
 
@@ -11,8 +9,8 @@ type PageData struct {
 	Receipt string `json:"receipt"`
 }
 
-func load(ctx context.Context) (PageData, error) {
-	slug := skgo.EventFrom(ctx).Param("slug")
+func load(event RequestEvent) (PageData, error) {
+	slug := event.Params.Slug()
 	return PageData{Slug: slug, Receipt: "Go entry load: " + slug}, nil
 }
 

@@ -4,8 +4,6 @@
 package statement
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 )
 
@@ -15,7 +13,7 @@ type PageData struct {
 	Balance int `json:"balance"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
 	return PageData{}, skgo.Errorf(402, "Your account is in arrears")
 }
 
