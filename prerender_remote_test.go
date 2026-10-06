@@ -46,10 +46,10 @@ func TestPrerenderRemotePreservesNativeErrorOrigin(t *testing.T) {
 				Kind: KindPrerender, Module: "src/data.remote.ts", Name: "item",
 				Fn: func() {}, Call: test.call,
 			})
-			request := `{"kind":"remote","module":"src/data.remote.ts","name":"item","url":"http://skgo.test/item"}`
+			request := `{"module":"src/data.remote.ts","name":"item","url":"http://skgo.test/item"}`
 			var output strings.Builder
-			if err := RunPrerenderBuild(strings.NewReader(request), &output, nil, nil, []*Remote{fn}); err != nil {
-				t.Fatalf("RunPrerenderBuild: %v", err)
+			if err := callBuildOperation("/remote", strings.NewReader(request), &output, nil, nil, []*Remote{fn}); err != nil {
+				t.Fatalf("prerender service: %v", err)
 			}
 			var got struct {
 				Type       string    `json:"type"`
@@ -79,10 +79,10 @@ func TestPrerenderRemoteRedirectStaysStructuredForKit(t *testing.T) {
 			return nil, &Redirect{Status: 308, Location: "/catalog/atlas"}
 		},
 	})
-	request := `{"kind":"remote","module":"src/data.remote.ts","name":"item","url":"http://skgo.test/item"}`
+	request := `{"module":"src/data.remote.ts","name":"item","url":"http://skgo.test/item"}`
 	var output strings.Builder
-	if err := RunPrerenderBuild(strings.NewReader(request), &output, nil, nil, []*Remote{fn}); err != nil {
-		t.Fatalf("RunPrerenderBuild: %v", err)
+	if err := callBuildOperation("/remote", strings.NewReader(request), &output, nil, nil, []*Remote{fn}); err != nil {
+		t.Fatalf("prerender service: %v", err)
 	}
 	var got struct {
 		Type     string `json:"type"`

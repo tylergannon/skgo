@@ -1,7 +1,0 @@
-=== RUN   TestDeliveryNativeCorrectionFromCommittedPayload
-    delivery_test.go:737: owned command pid/group=95369 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/native-correction-A0ab6303 args=["pnpm" "config" "set" "patchedDependencies" "{\"@sveltejs/kit@3.0.0\":\"patches/skgo-kit-3.0.0-queue.patch\"}" "--location=project" "--json"]
-    delivery_test.go:738: owned command pid/group=95383 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/native-correction-A0ab6303 args=["pnpm" "install" "--no-frozen-lockfile" "--store-dir" "/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery/native-correction-store"]
-    delivery_test.go:742: owned command pid/group=95423 cwd=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/delivery-fixtures/native-correction-A0ab6303 args=["node_modules/.bin/vp" "build"]
---- PASS: TestDeliveryNativeCorrectionFromCommittedPayload (5.74s)
-PASS
-ok  	_/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/deliveryproof	5.973s

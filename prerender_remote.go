@@ -11,41 +11,13 @@ import (
 	"net/url"
 
 	"github.com/tylergannon/polytype/devalue"
-	"github.com/tylergannon/skgo/internal/remotearg"
 )
-
-// RunPrerenderBuild handles the two kinds of Go work Kit invokes while
-// prerendering: a server load and a remote prerender function. It runs in the
-// adapter's build-only Go command, before the final frontend manifest exists.
-func RunPrerenderBuild(in io.Reader, out io.Writer, transport Transport, loads []*ServerLoad, remotes []*Remote) error {
-	raw, err := io.ReadAll(in)
-	if err != nil {
-		return err
-	}
-	var target struct {
-		Kind string `json:"kind"`
-	}
-	if err := json.Unmarshal(raw, &target); err != nil {
-		return fmt.Errorf("skgo: decode prerender request: %w", err)
-	}
-	switch target.Kind {
-	case "load":
-		return RunPrerenderLoad(bytes.NewReader(raw), out, transport, loads...)
-	case "remote":
-		return runPrerenderRemote(raw, out, transport, remotes)
-	case "remote-inputs":
-		return runPrerenderInputs(raw, out, transport, remotes)
-	default:
-		return fmt.Errorf("skgo: unknown prerender request kind %q", target.Kind)
-	}
-}
 
 // runPrerenderInputs evaluates a declared input producer without constructing
 // a request or event. The serialized array is decoded by the adapter before
 // Kit computes the canonical remote argument keys.
-func runPrerenderInputs(raw []byte, out io.Writer, transport Transport, remotes []*Remote) error {
+func runPrerenderInputs(ctx context.Context, raw []byte, out io.Writer, transport Transport, remotes []*Remote) error {
 	var input struct {
-		Kind   string `json:"kind"`
 		Module string `json:"module"`
 		Name   string `json:"name"`
 	}
@@ -53,9 +25,6 @@ func runPrerenderInputs(raw []byte, out io.Writer, transport Transport, remotes 
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&input); err != nil {
 		return fmt.Errorf("skgo: decode prerender remote inputs: %w", err)
-	}
-	if input.Kind != "remote-inputs" {
-		return fmt.Errorf("skgo: invalid prerender inputs request kind %q", input.Kind)
 	}
 	var fn *Remote
 	for _, remote := range remotes {
@@ -67,7 +36,7 @@ func runPrerenderInputs(raw []byte, out io.Writer, transport Transport, remotes 
 	if fn == nil || fn.kind != KindPrerender || fn.inputs == nil {
 		return fmt.Errorf("skgo: no generated Go prerender inputs for %s#%s", input.Module, input.Name)
 	}
-	values, err := fn.inputs(context.Background(), Call{transport: transport})
+	values, err := callPrerenderInputs(ctx, fn, Call{transport: transport})
 	if err != nil {
 		return fmt.Errorf("skgo: prerender inputs %s#%s: %w", input.Module, input.Name, err)
 	}
@@ -80,7 +49,7 @@ func runPrerenderInputs(raw []byte, out io.Writer, transport Transport, remotes 
 	}{Inputs: encoded})
 }
 
-func runPrerenderRemote(raw []byte, out io.Writer, transport Transport, remotes []*Remote) error {
+func runPrerenderRemote(ctx context.Context, raw []byte, out io.Writer, transport Transport, remotes []*Remote) error {
 	var input struct {
 		Module  string      `json:"module"`
 		Name    string      `json:"name"`
@@ -95,11 +64,14 @@ func runPrerenderRemote(raw []byte, out io.Writer, transport Transport, remotes 
 	if err != nil || pageURL.Scheme == "" || pageURL.Host == "" {
 		return fmt.Errorf("skgo: invalid prerender page URL %q", input.URL)
 	}
-	request, err := http.NewRequest(http.MethodGet, input.URL, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, input.URL, nil)
 	if err != nil {
 		return err
 	}
-	request.Header = input.Headers.Clone()
+	request.Header = http.Header{}
+	for name, values := range input.Headers {
+		request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
+	}
 	registry, err := NewRemotes(RemoteConfig{Dev: true, Origin: pageURL.Scheme + "://" + pageURL.Host, Transport: transport}, remotes...)
 	if err != nil {
 		return err
@@ -114,11 +86,11 @@ func runPrerenderRemote(raw []byte, out io.Writer, transport Transport, remotes 
 	if fn == nil || fn.kind != KindPrerender {
 		return fmt.Errorf("skgo: no generated Go prerender remote for %s#%s", input.Module, input.Name)
 	}
-	arg, present, err := remotearg.ParsePayloadWith(input.Payload, registry.codecs())
-	if err != nil {
-		return fmt.Errorf("skgo: decode prerender argument for %s: %w", fn.id, err)
+	result := registry.invokePayload(withEvent(request.Context(), registry.newEvent(request, false)), fn, input.Payload)
+	if result.argumentError {
+		return fmt.Errorf("skgo: decode prerender argument for %s: %s", fn.id, result.diagnostic)
 	}
-	value, err, panicked, diagnostic := callPrerenderRemote(registry, fn, withEvent(request.Context(), registry.newEvent(request, false)), registry.newCall(arg, present))
+	value, err, panicked, diagnostic := result.value, result.err, result.panicked, result.diagnostic
 	if err != nil {
 		if redirect := asRedirect(err); redirect != nil {
 			return json.NewEncoder(out).Encode(struct {
@@ -148,7 +120,7 @@ func runPrerenderRemote(raw []byte, out io.Writer, transport Transport, remotes 
 		}
 		return json.NewEncoder(out).Encode(response)
 	}
-	data, err := devalue.StringifyWith(map[string]any{"_": value}, transport.reducers())
+	data, err := encodeRemoteResult(transport, map[string]any{"_": value})
 	if err != nil {
 		return fmt.Errorf("skgo: serialize prerender remote %s: %w", fn.id, err)
 	}
@@ -158,21 +130,12 @@ func runPrerenderRemote(raw []byte, out io.Writer, transport Transport, remotes 
 	}{Type: "result", Data: data})
 }
 
-// callPrerenderRemote preserves whether an error came from an authored Go
-// error or a recovered panic. The production remote path intentionally folds
-// both to an HTTP 500; Kit's build crawler needs the origin so its own native
-// handleError path can distinguish app errors from unknown throws.
-func callPrerenderRemote(registry *Remotes, fn *Remote, ctx context.Context, call Call) (value any, err error, panicked bool, diagnostic string) {
+// Declared inputs have no application event, but share the request cancellation.
+func callPrerenderInputs(ctx context.Context, fn *Remote, call Call) (values []any, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			panicked = true
-			diagnostic = fmt.Sprint(recovered)
-			err = registry.recovered(fn, recovered, nil)
+			err = fmt.Errorf("input producer panicked: %v", recovered)
 		}
 	}()
-	value, err = fn.call(ctx, call)
-	if err != nil {
-		diagnostic = err.Error()
-	}
-	return
+	return fn.inputs(ctx, call)
 }

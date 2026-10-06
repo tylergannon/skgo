@@ -11,7 +11,7 @@ import (
 	"github.com/tylergannon/polytype/devalue"
 )
 
-func TestRunPrerenderBuildReturnsDeclaredInputsWithoutRequestContext(t *testing.T) {
+func TestPrerenderServiceReturnsDeclaredInputsWithoutRequestContext(t *testing.T) {
 	called := false
 	fn := NewRemote(RemoteSpec{
 		Kind:   KindPrerender,
@@ -26,10 +26,10 @@ func TestRunPrerenderBuildReturnsDeclaredInputsWithoutRequestContext(t *testing.
 			return []any{"atlas", "beacon"}, nil
 		},
 	})
-	request := `{"kind":"remote-inputs","module":"src/routes/catalog/catalog.remote.ts","name":"item"}`
+	request := `{"module":"src/routes/catalog/catalog.remote.ts","name":"item"}`
 	var output strings.Builder
-	if err := RunPrerenderBuild(strings.NewReader(request), &output, nil, nil, []*Remote{fn}); err != nil {
-		t.Fatalf("RunPrerenderBuild: %v", err)
+	if err := callBuildOperation("/inputs", strings.NewReader(request), &output, nil, nil, []*Remote{fn}); err != nil {
+		t.Fatalf("prerender service: %v", err)
 	}
 	if !called {
 		t.Fatal("input producer was not called")
@@ -49,35 +49,35 @@ func TestRunPrerenderBuildReturnsDeclaredInputsWithoutRequestContext(t *testing.
 	}
 }
 
-func TestRunPrerenderInputsErrorsFailBuildAndRejectExtraFields(t *testing.T) {
+func TestPrerenderServiceInputsErrorsFailBuildAndRejectExtraFields(t *testing.T) {
 	producerErr := errors.New("inputs fixture failed")
 	fn := NewRemote(RemoteSpec{
 		Kind: KindPrerender, Module: "mod.remote.ts", Name: "data",
 		Call:   func(context.Context, Call) (any, error) { return nil, nil },
 		Inputs: func(context.Context, Call) ([]any, error) { return nil, producerErr },
 	})
-	request := `{"kind":"remote-inputs","module":"mod.remote.ts","name":"data"}`
+	request := `{"module":"mod.remote.ts","name":"data"}`
 	var output strings.Builder
-	err := RunPrerenderBuild(strings.NewReader(request), &output, nil, nil, []*Remote{fn})
+	err := callBuildOperation("/inputs", strings.NewReader(request), &output, nil, nil, []*Remote{fn})
 	if err == nil || !strings.Contains(err.Error(), "inputs fixture failed") {
 		t.Fatalf("producer error = %v; want propagated failure", err)
 	}
-	extra := `{"kind":"remote-inputs","module":"mod.remote.ts","name":"data","url":"http://unused"}`
+	extra := `{"module":"mod.remote.ts","name":"data","url":"http://unused"}`
 	output.Reset()
-	if err := RunPrerenderBuild(strings.NewReader(extra), &output, nil, nil, []*Remote{fn}); err == nil || !strings.Contains(err.Error(), "unknown field") {
+	if err := callBuildOperation("/inputs", strings.NewReader(extra), &output, nil, nil, []*Remote{fn}); err == nil || !strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("extra-field request error = %v; want strict protocol rejection", err)
 	}
 }
 
-func TestRunPrerenderInputsSerializesExplicitUndefined(t *testing.T) {
+func TestPrerenderServiceInputsSerializesExplicitUndefined(t *testing.T) {
 	fn := NewRemote(RemoteSpec{
 		Kind: KindPrerender, Module: "mod.remote.ts", Name: "empty",
 		Call:   func(context.Context, Call) (any, error) { return nil, nil },
 		Inputs: func(context.Context, Call) ([]any, error) { return []any{devalue.UndefinedValue{}}, nil },
 	})
 	var output strings.Builder
-	request := `{"kind":"remote-inputs","module":"mod.remote.ts","name":"empty"}`
-	if err := RunPrerenderBuild(strings.NewReader(request), &output, nil, nil, []*Remote{fn}); err != nil {
+	request := `{"module":"mod.remote.ts","name":"empty"}`
+	if err := callBuildOperation("/inputs", strings.NewReader(request), &output, nil, nil, []*Remote{fn}); err != nil {
 		t.Fatal(err)
 	}
 	var response struct {

@@ -43,7 +43,7 @@ func callPrerenderLoad(t *testing.T, input PrerenderLoadInput, load *ServerLoad)
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := RunPrerenderLoad(bytes.NewReader(request), &output, nil, load); err != nil {
+	if err := callBuildOperation("/load", bytes.NewReader(request), &output, nil, []*ServerLoad{load}, nil); err != nil {
 		t.Fatal(err)
 	}
 	var answer prerenderLoadOutput

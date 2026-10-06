@@ -228,6 +228,23 @@ func requestedArg_buildReceipt(arg any) (any, error) {
 	return in, nil
 }
 
+// inputs_buildReceipt encodes declared build-time inputs for src/routes/about/about.remote.ts#buildReceipt.
+func inputs_buildReceipt(_ context.Context, _ skgo.Call) ([]any, error) {
+	values, err := skgo7.SkgoPrerenderInputs_buildReceipt()
+	if err != nil {
+		return nil, err
+	}
+	encoded := make([]any, len(values))
+	for i, value := range values {
+		tree, err := EncodeRoot0(value)
+		if err != nil {
+			return nil, fmt.Errorf("skgo: encode prerender input %d: %w", i, err)
+		}
+		encoded[i] = tree
+	}
+	return encoded, nil
+}
+
 // remote_sendRemoteNote answers src/routes/actions/coexist.remote.ts#sendRemoteNote, a form.
 //
 // A form's submission is assigned onto the handler's own argument type:
@@ -1078,6 +1095,7 @@ func Remotes() []*skgo.Remote {
 			Fn:        skgo7.Skgo_buildReceipt,
 			Call:      remote_buildReceipt,
 			DecodeArg: requestedArg_buildReceipt,
+			Inputs:    inputs_buildReceipt,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindForm,
