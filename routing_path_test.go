@@ -95,3 +95,57 @@ func TestLoadRoutingPathContracts(t *testing.T) {
 		})
 	}
 }
+
+func TestMatcherRoutesWithoutLoads(t *testing.T) {
+	routes := []ManifestRoute{
+		{ID: "/orders/[n=Order]", Pattern: "^/orders/([^/]+?)/?$", Params: []ManifestParam{{Name: "n", Matcher: "Order"}}, Page: &ManifestPage{Leaf: 0}},
+		{ID: "/orders/[fallback]", Pattern: "^/orders/([^/]+?)/?$", Params: []ManifestParam{{Name: "fallback"}}, Page: &ManifestPage{Leaf: 0}},
+	}
+	matchers := map[string]ParamMatcher{"Order": func(value string) (any, bool) { return 42, value == "42" }}
+	ls, err := NewLoads(LoadConfig{Nodes: []string{""}, Routes: routes, Matchers: matchers})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{"42", "banana"} {
+		rec := httptest.NewRecorder()
+		ls.Intercept(http.NotFoundHandler()).ServeHTTP(rec, httptest.NewRequest("GET", "/orders/"+value+dataSuffix, nil))
+		if rec.Code != 200 || rec.Body.String() != "{\"type\":\"data\",\"nodes\":[null]}\n" {
+			t.Fatalf("%s: %d %s", value, rec.Code, rec.Body.String())
+		}
+	}
+	// The hook must select the same candidate even without a Loads registry.
+	cfg := (Manifest{Routes: routes}).HandleConfig()
+	cfg.Matchers = matchers
+	for _, c := range []struct{ value, id string }{{"42", "/orders/[n=Order]"}, {"banana", "/orders/[fallback]"}} {
+		route, _, ok := cfg.matchRoute("/orders/" + c.value)
+		if !ok || route.id != c.id {
+			t.Fatalf("hook %s: %+v %v", c.value, route, ok)
+		}
+	}
+	if _, err := NewLoads(LoadConfig{Nodes: []string{""}, Routes: routes}); err == nil {
+		t.Fatal("missing matcher must fail startup")
+	}
+}
+
+func TestEndpointMatcherRejectionFallback(t *testing.T) {
+	routes := []ManifestRoute{
+		{ID: "/api/[n=Order]", Pattern: "^/api/([^/]+?)/?$", Params: []ManifestParam{{Name: "n", Matcher: "Order"}}, Endpoint: &ManifestEndpoint{Methods: []string{"GET"}}},
+		{ID: "/api/[fallback]", Pattern: "^/api/([^/]+?)/?$", Params: []ManifestParam{{Name: "fallback"}}, Endpoint: &ManifestEndpoint{Methods: []string{"GET"}}},
+	}
+	cfg := EndpointConfig{Routes: routes, Matchers: map[string]ParamMatcher{"Order": func(value string) (any, bool) { return 42, value == "42" }}}
+	es, err := NewEndpoints(cfg, NewEndpoint(routes[0].ID, "GET", echo("order42")), NewEndpoint(routes[1].ID, "GET", echo("fallbackbanana")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct{ value, body string }{{"42", "order42"}, {"banana", "fallbackbanana"}} {
+		rec := httptest.NewRecorder()
+		es.Intercept(http.NotFoundHandler()).ServeHTTP(rec, httptest.NewRequest("GET", "/api/"+c.value, nil))
+		if rec.Code != 200 || rec.Body.String() != c.body {
+			t.Fatalf("%s: %d %s", c.value, rec.Code, rec.Body.String())
+		}
+	}
+	cfg.Matchers = nil
+	if _, err := NewEndpoints(cfg); err == nil {
+		t.Fatal("missing matcher must fail startup")
+	}
+}

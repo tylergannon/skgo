@@ -30,6 +30,7 @@ import (
 
 // Config describes one app.
 type Config struct {
+	matchers      map[string]goParamMatcher
 	loadParams    map[string]*routeLoadParams
 	frontendFiles map[string]struct{}
 	// produced is every path this run wrote or confirmed unchanged, so that
@@ -97,7 +98,7 @@ func Run(cfg Config) (err error) {
 	if err != nil {
 		return err
 	}
-	if cfg.loadParams, err = prepareLoadParams(cfg, files); err != nil {
+	if cfg.loadParams, err = prepareLoadParams(&cfg, files); err != nil {
 		return err
 	}
 	if len(files) == 0 {

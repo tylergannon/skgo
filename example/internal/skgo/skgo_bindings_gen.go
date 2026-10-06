@@ -58,8 +58,16 @@ import (
 	skgo46 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a"
 	skgo47 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq"
 	skgo48 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq"
+	skgoMatcher0 "github.com/tylergannon/skgo/example/web/src"
 	skgo49 "github.com/tylergannon/skgo/example/web/src/lib"
 )
+
+// Matchers returns the app's route matchers, including routes without server loads.
+func Matchers() map[string]skgo.ParamMatcher {
+	return map[string]skgo.ParamMatcher{
+		"Order": func(value string) (any, bool) { return skgoMatcher0.Order(value) },
+	}
+}
 
 // remote_signIn answers src/lib/auth.remote.ts#signIn, a command.
 //

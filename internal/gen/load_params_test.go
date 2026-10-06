@@ -328,3 +328,62 @@ func TestGeneratedParameterDependencies(t *testing.T) {
 		t.Fatalf("generated load dependency contracts: %v\n%s", err, output)
 	}
 }
+
+func TestAppMatchersWithoutGoLoads(t *testing.T) {
+	root, err := repoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := t.TempDir()
+	web := filepath.Join(app, "web")
+	for _, dir := range []string{filepath.Join(web, "src", "routes", "orders", "[n=Order]"), filepath.Join(app, "generated")} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	files := map[string]string{
+		"go.mod":            "module matcherfixture\n\ngo 1.27\nrequire github.com/tylergannon/skgo v0.0.0\nreplace github.com/tylergannon/skgo => " + root + "\n",
+		"web/src/params.js": "export const params = { Order: value => value === '42' ? 42 : undefined };\n",
+		"web/src/params.go": "package params\nfunc Order(value string) (int,bool) { return 42,value==\"42\" }\n",
+		"web/src/routes/orders/[n=Order]/+page.svelte": "<p>Order</p>\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(app, name), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := linkGeneratorKit(root, app); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{Web: web, Out: filepath.Join(app, "generated")}
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	const consumer = `package generated
+import("net/http";"net/http/httptest";"testing";"github.com/tylergannon/skgo")
+func TestMatcherOnlyHandler(t *testing.T){
+ if len(Loads())!=0{t.Fatal("fixture must have no loads")}
+ cfg:=skgo.LoadConfig{Nodes:[]string{""},Matchers:Matchers(),Routes:[]skgo.ManifestRoute{{ID:"/orders/[n=Order]",Pattern:"^/orders/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"n",Matcher:"Order"}},Page:&skgo.ManifestPage{Leaf:0}}}}
+ ls,err:=skgo.NewLoads(cfg);if err!=nil{t.Fatal(err)}
+ for _,c:=range []struct{path string;status int;body string}{{"42",200,"{\"type\":\"data\",\"nodes\":[null]}\n"},{"banana",404,"Not Found\n"}}{
+ r:=httptest.NewRecorder();ls.Intercept(http.NotFoundHandler()).ServeHTTP(r,httptest.NewRequest("GET","/orders/"+c.path+"/__data.json",nil))
+ if r.Code!=c.status||r.Body.String()!=c.body{t.Fatalf("%s: %d %s",c.path,r.Code,r.Body.String())}
+ }
+}`
+	if err := os.WriteFile(filepath.Join(app, "generated", "matcher_test.go"), []byte(consumer), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("go", "test", "-mod=mod", "-count=1", "./generated")
+	cmd.Dir = app
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("matcher-only generated handler: %v\n%s", err, out)
+	}
+	if err := os.Remove(filepath.Join(web, "src", "params.go")); err != nil {
+		t.Fatal(err)
+	}
+	for _, check := range []func(Config) error{Run, Check} {
+		if err := check(cfg); err == nil || !strings.Contains(err.Error(), "matcher \"Order\" requires a Go matcher") {
+			t.Fatalf("missing Go matcher: %v", err)
+		}
+	}
+}

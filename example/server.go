@@ -173,6 +173,9 @@ func NewHandlerSized(dist fs.FS, proxy, origin string, runtimes int) (http.Handl
 	loadCfg := manifest.LoadConfig(origin)
 	endpointCfg := manifest.EndpointConfig(origin)
 	handleCfg := manifest.HandleConfig()
+	loadCfg.Matchers = generated.Matchers()
+	endpointCfg.Matchers = generated.Matchers()
+	handleCfg.Matchers = generated.Matchers()
 	handleCfg.Origin = origin
 
 	mode := "prod"

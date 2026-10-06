@@ -612,7 +612,37 @@ func (a *app) writeAppBindings() error {
 	for _, imp := range transportPkgs {
 		fmt.Fprintf(&b, "\t%s %q\n", imp.alias, imp.path)
 	}
+	matcherAliases := map[string]string{}
+	var matcherNames []string
+	for name := range a.cfg.matchers {
+		matcherNames = append(matcherNames, name)
+	}
+	sort.Strings(matcherNames)
+	for _, name := range matcherNames {
+		path := a.cfg.matchers[name].pkg.Path()
+		if matcherAliases[path] != "" {
+			continue
+		}
+		for _, gp := range a.pkgs {
+			if gp.pkg.PkgPath == path {
+				matcherAliases[path] = gp.alias
+				break
+			}
+		}
+		if matcherAliases[path] == "" {
+			alias := fmt.Sprintf("skgoMatcher%d", len(matcherAliases))
+			matcherAliases[path] = alias
+			fmt.Fprintf(&b, "\t%s %q\n", alias, path)
+		}
+	}
 	b.WriteString(")\n")
+
+	b.WriteString("\n// Matchers returns the app's route matchers, including routes without server loads.\nfunc Matchers() map[string]skgo.ParamMatcher {\n return map[string]skgo.ParamMatcher{\n")
+	for _, name := range matcherNames {
+		matcher := a.cfg.matchers[name]
+		fmt.Fprintf(&b, "%q: func(value string) (any, bool) { return %s.%s(value) },\n", name, matcherAliases[matcher.pkg.Path()], name)
+	}
+	b.WriteString("}\n}\n")
 
 	for _, fn := range a.remotes {
 		a.writeHandler(&b, fn)

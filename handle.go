@@ -237,6 +237,8 @@ type HandleConfig struct {
 	// data or remote response carries, so a client watching for a new
 	// deployment sees it either way.
 	Version string
+	// Matchers contains the app route matchers when Loads is unset.
+	Matchers map[string]ParamMatcher
 	// Loads, when set, is the route table the hook matches against. It is the
 	// one `__data.json` already uses, and in dev it follows the live routes;
 	// without it the hook matches the manifest routes HandleConfig was made
@@ -292,7 +294,7 @@ func (cfg HandleConfig) matchRoute(routePath string) (handleRoute, map[string]st
 		if loc == nil {
 			continue
 		}
-		if params, ok := execParams(routePath, loc, route.params); ok {
+		if params, _, ok := execMatchedParams(routePath, loc, route.params, cfg.Matchers); ok {
 			return route, params, true
 		}
 	}

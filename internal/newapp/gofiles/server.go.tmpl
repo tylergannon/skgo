@@ -29,6 +29,8 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	remoteConfig := manifest.RemoteConfig(origin)
 	loadConfig := manifest.LoadConfig(origin)
 	endpointConfig := manifest.EndpointConfig(origin)
+	loadConfig.Matchers = generated.Matchers()
+	endpointConfig.Matchers = generated.Matchers()
 	mode := "production"
 
 	var endpoints *skgo.Endpoints

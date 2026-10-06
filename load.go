@@ -124,6 +124,8 @@ type LoadConfig struct {
 	// The `handle` hook has its own OnPanic, on HandleConfig: it is not a load
 	// concern and does not run through this registry. See Handle.
 	OnPanic func(id string, value any, stack []byte)
+	// Matchers contains the app route matchers, including routes without loads.
+	Matchers map[string]ParamMatcher
 	// Nodes and Routes come from the manifest.
 	Nodes       []string
 	LoadModules []string
@@ -210,6 +212,9 @@ func NewLoads(cfg LoadConfig, loads ...*ServerLoad) (*Loads, error) {
 	cfg.Base = base
 
 	ls := &Loads{cfg: cfg, base: base, byModule: make(map[string]*ServerLoad, len(loads)), prerendered: map[string]bool{}, matchers: map[string]ParamMatcher{}}
+	for name, matcher := range cfg.Matchers {
+		ls.matchers[name] = matcher
+	}
 	for _, path := range cfg.Prerendered {
 		ls.prerendered[path] = true
 	}
@@ -236,6 +241,9 @@ func NewLoads(cfg LoadConfig, loads ...*ServerLoad) (*Loads, error) {
 		}
 	}
 
+	if err := validateRouteMatchers(cfg.Routes, ls.matchers); err != nil {
+		return nil, err
+	}
 	var err error
 	ls.nodes, ls.routes, err = loadRouting(cfg, ls.byModule)
 	if err != nil {
@@ -501,4 +509,15 @@ func (ls *Loads) recovered(id string, value any, err error) error {
 		log.Printf("skgo: server load %s panicked: %v\n%s", id, value, stack)
 	}
 	return &HTTPError{Status: 500, Message: "Internal Error"}
+}
+
+func validateRouteMatchers(routes []ManifestRoute, matchers map[string]ParamMatcher) error {
+	for _, route := range routes {
+		for _, param := range route.Params {
+			if param.Matcher != "" && matchers[param.Matcher] == nil {
+				return fmt.Errorf("skgo: route %s requires matcher %q in the app matcher registry", route.ID, param.Matcher)
+			}
+		}
+	}
+	return nil
 }

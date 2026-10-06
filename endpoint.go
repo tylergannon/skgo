@@ -148,6 +148,8 @@ type EndpointConfig struct {
 	// ErrorTemplate is Kit's error.html, used for fatal endpoint errors when
 	// the request accepts HTML. The application sets it from its renderer.
 	ErrorTemplate string
+	// Matchers contains the app route matchers.
+	Matchers map[string]ParamMatcher
 	// Routes is the route table, from the manifest.
 	Routes []ManifestRoute
 	// Prerendered is the build's list of prerendered pathnames. Kit's adapters
@@ -219,6 +221,9 @@ type endpointRoute struct {
 // path is an endpoint request at all, so a disagreement is a route nobody
 // answers or a handler nothing reaches.
 func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
+	if err := validateRouteMatchers(cfg.Routes, cfg.Matchers); err != nil {
+		return nil, err
+	}
 	if cfg.AppDir == "" {
 		cfg.AppDir = "_app"
 	}
@@ -609,7 +614,7 @@ func (es *Endpoints) match(routePath string) (*endpointRoute, map[string]string,
 		if loc == nil {
 			continue
 		}
-		params, ok := execParams(routePath, loc, route.params)
+		params, _, ok := execMatchedParams(routePath, loc, route.params, es.cfg.Matchers)
 		if !ok {
 			continue
 		}

@@ -48,7 +48,7 @@ console.log(JSON.stringify({ routes: ids.map(id => parse_route_id(id).params), n
 // Refresh the event types before compiling application load bodies. Loading
 // the matcher package separately lets an edited matcher signature replace a
 // stale RouteParams even when the old load body no longer compiles.
-func prepareLoadParams(cfg Config, files []string) (map[string]*routeLoadParams, error) {
+func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams, error) {
 	dirs := map[string]bool{}
 	authoredDirs := map[string]bool{}
 	for _, path := range files {
@@ -125,10 +125,19 @@ func prepareLoadParams(cfg Config, files []string) (map[string]*routeLoadParams,
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
-	if len(dirs) == 0 {
+	frontendParams := ""
+	for _, ext := range []string{".ts", ".js"} {
+		path := filepath.Join(cfg.Web, "src", "params"+ext)
+		if _, err := os.Stat(path); err == nil {
+			frontendParams = path
+			break
+		}
+	}
+	if len(dirs) == 0 && frontendParams == "" {
 		return result, nil
 	}
-	var ordered, ids []string
+	var ordered []string
+	ids := []string{}
 	for dir := range dirs {
 		ordered = append(ordered, dir)
 	}
@@ -147,14 +156,6 @@ func prepareLoadParams(cfg Config, files []string) (map[string]*routeLoadParams,
 	kit := filepath.Join(cfg.Web, "node_modules", "@sveltejs", "kit")
 	if _, err := os.Stat(filepath.Join(kit, "src", "utils", "routing.js")); err != nil {
 		return nil, fmt.Errorf("skgo: typed loads require installed SvelteKit route metadata: %w", err)
-	}
-	frontendParams := ""
-	for _, ext := range []string{".ts", ".js"} {
-		path := filepath.Join(cfg.Web, "src", "params"+ext)
-		if _, err := os.Stat(path); err == nil {
-			frontendParams = path
-			break
-		}
 	}
 	input, _ := json.Marshal(map[string]any{"kit": kit, "ids": ids, "params": frontendParams})
 	cmd := exec.Command("node", "--input-type=module", "--eval", kitLoadParams)
@@ -176,13 +177,19 @@ func prepareLoadParams(cfg Config, files []string) (map[string]*routeLoadParams,
 	if len(metadata.Routes) != len(ordered) {
 		return nil, fmt.Errorf("skgo: incomplete Kit route params")
 	}
-	matchers, err := readGoParamMatchers(cfg)
+	matchers, err := readGoParamMatchers(*cfg)
 	if err != nil {
 		return nil, err
 	}
+	cfg.matchers = map[string]goParamMatcher{}
 	names := map[string]bool{}
 	for _, name := range metadata.Names {
 		names[name] = true
+		matcher, ok := matchers[name]
+		if !ok {
+			return nil, fmt.Errorf("skgo: matcher %q requires a Go matcher in src/params.go", name)
+		}
+		cfg.matchers[name] = matcher
 	}
 	for i, dir := range ordered {
 		info := &routeLoadParams{params: metadata.Routes[i], matchers: map[string]goParamMatcher{}}
@@ -201,7 +208,7 @@ func prepareLoadParams(cfg Config, files []string) (map[string]*routeLoadParams,
 			}
 			info.matchers[param.Matcher] = matcher
 		}
-		if err := writeLoadParams(cfg, dir, info); err != nil {
+		if err := writeLoadParams(*cfg, dir, info); err != nil {
 			return nil, err
 		}
 		result[dir] = info
