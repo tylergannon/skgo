@@ -1,0 +1,24 @@
+=== RUN   TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation
+=== PAUSE TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation
+=== CONT  TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation
+--- PASS: TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation (2.41s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	2.811s
+        4.03 real         3.83 user         2.95 sys
+           304627712  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              186154  page reclaims
+                5206  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                1618  signals received
+                1920  voluntary context switches
+               31176  involuntary context switches
+          4123019188  instructions retired
+          4267338761  cycles elapsed
+            29721296  peak memory footprint
