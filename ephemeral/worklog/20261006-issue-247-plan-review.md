@@ -15,3 +15,8 @@ decision: Issue 248 records the separate future performance investigation: captu
 
 decision: User authorized the Gimbal implement flow with Sol 6.1 implementation and Opus 5.5 independent validation. Retain workflow defaults for planning and scope review. Run in this worktree and monitor from the original chat at five-minute intervals.
 decision: Main still lacks the typed-parameter integration at launch; dispatch Part A only and retain Part B as a required pending dependency. A successful Part A run does not complete issue 247. Use the existing Gimbal instance without creating another coordinator or altering the active parameter worktrees.
+
+correction: Monitoring must assess run health, not just liveness: compare useful public results, pending command age, repeated failures, and validation progress; diagnose before recovery. User explicitly reinforced this on 2026-10-06. Five-minute bounded checks remain the cadence.
+
+friction: Gimbal implement 01M497K2S3BYMEB2T0YC0CZ3S7 marked its broad Part A outcome complete after Opus accepted only the first task. Continue with separate ordered outcomes for failure isolation, adapter grouping and complete Part A integration proof; workflow completion is not scope completion.
+correction: Opus discarded a payload mutation that failed setup, then demonstrated the targeted runtime status assertion (200 instead of 500) with a narrower restored mutation. Require actual failure causes, not filtered FAIL lines. Its GOWORK concern is already covered by package TestMain setting GOWORK=off.
