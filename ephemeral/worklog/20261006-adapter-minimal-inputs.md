@@ -1,0 +1,1 @@
+correction: The previous minimal empty-input test checked receipt absence after generation without setting its receipt environment variable for generation; that absence could not detect premature producer execution. Shared preparation sets SKGO_INPUTS_RECEIPT for generation and checks absence before building.
