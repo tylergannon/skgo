@@ -1,0 +1,5 @@
+correction: The authorized load API replaces context-based application loads with an explicit generic request event; an opt-in second load API does not satisfy the milestone. Remote argument APIs remain unchanged.
+friction: go generate ./... enumerates Go files before the first package runs its generator. Deleting an existing generated params alias mid-run strands a later invocation; refresh existing aliases before compiling instead.
+friction: The existing optional-form interoperability BDD uses a fixed operation key and expects operation 1. Repeating the suite against the same server retains mutations; run each complete suite against a fresh server.
+correction: Implementation and independent validation belong to the installed Gimbal coding and qa-orchestration sessions. Generic subagents and agent CLI reviewers are not substitutes.
+correction: Source-edit BDD and ordinary Go tests share the example source and output tree. Finish BDD, stop dev, rebuild restored sources, then run Go tests; concurrent execution races disappearing Playwright artifacts and invalidates embedded build freshness.

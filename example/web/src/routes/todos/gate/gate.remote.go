@@ -19,6 +19,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic/visitor"
+	"github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 
 // Note is one panel's text. Two instances of getNote are on the page, told
@@ -120,7 +121,8 @@ type Ack struct {
 // instance of getNote the page asked for, comes back refused with the reason
 // on it; and the banner is deliberately not run, which the page shows by going
 // stale without making Kit reject the command as unhandled.
-func writeNotes(ctx context.Context, arg Write) (Ack, error) {
+func writeNotes(event params.RequestEvent, arg Write) (Ack, error) {
+	ctx := event.Context()
 	store := store(ctx)
 	store.Lock()
 	store.notes["left"] = arg.Left

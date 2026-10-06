@@ -97,6 +97,9 @@ func (e *Event) IsSubRequest() bool { return e != nil && e.hook != nil && e.hook
 // matched. It is only available on the event a Middleware receives; inside a
 // query kit forbids reading it, and so does this.
 func (e *Event) Params() map[string]string {
+	if e != nil && e.remote {
+		panic("skgo: raw Params is forbidden in remote functions; use the explicit event.Params getters")
+	}
 	if e == nil || e.hook == nil || e.hook.params == nil {
 		return nil
 	}

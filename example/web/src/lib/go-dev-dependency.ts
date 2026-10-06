@@ -1,1 +1,1 @@
-export const dependencyRevision = 'Dependency revision one';
+export const dependencyRevision = "Dependency revision one";

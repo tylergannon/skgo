@@ -295,6 +295,7 @@ function makeSession(root, ownerParentPid) {
 		ownerParentPid,
 		parentObserver: null,
 		parentLossStarted: false,
+		retirePromise: null,
 		signalHandlers: new Map(),
 		watchParent() {
 			if (session.ownerParentPid === null || session.parentObserver) return;
@@ -306,7 +307,7 @@ function makeSession(root, ownerParentPid) {
 				session.parentLossStarted = true;
 				void (async () => {
 					try {
-						await session.fail(makeError('skgo prerender Vite build parent exited'));
+						await session.retire(makeError('skgo prerender Vite build parent exited'));
 						for (const [signal, handler] of session.signalHandlers) process.off(signal, handler);
 						session.signalHandlers.clear();
 						process.exitCode = 1;
@@ -319,6 +320,24 @@ function makeSession(root, ownerParentPid) {
 				})();
 			}, 50);
 			session.parentObserver.unref();
+		},
+		retire(error) {
+			if (!session.retirePromise) {
+				session.retirePromise = (async () => {
+					for (;;) {
+						try { return await session.fail(error); }
+						catch (failure) {
+							process.exitCode = 1;
+							reportOwnerFailure(failure);
+							// Cleanup retains failed groups and its directory. An
+							// interrupted build has no caller left to request a retry,
+							// and its pending Kit worker cannot make progress yet.
+							await new Promise((resolve) => setTimeout(resolve, 250));
+						}
+					}
+				})();
+			}
+			return session.retirePromise;
 		},
 		fail(error) {
 			if (!session.failed) session.failed = error;
@@ -346,7 +365,7 @@ function makeSession(root, ownerParentPid) {
 				for (const signal of ['SIGINT', 'SIGTERM']) {
 					const handler = async () => {
 						try {
-							await session.fail(makeError(`skgo prerender build interrupted by ${signal}`));
+							await session.retire(makeError(`skgo prerender build interrupted by ${signal}`));
 							process.off(signal, handler);
 							try { process.kill(process.pid, signal); } catch { process.exitCode = 1; }
 						} catch (error) {

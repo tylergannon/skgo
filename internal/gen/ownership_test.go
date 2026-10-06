@@ -84,6 +84,20 @@ func Query(fn any) Marker { _ = fn; return Marker{} }
 type Event struct{}
 type RequestEvent[P any] struct { *Event; Params P }
 type ParamMatcher func(string) (any, bool)
+type CallerMatchers map[string]ParamMatcher
+type ManifestParam struct {
+	Name string
+	Optional bool
+	Rest bool
+	Chained bool
+	Matcher string
+}
+type CallerRoute struct {
+	Params []ManifestParam
+	NewParams func(map[string]any) (any, error)
+}
+type CallerRoutes map[string]CallerRoute
+func RemoteCallerValues(*Event) (string,map[string]any) { return "",nil }
 func EventFrom(context.Context) *Event { return &Event{} }
 func TrackLoadParam(*Event, string) {}
 func LoadParamValue[T any](*Event, string) T { var zero T; return zero }
@@ -98,7 +112,7 @@ func BatchQuery(fn any) Marker { _ = fn; return Marker{} }
 
 func Prerender(fn any, options ...PrerenderOptions) Marker { _, _ = fn, options; return Marker{} }
 
-func Form[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
+func Form(fn any) Marker { _ = fn; return Marker{} }
 
 type Kind int
 
@@ -127,6 +141,8 @@ type BatchFunc func(ctx context.Context, calls []Call) ([]any, error)
 type RemoteInputsFunc func(ctx context.Context, call Call) ([]any, error)
 
 type RemoteSpec struct {
+ CallerMatchers CallerMatchers
+ CallerRoutes CallerRoutes
 	Kind      Kind
 	Module    string
 	Name      string

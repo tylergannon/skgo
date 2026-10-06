@@ -1,12 +1,12 @@
 package optional
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
 	"github.com/tylergannon/polytype"
 	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 
 type Input struct {
@@ -29,7 +29,7 @@ var operations = struct {
 	byName map[string]int
 }{byName: make(map[string]int)}
 
-func submit(_ context.Context, in Input) (Result, error) {
+func submit(_ params.RequestEvent, in Input) (Result, error) {
 	if in.Name == "" {
 		return Result{}, skgo.Invalidf("name", "A name is required")
 	}

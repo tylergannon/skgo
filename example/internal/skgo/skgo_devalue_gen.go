@@ -1277,6 +1277,10 @@ func encReceipt(v pkg_onzggl3sn52xizltf5rw63tumfrxi.Receipt, at string) (any, er
 	enc1.Set("summary", enc3)
 	var enc4 any = string(v.Key)
 	enc1.Set("key", enc4)
+	var enc5 any = string(v.Caller)
+	enc1.Set("caller", enc5)
+	var enc6 any = string(v.Body)
+	enc1.Set("body", enc6)
 	return enc1, nil
 }
 
@@ -1287,7 +1291,7 @@ func decReceipt(raw any, at string) (pkg_onzggl3sn52xizltf5rw63tumfrxi.Receipt, 
 	if err != nil {
 		return dvZero, err
 	}
-	if err := dvKnown(obj2, at, "id", "summary", "key"); err != nil {
+	if err := dvKnown(obj2, at, "id", "summary", "key", "caller", "body"); err != nil {
 		return dvZero, err
 	}
 	raw3, err := dvRequired(obj2, "id", at+"/id")
@@ -1317,6 +1321,24 @@ func decReceipt(raw any, at string) (pkg_onzggl3sn52xizltf5rw63tumfrxi.Receipt, 
 		return dvZero, err
 	}
 	dec1.Key = dec8
+	raw9, err := dvRequired(obj2, "caller", at+"/caller")
+	if err != nil {
+		return dvZero, err
+	}
+	dec10, err := dvString(raw9, at+"/caller")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Caller = dec10
+	raw11, err := dvRequired(obj2, "body", at+"/body")
+	if err != nil {
+		return dvZero, err
+	}
+	dec12, err := dvString(raw11, at+"/body")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Body = dec12
 	return dec1, nil
 }
 

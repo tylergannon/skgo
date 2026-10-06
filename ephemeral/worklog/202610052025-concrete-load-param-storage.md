@@ -1,0 +1,2 @@
+friction: A real-generation consumer test cannot import bracketed route directories as Go package paths; use the generator's existing encoded link packages to inspect route-local params types and exercise registrations.
+correction: Matcher-signature refresh fixtures must repair every affected handler, including all A/B reads in typed-dependencies, before claiming restored generation and compilation. Serve both repaired routes afterward with literal values.

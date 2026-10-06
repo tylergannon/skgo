@@ -74,6 +74,9 @@ func isUpgrade(r *http.Request) bool {
 // variadic form preserves the original call for apps with pages only.
 func NewDevPages(target *url.URL, m Manifest, renderer *SSR, logf func(format string, args ...any), endpointRegistries ...*Endpoints) http.Handler {
 	renderer.loads.devRefresh = renderer.refreshDev
+	if renderer.remotes != nil {
+		renderer.remotes.devRefresh = renderer.refreshDev
+	}
 	if len(endpointRegistries) > 0 && endpointRegistries[0] != nil {
 		renderer.devEndpoints = endpointRegistries[0]
 		endpointRegistries[0].devRefresh = renderer.refreshDev

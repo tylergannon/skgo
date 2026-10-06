@@ -119,11 +119,101 @@ func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		t.Fatalf("send SIGTERM to the outer real vp build process: %v", err)
 	}
-	waitErr := waitInputsCommand(t, process, 20*time.Second)
+	deadline := time.Now().Add(20 * time.Second)
+	waitErr := waitInputsCommand(t, process, time.Until(deadline))
 	if waitErr == nil {
 		t.Fatalf("outer vp build exited successfully after SIGTERM; output:\n%s", process.output.String())
 	}
+	waitInputsOwnerExit(t, fixture, deadline, process.output.String())
 	assertInputsReceiptDrained(t, fixture)
+}
+
+func TestPrerenderInputsOuterVPCLIExitPrecedesOwnerCleanup(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Fatal("process-group lifecycle evidence requires Unix process groups")
+	}
+	fixture := prepareInputsLifecycleFixture(t, "blocked")
+	configPath := filepath.Join(fixture, "web", "vite.config.ts")
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Hold only the owner's final directory removal, after its groups have
+	// drained. The outer CLI can exit and its inherited pipe wait can expire
+	// while Vite is still inside this cleanup. No application work is delayed.
+	controlledRemoval := `import __lifecycleFS from 'node:fs';
+import { syncBuiltinESMExports as __syncLifecycleFS } from 'node:module';
+const __removeLifecycleDir = __lifecycleFS.rmSync;
+__lifecycleFS.rmSync = function(path, options) {
+  if (String(path).startsWith(process.env.TMPDIR + '/') && /\/skgo-prerender-[^/]+$/.test(String(path))) {
+    __lifecycleFS.writeFileSync(process.env.SKGO_LIFECYCLE_RECEIPT + '.removing', 'groups drained');
+    const deadline = Date.now() + 10000;
+    while (!__lifecycleFS.existsSync(process.env.SKGO_LIFECYCLE_RECEIPT + '.allow-removal')) {
+      if (Date.now() >= deadline) throw new Error('test did not release owner directory removal');
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
+    }
+  }
+  return __removeLifecycleDir(path, options);
+};
+__syncLifecycleFS();
+`
+	if err := os.WriteFile(configPath, append([]byte(controlledRemoval), config...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := inputsVPBuildCommand(t, fixture)
+	process := startInputsTrackedCommand(t, cmd, fixture)
+	waitInputsReceipt(t, fixture)
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(20 * time.Second)
+	if err := waitInputsCommand(t, process, time.Until(deadline)); err == nil {
+		t.Fatal("outer vp build resolved after SIGTERM")
+	}
+	if _, err := os.Stat(filepath.Join(fixture, "owner-receipt.removing")); err != nil {
+		t.Fatalf("owner did not reach controlled removal: %v\n%s", err, process.output.String())
+	}
+	// This is the state the old assertion mistook for a leaked directory.
+	data, err := os.ReadFile(filepath.Join(fixture, "owner-receipt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fields := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(fields) != 3 {
+		t.Fatalf("incomplete owner receipt: %q", data)
+	}
+	privateDir := fields[2]
+	if _, err := os.Stat(privateDir); err != nil {
+		t.Fatalf("outer exit did not precede controlled owner cleanup: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(fixture, "owner-receipt.allow-removal"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	waitInputsOwnerExit(t, fixture, deadline, process.output.String())
+	assertInputsReceiptDrained(t, fixture)
+}
+
+func waitInputsOwnerExit(t *testing.T, fixture string, deadline time.Time, output string) {
+	t.Helper()
+	pid, err := inputsViteOwnerPID(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The CLI is not the owner. Cmd.WaitDelay bounds inherited pipe draining,
+	// so its Wait may return before Vite's parent-loss observer finishes. Wait
+	// for Vite itself within the original shutdown budget; then require the
+	// same exact group, directory and late-I/O assertions as every other path.
+	for time.Now().Before(deadline) {
+		err := syscall.Kill(pid, 0)
+		if errors.Is(err, syscall.ESRCH) {
+			return
+		}
+		if err != nil {
+			t.Fatalf("inspect Vite owner %d: %v", pid, err)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("Vite owner %d did not exit within the signal shutdown budget:\n%s", pid, output)
 }
 
 func TestPrerenderInputsMalformedGoSourceFailsAndCleansPrivateDirectory(t *testing.T) {
@@ -193,6 +283,7 @@ while (Date.now() < deadline) {
   if (receipt.length >= 3 && /^\d+$/.test(receipt[0]) && /^\d+$/.test(receipt[1]) && receipt[2]) break;
   await new Promise((resolve) => setTimeout(resolve, 10));
 }
+
 if (!(receipt.length >= 3 && /^\d+$/.test(receipt[0]) && /^\d+$/.test(receipt[1]) && receipt[2])) throw new Error('Go Inputs callback did not write a complete receipt');
 const [pidText, groupText] = receipt;
 const group = Number(groupText);
@@ -280,6 +371,74 @@ console.log('RETRY_RESULT:' + JSON.stringify({ pid: Number(pidText), group, fail
 	if result.Retried.Groups != 0 || result.Retried.DirectoryExists || result.Retried.Listeners != result.Retried.BaseTermListeners || !result.Retried.GroupGone {
 		t.Fatalf("successful retry did not retire all owned state: %+v\n%s", result.Retried, output)
 	}
+}
+
+func TestPrerenderInputsSignalRetriesRecoverableDrainFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Fatal("controlled process-group drain evidence requires Unix process groups")
+	}
+	fixture := prepareInputsLifecycleFixture(t, "controlled-drain")
+	project, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := `import { existsSync, readFileSync } from 'node:fs';
+import process from 'node:process';
+import { pathToFileURL } from 'node:url';
+const bridge = await import(pathToFileURL(process.env.SKGO_PRERENDER_BRIDGE));
+const owner = bridge.createPrerenderOwner();
+await owner.ensureCompiled();
+const invocation = owner.invoke({ kind: 'remote-inputs', module: 'src/routes/site.remote.ts', name: 'getSite' }).catch(() => {});
+let receipt;
+const deadline = Date.now() + 15000;
+while (Date.now() < deadline) {
+  try { receipt = readFileSync(process.env.SKGO_LIFECYCLE_RECEIPT, 'utf8').trim().split('\n'); } catch {}
+  if (receipt?.length === 3) break;
+  await new Promise((resolve) => setTimeout(resolve, 10));
+}
+if (receipt?.length !== 3) throw new Error('missing Go producer receipt');
+const group = Number(receipt[1]);
+const realKill = process.kill;
+process.kill = function(pid, signal) {
+  if (Number(pid) === -group && (signal === 'SIGTERM' || signal === 'SIGKILL')) {
+    const error = new Error('recoverable signal denial'); error.code = 'EPERM'; throw error;
+  }
+  return realKill.call(process, pid, signal);
+};
+let cleanupFailure;
+Object.defineProperty(owner, 'cleanupFailure', {
+  get() { return cleanupFailure; },
+  set(error) {
+    cleanupFailure = error;
+    if (!(error instanceof AggregateError)) return;
+    console.log('RECOVERABLE_DRAIN_FAILURE:' + JSON.stringify({
+      groupAlive: (() => { try { realKill(-group, 0); return true; } catch { return false; } })(),
+      directoryRetained: existsSync(owner.dir),
+      groupRetained: owner.groups.size === 1,
+      signalFailure: owner.failed?.message === 'skgo prerender build interrupted by SIGTERM'
+    }));
+    process.kill = realKill;
+  }
+});
+// Model the active native build while its worker is waiting for Go. A failed
+// drain must not require another signal or incoming request to recover.
+setInterval(() => {}, 1000);
+process.kill(process.pid, 'SIGTERM');
+await invocation;
+`
+	cmd := exec.Command("node", "-e", program)
+	cmd.Dir = filepath.Join(fixture, "web")
+	cmd.Env = inputsTestEnv(fixture, "")
+	cmd.Env = replaceEnv(cmd.Env, "SKGO_PRERENDER_BRIDGE", filepath.Join(project, "internal", "adapter", "skgo-adapter", "prerender.js"))
+	process := startInputsTrackedCommand(t, cmd, fixture)
+	waitInputsReceipt(t, fixture)
+	if err := waitInputsCommand(t, process, 20*time.Second); err == nil {
+		t.Fatal("signal-interrupted owner exited successfully")
+	}
+	if !strings.Contains(process.output.String(), `RECOVERABLE_DRAIN_FAILURE:{"groupAlive":true,"directoryRetained":true,"groupRetained":true,"signalFailure":true}`) {
+		t.Fatalf("did not exercise retained ownership after a real drain failure:\n%s", process.output.String())
+	}
+	assertInputsReceiptDrained(t, fixture)
 }
 
 type inputsBuildResult struct {

@@ -10,12 +10,13 @@ import (
 	"sync"
 	"testing"
 
+	"testing/fstest"
+
 	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example"
 	"github.com/tylergannon/skgo/example/businesslogic"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
-	"testing/fstest"
 )
 
 type oneFileOverlay struct {

@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 
 // Message is one message the visitor has sent, as the page lists it.
@@ -74,6 +75,9 @@ type Receipt struct {
 	// Key echoes Draft.ForKey, so a page can show that a `for(key)` submission
 	// carried its key all the way to the handler and back.
 	Key string `json:"key"`
+	// Caller records the selected wrapper and its original Go value.
+	Caller string `json:"caller"`
+	Body   string `json:"body"`
 }
 
 var inbox = struct {
@@ -96,7 +100,23 @@ func getMessages(_ context.Context) ([]Message, error) {
 // The checks below are the form's validation. Returning a *skgo.Invalid puts
 // each message on the field it names, and kit's client leaves the page — and
 // therefore everything the visitor typed — exactly as it was.
-func sendMessage(ctx context.Context, draft Draft) (Receipt, error) {
+func sendMessage(event params.RequestEvent, draft Draft) (Receipt, error) {
+	ctx := event.Context()
+	caller := "absent"
+	switch number := event.Params.Number().(type) {
+	case nil:
+		switch id := event.Params.ID().(type) {
+		case params.Variant_ID_BuiltinString:
+			caller = "id:string:" + id.Value
+		case nil:
+		default:
+			return Receipt{}, fmt.Errorf("unsupported caller ID variant %T", id)
+		}
+	default:
+		// Report the actual wrapper and value, including newly generated
+		// alternatives when the example's matcher changes.
+		caller = fmt.Sprintf("number:%T:%v", number, number)
+	}
 	invalid := &skgo.Invalid{}
 
 	if strings.TrimSpace(draft.From) == "" {
@@ -136,6 +156,8 @@ func sendMessage(ctx context.Context, draft Draft) (Receipt, error) {
 			ID:      message.ID,
 			Summary: "Thanks, " + message.From + " — message " + message.ID + " is in.",
 			Key:     draft.ForKey,
+			Caller:  caller,
+			Body:    draft.Body,
 		},
 		skgo.RefreshRequestedNoArg(ctx, getMessages)
 }

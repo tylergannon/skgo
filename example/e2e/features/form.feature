@@ -125,3 +125,22 @@ Feature: Forms written in Go
     And the field "email" carries the message "\"katherine-at-example\" is not an email address"
     And the field "body" carries the message "A message needs at least 10 characters; this one has 4"
     And the form reports it was not sent
+
+  Scenario Outline: Typed caller forms follow navigation with <mode> <instance> submissions
+    Given I open "/contact"
+    When I navigate to the "Numeric caller" form caller at "/typed-load/42"
+    And I submit the "<instance>" caller form using "<mode>" with message "Numeric caller payload."
+    Then the "<instance>" caller receipt is "number:params.Variant_Number_NamedOrderNumber_123cbe2d9d50:{42}" with message "Numeric caller payload."
+    When I navigate to the "String caller" form caller at "/items/42"
+    And I submit the "<instance>" caller form using "<mode>" with message "String caller payload."
+    Then the "<instance>" caller receipt is "id:string:42" with message "String caller payload."
+    When I navigate to the "Absent caller" form caller at "/contact"
+    And I submit the "<instance>" caller form using "<mode>" with message "Absent caller payload."
+    Then the "<instance>" caller receipt is "absent" with message "Absent caller payload."
+
+    Examples:
+      | mode     | instance |
+      | enhanced | bare     |
+      | enhanced | keyed    |
+      | native   | bare     |
+      | native   | keyed    |

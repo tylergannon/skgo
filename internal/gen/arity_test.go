@@ -27,13 +27,14 @@ import (
 	"context"
 
 	"github.com/tylergannon/skgo"
+ "example.com/app/generated/params"
 )
 
 func getThing(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func doThing(ctx context.Context) (string, error) {
+func doThing(event params.RequestEvent) (string, error) {
 	return "", nil
 }
 
@@ -240,7 +241,7 @@ import (
 )
 
 type Quote struct {
-	Symbol string ` + "`json:\"symbol\"`" + `
+	Symbol string `+"`json:\"symbol\"`"+`
 }
 
 func getQuotes(ctx context.Context, symbols []string) ([]Quote, error) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
+	"github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 
 // Plan is one row of the pricing table.
@@ -62,7 +63,7 @@ type Quote struct {
 }
 
 // quoteFor takes a price from the browser and answers in Go's own words.
-func quoteFor(ctx context.Context, price businesslogic.Money) (Quote, error) {
+func quoteFor(_ params.RequestEvent, price businesslogic.Money) (Quote, error) {
 	return Quote{
 		Heard:   price.Format(),
 		Doubled: businesslogic.Money{Cents: price.Cents * 2}.Format(),

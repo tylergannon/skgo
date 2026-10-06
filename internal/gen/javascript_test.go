@@ -18,6 +18,7 @@ import (
 
 	"github.com/tylergannon/polytype"
 	"github.com/tylergannon/skgo"
+ "example.com/app/generated/params"
 )
 
 type Status struct {
@@ -40,9 +41,9 @@ func getThing(ctx context.Context) (Item, error) { return Item{}, nil }
 
 func getStatusFor(ctx context.Context, name string) (Status, error) { return Status{}, nil }
 
-func record(ctx context.Context, name string) (Status, error) { return Status{}, nil }
+func record(event params.RequestEvent, name string) (Status, error) { return Status{}, nil }
 
-func doThing(ctx context.Context) (Item, error) { return Item{}, nil }
+func doThing(event params.RequestEvent) (Item, error) { return Item{}, nil }
 
 func watchStatus(ctx context.Context, name string, yield func(Status) error) error { return nil }
 
@@ -50,7 +51,7 @@ func watchAll(ctx context.Context, yield func(Item) error) error { return nil }
 
 func getQuotes(ctx context.Context, names []string) ([]Item, error) { return nil, nil }
 
-func submitItem(ctx context.Context, in FormInput) (Status, error) { return Status{}, nil }
+func submitItem(event params.RequestEvent, in FormInput) (Status, error) { return Status{}, nil }
 
 var (
 	_ = skgo.Query(getThing)

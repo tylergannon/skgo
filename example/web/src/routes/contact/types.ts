@@ -50,4 +50,9 @@ export type Receipt = {
    * Key echoes Draft.ForKey, so a page can show that a `for(key)` submission carried its key all the way to the handler and back.
    */
   key: string;
+  /**
+   * Caller records the selected wrapper and its original Go value.
+   */
+  caller: string;
+  body: string;
 };

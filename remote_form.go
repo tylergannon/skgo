@@ -17,7 +17,6 @@
 package skgo
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -112,13 +111,13 @@ func (v *Invalid) Error() string {
 // Form declares fn as a SvelteKit `form`. Write it beside the function, in a
 // file named `*.remote.go`:
 //
-//	func subscribe(ctx context.Context, arg Signup) (Result, error) { ... }
+//	func subscribe(event params.RequestEvent, arg Signup) (Result, error) { ... }
 //
 //	var _ = skgo.Form(subscribe)
 //
 // A form's event may write cookies, which kit permits in forms and commands
 // and nowhere else. Return a *Invalid to put messages on specific fields.
-func Form[In, Out any](fn func(context.Context, In) (Out, error)) Marker { _ = fn; return Marker{} }
+func Form(fn any) Marker { _ = fn; return Marker{} }
 
 func (rs *Remotes) serveForm(w http.ResponseWriter, r *http.Request, fn *Remote) {
 	if r.Method != http.MethodPost {
