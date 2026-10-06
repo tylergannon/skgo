@@ -168,7 +168,7 @@ export async function load() {
 	"context"`, `import (
 	"context"
 	"os"`, 1)
-	pageSourceText = strings.Replace(pageSourceText, `var _ = skgo.Prerender(buildReceipt)`, `func buildReceiptInputs() ([]string, error) {
+	pageSourceText = strings.Replace(pageSourceText, `var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: receiptNames})`, `func buildReceiptInputs() ([]string, error) {
 	if receipt := os.Getenv("SKGO_PAGE_INPUTS_RECEIPT"); receipt != "" {
 		file, err := os.OpenFile(receipt, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 		if err != nil { return nil, err }

@@ -17,7 +17,6 @@ import { pathToFileURL } from 'node:url';
 import {
 	createPrerenderOwner,
 	installPrerenderFailureBoundary,
-	joinFailedPrerenderOwner,
 	remoteFunction,
 	remoteLoad
 } from './skgo-adapter/prerender.js';
@@ -77,11 +76,20 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			prerenderOwner = createPrerenderOwner(process.cwd());
 			installPrerenderFailureBoundary(config, prerenderOwner);
 		},
+		// Kit captures its app environment in config/configResolved. Vite awaits
+		// all of those before this hook; publication here cannot enter that snapshot.
+		buildApp: {
+			order: 'pre',
+			async handler() {
+				await prerenderOwner?.prepare();
+				prerenderOwner?.publish();
+			}
+		},
 		buildEnd(error) {
 			if (error && prerenderOwner) return prerenderOwner.fail(error);
 		},
 		async closeBundle() {
-			await joinFailedPrerenderOwner(prerenderOwner);
+			if (prerenderOwner?.closing) await prerenderOwner.cleanup();
 		}
 	};
 
@@ -107,6 +115,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 		// states its own `apply`, so only one of them is ever live.
 		vite: { plugins: { pre: [prerenderOwnerPlugin], post: [environment.plugin, goja.plugin, gojaDevEnvironment(), gojaDevUnchangedFiles({ out })] } },
 		async adapt(builder) {
+			let failure;
 			try {
 			rmSync(out, { force: true, recursive: true });
 
@@ -242,8 +251,15 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			write(`${out}/.gitkeep`, '');
 
 			builder.log.minor(`skgo: wrote ${out}/`);
+			} catch (error) {
+				failure = error;
+				throw error;
 			} finally {
-				await prerenderOwner?.cleanup();
+				if (failure) await prerenderOwner?.fail(failure);
+				else {
+					await prerenderOwner?.cleanup();
+					if (prerenderOwner?.failed) throw prerenderOwner.failed;
+				}
 			}
 		}
 	};

@@ -756,13 +756,9 @@ func (rs *Remotes) servePrerender(w http.ResponseWriter, r *http.Request, fn *Re
 	if len(parts) == 3 {
 		payload = parts[2]
 	}
-	arg, present, err := remotearg.ParsePayloadWith(payload, rs.codecs())
-	if err != nil {
-		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
-		return
-	}
 	ev := rs.newEvent(r, false)
-	value, err := rs.call(withEvent(r.Context(), ev), fn, rs.newCall(arg, present))
+	result := rs.invokePayload(withEvent(r.Context(), ev), fn, payload)
+	value, err := result.value, result.err
 	if err != nil {
 		rs.writeError(w, asHTTPError(err))
 		return
@@ -921,11 +917,11 @@ func rawPayload(u *url.URL) string {
 // server's business, and asHTTPError renders anything that is not an
 // *HTTPError as `{"status":500,"message":"Internal Error"}`.
 func (rs *Remotes) call(ctx context.Context, fn *Remote, call Call) (v any, err error) {
-	defer func() { err = rs.recovered(fn, recover(), err) }()
 	// What comes back is already the tree devalue serializes: the generated
 	// closure encoded it, with the codec polytype emitted for this function's
 	// own result type. Nothing here inspects a Go value of the app's types.
-	return fn.call(ctx, call)
+	result := rs.invoke(ctx, fn, call)
+	return result.value, result.err
 }
 
 // newCall packages one call's argument for the generated closure that answers
@@ -994,7 +990,7 @@ func (rs *Remotes) header(w http.ResponseWriter) http.Header {
 }
 
 func (rs *Remotes) writeResult(w http.ResponseWriter, ev *Event, data map[string]any) {
-	serialized, err := devalue.StringifyWith(data, rs.cfg.Transport.reducers())
+	serialized, err := encodeRemoteResult(rs.cfg.Transport, data)
 	if err != nil {
 		rs.writeError(w, &HTTPError{Status: 500, Message: "Internal Error"})
 		return

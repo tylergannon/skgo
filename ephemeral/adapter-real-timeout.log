@@ -1,0 +1,4 @@
+=== RUN   TestPrerenderCallbackTimeoutFailsBuildDespiteApplicationCatch
+--- PASS: TestPrerenderCallbackTimeoutFailsBuildDespiteApplicationCatch (32.67s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	32.999s

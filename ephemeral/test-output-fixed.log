@@ -1,0 +1,134 @@
+go test -count=1 ./... ./example/...
+ok  	github.com/tylergannon/skgo	2.264s
+ok  	github.com/tylergannon/skgo/cmd/skgo	62.196s
+ok  	github.com/tylergannon/skgo/cmd/skgo-adapter-changed	1.516s
+ok  	github.com/tylergannon/skgo/cmd/skgo-e2e	1.396s
+?   	github.com/tylergannon/skgo/cmd/skgo-release-version	[no test files]
+--- FAIL: TestDeclaredPrerenderInputsBuildAndProduceNativeArtifacts (1.01s)
+    prerender_inputs_build_test.go:183: could not add a declared input for the duplicate page remote
+--- FAIL: TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain (28.35s)
+    prerender_inputs_lifecycle_test.go:85: owned descendant performed late I/O after buildApp settled: <nil>
+--- FAIL: TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer (15.91s)
+    prerender_inputs_lifecycle_test.go:111: owned descendant performed late I/O after buildApp settled: <nil>
+--- FAIL: TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer (10.31s)
+    prerender_inputs_lifecycle_test.go:130: private Go compile directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer1455680210/001/example/owner-tmp/skgo-prerender-sxRV7w remains after buildApp settled: <nil>
+--- FAIL: TestPrerenderInputsMalformedGoSourceFailsAndCleansPrivateDirectory (0.00s)
+    prerender_inputs_lifecycle_test.go:136: open /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderInputsMalformedGoSourceFailsAndCleansPrivateDirecto1539392243/001/example/internal/skgo/config.go: file exists
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	116.195s
+ok  	github.com/tylergannon/skgo/internal/advice	4.854s
+ok  	github.com/tylergannon/skgo/internal/check	3.892s
+ok  	github.com/tylergannon/skgo/internal/dev	44.376s
+?   	github.com/tylergannon/skgo/internal/envspec	[no test files]
+ok  	github.com/tylergannon/skgo/internal/formdata	0.657s
+--- FAIL: TestJavaScriptModeAcceptsAPrerenderedLoad (0.61s)
+    javascript_loads_test.go:117: generating a JavaScript app's prerendered Go load: skgo: example.com/app/generated/links/onzggl3sn52xizltf5qwe33voq: -: # example.com/app/generated/links/onzggl3sn52xizltf5qwe33voq
+        generated/links/onzggl3sn52xizltf5qwe33voq/page.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+--- FAIL: TestTheLoadStubBridgesAPrerenderCall (0.87s)
+    prerender_test.go:466: Run: skgo: example.com/app/generated/links/onzggl3sn52xizltf5qwgy3povxhi: -: # example.com/app/generated/links/onzggl3sn52xizltf5qwgy3povxhi
+        generated/links/onzggl3sn52xizltf5qwgy3povxhi/page.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+--- FAIL: TestANamedLayoutResetExcludesLoadsOutsideKitsBranch (0.68s)
+    prerender_test.go:455: Run: skgo: example.com/app/generated/links/onzggl3sn52xizltf5rheylomnua: -: # example.com/app/generated/links/onzggl3sn52xizltf5rheylomnua
+        generated/links/onzggl3sn52xizltf5rheylomnua/layout.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+--- FAIL: TestAPrerenderedPageCanHaveItsOwnGoLoad (0.64s)
+    prerender_test.go:441: Run: skgo: example.com/app/generated/links/onzggl3sn52xizltf5qwe33voq: -: # example.com/app/generated/links/onzggl3sn52xizltf5qwe33voq
+        generated/links/onzggl3sn52xizltf5qwe33voq/page.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+--- FAIL: TestLoadsOutsideThePrerenderedBranchAreAccepted (0.52s)
+    prerender_test.go:429: Run: skgo: example.com/app/generated/links/onzggl3sn52xizltf5yhe2lwmf2gk: -: # example.com/app/generated/links/onzggl3sn52xizltf5yhe2lwmf2gk
+        generated/links/onzggl3sn52xizltf5yhe2lwmf2gk/layout.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+--- FAIL: TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch (0.54s)
+    prerender_test.go:343: Run: skgo: example.com/app/generated/links/onzggl3sn52xizlt: -: # example.com/app/generated/links/onzggl3sn52xizlt
+        generated/links/onzggl3sn52xizlt/layout.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+--- FAIL: TestPrerenderInheritanceMatchesKit (2.24s)
+    --- FAIL: TestPrerenderInheritanceMatchesKit/a_leaf_inherits_true_from_its_layout (0.53s)
+        prerender_test.go:414: Run: skgo: example.com/app/generated/links/onzggl3sn52xizlt: -: # example.com/app/generated/links/onzggl3sn52xizlt
+            generated/links/onzggl3sn52xizlt/layout.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+    --- FAIL: TestPrerenderInheritanceMatchesKit/a_leaf_false_overrides_a_layout_true (0.41s)
+        prerender_test.go:414: Run: skgo: example.com/app/generated/links/onzggl3sn52xizlt: -: # example.com/app/generated/links/onzggl3sn52xizlt
+            generated/links/onzggl3sn52xizlt/layout.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+    --- FAIL: TestPrerenderInheritanceMatchesKit/a_leaf_true_overrides_a_layout_false (0.36s)
+        prerender_test.go:414: Run: skgo: example.com/app/generated/links/onzggl3sn52xizlt: -: # example.com/app/generated/links/onzggl3sn52xizlt
+            generated/links/onzggl3sn52xizlt/layout.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+    --- FAIL: TestPrerenderInheritanceMatchesKit/a_universal_option_wins_over_the_same_node_server_option (0.33s)
+        prerender_test.go:414: Run: skgo: example.com/app/generated/links/onzggl3sn52xizlt: -: # example.com/app/generated/links/onzggl3sn52xizlt
+            generated/links/onzggl3sn52xizlt/layout.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+    --- FAIL: TestPrerenderInheritanceMatchesKit/auto_can_enter_kits_prerender_crawl (0.30s)
+        prerender_test.go:414: Run: skgo: example.com/app/generated/links/onzggl3sn52xizlt: -: # example.com/app/generated/links/onzggl3sn52xizlt
+            generated/links/onzggl3sn52xizlt/layout.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+    --- FAIL: TestPrerenderInheritanceMatchesKit/an_unknown_universal_option_does_not_fall_back_to_the_server_option (0.30s)
+        prerender_test.go:414: Run: skgo: example.com/app/generated/links/onzggl3sn52xizlt: -: # example.com/app/generated/links/onzggl3sn52xizlt
+            generated/links/onzggl3sn52xizlt/layout.server.go:13:19: in call to skgo.Load, type func(context.Context) (Data, error) of site does not match func(skgo.RequestEvent[P]) (Out, error) (cannot infer P and Out)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	69.097s
+ok  	github.com/tylergannon/skgo/internal/kithash	1.720s
+ok  	github.com/tylergannon/skgo/internal/kitpatch	2.553s
+ok  	github.com/tylergannon/skgo/internal/newapp	9.750s
+?   	github.com/tylergannon/skgo/internal/newapp/gofiles/web	[no test files]
+ok  	github.com/tylergannon/skgo/internal/releaseversion	1.335s
+ok  	github.com/tylergannon/skgo/internal/remotearg	1.396s
+ok  	github.com/tylergannon/skgo/internal/ssr	1.996s
+ok  	github.com/tylergannon/skgo/internal/sv	1.548s
+ok  	github.com/tylergannon/skgo/internal/vite	1.500s
+ok  	github.com/tylergannon/skgo/example	31.536s
+?   	github.com/tylergannon/skgo/example/actiondemo	[no test files]
+ok  	github.com/tylergannon/skgo/example/businesslogic	1.683s
+ok  	github.com/tylergannon/skgo/example/businesslogic/visitor	1.843s
+?   	github.com/tylergannon/skgo/example/cmd	[no test files]
+?   	github.com/tylergannon/skgo/example/cmd/form-client	[no test files]
+ok  	github.com/tylergannon/skgo/example/devrender	19.408s
+?   	github.com/tylergannon/skgo/example/internal/skgo	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/client	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwe33voq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3smvzhk3ttf5nxg3dvm5oq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3c6zlomryg62looq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+ok  	github.com/tylergannon/skgo/example/web	2.009s
+ok  	github.com/tylergannon/skgo/example/web/src	1.846s
+?   	github.com/tylergannon/skgo/example/web/src/lib	[no test files]
+FAIL
+error: recipe `test` failed on line 57 with exit code 1

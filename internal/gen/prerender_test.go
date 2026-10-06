@@ -10,15 +10,11 @@ import (
 
 const loadSource = `package routes
 
-import (
-	"context"
-
-	"github.com/tylergannon/skgo"
-)
+import "github.com/tylergannon/skgo"
 
 type Data struct { Message string ` + "`json:\"message\"`" + ` }
 
-func site(context.Context) (Data, error) { return Data{Message: "hello"}, nil }
+func site(RequestEvent) (Data, error) { return Data{Message: "hello"}, nil }
 
 var _ = skgo.Load(site)
 `
