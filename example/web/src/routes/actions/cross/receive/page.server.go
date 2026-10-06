@@ -28,7 +28,8 @@ type ValidationFailure struct {
 	EmailError string `json:"emailError"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
 	id, err := actiondemo.Visitor(ctx)
 	if err != nil {
 		return PageData{}, err

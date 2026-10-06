@@ -54,14 +54,13 @@ func TestGoPagePrerenderRedirectBuildsKitsNativeArtifact(t *testing.T) {
 	write("src/routes/old/page.server.go", `package old
 
 import (
-	"context"
 
 	"github.com/tylergannon/skgo"
 )
 
 type Data struct{}
 
-func pageLoad(context.Context) (Data, error) {
+func pageLoad(RequestEvent) (Data, error) {
 	return Data{}, &skgo.Redirect{Status: 307, Location: "/target?from=atlas"}
 }
 
@@ -72,14 +71,13 @@ var _ = skgo.Load(pageLoad)
 	write("src/routes/second/page.server.go", `package second
 
 import (
-	"context"
 
 	"github.com/tylergannon/skgo"
 )
 
 type Data struct{}
 
-func pageLoad(context.Context) (Data, error) {
+func pageLoad(RequestEvent) (Data, error) {
 	return Data{}, &skgo.Redirect{Status: 307, Location: "/target?from=beacon"}
 }
 
@@ -90,14 +88,13 @@ var _ = skgo.Load(pageLoad)
 	write("src/routes/ordinary-old/page.server.go", `package ordinaryold
 
 import (
-	"context"
 
 	"github.com/tylergannon/skgo"
 )
 
 type Data struct{}
 
-func pageLoad(context.Context) (Data, error) {
+func pageLoad(RequestEvent) (Data, error) {
 	return Data{}, &skgo.Redirect{Status: 307, Location: "/ordinary?from=legacy"}
 }
 

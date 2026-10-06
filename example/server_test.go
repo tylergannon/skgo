@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example"
 	"github.com/tylergannon/skgo/example/businesslogic"
@@ -57,6 +58,67 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 	return rec
+}
+
+func TestTypedDependencySerialsBelongToEachCaller(t *testing.T) {
+	h := newProdHandler(t)
+	request := func(cookie *http.Cookie, browser bool, want int) *http.Cookie {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/typed-dependencies/0/42/first/__data.json", nil)
+		if cookie != nil {
+			req.AddCookie(cookie)
+		}
+		if browser {
+			req.Header.Set("Sec-Fetch-Site", "none")
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		var wire struct {
+			Nodes []struct {
+				Data json.RawMessage
+			}
+		}
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &wire) != nil || len(wire.Nodes) != 2 {
+			t.Fatalf("data response: %d %s", rec.Code, rec.Body.String())
+		}
+		value, err := devalue.Parse(string(wire.Nodes[1].Data), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var data struct {
+			Label, Ignored string
+			Serial         int
+		}
+		if err := json.Unmarshal(raw, &data); err != nil {
+			t.Fatal(err)
+		}
+		if data.Label != "Order #0" || data.Ignored != "first" || data.Serial != want {
+			t.Fatalf("load data = %+v, want Order #0, first, serial %d", data, want)
+		}
+		for _, assigned := range rec.Result().Cookies() {
+			if assigned.Name == "skgo_typed_dependency_visitor" {
+				if assigned.Value == "" || assigned.Path != "/" {
+					t.Fatalf("invalid assigned cookie: %v", assigned)
+				}
+				return assigned
+			}
+		}
+		if cookie == nil {
+			t.Fatal("new caller received no serial cookie")
+		}
+		return cookie
+	}
+	// Unrelated cookieless probes cannot advance a later browser's count.
+	probe := request(nil, false, 1)
+	request(nil, false, 1)
+	browser := request(nil, true, 1)
+	request(probe, false, 2)
+	request(browser, true, 2)
+	request(nil, true, 1)
 }
 
 func TestEveryPrerenderedPathIsServedFromItsFile(t *testing.T) {
@@ -619,6 +681,8 @@ func samplePath(t *testing.T, id string) string {
 		switch {
 		case groupSegment.MatchString(segment):
 			// A group does not appear in the URL.
+		case segment == "[number=Order]", segment == "[a=Order]", segment == "[b=Order]":
+			out = append(out, "42")
 		case restSegment.MatchString(segment):
 			out = append(out, "deep", "rest", "path")
 		case paramSegment.MatchString(segment):

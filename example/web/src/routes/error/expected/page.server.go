@@ -7,8 +7,6 @@
 package expected
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 )
 
@@ -18,7 +16,7 @@ type PageData struct {
 	Brew string `json:"brew"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
 	return PageData{}, skgo.Errorf(418, "This page is a teapot")
 }
 

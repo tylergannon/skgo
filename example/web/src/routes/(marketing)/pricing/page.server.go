@@ -1,8 +1,6 @@
 package pricing
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
 )
@@ -21,7 +19,7 @@ type PageData struct {
 	Featured Plan `json:"featured"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
 	return PageData{Featured: Plan{Name: "Startup", Price: businesslogic.USD(45)}}, nil
 }
 

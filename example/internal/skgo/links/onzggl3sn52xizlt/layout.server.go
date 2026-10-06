@@ -1,8 +1,6 @@
 package site
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
@@ -32,8 +30,8 @@ const scriptSafeFixture = `</script><script>globalThis.__skgo_injected=true</scr
 //
 // The refusal is on a query parameter rather than on anything ambient, so a
 // scenario can ask for it and no other request can stumble into it.
-func layoutLoad(ctx context.Context) (RootLayoutData, error) {
-	event := skgo.EventFrom(ctx)
+func layoutLoad(event RequestEvent) (RootLayoutData, error) {
+	ctx := event.Context()
 	if boom, _ := event.SearchParam("boom"); boom == "root-layout" {
 		return RootLayoutData{}, skgo.Errorf(503, "The root layout could not reach the database")
 	}

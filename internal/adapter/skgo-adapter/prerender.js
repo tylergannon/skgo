@@ -752,9 +752,18 @@ export async function remoteLoad(module, source, event) {
 	if (cookies.length) {
 		headers.cookie = [cookies.map(({ name, value }) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join('; ')];
 	}
+	// Kit's JS matcher results cannot construct named Go values. Send its
+	// actual route metadata and the unconverted path to the build-only Go load.
+	const { manifest } = await import(pathToFileURL(join(appRoot(), '.svelte-kit/output/server/manifest-full.js')).href);
+	const route = manifest.routes.find((candidate) => candidate.id === event.route.id);
+	const prefix = manifest.app_path.slice(0, -manifest.app_dir.length);
+	const base = prefix ? '/' + prefix.slice(0, -1) : '';
+	const { decode_pathname } = await import(pathToFileURL(join(kitRootFor(appRoot()), 'src/utils/url.js')).href);
 	const request = {
 		kind: 'load', module, url: event.url.href, routeId: event.route.id,
-		params: Object.fromEntries(Object.entries(event.params)), parent: await event.parent(), headers
+		params: {}, parent: await event.parent(), headers,
+		...(route ? { routePattern: route.pattern.source, routeParams: route.params,
+			routePath: decode_pathname(event.url.pathname).slice(base.length) || '/' } : {})
 	};
 	const raw = await invokeWorker(request);
 	const answer = JSON.parse(raw);

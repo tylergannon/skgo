@@ -10,7 +10,6 @@
 package unexpected
 
 import (
-	"context"
 	"errors"
 
 	"github.com/tylergannon/skgo"
@@ -22,7 +21,7 @@ type PageData struct {
 	Secret string `json:"secret"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
 	return PageData{}, errors.New("the connection string is postgres://ada:hunter2@db")
 }
 

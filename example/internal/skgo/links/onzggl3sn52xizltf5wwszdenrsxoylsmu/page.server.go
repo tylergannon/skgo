@@ -18,12 +18,13 @@ type PageData struct {
 	Cookie string `json:"cookie"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
 	visit, ok := skgo.LocalOf[businesslogic.Visit](ctx)
 	if !ok {
 		return PageData{}, skgo.Errorf(http.StatusInternalServerError, "the middleware established no visit")
 	}
-	cookie, _ := skgo.EventFrom(ctx).Cookie(businesslogic.VisitCookie)
+	cookie, _ := event.Cookie(businesslogic.VisitCookie)
 	return PageData{Token: visit.Token, Route: visit.Route, Cookie: cookie}, nil
 }
 

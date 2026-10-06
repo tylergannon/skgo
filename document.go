@@ -501,6 +501,12 @@ func (s *SSR) servePageMethod(w http.ResponseWriter, r *http.Request, urlPath st
 	if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodPost {
 		return false
 	}
+	var ok bool
+	urlPath, ok = requestRoutingPath(r.URL)
+	if !ok {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return true
+	}
 	routePath := strings.TrimPrefix(urlPath, s.base)
 	if routePath == "" {
 		routePath = "/"
@@ -554,13 +560,20 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodPost {
 		return false
 	}
+	var ok bool
+	urlPath, ok = requestRoutingPath(r.URL)
+	if !ok {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return true
+	}
 	routePath := strings.TrimPrefix(urlPath, s.base)
 	if routePath == "" {
 		routePath = "/"
 	}
-	req := dataRequest{url: s.pageURL(r, urlPath), routePath: routePath}
+	req := dataRequest{url: s.pageURL(r), routePath: routePath}
 
-	route, params, matched := s.loads.match(routePath)
+	route, params, converted, matched := s.loads.matchValues(routePath)
+	req.converted = converted
 	if !matched {
 		if nonHTMLDestination(r.Header.Get("Sec-Fetch-Dest")) {
 			// A missing image, stylesheet or script is not worth a document,
@@ -1454,7 +1467,7 @@ func nonHTMLDestination(dest string) bool {
 
 // pageURL is the URL the page was asked for, resolved against the app's
 // configured origin the same way a data request's is.
-func (s *SSR) pageURL(r *http.Request, urlPath string) *url.URL {
+func (s *SSR) pageURL(r *http.Request) *url.URL {
 	origin := s.loads.origin
 	if origin == nil {
 		origin = &url.URL{Scheme: "http", Host: r.Host}
@@ -1462,7 +1475,7 @@ func (s *SSR) pageURL(r *http.Request, urlPath string) *url.URL {
 			origin.Scheme = "https"
 		}
 	}
-	return &url.URL{Scheme: origin.Scheme, Host: origin.Host, Path: urlPath, RawQuery: r.URL.RawQuery}
+	return &url.URL{Scheme: origin.Scheme, Host: origin.Host, Path: r.URL.Path, RawPath: r.URL.RawPath, RawQuery: r.URL.RawQuery}
 }
 
 // answer runs one remote function the render asked for and records what it gave

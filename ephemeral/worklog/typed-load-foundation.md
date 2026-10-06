@@ -1,0 +1,4 @@
+correction: The preserved foundation checkpoint includes remote plans and run outcomes. Extract source changes independently; those historical records are not part of the typed-load API.
+correction: Kit decode_pathname preserves percent and reserved escapes before component decoding at captures. Go URL.Path has already decoded those characters. Route from EscapedPath, keep Path/RawPath on event URLs, and retain decoded paths only for static file lookup.
+correction: A required segment following an optional matcher can backtrack around the matcher. The regression must force capture and assert the matcher saw abc as well as the successful load receipt.
+friction: Setting GOFLAGS=-v for a verbose test capture also makes child go build print package names; skgo check treats that stdout as unrecognized diagnostics. Pass -v directly to go test with the Justfile's .tools/bin PATH, leaving child commands unmodified.

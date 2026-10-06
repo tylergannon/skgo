@@ -99,7 +99,11 @@ type devPages struct {
 }
 
 func (h *devPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	urlPath, ok := normalizePath(r.URL.Path)
+	urlPath, ok := requestRoutingPath(r.URL)
+	if !ok {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
 	if ok && urlPath == h.appPrefix+"env.js" && !isUpgrade(r) {
 		h.renderer.serveEnvironment(w, r)
 		return
@@ -178,7 +182,7 @@ func (h *devPages) servedByVite(r *http.Request) bool {
 	if isUpgrade(r) {
 		return true
 	}
-	urlPath, ok := normalizePath(r.URL.Path)
+	urlPath, ok := requestRoutingPath(r.URL)
 	if !ok {
 		return false
 	}

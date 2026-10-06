@@ -1,8 +1,6 @@
 package saveddefault
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/actiondemo"
 )
@@ -12,7 +10,8 @@ type PageData struct {
 	Profile actiondemo.Profile `json:"profile"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
 	id, err := actiondemo.Visitor(ctx)
 	if err != nil {
 		return PageData{}, err

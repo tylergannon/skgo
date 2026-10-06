@@ -39,7 +39,7 @@ type SaveFailure struct {
 	Reason string ` + "`json:\"reason\"`" + `
 }
 
-func page(context.Context) (PageData, error) { return PageData{}, nil }
+func page(RequestEvent) (PageData, error) { return PageData{}, nil }
 
 func save(context.Context) (SaveResult, error) { return SaveResult{}, nil }
 
@@ -128,8 +128,6 @@ func TestJavaScriptModeLoadImportsATransportedClassFromHooks(t *testing.T) {
 	const load = `package routes
 
 import (
-	"context"
-
 	hooks "example.com/app/web/src"
 	"github.com/tylergannon/skgo"
 )
@@ -138,7 +136,7 @@ type PageData struct {
 	Price hooks.Money ` + "`json:\"price\"`" + `
 }
 
-func page(context.Context) (PageData, error) { return PageData{}, nil }
+func page(RequestEvent) (PageData, error) { return PageData{}, nil }
 
 var _ = skgo.Load(page)
 `

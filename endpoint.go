@@ -397,9 +397,9 @@ func (es *Endpoints) Intercept(next http.Handler) http.Handler {
 }
 
 func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Handler) {
-	urlPath, ok := normalizePath(r.URL.Path)
+	urlPath, ok := requestRoutingPath(r.URL)
 	if !ok {
-		next.ServeHTTP(w, r)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 	if es.base != "" && urlPath != es.base && !strings.HasPrefix(urlPath, es.base+"/") {

@@ -12,7 +12,7 @@ type PageData struct {
 	Revision string `json:"revision"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
 	return PageData{Revision: "Go revision one"}, nil
 }
 

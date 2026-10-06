@@ -134,12 +134,16 @@ func fixture(id string) Profile {
 	return profile
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
+	return loadPageData(event.Context(), event.Event)
+}
+
+func loadPageData(ctx context.Context, event *skgo.Event) (PageData, error) {
 	id, err := workspace(ctx)
 	if err != nil {
 		return PageData{}, err
 	}
-	cookie, _ := skgo.EventFrom(ctx).Cookie("skgo_actions_feedback")
+	cookie, _ := event.Cookie("skgo_actions_feedback")
 	return PageData{Profile: fixture(id), ActionCookie: cookie}, nil
 }
 
@@ -239,7 +243,7 @@ var _ = skgo.ActionNoData(unavailable)
 
 // The option examples share the same Go fixture and mutations. Their page
 // options, rather than a second action implementation, determine the result.
-func OptionLoad(ctx context.Context) (PageData, error)   { return pageLoad(ctx) }
+func OptionLoad(ctx context.Context) (PageData, error)   { return loadPageData(ctx, skgo.EventFrom(ctx)) }
 func OptionSave(ctx context.Context) (SaveResult, error) { return save(ctx) }
 func OptionSignIn(ctx context.Context) error             { return signIn(ctx) }
 func OptionForbidden(ctx context.Context) error          { return forbidden(ctx) }

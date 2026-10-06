@@ -23,6 +23,14 @@
 			"target": "web/src/routes/todos/gate"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi",
+			"target": "web/src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu",
+			"target": "web/src/routes/typed-load/[number=Order]"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5qwe33voq",
 			"target": "web/src/routes/about"
 		},

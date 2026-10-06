@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 
 	"github.com/tylergannon/polytype/devalue"
 )
@@ -15,12 +16,15 @@ import (
 // PrerenderLoadInput carries one Kit build-time server-load invocation from the
 // adapter's prerender process to the application's compiled Go load registry.
 type PrerenderLoadInput struct {
-	Module  string            `json:"module"`
-	URL     string            `json:"url"`
-	RouteID string            `json:"routeId"`
-	Params  map[string]string `json:"params"`
-	Headers http.Header       `json:"headers"`
-	Parent  map[string]any    `json:"parent"`
+	Module       string            `json:"module"`
+	URL          string            `json:"url"`
+	RouteID      string            `json:"routeId"`
+	Params       map[string]string `json:"params"`
+	Headers      http.Header       `json:"headers"`
+	Parent       map[string]any    `json:"parent"`
+	RoutePattern string            `json:"routePattern,omitempty"`
+	RouteParams  []ManifestParam   `json:"routeParams,omitempty"`
+	RoutePath    string            `json:"routePath,omitempty"`
 }
 
 type prerenderCookie struct {
@@ -86,7 +90,23 @@ func RunPrerenderLoad(in io.Reader, out io.Writer, transport Transport, loads ..
 	// Kit has already evaluated parent loads before calling this stub. A
 	// synthetic preceding node lets skgo.Parent read the same merged values.
 	parent := &ServerLoad{run: func(context.Context) (any, error) { return input.Parent, nil }}
-	shared, nodes := registry.runBranchWith(request, dataRequest{url: pageURL}, input.RouteID, input.Params, []*ServerLoad{parent, load}, nil, nil, nil)
+	var converted map[string]any
+	if input.RoutePattern != "" {
+		pattern, err := regexp.Compile(kitPattern(input.RoutePattern))
+		if err != nil {
+			return fmt.Errorf("skgo: prerender route pattern: %w", err)
+		}
+		match := pattern.FindStringSubmatchIndex(input.RoutePath)
+		if match == nil {
+			return fmt.Errorf("skgo: prerender path %q does not match route %s", input.RoutePath, input.RouteID)
+		}
+		var accepted bool
+		input.Params, converted, accepted = execMatchedParams(input.RoutePath, match, input.RouteParams, registry.matchers)
+		if !accepted {
+			return fmt.Errorf("skgo: Go matchers reject Kit prerender route %s at %s", input.RouteID, input.RoutePath)
+		}
+	}
+	shared, nodes := registry.runBranchWith(request, dataRequest{url: pageURL, converted: converted}, input.RouteID, input.Params, []*ServerLoad{parent, load}, nil, nil, nil)
 	node := nodes[1]
 	answer := prerenderLoadOutput{Headers: shared.headers.Clone()}
 	if node.redir != nil {

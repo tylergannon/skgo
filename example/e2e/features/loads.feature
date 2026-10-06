@@ -11,6 +11,37 @@ Feature: Server loads written in Go
   The same claims run against the bundle the adapter built and the modules
   `vp dev` transforms. Go renders the document and owns every load in both.
 
+  Scenario: A named Go matcher result reaches a load after Kit navigation
+    Given I open "/typed-load/0"
+    Then the typed load says "Order #0"
+    When I follow the "Order 42" link
+    Then the typed load says "Order #42"
+    And exactly 1 document request was made
+    When I follow the "Order zero" link
+    Then the typed load says "Order #0"
+    And exactly 1 document request was made
+
+  Scenario: Typed parameter reads retain only the current execution's dependencies
+    Given I open "/typed-dependencies/0/42/first"
+    Then the typed dependency load says "Order #0" with ignored "first" at serial 1
+    When I follow the "Unread B" link
+    Then the typed dependency URL is "/typed-dependencies/0/7/first"
+    And the typed dependency load says "Order #0" with ignored "first" at serial 1
+    When I follow the "Read A" link
+    Then the typed dependency URL is "/typed-dependencies/42/7/first"
+    And the typed dependency load says "Order #42" with ignored "first" at serial 2
+    When I follow the "Untracked ignored" link
+    Then the typed dependency URL is "/typed-dependencies/42/7/second"
+    And the typed dependency load says "Order #42" with ignored "first" at serial 2
+    When I follow the "Read B instead" link
+    Then the typed dependency load says "Order #7" with ignored "second" at serial 3
+    When I follow the "Now unread A" link
+    Then the typed dependency URL is "/typed-dependencies/0/7/second?read=b"
+    And the typed dependency load says "Order #7" with ignored "second" at serial 3
+    When I follow the "Now read B" link
+    Then the typed dependency load says "Order #42" with ignored "second" at serial 4
+    And exactly 1 document request was made
+
   Scenario: Moving between two pages under one layout does not reload the layout's data
     The layout counts its own runs for each visitor, and this browser is a
     visitor nobody else is, so its first visit to the section is run 1.

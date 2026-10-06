@@ -127,6 +127,13 @@ var evolved = sync.OnceValue(func() *evolvedApp {
 		err = copySandboxTree(app, staleDir, nil)
 	}
 	if err == nil {
+		var root string
+		root, err = repoRoot()
+		if err == nil {
+			err = linkGeneratorKit(root, staleDir)
+		}
+	}
+	if err == nil {
 		for _, f := range clientFiles {
 			if err = os.Remove(filepath.Join(app, filepath.FromSlash(f))); err != nil {
 				break

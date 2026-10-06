@@ -67,7 +67,9 @@
     "src/routes/middleware/[slug]/+page.server.ts",
     "src/routes/prerender/[slug]/+page.server.ts",
     "src/routes/request-fetch/+page.server.ts",
-    "src/routes/stream/+page.server.ts"
+    "src/routes/stream/+page.server.ts",
+    "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts",
+    "src/routes/typed-load/[number=Order]/+page.server.ts"
   ],
   "actions": [
     "src/routes/actions/+page.server.ts",

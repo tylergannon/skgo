@@ -1,8 +1,6 @@
 package about
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
 )
@@ -14,7 +12,8 @@ type PageData struct {
 	Later            skgo.Deferred[string] `json:"later"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
+	ctx := event.Context()
 	parent, err := skgo.Parent[struct {
 		Deployment string `json:"deployment"`
 	}](ctx)

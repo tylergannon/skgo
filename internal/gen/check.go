@@ -34,6 +34,9 @@ func Check(cfg Config) error {
 	if err != nil || len(files) == 0 {
 		return err
 	}
+	if cfg.loadParams, err = prepareLoadParams(cfg, files); err != nil {
+		return err
+	}
 	a, err := loadApp(cfg, files)
 	if err != nil {
 		return err

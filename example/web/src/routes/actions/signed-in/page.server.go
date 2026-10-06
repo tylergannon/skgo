@@ -1,8 +1,6 @@
 package signedin
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 )
 
@@ -11,9 +9,9 @@ type PageData struct {
 	Required bool   `json:"required"`
 }
 
-func pageLoad(ctx context.Context) (PageData, error) {
-	user, _ := skgo.EventFrom(ctx).Cookie("skgo_actions_signin")
-	required, _ := skgo.EventFrom(ctx).SearchParam("required")
+func pageLoad(event RequestEvent) (PageData, error) {
+	user, _ := event.Cookie("skgo_actions_signin")
+	required, _ := event.SearchParam("required")
 	return PageData{User: user, Required: required == "1"}, nil
 }
 

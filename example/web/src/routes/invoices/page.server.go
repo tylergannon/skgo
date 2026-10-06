@@ -1,8 +1,6 @@
 package invoices
 
 import (
-	"context"
-
 	"github.com/tylergannon/skgo"
 )
 
@@ -17,7 +15,7 @@ type PageData struct {
 	Invoices []Invoice `json:"invoices"`
 }
 
-func pageLoad(context.Context) (PageData, error) {
+func pageLoad(event RequestEvent) (PageData, error) {
 	return PageData{
 		AsOf: "2026-09-28",
 		Invoices: []Invoice{
