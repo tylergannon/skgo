@@ -20,3 +20,5 @@ correction: Monitoring must assess run health, not just liveness: compare useful
 
 friction: Gimbal implement 01M497K2S3BYMEB2T0YC0CZ3S7 marked its broad Part A outcome complete after Opus accepted only the first task. Continue with separate ordered outcomes for failure isolation, adapter grouping and complete Part A integration proof; workflow completion is not scope completion.
 correction: Opus discarded a payload mutation that failed setup, then demonstrated the targeted runtime status assertion (200 instead of 500) with a narrower restored mutation. Require actual failure causes, not filtered FAIL lines. Its GOWORK concern is already covered by package TestMain setting GOWORK=off.
+
+correction: User requires causal investigation and filed bugs, not reassurance after repeated failures. Reported signal-contract intermittence as SKGo251, destructive validation-output filtering as Gimbal428, and added this run recurrence to Gimbal424. SKGo250 has captured crawler cleanup/EPERM evidence, but a shared cause with signal failures is unproven. Preserve full first-failure output and tested-command status before summaries; retry success is not diagnosis.
