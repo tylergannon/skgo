@@ -126,6 +126,18 @@ Feature: Forms written in Go
     And the field "body" carries the message "A message needs at least 10 characters; this one has 4"
     And the form reports it was not sent
 
+  Scenario: A shared command follows the current caller after client navigation
+    Given I open "/contact"
+    When I navigate to the "Numeric caller" form caller at "/typed-load/42"
+    And I preview the message "Numeric command payload."
+    Then the command preview shows caller "number:params.Variant_Number_NamedOrderNumber_123cbe2d9d50:{42}" and message "Numeric command payload."
+    When I navigate to the "String caller" form caller at "/items/42"
+    And I preview the message "String command payload."
+    Then the command preview shows caller "id:string:42" and message "String command payload."
+    When I navigate to the "Absent caller" form caller at "/contact"
+    And I preview the message "Absent command payload."
+    Then the command preview shows caller "absent" and message "Absent command payload."
+
   Scenario Outline: Typed caller forms follow navigation with <mode> <instance> submissions
     Given I open "/contact"
     When I navigate to the "Numeric caller" form caller at "/typed-load/42"

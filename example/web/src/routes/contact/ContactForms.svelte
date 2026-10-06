@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MessagePreview from "./MessagePreview.svelte";
   import { getMessages, sendMessage } from "./contact.remote";
 
   let { showInbox = true }: { showInbox?: boolean } = $props();
@@ -28,6 +29,8 @@
   <a href="/items/42">String caller</a>
   <a href="/contact">Absent caller</a>
 </nav>
+
+<MessagePreview />
 
 <form
   data-testid="contact-form"

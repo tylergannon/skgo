@@ -464,3 +464,19 @@ Then(
 		);
 	}
 );
+
+When('I preview the message {string}', async ({ page }, message: string) => {
+	await hydrated(page);
+	await page.getByTestId('preview-body').fill(message);
+	await page.getByTestId('preview-message').click();
+});
+
+Then(
+	'the command preview shows caller {string} and message {string}',
+	async ({ page, documents }, caller: string, message: string) => {
+		await expect(page.getByTestId('preview-summary')).toHaveText('Message preview');
+		await expect(page.getByTestId('preview-caller')).toHaveText(caller);
+		await expect(page.getByTestId('preview-result-body')).toHaveText(message);
+		expect(documents.count).toBe(1);
+	}
+);

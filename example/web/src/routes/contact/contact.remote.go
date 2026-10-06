@@ -102,20 +102,9 @@ func getMessages(_ context.Context) ([]Message, error) {
 // therefore everything the visitor typed — exactly as it was.
 func sendMessage(event params.RequestEvent, draft Draft) (Receipt, error) {
 	ctx := event.Context()
-	caller := "absent"
-	switch number := event.Params.Number().(type) {
-	case nil:
-		switch id := event.Params.ID().(type) {
-		case params.Variant_ID_BuiltinString:
-			caller = "id:string:" + id.Value
-		case nil:
-		default:
-			return Receipt{}, fmt.Errorf("unsupported caller ID variant %T", id)
-		}
-	default:
-		// Report the actual wrapper and value, including newly generated
-		// alternatives when the example's matcher changes.
-		caller = fmt.Sprintf("number:%T:%v", number, number)
+	caller, err := callerReceipt(event.Params)
+	if err != nil {
+		return Receipt{}, err
 	}
 	invalid := &skgo.Invalid{}
 
@@ -162,7 +151,33 @@ func sendMessage(event params.RequestEvent, draft Draft) (Receipt, error) {
 		skgo.RefreshRequestedNoArg(ctx, getMessages)
 }
 
+// previewMessage lets the visitor check a message before submitting it.
+func previewMessage(event params.RequestEvent, body string) (Receipt, error) {
+	caller, err := callerReceipt(event.Params)
+	return Receipt{Summary: "Message preview", Caller: caller, Body: body}, err
+}
+
+func callerReceipt(p params.Params) (string, error) {
+	caller := "absent"
+	switch number := p.Number().(type) {
+	case nil:
+		switch id := p.ID().(type) {
+		case params.Variant_ID_BuiltinString:
+			caller = "id:string:" + id.Value
+		case nil:
+		default:
+			return "", fmt.Errorf("unsupported caller ID variant %T", id)
+		}
+	default:
+		// Report the actual wrapper and value, including newly generated
+		// alternatives when the example's matcher changes.
+		caller = fmt.Sprintf("number:%T:%v", number, number)
+	}
+	return caller, nil
+}
+
 var (
 	_ = skgo.Query(getMessages)
 	_ = skgo.Form(sendMessage)
+	_ = skgo.Command(previewMessage)
 )

@@ -107,30 +107,34 @@ func TestCallerManifestDriftBeforeFallback(t *testing.T) {
 					s := &SSR{dev: vite.NewDev(server.URL), loads: ls, remotes: rs}
 					h := NewDevPages(mustURL(t, server.URL), Manifest{}, s, nil)
 					served := ls.Intercept(rs.Intercept(h))
-					for _, path := range []string{"/choice/word", "/choice/word/__data.json", "/choice/word?/remote=" + form.ID(), "/choice/word?/remote=" + form.ID() + "/key", rs.Prefix() + form.ID()} {
-						method, body := "GET", ""
-						if strings.Contains(path, "remote") {
-							method, body = "POST", "name=fixture"
-						}
-						req := httptest.NewRequest(method, path, strings.NewReader(body))
-						req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-						req.Header.Set("x-sveltekit-pathname", "/choice/word")
-						rec := httptest.NewRecorder()
-						served.ServeHTTP(rec, req)
-						// Kit remote errors use a 200 error envelope; pages/data fail
-						// with 502. Both must visibly carry the operator diagnosis.
-						if !strings.Contains(rec.Body.String(), "caller manifest drift") || !strings.Contains(rec.Body.String(), want) {
-							t.Fatalf("%s: %d %s, want %s", path, rec.Code, rec.Body.String(), want)
-						}
-						if strings.HasPrefix(path, rs.Prefix()) {
-							if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"type":"error"`) || !strings.Contains(rec.Body.String(), `"status":503`) {
-								t.Fatalf("enhanced error envelope: %d %s", rec.Code, rec.Body.String())
+					hook := Handle(func(context.Context) error { t.Error("hook ran before drift rejection"); return nil }).Middleware()
+					withHook := hook.Intercept(HandleConfig{Loads: ls, Static: ServedAsFile(h)}, served)
+					for _, handler := range []http.Handler{served, withHook} {
+						for _, path := range []string{"/choice/word", "/choice/word.json", "/choice/word/__data.json", "/choice/word?/remote=" + form.ID(), "/choice/word?/remote=" + form.ID() + "/key", "/choice/word.json?/remote=" + form.ID(), rs.Prefix() + form.ID()} {
+							method, body := "GET", ""
+							if strings.Contains(path, "remote") {
+								method, body = "POST", "name=fixture"
 							}
-						} else if rec.Code != http.StatusBadGateway {
-							t.Fatalf("document/data drift status %d, want 502", rec.Code)
-						}
-						if s.devVersion != 0 {
-							t.Fatal("invalid snapshot was accepted")
+							req := httptest.NewRequest(method, path, strings.NewReader(body))
+							req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+							req.Header.Set("x-sveltekit-pathname", "/choice/word")
+							rec := httptest.NewRecorder()
+							handler.ServeHTTP(rec, req)
+							// Kit remote errors use a 200 error envelope; pages/data fail
+							// with 502. Both must visibly carry the operator diagnosis.
+							if !strings.Contains(rec.Body.String(), "caller manifest drift") || !strings.Contains(rec.Body.String(), want) {
+								t.Fatalf("%s: %d %s, want %s", path, rec.Code, rec.Body.String(), want)
+							}
+							if strings.HasPrefix(path, rs.Prefix()) {
+								if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"type":"error"`) || !strings.Contains(rec.Body.String(), `"status":503`) {
+									t.Fatalf("enhanced error envelope: %d %s", rec.Code, rec.Body.String())
+								}
+							} else if rec.Code != http.StatusBadGateway {
+								t.Fatalf("document/data drift status %d, want 502", rec.Code)
+							}
+							if s.devVersion != 0 {
+								t.Fatal("invalid snapshot was accepted")
+							}
 						}
 					}
 				}

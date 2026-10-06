@@ -197,6 +197,15 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 		}
 		hasPage := false
 		if !skipRoute {
+			// Handle runs before the registries, so it must validate the
+			// live graph before its own match too. Let the owning handler
+			// report refresh failures in the request kind's normal format.
+			if cfg.Loads != nil && cfg.Loads.devRefresh != nil {
+				if err := cfg.Loads.devRefresh(); err != nil {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
 			if route, params, ok := cfg.matchRoute(routePath); ok {
 				state.routeID, state.params, hasPage = route.id, params, route.hasPage
 			}

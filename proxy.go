@@ -172,10 +172,19 @@ func (h *devPages) isDocument(urlPath string) bool {
 			return false
 		}
 	}
+	if path.Ext(routePath) == "" {
+		return true
+	}
+	// Only a file-shaped path needs route matching to distinguish it from
+	// a static asset. Validate the live graph before running app matchers;
+	// on failure let the renderer return its normal refresh diagnosis.
+	if err := h.renderer.refreshDev(); err != nil {
+		return true
+	}
 	if _, _, matched := h.renderer.loads.match(routePath); matched {
 		return true
 	}
-	return path.Ext(routePath) == ""
+	return false
 }
 
 // servedByVite reports a request vite answers on its own — a module, a file out
