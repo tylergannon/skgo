@@ -1,0 +1,3 @@
+Squash rebasing with `--onto <merged-main> <old-foundation>` intentionally skips files introduced only in the old foundation checkpoint. Restore those planning/history files from the preservation ref rather than dropping them during modify/delete conflicts.
+
+Main now owns pathname decoding and the extracted document/data path fixtures. Keep the remote caller implementation while consolidating the identical decoder definitions and identical fixture bodies; retain the originals in the pre-rebase archive. Application route matchers and the remote caller table must reuse the same imported matcher package rather than emit duplicate imports. The generator's configuration now passes by pointer, including direct calls in shared-params tests.

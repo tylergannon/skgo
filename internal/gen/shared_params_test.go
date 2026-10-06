@@ -401,7 +401,7 @@ func TestSharedParamsSourceDiagnostics(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = prepareLoadParams(cfg, files)
+			_, err = prepareLoadParams(&cfg, files)
 			if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "params.go:") {
 				t.Fatalf("want source-located %q: %v", tc.want, err)
 			}
@@ -416,7 +416,7 @@ func TestSharedParamsSourceDiagnostics(t *testing.T) {
 	if err := os.WriteFile(matcherPath, source, 0644); err != nil {
 		t.Fatal(err)
 	}
-	_, err = prepareLoadParams(cfg, nil)
+	_, err = prepareLoadParams(&cfg, nil)
 	if err == nil || !strings.Contains(err.Error(), "import cycle") || !strings.Contains(err.Error(), "params.go") {
 		t.Fatalf("want source-located cycle diagnostic: %v", err)
 	}
