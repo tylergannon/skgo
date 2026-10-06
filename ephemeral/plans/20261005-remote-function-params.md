@@ -16,12 +16,18 @@ build lifecycle; old branch-specific retirement retries are not requirements
 to preserve. Carry the existing build-query behavioral assertions through the
 replacement entry point. Resolve integration gaps before full acceptance.
 
-The role boundary at the top of AGENTS.md is mandatory and must also appear
-directly in every coding-agent assignment: **implement the assigned capability,
-run focused developer checks, and return to the parent; do not launch reviewers,
-validators, coordinating agents, or workflows.** The parent owns the independent
-QA handoff, exclusive access during mutations/source-edit scenarios, and the
-complete-feature decision. A worker's passing checks do not accept the feature.
+The orchestrator in this chat assigns bounded implementation work and owns the
+independent QA handoff. Each coding agent implements its assigned capability,
+runs focused developer checks, and returns its changes, observed results, and
+remaining gaps. Coding agents do not launch reviewers, validators, coordinating
+agents, or workflows. Include this division of responsibility directly in each
+coding assignment.
+
+Once the implementation is stable, the orchestrator dispatches the designated
+independent verifier. That handoff fulfills the repository's independent
+validation requirement. Source-changing checks and mutations run exclusively.
+The orchestrator assesses the complete feature; a worker's passing checks alone
+do not establish acceptance.
 
 All Gimbal launch, active-run, monitoring, and recovery instructions below are
 historical and superseded by this section. The API contract and Definition of

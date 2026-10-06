@@ -46,16 +46,6 @@ demonstrated running.
 
 ## Read this first
 
-**Remote-params continuation: the parent chat owns orchestration.** Do not use
-Gimbal for this continuation. Implementation starts only after issue #256's
-replacement has landed on main. Coding agents implement their assigned
-capability, run focused developer checks, and return their changes, observed
-results, and remaining gaps to the parent. They must not launch reviewers,
-validators, coordinating agents, or implementation workflows. The parent
-dispatches the designated independent verifier; that dispatch satisfies the
-independent-validation requirement below. The parent owns whole-feature
-acceptance and schedules source-changing checks and mutations exclusively.
-
 **Invoke the `agent-protocol` skill at the start of every session and after any
 context compaction.** It is mandatory, not advisory: worktrees, worklogs,
 `ephemeral/`, checkpoint commits, squash-merge PRs, and root-checkout
