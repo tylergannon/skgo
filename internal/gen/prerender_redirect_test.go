@@ -16,110 +16,9 @@ import (
 // build bridge: a Go page load redirects while Kit crawls /old, and the adapter
 // must retain both the recorded path and Kit's HTML output.
 func TestGoPagePrerenderRedirectBuildsKitsNativeArtifact(t *testing.T) {
-	root, err := repoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := copyExample(root, filepath.Join(t.TempDir(), "example"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	ui := filepath.Join(app, "ui")
-	if err := os.Rename(filepath.Join(app, "web"), ui); err != nil {
-		t.Fatal(err)
-	}
-	config := filepath.Join(app, "internal", "skgo", "config.go")
-	if err := replaceOnce(config, "--web ../../web", "--web ../../ui"); err != nil {
-		t.Fatal(err)
-	}
-	goMod := filepath.Join(app, "go.mod")
-	if err := replaceOnce(goMod, "ignore ./web/node_modules", "ignore ./ui/node_modules"); err != nil {
-		t.Fatal(err)
-	}
-	if err := replaceOnce(filepath.Join(app, "cmd", "main.go"), "github.com/tylergannon/skgo/example/web", "github.com/tylergannon/skgo/example/ui"); err != nil {
-		t.Fatal(err)
-	}
-	linkExampleFrontendDependencies(t, root, app)
-
-	write := func(name, content string) {
-		t.Helper()
-		file := filepath.Join(ui, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	write("src/routes/old/page.server.go", `package old
-
-import (
-
-	"github.com/tylergannon/skgo"
-)
-
-type Data struct{}
-
-func pageLoad(RequestEvent) (Data, error) {
-	return Data{}, &skgo.Redirect{Status: 307, Location: "/target?from=atlas"}
-}
-
-var _ = skgo.Load(pageLoad)
-`)
-	write("src/routes/old/+page.ts", "export const prerender = true;\n")
-	write("src/routes/old/+page.svelte", "<h1>Old route</h1>\n")
-	write("src/routes/second/page.server.go", `package second
-
-import (
-
-	"github.com/tylergannon/skgo"
-)
-
-type Data struct{}
-
-func pageLoad(RequestEvent) (Data, error) {
-	return Data{}, &skgo.Redirect{Status: 307, Location: "/target?from=beacon"}
-}
-
-var _ = skgo.Load(pageLoad)
-`)
-	write("src/routes/second/+page.ts", "export const prerender = true;\n")
-	write("src/routes/second/+page.svelte", "<h1>Second redirect</h1>\n")
-	write("src/routes/ordinary-old/page.server.go", `package ordinaryold
-
-import (
-
-	"github.com/tylergannon/skgo"
-)
-
-type Data struct{}
-
-func pageLoad(RequestEvent) (Data, error) {
-	return Data{}, &skgo.Redirect{Status: 307, Location: "/ordinary?from=legacy"}
-}
-
-var _ = skgo.Load(pageLoad)
-`)
-	write("src/routes/ordinary-old/+page.ts", "export const prerender = true;\n")
-	write("src/routes/ordinary-old/+page.svelte", "<h1>Ordinary redirect</h1>\n")
-	write("src/routes/target/+page.ts", "export const prerender = true;\n")
-	write("src/routes/target/+page.svelte", "<h1>Target route</h1>\n")
-	write("src/routes/ordinary/+page.svelte", "<h1>Ordinary SSR route</h1>\n")
-
-	if output, err := runGoGenerate(app); err != nil {
-		t.Fatalf("go generate ./...: %v\n%s", err, output)
-	}
-	cmd := exec.Command(filepath.Join(ui, "node_modules", ".bin", "vp"), "build")
-	cmd.Dir = ui
-	cmd.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080")
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err = cmd.Run()
-	t.Logf("vp build exit: %d\nstdout:\n%s\nstderr:\n%s", exitCode(err), stdout.String(), stderr.String())
-	if err != nil {
-		t.Fatalf("vp build: %v", err)
-	}
+	t.Parallel()
+	fixture := requireProductionFixture(t)
+	ui := filepath.Join(fixture.app, "ui")
 
 	manifestBytes, err := os.ReadFile(filepath.Join(ui, "build", "skgo.manifest.json"))
 	if err != nil {
@@ -165,10 +64,8 @@ var _ = skgo.Load(pageLoad)
 			t.Errorf("native redirect artifact lacks %q: %s", want, artifact)
 		}
 	}
-	for logical := range map[string]struct{}{
-		"target?from=atlas.html":  {},
-		"target?from=beacon.html": {},
-	} {
+	physicalFiles := map[string]string{}
+	for _, logical := range []string{"target?from=atlas.html", "target?from=beacon.html"} {
 		kitBase := filepath.Join(ui, ".svelte-kit", "output", "prerendered", "pages", filepath.FromSlash(logical))
 		native, err := os.ReadFile(kitBase)
 		if err != nil {
@@ -183,6 +80,10 @@ var _ = skgo.Load(pageLoad)
 			if !ok || !strings.HasPrefix(physical, "prerendered-files/") || strings.Contains(physical, "?") {
 				t.Fatalf("query artifact %q has no safe mapping: %q", mappedName, physical)
 			}
+			if previous, exists := physicalFiles[physical]; exists {
+				t.Fatalf("query artifacts %q and %q share physical file %q", previous, mappedName, physical)
+			}
+			physicalFiles[physical] = mappedName
 			artifact, err := os.ReadFile(filepath.Join(ui, "build", filepath.FromSlash(physical)))
 			if err != nil {
 				t.Fatalf("reading mapped query artifact %q: %v", mappedName, err)
@@ -216,12 +117,7 @@ var _ = skgo.Load(pageLoad)
 		t.Fatalf("ordinary SSR target has unexpected native artifact, err %v", err)
 	}
 
-	build := exec.Command("go", "build", "-o", filepath.Join(t.TempDir(), "skgo-example"), "./cmd")
-	build.Dir = app
-	build.Env = append(os.Environ(), "GOWORK=off")
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("go build ./cmd: %v\n%s", err, output)
-	}
+	fixture.run(t, "TestProductionRedirectServing")
 }
 
 func exitCode(err error) int {

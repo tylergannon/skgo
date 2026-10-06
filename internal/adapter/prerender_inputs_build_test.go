@@ -615,22 +615,26 @@ func copyFixtureTree(t *testing.T, source, destination string) {
 
 func linkFixtureDependencies(t *testing.T, source, destination, adapterPath string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(destination, "@skgo"), 0o755); err != nil {
+	if err := linkFixtureDependencyTree(source, destination, adapterPath); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func linkFixtureDependencyTree(source, destination, adapterPath string) error {
+	if err := os.MkdirAll(filepath.Join(destination, "@skgo"), 0o755); err != nil {
+		return err
 	}
 	entries, err := os.ReadDir(source)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 	for _, entry := range entries {
 		if entry.Name() == "$app" || entry.Name() == ".vite-temp" || entry.Name() == "@skgo" {
 			continue
 		}
 		if err := os.Symlink(filepath.Join(source, entry.Name()), filepath.Join(destination, entry.Name())); err != nil {
-			t.Fatalf("link frontend dependency %s: %v", entry.Name(), err)
+			return err
 		}
 	}
-	if err := os.Symlink(adapterPath, filepath.Join(destination, "@skgo", "sveltekit-adapter")); err != nil {
-		t.Fatal(err)
-	}
+	return os.Symlink(adapterPath, filepath.Join(destination, "@skgo", "sveltekit-adapter"))
 }

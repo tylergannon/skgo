@@ -1,0 +1,1 @@
+<script>import { noargValue } from './fixture.remote';const value=await noargValue(null);</script><h1>Prerender contract</h1><p>{value}</p>

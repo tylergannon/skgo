@@ -1,0 +1,1 @@
+<script>let { data } = $props();</script><h1>Prerender error consumer</h1><p>{data.value}</p>
