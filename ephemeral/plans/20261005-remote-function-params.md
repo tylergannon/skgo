@@ -1,5 +1,37 @@
 # Remote command and form caller params
 
+## Current continuation instructions — 2026-10-06
+
+The user has replaced Gimbal with direct orchestration in chat
+`01a11328-2836-7ee3-9276-dab87a186ec6`. Do not restart any historical run or
+reactivate its automation. Wait until issue #256's replacement is merged into
+main before implementation, then refresh the accepted baseline. No feature
+merge or release is authorized by this preparation.
+
+The mission is to complete the existing explicit typed command/form event
+capability against the accepted API and executable contracts below. Preserve
+working generated consumers, original Go types, precise load tracking, and
+independently demonstrated behavior. The replacement prerender service owns
+build lifecycle; old branch-specific retirement retries are not requirements
+to preserve. Carry the existing build-query behavioral assertions through the
+replacement entry point. Resolve integration gaps before full acceptance.
+
+The role boundary at the top of AGENTS.md is mandatory and must also appear
+directly in every coding-agent assignment: **implement the assigned capability,
+run focused developer checks, and return to the parent; do not launch reviewers,
+validators, coordinating agents, or workflows.** The parent owns the independent
+QA handoff, exclusive access during mutations/source-edit scenarios, and the
+complete-feature decision. A worker's passing checks do not accept the feature.
+
+All Gimbal launch, active-run, monitoring, and recovery instructions below are
+historical and superseded by this section. The API contract and Definition of
+done remain authoritative. The old outcomes files are historical context, not
+new assignments; assess remaining work from the integrated source and actual
+results. The separate validation session owns its changes; do not duplicate or
+redesign that work here.
+
+## Historical planning and implementation record
+
 Status: ready and validatable for the authorized Gimbal implementation. Independent reviews `01M47VDEGR8VVS73DPTJCW71ZN.review`, `01M47VZ3KDZC2B9FQYB8S53XBV.review` and `01M47WNGTPAH66VBHC3VVT57G5.review` found material issues which were corrected against cited code below. This revised version is not claimed independently approved. An additional focused read-only review `01M47X0VPWBN0TVG0H0YT4C24J.review` was already launched before the user directed proceeding after concrete corrections; it is not an additional launch gate. Independent implementation QA must exercise every correction. No unresolved material design decision remains. Old run `01M47X5GE8YF243ZP4JB0GBXM3.implement` ended after task1 generation only. Recovery run `01M48KMMYQ0R7DAT9S15EXF253.implement` is active with explicit remaining capability outcomes; complete remote behavior is not yet independently validated. The user authorized implementation once ready; old implementation-start questions are resolved.
 
 ## Accepted direction and superseded proposal
