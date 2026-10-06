@@ -12,6 +12,15 @@ generator, pinned Kit, adapter, production rendering and named contracts while
 eliminating unnecessary preparation. Whole-example coverage must still catch
 actual application integration failures.
 
+This is the correctness and obstacle-removal promise. A substantial CI speedup
+is not its completion criterion. Sharing compatible setup avoids known wasted
+work, and measurements remain useful, but the modest browser-pruning proposal
+is not prioritized or included here. The future CI-performance investigation
+is https://github.com/tylergannon/skgo/issues/248: capture browser activity
+against a pure-TypeScript Kit reference when the example or dependency pins
+change, then investigate browserless replay against Go. That work neither
+expands nor blocks this plan.
+
 The user requests correctness and feasibility review and agreement that the
 result eliminates the major testing problem in the issue. They explicitly
 exclude complicated proof machinery and significant scope additions. Use
@@ -29,6 +38,21 @@ parameter worktrees. Rebase the isolated fixture work onto the integrated
 API before Part B. Capture a fresh comparable baseline at that point; do not
 compare Part B against a base on which its APIs do not exist. Completion of
 the issue requires both parts.
+
+The value-to-implementation check is:
+
+- Narrow changes are verifiable despite unrelated demo edits: the named
+  tests stage contract-only application sources; the contact-consumer break
+  experiment proves independence while whole-example coverage still fails.
+- A narrow failure diagnoses the claimed behavior: real Kit/SKGo paths retain
+  the literal diagnostics, artifacts and served results; deliberate relevant
+  breakage demonstrates that their assertions detect regressions.
+- Isolation does not weaken coverage: type evolution, nondefault roots and
+  production composition remain explicit, with required browser and example
+  coverage retained.
+- Verification avoids unnecessary preparation: immutable compatible builds
+  are shared, incompatible transitions stay separate, and per-handler state
+  keeps selected and shuffled tests independent. Ordinary test helpers suffice.
 
 ## 1. Purpose-built applications
 
