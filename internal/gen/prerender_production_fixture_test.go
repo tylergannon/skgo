@@ -15,36 +15,13 @@ type productionFixture struct {
 	tests string
 }
 
-// Only these example files are build bootstrap. The fixture supplies all
-// application code, including hooks and serving; no demo consumers enter it.
 var preparedProductionFixture = sync.OnceValues(func() (productionFixture, error) {
 	root, err := repoRoot()
 	if err != nil {
 		return productionFixture{}, err
 	}
 	app := filepath.Join(packageTemp, "prerender-production")
-	if err := copySandboxTree(filepath.Join(root, "internal", "gen", "testdata", "prerender-production"), app, nil); err != nil {
-		return productionFixture{}, err
-	}
-	for _, file := range []struct{ source, destination string }{
-		{"go.mod", "go.mod"},
-		{"go.sum", "go.sum"},
-		{"web/package.json", "ui/package.json"},
-		{"web/vite.config.ts", "ui/vite.config.ts"},
-		{"web/tsconfig.json", "ui/tsconfig.json"},
-		{"web/src/app.html", "ui/src/app.html"},
-	} {
-		if err := copySandboxFile(filepath.Join(root, "example", filepath.FromSlash(file.source)), filepath.Join(app, filepath.FromSlash(file.destination))); err != nil {
-			return productionFixture{}, err
-		}
-	}
-	if err := rewriteSkgoReplace(filepath.Join(app, "go.mod"), root); err != nil {
-		return productionFixture{}, err
-	}
-	if err := replaceOnce(filepath.Join(app, "go.mod"), "ignore ./web/node_modules", "ignore ./ui/node_modules"); err != nil {
-		return productionFixture{}, err
-	}
-	if err := replaceOnce(filepath.Join(app, "ui", "package.json"), "link:../../internal/adapter", "link:"+filepath.ToSlash(filepath.Join(root, "internal", "adapter"))); err != nil {
+	if err := stagePrerenderFixture(root, app, "prerender-production"); err != nil {
 		return productionFixture{}, err
 	}
 	return productionFixture{app: app}, nil
