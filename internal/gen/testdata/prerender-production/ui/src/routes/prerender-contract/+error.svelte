@@ -1,0 +1,1 @@
+<script>let { error, status } = $props();</script><h1>{status}</h1><p>{error.message}</p>

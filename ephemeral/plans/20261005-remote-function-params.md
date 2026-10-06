@@ -4,9 +4,10 @@
 
 The user has replaced Gimbal with direct orchestration in chat
 `01a11328-2836-7ee3-9276-dab87a186ec6`. Do not restart any historical run or
-reactivate its automation. Wait until issue #256's replacement is merged into
-main before implementation, then refresh the accepted baseline. No feature
-merge or release is authorized by this preparation.
+reactivate its automation. Issue #256's replacement landed in PR #258 at
+`05ec9902f1c3ac035ee910e1a531552cc666c1a6`; the user has authorized integrating
+main into the preserved branch, completing implementation, and independently
+validating it through subagents. No feature merge or release is authorized.
 
 The mission is to complete the existing explicit typed command/form event
 capability against the accepted API and executable contracts below. Preserve

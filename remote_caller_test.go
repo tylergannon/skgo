@@ -129,9 +129,9 @@ func TestRemoteCallerSSRQueryRestrictions(t *testing.T) {
 
 func TestRemoteCallerBuildPrerenderQueryRestrictions(t *testing.T) {
 	p := NewRemote(RemoteSpec{Kind: KindPrerender, Module: testModule, Name: "restrictedBuild", Call: func(ctx context.Context, _ Call) (any, error) { return restrictedCallerReceipt(ctx) }})
-	input := fmt.Sprintf(`{"kind":"remote","module":%q,"name":"restrictedBuild","url":"http://fixture/numeric/42","params":{"id":"42"}}`, testModule)
+	input := fmt.Sprintf(`{"module":%q,"name":"restrictedBuild","url":"http://fixture/numeric/42","params":{"id":"42"}}`, testModule)
 	var output strings.Builder
-	if err := RunPrerenderBuild(strings.NewReader(input), &output, nil, nil, []*Remote{p}); err != nil {
+	if err := callBuildOperation("/remote", strings.NewReader(input), &output, nil, nil, []*Remote{p}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), "query:refused:6") {

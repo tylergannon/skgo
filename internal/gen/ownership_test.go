@@ -56,7 +56,6 @@ func foreignFixture(t *testing.T, remote string, extra map[string]string) (root 
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"reflect"
 )
@@ -156,7 +155,7 @@ type RemoteSpec struct {
 
 func NewRemote(spec RemoteSpec) *Remote { _ = spec; return &Remote{} }
 
-func RunPrerenderBuild(io.Reader, io.Writer, any, []*ServerLoad, []*Remote) error { return nil }
+func RunPrerenderService(any, []*ServerLoad, []*Remote) error { return nil }
 
 func BadRequest(detail error) error { return detail }
 

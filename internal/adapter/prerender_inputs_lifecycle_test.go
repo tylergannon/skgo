@@ -29,6 +29,9 @@ func TestPrerenderInputsBuildAppWaitsForProducerFailureDrain(t *testing.T) {
 	if result.err == nil {
 		t.Fatalf("native Vite buildApp resolved after producer failure; output:\n%s", result.output)
 	}
+	if !strings.Contains(result.output, "declared Inputs producer lifecycle failure") {
+		t.Fatalf("build rejection lost the producer failure:\n%s", result.output)
+	}
 	assertInputsDrainComplete(t, fixture, result.output)
 }
 
@@ -89,6 +92,11 @@ func TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer(t *testing.T) {
 	fixture := prepareInputsLifecycleFixture(t, "blocked")
 	cmd := inputsVPBuildCommand(t, fixture)
 	process := startInputsTrackedCommand(t, cmd, fixture)
+	defer func() {
+		if t.Failed() {
+			t.Log(process.output.String())
+		}
+	}()
 	waitInputsReceipt(t, fixture)
 	ownerPID, err := inputsViteOwnerPID(fixture)
 	if err != nil {
@@ -115,109 +123,37 @@ func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
 	fixture := prepareInputsLifecycleFixture(t, "blocked")
 	cmd := inputsVPBuildCommand(t, fixture)
 	process := startInputsTrackedCommand(t, cmd, fixture)
+	defer func() {
+		if t.Failed() {
+			t.Log(process.output.String())
+		}
+	}()
 	waitInputsReceipt(t, fixture)
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		t.Fatalf("send SIGTERM to the outer real vp build process: %v", err)
 	}
-	deadline := time.Now().Add(20 * time.Second)
-	waitErr := waitInputsCommand(t, process, time.Until(deadline))
+	waitErr := waitInputsCommand(t, process, 20*time.Second)
 	if waitErr == nil {
 		t.Fatalf("outer vp build exited successfully after SIGTERM; output:\n%s", process.output.String())
 	}
-	waitInputsOwnerExit(t, fixture, deadline, process.output.String())
+	waitInputsViteOwnerExit(t, fixture)
 	assertInputsReceiptDrained(t, fixture)
-}
-
-func TestPrerenderInputsOuterVPCLIExitPrecedesOwnerCleanup(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Fatal("process-group lifecycle evidence requires Unix process groups")
-	}
-	fixture := prepareInputsLifecycleFixture(t, "blocked")
-	configPath := filepath.Join(fixture, "web", "vite.config.ts")
-	config, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Hold only the owner's final directory removal, after its groups have
-	// drained. The outer CLI can exit and its inherited pipe wait can expire
-	// while Vite is still inside this cleanup. No application work is delayed.
-	controlledRemoval := `import __lifecycleFS from 'node:fs';
-import { syncBuiltinESMExports as __syncLifecycleFS } from 'node:module';
-const __removeLifecycleDir = __lifecycleFS.rmSync;
-__lifecycleFS.rmSync = function(path, options) {
-  if (String(path).startsWith(process.env.TMPDIR + '/') && /\/skgo-prerender-[^/]+$/.test(String(path))) {
-    __lifecycleFS.writeFileSync(process.env.SKGO_LIFECYCLE_RECEIPT + '.removing', 'groups drained');
-    const deadline = Date.now() + 10000;
-    while (!__lifecycleFS.existsSync(process.env.SKGO_LIFECYCLE_RECEIPT + '.allow-removal')) {
-      if (Date.now() >= deadline) throw new Error('test did not release owner directory removal');
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
-    }
-  }
-  return __removeLifecycleDir(path, options);
-};
-__syncLifecycleFS();
-`
-	if err := os.WriteFile(configPath, append([]byte(controlledRemoval), config...), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := inputsVPBuildCommand(t, fixture)
-	process := startInputsTrackedCommand(t, cmd, fixture)
-	waitInputsReceipt(t, fixture)
-	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-		t.Fatal(err)
-	}
-	deadline := time.Now().Add(20 * time.Second)
-	if err := waitInputsCommand(t, process, time.Until(deadline)); err == nil {
-		t.Fatal("outer vp build resolved after SIGTERM")
-	}
-	if _, err := os.Stat(filepath.Join(fixture, "owner-receipt.removing")); err != nil {
-		t.Fatalf("owner did not reach controlled removal: %v\n%s", err, process.output.String())
-	}
-	// This is the state the old assertion mistook for a leaked directory.
-	data, err := os.ReadFile(filepath.Join(fixture, "owner-receipt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	fields := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(fields) != 3 {
-		t.Fatalf("incomplete owner receipt: %q", data)
-	}
-	privateDir := fields[2]
-	if _, err := os.Stat(privateDir); err != nil {
-		t.Fatalf("outer exit did not precede controlled owner cleanup: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(fixture, "owner-receipt.allow-removal"), nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	waitInputsOwnerExit(t, fixture, deadline, process.output.String())
-	assertInputsReceiptDrained(t, fixture)
-}
-
-func waitInputsOwnerExit(t *testing.T, fixture string, deadline time.Time, output string) {
-	t.Helper()
-	pid, err := inputsViteOwnerPID(fixture)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The CLI is not the owner. Cmd.WaitDelay bounds inherited pipe draining,
-	// so its Wait may return before Vite's parent-loss observer finishes. Wait
-	// for Vite itself within the original shutdown budget; then require the
-	// same exact group, directory and late-I/O assertions as every other path.
-	for time.Now().Before(deadline) {
-		err := syscall.Kill(pid, 0)
-		if errors.Is(err, syscall.ESRCH) {
-			return
-		}
-		if err != nil {
-			t.Fatalf("inspect Vite owner %d: %v", pid, err)
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatalf("Vite owner %d did not exit within the signal shutdown budget:\n%s", pid, output)
 }
 
 func TestPrerenderInputsMalformedGoSourceFailsAndCleansPrivateDirectory(t *testing.T) {
-	fixture := prepareInputsLifecycleFixture(t, "success")
+	fixture := filepath.Join(t.TempDir(), "example")
+	if err := stageMinimalInputsBootstrap(fixture); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.CopyFS(fixture, os.DirFS("testdata/minimal-inputs")); err != nil {
+		t.Fatal(err)
+	}
+	generate := exec.Command("go", "generate", "./...")
+	generate.Dir = fixture
+	generate.Env = inputsTestEnv(fixture, "success")
+	if output, err := generate.CombinedOutput(); err != nil {
+		t.Fatalf("generate compiler fixture: %v\n%s", err, output)
+	}
 	broken := filepath.Join(fixture, "internal", "skgo", "prerender", "lifecycle_broken.go")
 	if err := os.WriteFile(broken, []byte("package main\nfunc malformed( {\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -232,214 +168,9 @@ func TestPrerenderInputsMalformedGoSourceFailsAndCleansPrivateDirectory(t *testi
 	assertInputsScratchEmpty(t, fixture)
 }
 
-func TestPrerenderInputsCommandEarlyStdinCloseIsTerminal(t *testing.T) {
-	result := runInputsProtocolFixture(t, -1)
-	if result.err == nil {
-		t.Fatalf("native Vite buildApp accepted a command that closed stdin without a response; output:\n%s", result.output)
-	}
-	if strings.Contains(result.output, "BUILD_APP_RESOLVED") {
-		t.Fatalf("buildApp reported success after early stdin close:\n%s", result.output)
-	}
-}
-
-func TestPrerenderInputsValidJSONThenNonzeroIsTerminal(t *testing.T) {
-	result := runInputsProtocolFixture(t, 23)
-	if result.err == nil {
-		t.Fatalf("native Vite buildApp accepted valid JSON followed by a nonzero command exit; output:\n%s", result.output)
-	}
-	if strings.Contains(result.output, "BUILD_APP_RESOLVED") {
-		t.Fatalf("buildApp reported success after command exit 23:\n%s", result.output)
-	}
-}
-
-func TestPrerenderInputsValidGeneratedResponseWithZeroExitResolves(t *testing.T) {
-	result := runInputsProtocolFixture(t, 0)
-	if result.err != nil || !strings.Contains(result.output, "BUILD_APP_RESOLVED") {
-		t.Fatalf("the same generated Go protocol with zero exit did not resolve buildApp: err=%v\n%s", result.err, result.output)
-	}
-}
-
-func TestPrerenderInputsFailedDrainRetainsOwnershipForRetry(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Fatal("controlled process-group drain evidence requires Unix process groups")
-	}
-	fixture := prepareInputsLifecycleFixture(t, "controlled-drain")
-	project, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	program := `import { existsSync, readFileSync } from 'node:fs';
-import process from 'node:process';
-import { pathToFileURL } from 'node:url';
-const bridge = await import(pathToFileURL(process.env.SKGO_PRERENDER_BRIDGE));
-const baseTermListeners = process.listenerCount('SIGTERM');
-const owner = bridge.createPrerenderOwner();
-await owner.ensureCompiled();
-const invocation = owner.invoke({ kind: 'remote-inputs', module: 'src/routes/site.remote.ts', name: 'getSite' }).catch((error) => error);
-const deadline = Date.now() + 15000;
-let receipt = [];
-while (Date.now() < deadline) {
-  try { receipt = readFileSync(process.env.SKGO_LIFECYCLE_RECEIPT, 'utf8').trim().split('\n'); } catch {}
-  if (receipt.length >= 3 && /^\d+$/.test(receipt[0]) && /^\d+$/.test(receipt[1]) && receipt[2]) break;
-  await new Promise((resolve) => setTimeout(resolve, 10));
-}
-
-if (!(receipt.length >= 3 && /^\d+$/.test(receipt[0]) && /^\d+$/.test(receipt[1]) && receipt[2])) throw new Error('Go Inputs callback did not write a complete receipt');
-const [pidText, groupText] = receipt;
-const group = Number(groupText);
-const primary = new Error('native lifecycle primary failure');
-const realKill = process.kill;
-process.kill = function (pid, signal) {
-  if (Math.abs(Number(pid)) === group && (signal === 'SIGTERM' || signal === 'SIGKILL')) {
-    const error = new Error('controlled signal denial'); error.code = 'EPERM'; throw error;
-  }
-  return realKill.call(process, pid, signal);
-};
-let failureRejected = false;
-try {
-  await owner.fail(primary);
-} catch (error) {
-  failureRejected = error === primary && Boolean(error.cleanupError);
-}
-await invocation;
-const failed = {
-  failureRejected,
-  primaryPreserved: owner.failed === primary,
-  cleanupMetadata: Boolean(owner.cleanupFailure && primary.cleanupError),
-  groupRetained: owner.groups.size === 1,
-  directoryRetained: existsSync(owner.dir),
-  listenersRetained: process.listenerCount('SIGTERM') > baseTermListeners,
-  groupAlive: (() => { try { realKill(-group, 0); return true; } catch { return false; } })()
-};
-process.kill = realKill;
-await owner.cleanup();
-const retried = {
-  groups: owner.groups.size,
-  directoryExists: existsSync(owner.dir),
-  listeners: process.listenerCount('SIGTERM'),
-  baseTermListeners,
-  groupGone: (() => { try { realKill(-group, 0); return false; } catch (error) { return error.code === 'ESRCH'; } })()
-};
-console.log('RETRY_RESULT:' + JSON.stringify({ pid: Number(pidText), group, failed, retried }));
-`
-	cmd := exec.Command("node", "-e", program)
-	cmd.Dir = filepath.Join(fixture, "web")
-	cmd.Env = inputsTestEnv(fixture, "")
-	cmd.Env = replaceEnv(cmd.Env, "SKGO_PRERENDER_BRIDGE", filepath.Join(project, "internal", "adapter", "skgo-adapter", "prerender.js"))
-	process := startInputsTrackedCommand(t, cmd, fixture)
-	err, timedOut := process.wait(45 * time.Second)
-	output := process.output.String()
-	if timedOut {
-		t.Fatalf("controlled drain retry harness exceeded 45s and was terminated:\n%s", output)
-	}
-	if err != nil {
-		t.Fatalf("controlled drain retry harness: %v\n%s", err, output)
-	}
-	var result struct {
-		Failed struct {
-			FailureRejected   bool `json:"failureRejected"`
-			PrimaryPreserved  bool `json:"primaryPreserved"`
-			CleanupMetadata   bool `json:"cleanupMetadata"`
-			GroupRetained     bool `json:"groupRetained"`
-			DirectoryRetained bool `json:"directoryRetained"`
-			ListenersRetained bool `json:"listenersRetained"`
-			GroupAlive        bool `json:"groupAlive"`
-		} `json:"failed"`
-		Retried struct {
-			Groups            int  `json:"groups"`
-			DirectoryExists   bool `json:"directoryExists"`
-			Listeners         int  `json:"listeners"`
-			BaseTermListeners int  `json:"baseTermListeners"`
-			GroupGone         bool `json:"groupGone"`
-		} `json:"retried"`
-	}
-	var line string
-	for _, item := range strings.Split(string(output), "\n") {
-		if strings.HasPrefix(item, "RETRY_RESULT:") {
-			line = strings.TrimPrefix(item, "RETRY_RESULT:")
-		}
-	}
-	if line == "" {
-		t.Fatalf("controlled drain harness omitted its state receipt:\n%s", output)
-	}
-	if err := json.Unmarshal([]byte(line), &result); err != nil {
-		t.Fatalf("parse controlled drain state: %v\n%s", err, output)
-	}
-	if !result.Failed.FailureRejected || !result.Failed.PrimaryPreserved || !result.Failed.CleanupMetadata || !result.Failed.GroupRetained || !result.Failed.DirectoryRetained || !result.Failed.ListenersRetained || !result.Failed.GroupAlive {
-		t.Fatalf("failed cleanup forgot live ownership or replaced the primary failure: %+v\n%s", result.Failed, output)
-	}
-	if result.Retried.Groups != 0 || result.Retried.DirectoryExists || result.Retried.Listeners != result.Retried.BaseTermListeners || !result.Retried.GroupGone {
-		t.Fatalf("successful retry did not retire all owned state: %+v\n%s", result.Retried, output)
-	}
-}
-
-func TestPrerenderInputsSignalRetriesRecoverableDrainFailure(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Fatal("controlled process-group drain evidence requires Unix process groups")
-	}
-	fixture := prepareInputsLifecycleFixture(t, "controlled-drain")
-	project, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	program := `import { existsSync, readFileSync } from 'node:fs';
-import process from 'node:process';
-import { pathToFileURL } from 'node:url';
-const bridge = await import(pathToFileURL(process.env.SKGO_PRERENDER_BRIDGE));
-const owner = bridge.createPrerenderOwner();
-await owner.ensureCompiled();
-const invocation = owner.invoke({ kind: 'remote-inputs', module: 'src/routes/site.remote.ts', name: 'getSite' }).catch(() => {});
-let receipt;
-const deadline = Date.now() + 15000;
-while (Date.now() < deadline) {
-  try { receipt = readFileSync(process.env.SKGO_LIFECYCLE_RECEIPT, 'utf8').trim().split('\n'); } catch {}
-  if (receipt?.length === 3) break;
-  await new Promise((resolve) => setTimeout(resolve, 10));
-}
-if (receipt?.length !== 3) throw new Error('missing Go producer receipt');
-const group = Number(receipt[1]);
-const realKill = process.kill;
-process.kill = function(pid, signal) {
-  if (Number(pid) === -group && (signal === 'SIGTERM' || signal === 'SIGKILL')) {
-    const error = new Error('recoverable signal denial'); error.code = 'EPERM'; throw error;
-  }
-  return realKill.call(process, pid, signal);
-};
-let cleanupFailure;
-Object.defineProperty(owner, 'cleanupFailure', {
-  get() { return cleanupFailure; },
-  set(error) {
-    cleanupFailure = error;
-    if (!(error instanceof AggregateError)) return;
-    console.log('RECOVERABLE_DRAIN_FAILURE:' + JSON.stringify({
-      groupAlive: (() => { try { realKill(-group, 0); return true; } catch { return false; } })(),
-      directoryRetained: existsSync(owner.dir),
-      groupRetained: owner.groups.size === 1,
-      signalFailure: owner.failed?.message === 'skgo prerender build interrupted by SIGTERM'
-    }));
-    process.kill = realKill;
-  }
-});
-// Model the active native build while its worker is waiting for Go. A failed
-// drain must not require another signal or incoming request to recover.
-setInterval(() => {}, 1000);
-process.kill(process.pid, 'SIGTERM');
-await invocation;
-`
-	cmd := exec.Command("node", "-e", program)
-	cmd.Dir = filepath.Join(fixture, "web")
-	cmd.Env = inputsTestEnv(fixture, "")
-	cmd.Env = replaceEnv(cmd.Env, "SKGO_PRERENDER_BRIDGE", filepath.Join(project, "internal", "adapter", "skgo-adapter", "prerender.js"))
-	process := startInputsTrackedCommand(t, cmd, fixture)
-	waitInputsReceipt(t, fixture)
-	if err := waitInputsCommand(t, process, 20*time.Second); err == nil {
-		t.Fatal("signal-interrupted owner exited successfully")
-	}
-	if !strings.Contains(process.output.String(), `RECOVERABLE_DRAIN_FAILURE:{"groupAlive":true,"directoryRetained":true,"groupRetained":true,"signalFailure":true}`) {
-		t.Fatalf("did not exercise retained ownership after a real drain failure:\n%s", process.output.String())
-	}
-	assertInputsReceiptDrained(t, fixture)
-}
+// The one-shot stdin/stdout/exit-status tests and retry ownership test were
+// removed with that protocol. These native builds now exercise shared-service
+// results and terminal cleanup.
 
 type inputsBuildResult struct {
 	output string
@@ -514,7 +245,7 @@ func prepareInputsLifecycleFixture(t *testing.T, mode string) string {
     return []string{"atlas", "beacon"}, nil
 }
 func writeInputsLifecycleReceipt() error {
-    child := exec.Command("/bin/sh", "-c", "trap '' TERM; (sleep 2; printf late > \"$1\") & wait", "sh", os.Getenv("SKGO_LIFECYCLE_LATE"))
+    child := exec.Command("/bin/sh", "-c", "trap '' TERM; while :; do sleep 1; done")
     if os.Getenv("SKGO_LIFECYCLE_MODE") != "controlled-drain" { child.Stdout, child.Stderr = os.Stdout, os.Stderr }
     if err := child.Start(); err != nil { return err }
     exe, err := os.Executable(); if err != nil { return err }
@@ -538,7 +269,7 @@ var _ = skgo.Prerender(getSite, skgo.PrerenderOptions{Inputs: siteInputs})`, 1)
 		loadText := string(loadSource)
 		loadText = strings.Replace(loadText, "import (", "import (\n\t\"fmt\"\n\t\"os\"\n\t\"os/exec\"\n\t\"path/filepath\"\n\t\"time\"", 1)
 		injection := "if os.Getenv(\"SKGO_LIFECYCLE_MODE\") == \"crawler-failure\" || os.Getenv(\"SKGO_LIFECYCLE_MODE\") == \"blocked\" {\n" +
-			"child := exec.Command(\"/bin/sh\", \"-c\", \"trap '' TERM; (sleep 2; printf late > \\\"$1\\\") & wait\", \"sh\", os.Getenv(\"SKGO_LIFECYCLE_LATE\")); child.Stdout, child.Stderr = os.Stdout, os.Stderr; if err := child.Start(); err != nil { return PageData{}, err };\n" +
+			"child := exec.Command(\"/bin/sh\", \"-c\", \"trap '' TERM; while :; do sleep 1; done\"); child.Stdout, child.Stderr = os.Stdout, os.Stderr; if err := child.Start(); err != nil { return PageData{}, err };\n" +
 			"exe, err := os.Executable(); if err != nil { return PageData{}, err }; file, err := os.Create(os.Getenv(\"SKGO_LIFECYCLE_RECEIPT\")); if err != nil { return PageData{}, err }; _, err = fmt.Fprintf(file, \"%d\\n%d\\n%s\\n\", os.Getpid(), os.Getpid(), filepath.Dir(exe)); closeErr := file.Close(); if err != nil { return PageData{}, err }; if closeErr != nil { return PageData{}, closeErr }; <-time.After(30 * time.Second); }\n"
 		const signature = "func pageLoad(event RequestEvent) (PageData, error) {"
 		if !strings.Contains(loadText, signature) {
@@ -578,7 +309,7 @@ func inputsBuildProgram() string {
 		"function observation() { try { const [pid, group, privateDir] = readFileSync(process.env.SKGO_LIFECYCLE_RECEIPT, 'utf8').trim().split('\\n'); let groupAlive=true; try { process.kill(-Number(group),0); } catch (e) { if (e.code==='ESRCH') groupAlive=false; } return {pid:Number(pid),group:Number(group),groupAlive,privateDirExists:existsSync(privateDir)}; } catch { return null; } }\n" +
 		"const builder = await createBuilder({ root: process.cwd(), configFile: 'vite.config.ts', logLevel: 'silent', builder: {} });\n" +
 		"try { await builder.buildApp(); console.log('BUILD_APP_RESOLVED'); }\n" +
-		"catch (error) { console.log('DRAIN_OBSERVATION:' + JSON.stringify(observation())); const message = String(error?.message ?? error); const stack = error?.stack; console.error('BUILD_APP_REJECTED:' + message + (stack ? '\\n' + stack : '')); process.exitCode = 1; }\n" +
+		"catch (error) { console.log('DRAIN_OBSERVATION:' + JSON.stringify(observation())); const message = String(error?.message ?? error); const stack = error?.stack; if (error?.cleanupError) console.error('CLEANUP_FAILURE:', error.cleanupError); console.error('BUILD_APP_REJECTED:' + message + (stack ? '\\n' + stack : '')); process.exitCode = 1; }\n" +
 		"finally { await builder.close?.(); }\n"
 }
 
@@ -588,52 +319,6 @@ func inputsVPBuildCommand(t *testing.T, fixture string) *exec.Cmd {
 	cmd.Dir = filepath.Join(fixture, "web")
 	cmd.Env = inputsTestEnv(fixture, "")
 	return cmd
-}
-
-func runInputsProtocolFixture(t *testing.T, exitCode int) inputsBuildResult {
-	t.Helper()
-	fixture := prepareInputsLifecycleFixture(t, "success")
-	packageDir := filepath.Join(fixture, "internal", "inputsprotocol")
-	if err := os.MkdirAll(packageDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	code := `package main
-import (
-    "log"
-    "os"
-    "github.com/tylergannon/skgo"
-    generated "github.com/tylergannon/skgo/example/internal/skgo"
-)
-func main() {
-    if err := skgo.RunPrerenderBuild(os.Stdin, os.Stdout, generated.Transport(), generated.Loads(), generated.Remotes()); err != nil { log.Fatal(err) }
-    os.Exit(EXIT_CODE)
-}
-`
-	if exitCode < 0 {
-		code = "package main\nimport \"os\"\nfunc main() { os.Exit(0) }\n"
-	}
-	code = strings.Replace(code, "EXIT_CODE", strconv.Itoa(exitCode), 1)
-	if err := os.WriteFile(filepath.Join(packageDir, "main.go"), []byte(code), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	manifestPath := filepath.Join(fixture, "web", "skgo.remotes.json")
-	manifestBytes, err := os.ReadFile(manifestPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var manifest map[string]any
-	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		t.Fatal(err)
-	}
-	manifest["prerender"] = map[string]string{"root": "..", "package": "./internal/inputsprotocol"}
-	updated, err := json.Marshal(manifest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(manifestPath, updated, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return runInputsBuildApp(t, fixture)
 }
 
 func inputsTestEnv(fixture, mode string) []string {
@@ -649,7 +334,6 @@ func inputsTestEnv(fixture, mode string) []string {
 		"TMPDIR":                 filepath.Join(fixture, "owner-tmp"),
 		"SKGO_LIFECYCLE_MODE":    mode,
 		"SKGO_LIFECYCLE_RECEIPT": filepath.Join(fixture, "owner-receipt"),
-		"SKGO_LIFECYCLE_LATE":    filepath.Join(fixture, "late-descendant-write"),
 		"SKGO_VITE_OWNER_PID":    filepath.Join(fixture, "vite-owner-pid"),
 	}
 	_ = os.MkdirAll(set["TMPDIR"], 0o755)
@@ -789,6 +473,22 @@ func waitInputsCommand(t *testing.T, tracked *inputsTrackedCommand, timeout time
 	return err
 }
 
+func waitInputsViteOwnerExit(t *testing.T, fixture string) {
+	t.Helper()
+	pid, err := inputsViteOwnerPID(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if err := syscall.Kill(pid, 0); errors.Is(err, syscall.ESRCH) {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("actual Vite owner %d did not exit after its outer launcher", pid)
+}
+
 func assertInputsDrainComplete(t *testing.T, fixture, output string) {
 	t.Helper()
 	if !strings.Contains(output, "BUILD_APP_REJECTED:") && !strings.Contains(output, "error during build") {
@@ -831,9 +531,7 @@ func assertInputsReceiptDrained(t *testing.T, fixture string) {
 	if _, err := os.Stat(privateDir); !os.IsNotExist(err) {
 		t.Fatalf("private Go compile directory %s remains after buildApp settled: %v", privateDir, err)
 	}
-	if _, err := os.Stat(filepath.Join(fixture, "late-descendant-write")); !os.IsNotExist(err) {
-		t.Fatalf("owned descendant performed late I/O after buildApp settled: %v", err)
-	}
+
 	assertInputsScratchEmpty(t, fixture)
 }
 

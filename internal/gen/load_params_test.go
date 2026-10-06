@@ -40,8 +40,8 @@ func TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app, err := copyExample(root, t.TempDir())
-	if err != nil {
+	app := t.TempDir()
+	if err := stageTypedLoadEvolutionFixture(root, app); err != nil {
 		t.Fatal(err)
 	}
 	cfg := Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")}
@@ -49,9 +49,25 @@ func TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation(t *testing.T) {
 		t.Fatal(err)
 	}
 	paramsFile := filepath.Join(app, "web", "src", "routes", "typed-load", "[number=Order]", loadParamsFile)
-	initial, err := os.ReadFile(paramsFile)
-	if err != nil || !strings.Contains(string(initial), "Number() hooks.OrderNumber") || !strings.Contains(string(initial), "valueNumber hooks.OrderNumber") {
-		t.Fatalf("initial named matcher type missing: %s, %v", initial, err)
+	dependenciesFile := filepath.Join(app, "web", "src", "routes", "typed-dependencies", "[a=Order]", "[b=Order]", "[ignored]", "page.server.go")
+	paramDeclarations := []struct {
+		path      string
+		accessors []string
+	}{
+		{paramsFile, []string{"Number"}},
+		{filepath.Join(filepath.Dir(dependenciesFile), loadParamsFile), []string{"A", "B"}},
+	}
+	for _, fixture := range paramDeclarations {
+		initial, err := os.ReadFile(fixture.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		declarations := strings.Join(strings.Fields(string(initial)), " ")
+		for _, accessor := range fixture.accessors {
+			if !strings.Contains(declarations, accessor+"() hooks.OrderNumber") || !strings.Contains(declarations, "value"+accessor+" hooks.OrderNumber") {
+				t.Fatalf("%s: initial named matcher type missing: %s", fixture.path, initial)
+			}
+		}
 	}
 	matcherFile := filepath.Join(app, "web", "src", "params.go")
 	revised := `package hooks
@@ -70,14 +86,7 @@ func Order(value string) (RevisedOrder, bool) {
 	if err := Run(cfg); err == nil || !strings.Contains(err.Error(), "Label") {
 		t.Fatalf("stale handler must fail compilation after params refresh: %v", err)
 	}
-	dependenciesFile := filepath.Join(app, "web", "src", "routes", "typed-dependencies", "[a=Order]", "[b=Order]", "[ignored]", "page.server.go")
-	for _, fixture := range []struct {
-		path      string
-		accessors []string
-	}{
-		{paramsFile, []string{"Number"}},
-		{filepath.Join(filepath.Dir(dependenciesFile), loadParamsFile), []string{"A", "B"}},
-	} {
+	for _, fixture := range paramDeclarations {
 		refreshed, err := os.ReadFile(fixture.path)
 		if err != nil {
 			t.Fatal(err)

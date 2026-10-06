@@ -63,15 +63,15 @@ import (
 	skgo49 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
-// Matchers returns the app route matchers independently of loads.
-func Matchers() map[string]skgo.ParamMatcher {
-	return map[string]skgo.ParamMatcher{
+func skgoCallerMatchers() skgo.CallerMatchers {
+	return skgo.CallerMatchers{
 		"Order": func(value string) (any, bool) { return hooks.Order(value) },
 	}
 }
 
-func skgoCallerMatchers() skgo.CallerMatchers {
-	return skgo.CallerMatchers{
+// Matchers returns the app's route matchers, including routes without server loads.
+func Matchers() map[string]skgo.ParamMatcher {
+	return map[string]skgo.ParamMatcher{
 		"Order": func(value string) (any, bool) { return hooks.Order(value) },
 	}
 }
@@ -245,6 +245,23 @@ func requestedArg_buildReceipt(arg any) (any, error) {
 		return nil, skgo.BadRequest(err)
 	}
 	return in, nil
+}
+
+// inputs_buildReceipt encodes declared build-time inputs for src/routes/about/about.remote.ts#buildReceipt.
+func inputs_buildReceipt(_ context.Context, _ skgo.Call) ([]any, error) {
+	values, err := skgo7.SkgoPrerenderInputs_buildReceipt()
+	if err != nil {
+		return nil, err
+	}
+	encoded := make([]any, len(values))
+	for i, value := range values {
+		tree, err := EncodeRoot0(value)
+		if err != nil {
+			return nil, fmt.Errorf("skgo: encode prerender input %d: %w", i, err)
+		}
+		encoded[i] = tree
+	}
+	return encoded, nil
 }
 
 // remote_sendRemoteNote answers src/routes/actions/coexist.remote.ts#sendRemoteNote, a form.
@@ -1139,6 +1156,7 @@ func Remotes() []*skgo.Remote {
 			Fn:        skgo7.Skgo_buildReceipt,
 			Call:      remote_buildReceipt,
 			DecodeArg: requestedArg_buildReceipt,
+			Inputs:    inputs_buildReceipt,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:           skgo.KindForm,

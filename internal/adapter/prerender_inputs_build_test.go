@@ -6,10 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestDeclaredPrerenderInputsBuildAndProduceNativeArtifacts(t *testing.T) {
@@ -44,8 +45,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
-	"runtime"
 
 	"github.com/tylergannon/polytype/devalue"
 	"github.com/tylergannon/skgo"
@@ -69,10 +68,6 @@ func siteInputs() ([]string, error) {
 		if err != nil { return nil, err }
 		if _, err := file.WriteString("called\n"); err != nil { file.Close(); return nil, err }
 		if err := file.Close(); err != nil { return nil, err }
-	}
-	if late := os.Getenv("SKGO_LATE_RECEIPT"); late != "" && runtime.GOOS != "windows" {
-		cmd := exec.Command("/bin/sh", "-c", "sleep 1; printf late > \"$1\"", "sh", late)
-		if err := cmd.Start(); err != nil { return nil, err }
 	}
 	return []string{"atlas", "beacon", "atlas"}, nil
 }
@@ -168,7 +163,7 @@ export async function load() {
 	"context"`, `import (
 	"context"
 	"os"`, 1)
-	pageSourceText = strings.Replace(pageSourceText, `var _ = skgo.Prerender(buildReceipt)`, `func buildReceiptInputs() ([]string, error) {
+	pageSourceText = strings.Replace(pageSourceText, `var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: receiptNames})`, `func buildReceiptInputs() ([]string, error) {
 	if receipt := os.Getenv("SKGO_PAGE_INPUTS_RECEIPT"); receipt != "" {
 		file, err := os.OpenFile(receipt, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 		if err != nil { return nil, err }
@@ -243,11 +238,22 @@ export const handleError = ({ error, kind }: { error: unknown; kind: string }) =
 	remoteReceipt := filepath.Join(fixture, "remotes-called")
 	pageRemoteReceipt := filepath.Join(fixture, "page-remotes-called")
 	nativeErrorReceipt := filepath.Join(fixture, "native-errors")
-	lateReceipt := filepath.Join(fixture, "late-descendant-write")
-	build.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_ERROR_INPUTS_RECEIPT="+errorInputsReceipt, "SKGO_REMOTE_RECEIPT="+remoteReceipt, "SKGO_PAGE_REMOTE_RECEIPT="+pageRemoteReceipt, "SKGO_LATE_RECEIPT="+lateReceipt, "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
+	build.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_ERROR_INPUTS_RECEIPT="+errorInputsReceipt, "SKGO_REMOTE_RECEIPT="+remoteReceipt, "SKGO_PAGE_REMOTE_RECEIPT="+pageRemoteReceipt, "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
 	buildOutput, err := build.CombinedOutput()
 	if err != nil {
 		t.Fatalf("vp build: %v\n%s", err, buildOutput)
+	}
+	started := regexp.MustCompile(`(?m)^skgo prerender service started \(pid ([0-9]+)\)$`).FindAllStringSubmatch(string(buildOutput), -1)
+	stopped := regexp.MustCompile(`(?m)^skgo prerender service stopped \(pid ([0-9]+)\)$`).FindAllStringSubmatch(string(buildOutput), -1)
+	if len(started) != 1 || len(stopped) != 1 || started[0][1] != stopped[0][1] {
+		t.Fatalf("build did not start and stop exactly one Go helper:\n%s", buildOutput)
+	}
+	helperPID, err := strconv.Atoi(started[0][1])
+	if err != nil || helperPID < 2 {
+		t.Fatalf("invalid build helper PID %q: %v", started[0][1], err)
+	}
+	if runtime.GOOS != "windows" {
+		assertInputsProcessGroupGone(t, helperPID)
 	}
 	if strings.Contains(string(buildOutput), "private unknown failure") {
 		t.Fatalf("native public prerender output leaked the private unknown diagnostic:\n%s", buildOutput)
@@ -279,12 +285,6 @@ export const handleError = ({ error, kind }: { error: unknown; kind: string }) =
 	}
 	if calls, err := os.ReadFile(pageRemoteReceipt); err != nil || string(calls) != "atlas\n" {
 		t.Fatalf("duplicate page remote calls = %q, %v; want one build response for two atlas calls", calls, err)
-	}
-	if runtime.GOOS != "windows" {
-		time.Sleep(1200 * time.Millisecond)
-		if _, err := os.Stat(lateReceipt); !os.IsNotExist(err) {
-			t.Fatalf("owned Go producer descendant performed late I/O after build completion: %v", err)
-		}
 	}
 	for _, path := range []string{
 		"web/build/prerendered/prerender/atlas.html",
@@ -615,22 +615,26 @@ func copyFixtureTree(t *testing.T, source, destination string) {
 
 func linkFixtureDependencies(t *testing.T, source, destination, adapterPath string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(destination, "@skgo"), 0o755); err != nil {
+	if err := linkFixtureDependencyTree(source, destination, adapterPath); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func linkFixtureDependencyTree(source, destination, adapterPath string) error {
+	if err := os.MkdirAll(filepath.Join(destination, "@skgo"), 0o755); err != nil {
+		return err
 	}
 	entries, err := os.ReadDir(source)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 	for _, entry := range entries {
 		if entry.Name() == "$app" || entry.Name() == ".vite-temp" || entry.Name() == "@skgo" {
 			continue
 		}
 		if err := os.Symlink(filepath.Join(source, entry.Name()), filepath.Join(destination, entry.Name())); err != nil {
-			t.Fatalf("link frontend dependency %s: %v", entry.Name(), err)
+			return err
 		}
 	}
-	if err := os.Symlink(adapterPath, filepath.Join(destination, "@skgo", "sveltekit-adapter")); err != nil {
-		t.Fatal(err)
-	}
+	return os.Symlink(adapterPath, filepath.Join(destination, "@skgo", "sveltekit-adapter"))
 }

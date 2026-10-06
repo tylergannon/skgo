@@ -4,14 +4,13 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/tylergannon/skgo"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
 )
 
 func main() {
-	if err := skgo.RunPrerenderBuild(os.Stdin, os.Stdout, generated.Transport(), generated.Loads(), generated.Remotes()); err != nil {
+	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes()); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -24,50 +24,12 @@ func TestPrerenderGoLoadFailureNamesAuthoredRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app, err := copyExample(root, filepath.Join(t.TempDir(), "example"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Rename(filepath.Join(app, "web"), filepath.Join(app, "ui")); err != nil {
-		t.Fatal(err)
-	}
-	config := filepath.Join(app, "internal", "skgo", "config.go")
-	configSource, err := os.ReadFile(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	updatedConfig := strings.Replace(string(configSource), "--web ../../web", "--web ../../ui", 1)
-	if updatedConfig == string(configSource) {
-		t.Fatal("could not point generation at the fixture's ui/ frontend")
-	}
-	if err := os.WriteFile(config, []byte(updatedConfig), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	goMod := filepath.Join(app, "go.mod")
-	goModSource, err := os.ReadFile(goMod)
-	if err != nil {
-		t.Fatal(err)
-	}
-	updatedGoMod := strings.Replace(string(goModSource), "ignore ./web/node_modules", "ignore ./ui/node_modules", 1)
-	if err := os.WriteFile(goMod, []byte(updatedGoMod), 0o644); err != nil {
+	app := filepath.Join(t.TempDir(), "prerender-failure")
+	if err := stagePrerenderFixture(root, app, "prerender-failure"); err != nil {
 		t.Fatal(err)
 	}
 	linkExampleFrontendDependencies(t, root, app)
 
-	const failure = "prerender fixture literal failure"
-	layout := filepath.Join(app, "ui", "src", "routes", "layout.server.go")
-	source, err := os.ReadFile(layout)
-	if err != nil {
-		t.Fatal(err)
-	}
-	broken := strings.Replace(string(source), "import (", "import (\n\t\"errors\"", 1)
-	broken = strings.Replace(broken, "func layoutLoad(event RequestEvent) (RootLayoutData, error) {", "func layoutLoad(event RequestEvent) (RootLayoutData, error) {\n\treturn RootLayoutData{}, errors.New(\""+failure+"\")", 1)
-	if broken == string(source) || !strings.Contains(broken, failure) {
-		t.Fatal("failed to install the literal Go load failure in the fixture")
-	}
-	if err := os.WriteFile(layout, []byte(broken), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	if out, err := runGoGenerate(app); err != nil {
 		t.Fatalf("go generate ./...: %v\n%s", err, out)
 	}
@@ -79,12 +41,13 @@ func TestPrerenderGoLoadFailureNamesAuthoredRoute(t *testing.T) {
 	if buildErr == nil {
 		t.Fatalf("vp build succeeded despite the Go layout load failure:\n%s", output)
 	}
+	t.Logf("intentional vp build failure: %v", buildErr)
 	got := string(output)
 	for _, want := range []string{
 		"route ID /about",
 		"path /about",
 		"source src/routes/layout.server.go",
-		failure,
+		"prerender fixture literal failure",
 		"GET /about",
 	} {
 		if !strings.Contains(got, want) {
@@ -344,11 +307,6 @@ func linkExampleFrontendDependencies(t *testing.T, root, app string) {
 		t.Fatalf("example web dependencies are missing, so the real vp build cannot run: %v; install the pinned dependencies first", err)
 	}
 	destination := filepath.Join(app, "ui", "node_modules")
-	// copyExample's generation-only Kit link moves with web -> ui. Replace
-	// that small dependency tree with the complete installed build toolchain.
-	if err := os.RemoveAll(filepath.Join(destination, "@sveltejs")); err != nil {
-		t.Fatal(err)
-	}
 	if err := os.MkdirAll(filepath.Join(destination, "@skgo"), 0o755); err != nil {
 		t.Fatal(err)
 	}

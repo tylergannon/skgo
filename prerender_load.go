@@ -59,10 +59,9 @@ type prerenderRedirect struct {
 	Location string `json:"location"`
 }
 
-// RunPrerenderLoad answers one load invocation without the final application
-// manifest, which Kit has not written yet while it prerenders. The adapter
-// calls a build-only Go executable that imports the generated registrations.
-func RunPrerenderLoad(in io.Reader, out io.Writer, transport Transport, loads ...*ServerLoad) error {
+// runPrerenderLoad executes exactly the load Kit requested, with Kit's parent
+// data, through the same load engine that serves application requests.
+func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transport Transport, loads []*ServerLoad) error {
 	var input PrerenderLoadInput
 	if err := json.NewDecoder(in).Decode(&input); err != nil {
 		return fmt.Errorf("skgo: decode prerender load request: %w", err)
@@ -71,7 +70,7 @@ func RunPrerenderLoad(in io.Reader, out io.Writer, transport Transport, loads ..
 	if err != nil || pageURL.Scheme == "" || pageURL.Host == "" {
 		return fmt.Errorf("skgo: invalid prerender page URL %q", input.URL)
 	}
-	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, input.URL, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, input.URL, nil)
 	if err != nil {
 		return err
 	}

@@ -97,7 +97,10 @@ func TestCallerManifestDriftBeforeFallback(t *testing.T) {
 					if _, err := NewDevSSR(nil, Manifest{SSR: &ManifestSSR{}}, nil, rs, server.URL, SSROptions{}); err == nil || !strings.Contains(err.Error(), want) {
 						t.Fatalf("dev startup accepted a live snapshot ahead of Go: %v", err)
 					}
-					ls, err := NewLoads(LoadConfig{Dev: true, Routes: routes})
+					// The live response is ahead of the running Go registry;
+					// initialize loads from its original, valid graph too.
+					originalRoutes, _ := callerManifestFixture()
+					ls, err := NewLoads(LoadConfig{Dev: true, Routes: originalRoutes, Matchers: map[string]ParamMatcher(form.callerMatchers)})
 					if err != nil {
 						t.Fatal(err)
 					}

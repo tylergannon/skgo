@@ -44,7 +44,7 @@ func TestKitQueueCompatibilityAssetsAreCanonical(t *testing.T) {
 	}
 }
 
-func TestPrerenderInputsRejectsUnpatchedPinnedKitBeforeIPC(t *testing.T) {
+func TestPrerenderInputsRejectsUnpatchedPinnedKitBeforeHTTP(t *testing.T) {
 	metadata, patch, err := KitQueueCompatibility()
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ try {
   if (!error.message.includes(process.env.SKGO_STOCK_SHA256) || !error.message.includes(process.env.SKGO_CORRECTED_SHA256)) throw error;
   if (!error.message.includes('@sveltejs/kit@3.0.0')) throw error;
   if (!error.message.includes('kit-patch --web web --apply') || !error.message.includes('kit-patch --web web --check')) throw error;
-  console.log('incompatible Kit queue rejected before IPC with setup guidance');
+  console.log('incompatible Kit queue rejected before HTTP with setup guidance');
 }
 `
 	modulePath, err := filepath.Abs("skgo-adapter/prerender.js")
@@ -89,7 +89,7 @@ try {
 		"SKGO_STOCK_SHA256="+metadata.StockSHA256,
 		"SKGO_CORRECTED_SHA256="+metadata.CorrectedSHA256)
 	output, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(output), "incompatible Kit queue rejected before IPC with setup guidance") {
+	if err != nil || !strings.Contains(string(output), "incompatible Kit queue rejected before HTTP with setup guidance") {
 		t.Fatalf("prerender queue guard: err=%v output=%s", err, output)
 	}
 }
