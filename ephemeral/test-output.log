@@ -1,6 +1,0 @@
-go test -count=1 ./... ./example/...
-ok  	github.com/tylergannon/skgo	2.284s
-signal: interrupt
-FAIL	github.com/tylergannon/skgo/cmd/skgo	19.004s
-ok  	github.com/tylergannon/skgo/cmd/skgo-adapter-changed	0.649s
-error: recipe `test` failed on line 57 with exit code 1

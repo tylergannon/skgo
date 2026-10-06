@@ -1,4 +1,0 @@
-=== RUN   TestDeclaredPrerenderInputsBuildAndProduceNativeArtifacts
---- PASS: TestDeclaredPrerenderInputsBuildAndProduceNativeArtifacts (28.88s)
-PASS
-ok  	github.com/tylergannon/skgo/internal/adapter	29.217s

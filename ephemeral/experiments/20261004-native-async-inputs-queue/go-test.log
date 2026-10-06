@@ -1,7 +1,0 @@
-=== RUN   TestNativeDelayedAsyncInputsExposeClosedCrawlerQueue
-    native_test.go:404: native build pid/group=18362 fixture=/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/native-fixtures/async-queue-closed
-    native_test.go:404: native build completed: exit status 1
-    native_test.go:412: STOCK Kit3.0.0 legal asynchronous Inputs: root page completed; producer returned atlas/beacon; native crawler queue rejected enqueue, body0
---- PASS: TestNativeDelayedAsyncInputsExposeClosedCrawlerQueue (1.63s)
-PASS
-ok  	_/Users/tyler/Codex/2026-10-03/task-8/prerender-inputs-proof/native	1.802s
