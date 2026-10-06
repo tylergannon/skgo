@@ -1,5 +1,4 @@
 <script lang="ts">
-  import ContactForms from "../../contact/ContactForms.svelte";
   import type { PageProps } from "./$types";
   import { getItem } from "./item.remote";
 
@@ -19,5 +18,3 @@
     <p data-testid="item-failed">{(error as Error).message}</p>
   {/snippet}
 </svelte:boundary>
-
-<ContactForms showInbox={false} />

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import ContactForms from "../../contact/ContactForms.svelte";
   let { data } = $props();
 </script>
 
@@ -9,5 +8,3 @@
   <a href="/typed-load/42">Order 42</a>
   <a href="/typed-load/0">Order zero</a>
 </nav>
-
-<ContactForms showInbox={false} />

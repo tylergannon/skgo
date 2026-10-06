@@ -2,12 +2,13 @@ package example_test
 
 import (
 	"encoding/json"
-	"github.com/tylergannon/polytype/devalue"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/tylergannon/polytype/devalue"
 )
 
 func pathMarkupContains(body, literal string) bool {

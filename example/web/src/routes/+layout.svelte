@@ -1,6 +1,7 @@
 <script lang="ts">
   import { building } from "$app/env";
   import { page } from "$app/state";
+  import ContactForms from "./contact/ContactForms.svelte";
   import SignIn from "#lib/SignIn.svelte";
 
   let { data, children } = $props();
@@ -72,6 +73,10 @@
 
 <main>
   {@render children()}
+  <!-- Keep the shared keyed form's reactive owner alive across caller changes. -->
+  {#if page.route.id === "/contact" || page.route.id === "/items/[id]" || page.route.id === "/typed-load/[number=Order]"}
+    <ContactForms showInbox={page.route.id === "/contact"} />
+  {/if}
 </main>
 
 <!--
