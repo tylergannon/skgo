@@ -75,7 +75,7 @@ appear. A warm Go build cache does not prevent these in-process source parses.
 The measured repetition here is between invocations; the largest dependency
 files were parsed once within each of these particular invocations.
 
-The direct cause is `internal/gen/load_params.go:249`: the matcher loader asks
+The direct cause in this existing-example probe is `internal/gen/load_params.go:249`: the matcher loader asks
 for `NeedSyntax | NeedTypesInfo | NeedDeps`. In pinned
 `golang.org/x/tools/go/packages` v0.50.0, `NeedDeps` applies the requested source
 and type-information modes to dependency packages too (`packages.go:805-810`).
@@ -86,7 +86,9 @@ an overlaid file does not yet exist. In go/packages v0.50.0, a nonempty overlay
 invalidates dependency export data indiscriminately (`packages.go:802`),
 forcing source loading even without `NeedDeps`. Fresh generation fixtures
 create exactly this situation. The focused existing-tree probe above did not
-quantify that fallback separately.
+quantify that fallback separately. Claude's independent review later reproduced
+it on a fresh endpoint fixture: 1,090 standard-library source parses and
+301.3 MiB allocated, with no `params.go` and no matcher `NeedDeps` load.
 
 Reuse already exists within an invocation: `internal/gen/packages.go:11`
 caches a loaded grammar package for type and codec generation. The probe still
@@ -209,6 +211,46 @@ The first optimization target should be repeated package analysis, with its
 transitive checks preserved. Sharing identical generation results is a separate,
 smaller opportunity. Keep every existing assertion and the normal validation
 entrypoint; do not introduce a reduced-confidence alternate suite.
+
+## Independent Claude Fable review
+
+The written claims are in `claims-for-review.md`. Claude Fable 5.1 reviewed them
+in session `fbc0aa23-df12-4a1a-b9cd-e9a929eecdd1`; its complete report is
+`ephemeral/reviews/202610070852-gen-cpu-claude-fable-round-01.md`. The outcome is
+**material findings remain**, not implementation approval.
+
+The review supports reuse once per identical fixture/input/starting state and
+agrees that dependency import validation does not require full dependency
+source type-checking. It identifies a more useful existing shared result than
+new caching machinery: compiler export data, already maintained and invalidated
+by Go's build cache. Both the matcher `NeedDeps` mode and fresh-file overlays
+prevent that reuse. The reviewer's fresh-fixture probe independently establishes
+the second path; a single full-suite observation tagged by load site and
+overlay-fallback decision would quantify their respective contributions.
+
+Do not read the earlier paired example probe as attribution of the entire
+suite to matcher loading. Do not read the failed no-deps experiment as the only
+failure it could cause: its panic aborted execution of the remaining selected
+test. The metadata-based remedy is still a proposal, not demonstrated combined
+behavior.
+
+Claude ranks restoring compiler-export reuse above fixture consolidation and
+finds no profiling evidence that memoizing `validateSharedType` would materially
+save resources. It also recommends measuring invocation-level `GOMAXPROCS`,
+test `-parallel`, and package `-p`; considering GC tuning only after allocation
+and RSS drop; retaining `-count=1` because subprocess inputs are not safely
+covered by the test result cache; and avoiding a separate fast suite or a
+persistent SKGo analysis cache.
+
+One implementation suggestion in the review needs qualification before use:
+materializing generated files earlier must preserve failed-generation output
+retention. Although `writeSharedParams` and `writeLoadParams` call `write`,
+`emit.go:1134` routes those calls to the generation buffer when
+`cfg.generation != nil`; publication occurs later in `output.go`.
+`output_test.go` checks that source errors and formatter failures do not publish
+changed output. The fresh-overlay problem is demonstrated; early publication
+is not an accepted solution. An implementer must preserve those contracts and
+read-only checks while restoring export reuse.
 
 ## Read or reproduce the profiles
 
