@@ -4,12 +4,12 @@ import "testing"
 
 func TestEvolvedApplication(t *testing.T) {
 	t.Parallel()
-	t.Run("TestFormClientInputContractEvolution", testFormClientInputContractEvolution)
-	t.Run("TestFormClientResultContractEvolution", testFormClientResultContractEvolution)
-	t.Run("TestFormClientGenerationRecoversAndTracksContract", testFormClientGenerationRecoversAndTracksContract)
-	t.Run("TestGenerateRecoversFromAStaleGeneratedFile", testGenerateRecoversFromAStaleGeneratedFile)
-	t.Run("TestCheckAcceptsNullableWithGeneratorProjection", testCheckAcceptsNullableWithGeneratorProjection)
-	t.Run("TestNamedDeferredPayloadSerializedNames", testNamedDeferredPayloadSerializedNames)
+	t.Run("FormClientInputContractEvolution", testFormClientInputContractEvolution)
+	t.Run("FormClientResultContractEvolution", testFormClientResultContractEvolution)
+	t.Run("FormClientGenerationRecoversAndTracksContract", testFormClientGenerationRecoversAndTracksContract)
+	t.Run("GenerateRecoversFromAStaleGeneratedFile", testGenerateRecoversFromAStaleGeneratedFile)
+	t.Run("CheckAcceptsNullableWithGeneratorProjection", testCheckAcceptsNullableWithGeneratorProjection)
+	t.Run("NamedDeferredPayloadSerializedNames", testNamedDeferredPayloadSerializedNames)
 }
 
 func TestProductionApplication(t *testing.T) {
@@ -18,15 +18,15 @@ func TestProductionApplication(t *testing.T) {
 	if err := ready(); err != nil {
 		t.Fatal(err)
 	}
-	t.Run("TestTypedLoadMatchersPrerenderNamedGoValues", testTypedLoadMatchersPrerenderNamedGoValues)
-	t.Run("TestGoPagePrerenderRedirectBuildsKitsNativeArtifact", testGoPagePrerenderRedirectBuildsKitsNativeArtifact)
-	t.Run("TestRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse", testRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse)
-	t.Run("TestCompiledProductionPrerenderedEndpointsAndPages", testCompiledProductionPrerenderedEndpointsAndPages)
-	t.Run("TestRealProductionStartsWithPrerenderedEndpoints", testRealProductionStartsWithPrerenderedEndpoints)
-	t.Run("TestCompiledProductionNoArgumentNullReachesTheArtifactLookup", testCompiledProductionNoArgumentNullReachesTheArtifactLookup)
-	t.Run("TestCompiledProductionStoredPrerenderError", testCompiledProductionStoredPrerenderError)
-	t.Run("TestCompiledProductionPrerenderTransformFailure", testCompiledProductionPrerenderTransformFailure)
-	t.Run("TestRealKitBuildAppliesRequestResolveOptions", testRealKitBuildAppliesRequestResolveOptions)
+	t.Run("TypedLoadMatchersPrerenderNamedGoValues", testTypedLoadMatchersPrerenderNamedGoValues)
+	t.Run("GoPagePrerenderRedirectBuildsKitsNativeArtifact", testGoPagePrerenderRedirectBuildsKitsNativeArtifact)
+	t.Run("RealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse", testRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse)
+	t.Run("CompiledProductionPrerenderedEndpointsAndPages", testCompiledProductionPrerenderedEndpointsAndPages)
+	t.Run("RealProductionStartsWithPrerenderedEndpoints", testRealProductionStartsWithPrerenderedEndpoints)
+	t.Run("CompiledProductionNoArgumentNullReachesTheArtifactLookup", testCompiledProductionNoArgumentNullReachesTheArtifactLookup)
+	t.Run("CompiledProductionStoredPrerenderError", testCompiledProductionStoredPrerenderError)
+	t.Run("CompiledProductionPrerenderTransformFailure", testCompiledProductionPrerenderTransformFailure)
+	t.Run("RealKitBuildAppliesRequestResolveOptions", testRealKitBuildAppliesRequestResolveOptions)
 
 }
 
@@ -36,11 +36,11 @@ func TestProductionOptionsApplication(t *testing.T) {
 	if err := ready(); err != nil {
 		t.Fatal(err)
 	}
-	t.Run("TestRealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads", testRealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads)
+	t.Run("RealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads", testRealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads)
 }
 
 func TestCheckApplication(t *testing.T) {
 	t.Parallel()
-	t.Run("TestRealCheckReportsWireAdviceAtAuthoredLocations", testRealCheckReportsWireAdviceAtAuthoredLocations)
-	t.Run("TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink", testReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink)
+	t.Run("RealCheckReportsWireAdviceAtAuthoredLocations", testRealCheckReportsWireAdviceAtAuthoredLocations)
+	t.Run("ReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink", testReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink)
 }

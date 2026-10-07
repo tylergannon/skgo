@@ -61,7 +61,8 @@ func markerDeclaration(t *testing.T, filename, source string) (*app, *goPackage,
 	imports := declarationImports{}
 	imports[skgoPkg] = declarationPackage(t, skgoPkg, "skgo.go", `package skgo
 import("context";"net/http")
-type RequestResolve[P,L any] func(context.Context,RequestEvent[P,L])(*http.Response,error)
+type ResolveOptions struct{}
+type RequestResolve[P,L any] func(context.Context,RequestEvent[P,L],...ResolveOptions)(*http.Response,error)
 type RequestMiddleware[P,L any] func(context.Context,RequestEvent[P,L],RequestResolve[P,L])(*http.Response,error)
 type RequestEvent[P,L any] struct{}
 func Load(any)int{return 0}

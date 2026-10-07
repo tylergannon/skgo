@@ -151,26 +151,6 @@ func runGoBuild(dir string) (string, error) {
 	return string(out), err
 }
 
-// sandboxExample copies the example app into a temp dir, so tests that
-// corrupt application source do not touch the tree the developer is working
-// in.
-//
-// GOWORK is off (TestMain) because the sandbox is not part of this checkout's
-// workspace; its go.mod carries an absolute replace back to the real skgo
-// module instead, since the copy is no longer one directory below it.
-func sandboxExample(t *testing.T) string {
-	t.Helper()
-	root, err := repoRoot()
-	if err != nil {
-		t.Fatalf("locating the repository root: %v", err)
-	}
-	app, err := copyExample(root, filepath.Join(t.TempDir(), "example"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return app
-}
-
 // copyExample copies root's example app to app and points its skgo replace
 // back at root.
 func copyExample(root, app string) (string, error) {
