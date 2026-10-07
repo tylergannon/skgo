@@ -134,7 +134,7 @@ func fixture(id string) Profile {
 	return profile
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	return loadPageData(event.Context(), event.Event)
 }
 

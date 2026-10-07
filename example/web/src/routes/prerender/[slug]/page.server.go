@@ -9,7 +9,7 @@ type PageData struct {
 	Receipt string `json:"receipt"`
 }
 
-func load(event RequestEvent) (PageData, error) {
+func load(event PageRequestEvent) (PageData, error) {
 	slug := event.Params.Slug()
 	return PageData{Slug: slug, Receipt: "Go entry load: " + slug}, nil
 }

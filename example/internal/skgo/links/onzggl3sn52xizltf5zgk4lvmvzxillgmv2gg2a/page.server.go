@@ -17,7 +17,7 @@ type PageData struct {
 // pageLoad calls /api/request-fetch the way a load calls any service: with
 // Event.Fetch, a relative URL, and no socket. The visitor's session cookie
 // travels with the subrequest, so the endpoint knows who is asking.
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	request, err := http.NewRequest(http.MethodGet, "/api/request-fetch", nil)
 	if err != nil {

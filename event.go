@@ -21,11 +21,13 @@ import (
 // `cookies.delete`. skgo enforces the same rules; the difference is that a Go
 // handler returns the refusal rather than throwing it.
 type Event struct {
-	remote bool
-	query  bool
-	caller *remoteCaller
-	req    *http.Request
-	jar    *cookieJar
+	// metadata survives remote derivation; its URL and route remain guarded by query.
+	metadata *requestMetadata
+	remote   bool
+	query    bool
+	caller   *remoteCaller
+	req      *http.Request
+	jar      *cookieJar
 	// A page action shares response headers with the loads that follow it.
 	actionResponse *loadRequest
 	// mutable reports that this call may write cookies, which is true of a
@@ -55,9 +57,8 @@ type Event struct {
 	refreshes *refreshSet
 	// hook is non-nil only on the event the `handle` hook receives, which is
 	// the one event that sees everything kit resolved before it ran: the
-	// normalized URL, the matched route and its parameters, and what kind of
-	// request this is. Every other event is narrower, and a remote function's
-	// stays that way however much the hook can see.
+	// normalized URL, the matched route and its parameters. Remote function's
+	// caller capabilities stay narrower however much the hook can see.
 	hook *hookState
 }
 

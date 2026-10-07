@@ -54,6 +54,10 @@ type Manifest struct {
 	// Routes lists every route kit knows about, with the regular expression
 	// kit's own router uses to match it.
 	Routes []ManifestRoute `json:"routes"`
+	// PrerenderedEndpoints retains the compiled methods of endpoint routes Kit
+	// removed from Routes after prerendering. It checks binary/build agreement;
+	// these routes are served only at the paths recorded in Prerendered.
+	PrerenderedEndpoints map[string][]string `json:"prerenderedEndpoints,omitempty"`
 	// Remotes lists the `<hash>/<name>` ids of every remote function the
 	// built client calls. The adapter copies it from the list `skgo generate`
 	// wrote and refuses to build if kit compiled a different set, so a

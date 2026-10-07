@@ -375,7 +375,7 @@ func TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites(t *testing.T) {
 				t.Fatal(err)
 			}
 			before := checkSourceSnapshot(t, filepath.Join(web, "src"), out)
-			err = Check(Config{Web: web, Out: out})
+			err = Check(fixtureConfig(Config{Web: web, Out: out}))
 			if err == nil || !strings.Contains(err.Error(), path+":") || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("missing authored %s diagnostic: %v", tc.name, err)
 			}

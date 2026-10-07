@@ -39,7 +39,7 @@ type SaveFailure struct {
 	Reason string ` + "`json:\"reason\"`" + `
 }
 
-func page(RequestEvent) (PageData, error) { return PageData{}, nil }
+func page(PageRequestEvent) (PageData, error) { return PageData{}, nil }
 
 func save(context.Context) (SaveResult, error) { return SaveResult{}, nil }
 
@@ -108,7 +108,7 @@ func TestJavaScriptModeEmitsJSDocServerLoadsAndActions(t *testing.T) {
 func TestJavaScriptModeAcceptsAPrerenderedLoad(t *testing.T) {
 	t.Parallel()
 	_, cfg := foreignFixture(t, "", map[string]string{
-		"app/web/src/routes/about/page.server.go": loadSource,
+		"app/web/src/routes/about/page.server.go": strings.ReplaceAll(loadSource, "LayoutRequestEvent", "PageRequestEvent"),
 		"app/web/src/routes/about/+page.ts":       "export const prerender = true;\n",
 	})
 	cfg.Language = LanguageJavaScript
@@ -136,7 +136,7 @@ type PageData struct {
 	Price hooks.Money ` + "`json:\"price\"`" + `
 }
 
-func page(RequestEvent) (PageData, error) { return PageData{}, nil }
+func page(PageRequestEvent) (PageData, error) { return PageData{}, nil }
 
 var _ = skgo.Load(page)
 `

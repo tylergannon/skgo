@@ -16,7 +16,7 @@ func skgoGenerate(t *testing.T, app string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(requireSkgoBinary(t), "generate", "--web", filepath.Join(resolved, "web"), "--out", ".", "--quiet")
+	cmd := exec.Command(requireSkgoBinary(t), "generate", "--web", filepath.Join(resolved, "web"), "--out", ".", "--quiet", "--locals-package", "github.com/tylergannon/skgo/example/internal/app", "--hook-package", "github.com/tylergannon/skgo/example/internal/serverhooks")
 	cmd.Dir = filepath.Join(resolved, "internal", "skgo")
 	cmd.Env = append(os.Environ(), "GOWORK=off")
 	if out, err := cmd.CombinedOutput(); err != nil {

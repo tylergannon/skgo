@@ -72,8 +72,10 @@ type Request struct {
 	Cookies map[string]string `json:"cookies"`
 	Headers map[string]string `json:"headers"`
 	CSR     bool              `json:"csr"`
-	// ClientAddress is what `getClientAddress()` returns.
-	ClientAddress string `json:"client_address"`
+	// Flags describe the incoming request, including an internal fetch.
+	IsDataRequest   bool `json:"is_data_request"`
+	IsRemoteRequest bool `json:"is_remote_request"`
+	IsSubRequest    bool `json:"is_sub_request"`
 	// CSP is this render's Svelte-facing csp option, kit's own
 	// `csp.script_needs_nonce ? { nonce: csp.nonce } : { hash:
 	// csp.script_needs_hash }` (`page/render.js:198`), passed to Svelte's
@@ -377,8 +379,9 @@ type runtime struct {
 	// fetch and match are the other two calls a render currently in flight may
 	// make back out to Go. Like host, they belong to the one goroutine holding
 	// the runtime.
-	fetch Fetch
-	match Match
+	fetch         Fetch
+	match         Match
+	clientAddress func() (string, error)
 	// calls records the `<id>` and payload of every remote call the current
 	// render made, in order.
 	calls []Call
@@ -470,6 +473,8 @@ type Match func(pathname string) (routeID string, params map[string]string, ok b
 // optional; leaving one nil means a render that reaches it gets a well-defined
 // refusal rather than a ReferenceError.
 type Hosts struct {
+	// ClientAddress answers getClientAddress lazily from the hosting boundary.
+	ClientAddress func() (string, error)
 	// Remote answers a remote-function call.
 	Remote Host
 	// Fetch answers a same-origin `event.fetch`.
@@ -597,6 +602,15 @@ func (e *Engine) newRuntime() (*runtime, error) {
 		return nil, err
 	}
 
+	if err := rt.vm.Set("__skgo_client_address", func() (string, error) {
+		if rt.clientAddress == nil {
+			return "", errors.New("skgo: client address is unavailable in this request context")
+		}
+		return rt.clientAddress()
+	}); err != nil {
+		return nil, err
+	}
+
 	if err := rt.vm.Set("__skgo_match", func(pathname string) (string, error) {
 		if rt.match == nil {
 			return "null", nil
@@ -720,10 +734,11 @@ func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hos
 	rt.host = hosts.Remote
 	rt.fetch = hosts.Fetch
 	rt.match = hosts.Match
+	rt.clientAddress = hosts.ClientAddress
 	rt.calls = nil
 	rt.failed = nil
 	rt.route = routeID
-	defer func() { rt.host = nil; rt.fetch = nil; rt.match = nil; rt.route = "" }()
+	defer func() { rt.host = nil; rt.fetch = nil; rt.match = nil; rt.clientAddress = nil; rt.route = "" }()
 
 	// Whatever the last render left on the macrotask queue belongs to a request
 	// that is over. It is dropped rather than run: it would run against this

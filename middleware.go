@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"reflect"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -23,6 +23,8 @@ type hookState struct {
 	url       *url.URL
 	routeID   string
 	params    map[string]string
+	converted map[string]any
+	routing   bool
 	isData    bool
 	isRemote  bool
 	isSub     bool
@@ -81,18 +83,6 @@ func requestResponseHeaders(r *http.Request) http.Header {
 	return http.Header{}
 }
 
-// IsDataRequest reports that this is a `__data.json` request. It is only
-// meaningful on the event a Middleware receives.
-func (e *Event) IsDataRequest() bool { return e != nil && e.hook != nil && e.hook.isData }
-
-// IsRemoteRequest reports that this is a remote-function call. It is only
-// meaningful on the event a Middleware receives.
-func (e *Event) IsRemoteRequest() bool { return e != nil && e.hook != nil && e.hook.isRemote }
-
-// IsSubRequest reports that this request came from an in-process Fetch of the
-// app's own routes rather than from a client.
-func (e *Event) IsSubRequest() bool { return e != nil && e.hook != nil && e.hook.isSub }
-
 // Params is a copy of the matched route's parameters, or nil when no route
 // matched. It is only available on the event a Middleware receives; inside a
 // query kit forbids reading it, and so does this.
@@ -118,17 +108,15 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 	if m == nil {
 		return next
 	}
+	return m.intercept(cfg, next, nil)
+}
 
-	appDir := cfg.AppDir
-	if appDir == "" {
-		appDir = "_app"
-	}
+func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(context.Context) context.Context) http.Handler {
+
 	base := strings.TrimSuffix(cfg.Base, "/")
 	if base != "" && !strings.HasPrefix(base, "/") {
 		base = "/" + base
 	}
-	assetPrefix := base + "/" + appDir + "/"
-	remotePrefix := assetPrefix + "remote/"
 	var origin *url.URL
 	if u, err := url.Parse(cfg.Origin); err == nil && u.Host != "" {
 		origin = u
@@ -136,6 +124,32 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 	secure := secureCookieDefault(cfg.Origin, cfg.Dev)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cfg := cfg
+		base := base
+		origin := origin
+		secure := secure
+		if manifest, ok := r.Context().Value(prerenderManifestKey{}).(Manifest); ok {
+			build := manifest.HandleConfig()
+			cfg.routes = build.routes
+			cfg.Base = build.Base
+			cfg.AppDir = build.AppDir
+			base = cfg.Base
+			logicalURL := r.URL.String()
+			if request, ok := r.Context().Value(prerenderMatchKey{}).(prerenderRequestInput); ok && request.LogicalURL != "" {
+				logicalURL = request.LogicalURL
+			}
+			if u, err := url.Parse(logicalURL); err == nil && u.Host != "" {
+				origin = u
+				cfg.Origin = u.Scheme + "://" + u.Host
+				secure = secureCookieDefault(cfg.Origin, cfg.Dev)
+			}
+		}
+		appDir := cfg.AppDir
+		if appDir == "" {
+			appDir = "_app"
+		}
+		assetPrefix := base + "/" + appDir + "/"
+		remotePrefix := assetPrefix + "remote/"
 		path := r.URL.Path
 
 		// A websocket upgrade is not a request kit's server answers.
@@ -189,6 +203,7 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 		}
 
 		state := &hookState{
+			routing:  cfg.Loads != nil || len(cfg.routes) > 0,
 			url:      pageURL,
 			isData:   isData,
 			isRemote: isRemote,
@@ -196,7 +211,8 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 			response: &loadRequest{responseState: &responseState{headers: http.Header{}}},
 		}
 		hasPage := false
-		if !skipRoute {
+		_, buildRequest := r.Context().Value(prerenderMatchKey{}).(prerenderRequestInput)
+		if !skipRoute && !buildRequest {
 			// Handle runs before the registries, so it must validate the
 			// live graph before its own match too. Let the owning handler
 			// report refresh failures in the request kind's normal format.
@@ -206,16 +222,52 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 					return
 				}
 			}
-			if route, params, ok := cfg.matchRoute(routePath); ok {
+			if route, params, converted, ok := cfg.matchRoute(routePath); ok {
+				state.converted = converted
 				state.routeID, state.params, hasPage = route.id, params, route.hasPage
+			}
+		}
+		if build, ok := r.Context().Value(prerenderMatchKey{}).(prerenderRequestInput); ok {
+			state.routing = true
+			if build.LogicalURL != "" {
+				if logical, err := url.Parse(build.LogicalURL); err == nil {
+					state.url = logical
+					pageURL = logical
+				}
+			}
+			state.routeID = build.RouteID
+			state.params, state.converted = nil, nil
+			if build.RoutePattern != "" {
+				pattern, compileErr := regexp.Compile(kitPattern(build.RoutePattern))
+				if compileErr != nil {
+					http.Error(w, compileErr.Error(), 500)
+					return
+				}
+				match := pattern.FindStringSubmatchIndex(build.RoutePath)
+				if match == nil {
+					http.Error(w, "skgo: invalid build route", 500)
+					return
+				}
+				var accepted bool
+				state.params, state.converted, accepted = execMatchedParams(build.RoutePath, match, build.RouteParams, cfg.Matchers)
+				if !accepted {
+					http.Error(w, "skgo: Go matchers reject build route", 500)
+					return
+				}
 			}
 		}
 		state.jar = newCookieJarAt(r, pageURL.Host, pageURL.Path, secure)
 
-		event := &Event{req: r, jar: state.jar, mutable: true, hook: state, actionResponse: state.response}
+		r = withClientAddress(r, cfg.ClientAddress)
+		metadata := &requestMetadata{url: pageURL, routeID: state.routeID, isData: isData, isRemote: isRemote, isSub: state.isSub, routing: state.routing}
+		r = r.WithContext(context.WithValue(r.Context(), requestMetadataKey{}, metadata))
+		event := &Event{metadata: metadata, req: r, jar: state.jar, mutable: true, hook: state, actionResponse: state.response}
 		ctx := withEvent(r.Context(), event)
 		ctx = context.WithValue(ctx, hookStateKey{}, state)
-		ctx = context.WithValue(ctx, localsKey{}, &locals{values: map[reflect.Type]any{}})
+		if bind != nil {
+			ctx = bind(ctx)
+		}
+		event.req = r.WithContext(ctx)
 
 		var resolved *downstream
 		defer func() {
@@ -237,6 +289,9 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 			base := ctx
 			if hookStateOf(rctx) == state {
 				base = rctx
+			} else if locals := rctx.Value(localsKey{}); locals != nil {
+				// A different cancellation context still forwards the selected object.
+				base = context.WithValue(base, localsKey{}, locals)
 			}
 			resolved, response = startDownstream(rctx, base, next, r)
 			// Kit adds the headers and cookies in the same place it stops
@@ -256,8 +311,18 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 			err = Errorf(http.StatusInternalServerError, "skgo: the handle hook returned no response")
 		}
 		if err != nil {
+			if refusal, ok := err.(*requestRefusal); ok {
+				ctx = refusal.ctx
+				err = refusal.err
+			}
+			if refusal, ok := r.Context().Value(prerenderRefusalKey{}).(func(error, *hookState)); ok {
+				refusal(err, state)
+			}
 			cfg.refuse(w, r.WithContext(ctx), ctx, state.jar, state.routeID, err, isData, isRemote, hasPage)
 			return
+		}
+		if failed, ok := r.Context().Value(prerenderBodyFailureKey{}).(func(error)); ok && response.Body != nil {
+			response.Body = &prerenderBody{ReadCloser: response.Body, failed: failed}
 		}
 		cfg.finish(w, r, response, state, isData)
 	})
@@ -363,6 +428,12 @@ func (m Middleware) runGuarded(ctx context.Context, cfg HandleConfig, event *Eve
 			panic(value)
 		}
 		stack := debug.Stack()
+		if carried, ok := value.(*requestHookPanic); ok {
+			ctx, value, stack = carried.ctx, carried.value, carried.stack
+			if value == http.ErrAbortHandler {
+				panic(value)
+			}
+		}
 		if carried, ok := value.(*panicWithStack); ok {
 			if carried.value == http.ErrAbortHandler {
 				panic(carried.value)
@@ -374,7 +445,7 @@ func (m Middleware) runGuarded(ctx context.Context, cfg HandleConfig, event *Eve
 		} else {
 			log.Printf("skgo: handle hook panicked: %v\n%s", value, stack)
 		}
-		response, err = nil, &HTTPError{Status: 500, Message: "Internal Error"}
+		response, err = nil, requestHookError(ctx, &HTTPError{Status: 500, Message: "Internal Error"})
 	}()
 	return m(ctx, event, resolve)
 }

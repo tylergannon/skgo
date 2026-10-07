@@ -66,10 +66,10 @@ func evolvedEdits() []evolvedEdit {
 		// Form out of the Go client, whose contract the tests above assert on
 		// submit.
 		{optionalSource, "var _ = skgo.Form(submit)\n", "var _ = skgo.Form(submit)\n\n" +
-			"func submitAgain(ctx context.Context, event skgo.RequestEvent[params.Params], in Input) (Result, error) { return submit(ctx, event, in) }\n" +
+			"func submitAgain(ctx context.Context, event params.RequestEvent, in Input) (Result, error) { return submit(ctx, event, in) }\n" +
 			"var _ = skgo.Form(submitAgain)\n\n" +
 			"type NullableInput struct {\n\tName string `json:\"name\"`\n\tNickname polytype.Nullable[string] `json:\"nickname\"`\n}\n\n" +
-			"func submitNullable(ctx context.Context, event skgo.RequestEvent[params.Params], in NullableInput) (Result, error) { return submit(ctx, event, Input{Name: in.Name}) }\n" +
+			"func submitNullable(ctx context.Context, event params.RequestEvent, in NullableInput) (Result, error) { return submit(ctx, event, Input{Name: in.Name}) }\n" +
 			"var _ = skgo.Form(submitNullable)\n"},
 		// TestNamedDeferredPayloadSerializedNames: named, slice and array
 		// Deferred payloads of a type with a nullable member.
@@ -177,7 +177,7 @@ var evolved = sync.OnceValue(func() *evolvedApp {
 		return e
 	}
 	e.check = start(func() error {
-		return Check(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")})
+		return Check(fixtureConfig(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")}))
 	})
 	e.first.buildOut, e.first.buildErr = runGoBuild(filepath.Join(app, "internal", "skgo"))
 	return e

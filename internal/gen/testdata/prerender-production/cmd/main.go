@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
+	"os"
 
 	"github.com/tylergannon/skgo/example"
 	"github.com/tylergannon/skgo/example/ui"
@@ -18,5 +21,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Fatal(http.ListenAndServe("127.0.0.1:8080", handler))
+	address := os.Getenv("LISTEN_ADDRESS")
+	if address == "" {
+		address = "127.0.0.1:8080"
+	}
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("http://" + listener.Addr().String())
+	log.Fatal(http.Serve(listener, handler))
 }

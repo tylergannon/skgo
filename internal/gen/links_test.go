@@ -33,7 +33,7 @@ func fakeApp(t *testing.T, dirs ...string) Config {
 	if err := os.MkdirAll(filepath.Join(root, "generated"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	return Config{Web: web, Out: filepath.Join(root, "generated"), Logf: func(string, ...any) {}}
+	return fixtureConfig(Config{Web: web, Out: filepath.Join(root, "generated"), Logf: func(string, ...any) {}})
 }
 
 func linksFor(t *testing.T, cfg Config) *routeLinks {

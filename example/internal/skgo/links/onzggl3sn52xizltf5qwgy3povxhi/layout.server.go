@@ -11,8 +11,9 @@ import (
 	"context"
 	"sync"
 
+	app "github.com/tylergannon/skgo/example/internal/app"
+
 	"github.com/tylergannon/skgo"
-	"github.com/tylergannon/skgo/example/businesslogic"
 	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
 
@@ -47,9 +48,9 @@ func nextSerial(ctx context.Context) int {
 // hook filled in; nothing here reads a cookie or knows how a session is
 // spelled. Turning a signed-out visitor away here turns them away from every
 // page below, so adding another one needs no new guard.
-func layoutLoad(event RequestEvent) (LayoutData, error) {
+func layoutLoad(event LayoutRequestEvent) (LayoutData, error) {
 	ctx := event.Context()
-	session, _ := skgo.LocalOf[businesslogic.Session](ctx)
+	session := app.LocalsFrom(ctx).Session
 	if session.User == "" {
 		return LayoutData{}, &skgo.Redirect{Status: 307, Location: "/"}
 	}

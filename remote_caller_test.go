@@ -143,7 +143,7 @@ func TestTypedCommandContextRetainsCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	req := httptest.NewRequest(http.MethodPost, "/_app/remote/id/act", nil).WithContext(ctx)
 	e := (&Remotes{}).newEvent(req, true)
-	event := RequestEvent[struct{}]{Event: e}
+	event := RequestEvent[struct{}, struct{}]{Event: e}
 	derived := event.Context()
 	cancel()
 	if derived.Err() != context.Canceled {

@@ -180,20 +180,6 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 	if err := os.WriteFile(pageRemote, []byte(pageSourceText), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	serverHook := filepath.Join(fixture, "web", "src", "hooks.server.ts")
-	if err := os.WriteFile(serverHook, []byte(`import { appendFileSync } from "node:fs";
-import { getDeclaredSite, moneyRemote, noArgumentRemote, appFailureRemote, unknownFailureRemote, redirectRemote } from "./routes/declared.remote";
-import type { Handle } from "@sveltejs/kit/hooks";
-void [getDeclaredSite, moneyRemote, noArgumentRemote, appFailureRemote, unknownFailureRemote, redirectRemote];
-export const handle: Handle = async ({ event, resolve }) => resolve(event);
-export const handleError = ({ error, kind }: { error: unknown; kind: string }) => {
-  const diagnostic = error instanceof Error ? error.message : JSON.stringify(error);
-	  appendFileSync(process.env.SKGO_NATIVE_ERROR_RECEIPT!, kind + "|" + diagnostic + "\n");
-  return { message: kind === "app" ? "app-policy" : "Internal Error" };
-};
-`), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	viteConfig := filepath.Join(fixture, "web", "vite.config.ts")
 	viteSource, err := os.ReadFile(viteConfig)
 	if err != nil {
@@ -217,6 +203,7 @@ export const handleError = ({ error, kind }: { error: unknown; kind: string }) =
 	if output, err := generate.CombinedOutput(); err != nil {
 		t.Fatalf("go generate: %v\n%s", err, output)
 	}
+	installInputsErrorPolicy(t, fixture, "ts")
 	for _, receipt := range []string{inputReceipt, emptyReceipt, moneyReceipt, pageInputsReceipt, errorInputsReceipt} {
 		if _, err := os.Stat(receipt); !os.IsNotExist(err) {
 			t.Fatalf("producer ran during generation: %s (%v)", receipt, err)
@@ -462,6 +449,7 @@ export const handleError = ({ error, kind }: { error: unknown; kind: string }) =
 		t.Fatalf("JavaScript-mode go generate: %v\n%s", err, output)
 	}
 	jsRemote := filepath.Join(fixture, "web", "src", "routes", "declared.remote.js")
+	installInputsErrorPolicy(t, fixture, "js")
 	if _, err := os.Stat(jsRemote); err != nil {
 		t.Fatalf("JavaScript-mode go generate did not emit the JavaScript remote: %v", err)
 	}
@@ -637,4 +625,38 @@ func linkFixtureDependencyTree(source, destination, adapterPath string) error {
 		}
 	}
 	return os.Symlink(adapterPath, filepath.Join(destination, "@skgo", "sveltekit-adapter"))
+}
+
+// The native error-policy contract injects only its test policy after the
+// generator has installed the Go-owned handle. Applications cannot author it.
+func installInputsErrorPolicy(t *testing.T, fixture, extension string) {
+	t.Helper()
+	path := filepath.Join(fixture, "web", "src", "hooks.server."+extension)
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	annotation := "({ error, kind }: { error: unknown; kind: string })"
+	if extension == "js" {
+		annotation = "({ error, kind })"
+	}
+	source = append(source, []byte(`
+import { appendFileSync } from "node:fs";
+import { getDeclaredSite, moneyRemote, noArgumentRemote, appFailureRemote, unknownFailureRemote, redirectRemote } from "./routes/declared.remote";
+void [getDeclaredSite, moneyRemote, noArgumentRemote, appFailureRemote, unknownFailureRemote, redirectRemote];
+/** @param {{ error: unknown, kind: string }} input */
+export const handleError = `+annotation+` => {
+ const diagnostic = error instanceof Error ? error.message : JSON.stringify(error);
+ appendFileSync(process.env.SKGO_NATIVE_ERROR_RECEIPT`+func() string {
+		if extension == "ts" {
+			return "!"
+		}
+		return " ?? \"\""
+	}()+`, kind + "|" + diagnostic + "\n");
+ return { message: kind === "app" ? "app-policy" : "Internal Error" };
+};
+`)...)
+	if err := os.WriteFile(path, source, 0644); err != nil {
+		t.Fatal(err)
+	}
 }

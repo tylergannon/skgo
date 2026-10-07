@@ -6,7 +6,7 @@ type PageData struct {
 	Label string `json:"label"`
 }
 
-func load(event RequestEvent) (PageData, error) {
+func load(event PageRequestEvent) (PageData, error) {
 	return PageData{Label: event.Params.Number().Label()}, nil
 }
 

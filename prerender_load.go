@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"time"
 
 	"github.com/tylergannon/polytype/devalue"
 )
@@ -28,14 +29,18 @@ type PrerenderLoadInput struct {
 }
 
 type prerenderCookie struct {
-	Name     string `json:"name"`
-	Value    string `json:"value"`
-	Path     string `json:"path"`
-	Domain   string `json:"domain,omitempty"`
-	MaxAge   int    `json:"maxAge,omitempty"`
-	HTTPOnly bool   `json:"httpOnly"`
-	Secure   bool   `json:"secure"`
-	SameSite int    `json:"sameSite"`
+	Name        string     `json:"name"`
+	Value       string     `json:"value"`
+	Path        string     `json:"path"`
+	Domain      string     `json:"domain,omitempty"`
+	MaxAge      *int       `json:"maxAge,omitempty"`
+	Expires     *time.Time `json:"expires,omitempty"`
+	Partitioned bool       `json:"partitioned,omitempty"`
+	Priority    string     `json:"priority,omitempty"`
+	Raw         bool       `json:"raw,omitempty"`
+	HTTPOnly    bool       `json:"httpOnly"`
+	Secure      bool       `json:"secure"`
+	SameSite    int        `json:"sameSite"`
 }
 
 type prerenderLoadOutput struct {
@@ -74,6 +79,9 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 	if err != nil {
 		return err
 	}
+	if original, ok := ctx.Value(prerenderRequestKey{}).(*http.Request); ok {
+		request = original.WithContext(ctx)
+	}
 	request.Header = http.Header{}
 	for name, values := range input.Headers {
 		request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
@@ -90,7 +98,10 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 	// synthetic preceding node lets skgo.Parent read the same merged values.
 	parent := &ServerLoad{run: func(context.Context) (any, error) { return input.Parent, nil }}
 	var converted map[string]any
-	if input.RoutePattern != "" {
+	if state := hookStateOf(ctx); state != nil {
+		input.Params, converted = state.params, state.converted
+	}
+	if input.RoutePattern != "" && hookStateOf(ctx) == nil {
 		pattern, err := regexp.Compile(kitPattern(input.RoutePattern))
 		if err != nil {
 			return fmt.Errorf("skgo: prerender route pattern: %w", err)
@@ -105,9 +116,13 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 			return fmt.Errorf("skgo: Go matchers reject Kit prerender route %s at %s", input.RouteID, input.RoutePath)
 		}
 	}
+	previousHeaders := requestResponseHeaders(request).Clone()
 	shared, nodes := registry.runBranchWith(request, dataRequest{url: pageURL, converted: converted}, input.RouteID, input.Params, []*ServerLoad{parent, load}, nil, nil, nil)
 	node := nodes[1]
 	answer := prerenderLoadOutput{Headers: shared.headers.Clone()}
+	for name := range previousHeaders {
+		delete(answer.Headers, name)
+	}
 	if node.redir != nil {
 		answer.Redirect = &prerenderRedirect{Status: node.redir.status(), Location: node.redir.Location}
 	} else if node.err != nil {
@@ -151,11 +166,6 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 			return chunkErr
 		}
 	}
-	for _, c := range shared.jar.snapshot() {
-		answer.Cookies = append(answer.Cookies, prerenderCookie{
-			Name: c.Name, Value: c.Value, Path: c.Path, Domain: c.Domain,
-			MaxAge: c.MaxAge, HTTPOnly: c.HttpOnly, Secure: c.Secure, SameSite: int(c.SameSite),
-		})
-	}
+	answer.Cookies = prerenderCookies(shared.jar)
 	return json.NewEncoder(out).Encode(answer)
 }

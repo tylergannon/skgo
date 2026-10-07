@@ -112,8 +112,12 @@ export const prerender = true;
 			if err != nil {
 				t.Fatalf("native literal input-key artifact: %v", err)
 			}
-			want := fmt.Sprintf(`{"type":"result","data":"[{\"_\":1,\"p\":2},\"body:atlas\",{\"%s/skgoRemoteInputs/WyJhdGxhcyJd\":3},{\"v\":1}]"}`, address)
-			if string(contents) != want {
+			want := `{"type":"result","data":"[{\"_\":1},\"body:atlas\"]"}`
+			// Kit's prerender wrapper records a dependency with only _. A
+			// direct remote request additionally collects implicit data.p.
+			// The page and declared-input queue may race to publish either.
+			withImplicit := fmt.Sprintf(`{"type":"result","data":"[{\"_\":1,\"p\":2},\"body:atlas\",{\"%s/skgoRemoteInputs/WyJhdGxhcyJd\":3},{\"v\":1}]"}`, address)
+			if string(contents) != want && string(contents) != withImplicit {
 				t.Fatalf("native artifact for literal module/name/key = %s; want %s", contents, want)
 			}
 			entries, err := os.ReadDir(filepath.Dir(artifact))

@@ -255,7 +255,8 @@ func newDevApp(t *testing.T) *devApp {
 	app.write("go.mod", gomod)
 	app.write("go.sum", string(sum))
 	app.write("cmd/main.go", devAppMain)
-	app.write("internal/skgo/config.go", "package skgo\n")
+	app.write("internal/skgo/config.go", "package skgo\n//go:generate go tool skgo generate --web ../../web --locals-package toy/internal/app\n")
+	app.write("internal/app/locals.go", "package app\ntype Locals struct{}\n")
 	app.write("web/src/routes/api/thing/server.go", devEndpointOne)
 	app.write("web/src/routes/form/page.server.go", devActionOne)
 	return app
@@ -462,7 +463,7 @@ func TestSkgoDevAdoptsAuthoredEndpointsAndActionsInOneLaunch(t *testing.T) {
 
 	// The built binary: what a deployment of the starting source answers, for
 	// as long as the developer edits the source.
-	gen := exec.Command(skgoBin, "generate", "--web", filepath.Join(app.root, "web"), "--out", ".", "--quiet")
+	gen := exec.Command(skgoBin, "generate", "--web", filepath.Join(app.root, "web"), "--out", ".", "--quiet", "--locals-package", "toy/internal/app")
 	gen.Dir = filepath.Join(app.root, "internal", "skgo")
 	gen.Env = app.env
 	if output, err := gen.CombinedOutput(); err != nil {

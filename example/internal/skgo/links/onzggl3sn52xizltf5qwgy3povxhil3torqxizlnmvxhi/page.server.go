@@ -13,7 +13,7 @@ type PageData struct {
 	Balance int `json:"balance"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{}, skgo.Errorf(402, "Your account is in arrears")
 }
 

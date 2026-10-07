@@ -4,21 +4,44 @@ package account
 
 import (
 	skgo "github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
-// RouteParams stores converted values. Only accessor reads record dependencies
-// on the load invocation that constructed these params.
+// RouteParams stores converted values; only accessors record load dependencies.
 type RouteParams struct {
 	event *skgo.Event
 }
+type PageRequestEvent = skgo.RequestEvent[RouteParams, appstate.Locals]
 
-type RequestEvent = skgo.RequestEvent[RouteParams]
+func SkgoPageRequestEvent(event *skgo.Event) PageRequestEvent {
+	return PageRequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: skgoRouteParams(event)}
+}
+func skgoRouteParams(event *skgo.Event) RouteParams {
+	p := RouteParams{event: event}
 
-func SkgoRequestEvent(event *skgo.Event) RequestEvent {
-	return RequestEvent{Event: event, Params: RouteParams{event: event}}
+	return p
 }
 
+// LayoutParams stores this layout's local and participating-page values.
+type LayoutParams struct {
+	event     *skgo.Event
+	valueSlug *string
+}
+
+func (p LayoutParams) Slug() *string { skgo.TrackLoadParam(p.event, "slug"); return p.valueSlug }
+
+type LayoutRequestEvent = skgo.RequestEvent[LayoutParams, appstate.Locals]
+
+func SkgoLayoutRequestEvent(event *skgo.Event) LayoutRequestEvent {
+	return LayoutRequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: skgoLayoutParams(event)}
+}
+func skgoLayoutParams(event *skgo.Event) LayoutParams {
+	p := LayoutParams{event: event}
+	p.valueSlug = skgo.OptionalLoadParamValue[string](event, "slug")
+
+	return p
+}
 func SkgoParamMatchers() map[string]skgo.ParamMatcher {
 	return map[string]skgo.ParamMatcher{
 		"Order": func(value string) (any, bool) { return hooks.Order(value) },

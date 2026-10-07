@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/tylergannon/skgo/internal/dev"
+	"github.com/tylergannon/skgo/internal/gen"
 )
 
 const devUsage = `usage: skgo dev [flags]
@@ -158,11 +159,22 @@ func devCommand(args []string) int {
 			// The same invocation `go generate` makes: from the bindings
 			// package, so every path the generator reports is the one a
 			// developer sees.
-			cmd := exec.CommandContext(ctx, self, "generate", "--web", webDir, "--out", ".", "--quiet")
+			cfg, err := gen.DeclaredConfig(gen.Config{Out: outDir})
+			if err != nil {
+				return nil, err
+			}
+			args := []string{"generate", "--web", webDir, "--out", ".", "--quiet", "--locals-package", cfg.LocalsPackage}
+			if cfg.LocalsType != "" {
+				args = append(args, "--locals-type", cfg.LocalsType)
+			}
+			if cfg.HookPackage != "" {
+				args = append(args, "--hook-package", cfg.HookPackage, "--hook-symbol", cfg.HookSymbol)
+			}
+			cmd := exec.CommandContext(ctx, self, args...)
 			cmd.Dir = outDir
 			var output bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &output, &output
-			err := cmd.Run()
+			err = cmd.Run()
 			return output.Bytes(), err
 		},
 	})

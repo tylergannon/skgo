@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -159,6 +158,10 @@ func (e *Event) Fetch(ctx context.Context, request *http.Request, opts ...FetchO
 // fetchURL is event.url for fetch's purposes. It reads the load's URL without
 // recording a dependency on it.
 func (e *Event) fetchURL(f *requestFetcher) *url.URL {
+	if e.metadata != nil && e.metadata.url != nil {
+		u := *e.metadata.url
+		return &u
+	}
 	if e.hook != nil {
 		u := *e.hook.url
 		return &u
@@ -427,8 +430,10 @@ func (f *requestFetcher) serve(ctx context.Context, src fetchSource, request *ht
 	// engine needs to know how many renders are waiting on this one.
 	sub := valuelessContext{ctx}
 	subCtx := context.WithValue(sub, requestFetcherKey{}, f)
-	subCtx = context.WithValue(subCtx, localsKey{}, &locals{values: map[reflect.Type]any{}})
 	subCtx = withFetchDepth(subCtx, fetchDepthOf(ctx)+1)
+	if src.request != nil {
+		subCtx = context.WithValue(subCtx, clientAddressKey{}, clientAddressOf(src.request))
+	}
 	subCtx = ssr.CarryDepth(subCtx, ctx)
 	subCtx = carryDevRender(subCtx, ctx)
 	request = request.WithContext(subCtx)

@@ -117,7 +117,7 @@ func TestMatcherRoutesWithoutLoads(t *testing.T) {
 	cfg := (Manifest{Routes: routes}).HandleConfig()
 	cfg.Matchers = matchers
 	for _, c := range []struct{ value, id string }{{"42", "/orders/[n=Order]"}, {"banana", "/orders/[fallback]"}} {
-		route, _, ok := cfg.matchRoute("/orders/" + c.value)
+		route, _, _, ok := cfg.matchRoute("/orders/" + c.value)
 		if !ok || route.id != c.id {
 			t.Fatalf("hook %s: %+v %v", c.value, route, ok)
 		}

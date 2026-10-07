@@ -20,7 +20,7 @@ var runs = struct {
 
 const serialCookie = "skgo_typed_dependency_visitor"
 
-func load(event RequestEvent) (PageData, error) {
+func load(event PageRequestEvent) (PageData, error) {
 	read, _ := event.SearchParam("read")
 	label := "No parameter read"
 	switch read {

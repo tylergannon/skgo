@@ -72,8 +72,8 @@ func (rs *Remotes) serveLive(w http.ResponseWriter, r *http.Request, fn *Remote)
 	// The producer sees a context that ends when this handler does, so a
 	// `query.live` blocked on ctx.Done() unwinds when the client disconnects.
 	liveEvent := *ev
-	liveEvent.req = r.WithContext(ctx)
 	liveCtx := withEvent(ctx, &liveEvent)
+	liveEvent.req = r.WithContext(liveCtx)
 
 	values := make(chan any)
 	done := make(chan error, 1)

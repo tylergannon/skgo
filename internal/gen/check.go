@@ -39,7 +39,13 @@ func Check(cfg Config) error {
 		return err
 	}
 	defer cfg.generation.close()
+	if err := prepareLocals(&cfg); err != nil {
+		return err
+	}
 	if cfg.loadParams, err = prepareLoadParams(&cfg, files); err != nil {
+		return err
+	}
+	if err := validateHook(cfg); err != nil {
 		return err
 	}
 	if len(files) == 0 {

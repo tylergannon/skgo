@@ -30,7 +30,7 @@ var operations = struct {
 	byName map[string]int
 }{byName: make(map[string]int)}
 
-func submit(ctx context.Context, _ skgo.RequestEvent[params.Params], in Input) (Result, error) {
+func submit(ctx context.Context, _ params.RequestEvent, in Input) (Result, error) {
 	if in.Name == "" {
 		return Result{}, skgo.Invalidf("name", "A name is required")
 	}

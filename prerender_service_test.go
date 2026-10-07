@@ -135,7 +135,9 @@ func TestPrerenderServiceOwnerEOFStopsListenerAndCancelsWork(t *testing.T) {
 		return nil, ctx.Err()
 	}})
 	done := make(chan error, 1)
-	go func() { done <- servePrerenderService(context.Background(), helper, nil, nil, []*Remote{fn}) }()
+	go func() {
+		done <- servePrerenderService(context.Background(), helper, nil, nil, []*Remote{fn}, testPrerenderOptions(nil))
+	}()
 	var ready struct {
 		URL    string `json:"url"`
 		Secret string `json:"secret"`
@@ -146,7 +148,8 @@ func TestPrerenderServiceOwnerEOFStopsListenerAndCancelsWork(t *testing.T) {
 	if len(ready.Secret) != 64 || !strings.HasPrefix(ready.URL, "http://127.0.0.1:") {
 		t.Fatalf("readiness: %+v", ready)
 	}
-	request, _ := http.NewRequest(http.MethodPost, ready.URL+"/remote", strings.NewReader(`{"module":"owner.remote.ts","name":"item","url":"http://app.test/"}`))
+	handle := beginTestPrerender(t, ready.URL, ready.Secret)
+	request, _ := http.NewRequest(http.MethodPost, ready.URL+"/remote", strings.NewReader(`{"module":"owner.remote.ts","name":"item","url":"http://app.test/","handle":"`+handle+`"}`))
 	request.Header.Set("Authorization", "Bearer "+ready.Secret)
 	responseDone := make(chan struct{})
 	go func() {
@@ -276,7 +279,9 @@ func TestPrerenderServiceAbandonedCallbackFailsHelper(t *testing.T) {
 	entered := make(chan struct{})
 	fn := NewRemote(RemoteSpec{Kind: KindPrerender, Module: "timeout.remote.ts", Name: "item", Call: func(ctx context.Context, _ Call) (any, error) { close(entered); <-ctx.Done(); return nil, ctx.Err() }})
 	done := make(chan error, 1)
-	go func() { done <- servePrerenderService(context.Background(), helper, nil, nil, []*Remote{fn}) }()
+	go func() {
+		done <- servePrerenderService(context.Background(), helper, nil, nil, []*Remote{fn}, testPrerenderOptions(nil))
+	}()
 	var ready struct {
 		URL    string `json:"url"`
 		Secret string `json:"secret"`
@@ -285,7 +290,8 @@ func TestPrerenderServiceAbandonedCallbackFailsHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	request, _ := http.NewRequestWithContext(ctx, http.MethodPost, ready.URL+"/remote", strings.NewReader(`{"module":"timeout.remote.ts","name":"item","url":"http://app.test/"}`))
+	handle := beginTestPrerender(t, ready.URL, ready.Secret)
+	request, _ := http.NewRequestWithContext(ctx, http.MethodPost, ready.URL+"/remote", strings.NewReader(`{"module":"timeout.remote.ts","name":"item","url":"http://app.test/","handle":"`+handle+`"}`))
 	request.Header.Set("Authorization", "Bearer "+ready.Secret)
 	clientDone := make(chan struct{})
 	go func() {
@@ -310,4 +316,25 @@ func TestPrerenderServiceAbandonedCallbackFailsHelper(t *testing.T) {
 		connection.Close()
 		t.Fatal("abandoned callback left helper serving")
 	}
+}
+
+func testPrerenderOptions(h RequestMiddleware[struct{}, struct{}]) PrerenderServiceOptions {
+	return PrerenderServiceOptions{BindRequest: func(next http.Handler) http.Handler {
+		return h.Intercept(HandleConfig{}, func(*Event) (struct{}, error) { return struct{}{}, nil }, next)
+	}}
+}
+func beginTestPrerender(t *testing.T, server, secret string) string {
+	t.Helper()
+	req, _ := http.NewRequest("POST", server+"/begin", strings.NewReader(`{"url":"http://app.test/","method":"GET"}`))
+	req.Header.Set("Authorization", "Bearer "+secret)
+	response, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	var answer prerenderRequestAnswer
+	if err := json.NewDecoder(response.Body).Decode(&answer); err != nil || !answer.Resolve || answer.Handle == "" {
+		t.Fatalf("begin: %+v %v", answer, err)
+	}
+	return answer.Handle
 }

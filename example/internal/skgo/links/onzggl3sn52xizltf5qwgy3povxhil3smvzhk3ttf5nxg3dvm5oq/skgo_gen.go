@@ -4,11 +4,11 @@ package slug
 
 import (
 	skgo "github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
-// RouteParams stores converted values. Only accessor reads record dependencies
-// on the load invocation that constructed these params.
+// RouteParams stores converted values; only accessors record load dependencies.
 type RouteParams struct {
 	event     *skgo.Event
 	valueSlug string
@@ -16,14 +16,17 @@ type RouteParams struct {
 
 func (p RouteParams) Slug() string { skgo.TrackLoadParam(p.event, "slug"); return p.valueSlug }
 
-type RequestEvent = skgo.RequestEvent[RouteParams]
+type PageRequestEvent = skgo.RequestEvent[RouteParams, appstate.Locals]
 
-func SkgoRequestEvent(event *skgo.Event) RequestEvent {
-	return RequestEvent{Event: event, Params: RouteParams{event: event,
-		valueSlug: skgo.LoadParamValue[string](event, "slug"),
-	}}
+func SkgoPageRequestEvent(event *skgo.Event) PageRequestEvent {
+	return PageRequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: skgoRouteParams(event)}
 }
+func skgoRouteParams(event *skgo.Event) RouteParams {
+	p := RouteParams{event: event}
+	p.valueSlug = skgo.LoadParamValue[string](event, "slug")
 
+	return p
+}
 func SkgoParamMatchers() map[string]skgo.ParamMatcher {
 	return map[string]skgo.ParamMatcher{
 		"Order": func(value string) (any, bool) { return hooks.Order(value) },

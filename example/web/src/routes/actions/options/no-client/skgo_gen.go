@@ -4,21 +4,24 @@ package noclient
 
 import (
 	skgo "github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
-// RouteParams stores converted values. Only accessor reads record dependencies
-// on the load invocation that constructed these params.
+// RouteParams stores converted values; only accessors record load dependencies.
 type RouteParams struct {
 	event *skgo.Event
 }
+type PageRequestEvent = skgo.RequestEvent[RouteParams, appstate.Locals]
 
-type RequestEvent = skgo.RequestEvent[RouteParams]
-
-func SkgoRequestEvent(event *skgo.Event) RequestEvent {
-	return RequestEvent{Event: event, Params: RouteParams{event: event}}
+func SkgoPageRequestEvent(event *skgo.Event) PageRequestEvent {
+	return PageRequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: skgoRouteParams(event)}
 }
+func skgoRouteParams(event *skgo.Event) RouteParams {
+	p := RouteParams{event: event}
 
+	return p
+}
 func SkgoParamMatchers() map[string]skgo.ParamMatcher {
 	return map[string]skgo.ParamMatcher{
 		"Order": func(value string) (any, bool) { return hooks.Order(value) },

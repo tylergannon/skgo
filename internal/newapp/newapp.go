@@ -314,20 +314,15 @@ func finish(p project, run func(command) error) (Result, error) {
 // initializeGo bootstraps demo bindings before tidy follows their imports.
 // The template imports the generated params leaf, which does not exist yet.
 func initializeGo(p project, run func(command) error) error {
-	args := []string{"mod", "tidy"}
-	if p.Examples {
-		args = []string{"get", "-tool", skgoModule + "/cmd/skgo@" + p.SkgoVersion}
-	}
+	args := []string{"get", "-tool", skgoModule + "/cmd/skgo@" + p.SkgoVersion}
 	if err := run(command{Dir: p.Dir, Name: "go", Args: args, Env: os.Environ()}); err != nil {
 		return fmt.Errorf("skgo: initializing the Go module failed: %w", err)
 	}
 	if err := run(command{Dir: p.Dir, Name: "go", Args: []string{"generate", "./..."}, Env: os.Environ()}); err != nil {
 		return fmt.Errorf("skgo: generating the Go bindings failed: %w", err)
 	}
-	if p.Examples {
-		if err := run(command{Dir: p.Dir, Name: "go", Args: []string{"mod", "tidy"}, Env: os.Environ()}); err != nil {
-			return fmt.Errorf("skgo: initializing the Go module failed: %w", err)
-		}
+	if err := run(command{Dir: p.Dir, Name: "go", Args: []string{"mod", "tidy"}, Env: os.Environ()}); err != nil {
+		return fmt.Errorf("skgo: initializing the Go module failed: %w", err)
 	}
 	return nil
 }

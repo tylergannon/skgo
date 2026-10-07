@@ -7,7 +7,7 @@ import (
 	actions "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
 )
 
-func pageLoad(event RequestEvent) (actions.PageData, error) {
+func pageLoad(event PageRequestEvent) (actions.PageData, error) {
 	ctx := event.Context()
 	return actions.OptionLoad(ctx)
 }

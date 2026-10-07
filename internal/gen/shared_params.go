@@ -402,7 +402,7 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 	for _, key := range keys {
 		fmt.Fprintf(&body, "value_%x Key_%s\n", key, sharedParamStem(key))
 	}
-	body.WriteString("}\n\ntype RequestEvent = skgo.RequestEvent[Params]\n\n")
+	fmt.Fprintf(&body, "}\n\ntype RequestEvent = skgo.RequestEvent[Params, appstate.%s]\ntype Resolve = skgo.RequestResolve[Params, appstate.%s]\ntype Middleware skgo.RequestMiddleware[Params,appstate.%s]\ntype Handle skgo.RequestHandle[Params,appstate.%s]\nfunc (h Handle) Middleware() Middleware {return Middleware(skgo.RequestHandle[Params,appstate.%s](h).Middleware())}\nfunc Sequence(hooks ...Middleware) Middleware {values:=make([]skgo.RequestMiddleware[Params,appstate.%s],len(hooks));for i,h:=range hooks {values[i]=skgo.RequestMiddleware[Params,appstate.%s](h)};return Middleware(skgo.RequestSequence(values...))}\nfunc (h Handle) Intercept(cfg skgo.HandleConfig,next http.Handler) http.Handler {return h.Middleware().Intercept(cfg,next)}\nfunc (h Middleware) Intercept(cfg skgo.HandleConfig,next http.Handler) http.Handler {return skgo.RequestMiddleware[Params,appstate.%s](h).Intercept(cfg,func(event *skgo.Event)(Params,error){id,values:=skgo.HookValues(event);p,err:=SkgoParams(id,values);if err!=nil{return p,skgo.Errorf(503,\"skgo: callerManifestDrift: %%v\",err)};return p,nil},next)}\n\n", cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType)
 	for _, key := range keys {
 		stem := sharedParamStem(key)
 		fmt.Fprintf(&body, "type Key_%s interface { skgoParam_%x() }\nfunc (p Params) %s() Key_%s { return p.value_%x }\n", stem, key, stem, stem, key)
@@ -427,7 +427,7 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 		fmt.Fprintf(&body, "},NewParams:func(values map[string]any)(any,error){return SkgoParams(%q,values)}},\n", id)
 	}
 	body.WriteString("}}\n")
-	body.WriteString("\n// SkgoRequestEvent constructs the explicit event for a command or form.\nfunc SkgoRequestEvent(event *skgo.Event) (RequestEvent,error) {\n routeID,values := skgo.RemoteCallerValues(event)\n p,err := SkgoParams(routeID,values)\n return RequestEvent{Event:event,Params:p},err\n}\n")
+	body.WriteString("\n// SkgoRequestEvent constructs the explicit event for a command or form.\nfunc SkgoRequestEvent(event *skgo.Event) (RequestEvent,error) {\n routeID,values := skgo.RemoteCallerValues(event)\n p,err := SkgoParams(routeID,values)\n return RequestEvent{Event:event,Params:p,Locals:appstate.LocalsFrom(event.Request().Context())},err\n}\n")
 	body.WriteString("\n// SkgoParams constructs values for an already matched caller route.\nfunc SkgoParams(routeID string, values map[string]any) (Params, error) {\n var p Params\n switch routeID {\n")
 	for _, dir := range dirs {
 		rel, _ := filepath.Rel(filepath.Join(cfg.Web, routesDir), dir)
@@ -447,7 +447,7 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 	body.WriteString("default: if routeID != \"\" { return Params{}, fmt.Errorf(\"skgo: unknown caller route %q; regenerate params\", routeID) }\n}\nreturn p,nil\n}\n\nfunc skgoSharedValue[T any](raw any) (T,error) {\nvar zero T\nif raw == nil && reflect.TypeFor[T]().Kind() == reflect.Interface { return zero,nil }\nvalue,ok := raw.(T)\nif !ok { return zero,fmt.Errorf(\"converted value %T does not fit %v\",raw,reflect.TypeFor[T]()) }\nreturn value,nil\n}\n")
 	var b strings.Builder
 	b.WriteString(goHeader)
-	fmt.Fprintf(&b, "package params\nimport (skgo %q; \"fmt\"; \"reflect\")\n", skgoPkg)
+	fmt.Fprintf(&b, "package params\nimport (skgo %q; \"fmt\"; \"reflect\"; \"net/http\"; appstate %q)\n", skgoPkg, cfg.LocalsPackage)
 	imports.writeTo(&b)
 	b.WriteString(body.String())
 	formatted, err := format.Source([]byte(b.String()))

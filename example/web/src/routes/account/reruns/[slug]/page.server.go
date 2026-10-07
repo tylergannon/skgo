@@ -18,7 +18,7 @@ var runs = struct {
 	byVisitor map[string]int
 }{byVisitor: map[string]int{}}
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	slug := event.Params.Slug()
 	filter, _ := event.SearchParam("x")

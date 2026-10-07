@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
 )
 
@@ -40,9 +41,10 @@ func NewHandler(dist fs.FS, middleware skgo.Middleware) (http.Handler, error) {
 	var app http.Handler
 	internal := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.ServeHTTP(w, r) })
 	ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-		Runtimes: 2,
-		Fetch:    internal,
-		Actions:  actions,
+		Runtimes:                        2,
+		FilterSerializedResponseHeaders: appstate.SerializedHeader,
+		Fetch:                           internal,
+		Actions:                         actions,
 	})
 	if err != nil {
 		return nil, err

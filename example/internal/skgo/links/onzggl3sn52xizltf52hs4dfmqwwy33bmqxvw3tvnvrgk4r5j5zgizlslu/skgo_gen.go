@@ -4,11 +4,11 @@ package typedload
 
 import (
 	skgo "github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
-// RouteParams stores converted values. Only accessor reads record dependencies
-// on the load invocation that constructed these params.
+// RouteParams stores converted values; only accessors record load dependencies.
 type RouteParams struct {
 	event       *skgo.Event
 	valueNumber hooks.OrderNumber
@@ -19,14 +19,17 @@ func (p RouteParams) Number() hooks.OrderNumber {
 	return p.valueNumber
 }
 
-type RequestEvent = skgo.RequestEvent[RouteParams]
+type PageRequestEvent = skgo.RequestEvent[RouteParams, appstate.Locals]
 
-func SkgoRequestEvent(event *skgo.Event) RequestEvent {
-	return RequestEvent{Event: event, Params: RouteParams{event: event,
-		valueNumber: skgo.LoadParamValue[hooks.OrderNumber](event, "number"),
-	}}
+func SkgoPageRequestEvent(event *skgo.Event) PageRequestEvent {
+	return PageRequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: skgoRouteParams(event)}
 }
+func skgoRouteParams(event *skgo.Event) RouteParams {
+	p := RouteParams{event: event}
+	p.valueNumber = skgo.LoadParamValue[hooks.OrderNumber](event, "number")
 
+	return p
+}
 func SkgoParamMatchers() map[string]skgo.ParamMatcher {
 	return map[string]skgo.ParamMatcher{
 		"Order": func(value string) (any, bool) { return hooks.Order(value) },

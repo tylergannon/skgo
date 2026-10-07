@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -219,7 +218,7 @@ func newFetchApp(t *testing.T, o fetchAppOptions) *fetchApp {
 			_, _ = w.Write([]byte("dynamic-endpoint"))
 		}),
 		NewEndpoint("/api/mw", "GET", func(w http.ResponseWriter, r *http.Request) {
-			v, _ := LocalOf[middlewareLocal](r.Context())
+			v := fetchLocal(r.Context()).Middleware
 			_, _ = w.Write([]byte(v))
 		}),
 	)
@@ -234,9 +233,8 @@ func newFetchApp(t *testing.T, o fetchAppOptions) *fetchApp {
 		if who == "" {
 			who = "subrequest-default"
 		}
-		if err := SetLocal(ctx, whoLocal(who)); err != nil {
-			return err
-		}
+		RequestLocals[fetchLocals](ctx).Who = whoLocal(who)
+		RequestLocals[fetchLocals](ctx).HasWho = true
 		if target := e.Request().Header.Get("X-Middleware-Cookie"); target != "" {
 			resp, err := e.Fetch(ctx, mustRequest(t, "GET", target, nil))
 			if err != nil {
@@ -249,7 +247,8 @@ func newFetchApp(t *testing.T, o fetchAppOptions) *fetchApp {
 			if err != nil {
 				return err
 			}
-			return SetLocal(ctx, middlewareLocal(fetchBody(t, resp)))
+			RequestLocals[fetchLocals](ctx).Middleware = middlewareLocal(fetchBody(t, resp))
+			return nil
 		}
 		return nil
 	})
@@ -269,11 +268,11 @@ func newFetchApp(t *testing.T, o fetchAppOptions) *fetchApp {
 		// subrequest that wrongly inherited them would be visible.
 		parent := outer
 		outer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			l := &locals{values: map[reflect.Type]any{reflect.TypeOf((*whoLocal)(nil)).Elem(): whoLocal("outer-user")}}
+			l := &fetchLocals{Who: "outer-user", HasWho: true}
 			parent.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), localsKey{}, l)))
 		})
 	} else {
-		stack = handle.Intercept(handleCfg, stack)
+		stack = RequestMiddleware[struct{}, fetchLocals](nil).Intercept(handleCfg, emptyHookParams, handle.Intercept(handleCfg, stack))
 		outer = stack
 	}
 	app.handler = FetchConfig{
@@ -334,7 +333,7 @@ func (app *fetchApp) echo(w http.ResponseWriter, r *http.Request) {
 	if r.Body != nil {
 		body, _ = io.ReadAll(r.Body)
 	}
-	local, has := LocalOf[whoLocal](r.Context())
+	local, has := fetchLocal(r.Context()).Who, fetchLocal(r.Context()).HasWho
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Echo", "header-"+r.Method)
 	w.Header().Set("X-Remote", r.RemoteAddr)
@@ -397,7 +396,7 @@ func (app *fetchApp) relay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
-	local, _ := LocalOf[whoLocal](r.Context())
+	local := fetchLocal(r.Context()).Who
 	w.Header().Set("X-Relay-Local", string(local))
 	for _, name := range []string{"Content-Type", "X-Echo", "X-Tea", "X-External", "X-Hook", "X-Saw-Cookie", "X-Saw-Auth", "X-Saw-Accept", "X-Remote", "X-Static"} {
 		if v := resp.Header.Get(name); v != "" {
@@ -746,7 +745,7 @@ func TestHandleFetchSeesTheOriginalEventAndNextSkipsTheHook(t *testing.T) {
 	app := newFetchApp(t, fetchAppOptions{hook: func(app *fetchApp) HandleFetch {
 		return func(ctx context.Context, request *http.Request, next Fetch) (*http.Response, error) {
 			app.hookCalls.Add(1)
-			who, _ := LocalOf[whoLocal](ctx)
+			who := fetchLocal(ctx).Who
 			app.hookMu.Lock()
 			app.hookWho = EventFrom(ctx).Request().Header.Get("X-Who")
 			app.hookLocal = string(who)
@@ -1010,4 +1009,17 @@ func TestRenderFetchSharesTheSameRules(t *testing.T) {
 	if answer.Response == nil || responseHeader(answer.Response, "x-saw-cookie") != "session=abc123" {
 		t.Errorf("same-origin render fetch = %+v, want the cookie inherited", answer)
 	}
+}
+
+type fetchLocals struct {
+	Who        whoLocal
+	HasWho     bool
+	Middleware middlewareLocal
+}
+
+func fetchLocal(ctx context.Context) fetchLocals {
+	if p := RequestLocals[fetchLocals](ctx); p != nil {
+		return *p
+	}
+	return fetchLocals{}
 }

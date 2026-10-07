@@ -73,8 +73,9 @@ func (s *SSR) runClassicAction(r *http.Request, route *dataRoute, params map[str
 		return actionError(&HTTPError{Status: 415, Message: "Form actions expect form-encoded data — received " + contentType})
 	}
 	jar := requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev))
+	pageURL, _ := (HandleConfig{Origin: s.loads.cfg.Origin}).eventURL(r, s.loads.origin, s.loads.cfg.Base, false, false)
 	response := &loadRequest{responseState: newResponseState(r)}
-	ctx := withEvent(r.Context(), &Event{req: r, jar: jar, mutable: true, params: params, actionResponse: response})
+	ctx := withEvent(r.Context(), &Event{metadata: requestMetadataOf(r, pageURL, route.id, false), req: r, jar: jar, mutable: true, params: params, actionResponse: response})
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = &classicResult{jar: jar, headers: response.headers, location: location, actionErr: errors.New("action panicked")}

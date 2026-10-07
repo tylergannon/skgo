@@ -4,11 +4,11 @@ package typeddependencies
 
 import (
 	skgo "github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
-// RouteParams stores converted values. Only accessor reads record dependencies
-// on the load invocation that constructed these params.
+// RouteParams stores converted values; only accessors record load dependencies.
 type RouteParams struct {
 	event        *skgo.Event
 	valueA       hooks.OrderNumber
@@ -17,21 +17,22 @@ type RouteParams struct {
 }
 
 func (p RouteParams) A() hooks.OrderNumber { skgo.TrackLoadParam(p.event, "a"); return p.valueA }
-
 func (p RouteParams) B() hooks.OrderNumber { skgo.TrackLoadParam(p.event, "b"); return p.valueB }
+func (p RouteParams) Ignored() string      { skgo.TrackLoadParam(p.event, "ignored"); return p.valueIgnored }
 
-func (p RouteParams) Ignored() string { skgo.TrackLoadParam(p.event, "ignored"); return p.valueIgnored }
+type PageRequestEvent = skgo.RequestEvent[RouteParams, appstate.Locals]
 
-type RequestEvent = skgo.RequestEvent[RouteParams]
-
-func SkgoRequestEvent(event *skgo.Event) RequestEvent {
-	return RequestEvent{Event: event, Params: RouteParams{event: event,
-		valueA:       skgo.LoadParamValue[hooks.OrderNumber](event, "a"),
-		valueB:       skgo.LoadParamValue[hooks.OrderNumber](event, "b"),
-		valueIgnored: skgo.LoadParamValue[string](event, "ignored"),
-	}}
+func SkgoPageRequestEvent(event *skgo.Event) PageRequestEvent {
+	return PageRequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: skgoRouteParams(event)}
 }
+func skgoRouteParams(event *skgo.Event) RouteParams {
+	p := RouteParams{event: event}
+	p.valueA = skgo.LoadParamValue[hooks.OrderNumber](event, "a")
+	p.valueB = skgo.LoadParamValue[hooks.OrderNumber](event, "b")
+	p.valueIgnored = skgo.LoadParamValue[string](event, "ignored")
 
+	return p
+}
 func SkgoParamMatchers() map[string]skgo.ParamMatcher {
 	return map[string]skgo.ParamMatcher{
 		"Order": func(value string) (any, bool) { return hooks.Order(value) },

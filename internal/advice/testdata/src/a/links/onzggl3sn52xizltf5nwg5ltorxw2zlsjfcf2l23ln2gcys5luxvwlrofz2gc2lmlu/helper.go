@@ -5,7 +5,7 @@ import (
 	"github.com/tylergannon/skgo"
 )
 
-func load(ctx skgo.RequestEvent[struct{}]) (string, error) {
+func load(ctx skgo.RequestEvent[struct{}, struct{}]) (string, error) {
 	e := ctx.Event
 	_ = e.Param("customerID")
 	_ = e.Param("tab")
@@ -22,6 +22,6 @@ func load(ctx skgo.RequestEvent[struct{}]) (string, error) {
 
 func shared(ctx context.Context) string { return skgo.EventFrom(ctx).Param("childPageParameter") }
 
-func unregistered(ctx skgo.RequestEvent[struct{}]) (string, error) {
+func unregistered(ctx skgo.RequestEvent[struct{}, struct{}]) (string, error) {
 	return ctx.Param("notInRoute"), nil
 }

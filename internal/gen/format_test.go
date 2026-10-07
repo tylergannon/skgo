@@ -23,7 +23,7 @@ func TestWriteFormatsGeneratedSourceBeforeComparing(t *testing.T) {
 	}
 
 	path := filepath.Join(web, "src", "types.ts")
-	cfg := Config{Web: web, Logf: func(string, ...any) {}}
+	cfg := fixtureConfig(Config{Web: web, Logf: func(string, ...any) {}})
 	if err := write(cfg, path, "raw\n"); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestWriteFormatsGeneratedSourceBeforeComparing(t *testing.T) {
 func TestWriteWithoutVitePlusLeavesGenerationAvailable(t *testing.T) {
 	web := t.TempDir()
 	path := filepath.Join(web, "src", "types.ts")
-	if err := write(Config{Web: web, Logf: func(string, ...any) {}}, path, "raw\n"); err != nil {
+	if err := write(fixtureConfig(Config{Web: web, Logf: func(string, ...any) {}}), path, "raw\n"); err != nil {
 		t.Fatal(err)
 	}
 	got, err := os.ReadFile(path)

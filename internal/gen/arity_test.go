@@ -34,7 +34,7 @@ func getThing(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func doThing(ctx context.Context, event skgo.RequestEvent[params.Params]) (string, error) {
+func doThing(ctx context.Context, event params.RequestEvent) (string, error) {
 	return "", nil
 }
 

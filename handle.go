@@ -7,11 +7,9 @@ import (
 	"html"
 	"io"
 	"net/http"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 // Handle is the simple, before-only form of kit's `handle` hook
@@ -21,7 +19,7 @@ import (
 //
 //	func handle(ctx context.Context) error {
 //		user := users.FromCookie(skgo.EventFrom(ctx))
-//		return skgo.SetLocal(ctx, user)
+//		return nil // low-level hooks do not bind application locals
 //	}
 //
 // Returning a *Redirect or an *HTTPError refuses the request there and then,
@@ -222,6 +220,10 @@ func NewResponse(status int, header http.Header, body io.Reader) *http.Response 
 // and Base come straight from the built manifest; an app has nothing else to
 // decide.
 type HandleConfig struct {
+	// ClientAddress resolves the visitor address from the original HTTP request.
+	// Nil uses the peer IP in RemoteAddr. Proxy headers require an explicit provider.
+	// The first value or error is shared by derived events and internal fetches.
+	ClientAddress func(*http.Request) (string, error)
 	// AppDir is kit's appDir; empty means "_app".
 	AppDir string
 	// Base is kit's paths.base, without a trailing slash.
@@ -281,66 +283,24 @@ func (m Manifest) HandleConfig() HandleConfig {
 }
 
 // matchRoute is kit's `find_route` over the base-stripped pathname.
-func (cfg HandleConfig) matchRoute(routePath string) (handleRoute, map[string]string, bool) {
+func (cfg HandleConfig) matchRoute(routePath string) (handleRoute, map[string]string, map[string]any, bool) {
 	if cfg.Loads != nil {
-		route, params, ok := cfg.Loads.match(routePath)
+		route, params, converted, ok := cfg.Loads.matchValues(routePath)
 		if !ok {
-			return handleRoute{}, nil, false
+			return handleRoute{}, nil, nil, false
 		}
-		return handleRoute{id: route.id, hasPage: route.hasPage}, params, true
+		return handleRoute{id: route.id, hasPage: route.hasPage}, params, converted, true
 	}
 	for _, route := range cfg.routes {
 		loc := route.pattern.FindStringSubmatchIndex(routePath)
 		if loc == nil {
 			continue
 		}
-		if params, _, ok := execMatchedParams(routePath, loc, route.params, cfg.Matchers); ok {
-			return route, params, true
+		if params, converted, ok := execMatchedParams(routePath, loc, route.params, cfg.Matchers); ok {
+			return route, params, converted, true
 		}
 	}
-	return handleRoute{}, nil, false
-}
-
-type localsKey struct{}
-
-// locals is the per-request scratch space kit calls `event.locals`, keyed by
-// the type of what is stored so a reader gets back what a writer put in
-// without a name to agree on.
-type locals struct {
-	mu     sync.Mutex
-	values map[reflect.Type]any
-}
-
-// SetLocal stores v on the request, keyed by its type. Call it from the app's
-// Handle hook; every load, remote function and server route serving the same
-// request can then read it with LocalOf.
-func SetLocal[T any](ctx context.Context, v T) error {
-	l, _ := ctx.Value(localsKey{}).(*locals)
-	if l == nil {
-		return Errorf(500, "skgo: there is no request here to store a local on")
-	}
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.values[reflect.TypeOf((*T)(nil)).Elem()] = v
-	return nil
-}
-
-// LocalOf returns the value of type T that the Handle hook stored for this
-// request, and whether it stored one.
-func LocalOf[T any](ctx context.Context) (T, bool) {
-	var zero T
-	l, _ := ctx.Value(localsKey{}).(*locals)
-	if l == nil {
-		return zero, false
-	}
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	v, ok := l.values[reflect.TypeOf((*T)(nil)).Elem()]
-	if !ok {
-		return zero, false
-	}
-	typed, ok := v.(T)
-	return typed, ok
+	return handleRoute{}, nil, nil, false
 }
 
 // Intercept wraps next so that h runs once before it, on every request kind

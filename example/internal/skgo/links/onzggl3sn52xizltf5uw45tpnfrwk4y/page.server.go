@@ -15,7 +15,7 @@ type PageData struct {
 	Invoices []Invoice `json:"invoices"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{
 		AsOf: "2026-09-28",
 		Invoices: []Invoice{

@@ -46,9 +46,7 @@ type streamApp struct {
 func streamMiddleware() Middleware {
 	return func(ctx context.Context, e *Event, resolve Resolve) (*http.Response, error) {
 		if !e.IsSubRequest() {
-			if err := SetLocal(ctx, mwUser("outer")); err != nil {
-				return nil, err
-			}
+			*RequestLocals[mwUser](ctx) = "outer"
 		}
 		resp, err := resolve(ctx)
 		if err != nil {
@@ -77,6 +75,9 @@ func newStreamApp(t *testing.T, mw Middleware, producers, consume http.HandlerFu
 		producers(w, r)
 	})
 	stack = mw.Intercept(cfg, router)
+	if mw != nil {
+		stack = RequestMiddleware[struct{}, mwUser](nil).Intercept(cfg, emptyHookParams, stack)
+	}
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { stack.ServeHTTP(w, r) })
 	app := &streamApp{handler: FetchConfig{Origin: mwOrigin, Handler: inner}.Intercept(stack)}
 	return app
@@ -159,7 +160,7 @@ func TestInternalFetchDeliversHeadersAndFirstBytesWhileTheProducerIsStillRunning
 					return
 				}
 				defer close(producerDone)
-				user, _ := LocalOf[mwUser](r.Context())
+				user := mwLocal(r.Context())
 				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 				w.Header().Set("X-Producer-User", "["+string(user)+"]")
 				w.Header().Add("Set-Cookie", "sub=1; Path=/")

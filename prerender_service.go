@@ -19,7 +19,10 @@ import (
 // RunPrerenderService serves the generated application's build operations until
 // its build owner closes the dedicated inherited control channel. It does not
 // depend on the application's final frontend manifest.
-func RunPrerenderService(transport Transport, loads []*ServerLoad, remotes []*Remote) error {
+func RunPrerenderService(transport Transport, loads []*ServerLoad, remotes []*Remote, options PrerenderServiceOptions) error {
+	if options.BindRequest == nil {
+		return fmt.Errorf("skgo: prerender service requires BindRequest")
+	}
 	control, err := prerenderControl()
 	if err != nil {
 		return fmt.Errorf("skgo: open prerender control channel: %w", err)
@@ -27,10 +30,10 @@ func RunPrerenderService(transport Transport, loads []*ServerLoad, remotes []*Re
 	defer control.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), prerenderSignals()...)
 	defer stop()
-	return servePrerenderService(ctx, control, transport, loads, remotes)
+	return servePrerenderService(ctx, control, transport, loads, remotes, options)
 }
 
-func servePrerenderService(ctx context.Context, control io.ReadWriteCloser, transport Transport, loads []*ServerLoad, remotes []*Remote) error {
+func servePrerenderService(ctx context.Context, control io.ReadWriteCloser, transport Transport, loads []*ServerLoad, remotes []*Remote, options PrerenderServiceOptions) error {
 	secretBytes := make([]byte, 32)
 	if _, err := rand.Read(secretBytes); err != nil {
 		return fmt.Errorf("skgo: generate prerender secret: %w", err)
@@ -44,6 +47,8 @@ func servePrerenderService(ctx context.Context, control io.ReadWriteCloser, tran
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	failed := make(chan error, 1)
+	requests := &prerenderRequests{ctx: ctx, options: options, entries: map[string]*prerenderRequest{}}
+	defer requests.close()
 	server := &http.Server{
 		Handler: prerenderHandler(secret, transport, loads, remotes, func(err error) {
 			if ctx.Err() == nil {
@@ -52,7 +57,7 @@ func servePrerenderService(ctx context.Context, control io.ReadWriteCloser, tran
 				default:
 				}
 			}
-		}),
+		}, requests),
 		BaseContext:       func(net.Listener) context.Context { return ctx },
 		ReadHeaderTimeout: 5 * time.Second,
 	}
@@ -93,7 +98,7 @@ func servePrerenderService(ctx context.Context, control io.ReadWriteCloser, tran
 	return failure
 }
 
-func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, remotes []*Remote, abandoned func(error)) http.Handler {
+func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, remotes []*Remote, abandoned func(error), sessions ...*prerenderRequests) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		expected := "Bearer " + secret
 		if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte(expected)) != 1 {
@@ -109,10 +114,12 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
-		if r.URL.Path != "/load" && r.URL.Path != "/remote" && r.URL.Path != "/inputs" {
+		lifecycle := r.URL.Path == "/begin" || r.URL.Path == "/response" || r.URL.Path == "/end"
+		if r.URL.Path != "/load" && r.URL.Path != "/remote" && r.URL.Path != "/inputs" && r.URL.Path != "/endpoint" && r.URL.Path != "/cookies" && r.URL.Path != "/resolve-option" && !lifecycle {
 			http.NotFound(w, r)
 			return
 		}
+		callbackContext := r.Context()
 		if abandoned != nil {
 			var identity struct {
 				Module string `json:"module"`
@@ -120,19 +127,19 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			}
 			json.Unmarshal(raw, &identity)
 			report := func() {
-				abandoned(fmt.Errorf("skgo: prerender %s %s#%s: callback canceled before response completion: %w", r.URL.Path, identity.Module, identity.Name, r.Context().Err()))
+				abandoned(fmt.Errorf("skgo: prerender %s %s#%s: callback canceled before response completion: %w", r.URL.Path, identity.Module, identity.Name, callbackContext.Err()))
 			}
 			finished := make(chan struct{})
 			defer close(finished)
 			defer func() {
-				if r.Context().Err() != nil {
+				if callbackContext.Err() != nil {
 					report()
 				}
 			}()
 			go func() {
 				select {
 				case <-finished:
-				case <-r.Context().Done():
+				case <-callbackContext.Done():
 					select {
 					case <-finished:
 						return
@@ -143,12 +150,50 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			}()
 		}
 		var answer bytes.Buffer
-		switch r.URL.Path {
-		case "/load":
+		ctx := r.Context()
+		var boundRequest *prerenderRequest
+		if len(sessions) > 0 && !lifecycle && r.URL.Path != "/inputs" {
+			var identity struct {
+				Handle string `json:"handle"`
+			}
+			json.Unmarshal(raw, &identity)
+			entry, acquireErr := sessions[0].acquire(identity.Handle)
+			if acquireErr != nil {
+				http.Error(w, acquireErr.Error(), 500)
+				return
+			}
+			boundRequest = entry
+			defer entry.active.Done()
+			ctx, cancel := context.WithCancel(entry.request.Context())
+			stop := context.AfterFunc(r.Context(), cancel)
+			defer func() { stop(); cancel() }()
+			ctx = context.WithValue(ctx, prerenderRequestKey{}, entry.request)
+			// The request context carries the app locals and cancellation.
+			r = r.WithContext(ctx)
+		}
+		ctx = r.Context()
+		switch {
+		case lifecycle && len(sessions) > 0:
+			err = sessions[0].operation(ctx, r.URL.Path, raw, &answer)
+		case r.URL.Path == "/load":
 			err = runPrerenderLoad(r.Context(), bytes.NewReader(raw), &answer, transport, loads)
-		case "/remote":
+		case r.URL.Path == "/remote":
 			err = runPrerenderRemote(r.Context(), raw, &answer, transport, remotes)
-		case "/inputs":
+		case r.URL.Path == "/endpoint":
+			if boundRequest == nil {
+				err = fmt.Errorf("skgo: endpoint needs a logical request")
+			} else {
+				err = runPrerenderEndpoint(r.Context(), boundRequest, &answer)
+			}
+		case r.URL.Path == "/resolve-option":
+			if boundRequest == nil {
+				err = fmt.Errorf("skgo: resolve option needs a logical request")
+			} else {
+				err = runPrerenderResolveOption(r.Context(), boundRequest, raw, &answer)
+			}
+		case r.URL.Path == "/cookies":
+			err = runPrerenderCookies(r.Context(), raw, &answer)
+		case r.URL.Path == "/inputs":
 			err = runPrerenderInputs(r.Context(), raw, &answer, transport, remotes)
 		default:
 			http.NotFound(w, r)

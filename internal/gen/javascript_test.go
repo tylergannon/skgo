@@ -41,9 +41,9 @@ func getThing(ctx context.Context) (Item, error) { return Item{}, nil }
 
 func getStatusFor(ctx context.Context, name string) (Status, error) { return Status{}, nil }
 
-func record(ctx context.Context, event skgo.RequestEvent[params.Params], name string) (Status, error) { return Status{}, nil }
+func record(ctx context.Context, event params.RequestEvent, name string) (Status, error) { return Status{}, nil }
 
-func doThing(ctx context.Context, event skgo.RequestEvent[params.Params]) (Item, error) { return Item{}, nil }
+func doThing(ctx context.Context, event params.RequestEvent) (Item, error) { return Item{}, nil }
 
 func watchStatus(ctx context.Context, name string, yield func(Status) error) error { return nil }
 
@@ -51,7 +51,7 @@ func watchAll(ctx context.Context, yield func(Item) error) error { return nil }
 
 func getQuotes(ctx context.Context, names []string) ([]Item, error) { return nil, nil }
 
-func submitItem(ctx context.Context, event skgo.RequestEvent[params.Params], in FormInput) (Status, error) { return Status{}, nil }
+func submitItem(ctx context.Context, event params.RequestEvent, in FormInput) (Status, error) { return Status{}, nil }
 
 var (
 	_ = skgo.Query(getThing)

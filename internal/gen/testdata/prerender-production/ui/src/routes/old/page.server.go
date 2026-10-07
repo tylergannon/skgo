@@ -6,7 +6,7 @@ import (
 
 type Data struct{}
 
-func pageLoad(RequestEvent) (Data, error) {
+func pageLoad(PageRequestEvent) (Data, error) {
 	return Data{}, &skgo.Redirect{Status: 307, Location: "/target?from=atlas"}
 }
 

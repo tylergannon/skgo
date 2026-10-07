@@ -38,7 +38,27 @@ func newGeneration(cfg Config) (*generatedOutput, error) {
 		return nil, err
 	}
 	g := &generatedOutput{files: map[string]string{}, parts: map[string][]string{}, owned: map[string]bool{}, removed: map[string]bool{}, links: links}
-	for _, root := range []string{filepath.Join(cfg.Web, "src"), cfg.Out} {
+	roots := []string{filepath.Join(cfg.Web, "src"), cfg.Out}
+	localsDir := ""
+	if cfg.LocalsPackage == mod {
+		localsDir = host
+	} else if strings.HasPrefix(cfg.LocalsPackage, mod+"/") {
+		localsDir = filepath.Join(host, filepath.FromSlash(strings.TrimPrefix(cfg.LocalsPackage, mod+"/")))
+	}
+	if localsDir != "" {
+		// Only this package's helper belongs to the locals selection. Child
+		// packages may belong to another application in the same module.
+		path := filepath.Join(localsDir, generatedGoFile)
+		content, err := os.ReadFile(path)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		if bytes.HasPrefix(content, []byte(goHeader)) {
+			g.owned[path] = true
+		}
+	}
+
+	for _, root := range roots {
 		err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 			if os.IsNotExist(err) {
 				return nil

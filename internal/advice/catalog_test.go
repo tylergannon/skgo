@@ -31,7 +31,7 @@ func TestCatalogRepairExamplesCompileAgainstThisSkgo(t *testing.T) {
 			t.Fatal(err)
 		}
 		imports := "skgo \"github.com/tylergannon/skgo\""
-		if strings.Contains(entry.Example, "params.Params") {
+		if strings.Contains(entry.Example, "params.RequestEvent") {
 			imports += "; params \"example.com/repairs/generated/params\""
 		}
 		if strings.Contains(entry.Example, "context.") {
@@ -56,8 +56,14 @@ func TestCatalogRepairExamplesCompileAgainstThisSkgo(t *testing.T) {
 	if err := os.Symlink(filepath.Join(repo, "example", "web", "node_modules"), filepath.Join(root, "web", "node_modules")); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(filepath.Join(root, "internal", "app"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "internal", "app", "locals.go"), []byte("package app\ntype Locals struct{}\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	// Bootstrap the shared params leaf before tidy loads illustrative consumers.
-	if err := gen.Run(gen.Config{Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated")}); err != nil {
+	if err := gen.Run(gen.Config{Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated"), LocalsPackage: "example.com/repairs/internal/app"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{{"mod", "tidy"}, {"test", "./..."}} {
@@ -67,7 +73,7 @@ func TestCatalogRepairExamplesCompileAgainstThisSkgo(t *testing.T) {
 			if err := os.WriteFile(routePath, []byte(routeSource), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := gen.Run(gen.Config{Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated")}); err != nil {
+			if err := gen.Run(gen.Config{Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated"), LocalsPackage: "example.com/repairs/internal/app"}); err != nil {
 				t.Fatalf("generate route-param repair: %v", err)
 			}
 		}

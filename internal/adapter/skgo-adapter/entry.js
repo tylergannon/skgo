@@ -60,12 +60,12 @@ function handle_error(error) {
  * kit's remote wrappers read during a render are populated. is_in_render is
  * what makes kit refuse a command.
  */
-function make_state() {
+function make_state(req) {
 	return {
-		getClientAddress: () => '127.0.0.1',
+		getClientAddress: () => __skgo_client_address(),
 		error: false,
 		rerouted_url: null,
-		depth: 0,
+		depth: req.is_sub_request ? 1 : 0,
 		remote: {
 			data: null,
 			implicit: null,
@@ -171,7 +171,7 @@ function make_event(req, url, serialized) {
 			serialize: () => ''
 		},
 		fetch: create_fetch(req, url, serialized),
-		getClientAddress: () => req.client_address ?? '127.0.0.1',
+		getClientAddress: () => __skgo_client_address(),
 		locals: {},
 		params: req.params ?? {},
 		platform: undefined,
@@ -179,9 +179,9 @@ function make_event(req, url, serialized) {
 		route: { id: req.route_id ?? null },
 		setHeaders: () => {},
 		url,
-		isDataRequest: false,
-		isSubRequest: false,
-		isRemoteRequest: false,
+		isDataRequest: !!req.is_data_request,
+		isSubRequest: !!req.is_sub_request,
+		isRemoteRequest: !!req.is_remote_request,
 		tracing: { enabled: false }
 	};
 }
@@ -362,7 +362,7 @@ globalThis.__skgo_render = function (req_json) {
 	try {
 		const req = JSON.parse(req_json);
 		const url = new URL(req.url);
-		const state = make_state();
+		const state = make_state(req);
 		const serialized = new Set();
 		const event = make_event(req, url, serialized);
 		const fetched = [];

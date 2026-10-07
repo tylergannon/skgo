@@ -21,7 +21,7 @@ type PageData struct {
 	Secret string `json:"secret"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{}, errors.New("the connection string is postgres://ada:hunter2@db")
 }
 

@@ -7,6 +7,10 @@ interface AdapterOptions {
 	 * @default 'build'
 	 */
 	out?: string;
+	/** Authored Go build-service package, relative to the app's Go module root.
+	 * Use RunPrerenderService to share renderer defaults with production SSR.
+	 * Defaults to the generated prerender entry. */
+	prerenderPackage?: string;
 	/**
 	 * Whether to write gzip and brotli copies of the assets and the prerendered
 	 * pages beside them. The Go server serves whichever the browser asked for.

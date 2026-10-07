@@ -64,6 +64,11 @@
       look: "The layout and the page were both loaded in Go. Move between Overview and Orders: the serial does not change, because kit did not re-run the layout.",
     },
     {
+      name: "Typed locals and layout request events",
+      href: "/event-layout/red/first/one?route=untracked",
+      look: "The Go hook supplies the signed-in user. Sibling and unread item changes reuse the layout; a tracked section, item or route change advances its serial.",
+    },
+    {
       name: "Universal load over Go invoice data",
       href: "/invoices?overdue=1",
       look: "Go supplies invoices; the authored universal load filters, sorts and totals them during the first render and again in Kit navigation.",

@@ -21,6 +21,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
+	"github.com/tylergannon/skgo/example/internal/app"
 )
 
 // Cookie is the name the visitor id travels under.
@@ -32,7 +33,6 @@ const Cookie = "skgo_visitor"
 // request, which was sent before the cookie existed. Kit's `cookies.get`
 // answers with a cookie set earlier in the same request; the local is how this
 // request's remote functions get the same answer.
-type id string
 
 // Start makes sure a browser has a visitor id, writing a new one on the
 // response if the request carried none. The root layout's load calls it.
@@ -59,13 +59,14 @@ func Start(ctx context.Context) error {
 			return err
 		}
 	}
-	return skgo.SetLocal(ctx, id(visitor))
+	app.LocalsFrom(ctx).Visitor = visitor
+	return nil
 }
 
 // Of is the visitor this request belongs to, or "" for nobody.
 func Of(ctx context.Context) string {
-	if visitor, ok := skgo.LocalOf[id](ctx); ok {
-		return string(visitor)
+	if locals := app.LocalsFrom(ctx); locals != nil && locals.Visitor != "" {
+		return locals.Visitor
 	}
 	visitor, _ := skgo.EventFrom(ctx).Cookie(Cookie)
 	return visitor

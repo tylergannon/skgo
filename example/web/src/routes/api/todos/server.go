@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"strings"
 
+	app "github.com/tylergannon/skgo/example/internal/app"
+
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
 	"github.com/tylergannon/skgo/example/businesslogic/visitor"
@@ -23,7 +25,7 @@ import (
 // load or a remote function: the endpoint reads the session it stored rather
 // than parsing the cookie again.
 func list(w http.ResponseWriter, r *http.Request) {
-	session, _ := skgo.LocalOf[businesslogic.Session](r.Context())
+	session := app.LocalsFrom(r.Context()).Session
 	writeJSON(w, http.StatusOK, visitor.Store(r.Context()).Todos(session.User != ""))
 }
 
@@ -63,7 +65,7 @@ func search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, _ := skgo.LocalOf[businesslogic.Session](r.Context())
+	session := app.LocalsFrom(r.Context()).Session
 	var matches []businesslogic.Todo
 	for _, todo := range visitor.Store(r.Context()).Todos(session.User != "") {
 		if strings.Contains(strings.ToLower(todo.Text), strings.ToLower(body.Contains)) {

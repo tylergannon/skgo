@@ -30,7 +30,7 @@ var runs struct {
 
 // bumpTally is the command. Calling it from markup is the mistake the page
 // makes; calling it from a button is what it is for.
-func bumpTally(ctx context.Context, _ skgo.RequestEvent[params.Params]) (Tally, error) {
+func bumpTally(ctx context.Context, _ params.RequestEvent) (Tally, error) {
 	runs.Lock()
 	defer runs.Unlock()
 	runs.n++

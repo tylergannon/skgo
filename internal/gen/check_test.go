@@ -84,7 +84,7 @@ func TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = Check(Config{Web: web, Out: out})
+		err = Check(fixtureConfig(Config{Web: web, Out: out}))
 		if err == nil || !strings.Contains(err.Error(), "field Callback cannot cross the wire") {
 			t.Fatalf("current authored wire field was missed before stale-link check: %v", err)
 		}
@@ -351,7 +351,7 @@ func TestCheckWireAdviceUsesAuthoredDeclarations(t *testing.T) {
 			}
 			planted := strings.Replace(string(original), tc.anchor, tc.anchor+tc.insertion, 1)
 			plantInLane(t, file, original, []byte(planted), unlock)
-			err = Check(Config{Web: web, Out: filepath.Join(app, "internal", "skgo")})
+			err = Check(fixtureConfig(Config{Web: web, Out: filepath.Join(app, "internal", "skgo")}))
 			if err == nil || !strings.Contains(err.Error(), tc.consequence) || !strings.Contains(err.Error(), tc.repair) || !strings.Contains(err.Error(), filepath.Base(file)+":") {
 				t.Fatalf("wanted authored wire advice with consequence and repair, got %v", err)
 			}
@@ -399,7 +399,7 @@ func TestNamedDeferredPayloadSerializedNames(t *testing.T) {
 	if err := os.WriteFile(target, []byte(contents), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cfg := Config{Web: web, Out: out}
+	cfg := fixtureConfig(Config{Web: web, Out: out})
 	fieldOffset := strings.Index(contents, "Second string")
 	if fieldOffset < 0 {
 		t.Fatal("planted duplicate field is missing")

@@ -58,7 +58,7 @@ var pageMethods = map[string]bool{"GET": true, "POST": true, "HEAD": true}
 // and the body, and skgo does not encode, wrap or reinterpret any of them. What
 // the request carries beyond the standard library is reachable with
 // skgo.EventFrom(r.Context()) — the route id, the route parameters, and
-// whatever the app's Handle hook stored with skgo.SetLocal.
+// the application's selected locals through its generated LocalsFrom helper.
 func GET(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
 
 // POST declares fn as the handler for POST requests to this route. See GET.
@@ -156,6 +156,9 @@ type EndpointConfig struct {
 	// answer a GET of one from its file before any dynamic route is consulted,
 	// so a server route that would also match it does not run for it.
 	Prerendered []string
+	// PrerenderedEndpoints records compiled methods for fully prerendered
+	// endpoint routes. They participate in drift checks, never dynamic routing.
+	PrerenderedEndpoints map[string][]string
 
 	// manifest reports that this config came from a build manifest, which is
 	// what makes the drift check meaningful.
@@ -166,13 +169,14 @@ type EndpointConfig struct {
 // manifest.
 func (m Manifest) EndpointConfig(origin string) EndpointConfig {
 	return EndpointConfig{
-		AppDir:         m.AppDir,
-		Base:           m.Base,
-		Origin:         origin,
-		TrustedOrigins: m.TrustedOrigins,
-		Routes:         m.Routes,
-		Prerendered:    m.Prerendered,
-		manifest:       true,
+		AppDir:               m.AppDir,
+		Base:                 m.Base,
+		Origin:               origin,
+		TrustedOrigins:       m.TrustedOrigins,
+		Routes:               m.Routes,
+		Prerendered:          m.Prerendered,
+		PrerenderedEndpoints: m.PrerenderedEndpoints,
+		manifest:             true,
 	}
 }
 
@@ -351,7 +355,16 @@ func (es *Endpoints) checkDrift() error {
 	}
 
 	declared := map[string]map[string]bool{}
+	for id, methods := range es.cfg.PrerenderedEndpoints {
+		declared[id] = map[string]bool{}
+		for _, method := range methods {
+			declared[id][method] = true
+		}
+	}
 	for _, route := range es.routes {
+		if _, prerendered := es.cfg.PrerenderedEndpoints[route.id]; prerendered {
+			return fmt.Errorf("skgo: prerendered endpoint %s also appears in the dynamic route table", route.id)
+		}
 		if route.declared != nil {
 			declared[route.id] = route.declared
 		}
@@ -457,7 +470,7 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 		routePath = "/"
 	}
 
-	route, params, matched := es.match(routePath)
+	route, params, matched := es.matchRequest(r, routePath)
 	if !matched {
 		next.ServeHTTP(w, r)
 		return
@@ -606,6 +619,20 @@ func (es *Endpoints) fatalError(w http.ResponseWriter, r *http.Request, routeID 
 
 // match finds the route that serves routePath, which is the pathname with the
 // configured base already removed.
+func (es *Endpoints) matchRequest(r *http.Request, path string) (*endpointRoute, map[string]string, bool) {
+	if state := hookStateOf(r.Context()); state != nil && state.routing {
+		es.mu.RLock()
+		defer es.mu.RUnlock()
+		for _, route := range es.routes {
+			if route.id == state.routeID {
+				return route, state.params, true
+			}
+		}
+		return nil, nil, false
+	}
+	return es.match(path)
+}
+
 func (es *Endpoints) match(routePath string) (*endpointRoute, map[string]string, bool) {
 	es.mu.RLock()
 	defer es.mu.RUnlock()
