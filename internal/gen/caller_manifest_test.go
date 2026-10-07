@@ -11,17 +11,36 @@ import (
 // Build a changed frontend over unchanged generated Go. The route is outside
 // the caller the application would select, and has no Go load or hook.
 func TestFrontendRebuildWithoutCallerGeneration(t *testing.T) {
+	t.Parallel()
 	root, err := repoRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := sandboxExample(t)
+	app := t.TempDir()
+	if err := stageSharedModule(root, app); err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range []string{"web/package.json", "web/vite.config.ts", "web/tsconfig.json", "web/src/app.html"} {
+		if err := copySandboxFile(filepath.Join(root, "example", file), filepath.Join(app, file)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeSharedFixture(t, app, "web/src/routes/+page.svelte", `<script>import { answer } from '../data/answer.remote';</script><button onclick={()=>answer()}>Answer</button>`)
+	if err := copySandboxFile(filepath.Join(root, "example/web/dist.go"), filepath.Join(app, "web/dist.go")); err != nil {
+		t.Fatal(err)
+	}
 	web := filepath.Join(app, "web")
 	dependencies := filepath.Join(web, "node_modules")
 	if err := os.RemoveAll(dependencies); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(filepath.Join(root, "example", "web", "node_modules"), dependencies); err != nil {
+	linkFrontendDependencies(t, root, dependencies)
+	writeSharedFixture(t, app, "web/src/data/answer.remote.go", `package data
+import("context";"github.com/tylergannon/skgo";"github.com/tylergannon/skgo/example/internal/skgo/params")
+func answer(context.Context,params.RequestEvent)(string,error){return "answer",nil}
+var _=skgo.Command(answer)
+`)
+	if err := Run(fixtureConfig(Config{Web: web, Out: filepath.Join(app, "internal/skgo")})); err != nil {
 		t.Fatal(err)
 	}
 	writeSharedFixture(t, app, "web/src/routes/manifest-drift/[newkey]/+page.svelte", "<p>New frontend caller</p>")

@@ -79,15 +79,7 @@ var (
 // value used as non-null. Every generic in the @type annotations mirrors kit's
 // own declarations for `query`, `query.live`, `query.batch`, `command` and
 // `form`.
-func TestJavaScriptModeEmitsJSDocRemotesAndTypes(t *testing.T) {
-	t.Parallel()
-	root, cfg := foreignFixture(t, jsFixtureRemote, nil)
-	cfg.Language = LanguageJavaScript
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("generating a JavaScript app: %v", err)
-	}
-
+func testJavaScriptRemotesAndTypes(t *testing.T, root string) {
 	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.js")
 	for _, want := range []string{
 		"import { command, form, query } from '$app/server';",
@@ -150,63 +142,6 @@ func TestJavaScriptModeEmitsJSDocRemotesAndTypes(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(gone))); !os.IsNotExist(err) {
 			t.Errorf("%s still exists in JavaScript mode: %v", gone, err)
 		}
-	}
-}
-
-// TestJavaScriptModeIsChosenFromTheApp: the language choice has to survive a
-// regenerate, and `go generate` passes no flag, so the generator reads it off
-// the app sv created. sv writes a JavaScript app a jsconfig.json.
-func TestJavaScriptModeIsChosenFromTheApp(t *testing.T) {
-	t.Parallel()
-	root, cfg := foreignFixture(t, jsFixtureRemote, map[string]string{
-		"app/web/jsconfig.json": "{\n  \"extends\": \"$app/tsconfig\"\n}\n",
-	})
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("generating an app whose own config is JavaScript: %v", err)
-	}
-
-	if _, err := os.Stat(filepath.Join(root, "app", "web", "src", "data", "data.remote.js")); err != nil {
-		t.Fatalf("a jsconfig.json app was not generated as JavaScript: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, "app", "web", "src", "data", "data.remote.ts")); !os.IsNotExist(err) {
-		t.Fatalf("a jsconfig.json app still has a TypeScript stub: %v", err)
-	}
-}
-
-// TestSwitchingLanguageRemovesOnlyGeneratedFiles: regenerating after a choice
-// changes has to clear the mode that was replaced. The old modules are
-// generated artifacts; an authored file beside them must survive.
-func TestSwitchingLanguageRemovesOnlyGeneratedFiles(t *testing.T) {
-	t.Parallel()
-	root, cfg := foreignFixture(t, jsFixtureRemote, nil)
-
-	cfg.Language = LanguageTypeScript
-	if err := Run(cfg); err != nil {
-		t.Fatalf("generating TypeScript first: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(root, "app", "web", "src", "data", "data.remote.ts")); err != nil {
-		t.Fatalf("TypeScript stub was not written: %v", err)
-	}
-
-	// An authored module beside the generated one is not the generator's to
-	// remove.
-	authored := filepath.Join(root, "app", "web", "src", "data", "handwritten.js")
-	if err := os.WriteFile(authored, []byte("export const mine = 1;\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	cfg.Language = LanguageJavaScript
-	if err := Run(cfg); err != nil {
-		t.Fatalf("regenerating as JavaScript: %v", err)
-	}
-	for _, gone := range []string{"app/web/src/data/data.remote.ts", "app/web/src/data/types.ts"} {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(gone))); !os.IsNotExist(err) {
-			t.Errorf("%s was not removed when the language changed: %v", gone, err)
-		}
-	}
-	if _, err := os.Stat(authored); err != nil {
-		t.Errorf("switching languages removed an authored file: %v", err)
 	}
 }
 

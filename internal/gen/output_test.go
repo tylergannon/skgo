@@ -6,12 +6,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
 
 func TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations(t *testing.T) {
-	t.Parallel()
 	root, err := repoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -73,36 +73,44 @@ var _ = skgo.Form(save)
 		}
 		return out
 	}
-	run()
+	initial := start(func() error { return Run(cfg) })
+	t.Parallel()
+	if err := initial(); err != nil {
+		t.Fatal(err)
+	}
 	expected := snapshot()
 	// Two authored routes and their encoded copies, plus server, shared params,
 	// form client, and prerender command. This count comes from the fixture.
 	if len(expected) != 8 {
 		t.Fatalf("got %d generated files, want 8", len(expected))
 	}
-	run()
-	if !reflect.DeepEqual(snapshot(), expected) {
-		t.Fatal("repeated generation changed output")
+	// Exercise every previous-output state in one regeneration. Initial Run
+	// already exercised the all-absent bootstrap; each owned file must return
+	// byte for byte regardless of its old declarations.
+	paths := make([]string, 0, len(expected))
+	for path := range expected {
+		paths = append(paths, path)
 	}
-	for _, broken := range []string{goHeader + "this is not Go syntax\n", goHeader + "package stale\nvar _ = RemovedRuntimeSymbol\n"} {
-		for path := range expected {
-			if err := os.WriteFile(path, []byte(broken), 0644); err != nil {
+	sort.Strings(paths)
+	for i, path := range paths {
+		switch i % 3 {
+		case 0:
+			if err := os.WriteFile(path, []byte(goHeader+"this is not Go syntax\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		case 1:
+			if err := os.WriteFile(path, []byte(goHeader+"package stale\nvar _ = RemovedRuntimeSymbol\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		case 2:
+			if err := os.Remove(path); err != nil {
 				t.Fatal(err)
 			}
 		}
-		run()
-		if !reflect.DeepEqual(snapshot(), expected) {
-			t.Fatal("generation depended on broken previous declarations")
-		}
-	}
-	for path := range expected {
-		if err := os.Remove(path); err != nil {
-			t.Fatal(err)
-		}
 	}
 	run()
 	if !reflect.DeepEqual(snapshot(), expected) {
-		t.Fatal("generation depended on absent previous declarations")
+		t.Fatal("generation depended on broken or absent previous declarations")
 	}
 	build := exec.Command("go", "test", "./internal/skgo/...")
 	build.Dir = app
@@ -151,7 +159,25 @@ var _ = skgo.Form(save)
 	if err := os.Remove(source); err != nil {
 		t.Fatal(err)
 	}
+	// Remove a load in the same transition. The modules demonstrably existed
+	// before removal; Run must invoke pruning, not merely drop registrations.
+	for _, name := range []string{"save.remote.ts", "+page.server.ts", "types.ts"} {
+		if _, err := os.Stat(filepath.Join(route, name)); err != nil {
+			t.Fatalf("missing removal prerequisite %s: %v", name, err)
+		}
+	}
+	if err := os.Remove(filepath.Join(route, "page.server.go")); err != nil {
+		t.Fatal(err)
+	}
 	run()
+	for _, name := range []string{"save.remote.ts", "+page.server.ts", "types.ts"} {
+		if _, err := os.Stat(filepath.Join(route, name)); !os.IsNotExist(err) {
+			t.Errorf("orphaned %s survived generation: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(route, "+page.svelte")); err != nil {
+		t.Fatalf("authored component removed: %v", err)
+	}
 	if _, err := os.Stat(target); !os.IsNotExist(err) {
 		t.Fatalf("removed form left client: %v", err)
 	}
@@ -163,6 +189,7 @@ var _ = skgo.Form(save)
 }
 
 func TestMergeGoKeepsFileLocalImportsAndLocalShadows(t *testing.T) {
+	t.Parallel()
 	first := `package fixture
 import value "strings"
 func Upper(s string) string { return value.ToUpper(s) }

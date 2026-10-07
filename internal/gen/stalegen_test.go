@@ -37,8 +37,7 @@ var packageClauseRE = regexp.MustCompile(`(?m)^package\s+(\w+)\s*$`)
 // are overwritten with garbage in the same pass: both are generated files the
 // run is about to replace, and TestFormClientGenerationRecoversAndTracksContract
 // asserts the client half of the same generation.
-func TestGenerateRecoversFromAStaleGeneratedFile(t *testing.T) {
-	t.Parallel()
+func testGenerateRecoversFromAStaleGeneratedFile(t *testing.T) {
 	g := requireEvolved(t).stale()
 	if g.staleFiles == 0 {
 		t.Fatalf("no skgo_gen.go was corrupted, so nothing here tested recovery: %v", g.err)
@@ -59,10 +58,17 @@ func TestGenerateRecoversFromAStaleGeneratedFile(t *testing.T) {
 // before this change.
 func TestGenerateStillRefusesAGenuineTypeError(t *testing.T) {
 	t.Parallel()
-	app := sandboxExample(t)
+	root, err := repoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := t.TempDir()
+	if err := stageTypedLoadEvolutionFixture(root, app); err != nil {
+		t.Fatal(err)
+	}
 
-	const brokenFile = "todos.remote.go"
-	target := filepath.Join(app, "web", "src", "routes", "todos", brokenFile)
+	const brokenFile = "page.server.go"
+	target := filepath.Join(app, "web", "src", "routes", "typed-load", "[number=Order]", brokenFile)
 	original, err := os.ReadFile(target)
 	if err != nil {
 		t.Fatalf("reading %s: %v", target, err)

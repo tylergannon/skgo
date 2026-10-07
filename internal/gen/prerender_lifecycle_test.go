@@ -14,8 +14,7 @@ import (
 	"time"
 )
 
-func TestRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse(t *testing.T) {
-	t.Parallel()
+func testRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse(t *testing.T) {
 	fixture := requireProductionFixture(t)
 	for _, slug := range []string{"alpha", "beta"} {
 		body, err := os.ReadFile(filepath.Join(fixture.app, "ui", "build", "prerendered", "lifecycle", slug+".html"))
@@ -30,13 +29,11 @@ func TestRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse(t *testing
 	}
 }
 
-func TestCompiledProductionPrerenderedEndpointsAndPages(t *testing.T) {
-	t.Parallel()
+func testCompiledProductionPrerenderedEndpointsAndPages(t *testing.T) {
 	requireProductionFixture(t).run(t, "TestProductionPrerenderedEndpointsAndPages")
 }
 
-func TestRealProductionStartsWithPrerenderedEndpoints(t *testing.T) {
-	t.Parallel()
+func testRealProductionStartsWithPrerenderedEndpoints(t *testing.T) {
 	fixture := requireProductionFixture(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -100,6 +97,7 @@ func TestRealProductionStartsWithPrerenderedEndpoints(t *testing.T) {
 }
 
 func TestPrerenderHookRefusesBothAuthoredServerHookPaths(t *testing.T) {
+	t.Parallel()
 	for _, extension := range []string{"ts", "js"} {
 		t.Run(extension, func(t *testing.T) {
 			const authored = "// authored hook must survive\nexport const handle = ({ event, resolve }) => resolve(event);\n"

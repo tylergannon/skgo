@@ -8,6 +8,7 @@ import (
 )
 
 func TestLocalsConfigurationRejectsInvalidOwnershipAndTypes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, source, want string }{
 		{"missing-config", "", "locals package is required"},
 		{"missing-type", "package app\ntype Different struct{}", "locals type"},
@@ -18,6 +19,14 @@ func TestLocalsConfigurationRejectsInvalidOwnershipAndTypes(t *testing.T) {
 		{"params-cycle", "package app\nimport \"example.com/app/generated/params\"\ntype Locals struct{P params.Params}", "loadable without generated routing"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.name != "missing-config" && tc.name != "params-cycle" && tc.name != "non-struct" {
+				pkg := declarationPackage(t, "example.com/app/internal/app", "locals.go", tc.source, nil)
+				err := validateLocalsType(pkg.Types, "Locals")
+				if err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("wanted %q: %v", tc.want, err)
+				}
+				return
+			}
 			_, cfg := foreignFixture(t, `package data
 import("context";"github.com/tylergannon/skgo")
 func query(context.Context)(string,error){return "fixture",nil}
@@ -44,6 +53,7 @@ var _=skgo.Query(query)
 }
 
 func TestSelectedHookConfigurationAndAliases(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, source, want string }{
 		{"function", `package hooks
 import("context";"net/http";"example.com/app/generated/params")
@@ -68,6 +78,29 @@ func Handle(){}
 `, "selected hook"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.name != "bindings-dependency" && tc.name != "wrong-signature" {
+				_, _, route, _ := markerDeclaration(t, "fixture.go", `package route
+ import("context";"github.com/tylergannon/skgo";"example.com/app/internal/app";"example.com/app/generated/params")
+ var _=context.Background;var _=params.Params{};var _=app.Locals{}
+ func target(context.Context,params.RequestEvent)(string,error){return "",nil}
+ var _=skgo.Command(target)
+ `)
+				imports := declarationImports{}
+				for _, dep := range route.Types.Imports() {
+					imports[dep.Path()] = dep
+				}
+				pkg := declarationPackage(t, "example.com/app/hooks", "handle.go", tc.source, imports)
+				middleware := imports["example.com/app/generated/params"].Scope().Lookup("Middleware").Type()
+				err := validateHookSymbol(pkg.Types, middleware, "Handle")
+				if tc.want == "" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("wanted %q: %v", tc.want, err)
+				}
+				return
+			}
 			_, cfg := foreignFixture(t, `package data
 import("context";"github.com/tylergannon/skgo")
 func query(context.Context)(string,error){return "fixture",nil}
@@ -103,6 +136,7 @@ var _=skgo.Query(query)
 }
 
 func TestDeclaredLocalsAndSingleHookSelection(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.go")
 	if err := os.WriteFile(path, []byte("package binding\n//go:generate go tool skgo generate --locals-package=example.com/app/internal/app -hook-package example.com/app/hooks --hook-symbol=Serve\n"), 0644); err != nil {
@@ -121,6 +155,7 @@ func TestDeclaredLocalsAndSingleHookSelection(t *testing.T) {
 }
 
 func TestRootLocalsRegenerationPreservesOtherApplicationOutput(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, `package data
 import("context";"github.com/tylergannon/skgo")
 func query(context.Context)(string,error){return "fixture",nil}

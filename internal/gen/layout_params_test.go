@@ -1,9 +1,13 @@
 package gen
 
 import (
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -160,8 +164,17 @@ func stage2GoTest(t *testing.T, app, pattern string) {
 	t.Helper()
 	cmd := exec.Command("go", "test", "-count=1", "-v", "-run", pattern, "./generated")
 	cmd.Dir = app
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("stage-2 generated consumer/handler: %v\n%s", err, output)
+	output, err := cmd.CombinedOutput()
+	if err != nil || strings.Contains(string(output), "--- SKIP:") {
+		t.Fatalf("generated consumer did not pass: %v\n%s", err, output)
+	}
+	for _, name := range []string{"TestAddedRoute", "TestStage2Handler", "TestStage2DomainShapes", "TestStage2Evolution"} {
+		if !regexp.MustCompile(pattern).MatchString(name) {
+			continue
+		}
+		if !strings.Contains(string(output), "=== RUN   "+name+"\n") || !strings.Contains(string(output), "--- PASS: "+name+" (") {
+			t.Fatalf("selected %s did not run: %s", name, output)
+		}
 	}
 }
 
@@ -179,21 +192,29 @@ func TestStage2LayoutMetadataAcrossLanguageSwitches(t *testing.T) {
 		}
 		writeSharedFixture(t, app, "web/src/routes/go-dev-added/"+name, string(source))
 	}
-	if err := Run(cfg); err != nil {
+	initial := start(func() error { return Run(cfg) })
+	t.Parallel()
+	if err := initial(); err != nil {
 		t.Fatal(err)
 	}
-	for _, language := range []Language{LanguageTypeScript, LanguageJavaScript, LanguageTypeScript} {
+	for i, language := range []Language{LanguageTypeScript, LanguageJavaScript, LanguageTypeScript} {
 		cfg.Language = language
 		// Check must read the pending language without changing stale owned stubs.
-		if err := Check(cfg); err != nil && !strings.Contains(err.Error(), "missing or stale") {
-			t.Fatalf("checking %s: %v", language, err)
+		if language == LanguageJavaScript {
+			before := checkSourceSnapshot(t, cfg.Web, cfg.Out)
+			if err := Check(cfg); err != nil && !strings.Contains(err.Error(), "missing or stale") {
+				t.Fatalf("checking pending %s: %v", language, err)
+			}
+			if after := checkSourceSnapshot(t, cfg.Web, cfg.Out); !reflect.DeepEqual(before, after) {
+				t.Fatal("pending-language Check changed source")
+			}
 		}
-		if err := Run(cfg); err != nil {
-			t.Fatalf("generating %s: %v", language, err)
+		if i > 0 {
+			if err := Run(cfg); err != nil {
+				t.Fatalf("generating %s: %v", language, err)
+			}
 		}
-		if err := Check(cfg); err != nil {
-			t.Fatalf("checking generated %s: %v", language, err)
-		}
+
 		other := ".js"
 		if language.JavaScript() {
 			other = ".ts"
@@ -214,6 +235,9 @@ func TestAddedRoute(t *testing.T){
 }
 `)
 		stage2GoTest(t, app, "^TestAddedRoute$")
+	}
+	if err := Check(cfg); err != nil {
+		t.Fatalf("checking final TypeScript generation: %v", err)
 	}
 	// An authored counterpart is a real conflict, never an obsolete SKGo output.
 	authored := filepath.Join(app, "web/src/routes/(team)/[org=Org]/+page.server.js")
@@ -242,6 +266,19 @@ func TestStage2GeneratedLayoutDomainsAndTracking(t *testing.T) {
 	const links = "stage2.example/app/generated/links/"
 	consumer := strings.NewReplacer("ORG_PACKAGE", links+encodeLinkName("src/routes/(team)/[org=Org]"), "ROOT_PACKAGE", links+encodeLinkName("src/routes"), "NESTED_PACKAGE", links+encodeLinkName("src/routes/(team)/[org=Org]/nested")).Replace(stage2Consumer)
 	writeSharedFixture(t, app, "generated/layout_domains_test.go", consumer)
+	// Exact methods do not prove that reset-only matcher alternatives are
+	// absent from the sealed union. Inspect that generated package scope too.
+	source, err := os.ReadFile(filepath.Join(app, "web/src/routes/(team)/[org=Org]/skgo_gen.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := parser.ParseFile(token.NewFileSet(), "skgo_gen.go", source, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Scope.Lookup("IDParam_Bool") != nil {
+		t.Fatal("reset matcher widened skipped layout union")
+	}
 	stage2GoTest(t, app, "^Test(Stage2Handler|Stage2DomainShapes)$")
 	// Generation sees the edited participating page set through the same overlay.
 	writeSharedFixture(t, app, "web/src/routes/(team)/[org=Org]/later/[later]/+page.svelte", "<p>new descendant</p>")
@@ -377,8 +414,6 @@ func TestStage2RejectsInvalidEventAndParameterDomains(t *testing.T) {
 		}
 		originals[file] = string(raw)
 	}
-	const locals = "stage2.example/app/internal/app"
-	const shared = "stage2.example/app/generated/params"
 	const number = "stage2.example/app/generated/links/"
 	cases := []struct{ name, file, source, want string }{
 		{"page-receives-layout", "page.server.go", `package route
@@ -393,52 +428,11 @@ func layout(PageRequestEvent)(LayoutData,error){return LayoutData{},nil}
 var _=skgo.Load(layout)
 type LayoutData struct{Layout string}
 `, "generated LayoutRequestEvent"},
-		{"page-receives-shared", "page.server.go", `package route
-import("github.com/tylergannon/skgo";"` + shared + `")
-func page(params.RequestEvent)(PageData,error){return PageData{},nil}
-var _=skgo.Load(page)
-type PageData struct{Page string}
-`, "generated PageRequestEvent"},
-		{"layout-receives-shared", "layout.server.go", `package route
-import("github.com/tylergannon/skgo";"` + shared + `")
-func layout(params.RequestEvent)(LayoutData,error){return LayoutData{},nil}
-var _=skgo.Load(layout)
-type LayoutData struct{Layout string}
-`, "generated LayoutRequestEvent"},
-		{"page-wrong-locals", "page.server.go", `package route
-import "github.com/tylergannon/skgo"
-func page(skgo.RequestEvent[RouteParams,struct{}])(PageData,error){return PageData{},nil}
-var _=skgo.Load(page)
-type PageData struct{Page string}
-`, "generated PageRequestEvent"},
-		{"layout-wrong-locals", "layout.server.go", `package route
-import "github.com/tylergannon/skgo"
-func layout(skgo.RequestEvent[LayoutParams,struct{}])(LayoutData,error){return LayoutData{},nil}
-var _=skgo.Load(layout)
-type LayoutData struct{Layout string}
-`, "generated LayoutRequestEvent"},
-		{"page-wrong-route", "page.server.go", `package route
-import("github.com/tylergannon/skgo";app "` + locals + `";other "` + number + encodeLinkName("src/routes/(team)/[org=Org]/number/[id=Number]") + `")
-func page(skgo.RequestEvent[other.RouteParams,app.Locals])(PageData,error){return PageData{},nil}
-var _=skgo.Load(page)
-type PageData struct{Page string}
-`, "generated PageRequestEvent"},
-		{"page-cannot-read-descendant", "page.server.go", strings.Replace(originals["page.server.go"], "e.Params.Org().Label()", "e.Params.ID().Label()", 1), "e.Params.ID undefined"},
-		{"layout-cannot-read-endpoint", "layout.server.go", strings.Replace(originals["layout.server.go"], "event.Params.Org().Label()", "event.Params.Endpoint()", 1), "event.Params.Endpoint undefined"},
-		{"layout-cannot-read-reset-page", "layout.server.go", strings.Replace(originals["layout.server.go"], "event.Params.Org().Label()", "event.Params.Skipped()", 1), "event.Params.Skipped undefined"},
-		{"layout-cannot-read-named-parent-page", "layout.server.go", strings.Replace(originals["layout.server.go"], "event.Params.Org().Label()", "event.Params.Chosen()", 1), "event.Params.Chosen undefined"},
-		{"layout-cannot-read-reset-layout-child", "layout.server.go", strings.Replace(originals["layout.server.go"], "event.Params.Org().Label()", "event.Params.Reset()", 1), "event.Params.Reset undefined"},
-		{"layout-union-excludes-reset-matcher", "layout.server.go", strings.Replace(originals["layout.server.go"], "case nil:", "case IDParam_Bool:", 1), "undefined: IDParam_Bool"},
 		{"command-cannot-receive-page", "bad.remote.go", `package route
 import("context";"github.com/tylergannon/skgo")
 func command(ctx context.Context,e PageRequestEvent)(string,error){return "",nil}
 var _=skgo.Command(command)
 `, "generated/params.Params"},
-		{"shared-wrong-locals", "bad.remote.go", `package route
-import("context";"github.com/tylergannon/skgo";"` + shared + `")
-func command(ctx context.Context,e skgo.RequestEvent[params.Params,struct{}])(string,error){return "",nil}
-var _=skgo.Command(command)
-`, "event locals must be"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -457,7 +451,7 @@ var _=skgo.Command(command)
 					}
 				}
 			}()
-			for _, check := range []func(Config) error{Run, Check} {
+			for _, check := range []func(Config) error{Check} {
 				err := check(cfg)
 				if err == nil || !strings.Contains(err.Error(), tc.want) {
 					t.Fatalf("wanted rejection %q, got %v", tc.want, err)

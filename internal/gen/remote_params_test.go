@@ -9,6 +9,7 @@ import (
 )
 
 func TestGeneratedCommandFormCallerEvents(t *testing.T) {
+	t.Parallel()
 	app, cfg := sharedFixture(t)
 	for _, route := range []string{"choice/[id=Numeric]", "choice/[id]", "chain/[[lang=Lang]]/[[id]]"} {
 		writeSharedFixture(t, app, "web/src/routes/"+route+"/+page.svelte", "<p>caller</p>")
@@ -47,6 +48,7 @@ func TestGeneratedCommandFormCallerEvents(t *testing.T) {
 }
 
 func TestCommandFormEventDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"Command", "Form"} {
 		for _, tc := range []struct{ name, signature, want string }{
 			{"ctx-only", "ctx context.Context,in string", "A " + strings.ToLower(kind) + " is func(context.Context, params.RequestEvent"},
@@ -54,13 +56,13 @@ func TestCommandFormEventDiagnostics(t *testing.T) {
 			{"wrong-params", "ctx context.Context,event skgo.RequestEvent[struct{}, struct{}],in string", "event locals must be example.com/app/internal/app.Locals"},
 		} {
 			t.Run(kind+"/"+tc.name, func(t *testing.T) {
-				_, cfg := foreignFixture(t, `package data
+				a, gp, p, call := markerDeclaration(t, "data.remote.go", `package data
 import("context";"github.com/tylergannon/skgo";"example.com/app/generated/params")
 var _ = params.Params{}; var _ = context.Background
 func old(`+tc.signature+`)(string,error){return in,nil}
 var _ = skgo.`+kind+`(old)
-`, nil)
-				err := Run(cfg)
+`)
+				_, _, _, _, err := a.readMarker(gp, p, call, "src/data.remote.ts", "", "", filepath.Join(gp.dir, "data.remote.go"))
 				if err == nil || !strings.Contains(err.Error(), "data.remote.go:5:") || !strings.Contains(err.Error(), tc.want) {
 					t.Fatalf("missing source-located %s migration: %v", kind, err)
 				}

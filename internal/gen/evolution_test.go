@@ -9,16 +9,9 @@ import (
 	"testing"
 )
 
-// The contract tests in clients_test.go, stalegen_test.go and check_test.go
-// all ask the generator the same kind of question: the developer changed their
-// Go and ran `go generate ./...`; what came out? Each used to copy the example
-// and run the generator for itself, several times over, at several seconds a
-// pass. The changes they plant do not overlap, so they are planted together in
-// one evolved copy of the example, generated once, and each test asserts on
-// that one result. The follow-up generations that need a different starting
-// tree — a tree whose generated files went stale, and the untouched example
-// regenerated over its own committed output — each run once on their own
-// copy, concurrently with the first.
+// Compatible contract edits share one application containing only their routes.
+// Recovery starts from a separate copy so it can corrupt owned files while the
+// other assertions read the successful generation.
 
 // evolvedEdit is one change a contract test plants in the example's source.
 // old must occur exactly once, so a fixture that drifts fails here rather
@@ -113,11 +106,12 @@ type evolvedApp struct {
 }
 
 var evolved = sync.OnceValue(func() *evolvedApp {
-	// The one test that asks for regenerated also asks for this; start it
-	// now rather than after this returns.
-	go regenerated()
 	e := &evolvedApp{}
-	app, err := sharedSandbox("evolved")
+	app := filepath.Join(packageTemp, "evolved")
+	root, err := repoRoot()
+	if err == nil {
+		err = stageEvolvedModule(root, app)
+	}
 	if err == nil {
 		err = applyEdits(app, evolvedEdits())
 	}
@@ -181,20 +175,6 @@ var evolved = sync.OnceValue(func() *evolvedApp {
 	})
 	e.first.buildOut, e.first.buildErr = runGoBuild(filepath.Join(app, "internal", "skgo"))
 	return e
-})
-
-// regenerated is `go generate ./...` over an untouched copy of the example,
-// whose generated files are this generator's own earlier output: the example
-// commits them, and TestNothingGeneratedWasWrittenByHand in the example module
-// holds the tree to exactly what generation writes. Regenerating it is the
-// repeat-generation claim with the expectation fixed in advance, and it needs
-// nothing from the evolved app, so it runs beside it.
-var regenerated = sync.OnceValue(func() generation {
-	app, err := sharedSandbox("regenerated")
-	if err != nil {
-		return generation{err: err}
-	}
-	return generate(app)
 })
 
 // requireEvolved returns the evolved app, failing the test if the fixture

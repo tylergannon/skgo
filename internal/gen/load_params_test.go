@@ -10,6 +10,7 @@ import (
 )
 
 func TestTypedLoadJavaScriptMatcherContract(t *testing.T) {
+	t.Parallel()
 	root, err := repoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -155,43 +156,17 @@ func TestRepairedTypedLoad(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(app, "internal", "skgo", "typed_load_repaired_test.go"), []byte(consumer), 0644); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("go", "test", "-count=1", "-run", "^TestRepairedTypedLoad$", "./internal/skgo")
+	cmd := exec.Command("go", "test", "-count=1", "-v", "-run", "^TestRepairedTypedLoad$", "./internal/skgo")
 	cmd.Dir = app
-	if output, err := cmd.CombinedOutput(); err != nil {
+	if output, err := cmd.CombinedOutput(); err != nil || strings.Contains(string(output), "--- SKIP:") || !strings.Contains(string(output), "=== RUN   TestRepairedTypedLoad\n") || !strings.Contains(string(output), "--- PASS: TestRepairedTypedLoad (") {
 		t.Fatalf("repaired load compile/behavior: %v\n%s", err, output)
 	}
 }
 
-func TestTypedLoadMatchersPrerenderNamedGoValues(t *testing.T) {
-	t.Parallel()
-	root, err := repoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	app, err := copyExample(root, filepath.Join(t.TempDir(), "example"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	web := filepath.Join(app, "web")
-	dependencies := filepath.Join(web, "node_modules")
-	if err := os.RemoveAll(dependencies); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(filepath.Join(root, "example", "web", "node_modules"), dependencies); err != nil {
-		t.Fatal(err)
-	}
-	page := filepath.Join(web, "src", "routes", "typed-load", "[number=Order]", "+page.ts")
-	if err := os.WriteFile(page, []byte("export const prerender = true;\nexport const entries = () => [{ number: '0' }, { number: '00042' }];\n"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	command := exec.Command(filepath.Join(dependencies, ".bin", "vp"), "build")
-	command.Dir = web
-	command.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080")
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build typed prerender fixture: %v\n%s", err, output)
-	}
+func testTypedLoadMatchersPrerenderNamedGoValues(t *testing.T) {
+	fixture := requireProductionFixture(t)
 	for path, label := range map[string]string{"0": "Order #0", "00042": "Order #42"} {
-		artifact, err := os.ReadFile(filepath.Join(web, "build", "prerendered", "typed-load", path+".html"))
+		artifact, err := os.ReadFile(filepath.Join(fixture.app, "ui/build/prerendered/typed-load", path+".html"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -210,8 +185,12 @@ func TestTypedLoadActualParameterDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app, err := copyExample(root, t.TempDir())
-	if err != nil {
+	app := t.TempDir()
+	if err := stageTypedLoadEvolutionFixture(root, app); err != nil {
+		t.Fatal(err)
+	}
+	const dependencySource = "web/src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/page.server.go"
+	if err := copySandboxFile(filepath.Join(root, "example", dependencySource), filepath.Join(app, dependencySource)); err != nil {
 		t.Fatal(err)
 	}
 	optional := filepath.Join(app, "web", "src", "routes", "typed-optional", "[[n=Order]]")
@@ -329,14 +308,15 @@ func TestGeneratedParameterDependencies(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(app, "internal", "skgo", "typed_dependencies_test.go"), []byte(linkedConsumer), 0644); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("go", "test", "-count=1", "-run", "^TestGeneratedParameterDependencies$", "./internal/skgo")
+	cmd := exec.Command("go", "test", "-count=1", "-v", "-run", "^TestGeneratedParameterDependencies$", "./internal/skgo")
 	cmd.Dir = app
-	if output, err := cmd.CombinedOutput(); err != nil {
+	if output, err := cmd.CombinedOutput(); err != nil || strings.Contains(string(output), "--- SKIP:") || !strings.Contains(string(output), "=== RUN   TestGeneratedParameterDependencies\n") || !strings.Contains(string(output), "--- PASS: TestGeneratedParameterDependencies (") {
 		t.Fatalf("generated load dependency contracts: %v\n%s", err, output)
 	}
 }
 
 func TestAppMatchersWithoutGoLoads(t *testing.T) {
+	t.Parallel()
 	root, err := repoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -380,9 +360,9 @@ func TestMatcherOnlyHandler(t *testing.T){
 	if err := os.WriteFile(filepath.Join(app, "generated", "matcher_test.go"), []byte(consumer), 0644); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("go", "test", "-mod=mod", "-count=1", "./generated")
+	cmd := exec.Command("go", "test", "-mod=mod", "-count=1", "-v", "./generated")
 	cmd.Dir = app
-	if out, err := cmd.CombinedOutput(); err != nil {
+	if out, err := cmd.CombinedOutput(); err != nil || strings.Contains(string(out), "--- SKIP:") || !strings.Contains(string(out), "=== RUN   TestMatcherOnlyHandler\n") || !strings.Contains(string(out), "--- PASS: TestMatcherOnlyHandler (") {
 		t.Fatalf("matcher-only generated handler: %v\n%s", err, out)
 	}
 	if err := os.Remove(filepath.Join(web, "src", "params.go")); err != nil {

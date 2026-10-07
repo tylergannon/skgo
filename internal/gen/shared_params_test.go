@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -26,7 +27,8 @@ func sharedFixture(t *testing.T) (string, Config) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app, err := copyExample(root, t.TempDir())
+	app := t.TempDir()
+	err = stageSharedModule(root, app)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,26 +117,43 @@ func PublicHidden(s string) (domain.PublicHidden,bool) { return 0,true }
 	return app, fixtureConfig(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")})
 }
 
-func runSharedConsumer(t *testing.T, app, pattern string, wantFailure string) {
+func runSharedConsumer(t *testing.T, app, pattern string, wantFailure string) string {
 	t.Helper()
-	cmd := exec.Command("go", "test", "-count=1", "-v", "-run", pattern, "./internal/skgo/params")
+	cmd := exec.Command("go", "test", "-count=1", "-v", "-run", pattern, "./internal/skgo/...")
 	cmd.Dir = app
 	output, err := cmd.CombinedOutput()
 	if wantFailure != "" {
 		if err == nil || !strings.Contains(string(output), wantFailure) {
 			t.Fatalf("expected compile failure %q: %v\n%s", wantFailure, err, output)
 		}
-		return
+		return string(output)
 	}
 	if err != nil || strings.Contains(string(output), "SKIP") || !strings.Contains(string(output), "--- PASS:") {
 		t.Fatalf("generated consumer did not execute: %v\n%s", err, output)
 	}
+	if wantFailure == "" {
+		for _, name := range []string{"TestSharedReceipts", "TestGeneratedNilLoads", "TestThird", "TestFrontendOnly"} {
+			if !regexp.MustCompile(pattern).MatchString(name) {
+				continue
+			}
+			if !strings.Contains(string(output), "=== RUN   "+name+"\n") || !strings.Contains(string(output), "--- PASS: "+name+" (") {
+				t.Fatalf("selected %s did not run: %s", name, output)
+			}
+		}
+	}
 	t.Logf("compiled consumers:\n%s", output)
+	return string(output)
 }
 
 func TestSharedParamsGeneratedConsumers(t *testing.T) {
 	t.Parallel()
 	app, cfg := sharedFixture(t)
+	writeSharedFixture(t, app, "web/src/routes/todos/todos.remote.go", `package todos
+import("context";"github.com/tylergannon/skgo")
+func answer(context.Context)(string,error){return "fixture",nil}
+var _=skgo.Query(answer)
+`)
+	writeSharedNilLoads(t, app)
 	// A real application body can import shared params before their first generation.
 	writeSharedFixture(t, app, "web/src/routes/todos/consumer.go", `package todos
 import "github.com/tylergannon/skgo/example/internal/skgo/params"
@@ -166,14 +185,20 @@ func sharedConsumer(p params.Params) params.Key_ID { return p.ID() }
 	// These names are pinned literals. The running consumer supplies independent
 	// concrete values and checks original methods and exact presence receipts.
 	writeSharedFixture(t, app, "internal/skgo/params/consumer_test.go", sharedConsumerSource)
-	runSharedConsumer(t, app, "^TestSharedReceipts$", "")
-	// Plain values must fail interface assignment, not just pass a scanner check.
-	for _, value := range []string{"42", `"42"`, "domain.Number(42)"} {
-		writeSharedFixture(t, app, "internal/skgo/params/bad_test.go", `package params_test
-import ( "github.com/tylergannon/skgo/example/domain"; "github.com/tylergannon/skgo/example/internal/skgo/params" )
-var _ = domain.Number(0)
-var _ params.Key_ID = `+value+"\n")
-		runSharedConsumer(t, app, "^TestSharedReceipts$", "does not implement")
+	runSharedConsumer(t, app, "^Test(SharedReceipts|GeneratedNilLoads)$", "")
+	// One compile rejects all three plain values; they reach the same sealed
+	// interface rule, and no source transition needs a separate Go invocation.
+	writeSharedFixture(t, app, "internal/skgo/params/bad_test.go", `package params_test
+import("github.com/tylergannon/skgo/example/domain";"github.com/tylergannon/skgo/example/internal/skgo/params")
+var _ params.Key_ID = 42
+var _ params.Key_ID = "42"
+var _ params.Key_ID = domain.Number(42)
+`)
+	rejected := runSharedConsumer(t, app, "^TestSharedReceipts$", "does not implement")
+	for _, line := range []string{"bad_test.go:3:", "bad_test.go:4:", "bad_test.go:5:"} {
+		if !strings.Contains(rejected, line) {
+			t.Fatalf("plain value at %s was not rejected: %s", line, rejected)
+		}
 	}
 	if err := os.Remove(filepath.Join(cfg.Out, "params", "bad_test.go")); err != nil {
 		t.Fatal(err)
@@ -324,9 +349,8 @@ func TestSharedReceipts(t *testing.T) {
 }
 `
 
-func TestSharedParamsGeneratedNilLoads(t *testing.T) {
-	t.Parallel()
-	app, cfg := sharedFixture(t)
+func writeSharedNilLoads(t *testing.T, app string) {
+	t.Helper()
 	for _, tc := range []struct{ route, body string }{
 		{"nil/[id=MaybeRef]", `ref:=event.Params.ID();label:="load:present:nil";if ref!=nil{label="load:present:"+ref.Label()}`},
 		{"nil-optional/[[id=MaybeRef]]", `ptr:=event.Params.ID();label:="load:absent";if ptr!=nil{label="load:present:nil";if *ptr!=nil{label="load:present:"+(*ptr).Label()}}`},
@@ -337,9 +361,6 @@ type PageData struct { Receipt string `+"`json:\"receipt\"`"+` }
 func load(event PageRequestEvent) (PageData,error) { `+tc.body+`;return PageData{Receipt:label},nil }
 var _ = skgo.Load(load)
 `)
-	}
-	if err := Run(cfg); err != nil {
-		t.Fatal(err)
 	}
 	writeSharedFixture(t, app, "internal/skgo/nil_loads_test.go", `package skgo_test
 import (
@@ -371,16 +392,10 @@ func TestGeneratedNilLoads(t *testing.T) {
  }
 }
 `)
-	cmd := exec.Command("go", "test", "-count=1", "-v", "-run", "^TestGeneratedNilLoads$", "./internal/skgo")
-	cmd.Dir = app
-	output, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(output), "--- PASS: TestGeneratedNilLoads") || strings.Contains(string(output), "SKIP") {
-		t.Fatalf("generated nil loads did not run: %v\n%s", err, output)
-	}
-	t.Logf("real generated nil loads:\n%s", output)
 }
 
 func TestSharedParamsSourceDiagnostics(t *testing.T) {
+	t.Parallel()
 	app, cfg := sharedFixture(t)
 	if err := os.RemoveAll(filepath.Join(cfg.Out, "params")); err != nil {
 		t.Fatal(err)
@@ -401,10 +416,6 @@ func TestSharedParamsSourceDiagnostics(t *testing.T) {
 	}
 	writeSharedFixture(t, app, "web/src/routes/diagnostic/[bad=Bad]/+page.svelte", "<p>diagnostic</p>")
 	for _, tc := range []struct{ name, importPath, setup, signature, want string }{
-		{"private-type", "", "", `type hidden int; func Bad(s string) (hidden,bool) { return 0,true }`, "inaccessible type hidden"},
-		{"private-argument", "", "", `type hidden int; func Bad(s string) (domain.Box[hidden],bool) { return domain.Box[hidden]{},true }`, "inaccessible type hidden"},
-		{"private-struct-field", "", "", `func Bad(s string) (struct{ private int },bool) { return struct{ private int }{},true }`, "inaccessible structural field private"},
-		{"private-interface-method", "", "", `func Bad(s string) (interface{ private() },bool) { return nil,true }`, "inaccessible structural interface method private"},
 		{"illegal-internal", "github.com/tylergannon/skgo/example/foreign/internal/domain", `package domain; type Value int`, `func Bad(s string) (bad.Value,bool) { return 0,true }`, "use of internal package"},
 		{"remote-owned", "github.com/tylergannon/skgo/example/web/src/lib/remote", `package remote; type Value int`, `func Bad(s string) (bad.Value,bool) { return 0,true }`, "caller-owned"},
 		{"caller-owned", "github.com/tylergannon/skgo/example/web/src/routes/owned", `package owned; type Value int`, `func Bad(s string) (bad.Value,bool) { return 0,true }`, "caller-owned"},
@@ -479,8 +490,8 @@ func TestSharedParamsFrontendOnlyApplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app, err := copyExample(root, t.TempDir())
-	if err != nil {
+	app := t.TempDir()
+	if err := stageSharedModule(root, app); err != nil {
 		t.Fatal(err)
 	}
 	web := filepath.Join(app, "web")

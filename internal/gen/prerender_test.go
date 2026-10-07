@@ -1,11 +1,18 @@
 package gen
 
 import (
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"go/types"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/tools/go/packages"
 )
 
 const loadSource = `package routes
@@ -20,6 +27,7 @@ var _ = skgo.Load(site)
 `
 
 func TestPrerenderGoLoadFailureNamesAuthoredRoute(t *testing.T) {
+	t.Parallel()
 	root, err := repoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -146,32 +154,32 @@ var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: inputs})
 
 func TestPrerenderOptionsFailuresArePositioned(t *testing.T) {
 	t.Parallel()
-	for name, options := range map[string]string{
-		"dynamic false": `{Dynamic: false}`,
-		"validate nil":  `{Validate: nil}`,
-		"unknown":       `{Inputs: producer, Other: true}`,
-		"variable":      `options`,
-		"anonymous":     `{Inputs: func() ([]string, error) { return nil, nil }}`,
+	for _, tc := range []struct{ name, expr, want string }{
+		{"dynamic false", "skgo.PrerenderOptions{Dynamic:false}", "Dynamic is not supported"},
+		{"validate nil", "skgo.PrerenderOptions{Validate:nil}", "Validate is not supported"},
+		{"unknown", "skgo.PrerenderOptions{Inputs:producer,Other:true}", `unknown PrerenderOptions field "Other"`},
+		{"variable", "options", "must be a keyed"},
+		{"anonymous", "skgo.PrerenderOptions{Inputs:func()([]string,error){return nil,nil}}", "must name a local function"},
+		{"duplicate", "skgo.PrerenderOptions{Inputs:first,Inputs:second}", "duplicate PrerenderOptions field"},
+		{"unkeyed", "skgo.PrerenderOptions{producer}", "must use keyed syntax"},
 	} {
-		t.Run(name, func(t *testing.T) {
-			optionExpr := "skgo.PrerenderOptions" + options
-			if name == "variable" {
-				optionExpr = options
+		t.Run(tc.name, func(t *testing.T) {
+			fset := token.NewFileSet()
+			expr, err := parser.ParseExprFrom(fset, "data.remote.go", tc.expr, 0)
+			if err != nil {
+				t.Fatal(err)
 			}
-			_, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-	"github.com/tylergannon/skgo"
-)
-func build(ctx context.Context, name string) (string, error) { return name, nil }
-func producer() ([]string, error) { return nil, nil }
-var options = skgo.PrerenderOptions{Inputs: producer}
-var _ = skgo.Prerender(build, `+optionExpr+`)
-`, nil)
-			err := Run(cfg)
-			if err == nil || !strings.Contains(err.Error(), "data.remote.go:") {
-				t.Fatalf("Run error = %v; want positioned diagnostic", err)
+			info := &types.Info{Uses: map[*ast.Ident]types.Object{}}
+			ast.Inspect(expr, func(n ast.Node) bool {
+				if id, ok := n.(*ast.Ident); ok && id.Name == "skgo" {
+					info.Uses[id] = types.NewPkgName(id.Pos(), nil, "skgo", types.NewPackage(skgoPkg, "skgo"))
+				}
+				return true
+			})
+			p := &packages.Package{Fset: fset, TypesInfo: info}
+			_, err = (&app{}).readPrerenderOptions(p, expr)
+			if err == nil || !strings.Contains(err.Error(), "data.remote.go:1:") || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("missing positioned %q: %v", tc.want, err)
 			}
 		})
 	}
@@ -179,19 +187,25 @@ var _ = skgo.Prerender(build, `+optionExpr+`)
 
 func TestPrerenderInputProducerMustMatchBodyArgument(t *testing.T) {
 	t.Parallel()
-	_, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-	"github.com/tylergannon/skgo"
-)
-func build(ctx context.Context, name string) (string, error) { return name, nil }
-func wrongInputs() ([]int, error) { return nil, nil }
-var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: wrongInputs})
-`, nil)
-	err := Run(cfg)
-	if err == nil || !strings.Contains(err.Error(), "data.remote.go:") || !strings.Contains(err.Error(), "matching the published argument") {
-		t.Fatalf("Run error = %v; want positioned producer type mismatch", err)
+	for _, tc := range []struct {
+		source string
+		valid  bool
+	}{
+		{"func producer()([]string,error){return nil,nil}", true},
+		{"func producer()([]int,error){return nil,nil}", false},
+		{"func producer() (string,error){return \"\",nil}", false},
+		{"func producer(string)([]string,error){return nil,nil}", false},
+		{"func producer()([]string,int){return nil,0}", false},
+	} {
+		fn := declarationFunction(t, "package data\n"+tc.source, "producer")
+		err := prerenderInputsSignature(fn, types.Typ[types.String])
+		if tc.valid {
+			if err != nil {
+				t.Fatal(err)
+			}
+		} else if err == nil || !strings.Contains(err.Error(), "matching the published argument") {
+			t.Fatalf("lost producer restriction: %v", err)
+		}
 	}
 }
 
@@ -300,29 +314,38 @@ var _ = skgo.Transported[Money]("Money")
 
 func linkExampleFrontendDependencies(t *testing.T, root, app string) {
 	t.Helper()
-	source := filepath.Join(root, "example", "web", "node_modules")
-	if _, err := os.Stat(filepath.Join(source, ".bin", "vp")); err != nil {
-		t.Fatalf("example web dependencies are missing, so the real vp build cannot run: %v; install the pinned dependencies first", err)
-	}
-	destination := filepath.Join(app, "ui", "node_modules")
-	if err := os.MkdirAll(filepath.Join(destination, "@skgo"), 0o755); err != nil {
+	linkFrontendDependencies(t, root, filepath.Join(app, "ui", "node_modules"))
+}
+
+func linkFrontendDependencies(t *testing.T, root, destination string) {
+	t.Helper()
+	if err := frontendDependencies(root, destination); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Each build owns Vite's mutable directories; only pinned dependencies are shared.
+func frontendDependencies(root, destination string) error {
+	source := filepath.Join(root, "example/web/node_modules")
+	if _, err := os.Stat(filepath.Join(source, ".bin/vp")); err != nil {
+		return fmt.Errorf("pinned frontend dependencies missing: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Join(destination, "@skgo"), 0755); err != nil {
+		return err
 	}
 	entries, err := os.ReadDir(source)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 	for _, entry := range entries {
 		if entry.Name() == "@skgo" || entry.Name() == "$app" || entry.Name() == ".vite-temp" {
 			continue
 		}
 		if err := os.Symlink(filepath.Join(source, entry.Name()), filepath.Join(destination, entry.Name())); err != nil {
-			t.Fatalf("link pinned frontend dependency %s: %v", entry.Name(), err)
+			return err
 		}
 	}
-	if err := os.Symlink(filepath.Join(root, "internal", "adapter"), filepath.Join(destination, "@skgo", "sveltekit-adapter")); err != nil {
-		t.Fatalf("link current skgo adapter: %v", err)
-	}
+	return os.Symlink(filepath.Join(root, "internal/adapter"), filepath.Join(destination, "@skgo/sveltekit-adapter"))
 }
 
 func TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch(t *testing.T) {
@@ -341,71 +364,44 @@ func TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch(t *testing.T) {
 	}
 }
 
+// Kit 3 PageNodes reduces universal ?? server ?? inherited, and its page
+// handler rejects actions on a true/auto branch. Exercise that decision with
+// actual files and an action; generation success alone never reached it.
 func TestPrerenderInheritanceMatchesKit(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name  string
-		files map[string]string
+	for _, tc := range []struct {
+		name, layout, server, page string
+		reject                     bool
 	}{
-		{
-			name: "a leaf inherits true from its layout",
-			files: map[string]string{
-				"app/web/src/routes/layout.server.go":   loadSource,
-				"app/web/src/routes/+layout.ts":         "export const prerender = true;\n",
-				"app/web/src/routes/about/+page.svelte": "<h1>About</h1>\n",
-			},
-		},
-		{
-			name: "a leaf false overrides a layout true",
-			files: map[string]string{
-				"app/web/src/routes/layout.server.go":   loadSource,
-				"app/web/src/routes/+layout.ts":         "export const prerender = true;\n",
-				"app/web/src/routes/about/+page.svelte": "<h1>About</h1>\n",
-				"app/web/src/routes/about/+page.ts":     "export const prerender = false;\n",
-			},
-		},
-		{
-			name: "a leaf true overrides a layout false",
-			files: map[string]string{
-				"app/web/src/routes/layout.server.go":   loadSource,
-				"app/web/src/routes/+layout.ts":         "export const prerender = false;\n",
-				"app/web/src/routes/about/+page.svelte": "<h1>About</h1>\n",
-				"app/web/src/routes/about/+page.ts":     "export const prerender = true;\n",
-			},
-		},
-		{
-			name: "a universal option wins over the same node server option",
-			files: map[string]string{
-				"app/web/src/routes/layout.server.go":         loadSource,
-				"app/web/src/routes/branch/+layout.ts":        "export const prerender = false;\n",
-				"app/web/src/routes/branch/+layout.server.ts": "export const prerender = true;\n",
-				"app/web/src/routes/branch/page/+page.svelte": "<h1>Page</h1>\n",
-			},
-		},
-		{
-			name: "auto can enter kits prerender crawl",
-			files: map[string]string{
-				"app/web/src/routes/layout.server.go":   loadSource,
-				"app/web/src/routes/about/+page.svelte": "<h1>About</h1>\n",
-				"app/web/src/routes/about/+page.ts":     "export const prerender: boolean | 'auto' = 'auto';\n",
-			},
-		},
-		{
-			name: "an unknown universal option does not fall back to the server option",
-			files: map[string]string{
-				"app/web/src/routes/layout.server.go":         loadSource,
-				"app/web/src/routes/branch/+layout.ts":        "const choice = false;\nexport const prerender = choice;\n",
-				"app/web/src/routes/branch/+layout.server.ts": "export const prerender = true;\n",
-				"app/web/src/routes/branch/page/+page.svelte": "<h1>Page</h1>\n",
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			_, cfg := foreignFixture(t, "", test.files)
-			if err := Run(cfg); err != nil {
-				t.Fatalf("Run: %v", err)
+		{"inherited true", "true", "", "", true},
+		{"leaf false", "true", "", "false", false},
+		{"leaf true", "false", "", "true", true},
+		{"universal wins", "false", "true", "", false},
+		{"auto", "", "", "'auto'", true},
+		{"unknown suppresses server", "choice", "true", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			web := t.TempDir()
+			root := filepath.Join(web, "src/routes")
+			page := filepath.Join(root, "about")
+			writeSharedFixture(t, web, "src/routes/about/+page.svelte", "<p>fixture</p>")
+			if tc.layout != "" {
+				writeSharedFixture(t, web, "src/routes/+layout.ts", "const choice=false; export const prerender = "+tc.layout+";\n")
+			}
+			if tc.server != "" {
+				writeSharedFixture(t, web, "src/routes/+layout.server.ts", "export const prerender = "+tc.server+";\n")
+			}
+			if tc.page != "" {
+				writeSharedFixture(t, web, "src/routes/about/+page.ts", "export const prerender = "+tc.page+";\n")
+			}
+			a := &app{cfg: Config{Web: web}, actions: []*actionFn{{stub: filepath.Join(page, "+page.server.ts"), pos: token.Position{Filename: "page.server.go", Line: 7}}}}
+			err := a.checkPrerenderedActions()
+			if tc.reject {
+				if err == nil || !strings.Contains(err.Error(), "cannot prerender page /about with actions at page.server.go:7") {
+					t.Fatalf("lost branch rejection: %v", err)
+				}
+			} else if err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

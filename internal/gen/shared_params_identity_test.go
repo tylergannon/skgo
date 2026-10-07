@@ -5,10 +5,15 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"golang.org/x/tools/go/packages"
 )
 
 func TestSharedParamsGoIdentities(t *testing.T) {
+	t.Parallel()
 	const source = `package domain
  type Number int
  type Alias = Number
@@ -73,6 +78,7 @@ func TestSharedParamsGoIdentities(t *testing.T) {
 }
 
 func TestSharedParamsKeyNames(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ key, want string }{
 		{"id", "ID"}, {"slug", "Slug"}, {"params", "Params"}, {"request_event", "RequestEvent_K726571756573745f6576656e74"},
 		{"slug_string", "SlugString_K736c75675f737472696e67"}, {"1", "Key1_K31"}, {"_", "Key_K5f"}, {"-", "Key_K2d"},
@@ -85,6 +91,7 @@ func TestSharedParamsKeyNames(t *testing.T) {
 }
 
 func TestSharedParamsReadableVariantNames(t *testing.T) {
+	t.Parallel()
 	makeNamed := func(path, pkg, name string) types.Type {
 		p := types.NewPackage(path, pkg)
 		return types.NewNamed(types.NewTypeName(token.NoPos, p, name, nil), types.Typ[types.Int], nil)
@@ -126,5 +133,38 @@ func TestSharedParamsReadableVariantNames(t *testing.T) {
 	}
 	if sharedAlternativeName(three, "number", sales) == sharedAlternativeName(three, "number", other) {
 		t.Fatal("equal package names erased distinct type identity")
+	}
+}
+
+func TestSharedParamsTypeAccessibility(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ declaration, want string }{
+		{"type hidden int;type Result = hidden", "inaccessible type hidden"},
+		{"type hidden int;type Box[T any]struct{Value T};type Result = Box[hidden]", "inaccessible type hidden"},
+		{"type Result = struct{private int}", "inaccessible structural field private"},
+		{"type Result = interface{private()}", "inaccessible structural interface method private"},
+		{"type Result = struct{Value int}", ""},
+		{"type Result = interface{Label()string}", ""},
+		{"type hidden int;type Result = hidden", ""},
+	} {
+		p := declarationPackage(t, "example.com/app/domain", "params.go", "package domain\n"+tc.declaration, nil)
+		typ := p.Types.Scope().Lookup("Result").Type()
+		// A public alias is nameable even when its underlying named type is private.
+		if tc.want != "" {
+			typ = types.Unalias(typ)
+		}
+		root := t.TempDir()
+		writeSharedFixture(t, root, "go.mod", "module example.com/app\n\ngo 1.27\n")
+		writeSharedFixture(t, root, "web/src/routes/+page.svelte", "<p>fixture</p>")
+		cfg := Config{Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated")}
+		imports := map[string]*packages.Package{p.Types.Path(): p}
+		err := validateSharedType(cfg, typ, imports)
+		if tc.want == "" {
+			if err != nil {
+				t.Fatal(err)
+			}
+		} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("lost %q: %v", tc.want, err)
+		}
 	}
 }
