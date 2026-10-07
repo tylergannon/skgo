@@ -150,7 +150,22 @@ func (s *session) write(rel, content string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		s.t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	// Publish one complete authored save. Truncating the watched file first can
+	// expose an intermediate state for an entire debounce under CI scheduling.
+	// A build that starts then legitimately needs another when the write ends.
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".skgo-source-*")
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	defer os.Remove(temporary.Name())
+	if _, err := temporary.WriteString(content); err != nil {
+		temporary.Close()
+		s.t.Fatal(err)
+	}
+	if err := temporary.Close(); err != nil {
+		s.t.Fatal(err)
+	}
+	if err := os.Rename(temporary.Name(), path); err != nil {
 		s.t.Fatal(err)
 	}
 }
@@ -278,14 +293,14 @@ func register(mux *http.ServeMux) {
 	s.write("cmd/register.go", fixtureRegister)
 	s.until("/added", func(r reply) bool { return r.status == 200 && strings.HasPrefix(r.body, "revision three ") }, "removed route falls to the root handler")
 
-	// The generator ran for every build and its own output started none.
-	settled := s.gens.Load()
-	time.Sleep(time.Second)
-	if now := s.gens.Load(); now != settled {
-		t.Fatalf("generated files retriggered the watcher: %d generations, then %d", settled, now)
+	// Five complete source saves plus the initial build mean six generations.
+	// Anchor the expectation in those literal edits, not in the observed counter.
+	if got := s.gens.Load(); got != 6 {
+		t.Fatalf("five source changes and initial build: got %d generations, want 6\nsupervisor log:\n%s", got, s.log.String())
 	}
-	if settled < 5 {
-		t.Fatalf("the generator ran %d times for five source changes and the first build", settled)
+	time.Sleep(time.Second)
+	if got := s.gens.Load(); got != 6 {
+		t.Fatalf("generated files retriggered the watcher: got %d generations, want 6\nsupervisor log:\n%s", got, s.log.String())
 	}
 
 	// Shutdown stops what the session started.
@@ -434,4 +449,52 @@ func register(mux *http.ServeMux) {
 		t.Fatal("held response did not complete")
 	}
 	waitDead(t, oldPID, "the drained application")
+}
+
+// A save can be paused after truncation while the watcher starts building.
+// Completing it during generation is another authored edit, not generator output.
+func TestDevRebuildsForASaveCompletedDuringGeneration(t *testing.T) {
+	s := startSession(t)
+	s.until("/", startsWith("revision one "), "initial build")
+	gate := &gateState{entered: make(chan struct{}, 1), release: make(chan struct{})}
+	s.gate.Store(gate)
+	f, err := os.OpenFile(filepath.Join(s.root, "answer", "answer.go"), os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	defer func() {
+		select {
+		case <-gate.release:
+		default:
+			close(gate.release)
+		}
+	}()
+	select {
+	case <-gate.entered:
+	case <-time.After(30 * time.Second):
+		t.Fatal("intermediate save did not start generation")
+	}
+	if _, err := f.WriteString(answerSource("revision two")); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s.gate.Store(nil)
+	close(gate.release)
+	s.until("/", startsWith("revision two "), "completed save")
+	deadline := time.After(30 * time.Second)
+	for s.gens.Load() != 3 {
+		select {
+		case <-deadline:
+			t.Fatalf("completed authored save did not schedule generation 3; got %d\n%s", s.gens.Load(), s.log.String())
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	s.until("/", startsWith("revision two "), "follow-up build")
+	time.Sleep(time.Second)
+	if got := s.gens.Load(); got != 3 {
+		t.Fatalf("completed save: got %d generations, want 3\n%s", got, s.log.String())
+	}
 }
