@@ -56,6 +56,7 @@ var packageFiles = []string{
 }
 
 func TestThePublishedPackageHoldsExactlyWhatTheAdapterNeeds(t *testing.T) {
+	t.Parallel()
 	tarball := pack(t)
 
 	var got []string
@@ -72,6 +73,7 @@ func TestThePublishedPackageHoldsExactlyWhatTheAdapterNeeds(t *testing.T) {
 }
 
 func TestThePublishedPackageIsTheAdapterThisModuleEmbeds(t *testing.T) {
+	t.Parallel()
 	tarball := pack(t)
 
 	embedded := map[string]bool{}
@@ -119,6 +121,7 @@ func TestThePublishedPackageIsTheAdapterThisModuleEmbeds(t *testing.T) {
 // peer dependency rather than a hard one, an exports map so nothing imports a
 // path, and types beside it.
 func TestThePublishedPackageDeclaresWhatAnAdapterDeclares(t *testing.T) {
+	t.Parallel()
 	var pkg struct {
 		Name             string            `json:"name"`
 		Type             string            `json:"type"`

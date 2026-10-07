@@ -12,6 +12,7 @@ import (
 )
 
 func TestKitQueueCompatibilityAssetsAreCanonical(t *testing.T) {
+	t.Parallel()
 	metadata, patch, err := KitQueueCompatibility()
 	if err != nil {
 		t.Fatal(err)
@@ -45,6 +46,7 @@ func TestKitQueueCompatibilityAssetsAreCanonical(t *testing.T) {
 }
 
 func TestPrerenderInputsRejectsUnpatchedPinnedKitBeforeHTTP(t *testing.T) {
+	t.Parallel()
 	metadata, patch, err := KitQueueCompatibility()
 	if err != nil {
 		t.Fatal(err)
@@ -95,6 +97,7 @@ try {
 }
 
 func TestKitQueuePatchMatchesPinnedSourceAndChangesQueueBehavior(t *testing.T) {
+	t.Parallel()
 	metadata, patch, err := KitQueueCompatibility()
 	if err != nil {
 		t.Fatal(err)

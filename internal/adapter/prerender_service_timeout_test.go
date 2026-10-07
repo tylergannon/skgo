@@ -10,6 +10,7 @@ import (
 )
 
 func TestPrerenderCallbackTimeoutFailsBuildDespiteApplicationCatch(t *testing.T) {
+	t.Parallel()
 	fixture := prepareMinimalInputsApp(t)
 	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "timeout.remote.go"), `package routes
 import (
@@ -48,6 +49,7 @@ export async function load() {
 	if output, err := generate.CombinedOutput(); err != nil {
 		t.Fatalf("generate timeout fixture: %v\n%s", err, output)
 	}
+	installInputsTimeoutAdapter(t, fixture, "callback")
 	cmd := exec.Command("node", "-e", inputsBuildProgram())
 	cmd.Dir, cmd.Env = filepath.Join(fixture, "web"), env
 	process := startInputsTrackedCommand(t, cmd, fixture)
@@ -57,7 +59,7 @@ export async function load() {
 	if timedOut || err == nil {
 		t.Fatalf("build swallowed the callback timeout: error=%v deadline=%v\n%s", err, timedOut, output)
 	}
-	const timeout = "remote src/routes/timeout.remote.ts/blocked timed out after 30000ms"
+	const timeout = "remote src/routes/timeout.remote.ts/blocked timed out after 500ms"
 	rejectedHelper := strings.Contains(output, "BUILD_APP_REJECTED:skgo prerender service exited unexpectedly: 1") ||
 		strings.Contains(output, "BUILD_APP_REJECTED:skgo prerender service exited unexpectedly: SIGKILL") || (strings.Contains(output, "BUILD_APP_REJECTED:Prerendering failed") && strings.Contains(output, "callback canceled before response completion"))
 	if !strings.Contains(output, "APPLICATION_CAUGHT_CALLBACK:skgo prerender "+timeout) || !rejectedHelper {

@@ -7,6 +7,7 @@ import (
 )
 
 func TestPrivateEnvironmentMiddlewareDeniesViteRawServerModules(t *testing.T) {
+	t.Parallel()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatal(err)

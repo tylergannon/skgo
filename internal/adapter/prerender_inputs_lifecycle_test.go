@@ -21,6 +21,7 @@ import (
 // only the programmatic equivalent of `vp build`; the adapter and Kit plugins
 // are loaded from the disposable copy of the real example.
 func TestPrerenderInputsBuildAppWaitsForProducerFailureDrain(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
@@ -36,6 +37,7 @@ func TestPrerenderInputsBuildAppWaitsForProducerFailureDrain(t *testing.T) {
 }
 
 func TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
@@ -92,6 +94,7 @@ export async function load() {
 }
 
 func TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
@@ -123,6 +126,7 @@ func TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer(t *testing.T) {
 }
 
 func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
@@ -147,6 +151,7 @@ func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
 }
 
 func TestPrerenderInputsMalformedGoSourceFailsAndCleansPrivateDirectory(t *testing.T) {
+	t.Parallel()
 	fixture := filepath.Join(t.TempDir(), "example")
 	if err := stageMinimalInputsBootstrap(fixture); err != nil {
 		t.Fatal(err)
@@ -185,32 +190,7 @@ type inputsBuildResult struct {
 
 func prepareInputsLifecycleFixture(t *testing.T, mode string) string {
 	t.Helper()
-	project, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	source := filepath.Join(project, "example")
-	fixture := filepath.Join(t.TempDir(), "example")
-	copyFixtureTree(t, source, fixture)
-	dependencies := filepath.Join(source, "web", "node_modules")
-	if _, err := os.Stat(filepath.Join(dependencies, ".bin", "vp")); err != nil {
-		t.Fatalf("pinned frontend dependencies are required for native lifecycle evidence: %v", err)
-	}
-	linkFixtureDependencies(t, dependencies, filepath.Join(fixture, "web", "node_modules"), filepath.Join(project, "internal", "adapter"))
-	modPath := filepath.Join(fixture, "go.mod")
-	mod, err := os.ReadFile(modPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	oldReplace := "replace github.com/tylergannon/skgo => ../"
-	newReplace := "replace github.com/tylergannon/skgo => " + filepath.Clean(project)
-	updated := strings.Replace(string(mod), oldReplace, newReplace, 1)
-	if updated == string(mod) {
-		t.Fatal("fixture module does not contain the expected local replace")
-	}
-	if err := os.WriteFile(modPath, []byte(updated), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	fixture := prepareMinimalInputsApp(t)
 	configPath := filepath.Join(fixture, "web", "vite.config.ts")
 	config, err := os.ReadFile(configPath)
 	if err != nil {
@@ -218,80 +198,72 @@ func prepareInputsLifecycleFixture(t *testing.T, mode string) string {
 	}
 	configText := strings.Replace(string(config), "export default defineConfig({", "import { writeFileSync as __skgoWriteOwner } from 'node:fs';\n__skgoWriteOwner(process.env.SKGO_VITE_OWNER_PID, String(process.pid));\nexport default defineConfig({", 1)
 	configText = strings.Replace(configText, "adapter: skgo(),", "adapter: skgo(),\n      prerender: { concurrency: 4 },", 1)
-	if configText == string(config) {
-		t.Fatal("could not add the disposable Vite owner PID receipt")
+	if mode == "producer-failure" {
+		configText = strings.Replace(configText, "concurrency: 4", "concurrency: 4, handleHttpError: 'ignore'", 1)
 	}
-	if err := os.WriteFile(configPath, []byte(configText), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(fixture, ".lifecycle-mode"), []byte(mode), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	inputsPath := filepath.Join(fixture, "web", "src", "routes", "site.remote.go")
-	inputsSource, err := os.ReadFile(inputsPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	inputsText := string(inputsSource)
-	inputsText = strings.Replace(inputsText, "func getSite(ctx context.Context) (Site, error) {\n\treturn Site{Name: \"skgo\", Colocated: \"src/routes/site.remote.go\"}, nil\n}", "func getSite(ctx context.Context, name string) (Site, error) {\n\treturn Site{Name: name, Colocated: \"src/routes/site.remote.go\"}, nil\n}", 1)
-	inputsText = strings.Replace(inputsText, `"context"`, `"context"
-    "errors"
-    "fmt"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "time"`, 1)
-	inputsText = strings.Replace(inputsText, "var _ = skgo.Query(getSite)", `func siteInputs() ([]string, error) {
-    mode := os.Getenv("SKGO_LIFECYCLE_MODE")
-    if mode == "producer-failure" || mode == "controlled-drain" {
-        if err := writeInputsLifecycleReceipt(); err != nil { return nil, err }
-        if mode == "producer-failure" { time.Sleep(300 * time.Millisecond); return nil, errors.New("declared Inputs producer lifecycle failure") }
-        time.Sleep(400 * time.Millisecond)
-    }
-    return []string{"atlas", "beacon"}, nil
+	writeFixtureFile(t, configPath, configText)
+	writeFixtureFile(t, filepath.Join(fixture, ".lifecycle-mode"), mode)
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+layout.ts"), `import './site.remote';
+export const prerender = true;
+`)
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "site.remote.go"), `package routes
+import (
+ "context"
+ "errors"
+ "fmt"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "time"
+ "github.com/tylergannon/skgo"
+)
+func getSite(context.Context, string) (string,error) { return "site",nil }
+func siteInputs() ([]string,error) {
+ if os.Getenv("SKGO_LIFECYCLE_MODE") == "producer-failure" {
+  if err:=writeInputsLifecycleReceipt();err!=nil{return nil,err}
+  time.Sleep(300*time.Millisecond)
+  return nil,errors.New("declared Inputs producer lifecycle failure")
+ }
+ return []string{"atlas"},nil
 }
 func writeInputsLifecycleReceipt() error {
-    child := exec.Command("/bin/sh", "-c", "trap '' TERM; while :; do sleep 1; done")
-    if os.Getenv("SKGO_LIFECYCLE_MODE") != "controlled-drain" { child.Stdout, child.Stderr = os.Stdout, os.Stderr }
-    if err := child.Start(); err != nil { return err }
-    exe, err := os.Executable(); if err != nil { return err }
-    file, err := os.Create(os.Getenv("SKGO_LIFECYCLE_RECEIPT")); if err != nil { return err }
-    _, err = fmt.Fprintf(file, "%d\n%d\n%s\n", os.Getpid(), os.Getpid(), filepath.Dir(exe))
-    closeErr := file.Close(); if err != nil { return err }; return closeErr
+ child:=exec.Command("/bin/sh","-c","trap '' TERM; while :; do sleep 1; done")
+ child.Stdout,child.Stderr=os.Stdout,os.Stderr
+ if err:=child.Start();err!=nil{return err}
+ exe,err:=os.Executable();if err!=nil{return err}
+ return os.WriteFile(os.Getenv("SKGO_LIFECYCLE_RECEIPT"),[]byte(fmt.Sprintf("%d\n%d\n%s\n",os.Getpid(),os.Getpid(),filepath.Dir(exe))),0600)
 }
-var _ = skgo.Prerender(getSite, skgo.PrerenderOptions{Inputs: siteInputs})`, 1)
-	if inputsText == string(inputsSource) || !strings.Contains(inputsText, "PrerenderOptions{Inputs: siteInputs}") {
-		t.Fatal("could not install the declared Inputs lifecycle producer in the fixture")
-	}
-	if err := os.WriteFile(inputsPath, []byte(inputsText), 0o644); err != nil {
-		t.Fatal(err)
-	}
+var _ = skgo.Prerender(getSite,skgo.PrerenderOptions{Inputs:siteInputs})
+`)
 	if mode == "crawler-failure" || mode == "blocked" {
-		loadPath := filepath.Join(fixture, "web", "src", "routes", "about", "page.server.go")
-		loadSource, err := os.ReadFile(loadPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		loadText := string(loadSource)
-		loadText = strings.Replace(loadText, "import (", "import (\n\t\"fmt\"\n\t\"os\"\n\t\"os/exec\"\n\t\"path/filepath\"\n\t\"time\"", 1)
-		injection := "if os.Getenv(\"SKGO_LIFECYCLE_MODE\") == \"crawler-failure\" || os.Getenv(\"SKGO_LIFECYCLE_MODE\") == \"blocked\" {\n" +
-			"child := exec.Command(\"/bin/sh\", \"-c\", \"trap '' TERM; while :; do sleep 1; done\"); child.Stdout, child.Stderr = os.Stdout, os.Stderr; if err := child.Start(); err != nil { return PageData{}, err };\n" +
-			"exe, err := os.Executable(); if err != nil { return PageData{}, err }; file, err := os.Create(os.Getenv(\"SKGO_LIFECYCLE_RECEIPT\")); if err != nil { return PageData{}, err }; _, err = fmt.Fprintf(file, \"%d\\n%d\\n%s\\n\", os.Getpid(), os.Getpid(), filepath.Dir(exe)); closeErr := file.Close(); if err != nil { return PageData{}, err }; if closeErr != nil { return PageData{}, closeErr }; <-time.After(30 * time.Second); }\n"
-		const signature = "func pageLoad(event PageRequestEvent) (PageData, error) {"
-		if !strings.Contains(loadText, signature) {
-			t.Fatal("about load signature changed; lifecycle injection was not installed")
-		}
-		loadText = strings.Replace(loadText, signature, signature+"\n"+injection, 1)
-		if err := os.WriteFile(loadPath, []byte(loadText), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "about", "page.server.go"), `package about
+import (
+ "fmt"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "github.com/tylergannon/skgo"
+)
+type PageData struct { Message string }
+func pageLoad(event PageRequestEvent) (PageData,error) {
+ child:=exec.Command("/bin/sh","-c","trap '' TERM; while :; do sleep 1; done")
+ child.Stdout,child.Stderr=os.Stdout,os.Stderr
+ if err:=child.Start();err!=nil{return PageData{},err}
+ exe,err:=os.Executable();if err!=nil{return PageData{},err}
+ if err:=os.WriteFile(os.Getenv("SKGO_LIFECYCLE_RECEIPT"),[]byte(fmt.Sprintf("%d\n%d\n%s\n",os.Getpid(),os.Getpid(),filepath.Dir(exe))),0600);err!=nil{return PageData{},err}
+ <-event.Context().Done()
+ return PageData{},event.Context().Err()
+}
+var _ = skgo.Load(pageLoad)
+`)
+		writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "about", "+page.svelte"), `<h1>Blocked Go load</h1>`)
 	}
 	generate := exec.Command("go", "generate", "./...")
-	generate.Dir = fixture
-	generate.Env = inputsTestEnv(fixture, mode)
+	generate.Dir, generate.Env = fixture, inputsTestEnv(fixture, mode)
 	if output, err := generate.CombinedOutput(); err != nil {
-		t.Fatalf("go generate lifecycle fixture: %v\n%s", err, output)
+		t.Fatalf("generate lifecycle fixture: %v\n%s", err, output)
 	}
+
 	return fixture
 }
 
@@ -328,7 +300,7 @@ func inputsVPBuildCommand(t *testing.T, fixture string) *exec.Cmd {
 }
 
 func inputsTestEnv(fixture, mode string) []string {
-	env := os.Environ()
+	env := fixtureBuildEnv()
 	if mode == "" {
 		if data, err := os.ReadFile(filepath.Join(fixture, ".lifecycle-mode")); err == nil {
 			mode = string(data)

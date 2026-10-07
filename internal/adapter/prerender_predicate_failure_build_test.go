@@ -10,8 +10,10 @@ import (
 )
 
 func TestPrerenderPredicateFailureRejectsPermissiveKitBuildAndDrainsOwner(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"transform", "killed", "timeout", "worker-timeout"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			fixture := prepareMinimalInputsApp(t)
 			config := filepath.Join(fixture, "internal", "skgo", "config.go")
 			writeFixtureFile(t, config, "package skgo\n//go:generate go tool skgo generate --web ../../web --locals-package github.com/tylergannon/skgo/example/internal/app --hook-package github.com/tylergannon/skgo/example/internal/serverhooks\n")
@@ -64,32 +66,8 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 			if output, err := generate.CombinedOutput(); err != nil {
 				t.Fatalf("generate: %v\n%s", err, output)
 			}
-			// Delay only the owner's service deadline in a disposable adapter to
-			// isolate the worker notice from the independent HTTP timeout.
-			if mode == "worker-timeout" {
-				adapterRoot, err := filepath.Abs(".")
-				if err != nil {
-					t.Fatal(err)
-				}
-				copyRoot := filepath.Join(fixture, "adapter")
-				copyFixtureTree(t, adapterRoot, copyRoot)
-				modulePath := filepath.Join(copyRoot, "skgo-adapter", "prerender.js")
-				module, err := os.ReadFile(modulePath)
-				if err != nil {
-					t.Fatal(err)
-				}
-				updated := strings.Replace(string(module), "const CALLBACK_TIMEOUT = 30_000;", "const CALLBACK_TIMEOUT = isMainThread ? 60_000 : 30_000;", 1)
-				if updated == string(module) {
-					t.Fatal("worker-timeout injection did not apply")
-				}
-				writeFixtureFile(t, modulePath, updated)
-				link := filepath.Join(fixture, "web", "node_modules", "@skgo", "sveltekit-adapter")
-				if err := os.Remove(link); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.Symlink(copyRoot, link); err != nil {
-					t.Fatal(err)
-				}
+			if mode == "timeout" || mode == "worker-timeout" {
+				installInputsTimeoutAdapter(t, fixture, mode)
 			}
 			cmd := exec.Command("node", "-e", inputsBuildProgram())
 			cmd.Dir, cmd.Env = filepath.Join(fixture, "web"), env
@@ -108,13 +86,16 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 					t.Fatalf("application transform failure was hidden: %s", output)
 				}
 			} else if mode != "killed" {
-				if !strings.Contains(output, "timed out after 30000ms") {
+				if !strings.Contains(output, "timed out after 500ms") {
 					t.Fatalf("worker timeout not observed: %s", output)
 				}
 				if data, err := os.ReadFile(cancelled); err != nil || string(data) != "cancelled\n" {
 					t.Fatalf("callback context did not cancel: %s %v", data, err)
 				}
-				if mode == "worker-timeout" && !strings.Contains(output, "BUILD_APP_REJECTED:Error: skgo prerender preload predicate timed out after 30000ms") {
+				if mode == "timeout" && !strings.Contains(output, "skgo prerender preload resolve callback timed out after 500ms") {
+					t.Fatalf("owner HTTP timeout did not terminally fail the build: %s", output)
+				}
+				if mode == "worker-timeout" && !strings.Contains(output, "BUILD_APP_REJECTED:Error: skgo prerender preload predicate timed out after 500ms") {
 					t.Fatalf("worker failure notice did not terminally fail the owner: %s", output)
 				}
 			} else if time.Since(started) > 15*time.Second || !(strings.Contains(output, "service exited unexpectedly") || strings.Contains(output, "preload resolve callback failed: fetch failed")) {
@@ -129,6 +110,7 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 }
 
 func TestPrerenderNilCallbacksProduceNoPredicateTraffic(t *testing.T) {
+	t.Parallel()
 	fixture := prepareMinimalInputsApp(t)
 	writeFixtureFile(t, filepath.Join(fixture, "internal", "skgo", "config.go"), "package skgo\n//go:generate go tool skgo generate --web ../../web --locals-package github.com/tylergannon/skgo/example/internal/app --hook-package github.com/tylergannon/skgo/example/internal/serverhooks\n")
 	writeFixtureFile(t, filepath.Join(fixture, "internal", "serverhooks", "handle.go"), "package serverhooks\nimport \"github.com/tylergannon/skgo/example/internal/skgo/params\"\nvar Handle params.Middleware\n")

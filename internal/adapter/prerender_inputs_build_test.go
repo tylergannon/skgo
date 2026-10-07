@@ -2,7 +2,6 @@ package adapter
 
 import (
 	"encoding/json"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +13,16 @@ import (
 )
 
 func TestDeclaredPrerenderInputsBuildAndProduceNativeArtifacts(t *testing.T) {
+	t.Parallel()
+	for _, language := range []string{"ts", "js"} {
+		t.Run(language, func(t *testing.T) {
+			t.Parallel()
+			testDeclaredPrerenderInputsBuild(t, language)
+		})
+	}
+}
+
+func testDeclaredPrerenderInputsBuild(t *testing.T, language string) {
 	root, err := filepath.Abs("../../example")
 	if err != nil {
 		t.Fatal(err)
@@ -22,21 +31,7 @@ func TestDeclaredPrerenderInputsBuildAndProduceNativeArtifacts(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dependencies, ".bin", "vp")); err != nil {
 		t.Fatalf("pinned frontend dependencies are missing: %v", err)
 	}
-	fixture := filepath.Join(t.TempDir(), "example")
-	copyFixtureTree(t, root, fixture)
-	linkFixtureDependencies(t, dependencies, filepath.Join(fixture, "web", "node_modules"), filepath.Join(root, "..", "internal", "adapter"))
-	goMod := filepath.Join(fixture, "go.mod")
-	mod, err := os.ReadFile(goMod)
-	if err != nil {
-		t.Fatal(err)
-	}
-	updatedMod := strings.Replace(string(mod), "replace github.com/tylergannon/skgo => ../", "replace github.com/tylergannon/skgo => "+filepath.Clean(filepath.Join(root, "..")), 1)
-	if updatedMod == string(mod) {
-		t.Fatal("could not point the isolated example module at this worktree")
-	}
-	if err := os.WriteFile(goMod, []byte(updatedMod), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	fixture := prepareDeclaredInputsApp(t)
 
 	remote := filepath.Join(fixture, "web", "src", "routes", "declared.remote.go")
 	declaredSource := `package site
@@ -192,19 +187,48 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 	if err := os.WriteFile(viteConfig, []byte(viteSourceText), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	identifierReceipt := filepath.Join(fixture, "identifier-receipt")
 	inputReceipt := filepath.Join(fixture, "inputs-called")
 	emptyReceipt := filepath.Join(fixture, "empty-inputs-called")
 	moneyReceipt := filepath.Join(fixture, "money-inputs-called")
 	pageInputsReceipt := filepath.Join(fixture, "page-inputs-called")
 	errorInputsReceipt := filepath.Join(fixture, "error-inputs-called")
+	tsconfig := filepath.Join(fixture, "web", "tsconfig.json")
+	tsconfigData, err := os.ReadFile(tsconfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if language == "js" {
+		if err := os.Remove(tsconfig); err != nil {
+			t.Fatal(err)
+		}
+		writeFixtureFile(t, filepath.Join(fixture, "web", "jsconfig.json"), `{"extends":"$app/tsconfig","compilerOptions":{"allowJs":true,"checkJs":true,"strict":true}}`)
+	}
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir = fixture
-	generate.Env = append(os.Environ(), "GOWORK=off", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_ERROR_INPUTS_RECEIPT="+errorInputsReceipt)
+	generate.Env = append(fixtureBuildEnv(), "GOWORK=off", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_ERROR_INPUTS_RECEIPT="+errorInputsReceipt, "SKGO_IDENTIFIER_RECEIPT="+identifierReceipt)
 	if output, err := generate.CombinedOutput(); err != nil {
 		t.Fatalf("go generate: %v\n%s", err, output)
 	}
-	installInputsErrorPolicy(t, fixture, "ts")
-	for _, receipt := range []string{inputReceipt, emptyReceipt, moneyReceipt, pageInputsReceipt, errorInputsReceipt} {
+	installInputsErrorPolicy(t, fixture, language)
+	if language == "js" {
+		var config map[string]any
+		if err := json.Unmarshal(tsconfigData, &config); err != nil {
+			t.Fatal(err)
+		}
+		options, _ := config["compilerOptions"].(map[string]any)
+		if options == nil {
+			options = map[string]any{}
+			config["compilerOptions"] = options
+		}
+		options["allowJs"], options["checkJs"] = true, true
+		data, err := json.MarshalIndent(config, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeFixtureFile(t, tsconfig, string(data))
+	}
+	for _, receipt := range []string{inputReceipt, emptyReceipt, moneyReceipt, pageInputsReceipt, errorInputsReceipt, identifierReceipt} {
 		if _, err := os.Stat(receipt); !os.IsNotExist(err) {
 			t.Fatalf("producer ran during generation: %s (%v)", receipt, err)
 		}
@@ -215,7 +239,7 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 	} {
 		check := exec.Command(command[0], command[1:]...)
 		check.Dir = filepath.Join(fixture, "web")
-		check.Env = append(os.Environ(), "GOWORK=off")
+		check.Env = append(fixtureBuildEnv(), "GOWORK=off")
 		if output, err := check.CombinedOutput(); err != nil {
 			t.Fatalf("frontend typecheck %v: %v\n%s", command, err, output)
 		}
@@ -225,11 +249,12 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 	remoteReceipt := filepath.Join(fixture, "remotes-called")
 	pageRemoteReceipt := filepath.Join(fixture, "page-remotes-called")
 	nativeErrorReceipt := filepath.Join(fixture, "native-errors")
-	build.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_ERROR_INPUTS_RECEIPT="+errorInputsReceipt, "SKGO_REMOTE_RECEIPT="+remoteReceipt, "SKGO_PAGE_REMOTE_RECEIPT="+pageRemoteReceipt, "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
+	build.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_ERROR_INPUTS_RECEIPT="+errorInputsReceipt, "SKGO_REMOTE_RECEIPT="+remoteReceipt, "SKGO_PAGE_REMOTE_RECEIPT="+pageRemoteReceipt, "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt, "SKGO_IDENTIFIER_RECEIPT="+identifierReceipt)
 	buildOutput, err := build.CombinedOutput()
 	if err != nil {
 		t.Fatalf("vp build: %v\n%s", err, buildOutput)
 	}
+	t.Run("authored remote identifier", func(t *testing.T) { assertAuthoredInputsIdentifier(t, fixture, language) })
 	started := regexp.MustCompile(`(?m)^skgo prerender service started \(pid ([0-9]+)\)$`).FindAllStringSubmatch(string(buildOutput), -1)
 	stopped := regexp.MustCompile(`(?m)^skgo prerender service stopped \(pid ([0-9]+)\)$`).FindAllStringSubmatch(string(buildOutput), -1)
 	if len(started) != 1 || len(stopped) != 1 || started[0][1] != stopped[0][1] {
@@ -384,134 +409,8 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 			t.Errorf("native public unknown error exposed private Go diagnostic: %s", contents)
 		}
 	}
-	failingBuild := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "vp"), "build")
-	failingBuild.Dir = filepath.Join(fixture, "web")
-	failingBuild.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_FAIL_INPUTS=1", "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
-	failingOutput, failingErr := failingBuild.CombinedOutput()
-	if failingErr == nil || !strings.Contains(string(failingOutput), "declared input producer failed") {
-		t.Fatalf("permissive native HTTP policy accepted a Go Inputs producer failure: err=%v\n%s", failingErr, failingOutput)
-	}
-	badShapeOverlay := filepath.Join(t.TempDir(), "prerender_remote_bad_shape.go")
-	remoteSourcePath := filepath.Join(root, "..", "prerender_remote.go")
-	remoteSource, err := os.ReadFile(remoteSourcePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	badShapeSource := strings.Replace(string(remoteSource), `"net/url"`, `"net/url"
-	"os"`, 1)
-	badShapeSource = strings.Replace(badShapeSource, `	encoded, err := devalue.StringifyWith(values, transport.reducers())`, `	if os.Getenv("SKGO_FORCE_BAD_INPUT_SHAPE") != "" {
-		return json.NewEncoder(out).Encode(struct { Inputs string `+"`json:\"inputs\"`"+` }{Inputs: "[null]"})
-	}
-	encoded, err := devalue.StringifyWith(values, transport.reducers())`, 1)
-	if badShapeSource == string(remoteSource) || badShapeSource == "" {
-		t.Fatal("could not create the malformed-input response test overlay")
-	}
-	if err := os.WriteFile(badShapeOverlay, []byte(badShapeSource), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	overlayData, err := json.Marshal(struct {
-		Replace map[string]string `json:"Replace"`
-	}{Replace: map[string]string{remoteSourcePath: badShapeOverlay}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	overlayPath := filepath.Join(t.TempDir(), "go-overlay.json")
-	if err := os.WriteFile(overlayPath, overlayData, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	malformedBuild := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "vp"), "build")
-	malformedBuild.Dir = filepath.Join(fixture, "web")
-	malformedBuild.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "GOFLAGS=-overlay="+overlayPath, "SKGO_FORCE_BAD_INPUT_SHAPE=1", "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
-	malformedOutput, malformedErr := malformedBuild.CombinedOutput()
-	if malformedErr == nil || !strings.Contains(string(malformedOutput), "did not decode to an array") {
-		t.Fatalf("permissive native HTTP policy accepted malformed Go Inputs shape: err=%v\n%s", malformedErr, malformedOutput)
-	}
-	jsconfig := filepath.Join(fixture, "web", "jsconfig.json")
-	tsconfig := filepath.Join(fixture, "web", "tsconfig.json")
-	tsconfigData, err := os.ReadFile(tsconfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(tsconfig); err != nil {
-		t.Fatalf("remove TypeScript config before JavaScript-mode generation: %v", err)
-	}
-	if err := os.WriteFile(jsconfig, []byte(`{
-  "extends": "$app/tsconfig",
-  "compilerOptions": { "allowJs": true, "checkJs": true, "strict": true }
-}
-`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	jsGenerate := exec.Command("go", "generate", "./...")
-	jsGenerate.Dir = fixture
-	jsGenerate.Env = append(os.Environ(), "GOWORK=off")
-	if output, err := jsGenerate.CombinedOutput(); err != nil {
-		t.Fatalf("JavaScript-mode go generate: %v\n%s", err, output)
-	}
-	jsRemote := filepath.Join(fixture, "web", "src", "routes", "declared.remote.js")
-	installInputsErrorPolicy(t, fixture, "js")
-	if _, err := os.Stat(jsRemote); err != nil {
-		t.Fatalf("JavaScript-mode go generate did not emit the JavaScript remote: %v", err)
-	}
-	var tsconfigObject map[string]any
-	if err := json.Unmarshal(tsconfigData, &tsconfigObject); err != nil {
-		t.Fatal(err)
-	}
-	compilerOptions, _ := tsconfigObject["compilerOptions"].(map[string]any)
-	if compilerOptions == nil {
-		compilerOptions = map[string]any{}
-		tsconfigObject["compilerOptions"] = compilerOptions
-	}
-	compilerOptions["allowJs"] = true
-	compilerOptions["checkJs"] = true
-	updatedTSConfig, err := json.MarshalIndent(tsconfigObject, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(tsconfig, append(updatedTSConfig, '\n'), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	sync := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "svelte-kit"), "sync")
-	sync.Dir = filepath.Join(fixture, "web")
-	if output, err := sync.CombinedOutput(); err != nil {
-		t.Fatalf("JavaScript-mode svelte-kit sync: %v\n%s", err, output)
-	}
-	jsCheck := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "svelte-check"), "--tsconfig", "./tsconfig.json")
-	jsCheck.Dir = filepath.Join(fixture, "web")
-	if output, err := jsCheck.CombinedOutput(); err != nil {
-		t.Fatalf("generated JavaScript frontend typecheck: %v\n%s", err, output)
-	}
-	jsBuild := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "vp"), "build")
-	jsBuild.Dir = filepath.Join(fixture, "web")
-	jsBuild.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080")
-	jsBuildOutput, err := jsBuild.CombinedOutput()
-	if err != nil {
-		t.Fatalf("JavaScript-mode vp build: %v\n%s", err, jsBuildOutput)
-	}
-	jsManifest, err := os.ReadFile(filepath.Join(fixture, "web", "skgo.remotes.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var jsGenerated struct {
-		Remotes []string `json:"remotes"`
-	}
-	if err := json.Unmarshal(jsManifest, &jsGenerated); err != nil {
-		t.Fatal(err)
-	}
-	jsDeclaredModule := ""
-	for _, remote := range jsGenerated.Remotes {
-		if strings.HasSuffix(remote, "/getDeclaredSite") {
-			jsDeclaredModule = remote
-		}
-	}
-	if jsDeclaredModule == "" {
-		t.Fatalf("JavaScript-mode manifest omitted declared-only remote: %s", jsManifest)
-	}
-	jsModuleParts := strings.SplitN(jsDeclaredModule, "/", 2)
-	jsDeclaredArtifact := filepath.Join(fixture, "web", "build", "prerendered", "_app", "remote", jsModuleParts[0], jsModuleParts[1], "WyJhdGxhcyJd")
-	jsDeclaredData, err := os.ReadFile(jsDeclaredArtifact)
-	if err != nil || !strings.Contains(string(jsDeclaredData), "build:atlas") {
-		t.Fatalf("JavaScript-mode native declared-input artifact = %q, %v", jsDeclaredData, err)
+	if language != "js" {
+		return
 	}
 	jsServerBundle, err := os.ReadFile(filepath.Join(fixture, "web", "build", "ssr", "bundle.js"))
 	if err != nil {
@@ -531,15 +430,19 @@ import (
   "strings"
   "testing"
 
-  "github.com/tylergannon/skgo/example"
+  "github.com/tylergannon/skgo"
+  generated "github.com/tylergannon/skgo/example/internal/skgo"
   "github.com/tylergannon/skgo/example/web"
 )
 
 func TestPrerenderHelperIsBuildOnlyInGoja(t *testing.T) {
   dist, err := fs.Sub(web.Build, "build")
   if err != nil { t.Fatal(err) }
-  handler, _, err := example.NewHandler(dist, "", "http://127.0.0.1:8080")
-  if err != nil { t.Fatal(err) }
+  manifest,err:=skgo.ReadManifest(dist);if err!=nil{t.Fatal(err)}
+  loads,err:=skgo.NewLoads(manifest.LoadConfig("http://127.0.0.1:8080"),generated.Loads()...);if err!=nil{t.Fatal(err)}
+  remotes,err:=skgo.NewRemotes(manifest.RemoteConfig("http://127.0.0.1:8080"),generated.Remotes()...);if err!=nil{t.Fatal(err)}
+  renderer,err:=skgo.NewSSR(dist,manifest,loads,remotes,skgo.SSROptions{Runtimes:1});if err!=nil{t.Fatal(err)}
+  handler,err:=skgo.NewStaticHandler(dist,skgo.WithSSR(renderer));if err!=nil{t.Fatal(err)}
   response := httptest.NewRecorder()
   handler.ServeHTTP(response, httptest.NewRequest("GET", "/prerender-helper", nil))
   if response.Code != 200 || !strings.Contains(response.Body.String(), "skgo: declared prerender inputs are build-only") {
@@ -551,60 +454,9 @@ func TestPrerenderHelperIsBuildOnlyInGoja(t *testing.T) {
 	}
 	gojaTestCmd := exec.Command("go", "test", "./cmd", "-run", "^TestPrerenderHelperIsBuildOnlyInGoja$", "-count=1", "-v")
 	gojaTestCmd.Dir = fixture
-	gojaTestCmd.Env = append(os.Environ(), "GOWORK=off")
-	if output, err := gojaTestCmd.CombinedOutput(); err != nil {
+	gojaTestCmd.Env = append(fixtureBuildEnv(), "GOWORK=off")
+	if output, err := gojaTestCmd.CombinedOutput(); err != nil || !strings.Contains(string(output), "--- PASS: TestPrerenderHelperIsBuildOnlyInGoja") || strings.Contains(string(output), "--- SKIP:") {
 		t.Fatalf("compiled JavaScript-mode Goja helper invocation: %v\n%s", err, output)
-	}
-}
-
-func copyFixtureTree(t *testing.T, source, destination string) {
-	t.Helper()
-	err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		relative, err := filepath.Rel(source, path)
-		if err != nil {
-			return err
-		}
-		if relative == "web/node_modules" || relative == "web/.svelte-kit" || relative == "web/build" || relative == "web/dist" {
-			if entry.IsDir() {
-				return filepath.SkipDir
-			}
-		}
-		target := filepath.Join(destination, relative)
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			return os.MkdirAll(target, info.Mode().Perm())
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			link, err := os.Readlink(path)
-			if err != nil {
-				return err
-			}
-			return os.Symlink(link, target)
-		}
-		contents, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		return os.WriteFile(target, contents, info.Mode().Perm())
-	})
-	if err != nil {
-		t.Fatalf("copy fixture tree: %v", err)
-	}
-}
-
-func linkFixtureDependencies(t *testing.T, source, destination, adapterPath string) {
-	t.Helper()
-	if err := linkFixtureDependencyTree(source, destination, adapterPath); err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -658,5 +510,68 @@ export const handleError = `+annotation+` => {
 `)...)
 	if err := os.WriteFile(path, source, 0644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestMalformedPrerenderInputsRejectsPermissiveKitBuild(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs("../../example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := prepareMinimalInputsApp(t)
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "lib", "fixture.remote.go"), `package lib
+import (
+ "context"
+ "github.com/tylergannon/skgo"
+ "github.com/tylergannon/polytype/devalue"
+)
+func emptyInputs() ([]devalue.UndefinedValue,error) { return []devalue.UndefinedValue{},nil }
+func empty(context.Context) (string,error) { return "empty",nil }
+var _=skgo.Prerender(empty,skgo.PrerenderOptions{Inputs:emptyInputs})
+`)
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+layout.ts"), "import '../lib/fixture.remote';\nexport const prerender=true;\n")
+	configPath := filepath.Join(fixture, "web", "vite.config.ts")
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureFile(t, configPath, strings.Replace(string(config), "adapter: skgo(),", "adapter: skgo(), prerender: {handleHttpError:'ignore'},", 1))
+	generateMinimalInputsApp(t, fixture)
+	nativeErrorReceipt := filepath.Join(fixture, "native-errors")
+	badShapeOverlay := filepath.Join(t.TempDir(), "prerender_remote_bad_shape.go")
+	remoteSourcePath := filepath.Join(root, "..", "prerender_remote.go")
+	remoteSource, err := os.ReadFile(remoteSourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	badShapeSource := strings.Replace(string(remoteSource), `"net/url"`, `"net/url"
+	"os"`, 1)
+	badShapeSource = strings.Replace(badShapeSource, `	encoded, err := devalue.StringifyWith(values, transport.reducers())`, `	if os.Getenv("SKGO_FORCE_BAD_INPUT_SHAPE") != "" {
+		return json.NewEncoder(out).Encode(struct { Inputs string `+"`json:\"inputs\"`"+` }{Inputs: "[null]"})
+	}
+	encoded, err := devalue.StringifyWith(values, transport.reducers())`, 1)
+	if badShapeSource == string(remoteSource) || badShapeSource == "" {
+		t.Fatal("could not create the malformed-input response test overlay")
+	}
+	if err := os.WriteFile(badShapeOverlay, []byte(badShapeSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	overlayData, err := json.Marshal(struct {
+		Replace map[string]string `json:"Replace"`
+	}{Replace: map[string]string{remoteSourcePath: badShapeOverlay}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	overlayPath := filepath.Join(t.TempDir(), "go-overlay.json")
+	if err := os.WriteFile(overlayPath, overlayData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	malformedBuild := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "vp"), "build")
+	malformedBuild.Dir = filepath.Join(fixture, "web")
+	malformedBuild.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "GOFLAGS=-overlay="+overlayPath, "SKGO_FORCE_BAD_INPUT_SHAPE=1", "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
+	malformedOutput, malformedErr := malformedBuild.CombinedOutput()
+	if malformedErr == nil || !strings.Contains(string(malformedOutput), "did not decode to an array") {
+		t.Fatalf("permissive native HTTP policy accepted malformed Go Inputs shape: err=%v\n%s", malformedErr, malformedOutput)
 	}
 }

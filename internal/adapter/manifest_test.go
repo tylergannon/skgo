@@ -9,6 +9,7 @@ import (
 // Kit 3 generates a server instance around the manifest. Reading its route
 // table must leave all server and application modules unevaluated.
 func TestManifestReadDoesNotExecuteTheKitServer(t *testing.T) {
+	t.Parallel()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatal(err)

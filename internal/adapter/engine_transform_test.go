@@ -9,6 +9,7 @@ import (
 // Exercise the transform used by both build and dev on actual JavaScript
 // syntax: comments and quoted text must not downlevel native private fields.
 func TestEngineLoweringUsesSyntaxRatherThanComments(t *testing.T) {
+	t.Parallel()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatal(err)
@@ -57,6 +58,7 @@ for (const code of unsupported) {
 `
 	cmd := exec.Command(node, "--input-type=module", "-e", source, module)
 	cmd.Dir = root
+	cmd.Env = fixtureBuildEnv()
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("engine transform: %v\n%s", err, out)
 	}

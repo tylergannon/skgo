@@ -90,7 +90,7 @@ var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir = fixture
 	// Setting the receipt for generation makes premature producer execution observable.
-	generate.Env = append(os.Environ(), "GOWORK=off", "SKGO_INPUTS_RECEIPT="+receipt)
+	generate.Env = append(fixtureBuildEnv(), "GOWORK=off", "SKGO_INPUTS_RECEIPT="+receipt)
 	if output, err := generate.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("minimal app go generate: %w\n%s", err, output)
 	}
@@ -130,7 +130,7 @@ func generateMinimalInputsApp(t *testing.T, fixture string) {
 	t.Helper()
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir = fixture
-	generate.Env = append(os.Environ(), "GOWORK=off")
+	generate.Env = append(fixtureBuildEnv(), "GOWORK=off")
 	if output, err := generate.CombinedOutput(); err != nil {
 		t.Fatalf("minimal app go generate: %v\n%s", err, output)
 	}
@@ -164,12 +164,13 @@ func buildMinimalInputsApp(t *testing.T, fixture string, env ...string) (string,
 func runMinimalInputsBuild(fixture string, env ...string) (string, error) {
 	build := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "vp"), "build")
 	build.Dir = filepath.Join(fixture, "web")
-	build.Env = append(os.Environ(), append([]string{"GOWORK=off", "ORIGIN=http://127.0.0.1:8080"}, env...)...)
+	build.Env = append(fixtureBuildEnv(), append([]string{"GOWORK=off", "ORIGIN=http://127.0.0.1:8080"}, env...)...)
 	output, err := build.CombinedOutput()
 	return string(output), err
 }
 
 func TestMinimalNoGoLoadsInputsBuildProducesNoArgumentArtifact(t *testing.T) {
+	t.Parallel()
 	fixture := requireMinimalInputsBuild(t)
 	app := filepath.Join(fixture, "web")
 	receipt := filepath.Join(fixture, "inputs-receipt")
@@ -188,6 +189,7 @@ func TestMinimalNoGoLoadsInputsBuildProducesNoArgumentArtifact(t *testing.T) {
 }
 
 func TestSameExportAcrossPackagesInputsBuildProducesBothArtifacts(t *testing.T) {
+	t.Parallel()
 	fixture := requireMinimalInputsBuild(t)
 	app := filepath.Join(fixture, "web")
 	artifacts := []struct{ path, want string }{
