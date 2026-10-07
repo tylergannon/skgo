@@ -20,8 +20,8 @@ import (
 // reparsing and type-checking even the standard library for each Check. The
 // go command already invalidates exports according to the actual overlay.
 //
-// go/packages reads a file before calling ParseFile, so a new route or source
-// file with no committed copy still needs its ordinary overlay path.
+// For new files, a temporary module view supplies the files go/packages reads
+// before calling ParseFile. Nothing is published to the application's tree.
 func preserveDependencyExports(cfg *packages.Config) (func(), error) {
 	noop := func() {}
 	if len(cfg.Overlay) == 0 {
@@ -48,16 +48,21 @@ func preserveDependencyExports(cfg *packages.Config) (func(), error) {
 	}
 	contents := make(map[string][]byte, len(cfg.Overlay))
 	var paths []string
+	newFiles := false
 	for path, source := range cfg.Overlay {
 		canonical, err := filepath.EvalSymlinks(path)
 		if os.IsNotExist(err) {
-			return noop, nil
+			newFiles = true
+			continue
 		}
 		if err != nil {
 			return noop, err
 		}
 		contents[canonical] = source
 		paths = append(paths, path)
+	}
+	if newFiles {
+		return stagePackageOverlay(cfg)
 	}
 	sort.Strings(paths)
 	dir, err := os.MkdirTemp("", "skgo-check-overlay-")

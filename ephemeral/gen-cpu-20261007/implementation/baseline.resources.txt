@@ -1,0 +1,32 @@
+parse-count matcher/application 1676
+parse-count scan/new-file/standard-library 86945
+parse-count grammar/new-file/standard-library 111336
+parse-count matcher/new-file/standard-library 5856
+parse-count matcher/new-file/application 271
+parse-count matcher/new-file/module-cache 848
+parse-count matcher/standard-library 34626
+parse-count matcher/module-cache 5300
+parse-count scan/application 1933
+parse-count grammar/application 435
+parse-count scan/new-file/application 925
+parse-count grammar/new-file/application 4554
+parse-count grammar/new-file/module-cache 14052
+parse-count scan/new-file/module-cache 1332
+      201.92 real       473.20 user       706.57 sys
+          8491253760  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            55282581  page reclaims
+               78682  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                 320  messages sent
+                  76  messages received
+              249082  signals received
+               93831  voluntary context switches
+             5074195  involuntary context switches
+       3721262246716  instructions retired
+       2844600585121  cycles elapsed
+         10930905440  peak memory footprint

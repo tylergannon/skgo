@@ -2,13 +2,16 @@ package gen
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
+	"go/constant"
 	"go/parser"
 	"go/token"
 	"go/types"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -90,13 +93,148 @@ func TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies(t *testing.T) 
 	}
 }
 
+func TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations(t *testing.T) {
+	for _, workspace := range []bool{false, true} {
+		t.Run(fmt.Sprintf("workspace=%t", workspace), func(t *testing.T) {
+			base := t.TempDir()
+			dir := filepath.Join(base, "real app")
+			alias := filepath.Join(base, "alias app")
+			for path, source := range map[string]string{
+				"real app/go.mod":                        "module freshfixture\n\ngo 1.27.1\nrequire freshdep v0.0.0\nreplace freshdep => ../dep\n",
+				"dep/go.mod":                             "module freshdep\n\ngo 1.27.1\n",
+				"dep/dep.go":                             "package dep\ntype Value struct { Text string }\n",
+				"real app/route/route.go":                "package route\nimport \"embed\"\n//go:embed assets\nvar Files embed.FS\n",
+				"real app/route/assets/nested/value.txt": "literal asset\n",
+			} {
+				path = filepath.Join(base, path)
+				if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.Symlink(dir, alias); err != nil {
+				t.Fatal(err)
+			}
+			before := checkSourceSnapshot(t, dir, filepath.Join(base, "dep"))
+			env := append(os.Environ(), "GOWORK=off")
+			if workspace {
+				work := filepath.Join(base, "go.work")
+				if err := os.WriteFile(work, []byte("go 1.27.1\nuse \"./real app\"\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				env = append(env, "GOWORK="+work)
+			}
+			path := filepath.Join(alias, "route/new.go")
+			var stdlibParses atomic.Int32
+			cfg := &packages.Config{
+				Dir: alias, Env: env,
+				Mode:    packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
+				Overlay: map[string][]byte{path: []byte("package route\nimport (\"freshdep\"; \"net/http\")\ntype Added struct { Value dep.Value; Header http.Header }\nconst DirectiveText = `first\n//line alternate.go:40:5\nlast`\n")},
+				ParseFile: func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
+					if strings.HasPrefix(filename, runtime.GOROOT()+string(filepath.Separator)) {
+						stdlibParses.Add(1)
+					}
+					return parser.ParseFile(fset, filename, src, parser.AllErrors|parser.ParseComments)
+				},
+			}
+			cleanup, err := preserveDependencyExports(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer cleanup()
+			loaded, err := packages.Load(cfg, "./route")
+			if err != nil || len(loaded) != 1 || len(loaded[0].Errors) != 0 {
+				t.Fatalf("fresh load: %v, %+v", err, loaded)
+			}
+			added := loaded[0].Types.Scope().Lookup("Added")
+			if added == nil {
+				t.Fatal("new declaration missing")
+			}
+			text := loaded[0].Types.Scope().Lookup("DirectiveText").(*types.Const)
+			if got := constant.StringVal(text.Val()); got != "first\n//line alternate.go:40:5\nlast" {
+				t.Fatalf("raw string value changed: %q", got)
+			}
+			shape := added.Type().Underlying().(*types.Struct)
+			if shape.NumFields() != 2 || shape.Field(0).Type().Underlying().(*types.Struct).Field(0).Name() != "Text" {
+				t.Fatalf("replacement dependency changed: %s", shape)
+			}
+			if pos := loaded[0].Fset.Position(added.Pos()); pos.Filename != path || pos.Line != 3 {
+				t.Fatalf("source location = %s, want %s:3", pos, path)
+			}
+			if stdlibParses.Load() != 0 {
+				t.Fatalf("reparsed %d standard-library files", stdlibParses.Load())
+			}
+			after := checkSourceSnapshot(t, dir, filepath.Join(base, "dep"))
+			if len(before) != len(after) {
+				t.Fatalf("changed file count: %d -> %d", len(before), len(after))
+			}
+			for path, want := range before {
+				if !bytes.Equal(after[path], want) {
+					t.Fatalf("changed %s", path)
+				}
+			}
+		})
+	}
+}
+
+func TestFreshPackagesLocateParserAndCompilerErrors(t *testing.T) {
+	for _, tc := range []struct{ name, source, want, file, line string }{
+		{"parser", "package fresherrors\nfunc broken( {\n", "expected", "new.go", "2"},
+		{"compiler", "package fresherrors\nvar Value = missingIdentifier\n", "undefined: missingIdentifier", "new.go", "2"},
+		{"relative line directive", "package fresherrors\n//line alternate.go:40:5\nvar Value = missingIdentifier\n", "undefined: missingIdentifier", "alternate.go", "40"},
+		{"relative block directive", "package fresherrors\n/*line alternate.go:40:5*/var Value = missingIdentifier\n", "undefined: missingIdentifier", "alternate.go", "40"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module fresherrors\n\ngo 1.27.1\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, "new.go")
+			cfg := &packages.Config{Dir: dir, Mode: packages.NeedName | packages.NeedTypes | packages.NeedSyntax, Overlay: map[string][]byte{path: []byte(tc.source)}}
+			cleanup, err := preserveDependencyExports(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer cleanup()
+			loaded, err := packages.Load(cfg, ".")
+			if err != nil || len(loaded) != 1 {
+				t.Fatalf("load: %v, %+v", err, loaded)
+			}
+			found := false
+			for _, diagnostic := range loaded[0].Errors {
+				if strings.HasPrefix(diagnostic.Pos, filepath.Join(dir, tc.file)+":"+tc.line+":") && strings.Contains(diagnostic.Msg, tc.want) {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("missing authored %s diagnostic: %v", tc.name, loaded[0].Errors)
+			}
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Fatalf("load published source: %v", err)
+			}
+		})
+	}
+}
+
 func TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module overlaynew\n\ngo 1.27.1\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(dir, "new.go")
-	cfg := &packages.Config{Dir: dir, Mode: packages.NeedName | packages.NeedTypes | packages.NeedSyntax, Overlay: map[string][]byte{path: []byte("package overlaynew\ntype Added struct { Number int }\n")}}
+	var dependencyParses atomic.Int32
+	cfg := &packages.Config{
+		Dir: dir, Mode: packages.NeedName | packages.NeedTypes | packages.NeedSyntax,
+		Overlay: map[string][]byte{path: []byte("package overlaynew\nimport \"net/http\"\ntype Added struct { Number int; Header http.Header }\n")},
+		ParseFile: func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
+			if filepath.Base(filename) != "new.go" {
+				dependencyParses.Add(1)
+			}
+			return parser.ParseFile(fset, filename, src, parser.AllErrors|parser.ParseComments)
+		},
+	}
 	cleanup, err := preserveDependencyExports(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -112,8 +250,16 @@ func TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy(t *testing.T) {
 	if added := loaded[0].Types.Scope().Lookup("Added"); added == nil || !strings.Contains(added.Type().String(), "Added") {
 		t.Fatal("new source was not loaded")
 	}
+	if got := dependencyParses.Load(); got != 0 {
+		t.Fatalf("fresh source reparsed %d dependency files despite compiler exports", got)
+	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("check wrote an app source file: %v", err)
+	}
+	view := cfg.Dir
+	cleanup()
+	if _, err := os.Stat(view); !os.IsNotExist(err) {
+		t.Fatalf("package view survived cleanup: %v", err)
 	}
 }
 
@@ -187,6 +333,15 @@ func checkSourceSnapshot(t *testing.T, roots ...string) map[string][]byte {
 			}
 			if d.IsDir() {
 				return nil
+			}
+			if d.Type()&os.ModeSymlink != 0 {
+				info, err := os.Stat(path)
+				if err != nil {
+					return err
+				}
+				if info.IsDir() {
+					return nil
+				}
 			}
 			b, err := os.ReadFile(path)
 			if err == nil {

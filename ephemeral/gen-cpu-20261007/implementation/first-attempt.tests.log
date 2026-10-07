@@ -1,0 +1,359 @@
+ok  	github.com/tylergannon/skgo	2.359s
+--- FAIL: TestKitPatchCLIConfiguresFilesAndDoesNotClaimInstallation (0.03s)
+    kit_patch_test.go:38: native pnpm version = "12.10.1", <nil>; want 12.9.1
+FAIL
+FAIL	github.com/tylergannon/skgo/cmd/skgo	51.007s
+ok  	github.com/tylergannon/skgo/cmd/skgo-adapter-changed	0.309s
+ok  	github.com/tylergannon/skgo/cmd/skgo-e2e	0.389s
+?   	github.com/tylergannon/skgo/cmd/skgo-release-version	[no test files]
+ok  	github.com/tylergannon/skgo/internal/adapter	257.029s
+ok  	github.com/tylergannon/skgo/internal/advice	6.491s
+ok  	github.com/tylergannon/skgo/internal/check	0.610s
+ok  	github.com/tylergannon/skgo/internal/dev	42.014s
+?   	github.com/tylergannon/skgo/internal/envspec	[no test files]
+ok  	github.com/tylergannon/skgo/internal/formdata	0.266s
+--- FAIL: TestFreshPackagesLocateParserAndCompilerErrors (0.12s)
+    --- FAIL: TestFreshPackagesLocateParserAndCompilerErrors/parser (0.07s)
+        package_overlay_test.go:205: missing authored parser diagnostic: [-: # fresherrors
+            ./new.go:2:14: syntax error: unexpected {, expected ) /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorsparser1249597914/001/new.go:2: expected ')', found 'EOF' /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorsparser1249597914/001/new.go:2: expected ')', found '{' /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorsparser1249597914/001/new.go:2: expected ';', found 'EOF' /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorsparser1249597914/001/new.go:2: missing ',' in parameter list]
+    --- FAIL: TestFreshPackagesLocateParserAndCompilerErrors/compiler (0.05s)
+        package_overlay_test.go:205: missing authored compiler diagnostic: [-: # fresherrors
+            ./new.go:2:13: undefined: missingIdentifier /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorscompiler2192309103/001/new.go:2: undefined: missingIdentifier]
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	216.842s
+ok  	github.com/tylergannon/skgo/internal/kithash	0.168s
+--- FAIL: TestConfigureUsesNativePNPMMergeAndIsIdempotent (0.17s)
+    kitpatch_test.go:63: native pnpm version = "12.10.1", <nil>; want 12.9.1
+--- FAIL: TestConfigureConfiguredButUninstalledFailsCheck (0.13s)
+    kitpatch_test.go:210: native pnpm version = "12.10.1", <nil>; want 12.9.1
+--- FAIL: TestConfigurePreservesLogicalPatchPathsAcrossYAMLSyntax (0.08s)
+    kitpatch_test.go:229: native pnpm version = "12.10.1", <nil>; want 12.9.1
+--- FAIL: TestConfigureAcceptsDirectPatchMapAliasAndFlowStyleMap (0.09s)
+    --- FAIL: TestConfigureAcceptsDirectPatchMapAliasAndFlowStyleMap/direct_alias (0.04s)
+        kitpatch_test.go:268: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureAcceptsDirectPatchMapAliasAndFlowStyleMap/flow_style_patch_map (0.05s)
+        kitpatch_test.go:268: native pnpm version = "12.10.1", <nil>; want 12.9.1
+--- FAIL: TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites (0.44s)
+    --- FAIL: TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites/multiple_documents (0.04s)
+        kitpatch_test.go:303: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites/duplicate_entry_key (0.03s)
+        kitpatch_test.go:303: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites/duplicate_top-level_map (0.04s)
+        kitpatch_test.go:303: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites/non-string_patch_key (0.05s)
+        kitpatch_test.go:303: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites/numeric_path (0.06s)
+        kitpatch_test.go:303: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites/boolean_path (0.11s)
+        kitpatch_test.go:303: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites/null_path (0.04s)
+        kitpatch_test.go:303: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites/wrong_shape (0.07s)
+        kitpatch_test.go:303: native pnpm version = "12.10.1", <nil>; want 12.9.1
+--- FAIL: TestConfigureRefusesNativeAndRawPatchedDependenciesDisagreement (0.04s)
+    kitpatch_test.go:336: native pnpm version = "12.10.1", <nil>; want 12.9.1
+--- FAIL: TestNativeEnvironmentAmbiguityDoesNotMutateSelectedTree (0.31s)
+    --- FAIL: TestNativeEnvironmentAmbiguityDoesNotMutateSelectedTree/configure (0.22s)
+        kitpatch_test.go:366: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestNativeEnvironmentAmbiguityDoesNotMutateSelectedTree/verify (0.09s)
+        kitpatch_test.go:375: native pnpm version = "12.10.1", <nil>; want 12.9.1
+--- FAIL: TestConfigureRefusesDuplicateKitJSONKeysWithoutRewritingPackage (0.03s)
+    kitpatch_test.go:433: native pnpm version = "12.10.1", <nil>; want 12.9.1
+--- FAIL: TestConfigureRefusalsPrecedeAuthoredWrites (0.65s)
+    --- FAIL: TestConfigureRefusalsPrecedeAuthoredWrites/unsupported_installed_version (0.15s)
+        kitpatch_test.go:459: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRefusalsPrecedeAuthoredWrites/altered_installed_queue (0.07s)
+        kitpatch_test.go:464: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRefusalsPrecedeAuthoredWrites/incompatible_exact_Kit_patch (0.03s)
+        kitpatch_test.go:469: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRefusalsPrecedeAuthoredWrites/absolute_owned_patch_path (0.04s)
+        kitpatch_test.go:481: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRefusalsPrecedeAuthoredWrites/wildcard_Kit_patch (0.08s)
+        kitpatch_test.go:499: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRefusalsPrecedeAuthoredWrites/different_destination_bytes (0.04s)
+        kitpatch_test.go:506: native pnpm version = "12.10.1", <nil>; want 12.9.1
+    --- FAIL: TestConfigureRefusalsPrecedeAuthoredWrites/selected_frontend_workspace_remains_isolated_from_parent (0.20s)
+        kitpatch_test.go:565: read project pnpm patchedDependencies: pnpm 12.9.1 is required, found "12.10.1": 12.10.1
+    --- FAIL: TestConfigureRefusalsPrecedeAuthoredWrites/selected_workspace_symlink (0.04s)
+        kitpatch_test.go:603: native pnpm version = "12.10.1", <nil>; want 12.9.1
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/kitpatch	2.170s
+ok  	github.com/tylergannon/skgo/internal/newapp	7.877s
+?   	github.com/tylergannon/skgo/internal/newapp/gofiles/web	[no test files]
+ok  	github.com/tylergannon/skgo/internal/releaseversion	0.160s
+ok  	github.com/tylergannon/skgo/internal/remotearg	0.286s
+ok  	github.com/tylergannon/skgo/internal/ssr	0.847s
+ok  	github.com/tylergannon/skgo/internal/sv	0.591s
+ok  	github.com/tylergannon/skgo/internal/vite	0.279s
+--- FAIL: TestPageActionOutcomesThroughRealHandler (0.00s)
+    action_protocol_test.go:31: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestPageActionRequestProtocol (0.00s)
+    action_protocol_test.go:153: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTrustedOriginReachesPageActionWithoutOpeningUntrustedMutation (0.00s)
+    action_protocol_test.go:291: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestPageOnlyOptionsAndAllow (0.00s)
+    action_protocol_test.go:359: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheBinaryAnswersEveryRemoteTheFrontendCalls (0.00s)
+    bindings_test.go:46: reading the build manifest: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheGeneratorAndTheBuildAgree (0.00s)
+    bindings_test.go:70: reading the build manifest: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheServerRefusesABuildItCannotServe (0.00s)
+    bindings_test.go:81: reading the build manifest: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheBinaryAnswersEveryServerLoadTheFrontendHas (0.00s)
+    bindings_test.go:119: reading the build manifest: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheGeneratorAndTheBuildAgreeAboutLoads (0.00s)
+    bindings_test.go:138: reading the build manifest: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheServerRefusesABuildWhoseLoadsItCannotAnswer (0.00s)
+    bindings_test.go:146: reading the build manifest: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheFrontPageIndexesEveryCapabilityItDemonstrates (0.00s)
+    contracts_test.go:78: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestEveryPageArrivesWithItsOwnHeading (0.00s)
+    contracts_test.go:143: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAFailingPageIsTheErrorPageKitWouldRender (0.00s)
+    contracts_test.go:204: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheAccountSectionTurnsASignedOutVisitorAway (0.00s)
+    contracts_test.go:248: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestHydrationDataCannotCloseItsScriptElement (0.00s)
+    contracts_test.go:267: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestPathsResolveDuringARenderByKitsRules (0.00s)
+    contracts_test.go:279: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestANilGoSliceRendersAsAnEmptyList (0.00s)
+    contracts_test.go:292: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheBatchPageIsAnsweredInOneCallOfFour (0.00s)
+    contracts_test.go:311: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestALiveQueryRendersItsFirstValueIntoTheDocument (0.00s)
+    contracts_test.go:323: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAWellFormedCommandArgumentIsAnswered (0.00s)
+    contracts_test.go:336: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestWhatTheRendererReportsReachesTheServerLog (0.00s)
+    contracts_test.go:350: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestKitsReservedQueryParametersAreRefused (0.00s)
+    contracts_test.go:368: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAnEndpointRouteAnswersEveryMethodAsWritten (0.00s)
+    contracts_test.go:381: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestANativeActionIsAnsweredWithTheDocument (0.00s)
+    contracts_test.go:452: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestALoadFetchesEveryKindOfDestinationTheAppHas (0.00s)
+    destinations_test.go:79: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAPrerenderedPageWinsOverADynamicServerRouteThatAlsoMatchesIt (0.00s)
+    destinations_test.go:132: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestANestedUniversalFetchOfARenderedPageIsInTheColdDocument (0.00s)
+    destinations_test.go:145: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestNestedRendersFinishUnderCapacityPressureWithEachVisitorsOwnValues (0.00s)
+    destinations_test.go:169: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestNativeTypedCallerForms (0.00s)
+    form_caller_test.go:14: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestNativeTypedCallerKeyInputPrecedence (0.00s)
+    form_caller_test.go:73: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheFormRendersItsActionSoABrowserCanPostItWithoutAScript (0.00s)
+    form_noscript_test.go:22: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestARefusedSubmissionComesBackAsThePageWithItsIssues (0.00s)
+    form_noscript_test.go:33: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestASuccessfulSubmissionComesBackAsThePageWithItsResult (0.00s)
+    form_noscript_test.go:97: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestASubmissionFromAnotherSiteIsRefused (0.00s)
+    form_noscript_test.go:129: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAPostToAPageThatNamesNoFormIsNotAllowed (0.00s)
+    form_noscript_test.go:153: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAPostThatNamesAMissingFormIsNotAllowed (0.00s)
+    form_noscript_test.go:174: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAPostThatNamesAQueryIsAnOpaqueError (0.00s)
+    form_noscript_test.go:193: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestMiddlewareAuthenticatesAColdDocumentAndRefreshesTheStaleCookie (0.00s)
+    middleware_test.go:19: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestMiddlewareKeepsAValidVisitCookieAndSendsNoSecondOne (0.00s)
+    middleware_test.go:39: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestMiddlewareSeesTheMatchedRouteOnAClientNavigationsDataRequest (0.00s)
+    middleware_test.go:49: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestMiddlewareReachesPageActionsNativeAndEnhanced (0.00s)
+    middleware_test.go:67: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestMiddlewareTransformsOnlyTheMiddlewarePagesDocumentsAndNothingElse (0.00s)
+    middleware_test.go:93: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestALoadsRequestFetchIsInTheColdDocument (0.00s)
+    request_fetch_test.go:30: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheLoadsFetchCarriesTheVisitorsSession (0.00s)
+    request_fetch_test.go:48: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAClientNavigationGetsTheLoadsFetchedValueFromGo (0.00s)
+    request_fetch_test.go:64: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheEndpointAnswersABrowserTheSameWay (0.00s)
+    request_fetch_test.go:81: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestSharedPathDecoding (0.00s)
+    routing_path_test.go:20: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTypedDependencySerialsBelongToEachCaller (0.00s)
+    server_test.go:64: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestEveryPrerenderedPathIsServedFromItsFile (0.00s)
+    server_test.go:128: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestPrerenderedGoRemoteIsAStaticAnswer (0.00s)
+    server_test.go:167: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestDynamicPrerenderEntriesAreServedFromFiles (0.00s)
+    server_test.go:197: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestUniversalInvoiceLoadRendersFilteredDocument (0.00s)
+    server_test.go:234: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheEmbeddedBuildProducesAWorkingServer (0.00s)
+    server_test.go:271: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage (0.00s)
+    server_test.go:567: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAMissingImageIsNotAnsweredWithADocument (0.00s)
+    server_test.go:595: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheServerAnswersARealRemoteCall (0.00s)
+    server_test.go:626: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestACommandRefusesTheTodoTheQueryRefuses (0.00s)
+    server_test.go:735: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestADataErrorCarriesWhatTheAppsHandleErrorHookChose (0.00s)
+    server_test.go:874: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAConditionalRequestForADataURLStillGetsKitsData (0.00s)
+    server_test.go:928: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAServerRouteAnswersItsOwnMethods (0.00s)
+    server_test.go:984: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAFatalServerRouteUsesTheAppsErrorTemplate (0.00s)
+    server_test.go:1054: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestPrerenderedGoRemoteIsReusedByProductionSSR (0.00s)
+    ssr_test.go:39: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheProductionBundleRunsInAFreshRuntime (0.00s)
+    ssr_test.go:111: reading the build manifest: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestARenderedPageCarriesGosAnswerToTheBrowser (0.00s)
+    ssr_test.go:141: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAQueryWithAnArgumentIsRenderedWithTheArgumentGoWasGiven (0.00s)
+    ssr_test.go:167: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestARunesClassWithAClassFieldDerivedRenders (0.00s)
+    ssr_test.go:196: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTwoPagesRenderingAtOnceAreEachTheirOwn (0.00s)
+    ssr_test.go:213: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestARenderedPageDoesNotRepeatItself (0.00s)
+    ssr_test.go:271: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestALayoutsDataAndItsPagesDataArriveTogether (0.00s)
+    ssr_test.go:333: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestATransportedValueReachesTheEngineWithItsType (0.00s)
+    ssr_test.go:373: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestARemoteAnswersTransportedValueIsRenderedByItsOwnMethod (0.00s)
+    ssr_test.go:405: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestALoadThatFailsInTheRootLayoutIsKitsStaticErrorPage (0.00s)
+    ssr_test.go:442: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestSuccessfulDocumentsDoNotRetainTheirRenderTrees (0.00s)
+    ssr_test.go:479: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAColdDocumentReplaysEveryAnswerTheWayKitSerializesIt (0.00s)
+    universal_fetch_test.go:59: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAHookRewrittenRequestIsReplayedUnderItsOriginalIdentity (0.00s)
+    universal_fetch_test.go:196: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAnExternalFetchIsHeldToCorsAndNoCorsHidesTheBody (0.00s)
+    universal_fetch_test.go:274: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAnExternalResponsesHeadersAreHeldToTheAppsFilter (0.00s)
+    universal_fetch_test.go:300: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestADeniedHeaderIsDeniedOnTheInternalFetchAndOnlyThere (0.00s)
+    universal_fetch_test.go:320: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAGoEndpointsFetchIsNotSubjectToTheUniversalFetchsCors (0.00s)
+    universal_fetch_test.go:339: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestARequestFetchedWithABodyOrHeadersIsToldApartByThem (0.00s)
+    universal_fetch_test.go:358: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestCookiesAFetchSetsReachTheNextFetchAndTheDocument (0.00s)
+    universal_fetch_test.go:384: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestEveryShapeTheExampleSendsRoundTripsThroughItsGeneratedCodec (0.00s)
+    wire_test.go:133: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestABatchQueryAnswersEveryArgumentThroughItsGeneratedCodec (0.00s)
+    wire_test.go:193: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestATransportedArgumentReachesGoAsItsOwnType (0.00s)
+    wire_test.go:208: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestACommandMissingARequiredFieldIsRefusedAndChangesNothing (0.00s)
+    wire_test.go:226: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestACommandGivenAFieldOfTheWrongKindIsRefusedAndChangesNothing (0.00s)
+    wire_test.go:244: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestACommandGivenAnUnknownFieldIsRefused (0.00s)
+    wire_test.go:260: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAQueryDeclaredWithoutAnArgumentRefusesOne (0.00s)
+    wire_test.go:275: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestAQueryDeclaredWithAnArgumentRefusesACallWithoutOne (0.00s)
+    wire_test.go:292: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheEmbeddedBuildIsNewerThanTheFrontendSource (0.00s)
+    buildfresh_test.go:27: there is no frontend build (stat web/build/skgo.manifest.json: no such file or directory). Run `just build`.
+--- FAIL: TestTheStreamDataResponseIsNotTransformedButIsMarkedByTheMiddleware (0.00s)
+    stream_test.go:236: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheDataResponseCarriesTheValuesInTheOrderTheySettle (0.00s)
+    stream_test.go:73: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheDocumentCarriesTheLoadingStatesAndTheValuesFollowIt (0.00s)
+    stream_test.go:40: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestTheTransformedStreamedShellArrivesBeforeAnyDeferredValueAndTheChunksAreUntouched (0.00s)
+    stream_test.go:165: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestEveryRouteInTheManifestIsServed (0.00s)
+    server_test.go:294: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument (0.00s)
+    server_test.go:802: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- FAIL: TestGeneratedActionTypesRejectWrongUses (0.00s)
+    typedrift_test.go:200: web/.svelte-kit/types is missing, so the Go-to-TypeScript check cannot run. Run `mise x -- vp install` and `mise x -- vp build` in example/web.
+--- FAIL: TestNothingGeneratedWasWrittenByHand (0.00s)
+    generate_test.go:29: web/.svelte-kit/types is missing, so the Go-to-TypeScript check cannot run. Run `mise x -- vp install` and `mise x -- vp build` in example/web.
+--- FAIL: TestChangingAGoTypeBreaksTheComponentThatUsesIt (0.00s)
+    typedrift_test.go:162: web/.svelte-kit/types is missing, so the Go-to-TypeScript check cannot run. Run `mise x -- vp install` and `mise x -- vp build` in example/web.
+FAIL
+FAIL	github.com/tylergannon/skgo/example	0.310s
+?   	github.com/tylergannon/skgo/example/actiondemo	[no test files]
+ok  	github.com/tylergannon/skgo/example/businesslogic	0.164s
+--- FAIL: TestEachBrowserKeepsItsOwnTodos (0.00s)
+    visitor_test.go:87: assembling the production stack: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+FAIL
+FAIL	github.com/tylergannon/skgo/example/businesslogic/visitor	0.344s
+?   	github.com/tylergannon/skgo/example/cmd	[no test files]
+?   	github.com/tylergannon/skgo/example/cmd/form-client	[no test files]
+assembling the dev stack against http://127.0.0.1:49234: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: file does not exist
+--- vp dev ---
+FAIL	github.com/tylergannon/skgo/example/devrender	0.360s
+?   	github.com/tylergannon/skgo/example/internal/skgo	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/client	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwe33voq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3smvzhk3ttf5nxg3dvm5oq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3c6zlomryg62looq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/params	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+--- FAIL: TestBuildEmbedsImmutableAssets (0.00s)
+    dist_test.go:16: build/index.html: open build/index.html: file does not exist
+    dist_test.go:16: build/skgo.manifest.json: open build/skgo.manifest.json: file does not exist
+    dist_test.go:31: walking build/client/_app/immutable: open build/client/_app/immutable: file does not exist (is `all:` missing from //go:embed?)
+FAIL
+FAIL	github.com/tylergannon/skgo/example/web	0.176s
+ok  	github.com/tylergannon/skgo/example/web/src	0.332s
+?   	github.com/tylergannon/skgo/example/web/src/lib	[no test files]
+FAIL

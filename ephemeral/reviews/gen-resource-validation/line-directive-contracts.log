@@ -1,0 +1,23 @@
+=== RUN   TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== PAUSE TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== RUN   TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations
+=== RUN   TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations/workspace=false
+=== RUN   TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations/workspace=true
+--- PASS: TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations (0.31s)
+    --- PASS: TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations/workspace=false (0.15s)
+    --- PASS: TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations/workspace=true (0.16s)
+=== RUN   TestFreshPackagesLocateParserAndCompilerErrors
+=== RUN   TestFreshPackagesLocateParserAndCompilerErrors/parser
+    package_overlay_test.go:205: missing authored parser diagnostic: [-: # fresherrors
+        ./new.go:2:14: syntax error: unexpected {, expected ) /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorsparser938897116/001/new.go:2: expected ')', found 'EOF' /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorsparser938897116/001/new.go:2: expected ')', found '{' /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorsparser938897116/001/new.go:2: expected ';', found 'EOF' /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorsparser938897116/001/new.go:2: missing ',' in parameter list]
+=== RUN   TestFreshPackagesLocateParserAndCompilerErrors/compiler
+    package_overlay_test.go:205: missing authored compiler diagnostic: [-: # fresherrors
+        ./new.go:2:13: undefined: missingIdentifier /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFreshPackagesLocateParserAndCompilerErrorscompiler2205034362/001/new.go:2: undefined: missingIdentifier]
+--- FAIL: TestFreshPackagesLocateParserAndCompilerErrors (0.08s)
+    --- FAIL: TestFreshPackagesLocateParserAndCompilerErrors/parser (0.04s)
+    --- FAIL: TestFreshPackagesLocateParserAndCompilerErrors/compiler (0.05s)
+=== CONT  TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+--- PASS: TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations (8.84s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	9.527s
+FAIL

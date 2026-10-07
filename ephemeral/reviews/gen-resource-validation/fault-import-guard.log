@@ -1,0 +1,24 @@
+=== RUN   TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/private-type
+=== RUN   TestSharedParamsSourceDiagnostics/private-argument
+=== RUN   TestSharedParamsSourceDiagnostics/private-struct-field
+=== RUN   TestSharedParamsSourceDiagnostics/private-interface-method
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+    shared_params_test.go:434: want source-located "imports generated bindings/params": <nil>
+--- FAIL: TestSharedParamsSourceDiagnostics (1.89s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-type (0.26s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-argument (0.22s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-struct-field (0.22s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-interface-method (0.22s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.21s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.06s)
+    --- FAIL: TestSharedParamsSourceDiagnostics/transitive-generated (0.29s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	2.167s
+FAIL

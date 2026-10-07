@@ -1,0 +1,6 @@
+=== RUN   TestIndependentStageEmbed
+    independent_probe_test.go:26: route/route.go:4:12: pattern value.txt: cannot embed irregular file value.txt
+--- FAIL: TestIndependentStageEmbed (0.06s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	0.322s
+FAIL

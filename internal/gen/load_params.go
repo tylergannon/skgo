@@ -22,10 +22,11 @@ import (
 const loadParamsFile = generatedGoFile
 
 type goParamMatcher struct {
-	name string
-	out  types.Type
-	pkg  *types.Package
-	pos  token.Position
+	name    string
+	out     types.Type
+	pkg     *types.Package
+	pos     token.Position
+	imports map[string]*packages.Package
 }
 
 type routeLoadParams struct {
@@ -246,7 +247,7 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 			}
 		}
 	}
-	loadCfg := &packages.Config{Dir: host, Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps}
+	loadCfg := &packages.Config{Dir: host, Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports}
 	if cfg.generation != nil {
 		loadCfg.Overlay, err = cfg.generation.overlay()
 		if err != nil {
@@ -258,6 +259,17 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 		return nil, err
 	}
 	defer cleanup()
+	// Export data describes type relationships, not every source import. Load
+	// the complete import graph as metadata, independently of dependency syntax
+	// and type information, for the shared-params ownership check.
+	metadataCfg := *loadCfg
+	metadataCfg.Mode = packages.NeedName | packages.NeedImports | packages.NeedDeps
+	metadata, err := packages.Load(&metadataCfg, mod+"/"+filepath.ToSlash(rel))
+	if err != nil {
+		return nil, err
+	}
+	imports := map[string]*packages.Package{}
+	packages.Visit(metadata, nil, func(p *packages.Package) { imports[p.PkgPath] = p })
 	loaded, err := packages.Load(loadCfg, mod+"/"+filepath.ToSlash(rel))
 	if err != nil {
 		return nil, err
@@ -267,6 +279,7 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 	}
 	p := loaded[0]
 	var compilerErrors []packages.Error
+	packages.Visit(metadata, nil, func(dependency *packages.Package) { compilerErrors = append(compilerErrors, dependency.Errors...) })
 	packages.Visit(loaded, nil, func(dependency *packages.Package) { compilerErrors = append(compilerErrors, dependency.Errors...) })
 	if len(compilerErrors) > 0 {
 		sort.Slice(compilerErrors, func(i, j int) bool { return compilerErrors[i].Error() < compilerErrors[j].Error() })
@@ -289,7 +302,7 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 			if sig.Variadic() || sig.TypeParams().Len() != 0 || sig.Params().Len() != 1 || !types.Identical(sig.Params().At(0).Type(), types.Typ[types.String]) || sig.Results().Len() != 2 || !types.Identical(sig.Results().At(1).Type(), types.Typ[types.Bool]) {
 				return nil, fmt.Errorf("skgo: %s: matcher %s must be func(string) (T, bool)", p.Fset.Position(fn.Pos()), fn.Name.Name)
 			}
-			result[fn.Name.Name] = goParamMatcher{name: fn.Name.Name, out: sig.Results().At(0).Type(), pkg: p.Types, pos: p.Fset.Position(fn.Pos())}
+			result[fn.Name.Name] = goParamMatcher{name: fn.Name.Name, out: sig.Results().At(0).Type(), pkg: p.Types, pos: p.Fset.Position(fn.Pos()), imports: imports}
 		}
 	}
 	return result, nil

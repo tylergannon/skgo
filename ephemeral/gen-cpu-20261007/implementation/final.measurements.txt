@@ -1,0 +1,18 @@
+phase=existing-tree wall=9.425233042s allocated=394.0 MiB gc=20 GOMAXPROCS=10
+phase=existing-tree source=application parses=182 bytes=260679
+phase=existing-tree source=framework-checkout parses=0 bytes=0
+phase=existing-tree source=standard-library parses=0 bytes=0
+phase=existing-tree source=module-cache parses=0 bytes=0
+phase=repeat-unchanged wall=6.323794583s allocated=392.2 MiB gc=10 GOMAXPROCS=10
+phase=repeat-unchanged source=application parses=182 bytes=260679
+phase=repeat-unchanged source=framework-checkout parses=0 bytes=0
+phase=repeat-unchanged source=standard-library parses=0 bytes=0
+phase=repeat-unchanged source=module-cache parses=0 bytes=0
+fresh wall=207.940458ms allocated=6.3 MiB stdlib-parses=0
+gen-resource total-allocated=6020307200 gc=289 GOMAXPROCS=10
+parse-count matcher/application 62
+parse-count scan/application 1933
+parse-count grammar/application 435
+parse-count scan/new-file/application 464
+parse-count grammar/new-file/application 264
+parse-count matcher/new-file/application 14

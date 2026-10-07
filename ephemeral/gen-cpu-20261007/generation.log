@@ -1,0 +1,33 @@
+=== RUN   TestCPUProbe
+    cpu_probe_test.go:65: phase=existing-tree wall=12.141515292s allocated=1504.9 MiB gc=19 GOMAXPROCS=10
+    cpu_probe_test.go:85: phase=existing-tree source=application parses=188 bytes=273550
+    cpu_probe_test.go:85: phase=existing-tree source=framework-checkout parses=57 bytes=676730
+    cpu_probe_test.go:85: phase=existing-tree source=standard-library parses=1182 bytes=12577571
+    cpu_probe_test.go:85: phase=existing-tree source=module-cache parses=212 bytes=9220347
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=4950165 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/collate/tables.go
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=523354 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/crypto/internal/fips140/nistec/p256_table.go
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=402801 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/vendor/golang.org/x/text/unicode/norm/tables17.0.0.go
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=402800 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/unicode/norm/tables17.0.0.go
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=312250 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/vendor/golang.org/x/net/idna/tables17.0.0.go
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=312250 file=/Users/tyler/go/pkg/mod/golang.org/x/net@v0.59.0/idna/tables17.0.0.go
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=272949 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/unicode/rangetable/tables17.0.0.go
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=256788 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/unicode/tables.go
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=252048 file=/Users/tyler/go/pkg/mod/github.com/dlclark/regexp2/v2@v2.8.0/syntax/unicode_alias_tables.go
+    cpu_probe_test.go:92: phase=existing-tree parses=1 bytes=243217 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/runtime/proc.go
+    cpu_probe_test.go:65: phase=repeat-unchanged wall=10.608102458s allocated=1504.1 MiB gc=11 GOMAXPROCS=10
+    cpu_probe_test.go:85: phase=repeat-unchanged source=application parses=188 bytes=273550
+    cpu_probe_test.go:85: phase=repeat-unchanged source=framework-checkout parses=57 bytes=676730
+    cpu_probe_test.go:85: phase=repeat-unchanged source=standard-library parses=1182 bytes=12577571
+    cpu_probe_test.go:85: phase=repeat-unchanged source=module-cache parses=212 bytes=9220347
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=4950165 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/collate/tables.go
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=523354 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/crypto/internal/fips140/nistec/p256_table.go
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=402801 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/vendor/golang.org/x/text/unicode/norm/tables17.0.0.go
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=402800 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/unicode/norm/tables17.0.0.go
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=312250 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/vendor/golang.org/x/net/idna/tables17.0.0.go
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=312250 file=/Users/tyler/go/pkg/mod/golang.org/x/net@v0.59.0/idna/tables17.0.0.go
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=272949 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/unicode/rangetable/tables17.0.0.go
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=256788 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/unicode/tables.go
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=252048 file=/Users/tyler/go/pkg/mod/github.com/dlclark/regexp2/v2@v2.8.0/syntax/unicode_alias_tables.go
+    cpu_probe_test.go:92: phase=repeat-unchanged parses=1 bytes=243217 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/runtime/proc.go
+--- PASS: TestCPUProbe (22.88s)
+PASS

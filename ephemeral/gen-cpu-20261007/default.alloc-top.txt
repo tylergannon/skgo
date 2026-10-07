@@ -1,0 +1,37 @@
+File: gen.test
+Type: alloc_space
+Time: 2026-10-07 08:36:03 PDT
+Showing nodes accounting for 94.31GB, 81.56% of 115.64GB total
+Dropped 1032 nodes (cum <= 0.58GB)
+Showing top 30 nodes out of 162
+      flat  flat%   sum%        cum   cum%
+   32.23GB 27.87% 27.87%    32.23GB 27.87%  go/types.(*Checker).recordTypeAndValue
+    6.41GB  5.54% 33.41%    28.18GB 24.37%  go/types.(*Checker).updateExprType
+    5.72GB  4.95% 38.36%    38.02GB 32.88%  go/types.(*Checker).indexedElts
+    5.47GB  4.73% 43.09%     9.01GB  7.79%  go/parser.(*parser).parseOperand
+    5.29GB  4.57% 47.66%    14.33GB 12.39%  go/parser.(*parser).parseElementList
+    4.26GB  3.68% 51.35%     4.59GB  3.97%  go/parser.(*parser).parseIdent
+    3.40GB  2.94% 54.29%     3.40GB  2.94%  os.readFileContents
+    2.94GB  2.54% 56.83%     2.94GB  2.54%  go/types.(*Checker).recordUse
+    2.50GB  2.16% 58.99%     2.50GB  2.16%  go/token.(*File).AddLine
+    1.95GB  1.69% 60.68%     1.95GB  1.69%  go/types.(*Checker).later (inline)
+    1.76GB  1.52% 62.19%     1.76GB  1.52%  go/types.(*Scope).insert (inline)
+    1.75GB  1.52% 63.71%     3.95GB  3.42%  go/parser.(*parser).parseCallOrConversion
+    1.73GB  1.49% 65.20%     1.73GB  1.49%  go/ast.(*Scope).Insert
+    1.68GB  1.45% 66.66%     8.71GB  7.53%  go/parser.(*parser).parseElement
+    1.68GB  1.45% 68.11%     8.92GB  7.71%  go/types.(*Checker).index
+    1.63GB  1.41% 69.52%     1.63GB  1.41%  go/ast.NewObj
+    1.52GB  1.31% 70.83%     1.52GB  1.31%  go/types.newVar (inline)
+    1.45GB  1.25% 72.08%     1.45GB  1.25%  go/ast.NewScope
+    1.26GB  1.09% 73.17%     1.26GB  1.09%  go/types.(*Checker).recordDef (inline)
+    1.10GB  0.95% 74.12%     1.10GB  0.96%  go/scanner.(*Scanner).scanComment
+    1.08GB  0.93% 75.05%     2.90GB  2.51%  go/types.(*Checker).collectObjects.func1
+    0.91GB  0.79% 75.84%     8.42GB  7.28%  go/parser.(*parser).parseSimpleStmt
+    0.90GB  0.78% 76.62%     0.90GB  0.78%  go/scanner.(*Scanner).scanIdentifier
+    0.88GB  0.76% 77.38%    13.74GB 11.88%  go/parser.(*parser).parseStmtList
+    0.87GB  0.76% 78.14%     5.36GB  4.64%  go/types.(*Checker).typInternal
+    0.86GB  0.74% 78.88%     0.86GB  0.74%  go/scanner.(*Scanner).scanNumber
+    0.84GB  0.73% 79.61%    23.06GB 19.94%  go/parser.(*parser).parseExprList
+    0.79GB  0.68% 80.29%     1.19GB  1.03%  go/types.dependencyGraph
+    0.74GB  0.64% 80.93%     0.74GB  0.64%  go/types.NewScope
+    0.73GB  0.63% 81.56%     2.40GB  2.07%  go/types.(*Checker).validVarType

@@ -1,0 +1,272 @@
+File: baseline.test
+Type: cpu
+Time: 2026-10-07 09:31:55 PDT
+Duration: 200.52s, Total samples = 758.68s (378.36%)
+Showing nodes accounting for 699.35s, 92.18% of 758.68s total
+Dropped 1834 nodes (cum <= 3.79s)
+      flat  flat%   sum%        cum   cum%
+   208.93s 27.54% 27.54%    211.06s 27.82%  runtime.tryDeferToSpanScan
+   124.46s 16.40% 43.94%    124.47s 16.41%  runtime.(*spanInlineMarkBits).init
+    93.93s 12.38% 56.32%     93.93s 12.38%  runtime.memclrNoHeapPointers
+    31.69s  4.18% 60.50%     31.69s  4.18%  syscall.rawsyscalln
+    30.72s  4.05% 64.55%     30.72s  4.05%  runtime.madvise
+    28.80s  3.80% 68.35%     28.80s  3.80%  runtime.memmove
+    27.77s  3.66% 72.01%     27.77s  3.66%  runtime.(*spanInlineMarkBits).release (inline)
+    18.24s  2.40% 74.41%    141.54s 18.66%  runtime.(*mspan).moveInlineMarks
+    14.30s  1.88% 76.30%     14.30s  1.88%  runtime.(*sweepLocker).tryAcquire
+    10.86s  1.43% 77.73%     81.78s 10.78%  runtime.mapassign
+     8.04s  1.06% 78.79%     31.80s  4.19%  runtime.mallocgcSmallScanNoHeaderSC4
+     7.71s  1.02% 79.80%      7.71s  1.02%  runtime.(*mspan).init
+     7.20s  0.95% 80.75%     86.21s 11.36%  runtime.mallocgcSmallScanNoHeaderSC6
+     7.03s  0.93% 81.68%      7.15s  0.94%  runtime.mapassign_fast64
+     6.64s  0.88% 82.55%      6.77s  0.89%  runtime.(*mspan).refillAllocCache
+     6.56s  0.86% 83.42%     17.06s  2.25%  runtime.mallocgcTinySC2
+     6.47s  0.85% 84.27%     49.24s  6.49%  runtime.mallocgcSmallScanNoHeaderSC5
+     6.36s  0.84% 85.11%     60.72s  8.00%  runtime.scanObject
+     6.17s  0.81% 85.92%     15.74s  2.07%  runtime.mallocgcSmallScanNoHeaderSC2
+     4.94s  0.65% 86.57%      4.94s  0.65%  runtime.pthread_cond_wait
+     4.15s  0.55% 87.12%     11.43s  1.51%  runtime.mallocgcSmallScanNoHeaderSC3
+     3.11s  0.41% 87.53%    137.76s 18.16%  runtime.scanObjectsSmall
+        3s   0.4% 87.93%     16.55s  2.18%  runtime.mapassign_fast64ptr
+     2.61s  0.34% 88.27%      4.25s  0.56%  runtime.mallocgcSmallScanNoHeaderSC1
+     2.02s  0.27% 88.54%     39.86s  5.25%  go/parser.(*resolver).Visit
+     1.89s  0.25% 88.79%      4.02s  0.53%  runtime/pprof.(*profileBuilder).addCPUData
+     1.56s  0.21% 88.99%     24.91s  3.28%  runtime.mapassign_faststr
+     1.48s   0.2% 89.19%    190.26s 25.08%  runtime.scanSpan
+     1.44s  0.19% 89.38%    267.58s 35.27%  golang.org/x/tools/go/packages.(*loader).loadPackage
+     1.35s  0.18% 89.55%    143.48s 18.91%  go/types.(*Checker).indexedElts
+     1.28s  0.17% 89.72%    174.35s 22.98%  runtime.(*mcentral).cacheSpan
+     1.27s  0.17% 89.89%     14.58s  1.92%  runtime.mallocgcSmallScanNoHeaderSC7
+     1.15s  0.15% 90.04%      6.47s  0.85%  go/parser.(*resolver).resolve
+     0.95s  0.13% 90.17%     10.50s  1.38%  go/types.(*Checker).basicLit
+     0.86s  0.11% 90.28%      5.46s  0.72%  runtime.mallocgcTinySlowPath
+     0.79s   0.1% 90.38%     14.03s  1.85%  go/scanner.(*Scanner).next
+     0.79s   0.1% 90.49%    146.66s 19.33%  go/types.(*Checker).compositeLit
+     0.70s 0.092% 90.58%    244.43s 32.22%  golang.org/x/tools/go/packages.(*loader).parseFiles.func1
+     0.67s 0.088% 90.67%      4.24s  0.56%  runtime.wbBufFlush1
+     0.58s 0.076% 90.75%     82.76s 10.91%  runtime.mallocgcSmallScanSlowPath
+     0.51s 0.067% 90.81%      5.06s  0.67%  go/types.NewScope (inline)
+     0.46s 0.061% 90.87%     13.84s  1.82%  go/types.(*Checker).collectObjects.func1
+     0.44s 0.058% 90.93%    520.90s 68.66%  golang.org/x/sync/errgroup.(*Group).Go.func1
+     0.38s  0.05% 90.98%     35.78s  4.72%  go/types.(*Checker).funcDecl
+     0.35s 0.046% 91.03%     40.61s  5.35%  go/parser.resolveFile
+     0.29s 0.038% 91.07%     13.20s  1.74%  go/token.(*File).AddLine
+     0.28s 0.037% 91.10%    143.62s 18.93%  runtime.(*sweepLocked).sweep
+     0.28s 0.037% 91.14%     22.60s  2.98%  runtime.scanObjectSmall
+     0.26s 0.034% 91.17%     39.87s  5.26%  go/ast.Walk
+     0.25s 0.033% 91.21%      4.03s  0.53%  go/types.(*Checker).later (inline)
+     0.25s 0.033% 91.24%    243.77s 32.13%  golang.org/x/tools/go/packages.(*loader).parseFile
+     0.24s 0.032% 91.27%     37.30s  4.92%  go/scanner.(*Scanner).Scan
+     0.22s 0.029% 91.30%     46.92s  6.18%  go/parser.(*parser).parseElementList
+     0.21s 0.028% 91.33%      6.22s  0.82%  go/scanner.(*Scanner).scanIdentifier
+     0.19s 0.025% 91.35%      4.20s  0.55%  bytes.(*Buffer).ReadFrom
+     0.19s 0.025% 91.38%    237.69s 31.33%  runtime.mallocgc
+     0.18s 0.024% 91.40%     19.45s  2.56%  go/types.(*Checker).collectParams
+     0.18s 0.024% 91.43%     25.95s  3.42%  go/types.(*Checker).ident
+     0.18s 0.024% 91.45%      7.39s  0.97%  go/types.(*Checker).selector
+     0.18s 0.024% 91.47%      5.35s  0.71%  runtime.convT64
+     0.17s 0.022% 91.50%     37.67s  4.97%  go/parser.(*parser).next0
+     0.16s 0.021% 91.52%     47.35s  6.24%  go/parser.(*parser).next
+     0.16s 0.021% 91.54%    170.64s 22.49%  go/types.(*Checker).exprInternal
+     0.15s  0.02% 91.56%     19.01s  2.51%  go/parser.(*parser).consumeCommentGroup
+     0.15s  0.02% 91.58%     39.86s  5.25%  internal/runtime/maps.(*table).split
+     0.14s 0.018% 91.60%      8.05s  1.06%  go/scanner.(*Scanner).skipWhitespace
+     0.14s 0.018% 91.61%    199.57s 26.30%  go/types.(*Checker).objDecl
+     0.14s 0.018% 91.63%    173.15s 22.82%  go/types.(*Checker).rawExpr
+     0.13s 0.017% 91.65%     70.51s  9.29%  go/types.(*Checker).recordTypeAndValue
+     0.12s 0.016% 91.67%     88.99s 11.73%  go/parser.(*parser).parseBinaryExpr
+     0.12s 0.016% 91.68%     85.75s 11.30%  go/types.(*Checker).updateExprType
+     0.12s 0.016% 91.70%     23.46s  3.09%  runtime.typedmemmove
+     0.11s 0.014% 91.71%      9.44s  1.24%  go/types.(*Checker).binary
+     0.11s 0.014% 91.73%     37.42s  4.93%  go/types.(*Checker).genericExpr
+     0.11s 0.014% 91.74%     15.21s  2.00%  go/types.(*Checker).walkDecl
+     0.11s 0.014% 91.76%     67.51s  8.90%  runtime.growslice
+     0.10s 0.013% 91.77%     14.18s  1.87%  go/parser.(*resolver).declare
+     0.10s 0.013% 91.78%     33.71s  4.44%  go/types.(*Checker).processDelayed
+     0.10s 0.013% 91.79%     29.66s  3.91%  go/types.(*Checker).stmt
+     0.10s 0.013% 91.81%      5.29s   0.7%  runtime.mallocgcSmallNoScanSlowPath
+     0.09s 0.012% 91.82%     64.47s  8.50%  go/types.(*Checker).assignment
+     0.09s 0.012% 91.83%    132.89s 17.52%  runtime.gcDrain
+     0.09s 0.012% 91.84%      3.89s  0.51%  runtime.mallocgcSmallNoScanSC7
+     0.08s 0.011% 91.85%     85.63s 11.29%  go/parser.(*parser).parsePrimaryExpr
+     0.08s 0.011% 91.86%      5.73s  0.76%  go/scanner.(*Scanner).scanNumber
+     0.08s 0.011% 91.88%    258.53s 34.08%  go/types.(*Checker).checkFiles
+     0.08s 0.011% 91.89%     16.56s  2.18%  go/types.(*Checker).collectObjects
+     0.08s 0.011% 91.90%    163.54s 21.56%  go/types.(*Checker).expr
+     0.08s 0.011% 91.91%      5.43s  0.72%  go/types.(*Checker).initOrder
+     0.08s 0.011% 91.92%      9.22s  1.22%  go/types.(*Checker).structType
+     0.08s 0.011% 91.93%     54.26s  7.15%  runtime.sweepone
+     0.07s 0.0092% 91.94%     72.02s  9.49%  go/parser.(*parser).parseStmtList
+     0.07s 0.0092% 91.95%      9.98s  1.32%  go/scanner.(*Scanner).scanComment
+     0.07s 0.0092% 91.96%    176.28s 23.24%  runtime.(*mcache).refill
+     0.06s 0.0079% 91.96%        86s 11.34%  go/parser.(*parser).parseUnaryExpr
+     0.06s 0.0079% 91.97%     14.99s  1.98%  go/types.(*Checker).callExpr
+     0.06s 0.0079% 91.98%      8.51s  1.12%  go/types.(*operand).setConst
+     0.05s 0.0066% 91.99%     38.98s  5.14%  go/parser.(*parser).parseOperand
+     0.05s 0.0066% 91.99%     25.02s  3.30%  go/types.(*Checker).convertUntyped
+     0.05s 0.0066% 92.00%     13.40s  1.77%  go/types.(*Checker).record
+     0.05s 0.0066% 92.01%     48.97s  6.45%  runtime.mallocgcSmallScanNoHeader
+     0.05s 0.0066% 92.01%     23.53s  3.10%  runtime.slicebytetostring
+     0.05s 0.0066% 92.02%    301.90s 39.79%  runtime.systemstack
+     0.04s 0.0053% 92.02%        89s 11.73%  go/parser.(*parser).parseExpr
+     0.04s 0.0053% 92.03%    195.91s 25.82%  go/parser.(*parser).parseFile
+     0.04s 0.0053% 92.03%     26.78s  3.53%  go/parser.(*parser).parseValue
+     0.04s 0.0053% 92.04%    199.43s 26.29%  go/types.(*Checker).packageObjects
+     0.04s 0.0053% 92.05%     20.15s  2.66%  go/types.(*Checker).typInternal
+     0.04s 0.0053% 92.05%      9.88s  1.30%  go/types.(*Scope).insert (inline)
+     0.04s 0.0053% 92.06%    120.19s 15.84%  runtime.gcAssistAlloc
+     0.03s 0.004% 92.06%     11.43s  1.51%  go/parser.(*parser).expect
+     0.03s 0.004% 92.06%     33.38s  4.40%  go/parser.(*parser).parseElement
+     0.03s 0.004% 92.07%     92.92s 12.25%  go/parser.(*parser).parseExprList
+     0.03s 0.004% 92.07%     35.19s  4.64%  go/types.(*Checker).index
+     0.03s 0.004% 92.08%      6.53s  0.86%  go/types.(*Checker).openScope
+     0.03s 0.004% 92.08%      4.90s  0.65%  go/types.dependencyGraph
+     0.03s 0.004% 92.08%    267.95s 35.32%  golang.org/x/tools/go/packages.(*loader).refine.func2.1
+     0.03s 0.004% 92.09%     62.74s  8.27%  internal/runtime/maps.(*table).reset
+     0.03s 0.004% 92.09%     23.41s  3.09%  internal/runtime/maps.typedmemmove
+     0.03s 0.004% 92.10%     26.59s  3.50%  runtime.(*mspan).initHeapBits
+     0.03s 0.004% 92.10%     29.95s  3.95%  runtime.mallocgcSmallScanHeader
+     0.02s 0.0026% 92.10%     10.77s  1.42%  go/ast.NewObj (inline)
+     0.02s 0.0026% 92.10%      8.35s  1.10%  go/constant.MakeFromLiteral
+     0.02s 0.0026% 92.11%      7.55s     1%  go/parser.(*parser).parseParameterList
+     0.02s 0.0026% 92.11%      8.55s  1.13%  go/parser.(*parser).tryIdentOrType
+     0.02s 0.0026% 92.11%     20.23s  2.67%  go/parser.(*resolver).walkStmts (inline)
+     0.02s 0.0026% 92.12%     29.56s  3.90%  go/types.(*Checker).funcDecl.func1
+     0.02s 0.0026% 92.12%     37.78s  4.98%  go/types.(*Checker).funcType
+     0.02s 0.0026% 92.12%      4.82s  0.64%  go/types.(*Checker).genericExprList
+     0.02s 0.0026% 92.12%      7.82s  1.03%  go/types.(*Checker).recordUse
+     0.02s 0.0026% 92.13%     22.44s  2.96%  internal/runtime/maps.(*table).grow
+     0.02s 0.0026% 92.13%    176.58s 23.27%  runtime.(*mcache).nextFree
+     0.02s 0.0026% 92.13%    119.97s 15.81%  runtime.gcDrainN
+     0.02s 0.0026% 92.13%     13.06s  1.72%  runtime.mallocgcSmallNoscan
+     0.01s 0.0013% 92.14%      4.71s  0.62%  bytes.(*Buffer).grow
+     0.01s 0.0013% 92.14%      7.99s  1.05%  github.com/tylergannon/skgo/internal/gen.(*app).loadGrammar
+     0.01s 0.0013% 92.14%      9.65s  1.27%  go/ast.(*Scope).Insert (inline)
+     0.01s 0.0013% 92.14%     13.25s  1.75%  go/parser.(*parser).consumeComment
+     0.01s 0.0013% 92.14%    149.79s 19.74%  go/parser.(*parser).parseDecl
+     0.01s 0.0013% 92.14%     23.87s  3.15%  go/parser.(*parser).parseIdent
+     0.01s 0.0013% 92.14%     33.37s  4.40%  go/parser.(*parser).parseIfStmt
+     0.01s 0.0013% 92.14%      8.65s  1.14%  go/parser.(*parser).parseReturnStmt
+     0.01s 0.0013% 92.15%     13.56s  1.79%  go/parser.(*parser).parseRhs (inline)
+     0.01s 0.0013% 92.15%     42.54s  5.61%  go/parser.(*parser).parseSimpleStmt
+     0.01s 0.0013% 92.15%      7.65s  1.01%  go/parser.(*parser).parseType
+     0.01s 0.0013% 92.15%      8.36s  1.10%  go/parser.(*resolver).declareList (inline)
+     0.01s 0.0013% 92.15%     21.24s  2.80%  go/parser.(*resolver).walkBody
+     0.01s 0.0013% 92.15%      5.99s  0.79%  go/parser.(*resolver).walkExprs (inline)
+     0.01s 0.0013% 92.15%    202.39s 26.68%  go/parser.ParseFile
+     0.01s 0.0013% 92.15%      4.37s  0.58%  go/types.(*Checker).declareParams
+     0.01s 0.0013% 92.16%     24.11s  3.18%  go/types.(*Checker).declaredType
+     0.01s 0.0013% 92.16%      7.36s  0.97%  go/types.(*Checker).exprOrType
+     0.01s 0.0013% 92.16%      7.84s  1.03%  go/types.(*Checker).initVars
+     0.01s 0.0013% 92.16%     23.60s  3.11%  go/types.(*Checker).isValidIndex
+     0.01s 0.0013% 92.16%      4.18s  0.55%  go/types.(*Checker).recordDef (inline)
+     0.01s 0.0013% 92.16%     11.26s  1.48%  go/types.(*Checker).typeDecl
+     0.01s 0.0013% 92.16%     14.83s  1.95%  go/types.(*Checker).unary
+     0.01s 0.0013% 92.17%    148.89s 19.62%  go/types.(*Checker).varDecl
+     0.01s 0.0013% 92.17%      9.92s  1.31%  go/types.(*Scope).Insert
+     0.01s 0.0013% 92.17%      7.37s  0.97%  golang.org/x/tools/go/packages.(*golistState).createDriverResponse
+     0.01s 0.0013% 92.17%     19.04s  2.51%  internal/runtime/maps.(*Map).growToSmall
+     0.01s 0.0013% 92.17%     81.50s 10.74%  internal/runtime/maps.newarray
+     0.01s 0.0013% 92.17%     21.23s  2.80%  os.open (inline)
+     0.01s 0.0013% 92.17%      8.42s  1.11%  runtime.(*mheap).initSpan
+     0.01s 0.0013% 92.17%      7.77s  1.02%  runtime.makemap_small
+     0.01s 0.0013% 92.18%     16.22s  2.14%  runtime.makeslice
+     0.01s 0.0013% 92.18%     17.63s  2.32%  runtime.mallocgcLarge
+     0.01s 0.0013% 92.18%     38.12s  5.02%  runtime.newobject
+     0.01s 0.0013% 92.18%      4.25s  0.56%  runtime.wbBufFlush
+         0     0% 92.18%      4.01s  0.53%  bytes.growSlice
+         0     0% 92.18%      7.56s     1%  github.com/tylergannon/skgo/internal/gen.(*app).generateTypes
+         0     0% 92.18%      7.55s     1%  github.com/tylergannon/skgo/internal/gen.(*app).projectTypes
+         0     0% 92.18%      4.73s  0.62%  github.com/tylergannon/skgo/internal/gen.(*generatedOutput).overlay
+         0     0% 92.18%      5.72s  0.75%  github.com/tylergannon/skgo/internal/gen.Check
+         0     0% 92.18%     14.53s  1.92%  github.com/tylergannon/skgo/internal/gen.Run
+         0     0% 92.18%      4.96s  0.65%  github.com/tylergannon/skgo/internal/gen.TestSharedParamsGeneratedConsumers
+         0     0% 92.18%    200.04s 26.37%  github.com/tylergannon/skgo/internal/gen.observeCPUProbe.func1
+         0     0% 92.18%    201.58s 26.57%  github.com/tylergannon/skgo/internal/gen.observeCPUProbe.func2
+         0     0% 92.18%      5.18s  0.68%  github.com/tylergannon/skgo/internal/gen.prepareLoadParams
+         0     0% 92.18%     17.33s  2.28%  github.com/tylergannon/skgo/internal/gen.preserveDependencyExports.func4
+         0     0% 92.18%      8.05s  1.06%  go/ast.NewScope (inline)
+         0     0% 92.18%     16.50s  2.17%  go/parser.(*parser).expectSemi
+         0     0% 92.18%     32.15s  4.24%  go/parser.(*parser).parseBlockStmt
+         0     0% 92.18%     74.29s  9.79%  go/parser.(*parser).parseBody
+         0     0% 92.18%     19.82s  2.61%  go/parser.(*parser).parseCallOrConversion
+         0     0% 92.18%      8.66s  1.14%  go/parser.(*parser).parseCaseClause
+         0     0% 92.18%     17.44s  2.30%  go/parser.(*parser).parseForStmt
+         0     0% 92.18%     92.16s 12.15%  go/parser.(*parser).parseFuncDecl
+         0     0% 92.18%     63.03s  8.31%  go/parser.(*parser).parseGenDecl
+         0     0% 92.18%      8.93s  1.18%  go/parser.(*parser).parseIfHeader
+         0     0% 92.18%     92.92s 12.25%  go/parser.(*parser).parseList (inline)
+         0     0% 92.18%     47.34s  6.24%  go/parser.(*parser).parseLiteralValue
+         0     0% 92.18%     10.30s  1.36%  go/parser.(*parser).parseParameters
+         0     0% 92.18%      6.78s  0.89%  go/parser.(*parser).parseSelector
+         0     0% 92.18%     68.94s  9.09%  go/parser.(*parser).parseStmt
+         0     0% 92.18%      4.19s  0.55%  go/parser.(*parser).parseStructType
+         0     0% 92.18%      9.32s  1.23%  go/parser.(*parser).parseSwitchStmt
+         0     0% 92.18%      5.85s  0.77%  go/parser.(*parser).parseTypeSpec
+         0     0% 92.18%     52.81s  6.96%  go/parser.(*parser).parseValueSpec
+         0     0% 92.18%      6.80s   0.9%  go/parser.(*resolver).openScope (inline)
+         0     0% 92.18%      6.34s  0.84%  go/parser.(*resolver).shortVarDecl
+         0     0% 92.18%    258.49s 34.07%  go/types.(*Checker).Files
+         0     0% 92.18%      5.44s  0.72%  go/types.(*Checker).assignVars
+         0     0% 92.18%      4.91s  0.65%  go/types.(*Checker).collectRecv
+         0     0% 92.18%     12.56s  1.66%  go/types.(*Checker).declare
+         0     0% 92.18%     29.75s  3.92%  go/types.(*Checker).funcBody
+         0     0% 92.18%      7.47s  0.98%  go/types.(*Checker).multiExpr
+         0     0% 92.18%      6.15s  0.81%  go/types.(*Checker).shortVarDecl
+         0     0% 92.18%     29.69s  3.91%  go/types.(*Checker).stmtList
+         0     0% 92.18%      4.08s  0.54%  go/types.(*Checker).typ (inline)
+         0     0% 92.18%      6.75s  0.89%  go/types.(*Checker).validVarType
+         0     0% 92.18%     23.60s  3.11%  go/types.(*Checker).varType
+         0     0% 92.18%     14.29s  1.88%  go/types.(*Checker).walkDecls (inline)
+         0     0% 92.18%      4.72s  0.62%  go/types.(*objset).insert
+         0     0% 92.18%      8.35s  1.10%  go/types.makeFromLiteral (inline)
+         0     0% 92.18%      7.85s  1.03%  go/types.newVar (inline)
+         0     0% 92.18%      7.49s  0.99%  golang.org/x/tools/go/packages.callDriverOnChunks.func1
+         0     0% 92.18%      7.49s  0.99%  golang.org/x/tools/go/packages.defaultDriver.func1
+         0     0% 92.18%      7.49s  0.99%  golang.org/x/tools/go/packages.goListDriver
+         0     0% 92.18%      4.28s  0.56%  internal/runtime/maps.(*Map).growToTable
+         0     0% 92.18%     62.30s  8.21%  internal/runtime/maps.(*table).rehash
+         0     0% 92.18%      7.76s  1.02%  internal/runtime/maps.NewEmptyMap (inline)
+         0     0% 92.18%     81.50s 10.74%  internal/runtime/maps.newGroups (inline)
+         0     0% 92.18%     66.04s  8.70%  internal/runtime/maps.newTable
+         0     0% 92.18%      4.96s  0.65%  io.Copy (inline)
+         0     0% 92.18%      4.96s  0.65%  io.copyBuffer
+         0     0% 92.18%      4.96s  0.65%  os.(*File).WriteTo
+         0     0% 92.18%     16.87s  2.22%  os.Open (inline)
+         0     0% 92.18%     19.87s  2.62%  os.OpenFile
+         0     0% 92.18%      4.68s  0.62%  os.ReadDir
+         0     0% 92.18%     28.02s  3.69%  os.ReadFile
+         0     0% 92.18%      4.96s  0.65%  os.genericWriteTo
+         0     0% 92.18%     27.37s  3.61%  os.ignoringEINTR (inline)
+         0     0% 92.18%     19.87s  2.62%  os.openFileNolog
+         0     0% 92.18%     18.77s  2.47%  os.openFileNolog.func1 (inline)
+         0     0% 92.18%     10.46s  1.38%  os.readFileContents
+         0     0% 92.18%      4.77s  0.63%  path/filepath.WalkDir
+         0     0% 92.18%      4.77s  0.63%  path/filepath.walkDir
+         0     0% 92.18%      5.10s  0.67%  runtime.(*mcache).allocLarge
+         0     0% 92.18%     34.37s  4.53%  runtime.(*mcentral).grow
+         0     0% 92.18%      9.18s  1.21%  runtime.(*mheap).alloc
+         0     0% 92.18%     39.98s  5.27%  runtime.(*mheap).alloc.func1
+         0     0% 92.18%     40.04s  5.28%  runtime.(*mheap).allocSpan
+         0     0% 92.18%     23.32s  3.07%  runtime.bgsweep
+         0     0% 92.18%     61.64s  8.12%  runtime.deductAssistCredit
+         0     0% 92.18%     30.98s  4.08%  runtime.deductSweepCredit
+         0     0% 92.18%    120.01s 15.82%  runtime.gcAssistAlloc.func2
+         0     0% 92.18%    120.01s 15.82%  runtime.gcAssistAlloc1
+         0     0% 92.18%    132.26s 17.43%  runtime.gcBgMarkWorker
+         0     0% 92.18%    132.89s 17.52%  runtime.gcBgMarkWorker.func2
+         0     0% 92.18%    111.97s 14.76%  runtime.gcDrainMarkWorkerDedicated (inline)
+         0     0% 92.18%     20.92s  2.76%  runtime.gcDrainMarkWorkerIdle (inline)
+         0     0% 92.18%     10.39s  1.37%  runtime.makechan
+         0     0% 92.18%      5.27s  0.69%  runtime.mcall
+         0     0% 92.18%     12.06s  1.59%  runtime.memclrNoHeapPointersChunked
+         0     0% 92.18%     81.49s 10.74%  runtime.newarray
+         0     0% 92.18%      4.97s  0.66%  runtime.semasleep
+         0     0% 92.18%     30.30s  3.99%  runtime.sysUsed (inline)
+         0     0% 92.18%     30.30s  3.99%  runtime.sysUsedOS (inline)
+         0     0% 92.18%      4.24s  0.56%  runtime.wbBufFlush.func1
+         0     0% 92.18%      4.06s  0.54%  runtime/pprof.profileWriter
+         0     0% 92.18%     21.22s  2.80%  syscall.Open
+         0     0% 92.18%     30.33s  4.00%  syscall.syscall
+         0     0% 92.18%     31.77s  4.19%  syscall.syscalln
+         0     0% 92.18%     21.95s  2.89%  testing.tRunner

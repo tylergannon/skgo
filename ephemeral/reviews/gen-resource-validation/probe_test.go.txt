@@ -1,0 +1,67 @@
+package gen
+
+import (
+ "os"
+ "path/filepath"
+ "strings"
+ "testing"
+ "golang.org/x/tools/go/packages"
+)
+
+func TestIndependentStageEmbed(t *testing.T) {
+ dir:=t.TempDir()
+ files:=map[string]string{
+  "go.mod":"module stageembed\n\ngo 1.27.1\n",
+  "dep/value.go":"package dep\nimport _ \"embed\"\n//go:embed value.txt\nvar Value string\n",
+  "dep/value.txt":"independent literal\n",
+  "route/route.go":"package route\nimport (\"stageembed/dep\"; _ \"embed\")\nvar Value = dep.Value\n//go:embed value.txt\nvar Local string\n",
+  "route/value.txt":"local independent literal\n",
+ }
+ for rel,src:=range files {path:=filepath.Join(dir,rel);if err:=os.MkdirAll(filepath.Dir(path),0700);err!=nil{t.Fatal(err)};if err:=os.WriteFile(path,[]byte(src),0600);err!=nil{t.Fatal(err)}}
+ path:=filepath.Join(dir,"route/new.go")
+ cfg:=&packages.Config{Dir:dir,Mode:packages.NeedName|packages.NeedFiles|packages.NeedTypes|packages.NeedSyntax|packages.NeedTypesInfo|packages.NeedImports,Overlay:map[string][]byte{path:[]byte("package route\ntype Added int\n")}}
+ cleanup,err:=preserveDependencyExports(cfg);if err!=nil{t.Fatal(err)};defer cleanup()
+ loaded,err:=packages.Load(cfg,"./route");if err!=nil{t.Fatal(err)}
+ var errors []string;packages.Visit(loaded,nil,func(p *packages.Package){for _,e:=range p.Errors{errors=append(errors,e.Error())}})
+ if len(errors)>0 {t.Fatal(strings.Join(errors,"\n"))}
+ if len(loaded)!=1||loaded[0].Types.Scope().Lookup("Added")==nil {t.Fatal("current new source missing")}
+ if _,err:=os.Stat(path);!os.IsNotExist(err){t.Fatal("published new source")}
+}
+
+func TestIndependentFreshStageDiagnostics(t *testing.T) {
+ for _,tc:=range []struct{name,source,want string}{
+  {"parser","package freshdiag\nfunc broken( {\n","expected"},
+  {"compiler","package freshdiag\nvar Broken = Missing\n","undefined: Missing"},
+ } {t.Run(tc.name,func(t *testing.T){
+  dir:=t.TempDir(); if err:=os.WriteFile(filepath.Join(dir,"go.mod"),[]byte("module freshdiag\n\ngo 1.27.1\n"),0600);err!=nil{t.Fatal(err)}
+  path:=filepath.Join(dir,"new.go")
+  cfg:=&packages.Config{Dir:dir,Mode:packages.NeedName|packages.NeedTypes|packages.NeedSyntax,Overlay:map[string][]byte{path:[]byte(tc.source)}}
+  cleanup,err:=preserveDependencyExports(cfg);if err!=nil{t.Fatal(err)};defer cleanup()
+  loaded,err:=packages.Load(cfg,".");if err!=nil{t.Fatal(err)}
+  if len(loaded)!=1{t.Fatalf("loaded=%d",len(loaded))}
+  var errors []string;for _,e:=range loaded[0].Errors {errors=append(errors,e.Error())};diagnostic:=strings.Join(errors,"\n");t.Log(diagnostic)
+  if !strings.Contains(diagnostic,path+":") || !strings.Contains(diagnostic,tc.want) {t.Fatalf("authored diagnostic lost: %s",diagnostic)}
+ })}
+}
+
+func TestIndependentWildcardStage(t *testing.T) {
+ dir:=t.TempDir()
+ for rel,source:=range map[string]string{"go.mod":"module wildcardstage\n\ngo 1.27.1\n", "route/route.go":"package route\n", "other/other.go":"package other\n"} {
+  path:=filepath.Join(dir,rel);if err:=os.MkdirAll(filepath.Dir(path),0700);err!=nil{t.Fatal(err)};if err:=os.WriteFile(path,[]byte(source),0600);err!=nil{t.Fatal(err)}
+ }
+ cfg:=&packages.Config{Dir:dir,Mode:packages.NeedName|packages.NeedFiles,Overlay:map[string][]byte{filepath.Join(dir,"route/new.go"):[]byte("package route\ntype Added int\n")}}
+ cleanup,err:=preserveDependencyExports(cfg);if err!=nil{t.Fatal(err)};defer cleanup()
+ loaded,err:=packages.Load(cfg,"./...");if err!=nil{t.Fatal(err)}
+ var paths []string;for _,p:=range loaded{paths=append(paths,p.PkgPath)};t.Log(paths)
+ if len(paths)!=2 {t.Fatalf("wildcard package set changed: %v",paths)}
+}
+
+func TestIndependentLaterLineDirective(t *testing.T) {
+ dir:=t.TempDir();if err:=os.WriteFile(filepath.Join(dir,"go.mod"),[]byte("module laterline\n\ngo 1.27.1\n"),0600);err!=nil{t.Fatal(err)}
+ path:=filepath.Join(dir,"new.go")
+ cfg:=&packages.Config{Dir:dir,Mode:packages.NeedName|packages.NeedTypes|packages.NeedSyntax,Overlay:map[string][]byte{path:[]byte("package laterline\n//line alternate.go:40:5\nvar Broken=Missing\n")}}
+ cleanup,err:=preserveDependencyExports(cfg);if err!=nil{t.Fatal(err)};defer cleanup()
+ loaded,err:=packages.Load(cfg,".");if err!=nil{t.Fatal(err)}
+ var errors []string;for _,e:=range loaded[0].Errors{errors=append(errors,e.Error())};diagnostic:=strings.Join(errors,"\n");t.Log(diagnostic)
+ if !strings.Contains(diagnostic,filepath.Join(dir,"alternate.go")+":40:") {t.Fatalf("relative authored line directive changed: %s",diagnostic)}
+}

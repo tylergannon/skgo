@@ -1,0 +1,7 @@
+=== RUN   TestIndependentWildcardStage
+    independent_probe_test.go:55: [wildcardstage/route]
+    independent_probe_test.go:56: wildcard package set changed: [wildcardstage/route]
+--- FAIL: TestIndependentWildcardStage (0.03s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	0.344s
+FAIL

@@ -1,0 +1,7 @@
+{
+  "Replace": {
+    "internal/gen/package_overlay.go": "ephemeral/gen-cpu-20261007/observed_package_overlay.go.txt",
+    "internal/gen/cpu_probe_test.go": "ephemeral/gen-cpu-20261007/probe_test.go.txt",
+    "internal/gen/load_params.go": "ephemeral/gen-cpu-20261007/load_params.no-deps.go.txt"
+  }
+}

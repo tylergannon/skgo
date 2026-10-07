@@ -1,0 +1,22 @@
+=== RUN   TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/private-type
+=== RUN   TestSharedParamsSourceDiagnostics/private-argument
+=== RUN   TestSharedParamsSourceDiagnostics/private-struct-field
+=== RUN   TestSharedParamsSourceDiagnostics/private-interface-method
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+--- PASS: TestSharedParamsSourceDiagnostics (2.87s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-type (0.26s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-argument (0.24s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-struct-field (0.27s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-interface-method (0.28s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.20s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.05s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/transitive-generated (1.17s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	3.172s

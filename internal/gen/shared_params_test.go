@@ -432,6 +432,29 @@ func TestSharedParamsSourceDiagnostics(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "params.go:") {
 				t.Fatalf("want source-located %q: %v", tc.want, err)
 			}
+			if tc.name == "transitive-generated" {
+				// The public paths must refuse this graph before buffering or
+				// publishing output, independently of this internal helper's logger.
+				before := checkSourceSnapshot(t, filepath.Join(app, "web", "src"), cfg.Out)
+				for _, check := range []struct {
+					name string
+					run  func(Config) error
+				}{{"Run", Run}, {"Check", Check}} {
+					err := check.run(cfg)
+					if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "params.go:") {
+						t.Fatalf("%s lost transitive refusal: %v", check.name, err)
+					}
+				}
+				after := checkSourceSnapshot(t, filepath.Join(app, "web", "src"), cfg.Out)
+				if len(before) != len(after) {
+					t.Fatalf("refusal changed file count: %d -> %d", len(before), len(after))
+				}
+				for path, want := range before {
+					if !bytes.Equal(after[path], want) {
+						t.Fatalf("refusal changed %s", path)
+					}
+				}
+			}
 		})
 	}
 	// A real import cycle is diagnosed by the Go compiler with the matcher

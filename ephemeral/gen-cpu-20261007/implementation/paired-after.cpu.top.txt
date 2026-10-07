@@ -1,0 +1,283 @@
+File: after.test
+Type: cpu
+Time: 2026-10-07 09:59:51 PDT
+Duration: 8.11s, Total samples = 2.82s (34.75%)
+Showing nodes accounting for 2.71s, 96.10% of 2.82s total
+Dropped 210 nodes (cum <= 0.01s)
+      flat  flat%   sum%        cum   cum%
+     1.35s 47.87% 47.87%      1.35s 47.87%  syscall.rawsyscalln
+     0.50s 17.73% 65.60%      0.50s 17.73%  runtime.tryDeferToSpanScan
+     0.23s  8.16% 73.76%      0.23s  8.16%  runtime.memclrNoHeapPointers
+     0.16s  5.67% 79.43%      0.16s  5.67%  runtime.madvise
+     0.11s  3.90% 83.33%      0.11s  3.90%  runtime.pthread_cond_wait
+     0.06s  2.13% 85.46%      0.06s  2.13%  internal/runtime/atomic.(*UnsafePointer).StoreNoWB (inline)
+     0.05s  1.77% 87.23%      0.05s  1.77%  runtime.pthread_cond_signal
+     0.04s  1.42% 88.65%      0.04s  1.42%  runtime.(*mspan).refillAllocCache
+     0.03s  1.06% 89.72%      0.03s  1.06%  runtime.(*spanInlineMarkBits).init
+     0.03s  1.06% 90.78%      0.03s  1.06%  runtime.kevent
+     0.03s  1.06% 91.84%      0.03s  1.06%  runtime.memmove
+     0.03s  1.06% 92.91%      0.03s  1.06%  runtime.pthread_kill
+     0.03s  1.06% 93.97%      0.03s  1.06%  runtime.usleep
+     0.01s  0.35% 94.33%      0.03s  1.06%  github.com/tylergannon/polytype/grammar.LoadWithConfig
+     0.01s  0.35% 94.68%      0.04s  1.42%  runtime.(*mspan).moveInlineMarks
+     0.01s  0.35% 95.04%      0.04s  1.42%  runtime.lock2
+     0.01s  0.35% 95.39%      0.02s  0.71%  runtime.newproc1
+     0.01s  0.35% 95.74%      0.17s  6.03%  runtime.scanObject
+     0.01s  0.35% 96.10%      0.29s 10.28%  runtime.scanObjectsSmall
+         0     0% 96.10%      0.04s  1.42%  encoding/json.(*Decoder).Decode
+         0     0% 96.10%      0.03s  1.06%  encoding/json/v2.Unmarshal
+         0     0% 96.10%      0.03s  1.06%  encoding/json/v2.makeStructArshaler.func3
+         0     0% 96.10%      0.03s  1.06%  encoding/json/v2.unmarshalDecode
+         0     0% 96.10%      0.02s  0.71%  github.com/dave/dst/decorator.(*Decorator).DecorateFile (inline)
+         0     0% 96.10%      0.02s  0.71%  github.com/dave/dst/decorator.(*Decorator).DecorateNode
+         0     0% 96.10%      0.03s  1.06%  github.com/dave/dst/decorator.Load
+         0     0% 96.10%      0.02s  0.71%  github.com/dave/dst/decorator.Load.func1
+         0     0% 96.10%      0.02s  0.71%  github.com/tylergannon/polytype/devalue/codegen.Generate
+         0     0% 96.10%      0.03s  1.06%  github.com/tylergannon/polytype/grammar.LoadWithConfig.func3 (partial-inline)
+         0     0% 96.10%      0.02s  0.71%  github.com/tylergannon/polytype/internal/builder.FormatCodeWithGoimports
+         0     0% 96.10%      0.09s  3.19%  github.com/tylergannon/skgo/internal/gen.(*app).generateCodecs
+         0     0% 96.10%      0.82s 29.08%  github.com/tylergannon/skgo/internal/gen.(*app).generateTypes
+         0     0% 96.10%      0.84s 29.79%  github.com/tylergannon/skgo/internal/gen.(*app).loadGrammar
+         0     0% 96.10%      0.80s 28.37%  github.com/tylergannon/skgo/internal/gen.(*app).projectTypes
+         0     0% 96.10%      0.05s  1.77%  github.com/tylergannon/skgo/internal/gen.(*app).write (inline)
+         0     0% 96.10%      0.02s  0.71%  github.com/tylergannon/skgo/internal/gen.(*app).writeAppBindings
+         0     0% 96.10%      0.05s  1.77%  github.com/tylergannon/skgo/internal/gen.(*app).writeGo
+         0     0% 96.10%      0.05s  1.77%  github.com/tylergannon/skgo/internal/gen.(*generatedOutput).add
+         0     0% 96.10%      0.21s  7.45%  github.com/tylergannon/skgo/internal/gen.(*generatedOutput).close
+         0     0% 96.10%      0.36s 12.77%  github.com/tylergannon/skgo/internal/gen.(*generatedOutput).overlay
+         0     0% 96.10%      0.03s  1.06%  github.com/tylergannon/skgo/internal/gen.(*generatedOutput).publish
+         0     0% 96.10%      0.02s  0.71%  github.com/tylergannon/skgo/internal/gen.(*routeLinks).sync
+         0     0% 96.10%      0.02s  0.71%  github.com/tylergannon/skgo/internal/gen.(*routeLinks).syncPackage
+         0     0% 96.10%      1.37s 48.58%  github.com/tylergannon/skgo/internal/gen.Run
+         0     0% 96.10%      1.41s 50.00%  github.com/tylergannon/skgo/internal/gen.TestCPUProbe
+         0     0% 96.10%      1.37s 48.58%  github.com/tylergannon/skgo/internal/gen.TestCPUProbe.func1
+         0     0% 96.10%      0.04s  1.42%  github.com/tylergannon/skgo/internal/gen.copyExample
+         0     0% 96.10%      0.02s  0.71%  github.com/tylergannon/skgo/internal/gen.copySandboxFile
+         0     0% 96.10%      0.04s  1.42%  github.com/tylergannon/skgo/internal/gen.copySandboxTree (inline)
+         0     0% 96.10%      0.04s  1.42%  github.com/tylergannon/skgo/internal/gen.copySandboxTree.func1
+         0     0% 96.10%      0.06s  2.13%  github.com/tylergannon/skgo/internal/gen.finishGeneration
+         0     0% 96.10%      0.07s  2.48%  github.com/tylergannon/skgo/internal/gen.goFileNames
+         0     0% 96.10%      0.06s  2.13%  github.com/tylergannon/skgo/internal/gen.loadApp
+         0     0% 96.10%      0.04s  1.42%  github.com/tylergannon/skgo/internal/gen.mergeGo
+         0     0% 96.10%      0.02s  0.71%  github.com/tylergannon/skgo/internal/gen.newGeneration
+         0     0% 96.10%      0.29s 10.28%  github.com/tylergannon/skgo/internal/gen.packageNameOf
+         0     0% 96.10%      0.07s  2.48%  github.com/tylergannon/skgo/internal/gen.prepareLoadParams
+         0     0% 96.10%      0.52s 18.44%  github.com/tylergannon/skgo/internal/gen.preserveDependencyExports
+         0     0% 96.10%      0.23s  8.16%  github.com/tylergannon/skgo/internal/gen.preserveDependencyExports.func2
+         0     0% 96.10%      0.02s  0.71%  github.com/tylergannon/skgo/internal/gen.preserveDependencyExports.func4
+         0     0% 96.10%      0.05s  1.77%  github.com/tylergannon/skgo/internal/gen.readGoParamMatchers
+         0     0% 96.10%      0.04s  1.42%  github.com/tylergannon/skgo/internal/gen.sharedSandbox
+         0     0% 96.10%      0.05s  1.77%  github.com/tylergannon/skgo/internal/gen.write
+         0     0% 96.10%      0.04s  1.42%  go/format.Source
+         0     0% 96.10%      0.02s  0.71%  go/format.format
+         0     0% 96.10%      0.02s  0.71%  go/format.parse
+         0     0% 96.10%      0.02s  0.71%  go/parser.(*parser).parseDecl
+         0     0% 96.10%      0.02s  0.71%  go/parser.(*parser).parseFile
+         0     0% 96.10%      0.02s  0.71%  go/parser.(*parser).parseFuncDecl
+         0     0% 96.10%      0.12s  4.26%  go/parser.ParseFile
+         0     0% 96.10%      0.10s  3.55%  go/parser.readSource
+         0     0% 96.10%      0.03s  1.06%  go/printer.(*Config).Fprint (inline)
+         0     0% 96.10%      0.03s  1.06%  go/printer.(*Config).fprint
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).block
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).decl
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).declList
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).expr1
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).exprList
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).file
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).funcBody
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).funcDecl
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).printNode
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).stmt
+         0     0% 96.10%      0.02s  0.71%  go/printer.(*printer).stmtList
+         0     0% 96.10%      0.03s  1.06%  go/types.(*Checker).Files
+         0     0% 96.10%      0.02s  0.71%  go/types.(*Checker).callExpr
+         0     0% 96.10%      0.03s  1.06%  go/types.(*Checker).checkFiles
+         0     0% 96.10%      0.02s  0.71%  go/types.(*Checker).exprInternal
+         0     0% 96.10%      0.02s  0.71%  go/types.(*Checker).funcBody
+         0     0% 96.10%      0.02s  0.71%  go/types.(*Checker).funcDecl.func1
+         0     0% 96.10%      0.03s  1.06%  go/types.(*Checker).ident
+         0     0% 96.10%      0.02s  0.71%  go/types.(*Checker).processDelayed
+         0     0% 96.10%      0.02s  0.71%  go/types.(*Checker).rawExpr
+         0     0% 96.10%      0.02s  0.71%  go/types.(*Checker).recordUse
+         0     0% 96.10%      0.02s  0.71%  go/types.(*Checker).stmt
+         0     0% 96.10%      0.02s  0.71%  go/types.(*Checker).stmtList
+         0     0% 96.10%      0.04s  1.42%  go/types.NewParam (inline)
+         0     0% 96.10%      0.05s  1.77%  go/types.newVar (inline)
+         0     0% 96.10%      0.29s 10.28%  golang.org/x/sync/errgroup.(*Group).Go.func1
+         0     0% 96.10%      0.05s  1.77%  golang.org/x/tools/go/gcexportdata.Read
+         0     0% 96.10%      0.16s  5.67%  golang.org/x/tools/go/packages.(*golistState).createDriverResponse
+         0     0% 96.10%      0.06s  2.13%  golang.org/x/tools/go/packages.(*loader).loadFromExportData
+         0     0% 96.10%      0.09s  3.19%  golang.org/x/tools/go/packages.(*loader).loadPackage
+         0     0% 96.10%      0.03s  1.06%  golang.org/x/tools/go/packages.(*loader).parseFile
+         0     0% 96.10%      0.03s  1.06%  golang.org/x/tools/go/packages.(*loader).parseFiles.func1
+         0     0% 96.10%      0.10s  3.55%  golang.org/x/tools/go/packages.(*loader).refine.func2.1
+         0     0% 96.10%      0.03s  1.06%  golang.org/x/tools/go/packages.absJoin
+         0     0% 96.10%      0.16s  5.67%  golang.org/x/tools/go/packages.callDriverOnChunks.func1
+         0     0% 96.10%      0.16s  5.67%  golang.org/x/tools/go/packages.defaultDriver.func1
+         0     0% 96.10%      0.02s  0.71%  golang.org/x/tools/go/packages.getSizesForArgs
+         0     0% 96.10%      0.16s  5.67%  golang.org/x/tools/go/packages.goListDriver
+         0     0% 96.10%      0.02s  0.71%  golang.org/x/tools/go/packages.goListDriver.func1
+         0     0% 96.10%      0.02s  0.71%  golang.org/x/tools/imports.Process
+         0     0% 96.10%      0.02s  0.71%  golang.org/x/tools/internal/gcimporter.(*pkgReader).newReader (inline)
+         0     0% 96.10%      0.09s  3.19%  golang.org/x/tools/internal/gcimporter.(*pkgReader).objIdx
+         0     0% 96.10%      0.09s  3.19%  golang.org/x/tools/internal/gcimporter.(*pkgReader).typIdx
+         0     0% 96.10%      0.09s  3.19%  golang.org/x/tools/internal/gcimporter.(*reader).doTyp
+         0     0% 96.10%      0.07s  2.48%  golang.org/x/tools/internal/gcimporter.(*reader).interfaceType
+         0     0% 96.10%      0.05s  1.77%  golang.org/x/tools/internal/gcimporter.(*reader).method
+         0     0% 96.10%      0.09s  3.19%  golang.org/x/tools/internal/gcimporter.(*reader).obj
+         0     0% 96.10%      0.09s  3.19%  golang.org/x/tools/internal/gcimporter.(*reader).param
+         0     0% 96.10%      0.09s  3.19%  golang.org/x/tools/internal/gcimporter.(*reader).params
+         0     0% 96.10%      0.09s  3.19%  golang.org/x/tools/internal/gcimporter.(*reader).signature
+         0     0% 96.10%      0.06s  2.13%  golang.org/x/tools/internal/gcimporter.(*reader).structType
+         0     0% 96.10%      0.09s  3.19%  golang.org/x/tools/internal/gcimporter.(*reader).typ
+         0     0% 96.10%      0.04s  1.42%  golang.org/x/tools/internal/gcimporter.UImportData
+         0     0% 96.10%      0.05s  1.77%  golang.org/x/tools/internal/gcimporter.readUnifiedPackage
+         0     0% 96.10%      0.04s  1.42%  golang.org/x/tools/internal/gocommand.(*Invocation).run
+         0     0% 96.10%      0.04s  1.42%  golang.org/x/tools/internal/gocommand.(*Invocation).runWithFriendlyError
+         0     0% 96.10%      0.04s  1.42%  golang.org/x/tools/internal/gocommand.(*Runner).RunRaw
+         0     0% 96.10%      0.04s  1.42%  golang.org/x/tools/internal/gocommand.(*Runner).runConcurrent
+         0     0% 96.10%      0.03s  1.06%  golang.org/x/tools/internal/gocommand.runCmdContext
+         0     0% 96.10%      0.03s  1.06%  golang.org/x/tools/internal/gocommand.runCmdContext.func4
+         0     0% 96.10%      0.02s  0.71%  golang.org/x/tools/internal/imports.Process
+         0     0% 96.10%      0.02s  0.71%  golang.org/x/tools/internal/imports.formatFile
+         0     0% 96.10%      0.02s  0.71%  golang.org/x/tools/internal/pkgbits.(*PkgDecoder).NewDecoder
+         0     0% 96.10%      0.02s  0.71%  golang.org/x/tools/internal/pkgbits.(*PkgDecoder).NewDecoderRaw
+         0     0% 96.10%      0.06s  2.13%  internal/poll.(*FD).Close
+         0     0% 96.10%      0.07s  2.48%  internal/poll.(*FD).OpenDir
+         0     0% 96.10%      0.04s  1.42%  internal/poll.(*FD).Read
+         0     0% 96.10%      0.06s  2.13%  internal/poll.(*FD).Write
+         0     0% 96.10%      0.06s  2.13%  internal/poll.(*FD).decref
+         0     0% 96.10%      0.06s  2.13%  internal/poll.(*FD).destroy
+         0     0% 96.10%      0.06s  2.13%  internal/poll.(*SysFile).destroy (inline)
+         0     0% 96.10%      0.10s  3.55%  internal/poll.ignoringEINTRIO (inline)
+         0     0% 96.10%      0.02s  0.71%  internal/runtime/maps.(*Map).growToSmall
+         0     0% 96.10%      0.02s  0.71%  internal/runtime/maps.(*Map).growToTable
+         0     0% 96.10%      0.05s  1.77%  internal/runtime/maps.(*table).grow
+         0     0% 96.10%      0.05s  1.77%  internal/runtime/maps.(*table).rehash
+         0     0% 96.10%      0.08s  2.84%  internal/runtime/maps.(*table).reset
+         0     0% 96.10%      0.10s  3.55%  internal/runtime/maps.newGroups (inline)
+         0     0% 96.10%      0.08s  2.84%  internal/runtime/maps.newTable
+         0     0% 96.10%      0.10s  3.55%  internal/runtime/maps.newarray
+         0     0% 96.10%      0.25s  8.87%  internal/syscall/unix.Unlinkat (inline)
+         0     0% 96.10%      0.07s  2.48%  os.(*File).Close (partial-inline)
+         0     0% 96.10%      0.04s  1.42%  os.(*File).Read
+         0     0% 96.10%      0.07s  2.48%  os.(*File).ReadDir
+         0     0% 96.10%      0.06s  2.13%  os.(*File).Write
+         0     0% 96.10%      0.04s  1.42%  os.(*File).read (inline)
+         0     0% 96.10%      0.07s  2.48%  os.(*File).readdir
+         0     0% 96.10%      0.06s  2.13%  os.(*File).write (inline)
+         0     0% 96.10%      0.03s  1.06%  os.(*Process).Wait (inline)
+         0     0% 96.10%      0.03s  1.06%  os.(*Process).pidWait
+         0     0% 96.10%      0.03s  1.06%  os.(*Process).wait
+         0     0% 96.10%      0.07s  2.48%  os.(*file).close
+         0     0% 96.10%      0.14s  4.96%  os.Lstat
+         0     0% 96.10%      0.03s  1.06%  os.Mkdir
+         0     0% 96.10%      0.03s  1.06%  os.Mkdir.func1 (inline)
+         0     0% 96.10%      0.03s  1.06%  os.MkdirAll
+         0     0% 96.10%      0.13s  4.61%  os.Open (inline)
+         0     0% 96.10%      0.46s 16.31%  os.OpenFile
+         0     0% 96.10%      0.31s 10.99%  os.ReadDir
+         0     0% 96.10%      0.14s  4.96%  os.ReadFile
+         0     0% 96.10%      0.25s  8.87%  os.RemoveAll (partial-inline)
+         0     0% 96.10%      0.41s 14.54%  os.WriteFile
+         0     0% 96.10%      1.10s 39.01%  os.ignoringEINTR (inline)
+         0     0% 96.10%      0.02s  0.71%  os.ignoringEINTR2[go.shape.int] (inline)
+         0     0% 96.10%      0.14s  4.96%  os.lstatNolog
+         0     0% 96.10%      0.13s  4.61%  os.lstatNolog.func1 (inline)
+         0     0% 96.10%      0.68s 24.11%  os.open (inline)
+         0     0% 96.10%      0.22s  7.80%  os.openDir
+         0     0% 96.10%      0.22s  7.80%  os.openDirNolog
+         0     0% 96.10%      0.22s  7.80%  os.openDirNolog.func1 (inline)
+         0     0% 96.10%      0.46s 16.31%  os.openFileNolog
+         0     0% 96.10%      0.46s 16.31%  os.openFileNolog.func1 (inline)
+         0     0% 96.10%      0.02s  0.71%  os.readFileContents
+         0     0% 96.10%      0.25s  8.87%  os.removeAll
+         0     0% 96.10%      0.25s  8.87%  os.removeAllFrom
+         0     0% 96.10%      0.02s  0.71%  os.removedirat (inline)
+         0     0% 96.10%      0.02s  0.71%  os.removedirat.func1 (inline)
+         0     0% 96.10%      0.23s  8.16%  os.removefileat (inline)
+         0     0% 96.10%      0.23s  8.16%  os.removefileat.func1 (inline)
+         0     0% 96.10%      0.04s  1.42%  os/exec.(*Cmd).Start
+         0     0% 96.10%      0.03s  1.06%  os/exec.(*Cmd).Wait
+         0     0% 96.10%      0.15s  5.32%  path/filepath.EvalSymlinks
+         0     0% 96.10%      0.09s  3.19%  path/filepath.WalkDir
+         0     0% 96.10%      0.15s  5.32%  path/filepath.evalSymlinks (inline)
+         0     0% 96.10%      0.09s  3.19%  path/filepath.walkDir
+         0     0% 96.10%      0.15s  5.32%  path/filepath.walkSymlinks
+         0     0% 96.10%      0.05s  1.77%  runtime.(*atomicMSpanPointer).StoreNoWB (inline)
+         0     0% 96.10%      0.04s  1.42%  runtime.(*gcControllerState).enlistWorker
+         0     0% 96.10%      0.20s  7.09%  runtime.(*mcache).nextFree
+         0     0% 96.10%      0.20s  7.09%  runtime.(*mcache).refill
+         0     0% 96.10%      0.18s  6.38%  runtime.(*mcentral).cacheSpan
+         0     0% 96.10%      0.09s  3.19%  runtime.(*mcentral).grow
+         0     0% 96.10%      0.02s  0.71%  runtime.(*mcentral).uncacheSpan
+         0     0% 96.10%      0.15s  5.32%  runtime.(*mheap).alloc.func1
+         0     0% 96.10%      0.16s  5.67%  runtime.(*mheap).allocSpan
+         0     0% 96.10%      0.02s  0.71%  runtime.(*mheap).freeSpan.func1
+         0     0% 96.10%      0.08s  2.84%  runtime.(*mspan).initHeapBits
+         0     0% 96.10%      0.03s  1.06%  runtime.(*spanSet).pop
+         0     0% 96.10%      0.02s  0.71%  runtime.(*spanSet).push
+         0     0% 96.10%      0.05s  1.77%  runtime.(*sweepLocked).sweep
+         0     0% 96.10%      0.03s  1.06%  runtime.bgsweep
+         0     0% 96.10%      0.02s  0.71%  runtime.concatstring3
+         0     0% 96.10%      0.02s  0.71%  runtime.concatstrings
+         0     0% 96.10%      0.14s  4.96%  runtime.findRunnable
+         0     0% 96.10%      0.56s 19.86%  runtime.gcBgMarkWorker
+         0     0% 96.10%      0.62s 21.99%  runtime.gcBgMarkWorker.func2
+         0     0% 96.10%      0.62s 21.99%  runtime.gcDrain
+         0     0% 96.10%      0.25s  8.87%  runtime.gcDrainMarkWorkerDedicated (inline)
+         0     0% 96.10%      0.37s 13.12%  runtime.gcDrainMarkWorkerIdle (inline)
+         0     0% 96.10%      0.05s  1.77%  runtime.goexit0
+         0     0% 96.10%      0.07s  2.48%  runtime.growslice
+         0     0% 96.10%      0.04s  1.42%  runtime.lock (partial-inline)
+         0     0% 96.10%      0.04s  1.42%  runtime.lockWithRank (inline)
+         0     0% 96.10%      0.10s  3.55%  runtime.mPark (inline)
+         0     0% 96.10%      0.03s  1.06%  runtime.makeslice
+         0     0% 96.10%      0.34s 12.06%  runtime.mallocgc
+         0     0% 96.10%      0.05s  1.77%  runtime.mallocgcSmallNoscan
+         0     0% 96.10%      0.09s  3.19%  runtime.mallocgcSmallScanHeader
+         0     0% 96.10%      0.17s  6.03%  runtime.mallocgcSmallScanNoHeader
+         0     0% 96.10%      0.02s  0.71%  runtime.mapassign_fast64ptr
+         0     0% 96.10%      0.06s  2.13%  runtime.mapassign_faststr
+         0     0% 96.10%      0.17s  6.03%  runtime.mcall
+         0     0% 96.10%      0.03s  1.06%  runtime.netpoll
+         0     0% 96.10%      0.10s  3.55%  runtime.newarray
+         0     0% 96.10%      0.13s  4.61%  runtime.newobject
+         0     0% 96.10%      0.02s  0.71%  runtime.newproc
+         0     0% 96.10%      0.02s  0.71%  runtime.newproc.func1
+         0     0% 96.10%      0.10s  3.55%  runtime.notesleep
+         0     0% 96.10%      0.05s  1.77%  runtime.notewakeup
+         0     0% 96.10%      0.02s  0.71%  runtime.osyield (inline)
+         0     0% 96.10%      0.12s  4.26%  runtime.park_m
+         0     0% 96.10%      0.03s  1.06%  runtime.preemptM
+         0     0% 96.10%      0.03s  1.06%  runtime.preemptone
+         0     0% 96.10%      0.03s  1.06%  runtime.resetspinning
+         0     0% 96.10%      0.07s  2.48%  runtime.scanObjectSmall
+         0     0% 96.10%      0.38s 13.48%  runtime.scanSpan
+         0     0% 96.10%      0.17s  6.03%  runtime.schedule
+         0     0% 96.10%      0.11s  3.90%  runtime.semasleep
+         0     0% 96.10%      0.05s  1.77%  runtime.semawakeup
+         0     0% 96.10%      0.03s  1.06%  runtime.signalM (inline)
+         0     0% 96.10%      0.02s  0.71%  runtime.slicebytetostring
+         0     0% 96.10%      0.05s  1.77%  runtime.startm
+         0     0% 96.10%      0.10s  3.55%  runtime.stopm
+         0     0% 96.10%      0.04s  1.42%  runtime.sweepone
+         0     0% 96.10%      0.15s  5.32%  runtime.sysUsed (inline)
+         0     0% 96.10%      0.15s  5.32%  runtime.sysUsedOS (inline)
+         0     0% 96.10%      0.83s 29.43%  runtime.systemstack
+         0     0% 96.10%      0.05s  1.77%  runtime.wakep
+         0     0% 96.10%      1.37s 48.58%  runtime/pprof.Do
+         0     0% 96.10%      0.06s  2.13%  syscall.Close
+         0     0% 96.10%      0.13s  4.61%  syscall.Lstat
+         0     0% 96.10%      0.03s  1.06%  syscall.Mkdir
+         0     0% 96.10%      0.68s 24.11%  syscall.Open
+         0     0% 96.10%      0.04s  1.42%  syscall.Read (inline)
+         0     0% 96.10%      0.06s  2.13%  syscall.Write (inline)
+         0     0% 96.10%      0.07s  2.48%  syscall.fdopendir
+         0     0% 96.10%      0.04s  1.42%  syscall.read
+         0     0% 96.10%      1.27s 45.04%  syscall.syscall
+         0     0% 96.10%      0.07s  2.48%  syscall.syscallPtr
+         0     0% 96.10%      1.35s 47.87%  syscall.syscalln
+         0     0% 96.10%      0.25s  8.87%  syscall.unlinkat
+         0     0% 96.10%      0.06s  2.13%  syscall.write
+         0     0% 96.10%      1.42s 50.35%  testing.tRunner

@@ -1,0 +1,17 @@
+File: gen.test
+Type: cpu
+Time: 2026-10-07 08:32:21 PDT
+Duration: 221.85s, Total samples = 694.03s (312.84%)
+Active filters:
+   show=go/parser.ParseFile|go/types.\(\*Checker\).Files|runtime.gcBgMarkWorker|run…
+Showing nodes accounting for 596.45s, 85.94% of 694.03s total
+Dropped 1 node (cum <= 3.47s)
+      flat  flat%   sum%        cum   cum%
+   155.08s 22.34% 22.34%    254.87s 36.72%  go/types.(*Checker).Files
+   130.69s 18.83% 41.18%    130.69s 18.83%  runtime.(*sweepLocked).sweep
+   113.32s 16.33% 57.50%    113.32s 16.33%  runtime.gcBgMarkWorker.func2
+   100.60s 14.50% 72.00%    178.13s 25.67%  go/parser.ParseFile
+    96.38s 13.89% 85.89%     96.38s 13.89%  runtime.gcAssistAlloc1
+     0.22s 0.032% 85.92%    112.96s 16.28%  runtime.gcBgMarkWorker
+     0.16s 0.023% 85.94%     96.54s 13.91%  runtime.gcAssistAlloc
+         0     0% 85.94%     96.38s 13.89%  runtime.gcAssistAlloc.func2

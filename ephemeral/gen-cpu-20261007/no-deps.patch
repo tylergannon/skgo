@@ -1,0 +1,7 @@
+diff --git a/internal/gen/load_params.go b/ephemeral/gen-cpu-20261007/load_params.no-deps.go.txt
+index 5e8a407..261f484 100644
+--- a/internal/gen/load_params.go
++++ b/ephemeral/gen-cpu-20261007/load_params.no-deps.go.txt
+@@ -249 +249 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
+-	loadCfg := &packages.Config{Dir: host, Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps}
++	loadCfg := &packages.Config{Dir: host, Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports}

@@ -1,0 +1,8 @@
+{
+  "Replace": {
+    "/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/package_overlay.go": "/Users/tyler/.codex/worktrees/3e0c/skgo/ephemeral/gen-cpu-20261007/implementation/final_package_overlay.go.txt",
+    "/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/cpu_observer.go": "/Users/tyler/.codex/worktrees/3e0c/skgo/ephemeral/gen-cpu-20261007/implementation/observer.go.txt",
+    "/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/cpu_probe_test.go": "/Users/tyler/.codex/worktrees/3e0c/skgo/ephemeral/gen-cpu-20261007/implementation/final_probe_test.go.txt",
+    "/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/main_test.go": "/Users/tyler/.codex/worktrees/3e0c/skgo/ephemeral/gen-cpu-20261007/implementation/final_main_test.go.txt"
+  }
+}

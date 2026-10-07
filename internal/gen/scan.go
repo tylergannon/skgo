@@ -294,8 +294,8 @@ func loadApp(cfg Config, files []string) (*app, error) {
 
 	for i, p := range loaded {
 		gp := &goPackage{pkg: p, alias: fmt.Sprintf("skgo%d", i)}
-		if len(p.GoFiles) > 0 {
-			gp.loadDir = filepath.Dir(p.GoFiles[0])
+		if len(p.Syntax) > 0 {
+			gp.loadDir = filepath.Dir(p.Fset.Position(p.Syntax[0].Pos()).Filename)
 			gp.dir = a.links.authoredDir(gp.loadDir)
 		}
 		found := false

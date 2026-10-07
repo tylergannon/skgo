@@ -1,0 +1,20 @@
+go test -count=1 ./... ./example/...
+error: recipe `test` failed on line 57 with exit code 1
+      262.33 real       383.36 user       364.70 sys
+           713785344  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            27775213  page reclaims
+              113129  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                2225  messages sent
+                1347  messages received
+              157388  signals received
+               94878  voluntary context switches
+             5524933  involuntary context switches
+            45920436  instructions retired
+            22809067  cycles elapsed
+             3162616  peak memory footprint

@@ -1,0 +1,53 @@
+File: gen.test
+Type: cpu
+Time: 2026-10-07 08:32:21 PDT
+Duration: 221.85s, Total samples = 694.03s (312.84%)
+Showing nodes accounting for 415.46s, 59.86% of 694.03s total
+Dropped 1865 nodes (cum <= 3.47s)
+Showing top 45 nodes out of 264
+      flat  flat%   sum%        cum   cum%
+     0.73s  0.11%  0.11%    488.92s 70.45%  golang.org/x/sync/errgroup.(*Group).Go.func1
+     0.02s 0.0029%  0.11%    264.87s 38.16%  golang.org/x/tools/go/packages.(*loader).refine.func2.1
+     1.40s   0.2%  0.31%    264.57s 38.12%  golang.org/x/tools/go/packages.(*loader).loadPackage
+     0.16s 0.023%  0.33%    254.91s 36.73%  go/types.(*Checker).checkFiles
+         0     0%  0.33%    254.87s 36.72%  go/types.(*Checker).Files
+     0.07s  0.01%  0.34%    248.79s 35.85%  runtime.systemstack
+     0.66s 0.095%  0.44%    216.42s 31.18%  golang.org/x/tools/go/packages.(*loader).parseFiles.func1
+     0.40s 0.058%   0.5%    215.76s 31.09%  golang.org/x/tools/go/packages.(*loader).parseFile
+     0.15s 0.022%  0.52%    212.76s 30.66%  runtime.mallocgc
+     0.12s 0.017%  0.53%    193.87s 27.93%  go/types.(*Checker).objDecl
+     0.02s 0.0029%  0.54%    193.59s 27.89%  go/types.(*Checker).packageObjects
+         0     0%  0.54%    178.13s 25.67%  go/parser.ParseFile
+   172.22s 24.81% 25.35%    174.63s 25.16%  runtime.tryDeferToSpanScan
+     0.05s 0.0072% 25.36%    171.91s 24.77%  go/parser.(*parser).parseFile
+     0.27s 0.039% 25.40%    171.38s 24.69%  go/types.(*Checker).rawExpr
+     0.21s  0.03% 25.43%    169.01s 24.35%  go/types.(*Checker).exprInternal
+     0.03s 0.0043% 25.43%    161.27s 23.24%  runtime.(*mcache).nextFree
+     0.09s 0.013% 25.45%    161.06s 23.21%  runtime.(*mcache).refill
+     0.04s 0.0058% 25.45%    160.63s 23.14%  go/types.(*Checker).expr
+         0     0% 25.45%    160.58s 23.14%  golang.org/x/tools/go/packages.newLoader.func2
+     1.25s  0.18% 25.63%    159.73s 23.01%  runtime.scanSpan
+     1.03s  0.15% 25.78%    159.08s 22.92%  runtime.(*mcentral).cacheSpan
+     0.02s 0.0029% 25.78%    144.95s 20.89%  go/types.(*Checker).varDecl
+     0.51s 0.073% 25.86%    143.12s 20.62%  go/types.(*Checker).compositeLit
+     1.48s  0.21% 26.07%    139.73s 20.13%  go/types.(*Checker).indexedElts
+         0     0% 26.07%    131.45s 18.94%  go/parser.(*parser).parseDecl
+     0.35s  0.05% 26.12%    130.69s 18.83%  runtime.(*sweepLocked).sweep
+    16.39s  2.36% 28.48%    128.51s 18.52%  runtime.(*mspan).moveInlineMarks
+     3.18s  0.46% 28.94%    114.25s 16.46%  runtime.scanObjectsSmall
+   113.43s 16.34% 45.28%    113.43s 16.34%  runtime.(*spanInlineMarkBits).init
+         0     0% 45.28%    113.32s 16.33%  runtime.gcBgMarkWorker.func2
+     0.16s 0.023% 45.31%    113.32s 16.33%  runtime.gcDrain
+         0     0% 45.31%    112.96s 16.28%  runtime.gcBgMarkWorker
+     0.02s 0.0029% 45.31%     96.54s 13.91%  runtime.gcAssistAlloc
+         0     0% 45.31%     96.38s 13.89%  runtime.gcAssistAlloc.func2
+         0     0% 45.31%     96.38s 13.89%  runtime.gcAssistAlloc1
+     0.01s 0.0014% 45.31%     96.34s 13.88%  runtime.gcDrainN
+         0     0% 45.31%     95.98s 13.83%  runtime.gcDrainMarkWorkerDedicated (inline)
+    93.90s 13.53% 58.84%     93.90s 13.53%  runtime.memclrNoHeapPointers
+     0.18s 0.026% 58.87%     82.73s 11.92%  go/types.(*Checker).updateExprType
+     0.01s 0.0014% 58.87%     82.17s 11.84%  go/parser.(*parser).parseList (inline)
+     0.01s 0.0014% 58.87%     82.16s 11.84%  go/parser.(*parser).parseExprList
+     0.01s 0.0014% 58.87%     81.27s 11.71%  go/parser.(*parser).parseFuncDecl
+     6.83s  0.98% 59.85%     80.50s 11.60%  runtime.mallocgcSmallScanNoHeaderSC6
+     0.05s 0.0072% 59.86%     78.79s 11.35%  go/parser.(*parser).parseExpr

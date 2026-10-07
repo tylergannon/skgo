@@ -1,0 +1,46 @@
+package gen
+import("go/ast";"go/parser";"go/token";"os";"path/filepath";"runtime";"strings";"sync";"golang.org/x/tools/go/packages")
+// This diagnostic is loaded only through go test -overlay, not the normal suite.
+// Its parser hook observes files without changing the generator's load modes.
+var cpuProbe struct {
+	sync.Mutex
+	files map[string]int
+	bytes map[string]int
+}
+
+var suiteProbe struct { sync.Mutex; counts map[string]int }
+func observeCPUProbe(cfg *packages.Config) {
+ site:="scan"
+ pc,_,_,_:=runtime.Caller(2)
+ caller:=runtime.FuncForPC(pc).Name()
+ if strings.Contains(caller,"readGoParamMatchers") {site="matcher"} else if strings.Contains(caller,"loadGrammar") {site="grammar"}
+ for path:=range cfg.Overlay {if _,err:=os.Stat(path);os.IsNotExist(err){site+="/new-file";break}}
+
+	originalDir := cfg.Dir
+ parse := cfg.ParseFile
+	if parse == nil {
+		parse = func(fset *token.FileSet, filename string, source []byte) (*ast.File, error) {
+			return parser.ParseFile(fset, filename, source, parser.AllErrors|parser.ParseComments)
+		}
+	}
+	cfg.ParseFile = func(fset *token.FileSet, filename string, source []byte) (*ast.File, error) {
+		measuredFilename := filename
+ if rel,inside:=withinDir(cfg.Dir,filename);inside {measuredFilename=filepath.Join(originalDir,rel)}
+ group:="application"
+ if strings.HasPrefix(measuredFilename,runtime.GOROOT()+"/"){group="standard-library"} else if strings.Contains(measuredFilename,"/pkg/mod/"){group="module-cache"}
+ suiteProbe.Lock()
+ if suiteProbe.counts==nil {suiteProbe.counts=map[string]int{}}
+ suiteProbe.counts[site+"/"+group]++
+ suiteProbe.Unlock()
+ cpuProbe.Lock()
+		if cpuProbe.files != nil {
+			cpuProbe.files[measuredFilename]++
+			cpuProbe.bytes[measuredFilename] += len(source)
+		}
+		cpuProbe.Unlock()
+		return parse(fset, filename, source)
+	}
+}
+
+
+var resourceMeasurement *os.File

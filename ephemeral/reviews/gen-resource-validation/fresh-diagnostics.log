@@ -1,0 +1,24 @@
+=== RUN   TestIndependentFreshStageDiagnostics
+=== RUN   TestIndependentFreshStageDiagnostics/parser
+    independent_probe_test.go:42: -: # freshdiag
+        ./new.go:2:14: syntax error: unexpected {, expected )
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-2277605419/new.go:2:14: expected ')', found '{'
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-2277605419/new.go:2:16: expected ')', found 'EOF'
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-2277605419/new.go:2:16: expected ';', found 'EOF'
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-2277605419/new.go:2:16: missing ',' in parameter list
+    independent_probe_test.go:43: authored diagnostic lost: -: # freshdiag
+        ./new.go:2:14: syntax error: unexpected {, expected )
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-2277605419/new.go:2:14: expected ')', found '{'
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-2277605419/new.go:2:16: expected ')', found 'EOF'
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-2277605419/new.go:2:16: expected ';', found 'EOF'
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-2277605419/new.go:2:16: missing ',' in parameter list
+=== RUN   TestIndependentFreshStageDiagnostics/compiler
+    independent_probe_test.go:42: -: # freshdiag
+        ./new.go:2:14: undefined: Missing
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestIndependentFreshStageDiagnosticscompiler316747346/001/new.go:2:14: undefined: Missing
+--- FAIL: TestIndependentFreshStageDiagnostics (0.07s)
+    --- FAIL: TestIndependentFreshStageDiagnostics/parser (0.04s)
+    --- PASS: TestIndependentFreshStageDiagnostics/compiler (0.03s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	0.359s
+FAIL

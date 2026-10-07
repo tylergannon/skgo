@@ -1,0 +1,8 @@
+--- FAIL: TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations (0.13s)
+    --- FAIL: TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations/workspace=true (0.02s)
+        package_overlay_test.go:148: fresh load: err: exit status 1: stderr: go: errors parsing go.work:
+            go.work:3: unknown directive: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-3880700424
+            , []
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	0.490s
+FAIL

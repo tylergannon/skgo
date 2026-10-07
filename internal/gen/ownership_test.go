@@ -35,11 +35,15 @@ import (
 // further files, keyed by their slash-separated path under the fixture root.
 func foreignFixture(t *testing.T, remote string, extra map[string]string) (root string, cfg Config) {
 	t.Helper()
+	return foreignFixtureIn(t, t.TempDir(), remote, extra)
+}
+
+func foreignFixtureIn(t *testing.T, root string, remote string, extra map[string]string) (string, Config) {
+	t.Helper()
 	// The fixture is not a member of this repository's workspace, so the go
 	// commands the generator runs have to see the fixture's own go.mod.
 	// GOWORK is off for the whole package (TestMain).
 
-	root = t.TempDir()
 	write := func(path, content string) {
 		t.Helper()
 		full := filepath.Join(root, filepath.FromSlash(path))

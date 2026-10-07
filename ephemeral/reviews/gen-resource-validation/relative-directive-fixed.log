@@ -1,0 +1,18 @@
+=== RUN   TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations
+=== RUN   TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations/workspace=false
+=== RUN   TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations/workspace=true
+--- PASS: TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations (0.27s)
+    --- PASS: TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations/workspace=false (0.12s)
+    --- PASS: TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations/workspace=true (0.16s)
+=== RUN   TestFreshPackagesLocateParserAndCompilerErrors
+=== RUN   TestFreshPackagesLocateParserAndCompilerErrors/parser
+=== RUN   TestFreshPackagesLocateParserAndCompilerErrors/compiler
+=== RUN   TestFreshPackagesLocateParserAndCompilerErrors/relative_line_directive
+=== RUN   TestFreshPackagesLocateParserAndCompilerErrors/relative_block_directive
+--- PASS: TestFreshPackagesLocateParserAndCompilerErrors (0.11s)
+    --- PASS: TestFreshPackagesLocateParserAndCompilerErrors/parser (0.03s)
+    --- PASS: TestFreshPackagesLocateParserAndCompilerErrors/compiler (0.03s)
+    --- PASS: TestFreshPackagesLocateParserAndCompilerErrors/relative_line_directive (0.03s)
+    --- PASS: TestFreshPackagesLocateParserAndCompilerErrors/relative_block_directive (0.03s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	0.693s

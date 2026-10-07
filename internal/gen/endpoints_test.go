@@ -1,9 +1,11 @@
 package gen
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -25,18 +27,36 @@ var (
 )
 `
 
+// Both consumers read the same immutable generation. Its directory belongs
+// to the package, so one test finishing cannot remove another test's input.
+var endpointFixture struct {
+	once sync.Once
+	root string
+	err  error
+}
+
+func generatedEndpointFixture(t *testing.T) string {
+	t.Helper()
+	endpointFixture.once.Do(func() {
+		endpointFixture.err = fmt.Errorf("endpoint fixture setup did not complete")
+		root, cfg := foreignFixtureIn(t, filepath.Join(packageTemp, "endpoint"), "", map[string]string{
+			"app/web/src/routes/api/thing/server.go": endpointSource,
+		})
+		endpointFixture.root = root
+		endpointFixture.err = Run(cfg)
+	})
+	if endpointFixture.err != nil {
+		t.Fatal(endpointFixture.err)
+	}
+	return endpointFixture.root
+}
+
 // A `server.go` becomes the `+server.ts` kit compiles, with one export per
 // marker, named exactly as kit names them — kit dispatches by looking the
 // request's method up on the module's exports, so the names are the interface.
 func TestAServerRouteBecomesTheModuleKitCompiles(t *testing.T) {
 	t.Parallel()
-	root, cfg := foreignFixture(t, "", map[string]string{
-		"app/web/src/routes/api/thing/server.go": endpointSource,
-	})
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	root := generatedEndpointFixture(t)
 
 	stub := readFixtureFile(t, root, "app/web/src/routes/api/thing/+server.ts")
 	for _, want := range []string{"export const GET =", "export const POST ="} {

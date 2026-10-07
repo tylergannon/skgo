@@ -1,0 +1,384 @@
+package gen
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+)
+
+// endpointSource is a `server.go` declaring the two methods a route answers.
+const endpointSource = `package thing
+
+import (
+	"net/http"
+
+	"github.com/tylergannon/skgo"
+)
+
+func read(w http.ResponseWriter, r *http.Request)  { _, _ = w.Write([]byte("read")) }
+func write(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("write")) }
+
+var (
+	_ = skgo.GET(read)
+	_ = skgo.POST(write)
+)
+`
+
+// Both consumers read the same immutable generation. Its directory belongs
+// to the package, so one test finishing cannot remove another test's input.
+var endpointFixture struct {
+	once sync.Once
+	root string
+	err  error
+}
+
+func generatedEndpointFixture(t *testing.T) string {
+	t.Helper()
+	endpointFixture.once.Do(func() {
+		endpointFixture.err = fmt.Errorf("endpoint fixture setup did not complete")
+		root, cfg := foreignFixtureIn(t, filepath.Join(packageTemp, "endpoint"), "", map[string]string{
+			"app/web/src/routes/api/thing/server.go": endpointSource,
+		})
+		endpointFixture.root = root
+		endpointFixture.err = Run(cfg)
+
+        if endpointFixture.err == nil {
+          fault:=os.Getenv("SKGO_VALIDATION_FAULT")
+          path, before := "", ""
+          switch fault {
+          case "get-export": path,before="app/web/src/routes/api/thing/+server.ts","export const GET ="
+          case "post-export": path,before="app/web/src/routes/api/thing/+server.ts","export const POST ="
+          case "stub-throw": path,before="app/web/src/routes/api/thing/+server.ts","throw new Error('skgo: implemented in Go')"
+          case "get-binding": path,before="app/generated/skgo_gen.go",`skgo.NewEndpoint("/api/thing", "GET", skgo0.Skgo_read)`
+          case "post-binding": path,before="app/generated/skgo_gen.go",`skgo.NewEndpoint("/api/thing", "POST", skgo0.Skgo_write)`
+          case "manifest-route": path,before="app/web/skgo.remotes.json",`"/api/thing"`
+          case "manifest-get": path,before="app/web/skgo.remotes.json",`"GET"`
+          case "action-registry": path,before="app/generated/skgo_gen.go","func Actions() []*skgo.PageAction {\n\treturn []*skgo.PageAction{}\n}"
+          }
+          if path!="" {path=filepath.Join(root,path); data,e:=os.ReadFile(path); if e!=nil {t.Fatal(e)}; if !strings.Contains(string(data),before) {t.Fatalf("fault target absent: %s",fault)}; if e=os.WriteFile(path,[]byte(strings.ReplaceAll(string(data),before,"INDEPENDENT_REMOVED_BEHAVIOR")),0600);e!=nil {t.Fatal(e)}}
+        }
+	})
+	if endpointFixture.err != nil {
+		t.Fatal(endpointFixture.err)
+	}
+	return endpointFixture.root
+}
+
+// A `server.go` becomes the `+server.ts` kit compiles, with one export per
+// marker, named exactly as kit names them — kit dispatches by looking the
+// request's method up on the module's exports, so the names are the interface.
+func TestAServerRouteBecomesTheModuleKitCompiles(t *testing.T) {
+	t.Parallel()
+	root := generatedEndpointFixture(t)
+
+	stub := readFixtureFile(t, root, "app/web/src/routes/api/thing/+server.ts")
+	for _, want := range []string{"export const GET =", "export const POST ="} {
+		if !strings.Contains(stub, want) {
+			t.Errorf("the generated +server.ts has no %q:\n%s", want, stub)
+		}
+	}
+	// Every body throws, so a real response proves Go answered rather than this
+	// module — the same rule the remote and load stubs follow.
+	if !strings.Contains(stub, "throw new Error('skgo: implemented in Go')") {
+		t.Errorf("the generated +server.ts does not throw:\n%s", stub)
+	}
+
+	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
+	for _, want := range []string{
+		`skgo.NewEndpoint("/api/thing", "GET", skgo0.Skgo_read)`,
+		`skgo.NewEndpoint("/api/thing", "POST", skgo0.Skgo_write)`,
+	} {
+		if !strings.Contains(bindings, want) {
+			t.Errorf("the registration file has no %q:\n%s", want, bindings)
+		}
+	}
+
+	list := readFixtureFile(t, root, "app/web/skgo.remotes.json")
+	if !strings.Contains(list, `"/api/thing"`) || !strings.Contains(list, `"GET"`) {
+		t.Errorf("skgo.remotes.json does not describe the route:\n%s", list)
+	}
+}
+
+// endpointEveryMethodSource declares one handler for every method kit's
+// analyser recognises — its ENDPOINT_METHODS plus the `fallback` export — so a
+// generated stub can be checked against the whole surface, QUERY and fallback
+// included.
+const endpointEveryMethodSource = `package thing
+
+import (
+	"net/http"
+
+	"github.com/tylergannon/skgo"
+)
+
+func get(w http.ResponseWriter, r *http.Request)     { _, _ = w.Write([]byte("get")) }
+func post(w http.ResponseWriter, r *http.Request)    { _, _ = w.Write([]byte("post")) }
+func put(w http.ResponseWriter, r *http.Request)     { _, _ = w.Write([]byte("put")) }
+func patch(w http.ResponseWriter, r *http.Request)   { _, _ = w.Write([]byte("patch")) }
+func del(w http.ResponseWriter, r *http.Request)     { _, _ = w.Write([]byte("delete")) }
+func options(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("options")) }
+func head(w http.ResponseWriter, r *http.Request)    { _, _ = w.Write([]byte("head")) }
+func query(w http.ResponseWriter, r *http.Request)   { _, _ = w.Write([]byte("query")) }
+func fallback(w http.ResponseWriter, r *http.Request) {
+	_, _ = w.Write([]byte("fallback"))
+}
+
+var (
+	_ = skgo.GET(get)
+	_ = skgo.POST(post)
+	_ = skgo.PUT(put)
+	_ = skgo.PATCH(patch)
+	_ = skgo.DELETE(del)
+	_ = skgo.OPTIONS(options)
+	_ = skgo.HEAD(head)
+	_ = skgo.QUERY(query)
+	_ = skgo.Fallback(fallback)
+)
+`
+
+// TestJavaScriptModeEmitsJSDocServerRoute is the contract for a JavaScript
+// app's `+server.js`: one JSDoc-typed `RequestHandler` per marker, named as kit
+// names it, with the fallback exported as `fallback` and no `+server.ts` left
+// behind. The names are not cosmetic — kit dispatches by looking the request's
+// method up on the module's exports — so the golden spells every one.
+func TestJavaScriptModeEmitsJSDocServerRoute(t *testing.T) {
+	t.Parallel()
+	root, cfg := foreignFixture(t, "", map[string]string{
+		"app/web/src/routes/api/thing/server.go": endpointEveryMethodSource,
+	})
+	cfg.Language = LanguageJavaScript
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("generating a JavaScript app: %v", err)
+	}
+
+	want := `// Code generated by skgo. DO NOT EDIT.
+// Every body throws. This route is implemented in Go, and skgo answers it
+// itself, so any real response is proof the Go handler replied rather than
+// this module. Kit reads the export names to learn which methods the route
+// answers; it never calls them.
+/**
+ * @returns {never}
+ */
+const unimplemented = () => {
+	throw new Error('skgo: implemented in Go');
+};
+
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export const GET = () => unimplemented();
+
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export const POST = () => unimplemented();
+
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export const PUT = () => unimplemented();
+
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export const PATCH = () => unimplemented();
+
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export const DELETE = () => unimplemented();
+
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export const OPTIONS = () => unimplemented();
+
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export const HEAD = () => unimplemented();
+
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export const QUERY = () => unimplemented();
+
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export const fallback = () => unimplemented();
+`
+	got := readFixtureFile(t, root, "app/web/src/routes/api/thing/+server.js")
+	if got != want {
+		t.Fatalf("JavaScript +server.js mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	}
+
+	// The TypeScript counterpart must not exist: an app in JavaScript mode has
+	// one stub per server.go, not two.
+	if _, err := os.Stat(filepath.Join(root, "app/web/src/routes/api/thing/+server.ts")); !os.IsNotExist(err) {
+		t.Errorf("a +server.ts survived beside the +server.js: %v", err)
+	}
+
+	// The manifest kit's build is checked against names each method the way the
+	// adapter compares it: kit's method names, `*` for the fallback.
+	list := readFixtureFile(t, root, "app/web/skgo.remotes.json")
+	for _, want := range []string{`"QUERY"`, `"*"`} {
+		if !strings.Contains(list, want) {
+			t.Errorf("skgo.remotes.json does not carry %s:\n%s", want, list)
+		}
+	}
+}
+
+// TestTypeScriptModeServerRouteStubIsUnchanged pins the TypeScript `+server.ts`
+// byte for byte over the same every-method fixture. The JavaScript work must
+// not move the original output, and a golden says so rather than relying on
+// the absence of a failure.
+func TestTypeScriptModeServerRouteStubIsUnchanged(t *testing.T) {
+	t.Parallel()
+	root, cfg := foreignFixture(t, "", map[string]string{
+		"app/web/src/routes/api/thing/server.go": endpointEveryMethodSource,
+	})
+	cfg.Language = LanguageTypeScript
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("generating a TypeScript app: %v", err)
+	}
+
+	want := `// Code generated by skgo. DO NOT EDIT.
+// Every body throws. This route is implemented in Go, and skgo answers it
+// itself, so any real response is proof the Go handler replied rather than
+// this module. Kit reads the export names to learn which methods the route
+// answers; it never calls them.
+const unimplemented = (): never => {
+	throw new Error('skgo: implemented in Go');
+};
+
+export const GET = (): never => unimplemented();
+
+export const POST = (): never => unimplemented();
+
+export const PUT = (): never => unimplemented();
+
+export const PATCH = (): never => unimplemented();
+
+export const DELETE = (): never => unimplemented();
+
+export const OPTIONS = (): never => unimplemented();
+
+export const HEAD = (): never => unimplemented();
+
+export const QUERY = (): never => unimplemented();
+
+export const fallback = (): never => unimplemented();
+`
+	got := readFixtureFile(t, root, "app/web/src/routes/api/thing/+server.ts")
+	if got != want {
+		t.Fatalf("TypeScript +server.ts changed:\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	}
+	if _, err := os.Stat(filepath.Join(root, "app/web/src/routes/api/thing/+server.js")); !os.IsNotExist(err) {
+		t.Errorf("a JavaScript counterpart was written in TypeScript mode: %v", err)
+	}
+}
+
+// TestSwitchingLanguageReplacesTheServerRouteStub: regenerating after the
+// language choice changes has to clear the other mode's module. It is a
+// generated artifact, and leaving both behind would have kit compile two
+// modules for one route id.
+func TestSwitchingLanguageReplacesTheServerRouteStub(t *testing.T) {
+	t.Parallel()
+	root, cfg := foreignFixture(t, "", map[string]string{
+		"app/web/src/routes/api/thing/server.go": endpointEveryMethodSource,
+	})
+
+	cfg.Language = LanguageTypeScript
+	if err := Run(cfg); err != nil {
+		t.Fatalf("generating TypeScript first: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "app/web/src/routes/api/thing/+server.ts")); err != nil {
+		t.Fatalf("the TypeScript stub was not written: %v", err)
+	}
+
+	cfg.Language = LanguageJavaScript
+	if err := Run(cfg); err != nil {
+		t.Fatalf("regenerating as JavaScript: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "app/web/src/routes/api/thing/+server.ts")); !os.IsNotExist(err) {
+		t.Errorf("the TypeScript stub was not removed when the language changed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "app/web/src/routes/api/thing/+server.js")); err != nil {
+		t.Errorf("the JavaScript stub was not written: %v", err)
+	}
+
+	cfg.Language = LanguageTypeScript
+	if err := Run(cfg); err != nil {
+		t.Fatalf("switching back to TypeScript: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "app/web/src/routes/api/thing/+server.js")); !os.IsNotExist(err) {
+		t.Errorf("the JavaScript stub was not removed when the language changed back: %v", err)
+	}
+}
+
+// Kit's route id is the route directory's path below `src/routes`, verbatim:
+// group segments and parameter segments are part of it, because kit reads the
+// directory back with `path.join(cwd, routes_base, id)`.
+func TestARouteIdIsTheDirectoryPathVerbatim(t *testing.T) {
+	t.Parallel()
+	cases := map[string]string{
+		"src/routes/+server.ts":                      "/",
+		"src/routes/api/thing/+server.ts":            "/api/thing",
+		"src/routes/api/thing/+server.js":            "/api/thing",
+		"src/routes/(marketing)/plans/+server.ts":    "/(marketing)/plans",
+		"src/routes/items/[id]/+server.ts":           "/items/[id]",
+		"src/routes/docs/[...rest]/edit/+server.ts":  "/docs/[...rest]/edit",
+		"src/routes/[[lang]]/about/x/y/z/+server.ts": "/[[lang]]/about/x/y/z",
+		"src/routes/+server.js":                      "/",
+	}
+	for module, want := range cases {
+		got, err := routeIDFor(module)
+		if err != nil {
+			t.Errorf("routeIDFor(%q): %v", module, err)
+			continue
+		}
+		if got != want {
+			t.Errorf("routeIDFor(%q) = %q, want %q", module, got, want)
+		}
+	}
+
+	if _, err := routeIDFor("src/lib/+server.ts"); err == nil {
+		t.Error("a +server.ts outside src/routes was accepted")
+	}
+}
+
+// The markers are per file, because the file name is what decides which module
+// kit compiles beside it. A marker in the wrong file is a stub nobody generates.
+func TestAServerRouteMarkerBelongsInServerGo(t *testing.T) {
+	t.Parallel()
+	_, cfg := foreignFixture(t, "", map[string]string{
+		"app/web/src/routes/api/thing/thing.remote.go": endpointSource,
+	})
+
+	err := Run(cfg)
+	if err == nil {
+		t.Fatal("a server route declared in a .remote.go was accepted")
+	}
+	if !strings.Contains(err.Error(), "declares a server route") {
+		t.Errorf("the error does not say where a server route belongs: %v", err)
+	}
+}
+
+// A module has one export per name, so a route cannot answer one method twice.
+func TestARouteCannotAnswerAMethodTwice(t *testing.T) {
+	t.Parallel()
+	_, cfg := foreignFixture(t, "", map[string]string{
+		"app/web/src/routes/api/thing/server.go": `package thing
+
+import (
+	"net/http"
+
+	"github.com/tylergannon/skgo"
+)
+
+func read(w http.ResponseWriter, r *http.Request)  { _, _ = w.Write([]byte("read")) }
+func again(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("again")) }
+
+var (
+	_ = skgo.GET(read)
+	_ = skgo.GET(again)
+)
+`,
+	})
+
+	err := Run(cfg)
+	if err == nil {
+		t.Fatal("two GET handlers for one route were accepted")
+	}
+	if !strings.Contains(err.Error(), "answers GET twice") {
+		t.Errorf("the error does not name the method: %v", err)
+	}
+}

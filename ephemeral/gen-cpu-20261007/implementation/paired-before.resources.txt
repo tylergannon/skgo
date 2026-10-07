@@ -1,0 +1,25 @@
+parse-count matcher/module-cache 424
+parse-count matcher/application 130
+parse-count scan/application 220
+parse-count grammar/application 140
+parse-count scan/new-file/standard-library 1090
+parse-count scan/new-file/application 2
+parse-count matcher/standard-library 2364
+        9.42 real        10.45 user         8.04 sys
+           930267136  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1032016  page reclaims
+                1056  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                4455  signals received
+                1943  voluntary context switches
+               83154  involuntary context switches
+        103175680173  instructions retired
+         32727681198  cycles elapsed
+           913556800  peak memory footprint

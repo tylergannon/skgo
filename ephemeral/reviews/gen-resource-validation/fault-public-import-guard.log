@@ -1,0 +1,24 @@
+=== RUN   TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/private-type
+=== RUN   TestSharedParamsSourceDiagnostics/private-argument
+=== RUN   TestSharedParamsSourceDiagnostics/private-struct-field
+=== RUN   TestSharedParamsSourceDiagnostics/private-interface-method
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+    shared_params_test.go:446: Run lost transitive refusal: skgo: github.com/tylergannon/skgo/example/internal/skgo/params: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestSharedParamsSourceDiagnostics2537253505/001/internal/skgo/params/skgo_gen.go:8:14: could not import github.com/tylergannon/skgo/example/cycledomain (import cycle: [github.com/tylergannon/skgo/example/web/src github.com/tylergannon/skgo/example/cycledomain github.com/tylergannon/skgo/example/internal/skgo/params])
+--- FAIL: TestSharedParamsSourceDiagnostics (2.92s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-type (0.28s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-argument (0.23s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-struct-field (0.25s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-interface-method (0.23s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.22s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.06s)
+    --- FAIL: TestSharedParamsSourceDiagnostics/transitive-generated (1.24s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	3.218s
+FAIL

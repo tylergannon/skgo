@@ -1,0 +1,33 @@
+File: probe.test
+Type: cpu
+Time: 2026-10-07 08:38:37 PDT
+Duration: 23.07s, Total samples = 11.19s (48.51%)
+Showing nodes accounting for 5.31s, 47.45% of 11.19s total
+Dropped 537 nodes (cum <= 0.06s)
+Showing top 25 nodes out of 289
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      4.50s 40.21%  runtime.systemstack
+     3.44s 30.74% 30.74%      3.44s 30.74%  syscall.rawsyscalln
+         0     0% 30.74%      3.43s 30.65%  syscall.syscalln
+         0     0% 30.74%      3.29s 29.40%  syscall.syscall
+         0     0% 30.74%      3.24s 28.95%  github.com/tylergannon/skgo/internal/gen.TestCPUProbe
+         0     0% 30.74%      3.24s 28.95%  testing.tRunner
+         0     0% 30.74%      3.17s 28.33%  github.com/tylergannon/skgo/internal/gen.Run
+         0     0% 30.74%      3.17s 28.33%  github.com/tylergannon/skgo/internal/gen.TestCPUProbe.func1
+         0     0% 30.74%      3.17s 28.33%  runtime/pprof.Do
+         0     0% 30.74%      2.97s 26.54%  os.ignoringEINTR (inline)
+         0     0% 30.74%      2.92s 26.09%  golang.org/x/sync/errgroup.(*Group).Go.func1
+         0     0% 30.74%      2.38s 21.27%  runtime.gcBgMarkWorker.func2
+     0.03s  0.27% 31.01%      2.38s 21.27%  runtime.gcDrain
+         0     0% 31.01%      2.33s 20.82%  runtime.gcBgMarkWorker
+         0     0% 31.01%      2.10s 18.77%  github.com/tylergannon/skgo/internal/gen.(*app).loadGrammar
+         0     0% 31.01%      1.99s 17.78%  github.com/tylergannon/skgo/internal/gen.(*app).generateTypes
+         0     0% 31.01%      1.98s 17.69%  github.com/tylergannon/skgo/internal/gen.(*app).projectTypes
+         0     0% 31.01%      1.96s 17.52%  runtime.(*mheap).allocSpan
+         0     0% 31.01%      1.95s 17.43%  runtime.(*mheap).alloc.func1
+         0     0% 31.01%      1.91s 17.07%  os.open (inline)
+         0     0% 31.01%      1.91s 17.07%  syscall.Open
+     0.01s 0.089% 31.10%      1.89s 16.89%  golang.org/x/tools/go/packages.(*loader).refine.func2.1
+         0     0% 31.10%      1.88s 16.80%  golang.org/x/tools/go/packages.(*loader).loadPackage
+     1.83s 16.35% 47.45%      1.83s 16.35%  runtime.madvise
+         0     0% 47.45%      1.80s 16.09%  runtime.sysUsed (inline)

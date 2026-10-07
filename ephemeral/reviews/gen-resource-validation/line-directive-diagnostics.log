@@ -1,0 +1,19 @@
+=== RUN   TestIndependentStageEmbed
+--- PASS: TestIndependentStageEmbed (0.12s)
+=== RUN   TestIndependentFreshStageDiagnostics
+=== RUN   TestIndependentFreshStageDiagnostics/parser
+    independent_probe_test.go:42: -: # freshdiag
+        ./new.go:2:14: syntax error: unexpected {, expected )
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestIndependentFreshStageDiagnosticsparser4263517512/001/new.go:2: expected ')', found 'EOF'
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestIndependentFreshStageDiagnosticsparser4263517512/001/new.go:2: expected ')', found '{'
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestIndependentFreshStageDiagnosticsparser4263517512/001/new.go:2: expected ';', found 'EOF'
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestIndependentFreshStageDiagnosticsparser4263517512/001/new.go:2: missing ',' in parameter list
+=== RUN   TestIndependentFreshStageDiagnostics/compiler
+    independent_probe_test.go:42: -: # freshdiag
+        ./new.go:2:14: undefined: Missing
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestIndependentFreshStageDiagnosticscompiler3895952034/001/new.go:2: undefined: Missing
+--- PASS: TestIndependentFreshStageDiagnostics (0.17s)
+    --- PASS: TestIndependentFreshStageDiagnostics/parser (0.10s)
+    --- PASS: TestIndependentFreshStageDiagnostics/compiler (0.07s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	0.573s

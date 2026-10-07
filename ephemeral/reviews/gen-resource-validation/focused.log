@@ -1,0 +1,67 @@
+=== RUN   TestTypedLoadActualParameterDependencies
+=== PAUSE TestTypedLoadActualParameterDependencies
+=== RUN   TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== PAUSE TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== RUN   TestFormatterFailureDoesNotPublishGeneratedOutput
+=== PAUSE TestFormatterFailureDoesNotPublishGeneratedOutput
+=== RUN   TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies
+=== RUN   TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/unchanged_dependency
+=== RUN   TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/changed_dependency
+--- PASS: TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies (0.08s)
+    --- PASS: TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/unchanged_dependency (0.05s)
+    --- PASS: TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/changed_dependency (0.03s)
+=== RUN   TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy
+--- PASS: TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy (0.03s)
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies/real-dir-alias-overlay
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies/alias-dir-real-overlay
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies/file-alias-overlay
+--- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies (0.10s)
+    --- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies/real-dir-alias-overlay (0.03s)
+    --- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies/alias-dir-real-overlay (0.03s)
+    --- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies/file-alias-overlay (0.03s)
+=== RUN   TestReadOnlyPackagesPreserveExternalDriverOverlays
+=== RUN   TestReadOnlyPackagesPreserveExternalDriverOverlays/auto-discovered
+=== RUN   TestReadOnlyPackagesPreserveExternalDriverOverlays/configured
+--- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays (0.35s)
+    --- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays/auto-discovered (0.21s)
+    --- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays/configured (0.03s)
+=== RUN   TestSharedParamsGeneratedConsumers
+=== PAUSE TestSharedParamsGeneratedConsumers
+=== RUN   TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/private-type
+=== RUN   TestSharedParamsSourceDiagnostics/private-argument
+=== RUN   TestSharedParamsSourceDiagnostics/private-struct-field
+=== RUN   TestSharedParamsSourceDiagnostics/private-interface-method
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+--- PASS: TestSharedParamsSourceDiagnostics (1.86s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-type (0.27s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-argument (0.22s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-struct-field (0.22s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-interface-method (0.22s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.20s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/transitive-generated (0.23s)
+=== CONT  TestTypedLoadActualParameterDependencies
+=== CONT  TestFormatterFailureDoesNotPublishGeneratedOutput
+=== CONT  TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== CONT  TestSharedParamsGeneratedConsumers
+=== NAME  TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+    output_test.go:76: skgo: polytype could not project the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu: lower root 0 (github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu.Draft): unresolved named type github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu.Draft
+--- FAIL: TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations (0.75s)
+--- PASS: TestFormatterFailureDoesNotPublishGeneratedOutput (1.26s)
+=== NAME  TestTypedLoadActualParameterDependencies
+    load_params_test.go:256: skgo: polytype could not project the types in github.com/tylergannon/skgo/example/actiondemo: lower root 0 (github.com/tylergannon/skgo/example/actiondemo.Profile): unresolved named type github.com/tylergannon/skgo/example/actiondemo.Profile
+--- FAIL: TestTypedLoadActualParameterDependencies (1.92s)
+=== NAME  TestSharedParamsGeneratedConsumers
+    shared_params_test.go:154: skgo: polytype could not project the types in github.com/tylergannon/skgo/example/actiondemo: lower root 0 (github.com/tylergannon/skgo/example/actiondemo.Profile): unresolved named type github.com/tylergannon/skgo/example/actiondemo.Profile
+--- FAIL: TestSharedParamsGeneratedConsumers (2.51s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	5.346s
+FAIL
