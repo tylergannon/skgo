@@ -2,6 +2,14 @@
 
 ## Current continuation instructions — 2026-10-06
 
+Latest execution direction: Sol implements; the parent calls Claude Opus through
+the consensus review loop and independently adjudicates findings. Fix concrete,
+demonstrable correctness and material completeness problems. Do not build complex
+proof machinery or chase exhaustive polish. The user requests stopping at roughly
+90–95% once the main capability is implemented and independently checked; report
+remaining proof or polish honestly rather than treating every historical proof
+item below as a requirement to keep working indefinitely.
+
 This chat (`01a11328-2836-7ee3-9276-dab87a186ec6`) owns direct orchestration,
 without Gimbal. Work in the preserved `codex/remote-function-params` worktree at
 `/Users/tyler/.codex/worktrees/remote-function-params/skgo`. Main integration
