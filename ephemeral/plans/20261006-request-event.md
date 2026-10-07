@@ -1,6 +1,6 @@
 # Complete RequestEvent: typed locals, layout params, and request metadata
 
-**Status:** initial design reviewed with Claude through round 05; the predicate mechanism is now being reconsidered in the [alternating design discussion](20261006-prerender-predicate-design.md). Codegen prerequisite [#262](https://github.com/tylergannon/skgo/issues/262) landed in [#266](https://github.com/tylergannon/skgo/pull/266). This task remains design-only.
+**Status:** initial design reviewed with Claude through round 05; Codex and Claude Fable 5.1 subsequently agreed on the simpler predicate relay after [three alternating rounds](20261006-prerender-predicate-design.md). Codegen prerequisite [#262](https://github.com/tylergannon/skgo/issues/262) landed in [#266](https://github.com/tylergannon/skgo/pull/266). This task remains design-only; actual Kit/Go integration proof is outstanding.
 
 **Baseline:** rebased onto SKGo `c6906b7` (merged #266, following typed params #261); installed SvelteKit **3.0.0**. This is a plan, not an implementation or a claim of runtime proof.
 
