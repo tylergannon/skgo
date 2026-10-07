@@ -20,7 +20,7 @@ import (
 // a remote function, and a codec written anywhere else would either have to be
 // duplicated per route or written into the directory of the type it encodes,
 // which is not the app's to write into for a type from a dependency (#14).
-const devalueCodecsFile = "skgo_devalue_gen.go"
+const devalueCodecsFile = generatedGoFile
 
 // codecRoot is one type polytype is asked to emit an encoder and a strict
 // decoder for.

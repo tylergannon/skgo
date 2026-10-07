@@ -81,8 +81,7 @@ func evolvedEdits() []evolvedEdit {
 
 // clientFiles are the generated Go client, relative to the app.
 var clientFiles = []string{
-	"internal/skgo/client/skgo_client_gen.go",
-	"internal/skgo/client/skgo_client_devalue_gen.go",
+	"internal/skgo/client/skgo_gen.go",
 }
 
 // generation is one `go generate ./...` and what it left behind.
@@ -95,7 +94,7 @@ type generation struct {
 	// the generation's claim includes that the tree it left compiles.
 	buildOut string
 	buildErr error
-	// staleFiles is how many skgo_remotes_gen.go files were corrupted first.
+	// staleFiles is how many skgo_gen.go files were corrupted first.
 	staleFiles int
 }
 
@@ -108,7 +107,7 @@ type evolvedApp struct {
 	// check is Check over the evolved source after first.
 	check func() error
 	// stale generates a copy of the evolved source whose Go client files hold
-	// garbage and whose every skgo_remotes_gen.go calls a symbol skgo does not
+	// garbage and whose every skgo_gen.go calls a symbol skgo does not
 	// export (#91). It needs nothing from first, so it runs beside it.
 	stale func() generation
 }
@@ -148,7 +147,7 @@ var evolved = sync.OnceValue(func() *evolvedApp {
 		g := generation{dir: staleDir}
 		stale, err := findGeneratedRemoteFilesIn(staleDir)
 		if err == nil && len(stale) == 0 {
-			err = fmt.Errorf("no skgo_remotes_gen.go found under %s", staleDir)
+			err = fmt.Errorf("no skgo_gen.go found under %s", staleDir)
 		}
 		for _, f := range stale {
 			if err == nil {
@@ -157,7 +156,7 @@ var evolved = sync.OnceValue(func() *evolvedApp {
 		}
 		for _, f := range clientFiles {
 			if err == nil {
-				err = os.WriteFile(filepath.Join(staleDir, filepath.FromSlash(f)), []byte("stale generated client\n"), 0o644)
+				err = os.WriteFile(filepath.Join(staleDir, filepath.FromSlash(f)), []byte(goHeader+"stale generated client\n"), 0o644)
 			}
 		}
 		if err != nil {

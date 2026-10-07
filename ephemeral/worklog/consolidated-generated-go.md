@@ -1,0 +1,5 @@
+correction: The only existing app is our small example. Issue #262 requires updating it directly, not migration support or compatibility with legacy output filenames.
+decision: Persisted generated Go is output only. Current invocation declarations must reach every package loader, including Polytype's recursive dependency loads; blank-and-restore is not the contract.
+friction: Running VitePlus formatting in the app root loads its Vite config, which may read generated skgo.remotes.json before publication. Format staged outputs in a temporary package instead; application outputs cannot bootstrap the formatter either.
+correction: Check Kit release notes and source changes before responding to an upstream version mismatch. Kit 3.0.1 only changes the generated app-type env import to ./env.js (upstream #17351) plus message links; its queue hash remains the recorded 3.0.0 stock hash, so the correction is still needed.
+friction: The globally available vp reports 0.3.3; real skgo new qualification must put this worktree's qualified VitePlus 1.0.0 executable first on PATH.

@@ -76,7 +76,7 @@ var (
 	// where the arity shows, because that is where the argument is refused or
 	// required. Kit draws the same line: `create_validator` reads the arity and
 	// installs the refusal.
-	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
 	for _, want := range []string{
 		`skgo.KindQuery,`,
 		`skgo.KindCommand,`,
@@ -97,7 +97,7 @@ var (
 		}
 	}
 	// Nothing in the declaring package but the functions themselves.
-	published := readFixtureFile(t, root, "app/web/src/data/skgo_remotes_gen.go")
+	published := readFixtureFile(t, root, "app/web/src/data/skgo_gen.go")
 	for _, want := range []string{
 		"Skgo_getThing = getThing",
 		"Skgo_doThing = doThing",
@@ -265,7 +265,7 @@ var _ = skgo.BatchQuery(getQuotes)
 		t.Errorf("the stub does not import query:\n%s", stub)
 	}
 
-	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
 	if want := `skgo.KindBatch,`; !strings.Contains(bindings, want) {
 		t.Errorf("the registration file does not carry %q:\n%s", want, bindings)
 	}

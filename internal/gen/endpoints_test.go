@@ -50,7 +50,7 @@ func TestAServerRouteBecomesTheModuleKitCompiles(t *testing.T) {
 		t.Errorf("the generated +server.ts does not throw:\n%s", stub)
 	}
 
-	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
 	for _, want := range []string{
 		`skgo.NewEndpoint("/api/thing", "GET", skgo0.Skgo_read)`,
 		`skgo.NewEndpoint("/api/thing", "POST", skgo0.Skgo_write)`,

@@ -61,12 +61,12 @@ func TestFingerprintCountsAuthoredInputsAndNothingTheToolsWrite(t *testing.T) {
 	base := print()
 
 	// Output of the generator and the compiler, and files that are not inputs.
-	put("web/src/routes/skgo_remotes_gen.go", "package routes\n")
+	put("web/src/routes/skgo_gen.go", "package routes\n")
 	put("web/src/routes/+page.server.ts", "throw new Error('skgo')")
 	put("web/src/routes/go.mod", "module routes\n")
 	put("web/src/routes/todos.remote.ts", "export {}")
 	put("internal/skgo/links/abc/page.server.go", "package x\n")
-	put("internal/skgo/skgo_bindings_gen.go", "package skgo\n")
+	put("internal/skgo/skgo_gen.go", "package skgo\n")
 	put("web/node_modules/pkg/index.go", "package pkg\n")
 	put("web/build/app.go", "package build\n")
 	put("web/.svelte-kit/generated.go", "package k\n")

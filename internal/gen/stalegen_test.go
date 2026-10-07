@@ -11,7 +11,7 @@ import (
 )
 
 // staleSkgoSymbol stands in for a real skgo runtime API this version removed
-// or renamed. A skgo_remotes_gen.go generated against an older skgo can end
+// or renamed. A skgo_gen.go generated against an older skgo can end
 // up calling exactly such a symbol after `go get
 // github.com/tylergannon/skgo@latest` (see #65/#88, which found this the hard
 // way with NewQuery/decodeArg) — the file compiles against the skgo the
@@ -27,7 +27,7 @@ var packageClauseRE = regexp.MustCompile(`(?m)^package\s+(\w+)\s*$`)
 // generated files it is about to overwrite, and the tree it leaves behind
 // builds.
 //
-// It simulates the exact wall #91 describes: every skgo_remotes_gen.go in the
+// It simulates the exact wall #91 describes: every skgo_gen.go in the
 // example app is replaced with a call to a symbol this skgo does not export,
 // standing in for generation against an older runtime. Before the fix, this
 // left the tree uncompilable and the generator that would repair it refusing
@@ -41,7 +41,7 @@ func TestGenerateRecoversFromAStaleGeneratedFile(t *testing.T) {
 	t.Parallel()
 	g := requireEvolved(t).stale()
 	if g.staleFiles == 0 {
-		t.Fatalf("no skgo_remotes_gen.go was corrupted, so nothing here tested recovery: %v", g.err)
+		t.Fatalf("no skgo_gen.go was corrupted, so nothing here tested recovery: %v", g.err)
 	}
 	if g.err != nil {
 		t.Fatalf("go generate ./... did not recover from %d generated file(s) calling skgo.%s:\n%v\n%s",
@@ -81,7 +81,7 @@ func TestGenerateStillRefusesAGenuineTypeError(t *testing.T) {
 	}
 }
 
-// findGeneratedRemoteFilesIn lists every skgo_remotes_gen.go under app's
+// findGeneratedRemoteFilesIn lists every skgo_gen.go under app's
 // route tree.
 func findGeneratedRemoteFilesIn(app string) ([]string, error) {
 	var found []string
@@ -90,7 +90,7 @@ func findGeneratedRemoteFilesIn(app string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		if !d.IsDir() && d.Name() == "skgo_remotes_gen.go" {
+		if !d.IsDir() && d.Name() == "skgo_gen.go" {
 			found = append(found, path)
 		}
 		return nil
@@ -101,7 +101,7 @@ func findGeneratedRemoteFilesIn(app string) ([]string, error) {
 	return found, nil
 }
 
-// corruptGeneratedFileAt overwrites a generated skgo_remotes_gen.go with a
+// corruptGeneratedFileAt overwrites a generated skgo_gen.go with a
 // call to a symbol skgo does not export, keeping its original package clause
 // so it still belongs to the same Go package as the developer's own files
 // beside it.

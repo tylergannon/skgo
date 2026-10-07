@@ -33,7 +33,7 @@ func (a *app) writePrerenderCommand() error {
 	}
 	fmt.Fprintf(&b, "\tif err := skgo.RunPrerenderService(%s, generated.Loads(), generated.Remotes()); err != nil {\n", transport)
 	b.WriteString("\t\tlog.Fatal(err)\n\t}\n}\n")
-	return a.writeGo(filepath.Join(a.cfg.Out, "prerender", "main_gen.go"), b.String())
+	return a.writeGo(filepath.Join(a.cfg.Out, "prerender", generatedGoFile), b.String())
 }
 
 func (a *app) hasPrerenderRemote() bool {

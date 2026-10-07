@@ -425,7 +425,7 @@ var _ = skgo.Query(getStatus)
 	// The route directory holds the developer's Go, the stub, the registration
 	// that names the handler — and nothing of polytype's. No marker file, no
 	// schema, no declaration package for the dependency anywhere in the app.
-	if got, want := filesUnder(t, filepath.Join(root, "app", "web", "src", "data")), []string{"data.remote.go", "data.remote.ts", "skgo_remotes_gen.go"}; !slices.Equal(got, want) {
+	if got, want := filesUnder(t, filepath.Join(root, "app", "web", "src", "data")), []string{"data.remote.go", "data.remote.ts", "skgo_gen.go"}; !slices.Equal(got, want) {
 		t.Fatalf("the route directory holds %v, want %v", got, want)
 	}
 	for _, f := range filesUnder(t, filepath.Join(root, "app")) {

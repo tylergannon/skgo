@@ -196,7 +196,7 @@ func (a *app) removeObsoleteStub(stub string) error {
 	if a.cfg.Language.JavaScript() {
 		other = ".ts"
 	}
-	return removeGeneratedArtifact(strings.TrimSuffix(stub, a.cfg.Language.ext()) + other)
+	return removeGeneratedArtifact(a.cfg, strings.TrimSuffix(stub, a.cfg.Language.ext())+other)
 }
 
 // stubSignature renders one export.
@@ -475,7 +475,7 @@ func (a *app) writePackageBindings() error {
 		}
 		b.WriteString(")\n")
 		b.WriteString(aliases.String())
-		if err := a.writeGo(filepath.Join(gp.dir, "skgo_remotes_gen.go"), b.String()); err != nil {
+		if err := a.writeGo(filepath.Join(gp.dir, generatedGoFile), b.String()); err != nil {
 			return err
 		}
 	}
@@ -774,7 +774,7 @@ func (a *app) writeAppBindings() error {
 	b.WriteString("\t}\n}\n")
 
 	a.writeTransportBinding(&b)
-	return a.writeGo(filepath.Join(a.cfg.Out, "skgo_bindings_gen.go"), b.String())
+	return a.writeGo(filepath.Join(a.cfg.Out, generatedGoFile), b.String())
 }
 
 func (a *app) hasPrerenderInputs() bool {
@@ -1131,6 +1131,15 @@ func (a *app) write(path, content string) error {
 // write emits a file. Run collects frontend paths for one formatter invocation
 // after generation; other files are compared with their existing content.
 func write(cfg Config, path, content string) error {
+	if cfg.generation != nil {
+		if cfg.produced != nil {
+			cfg.produced[path] = struct{}{}
+		}
+		if cfg.frontendFiles != nil && (isFrontendSource(path) || path == filepath.Join(cfg.Web, "skgo.remotes.json")) {
+			cfg.frontendFiles[path] = struct{}{}
+		}
+		return cfg.generation.add(path, content)
+	}
 	if cfg.produced != nil {
 		cfg.produced[path] = struct{}{}
 	}

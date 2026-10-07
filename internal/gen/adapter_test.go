@@ -25,6 +25,9 @@ import (
 func installAdapter(t *testing.T, version string, contents map[string]string) string {
 	t.Helper()
 	web := t.TempDir()
+	if err := os.WriteFile(filepath.Join(web, "go.mod"), []byte("module adapterfixture\n\ngo 1.27\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(web, "src"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -73,6 +76,9 @@ func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
 func TestGeneratingAnEmptyAppNeedsNoInstalledAdapter(t *testing.T) {
 	t.Parallel()
 	web := t.TempDir()
+	if err := os.WriteFile(filepath.Join(web, "go.mod"), []byte("module adapterfixture\n\ngo 1.27\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(web, "src"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +87,7 @@ func TestGeneratingAnEmptyAppNeedsNoInstalledAdapter(t *testing.T) {
 	if err := Run(Config{Web: web, Out: out}); err != nil {
 		t.Fatalf("generating empty bindings: %v", err)
 	}
-	bindings, err := os.ReadFile(filepath.Join(out, "skgo_bindings_gen.go"))
+	bindings, err := os.ReadFile(filepath.Join(out, "skgo_gen.go"))
 	if err != nil {
 		t.Fatal(err)
 	}

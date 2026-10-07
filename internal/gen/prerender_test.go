@@ -80,7 +80,7 @@ var (
 	if err := Run(cfg); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
 	for _, want := range []string{
 		"func inputs_build(_ context.Context, _ skgo.Call) ([]any, error)",
 		"values, err := skgo0.SkgoPrerenderInputs_build()",
@@ -105,7 +105,7 @@ var (
 			t.Errorf("generated remote module omits %q:\n%s", want, stub)
 		}
 	}
-	command := readFixtureFile(t, root, "app/generated/prerender/main_gen.go")
+	command := readFixtureFile(t, root, "app/generated/prerender/skgo_gen.go")
 	if !strings.Contains(command, "generated.Remotes()") {
 		t.Fatalf("generated build command omits remote registrations:\n%s", command)
 	}
@@ -212,10 +212,8 @@ var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: inputs})
 	if err := Run(cfg); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
-	if strings.Contains(bindings, `"fmt"`) {
-		t.Fatalf("no-argument producer unnecessarily imports fmt:\n%s", bindings)
-	}
+	// Codecs share the output file now and legitimately use fmt. The build
+	// catches any unused imports left by a no-argument producer.
 	cmd := exec.Command("go", "build", "./...")
 	cmd.Dir = filepath.Join(root, "app")
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -251,7 +249,7 @@ var _ = skgo.Prerender(item, skgo.PrerenderOptions{Inputs: inputs})
 	if err := Run(cfg); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
 	for _, want := range []string{"func inputs_item(", "func inputs_item_2(", "Inputs:    inputs_item,", "Inputs:    inputs_item_2,"} {
 		if !strings.Contains(bindings, want) {
 			t.Errorf("generated bindings omit %q:\n%s", want, bindings)
@@ -289,7 +287,7 @@ var _ = skgo.Transported[Money]("Money")
 	if err := Run(cfg); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
 	if !strings.Contains(bindings, "tree, err := call.Transported(value)") {
 		t.Fatalf("transported input does not reach the app's native transport encoder:\n%s", bindings)
 	}
@@ -338,7 +336,7 @@ func TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch(t *testing.T) {
 	if err := Run(cfg); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if command := readFixtureFile(t, root, "app/generated/prerender/main_gen.go"); !strings.Contains(command, "nil, generated.Loads()") {
+	if command := readFixtureFile(t, root, "app/generated/prerender/skgo_gen.go"); !strings.Contains(command, "nil, generated.Loads()") {
 		t.Fatalf("build command omits generated loads:\n%s", command)
 	}
 }

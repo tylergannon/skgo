@@ -64,7 +64,7 @@ func generatedArtifact(content []byte) bool {
 // removeGeneratedArtifact deletes a file if it is a generated artifact. It is
 // what makes switching a language remove the modules the other mode wrote and
 // nothing else: a missing file is fine, and an authored one is refused.
-func removeGeneratedArtifact(path string) error {
+func removeGeneratedArtifact(cfg Config, path string) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -75,5 +75,5 @@ func removeGeneratedArtifact(path string) error {
 	if !generatedArtifact(content) {
 		return nil
 	}
-	return os.Remove(path)
+	return removeOutput(cfg, path)
 }
