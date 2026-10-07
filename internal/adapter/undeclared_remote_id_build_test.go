@@ -9,6 +9,7 @@ import (
 )
 
 func TestNativeBuildRejectsClientCalledRemoteMissingFromGoRegistration(t *testing.T) {
+	t.Parallel()
 	fixture := prepareMinimalInputsApp(t)
 	app := filepath.Join(fixture, "web")
 	writeFixtureFile(t, filepath.Join(app, "src", "lib", "fixture.remote.go"), `package lib

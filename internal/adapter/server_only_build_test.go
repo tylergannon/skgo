@@ -11,6 +11,7 @@ import (
 // Kit's client guard belongs to Kit's Vite plugin. This exercises the actual
 // adapter build rather than copying the guard's filename rules into Go.
 func TestKitRejectsClientImportOfServerOnlyModuleInSkgoBuild(t *testing.T) {
+	t.Parallel()
 	deps, err := filepath.Abs("../../example/web/node_modules")
 	if err != nil {
 		t.Fatal(err)
@@ -64,6 +65,7 @@ export const handle: Handle = ({ event, resolve }) => { void receipt; return res
 	build := func() (string, error) {
 		cmd := exec.Command(filepath.Join(deps, ".bin", "vp"), "build")
 		cmd.Dir = root
+		cmd.Env = fixtureBuildEnv()
 		out, err := cmd.CombinedOutput()
 		return string(out), err
 	}
