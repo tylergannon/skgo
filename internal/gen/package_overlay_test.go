@@ -20,6 +20,7 @@ import (
 )
 
 func TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies(t *testing.T) {
+	t.Parallel()
 	for _, changedDependency := range []bool{false, true} {
 		name := "unchanged dependency"
 		if changedDependency {
@@ -94,6 +95,7 @@ func TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies(t *testing.T) 
 }
 
 func TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations(t *testing.T) {
+	t.Parallel()
 	for _, workspace := range []bool{false, true} {
 		t.Run(fmt.Sprintf("workspace=%t", workspace), func(t *testing.T) {
 			base := t.TempDir()
@@ -180,6 +182,7 @@ func TestFreshPackagesPreserveWorkspaceAssetsAndSourceLocations(t *testing.T) {
 }
 
 func TestFreshPackagesLocateParserAndCompilerErrors(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, source, want, file, line string }{
 		{"parser", "package fresherrors\nfunc broken( {\n", "expected", "new.go", "2"},
 		{"compiler", "package fresherrors\nvar Value = missingIdentifier\n", "undefined: missingIdentifier", "new.go", "2"},
@@ -219,6 +222,7 @@ func TestFreshPackagesLocateParserAndCompilerErrors(t *testing.T) {
 }
 
 func TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module overlaynew\n\ngo 1.27.1\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -264,6 +268,7 @@ func TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy(t *testing.T) {
 }
 
 func TestReadOnlyPackagesResolveAliasedRootsAndDependencies(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"real-dir-alias-overlay", "alias-dir-real-overlay", "file-alias-overlay"} {
 		t.Run(name, func(t *testing.T) {
 			base := t.TempDir()
@@ -357,25 +362,42 @@ func checkSourceSnapshot(t *testing.T, roots ...string) map[string][]byte {
 }
 
 func TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites(t *testing.T) {
+	t.Parallel()
+	root, err := repoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := t.TempDir()
+	if err := stageTypedLoadEvolutionFixture(root, app); err != nil {
+		t.Fatal(err)
+	}
+	web := filepath.Join(app, "web")
+	out := filepath.Join(app, "internal", "skgo")
+	cfg := fixtureConfig(Config{Web: web, Out: out})
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(web, "src", "routes", "typed-load", "[number=Order]", "page.server.go")
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct{ name, source, want string }{
 		{"parser", "\nfunc checkBroken( {\n", "expected"},
 		{"compiler", "\nvar _ = checkMissingIdentifier\n", "undefined: checkMissingIdentifier"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			app := sandboxExample(t)
-			web := filepath.Join(app, "web")
-			out := filepath.Join(app, "internal", "skgo")
-			path := filepath.Join(web, "src", "routes", "todos", "todos.remote.go")
-			original, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatal(err)
-			}
 			planted := append(append([]byte(nil), original...), []byte(tc.source)...)
 			if err := os.WriteFile(path, planted, 0600); err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(func() {
+				if err := os.WriteFile(path, original, 0600); err != nil {
+					t.Fatal(err)
+				}
+			})
 			before := checkSourceSnapshot(t, filepath.Join(web, "src"), out)
-			err = Check(fixtureConfig(Config{Web: web, Out: out}))
+			err = Check(cfg)
 			if err == nil || !strings.Contains(err.Error(), path+":") || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("missing authored %s diagnostic: %v", tc.name, err)
 			}
@@ -394,6 +416,30 @@ func TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites(t *testing.T) {
 }
 
 func TestReadOnlyPackagesPreserveExternalDriverOverlays(t *testing.T) {
+	// Driver discovery depends on process-global environment. Keep its mutations
+	// in a child test process so independent application builds can overlap it.
+	if os.Getenv("SKGO_TEST_EXTERNAL_DRIVER") != "1" {
+		t.Parallel()
+		binary, err := os.Executable()
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(binary, "-test.run=^TestReadOnlyPackagesPreserveExternalDriverOverlays$", "-test.v")
+		cmd.Env = append(os.Environ(), "SKGO_TEST_EXTERNAL_DRIVER=1")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("isolated driver contracts: %v\n%s", err, output)
+		}
+		for _, name := range []string{"auto-discovered", "configured"} {
+			if !strings.Contains(string(output), "--- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays/"+name+" (") {
+				t.Fatalf("driver case %s did not pass: %s", name, output)
+			}
+		}
+		if strings.Contains(string(output), "--- SKIP:") {
+			t.Fatalf("driver contract skipped: %s", output)
+		}
+		return
+	}
 	binDir := t.TempDir()
 	source := filepath.Join(binDir, "driver.go")
 	const driverSource = `package main

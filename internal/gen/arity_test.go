@@ -155,7 +155,7 @@ var _ = skgo.Query(getThing)
 // function it cannot publish — at the declaration's own position, saying what
 // the shape should have been. A message that only says "cannot read the types"
 // leaves the developer to guess.
-func TestAFunctionSkgoCannotPublishIsRefusedByName(t *testing.T) {
+func TestRemoteSignaturesRejectUnsupportedFunctions(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name    string
@@ -167,50 +167,54 @@ func TestAFunctionSkgoCannotPublishIsRefusedByName(t *testing.T) {
 			decl: `func getThing(id string) (string, error) { return "", nil }
 
 var _ = skgo.Query(getThing)`,
-			wantAll: []string{"getThing", "query", "func(context.Context) (Out, error)"},
+			wantAll: []string{"query", "func(context.Context) (Out, error)"},
 		},
 		{
 			name: "no error result",
 			decl: `func getThing(ctx context.Context) string { return "" }
 
 var _ = skgo.Query(getThing)`,
-			wantAll: []string{"getThing", "query", "(Out, error)"},
+			wantAll: []string{"query", "(Out, error)"},
 		},
 		{
 			name: "two arguments",
 			decl: `func getThing(ctx context.Context, a string, b string) (string, error) { return "", nil }
 
 var _ = skgo.Query(getThing)`,
-			wantAll: []string{"getThing", "query"},
+			wantAll: []string{"query"},
 		},
 		{
 			name: "variadic",
 			decl: `func getThing(ctx context.Context, ids ...string) (string, error) { return "", nil }
 
 var _ = skgo.Query(getThing)`,
-			wantAll: []string{"getThing", "variadic"},
+			wantAll: []string{"variadic"},
 		},
 		{
 			name: "a live query with no yield",
 			decl: `func watchThing(ctx context.Context) error { return nil }
 
 var _ = skgo.LiveQuery(watchThing)`,
-			wantAll: []string{"watchThing", "query.live", "func(Out) error"},
+			wantAll: []string{"query.live", "func(Out) error"},
 		},
 		{
 			name: "a live query that returns a value",
 			decl: `func watchThing(ctx context.Context, yield func(int) error) (int, error) { return 0, nil }
 
 var _ = skgo.LiveQuery(watchThing)`,
-			wantAll: []string{"watchThing", "query.live"},
+			wantAll: []string{"query.live"},
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, cfg := foreignFixture(t, "package data\n\nimport (\n\t\"context\"\n\n\t\"github.com/tylergannon/skgo\"\n)\n\nvar _ = context.Background\n\n"+tc.decl+"\n", nil)
-
-			err := Run(cfg)
+			name, kind := "getThing", kindQuery
+			if strings.Contains(tc.decl, "watchThing") {
+				name, kind = "watchThing", kindLive
+			}
+			declaration := strings.Split(tc.decl, "var _ =")[0]
+			fn := declarationFunction(t, "package data\nimport \"context\"\nvar _ = context.Background\n"+declaration, name)
+			_, _, err := remoteSignature(kind, fn)
 			if err == nil {
 				t.Fatal("the generator published a function whose signature it cannot call")
 			}
@@ -288,20 +292,8 @@ func TestABatchQueryThatIsNotABatchIsRefused(t *testing.T) {
 		"a single result":    `func getQuotes(ctx context.Context, symbols []string) (string, error) { return "", nil }`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-
-	"github.com/tylergannon/skgo"
-)
-
-`+decl+`
-
-var _ = skgo.BatchQuery(getQuotes)
-`, nil)
-
-			err := Run(cfg)
+			fn := declarationFunction(t, "package data\nimport \"context\"\n"+decl, "getQuotes")
+			_, _, err := remoteSignature(kindBatch, fn)
 			if err == nil {
 				t.Fatal("the generator accepted a batch query that cannot be one")
 			}

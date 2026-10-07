@@ -37,6 +37,25 @@ func prepareProductionFixture(customDefaults bool) (productionFixture, error) {
 		return productionFixture{}, err
 	}
 	if customDefaults {
+		// Defaults need only these fetch routes. Lifecycle, redirects and remote
+		// artifact contracts already run against the strict production build.
+		routes := filepath.Join(app, "ui/src/routes")
+		entries, err := os.ReadDir(routes)
+		if err != nil {
+			return productionFixture{}, err
+		}
+		for _, entry := range entries {
+			switch entry.Name() {
+			case "options-default", "options-rejected", "options-served", "options-api", "options-live-api":
+			default:
+				if err := os.RemoveAll(filepath.Join(routes, entry.Name())); err != nil {
+					return productionFixture{}, err
+				}
+			}
+		}
+		if err := copySandboxFile(filepath.Join(root, "internal/gen/testdata/prerender-options/server_test.go"), filepath.Join(app, "server_test.go")); err != nil {
+			return productionFixture{}, err
+		}
 		if err := replaceOnce(filepath.Join(app, "ui", "vite.config.ts"), "adapter: skgo(),", "adapter: skgo({prerenderPackage: './buildservice'}),\n prerender: {handleHttpError: 'ignore', handleUnseenRoutes: 'ignore'},"); err != nil {
 			return productionFixture{}, err
 		}
@@ -67,6 +86,13 @@ func buildProductionFixture(fixture productionFixture, err error) (productionFix
 	if err != nil {
 		return productionFixture{}, err
 	}
+	root, rootErr := repoRoot()
+	if rootErr != nil {
+		return productionFixture{}, rootErr
+	}
+	if err := frontendDependencies(root, filepath.Join(fixture.app, "ui/node_modules")); err != nil {
+		return productionFixture{}, err
+	}
 	if output, err := runGoGenerate(fixture.app); err != nil {
 		return productionFixture{}, fmt.Errorf("go generate ./...: %w\n%s", err, output)
 	}
@@ -79,10 +105,14 @@ func buildProductionFixture(fixture productionFixture, err error) (productionFix
 	if err != nil {
 		return productionFixture{}, fmt.Errorf("vp build under ui: %w\n%s", err, output)
 	}
-	command := exec.Command("go", "build", "-o", filepath.Join(fixture.app, "server"), "./cmd")
-	command.Dir = fixture.app
-	if output, err := command.CombinedOutput(); err != nil {
-		return productionFixture{}, fmt.Errorf("compile production binary importing ui: %w\n%s", err, output)
+	// Only the strict fixture starts the ordinary server binary. The options
+	// fixture's served-page contract runs in the compiled handler test below.
+	if !strings.HasSuffix(fixture.app, "-options") {
+		command := exec.Command("go", "build", "-o", filepath.Join(fixture.app, "server"), "./cmd")
+		command.Dir = fixture.app
+		if output, err := command.CombinedOutput(); err != nil {
+			return productionFixture{}, fmt.Errorf("compile production binary importing ui: %w\n%s", err, output)
+		}
 	}
 	fixture.tests = filepath.Join(fixture.app, "production.test")
 	compile := exec.Command("go", "test", "-c", "-o", fixture.tests, ".")
@@ -94,36 +124,27 @@ func buildProductionFixture(fixture productionFixture, err error) (productionFix
 }
 
 func requireProductionFixture(t *testing.T) productionFixture {
-	return requireFixture(t, preparedProductionFixture, builtProductionFixture, &linkProductionDependencies)
-}
-
-func requireOptionsFixture(t *testing.T) productionFixture {
-	return requireFixture(t, preparedOptionsFixture, builtOptionsFixture, &linkOptionsDependencies)
-}
-
-func requireFixture(t *testing.T, prepare, build func() (productionFixture, error), dependencies *sync.Once) productionFixture {
 	t.Helper()
-	fixture, err := prepare()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Linking needs testing.T for diagnostics; it must also run only once.
-	dependencies.Do(func() {
-		root, err := repoRoot()
-		if err != nil {
-			t.Fatal(err)
-		}
-		linkExampleFrontendDependencies(t, root, fixture.app)
-	})
-	fixture, err = build()
+	return requireBuiltFixture(t, builtProductionFixture)
+}
+func requireOptionsFixture(t *testing.T) productionFixture {
+	t.Helper()
+	return requireBuiltFixture(t, builtOptionsFixture)
+}
+func requireBuiltFixture(t *testing.T, build func() (productionFixture, error)) productionFixture {
+	t.Helper()
+	fixture, err := build()
 	if err != nil {
 		t.Fatal(err)
 	}
 	return fixture
 }
 
-var linkProductionDependencies sync.Once
-var linkOptionsDependencies sync.Once
+// Begin the long build before joining the parallel-test queue. A targeted unit
+// run still builds nothing; only a selected application test starts its fixture.
+func startProductionBuild(build func() (productionFixture, error)) func() error {
+	return start(func() error { _, err := build(); return err })
+}
 
 func (f productionFixture) run(t *testing.T, name string) {
 	t.Helper()

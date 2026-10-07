@@ -8,8 +8,7 @@ import (
 	"testing"
 )
 
-func TestRealKitBuildAppliesRequestResolveOptions(t *testing.T) {
-	t.Parallel()
+func testRealKitBuildAppliesRequestResolveOptions(t *testing.T) {
 	fixture := requireProductionFixture(t)
 	read := func(path string) string {
 		t.Helper()
@@ -52,8 +51,7 @@ func TestRealKitBuildAppliesRequestResolveOptions(t *testing.T) {
 	}
 }
 
-func TestRealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads(t *testing.T) {
-	t.Parallel()
+func testRealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads(t *testing.T) {
 	fixture := requireOptionsFixture(t)
 	body, err := os.ReadFile(filepath.Join(fixture.app, "ui", "build", "prerendered", "options-default.html"))
 	if err != nil {

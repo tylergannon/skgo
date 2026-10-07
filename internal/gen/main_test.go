@@ -59,22 +59,3 @@ var skgoBinary = sync.OnceValues(func() (string, error) {
 	}
 	return bin, nil
 })
-
-func requireSkgoBinary(t *testing.T) string {
-	t.Helper()
-	bin, err := skgoBinary()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return bin
-}
-
-// sharedSandbox copies the example app into packageTemp/name, for a sandbox
-// whose result more than one test asserts.
-func sharedSandbox(name string) (string, error) {
-	root, err := repoRoot()
-	if err != nil {
-		return "", err
-	}
-	return copyExample(root, filepath.Join(packageTemp, name))
-}

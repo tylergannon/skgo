@@ -52,22 +52,7 @@ var (
 )
 `
 
-// TestJavaScriptModeEmitsJSDocServerLoadsAndActions is the contract for the
-// JavaScript mode's `+page.server.js`: a load whose JSDoc carries the whole
-// object kit's type writer reads back out, and actions whose JSDoc carries
-// their success and `ActionFailure` return unions. The TypeScript counterpart
-// is not written.
-func TestJavaScriptModeEmitsJSDocServerLoadsAndActions(t *testing.T) {
-	t.Parallel()
-	root, cfg := foreignFixture(t, "", map[string]string{
-		"app/web/src/routes/account/page.server.go": javaScriptLoadActionFixture,
-	})
-	cfg.Language = LanguageJavaScript
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("generating a JavaScript app: %v", err)
-	}
-
+func testJavaScriptLoadActions(t *testing.T, root string) {
 	stub := readFixtureFile(t, root, "app/web/src/routes/account/+page.server.js")
 	for _, want := range []string{
 		"import { building } from '$app/env';",
@@ -105,62 +90,8 @@ func TestJavaScriptModeEmitsJSDocServerLoadsAndActions(t *testing.T) {
 	}
 }
 
-func TestJavaScriptModeAcceptsAPrerenderedLoad(t *testing.T) {
-	t.Parallel()
-	_, cfg := foreignFixture(t, "", map[string]string{
-		"app/web/src/routes/about/page.server.go": strings.ReplaceAll(loadSource, "LayoutRequestEvent", "PageRequestEvent"),
-		"app/web/src/routes/about/+page.ts":       "export const prerender = true;\n",
-	})
-	cfg.Language = LanguageJavaScript
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("generating a JavaScript app's prerendered Go load: %v", err)
-	}
-}
-
-// TestJavaScriptModeLoadImportsATransportedClassFromHooks: a load's result may
-// carry one of the app's own classes, which reaches the browser through kit's
-// `transport` hook. In JavaScript the class cannot be an `import type`, so the
-// stub names it with a top-level JSDoc typedef pointing at `src/hooks.js`,
-// and the reference keeps the class's methods in the page's type.
-func TestJavaScriptModeLoadImportsATransportedClassFromHooks(t *testing.T) {
-	t.Parallel()
-	const load = `package routes
-
-import (
-	hooks "example.com/app/web/src"
-	"github.com/tylergannon/skgo"
-)
-
-type PageData struct {
-	Price hooks.Money ` + "`json:\"price\"`" + `
-}
-
-func page(PageRequestEvent) (PageData, error) { return PageData{}, nil }
-
-var _ = skgo.Load(page)
-`
-	const hooks = `package hooks
-
-import "github.com/tylergannon/skgo"
-
-type Money struct {
-	Cents int ` + "`json:\"cents\"`" + `
-}
-
-var _ = skgo.Transported[Money]("Money")
-`
-	root, cfg := foreignFixture(t, "", map[string]string{
-		"app/web/src/hooks.go":                      hooks,
-		"app/web/src/routes/account/page.server.go": load,
-	})
-	cfg.Language = LanguageJavaScript
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("generating a JavaScript app with a transported load: %v", err)
-	}
-
-	stub := readFixtureFile(t, root, "app/web/src/routes/account/+page.server.js")
+func testJavaScriptTransportedLoad(t *testing.T, root string) {
+	stub := readFixtureFile(t, root, "app/web/src/routes/price/+page.server.js")
 	if command := readFixtureFile(t, root, "app/generated/prerender/skgo_gen.go"); !strings.Contains(command, "generated.Transport(), generated.Loads()") {
 		t.Fatalf("a transported load lost its build-time transport: %s", command)
 	}
@@ -174,19 +105,7 @@ var _ = skgo.Transported[Money]("Money")
 	}
 }
 
-// TestTypeScriptModeLoadStubCarriesTheBuildBridge checks that both modes
-// preserve their declared load data shape while Kit can call the Go load.
-func TestTypeScriptModeLoadStubCarriesTheBuildBridge(t *testing.T) {
-	t.Parallel()
-	root, cfg := foreignFixture(t, "", map[string]string{
-		"app/web/src/routes/account/page.server.go": javaScriptLoadActionFixture,
-	})
-	cfg.Language = LanguageTypeScript
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("generating a TypeScript app: %v", err)
-	}
-
+func testTypeScriptLoadBridge(t *testing.T, root string) {
 	got := readFixtureFile(t, root, "app/web/src/routes/account/+page.server.ts")
 	for _, want := range []string{
 		"import type { Item } from './types';",

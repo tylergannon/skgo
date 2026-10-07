@@ -62,19 +62,8 @@ func prepareLocals(cfg *Config) error {
 		return problem
 	}
 	pkg := pkgs[0]
-	obj := pkg.Types.Scope().Lookup(cfg.LocalsType)
-	if obj == nil {
-		return fmt.Errorf("skgo: locals type %s.%s is missing", cfg.LocalsPackage, cfg.LocalsType)
-	}
-	if _, ok := obj.(*types.TypeName); !ok {
-		return fmt.Errorf("skgo: configured locals must name a type")
-	}
-	named, ok := obj.Type().(*types.Named)
-	if !ok || named.TypeParams().Len() != 0 || !obj.Exported() {
-		return fmt.Errorf("skgo: locals must be an exported concrete named struct")
-	}
-	if _, ok := named.Underlying().(*types.Struct); !ok {
-		return fmt.Errorf("skgo: locals must be a concrete named struct")
+	if err := validateLocalsType(pkg.Types, cfg.LocalsType); err != nil {
+		return err
 	}
 	forbidden, err := sharedForbiddenPackages(*cfg)
 	if err != nil {
@@ -191,17 +180,39 @@ func validateHook(cfg Config) error {
 	if err := visit(hook.Types); err != nil {
 		return err
 	}
-	symbol := hook.Types.Scope().Lookup(cfg.HookSymbol)
+	return validateHookSymbol(hook.Types, params.Types.Scope().Lookup("Middleware").Type(), cfg.HookSymbol)
+}
+
+func validateLocalsType(pkg *types.Package, typeName string) error {
+	obj := pkg.Scope().Lookup(typeName)
+	if obj == nil {
+		return fmt.Errorf("skgo: locals type %s.%s is missing", pkg.Path(), typeName)
+	}
+	if _, ok := obj.(*types.TypeName); !ok {
+		return fmt.Errorf("skgo: configured locals must name a type")
+	}
+	named, ok := obj.Type().(*types.Named)
+	if !ok || named.TypeParams().Len() != 0 || !obj.Exported() {
+		return fmt.Errorf("skgo: locals must be an exported concrete named struct")
+	}
+	if _, ok := named.Underlying().(*types.Struct); !ok {
+		return fmt.Errorf("skgo: locals must be a concrete named struct")
+	}
+	return nil
+}
+
+func validateHookSymbol(pkg *types.Package, middleware types.Type, symbolName string) error {
+	symbol := pkg.Scope().Lookup(symbolName)
 	if symbol == nil || !symbol.Exported() {
-		return fmt.Errorf("skgo: selected hook %s.%s is missing or not exported", cfg.HookPackage, cfg.HookSymbol)
+		return fmt.Errorf("skgo: selected hook %s.%s is missing or not exported", pkg.Path(), symbolName)
 	}
 	switch symbol.(type) {
 	case *types.Func, *types.Var:
 	default:
-		return fmt.Errorf("skgo: selected hook %s.%s must be a function or variable", cfg.HookPackage, cfg.HookSymbol)
+		return fmt.Errorf("skgo: selected hook %s.%s must be a function or variable", pkg.Path(), symbolName)
 	}
-	if !types.ConvertibleTo(symbol.Type(), params.Types.Scope().Lookup("Middleware").Type()) {
-		return fmt.Errorf("skgo: selected hook %s.%s must be convertible to params.Middleware", cfg.HookPackage, cfg.HookSymbol)
+	if !types.ConvertibleTo(symbol.Type(), middleware) {
+		return fmt.Errorf("skgo: selected hook %s.%s must be convertible to params.Middleware", pkg.Path(), symbolName)
 	}
 	return nil
 }

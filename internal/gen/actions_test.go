@@ -1,6 +1,8 @@
 package gen
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -56,6 +58,41 @@ func TestActionDeclarationsMatchKit(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.name != "two named actions" && tc.name != "prerendered page" {
+				file := "page.server.go"
+				source := tc.files[path]
+				if tc.name == "layout placement" {
+					file = "layout.server.go"
+					source = tc.files["app/web/src/routes/profile/layout.server.go"]
+				}
+				a, gp, p, _ := markerDeclaration(t, file, source)
+				for name, content := range tc.files {
+					if !strings.HasSuffix(name, ".go") {
+						writeSharedFixture(t, a.cfg.Web, strings.TrimPrefix(name, "app/web/"), content)
+					}
+				}
+				// Put the parsed declaration in the same route as its option files.
+				gp.dir = filepath.Join(a.cfg.Web, "src/routes/profile")
+				if err := os.MkdirAll(gp.dir, 0755); err != nil {
+					t.Fatal(err)
+				}
+				_, _, actions, _, err := a.scanFile(gp, p, p.Syntax[0], filepath.Join(gp.dir, file))
+				a.actions = actions
+				if err == nil {
+					err = a.checkDuplicates()
+				}
+				if err == nil {
+					err = a.checkPrerenderedActions()
+				}
+				if tc.want == "" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("wanted %q: %v", tc.want, err)
+				}
+				return
+			}
 			_, cfg := foreignFixture(t, "", tc.files)
 			err := Run(cfg)
 			if tc.want == "" {

@@ -15,8 +15,7 @@ import (
 // TestGoPagePrerenderRedirectBuildsKitsNativeArtifact exercises the complete
 // build bridge: a Go page load redirects while Kit crawls /old, and the adapter
 // must retain both the recorded path and Kit's HTML output.
-func TestGoPagePrerenderRedirectBuildsKitsNativeArtifact(t *testing.T) {
-	t.Parallel()
+func testGoPagePrerenderRedirectBuildsKitsNativeArtifact(t *testing.T) {
 	fixture := requireProductionFixture(t)
 	ui := filepath.Join(fixture.app, "ui")
 

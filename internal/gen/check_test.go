@@ -5,26 +5,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
 )
 
-// checkLane is one copy of the example that the in-process Check tests below
-// plant their wire errors in, one test at a time, each putting the file back
-// before it lets go. Check type-checks every route package, and in a fresh
-// copy every one of them compiles cold; in the same copy, only the one file a
-// test changed does.
+// Check mutations share a small generated module. Each assertion restores its
+// authored source before releasing the lane.
 var checkLane struct {
 	sync.Mutex
-	app string
 }
 
-var checkLaneSandbox = sync.OnceValues(func() (string, error) { return sharedSandbox("check") })
+var checkLaneSandbox = sync.OnceValues(func() (string, error) { return cloneCheckModule("check") })
 
 // lockCheckLane waits for the lane and returns its app. The caller restores
 // what it planted before calling unlock.
@@ -54,8 +50,7 @@ func plantInLane(t *testing.T, path string, original, planted []byte, unlock fun
 	}
 }
 
-func TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink(t *testing.T) {
-	t.Parallel()
+func testReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink(t *testing.T) {
 	// The planted half holds the check lane, and gives it back before waiting
 	// on the valid counterpart.
 	t.Run("planted", func(t *testing.T) {
@@ -71,13 +66,13 @@ func TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink(t *testing.T) {
 		const declaration = "type Rename struct {"
 		if !bytes.Contains(original, []byte(declaration)) {
 			unlock()
-			t.Fatal("example no longer declares Rename; update the test")
+			t.Fatal("fixture no longer declares Rename; update the test")
 		}
 		broken := []byte(strings.Replace(string(original), declaration, declaration+"\n\tCallback func() `json:\"callback\"`", 1))
 		plantInLane(t, target, original, broken, unlock)
 		links, err := filepath.Glob(filepath.Join(out, "links", "*", "todos.remote.go"))
 		if err != nil || len(links) != 1 {
-			t.Fatalf("expected one committed todos route copy, got %v: %v", links, err)
+			t.Fatalf("expected one generated todos route copy, got %v: %v", links, err)
 		}
 		link := links[0]
 		beforeLink, err := os.ReadFile(link)
@@ -95,7 +90,7 @@ func TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink(t *testing.T) {
 			t.Fatalf("authored file changed: %v", err)
 		}
 	})
-	// The valid counterpart is the untouched example, which pristineCheck
+	// The valid counterpart is the pristine fixture, which pristineCheck
 	// checks once for every test that needs it.
 	if err := pristineCheck(); err != nil {
 		t.Fatalf("valid counterpart did not check cleanly: %v", err)
@@ -128,7 +123,7 @@ func runCheckCLI(bin, app string) cliRun {
 	return cliRun{output, err}
 }
 
-// plantedWireError is one unsupported wire value planted in the example for
+// plantedWireError is one unsupported wire value planted in the fixture for
 // the CLI to report. field names the case.
 type plantedWireError struct {
 	file, anchor, insertion, field, reason, repair string
@@ -136,9 +131,6 @@ type plantedWireError struct {
 
 var cliWireErrors = []plantedWireError{
 	{"todos/todos.remote.go", "type Rename struct {", "\n\tDetail []map[string]string `json:\"detail\"`", "Detail", "map", "named struct"},
-	{"todos/todos.remote.go", "ID string `json:\"id\"`", "\n\tAlias string `json:\"id\"`", "Alias", "duplicate serialized name", "distinct json name"},
-	{"todos/todos.remote.go", "type Rename struct {", "\n\tLater skgo.Deferred[string] `json:\"later\"`", "Later", "Deferred", "server load"},
-	{"contact/contact.remote.go", "type Receipt struct {", "\n\tUpload skgo.File `json:\"upload\"`", "sendMessage", "skgo.File", "download URL"},
 }
 
 // plantedRun is the CLI over one planted wire error, and the line the planted
@@ -149,11 +141,9 @@ type plantedRun struct {
 	wantLine int
 }
 
-// cliLane is `skgo check` over copies of the example: untouched, then with
-// each of cliWireErrors planted in turn and taken out again. A copy is run in
-// sequence rather than one copy per state, because the CLI builds, vets and
-// statically checks the whole module: in a fresh directory every package is
-// cold, while in the same directory only the one file each case changes is.
+// One pristine and one failing small module exercise the CLI's complete JSON
+// report, exit status and authored location. Declaration tests cover the wire
+// rules without rebuilding a module for every spelling.
 type cliLaneRuns struct {
 	setupErr error
 	pristine func() cliRun
@@ -167,12 +157,12 @@ var cliLane = sync.OnceValue(func() *cliLaneRuns {
 		lane.setupErr = err
 		return lane
 	}
-	// Two copies, so the chain is not all five runs long: the untouched run
-	// and the first planted case in one, the other three in the other.
-	first, err := sharedSandbox("cli-1")
+	// Independent pristine and failing CLI runs keep CLI-format proof to one
+	// representative wire error; direct declarations distinguish the rules.
+	first, err := cloneCheckModule("cli-1")
 	if err == nil {
 		var second string
-		second, err = sharedSandbox("cli-2")
+		second, err = cloneCheckModule("cli-2")
 		if err == nil {
 			pristine := make(chan cliRun, 1)
 			planted := make([]chan plantedRun, len(cliWireErrors))
@@ -181,10 +171,9 @@ var cliLane = sync.OnceValue(func() *cliLaneRuns {
 			}
 			go func() {
 				pristine <- runCheckCLI(bin, first)
-				planted[0] <- plantAndCheck(bin, first, cliWireErrors[0])
 			}()
 			go func() {
-				for i := 1; i < len(cliWireErrors); i++ {
+				for i := 0; i < len(cliWireErrors); i++ {
 					planted[i] <- plantAndCheck(bin, second, cliWireErrors[i])
 				}
 			}()
@@ -220,7 +209,7 @@ func plantAndCheck(bin, app string, tc plantedWireError) plantedRun {
 	return plantedRun{cliRun: run, wantLine: wantLine}
 }
 
-// pristineCLI is `skgo check` over the untouched example, the lane's first
+// pristineCLI is `skgo check` over the pristine fixture, the lane's first
 // run. TestRealCheckReportsWireAdviceAtAuthoredLocations asserts the whole
 // report; pristineCheck reads the generator's own check out of it.
 func pristineCLI() (cliRun, error) {
@@ -231,7 +220,7 @@ func pristineCLI() (cliRun, error) {
 	return lane.pristine(), nil
 }
 
-// pristineCheck is the generator's Check over the untouched example: the
+// pristineCheck is the generator's Check over the pristine fixture: the
 // valid counterpart every test that plants a wire error needs to check
 // cleanly. It is the same source every time, so it is checked once, by the
 // CLI run above, which calls Check with the same Config these tests would
@@ -256,8 +245,7 @@ func pristineCheck() error {
 	return fmt.Errorf("skgo check reported no generator check: %s", run.output)
 }
 
-func TestRealCheckReportsWireAdviceAtAuthoredLocations(t *testing.T) {
-	t.Parallel()
+func testRealCheckReportsWireAdviceAtAuthoredLocations(t *testing.T) {
 	lane := cliLane()
 	if lane.setupErr != nil {
 		t.Fatal(lane.setupErr)
@@ -319,7 +307,7 @@ func TestRealCheckReportsWireAdviceAtAuthoredLocations(t *testing.T) {
 			}
 		}
 		if !skgoComplete {
-			t.Fatalf("supported nested, array, upload and deferred values did not complete generator check: %+v", valid.Checks)
+			t.Fatalf("supported declaration did not complete generator check: %+v", valid.Checks)
 		}
 	})
 }
@@ -327,112 +315,72 @@ func TestRealCheckReportsWireAdviceAtAuthoredLocations(t *testing.T) {
 func TestCheckWireAdviceUsesAuthoredDeclarations(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		name, file, anchor, insertion, consequence, repair string
+		name, field, consequence, repair string
+		load                             bool
 	}{
-		{"nested unsupported", "todos/todos.remote.go", "type Rename struct {", "\n\tDetail []map[string]string `json:\"detail\"`", "cannot cross the wire", "Use a named struct"},
-		{"duplicate name", "todos/todos.remote.go", "ID string `json:\"id\"`", "\n\tAlias string `json:\"id\"`", "duplicate serialized name", "distinct json name"},
-		{"deferred remote", "todos/todos.remote.go", "type Rename struct {", "\n\tLater skgo.Deferred[string] `json:\"later\"`", "Deferred", "server load"},
-		{"file result", "contact/contact.remote.go", "type Receipt struct {", "\n\tUpload skgo.File `json:\"upload\"`", "returns a skgo.File", "download URL"},
-		{"deferred file result", "stream/page.server.go", "type PageData struct {", "\n\tUpload skgo.Deferred[skgo.File] `json:\"upload\"`", "returns a skgo.File", "download URL"},
+		{"nested unsupported", "Detail []map[string]string", "cannot cross the wire", "Use a named struct", false},
+		{"duplicate name", "A string `json:\"same\"`; Alias string `json:\"same\"`", "duplicate serialized name", "distinct json name", false},
+		{"deferred remote", "Later skgo.Deferred[string]", "Deferred", "server load", false},
+		{"file result", "Upload skgo.File", "returns a skgo.File", "download URL", false},
+		{"deferred file result", "Upload skgo.Deferred[skgo.File]", "returns a skgo.File", "download URL", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			app, unlock := lockCheckLane(t)
-			web := filepath.Join(app, "web")
-			file := filepath.Join(web, "src", "routes", filepath.FromSlash(tc.file))
-			original, err := os.ReadFile(file)
-			if err != nil {
-				unlock()
-				t.Fatal(err)
+			p := wireDeclaration(t, "package fixture\nimport \"github.com/tylergannon/skgo\"\nvar _ skgo.File\ntype Output struct{\n"+tc.field+"\n}\n")
+			typ := p.Types.Scope().Lookup("Output").Type()
+			gp := &goPackage{pkg: p}
+			pos := token.Position{Filename: "wire.go", Line: 4}
+			a := &app{}
+			if tc.load {
+				a.loads = []*loadFn{{name: "load", out: typ, goPkg: gp, pos: pos}}
+			} else {
+				a.remotes = []*remoteFn{{name: "query", out: typ, goPkg: gp, pos: pos}}
 			}
-			if !bytes.Contains(original, []byte(tc.anchor)) {
-				unlock()
-				t.Fatalf("missing fixture anchor %q", tc.anchor)
+			err := a.checkFileUsage()
+			if err == nil {
+				err = a.checkWireFields()
 			}
-			planted := strings.Replace(string(original), tc.anchor, tc.anchor+tc.insertion, 1)
-			plantInLane(t, file, original, []byte(planted), unlock)
-			err = Check(fixtureConfig(Config{Web: web, Out: filepath.Join(app, "internal", "skgo")}))
-			if err == nil || !strings.Contains(err.Error(), tc.consequence) || !strings.Contains(err.Error(), tc.repair) || !strings.Contains(err.Error(), filepath.Base(file)+":") {
-				t.Fatalf("wanted authored wire advice with consequence and repair, got %v", err)
+			if err == nil || !strings.Contains(err.Error(), tc.consequence) || !strings.Contains(err.Error(), tc.repair) || !strings.Contains(err.Error(), "wire.go:") {
+				t.Fatalf("missing authored consequence/repair: %v", err)
 			}
 		})
 	}
-	// The untouched example's declarations exercise supported nested and array
-	// data, form uploads, and load-deferred data under the same generator
-	// checks.
-	t.Run("supported", func(t *testing.T) {
-		t.Parallel()
-		if err := pristineCheck(); err != nil {
-			t.Fatalf("supported example wire values: %v", err)
-		}
-	})
 }
 
 // The evolved example (evolution_test.go) added a polytype.Nullable field to
 // a Form input in the optional route.
-func TestCheckAcceptsNullableWithGeneratorProjection(t *testing.T) {
-	t.Parallel()
+func testCheckAcceptsNullableWithGeneratorProjection(t *testing.T) {
 	e := requireEvolved(t) // fails with the generator's refusal if it rejected the nullable value
 	if err := e.check(); err != nil {
 		t.Fatalf("checker rejected generated nullable value: %v", err)
 	}
 }
 
-func TestNamedDeferredPayloadSerializedNames(t *testing.T) {
-	t.Parallel()
-	app := sandboxExample(t)
-	web := filepath.Join(app, "web")
-	out := filepath.Join(app, "internal", "skgo")
-	target := filepath.Join(web, "src", "routes", "stream", "page.server.go")
-	original, err := os.ReadFile(target)
-	if err != nil {
-		t.Fatal(err)
+func testNamedDeferredPayloadSerializedNames(t *testing.T) {
+	p := wireDeclaration(t, `package fixture
+import "github.com/tylergannon/skgo"
+type Payload struct {
+ First string `+"`json:\"same\"`"+`
+ Second string `+"`json:\"same\"`"+`
+}
+type Output struct { Value skgo.Deferred[Payload] }
+`)
+	err := checkTypeSerializedNames(p.Types.Scope().Lookup("Output").Type(), p.Fset, nil)
+	if err == nil || !strings.Contains(err.Error(), "wire.go:5:") || !strings.Contains(err.Error(), `duplicate serialized name "same"`) {
+		t.Fatalf("lost named Deferred field location: %v", err)
 	}
-	const anchor = "// Panel is one section of the page."
-	const field = "\n\tPayload skgo.Deferred[Payload] `json:\"payload\"`"
-	const declaration = "type Payload struct {\n\tFirst string `json:\"same\"`\n\tSecond string `json:\"same\"`\n}\n\n"
-	contents := strings.Replace(string(original), anchor, declaration+anchor, 1)
-	contents = strings.Replace(contents, "type PageData struct {", "type PageData struct {"+field, 1)
-	if contents == string(original) || !strings.Contains(contents, declaration) || !strings.Contains(contents, field) {
-		t.Fatal("stream fixture anchor missing")
-	}
-	if err := os.WriteFile(target, []byte(contents), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cfg := fixtureConfig(Config{Web: web, Out: out})
-	fieldOffset := strings.Index(contents, "Second string")
-	if fieldOffset < 0 {
-		t.Fatal("planted duplicate field is missing")
-	}
-	wantFieldLocation := target + ":" + strconv.Itoa(strings.Count(contents[:fieldOffset], "\n")+1) + ":"
-	for _, tc := range []struct {
-		name string
-		run  func(Config) error
-	}{{"generate", Run}, {"check", Check}} {
-		err := tc.run(cfg)
-		if err == nil || !strings.Contains(err.Error(), wantFieldLocation) || !strings.Contains(err.Error(), "Second") || !strings.Contains(err.Error(), `duplicate serialized name "same"`) || !strings.Contains(err.Error(), "distinct json name") {
-			t.Errorf("%s accepted named Deferred payload's duplicate authored fields: %v", tc.name, err)
-		}
-	}
-
-	// The valid counterpart — distinct names and a nullable member, reached by
-	// value, through a slice and through an array — is planted in the evolved
-	// example, all three representations in one PageData, so one generation
-	// and one check accept or refuse all three.
-	e := requireEvolved(t) // fails with the generator's refusal if it rejected any of them
+	// Real projection of valid named/slice/array nullable Deferred payloads
+	// remains in the shared evolved application and its generated build/check.
+	e := requireEvolved(t)
 	source, err := os.ReadFile(filepath.Join(e.first.dir, filepath.FromSlash(streamSource)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkErr := e.check()
 	for _, r := range deferredRepresentations {
-		t.Run(r.name, func(t *testing.T) {
-			if !strings.Contains(string(source), deferredPayload) || !strings.Contains(string(source), r.field) {
-				t.Fatalf("the evolved example does not carry the %s Deferred payload", r.name)
-			}
-			if checkErr != nil {
-				t.Fatalf("check rejected valid %s Deferred payload: %v", r.name, checkErr)
-			}
-		})
+		if !strings.Contains(string(source), deferredPayload) || !strings.Contains(string(source), r.field) {
+			t.Fatalf("missing %s Deferred counterpart", r.name)
+		}
+	}
+	if err := e.check(); err != nil {
+		t.Fatal(err)
 	}
 }

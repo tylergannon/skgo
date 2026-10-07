@@ -9,6 +9,7 @@ import (
 )
 
 func TestWriteFormatsGeneratedSourceBeforeComparing(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("the fixture formatter is a shell script")
 	}
@@ -52,6 +53,7 @@ func TestWriteFormatsGeneratedSourceBeforeComparing(t *testing.T) {
 }
 
 func TestWriteWithoutVitePlusLeavesGenerationAvailable(t *testing.T) {
+	t.Parallel()
 	web := t.TempDir()
 	path := filepath.Join(web, "src", "types.ts")
 	if err := write(fixtureConfig(Config{Web: web, Logf: func(string, ...any) {}}), path, "raw\n"); err != nil {
