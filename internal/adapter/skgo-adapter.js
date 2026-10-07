@@ -59,10 +59,10 @@ const KIT_COMPONENTS = join(
  * serve a frontend that was built from a different set of Go functions than it
  * answers.
  *
- * @param {{ out?: string, precompress?: boolean }} [options]
+ * @param {{ out?: string, precompress?: boolean, prerenderPackage?: string }} [options]
  * @returns {import('@sveltejs/kit').Adapter}
  */
-export default function skgo({ out = 'build', precompress = true } = {}) {
+export default function skgo({ out = 'build', precompress = true, prerenderPackage } = {}) {
 	// The engine's bundle is a fourth environment of kit's own build. Kit reads
 	// `vite.plugins.post` while it assembles its config, long before `adapt`
 	// runs, so the plugin that declares the environment has to exist here; the
@@ -74,7 +74,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 		name: 'skgo-prerender-main-owner',
 		apply: 'build',
 		configResolved(config) {
-			prerenderOwner = createPrerenderOwner(process.cwd());
+			prerenderOwner = createPrerenderOwner(process.cwd(), prerenderPackage);
 			installPrerenderFailureBoundary(config, prerenderOwner);
 		},
 		// Kit captures its app environment in config/configResolved. Vite awaits

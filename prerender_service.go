@@ -115,7 +115,7 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			return
 		}
 		lifecycle := r.URL.Path == "/begin" || r.URL.Path == "/response" || r.URL.Path == "/end"
-		if r.URL.Path != "/load" && r.URL.Path != "/remote" && r.URL.Path != "/inputs" && r.URL.Path != "/endpoint" && r.URL.Path != "/cookies" && !lifecycle {
+		if r.URL.Path != "/load" && r.URL.Path != "/remote" && r.URL.Path != "/inputs" && r.URL.Path != "/endpoint" && r.URL.Path != "/cookies" && r.URL.Path != "/resolve-option" && !lifecycle {
 			http.NotFound(w, r)
 			return
 		}
@@ -184,6 +184,12 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 				err = fmt.Errorf("skgo: endpoint needs a logical request")
 			} else {
 				err = runPrerenderEndpoint(r.Context(), boundRequest, &answer)
+			}
+		case r.URL.Path == "/resolve-option":
+			if boundRequest == nil {
+				err = fmt.Errorf("skgo: resolve option needs a logical request")
+			} else {
+				err = runPrerenderResolveOption(r.Context(), boundRequest, raw, &answer)
 			}
 		case r.URL.Path == "/cookies":
 			err = runPrerenderCookies(r.Context(), raw, &answer)

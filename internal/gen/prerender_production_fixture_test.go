@@ -11,8 +11,9 @@ import (
 )
 
 type productionFixture struct {
-	app   string
-	tests string
+	app         string
+	tests       string
+	buildOutput string
 }
 
 var preparedProductionFixture = sync.OnceValues(func() (productionFixture, error) {
@@ -22,6 +23,9 @@ var preparedProductionFixture = sync.OnceValues(func() (productionFixture, error
 	}
 	app := filepath.Join(packageTemp, "prerender-production")
 	if err := stagePrerenderFixture(root, app, "prerender-production"); err != nil {
+		return productionFixture{}, err
+	}
+	if err := replaceOnce(filepath.Join(app, "ui", "vite.config.ts"), "adapter: skgo(),", "adapter: skgo({prerenderPackage: './buildservice'}),\n prerender: {handleHttpError: 'ignore', handleUnseenRoutes: 'ignore'},"); err != nil {
 		return productionFixture{}, err
 	}
 	return productionFixture{app: app}, nil
@@ -41,7 +45,9 @@ var builtProductionFixture = sync.OnceValues(func() (productionFixture, error) {
 	build := exec.Command(filepath.Join(ui, "node_modules", ".bin", "vp"), "build")
 	build.Dir = ui
 	build.Env = append(os.Environ(), "ORIGIN=http://127.0.0.1:8080")
-	if output, err := build.CombinedOutput(); err != nil {
+	output, err := build.CombinedOutput()
+	fixture.buildOutput = string(output)
+	if err != nil {
 		return productionFixture{}, fmt.Errorf("vp build under ui: %w\n%s", err, output)
 	}
 	command := exec.Command("go", "build", "-o", filepath.Join(fixture.app, "server"), "./cmd")

@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var Handle = params.Middleware(func(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (response *http.Response, err error) {
+var lifecycleHandle = params.Middleware(func(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (response *http.Response, err error) {
 	defer func() {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "lifecycle fixture hook:", err)
@@ -68,3 +68,37 @@ var Handle = params.Middleware(func(ctx context.Context, event params.RequestEve
 	}
 	return response, nil
 })
+
+var Handle = params.Sequence(
+	params.Middleware(func(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error) {
+		if event.URL().Path != "/options" && event.URL().Path != "/options-rejected" {
+			return resolve(ctx, event)
+		}
+		return resolve(ctx, event, skgo.ResolveOptions{
+			TransformPageChunk: func(ctx context.Context, html string, done bool) (string, error) {
+				if !done || (event.URL().Path == "/options" && !event.Locals.AssetsReady) {
+					return "", fmt.Errorf("transform lost load state")
+				}
+				return strings.ReplaceAll(html, "INNER_TOKEN", "inner-outer"), nil
+			},
+			FilterSerializedResponseHeaders: func(name, value string) bool {
+				return name == "x-public" || (name == "x-late" && event.Locals.HeadersReady)
+			},
+			Preload: func(input skgo.PreloadInput) bool {
+				return input.Type == "font" && input.Filename == "src/routes/options/fixture.woff2" && event.Locals.AssetsReady
+			},
+		})
+	}),
+	params.Middleware(func(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error) {
+		if event.URL().Path != "/options" && event.URL().Path != "/options-rejected" {
+			return resolve(ctx, event)
+		}
+		return resolve(ctx, event, skgo.ResolveOptions{
+			TransformPageChunk: func(ctx context.Context, html string, done bool) (string, error) {
+				return strings.ReplaceAll(html, "TRANSFORM_TOKEN", "INNER_TOKEN"), nil
+			},
+			FilterSerializedResponseHeaders: func(string, string) bool { panic("inner filter must not run") },
+			Preload:                         func(skgo.PreloadInput) bool { panic("inner preload must not run") },
+		})
+	}), lifecycleHandle,
+)

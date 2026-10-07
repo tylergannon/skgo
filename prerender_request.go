@@ -21,6 +21,9 @@ type PrerenderServiceOptions struct {
 	BindRequest func(http.Handler) http.Handler
 	Endpoints   []*Endpoint
 	Matchers    map[string]ParamMatcher
+	// FilterSerializedResponseHeaders supplies the same default passed to
+	// SSROptions when a request's hooks do not select their own filter.
+	FilterSerializedResponseHeaders func(name, value string) bool
 }
 
 type prerenderRequestKey struct{}
@@ -47,16 +50,23 @@ type prerenderResponse struct {
 	Body    []byte      `json:"body"`
 }
 type prerenderRequestAnswer struct {
-	Handle   string             `json:"handle,omitempty"`
-	Resolve  bool               `json:"resolve,omitempty"`
-	Response *prerenderResponse `json:"response,omitempty"`
-	Redirect *prerenderRedirect `json:"redirect,omitempty"`
-	Error    *HTTPError         `json:"error,omitempty"`
-	Headers  http.Header        `json:"headers,omitempty"`
-	Cookies  []prerenderCookie  `json:"cookies,omitempty"`
+	Handle   string                   `json:"handle,omitempty"`
+	Resolve  bool                     `json:"resolve,omitempty"`
+	Response *prerenderResponse       `json:"response,omitempty"`
+	Redirect *prerenderRedirect       `json:"redirect,omitempty"`
+	Error    *HTTPError               `json:"error,omitempty"`
+	Headers  http.Header              `json:"headers,omitempty"`
+	Cookies  []prerenderCookie        `json:"cookies,omitempty"`
+	Options  *prerenderResolveOptions `json:"options,omitempty"`
+}
+type prerenderResolveOptions struct {
+	Transform bool `json:"transform"`
+	Filter    bool `json:"filter"`
+	Preload   bool `json:"preload"`
 }
 type prerenderRequest struct {
 	input     prerenderRequestInput
+	options   ResolveOptions
 	endpoints *Endpoints
 	cancel    context.CancelFunc
 	ready     chan *http.Request
@@ -216,7 +226,13 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 	select {
 	case r := <-entry.ready:
 		entry.request = r
-		return prerenderRequestAnswer{Handle: handle, Resolve: true, Headers: requestResponseHeaders(r).Clone(), Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
+		if chosen := requestResolveOptions(r.Context()); chosen != nil {
+			entry.options = *chosen
+		}
+		if entry.options.FilterSerializedResponseHeaders == nil {
+			entry.options.FilterSerializedResponseHeaders = s.options.FilterSerializedResponseHeaders
+		}
+		return prerenderRequestAnswer{Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: requestResponseHeaders(r).Clone(), Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
 	case <-entry.done:
 		if entry.failure != nil {
 			s.end(handle)
@@ -369,4 +385,54 @@ func runPrerenderCookies(ctx context.Context, raw []byte, out io.Writer) error {
 		jar.setInternal(cookie)
 	}
 	return json.NewEncoder(out).Encode(struct{}{})
+}
+
+// Kit calls these against the suspended request, after its loads have run.
+// A panic is a transport failure, not a false predicate answer.
+func runPrerenderResolveOption(ctx context.Context, entry *prerenderRequest, raw []byte, out io.Writer) (err error) {
+	defer func() {
+		if value := recover(); value != nil {
+			err = fmt.Errorf("skgo: prerender resolve callback panicked: %v", value)
+		}
+	}()
+	var input struct {
+		Kind  string       `json:"option"`
+		HTML  string       `json:"html"`
+		Done  bool         `json:"done"`
+		Name  string       `json:"name"`
+		Value string       `json:"value"`
+		Input PreloadInput `json:"input"`
+	}
+	if err := json.Unmarshal(raw, &input); err != nil {
+		return err
+	}
+	switch input.Kind {
+	case "transform":
+		if entry.options.TransformPageChunk == nil {
+			return fmt.Errorf("skgo: no prerender transform selected")
+		}
+		html, err := entry.options.TransformPageChunk(ctx, input.HTML, input.Done)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(out).Encode(struct {
+			HTML string `json:"html"`
+		}{html})
+	case "filter":
+		if entry.options.FilterSerializedResponseHeaders == nil {
+			return fmt.Errorf("skgo: no prerender header filter selected")
+		}
+		return json.NewEncoder(out).Encode(struct {
+			Value bool `json:"value"`
+		}{entry.options.FilterSerializedResponseHeaders(input.Name, input.Value)})
+	case "preload":
+		if entry.options.Preload == nil {
+			return fmt.Errorf("skgo: no prerender preload selected")
+		}
+		return json.NewEncoder(out).Encode(struct {
+			Value bool `json:"value"`
+		}{entry.options.Preload(input.Input)})
+	default:
+		return fmt.Errorf("skgo: unknown prerender resolve option %q", input.Kind)
+	}
 }

@@ -22,11 +22,11 @@ func TestProductionPrerenderedEndpointsAndPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(manifest.PrerenderedEndpoints) != 2 || strings.Join(manifest.PrerenderedEndpoints["/lifecycle-api"], ",") != "GET" || strings.Join(manifest.PrerenderedEndpoints["/lifecycle-cookies/[operation]"], ",") != "GET" {
+	if len(manifest.PrerenderedEndpoints) != 3 || strings.Join(manifest.PrerenderedEndpoints["/lifecycle-api"], ",") != "GET" || strings.Join(manifest.PrerenderedEndpoints["/lifecycle-cookies/[operation]"], ",") != "GET" {
 		t.Fatalf("fully prerendered endpoint declarations: %v", manifest.PrerenderedEndpoints)
 	}
 	for _, route := range manifest.Routes {
-		if route.ID == "/lifecycle-api" || route.ID == "/lifecycle-cookies/[operation]" || route.ID == "/lifecycle/[slug]" {
+		if route.ID == "/options-api/[slug]" || route.ID == "/lifecycle-api" || route.ID == "/lifecycle-cookies/[operation]" || route.ID == "/lifecycle/[slug]" {
 			t.Fatalf("fully prerendered route retained for dynamic dispatch: %s", route.ID)
 		}
 	}
@@ -228,5 +228,17 @@ func TestProductionRedirectServing(t *testing.T) {
 	recorder := get(handler, "/ordinary?from=legacy")
 	if recorder.Code != 200 || !strings.Contains(recorder.Body.String(), "<h1>Ordinary SSR route</h1>") {
 		t.Fatalf("dynamic destination status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestSharedRendererDefaultFilter(t *testing.T) {
+	dist := buildFS(t)
+	// This served route has the same universal fetch as the prerendered default
+	// route, and uses the renderer default without a hook-selected filter.
+	handler := newHandler(t, dist, nil)
+	response := get(handler, "/options-served")
+	body := response.Body.String()
+	if response.Code != 200 || !strings.Contains(body, "<h1>Served default options</h1>") || !strings.Contains(body, `"x-default":"default-literal"`) || strings.Contains(body, `"x-public"`) || strings.Contains(body, `"x-denied"`) {
+		t.Fatalf("served default parity: %d %s", response.Code, body)
 	}
 }

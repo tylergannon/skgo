@@ -302,3 +302,137 @@ func TestPrerenderKeepsKitLogicalURLAndOriginalRequestDistinct(t *testing.T) {
 	}
 	sessions.end(answer.Handle)
 }
+
+func TestPrerenderResolveOptionsUseComposedPostLoadState(t *testing.T) {
+	outer := RequestMiddleware[struct{}, buildLocals](func(ctx context.Context, event RequestEvent[struct{}, buildLocals], resolve RequestResolve[struct{}, buildLocals]) (*http.Response, error) {
+		event.Locals.Value = "before"
+		return resolve(ctx, event, ResolveOptions{
+			TransformPageChunk: func(ctx context.Context, html string, done bool) (string, error) {
+				if !done || RequestLocals[buildLocals](ctx).Value != "loaded" {
+					return "", fmt.Errorf("wrong callback context")
+				}
+				return html + ":outer", nil
+			},
+			FilterSerializedResponseHeaders: func(name, value string) bool {
+				return name == "x-public" && value == "literal" && event.Locals.Value == "loaded"
+			},
+			Preload: func(input PreloadInput) bool {
+				return event.Locals.Value == "loaded" && input == (PreloadInput{Type: "font", Path: "/known.woff2", Filename: "src/known.woff2"})
+			},
+		})
+	})
+	inner := RequestMiddleware[struct{}, buildLocals](func(ctx context.Context, event RequestEvent[struct{}, buildLocals], resolve RequestResolve[struct{}, buildLocals]) (*http.Response, error) {
+		return resolve(ctx, event, ResolveOptions{
+			TransformPageChunk:              func(ctx context.Context, html string, done bool) (string, error) { return html + ":inner", nil },
+			FilterSerializedResponseHeaders: func(string, string) bool { panic("wrong filter") }, Preload: func(PreloadInput) bool { panic("wrong preload") },
+		})
+	})
+	load := NewServerLoad(LoadSpec{Module: "page", Run: func(ctx context.Context) (any, error) {
+		RequestLocals[buildLocals](ctx).Value = "loaded"
+		return map[string]any{"literal": "loaded"}, nil
+	}})
+	sessions := &prerenderRequests{ctx: context.Background(), options: PrerenderServiceOptions{BindRequest: buildBoundary(RequestSequence(outer, inner))}, entries: map[string]*prerenderRequest{}}
+	defer sessions.close()
+	handler := prerenderHandler("secret", nil, []*ServerLoad{load}, nil, nil, sessions)
+	var begin prerenderRequestAnswer
+	buildOperation(t, handler, "/begin", prerenderRequestInput{Method: "GET", URL: "http://app.test/page"}, &begin)
+	if begin.Options == nil || !begin.Options.Transform || !begin.Options.Filter || !begin.Options.Preload {
+		t.Fatalf("callback selection: %+v", begin.Options)
+	}
+	buildOperation(t, handler, "/load", map[string]any{"handle": begin.Handle, "module": "page", "url": "http://app.test/page"}, nil)
+	var transform struct{ HTML string }
+	buildOperation(t, handler, "/resolve-option", map[string]any{"handle": begin.Handle, "option": "transform", "html": "literal", "done": true}, &transform)
+	if transform.HTML != "literal:inner:outer" {
+		t.Fatalf("composition: %q", transform.HTML)
+	}
+	for _, test := range []struct {
+		option string
+		args   map[string]any
+		want   bool
+	}{
+		{"filter", map[string]any{"name": "x-public", "value": "literal"}, true},
+		{"filter", map[string]any{"name": "x-denied", "value": "literal"}, false},
+		{"preload", map[string]any{"input": map[string]string{"type": "font", "path": "/known.woff2", "filename": "src/known.woff2"}}, true},
+		{"preload", map[string]any{"input": map[string]string{"type": "js", "path": "/known.js"}}, false},
+	} {
+		test.args["handle"] = begin.Handle
+		test.args["option"] = test.option
+		var answer struct{ Value bool }
+		buildOperation(t, handler, "/resolve-option", test.args, &answer)
+		if answer.Value != test.want {
+			t.Errorf("%s got %v want %v", test.option, answer.Value, test.want)
+		}
+	}
+	buildOperation(t, handler, "/response", map[string]any{"handle": begin.Handle, "response": prerenderResponse{Status: 200, Body: []byte("Kit result")}}, nil)
+	buildOperation(t, handler, "/end", map[string]string{"handle": begin.Handle}, nil)
+	if len(sessions.entries) != 0 {
+		t.Fatal("request leaked")
+	}
+}
+
+func TestPrerenderResolveOptionDefaultsAndFailures(t *testing.T) {
+	for _, test := range []struct {
+		name                  string
+		chosen, defaultFilter func(string, string) bool
+		filter                bool
+	}{
+		{name: "nil"},
+		{name: "renderer default", defaultFilter: func(name, value string) bool { return name == "x-default" }, filter: true},
+		{name: "hook overrides default", chosen: func(string, string) bool { return false }, defaultFilter: func(string, string) bool { panic("default must not run") }, filter: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			hook := RequestMiddleware[struct{}, buildLocals](func(ctx context.Context, event RequestEvent[struct{}, buildLocals], resolve RequestResolve[struct{}, buildLocals]) (*http.Response, error) {
+				return resolve(ctx, event, ResolveOptions{FilterSerializedResponseHeaders: test.chosen})
+			})
+			sessions := &prerenderRequests{ctx: context.Background(), options: PrerenderServiceOptions{BindRequest: buildBoundary(hook), FilterSerializedResponseHeaders: test.defaultFilter}, entries: map[string]*prerenderRequest{}}
+			defer sessions.close()
+			handler := prerenderHandler("secret", nil, nil, nil, nil, sessions)
+			var begin prerenderRequestAnswer
+			buildOperation(t, handler, "/begin", prerenderRequestInput{Method: "GET", URL: "http://app.test/"}, &begin)
+			if begin.Options == nil || begin.Options.Transform || begin.Options.Preload || begin.Options.Filter != test.filter {
+				t.Fatalf("default selection: %+v", begin.Options)
+			}
+			if test.filter {
+				var answer struct{ Value bool }
+				buildOperation(t, handler, "/resolve-option", map[string]string{"handle": begin.Handle, "option": "filter", "name": "x-default", "value": "literal"}, &answer)
+				if answer.Value != (test.chosen == nil) {
+					t.Fatalf("default precedence: %v", answer.Value)
+				}
+			}
+			buildOperation(t, handler, "/end", map[string]string{"handle": begin.Handle}, nil)
+		})
+	}
+	for _, failure := range []string{"transform", "panic"} {
+		t.Run(failure, func(t *testing.T) {
+			hook := RequestMiddleware[struct{}, buildLocals](func(ctx context.Context, event RequestEvent[struct{}, buildLocals], resolve RequestResolve[struct{}, buildLocals]) (*http.Response, error) {
+				return resolve(ctx, event, ResolveOptions{
+					TransformPageChunk: func(context.Context, string, bool) (string, error) {
+						return "", fmt.Errorf("literal full transform error")
+					},
+					Preload: func(PreloadInput) bool { panic("literal panic error") },
+				})
+			})
+			sessions := &prerenderRequests{ctx: context.Background(), options: PrerenderServiceOptions{BindRequest: buildBoundary(hook)}, entries: map[string]*prerenderRequest{}}
+			defer sessions.close()
+			handler := prerenderHandler("secret", nil, nil, nil, nil, sessions)
+			var begin prerenderRequestAnswer
+			buildOperation(t, handler, "/begin", prerenderRequestInput{Method: "GET", URL: "http://app.test/"}, &begin)
+			option, want := "transform", "literal full transform error"
+			if failure == "panic" {
+				option, want = "preload", "literal panic error"
+			}
+			raw, _ := json.Marshal(map[string]string{"handle": begin.Handle, "option": option})
+			request := httptest.NewRequest("POST", "/resolve-option", bytes.NewReader(raw))
+			request.Header.Set("Authorization", "Bearer secret")
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != 500 || !strings.Contains(response.Body.String(), want) {
+				t.Fatalf("callback failure: %d %s", response.Code, response.Body.String())
+			}
+			buildOperation(t, handler, "/end", map[string]string{"handle": begin.Handle}, nil)
+			if len(sessions.entries) != 0 {
+				t.Fatal("failed request leaked")
+			}
+		})
+	}
+}
