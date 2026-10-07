@@ -1,8 +1,8 @@
 # Complete RequestEvent: typed locals, layout params, and request metadata
 
-**Status:** design plan reviewed with Claude; final outcome **only nitpicks remain** (round 05). Implementation starts after [#262](https://github.com/tylergannon/skgo/issues/262) lands.
+**Status:** initial design reviewed with Claude through round 05; the predicate mechanism is now being reconsidered in the [alternating design discussion](20261006-prerender-predicate-design.md). Codegen prerequisite [#262](https://github.com/tylergannon/skgo/issues/262) landed in [#266](https://github.com/tylergannon/skgo/pull/266). This task remains design-only.
 
-**Baseline:** SKGo `916ccdc` (merged [#261](https://github.com/tylergannon/skgo/pull/261)); installed SvelteKit **3.0.0**, verified against the example lockfile. This is a plan, not an implementation or a claim of runtime proof.
+**Baseline:** rebased onto SKGo `c6906b7` (merged #266, following typed params #261); installed SvelteKit **3.0.0**. This is a plan, not an implementation or a claim of runtime proof.
 
 ## Outcome
 
@@ -232,7 +232,7 @@ Cookies, fetch, response headers, parent data, dependency declarations, and erro
 
 ## 5. Relationship to #262 and in-tree updates
 
-Do not implement this plan until #262's codegen reorganization is merged and its new loading model is understood. Refresh this plan's baseline then; adapt to the resulting interfaces rather than reintroducing the old on-disk bootstrap.
+The #262 reorganization is merged in #266. `internal/gen/output.go` owns invocation-local generated fragments, merges Go declarations into `skgo_gen.go`, and supplies the synthetic overlay. `internal/gen/packages.go` passes that overlay to Polytype's `grammar.LoadWithConfig` too. Extend those existing mechanisms rather than reintroducing an on-disk bootstrap. The example's shared params and prerender command now live in their respective packages' `skgo_gen.go` files.
 
 The current invocation must synthesize the configured locals binding, route/layout types, and event aliases before checking authored handlers. Every type consumer must see that same view. Persist SKGo-generated Go declarations only in the package's `skgo_gen.go`; scaffolded `locals.go` remains authored. The configured locals package must already exist and be loadable without importing generated routing output.
 
@@ -240,7 +240,7 @@ Aliases are recognized by Go type identity, not spelling. Validate both event ty
 
 A fresh scaffold must work with an empty locals struct. Editing it to use an application domain type must survive regeneration and compile through the real starter workflow. Update every in-tree consumer to the new configuration and signatures. Ordinary validation rejects missing locals configuration or an incorrect event domain; no migration-specific diagnostics or hidden compatibility types are required.
 
-## 6. Implementation missions, after the dependency lands
+## 6. Implementation missions
 
 These are capability boundaries, not prescribed algorithms or parallel file assignments. The implementer owns mapping the refreshed pin and choosing internals.
 

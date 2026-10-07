@@ -1,6 +1,6 @@
 # Prerender predicates: simplest correct design
 
-Design discussion; no RequestEvent implementation before #262. This proposal revisits the synchronous-predicate mechanism in [the RequestEvent plan](20261006-request-event.md), not the requirement that Go owns application decisions. The user requested alternating edits and commits with Claude Fable 5.1 until both authors endorse simplicity and correctness. Agreement is about the design; real-build acceptance remains implementation work.
+Design discussion; no RequestEvent implementation in this task. The branch was rebased onto `origin/main` at `c6906b7` after Claude's first turn; #262 landed via #266 with invocation-local synthetic generation and one `skgo_gen.go` per package. This proposal revisits the synchronous-predicate mechanism in [the RequestEvent plan](20261006-request-event.md), not the requirement that Go owns application decisions. The user requested alternating edits and commits with Claude Fable 5.1 until both authors endorse simplicity and correctness. Agreement is about the design; real-build acceptance remains implementation work.
 
 ## Codex opening proposal
 
@@ -77,6 +77,23 @@ Item 4 of the prerender lifecycle keeps its outcome (Go-selected options are eff
 
 ## Competing ideas worth defending
 
+## Codex reply: precompute is earlier than the runtime too
+
+Claude's table proposal makes a valuable simplification if purity is an established contract. It is not established by an internal implementation comment. More decisively, here is the requested counterexample that the current runtime honours and the proposed begin-time preload table does not:
+
+1. The hook creates a request-local `assetsReady := false` and installs a preload closure which returns `assetsReady && input.Type == "font"`.
+2. An awaited Go page load sets that same request-local boolean to true. Existing context can carry the pointer today; typed Locals gives it a named home in this plan. There is no concurrent access in this example.
+3. Kit calls preload after those loads and rendering; it returns true for the font. SKGo `document.go:deliver` calls `renderPlan` before `assemble`, and `document_assemble.go` calls preload inside `assemble`, so runtime SKGo returns true too.
+4. Claude's table is computed before `resolve`, hence before the load; it records false and omits the font.
+
+This is ordinary closure behavior, not reliance on an unspecified order among assets. The same reasoning applies to a preload decision driven by a awaited query during rendering. Moving the batch to "after the loads" still needs an actual Kit seam after all relevant work and before its synchronous decisions, including error rendering. A whole-manifest batch also invokes callbacks for unrelated assets Kit never asks about.
+
+The filter table is a useful existing optimization for stable policies. Its existence does not establish a public purity constraint on either callback, and a runtime mismatch would be a bug to examine, not permission to introduce another one. Repository instructions explicitly make Kit the authority. Therefore I do not accept the table proposal as a general replacement yet.
+
+My revised recommendation remains small: omit proxy options for nil callbacks, and for custom callbacks use one build-scoped channel to the already-running owner, with a per-call atomic status (pending/false/true/error) and the existing timeout. Do not add a cache, an asset enumerator, a fetch wrapper, or another worker. Send exactly the arguments Kit provides when it provides them. This also avoids reproducing Kit's path-prefix, relative-assets, font-filename and branch-selection logic. A correct default path is free; the general custom path has one uniform mechanism.
+
+A second correction to the counter-proposal's acceptance: excluded-header reads during universal load invoke Kit's generated `load_response_header_not_serialized` error, not a harmless warning. Also a Set containing only admitted headers cannot distinguish denied from unknown while claiming lookup-miss detection. These are reparable table details, but they matter when comparing simplicity.
+
 | Candidate | Attraction | Correctness or complexity question |
 | --- | --- | --- |
 | Return header decisions alongside Go fetch responses | Already used at runtime; no extra round trip for each header | Timing/count differs from Kit's call sites — but the runtime already differs identically, so this is the mirror, not a deviation. At prerender the fetch is Kit's, so decisions are fetched *after* the response rather than carried with it; `fetchHeaders` covers joining and repeated set-cookie in both modes. **Adopted by the counter-proposal.** |
@@ -98,3 +115,4 @@ A real Kit build exercises both true and false decisions for each custom predica
 
 - Codex turn 1: main-thread relay is the best general candidate I have. Its chief advantage is preserving arbitrary callback behavior while adding only a channel and bounded completion cell to resources we already own. I invite a smaller solution that preserves the actual contract, or evidence that this topology cannot work.
 - Claude turn 1 (claude-fable-5-1): the synchronous requirement is an artefact of mirroring Kit's call sites instead of skgo's runtime, which already evaluates both predicates in Go ahead of the renderer and replays tables. Replace the relay with two asynchronous table transfers over the bridge the RequestEvent plan already specifies, carried by the generated `handle`. Argument and open questions in [the contest review](../reviews/20261006-predicate-contest-claude-01.md). I endorse the outcome and acceptance of Codex's proposal; I do not endorse its mechanism while a mechanism with no new primitives satisfies the same contract.
+- Codex turn 2: rebased onto #266, supplied a concrete load-mutated preload closure that both Kit and the current Go runtime honour and the early table does not, and retained the main-thread relay as the smaller general solution. [Argument](../reviews/20261006-predicate-contest-codex-02.md).
