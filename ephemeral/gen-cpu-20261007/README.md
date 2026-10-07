@@ -127,6 +127,41 @@ The unmodified full-suite execution passed this case. Do not apply
 import-ownership and compiler-error checks while avoiding unnecessary syntax
 and type-information construction for dependencies.
 
+### Clarification: the diagnostic does not justify repeated full analysis
+
+The `transitive-generated` regression case runs once per full generator-suite
+execution. The repeated expensive work is production generator behavior:
+`readGoParamMatchers` requests dependency syntax/type information for each
+invocation. The failing experiment establishes that the unchanged validator
+cannot rely on export-loaded `go/types.Package.Imports()` alone. It does not
+establish that this guard requires full dependency source type-checking.
+
+The concrete hazard is a matcher domain package importing generated params.
+Generated params in turn imports that domain package to spell the matcher's
+result type, creating an import cycle. A proof about one fixture cannot prove
+that a different application, or a changed import graph, is free of that cycle.
+For the same unchanged inputs, however, one validation result can be reused.
+
+Pinned go/packages exposes a cheaper metadata mode:
+`NeedName | NeedImports | NeedDeps`, with no `NeedSyntax`, `NeedTypes`, or
+`NeedTypesInfo`. It supplies the dependency import graph without requesting
+dependency parsing/type-checking. That provides a candidate way to retain the
+fast type-loading experiment and separately validate the source-import graph.
+This combination has not been implemented or measured here, and export/overlay
+invalidation and compiler diagnostics still need verification.
+
+There is also repeated validation within a single invocation:
+`writeSharedParams` calls `validateSharedType` for each matched route parameter
+before deduplicating equivalent type alternatives (`shared_params.go:366-375`).
+The validator builds its forbidden-package list and starts a fresh graph walk
+each time. Checking each distinct type/import graph once for that invocation
+could preserve the same diagnostics while reusing its result across routes.
+
+For tests, share a generated result among all assertions whose inputs and
+starting state match. For changed inputs, retain a fresh input-dependent check,
+which need not use the expensive dependency-syntax mode. Rejecting the exact
+one-flag patch should not be read as rejecting either optimization.
+
 ## Test reuse without lowering confidence
 
 The suite already implements the user's “expensive operation once, assert many
