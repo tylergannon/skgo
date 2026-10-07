@@ -1,0 +1,1 @@
+decision: For #259, collide `domain.Order` with `legacy.Order` on the existing `order` key. This exercises readable package qualification without replacing the two same-named `domain.Number` packages that cover the digest fallback.
