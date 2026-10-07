@@ -1,0 +1,2 @@
+correction: Issue #260 distinguishes authored API guidance from Go type identity: signature diagnostics should show the explicit RequestEvent generic argument while ordinary aliases remain accepted. The previous wrong-params assertion checked only "must receive", allowing the unwanted alias recommendation to pass.
+friction: Running `just test` in a fresh worktree before `just install` and `just build` produces dependency and embedded-build failures. Prepare those prerequisites before the full suite, even for a generator-only correction.

@@ -47,6 +47,11 @@ type PublicHidden = hidden
 	writeSharedFixture(t, app, "other/domain.go", `package domain
 type Number int
 `)
+	writeSharedFixture(t, app, "legacy/order.go", `package legacy
+import "fmt"
+type Order struct { Number int }
+func (r Order) Label() string { return fmt.Sprintf("Legacy order #%d",r.Number) }
+`)
 	matcherFile := filepath.Join(app, "web", "src", "params.go")
 	original, err := os.ReadFile(matcherFile)
 	if err != nil {
@@ -54,6 +59,7 @@ type Number int
 	}
 	original = bytes.Replace(original, []byte("import ("), []byte(`import (
  domain "github.com/tylergannon/skgo/example/domain"
+ "github.com/tylergannon/skgo/example/legacy"
  other "github.com/tylergannon/skgo/example/other"`), 1)
 	original = append(original, []byte(`
 func Numeric(s string) (domain.Number,bool) { n,e:=strconv.Atoi(s);return domain.Number(n),e==nil }
@@ -73,6 +79,7 @@ func Channel(s string) (<-chan domain.Number,bool) { return nil,true }
 func Interface(s string) (interface{Label() string},bool) { return nil,true }
 func Array(s string) ([2]domain.Number,bool) { return [2]domain.Number{0,42},true }
 func StructOrder(s string) (domain.Order,bool) { return domain.Order{Number:42},true }
+func LegacyOrder(s string) (legacy.Order,bool) { return legacy.Order{Number:17},true }
 func PublicHidden(s string) (domain.PublicHidden,bool) { return 0,true }
 `)...)
 	if err := os.WriteFile(matcherFile, original, 0644); err != nil {
@@ -84,7 +91,7 @@ func PublicHidden(s string) (domain.PublicHidden,bool) { return 0,true }
 		t.Fatal(err)
 	}
 	var entries strings.Builder
-	for _, name := range []string{"Numeric", "Aliased", "Other", "Flag", "Blank", "MaybeRef", "Pointer", "Generic", "Structure", "Function", "FunctionAlias", "Slice", "Map", "Channel", "PublicHidden", "StructOrder", "Interface", "Array"} {
+	for _, name := range []string{"Numeric", "Aliased", "Other", "Flag", "Blank", "MaybeRef", "Pointer", "Generic", "Structure", "Function", "FunctionAlias", "Slice", "Map", "Channel", "PublicHidden", "StructOrder", "LegacyOrder", "Interface", "Array"} {
 		entries.WriteString(name + ": (value: string) => value,\n")
 	}
 	frontendSource = bytes.Replace(frontendSource, []byte("defineParams({"), []byte("defineParams({\n"+entries.String()), 1)
@@ -94,6 +101,7 @@ func PublicHidden(s string) (domain.PublicHidden,bool) { return 0,true }
 	for _, route := range []string{"numeric/[id=Numeric]", "alias/[id=Aliased]", "text/[id]", "optional/[[id]]", "absent", "other/[id=Other]", "flag/[flag=Flag]", "empty/[empty=Blank]", "pointer/[[pointer=Pointer]]", "nil/[id=MaybeRef]", "nil-optional/[[id=MaybeRef]]", "generic/[box=Generic]", "structure/[structure=Structure]", "fn/[fn=Function]", "fn-alias/[fn=FunctionAlias]", "slice/[slice=Slice]", "map/[map=Map]", "channel/[channel=Channel]", "hidden-alias/[hidden=PublicHidden]", "named/[order=StructOrder]", "interface/[iface=Interface]", "array/[array=Array]", "_frontend/[underscored]", "keys/[slug]/[params]/[request_event]/[1]/[_]/[-]/[a-b]/[a_b]"} {
 		writeSharedFixture(t, app, "web/src/routes/"+route+"/+page.svelte", "<p>fixture</p>\n")
 	}
+	writeSharedFixture(t, app, "web/src/routes/legacy/[order=LegacyOrder]/+page.svelte", "<p>legacy order</p>\n")
 	linked := filepath.Join(t.TempDir(), "[linked]")
 	if err := os.MkdirAll(linked, 0755); err != nil {
 		t.Fatal(err)
@@ -238,6 +246,7 @@ import (
  "testing"
  "github.com/tylergannon/skgo"
  "github.com/tylergannon/skgo/example/domain"
+ "github.com/tylergannon/skgo/example/legacy"
  other "github.com/tylergannon/skgo/example/other"
  "github.com/tylergannon/skgo/example/internal/skgo/params"
 )
@@ -270,8 +279,19 @@ func TestSharedReceipts(t *testing.T) {
   if got:=receipt(p);got!=tc.want{t.Fatalf("%s receipt %s, want %s",tc.route,got,tc.want)}
   if p.ID()!=nil && reflect.TypeOf(p.ID()).Kind()!=reflect.Struct{t.Fatalf("presence wrapper %T is not concrete",p.ID())}
  }
- named,err:=params.SkgoParams("/named/[order=StructOrder]",map[string]any{"order":domain.Order{Number:42}});if err!=nil{t.Fatal(err)}
- switch v:=named.Order().(type){case params.OrderParam_Order:if v.Value.Number!=42 || v.Value.Label()!="Struct order #42"{t.Fatal("lost named struct fields/method")};default:t.Fatalf("wrong struct variant %T",v)}
+ for _,tc:=range []struct{route string; value any; want string}{
+ {"/named/[order=StructOrder]",domain.Order{Number:42},"domain:42:Struct order #42"},
+ {"/legacy/[order=LegacyOrder]",legacy.Order{Number:17},"legacy:17:Legacy order #17"},
+ } {
+  named,err:=params.SkgoParams(tc.route,map[string]any{"order":tc.value});if err!=nil{t.Fatal(err)}
+  var got string
+  switch v:=named.Order().(type){
+  case params.OrderParam_DomainOrder:got=fmt.Sprintf("domain:%d:%s",v.Value.Number,v.Value.Label())
+  case params.OrderParam_LegacyOrder:got=fmt.Sprintf("legacy:%d:%s",v.Value.Number,v.Value.Label())
+  default:t.Fatalf("wrong struct variant %T",v)
+  }
+  if got!=tc.want{t.Fatalf("%s receipt %s, want %s",tc.route,got,tc.want)}
+ }
  p,err:=params.SkgoParams("/pointer/[[pointer=Pointer]]",map[string]any{"pointer":(*domain.OrderRef)(nil)});if err!=nil{t.Fatal(err)}
  switch v:=p.Pointer().(type){case params.PointerParam_PointerOrderRef:if v.Value!=nil{t.Fatal("pointer payload changed")};case nil:t.Fatal("pointer:absent");default:t.Fatalf("wrong pointer variant %T",v)}
  p,err=params.SkgoParams("/pointer/[[pointer=Pointer]]",nil);if err!=nil || p.Pointer()!=nil{t.Fatal("pointer omission must be absent")}

@@ -580,7 +580,7 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 		event := types.Unalias(target.Type().(*types.Signature).Params().At(1).Type()).(*types.Named)
 		param, ok := types.Unalias(event.TypeArgs().At(0)).(*types.Named)
 		if !ok || param.Obj().Pkg() == nil || param.Obj().Pkg().Path() != expected || param.Obj().Name() != "Params" {
-			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s must receive skgo.RequestEvent[%s.Params] or its generated RequestEvent alias", pos, target.Name(), expected)
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s must receive skgo.RequestEvent[%s.Params]", pos, target.Name(), expected)
 		}
 	}
 	if inputsName != "" {

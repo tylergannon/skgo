@@ -51,7 +51,7 @@ func TestCommandFormContextMigrationDiagnostics(t *testing.T) {
 		for _, tc := range []struct{ name, signature, want string }{
 			{"ctx-only", "ctx context.Context,in string", "A " + strings.ToLower(kind) + " is func(context.Context, skgo.RequestEvent[params.Params]"},
 			{"event-only", "event skgo.RequestEvent[params.Params],in string", "A " + strings.ToLower(kind) + " is func(context.Context, skgo.RequestEvent[params.Params]"},
-			{"wrong-params", "ctx context.Context,event skgo.RequestEvent[struct{}],in string", "must receive"},
+			{"wrong-params", "ctx context.Context,event skgo.RequestEvent[struct{}],in string", "old must receive skgo.RequestEvent[example.com/app/generated/params.Params]"},
 		} {
 			t.Run(kind+"/"+tc.name, func(t *testing.T) {
 				_, cfg := foreignFixture(t, `package data
@@ -63,6 +63,9 @@ var _ = skgo.`+kind+`(old)
 				err := Run(cfg)
 				if err == nil || !strings.Contains(err.Error(), "data.remote.go:5:") || !strings.Contains(err.Error(), tc.want) {
 					t.Fatalf("missing source-located %s migration: %v", kind, err)
+				}
+				if strings.Contains(err.Error(), "RequestEvent alias") {
+					t.Fatalf("%s migration recommends an alias instead of the explicit generic type: %v", kind, err)
 				}
 			})
 		}
@@ -100,7 +103,10 @@ func receipt(p params.Params) string {
  if v:=p.Pointer();v!=nil {switch v:=v.(type){case params.PointerParam_PointerOrderRef:if v.Value!=nil{panic("pointer payload")};return "pointer:present:nil";default:panic("pointer variant")}}
  if v:=p.Flag();v!=nil {switch v:=v.(type){case params.FlagParam_Bool:return fmt.Sprintf("bool:%t",v.Value);default:panic("flag variant")}}
  if v:=p.Empty();v!=nil {switch v:=v.(type){case params.EmptyParam_String:return "empty:"+v.Value;default:panic("empty variant")}}
- if v:=p.Order();v!=nil {switch v:=v.(type){case params.OrderParam_Order:return fmt.Sprintf("struct:%d:%s",v.Value.Number,v.Value.Label());default:panic("order variant")}}
+ if v:=p.Order();v!=nil {switch v:=v.(type){
+ case params.OrderParam_DomainOrder:return fmt.Sprintf("struct:%d:%s",v.Value.Number,v.Value.Label())
+ case params.OrderParam_LegacyOrder:return fmt.Sprintf("legacy-struct:%d:%s",v.Value.Number,v.Value.Label())
+ default:panic("order variant")}}
  return "remote:absent"
 }
 func check(ctx context.Context,event skgo.RequestEvent[params.Params]) {
@@ -170,6 +176,7 @@ func registry(t *testing.T,dev bool)(*skgo.Remotes,map[string]*skgo.Remote){t.He
  {ID:"/flag/[flag=Flag]",Pattern:"^/flag/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"flag",Matcher:"Flag"}}},
  {ID:"/empty/[empty=Blank]",Pattern:"^/empty/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"empty",Matcher:"Blank"}}},
  {ID:"/named/[order=StructOrder]",Pattern:"^/named/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"order",Matcher:"StructOrder"}}},
+ {ID:"/legacy/[order=LegacyOrder]",Pattern:"^/legacy/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"order",Matcher:"LegacyOrder"}}},
  {ID:"/choice/[id=Numeric]",Pattern:"^/choice/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"id",Matcher:"Numeric"}}},
  {ID:"/choice/[id]",Pattern:"^/choice/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"id"}}},
  {ID:"/chain/[[lang=Lang]]/[[id]]",Pattern:"^/chain(?:/([^/]+))?(?:/([^/]+))?/?$",Params:[]skgo.ManifestParam{{Name:"lang",Matcher:"Lang",Optional:true,Chained:true},{Name:"id",Optional:true,Chained:true}}},
@@ -215,6 +222,7 @@ func TestCallerHandlers(t *testing.T){
  {"/nil/none","remote:present:nil"},{"/nil/42","remote:present:Ref #42"},{"/nil/typednil","remote:present:typednil"},
  {"/nil-optional/none","remote:present:nil"},{"/nil-optional","remote:absent"},{"/pointer/none","pointer:present:nil"},{"/pointer","remote:absent"},
  {"/flag/false","bool:false"},{"/empty/ignored","empty:"},{"/named/42","struct:42:Struct order #42"},
+ {"/legacy/17","legacy-struct:17:Legacy order #17"},
  {"","remote:absent"},{"/unmatched","remote:absent"},{"/numeric/rejected","remote:absent"},
  {"/text/%2525","string:%25"},{"/text/a%2Fb","string:a/b"},{"/text/%E2%9C%93","string:✓"},
  {"/chain/abc","string:abc"},
