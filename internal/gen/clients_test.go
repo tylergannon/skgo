@@ -222,7 +222,7 @@ func TestEmptyAppRemovesOldFormClient(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := Run(Config{Web: web, Out: out}); err != nil {
+	if err := Run(fixtureConfig(Config{Web: web, Out: out})); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"skgo_gen.go"} {

@@ -35,7 +35,7 @@ func whoami(ctx context.Context) (businesslogic.Session, error) {
 // The page writes `signIn(name).updates(whoami(), getTodos(), watchCount)`.
 // Everything that request asks for is named below, and nothing else is: a
 // request naming a fourth query would run nothing.
-func signIn(ctx context.Context, event skgo.RequestEvent[params.Params], user string) (businesslogic.Session, error) {
+func signIn(ctx context.Context, event params.RequestEvent, user string) (businesslogic.Session, error) {
 	if user == "" {
 		return businesslogic.Session{}, skgo.Errorf(400, "Who are you?")
 	}
@@ -50,7 +50,7 @@ func signIn(ctx context.Context, event skgo.RequestEvent[params.Params], user st
 }
 
 // signOut ends the session and clears the cookie.
-func signOut(ctx context.Context, event skgo.RequestEvent[params.Params]) (businesslogic.Session, error) {
+func signOut(ctx context.Context, event params.RequestEvent) (businesslogic.Session, error) {
 	e := skgo.EventFrom(ctx)
 	id, _ := e.Cookie(sessionCookie)
 	businesslogic.Default.SignOut(id)

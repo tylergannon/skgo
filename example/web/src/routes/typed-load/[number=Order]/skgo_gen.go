@@ -4,6 +4,7 @@ package typedload
 
 import (
 	skgo "github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
@@ -19,10 +20,10 @@ func (p RouteParams) Number() hooks.OrderNumber {
 	return p.valueNumber
 }
 
-type RequestEvent = skgo.RequestEvent[RouteParams]
+type RequestEvent = skgo.RequestEvent[RouteParams, appstate.Locals]
 
 func SkgoRequestEvent(event *skgo.Event) RequestEvent {
-	return RequestEvent{Event: event, Params: RouteParams{event: event,
+	return RequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: RouteParams{event: event,
 		valueNumber: skgo.LoadParamValue[hooks.OrderNumber](event, "number"),
 	}}
 }

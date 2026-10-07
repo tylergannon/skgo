@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -427,7 +426,6 @@ func (f *requestFetcher) serve(ctx context.Context, src fetchSource, request *ht
 	// engine needs to know how many renders are waiting on this one.
 	sub := valuelessContext{ctx}
 	subCtx := context.WithValue(sub, requestFetcherKey{}, f)
-	subCtx = context.WithValue(subCtx, localsKey{}, &locals{values: map[reflect.Type]any{}})
 	subCtx = withFetchDepth(subCtx, fetchDepthOf(ctx)+1)
 	subCtx = ssr.CarryDepth(subCtx, ctx)
 	subCtx = carryDevRender(subCtx, ctx)

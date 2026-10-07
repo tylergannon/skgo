@@ -102,7 +102,7 @@ func TestProjectRefusesWhatPolytypeCannotCarry(t *testing.T) {
 func TestImportPathOutsideTheRouteTreeStillHasToBeNameable(t *testing.T) {
 	t.Parallel()
 	a := &app{
-		cfg:        Config{Web: filepath.Join("/app", "web")},
+		cfg:        fixtureConfig(Config{Web: filepath.Join("/app", "web")}),
 		hostDir:    "/app",
 		hostModule: "example.com/app",
 	}

@@ -15,99 +15,15 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/tylergannon/skgo"
-	"github.com/tylergannon/skgo/example/businesslogic"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
 )
 
 // SessionCookie is the cookie the session id travels in. This is the one place
 // the app spells it: everything downstream reads the session, not the cookie.
 const SessionCookie = "skgo_session"
-
-// Handle is the app's `handle` hook — the one place it decides who the caller
-// is. It runs once per request, before any load or remote function, and puts
-// the answer where all of them can read it with skgo.LocalOf.
-//
-// A guard is then a load that reads the session; see
-// web/src/routes/account/layout.server.go, which turns a signed-out visitor
-// away from every page under /account without any of those pages knowing.
-func Handle(ctx context.Context) error {
-	event := skgo.EventFrom(ctx)
-	request := event.Request()
-	if request.Method == http.MethodPost && request.URL.Path == "/actions" {
-		switch request.URL.Query().Get("hook") {
-		case "sign-in":
-			return &skgo.Redirect{Status: http.StatusSeeOther, Location: "/actions/signed-in?required=1"}
-		case "forbidden":
-			return skgo.Errorf(http.StatusForbidden, "Hook denied this edit")
-		}
-	}
-	if run := request.URL.Query().Get("run"); run != "" && request.URL.Path != "/api/replay-count" {
-		businesslogic.Replays.Record(run, request.Method+" "+request.URL.Path)
-	}
-	id, _ := event.Cookie(SessionCookie)
-	return skgo.SetLocal(ctx, businesslogic.Default.Session(id))
-}
-
-// VisitMiddleware is the part of the app's `handle` hook that wraps the
-// response. For the /middleware pages it establishes a visit before anything
-// answers — refreshing the visit cookie when it is missing or stale, so the
-// load that runs next reads the token from the same cookie jar the visitor
-// receives it from — and marks the response it gets back with what it
-// observed on the matched event.
-func VisitMiddleware(ctx context.Context, event *skgo.Event, resolve skgo.Resolve) (*http.Response, error) {
-	route := event.RouteID()
-	if route == "/stream" {
-		response, err := resolve(ctx, skgo.ResolveOptions{TransformPageChunk: markTransformed})
-		if err != nil {
-			return nil, err
-		}
-		response.Header.Set("X-Skgo-Middleware", route+" data="+strconv.FormatBool(event.IsDataRequest()))
-		return response, nil
-	}
-	if route != "/middleware" && !strings.HasPrefix(route, "/middleware/") {
-		return resolve(ctx)
-	}
-	token, _ := event.Cookie(businesslogic.VisitCookie)
-	if !strings.HasPrefix(token, "visit-") {
-		token = businesslogic.FreshVisitToken
-		if err := event.SetCookie(businesslogic.VisitCookie, token, skgo.CookieOptions{}); err != nil {
-			return nil, err
-		}
-	}
-	err := skgo.SetLocal(ctx, businesslogic.Visit{
-		Token: token, Route: route, Slug: event.Params()["slug"], Data: event.IsDataRequest(),
-	})
-	if err != nil {
-		return nil, err
-	}
-	response, err := resolve(ctx, skgo.ResolveOptions{TransformPageChunk: markTransformed})
-	if err != nil {
-		return nil, err
-	}
-	response.Header.Set("X-Skgo-Middleware", route+" data="+strconv.FormatBool(event.IsDataRequest()))
-	return response, nil
-}
-
-// markTransformed is the document transform of the /middleware pages and of
-// /stream, whose deferred values must still reach kit's client behind a
-// transformed shell: the one place a middleware chooses to rewrite the
-// assembled document, here by marking the root element so a scenario can see
-// kit's client hydrate a transformed page.
-func markTransformed(_ context.Context, html string, _ bool) (string, error) {
-	return strings.Replace(html, `<html lang="en">`, `<html lang="en" data-middleware-transformed="yes">`, 1), nil
-}
-
-// SerializedHeaders is the app's choice of which headers a universal load's
-// hydration data carries. It is made here, per request, rather than on the
-// renderer, so the whole universal-fetch suite runs through the request-local
-// path.
-func SerializedHeaders(ctx context.Context, _ *skgo.Event, resolve skgo.Resolve) (*http.Response, error) {
-	return resolve(ctx, skgo.ResolveOptions{FilterSerializedResponseHeaders: filterSerializedResponseHeaders})
-}
 
 // supportID is the fixture value HandleError adds to every failure. It is a
 // literal on purpose, the same way businesslogic.Default's fixtures are:
@@ -297,7 +213,7 @@ func NewHandlerSized(dist fs.FS, proxy, origin string, runtimes int) (http.Handl
 	// routes — is mounted outside Handle so the hook's own event can fetch too.
 	// It answers in-process through the same stack, and each subrequest runs
 	// Handle again with fresh locals.
-	app = skgo.Sequence(skgo.Handle(Handle).Middleware(), SerializedHeaders, VisitMiddleware).Intercept(handleCfg,
+	app = generated.RequestBoundary(handleCfg,
 		loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
 	return skgo.FetchConfig{
 		Origin:      origin,
@@ -329,17 +245,4 @@ func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*
 		response.Header.Set("X-Fetch-Hook", "Go")
 	}
 	return response, err
-}
-
-// The headers a universal fetch's replay may carry into the document. The
-// answer depends on the value as well as the name, as Kit's own contract
-// allows: of the cookies an answer sets, only the one named lamp is replayed.
-func filterSerializedResponseHeaders(name, value string) bool {
-	switch name {
-	case "x-fetch-hook", "x-replay-allowed":
-		return true
-	case "set-cookie":
-		return strings.HasPrefix(value, "lamp=")
-	}
-	return false
 }

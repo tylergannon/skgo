@@ -31,7 +31,12 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	endpointConfig := manifest.EndpointConfig(origin)
 	loadConfig.Matchers = generated.Matchers()
 	endpointConfig.Matchers = generated.Matchers()
-	mode := "production"
+	handleConfig := manifest.HandleConfig()
+ handleConfig.Origin = origin
+ handleConfig.Matchers = generated.Matchers()
+ var bound http.Handler
+ internal := http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){ bound.ServeHTTP(w,r) })
+ mode := "production"
 
 	var endpoints *skgo.Endpoints
 	actions, err := skgo.NewActions(generated.Actions()...)
@@ -42,13 +47,14 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if proxy == "" {
 		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			renderer, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-				Fetch:   endpoints.Intercept(http.NotFoundHandler()),
+				Fetch: internal,
 				Actions: actions,
 			})
 			if err != nil {
 				return nil, err
 			}
 			endpoints.SetErrorTemplate(renderer.ErrorTemplate())
+ handleConfig.ErrorTemplate = renderer.ErrorTemplate()
 			return skgo.NewStaticHandler(dist, skgo.WithSSR(renderer))
 		}
 	} else {
@@ -64,15 +70,18 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 		loadConfig.Version = ""
 		loadConfig.Dev = true
 		endpointConfig.Dev = true
+ handleConfig.Dev = true
+ handleConfig.Version = ""
 		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			renderer, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
-				Fetch:   endpoints.Intercept(http.NotFoundHandler()),
+				Fetch: internal,
 				Actions: actions,
 			})
 			if err != nil {
 				return nil, err
 			}
 			endpoints.SetErrorTemplate(renderer.ErrorTemplate())
+ handleConfig.ErrorTemplate = renderer.ErrorTemplate()
 			return skgo.NewDevPages(target, manifest, renderer, log.Printf, endpoints), nil
 		}
 	}
@@ -93,5 +102,8 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 	if err != nil {
 		return nil, "", err
 	}
-	return loads.Intercept(remotes.Intercept(endpoints.Intercept(pageHandler))), mode, nil
+	handleConfig.Loads = loads
+ handleConfig.Static = skgo.ServedAsFile(pageHandler)
+ bound = generated.RequestBoundary(handleConfig,loads.Intercept(remotes.Intercept(endpoints.Intercept(pageHandler))))
+ return skgo.FetchConfig{Origin:origin,Base:manifest.Base,Handler:internal,Prerendered:manifest.Prerendered}.Intercept(bound), mode, nil
 }

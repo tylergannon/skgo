@@ -52,7 +52,7 @@ func batch(ctx context.Context, ids []string) ([]string, error) {
 
 var _ = skgo.BatchQuery(batch)
 
-func badContext(ctx context.Context, event skgo.RequestEvent[struct{}]) (string, error) {
+func badContext(ctx context.Context, event skgo.RequestEvent[struct{}, struct{}]) (string, error) {
 	_ = skgo.EventFrom(context.Background())                        // want `loses.*request event`
 	_ = skgo.EventFrom(context.WithValue(context.TODO(), key{}, 1)) // want `loses.*request event`
 	return "", nil
@@ -62,7 +62,7 @@ var _ = skgo.Command(badContext)
 
 type key struct{}
 
-func goodContext(ctx context.Context, event skgo.RequestEvent[struct{}]) (string, error) {
+func goodContext(ctx context.Context, event skgo.RequestEvent[struct{}, struct{}]) (string, error) {
 	_ = skgo.EventFrom(ctx)
 	_ = skgo.EventFrom(context.WithValue(ctx, key{}, 1))
 	_ = context.Background() // intentional unrelated background work
@@ -84,7 +84,7 @@ func badCommand(ctx context.Context) (string, error) {
 
 var _ = skgo.Command(badCommand)
 
-func goodCommand(ctx context.Context, event skgo.RequestEvent[struct{}]) (string, error) {
+func goodCommand(ctx context.Context, event skgo.RequestEvent[struct{}, struct{}]) (string, error) {
 	if err := skgo.EventFrom(ctx).SetCookie("session", "x", skgo.CookieOptions{}); err != nil {
 		return "", err
 	}
@@ -104,7 +104,7 @@ type input struct {
 	Tags []string `json:"tags"`
 }
 
-func badForm(ctx context.Context, event skgo.RequestEvent[struct{}], arg input) (string, error) {
+func badForm(ctx context.Context, event skgo.RequestEvent[struct{}, struct{}], arg input) (string, error) {
 	_ = skgo.Invalidf("emial", "bad")                // want `did you mean "email"`
 	_ = (&skgo.Invalid{}).Add("author.nmae", "bad")  // want `did you mean "author.name"`
 	_ = skgo.Issue{Field: "tagz[0]", Message: "bad"} // want `did you mean "tags\[0\]"`
@@ -115,7 +115,7 @@ func badForm(ctx context.Context, event skgo.RequestEvent[struct{}], arg input) 
 
 var _ = skgo.Form(badForm)
 
-func goodForm(ctx context.Context, event skgo.RequestEvent[struct{}], arg input) (string, error) {
+func goodForm(ctx context.Context, event skgo.RequestEvent[struct{}, struct{}], arg input) (string, error) {
 	_ = skgo.Invalidf("", "whole form")
 	_ = skgo.Invalidf("email", "bad")
 	_ = skgo.Invalidf("author.name", "bad")

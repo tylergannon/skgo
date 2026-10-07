@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -39,4 +40,16 @@ func TestMain(m *testing.M) {
 		return m.Run()
 	}()
 	os.Exit(code)
+}
+
+func TestMultipleApplicationSelectionsAreRejected(t *testing.T) {
+	for _, args := range [][]string{
+		{"generate", "--locals-package", "example.com/app", "--hook-package", "example.com/first", "--hook-package=example.com/second"},
+		{"check", "-hook-package=example.com/first", "-hook-package=example.com/second"},
+	} {
+		output, err := exec.Command(skgoBin, args...).CombinedOutput()
+		if err == nil || !strings.Contains(string(output), "multiple configured selections for hook-package") {
+			t.Fatalf("selection diagnostic: %v %s", err, output)
+		}
+	}
 }

@@ -6,6 +6,8 @@ import (
 	"context"
 	"net/http"
 
+	app "github.com/tylergannon/skgo/example/internal/app"
+
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
 )
@@ -20,7 +22,8 @@ type PageData struct {
 
 func pageLoad(event RequestEvent) (PageData, error) {
 	ctx := event.Context()
-	visit, ok := skgo.LocalOf[businesslogic.Visit](ctx)
+	visit := app.LocalsFrom(ctx).Visit
+	ok := visit.Token != ""
 	if !ok {
 		return PageData{}, skgo.Errorf(http.StatusInternalServerError, "the middleware established no visit")
 	}
@@ -36,7 +39,8 @@ type NoteResult struct {
 }
 
 func note(ctx context.Context) (NoteResult, error) {
-	visit, ok := skgo.LocalOf[businesslogic.Visit](ctx)
+	visit := app.LocalsFrom(ctx).Visit
+	ok := visit.Token != ""
 	if !ok {
 		return NoteResult{}, skgo.Errorf(http.StatusInternalServerError, "the middleware established no visit")
 	}

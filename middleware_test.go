@@ -57,7 +57,7 @@ func mwBuild(t *testing.T, base string, mw Middleware, pages http.Handler, tweak
 
 	load := NewLoad("src/routes/items/[id]/+page.server.ts", func(ctx context.Context) (pageData, error) {
 		e := EventFrom(ctx)
-		who, _ := LocalOf[mwUser](ctx)
+		who := mwLocal(ctx)
 		session, _ := e.Cookie("session")
 		return pageData{Greeting: fmt.Sprintf("user=%s session=%s id=%s", who, session, e.Param("id"))}, nil
 	})
@@ -70,7 +70,7 @@ func mwBuild(t *testing.T, base string, mw Middleware, pages http.Handler, tweak
 
 	if endpoint == nil {
 		endpoint = func(w http.ResponseWriter, r *http.Request) {
-			who, _ := LocalOf[mwUser](r.Context())
+			who := mwLocal(r.Context())
 			session, _ := EventFrom(r.Context()).Cookie("session")
 			_, _ = fmt.Fprintf(w, "user=%s session=%s", who, session)
 		}
@@ -95,7 +95,7 @@ func mwBuild(t *testing.T, base string, mw Middleware, pages http.Handler, tweak
 		tweak(&cfg)
 	}
 	return mwStack{
-		handler: mw.Intercept(cfg, ls.Intercept(rs.Intercept(es.Intercept(pages)))),
+		handler: RequestMiddleware[struct{}, mwUser](nil).Intercept(cfg, emptyHookParams, mw.Intercept(cfg, ls.Intercept(rs.Intercept(es.Intercept(pages))))),
 		remotes: rs,
 		cfg:     cfg,
 	}
@@ -234,14 +234,12 @@ func TestMiddlewareShortCircuitNeverCallsDownstream(t *testing.T) {
 
 func TestMiddlewareLocalsAndRefreshedCookiesReachEveryDownstreamKind(t *testing.T) {
 	whoAmI := NewQueryNoArg(testModule, "whoAmI", func(ctx context.Context) (string, error) {
-		who, _ := LocalOf[mwUser](ctx)
+		who := mwLocal(ctx)
 		session, _ := EventFrom(ctx).Cookie("session")
 		return fmt.Sprintf("user=%s session=%s", who, session), nil
 	})
 	mw := func(ctx context.Context, e *Event, resolve Resolve) (*http.Response, error) {
-		if err := SetLocal(ctx, mwUser("ada-lovelace")); err != nil {
-			return nil, err
-		}
+		*RequestLocals[mwUser](ctx) = "ada-lovelace"
 		if err := e.SetCookie("session", "fresh-9", CookieOptions{}); err != nil {
 			return nil, err
 		}
@@ -553,18 +551,18 @@ func TestMiddlewareKeepsConcurrentRequestsApart(t *testing.T) {
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
 		barrier.Done()
 		barrier.Wait() // every request is inside the application at the same moment
-		who, _ := LocalOf[mwUser](r.Context())
+		who := mwLocal(r.Context())
 		session, _ := EventFrom(r.Context()).Cookie("session")
 		_, _ = fmt.Fprintf(w, "%s|%s", who, session)
 	}
 	mw := func(ctx context.Context, e *Event, resolve Resolve) (*http.Response, error) {
 		user := e.Request().Header.Get("X-User")
-		_ = SetLocal(ctx, mwUser(user))
+		*RequestLocals[mwUser](ctx) = mwUser(user)
 		_ = e.SetCookie("session", "s-"+user, CookieOptions{})
 		_ = e.SetHeader("X-Echo-User", user)
 		resp, err := resolve(ctx)
 		if err == nil {
-			resp.Header.Set("X-After-User", string(mustLocal[mwUser](ctx)))
+			resp.Header.Set("X-After-User", string(mwLocal(ctx)))
 		}
 		return resp, err
 	}
@@ -592,9 +590,12 @@ func TestMiddlewareKeepsConcurrentRequestsApart(t *testing.T) {
 	}
 }
 
-func mustLocal[T any](ctx context.Context) T {
-	v, _ := LocalOf[T](ctx)
-	return v
+func emptyHookParams(*Event) (struct{}, error) { return struct{}{}, nil }
+func mwLocal(ctx context.Context) mwUser {
+	if p := RequestLocals[mwUser](ctx); p != nil {
+		return *p
+	}
+	return ""
 }
 
 func TestRemoteFunctionBodiesGetNoRequestEventFromTheHook(t *testing.T) {
@@ -619,11 +620,11 @@ func TestRemoteFunctionBodiesGetNoRequestEventFromTheHook(t *testing.T) {
 			}()
 		}
 		got = report{remote: e.IsRemoteRequest(), cookieErr: e.SetCookie("x", "1", CookieOptions{})}
-		got.local, _ = LocalOf[mwUser](ctx)
+		got.local = mwLocal(ctx)
 		return "ok", nil
 	})
 	mw := func(ctx context.Context, e *Event, resolve Resolve) (*http.Response, error) {
-		_ = SetLocal(ctx, mwUser("grace"))
+		*RequestLocals[mwUser](ctx) = "grace"
 		return resolve(ctx)
 	}
 	s := mwBuild(t, "", mw, nil, nil, nil, q)

@@ -4,6 +4,7 @@ package middlewareslug
 
 import (
 	skgo "github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
@@ -16,10 +17,10 @@ type RouteParams struct {
 
 func (p RouteParams) Slug() string { skgo.TrackLoadParam(p.event, "slug"); return p.valueSlug }
 
-type RequestEvent = skgo.RequestEvent[RouteParams]
+type RequestEvent = skgo.RequestEvent[RouteParams, appstate.Locals]
 
 func SkgoRequestEvent(event *skgo.Event) RequestEvent {
-	return RequestEvent{Event: event, Params: RouteParams{event: event,
+	return RequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: RouteParams{event: event,
 		valueSlug: skgo.LoadParamValue[string](event, "slug"),
 	}}
 }

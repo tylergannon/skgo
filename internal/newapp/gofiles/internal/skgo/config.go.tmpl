@@ -1,4 +1,4 @@
 // Package skgo contains generated application bindings.
 package skgo
 
-//go:generate go tool skgo generate --web ../../web
+//go:generate go tool skgo generate --web ../../web --locals-package {{.Module}}/internal/app --hook-package {{.Module}}/internal/serverhooks

@@ -111,7 +111,7 @@ func (v *Invalid) Error() string {
 // Form declares fn as a SvelteKit `form`. Write it beside the function, in a
 // file named `*.remote.go`:
 //
-//	func subscribe(ctx context.Context, event skgo.RequestEvent[params.Params], arg Signup) (Result, error) { ... }
+//	func subscribe(ctx context.Context, event params.RequestEvent, arg Signup) (Result, error) { ... }
 //
 //	var _ = skgo.Form(subscribe)
 //

@@ -20,7 +20,7 @@ func TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations(t *testing.T) {
 	if err := stageTypedLoadEvolutionFixture(root, app); err != nil {
 		t.Fatal(err)
 	}
-	cfg := Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")}
+	cfg := fixtureConfig(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")})
 	route := filepath.Join(cfg.Web, "src", "routes", "typed-load", "[number=Order]")
 	source := filepath.Join(route, "save.remote.go")
 	authored := `package typedload

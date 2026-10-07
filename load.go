@@ -32,11 +32,11 @@ import (
 // `skgo generate` emits the `+page.server.ts` or `+layout.server.ts` kit
 // compiles — the file name says which — and the Go registration that answers
 // the route's `__data.json`. RequestEvent is the generated route-local alias of
-// skgo.RequestEvent[RouteParams]; its Params retain Go matcher result types.
+// skgo.RequestEvent[RouteParams, app.Locals]; its Params retain Go matcher result types.
 //
 // Out must be a struct: kit requires a load to return a plain object, and
 // refuses anything else.
-func Load[P, Out any](fn func(RequestEvent[P]) (Out, error)) Marker { _ = fn; return Marker{} }
+func Load[P, L, Out any](fn func(RequestEvent[P, L]) (Out, error)) Marker { _ = fn; return Marker{} }
 
 // ServerLoad is one registered server load. Generated code builds these with
 // NewLoad; application code declares the functions and marks them with Load.
@@ -355,6 +355,22 @@ func (ls *Loads) checkDrift() error {
 func (ls *Loads) match(routePath string) (*dataRoute, map[string]string, bool) {
 	route, raw, _, ok := ls.matchValues(routePath)
 	return route, raw, ok
+}
+
+// matchRequest reuses the boundary's accepted route conversion. The same
+// request never re-runs application matchers as it enters a registry.
+func (ls *Loads) matchRequest(r *http.Request, path string) (*dataRoute, map[string]string, map[string]any, bool) {
+	if state := hookStateOf(r.Context()); state != nil && state.routing {
+		ls.mu.RLock()
+		defer ls.mu.RUnlock()
+		for _, route := range ls.routes {
+			if route.id == state.routeID {
+				return route, state.params, state.converted, true
+			}
+		}
+		return nil, nil, nil, false
+	}
+	return ls.matchValues(path)
 }
 
 func (ls *Loads) matchValues(routePath string) (*dataRoute, map[string]string, map[string]any, bool) {

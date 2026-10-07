@@ -110,6 +110,9 @@ func RemoteCallerValues(e *Event) (string, map[string]any) {
 }
 
 func (rs *Remotes) matchCaller(r *http.Request) (*remoteCaller, error) {
+	if state := hookStateOf(r.Context()); state != nil && state.routing {
+		return &remoteCaller{url: state.url, routeID: state.routeID, values: state.converted}, nil
+	}
 	origin, _ := url.Parse(rs.cfg.Origin)
 	u, skip := (HandleConfig{}).eventURL(r, origin, rs.cfg.Base, false, true)
 	caller := &remoteCaller{url: u}

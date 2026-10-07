@@ -67,7 +67,8 @@ func prepareMinimalInputsApp(t *testing.T) string {
 	if err := stageMinimalInputsBootstrap(fixture); err != nil {
 		t.Fatal(err)
 	}
-	writeFixtureFile(t, filepath.Join(fixture, "internal", "skgo", "config.go"), "package skgo\n//go:generate go tool skgo generate --web ../../web\n")
+	writeFixtureFile(t, filepath.Join(fixture, "internal", "skgo", "config.go"), "package skgo\n//go:generate go tool skgo generate --web ../../web --locals-package github.com/tylergannon/skgo/example/internal/app\n")
+	writeFixtureFile(t, filepath.Join(fixture, "internal", "app", "locals.go"), "package app\ntype Locals struct{}\n")
 	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+page.svelte"), `<h1>Minimal declared Inputs fixture</h1>`)
 	return fixture
 }

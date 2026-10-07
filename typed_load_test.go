@@ -52,7 +52,7 @@ func TestTypedLoadMatcherRouting(t *testing.T) {
 			answer := fixture.evidence
 			switch fixture.evidence {
 			case "number":
-				typed := RequestEvent[struct{ N fixtureNumber }]{Event: e, Params: struct{ N fixtureNumber }{LoadParamValue[fixtureNumber](e, "n")}}
+				typed := RequestEvent[struct{ N fixtureNumber }, struct{}]{Event: e, Params: struct{ N fixtureNumber }{LoadParamValue[fixtureNumber](e, "n")}}
 				answer = typed.Params.N.Label() + "|skgo.fixtureNumber|" + fixture.id
 			case "fallback":
 				answer += ":" + LoadParamValue[string](e, "text") + "|" + fixture.id

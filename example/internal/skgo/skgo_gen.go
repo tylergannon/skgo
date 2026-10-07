@@ -9,6 +9,7 @@ import (
 	devalue "github.com/tylergannon/polytype/devalue"
 	skgo "github.com/tylergannon/skgo"
 	pkg_businesslogic "github.com/tylergannon/skgo/example/businesslogic"
+	serverhooks "github.com/tylergannon/skgo/example/internal/serverhooks"
 	pkg_onzggl3sn52xizlt "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt"
 	pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th"
 	pkg_onzggl3sn52xizltf52g6zdpom "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom"
@@ -57,15 +58,20 @@ import (
 	skgo46 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a"
 	skgo47 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq"
 	skgo48 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq"
-	skgoSharedParams "github.com/tylergannon/skgo/example/internal/skgo/params"
+	params "github.com/tylergannon/skgo/example/internal/skgo/params"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 	skgo49 "github.com/tylergannon/skgo/example/web/src/lib"
 	math "math"
+	http "net/http"
 	reflect "reflect"
 	slices "slices"
 	strconv "strconv"
 	time "time"
 )
+
+func RequestBoundary(cfg skgo.HandleConfig, next http.Handler) http.Handler {
+	return params.Middleware(serverhooks.Handle).Intercept(cfg, next)
+}
 
 // dvAt renders a JSON-pointer-style path for a diagnostic. The root value has
 // the empty path, which is spelled "/" so a message never starts with ": ".
@@ -3464,7 +3470,7 @@ func remote_signIn(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -3494,7 +3500,7 @@ func remote_signOut(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -3569,7 +3575,7 @@ func remote_quoteFor(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -3649,7 +3655,7 @@ func remote_sendRemoteNote(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.DecodeForm(call.Arg, &in); err != nil {
 		return nil, err
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -3939,7 +3945,7 @@ func remote_previewMessage(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -3971,7 +3977,7 @@ func remote_sendMessage(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.DecodeForm(call.Arg, &in); err != nil {
 		return nil, err
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -4070,7 +4076,7 @@ func remote_reparse(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -4106,7 +4112,7 @@ func remote_bumpTally(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -4225,7 +4231,7 @@ func remote_submit(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.DecodeForm(call.Arg, &in); err != nil {
 		return nil, err
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -4313,7 +4319,7 @@ func remote_writeNotes(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -4348,7 +4354,7 @@ func remote_addTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -4430,7 +4436,7 @@ func remote_renameTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -4465,7 +4471,7 @@ func remote_retitleTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	event, err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -4514,7 +4520,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "signIn",
 			Fn:             skgo49.Skgo_signIn,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_signIn,
 			DecodeArg:      requestedArg_signIn,
 		}),
@@ -4524,7 +4530,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "signOut",
 			Fn:             skgo49.Skgo_signOut,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_signOut,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -4554,7 +4560,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "quoteFor",
 			Fn:             pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th.Skgo_quoteFor,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_quoteFor,
 			DecodeArg:      requestedArg_quoteFor,
 		}),
@@ -4573,7 +4579,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "sendRemoteNote",
 			Fn:             pkg_onzggl3sn52xizltf5qwg5djn5xhg.Skgo_sendRemoteNote,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_sendRemoteNote,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -4645,7 +4651,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "previewMessage",
 			Fn:             pkg_onzggl3sn52xizltf5rw63tumfrxi.Skgo_previewMessage,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_previewMessage,
 			DecodeArg:      requestedArg_previewMessage,
 		}),
@@ -4655,7 +4661,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "sendMessage",
 			Fn:             pkg_onzggl3sn52xizltf5rw63tumfrxi.Skgo_sendMessage,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_sendMessage,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -4693,7 +4699,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "reparse",
 			Fn:             pkg_onzggl3sn52xizltf5sw24dupe.Skgo_reparse,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_reparse,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -4709,7 +4715,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "bumpTally",
 			Fn:             pkg_onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za.Skgo_bumpTally,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_bumpTally,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -4754,7 +4760,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "submit",
 			Fn:             pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Skgo_submit,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_submit,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -4785,7 +4791,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "writeNotes",
 			Fn:             pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Skgo_writeNotes,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_writeNotes,
 			DecodeArg:      requestedArg_writeNotes,
 		}),
@@ -4795,7 +4801,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "addTodo",
 			Fn:             pkg_onzggl3sn52xizltf52g6zdpom.Skgo_addTodo,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_addTodo,
 			DecodeArg:      requestedArg_addTodo,
 		}),
@@ -4820,7 +4826,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "renameTodo",
 			Fn:             pkg_onzggl3sn52xizltf52g6zdpom.Skgo_renameTodo,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_renameTodo,
 			DecodeArg:      requestedArg_renameTodo,
 		}),
@@ -4830,7 +4836,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "retitleTodo",
 			Fn:             pkg_onzggl3sn52xizltf52g6zdpom.Skgo_retitleTodo,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   skgoSharedParams.SkgoCallerRoutes(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_retitleTodo,
 			DecodeArg:      requestedArg_retitleTodo,
 		}),

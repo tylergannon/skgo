@@ -526,7 +526,7 @@ func (s *SSR) servePageMethod(w http.ResponseWriter, r *http.Request, urlPath st
 	if routePath == "" {
 		routePath = "/"
 	}
-	route, _, matched := s.loads.match(routePath)
+	route, _, _, matched := s.loads.matchRequest(r, routePath)
 	if !matched || !route.hasPage {
 		return false
 	}
@@ -587,7 +587,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 	}
 	req := dataRequest{url: s.pageURL(r), routePath: routePath}
 
-	route, params, converted, matched := s.loads.matchValues(routePath)
+	route, params, converted, matched := s.loads.matchRequest(r, routePath)
 	req.converted = converted
 	if !matched {
 		if nonHTMLDestination(r.Header.Get("Sec-Fetch-Dest")) {

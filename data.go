@@ -85,7 +85,7 @@ func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	route, params, converted, matched := ls.matchValues(req.routePath)
+	route, params, converted, matched := ls.matchRequest(r, req.routePath)
 	req.converted = converted
 	if !matched {
 		// An unmatched path is still asked for the root layout's data, so that

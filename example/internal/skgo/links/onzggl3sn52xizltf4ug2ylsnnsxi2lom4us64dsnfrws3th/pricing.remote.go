@@ -63,7 +63,7 @@ type Quote struct {
 }
 
 // quoteFor takes a price from the browser and answers in Go's own words.
-func quoteFor(ctx context.Context, _ skgo.RequestEvent[params.Params], price businesslogic.Money) (Quote, error) {
+func quoteFor(ctx context.Context, _ params.RequestEvent, price businesslogic.Money) (Quote, error) {
 	return Quote{
 		Heard:   price.Format(),
 		Doubled: businesslogic.Money{Cents: price.Cents * 2}.Format(),

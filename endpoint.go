@@ -58,7 +58,7 @@ var pageMethods = map[string]bool{"GET": true, "POST": true, "HEAD": true}
 // and the body, and skgo does not encode, wrap or reinterpret any of them. What
 // the request carries beyond the standard library is reachable with
 // skgo.EventFrom(r.Context()) — the route id, the route parameters, and
-// whatever the app's Handle hook stored with skgo.SetLocal.
+// the application's selected locals through its generated LocalsFrom helper.
 func GET(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
 
 // POST declares fn as the handler for POST requests to this route. See GET.
@@ -457,7 +457,7 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 		routePath = "/"
 	}
 
-	route, params, matched := es.match(routePath)
+	route, params, matched := es.matchRequest(r, routePath)
 	if !matched {
 		next.ServeHTTP(w, r)
 		return
@@ -606,6 +606,20 @@ func (es *Endpoints) fatalError(w http.ResponseWriter, r *http.Request, routeID 
 
 // match finds the route that serves routePath, which is the pathname with the
 // configured base already removed.
+func (es *Endpoints) matchRequest(r *http.Request, path string) (*endpointRoute, map[string]string, bool) {
+	if state := hookStateOf(r.Context()); state != nil && state.routing {
+		es.mu.RLock()
+		defer es.mu.RUnlock()
+		for _, route := range es.routes {
+			if route.id == state.routeID {
+				return route, state.params, true
+			}
+		}
+		return nil, nil, false
+	}
+	return es.match(path)
+}
+
 func (es *Endpoints) match(routePath string) (*endpointRoute, map[string]string, bool) {
 	es.mu.RLock()
 	defer es.mu.RUnlock()

@@ -85,8 +85,21 @@ type Transport map[string]Transporter
 func Query(fn any) Marker { _ = fn; return Marker{} }
 
 type Event struct{}
-type RequestEvent[P any] struct { *Event; Params P }
-func (RequestEvent[P]) Context() context.Context { return context.Background() }
+func (*Event) Request() *http.Request {return &http.Request{}}
+func RequestLocals[L any](context.Context) *L {return new(L)}
+type RequestResolve[P,L any] func(context.Context,RequestEvent[P,L],...ResolveOptions)(*http.Response,error)
+type RequestMiddleware[P,L any] func(context.Context,RequestEvent[P,L],RequestResolve[P,L])(*http.Response,error)
+type RequestHandle[P,L any] func(context.Context,RequestEvent[P,L])(RequestEvent[P,L],error)
+type ResolveOptions struct{}
+type HandleConfig struct{}
+func HookValues(*Event)(string,map[string]any){return "",nil}
+func Errorf(int,string,...any)error{return nil}
+func (h RequestHandle[P,L]) Middleware() RequestMiddleware[P,L]{return nil}
+func RequestSequence[P,L any](...RequestMiddleware[P,L]) RequestMiddleware[P,L]{return nil}
+func (h RequestMiddleware[P,L]) Intercept(HandleConfig,func(*Event)(P,error),http.Handler)http.Handler{return nil}
+
+type RequestEvent[P,L any] struct { *Event; Params P; Locals *L }
+func (RequestEvent[P,L]) Context() context.Context { return context.Background() }
 type ParamMatcher func(string) (any, bool)
 type CallerMatchers map[string]ParamMatcher
 type ManifestParam struct {
@@ -106,7 +119,7 @@ func EventFrom(context.Context) *Event { return &Event{} }
 func TrackLoadParam(*Event, string) {}
 func LoadParamValue[T any](*Event, string) T { var zero T; return zero }
 func OptionalLoadParamValue[T any](*Event, string) *T { return nil }
-func Load[P, Out any](fn func(RequestEvent[P]) (Out, error)) Marker { _ = fn; return Marker{} }
+func Load[P,L, Out any](fn func(RequestEvent[P,L]) (Out, error)) Marker { _ = fn; return Marker{} }
 
 func Command(fn any) Marker { _ = fn; return Marker{} }
 
@@ -284,11 +297,11 @@ const (
 		t.Fatal(err)
 	}
 
-	return root, Config{
+	return root, fixtureConfig(Config{
 		Web:  filepath.Join(root, "app", "web"),
 		Out:  filepath.Join(root, "app", "generated"),
 		Logf: func(string, ...any) {},
-	}
+	})
 }
 
 // fixtureModule builds the fixture app's go.mod out of the example app's, so

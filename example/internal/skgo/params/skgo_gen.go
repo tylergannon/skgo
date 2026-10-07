@@ -5,7 +5,9 @@ package params
 import (
 	fmt "fmt"
 	skgo "github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
+	http "net/http"
 	reflect "reflect"
 )
 
@@ -23,7 +25,34 @@ type Params struct {
 	value_736c7567       Key_Slug
 }
 
-type RequestEvent = skgo.RequestEvent[Params]
+type RequestEvent = skgo.RequestEvent[Params, appstate.Locals]
+type Resolve = skgo.RequestResolve[Params, appstate.Locals]
+type Middleware skgo.RequestMiddleware[Params, appstate.Locals]
+type Handle skgo.RequestHandle[Params, appstate.Locals]
+
+func (h Handle) Middleware() Middleware {
+	return Middleware(skgo.RequestHandle[Params, appstate.Locals](h).Middleware())
+}
+func Sequence(hooks ...Middleware) Middleware {
+	values := make([]skgo.RequestMiddleware[Params, appstate.Locals], len(hooks))
+	for i, h := range hooks {
+		values[i] = skgo.RequestMiddleware[Params, appstate.Locals](h)
+	}
+	return Middleware(skgo.RequestSequence(values...))
+}
+func (h Handle) Intercept(cfg skgo.HandleConfig, next http.Handler) http.Handler {
+	return h.Middleware().Intercept(cfg, next)
+}
+func (h Middleware) Intercept(cfg skgo.HandleConfig, next http.Handler) http.Handler {
+	return skgo.RequestMiddleware[Params, appstate.Locals](h).Intercept(cfg, func(event *skgo.Event) (Params, error) {
+		id, values := skgo.HookValues(event)
+		p, err := SkgoParams(id, values)
+		if err != nil {
+			return p, skgo.Errorf(503, "skgo: callerManifestDrift: %v", err)
+		}
+		return p, nil
+	}, next)
+}
 
 type Key_A interface{ skgoParam_61() }
 
@@ -210,7 +239,7 @@ func SkgoCallerRoutes() skgo.CallerRoutes {
 func SkgoRequestEvent(event *skgo.Event) (RequestEvent, error) {
 	routeID, values := skgo.RemoteCallerValues(event)
 	p, err := SkgoParams(routeID, values)
-	return RequestEvent{Event: event, Params: p}, err
+	return RequestEvent{Event: event, Params: p, Locals: appstate.LocalsFrom(event.Request().Context())}, err
 }
 
 // SkgoParams constructs values for an already matched caller route.

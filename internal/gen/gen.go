@@ -30,6 +30,11 @@ import (
 
 // Config describes one app.
 type Config struct {
+	localsDir     string
+	LocalsPackage string
+	LocalsType    string
+	HookPackage   string
+	HookSymbol    string
 	generation    *generatedOutput
 	matchers      map[string]goParamMatcher
 	loadParams    map[string]*routeLoadParams
@@ -104,7 +109,16 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	defer cfg.generation.close()
+	if err := prepareLocals(&cfg); err != nil {
+		return err
+	}
 	if cfg.loadParams, err = prepareLoadParams(&cfg, files); err != nil {
+		return err
+	}
+	if err := validateHook(cfg); err != nil {
+		return err
+	}
+	if err := (&app{cfg: cfg}).writeRequestBoundary(); err != nil {
 		return err
 	}
 	if len(files) == 0 {

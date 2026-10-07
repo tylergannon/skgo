@@ -7,15 +7,16 @@ import (
 	"encoding/json"
 	"net/http"
 
+	app "github.com/tylergannon/skgo/example/internal/app"
+
 	"github.com/tylergannon/skgo"
-	"github.com/tylergannon/skgo/example/businesslogic"
 )
 
 // Fact is the one value the page shows. Nothing else in the app produces it.
 const Fact = "harbour-lamp-4096"
 
 func fact(w http.ResponseWriter, r *http.Request) {
-	session, _ := skgo.LocalOf[businesslogic.Session](r.Context())
+	session := app.LocalsFrom(r.Context()).Session
 	visitor := "guest"
 	if session.User != "" {
 		visitor = session.User

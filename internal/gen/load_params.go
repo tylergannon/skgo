@@ -355,7 +355,7 @@ func writeLoadParams(cfg Config, dir string, info *routeLoadParams) error {
 	}
 	body.WriteString("}\n\n")
 	body.WriteString(accessors.String())
-	body.WriteString("type RequestEvent = skgo.RequestEvent[RouteParams]\n\nfunc SkgoRequestEvent(event *skgo.Event) RequestEvent {\n return RequestEvent{Event: event, Params: RouteParams{event: event,\n")
+	fmt.Fprintf(&body, "type RequestEvent = skgo.RequestEvent[RouteParams, appstate.%s]\n\nfunc SkgoRequestEvent(event *skgo.Event) RequestEvent {\n return RequestEvent{Event: event, Locals:appstate.LocalsFrom(event.Request().Context()), Params: RouteParams{event: event,\n", cfg.LocalsType)
 	body.WriteString(populate.String())
 	body.WriteString("}}\n}\n\nfunc SkgoParamMatchers() map[string]skgo.ParamMatcher {\n return map[string]skgo.ParamMatcher{\n")
 	var names []string
@@ -371,7 +371,7 @@ func writeLoadParams(cfg Config, dir string, info *routeLoadParams) error {
 	body.WriteString("}\n}\n")
 	var b strings.Builder
 	b.WriteString(goHeader)
-	fmt.Fprintf(&b, "package %s\n\nimport skgo %q\n\n", pkg, skgoPkg)
+	fmt.Fprintf(&b, "package %s\n\nimport (skgo %q; appstate %q)\n\n", pkg, skgoPkg, cfg.LocalsPackage)
 	imports.writeTo(&b)
 	b.WriteString(body.String())
 	formatted, err := format.Source([]byte(b.String()))

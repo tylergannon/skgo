@@ -71,43 +71,47 @@ func TestLocalsCrossFromHandleToLoad(t *testing.T) {
 	type session struct{ User string }
 	var seen session
 	page := NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (pageData, error) {
-		seen, _ = LocalOf[session](ctx)
+		seen = *RequestLocals[session](ctx)
 		return pageData{Greeting: seen.User}, nil
 	})
 	ls := mustLoads(t, nil, page)
-	hook := Handle(func(ctx context.Context) error { return SetLocal(ctx, session{User: "ada"}) })
+	hook := RequestHandle[struct{}, session](func(ctx context.Context, event RequestEvent[struct{}, session]) (RequestEvent[struct{}, session], error) {
+		event.Locals.User = "ada"
+		return event, nil
+	})
 
-	h := hook.Intercept(HandleConfig{}, ls.Intercept(http.NotFoundHandler()))
+	h := hook.Middleware().Intercept(HandleConfig{}, emptyHookParams, ls.Intercept(http.NotFoundHandler()))
 	get(t, h, "/a/__data.json?x-sveltekit-invalidated=111")
 	if seen.User != "ada" {
 		t.Errorf("the load saw %+v, want the session the hook stored", seen)
 	}
 }
 
-// TestLocalOfReachesARemoteFunctionWithoutALoadsRegistry is skgo issue #51: an
+// TestRequestLocalsReachARemoteFunctionWithoutALoadsRegistry is skgo issue #51: an
 // app that answers nothing but remote functions has no server loads and no
 // page routes, so it has no use for a Loads registry — and must not need to
-// build one just to run its `handle` hook and have LocalOf work inside a
+// build one just to run its `handle` hook and have RequestLocals work inside a
 // query. There is no *Loads anywhere in this test.
-func TestLocalOfReachesARemoteFunctionWithoutALoadsRegistry(t *testing.T) {
+func TestRequestLocalsReachARemoteFunctionWithoutALoadsRegistry(t *testing.T) {
 	type session struct{ User string }
 
-	hook := Handle(func(ctx context.Context) error {
-		id, _ := EventFrom(ctx).Cookie("session")
-		return SetLocal(ctx, session{User: id})
+	hook := RequestHandle[struct{}, session](func(ctx context.Context, event RequestEvent[struct{}, session]) (RequestEvent[struct{}, session], error) {
+		id, _ := event.Cookie("session")
+		event.Locals.User = id
+		return event, nil
 	})
 
 	whoAmI := NewQueryNoArg(testModule, "whoAmI", func(ctx context.Context) (string, error) {
-		s, _ := LocalOf[session](ctx)
+		s := RequestLocals[session](ctx)
 		return s.User, nil
 	})
 	rs := testRemotes(t, RemoteConfig{}, whoAmI)
 
-	h := hook.Intercept(HandleConfig{}, rs.Intercept(http.NotFoundHandler()))
+	h := hook.Middleware().Intercept(HandleConfig{}, emptyHookParams, rs.Intercept(http.NotFoundHandler()))
 
 	req := httptest.NewRequest(http.MethodGet, rs.Prefix()+whoAmI.ID(), nil)
 	// An independent fixture the test supplies, not anything derived from the
-	// code under test: if LocalOf ever came back empty, this value is what
+	// code under test: if RequestLocals ever came back empty, this value is what
 	// would go missing.
 	req.AddCookie(&http.Cookie{Name: "session", Value: "quokka-42"})
 	rec := httptest.NewRecorder()
@@ -118,7 +122,7 @@ func TestLocalOfReachesARemoteFunctionWithoutALoadsRegistry(t *testing.T) {
 		t.Fatalf("remote call refused: %v", httpErr)
 	}
 	if got := field(t, data, "_"); got != "quokka-42" {
-		t.Errorf("LocalOf returned %#v, want %q — the cookie value the hook stored", got, "quokka-42")
+		t.Errorf("RequestLocals returned %#v, want %q — the cookie value the hook stored", got, "quokka-42")
 	}
 }
 

@@ -4,6 +4,7 @@ package typeddependencies
 
 import (
 	skgo "github.com/tylergannon/skgo"
+	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
@@ -22,10 +23,10 @@ func (p RouteParams) B() hooks.OrderNumber { skgo.TrackLoadParam(p.event, "b"); 
 
 func (p RouteParams) Ignored() string { skgo.TrackLoadParam(p.event, "ignored"); return p.valueIgnored }
 
-type RequestEvent = skgo.RequestEvent[RouteParams]
+type RequestEvent = skgo.RequestEvent[RouteParams, appstate.Locals]
 
 func SkgoRequestEvent(event *skgo.Event) RequestEvent {
-	return RequestEvent{Event: event, Params: RouteParams{event: event,
+	return RequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: RouteParams{event: event,
 		valueA:       skgo.LoadParamValue[hooks.OrderNumber](event, "a"),
 		valueB:       skgo.LoadParamValue[hooks.OrderNumber](event, "b"),
 		valueIgnored: skgo.LoadParamValue[string](event, "ignored"),

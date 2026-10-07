@@ -112,7 +112,7 @@ func PublicHidden(s string) (domain.PublicHidden,bool) { return 0,true }
 	if err := os.Symlink(filepath.Dir(linked), filepath.Join(app, "web", "src", "routes", "linked")); err != nil {
 		t.Fatal(err)
 	}
-	return app, Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")}
+	return app, fixtureConfig(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")})
 }
 
 func runSharedConsumer(t *testing.T, app, pattern string, wantFailure string) {
@@ -247,10 +247,11 @@ import (
  "github.com/tylergannon/skgo"
  "github.com/tylergannon/skgo/example/domain"
  "github.com/tylergannon/skgo/example/legacy"
+ "github.com/tylergannon/skgo/example/internal/app"
  other "github.com/tylergannon/skgo/example/other"
  "github.com/tylergannon/skgo/example/internal/skgo/params"
 )
-var _ skgo.RequestEvent[params.Params] = params.RequestEvent{}
+var _ skgo.RequestEvent[params.Params, app.Locals] = params.RequestEvent{}
 func receipt(p params.Params) string {
  switch id:=p.ID().(type) {
  case params.IDParam_DomainNumber_f2699d13762bca7d8b7b8d63120233e8bd9a519b8afaa1e5fedbb0bc340de94a: return "numeric:"+id.Value.Label()
@@ -492,7 +493,7 @@ func TestSharedParamsFrontendOnlyApplication(t *testing.T) {
 	}
 	writeSharedFixture(t, app, "web/src/routes/plain/[id]/+page.svelte", "<p>frontend-only</p>")
 	writeSharedFixture(t, app, "web/src/routes/optional/[[id]]/+page.svelte", "<p>optional frontend-only</p>")
-	cfg := Config{Web: web, Out: out}
+	cfg := fixtureConfig(Config{Web: web, Out: out})
 	if err := Check(cfg); err == nil || !strings.Contains(err.Error(), "missing or stale") {
 		t.Fatalf("hookless/loadless missing output check: %v", err)
 	}

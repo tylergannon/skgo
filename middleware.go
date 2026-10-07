@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"reflect"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -23,6 +22,8 @@ type hookState struct {
 	url       *url.URL
 	routeID   string
 	params    map[string]string
+	converted map[string]any
+	routing   bool
 	isData    bool
 	isRemote  bool
 	isSub     bool
@@ -118,6 +119,10 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 	if m == nil {
 		return next
 	}
+	return m.intercept(cfg, next, nil)
+}
+
+func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(context.Context) context.Context) http.Handler {
 
 	appDir := cfg.AppDir
 	if appDir == "" {
@@ -189,6 +194,7 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 		}
 
 		state := &hookState{
+			routing:  cfg.Loads != nil || len(cfg.routes) > 0,
 			url:      pageURL,
 			isData:   isData,
 			isRemote: isRemote,
@@ -206,7 +212,8 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 					return
 				}
 			}
-			if route, params, ok := cfg.matchRoute(routePath); ok {
+			if route, params, converted, ok := cfg.matchRoute(routePath); ok {
+				state.converted = converted
 				state.routeID, state.params, hasPage = route.id, params, route.hasPage
 			}
 		}
@@ -215,7 +222,10 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 		event := &Event{req: r, jar: state.jar, mutable: true, hook: state, actionResponse: state.response}
 		ctx := withEvent(r.Context(), event)
 		ctx = context.WithValue(ctx, hookStateKey{}, state)
-		ctx = context.WithValue(ctx, localsKey{}, &locals{values: map[reflect.Type]any{}})
+		if bind != nil {
+			ctx = bind(ctx)
+		}
+		event.req = r.WithContext(ctx)
 
 		var resolved *downstream
 		defer func() {
@@ -237,6 +247,9 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 			base := ctx
 			if hookStateOf(rctx) == state {
 				base = rctx
+			} else if locals := rctx.Value(localsKey{}); locals != nil {
+				// A different cancellation context still forwards the selected object.
+				base = context.WithValue(base, localsKey{}, locals)
 			}
 			resolved, response = startDownstream(rctx, base, next, r)
 			// Kit adds the headers and cookies in the same place it stops
@@ -256,6 +269,10 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 			err = Errorf(http.StatusInternalServerError, "skgo: the handle hook returned no response")
 		}
 		if err != nil {
+			if refusal, ok := err.(*requestRefusal); ok {
+				ctx = refusal.ctx
+				err = refusal.err
+			}
 			cfg.refuse(w, r.WithContext(ctx), ctx, state.jar, state.routeID, err, isData, isRemote, hasPage)
 			return
 		}
@@ -363,6 +380,12 @@ func (m Middleware) runGuarded(ctx context.Context, cfg HandleConfig, event *Eve
 			panic(value)
 		}
 		stack := debug.Stack()
+		if carried, ok := value.(*requestHookPanic); ok {
+			ctx, value, stack = carried.ctx, carried.value, carried.stack
+			if value == http.ErrAbortHandler {
+				panic(value)
+			}
+		}
 		if carried, ok := value.(*panicWithStack); ok {
 			if carried.value == http.ErrAbortHandler {
 				panic(carried.value)
@@ -374,7 +397,7 @@ func (m Middleware) runGuarded(ctx context.Context, cfg HandleConfig, event *Eve
 		} else {
 			log.Printf("skgo: handle hook panicked: %v\n%s", value, stack)
 		}
-		response, err = nil, &HTTPError{Status: 500, Message: "Internal Error"}
+		response, err = nil, requestHookError(ctx, &HTTPError{Status: 500, Message: "Internal Error"})
 	}()
 	return m(ctx, event, resolve)
 }

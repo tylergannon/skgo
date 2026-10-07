@@ -8,13 +8,14 @@ import (
 // RequestEvent pairs a request with generated typed params. Route-bound loads
 // alias this implementation with their own precise RouteParams. Commands and
 // forms use the generated application-wide params.Params instead.
-type RequestEvent[Params any] struct {
+type RequestEvent[Params, Locals any] struct {
 	*Event
 	Params Params
+	Locals *Locals
 }
 
 // Context carries cancellation and the existing request-scoped helpers.
-func (e RequestEvent[P]) Context() context.Context {
+func (e RequestEvent[P, L]) Context() context.Context {
 	event := e.Event
 	if event.remote {
 		// Context helpers and direct nested queries cannot recover the explicit

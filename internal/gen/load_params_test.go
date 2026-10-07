@@ -45,7 +45,7 @@ func TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation(t *testing.T) {
 	if err := stageTypedLoadEvolutionFixture(root, app); err != nil {
 		t.Fatal(err)
 	}
-	cfg := Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")}
+	cfg := fixtureConfig(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")})
 	if err := Run(cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +252,7 @@ var _ = skgo.Load(layoutLoad)
 	if err := os.WriteFile(layoutFile, []byte(layoutLoad), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := Run(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")}); err != nil {
+	if err := Run(fixtureConfig(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")})); err != nil {
 		t.Fatal(err)
 	}
 	const consumer = `package skgo_test
@@ -362,7 +362,7 @@ func TestAppMatchersWithoutGoLoads(t *testing.T) {
 	if err := linkGeneratorKit(root, app); err != nil {
 		t.Fatal(err)
 	}
-	cfg := Config{Web: web, Out: filepath.Join(app, "generated")}
+	cfg := fixtureConfig(Config{Web: web, Out: filepath.Join(app, "generated")})
 	if err := Run(cfg); err != nil {
 		t.Fatal(err)
 	}

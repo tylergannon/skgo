@@ -579,8 +579,11 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 		expected := mod + "/" + filepath.ToSlash(rel) + "/params"
 		event := types.Unalias(target.Type().(*types.Signature).Params().At(1).Type()).(*types.Named)
 		param, ok := types.Unalias(event.TypeArgs().At(0)).(*types.Named)
+		if sharedTypeIdentity(event.TypeArgs().At(1)) != "named("+fmt.Sprintf("%q,%q", a.cfg.LocalsPackage, a.cfg.LocalsType)+")" {
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: event locals must be %s.%s", pos, a.cfg.LocalsPackage, a.cfg.LocalsType)
+		}
 		if !ok || param.Obj().Pkg() == nil || param.Obj().Pkg().Path() != expected || param.Obj().Name() != "Params" {
-			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s must receive skgo.RequestEvent[%s.Params]", pos, target.Name(), expected)
+			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s must receive skgo.RequestEvent[%s.Params, configured Locals]", pos, target.Name(), expected)
 		}
 	}
 	if inputsName != "" {
@@ -804,17 +807,17 @@ func shapeOf(kind remoteKind) string {
 	case kindBatch:
 		return "A query.batch is func(context.Context, []In) ([]Out, error): it is handed every argument in the batch and answers one result per argument, in the same order."
 	case kindForm:
-		return "A form is func(context.Context, skgo.RequestEvent[params.Params], In) (Out, error): kit hands a form handler the submission, so its argument is not optional."
+		return "A form is func(context.Context, params.RequestEvent, In) (Out, error): kit hands a form handler the submission, so its argument is not optional."
 	}
 	if kind == kindCommand {
-		return "A command is func(context.Context, skgo.RequestEvent[params.Params]) (Out, error), or func(context.Context, skgo.RequestEvent[params.Params], In) (Out, error)."
+		return "A command is func(context.Context, params.RequestEvent) (Out, error), or func(context.Context, params.RequestEvent, In) (Out, error)."
 	}
 	return fmt.Sprintf("A %s is func(context.Context) (Out, error), or func(context.Context, In) (Out, error) when it takes an argument.", kind)
 }
 
 func isRemoteRequestEvent(t types.Type) bool {
 	named, ok := types.Unalias(t).(*types.Named)
-	return ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == skgoPkg && named.Obj().Name() == "RequestEvent" && named.TypeArgs().Len() == 1
+	return ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == skgoPkg && named.Obj().Name() == "RequestEvent" && named.TypeArgs().Len() == 2
 }
 
 // yieldType reads Out out of a `func(Out) error` parameter.

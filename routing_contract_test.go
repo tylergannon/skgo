@@ -121,7 +121,7 @@ func TestSharedRoutingContracts(t *testing.T) {
 							if hookCalls != entry.hooks {
 								t.Fatalf("%s: hook called %d times, want %d", kind, hookCalls, entry.hooks)
 							}
-							wantLang := fixture.langCalls * (1 + entry.hooks)
+							wantLang := fixture.langCalls // the hook and handler share the accepted conversion
 							if langCalls != wantLang {
 								t.Fatalf("%s: Lang called %d times, want %d", kind, langCalls, wantLang)
 							}

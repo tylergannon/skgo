@@ -116,17 +116,22 @@ func showAdvice(args []string) {
 }
 
 func checkProject(args []string) {
+	rejectMultipleSelections(args)
 	fs := flag.NewFlagSet("check", flag.ExitOnError)
 	root := fs.String("root", ".", "project root containing go.mod")
 	web := fs.String("web", "web", "frontend root, relative to --root")
 	out := fs.String("out", "", "generated Go bindings directory, relative to --root; detected when omitted")
+	localsPackage := fs.String("locals-package", "", "application locals Go import path (required)")
+	localsType := fs.String("locals-type", "Locals", "application locals named struct")
+	hookPackage := fs.String("hook-package", "", "optional request hook Go import path")
+	hookSymbol := fs.String("hook-symbol", "Handle", "selected request hook symbol")
 	jsonOutput := fs.Bool("json", false, "write a structured JSON report")
 	_ = fs.Parse(args)
 	if fs.NArg() != 0 {
 		fs.Usage()
 		os.Exit(2)
 	}
-	report := check.Run(context.Background(), check.Options{Root: *root, Web: *web, Out: *out})
+	report := check.Run(context.Background(), check.Options{Root: *root, Web: *web, Out: *out, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol})
 	if *jsonOutput {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
@@ -184,14 +189,19 @@ func newProject(args []string) {
 }
 
 func generate(args []string) {
+	rejectMultipleSelections(args)
 	fs := flag.NewFlagSet("generate", flag.ExitOnError)
 	web := fs.String("web", "../web", "the vite root: the directory holding src/ and package.json")
 	out := fs.String("out", ".", "the directory of the generated bindings package")
 	pkg := fs.String("package", "", "the name of the generated bindings package; defaults to the base name of --out")
+	localsPackage := fs.String("locals-package", "", "application locals Go import path (required)")
+	localsType := fs.String("locals-type", "Locals", "application locals named struct")
+	hookPackage := fs.String("hook-package", "", "optional request hook Go import path")
+	hookSymbol := fs.String("hook-symbol", "Handle", "selected request hook symbol")
 	quiet := fs.Bool("quiet", false, "do not list the files written")
 	_ = fs.Parse(args)
 
-	cfg := gen.Config{Web: *web, Out: *out, Package: *pkg}
+	cfg := gen.Config{Web: *web, Out: *out, Package: *pkg, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol}
 	if !*quiet {
 		cfg.Logf = logf
 	}
@@ -203,4 +213,20 @@ func generate(args []string) {
 }
 func logf(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "skgo: "+format+"\n", args...)
+}
+
+// A selected application type and hook are single explicit declarations.
+func rejectMultipleSelections(args []string) {
+	seen := map[string]bool{}
+	for _, arg := range args {
+		name, _, _ := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+		switch name {
+		case "locals-package", "locals-type", "hook-package", "hook-symbol":
+			if seen[name] {
+				fmt.Fprintf(os.Stderr, "skgo: multiple configured selections for %s\n", name)
+				os.Exit(2)
+			}
+			seen[name] = true
+		}
+	}
 }

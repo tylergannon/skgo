@@ -46,12 +46,12 @@ func TestGeneratedCommandFormCallerEvents(t *testing.T) {
 	t.Logf("generated handler contracts:\n%s", output)
 }
 
-func TestCommandFormContextMigrationDiagnostics(t *testing.T) {
+func TestCommandFormEventDiagnostics(t *testing.T) {
 	for _, kind := range []string{"Command", "Form"} {
 		for _, tc := range []struct{ name, signature, want string }{
-			{"ctx-only", "ctx context.Context,in string", "A " + strings.ToLower(kind) + " is func(context.Context, skgo.RequestEvent[params.Params]"},
-			{"event-only", "event skgo.RequestEvent[params.Params],in string", "A " + strings.ToLower(kind) + " is func(context.Context, skgo.RequestEvent[params.Params]"},
-			{"wrong-params", "ctx context.Context,event skgo.RequestEvent[struct{}],in string", "old must receive skgo.RequestEvent[example.com/app/generated/params.Params]"},
+			{"ctx-only", "ctx context.Context,in string", "A " + strings.ToLower(kind) + " is func(context.Context, params.RequestEvent"},
+			{"event-only", "event params.RequestEvent,in string", "A " + strings.ToLower(kind) + " is func(context.Context, params.RequestEvent"},
+			{"wrong-params", "ctx context.Context,event skgo.RequestEvent[struct{}, struct{}],in string", "event locals must be example.com/app/internal/app.Locals"},
 		} {
 			t.Run(kind+"/"+tc.name, func(t *testing.T) {
 				_, cfg := foreignFixture(t, `package data
@@ -109,7 +109,7 @@ func receipt(p params.Params) string {
  default:panic("order variant")}}
  return "remote:absent"
 }
-func check(ctx context.Context,event skgo.RequestEvent[params.Params]) {
+func check(ctx context.Context,event params.RequestEvent) {
  for _,fn:=range []func(){func(){skgo.EventFrom(ctx).Param("id")},func(){skgo.EventFrom(ctx).Params()},func(){skgo.EventFrom(ctx).URL()},func(){skgo.EventFrom(ctx).RouteID()},func(){params.SkgoRequestEvent(skgo.EventFrom(ctx))},func(){event.Event.Param("id")},func(){event.Event.Params()},func(){skgo.EventFrom(event.Context()).Param("id")},func(){skgo.EventFrom(event.Context()).Params()},func(){skgo.EventFrom(event.Context()).URL()},func(){skgo.EventFrom(event.Context()).RouteID()},func(){params.SkgoRequestEvent(skgo.EventFrom(event.Context()))}} {
   if !forbidden(fn){panic("raw/context caller access allowed")}
  }
@@ -123,14 +123,14 @@ func check(ctx context.Context,event skgo.RequestEvent[params.Params]) {
  // A direct nested query gets the restricted context too.
  if got,_:=nested(ctx);got!="query:restricted"{panic(got)}
 }
-func act(ctx context.Context, event skgo.RequestEvent[params.Params],input string)(string,error){
+func act(ctx context.Context, event params.RequestEvent,input string)(string,error){
  check(ctx,event)
  if input=="hold" { Enter<-struct{}{};<-Release }
  return input+"|"+receipt(event.Params),nil
 }
-type EventAlias = skgo.RequestEvent[params.Params]
+type EventAlias = params.RequestEvent
 func noInput(ctx context.Context, event EventAlias)(string,error){check(ctx,event);return "no-input|"+receipt(event.Params),nil}
-func submit(ctx context.Context, event skgo.RequestEvent[params.Params],input Input)(string,error){if input.Name!="go-client"{check(ctx,event)};if input.Name=="hold" {Enter<-struct{}{};<-Release};return input.Name+"|"+receipt(event.Params),nil}
+func submit(ctx context.Context, event params.RequestEvent,input Input)(string,error){if input.Name!="go-client"{check(ctx,event)};if input.Name=="hold" {Enter<-struct{}{};<-Release};return input.Name+"|"+receipt(event.Params),nil}
 ` + `
 func nested(ctx context.Context)(string,error){
  e:=skgo.EventFrom(ctx)
