@@ -12,6 +12,7 @@ import (
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
 	"github.com/tylergannon/skgo/example/businesslogic/visitor"
+	"github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 
 // sessionCookie is the name of the cookie the auth functions in src/lib set.
@@ -46,7 +47,7 @@ func getTodo(ctx context.Context, id string) (businesslogic.Todo, error) {
 // and no others, however many the browser asks for. There is no limit to
 // give: getTodos takes no argument, so kit's client keys it under the empty
 // payload and there is exactly one instance of it to ask for.
-func addTodo(ctx context.Context, text string) (businesslogic.Todo, error) {
+func addTodo(ctx context.Context, event skgo.RequestEvent[params.Params], text string) (businesslogic.Todo, error) {
 	if text == "" {
 		return businesslogic.Todo{}, skgo.Errorf(400, "A todo needs some text")
 	}
@@ -67,7 +68,7 @@ type Rename struct {
 // for a todo this visitor may not see is the same 404 getTodo gives. A command
 // that reached a todo the matching query refuses would disclose the row it
 // returns.
-func renameTodo(ctx context.Context, arg Rename) (businesslogic.Todo, error) {
+func renameTodo(ctx context.Context, event skgo.RequestEvent[params.Params], arg Rename) (businesslogic.Todo, error) {
 	todo, ok := visitor.Store(ctx).Rename(arg.ID, arg.Text, signedIn(ctx))
 	if !ok {
 		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", arg.ID)
@@ -100,7 +101,7 @@ type Retitle struct {
 // what it wants refreshed. The refreshed value on the response is entirely the
 // server's doing, and it names the Go function and the argument rather than a
 // string — getTodo's own parameter type is what RefreshID has to satisfy.
-func retitleTodo(ctx context.Context, arg Retitle) (businesslogic.Todo, error) {
+func retitleTodo(ctx context.Context, event skgo.RequestEvent[params.Params], arg Retitle) (businesslogic.Todo, error) {
 	todo, ok := visitor.Store(ctx).Rename(arg.ID, arg.Text, signedIn(ctx))
 	if !ok {
 		return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", arg.ID)

@@ -124,7 +124,7 @@ func Requested[In, Out any](ctx context.Context, fn func(context.Context, In) (O
 // RefreshRequested accepts up to limit of the instances of fn the client asked
 // this command or form to refresh:
 //
-//	func addTodo(ctx context.Context, text string) (businesslogic.Todo, error) {
+//	func addTodo(ctx context.Context, event skgo.RequestEvent[params.Params], text string) (businesslogic.Todo, error) {
 //		return businesslogic.Default.Add(text), skgo.RefreshRequested(ctx, getTodos, 1)
 //	}
 //
@@ -160,7 +160,7 @@ func IgnoreRequested[In, Out any](ctx context.Context, fn func(context.Context, 
 
 // RefreshRequestedNoArg is RefreshRequested for a query that takes no argument:
 //
-//	func addTodo(ctx context.Context, text string) (businesslogic.Todo, error) {
+//	func addTodo(ctx context.Context, event skgo.RequestEvent[params.Params], text string) (businesslogic.Todo, error) {
 //		return businesslogic.Default.Add(text), skgo.RefreshRequestedNoArg(ctx, getTodos)
 //	}
 //

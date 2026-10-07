@@ -1,6 +1,7 @@
 {
   "remotes": [
     "14q4me9/getMessages",
+    "14q4me9/previewMessage",
     "14q4me9/sendMessage",
     "1627chi/readSensor",
     "16h93j5/addTodo",

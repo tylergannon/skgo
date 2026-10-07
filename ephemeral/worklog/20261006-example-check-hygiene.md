@@ -1,0 +1,2 @@
+friction: The example check requires project-local Prettier and prettier-plugin-svelte even with Vite+ installed. Neither was declared. Cached exact versions 3.6.2 and 3.5.2 install with pnpm --offline, with zero downloads and no existing pin changes; declare both in package.json and the lockfile rather than relying on global tooling.
+correction: Making the Svelte formatter available exposed 71 previously unformatted components. Formatting coverage must execute across the existing glob; removing files from it would conceal the blocker.

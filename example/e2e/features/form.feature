@@ -125,3 +125,46 @@ Feature: Forms written in Go
     And the field "email" carries the message "\"katherine-at-example\" is not an email address"
     And the field "body" carries the message "A message needs at least 10 characters; this one has 4"
     And the form reports it was not sent
+
+  Scenario: Keyed validation survives navigation between caller pages
+    Given I open "/items/42"
+    When I navigate to the "Numeric caller" form caller at "/typed-load/42"
+    And I fill the keyed contact form with name "", email "invalid-email" and message "nope"
+    And I send the keyed message
+    Then the keyed form reports it was not sent
+    And the keyed field "from" carries the message "Tell us who you are"
+    And the keyed field "email" carries the message "\"invalid-email\" is not an email address"
+    And the keyed field "body" carries the message "A message needs at least 10 characters; this one has 4"
+    And the keyed contact form still holds name "" and email "invalid-email"
+    And the bare contact form reports nothing sent and nothing refused
+
+  Scenario: A shared command follows the current caller after client navigation
+    Given I open "/contact"
+    When I navigate to the "Numeric caller" form caller at "/typed-load/42"
+    And I preview the message "Numeric command payload."
+    Then the command preview shows caller "number:params.NumberParam_OrderNumber:{42}" and message "Numeric command payload."
+    When I navigate to the "String caller" form caller at "/items/42"
+    And I preview the message "String command payload."
+    Then the command preview shows caller "id:string:42" and message "String command payload."
+    When I navigate to the "Absent caller" form caller at "/contact"
+    And I preview the message "Absent command payload."
+    Then the command preview shows caller "absent" and message "Absent command payload."
+
+  Scenario Outline: Typed caller forms follow navigation with <mode> <instance> submissions
+    Given I open "/contact"
+    When I navigate to the "Numeric caller" form caller at "/typed-load/42"
+    And I submit the "<instance>" caller form using "<mode>" with message "Numeric caller payload."
+    Then the "<instance>" caller receipt is "number:params.NumberParam_OrderNumber:{42}" with message "Numeric caller payload."
+    When I navigate to the "String caller" form caller at "/items/42"
+    And I submit the "<instance>" caller form using "<mode>" with message "String caller payload."
+    Then the "<instance>" caller receipt is "id:string:42" with message "String caller payload."
+    When I navigate to the "Absent caller" form caller at "/contact"
+    And I submit the "<instance>" caller form using "<mode>" with message "Absent caller payload."
+    Then the "<instance>" caller receipt is "absent" with message "Absent caller payload."
+
+    Examples:
+      | mode     | instance |
+      | enhanced | bare     |
+      | enhanced | keyed    |
+      | native   | bare     |
+      | native   | keyed    |

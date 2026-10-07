@@ -97,6 +97,9 @@ func (e *Event) IsSubRequest() bool { return e != nil && e.hook != nil && e.hook
 // matched. It is only available on the event a Middleware receives; inside a
 // query kit forbids reading it, and so does this.
 func (e *Event) Params() map[string]string {
+	if e != nil && e.remote {
+		panic("skgo: raw Params is forbidden in remote functions; use the explicit event.Params getters")
+	}
 	if e == nil || e.hook == nil || e.hook.params == nil {
 		return nil
 	}
@@ -194,6 +197,15 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 		}
 		hasPage := false
 		if !skipRoute {
+			// Handle runs before the registries, so it must validate the
+			// live graph before its own match too. Let the owning handler
+			// report refresh failures in the request kind's normal format.
+			if cfg.Loads != nil && cfg.Loads.devRefresh != nil {
+				if err := cfg.Loads.devRefresh(); err != nil {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
 			if route, params, ok := cfg.matchRoute(routePath); ok {
 				state.routeID, state.params, hasPage = route.id, params, route.hasPage
 			}

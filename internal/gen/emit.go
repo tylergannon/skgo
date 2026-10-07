@@ -594,6 +594,31 @@ func (a *app) writeAppBindings() error {
 	b.WriteString(goHeader)
 	fmt.Fprintf(&b, "package %s\n\n", a.cfg.Package)
 	transportPkgs := a.transportImports()
+	hasCaller := false
+	for _, fn := range a.remotes {
+		hasCaller = hasCaller || fn.kind == kindCommand || fn.kind == kindForm
+	}
+	matcherImports := &fileImports{}
+	matcherImports.used = map[string]bool{"skgo": true, "context": true, "fmt": true, "reflect": true, "skgoSharedParams": true}
+	for _, gp := range a.pkgs {
+		matcherImports.used[gp.alias] = true
+	}
+	for _, imp := range transportPkgs {
+		matcherImports.used[imp.alias] = true
+	}
+	matcherImports.byPkg = map[*types.Package]string{}
+	matcherImports.order = nil
+	matchers := map[string]goParamMatcher{}
+	if hasCaller {
+		for _, route := range a.cfg.loadParams {
+			for name, matcher := range route.matchers {
+				matchers[name] = matcher
+			}
+		}
+		for _, matcher := range matchers {
+			matcherImports.packageAlias(matcher.pkg)
+		}
+	}
 	b.WriteString("import (\n")
 	if len(a.remotes) > 0 || len(a.loads) > 0 || len(a.actions) > 0 {
 		b.WriteString("\t\"context\"\n")
@@ -612,7 +637,21 @@ func (a *app) writeAppBindings() error {
 	for _, imp := range transportPkgs {
 		fmt.Fprintf(&b, "\t%s %q\n", imp.alias, imp.path)
 	}
+	if hasCaller {
+		host, mod, err := moduleOf(a.cfg.Out)
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(host, a.cfg.Out)
+		fmt.Fprintf(&b, "skgoSharedParams %q\n", mod+"/"+filepath.ToSlash(rel)+"/params")
+		for _, pkg := range matcherImports.order {
+			fmt.Fprintf(&b, "%s %q\n", matcherImports.byPkg[pkg], pkg.Path())
+		}
+	}
 	matcherAliases := map[string]string{}
+	for _, pkg := range matcherImports.order {
+		matcherAliases[pkg.Path()] = matcherImports.byPkg[pkg]
+	}
 	var matcherNames []string
 	for name := range a.cfg.matchers {
 		matcherNames = append(matcherNames, name)
@@ -636,6 +675,19 @@ func (a *app) writeAppBindings() error {
 		}
 	}
 	b.WriteString(")\n")
+	if hasCaller {
+		b.WriteString("\nfunc skgoCallerMatchers() skgo.CallerMatchers { return skgo.CallerMatchers{\n")
+		names := make([]string, 0, len(matchers))
+		for name := range matchers {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			matcher := matchers[name]
+			fmt.Fprintf(&b, "%q:func(value string)(any,bool){ return %s.%s(value) },\n", name, matcherImports.byPkg[matcher.pkg], name)
+		}
+		b.WriteString("}}\n")
+	}
 
 	b.WriteString("\n// Matchers returns the app's route matchers, including routes without server loads.\nfunc Matchers() map[string]skgo.ParamMatcher {\n return map[string]skgo.ParamMatcher{\n")
 	for _, name := range matcherNames {
@@ -660,6 +712,10 @@ func (a *app) writeAppBindings() error {
 		fmt.Fprintf(&b, "\t\t\tModule: %q,\n", fn.module)
 		fmt.Fprintf(&b, "\t\t\tName:   %q,\n", fn.name)
 		fmt.Fprintf(&b, "\t\t\tFn:     %s,\n", a.published(fn.goPkg, fn.name))
+		if fn.kind == kindCommand || fn.kind == kindForm {
+			b.WriteString("CallerMatchers:skgoCallerMatchers(),\n")
+			b.WriteString("CallerRoutes:skgoSharedParams.SkgoCallerRoutes(),\n")
+		}
 		switch fn.kind {
 		case kindLive:
 			fmt.Fprintf(&b, "\t\t\tLive:   %s,\n", fn.handler)
@@ -840,7 +896,12 @@ func (a *app) writeHandler(b *strings.Builder, fn *remoteFn) {
 	default:
 		fmt.Fprintf(b, "func %s(ctx context.Context, call skgo.Call) (any, error) {\n", fn.handler)
 		a.writeArgument(b, fn, "\t", "return nil, err")
-		fmt.Fprintf(b, "\tout, err := %s(ctx%s)\n", a.published(fn.goPkg, fn.name), callArg(fn))
+		contextArg := "ctx"
+		if fn.kind == kindCommand || fn.kind == kindForm {
+			b.WriteString("\tevent,err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))\n\tif err != nil { return nil,err }\n")
+			contextArg = "event.Context(), event"
+		}
+		fmt.Fprintf(b, "\tout, err := %s(%s%s)\n", a.published(fn.goPkg, fn.name), contextArg, callArg(fn))
 		b.WriteString("\tif err != nil {\n\t\treturn nil, err\n\t}\n")
 		if fn.outCodec != "" {
 			fmt.Fprintf(b, "\treturn Encode%s(out)\n}\n", fn.outCodec)

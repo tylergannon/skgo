@@ -77,3 +77,22 @@ Feature: A form works without JavaScript
     And the keyed form reports it was not sent
     And the keyed contact form still holds name "Grace Hopper" and email "grace-at-example"
     And the bare contact form reports nothing sent and nothing refused
+
+  Scenario Outline: Typed caller forms follow navigation with <mode> <instance> submissions
+    Given I open "/contact"
+    When I navigate to the "Numeric caller" form caller at "/typed-load/42"
+    And I submit the "<instance>" caller form using "<mode>" with message "Numeric caller payload."
+    Then the "<instance>" caller receipt is "number:params.NumberParam_OrderNumber:{42}" with message "Numeric caller payload."
+    When I navigate to the "String caller" form caller at "/items/42"
+    And I submit the "<instance>" caller form using "<mode>" with message "String caller payload."
+    Then the "<instance>" caller receipt is "id:string:42" with message "String caller payload."
+    When I navigate to the "Absent caller" form caller at "/contact"
+    And I submit the "<instance>" caller form using "<mode>" with message "Absent caller payload."
+    Then the "<instance>" caller receipt is "absent" with message "Absent caller payload."
+
+    And the browser ran no script
+
+    Examples:
+      | mode   | instance |
+      | native | bare     |
+      | native | keyed    |

@@ -343,9 +343,8 @@ func TestAFileTouchedWithoutBeingChangedIsNotAnEdit(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET /%s: status %d", file, resp.StatusCode)
 	}
-	cursor, _ := changesSince(0)
 	settle(0)
-	cursor, _ = changesSince(0)
+	cursor, _ := changesSince(0)
 
 	info, err := os.Stat(path)
 	if err != nil {

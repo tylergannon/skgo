@@ -1,0 +1,459 @@
+package gen
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"go/format"
+	"go/types"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+const sharedParamsFile = "params_gen.go"
+
+// Key namespaces are lossless and disjoint: canonical keys have no underscore;
+// every other spelling carries its entire UTF-8 identity, not a short hash.
+func sharedParamStem(key string) string {
+	if key == "id" {
+		return "ID"
+	}
+	canonical := len(key) > 0 && key[0] >= 'a' && key[0] <= 'z'
+	for _, c := range []byte(key) {
+		canonical = canonical && (c >= 'a' && c <= 'z' || c >= '0' && c <= '9')
+	}
+	if canonical {
+		return strings.ToUpper(key[:1]) + key[1:]
+	}
+	stem := readableTypeStem(key)
+	if stem == "" || stem[0] >= '0' && stem[0] <= '9' {
+		stem = "Key" + stem
+	}
+	return stem + "_K" + hex.EncodeToString([]byte(key))
+}
+
+func readableTypeStem(s string) string {
+	var b strings.Builder
+	upper := true
+	for _, c := range s {
+		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' {
+			if upper && c >= 'a' && c <= 'z' {
+				c -= 'a' - 'A'
+			}
+			b.WriteRune(c)
+			upper = false
+		} else {
+			upper = true
+		}
+	}
+	return b.String()
+}
+
+// This representation follows Go identity rather than emission spelling.
+// In particular aliases, tuple variable names and interface embedding spelling
+// cannot affect a wrapper's public name.
+func sharedTypeIdentity(t types.Type) string {
+	t = types.Unalias(t)
+	list := func(tuple *types.Tuple) string {
+		var out []string
+		for i := 0; i < tuple.Len(); i++ {
+			out = append(out, sharedTypeIdentity(tuple.At(i).Type()))
+		}
+		return "(" + strings.Join(out, ",") + ")"
+	}
+	switch t := t.(type) {
+	case *types.Basic:
+		return types.Typ[t.Kind()].Name()
+	case *types.Named:
+		path := ""
+		if t.Obj().Pkg() != nil {
+			path = t.Obj().Pkg().Path()
+		}
+		s := fmt.Sprintf("named(%q,%q", path, t.Obj().Name())
+		for i := 0; i < t.TypeArgs().Len(); i++ {
+			s += "," + sharedTypeIdentity(t.TypeArgs().At(i))
+		}
+		return s + ")"
+	case *types.Pointer:
+		return "*" + sharedTypeIdentity(t.Elem())
+	case *types.Slice:
+		return "[]" + sharedTypeIdentity(t.Elem())
+	case *types.Array:
+		return fmt.Sprintf("[%d]", t.Len()) + sharedTypeIdentity(t.Elem())
+	case *types.Map:
+		return "map[" + sharedTypeIdentity(t.Key()) + "]" + sharedTypeIdentity(t.Elem())
+	case *types.Chan:
+		return fmt.Sprintf("chan(%d,%s)", t.Dir(), sharedTypeIdentity(t.Elem()))
+	case *types.Signature:
+		return fmt.Sprintf("func%s%s:%t", list(t.Params()), list(t.Results()), t.Variadic())
+	case *types.Struct:
+		s := "struct{"
+		for i := 0; i < t.NumFields(); i++ {
+			f := t.Field(i)
+			pkg := ""
+			if !f.Exported() && f.Pkg() != nil {
+				pkg = f.Pkg().Path()
+			}
+			s += fmt.Sprintf("%q:%q:%t:%q:%s;", pkg, f.Name(), f.Embedded(), t.Tag(i), sharedTypeIdentity(f.Type()))
+		}
+		return s + "}"
+	case *types.Interface:
+		t.Complete()
+		var methods []string
+		for i := 0; i < t.NumMethods(); i++ {
+			m := t.Method(i)
+			pkg := ""
+			if !m.Exported() && m.Pkg() != nil {
+				pkg = m.Pkg().Path()
+			}
+			methods = append(methods, fmt.Sprintf("%q:%q:%s", pkg, m.Name(), sharedTypeIdentity(m.Type())))
+		}
+		sort.Strings(methods)
+		return "interface{" + strings.Join(methods, ";") + "}"
+	default:
+		panic(fmt.Sprintf("unsupported matcher type identity %T", t))
+	}
+}
+
+// sharedVariantName is the readable ordinary name. The complete alternative
+// set resolves genuine collisions before emitting declarations or constructors.
+func sharedVariantName(key string, t types.Type) string {
+	return sharedParamStem(key) + "Param_" + sharedTypeStem(t, false)
+}
+
+func sharedTypeStem(t types.Type, qualified bool) string {
+	t = types.Unalias(t)
+	switch t := t.(type) {
+	case *types.Basic:
+		return readableTypeStem(types.Typ[t.Kind()].Name())
+	case *types.Named:
+		name := readableTypeStem(t.Obj().Name())
+		if qualified && t.Obj().Pkg() != nil {
+			name = readableTypeStem(t.Obj().Pkg().Name()) + name
+		}
+		for i := 0; i < t.TypeArgs().Len(); i++ {
+			name += "_" + sharedTypeStem(t.TypeArgs().At(i), qualified)
+		}
+		return name
+	case *types.Pointer:
+		return "Pointer" + sharedTypeStem(t.Elem(), qualified)
+	case *types.Slice:
+		return "Slice" + sharedTypeStem(t.Elem(), qualified)
+	case *types.Array:
+		return fmt.Sprintf("Array%d", t.Len()) + sharedTypeStem(t.Elem(), qualified)
+	case *types.Map:
+		return "Map" + sharedTypeStem(t.Key(), qualified) + sharedTypeStem(t.Elem(), qualified)
+	case *types.Chan:
+		return fmt.Sprintf("Chan%d", t.Dir()) + sharedTypeStem(t.Elem(), qualified)
+	case *types.Signature:
+		return "Func"
+	case *types.Struct:
+		return "Struct"
+	case *types.Interface:
+		return "Interface"
+	default:
+		panic(fmt.Sprintf("unsupported matcher type name %T", t))
+	}
+}
+
+func nameSharedAlternatives(alternatives map[string][]sharedAlternative) {
+	counts := map[string]int{}
+	for _, alts := range alternatives {
+		for _, alt := range alts {
+			counts[alt.name]++
+		}
+	}
+	for key, alts := range alternatives {
+		for i := range alts {
+			if counts[alts[i].name] > 1 {
+				alts[i].name = sharedParamStem(key) + "Param_" + sharedTypeStem(alts[i].typ, true)
+			}
+		}
+	}
+	counts = map[string]int{}
+	for _, alts := range alternatives {
+		for _, alt := range alts {
+			counts[alt.name]++
+		}
+	}
+	// Equal package names or structural spellings can still collide. Only these
+	// alternatives carry an identity suffix; full digests avoid truncated clashes.
+	for key, alts := range alternatives {
+		for i := range alts {
+			if counts[alts[i].name] > 1 {
+				digest := sha256.Sum256([]byte(key + ":" + sharedTypeIdentity(alts[i].typ)))
+				alts[i].name += "_" + hex.EncodeToString(digest[:])
+			}
+		}
+	}
+}
+
+func sharedAlternativeName(alternatives map[string][]sharedAlternative, key string, t types.Type) string {
+	for _, alt := range alternatives[key] {
+		if types.Identical(types.Unalias(alt.typ), types.Unalias(t)) {
+			return alt.name
+		}
+	}
+	panic("missing shared param alternative")
+}
+
+// Authored remotes can live outside src/routes as well. Their packages are
+// above the shared leaf just as caller packages and generated bindings are.
+func sharedForbiddenPackages(cfg Config) ([]string, error) {
+	host, mod, err := moduleOf(cfg.Out)
+	if err != nil {
+		return nil, err
+	}
+	importPath := func(dir string) string { rel, _ := filepath.Rel(host, dir); return mod + "/" + filepath.ToSlash(rel) }
+	paths := []string{importPath(cfg.Out), importPath(filepath.Join(cfg.Web, routesDir))}
+	files, err := findSourceFiles(cfg.Web)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if strings.HasSuffix(file, ".remote.go") {
+			paths = append(paths, importPath(filepath.Dir(file)))
+		}
+	}
+	sort.Strings(paths)
+	return paths, nil
+}
+
+// Ensure the type can be spelled in a leaf package. Named types need not expose
+// their underlying fields; unnamed structs/interfaces do. Import graphs must
+// remain below params, never reach caller packages or generated bindings.
+func validateSharedType(cfg Config, t types.Type) error {
+	host, mod, err := moduleOf(cfg.Out)
+	if err != nil {
+		return err
+	}
+	outRel, _ := filepath.Rel(host, cfg.Out)
+	outPath := mod + "/" + filepath.ToSlash(outRel)
+	forbidden, err := sharedForbiddenPackages(cfg)
+	if err != nil {
+		return err
+	}
+	hasPrefix := func(path, prefix string) bool { return path == prefix || strings.HasPrefix(path, prefix+"/") }
+	seen := map[*types.Package]bool{}
+	var checkPackage func(*types.Package) error
+	checkPackage = func(p *types.Package) error {
+		if p == nil || seen[p] {
+			return nil
+		}
+		seen[p] = true
+		for _, path := range forbidden {
+			if hasPrefix(p.Path(), path) {
+				return fmt.Errorf("type dependency %s is caller-owned or imports generated bindings/params; move matcher domain types to a leaf package", p.Path())
+			}
+		}
+
+		for _, dep := range p.Imports() {
+			if err := checkPackage(dep); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	var visit func(types.Type) error
+	visit = func(t types.Type) error {
+		object := func(obj *types.TypeName) error {
+			if obj.Pkg() != nil && !obj.Exported() {
+				return fmt.Errorf("inaccessible type %s; export it from a leaf domain package", obj.Name())
+			}
+			if p := obj.Pkg(); p != nil {
+				if i := strings.LastIndex(p.Path(), "/internal/"); i >= 0 && !hasPrefix(outPath+"/params", p.Path()[:i]) {
+					return fmt.Errorf("cannot import internal type package %s from shared params; move matcher domain types to an accessible leaf package", p.Path())
+				}
+			}
+			return checkPackage(obj.Pkg())
+		}
+		switch t := t.(type) {
+		case *types.Alias:
+			if err := object(t.Obj()); err != nil {
+				return err
+			}
+			for i := 0; i < t.TypeArgs().Len(); i++ {
+				if err := visit(t.TypeArgs().At(i)); err != nil {
+					return err
+				}
+			}
+			return nil
+		case *types.Named:
+			if err := object(t.Obj()); err != nil {
+				return err
+			}
+			for i := 0; i < t.TypeArgs().Len(); i++ {
+				if err := visit(t.TypeArgs().At(i)); err != nil {
+					return err
+				}
+			}
+			return nil
+		case *types.Basic:
+			return nil
+		case *types.Pointer:
+			return visit(t.Elem())
+		case *types.Slice:
+			return visit(t.Elem())
+		case *types.Array:
+			return visit(t.Elem())
+		case *types.Map:
+			if err := visit(t.Key()); err != nil {
+				return err
+			}
+			return visit(t.Elem())
+		case *types.Chan:
+			return visit(t.Elem())
+		case *types.Struct:
+			for i := 0; i < t.NumFields(); i++ {
+				f := t.Field(i)
+				if !f.Exported() {
+					return fmt.Errorf("inaccessible structural field %s; use an exported named type in a leaf domain package", f.Name())
+				}
+				if err := visit(f.Type()); err != nil {
+					return err
+				}
+			}
+			return nil
+		case *types.Signature:
+			for _, tuple := range []*types.Tuple{t.Params(), t.Results()} {
+				for i := 0; i < tuple.Len(); i++ {
+					if err := visit(tuple.At(i).Type()); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		case *types.Interface:
+			t.Complete()
+			if !t.IsMethodSet() {
+				return fmt.Errorf("constraint interface cannot be a matcher value")
+			}
+			for i := 0; i < t.NumMethods(); i++ {
+				if !t.Method(i).Exported() {
+					return fmt.Errorf("inaccessible structural interface method %s; use an exported named interface in a leaf domain package", t.Method(i).Name())
+				}
+				if err := visit(t.Method(i).Type()); err != nil {
+					return err
+				}
+			}
+			return nil
+		default:
+			return fmt.Errorf("unsupported compiler type %T", t)
+		}
+	}
+	return visit(t)
+}
+
+type sharedAlternative struct {
+	typ  types.Type
+	name string
+}
+
+func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
+	var dirs []string
+	for dir := range routes {
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+	alternatives := map[string][]sharedAlternative{}
+	for _, dir := range dirs {
+		for _, param := range routes[dir].params {
+			typ := types.Type(types.Typ[types.String])
+			if param.Matcher != "" {
+				matcher := routes[dir].matchers[param.Matcher]
+				typ = matcher.out
+				if err := validateSharedType(cfg, typ); err != nil {
+					return fmt.Errorf("skgo: %s: matcher %s: %w", matcher.pos, param.Matcher, err)
+				}
+			}
+			found := false
+			for _, alt := range alternatives[param.Name] {
+				if types.Identical(types.Unalias(alt.typ), types.Unalias(typ)) {
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+			name := sharedVariantName(param.Name, typ)
+			alternatives[param.Name] = append(alternatives[param.Name], sharedAlternative{typ, name})
+		}
+	}
+	nameSharedAlternatives(alternatives)
+	var keys []string
+	for key := range alternatives {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	imports := &fileImports{used: map[string]bool{"skgo": true, "fmt": true, "reflect": true}, byPkg: map[*types.Package]string{}}
+	var body strings.Builder
+	body.WriteString("type Params struct {\n")
+	for _, key := range keys {
+		fmt.Fprintf(&body, "value_%x Key_%s\n", key, sharedParamStem(key))
+	}
+	body.WriteString("}\n\ntype RequestEvent = skgo.RequestEvent[Params]\n\n")
+	for _, key := range keys {
+		stem := sharedParamStem(key)
+		fmt.Fprintf(&body, "type Key_%s interface { skgoParam_%x() }\nfunc (p Params) %s() Key_%s { return p.value_%x }\n", stem, key, stem, stem, key)
+		sort.Slice(alternatives[key], func(i, j int) bool { return alternatives[key][i].name < alternatives[key][j].name })
+		for _, alt := range alternatives[key] {
+			fmt.Fprintf(&body, "type %s struct { Value %s }\nfunc (%s) skgoParam_%x() {}\n", alt.name, imports.typeExpr(alt.typ), alt.name, key)
+		}
+	}
+	// A selected route's declared metadata picks the variant, never the dynamic
+	// type of an interface payload. Membership alone decides presence.
+	body.WriteString("\n// SkgoCallerRoutes describes every constructor generated from Kit's route metadata.\nfunc SkgoCallerRoutes() skgo.CallerRoutes { return skgo.CallerRoutes{\n")
+	for _, dir := range dirs {
+		rel, _ := filepath.Rel(filepath.Join(cfg.Web, routesDir), dir)
+		id := "/" + filepath.ToSlash(rel)
+		if rel == "." {
+			id = "/"
+		}
+		fmt.Fprintf(&body, "%q:{Params:[]skgo.ManifestParam{", id)
+		for _, param := range routes[dir].params {
+			fmt.Fprintf(&body, "{Name:%q,Matcher:%q,Optional:%t,Rest:%t,Chained:%t},", param.Name, param.Matcher, param.Optional, param.Rest, param.Chained)
+		}
+		fmt.Fprintf(&body, "},NewParams:func(values map[string]any)(any,error){return SkgoParams(%q,values)}},\n", id)
+	}
+	body.WriteString("}}\n")
+	body.WriteString("\n// SkgoRequestEvent constructs the explicit event for a command or form.\nfunc SkgoRequestEvent(event *skgo.Event) (RequestEvent,error) {\n routeID,values := skgo.RemoteCallerValues(event)\n p,err := SkgoParams(routeID,values)\n return RequestEvent{Event:event,Params:p},err\n}\n")
+	body.WriteString("\n// SkgoParams constructs values for an already matched caller route.\nfunc SkgoParams(routeID string, values map[string]any) (Params, error) {\n var p Params\n switch routeID {\n")
+	for _, dir := range dirs {
+		rel, _ := filepath.Rel(filepath.Join(cfg.Web, routesDir), dir)
+		id := "/" + filepath.ToSlash(rel)
+		if rel == "." {
+			id = "/"
+		}
+		fmt.Fprintf(&body, "case %q:\n", id)
+		for _, param := range routes[dir].params {
+			typ := types.Type(types.Typ[types.String])
+			if param.Matcher != "" {
+				typ = routes[dir].matchers[param.Matcher].out
+			}
+			fmt.Fprintf(&body, "if raw, present := values[%q]; present { value, err := skgoSharedValue[%s](raw); if err != nil { return Params{}, fmt.Errorf(%q, err) }; p.value_%x = %s{Value:value} }\n", param.Name, imports.typeExpr(typ), "skgo: caller "+id+" param "+param.Name+": %w", param.Name, sharedAlternativeName(alternatives, param.Name, typ))
+		}
+	}
+	body.WriteString("default: if routeID != \"\" { return Params{}, fmt.Errorf(\"skgo: unknown caller route %q; regenerate params\", routeID) }\n}\nreturn p,nil\n}\n\nfunc skgoSharedValue[T any](raw any) (T,error) {\nvar zero T\nif raw == nil && reflect.TypeFor[T]().Kind() == reflect.Interface { return zero,nil }\nvalue,ok := raw.(T)\nif !ok { return zero,fmt.Errorf(\"converted value %T does not fit %v\",raw,reflect.TypeFor[T]()) }\nreturn value,nil\n}\n")
+	var b strings.Builder
+	b.WriteString(goHeader)
+	fmt.Fprintf(&b, "package params\nimport (skgo %q; \"fmt\"; \"reflect\")\n", skgoPkg)
+	imports.writeTo(&b)
+	b.WriteString(body.String())
+	formatted, err := format.Source([]byte(b.String()))
+	if err != nil {
+		return fmt.Errorf("skgo: formatting shared params: %w", err)
+	}
+	path := filepath.Join(cfg.Out, "params", sharedParamsFile)
+	if cfg.ReadOnly {
+		previous, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(previous, formatted) {
+			return fmt.Errorf("skgo: %s is missing or stale; run skgo generate", path)
+		}
+		return nil
+	}
+	return (&app{cfg: cfg}).write(path, string(formatted))
+}

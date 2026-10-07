@@ -118,7 +118,9 @@ export const load: PageLoad = async ({ fetch, url }) => {
 
   const text = await (await fetch(`/api/replay/text?${q}`)).text();
   const json = await (await fetch(`/api/replay/json?${q}`)).json();
-  const aliased = await (await fetch(`/api/replay/json?run=${encodeURIComponent(run)}&alias=1`)).json();
+  const aliased = await (
+    await fetch(`/api/replay/json?run=${encodeURIComponent(run)}&alias=1`)
+  ).json();
   const binaryResponse = await fetch(`/api/replay/binary?${q}`);
   const binary = hex(new Uint8Array(await binaryResponse.arrayBuffer()));
   const shown = binaryResponse.headers.get("x-replay-allowed");
@@ -134,7 +136,10 @@ export const load: PageLoad = async ({ fetch, url }) => {
   const bodyAlpha = await (await fetch(echo, { method: "POST", body: "alpha" })).json();
   const bodyBeta = await (await fetch(echo, { method: "POST", body: "beta" })).json();
   const form = await (
-    await fetch(`/api/replay/form?${q}`, { method: "POST", body: new URLSearchParams({ lamp: "one" }) })
+    await fetch(`/api/replay/form?${q}`, {
+      method: "POST",
+      body: new URLSearchParams({ lamp: "one" }),
+    })
   ).json();
   const cached = await (await fetch(`/api/replay/cached?run=${encodeURIComponent(run)}`)).json();
   const page = await (await fetch(`/request-fetch?run=${encodeURIComponent(run)}`)).text();

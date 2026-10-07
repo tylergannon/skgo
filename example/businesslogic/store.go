@@ -113,17 +113,6 @@ func (s *Store) snapshot(signedIn bool) Snapshot {
 	return snap
 }
 
-// count reports how many todos a visitor may see. Callers hold s.mu.
-func (s *Store) count(signedIn bool) int {
-	n := 0
-	for _, todo := range s.todos {
-		if visible(todo, signedIn) {
-			n++
-		}
-	}
-	return n
-}
-
 // Todo looks one up, applying the same visibility rule.
 func (s *Store) Todo(id string, signedIn bool) (Todo, bool) {
 	s.mu.Lock()

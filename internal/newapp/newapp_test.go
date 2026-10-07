@@ -873,3 +873,36 @@ func TestProjectCreationRejectsAnUnqualifiedVitePlusBeforeItRuns(t *testing.T) {
 		})
 	}
 }
+
+// Exercise the Go steps of Create for a rendered demo, using the installed Kit
+// pin. The UI installer is irrelevant to whether our shipped command compiles.
+func TestDemoStarterGeneratesAndCompiles(t *testing.T) {
+	repo, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	p := project{Dir: dir, App: "greetings", Module: "example.net/customer/greetings", Origin: defaultOrigin, OriginHostPort: "127.0.0.1:8080", GoVersion: "1.27.1", BindingsImport: "example.net/customer/greetings/internal/skgo", SkgoVersion: "v0.0.0", SkgoReplace: repo, Examples: true}
+	if err := writeGoFiles(p); err != nil {
+		t.Fatal(err)
+	}
+	writeFiles(t, filepath.Join(dir, "web"), map[string]string{"package.json": `{"name":"greetings","private":true,"type":"module"}`, "src/routes/+page.svelte": "<p>Greetings from Go</p>"})
+	if err := os.Symlink(filepath.Join(repo, "example", "web", "node_modules"), filepath.Join(dir, "web", "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	run := func(c command) error {
+		cmd := exec.Command(c.Name, c.Args...)
+		cmd.Dir = c.Dir
+		cmd.Env = append(c.Env, "GOWORK=off")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("%s %v: %w\n%s", c.Name, c.Args, err, out)
+		}
+		return nil
+	}
+	if err := initializeGo(p, run); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(command{Dir: dir, Name: "go", Args: []string{"build", "./..."}, Env: os.Environ()}); err != nil {
+		t.Fatal(err)
+	}
+}

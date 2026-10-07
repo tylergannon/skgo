@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/tylergannon/skgo"
+	"{{.BindingsImport}}/params"
 )
 
 type Status struct {
@@ -24,7 +25,7 @@ func status(context.Context) (Status, error) {
 	return Status{Message: "This value came from a Go query.", Writes: writes}, nil
 }
 
-func record(ctx context.Context, name string) (Status, error) {
+func record(ctx context.Context, event skgo.RequestEvent[params.Params], name string) (Status, error) {
 	if name == "" {
 		return Status{}, skgo.Errorf(400, "enter a name")
 	}

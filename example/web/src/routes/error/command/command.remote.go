@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 
 // Tally is how many times the command has run.
@@ -29,7 +30,7 @@ var runs struct {
 
 // bumpTally is the command. Calling it from markup is the mistake the page
 // makes; calling it from a button is what it is for.
-func bumpTally(_ context.Context) (Tally, error) {
+func bumpTally(ctx context.Context, _ skgo.RequestEvent[params.Params]) (Tally, error) {
 	runs.Lock()
 	defer runs.Unlock()
 	runs.n++

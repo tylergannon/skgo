@@ -21,8 +21,11 @@ import (
 // `cookies.delete`. skgo enforces the same rules; the difference is that a Go
 // handler returns the refusal rather than throwing it.
 type Event struct {
-	req *http.Request
-	jar *cookieJar
+	remote bool
+	query  bool
+	caller *remoteCaller
+	req    *http.Request
+	jar    *cookieJar
 	// A page action shares response headers with the loads that follow it.
 	actionResponse *loadRequest
 	// mutable reports that this call may write cookies, which is true of a

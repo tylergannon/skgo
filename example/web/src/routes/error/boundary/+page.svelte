@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { readSensor } from './boundary.remote';
+  import { readSensor } from "./boundary.remote";
 </script>
 
 <h1 data-testid="title">Sensor</h1>
@@ -11,8 +11,8 @@
 	and the document is answered with it.
 -->
 <svelte:boundary>
-	<p data-testid="reading">{(await readSensor()).celsius}</p>
-	{#snippet failed(error)}
-		<p data-testid="sensor-failed">{(error as { message: string }).message}</p>
-	{/snippet}
+  <p data-testid="reading">{(await readSensor()).celsius}</p>
+  {#snippet failed(error)}
+    <p data-testid="sensor-failed">{(error as { message: string }).message}</p>
+  {/snippet}
 </svelte:boundary>

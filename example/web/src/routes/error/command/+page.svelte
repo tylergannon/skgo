@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { bumpTally } from './command.remote';
+  import { bumpTally } from "./command.remote";
 </script>
 
 <h1 data-testid="title">Tally</h1>

@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 
 // Message is one message the visitor has sent, as the page lists it.
@@ -74,6 +75,9 @@ type Receipt struct {
 	// Key echoes Draft.ForKey, so a page can show that a `for(key)` submission
 	// carried its key all the way to the handler and back.
 	Key string `json:"key"`
+	// Caller records the selected wrapper and its original Go value.
+	Caller string `json:"caller"`
+	Body   string `json:"body"`
 }
 
 var inbox = struct {
@@ -96,7 +100,11 @@ func getMessages(_ context.Context) ([]Message, error) {
 // The checks below are the form's validation. Returning a *skgo.Invalid puts
 // each message on the field it names, and kit's client leaves the page — and
 // therefore everything the visitor typed — exactly as it was.
-func sendMessage(ctx context.Context, draft Draft) (Receipt, error) {
+func sendMessage(ctx context.Context, event skgo.RequestEvent[params.Params], draft Draft) (Receipt, error) {
+	caller, err := callerReceipt(event.Params)
+	if err != nil {
+		return Receipt{}, err
+	}
 	invalid := &skgo.Invalid{}
 
 	if strings.TrimSpace(draft.From) == "" {
@@ -136,11 +144,39 @@ func sendMessage(ctx context.Context, draft Draft) (Receipt, error) {
 			ID:      message.ID,
 			Summary: "Thanks, " + message.From + " — message " + message.ID + " is in.",
 			Key:     draft.ForKey,
+			Caller:  caller,
+			Body:    draft.Body,
 		},
 		skgo.RefreshRequestedNoArg(ctx, getMessages)
+}
+
+// previewMessage lets the visitor check a message before submitting it.
+func previewMessage(ctx context.Context, event skgo.RequestEvent[params.Params], body string) (Receipt, error) {
+	caller, err := callerReceipt(event.Params)
+	return Receipt{Summary: "Message preview", Caller: caller, Body: body}, err
+}
+
+func callerReceipt(p params.Params) (string, error) {
+	caller := "absent"
+	switch number := p.Number().(type) {
+	case nil:
+		switch id := p.ID().(type) {
+		case params.IDParam_String:
+			caller = "id:string:" + id.Value
+		case nil:
+		default:
+			return "", fmt.Errorf("unsupported caller ID variant %T", id)
+		}
+	default:
+		// Report the actual wrapper and value, including newly generated
+		// alternatives when the example's matcher changes.
+		caller = fmt.Sprintf("number:%T:%v", number, number)
+	}
+	return caller, nil
 }
 
 var (
 	_ = skgo.Query(getMessages)
 	_ = skgo.Form(sendMessage)
+	_ = skgo.Command(previewMessage)
 )

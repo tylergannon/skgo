@@ -193,6 +193,9 @@ type BatchFunc func(ctx context.Context, calls []Call) ([]any, error)
 // application declares its functions with Query, Command, LiveQuery,
 // BatchQuery and Form and writes none of this by hand.
 type RemoteSpec struct {
+	// CallerMatchers are generated for commands and forms, including loadless routes.
+	CallerMatchers CallerMatchers
+	CallerRoutes   CallerRoutes
 	// Kind is which of kit's remote-function kinds this publishes.
 	Kind Kind
 	// Module is the vite-root-relative path of the `.remote.ts` kit compiles,
@@ -230,11 +233,13 @@ type RemoteSpec struct {
 // NewRemote; application code declares the functions and marks them with
 // Query, Command, LiveQuery, BatchQuery and Form.
 type Remote struct {
-	module string
-	name   string
-	hash   string
-	id     string
-	kind   Kind
+	callerMatchers CallerMatchers
+	callerRoutes   CallerRoutes
+	module         string
+	name           string
+	hash           string
+	id             string
+	kind           Kind
 
 	call   RemoteFunc
 	live   LiveFunc
@@ -272,17 +277,19 @@ func (r *Remote) Kind() Kind { return r.kind }
 func NewRemote(spec RemoteSpec) *Remote {
 	hash := kithash.Kit(spec.Module)
 	r := &Remote{
-		module:     spec.Module,
-		name:       spec.Name,
-		hash:       hash,
-		id:         hash + "/" + spec.Name,
-		kind:       spec.Kind,
-		call:       spec.Call,
-		live:       spec.Live,
-		batch:      spec.Batch,
-		inputs:     spec.Inputs,
-		argDecoder: spec.DecodeArg,
-		ptr:        codePointer(spec.Fn),
+		callerMatchers: spec.CallerMatchers,
+		callerRoutes:   spec.CallerRoutes,
+		module:         spec.Module,
+		name:           spec.Name,
+		hash:           hash,
+		id:             hash + "/" + spec.Name,
+		kind:           spec.Kind,
+		call:           spec.Call,
+		live:           spec.Live,
+		batch:          spec.Batch,
+		inputs:         spec.Inputs,
+		argDecoder:     spec.DecodeArg,
+		ptr:            codePointer(spec.Fn),
 	}
 	switch spec.Kind {
 	case KindLive:
@@ -367,7 +374,9 @@ func Prerender(fn any, options ...PrerenderOptions) Marker { _ = fn; _ = options
 // Command declares fn as a SvelteKit `command`. A command's event may write
 // cookies; kit allows that in commands and forms and nowhere else.
 //
-// Like a query, it takes `(ctx)` or `(ctx, arg)`. See Query for why fn is any.
+// It takes context.Context, skgo.RequestEvent[params.Params], and an optional
+// separate input. The context preserves helpers while restricting caller state.
+// The scanner validates the shared Params identity and reports old ctx shapes.
 func Command(fn any) Marker { _ = fn; return Marker{} }
 
 // LiveQuery declares fn as a SvelteKit `query.live`. fn pushes values with
@@ -494,6 +503,8 @@ type RemoteConfig struct {
 	// recorded in the manifest. NewRemotes refuses to build a registry that
 	// does not answer exactly these.
 	Remotes []string
+	// Routes is Kit's ordered caller route table, including routes without loads.
+	Routes []ManifestRoute
 	// OnPanic is called when a remote function panics, with the function's
 	// `<hash>/<name>` id, the recovered value, and the stack. The client is
 	// told nothing but an opaque 500, so this is the only record the panic
@@ -516,6 +527,7 @@ func (m Manifest) RemoteConfig(origin string) RemoteConfig {
 		Version:  m.Version,
 		Origin:   origin,
 		Remotes:  m.Remotes,
+		Routes:   m.Routes,
 		manifest: true,
 	}
 }
@@ -552,9 +564,11 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 // Remotes is a registry of remote functions and the http.Handler that answers
 // calls to them.
 type Remotes struct {
-	cfg    RemoteConfig
-	prefix string
-	fns    map[string]*Remote
+	callers    callerRouting
+	devRefresh func() error
+	cfg        RemoteConfig
+	prefix     string
+	fns        map[string]*Remote
 	// byFunc indexes the registrations by the code pointer of the Go function
 	// each one publishes, which is how skgo.Refresh turns `getTodo` into the
 	// id half of a refresh key.
@@ -589,6 +603,7 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 		fns:           make(map[string]*Remote, len(fns)),
 		byFunc:        make(map[uintptr]*Remote, len(fns)),
 		secureCookies: secureCookieDefault(cookieOrigin, cfg.Dev),
+		callers:       callerRouting{matchers: CallerMatchers{}},
 	}
 	for _, fn := range fns {
 		if fn == nil {
@@ -599,6 +614,16 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 				fn.id, existing.module, existing.name, fn.module, fn.name)
 		}
 		rs.fns[fn.id] = fn
+		for name, matcher := range fn.callerMatchers {
+			rs.callers.matchers[name] = matcher
+		}
+		if fn.kind == KindCommand || fn.kind == KindForm {
+			if fn.callerRoutes != nil {
+				rs.callers.generated = append(rs.callers.generated, fn.callerRoutes)
+			} else if cfg.manifest {
+				return nil, callerManifestDrift("remote %s has no generated caller metadata; regenerate and rebuild Go", fn.id)
+			}
+		}
 		if fn.ptr == 0 {
 			continue
 		}
@@ -613,6 +638,9 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 				existing.id, fn.id, funcNameAt(fn.ptr))
 		}
 		rs.byFunc[fn.ptr] = fn
+	}
+	if err := rs.updateCallerRoutes(cfg.Routes); err != nil {
+		return nil, err
 	}
 	if err := rs.checkDrift(); err != nil {
 		return nil, err
@@ -728,6 +756,20 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if fn.kind == KindCommand || fn.kind == KindForm {
+		if rs.devRefresh != nil {
+			if err := rs.devRefresh(); err != nil {
+				rs.writeError(w, asHTTPError(err))
+				return
+			}
+		}
+		caller, err := rs.matchCaller(r)
+		if err != nil {
+			rs.writeErrorStatus(w, asHTTPError(err), 400)
+			return
+		}
+		r = r.WithContext(callerContext(r.Context(), caller))
+	}
 	switch fn.kind {
 	case KindQuery:
 		rs.serveQuery(w, r, fn)
@@ -969,7 +1011,11 @@ func (rs *Remotes) recovered(fn *Remote, value any, err error) error {
 // refreshed query reads the cookie the command just wrote — kit resolves both
 // on one request, and so does this.
 func (rs *Remotes) newEvent(r *http.Request, mutable bool) *Event {
-	return &Event{req: r, jar: requestCookieJar(r, rs.secureCookies), mutable: mutable}
+	e := &Event{req: r, jar: requestCookieJar(r, rs.secureCookies), mutable: mutable, remote: true, query: !mutable}
+	if mutable {
+		e.caller, _ = r.Context().Value(remoteCallerKey{}).(*remoteCaller)
+	}
+	return e
 }
 
 // immutable derives the event a query gets, mirroring kit's
@@ -977,6 +1023,8 @@ func (rs *Remotes) newEvent(r *http.Request, mutable bool) *Event {
 func (e *Event) immutable() *Event {
 	derived := *e
 	derived.mutable = false
+	derived.remote, derived.query = true, true
+	derived.caller, derived.hook, derived.load, derived.params = nil, nil, nil, nil
 	return &derived
 }
 

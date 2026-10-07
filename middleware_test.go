@@ -608,10 +608,17 @@ func TestRemoteFunctionBodiesGetNoRequestEventFromTheHook(t *testing.T) {
 	var got report
 	q := NewQueryNoArg(testModule, "restricted", func(ctx context.Context) (string, error) {
 		e := EventFrom(ctx)
-		got = report{route: e.RouteID(), params: e.Params(), remote: e.IsRemoteRequest(), cookieErr: e.SetCookie("x", "1", CookieOptions{})}
-		if u := e.URL(); u != nil {
-			got.url = u.String()
+		for _, read := range []func(){func() { e.RouteID() }, func() { e.Params() }, func() { e.URL() }, func() { e.Param("id") }} {
+			func() {
+				defer func() {
+					if recover() == nil {
+						t.Error("query request property did not throw")
+					}
+				}()
+				read()
+			}()
 		}
+		got = report{remote: e.IsRemoteRequest(), cookieErr: e.SetCookie("x", "1", CookieOptions{})}
 		got.local, _ = LocalOf[mwUser](ctx)
 		return "ok", nil
 	})

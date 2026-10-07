@@ -286,11 +286,8 @@ func finish(p project, run func(command) error) (Result, error) {
 	if err := writeGoFiles(p); err != nil {
 		return Result{}, err
 	}
-	if err := run(command{Dir: p.Dir, Name: "go", Args: []string{"mod", "tidy"}, Env: os.Environ()}); err != nil {
-		return Result{}, fmt.Errorf("skgo: initializing the Go module failed: %w", err)
-	}
-	if err := run(command{Dir: p.Dir, Name: "go", Args: []string{"generate", "./..."}, Env: os.Environ()}); err != nil {
-		return Result{}, fmt.Errorf("skgo: generating the Go bindings failed: %w", err)
+	if err := initializeGo(p, run); err != nil {
+		return Result{}, err
 	}
 	// The native upstream installers leave some generated files outside Vite+'s
 	// formatting and import rules. Let the project's own VitePlus repair what it
@@ -308,6 +305,27 @@ func finish(p project, run func(command) error) (Result, error) {
 		return Result{}, fmt.Errorf("skgo: creating the initial frontend build failed: %w", err)
 	}
 	return Result{Dir: p.Dir, App: p.App, Origin: p.Origin, Starter: p.Starter}, nil
+}
+
+// initializeGo bootstraps demo bindings before tidy follows their imports.
+// The template imports the generated params leaf, which does not exist yet.
+func initializeGo(p project, run func(command) error) error {
+	args := []string{"mod", "tidy"}
+	if p.Examples {
+		args = []string{"get", "-tool", skgoModule + "/cmd/skgo@" + p.SkgoVersion}
+	}
+	if err := run(command{Dir: p.Dir, Name: "go", Args: args, Env: os.Environ()}); err != nil {
+		return fmt.Errorf("skgo: initializing the Go module failed: %w", err)
+	}
+	if err := run(command{Dir: p.Dir, Name: "go", Args: []string{"generate", "./..."}, Env: os.Environ()}); err != nil {
+		return fmt.Errorf("skgo: generating the Go bindings failed: %w", err)
+	}
+	if p.Examples {
+		if err := run(command{Dir: p.Dir, Name: "go", Args: []string{"mod", "tidy"}, Env: os.Environ()}); err != nil {
+			return fmt.Errorf("skgo: initializing the Go module failed: %w", err)
+		}
+	}
+	return nil
 }
 
 // svCreateArgs validates the `sv create` options a developer passed through and,

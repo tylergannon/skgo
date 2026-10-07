@@ -95,6 +95,13 @@ type loadState struct {
 // parameter matters, SearchParam is cheaper: it records only that parameter,
 // exactly as kit's own `url.searchParams.get` does.
 func (e *Event) URL() *url.URL {
+	if e != nil && e.query {
+		panic("skgo: cannot read URL in a remote query")
+	}
+	if e != nil && e.caller != nil {
+		copied := *e.caller.url
+		return &copied
+	}
 	if e != nil && e.hook != nil {
 		copied := *e.hook.url
 		return &copied
@@ -109,6 +116,9 @@ func (e *Event) URL() *url.URL {
 
 // Param returns a route parameter, and records that this load depends on it.
 func (e *Event) Param(name string) string {
+	if e != nil && e.remote {
+		panic("skgo: raw Param is forbidden in remote functions; use the explicit event.Params getters")
+	}
 	if e == nil {
 		return ""
 	}
@@ -125,6 +135,16 @@ func (e *Event) Param(name string) string {
 // SearchParam returns a query parameter, and records that this load depends on
 // that one parameter and no other.
 func (e *Event) SearchParam(name string) (string, bool) {
+	if e != nil && e.query {
+		panic("skgo: cannot read URL in a remote query")
+	}
+	if e != nil && e.caller != nil {
+		values, ok := e.caller.url.Query()[name]
+		if !ok || len(values) == 0 {
+			return "", false
+		}
+		return values[0], true
+	}
 	if e != nil && e.hook != nil {
 		values, ok := e.hook.url.Query()[name]
 		if !ok || len(values) == 0 {
@@ -146,6 +166,12 @@ func (e *Event) SearchParam(name string) (string, bool) {
 // RouteID is the id of the route being served, e.g. "/account/orders", and
 // records that this load depends on which route it is.
 func (e *Event) RouteID() string {
+	if e != nil && e.query {
+		panic("skgo: cannot read route in a remote query")
+	}
+	if e != nil && e.caller != nil {
+		return e.caller.routeID
+	}
 	if e != nil && e.hook != nil {
 		return e.hook.routeID
 	}

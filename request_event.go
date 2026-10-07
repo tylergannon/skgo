@@ -5,15 +5,27 @@ import (
 	"reflect"
 )
 
-// RequestEvent is the explicit event of a route-bound server load. Generated
-// route packages alias this implementation with their own RouteParams.
+// RequestEvent pairs a request with generated typed params. Route-bound loads
+// alias this implementation with their own precise RouteParams. Commands and
+// forms use the generated application-wide params.Params instead.
 type RequestEvent[Params any] struct {
 	*Event
 	Params Params
 }
 
 // Context carries cancellation and the existing request-scoped helpers.
-func (e RequestEvent[P]) Context() context.Context { return withEvent(e.Request().Context(), e.Event) }
+func (e RequestEvent[P]) Context() context.Context {
+	event := e.Event
+	if event.remote {
+		// Context helpers and direct nested queries cannot recover the explicit
+		// command/form caller. Cookies, cancellation and refresh state stay shared.
+		derived := *event
+		derived.caller, derived.hook, derived.load, derived.params = nil, nil, nil, nil
+		derived.query = true
+		event = &derived
+	}
+	return withEvent(e.Request().Context(), event)
+}
 
 // ParamMatcher is a generated adapter for a plain Go func(string) (T, bool).
 // Only the bool decides whether a route candidate is accepted.
@@ -41,7 +53,9 @@ func LoadParamValue[T any](e *Event, name string) T {
 	if !exists {
 		return zero
 	}
-	// A present nil interface has no dynamic type to assert.
+	// An accepted nil interface has no dynamic type to assert. Only the
+	// declared interface domain permits this case; a nil conversion for any
+	// other T remains a mismatch and must fail instead of becoming zero.
 	if value == nil && reflect.TypeFor[T]().Kind() == reflect.Interface {
 		return zero
 	}

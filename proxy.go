@@ -74,6 +74,9 @@ func isUpgrade(r *http.Request) bool {
 // variadic form preserves the original call for apps with pages only.
 func NewDevPages(target *url.URL, m Manifest, renderer *SSR, logf func(format string, args ...any), endpointRegistries ...*Endpoints) http.Handler {
 	renderer.loads.devRefresh = renderer.refreshDev
+	if renderer.remotes != nil {
+		renderer.remotes.devRefresh = renderer.refreshDev
+	}
 	if len(endpointRegistries) > 0 && endpointRegistries[0] != nil {
 		renderer.devEndpoints = endpointRegistries[0]
 		endpointRegistries[0].devRefresh = renderer.refreshDev
@@ -169,10 +172,19 @@ func (h *devPages) isDocument(urlPath string) bool {
 			return false
 		}
 	}
+	if path.Ext(routePath) == "" {
+		return true
+	}
+	// Only a file-shaped path needs route matching to distinguish it from
+	// a static asset. Validate the live graph before running app matchers;
+	// on failure let the renderer return its normal refresh diagnosis.
+	if err := h.renderer.refreshDev(); err != nil {
+		return true
+	}
 	if _, _, matched := h.renderer.loads.match(routePath); matched {
 		return true
 	}
-	return path.Ext(routePath) == ""
+	return false
 }
 
 // servedByVite reports a request vite answers on its own — a module, a file out

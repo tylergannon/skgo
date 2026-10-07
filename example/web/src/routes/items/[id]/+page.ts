@@ -6,5 +6,5 @@ import { getItem } from "./item.remote";
 export const load: PageLoad = async ({ params, url }) => {
   const item = getItem(params.id);
   const loadedItem = await item;
-  return url.searchParams.has('retain') ? { loadedItem, item } : { loadedItem };
+  return url.searchParams.has("retain") ? { loadedItem, item } : { loadedItem };
 };

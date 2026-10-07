@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { data } = $props();
+  let { data } = $props();
 </script>
 
 <h1 data-testid="title">Universal fetch without a script</h1>

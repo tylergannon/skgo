@@ -25,6 +25,7 @@ type goParamMatcher struct {
 	name string
 	out  types.Type
 	pkg  *types.Package
+	pos  token.Position
 }
 
 type routeLoadParams struct {
@@ -133,8 +134,18 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 			break
 		}
 	}
+	loadDirs := map[string]bool{}
+	for dir := range dirs {
+		loadDirs[dir] = true
+	}
+	// Shared params include callers with only frontend pages or endpoints, and
+	// intermediate layout routes. Load ownership is not the caller universe.
+	err = walkCallerRouteDirs(filepath.Join(cfg.Web, routesDir), map[string]bool{}, func(path string) { dirs[path] = true })
+	if err != nil {
+		return nil, err
+	}
 	if len(dirs) == 0 && frontendParams == "" {
-		return result, nil
+		return result, writeSharedParams(*cfg, result)
 	}
 	var ordered []string
 	ids := []string{}
@@ -154,13 +165,22 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 		ids = append(ids, id)
 	}
 	kit := filepath.Join(cfg.Web, "node_modules", "@sveltejs", "kit")
-	if _, err := os.Stat(filepath.Join(kit, "src", "utils", "routing.js")); err != nil {
+	needsKit := frontendParams != ""
+	for _, id := range ids {
+		needsKit = needsKit || strings.Contains(id, "[")
+	}
+	if _, err := os.Stat(filepath.Join(kit, "src", "utils", "routing.js")); err != nil && needsKit {
 		return nil, fmt.Errorf("skgo: typed loads require installed SvelteKit route metadata: %w", err)
 	}
 	input, _ := json.Marshal(map[string]any{"kit": kit, "ids": ids, "params": frontendParams})
 	cmd := exec.Command("node", "--input-type=module", "--eval", kitLoadParams)
 	cmd.Dir, cmd.Stdin = cfg.Web, bytes.NewReader(input)
-	output, err := cmd.Output()
+	var output []byte
+	if _, statErr := os.Stat(filepath.Join(kit, "src", "utils", "routing.js")); statErr == nil {
+		output, err = cmd.Output()
+	} else {
+		output, err = json.Marshal(map[string]any{"routes": make([][]skgo.ManifestParam, len(ids))})
+	}
 	if err != nil {
 		if exit, ok := err.(*exec.ExitError); ok {
 			return nil, fmt.Errorf("skgo: reading Kit route params: %s", exit.Stderr)
@@ -208,12 +228,58 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 			}
 			info.matchers[param.Matcher] = matcher
 		}
-		if err := writeLoadParams(*cfg, dir, info); err != nil {
-			return nil, err
-		}
 		result[dir] = info
 	}
+	if err := writeSharedParams(*cfg, result); err != nil {
+		return nil, err
+	}
+	for _, dir := range ordered {
+		if loadDirs[dir] {
+			if err := writeLoadParams(*cfg, dir, result[dir]); err != nil {
+				return nil, err
+			}
+		}
+	}
 	return result, nil
+}
+
+// Kit follows symlinked route directories too. Track only ancestor targets so
+// two distinct route IDs may point to the same tree without being conflated.
+func walkCallerRouteDirs(path string, ancestors map[string]bool, visit func(string)) error {
+	real, err := filepath.EvalSymlinks(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if ancestors[real] {
+		return fmt.Errorf("skgo: cyclic caller route directory %s", path)
+	}
+	ancestors[real] = true
+	defer delete(ancestors, real)
+	visit(path)
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		child := filepath.Join(path, entry.Name())
+		isDir := entry.IsDir()
+		if entry.Type()&os.ModeSymlink != 0 {
+			info, err := os.Stat(child)
+			if err != nil {
+				return err
+			}
+			isDir = info.IsDir()
+		}
+		if isDir {
+			if err := walkCallerRouteDirs(child, ancestors, visit); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
@@ -232,7 +298,24 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	loaded, err := packages.Load(&packages.Config{Dir: host, Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports}, mod+"/"+filepath.ToSlash(rel))
+	forbidden, err := sharedForbiddenPackages(cfg)
+	if err != nil {
+		return nil, err
+	}
+	fset := token.NewFileSet()
+	syntax, err := parser.ParseFile(fset, path, nil, parser.ImportsOnly)
+	if err != nil {
+		return nil, err
+	}
+	for _, imp := range syntax.Imports {
+		dependency := strings.Trim(imp.Path.Value, "\"")
+		for _, forbidden := range forbidden {
+			if dependency == forbidden || strings.HasPrefix(dependency, forbidden+"/") {
+				return nil, fmt.Errorf("skgo: %s: matcher package imports caller-owned or generated package %s; move matcher domain types to a leaf package", fset.Position(imp.Pos()), dependency)
+			}
+		}
+	}
+	loaded, err := packages.Load(&packages.Config{Dir: host, Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps}, mod+"/"+filepath.ToSlash(rel))
 	if err != nil {
 		return nil, err
 	}
@@ -240,8 +323,11 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 		return nil, fmt.Errorf("skgo: cannot load Go params package")
 	}
 	p := loaded[0]
-	if len(p.Errors) > 0 {
-		return nil, fmt.Errorf("skgo: loading Go params: %v", p.Errors[0])
+	var compilerErrors []packages.Error
+	packages.Visit(loaded, nil, func(dependency *packages.Package) { compilerErrors = append(compilerErrors, dependency.Errors...) })
+	if len(compilerErrors) > 0 {
+		sort.Slice(compilerErrors, func(i, j int) bool { return compilerErrors[i].Error() < compilerErrors[j].Error() })
+		return nil, fmt.Errorf("skgo: %s: loading Go params: %v; matcher/domain dependencies must be leaf packages, not generated params or caller packages", fset.Position(syntax.Package), compilerErrors[0])
 	}
 	for _, file := range p.Syntax {
 		if filepath.Base(p.Fset.Position(file.Pos()).Filename) != "params.go" {
@@ -260,7 +346,7 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 			if sig.Variadic() || sig.TypeParams().Len() != 0 || sig.Params().Len() != 1 || !types.Identical(sig.Params().At(0).Type(), types.Typ[types.String]) || sig.Results().Len() != 2 || !types.Identical(sig.Results().At(1).Type(), types.Typ[types.Bool]) {
 				return nil, fmt.Errorf("skgo: %s: matcher %s must be func(string) (T, bool)", p.Fset.Position(fn.Pos()), fn.Name.Name)
 			}
-			result[fn.Name.Name] = goParamMatcher{name: fn.Name.Name, out: sig.Results().At(0).Type(), pkg: p.Types}
+			result[fn.Name.Name] = goParamMatcher{name: fn.Name.Name, out: sig.Results().At(0).Type(), pkg: p.Types, pos: p.Fset.Position(fn.Pos())}
 		}
 	}
 	return result, nil

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { whereTo } from './redirect.remote';
+  import { whereTo } from "./redirect.remote";
 </script>
 
 <h1 data-testid="title">Where to</h1>

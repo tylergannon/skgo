@@ -8,6 +8,8 @@ package contact
 var (
 	// Skgo_getMessages is getMessages, published as src/routes/contact/contact.remote.ts#getMessages.
 	Skgo_getMessages = getMessages
+	// Skgo_previewMessage is previewMessage, published as src/routes/contact/contact.remote.ts#previewMessage.
+	Skgo_previewMessage = previewMessage
 	// Skgo_sendMessage is sendMessage, published as src/routes/contact/contact.remote.ts#sendMessage.
 	Skgo_sendMessage = sendMessage
 )

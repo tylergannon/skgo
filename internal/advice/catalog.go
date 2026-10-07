@@ -26,7 +26,7 @@ func Version() string {
 // Catalog lists exactly the stable advice rules supported by this binary.
 func Catalog() []Entry {
 	entries := []Entry{
-		{QueryCookie, "Cookie mutation in a query", "", "", "Kit refuses cookie writes in queries; a cached query could also skip a write.", "Move the write into a registered command or form and return its error.", `func signIn(ctx context.Context) (string, error) {
+		{QueryCookie, "Cookie mutation in a query", "", "", "Kit refuses cookie writes in queries; a cached query could also skip a write.", "Move the write into a registered command or form and return its error.", `func signIn(ctx context.Context, event skgo.RequestEvent[params.Params]) (string, error) {
     if err := skgo.EventFrom(ctx).SetCookie("session", "token", skgo.CookieOptions{Path: "/"}); err != nil { return "", err }
     return "signed in", nil
 }
@@ -41,7 +41,7 @@ var _ = skgo.Query(article) // the page calls article(page.params.slug)`},
 var _ = skgo.Query(whoami)`},
 		{OperationError, "Discarded skgo operation error", "", "", "A failed cookie write, refresh, requested update, or live yield is hidden from the caller.", "Return or handle the operation error explicitly.", `func current(ctx context.Context) (string, error) { return "ready", nil }
 var _ = skgo.Query(current)
-func update(ctx context.Context) (string, error) {
+func update(ctx context.Context, event skgo.RequestEvent[params.Params]) (string, error) {
     if err := skgo.RefreshNoArg(ctx, current); err != nil { return "", err }
     return "updated", nil
 }
@@ -50,14 +50,14 @@ var _ = skgo.Command(update)`},
 var _ = skgo.Query(current)
 func watch(ctx context.Context, yield func(string) error) error { return yield("ready") }
 var _ = skgo.LiveQuery(watch)
-func update(ctx context.Context) (string, error) {
+func update(ctx context.Context, event skgo.RequestEvent[params.Params]) (string, error) {
     if err := skgo.RefreshNoArg(ctx, current); err != nil { return "", err }
     if err := skgo.ReconnectRequestedNoArg(ctx, watch); err != nil { return "", err }
     return "updated", nil
 }
 var _ = skgo.Command(update)`},
 		{FormField, "Unknown form issue field", "", "", "Kit attaches an issue only to the matching form field path; a misspelled literal has no matching field.", "Use the form argument's serialized field path, including nested names or array indexes.", `type Signup struct { Email string ` + "`json:\"email\"`" + ` }
-func subscribe(ctx context.Context, arg Signup) (string, error) {
+func subscribe(ctx context.Context, event skgo.RequestEvent[params.Params], arg Signup) (string, error) {
     if arg.Email == "" { return "", skgo.Invalidf("email", "required") }
     return "subscribed", nil
 }

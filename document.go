@@ -131,6 +131,11 @@ type SSROptions struct {
 // NewSSR builds a renderer over an adapter build. It fails if the build carries
 // no SSR bundle, if the bundle does not parse, or if it does not come up.
 func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROptions) (*SSR, error) {
+	if remotes != nil {
+		if err := remotes.updateCallerRoutes(m.Routes); err != nil {
+			return nil, err
+		}
+	}
 	if err := requireEnvironment(build, opts.Environment); err != nil {
 		return nil, err
 	}
@@ -230,6 +235,11 @@ func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServe
 	live, err := manifestFromDev(m, answer)
 	if err != nil {
 		return nil, err
+	}
+	if remotes != nil {
+		if err := remotes.updateCallerRoutes(live.Routes); err != nil {
+			return nil, err
+		}
 	}
 	info := *live.SSR
 	template, errorPage, err := devDocumentTemplates(answer)
@@ -409,6 +419,11 @@ func (s *SSR) refreshDevLocked() error {
 	template, errorPage, err := devDocumentTemplates(answer)
 	if err != nil {
 		return err
+	}
+	if s.remotes != nil {
+		if err := s.remotes.updateCallerRoutes(live.Routes); err != nil {
+			return err
+		}
 	}
 	if err := s.loads.updateManifest(live); err != nil {
 		return err
@@ -633,7 +648,10 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 				return true
 			}
 		} else {
-			submitted, redirect, e := s.runFormAction(r, id)
+			// Native forms use the page route already selected above, not the
+			// optional caller headers of an enhanced remote request.
+			caller := &remoteCaller{url: req.url, routeID: route.id, values: converted}
+			submitted, redirect, e := s.runFormAction(r.WithContext(callerContext(r.Context(), caller)), id)
 			if redirect != nil {
 				s.writeRedirect(w, nil, redirect.status(), redirect.Location)
 				return true

@@ -6,6 +6,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
+	"github.com/tylergannon/skgo/example/internal/skgo/params"
 
 	// The sign-in form lives in the root layout, so signing in changes what
 	// the todos page is showing — and a command runs only the queries it
@@ -34,7 +35,7 @@ func whoami(ctx context.Context) (businesslogic.Session, error) {
 // The page writes `signIn(name).updates(whoami(), getTodos(), watchCount)`.
 // Everything that request asks for is named below, and nothing else is: a
 // request naming a fourth query would run nothing.
-func signIn(ctx context.Context, user string) (businesslogic.Session, error) {
+func signIn(ctx context.Context, event skgo.RequestEvent[params.Params], user string) (businesslogic.Session, error) {
 	if user == "" {
 		return businesslogic.Session{}, skgo.Errorf(400, "Who are you?")
 	}
@@ -49,7 +50,7 @@ func signIn(ctx context.Context, user string) (businesslogic.Session, error) {
 }
 
 // signOut ends the session and clears the cookie.
-func signOut(ctx context.Context) (businesslogic.Session, error) {
+func signOut(ctx context.Context, event skgo.RequestEvent[params.Params]) (businesslogic.Session, error) {
 	e := skgo.EventFrom(ctx)
 	id, _ := e.Cookie(sessionCookie)
 	businesslogic.Default.SignOut(id)

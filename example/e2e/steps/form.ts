@@ -386,3 +386,97 @@ Then('the bare contact form reports nothing sent and nothing refused', async ({ 
 	await expect(page.getByTestId('receipt')).toHaveCount(0);
 	await expect(page.getByTestId('rejected')).toHaveCount(0);
 });
+
+When(
+	'I navigate to the {string} form caller at {string}',
+	async ({ page, documents, $testInfo }, label: string, path: string) => {
+		await hydrated(page);
+		const before = documents.count;
+		await page.getByRole('link', { name: label, exact: true }).click();
+		await expect(page).toHaveURL(
+			new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+		);
+		await expect(page.getByTestId('contact-form')).toBeVisible();
+		await hydrated(page);
+		if ($testInfo.project.name !== 'noscript')
+			expect(documents.count).toBe(before);
+	}
+);
+
+When(
+	'I submit the {string} caller form using {string} with message {string}',
+	async (
+		{ page, documents, notes, $testInfo },
+		instance: string,
+		mode: string,
+		message: string
+	) => {
+		await hydrated(page);
+		const prefix = instance === 'keyed' ? 'keyed-' : '';
+		await page.getByTestId(`${prefix}field-from`).fill('Caller fixture');
+		await page.getByTestId(`${prefix}field-email`).fill('caller@example.test');
+		await page.getByTestId(`${prefix}field-body`).fill(message);
+		notes.set('caller-documents', documents.count);
+		const native = mode === 'native' || $testInfo.project.name === 'noscript';
+		notes.set('caller-native', native ? 1 : 0);
+		const answer = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' &&
+				(native
+					? response.request().resourceType() === 'document'
+					: response.url().includes('/_app/remote/'))
+		);
+		if (native && $testInfo.project.name !== 'noscript') {
+			await page
+				.getByTestId(`${prefix}contact-form`)
+				.evaluate((form: HTMLFormElement) => form.submit());
+		} else {
+			await page.getByTestId(`${prefix}send`).click();
+		}
+		const response = await answer;
+		expect(response.status()).toBe(200);
+		if (native) await page.waitForLoadState('load');
+	}
+);
+
+Then(
+	'the {string} caller receipt is {string} with message {string}',
+	async (
+		{ page, documents, notes },
+		instance: string,
+		receipt: string,
+		message: string
+	) => {
+		const prefix = instance === 'keyed' ? 'keyed-' : '';
+		await expect(page.getByTestId(`${prefix}receipt`)).toContainText(
+			'Thanks, Caller fixture'
+		);
+		await expect(page.getByTestId(`${prefix}receipt-caller`)).toHaveText(
+			receipt
+		);
+		await expect(page.getByTestId(`${prefix}receipt-body`)).toHaveText(message);
+		if (prefix)
+			await expect(page.getByTestId('keyed-receipt-key')).toHaveText(
+				'carried key: k1'
+			);
+		expect(documents.count).toBe(
+			(notes.get('caller-documents') ?? 0) + (notes.get('caller-native') ?? 0)
+		);
+	}
+);
+
+When('I preview the message {string}', async ({ page }, message: string) => {
+	await hydrated(page);
+	await page.getByTestId('preview-body').fill(message);
+	await page.getByTestId('preview-message').click();
+});
+
+Then(
+	'the command preview shows caller {string} and message {string}',
+	async ({ page, documents }, caller: string, message: string) => {
+		await expect(page.getByTestId('preview-summary')).toHaveText('Message preview');
+		await expect(page.getByTestId('preview-caller')).toHaveText(caller);
+		await expect(page.getByTestId('preview-result-body')).toHaveText(message);
+		expect(documents.count).toBe(1);
+	}
+);
