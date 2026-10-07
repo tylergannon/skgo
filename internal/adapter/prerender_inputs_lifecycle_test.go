@@ -106,7 +106,7 @@ func TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer(t *testing.T) {
 			t.Log(process.output.String())
 		}
 	}()
-	waitInputsReceipt(t, fixture)
+	waitInputsReceipt(t, fixture, process)
 	ownerPID, err := inputsViteOwnerPID(fixture)
 	if err != nil {
 		t.Fatal(err)
@@ -138,7 +138,7 @@ func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
 			t.Log(process.output.String())
 		}
 	}()
-	waitInputsReceipt(t, fixture)
+	waitInputsReceipt(t, fixture, process)
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		t.Fatalf("send SIGTERM to the outer real vp build process: %v", err)
 	}
@@ -332,19 +332,30 @@ func replaceEnv(env []string, key, value string) []string {
 	return append(env, prefix+value)
 }
 
-func waitInputsReceipt(t *testing.T, fixture string) {
+func waitInputsReceipt(t *testing.T, fixture string, process *inputsTrackedCommand) {
 	t.Helper()
-	deadline := time.Now().Add(30 * time.Second)
-	for time.Now().Before(deadline) {
+	// Compilation and Kit analysis compete with the other packages in just
+	// test. This is a readiness bound, not the signal-to-drain assertion: send
+	// the signal as soon as the real Go body reports that it is blocked.
+	timeout := time.NewTimer(120 * time.Second)
+	defer timeout.Stop()
+	poll := time.NewTicker(25 * time.Millisecond)
+	defer poll.Stop()
+	for {
 		if data, err := os.ReadFile(filepath.Join(fixture, "owner-receipt")); err == nil {
 			fields := strings.Split(strings.TrimSpace(string(data)), "\n")
 			if len(fields) == 3 && fields[0] != "" && fields[1] != "" && fields[2] != "" {
 				return
 			}
 		}
-		time.Sleep(25 * time.Millisecond)
+		select {
+		case <-process.done:
+			t.Fatalf("native build exited before the Go prerender body receipt: %v\n%s", process.waitErr, process.output.String())
+		case <-timeout.C:
+			t.Fatal("Go prerender body did not write its process/private-directory receipt before startup deadline")
+		case <-poll.C:
+		}
 	}
-	t.Fatal("Go prerender body did not write its process/private-directory receipt before deadline")
 }
 
 func inputsViteOwnerPID(fixture string) (int, error) {
