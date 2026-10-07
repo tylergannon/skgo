@@ -51,7 +51,7 @@ func TestCommandFormContextMigrationDiagnostics(t *testing.T) {
 		for _, tc := range []struct{ name, signature, want string }{
 			{"ctx-only", "ctx context.Context,in string", "A " + strings.ToLower(kind) + " is func(context.Context, skgo.RequestEvent[params.Params]"},
 			{"event-only", "event skgo.RequestEvent[params.Params],in string", "A " + strings.ToLower(kind) + " is func(context.Context, skgo.RequestEvent[params.Params]"},
-			{"wrong-params", "ctx context.Context,event skgo.RequestEvent[struct{}],in string", "must receive"},
+			{"wrong-params", "ctx context.Context,event skgo.RequestEvent[struct{}],in string", "old must receive skgo.RequestEvent[example.com/app/generated/params.Params]"},
 		} {
 			t.Run(kind+"/"+tc.name, func(t *testing.T) {
 				_, cfg := foreignFixture(t, `package data
@@ -63,6 +63,9 @@ var _ = skgo.`+kind+`(old)
 				err := Run(cfg)
 				if err == nil || !strings.Contains(err.Error(), "data.remote.go:5:") || !strings.Contains(err.Error(), tc.want) {
 					t.Fatalf("missing source-located %s migration: %v", kind, err)
+				}
+				if strings.Contains(err.Error(), "RequestEvent alias") {
+					t.Fatalf("%s migration recommends an alias instead of the explicit generic type: %v", kind, err)
 				}
 			})
 		}
