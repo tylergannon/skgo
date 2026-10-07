@@ -22,7 +22,7 @@ func (e RequestEvent[P, L]) Context() context.Context {
 		// command/form caller. Cookies, cancellation and refresh state stay shared.
 		derived := *event
 		derived.caller, derived.hook, derived.load, derived.params = nil, nil, nil, nil
-		derived.query, derived.mutable = true, false
+		derived.query = true
 		derived.req = event.req.WithContext(withEvent(event.req.Context(), &derived))
 		event = &derived
 	}

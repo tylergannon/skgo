@@ -110,11 +110,14 @@ func prepareLocals(cfg *Config) error {
 	if len(pkg.GoFiles) == 0 {
 		return fmt.Errorf("skgo: locals package has no authored Go source")
 	}
-	cfg.localsDir = filepath.Dir(pkg.GoFiles[0])
-	rel, err := filepath.Rel(host, cfg.localsDir)
+	// Dependency-export reuse may load a fresh package from a temporary module
+	// view. Check ownership relative to that view, then publish in the authored
+	// module; loader paths are never application output destinations.
+	rel, err := filepath.Rel(load.Dir, filepath.Dir(pkg.GoFiles[0]))
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("skgo: locals package %s must be owned by the application module", cfg.LocalsPackage)
 	}
+	cfg.localsDir = filepath.Join(host, rel)
 	source := fmt.Sprintf("%spackage %s\nimport (\"context\"; skgo %q)\nfunc LocalsFrom(ctx context.Context) *%s { return skgo.RequestLocals[%s](ctx) }\n", goHeader, pkg.Name, skgoPkg, cfg.LocalsType, cfg.LocalsType)
 	return (&app{cfg: *cfg}).write(filepath.Join(cfg.localsDir, generatedGoFile), source)
 }

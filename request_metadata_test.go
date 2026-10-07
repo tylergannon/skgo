@@ -140,6 +140,10 @@ func TestRequestMetadataThroughServedLoadsEndpointsAndActions(t *testing.T) {
 // Caller-property refusals are counted positively in both the current context
 // and Request().Context(), so a query cannot recover the boundary's full event.
 func restrictedMetadataReceipt(ctx context.Context) (string, error) {
+	return restrictedMetadataReceiptWithCookies(ctx, false)
+}
+
+func restrictedMetadataReceiptWithCookies(ctx context.Context, allowCookies bool) (string, error) {
 	e := EventFrom(ctx)
 	refused := 0
 	for _, current := range []*Event{e, EventFrom(e.Request().Context())} {
@@ -154,8 +158,8 @@ func restrictedMetadataReceipt(ctx context.Context) (string, error) {
 			}()
 		}
 	}
-	if e.SetCookie("query", "forbidden", CookieOptions{}) == nil || e.SetHeader("X-Query", "forbidden") == nil {
-		return "query-mutation-escaped", nil
+	if (e.SetCookie("fixture-cookie", "fixture-value", CookieOptions{}) == nil) != allowCookies || e.SetHeader("X-Query", "forbidden") == nil {
+		return "context-mutation-permissions-mismatch", nil
 	}
 	address, err := e.ClientAddress()
 	if err != nil {
@@ -182,7 +186,7 @@ func TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries(t *testing.T) 
 		e := EventFrom(ctx)
 		// Generated command contexts deliberately narrow nested function access.
 		derived := RequestEvent[struct{}, hookLocals]{Event: e, Locals: RequestLocals[hookLocals](ctx)}.Context()
-		if receipt, err := restrictedMetadataReceipt(derived); err != nil || !strings.HasPrefix(receipt, "refused:12|") {
+		if receipt, err := restrictedMetadataReceiptWithCookies(derived, true); err != nil || !strings.HasPrefix(receipt, "refused:12|") {
 			return "", fmt.Errorf("nested context recovered caller: %s %v", receipt, err)
 		}
 		return metadataReceipt(e), RefreshNoArg(ctx, restrictedMetadataReceipt)
