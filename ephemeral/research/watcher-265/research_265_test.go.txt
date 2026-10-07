@@ -1,0 +1,88 @@
+package devrender_test
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+// Temporary research: actual vp dev watcher, observed event timing and served bytes.
+func TestResearch265(t *testing.T) {
+	fetch := func(url string) string {
+		t.Helper()
+		resp, err := http.Get(devServer + url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != 200 {
+			t.Fatalf("%s: %d %s", url, resp.StatusCode, b)
+		}
+		return string(b)
+	}
+	for _, delay := range []time.Duration{10 * time.Millisecond, 10 * time.Millisecond, 10 * time.Millisecond, 150 * time.Millisecond} {
+		t.Run(fmt.Sprintf("restore_after_%s", delay), func(t *testing.T) {
+			name := fmt.Sprintf("research-265-%d.ts", time.Now().UnixNano())
+			file := "src/lib/" + name
+			path := filepath.Join(webRoot, filepath.FromSlash(file))
+			defer os.Remove(path)
+			fetch("/__research265?file=" + name + "&value=1")
+			fetch("/" + file)
+			settleChanges(t, file, 0)
+			cursor, _ := changeLog(t, 0)
+			fetch("/__research265?file=" + name + "&value=2")
+			until := time.Now().Add(time.Second)
+			for namedChanges(t, file, cursor) == 0 {
+				if time.Now().After(until) {
+					t.Fatal("first edit missing")
+				}
+				time.Sleep(time.Millisecond)
+			}
+			time.Sleep(delay)
+			intermediate := fetch("/" + file)
+			fetch("/__research265?file=" + name + "&value=1")
+			time.Sleep(300 * time.Millisecond)
+			final := fetch("/" + file)
+			n := namedChanges(t, file, cursor)
+			var trace struct {
+				Options json.RawMessage
+				Trace   []json.RawMessage
+			}
+			if err := json.Unmarshal([]byte(fetch("/__research265?file="+name)), &trace); err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("options=%s delivered_changes=%d intermediate_probe2=%t final_probe1=%t final_probe2=%t disk_probe1=%t", trace.Options, n, strings.Contains(intermediate, "probe = 2"), strings.Contains(final, "probe = 1"), strings.Contains(final, "probe = 2"), func() bool { b, _ := os.ReadFile(path); return strings.Contains(string(b), "probe = 1") }())
+			for _, row := range trace.Trace {
+				if strings.Contains(string(row), name) {
+					t.Log(string(row))
+				}
+			}
+			disk, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(disk) != "export const probe = 1;\n" {
+				t.Fatalf("disk = %q", disk)
+			}
+			if !strings.Contains(intermediate, "probe = 2") {
+				t.Errorf("first edit not served: %s", intermediate)
+			}
+			if n != 2 {
+				t.Errorf("delivered changes = %d, want 2 actual edits", n)
+			}
+			if !strings.Contains(final, "probe = 1") || strings.Contains(final, "probe = 2") {
+				t.Errorf("restored file served stale bytes: %s", final)
+			}
+		})
+	}
+}

@@ -1,0 +1,47 @@
+diff --git a/example/web/vite.config.ts b/example/web/vite.config.ts
+index a2865f6..5ce2d80 100644
+--- a/example/web/vite.config.ts
++++ b/example/web/vite.config.ts
+@@ -1,9 +1,42 @@
++import { readFileSync, writeFileSync } from 'node:fs';
++import { join } from 'node:path';
+ import { sveltekit } from "@sveltejs/kit/vite";
+ import { defineConfig } from "vite-plus";
+ import skgo from "@skgo/sveltekit-adapter";
+ 
+ export default defineConfig({
++  server: { watch: { useFsEvents: false, usePolling: false, awaitWriteFinish: process.env.SKGO_RESEARCH_265_STABLE_WRITES === '1' ? { stabilityThreshold: 50, pollInterval: 10 } : false } },
+   plugins: [
++    {
++      name: 'research-265',
++      configureServer(server) {
++        const trace = [];
++        const watcher = server.watcher;
++        const throttle = watcher._throttle;
++        const record = (kind, file, extra = {}) => {
++          if (!String(file).includes('research-265-')) return;
++          let bytes = ''; try { bytes = readFileSync(file, 'utf8'); } catch {}
++          trace.push({ ms: performance.now(), kind, file, bytes, ...extra });
++        };
++        watcher._throttle = function(action, file, timeout) {
++          const result = throttle.call(this, action, file, timeout);
++          record('throttle', file, { action, timeout, allowed: !!result });
++          return result;
++        };
++        watcher.on('all', (kind, file) => record(kind, file));
++        server.middlewares.use('/__research265', (req, res) => {
++          const url = new URL(req.url, 'http://localhost');
++          const file = join(server.config.root, 'src/lib', url.searchParams.get('file') ?? 'unused');
++          if (url.searchParams.has('value')) {
++            writeFileSync(file, `export const probe = ${url.searchParams.get('value')};\n`);
++            record('write', file);
++          }
++          res.setHeader('Content-Type', 'application/json');
++          res.end(JSON.stringify({ options: watcher.options, trace }));
++        });
++      }
++    },
++
+     sveltekit({
+       adapter: skgo(),
+       // Kit 3 fixes the app's origin at build time.

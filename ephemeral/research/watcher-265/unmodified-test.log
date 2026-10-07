@@ -1,0 +1,12 @@
+=== RUN   TestAFileTouchedWithoutBeingChangedIsNotAnEdit
+--- PASS: TestAFileTouchedWithoutBeingChangedIsNotAnEdit (3.33s)
+=== RUN   TestAFileTouchedWithoutBeingChangedIsNotAnEdit
+--- PASS: TestAFileTouchedWithoutBeingChangedIsNotAnEdit (3.13s)
+=== RUN   TestAFileTouchedWithoutBeingChangedIsNotAnEdit
+--- PASS: TestAFileTouchedWithoutBeingChangedIsNotAnEdit (3.13s)
+=== RUN   TestAFileTouchedWithoutBeingChangedIsNotAnEdit
+--- PASS: TestAFileTouchedWithoutBeingChangedIsNotAnEdit (3.13s)
+=== RUN   TestAFileTouchedWithoutBeingChangedIsNotAnEdit
+--- PASS: TestAFileTouchedWithoutBeingChangedIsNotAnEdit (3.14s)
+PASS
+ok  	github.com/tylergannon/skgo/example/devrender	19.015s
