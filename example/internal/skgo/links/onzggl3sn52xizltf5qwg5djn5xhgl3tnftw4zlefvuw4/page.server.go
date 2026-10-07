@@ -9,7 +9,7 @@ type PageData struct {
 	Required bool   `json:"required"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	user, _ := event.Cookie("skgo_actions_signin")
 	required, _ := event.SearchParam("required")
 	return PageData{User: user, Required: required == "1"}, nil

@@ -25,7 +25,7 @@ func selected(name string) (string, error) {
 	return name, nil
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	name, err := selected(event.Params.Profile())
 	if err != nil {

@@ -19,7 +19,7 @@ type PageData struct {
 	Featured Plan `json:"featured"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{Featured: Plan{Name: "Startup", Price: businesslogic.USD(45)}}, nil
 }
 

@@ -4856,7 +4856,7 @@ func Remotes() []*skgo.Remote {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_marketing_pricing_page(ctx context.Context) (any, error) {
-	return pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th.Skgo_pageLoad(pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th.Skgo_pageLoad(pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_layout answers src/routes/+layout.server.ts.
@@ -4865,7 +4865,7 @@ func load_marketing_pricing_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_layout(ctx context.Context) (any, error) {
-	return pkg_onzggl3sn52xizlt.Skgo_layoutLoad(pkg_onzggl3sn52xizlt.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return pkg_onzggl3sn52xizlt.Skgo_layoutLoad(pkg_onzggl3sn52xizlt.SkgoLayoutRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_about_page answers src/routes/about/+page.server.ts.
@@ -4874,7 +4874,7 @@ func load_layout(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_about_page(ctx context.Context) (any, error) {
-	return skgo7.Skgo_pageLoad(skgo7.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo7.Skgo_pageLoad(skgo7.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_layout answers src/routes/account/+layout.server.ts.
@@ -4883,7 +4883,7 @@ func load_about_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_layout(ctx context.Context) (any, error) {
-	return skgo16.Skgo_layoutLoad(skgo16.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo16.Skgo_layoutLoad(skgo16.SkgoLayoutRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_page answers src/routes/account/+page.server.ts.
@@ -4892,7 +4892,7 @@ func load_account_layout(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_page(ctx context.Context) (any, error) {
-	return skgo16.Skgo_pageLoad(skgo16.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo16.Skgo_pageLoad(skgo16.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_orders_page answers src/routes/account/orders/+page.server.ts.
@@ -4901,7 +4901,7 @@ func load_account_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_orders_page(ctx context.Context) (any, error) {
-	return skgo17.Skgo_pageLoad(skgo17.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo17.Skgo_pageLoad(skgo17.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_reruns_slug_page answers src/routes/account/reruns/[slug]/+page.server.ts.
@@ -4910,7 +4910,7 @@ func load_account_orders_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_reruns_slug_page(ctx context.Context) (any, error) {
-	return skgo18.Skgo_pageLoad(skgo18.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo18.Skgo_pageLoad(skgo18.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_statement_page answers src/routes/account/statement/+page.server.ts.
@@ -4919,7 +4919,7 @@ func load_account_reruns_slug_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_statement_page(ctx context.Context) (any, error) {
-	return skgo19.Skgo_pageLoad(skgo19.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo19.Skgo_pageLoad(skgo19.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_page answers src/routes/actions/+page.server.ts.
@@ -4928,7 +4928,7 @@ func load_account_statement_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_page(ctx context.Context) (any, error) {
-	return pkg_onzggl3sn52xizltf5qwg5djn5xhg.Skgo_pageLoad(pkg_onzggl3sn52xizltf5qwg5djn5xhg.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return pkg_onzggl3sn52xizltf5qwg5djn5xhg.Skgo_pageLoad(pkg_onzggl3sn52xizltf5qwg5djn5xhg.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_cross_receive_page answers src/routes/actions/cross/receive/+page.server.ts.
@@ -4937,7 +4937,7 @@ func load_actions_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_cross_receive_page(ctx context.Context) (any, error) {
-	return skgo9.Skgo_pageLoad(skgo9.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo9.Skgo_pageLoad(skgo9.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_default_saved_page answers src/routes/actions/default/saved/+page.server.ts.
@@ -4946,7 +4946,7 @@ func load_actions_cross_receive_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_default_saved_page(ctx context.Context) (any, error) {
-	return skgo11.Skgo_pageLoad(skgo11.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo11.Skgo_pageLoad(skgo11.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_options_noclient_page answers src/routes/actions/options/no-client/+page.server.ts.
@@ -4955,7 +4955,7 @@ func load_actions_default_saved_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_options_noclient_page(ctx context.Context) (any, error) {
-	return skgo12.Skgo_pageLoad(skgo12.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo12.Skgo_pageLoad(skgo12.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_options_nossr_page answers src/routes/actions/options/no-ssr/+page.server.ts.
@@ -4964,7 +4964,7 @@ func load_actions_options_noclient_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_options_nossr_page(ctx context.Context) (any, error) {
-	return skgo13.Skgo_pageLoad(skgo13.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo13.Skgo_pageLoad(skgo13.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_profiles_profile_page answers src/routes/actions/profiles/[profile]/+page.server.ts.
@@ -4973,7 +4973,7 @@ func load_actions_options_nossr_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_profiles_profile_page(ctx context.Context) (any, error) {
-	return skgo14.Skgo_pageLoad(skgo14.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo14.Skgo_pageLoad(skgo14.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_signedin_page answers src/routes/actions/signed-in/+page.server.ts.
@@ -4982,7 +4982,7 @@ func load_actions_profiles_profile_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_signedin_page(ctx context.Context) (any, error) {
-	return skgo15.Skgo_pageLoad(skgo15.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo15.Skgo_pageLoad(skgo15.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_destinations_page answers src/routes/destinations/+page.server.ts.
@@ -4991,7 +4991,7 @@ func load_actions_signedin_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_destinations_page(ctx context.Context) (any, error) {
-	return skgo30.Skgo_pageLoad(skgo30.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo30.Skgo_pageLoad(skgo30.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_empty_page answers src/routes/empty/+page.server.ts.
@@ -5000,7 +5000,7 @@ func load_destinations_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_empty_page(ctx context.Context) (any, error) {
-	return pkg_onzggl3sn52xizltf5sw24dupe.Skgo_pageLoad(pkg_onzggl3sn52xizltf5sw24dupe.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return pkg_onzggl3sn52xizltf5sw24dupe.Skgo_pageLoad(pkg_onzggl3sn52xizltf5sw24dupe.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_error_expected_page answers src/routes/error/expected/+page.server.ts.
@@ -5009,7 +5009,7 @@ func load_empty_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_error_expected_page(ctx context.Context) (any, error) {
-	return skgo34.Skgo_pageLoad(skgo34.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo34.Skgo_pageLoad(skgo34.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_error_unexpected_page answers src/routes/error/unexpected/+page.server.ts.
@@ -5018,7 +5018,7 @@ func load_error_expected_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_error_unexpected_page(ctx context.Context) (any, error) {
-	return skgo36.Skgo_pageLoad(skgo36.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo36.Skgo_pageLoad(skgo36.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_godev_page answers src/routes/go-dev/+page.server.ts.
@@ -5027,7 +5027,7 @@ func load_error_unexpected_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_godev_page(ctx context.Context) (any, error) {
-	return skgo37.Skgo_pageLoad(skgo37.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo37.Skgo_pageLoad(skgo37.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_invoices_page answers src/routes/invoices/+page.server.ts.
@@ -5036,7 +5036,7 @@ func load_godev_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_invoices_page(ctx context.Context) (any, error) {
-	return skgo39.Skgo_pageLoad(skgo39.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo39.Skgo_pageLoad(skgo39.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_middleware_page answers src/routes/middleware/+page.server.ts.
@@ -5045,7 +5045,7 @@ func load_invoices_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_middleware_page(ctx context.Context) (any, error) {
-	return skgo42.Skgo_pageLoad(skgo42.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo42.Skgo_pageLoad(skgo42.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_middleware_slug_page answers src/routes/middleware/[slug]/+page.server.ts.
@@ -5054,7 +5054,7 @@ func load_middleware_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_middleware_slug_page(ctx context.Context) (any, error) {
-	return skgo43.Skgo_pageLoad(skgo43.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo43.Skgo_pageLoad(skgo43.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_prerender_slug_page answers src/routes/prerender/[slug]/+page.server.ts.
@@ -5063,7 +5063,7 @@ func load_middleware_slug_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_prerender_slug_page(ctx context.Context) (any, error) {
-	return skgo45.Skgo_load(skgo45.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo45.Skgo_load(skgo45.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_requestfetch_page answers src/routes/request-fetch/+page.server.ts.
@@ -5072,7 +5072,7 @@ func load_prerender_slug_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_requestfetch_page(ctx context.Context) (any, error) {
-	return skgo46.Skgo_pageLoad(skgo46.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo46.Skgo_pageLoad(skgo46.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_stream_page answers src/routes/stream/+page.server.ts.
@@ -5081,7 +5081,7 @@ func load_requestfetch_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_stream_page(ctx context.Context) (any, error) {
-	return skgo48.Skgo_pageLoad(skgo48.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo48.Skgo_pageLoad(skgo48.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_typeddependencies_aOrder_bOrder_ignored_page answers src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts.
@@ -5090,7 +5090,7 @@ func load_stream_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_typeddependencies_aOrder_bOrder_ignored_page(ctx context.Context) (any, error) {
-	return skgo5.Skgo_load(skgo5.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo5.Skgo_load(skgo5.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_typedload_numberOrder_page answers src/routes/typed-load/[number=Order]/+page.server.ts.
@@ -5099,7 +5099,7 @@ func load_typeddependencies_aOrder_bOrder_ignored_page(ctx context.Context) (any
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_typedload_numberOrder_page(ctx context.Context) (any, error) {
-	return skgo6.Skgo_load(skgo6.SkgoRequestEvent(skgo.EventFrom(ctx)))
+	return skgo6.Skgo_load(skgo6.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // Loads returns every server load declared in the app, ready to hand to

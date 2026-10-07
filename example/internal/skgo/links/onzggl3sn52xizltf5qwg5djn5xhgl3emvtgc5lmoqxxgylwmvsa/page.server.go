@@ -10,7 +10,7 @@ type PageData struct {
 	Profile actiondemo.Profile `json:"profile"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	id, err := actiondemo.Visitor(ctx)
 	if err != nil {

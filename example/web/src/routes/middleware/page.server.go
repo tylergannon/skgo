@@ -20,7 +20,7 @@ type PageData struct {
 	Cookie string `json:"cookie"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	visit := app.LocalsFrom(ctx).Visit
 	ok := visit.Token != ""

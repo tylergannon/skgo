@@ -12,7 +12,7 @@ type PageData struct {
 	Later            skgo.Deferred[string] `json:"later"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	parent, err := skgo.Parent[struct {
 		Deployment string `json:"deployment"`

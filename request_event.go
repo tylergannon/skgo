@@ -5,9 +5,9 @@ import (
 	"reflect"
 )
 
-// RequestEvent pairs a request with generated typed params. Route-bound loads
-// alias this implementation with their own precise RouteParams. Commands and
-// forms use the generated application-wide params.Params instead.
+// RequestEvent pairs a request with generated typed params and application locals.
+// Page and layout loads use their generated RouteParams and LayoutParams domains.
+// Commands and forms use the generated application-wide params.Params.
 type RequestEvent[Params, Locals any] struct {
 	*Event
 	Params Params
@@ -74,4 +74,13 @@ func OptionalLoadParamValue[T any](e *Event, name string) *T {
 	}
 	value := LoadParamValue[T](e, name)
 	return &value
+}
+
+// LoadRouteIDValue selects a generated layout alternative without recording a
+// route dependency. A layout's public RouteID still tracks the matched page.
+func LoadRouteIDValue(e *Event) string {
+	if e == nil || e.load == nil {
+		return ""
+	}
+	return e.load.shared.routeID
 }

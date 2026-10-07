@@ -8,18 +8,61 @@ import (
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
-// RouteParams stores converted values. Only accessor reads record dependencies
-// on the load invocation that constructed these params.
-type RouteParams struct {
-	event *skgo.Event
+// LayoutParams stores this layout's local and participating-page values.
+type LayoutParams struct {
+	event        *skgo.Event
+	valueA       *hooks.OrderNumber
+	valueB       *hooks.OrderNumber
+	valueGroup   *string
+	valueID      *string
+	valueIgnored *string
+	valueMode    *string
+	valueNumber  *hooks.OrderNumber
+	valueProfile *string
+	valueRest    *string
+	valueSlug    *string
 }
 
-type RequestEvent = skgo.RequestEvent[RouteParams, appstate.Locals]
-
-func SkgoRequestEvent(event *skgo.Event) RequestEvent {
-	return RequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: RouteParams{event: event}}
+func (p LayoutParams) A() *hooks.OrderNumber { skgo.TrackLoadParam(p.event, "a"); return p.valueA }
+func (p LayoutParams) B() *hooks.OrderNumber { skgo.TrackLoadParam(p.event, "b"); return p.valueB }
+func (p LayoutParams) Group() *string        { skgo.TrackLoadParam(p.event, "group"); return p.valueGroup }
+func (p LayoutParams) ID() *string           { skgo.TrackLoadParam(p.event, "id"); return p.valueID }
+func (p LayoutParams) Ignored() *string {
+	skgo.TrackLoadParam(p.event, "ignored")
+	return p.valueIgnored
 }
+func (p LayoutParams) Mode() *string { skgo.TrackLoadParam(p.event, "mode"); return p.valueMode }
+func (p LayoutParams) Number() *hooks.OrderNumber {
+	skgo.TrackLoadParam(p.event, "number")
+	return p.valueNumber
+}
+func (p LayoutParams) Profile() *string {
+	skgo.TrackLoadParam(p.event, "profile")
+	return p.valueProfile
+}
+func (p LayoutParams) Rest() *string { skgo.TrackLoadParam(p.event, "rest"); return p.valueRest }
+func (p LayoutParams) Slug() *string { skgo.TrackLoadParam(p.event, "slug"); return p.valueSlug }
 
+type LayoutRequestEvent = skgo.RequestEvent[LayoutParams, appstate.Locals]
+
+func SkgoLayoutRequestEvent(event *skgo.Event) LayoutRequestEvent {
+	return LayoutRequestEvent{Event: event, Locals: appstate.LocalsFrom(event.Request().Context()), Params: skgoLayoutParams(event)}
+}
+func skgoLayoutParams(event *skgo.Event) LayoutParams {
+	p := LayoutParams{event: event}
+	p.valueA = skgo.OptionalLoadParamValue[hooks.OrderNumber](event, "a")
+	p.valueB = skgo.OptionalLoadParamValue[hooks.OrderNumber](event, "b")
+	p.valueGroup = skgo.OptionalLoadParamValue[string](event, "group")
+	p.valueID = skgo.OptionalLoadParamValue[string](event, "id")
+	p.valueIgnored = skgo.OptionalLoadParamValue[string](event, "ignored")
+	p.valueMode = skgo.OptionalLoadParamValue[string](event, "mode")
+	p.valueNumber = skgo.OptionalLoadParamValue[hooks.OrderNumber](event, "number")
+	p.valueProfile = skgo.OptionalLoadParamValue[string](event, "profile")
+	p.valueRest = skgo.OptionalLoadParamValue[string](event, "rest")
+	p.valueSlug = skgo.OptionalLoadParamValue[string](event, "slug")
+
+	return p
+}
 func SkgoParamMatchers() map[string]skgo.ParamMatcher {
 	return map[string]skgo.ParamMatcher{
 		"Order": func(value string) (any, bool) { return hooks.Order(value) },

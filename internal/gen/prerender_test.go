@@ -14,7 +14,7 @@ import "github.com/tylergannon/skgo"
 
 type Data struct { Message string ` + "`json:\"message\"`" + ` }
 
-func site(RequestEvent) (Data, error) { return Data{Message: "hello"}, nil }
+func site(LayoutRequestEvent) (Data, error) { return Data{Message: "hello"}, nil }
 
 var _ = skgo.Load(site)
 `
@@ -427,7 +427,7 @@ func TestLoadsOutsideThePrerenderedBranchAreAccepted(t *testing.T) {
 func TestAPrerenderedPageCanHaveItsOwnGoLoad(t *testing.T) {
 	t.Parallel()
 	_, cfg := foreignFixture(t, "", map[string]string{
-		"app/web/src/routes/about/page.server.go": loadSource,
+		"app/web/src/routes/about/page.server.go": strings.ReplaceAll(loadSource, "LayoutRequestEvent", "PageRequestEvent"),
 		"app/web/src/routes/about/+page.svelte":   "<h1>About</h1>\n",
 		"app/web/src/routes/about/+page.ts":       "export const prerender = true;\n",
 	})
@@ -453,7 +453,7 @@ func TestANamedLayoutResetExcludesLoadsOutsideKitsBranch(t *testing.T) {
 func TestTheLoadStubBridgesAPrerenderCall(t *testing.T) {
 	t.Parallel()
 	root, cfg := foreignFixture(t, "", map[string]string{
-		"app/web/src/routes/account/page.server.go": loadSource,
+		"app/web/src/routes/account/page.server.go": strings.ReplaceAll(loadSource, "LayoutRequestEvent", "PageRequestEvent"),
 		"app/web/src/routes/account/+page.svelte":   "<h1>Account</h1>\n",
 	})
 	if err := Run(cfg); err != nil {

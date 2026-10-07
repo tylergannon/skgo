@@ -38,7 +38,7 @@ var paths = []string{
 	"/api/request-fetch",
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	var data PageData
 	for _, path := range paths {

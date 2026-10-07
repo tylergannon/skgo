@@ -66,9 +66,9 @@ var _ = skgo.Form(subscribe)`},
 func read(ctx context.Context) (Result, error) { return Result{Name: "ready"}, nil }
 var _ = skgo.Query(read)`},
 		{RouteParam, "Unknown route parameter", "", "", "Event.Param returns an empty string for a name this page route does not declare.", "Read a parameter declared in this page's route path.", `// In web/src/routes/[slug]/page.server.go:
-// RequestEvent and its typed parameter accessors are generated beside this load.
+// PageRequestEvent and its typed parameter accessors are generated beside this load.
 type PageData struct { Slug string ` + "`json:\"slug\"`" + ` }
-func load(event RequestEvent) (PageData, error) {
+func load(event PageRequestEvent) (PageData, error) {
     return PageData{Slug: event.Params.Slug()}, nil
 }
 var _ = skgo.Load(load)`},

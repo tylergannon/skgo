@@ -16,7 +16,7 @@ type PageData struct {
 	Brew string `json:"brew"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{}, skgo.Errorf(418, "This page is a teapot")
 }
 

@@ -12,7 +12,7 @@ type PageData struct {
 	Notes []string `json:"notes"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{}, nil
 }
 

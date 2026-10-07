@@ -531,9 +531,13 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 			if !ok || t.Obj().Pkg() == nil || t.Obj().Pkg().Path() != skgoPkg || t.Obj().Name() != "RequestEvent" || a.cfg.loadParams[gp.dir] == nil {
 				return nil, nil, nil, nil, fmt.Errorf("skgo: %s: load must receive this route's generated RequestEvent", pos)
 			}
-			local := p.Types.Scope().Lookup("RequestEvent")
+			domain := "PageRequestEvent"
+			if filepath.Base(path) == "layout.server.go" {
+				domain = "LayoutRequestEvent"
+			}
+			local := p.Types.Scope().Lookup(domain)
 			if local == nil || !types.Identical(sig.Params().At(0).Type(), local.Type()) {
-				return nil, nil, nil, nil, fmt.Errorf("skgo: %s: load must receive this route's generated RequestEvent", pos)
+				return nil, nil, nil, nil, fmt.Errorf("skgo: %s: load must receive this route's generated %s", pos, domain)
 			}
 		}
 		source, err := webRel(a.cfg.Web, path)

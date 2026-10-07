@@ -30,8 +30,10 @@ type goParamMatcher struct {
 }
 
 type routeLoadParams struct {
-	params   []skgo.ManifestParam
-	matchers map[string]goParamMatcher
+	params       []skgo.ManifestParam
+	matchers     map[string]goParamMatcher
+	page, layout bool
+	children     map[string]*routeLoadParams
 }
 
 // Parameter metadata comes from the installed Kit parser, not a second route
@@ -39,12 +41,42 @@ type routeLoadParams struct {
 // the Go request matcher.
 const kitLoadParams = `
 import { pathToFileURL } from 'node:url';
-import { readFileSync } from 'node:fs';
-const { kit, ids, params } = JSON.parse(readFileSync(0, 'utf8'));
+import fs from 'node:fs';
+import path from 'node:path';
+const { readFileSync } = fs;
+const { kit, ids, params, web, modules, obsolete, layouts } = JSON.parse(readFileSync(0, 'utf8'));
 const { parse_route_id } = await import(pathToFileURL(kit + '/src/utils/routing.js'));
 let names = [];
 if (params) names = Object.keys((await import(pathToFileURL(params))).params ?? {});
-console.log(JSON.stringify({ routes: ids.map(id => parse_route_id(id).params), names }));
+let children = {};
+if (layouts) {
+ // Feed Kit the pending Go-backed modules without writing bootstrap stubs.
+ // Kit still owns filename recognition, groups, resets and page ancestry.
+ const pending = new Set(modules);
+ const hidden = new Set(obsolete);
+ const readdir = fs.readdirSync, read = fs.readFileSync;
+ fs.readdirSync = (dir, options) => {
+  const entries = readdir(dir, options).filter(entry => !hidden.has(path.join(String(dir), typeof entry === 'string' ? entry : entry.name)));
+  for (const file of pending) {
+   if (path.dirname(file) !== String(dir) || entries.some(entry => entry.name === path.basename(file))) continue;
+   entries.push({name: path.basename(file), isDirectory: () => false, isSymbolicLink: () => false});
+  }
+  return entries;
+ };
+ fs.readFileSync = (file, ...args) => pending.has(String(file)) ? 'export const load = () => ({});' : read(file, ...args);
+ const { default: create_manifest_data } = await import(pathToFileURL(kit + '/src/core/sync/create_manifest_data/index.js'));
+ const absent = path.join(web, '.skgo-no-entry');
+ const { routes } = create_manifest_data({
+  extensions: ['.svelte'], moduleExtensions: ['.js', '.ts'], router: {type: 'pathname'},
+  files: {routes: path.join(web, 'src/routes'), assets: absent, params: absent,
+   hooks: {client: absent, server: absent, universal: absent}}
+ }, web);
+ const pages = new Map(routes.filter(route => route.leaf).map(route => [route.leaf, route.id]));
+ for (const route of routes) {
+  if (route.layout) children[route.id] = route.layout.child_pages.map(page => pages.get(page));
+ }
+}
+console.log(JSON.stringify({ routes: ids.map(id => parse_route_id(id).params), names, children }));
 `
 
 // Refresh the event types before compiling application load bodies. Loading
@@ -52,9 +84,41 @@ console.log(JSON.stringify({ routes: ids.map(id => parse_route_id(id).params), n
 // stale RouteParams even when the old load body no longer compiles.
 func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams, error) {
 	dirs := map[string]bool{}
+	loadKinds := map[string]map[string]bool{}
+	var modules, obsolete []string
+	hasLayouts := false
 	for _, path := range files {
 		if _, ok := loadFileNames[filepath.Base(path)]; ok {
-			dirs[filepath.Dir(path)] = true
+			dir := filepath.Dir(path)
+			dirs[dir] = true
+			if loadKinds[dir] == nil {
+				loadKinds[dir] = map[string]bool{}
+			}
+			loadKinds[dir][filepath.Base(path)] = true
+			hasLayouts = hasLayouts || filepath.Base(path) == "layout.server.go"
+		}
+	}
+	for _, file := range files {
+		name := loadFileNames[filepath.Base(file)]
+		if filepath.Base(file) == serverFileName {
+			name = "+server.ts"
+		}
+		if name != "" {
+			stem := filepath.Join(filepath.Dir(file), strings.TrimSuffix(name, ".ts"))
+			modules = append(modules, stem+cfg.Language.ext())
+			other := ".js"
+			if cfg.Language.JavaScript() {
+				other = ".ts"
+			}
+			// Match publication's ownership rule without deleting files before
+			// this invocation succeeds. Authored counterparts stay visible to Kit.
+			content, err := os.ReadFile(stem + other)
+			if err != nil && !os.IsNotExist(err) {
+				return nil, err
+			}
+			if generatedArtifact(content) {
+				obsolete = append(obsolete, stem+other)
+			}
 		}
 	}
 	result := map[string]*routeLoadParams{}
@@ -97,14 +161,14 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 		ids = append(ids, id)
 	}
 	kit := filepath.Join(cfg.Web, "node_modules", "@sveltejs", "kit")
-	needsKit := frontendParams != ""
+	needsKit := frontendParams != "" || hasLayouts
 	for _, id := range ids {
 		needsKit = needsKit || strings.Contains(id, "[")
 	}
 	if _, err := os.Stat(filepath.Join(kit, "src", "utils", "routing.js")); err != nil && needsKit {
 		return nil, fmt.Errorf("skgo: typed loads require installed SvelteKit route metadata: %w", err)
 	}
-	input, _ := json.Marshal(map[string]any{"kit": kit, "ids": ids, "params": frontendParams})
+	input, _ := json.Marshal(map[string]any{"kit": kit, "ids": ids, "params": frontendParams, "web": cfg.Web, "modules": modules, "obsolete": obsolete, "layouts": hasLayouts})
 	cmd := exec.Command("node", "--input-type=module", "--eval", kitLoadParams)
 	cmd.Dir, cmd.Stdin = cfg.Web, bytes.NewReader(input)
 	var output []byte
@@ -120,8 +184,9 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 		return nil, fmt.Errorf("skgo: reading Kit route params: %w", err)
 	}
 	var metadata struct {
-		Routes [][]skgo.ManifestParam `json:"routes"`
-		Names  []string               `json:"names"`
+		Routes   [][]skgo.ManifestParam `json:"routes"`
+		Names    []string               `json:"names"`
+		Children map[string][]string    `json:"children"`
 	}
 	if err := json.Unmarshal(output, &metadata); err != nil {
 		return nil, err
@@ -144,7 +209,7 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 		cfg.matchers[name] = matcher
 	}
 	for i, dir := range ordered {
-		info := &routeLoadParams{params: metadata.Routes[i], matchers: map[string]goParamMatcher{}}
+		info := &routeLoadParams{params: metadata.Routes[i], matchers: map[string]goParamMatcher{}, page: loadKinds[dir]["page.server.go"], layout: loadKinds[dir]["layout.server.go"]}
 		for name, matcher := range matchers {
 			if names[name] {
 				info.matchers[name] = matcher
@@ -161,6 +226,23 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 			info.matchers[param.Matcher] = matcher
 		}
 		result[dir] = info
+	}
+	byID := map[string]*routeLoadParams{}
+	for i, dir := range ordered {
+		byID[ids[i]] = result[dir]
+	}
+	for i, dir := range ordered {
+		if !result[dir].layout {
+			continue
+		}
+		result[dir].children = map[string]*routeLoadParams{}
+		for _, id := range metadata.Children[ids[i]] {
+			child := byID[id]
+			if child == nil {
+				return nil, fmt.Errorf("skgo: layout %s has unknown participating page %s", ids[i], id)
+			}
+			result[dir].children[id] = child
+		}
 	}
 	if err := writeSharedParams(*cfg, result); err != nil {
 		return nil, err
@@ -327,37 +409,18 @@ func writeLoadParams(cfg Config, dir string, info *routeLoadParams) error {
 		return err
 	}
 	imports := &fileImports{used: map[string]bool{"skgo": true}, byPkg: map[*types.Package]string{}}
-	var body, accessors, populate strings.Builder
-	body.WriteString("// RouteParams stores converted values. Only accessor reads record dependencies\n// on the load invocation that constructed these params.\ntype RouteParams struct { event *skgo.Event\n")
-	fields := map[string]bool{}
-	for _, param := range info.params {
-		field := paramField(param.Name)
-		if !token.IsIdentifier(field) || fields[field] {
-			return fmt.Errorf("skgo: route parameter %q has a conflicting Go field %q", param.Name, field)
+	var body strings.Builder
+	if info.page {
+		if err := writeConcreteLoadDomain(&body, imports, cfg, "RouteParams", "Page", info.params, info.matchers); err != nil {
+			return err
 		}
-		fields[field] = true
-		typ := "string"
-		if param.Matcher != "" {
-			typ = imports.typeExpr(info.matchers[param.Matcher].out)
-		}
-		helper := "LoadParamValue"
-		result := typ
-		if param.Optional {
-			helper = "OptionalLoadParamValue"
-			result = "*" + typ
-		}
-		// Prefixing the accessor name keeps private storage distinct from both
-		// methods and the event pointer, including a route parameter named event.
-		storage := "value" + field
-		fmt.Fprintf(&body, "%s %s\n", storage, result)
-		fmt.Fprintf(&accessors, "func (p RouteParams) %s() %s { skgo.TrackLoadParam(p.event, %q); return p.%s }\n\n", field, result, param.Name, storage)
-		fmt.Fprintf(&populate, "%s: skgo.%s[%s](event, %q),\n", storage, helper, typ, param.Name)
 	}
-	body.WriteString("}\n\n")
-	body.WriteString(accessors.String())
-	fmt.Fprintf(&body, "type RequestEvent = skgo.RequestEvent[RouteParams, appstate.%s]\n\nfunc SkgoRequestEvent(event *skgo.Event) RequestEvent {\n return RequestEvent{Event: event, Locals:appstate.LocalsFrom(event.Request().Context()), Params: RouteParams{event: event,\n", cfg.LocalsType)
-	body.WriteString(populate.String())
-	body.WriteString("}}\n}\n\nfunc SkgoParamMatchers() map[string]skgo.ParamMatcher {\n return map[string]skgo.ParamMatcher{\n")
+	if info.layout {
+		if err := writeLayoutDomain(&body, imports, cfg, info); err != nil {
+			return err
+		}
+	}
+	body.WriteString("func SkgoParamMatchers() map[string]skgo.ParamMatcher {\n return map[string]skgo.ParamMatcher{\n")
 	var names []string
 	for name := range info.matchers {
 		names = append(names, name)

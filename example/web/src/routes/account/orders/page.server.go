@@ -26,7 +26,7 @@ type PageData struct {
 	Orders skgo.Deferred[[]Order] `json:"orders"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	return PageData{
 		OrderTotal: 2,

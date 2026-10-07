@@ -81,7 +81,7 @@ var Handle params.Middleware = func(ctx context.Context,event params.RequestEven
 	write("web/src/routes/page.server.go", `package routes
 import("context";"io";"net/http";"github.com/tylergannon/skgo";"example.com/custom-locals/internal/app")
 type Data struct{Name string `+"`json:\"name\"`"+`;GoFetch string `+"`json:\"goFetch\"`"+`;Nested string `+"`json:\"nested\"`"+`}
-func pageLoad(event RequestEvent)(Data,error){
+func pageLoad(event PageRequestEvent)(Data,error){
  ctx:=event.Context();if app.LocalsFrom(ctx)!=event.Locals{panic("typed/context mismatch")}
  request,_:=http.NewRequest("GET","/api/locals",nil);response,err:=event.Fetch(ctx,request);if err!=nil{return Data{},err};defer response.Body.Close();body,err:=io.ReadAll(response.Body);if err!=nil{return Data{},err}
  value,err:=nested(ctx);return Data{Name:event.Locals.Principal.Name,GoFetch:string(body),Nested:value},err
@@ -108,7 +108,7 @@ var _=skgo.Form(submit)
 	write("web/src/routes/layout.server.go", `package routes
 import "github.com/tylergannon/skgo"
 type Layout struct{LayoutName string `+"`json:\"layoutName\"`"+`}
-func layoutLoad(event RequestEvent)(Layout,error){return Layout{LayoutName:event.Locals.Principal.Name},nil}
+func layoutLoad(event LayoutRequestEvent)(Layout,error){return Layout{LayoutName:event.Locals.Principal.Name},nil}
 var _=skgo.Load(layoutLoad)
 `)
 	write("web/src/routes/api/locals/server.go", `package locals

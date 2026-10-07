@@ -172,14 +172,14 @@ func (e *Event) RouteID() string {
 	if e != nil && e.caller != nil {
 		return e.caller.routeID
 	}
+	if e != nil && e.load != nil {
+		e.load.uses.flag(&e.load.uses.route)
+		return e.load.shared.routeID
+	}
 	if e != nil && e.hook != nil {
 		return e.hook.routeID
 	}
-	if e == nil || e.load == nil {
-		return ""
-	}
-	e.load.uses.flag(&e.load.uses.route)
-	return e.load.shared.routeID
+	return ""
 }
 
 // Depends declares that this load's result goes stale when any of these

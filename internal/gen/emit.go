@@ -740,7 +740,11 @@ func (a *app) writeAppBindings() error {
 		fmt.Fprintf(&b, "// A load's result is the one value no generated encoder produces: it may\n")
 		fmt.Fprintf(&b, "// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go\n")
 		fmt.Fprintf(&b, "// type, so the value is encoded where a promise can still be recognised.\n")
-		fmt.Fprintf(&b, "func %s(ctx context.Context) (any, error) {\n\treturn %s(%s.SkgoRequestEvent(skgo.EventFrom(ctx)))\n}\n", load.handler, a.published(load.goPkg, load.name), load.goPkg.alias)
+		kind := "Page"
+		if filepath.Base(load.source) == "layout.server.go" {
+			kind = "Layout"
+		}
+		fmt.Fprintf(&b, "func %s(ctx context.Context) (any, error) {\n\treturn %s(%s.Skgo%sRequestEvent(skgo.EventFrom(ctx)))\n}\n", load.handler, a.published(load.goPkg, load.name), load.goPkg.alias, kind)
 	}
 
 	b.WriteString("\n// Loads returns every server load declared in the app, ready to hand to\n")

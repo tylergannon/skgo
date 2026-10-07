@@ -18,7 +18,7 @@ type PageData struct {
 	Data  bool   `json:"data"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	visit := app.LocalsFrom(ctx).Visit
 	ok := visit.Token != ""

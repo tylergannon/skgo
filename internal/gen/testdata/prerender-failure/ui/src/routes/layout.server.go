@@ -8,7 +8,7 @@ import (
 
 type Data struct{}
 
-func layoutLoad(RequestEvent) (Data, error) {
+func layoutLoad(LayoutRequestEvent) (Data, error) {
 	return Data{}, errors.New("prerender fixture literal failure")
 }
 

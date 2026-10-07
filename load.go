@@ -25,14 +25,14 @@ import (
 // a file named `page.server.go` or `layout.server.go` in the route's own
 // directory:
 //
-//	func load(event RequestEvent) (Data, error) { ... }
+//	func load(event PageRequestEvent) (Data, error) { ... }
 //
 //	var _ = skgo.Load(load)
 //
 // `skgo generate` emits the `+page.server.ts` or `+layout.server.ts` kit
 // compiles — the file name says which — and the Go registration that answers
-// the route's `__data.json`. RequestEvent is the generated route-local alias of
-// skgo.RequestEvent[RouteParams, app.Locals]; its Params retain Go matcher result types.
+// the route's `__data.json`. PageRequestEvent and LayoutRequestEvent are the generated aliases with
+// RouteParams and LayoutParams respectively; both bind the application Locals.
 //
 // Out must be a struct: kit requires a load to return a plain object, and
 // refuses anything else.

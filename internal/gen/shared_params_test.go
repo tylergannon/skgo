@@ -334,7 +334,7 @@ func TestSharedParamsGeneratedNilLoads(t *testing.T) {
 		writeSharedFixture(t, app, "web/src/routes/"+tc.route+"/page.server.go", `package nilfixture
 import "github.com/tylergannon/skgo"
 type PageData struct { Receipt string `+"`json:\"receipt\"`"+` }
-func load(event RequestEvent) (PageData,error) { `+tc.body+`;return PageData{Receipt:label},nil }
+func load(event PageRequestEvent) (PageData,error) { `+tc.body+`;return PageData{Receipt:label},nil }
 var _ = skgo.Load(load)
 `)
 	}

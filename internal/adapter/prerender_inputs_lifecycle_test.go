@@ -271,7 +271,7 @@ var _ = skgo.Prerender(getSite, skgo.PrerenderOptions{Inputs: siteInputs})`, 1)
 		injection := "if os.Getenv(\"SKGO_LIFECYCLE_MODE\") == \"crawler-failure\" || os.Getenv(\"SKGO_LIFECYCLE_MODE\") == \"blocked\" {\n" +
 			"child := exec.Command(\"/bin/sh\", \"-c\", \"trap '' TERM; while :; do sleep 1; done\"); child.Stdout, child.Stderr = os.Stdout, os.Stderr; if err := child.Start(); err != nil { return PageData{}, err };\n" +
 			"exe, err := os.Executable(); if err != nil { return PageData{}, err }; file, err := os.Create(os.Getenv(\"SKGO_LIFECYCLE_RECEIPT\")); if err != nil { return PageData{}, err }; _, err = fmt.Fprintf(file, \"%d\\n%d\\n%s\\n\", os.Getpid(), os.Getpid(), filepath.Dir(exe)); closeErr := file.Close(); if err != nil { return PageData{}, err }; if closeErr != nil { return PageData{}, closeErr }; <-time.After(30 * time.Second); }\n"
-		const signature = "func pageLoad(event RequestEvent) (PageData, error) {"
+		const signature = "func pageLoad(event PageRequestEvent) (PageData, error) {"
 		if !strings.Contains(loadText, signature) {
 			t.Fatal("about load signature changed; lifecycle injection was not installed")
 		}

@@ -48,7 +48,7 @@ type PageData struct {
 	Weather Panel `json:"weather"`
 }
 
-func pageLoad(event RequestEvent) (PageData, error) {
+func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	return PageData{
 		Headline: "Three promises, one response",

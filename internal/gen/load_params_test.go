@@ -221,7 +221,7 @@ func TestTypedLoadActualParameterDependencies(t *testing.T) {
 	const optionalLoad = `package optional
 import "github.com/tylergannon/skgo"
 type PageData struct { Label string }
-func load(event RequestEvent) (PageData,error) {
+func load(event PageRequestEvent) (PageData,error) {
  read,_ := event.SearchParam("read")
  if read == "none" { return PageData{Label:"Constructed only"},nil }
  var value string
@@ -237,7 +237,7 @@ var _ = skgo.Load(load)
 	const layoutLoad = `package typeddependencies
 import "github.com/tylergannon/skgo"
 type LayoutData struct { Label string }
-func layoutLoad(event RequestEvent) (LayoutData,error) {
+func layoutLoad(event LayoutRequestEvent) (LayoutData,error) {
  read,_ := event.SearchParam("layout")
  label := "Layout constructed only"
  if read != "none" {
