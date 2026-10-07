@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"golang.org/x/tools/go/packages"
 )
 
 const sharedParamsFile = generatedGoFile
@@ -223,7 +225,7 @@ func sharedForbiddenPackages(cfg Config) ([]string, error) {
 // Ensure the type can be spelled in a leaf package. Named types need not expose
 // their underlying fields; unnamed structs/interfaces do. Import graphs must
 // remain below params, never reach caller packages or generated bindings.
-func validateSharedType(cfg Config, t types.Type) error {
+func validateSharedType(cfg Config, t types.Type, imports map[string]*packages.Package) error {
 	host, mod, err := moduleOf(cfg.Out)
 	if err != nil {
 		return err
@@ -235,21 +237,25 @@ func validateSharedType(cfg Config, t types.Type) error {
 		return err
 	}
 	hasPrefix := func(path, prefix string) bool { return path == prefix || strings.HasPrefix(path, prefix+"/") }
-	seen := map[*types.Package]bool{}
-	var checkPackage func(*types.Package) error
-	checkPackage = func(p *types.Package) error {
-		if p == nil || seen[p] {
+	seen := map[string]bool{}
+	var checkPackage func(string) error
+	checkPackage = func(path string) error {
+		if seen[path] {
 			return nil
 		}
-		seen[p] = true
-		for _, path := range forbidden {
-			if hasPrefix(p.Path(), path) {
-				return fmt.Errorf("type dependency %s is caller-owned or imports generated bindings/params; move matcher domain types to a leaf package", p.Path())
+		seen[path] = true
+		for _, prefix := range forbidden {
+			if hasPrefix(path, prefix) {
+				return fmt.Errorf("type dependency %s is caller-owned or imports generated bindings/params; move matcher domain types to a leaf package", path)
 			}
 		}
 
-		for _, dep := range p.Imports() {
-			if err := checkPackage(dep); err != nil {
+		p := imports[path]
+		if p == nil {
+			return fmt.Errorf("missing import metadata for type dependency %s", path)
+		}
+		for _, dep := range p.Imports {
+			if err := checkPackage(dep.PkgPath); err != nil {
 				return err
 			}
 		}
@@ -266,7 +272,10 @@ func validateSharedType(cfg Config, t types.Type) error {
 					return fmt.Errorf("cannot import internal type package %s from shared params; move matcher domain types to an accessible leaf package", p.Path())
 				}
 			}
-			return checkPackage(obj.Pkg())
+			if obj.Pkg() != nil {
+				return checkPackage(obj.Pkg().Path())
+			}
+			return nil
 		}
 		switch t := t.(type) {
 		case *types.Alias:
@@ -363,7 +372,7 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 			if param.Matcher != "" {
 				matcher := routes[dir].matchers[param.Matcher]
 				typ = matcher.out
-				if err := validateSharedType(cfg, typ); err != nil {
+				if err := validateSharedType(cfg, typ, matcher.imports); err != nil {
 					return fmt.Errorf("skgo: %s: matcher %s: %w", matcher.pos, param.Matcher, err)
 				}
 			}

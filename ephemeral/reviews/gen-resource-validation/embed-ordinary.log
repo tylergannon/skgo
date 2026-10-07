@@ -1,0 +1,4 @@
+=== RUN   TestIndependentStageEmbed
+--- PASS: TestIndependentStageEmbed (0.22s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	0.529s

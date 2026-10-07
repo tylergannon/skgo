@@ -1,0 +1,19 @@
+go test -count=1 ./... ./example/...
+      160.34 real       356.52 user       388.95 sys
+           727072768  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            28054356  page reclaims
+              109946  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                3882  messages sent
+                5168  messages received
+              158691  signals received
+               76209  voluntary context switches
+             4897509  involuntary context switches
+            43459886  instructions retired
+            18946048  cycles elapsed
+             3162616  peak memory footprint

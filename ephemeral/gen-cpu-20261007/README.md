@@ -278,3 +278,7 @@ The `.pprof`, logs, resource measurements, and text summaries beside this file
 are the recorded evidence. The complete suite was profiled once; each paired
 focused probe generated twice. The rejected experiment's diagnostic check ran
 once and stopped at its failure. No browser or request-throughput benchmark ran.
+
+## Implementation completed
+
+The resource reductions are implemented. [Measurements and execution details](implementation/README.md) preserve the attributable baseline, successful normal test run, matched process-tree pair, and independent validation. Dependency imports remain checked as metadata; fresh-file loading keeps generated output buffered. The normal suite and generated interface remain intact.

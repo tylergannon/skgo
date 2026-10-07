@@ -1,0 +1,6 @@
+--- FAIL: TestSharedParamsSourceDiagnostics (1.81s)
+    --- FAIL: TestSharedParamsSourceDiagnostics/transitive-generated (0.24s)
+        shared_params_test.go:438: read /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestSharedParamsSourceDiagnostics363490581/001/web/src/routes/linked: is a directory
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	2.365s
+FAIL

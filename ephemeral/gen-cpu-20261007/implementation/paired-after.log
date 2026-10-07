@@ -1,0 +1,36 @@
+=== RUN   TestCPUProbe
+    cpu_probe_test.go:83: phase=existing-tree wall=4.247061167s allocated=394.7 MiB gc=22 GOMAXPROCS=10
+    cpu_probe_test.go:103: phase=existing-tree source=application parses=182 bytes=260679
+    cpu_probe_test.go:103: phase=existing-tree source=framework-checkout parses=0 bytes=0
+    cpu_probe_test.go:103: phase=existing-tree source=standard-library parses=0 bytes=0
+    cpu_probe_test.go:103: phase=existing-tree source=module-cache parses=0 bytes=0
+    cpu_probe_test.go:110: phase=existing-tree parses=1 bytes=27481 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/params/skgo_gen.go
+    cpu_probe_test.go:110: phase=existing-tree parses=4 bytes=26888 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/businesslogic/store.go
+    cpu_probe_test.go:110: phase=existing-tree parses=2 bytes=15878 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg/page.server.go
+    cpu_probe_test.go:110: phase=existing-tree parses=2 bytes=13738 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf52g6zdpom/todos.remote.go
+    cpu_probe_test.go:110: phase=existing-tree parses=2 bytes=12988 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi/contact.remote.go
+    cpu_probe_test.go:110: phase=existing-tree parses=2 bytes=9808 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu/gate.remote.go
+    cpu_probe_test.go:110: phase=existing-tree parses=4 bytes=8796 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/businesslogic/ssr_probe.go
+    cpu_probe_test.go:110: phase=existing-tree parses=2 bytes=7056 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5/probe.remote.go
+    cpu_probe_test.go:110: phase=existing-tree parses=2 bytes=5754 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/web/src/lib/auth.remote.go
+    cpu_probe_test.go:110: phase=existing-tree parses=2 bytes=5648 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th/pricing.remote.go
+    cpu_probe_test.go:83: phase=repeat-unchanged wall=3.492228375s allocated=393.3 MiB gc=12 GOMAXPROCS=10
+    cpu_probe_test.go:103: phase=repeat-unchanged source=application parses=182 bytes=260679
+    cpu_probe_test.go:103: phase=repeat-unchanged source=framework-checkout parses=0 bytes=0
+    cpu_probe_test.go:103: phase=repeat-unchanged source=standard-library parses=0 bytes=0
+    cpu_probe_test.go:103: phase=repeat-unchanged source=module-cache parses=0 bytes=0
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=1 bytes=27481 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/params/skgo_gen.go
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=4 bytes=26888 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/businesslogic/store.go
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=2 bytes=15878 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg/page.server.go
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=2 bytes=13738 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf52g6zdpom/todos.remote.go
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=2 bytes=12988 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi/contact.remote.go
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=2 bytes=9808 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu/gate.remote.go
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=4 bytes=8796 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/businesslogic/ssr_probe.go
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=2 bytes=7056 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5/probe.remote.go
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=2 bytes=5754 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/web/src/lib/auth.remote.go
+    cpu_probe_test.go:110: phase=repeat-unchanged parses=2 bytes=5648 file=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-gen-test-909701288/cpu-probe/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th/pricing.remote.go
+--- PASS: TestCPUProbe (7.80s)
+=== RUN   TestCPUProbeFresh
+    cpu_probe_test.go:126: fresh wall=188.931208ms allocated=6.3 MiB stdlib-parses=0
+--- PASS: TestCPUProbeFresh (0.19s)
+PASS

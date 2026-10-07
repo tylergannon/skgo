@@ -1,0 +1,129 @@
+package gen
+
+import (
+	"encoding/json"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+
+	"golang.org/x/tools/go/packages"
+)
+
+// preserveDependencyExports passes current route sources to both go list and
+// the root parser without setting Config.Overlay. go/packages v0.50.0 treats
+// any Config.Overlay as invalidating every dependency's compiler export data,
+// reparsing and type-checking even the standard library for each Check. The
+// go command already invalidates exports according to the actual overlay.
+//
+// For new files, a temporary module view supplies the files go/packages reads
+// before calling ParseFile. Nothing is published to the application's tree.
+func preserveDependencyExports(cfg *packages.Config) (func(), error) {
+	observeCPUProbe(cfg)
+	noop := func() {}
+	if len(cfg.Overlay) == 0 {
+		return noop, nil
+	}
+	// External package drivers receive Overlay in their own protocol; they
+	// need not understand a flag intended for the go command.
+	driver := os.Getenv("GOPACKAGESDRIVER")
+	if driver != "off" {
+		if driver != "" {
+			return noop, nil
+		}
+		if _, err := exec.LookPath("gopackagesdriver"); err == nil {
+			return noop, nil
+		}
+	}
+	logicalDir, err := filepath.Abs(cfg.Dir)
+	if err != nil {
+		return noop, err
+	}
+	physicalDir, err := filepath.EvalSymlinks(logicalDir)
+	if err != nil {
+		return noop, err
+	}
+	contents := make(map[string][]byte, len(cfg.Overlay))
+	var paths []string
+	newFiles := false
+	for path, source := range cfg.Overlay {
+		canonical, err := filepath.EvalSymlinks(path)
+		if os.IsNotExist(err) {
+			newFiles = true
+			continue
+		}
+		if err != nil {
+			return noop, err
+		}
+		contents[canonical] = source
+		paths = append(paths, path)
+	}
+	if newFiles {
+		return stagePackageOverlay(cfg)
+	}
+	sort.Strings(paths)
+	dir, err := os.MkdirTemp("", "skgo-check-overlay-")
+	if err != nil {
+		return noop, err
+	}
+	cleanup := func() { os.RemoveAll(dir) }
+	replacements := make(map[string]string, len(paths))
+	for i, path := range paths {
+		backing := filepath.Join(dir, fmt.Sprintf("%d-%s", i, filepath.Base(path)))
+		if err := os.WriteFile(backing, cfg.Overlay[path], 0600); err != nil {
+			cleanup()
+			return noop, err
+		}
+		replacements[path] = backing
+		// The go command resolves its working directory, so it may load the
+		// same package through a physical path rather than the caller's alias.
+		// Give compiler reads the same source the root parser sees.
+		canonical, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			cleanup()
+			return noop, err
+		}
+		replacements[canonical] = backing
+		// Go retains Config.Dir in PWD. /var and /private/var, for example,
+		// are the same directory but different overlay keys on macOS.
+		relative, err := filepath.Rel(physicalDir, canonical)
+		if err != nil {
+			cleanup()
+			return noop, err
+		}
+		replacements[filepath.Join(logicalDir, relative)] = backing
+	}
+	encoded, err := json.Marshal(struct{ Replace map[string]string }{replacements})
+	if err != nil {
+		cleanup()
+		return noop, err
+	}
+	overlayPath := filepath.Join(dir, "overlay.json")
+	if err := os.WriteFile(overlayPath, encoded, 0600); err != nil {
+		cleanup()
+		return noop, err
+	}
+	parse := cfg.ParseFile
+	if parse == nil {
+		parse = func(fset *token.FileSet, filename string, source []byte) (*ast.File, error) {
+			return parser.ParseFile(fset, filename, source, parser.AllErrors|parser.ParseComments)
+		}
+	}
+	cfg.BuildFlags = append(cfg.BuildFlags, "-overlay="+overlayPath)
+	cfg.Overlay = nil
+	cfg.ParseFile = func(fset *token.FileSet, filename string, source []byte) (*ast.File, error) {
+		canonical, err := filepath.EvalSymlinks(filename)
+		if err != nil {
+			return nil, err
+		}
+		if current, ok := contents[canonical]; ok {
+			source = current
+		}
+		return parse(fset, filename, source)
+	}
+	return cleanup, nil
+}

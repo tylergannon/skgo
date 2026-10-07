@@ -1,0 +1,127 @@
+package gen
+
+import (
+	"context"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"path/filepath"
+"os"
+	"runtime"
+	"runtime/pprof"
+	"sort"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"golang.org/x/tools/go/packages"
+)
+
+// This diagnostic is loaded only through go test -overlay, not the normal suite.
+// Its parser hook observes files without changing the generator's load modes.
+var cpuProbe struct {
+	sync.Mutex
+	files map[string]int
+	bytes map[string]int
+}
+
+var suiteProbe struct { sync.Mutex; counts map[string]int }
+func observeCPUProbe(cfg *packages.Config) {
+ site:="scan"
+ pc,_,_,_:=runtime.Caller(2)
+ caller:=runtime.FuncForPC(pc).Name()
+ if strings.Contains(caller,"readGoParamMatchers") {site="matcher"} else if strings.Contains(caller,"loadGrammar") {site="grammar"}
+ for path:=range cfg.Overlay {if _,err:=os.Stat(path);os.IsNotExist(err){site+="/new-file";break}}
+
+	parse := cfg.ParseFile
+	if parse == nil {
+		parse = func(fset *token.FileSet, filename string, source []byte) (*ast.File, error) {
+			return parser.ParseFile(fset, filename, source, parser.AllErrors|parser.ParseComments)
+		}
+	}
+	cfg.ParseFile = func(fset *token.FileSet, filename string, source []byte) (*ast.File, error) {
+		group:="application"
+ if strings.HasPrefix(filename,runtime.GOROOT()+"/"){group="standard-library"} else if strings.Contains(filename,"/pkg/mod/"){group="module-cache"}
+ suiteProbe.Lock()
+ if suiteProbe.counts==nil {suiteProbe.counts=map[string]int{}}
+ suiteProbe.counts[site+"/"+group]++
+ suiteProbe.Unlock()
+ cpuProbe.Lock()
+		if cpuProbe.files != nil {
+			cpuProbe.files[filename]++
+			cpuProbe.bytes[filename] += len(source)
+		}
+		cpuProbe.Unlock()
+		return parse(fset, filename, source)
+	}
+}
+
+func TestCPUProbe(t *testing.T) {
+	app, err := sharedSandbox("cpu-probe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	physicalApp, err := filepath.EvalSymlinks(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")}
+	for _, phase := range []string{"existing-tree", "repeat-unchanged"} {
+		cpuProbe.files, cpuProbe.bytes = map[string]int{}, map[string]int{}
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		start := time.Now()
+		pprof.Do(context.Background(), pprof.Labels("phase", phase), func(context.Context) {
+			err = Run(cfg)
+		})
+		runtime.ReadMemStats(&after)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("phase=%s wall=%s allocated=%.1f MiB gc=%d GOMAXPROCS=%d", phase, time.Since(start), float64(after.TotalAlloc-before.TotalAlloc)/(1<<20), after.NumGC-before.NumGC, runtime.GOMAXPROCS(0))
+		groups := map[string][2]int{}
+		var paths []string
+		for path, count := range cpuProbe.files {
+			group := "application"
+			if strings.HasPrefix(path, runtime.GOROOT()+"/") {
+				group = "standard-library"
+			} else if strings.Contains(path, "/pkg/mod/") {
+				group = "module-cache"
+			} else if !strings.HasPrefix(path, app+"/") && !strings.HasPrefix(path, physicalApp+"/") {
+				group = "framework-checkout"
+			}
+			value := groups[group]
+			value[0] += count
+			value[1] += cpuProbe.bytes[path]
+			groups[group] = value
+			paths = append(paths, path)
+		}
+		for _, group := range []string{"application", "framework-checkout", "standard-library", "module-cache"} {
+			value := groups[group]
+			t.Logf("phase=%s source=%s parses=%d bytes=%d", phase, group, value[0], value[1])
+		}
+		sort.Slice(paths, func(i, j int) bool { return cpuProbe.bytes[paths[i]] > cpuProbe.bytes[paths[j]] })
+		for i, path := range paths {
+			if i == 10 {
+				break
+			}
+			t.Log(fmt.Sprintf("phase=%s parses=%d bytes=%d file=%s", phase, cpuProbe.files[path], cpuProbe.bytes[path], path))
+		}
+	}
+}
+
+func TestCPUProbeFresh(t *testing.T) {
+ root,cfg := foreignFixture(t,"",map[string]string{"app/web/src/routes/api/thing/server.go":endpointSource})
+ _=root
+ cpuProbe.files,cpuProbe.bytes=map[string]int{},map[string]int{}
+ var before,after runtime.MemStats
+ runtime.ReadMemStats(&before)
+ start:=time.Now()
+ if err:=Run(cfg);err!=nil {t.Fatal(err)}
+ runtime.ReadMemStats(&after)
+ std:=0
+ for path,n:=range cpuProbe.files {if strings.HasPrefix(path,runtime.GOROOT()+"/"){std+=n}}
+ t.Logf("fresh wall=%s allocated=%.1f MiB stdlib-parses=%d",time.Since(start),float64(after.TotalAlloc-before.TotalAlloc)/(1<<20),std)
+}

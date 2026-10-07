@@ -1,0 +1,285 @@
+File: gen.test
+Type: alloc_space
+Time: 2026-10-07 09:58:21 PDT
+Showing nodes accounting for 4936.12MB, 86.06% of 5735.47MB total
+Dropped 765 nodes (cum <= 28.68MB)
+      flat  flat%   sum%        cum   cum%
+  477.35MB  8.32%  8.32%   881.21MB 15.36%  golang.org/x/tools/go/packages.(*golistState).createDriverResponse
+  430.54MB  7.51% 15.83%   430.54MB  7.51%  go/types.newVar (inline)
+  289.87MB  5.05% 20.88%   512.08MB  8.93%  io.copyBuffer
+  264.71MB  4.62% 25.50%   264.71MB  4.62%  bytes.growSlice
+  246.42MB  4.30% 29.80%   246.42MB  4.30%  golang.org/x/tools/go/gcexportdata.readAll
+  245.67MB  4.28% 34.08%  1458.03MB 25.42%  golang.org/x/tools/internal/gcimporter.UImportData
+  237.55MB  4.14% 38.22%   336.56MB  5.87%  os.lstatNolog
+  230.02MB  4.01% 42.23%   230.02MB  4.01%  internal/bytealg.MakeNoZero
+  223.21MB  3.89% 46.12%   266.72MB  4.65%  os.(*File).readdir
+  203.52MB  3.55% 49.67%   551.08MB  9.61%  path/filepath.walkSymlinks
+  173.49MB  3.02% 52.70%   173.49MB  3.02%  os.readFileContents
+  163.52MB  2.85% 55.55%   163.52MB  2.85%  syscall.ByteSliceFromString
+  123.51MB  2.15% 57.70%   123.51MB  2.15%  go/types.NewFunc (inline)
+   96.09MB  1.68% 59.38%    96.09MB  1.68%  reflect.growslice
+   91.55MB  1.60% 60.97%   106.05MB  1.85%  go/types.(*objset).insert
+   91.29MB  1.59% 62.56%   294.29MB  5.13%  github.com/tylergannon/skgo/internal/gen.mergeGo
+      78MB  1.36% 63.92%       80MB  1.39%  go/types.NewSignatureType
+   66.70MB  1.16% 65.09%  1151.51MB 20.08%  golang.org/x/tools/internal/gcimporter.readUnifiedPackage
+   62.61MB  1.09% 66.18%   202.63MB  3.53%  golang.org/x/tools/go/packages.absJoin
+      51MB  0.89% 67.07%       51MB  0.89%  github.com/tylergannon/skgo/internal/gen.validateSharedType.func1 (inline)
+      50MB  0.87% 67.94%       50MB  0.87%  slices.Grow[go.shape.[]uint8,go.shape.uint8] (inline)
+      48MB  0.84% 68.78%       48MB  0.84%  go/types.NewTuple (inline)
+   47.02MB  0.82% 69.60%    47.02MB  0.82%  golang.org/x/tools/go/packages.(*loader).refine.func1
+   46.02MB   0.8% 70.40%    46.02MB   0.8%  golang.org/x/tools/internal/gcimporter.(*pkgReader).objDictIdx
+   44.60MB  0.78% 71.18%  1137.52MB 19.83%  golang.org/x/tools/internal/gcimporter.(*pkgReader).objIdx
+   44.50MB  0.78% 71.95%    44.50MB  0.78%  encoding/json/v2.makeString
+   43.97MB  0.77% 72.72%    43.97MB  0.77%  github.com/dave/dst/decorator.(*fileDecorator).addDecorationFragment (inline)
+   43.50MB  0.76% 73.48%    43.50MB  0.76%  os.newUnixDirent
+   41.74MB  0.73% 74.20%    48.79MB  0.85%  github.com/dave/dst/decorator.(*fileDecorator).decorateNode
+   41.50MB  0.72% 74.93%       46MB   0.8%  go/parser.(*parser).parseIdent
+   40.83MB  0.71% 75.64%    40.83MB  0.71%  go/types.(*Checker).recordTypeAndValue
+   39.71MB  0.69% 76.33%    39.71MB  0.69%  golang.org/x/tools/go/packages.(*loader).loadFromExportData.func1
+   39.60MB  0.69% 77.02%    39.60MB  0.69%  golang.org/x/tools/internal/pkgbits.(*PkgDecoder).NewDecoderRaw
+   37.50MB  0.65% 77.68%    37.50MB  0.65%  os.newFile
+   35.28MB  0.62% 78.29%    68.36MB  1.19%  golang.org/x/tools/internal/pkgbits.NewPkgDecoder
+   33.08MB  0.58% 78.87%    33.08MB  0.58%  encoding/binary.Read
+   29.59MB  0.52% 79.38%    29.59MB  0.52%  go/types.(*Scope).insert (inline)
+   26.89MB  0.47% 79.85%    40.95MB  0.71%  go/printer.(*printer).nodeSize
+   25.50MB  0.44% 80.30%    65.11MB  1.14%  golang.org/x/tools/internal/gcimporter.(*pkgReader).newReader (inline)
+   22.88MB   0.4% 80.70%   310.74MB  5.42%  github.com/tylergannon/skgo/internal/gen.(*generatedOutput).overlay
+      22MB  0.38% 81.08%   943.39MB 16.45%  golang.org/x/tools/internal/gcimporter.(*reader).params
+   20.50MB  0.36% 81.44%    34.51MB   0.6%  go/parser.(*parser).parseCallOrConversion
+   19.01MB  0.33% 81.77%    47.52MB  0.83%  go/types.computeInterfaceTypeSet.func2
+   18.20MB  0.32% 82.09%    86.75MB  1.51%  github.com/dave/dst/decorator.(*fileDecorator).fragment
+   16.04MB  0.28% 82.37%   498.71MB  8.70%  github.com/tylergannon/skgo/internal/gen.prepareLoadParams
+   12.50MB  0.22% 82.58%    31.50MB  0.55%  go/parser.(*parser).parseParameterList
+      11MB  0.19% 82.78%   386.69MB  6.74%  go/parser.ParseFile
+   10.01MB  0.17% 82.95%   275.13MB  4.80%  go/parser.(*parser).parseFile
+      10MB  0.17% 83.13%   136.73MB  2.38%  go/printer.(*Config).fprint
+    9.60MB  0.17% 83.29%   740.27MB 12.91%  github.com/tylergannon/skgo/internal/gen.preserveDependencyExports
+    9.50MB  0.17% 83.46%       63MB  1.10%  go/parser.(*parser).parseOperand
+       9MB  0.16% 83.62%       43MB  0.75%  go/parser.(*parser).parseParameters
+    8.39MB  0.15% 83.76%    84.06MB  1.47%  go/parser.readSource
+    8.04MB  0.14% 83.90%   709.93MB 12.38%  github.com/tylergannon/skgo/internal/gen.TestSharedParamsGeneratedConsumers
+       8MB  0.14% 84.04%    56.02MB  0.98%  go/types.computeInterfaceTypeSet
+    7.55MB  0.13% 84.17%    58.56MB  1.02%  github.com/tylergannon/skgo/internal/gen.validateSharedType.func2
+    7.52MB  0.13% 84.30%    55.04MB  0.96%  golang.org/x/tools/go/packages.(*loader).refine
+       7MB  0.12% 84.43%       49MB  0.85%  go/parser.(*parser).parseSimpleStmt
+       6MB   0.1% 84.53%   908.41MB 15.84%  golang.org/x/tools/internal/gcimporter.(*reader).structType
+       6MB   0.1% 84.64%   107.51MB  1.87%  go/parser.(*parser).parseBinaryExpr
+       6MB   0.1% 84.74%   112.01MB  1.95%  go/parser.(*parser).parseExprList
+    5.50MB 0.096% 84.84%   146.54MB  2.55%  go/parser.(*parser).parseStmtList
+       5MB 0.087% 84.92%    40.53MB  0.71%  go/parser.(*parser).parseIfStmt
+       5MB 0.087% 85.01%    73.51MB  1.28%  go/parser.(*parser).parseReturnStmt
+    4.02MB  0.07% 85.08%    48.52MB  0.85%  encoding/json/v2.makeStringArshaler.func2
+       4MB  0.07% 85.15%    79.03MB  1.38%  go/types.NewStruct
+    3.50MB 0.061% 85.21%    50.51MB  0.88%  go/parser.(*parser).parseElementList
+    3.50MB 0.061% 85.27%    53.01MB  0.92%  go/parser.(*parser).parseLiteralValue
+    3.50MB 0.061% 85.33%   151.06MB  2.63%  go/parser.(*parser).parseBody
+    3.50MB 0.061% 85.39%    47.50MB  0.83%  go/parser.(*parser).parseElement
+    3.07MB 0.053% 85.45%   238.78MB  4.16%  github.com/tylergannon/skgo/internal/gen.writeSharedParams
+       3MB 0.052% 85.50%   627.82MB 10.95%  golang.org/x/tools/internal/gcimporter.(*reader).interfaceType
+       3MB 0.052% 85.55%    54.54MB  0.95%  go/parser.resolveFile
+    2.72MB 0.047% 85.60%   273.07MB  4.76%  github.com/tylergannon/skgo/internal/gen.(*app).writeGo
+    2.51MB 0.044% 85.64%   214.92MB  3.75%  github.com/tylergannon/skgo/internal/gen.stagePackageOverlay
+    2.50MB 0.044% 85.69%    69.05MB  1.20%  github.com/tylergannon/skgo/internal/gen.writeLoadParams
+    2.50MB 0.044% 85.73%    38.08MB  0.66%  golang.org/x/tools/internal/gocommand.(*Invocation).run
+    2.50MB 0.044% 85.77%   267.21MB  4.66%  bytes.(*Buffer).grow
+    2.50MB 0.044% 85.82%   185.57MB  3.24%  go/parser.(*parser).parseFuncDecl
+       2MB 0.035% 85.85%    59.04MB  1.03%  github.com/tylergannon/skgo/internal/gen.goFileNames
+    1.06MB 0.019% 85.87%   236.64MB  4.13%  github.com/tylergannon/skgo/internal/gen.(*app).generateCodecs
+       1MB 0.017% 85.89%   102.06MB  1.78%  github.com/tylergannon/skgo/internal/gen.sharedForbiddenPackages
+       1MB 0.017% 85.91%   137.73MB  2.40%  go/printer.(*Config).Fprint (inline)
+       1MB 0.017% 85.92%    48.55MB  0.85%  go/printer.(*printer).stmtList
+    0.50MB 0.0088% 85.93%    34.11MB  0.59%  github.com/tylergannon/skgo/internal/gen.TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink.func1
+    0.50MB 0.0088% 85.94%   118.38MB  2.06%  github.com/tylergannon/skgo/internal/gen.stagePackageOverlay.func4
+    0.50MB 0.0088% 85.95%    88.36MB  1.54%  github.com/tylergannon/polytype/devalue/codegen.Generate
+    0.50MB 0.0087% 85.96%   283.49MB  4.94%  github.com/tylergannon/skgo/internal/gen.write
+    0.50MB 0.0087% 85.97%   302.03MB  5.27%  github.com/tylergannon/skgo/internal/gen.(*generatedOutput).add
+    0.50MB 0.0087% 85.98%    56.11MB  0.98%  github.com/tylergannon/skgo/internal/gen.sharedFixture
+    0.50MB 0.0087% 85.98%    32.96MB  0.57%  go/types.(*Checker).compositeLit
+    0.50MB 0.0087% 85.99%    41.57MB  0.72%  go/types.(*Checker).packageObjects
+    0.50MB 0.0087% 86.00%   128.74MB  2.24%  github.com/tylergannon/skgo/internal/gen.loadApp
+    0.50MB 0.0087% 86.01%    77.08MB  1.34%  golang.org/x/tools/go/packages.(*loader).parseFile
+    0.50MB 0.0087% 86.02%   135.81MB  2.37%  github.com/tylergannon/skgo/internal/gen.readGoParamMatchers
+    0.50MB 0.0087% 86.03%    64.28MB  1.12%  go/types.(*Checker).initVars
+    0.50MB 0.0087% 86.04%    57.53MB  1.00%  github.com/tylergannon/skgo/internal/gen.observeCPUProbe.func2
+    0.50MB 0.0087% 86.05%  1745.70MB 30.44%  golang.org/x/tools/go/packages.(*loader).loadFromExportData
+    0.50MB 0.0087% 86.05%   974.42MB 16.99%  golang.org/x/tools/internal/gcimporter.(*reader).obj
+    0.50MB 0.0087% 86.06%       31MB  0.54%  go/parser.(*parser).parseFuncTypeOrLit
+         0     0% 86.06%   222.21MB  3.87%  bytes.(*Buffer).ReadFrom
+         0     0% 86.06%    36.50MB  0.64%  bytes.(*Buffer).Write
+         0     0% 86.06%   171.68MB  2.99%  encoding/json.(*Decoder).Decode
+         0     0% 86.06%    67.68MB  1.18%  encoding/json.Marshal (inline)
+         0     0% 86.06%       50MB  0.87%  encoding/json/internal/jsonwire.AppendQuote
+         0     0% 86.06%    67.68MB  1.18%  encoding/json/v2.Marshal
+         0     0% 86.06%   149.11MB  2.60%  encoding/json/v2.Unmarshal
+         0     0% 86.06%       52MB  0.91%  encoding/json/v2.makeMapArshaler.func2
+         0     0% 86.06%   121.09MB  2.11%  encoding/json/v2.makeSliceArshaler.func3
+         0     0% 86.06%    51.50MB   0.9%  encoding/json/v2.makeStructArshaler.func2
+         0     0% 86.06%   148.60MB  2.59%  encoding/json/v2.makeStructArshaler.func3
+         0     0% 86.06%       52MB  0.91%  encoding/json/v2.marshalEncode
+         0     0% 86.06%   149.11MB  2.60%  encoding/json/v2.unmarshalDecode
+         0     0% 86.06%   142.04MB  2.48%  github.com/dave/dst/decorator.(*Decorator).DecorateFile (inline)
+         0     0% 86.06%   142.04MB  2.48%  github.com/dave/dst/decorator.(*Decorator).DecorateNode
+         0     0% 86.06%    64.92MB  1.13%  github.com/dave/dst/decorator.(*fileDecorator).addNodeFragments
+         0     0% 86.06%   174.06MB  3.03%  github.com/dave/dst/decorator.Load
+         0     0% 86.06%   142.04MB  2.48%  github.com/dave/dst/decorator.Load.func1
+         0     0% 86.06%    44.53MB  0.78%  github.com/tylergannon/polytype/grammar.(*Package).Lower
+         0     0% 86.06%   135.54MB  2.36%  github.com/tylergannon/polytype/grammar.LoadWithConfig
+         0     0% 86.06%   174.06MB  3.03%  github.com/tylergannon/polytype/grammar.LoadWithConfig.func3 (partial-inline)
+         0     0% 86.06%    44.53MB  0.78%  github.com/tylergannon/polytype/internal/builder.(*SchemaBuilder).LowerRoots
+         0     0% 86.06%    39.02MB  0.68%  github.com/tylergannon/polytype/internal/builder.(*SchemaBuilder).LowerRoots.func1
+         0     0% 86.06%    39.02MB  0.68%  github.com/tylergannon/polytype/internal/builder.(*typeGrammarLowerer).ensurePackage
+         0     0% 86.06%    44.53MB  0.78%  github.com/tylergannon/polytype/internal/builder.(*typeGrammarLowerer).rootNamed
+         0     0% 86.06%    44.53MB  0.78%  github.com/tylergannon/polytype/internal/builder.(*typeGrammarLowerer).rootType
+         0     0% 86.06%    79.15MB  1.38%  github.com/tylergannon/polytype/internal/builder.FormatCodeWithGoimports
+         0     0% 86.06%    39.02MB  0.68%  github.com/tylergannon/polytype/internal/syntax.(*ScanResult).EnsureRemoteType
+         0     0% 86.06%    39.02MB  0.68%  github.com/tylergannon/polytype/internal/syntax.(*ScanResult).loadDependency
+         0     0% 86.06%    39.02MB  0.68%  github.com/tylergannon/polytype/internal/syntax.(*ScanResult).resolveTypes
+         0     0% 86.06%   936.84MB 16.33%  github.com/tylergannon/skgo/internal/gen.(*app).generateTypes
+         0     0% 86.06%   978.55MB 17.06%  github.com/tylergannon/skgo/internal/gen.(*app).loadGrammar
+         0     0% 86.06%   936.84MB 16.33%  github.com/tylergannon/skgo/internal/gen.(*app).projectTypes
+         0     0% 86.06%   283.49MB  4.94%  github.com/tylergannon/skgo/internal/gen.(*app).write (inline)
+         0     0% 86.06%   158.59MB  2.77%  github.com/tylergannon/skgo/internal/gen.(*app).writeAppBindings
+         0     0% 86.06%    29.13MB  0.51%  github.com/tylergannon/skgo/internal/gen.(*app).writeFormClients
+         0     0% 86.06%    31.03MB  0.54%  github.com/tylergannon/skgo/internal/gen.(*app).writePackageBindings
+         0     0% 86.06%   394.01MB  6.87%  github.com/tylergannon/skgo/internal/gen.Check
+         0     0% 86.06%  1697.29MB 29.59%  github.com/tylergannon/skgo/internal/gen.Run
+         0     0% 86.06%   317.34MB  5.53%  github.com/tylergannon/skgo/internal/gen.TestCPUProbe
+         0     0% 86.06%   300.33MB  5.24%  github.com/tylergannon/skgo/internal/gen.TestCPUProbe.func1
+         0     0% 86.06%   104.02MB  1.81%  github.com/tylergannon/skgo/internal/gen.TestCheckWireAdviceUsesAuthoredDeclarations.func1
+         0     0% 86.06%   219.41MB  3.83%  github.com/tylergannon/skgo/internal/gen.TestGeneratedCommandFormCallerEvents
+         0     0% 86.06%    43.61MB  0.76%  github.com/tylergannon/skgo/internal/gen.TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+         0     0% 86.06%    35.59MB  0.62%  github.com/tylergannon/skgo/internal/gen.TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations.func1
+         0     0% 86.06%    52.08MB  0.91%  github.com/tylergannon/skgo/internal/gen.TestNamedDeferredPayloadSerializedNames
+         0     0% 86.06%    75.20MB  1.31%  github.com/tylergannon/skgo/internal/gen.TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites.func1
+         0     0% 86.06%    30.90MB  0.54%  github.com/tylergannon/skgo/internal/gen.TestRealCheckReportsWireAdviceAtAuthoredLocations
+         0     0% 86.06%   227.33MB  3.96%  github.com/tylergannon/skgo/internal/gen.TestSharedParamsGeneratedNilLoads
+         0     0% 86.06%    64.84MB  1.13%  github.com/tylergannon/skgo/internal/gen.TestSharedParamsSourceDiagnostics.func1
+         0     0% 86.06%   206.60MB  3.60%  github.com/tylergannon/skgo/internal/gen.TestTypedLoadActualParameterDependencies
+         0     0% 86.06%   287.17MB  5.01%  github.com/tylergannon/skgo/internal/gen.copyExample
+         0     0% 86.06%   291.54MB  5.08%  github.com/tylergannon/skgo/internal/gen.copySandboxFile
+         0     0% 86.06%   299.52MB  5.22%  github.com/tylergannon/skgo/internal/gen.copySandboxTree (inline)
+         0     0% 86.06%   282.21MB  4.92%  github.com/tylergannon/skgo/internal/gen.copySandboxTree.func1
+         0     0% 86.06%   108.57MB  1.89%  github.com/tylergannon/skgo/internal/gen.findSourceFiles
+         0     0% 86.06%    30.90MB  0.54%  github.com/tylergannon/skgo/internal/gen.init.func4
+         0     0% 86.06%   135.41MB  2.36%  github.com/tylergannon/skgo/internal/gen.init.func7.2
+         0     0% 86.06%    35.37MB  0.62%  github.com/tylergannon/skgo/internal/gen.newGeneration
+         0     0% 86.06%    56.53MB  0.99%  github.com/tylergannon/skgo/internal/gen.observeCPUProbe.func1
+         0     0% 86.06%   195.73MB  3.41%  github.com/tylergannon/skgo/internal/gen.packageNameOf
+         0     0% 86.06%    60.52MB  1.06%  github.com/tylergannon/skgo/internal/gen.preserveDependencyExports.func4
+         0     0% 86.06%    82.32MB  1.44%  github.com/tylergannon/skgo/internal/gen.sandboxExample
+         0     0% 86.06%   100.88MB  1.76%  github.com/tylergannon/skgo/internal/gen.sharedSandbox
+         0     0% 86.06%    77.51MB  1.35%  github.com/tylergannon/skgo/internal/gen.sourcePath
+         0     0% 86.06%   135.41MB  2.36%  github.com/tylergannon/skgo/internal/gen.start[go.shape.interface { Error string }].func1
+         0     0% 86.06%   151.61MB  2.64%  github.com/tylergannon/skgo/internal/gen.validateSharedType
+         0     0% 86.06%    58.56MB  1.02%  github.com/tylergannon/skgo/internal/gen.validateSharedType.func3
+         0     0% 86.06%    58.56MB  1.02%  github.com/tylergannon/skgo/internal/gen.validateSharedType.func3.1
+         0     0% 86.06%    35.01MB  0.61%  github.com/tylergannon/skgo/internal/gen.walkCallerRouteDirs
+         0     0% 86.06%    49.04MB  0.86%  go/ast.Walk
+         0     0% 86.06%   223.28MB  3.89%  go/format.Source
+         0     0% 86.06%   117.72MB  2.05%  go/format.format
+         0     0% 86.06%   105.06MB  1.83%  go/format.parse
+         0     0% 86.06%    44.07MB  0.77%  go/parser.(*parser).next
+         0     0% 86.06%    40.07MB   0.7%  go/parser.(*parser).next0
+         0     0% 86.06%   201.57MB  3.51%  go/parser.(*parser).parseDecl
+         0     0% 86.06%   107.51MB  1.87%  go/parser.(*parser).parseExpr
+         0     0% 86.06%   112.01MB  1.95%  go/parser.(*parser).parseList (inline)
+         0     0% 86.06%   102.01MB  1.78%  go/parser.(*parser).parsePrimaryExpr
+         0     0% 86.06%   141.54MB  2.47%  go/parser.(*parser).parseStmt
+         0     0% 86.06%   102.01MB  1.78%  go/parser.(*parser).parseUnaryExpr
+         0     0% 86.06%       45MB  0.78%  go/parser.(*parser).parseValue
+         0     0% 86.06%    48.54MB  0.85%  go/parser.(*resolver).Visit
+         0     0% 86.06%    29.54MB  0.52%  go/parser.(*resolver).walkBody
+         0     0% 86.06%    48.55MB  0.85%  go/printer.(*printer).block
+         0     0% 86.06%    91.08MB  1.59%  go/printer.(*printer).decl
+         0     0% 86.06%    91.08MB  1.59%  go/printer.(*printer).declList
+         0     0% 86.06%    31.12MB  0.54%  go/printer.(*printer).expr1
+         0     0% 86.06%    54.68MB  0.95%  go/printer.(*printer).exprList
+         0     0% 86.06%    91.08MB  1.59%  go/printer.(*printer).file
+         0     0% 86.06%    33.09MB  0.58%  go/printer.(*printer).flush
+         0     0% 86.06%    49.61MB  0.87%  go/printer.(*printer).funcBody
+         0     0% 86.06%    86.56MB  1.51%  go/printer.(*printer).funcDecl
+         0     0% 86.06%    29.45MB  0.51%  go/printer.(*printer).intersperseComments
+         0     0% 86.06%    49.64MB  0.87%  go/printer.(*printer).print
+         0     0% 86.06%    91.08MB  1.59%  go/printer.(*printer).printNode
+         0     0% 86.06%    48.11MB  0.84%  go/printer.(*printer).stmt
+         0     0% 86.06%    40.57MB  0.71%  go/scanner.(*Scanner).Scan
+         0     0% 86.06%   146.01MB  2.55%  go/types.(*Checker).Files
+         0     0% 86.06%    47.96MB  0.84%  go/types.(*Checker).callExpr
+         0     0% 86.06%   146.01MB  2.55%  go/types.(*Checker).checkFiles
+         0     0% 86.06%    38.30MB  0.67%  go/types.(*Checker).declaredType
+         0     0% 86.06%    54.09MB  0.94%  go/types.(*Checker).expr
+         0     0% 86.06%    76.30MB  1.33%  go/types.(*Checker).exprInternal
+         0     0% 86.06%    85.43MB  1.49%  go/types.(*Checker).funcBody
+         0     0% 86.06%    85.43MB  1.49%  go/types.(*Checker).funcDecl.func1
+         0     0% 86.06%    35.46MB  0.62%  go/types.(*Checker).genericExpr
+         0     0% 86.06%    41.06MB  0.72%  go/types.(*Checker).objDecl
+         0     0% 86.06%    89.93MB  1.57%  go/types.(*Checker).processDelayed
+         0     0% 86.06%    85.44MB  1.49%  go/types.(*Checker).rawExpr
+         0     0% 86.06%    85.43MB  1.49%  go/types.(*Checker).stmt
+         0     0% 86.06%    85.43MB  1.49%  go/types.(*Checker).stmtList
+         0     0% 86.06%    56.02MB  0.98%  go/types.(*Interface).Complete (inline)
+         0     0% 86.06%    56.02MB  0.98%  go/types.(*Interface).typeSet (inline)
+         0     0% 86.06%    29.59MB  0.52%  go/types.(*Scope).Insert
+         0     0% 86.06%    61.51MB  1.07%  go/types.NewField (inline)
+         0     0% 86.06%   348.53MB  6.08%  go/types.NewParam (inline)
+         0     0% 86.06%  2869.56MB 50.03%  golang.org/x/sync/errgroup.(*Group).Go.func1
+         0     0% 86.06%  1698.45MB 29.61%  golang.org/x/tools/go/gcexportdata.Read
+         0     0% 86.06%  1908.21MB 33.27%  golang.org/x/tools/go/packages.(*loader).loadPackage
+         0     0% 86.06%    77.08MB  1.34%  golang.org/x/tools/go/packages.(*loader).parseFiles.func1
+         0     0% 86.06%  1906.21MB 33.24%  golang.org/x/tools/go/packages.(*loader).refine.func2.1
+         0     0% 86.06%    60.04MB  1.05%  golang.org/x/tools/go/packages.Load
+         0     0% 86.06%   890.77MB 15.53%  golang.org/x/tools/go/packages.callDriverOnChunks.func1
+         0     0% 86.06%   890.77MB 15.53%  golang.org/x/tools/go/packages.defaultDriver.func1
+         0     0% 86.06%   890.77MB 15.53%  golang.org/x/tools/go/packages.goListDriver
+         0     0% 86.06%    79.15MB  1.38%  golang.org/x/tools/imports.Process
+         0     0% 86.06%  1007.42MB 17.56%  golang.org/x/tools/internal/gcimporter.(*pkgReader).typIdx
+         0     0% 86.06%  1006.42MB 17.55%  golang.org/x/tools/internal/gcimporter.(*reader).doTyp
+         0     0% 86.06%   822.65MB 14.34%  golang.org/x/tools/internal/gcimporter.(*reader).method
+         0     0% 86.06%   950.39MB 16.57%  golang.org/x/tools/internal/gcimporter.(*reader).param
+         0     0% 86.06%   957.39MB 16.69%  golang.org/x/tools/internal/gcimporter.(*reader).signature
+         0     0% 86.06%  1007.42MB 17.56%  golang.org/x/tools/internal/gcimporter.(*reader).typ
+         0     0% 86.06%    38.08MB  0.66%  golang.org/x/tools/internal/gocommand.(*Invocation).runWithFriendlyError
+         0     0% 86.06%    38.08MB  0.66%  golang.org/x/tools/internal/gocommand.(*Runner).RunRaw
+         0     0% 86.06%    38.08MB  0.66%  golang.org/x/tools/internal/gocommand.(*Runner).runConcurrent
+         0     0% 86.06%   218.70MB  3.81%  golang.org/x/tools/internal/gocommand.runCmdContext.func1
+         0     0% 86.06%    79.15MB  1.38%  golang.org/x/tools/internal/imports.Process
+         0     0% 86.06%    59.63MB  1.04%  golang.org/x/tools/internal/imports.formatFile
+         0     0% 86.06%    39.60MB  0.69%  golang.org/x/tools/internal/pkgbits.(*PkgDecoder).NewDecoder
+         0     0% 86.06%   512.08MB  8.93%  io.Copy (inline)
+         0     0% 86.06%   243.19MB  4.24%  os.(*File).ReadDir
+         0     0% 86.06%   279.04MB  4.87%  os.(*File).ReadFrom
+         0     0% 86.06%   512.08MB  8.93%  os.(*File).WriteTo
+         0     0% 86.06%   336.56MB  5.87%  os.Lstat
+         0     0% 86.06%       33MB  0.58%  os.Open (inline)
+         0     0% 86.06%    45.01MB  0.78%  os.OpenFile
+         0     0% 86.06%   273.69MB  4.77%  os.ReadDir
+         0     0% 86.06%      216MB  3.77%  os.ReadFile
+         0     0% 86.06%   279.04MB  4.87%  os.genericReadFrom
+         0     0% 86.06%   512.08MB  8.93%  os.genericWriteTo
+         0     0% 86.06%   162.02MB  2.82%  os.ignoringEINTR (inline)
+         0     0% 86.06%    99.01MB  1.73%  os.lstatNolog.func1 (inline)
+         0     0% 86.06%    39.51MB  0.69%  os.open (inline)
+         0     0% 86.06%    30.50MB  0.53%  os.openDir
+         0     0% 86.06%    30.50MB  0.53%  os.openDirNolog
+         0     0% 86.06%    45.01MB  0.78%  os.openFileNolog
+         0     0% 86.06%   551.08MB  9.61%  path/filepath.EvalSymlinks
+         0     0% 86.06%   228.02MB  3.98%  path/filepath.Join (inline)
+         0     0% 86.06%   461.17MB  8.04%  path/filepath.WalkDir
+         0     0% 86.06%   551.08MB  9.61%  path/filepath.evalSymlinks (inline)
+         0     0% 86.06%   228.02MB  3.98%  path/filepath.join
+         0     0% 86.06%   461.17MB  8.04%  path/filepath.walkDir
+         0     0% 86.06%    96.09MB  1.68%  reflect.Value.Grow
+         0     0% 86.06%    96.09MB  1.68%  reflect.Value.grow
+         0     0% 86.06%   300.33MB  5.24%  runtime/pprof.Do
+         0     0% 86.06%   230.02MB  4.01%  strings.(*Builder).Grow
+         0     0% 86.06%   230.02MB  4.01%  strings.(*Builder).grow
+         0     0% 86.06%   228.02MB  3.98%  strings.Join
+         0     0% 86.06%   111.56MB  1.95%  sync.(*Once).Do (partial-inline)
+         0     0% 86.06%   111.56MB  1.95%  sync.(*Once).doSlow
+         0     0% 86.06%    58.13MB  1.01%  sync.OnceValue[go.shape.*uint8].func1
+         0     0% 86.06%    58.13MB  1.01%  sync.OnceValue[go.shape.*uint8].func1.1
+         0     0% 86.06%   163.52MB  2.85%  syscall.BytePtrFromString (inline)
+         0     0% 86.06%    99.01MB  1.73%  syscall.Lstat
+         0     0% 86.06%    39.51MB  0.69%  syscall.Open
+         0     0% 86.06%  2311.54MB 40.30%  testing.tRunner
+         0     0% 86.06%    44.14MB  0.77%  text/tabwriter.(*Writer).Write

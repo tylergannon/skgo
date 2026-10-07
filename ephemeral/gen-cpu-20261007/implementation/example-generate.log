@@ -1,0 +1,70 @@
+cd example/internal/skgo && go generate ./...
+skgo: projected the types in github.com/tylergannon/skgo/example/actiondemo to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/lib/skgo/actiondemo/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/businesslogic to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/lib/skgo/businesslogic/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/(marketing)/pricing/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/todos/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/todos/gate/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/actions/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/account/orders/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5 to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/async-ssr/[mode]/[group]/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/batch/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/contact/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5 to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/docs/[...rest]/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/destinations/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/empty/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/error/boundary/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/error/command/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/error/redirect/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/invoices/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/items/[id]/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/live/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a to /Users/tyler/.codex/worktrees/3e0c/skgo/example/web/src/routes/optional/types.ts
+skgo: copied internal/skgo/links/onzggl3sn52xizlt/skgo_gen.go from web/src/routes/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th/skgo_gen.go from web/src/routes/(marketing)/pricing/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf52g6zdpom/skgo_gen.go from web/src/routes/todos/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu/skgo_gen.go from web/src/routes/todos/gate/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi/skgo_gen.go from web/src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu/skgo_gen.go from web/src/routes/typed-load/[number=Order]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwe33voq/skgo_gen.go from web/src/routes/about/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg/skgo_gen.go from web/src/routes/actions/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq/skgo_gen.go from web/src/routes/actions/cross/receive/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq/skgo_gen.go from web/src/routes/actions/default/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa/skgo_gen.go from web/src/routes/actions/default/saved/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq/skgo_gen.go from web/src/routes/actions/options/no-client/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe/skgo_gen.go from web/src/routes/actions/options/no-ssr/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq/skgo_gen.go from web/src/routes/actions/profiles/[profile]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4/skgo_gen.go from web/src/routes/actions/signed-in/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi/skgo_gen.go from web/src/routes/account/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt/skgo_gen.go from web/src/routes/account/orders/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3smvzhk3ttf5nxg3dvm5oq/skgo_gen.go from web/src/routes/account/reruns/[slug]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi/skgo_gen.go from web/src/routes/account/statement/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm/skgo_gen.go from web/src/routes/api/fatal/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a/skgo_gen.go from web/src/routes/api/replay-count/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2/skgo_gen.go from web/src/routes/api/replay/[kind]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq/skgo_gen.go from web/src/routes/api/request-fetch/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t/skgo_gen.go from web/src/routes/api/todos/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5/skgo_gen.go from web/src/routes/async-ssr/[mode]/[group]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu/skgo_gen.go from web/src/routes/async-ssr/control/[group]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5rgc5ddna/skgo_gen.go from web/src/routes/batch/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi/skgo_gen.go from web/src/routes/contact/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5/skgo_gen.go from web/src/routes/docs/[...rest]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg/skgo_gen.go from web/src/routes/destinations/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sw24dupe/skgo_gen.go from web/src/routes/empty/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz/skgo_gen.go from web/src/routes/error/boundary/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za/skgo_gen.go from web/src/routes/error/command/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle/skgo_gen.go from web/src/routes/error/expected/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u/skgo_gen.go from web/src/routes/error/redirect/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa/skgo_gen.go from web/src/routes/error/unexpected/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5tw6llemv3a/skgo_gen.go from web/src/routes/go-dev/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5tw6llemv3c6zlomryg62looq/skgo_gen.go from web/src/routes/go-dev/endpoint/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y/skgo_gen.go from web/src/routes/invoices/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu/skgo_gen.go from web/src/routes/items/[id]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5wgs5tf/skgo_gen.go from web/src/routes/live/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu/skgo_gen.go from web/src/routes/middleware/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2/skgo_gen.go from web/src/routes/middleware/[slug]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a/skgo_gen.go from web/src/routes/optional/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq/skgo_gen.go from web/src/routes/prerender/[slug]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a/skgo_gen.go from web/src/routes/request-fetch/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq/skgo_gen.go from web/src/routes/shadow/[...rest]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq/skgo_gen.go from web/src/routes/stream/skgo_gen.go

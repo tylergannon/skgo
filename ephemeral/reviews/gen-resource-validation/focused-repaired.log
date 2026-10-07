@@ -1,0 +1,81 @@
+=== RUN   TestAppWithoutPageActionsStillHasAnActionRegistry
+=== PAUSE TestAppWithoutPageActionsStillHasAnActionRegistry
+=== RUN   TestAServerRouteBecomesTheModuleKitCompiles
+=== PAUSE TestAServerRouteBecomesTheModuleKitCompiles
+=== RUN   TestTypedLoadActualParameterDependencies
+=== PAUSE TestTypedLoadActualParameterDependencies
+=== RUN   TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== PAUSE TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== RUN   TestFormatterFailureDoesNotPublishGeneratedOutput
+=== PAUSE TestFormatterFailureDoesNotPublishGeneratedOutput
+=== RUN   TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies
+=== RUN   TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/unchanged_dependency
+=== RUN   TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/changed_dependency
+--- PASS: TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies (0.08s)
+    --- PASS: TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/unchanged_dependency (0.04s)
+    --- PASS: TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/changed_dependency (0.03s)
+=== RUN   TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy
+--- PASS: TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy (0.10s)
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies/real-dir-alias-overlay
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies/alias-dir-real-overlay
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies/file-alias-overlay
+--- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies (0.10s)
+    --- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies/real-dir-alias-overlay (0.03s)
+    --- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies/alias-dir-real-overlay (0.03s)
+    --- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies/file-alias-overlay (0.03s)
+=== RUN   TestReadOnlyPackagesPreserveExternalDriverOverlays
+=== RUN   TestReadOnlyPackagesPreserveExternalDriverOverlays/auto-discovered
+=== RUN   TestReadOnlyPackagesPreserveExternalDriverOverlays/configured
+--- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays (0.36s)
+    --- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays/auto-discovered (0.21s)
+    --- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays/configured (0.03s)
+=== RUN   TestSharedParamsGeneratedConsumers
+=== PAUSE TestSharedParamsGeneratedConsumers
+=== RUN   TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/private-type
+=== RUN   TestSharedParamsSourceDiagnostics/private-argument
+=== RUN   TestSharedParamsSourceDiagnostics/private-struct-field
+=== RUN   TestSharedParamsSourceDiagnostics/private-interface-method
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+--- PASS: TestSharedParamsSourceDiagnostics (1.81s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-type (0.26s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-argument (0.22s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-struct-field (0.22s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-interface-method (0.23s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.20s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/transitive-generated (0.24s)
+=== CONT  TestAppWithoutPageActionsStillHasAnActionRegistry
+=== CONT  TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== CONT  TestSharedParamsGeneratedConsumers
+=== CONT  TestFormatterFailureDoesNotPublishGeneratedOutput
+=== CONT  TestTypedLoadActualParameterDependencies
+=== CONT  TestAServerRouteBecomesTheModuleKitCompiles
+--- PASS: TestAppWithoutPageActionsStillHasAnActionRegistry (0.23s)
+--- PASS: TestAServerRouteBecomesTheModuleKitCompiles (0.23s)
+--- PASS: TestFormatterFailureDoesNotPublishGeneratedOutput (1.26s)
+--- PASS: TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations (4.51s)
+--- PASS: TestTypedLoadActualParameterDependencies (12.04s)
+=== NAME  TestSharedParamsGeneratedConsumers
+    shared_params_test.go:169: compiled consumers:
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.261s
+    shared_params_test.go:231: compiled consumers:
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        === RUN   TestThird
+        --- PASS: TestThird (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.273s
+--- PASS: TestSharedParamsGeneratedConsumers (22.57s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	25.306s

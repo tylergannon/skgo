@@ -1,0 +1,11 @@
+=== RUN   TestIndependentLaterLineDirective
+    independent_probe_test.go:65: -: # laterline
+        ./alternate.go:40:16: undefined: Missing
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-3603049702/alternate.go:40:16: undefined: Missing
+    independent_probe_test.go:66: relative authored line directive changed: -: # laterline
+        ./alternate.go:40:16: undefined: Missing
+        /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-package-view-3603049702/alternate.go:40:16: undefined: Missing
+--- FAIL: TestIndependentLaterLineDirective (0.11s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	0.519s
+FAIL

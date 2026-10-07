@@ -1,0 +1,22 @@
+parse-count matcher/application 4
+parse-count scan/application 220
+parse-count grammar/application 140
+parse-count scan/new-file/application 3
+        9.36 real         6.28 user         8.00 sys
+           228671488  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              879835  page reclaims
+                 420  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                3591  signals received
+                1580  voluntary context switches
+               92561  involuntary context switches
+         43611310170  instructions retired
+         12802783928  cycles elapsed
+           213123912  peak memory footprint

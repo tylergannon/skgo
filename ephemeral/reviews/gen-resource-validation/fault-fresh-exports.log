@@ -1,0 +1,6 @@
+=== RUN   TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy
+    package_overlay_test.go:247: fresh source reparsed 1090 dependency files despite compiler exports
+--- FAIL: TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy (0.19s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	0.449s
+FAIL

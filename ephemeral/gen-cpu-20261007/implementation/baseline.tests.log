@@ -1,0 +1,741 @@
+=== RUN   TestAppWithoutPageActionsStillHasAnActionRegistry
+=== PAUSE TestAppWithoutPageActionsStillHasAnActionRegistry
+=== RUN   TestActionDeclarationsMatchKit
+=== PAUSE TestActionDeclarationsMatchKit
+=== RUN   TestGeneratingAgainstAnotherSkgosAdapterIsRefused
+=== PAUSE TestGeneratingAgainstAnotherSkgosAdapterIsRefused
+=== RUN   TestGeneratingAnEmptyAppNeedsNoInstalledAdapter
+=== PAUSE TestGeneratingAnEmptyAppNeedsNoInstalledAdapter
+=== RUN   TestGeneratingAgainstThisModulesAdapterIsAllowed
+=== PAUSE TestGeneratingAgainstThisModulesAdapterIsAllowed
+=== RUN   TestANoArgumentRemoteFunctionIsAnOrdinaryGoFunction
+=== PAUSE TestANoArgumentRemoteFunctionIsAnOrdinaryGoFunction
+=== RUN   TestNoArgumentMeansNothingToProject
+=== PAUSE TestNoArgumentMeansNothingToProject
+=== RUN   TestAFunctionSkgoCannotPublishIsRefusedByName
+=== PAUSE TestAFunctionSkgoCannotPublishIsRefusedByName
+=== RUN   TestABatchQueryIsProjectedFromItsElementTypes
+=== PAUSE TestABatchQueryIsProjectedFromItsElementTypes
+=== RUN   TestABatchQueryThatIsNotABatchIsRefused
+=== PAUSE TestABatchQueryThatIsNotABatchIsRefused
+=== RUN   TestFrontendRebuildWithoutCallerGeneration
+--- PASS: TestFrontendRebuildWithoutCallerGeneration (6.10s)
+=== RUN   TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink
+=== PAUSE TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink
+=== RUN   TestRealCheckReportsWireAdviceAtAuthoredLocations
+=== PAUSE TestRealCheckReportsWireAdviceAtAuthoredLocations
+=== RUN   TestCheckWireAdviceUsesAuthoredDeclarations
+=== PAUSE TestCheckWireAdviceUsesAuthoredDeclarations
+=== RUN   TestCheckAcceptsNullableWithGeneratorProjection
+=== PAUSE TestCheckAcceptsNullableWithGeneratorProjection
+=== RUN   TestNamedDeferredPayloadSerializedNames
+=== PAUSE TestNamedDeferredPayloadSerializedNames
+=== RUN   TestFormClientInputContractEvolution
+=== PAUSE TestFormClientInputContractEvolution
+=== RUN   TestFormClientResultContractEvolution
+=== PAUSE TestFormClientResultContractEvolution
+=== RUN   TestFormClientGenerationRecoversAndTracksContract
+=== PAUSE TestFormClientGenerationRecoversAndTracksContract
+=== RUN   TestEmptyAppRemovesOldFormClient
+=== PAUSE TestEmptyAppRemovesOldFormClient
+=== RUN   TestCPUProbe
+    cpu_probe_test.go:81: phase=existing-tree wall=5.022657875s allocated=1508.9 MiB gc=20 GOMAXPROCS=10
+    cpu_probe_test.go:101: phase=existing-tree source=application parses=188 bytes=273550
+    cpu_probe_test.go:101: phase=existing-tree source=framework-checkout parses=57 bytes=676730
+    cpu_probe_test.go:101: phase=existing-tree source=standard-library parses=1182 bytes=12577571
+    cpu_probe_test.go:101: phase=existing-tree source=module-cache parses=212 bytes=9220347
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=4950165 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/collate/tables.go
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=523354 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/crypto/internal/fips140/nistec/p256_table.go
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=402801 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/vendor/golang.org/x/text/unicode/norm/tables17.0.0.go
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=402800 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/unicode/norm/tables17.0.0.go
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=312250 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/vendor/golang.org/x/net/idna/tables17.0.0.go
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=312250 file=/Users/tyler/go/pkg/mod/golang.org/x/net@v0.59.0/idna/tables17.0.0.go
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=272949 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/unicode/rangetable/tables17.0.0.go
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=256788 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/unicode/tables.go
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=252048 file=/Users/tyler/go/pkg/mod/github.com/dlclark/regexp2/v2@v2.8.0/syntax/unicode_alias_tables.go
+    cpu_probe_test.go:108: phase=existing-tree parses=1 bytes=243217 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/runtime/proc.go
+    cpu_probe_test.go:81: phase=repeat-unchanged wall=4.270547s allocated=1506.9 MiB gc=11 GOMAXPROCS=10
+    cpu_probe_test.go:101: phase=repeat-unchanged source=application parses=188 bytes=273550
+    cpu_probe_test.go:101: phase=repeat-unchanged source=framework-checkout parses=57 bytes=676730
+    cpu_probe_test.go:101: phase=repeat-unchanged source=standard-library parses=1182 bytes=12577571
+    cpu_probe_test.go:101: phase=repeat-unchanged source=module-cache parses=212 bytes=9220347
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=4950165 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/collate/tables.go
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=523354 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/crypto/internal/fips140/nistec/p256_table.go
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=402801 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/vendor/golang.org/x/text/unicode/norm/tables17.0.0.go
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=402800 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/unicode/norm/tables17.0.0.go
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=312250 file=/Users/tyler/go/pkg/mod/golang.org/x/net@v0.59.0/idna/tables17.0.0.go
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=312250 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/vendor/golang.org/x/net/idna/tables17.0.0.go
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=272949 file=/Users/tyler/go/pkg/mod/golang.org/x/text@v0.42.0/unicode/rangetable/tables17.0.0.go
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=256788 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/unicode/tables.go
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=252048 file=/Users/tyler/go/pkg/mod/github.com/dlclark/regexp2/v2@v2.8.0/syntax/unicode_alias_tables.go
+    cpu_probe_test.go:108: phase=repeat-unchanged parses=1 bytes=243217 file=/opt/homebrew/Cellar/go/1.27.1/libexec/src/runtime/proc.go
+--- PASS: TestCPUProbe (9.34s)
+=== RUN   TestCPUProbeFresh
+    cpu_probe_test.go:124: fresh wall=344.85325ms allocated=301.1 MiB stdlib-parses=1090
+--- PASS: TestCPUProbeFresh (0.35s)
+=== RUN   TestAServerRouteBecomesTheModuleKitCompiles
+=== PAUSE TestAServerRouteBecomesTheModuleKitCompiles
+=== RUN   TestJavaScriptModeEmitsJSDocServerRoute
+=== PAUSE TestJavaScriptModeEmitsJSDocServerRoute
+=== RUN   TestTypeScriptModeServerRouteStubIsUnchanged
+=== PAUSE TestTypeScriptModeServerRouteStubIsUnchanged
+=== RUN   TestSwitchingLanguageReplacesTheServerRouteStub
+=== PAUSE TestSwitchingLanguageReplacesTheServerRouteStub
+=== RUN   TestARouteIdIsTheDirectoryPathVerbatim
+=== PAUSE TestARouteIdIsTheDirectoryPathVerbatim
+=== RUN   TestAServerRouteMarkerBelongsInServerGo
+=== PAUSE TestAServerRouteMarkerBelongsInServerGo
+=== RUN   TestARouteCannotAnswerAMethodTwice
+=== PAUSE TestARouteCannotAnswerAMethodTwice
+=== RUN   TestEnvironmentGenerationUsesDeclaredGoTypes
+=== PAUSE TestEnvironmentGenerationUsesDeclaredGoTypes
+=== RUN   TestWriteFormatsGeneratedSourceBeforeComparing
+--- PASS: TestWriteFormatsGeneratedSourceBeforeComparing (0.13s)
+=== RUN   TestWriteWithoutVitePlusLeavesGenerationAvailable
+--- PASS: TestWriteWithoutVitePlusLeavesGenerationAvailable (0.00s)
+=== RUN   TestJavaScriptModeEmitsJSDocServerLoadsAndActions
+=== PAUSE TestJavaScriptModeEmitsJSDocServerLoadsAndActions
+=== RUN   TestJavaScriptModeAcceptsAPrerenderedLoad
+=== PAUSE TestJavaScriptModeAcceptsAPrerenderedLoad
+=== RUN   TestJavaScriptModeLoadImportsATransportedClassFromHooks
+=== PAUSE TestJavaScriptModeLoadImportsATransportedClassFromHooks
+=== RUN   TestTypeScriptModeLoadStubCarriesTheBuildBridge
+=== PAUSE TestTypeScriptModeLoadStubCarriesTheBuildBridge
+=== RUN   TestJavaScriptModeEmitsJSDocRemotesAndTypes
+=== PAUSE TestJavaScriptModeEmitsJSDocRemotesAndTypes
+=== RUN   TestJavaScriptModeIsChosenFromTheApp
+=== PAUSE TestJavaScriptModeIsChosenFromTheApp
+=== RUN   TestSwitchingLanguageRemovesOnlyGeneratedFiles
+=== PAUSE TestSwitchingLanguageRemovesOnlyGeneratedFiles
+=== RUN   TestJavaScriptModeKeepsTheCollisionRefusal
+=== PAUSE TestJavaScriptModeKeepsTheCollisionRefusal
+=== RUN   TestEveryRouteDirectoryBecomesAnImportableGoPackage
+=== PAUSE TestEveryRouteDirectoryBecomesAnImportableGoPackage
+=== RUN   TestGeneratedRoutePackagesContainFilesNotSymlinks
+=== PAUSE TestGeneratedRoutePackagesContainFilesNotSymlinks
+=== RUN   TestGeneratedRoutePackagesSurviveAModuleArchive
+=== PAUSE TestGeneratedRoutePackagesSurviveAModuleArchive
+=== RUN   TestTheBoundaryStopsTheParentModuleWalkingIn
+=== PAUSE TestTheBoundaryStopsTheParentModuleWalkingIn
+=== RUN   TestAnAuthoredBoundaryIsLeftAlone
+=== PAUSE TestAnAuthoredBoundaryIsLeftAlone
+=== RUN   TestTheLinkTreeRegeneratesDeterministically
+=== PAUSE TestTheLinkTreeRegeneratesDeterministically
+=== RUN   TestRemovingTheLastGoFileRemovesTheBoundary
+=== PAUSE TestRemovingTheLastGoFileRemovesTheBoundary
+=== RUN   TestTheRoutePackageHoldsOnlyGeneratedCopies
+=== PAUSE TestTheRoutePackageHoldsOnlyGeneratedCopies
+=== RUN   TestAStaleLinkInTheRouteRootGoes
+=== PAUSE TestAStaleLinkInTheRouteRootGoes
+=== RUN   TestPruningRefusesToDeleteSomethingItDidNotCreate
+=== PAUSE TestPruningRefusesToDeleteSomethingItDidNotCreate
+=== RUN   TestLinkNamesAreTheDocumentedEncoding
+=== PAUSE TestLinkNamesAreTheDocumentedEncoding
+=== RUN   TestTypedLoadJavaScriptMatcherContract
+--- PASS: TestTypedLoadJavaScriptMatcherContract (0.10s)
+=== RUN   TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation
+=== PAUSE TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation
+=== RUN   TestTypedLoadMatchersPrerenderNamedGoValues
+=== PAUSE TestTypedLoadMatchersPrerenderNamedGoValues
+=== RUN   TestTypedLoadActualParameterDependencies
+=== PAUSE TestTypedLoadActualParameterDependencies
+=== RUN   TestAppMatchersWithoutGoLoads
+--- PASS: TestAppMatchersWithoutGoLoads (0.85s)
+=== RUN   TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== PAUSE TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== RUN   TestMergeGoKeepsFileLocalImportsAndLocalShadows
+--- PASS: TestMergeGoKeepsFileLocalImportsAndLocalShadows (0.30s)
+=== RUN   TestFormatterFailureDoesNotPublishGeneratedOutput
+=== PAUSE TestFormatterFailureDoesNotPublishGeneratedOutput
+=== RUN   TestATypeFromAnotherModuleCrossesTheWire
+=== PAUSE TestATypeFromAnotherModuleCrossesTheWire
+=== RUN   TestTwoDependenciesCalledTheSameThingAreKeptApart
+=== PAUSE TestTwoDependenciesCalledTheSameThingAreKeptApart
+=== RUN   TestOneStubCannotImportTwoTypesOfTheSameName
+=== PAUSE TestOneStubCannotImportTwoTypesOfTheSameName
+=== RUN   TestATypeThatReachesAnotherOfItsOwnNameIsRefused
+=== PAUSE TestATypeThatReachesAnotherOfItsOwnNameIsRefused
+=== RUN   TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace
+=== PAUSE TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace
+=== RUN   TestOwnershipSurvivesASymlinkedPath
+=== PAUSE TestOwnershipSurvivesASymlinkedPath
+=== RUN   TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies
+=== RUN   TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/unchanged_dependency
+=== RUN   TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/changed_dependency
+--- PASS: TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies (0.07s)
+    --- PASS: TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/unchanged_dependency (0.04s)
+    --- PASS: TestReadOnlyPackagesUseCurrentSourcesAndCompilerDependencies/changed_dependency (0.04s)
+=== RUN   TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy
+--- PASS: TestReadOnlyPackagesStillLoadSourceWithoutACommittedCopy (0.03s)
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies/real-dir-alias-overlay
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies/alias-dir-real-overlay
+=== RUN   TestReadOnlyPackagesResolveAliasedRootsAndDependencies/file-alias-overlay
+--- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies (0.11s)
+    --- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies/real-dir-alias-overlay (0.04s)
+    --- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies/alias-dir-real-overlay (0.04s)
+    --- PASS: TestReadOnlyPackagesResolveAliasedRootsAndDependencies/file-alias-overlay (0.04s)
+=== RUN   TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites
+=== RUN   TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites/parser
+    package_overlay_test.go:227: skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWritesparser3727496711/001/example/web/src/routes/todos/todos.remote.go:170:19: syntax error: unexpected {, expected )
+=== RUN   TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites/compiler
+    package_overlay_test.go:227: skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWritescompil4020184774/001/example/web/src/routes/todos/todos.remote.go:170:9: undefined: checkMissingIdentifier
+--- PASS: TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites (3.56s)
+    --- PASS: TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites/parser (1.72s)
+    --- PASS: TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites/compiler (1.84s)
+=== RUN   TestReadOnlyPackagesPreserveExternalDriverOverlays
+=== RUN   TestReadOnlyPackagesPreserveExternalDriverOverlays/auto-discovered
+=== RUN   TestReadOnlyPackagesPreserveExternalDriverOverlays/configured
+--- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays (0.36s)
+    --- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays/auto-discovered (0.21s)
+    --- PASS: TestReadOnlyPackagesPreserveExternalDriverOverlays/configured (0.03s)
+=== RUN   TestGoPagePrerenderRedirectBuildsKitsNativeArtifact
+=== PAUSE TestGoPagePrerenderRedirectBuildsKitsNativeArtifact
+=== RUN   TestCompiledProductionNoArgumentNullReachesTheArtifactLookup
+=== PAUSE TestCompiledProductionNoArgumentNullReachesTheArtifactLookup
+=== RUN   TestCompiledProductionStoredPrerenderError
+=== PAUSE TestCompiledProductionStoredPrerenderError
+=== RUN   TestCompiledProductionPrerenderTransformFailure
+=== PAUSE TestCompiledProductionPrerenderTransformFailure
+=== RUN   TestPrerenderGoLoadFailureNamesAuthoredRoute
+    prerender_test.go:44: intentional vp build failure: exit status 1
+--- PASS: TestPrerenderGoLoadFailureNamesAuthoredRoute (3.32s)
+=== RUN   TestPrerenderInputsGenerateLazyTypedProducerAndNoArgumentUndefined
+=== PAUSE TestPrerenderInputsGenerateLazyTypedProducerAndNoArgumentUndefined
+=== RUN   TestJavaScriptPrerenderInputCallbackCarriesProducerElementType
+=== PAUSE TestJavaScriptPrerenderInputCallbackCarriesProducerElementType
+=== RUN   TestPrerenderOptionsFailuresArePositioned
+=== PAUSE TestPrerenderOptionsFailuresArePositioned
+=== RUN   TestPrerenderInputProducerMustMatchBodyArgument
+=== PAUSE TestPrerenderInputProducerMustMatchBodyArgument
+=== RUN   TestNoArgumentPrerenderInputsCompileWithoutFmtImport
+=== PAUSE TestNoArgumentPrerenderInputsCompileWithoutFmtImport
+=== RUN   TestPrerenderInputHandlersHaveUniqueNamesAcrossModules
+=== PAUSE TestPrerenderInputHandlersHaveUniqueNamesAcrossModules
+=== RUN   TestTransportedPrerenderInputsUseRuntimeTransportEncoding
+=== PAUSE TestTransportedPrerenderInputsUseRuntimeTransportEncoding
+=== RUN   TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch
+=== PAUSE TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch
+=== RUN   TestPrerenderInheritanceMatchesKit
+=== PAUSE TestPrerenderInheritanceMatchesKit
+=== RUN   TestLoadsOutsideThePrerenderedBranchAreAccepted
+=== PAUSE TestLoadsOutsideThePrerenderedBranchAreAccepted
+=== RUN   TestAPrerenderedPageCanHaveItsOwnGoLoad
+=== PAUSE TestAPrerenderedPageCanHaveItsOwnGoLoad
+=== RUN   TestANamedLayoutResetExcludesLoadsOutsideKitsBranch
+=== PAUSE TestANamedLayoutResetExcludesLoadsOutsideKitsBranch
+=== RUN   TestTheLoadStubBridgesAPrerenderCall
+=== PAUSE TestTheLoadStubBridgesAPrerenderCall
+=== RUN   TestOptionExamplesInCommentsAndStringsAreIgnored
+=== PAUSE TestOptionExamplesInCommentsAndStringsAreIgnored
+=== RUN   TestGenerateRemovesWhatTheDeletedGoProduced
+--- PASS: TestGenerateRemovesWhatTheDeletedGoProduced (11.39s)
+=== RUN   TestGeneratedCommandFormCallerEvents
+    remote_params_test.go:46: generated handler contracts:
+        === RUN   TestCallerHandlers
+        === RUN   TestCallerHandlers/dev=false
+        === RUN   TestCallerHandlers/dev=true
+        --- PASS: TestCallerHandlers (0.04s)
+            --- PASS: TestCallerHandlers/dev=false (0.02s)
+            --- PASS: TestCallerHandlers/dev=true (0.02s)
+        === RUN   TestCallerOverlap
+        === RUN   TestCallerOverlap/dev=false
+        === RUN   TestCallerOverlap/dev=false/act
+        === RUN   TestCallerOverlap/dev=false/submit
+        === RUN   TestCallerOverlap/dev=true
+        === RUN   TestCallerOverlap/dev=true/act
+        === RUN   TestCallerOverlap/dev=true/submit
+        --- PASS: TestCallerOverlap (0.00s)
+            --- PASS: TestCallerOverlap/dev=false (0.00s)
+                --- PASS: TestCallerOverlap/dev=false/act (0.00s)
+                --- PASS: TestCallerOverlap/dev=false/submit (0.00s)
+            --- PASS: TestCallerOverlap/dev=true (0.00s)
+                --- PASS: TestCallerOverlap/dev=true/act (0.00s)
+                --- PASS: TestCallerOverlap/dev=true/submit (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo	1.367s
+--- PASS: TestGeneratedCommandFormCallerEvents (9.89s)
+=== RUN   TestCommandFormContextMigrationDiagnostics
+=== RUN   TestCommandFormContextMigrationDiagnostics/Command/ctx-only
+=== RUN   TestCommandFormContextMigrationDiagnostics/Command/event-only
+=== RUN   TestCommandFormContextMigrationDiagnostics/Command/wrong-params
+=== RUN   TestCommandFormContextMigrationDiagnostics/Form/ctx-only
+=== RUN   TestCommandFormContextMigrationDiagnostics/Form/event-only
+=== RUN   TestCommandFormContextMigrationDiagnostics/Form/wrong-params
+--- PASS: TestCommandFormContextMigrationDiagnostics (1.59s)
+    --- PASS: TestCommandFormContextMigrationDiagnostics/Command/ctx-only (0.27s)
+    --- PASS: TestCommandFormContextMigrationDiagnostics/Command/event-only (0.24s)
+    --- PASS: TestCommandFormContextMigrationDiagnostics/Command/wrong-params (0.28s)
+    --- PASS: TestCommandFormContextMigrationDiagnostics/Form/ctx-only (0.26s)
+    --- PASS: TestCommandFormContextMigrationDiagnostics/Form/event-only (0.24s)
+    --- PASS: TestCommandFormContextMigrationDiagnostics/Form/wrong-params (0.28s)
+=== RUN   TestSharedParamsGoIdentities
+=== RUN   TestSharedParamsGoIdentities/Number/Alias
+=== RUN   TestSharedParamsGoIdentities/Number/Other
+=== RUN   TestSharedParamsGoIdentities/F/G
+=== RUN   TestSharedParamsGoIdentities/F/Variadic
+=== RUN   TestSharedParamsGoIdentities/I/J
+=== RUN   TestSharedParamsGoIdentities/I/K
+=== RUN   TestSharedParamsGoIdentities/Struct/Tagged
+=== RUN   TestSharedParamsGoIdentities/Embedded/Field
+=== RUN   TestSharedParamsGoIdentities/Pointer/OtherPointer
+=== RUN   TestSharedParamsGoIdentities/Channel/Receive
+=== RUN   TestSharedParamsGoIdentities/IntBox/StringBox
+=== RUN   TestSharedParamsGoIdentities/Byte/Uint8
+=== RUN   TestSharedParamsGoIdentities/Rune/Int32
+--- PASS: TestSharedParamsGoIdentities (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/Number/Alias (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/Number/Other (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/F/G (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/F/Variadic (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/I/J (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/I/K (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/Struct/Tagged (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/Embedded/Field (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/Pointer/OtherPointer (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/Channel/Receive (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/IntBox/StringBox (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/Byte/Uint8 (0.00s)
+    --- PASS: TestSharedParamsGoIdentities/Rune/Int32 (0.00s)
+=== RUN   TestSharedParamsKeyNames
+--- PASS: TestSharedParamsKeyNames (0.00s)
+=== RUN   TestSharedParamsReadableVariantNames
+--- PASS: TestSharedParamsReadableVariantNames (0.00s)
+=== RUN   TestSharedParamsGeneratedConsumers
+=== PAUSE TestSharedParamsGeneratedConsumers
+=== RUN   TestSharedParamsGeneratedNilLoads
+=== PAUSE TestSharedParamsGeneratedNilLoads
+=== RUN   TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/private-type
+=== RUN   TestSharedParamsSourceDiagnostics/private-argument
+=== RUN   TestSharedParamsSourceDiagnostics/private-struct-field
+=== RUN   TestSharedParamsSourceDiagnostics/private-interface-method
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+--- PASS: TestSharedParamsSourceDiagnostics (5.89s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-type (0.81s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-argument (0.78s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-struct-field (0.86s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-interface-method (0.77s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.75s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.11s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.11s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.10s)
+    --- PASS: TestSharedParamsSourceDiagnostics/transitive-generated (0.75s)
+=== RUN   TestSharedParamsFrontendOnlyApplication
+=== PAUSE TestSharedParamsFrontendOnlyApplication
+=== RUN   TestGenerateRecoversFromAStaleGeneratedFile
+=== PAUSE TestGenerateRecoversFromAStaleGeneratedFile
+=== RUN   TestGenerateStillRefusesAGenuineTypeError
+=== PAUSE TestGenerateStillRefusesAGenuineTypeError
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells
+=== PAUSE TestProjectSpellsTheShapesPolytypeSpells
+=== RUN   TestProjectRefusesWhatPolytypeCannotCarry
+=== PAUSE TestProjectRefusesWhatPolytypeCannotCarry
+=== RUN   TestImportPathOutsideTheRouteTreeStillHasToBeNameable
+=== PAUSE TestImportPathOutsideTheRouteTreeStillHasToBeNameable
+=== RUN   TestSerializedFieldNames
+=== PAUSE TestSerializedFieldNames
+=== CONT  TestTheRoutePackageHoldsOnlyGeneratedCopies
+=== CONT  TestAppWithoutPageActionsStillHasAnActionRegistry
+=== CONT  TestRemovingTheLastGoFileRemovesTheBoundary
+=== CONT  TestTheLinkTreeRegeneratesDeterministically
+=== CONT  TestAnAuthoredBoundaryIsLeftAlone
+=== CONT  TestTheBoundaryStopsTheParentModuleWalkingIn
+=== CONT  TestGeneratedRoutePackagesSurviveAModuleArchive
+=== CONT  TestGeneratedRoutePackagesContainFilesNotSymlinks
+=== CONT  TestEveryRouteDirectoryBecomesAnImportableGoPackage
+=== CONT  TestJavaScriptModeKeepsTheCollisionRefusal
+--- PASS: TestRemovingTheLastGoFileRemovesTheBoundary (0.02s)
+=== CONT  TestSwitchingLanguageRemovesOnlyGeneratedFiles
+--- PASS: TestTheRoutePackageHoldsOnlyGeneratedCopies (0.03s)
+=== CONT  TestPrerenderOptionsFailuresArePositioned
+--- PASS: TestTheBoundaryStopsTheParentModuleWalkingIn (0.03s)
+=== CONT  TestSerializedFieldNames
+=== RUN   TestPrerenderOptionsFailuresArePositioned/validate_nil
+--- PASS: TestSerializedFieldNames (0.00s)
+=== CONT  TestJavaScriptModeIsChosenFromTheApp
+=== CONT  TestImportPathOutsideTheRouteTreeStillHasToBeNameable
+--- PASS: TestAnAuthoredBoundaryIsLeftAlone (0.03s)
+--- PASS: TestGeneratedRoutePackagesSurviveAModuleArchive (0.03s)
+--- PASS: TestGeneratedRoutePackagesContainFilesNotSymlinks (0.03s)
+--- PASS: TestImportPathOutsideTheRouteTreeStillHasToBeNameable (0.00s)
+=== CONT  TestTypeScriptModeLoadStubCarriesTheBuildBridge
+=== CONT  TestProjectRefusesWhatPolytypeCannotCarry
+=== CONT  TestJavaScriptModeEmitsJSDocRemotesAndTypes
+=== RUN   TestProjectRefusesWhatPolytypeCannotCarry/map
+=== RUN   TestProjectRefusesWhatPolytypeCannotCarry/pointer
+=== RUN   TestProjectRefusesWhatPolytypeCannotCarry/slice_of_pointers
+=== RUN   TestProjectRefusesWhatPolytypeCannotCarry/interface
+=== RUN   TestProjectRefusesWhatPolytypeCannotCarry/named_map
+=== RUN   TestProjectRefusesWhatPolytypeCannotCarry/channel
+--- PASS: TestProjectRefusesWhatPolytypeCannotCarry (0.00s)
+    --- PASS: TestProjectRefusesWhatPolytypeCannotCarry/map (0.00s)
+    --- PASS: TestProjectRefusesWhatPolytypeCannotCarry/pointer (0.00s)
+    --- PASS: TestProjectRefusesWhatPolytypeCannotCarry/slice_of_pointers (0.00s)
+    --- PASS: TestProjectRefusesWhatPolytypeCannotCarry/interface (0.00s)
+    --- PASS: TestProjectRefusesWhatPolytypeCannotCarry/named_map (0.00s)
+    --- PASS: TestProjectRefusesWhatPolytypeCannotCarry/channel (0.00s)
+=== CONT  TestProjectSpellsTheShapesPolytypeSpells
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/string
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/bool
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/int
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/float64
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/slice_of_strings
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/named_struct
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/slice_of_named_structs
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/named_string
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/array
+=== RUN   TestProjectSpellsTheShapesPolytypeSpells/time.Time
+--- PASS: TestProjectSpellsTheShapesPolytypeSpells (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/string (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/bool (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/int (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/float64 (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/slice_of_strings (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/named_struct (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/slice_of_named_structs (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/named_string (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/array (0.00s)
+    --- PASS: TestProjectSpellsTheShapesPolytypeSpells/time.Time (0.00s)
+=== CONT  TestJavaScriptModeLoadImportsATransportedClassFromHooks
+--- PASS: TestTheLinkTreeRegeneratesDeterministically (0.04s)
+=== CONT  TestGenerateStillRefusesAGenuineTypeError
+--- PASS: TestEveryRouteDirectoryBecomesAnImportableGoPackage (0.05s)
+=== CONT  TestGenerateRecoversFromAStaleGeneratedFile
+=== RUN   TestPrerenderOptionsFailuresArePositioned/unknown
+--- PASS: TestAppWithoutPageActionsStillHasAnActionRegistry (2.09s)
+=== CONT  TestJavaScriptModeAcceptsAPrerenderedLoad
+--- PASS: TestJavaScriptModeKeepsTheCollisionRefusal (4.04s)
+=== CONT  TestSharedParamsFrontendOnlyApplication
+--- PASS: TestJavaScriptModeIsChosenFromTheApp (4.60s)
+=== CONT  TestJavaScriptModeEmitsJSDocServerLoadsAndActions
+=== RUN   TestPrerenderOptionsFailuresArePositioned/variable
+--- PASS: TestTypeScriptModeLoadStubCarriesTheBuildBridge (4.68s)
+=== CONT  TestSharedParamsGeneratedNilLoads
+--- PASS: TestJavaScriptModeLoadImportsATransportedClassFromHooks (4.93s)
+=== CONT  TestEnvironmentGenerationUsesDeclaredGoTypes
+--- PASS: TestJavaScriptModeEmitsJSDocRemotesAndTypes (5.01s)
+=== CONT  TestARouteCannotAnswerAMethodTwice
+--- PASS: TestJavaScriptModeAcceptsAPrerenderedLoad (3.08s)
+=== CONT  TestAServerRouteMarkerBelongsInServerGo
+--- PASS: TestSwitchingLanguageRemovesOnlyGeneratedFiles (5.94s)
+=== CONT  TestARouteIdIsTheDirectoryPathVerbatim
+--- PASS: TestARouteIdIsTheDirectoryPathVerbatim (0.00s)
+=== CONT  TestSwitchingLanguageReplacesTheServerRouteStub
+--- PASS: TestGenerateStillRefusesAGenuineTypeError (6.16s)
+=== CONT  TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink
+=== RUN   TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink/planted
+=== NAME  TestSharedParamsFrontendOnlyApplication
+    shared_params_test.go:490: compiled consumers:
+        === RUN   TestFrontendOnly
+        --- PASS: TestFrontendOnly (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.231s
+--- PASS: TestSharedParamsFrontendOnlyApplication (3.68s)
+=== CONT  TestABatchQueryThatIsNotABatchIsRefused
+=== RUN   TestABatchQueryThatIsNotABatchIsRefused/no_argument_at_all
+=== RUN   TestPrerenderOptionsFailuresArePositioned/anonymous
+--- PASS: TestEnvironmentGenerationUsesDeclaredGoTypes (4.13s)
+=== CONT  TestSharedParamsGeneratedConsumers
+--- PASS: TestAServerRouteMarkerBelongsInServerGo (4.32s)
+=== CONT  TestOptionExamplesInCommentsAndStringsAreIgnored
+--- PASS: TestARouteCannotAnswerAMethodTwice (4.46s)
+=== CONT  TestTheLoadStubBridgesAPrerenderCall
+--- PASS: TestOptionExamplesInCommentsAndStringsAreIgnored (0.02s)
+=== CONT  TestRealCheckReportsWireAdviceAtAuthoredLocations
+=== RUN   TestRealCheckReportsWireAdviceAtAuthoredLocations/Detail
+--- PASS: TestSwitchingLanguageReplacesTheServerRouteStub (5.70s)
+=== CONT  TestANamedLayoutResetExcludesLoadsOutsideKitsBranch
+=== RUN   TestABatchQueryThatIsNotABatchIsRefused/a_single_argument
+=== RUN   TestPrerenderOptionsFailuresArePositioned/dynamic_false
+--- PASS: TestJavaScriptModeEmitsJSDocServerLoadsAndActions (8.66s)
+=== CONT  TestAPrerenderedPageCanHaveItsOwnGoLoad
+--- PASS: TestTheLoadStubBridgesAPrerenderCall (4.28s)
+=== CONT  TestTypeScriptModeServerRouteStubIsUnchanged
+=== RUN   TestABatchQueryThatIsNotABatchIsRefused/a_single_result
+--- PASS: TestPrerenderOptionsFailuresArePositioned (15.93s)
+    --- PASS: TestPrerenderOptionsFailuresArePositioned/validate_nil (2.02s)
+    --- PASS: TestPrerenderOptionsFailuresArePositioned/unknown (2.60s)
+    --- PASS: TestPrerenderOptionsFailuresArePositioned/variable (3.33s)
+    --- PASS: TestPrerenderOptionsFailuresArePositioned/anonymous (4.07s)
+    --- PASS: TestPrerenderOptionsFailuresArePositioned/dynamic_false (3.90s)
+=== CONT  TestLoadsOutsideThePrerenderedBranchAreAccepted
+--- PASS: TestANamedLayoutResetExcludesLoadsOutsideKitsBranch (4.66s)
+=== CONT  TestPrerenderInheritanceMatchesKit
+=== RUN   TestPrerenderInheritanceMatchesKit/a_leaf_inherits_true_from_its_layout
+--- PASS: TestAPrerenderedPageCanHaveItsOwnGoLoad (3.28s)
+=== CONT  TestJavaScriptModeEmitsJSDocServerRoute
+--- PASS: TestTypeScriptModeServerRouteStubIsUnchanged (3.68s)
+=== CONT  TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch
+--- PASS: TestABatchQueryThatIsNotABatchIsRefused (9.93s)
+    --- PASS: TestABatchQueryThatIsNotABatchIsRefused/no_argument_at_all (4.18s)
+    --- PASS: TestABatchQueryThatIsNotABatchIsRefused/a_single_argument (3.78s)
+    --- PASS: TestABatchQueryThatIsNotABatchIsRefused/a_single_result (1.97s)
+=== CONT  TestAServerRouteBecomesTheModuleKitCompiles
+--- PASS: TestLoadsOutsideThePrerenderedBranchAreAccepted (3.24s)
+=== CONT  TestTransportedPrerenderInputsUseRuntimeTransportEncoding
+=== RUN   TestPrerenderInheritanceMatchesKit/a_leaf_false_overrides_a_layout_true
+--- PASS: TestJavaScriptModeEmitsJSDocServerRoute (3.88s)
+=== CONT  TestEmptyAppRemovesOldFormClient
+--- PASS: TestEmptyAppRemovesOldFormClient (0.00s)
+=== CONT  TestPrerenderInputHandlersHaveUniqueNamesAcrossModules
+--- PASS: TestGenerateRecoversFromAStaleGeneratedFile (20.96s)
+=== CONT  TestFormClientGenerationRecoversAndTracksContract
+--- PASS: TestFormClientGenerationRecoversAndTracksContract (0.00s)
+=== CONT  TestNoArgumentPrerenderInputsCompileWithoutFmtImport
+--- PASS: TestAServerRouteBecomesTheModuleKitCompiles (4.04s)
+=== CONT  TestFormClientResultContractEvolution
+--- PASS: TestFormClientResultContractEvolution (0.80s)
+=== CONT  TestPrerenderInputProducerMustMatchBodyArgument
+--- PASS: TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch (5.53s)
+=== CONT  TestFormClientInputContractEvolution
+--- PASS: TestFormClientInputContractEvolution (0.71s)
+=== CONT  TestABatchQueryIsProjectedFromItsElementTypes
+=== RUN   TestPrerenderInheritanceMatchesKit/a_leaf_true_overrides_a_layout_false
+--- PASS: TestPrerenderInputProducerMustMatchBodyArgument (3.66s)
+=== CONT  TestNamedDeferredPayloadSerializedNames
+=== RUN   TestPrerenderInheritanceMatchesKit/a_universal_option_wins_over_the_same_node_server_option
+--- PASS: TestPrerenderInputHandlersHaveUniqueNamesAcrossModules (9.00s)
+=== CONT  TestAFunctionSkgoCannotPublishIsRefusedByName
+=== RUN   TestAFunctionSkgoCannotPublishIsRefusedByName/no_context_at_all
+--- PASS: TestNoArgumentPrerenderInputsCompileWithoutFmtImport (8.73s)
+=== CONT  TestCheckAcceptsNullableWithGeneratorProjection
+--- PASS: TestTransportedPrerenderInputsUseRuntimeTransportEncoding (12.46s)
+=== CONT  TestCheckWireAdviceUsesAuthoredDeclarations
+=== RUN   TestCheckWireAdviceUsesAuthoredDeclarations/nested_unsupported
+=== PAUSE TestCheckWireAdviceUsesAuthoredDeclarations/nested_unsupported
+=== RUN   TestCheckWireAdviceUsesAuthoredDeclarations/duplicate_name
+=== PAUSE TestCheckWireAdviceUsesAuthoredDeclarations/duplicate_name
+=== RUN   TestCheckWireAdviceUsesAuthoredDeclarations/deferred_remote
+=== PAUSE TestCheckWireAdviceUsesAuthoredDeclarations/deferred_remote
+=== RUN   TestCheckWireAdviceUsesAuthoredDeclarations/file_result
+=== PAUSE TestCheckWireAdviceUsesAuthoredDeclarations/file_result
+=== RUN   TestCheckWireAdviceUsesAuthoredDeclarations/deferred_file_result
+=== PAUSE TestCheckWireAdviceUsesAuthoredDeclarations/deferred_file_result
+=== RUN   TestCheckWireAdviceUsesAuthoredDeclarations/supported
+=== PAUSE TestCheckWireAdviceUsesAuthoredDeclarations/supported
+=== CONT  TestGeneratingAnEmptyAppNeedsNoInstalledAdapter
+--- PASS: TestGeneratingAnEmptyAppNeedsNoInstalledAdapter (0.04s)
+=== CONT  TestANoArgumentRemoteFunctionIsAnOrdinaryGoFunction
+--- PASS: TestABatchQueryIsProjectedFromItsElementTypes (8.12s)
+=== CONT  TestOneStubCannotImportTwoTypesOfTheSameName
+=== NAME  TestAFunctionSkgoCannotPublishIsRefusedByName/no_context_at_all
+    arity_test.go:222: refused with:
+        skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestAFunctionSkgoCannotPublishIsRefusedByNameno_context_at_all915056625/001/app/web/src/data/data.remote.go:13:9: getThing is declared as a query, but its signature is func(id string) (string, error). A query is func(context.Context) (Out, error), or func(context.Context, In) (Out, error) when it takes an argument.
+=== RUN   TestAFunctionSkgoCannotPublishIsRefusedByName/no_error_result
+=== RUN   TestPrerenderInheritanceMatchesKit/auto_can_enter_kits_prerender_crawl
+--- PASS: TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink (29.00s)
+    --- PASS: TestReadOnlyCheckFindsCurrentWireFieldBeforeStaleLink/planted (13.66s)
+=== CONT  TestGeneratingAgainstThisModulesAdapterIsAllowed
+--- PASS: TestGeneratingAgainstThisModulesAdapterIsAllowed (0.07s)
+=== CONT  TestJavaScriptPrerenderInputCallbackCarriesProducerElementType
+=== RUN   TestPrerenderInheritanceMatchesKit/an_unknown_universal_option_does_not_fall_back_to_the_server_option
+=== NAME  TestAFunctionSkgoCannotPublishIsRefusedByName/no_error_result
+    arity_test.go:222: refused with:
+        skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestAFunctionSkgoCannotPublishIsRefusedByNameno_error_result935969461/001/app/web/src/data/data.remote.go:13:9: getThing is declared as a query, but its signature is func(ctx context.Context) string. A query is func(context.Context) (Out, error), or func(context.Context, In) (Out, error) when it takes an argument.
+=== RUN   TestAFunctionSkgoCannotPublishIsRefusedByName/two_arguments
+=== NAME  TestOneStubCannotImportTwoTypesOfTheSameName
+    ownership_test.go:571: refused with:
+        skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestOneStubCannotImportTwoTypesOfTheSameName2267733415/001/app/web/src/data/data.remote.ts puts a type called Thing on the wire from both example.com/wire/other/wire and example.com/wire; TypeScript can only have one Thing in a module, so one of them has to be renamed or moved to a remote function in another file
+--- PASS: TestOneStubCannotImportTwoTypesOfTheSameName (7.15s)
+=== CONT  TestNoArgumentMeansNothingToProject
+--- PASS: TestANoArgumentRemoteFunctionIsAnOrdinaryGoFunction (9.23s)
+=== CONT  TestPrerenderInputsGenerateLazyTypedProducerAndNoArgumentUndefined
+--- PASS: TestPrerenderInheritanceMatchesKit (26.89s)
+    --- PASS: TestPrerenderInheritanceMatchesKit/a_leaf_inherits_true_from_its_layout (3.47s)
+    --- PASS: TestPrerenderInheritanceMatchesKit/a_leaf_false_overrides_a_layout_true (5.03s)
+    --- PASS: TestPrerenderInheritanceMatchesKit/a_leaf_true_overrides_a_layout_false (4.37s)
+    --- PASS: TestPrerenderInheritanceMatchesKit/a_universal_option_wins_over_the_same_node_server_option (4.03s)
+    --- PASS: TestPrerenderInheritanceMatchesKit/auto_can_enter_kits_prerender_crawl (4.10s)
+    --- PASS: TestPrerenderInheritanceMatchesKit/an_unknown_universal_option_does_not_fall_back_to_the_server_option (5.87s)
+=== CONT  TestTypedLoadActualParameterDependencies
+=== NAME  TestAFunctionSkgoCannotPublishIsRefusedByName/two_arguments
+    arity_test.go:222: refused with:
+        skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestAFunctionSkgoCannotPublishIsRefusedByNametwo_arguments2626397933/001/app/web/src/data/data.remote.go:13:9: getThing is declared as a query, but its signature is func(ctx context.Context, a string, b string) (string, error). A query is func(context.Context) (Out, error), or func(context.Context, In) (Out, error) when it takes an argument.
+=== RUN   TestAFunctionSkgoCannotPublishIsRefusedByName/variadic
+=== RUN   TestRealCheckReportsWireAdviceAtAuthoredLocations/Alias
+=== RUN   TestRealCheckReportsWireAdviceAtAuthoredLocations/Later
+=== RUN   TestRealCheckReportsWireAdviceAtAuthoredLocations/sendMessage
+=== RUN   TestRealCheckReportsWireAdviceAtAuthoredLocations/supported
+--- PASS: TestRealCheckReportsWireAdviceAtAuthoredLocations (34.80s)
+    --- PASS: TestRealCheckReportsWireAdviceAtAuthoredLocations/Detail (33.54s)
+    --- PASS: TestRealCheckReportsWireAdviceAtAuthoredLocations/Alias (0.00s)
+    --- PASS: TestRealCheckReportsWireAdviceAtAuthoredLocations/Later (0.00s)
+    --- PASS: TestRealCheckReportsWireAdviceAtAuthoredLocations/sendMessage (0.22s)
+    --- PASS: TestRealCheckReportsWireAdviceAtAuthoredLocations/supported (0.00s)
+=== CONT  TestGeneratingAgainstAnotherSkgosAdapterIsRefused
+--- PASS: TestGeneratingAgainstAnotherSkgosAdapterIsRefused (0.01s)
+=== CONT  TestActionDeclarationsMatchKit
+=== RUN   TestActionDeclarationsMatchKit/two_named_actions
+--- PASS: TestJavaScriptPrerenderInputCallbackCarriesProducerElementType (10.61s)
+=== CONT  TestTwoDependenciesCalledTheSameThingAreKeptApart
+=== NAME  TestAFunctionSkgoCannotPublishIsRefusedByName/variadic
+    arity_test.go:222: refused with:
+        skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestAFunctionSkgoCannotPublishIsRefusedByNamevariadic1945878184/001/app/web/src/data/data.remote.go:13:9: getThing is declared as a query, but its signature is func(ctx context.Context, ids ...string) (string, error): a query cannot be variadic, because kit calls it with one argument at most
+=== RUN   TestAFunctionSkgoCannotPublishIsRefusedByName/a_live_query_with_no_yield
+=== RUN   TestActionDeclarationsMatchKit/default_alone
+--- PASS: TestNoArgumentMeansNothingToProject (12.06s)
+=== CONT  TestGoPagePrerenderRedirectBuildsKitsNativeArtifact
+--- PASS: TestPrerenderInputsGenerateLazyTypedProducerAndNoArgumentUndefined (11.88s)
+=== CONT  TestCompiledProductionStoredPrerenderError
+=== NAME  TestAFunctionSkgoCannotPublishIsRefusedByName/a_live_query_with_no_yield
+    arity_test.go:222: refused with:
+        skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestAFunctionSkgoCannotPublishIsRefusedByNamea_live_query_with_3939601480/001/app/web/src/data/data.remote.go:13:9: watchThing is declared as a query.live, but its signature is func(ctx context.Context) error. A query.live is func(context.Context, func(Out) error) error, or func(context.Context, In, func(Out) error) error when it takes an argument.
+=== RUN   TestAFunctionSkgoCannotPublishIsRefusedByName/a_live_query_that_returns_a_value
+=== RUN   TestActionDeclarationsMatchKit/duplicate_names
+--- PASS: TestCheckAcceptsNullableWithGeneratorProjection (28.49s)
+=== CONT  TestCompiledProductionNoArgumentNullReachesTheArtifactLookup
+=== RUN   TestNamedDeferredPayloadSerializedNames/named
+=== RUN   TestNamedDeferredPayloadSerializedNames/slice
+=== RUN   TestNamedDeferredPayloadSerializedNames/array
+--- PASS: TestNamedDeferredPayloadSerializedNames (32.14s)
+    --- PASS: TestNamedDeferredPayloadSerializedNames/named (0.00s)
+    --- PASS: TestNamedDeferredPayloadSerializedNames/slice (0.00s)
+    --- PASS: TestNamedDeferredPayloadSerializedNames/array (0.00s)
+=== CONT  TestFormatterFailureDoesNotPublishGeneratedOutput
+=== NAME  TestAFunctionSkgoCannotPublishIsRefusedByName/a_live_query_that_returns_a_value
+    arity_test.go:222: refused with:
+        skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestAFunctionSkgoCannotPublishIsRefusedByNamea_live_query_that_1050259970/001/app/web/src/data/data.remote.go:13:9: watchThing is declared as a query.live, but its signature is func(ctx context.Context, yield func(int) error) (int, error). A query.live is func(context.Context, func(Out) error) error, or func(context.Context, In, func(Out) error) error when it takes an argument.
+--- PASS: TestAFunctionSkgoCannotPublishIsRefusedByName (29.45s)
+    --- PASS: TestAFunctionSkgoCannotPublishIsRefusedByName/no_context_at_all (3.75s)
+    --- PASS: TestAFunctionSkgoCannotPublishIsRefusedByName/no_error_result (4.46s)
+    --- PASS: TestAFunctionSkgoCannotPublishIsRefusedByName/two_arguments (5.58s)
+    --- PASS: TestAFunctionSkgoCannotPublishIsRefusedByName/variadic (5.70s)
+    --- PASS: TestAFunctionSkgoCannotPublishIsRefusedByName/a_live_query_with_no_yield (4.26s)
+    --- PASS: TestAFunctionSkgoCannotPublishIsRefusedByName/a_live_query_that_returns_a_value (5.70s)
+=== CONT  TestATypeFromAnotherModuleCrossesTheWire
+=== RUN   TestActionDeclarationsMatchKit/default_then_named
+--- PASS: TestTwoDependenciesCalledTheSameThingAreKeptApart (14.84s)
+=== CONT  TestLinkNamesAreTheDocumentedEncoding
+--- PASS: TestLinkNamesAreTheDocumentedEncoding (0.00s)
+=== CONT  TestTypedLoadMatchersPrerenderNamedGoValues
+=== RUN   TestActionDeclarationsMatchKit/named_then_default
+=== RUN   TestActionDeclarationsMatchKit/layout_placement
+=== CONT  TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation
+--- PASS: TestATypeFromAnotherModuleCrossesTheWire (6.35s)
+--- PASS: TestFormatterFailureDoesNotPublishGeneratedOutput (8.47s)
+=== CONT  TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations
+=== RUN   TestActionDeclarationsMatchKit/prerendered_page
+=== NAME  TestGoPagePrerenderRedirectBuildsKitsNativeArtifact
+    prerender_redirect_test.go:120: compiled production handler contract:
+        === RUN   TestProductionRedirectServing
+        --- PASS: TestProductionRedirectServing (0.02s)
+        PASS
+--- PASS: TestGoPagePrerenderRedirectBuildsKitsNativeArtifact (18.88s)
+=== CONT  TestPruningRefusesToDeleteSomethingItDidNotCreate
+--- PASS: TestPruningRefusesToDeleteSomethingItDidNotCreate (0.00s)
+=== CONT  TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace
+=== RUN   TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/the_app's_own_root
+=== RUN   TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_package_in_the_app
+=== RUN   TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_route_package_behind_skgo's_own_go.mod_boundary
+=== RUN   TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_dependency_in_the_module_cache
+=== RUN   TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_sibling_module_in_the_same_checkout
+=== RUN   TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_parent_of_the_app
+=== RUN   TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_directory_whose_name_merely_starts_with_the_app's
+--- PASS: TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace (0.00s)
+    --- PASS: TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/the_app's_own_root (0.00s)
+    --- PASS: TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_package_in_the_app (0.00s)
+    --- PASS: TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_route_package_behind_skgo's_own_go.mod_boundary (0.00s)
+    --- PASS: TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_dependency_in_the_module_cache (0.00s)
+    --- PASS: TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_sibling_module_in_the_same_checkout (0.00s)
+    --- PASS: TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_parent_of_the_app (0.00s)
+    --- PASS: TestOnlyTheAppsOwnPackagesGetTheirDeclarationInPlace/a_directory_whose_name_merely_starts_with_the_app's (0.00s)
+=== CONT  TestOwnershipSurvivesASymlinkedPath
+--- PASS: TestOwnershipSurvivesASymlinkedPath (0.00s)
+=== CONT  TestAStaleLinkInTheRouteRootGoes
+--- PASS: TestAStaleLinkInTheRouteRootGoes (0.00s)
+=== CONT  TestATypeThatReachesAnotherOfItsOwnNameIsRefused
+=== NAME  TestCompiledProductionNoArgumentNullReachesTheArtifactLookup
+    prerender_remote_ssr_test.go:9: compiled production handler contract:
+        === RUN   TestProductionNoArgumentNullUsesArtifactMiss
+        === RUN   TestProductionNoArgumentNullUsesArtifactMiss//prerender-contract
+        === RUN   TestProductionNoArgumentNullUsesArtifactMiss//prerender-contract-missing
+        2026/10/07 09:33:58 skgo: rendering /prerender-contract-missing: skgo: the page threw while rendering: {"status":500,"message":"Internal Error"}
+        --- PASS: TestProductionNoArgumentNullUsesArtifactMiss (0.04s)
+            --- PASS: TestProductionNoArgumentNullUsesArtifactMiss//prerender-contract (0.02s)
+            --- PASS: TestProductionNoArgumentNullUsesArtifactMiss//prerender-contract-missing (0.02s)
+        PASS
+--- PASS: TestCompiledProductionNoArgumentNullReachesTheArtifactLookup (11.75s)
+=== CONT  TestCompiledProductionPrerenderTransformFailure
+=== NAME  TestCompiledProductionStoredPrerenderError
+    prerender_remote_ssr_test.go:14: compiled production handler contract:
+        === RUN   TestProductionStoredError
+        2026/10/07 09:33:58 skgo: rendering /prerender-contract-error: skgo: handled remote error (409 built no-argument failure)
+        2026/10/07 09:33:58 skgo: rendering /prerender-contract-error: skgo: handled remote error (409 built no-argument failure)
+        --- PASS: TestProductionStoredError (0.08s)
+        PASS
+--- PASS: TestCompiledProductionStoredPrerenderError (17.20s)
+=== CONT  TestCheckWireAdviceUsesAuthoredDeclarations/nested_unsupported
+=== NAME  TestCompiledProductionPrerenderTransformFailure
+    prerender_remote_ssr_test.go:19: compiled production handler contract:
+        === RUN   TestProductionTransformFailure
+        2026/10/07 09:33:58 skgo: rendering /prerender-contract-transform: one-shot transform failure
+        2026/10/07 09:33:58 skgo: rendering /prerender-contract-error: skgo: handled remote error (409 built no-argument failure)
+        2026/10/07 09:33:58 skgo: rendering /prerender-contract-transform: one-shot transform failure
+        2026/10/07 09:33:58 skgo: rendering /prerender-contract-error: skgo: handled remote error (409 built no-argument failure)
+        --- PASS: TestProductionTransformFailure (0.11s)
+        PASS
+--- PASS: TestCompiledProductionPrerenderTransformFailure (0.21s)
+=== CONT  TestCheckWireAdviceUsesAuthoredDeclarations/supported
+=== CONT  TestCheckWireAdviceUsesAuthoredDeclarations/deferred_file_result
+=== RUN   TestActionDeclarationsMatchKit/auto_prerendered_page
+--- PASS: TestTypedLoadMatchersPrerenderNamedGoValues (12.93s)
+=== CONT  TestCheckWireAdviceUsesAuthoredDeclarations/file_result
+=== RUN   TestActionDeclarationsMatchKit/inherited_prerender
+=== NAME  TestATypeThatReachesAnotherOfItsOwnNameIsRefused
+    ownership_test.go:609: refused with:
+        skgo: example.com/app/web/src/data.Thing reaches another type called Thing from a different package; TypeScript can only have one Thing in a module, so one of them has to be renamed
+--- PASS: TestATypeThatReachesAnotherOfItsOwnNameIsRefused (6.93s)
+=== CONT  TestCheckWireAdviceUsesAuthoredDeclarations/deferred_remote
+=== RUN   TestActionDeclarationsMatchKit/leaf_overrides_prerender
+=== CONT  TestCheckWireAdviceUsesAuthoredDeclarations/duplicate_name
+=== RUN   TestActionDeclarationsMatchKit/prerendered_sibling
+--- PASS: TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation (17.68s)
+--- PASS: TestActionDeclarationsMatchKit (40.66s)
+    --- PASS: TestActionDeclarationsMatchKit/two_named_actions (6.20s)
+    --- PASS: TestActionDeclarationsMatchKit/default_alone (3.03s)
+    --- PASS: TestActionDeclarationsMatchKit/duplicate_names (5.76s)
+    --- PASS: TestActionDeclarationsMatchKit/default_then_named (2.43s)
+    --- PASS: TestActionDeclarationsMatchKit/named_then_default (3.44s)
+    --- PASS: TestActionDeclarationsMatchKit/layout_placement (2.31s)
+    --- PASS: TestActionDeclarationsMatchKit/prerendered_page (4.47s)
+    --- PASS: TestActionDeclarationsMatchKit/auto_prerendered_page (4.00s)
+    --- PASS: TestActionDeclarationsMatchKit/inherited_prerender (3.72s)
+    --- PASS: TestActionDeclarationsMatchKit/leaf_overrides_prerender (2.56s)
+    --- PASS: TestActionDeclarationsMatchKit/prerendered_sibling (2.74s)
+--- PASS: TestCheckWireAdviceUsesAuthoredDeclarations (0.00s)
+    --- PASS: TestCheckWireAdviceUsesAuthoredDeclarations/supported (0.00s)
+    --- PASS: TestCheckWireAdviceUsesAuthoredDeclarations/nested_unsupported (11.01s)
+    --- PASS: TestCheckWireAdviceUsesAuthoredDeclarations/deferred_file_result (19.12s)
+    --- PASS: TestCheckWireAdviceUsesAuthoredDeclarations/file_result (22.66s)
+    --- PASS: TestCheckWireAdviceUsesAuthoredDeclarations/deferred_remote (25.96s)
+    --- PASS: TestCheckWireAdviceUsesAuthoredDeclarations/duplicate_name (29.54s)
+--- PASS: TestGenerationOwnsOneFileAndIgnoresPreviousDeclarations (48.26s)
+=== NAME  TestSharedParamsGeneratedNilLoads
+    shared_params_test.go:379: real generated nil loads:
+        === RUN   TestGeneratedNilLoads
+        --- PASS: TestGeneratedNilLoads (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo	0.269s
+--- PASS: TestSharedParamsGeneratedNilLoads (126.93s)
+=== NAME  TestSharedParamsGeneratedConsumers
+    shared_params_test.go:169: compiled consumers:
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.220s
+--- PASS: TestTypedLoadActualParameterDependencies (91.65s)
+=== NAME  TestSharedParamsGeneratedConsumers
+    shared_params_test.go:231: compiled consumers:
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        === RUN   TestThird
+        --- PASS: TestThird (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.229s
+--- PASS: TestSharedParamsGeneratedConsumers (137.86s)
+PASS

@@ -7,12 +7,7 @@ import (
 
 func TestAppWithoutPageActionsStillHasAnActionRegistry(t *testing.T) {
 	t.Parallel()
-	root, cfg := foreignFixture(t, "", map[string]string{
-		"app/web/src/routes/api/thing/server.go": endpointSource,
-	})
-	if err := Run(cfg); err != nil {
-		t.Fatal(err)
-	}
+	root := generatedEndpointFixture(t)
 	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
 	if !strings.Contains(bindings, "func Actions() []*skgo.PageAction {\n\treturn []*skgo.PageAction{}\n}") {
 		t.Fatalf("a scaffold without page actions cannot call generated.Actions():\n%s", bindings)

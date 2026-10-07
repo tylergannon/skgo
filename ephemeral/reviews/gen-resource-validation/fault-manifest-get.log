@@ -1,0 +1,22 @@
+=== RUN   TestAppWithoutPageActionsStillHasAnActionRegistry
+=== PAUSE TestAppWithoutPageActionsStillHasAnActionRegistry
+=== RUN   TestAServerRouteBecomesTheModuleKitCompiles
+=== PAUSE TestAServerRouteBecomesTheModuleKitCompiles
+=== CONT  TestAppWithoutPageActionsStillHasAnActionRegistry
+=== CONT  TestAServerRouteBecomesTheModuleKitCompiles
+--- PASS: TestAppWithoutPageActionsStillHasAnActionRegistry (0.31s)
+=== NAME  TestAServerRouteBecomesTheModuleKitCompiles
+    endpoints_test.go:101: skgo.remotes.json does not describe the route:
+        {
+        	"remotes": [],
+        	"loads": [],
+        	"actions": [],
+        	"endpoints": {
+        		"/api/thing": [
+        			INDEPENDENT_REMOVED_BEHAVIOR,
+        			"POST"
+        		]
+        	}
+        }
+--- FAIL: TestAServerRouteBecomesTheModuleKitCompiles (0.31s)
+FAIL
