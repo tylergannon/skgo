@@ -187,13 +187,24 @@ var _ params.Key_ID = `+value+"\n")
 	if !bytes.Equal(initial, afterCheck) {
 		t.Fatal("read-only check mutated stale params")
 	}
-	// Bootstrap refresh must precede a stale dependent body error.
+	// Current declarations must precede checking; failed generation publishes nothing.
 	writeSharedFixture(t, app, "web/src/routes/todos/consumer.go", `package todos
 import "github.com/tylergannon/skgo/example/internal/skgo/params"
 func stale(p params.Params) { p.NoLongerExists() }
 `)
 	if err := Run(cfg); err == nil || !strings.Contains(err.Error(), "NoLongerExists") {
 		t.Fatalf("stale authored body: %v", err)
+	}
+	afterFailure, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(initial, afterFailure) {
+		t.Fatal("failed generation published shared params")
+	}
+	writeSharedFixture(t, app, "web/src/routes/todos/consumer.go", "package todos\n")
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
 	}
 	refreshed, err := os.ReadFile(path)
 	if err != nil {
@@ -208,10 +219,6 @@ func stale(p params.Params) { p.NoLongerExists() }
 		if strings.HasPrefix(line, "type ") && strings.Contains(line, "Param_") && !strings.Contains(string(refreshed), line) {
 			t.Fatalf("renamed old variant %s", line)
 		}
-	}
-	writeSharedFixture(t, app, "web/src/routes/todos/consumer.go", "package todos\n")
-	if err := Run(cfg); err != nil {
-		t.Fatal(err)
 	}
 	writeSharedFixture(t, app, "internal/skgo/params/third_test.go", `package params_test
 import ("testing"; "github.com/tylergannon/skgo/example/internal/skgo/params")

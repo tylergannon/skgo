@@ -1,19 +1,17 @@
 package gen
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"go/format"
 	"go/types"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
-const sharedParamsFile = "params_gen.go"
+const sharedParamsFile = generatedGoFile
 
 // Key namespaces are lossless and disjoint: canonical keys have no underscore;
 // every other spelling carries its entire UTF-8 identity, not a short hash.
@@ -449,11 +447,14 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 	}
 	path := filepath.Join(cfg.Out, "params", sharedParamsFile)
 	if cfg.ReadOnly {
-		previous, err := os.ReadFile(path)
-		if err != nil || !bytes.Equal(previous, formatted) {
-			return fmt.Errorf("skgo: %s is missing or stale; run skgo generate", path)
+		if err := verifyGoPart(path, string(formatted)); err != nil {
+			return err
+		}
+		if cfg.generation != nil {
+			return cfg.generation.add(path, string(formatted))
 		}
 		return nil
 	}
+
 	return (&app{cfg: cfg}).write(path, string(formatted))
 }

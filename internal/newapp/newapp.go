@@ -29,6 +29,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/tylergannon/skgo/internal/adapter"
 	"github.com/tylergannon/skgo/internal/kitpatch"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
@@ -241,6 +242,9 @@ func Create(options Options) (Result, error) {
 // Go half.
 func finish(p project, run func(command) error) (Result, error) {
 	web := filepath.Join(p.Dir, "web")
+	if err := installSupportedKit(web, run); err != nil {
+		return Result{}, err
+	}
 	configureQueue := p.configureKitQueue
 	if configureQueue == nil {
 		configureQueue = func(web string, out io.Writer) error {
@@ -953,4 +957,34 @@ func writeGoFiles(p project) error {
 		}
 		return os.WriteFile(target, body, 0o644)
 	})
+}
+
+// Upstream installers may resolve a newer Kit before the queue correction can
+// pin package.json. Bring that scaffold to the correction's qualified version
+// through its package manager, then let Configure check the installed source.
+func installSupportedKit(web string, run func(command) error) error {
+	data, err := os.ReadFile(filepath.Join(web, "node_modules", "@sveltejs", "kit", "package.json"))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var installed struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &installed); err != nil {
+		return err
+	}
+	metadata, _, err := adapter.KitQueueCompatibility()
+	if err != nil {
+		return err
+	}
+	if installed.Version == metadata.Version {
+		return nil
+	}
+	if err := run(command{Dir: web, Name: filepath.Join("node_modules", ".bin", "vp"), Args: []string{"add", "--save-dev", "--save-exact", "@sveltejs/kit@" + metadata.Version}, Env: os.Environ()}); err != nil {
+		return fmt.Errorf("skgo: installing qualified Kit %s before configuring its queue correction: %w", metadata.Version, err)
+	}
+	return nil
 }

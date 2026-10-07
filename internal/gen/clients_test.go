@@ -42,7 +42,7 @@ func TestFormClientResultContractEvolution(t *testing.T) {
 	e := requireEvolved(t)
 	assertGeneratedContract(t, e, "result", `"operations": string;`, `"operations": number;`,
 		`Operations string`, `Operations int`)
-	codec := e.first.clients[1]
+	codec := e.first.clients[0]
 	if !regexp.MustCompile(`dvString\(raw\d+, at\+"/operations"\)`).Match(codec) ||
 		regexp.MustCompile(`dvInteger\(raw\d+, at\+"/operations"`).Match(codec) {
 		t.Fatal("generated Go client did not decode operations as the fixture's new string type")
@@ -88,7 +88,7 @@ func assertGeneratedContract(t *testing.T, e *evolvedApp, caseName, browserWant,
 	if !bytes.Contains(link, []byte(linkWant)) || bytes.Contains(link, []byte(linkOld)) {
 		t.Fatalf("Go route binding did not follow fixture %s contract:\n%s", caseName, link)
 	}
-	server := readGenerated(t, filepath.Join(app, "internal", "skgo", "skgo_bindings_gen.go"))
+	server := readGenerated(t, filepath.Join(app, "internal", "skgo", "skgo_gen.go"))
 	submit := bytes.SplitN(server, []byte("func remote_submit("), 2)
 	if len(submit) != 2 {
 		t.Fatal("server Form binding is missing")
@@ -191,11 +191,11 @@ func TestFormClientGenerationRecoversAndTracksContract(t *testing.T) {
 
 	// The evolved Result gained Extra, so its decoder is not the one the
 	// example commits, which was generated before that field existed.
-	before := readGenerated(t, filepath.Join(root, "example", filepath.FromSlash(clientFiles[1])))
+	before := readGenerated(t, filepath.Join(root, "example", filepath.FromSlash(clientFiles[0])))
 	if bytes.Contains(before, []byte("extra")) {
 		t.Fatal("the example's committed client decoder already mentions extra; pick another field name")
 	}
-	if codec := first[1]; bytes.Equal(codec, before) || !bytes.Contains(codec, []byte("extra")) {
+	if codec := first[0]; bytes.Equal(codec, before) || !bytes.Contains(codec, []byte("extra")) {
 		t.Fatal("changed Form result was not projected into client decoder")
 	}
 	if e.first.buildErr != nil {
@@ -209,20 +209,23 @@ func TestEmptyAppRemovesOldFormClient(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(web, "src"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(web, "go.mod"), []byte("module emptyapp\n\ngo 1.27\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	out := filepath.Join(web, "generated")
 	clientDir := filepath.Join(out, "client")
 	if err := os.MkdirAll(clientDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"skgo_client_gen.go", "skgo_client_devalue_gen.go"} {
-		if err := os.WriteFile(filepath.Join(clientDir, name), []byte("stale"), 0o644); err != nil {
+	for _, name := range []string{"skgo_gen.go"} {
+		if err := os.WriteFile(filepath.Join(clientDir, name), []byte(goHeader+"stale"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if err := Run(Config{Web: web, Out: out}); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"skgo_client_gen.go", "skgo_client_devalue_gen.go"} {
+	for _, name := range []string{"skgo_gen.go"} {
 		if _, err := os.Stat(filepath.Join(clientDir, name)); !os.IsNotExist(err) {
 			t.Fatalf("old client %s survived empty generation: %v", name, err)
 		}

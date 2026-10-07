@@ -12,6 +12,10 @@ import (
 
 // Run the app's formatter once, after all frontend files have been generated.
 func flushFrontendSources(cfg Config) error {
+	return formatFrontendFiles(cfg, cfg.Web)
+}
+
+func formatFrontendFiles(cfg Config, dir string) error {
 	if len(cfg.frontendFiles) == 0 {
 		return nil
 	}
@@ -31,7 +35,7 @@ func flushFrontendSources(cfg Config) error {
 	} else {
 		cmd = exec.Command(vp, args...)
 	}
-	cmd.Dir = cfg.Web
+	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("skgo: formatting generated frontend with vp fmt: %w: %s", err, strings.TrimSpace(string(output)))

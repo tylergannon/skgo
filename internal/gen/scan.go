@@ -220,7 +220,13 @@ func loadApp(cfg Config, files []string) (*app, error) {
 		return nil, err
 	}
 	var overlay map[string][]byte
-	if cfg.ReadOnly {
+	if cfg.generation != nil {
+		a.links = cfg.generation.links
+		overlay, err = cfg.generation.overlay()
+		if err != nil {
+			return nil, err
+		}
+	} else if cfg.ReadOnly {
 		overlay, err = a.links.overlay()
 		if err != nil {
 			return nil, err

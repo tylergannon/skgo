@@ -233,13 +233,7 @@ func (t *routeLinks) overlay() (map[string][]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			if name == generatedRemotesFileName {
-				pkg, err := packageNameOf(link.dir)
-				if err != nil {
-					return nil, err
-				}
-				a = []byte("package " + pkg + "\n")
-			}
+
 			overlay[copy] = a
 		}
 	}
@@ -493,8 +487,11 @@ func goDirsUnder(root string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		if len(names) > 0 {
-			dirs = append(dirs, path)
+		for _, name := range names {
+			if name != generatedGoFile {
+				dirs = append(dirs, path)
+				break
+			}
 		}
 		return nil
 	})

@@ -476,7 +476,7 @@ func (a *app) projectTypes(set *namedTypes) error {
 	if a.cfg.Language.JavaScript() {
 		other = "types.ts"
 	}
-	return removeGeneratedArtifact(filepath.Join(set.tsDir, other))
+	return removeGeneratedArtifact(a.cfg, filepath.Join(set.tsDir, other))
 }
 
 // projectedFile is one module a polytype backend produced, independent of the

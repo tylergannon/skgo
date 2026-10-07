@@ -13,7 +13,7 @@ func TestAppWithoutPageActionsStillHasAnActionRegistry(t *testing.T) {
 	if err := Run(cfg); err != nil {
 		t.Fatal(err)
 	}
-	bindings := readFixtureFile(t, root, "app/generated/skgo_bindings_gen.go")
+	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
 	if !strings.Contains(bindings, "func Actions() []*skgo.PageAction {\n\treturn []*skgo.PageAction{}\n}") {
 		t.Fatalf("a scaffold without page actions cannot call generated.Actions():\n%s", bindings)
 	}

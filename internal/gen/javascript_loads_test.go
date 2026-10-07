@@ -161,7 +161,7 @@ var _ = skgo.Transported[Money]("Money")
 	}
 
 	stub := readFixtureFile(t, root, "app/web/src/routes/account/+page.server.js")
-	if command := readFixtureFile(t, root, "app/generated/prerender/main_gen.go"); !strings.Contains(command, "generated.Transport(), generated.Loads()") {
+	if command := readFixtureFile(t, root, "app/generated/prerender/skgo_gen.go"); !strings.Contains(command, "generated.Transport(), generated.Loads()") {
 		t.Fatalf("a transported load lost its build-time transport: %s", command)
 	}
 	for _, want := range []string{

@@ -34,6 +34,11 @@ func Check(cfg Config) error {
 	if err != nil {
 		return err
 	}
+	cfg.generation, err = newGeneration(cfg)
+	if err != nil {
+		return err
+	}
+	defer cfg.generation.close()
 	if cfg.loadParams, err = prepareLoadParams(&cfg, files); err != nil {
 		return err
 	}

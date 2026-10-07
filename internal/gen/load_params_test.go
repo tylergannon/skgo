@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,11 +58,13 @@ func TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation(t *testing.T) {
 		{paramsFile, []string{"Number"}},
 		{filepath.Join(filepath.Dir(dependenciesFile), loadParamsFile), []string{"A", "B"}},
 	}
+	initialParams := map[string][]byte{}
 	for _, fixture := range paramDeclarations {
 		initial, err := os.ReadFile(fixture.path)
 		if err != nil {
 			t.Fatal(err)
 		}
+		initialParams[fixture.path] = initial
 		declarations := strings.Join(strings.Fields(string(initial)), " ")
 		for _, accessor := range fixture.accessors {
 			if !strings.Contains(declarations, accessor+"() hooks.OrderNumber") || !strings.Contains(declarations, "value"+accessor+" hooks.OrderNumber") {
@@ -86,21 +89,16 @@ func Order(value string) (RevisedOrder, bool) {
 	if err := Run(cfg); err == nil || !strings.Contains(err.Error(), "Label") {
 		t.Fatalf("stale handler must fail compilation after params refresh: %v", err)
 	}
-	for _, fixture := range paramDeclarations {
-		refreshed, err := os.ReadFile(fixture.path)
+	for path, initial := range initialParams {
+		after, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(refreshed), "hooks.OrderNumber") {
-			t.Fatalf("stale matcher type remains after handler compilation failed: %s", refreshed)
-		}
-		declarations := strings.Join(strings.Fields(string(refreshed)), " ")
-		for _, accessor := range fixture.accessors {
-			if !strings.Contains(declarations, accessor+"() hooks.RevisedOrder") || !strings.Contains(declarations, "value"+accessor+" hooks.RevisedOrder") {
-				t.Fatalf("%s: new matcher type was not written before stale handler failed: %s", fixture.path, refreshed)
-			}
+		if !bytes.Equal(after, initial) {
+			t.Fatalf("failed generation changed %s", path)
 		}
 	}
+
 	handlerFile := filepath.Join(app, "web", "src", "routes", "typed-load", "[number=Order]", "page.server.go")
 	if err := replaceOnce(handlerFile, "event.Params.Number().Label()", "event.Params.Number().Text()"); err != nil {
 		t.Fatal(err)

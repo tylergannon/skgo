@@ -3,7 +3,6 @@ package gen
 import (
 	"fmt"
 	"go/types"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -72,12 +71,7 @@ func (a *app) writeFormClients() error {
 		}
 	}
 	if len(forms) == 0 {
-		// Clear previously generated clients when declarations cease to qualify.
-		for _, name := range []string{"skgo_client_gen.go", "skgo_client_devalue_gen.go"} {
-			if err := os.Remove(filepath.Join(dir, name)); err != nil && !os.IsNotExist(err) {
-				return err
-			}
-		}
+
 		return nil
 	}
 	var b strings.Builder
@@ -119,8 +113,8 @@ func (a *app) writeFormClients() error {
 	if err != nil {
 		return fmt.Errorf("skgo: generating Form client codecs: %w", err)
 	}
-	if err := a.writeGo(filepath.Join(dir, "skgo_client_gen.go"), b.String()); err != nil {
+	if err := a.writeGo(filepath.Join(dir, generatedGoFile), b.String()); err != nil {
 		return err
 	}
-	return a.writeGo(filepath.Join(dir, "skgo_client_devalue_gen.go"), string(codecs))
+	return a.writeGo(filepath.Join(dir, generatedGoFile), string(codecs))
 }

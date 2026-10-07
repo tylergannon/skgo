@@ -19,7 +19,7 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-const loadParamsFile = "skgo_params_gen.go"
+const loadParamsFile = generatedGoFile
 
 type goParamMatcher struct {
 	name string
@@ -51,81 +51,12 @@ console.log(JSON.stringify({ routes: ids.map(id => parse_route_id(id).params), n
 // stale RouteParams even when the old load body no longer compiles.
 func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams, error) {
 	dirs := map[string]bool{}
-	authoredDirs := map[string]bool{}
 	for _, path := range files {
-		authoredDirs[filepath.Dir(path)] = true
-		if _, ok := loadFileNames[filepath.Base(path)]; !ok {
-			continue
+		if _, ok := loadFileNames[filepath.Base(path)]; ok {
+			dirs[filepath.Dir(path)] = true
 		}
-		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-		if err != nil {
-			return nil, err
-		}
-		aliases := map[string]bool{}
-		for _, imp := range file.Imports {
-			if strings.Trim(imp.Path.Value, "\"") != skgoPkg {
-				continue
-			}
-			alias := "skgo"
-			if imp.Name != nil {
-				alias = imp.Name.Name
-			}
-			aliases[alias] = true
-		}
-		ast.Inspect(file, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			fun := call.Fun
-			for {
-				switch f := fun.(type) {
-				case *ast.IndexExpr:
-					fun = f.X
-				case *ast.IndexListExpr:
-					fun = f.X
-				default:
-					goto resolved
-				}
-			}
-		resolved:
-			switch f := fun.(type) {
-			case *ast.SelectorExpr:
-				if id, ok := f.X.(*ast.Ident); ok && aliases[id.Name] && f.Sel.Name == "Load" {
-					dirs[filepath.Dir(path)] = true
-				}
-			case *ast.Ident:
-				if aliases["."] && f.Name == "Load" {
-					dirs[filepath.Dir(path)] = true
-				}
-			}
-			return true
-		})
 	}
 	result := map[string]*routeLoadParams{}
-	// Existing aliases must refresh too, even when a page now contains actions
-	// only. go generate ./... has already enumerated those Go files: deleting
-	// them during its first package would strand the later package invocations.
-	err := filepath.WalkDir(filepath.Join(cfg.Web, "src", "routes"), func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.IsDir() || entry.Name() != loadParamsFile || dirs[filepath.Dir(path)] || !authoredDirs[filepath.Dir(path)] {
-			return nil
-		}
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		if !bytes.HasPrefix(content, []byte(goHeader)) {
-			return nil
-		}
-		dirs[filepath.Dir(path)] = true
-		return nil
-	})
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
 	frontendParams := ""
 	for _, ext := range []string{".ts", ".js"} {
 		path := filepath.Join(cfg.Web, "src", "params"+ext)
@@ -140,7 +71,7 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 	}
 	// Shared params include callers with only frontend pages or endpoints, and
 	// intermediate layout routes. Load ownership is not the caller universe.
-	err = walkCallerRouteDirs(filepath.Join(cfg.Web, routesDir), map[string]bool{}, func(path string) { dirs[path] = true })
+	err := walkCallerRouteDirs(filepath.Join(cfg.Web, routesDir), map[string]bool{}, func(path string) { dirs[path] = true })
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +246,19 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 			}
 		}
 	}
-	loaded, err := packages.Load(&packages.Config{Dir: host, Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps}, mod+"/"+filepath.ToSlash(rel))
+	loadCfg := &packages.Config{Dir: host, Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps}
+	if cfg.generation != nil {
+		loadCfg.Overlay, err = cfg.generation.overlay()
+		if err != nil {
+			return nil, err
+		}
+	}
+	cleanup, err := preserveDependencyExports(loadCfg)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+	loaded, err := packages.Load(loadCfg, mod+"/"+filepath.ToSlash(rel))
 	if err != nil {
 		return nil, err
 	}
@@ -424,11 +367,14 @@ func writeLoadParams(cfg Config, dir string, info *routeLoadParams) error {
 	}
 	path := filepath.Join(dir, loadParamsFile)
 	if cfg.ReadOnly {
-		previous, err := os.ReadFile(path)
-		if err != nil || !bytes.Equal(previous, formatted) {
-			return fmt.Errorf("skgo: %s is missing or stale; run skgo generate", path)
+		if err := verifyGoPart(path, string(formatted)); err != nil {
+			return err
+		}
+		if cfg.generation != nil {
+			return cfg.generation.add(path, string(formatted))
 		}
 		return nil
 	}
+
 	return (&app{cfg: cfg}).write(path, string(formatted))
 }

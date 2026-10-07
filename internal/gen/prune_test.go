@@ -43,7 +43,7 @@ func TestGenerateRemovesWhatTheDeletedGoProduced(t *testing.T) {
 	}
 
 	skgoGenerate(t, app)
-	for _, rel := range []string{"+page.server.ts", "go-dev.remote.ts", "skgo_remotes_gen.go", "skgo_params_gen.go"} {
+	for _, rel := range []string{"+page.server.ts", "go-dev.remote.ts", "skgo_gen.go"} {
 		if !exists(rel) {
 			t.Fatalf("generation did not write %s for the route's Go", rel)
 		}
@@ -55,7 +55,7 @@ func TestGenerateRemovesWhatTheDeletedGoProduced(t *testing.T) {
 		}
 	}
 	skgoGenerate(t, app)
-	for _, rel := range []string{"+page.server.ts", "go-dev.remote.ts", "types.ts", "skgo_remotes_gen.go", "skgo_params_gen.go"} {
+	for _, rel := range []string{"+page.server.ts", "go-dev.remote.ts", "types.ts", "skgo_gen.go"} {
 		if exists(rel) {
 			t.Errorf("%s outlived the Go that produced it", rel)
 		}

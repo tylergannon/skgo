@@ -906,3 +906,30 @@ func TestDemoStarterGeneratesAndCompiles(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestNewAppPinsAnUpstreamKitUpdateBeforeQueueConfiguration(t *testing.T) {
+	web := t.TempDir()
+	installed := filepath.Join(web, "node_modules", "@sveltejs", "kit", "package.json")
+	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		version  string
+		commands int
+	}{{"3.0.1", 1}, {"3.0.0", 0}} {
+		if err := os.WriteFile(installed, []byte(`{"version":"`+tc.version+`"}`), 0644); err != nil {
+			t.Fatal(err)
+		}
+		calls := 0
+		err := installSupportedKit(web, func(c command) error {
+			calls++
+			if c.Dir != web || c.Name != filepath.Join("node_modules", ".bin", "vp") || !slices.Equal(c.Args, []string{"add", "--save-dev", "--save-exact", "@sveltejs/kit@3.0.0"}) {
+				t.Fatalf("wrong pin command: %#v", c)
+			}
+			return nil
+		})
+		if err != nil || calls != tc.commands {
+			t.Fatalf("Kit %s: calls=%d err=%v", tc.version, calls, err)
+		}
+	}
+}
