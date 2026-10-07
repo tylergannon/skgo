@@ -12,7 +12,7 @@ Developers can initialize a signed-in user or other request-specific resources o
 
 An application developer defines one editable `Locals` struct, initializes it in the request hook, and reads `event.Locals` from typed events. Page and layout loads receive params appropriate to their different route domains. Every event reports the request's route, normalized URL, kind, and client address wherever Kit permits it. Remote queries retain their caller-state restrictions.
 
-The user has accepted keeping route identity separate from params, retaining `RouteID()` and its dependency tracking, reusing #261's sealed unions, and deferring platform/tracing. They want the hook to be able to assign the locals pointer. API spellings below are proposed decisions for this work, not existing APIs.
+The user has accepted keeping route identity separate from params, retaining `RouteID()` and its dependency tracking, reusing #261's sealed unions, and deferring platform/tracing. They want the hook to assign the locals pointer and explicitly forward a value event with `resolve(ctx, event, options...)`. API spellings below are proposed decisions for this work, not existing APIs.
 
 ## Source of truth
 
@@ -56,7 +56,7 @@ type RequestEvent[P any] = skgo.RequestEvent[P, Locals]
 
 The alias can live immediately after `Locals`. Generation never rewrites this file. Add `LocalsPackage string` and `LocalsType string` to generation configuration. The CLI accepts `--locals-package <Go import path>` (required) and `--locals-type Locals` (default type name). The scaffold writes its real module import path into the generation directive. Checking uses the same configuration; there is no separate inferred locals type. One configured locals type applies to all registrations in that app. Different applications in the same process may use different types.
 
-Select the application's hook once for runtime and build use: generation config adds optional `HookPackage` and `HookSymbol` (`--hook-package <Go import path>`, `--hook-symbol Handle`, default symbol `Handle`). When no hook package is selected, the generated binding uses a nil typed middleware. A selected symbol must be convertible to the generated `params.Middleware` signature. The scaffold creates an editable `internal/serverhooks/handle.go` with `var Handle params.Middleware`, and its generation directive selects it. Developers can assign a full hook or `params.Handle(before).Middleware()`, or a typed sequence. This package may import app/domain/shared params, but not the generated server bindings; generated bindings import the selected hook. The scaffolded hook variable may remain nil. This explicit package-and-symbol selection is the discovery mechanism: no hook marker or filename scan is added. No package means a nil hook; a selected missing symbol, wrong signature, or multiple configured selections is a generation error. Other unselected functions are irrelevant. The exported symbol has the underlying signature `func(context.Context, *params.RequestEvent, skgo.Resolve) (*http.Response, error)`; a function declaration or variable of that function type is accepted.
+Select the application's hook once for runtime and build use: generation config adds optional `HookPackage` and `HookSymbol` (`--hook-package <Go import path>`, `--hook-symbol Handle`, default symbol `Handle`). When no hook package is selected, the generated binding uses a nil typed middleware. A selected symbol must be convertible to the generated `params.Middleware` signature. The scaffold creates an editable `internal/serverhooks/handle.go` with `var Handle params.Middleware`, and its generation directive selects it. Developers can assign a full hook or `params.Handle(before).Middleware()`, or a typed sequence. This package may import app/domain/shared params, but not the generated server bindings; generated bindings import the selected hook. The scaffolded hook variable may remain nil. This explicit package-and-symbol selection is the discovery mechanism: no hook marker or filename scan is added. No package means a nil hook; a selected missing symbol, wrong signature, or multiple configured selections is a generation error. Other unselected functions are irrelevant. The exported symbol has the underlying signature `func(context.Context, params.RequestEvent, params.Resolve) (*http.Response, error)`; a function declaration or variable of that function type is accepted.
 
 The configured type is a concrete named struct. Its fields may contain ordinary server-only Go resources; locals are never projected through Polytype or serialized automatically. Library code never imports an application's package.
 
@@ -79,17 +79,27 @@ flowchart TD
 
 Arrows are imports. `app` and its transitive dependencies must not import routes, generated params, or server bindings. A hook that imports shared params therefore lives outside `app` and outside any matcher package imported by generated params. In particular, putting that hook beside matchers in `web/src` would create `hooks → params → hooks`; keep it in a separate importable hooks package that does not import server assembly or generated bindings, even transitively. Server assembly is not a valid selected-hook location because it imports generated bindings. Preserve #261's leaf-package rules for matcher types. Validate violations with a useful import/dependency diagnostic. The scaffold's module-root server package is already named `app`; it imports `internal/app` as `appstate` where needed to avoid confusing the two packages. The route examples use the shorter `app` import name.
 
-## 2. Locals lifecycle and hook assignment
+## 2. Locals lifecycle and explicit event forwarding
 
-The full hook receives a **pointer** to the app-wide typed event. Illustrative application code:
+The full hook receives the app-wide typed event **by value** and explicitly passes its chosen event to resolve. The generated shared package binds both generic arguments, so application hook signatures need no type arguments:
 
 ```go
-func handle(ctx context.Context, event *params.RequestEvent,
-    resolve skgo.Resolve) (*http.Response, error) {
+package params
+
+type RequestEvent = app.RequestEvent[Params]
+// Equivalent to skgo.RequestEvent[Params, app.Locals].
+type Resolve = skgo.RequestResolve[Params, app.Locals]
+```
+
+`Params` is the widened app-wide parameter type used by remote commands/forms, including its sealed alternatives. Page and layout loads retain their narrower event types. Illustrative application code:
+
+```go
+func handle(ctx context.Context, event params.RequestEvent,
+    resolve params.Resolve) (*http.Response, error) {
     session, err := loadSession(ctx, event.Cookie)
     if err != nil { return nil, err }
     event.Locals = &app.Locals{Session: session}
-    return resolve(ctx)
+    return resolve(ctx, event)
 }
 ```
 
@@ -98,11 +108,18 @@ The `Session` field and `loadSession` are application examples, not scaffold req
 The library adds these typed hook APIs alongside its existing low-level hooks:
 
 ```go
-type RequestMiddleware[P, L any] func(
-    context.Context, *RequestEvent[P, L], Resolve,
+type RequestResolve[P, L any] func(
+    context.Context, RequestEvent[P, L], ...ResolveOptions,
 ) (*http.Response, error)
 
-type RequestHandle[P, L any] func(context.Context, *RequestEvent[P, L]) error
+type RequestMiddleware[P, L any] func(
+    context.Context, RequestEvent[P, L], RequestResolve[P, L],
+) (*http.Response, error)
+
+// A before-only hook returns the event it wants to forward.
+type RequestHandle[P, L any] func(
+    context.Context, RequestEvent[P, L],
+) (RequestEvent[P, L], error)
 
 func (h RequestHandle[P, L]) Middleware() RequestMiddleware[P, L]
 func RequestSequence[P, L any](hooks ...RequestMiddleware[P, L]) RequestMiddleware[P, L]
@@ -112,11 +129,23 @@ func (h RequestMiddleware[P, L]) Intercept(
 func RequestLocals[L any](ctx context.Context) *L
 ```
 
-These are declaration sketches; implementations are deferred. Shared `params` generates concrete `Middleware` and `Handle` function types, a `Sequence` wrapper, and `.Intercept(cfg skgo.HandleConfig, next http.Handler)` convenience methods. They delegate to these library APIs and supply their own generated hook-params constructor. The library never imports `params`. Existing raw `skgo.Handle`, `skgo.Middleware`, and `skgo.EventFrom(ctx) *Event` retain their low-level shapes; `EventFrom` is the permission-appropriate core event, not a typed wrapper and not a way to regain query caller state.
+These are declaration sketches; implementations are deferred. Shared `params` generates the concrete `RequestEvent` and `Resolve` aliases, `Middleware` and `Handle` function types, a `Sequence` wrapper, and `.Intercept(cfg skgo.HandleConfig, next http.Handler)` convenience methods. They delegate to these library APIs and supply their own generated hook-params constructor. The library never imports `params`. Existing raw `skgo.Handle`, `skgo.Middleware`, `skgo.Resolve`, and `skgo.EventFrom(ctx) *Event` retain their low-level shapes; `EventFrom` is the permission-appropriate core event, not a typed wrapper and not a way to regain query caller state.
+
+### Resolve options
+
+Typed resolve accepts `resolve(ctx, event)` or `resolve(ctx, event, skgo.ResolveOptions{...})`. It keeps the existing options type; only the explicit event argument is new. More than one options value is an error.
+
+| Option | Purpose and default | Sequence behavior |
+| --- | --- | --- |
+| `TransformPageChunk func(context.Context, string, bool) (string, error)` | Transforms the page HTML. Arguments are context, HTML and whether this is the final chunk. Nil means no custom transformation. | All configured transforms compose, innermost first and outermost last. |
+| `FilterSerializedResponseHeaders func(name, value string) bool` | Selects fetched response headers for the hydration data embedded in HTML; it is not a filter on the page's HTTP response headers. Without a hook filter, SKGo uses its renderer-level default if configured; otherwise none are included. | The first defined filter from the outermost hook wins, even when it returns false. |
+| `Preload func(PreloadInput) bool` | Selects resource preloads. Input includes resource type and path; fonts also have a source filename. The default admits JavaScript/CSS preloads, not fonts. Required stylesheet links remain regardless of this predicate. | The first defined predicate from the outermost hook wins. |
+
+These options govern page rendering, not route selection or arbitrary endpoint responses. Kit's transform can receive chunks that are not individually well-formed HTML. Current SKGo runtime transforms the assembled document once with `done=true`; later streamed data is not transformed. This event-API change does not silently promise new runtime chunking behavior. The prerender bridge invokes the transform at Kit's own chunk boundaries.
 
 Low-level HTTP endpoints keep `net/http` signatures. Existing context-only query, action, error-hook, and fetch-hook signatures remain; they get typed locals through generated `app.LocalsFrom(ctx) *app.Locals`, delegating to `skgo.RequestLocals[Locals](ctx)`. Outside a bound request that helper returns nil; requesting a different locals type inside a bound request panics with a message naming the requested and configured Go types. The existing guarded hook/handler boundary reports it through `OnPanic` and its normal error response; never create an independent empty store.
 
-The **typed Intercept is the single application binding boundary** for locals and client-address policy. Add `ClientAddress func(*http.Request) (string, error)` to `skgo.HandleConfig`. Generated server bindings expose `RequestBoundary(cfg skgo.HandleConfig, next http.Handler) http.Handler`, which supplies the selected hook through the shared params adapter. The scaffold and example use this boundary; with no selected hook it delegates to `params.Middleware(nil).Intercept(handleCfg, handlers)`. A nil typed hook still binds the request; unlike today's nil raw middleware it is not a pass-through. Loads/remotes/endpoints do not independently create locals. Low-level registry-only fixtures remain possible without a typed app, but a generated typed application must install this boundary. The before-only typed Handle runs its initializer then resolves. Keep original Handle only as a low-level API; do not invent old-locals-store compatibility for it.
+The **typed Intercept is the single application binding boundary** for locals and client-address policy. Add `ClientAddress func(*http.Request) (string, error)` to `skgo.HandleConfig`. Generated server bindings expose `RequestBoundary(cfg skgo.HandleConfig, next http.Handler) http.Handler`, which supplies the selected hook through the shared params adapter. The scaffold and example use this boundary; with no selected hook it delegates to `params.Middleware(nil).Intercept(handleCfg, handlers)`. A nil typed hook still binds the request; unlike today's nil raw middleware it is not a pass-through. Loads/remotes/endpoints do not independently create locals. Low-level registry-only fixtures remain possible without a typed app, but a generated typed application must install this boundary. The before-only typed Handle runs its initializer, takes the returned event on success, then calls typed resolve with that event. Returning an error refuses the request; it does not forward the returned event. Keep original Handle only as a low-level API; do not invent old-locals-store compatibility for it.
 
 Hook conversion uses the already matched route's converted params, not the remote-only caller accessor and not an additional matcher execution. The implementation must make that converted snapshot available at this boundary. A generated params-constructor failure indicating route/type drift is `callerManifestDrift` (503), serialized by the existing hook-refusal path (remote transport uses its error envelope). A genuine constructor programming error is a 500. Neither runs the application hook with partial params.
 
@@ -153,12 +182,12 @@ Declared prerender input producers (`/inputs`) currently run without a RequestEv
 
 **Ownership contract:**
 
-- Before hooks, provide a fresh non-nil zero `Locals` for this request. The hook owns loading resources and may replace that pointer before handing control downstream.
-- All hooks in a sequence receive the same authoritative typed hook event. A replacement in an outer hook is immediately visible to an inner hook and to context helpers during initialization.
-- There is one binding instant: the **final resolve call**, when the last hook hands control to application handlers. Calls to resolve that enter another hook in the same sequence are still initialization. Before that final call, context helpers read the authoritative hook event's current pointer; at that call, derived events and context helpers bind the selected pointer.
-- A hook that refuses or answers directly never crosses this boundary; its helpers and error handling read its current locals pointer. At final resolve, nil locals fail via `Errorf(500, "skgo: Locals must not be nil when resolving a request")`, using existing hook-refusal serialization: remote requests receive the HTTP-200 error envelope carrying status 500, data requests HTTP 500 with the error JSON, and ordinary page/endpoint requests the existing HTTP-500 error response/template. No downstream handler runs and no replacement object is silently allocated.
-- A direct public field assignment cannot be intercepted after resolve. Therefore late pointer replacement has a **documented and tested no-op effect on the request binding**: the hook variable's field changes, but all context helpers and downstream events continue to use the pointer selected at final resolve. There is no late-write error and no retroactive rebinding. Set the pointer before resolve; after it, mutate the selected object's fields only with appropriate synchronization once loads or other goroutines can execute concurrently. A shared pointer is not automatic concurrency safety.
-- A page action and the loads rendering its result share the request's pointer. Nested remote calls and single-flight refreshes share it. Restricted query derivation removes caller state, never locals, cancellation, or request-kind metadata.
+- Before hooks, provide a fresh non-nil zero `Locals` for this request. Each hook receives an event value. Copying that value copies its pointers, not the locals object or the embedded core event.
+- `resolve(ctx, event, options...)` forwards the supplied value to the next hook. At the last hook it binds that value's locals pointer for application handlers and their more narrowly typed events. There is no shared mutable hook wrapper whose public field assignments the framework observes.
+- The context supplied to each hook exposes the locals pointer from that hook's incoming event. Assigning `event.Locals = replacement` changes only the hook's local event value; use `event.Locals` for initialization work on the replacement. Calling resolve creates the downstream context binding from the explicitly forwarded event. An outer hook's context and event copy are not retroactively changed if an inner hook forwards a different pointer. Mutations to fields of an object shared by both remain visible as ordinary Go pointer behavior.
+- A hook that refuses or answers directly does not forward its event. Its error handling and context helpers retain the incoming context binding; an unforwarded field assignment does not secretly rebind them. Nil locals passed to any typed resolve fail via `Errorf(500, "skgo: Locals must not be nil when resolving a request")`, using existing hook-refusal serialization: remote requests receive the HTTP-200 error envelope carrying status 500, data requests HTTP 500 with the error JSON, and ordinary page/endpoint requests the existing HTTP-500 error response/template. No next hook or application handler runs and no replacement object is silently allocated.
+- Assigning a different pointer to a hook's local event after resolve does not change the value already forwarded. Resolve remains callable at most once per hook invocation and accepts at most one options value. Mutating the selected object's fields requires appropriate synchronization once loads or other goroutines can execute concurrently; value event passing does not make shared resources immutable or concurrency-safe.
+- A page action and the loads rendering its result share the final forwarded locals pointer. Nested remote calls and single-flight refreshes share it. Restricted query derivation removes caller state, never locals, cancellation, or request-kind metadata. Downstream context helpers and typed events agree on this selected pointer.
 - An internal fetch is a new request: fresh locals, hooks run again, and the parent locals are not inherited. An ordinary nested function call is not a new request.
 - Framework code neither closes application-owned resources nor assumes the handler's returned headers mean a streamed response has finished. Resource lifetime remains application-owned.
 
@@ -169,9 +198,9 @@ sequenceDiagram
     participant Hook as Application hook chain
     participant Run as Loads / actions / remotes / endpoints
     HTTP->>Bind: Enter application request
-    Bind->>Hook: Shared hook event with fresh Locals
-    Hook->>Hook: Load resources; assign event.Locals
-    Hook->>Bind: resolve(ctx)
+    Bind->>Hook: Event value and context with fresh Locals
+    Hook->>Hook: Initialize locals; explicitly forward between hooks
+    Hook->>Bind: resolve(ctx, event)
     Bind->>Run: Derived events with selected Locals pointer
     Run->>Run: Nested query keeps locals; caller access restricted
     Run-->>Hook: Response headers / streaming body
@@ -249,7 +278,7 @@ A fresh scaffold must work with an empty locals struct. Editing it to use an app
 
 These are capability boundaries, not prescribed algorithms or parallel file assignments. The implementer owns mapping the refreshed pin and choosing internals.
 
-1. **Typed request ownership:** scaffold and bind application locals; support hook pointer assignment, typed context access, sequence behavior, nested calls, subrequests, and updates to existing in-tree consumers. Acceptance: the same request sees the same selected object and other requests do not.
+1. **Typed request ownership:** scaffold and bind application locals; support explicit value-event forwarding, typed context access, sequence behavior, nested calls, subrequests, and updates to existing in-tree consumers. Acceptance: the same request sees the same selected object and other requests do not.
 2. **Layout-aware generated events:** expose precise page params and participating-page layout params, reusing sealed alternatives and preserving per-load tracking. Acceptance: a colocated page/layout compiles with distinct types and Kit's client reruns exactly the affected loads.
 3. **Complete common metadata:** carry logical URL, route, flags, and client address through all allowed execution contexts without weakening remote restrictions. Acceptance: literal handler responses and real browser interactions demonstrate the context distinctions.
 4. **Prerender request lifecycle:** implement the generated build-only Kit hook and Go service binding with the begin/resolve/response/options/end contracts above. Acceptance: the actual Kit build exercises the same application hook once per logical request, retains locals through all callbacks, preserves before/after responses and resolve options, and releases state on completion/cancellation.
@@ -270,7 +299,7 @@ The plan's review completion and the feature's implementation completion are sep
 | Observable claim | Required demonstration |
 | --- | --- |
 | Application-owned locals and aliases work | Real scaffold generation/compilation with a custom module path, edited locals domain fields, and repeated generation that preserves authored files. The example, testdata fixtures, and starter use the new signatures/configuration; incorrect type domains are rejected. |
-| Hook pointer assignment is shared correctly | Served handler fixtures: outer and inner hooks, page/layout loads, action then rendering, command/form, nested/refreshed query, and context helpers observe the supplied fixture values and the selected object. No-hook path supplies an empty object. Cover both Go-fetch and renderer-fetch dispatch in a fresh scaffold, not just the example. Refusal/error, nil-assignment serialization, and the documented late-pointer-replacement no-op are covered. |
+| Explicit event forwarding binds locals correctly | Served fixtures cover outer/inner hooks, the before-only adapter, and downstream page/layout loads, actions, command/form, nested/refreshed queries and context helpers. An assigned pointer changes downstream state only when forwarded; each hook context agrees with its incoming event; inner pointer replacement does not rewrite the outer event/context; shared object-field mutations remain visible. Refusal, nil-forwarding serialization, once-only resolve, and assignment after forwarding are covered. No-hook path supplies a fresh empty object. Cover both Go-fetch and renderer-fetch dispatch in a fresh scaffold, not just the example. |
 | Request isolation is real | Concurrent served requests with independent literal values cannot see each other's locals; internal fetch gets its own initialization while direct nested calls retain the parent. Concurrent fixtures belong to the existing Go contract suite; this plan adds no separate race-detector gate or test recipe. |
 | Prerender has real request ownership | A real build with a configured Go hook proves one initialization across a page's layout/page/remote callbacks, shared fixture values, separate concurrent request state, before/after hook ordering over the real returned response, redirects/errors before load execution, transformed HTML, synchronous true/false fetch-header filtering and preload selection, bounded predicate-bridge failure, unavailable client address, and cleanup after deferred completion or cancellation/failure. The generated hook is inert outside building and refuses to overwrite authored hooks-server files. Requestless input producers remain requestless. |
 | Layout types follow Kit | Generated consumers cover colocated page/layout, required ancestors, optional descendants, different matcher types for one key, named methods, absent versus falsey/nil values, groups, reset ancestry, endpoint-only routes, and root fallback. Invalid domain use fails compilation. |
@@ -291,3 +320,5 @@ HTTP-only claims belong in ordinary Go tests at the real served handler. Browser
 - [Round 04](../reviews/20261006-request-event-round-04.md): material findings; specified a build-only worker bridge for Kit's synchronous boolean options and removed an unnecessary no-buffering transport prescription.
 - [Round 05](../reviews/20261006-request-event-round-05.md): **only nitpicks remain**. No material findings remain; review loop stopped. The final review retains three implementation notes about worker ownership, blocking cost, and configuration reuse.
 - Reviewer session: `a45af856-e936-4ea4-8357-f324525ff311` (Claude via `agent`). All rounds independently considered the entire current plan; no application implementation or runtime validation was performed in this planning task.
+
+- User-directed revision (2026-10-07): hooks now receive value events and forward them through typed `resolve(ctx, event, options...)`. The before-only adapter returns the event to forward, context bindings follow explicit handoffs, and completion criteria cover those semantics. Earlier reviews describe the preceding pointer-wrapper proposal; they are retained as history, not a claim that this revision received another independent review.
