@@ -65,16 +65,15 @@ and present nil payloads must survive. There is no outer Optional and no public
 `any`/map escape hatch. This is Go's conventional closed-interface pattern, not
 an exhaustive-switch guarantee or a security boundary against hostile embedding.
 
-Readable switch cases are the intended surface. Illustrative names, pending
-the naming decision below:
+Readable switch cases use the accepted parameter/type naming pattern:
 
 ```go
 switch number := event.Params.Number().(type) {
-case params.NumberString:
+case params.NumberParam_String:
     return number.Value, nil
-case params.NumberInt:
+case params.NumberParam_Int:
     return strconv.Itoa(number.Value), nil
-case params.NumberOrderNumber:
+case params.NumberParam_OrderNumber:
     return number.Value.Label(), nil
 case nil:
     return "absent", nil
@@ -89,25 +88,20 @@ compiler probes established that boundary. Do not silently weaken the return
 type to `any` to imitate that syntax. A default must not treat unknown variants
 as absence.
 
-## Remaining naming decision
+## Accepted variant naming
 
-The old mandatory `Variant_<Key>_Named<Type>_<digest>` public scheme is withdrawn.
-Prefer readable key/type alternatives for ordinary application code. Preserve
-actual Go type identity, alias deduplication, and deterministic generation;
-scan order and import aliases must not choose identities. Package-name,
-key-stem, builtin-versus-defined-type, generic, and structural collisions still
-need a deliberate rule.
+Use `<Key>Param_<Type>`: `NumberParam_String`, `NumberParam_Int`, and
+`NumberParam_OrderNumber`. If distinct types collide, qualify with the declaring
+package: `sales.OrderNumber` and `legacy.OrderNumber` become
+`NumberParam_SalesOrderNumber` and `NumberParam_LegacyOrderNumber`.
 
-Before assigning the coding mission, settle one compact naming policy with
-literal examples for those collisions and for adding a colliding type later.
-The read-only preparation review recommends readable names in ordinary cases
-and deterministic collision diagnostics with deliberate disambiguation, rather
-than silently renaming existing public cases. The mechanism for disambiguation
-must be settled before implementation. Do not promise both universally short automatic
-names and unconditional stability under all future collisions. The exact
-collision remedy remains a proposal, not an accepted or implemented API.
-Keep this bounded; do not introduce a migration framework or a persistent
-naming ledger. Internal unique identities need not be application-facing names.
+Adding a real collision may rename the affected alternatives; that tradeoff is
+accepted. Names remain deterministic for the same inputs. Preserve actual Go
+type identity and alias deduplication. If readable qualification still collides,
+use a deterministic identity suffix only for those colliding alternatives.
+Do not impose hashes on ordinary names or add user naming configuration, a
+migration framework, or a naming ledger. The old unconditional name-stability
+requirement and collision-as-user-error proposal are superseded.
 
 ## Presence and the matcher type domain
 
@@ -129,7 +123,7 @@ Collect route metadata from every Kit caller route, including routes with no Go 
 
 Deduplicate using Go type identity (`types.Identical` with aliases unaliased), not Type.String, matcher name or underlying kind. Aliases of the same original type share one variant; distinct defined types with identical underlying types, including identically named types in different packages, remain distinct. Named generic instantiations include their arguments; pointer T differs from T and legally expressible unnamed types deduplicate by actual Go structural identity. Multiple matchers returning the same T share the variant while retaining their independent acceptance/conversion behavior.
 
-Public naming follows the revised naming decision above, once settled. Fixtures
+Public naming follows the accepted policy above. Fixtures
 must establish readable ordinary cases, distinct identities for colliding Go
 types and parameter keys, deterministic regeneration, and the documented
 behavior when a newly added type collides. Keep private markers/storage and
@@ -166,7 +160,7 @@ Explicitly settle all inherited raw APIs: for command/form events, both raw `Par
 
 Use ordinary Go tests, existing production/dev BDD, and independent Claude Opus QA. No new proof framework, harness, ledger, acceptance runner or feature-specific site page. Expectations are literal fixtures independent of the implementation. A skip is an unmet check.
 
-1. **Generation and compilation.** Actually generate Go and compile/run consumers of the shared Params. A remote imports only the shared params package and domain types, without any caller package import. At least one shared `id` is a named numeric matcher value with a method on one route, plain string on another, absent on a third/optional omission. Type-switch receipts assert the exact variant and Value/method result for each, including accepted zero/false/empty. Generate a named struct variant retaining fields and methods (the accepted RevisedOrder load test must remain intact), and an unnamed `*domain.OrderRef` pointer accepted as nil whose pointer wrapper remains present. Where supported, accepted nil interface payloads retain the declared interface variant. Unsupported accessibility/ownership cases fail with source-located diagnostics; JS/TS matchers still obey Kit primitive results. Negative compilation proves unrelated plain int/string/domain values cannot be assigned directly to the variant interface. Tests cover named-type vs alias deduplication, identical underlying values in different packages, import-name and public-name collisions, legally nameable generic and structural identities, with declared interface identity where supported. First generation and stale-handler regeneration both work. Add a third alternative in regeneration: old public names remain stable, a consumer handles it explicitly, and an old consumer which handles nil but rejects unknown variants does not mistake it for absence. Do not claim all missing switch cases are detected by Go.
+1. **Generation and compilation.** Actually generate Go and compile/run consumers of the shared Params. A remote imports only the shared params package and domain types, without any caller package import. At least one shared `id` is a named numeric matcher value with a method on one route, plain string on another, absent on a third/optional omission. Type-switch receipts assert the exact variant and Value/method result for each, including accepted zero/false/empty. Generate a named struct variant retaining fields and methods (the accepted RevisedOrder load test must remain intact), and an unnamed `*domain.OrderRef` pointer accepted as nil whose pointer wrapper remains present. Where supported, accepted nil interface payloads retain the declared interface variant. Unsupported accessibility/ownership cases fail with source-located diagnostics; JS/TS matchers still obey Kit primitive results. Negative compilation proves unrelated plain int/string/domain values cannot be assigned directly to the variant interface. Tests cover named-type vs alias deduplication, identical underlying values in different packages, import-name and public-name collisions, legally nameable generic and structural identities, with declared interface identity where supported. First generation and stale-handler regeneration both work. Add a noncolliding third alternative in regeneration: old public names remain stable, a consumer handles it explicitly, and an old consumer which handles nil but rejects unknown variants does not mistake it for absence. Do not claim all missing switch cases are detected by Go.
 2. **Real command/enhanced-form handler entries.** Call the same command and form from multiple caller shapes with distinct literal explicit input. Same-name/different-type receipts prove selected route conversion, without context retrieval for authored params or inference from remote directory. Include hookless, Loads-less, matched-loadless, optional omission and candidate rejection followed by fallback where the SAME key changes variant. Headerless generated Go form-client calls and unmatched caller URLs execute a known remote with every relevant getter nil; unknown remote identity remains a separate 404. No serialized browser params are authoritative. Encoded Unicode/segments/percent/slash use literal Kit-derived expectations for remote, document and data paths, never values read from one path as the oracle for another. Include `/items/%2525` -> `%25` and `/docs/a%2Fb` -> single-segment value `a/b`, plus malformed caller path 400 before handler invocation. Preserve the implemented shared decoding correction for document/data as well as remotes; do not regress precise load API/tracking semantics. Include Kit-derived chained optional rejection fixtures `/[[lang=Lang]]/[[id]]` from `/abc` (Lang matcher is actually invoked and rejects captured `abc`; Lang getter nil, ID string wrapper Value `abc`) and/or `/[[lang=Lang]]/[...rest]` from `/abc/def` (Lang nil; Rest string wrapper Value `abc/def`). Assert matcher invocation explicitly. The earlier `/[[lang=Lang]]/[id]` from `/abc` fixture exercises regex backtracking without calling Lang and is superseded as carry-forward proof.
 3. **Native forms.** Literal urlencoded HTTP POSTs to `?/remote=<id>` on multiple caller pages, including keyed `form.for` identity, assert variant/value receipts in the returned document in production and dev SSR. These supplement enhanced endpoint tests and JavaScript-off browser submission. Preserve form codecs/validation/retained fields and generated Go client behavior. Adding optional caller URL support to that Go client is a separate decision.
 4. **Isolation and existing semantics.** Alternating callers and concurrent overlapping requests have independently fixed receipts; no shared storage/cache/hook state leaks across requests or fallback candidates. Embedded/context-derived raw Param and Params are forbidden consistently in command/form; Params getters remain correct. Queries called directly inside commands, SSR queries and Refresh/RefreshRequested queries cannot observe caller Params, URL or route. Cover batch/live/dev-prerender entry paths affected by common constructors. Preserve existing cookies, CSRF, header limits, redirects, cancellation, refresh/single-flight handling and codecs.
@@ -179,10 +173,9 @@ Use ordinary Go tests, existing production/dev BDD, and independent Claude Opus 
 
 ## Development sequence
 
-1. **Settle the public naming contract.** The read-only preparation agent has
-   checked the revised API against the implementation and pinned Kit; the
-   remaining decision is recorded above. The parent records the chosen naming
-   policy here before dispatching code. Do not repeat the preparation review.
+1. **Preparation complete.** The read-only preparation review is complete and
+   the user has settled naming as recorded above. Do not reopen that decision
+   or repeat the preparation review.
 2. **Implement the coherent API revision.** One coding agent owns the generated
    public surface, signature acceptance, dispatch, authored consumers and their
    immediate fixtures as one mission. Success means developers can write the
