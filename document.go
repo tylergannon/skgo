@@ -1266,6 +1266,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 		requestCSP.Nonce = csp.nonce
 	}
 
+	metadata := requestMetadataOf(r, req.url, plan.routeID, false)
 	request, err := json.Marshal(ssr.Request{
 		URL:             req.url.String(),
 		Method:          r.Method,
@@ -1278,7 +1279,9 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 		Cookies:         cookies,
 		Headers:         requestHeaders(r),
 		CSR:             plan.hydrate,
-		ClientAddress:   clientAddress(r),
+		IsDataRequest:   metadata.isData,
+		IsRemoteRequest: metadata.isRemote,
+		IsSubRequest:    metadata.isSub,
 		FormAction:      seed,
 		Form:            classicFormWire(plan.classic),
 		CSP:             requestCSP,
@@ -1304,6 +1307,7 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 	var answersMu sync.Mutex
 	finished := false
 	result, _, err := s.engine.Render(ctx, plan.routeID, request, ssr.Hosts{
+		ClientAddress: clientAddressOf(r).get,
 		Remote: func(ctx context.Context, id, payload string) ([]byte, error) {
 			local := map[string]map[string]answered{}
 			raw, err := s.answer(withEvent(ctx, event), id, payload, local)
@@ -1859,22 +1863,6 @@ func (s *SSR) deferReplacer(promises *promiseTable) devalue.Replacer {
 		}
 		return transport(v, uneval)
 	}
-}
-
-func clientAddress(r *http.Request) string {
-	host, _, err := splitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}
-
-func splitHostPort(addr string) (string, string, error) {
-	i := strings.LastIndex(addr, ":")
-	if i < 0 {
-		return "", "", errors.New("no port")
-	}
-	return strings.Trim(addr[:i], "[]"), addr[i+1:], nil
 }
 
 // jarOf is the cookie jar a form submission wrote into, so the loads that run

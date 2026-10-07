@@ -1011,10 +1011,11 @@ func (rs *Remotes) recovered(fn *Remote, value any, err error) error {
 // refreshed query reads the cookie the command just wrote — kit resolves both
 // on one request, and so does this.
 func (rs *Remotes) newEvent(r *http.Request, mutable bool) *Event {
-	e := &Event{req: r, jar: requestCookieJar(r, rs.secureCookies), mutable: mutable, remote: true, query: !mutable}
+	e := &Event{metadata: requestMetadataOf(r, nil, "", strings.HasPrefix(r.URL.Path, rs.Prefix())), req: r, jar: requestCookieJar(r, rs.secureCookies), mutable: mutable, remote: true, query: !mutable}
 	if mutable {
 		e.caller, _ = r.Context().Value(remoteCallerKey{}).(*remoteCaller)
 	}
+	e.req = r.WithContext(withEvent(r.Context(), e))
 	return e
 }
 
@@ -1025,6 +1026,7 @@ func (e *Event) immutable() *Event {
 	derived.mutable = false
 	derived.remote, derived.query = true, true
 	derived.caller, derived.hook, derived.load, derived.params = nil, nil, nil, nil
+	derived.req = e.req.WithContext(withEvent(e.req.Context(), &derived))
 	return &derived
 }
 

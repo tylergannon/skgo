@@ -82,18 +82,6 @@ func requestResponseHeaders(r *http.Request) http.Header {
 	return http.Header{}
 }
 
-// IsDataRequest reports that this is a `__data.json` request. It is only
-// meaningful on the event a Middleware receives.
-func (e *Event) IsDataRequest() bool { return e != nil && e.hook != nil && e.hook.isData }
-
-// IsRemoteRequest reports that this is a remote-function call. It is only
-// meaningful on the event a Middleware receives.
-func (e *Event) IsRemoteRequest() bool { return e != nil && e.hook != nil && e.hook.isRemote }
-
-// IsSubRequest reports that this request came from an in-process Fetch of the
-// app's own routes rather than from a client.
-func (e *Event) IsSubRequest() bool { return e != nil && e.hook != nil && e.hook.isSub }
-
 // Params is a copy of the matched route's parameters, or nil when no route
 // matched. It is only available on the event a Middleware receives; inside a
 // query kit forbids reading it, and so does this.
@@ -219,7 +207,10 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		}
 		state.jar = newCookieJarAt(r, pageURL.Host, pageURL.Path, secure)
 
-		event := &Event{req: r, jar: state.jar, mutable: true, hook: state, actionResponse: state.response}
+		r = withClientAddress(r, cfg.ClientAddress)
+		metadata := &requestMetadata{url: pageURL, routeID: state.routeID, isData: isData, isRemote: isRemote, isSub: state.isSub, routing: state.routing}
+		r = r.WithContext(context.WithValue(r.Context(), requestMetadataKey{}, metadata))
+		event := &Event{metadata: metadata, req: r, jar: state.jar, mutable: true, hook: state, actionResponse: state.response}
 		ctx := withEvent(r.Context(), event)
 		ctx = context.WithValue(ctx, hookStateKey{}, state)
 		if bind != nil {

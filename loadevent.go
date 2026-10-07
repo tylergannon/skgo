@@ -47,8 +47,9 @@ func newResponseState(r *http.Request) *responseState {
 // because the client decides per node whether the load has to run again.
 func (lr *loadRequest) event(index int, fns []func() dataNode) *Event {
 	return &Event{
-		req: lr.req,
-		jar: lr.jar,
+		metadata: requestMetadataOf(lr.req, lr.url, lr.routeID, false),
+		req:      lr.req,
+		jar:      lr.jar,
 		// A load may write cookies. Kit allows it there and forbids it in a
 		// query, because a query's result is cached by its argument and
 		// replayed; a load's result is not.
@@ -106,8 +107,15 @@ func (e *Event) URL() *url.URL {
 		copied := *e.hook.url
 		return &copied
 	}
-	if e == nil || e.load == nil {
+	if e == nil {
 		return nil
+	}
+	if e.load == nil {
+		if e.metadata == nil || e.metadata.url == nil {
+			return nil
+		}
+		copied := *e.metadata.url
+		return &copied
 	}
 	e.load.uses.flag(&e.load.uses.url)
 	copied := *e.load.shared.url
@@ -152,8 +160,18 @@ func (e *Event) SearchParam(name string) (string, bool) {
 		}
 		return values[0], true
 	}
-	if e == nil || e.load == nil {
+	if e == nil {
 		return "", false
+	}
+	if e.load == nil {
+		if e.metadata == nil || e.metadata.url == nil {
+			return "", false
+		}
+		values, ok := e.metadata.url.Query()[name]
+		if !ok || len(values) == 0 {
+			return "", false
+		}
+		return values[0], true
 	}
 	e.load.uses.add(&e.load.uses.searchParams, name)
 	values, ok := e.load.shared.url.Query()[name]
@@ -178,6 +196,9 @@ func (e *Event) RouteID() string {
 	}
 	if e != nil && e.hook != nil {
 		return e.hook.routeID
+	}
+	if e != nil && e.metadata != nil {
+		return e.metadata.routeID
 	}
 	return ""
 }

@@ -635,8 +635,8 @@ func TestRemoteFunctionBodiesGetNoRequestEventFromTheHook(t *testing.T) {
 	if kind, _, _ := envelope(t, rec.Body.Bytes()); kind == "error" {
 		t.Fatalf("query failed: %s", rec.Body.String())
 	}
-	if got.url != "" || got.route != "" || got.params != nil || got.remote {
-		t.Errorf("a query's event exposed the request: %+v; kit's query event has no url, route or params because the result is cached by argument", got)
+	if got.url != "" || got.route != "" || got.params != nil || !got.remote {
+		t.Errorf("query metadata: %+v; caller url, route and params must be restricted while the remote request flag survives", got)
 	}
 	if got.cookieErr == nil {
 		t.Error("a query was allowed to write a cookie")

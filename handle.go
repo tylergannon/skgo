@@ -220,6 +220,10 @@ func NewResponse(status int, header http.Header, body io.Reader) *http.Response 
 // and Base come straight from the built manifest; an app has nothing else to
 // decide.
 type HandleConfig struct {
+	// ClientAddress resolves the visitor address from the original HTTP request.
+	// Nil uses the peer IP in RemoteAddr. Proxy headers require an explicit provider.
+	// The first value or error is shared by derived events and internal fetches.
+	ClientAddress func(*http.Request) (string, error)
 	// AppDir is kit's appDir; empty means "_app".
 	AppDir string
 	// Base is kit's paths.base, without a trailing slash.
