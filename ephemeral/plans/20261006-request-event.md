@@ -4,7 +4,25 @@ This feature gives Go application code a complete, consistently typed view of th
 
 Developers can initialize a signed-in user or other request-specific resources once in a hook, then use them throughout that request with compiler-checked access. Generated types handle the wiring, reducing repeated setup and manual type assertions while preserving SvelteKit's request behavior during serving and prerendering.
 
-**Status:** initial design reviewed with Claude through round 05; Codex and Claude Fable 5.1 subsequently agreed on the simpler predicate relay after [three alternating rounds](20261006-prerender-predicate-design.md). Codegen prerequisite [#262](https://github.com/tylergannon/skgo/issues/262) landed in [#266](https://github.com/tylergannon/skgo/pull/266). This task remains design-only; actual Kit/Go integration proof is outstanding.
+## What happens next
+
+**Next: stage 1 — typed locals throughout a served request.** The design and prerequisites are ready. No RequestEvent implementation stage is complete yet: the library still has `RequestEvent[P]` without typed locals, and the typed resolve API is not implemented.
+
+Implement the entire feature in the following order. These stages are development checkpoints within one implementation, not separately supported versions or staged releases. Change the library, generated code, example, starter and fixtures directly as needed. Do not add migration machinery, compatibility shims, temporary public APIs or feature flags to bridge stages. Continue from one completed stage to the next without another approval round. Keep this table current; mark a stage done only when its stated behavior has been demonstrated.
+
+| Order | Stage | Status | Finished when |
+| --- | --- | --- | --- |
+| Prerequisites | Typed route/remote params and consolidated generation | **Done — merged** | #261 supplies the parameter foundation; #266 supplies invocation-local synthetic declarations and one `skgo_gen.go` per package. Both are in this branch. |
+| 1 | **Typed locals and explicit event forwarding** | **Next — not started** | An app defines its locals, initializes them in a value-event hook, and forwards them through typed resolve. Runtime loads, actions, commands/forms, nested queries and context helpers see the intended object; separate requests and internal fetches remain isolated. Generation, the scaffold and in-tree consumers use the new API. Real handler fixtures demonstrate forwarding, refusal and isolation. |
+| 2 | **Page and layout event types** | Not started | Page and layout handlers receive their correct parameter domains, including descendant optionality, matcher alternatives, route groups and layout resets. Colocated page/layout handlers compile with distinct aliases. Accessors retain per-load tracking. |
+| 3 | **Complete request metadata** | Not started | Route ID, logical/original URL, request-kind flags and client address behave consistently across the allowed request contexts, including actions and internal fetch. Query restrictions remain intact. Handler fixtures demonstrate the distinctions and address inheritance. |
+| 4 | **Prerender request lifecycle** | Not started | A real Kit build runs the Go hook once per logical request, shares locals across its load/remote callbacks, and carries the actual response through hook before/after logic. Go-backed fetches work, refusals preserve their meaning, and completion/cancellation releases request state. |
+| 5 | **Prerender resolve options** | Not started | The real build applies HTML transforms, header filtering and preload decisions with the selected request's state and defaults. The agreed relay uses the existing owner; no additional worker is added. Default callbacks require no predicate traffic, and bridge failure cannot produce a successful build. |
+| 6 | **Complete integration and independent validation** | Not started | The fresh scaffold and example exercise the whole feature. Independent validation checks that assertions are load-bearing, both browser modes prove client behavior, and the running app is inspected. Every claim in the definition of done below is satisfied. |
+
+Tests accompany the stage that introduces their behavior. Stage 6 checks the assembled result; it is not where testing first begins. Reuse relevant proof as work proceeds instead of rerunning every expensive build and browser suite at each checkpoint. A completed stage is progress, not a claim that the whole feature is ready.
+
+**Design history:** the initial plan was reviewed with Claude through round 05; Codex and Claude Fable 5.1 then agreed on the simpler predicate relay after [three alternating rounds](20261006-prerender-predicate-design.md). The user subsequently approved explicit value-event forwarding. Codegen prerequisite [#262](https://github.com/tylergannon/skgo/issues/262) landed in [#266](https://github.com/tylergannon/skgo/pull/266). Actual RequestEvent implementation and its integration proof remain outstanding.
 
 **Baseline:** rebased onto SKGo `c6906b7` (merged #266, following typed params #261); installed SvelteKit **3.0.0**. This is a plan, not an implementation or a claim of runtime proof.
 
@@ -274,15 +292,11 @@ Aliases are recognized by Go type identity, not spelling. Validate both event ty
 
 A fresh scaffold must work with an empty locals struct. Editing it to use an application domain type must survive regeneration and compile through the real starter workflow. Update every in-tree consumer to the new configuration and signatures. Ordinary validation rejects missing locals configuration or an incorrect event domain; no migration-specific diagnostics or hidden compatibility types are required.
 
-## 6. Implementation missions
+## 6. Execution rules
 
-These are capability boundaries, not prescribed algorithms or parallel file assignments. The implementer owns mapping the refreshed pin and choosing internals.
+The ordered stage table at the top is the implementation sequence and the single place to track completion. The detailed sections define the final behavior; they do not require intermediate compatibility contracts. Each stage owns making its behavior work through the relevant application path, including generated consumers and ordinary tests, rather than completing a disconnected library layer first.
 
-1. **Typed request ownership:** scaffold and bind application locals; support explicit value-event forwarding, typed context access, sequence behavior, nested calls, subrequests, and updates to existing in-tree consumers. Acceptance: the same request sees the same selected object and other requests do not.
-2. **Layout-aware generated events:** expose precise page params and participating-page layout params, reusing sealed alternatives and preserving per-load tracking. Acceptance: a colocated page/layout compiles with distinct types and Kit's client reruns exactly the affected loads.
-3. **Complete common metadata:** carry logical URL, route, flags, and client address through all allowed execution contexts without weakening remote restrictions. Acceptance: literal handler responses and real browser interactions demonstrate the context distinctions.
-4. **Prerender request lifecycle:** implement the generated build-only Kit hook and Go service binding with the begin/resolve/response/options/end contracts above. Acceptance: the actual Kit build exercises the same application hook once per logical request, retains locals through all callbacks, preserves before/after responses and resolve options, and releases state on completion/cancellation.
-5. **Integration and independent validation:** exercise the assembled example and starter, verify the assertions are load-bearing, and inspect the application as a visitor. The example, testdata fixtures, starter, and their generated API usage are part of the deliverable. Every generated-application fixture must include a configured locals package; update fixtures as part of this work rather than relying on the old implicit empty type.
+The implementer maps the installed Kit pin and chooses internals. Independent validation assesses the completed behavior, including whether the tests would fail if it were broken. Keep intermediate work in this feature's development branch and deliver the complete feature; do not create a release or approval gate for every stage. Platform and tracing remain the explicit exclusions already agreed above, not unfinished stages of this implementation.
 
 ## 7. Definition of done
 
