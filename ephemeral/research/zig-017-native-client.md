@@ -5,6 +5,21 @@ is an investigation of protocol, memory and scheduling boundaries, with a small
 executed interop probe. It is not a remote client implementation or a claim of
 SvelteKit cache parity.
 
+## Pilot motivation
+
+The user clarified that the native client is also a pilot for evaluating a
+possible future Zig port of skgo; Rust remains another language of interest.
+The motivation includes a fast independent build/test loop and interoperability
+with C toolchains. This does not authorize a whole-server port or expand the
+first client's functionality.
+
+The client can supply experience with Zig allocation, I/O, cancellation,
+devalue, generated types and foreign-language integration. It does not test
+replacement of skgo's Go HTTP/runtime facilities, its goja-based renderer or
+its Go source-analysis tooling. Those are separate parts of a future dependency
+assessment. C interoperability provides access to existing libraries; this
+research has not established which replacements meet skgo's behavior.
+
 ## Verified versions and the two I/O changes
 
 The [official downloads](https://ziglang.org/download/) and
