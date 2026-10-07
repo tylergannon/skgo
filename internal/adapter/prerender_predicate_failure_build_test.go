@@ -145,7 +145,9 @@ finally{await builder.close?.();}
 	cmd := exec.Command("node", "-e", program)
 	cmd.Dir, cmd.Env = filepath.Join(fixture, "web"), env
 	tracked := startInputsTrackedCommand(t, cmd, fixture)
-	err, timedOut := tracked.wait(30 * time.Second)
+	// This case asserts a successful native build and literal zero predicate
+	// traffic, not build speed. Leave room for other packages' compilation.
+	err, timedOut := tracked.wait(120 * time.Second)
 	output := tracked.output.String()
 	if err != nil || timedOut || !strings.Contains(output, "NIL_CALLBACK_TRAFFIC:0 OWNER_CHANNEL_CLOSED") {
 		t.Fatalf("nil callback build: %v deadline=%v\n%s", err, timedOut, output)
