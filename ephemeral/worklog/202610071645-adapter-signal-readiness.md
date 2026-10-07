@@ -1,0 +1,3 @@
+friction: PR #281 CI passed, but merged-main CI spent over 30s compiling and analysing two native signal fixtures before their Go-body receipt existed. Readiness must accommodate whole-suite contention and return immediately on a receipt or child exit; preserve the separate 20s signal-to-drain bound.
+friction: The same merged-main run hit the pre-existing restored-file watcher race investigated in #265. Keep startup-harness repair separate from watcher behavior unless the user expands this delivery.
+friction: Production qualification's repeated Go suite independently exceeded the nil-callback successful build's 30s outer bound. Zero predicate traffic is the contract; do not time compilation as a callback or shutdown requirement.
