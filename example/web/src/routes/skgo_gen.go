@@ -16,10 +16,12 @@ type LayoutParams struct {
 	valueGroup   *string
 	valueID      *string
 	valueIgnored *string
+	valueItem    *string
 	valueMode    *string
 	valueNumber  *hooks.OrderNumber
 	valueProfile *string
 	valueRest    *string
+	valueSection *string
 	valueSlug    *string
 }
 
@@ -31,6 +33,7 @@ func (p LayoutParams) Ignored() *string {
 	skgo.TrackLoadParam(p.event, "ignored")
 	return p.valueIgnored
 }
+func (p LayoutParams) Item() *string { skgo.TrackLoadParam(p.event, "item"); return p.valueItem }
 func (p LayoutParams) Mode() *string { skgo.TrackLoadParam(p.event, "mode"); return p.valueMode }
 func (p LayoutParams) Number() *hooks.OrderNumber {
 	skgo.TrackLoadParam(p.event, "number")
@@ -41,6 +44,10 @@ func (p LayoutParams) Profile() *string {
 	return p.valueProfile
 }
 func (p LayoutParams) Rest() *string { skgo.TrackLoadParam(p.event, "rest"); return p.valueRest }
+func (p LayoutParams) Section() *string {
+	skgo.TrackLoadParam(p.event, "section")
+	return p.valueSection
+}
 func (p LayoutParams) Slug() *string { skgo.TrackLoadParam(p.event, "slug"); return p.valueSlug }
 
 type LayoutRequestEvent = skgo.RequestEvent[LayoutParams, appstate.Locals]
@@ -55,10 +62,12 @@ func skgoLayoutParams(event *skgo.Event) LayoutParams {
 	p.valueGroup = skgo.OptionalLoadParamValue[string](event, "group")
 	p.valueID = skgo.OptionalLoadParamValue[string](event, "id")
 	p.valueIgnored = skgo.OptionalLoadParamValue[string](event, "ignored")
+	p.valueItem = skgo.OptionalLoadParamValue[string](event, "item")
 	p.valueMode = skgo.OptionalLoadParamValue[string](event, "mode")
 	p.valueNumber = skgo.OptionalLoadParamValue[hooks.OrderNumber](event, "number")
 	p.valueProfile = skgo.OptionalLoadParamValue[string](event, "profile")
 	p.valueRest = skgo.OptionalLoadParamValue[string](event, "rest")
+	p.valueSection = skgo.OptionalLoadParamValue[string](event, "section")
 	p.valueSlug = skgo.OptionalLoadParamValue[string](event, "slug")
 
 	return p

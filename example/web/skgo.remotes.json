@@ -62,6 +62,7 @@
     "src/routes/empty/+page.server.ts",
     "src/routes/error/expected/+page.server.ts",
     "src/routes/error/unexpected/+page.server.ts",
+    "src/routes/event-layout/[section]/+layout.server.ts",
     "src/routes/go-dev/+page.server.ts",
     "src/routes/invoices/+page.server.ts",
     "src/routes/middleware/+page.server.ts",

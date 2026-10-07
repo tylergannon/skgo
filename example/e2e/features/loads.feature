@@ -21,6 +21,27 @@ Feature: Server loads written in Go
     Then the typed load says "Order #0"
     And exactly 1 document request was made
 
+  Scenario: Typed layout events preserve locals and track descendant params and route reads
+    Given I have signed in as "ada"
+    When I visit "/event-layout/red/first/one?route=untracked"
+    Then the event layout shows "red|first|/event-layout/[section]/[item]/one|ada|1"
+    When I follow the "Unread sibling" link
+    Then I see "Second sibling page"
+    And the event layout shows "red|first|/event-layout/[section]/[item]/one|ada|1"
+    When I follow the "Unread item" link
+    Then the event layout URL is "/event-layout/red/second/two?route=untracked"
+    And the event layout shows "red|first|/event-layout/[section]/[item]/one|ada|1"
+    When I follow the "Tracked section" link
+    Then the event layout shows "blue|second|/event-layout/[section]/[item]/two|ada|2"
+    When I follow the "Track route" link
+    Then the event layout shows "blue|second|/event-layout/[section]/[item]/two|ada|3"
+    When I follow the "Tracked sibling" link
+    Then I see "First sibling page"
+    And the event layout shows "blue|second|/event-layout/[section]/[item]/one|ada|4"
+    When I follow the "Tracked item" link
+    Then the event layout shows "blue|third|/event-layout/[section]/[item]/one|ada|5"
+    And exactly 2 document requests were made
+
   Scenario: Typed parameter reads retain only the current execution's dependencies
     Given I open "/typed-dependencies/0/42/first"
     Then the typed dependency load says "Order #0" with ignored "first" at serial 1

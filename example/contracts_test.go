@@ -87,6 +87,7 @@ func TestTheFrontPageIndexesEveryCapabilityItDemonstrates(t *testing.T) {
 		{"A query that goes on answering", "/live"},
 		{"Many calls answered by one", "/batch"},
 		{"Server loads, section-wide", "/account"},
+		{"Typed locals and layout request events", "/event-layout/red/first/one?route=untracked"},
 		{"Universal load over Go invoice data", "/invoices?overdue=1"},
 		{"A nested error page", "/account/statement"},
 		{"Values a load promises but does not have yet", "/stream"},

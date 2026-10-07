@@ -6,7 +6,7 @@ Developers can initialize a signed-in user or other request-specific resources o
 
 ## What happens next
 
-**Current: stage 6 — complete integration and independent validation.** Stages 1–5 are independently accepted. Opus found no deployment blocker in stage 5; nonblocking coverage, renderer-default setup and transform error-policy findings are tracked in #274–276. Whole-feature validation and delivery remain outstanding.
+**Current: all six stages independently accepted; PR, CI and merged-main delivery pending.** Final Opus review found no deployment blocker. Stage 6 restores ordinary generated-entry coverage under strict Kit defaults and independently demonstrates load-bearing runtime behavior. Nonblocking latency (#277) and prerender fetch/error-hook configuration (#278) are filed alongside the accepted limits below.
 
 Implement the entire feature in the following order. These stages are development checkpoints within one implementation, not separately supported versions or staged releases. Change the library, generated code, example, starter and fixtures directly as needed. Do not add migration machinery, compatibility shims, temporary public APIs or feature flags to bridge stages. Continue from one completed stage to the next without another approval round. Keep this table current; mark a stage done only when its stated behavior has been demonstrated.
 
@@ -18,13 +18,13 @@ Implement the entire feature in the following order. These stages are developmen
 | 3 | **Complete request metadata** | **Done — independently validated** | Route ID, logical/original URL, request-kind flags and client address behave consistently across the allowed request contexts, including actions and internal fetch. Query restrictions remain intact. Handler fixtures demonstrate the distinctions and address inheritance. |
 | 4 | **Prerender request lifecycle** | **Done — independently validated** | A real Kit build runs the Go hook once per logical request, shares locals across its load/remote callbacks, and carries the actual response through hook before/after logic. Go-backed endpoint fetches work, refusals preserve their meaning, and completion/cancellation releases request state. Own-page/data fetch support remains a nonblocking limitation tracked in #272. |
 | 5 | **Prerender resolve options** | **Done — independently validated** | The real build applies HTML transforms, header filtering and preload decisions with the selected request's state and defaults. The agreed relay uses the existing owner; no additional worker is added. Default callbacks require no predicate traffic, and bridge failure cannot produce a successful build. |
-| 6 | **Complete integration and independent validation** | **In progress** | The fresh scaffold and example exercise the whole feature. Independent validation checks that assertions are load-bearing, both browser modes prove client behavior, and the running app is inspected. Every claim in the definition of done below is satisfied. |
+| 6 | **Complete integration and independent validation** | **Done — independently validated; main delivery pending** | The fresh scaffold and example exercise the assembled feature, both browser modes pass with no skips, and the running app is inspected. Independent validation checks that assertions are load-bearing. Accepted limitations #272, #275, #276 and #278 narrow the ideal definition of done below. |
 
 Tests accompany the stage that introduces their behavior. Stage 6 checks the assembled result; it is not where testing first begins. Reuse relevant proof as work proceeds instead of rerunning every expensive build and browser suite at each checkpoint. A completed stage is progress, not a claim that the whole feature is ready.
 
-**Design history:** the initial plan was reviewed with Claude through round 05; Codex and Claude Fable 5.1 then agreed on the simpler predicate relay after [three alternating rounds](20261006-prerender-predicate-design.md). The user subsequently approved explicit value-event forwarding. Codegen prerequisite [#262](https://github.com/tylergannon/skgo/issues/262) landed in [#266](https://github.com/tylergannon/skgo/pull/266). Actual RequestEvent implementation and its integration proof remain outstanding.
+**Design history:** the initial plan was reviewed with Claude through round 05; Codex and Claude Fable 5.1 then agreed on the simpler predicate relay after [three alternating rounds](20261006-prerender-predicate-design.md). The user subsequently approved explicit value-event forwarding. Codegen prerequisite [#262](https://github.com/tylergannon/skgo/issues/262) landed in [#266](https://github.com/tylergannon/skgo/pull/266). The stage table distinguishes implemented behavior from whole-feature review and delivery.
 
-**Baseline:** rebased onto SKGo `c6906b7` (merged #266, following typed params #261); installed SvelteKit **3.0.0**. This is a plan, not an implementation or a claim of runtime proof.
+**Original baseline:** SKGo `c6906b7` (merged #266, following typed params #261); installed SvelteKit **3.0.0**. Later implementation and review results are recorded in the stage table; the original plan alone supplies no runtime proof.
 
 ## Outcome
 
@@ -309,6 +309,13 @@ The plan's review completion and the feature's implementation completion are sep
 - [x] Final review outcome is `no findings` or `only nitpicks remain`, with each round retained and linked below.
 
 ### Feature complete, after implementation
+
+The accepted delivery limits in the [API handoff](20261007-request-event-handoff.md)
+narrow this original ideal contract: own-page/data prerender fetch (#272),
+automatic sharing of runtime renderer defaults (#275), and Kit's permissive
+policy for application transform errors (#276) are not fully mirrored. Generated
+entry coverage (#274) is exercised separately under strict Kit behavior in stage 6.
+Do not report every ideal claim below as satisfied while those limits remain.
 
 | Observable claim | Required demonstration |
 | --- | --- |

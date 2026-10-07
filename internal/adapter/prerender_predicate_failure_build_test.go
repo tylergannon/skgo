@@ -10,7 +10,7 @@ import (
 )
 
 func TestPrerenderPredicateFailureRejectsPermissiveKitBuildAndDrainsOwner(t *testing.T) {
-	for _, mode := range []string{"killed", "timeout", "worker-timeout"} {
+	for _, mode := range []string{"transform", "killed", "timeout", "worker-timeout"} {
 		t.Run(mode, func(t *testing.T) {
 			fixture := prepareMinimalInputsApp(t)
 			config := filepath.Join(fixture, "internal", "skgo", "config.go")
@@ -26,6 +26,14 @@ import (
  "github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 var Handle = params.Middleware(func(ctx context.Context,event params.RequestEvent,resolve params.Resolve)(*http.Response,error){
+ if os.Getenv("SKGO_PREDICATE_FAILURE_MODE")=="transform" {
+  return resolve(ctx,event,skgo.ResolveOptions{TransformPageChunk:func(ctx context.Context,html string,done bool)(string,error){
+   exe,_:=os.Executable()
+   receipt:=fmt.Sprintf("%d\n%d\n%s\n",os.Getpid(),os.Getpid(),filepath.Dir(exe))
+   if err:=os.WriteFile(os.Getenv("SKGO_LIFECYCLE_RECEIPT"),[]byte(receipt),0600);err!=nil{panic(err)}
+   return "",fmt.Errorf("literal application transform failure")
+  }})
+ }
  return resolve(ctx,event,skgo.ResolveOptions{Preload:func(input skgo.PreloadInput)bool{
   exe,_:=os.Executable()
   receipt:=fmt.Sprintf("%d\n%d\n%s\n",os.Getpid(),os.Getpid(),filepath.Dir(exe))
@@ -93,7 +101,13 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 			if timedOut || err == nil || !strings.Contains(output, "BUILD_APP_REJECTED:") || strings.Contains(output, "BUILD_APP_RESOLVED") {
 				t.Fatalf("predicate failure became build success: %v deadline=%v\n%s", err, timedOut, output)
 			}
-			if mode != "killed" {
+			if mode == "transform" {
+				// A Go application transform error currently rejects the whole
+				// build even when Kit's HTTP error policy would ignore a page.
+				if !strings.Contains(output, "literal application transform failure") {
+					t.Fatalf("application transform failure was hidden: %s", output)
+				}
+			} else if mode != "killed" {
 				if !strings.Contains(output, "timed out after 30000ms") {
 					t.Fatalf("worker timeout not observed: %s", output)
 				}

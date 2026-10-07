@@ -84,6 +84,10 @@ export default defineConfig({
 		},
 		{
 			name: 'source-edit',
+			// dev.ts already permits 120s for generation and startup. The
+			// scenario must allow that wait instead of Playwright's default
+			// 30s, which removes newly added sources while Go still reads them.
+			timeout: 120_000,
 			use: { ...devices['Desktop Chrome'] },
 			testMatch: SOURCE_EDIT,
 			fullyParallel: false,

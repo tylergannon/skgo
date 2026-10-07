@@ -3,6 +3,22 @@ import { booted, expect, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 
+Then('the event layout shows {string}', async ({ page }, values: string) => {
+	await booted(page);
+	await expect(page.getByTestId('event-layout-values')).toHaveText(values);
+});
+
+Then('the event layout URL is {string}', async ({ page }, path: string) => {
+	await expect.poll(() => {
+		const url = new URL(page.url());
+		return url.pathname + url.search;
+	}).toBe(path);
+});
+
+Then('exactly {int} document requests were made', async ({ documents }, expected: number) => {
+	expect(documents.count, documents.log.join('\n')).toBe(expected);
+});
+
 Then('the typed load says {string}', async ({ page }, label: string) => {
 	await expect(page.getByTestId('typed-load-label')).toHaveText(label);
 });

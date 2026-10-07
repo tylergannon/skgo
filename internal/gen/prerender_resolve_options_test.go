@@ -37,21 +37,40 @@ func TestRealKitBuildAppliesRequestResolveOptions(t *testing.T) {
 		t.Error("preload policy removed required stylesheet")
 	}
 	defaults := read("options-default.html")
-	for _, want := range []string{">Default options</h1>", "options fetched body", `"x-default":"default-literal"`, `rel="modulepreload"`} {
+	for _, want := range []string{">Default options</h1>", "options fetched body", `rel="modulepreload"`} {
 		if !strings.Contains(defaults, want) {
 			t.Errorf("default page lacks %q: %s", want, defaults)
 		}
 	}
-	for _, denied := range []string{`"x-public"`, `"x-late"`, `"x-denied"`, `as="font"`} {
+	for _, denied := range []string{`"x-public"`, `"x-late"`, `"x-denied"`, `"x-default"`, `as="font"`} {
 		if strings.Contains(defaults, denied) {
 			t.Errorf("default page retained %q", denied)
 		}
 	}
-	if !strings.Contains(fixture.buildOutput, "load_response_header_not_serialized") || !strings.Contains(fixture.buildOutput, "x-denied") {
-		t.Errorf("Kit did not reject the universal-load header read: %s", fixture.buildOutput)
-	}
 	if !strings.Contains(fixture.buildOutput, "skgo prerender service stopped") {
 		t.Error("build did not drain its service")
+	}
+}
+
+func TestRealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads(t *testing.T) {
+	t.Parallel()
+	fixture := requireOptionsFixture(t)
+	body, err := os.ReadFile(filepath.Join(fixture.app, "ui", "build", "prerendered", "options-default.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{">Default options</h1>", "options fetched body", `"x-default":"default-literal"`, `rel="modulepreload"`} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("explicit default page lacks %q: %s", want, body)
+		}
+	}
+	for _, denied := range []string{`"x-public"`, `"x-late"`, `"x-denied"`, `as="font"`} {
+		if strings.Contains(string(body), denied) {
+			t.Errorf("explicit default page retained %q", denied)
+		}
+	}
+	if !strings.Contains(fixture.buildOutput, "load_response_header_not_serialized") || !strings.Contains(fixture.buildOutput, "x-denied") {
+		t.Errorf("Kit did not reject the universal-load header read: %s", fixture.buildOutput)
 	}
 	fixture.run(t, "TestSharedRendererDefaultFilter")
 }
