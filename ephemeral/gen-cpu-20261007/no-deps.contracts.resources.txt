@@ -1,0 +1,44 @@
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x0 pc=0x105043280]
+
+goroutine 1414 [running]:
+testing.tRunner.func1.2({0x10599d148, 0x105bf0b90})
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2123 +0x1a0
+testing.tRunner.func1()
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2126 +0x2c8
+panic({0x10599d148?, 0x105bf0b90?})
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo/internal/gen.writeContent({0x0, 0x3724c7690060, 0x0, 0x0, 0x0, {0x3724c6f06a80, 0x64}, {0x3724c6f06af0, 0x6e}, {0x0, ...}, ...}, ...)
+	/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/emit.go:1170 +0x100
+github.com/tylergannon/skgo/internal/gen.write({0x0, 0x3724c7690060, 0x0, 0x0, 0x0, {0x3724c6f06a80, 0x64}, {0x3724c6f06af0, 0x6e}, {0x0, ...}, ...}, ...)
+	/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/emit.go:1157 +0x244
+github.com/tylergannon/skgo/internal/gen.(*app).write(...)
+	/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/emit.go:1128
+github.com/tylergannon/skgo/internal/gen.writeSharedParams({0x0, 0x3724c7690060, 0x0, 0x0, 0x0, {0x3724c6f06a80, 0x64}, {0x3724c6f06af0, 0x6e}, {0x0, ...}, ...}, ...)
+	/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/shared_params.go:459 +0x1a48
+github.com/tylergannon/skgo/internal/gen.prepareLoadParams(0x3724c70e2400, {0x3724c8244d88, 0x3c, 0x8ee?})
+	/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/load_params.go:164 +0x14b8
+github.com/tylergannon/skgo/internal/gen.TestSharedParamsSourceDiagnostics.func1(0x3724c6f858c8)
+	/Users/tyler/.codex/worktrees/3e0c/skgo/internal/gen/shared_params_test.go:431 +0x3d8
+testing.tRunner(0x3724c6f858c8, 0x3724c70def00)
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0xc4
+created by testing.(*T).Run in goroutine 21
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x3b8
+        1.90 real         1.42 user         1.10 sys
+            73957376  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              142048  page reclaims
+                 792  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                 778  signals received
+                 386  voluntary context switches
+               11975  involuntary context switches
+          6544518985  instructions retired
+          1819136971  cycles elapsed
+            32522960  peak memory footprint

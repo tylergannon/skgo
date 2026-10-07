@@ -1,0 +1,38 @@
+File: gen.test
+Type: cpu
+Time: 2026-10-07 08:32:21 PDT
+Duration: 221.85s, Total samples = 694.03s (312.84%)
+Showing nodes accounting for 610.48s, 87.96% of 694.03s total
+Dropped 1865 nodes (cum <= 3.47s)
+Showing top 30 nodes out of 264
+      flat  flat%   sum%        cum   cum%
+   172.22s 24.81% 24.81%    174.63s 25.16%  runtime.tryDeferToSpanScan
+   113.43s 16.34% 41.16%    113.43s 16.34%  runtime.(*spanInlineMarkBits).init
+    93.90s 13.53% 54.69%     93.90s 13.53%  runtime.memclrNoHeapPointers
+    29.03s  4.18% 58.87%     29.03s  4.18%  runtime.memmove
+       29s  4.18% 63.05%        29s  4.18%  syscall.rawsyscalln
+    22.63s  3.26% 66.31%     22.63s  3.26%  runtime.madvise
+    22.54s  3.25% 69.56%     22.54s  3.25%  runtime.(*spanInlineMarkBits).release (inline)
+    16.39s  2.36% 71.92%    128.51s 18.52%  runtime.(*mspan).moveInlineMarks
+    12.39s  1.79% 73.70%     12.39s  1.79%  runtime.(*sweepLocker).tryAcquire
+       11s  1.58% 75.29%     78.48s 11.31%  runtime.mapassign
+     8.62s  1.24% 76.53%      8.76s  1.26%  runtime.mapassign_fast64
+     8.37s  1.21% 77.74%     27.26s  3.93%  runtime.mallocgcSmallScanNoHeaderSC4
+     7.83s  1.13% 78.87%     42.48s  6.12%  runtime.mallocgcSmallScanNoHeaderSC5
+     6.83s  0.98% 79.85%     80.50s 11.60%  runtime.mallocgcSmallScanNoHeaderSC6
+     5.89s  0.85% 80.70%     14.94s  2.15%  runtime.mallocgcSmallScanNoHeaderSC2
+     5.88s  0.85% 81.55%     14.38s  2.07%  runtime.mallocgcTinySC2
+     5.70s  0.82% 82.37%      5.93s  0.85%  runtime.(*mspan).refillAllocCache
+     5.64s  0.81% 83.18%     48.43s  6.98%  runtime.scanObject
+     5.49s  0.79% 83.97%      5.49s  0.79%  runtime.(*mspan).init
+     5.49s  0.79% 84.76%      5.49s  0.79%  runtime.pthread_cond_wait
+     4.77s  0.69% 85.45%     10.39s  1.50%  runtime.mallocgcSmallScanNoHeaderSC3
+     3.63s  0.52% 85.97%     16.50s  2.38%  runtime.mapassign_fast64ptr
+     3.18s  0.46% 86.43%    114.25s 16.46%  runtime.scanObjectsSmall
+     2.28s  0.33% 86.76%      3.92s  0.56%  runtime.mallocgcSmallScanNoHeaderSC1
+     1.92s  0.28% 87.04%     34.97s  5.04%  go/parser.(*resolver).Visit
+     1.48s  0.21% 87.25%    139.73s 20.13%  go/types.(*Checker).indexedElts
+     1.40s   0.2% 87.45%    264.57s 38.12%  golang.org/x/tools/go/packages.(*loader).loadPackage
+     1.25s  0.18% 87.63%    159.73s 23.01%  runtime.scanSpan
+     1.24s  0.18% 87.81%      6.29s  0.91%  go/parser.(*resolver).resolve
+     1.06s  0.15% 87.96%     13.78s  1.99%  go/scanner.(*Scanner).next

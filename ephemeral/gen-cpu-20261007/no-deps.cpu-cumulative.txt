@@ -1,0 +1,33 @@
+File: no-deps.test
+Type: cpu
+Time: 2026-10-07 08:40:05 PDT
+Duration: 8.16s, Total samples = 2870ms (35.17%)
+Showing nodes accounting for 1820ms, 63.41% of 2870ms total
+Dropped 204 nodes (cum <= 14.35ms)
+Showing top 25 nodes out of 266
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%     1410ms 49.13%  github.com/tylergannon/skgo/internal/gen.TestCPUProbe
+         0     0%     0%     1410ms 49.13%  testing.tRunner
+         0     0%     0%     1370ms 47.74%  github.com/tylergannon/skgo/internal/gen.Run
+         0     0%     0%     1370ms 47.74%  github.com/tylergannon/skgo/internal/gen.TestCPUProbe.func1
+         0     0%     0%     1370ms 47.74%  runtime/pprof.Do
+    1370ms 47.74% 47.74%     1370ms 47.74%  syscall.rawsyscalln
+         0     0% 47.74%     1370ms 47.74%  syscall.syscalln
+         0     0% 47.74%     1300ms 45.30%  syscall.syscall
+         0     0% 47.74%     1170ms 40.77%  os.ignoringEINTR (inline)
+         0     0% 47.74%      880ms 30.66%  github.com/tylergannon/skgo/internal/gen.(*app).loadGrammar
+         0     0% 47.74%      880ms 30.66%  runtime.systemstack
+         0     0% 47.74%      850ms 29.62%  github.com/tylergannon/skgo/internal/gen.(*app).generateTypes
+         0     0% 47.74%      850ms 29.62%  github.com/tylergannon/skgo/internal/gen.(*app).projectTypes
+         0     0% 47.74%      700ms 24.39%  os.open (inline)
+         0     0% 47.74%      700ms 24.39%  syscall.Open
+         0     0% 47.74%      630ms 21.95%  runtime.gcBgMarkWorker.func2
+         0     0% 47.74%      630ms 21.95%  runtime.gcDrain
+         0     0% 47.74%      590ms 20.56%  runtime.gcBgMarkWorker
+         0     0% 47.74%      530ms 18.47%  github.com/tylergannon/skgo/internal/gen.preserveDependencyExports
+         0     0% 47.74%      510ms 17.77%  os.OpenFile
+         0     0% 47.74%      510ms 17.77%  os.openFileNolog
+         0     0% 47.74%      510ms 17.77%  os.openFileNolog.func1 (inline)
+     450ms 15.68% 63.41%      480ms 16.72%  runtime.tryDeferToSpanScan
+         0     0% 63.41%      440ms 15.33%  runtime.scanSpan
+         0     0% 63.41%      400ms 13.94%  runtime.gcDrainMarkWorkerIdle (inline)

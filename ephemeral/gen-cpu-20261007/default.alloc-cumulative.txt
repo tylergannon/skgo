@@ -1,0 +1,52 @@
+File: gen.test
+Type: alloc_space
+Time: 2026-10-07 08:36:03 PDT
+Showing nodes accounting for 61626.02MB, 52.04% of 118411.18MB total
+Dropped 1032 nodes (cum <= 592.06MB)
+Showing top 45 nodes out of 162
+      flat  flat%   sum%        cum   cum%
+         0     0%     0% 116078.07MB 98.03%  golang.org/x/sync/errgroup.(*Group).Go.func1
+         0     0%     0% 71358.66MB 60.26%  golang.org/x/tools/go/packages.(*loader).refine.func2.1
+       7MB 0.0059% 0.0059% 71356.66MB 60.26%  golang.org/x/tools/go/packages.(*loader).loadPackage
+         0     0% 0.0059% 70515.51MB 59.55%  go/types.(*Checker).Files
+         0     0% 0.0059% 70515.51MB 59.55%  go/types.(*Checker).checkFiles
+  212.93MB  0.18%  0.19% 53240.41MB 44.96%  go/types.(*Checker).packageObjects
+     124MB   0.1%  0.29% 53051.98MB 44.80%  go/types.(*Checker).objDecl
+         0     0%  0.29% 49367.05MB 41.69%  go/types.(*Checker).rawExpr
+         0     0%  0.29% 47953.45MB 40.50%  go/types.(*Checker).exprInternal
+         0     0%  0.29% 45686.26MB 38.58%  go/types.(*Checker).expr
+   58.94MB  0.05%  0.34% 44020.83MB 37.18%  golang.org/x/tools/go/packages.(*loader).parseFile
+         0     0%  0.34% 44020.83MB 37.18%  golang.org/x/tools/go/packages.(*loader).parseFiles.func1
+  106.04MB  0.09%  0.43% 40621.44MB 34.31%  go/parser.ParseFile
+  219.20MB  0.19%  0.61% 40141.24MB 33.90%  go/parser.(*parser).parseFile
+   30.50MB 0.026%  0.64% 40054.16MB 33.83%  go/types.(*Checker).varDecl
+   15.29MB 0.013%  0.65% 39795.17MB 33.61%  go/types.(*Checker).compositeLit
+ 5858.60MB  4.95%  5.60% 38933.21MB 32.88%  go/types.(*Checker).indexedElts
+       3MB 0.0025%  5.60% 35577.48MB 30.05%  golang.org/x/tools/go/packages.newLoader.func2
+         0     0%  5.60% 33786.81MB 28.53%  go/parser.(*parser).parseDecl
+32999.43MB 27.87% 33.47% 32999.43MB 27.87%  go/types.(*Checker).recordTypeAndValue
+ 6563.40MB  5.54% 39.02% 28859.80MB 24.37%  go/types.(*Checker).updateExprType
+  859.03MB  0.73% 39.74% 23608.61MB 19.94%  go/parser.(*parser).parseExprList
+         0     0% 39.74% 23608.61MB 19.94%  go/parser.(*parser).parseList (inline)
+  610.53MB  0.52% 40.26% 22854.63MB 19.30%  go/parser.(*parser).parseBinaryExpr
+         0     0% 40.26% 22854.63MB 19.30%  go/parser.(*parser).parseExpr
+      98MB 0.083% 40.34% 22285.83MB 18.82%  go/parser.(*parser).parseUnaryExpr
+         0     0% 40.34% 22223.83MB 18.77%  go/parser.(*parser).parsePrimaryExpr
+         0     0% 40.34% 21801.06MB 18.41%  go/types.(*Checker).assignment
+  279.01MB  0.24% 40.57% 17691.13MB 14.94%  go/parser.(*parser).parseFuncDecl
+  325.32MB  0.27% 40.85% 16996.82MB 14.35%  go/parser.(*parser).parseGenDecl
+  315.02MB  0.27% 41.12% 15441.40MB 13.04%  go/parser.(*parser).parseValueSpec
+  429.03MB  0.36% 41.48% 14759.90MB 12.46%  go/parser.(*parser).parseLiteralValue
+ 5414.09MB  4.57% 46.05% 14668.87MB 12.39%  go/parser.(*parser).parseElementList
+  168.01MB  0.14% 46.19% 14470.14MB 12.22%  go/parser.(*parser).parseBody
+  899.39MB  0.76% 46.95% 14064.82MB 11.88%  go/parser.(*parser).parseStmtList
+      30MB 0.025% 46.98% 13556.96MB 11.45%  go/parser.(*parser).parseStmt
+         0     0% 46.98% 11884.57MB 10.04%  go/types.(*Checker).genericExpr
+         0     0% 46.98% 11815.56MB  9.98%  go/types.(*Checker).processDelayed
+         0     0% 46.98% 11235.99MB  9.49%  go/types.(*Checker).funcBody
+  173.51MB  0.15% 47.12%    11230MB  9.48%  go/types.(*Checker).stmt
+         0     0% 47.12%    11230MB  9.48%  go/types.(*Checker).stmtList
+         0     0% 47.12% 11151.57MB  9.42%  go/types.(*Checker).funcDecl.func1
+         0     0% 47.12% 10681.59MB  9.02%  go/types.(*Checker).funcType
+  223.51MB  0.19% 47.31% 10257.51MB  8.66%  go/types.(*Checker).funcDecl
+ 5603.26MB  4.73% 52.04%  9230.04MB  7.79%  go/parser.(*parser).parseOperand

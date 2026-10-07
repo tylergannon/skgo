@@ -1,0 +1,22 @@
+=== RUN   TestTypedLoadActualParameterDependencies
+=== PAUSE TestTypedLoadActualParameterDependencies
+=== RUN   TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/private-type
+=== RUN   TestSharedParamsSourceDiagnostics/private-argument
+=== RUN   TestSharedParamsSourceDiagnostics/private-struct-field
+=== RUN   TestSharedParamsSourceDiagnostics/private-interface-method
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+--- FAIL: TestSharedParamsSourceDiagnostics (1.89s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-type (0.29s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-argument (0.23s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-struct-field (0.23s)
+    --- PASS: TestSharedParamsSourceDiagnostics/private-interface-method (0.23s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.25s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.11s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.10s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.10s)
+    --- FAIL: TestSharedParamsSourceDiagnostics/transitive-generated (0.29s)
