@@ -2,83 +2,112 @@
 
 ## Current continuation instructions — 2026-10-06
 
-The user has replaced Gimbal with direct orchestration in chat
-`01a11328-2836-7ee3-9276-dab87a186ec6`. Do not restart any historical run or
-reactivate its automation. Issue #256's replacement landed in PR #258 at
-`05ec9902f1c3ac035ee910e1a531552cc666c1a6`; the user has authorized integrating
-main into the preserved branch, completing implementation, and independently
-validating it through subagents. No feature merge or release is authorized.
+This chat (`01a11328-2836-7ee3-9276-dab87a186ec6`) owns direct orchestration,
+without Gimbal. Work in the preserved `codex/remote-function-params` worktree at
+`/Users/tyler/.codex/worktrees/remote-function-params/skgo`. Main integration
+and the previous implementation/independent validation are complete at
+`7734653`; `8e0d62a` adds investigation notes. PR #258's prerequisite is already
+integrated. Do not restart that integration or historical Gimbal runs.
 
-The mission is to complete the existing explicit typed command/form event
-capability against the accepted API and executable contracts below. Preserve
-working generated consumers, original Go types, precise load tracking, and
-independently demonstrated behavior. The replacement prerender service owns
-build lifecycle; old branch-specific retirement retries are not requirements
-to preserve. Carry the existing build-query behavioral assertions through the
-replacement entry point. Resolve integration gaps before full acceptance.
+The user has reopened the public Go API. This revision prepares the next
+implementation; it does not claim that the new API has been implemented or
+validated. Preserve the working caller routing, matching, decoding, native and
+enhanced forms, isolation, drift validation, and precise typed loads. Previous
+proof covers the previous API, not this revision.
 
-The orchestrator in this chat assigns bounded implementation work and owns the
-independent QA handoff. Each coding agent implements its assigned capability,
-runs focused developer checks, and returns its changes, observed results, and
-remaining gaps. Coding agents do not launch reviewers, validators, coordinating
-agents, or workflows. Include this division of responsibility directly in each
-coding assignment.
+The orchestrator assigns bounded coding missions and owns independent QA.
+Each builder implements its assigned capability, runs focused developer checks,
+and returns changes, results, and remaining gaps. **Builders do not launch
+reviewers, validators, coordinating agents, or workflows.** Repeat that boundary
+in each assignment. The parent dispatches the independent verifier afterward
+and manages concrete repairs. Source-changing checks and mutations run
+exclusively. Task instructions belong here and in assignments, never AGENTS.md.
+No feature PR, merge, release, site-pin change, or deployment is authorized.
 
-Once the implementation is stable, the orchestrator dispatches the designated
-independent verifier. That handoff fulfills the repository's independent
-validation requirement. Source-changing checks and mutations run exclusively.
-The orchestrator assesses the complete feature; a worker's passing checks alone
-do not establish acceptance.
+## Revised public API
 
-All Gimbal launch, active-run, monitoring, and recovery instructions below are
-historical and superseded by this section. The API contract and Definition of
-done remain authoritative. The old outcomes files are historical context, not
-new assignments; assess remaining work from the integrated source and actual
-results. The separate validation session owns its changes; do not duplicate or
-redesign that work here.
-
-## Historical planning and implementation record
-
-Status: ready and validatable for the authorized Gimbal implementation. Independent reviews `01M47VDEGR8VVS73DPTJCW71ZN.review`, `01M47VZ3KDZC2B9FQYB8S53XBV.review` and `01M47WNGTPAH66VBHC3VVT57G5.review` found material issues which were corrected against cited code below. This revised version is not claimed independently approved. An additional focused read-only review `01M47X0VPWBN0TVG0H0YT4C24J.review` was already launched before the user directed proceeding after concrete corrections; it is not an additional launch gate. Independent implementation QA must exercise every correction. No unresolved material design decision remains. Old run `01M47X5GE8YF243ZP4JB0GBXM3.implement` ended after task1 generation only. Recovery run `01M48KMMYQ0R7DAT9S15EXF253.implement` is active with explicit remaining capability outcomes; complete remote behavior is not yet independently validated. The user authorized implementation once ready; old implementation-start questions are resolved.
-
-## Accepted direction and superseded proposal
-
-A shared Go remote command or remote form receives an explicit generic request event alongside its existing explicit call argument. Its Params is a generated application-wide concrete superset struct. For each parameter name, generation collects the distinct actual Go result types used across caller routes and exposes a named variant interface and concrete wrappers. A truly nil interface denotes absence. There is no outer Optional.
-
-This direction supersedes the earlier `map[string]any` public remote API and its proposed `RemoteEvent = RequestEvent[map[string]any]` alias. The earlier claim that Go cannot represent this superset was too strong: a generated interface with wrappers represents it. Internal converted maps may remain plumbing; they are not the selected application API. The prohibition on application-wide unions in the previous draft is withdrawn specifically for these remote Params. Route-bound loads keep their precise generated RouteParams and tracking getters.
-
-One coherent generated API, with illustrative identity suffix below:
+Commands and forms receive `context.Context` first, an explicitly instantiated
+`skgo.RequestEvent[params.Params]` second, and their explicit input afterward.
+Commands may omit input; forms require it. Results retain their existing shape.
+For example:
 
 ```go
-// Generated in the application's <generator-output>/params package.
-type Params struct { value_6964 Key_ID /* other private variant fields */ }
-type RequestEvent = skgo.RequestEvent[Params]
-type Key_ID interface { skgoParam_6964() }
-
-type Variant_ID_BuiltinString struct { Value string }
-func (Variant_ID_BuiltinString) skgoParam_6964() {}
-
-type Variant_ID_NamedOrderNumber_a1b2c3d4e5f6 struct { Value domain.OrderNumber }
-func (Variant_ID_NamedOrderNumber_a1b2c3d4e5f6) skgoParam_6964() {}
-func (p Params) ID() Key_ID { return p.value_6964 }
-
-// Authored remote handler (the existing explicit input stays separate):
-func save(event params.RequestEvent, input SaveInput) (Receipt, error) {
-    switch id := event.Params.ID().(type) {
-    case params.Variant_ID_NamedOrderNumber_a1b2c3d4e5f6:
-        return receipt(id.Value.Label(), input), nil
-    case params.Variant_ID_BuiltinString:
-        return receipt(id.Value, input), nil
-    case nil:
-        return missingCallerReceipt(input), nil
-    }
-    return Receipt{}, fmt.Errorf("unsupported caller ID variant")
-}
+func save(
+    ctx context.Context,
+    event skgo.RequestEvent[params.Params],
+    input SaveInput,
+) (Receipt, error)
 ```
 
-Handlers may spell the event as `skgo.RequestEvent[params.Params]` or the generated alias; they denote the same type. Commands with no explicit input still receive the event; commands with input and forms retain input as a separate argument. Form marker/scanner/binding inference must accept the generic event without forcing a caller route. Keep one RequestEvent implementation, existing result/input codecs, cancellation and helper access via Context(). Query, batch/live and prerender signatures are unchanged.
+`skgo.RequestEvent[P]` is the one reusable generic event implementation.
+`params.Params` is the one generated concrete app-wide superset type; each
+request gets its own value. The package qualifier `skgo` names the existing
+framework type. The user's `AppWideParams` was illustrative: retaining the
+existing `params.Params` avoids an unrelated rename. Do not replace the generic
+event with an application-specific event implementation, and do not hide its
+type argument in the canonical authored examples through `params.RequestEvent`.
+Ordinary Go aliases do not create a different type; signature validation should
+check type identity, not source spelling.
 
-Use explicit `case nil` for absence. A default arm may report unsupported variants, but must never interpret a new variant as absence. Go does not enforce exhaustive type switches; regeneration cannot make every missing case a compile error. The unexported marker keeps unrelated plain values from satisfying the variant interface. It is not a security boundary or a proof that hostile embedding cannot implement the interface.
+The supplied ctx must retain request cancellation, deadlines, values, and
+request-scoped cookie/refresh helpers. Passing it to a query, including a direct
+nested Go call, must not reveal the command/form caller's params, URL, or route.
+The explicit event supplies that caller state. The existing `event.Context()`
+restriction is a compatibility boundary to preserve, not permission to forward
+an unrestricted dispatcher context. Context and event must belong to the same
+request. Query/batch/live/prerender signatures and route-local load APIs remain
+unchanged.
+
+`event.Params.Number()` returns a generated per-key marker interface. Its
+concrete alternatives wrap the original declared Go type in `Value`; truly nil
+means absence. Original methods, named type identity, accepted falsey values,
+and present nil payloads must survive. There is no outer Optional and no public
+`any`/map escape hatch. This is Go's conventional closed-interface pattern, not
+an exhaustive-switch guarantee or a security boundary against hostile embedding.
+
+Readable switch cases are the intended surface. Illustrative names, pending
+the naming decision below:
+
+```go
+switch number := event.Params.Number().(type) {
+case params.NumberString:
+    return number.Value, nil
+case params.NumberInt:
+    return strconv.Itoa(number.Value), nil
+case params.NumberOrderNumber:
+    return number.Value.Label(), nil
+case nil:
+    return "absent", nil
+}
+return "", fmt.Errorf("unsupported number variant")
+```
+
+The ordinary named case retains the actual domain name `OrderNumber`; it is not
+arbitrarily shortened to `Order`. Literal `case string`/`case int` cannot satisfy
+a marker interface, and those variables would have no Value field. The prior
+compiler probes established that boundary. Do not silently weaken the return
+type to `any` to imitate that syntax. A default must not treat unknown variants
+as absence.
+
+## Remaining naming decision
+
+The old mandatory `Variant_<Key>_Named<Type>_<digest>` public scheme is withdrawn.
+Prefer readable key/type alternatives for ordinary application code. Preserve
+actual Go type identity, alias deduplication, and deterministic generation;
+scan order and import aliases must not choose identities. Package-name,
+key-stem, builtin-versus-defined-type, generic, and structural collisions still
+need a deliberate rule.
+
+Before assigning the coding mission, settle one compact naming policy with
+literal examples for those collisions and for adding a colliding type later.
+The read-only preparation review recommends readable names in ordinary cases
+and deterministic collision diagnostics with deliberate disambiguation, rather
+than silently renaming existing public cases. The mechanism for disambiguation
+must be settled before implementation. Do not promise both universally short automatic
+names and unconditional stability under all future collisions. The exact
+collision remedy remains a proposal, not an accepted or implemented API.
+Keep this bounded; do not introduce a migration framework or a persistent
+naming ledger. Internal unique identities need not be application-facing names.
 
 ## Presence and the matcher type domain
 
@@ -100,18 +129,20 @@ Collect route metadata from every Kit caller route, including routes with no Go 
 
 Deduplicate using Go type identity (`types.Identical` with aliases unaliased), not Type.String, matcher name or underlying kind. Aliases of the same original type share one variant; distinct defined types with identical underlying types, including identically named types in different packages, remain distinct. Named generic instantiations include their arguments; pointer T differs from T and legally expressible unnamed types deduplicate by actual Go structural identity. Multiple matchers returning the same T share the variant while retaining their independent acceptance/conversion behavior.
 
-Generated public names must be stable when any route/key/type is added, independent of scan order and chosen import aliases. Pin this disjoint naming scheme in compile/regeneration fixtures:
+Public naming follows the revised naming decision above, once settled. Fixtures
+must establish readable ordinary cases, distinct identities for colliding Go
+types and parameter keys, deterministic regeneration, and the documented
+behavior when a newly added type collides. Keep private markers/storage and
+helper declarations collision-safe without exposing their machinery in every
+application switch case.
 
-- Derive accessor stem K from the actual parameter key. `id` reserves `ID`. Other canonical ASCII `[a-z][a-z0-9]*` keys use only uppercase-first spelling (`slug` -> `Slug`). Every noncanonical key gets a readable alphanumeric-only stem (prefix `Key` if necessary for a leading digit or empty result), followed by `_K` plus the full lowercase hex encoding of its UTF-8 bytes (`slug_string` -> `SlugString_K736c75675f737472696e67`; `1` -> `Key1_K31`; `_` -> `Key_K5f`; `-` -> `Key_K2d`). No canonical stem contains underscore, so these namespaces stay disjoint and an added noncanonical key never renames an old accessor. Sanitized readable stems are not identity; the lossless encoded suffix is.
-- The getter is `K()`. Private storage uses an encoded key. The variant interface is `Key_<K>` and every concrete wrapper starts `Variant_<K>_`. Fixed `Params` and `RequestEvent` declarations occupy neither prefix. Unexported per-key markers are also derived injectively from full encoded keys. Interfaces/wrappers/accessors cannot collide across these categories; helpers occupy a separate reserved prefix and do not introduce getter methods.
-- Predeclared alternatives have reserved type tags such as `BuiltinString`, `BuiltinInt`, `BuiltinBool`; aliases such as rune use the original type identity (int32). Named alternatives use `Named<ReadableTypeStem>_<fixed identity digest>`. Unnamed alternatives have a separate reserved family `Type<ReadableKindStem>_<fixed identity digest>` (e.g. TypePointer, TypeSlice, TypeMap, TypeStruct, TypeFunc, TypeChan, TypeInterface), with pointer target, channel direction, signatures, fields/tags, embeddedness and interface methods included in canonical Go identity. The nil-pointer fixture uses `*domain.OrderRef`, so its wrapper is in TypePointer, not Named. Builtin/Named/Type families are disjoint. Canonical structural identity follows types.Identical: aliases unalias; function parameter/result names do not affect identity; named references use full package path/name/arguments. A legally accessible alias may be used to spell Value while its underlying Go identity drives deduplication/digest. The digest is based on canonical package-path-qualified Go type identity and full key, including generic arguments and legally expressible structural types, not matcher names, numeric scan order or import aliases. Named and Type suffixes always appear. Detect digest collisions and report a deterministic diagnostic instead of merging or renaming an existing variant. Deterministic import alias resolution does not alter public names.
-
-Regeneration fixtures add `slug_string` after `slug`, `params`, `request_event`, `1`, `_`, `-` and keys with colliding sanitized spellings; original names must remain unchanged and the new declarations must compile. This deliberately uses longer names to make the app-wide namespace total and stable across Kit-legal keys.
 Bootstrap and regeneration precede full application handler type checking. Independently parse Kit route metadata and load matcher/domain compiler information, then write/refresh the shared params and precise load params before loading remote bodies which import them. First generation must work without the generated package. Adding a variant must refresh it even if an old handler body has a stale reference or changed matcher type and currently fails compilation. Once refreshed, type-check bodies and report actual authored errors. Read-only generation/check detects missing/stale output without rewriting. Do not use stale generated type information as the source of truth or require placeholder hand-authored structs. Matcher/domain imports of generated params themselves are dependency cycles to diagnose, not bootstrap sources.
 
 ## Kit mapping and runtime seams
 
-The preserved library worktree is `/Users/tyler/.codex/worktrees/5f2d/skgo`, branch `codex/typed-load-params`. Accepted load work was safely checkpointed at `41f8105b667e40d7f784ab4fc1d251d9b59794f4` before remote launch; it remains unmerged/unreleased. Installed Kit package.json is verified as 3.0.0, per `ephemeral/sveltekit-current/SKILL.md`.
+The active worktree's installed Kit package is verified as 3.0.0, per
+`ephemeral/sveltekit-current/SKILL.md`. Builders and the independent verifier
+must inspect that pin themselves; these references are orientation.
 
 Kit's `src/runtime/client/remote-functions/shared.svelte.js:get_remote_request_headers` sends the current or navigating-to pathname/search independently of explicit arguments. Enhanced forms carry this context too. `src/runtime/server/respond.js:167–175` skips caller route resolution only when pathname is absent; event.params starts empty; `:371–381` calls find_route and assigns route/params before dispatching the known remote at `:634–635`. An unmatched caller route leaves params empty and does not make a known remote unknown. `src/utils/routing.js` checks candidates and matcher rejection permits fallback. The remote definition directory does not determine caller params.
 
@@ -119,9 +150,15 @@ Kit decodes pathnames through `src/utils/url.js:decode_pathname`, splitting on `
 
 Kit's `src/runtime/app/server/remote/shared.js:derive_remote_function_event` preserves command/form context, disallows setHeaders and enforces cookie limits. Under is_in_remote_query it makes url/params/route throw (`:115–125`), including nested queries. Therefore the application-wide params event is only for command/form. Preserve query restrictions across SSR, direct nested calls, refresh, batch/live and dev-prerender constructors. No load tracking is needed for remote Params.
 
-Current skgo seams: middleware.go eventURL reads caller headers, but hookState retains raw params; route matching can currently depend on optional middleware/Loads. Matcher adapters are registered through LoadSpec. remote.go Remotes.newEvent currently drops caller context and is shared by queries. Enhanced commands/forms and document_form.go SSR.runFormAction are separate entry paths; document.go already matches native forms but does not pass that match onward. internal/gen/load_params.go refreshes load types before full scanning, but scans load-owned dirs. Form's marker currently requires context.Context while Command is scanner checked. These are research anchors, not a prescribed implementation algorithm; each Gimbal builder/reviewer must map current source and Kit independently.
-
-The new authored command/form marker API replaces `(context.Context[, In])` with `(params.RequestEvent[, In])`. Existing ctx-shaped command/form declarations are rejected with source-located migration diagnostics; examples receive the mechanical signature update. Queries/batch/live/prerender keep their ctx signatures, and internal low-level runtime callback adapters may remain context-based. The Form marker must change so Go can accept the new callback before the scanner checks it; use the same non-generic `Form(fn any)` marker approach as Command and let the scanner infer/validate event, input and output. This deliberately changes the exported marker; do not retain an undocumented ctx-shaped application mode or create a compatibility framework.
+Current implementation already constructs the generic event and shared Params.
+The generator recognizes command/form event-first signatures and emits calls
+without an explicit ctx. The next implementation must accept the revised
+context-first signatures, validate the app-wide type in the event argument,
+and pass both arguments correctly through generated dispatch. Update authored
+consumers, diagnostics, generation fixtures and marker documentation together.
+Event-only and ctx-only authored command/form shapes should receive the new
+source-located signature guidance; do not add an undocumented alternate mode.
+Low-level runtime callback adapters may remain context-based.
 
 Explicitly settle all inherited raw APIs: for command/form events, both raw `Param(name)` and `Params() map[string]string` are forbidden legacy access (including `event.Event.Param`, `event.Event.Params`, and `EventFrom(event.Context()).Param/Params`), with a clear error/panic consistent with the remote-property restriction mechanism. Their supported accessor is `event.Params.<name>()`. A shadowing method alone is insufficient because Context() and the embedded Event are reachable. Keep raw load/middleware behavior outside the remote context unchanged. Query-derived contexts must forbid params, URL and route access and must not retain a usable command superset through existing context helpers. Do not expose raw strings as an inconsistent second command/form params API. This is a deliberate boundary within the new explicit remote-event API, to be reviewed against existing usages before implementation.
 
@@ -129,43 +166,51 @@ Explicitly settle all inherited raw APIs: for command/form events, both raw `Par
 
 Use ordinary Go tests, existing production/dev BDD, and independent Claude Opus QA. No new proof framework, harness, ledger, acceptance runner or feature-specific site page. Expectations are literal fixtures independent of the implementation. A skip is an unmet check.
 
-1. **Generation and compilation.** Actually generate Go and compile/run consumers of the shared Params. A remote imports only the shared params package and domain types, without any caller package import. At least one shared `id` is a named numeric matcher value with a method on one route, plain string on another, absent on a third/optional omission. Type-switch receipts assert the exact variant and Value/method result for each, including accepted zero/false/empty. Generate a named struct variant retaining fields and methods (the accepted RevisedOrder load test must remain intact), and an unnamed `*domain.OrderRef` pointer accepted as nil whose TypePointer wrapper remains present. Where supported, accepted nil interface payloads retain the declared interface variant. Unsupported accessibility/ownership cases fail with source-located diagnostics; JS/TS matchers still obey Kit primitive results. Negative compilation proves unrelated plain int/string/domain values cannot be assigned directly to the variant interface. Tests cover named-type vs alias deduplication, identical underlying values in different packages, import-name and public-name collisions, legally nameable generic and structural identities, with declared interface identity where supported. First generation and stale-handler regeneration both work. Add a third alternative in regeneration: old public names remain stable, a consumer handles it explicitly, and an old consumer which handles nil but rejects unknown variants does not mistake it for absence. Do not claim all missing switch cases are detected by Go.
-2. **Real command/enhanced-form handler entries.** Call the same command and form from multiple caller shapes with distinct literal explicit input. Same-name/different-type receipts prove selected route conversion, without context retrieval for authored params or inference from remote directory. Include hookless, Loads-less, matched-loadless, optional omission and candidate rejection followed by fallback where the SAME key changes variant. Headerless generated Go form-client calls and unmatched caller URLs execute a known remote with every relevant getter nil; unknown remote identity remains a separate 404. No serialized browser params are authoritative. Encoded Unicode/segments/percent/slash use literal Kit-derived expectations for remote, document and data paths, never values read from one path as the oracle for another. Include `/items/%2525` -> `%25` and `/docs/a%2Fb` -> single-segment value `a/b`, plus malformed caller path 400 before handler invocation. The review established existing document/data handling double-decodes percent and splits encoded slash, so fixing the shared decoding/matching boundary for document/data is necessary in this slice; preserve load API/tracking semantics while correcting these bytes. Include Kit-derived chained optional rejection fixtures `/[[lang=Lang]]/[[id]]` from `/abc` (Lang matcher is actually invoked and rejects captured `abc`; Lang getter nil, ID string wrapper Value `abc`) and/or `/[[lang=Lang]]/[...rest]` from `/abc/def` (Lang nil; Rest string wrapper Value `abc/def`). Assert matcher invocation explicitly. The earlier `/[[lang=Lang]]/[id]` from `/abc` fixture exercises regex backtracking without calling Lang and is superseded as carry-forward proof.
+1. **Generation and compilation.** Actually generate Go and compile/run consumers of the shared Params. A remote imports only the shared params package and domain types, without any caller package import. At least one shared `id` is a named numeric matcher value with a method on one route, plain string on another, absent on a third/optional omission. Type-switch receipts assert the exact variant and Value/method result for each, including accepted zero/false/empty. Generate a named struct variant retaining fields and methods (the accepted RevisedOrder load test must remain intact), and an unnamed `*domain.OrderRef` pointer accepted as nil whose pointer wrapper remains present. Where supported, accepted nil interface payloads retain the declared interface variant. Unsupported accessibility/ownership cases fail with source-located diagnostics; JS/TS matchers still obey Kit primitive results. Negative compilation proves unrelated plain int/string/domain values cannot be assigned directly to the variant interface. Tests cover named-type vs alias deduplication, identical underlying values in different packages, import-name and public-name collisions, legally nameable generic and structural identities, with declared interface identity where supported. First generation and stale-handler regeneration both work. Add a third alternative in regeneration: old public names remain stable, a consumer handles it explicitly, and an old consumer which handles nil but rejects unknown variants does not mistake it for absence. Do not claim all missing switch cases are detected by Go.
+2. **Real command/enhanced-form handler entries.** Call the same command and form from multiple caller shapes with distinct literal explicit input. Same-name/different-type receipts prove selected route conversion, without context retrieval for authored params or inference from remote directory. Include hookless, Loads-less, matched-loadless, optional omission and candidate rejection followed by fallback where the SAME key changes variant. Headerless generated Go form-client calls and unmatched caller URLs execute a known remote with every relevant getter nil; unknown remote identity remains a separate 404. No serialized browser params are authoritative. Encoded Unicode/segments/percent/slash use literal Kit-derived expectations for remote, document and data paths, never values read from one path as the oracle for another. Include `/items/%2525` -> `%25` and `/docs/a%2Fb` -> single-segment value `a/b`, plus malformed caller path 400 before handler invocation. Preserve the implemented shared decoding correction for document/data as well as remotes; do not regress precise load API/tracking semantics. Include Kit-derived chained optional rejection fixtures `/[[lang=Lang]]/[[id]]` from `/abc` (Lang matcher is actually invoked and rejects captured `abc`; Lang getter nil, ID string wrapper Value `abc`) and/or `/[[lang=Lang]]/[...rest]` from `/abc/def` (Lang nil; Rest string wrapper Value `abc/def`). Assert matcher invocation explicitly. The earlier `/[[lang=Lang]]/[id]` from `/abc` fixture exercises regex backtracking without calling Lang and is superseded as carry-forward proof.
 3. **Native forms.** Literal urlencoded HTTP POSTs to `?/remote=<id>` on multiple caller pages, including keyed `form.for` identity, assert variant/value receipts in the returned document in production and dev SSR. These supplement enhanced endpoint tests and JavaScript-off browser submission. Preserve form codecs/validation/retained fields and generated Go client behavior. Adding optional caller URL support to that Go client is a separate decision.
 4. **Isolation and existing semantics.** Alternating callers and concurrent overlapping requests have independently fixed receipts; no shared storage/cache/hook state leaks across requests or fallback candidates. Embedded/context-derived raw Param and Params are forbidden consistently in command/form; Params getters remain correct. Queries called directly inside commands, SSR queries and Refresh/RefreshRequested queries cannot observe caller Params, URL or route. Cover batch/live/dev-prerender entry paths affected by common constructors. Preserve existing cookies, CSRF, header limits, redirects, cancellation, refresh/single-flight handling and codecs.
-   **Accepted nil interface at the load boundary:** The current LoadParamValue[T] unchecked assertion panics when an interface-typed matcher returns `(nil, true)`, before the load runs; OptionalLoadParamValue calls it too. Fix this common typed-load value boundary in the same slice while preserving accessors/tracking. A declared-type-aware branch must return a present nil interface value only for the accepted nil-interface case; map membership determines presence, and mismatched non-interface nil must not silently become an unrelated zero value. Real handler fixtures for required and optional interface params prove the load runs, its optional pointer-to-interface is non-nil with nil payload when present, actual omission remains absent, and shared remote wrappers on the same caller routes are present with nil Value. Literal nil-interface fixture: matcher MaybeRef returns declared `domain.Ref` (interface with Label method), `(nil, true)` for `none`, a concrete Ref with Label `Ref #42` for `42`, and rejection otherwise. Required `/nil/[id=MaybeRef]` and optional `/nil-optional/[[id=MaybeRef]]` loads receive it. Real data-handler requests `/nil/none/__data.json` and `/nil-optional/none/__data.json` return HTTP 200 with exact receipt `load:present:nil`; `/nil-optional/__data.json` returns `load:absent`; `/nil/42/__data.json` returns `load:present:Ref #42`. Assert the optional getter's pointer is non-nil with nil interface payload for `none`, and nil only on actual omission. Commands/forms from the same caller routes return exact `remote:present:nil`, `remote:absent`, and `remote:present:Ref #42` receipts through the declared Ref wrapper. Unnamed pointer fixture uses `*domain.OrderRef` and distinguishes exact `pointer:present:nil` from `pointer:absent`. Tests include positive handler execution, not merely lack of output. Retain the existing RevisedOrder fixture unchanged. Independent QA must establish removing this nil-boundary fix makes those load-handler assertions fail. This targeted consistency fix is included explicitly; do not invent a new load API or general conversion framework.
+   **Accepted nil interface at the load boundary:** Preserve the implemented LoadParamValue[T]/OptionalLoadParamValue fix for interface-typed matchers returning `(nil, true)`, with unchanged accessor tracking. A declared-type-aware branch must return a present nil interface value only for the accepted nil-interface case; map membership determines presence, and mismatched non-interface nil must not silently become an unrelated zero value. Real handler fixtures for required and optional interface params prove the load runs, its optional pointer-to-interface is non-nil with nil payload when present, actual omission remains absent, and shared remote wrappers on the same caller routes are present with nil Value. Literal nil-interface fixture: matcher MaybeRef returns declared `domain.Ref` (interface with Label method), `(nil, true)` for `none`, a concrete Ref with Label `Ref #42` for `42`, and rejection otherwise. Required `/nil/[id=MaybeRef]` and optional `/nil-optional/[[id=MaybeRef]]` loads receive it. Real data-handler requests `/nil/none/__data.json` and `/nil-optional/none/__data.json` return HTTP 200 with exact receipt `load:present:nil`; `/nil-optional/__data.json` returns `load:absent`; `/nil/42/__data.json` returns `load:present:Ref #42`. Assert the optional getter's pointer is non-nil with nil interface payload for `none`, and nil only on actual omission. Commands/forms from the same caller routes return exact `remote:present:nil`, `remote:absent`, and `remote:present:Ref #42` receipts through the declared Ref wrapper. Unnamed pointer fixture uses `*domain.OrderRef` and distinguishes exact `pointer:present:nil` from `pointer:absent`. Tests include positive handler execution, not merely lack of output. Retain the existing RevisedOrder fixture unchanged. Independent QA must establish removing this nil-boundary fix makes those load-handler assertions fail. This targeted consistency fix is included explicitly; do not invent a new load API or general conversion framework.
 
    **Compiled/manifest drift:** Validate the actual served manifest snapshot against the generated complete route/key/matcher metadata before selecting any candidate, in production and dev. A new unknown key, matcher or missing constructor must fail loudly before invoking a known remote, rather than produce nil or reject that candidate into a different fallback. Use an explicit startup drift error or visible request failure until regeneration/rebuild; tests assert the error or literal failing response and zero handler calls. Cover frontend rebuilt without generation, transient dev manifest ahead of the Go rebuild, and an unknown matcher on the first candidate with an otherwise valid fallback. Selected-route-only validation is insufficient. This is an extension of existing drift checks, not a new framework.
 
 5. **Kit client behavior.** Extend existing example BDD with actual client navigation among numeric, string and absent caller shapes using the same command and form. Literal receipts include both variant and value, with positive visible page content. Enhanced JS and JS-off forms work in production and dev. Ordinary HTTP-only claims belong in Go handler tests. No new site-specific remote demo page; future site work extends the existing shared /demo after the library feature exists.
 6. **Independent QA.** Claude Opus runs the existing required Go/build/check workflows and production/dev BDD with no silent skips, personally inspects real page behavior, and establishes load-bearing assertions with deliberate restored mutations. Required mutations catch wrong variant, erased named type/method (including a compilation failure when appropriate), dropped caller state, falsey treated as absent, wrong route/fallback, rejection of a captured chained optional as whole-route rejection, and inter-request leakage. Also establish query restriction, native form, and the required/optional accepted nil-interface load boundary claims are load-bearing. Reuse captured expensive-suite results; repeat only for changed behavior, failure reconciliation or necessary mutation proof. Passing workflow status alone is not proof.
 
-## Review and delivery sequencing
+## Development sequence
 
-Prior review evidence: `.gimbal/runs/01M47SK5ZD39Q4GCM8P4QQ18FT.review/turns.json`, `code-review.1/turn.1`. All six findings are carried into the above contracts. Fresh union review `01M47VDEGR8VVS73DPTJCW71ZN.review` returned six further grounded findings: Kit primitive domain, literal encoded-path oracle/shared correction, compiled-manifest drift, chained optional rejection, disjoint stable naming, and explicit legacy signature/raw accessor behavior. Follow-up `01M47VZ3KDZC2B9FQYB8S53XBV.review` found two material gaps: the required-trailing-id fixture never calls its optional matcher, and the Go scalar-only restriction contradicts the accepted real-handler RevisedOrder struct fixture. This revision uses actually captured optional/rest fixtures plus a required mutation, and preserves the demonstrated Go enrichment separately from Kit primitive JS outputs. Review `01M47WNGTPAH66VBHC3VVT57G5.review` then found missing unnamed-type naming and the unchecked nil-interface assertion in the accepted load helper. This revision adds the disjoint Type family, specifies pointer-to-named-struct fixture shape, and includes a targeted required/optional load nil-boundary fix/proof while retaining load API/tracking. The coordinator checked the remaining corrections against current LoadParamValue/OptionalLoadParamValue and generated type construction, then the user directed proceeding once concretely resolved instead of unlimited review rounds. Record the last findings as addressed, not independently approved. Independent implementation QA must prove them. The already-started extra focused read-only review is supplementary; assess any returned material findings without treating its running flag as approval. No earlier completed review is reused as acceptance.
+1. **Settle the public naming contract.** The read-only preparation agent has
+   checked the revised API against the implementation and pinned Kit; the
+   remaining decision is recorded above. The parent records the chosen naming
+   policy here before dispatching code. Do not repeat the preparation review.
+2. **Implement the coherent API revision.** One coding agent owns the generated
+   public surface, signature acceptance, dispatch, authored consumers and their
+   immediate fixtures as one mission. Success means developers can write the
+   explicit generic context-first signature and readable switches above while
+   all preserved behavioral contracts remain true. The agent chooses its
+   implementation path and hands back focused proof; it launches no validators.
+3. **Independently validate and repair.** The parent dispatches Claude Opus on
+   stable source. In addition to preserved contracts, prove explicit ctx
+   cancellation/deadline/value propagation, cookie/refresh state, and nested
+   query restrictions through real generated handlers; prove correct argument
+   positions with both no-input commands and input-bearing commands/forms.
+   Compile generated consumers with the explicit generic spelling and prove
+   wrong app-wide type arguments and obsolete signatures are diagnosed.
+   Naming fixtures exercise the settled collision policy. Preserve keyed-form
+   validation feedback and retained fields after client navigation, not merely
+   successful submissions. The parent assigns material repairs back to the
+   builder and asks the verifier to recheck the affected claims.
 
-Implementation is authorized once ready and validatable. Inspect ownership/use of the preserved worktree, establish an explicit checkpoint containing accepted load work plus this reviewed plan (excluding .gimbal/runtime state), and create an isolated implementation worktree from that base. Do not start from main without the load foundation. Preserve accepted library changes, the handoff history and the site demo commit. No automatic feature merge, PR, release or deployment is authorized by this task.
+Final acceptance includes required build/checks and Go tests, production/dev
+browser behavior without skips, and direct visual inspection of affected flows.
+Use existing suites; introduce no runner, evidence ledger, or alternate harness.
+Deliberately restored mutations must demonstrate that the new ctx and naming
+assertions detect the failures they claim to catch. Reuse still-applicable prior
+mutation evidence; repeat expensive suites only when changed behavior or an
+unresolved failure warrants it.
 
-The shared skgo-project /demo task has completed at `/Users/tyler/.codex/worktrees/shared-demo-page/skgo-project`, commit `ebadaaa3341fd59c894b871cfe9bfcdbeb76b3c5`, clean status, no material independent review findings. Published pins remain Go v0.17.1 / adapter 0.17.0; local proof used an ignored workspace and copied adapter. Do not edit the site or its pins during this library task.
-
-Boundaries: no shared descendant layout types, new locals, new route-ID feature, Polytype walker, migration framework, runtime JavaScript I/O or query API redesign. Mechanical command/form example changes needed for the selected explicit event are in scope. Requested roles: GPT 6.1 Sol HIGH coding, independent Claude Opus 5.5 HIGH QA; keep appropriate other Gimbal defaults after reading installed help. No coordinating subagent. Passive checks approximately every five minutes inspect actual public progress/results. Reuse local caches on the tethered computer; report before multi-GB requirements. After implementation launch, retarget the existing paused check-typed-load-gimbal-run heartbeat to that exact run at five-minute cadence, preserving notification intent. No duplicate continuous watch; inspect public operations/results and independent QA, notify only on meaningful changes and pause at terminal state.
-
-
-Implementation launch: `01M47X5GE8YF243ZP4JB0GBXM3.implement`, owning project/worktree `/Users/tyler/.codex/worktrees/remote-function-params/skgo`, branch `codex/remote-function-params`, base `41f8105b667e40d7f784ab4fc1d251d9b59794f4`. The base includes accepted load work and this revised contract; `.gimbal` runtime and temporary captures were excluded. Installed web/e2e node_modules and Staticcheck cache were cloned locally without downloads; new Kit pin verified 3.0.0 and adapter link resolves inside the isolated checkout. Gimbal uses the existing instance at `/Users/tyler/.codex/worktrees/5f2d/skgo/.gimbal/instance`. Configured roles: coding gpt-6.1-sol HIGH, QA claude-opus-5-5 HIGH, default planning gpt-6-astra HIGH and critique gpt-6-astra MEDIUM. No coordinating subagent.
-
-Public startup evidence: planner operations read the revised plan/worklog, verified Kit package version, and inspected generator/runtime source from the isolated cwd. Planning/critique Astra sessions were observed; implementation/QA acceptance remains pending. Five-minute heartbeat `check-typed-load-gimbal-run` was retargeted and activated for this exact run, retaining its parent-chat target and quiet-unless-meaningful notification intent. It inspects public operations/results and final independent QA, reports real progress/failure/stall/required decisions, and pauses at terminal state. Existing follow client PID 42260 has the required exit watcher; no duplicate continuous implementation watch. No feature merge/PR/release/deployment or site-pin adoption.
-
-
-RECOVERY AUTHORIZATION AND CAUSE — 2026-10-06
-User explicitly asked to get the work done, find why the run stopped, and circumvent it. Earlier monitoring-only/terminal-pause constraints are superseded. Old run 01M47X5GE8YF243ZP4JB0GBXM3.implement completed operationally with no error but only task1 generation/nil boundary is independently accepted. Command/form dispatch and complete browser proof remain pending. Preserve all dirty implementation in /Users/tyler/.codex/worktrees/remote-function-params/skgo, codex/remote-function-params, base41f8105b667e40d7f784ab4fc1d251d9b59794f4.
-Installed Gimbal source v0.12.2-0.20261001161540-4f2f025eef52 internal/workflows/implementation/implementation.go:95 iterates the caller outcome array;134-137 breaks the current outcome on validation_passed=true and no substantial_gaps. Planner proposed three tasks inside ONE outcome, but task1 QA put mandatory remaining command/form/live dispatch/BDD scope under small_gaps as outside task. Workflow therefore stopped after generation, not a crash or exhausted task bound. Supported workaround: three explicit ordered remaining capability outcomes, plus whole-current-outcome QA semantics and a final full-feature acceptance outcome in ephemeral/remote-function-remaining-outcomes.json. Do not rerun historical typed-load outcome.
-Staticcheck2025.1.1 default binary could not read Go1.27.1 exportdata v4. Cached project pin2026.2.1(0.8.1) passed TestCLIAndInitializedStdioMCPExposeSameAdviceAndFailedCheck (3.697s). Global /Users/tyler/go/bin/staticcheck now equals cached binary SHA256 e5592d9379820f3feda239329c6d2716b6d5aead95f5d4666608f4997970da80; old binary backed up at ephemeral/tmp/staticcheck-2025.1.1.before-recovery. No download. Complete feature QA must still run full checks.
-Next action: direct Gimbal continuation in the same preserved dirty worktree, max6 tasks per outcome; Sol6.1 HIGH coding, Opus5.5 HIGH QA, installed Astra planning/critique defaults. Attach process-exit watcher and reactivate existing five-minute heartbeat against exact new run. Unexpected partial termination triggers bounded diagnosis and authorized continuation rather than terminal abandonment. Pause only on actual complete feature acceptance or a concrete blocker requiring user input. No coordinating subagent, Gimbal changes, feature merge/release/site adoption.
-
-
-CURRENT RECOVERY LAUNCH — 2026-10-06
-Continuation01M48KMMYQ0R7DAT9S15EXF253.implement is active in /Users/tyler/.codex/worktrees/remote-function-params/skgo, codex/remote-function-params. Accepted dirty task1 implementation is preserved. Launched directly via existing /Users/tyler/.codex/worktrees/5f2d/skgo/.gimbal/instance, project/work-dir isolated checkout, outcomes ephemeral/remote-function-remaining-outcomes.json (3 explicit capabilities), max-tasks-per-outcome6, codinggpt-6.1-sol:high, qa-orchestrationclaude-opus-5-5:high, --follow. Astra planningHIGH/critiqueMEDIUM defaults retained. FollowPID59319, unifiedexecsession38351, launchlogephemeral/tmp/recovery-launch.log, process-exit watcher attached in same launch.
-Actual public planner operations read agent-protocol, AGENTS.md, installed Kit3.0.0, accepted plan and remaining outcomes and inspected Go runtime/generator seams in correct worktree. Planner completed; actual Sol coding sessionoutcome.1/implementation.1/task.1/coding.1 started. QA configured but not yet observed. Do not claim feature completion.
-Existing heartbeatcheck-typed-load-gimbal-run verified ACTIVE, five-minute interval, same parentchat01a10ea5-fb99-71f1-bae8-7cf9a7a3a65f, exact continuationrun. It remains quiet while unchanged, checks public actual progress/whole-feature proof, and now diagnoses/relaunches bounded authorized continuation after unexpected partial termination instead of pausing on every terminal flag. Pause only after actual complete independent acceptance or concrete blocker requiring user input. No duplicate workers or coordinating subagent.
-User-authorized independent Gimbal bug report filed after duplicate searches and upstream verification from installed module metadata plus authenticated repo: https://github.com/tylergannon/gimbal/issues/424 (OPEN). Source matches installed commit4f2f025eef52c4e54b71b2f1f90ffcafd324e38f. Report distinguishes documented early-acceptance behavior from task-scoped QA misclassification; no runtime crash claimed or private logs uploaded. Gimbal itself unchanged.
-Current next action is monitored continuation and independent whole-feature validation. No merge, release or site-pin change. Preserve load/demo history; previous pause/no-new-run statements are superseded by explicit user recovery authorization.
+Historical operational launches and earlier naming decisions are retained in
+Git history and the existing worklog. They are not current instructions. The
+previous implementation's independent results are in
+`ephemeral/tmp/remote-params-independent-qa-final.log`; they establish the
+baseline, not acceptance of the revised public API.
