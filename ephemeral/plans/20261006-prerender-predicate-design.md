@@ -1,5 +1,9 @@
 # Prerender predicates: simplest correct design
 
+This feature lets an application's Go callbacks choose which assets a prerendered page preloads and which fetched response headers it includes for the browser.
+
+Developers keep those decisions in Go, alongside the request state they depend on, without maintaining separate build-time rules in JavaScript. Decisions take effect when SvelteKit needs them, so a page can use information established by its loads instead of relying on answers computed too early.
+
 **Status:** Agreed. Codex and Claude Fable 5.1 both endorse the existing-owner relay with message-carried replies and terminal failure; Claude's final check (turn 3) added the worker-to-owner failure notice and the renderer-default parity requirement below. Design only: no build has run this, and the definition of done is the proof. The branch is rebased onto `origin/main` at `c6906b7`, including codegen #266; generated Go goes in each package's `skgo_gen.go`. The [RequestEvent plan](20261006-request-event.md) remains the feature plan.
 
 ## Decision

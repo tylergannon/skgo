@@ -1,5 +1,9 @@
 # Complete RequestEvent: typed locals, layout params, and request metadata
 
+This feature gives Go application code a complete, consistently typed view of the request: shared application state, the parameters available to each page or layout, and information about the matched route and request.
+
+Developers can initialize a signed-in user or other request-specific resources once in a hook, then use them throughout that request with compiler-checked access. Generated types handle the wiring, reducing repeated setup and manual type assertions while preserving SvelteKit's request behavior during serving and prerendering.
+
 **Status:** initial design reviewed with Claude through round 05; Codex and Claude Fable 5.1 subsequently agreed on the simpler predicate relay after [three alternating rounds](20261006-prerender-predicate-design.md). Codegen prerequisite [#262](https://github.com/tylergannon/skgo/issues/262) landed in [#266](https://github.com/tylergannon/skgo/pull/266). This task remains design-only; actual Kit/Go integration proof is outstanding.
 
 **Baseline:** rebased onto SKGo `c6906b7` (merged #266, following typed params #261); installed SvelteKit **3.0.0**. This is a plan, not an implementation or a claim of runtime proof.
