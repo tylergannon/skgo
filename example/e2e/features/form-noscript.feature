@@ -82,7 +82,7 @@ Feature: A form works without JavaScript
     Given I open "/contact"
     When I navigate to the "Numeric caller" form caller at "/typed-load/42"
     And I submit the "<instance>" caller form using "<mode>" with message "Numeric caller payload."
-    Then the "<instance>" caller receipt is "number:params.Variant_Number_NamedOrderNumber_123cbe2d9d50:{42}" with message "Numeric caller payload."
+    Then the "<instance>" caller receipt is "number:params.NumberParam_OrderNumber:{42}" with message "Numeric caller payload."
     When I navigate to the "String caller" form caller at "/items/42"
     And I submit the "<instance>" caller form using "<mode>" with message "String caller payload."
     Then the "<instance>" caller receipt is "id:string:42" with message "String caller payload."

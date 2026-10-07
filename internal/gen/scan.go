@@ -571,7 +571,7 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 		}
 		rel, _ := filepath.Rel(host, a.cfg.Out)
 		expected := mod + "/" + filepath.ToSlash(rel) + "/params"
-		event := types.Unalias(target.Type().(*types.Signature).Params().At(0).Type()).(*types.Named)
+		event := types.Unalias(target.Type().(*types.Signature).Params().At(1).Type()).(*types.Named)
 		param, ok := types.Unalias(event.TypeArgs().At(0)).(*types.Named)
 		if !ok || param.Obj().Pkg() == nil || param.Obj().Pkg().Path() != expected || param.Obj().Name() != "Params" {
 			return nil, nil, nil, nil, fmt.Errorf("skgo: %s: %s must receive skgo.RequestEvent[%s.Params] or its generated RequestEvent alias", pos, target.Name(), expected)
@@ -713,7 +713,7 @@ func remoteSignature(kind remoteKind, target *types.Func) (in, out types.Type, e
 
 	validEvent := params.Len() > 0 && isContext(params.At(0).Type())
 	if kind == kindCommand || kind == kindForm {
-		validEvent = params.Len() > 0 && isRemoteRequestEvent(params.At(0).Type())
+		validEvent = validEvent && params.Len() > 1 && isRemoteRequestEvent(params.At(1).Type())
 	}
 	if !validEvent {
 		return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
@@ -738,7 +738,11 @@ func remoteSignature(kind remoteKind, target *types.Func) (in, out types.Type, e
 		return in, yielded, nil
 	}
 
-	if params.Len() > 2 || kind == kindForm && params.Len() != 2 {
+	inputIndex := 1
+	if kind == kindCommand || kind == kindForm {
+		inputIndex = 2
+	}
+	if params.Len() > inputIndex+1 || kind == kindForm && params.Len() != inputIndex+1 {
 		return nil, nil, fmt.Errorf("its signature is %s. %s", sig, want)
 	}
 	if results.Len() != 2 || !isError(results.At(1).Type()) {
@@ -766,8 +770,8 @@ func remoteSignature(kind remoteKind, target *types.Func) (in, out types.Type, e
 		return arg, result, nil
 	}
 
-	if params.Len() == 2 {
-		in = params.At(1).Type()
+	if params.Len() == inputIndex+1 {
+		in = params.At(inputIndex).Type()
 	}
 	return in, results.At(0).Type(), nil
 }
@@ -794,10 +798,10 @@ func shapeOf(kind remoteKind) string {
 	case kindBatch:
 		return "A query.batch is func(context.Context, []In) ([]Out, error): it is handed every argument in the batch and answers one result per argument, in the same order."
 	case kindForm:
-		return "A form is func(skgo.RequestEvent[params.Params], In) (Out, error): kit hands a form handler the submission, so its argument is not optional."
+		return "A form is func(context.Context, skgo.RequestEvent[params.Params], In) (Out, error): kit hands a form handler the submission, so its argument is not optional."
 	}
 	if kind == kindCommand {
-		return "A command is func(skgo.RequestEvent[params.Params]) (Out, error), or func(skgo.RequestEvent[params.Params], In) (Out, error). Replace context.Context with the generated params.RequestEvent alias and use event.Context() for context helpers."
+		return "A command is func(context.Context, skgo.RequestEvent[params.Params]) (Out, error), or func(context.Context, skgo.RequestEvent[params.Params], In) (Out, error)."
 	}
 	return fmt.Sprintf("A %s is func(context.Context) (Out, error), or func(context.Context, In) (Out, error) when it takes an argument.", kind)
 }

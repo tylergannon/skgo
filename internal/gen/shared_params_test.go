@@ -149,10 +149,10 @@ func sharedConsumer(p params.Params) params.Key_ID { return p.ID() }
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Count(string(initial), "type Variant_ID_NamedNumber_") != 2 {
+	if strings.Count(string(initial), "type IDParam_DomainNumber_") != 2 {
 		t.Fatal("aliases failed to deduplicate or distinct packages merged")
 	}
-	if strings.Count(string(initial), "type Variant_Fn_TypeFunc_") != 1 {
+	if strings.Count(string(initial), "type FnParam_Func") != 1 {
 		t.Fatal("function argument names changed type identity")
 	}
 	// These names are pinned literals. The running consumer supplies independent
@@ -191,13 +191,13 @@ func stale(p params.Params) { p.NoLongerExists() }
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"Slug()", "Params()", "RequestEvent_K726571756573745f6576656e74()", "Key1_K31()", "Key_K5f()", "Key_K2d()", "AB_K612d62()", "AB_K615f62()", "SlugString_K736c75675f737472696e67()", "Variant_ID_BuiltinBool", "Linked()", "Underscored()"} {
+	for _, name := range []string{"Slug()", "Params()", "RequestEvent_K726571756573745f6576656e74()", "Key1_K31()", "Key_K5f()", "Key_K2d()", "AB_K612d62()", "AB_K615f62()", "SlugString_K736c75675f737472696e67()", "IDParam_Bool", "Linked()", "Underscored()"} {
 		if !strings.Contains(string(refreshed), name) {
 			t.Fatalf("stable public declaration %s missing", name)
 		}
 	}
 	for _, line := range strings.Split(string(initial), "\n") {
-		if strings.HasPrefix(line, "type Variant_") && !strings.Contains(string(refreshed), line) {
+		if strings.HasPrefix(line, "type ") && strings.Contains(line, "Param_") && !strings.Contains(string(refreshed), line) {
 			t.Fatalf("renamed old variant %s", line)
 		}
 	}
@@ -210,7 +210,7 @@ import ("testing"; "github.com/tylergannon/skgo/example/internal/skgo/params")
 func TestThird(t *testing.T) {
  p,err:=params.SkgoParams("/third/[id=Flag]",map[string]any{"id":false});if err!=nil{t.Fatal(err)}
  if got:=receipt(p);got!="unsupported"{t.Fatalf("old consumer treats new variant as %s",got)}
- switch id:=p.ID().(type){case params.Variant_ID_BuiltinBool:if id.Value{t.Fatal("false changed")};case nil:t.Fatal("false absent");default:t.Fatalf("wrong variant %T",id)}
+ switch id:=p.ID().(type){case params.IDParam_Bool:if id.Value{t.Fatal("false changed")};case nil:t.Fatal("false absent");default:t.Fatalf("wrong variant %T",id)}
 }
 `)
 	runSharedConsumer(t, app, "TestSharedReceipts|TestThird", "")
@@ -237,9 +237,9 @@ import (
 var _ skgo.RequestEvent[params.Params] = params.RequestEvent{}
 func receipt(p params.Params) string {
  switch id:=p.ID().(type) {
- case params.Variant_ID_NamedNumber_8b6a69468249: return "numeric:"+id.Value.Label()
- case params.Variant_ID_BuiltinString: return "string:"+id.Value
- case params.Variant_ID_NamedRef_fdd698b53997: if id.Value==nil{return "remote:present:nil"};return "remote:present:"+id.Value.Label()
+ case params.IDParam_DomainNumber_f2699d13762bca7d8b7b8d63120233e8bd9a519b8afaa1e5fedbb0bc340de94a: return "numeric:"+id.Value.Label()
+ case params.IDParam_String: return "string:"+id.Value
+ case params.IDParam_Ref: if id.Value==nil{return "remote:present:nil"};return "remote:present:"+id.Value.Label()
  case nil: return "remote:absent"
  }
  return "unsupported"
@@ -259,19 +259,19 @@ func TestSharedReceipts(t *testing.T) {
  {"/nil/[id=MaybeRef]",map[string]any{"id":(*domain.OrderRef)(nil)},"typed-nil"},
  } {
   p,err:=params.SkgoParams(tc.route,tc.values);if err!=nil{t.Fatal(err)}
-  if tc.want=="typed-nil" {v,ok:=p.ID().(params.Variant_ID_NamedRef_fdd698b53997);if !ok || v.Value==nil || !reflect.ValueOf(v.Value).IsNil(){t.Fatalf("lost declared interface typed nil: %T",p.ID())};continue}
+  if tc.want=="typed-nil" {v,ok:=p.ID().(params.IDParam_Ref);if !ok || v.Value==nil || !reflect.ValueOf(v.Value).IsNil(){t.Fatalf("lost declared interface typed nil: %T",p.ID())};continue}
   if got:=receipt(p);got!=tc.want{t.Fatalf("%s receipt %s, want %s",tc.route,got,tc.want)}
   if p.ID()!=nil && reflect.TypeOf(p.ID()).Kind()!=reflect.Struct{t.Fatalf("presence wrapper %T is not concrete",p.ID())}
  }
  named,err:=params.SkgoParams("/named/[order=StructOrder]",map[string]any{"order":domain.Order{Number:42}});if err!=nil{t.Fatal(err)}
- switch v:=named.Order().(type){case params.Variant_Order_NamedOrder_f26a75ad74d1:if v.Value.Number!=42 || v.Value.Label()!="Struct order #42"{t.Fatal("lost named struct fields/method")};default:t.Fatalf("wrong struct variant %T",v)}
+ switch v:=named.Order().(type){case params.OrderParam_Order:if v.Value.Number!=42 || v.Value.Label()!="Struct order #42"{t.Fatal("lost named struct fields/method")};default:t.Fatalf("wrong struct variant %T",v)}
  p,err:=params.SkgoParams("/pointer/[[pointer=Pointer]]",map[string]any{"pointer":(*domain.OrderRef)(nil)});if err!=nil{t.Fatal(err)}
- switch v:=p.Pointer().(type){case params.Variant_Pointer_TypePointer_10dd091488b7:if v.Value!=nil{t.Fatal("pointer payload changed")};case nil:t.Fatal("pointer:absent");default:t.Fatalf("wrong pointer variant %T",v)}
+ switch v:=p.Pointer().(type){case params.PointerParam_PointerOrderRef:if v.Value!=nil{t.Fatal("pointer payload changed")};case nil:t.Fatal("pointer:absent");default:t.Fatalf("wrong pointer variant %T",v)}
  p,err=params.SkgoParams("/pointer/[[pointer=Pointer]]",nil);if err!=nil || p.Pointer()!=nil{t.Fatal("pointer omission must be absent")}
  p,err=params.SkgoParams("/flag/[flag=Flag]",map[string]any{"flag":false});if err!=nil{t.Fatal(err)}
- switch v:=p.Flag().(type){case params.Variant_Flag_BuiltinBool:if v.Value{t.Fatal("false changed")};default:t.Fatalf("false lost: %T",v)}
+ switch v:=p.Flag().(type){case params.FlagParam_Bool:if v.Value{t.Fatal("false changed")};default:t.Fatalf("false lost: %T",v)}
  p,err=params.SkgoParams("/empty/[empty=Blank]",map[string]any{"empty":""});if err!=nil{t.Fatal(err)}
- switch v:=p.Empty().(type){case params.Variant_Empty_BuiltinString:if v.Value!=""{t.Fatal("empty value changed")};default:t.Fatalf("empty lost: %T",v)}
+ switch v:=p.Empty().(type){case params.EmptyParam_String:if v.Value!=""{t.Fatal("empty value changed")};default:t.Fatalf("empty lost: %T",v)}
  p,err=params.SkgoParams("/other/[id=Other]",map[string]any{"id":other.Number(42)});if err!=nil{t.Fatal(err)}
  if reflect.TypeOf(p.ID()).Field(0).Type!=reflect.TypeFor[other.Number](){t.Fatal("distinct named type lost")}
  for _,tc:=range []struct{route,key string; value any; typ reflect.Type}{
@@ -456,7 +456,7 @@ func TestSharedParamsFrontendOnlyApplication(t *testing.T) {
 import ("testing"; "github.com/tylergannon/skgo/example/internal/skgo/params")
 func TestFrontendOnly(t *testing.T) {
  p,err:=params.SkgoParams("/plain/[id]",map[string]any{"id":"frontend"});if err!=nil{t.Fatal(err)}
- switch v:=p.ID().(type){case params.Variant_ID_BuiltinString:if v.Value!="frontend"{t.Fatalf("wrong value %s",v.Value)};default:t.Fatalf("wrong variant %T",v)}
+ switch v:=p.ID().(type){case params.IDParam_String:if v.Value!="frontend"{t.Fatalf("wrong value %s",v.Value)};default:t.Fatalf("wrong variant %T",v)}
  p,err=params.SkgoParams("/optional/[[id]]",nil);if err!=nil || p.ID()!=nil{t.Fatal("omitted frontend param should be absent")}
 }
 `)

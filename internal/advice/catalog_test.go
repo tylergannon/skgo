@@ -31,6 +31,9 @@ func TestCatalogRepairExamplesCompileAgainstThisSkgo(t *testing.T) {
 			t.Fatal(err)
 		}
 		imports := "skgo \"github.com/tylergannon/skgo\""
+		if strings.Contains(entry.Example, "params.Params") {
+			imports += "; params \"example.com/repairs/generated/params\""
+		}
 		if strings.Contains(entry.Example, "context.") {
 			imports += "; \"context\""
 		}
@@ -51,6 +54,10 @@ func TestCatalogRepairExamplesCompileAgainstThisSkgo(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(filepath.Join(repo, "example", "web", "node_modules"), filepath.Join(root, "web", "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	// Bootstrap the shared params leaf before tidy loads illustrative consumers.
+	if err := gen.Run(gen.Config{Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated")}); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{{"mod", "tidy"}, {"test", "./..."}} {

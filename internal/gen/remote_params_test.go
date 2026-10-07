@@ -48,17 +48,24 @@ func TestGeneratedCommandFormCallerEvents(t *testing.T) {
 
 func TestCommandFormContextMigrationDiagnostics(t *testing.T) {
 	for _, kind := range []string{"Command", "Form"} {
-		t.Run(kind, func(t *testing.T) {
-			_, cfg := foreignFixture(t, `package data
-import("context";"github.com/tylergannon/skgo")
-func old(ctx context.Context,in string)(string,error){return in,nil}
+		for _, tc := range []struct{ name, signature, want string }{
+			{"ctx-only", "ctx context.Context,in string", "A " + strings.ToLower(kind) + " is func(context.Context, skgo.RequestEvent[params.Params]"},
+			{"event-only", "event skgo.RequestEvent[params.Params],in string", "A " + strings.ToLower(kind) + " is func(context.Context, skgo.RequestEvent[params.Params]"},
+			{"wrong-params", "ctx context.Context,event skgo.RequestEvent[struct{}],in string", "must receive"},
+		} {
+			t.Run(kind+"/"+tc.name, func(t *testing.T) {
+				_, cfg := foreignFixture(t, `package data
+import("context";"github.com/tylergannon/skgo";"example.com/app/generated/params")
+var _ = params.Params{}; var _ = context.Background
+func old(`+tc.signature+`)(string,error){return in,nil}
 var _ = skgo.`+kind+`(old)
 `, nil)
-			err := Run(cfg)
-			if err == nil || !strings.Contains(err.Error(), "data.remote.go:4:") || !strings.Contains(err.Error(), "skgo.RequestEvent[params.Params]") {
-				t.Fatalf("missing source-located %s migration: %v", kind, err)
-			}
-		})
+				err := Run(cfg)
+				if err == nil || !strings.Contains(err.Error(), "data.remote.go:5:") || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("missing source-located %s migration: %v", kind, err)
+				}
+			})
+		}
 	}
 }
 
@@ -67,10 +74,12 @@ import (
  "context"
  "fmt"
  "reflect"
+ "time"
  "github.com/tylergannon/skgo"
  "github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 type Input struct { Name string ` + "`json:\"name\"`" + ` }
+type ContextKey struct{}
 var Enter = make(chan struct{},2)
 var Release = make(chan struct{})
 func forbidden(fn func())(threw bool){defer func(){threw=recover()!=nil}();fn();return}
@@ -79,35 +88,43 @@ func receipt(p params.Params) string {
  if v:=p.ID();v!=nil {
   if reflect.TypeOf(v).Kind()!=reflect.Struct {panic("pointer wrapper")}
   switch id:=v.(type){
-  case params.Variant_ID_NamedNumber_8b6a69468249:return "numeric:"+id.Value.Label()
-  case params.Variant_ID_BuiltinString:return "string:"+id.Value
-  case params.Variant_ID_NamedRef_fdd698b53997:
+  case params.IDParam_DomainNumber_f2699d13762bca7d8b7b8d63120233e8bd9a519b8afaa1e5fedbb0bc340de94a:return "numeric:"+id.Value.Label()
+  case params.IDParam_String:return "string:"+id.Value
+  case params.IDParam_Ref:
    if id.Value==nil{return "remote:present:nil"}
    if reflect.ValueOf(id.Value).IsNil(){return "remote:present:typednil"}
    return "remote:present:"+id.Value.Label()
   default:panic(fmt.Sprintf("unknown id %T",v))
   }
  }
- if v:=p.Pointer();v!=nil {switch v:=v.(type){case params.Variant_Pointer_TypePointer_10dd091488b7:if v.Value!=nil{panic("pointer payload")};return "pointer:present:nil";default:panic("pointer variant")}}
- if v:=p.Flag();v!=nil {switch v:=v.(type){case params.Variant_Flag_BuiltinBool:return fmt.Sprintf("bool:%t",v.Value);default:panic("flag variant")}}
- if v:=p.Empty();v!=nil {switch v:=v.(type){case params.Variant_Empty_BuiltinString:return "empty:"+v.Value;default:panic("empty variant")}}
- if v:=p.Order();v!=nil {switch v:=v.(type){case params.Variant_Order_NamedOrder_f26a75ad74d1:return fmt.Sprintf("struct:%d:%s",v.Value.Number,v.Value.Label());default:panic("order variant")}}
+ if v:=p.Pointer();v!=nil {switch v:=v.(type){case params.PointerParam_PointerOrderRef:if v.Value!=nil{panic("pointer payload")};return "pointer:present:nil";default:panic("pointer variant")}}
+ if v:=p.Flag();v!=nil {switch v:=v.(type){case params.FlagParam_Bool:return fmt.Sprintf("bool:%t",v.Value);default:panic("flag variant")}}
+ if v:=p.Empty();v!=nil {switch v:=v.(type){case params.EmptyParam_String:return "empty:"+v.Value;default:panic("empty variant")}}
+ if v:=p.Order();v!=nil {switch v:=v.(type){case params.OrderParam_Order:return fmt.Sprintf("struct:%d:%s",v.Value.Number,v.Value.Label());default:panic("order variant")}}
  return "remote:absent"
 }
-func check(event params.RequestEvent) {
- for _,fn:=range []func(){func(){event.Event.Param("id")},func(){event.Event.Params()},func(){skgo.EventFrom(event.Context()).Param("id")},func(){skgo.EventFrom(event.Context()).Params()},func(){skgo.EventFrom(event.Context()).URL()},func(){skgo.EventFrom(event.Context()).RouteID()},func(){params.SkgoRequestEvent(skgo.EventFrom(event.Context()))}} {
+func check(ctx context.Context,event skgo.RequestEvent[params.Params]) {
+ for _,fn:=range []func(){func(){skgo.EventFrom(ctx).Param("id")},func(){skgo.EventFrom(ctx).Params()},func(){skgo.EventFrom(ctx).URL()},func(){skgo.EventFrom(ctx).RouteID()},func(){params.SkgoRequestEvent(skgo.EventFrom(ctx))},func(){event.Event.Param("id")},func(){event.Event.Params()},func(){skgo.EventFrom(event.Context()).Param("id")},func(){skgo.EventFrom(event.Context()).Params()},func(){skgo.EventFrom(event.Context()).URL()},func(){skgo.EventFrom(event.Context()).RouteID()},func(){params.SkgoRequestEvent(skgo.EventFrom(event.Context()))}} {
   if !forbidden(fn){panic("raw/context caller access allowed")}
  }
+ if ctx.Value(ContextKey{}) != "request-value" {panic("ctx lost request value")}
+ if deadline,ok:=ctx.Deadline();!ok || !deadline.Equal(time.Unix(4102444800,0)) {panic("ctx lost deadline")}
+ if ctx.Err()!=context.Canceled {panic("ctx lost cancellation")}
+ cookie,ok:=skgo.EventFrom(ctx).Cookie("request-cookie");if !ok || cookie!="from-request" {panic("ctx lost cookies")}
+ if err:=skgo.EventFrom(ctx).SetCookie("response-cookie","from-handler",skgo.CookieOptions{});err!=nil {panic(err)}
+ if cookie,ok:=event.Cookie("response-cookie");!ok || cookie!="from-handler" {panic("ctx and event have different cookie jars")}
+ if err:=skgo.RefreshNoArg(ctx,nested);err!=nil {panic(err)}
  // A direct nested query gets the restricted context too.
- if got,_:=nested(event.Context());got!="query:restricted"{panic(got)}
+ if got,_:=nested(ctx);got!="query:restricted"{panic(got)}
 }
-func act(event skgo.RequestEvent[params.Params],input string)(string,error){
- check(event)
+func act(ctx context.Context, event skgo.RequestEvent[params.Params],input string)(string,error){
+ check(ctx,event)
  if input=="hold" { Enter<-struct{}{};<-Release }
  return input+"|"+receipt(event.Params),nil
 }
-func noInput(event params.RequestEvent)(string,error){check(event);return "no-input|"+receipt(event.Params),nil}
-func submit(event params.RequestEvent,input Input)(string,error){check(event);if input.Name=="hold" {Enter<-struct{}{};<-Release};return input.Name+"|"+receipt(event.Params),nil}
+type EventAlias = skgo.RequestEvent[params.Params]
+func noInput(ctx context.Context, event EventAlias)(string,error){check(ctx,event);return "no-input|"+receipt(event.Params),nil}
+func submit(ctx context.Context, event skgo.RequestEvent[params.Params],input Input)(string,error){if input.Name!="go-client"{check(ctx,event)};if input.Name=="hold" {Enter<-struct{}{};<-Release};return input.Name+"|"+receipt(event.Params),nil}
 ` + `
 func nested(ctx context.Context)(string,error){
  e:=skgo.EventFrom(ctx)
@@ -125,6 +142,7 @@ import (
  "encoding/binary"
  "encoding/base64"
  "fmt"
+ "net/http"
  "net/http/httptest"
  "strings"
  "sync"
@@ -175,6 +193,8 @@ func dispatch(rs *skgo.Remotes,fn *skgo.Remote,path,input string)*httptest.Respo
  }
  req:=httptest.NewRequest("POST",rs.Prefix()+fn.ID(),bytes.NewReader(body));req.Header.Set("Content-Type",media)
  if path!=""{req.Header.Set("x-sveltekit-pathname",path)}
+ ctx,cancel:=context.WithDeadline(context.WithValue(req.Context(),caller.ContextKey{},"request-value"),time.Unix(4102444800,0));cancel()
+ req=req.WithContext(ctx);req.AddCookie(&http.Cookie{Name:"request-cookie",Value:"from-request"})
  rec:=httptest.NewRecorder();rs.ServeHTTP(rec,req);return rec
 }
 func result(rec *httptest.ResponseRecorder,form bool)(string,error){

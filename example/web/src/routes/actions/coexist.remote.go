@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"context"
 	"strings"
 
 	"github.com/tylergannon/skgo"
@@ -15,7 +16,7 @@ type RemoteReceipt struct {
 	Message string `json:"message"`
 }
 
-func sendRemoteNote(_ params.RequestEvent, note RemoteNote) (RemoteReceipt, error) {
+func sendRemoteNote(ctx context.Context, _ skgo.RequestEvent[params.Params], note RemoteNote) (RemoteReceipt, error) {
 	return RemoteReceipt{Message: "Remote Go form received " + strings.TrimSpace(note.Name)}, nil
 }
 

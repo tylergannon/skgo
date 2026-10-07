@@ -30,7 +30,7 @@ import (
 //
 // It names the Go function, not a string:
 //
-//	func renameTodo(ctx context.Context, arg Rename) (businesslogic.Todo, error) {
+//	func renameTodo(ctx context.Context, event skgo.RequestEvent[params.Params], arg Rename) (businesslogic.Todo, error) {
 //		todo, ok := businesslogic.Default.Rename(arg.ID, arg.Text, signedIn(ctx))
 //		if !ok {
 //			return businesslogic.Todo{}, skgo.Errorf(404, "No todo with id %q", arg.ID)

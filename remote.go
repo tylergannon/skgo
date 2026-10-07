@@ -374,8 +374,8 @@ func Prerender(fn any, options ...PrerenderOptions) Marker { _ = fn; _ = options
 // Command declares fn as a SvelteKit `command`. A command's event may write
 // cookies; kit allows that in commands and forms and nowhere else.
 //
-// It takes the generated params.RequestEvent (skgo.RequestEvent[params.Params]),
-// with an optional separate input. Use event.Context() for context helpers.
+// It takes context.Context, skgo.RequestEvent[params.Params], and an optional
+// separate input. The context preserves helpers while restricting caller state.
 // The scanner validates the shared Params identity and reports old ctx shapes.
 func Command(fn any) Marker { _ = fn; return Marker{} }
 

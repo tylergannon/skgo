@@ -94,7 +94,7 @@ func remote_signIn(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo49.Skgo_signIn(event, in)
+	out, err := skgo49.Skgo_signIn(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func remote_signOut(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo49.Skgo_signOut(event)
+	out, err := skgo49.Skgo_signOut(event.Context(), event)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func remote_quoteFor(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo2.Skgo_quoteFor(event, in)
+	out, err := skgo2.Skgo_quoteFor(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +279,7 @@ func remote_sendRemoteNote(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo8.Skgo_sendRemoteNote(event, in)
+	out, err := skgo8.Skgo_sendRemoteNote(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -569,7 +569,7 @@ func remote_previewMessage(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo28.Skgo_previewMessage(event, in)
+	out, err := skgo28.Skgo_previewMessage(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -601,7 +601,7 @@ func remote_sendMessage(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo28.Skgo_sendMessage(event, in)
+	out, err := skgo28.Skgo_sendMessage(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -700,7 +700,7 @@ func remote_reparse(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo31.Skgo_reparse(event)
+	out, err := skgo31.Skgo_reparse(event.Context(), event)
 	if err != nil {
 		return nil, err
 	}
@@ -736,7 +736,7 @@ func remote_bumpTally(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo33.Skgo_bumpTally(event)
+	out, err := skgo33.Skgo_bumpTally(event.Context(), event)
 	if err != nil {
 		return nil, err
 	}
@@ -855,7 +855,7 @@ func remote_submit(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo44.Skgo_submit(event, in)
+	out, err := skgo44.Skgo_submit(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -943,7 +943,7 @@ func remote_writeNotes(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo4.Skgo_writeNotes(event, in)
+	out, err := skgo4.Skgo_writeNotes(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -978,7 +978,7 @@ func remote_addTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo3.Skgo_addTodo(event, in)
+	out, err := skgo3.Skgo_addTodo(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -1060,7 +1060,7 @@ func remote_renameTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo3.Skgo_renameTodo(event, in)
+	out, err := skgo3.Skgo_renameTodo(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -1095,7 +1095,7 @@ func remote_retitleTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo3.Skgo_retitleTodo(event, in)
+	out, err := skgo3.Skgo_retitleTodo(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}

@@ -31,89 +31,89 @@ type Key_A interface{ skgoParam_61() }
 
 func (p Params) A() Key_A { return p.value_61 }
 
-type Variant_A_NamedOrderNumber_445985ecd711 struct{ Value hooks.OrderNumber }
+type AParam_OrderNumber struct{ Value hooks.OrderNumber }
 
-func (Variant_A_NamedOrderNumber_445985ecd711) skgoParam_61() {}
+func (AParam_OrderNumber) skgoParam_61() {}
 
 type Key_B interface{ skgoParam_62() }
 
 func (p Params) B() Key_B { return p.value_62 }
 
-type Variant_B_NamedOrderNumber_e20c213cb3b6 struct{ Value hooks.OrderNumber }
+type BParam_OrderNumber struct{ Value hooks.OrderNumber }
 
-func (Variant_B_NamedOrderNumber_e20c213cb3b6) skgoParam_62() {}
+func (BParam_OrderNumber) skgoParam_62() {}
 
 type Key_Group interface{ skgoParam_67726f7570() }
 
 func (p Params) Group() Key_Group { return p.value_67726f7570 }
 
-type Variant_Group_BuiltinString struct{ Value string }
+type GroupParam_String struct{ Value string }
 
-func (Variant_Group_BuiltinString) skgoParam_67726f7570() {}
+func (GroupParam_String) skgoParam_67726f7570() {}
 
 type Key_ID interface{ skgoParam_6964() }
 
 func (p Params) ID() Key_ID { return p.value_6964 }
 
-type Variant_ID_BuiltinString struct{ Value string }
+type IDParam_String struct{ Value string }
 
-func (Variant_ID_BuiltinString) skgoParam_6964() {}
+func (IDParam_String) skgoParam_6964() {}
 
 type Key_Ignored interface{ skgoParam_69676e6f726564() }
 
 func (p Params) Ignored() Key_Ignored { return p.value_69676e6f726564 }
 
-type Variant_Ignored_BuiltinString struct{ Value string }
+type IgnoredParam_String struct{ Value string }
 
-func (Variant_Ignored_BuiltinString) skgoParam_69676e6f726564() {}
+func (IgnoredParam_String) skgoParam_69676e6f726564() {}
 
 type Key_Kind interface{ skgoParam_6b696e64() }
 
 func (p Params) Kind() Key_Kind { return p.value_6b696e64 }
 
-type Variant_Kind_BuiltinString struct{ Value string }
+type KindParam_String struct{ Value string }
 
-func (Variant_Kind_BuiltinString) skgoParam_6b696e64() {}
+func (KindParam_String) skgoParam_6b696e64() {}
 
 type Key_Mode interface{ skgoParam_6d6f6465() }
 
 func (p Params) Mode() Key_Mode { return p.value_6d6f6465 }
 
-type Variant_Mode_BuiltinString struct{ Value string }
+type ModeParam_String struct{ Value string }
 
-func (Variant_Mode_BuiltinString) skgoParam_6d6f6465() {}
+func (ModeParam_String) skgoParam_6d6f6465() {}
 
 type Key_Number interface{ skgoParam_6e756d626572() }
 
 func (p Params) Number() Key_Number { return p.value_6e756d626572 }
 
-type Variant_Number_NamedOrderNumber_123cbe2d9d50 struct{ Value hooks.OrderNumber }
+type NumberParam_OrderNumber struct{ Value hooks.OrderNumber }
 
-func (Variant_Number_NamedOrderNumber_123cbe2d9d50) skgoParam_6e756d626572() {}
+func (NumberParam_OrderNumber) skgoParam_6e756d626572() {}
 
 type Key_Profile interface{ skgoParam_70726f66696c65() }
 
 func (p Params) Profile() Key_Profile { return p.value_70726f66696c65 }
 
-type Variant_Profile_BuiltinString struct{ Value string }
+type ProfileParam_String struct{ Value string }
 
-func (Variant_Profile_BuiltinString) skgoParam_70726f66696c65() {}
+func (ProfileParam_String) skgoParam_70726f66696c65() {}
 
 type Key_Rest interface{ skgoParam_72657374() }
 
 func (p Params) Rest() Key_Rest { return p.value_72657374 }
 
-type Variant_Rest_BuiltinString struct{ Value string }
+type RestParam_String struct{ Value string }
 
-func (Variant_Rest_BuiltinString) skgoParam_72657374() {}
+func (RestParam_String) skgoParam_72657374() {}
 
 type Key_Slug interface{ skgoParam_736c7567() }
 
 func (p Params) Slug() Key_Slug { return p.value_736c7567 }
 
-type Variant_Slug_BuiltinString struct{ Value string }
+type SlugParam_String struct{ Value string }
 
-func (Variant_Slug_BuiltinString) skgoParam_736c7567() {}
+func (SlugParam_String) skgoParam_736c7567() {}
 
 // SkgoCallerRoutes describes every constructor generated from Kit's route metadata.
 func SkgoCallerRoutes() skgo.CallerRoutes {
@@ -232,7 +232,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /account/reruns/[slug] param slug: %w", err)
 			}
-			p.value_736c7567 = Variant_Slug_BuiltinString{Value: value}
+			p.value_736c7567 = SlugParam_String{Value: value}
 		}
 	case "/account/statement":
 	case "/actions":
@@ -251,7 +251,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /actions/profiles/[profile] param profile: %w", err)
 			}
-			p.value_70726f66696c65 = Variant_Profile_BuiltinString{Value: value}
+			p.value_70726f66696c65 = ProfileParam_String{Value: value}
 		}
 	case "/actions/signed-in":
 	case "/api":
@@ -264,7 +264,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /api/replay/[kind] param kind: %w", err)
 			}
-			p.value_6b696e64 = Variant_Kind_BuiltinString{Value: value}
+			p.value_6b696e64 = KindParam_String{Value: value}
 		}
 	case "/api/request-fetch":
 	case "/api/todos":
@@ -275,7 +275,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /async-ssr/[mode] param mode: %w", err)
 			}
-			p.value_6d6f6465 = Variant_Mode_BuiltinString{Value: value}
+			p.value_6d6f6465 = ModeParam_String{Value: value}
 		}
 	case "/async-ssr/[mode]/[group]":
 		if raw, present := values["mode"]; present {
@@ -283,14 +283,14 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /async-ssr/[mode]/[group] param mode: %w", err)
 			}
-			p.value_6d6f6465 = Variant_Mode_BuiltinString{Value: value}
+			p.value_6d6f6465 = ModeParam_String{Value: value}
 		}
 		if raw, present := values["group"]; present {
 			value, err := skgoSharedValue[string](raw)
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /async-ssr/[mode]/[group] param group: %w", err)
 			}
-			p.value_67726f7570 = Variant_Group_BuiltinString{Value: value}
+			p.value_67726f7570 = GroupParam_String{Value: value}
 		}
 	case "/async-ssr/control":
 	case "/async-ssr/control/[group]":
@@ -299,7 +299,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /async-ssr/control/[group] param group: %w", err)
 			}
-			p.value_67726f7570 = Variant_Group_BuiltinString{Value: value}
+			p.value_67726f7570 = GroupParam_String{Value: value}
 		}
 	case "/batch":
 	case "/console":
@@ -312,7 +312,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /docs/[...rest] param rest: %w", err)
 			}
-			p.value_72657374 = Variant_Rest_BuiltinString{Value: value}
+			p.value_72657374 = RestParam_String{Value: value}
 		}
 	case "/empty":
 	case "/error":
@@ -334,7 +334,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /items/[id] param id: %w", err)
 			}
-			p.value_6964 = Variant_ID_BuiltinString{Value: value}
+			p.value_6964 = IDParam_String{Value: value}
 		}
 	case "/live":
 	case "/middleware":
@@ -344,7 +344,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /middleware/[slug] param slug: %w", err)
 			}
-			p.value_736c7567 = Variant_Slug_BuiltinString{Value: value}
+			p.value_736c7567 = SlugParam_String{Value: value}
 		}
 	case "/nested-universal":
 	case "/optional":
@@ -357,7 +357,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /prerender/[slug] param slug: %w", err)
 			}
-			p.value_736c7567 = Variant_Slug_BuiltinString{Value: value}
+			p.value_736c7567 = SlugParam_String{Value: value}
 		}
 	case "/render-paths":
 	case "/request-fetch":
@@ -369,7 +369,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /shadow/[...rest] param rest: %w", err)
 			}
-			p.value_72657374 = Variant_Rest_BuiltinString{Value: value}
+			p.value_72657374 = RestParam_String{Value: value}
 		}
 	case "/shadow/[slug]":
 		if raw, present := values["slug"]; present {
@@ -377,7 +377,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /shadow/[slug] param slug: %w", err)
 			}
-			p.value_736c7567 = Variant_Slug_BuiltinString{Value: value}
+			p.value_736c7567 = SlugParam_String{Value: value}
 		}
 	case "/spa":
 	case "/stream":
@@ -388,7 +388,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /todos/[id] param id: %w", err)
 			}
-			p.value_6964 = Variant_ID_BuiltinString{Value: value}
+			p.value_6964 = IDParam_String{Value: value}
 		}
 	case "/todos/gate":
 	case "/todos/pair":
@@ -399,7 +399,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /typed-dependencies/[a=Order] param a: %w", err)
 			}
-			p.value_61 = Variant_A_NamedOrderNumber_445985ecd711{Value: value}
+			p.value_61 = AParam_OrderNumber{Value: value}
 		}
 	case "/typed-dependencies/[a=Order]/[b=Order]":
 		if raw, present := values["a"]; present {
@@ -407,14 +407,14 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /typed-dependencies/[a=Order]/[b=Order] param a: %w", err)
 			}
-			p.value_61 = Variant_A_NamedOrderNumber_445985ecd711{Value: value}
+			p.value_61 = AParam_OrderNumber{Value: value}
 		}
 		if raw, present := values["b"]; present {
 			value, err := skgoSharedValue[hooks.OrderNumber](raw)
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /typed-dependencies/[a=Order]/[b=Order] param b: %w", err)
 			}
-			p.value_62 = Variant_B_NamedOrderNumber_e20c213cb3b6{Value: value}
+			p.value_62 = BParam_OrderNumber{Value: value}
 		}
 	case "/typed-dependencies/[a=Order]/[b=Order]/[ignored]":
 		if raw, present := values["a"]; present {
@@ -422,21 +422,21 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /typed-dependencies/[a=Order]/[b=Order]/[ignored] param a: %w", err)
 			}
-			p.value_61 = Variant_A_NamedOrderNumber_445985ecd711{Value: value}
+			p.value_61 = AParam_OrderNumber{Value: value}
 		}
 		if raw, present := values["b"]; present {
 			value, err := skgoSharedValue[hooks.OrderNumber](raw)
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /typed-dependencies/[a=Order]/[b=Order]/[ignored] param b: %w", err)
 			}
-			p.value_62 = Variant_B_NamedOrderNumber_e20c213cb3b6{Value: value}
+			p.value_62 = BParam_OrderNumber{Value: value}
 		}
 		if raw, present := values["ignored"]; present {
 			value, err := skgoSharedValue[string](raw)
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /typed-dependencies/[a=Order]/[b=Order]/[ignored] param ignored: %w", err)
 			}
-			p.value_69676e6f726564 = Variant_Ignored_BuiltinString{Value: value}
+			p.value_69676e6f726564 = IgnoredParam_String{Value: value}
 		}
 	case "/typed-load":
 	case "/typed-load/[number=Order]":
@@ -445,7 +445,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			if err != nil {
 				return Params{}, fmt.Errorf("skgo: caller /typed-load/[number=Order] param number: %w", err)
 			}
-			p.value_6e756d626572 = Variant_Number_NamedOrderNumber_123cbe2d9d50{Value: value}
+			p.value_6e756d626572 = NumberParam_OrderNumber{Value: value}
 		}
 	case "/universal-fetch":
 	case "/universal-fetch/no-script":

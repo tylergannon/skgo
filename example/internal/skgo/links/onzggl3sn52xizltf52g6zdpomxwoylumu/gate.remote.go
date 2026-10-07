@@ -121,8 +121,7 @@ type Ack struct {
 // instance of getNote the page asked for, comes back refused with the reason
 // on it; and the banner is deliberately not run, which the page shows by going
 // stale without making Kit reject the command as unhandled.
-func writeNotes(event params.RequestEvent, arg Write) (Ack, error) {
-	ctx := event.Context()
+func writeNotes(ctx context.Context, event skgo.RequestEvent[params.Params], arg Write) (Ack, error) {
 	store := store(ctx)
 	store.Lock()
 	store.notes["left"] = arg.Left

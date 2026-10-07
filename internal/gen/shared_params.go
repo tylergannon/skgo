@@ -118,35 +118,86 @@ func sharedTypeIdentity(t types.Type) string {
 	}
 }
 
+// sharedVariantName is the readable ordinary name. The complete alternative
+// set resolves genuine collisions before emitting declarations or constructors.
 func sharedVariantName(key string, t types.Type) string {
+	return sharedParamStem(key) + "Param_" + sharedTypeStem(t, false)
+}
+
+func sharedTypeStem(t types.Type, qualified bool) string {
 	t = types.Unalias(t)
-	prefix := "Variant_" + sharedParamStem(key) + "_"
-	if basic, ok := t.(*types.Basic); ok {
-		return prefix + "Builtin" + readableTypeStem(types.Typ[basic.Kind()].Name())
-	}
-	tag := ""
 	switch t := t.(type) {
+	case *types.Basic:
+		return readableTypeStem(types.Typ[t.Kind()].Name())
 	case *types.Named:
-		tag = "Named" + readableTypeStem(t.Obj().Name())
+		name := readableTypeStem(t.Obj().Name())
+		if qualified && t.Obj().Pkg() != nil {
+			name = readableTypeStem(t.Obj().Pkg().Name()) + name
+		}
+		for i := 0; i < t.TypeArgs().Len(); i++ {
+			name += "_" + sharedTypeStem(t.TypeArgs().At(i), qualified)
+		}
+		return name
 	case *types.Pointer:
-		tag = "TypePointer"
+		return "Pointer" + sharedTypeStem(t.Elem(), qualified)
 	case *types.Slice:
-		tag = "TypeSlice"
+		return "Slice" + sharedTypeStem(t.Elem(), qualified)
 	case *types.Array:
-		tag = "TypeArray"
+		return fmt.Sprintf("Array%d", t.Len()) + sharedTypeStem(t.Elem(), qualified)
 	case *types.Map:
-		tag = "TypeMap"
+		return "Map" + sharedTypeStem(t.Key(), qualified) + sharedTypeStem(t.Elem(), qualified)
 	case *types.Chan:
-		tag = "TypeChan"
+		return fmt.Sprintf("Chan%d", t.Dir()) + sharedTypeStem(t.Elem(), qualified)
 	case *types.Signature:
-		tag = "TypeFunc"
+		return "Func"
 	case *types.Struct:
-		tag = "TypeStruct"
+		return "Struct"
 	case *types.Interface:
-		tag = "TypeInterface"
+		return "Interface"
+	default:
+		panic(fmt.Sprintf("unsupported matcher type name %T", t))
 	}
-	digest := sha256.Sum256([]byte(fmt.Sprintf("%q:%s", key, sharedTypeIdentity(t))))
-	return prefix + tag + "_" + hex.EncodeToString(digest[:6])
+}
+
+func nameSharedAlternatives(alternatives map[string][]sharedAlternative) {
+	counts := map[string]int{}
+	for _, alts := range alternatives {
+		for _, alt := range alts {
+			counts[alt.name]++
+		}
+	}
+	for key, alts := range alternatives {
+		for i := range alts {
+			if counts[alts[i].name] > 1 {
+				alts[i].name = sharedParamStem(key) + "Param_" + sharedTypeStem(alts[i].typ, true)
+			}
+		}
+	}
+	counts = map[string]int{}
+	for _, alts := range alternatives {
+		for _, alt := range alts {
+			counts[alt.name]++
+		}
+	}
+	// Equal package names or structural spellings can still collide. Only these
+	// alternatives carry an identity suffix; full digests avoid truncated clashes.
+	for key, alts := range alternatives {
+		for i := range alts {
+			if counts[alts[i].name] > 1 {
+				digest := sha256.Sum256([]byte(key + ":" + sharedTypeIdentity(alts[i].typ)))
+				alts[i].name += "_" + hex.EncodeToString(digest[:])
+			}
+		}
+	}
+}
+
+func sharedAlternativeName(alternatives map[string][]sharedAlternative, key string, t types.Type) string {
+	for _, alt := range alternatives[key] {
+		if types.Identical(types.Unalias(alt.typ), types.Unalias(t)) {
+			return alt.name
+		}
+	}
+	panic("missing shared param alternative")
 }
 
 // Authored remotes can live outside src/routes as well. Their packages are
@@ -308,7 +359,6 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 	}
 	sort.Strings(dirs)
 	alternatives := map[string][]sharedAlternative{}
-	names := map[string]string{}
 	for _, dir := range dirs {
 		for _, param := range routes[dir].params {
 			typ := types.Type(types.Typ[types.String])
@@ -330,14 +380,10 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 				continue
 			}
 			name := sharedVariantName(param.Name, typ)
-			identity := param.Name + ":" + sharedTypeIdentity(typ)
-			if old, ok := names[name]; ok && old != identity {
-				return fmt.Errorf("skgo: shared params identity digest collision for %s", name)
-			}
-			names[name] = identity
 			alternatives[param.Name] = append(alternatives[param.Name], sharedAlternative{typ, name})
 		}
 	}
+	nameSharedAlternatives(alternatives)
 	var keys []string
 	for key := range alternatives {
 		keys = append(keys, key)
@@ -388,7 +434,7 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 			if param.Matcher != "" {
 				typ = routes[dir].matchers[param.Matcher].out
 			}
-			fmt.Fprintf(&body, "if raw, present := values[%q]; present { value, err := skgoSharedValue[%s](raw); if err != nil { return Params{}, fmt.Errorf(%q, err) }; p.value_%x = %s{Value:value} }\n", param.Name, imports.typeExpr(typ), "skgo: caller "+id+" param "+param.Name+": %w", param.Name, sharedVariantName(param.Name, typ))
+			fmt.Fprintf(&body, "if raw, present := values[%q]; present { value, err := skgoSharedValue[%s](raw); if err != nil { return Params{}, fmt.Errorf(%q, err) }; p.value_%x = %s{Value:value} }\n", param.Name, imports.typeExpr(typ), "skgo: caller "+id+" param "+param.Name+": %w", param.Name, sharedAlternativeName(alternatives, param.Name, typ))
 		}
 	}
 	body.WriteString("default: if routeID != \"\" { return Params{}, fmt.Errorf(\"skgo: unknown caller route %q; regenerate params\", routeID) }\n}\nreturn p,nil\n}\n\nfunc skgoSharedValue[T any](raw any) (T,error) {\nvar zero T\nif raw == nil && reflect.TypeFor[T]().Kind() == reflect.Interface { return zero,nil }\nvalue,ok := raw.(T)\nif !ok { return zero,fmt.Errorf(\"converted value %T does not fit %v\",raw,reflect.TypeFor[T]()) }\nreturn value,nil\n}\n")

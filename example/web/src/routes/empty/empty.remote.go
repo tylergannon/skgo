@@ -58,7 +58,7 @@ func getKnownReport(ctx context.Context) (Report, error) {
 
 // reparse is the same zero value coming back from a command rather than a
 // query, which is a different encoder call on a different response envelope.
-func reparse(_ params.RequestEvent) (Report, error) {
+func reparse(ctx context.Context, _ skgo.RequestEvent[params.Params]) (Report, error) {
 	return Report{Title: "Reparsed"}, nil
 }
 

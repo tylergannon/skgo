@@ -899,7 +899,7 @@ func (a *app) writeHandler(b *strings.Builder, fn *remoteFn) {
 		contextArg := "ctx"
 		if fn.kind == kindCommand || fn.kind == kindForm {
 			b.WriteString("\tevent,err := skgoSharedParams.SkgoRequestEvent(skgo.EventFrom(ctx))\n\tif err != nil { return nil,err }\n")
-			contextArg = "event"
+			contextArg = "event.Context(), event"
 		}
 		fmt.Fprintf(b, "\tout, err := %s(%s%s)\n", a.published(fn.goPkg, fn.name), contextArg, callArg(fn))
 		b.WriteString("\tif err != nil {\n\t\treturn nil, err\n\t}\n")

@@ -24,8 +24,8 @@ func TestNativeTypedCallerForms(t *testing.T) {
 		t.Fatal("sendMessage is not registered")
 	}
 	for _, caller := range []struct{ path, receipt string }{
-		{"/typed-load/42", "number:params.Variant_Number_NamedOrderNumber_123cbe2d9d50:{42}"},
-		{"/typed-load/0", "number:params.Variant_Number_NamedOrderNumber_123cbe2d9d50:{0}"},
+		{"/typed-load/42", "number:params.NumberParam_OrderNumber:{42}"},
+		{"/typed-load/0", "number:params.NumberParam_OrderNumber:{0}"},
 		{"/items/42", "id:string:42"},
 		{"/items/%2525", "id:string:%25"},
 		{"/items/a%2Fb", "id:string:a/b"},
@@ -97,7 +97,7 @@ func TestNativeTypedCallerKeyInputPrecedence(t *testing.T) {
 	req.Header.Set("Accept", "text/html")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	for _, want := range []string{`data-testid="keyed-receipt-key">carried key: submitted-id</p>`, `data-testid="keyed-receipt-caller">number:params.Variant_Number_NamedOrderNumber_123cbe2d9d50:{42}</p>`} {
+	for _, want := range []string{`data-testid="keyed-receipt-key">carried key: submitted-id</p>`, `data-testid="keyed-receipt-caller">number:params.NumberParam_OrderNumber:{42}</p>`} {
 		if rec.Code != 200 || !callerMarkupContains(rec.Body.String(), want) {
 			t.Fatalf("missing %q: %d %s", want, rec.Code, rec.Body.String())
 		}

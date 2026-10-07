@@ -131,8 +131,8 @@ func run(pass *analysis.Pass) (any, error) {
 		sig, _ := obj.Type().(*types.Signature)
 		if sig != nil && sig.Params().Len() > 0 {
 			h.ctx = sig.Params().At(0)
-			if kind == "Form" && sig.Params().Len() > 1 {
-				h.input = sig.Params().At(1).Type()
+			if kind == "Form" && sig.Params().Len() > 2 {
+				h.input = sig.Params().At(2).Type()
 			}
 			if kind == "LiveQuery" {
 				h.yield = sig.Params().At(sig.Params().Len() - 1)

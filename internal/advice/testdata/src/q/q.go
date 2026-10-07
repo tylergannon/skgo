@@ -47,7 +47,7 @@ func batch(ctx context.Context, slugs []string) ([]string, error) {
 
 var _ = kit.BatchQuery(batch)
 
-func command(ctx context.Context) (string, error) {
+func command(ctx context.Context, event kit.RequestEvent[struct{}]) (string, error) {
 	e := kit.EventFrom(ctx)
 	if err := e.SetCookie("session", "x", kit.CookieOptions{}); err != nil {
 		return "", err
@@ -60,7 +60,7 @@ func command(ctx context.Context) (string, error) {
 
 var _ = kit.Command(command)
 
-func form(ctx context.Context, arg string) (string, error) {
+func form(ctx context.Context, event kit.RequestEvent[struct{}], arg string) (string, error) {
 	if err := kit.EventFrom(ctx).SetCookie("session", arg, kit.CookieOptions{}); err != nil {
 		return "", err
 	}

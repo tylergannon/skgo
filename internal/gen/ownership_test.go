@@ -82,6 +82,7 @@ func Query(fn any) Marker { _ = fn; return Marker{} }
 
 type Event struct{}
 type RequestEvent[P any] struct { *Event; Params P }
+func (RequestEvent[P]) Context() context.Context { return context.Background() }
 type ParamMatcher func(string) (any, bool)
 type CallerMatchers map[string]ParamMatcher
 type ManifestParam struct {

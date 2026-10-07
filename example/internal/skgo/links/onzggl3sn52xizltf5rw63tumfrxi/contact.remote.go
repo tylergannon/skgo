@@ -100,8 +100,7 @@ func getMessages(_ context.Context) ([]Message, error) {
 // The checks below are the form's validation. Returning a *skgo.Invalid puts
 // each message on the field it names, and kit's client leaves the page — and
 // therefore everything the visitor typed — exactly as it was.
-func sendMessage(event params.RequestEvent, draft Draft) (Receipt, error) {
-	ctx := event.Context()
+func sendMessage(ctx context.Context, event skgo.RequestEvent[params.Params], draft Draft) (Receipt, error) {
 	caller, err := callerReceipt(event.Params)
 	if err != nil {
 		return Receipt{}, err
@@ -152,7 +151,7 @@ func sendMessage(event params.RequestEvent, draft Draft) (Receipt, error) {
 }
 
 // previewMessage lets the visitor check a message before submitting it.
-func previewMessage(event params.RequestEvent, body string) (Receipt, error) {
+func previewMessage(ctx context.Context, event skgo.RequestEvent[params.Params], body string) (Receipt, error) {
 	caller, err := callerReceipt(event.Params)
 	return Receipt{Summary: "Message preview", Caller: caller, Body: body}, err
 }
@@ -162,7 +161,7 @@ func callerReceipt(p params.Params) (string, error) {
 	switch number := p.Number().(type) {
 	case nil:
 		switch id := p.ID().(type) {
-		case params.Variant_ID_BuiltinString:
+		case params.IDParam_String:
 			caller = "id:string:" + id.Value
 		case nil:
 		default:

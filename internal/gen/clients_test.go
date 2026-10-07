@@ -95,7 +95,7 @@ func assertGeneratedContract(t *testing.T, e *evolvedApp, caseName, browserWant,
 	}
 	submitHandler := bytes.SplitN(submit[1], []byte("\nfunc "), 2)[0]
 	if !bytes.Contains(submitHandler, []byte("skgo.DecodeForm(call.Arg, &in)")) ||
-		!bytes.Contains(submitHandler, []byte("Skgo_submit(event, in)")) ||
+		!bytes.Contains(submitHandler, []byte("Skgo_submit(event.Context(), event, in)")) ||
 		!bytes.Contains(submitHandler, []byte("EncodeRoot")) {
 		t.Fatalf("server Form binding does not decode, call, and encode the changed %s contract", caseName)
 	}

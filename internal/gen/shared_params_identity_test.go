@@ -60,7 +60,12 @@ func TestSharedParamsGoIdentities(t *testing.T) {
 			if got := sharedTypeIdentity(a) == sharedTypeIdentity(b); got != tc.identical {
 				t.Fatalf("canonical identity %t, want %t:\n%s\n%s", got, tc.identical, sharedTypeIdentity(a), sharedTypeIdentity(b))
 			}
-			if got := sharedVariantName("id", a) == sharedVariantName("id", b); got != tc.identical {
+			alts := map[string][]sharedAlternative{"id": {{a, sharedVariantName("id", a)}}}
+			if !tc.identical {
+				alts["id"] = append(alts["id"], sharedAlternative{b, sharedVariantName("id", b)})
+			}
+			nameSharedAlternatives(alts)
+			if got := sharedAlternativeName(alts, "id", a) == sharedAlternativeName(alts, "id", b); got != tc.identical {
 				t.Fatalf("variant identity %t, want %t", got, tc.identical)
 			}
 		})
@@ -76,5 +81,50 @@ func TestSharedParamsKeyNames(t *testing.T) {
 		if got := sharedParamStem(tc.key); got != tc.want || !token.IsIdentifier(got) {
 			t.Fatalf("%q -> %q, want %q", tc.key, got, tc.want)
 		}
+	}
+}
+
+func TestSharedParamsReadableVariantNames(t *testing.T) {
+	makeNamed := func(path, pkg, name string) types.Type {
+		p := types.NewPackage(path, pkg)
+		return types.NewNamed(types.NewTypeName(token.NoPos, p, name, nil), types.Typ[types.Int], nil)
+	}
+	sales := makeNamed("example.com/sales", "sales", "OrderNumber")
+	legacy := makeNamed("example.com/legacy", "legacy", "OrderNumber")
+	other := makeNamed("example.com/other-sales", "sales", "OrderNumber")
+	build := func(ts ...types.Type) map[string][]sharedAlternative {
+		a := map[string][]sharedAlternative{}
+		for _, typ := range ts {
+			a["number"] = append(a["number"], sharedAlternative{typ, sharedVariantName("number", typ)})
+		}
+		nameSharedAlternatives(a)
+		return a
+	}
+	one := build(types.Typ[types.String], types.Typ[types.Int], sales)
+	for typ, want := range map[types.Type]string{
+		types.Typ[types.String]: "NumberParam_String", types.Typ[types.Int]: "NumberParam_Int", sales: "NumberParam_OrderNumber",
+	} {
+		if got := sharedAlternativeName(one, "number", typ); got != want {
+			t.Fatalf("name %s, want %s", got, want)
+		}
+	}
+	two := build(types.Typ[types.String], types.Typ[types.Int], sales, legacy)
+	if got := sharedAlternativeName(two, "number", sales); got != "NumberParam_SalesOrderNumber" {
+		t.Fatal(got)
+	}
+	if got := sharedAlternativeName(two, "number", legacy); got != "NumberParam_LegacyOrderNumber" {
+		t.Fatal(got)
+	}
+	if got := sharedAlternativeName(two, "number", types.Typ[types.String]); got != "NumberParam_String" {
+		t.Fatal(got)
+	}
+	three, reverse := build(sales, legacy, other), build(other, legacy, sales)
+	for _, typ := range []types.Type{sales, legacy, other} {
+		if sharedAlternativeName(three, "number", typ) != sharedAlternativeName(reverse, "number", typ) {
+			t.Fatal("names depend on traversal order")
+		}
+	}
+	if sharedAlternativeName(three, "number", sales) == sharedAlternativeName(three, "number", other) {
+		t.Fatal("equal package names erased distinct type identity")
 	}
 }
