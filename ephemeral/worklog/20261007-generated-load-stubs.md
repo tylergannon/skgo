@@ -1,0 +1,2 @@
+correction: The user dislikes inline TypeScript import expressions in generated stubs and expects compact, understandable generated code. Prefer named type imports when revisiting this output.
+decision: This request asks for an explanation, not implementation changes. The prerender load wrapper is emitted by internal/gen/loads.go; its build bridge originated in 36350f3 (September 28), with the present platform callback cast in eb401ec (October 4).
