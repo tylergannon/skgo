@@ -5,8 +5,9 @@ go 1.27.1
 require (
 	github.com/dop251/goja v0.0.0-20260911104922-fabc3b8078ad
 	github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14
-	github.com/tylergannon/polytype v1.3.1-0.20261007050534-c05b22d7cf2e
+	github.com/tylergannon/polytype v1.4.0
 	golang.org/x/mod v0.41.0
+	golang.org/x/sys v0.48.0
 	golang.org/x/term v0.46.0
 	golang.org/x/tools v0.50.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -22,6 +23,5 @@ require (
 	github.com/tylergannon/structtag v0.1.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 )
