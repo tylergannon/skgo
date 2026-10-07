@@ -59,7 +59,7 @@ export async function load() {
 	}
 	const timeout = "remote src/routes/timeout.remote.ts/blocked timed out after 30000ms"
 	rejectedHelper := strings.Contains(output, "BUILD_APP_REJECTED:skgo prerender service exited unexpectedly: 1") ||
-		strings.Contains(output, "BUILD_APP_REJECTED:skgo prerender service exited unexpectedly: SIGKILL")
+		strings.Contains(output, "BUILD_APP_REJECTED:skgo prerender service exited unexpectedly: SIGKILL") || (strings.Contains(output, "BUILD_APP_REJECTED:Prerendering failed") && strings.Contains(output, "callback canceled before response completion"))
 	if !strings.Contains(output, "APPLICATION_CAUGHT_CALLBACK:skgo prerender "+timeout) || !rejectedHelper {
 		t.Fatalf("fixture did not catch the actual timeout before the owner rejected the build:\n%s", output)
 	}

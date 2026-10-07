@@ -68,6 +68,9 @@ func runPrerenderRemote(ctx context.Context, raw []byte, out io.Writer, transpor
 	if err != nil {
 		return err
 	}
+	if original, ok := ctx.Value(prerenderRequestKey{}).(*http.Request); ok {
+		request = original.WithContext(ctx)
+	}
 	request.Header = http.Header{}
 	for name, values := range input.Headers {
 		request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)

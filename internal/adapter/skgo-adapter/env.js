@@ -338,6 +338,8 @@ export function gojaEnvironment() {
 		load: {
 			order: 'pre',
 			handler(id) {
+				// Go owns handle at runtime; this build-only hook has no engine code.
+				if (/\/src\/hooks\.server\.(?:ts|js)(?:\?|$)/.test(id)) return 'export {};';
 				if (/\/\.svelte-kit\/skgo-env-(?:values\.js|runtime\.json)(?:\?|$)/.test(id)) {
 					throw new Error('skgo: environment build inputs are private');
 				}
@@ -978,6 +980,8 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
 		load: {
 			order: 'pre',
 			handler(id) {
+				// Go owns handle at runtime; this build-only hook has no engine code.
+				if (/\/src\/hooks\.server\.(?:ts|js)(?:\?|$)/.test(id)) return 'export {};';
 				if (/\/\.svelte-kit\/skgo-env-(?:values\.js|runtime\.json)(?:\?|$)/.test(id)) {
 					throw new Error('skgo: environment build inputs are private');
 				}

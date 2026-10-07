@@ -72,6 +72,12 @@ export async function load() {
 	if err := os.WriteFile(filepath.Join(filepath.Dir(page), "+page.svelte"), []byte(`<h1>Native crawler failure fixture</h1>`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	generate := exec.Command("go", "generate", "./...")
+	generate.Dir = fixture
+	generate.Env = inputsTestEnv(fixture, "")
+	if output, err := generate.CombinedOutput(); err != nil {
+		t.Fatalf("regenerate native route graph: %v\n%s", err, output)
+	}
 	result := runInputsBuildApp(t, fixture)
 	if result.err == nil {
 		t.Fatalf("native Vite buildApp resolved after crawler failure; output:\n%s", result.output)

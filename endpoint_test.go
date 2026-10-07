@@ -2,6 +2,7 @@ package skgo
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -145,6 +146,47 @@ func TestPrerenderedCanonicalPathAndSlashAliasBypassWildcardEndpoint(t *testing.
 	}
 	if len(called) != 1 || called[0] != "/other" {
 		t.Fatalf("positive control called wildcard route endpoint with %v, want [/other]", called)
+	}
+}
+
+func TestFullyPrerenderedEndpointsCheckDriftWithoutDynamicDispatch(t *testing.T) {
+	cfg := (Manifest{Prerendered: []string{"/snapshot/alpha"}, PrerenderedEndpoints: map[string][]string{"/snapshot/[slug]": {"GET"}}}).EndpointConfig("https://app.test")
+	called := 0
+	endpoint := NewEndpoint("/snapshot/[slug]", "GET", func(w http.ResponseWriter, r *http.Request) { called++; fmt.Fprint(w, "unexpected dynamic endpoint") })
+	es, err := NewEndpoints(cfg, endpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := es.Intercept(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/snapshot/alpha" {
+			fmt.Fprint(w, "literal static endpoint")
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	for _, fixture := range []struct {
+		path   string
+		status int
+		body   string
+	}{
+		{"/snapshot/alpha", 200, "literal static endpoint"}, {"/snapshot/unbuilt", 404, "404 page not found\n"},
+	} {
+		response := request(t, handler, "GET", fixture.path, nil)
+		if response.StatusCode != fixture.status || body(t, response) != fixture.body {
+			t.Fatalf("%s: %d", fixture.path, response.StatusCode)
+		}
+	}
+	if called != 0 {
+		t.Fatalf("prerendered endpoint ran %d times; want zero", called)
+	}
+	if _, err := NewEndpoints(cfg); err == nil || !strings.Contains(err.Error(), "GET /snapshot/[slug]") {
+		t.Fatalf("missing static registration drift: %v", err)
+	}
+	if _, err := NewEndpoints(cfg, endpoint, NewEndpoint("/snapshot/[slug]", "POST", func(http.ResponseWriter, *http.Request) {})); err == nil || !strings.Contains(err.Error(), "POST /snapshot/[slug]") {
+		t.Fatalf("extra static method drift: %v", err)
+	}
+	if _, err := NewEndpoints(cfg, endpoint, NewEndpoint("/undeclared", "GET", func(http.ResponseWriter, *http.Request) {})); err == nil || !strings.Contains(err.Error(), "GET /undeclared") {
+		t.Fatalf("undeclared route drift: %v", err)
 	}
 }
 

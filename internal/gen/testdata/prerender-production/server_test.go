@@ -16,6 +16,49 @@ import (
 	"github.com/tylergannon/skgo/example/ui"
 )
 
+func TestProductionPrerenderedEndpointsAndPages(t *testing.T) {
+	dist := buildFS(t)
+	manifest, err := skgo.ReadManifest(dist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest.PrerenderedEndpoints) != 2 || strings.Join(manifest.PrerenderedEndpoints["/lifecycle-api"], ",") != "GET" || strings.Join(manifest.PrerenderedEndpoints["/lifecycle-cookies/[operation]"], ",") != "GET" {
+		t.Fatalf("fully prerendered endpoint declarations: %v", manifest.PrerenderedEndpoints)
+	}
+	for _, route := range manifest.Routes {
+		if route.ID == "/lifecycle-api" || route.ID == "/lifecycle-cookies/[operation]" || route.ID == "/lifecycle/[slug]" {
+			t.Fatalf("fully prerendered route retained for dynamic dispatch: %s", route.ID)
+		}
+	}
+	handler := newHandler(t, dist, nil)
+	for _, path := range []string{"/lifecycle-api", "/lifecycle-cookies/alpha-set", "/lifecycle-cookies/alpha-delete", "/lifecycle-cookies/beta-set", "/lifecycle-cookies/beta-delete"} {
+		want := "cookies updated"
+		if path == "/lifecycle-api" {
+			want = "Go fetch: own locals 10"
+		}
+		response := get(handler, path)
+		if response.Code != 200 || response.Body.String() != want || len(response.Header().Values("Set-Cookie")) != 0 {
+			t.Fatalf("static endpoint %s: %d %v %s", path, response.Code, response.Header(), response.Body.String())
+		}
+	}
+	for _, slug := range []string{"alpha", "beta"} {
+		response := get(handler, "/lifecycle/"+slug)
+		if response.Code != 200 || !strings.Contains(response.Body.String(), "/lifecycle/"+slug+":remote-13 cookies:scoped%20raw deleted") || !strings.Contains(response.Body.String(), "<!-- Go after hook: /lifecycle/"+slug+" cookies:scoped%20raw deleted cookie-forwarding:root -->") {
+			t.Fatalf("static page %s: %d %s", slug, response.Code, response.Body.String())
+		}
+	}
+	for _, path := range []string{"/lifecycle-cookies/unbuilt-set", "/lifecycle/unbuilt"} {
+		response := get(handler, path)
+		if response.Code != 404 || !strings.Contains(response.Body.String(), "Not Found") || response.Body.String() == "cookies updated" {
+			t.Fatalf("unbuilt path %s dynamically answered: %d %s", path, response.Code, response.Body.String())
+		}
+	}
+	ordinary := get(handler, "/ordinary")
+	if ordinary.Code != 200 || !strings.Contains(ordinary.Body.String(), "<h1>Ordinary SSR route</h1>") {
+		t.Fatalf("ordinary dynamic page: %d %s", ordinary.Code, ordinary.Body.String())
+	}
+}
+
 // Literal ID from Kit 3.0.0's hash of the authored module path
 // src/routes/prerender-contract/fixture.remote.ts, not discovered from output.
 const remoteID = "18787o2/noargValue"

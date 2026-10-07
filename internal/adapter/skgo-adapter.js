@@ -18,6 +18,7 @@ import {
 	createPrerenderOwner,
 	installPrerenderFailureBoundary,
 	remoteFunction,
+ remoteEndpoint,
 	remoteLoad
 } from './skgo-adapter/prerender.js';
 import { gojaDevEnvironment, gojaDevUnchangedFiles, gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
@@ -98,6 +99,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 		emulate() {
 			return {
 				platform: () => ({
+                    skgoPrerenderEndpoint(event) { return remoteEndpoint(event); },
 					async skgoPrerenderLoad(module, source, event) {
 						return remoteLoad(module, source, event);
 					},
@@ -129,6 +131,9 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 			checkServerLoads(allServerIds, generated.loads, generated.actions);
 
 			const endpoints = checkEndpoints(builder, generated.endpoints);
+			const prerenderedEndpoints = Object.fromEntries(builder.routes
+				.filter((route) => route.prerender === true && endpoints.has(route.id))
+				.map((route) => [route.id, endpoints.get(route.id)]));
 
 			builder.writeClient(`${out}/client`);
 			checkRemoteIds(`${out}/client`, generated.remotes, hashes);
@@ -195,6 +200,7 @@ export default function skgo({ out = 'build', precompress = true } = {}) {
 						// records in the node module it builds.
 						nodes: serverIds,
 						loads: generated.loads,
+						prerenderedEndpoints,
 						actions: [...new Set(generated.actions)].sort(),
 						ssr: describeSSR(builder, kit, nodes),
 						routes: kit._.routes.map((/** @type {any} */ route) => ({

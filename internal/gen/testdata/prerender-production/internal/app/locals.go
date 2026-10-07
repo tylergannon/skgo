@@ -1,2 +1,6 @@
 package app
-type Locals struct{}
+
+type Locals struct {
+	Value string
+	Calls int
+}

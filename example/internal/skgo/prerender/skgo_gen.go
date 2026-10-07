@@ -3,13 +3,19 @@
 package main
 
 import (
+	fmt "fmt"
 	skgo "github.com/tylergannon/skgo"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
 	log "log"
+	http "net/http"
 )
 
 func main() {
-	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes()); err != nil {
+	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{BindRequest: func(next http.Handler) http.Handler {
+		return generated.RequestBoundary(skgo.HandleConfig{Matchers: generated.Matchers(), ClientAddress: func(*http.Request) (string, error) {
+			return "", fmt.Errorf("skgo: client address unavailable during prerender")
+		}}, next)
+	}, Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {
 		log.Fatal(err)
 	}
 }

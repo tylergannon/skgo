@@ -156,6 +156,9 @@ type EndpointConfig struct {
 	// answer a GET of one from its file before any dynamic route is consulted,
 	// so a server route that would also match it does not run for it.
 	Prerendered []string
+	// PrerenderedEndpoints records compiled methods for fully prerendered
+	// endpoint routes. They participate in drift checks, never dynamic routing.
+	PrerenderedEndpoints map[string][]string
 
 	// manifest reports that this config came from a build manifest, which is
 	// what makes the drift check meaningful.
@@ -166,13 +169,14 @@ type EndpointConfig struct {
 // manifest.
 func (m Manifest) EndpointConfig(origin string) EndpointConfig {
 	return EndpointConfig{
-		AppDir:         m.AppDir,
-		Base:           m.Base,
-		Origin:         origin,
-		TrustedOrigins: m.TrustedOrigins,
-		Routes:         m.Routes,
-		Prerendered:    m.Prerendered,
-		manifest:       true,
+		AppDir:               m.AppDir,
+		Base:                 m.Base,
+		Origin:               origin,
+		TrustedOrigins:       m.TrustedOrigins,
+		Routes:               m.Routes,
+		Prerendered:          m.Prerendered,
+		PrerenderedEndpoints: m.PrerenderedEndpoints,
+		manifest:             true,
 	}
 }
 
@@ -351,7 +355,16 @@ func (es *Endpoints) checkDrift() error {
 	}
 
 	declared := map[string]map[string]bool{}
+	for id, methods := range es.cfg.PrerenderedEndpoints {
+		declared[id] = map[string]bool{}
+		for _, method := range methods {
+			declared[id][method] = true
+		}
+	}
 	for _, route := range es.routes {
+		if _, prerendered := es.cfg.PrerenderedEndpoints[route.id]; prerendered {
+			return fmt.Errorf("skgo: prerendered endpoint %s also appears in the dynamic route table", route.id)
+		}
 		if route.declared != nil {
 			declared[route.id] = route.declared
 		}

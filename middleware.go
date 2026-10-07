@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -112,16 +113,10 @@ func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler 
 
 func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(context.Context) context.Context) http.Handler {
 
-	appDir := cfg.AppDir
-	if appDir == "" {
-		appDir = "_app"
-	}
 	base := strings.TrimSuffix(cfg.Base, "/")
 	if base != "" && !strings.HasPrefix(base, "/") {
 		base = "/" + base
 	}
-	assetPrefix := base + "/" + appDir + "/"
-	remotePrefix := assetPrefix + "remote/"
 	var origin *url.URL
 	if u, err := url.Parse(cfg.Origin); err == nil && u.Host != "" {
 		origin = u
@@ -129,6 +124,32 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 	secure := secureCookieDefault(cfg.Origin, cfg.Dev)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cfg := cfg
+		base := base
+		origin := origin
+		secure := secure
+		if manifest, ok := r.Context().Value(prerenderManifestKey{}).(Manifest); ok {
+			build := manifest.HandleConfig()
+			cfg.routes = build.routes
+			cfg.Base = build.Base
+			cfg.AppDir = build.AppDir
+			base = cfg.Base
+			logicalURL := r.URL.String()
+			if request, ok := r.Context().Value(prerenderMatchKey{}).(prerenderRequestInput); ok && request.LogicalURL != "" {
+				logicalURL = request.LogicalURL
+			}
+			if u, err := url.Parse(logicalURL); err == nil && u.Host != "" {
+				origin = u
+				cfg.Origin = u.Scheme + "://" + u.Host
+				secure = secureCookieDefault(cfg.Origin, cfg.Dev)
+			}
+		}
+		appDir := cfg.AppDir
+		if appDir == "" {
+			appDir = "_app"
+		}
+		assetPrefix := base + "/" + appDir + "/"
+		remotePrefix := assetPrefix + "remote/"
 		path := r.URL.Path
 
 		// A websocket upgrade is not a request kit's server answers.
@@ -190,7 +211,8 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 			response: &loadRequest{responseState: &responseState{headers: http.Header{}}},
 		}
 		hasPage := false
-		if !skipRoute {
+		_, buildRequest := r.Context().Value(prerenderMatchKey{}).(prerenderRequestInput)
+		if !skipRoute && !buildRequest {
 			// Handle runs before the registries, so it must validate the
 			// live graph before its own match too. Let the owning handler
 			// report refresh failures in the request kind's normal format.
@@ -203,6 +225,35 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 			if route, params, converted, ok := cfg.matchRoute(routePath); ok {
 				state.converted = converted
 				state.routeID, state.params, hasPage = route.id, params, route.hasPage
+			}
+		}
+		if build, ok := r.Context().Value(prerenderMatchKey{}).(prerenderRequestInput); ok {
+			state.routing = true
+			if build.LogicalURL != "" {
+				if logical, err := url.Parse(build.LogicalURL); err == nil {
+					state.url = logical
+					pageURL = logical
+				}
+			}
+			state.routeID = build.RouteID
+			state.params, state.converted = nil, nil
+			if build.RoutePattern != "" {
+				pattern, compileErr := regexp.Compile(kitPattern(build.RoutePattern))
+				if compileErr != nil {
+					http.Error(w, compileErr.Error(), 500)
+					return
+				}
+				match := pattern.FindStringSubmatchIndex(build.RoutePath)
+				if match == nil {
+					http.Error(w, "skgo: invalid build route", 500)
+					return
+				}
+				var accepted bool
+				state.params, state.converted, accepted = execMatchedParams(build.RoutePath, match, build.RouteParams, cfg.Matchers)
+				if !accepted {
+					http.Error(w, "skgo: Go matchers reject build route", 500)
+					return
+				}
 			}
 		}
 		state.jar = newCookieJarAt(r, pageURL.Host, pageURL.Path, secure)
@@ -264,8 +315,14 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 				ctx = refusal.ctx
 				err = refusal.err
 			}
+			if refusal, ok := r.Context().Value(prerenderRefusalKey{}).(func(error, *hookState)); ok {
+				refusal(err, state)
+			}
 			cfg.refuse(w, r.WithContext(ctx), ctx, state.jar, state.routeID, err, isData, isRemote, hasPage)
 			return
+		}
+		if failed, ok := r.Context().Value(prerenderBodyFailureKey{}).(func(error)); ok && response.Body != nil {
+			response.Body = &prerenderBody{ReadCloser: response.Body, failed: failed}
 		}
 		cfg.finish(w, r, response, state, isData)
 	})

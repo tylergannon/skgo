@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { isMainThread } from "node:worker_threads";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 const owners = new Map();
 const SERVICE_URL = "SKGO_PRERENDER_SERVICE_URL";
@@ -16,6 +17,8 @@ const CALLBACK_TIMEOUT = 30_000;
 const STARTUP_TIMEOUT = 60_000;
 const SHUTDOWN_GRACE = 150;
 const CLEANUP_TIMEOUT = 5_000;
+const internalFetch = new AsyncLocalStorage();
+const cookieRelays = new WeakMap();
 function appRoot() {
   return resolve(process.cwd());
 }
@@ -98,6 +101,7 @@ function validateEnvelope(request, raw) {
   }
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("skgo prerender command returned a non-object response");
+  if (["begin", "response", "end", "endpoint", "cookies"].includes(request.kind)) return;
   if (request.kind === "remote-inputs") {
     if (typeof value.inputs !== "string")
       throw new Error("skgo prerender inputs response has no devalue payload");
@@ -565,7 +569,7 @@ async function invokeService(request) {
   const identity = `${request.kind} ${request.module}/${request.name ?? ""}`;
   if (!url || !secret) throw new Error(`skgo prerender service unavailable for ${identity}`);
   const { kind, ...body } = request;
-  const path = { load: "/load", remote: "/remote", "remote-inputs": "/inputs" }[kind];
+  const path = { load: "/load", remote: "/remote", "remote-inputs": "/inputs", begin: "/begin", response: "/response", end: "/end", endpoint: "/endpoint", cookies: "/cookies" }[kind];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CALLBACK_TIMEOUT);
   try {
@@ -657,6 +661,7 @@ export async function remoteLoad(module, source, event) {
   const request = {
     kind: "load",
     module,
+    handle: event.platform?.skgoRequestHandle,
     url: event.url.href,
     routeId: event.route.id,
     params: {},
@@ -677,18 +682,7 @@ export async function remoteLoad(module, source, event) {
       `skgo: Go load failed during prerender: route ID ${event.route.id}, path ${event.url.pathname}, source ${source}: ${answer.failure}`,
     );
   }
-  for (const [name, values] of Object.entries(answer.headers ?? {}))
-    event.setHeaders({ [name]: values.join(", ") });
-  for (const cookie of answer.cookies ?? []) {
-    event.cookies.set(cookie.name, cookie.value, {
-      path: cookie.path,
-      ...(cookie.domain ? { domain: cookie.domain } : {}),
-      ...(cookie.maxAge ? { maxAge: cookie.maxAge } : {}),
-      httpOnly: cookie.httpOnly,
-      secure: cookie.secure,
-      sameSite: ["lax", "lax", "strict", "none"][cookie.sameSite] ?? "lax",
-    });
-  }
+  applyRequestEffects(event, answer);
   if (answer.data) {
     const pending = new Map();
     const revivers = {
@@ -728,6 +722,7 @@ export async function remoteFunction(module, name, arg, event) {
     kind: "remote",
     module,
     name,
+    handle: event.platform?.skgoRequestHandle,
     payload,
     url: event.url.href,
     headers,
@@ -744,4 +739,130 @@ export async function remoteFunction(module, name, arg, event) {
     throw new Error("skgo prerender remote result omitted its value member");
   }
   return result._;
+}
+
+
+function applyRequestEffects(event, answer) {
+  for (const [name, values] of Object.entries(answer.headers ?? {}))
+    event.setHeaders({ [name]: values.join(", ") });
+  for (const cookie of answer.cookies ?? [])
+    event.cookies.set(cookie.name, cookie.value, {
+      path: cookie.path, ...(cookie.domain ? { domain: cookie.domain } : {}),
+      ...(cookie.maxAge !== undefined ? { maxAge: cookie.maxAge } : {}), httpOnly: cookie.httpOnly,
+      ...(cookie.expires ? { expires: new Date(cookie.expires) } : {}),
+      ...(cookie.partitioned ? { partitioned: true } : {}),
+      ...(cookie.priority ? { priority: cookie.priority } : {}),
+      ...(cookie.raw ? { encode: (value) => value } : {}),
+      secure: cookie.secure, sameSite: [false, false, "lax", "strict", "none"][cookie.sameSite] ?? false,
+    });
+}
+
+/** Generated hooks.server calls this only while Kit is building. */
+export async function requestHandle(event, resolveRequest) {
+  // handleFetch's supplied fetch reaches this hook only for Kit subrequests.
+  const fetching = internalFetch.getStore();
+  if (fetching) fetching.internal = true;
+  const { manifest } = await import(pathToFileURL(join(appRoot(), ".svelte-kit/output/server/manifest-full.js")).href);
+  const prefix = manifest.app_path.slice(0, -manifest.app_dir.length);
+  const base = prefix ? "/" + prefix.slice(0, -1) : "";
+  const routes = await Promise.all(manifest.routes.map(async (route) => ({
+    id: route.id, pattern: route.pattern.source, params: route.params,
+    ...(route.page ? { page: route.page } : {}),
+    ...(route.endpoint ? { endpoint: { methods: Object.keys(await route.endpoint()).filter((key) => ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "QUERY", "fallback"].includes(key)).map((key) => key === "fallback" ? "*" : key) } } : {}),
+  })));
+  const route = routes.find((candidate) => candidate.id === event.route.id);
+  const { decode_pathname } = await import(pathToFileURL(join(kitRootFor(appRoot()), "src/utils/url.js")).href);
+  const answer = JSON.parse(await invokeService({
+    kind: "begin", method: event.request.method, url: event.request.url, logicalUrl: event.url.href,
+    headers: Object.fromEntries([...event.request.headers].map(([key, value]) => [key, [value]])),
+    body: event.request.method === "GET" || event.request.method === "HEAD" ? "" : Buffer.from(await event.request.clone().arrayBuffer()).toString("base64"),
+    routeId: event.route.id ?? "", routePattern: route?.pattern ?? "", routeParams: route?.params ?? [],
+    routePath: decode_pathname(event.url.pathname).slice(base.length) || "/",
+    isSubRequest: event.isSubRequest,
+    manifest: { appDir: manifest.app_dir, base, routes },
+  }));
+  const handle = answer.handle;
+  if (!handle) throw new Error("skgo prerender begin omitted request handle");
+  let ended = false;
+  const end = async () => {
+    if (ended) return;
+    ended = true;
+    await invokeService({ kind: "end", handle });
+  };
+  try {
+    applyRequestEffects(event, answer);
+    const { internal } = await runtime();
+    if (answer.redirect) throw new internal.Redirect(answer.redirect.status, answer.redirect.location);
+    if (answer.error) throw new internal.HttpError(answer.error);
+    let final = answer.response;
+    if (answer.resolve) {
+      event.platform ??= {};
+      event.platform.skgoRequestHandle = handle;
+      const response = await resolveRequest(event);
+      const headers = {};
+      for (const [name, value] of response.headers) headers[name] = [value];
+      if (response.headers.getSetCookie) headers["set-cookie"] = response.headers.getSetCookie();
+      const result = JSON.parse(await invokeService({kind: "response", handle, response: {
+        status: response.status, headers,
+        body: Buffer.from(await response.arrayBuffer()).toString("base64"),
+      }}));
+      if (result.redirect) throw new internal.Redirect(result.redirect.status, result.redirect.location);
+      if (result.error) throw new internal.HttpError(result.error);
+      final = result.response;
+    }
+    if (!final || !Number.isInteger(final.status)) throw new Error("skgo prerender request omitted final response");
+    const headers = new Headers();
+    for (const [name, values] of Object.entries(final.headers ?? {}))
+      for (const value of values ?? []) headers.append(name, value);
+    if (event.request.method === "HEAD" || [204, 205, 304].includes(final.status)) {
+      await end();
+      return new Response(null, { status: final.status, headers });
+    }
+    const bytes = Buffer.from(final.body ?? "", "base64");
+    let emitted = false;
+    const body = new ReadableStream({
+      async pull(controller) {
+        try {
+          if (!emitted) { emitted = true; controller.enqueue(bytes); }
+          else { await end(); controller.close(); }
+        } catch (error) { controller.error(error); }
+      },
+      cancel: end,
+    }, { highWaterMark: 0 });
+    return new Response(body, { status: final.status, headers });
+  } catch (error) {
+    await end();
+    throw error;
+  }
+}
+
+/** Kit has applied internal response cookies before its supplied fetch returns. */
+export async function requestFetch({ event, request, fetch }) {
+  const scope = { internal: false };
+  return internalFetch.run(scope, async () => {
+    const response = await fetch(request);
+    const cookies = response.headers.getSetCookie();
+    const handle = event.platform?.skgoRequestHandle;
+    if (scope.internal && handle && cookies.length) {
+      // Match the order in which Kit applied concurrent fetch responses.
+      const previous = cookieRelays.get(event.platform) ?? Promise.resolve();
+      const relay = previous.then(() => invokeService({ kind: "cookies", handle, url: request.url, cookies }));
+      cookieRelays.set(event.platform, relay);
+      await relay;
+    }
+    return response;
+  });
+}
+
+/** A generated server-route stub forwards only its build-time execution. */
+export async function remoteEndpoint(event) {
+  const answer = JSON.parse(await invokeService({kind: "endpoint", handle:event.platform?.skgoRequestHandle}));
+  applyRequestEffects(event,answer);
+  const response = answer.response;
+  if (!response || !Number.isInteger(response.status)) throw new Error("skgo prerender endpoint omitted response");
+  const headers = new Headers();
+  for (const [name,values] of Object.entries(response.headers ?? {}))
+    for (const value of values ?? []) headers.append(name,value);
+  const body = event.request.method === "HEAD" || [204,205,304].includes(response.status) ? null : Buffer.from(response.body ?? "","base64");
+  return new Response(body,{status:response.status,headers});
 }

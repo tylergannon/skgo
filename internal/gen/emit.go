@@ -1081,7 +1081,7 @@ type prerenderCommandLocation struct {
 
 func (a *app) writeRemoteList() error {
 	list := remoteList{Remotes: []string{}, Loads: []string{}, Actions: []string{}, Endpoints: a.endpointList()}
-	if len(a.loads) > 0 || a.hasPrerenderRemote() {
+	if a.hasPrerenderWork() {
 		root, err := filepath.Rel(a.cfg.Web, a.hostDir)
 		if err != nil {
 			return err

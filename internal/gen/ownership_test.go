@@ -91,7 +91,7 @@ type RequestResolve[P,L any] func(context.Context,RequestEvent[P,L],...ResolveOp
 type RequestMiddleware[P,L any] func(context.Context,RequestEvent[P,L],RequestResolve[P,L])(*http.Response,error)
 type RequestHandle[P,L any] func(context.Context,RequestEvent[P,L])(RequestEvent[P,L],error)
 type ResolveOptions struct{}
-type HandleConfig struct{}
+type HandleConfig struct {Matchers map[string]ParamMatcher;ClientAddress func(*http.Request)(string,error)}
 func HookValues(*Event)(string,map[string]any){return "",nil}
 func Errorf(int,string,...any)error{return nil}
 func (h RequestHandle[P,L]) Middleware() RequestMiddleware[P,L]{return nil}
@@ -173,7 +173,8 @@ type RemoteSpec struct {
 
 func NewRemote(spec RemoteSpec) *Remote { _ = spec; return &Remote{} }
 
-func RunPrerenderService(any, []*ServerLoad, []*Remote) error { return nil }
+type PrerenderServiceOptions struct {BindRequest func(http.Handler)http.Handler; Endpoints []*Endpoint;Matchers map[string]ParamMatcher}
+func RunPrerenderService(any, []*ServerLoad, []*Remote,PrerenderServiceOptions) error { return nil }
 
 func BadRequest(detail error) error { return detail }
 
