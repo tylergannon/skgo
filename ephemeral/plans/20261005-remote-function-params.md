@@ -10,6 +10,15 @@ proof machinery or chase exhaustive polish. The user requests stopping at roughl
 remaining proof or polish honestly rather than treating every historical proof
 item below as a requirement to keep working indefinitely.
 
+This implementation pass is complete at source commit `6b96208`, following the
+API revision at `3d21533`. Claude Opus's consensus round 02 reports only nitpicks
+remain; the parent agrees and stops under the user's direction. The reviews are
+`ephemeral/reviews/20261006-remote-api-round-01.md` and
+`ephemeral/reviews/20261006-remote-api-round-02.md`. Remaining suggestions concern
+a compiled package-qualified naming fixture and alias wording in a diagnostic.
+The contracts below remain reference material, not an instruction to restart
+implementation or repeat completed validation.
+
 This chat (`01a11328-2836-7ee3-9276-dab87a186ec6`) owns direct orchestration,
 without Gimbal. Work in the preserved `codex/remote-function-params` worktree at
 `/Users/tyler/.codex/worktrees/remote-function-params/skgo`. Main integration
@@ -17,11 +26,10 @@ and the previous implementation/independent validation are complete at
 `7734653`; `8e0d62a` adds investigation notes. PR #258's prerequisite is already
 integrated. Do not restart that integration or historical Gimbal runs.
 
-The user has reopened the public Go API. This revision prepares the next
-implementation; it does not claim that the new API has been implemented or
-validated. Preserve the working caller routing, matching, decoding, native and
-enhanced forms, isolation, drift validation, and precise typed loads. Previous
-proof covers the previous API, not this revision.
+The reopened public Go API is now implemented and independently validated.
+Preserve the working caller routing, matching, decoding, native and enhanced
+forms, isolation, drift validation, and precise typed loads. The consensus
+reviews distinguish current proof from the previous implementation's baseline.
 
 The orchestrator assigns bounded coding missions and owns independent QA.
 Each builder implements its assigned capability, runs focused developer checks,
@@ -152,12 +160,11 @@ Kit decodes pathnames through `src/utils/url.js:decode_pathname`, splitting on `
 
 Kit's `src/runtime/app/server/remote/shared.js:derive_remote_function_event` preserves command/form context, disallows setHeaders and enforces cookie limits. Under is_in_remote_query it makes url/params/route throw (`:115–125`), including nested queries. Therefore the application-wide params event is only for command/form. Preserve query restrictions across SSR, direct nested calls, refresh, batch/live and dev-prerender constructors. No load tracking is needed for remote Params.
 
-Current implementation already constructs the generic event and shared Params.
-The generator recognizes command/form event-first signatures and emits calls
-without an explicit ctx. The next implementation must accept the revised
-context-first signatures, validate the app-wide type in the event argument,
-and pass both arguments correctly through generated dispatch. Update authored
-consumers, diagnostics, generation fixtures and marker documentation together.
+The implementation constructs the generic event and shared Params, recognizes
+the revised context-first signatures, validates the app-wide type in the event
+argument, and passes both arguments through generated dispatch. Authored
+consumers, diagnostics, generation fixtures, marker documentation, and the
+new-project demo starter use the revised API.
 Event-only and ctx-only authored command/form shapes should receive the new
 source-located signature guidance; do not add an undocumented alternate mode.
 Low-level runtime callback adapters may remain context-based.
