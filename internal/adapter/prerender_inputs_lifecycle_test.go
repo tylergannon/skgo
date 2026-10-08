@@ -48,6 +48,21 @@ func TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain(t *testing.
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
 	fixture := prepareInputsLifecycleFixture(t, "crawler-failure")
+	result := runInputsBuildApp(t, fixture)
+	if result.err == nil {
+		t.Fatalf("native Vite buildApp resolved after crawler failure; output:\n%s", result.output)
+	}
+	if !strings.Contains(result.output, "NATIVE_CRAWLER_FAILURE:500") || !strings.Contains(result.output, "GET /z-native-failure") || !strings.Contains(result.output, "Failed to prerender `/z-native-failure`") {
+		t.Fatalf("build rejection did not preserve the native crawler failure:\n%s", result.output)
+	}
+	if !strings.Contains(result.output, "BUILD_APP_REJECTED:Prerendering failed") {
+		t.Fatalf("buildApp did not reject with Kit's final native crawler failure:\n%s", result.output)
+	}
+	assertInputsDrainComplete(t, fixture, result.output)
+}
+
+func writeNativeCrawlerFailurePage(t *testing.T, fixture string) {
+	t.Helper()
 	// A real Kit page throws from its native server load. The Go-backed /about
 	// prerender request is held open independently, so Vite's native crawler
 	// failure must pass through the adapter's buildApp drain boundary.
@@ -81,22 +96,6 @@ export async function load() {
 	if err := os.WriteFile(filepath.Join(filepath.Dir(page), "+page.svelte"), []byte(`<h1>Native crawler failure fixture</h1>`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	generate := exec.Command("go", "generate", "./...")
-	generate.Dir, generate.Env = fixture, inputsTestEnv(fixture, "")
-	if output, err := generate.CombinedOutput(); err != nil {
-		t.Fatalf("regenerate native route graph: %v\n%s", err, output)
-	}
-	result := runInputsBuildApp(t, fixture)
-	if result.err == nil {
-		t.Fatalf("native Vite buildApp resolved after crawler failure; output:\n%s", result.output)
-	}
-	if !strings.Contains(result.output, "NATIVE_CRAWLER_FAILURE:500") || !strings.Contains(result.output, "GET /z-native-failure") || !strings.Contains(result.output, "Failed to prerender `/z-native-failure`") {
-		t.Fatalf("build rejection did not preserve the native crawler failure:\n%s", result.output)
-	}
-	if !strings.Contains(result.output, "BUILD_APP_REJECTED:Prerendering failed") {
-		t.Fatalf("buildApp did not reject with Kit's final native crawler failure:\n%s", result.output)
-	}
-	assertInputsDrainComplete(t, fixture, result.output)
 }
 
 var lifecycleInputsFixtureOnce sync.Once
@@ -285,6 +284,9 @@ func pageLoad(event PageRequestEvent) (PageData,error) {
 var _ = skgo.Load(pageLoad)
 `)
 		writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "about", "+page.svelte"), `<h1>Blocked Go load</h1>`)
+	}
+	if mode == "crawler-failure" {
+		writeNativeCrawlerFailurePage(t, fixture)
 	}
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir, generate.Env = fixture, inputsTestEnv(fixture, mode)

@@ -242,17 +242,6 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 			t.Fatalf("producer ran during generation: %s (%v)", receipt, err)
 		}
 	}
-	for _, command := range [][]string{
-		{filepath.Join(fixture, "web", "node_modules", ".bin", "svelte-kit"), "sync"},
-		{filepath.Join(fixture, "web", "node_modules", ".bin", "svelte-check"), "--tsconfig", "./tsconfig.json"},
-	} {
-		check := exec.Command(command[0], command[1:]...)
-		check.Dir = filepath.Join(fixture, "web")
-		check.Env = append(fixtureBuildEnv(), "GOWORK=off")
-		if output, err := timedFixtureOutput(t, filepath.Base(command[0]), check); err != nil {
-			t.Fatalf("frontend typecheck %v: %v\n%s", command, err, output)
-		}
-	}
 	build := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "vp"), "build")
 	build.Dir = filepath.Join(fixture, "web")
 	remoteReceipt := filepath.Join(fixture, "remotes-called")
@@ -262,6 +251,14 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 	buildOutput, err := timedFixtureOutput(t, "native build", build)
 	if err != nil {
 		t.Fatalf("vp build: %v\n%s", err, buildOutput)
+	}
+	// Kit's native build calls sync.all, including all route and app types.
+	// Check that output rather than repeating Kit sync in a second process.
+	check := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "svelte-check"), "--tsconfig", "./tsconfig.json")
+	check.Dir = filepath.Join(fixture, "web")
+	check.Env = append(fixtureBuildEnv(), "GOWORK=off")
+	if output, err := timedFixtureOutput(t, "svelte-check", check); err != nil {
+		t.Fatalf("frontend typecheck: %v\n%s", err, output)
 	}
 	t.Run("authored remote identifier", func(t *testing.T) { assertAuthoredInputsIdentifier(t, fixture, language) })
 	started := regexp.MustCompile(`(?m)^skgo prerender service started \(pid ([0-9]+)\)$`).FindAllStringSubmatch(string(buildOutput), -1)
@@ -570,7 +567,7 @@ func TestMalformedPrerenderInputsRejectsPermissiveKitBuild(t *testing.T) {
 	}
 	malformedBuild := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "vp"), "build")
 	malformedBuild.Dir = filepath.Join(fixture, "web")
-	malformedBuild.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "GOFLAGS=-overlay="+overlayPath, "SKGO_FORCE_BAD_INPUT_SHAPE=1", "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
+	malformedBuild.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "GOFLAGS=-ldflags=-w -overlay="+overlayPath, "SKGO_FORCE_BAD_INPUT_SHAPE=1", "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
 	malformedOutput, malformedErr := malformedBuild.CombinedOutput()
 	if malformedErr == nil || !strings.Contains(string(malformedOutput), "did not decode to an array") {
 		t.Fatalf("permissive native HTTP policy accepted malformed Go Inputs shape: err=%v\n%s", malformedErr, malformedOutput)

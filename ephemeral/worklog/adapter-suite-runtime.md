@@ -5,3 +5,13 @@ friction: Sharing alone measured 14.107s isolated, 51.006s in the local suite an
 friction: CI hit the exact restored-file failure tracked in #265. Keep watcher delivery and its separate proposed deterministic restructuring outside this optimization, as requested.
 friction: One-package scheduling brought adapter CI to 56.168s but the full step rose to 324s. Reject that schedule; improving a package's reported elapsed time is insufficient when the ordinary suite regresses.
 correction: Adding a native JS route still requires regeneration of the Go route graph. Sharing an older graph let a 503 masquerade as the intended 500 crawler failure until the independent blocked-body receipt assertion rejected it. Keep that fixture separate and require its literal failure marker.
+# Native-build type output and disposable linking
+
+Kit 3.0.0's `exports/vite/build/index.js` calls `sync.all` before compiling;
+`core/sync/sync.js` writes all route/app types there. Running the real
+`svelte-check` after the native build can therefore reuse that output and drop
+the preceding standalone sync. The crawler failure page must likewise exist
+before the single Go generation so its route graph is current. Disposable Go
+fixture binaries need no DWARF metadata; `-ldflags=-w` keeps compilation,
+linking, runtime behavior and native stack traces while reducing repeated
+linker output. Overlay cases must preserve that flag when supplying GOFLAGS.

@@ -167,6 +167,9 @@ var _ = skgo.Prerender(skgoRemoteInputs, skgo.PrerenderOptions{Inputs: fixtureIn
 // a bounded budget instead of multiplying whole-machine worker pools.
 func fixtureBuildEnv() []string {
 	env := replaceEnv(os.Environ(), "GOMAXPROCS", "1")
+	// Disposable executables exercise compiled Go code, not debugger metadata.
+	// Keep the real compiler/linker boundary while avoiding repeated DWARF output.
+	env = replaceEnv(env, "GOFLAGS", os.Getenv("GOFLAGS")+" -ldflags=-w")
 	env = replaceEnv(env, "RAYON_NUM_THREADS", "1")
 	env = replaceEnv(env, "ROLLDOWN_WORKER_THREADS", "1")
 	env = replaceEnv(env, "ROLLDOWN_MAX_BLOCKING_THREADS", "1")
