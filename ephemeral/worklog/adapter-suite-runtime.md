@@ -7,6 +7,15 @@ friction: One-package scheduling brought adapter CI to 56.168s but the full step
 correction: Adding a native JS route still requires regeneration of the Go route graph. Sharing an older graph let a 503 masquerade as the intended 500 crawler failure until the independent blocked-body receipt assertion rejected it. Keep that fixture separate and require its literal failure marker.
 # Native-build type output and disposable linking
 
+The successful shared build must enter the parallel pool before its consumers
+wait: doing setup before `t.Parallel` serializes it ahead of every other native
+pipeline. Three consumers occupy three slots while sharing one build. Native
+fixture executables can also be reused without bypassing compilation: seed each
+private output with the immutable executable, then run the original `go build`
+so Go validates its build ID and dependencies. Compiler-failure fixtures stay
+fresh. The extra cached binary belongs to the shared generated module and never
+to a native owner's private scratch directory.
+
 Kit 3.0.0's `exports/vite/build/index.js` calls `sync.all` before compiling;
 `core/sync/sync.js` writes all route/app types there. Running the real
 `svelte-check` after the native build can therefore reuse that output and drop

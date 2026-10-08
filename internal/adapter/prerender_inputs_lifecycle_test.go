@@ -109,6 +109,7 @@ func sharedInputsLifecycleFixture(t *testing.T, mode string) string {
 		if err := os.Rename(source, lifecycleInputsFixture); err != nil {
 			t.Fatal(err)
 		}
+		compileGeneratedInputsFixture(t, lifecycleInputsFixture)
 	})
 	fixture := cloneGeneratedInputsWeb(t, lifecycleInputsFixture)
 	writeFixtureFile(t, filepath.Join(fixture, ".lifecycle-mode"), mode)

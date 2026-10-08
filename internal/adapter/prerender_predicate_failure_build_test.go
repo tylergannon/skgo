@@ -21,6 +21,7 @@ func sharedPredicateInputsFixture(t *testing.T) string {
 		if err := os.Rename(source, predicateInputsFixture); err != nil {
 			t.Fatal(err)
 		}
+		compileGeneratedInputsFixture(t, predicateInputsFixture)
 	})
 	return predicateInputsFixture
 }
@@ -191,8 +192,8 @@ finally{await builder.close?.();}
 }
 
 func TestPrerenderNilCallbacksProduceNoPredicateTraffic(t *testing.T) {
-	fixture := requireMinimalInputsBuild(t)
 	t.Parallel()
+	fixture := requireMinimalInputsBuild(t)
 	body, err := os.ReadFile(filepath.Join(fixture, "web", "build", "prerendered", "index.html"))
 	if err != nil {
 		t.Fatal(err)

@@ -18,9 +18,10 @@ var sharedInputsTemp string
 
 func TestMain(m *testing.M) {
 	// A fixture spends time waiting for child processes and group draining.
-	// Eight pipelines keep those waits overlapping; each child has one worker.
+	// Twelve slots include three consumers waiting on one shared build; each
+	// child has one worker, so native pipelines still have bounded resources.
 	// m.Run parses an explicit -parallel flag afterward, preserving overrides.
-	if err := flag.Set("test.parallel", "8"); err != nil {
+	if err := flag.Set("test.parallel", "12"); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -222,8 +223,8 @@ func runMinimalInputsBuild(fixture string, env ...string) (string, error) {
 }
 
 func TestMinimalNoGoLoadsInputsBuildProducesNoArgumentArtifact(t *testing.T) {
-	fixture := requireMinimalInputsBuild(t)
 	t.Parallel()
+	fixture := requireMinimalInputsBuild(t)
 	app := filepath.Join(fixture, "web")
 	receipt := filepath.Join(fixture, "inputs-receipt")
 	artifact := filepath.Join(app, "build", "prerendered", "_app", "remote", "3215r6", "empty")
@@ -241,8 +242,8 @@ func TestMinimalNoGoLoadsInputsBuildProducesNoArgumentArtifact(t *testing.T) {
 }
 
 func TestSameExportAcrossPackagesInputsBuildProducesBothArtifacts(t *testing.T) {
-	fixture := requireMinimalInputsBuild(t)
 	t.Parallel()
+	fixture := requireMinimalInputsBuild(t)
 	app := filepath.Join(fixture, "web")
 	artifacts := []struct{ path, want string }{
 		{"1vyw5d0/item/WyJhdGxhcyJd", `{"type":"result","data":"[{\"_\":1,\"p\":2},\"alpha:atlas\",{\"1vyw5d0/item/WyJhdGxhcyJd\":3},{\"v\":1}]"}`},

@@ -3,6 +3,7 @@ package adapter
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -54,7 +55,36 @@ func cloneGeneratedInputsWeb(t *testing.T, source string) string {
 		}
 		writeFixtureFile(t, filepath.Join(web, name), string(contents))
 	}
+	if _, err := os.Stat(filepath.Join(source, "prerender-fixture-binary")); err == nil {
+		writeFixtureFile(t, filepath.Join(fixture, ".prerender-fixture-binary"), filepath.Join(source, "prerender-fixture-binary"))
+		installInputsFixtureAdapter(t, fixture, "")
+	} else if !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
 	return fixture
+}
+
+// Go can validate an existing executable's build ID without linking it again.
+// Only immutable generated modules share this output. Each native build still
+// invokes go build with its own private target and then runs that private copy.
+func compileGeneratedInputsFixture(t *testing.T, fixture string) {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(fixture, "web", "skgo.remotes.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		Prerender struct{ Root, Package string }
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil || manifest.Prerender.Package == "" {
+		t.Fatalf("missing generated service: %v", err)
+	}
+	build := exec.Command("go", "build", "-o", filepath.Join(fixture, "prerender-fixture-binary"), manifest.Prerender.Package)
+	build.Dir = filepath.Join(fixture, "web", manifest.Prerender.Root)
+	build.Env = append(fixtureBuildEnv(), "GOWORK=off")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("compile immutable fixture: %v\n%s", err, output)
+	}
 }
 
 // Keep production policy independent of the controlled deadlines used by the
@@ -72,13 +102,22 @@ func TestPrerenderProductionTimeoutPolicy(t *testing.T) {
 
 func installInputsTimeoutAdapter(t *testing.T, fixture string, mode string) {
 	t.Helper()
+	installInputsFixtureAdapter(t, fixture, mode)
+}
+
+func installInputsFixtureAdapter(t *testing.T, fixture string, mode string) {
+	t.Helper()
 	root := filepath.Join(fixture, "adapter")
+	binary, err := os.ReadFile(filepath.Join(fixture, ".prerender-fixture-binary"))
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
 	for _, name := range packageFiles {
 		contents, err := os.ReadFile(name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if name == "skgo-adapter/prerender.js" {
+		if name == "skgo-adapter/prerender.js" && mode != "" {
 			const policy = "const CALLBACK_TIMEOUT = 30_000;"
 			if strings.Count(string(contents), policy) != 1 {
 				t.Fatal("callback timeout policy injection did not apply")
@@ -90,6 +129,18 @@ func installInputsTimeoutAdapter(t *testing.T, fixture string, mode string) {
 				deadline = "const CALLBACK_TIMEOUT = isMainThread ? 500 : 10_000;"
 			}
 			contents = []byte(strings.Replace(string(contents), policy, deadline, 1))
+		}
+		if name == "skgo-adapter/prerender.js" && len(binary) != 0 {
+			path, err := json.Marshal(string(binary))
+			if err != nil {
+				t.Fatal(err)
+			}
+			const compiler = `const compiler = startJob(owner, "go", ["build", "-o", binary, owner.pkg], {`
+			if strings.Count(string(contents), compiler) != 1 {
+				t.Fatal("native compiler boundary injection did not apply")
+			}
+			contents = []byte(strings.Replace(string(contents), "import { mkdtempSync,", "import { copyFileSync, mkdtempSync,", 1))
+			contents = []byte(strings.Replace(string(contents), compiler, "copyFileSync("+string(path)+", binary);\n          "+compiler, 1))
 		}
 		writeFixtureFile(t, filepath.Join(root, filepath.FromSlash(name)), string(contents))
 	}
