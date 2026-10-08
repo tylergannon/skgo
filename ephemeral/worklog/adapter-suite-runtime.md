@@ -176,3 +176,30 @@ Reject the transform-only csr:false trial: retained transform/drain assertions
 passed, but focused package wall was 4.132s versus 4.141s with its original client
 mode, and command CPU showed no reduction (4.62s versus 4.35s). No source change
 adopted from that observation.
+
+Reject sharing the TS/JS service executable: captured native generated modules
+had 31 Go/module inputs each, with eight differing files. In particular,
+RemoteSpec.Module and server-load registration strings carry distinct .ts/.js
+paths. Those builds are not interchangeable consumer coverage.
+
+Profile the actual generator, not only its test parent: the focused native TS
+build retained its assertions while the generator sampled about 100ms CPU over
+1.34s process duration and allocated about 39MB. Child Go tool invocations are
+part of that duration; the profile does not establish their GC cost. Generator
+GC alone cannot explain the native build/checker stage costs.
+
+Reject disabling native SSR source maps as a runtime optimization: a clean
+focused pair used 5.36s CPU and about 4.7s wall in both modes; native-build CPU
+was 2.463s on and 2.450s off. The experiment required changing component source
+discovery because the current adapter reads .js.map files unconditionally.
+Kit's build_server_nodes uses resolve_symlinks through Vite's server manifest,
+but reversing that mapping with a uniqueness constraint needs alias/symlink
+qualification. Restore both adapter and fixture changes; there is no measured
+speedup to justify that compatibility work in this optimization task.
+
+Do not adopt externalizing Svelte in native SSR from the first full-package
+pair alone. That pair reduced CPU in unchanged generation/checker stages too,
+and focused follow-ups were contaminated by other worktrees' Go tests. A later
+focused native-build observation was 2.50s CPU default versus 2.96s external,
+not a demonstrated reduction. Keep native bundling and Goja's mandatory fully
+bundled graph unchanged until a repeatable saving is established.
