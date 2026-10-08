@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,6 +17,13 @@ var minimalInputsTemp string
 var sharedInputsTemp string
 
 func TestMain(m *testing.M) {
+	// A fixture spends time waiting for child processes and group draining.
+	// Eight pipelines keep those waits overlapping; each child has one worker.
+	// m.Run parses an explicit -parallel flag afterward, preserving overrides.
+	if err := flag.Set("test.parallel", "8"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	var err error
 	sharedInputsTemp, err = os.MkdirTemp("", "skgo-adapter-shared-")
 	if err != nil {
@@ -84,7 +92,7 @@ func prepareMinimalInputsApp(t *testing.T) string {
 	return fixture
 }
 
-var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
+var generatedMinimalInputsApp = sync.OnceValues(func() (string, error) {
 	var err error
 	minimalInputsTemp, err = os.MkdirTemp("", "skgo-adapter-minimal-")
 	if err != nil {
@@ -129,6 +137,15 @@ var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
 	if _, err := os.Stat(receipt); !os.IsNotExist(err) {
 		return "", fmt.Errorf("producer ran during generation: %v", err)
 	}
+	return fixture, nil
+})
+
+var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
+	fixture, err := generatedMinimalInputsApp()
+	if err != nil {
+		return "", err
+	}
+	receipt := filepath.Join(fixture, "inputs-receipt")
 	build := exec.Command("node", "-e", nilCallbacksBuildProgram())
 	build.Dir = filepath.Join(fixture, "web")
 	build.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+receipt)
@@ -205,8 +222,8 @@ func runMinimalInputsBuild(fixture string, env ...string) (string, error) {
 }
 
 func TestMinimalNoGoLoadsInputsBuildProducesNoArgumentArtifact(t *testing.T) {
-	t.Parallel()
 	fixture := requireMinimalInputsBuild(t)
+	t.Parallel()
 	app := filepath.Join(fixture, "web")
 	receipt := filepath.Join(fixture, "inputs-receipt")
 	artifact := filepath.Join(app, "build", "prerendered", "_app", "remote", "3215r6", "empty")
@@ -224,8 +241,8 @@ func TestMinimalNoGoLoadsInputsBuildProducesNoArgumentArtifact(t *testing.T) {
 }
 
 func TestSameExportAcrossPackagesInputsBuildProducesBothArtifacts(t *testing.T) {
-	t.Parallel()
 	fixture := requireMinimalInputsBuild(t)
+	t.Parallel()
 	app := filepath.Join(fixture, "web")
 	artifacts := []struct{ path, want string }{
 		{"1vyw5d0/item/WyJhdGxhcyJd", `{"type":"result","data":"[{\"_\":1,\"p\":2},\"alpha:atlas\",{\"1vyw5d0/item/WyJhdGxhcyJd\":3},{\"v\":1}]"}`},

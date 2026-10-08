@@ -166,9 +166,9 @@ var _ = skgo.Prerender(skgoRemoteInputs, skgo.PrerenderOptions{Inputs: fixtureIn
 // Fixtures compile Go and bundle through Rust concurrently. Give each child
 // a bounded budget instead of multiplying whole-machine worker pools.
 func fixtureBuildEnv() []string {
-	env := replaceEnv(os.Environ(), "GOMAXPROCS", "2")
-	env = replaceEnv(env, "RAYON_NUM_THREADS", "2")
-	env = replaceEnv(env, "ROLLDOWN_WORKER_THREADS", "2")
-	env = replaceEnv(env, "ROLLDOWN_MAX_BLOCKING_THREADS", "2")
+	env := replaceEnv(os.Environ(), "GOMAXPROCS", "1")
+	env = replaceEnv(env, "RAYON_NUM_THREADS", "1")
+	env = replaceEnv(env, "ROLLDOWN_WORKER_THREADS", "1")
+	env = replaceEnv(env, "ROLLDOWN_MAX_BLOCKING_THREADS", "1")
 	return env
 }

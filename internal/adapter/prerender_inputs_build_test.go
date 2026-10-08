@@ -519,25 +519,17 @@ func TestMalformedPrerenderInputsRejectsPermissiveKitBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture := prepareMinimalInputsApp(t)
-	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "lib", "fixture.remote.go"), `package lib
-import (
- "context"
- "github.com/tylergannon/skgo"
- "github.com/tylergannon/polytype/devalue"
-)
-func emptyInputs() ([]devalue.UndefinedValue,error) { return []devalue.UndefinedValue{},nil }
-func empty(context.Context) (string,error) { return "empty",nil }
-var _=skgo.Prerender(empty,skgo.PrerenderOptions{Inputs:emptyInputs})
-`)
-	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+layout.ts"), "import '../lib/fixture.remote';\nexport const prerender=true;\n")
+	source, err := generatedMinimalInputsApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := cloneGeneratedInputsWeb(t, source)
 	configPath := filepath.Join(fixture, "web", "vite.config.ts")
 	config, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	writeFixtureFile(t, configPath, strings.Replace(string(config), "adapter: skgo(),", "adapter: skgo(), prerender: {handleHttpError:'ignore'},", 1))
-	generateMinimalInputsApp(t, fixture)
 	nativeErrorReceipt := filepath.Join(fixture, "native-errors")
 	badShapeOverlay := filepath.Join(t.TempDir(), "prerender_remote_bad_shape.go")
 	remoteSourcePath := filepath.Join(root, "..", "prerender_remote.go")

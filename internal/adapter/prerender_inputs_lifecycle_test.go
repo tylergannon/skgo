@@ -25,7 +25,13 @@ func TestPrerenderInputsBuildAppWaitsForProducerFailureDrain(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := prepareInputsLifecycleFixture(t, "producer-failure")
+	fixture := sharedInputsLifecycleFixture(t, "producer-failure")
+	configPath := filepath.Join(fixture, "web", "vite.config.ts")
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureFile(t, configPath, strings.Replace(string(config), "concurrency: 4", "concurrency: 4, handleHttpError: 'ignore'", 1))
 	result := runInputsBuildApp(t, fixture)
 	if result.err == nil {
 		t.Fatalf("native Vite buildApp resolved after producer failure; output:\n%s", result.output)
@@ -62,6 +68,7 @@ export async function load() {
       if (receipt.length < 3 || !Number.isInteger(pid) || pid < 2) { await new Promise((resolve) => setTimeout(resolve, 20)); continue; }
       try { process.kill(pid, 0); }
       catch { throw new Error("Go body exited before the native crawler failure"); }
+      console.error("NATIVE_CRAWLER_FAILURE:500");
       return error(500, "native crawler fixture failure");
     }
     catch (cause) { if (cause?.status || cause?.code !== "ENOENT") throw cause; await new Promise((resolve) => setTimeout(resolve, 20)); }
@@ -75,8 +82,7 @@ export async function load() {
 		t.Fatal(err)
 	}
 	generate := exec.Command("go", "generate", "./...")
-	generate.Dir = fixture
-	generate.Env = inputsTestEnv(fixture, "")
+	generate.Dir, generate.Env = fixture, inputsTestEnv(fixture, "")
 	if output, err := generate.CombinedOutput(); err != nil {
 		t.Fatalf("regenerate native route graph: %v\n%s", err, output)
 	}
@@ -84,7 +90,7 @@ export async function load() {
 	if result.err == nil {
 		t.Fatalf("native Vite buildApp resolved after crawler failure; output:\n%s", result.output)
 	}
-	if !strings.Contains(result.output, "GET /z-native-failure") || !strings.Contains(result.output, "Failed to prerender `/z-native-failure`") {
+	if !strings.Contains(result.output, "NATIVE_CRAWLER_FAILURE:500") || !strings.Contains(result.output, "GET /z-native-failure") || !strings.Contains(result.output, "Failed to prerender `/z-native-failure`") {
 		t.Fatalf("build rejection did not preserve the native crawler failure:\n%s", result.output)
 	}
 	if !strings.Contains(result.output, "BUILD_APP_REJECTED:Prerendering failed") {
@@ -93,19 +99,21 @@ export async function load() {
 	assertInputsDrainComplete(t, fixture, result.output)
 }
 
-var blockedInputsFixtureOnce sync.Once
-var blockedInputsFixture string
+var lifecycleInputsFixtureOnce sync.Once
+var lifecycleInputsFixture string
 
-func sharedBlockedInputsFixture(t *testing.T) string {
+func sharedInputsLifecycleFixture(t *testing.T, mode string) string {
 	t.Helper()
-	blockedInputsFixtureOnce.Do(func() {
+	lifecycleInputsFixtureOnce.Do(func() {
 		source := prepareInputsLifecycleFixture(t, "blocked")
-		blockedInputsFixture = filepath.Join(sharedInputsTemp, "blocked")
-		if err := os.Rename(source, blockedInputsFixture); err != nil {
+		lifecycleInputsFixture = filepath.Join(sharedInputsTemp, "lifecycle")
+		if err := os.Rename(source, lifecycleInputsFixture); err != nil {
 			t.Fatal(err)
 		}
 	})
-	return cloneGeneratedInputsWeb(t, blockedInputsFixture)
+	fixture := cloneGeneratedInputsWeb(t, lifecycleInputsFixture)
+	writeFixtureFile(t, filepath.Join(fixture, ".lifecycle-mode"), mode)
+	return fixture
 }
 
 func TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer(t *testing.T) {
@@ -113,7 +121,7 @@ func TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := sharedBlockedInputsFixture(t)
+	fixture := sharedInputsLifecycleFixture(t, "blocked")
 	cmd := inputsVPBuildCommand(t, fixture)
 	process := startInputsTrackedCommand(t, cmd, fixture)
 	defer func() {
@@ -145,7 +153,7 @@ func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := sharedBlockedInputsFixture(t)
+	fixture := sharedInputsLifecycleFixture(t, "blocked")
 	cmd := inputsVPBuildCommand(t, fixture)
 	process := startInputsTrackedCommand(t, cmd, fixture)
 	defer func() {
@@ -167,19 +175,23 @@ func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
 
 func TestPrerenderInputsMalformedGoSourceFailsAndCleansPrivateDirectory(t *testing.T) {
 	t.Parallel()
-	fixture := filepath.Join(t.TempDir(), "example")
-	if err := stageMinimalInputsBootstrap(fixture); err != nil {
+	source, err := generatedMinimalInputsApp()
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.CopyFS(fixture, os.DirFS("testdata/minimal-inputs")); err != nil {
+	fixture := cloneGeneratedInputsWeb(t, source)
+	// Compiler-error input must be mutable and owned by this case.
+	if err := os.RemoveAll(filepath.Join(fixture, "internal")); err != nil {
 		t.Fatal(err)
 	}
-	generate := exec.Command("go", "generate", "./...")
-	generate.Dir = fixture
-	generate.Env = inputsTestEnv(fixture, "success")
-	if output, err := generate.CombinedOutput(); err != nil {
-		t.Fatalf("generate compiler fixture: %v\n%s", err, output)
+	if err := os.CopyFS(filepath.Join(fixture, "internal"), os.DirFS(filepath.Join(source, "internal"))); err != nil {
+		t.Fatal(err)
 	}
+	manifest, err := os.ReadFile(filepath.Join(source, "web", "skgo.remotes.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureFile(t, filepath.Join(fixture, "web", "skgo.remotes.json"), string(manifest))
 	broken := filepath.Join(fixture, "internal", "skgo", "prerender", "lifecycle_broken.go")
 	if err := os.WriteFile(broken, []byte("package main\nfunc malformed( {\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -261,6 +273,7 @@ import (
 )
 type PageData struct { Message string }
 func pageLoad(event PageRequestEvent) (PageData,error) {
+ if os.Getenv("SKGO_LIFECYCLE_MODE")=="producer-failure" { return PageData{Message:"lifecycle control"},nil }
  child:=exec.Command("/bin/sh","-c","trap '' TERM; while :; do sleep 1; done")
  child.Stdout,child.Stderr=os.Stdout,os.Stderr
  if err:=child.Start();err!=nil{return PageData{},err}

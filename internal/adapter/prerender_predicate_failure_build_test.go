@@ -5,9 +5,25 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
+
+var predicateInputsFixtureOnce sync.Once
+var predicateInputsFixture string
+
+func sharedPredicateInputsFixture(t *testing.T) string {
+	t.Helper()
+	predicateInputsFixtureOnce.Do(func() {
+		source := preparePredicateFailureFixture(t)
+		predicateInputsFixture = filepath.Join(sharedInputsTemp, "predicate")
+		if err := os.Rename(source, predicateInputsFixture); err != nil {
+			t.Fatal(err)
+		}
+	})
+	return predicateInputsFixture
+}
 
 func preparePredicateFailureFixture(t *testing.T) string {
 	fixture := prepareMinimalInputsApp(t)
@@ -25,6 +41,7 @@ import (
  "github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 var Handle = params.Middleware(func(ctx context.Context,event params.RequestEvent,resolve params.Resolve)(*http.Response,error){
+ if os.Getenv("SKGO_PREDICATE_FAILURE_MODE")=="" { return resolve(ctx,event) }
  if os.Getenv("SKGO_PREDICATE_FAILURE_MODE")=="transform" {
   return resolve(ctx,event,skgo.ResolveOptions{TransformPageChunk:func(ctx context.Context,html string,done bool)(string,error){
    exe,_:=os.Executable()
@@ -58,6 +75,25 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 		t.Fatal("fixture config did not select permissive error policy")
 	}
 	writeFixtureFile(t, configPath, updated)
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "timeout.remote.go"), `package routes
+import (
+ "context"
+ "fmt"
+ "os"
+ "path/filepath"
+ "github.com/tylergannon/skgo"
+)
+func blocked(ctx context.Context, name string) (string, error) {
+ exe, err := os.Executable(); if err != nil { return "", err }
+ receipt := fmt.Sprintf("%d\n%d\n%s\n", os.Getpid(), os.Getpid(), filepath.Dir(exe))
+ if err := os.WriteFile(os.Getenv("SKGO_LIFECYCLE_RECEIPT"), []byte(receipt), 0600); err != nil { return "", err }
+ <-ctx.Done()
+ if err := os.WriteFile(os.Getenv("SKGO_TIMEOUT_CANCELLED"), []byte("cancelled\n"), 0600); err != nil { return "", err }
+ return "", ctx.Err()
+}
+func noInputs() ([]string, error) { return []string{}, nil }
+var _ = skgo.Prerender(blocked, skgo.PrerenderOptions{Inputs: noInputs})
+`)
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir, generate.Env = fixture, inputsTestEnv(fixture, "")
 	if output, err := generate.CombinedOutput(); err != nil {
@@ -68,7 +104,7 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 
 func TestPrerenderPredicateFailureRejectsPermissiveKitBuildAndDrainsOwner(t *testing.T) {
 	t.Parallel()
-	source := preparePredicateFailureFixture(t)
+	source := sharedPredicateInputsFixture(t)
 	for _, mode := range []string{"transform", "killed", "timeout", "worker-timeout"} {
 		t.Run(mode, func(t *testing.T) {
 			t.Parallel()
@@ -155,8 +191,8 @@ finally{await builder.close?.();}
 }
 
 func TestPrerenderNilCallbacksProduceNoPredicateTraffic(t *testing.T) {
-	t.Parallel()
 	fixture := requireMinimalInputsBuild(t)
+	t.Parallel()
 	body, err := os.ReadFile(filepath.Join(fixture, "web", "build", "prerendered", "index.html"))
 	if err != nil {
 		t.Fatal(err)

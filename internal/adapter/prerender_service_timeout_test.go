@@ -11,26 +11,7 @@ import (
 
 func TestPrerenderCallbackTimeoutFailsBuildDespiteApplicationCatch(t *testing.T) {
 	t.Parallel()
-	fixture := prepareMinimalInputsApp(t)
-	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "timeout.remote.go"), `package routes
-import (
- "context"
- "fmt"
- "os"
- "path/filepath"
- "github.com/tylergannon/skgo"
-)
-func blocked(ctx context.Context, name string) (string, error) {
- exe, err := os.Executable(); if err != nil { return "", err }
- receipt := fmt.Sprintf("%d\n%d\n%s\n", os.Getpid(), os.Getpid(), filepath.Dir(exe))
- if err := os.WriteFile(os.Getenv("SKGO_LIFECYCLE_RECEIPT"), []byte(receipt), 0600); err != nil { return "", err }
- <-ctx.Done()
- if err := os.WriteFile(os.Getenv("SKGO_TIMEOUT_CANCELLED"), []byte("cancelled\n"), 0600); err != nil { return "", err }
- return "", ctx.Err()
-}
-func noInputs() ([]string, error) { return []string{}, nil }
-var _ = skgo.Prerender(blocked, skgo.PrerenderOptions{Inputs: noInputs})
-`)
+	fixture := cloneGeneratedInputsWeb(t, sharedPredicateInputsFixture(t))
 	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+page.ts"), `import { blocked } from './timeout.remote';
 export const prerender = true;
 export async function load() {
@@ -44,11 +25,6 @@ export async function load() {
 	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+page.svelte"), `<script lang="ts">let { data } = $props();</script><h1>{data.message}</h1>`)
 	cancelled := filepath.Join(fixture, "callback-cancelled")
 	env := replaceEnv(inputsTestEnv(fixture, "timeout"), "SKGO_TIMEOUT_CANCELLED", cancelled)
-	generate := exec.Command("go", "generate", "./...")
-	generate.Dir, generate.Env = fixture, env
-	if output, err := generate.CombinedOutput(); err != nil {
-		t.Fatalf("generate timeout fixture: %v\n%s", err, output)
-	}
 	installInputsTimeoutAdapter(t, fixture, "callback")
 	cmd := exec.Command("node", "-e", inputsBuildProgram())
 	cmd.Dir, cmd.Env = filepath.Join(fixture, "web"), env
