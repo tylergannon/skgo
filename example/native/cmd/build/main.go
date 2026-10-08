@@ -14,9 +14,14 @@ import (
 
 func main() {
 	sdk := flag.String("sdk", "iphonesimulator", "iphoneos or iphonesimulator")
+	destination := flag.String("destination", "", "xcodebuild destination; required when running UI tests")
+	test := flag.Bool("test", false, "build and run the probe's simulator UI tests")
 	flag.Parse()
 	if *sdk != "iphoneos" && *sdk != "iphonesimulator" {
 		log.Fatal("unsupported SDK")
+	}
+	if *test && (*sdk != "iphonesimulator" || *destination == "") {
+		log.Fatal("simulator UI tests require -sdk iphonesimulator and -destination")
 	}
 	run := func(name string, args ...string) string {
 		cmd := exec.Command(name, args...)
@@ -77,5 +82,26 @@ func main() {
 	if err := cmd.Run(); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(filepath.Join(dir, "project/SKGoNativeProbe.xcodeproj"))
+	project := filepath.Join(dir, "project/SKGoNativeProbe.xcodeproj")
+	if *destination == "" {
+		*destination = "generic/platform=iOS"
+		if *sdk == "iphonesimulator" {
+			*destination += " Simulator"
+		}
+	}
+	action := "build"
+	if *test {
+		action = "test"
+	}
+	args := []string{"-project", project, "-scheme", "SKGoNativeProbe", "-sdk", *sdk,
+		"-destination", *destination, "-derivedDataPath", filepath.Join(dir, "DerivedData"), "CODE_SIGNING_ALLOWED=NO"}
+	if *test {
+		args = append(args, "-resultBundlePath", filepath.Join(dir, "UI.xcresult"))
+	}
+	cmd = exec.Command("xcodebuild", append(args, action)...)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(project)
 }
