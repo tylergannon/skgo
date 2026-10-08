@@ -22,3 +22,11 @@ ephemeral/screenshots/
 
 # Node's content- and version-keyed compiled module cache
 .cache/node-compile/
+
+# Native compiler caches and disposable Apple build output.
+**/.zig-cache/
+**/zig-out/
+**/zig-pkg/
+**/.build/
+/native/build/
+/example/native/build/

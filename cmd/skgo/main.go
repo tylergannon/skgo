@@ -199,9 +199,16 @@ func generate(args []string) {
 	hookPackage := fs.String("hook-package", "", "optional request hook Go import path")
 	hookSymbol := fs.String("hook-symbol", "Handle", "selected request hook symbol")
 	quiet := fs.Bool("quiet", false, "do not list the files written")
+	swiftOut := fs.String("swift-out", "", "generated Swift source file")
+	var swiftRemotes []string
+	fs.Func("swift-remote", "select module#export for Swift and the shared safe-number contract (ordinary query/command; repeatable)", func(value string) error {
+		swiftRemotes = append(swiftRemotes, value)
+		return nil
+	})
 	_ = fs.Parse(args)
 
 	cfg := gen.Config{Web: *web, Out: *out, Package: *pkg, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol}
+	cfg.SwiftOut, cfg.SwiftRemotes = *swiftOut, swiftRemotes
 	if !*quiet {
 		cfg.Logf = logf
 	}

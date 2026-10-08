@@ -30,8 +30,8 @@ _default:
 
 # node deps for the example app and its Gherkin suite
 install:
-    cd example/web && mise x -- pnpm install
-    cd example/e2e && mise x -- pnpm install
+    cd example/web && mise x -- vp install
+    cd example/e2e && mise x -- vp install
 
 # the link tree, the throwing stubs, and the wire types
 generate:

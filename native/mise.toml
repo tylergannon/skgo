@@ -1,0 +1,6 @@
+[tools]
+zig = "0.17.0"
+"aqua:yonaskolb/XcodeGen" = { version = "2.46.0", os = ["macos"] }
+
+[settings]
+lockfile = true

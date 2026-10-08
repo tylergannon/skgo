@@ -1,0 +1,26 @@
+name: SKGoNativeProbe
+options:
+  minimumXcodeGenVersion: 2.46.0
+  deploymentTarget:
+    iOS: '17.0'
+targets:
+  SKGoNativeProbe:
+    type: application
+    platform: iOS
+    sources:
+      - path: ios
+        excludes: [Info.plist]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tylergannon.skgo.nativeprobe
+        SWIFT_VERSION: '6.0'
+        SWIFT_OBJC_BRIDGING_HEADER: $(SRCROOT)/../../../ios/Bridge.h
+        HEADER_SEARCH_PATHS: $(SRCROOT)/../host
+        OTHER_LDFLAGS: $(SRCROOT)/../host/skgo-host.a
+        INFOPLIST_FILE: $(SRCROOT)/../../../ios/Info.plist
+        TARGETED_DEVICE_FAMILY: '1,2'
+schemes:
+  SKGoNativeProbe:
+    build:
+      targets:
+        SKGoNativeProbe: all
