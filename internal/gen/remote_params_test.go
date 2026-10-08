@@ -157,7 +157,7 @@ import (
  "testing"
  "time"
  "github.com/tylergannon/skgo"
- "github.com/tylergannon/polytype/devalue"
+ "github.com/tylergannon/devalue/v5"
 
  generated "github.com/tylergannon/skgo/example/internal/skgo"
  client "github.com/tylergannon/skgo/example/internal/skgo/client"

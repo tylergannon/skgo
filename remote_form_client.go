@@ -12,7 +12,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 )
 
 // FormClient sends enhanced Form submissions to the same endpoint used by Kit.

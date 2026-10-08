@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/polytype"
-	"github.com/tylergannon/polytype/devalue"
 )
 
 // The goldens are real kit envelopes (see formdata_test.go); the values

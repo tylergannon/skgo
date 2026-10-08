@@ -5,7 +5,8 @@ go 1.27.1
 require (
 	github.com/dop251/goja v0.0.0-20260911104922-fabc3b8078ad
 	github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14
-	github.com/tylergannon/polytype v1.4.0
+	github.com/tylergannon/devalue/v5 v5.0.0
+	github.com/tylergannon/polytype v1.5.0
 	golang.org/x/mod v0.41.0
 	golang.org/x/sys v0.48.0
 	golang.org/x/term v0.46.0

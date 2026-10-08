@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 )
 
 // The one the issue exists for. The client's list is not a work order: a

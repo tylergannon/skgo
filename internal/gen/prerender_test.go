@@ -71,7 +71,7 @@ func TestPrerenderInputsGenerateGoProducerAndThrowingStubs(t *testing.T) {
 import (
 	"context"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/skgo"
 )
 
@@ -216,7 +216,7 @@ func TestNoArgumentPrerenderInputsCompileWithoutFmtImport(t *testing.T) {
 
 import (
 	"context"
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/skgo"
 )
 
