@@ -8,6 +8,7 @@ Build and test from the SKGo checkout:
 ```sh
 mise -C native install
 mise -C native/core exec -- zig build test install
+swift package --package-path native/swift clean
 swift test --package-path native/swift
 go test -count=1 -race ./native
 ```
@@ -16,6 +17,11 @@ The last command runs the Swift boundary and its production-handler HTTP calls
 on macOS; Linux runs the Zig handler integration. CI runs both platforms. No
 Xcode project or simulator is needed for these command-line checks. Apple SDKs
 and a Swift 6 compiler are required for the Apple command-line client.
+
+Clean the Swift build after rebuilding Zig: SwiftPM does not track the external
+static archive as an incremental build input, so plain `swift test` may reuse
+an executable linked to the previous core. The Go-driven tests above always
+use a fresh temporary Swift build directory.
 
 `RemoteClient.call` accepts optional JSON `Data` and returns optional JSON `Data`.
 This is the local ABI representation for finite model values. Zig translates it
