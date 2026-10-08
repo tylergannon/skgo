@@ -58,7 +58,7 @@ test_packages := `go list -f '{{if ne .ImportPath "github.com/tylergannon/skgo/i
 
 # go test, both modules; two packages share the CPU with their fixture workers
 test: tools
-    go test -json -p=2 -count=1 {{test_packages}} ./internal/adapter
+    go test -json -p=2 -count=1 {{replace(test_packages, "\n", " ")}} ./internal/adapter
 
 # the example server, against the built frontend
 serve:

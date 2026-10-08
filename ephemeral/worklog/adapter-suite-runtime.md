@@ -7,6 +7,12 @@ friction: One-package scheduling brought adapter CI to 56.168s but the full step
 correction: Adding a native JS route still requires regeneration of the Go route graph. Sharing an older graph let a 503 masquerade as the intended 500 crawler failure until the independent blocked-body receipt assertion rejected it. Keep that fixture separate and require its literal failure marker.
 # Native-build type output and disposable linking
 
+Just substitutes backtick output directly into recipe text. A `go list`
+result must replace newlines with spaces before interpolation into `go test`,
+or only the first package gets tested and subsequent names become commands.
+Backtick evaluation itself propagates `go list` failure. The package list
+keeps both original module patterns and only changes adapter scheduling.
+
 The successful shared build must enter the parallel pool before its consumers
 wait: doing setup before `t.Parallel` serializes it ahead of every other native
 pipeline. Three consumers occupy three slots while sharing one build. Native
