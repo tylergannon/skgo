@@ -3,6 +3,10 @@ const core = @import("root.zig");
 const d = core.devalue;
 const a = std.testing.allocator;
 
+test {
+    _ = @import("binary_tests.zig");
+}
+
 // Recorded by evaluating the argument functions from the installed Kit 3.0.0
 // runtime/shared.js with its own resolved devalue 5.9.4; empty transport hooks.
 // Inputs are upstream devalue documents, not output produced by the Zig codec.

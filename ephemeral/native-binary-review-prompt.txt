@@ -1,0 +1,1 @@
+/adversarial-review Review the current implementation and proof against ephemeral/native-binary-exchange.md and repository instructions. Inspect the working tree and relevant surrounding code. Write the complete review to ephemeral/reviews/20261008-native-binary-round-01.md. Do not edit any other files.

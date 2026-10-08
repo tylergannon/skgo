@@ -1,0 +1,1 @@
+/adversarial-review Re-review the entire current implementation and proof against the same authoritative sources, including the live PR #290. Write the complete review to ephemeral/reviews/20261008-native-binary-round-03.md. Do not edit any other files.
