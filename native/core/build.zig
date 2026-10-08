@@ -20,6 +20,7 @@ pub fn build(b: *std.Build) void {
     const abi = b.createModule(.{ .root_source_file = b.path("src/abi.zig"), .target = target, .optimize = optimize, .link_libc = true });
     abi.addImport("skgo", core);
     const library = b.addLibrary(.{ .name = "skgo_native_core", .root_module = abi, .linkage = .static });
+    library.bundle_compiler_rt = true;
     b.installArtifact(library);
     const abi_tests = b.addTest(.{ .root_module = abi });
     const run_abi_tests = b.addRunArtifact(abi_tests);

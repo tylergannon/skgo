@@ -86,6 +86,10 @@ func TestGeneratedSwiftCallsTheGeneratedGoHandlers(t *testing.T) {
 	}
 	// ude9z8 was recorded from the installed Kit 3.0.0 hash implementation.
 	want := map[string]int{"GET /_app/remote/ude9z8/read": 1, "POST /_app/remote/ude9z8/echo": 1, "GET /_app/remote/ude9z8/wide": 1, "POST /_app/remote/ude9z8/signedInput": 1, "POST /_app/remote/ude9z8/numberInput": 1}
+	want["GET /_app/remote/ude9z8/counter"] = 3
+	want["POST /_app/remote/ude9z8/increment"] = 1
+	want["POST /_app/remote/ude9z8/ignoreCounter"] = 1
+	want["POST /_app/remote/ude9z8/forgetCounter"] = 1
 	if len(counts) != len(want) {
 		t.Fatalf("requests=%v; want %v", counts, want)
 	}
@@ -130,6 +134,31 @@ static func main() async throws {
     do { _ = try await api.numberInput(Double.infinity); fatalError("sent infinity") } catch is NativeModelError {}
     do { _ = try await api.numberInput(Double.nan); fatalError("sent NaN") } catch is NativeModelError {}
     do { _ = try await api.wide(); fatalError("received unsafe integer") } catch is RemoteError {}
+    let counter = try await api.retainCounter()
+    let same = try await api.retainCounter()
+    let initial = try await counter.value()
+    precondition(initial == 1)
+    let shared = try await same.value()
+    precondition(shared == 1)
+    let acknowledged = try await api.increment(1, updates:[counter.update])
+    precondition(acknowledged == 2)
+    let updated = try await same.snapshot()
+    precondition(updated.ready && !updated.loading && updated.current == 2 && updated.error == nil)
+    let ignored = try await api.ignoreCounter(updates:[counter.update])
+    precondition(ignored == "ignored")
+    let stillValid = try await counter.snapshot()
+    precondition(stillValid.current == 2 && stillValid.error == nil)
+    let forgot = try await api.forgetCounter(updates:[counter.update])
+    precondition(forgot == "forgot")
+    let unhandled = try await same.snapshot()
+    precondition(unhandled.current == 2 && unhandled.error == .remote(400,"Requested update was not handled by the remote function"))
+    let refreshed = try await same.refresh()
+    precondition(refreshed == 2)
+    await counter.release()
+    await same.release()
+    precondition(initial == 1 && updated.current == 2)
+    let uncached = try await api.counter()
+    precondition(uncached == 2)
     await client.shutdown()
     print("typed native round trip verified")
 }

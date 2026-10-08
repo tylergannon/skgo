@@ -54,7 +54,7 @@ func Generate(defs tg.Definitions, roots []tg.Type, calls []Call) (Result, error
 		return Result{}, err
 	}
 	m := &emitter{defs: defs, names: map[tg.Name]string{}, used: map[string]bool{}, objects: map[*tg.Object]string{}, enums: map[string]string{}, unions: map[string]string{}}
-	for _, name := range strings.Fields("String Bool Int Int8 Int16 Int32 Int64 UInt UInt8 UInt16 UInt32 UInt64 Float Double Any Self Error Sendable FixedWidthInteger BinaryInteger BinaryFloatingPoint Data NSNumber NSNull NativeAPI NativeModelError RemoteClient RemoteError RemoteRequest RemoteResponse RemoteTransport URLSessionTransport Set Array JSONSerialization _SKGoWire Foundation CoreFoundation CFGetTypeID CFBooleanGetTypeID SKGoNative") {
+	for _, name := range strings.Fields("String Bool Int Int8 Int16 Int32 Int64 UInt UInt8 UInt16 UInt32 UInt64 Float Double Any Self Error Sendable FixedWidthInteger BinaryInteger BinaryFloatingPoint Data NSNumber NSNull NativeAPI NativeModelError RemoteClient RemoteError RemoteRequest RemoteResponse RemoteTransport URLSessionTransport RemoteQuery QuerySnapshot QueryUpdate Set Array JSONSerialization _SKGoWire Foundation CoreFoundation CFGetTypeID CFBooleanGetTypeID SKGoNative") {
 		m.used[name] = true
 	}
 	for _, def := range defs {
@@ -628,19 +628,42 @@ func (m *emitter) emitCalls(roots []tg.Type, calls []Call) error {
 	m.out.WriteString("\npublic struct NativeAPI: Sendable {\nprivate let core: RemoteClient\npublic init(core: RemoteClient) { self.core = core }\n")
 	used := map[string]bool{"core": true, "init": true}
 	for _, call := range calls {
+		if used[call.Name] {
+			return fmt.Errorf("duplicate or reserved Swift call name %s", call.Name)
+		}
+		used[call.Name] = true
+	}
+	retainers := make(map[string]string)
+	for _, call := range calls {
+		if call.Kind == "query" {
+			runes := []rune(call.Name)
+			if len(runes) > 0 {
+				runes[0] = unicode.ToUpper(runes[0])
+			}
+			name := "retain" + string(runes)
+			for used[name] {
+				name += "Query"
+			}
+			used[name] = true
+			retainers[call.Name] = name
+		}
+	}
+	for _, call := range calls {
 		if call.Kind != "query" && call.Kind != "command" {
 			return fmt.Errorf("%s: unsupported native remote kind %s", call.Name, call.Kind)
 		}
 		if call.Input < -1 || call.Input >= len(roots) || call.Output < 0 || call.Output >= len(roots) {
 			return fmt.Errorf("%s: invalid native root index", call.Name)
 		}
-		if used[call.Name] {
-			return fmt.Errorf("duplicate or reserved Swift call name %s", call.Name)
-		}
-		used[call.Name] = true
 		fmt.Fprintf(&m.out, "/// Kit remote %s\npublic func %s(", call.ID, ident(call.Name))
 		if call.Input >= 0 {
 			fmt.Fprintf(&m.out, "_ argument: %s", m.typeName(roots[call.Input]))
+		}
+		if call.Kind == "command" {
+			if call.Input >= 0 {
+				m.out.WriteString(", ")
+			}
+			m.out.WriteString("updates: [QueryUpdate] = []")
 		}
 		fmt.Fprintf(&m.out, ") async throws -> %s {\n", m.typeName(roots[call.Output]))
 		if call.Input >= 0 {
@@ -650,7 +673,22 @@ func (m *emitter) emitCalls(roots []tg.Type, calls []Call) error {
 		if call.Input >= 0 {
 			arg = "argument"
 		}
-		fmt.Fprintf(&m.out, "guard let data = try await core.call(%s, kind: .%s, argument: %s) else { throw NativeModelError.invalid(\"Expected a result\") }\nreturn try _skgoDecodeRoot_%d(JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]), 0)\n}\n", quote(call.ID), call.Kind, arg, call.Output)
+		updates := ""
+		if call.Kind == "command" {
+			updates = ", updates: updates"
+		}
+		fmt.Fprintf(&m.out, "guard let data = try await core.call(%s, kind: .%s, argument: %s%s) else { throw NativeModelError.invalid(\"Expected a result\") }\nreturn try _skgoDecodeRoot_%d(JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]), 0)\n}\n", quote(call.ID), call.Kind, arg, updates, call.Output)
+		if call.Kind == "query" {
+			fmt.Fprintf(&m.out, "public func %s(", ident(retainers[call.Name]))
+			if call.Input >= 0 {
+				fmt.Fprintf(&m.out, "_ argument: %s", m.typeName(roots[call.Input]))
+			}
+			fmt.Fprintf(&m.out, ") async throws -> RemoteQuery<%s> {\n", m.typeName(roots[call.Output]))
+			if call.Input >= 0 {
+				fmt.Fprintf(&m.out, "let argument = try JSONSerialization.data(withJSONObject: _skgoEncodeRoot_%d(argument, 0), options: [.fragmentsAllowed])\n", call.Input)
+			}
+			fmt.Fprintf(&m.out, "return try await core.query(%s, argument: %s) { data in\nguard let data else { throw NativeModelError.invalid(\"Expected a result\") }\nreturn try _skgoDecodeRoot_%d(JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]), 0)\n}\n}\n", quote(call.ID), arg, call.Output)
+		}
 	}
 	m.out.WriteString("}\n")
 	return nil

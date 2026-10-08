@@ -16,6 +16,7 @@ const nativeModelSource = `package data
 import (
  "context"
  "math"
+ "sync"
  "time"
  "github.com/tylergannon/skgo"
  "github.com/tylergannon/polytype"
@@ -56,6 +57,15 @@ func read(context.Context)(Envelope,error){ return Envelope{
  First:wire.Thing{Name:"first",Status:wire.StatusOn},Second:other.Thing{Label:"second"},
  Hidden:18446744073709551615,
  },nil }
+var revisionMu sync.Mutex
+var revision int64 = 1
+func counter(context.Context)(int64,error){revisionMu.Lock();defer revisionMu.Unlock();return revision,nil}
+func increment(ctx context.Context,_ params.RequestEvent,delta int64)(int64,error){
+ revisionMu.Lock();revision+=delta;value:=revision;revisionMu.Unlock()
+ return value,skgo.RefreshRequestedNoArg(ctx,counter)
+}
+func ignoreCounter(ctx context.Context,_ params.RequestEvent)(string,error){return "ignored",skgo.IgnoreRequestedNoArg(ctx,counter)}
+func forgetCounter(context.Context,params.RequestEvent)(string,error){return "forgot",nil}
 func wide(_ context.Context)(uint64,error){return 9007199254740993,nil}
 var WideCalls int
 func wideInput(_ context.Context,_ params.RequestEvent,in uint64)(uint64,error){ WideCalls++;return in,nil }
@@ -64,7 +74,7 @@ func signedInput(_ context.Context,_ params.RequestEvent,in int64)(int64,error){
 func numberInput(_ context.Context,_ params.RequestEvent,in float64)(float64,error){ NumberCalls++;return in,nil }
 func wideSigned(context.Context)(int64,error){ return -9007199254740993,nil }
 func wideNumber(context.Context)(float64,error){ return math.Inf(1),nil }
-var(_=skgo.Command(echo);_=skgo.Query(read);_=skgo.Query(wide);_=skgo.Command(wideInput);_=skgo.Command(signedInput);_=skgo.Command(numberInput);_=skgo.Query(wideSigned);_=skgo.Query(wideNumber))
+var(_=skgo.Command(echo);_=skgo.Query(read);_=skgo.Query(wide);_=skgo.Command(wideInput);_=skgo.Command(signedInput);_=skgo.Command(numberInput);_=skgo.Query(wideSigned);_=skgo.Query(wideNumber);_=skgo.Query(counter);_=skgo.Command(increment);_=skgo.Command(ignoreCounter);_=skgo.Command(forgetCounter))
 `
 
 var nativeFixture struct {
@@ -81,6 +91,7 @@ func generatedNativeFixture(t *testing.T) (string, Config) {
 		root, cfg := nativeModelFixture(t, filepath.Join(packageTemp, "native"), nativeModelSource)
 		cfg.SwiftOut = filepath.Join(root, "app", "native", "Generated.swift")
 		cfg.SwiftRemotes = []string{"src/data/data.remote.ts#echo", "src/data/data.remote.ts#read", "src/data/data.remote.ts#wide", "src/data/data.remote.ts#wideInput", "src/data/data.remote.ts#signedInput", "src/data/data.remote.ts#numberInput", "src/data/data.remote.ts#wideSigned", "src/data/data.remote.ts#wideNumber"}
+		cfg.SwiftRemotes = append(cfg.SwiftRemotes, "src/data/data.remote.ts#counter", "src/data/data.remote.ts#increment", "src/data/data.remote.ts#ignoreCounter", "src/data/data.remote.ts#forgetCounter")
 		nativeFixture.root, nativeFixture.cfg = root, cfg
 		nativeFixture.err = Run(cfg)
 	})

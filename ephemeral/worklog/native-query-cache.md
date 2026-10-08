@@ -1,0 +1,2 @@
+
+friction: The agent CLI defaults to a 20-minute turn timeout. Long mutation checks can exceed it, interrupt the reviewer before it writes an artifact, and leave Swift testing helper processes alive. Confirm CLI flags with --help and give the resumed reviewer an explicit longer timeout; interrupted rounds do not count toward consensus. Clean up only the identified scratch-test child processes after the reviewer exits.

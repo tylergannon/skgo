@@ -8,6 +8,7 @@ Build and test from the SKGo checkout:
 ```sh
 mise -C native install
 mise -C native/core exec -- zig build test install
+swift package --package-path native/swift clean
 swift test --package-path native/swift
 go test -count=1 -race ./native
 ```
@@ -16,6 +17,11 @@ The last command runs the Swift boundary and its production-handler HTTP calls
 on macOS; Linux runs the Zig handler integration. CI runs both platforms. No
 Xcode project or simulator is needed for these command-line checks. Apple SDKs
 and a Swift 6 compiler are required for the Apple command-line client.
+
+Clean the Swift build after rebuilding Zig: SwiftPM does not track the external
+static archive as an incremental build input, so plain `swift test` may reuse
+an executable linked to the previous core. The Go-driven tests above always
+use a fresh temporary Swift build directory.
 
 `RemoteClient.call` accepts optional JSON `Data` and returns optional JSON `Data`.
 This is the local ABI representation for finite model values. Zig translates it
@@ -37,8 +43,6 @@ rejects future calls and completes waiting callers. Cancellation cannot undo a
 command already received by the server. URLSession transport refuses HTTP
 redirects and does not replay commands. Kit redirect envelopes surface as a
 separate `RemoteError.redirect`.
-
-The current native core does not yet implement retained queries or caching.
 
 Generate typed calls with the application's existing `skgo generate` command:
 
@@ -76,3 +80,35 @@ a 400 remote error; an unsafe application result returns a 500 remote error,
 just as other result-encoding failures do. Previously lossy browser values are
 therefore refused when the function is selected. Choose string identifiers or
 bounded counters in Go before selecting an existing function for native use.
+## Retained ordinary queries
+
+Generated query APIs expose `retainCounter()` alongside the one-shot
+`counter()`. Retained queries share Zig's canonical argument key and initial
+HTTP request. Read `snapshot()` for `ready`, `loading`, `current`, and `error`;
+observe `changes()` for the latest state; await `value()` or `refresh()` for a
+typed result. Release a UI lease explicitly with `await query.release()`.
+An active await pins its result independently. Dropping a lease also releases
+it asynchronously as a fallback.
+
+Retention starts the initial request eagerly. `cacheCapacity` defaults to 256
+entries, counting retained queries and prefetched values. Retaining a new key
+when all entries are active throws `RemoteError.cacheFull`; increase the capacity
+or release unused leases. Only unused prefetch entries may be evicted.
+
+Pass `updates: [query.update]` to a generated command to request that query's
+single-flight refresh. The Go command uses SKGo's existing requested-query
+functions to fulfill or ignore it. An unhandled request puts the query in Kit's
+400 error state, retaining its previous value. HTTP and top-level remote errors
+leave the command's requested queries untouched. Only query-instance updates
+are admitted; query-function updates, live queries, batching and optimistic
+overrides are not part of this native API.
+
+`RemoteClient` serializes all access, including graph reads, on its actor. Zig
+stores serialized model bytes in a bounded cache; Swift owns HTTP tasks and
+observation. A private core context is released with the client. No generated
+model contains a Zig pointer, and every returned buffer is copied and released
+before an await. Successful unsolicited updates can prefill unused capacity;
+active retained entries cannot be evicted. Results remain Swift-owned after
+release or eviction. Call `resetSession()` after changing authentication, or
+`resetSession(origin:base:)` when changing servers. Both close existing leases
+and reject pending work; old transport completions cannot update the new cache.
