@@ -301,7 +301,7 @@ func TestSetFormKeyMirrorsKitsIDInjection(t *testing.T) {
 // of the form's argument.
 //
 // The fixture is the literal bytes kit's client puts on the wire
-// (`runtime/app/server/remote/form.js:163`,
+// (`runtime/client/remote-functions/form.svelte.js:80`,
 // `action_id = id + (key != undefined ? \`/${JSON.stringify(key)}\` : '')`,
 // `action = '/remote=' + encodeURIComponent(action_id)`) for the key "k1" —
 // not a string this test or the code under test invented — decoded by
