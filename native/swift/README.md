@@ -76,3 +76,30 @@ a 400 remote error; an unsafe application result returns a 500 remote error,
 just as other result-encoding failures do. Previously lossy browser values are
 therefore refused when the function is selected. Choose string identifiers or
 bounded counters in Go before selecting an existing function for native use.
+## Retained ordinary queries
+
+Generated query APIs expose `retainCounter()` alongside the one-shot
+`counter()`. Retained queries share Zig's canonical argument key and initial
+HTTP request. Read `snapshot()` for `ready`, `loading`, `current`, and `error`;
+observe `changes()` for the latest state; await `value()` or `refresh()` for a
+typed result. Release a UI lease explicitly with `await query.release()`.
+An active await pins its result independently. Dropping a lease also releases
+it asynchronously as a fallback.
+
+Pass `updates: [query.update]` to a generated command to request that query's
+single-flight refresh. The Go command uses SKGo's existing requested-query
+functions to fulfill or ignore it. An unhandled request puts the query in Kit's
+400 error state, retaining its previous value. HTTP and top-level remote errors
+leave the command's requested queries untouched. Only query-instance updates
+are admitted; query-function updates, live queries, batching and optimistic
+overrides are not part of this native API.
+
+`RemoteClient` serializes all access, including graph reads, on its actor. Zig
+stores serialized model bytes in a bounded cache; Swift owns HTTP tasks and
+observation. A private core context is released with the client. No generated
+model contains a Zig pointer, and every returned buffer is copied and released
+before an await. Successful unsolicited updates can prefill unused capacity;
+active retained entries cannot be evicted. Results remain Swift-owned after
+release or eviction. Call `resetSession()` after changing authentication, or
+`resetSession(origin:base:)` when changing servers. Both close existing leases
+and reject pending work; old transport completions cannot update the new cache.

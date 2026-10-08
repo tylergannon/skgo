@@ -4,7 +4,7 @@ import Testing
 
 private let acknowledgement = RemoteResponse(status: 200, body: Data(#"{"type":"result","data":"[{\"_\":1},{\"text\":2,\"revision\":3},\"Native voice transcript: café 😀\",1]"}"#.utf8))
 
-private actor ControlledTransport: RemoteTransport {
+actor ControlledTransport: RemoteTransport {
     var requests: [RemoteRequest] = []
     private var waiting: [Int: CheckedContinuation<RemoteResponse, Error>] = [:]
     private var observations: [CheckedContinuation<Int, Never>] = []

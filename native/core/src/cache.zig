@@ -169,6 +169,17 @@ pub const Cache = struct {
         entry.loading = false;
         return true; // Kit keeps the previous ready/value on failure.
     }
+    pub fn waiting(self: *Cache, key: []const u8, ticket: Ticket) bool {
+        const entry = self.entries.getPtr(key) orelse return false;
+        return self.pendingIndex(entry, ticket) != null;
+    }
+    /// Remove an unusable completion without allocating (including OOM paths).
+    pub fn abort(self: *Cache, key: []const u8, ticket: Ticket) void {
+        const entry = self.entries.getPtr(key) orelse return;
+        const index = self.pendingIndex(entry, ticket) orelse return;
+        settleThrough(entry, index);
+        entry.loading = false;
+    }
     pub const Update = union(enum) {
         value: struct { key: []const u8, bytes: ?[]const u8 },
         failure: struct { key: []const u8, fault: Fault },

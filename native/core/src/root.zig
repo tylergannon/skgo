@@ -3,6 +3,7 @@ pub const devalue = @import("devalue");
 const d = devalue;
 const Allocator = std.mem.Allocator;
 pub const model_json = @import("model_json.zig");
+pub const query_response = @import("query_response.zig");
 pub const QueryCache = @import("cache.zig").Cache;
 pub const Kind = enum { query, command };
 
@@ -206,4 +207,5 @@ pub fn receive(a: Allocator, http_status: u16, bytes: []const u8) !Response {
 test {
     _ = @import("tests.zig");
     _ = QueryCache;
+    _ = query_response;
 }
