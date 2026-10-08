@@ -203,3 +203,20 @@ and focused follow-ups were contaminated by other worktrees' Go tests. A later
 focused native-build observation was 2.50s CPU default versus 2.96s external,
 not a demonstrated reduction. Keep native bundling and Goja's mandatory fully
 bundled graph unchanged until a repeatable saving is established.
+
+The undeclared-client-ID refusal needs a generated same-module query control,
+not another generator invocation. Add that literal Query to the immutable
+minimal fixture and clone its generated Go registration into the refusal's
+private frontend. Keep its real native build and original ID diagnostics.
+Its page must explicitly override inherited prerender=true: otherwise Kit
+correctly rejects query execution during prerender before our client-ID guard
+runs. Exact assertions caught that incompatible fixture; restore the original
+request-time query behavior rather than suppressing Kit's HTTP error.
+
+Independent native controls caught removal of the actual copied client-ID
+guard (the emitted client contained literal 3215r6/manual), proved a declared
+query client call builds successfully, and caught a fifth Go registration.
+For the valid control, remove the unsupported manual export as well as its
+call: Kit can retain its constructor and literal ID in the client even when
+the page calls declared(). All five restored affected consumers passed with
+zero skips; disposable validation helpers were removed.

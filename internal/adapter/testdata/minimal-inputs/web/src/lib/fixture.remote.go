@@ -27,6 +27,8 @@ func emptyInputs() ([]devalue.UndefinedValue, error) {
 	note("inputs:empty")
 	return []devalue.UndefinedValue{}, nil
 }
-func empty(context.Context) (string, error) { note("body:empty"); return "build:empty", nil }
+func empty(context.Context) (string, error)    { note("body:empty"); return "build:empty", nil }
+func declared(context.Context) (string, error) { return "declared", nil }
 
 var _ = skgo.Prerender(empty, skgo.PrerenderOptions{Inputs: emptyInputs})
+var _ = skgo.Query(declared)
