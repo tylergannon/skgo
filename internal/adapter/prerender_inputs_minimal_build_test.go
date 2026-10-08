@@ -18,10 +18,10 @@ var sharedInputsTemp string
 
 func TestMain(m *testing.M) {
 	// A fixture spends time waiting for child processes and group draining.
-	// Twelve slots include three consumers waiting on one shared build; each
+	// Eight slots include three consumers waiting on one shared build; each
 	// child has one worker, so native pipelines still have bounded resources.
 	// m.Run parses an explicit -parallel flag afterward, preserving overrides.
-	if err := flag.Set("test.parallel", "12"); err != nil {
+	if err := flag.Set("test.parallel", "8"); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

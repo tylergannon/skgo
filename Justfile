@@ -52,9 +52,13 @@ tools:
         GOBIN="{{justfile_directory()}}/.tools/bin" go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
     fi
 
+# Keep native adapter builds after the other compiler-heavy packages. Just
+# propagates a failed go list rather than silently testing an incomplete list.
+test_packages := `go list -f '{{if ne .ImportPath "github.com/tylergannon/skgo/internal/adapter"}}{{.ImportPath}}{{end}}' ./... ./example/...`
+
 # go test, both modules; two packages share the CPU with their fixture workers
 test: tools
-    go test -json -p=2 -count=1 ./... ./example/...
+    go test -json -p=2 -count=1 {{test_packages}} ./internal/adapter
 
 # the example server, against the built frontend
 serve:
