@@ -220,3 +220,17 @@ For the valid control, remove the unsupported manual export as well as its
 call: Kit can retain its constructor and literal ID in the client even when
 the page calls declared(). All five restored affected consumers passed with
 zero skips; disposable validation helpers were removed.
+
+Reject globally adding -trimpath solely for disposable fixture cache reuse.
+Go's buildActionID normally hashes the package directory; -trimpath substitutes
+module identity but changes standard-library cache keys too. With ordinary
+exports already warmed, a fresh trimpath cache cost 266 compiler invocations
+and 24.7 CPU seconds before its relocated copy reused everything. Consistent
+real-build/test warm runs saved only about 7 percent CPU (65.98 to 61.39s).
+The ordinary full suite then failed: trimmed test binaries have no implicit
+GOROOT, breaking importer.Default and source-location classification in gen.
+Restore both the global flag and its malformed-test accommodation rather than
+extend a modest optimization into unrelated generator/toolchain behavior.
+Native independent controls did establish that trimpath itself preserves
+changed-source invalidation, compiler diagnostics and private-directory drain;
+the rejection is whole-suite compatibility and insufficient measured benefit.
