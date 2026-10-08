@@ -32,6 +32,8 @@ jobs:
           export_path: false
       - run: mise -C example install
       - run: mise -C example/web exec -- vp install --frozen-lockfile
+      - name: Initialize and list simulator devices
+        run: xcrun simctl list
       - name: Build and exercise the real probe in an iOS simulator
         working-directory: example
         run: go run ./native/cmd/build -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' -test
