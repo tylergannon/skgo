@@ -276,9 +276,14 @@ func result(_ reply: SKReply) throws -> Data? {
     let message = try text(reply.message)
     switch reply.kind {
     case 0: return reply.value.ptr == nil ? nil : copy(reply.value)
-    case 1: throw RemoteError.http(Int(reply.status), message)
-    case 2: throw RemoteError.remote(Int(reply.status), message)
-    case 3: throw RemoteError.redirect(message)
-    default: throw RemoteError.invalidWire
+    default: throw failure(kind: reply.kind, status: reply.status, message: message)
+    }
+}
+func failure(kind: UInt32, status: UInt32, message: String) -> RemoteError {
+    switch kind {
+    case 1: return .http(Int(status), message)
+    case 2: return .remote(Int(status), message)
+    case 3: return .redirect(message)
+    default: return .invalidWire
     }
 }

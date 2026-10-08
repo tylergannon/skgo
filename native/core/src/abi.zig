@@ -6,7 +6,7 @@ const Bytes = extern struct { ptr: ?[*]const u8 = null, len: usize = 0 };
 const Buffer = extern struct { ptr: ?[*]u8 = null, len: usize = 0 };
 const Request = extern struct { url: Buffer = .{}, origin: Buffer = .{}, body: Buffer = .{}, key: Buffer = .{} };
 const Ticket = extern struct { epoch: u64 = 0, serial: u64 = 0 };
-const State = extern struct { ready: u32 = 0, loading: u32 = 0, status: u32 = 0, value: Buffer = .{}, message: Buffer = .{} };
+const State = extern struct { ready: u32 = 0, loading: u32 = 0, kind: u32 = 0, status: u32 = 0, value: Buffer = .{}, message: Buffer = .{} };
 const Reply = extern struct { kind: u32 = 0, status: u32 = 0, value: Buffer = .{}, message: Buffer = .{} };
 fn input(v: Bytes) ![]const u8 {
     if (v.len == 0) return &.{};
@@ -123,14 +123,15 @@ pub export fn sk_cache_waiting(cache: *core.QueryCache, key: Bytes, ticket: Tick
 pub export fn sk_cache_abort(cache: *core.QueryCache, key: Bytes, ticket: Ticket) void {
     cache.abort(input(key) catch return, .{ .epoch = ticket.epoch, .serial = ticket.serial });
 }
-pub export fn sk_cache_reject(cache: *core.QueryCache, key: Bytes, ticket: Ticket, fault_status: u16, message: Bytes) u32 {
-    _ = cache.reject(input(key) catch |e| return status(e), .{ .epoch = ticket.epoch, .serial = ticket.serial }, .{ .status = fault_status, .message = input(message) catch |e| return status(e) }) catch |e| return status(e);
+pub export fn sk_cache_reject(cache: *core.QueryCache, key: Bytes, ticket: Ticket, fault_kind: u32, fault_status: u16, message: Bytes) u32 {
+    const kind = std.enums.fromInt(core.QueryCache.FaultKind, fault_kind) orelse return 2;
+    _ = cache.reject(input(key) catch |e| return status(e), .{ .epoch = ticket.epoch, .serial = ticket.serial }, .{ .kind = kind, .status = fault_status, .message = input(message) catch |e| return status(e) }) catch |e| return status(e);
     return 0;
 }
 pub export fn sk_cache_snapshot(cache: *core.QueryCache, key: Bytes, out: *State) u32 {
     out.* = .{};
     const snapshot = cache.snapshot(input(key) catch |e| return status(e)) catch |e| return status(e);
-    out.* = .{ .ready = @intFromBool(snapshot.ready), .loading = @intFromBool(snapshot.loading), .status = if (snapshot.fault) |f| f.status else 0, .value = if (snapshot.value) |v| buffer(v) else .{}, .message = if (snapshot.fault) |f| buffer(@constCast(f.message)) else .{} };
+    out.* = .{ .ready = @intFromBool(snapshot.ready), .loading = @intFromBool(snapshot.loading), .kind = if (snapshot.fault) |f| @backingInt(f.kind) else 0, .status = if (snapshot.fault) |f| f.status else 0, .value = if (snapshot.value) |v| buffer(v) else .{}, .message = if (snapshot.fault) |f| buffer(@constCast(f.message)) else .{} };
     return 0;
 }
 fn cacheResponse(cache: *core.QueryCache, key: []const u8, ticket: Ticket, http_status: u16, bytes: []const u8, requested: []const []const u8) !Reply {

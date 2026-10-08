@@ -21,7 +21,7 @@ uint32_t sk_prepare(SKBytes origin, SKBytes base, SKBytes id, uint32_t command, 
 // from begin means no HTTP dispatch; returned snapshot buffers own their bytes.
 typedef struct SKCache SKCache;
 typedef struct { uint64_t epoch, serial; } SKTicket;
-typedef struct { uint32_t ready, loading, status; SKBuffer value, message; } SKCacheState;
+typedef struct { uint32_t ready, loading, kind, status; SKBuffer value, message; } SKCacheState;
 uint32_t sk_cache_create(uint32_t capacity, SKCache **);
 void sk_cache_release(SKCache **); // releases and zeroes the private context
 uint32_t sk_cache_retain_query(SKCache *, SKBytes key);
@@ -30,7 +30,7 @@ uint32_t sk_cache_reset(SKCache *);
 uint32_t sk_cache_begin(SKCache *, SKBytes key, uint32_t refresh, SKTicket *);
 uint32_t sk_cache_waiting(SKCache *, SKBytes key, SKTicket);
 void sk_cache_abort(SKCache *, SKBytes key, SKTicket);
-uint32_t sk_cache_reject(SKCache *, SKBytes key, SKTicket, uint16_t status, SKBytes message);
+uint32_t sk_cache_reject(SKCache *, SKBytes key, SKTicket, uint32_t kind, uint16_t status, SKBytes message);
 uint32_t sk_cache_snapshot(SKCache *, SKBytes key, SKCacheState *);
 uint32_t sk_cache_receive(SKCache *, SKBytes key, SKTicket, uint16_t status, SKBytes body, SKBytes requested, SKReply *);
 uint32_t sk_decode(uint16_t http_status, SKBytes body, SKReply *);

@@ -74,13 +74,14 @@ final class CoreCache: @unchecked Sendable {
     func waiting(_ key: Data, _ ticket: SKTicket) -> Bool { withBytes(key) { sk_cache_waiting(pointer, $0, ticket) } != 0 }
     func abort(_ key: Data, _ ticket: SKTicket) { withBytes(key) { sk_cache_abort(pointer, $0, ticket) } }
     func reject(_ key: Data, _ ticket: SKTicket, error: Error) throws {
-        let status: UInt16, message: String
+        let kind: UInt32, status: UInt16, message: String
         switch error as? RemoteError {
-        case .http(let s, let m), .remote(let s, let m): status = UInt16(s); message = m
-        case .redirect(let m): status = 307; message = m
-        default: status = 500; message = String(describing: error)
+        case .http(let s, let m): kind = 1; status = UInt16(s); message = m
+        case .remote(let s, let m): kind = 2; status = UInt16(s); message = m
+        case .redirect(let m): kind = 3; status = 307; message = m
+        default: kind = 2; status = 500; message = String(describing: error)
         }
-        try check(withBytes(key) { k in withBytes(Data(message.utf8)) { sk_cache_reject(pointer, k, ticket, status, $0) } })
+        try check(withBytes(key) { k in withBytes(Data(message.utf8)) { sk_cache_reject(pointer, k, ticket, kind, status, $0) } })
     }
     func snapshot(_ key: Data) throws -> QueryState {
         var state = SKCacheState()
@@ -88,7 +89,7 @@ final class CoreCache: @unchecked Sendable {
         try check(withBytes(key) { sk_cache_snapshot(pointer, $0, &state) })
         return QueryState(ready: state.ready != 0, loading: state.loading != 0,
             value: state.value.ptr == nil ? nil : copy(state.value),
-            error: state.status == 0 ? nil : .remote(Int(state.status), try text(state.message)))
+            error: state.kind == 0 ? nil : failure(kind: state.kind, status: state.status, message: try text(state.message)))
     }
     func receive(_ response: RemoteResponse, key: Data = Data(), ticket: SKTicket, requested: [String] = []) throws -> Data? {
         var reply = SKReply()

@@ -13,7 +13,8 @@ pub const Cache = struct {
     entries: std.StringHashMapUnmanaged(Entry) = .empty,
 
     pub const Ticket = struct { epoch: u64, serial: u64 };
-    pub const Fault = struct { status: u16, message: []const u8 };
+    pub const FaultKind = enum(u32) { http = 1, remote = 2, redirect = 3 };
+    pub const Fault = struct { kind: FaultKind = .remote, status: u16, message: []const u8 };
     const Entry = struct {
         refs: u32 = 0,
         ready: bool = false,
@@ -115,7 +116,7 @@ pub const Cache = struct {
         const entry = self.entries.getPtr(key) orelse return error.NotRetained;
         const value = if (entry.value) |v| try self.allocator.dupe(u8, v) else null;
         errdefer if (value) |v| self.allocator.free(v);
-        const fault = if (entry.fault) |f| Fault{ .status = f.status, .message = try self.allocator.dupe(u8, f.message) } else null;
+        const fault = if (entry.fault) |f| Fault{ .kind = f.kind, .status = f.status, .message = try self.allocator.dupe(u8, f.message) } else null;
         return .{ .allocator = self.allocator, .ready = entry.ready, .loading = entry.loading, .value = value, .fault = fault };
     }
     pub fn begin(self: *Cache, key: []const u8, refresh: bool) !?Ticket {
@@ -165,7 +166,7 @@ pub const Cache = struct {
         const message = try self.allocator.dupe(u8, fault.message);
         settleThrough(entry, index);
         if (entry.fault) |f| self.allocator.free(f.message);
-        entry.fault = .{ .status = fault.status, .message = message };
+        entry.fault = .{ .kind = fault.kind, .status = fault.status, .message = message };
         entry.loading = false;
         return true; // Kit keeps the previous ready/value on failure.
     }
@@ -240,7 +241,7 @@ pub const Cache = struct {
         const message = try self.allocator.dupe(u8, fault.message);
         entry.pending.clearRetainingCapacity();
         if (entry.fault) |f| self.allocator.free(f.message);
-        entry.fault = .{ .status = fault.status, .message = message };
+        entry.fault = .{ .kind = fault.kind, .status = fault.status, .message = message };
         entry.loading = false;
         return true;
     }

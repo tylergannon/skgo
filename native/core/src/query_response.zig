@@ -9,7 +9,7 @@ pub fn apply(cache: *Cache, epoch: u64, query_key: ?[]const u8, ticket: ?Cache.T
     if (epoch != cache.epoch) return;
     if (response.kind == .http_error or response.kind == .remote_error) {
         if (query_key) |key| if (ticket) |t| {
-            _ = try cache.reject(key, t, .{ .status = response.status orelse response.http_status, .message = response.message orelse "" });
+            _ = try cache.reject(key, t, .{ .kind = if (response.kind == .http_error) .http else .remote, .status = response.status orelse response.http_status, .message = response.message orelse "" });
         };
         return; // remote_request throws before fail_unhandled_refreshes
     }
@@ -53,7 +53,7 @@ pub fn apply(cache: *Cache, epoch: u64, query_key: ?[]const u8, ticket: ?Cache.T
     _ = try cache.applyUpdates(epoch, updates.items, if (response.kind == .redirect) &.{} else requested, ignored.items);
     if (query_key) |key| if (ticket) |t| {
         if (response.kind == .redirect) {
-            _ = try cache.reject(key, t, .{ .status = 307, .message = response.message orelse "" });
+            _ = try cache.reject(key, t, .{ .kind = .redirect, .status = 307, .message = response.message orelse "" });
         } else {
             // A q node for this query already settled its promises via set/fail.
             // Otherwise settle the native call's direct result.

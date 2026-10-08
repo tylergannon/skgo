@@ -2,6 +2,28 @@ import Foundation
 import Testing
 @testable import SKGoNative
 
+@Test(.timeLimit(.minutes(1))) func completedQueriesPreserveHTTPRemoteAndRedirectErrors() async throws {
+    let transport = ControlledTransport()
+    let client = RemoteClient(origin: "http://127.0.0.1:8080", transport: transport)
+    let fixtures: [(UInt16, String, RemoteError)] = [
+        (403, #"{"type":"error","error":{"message":"Forbidden"}}"#, .http(403, "Forbidden")),
+        (200, #"{"type":"error","error":{"status":409,"message":"Conflict"}}"#, .remote(409, "Conflict")),
+        (200, #"{"type":"result","data":"[{\"redirect\":1},\"/sign-in\"]"}"#, .redirect("/sign-in"))
+    ]
+    for (status, body, expected) in fixtures {
+        let query = try await client.query("hash/query") { $0 }
+        let request = await transport.next()
+        await transport.finish(request, .init(status: status, body: Data(body.utf8)))
+        var state = try await query.snapshot()
+        while state.loading { await Task.yield(); state = try await query.snapshot() }
+        #expect(state.error == expected)
+        do { _ = try await query.value(); Issue.record("Completed error returned a value") }
+        catch { #expect(error as? RemoteError == expected) }
+        await query.release()
+    }
+    await client.shutdown()
+}
+
 @Test func retainedCanonicalQueriesShareRequestsAndOwnEvictedResults() async throws {
     let transport = ControlledTransport()
     let client = RemoteClient(origin: "http://127.0.0.1:8080", transport: transport, cacheCapacity: 1)
