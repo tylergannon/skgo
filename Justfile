@@ -54,7 +54,7 @@ tools:
 
 # go test, both modules, in one invocation so their packages run side by side
 test: tools
-    go test -count=1 ./... ./example/...
+    go test -json -count=1 ./... ./example/...
 
 # the example server, against the built frontend
 serve:

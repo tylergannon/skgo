@@ -1,0 +1,3 @@
+friction: Main CI at 89208d3 measured adapter 146.318s and the ordinary full test step 182s; isolated timing cannot close the CI target.
+friction: The relay test's timer-based late reply could arrive before Atomics.wait under compilation contention. Synchronize the late reply with an observed timeout so terminal-state assertions do not depend on worker scheduling.
+decision: Mode-controlled failure builds can share immutable generated Go source while retaining separate Vite roots, Go compiler invocations, private executable directories, services and receipts. Relocate only the fixture manifest's Go root; keep generated service bytes unchanged.

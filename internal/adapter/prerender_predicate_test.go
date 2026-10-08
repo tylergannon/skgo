@@ -28,16 +28,18 @@ import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
 for (const mode of ['booleans','early','error','malformed','timeout']) {
  const channel=new BroadcastChannel('predicate-test-'+mode);process.env.SKGO_PRERENDER_PREDICATE_CHANNEL=channel.name;process.env.SKGO_RELAY_TEST_MODE=mode;
- let calls=0,notice=false;
+ let calls=0,notice=false,lateAnswer,timeoutObserved=false;
+ const lateCell=new Int32Array(new SharedArrayBuffer(4));
+ const deliverLate=()=>{if(!timeoutObserved||!lateAnswer)return;lateAnswer();Atomics.store(lateCell,0,1);Atomics.notify(lateCell,0);};
  let announceFailure;const failureNotice=new Promise(resolve=>{announceFailure=resolve;});
  channel.onmessage=({data})=>{
   if(data.type==='failure'){notice=true;announceFailure();return;}
   if(data.type!=='predicate')return;
   calls++;
   const answer=()=>{channel.postMessage(mode==='malformed'?{id:data.id,value:'wrong'}:mode==='error'?{id:data.id,error:'full literal error\nwith details'}:{id:data.id,value:calls===1});Atomics.store(data.cell,0,1);Atomics.notify(data.cell,0);};
-  if(mode==='timeout')setTimeout(answer,200);else answer();
+  if(mode==='timeout'){lateAnswer=answer;deliverLate();}else answer();
  };
- const workerCode="import {workerData,parentPort} from 'node:worker_threads'; (async()=>{const {predicate}=await import(workerData.module);const results=[];for(let i=0;i<3;i++){try{results.push(predicate('literal-request','preload',{input:{type:'font',path:'/literal.woff2',filename:'src/literal.woff2'}}));}catch(error){results.push(error.message);} if(workerData.mode==='timeout' && i===1) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,250); }parentPort.postMessage(results);})();";
+ const workerCode="import {workerData,parentPort} from 'node:worker_threads'; (async()=>{const {predicate}=await import(workerData.module);const results=[];for(let i=0;i<3;i++){try{results.push(predicate('literal-request','preload',{input:{type:'font',path:'/literal.woff2',filename:'src/literal.woff2'}}));}catch(error){results.push(error.message);} if(workerData.mode==='timeout' && i===0){parentPort.postMessage('timeout-observed');if(Atomics.wait(workerData.lateCell,0,0,10000)==='timed-out')throw new Error('late reply was not delivered');} }parentPort.postMessage(results);})();";
  // Delay the worker immediately before Atomics.wait, allowing the real owner
  // reply to arrive first. The not-equal path must still read the answer.
  let workerModule=process.argv[1];
@@ -45,11 +47,11 @@ for (const mode of ['booleans','early','error','malformed','timeout']) {
   const {readFileSync,writeFileSync}=await import('node:fs');workerModule=process.argv[1]+'.early.mjs';
   writeFileSync(workerModule,readFileSync(process.argv[1],'utf8').replace('const status = Atomics.wait(predicateCell','Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,50); const status = Atomics.wait(predicateCell'));
  }
- const worker=new Worker(workerCode,{eval:true,workerData:{module:pathToFileURL(workerModule).href,mode}});
+ const worker=new Worker(workerCode,{eval:true,workerData:{module:pathToFileURL(workerModule).href,mode,lateCell}});
  // Register both listeners before waiting: the worker can exit as soon as it
  // sends its result, including before the main thread resumes under load.
  const [result]=await Promise.all([
-  new Promise((resolve,reject)=>{worker.once('message',resolve);worker.once('error',reject);}),
+  new Promise((resolve,reject)=>{worker.on('message',value=>{if(value==='timeout-observed'){timeoutObserved=true;deliverLate();}else resolve(value);});worker.once('error',reject);}),
   new Promise((resolve,reject)=>{worker.once('exit',resolve);worker.once('error',reject);})
  ]);
  if(mode==='booleans'||mode==='early'){assert.deepEqual(result,[true,false,false]);assert.equal(calls,3);assert.equal(notice,false);}

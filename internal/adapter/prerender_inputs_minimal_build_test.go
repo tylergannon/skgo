@@ -13,9 +13,20 @@ import (
 
 // minimalInputsTemp outlives individual tests: consumers only read the shared build.
 var minimalInputsTemp string
+var sharedInputsTemp string
 
 func TestMain(m *testing.M) {
+	var err error
+	sharedInputsTemp, err = os.MkdirTemp("", "skgo-adapter-shared-")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	code := m.Run()
+	if err := os.RemoveAll(sharedInputsTemp); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		code = 1
+	}
 	if minimalInputsTemp != "" {
 		if err := os.RemoveAll(minimalInputsTemp); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -86,6 +97,24 @@ var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
 	if err := os.CopyFS(fixture, os.DirFS("testdata/minimal-inputs")); err != nil {
 		return "", err
 	}
+	// The same successful build demonstrates literal zero predicate traffic
+	// from a typed nil Handle, as well as the native remote artifacts below.
+	config := filepath.Join(fixture, "internal", "skgo", "config.go")
+	contents, err := os.ReadFile(config)
+	if err != nil {
+		return "", err
+	}
+	contents = []byte(strings.Replace(string(contents), "--locals-package github.com/tylergannon/skgo/example/internal/app", "--locals-package github.com/tylergannon/skgo/example/internal/app --hook-package github.com/tylergannon/skgo/example/internal/serverhooks", 1))
+	if err := os.WriteFile(config, contents, 0o644); err != nil {
+		return "", err
+	}
+	hooks := filepath.Join(fixture, "internal", "serverhooks")
+	if err := os.MkdirAll(hooks, 0o755); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(hooks, "handle.go"), []byte("package serverhooks\nimport \"github.com/tylergannon/skgo/example/internal/skgo/params\"\nvar Handle params.Middleware\n"), 0o644); err != nil {
+		return "", err
+	}
 	receipt := filepath.Join(fixture, "inputs-receipt")
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir = fixture
@@ -100,9 +129,15 @@ var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
 	if _, err := os.Stat(receipt); !os.IsNotExist(err) {
 		return "", fmt.Errorf("producer ran during generation: %v", err)
 	}
-	output, err := runMinimalInputsBuild(fixture, "SKGO_INPUTS_RECEIPT="+receipt)
+	build := exec.Command("node", "-e", nilCallbacksBuildProgram())
+	build.Dir = filepath.Join(fixture, "web")
+	build.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+receipt)
+	output, err := build.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("minimal native build: %w\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "NIL_CALLBACK_TRAFFIC:0 OWNER_CHANNEL_CLOSED") {
+		return "", fmt.Errorf("native nil callback assertions did not finish: %s", output)
 	}
 	return fixture, nil
 })

@@ -93,12 +93,27 @@ export async function load() {
 	assertInputsDrainComplete(t, fixture, result.output)
 }
 
+var blockedInputsFixtureOnce sync.Once
+var blockedInputsFixture string
+
+func sharedBlockedInputsFixture(t *testing.T) string {
+	t.Helper()
+	blockedInputsFixtureOnce.Do(func() {
+		source := prepareInputsLifecycleFixture(t, "blocked")
+		blockedInputsFixture = filepath.Join(sharedInputsTemp, "blocked")
+		if err := os.Rename(source, blockedInputsFixture); err != nil {
+			t.Fatal(err)
+		}
+	})
+	return cloneGeneratedInputsWeb(t, blockedInputsFixture)
+}
+
 func TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := prepareInputsLifecycleFixture(t, "blocked")
+	fixture := sharedBlockedInputsFixture(t)
 	cmd := inputsVPBuildCommand(t, fixture)
 	process := startInputsTrackedCommand(t, cmd, fixture)
 	defer func() {
@@ -130,7 +145,7 @@ func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := prepareInputsLifecycleFixture(t, "blocked")
+	fixture := sharedBlockedInputsFixture(t)
 	cmd := inputsVPBuildCommand(t, fixture)
 	process := startInputsTrackedCommand(t, cmd, fixture)
 	defer func() {

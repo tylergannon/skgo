@@ -1,11 +1,61 @@
 package adapter
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// Native builds keep separate Vite roots, processes and private compile output.
+// Their Go service can share an immutable generated module: mode selection is
+// through each child's environment, and go build still runs at the real boundary.
+func cloneGeneratedInputsWeb(t *testing.T, source string) string {
+	t.Helper()
+	fixture := prepareMinimalInputsApp(t)
+	web := filepath.Join(fixture, "web")
+	if err := os.RemoveAll(filepath.Join(web, "src")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.CopyFS(filepath.Join(web, "src"), os.DirFS(filepath.Join(source, "web", "src"))); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"vite.config.ts", "skgo.remotes.json"} {
+		contents, err := os.ReadFile(filepath.Join(source, "web", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if name == "skgo.remotes.json" {
+			var manifest map[string]json.RawMessage
+			if err := json.Unmarshal(contents, &manifest); err != nil {
+				t.Fatal(err)
+			}
+			var service struct{ Root, Package string }
+			if err := json.Unmarshal(manifest["prerender"], &service); err != nil || service.Package == "" {
+				t.Fatalf("missing generated service: %v", err)
+			}
+			serviceRoot := filepath.Join(source, "web", service.Root)
+			relative, err := filepath.Rel(web, serviceRoot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			manifest["prerender"], err = json.Marshal(struct {
+				Root    string `json:"root"`
+				Package string `json:"package"`
+			}{filepath.ToSlash(relative), service.Package})
+			if err != nil {
+				t.Fatal(err)
+			}
+			contents, err = json.Marshal(manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		writeFixtureFile(t, filepath.Join(web, name), string(contents))
+	}
+	return fixture
+}
 
 // Keep production policy independent of the controlled deadlines used by the
 // real owner/worker timeout builds. No application configuration is added.
