@@ -76,7 +76,10 @@ fn allocationCase(allocator: std.mem.Allocator) !void {
     defer response.deinit();
 }
 test "allocation failures release request and response ownership" {
-    try std.testing.checkAllAllocationFailures(a, allocationCase, .{});
+    // Refuse resize/remap during exhaustive allocation failure injection so
+    // SafeAllocator's address-dependent growth cannot change allocation counts.
+    var no_growth = std.testing.FailingAllocator.init(std.testing.allocator, .{ .resize_fail_index = 0 });
+    try std.testing.checkAllAllocationFailures(no_growth.allocator(), allocationCase, .{});
 }
 
 test "unsupported argument nodes and invalid endpoint paths fail explicitly" {

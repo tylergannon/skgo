@@ -160,7 +160,10 @@ fn allocationCase(allocator: std.mem.Allocator) !void {
     try std.testing.expectEqualStrings("Revision conflict", failure.message.ptr.?[0..failure.message.len]);
 }
 test "owned buffers release every allocation failure" {
-    try std.testing.checkAllAllocationFailures(std.testing.allocator, allocationCase, .{});
+    // Refuse resize/remap during exhaustive allocation failure injection so
+    // SafeAllocator's address-dependent growth cannot change allocation counts.
+    var no_growth = std.testing.FailingAllocator.init(std.testing.allocator, .{ .resize_fail_index = 0 });
+    try std.testing.checkAllAllocationFailures(no_growth.allocator(), allocationCase, .{});
 }
 test "release zeroes buffers and result bytes outlive parsing" {
     var response = try decodeBuffers(std.testing.allocator, 200, "{\"type\":\"result\",\"data\":\"[{\\\"_\\\":1},\\\"owned\\\"]\"}");
