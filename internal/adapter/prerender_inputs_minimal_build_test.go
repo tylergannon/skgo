@@ -56,6 +56,15 @@ func stageMinimalInputsBootstrap(fixture string) error {
 		if file == "web/package.json" {
 			contents = []byte(strings.Replace(string(contents), "link:../../internal/adapter", "link:"+filepath.ToSlash(filepath.Join(root, "..", "internal", "adapter")), 1))
 		}
+		if file == "web/vite.config.ts" {
+			// These fixtures assert native artifacts and service lifecycle, not
+			// compressed variants. Keep their real build without extra encoders.
+			updated := strings.Replace(string(contents), "adapter: skgo(),", "adapter: skgo({ precompress: false }),", 1)
+			if updated == string(contents) {
+				return fmt.Errorf("fixture adapter compression option did not apply")
+			}
+			contents = []byte(updated)
+		}
 		target := filepath.Join(fixture, filepath.FromSlash(file))
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err

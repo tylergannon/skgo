@@ -18,6 +18,9 @@ func timedFixtureOutput(t *testing.T, stage string, command *exec.Cmd) ([]byte, 
 	start := time.Now()
 	output, err := command.CombinedOutput()
 	t.Logf("fixture stage %s: %s", stage, time.Since(start))
+	if command.ProcessState != nil {
+		t.Logf("fixture stage %s CPU: user=%s system=%s", stage, command.ProcessState.UserTime(), command.ProcessState.SystemTime())
+	}
 	return output, err
 }
 
@@ -189,7 +192,7 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 	if err != nil {
 		t.Fatal(err)
 	}
-	viteSourceText := strings.Replace(string(viteSource), "adapter: skgo(),", "adapter: skgo(),\n      prerender: { handleHttpError: \"ignore\" },", 1)
+	viteSourceText := strings.Replace(string(viteSource), "adapter: skgo({ precompress: false }),", "adapter: skgo({ precompress: false }),\n      prerender: { handleHttpError: \"ignore\" },", 1)
 	if viteSourceText == string(viteSource) {
 		t.Fatal("could not set permissive native HTTP error policy")
 	}

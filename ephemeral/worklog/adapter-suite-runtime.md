@@ -106,3 +106,17 @@ bytes yielded a new literal result and fresh producer/body receipts, and the
 unchanged-byte negative control failed the changed-byte guard. Cache storage
 survived package cleanup; owned tarballs did not. These are behavioral checks,
 not conclusions from cached filenames or a successful command alone.
+
+decision: Disposable adapter artifact/lifecycle fixtures use the public
+precompress:false option; their assertions do not consume gzip/Brotli variants.
+The native TS/JS artifact, type, and compiled Goja consumer checks passed in a
+controlled overlay comparison. Child-inclusive native-build CPU was about
+2.9s per language with compression and 2.55s without it (single observations).
+Default compression remains exercised by actual native generator redirect
+artifacts. Measure retained claims independently before delivery.
+
+friction: Plain successful CI output reports package elapsed time but hides
+per-test/stage logs. Temporarily collect Go's native JSON output from the same
+ordinary Just test invocation, with TS/JS stage child CPU alongside wall time,
+to distinguish repeated work from CI contention. Do not make a separate suite
+or change concurrency for this measurement; restore normal output afterward.

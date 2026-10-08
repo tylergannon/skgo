@@ -71,7 +71,7 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 	if err != nil {
 		t.Fatal(err)
 	}
-	updated := strings.Replace(string(source), "adapter: skgo(),", "adapter: skgo(),\n prerender: {handleHttpError: 'ignore', handleUnseenRoutes: 'ignore'},", 1)
+	updated := strings.Replace(string(source), "adapter: skgo({ precompress: false }),", "adapter: skgo({ precompress: false }),\n prerender: {handleHttpError: 'ignore', handleUnseenRoutes: 'ignore'},", 1)
 	if updated == string(source) {
 		t.Fatal("fixture config did not select permissive error policy")
 	}

@@ -225,7 +225,7 @@ func prepareInputsLifecycleFixture(t *testing.T, mode string) string {
 		t.Fatal(err)
 	}
 	configText := strings.Replace(string(config), "export default defineConfig({", "import { writeFileSync as __skgoWriteOwner } from 'node:fs';\n__skgoWriteOwner(process.env.SKGO_VITE_OWNER_PID, String(process.pid));\nexport default defineConfig({", 1)
-	configText = strings.Replace(configText, "adapter: skgo(),", "adapter: skgo(),\n      prerender: { concurrency: 4 },", 1)
+	configText = strings.Replace(configText, "adapter: skgo({ precompress: false }),", "adapter: skgo({ precompress: false }),\n      prerender: { concurrency: 4 },", 1)
 	if mode == "producer-failure" {
 		configText = strings.Replace(configText, "concurrency: 4", "concurrency: 4, handleHttpError: 'ignore'", 1)
 	}
