@@ -10,7 +10,16 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
+
+func timedFixtureOutput(t *testing.T, stage string, command *exec.Cmd) ([]byte, error) {
+	t.Helper()
+	start := time.Now()
+	output, err := command.CombinedOutput()
+	t.Logf("fixture stage %s: %s", stage, time.Since(start))
+	return output, err
+}
 
 func TestDeclaredPrerenderInputsBuildAndProduceNativeArtifacts(t *testing.T) {
 	t.Parallel()
@@ -207,7 +216,7 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir = fixture
 	generate.Env = append(fixtureBuildEnv(), "GOWORK=off", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_ERROR_INPUTS_RECEIPT="+errorInputsReceipt, "SKGO_IDENTIFIER_RECEIPT="+identifierReceipt)
-	if output, err := generate.CombinedOutput(); err != nil {
+	if output, err := timedFixtureOutput(t, "generate", generate); err != nil {
 		t.Fatalf("go generate: %v\n%s", err, output)
 	}
 	installInputsErrorPolicy(t, fixture, language)
@@ -240,7 +249,7 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 		check := exec.Command(command[0], command[1:]...)
 		check.Dir = filepath.Join(fixture, "web")
 		check.Env = append(fixtureBuildEnv(), "GOWORK=off")
-		if output, err := check.CombinedOutput(); err != nil {
+		if output, err := timedFixtureOutput(t, filepath.Base(command[0]), check); err != nil {
 			t.Fatalf("frontend typecheck %v: %v\n%s", command, err, output)
 		}
 	}
@@ -250,7 +259,7 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 	pageRemoteReceipt := filepath.Join(fixture, "page-remotes-called")
 	nativeErrorReceipt := filepath.Join(fixture, "native-errors")
 	build.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_ERROR_INPUTS_RECEIPT="+errorInputsReceipt, "SKGO_REMOTE_RECEIPT="+remoteReceipt, "SKGO_PAGE_REMOTE_RECEIPT="+pageRemoteReceipt, "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt, "SKGO_IDENTIFIER_RECEIPT="+identifierReceipt)
-	buildOutput, err := build.CombinedOutput()
+	buildOutput, err := timedFixtureOutput(t, "native build", build)
 	if err != nil {
 		t.Fatalf("vp build: %v\n%s", err, buildOutput)
 	}
@@ -455,7 +464,7 @@ func TestPrerenderHelperIsBuildOnlyInGoja(t *testing.T) {
 	gojaTestCmd := exec.Command("go", "test", "./cmd", "-run", "^TestPrerenderHelperIsBuildOnlyInGoja$", "-count=1", "-v")
 	gojaTestCmd.Dir = fixture
 	gojaTestCmd.Env = append(fixtureBuildEnv(), "GOWORK=off")
-	if output, err := gojaTestCmd.CombinedOutput(); err != nil || !strings.Contains(string(output), "--- PASS: TestPrerenderHelperIsBuildOnlyInGoja") || strings.Contains(string(output), "--- SKIP:") {
+	if output, err := timedFixtureOutput(t, "compiled consumer", gojaTestCmd); err != nil || !strings.Contains(string(output), "--- PASS: TestPrerenderHelperIsBuildOnlyInGoja") || strings.Contains(string(output), "--- SKIP:") {
 		t.Fatalf("compiled JavaScript-mode Goja helper invocation: %v\n%s", err, output)
 	}
 }
