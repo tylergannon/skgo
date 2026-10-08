@@ -28,6 +28,13 @@ func main() {
 	}
 	clang := run("xcrun", "--sdk", *sdk, "-f", "clang")
 	sdkPath := run("xcrun", "--sdk", *sdk, "--show-sdk-path")
+	run("go", "generate", "./internal/skgo")
+	frontend := exec.Command("mise", "-C", "web", "exec", "--", "vp", "build")
+	frontend.Env = append(os.Environ(), "SKGO_NATIVE_LOCAL=1")
+	frontend.Stdout, frontend.Stderr = os.Stdout, os.Stderr
+	if err := frontend.Run(); err != nil {
+		log.Fatal(err)
+	}
 	dir, err := filepath.Abs("native/build/" + *sdk)
 	if err != nil {
 		log.Fatal(err)
@@ -38,6 +45,22 @@ func main() {
 	target := "arm64-apple-ios17.0"
 	if *sdk == "iphonesimulator" {
 		target += "-simulator"
+	}
+	zigTarget := "aarch64-ios.17.0"
+	if *sdk == "iphonesimulator" {
+		zigTarget += "-simulator"
+	}
+	coreDir := filepath.Join(dir, "core")
+	run("mise", "-C", "../native/core", "exec", "--", "zig", "build", "library", "-Dtarget="+zigTarget, "--sysroot", sdkPath, "--prefix", coreDir)
+	header, err := filepath.Abs("../native/swift/Sources/CSKGo/include/skgo.h")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// The header-only C import and target-specific Zig archive are disposable
+	// build inputs, never a dependency on the desktop SwiftPM build directory.
+	moduleMap := fmt.Sprintf("module CSKGo {\n  header %q\n  export *\n}\n", header)
+	if err := os.WriteFile(filepath.Join(coreDir, "module.modulemap"), []byte(moduleMap), 0644); err != nil {
+		log.Fatal(err)
 	}
 	cmd := exec.Command("go", "build", "-buildmode=c-archive", "-o", filepath.Join(dir, "host/skgo-host.a"), "./native/host")
 	cmd.Env = append(os.Environ(), "GOOS=ios", "GOARCH=arm64", "CGO_ENABLED=1", fmt.Sprintf("CC=%s -target %s -isysroot %s", clang, target, sdkPath))
