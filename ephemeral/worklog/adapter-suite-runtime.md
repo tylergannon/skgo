@@ -145,3 +145,22 @@ fixtures: a cold trial still passed both language consumers but checker CPU was
 CLI process; there is no repeated check in these fixtures to amortize its cache.
 Keep the existing checker. Restore plain Just test output after capturing CI
 events; the same package patterns and native contracts remain in one invocation.
+
+correction: Changing copied configs to precompress:false left the malformed
+Inputs test's old adapter:skgo() replacement unmatched. Check the unique anchor
+and install the permissive HTTP policy explicitly. Independent actual native
+builds proved valid Inputs survive a supplied page HTTP500 only with that policy,
+malformed Inputs still reject with the exact array diagnostic, and corrupting
+the anchor fails before any native build. Silent replacement cannot prove policy.
+
+decision: The shared minimal successful native build can also prove a server
+hook may import a server-only module. Install its literal module/import before
+publishing the generated fixture; retain a separate native unsafe client-import
+build and Kit's original four diagnostics. Avoid repeating a compatible success
+merely to assert the same permission beside its refusal.
+
+friction: Identical generated Go modules relocated to two roots still compiled
+eight packages and linked again (about 0.52s CPU each in a focused observation).
+A seeded -trimpath relocation compiled/linked neither (0.12s CPU), but its cold
+first-build/toolchain-cache cost in ordinary CI remains unmeasured. Do not adopt
+new compiler flags based on the warm observation alone.

@@ -538,7 +538,11 @@ func TestMalformedPrerenderInputsRejectsPermissiveKitBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeFixtureFile(t, configPath, strings.Replace(string(config), "adapter: skgo(),", "adapter: skgo(), prerender: {handleHttpError:'ignore'},", 1))
+	const adapterConfig = "adapter: skgo({ precompress: false }),"
+	if strings.Count(string(config), adapterConfig) != 1 {
+		t.Fatal("could not install the permissive native HTTP policy")
+	}
+	writeFixtureFile(t, configPath, strings.Replace(string(config), adapterConfig, adapterConfig+" prerender: {handleHttpError:'ignore'},", 1))
 	nativeErrorReceipt := filepath.Join(fixture, "native-errors")
 	badShapeOverlay := filepath.Join(t.TempDir(), "prerender_remote_bad_shape.go")
 	remoteSourcePath := filepath.Join(root, "..", "prerender_remote.go")

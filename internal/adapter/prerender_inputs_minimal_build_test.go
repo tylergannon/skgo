@@ -147,6 +147,24 @@ var generatedMinimalInputsApp = sync.OnceValues(func() (string, error) {
 	if _, err := os.Stat(receipt); !os.IsNotExist(err) {
 		return "", fmt.Errorf("producer ran during generation: %v", err)
 	}
+	// The successful native build also proves Kit permits a server-only
+	// import in a server hook. Its client-import refusal owns a separate build.
+	secret := filepath.Join(fixture, "web", "src", "lib", "server", "secret.ts")
+	if err := os.MkdirAll(filepath.Dir(secret), 0o755); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(secret, []byte("export const receipt = 'server-only receipt';\n"), 0o644); err != nil {
+		return "", err
+	}
+	hook := filepath.Join(fixture, "web", "src", "hooks.server.ts")
+	hookSource, err := os.ReadFile(hook)
+	if err != nil {
+		return "", err
+	}
+	hookSource = append(hookSource, []byte("\nimport { receipt as serverOnlyReceipt } from './lib/server/secret';\nvoid serverOnlyReceipt;\n")...)
+	if err := os.WriteFile(hook, hookSource, 0o644); err != nil {
+		return "", err
+	}
 	return fixture, nil
 })
 
