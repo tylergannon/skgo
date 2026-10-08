@@ -164,3 +164,15 @@ eight packages and linked again (about 0.52s CPU each in a focused observation).
 A seeded -trimpath relocation compiled/linked neither (0.12s CPU), but its cold
 first-build/toolchain-cache cost in ordinary CI remains unmeasured. Do not adopt
 new compiler flags based on the warm observation alone.
+
+Independent actual native guard mutations caught wrongful rejection of the
+shared successful server-hook import and wrongful acceptance of the separate
+unsafe client import (whose emitted client JS contained the literal secret).
+Restored server-only and malformed cases passed on integrated main's standalone
+devalue runtime, with zero skips. Main's deterministic late-reply synchronization
+replaces the equivalent task-branch synchronization during integration.
+
+Reject the transform-only csr:false trial: retained transform/drain assertions
+passed, but focused package wall was 4.132s versus 4.141s with its original client
+mode, and command CPU showed no reduction (4.62s versus 4.35s). No source change
+adopted from that observation.
