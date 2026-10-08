@@ -6,14 +6,8 @@ export default defineConfig({
   plugins: [
     sveltekit({
       adapter: skgo(),
-      // An omitted Kit origin follows the request, so a bundled local host
-      // can use its actual dynamically allocated loopback port.
-      paths: {
-        origin:
-          process.env.SKGO_NATIVE_LOCAL === "1"
-            ? undefined
-            : (process.env.ORIGIN ?? "http://127.0.0.1:8080"),
-      },
+      // Kit 3 fixes the app's origin at build time.
+      paths: { origin: process.env.ORIGIN ?? "http://127.0.0.1:8080" },
       csrf: { trustedOrigins: ["https://trusted.test"] },
       experimental: { remoteFunctions: true },
       compilerOptions: { experimental: { async: true } },
