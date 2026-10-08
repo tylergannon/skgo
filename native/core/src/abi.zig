@@ -1,4 +1,13 @@
 const std = @import("std");
+// The iOS library needs no Zig I/O runtime. Zig 0.17's default panic handler
+// pulls in std.Io.Threaded, whose Darwin process support cannot compile on iOS.
+// Keep safety checks and their diagnostic, using the host's libc stderr.
+pub const panic = std.debug.FullPanic(if (@import("builtin").os.tag == .ios) iosPanic else std.debug.defaultPanic);
+fn iosPanic(message: []const u8, _: ?usize) noreturn {
+    _ = std.c.write(2, message.ptr, message.len);
+    _ = std.c.write(2, "\n", 1);
+    @trap();
+}
 const core = @import("skgo");
 const d = core.devalue;
 const a = std.heap.c_allocator;
