@@ -12,6 +12,7 @@ import (
 func TestPrerenderCallbackTimeoutFailsBuildDespiteApplicationCatch(t *testing.T) {
 	t.Parallel()
 	fixture := cloneGeneratedInputsWeb(t, sharedPredicateInputsFixture(t))
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+layout.ts"), "export const csr = false;\n")
 	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+page.ts"), `import { blocked } from './timeout.remote';
 export const prerender = true;
 export async function load() {

@@ -180,6 +180,7 @@ func TestPrerenderInputsMalformedGoSourceFailsAndCleansPrivateDirectory(t *testi
 		t.Fatal(err)
 	}
 	fixture := cloneGeneratedInputsWeb(t, source)
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+layout.ts"), "export const csr = false;\n")
 	// Compiler-error input must be mutable and owned by this case.
 	if err := os.RemoveAll(filepath.Join(fixture, "internal")); err != nil {
 		t.Fatal(err)
@@ -232,6 +233,9 @@ func prepareInputsLifecycleFixture(t *testing.T, mode string) string {
 	writeFixtureFile(t, filepath.Join(fixture, ".lifecycle-mode"), mode)
 	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+layout.ts"), `import './site.remote';
 export const prerender = true;
+// These fixtures exercise the server build's ownership and drain paths.
+// Kit can omit a client bundle that none of their assertions consumes.
+export const csr = false;
 `)
 	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "site.remote.go"), `package routes
 import (

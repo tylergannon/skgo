@@ -218,6 +218,9 @@ var _ = skgo.Prerender(skgoRemoteInputs, skgo.PrerenderOptions{Inputs: fixtureIn
 // a bounded budget instead of multiplying whole-machine worker pools.
 func fixtureBuildEnv() []string {
 	env := replaceEnv(os.Environ(), "GOMAXPROCS", "1")
+	// Dependencies are immutable across fixtures. Reuse Node's compiled modules,
+	// while each build still loads and executes them in its own process.
+	env = replaceEnv(env, "NODE_COMPILE_CACHE", filepath.Join(sharedInputsTemp, "node-compile-cache"))
 	// Disposable executables exercise compiled Go code, not debugger metadata.
 	// Keep the real compiler/linker boundary while avoiding repeated DWARF output.
 	env = replaceEnv(env, "GOFLAGS", os.Getenv("GOFLAGS")+" -ldflags=-w")

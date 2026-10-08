@@ -2,7 +2,6 @@ package adapter
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,14 +16,6 @@ var minimalInputsTemp string
 var sharedInputsTemp string
 
 func TestMain(m *testing.M) {
-	// A fixture spends time waiting for child processes and group draining.
-	// Eight slots include three consumers waiting on one shared build; each
-	// child has one worker, so native pipelines still have bounded resources.
-	// m.Run parses an explicit -parallel flag afterward, preserving overrides.
-	if err := flag.Set("test.parallel", "8"); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 	var err error
 	sharedInputsTemp, err = os.MkdirTemp("", "skgo-adapter-shared-")
 	if err != nil {
@@ -74,6 +65,15 @@ func stageMinimalInputsBootstrap(fixture string) error {
 		}
 	}
 	dependencies := filepath.Join(root, "web", "node_modules")
+	// Kit's no-client-build path populates output/client from static assets.
+	// Include a real asset so its crawler has that directory even without JS.
+	static := filepath.Join(fixture, "web", "static")
+	if err := os.MkdirAll(static, 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(static, "fixture.txt"), []byte("fixture\n"), 0o644); err != nil {
+		return err
+	}
 	if _, err := os.Stat(filepath.Join(dependencies, ".bin", "vp")); err != nil {
 		return fmt.Errorf("pinned frontend dependencies are missing: %w", err)
 	}

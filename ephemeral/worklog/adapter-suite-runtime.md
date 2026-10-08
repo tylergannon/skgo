@@ -30,3 +30,27 @@ before the single Go generation so its route graph is current. Disposable Go
 fixture binaries need no DWARF metadata; `-ldflags=-w` keeps compilation,
 linking, runtime behavior and native stack traces while reducing repeated
 linker output. Overlay cases must preserve that flag when supplying GOFLAGS.
+
+Reject the package ordering and parallelism overrides: ordinary CI remained
+over the target and scheduling did not remove work. Restore the original
+package patterns and Go's default test concurrency.
+
+The TS/JS subprocess profiles put tens of milliseconds in GC, while the Go
+test parent sampled only 60ms CPU over 8.94s. A GOGC=400 trial demonstrated no
+improvement. Repeated native tool startup and compilation warrant attention
+before GC policy. Keep Node's compiled dependency modules in the package-owned
+temporary directory; children still execute independently and Node keys cached
+code by module contents. Do not carry this disposable cache between test runs.
+
+Kit 3.0.0's native build omits the client bundle when every node inherits
+csr=false. Server lifecycle/compiler/caught-timeout fixtures can use that
+mode, while preload and client-consumer assertions require their client build.
+Its no-client path needs a real static asset to populate output/client before
+the crawler walks it. The malformed-input fixture additionally needs the
+client-side remote registrations: disabling CSR hit metadata mismatch before
+the intended decode assertion, so keep its original client build.
+
+CI's mise action installs the pinned Node but export_path=false leaves the
+plain Go test recipe's child processes on the runner's Node. Run the same Go
+suite through the example's mise environment and use Go's -C to retain the
+root package patterns. Local runtime measurements must likewise use the pin.
