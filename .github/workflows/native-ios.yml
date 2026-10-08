@@ -5,8 +5,12 @@ on:
     paths:
       - '.github/workflows/native-ios.yml'
       - 'native/**'
-      - 'example/native/**'
-      - 'example/internal/skgo/config.go'
+      - 'example/**'
+      - 'internal/**'
+      - '**/*.go'
+      - '**/go.mod'
+      - '**/go.sum'
+      - 'go.work*'
 
 concurrency:
   group: native-ios-${{ github.ref }}
