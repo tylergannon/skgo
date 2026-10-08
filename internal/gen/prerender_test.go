@@ -64,7 +64,7 @@ func TestPrerenderGoLoadFailureNamesAuthoredRoute(t *testing.T) {
 	}
 }
 
-func TestPrerenderInputsGenerateLazyTypedProducerAndNoArgumentUndefined(t *testing.T) {
+func TestPrerenderInputsGenerateGoProducerAndThrowingStubs(t *testing.T) {
 	t.Parallel()
 	root, cfg := foreignFixture(t, `package data
 
@@ -105,14 +105,14 @@ var (
 	}
 	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.ts")
 	for _, want := range []string{
-		"import { remoteInputs as $skgoRemoteInputs } from '@skgo/sveltekit-adapter/prerender';",
-		"inputs: () => $skgoRemoteInputs<string>(\"src/data/data.remote.ts\", \"build\")",
-		"inputs: () => $skgoRemoteInputs<void>(\"src/data/data.remote.ts\", \"noArgument\")",
+		"export const build = prerender('unchecked', async (_arg: string): Promise<string> => unimplemented());",
+		"export const noArgument = prerender(async (): Promise<string> => unimplemented());",
 	} {
 		if !strings.Contains(stub, want) {
 			t.Errorf("generated remote module omits %q:\n%s", want, stub)
 		}
 	}
+	assertThrowingSource(t, stub, false)
 	command := readFixtureFile(t, root, "app/generated/prerender/skgo_gen.go")
 	if !strings.Contains(command, "generated.Remotes()") {
 		t.Fatalf("generated build command omits remote registrations:\n%s", command)
@@ -124,7 +124,7 @@ var (
 	}
 }
 
-func TestJavaScriptPrerenderInputCallbackCarriesProducerElementType(t *testing.T) {
+func TestJavaScriptPrerenderStubCarriesArgumentType(t *testing.T) {
 	t.Parallel()
 	root, cfg := foreignFixture(t, `package data
 
@@ -142,9 +142,10 @@ var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: inputs})
 		t.Fatalf("Run: %v", err)
 	}
 	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.js")
-	if !strings.Contains(stub, "@type {() => Promise<string[]>}") {
-		t.Fatalf("generated JavaScript callback lost its concrete input type:\n%s", stub)
+	if !strings.Contains(stub, "@type {import('$app/server').RemotePrerenderFunction<string, string>}") {
+		t.Fatalf("generated JavaScript stub lost its concrete input type:\n%s", stub)
 	}
+	assertThrowingSource(t, stub, true)
 	cmd := exec.Command("go", "build", "./...")
 	cmd.Dir = filepath.Join(root, "app")
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -446,7 +447,7 @@ func TestANamedLayoutResetExcludesLoadsOutsideKitsBranch(t *testing.T) {
 	}
 }
 
-func TestTheLoadStubBridgesAPrerenderCall(t *testing.T) {
+func TestTheLoadStubContainsOnlyTypedThrowingBody(t *testing.T) {
 	t.Parallel()
 	root, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/account/page.server.go": strings.ReplaceAll(loadSource, "LayoutRequestEvent", "PageRequestEvent"),
@@ -457,15 +458,15 @@ func TestTheLoadStubBridgesAPrerenderCall(t *testing.T) {
 	}
 	stub := readFixtureFile(t, root, "app/web/src/routes/account/+page.server.ts")
 	for _, want := range []string{
-		"import { building } from '$app/env'",
-		"skgoPrerenderLoad",
-		`buildLoad("src/routes/account/+page.server.ts", "src/routes/account/page.server.go", event)`,
-		"event.url.pathname",
+		"import type { RequestEvent } from '@sveltejs/kit';",
+		"export const load = async (event: RequestEvent): Promise<{ message: string }>",
+		"throw new Error('skgo: implemented in Go')",
 	} {
 		if !strings.Contains(stub, want) {
 			t.Errorf("stub does not contain %q:\n%s", want, stub)
 		}
 	}
+	assertThrowingSource(t, stub, false)
 }
 
 func TestOptionExamplesInCommentsAndStringsAreIgnored(t *testing.T) {

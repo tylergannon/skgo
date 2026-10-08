@@ -98,9 +98,20 @@ func (a *app) writeLoadStubs() error {
 
 		var b strings.Builder
 		b.WriteString(tsHeader)
-		if load != nil {
-			b.WriteString("import { building } from '$app/env';\n")
-			b.WriteString("import { error, redirect } from '@sveltejs/kit';\n")
+		if !a.cfg.Language.JavaScript() {
+			var kitTypes []string
+			if load != nil {
+				kitTypes = append(kitTypes, "RequestEvent")
+			}
+			for _, action := range actions[module] {
+				if action.failure != nil {
+					kitTypes = append(kitTypes, "ActionFailure")
+					break
+				}
+			}
+			if len(kitTypes) > 0 {
+				fmt.Fprintf(&b, "import type { %s } from '@sveltejs/kit';\n", strings.Join(kitTypes, ", "))
+			}
 		}
 
 		if a.cfg.Language.JavaScript() {
@@ -157,28 +168,6 @@ func (a *app) writeLoadStubs() error {
 		b.WriteString("\n")
 
 		if load != nil {
-			b.WriteString("// Go answers this load at runtime. Kit calls it during prerendering,\n")
-			b.WriteString("// when the adapter's build-only Go process supplies its result.\n")
-			if a.cfg.Language.JavaScript() {
-				b.WriteString("/**\n * @param {string} route\n * @returns {never}\n */\nconst unimplemented = (route) => {\n")
-			} else {
-				b.WriteString("const unimplemented = (route: string): never => {\n")
-			}
-			b.WriteString("\tthrow new Error('skgo: implemented in Go');\n};\n\n")
-			if a.cfg.Language.JavaScript() {
-				b.WriteString("/**\n * @param {string} module\n * @param {string} source\n * @param {import('@sveltejs/kit').RequestEvent} event\n * @returns {Promise<any>}\n */\nconst buildLoad = async (module, source, event) => {\n")
-				b.WriteString("\tconst bridge = /** @type {{ skgoPrerenderLoad?: (module: string, source: string, event: import('@sveltejs/kit').RequestEvent) => Promise<any> } | undefined} */ (event.platform)?.skgoPrerenderLoad;\n")
-			} else {
-				b.WriteString("const buildLoad = async (module: string, source: string, event: import('@sveltejs/kit').RequestEvent): Promise<any> => {\n")
-				b.WriteString("\tconst bridge = (event.platform as { skgoPrerenderLoad?: (module: string, source: string, event: import('@sveltejs/kit').RequestEvent) => Promise<any> } | undefined)?.skgoPrerenderLoad;\n")
-			}
-			b.WriteString("\tif (!bridge) throw new Error('skgo: prerender Go load bridge unavailable');\n")
-			b.WriteString("\tconst answer = await bridge(module, source, event);\n")
-			b.WriteString("\tif (answer.redirect) redirect(answer.redirect.status, answer.redirect.location);\n")
-			b.WriteString("\tif (answer.error) error(answer.error.status, answer.error.message);\n")
-			b.WriteString("\tif (answer.data === undefined) throw new Error('skgo: prerender Go load returned no data');\n")
-			b.WriteString("\treturn answer.data;\n};\n\n")
-
 			var parts []string
 			for _, field := range loadFields {
 				optional := ""
@@ -196,9 +185,9 @@ func (a *app) writeLoadStubs() error {
 				// writer rewrites an `@type` on an exported function into a
 				// `@param`, which would leave the body's `never` as the load's
 				// return type and erase the data a page consumes.
-				fmt.Fprintf(&b, "/**\n * @param {import('@sveltejs/kit').RequestEvent} event\n * @returns {Promise<%s>}\n */\nexport const load = async (event) => building ? buildLoad(%q, %q, event) : unimplemented(event.url.pathname);\n", shape, load.module, load.source)
+				fmt.Fprintf(&b, "/**\n * @param {import('@sveltejs/kit').RequestEvent} event\n * @returns {Promise<%s>}\n */\nexport const load = async (event) => { throw new Error('skgo: implemented in Go'); };\n", shape)
 			} else {
-				fmt.Fprintf(&b, "export const load = async (event: import('@sveltejs/kit').RequestEvent): Promise<%s> => building ? buildLoad(%q, %q, event) : unimplemented(event.url.pathname);\n", shape, load.module, load.source)
+				fmt.Fprintf(&b, "export const load = async (event: RequestEvent): Promise<%s> => { throw new Error('skgo: implemented in Go'); };\n", shape)
 			}
 		}
 		if len(actions[module]) > 0 {
@@ -238,7 +227,11 @@ func (a *app) writeLoadStubs() error {
 					if e != nil {
 						return e
 					}
-					shape += " | import('@sveltejs/kit').ActionFailure<" + failureShape + ">"
+					failureType := "ActionFailure"
+					if a.cfg.Language.JavaScript() {
+						failureType = "import('@sveltejs/kit').ActionFailure"
+					}
+					shape += " | " + failureType + "<" + failureShape + ">"
 				}
 				if a.cfg.Language.JavaScript() {
 					fmt.Fprintf(&b, "\t/** @type {(event: { request: Request }) => Promise<%s>} */\n\t%s: async (_event) => { throw new Error('skgo: action implemented in Go'); },\n", shape, action.name)

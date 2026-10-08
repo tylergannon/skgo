@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -14,6 +15,7 @@ type productionFixture struct {
 	app         string
 	tests       string
 	buildOutput string
+	sources     map[string][]byte
 }
 
 var preparedProductionFixture = sync.OnceValues(func() (productionFixture, error) {
@@ -97,6 +99,22 @@ func buildProductionFixture(fixture productionFixture, err error) (productionFix
 		return productionFixture{}, fmt.Errorf("go generate ./...: %w\n%s", err, output)
 	}
 	ui := filepath.Join(fixture.app, "ui")
+	fixture.sources = map[string][]byte{}
+	if err := filepath.WalkDir(filepath.Join(ui, "src"), func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err == nil {
+			fixture.sources[path] = data
+		}
+		return err
+	}); err != nil {
+		return productionFixture{}, err
+	}
 	build := exec.Command(filepath.Join(ui, "node_modules", ".bin", "vp"), "build")
 	build.Dir = ui
 	build.Env = append(os.Environ(), "ORIGIN=http://127.0.0.1:8080")
@@ -159,5 +177,48 @@ func (f productionFixture) run(t *testing.T, name string) {
 		!strings.Contains(string(output), "--- PASS: "+name+" (") ||
 		strings.Contains(string(output), "--- SKIP:") {
 		t.Fatalf("%s did not execute and pass without skips:\n%s", name, output)
+	}
+}
+
+func testAdapterOwnedPrerenderModules(t *testing.T) {
+	fixture := requireProductionFixture(t)
+	ui := filepath.Join(fixture.app, "ui")
+	if after := checkSourceSnapshot(t, filepath.Join(ui, "src")); !reflect.DeepEqual(fixture.sources, after) {
+		t.Fatal("Kit build changed application source")
+	}
+	for path, data := range fixture.sources {
+		if !strings.HasPrefix(string(data), tsHeader) || (!strings.HasSuffix(path, ".ts") && !strings.HasSuffix(path, ".js")) {
+			continue
+		}
+		assertThrowingSource(t, string(data), strings.HasSuffix(path, ".js"))
+	}
+	if out, err := runGoGenerate(fixture.app); err != nil {
+		t.Fatalf("regenerate: %v\n%s", err, out)
+	}
+	if after := checkSourceSnapshot(t, filepath.Join(ui, "src")); !reflect.DeepEqual(fixture.sources, after) {
+		t.Fatal("regeneration changed application source")
+	}
+	server := checkSourceSnapshot(t, filepath.Join(ui, ".svelte-kit/output/server"))
+	for _, symbol := range []string{"skgoPrerenderLoad", "skgoPrerenderEndpoint", "requestHandle"} {
+		found := false
+		for path, data := range server {
+			if strings.HasSuffix(path, ".js") && strings.Contains(string(data), symbol) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Kit build SSR lacks %s", symbol)
+		}
+	}
+	for path, data := range checkSourceSnapshot(t, filepath.Join(ui, "build/client"), filepath.Join(ui, "build/ssr")) {
+		if !strings.HasSuffix(path, ".js") {
+			continue
+		}
+		for _, symbol := range []string{"skgoPrerenderLoad", "skgoPrerenderEndpoint", "skgoPrerenderRemote", "skgoRequestHandle"} {
+			if strings.Contains(string(data), symbol) {
+				t.Errorf("build callback %s leaked into %s", symbol, path)
+			}
+		}
 	}
 }

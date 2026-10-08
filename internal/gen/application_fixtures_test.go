@@ -18,6 +18,7 @@ func TestProductionApplication(t *testing.T) {
 	if err := ready(); err != nil {
 		t.Fatal(err)
 	}
+	t.Run("AdapterOwnedPrerenderModules", testAdapterOwnedPrerenderModules)
 	t.Run("TypedLoadMatchersPrerenderNamedGoValues", testTypedLoadMatchersPrerenderNamedGoValues)
 	t.Run("GoPagePrerenderRedirectBuildsKitsNativeArtifact", testGoPagePrerenderRedirectBuildsKitsNativeArtifact)
 	t.Run("RealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse", testRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse)

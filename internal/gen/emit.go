@@ -38,8 +38,6 @@ func (a *app) writeStubs() error {
 		declaredBy := map[string]*types.Package{}
 		var transported []string
 		var kinds []string
-		hasPrerender := false
-		hasPrerenderInputs := false
 		for _, fn := range fns {
 			for _, custom := range a.transportedOf(fn) {
 				transported = appendUnique(transported, custom.Obj().Name())
@@ -66,12 +64,7 @@ func (a *app) writeStubs() error {
 			case kindForm:
 				kinds = appendUnique(kinds, "form")
 			case kindPrerender:
-				hasPrerender = true
-				if fn.inputs != "" {
-					hasPrerenderInputs = true
-				}
 				kinds = appendUnique(kinds, "prerender")
-				kinds = appendUnique(kinds, "getRequestEvent")
 			default:
 				kinds = appendUnique(kinds, "query")
 			}
@@ -81,9 +74,6 @@ func (a *app) writeStubs() error {
 		var b strings.Builder
 		b.WriteString(tsHeader)
 		fmt.Fprintf(&b, "import { %s } from '$app/server';\n", strings.Join(kinds, ", "))
-		if hasPrerenderInputs {
-			b.WriteString("import { remoteInputs as $skgoRemoteInputs } from '@skgo/sveltekit-adapter/prerender';\n")
-		}
 
 		if a.cfg.Language.JavaScript() {
 			// A JavaScript module has no `import type` or `export type`, and a
@@ -150,25 +140,13 @@ func (a *app) writeStubs() error {
 			}
 		}
 
-		if hasPrerender {
-			b.WriteString("\n// Application bodies stay in Go. Runtime stubs throw; the prerender\n")
-			b.WriteString("// callback reaches Go only through the adapter's build bridge.\n")
-		} else {
-			b.WriteString("\n// Every body throws. These functions are implemented in Go, and skgo\n")
-			b.WriteString("// answers their endpoints itself, so anything that renders in the browser\n")
-			b.WriteString("// is proof the Go handler replied rather than this module.\n")
-		}
+		b.WriteString("\n// Every body throws. These functions are implemented in Go, and skgo\n")
+		b.WriteString("// answers their endpoints itself, so anything that renders in the browser\n")
+		b.WriteString("// is proof the Go handler replied rather than this module.\n")
 		if a.cfg.Language.JavaScript() {
 			b.WriteString("const unimplemented = () => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
 		} else {
 			b.WriteString("const unimplemented = (): never => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
-		}
-		if hasPrerender {
-			if a.cfg.Language.JavaScript() {
-				b.WriteString("\n/**\n * @param {string} module\n * @param {string} name\n * @param {unknown} arg\n */\nconst prerenderFromGo = (module, name, arg) => {\n\tconst event = getRequestEvent();\n\t/** @type {any} */ const platform = event.platform;\n\treturn platform?.skgoPrerenderRemote?.(module, name, arg, event) ?? unimplemented();\n};\n")
-			} else {
-				b.WriteString("\nconst prerenderFromGo = (module: string, name: string, arg: unknown): Promise<any> => {\n\tconst event = getRequestEvent();\n\tconst bridge = (event.platform as { skgoPrerenderRemote?: (module: string, name: string, arg: unknown, event: import('@sveltejs/kit').RequestEvent) => Promise<any> } | undefined)?.skgoPrerenderRemote;\n\treturn bridge?.(module, name, arg, event) ?? unimplemented();\n};\n")
-			}
 		}
 
 		for _, fn := range fns {
@@ -209,18 +187,14 @@ func (a *app) stubSignature(fn *remoteFn) (string, error) {
 		return "", err
 	}
 	if fn.kind == kindPrerender {
-		options, err := a.prerenderInputOptions(fn)
-		if err != nil {
-			return "", err
-		}
 		if fn.in == nil {
-			return fmt.Sprintf("export const %s = prerender(async (): Promise<%s> => prerenderFromGo(%q, %q, undefined)%s);\n", fn.name, out.expr, fn.module, fn.name, options), nil
+			return fmt.Sprintf("export const %s = prerender(async (): Promise<%s> => unimplemented());\n", fn.name, out.expr), nil
 		}
 		in, err := a.project(fn.in)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("export const %s = prerender('unchecked', async (arg: %s): Promise<%s> => prerenderFromGo(%q, %q, arg)%s);\n", fn.name, in.expr, out.expr, fn.module, fn.name, options), nil
+		return fmt.Sprintf("export const %s = prerender('unchecked', async (_arg: %s): Promise<%s> => unimplemented());\n", fn.name, in.expr, out.expr), nil
 	}
 
 	call := "query"
@@ -290,18 +264,14 @@ func (a *app) stubSignatureJS(fn *remoteFn) (string, error) {
 		return "", err
 	}
 	if fn.kind == kindPrerender {
-		options, err := a.prerenderInputOptions(fn)
-		if err != nil {
-			return "", err
-		}
 		if fn.in == nil {
-			return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<void, %s>} */\nexport const %s = prerender(async () => prerenderFromGo(%q, %q, undefined)%s);\n", out.expr, fn.name, fn.module, fn.name, options), nil
+			return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<void, %s>} */\nexport const %s = prerender(async () => unimplemented());\n", out.expr, fn.name), nil
 		}
 		in, err := a.project(fn.in)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<%s, %s>} */\nexport const %s = prerender('unchecked', async (arg) => prerenderFromGo(%q, %q, arg)%s);\n", in.expr, out.expr, fn.name, fn.module, fn.name, options), nil
+		return fmt.Sprintf("/** @type {import('$app/server').RemotePrerenderFunction<%s, %s>} */\nexport const %s = prerender('unchecked', async (_arg) => unimplemented());\n", in.expr, out.expr, fn.name), nil
 	}
 
 	remoteType, call := "RemoteQueryFunction", "query"
@@ -337,24 +307,6 @@ func (a *app) stubSignatureJS(fn *remoteFn) (string, error) {
 
 	return fmt.Sprintf("/** @type {import('$app/server').%s<%s>} */\nexport const %s = %s;\n",
 		remoteType, typeArgs, fn.name, invocation), nil
-}
-
-func (a *app) prerenderInputOptions(fn *remoteFn) (string, error) {
-	if fn.inputs == "" {
-		return "", nil
-	}
-	inType := "void"
-	if fn.in != nil {
-		projected, err := a.project(fn.in)
-		if err != nil {
-			return "", err
-		}
-		inType = projected.expr
-	}
-	if a.cfg.Language.JavaScript() {
-		return fmt.Sprintf(", { inputs: /** @type {() => Promise<%s[]>} */ (() => $skgoRemoteInputs(%q, %q)) }", inType, fn.module, fn.name), nil
-	}
-	return fmt.Sprintf(", { inputs: () => $skgoRemoteInputs<%s>(%q, %q) }", inType, fn.module, fn.name), nil
 }
 
 func (a *app) depsOf(fn *remoteFn) []*types.Named {
@@ -1070,8 +1022,23 @@ type remoteList struct {
 	// Endpoints names, per kit route id, the methods skgo generated an export
 	// for. Kit's build reports the same list for every route it compiled a
 	// `+server.ts` into, so the adapter can compare the two literally.
-	Endpoints map[string][]string       `json:"endpoints"`
-	Prerender *prerenderCommandLocation `json:"prerender,omitempty"`
+	Endpoints map[string][]string          `json:"endpoints"`
+	Prerender *prerenderCommandLocation    `json:"prerender,omitempty"`
+	Build     map[string]*buildDeclaration `json:"build"`
+}
+
+// buildDeclaration describes Go declarations whose bodies Kit invokes during
+// its Node build. It carries no application JavaScript or wire-type copies.
+type buildDeclaration struct {
+	Source   string                   `json:"source,omitempty"`
+	Remotes  []buildRemoteDeclaration `json:"remotes,omitempty"`
+	Endpoint bool                     `json:"endpoint,omitempty"`
+	Hook     bool                     `json:"hook,omitempty"`
+}
+type buildRemoteDeclaration struct {
+	Name     string `json:"name"`
+	Argument bool   `json:"argument"`
+	Inputs   bool   `json:"inputs"`
 }
 
 type prerenderCommandLocation struct {
@@ -1080,7 +1047,7 @@ type prerenderCommandLocation struct {
 }
 
 func (a *app) writeRemoteList() error {
-	list := remoteList{Remotes: []string{}, Loads: []string{}, Actions: []string{}, Endpoints: a.endpointList()}
+	list := remoteList{Remotes: []string{}, Loads: []string{}, Actions: []string{}, Endpoints: a.endpointList(), Build: map[string]*buildDeclaration{}}
 	if a.hasPrerenderWork() {
 		root, err := filepath.Rel(a.cfg.Web, a.hostDir)
 		if err != nil {
@@ -1092,11 +1059,28 @@ func (a *app) writeRemoteList() error {
 		}
 		list.Prerender = &prerenderCommandLocation{Root: filepath.ToSlash(root), Package: "./" + filepath.ToSlash(pkg)}
 	}
+	declaration := func(module string) *buildDeclaration {
+		if list.Build[module] == nil {
+			list.Build[module] = &buildDeclaration{}
+		}
+		return list.Build[module]
+	}
+	if a.hasPrerenderWork() {
+		declaration("src/hooks.server" + a.cfg.Language.ext()).Hook = true
+	}
+	for _, ep := range a.endpoints {
+		declaration(ep.module).Endpoint = true
+	}
 	for _, fn := range a.remotes {
+		if fn.kind == kindPrerender {
+			d := declaration(fn.module)
+			d.Remotes = append(d.Remotes, buildRemoteDeclaration{Name: fn.name, Argument: fn.in != nil, Inputs: fn.inputs != ""})
+		}
 		list.Remotes = append(list.Remotes, kithash.Kit(fn.module)+"/"+fn.name)
 	}
 	for _, load := range a.loads {
 		list.Loads = append(list.Loads, load.module)
+		declaration(load.module).Source = load.source
 	}
 	for _, action := range a.actions {
 		list.Actions = append(list.Actions, action.module)

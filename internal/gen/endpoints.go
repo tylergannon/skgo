@@ -103,8 +103,10 @@ func (a *app) writeEndpointStubs() error {
 	for _, stub := range stubs {
 		var b strings.Builder
 		b.WriteString(tsHeader)
-		b.WriteString("import { building } from '$app/env';\n")
-		b.WriteString("// Runtime bodies throw. Kit build callbacks forward to Go.\n")
+		if !a.cfg.Language.JavaScript() {
+			b.WriteString("import type { RequestHandler } from '@sveltejs/kit';\n")
+		}
+		b.WriteString("// Every body throws. These handlers are implemented in Go.\n")
 		b.WriteString("// Every response is produced by the Go handler rather than\n")
 		b.WriteString("// this module. Kit reads the export names to learn which methods the route\n")
 		b.WriteString("// answers.\n")
@@ -118,21 +120,15 @@ func (a *app) writeEndpointStubs() error {
 			b.WriteString("const unimplemented = (): never => {\n\tthrow new Error('skgo: implemented in Go');\n};\n")
 		}
 
-		if a.cfg.Language.JavaScript() {
-			b.WriteString("/** @param {import('@sveltejs/kit').RequestEvent} event */\nconst fromGo = (event) => {\n const platform = /** @type {any} */ (event.platform);\n return building ? platform?.skgoPrerenderEndpoint?.(event) ?? unimplemented() : unimplemented();\n};\n")
-		} else {
-			b.WriteString("const fromGo = (event: import('@sveltejs/kit').RequestEvent): Promise<Response> => {\n const platform = event.platform as { skgoPrerenderEndpoint?: (event: import('@sveltejs/kit').RequestEvent) => Promise<Response> } | undefined;\n return building ? platform?.skgoPrerenderEndpoint?.(event) ?? unimplemented() : unimplemented();\n};\n")
-		}
-
 		for _, method := range endpointMethodOrder {
 			for _, ep := range byStub[stub] {
 				if ep.method != method {
 					continue
 				}
 				if a.cfg.Language.JavaScript() {
-					fmt.Fprintf(&b, "\n/** @type {import('@sveltejs/kit').RequestHandler} */\nexport const %s = fromGo;\n", method)
+					fmt.Fprintf(&b, "\n/** @type {import('@sveltejs/kit').RequestHandler} */\nexport const %s = unimplemented;\n", method)
 				} else {
-					fmt.Fprintf(&b, "\nexport const %s = fromGo;\n", method)
+					fmt.Fprintf(&b, "\nexport const %s: RequestHandler = unimplemented;\n", method)
 				}
 			}
 		}

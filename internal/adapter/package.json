@@ -44,6 +44,7 @@
 		"skgo-adapter/identity.js",
 		"skgo-adapter/polyfill.js",
 		"skgo-adapter/prerender-csp.js",
+		"skgo-adapter/prerender-modules.js",
 		"skgo-adapter/prerender.js",
 		"skgo-adapter/prerender.d.ts"
 	],

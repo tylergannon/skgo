@@ -1,0 +1,1 @@
+/adversarial-review Continue the pending review. Inspect the current implementation and proof against the same authoritative sources. Write the complete review to ephemeral/reviews/20261007-adapter-owned-prerender-implementation-round-03.md. Do not edit any other files.
