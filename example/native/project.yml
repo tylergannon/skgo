@@ -35,8 +35,23 @@ targets:
         TARGETED_DEVICE_FAMILY: '1,2'
     dependencies:
       - target: SKGoNative
+  SKGoNativeProbeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: iosTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tylergannon.skgo.nativeprobe.uitests
+        SWIFT_VERSION: '6.0'
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: SKGoNativeProbe
 schemes:
   SKGoNativeProbe:
     build:
       targets:
         SKGoNativeProbe: all
+    test:
+      targets:
+        - SKGoNativeProbeUITests
