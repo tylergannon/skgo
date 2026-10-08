@@ -234,3 +234,11 @@ extend a modest optimization into unrelated generator/toolchain behavior.
 Native independent controls did establish that trimpath itself preserves
 changed-source invalidation, compiler diagnostics and private-directory drain;
 the rejection is whole-suite compatibility and insufficient measured benefit.
+
+The server-only refusal does not consume the shared successful server-hook
+build. Waiting for that build first serialized two independent native claims;
+run the private client refusal before awaiting the immutable success instead.
+The full adapter retained 44 passing named events. Independently replacing
+only the unsafe page with a public literal made the native build succeed and
+the original rejection assertion fail; the restored test passed both filename
+and leak diagnostics and the shared server-hook success, with zero skips.
