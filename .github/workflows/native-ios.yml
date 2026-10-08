@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   simulator:
-    runs-on: macos-15-arm64
+    runs-on: macos-15
     timeout-minutes: 25
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
