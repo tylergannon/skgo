@@ -123,7 +123,8 @@ fn allocationCase(allocator: std.mem.Allocator) !void {
     try cache.reset();
 }
 test "cache allocation failures release keys, snapshots, pending tickets and result buffers" {
-    try std.testing.checkAllAllocationFailures(a, allocationCase, .{});
+    var no_growth = std.testing.FailingAllocator.init(a, .{ .resize_fail_index = 0 });
+    try std.testing.checkAllAllocationFailures(no_growth.allocator(), allocationCase, .{});
 }
 
 test "command updates fulfill query requests, explicit ignores preserve values, unhandled keys fail" {
