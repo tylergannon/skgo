@@ -59,13 +59,9 @@ func (a *app) writePrerenderHook() error {
 	if err := removeGeneratedArtifact(a.cfg, filepath.Join(a.cfg.Web, "src", "hooks.server"+other)); err != nil {
 		return err
 	}
-	annotation := "/** @type {import('@sveltejs/kit/hooks').Handle} */\nexport const handle"
-	fetchAnnotation := "/** @type {import('@sveltejs/kit/hooks').HandleFetch} */\nexport const handleFetch"
-	if !a.cfg.Language.JavaScript() {
-		annotation = "export const handle: import('@sveltejs/kit/hooks').Handle"
-		fetchAnnotation = "export const handleFetch: import('@sveltejs/kit/hooks').HandleFetch"
-	}
-	return a.write(filepath.Join(a.cfg.Web, "src", "hooks.server"+extension), tsHeader+"import { building } from '$app/env';\nimport { requestHandle, requestFetch } from '@skgo/sveltekit-adapter/prerender';\n\n"+annotation+" = ({ event, resolve }) => building ? requestHandle(event, resolve) : resolve(event);\n"+fetchAnnotation+" = (input) => building ? requestFetch(input) : input.fetch(input.request);\n")
+	// Kit discovers hooks from a physical entry. The adapter supplies its
+	// exports only in the Node build environment.
+	return a.write(filepath.Join(a.cfg.Web, "src", "hooks.server"+extension), tsHeader+"export {};\n")
 }
 
 func (a *app) hasPrerenderWork() bool {

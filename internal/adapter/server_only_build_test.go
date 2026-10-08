@@ -54,7 +54,7 @@ import { defineConfig } from 'vite-plus';
 import skgo from '@skgo/sveltekit-adapter';
 export default defineConfig({ plugins: [sveltekit({ adapter: skgo(), paths: { origin: 'http://127.0.0.1:8080' } })] });
 `)
-	write("skgo.remotes.json", `{"remotes":[],"loads":[],"actions":[],"endpoints":{}}`)
+	write("skgo.remotes.json", `{"remotes":[],"loads":[],"actions":[],"endpoints":{},"build":{}}`)
 	write("src/app.html", `<!doctype html><html lang="en"><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>`)
 	write("src/lib/server/secret.ts", `export const receipt = 'server-only receipt';`)
 	write("src/hooks.server.ts", `import { receipt } from './lib/server/secret';

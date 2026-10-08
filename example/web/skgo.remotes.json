@@ -114,5 +114,136 @@
   "prerender": {
     "root": "..",
     "package": "./internal/skgo/prerender"
+  },
+  "build": {
+    "src/hooks.server.ts": {
+      "hook": true
+    },
+    "src/routes/(marketing)/pricing/+page.server.ts": {
+      "source": "src/routes/(marketing)/pricing/page.server.go"
+    },
+    "src/routes/+layout.server.ts": {
+      "source": "src/routes/layout.server.go"
+    },
+    "src/routes/about/+page.server.ts": {
+      "source": "src/routes/about/page.server.go"
+    },
+    "src/routes/about/about.remote.ts": {
+      "remotes": [
+        {
+          "name": "buildReceipt",
+          "argument": true,
+          "inputs": true
+        }
+      ]
+    },
+    "src/routes/account/+layout.server.ts": {
+      "source": "src/routes/account/layout.server.go"
+    },
+    "src/routes/account/+page.server.ts": {
+      "source": "src/routes/account/page.server.go"
+    },
+    "src/routes/account/orders/+page.server.ts": {
+      "source": "src/routes/account/orders/page.server.go"
+    },
+    "src/routes/account/reruns/[slug]/+page.server.ts": {
+      "source": "src/routes/account/reruns/[slug]/page.server.go"
+    },
+    "src/routes/account/statement/+page.server.ts": {
+      "source": "src/routes/account/statement/page.server.go"
+    },
+    "src/routes/actions/+page.server.ts": {
+      "source": "src/routes/actions/page.server.go"
+    },
+    "src/routes/actions/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/actions/cross/receive/+page.server.ts": {
+      "source": "src/routes/actions/cross/receive/page.server.go"
+    },
+    "src/routes/actions/default/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/actions/default/saved/+page.server.ts": {
+      "source": "src/routes/actions/default/saved/page.server.go"
+    },
+    "src/routes/actions/options/no-client/+page.server.ts": {
+      "source": "src/routes/actions/options/no-client/page.server.go"
+    },
+    "src/routes/actions/options/no-ssr/+page.server.ts": {
+      "source": "src/routes/actions/options/no-ssr/page.server.go"
+    },
+    "src/routes/actions/profiles/[profile]/+page.server.ts": {
+      "source": "src/routes/actions/profiles/[profile]/page.server.go"
+    },
+    "src/routes/actions/signed-in/+page.server.ts": {
+      "source": "src/routes/actions/signed-in/page.server.go"
+    },
+    "src/routes/api/fatal/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/api/replay-count/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/api/replay/[kind]/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/api/request-fetch/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/api/todos/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/async-ssr/control/[group]/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/destinations/+page.server.ts": {
+      "source": "src/routes/destinations/page.server.go"
+    },
+    "src/routes/empty/+page.server.ts": {
+      "source": "src/routes/empty/page.server.go"
+    },
+    "src/routes/error/expected/+page.server.ts": {
+      "source": "src/routes/error/expected/page.server.go"
+    },
+    "src/routes/error/unexpected/+page.server.ts": {
+      "source": "src/routes/error/unexpected/page.server.go"
+    },
+    "src/routes/event-layout/[section]/+layout.server.ts": {
+      "source": "src/routes/event-layout/[section]/layout.server.go"
+    },
+    "src/routes/go-dev/+page.server.ts": {
+      "source": "src/routes/go-dev/page.server.go"
+    },
+    "src/routes/go-dev/endpoint/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/invoices/+page.server.ts": {
+      "source": "src/routes/invoices/page.server.go"
+    },
+    "src/routes/middleware/+page.server.ts": {
+      "source": "src/routes/middleware/page.server.go"
+    },
+    "src/routes/middleware/[slug]/+page.server.ts": {
+      "source": "src/routes/middleware/[slug]/page.server.go"
+    },
+    "src/routes/prerender/[slug]/+page.server.ts": {
+      "source": "src/routes/prerender/[slug]/page.server.go"
+    },
+    "src/routes/request-fetch/+page.server.ts": {
+      "source": "src/routes/request-fetch/page.server.go"
+    },
+    "src/routes/shadow/[...rest]/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/stream/+page.server.ts": {
+      "source": "src/routes/stream/page.server.go"
+    },
+    "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts": {
+      "source": "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/page.server.go"
+    },
+    "src/routes/typed-load/[number=Order]/+page.server.ts": {
+      "source": "src/routes/typed-load/[number=Order]/page.server.go"
+    }
   }
 }

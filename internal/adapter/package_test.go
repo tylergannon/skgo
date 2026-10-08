@@ -51,6 +51,7 @@ var packageFiles = []string{
 	"skgo-adapter/identity.js",
 	"skgo-adapter/polyfill.js",
 	"skgo-adapter/prerender-csp.js",
+	"skgo-adapter/prerender-modules.js",
 	"skgo-adapter/prerender.d.ts",
 	"skgo-adapter/prerender.js",
 }

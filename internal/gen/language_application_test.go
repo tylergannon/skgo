@@ -31,7 +31,7 @@ var _=skgo.Load(page)
 	if err := Run(cfg); err != nil {
 		t.Fatal(err)
 	}
-	t.Run("TypeScriptLoadBridge", func(t *testing.T) { testTypeScriptLoadBridge(t, root) })
+	t.Run("TypeScriptLoadStub", func(t *testing.T) { testTypeScriptLoadStub(t, root) })
 	for _, name := range []string{"data.remote.ts", "types.ts"} {
 		if _, err := os.Stat(filepath.Join(cfg.Web, "src/data", name)); err != nil {
 			t.Fatalf("missing TypeScript prerequisite %s: %v", name, err)
@@ -51,9 +51,10 @@ var _=skgo.Load(page)
 	t.Run("JavaScriptLoadActions", func(t *testing.T) { testJavaScriptLoadActions(t, root) })
 	t.Run("JavaScriptTransportedLoad", func(t *testing.T) { testJavaScriptTransportedLoad(t, root) })
 	stub := readFixtureFile(t, root, "app/web/src/routes/about/+page.server.js")
-	if !strings.Contains(stub, `buildLoad("src/routes/about/+page.server.js", "src/routes/about/page.server.go", event)`) {
-		t.Fatalf("prerendered JavaScript load lost its build bridge: %s", stub)
+	if !strings.Contains(stub, `export const load = async (event) => { throw new Error('skgo: implemented in Go'); };`) {
+		t.Fatalf("prerendered JavaScript load lost its throwing stub: %s", stub)
 	}
+	assertThrowingSource(t, stub, true)
 	if got, err := os.ReadFile(authored); err != nil || string(got) != sentinel {
 		t.Fatalf("language switch changed authored file: %s %v", got, err)
 	}

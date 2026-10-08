@@ -1,0 +1,5 @@
+{
+  "Replace": {
+    "internal/gen/adapter_load_research_test.go": "ephemeral/research/adapter_load_research_test.go"
+  }
+}

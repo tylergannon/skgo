@@ -20,12 +20,16 @@ func assertAuthoredInputsIdentifier(t *testing.T, fixture, language string) {
 		t.Fatalf("generated %s remote stub: %v", language, err)
 	}
 	for _, want := range []string{
-		"remoteInputs as $skgoRemoteInputs",
 		"export const skgoRemoteInputs = prerender(",
-		"$skgoRemoteInputs",
+		"unimplemented()",
 	} {
 		if !strings.Contains(string(stub), want) {
 			t.Fatalf("generated %s remote stub omitted %q:\n%s", language, want, stub)
+		}
+	}
+	for _, forbidden := range []string{"getRequestEvent", "$skgoRemoteInputs", "@skgo/sveltekit-adapter/prerender"} {
+		if strings.Contains(string(stub), forbidden) {
+			t.Fatalf("generated %s source contains build helper %q", language, forbidden)
 		}
 	}
 	manifestBytes, err := os.ReadFile(filepath.Join(app, "skgo.remotes.json"))

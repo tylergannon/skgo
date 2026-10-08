@@ -55,13 +55,11 @@ var (
 func testJavaScriptLoadActions(t *testing.T, root string) {
 	stub := readFixtureFile(t, root, "app/web/src/routes/account/+page.server.js")
 	for _, want := range []string{
-		"import { building } from '$app/env';",
 		"/** @typedef {import('./types.js').Item} Item */",
 		// The load's return shape is spelled onto `@returns`, not onto an
 		// `@type` cast: kit's type writer rewrites an `@type` on an exported
 		// function into a `@param` and would leave the body's `never` behind.
-		"/**\n * @param {string} route\n * @returns {never}\n */\nconst unimplemented = (route) => {",
-		"* @returns {Promise<{ message: string; note?: string; parent: string | null; later: Promise<Item> }>}\n */\nexport const load = async (event) => building ? buildLoad(",
+		"* @returns {Promise<{ message: string; note?: string; parent: string | null; later: Promise<Item> }>}\n */\nexport const load = async (event) => { throw new Error('skgo: implemented in Go'); };",
 		"/** @type {(event: { request: Request }) => Promise<{ saved: boolean } | import('@sveltejs/kit').ActionFailure<{ reason: string }>>} */\n\tsave: async (_event) => { throw new Error('skgo: action implemented in Go'); },",
 		"/** @type {(event: { request: Request }) => Promise<void>} */\n\tremove: async (_event) => { throw new Error('skgo: action implemented in Go'); },",
 	} {
@@ -69,6 +67,7 @@ func testJavaScriptLoadActions(t *testing.T, root string) {
 			t.Errorf("the JavaScript load/action stub does not carry:\n%s\n---\n%s", want, stub)
 		}
 	}
+	assertThrowingSource(t, stub, true)
 	if strings.Contains(stub, "import type") || strings.Contains(stub, "export type") {
 		t.Errorf("the JavaScript stub carries a TypeScript-only declaration:\n%s", stub)
 	}
@@ -105,19 +104,36 @@ func testJavaScriptTransportedLoad(t *testing.T, root string) {
 	}
 }
 
-func testTypeScriptLoadBridge(t *testing.T, root string) {
+func testTypeScriptLoadStub(t *testing.T, root string) {
 	got := readFixtureFile(t, root, "app/web/src/routes/account/+page.server.ts")
 	for _, want := range []string{
 		"import type { Item } from './types';",
-		"skgoPrerenderLoad",
+		"import type { RequestEvent, ActionFailure } from '@sveltejs/kit';",
 		"Promise<{ message: string; note?: string; parent: string | null; later: Promise<Item> }>",
-		"building ? buildLoad(\"src/routes/account/+page.server.ts\", \"src/routes/account/page.server.go\", event)",
+		"export const load = async (event: RequestEvent)",
+		"throw new Error('skgo: implemented in Go')",
+		"Promise<{ saved: boolean } | ActionFailure<{ reason: string }>>",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("TypeScript load stub omits %q:\n%s", want, got)
 		}
 	}
+	assertThrowingSource(t, got, false)
 	if _, err := os.Stat(filepath.Join(root, "app/web/src/routes/account/+page.server.js")); !os.IsNotExist(err) {
 		t.Errorf("a JavaScript counterpart was written in TypeScript mode: %v", err)
+	}
+}
+
+// Paired with each fixture's literal declaration/type checks: an empty file
+// cannot satisfy these output contracts.
+func assertThrowingSource(t *testing.T, source string, javascript bool) {
+	t.Helper()
+	for _, forbidden := range []string{"building", "buildLoad", "prerenderFromGo", "skgoPrerender", "event.platform", "getRequestEvent", "@skgo/sveltekit-adapter/prerender", "inputs:"} {
+		if strings.Contains(source, forbidden) {
+			t.Errorf("generated source contains build code %q:\n%s", forbidden, source)
+		}
+	}
+	if !javascript && strings.Contains(source, "import(") {
+		t.Errorf("generated TypeScript contains inline import type:\n%s", source)
 	}
 }

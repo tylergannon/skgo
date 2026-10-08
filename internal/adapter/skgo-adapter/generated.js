@@ -64,7 +64,7 @@ export function validateGenerated(parsed) {
 			);
 		}
 	}
-	return { remotes: parsed.remotes, loads: parsed.loads, actions: parsed.actions, endpoints: parsed.endpoints, prerender: parsed.prerender };
+	return { remotes: parsed.remotes, loads: parsed.loads, actions: parsed.actions, endpoints: parsed.endpoints, prerender: parsed.prerender, build: parsed.build };
 }
 
 /**
