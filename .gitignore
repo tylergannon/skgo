@@ -20,6 +20,9 @@ ephemeral/screenshots/
 # task-local analyzers `just tools` installs
 .tools/
 
+# Node's content- and version-keyed compiled module cache
+.cache/node-compile/
+
 # Native compiler caches and disposable Apple build output.
 **/.zig-cache/
 **/zig-out/

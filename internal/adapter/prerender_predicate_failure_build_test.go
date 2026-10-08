@@ -5,19 +5,32 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
-func TestPrerenderPredicateFailureRejectsPermissiveKitBuildAndDrainsOwner(t *testing.T) {
-	t.Parallel()
-	for _, mode := range []string{"transform", "killed", "timeout", "worker-timeout"} {
-		t.Run(mode, func(t *testing.T) {
-			t.Parallel()
-			fixture := prepareMinimalInputsApp(t)
-			config := filepath.Join(fixture, "internal", "skgo", "config.go")
-			writeFixtureFile(t, config, "package skgo\n//go:generate go tool skgo generate --web ../../web --locals-package github.com/tylergannon/skgo/example/internal/app --hook-package github.com/tylergannon/skgo/example/internal/serverhooks\n")
-			writeFixtureFile(t, filepath.Join(fixture, "internal", "serverhooks", "handle.go"), `package serverhooks
+var predicateInputsFixtureOnce sync.Once
+var predicateInputsFixture string
+
+func sharedPredicateInputsFixture(t *testing.T) string {
+	t.Helper()
+	predicateInputsFixtureOnce.Do(func() {
+		source := preparePredicateFailureFixture(t)
+		predicateInputsFixture = filepath.Join(sharedInputsTemp, "predicate")
+		if err := os.Rename(source, predicateInputsFixture); err != nil {
+			t.Fatal(err)
+		}
+		compileGeneratedInputsFixture(t, predicateInputsFixture)
+	})
+	return predicateInputsFixture
+}
+
+func preparePredicateFailureFixture(t *testing.T) string {
+	fixture := prepareMinimalInputsApp(t)
+	config := filepath.Join(fixture, "internal", "skgo", "config.go")
+	writeFixtureFile(t, config, "package skgo\n//go:generate go tool skgo generate --web ../../web --locals-package github.com/tylergannon/skgo/example/internal/app --hook-package github.com/tylergannon/skgo/example/internal/serverhooks\n")
+	writeFixtureFile(t, filepath.Join(fixture, "internal", "serverhooks", "handle.go"), `package serverhooks
 import (
  "context"
  "fmt"
@@ -29,6 +42,7 @@ import (
  "github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 var Handle = params.Middleware(func(ctx context.Context,event params.RequestEvent,resolve params.Resolve)(*http.Response,error){
+ if os.Getenv("SKGO_PREDICATE_FAILURE_MODE")=="" { return resolve(ctx,event) }
  if os.Getenv("SKGO_PREDICATE_FAILURE_MODE")=="transform" {
   return resolve(ctx,event,skgo.ResolveOptions{TransformPageChunk:func(ctx context.Context,html string,done bool)(string,error){
    exe,_:=os.Executable()
@@ -51,27 +65,56 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
  }})
 })
 `)
-			writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+page.ts"), "export const prerender=true;\n")
-			configPath := filepath.Join(fixture, "web", "vite.config.ts")
-			source, err := os.ReadFile(configPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			updated := strings.Replace(string(source), "adapter: skgo(),", "adapter: skgo(),\n prerender: {handleHttpError: 'ignore', handleUnseenRoutes: 'ignore'},", 1)
-			if updated == string(source) {
-				t.Fatal("fixture config did not select permissive error policy")
-			}
-			writeFixtureFile(t, configPath, updated)
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+page.ts"), "export const prerender=true;\n")
+	configPath := filepath.Join(fixture, "web", "vite.config.ts")
+	source, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := strings.Replace(string(source), "adapter: skgo({ precompress: false }),", "adapter: skgo({ precompress: false }),\n prerender: {handleHttpError: 'ignore', handleUnseenRoutes: 'ignore'},", 1)
+	if updated == string(source) {
+		t.Fatal("fixture config did not select permissive error policy")
+	}
+	writeFixtureFile(t, configPath, updated)
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "timeout.remote.go"), `package routes
+import (
+ "context"
+ "fmt"
+ "os"
+ "path/filepath"
+ "github.com/tylergannon/skgo"
+)
+func blocked(ctx context.Context, name string) (string, error) {
+ exe, err := os.Executable(); if err != nil { return "", err }
+ receipt := fmt.Sprintf("%d\n%d\n%s\n", os.Getpid(), os.Getpid(), filepath.Dir(exe))
+ if err := os.WriteFile(os.Getenv("SKGO_LIFECYCLE_RECEIPT"), []byte(receipt), 0600); err != nil { return "", err }
+ <-ctx.Done()
+ if err := os.WriteFile(os.Getenv("SKGO_TIMEOUT_CANCELLED"), []byte("cancelled\n"), 0600); err != nil { return "", err }
+ return "", ctx.Err()
+}
+func noInputs() ([]string, error) { return []string{}, nil }
+var _ = skgo.Prerender(blocked, skgo.PrerenderOptions{Inputs: noInputs})
+`)
+	generate := exec.Command("go", "generate", "./...")
+	generate.Dir, generate.Env = fixture, inputsTestEnv(fixture, "")
+	if output, err := generate.CombinedOutput(); err != nil {
+		t.Fatalf("generate: %v\n%s", err, output)
+	}
+	return fixture
+}
+
+func TestPrerenderPredicateFailureRejectsPermissiveKitBuildAndDrainsOwner(t *testing.T) {
+	t.Parallel()
+	source := sharedPredicateInputsFixture(t)
+	for _, mode := range []string{"transform", "killed", "timeout", "worker-timeout"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
+			fixture := cloneGeneratedInputsWeb(t, source)
 			cancelled := filepath.Join(fixture, "predicate-cancelled")
 			env := replaceEnv(inputsTestEnv(fixture, ""), "SKGO_TIMEOUT_CANCELLED", cancelled)
 			env = replaceEnv(env, "SKGO_PREDICATE_FAILURE_MODE", mode)
 			killedAt := filepath.Join(fixture, "service-killed-at")
 			env = replaceEnv(env, "SKGO_SERVICE_KILLED_AT", killedAt)
-			generate := exec.Command("go", "generate", "./...")
-			generate.Dir, generate.Env = fixture, env
-			if output, err := generate.CombinedOutput(); err != nil {
-				t.Fatalf("generate: %v\n%s", err, output)
-			}
 			if mode == "timeout" || mode == "worker-timeout" {
 				installInputsTimeoutAdapter(t, fixture, mode)
 			}
@@ -123,18 +166,7 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 	}
 }
 
-func TestPrerenderNilCallbacksProduceNoPredicateTraffic(t *testing.T) {
-	t.Parallel()
-	fixture := prepareMinimalInputsApp(t)
-	writeFixtureFile(t, filepath.Join(fixture, "internal", "skgo", "config.go"), "package skgo\n//go:generate go tool skgo generate --web ../../web --locals-package github.com/tylergannon/skgo/example/internal/app --hook-package github.com/tylergannon/skgo/example/internal/serverhooks\n")
-	writeFixtureFile(t, filepath.Join(fixture, "internal", "serverhooks", "handle.go"), "package serverhooks\nimport \"github.com/tylergannon/skgo/example/internal/skgo/params\"\nvar Handle params.Middleware\n")
-	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+page.ts"), "export const prerender=true;\n")
-	env := inputsTestEnv(fixture, "")
-	generate := exec.Command("go", "generate", "./...")
-	generate.Dir, generate.Env = fixture, env
-	if output, err := generate.CombinedOutput(); err != nil {
-		t.Fatalf("generate: %v\n%s", err, output)
-	}
+func nilCallbacksBuildProgram() string {
 	// Observe the real owner's channel while building; don't change or replace
 	// its callback handler. The ordinary generated Go main stays untouched.
 	program := `import {createBuilder} from 'vite';
@@ -153,19 +185,15 @@ finally{await builder.close?.();}
 	// internal module by absolute URL, as the existing owner tests do.
 	root, err := filepath.Abs("skgo-adapter/prerender.js")
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	program = strings.Replace(program, "'@skgo/sveltekit-adapter/skgo-adapter/prerender.js'", "'file://"+filepath.ToSlash(root)+"'", 1)
-	cmd := exec.Command("node", "-e", program)
-	cmd.Dir, cmd.Env = filepath.Join(fixture, "web"), env
-	tracked := startInputsTrackedCommand(t, cmd, fixture)
-	// This case asserts a successful native build and literal zero predicate
-	// traffic, not build speed. Leave room for other packages' compilation.
-	err, timedOut := tracked.wait(120 * time.Second)
-	output := tracked.output.String()
-	if err != nil || timedOut || !strings.Contains(output, "NIL_CALLBACK_TRAFFIC:0 OWNER_CHANNEL_CLOSED") {
-		t.Fatalf("nil callback build: %v deadline=%v\n%s", err, timedOut, output)
-	}
+	return program
+}
+
+func TestPrerenderNilCallbacksProduceNoPredicateTraffic(t *testing.T) {
+	t.Parallel()
+	fixture := requireMinimalInputsBuild(t)
 	body, err := os.ReadFile(filepath.Join(fixture, "web", "build", "prerendered", "index.html"))
 	if err != nil {
 		t.Fatal(err)
@@ -173,5 +201,4 @@ finally{await builder.close?.();}
 	if !strings.Contains(string(body), "<h1>Minimal declared Inputs fixture</h1>") || !strings.Contains(string(body), `rel="modulepreload"`) {
 		t.Fatalf("Kit defaults lost: %s", body)
 	}
-	t.Logf("nil callbacks real build: %s", output)
 }

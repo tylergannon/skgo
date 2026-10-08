@@ -61,16 +61,12 @@ export default defineConfig({ plugins: [sveltekit({ adapter: skgo(), paths: { or
 import type { Handle } from '@sveltejs/kit';
 export const handle: Handle = ({ event, resolve }) => { void receipt; return resolve(event); };
 `)
-	write("src/routes/+page.svelte", `<h1>Client-safe page</h1>`)
 	build := func() (string, error) {
 		cmd := exec.Command(filepath.Join(deps, ".bin", "vp"), "build")
 		cmd.Dir = root
 		cmd.Env = fixtureBuildEnv()
 		out, err := cmd.CombinedOutput()
 		return string(out), err
-	}
-	if out, err := build(); err != nil {
-		t.Fatalf("a server-only import from a server hook did not build: %v\n%s", err, out)
 	}
 	write("src/routes/+page.svelte", `<script lang="ts">import { receipt } from '../lib/server/secret';</script><h1>{receipt}</h1>`)
 	out, err := build()
@@ -84,4 +80,8 @@ export const handle: Handle = ({ event, resolve }) => { void receipt; return res
 			t.Errorf("Kit's build failure does not name %q:\n%s", want, out)
 		}
 	}
+	// The allowed server-hook import is independent of this refused client
+	// import. Check the shared successful build after running the private one,
+	// so its generation and native build do not delay this client's guard.
+	requireMinimalInputsBuild(t)
 }

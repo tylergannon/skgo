@@ -21,6 +21,10 @@ log := env("SKGO_LOG", justfile_directory() / "example/e2e/server.log")
 # export data, which makes `skgo check` report it incomplete.
 export PATH := justfile_directory() / ".tools/bin" + ":" + env("PATH")
 
+# Build and test processes load the same pinned frontend dependencies. Reuse
+# Node's compiled code; each process still executes its own module instances.
+export NODE_COMPILE_CACHE := env("NODE_COMPILE_CACHE", justfile_directory() / ".cache/node-compile")
+
 _default:
     @just --list --unsorted
 
@@ -54,7 +58,7 @@ tools:
 
 # go test, both modules, in one invocation so their packages run side by side
 test: tools
-    go test -count=1 ./... ./example/...
+    cd example && mise x -- go -C .. test -count=1 ./... ./example/...
 
 # the example server, against the built frontend
 serve:

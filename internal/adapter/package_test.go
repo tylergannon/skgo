@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -168,22 +170,35 @@ func TestThePublishedPackageDeclaresWhatAnAdapterDeclares(t *testing.T) {
 // publish` does, so the tarball is the artifact and not a description of one.
 func pack(t *testing.T) map[string][]byte {
 	t.Helper()
-	if _, err := exec.LookPath("pnpm"); err != nil {
-		t.Fatalf("pnpm is not on PATH, so this test cannot run — which is not the same as passing: %v", err)
+	tarball, err := packedAdapter()
+	if err != nil {
+		t.Fatal(err)
 	}
-	dest := t.TempDir()
+	return untar(t, tarball)
+}
+
+// Every assertion examines the same immutable package sources. Publish them
+// once, then give each test its own decoded tarball contents.
+var packedAdapter = sync.OnceValues(func() (string, error) {
+	if _, err := exec.LookPath("pnpm"); err != nil {
+		return "", fmt.Errorf("pnpm is not on PATH, so this test cannot run — which is not the same as passing: %w", err)
+	}
+	dest := filepath.Join(sharedInputsTemp, "package")
+	if err := os.MkdirAll(dest, 0o755); err != nil {
+		return "", err
+	}
 	cmd := exec.Command("pnpm", "pack", "--pack-destination", dest)
 	cmd.Dir = "."
 	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("pnpm pack: %v\n%s", err, out)
+		return "", fmt.Errorf("pnpm pack: %w\n%s", err, out)
 	}
 
 	entries, err := filepath.Glob(filepath.Join(dest, "*.tgz"))
 	if err != nil || len(entries) != 1 {
-		t.Fatalf("pnpm pack wrote %v (%v); want one tarball", entries, err)
+		return "", fmt.Errorf("pnpm pack wrote %v (%v); want one tarball", entries, err)
 	}
-	return untar(t, entries[0])
-}
+	return entries[0], nil
+})
 
 // untar reads a npm tarball, whose every member sits under `package/`.
 func untar(t *testing.T, name string) map[string][]byte {

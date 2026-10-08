@@ -25,7 +25,13 @@ func TestPrerenderInputsBuildAppWaitsForProducerFailureDrain(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := prepareInputsLifecycleFixture(t, "producer-failure")
+	fixture := sharedInputsLifecycleFixture(t, "producer-failure")
+	configPath := filepath.Join(fixture, "web", "vite.config.ts")
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureFile(t, configPath, strings.Replace(string(config), "concurrency: 4", "concurrency: 4, handleHttpError: 'ignore'", 1))
 	result := runInputsBuildApp(t, fixture)
 	if result.err == nil {
 		t.Fatalf("native Vite buildApp resolved after producer failure; output:\n%s", result.output)
@@ -41,7 +47,22 @@ func TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain(t *testing.
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := prepareInputsLifecycleFixture(t, "crawler-failure")
+	fixture := sharedInputsLifecycleFixture(t, "crawler-failure")
+	result := runInputsBuildApp(t, fixture)
+	if result.err == nil {
+		t.Fatalf("native Vite buildApp resolved after crawler failure; output:\n%s", result.output)
+	}
+	if !strings.Contains(result.output, "NATIVE_CRAWLER_FAILURE:500") || !strings.Contains(result.output, "GET /z-native-failure") || !strings.Contains(result.output, "Failed to prerender `/z-native-failure`") {
+		t.Fatalf("build rejection did not preserve the native crawler failure:\n%s", result.output)
+	}
+	if !strings.Contains(result.output, "BUILD_APP_REJECTED:Prerendering failed") {
+		t.Fatalf("buildApp did not reject with Kit's final native crawler failure:\n%s", result.output)
+	}
+	assertInputsDrainComplete(t, fixture, result.output)
+}
+
+func writeNativeCrawlerFailurePage(t *testing.T, fixture string) {
+	t.Helper()
 	// A real Kit page throws from its native server load. The Go-backed /about
 	// prerender request is held open independently, so Vite's native crawler
 	// failure must pass through the adapter's buildApp drain boundary.
@@ -54,6 +75,7 @@ import { readFile } from "node:fs/promises";
 import process from "node:process";
 export const prerender = true;
 export async function load() {
+  if (process.env.SKGO_LIFECYCLE_MODE !== "crawler-failure") return {};
   const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
     try {
@@ -62,6 +84,7 @@ export async function load() {
       if (receipt.length < 3 || !Number.isInteger(pid) || pid < 2) { await new Promise((resolve) => setTimeout(resolve, 20)); continue; }
       try { process.kill(pid, 0); }
       catch { throw new Error("Go body exited before the native crawler failure"); }
+      console.error("NATIVE_CRAWLER_FAILURE:500");
       return error(500, "native crawler fixture failure");
     }
     catch (cause) { if (cause?.status || cause?.code !== "ENOENT") throw cause; await new Promise((resolve) => setTimeout(resolve, 20)); }
@@ -74,23 +97,24 @@ export async function load() {
 	if err := os.WriteFile(filepath.Join(filepath.Dir(page), "+page.svelte"), []byte(`<h1>Native crawler failure fixture</h1>`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	generate := exec.Command("go", "generate", "./...")
-	generate.Dir = fixture
-	generate.Env = inputsTestEnv(fixture, "")
-	if output, err := generate.CombinedOutput(); err != nil {
-		t.Fatalf("regenerate native route graph: %v\n%s", err, output)
-	}
-	result := runInputsBuildApp(t, fixture)
-	if result.err == nil {
-		t.Fatalf("native Vite buildApp resolved after crawler failure; output:\n%s", result.output)
-	}
-	if !strings.Contains(result.output, "GET /z-native-failure") || !strings.Contains(result.output, "Failed to prerender `/z-native-failure`") {
-		t.Fatalf("build rejection did not preserve the native crawler failure:\n%s", result.output)
-	}
-	if !strings.Contains(result.output, "BUILD_APP_REJECTED:Prerendering failed") {
-		t.Fatalf("buildApp did not reject with Kit's final native crawler failure:\n%s", result.output)
-	}
-	assertInputsDrainComplete(t, fixture, result.output)
+}
+
+var lifecycleInputsFixtureOnce sync.Once
+var lifecycleInputsFixture string
+
+func sharedInputsLifecycleFixture(t *testing.T, mode string) string {
+	t.Helper()
+	lifecycleInputsFixtureOnce.Do(func() {
+		source := prepareInputsLifecycleFixture(t, "blocked")
+		lifecycleInputsFixture = filepath.Join(sharedInputsTemp, "lifecycle")
+		if err := os.Rename(source, lifecycleInputsFixture); err != nil {
+			t.Fatal(err)
+		}
+		compileGeneratedInputsFixture(t, lifecycleInputsFixture)
+	})
+	fixture := cloneGeneratedInputsWeb(t, lifecycleInputsFixture)
+	writeFixtureFile(t, filepath.Join(fixture, ".lifecycle-mode"), mode)
+	return fixture
 }
 
 func TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer(t *testing.T) {
@@ -98,7 +122,7 @@ func TestPrerenderInputsVPOwnerSignalDrainsBlockedProducer(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := prepareInputsLifecycleFixture(t, "blocked")
+	fixture := sharedInputsLifecycleFixture(t, "blocked")
 	cmd := inputsVPBuildCommand(t, fixture)
 	process := startInputsTrackedCommand(t, cmd, fixture)
 	defer func() {
@@ -130,7 +154,7 @@ func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := prepareInputsLifecycleFixture(t, "blocked")
+	fixture := sharedInputsLifecycleFixture(t, "blocked")
 	cmd := inputsVPBuildCommand(t, fixture)
 	process := startInputsTrackedCommand(t, cmd, fixture)
 	defer func() {
@@ -152,19 +176,24 @@ func TestPrerenderInputsOuterVPCLISignalDrainsBlockedProducer(t *testing.T) {
 
 func TestPrerenderInputsMalformedGoSourceFailsAndCleansPrivateDirectory(t *testing.T) {
 	t.Parallel()
-	fixture := filepath.Join(t.TempDir(), "example")
-	if err := stageMinimalInputsBootstrap(fixture); err != nil {
+	source, err := generatedMinimalInputsApp()
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.CopyFS(fixture, os.DirFS("testdata/minimal-inputs")); err != nil {
+	fixture := cloneGeneratedInputsWeb(t, source)
+	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+layout.ts"), "export const csr = false;\n")
+	// Compiler-error input must be mutable and owned by this case.
+	if err := os.RemoveAll(filepath.Join(fixture, "internal")); err != nil {
 		t.Fatal(err)
 	}
-	generate := exec.Command("go", "generate", "./...")
-	generate.Dir = fixture
-	generate.Env = inputsTestEnv(fixture, "success")
-	if output, err := generate.CombinedOutput(); err != nil {
-		t.Fatalf("generate compiler fixture: %v\n%s", err, output)
+	if err := os.CopyFS(filepath.Join(fixture, "internal"), os.DirFS(filepath.Join(source, "internal"))); err != nil {
+		t.Fatal(err)
 	}
+	manifest, err := os.ReadFile(filepath.Join(source, "web", "skgo.remotes.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureFile(t, filepath.Join(fixture, "web", "skgo.remotes.json"), string(manifest))
 	broken := filepath.Join(fixture, "internal", "skgo", "prerender", "lifecycle_broken.go")
 	if err := os.WriteFile(broken, []byte("package main\nfunc malformed( {\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -197,7 +226,7 @@ func prepareInputsLifecycleFixture(t *testing.T, mode string) string {
 		t.Fatal(err)
 	}
 	configText := strings.Replace(string(config), "export default defineConfig({", "import { writeFileSync as __skgoWriteOwner } from 'node:fs';\n__skgoWriteOwner(process.env.SKGO_VITE_OWNER_PID, String(process.pid));\nexport default defineConfig({", 1)
-	configText = strings.Replace(configText, "adapter: skgo(),", "adapter: skgo(),\n      prerender: { concurrency: 4 },", 1)
+	configText = strings.Replace(configText, "adapter: skgo({ precompress: false }),", "adapter: skgo({ precompress: false }),\n      prerender: { concurrency: 4 },", 1)
 	if mode == "producer-failure" {
 		configText = strings.Replace(configText, "concurrency: 4", "concurrency: 4, handleHttpError: 'ignore'", 1)
 	}
@@ -205,6 +234,9 @@ func prepareInputsLifecycleFixture(t *testing.T, mode string) string {
 	writeFixtureFile(t, filepath.Join(fixture, ".lifecycle-mode"), mode)
 	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "+layout.ts"), `import './site.remote';
 export const prerender = true;
+// These fixtures exercise the server build's ownership and drain paths.
+// Kit can omit a client bundle that none of their assertions consumes.
+export const csr = false;
 `)
 	writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "site.remote.go"), `package routes
 import (
@@ -246,6 +278,7 @@ import (
 )
 type PageData struct { Message string }
 func pageLoad(event PageRequestEvent) (PageData,error) {
+ if os.Getenv("SKGO_LIFECYCLE_MODE")=="producer-failure" { return PageData{Message:"lifecycle control"},nil }
  child:=exec.Command("/bin/sh","-c","trap '' TERM; while :; do sleep 1; done")
  child.Stdout,child.Stderr=os.Stdout,os.Stderr
  if err:=child.Start();err!=nil{return PageData{},err}
@@ -258,6 +291,10 @@ var _ = skgo.Load(pageLoad)
 `)
 		writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "about", "+page.svelte"), `<h1>Blocked Go load</h1>`)
 	}
+	// The immutable Go graph includes the native crawler route before generation.
+	// Its native load fails only in the crawler case; signals and producer failure
+	// still own distinct processes, receipts and runtime mode selection.
+	writeNativeCrawlerFailurePage(t, fixture)
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir, generate.Env = fixture, inputsTestEnv(fixture, mode)
 	if output, err := generate.CombinedOutput(); err != nil {

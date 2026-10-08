@@ -13,9 +13,20 @@ import (
 
 // minimalInputsTemp outlives individual tests: consumers only read the shared build.
 var minimalInputsTemp string
+var sharedInputsTemp string
 
 func TestMain(m *testing.M) {
+	var err error
+	sharedInputsTemp, err = os.MkdirTemp("", "skgo-adapter-shared-")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	code := m.Run()
+	if err := os.RemoveAll(sharedInputsTemp); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		code = 1
+	}
 	if minimalInputsTemp != "" {
 		if err := os.RemoveAll(minimalInputsTemp); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -45,6 +56,15 @@ func stageMinimalInputsBootstrap(fixture string) error {
 		if file == "web/package.json" {
 			contents = []byte(strings.Replace(string(contents), "link:../../internal/adapter", "link:"+filepath.ToSlash(filepath.Join(root, "..", "internal", "adapter")), 1))
 		}
+		if file == "web/vite.config.ts" {
+			// These fixtures assert native artifacts and service lifecycle, not
+			// compressed variants. Keep their real build without extra encoders.
+			updated := strings.Replace(string(contents), "adapter: skgo(),", "adapter: skgo({ precompress: false }),", 1)
+			if updated == string(contents) {
+				return fmt.Errorf("fixture adapter compression option did not apply")
+			}
+			contents = []byte(updated)
+		}
 		target := filepath.Join(fixture, filepath.FromSlash(file))
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
@@ -54,6 +74,15 @@ func stageMinimalInputsBootstrap(fixture string) error {
 		}
 	}
 	dependencies := filepath.Join(root, "web", "node_modules")
+	// Kit's no-client-build path populates output/client from static assets.
+	// Include a real asset so its crawler has that directory even without JS.
+	static := filepath.Join(fixture, "web", "static")
+	if err := os.MkdirAll(static, 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(static, "fixture.txt"), []byte("fixture\n"), 0o644); err != nil {
+		return err
+	}
 	if _, err := os.Stat(filepath.Join(dependencies, ".bin", "vp")); err != nil {
 		return fmt.Errorf("pinned frontend dependencies are missing: %w", err)
 	}
@@ -73,7 +102,7 @@ func prepareMinimalInputsApp(t *testing.T) string {
 	return fixture
 }
 
-var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
+var generatedMinimalInputsApp = sync.OnceValues(func() (string, error) {
 	var err error
 	minimalInputsTemp, err = os.MkdirTemp("", "skgo-adapter-minimal-")
 	if err != nil {
@@ -84,6 +113,24 @@ var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
 		return "", err
 	}
 	if err := os.CopyFS(fixture, os.DirFS("testdata/minimal-inputs")); err != nil {
+		return "", err
+	}
+	// The same successful build demonstrates literal zero predicate traffic
+	// from a typed nil Handle, as well as the native remote artifacts below.
+	config := filepath.Join(fixture, "internal", "skgo", "config.go")
+	contents, err := os.ReadFile(config)
+	if err != nil {
+		return "", err
+	}
+	contents = []byte(strings.Replace(string(contents), "--locals-package github.com/tylergannon/skgo/example/internal/app", "--locals-package github.com/tylergannon/skgo/example/internal/app --hook-package github.com/tylergannon/skgo/example/internal/serverhooks", 1))
+	if err := os.WriteFile(config, contents, 0o644); err != nil {
+		return "", err
+	}
+	hooks := filepath.Join(fixture, "internal", "serverhooks")
+	if err := os.MkdirAll(hooks, 0o755); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(hooks, "handle.go"), []byte("package serverhooks\nimport \"github.com/tylergannon/skgo/example/internal/skgo/params\"\nvar Handle params.Middleware\n"), 0o644); err != nil {
 		return "", err
 	}
 	receipt := filepath.Join(fixture, "inputs-receipt")
@@ -100,9 +147,42 @@ var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
 	if _, err := os.Stat(receipt); !os.IsNotExist(err) {
 		return "", fmt.Errorf("producer ran during generation: %v", err)
 	}
-	output, err := runMinimalInputsBuild(fixture, "SKGO_INPUTS_RECEIPT="+receipt)
+	// The successful native build also proves Kit permits a server-only
+	// import in a server hook. Its client-import refusal owns a separate build.
+	secret := filepath.Join(fixture, "web", "src", "lib", "server", "secret.ts")
+	if err := os.MkdirAll(filepath.Dir(secret), 0o755); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(secret, []byte("export const receipt = 'server-only receipt';\n"), 0o644); err != nil {
+		return "", err
+	}
+	hook := filepath.Join(fixture, "web", "src", "hooks.server.ts")
+	hookSource, err := os.ReadFile(hook)
+	if err != nil {
+		return "", err
+	}
+	hookSource = append(hookSource, []byte("\nimport { receipt as serverOnlyReceipt } from './lib/server/secret';\nvoid serverOnlyReceipt;\n")...)
+	if err := os.WriteFile(hook, hookSource, 0o644); err != nil {
+		return "", err
+	}
+	return fixture, nil
+})
+
+var builtMinimalInputsApp = sync.OnceValues(func() (string, error) {
+	fixture, err := generatedMinimalInputsApp()
+	if err != nil {
+		return "", err
+	}
+	receipt := filepath.Join(fixture, "inputs-receipt")
+	build := exec.Command("node", "-e", nilCallbacksBuildProgram())
+	build.Dir = filepath.Join(fixture, "web")
+	build.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "SKGO_INPUTS_RECEIPT="+receipt)
+	output, err := build.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("minimal native build: %w\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "NIL_CALLBACK_TRAFFIC:0 OWNER_CHANNEL_CLOSED") {
+		return "", fmt.Errorf("native nil callback assertions did not finish: %s", output)
 	}
 	return fixture, nil
 })

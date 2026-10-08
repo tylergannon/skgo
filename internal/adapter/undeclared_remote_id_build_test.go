@@ -10,24 +10,22 @@ import (
 
 func TestNativeBuildRejectsClientCalledRemoteMissingFromGoRegistration(t *testing.T) {
 	t.Parallel()
-	fixture := prepareMinimalInputsApp(t)
+	// The compatible successful artifact/nil-callback build owns generation.
+	// This refusal keeps its own mutable web root and real native Kit build.
+	source, err := generatedMinimalInputsApp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := cloneGeneratedInputsWeb(t, source)
 	app := filepath.Join(fixture, "web")
-	writeFixtureFile(t, filepath.Join(app, "src", "lib", "fixture.remote.go"), `package lib
-import (
-  "context"
-  "github.com/tylergannon/skgo"
-)
-func declared(context.Context) (string, error) { return "declared", nil }
-var _ = skgo.Query(declared)
-`)
+	// Queries belong to a request-time page, as in the original refusal fixture.
+	writeFixtureFile(t, filepath.Join(app, "src", "routes", "+page.ts"), "export const prerender = false;\n")
 	writeFixtureFile(t, filepath.Join(app, "src", "routes", "+page.svelte"), `<script>
   import { manual } from '../lib/fixture.remote';
   const result = manual();
 </script>
 <h1>{#await result then value}{value}{/await}</h1>
 `)
-	generateMinimalInputsApp(t, fixture)
-
 	manifestBytes, err := os.ReadFile(filepath.Join(app, "skgo.remotes.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -39,8 +37,20 @@ var _ = skgo.Query(declared)
 		t.Fatal(err)
 	}
 	const declaredID = "3215r6/declared"
-	if len(manifest.Remotes) != 1 || manifest.Remotes[0] != declaredID {
-		t.Fatalf("Go registration manifest = %v; want exactly %q", manifest.Remotes, declaredID)
+	wantIDs := map[string]bool{
+		declaredID:     true,
+		"3215r6/empty": true,
+		"1vyw5d0/item": true,
+		"1h38tvo/item": true,
+	}
+	if len(manifest.Remotes) != len(wantIDs) {
+		t.Fatalf("Go registration manifest = %v; want the four fixture declarations", manifest.Remotes)
+	}
+	for _, id := range manifest.Remotes {
+		if !wantIDs[id] {
+			t.Fatalf("unexpected Go registration %q in %v", id, manifest.Remotes)
+		}
+		delete(wantIDs, id)
 	}
 	const manualID = "3215r6/manual"
 	remoteModule := filepath.Join(app, "src", "lib", "fixture.remote.ts")
@@ -48,7 +58,8 @@ var _ = skgo.Query(declared)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(generatedStub), "import { query } from \"$app/server\"") {
+	if !strings.Contains(string(generatedStub), "import { prerender, query } from \"$app/server\"") ||
+		!strings.Contains(string(generatedStub), "export const declared = query(") {
 		t.Fatalf("generated Go remote stub does not provide Kit query import for same-module control:\n%s", generatedStub)
 	}
 	generatedStub = append(generatedStub, []byte("\nexport const manual = query(() => \"manual\");\n")...)
