@@ -24,6 +24,7 @@ import (
  "net/http"
  "os"
  "path/filepath"
+ "time"
  "github.com/tylergannon/skgo"
  "github.com/tylergannon/skgo/example/internal/skgo/params"
 )
@@ -40,7 +41,10 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
   exe,_:=os.Executable()
   receipt:=fmt.Sprintf("%d\n%d\n%s\n",os.Getpid(),os.Getpid(),filepath.Dir(exe))
   if err:=os.WriteFile(os.Getenv("SKGO_LIFECYCLE_RECEIPT"),[]byte(receipt),0600);err!=nil{panic(err)}
-  if os.Getenv("SKGO_PREDICATE_FAILURE_MODE")=="killed" {process,_:=os.FindProcess(os.Getpid());process.Kill();select{}}
+  if os.Getenv("SKGO_PREDICATE_FAILURE_MODE")=="killed" {
+   if err:=os.WriteFile(os.Getenv("SKGO_SERVICE_KILLED_AT"),[]byte(time.Now().Format(time.RFC3339Nano)),0600);err!=nil{panic(err)}
+   process,_:=os.FindProcess(os.Getpid());process.Kill();select{}
+  }
   <-ctx.Done()
   os.WriteFile(os.Getenv("SKGO_TIMEOUT_CANCELLED"),[]byte("cancelled\n"),0600)
   return true
@@ -61,6 +65,8 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 			cancelled := filepath.Join(fixture, "predicate-cancelled")
 			env := replaceEnv(inputsTestEnv(fixture, ""), "SKGO_TIMEOUT_CANCELLED", cancelled)
 			env = replaceEnv(env, "SKGO_PREDICATE_FAILURE_MODE", mode)
+			killedAt := filepath.Join(fixture, "service-killed-at")
+			env = replaceEnv(env, "SKGO_SERVICE_KILLED_AT", killedAt)
 			generate := exec.Command("go", "generate", "./...")
 			generate.Dir, generate.Env = fixture, env
 			if output, err := generate.CombinedOutput(); err != nil {
@@ -71,7 +77,6 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 			}
 			cmd := exec.Command("node", "-e", inputsBuildProgram())
 			cmd.Dir, cmd.Env = filepath.Join(fixture, "web"), env
-			started := time.Now()
 			tracked := startInputsTrackedCommand(t, cmd, fixture)
 			err, timedOut := tracked.wait(60 * time.Second)
 			output := tracked.output.String()
@@ -98,8 +103,17 @@ var Handle = params.Middleware(func(ctx context.Context,event params.RequestEven
 				if mode == "worker-timeout" && !strings.Contains(output, "BUILD_APP_REJECTED:Error: skgo prerender preload predicate timed out after 500ms") {
 					t.Fatalf("worker failure notice did not terminally fail the owner: %s", output)
 				}
-			} else if time.Since(started) > 15*time.Second || !(strings.Contains(output, "service exited unexpectedly") || strings.Contains(output, "preload resolve callback failed: fetch failed")) {
-				t.Fatalf("dead service was not reported promptly: %s", output)
+			} else {
+				// The prompt-failure clock starts at the actual Go callback's
+				// kill, after compilation and Kit startup have finished.
+				stamp, readErr := os.ReadFile(killedAt)
+				killed, parseErr := time.Parse(time.RFC3339Nano, string(stamp))
+				if readErr != nil || parseErr != nil {
+					t.Fatalf("missing actual service-kill timestamp: read=%v parse=%v", readErr, parseErr)
+				}
+				if time.Since(killed) > 15*time.Second || !(strings.Contains(output, "service exited unexpectedly") || strings.Contains(output, "preload resolve callback failed: fetch failed")) {
+					t.Fatalf("dead service was not reported promptly: %s", output)
+				}
 			}
 			if _, err := os.Stat(filepath.Join(fixture, "web", "build")); !os.IsNotExist(err) {
 				t.Fatalf("failed build left successful adapter output: %v", err)
