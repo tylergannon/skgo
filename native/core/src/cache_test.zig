@@ -77,7 +77,13 @@ test "prefetch retention is bounded, active resources cannot be evicted, missing
         try std.testing.expectEqual(@as(usize, 2), cache.entries.count());
         try state(&cache, true, false, "1", null);
     }
+    try std.testing.expect(!try cache.fail(cache.epoch, "hash/c/", .{ .status = 503, .message = "Dropped prefetch error" }));
+    var prefetched = try cache.snapshot("hash/c/");
+    defer prefetched.deinit();
+    try std.testing.expect(prefetched.ready and !prefetched.loading and prefetched.fault == null);
+    try std.testing.expectEqualStrings("2", prefetched.value.?);
     try cache.retain("hash/c/");
+    try std.testing.expect(try cache.begin("hash/c/", false) == null);
     try std.testing.expectError(error.CacheFull, cache.retain("hash/d/"));
     try std.testing.expect(!try cache.set(cache.epoch, "hash/d/", "3"));
     try std.testing.expect(!try cache.fail(cache.epoch, "hash/missing/", .{ .status = 500, .message = "Dropped error" }));
@@ -136,6 +142,7 @@ test "command updates fulfill query requests, explicit ignores preserve values, 
         _ = try cache.set(cache.epoch, k, "1");
     }
     _ = (try cache.begin(key, true)).?;
+    _ = (try cache.begin("hash/unhandled/", true)).?;
     const updates = [_]Cache.Update{ .{ .value = .{ .key = key, .bytes = "2" } }, .{ .failure = .{ .key = "hash/missing/", .fault = .{ .status = 500, .message = "Drop me" } } } };
     try std.testing.expect(try cache.applyUpdates(cache.epoch, &updates, &requested, &.{"hash/ignored/"}));
     try state(&cache, true, false, "2", null);
@@ -146,9 +153,22 @@ test "command updates fulfill query requests, explicit ignores preserve values, 
     var unhandled = try cache.snapshot("hash/unhandled/");
     defer unhandled.deinit();
     try std.testing.expectEqualStrings("1", unhandled.value.?);
+    try std.testing.expect(unhandled.ready and !unhandled.loading);
     try std.testing.expectEqual(@as(u16, 400), unhandled.fault.?.status);
     try std.testing.expectEqualStrings("Requested update was not handled by the remote function", unhandled.fault.?.message);
     try std.testing.expectEqual(@as(usize, 3), cache.entries.count());
+}
+
+test "an explicit q failure settles a loading refresh while keeping its previous value" {
+    var cache = try Cache.init(a, 1);
+    defer cache.deinit();
+    try cache.retain(key);
+    _ = try cache.set(cache.epoch, key, "1");
+    const ticket = (try cache.begin(key, true)).?;
+    try state(&cache, true, true, "1", null);
+    _ = try cache.fail(cache.epoch, key, .{ .status = 503, .message = "Unavailable" });
+    try state(&cache, true, false, "1", 503);
+    try std.testing.expect(!cache.waiting(key, ticket));
 }
 
 test "ready undefined and JSON null remain distinct cached results" {

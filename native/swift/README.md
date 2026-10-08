@@ -38,8 +38,6 @@ command already received by the server. URLSession transport refuses HTTP
 redirects and does not replay commands. Kit redirect envelopes surface as a
 separate `RemoteError.redirect`.
 
-The current native core does not yet implement retained queries or caching.
-
 Generate typed calls with the application's existing `skgo generate` command:
 
 ```sh
@@ -85,6 +83,11 @@ observe `changes()` for the latest state; await `value()` or `refresh()` for a
 typed result. Release a UI lease explicitly with `await query.release()`.
 An active await pins its result independently. Dropping a lease also releases
 it asynchronously as a fallback.
+
+Retention starts the initial request eagerly. `cacheCapacity` defaults to 256
+entries, counting retained queries and prefetched values. Retaining a new key
+when all entries are active throws `RemoteError.cacheFull`; increase the capacity
+or release unused leases. Only unused prefetch entries may be evicted.
 
 Pass `updates: [query.update]` to a generated command to request that query's
 single-flight refresh. The Go command uses SKGo's existing requested-query

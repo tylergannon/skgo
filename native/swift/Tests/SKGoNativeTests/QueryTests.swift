@@ -24,7 +24,7 @@ import Testing
     await client.shutdown()
 }
 
-@Test func retainedCanonicalQueriesShareRequestsAndOwnEvictedResults() async throws {
+@Test(.timeLimit(.minutes(1))) func retainedCanonicalQueriesShareRequestsAndOwnEvictedResults() async throws {
     let transport = ControlledTransport()
     let client = RemoteClient(origin: "http://127.0.0.1:8080", transport: transport, cacheCapacity: 1)
     let first = try await client.query("hash/query", argument: Data(#"{"offset":20,"limit":10}"#.utf8)) { $0 }
@@ -50,7 +50,7 @@ import Testing
     #expect(String(data: value!, encoding: .utf8)!.contains("café 😀"))
 }
 
-@Test func queryRefreshOrderingAndObservedLoading() async throws {
+@Test(.timeLimit(.minutes(1))) func queryRefreshOrderingAndObservedLoading() async throws {
     let transport = ControlledTransport()
     let client = RemoteClient(origin: "http://127.0.0.1:8080", transport: transport)
     let query = try await client.query("hash/query") { $0 }
@@ -59,25 +59,31 @@ import Testing
     let first = await transport.next()
     let refresh = Task { try await query.refresh() }
     let second = await transport.next()
-    // Direct results settle predecessors. q side-channel races are separately
-    // asserted against literal Kit envelopes in the Zig tests.
-    await transport.finish(second, .init(status: 200, body: Data(#"{"type":"result","data":"[{\"_\":1},2]"}"#.utf8)))
+    // SKGo and Kit both include the query's own q node. Every arrival applies
+    // set(), even after a newer-issued request has settled all pending promises.
+    await transport.finish(second, .init(status: 200, body: Data(#"{"type":"result","data":"[{\"_\":1,\"q\":2},2,{\"hash/query/\":3},{\"v\":1}]"}"#.utf8)))
     #expect(try await refresh.value == Data("2".utf8))
     let ready = try await query.snapshot()
     #expect(ready.ready && !ready.loading && ready.current == Data("2".utf8))
-    await transport.finish(first, .init(status: 200, body: Data(#"{"type":"result","data":"[{\"_\":1},1]"}"#.utf8)))
-    #expect(try await query.value() == Data("2".utf8))
+    // Consume the new response's publication before watching the old one land.
+    var observed = try #require(try await changes.next())
+    while observed.current != Data("2".utf8) { observed = try #require(try await changes.next()) }
+    await transport.finish(first, .init(status: 200, body: Data(#"{"type":"result","data":"[{\"_\":1,\"q\":2},1,{\"hash/query/\":3},{\"v\":1}]"}"#.utf8)))
+    observed = try #require(try await changes.next())
+    while observed.current != Data("1".utf8) { observed = try #require(try await changes.next()) }
+    #expect(observed.ready && !observed.loading && observed.error == nil)
+    #expect(try await query.value() == Data("1".utf8))
     let failed = Task { try await query.refresh() }
     let third = await transport.next()
     await transport.finish(third, .init(status: 200, body: Data(#"{"type":"error","error":{"status":503,"message":"Unavailable"}}"#.utf8)))
     do { _ = try await failed.value; Issue.record("Refresh succeeded") } catch { #expect(error as? RemoteError == .remote(503, "Unavailable")) }
     let state = try await query.snapshot()
-    #expect(state.ready && !state.loading && state.current == Data("2".utf8) && state.error == .remote(503, "Unavailable"))
+    #expect(state.ready && !state.loading && state.current == Data("1".utf8) && state.error == .remote(503, "Unavailable"))
     await query.release()
     await client.shutdown()
 }
 
-@Test func commandRefreshesApplyFulfilledIgnoredAndUnhandledKeys() async throws {
+@Test(.timeLimit(.minutes(1))) func commandRefreshesApplyFulfilledIgnoredAndUnhandledKeys() async throws {
     let transport = ControlledTransport()
     let client = RemoteClient(origin: "http://127.0.0.1:8080", transport: transport)
     let a = try await client.query("hash/a") { $0 }
@@ -90,6 +96,9 @@ import Testing
     #expect(try await a.value() == Data("1".utf8))
     #expect(try await b.value() == Data("1".utf8))
     #expect(try await c.value() == Data("1".utf8))
+    let pending = Task { try await c.refresh() }
+    let pendingRequest = await transport.next()
+    #expect(try await c.snapshot().loading)
     let command = Task { try await client.call("hash/command", kind: .command, updates: [a.update, b.update, c.update, a.update]) }
     let id = await transport.next()
     #expect(String(data: await transport.request(id).body!, encoding: .utf8) == #"{"payload":"","refreshes":["hash/a/","hash/b/","hash/c/"]}"#)
@@ -98,12 +107,14 @@ import Testing
     #expect(try await a.value() == Data("2".utf8))
     #expect(try await b.value() == Data("1".utf8))
     let state = try await c.snapshot()
-    #expect(state.ready && state.current == Data("1".utf8) && state.error == .remote(400, "Requested update was not handled by the remote function"))
-    #expect(await transport.count() == 4)
+    #expect(state.ready && !state.loading && state.current == Data("1".utf8) && state.error == .remote(400, "Requested update was not handled by the remote function"))
+    #expect(try await pending.value == Data("1".utf8))
+    #expect(await transport.count() == 5)
     await client.shutdown()
+    await transport.finish(pendingRequest)
 }
 
-@Test func cancellingOneAwaiterKeepsSharedRequestAndAwaitPinsReleasedLease() async throws {
+@Test(.timeLimit(.minutes(1))) func cancellingOneAwaiterKeepsSharedRequestAndAwaitPinsReleasedLease() async throws {
     let transport = ControlledTransport()
     let client = RemoteClient(origin: "http://127.0.0.1:8080", transport: transport)
     let query = try await client.query("hash/query") { $0 }
@@ -112,7 +123,7 @@ import Testing
     cancelled.cancel()
     do { _ = try await cancelled.value; Issue.record("Cancelled waiter succeeded") } catch is CancellationError {}
     let value = Task { try await query.value() }
-    while await client.queryWaiterCount == 0 { await Task.yield() }
+    try await waitForAwaitingPin(client)
     await query.release()
     await transport.finish(request)
     #expect(try await value.value != nil)
@@ -120,13 +131,13 @@ import Testing
     await client.shutdown()
 }
 
-@Test func sessionReplacementRejectsOldWaitersAndCompletions() async throws {
+@Test(.timeLimit(.minutes(1))) func sessionReplacementRejectsOldWaitersAndCompletions() async throws {
     let transport = ControlledTransport()
     let client = RemoteClient(origin: "http://127.0.0.1:8080", transport: transport, cacheCapacity: 1)
     let old = try await client.query("hash/query") { $0 }
     let first = await transport.next()
     let waiter = Task { try await old.value() }
-    while await client.queryWaiterCount == 0 { await Task.yield() }
+    try await waitForAwaitingPin(client)
     try await client.resetSession(origin: "http://127.0.0.1:9090")
     do { _ = try await waiter.value; Issue.record("Old waiter survived reset") } catch { #expect(error as? RemoteError == .sessionChanged) }
     let current = try await client.query("hash/query") { $0 }
@@ -139,4 +150,13 @@ import Testing
     await old.release()
     #expect(try await current.snapshot().ready)
     await current.release()
+}
+
+private func waitForAwaitingPin(_ client: RemoteClient) async throws {
+    let deadline = ContinuousClock.now.advanced(by: .seconds(1))
+    while await client.queryWaiterCount == 0 && ContinuousClock.now < deadline {
+        try Task.checkCancellation()
+        await Task.yield()
+    }
+    try #require(await client.queryWaiterCount == 1)
 }
