@@ -47,7 +47,7 @@ func TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain(t *testing.
 	if runtime.GOOS == "windows" {
 		t.Fatal("process-group lifecycle evidence requires Unix process groups")
 	}
-	fixture := prepareInputsLifecycleFixture(t, "crawler-failure")
+	fixture := sharedInputsLifecycleFixture(t, "crawler-failure")
 	result := runInputsBuildApp(t, fixture)
 	if result.err == nil {
 		t.Fatalf("native Vite buildApp resolved after crawler failure; output:\n%s", result.output)
@@ -75,6 +75,7 @@ import { readFile } from "node:fs/promises";
 import process from "node:process";
 export const prerender = true;
 export async function load() {
+  if (process.env.SKGO_LIFECYCLE_MODE !== "crawler-failure") return {};
   const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
     try {
@@ -290,9 +291,10 @@ var _ = skgo.Load(pageLoad)
 `)
 		writeFixtureFile(t, filepath.Join(fixture, "web", "src", "routes", "about", "+page.svelte"), `<h1>Blocked Go load</h1>`)
 	}
-	if mode == "crawler-failure" {
-		writeNativeCrawlerFailurePage(t, fixture)
-	}
+	// The immutable Go graph includes the native crawler route before generation.
+	// Its native load fails only in the crawler case; signals and producer failure
+	// still own distinct processes, receipts and runtime mode selection.
+	writeNativeCrawlerFailurePage(t, fixture)
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir, generate.Env = fixture, inputsTestEnv(fixture, mode)
 	if output, err := generate.CombinedOutput(); err != nil {

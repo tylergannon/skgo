@@ -120,3 +120,12 @@ per-test/stage logs. Temporarily collect Go's native JSON output from the same
 ordinary Just test invocation, with TS/JS stage child CPU alongside wall time,
 to distinguish repeated work from CI contention. Do not make a separate suite
 or change concurrency for this measurement; restore normal output afterward.
+
+decision: The native crawler-failure route can be part of the immutable shared
+lifecycle graph if its source exists BEFORE generation. Its native server load
+returns a control result in other lifecycle modes and throws the literal native
+500 only in crawler-failure after observing the independent blocked Go receipt.
+That lets all four lifecycle cases share one generation and compiled service,
+while preserving distinct native builds/processes and original failure/drain
+assertions. The earlier stale-graph experiment remains invalid; adding a route
+after generation still cannot establish native crawler-failure coverage.
