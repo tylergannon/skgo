@@ -24,5 +24,6 @@ ephemeral/screenshots/
 **/.zig-cache/
 **/zig-out/
 **/zig-pkg/
+**/.build/
 /native/build/
 /example/native/build/
