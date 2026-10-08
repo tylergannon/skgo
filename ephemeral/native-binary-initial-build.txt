@@ -1,6 +1,0 @@
-# github.com/tylergannon/skgo/native_test [github.com/tylergannon/skgo/native.test]
-native/binary_test.go:151:32: not enough arguments in call to devalue.Parse
-	have (string)
-	want (string, map[string]func(any) (any, error))
-FAIL	github.com/tylergannon/skgo/native [build failed]
-FAIL
