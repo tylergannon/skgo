@@ -2,6 +2,7 @@ const std = @import("std");
 pub const devalue = @import("devalue");
 const d = devalue;
 const Allocator = std.mem.Allocator;
+pub const QueryCache = @import("cache.zig").Cache;
 pub const Kind = enum { query, command };
 
 /// All strings in a prepared request are owned. Release once with deinit.
@@ -14,6 +15,11 @@ pub const Request = struct {
     origin: []u8,
     payload: []u8,
     body: ?[]u8,
+    /// Kit runtime/shared.js create_remote_key: function id + slash + payload.
+    pub fn queryKey(self: *const Request, id: []const u8) ![]u8 {
+        if (self.kind != .query) return error.InvalidInput;
+        return std.fmt.allocPrint(self.allocator, "{s}/{s}", .{ id, self.payload });
+    }
     pub fn deinit(self: *Request) void {
         self.allocator.free(self.url);
         self.allocator.free(self.origin);
@@ -198,4 +204,5 @@ pub fn receive(a: Allocator, http_status: u16, bytes: []const u8) !Response {
 
 test {
     _ = @import("tests.zig");
+    _ = QueryCache;
 }

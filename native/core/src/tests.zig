@@ -98,3 +98,24 @@ test "query redirect is surfaced as a location rather than an empty result" {
     try std.testing.expectEqual(.redirect, response.kind);
     try std.testing.expectEqualStrings("/sign-in", response.message.?);
 }
+
+test "canonical argument keys coalesce reordered objects into one retained query" {
+    const expected = "hash/page/W1siX19za3JhbyIsMV0seyJsaW1pdCI6Miwib2Zmc2V0IjozfSwxMCwyMF0";
+    var cache = try core.QueryCache.init(a, 1);
+    defer cache.deinit();
+    var starts: usize = 0;
+    for ([_][]const u8{ "[{\"offset\":1,\"limit\":2},20,10]", "[{\"limit\":1,\"offset\":2},10,20]" }) |input| {
+        var arg = try d.parse(a, input, &.{});
+        defer arg.deinit();
+        var request = try core.prepare(a, .{ .origin = "https://example.test" }, "hash/page", .query, &arg.graph, arg.value, &.{});
+        defer request.deinit();
+        const key = try request.queryKey("hash/page");
+        defer a.free(key);
+        try std.testing.expectEqualStrings(expected, key);
+        try cache.retain(key);
+        if (try cache.begin(key, false) != null) starts += 1;
+    }
+    try std.testing.expectEqual(@as(usize, 1), starts);
+    try cache.release(expected);
+    try cache.release(expected);
+}

@@ -1,0 +1,2 @@
+decision: Kit 3.0.0 query/instance.svelte.js settles predecessor promises when a refresh completes; remote-functions/shared.svelte.js applies data.q through set/fail, which settle all pending refreshes. Preserve these distinct paths instead of imposing a single latest-request-wins rule on every update.
+decision: Native cache entries retain serialized model bytes, and snapshots own independent copies. No application model graph or per-value Zig ownership needs to cross the Swift boundary.
