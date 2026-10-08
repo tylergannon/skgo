@@ -69,3 +69,23 @@ request bottleneck in the adapter's native builds. CPU-profile goroutine
 labels separate handler setup/request stacks; background GC needs its own
 accounting and must not be treated as absent from either merely because it
 does not inherit those labels.
+
+Svelte 5.57.1's renderer collects string chunks with content[this.type] += item
+in both synchronous and asynchronous collection. Pinned Goja's Unicode Concat
+allocates a new UTF-16 array and copies the whole existing prefix. This is a
+candidate for the measured SSR allocation amplification, not attribution of
+every allocation to that loop; HTTP buffer pooling cannot reach that storage.
+
+decision: Preserve a caller-supplied NODE_COMPILE_CACHE in fixture child
+environments. A package-private cache discarded at exit cannot reuse compiled
+dependencies from the preceding ordinary build. Just recipes now share one
+ignored worktree-local code cache; fixtures retain private fallback when invoked
+directly without it. Runtime instances, output directories, and native compiler
+calls are still fresh. Validate changed module bytes with an already-populated
+cache rather than treating the cache's presence as correctness evidence.
+
+friction: Another worktree's concurrent Go/native-build suite contaminated the
+latest local timings. The ordinary invocation passed the adapter but failed
+strict pnpm version checks because the global shim resolved 12.10.1; those checks
+passed with the installed 12.9.1 executable prepended to PATH. Do not infer a
+speedup or regression from this contended local run; use ordinary full-suite CI.

@@ -21,6 +21,10 @@ log := env("SKGO_LOG", justfile_directory() / "example/e2e/server.log")
 # export data, which makes `skgo check` report it incomplete.
 export PATH := justfile_directory() / ".tools/bin" + ":" + env("PATH")
 
+# Build and test processes load the same pinned frontend dependencies. Reuse
+# Node's compiled code; each process still executes its own module instances.
+export NODE_COMPILE_CACHE := env("NODE_COMPILE_CACHE", justfile_directory() / ".cache/node-compile")
+
 _default:
     @just --list --unsorted
 
