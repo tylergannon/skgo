@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 )
 
 // The cases below are kit's own, from

@@ -6,7 +6,7 @@ import (
 	context "context"
 	json "encoding/json"
 	fmt "fmt"
-	devalue "github.com/tylergannon/polytype/devalue"
+	devalue "github.com/tylergannon/devalue/v5"
 	skgo "github.com/tylergannon/skgo"
 	pkg_businesslogic "github.com/tylergannon/skgo/example/businesslogic"
 	serverhooks "github.com/tylergannon/skgo/example/internal/serverhooks"

@@ -136,7 +136,7 @@ func TestWebGrammarUnionsAndWrappedPointers(t *testing.T) {
 }
 
 const webGrammarHandlerTests = `package generated_test
-import("encoding/json";"net/http/httptest";"strings";"testing";"github.com/tylergannon/polytype/devalue";"github.com/tylergannon/skgo";"example.com/app/generated")
+import("encoding/json";"net/http/httptest";"strings";"testing";"github.com/tylergannon/devalue/v5";"github.com/tylergannon/skgo";"example.com/app/generated")
 func TestWebUnionAndRecursiveValue(t *testing.T){
  remotes:=generated.Remotes();h,err:=skgo.NewRemotes(skgo.RemoteConfig{},remotes...);if err!=nil {t.Fatal(err)}
  var id string;for _,remote:=range remotes{if strings.HasSuffix(remote.ID(),"/read"){id=remote.ID()}};if id==""{t.Fatal("missing query")}

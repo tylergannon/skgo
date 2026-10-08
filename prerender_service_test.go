@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 )
 
 func callBuildOperation(path string, in io.Reader, out io.Writer, transport Transport, loads []*ServerLoad, remotes []*Remote) error {

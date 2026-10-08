@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 )
 
 // runPrerenderInputs evaluates a declared input producer without constructing

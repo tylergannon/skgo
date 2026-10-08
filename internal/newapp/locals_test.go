@@ -158,7 +158,7 @@ var _=skgo.GET(get)
 }
 
 const starterLocalsHandlerTest = `package app_test
-import("strconv";"io/fs";"bytes";"encoding/binary";"encoding/json";"net/http/httptest";"strings";"testing";app "example.com/custom-locals";"example.com/custom-locals/web";generated "example.com/custom-locals/internal/skgo";hooks "example.com/custom-locals/internal/serverhooks";"github.com/tylergannon/polytype/devalue")
+import("strconv";"io/fs";"bytes";"encoding/binary";"encoding/json";"net/http/httptest";"strings";"testing";app "example.com/custom-locals";"example.com/custom-locals/web";generated "example.com/custom-locals/internal/skgo";hooks "example.com/custom-locals/internal/serverhooks";"github.com/tylergannon/devalue/v5")
 func TestServedStarterLocals(t *testing.T){
  dist,err:=fs.Sub(web.Build,"build");if err!=nil{t.Fatal(err)}
  handler,_,err:=app.NewHandler(dist,"","http://localhost:8080");if err!=nil{t.Fatal(err)}
