@@ -1,0 +1,91 @@
+go test -count=1 ./... ./example/...
+ok  	github.com/tylergannon/skgo	2.390s
+ok  	github.com/tylergannon/skgo/cmd/skgo	63.538s
+ok  	github.com/tylergannon/skgo/cmd/skgo-adapter-changed	0.822s
+ok  	github.com/tylergannon/skgo/cmd/skgo-e2e	1.036s
+?   	github.com/tylergannon/skgo/cmd/skgo-release-version	[no test files]
+ok  	github.com/tylergannon/skgo/internal/adapter	55.484s
+ok  	github.com/tylergannon/skgo/internal/advice	9.745s
+ok  	github.com/tylergannon/skgo/internal/check	4.223s
+ok  	github.com/tylergannon/skgo/internal/dev	50.417s
+?   	github.com/tylergannon/skgo/internal/envspec	[no test files]
+ok  	github.com/tylergannon/skgo/internal/formdata	1.690s
+ok  	github.com/tylergannon/skgo/internal/gen	66.936s
+ok  	github.com/tylergannon/skgo/internal/kithash	1.839s
+ok  	github.com/tylergannon/skgo/internal/kitpatch	3.979s
+ok  	github.com/tylergannon/skgo/internal/newapp	65.220s
+?   	github.com/tylergannon/skgo/internal/newapp/gofiles/web	[no test files]
+ok  	github.com/tylergannon/skgo/internal/releaseversion	1.722s
+ok  	github.com/tylergannon/skgo/internal/remotearg	1.529s
+ok  	github.com/tylergannon/skgo/internal/ssr	1.236s
+ok  	github.com/tylergannon/skgo/internal/sv	1.311s
+ok  	github.com/tylergannon/skgo/internal/swiftgen	3.405s
+ok  	github.com/tylergannon/skgo/internal/vite	0.409s
+ok  	github.com/tylergannon/skgo/native	48.920s
+ok  	github.com/tylergannon/skgo/example	61.054s
+?   	github.com/tylergannon/skgo/example/actiondemo	[no test files]
+ok  	github.com/tylergannon/skgo/example/businesslogic	0.763s
+ok  	github.com/tylergannon/skgo/example/businesslogic/visitor	0.544s
+?   	github.com/tylergannon/skgo/example/cmd	[no test files]
+?   	github.com/tylergannon/skgo/example/cmd/form-client	[no test files]
+ok  	github.com/tylergannon/skgo/example/devrender	31.067s
+?   	github.com/tylergannon/skgo/example/internal/app	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/serverhooks	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/client	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwe33voq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3smvzhk3ttf5nxg3dvm5oq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxmzlooqwwyylzn52xil23onswg5djn5xf2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3c6zlomryg62looq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/params	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+?   	github.com/tylergannon/skgo/example/native/cmd/build	[no test files]
+ok  	github.com/tylergannon/skgo/example/native/host	0.466s
+ok  	github.com/tylergannon/skgo/example/web	0.277s
+ok  	github.com/tylergannon/skgo/example/web/src	0.312s
+?   	github.com/tylergannon/skgo/example/web/src/lib	[no test files]

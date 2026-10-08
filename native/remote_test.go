@@ -30,6 +30,7 @@ func TestZigRemoteCalls(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	cli := filepath.Join(prefix, "bin", "skgo-remote")
+	t.Run("binary", func(t *testing.T) { testZigBinaryCalls(t, ctx, cli) })
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

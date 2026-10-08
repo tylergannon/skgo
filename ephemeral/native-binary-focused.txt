@@ -1,0 +1,12 @@
+=== RUN   TestZigRemoteCalls
+=== RUN   TestZigRemoteCalls/binary
+=== RUN   TestZigRemoteCalls/binary/query
+=== RUN   TestZigRemoteCalls/binary/command
+--- PASS: TestZigRemoteCalls (5.04s)
+    --- PASS: TestZigRemoteCalls/binary (0.31s)
+        --- PASS: TestZigRemoteCalls/binary/query (0.29s)
+        --- PASS: TestZigRemoteCalls/binary/command (0.02s)
+=== RUN   TestSwiftRemoteCalls
+--- PASS: TestSwiftRemoteCalls (7.77s)
+PASS
+ok  	github.com/tylergannon/skgo/native	14.340s

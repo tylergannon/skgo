@@ -30,9 +30,9 @@ pub const Endpoint = struct {
     app_dir: []const u8 = "_app",
 };
 
-/// Native arguments currently admit primitives, plain/null-prototype objects
-/// and arrays. Other graph nodes fail explicitly. Application transport hooks,
-/// files and query Map/Set canonicalization are outside this finite-model path.
+/// Native arguments admit primitives, plain/null-prototype objects, arrays,
+/// and binary buffers/views. Other graph nodes fail explicitly. Application
+/// transport hooks, files and query Map/Set canonicalization are outside this profile.
 pub fn prepare(a: Allocator, endpoint: Endpoint, id: []const u8, kind: Kind, graph: *d.Graph, value: d.Value, refreshes: []const []const u8) !Request {
     const uri = std.Uri.parse(endpoint.origin) catch return error.InvalidEndpoint;
     if ((!std.mem.eql(u8, uri.scheme, "http") and !std.mem.eql(u8, uri.scheme, "https")) or uri.host == null or uri.user != null or uri.password != null or uri.query != null or uri.fragment != null or uri.path.percent_encoded.len != 0) return error.InvalidEndpoint;
@@ -67,7 +67,7 @@ fn validPath(path: []const u8, slash: bool) bool {
 
 fn guard(_: ?*anyopaque, graph: *d.Graph, value: d.Value) d.Error!?d.Value {
     if (value == .ref) switch (try graph.node(value)) {
-        .object, .array => {},
+        .object, .array, .array_buffer, .typed_array, .data_view => {},
         else => return error.UnsupportedValue,
     };
     return null;
