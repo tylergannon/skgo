@@ -129,3 +129,19 @@ That lets all four lifecycle cases share one generation and compiled service,
 while preserving distinct native builds/processes and original failure/drain
 assertions. The earlier stale-graph experiment remains invalid; adding a route
 after generation still cannot establish native crawler-failure coverage.
+
+The ec4b199 ordinary CI JSON observation passed 1589 named events with zero
+skips/failures but adapter elapsed was 144.352s; runner variation prevents
+attributing that difference from prior 91.926s to the source change. TS native
+build used 8.485s CPU over 22.044s wall; its svelte-check used 6.382s CPU over
+18.896s wall. JS native build used 8.928s CPU over 34.579s wall and checker
+6.059s CPU over 15.760s wall. Compilation/checking does real work and additionally
+waits under full-suite contention. Native request service CPU remains a separate
+millisecond-scale measurement, not the explanation for these stages.
+
+Reject svelte-check 4.7.6's supported --incremental option for these fresh
+fixtures: a cold trial still passed both language consumers but checker CPU was
+1.75/1.86s, versus about 1.64s without it. Its virtual-file path adds a TypeScript
+CLI process; there is no repeated check in these fixtures to amortize its cache.
+Keep the existing checker. Restore plain Just test output after capturing CI
+events; the same package patterns and native contracts remain in one invocation.
