@@ -52,9 +52,9 @@ tools:
         GOBIN="{{justfile_directory()}}/.tools/bin" go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
     fi
 
-# go test, both modules, in one invocation so their packages run side by side
+# go test, both modules; fixture builds already run concurrently inside packages
 test: tools
-    go test -json -count=1 ./... ./example/...
+    go test -json -p=1 -count=1 ./... ./example/...
 
 # the example server, against the built frontend
 serve:
