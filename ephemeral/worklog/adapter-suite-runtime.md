@@ -54,3 +54,18 @@ CI's mise action installs the pinned Node but export_path=false leaves the
 plain Go test recipe's child processes on the runner's Node. Run the same Go
 suite through the example's mise environment and use Go's -C to retain the
 root package patterns. Local runtime measurements must likewise use the pin.
+
+Actual request CPU and test setup must be profiled separately. Disposable Go
+overlays measured the native TS/JS prerender services from main through clean
+shutdown at 13.885ms and 12.851ms CPU (Getrusage, excluding profiler shutdown).
+The existing 500-home-document test used 72.557ms CPU to construct one handler,
+1.169033s CPU/490.355ms wall in its request loop, and 13.443ms CPU in the three
+explicit GCs. Its sampled cumulative allocation was about 1055MB, with 860MB
+under Engine.Render and Unicode string concatenation the largest flat source
+at 308MB. The whole example test process allocated about 5734MB, about 69%
+under handler construction, including repeated asset hashing and Goja setup.
+These figures identify actual allocation work; they do not establish a slow
+request bottleneck in the adapter's native builds. CPU-profile goroutine
+labels separate handler setup/request stacks; background GC needs its own
+accounting and must not be treated as absent from either merely because it
+does not inherit those labels.
