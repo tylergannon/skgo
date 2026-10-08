@@ -41,7 +41,7 @@ import (
 	"errors"
 	"os"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/businesslogic"
 )
@@ -524,7 +524,7 @@ func TestMalformedPrerenderInputsRejectsPermissiveKitBuild(t *testing.T) {
 import (
  "context"
  "github.com/tylergannon/skgo"
- "github.com/tylergannon/polytype/devalue"
+ "github.com/tylergannon/devalue/v5"
 )
 func emptyInputs() ([]devalue.UndefinedValue,error) { return []devalue.UndefinedValue{},nil }
 func empty(context.Context) (string,error) { return "empty",nil }

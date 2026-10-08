@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/skgo/internal/formdata"
 )
 
@@ -302,7 +302,7 @@ func TestSetFormKeyMirrorsKitsIDInjection(t *testing.T) {
 //
 // The fixture is the literal bytes kit's client puts on the wire
 // (`runtime/app/server/remote/form.js:163`,
-// `action_id = id + (key != undefined ? \`/${JSON.stringify(key)}\` : '')`,
+// `action_id = id + (key != undefined ? \`/${JSON.stringify(key)}\` : ”)`,
 // `action = '/remote=' + encodeURIComponent(action_id)`) for the key "k1" —
 // not a string this test or the code under test invented — decoded by
 // `actionID`, kit's own `get_remote_action`, the same as a real request would

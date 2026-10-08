@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 )
 
 // PrerenderLoadInput carries one Kit build-time server-load invocation from the

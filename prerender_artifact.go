@@ -9,7 +9,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/skgo/internal/ssr"
 )
 

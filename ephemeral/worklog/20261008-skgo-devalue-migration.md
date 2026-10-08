@@ -1,0 +1,8 @@
+# skgo standalone devalue migration
+
+decision: The current frozen example installs SvelteKit 3.0.0 and resolves devalue 5.9.4. The released Go v5.0.0 runtime therefore matches the actual Kit dependency, despite the older handoff naming a prerelease.
+friction: pnpm automatically selects 12.9.1 inside the example frontend but the root tests invoke the host 12.10.1 in temporary projects. Put the installed native pnpm 12.9.1 package directory first on PATH for the entire test process, not only frontend commands.
+friction: The initial concurrent baseline also failed TestPrerenderPredicateRelayBooleanErrorsAndTerminalLateReply (two callbacks instead of one). Preserve that failure and establish whether it repeats before changing migration code.
+friction: Tidying the example before regeneration tries to resolve the removed bundled runtime because the old generated codecs still import it. Regenerate with the updated generator first; then tidy the example.
+friction: The relay timeout probe guessed ordering with a 200ms owner timer against a 100ms worker wait; repeated runs returned a successful first call or never announced failure. Make the owner withhold its answer until the failure message, and acknowledge that late reply through a shared cell before the third call. This preserves the terminal-failure assertions while removing a scheduling guess.
+correction: The user requires vp as the frontend/tooling entry point. Do not infer permission to invoke pnpm directly from the existing just install recipe. Use vp install and vp exec/run; keep native pnpm 12.9.1 on PATH only because skgo's own Go tests call it and assert its version.

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/polytype"
-	"github.com/tylergannon/polytype/devalue"
 )
 
 // Decode assigns a parsed form submission onto a typed Go value.
