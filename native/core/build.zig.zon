@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .devalue = .{
-            .url = "https://github.com/tylergannon/devalue/archive/20a8d45bf73561af0cac227eb22a94084155c5b7.tar.gz",
-            .hash = "devalue-0.1.0-QJ2gKoMeBAC-jGq_M30rVJvF7jT-GzcB0MwMxEWxoIVk",
+            .url = "https://github.com/tylergannon/devalue/archive/f4c94b9aabb447e0e94452cd529a19f5d482efcf.tar.gz",
+            .hash = "devalue-0.1.0-QJ2gKno1BAArJnKGj2GWQ9foI_X8bxfzFPwQ3hePaVfC",
         },
     },
     .paths = .{ "build.zig", "build.zig.zon", "src" },
