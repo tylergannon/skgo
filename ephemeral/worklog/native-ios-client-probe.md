@@ -1,0 +1,3 @@
+friction: Zig 0.17's default C ABI panic handler imports std.Io.Threaded process support and fails to compile on iOS (NullFile has no fd). The protocol library performs no I/O; an iOS-only FullPanic handler writes its diagnostic through libc and traps, preserving runtime safety. Use the library-only build step for mobile targets; the desktop HTTP CLI requires its own I/O runtime.
+
+constraint: Compiling against the installed Apple SDKs is possible despite the incompatible Xcode system resources. It establishes target compilation/linkage only; XcodeGen application build, simulator/device execution, WebView rendering and mobile lifecycle outcomes remain pending until the installation and device access are available.

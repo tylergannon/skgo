@@ -8,7 +8,7 @@ import (
 	fmt "fmt"
 	devalue "github.com/tylergannon/devalue/v5"
 	skgo "github.com/tylergannon/skgo"
-	pkg_businesslogic "github.com/tylergannon/skgo/example/businesslogic"
+	businesslogic "github.com/tylergannon/skgo/example/businesslogic"
 	serverhooks "github.com/tylergannon/skgo/example/internal/serverhooks"
 	pkg_onzggl3sn52xizlt "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt"
 	pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th"
@@ -72,6 +72,31 @@ import (
 
 func RequestBoundary(cfg skgo.HandleConfig, next http.Handler) http.Handler {
 	return params.Middleware(serverhooks.Handle).Intercept(cfg, next)
+}
+
+var _ = math.IsNaN
+var _ = strconv.Itoa
+
+func skgoNativeCheck0(value string, path string, depth int) error {
+	if depth >= 256 {
+		return fmt.Errorf("native model %s exceeds depth 255", path)
+	}
+	return nil
+}
+func skgoNativeCheck2(value string, path string, depth int) error {
+	if depth >= 256 {
+		return fmt.Errorf("native model %s exceeds depth 255", path)
+	}
+	return nil
+}
+func skgoNativeCheck1(value businesslogic.Session, path string, depth int) error {
+	if depth >= 256 {
+		return fmt.Errorf("native model %s exceeds depth 255", path)
+	}
+	if err := skgoNativeCheck2(value.User, path+"/user", depth+1); err != nil {
+		return err
+	}
+	return nil
 }
 
 // dvAt renders a JSON-pointer-style path for a diagnostic. The root value has
@@ -365,16 +390,16 @@ func ParseSite(s string) (pkg_onzggl3sn52xizlt.Site, error) {
 	return decSite(parsed, "")
 }
 
-func encMoney(v pkg_businesslogic.Money, at string) (any, error) {
+func encMoney(v businesslogic.Money, at string) (any, error) {
 	enc1 := devalue.NewObject()
 	var enc2 any = float64(v.Cents)
 	enc1.Set("cents", enc2)
 	return enc1, nil
 }
 
-func decMoney(raw any, at string) (pkg_businesslogic.Money, error) {
-	var dvZero pkg_businesslogic.Money
-	var dec1 pkg_businesslogic.Money
+func decMoney(raw any, at string) (businesslogic.Money, error) {
+	var dvZero businesslogic.Money
+	var dec1 businesslogic.Money
 	obj2, err := dvObject(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -396,14 +421,14 @@ func decMoney(raw any, at string) (pkg_businesslogic.Money, error) {
 }
 
 // EncodeMoney converts v into the devalue value model.
-func EncodeMoney(v pkg_businesslogic.Money) (any, error) { return encMoney(v, "") }
+func EncodeMoney(v businesslogic.Money) (any, error) { return encMoney(v, "") }
 
 // DecodeMoney converts a devalue value model tree into a pkg_businesslogic.Money, rejecting any
 // shape the type grammar does not admit.
-func DecodeMoney(raw any) (pkg_businesslogic.Money, error) { return decMoney(raw, "") }
+func DecodeMoney(raw any) (businesslogic.Money, error) { return decMoney(raw, "") }
 
 // StringifyMoney encodes v and serializes it with devalue.
-func StringifyMoney(v pkg_businesslogic.Money) (string, error) {
+func StringifyMoney(v businesslogic.Money) (string, error) {
 	encoded, err := encMoney(v, "")
 	if err != nil {
 		return "", err
@@ -412,8 +437,8 @@ func StringifyMoney(v pkg_businesslogic.Money) (string, error) {
 }
 
 // ParseMoney parses a devalue document and decodes it into a pkg_businesslogic.Money.
-func ParseMoney(s string) (pkg_businesslogic.Money, error) {
-	var zero pkg_businesslogic.Money
+func ParseMoney(s string) (businesslogic.Money, error) {
+	var zero businesslogic.Money
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -491,7 +516,7 @@ func ParseQuote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d
 	return decQuote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f6c696e6b732f6f6e7a67676c33736e353278697a6c746634756732796c736e6e737869326c6f6d347573363464736e66727773337468(parsed, "")
 }
 
-func encTodo(v pkg_businesslogic.Todo, at string) (any, error) {
+func encTodo(v businesslogic.Todo, at string) (any, error) {
 	enc1 := devalue.NewObject()
 	var enc2 any = string(v.ID)
 	enc1.Set("id", enc2)
@@ -502,9 +527,9 @@ func encTodo(v pkg_businesslogic.Todo, at string) (any, error) {
 	return enc1, nil
 }
 
-func decTodo(raw any, at string) (pkg_businesslogic.Todo, error) {
-	var dvZero pkg_businesslogic.Todo
-	var dec1 pkg_businesslogic.Todo
+func decTodo(raw any, at string) (businesslogic.Todo, error) {
+	var dvZero businesslogic.Todo
+	var dec1 businesslogic.Todo
 	obj2, err := dvObject(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -543,14 +568,14 @@ func decTodo(raw any, at string) (pkg_businesslogic.Todo, error) {
 }
 
 // EncodeTodo converts v into the devalue value model.
-func EncodeTodo(v pkg_businesslogic.Todo) (any, error) { return encTodo(v, "") }
+func EncodeTodo(v businesslogic.Todo) (any, error) { return encTodo(v, "") }
 
 // DecodeTodo converts a devalue value model tree into a pkg_businesslogic.Todo, rejecting any
 // shape the type grammar does not admit.
-func DecodeTodo(raw any) (pkg_businesslogic.Todo, error) { return decTodo(raw, "") }
+func DecodeTodo(raw any) (businesslogic.Todo, error) { return decTodo(raw, "") }
 
 // StringifyTodo encodes v and serializes it with devalue.
-func StringifyTodo(v pkg_businesslogic.Todo) (string, error) {
+func StringifyTodo(v businesslogic.Todo) (string, error) {
 	encoded, err := encTodo(v, "")
 	if err != nil {
 		return "", err
@@ -559,8 +584,8 @@ func StringifyTodo(v pkg_businesslogic.Todo) (string, error) {
 }
 
 // ParseTodo parses a devalue document and decodes it into a pkg_businesslogic.Todo.
-func ParseTodo(s string) (pkg_businesslogic.Todo, error) {
-	var zero pkg_businesslogic.Todo
+func ParseTodo(s string) (businesslogic.Todo, error) {
+	var zero businesslogic.Todo
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -2102,16 +2127,16 @@ func ParseResult(s string) (pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result, error) {
 	return decResult(parsed, "")
 }
 
-func encSession(v pkg_businesslogic.Session, at string) (any, error) {
+func encSession(v businesslogic.Session, at string) (any, error) {
 	enc1 := devalue.NewObject()
 	var enc2 any = string(v.User)
 	enc1.Set("user", enc2)
 	return enc1, nil
 }
 
-func decSession(raw any, at string) (pkg_businesslogic.Session, error) {
-	var dvZero pkg_businesslogic.Session
-	var dec1 pkg_businesslogic.Session
+func decSession(raw any, at string) (businesslogic.Session, error) {
+	var dvZero businesslogic.Session
+	var dec1 businesslogic.Session
 	obj2, err := dvObject(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -2132,14 +2157,14 @@ func decSession(raw any, at string) (pkg_businesslogic.Session, error) {
 }
 
 // EncodeSession converts v into the devalue value model.
-func EncodeSession(v pkg_businesslogic.Session) (any, error) { return encSession(v, "") }
+func EncodeSession(v businesslogic.Session) (any, error) { return encSession(v, "") }
 
 // DecodeSession converts a devalue value model tree into a pkg_businesslogic.Session, rejecting any
 // shape the type grammar does not admit.
-func DecodeSession(raw any) (pkg_businesslogic.Session, error) { return decSession(raw, "") }
+func DecodeSession(raw any) (businesslogic.Session, error) { return decSession(raw, "") }
 
 // StringifySession encodes v and serializes it with devalue.
-func StringifySession(v pkg_businesslogic.Session) (string, error) {
+func StringifySession(v businesslogic.Session) (string, error) {
 	encoded, err := encSession(v, "")
 	if err != nil {
 		return "", err
@@ -2148,8 +2173,8 @@ func StringifySession(v pkg_businesslogic.Session) (string, error) {
 }
 
 // ParseSession parses a devalue document and decodes it into a pkg_businesslogic.Session.
-func ParseSession(s string) (pkg_businesslogic.Session, error) {
-	var zero pkg_businesslogic.Session
+func ParseSession(s string) (businesslogic.Session, error) {
+	var zero businesslogic.Session
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -2197,7 +2222,7 @@ func ParseRoot0(s string) (string, error) {
 	return decRoot0(parsed, "")
 }
 
-func encRoot1(v pkg_businesslogic.Session, at string) (any, error) {
+func encRoot1(v businesslogic.Session, at string) (any, error) {
 	enc1, err := encSession(v, at)
 	if err != nil {
 		return nil, err
@@ -2205,8 +2230,8 @@ func encRoot1(v pkg_businesslogic.Session, at string) (any, error) {
 	return enc1, nil
 }
 
-func decRoot1(raw any, at string) (pkg_businesslogic.Session, error) {
-	var dvZero pkg_businesslogic.Session
+func decRoot1(raw any, at string) (businesslogic.Session, error) {
+	var dvZero businesslogic.Session
 	dec1, err := decSession(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -2215,14 +2240,14 @@ func decRoot1(raw any, at string) (pkg_businesslogic.Session, error) {
 }
 
 // EncodeRoot1 converts v into the devalue value model.
-func EncodeRoot1(v pkg_businesslogic.Session) (any, error) { return encRoot1(v, "") }
+func EncodeRoot1(v businesslogic.Session) (any, error) { return encRoot1(v, "") }
 
 // DecodeRoot1 converts a devalue value model tree into a pkg_businesslogic.Session, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot1(raw any) (pkg_businesslogic.Session, error) { return decRoot1(raw, "") }
+func DecodeRoot1(raw any) (businesslogic.Session, error) { return decRoot1(raw, "") }
 
 // StringifyRoot1 encodes v and serializes it with devalue.
-func StringifyRoot1(v pkg_businesslogic.Session) (string, error) {
+func StringifyRoot1(v businesslogic.Session) (string, error) {
 	encoded, err := encRoot1(v, "")
 	if err != nil {
 		return "", err
@@ -2231,8 +2256,8 @@ func StringifyRoot1(v pkg_businesslogic.Session) (string, error) {
 }
 
 // ParseRoot1 parses a devalue document and decodes it into a pkg_businesslogic.Session.
-func ParseRoot1(s string) (pkg_businesslogic.Session, error) {
-	var zero pkg_businesslogic.Session
+func ParseRoot1(s string) (businesslogic.Session, error) {
+	var zero businesslogic.Session
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -2240,7 +2265,7 @@ func ParseRoot1(s string) (pkg_businesslogic.Session, error) {
 	return decRoot1(parsed, "")
 }
 
-func encRoot2(v pkg_businesslogic.Money, at string) (any, error) {
+func encRoot2(v businesslogic.Money, at string) (any, error) {
 	enc1, err := encMoney(v, at)
 	if err != nil {
 		return nil, err
@@ -2248,8 +2273,8 @@ func encRoot2(v pkg_businesslogic.Money, at string) (any, error) {
 	return enc1, nil
 }
 
-func decRoot2(raw any, at string) (pkg_businesslogic.Money, error) {
-	var dvZero pkg_businesslogic.Money
+func decRoot2(raw any, at string) (businesslogic.Money, error) {
+	var dvZero businesslogic.Money
 	dec1, err := decMoney(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -2258,14 +2283,14 @@ func decRoot2(raw any, at string) (pkg_businesslogic.Money, error) {
 }
 
 // EncodeRoot2 converts v into the devalue value model.
-func EncodeRoot2(v pkg_businesslogic.Money) (any, error) { return encRoot2(v, "") }
+func EncodeRoot2(v businesslogic.Money) (any, error) { return encRoot2(v, "") }
 
 // DecodeRoot2 converts a devalue value model tree into a pkg_businesslogic.Money, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot2(raw any) (pkg_businesslogic.Money, error) { return decRoot2(raw, "") }
+func DecodeRoot2(raw any) (businesslogic.Money, error) { return decRoot2(raw, "") }
 
 // StringifyRoot2 encodes v and serializes it with devalue.
-func StringifyRoot2(v pkg_businesslogic.Money) (string, error) {
+func StringifyRoot2(v businesslogic.Money) (string, error) {
 	encoded, err := encRoot2(v, "")
 	if err != nil {
 		return "", err
@@ -2274,8 +2299,8 @@ func StringifyRoot2(v pkg_businesslogic.Money) (string, error) {
 }
 
 // ParseRoot2 parses a devalue document and decodes it into a pkg_businesslogic.Money.
-func ParseRoot2(s string) (pkg_businesslogic.Money, error) {
-	var zero pkg_businesslogic.Money
+func ParseRoot2(s string) (businesslogic.Money, error) {
+	var zero businesslogic.Money
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -3218,7 +3243,7 @@ func ParseRoot22(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, error) {
 	return decRoot22(parsed, "")
 }
 
-func encRoot23(v pkg_businesslogic.Todo, at string) (any, error) {
+func encRoot23(v businesslogic.Todo, at string) (any, error) {
 	enc1, err := encTodo(v, at)
 	if err != nil {
 		return nil, err
@@ -3226,8 +3251,8 @@ func encRoot23(v pkg_businesslogic.Todo, at string) (any, error) {
 	return enc1, nil
 }
 
-func decRoot23(raw any, at string) (pkg_businesslogic.Todo, error) {
-	var dvZero pkg_businesslogic.Todo
+func decRoot23(raw any, at string) (businesslogic.Todo, error) {
+	var dvZero businesslogic.Todo
 	dec1, err := decTodo(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -3236,14 +3261,14 @@ func decRoot23(raw any, at string) (pkg_businesslogic.Todo, error) {
 }
 
 // EncodeRoot23 converts v into the devalue value model.
-func EncodeRoot23(v pkg_businesslogic.Todo) (any, error) { return encRoot23(v, "") }
+func EncodeRoot23(v businesslogic.Todo) (any, error) { return encRoot23(v, "") }
 
 // DecodeRoot23 converts a devalue value model tree into a pkg_businesslogic.Todo, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot23(raw any) (pkg_businesslogic.Todo, error) { return decRoot23(raw, "") }
+func DecodeRoot23(raw any) (businesslogic.Todo, error) { return decRoot23(raw, "") }
 
 // StringifyRoot23 encodes v and serializes it with devalue.
-func StringifyRoot23(v pkg_businesslogic.Todo) (string, error) {
+func StringifyRoot23(v businesslogic.Todo) (string, error) {
 	encoded, err := encRoot23(v, "")
 	if err != nil {
 		return "", err
@@ -3252,8 +3277,8 @@ func StringifyRoot23(v pkg_businesslogic.Todo) (string, error) {
 }
 
 // ParseRoot23 parses a devalue document and decodes it into a pkg_businesslogic.Todo.
-func ParseRoot23(s string) (pkg_businesslogic.Todo, error) {
-	var zero pkg_businesslogic.Todo
+func ParseRoot23(s string) (businesslogic.Todo, error) {
+	var zero businesslogic.Todo
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -3261,7 +3286,7 @@ func ParseRoot23(s string) (pkg_businesslogic.Todo, error) {
 	return decRoot23(parsed, "")
 }
 
-func encRoot24(v []pkg_businesslogic.Todo, at string) (any, error) {
+func encRoot24(v []businesslogic.Todo, at string) (any, error) {
 	enc1 := make([]any, 0, len(v))
 	for i2, item3 := range v {
 		enc4, err := encTodo(item3, at+"/"+strconv.Itoa(i2))
@@ -3274,13 +3299,13 @@ func encRoot24(v []pkg_businesslogic.Todo, at string) (any, error) {
 	return enc5, nil
 }
 
-func decRoot24(raw any, at string) ([]pkg_businesslogic.Todo, error) {
-	var dvZero []pkg_businesslogic.Todo
+func decRoot24(raw any, at string) ([]businesslogic.Todo, error) {
+	var dvZero []businesslogic.Todo
 	items2, err := dvArray(raw, at)
 	if err != nil {
 		return dvZero, err
 	}
-	dec1 := make([]pkg_businesslogic.Todo, 0, len(items2))
+	dec1 := make([]businesslogic.Todo, 0, len(items2))
 	for i3, item4 := range items2 {
 		dec5, err := decTodo(item4, at+"/"+strconv.Itoa(i3))
 		if err != nil {
@@ -3292,14 +3317,14 @@ func decRoot24(raw any, at string) ([]pkg_businesslogic.Todo, error) {
 }
 
 // EncodeRoot24 converts v into the devalue value model.
-func EncodeRoot24(v []pkg_businesslogic.Todo) (any, error) { return encRoot24(v, "") }
+func EncodeRoot24(v []businesslogic.Todo) (any, error) { return encRoot24(v, "") }
 
 // DecodeRoot24 converts a devalue value model tree into a []pkg_businesslogic.Todo, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot24(raw any) ([]pkg_businesslogic.Todo, error) { return decRoot24(raw, "") }
+func DecodeRoot24(raw any) ([]businesslogic.Todo, error) { return decRoot24(raw, "") }
 
 // StringifyRoot24 encodes v and serializes it with devalue.
-func StringifyRoot24(v []pkg_businesslogic.Todo) (string, error) {
+func StringifyRoot24(v []businesslogic.Todo) (string, error) {
 	encoded, err := encRoot24(v, "")
 	if err != nil {
 		return "", err
@@ -3308,8 +3333,8 @@ func StringifyRoot24(v []pkg_businesslogic.Todo) (string, error) {
 }
 
 // ParseRoot24 parses a devalue document and decodes it into a []pkg_businesslogic.Todo.
-func ParseRoot24(s string) ([]pkg_businesslogic.Todo, error) {
-	var zero []pkg_businesslogic.Todo
+func ParseRoot24(s string) ([]businesslogic.Todo, error) {
+	var zero []businesslogic.Todo
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -3471,12 +3496,18 @@ func remote_signIn(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
+	if err := skgoNativeCheck0(in, "", 0); err != nil {
+		return nil, skgo.BadRequest(err)
+	}
 	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
 	if err != nil {
 		return nil, err
 	}
 	out, err := skgo50.Skgo_signIn(event.Context(), event, in)
 	if err != nil {
+		return nil, err
+	}
+	if err := skgoNativeCheck1(out, "", 0); err != nil {
 		return nil, err
 	}
 	return EncodeRoot1(out)
@@ -3523,6 +3554,9 @@ func remote_whoami(ctx context.Context, call skgo.Call) (any, error) {
 	}
 	out, err := skgo50.Skgo_whoami(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := skgoNativeCheck1(out, "", 0); err != nil {
 		return nil, err
 	}
 	return EncodeRoot1(out)
@@ -5301,8 +5335,8 @@ func Endpoints() []*skgo.Endpoint {
 func Transport() skgo.Transport {
 	return skgo.Transport{
 		"Money": {
-			Type:   reflect.TypeFor[pkg_businesslogic.Money](),
-			Encode: func(v any) (any, error) { return EncodeMoney(v.(pkg_businesslogic.Money)) },
+			Type:   reflect.TypeFor[businesslogic.Money](),
+			Encode: func(v any) (any, error) { return EncodeMoney(v.(businesslogic.Money)) },
 			Decode: func(raw any) (any, error) { return DecodeMoney(raw) },
 		},
 	}
