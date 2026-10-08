@@ -40,13 +40,6 @@ separate `RemoteError.redirect`.
 
 The current native core does not yet implement retained queries or caching.
 
-The generic Zig graph API and `skgo-remote` CLI also accept ArrayBuffer, all
-twelve typed-array kinds and DataView. Their query and command payloads match
-Kit 3.0.0 with devalue 5.9.4, and preserve backing bytes, shared buffers, view
-identity and cycles through Go remote handlers. A subview transmits the whole
-backing buffer; use the codec's `uint8ArrayCopy` for a copy of visible bytes.
-The Swift JSON API described above keeps its finite model contract.
-
 Generate typed calls with the application's existing `skgo generate` command:
 
 ```sh

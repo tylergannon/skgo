@@ -9,5 +9,5 @@
             .hash = "devalue-0.1.0-QJ2gKno1BAArJnKGj2GWQ9foI_X8bxfzFPwQ3hePaVfC",
         },
     },
-    .paths = .{ "build.zig", "build.zig.zon", "src" },
+    .paths = .{ "build.zig", "build.zig.zon", "README.md", "src" },
 }
