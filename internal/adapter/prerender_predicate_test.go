@@ -28,16 +28,19 @@ import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
 for (const mode of ['booleans','early','error','malformed','timeout']) {
  const channel=new BroadcastChannel('predicate-test-'+mode);process.env.SKGO_PRERENDER_PREDICATE_CHANNEL=channel.name;process.env.SKGO_RELAY_TEST_MODE=mode;
- let calls=0,notice=false;
+ let calls=0,notice=false,lateAnswer;
+ const lateReplyCell=new Int32Array(new SharedArrayBuffer(4));
  let announceFailure;const failureNotice=new Promise(resolve=>{announceFailure=resolve;});
  channel.onmessage=({data})=>{
-  if(data.type==='failure'){notice=true;announceFailure();return;}
+  if(data.type==='failure'){notice=true;announceFailure();if(lateAnswer){lateAnswer();Atomics.store(lateReplyCell,0,1);Atomics.notify(lateReplyCell,0);}return;}
   if(data.type!=='predicate')return;
   calls++;
   const answer=()=>{channel.postMessage(mode==='malformed'?{id:data.id,value:'wrong'}:mode==='error'?{id:data.id,error:'full literal error\nwith details'}:{id:data.id,value:calls===1});Atomics.store(data.cell,0,1);Atomics.notify(data.cell,0);};
-  if(mode==='timeout')setTimeout(answer,200);else answer();
+  // A timer could answer before the worker starts waiting when it is
+  // descheduled. Release this reply only after the actual timeout failure.
+  if(mode==='timeout')lateAnswer=answer;else answer();
  };
- const workerCode="import {workerData,parentPort} from 'node:worker_threads'; (async()=>{const {predicate}=await import(workerData.module);const results=[];for(let i=0;i<3;i++){try{results.push(predicate('literal-request','preload',{input:{type:'font',path:'/literal.woff2',filename:'src/literal.woff2'}}));}catch(error){results.push(error.message);} if(workerData.mode==='timeout' && i===1) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,250); }parentPort.postMessage(results);})();";
+ const workerCode="import {workerData,parentPort} from 'node:worker_threads'; (async()=>{const {predicate}=await import(workerData.module);const results=[];for(let i=0;i<3;i++){try{results.push(predicate('literal-request','preload',{input:{type:'font',path:'/literal.woff2',filename:'src/literal.woff2'}}));}catch(error){results.push(error.message);} if(workerData.mode==='timeout' && i===1) Atomics.wait(workerData.lateReplyCell,0,0,10_000); }parentPort.postMessage(results);})();";
  // Delay the worker immediately before Atomics.wait, allowing the real owner
  // reply to arrive first. The not-equal path must still read the answer.
  let workerModule=process.argv[1];
@@ -45,7 +48,7 @@ for (const mode of ['booleans','early','error','malformed','timeout']) {
   const {readFileSync,writeFileSync}=await import('node:fs');workerModule=process.argv[1]+'.early.mjs';
   writeFileSync(workerModule,readFileSync(process.argv[1],'utf8').replace('const status = Atomics.wait(predicateCell','Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,50); const status = Atomics.wait(predicateCell'));
  }
- const worker=new Worker(workerCode,{eval:true,workerData:{module:pathToFileURL(workerModule).href,mode}});
+ const worker=new Worker(workerCode,{eval:true,workerData:{module:pathToFileURL(workerModule).href,mode,lateReplyCell}});
  // Register both listeners before waiting: the worker can exit as soon as it
  // sends its result, including before the main thread resumes under load.
  const [result]=await Promise.all([
@@ -57,7 +60,7 @@ for (const mode of ['booleans','early','error','malformed','timeout']) {
  channel.close();
 }
 console.log('relay true false full-error answer-before-wait malformed timeout late-reply passed');`
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	command := exec.CommandContext(ctx, "node", "--input-type=module", "-e", program, path)
 	output, err := command.CombinedOutput()

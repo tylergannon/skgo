@@ -57,6 +57,9 @@ jobs:
       - name: Build
         run: just build
 
+      - name: Install native core compiler
+        run: mise -C native install zig
+
       - name: Vet
         run: just vet
 
