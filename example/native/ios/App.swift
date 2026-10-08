@@ -10,6 +10,9 @@ struct NativeProbe: App {
     @State private var client: RemoteClient?
     @State private var result = ""
     @State private var calling = false
+    @State private var lifecycleTask: Task<Void, Never>?
+    @State private var generation = UUID()
+    private let host = LocalHost()
 
     var body: some Scene {
         WindowGroup {
@@ -28,28 +31,44 @@ struct NativeProbe: App {
                     ProgressView("Starting local server…")
                 }
             }
-            .task { start() }
+            .task { transition(active: true) }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { start() }
-                if phase == .background {
-                    let previous = client
-                    client = nil
-                    Task { await previous?.shutdown() }
-                    SKGoHostStop()
-                    origin = nil
-                    result = ""
-                    calling = false
-                }
+                if phase == .active { transition(active: true) }
+                if phase == .background { transition(active: false) }
             }
         }
     }
-    private func start() {
-        guard origin == nil else { return }
-        guard let bytes = SKGoHostStart() else { failed = true; return }
-        defer { free(bytes) }
-        origin = URL(string: String(cString: bytes))
-        failed = origin == nil
-        if let origin { client = RemoteClient(origin: origin.absoluteString, transport: URLSessionTransport(configuration: .ephemeral)) }
+    private func transition(active: Bool) {
+        if active && origin != nil { return }
+        let previous = lifecycleTask
+        let previousClient = client
+        let token = UUID()
+        generation = token
+        if !active {
+            client = nil
+            origin = nil
+            result = ""
+            calling = false
+        }
+        // Serialize complete transitions, including client shutdown. A resume
+        // cannot start a host that an earlier background transition then stops.
+        lifecycleTask = Task {
+            await previous?.value
+            if active {
+                guard generation == token else { return }
+                let address = await host.start()
+                guard generation == token else { return }
+                origin = address.flatMap(URL.init(string:))
+                failed = origin == nil
+                if let origin {
+                    client = RemoteClient(origin: origin.absoluteString,
+                        transport: URLSessionTransport(configuration: .ephemeral))
+                }
+            } else {
+                await previousClient?.shutdown()
+                await host.stop()
+            }
+        }
     }
     private func callNative() async {
         guard let client else { return }
@@ -68,6 +87,15 @@ struct NativeProbe: App {
         }
         calling = false
     }
+}
+// No Go render-pool initialization or shutdown wait executes on the UI actor.
+private actor LocalHost {
+    func start() -> String? {
+        guard let bytes = SKGoHostStart() else { return nil }
+        defer { free(bytes) }
+        return String(cString: bytes)
+    }
+    func stop() { SKGoHostStop() }
 }
 private struct Page: UIViewRepresentable {
     let url: URL

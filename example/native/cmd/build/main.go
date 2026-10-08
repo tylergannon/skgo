@@ -30,7 +30,6 @@ func main() {
 	sdkPath := run("xcrun", "--sdk", *sdk, "--show-sdk-path")
 	run("go", "generate", "./internal/skgo")
 	frontend := exec.Command("mise", "-C", "web", "exec", "--", "vp", "build")
-	frontend.Env = append(os.Environ(), "SKGO_NATIVE_LOCAL=1")
 	frontend.Stdout, frontend.Stderr = os.Stdout, os.Stderr
 	if err := frontend.Run(); err != nil {
 		log.Fatal(err)
