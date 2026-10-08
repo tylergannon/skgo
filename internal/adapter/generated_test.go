@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"encoding/json"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -30,21 +31,16 @@ func TestTheAdapterEndpointCheckAcceptsQueryAndFallbackAndRefusesMismatch(t *tes
 
 	const snippet = `import { pathToFileURL } from 'node:url';
 const { checkEndpoints } = await import(pathToFileURL(process.argv[1]).href);
-const { built, declared } = JSON.parse(process.argv[2]);
-checkEndpoints(built, declared);
+import { readFileSync } from 'node:fs';
+const { built, declarations } = JSON.parse(readFileSync(0, 'utf8'));
+console.log(JSON.stringify(declarations.map(declared => {
+ try { checkEndpoints(built, declared); return ''; }
+ catch (error) { return String(error.message ?? error); }
+})));
 `
-	run := func(built, declared string) (string, error) {
-		input := `{"built":` + built + `,"declared":` + declared + `}`
-		cmd := exec.Command(node, "--input-type=module", "-e", snippet, module, input)
-		out, err := cmd.CombinedOutput()
-		return string(out), err
-	}
 
 	// Kit's own reporting for a route that answers GET, QUERY and a fallback.
 	const built = `{"routes":[{"id":"/api/thing","api":{"methods":["GET","QUERY","*"]}}]}`
-	if out, err := run(built, `{"/api/thing":["GET","QUERY","*"]}`); err != nil {
-		t.Fatalf("the adapter refused QUERY and the fallback export: %v\n%s", err, out)
-	}
 
 	tests := []struct {
 		name     string
@@ -67,10 +63,32 @@ checkEndpoints(built, declared);
 			want:     "compiled but not generated",
 		},
 	}
+	declarations := []string{`{"/api/thing":["GET","QUERY","*"]}`}
 	for _, tc := range tests {
+		declarations = append(declarations, tc.declared)
+	}
+	cmd := exec.Command(node, "--input-type=module", "-e", snippet, module)
+	cmd.Stdin = strings.NewReader(`{"built":` + built + `,"declarations":[` + strings.Join(declarations, ",") + `]}`)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("adapter endpoint checks did not execute: %v\n%s", err, output)
+	}
+	var results []*string
+	if err := json.Unmarshal(output, &results); err != nil || len(results) != len(declarations) {
+		t.Fatalf("missing endpoint check results: %v\n%s", err, output)
+	}
+	for _, result := range results {
+		if result == nil {
+			t.Fatal("missing endpoint check result")
+		}
+	}
+	if *results[0] != "" {
+		t.Fatalf("the adapter refused QUERY and the fallback export: %s", *results[0])
+	}
+	for i, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			out, err := run(built, tc.declared)
-			if err == nil {
+			out := *results[i+1]
+			if out == "" {
 				t.Fatalf("the adapter accepted a mismatched export set: %s", tc.declared)
 			}
 			if !strings.Contains(out, tc.want) {
@@ -105,14 +123,12 @@ func TestTheAdapterAcceptsTypeScriptAndJavaScriptServerModules(t *testing.T) {
 	const snippet = `import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 const { validateGenerated } = await import(pathToFileURL(process.argv[1]).href);
-validateGenerated(JSON.parse(readFileSync(0, 'utf-8')));
+const inputs = JSON.parse(readFileSync(0, 'utf-8'));
+console.log(JSON.stringify(inputs.map(input => {
+ try { validateGenerated(input); return ''; }
+ catch (error) { return String(error.message ?? error); }
+})));
 `
-	run := func(input string) (string, error) {
-		cmd := exec.Command(node, "--input-type=module", "-e", snippet, module)
-		cmd.Stdin = strings.NewReader(input)
-		out, err := cmd.CombinedOutput()
-		return string(out), err
-	}
 
 	good := `{
 		"remotes": ["2b61k/status"],
@@ -121,9 +137,6 @@ validateGenerated(JSON.parse(readFileSync(0, 'utf-8')));
 		"actions": ["src/routes/a/+page.server.js", "src/routes/b/+page.server.ts"],
 		"endpoints": {"/api/thing": ["GET", "POST"]}
 	}`
-	if out, err := run(good); err != nil {
-		t.Fatalf("the adapter refused server modules from both languages: %v\n%s", err, out)
-	}
 
 	tests := []struct {
 		name  string
@@ -151,10 +164,32 @@ validateGenerated(JSON.parse(readFileSync(0, 'utf-8')));
 			want:  "not a +page.server.(ts|js) action path",
 		},
 	}
+	inputs := []string{good}
 	for _, tc := range tests {
+		inputs = append(inputs, tc.input)
+	}
+	cmd := exec.Command(node, "--input-type=module", "-e", snippet, module)
+	cmd.Stdin = strings.NewReader("[" + strings.Join(inputs, ",") + "]")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("adapter module checks did not execute: %v\n%s", err, output)
+	}
+	var results []*string
+	if err := json.Unmarshal(output, &results); err != nil || len(results) != len(inputs) {
+		t.Fatalf("missing module check results: %v\n%s", err, output)
+	}
+	for _, result := range results {
+		if result == nil {
+			t.Fatal("missing module check result")
+		}
+	}
+	if *results[0] != "" {
+		t.Fatalf("the adapter refused server modules from both languages: %s", *results[0])
+	}
+	for i, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			out, err := run(tc.input)
-			if err == nil {
+			out := *results[i+1]
+			if out == "" {
 				t.Fatalf("the adapter accepted a bad module path:\n%s", tc.input)
 			}
 			if !strings.Contains(out, tc.want) {

@@ -89,3 +89,20 @@ latest local timings. The ordinary invocation passed the adapter but failed
 strict pnpm version checks because the global shim resolved 12.10.1; those checks
 passed with the installed 12.9.1 executable prepended to PATH. Do not infer a
 speedup or regression from this contended local run; use ordinary full-suite CI.
+
+decision: Pure endpoint and module-path checks need one actual Node invocation
+per checker, rather than a process per supplied input. Capture every result and
+assert every named refusal and positive case; missing results fail. The three
+publication assertions likewise inspect one real pnpm tarball, each decoding
+its own independent map and byte slices. This reduces nine checker launches to
+two and three pack launches to one. A focused child-inclusive CPU comparison
+was 0.29s before and 0.07s after (one observation, not a stable CI prediction).
+Independent disabled-checker, wrong-positive-refusal, changed-diagnostic, and
+real tarball membership/bytes/metadata mutations all failed retained assertions.
+
+The externally supplied Node code cache must preserve module execution and
+runtime isolation: changed adapter bytes rejected a real native build, restored
+bytes yielded a new literal result and fresh producer/body receipts, and the
+unchanged-byte negative control failed the changed-byte guard. Cache storage
+survived package cleanup; owned tarballs did not. These are behavioral checks,
+not conclusions from cached filenames or a successful command alone.
