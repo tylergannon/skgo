@@ -679,7 +679,7 @@ func prerenderInputsSignature(fn *types.Func, inputType types.Type) error {
 		return prerenderInputsShapeError(inputType)
 	}
 	if inputType == nil {
-		if named, ok := types.Unalias(list.Elem()).(*types.Named); !ok || named.Obj().Pkg() == nil || named.Obj().Pkg().Path() != "github.com/tylergannon/polytype/devalue" || named.Obj().Name() != "UndefinedValue" {
+		if named, ok := types.Unalias(list.Elem()).(*types.Named); !ok || named.Obj().Pkg() == nil || named.Obj().Pkg().Path() != "github.com/tylergannon/devalue/v5" || named.Obj().Name() != "UndefinedValue" {
 			return fmt.Errorf("a no-argument prerender remote requires func() ([]devalue.UndefinedValue, error)")
 		}
 	} else if !types.Identical(list.Elem(), inputType) {

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 )
 
 // The wire skgo speaks is devalue's, and skgo does not implement it: the codec
-// is github.com/tylergannon/polytype/devalue. This file is the anchor that says
+// is github.com/tylergannon/devalue/v5. This file is the anchor that says
 // the codec skgo compiles against agrees with the real thing on every shape
 // skgo emits or accepts.
 //

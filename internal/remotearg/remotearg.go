@@ -17,7 +17,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 )
 
 // Reducer/reviver keys, spelled "sveltekit remote arg" in kit.

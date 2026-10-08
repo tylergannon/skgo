@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tylergannon/polytype/devalue"
+	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/skgo/internal/formdata"
 	"time"
 )
