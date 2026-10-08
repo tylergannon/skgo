@@ -24,6 +24,7 @@ final class NativeProbeUITests: XCTestCase {
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
         XCTAssertTrue(call.waitForExistence(timeout: 30))
         XCTAssertTrue(page.staticTexts["Todos"].waitForExistence(timeout: 30))
+        XCTAssertFalse(app.staticTexts["Command: Native probe; query: Native probe"].exists)
         call.tap()
         XCTAssertTrue(app.staticTexts["Command: Native probe; query: Native probe"].waitForExistence(timeout: 30))
     }
