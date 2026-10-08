@@ -56,6 +56,10 @@ jobs:
       - name: Build the candidate
         run: just build
 
+      - name: Install native core compiler
+        if: matrix.mode == 'prod'
+        run: mise -C native install zig
+
       # The Go suite is the same in both modes, so one runner carries it.
       - name: Vet and test the candidate
         if: matrix.mode == 'prod'

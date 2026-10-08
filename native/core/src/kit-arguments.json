@@ -1,0 +1,42 @@
+{
+  "kit": "3.0.0",
+  "devalue": "5.9.4",
+  "cases": [
+    {
+      "name": "undefined",
+      "input": "-1",
+      "query": "",
+      "command": ""
+    },
+    {
+      "name": "null",
+      "input": "[null]",
+      "query": "W251bGxd",
+      "command": "W251bGxd"
+    },
+    {
+      "name": "nested",
+      "input": "[{\"z\":1,\"a\":4},{\"b\":2,\"a\":3},1,2,[5],{\"d\":6,\"c\":7},4,3]",
+      "query": "W1siX19za3JhbyIsMV0seyJhIjoyLCJ6Ijo3fSxbM10sWyJfX3NrcmFvIiw0XSx7ImMiOjUsImQiOjZ9LDMsNCxbIl9fc2tyYW8iLDhdLHsiYSI6OSwiYiI6MTB9LDIsMV0",
+      "command": "W3sieiI6MSwiYSI6NH0seyJiIjoyLCJhIjozfSwxLDIsWzVdLHsiZCI6NiwiYyI6N30sNCwzXQ"
+    },
+    {
+      "name": "numeric",
+      "input": "[{\"2\":1,\"10\":2,\"a\":3,\"B\":4},\"b\",\"a\",\"c\",\"d\"]",
+      "query": "W1siX19za3JhbyIsMV0seyIyIjoyLCIxMCI6MywiQiI6NCwiYSI6NX0sImIiLCJhIiwiZCIsImMiXQ",
+      "command": "W3siMiI6MSwiMTAiOjIsImEiOjMsIkIiOjR9LCJiIiwiYSIsImMiLCJkIl0"
+    },
+    {
+      "name": "utf16",
+      "input": "[{\"\":1,\"😀\":2},2,1]",
+      "query": "W1siX19za3JhbyIsMV0seyLwn5iAIjoyLCLugIAiOjN9LDEsMl0",
+      "command": "W3si7oCAIjoxLCLwn5iAIjoyfSwyLDFd"
+    },
+    {
+      "name": "ordered",
+      "input": "[{\"offset\":1,\"limit\":2},20,10]",
+      "query": "W1siX19za3JhbyIsMV0seyJsaW1pdCI6Miwib2Zmc2V0IjozfSwxMCwyMF0",
+      "command": "W3sib2Zmc2V0IjoxLCJsaW1pdCI6Mn0sMjAsMTBd"
+    }
+  ]
+}

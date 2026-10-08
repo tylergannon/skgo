@@ -859,6 +859,9 @@ func (a *app) writeHandler(b *strings.Builder, fn *remoteFn) {
 		}
 		fmt.Fprintf(b, "\tout, err := %s(%s%s)\n", a.published(fn.goPkg, fn.name), contextArg, callArg(fn))
 		b.WriteString("\tif err != nil {\n\t\treturn nil, err\n\t}\n")
+		if fn.nativeOut != "" {
+			fmt.Fprintf(b, "\tif err := %s(out, \"\", 0); err != nil { return nil, err }\n", fn.nativeOut)
+		}
 		if fn.outCodec != "" {
 			fmt.Fprintf(b, "\treturn Encode%s(out)\n}\n", fn.outCodec)
 		} else {
@@ -910,6 +913,9 @@ func (a *app) writeArgument(b *strings.Builder, fn *remoteFn, indent, fail strin
 		fmt.Fprintf(b, "%sif err := skgo.RequireArgument(call); err != nil {\n%s\t%s\n%s}\n", indent, indent, fail, indent)
 		fmt.Fprintf(b, "%sin, err := Decode%s(call.Arg)\n", indent, fn.inCodec)
 		fmt.Fprintf(b, "%sif err != nil {\n%s\t%s\n%s}\n", indent, indent, strings.Replace(fail, "err", "skgo.BadRequest(err)", 1), indent)
+		if fn.nativeIn != "" {
+			fmt.Fprintf(b, "%sif err := %s(in, \"\", 0); err != nil { %s }\n", indent, fn.nativeIn, strings.Replace(fail, "err", "skgo.BadRequest(err)", 1))
+		}
 	default:
 		fmt.Fprintf(b, "%sif err := skgo.RefuseArgument(call); err != nil {\n%s\t%s\n%s}\n", indent, indent, fail, indent)
 	}

@@ -19,3 +19,11 @@ ephemeral/screenshots/
 
 # task-local analyzers `just tools` installs
 .tools/
+
+# Native compiler caches and disposable Apple build output.
+**/.zig-cache/
+**/zig-out/
+**/zig-pkg/
+**/.build/
+/native/build/
+/example/native/build/

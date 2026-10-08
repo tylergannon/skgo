@@ -53,6 +53,12 @@ type Config struct {
 	// Package is the name of the generated bindings package. It defaults to
 	// the base name of Out.
 	Package string
+	// SwiftOut is the generated Swift source file. SwiftRemotes selects ordinary
+	// queries and commands by Vite-root-relative module path plus #export.
+	// Selected functions adopt the finite native number profile in their shared
+	// Go handlers: unsafe integers are refused for browser and native callers.
+	SwiftOut     string
+	SwiftRemotes []string
 	// Logf receives one line per file written. It may be nil.
 	Logf func(format string, args ...any)
 	// ReadOnly makes package loading verify generated route links instead of
@@ -79,6 +85,18 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	cfg.Web, cfg.Out = web, out
+	if (cfg.SwiftOut == "") != (len(cfg.SwiftRemotes) == 0) {
+		return fmt.Errorf("skgo: --swift-out and --swift-remote must be provided together")
+	}
+	if cfg.SwiftOut != "" {
+		cfg.SwiftOut, err = filepath.Abs(cfg.SwiftOut)
+		if err != nil {
+			return err
+		}
+		if filepath.Ext(cfg.SwiftOut) != ".swift" {
+			return fmt.Errorf("skgo: --swift-out must name a .swift file")
+		}
+	}
 	cfg.frontendFiles = map[string]struct{}{}
 	cfg.produced = map[string]struct{}{}
 	if cfg.Language == LanguageAuto {
@@ -122,6 +140,9 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	if len(files) == 0 {
+		if len(cfg.SwiftRemotes) != 0 {
+			return fmt.Errorf("skgo: no remote functions match the Swift selection")
+		}
 		// An application does not need demo or placeholder server behavior. The
 		// empty bindings are still a real contract: the Go server imports these
 		// lists, and the adapter compares skgo.remotes.json with the frontend it
@@ -215,6 +236,9 @@ func Run(cfg Config) (err error) {
 		return err
 	}
 	if err := app.planCodecs(); err != nil {
+		return err
+	}
+	if err := app.writeSwiftClient(); err != nil {
 		return err
 	}
 	if err := app.generateCodecs(); err != nil {
