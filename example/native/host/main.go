@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -49,7 +50,9 @@ func start() string {
 		log.Print(err)
 		return ""
 	}
-	origin := "http://" + listener.Addr().String()
+	// Kit's HTTP cookie exception uses the literal hostname localhost.
+	// URLSession does not send Secure cookies over the numeric loopback URL.
+	origin := "http://" + net.JoinHostPort("localhost", strconv.Itoa(listener.Addr().(*net.TCPAddr).Port))
 	dist, err := fs.Sub(web.Build, "build")
 	if err != nil {
 		listener.Close()

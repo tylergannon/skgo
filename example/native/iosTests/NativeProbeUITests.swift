@@ -1,0 +1,48 @@
+import XCTest
+
+final class NativeProbeUITests: XCTestCase {
+    @MainActor
+    func testNativeCallsAndLocalPageAcrossBackground() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        let call = app.buttons["Run native query and command"]
+        XCTAssertTrue(call.waitForExistence(timeout: 30))
+        let page = app.webViews.firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 30))
+        XCTAssertTrue(page.staticTexts["Todos"].waitForExistence(timeout: 30))
+        capture(app, named: "Local SKGo page")
+        let user = page.textFields["your name"]
+        XCTAssertTrue(user.waitForExistence(timeout: 30))
+        user.tap()
+        user.typeText("Web probe")
+        page.buttons["Sign in"].tap()
+        XCTAssertTrue(page.staticTexts["Signed in as Web probe"].waitForExistence(timeout: 30))
+        call.tap()
+        XCTAssertTrue(app.staticTexts["Command: Native probe; query: Native probe"].waitForExistence(timeout: 30))
+        capture(app, named: "Native calls and WebView sign-in")
+
+        XCUIDevice.shared.press(.home)
+        let background = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                app.state == .runningBackground || app.state == .runningBackgroundSuspended
+            }, object: app)
+        XCTAssertEqual(XCTWaiter.wait(for: [background], timeout: 10), .completed)
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        XCTAssertTrue(call.waitForExistence(timeout: 30))
+        XCTAssertTrue(page.staticTexts["Todos"].waitForExistence(timeout: 30))
+        XCTAssertFalse(app.staticTexts["Command: Native probe; query: Native probe"].exists)
+        call.tap()
+        XCTAssertTrue(app.staticTexts["Command: Native probe; query: Native probe"].waitForExistence(timeout: 30))
+        capture(app, named: "Native calls after background and resume")
+    }
+
+    @MainActor
+    private func capture(_ app: XCUIApplication, named name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}

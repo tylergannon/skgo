@@ -4,6 +4,16 @@ options:
   deploymentTarget:
     iOS: '17.0'
 targets:
+  SKGoNative:
+    type: library.static
+    platform: iOS
+    sources:
+      - path: ../../native/swift/Sources/SKGoNative
+    settings:
+      base:
+        PRODUCT_MODULE_NAME: SKGoNative
+        SWIFT_VERSION: '6.0'
+        SWIFT_INCLUDE_PATHS: $(SRCROOT)/../core
   SKGoNativeProbe:
     type: application
     platform: iOS
@@ -16,11 +26,32 @@ targets:
         SWIFT_VERSION: '6.0'
         SWIFT_OBJC_BRIDGING_HEADER: $(SRCROOT)/../../../ios/Bridge.h
         HEADER_SEARCH_PATHS: $(SRCROOT)/../host
-        OTHER_LDFLAGS: $(SRCROOT)/../host/skgo-host.a
+        SWIFT_INCLUDE_PATHS: $(SRCROOT)/../core
+        OTHER_LDFLAGS:
+          - $(inherited)
+          - $(SRCROOT)/../host/skgo-host.a
+          - $(SRCROOT)/../core/lib/libskgo_native_core.a
         INFOPLIST_FILE: $(SRCROOT)/../../../ios/Info.plist
         TARGETED_DEVICE_FAMILY: '1,2'
+    dependencies:
+      - target: SKGoNative
+  SKGoNativeProbeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: iosTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tylergannon.skgo.nativeprobe.uitests
+        SWIFT_VERSION: '6.0'
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: SKGoNativeProbe
 schemes:
   SKGoNativeProbe:
     build:
       targets:
         SKGoNativeProbe: all
+    test:
+      targets:
+        - SKGoNativeProbeUITests

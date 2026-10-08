@@ -21,7 +21,9 @@ pub fn build(b: *std.Build) void {
     abi.addImport("skgo", core);
     const library = b.addLibrary(.{ .name = "skgo_native_core", .root_module = abi, .linkage = .static });
     library.bundle_compiler_rt = true;
-    b.installArtifact(library);
+    const install_library = b.addInstallArtifact(library, .{});
+    b.getInstallStep().dependOn(&install_library.step);
+    b.step("library", "Install the native client library without the desktop CLI").dependOn(&install_library.step);
     const abi_tests = b.addTest(.{ .root_module = abi });
     const run_abi_tests = b.addRunArtifact(abi_tests);
     test_step.dependOn(&run_abi_tests.step);

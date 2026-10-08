@@ -1,0 +1,8 @@
+friction: Zig 0.17's default C ABI panic handler imports std.Io.Threaded process support and fails to compile on iOS (NullFile has no fd). The protocol library performs no I/O; an iOS-only FullPanic handler writes its diagnostic through libc and traps, preserving runtime safety. Use the library-only build step for mobile targets; the desktop HTTP CLI requires its own I/O runtime.
+
+friction: xcodebuild cannot load the system DVTDownloads framework and simctl hangs on this host. Direct swiftc linking against the installed Apple SDKs works; it does not establish simulator/device execution.
+
+correction: The pinned Kit paths.origin switch feeds its own server CSRF decision and build-time prerendering; SKGo supplies the actual host origin to its Go request boundary already. A separate native frontend flag was unnecessary and overwrote the shared embed with another configuration. Use the ordinary example build and prove dynamic-port behavior in the real probe.
+
+correction: The todos page holds a live query, so graceful host shutdown can wait two seconds. Run Go host initialization/shutdown on a private Swift actor, serialize complete lifecycle transitions, and close the native client before stopping its host.
+correction: The first simulator run completed the WebView sign-in and native command, but the native whoami returned an empty user. Kit 3.0.0 cookie.js exempts HTTP localhost specifically; the numeric loopback origin produced a Secure session cookie that URLSession did not send over HTTP. Keep the listener bound to 127.0.0.1 and expose its dynamic port through a localhost origin. The real host cookie-jar test fails on the numeric origin and checks the signed-in query value after the change.

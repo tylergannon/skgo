@@ -1,0 +1,49 @@
+name: iOS native probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/native-ios.yml'
+      - 'native/**'
+      - 'example/**'
+      - 'internal/**'
+      - '**/*.go'
+      - '**/go.mod'
+      - '**/go.sum'
+      - 'go.work*'
+
+concurrency:
+  group: native-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: native
+          export_path: false
+      - run: mise -C example install
+      - run: mise -C example/web exec -- vp install --frozen-lockfile
+      - name: Initialize and list simulator devices
+        run: xcrun simctl list
+      - name: Build and exercise the real probe in an iOS simulator
+        working-directory: example
+        run: go run ./native/cmd/build -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' -test
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: native-ios-test-result
+          path: example/native/build/iphonesimulator/UI.xcresult
+          if-no-files-found: ignore

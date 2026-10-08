@@ -14,9 +14,14 @@ import (
 
 func main() {
 	sdk := flag.String("sdk", "iphonesimulator", "iphoneos or iphonesimulator")
+	destination := flag.String("destination", "", "xcodebuild destination; required when running UI tests")
+	test := flag.Bool("test", false, "build and run the probe's simulator UI tests")
 	flag.Parse()
 	if *sdk != "iphoneos" && *sdk != "iphonesimulator" {
 		log.Fatal("unsupported SDK")
+	}
+	if *test && (*sdk != "iphonesimulator" || *destination == "") {
+		log.Fatal("simulator UI tests require -sdk iphonesimulator and -destination")
 	}
 	run := func(name string, args ...string) string {
 		cmd := exec.Command(name, args...)
@@ -28,6 +33,12 @@ func main() {
 	}
 	clang := run("xcrun", "--sdk", *sdk, "-f", "clang")
 	sdkPath := run("xcrun", "--sdk", *sdk, "--show-sdk-path")
+	run("go", "generate", "./internal/skgo")
+	frontend := exec.Command("mise", "-C", "web", "exec", "--", "vp", "build")
+	frontend.Stdout, frontend.Stderr = os.Stdout, os.Stderr
+	if err := frontend.Run(); err != nil {
+		log.Fatal(err)
+	}
 	dir, err := filepath.Abs("native/build/" + *sdk)
 	if err != nil {
 		log.Fatal(err)
@@ -38,6 +49,22 @@ func main() {
 	target := "arm64-apple-ios17.0"
 	if *sdk == "iphonesimulator" {
 		target += "-simulator"
+	}
+	zigTarget := "aarch64-ios.17.0"
+	if *sdk == "iphonesimulator" {
+		zigTarget += "-simulator"
+	}
+	coreDir := filepath.Join(dir, "core")
+	run("mise", "-C", "../native/core", "exec", "--", "zig", "build", "library", "-Dtarget="+zigTarget, "--sysroot", sdkPath, "--prefix", coreDir)
+	header, err := filepath.Abs("../native/swift/Sources/CSKGo/include/skgo.h")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// The header-only C import and target-specific Zig archive are disposable
+	// build inputs, never a dependency on the desktop SwiftPM build directory.
+	moduleMap := fmt.Sprintf("module CSKGo {\n  header %q\n  export *\n}\n", header)
+	if err := os.WriteFile(filepath.Join(coreDir, "module.modulemap"), []byte(moduleMap), 0644); err != nil {
+		log.Fatal(err)
 	}
 	cmd := exec.Command("go", "build", "-buildmode=c-archive", "-o", filepath.Join(dir, "host/skgo-host.a"), "./native/host")
 	cmd.Env = append(os.Environ(), "GOOS=ios", "GOARCH=arm64", "CGO_ENABLED=1", fmt.Sprintf("CC=%s -target %s -isysroot %s", clang, target, sdkPath))
@@ -55,5 +82,26 @@ func main() {
 	if err := cmd.Run(); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(filepath.Join(dir, "project/SKGoNativeProbe.xcodeproj"))
+	project := filepath.Join(dir, "project/SKGoNativeProbe.xcodeproj")
+	if *destination == "" {
+		*destination = "generic/platform=iOS"
+		if *sdk == "iphonesimulator" {
+			*destination += " Simulator"
+		}
+	}
+	action := "build"
+	if *test {
+		action = "test"
+	}
+	args := []string{"-project", project, "-scheme", "SKGoNativeProbe", "-sdk", *sdk,
+		"-destination", *destination, "-derivedDataPath", filepath.Join(dir, "DerivedData"), "CODE_SIGNING_ALLOWED=NO"}
+	if *test {
+		args = append(args, "-resultBundlePath", filepath.Join(dir, "UI.xcresult"))
+	}
+	cmd = exec.Command("xcodebuild", append(args, action)...)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(project)
 }
