@@ -18,14 +18,17 @@ import (
 // The CLI uses real HTTP to the production registry and dispatcher. No mock
 // protocol server, source-derived expectation, or separately maintained harness.
 func TestZigRemoteCalls(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
-	defer cancel()
+	buildContext, cancelBuild := context.WithTimeout(t.Context(), 5*time.Minute)
+	defer cancelBuild()
 	prefix := t.TempDir()
-	build := exec.CommandContext(ctx, "mise", "exec", "--", "zig", "build", "test", "install", "--prefix", prefix)
+	build := exec.CommandContext(buildContext, "mise", "exec", "--", "zig", "build", "test", "install", "--prefix", prefix)
 	build.Dir = "core"
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build native CLI (Zig 0.17.0 required): %v\n%s", err, out)
 	}
+	// A cold Linux compiler/libc build is separate from the actual HTTP budget.
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
 	cli := filepath.Join(prefix, "bin", "skgo-remote")
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
