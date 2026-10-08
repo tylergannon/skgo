@@ -242,3 +242,11 @@ The full adapter retained 44 passing named events. Independently replacing
 only the unsafe page with a public literal made the native build succeed and
 the original rejection assertion fail; the restored test passed both filename
 and leak diagnostics and the shared server-hook success, with zero skips.
+
+Preserve inherited GOFLAGS when the malformed-Inputs build adds its overlay;
+otherwise this one native compiler silently uses a different policy from the
+other fixtures. The isolated original refusal passed with -trimpath supplied
+by the caller, in addition to the earlier independent changed-source/compiler
+controls. Global trimpath remains rejected and is not enabled by the recipes.
+Disabling fixture client minification did not reduce measured native-build CPU
+(2.587s on versus 2.608s off); restore the fixture's original build defaults.

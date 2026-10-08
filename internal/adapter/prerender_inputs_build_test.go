@@ -574,7 +574,7 @@ func TestMalformedPrerenderInputsRejectsPermissiveKitBuild(t *testing.T) {
 	}
 	malformedBuild := exec.Command(filepath.Join(fixture, "web", "node_modules", ".bin", "vp"), "build")
 	malformedBuild.Dir = filepath.Join(fixture, "web")
-	malformedBuild.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "GOFLAGS=-ldflags=-w -overlay="+overlayPath, "SKGO_FORCE_BAD_INPUT_SHAPE=1", "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
+	malformedBuild.Env = append(fixtureBuildEnv(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080", "GOFLAGS="+os.Getenv("GOFLAGS")+" -ldflags=-w -overlay="+overlayPath, "SKGO_FORCE_BAD_INPUT_SHAPE=1", "SKGO_NATIVE_ERROR_RECEIPT="+nativeErrorReceipt)
 	malformedOutput, malformedErr := malformedBuild.CombinedOutput()
 	if malformedErr == nil || !strings.Contains(string(malformedOutput), "did not decode to an array") {
 		t.Fatalf("permissive native HTTP policy accepted malformed Go Inputs shape: err=%v\n%s", malformedErr, malformedOutput)
