@@ -39,3 +39,40 @@ redirects and does not replay commands. Kit redirect envelopes surface as a
 separate `RemoteError.redirect`.
 
 The current native core does not yet implement retained queries or caching.
+
+Generate typed calls with the application's existing `skgo generate` command:
+
+```sh
+skgo generate --web web --out generated --locals-package example.com/app/internal/app \
+  --swift-out native/Generated.swift \
+  --swift-remote 'src/data/data.remote.ts#read' \
+  --swift-remote 'src/data/data.remote.ts#echo'
+```
+
+Paths in each selection are relative to the Vite root and name the generated
+remote module and its Go export. Only selected ordinary queries and commands
+enter `NativeAPI`; selection changes no authorization. Swift models and calls
+come from the same published Polytype grammar used for Go's wire codecs, with
+no application model declarations in Zig. Add the generated Swift source to the
+native target and construct `NativeAPI(core: client)`.
+
+Generated models keep Optional fields absent and Nullable fields explicitly
+null, validate closed objects, enum membership and fixed array lengths, and
+represent sealed unions with Swift enums. Recursive models are immutable Swift
+classes; times remain wire strings. Naming collisions receive deterministic
+suffixes. Calls preserve Kit's existing remote IDs. Custom transports and shapes
+the grammar cannot describe fail generation with source diagnostics.
+
+Native integer models use the JavaScript safe-integer range, intersected with
+the Go/Swift integer width. Generated Swift checks run before HTTP; generated
+Go checks run before result encoding and before a decoded argument reaches its
+handler. Exact identifiers should be strings; numeric counters must fit this
+range. Float values must be finite. Generated source is repeatable and refuses
+to overwrite an authored Swift destination.
+
+Selecting a function adopts that numeric contract in its shared Go handler,
+including requests from Kit's browser client. An unsafe integer argument returns
+a 400 remote error; an unsafe application result returns a 500 remote error,
+just as other result-encoding failures do. Previously lossy browser values are
+therefore refused when the function is selected. Choose string identifiers or
+bounded counters in Go before selecting an existing function for native use.

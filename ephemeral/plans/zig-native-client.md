@@ -251,6 +251,13 @@ Go and Swift checks reject out-of-domain numbers before rounding. No full-range
 Int64/UInt64 fidelity is claimed. Native selection does not change the server's
 authorization. Depends on 2.
 
+Selecting a remote also adopts the finite numeric contract in that function's
+shared Go handler, for Kit browser and native callers alike. Unsafe arguments
+produce the existing 400 remote error; unrepresentable application results
+produce the existing 500 result-encoding error. Application authors choose
+string IDs and bounded counters before selecting an existing API. This is one
+application value contract rather than a second client-specific server mode.
+
 **5. Native ordinary queries have reusable state in Zig.** Generated Swift
 clients can retain an observable query, share canonical keys, refresh, inspect
 loading/value/error and release ownership. Query and command single-flight

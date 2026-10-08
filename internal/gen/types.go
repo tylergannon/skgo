@@ -108,11 +108,17 @@ func (a *app) projectType(t types.Type, promises bool) (tsType, error) {
 		// field (a Deferred has no Go type), so unwrap them here. Optionalness
 		// itself is applied by the field's own caller.
 		if obj.Pkg().Path() == polytypePkg && u.TypeArgs() != nil && u.TypeArgs().Len() == 1 {
+			innerType := u.TypeArgs().At(0)
+			// The wrapper states absence/null explicitly. A pointer inside it
+			// retains indirection without making the present value nullable.
+			if pointer, ok := types.Unalias(innerType).(*types.Pointer); ok {
+				innerType = pointer.Elem()
+			}
 			switch obj.Name() {
 			case "Optional":
-				return a.projectType(u.TypeArgs().At(0), promises)
+				return a.projectType(innerType, promises)
 			case "Nullable":
-				inner, err := a.projectType(u.TypeArgs().At(0), promises)
+				inner, err := a.projectType(innerType, promises)
 				if err != nil {
 					return tsType{}, err
 				}

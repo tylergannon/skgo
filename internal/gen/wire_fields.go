@@ -57,7 +57,7 @@ func (a *app) checkNestedWireFields(typ types.Type, fset *token.FileSet, promise
 			obj := t.Obj()
 			if obj != nil && obj.Pkg() != nil {
 				path := obj.Pkg().Path()
-				if path == "github.com/tylergannon/polytype" && obj.Name() == "Nullable" && t.TypeArgs().Len() == 1 {
+				if path == "github.com/tylergannon/polytype" && (obj.Name() == "Nullable" || obj.Name() == "Optional") && t.TypeArgs().Len() == 1 {
 					return visit(t.TypeArgs().At(0))
 				}
 				if path == "time" && obj.Name() == "Time" || path == skgoFilePkg && obj.Name() == "File" {
@@ -80,7 +80,9 @@ func (a *app) checkNestedWireFields(typ types.Type, fset *token.FileSet, promise
 				if !field.Exported() || reflect.StructTag(t.Tag(i)).Get("json") == "-" {
 					continue
 				}
-				if _, err := a.projectType(field.Type(), promises); err != nil {
+				// Field-local sealed unions are lowered and admitted by Polytype
+				// as part of their object owner, rather than as standalone roots.
+				if _, err := a.projectType(field.Type(), promises); err != nil && !sealedUnionField(field.Type()) {
 					return fmt.Errorf("%s: field %s cannot cross the wire: %w", fset.Position(field.Pos()), field.Name(), err)
 				}
 				if err := visit(field.Type()); err != nil {
@@ -91,6 +93,29 @@ func (a *app) checkNestedWireFields(typ types.Type, fset *token.FileSet, promise
 		return nil
 	}
 	return visit(typ)
+}
+
+func sealedUnionField(t types.Type) bool {
+	if inner, ok := optionalElem(t); ok {
+		t = inner
+	}
+	if slice, ok := types.Unalias(t).Underlying().(*types.Slice); ok {
+		t = slice.Elem()
+	}
+	named, ok := types.Unalias(t).(*types.Named)
+	if !ok {
+		return false
+	}
+	iface, ok := named.Underlying().(*types.Interface)
+	if !ok {
+		return false
+	}
+	for i := 0; i < iface.NumMethods(); i++ {
+		if !iface.Method(i).Exported() {
+			return true
+		}
+	}
+	return false
 }
 
 func checkTypeSerializedNames(typ types.Type, fset *token.FileSet, links *routeLinks) error {

@@ -67,7 +67,7 @@ jobs:
         run: just test
 
   native-swift:
-    name: Swift buffer boundary and production HTTP calls
+    name: Swift client and generated production HTTP calls
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: macos-15
     timeout-minutes: 15
@@ -82,4 +82,10 @@ jobs:
         with:
           working_directory: native
           export_path: false
-      - run: go test -count=1 -race ./native
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.9.1
+      - run: mise -C example install
+      - run: mise -C example/web exec -- vp install --frozen-lockfile
+      - run: go test -count=1 -race ./native ./internal/swiftgen
+      - run: go test -count=1 -race ./internal/gen -run 'TestNative|TestGeneratedSwift'
