@@ -11,6 +11,7 @@ final class NativeProbeUITests: XCTestCase {
         let page = app.webViews.firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 30))
         XCTAssertTrue(page.staticTexts["Todos"].waitForExistence(timeout: 30))
+        capture(app, named: "Local SKGo page")
         let user = page.textFields["your name"]
         XCTAssertTrue(user.waitForExistence(timeout: 30))
         user.tap()
@@ -19,6 +20,7 @@ final class NativeProbeUITests: XCTestCase {
         XCTAssertTrue(page.staticTexts["Signed in as Web probe"].waitForExistence(timeout: 30))
         call.tap()
         XCTAssertTrue(app.staticTexts["Command: Native probe; query: Native probe"].waitForExistence(timeout: 30))
+        capture(app, named: "Native calls and WebView sign-in")
 
         XCUIDevice.shared.press(.home)
         let background = XCTNSPredicateExpectation(
@@ -33,5 +35,14 @@ final class NativeProbeUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Command: Native probe; query: Native probe"].exists)
         call.tap()
         XCTAssertTrue(app.staticTexts["Command: Native probe; query: Native probe"].waitForExistence(timeout: 30))
+        capture(app, named: "Native calls after background and resume")
+    }
+
+    @MainActor
+    private func capture(_ app: XCUIApplication, named name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }
