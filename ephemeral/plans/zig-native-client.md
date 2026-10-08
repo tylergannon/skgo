@@ -158,12 +158,14 @@ transport or boundary can be adopted on evidence while preserving Zig protocol
 ownership, explicit lifetimes, Apple session behavior and the same proof.
 
 One serialized owner controls each core instance and its graph/cache access.
-Swift wrappers arrange confinement, copy model data into Swift-owned values,
-and route cancellation/completion through that owner. Cross-boundary objects
-use opaque handles with explicit ownership and release. Request and callback
-IDs distinguish late completions from current work. No Zig Graph is assumed
-thread-safe or copied as a live value; no borrowed view outlives its owner.
-Zero-copy sharing is optional future optimization, not a milestone dependency.
+Swift owns HTTP transport; Zig owns protocol encoding/decoding, query keys and
+caching. The ABI exchanges serialized byte buffers with explicit buffer
+ownership and release. It does not expose Zig's internal graph or require Swift
+to manage Zig object lifetimes. Swift copies returned bytes before releasing
+them; no borrowed buffer crosses a network await. Request IDs distinguish late
+completions from current work. A cross-language object model is excluded unless
+a concrete requirement justifies it. Graphs and cache entries remain internal
+to Zig and are never assumed thread-safe.
 
 Application types live once in Go and are projected into Swift. Zig operates on
 generic devalue graphs and remote descriptors; this initiative needs no

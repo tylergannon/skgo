@@ -14,3 +14,5 @@ friction: TestNothingGeneratedWasWrittenByHand snapshots files across example/, 
 friction: Cleanup of a review session must target its own log directories. Devalue already tracked other reviewer logs; a broad deletion was detected and restored before removing the clean task worktree.
 
 correction: The user permits continuing available work while Apple tooling is unavailable. softwareupdate offers Safari/macOS upgrades but no Xcode update; only /Applications/Xcode.app is installed. Milestone 3 stays pending, and its platform gate precedes milestone 6 rather than the independent Swift client work.
+
+friction: Apple-tooling subagent identified system CoreSimulator1048/DVTDownloads24018 against Xcode26.5 bundled1051.54/24431. The matching signed XcodeSystemResources.pkg is present, but its standard installer needs administrator authentication unavailable to this session. App Store also offers Xcode27.0; updating it needs authentication too.
