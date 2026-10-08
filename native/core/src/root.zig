@@ -2,6 +2,7 @@ const std = @import("std");
 pub const devalue = @import("devalue");
 const d = devalue;
 const Allocator = std.mem.Allocator;
+pub const model_json = @import("model_json.zig");
 pub const QueryCache = @import("cache.zig").Cache;
 pub const Kind = enum { query, command };
 
