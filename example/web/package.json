@@ -11,6 +11,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
+    "bits-ui": "2.19.2",
     "yaml": "2.9.1"
   },
   "devDependencies": {
