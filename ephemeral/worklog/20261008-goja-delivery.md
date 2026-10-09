@@ -1,0 +1,2 @@
+friction: Swift 6.4's default swiftbuild writes target objects under out/Products/Debug and generated C module maps under out/Intermediates.noindex; the native integration test assumed the older scratch/debug layout. Query Swift's product directory and select the layout actually built before linking the generated client.
+friction: The host's ambient pnpm is 12.10.1 while repository tests require 12.9.1. Run the suite under `mise x npm:pnpm@12.9.1 --` when qualifying locally; CI already pins that version.

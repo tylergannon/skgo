@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -34,15 +35,29 @@ func TestGeneratedSwiftCallsTheGeneratedGoHandlers(t *testing.T) {
 	run(core, "mise", "exec", "--", "zig", "build", "install")
 	scratch := t.TempDir()
 	run(repo, "swift", "build", "--package-path", filepath.Join(repo, "native", "swift"), "--scratch-path", scratch)
+	binPath := exec.CommandContext(ctx, "swift", "build", "--package-path", filepath.Join(repo, "native", "swift"), "--scratch-path", scratch, "--show-bin-path")
+	binPath.Dir = repo
+	out, err := binPath.CombinedOutput()
+	if err != nil {
+		t.Fatalf("swift build --show-bin-path: %v\n%s", err, out)
+	}
+	products := strings.TrimSpace(string(out))
 	probe := filepath.Join(root, "app", "native", "Probe.swift")
 	writeSharedFixture(t, filepath.Join(root, "app"), "native/Probe.swift", nativeSwiftConsumer)
-	args := []string{"-swift-version", "6", "-parse-as-library", cfg.SwiftOut, probe, "-I", filepath.Join(scratch, "debug", "Modules"), "-I", filepath.Join(scratch, "debug", "CSKGo.build"), "-I", filepath.Join(repo, "native", "swift", "Sources", "CSKGo", "include"), "-L", filepath.Join(core, "zig-out", "lib"), "-lskgo_native_core"}
-	for _, pattern := range []string{"SKGoNative.build/*.swift.o", "CSKGo.build/*.o"} {
-		objects, err := filepath.Glob(filepath.Join(scratch, "debug", pattern))
-		if err != nil || len(objects) == 0 {
-			t.Fatalf("Swift objects %s: %v", pattern, err)
+	args := []string{"-swift-version", "6", "-parse-as-library", cfg.SwiftOut, probe, "-I", products, "-I", filepath.Join(products, "Modules"), "-I", filepath.Join(scratch, "debug", "CSKGo.build"), "-I", filepath.Join(repo, "native", "swift", "Sources", "CSKGo", "include"), "-L", filepath.Join(core, "zig-out", "lib"), "-lskgo_native_core"}
+	// Swift's newer default build system emits one object per target in its
+	// products directory. The native build system emits per-source objects.
+	if _, err := os.Stat(filepath.Join(products, "SKGoNative.o")); err == nil {
+		args = append(args, "-Xcc", "-fmodule-map-file="+filepath.Join(scratch, "out", "Intermediates.noindex", "GeneratedModuleMaps", "CSKGo.modulemap"))
+		args = append(args, filepath.Join(products, "SKGoNative.o"), filepath.Join(products, "CSKGo.o"))
+	} else {
+		for _, pattern := range []string{"SKGoNative.build/*.swift.o", "CSKGo.build/*.o"} {
+			objects, err := filepath.Glob(filepath.Join(scratch, "debug", pattern))
+			if err != nil || len(objects) == 0 {
+				t.Fatalf("Swift objects %s: %v", pattern, err)
+			}
+			args = append(args, objects...)
 		}
-		args = append(args, objects...)
 	}
 	cli := filepath.Join(scratch, "native-client")
 	args = append(args, "-o", cli)
@@ -68,7 +83,7 @@ func TestGeneratedSwiftCallsTheGeneratedGoHandlers(t *testing.T) {
 		t.Fatalf("origin=%q", origin)
 	}
 	cmd := exec.CommandContext(ctx, cli, origin)
-	out, err := cmd.CombinedOutput()
+	out, err = cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("generated native calls: %v\n%s", err, out)
 	}
