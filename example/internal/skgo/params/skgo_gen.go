@@ -197,6 +197,7 @@ func SkgoCallerRoutes() skgo.CallerRoutes {
 		"/async-ssr/control":             {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/async-ssr/control", values) }},
 		"/async-ssr/control/[group]":     {Params: []skgo.ManifestParam{{Name: "group", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/async-ssr/control/[group]", values) }},
 		"/batch":                         {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/batch", values) }},
+		"/bits-ui":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/bits-ui", values) }},
 		"/console":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/console", values) }},
 		"/contact":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/contact", values) }},
 		"/destinations":                  {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/destinations", values) }},
@@ -356,6 +357,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			p.value_67726f7570 = GroupParam_String{Value: value}
 		}
 	case "/batch":
+	case "/bits-ui":
 	case "/console":
 	case "/contact":
 	case "/destinations":

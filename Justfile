@@ -58,7 +58,7 @@ tools:
 
 # go test, both modules, in one invocation so their packages run side by side
 test: tools
-    cd example && mise x -- go -C .. test -count=1 ./... ./example/...
+    cd example && mise x npm:pnpm@12.9.1 -- go -C .. test -count=1 ./... ./example/...
 
 # the example server, against the built frontend
 serve:
