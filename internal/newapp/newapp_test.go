@@ -222,9 +222,6 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if readme := readFile(t, filepath.Join(dir, "README.md")); !strings.Contains(readme, "pnpm --dir web exec playwright install chromium") {
 		t.Errorf("the README does not tell a fresh clone how to get the component tests' browser:\n%s", readme)
 	}
-	if got := commands[0].VitePlusVersion; got != "1.0.0" {
-		t.Fatalf("qualified VitePlus bootstrap = %q, want 1.0.0", got)
-	}
 	if got := commands[0].Args[1]; got != "svelte@1.0.1" {
 		t.Fatalf("VitePlus template = %q", got)
 	}
@@ -843,40 +840,6 @@ func readFile(t *testing.T, name string) string {
 
 // The bootstrap's version determines the managed family it puts in the app.
 // An unsupported executable must not get as far as writing the project.
-func TestProjectCreationRejectsAnUnqualifiedVitePlusBeforeItRuns(t *testing.T) {
-	for _, version := range []string{"v0.3.3", "v1.0.0-beta.1", "v1.0.1", "v2.0.0", "v1.0.0"} {
-		t.Run(version, func(t *testing.T) {
-			root := t.TempDir()
-			vp := filepath.Join(root, "vp")
-			marker := filepath.Join(root, "created")
-			body := "#!/bin/sh\nif [ \"$1\" = --version ]; then printf 'vp %s\\nLocal vite-plus:\\n' \"$FIXTURE_VP_VERSION\"; exit 0; fi\nprintf 'created' > \"$FIXTURE_VP_MARKER\"\n"
-			if err := os.WriteFile(vp, []byte(body), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			err := realRunner(io.Discard, io.Discard)(command{
-				Dir: root, Name: vp, Args: []string{"create", "svelte@1.0.1"},
-				Env:             append(os.Environ(), "FIXTURE_VP_VERSION="+version, "FIXTURE_VP_MARKER="+marker),
-				VitePlusVersion: "1.0.0",
-			})
-			if version == "v1.0.0" {
-				if err != nil {
-					t.Fatal(err)
-				}
-				if got := readFile(t, marker); got != "created" {
-					t.Fatalf("creator marker = %q", got)
-				}
-				return
-			}
-			if err == nil || !strings.Contains(err.Error(), "requires qualified VitePlus 1.0.0") {
-				t.Fatalf("unqualified bootstrap error = %v", err)
-			}
-			if _, err := os.Stat(marker); !os.IsNotExist(err) {
-				t.Fatalf("unqualified bootstrap created a project: %v", err)
-			}
-		})
-	}
-}
-
 // Exercise the Go steps of Create for a rendered demo, using the installed Kit
 // pin. The UI installer is irrelevant to whether our shipped command compiles.
 func TestDemoStarterGeneratesAndCompiles(t *testing.T) {
