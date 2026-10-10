@@ -1,6 +1,7 @@
 package update
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,6 +16,10 @@ import (
 )
 
 type vpDependencies struct{ Core, Vitest string }
+
+// This exact peer exception is emitted by skgo's sv add-on for its qualified
+// Storybook/VitePlus pair. Other peer exceptions remain application-owned.
+const storybookVPPeer = "storybook@10.6.1>vite-plus"
 
 // The qualified global CLI reports its own bundled versions, independent of
 // the old application's installation. Vite's upstream version is not the
@@ -81,12 +86,13 @@ func alignVPDependencies(root string, pins vpDependencies) error {
 		return err
 	}
 	version := func(name string) string {
+		name = strings.TrimSuffix(name, "@*")
 		switch name {
 		case "vite-plus":
 			return toolchain.VitePlus
-		case "vite", "vite@*":
+		case "vite":
 			return "npm:@voidzero-dev/vite-plus-core@" + pins.Core
-		case "vitest", "vitest@*":
+		case "vitest":
 			return pins.Vitest
 		}
 		if vitestSibling(name) {
@@ -125,6 +131,10 @@ func alignVPDependencies(root string, pins vpDependencies) error {
 	if config == nil {
 		config = map[string]any{}
 	}
+	var emptyPrefix []byte
+	if document.Kind == 0 {
+		emptyPrefix = append([]byte(nil), data...)
+	}
 	if catalog, ok := config["catalog"].(map[string]any); ok {
 		align(catalog, false)
 	}
@@ -147,6 +157,13 @@ func alignVPDependencies(root string, pins vpDependencies) error {
 	if _, exists := overrides["vitest"]; !exists {
 		overrides["vitest@*"] = pins.Vitest
 	}
+	if rules, ok := config["peerDependencyRules"].(map[string]any); ok {
+		if allowed, ok := rules["allowedVersions"].(map[string]any); ok {
+			if _, exists := allowed[storybookVPPeer]; exists {
+				allowed[storybookVPPeer] = toolchain.VitePlus
+			}
+		}
+	}
 	data, err = json.MarshalIndent(pkg, "", "  ")
 	if err != nil {
 		return err
@@ -157,11 +174,20 @@ func alignVPDependencies(root string, pins vpDependencies) error {
 	if err := alignYAMLValues(&document, config); err != nil {
 		return err
 	}
-	data, err = yaml.Marshal(&document)
-	if err != nil {
+	var output bytes.Buffer
+	output.Write(emptyPrefix) // yaml.v3 otherwise drops comment-only input.
+	if len(emptyPrefix) != 0 && emptyPrefix[len(emptyPrefix)-1] != '\n' {
+		output.WriteByte('\n')
+	}
+	encoder := yaml.NewEncoder(&output)
+	encoder.SetIndent(2)
+	if err := encoder.Encode(&document); err != nil {
 		return err
 	}
-	return os.WriteFile(workspace, data, 0644)
+	if err := encoder.Close(); err != nil {
+		return err
+	}
+	return os.WriteFile(workspace, output.Bytes(), 0644)
 }
 
 // Update changed scalar values and append new mapping entries in the parsed

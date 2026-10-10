@@ -13,3 +13,9 @@ correction: `@vitest/` is not one version family: browser-webdriverio and eslint
 correction: Live review with the qualified pnpm12.9.1 contradicted vp1.0's shipped upgrade guide: pnpm12 ignores the entire legacy package.json pnpm field. Write the effective Vitest pin to pnpm-workspace.yaml and preserve legacy package settings untouched. A doc-derived fixture incorrectly encoded older precedence; qualify against the actual companion.
 
 correction: Aligning catalogs after pinDependencies is insufficient if the earlier pass erases the vite-plus catalog reference. Preserve that reference at the earlier pass too. Update YAML values through its parsed node tree so dependency changes retain authored comments and key order.
+
+correction: Dependency ownership must match in the aligner and preservation guard, including workspace overrides for VitePlus and its coupled Vitest siblings. A mismatch performs a valid alignment and then refuses its own edits.
+
+decision: The exact Storybook10.6.1-to-VitePlus peer exception emitted by skgo's sv add-on is owned compatibility configuration. Update that existing exception with the selected vp pin; preserve every other peer rule. The separate version-moving fixture exposed the stale exception through real pnpm peers check despite successful builds/tests.
+
+friction: Refusals that name only a randomly selected file hide the failed boundary. Sort source paths and report the first differing authored configuration key without printing values. Keep dependency JSON serialization unchanged from the prior updater; preserve YAML comments/order and use the generated two-space indentation.
