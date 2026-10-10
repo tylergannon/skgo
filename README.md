@@ -341,3 +341,38 @@ just install && just build && just serve    # http://127.0.0.1:8080
 - [Agent skills](#agent-skills)
 
 skgo is pronounced "skay-go". MIT licensed; see [LICENSE](LICENSE).
+
+
+### Native application foundation
+
+`skgo add --set bundle-id=dev.example.myapp native-app` adds an embedded Go
+host and a SwiftUI shell for macOS and iOS. Build on macOS with Xcode and the
+native tool versions declared in skgo's `native/mise.toml`:
+
+```sh
+go tool skgo native build --platform macos
+go tool skgo native build --platform simulator
+go tool skgo native build --platform iphone
+```
+
+`native/skgo-native.json` is the application configuration (`nativeapp.Config`).
+The builder compiles `native/Sources` and, when `swiftRemotes` is nonempty,
+generates and compiles `native/Generated.swift`. Additional local Swift packages,
+sources, resources, platform deployment targets and Info.plist properties come
+from that configuration. Named presets select Go tags, bundle suffixes, resource
+sets and additional plist properties with `--preset NAME`; output goes to
+`native/build/<platform>[-<preset>]`. A null/omitted preset resources list inherits
+the application resources; an explicit empty list clears them. Unknown configuration
+fields fail explicitly. Native compilation does not install or launch the result.
+
+The default `native/Sources/ApplicationView.swift` is an application-owned slot.
+Its exact initial bytes are exposed as `nativeapp.DefaultApplicationView` so an
+add-on can replace only the recognized default. It defines one retained
+`ApplicationState`, the content view and macOS settings view. `NativeHost` offers
+shutdown, background-change and availability callbacks. Listener recovery retains
+the Go application's state and loopback origin; recording and WebView-specific
+readiness remain the application's responsibility.
+
+Builds are unsigned unless `SKGO_DEVELOPMENT_TEAM` is explicitly configured;
+`SKGO_DEVICE_ID` optionally chooses a signing destination. An archive or successful
+build is not evidence of distribution or physical-device behavior.
