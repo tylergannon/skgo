@@ -20,20 +20,21 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 
-	"golang.org/x/term"
 	"golang.org/x/tools/go/analysis/unitchecker"
 
 	"github.com/tylergannon/skgo/internal/advice"
 	"github.com/tylergannon/skgo/internal/check"
 	"github.com/tylergannon/skgo/internal/gen"
-	"github.com/tylergannon/skgo/internal/newapp"
 )
 
 const usage = `usage:
 	skgo new [flags] DIR [-- SV_CREATE_OPTIONS]
 	                          create a SvelteKit application served by Go
+	skgo add [flags] ADDON    apply a reusable application change
+	skgo buildinfo [--json]   identify this executing CLI and its Go build
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
 	skgo dev [flags]          run Vite and the Go application, rebuilding Go as it changes
 	skgo check [flags]        check Go, Svelte, lint and formatting without edits
@@ -45,6 +46,17 @@ const usage = `usage:
 `
 
 func main() {
+	if len(os.Args) == 2 && (os.Args[1] == "--help" || os.Args[1] == "-h" || os.Args[1] == "help") {
+		fmt.Fprint(os.Stdout, usage)
+		if r, err := plugins(os.Stderr); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		} else {
+			_ = r.Help(os.Stdout, "template", "")
+			_ = r.Help(os.Stdout, "add-on", "")
+		}
+		return
+	}
 	// go vet invokes this binary as an analysis driver with leading flags.
 	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "-") {
 		unitchecker.Main(advice.Analyzer)
@@ -55,6 +67,18 @@ func main() {
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "buildinfo":
+		if err := buildinfoCommand(os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	case "add":
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		if err := addCommand(ctx, os.Args[2:], os.Stdout, os.Stderr); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "env":
 		if err := environmentCommand(os.Args[2:], os.Stdin, os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -142,50 +166,6 @@ func checkProject(args []string) {
 	if !report.OK {
 		os.Exit(1)
 	}
-}
-
-func newProject(args []string) {
-	fs := flag.NewFlagSet("new", flag.ExitOnError)
-	module := fs.String("module", "", "Go module path; defaults to the project name")
-	name := fs.String("name", "", "application name; defaults to the target directory name")
-	origin := fs.String("origin", "http://127.0.0.1:8080", "public browser origin")
-	version := fs.String("skgo-version", "", "skgo module version; defaults to this command's release")
-	svAddon := fs.String("sv-addon", "", "sv add-on package spec; a file: directory is packed into an isolated copy, for checkout qualification")
-	adapter := fs.String("adapter", "", "runtime adapter package spec; intended for checkout qualification")
-	replace := fs.String("skgo-replace", "", "local skgo module replacement; intended for checkout qualification")
-	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "usage: skgo new [flags] DIR [-- SV_CREATE_OPTIONS]")
-		fmt.Fprintln(os.Stderr, "\nVitePlus delegates the frontend to sv; skgo adds the Go application server.")
-		fmt.Fprintln(os.Stderr, "In a terminal sv asks its own questions. Options after -- are handed to")
-		fmt.Fprintln(os.Stderr, "`sv create` as written, for example:")
-		fmt.Fprintln(os.Stderr, "\n\tskgo new myapp -- --template demo --types jsdoc --add tailwindcss=plugins:none")
-		fmt.Fprintln(os.Stderr, "\nsv's demo template becomes the skgo remote-function example. Without a")
-		fmt.Fprintln(os.Stderr, "terminal, what is left open is the minimal TypeScript application.")
-		fmt.Fprintln(os.Stderr)
-		fs.PrintDefaults()
-	}
-	_ = fs.Parse(args)
-	if fs.NArg() < 1 || (fs.NArg() > 1 && fs.Arg(1) != "--") {
-		fs.Usage()
-		os.Exit(2)
-	}
-	var svArgs []string
-	if fs.NArg() > 1 {
-		svArgs = fs.Args()[2:]
-	}
-	// VitePlus applies the same rule to decide whether it may prompt.
-	interactive := os.Getenv("CI") == "" && term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
-
-	result, err := newapp.Create(newapp.Options{
-		Dir: fs.Arg(0), Module: *module, App: *name, Origin: *origin, SvArgs: svArgs, Interactive: interactive,
-		SkgoVersion: *version, SVAddonSpec: *svAddon, AdapterSpec: *adapter, SkgoReplace: *replace,
-		Stdout: os.Stdout, Stderr: os.Stderr,
-	})
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	fmt.Fprint(os.Stderr, "\n"+result.Instructions())
 }
 
 func generate(args []string) {
