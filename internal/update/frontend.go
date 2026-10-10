@@ -85,13 +85,16 @@ func pinDependencies(root, adapter, addon, kit string) error {
 		if _, ok := sections["dependencies"][name]; ok {
 			section = "dependencies"
 		}
+		if name == "vite-plus" && strings.HasPrefix(sections[section][name], "catalog:") {
+			continue // The existing-vp aligner updates the referenced catalog.
+		}
 		sections[section][name] = version
 	}
 	for name, v := range sections {
 		if _, ok := v["@skgo/sv"]; ok {
 			v["@skgo/sv"] = addon
 		}
-		p[name], err = json.Marshal(v)
+		p[name], err = manifestJSON(v)
 		if err != nil {
 			return err
 		}
@@ -104,12 +107,24 @@ func pinDependencies(root, adapter, addon, kit string) error {
 		}
 	}
 	engines["packageManager"], _ = json.Marshal(map[string]string{"name": "pnpm", "version": toolchain.PNPM, "onFail": "error"})
-	p["devEngines"], _ = json.Marshal(engines)
-	b, err = json.MarshalIndent(p, "", "  ")
+	p["devEngines"], err = manifestJSON(engines)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(b, '\n'), 0644)
+	b, err = manifestJSON(p)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0644)
+}
+
+func manifestJSON(value any) ([]byte, error) {
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	err := encoder.Encode(value)
+	return out.Bytes(), err
 }
 func dependencyFile(name string) bool {
 	switch name {
@@ -141,20 +156,58 @@ func preservedFiles(before map[string][]byte, stage string) error {
 			return err
 		}
 		if !reflect.DeepEqual(a, b) {
-			return fmt.Errorf("VitePlus migration would change authored configuration in %s; application configuration is untouched", name)
+			return fmt.Errorf("VitePlus update would change authored configuration in %s at %s; application configuration is untouched", name, changedConfigKey(a, b, ""))
 		}
 	}
-	for name, b := range before {
-		if !dependencyFile(name) && !bytes.Equal(b, after[name]) {
-			return fmt.Errorf("VitePlus migration would change application source %s; migration is incomplete and the original file is untouched", name)
+	for _, name := range sortedFileNames(before) {
+		if !dependencyFile(name) && !bytes.Equal(before[name], after[name]) {
+			return fmt.Errorf("VitePlus update would change application source %s; update is incomplete and the original file is untouched", name)
 		}
 	}
-	for name := range after {
+	for _, name := range sortedFileNames(after) {
 		if _, ok := before[name]; !ok && !dependencyFile(name) {
-			return fmt.Errorf("VitePlus migration would add application source %s; review the migration before updating", name)
+			return fmt.Errorf("VitePlus update would add application source %s; review the update before applying it", name)
 		}
 	}
 	return nil
+}
+
+func sortedFileNames(files map[string][]byte) []string {
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// Name a deterministic changed key without printing potentially secret values.
+func changedConfigKey(before, after any, path string) string {
+	a, aMap := before.(map[string]any)
+	b, bMap := after.(map[string]any)
+	if !aMap || !bMap {
+		return path
+	}
+	keys := make(map[string]bool, len(a)+len(b))
+	for k := range a {
+		keys[k] = true
+	}
+	for k := range b {
+		keys[k] = true
+	}
+	names := make([]string, 0, len(keys))
+	for k := range keys {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	for _, k := range names {
+		av, aExists := a[k]
+		bv, bExists := b[k]
+		if aExists != bExists || !reflect.DeepEqual(av, bv) {
+			return changedConfigKey(av, bv, path+"["+fmt.Sprintf("%q", k)+"]")
+		}
+	}
+	return path
 }
 func applyFrontend(root, stage string) error {
 	files, err := frontendFiles(stage)
@@ -235,16 +288,32 @@ func authoredConfig(name string, data []byte) (map[string]any, error) {
 		case "vite-plus", "vite", "vitest", "@sveltejs/kit", "@skgo/sveltekit-adapter", "@skgo/sv":
 			return true
 		}
-		return strings.HasPrefix(k, "@vitest/")
+		return vitestSibling(k)
 	}
 	if name == "package.json" {
 		delete(p, "packageManager")
 		strip(p, "devEngines", func(k string, _ any) bool { return k == "packageManager" })
 		strip(p, "dependencies", managed)
 		strip(p, "devDependencies", managed)
+		strip(p, "optionalDependencies", managed)
+		strip(p, "peerDependencies", managed)
 	} else {
 		strip(p, "catalog", managed)
-		strip(p, "overrides", func(k string, v any) bool { return k == "vite@*" || k == "vitest@*" })
+		if catalogs, ok := p["catalogs"].(map[string]any); ok {
+			for name := range catalogs {
+				strip(catalogs, name, managed)
+			}
+			if len(catalogs) == 0 {
+				delete(p, "catalogs")
+			}
+		}
+		strip(p, "overrides", managedOverride)
+		if rules, ok := p["peerDependencyRules"].(map[string]any); ok {
+			strip(rules, "allowedVersions", func(k string, _ any) bool { return k == storybookVPPeer })
+			if len(rules) == 0 {
+				delete(p, "peerDependencyRules")
+			}
+		}
 		strip(p, "patchedDependencies", func(k string, v any) bool {
 			path, ok := v.(string)
 			return ok && strings.HasPrefix(k, "@sveltejs/kit@") && strings.HasPrefix(path, "patches/skgo-kit-") && strings.HasSuffix(path, ".patch")
@@ -262,4 +331,9 @@ func unchangedFrontend(root string, original map[string][]byte) error {
 		return fmt.Errorf("frontend changed while update was staging; refusing to overwrite concurrent application edits")
 	}
 	return nil
+}
+
+func managedOverride(k string, _ any) bool {
+	k = strings.TrimSuffix(k, "@*")
+	return k == "vite-plus" || k == "vite" || k == "vitest" || vitestSibling(k)
 }
