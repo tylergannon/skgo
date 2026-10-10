@@ -61,3 +61,22 @@ func TestRemovalHintsNameModuleBehindOpaqueSlot(t *testing.T) {
 		t.Fatalf("guessed missing source: %v %v", hints, err)
 	}
 }
+
+func TestUnreadableRetainedHostIsOnlyAHint(t *testing.T) {
+	home := t.TempDir()
+	blocked := Dir(home, "unreadable")
+	if err := os.MkdirAll(blocked, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(blocked, 0000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blocked, 0755) })
+	if _, err := os.ReadDir(blocked); !os.IsPermission(err) {
+		t.Fatalf("permission fixture must be unreadable: %v", err)
+	}
+	hints, err := Hints(home, "current")
+	if err != nil || len(hints) != 1 || !strings.Contains(hints[0], "retained host directory "+blocked+" unreadable") {
+		t.Fatalf("unreadable retained host disabled discovery or lost warning: %v %v", hints, err)
+	}
+}

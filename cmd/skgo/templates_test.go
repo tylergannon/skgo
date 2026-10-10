@@ -191,6 +191,28 @@ func main(){if !semver.IsValid("v1.0.0"){panic("semver")};if e:=os.MkdirAll("gen
 	if !strings.Contains(text, "receipt-app") || !strings.Contains(text, "example.test/retained@v1.2.3") || strings.Contains(text, "invalid ELF") {
 		t.Fatal(text)
 	}
+	// Other-host help is advisory: an unreadable retained sibling cannot disable
+	// this host's valid plugin, with either manual discovery configuration.
+	blocked := pluginstore.Dir(managedHome, "unreadable-retained-host")
+	if err := os.Mkdir(blocked, 0000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blocked, 0755) })
+	if _, err := os.ReadDir(blocked); !os.IsPermission(err) {
+		t.Fatalf("permission fixture must be unreadable: %v", err)
+	}
+	for _, manual := range []string{"", emptyManual} {
+		for _, command := range []string{"new", "add"} {
+			text := call(skgoBin, []string{"HOME=" + managedHome, "SKGO_PLUGIN_DIRS=" + manual}, command, "--help")
+			want := "An application receipt"
+			if command == "add" {
+				want = "Write a configured receipt"
+			}
+			if !strings.Contains(text, want) || !strings.Contains(text, "retained host directory "+blocked+" unreadable") {
+				t.Fatalf("current plugin hidden or warning lost: %s", text)
+			}
+		}
+	}
 	// A moved copy with identical executable bytes must discover the same slot.
 	moved := filepath.Join(root, "moved-skgo")
 	binary, err := os.ReadFile(skgoBin)

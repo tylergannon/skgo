@@ -63,12 +63,12 @@ func plugins(out io.Writer) (*templates.Registry, error) {
 		}
 		hints, e := pluginstore.Hints(home, digest)
 		if e != nil {
-			return nil, e
+			diagnostics = append(diagnostics, fmt.Sprintf("cannot read retained plugin hints under %s: %v", pluginstore.Hosts(home), e))
 		}
 		diagnostics = append(diagnostics, hints...)
 		removals, e := pluginstore.RemovalHints(pluginstore.Dir(home, digest))
 		if e != nil {
-			return nil, e
+			diagnostics = append(diagnostics, fmt.Sprintf("cannot read managed plugin source hints under %s: %v", pluginstore.Dir(home, digest), e))
 		}
 		for _, hint := range removals {
 			fmt.Fprintln(out, hint)

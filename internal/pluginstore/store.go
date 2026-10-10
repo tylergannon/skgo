@@ -67,7 +67,8 @@ func Hints(home, host string) ([]string, error) {
 		path := filepath.Join(Hosts(home), dir.Name())
 		files, e := os.ReadDir(path)
 		if e != nil {
-			return nil, e
+			bad = append(bad, fmt.Sprintf("retained host directory %s unreadable: %v; inspect permissions or deliberately remove that directory", path, e))
+			continue
 		}
 		hasPlugin := false
 		for _, f := range files {
@@ -93,7 +94,7 @@ func Hints(home, host string) ([]string, error) {
 		}
 	}
 	if len(paths) == 0 {
-		return nil, nil
+		return bad, nil
 	}
 	out := []string{fmt.Sprintf("%d retained installation directories belong to other skgo executables; not loaded. Deliberate cleanup: %s", len(paths), strings.Join(paths, ", "))}
 	var sorted []string

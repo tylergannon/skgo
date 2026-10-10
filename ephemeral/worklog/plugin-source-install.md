@@ -11,3 +11,4 @@ correction: A private qualification set must canonicalize paths too: macOS candi
 - Materialize the pinned Git commit with archive rather than checkout filters; skip its global PAX commit metadata while rejecting source symlinks. A real local Git fixture exposed that archive header.
 - Failed/removed installations can leave lock-only host directories. Discovery hints must count actual retained .so files, not those empty directories.
 - correction: A digest-named managed file is not enough to recover from a conflict. Show its recorded module/version and concrete remove command during discovery and qualification failures, with exact-file fallback for missing metadata.
+- correction: Other-host installation hints are advisory. An unreadable retained sibling must warn with its path while current-host help/add discovery remains usable; metadata diagnostics must not become a second discovery gate.

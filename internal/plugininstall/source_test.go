@@ -1,12 +1,18 @@
 package plugininstall
 
 import (
+	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestManifestBoundary(t *testing.T) {
@@ -30,6 +36,94 @@ func TestManifestBoundary(t *testing.T) {
 				t.Fatalf("got %q,%v", got, err)
 			}
 		})
+	}
+}
+
+func TestFetchHonorsChecksumDatabaseRefusal(t *testing.T) {
+	const modulePath = "github.com/skgo-test/checksum-refusal"
+	const refusal = "fixture checksum database refuses this module"
+	repo := t.TempDir()
+	for name, body := range map[string]string{
+		"go.mod":           "module " + modulePath + "\n\ngo 1.27.1\n",
+		"skgo-plugin.json": "{\"package\":\".\"}\n",
+		"main.go":          "package main\nfunc main() {}\n",
+	} {
+		if err := os.WriteFile(filepath.Join(repo, name), []byte(body), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	config := filepath.Join(t.TempDir(), "gitconfig")
+	t.Setenv("GIT_CONFIG_GLOBAL", config)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GIT_CONFIG_COUNT", "0")
+	t.Setenv("GIT_AUTHOR_NAME", "Fixture")
+	t.Setenv("GIT_AUTHOR_EMAIL", "fixture@example.com")
+	t.Setenv("GIT_COMMITTER_NAME", "Fixture")
+	t.Setenv("GIT_COMMITTER_EMAIL", "fixture@example.com")
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repo
+		if b, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, b)
+		}
+	}
+	git("config", "--global", "url."+(&url.URL{Scheme: "file", Path: filepath.ToSlash(repo)}).String()+".insteadOf", "https://"+modulePath)
+	git("init", "--quiet")
+	git("add", ".")
+	git("-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "checksum refusal fixture")
+	git("tag", "v1.0.0")
+
+	lookups := make(chan string, 16)
+	db := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case lookups <- r.URL.Path:
+		default:
+		}
+		http.Error(w, refusal, http.StatusForbidden)
+	}))
+	defer db.Close()
+	// Use the already-running Go distribution, while isolating all resolver
+	// caches and caller policy. Git's static GitHub mapping is rewritten to the
+	// local repository; the only HTTP endpoint is this refusing checksum server.
+	t.Setenv("PATH", filepath.Join(runtime.GOROOT(), "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("GOENV", "off")
+	t.Setenv("GOPATH", t.TempDir())
+	t.Setenv("GOSUMDB", "sum.golang.org "+db.URL)
+	t.Setenv("GONOSUMDB", "")
+	t.Setenv("GOPRIVATE", "")
+	t.Setenv("GONOPROXY", "")
+	t.Setenv("GOINSECURE", "")
+	t.Setenv("GOVCS", "*:git")
+	temp := t.TempDir()
+	t.Setenv("TMPDIR", temp)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	var output bytes.Buffer
+	s, cleanup, err := fetch(ctx, modulePath+"@v1.0.0", runtime.Version(), &output)
+	if cleanup != nil {
+		t.Cleanup(cleanup)
+	}
+	if err == nil || !strings.Contains(err.Error(), refusal) || !strings.Contains(err.Error(), "verifying go.mod") {
+		t.Fatalf("checksum refusal was not returned: %v\n%s", err, &output)
+	}
+	select {
+	case path := <-lookups:
+		if path != "/lookup/"+modulePath+"@v1.0.0" {
+			t.Fatalf("unexpected checksum database request: %q", path)
+		}
+	default:
+		t.Fatal("resolver never queried the configured checksum database")
+	}
+	if !strings.Contains(output.String(), "Source checksum policy: checksum database sum.golang.org "+db.URL) {
+		t.Fatalf("configured checksum policy not named: %s", &output)
+	}
+	if s.Root != "" || s.Package != "" || strings.Contains(output.String(), "Resolved ") {
+		t.Fatalf("refused source reached preparation: %+v\n%s", s, &output)
+	}
+	entries, err := os.ReadDir(temp)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("failed fetch left temporary source/cache files: %v, %v", entries, err)
 	}
 }
 func TestReferenceQueries(t *testing.T) {
