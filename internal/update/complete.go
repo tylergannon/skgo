@@ -101,6 +101,10 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 	if err != nil {
 		return err
 	}
+	alreadyVP, err := usesVitePlus(stage)
+	if err != nil {
+		return err
+	}
 	if err := pinDependencies(stage, adapterVersion, addonVersion, metadata.Version); err != nil {
 		return err
 	}
@@ -111,13 +115,28 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 		managed := append([]string{"env", "exec", "--package-manager", "pnpm@" + toolchain.PNPM, name}, args...)
 		return o.run(ctx, command{Dir: stage, Name: vp, Args: managed, Env: env, Quiet: quiet})
 	}
-	if _, err := stageRun(false, vp, "migrate", "--no-interactive", "--no-agent", "--no-editor", "--no-hooks"); err != nil {
-		return fmt.Errorf("staged VitePlus migration failed; application source unchanged: %w", err)
-	}
-	// Migration may normalize dependency ranges. Persist exact release selections
-	// again; Vite/Vitest aliases produced by the pinned migrator stay authoritative.
-	if err := pinDependencies(stage, adapterVersion, addonVersion, metadata.Version); err != nil {
-		return err
+	if alreadyVP {
+		graph, err := run(outside, true, vp, "toolchain", "--global", "--json", "vite", "vitest")
+		if err != nil {
+			return fmt.Errorf("read qualified vp dependency versions: %w", err)
+		}
+		pins, err := parseVPToolchain(graph)
+		if err != nil {
+			return err
+		}
+		if err := alignVPDependencies(stage, pins); err != nil {
+			return err
+		}
+		fmt.Fprintln(o.Out, "Existing VitePlus project: aligning dependencies without source migration.")
+	} else {
+		if _, err := stageRun(false, vp, "migrate", "--no-interactive", "--no-agent", "--no-editor", "--no-hooks"); err != nil {
+			return fmt.Errorf("staged VitePlus migration failed; application source unchanged: %w", err)
+		}
+		// Initial migration may normalize dependency ranges. Restore skgo's pins
+		// before installing; the same authored-file guards apply to both paths.
+		if err := pinDependencies(stage, adapterVersion, addonVersion, metadata.Version); err != nil {
+			return err
+		}
 	}
 	pm, err := stageRun(true, "which", "pnpm")
 	if err != nil {
@@ -140,7 +159,7 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 	if err := kitpatch.Verify(kitpatch.Options{Web: stage, PNPM: pnpm, Out: o.Out}); err != nil {
 		return err
 	}
-	if err := preservedFiles(original, stage); err != nil {
+	if err := preservedFiles(original, stage, adapterVersion); err != nil {
 		return err
 	}
 	if err := unchangedFrontend(web, original); err != nil {

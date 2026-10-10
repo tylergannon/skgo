@@ -1067,7 +1067,12 @@ export function gojaDevUnchangedFiles({ out = 'build' } = {}) {
 
 		config(config) {
 			const emitted = posix(resolve(config.root ?? process.cwd(), out));
-			return { server: { watch: { ignored: [emitted, `${emitted}/**`] } } };
+			// Chokidar's ordinary change path drops a second edit inside 50 ms.
+			// Its supported pending-write path instead delivers settled contents.
+			const stability = config.server?.watch?.awaitWriteFinish === undefined
+				? { awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 25 } }
+				: {};
+			return { server: { watch: { ...stability, ignored: [emitted, `${emitted}/**`] } } };
 		},
 
 		configureServer(server) {
@@ -1087,13 +1092,18 @@ export function gojaDevUnchangedFiles({ out = 'build' } = {}) {
 			// Kit validates templates synchronously from its watcher. An in-place
 			// save can expose truncated bytes; report that validation error but
 			// keep the watcher alive so the completed save can regenerate Kit.
+			// Kit's listener was registered before this post plugin; wrapping emit
+			// catches its synchronous throw before it escapes the filesystem callback.
 			const notify = (receiver, event, args, file) => {
 				try {
 					return emit.call(receiver, event, ...args);
 				} catch (error) {
 					const authored = typeof file === 'string' ? relative(server.config.root, file) : null;
-					if (!(error instanceof Error) || authored === null ||
-						!['%sveltekit.head%', '%sveltekit.body%'].some(tag => error.message === `${authored} is missing ${tag}`)) throw error;
+					const [code, body] = error instanceof Error ? error.message.split('\n') : [];
+					const templateError = code === 'app_template_missing'
+						? body === `${authored} does not exist`
+						: code === 'app_template_tag_missing' && ['%sveltekit.head%', '%sveltekit.body%'].some(tag => body === `${authored} is missing \`${tag}\``);
+					if (!(error instanceof Error) || error.name !== 'SvelteKit error' || authored === null || !templateError) throw error;
 					known.delete(posix(file));
 					server.config.logger.error(error.stack ?? error.message);
 					server.ws.send({ type: 'error', err: { message: error.message, stack: error.stack ?? '', plugin: 'skgo-dev-unchanged-files' } });

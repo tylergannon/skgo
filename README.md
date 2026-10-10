@@ -222,7 +222,9 @@ regenerate their skgo bindings.
 
 You need Go, [VitePlus](https://viteplus.dev) **1.0.0** (`vp`) and
 [just](https://just.systems). This release qualifies that exact VitePlus toolchain;
-`skgo new` refuses other bootstrap versions before project creation.
+`skgo new` refuses other bootstrap versions before project creation. It uses
+vp’s managed environment with this release’s pnpm 12.9.1 companion and records
+that selection in the generated frontend, regardless of ambient pnpm settings.
 
 ```sh
 npm install --global vite-plus@1.0.0
@@ -243,8 +245,9 @@ SvelteKit patch and frontend toolchain. The release selects an exact vp version
 and its qualified pnpm companion; commands run through vp's managed environment.
 Use `--vp /path/to/vp` to select the global installation explicitly.
 
-Inside an application, update stages frontend migration, rejects changes to
-authored sources or configuration, then installs, regenerates and builds using
+Inside an existing VitePlus application, update stages dependency alignment
+without running whole-project migration. It rejects changes to authored sources
+or configuration, then installs, regenerates and builds using
 the verified project Go tool when declared. Native applications also regenerate
 Swift bindings and build macOS by default; select another build with
 `--native-platform simulator --native-preset synthetic`. A successful native

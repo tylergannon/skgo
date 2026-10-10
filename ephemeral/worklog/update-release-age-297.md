@@ -1,0 +1,13 @@
+# Release-age exception during update
+
+decision: The released v0.28.2 recorder refusal is retained by the consumer owner, not retried here. Its original workspace has no minimumReleaseAge, minimumReleaseAgeStrict or minimumReleaseAgeExclude; its log says pnpm added exactly @skgo/sveltekit-adapter@0.28.2. The disposable stage was deleted, so its after-bytes are unavailable.
+
+source: pnpm v12.9.1 pnpm/crates/package-manager/src/minimum_release_age.rs persists exact exclusions after non-strict installation. Explicit age configuration defaults strict; noninteractive strict refusal precedes persistence. pnpm/crates/config/src/version_policy.rs merges exact versions into unions. This behavior belongs to the qualified package manager; do not disable age policy or give skgo ownership of arbitrary policy edits.
+
+decision: Recognize only the installed, selected adapter version as an additive exception after successful staging. Retain every existing exception and all age/strict settings. Reject other new exemptions, wildcard broadening and removals. Public released consumer retry remains outstanding until a corrected release; deterministic package-manager regression is candidate evidence only.
+
+friction: An initial full suite under ambient Go 1.27.2 reached Staticcheck export-data incompatibility (unicode/utf16 export version 5 versus supported 4). Use the repository Go 1.27.1 toolchain for the qualification run; retain the failed ambient run instead of treating it as a passing check.
+
+review_adjudication: This branch repairs the demonstrated fresh adapter refusal; it does not claim #297 acceptance or general automatic policy ownership. The currently selected other pins are outside pnpm's built-in one-day age window: registry publication dates are vite-plus1.0.0 2026-09-28T05:37:20.027Z, @sveltejs/kit3.0.0 2026-10-01T17:22:34.593Z, @voidzero-dev/vite-plus-core1.0.0 2026-09-28T05:31:52.032Z, vitest5.0.1 2026-09-15T08:49:35.830Z (registry.npmjs.org metadata read2026-10-10). Broadening to future pins would grant additional policy ownership without a current consumer observation. Those cases continue to fail safely. Reconsider that ownership when adopting a fresh vp/Kit stack, with its own observed regression.
+
+review_adjudication: Coordinator explicitly requires the held consumer to remain untouched and another normal consumer retry only after a concrete corrected release. Issue297 stays open; candidate staging/guard validation is not substituted for its released acceptance. The release owner must record package age during retry; a pass after the adapter ages out cannot establish this repair. The deterministic native pnpm fixture retains this distinction after the real package ages.
