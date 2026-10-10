@@ -29,7 +29,7 @@ Install the agent skills for skgo (a Go backend for SvelteKit) and polytype (whi
 vp dlx skills add tylergannon/skgo -y
 vp dlx skills add tylergannon/polytype -y
 
-Without vp (VitePlus), use pnpm dlx instead, not npx: skgo projects use pnpm. Add -g to install them for all projects. Then read the skgo skill before writing skgo code.
+Use VitePlus (`vp`) for frontend tooling. SKGO declares the pins; vp manages the underlying package-manager version. Do not install or select pnpm separately. Add -g to install the skills for all projects. Then read the skgo skill before writing skgo code.
 ```
 
 ## Example
