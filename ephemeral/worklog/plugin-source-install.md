@@ -12,3 +12,7 @@ correction: A private qualification set must canonicalize paths too: macOS candi
 - Failed/removed installations can leave lock-only host directories. Discovery hints must count actual retained .so files, not those empty directories.
 - correction: A digest-named managed file is not enough to recover from a conflict. Show its recorded module/version and concrete remove command during discovery and qualification failures, with exact-file fallback for missing metadata.
 - correction: Other-host installation hints are advisory. An unreadable retained sibling must warn with its path while current-host help/add discovery remains usable; metadata diagnostics must not become a second discovery gate.
+
+correction: The prior native UI failure did not establish an unlock requirement. Configured CUA launched the retained TemplateFieldNotes app and actual controls produced Recording, Paused, resumed Recording and Stopped with retained synthetic text. Quit/reopen used a new backend and final quit removed the process/listener. Its retained binary still belongs to the earlier v0.28.0-generated consumer; current and released observations remain separately attributed in Mission Control.
+
+decision: Merge current main 2edb21c (v0.28.3) before installer delivery, retaining the scaffold bootstrap and updater/watcher fixes. Integration a6b69f5 is conflict-free; installer/builder/store code and its independently mutated assertions remain unchanged. Independent Go1.27.1 build/test/vet qualifies the integrated candidate.
