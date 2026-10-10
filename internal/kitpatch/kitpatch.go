@@ -17,13 +17,14 @@ import (
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/adapter"
+	"github.com/tylergannon/skgo/internal/toolchain"
 	"gopkg.in/yaml.v3"
 )
 
 const (
 	kitPackageName = "@sveltejs/kit"
 	ownedPatchName = "skgo-kit-3.0.0-queue.patch"
-	pnpmVersion    = "12.9.1"
+	pnpmVersion    = toolchain.PNPM
 )
 
 type Options struct {

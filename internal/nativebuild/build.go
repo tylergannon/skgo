@@ -95,7 +95,7 @@ func Build(ctx context.Context, o Options) error {
 		outputName += "-" + o.Preset
 	}
 	out := filepath.Join(p.Root, "native/build", outputName)
-	sdkRoot := filepath.Join(out, "sdk")
+	sdkRoot := filepath.Join(out, ".sdk")
 	spec, err := projectSpec(p.Root, p.Name, out, sdkRoot, xcodePlatform, minVersion, c, preset)
 	if err != nil {
 		return err

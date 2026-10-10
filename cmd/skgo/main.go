@@ -34,6 +34,7 @@ const usage = `usage:
 	skgo new [flags] DIR [-- SV_CREATE_OPTIONS]
 	                          create a SvelteKit application served by Go
 	skgo add [flags] ADDON    apply a reusable application change
+	skgo update [--root DIR] [--vp GLOBAL_VP]   align CLI and application toolchain
 	skgo native build [--platform macos|iphone|simulator] [--preset NAME]
 	skgo buildinfo [--json]   identify this executing CLI and its Go build
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
@@ -68,6 +69,8 @@ func main() {
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "update":
+		updateCommand(os.Args[2:])
 	case "native":
 		nativeCommand(os.Args[2:])
 	case "buildinfo":

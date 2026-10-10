@@ -223,3 +223,73 @@ func TestNewTemplateAppliesAfterBaseCreation(t *testing.T) {
 		t.Fatalf("template result %q: %v", b, err)
 	}
 }
+
+func TestNativePluginsShareDependenciesOrExplainIsolation(t *testing.T) {
+	repo, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	shared := filepath.Join(root, "shared")
+	other := filepath.Join(root, "other-shared")
+	for _, d := range []string{shared, other} {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			t.Fatal(err)
+		}
+		os.WriteFile(filepath.Join(d, "go.mod"), []byte("module example.test/plugin-shared\ngo 1.27.1\n"), 0644)
+	}
+	os.WriteFile(filepath.Join(shared, "shared.go"), []byte("package shared\nfunc Purpose() string { return \"shared dependency one\" }\n"), 0644)
+	os.WriteFile(filepath.Join(other, "shared.go"), []byte("package shared\nfunc Purpose() string { return \"different dependency two\" }\n"), 0644)
+	dirs := map[string]string{}
+	for _, name := range []string{"alpha", "beta", "conflict"} {
+		source := filepath.Join(root, name)
+		dir := filepath.Join(root, name+"-plugins")
+		dirs[name] = dir
+		os.MkdirAll(source, 0755)
+		os.MkdirAll(dir, 0755)
+		dep := shared
+		if name == "conflict" {
+			dep = other
+		}
+		mod := fmt.Sprintf("module example.test/%s\ngo 1.27.1\nrequire (\n github.com/tylergannon/skgo v0.0.0\n example.test/plugin-shared v0.0.0\n)\nreplace github.com/tylergannon/skgo => %s\nreplace example.test/plugin-shared => %s\n", name, repo, dep)
+		os.WriteFile(filepath.Join(source, "go.mod"), []byte(mod), 0644)
+		code := fmt.Sprintf(`package main
+import("context"; "github.com/tylergannon/skgo/templateapi"; shared "example.test/plugin-shared")
+var skgoVersion string
+type plugin struct{}
+func SKGoPluginV1() templateapi.Plugin{return plugin{}}
+func(plugin) Describe() templateapi.Descriptor{return templateapi.Descriptor{ID:%q,Version:"1",SkgoVersion:skgoVersion,Addons:[]templateapi.Addon{{Name:%q,Summary:shared.Purpose()}}}}
+func(plugin) Apply(context.Context,templateapi.Request)(templateapi.Result,error){return templateapi.Result{},nil}
+func main(){}
+`, name, name)
+		os.WriteFile(filepath.Join(source, "main.go"), []byte(code), 0644)
+		var log bytes.Buffer
+		if err := pluginbuild.Build(context.Background(), pluginbuild.Options{Host: skgoBin, Source: source, Output: filepath.Join(dir, name+".so"), SkgoSource: repo, VersionSymbol: "main.skgoVersion", Log: &log}); err != nil {
+			t.Fatalf("%s: %v\n%s", name, err, &log)
+		}
+	}
+	help := func(paths ...string) string {
+		cmd := exec.Command(skgoBin, "add", "--help")
+		cmd.Env = append(os.Environ(), "SKGO_PLUGIN_DIRS="+strings.Join(paths, ","))
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("help: %v\n%s", err, out)
+		}
+		return string(out)
+	}
+	if out := help(dirs["alpha"], dirs["beta"]); strings.Contains(out, "warning:") || !strings.Contains(out, "alpha") || !strings.Contains(out, "beta") {
+		t.Fatalf("compatible pair: %s", out)
+	}
+	out := help(dirs["alpha"], dirs["beta"], dirs["conflict"])
+	for _, want := range []string{"warning:", "conflict.so", "example.test/plugin-shared", "already loaded:", filepath.Join(dirs["alpha"], "alpha.so"), filepath.Join(dirs["beta"], "beta.so"), "isolate SKGO_PLUGIN_DIRS"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in conflict help: %s", want, out)
+		}
+	}
+	if strings.Contains(out, "different dependency two") {
+		t.Fatalf("claimed conflicting plugin loaded: %s", out)
+	}
+	if out := help(dirs["conflict"]); strings.Contains(out, "warning:") || !strings.Contains(out, "different dependency two") {
+		t.Fatalf("isolated plugin: %s", out)
+	}
+}
