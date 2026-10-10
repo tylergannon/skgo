@@ -99,7 +99,11 @@ func Install(ctx context.Context, ref string, o Options) error {
 	peers = append(peers, candidate)
 	exports, err := qualify(ctx, o.Host.Executable, candidate, peers)
 	if err != nil {
-		return err
+		hints, hintErr := pluginstore.RemovalHints(dir)
+		if hintErr != nil {
+			return fmt.Errorf("%w; read managed source references: %v", err, hintErr)
+		}
+		return fmt.Errorf("%w\n%s", err, strings.Join(hints, "\n"))
 	}
 	for _, d := range exports.Diagnostics {
 		fmt.Fprintln(o.Out, "warning:", d)

@@ -181,8 +181,12 @@ func TestInstallQualifiesReplacementAndPreservesWorkingSelectionOnFailure(t *tes
 		{broken, "prepare plugin", "intentional preparation failure"},
 	} {
 		t.Run(tc.ref, func(t *testing.T) {
-			if err := install(tc.ref); err == nil || !strings.Contains(err.Error(), tc.diagnostic) {
+			err := install(tc.ref)
+			if err == nil || !strings.Contains(err.Error(), tc.diagnostic) {
 				t.Fatalf("bad candidate accepted or wrong failure: %v\n%s", err, &output)
+			}
+			if tc.ref == conflict && !strings.Contains(err.Error(), "skgo plugin remove "+peerModule) {
+				t.Fatalf("conflict lacks source removal command: %v", err)
 			}
 			if !strings.Contains(output.String(), tc.log) {
 				t.Fatalf("missing preparation diagnostics: %s", &output)

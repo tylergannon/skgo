@@ -10,3 +10,4 @@ correction: A private qualification set must canonicalize paths too: macOS candi
 - Parse subprocess stdout independently from stderr: a first-use Go toolchain download announces itself on stderr and corrupted the GOROOT path when CombinedOutput was parsed. Preserve resolver JSON on nonzero exits for its actual module diagnostic.
 - Materialize the pinned Git commit with archive rather than checkout filters; skip its global PAX commit metadata while rejecting source symlinks. A real local Git fixture exposed that archive header.
 - Failed/removed installations can leave lock-only host directories. Discovery hints must count actual retained .so files, not those empty directories.
+- correction: A digest-named managed file is not enough to recover from a conflict. Show its recorded module/version and concrete remove command during discovery and qualification failures, with exact-file fallback for missing metadata.

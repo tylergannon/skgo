@@ -66,6 +66,13 @@ func plugins(out io.Writer) (*templates.Registry, error) {
 			return nil, e
 		}
 		diagnostics = append(diagnostics, hints...)
+		removals, e := pluginstore.RemovalHints(pluginstore.Dir(home, digest))
+		if e != nil {
+			return nil, e
+		}
+		for _, hint := range removals {
+			fmt.Fprintln(out, hint)
+		}
 	}
 	r, err := templates.DiscoverFiles(files, info.SkgoVersion, nativeapp.Plugin(info.SkgoVersion))
 	if err != nil {

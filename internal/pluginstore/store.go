@@ -106,3 +106,35 @@ func Hints(home, host string) ([]string, error) {
 	}
 	return append(out, bad...), nil
 }
+
+// RemovalHints maps current-host opaque slots back to their source module. Callers
+// show these alongside discovery and qualification diagnostics so the removal
+// command does not require remembering which module produced a digest-named file.
+func RemovalHints(dir string) ([]string, error) {
+	files, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var hints []string
+	for _, f := range files {
+		if f.IsDir() || filepath.Ext(f.Name()) != ".so" {
+			continue
+		}
+		path := filepath.Join(dir, f.Name())
+		b, err := os.ReadFile(Reference(path))
+		var source Source
+		if err == nil {
+			err = json.Unmarshal(b, &source)
+		}
+		expected := fmt.Sprintf("%x.so", sha256.Sum256([]byte(source.Module)))
+		if err != nil || source.Module == "" || source.Version == "" || f.Name() != expected {
+			hints = append(hints, "managed plugin "+path+" has a missing/malformed source reference; remove that exact file deliberately")
+			continue
+		}
+		hints = append(hints, fmt.Sprintf("managed plugin %s: %s@%s; current-host removal: skgo plugin remove %s (use go tool skgo plugin remove %s for this project-tool host)", path, source.Module, source.Version, source.Module, source.Module))
+	}
+	return hints, nil
+}
