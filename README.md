@@ -288,9 +288,62 @@ graphs. Inspect the actual host using `skgo buildinfo --json` or
 `go tool skgo buildinfo --json`; `skgo env` remains application configuration
 resolution.
 
-Use the source-build helper to stage the plugin module, align its shared graph
-and settings, compile with the host's recorded Go toolchain, and check that the
-result loads into that host before installing it:
+Install a source module for the executable you are using:
+
+```sh
+skgo plugin install github.com/tylergannon/skgo-template-voice-recorder
+skgo new --help
+CI=1 skgo new --name FieldNotes --module example.com/field-notes \
+  --template voice-notes --set bundle-id=com.example.fieldnotes field-notes
+
+# The project tool may have a different executable and dependency graph.
+cd field-notes
+go tool skgo plugin install github.com/tylergannon/skgo-template-voice-recorder
+go tool skgo add --help
+```
+
+`MODULE@VERSION`, branch and commit queries are supported; an omitted query means
+Go's `latest`. Output identifies the resolved version, exact Git commit, actual
+host executable/Go version/SHA256 and installed exports. The installer requires
+Git, the host's exact Go toolchain and cgo. It resolves through canonical Git
+using `GOPROXY=direct`, preserving your checksum/private-module and GOVCS policy,
+and reports whether checksum-database validation is enabled or exempted. Before
+running source, it compares the checkout's module zip and go.mod hashes with Go's
+resolution. Nested module inputs come from that same canonical Git commit.
+Unavailable provenance, checksums or source access are errors; archives and
+precompiled binary installation are not supported.
+
+Managed files live at `~/.skgo/plugins/hosts/<executable-sha256>/<module-sha256>.so`.
+Ordinary help/new/add discover only this host's managed directory automatically.
+An updated or differently built host needs another install; help lists retained
+other-host source references without loading those binaries or choosing a version
+for you. Old host directories remain for deliberate manual cleanup. Remove a
+module's selection for the current host with `skgo plugin remove MODULE`; this
+also removes its source reference and does not edit an application or other host.
+Installation qualifies the candidate alongside currently discoverable plugins in
+a fresh host process before replacing the module's prior selection. Unrelated
+stale plugins warn; conflicts involving the candidate prevent publication.
+
+Plugin authors put `{"package":"./template"}` in module-root `skgo-plugin.json`
+(`.` is also valid). Unknown fields and paths outside that module are rejected.
+Export `SKGoPluginV1` and declare `var skgoVersion string` in the main package,
+using it in `Describe`; the builder injects the actual host's version. Preparation
+is ordinary `go generate <package>`, with no JSON hooks. The builder writes host
+shared dependency pins, runs `go mod tidy -e` to prepare generator sums while
+preserving declared requirements, generates, runs strict `go mod tidy`, verifies the shared graph,
+and compiles, all under the host's exact Go toolchain with `GOWORK=off`.
+Declare generator dependencies and generated-source requirements in go.mod.
+Module mode (`-mod=mod`) ignores committed vendor trees. Direct source resolution
+uses a temporary cache; compilation uses your ordinary cache and proxy settings.
+An unreproducible development host without recorded source replacement is rejected.
+The writable stage has no `.git`, `node_modules`, `ephemeral`, `.local`, `.cache`,
+`build`, `.build` or `.so` files, and rejects source symlinks; generators must not
+rely on `git describe`, ignored assets or excluded directories. Generation cannot
+require a newer Go toolchain than the host. Source and consumer modules remain
+untouched. Initialization and generation execute trusted code without sandboxing.
+
+For an existing local source checkout, the manual helper remains available. It
+builds already-prepared source and qualifies that plugin in isolation:
 
 ```sh
 # Standalone CLI; plugin main declares var skgoVersion string and uses it in Describe.
@@ -313,13 +366,17 @@ existing `.so` output. Plugin-only dependencies must also agree between plugins;
 the helper's one-plugin qualification does not prove coexistence.
 
 Unset/empty `SKGO_PLUGIN_DIRS` searches `~/.skgo/plugins`. A nonempty
-comma-separated value replaces it; directories are scanned immediately, without
-recursion. For the examples, set `SKGO_PLUGIN_DIRS=~/.skgo/plugins/standalone`
+comma-separated value replaces that manual search; it does not disable managed
+installations. Manual directories load first, then the current managed directory,
+with sorted immediate `.so` files and no recursion. For the examples, set `SKGO_PLUGIN_DIRS=~/.skgo/plugins/standalone`
 for standalone commands or `SKGO_PLUGIN_DIRS=~/.skgo/plugins/myapp` for the
 project tool. Missing explicit directories are errors. Failed plugins warn and
 are excluded; their exports are unknown. Duplicate IDs invalidate those loaded
 plugins; duplicate names among loaded plugins are ambiguous and fail commands
-that select them. Diagnostics identify the files to remove or isolate.
+that select them. Go may reject a second copy before its descriptor can be read;
+diagnostics identify the first loaded file and the rejected copy. Avoid keeping a
+manual and managed copy of the same plugin. Remove the manual file or use
+`skgo plugin remove MODULE`; changing `SKGO_PLUGIN_DIRS` cannot hide a managed copy.
 Ordinary untemplated creation does not load plugins. Generated apps do not need
 plugins installed to build or run.
 

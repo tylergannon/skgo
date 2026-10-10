@@ -13,6 +13,7 @@ import (
 
 	"github.com/tylergannon/skgo/internal/buildinfo"
 	"github.com/tylergannon/skgo/internal/newapp"
+	"github.com/tylergannon/skgo/internal/pluginstore"
 	"github.com/tylergannon/skgo/internal/templates"
 	"github.com/tylergannon/skgo/nativeapp"
 	"golang.org/x/term"
@@ -46,10 +47,31 @@ func plugins(out io.Writer) (*templates.Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	r, err := templates.Discover(os.Getenv("SKGO_PLUGIN_DIRS"), home, cwd, info.SkgoVersion, nativeapp.Plugin(info.SkgoVersion))
+	var files, diagnostics []string
+	if private := os.Getenv(pluginstore.ProbeFiles); private != "" {
+		if err = json.Unmarshal([]byte(private), &files); err != nil {
+			return nil, err
+		}
+	} else {
+		digest, e := pluginstore.Digest(info.Executable)
+		if e != nil {
+			return nil, e
+		}
+		files, diagnostics, err = templates.Files(os.Getenv("SKGO_PLUGIN_DIRS"), home, cwd, pluginstore.Dir(home, digest))
+		if err != nil {
+			return nil, err
+		}
+		hints, e := pluginstore.Hints(home, digest)
+		if e != nil {
+			return nil, e
+		}
+		diagnostics = append(diagnostics, hints...)
+	}
+	r, err := templates.DiscoverFiles(files, info.SkgoVersion, nativeapp.Plugin(info.SkgoVersion))
 	if err != nil {
 		return nil, err
 	}
+	r.Diagnostics = append(diagnostics, r.Diagnostics...)
 	for _, d := range r.Diagnostics {
 		fmt.Fprintln(out, "warning:", d)
 	}

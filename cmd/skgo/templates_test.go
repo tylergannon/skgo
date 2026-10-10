@@ -15,6 +15,7 @@ import (
 	"github.com/tylergannon/skgo/internal/buildinfo"
 	"github.com/tylergannon/skgo/internal/newapp"
 	"github.com/tylergannon/skgo/internal/pluginbuild"
+	"github.com/tylergannon/skgo/internal/pluginstore"
 	"github.com/tylergannon/skgo/internal/templates"
 	"github.com/tylergannon/skgo/templateapi"
 )
@@ -37,8 +38,18 @@ func TestNativePluginHelpApplicationAndProjectTool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Preparation must tolerate the not-yet-generated in-module import and
+	// reconcile a generator dependency that differs from the host's pin.
+	data = bytes.Replace(data, []byte("import ("), []byte("import (\n \"example.test/plugin/generated\""), 1)
+	data = append([]byte("//go:generate go run ./gen\n"), data...)
+	data = append(data, []byte("\nvar _ = generated.Value\n")...)
+	os.MkdirAll(filepath.Join(source, "gen"), 0755)
+	os.WriteFile(filepath.Join(source, "gen", "main.go"), []byte(`package main
+import("os";"golang.org/x/mod/semver")
+func main(){if !semver.IsValid("v1.0.0"){panic("semver")};if e:=os.MkdirAll("generated",0755);e!=nil{panic(e)};if e:=os.WriteFile("generated/g.go",[]byte("package generated\nconst Value = \"generated\"\n"),0644);e!=nil{panic(e)}}
+`), 0644)
 	os.WriteFile(filepath.Join(source, "main.go"), data, 0644)
-	mod := "module example.test/plugin\n\ngo 1.27.1\n\nrequire github.com/tylergannon/skgo v0.0.0\nreplace github.com/tylergannon/skgo => " + repo + "\n"
+	mod := "module example.test/plugin\n\ngo 1.27.1\n\nrequire github.com/tylergannon/skgo v0.0.0\nrequire golang.org/x/mod v0.40.0\nreplace github.com/tylergannon/skgo => " + repo + "\n"
 	os.WriteFile(filepath.Join(source, "go.mod"), []byte(mod), 0644)
 	identityJSON, err := exec.Command(skgoBin, "buildinfo", "--json").Output()
 	if err != nil {
@@ -56,7 +67,7 @@ func TestNativePluginHelpApplicationAndProjectTool(t *testing.T) {
 		t.Fatalf("host identity: %s", identityJSON)
 	}
 	var buildLog bytes.Buffer
-	if err := pluginbuild.Build(context.Background(), pluginbuild.Options{Host: skgoBin, Source: source, Output: filepath.Join(plugins, "receipt.so"), SkgoSource: repo, VersionSymbol: "main.skgoVersion", Log: &buildLog}); err != nil {
+	if err := pluginbuild.Build(context.Background(), pluginbuild.Options{Host: skgoBin, Source: source, Output: filepath.Join(plugins, "receipt.so"), Generate: true, SkgoSource: repo, VersionSymbol: "main.skgoVersion", Log: &buildLog}); err != nil {
 		t.Fatalf("external source-build recipe: %v\n%s", err, buildLog.String())
 	}
 	if after, err := os.ReadFile(filepath.Join(source, "go.mod")); err != nil || string(after) != mod {
@@ -134,7 +145,7 @@ func TestNativePluginHelpApplicationAndProjectTool(t *testing.T) {
 	consumerMod, _ := os.ReadFile(filepath.Join(project, "go.mod"))
 	consumerSum, _ := os.ReadFile(filepath.Join(project, "go.sum"))
 	buildLog.Reset()
-	if err := pluginbuild.Build(context.Background(), pluginbuild.Options{Project: project, Source: source, Output: filepath.Join(toolPlugins, "receipt.so"), VersionSymbol: "main.skgoVersion", Log: &buildLog}); err != nil {
+	if err := pluginbuild.Build(context.Background(), pluginbuild.Options{Project: project, Source: source, Output: filepath.Join(toolPlugins, "receipt.so"), Generate: true, VersionSymbol: "main.skgoVersion", Log: &buildLog}); err != nil {
 		t.Fatalf("project-tool source-build recipe: %v\n%s", err, buildLog.String())
 	}
 	if out := call(info.Executable, []string{"SKGO_PLUGIN_DIRS=" + toolPlugins}, "add", "receipt", "--help"); !strings.Contains(out, "Receipt text") {
@@ -151,6 +162,71 @@ func TestNativePluginHelpApplicationAndProjectTool(t *testing.T) {
 	}
 	if after, _ := os.ReadFile(filepath.Join(project, "go.sum")); !bytes.Equal(after, consumerSum) {
 		t.Fatal("consumer go.sum changed")
+	}
+	// Managed installation is selected by executable bytes, independently of
+	// manual directory overrides, and removal leaves other hosts and apps alone.
+	managedHome := filepath.Join(root, "managed-home")
+	digest, err := pluginstore.Digest(skgoBin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slot := pluginstore.Slot(managedHome, digest, "example.test/plugin")
+	if err := os.MkdirAll(filepath.Dir(slot), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(slot, pluginData, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pluginstore.Reference(slot), []byte(`{"module":"example.test/plugin","version":"v1.0.0"}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	stale := pluginstore.Slot(managedHome, "other-host", "example.test/retained")
+	os.MkdirAll(filepath.Dir(stale), 0755)
+	os.WriteFile(stale, []byte("never load another host"), 0755)
+	os.WriteFile(pluginstore.Reference(stale), []byte(`{"module":"example.test/retained","version":"v1.2.3"}`), 0644)
+	emptyManual := filepath.Join(root, "empty-manual")
+	os.Mkdir(emptyManual, 0755)
+	managedEnv := []string{"HOME=" + managedHome, "SKGO_PLUGIN_DIRS=" + emptyManual}
+	text := call(skgoBin, managedEnv, "new", "--help")
+	if !strings.Contains(text, "receipt-app") || !strings.Contains(text, "example.test/retained@v1.2.3") || strings.Contains(text, "invalid ELF") {
+		t.Fatal(text)
+	}
+	// A moved copy with identical executable bytes must discover the same slot.
+	moved := filepath.Join(root, "moved-skgo")
+	binary, err := os.ReadFile(skgoBin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(moved, binary, 0755)
+	if text := call(moved, managedEnv, "add", "--help"); !strings.Contains(text, "Write a configured receipt") {
+		t.Fatal(text)
+	}
+	// A fresh private probe includes peers and rejects a candidate that cannot
+	// coexist, without rewriting the current managed binary or source reference.
+	probeJSON, _ := json.Marshal([]string{slot, filepath.Join(plugins, "receipt.so")})
+	cmd = exec.Command(skgoBin, "_plugin-probe", filepath.Join(plugins, "receipt.so"), filepath.Join(root, "probe.json"))
+	cmd.Env = append(os.Environ(), pluginstore.ProbeFiles+"="+string(probeJSON))
+	if b, e := cmd.CombinedOutput(); e == nil || !strings.Contains(string(b), "unavailable") {
+		t.Fatalf("duplicate candidate: %v %s", e, b)
+	}
+	if b, _ := os.ReadFile(slot); !bytes.Equal(b, pluginData) {
+		t.Fatal("qualification changed installed binary")
+	}
+	call(skgoBin, managedEnv, "plugin", "remove", "example.test/plugin")
+	call(skgoBin, managedEnv, "plugin", "remove", "example.test/plugin")
+	if text := call(skgoBin, managedEnv, "new", "--help"); strings.Contains(text, "An application receipt") {
+		t.Fatal(text)
+	}
+	for _, path := range []string{slot, pluginstore.Reference(slot)} {
+		if _, e := os.Stat(path); !os.IsNotExist(e) {
+			t.Fatalf("not removed: %s %v", path, e)
+		}
+	}
+	if b, _ := os.ReadFile(stale); string(b) != "never load another host" {
+		t.Fatal("removed another host")
+	}
+	if b, _ := os.ReadFile(filepath.Join(project, "receipt.txt")); string(b) != "MyApp\nexample.test/consumer\nliteral receipt\n" {
+		t.Fatal("removal edited consumer")
 	}
 	// An unrelated broken plugin warns; it does not erase the working one.
 	os.WriteFile(filepath.Join(plugins, "broken.so"), []byte("not a plugin"), 0644)
@@ -281,7 +357,7 @@ func main(){}
 		t.Fatalf("compatible pair: %s", out)
 	}
 	out := help(dirs["alpha"], dirs["beta"], dirs["conflict"])
-	for _, want := range []string{"warning:", "conflict.so", "example.test/plugin-shared", "already loaded:", filepath.Join(dirs["alpha"], "alpha.so"), filepath.Join(dirs["beta"], "beta.so"), "isolate SKGO_PLUGIN_DIRS"} {
+	for _, want := range []string{"warning:", "conflict.so", "example.test/plugin-shared", "already loaded:", filepath.Join(dirs["alpha"], "alpha.so"), filepath.Join(dirs["beta"], "beta.so"), "skgo plugin remove"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in conflict help: %s", want, out)
 		}
