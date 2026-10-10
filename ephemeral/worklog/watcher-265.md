@@ -1,0 +1,6 @@
+# Watcher settled-content repair
+
+decision: Pinned Kit 3.0.0 validates the authored app template synchronously in its `all` listener, before the adapter post plugin. Its errors are named `SvelteKit error` and carry a code, authored-file body and URL on separate lines; matching the old one-line plain Error silently missed both partial and absent saves. Catch only the two structured template diagnostics for the emitted file and propagate everything else.
+decision: The actual VitePlus 1.0.0 bundled chokidar change path drops events inside 50 ms; its supported pending-write branch precedes that throttle. Use the reviewed 200/25 default only when undefined, with explicit settings and byte digests retained. Do not repair event loss with test sleeps or digest changes.
+friction: Any adapter source edit, including a comment, changes its embedded fingerprint. A frontend built immediately before such an edit cannot be used by the rebuilt Go dev handler; rebuild after the final adapter edit before interpreting a version-mismatch failure as watcher behavior.
+correction: `viteLog` was a bytes.Buffer read by tests while child-process output wrote to it. The added held-partial-save observations need synchronized reads and writes, not a new concurrent diagnostic race.

@@ -23,6 +23,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -45,8 +46,21 @@ var (
 	// handler is example.NewHandler's dev arm over devServer.
 	handler http.Handler
 	// viteLog is everything `vp dev` printed, for a failure to show.
-	viteLog bytes.Buffer
+	viteLog synchronizedBuffer
 )
+
+// The child process writes while assertions read diagnostics.
+type synchronizedBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (b *synchronizedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.b.Write(p)
+}
+func (b *synchronizedBuffer) String() string { b.mu.Lock(); defer b.mu.Unlock(); return b.b.String() }
 
 func TestMain(m *testing.M) {
 	os.Exit(run(m))
@@ -63,6 +77,10 @@ func run(m *testing.M) int {
 	webRoot = filepath.Join(dir, "web")
 	if err := copyWebRoot(filepath.Join("..", "web"), webRoot); err != nil {
 		fmt.Fprintf(os.Stderr, "copying example/web: %v\n", err)
+		return 1
+	}
+	if err := configureWatcherFixture(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	port, err := freePort()
