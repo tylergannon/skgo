@@ -164,11 +164,11 @@ func alignVPDependencies(root string, pins vpDependencies) error {
 			}
 		}
 	}
-	data, err = json.MarshalIndent(pkg, "", "  ")
+	data, err = manifestJSON(pkg)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(name, append(data, '\n'), 0644); err != nil {
+	if err := os.WriteFile(name, data, 0644); err != nil {
 		return err
 	}
 	if err := alignYAMLValues(&document, config); err != nil {

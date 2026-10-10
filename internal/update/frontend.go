@@ -94,7 +94,7 @@ func pinDependencies(root, adapter, addon, kit string) error {
 		if _, ok := v["@skgo/sv"]; ok {
 			v["@skgo/sv"] = addon
 		}
-		p[name], err = json.Marshal(v)
+		p[name], err = manifestJSON(v)
 		if err != nil {
 			return err
 		}
@@ -107,12 +107,24 @@ func pinDependencies(root, adapter, addon, kit string) error {
 		}
 	}
 	engines["packageManager"], _ = json.Marshal(map[string]string{"name": "pnpm", "version": toolchain.PNPM, "onFail": "error"})
-	p["devEngines"], _ = json.Marshal(engines)
-	b, err = json.MarshalIndent(p, "", "  ")
+	p["devEngines"], err = manifestJSON(engines)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(b, '\n'), 0644)
+	b, err = manifestJSON(p)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0644)
+}
+
+func manifestJSON(value any) ([]byte, error) {
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	err := encoder.Encode(value)
+	return out.Bytes(), err
 }
 func dependencyFile(name string) bool {
 	switch name {
@@ -154,7 +166,7 @@ func preservedFiles(before map[string][]byte, stage string) error {
 	}
 	for _, name := range sortedFileNames(after) {
 		if _, ok := before[name]; !ok && !dependencyFile(name) {
-			return fmt.Errorf("VitePlus migration would add application source %s; review the migration before updating", name)
+			return fmt.Errorf("VitePlus update would add application source %s; review the update before applying it", name)
 		}
 	}
 	return nil

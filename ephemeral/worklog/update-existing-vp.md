@@ -19,3 +19,5 @@ correction: Dependency ownership must match in the aligner and preservation guar
 decision: The exact Storybook10.6.1-to-VitePlus peer exception emitted by skgo's sv add-on is owned compatibility configuration. Update that existing exception with the selected vp pin; preserve every other peer rule. The separate version-moving fixture exposed the stale exception through real pnpm peers check despite successful builds/tests.
 
 friction: Refusals that name only a randomly selected file hide the failed boundary. Sort source paths and report the first differing authored configuration key without printing values. Keep dependency JSON serialization unchanged from the prior updater; preserve YAML comments/order and use the generated two-space indentation.
+
+correction: Skipping migration makes skgo's JSON writer the final serializer. Go's default HTML escaping therefore becomes visible in authored script text (`&&`, `<`, `>`), even though decoded values still run correctly. Disable HTML escaping for manifest writes and test literal readability through both pinning and alignment.

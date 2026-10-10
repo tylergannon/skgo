@@ -18,6 +18,39 @@ import (
 
 const qualifiedVPGraph = `{"schemaVersion":1,"source":{"scope":"global","vitePlusVersion":"1.0.0"},"nodes":[{"name":"vite","version":"8.3.1"},{"name":"@voidzero-dev/vite-plus-core","version":"1.0.0"},{"name":"vitest","version":"5.0.1"}]}`
 
+func TestAlignmentKeepsAuthoredManifestOperatorsReadable(t *testing.T) {
+	root := t.TempDir()
+	writeAlignmentFile(t, root, "package.json", `{
+  "scripts": {"preview": "cd .. && just serve", "receipt": "echo <receipt> && cat < input > output"},
+  "devDependencies": {"vite-plus": "0.9.0", "application-library": "https://example.com/package.tgz?a=1&b=2"},
+  "devEngines": {"runtime": {"name": "node", "version": ">=24 <25"}}
+}`)
+	for _, step := range []struct {
+		name string
+		run  func() error
+	}{
+		{"pin dependencies", func() error { return pinDependencies(root, "0.28.0", "0.28.0", "3.0.0") }},
+		{"align VitePlus", func() error {
+			return alignVPDependencies(root, vpDependencies{Core: "1.0.0", Vitest: "5.0.1"})
+		}},
+	} {
+		t.Run(step.name, func(t *testing.T) {
+			if err := step.run(); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(filepath.Join(root, "package.json"))
+			if err != nil || !json.Valid(data) {
+				t.Fatalf("manifest is not valid JSON: %v, %s", err, data)
+			}
+			for _, literal := range []string{`"cd .. && just serve"`, `"echo <receipt> && cat < input > output"`, `"https://example.com/package.tgz?a=1&b=2"`, `">=24 <25"`} {
+				if !bytes.Contains(data, []byte(literal)) {
+					t.Errorf("authored manifest text %s was rewritten: %s", literal, data)
+				}
+			}
+		})
+	}
+}
+
 func TestQualifiedVPDependencyVersions(t *testing.T) {
 	got, err := parseVPToolchain([]byte(qualifiedVPGraph))
 	if err != nil || got != (vpDependencies{Core: "1.0.0", Vitest: "5.0.1"}) {
