@@ -85,6 +85,9 @@ func pinDependencies(root, adapter, addon, kit string) error {
 		if _, ok := sections["dependencies"][name]; ok {
 			section = "dependencies"
 		}
+		if name == "vite-plus" && strings.HasPrefix(sections[section][name], "catalog:") {
+			continue // The existing-vp aligner updates the referenced catalog.
+		}
 		sections[section][name] = version
 	}
 	for name, v := range sections {
@@ -244,12 +247,6 @@ func authoredConfig(name string, data []byte) (map[string]any, error) {
 		strip(p, "devDependencies", managed)
 		strip(p, "optionalDependencies", managed)
 		strip(p, "peerDependencies", managed)
-		if pnpm, ok := p["pnpm"].(map[string]any); ok {
-			strip(pnpm, "overrides", managedOverride)
-			if len(pnpm) == 0 {
-				delete(p, "pnpm")
-			}
-		}
 	} else {
 		strip(p, "catalog", managed)
 		if catalogs, ok := p["catalogs"].(map[string]any); ok {

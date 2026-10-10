@@ -9,3 +9,7 @@ friction: Creating package.json `pnpm.overrides` merely because another pnpm fie
 correction: The normal edited v0.27 recorder is `/private/tmp/skgo-recorder-consumer.GthvK4/edited-update-consumer`. Later explicit/full-migration diagnostic copies contain prerequisite patches and cannot qualify this repair. Preserve the original and run only on disposable copies. Development completion against v0.28 dependencies is not a released updater result.
 
 correction: `@vitest/` is not one version family: browser-webdriverio and eslint-plugin release independently. Explicitly own the coupled Vitest siblings in both alignment and preservation checks; namespace-wide ownership silently rewrites unrelated choices.
+
+correction: Live review with the qualified pnpm12.9.1 contradicted vp1.0's shipped upgrade guide: pnpm12 ignores the entire legacy package.json pnpm field. Write the effective Vitest pin to pnpm-workspace.yaml and preserve legacy package settings untouched. A doc-derived fixture incorrectly encoded older precedence; qualify against the actual companion.
+
+correction: Aligning catalogs after pinDependencies is insufficient if the earlier pass erases the vite-plus catalog reference. Preserve that reference at the earlier pass too. Update YAML values through its parsed node tree so dependency changes retain authored comments and key order.

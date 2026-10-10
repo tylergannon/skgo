@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/toolchain"
@@ -113,7 +115,11 @@ func alignVPDependencies(root string, pins vpDependencies) error {
 		return err
 	}
 	config := map[string]any{}
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	var document yaml.Node
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		return err
+	}
+	if err := document.Decode(&config); err != nil {
 		return err
 	}
 	if config == nil {
@@ -129,25 +135,15 @@ func alignVPDependencies(root string, pins vpDependencies) error {
 			}
 		}
 	}
-	// pnpm uses package.json's overrides when present, ahead of workspace
-	// overrides. Keep both existing locations aligned, and add the Vitest pin
-	// only at the effective location. @* leaves catalog references intact.
-	owner := config
-	if pnpm, ok := pkg["pnpm"].(map[string]any); ok {
-		if _, ok := pnpm["overrides"].(map[string]any); ok {
-			owner = pnpm
-		}
-	}
-	for _, location := range []map[string]any{config, owner} {
-		if overrides, ok := location["overrides"].(map[string]any); ok {
-			align(overrides, true)
-		}
-	}
-	overrides, ok := owner["overrides"].(map[string]any)
+	// The qualified pnpm 12 companion reads overrides only from the workspace
+	// file. Legacy package.json pnpm settings are ignored; leave those authored
+	// values untouched. @* leaves catalog references intact.
+	overrides, ok := config["overrides"].(map[string]any)
 	if !ok {
 		overrides = map[string]any{}
-		owner["overrides"] = overrides
+		config["overrides"] = overrides
 	}
+	align(overrides, true)
 	if _, exists := overrides["vitest"]; !exists {
 		overrides["vitest@*"] = pins.Vitest
 	}
@@ -158,11 +154,66 @@ func alignVPDependencies(root string, pins vpDependencies) error {
 	if err := os.WriteFile(name, append(data, '\n'), 0644); err != nil {
 		return err
 	}
-	data, err = yaml.Marshal(config)
+	if err := alignYAMLValues(&document, config); err != nil {
+		return err
+	}
+	data, err = yaml.Marshal(&document)
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(workspace, data, 0644)
+}
+
+// Update changed scalar values and append new mapping entries in the parsed
+// document, retaining existing comments, key order and scalar quoting.
+func alignYAMLValues(node *yaml.Node, value any) error {
+	if node.Kind == yaml.DocumentNode {
+		return alignYAMLValues(node.Content[0], value)
+	}
+	mapping, ok := value.(map[string]any)
+	if node.Kind != yaml.MappingNode || !ok {
+		var previous any
+		if err := node.Decode(&previous); err != nil {
+			return err
+		}
+		if reflect.DeepEqual(previous, value) {
+			return nil
+		}
+		if text, ok := value.(string); ok && node.Kind == yaml.ScalarNode {
+			node.Value, node.Tag = text, "!!str"
+			return nil
+		}
+		if node.Kind == 0 {
+			return node.Encode(value)
+		}
+		return fmt.Errorf("cannot align dependency YAML node at line %d without replacing authored structure", node.Line)
+	}
+	remaining := make(map[string]any, len(mapping))
+	for k, v := range mapping {
+		remaining[k] = v
+	}
+	for i := 0; i < len(node.Content); i += 2 {
+		key := node.Content[i].Value
+		if v, ok := remaining[key]; ok {
+			if err := alignYAMLValues(node.Content[i+1], v); err != nil {
+				return err
+			}
+			delete(remaining, key)
+		}
+	}
+	keys := make([]string, 0, len(remaining))
+	for key := range remaining {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		var child yaml.Node
+		if err := child.Encode(remaining[key]); err != nil {
+			return err
+		}
+		node.Content = append(node.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, &child)
+	}
+	return nil
 }
 
 // These packages share Vitest's release version. Other packages in the scope,
