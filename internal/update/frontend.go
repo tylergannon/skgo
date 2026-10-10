@@ -7,10 +7,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/toolchain"
+	"gopkg.in/yaml.v3"
 )
 
 func frontendFiles(root string) (map[string][]byte, error) {
@@ -121,9 +123,26 @@ func preservedFrontend(source, stage string) error {
 	if err != nil {
 		return err
 	}
+	return preservedFiles(before, stage)
+}
+
+func preservedFiles(before map[string][]byte, stage string) error {
 	after, err := frontendFiles(stage)
 	if err != nil {
 		return err
+	}
+	for _, name := range []string{"package.json", "pnpm-workspace.yaml"} {
+		a, err := authoredConfig(name, before[name])
+		if err != nil {
+			return err
+		}
+		b, err := authoredConfig(name, after[name])
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(a, b) {
+			return fmt.Errorf("VitePlus migration would change authored configuration in %s; application configuration is untouched", name)
+		}
 	}
 	for name, b := range before {
 		if !dependencyFile(name) && !bytes.Equal(b, after[name]) {
@@ -179,6 +198,68 @@ func applyFrontend(root, stage string) error {
 			os.Remove(temp)
 			return err
 		}
+	}
+	return nil
+}
+
+// Remove only dependency selections owned by skgo/vp before comparing authored
+// configuration. Scripts, runtime settings, unrelated overrides and packages
+// must survive migration, even when they live in a dependency file.
+func authoredConfig(name string, data []byte) (map[string]any, error) {
+	p := map[string]any{}
+	if len(data) > 0 {
+		var err error
+		if name == "package.json" {
+			err = json.Unmarshal(data, &p)
+		} else {
+			err = yaml.Unmarshal(data, &p)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", name, err)
+		}
+	}
+	strip := func(parent map[string]any, key string, owned func(string, any) bool) {
+		if m, ok := parent[key].(map[string]any); ok {
+			for k, v := range m {
+				if owned(k, v) {
+					delete(m, k)
+				}
+			}
+			if len(m) == 0 {
+				delete(parent, key)
+			}
+		}
+	}
+	managed := func(k string, _ any) bool {
+		switch k {
+		case "vite-plus", "vite", "vitest", "@sveltejs/kit", "@skgo/sveltekit-adapter", "@skgo/sv":
+			return true
+		}
+		return strings.HasPrefix(k, "@vitest/")
+	}
+	if name == "package.json" {
+		delete(p, "packageManager")
+		strip(p, "devEngines", func(k string, _ any) bool { return k == "packageManager" })
+		strip(p, "dependencies", managed)
+		strip(p, "devDependencies", managed)
+	} else {
+		strip(p, "catalog", managed)
+		strip(p, "overrides", func(k string, v any) bool { return k == "vite@*" || k == "vitest@*" })
+		strip(p, "patchedDependencies", func(k string, v any) bool {
+			path, ok := v.(string)
+			return ok && strings.HasPrefix(k, "@sveltejs/kit@") && strings.HasPrefix(path, "patches/skgo-kit-") && strings.HasSuffix(path, ".patch")
+		})
+	}
+	return p, nil
+}
+
+func unchangedFrontend(root string, original map[string][]byte) error {
+	current, err := frontendFiles(root)
+	if err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(current, original) {
+		return fmt.Errorf("frontend changed while update was staging; refusing to overwrite concurrent application edits")
 	}
 	return nil
 }

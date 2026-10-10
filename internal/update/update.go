@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/buildinfo"
@@ -20,11 +21,12 @@ import (
 )
 
 type Options struct {
-	Root, VP, CompleteVersion string
-	Out                       io.Writer
-	run                       func(context.Context, command) ([]byte, error)
-	info                      func() (buildinfo.Info, error)
-	packages                  func(string) (string, string, error)
+	Root, VP, CompleteVersion    string
+	NativePlatform, NativePreset string
+	Out                          io.Writer
+	run                          func(context.Context, command) ([]byte, error)
+	info                         func() (buildinfo.Info, error)
+	packages                     func(string) (string, string, error)
 }
 type command struct {
 	Dir, Name string
@@ -88,7 +90,7 @@ func Run(ctx context.Context, o Options) error {
 	if c, e := filepath.EvalSymlinks(cache); e == nil {
 		cache = c
 	}
-	if rel, e := filepath.Rel(cache, info.Executable); e == nil && filepath.IsLocal(rel) {
+	if goToolExecutable(cache, info.Executable) {
 		dir = env.GOBIN
 		if dir == "" {
 			paths := filepath.SplitList(env.GOPATH)
@@ -156,6 +158,12 @@ func Run(ctx context.Context, o Options) error {
 	if o.VP != "" {
 		args = append(args, "--vp", o.VP)
 	}
+	if o.NativePlatform != "" {
+		args = append(args, "--native-platform", o.NativePlatform)
+	}
+	if o.NativePreset != "" {
+		args = append(args, "--native-preset", o.NativePreset)
+	}
 	if _, err = o.run(ctx, command{Name: installed, Args: args}); err != nil {
 		return fmt.Errorf("CLI %s is installed, but toolchain/project update is incomplete: %w", latest.Version, err)
 	}
@@ -209,4 +217,15 @@ func projectRoot(explicit string) (string, error) {
 		}
 		root = parent
 	}
+}
+
+var temporaryGoTool = regexp.MustCompile(`(?:^|/)go-build[0-9]+/b[0-9]+/exe/skgo$`)
+
+func goToolExecutable(cache, executable string) bool {
+	if cache != "" {
+		if rel, err := filepath.Rel(cache, executable); err == nil && filepath.IsLocal(rel) {
+			return true
+		}
+	}
+	return temporaryGoTool.MatchString(filepath.ToSlash(executable))
 }

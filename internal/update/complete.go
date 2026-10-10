@@ -90,6 +90,10 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 		return err
 	}
 	defer os.RemoveAll(stage)
+	original, err := frontendFiles(web)
+	if err != nil {
+		return err
+	}
 	if err := copyFrontend(web, stage); err != nil {
 		return err
 	}
@@ -136,7 +140,10 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 	if err := kitpatch.Verify(kitpatch.Options{Web: stage, PNPM: pnpm, Out: o.Out}); err != nil {
 		return err
 	}
-	if err := preservedFrontend(web, stage); err != nil {
+	if err := preservedFiles(original, stage); err != nil {
+		return err
+	}
+	if err := unchangedFrontend(web, original); err != nil {
 		return err
 	}
 	if _, err := run(root, false, "go", "get", buildinfo.Module+"@"+info.SkgoVersion); err != nil {
@@ -149,23 +156,28 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 	// binary. A Go cache executable is read/executed only, never overwritten.
 	cli := info.Executable
 	if hasTool {
-		data, err := run(root, true, "go", "tool", "skgo", "buildinfo", "--json")
+		cli, err = projectTool(ctx, o, root, info.SkgoVersion)
 		if err != nil {
 			return err
 		}
-		var tool buildinfo.Info
-		if err := json.Unmarshal(data, &tool); err != nil {
-			return err
-		}
-		if tool.SkgoVersion != info.SkgoVersion {
-			return fmt.Errorf("project Go tool resolved %s, expected %s", tool.SkgoVersion, info.SkgoVersion)
-		}
-		fmt.Fprintf(o.Out, "Project Go tool verified: %s (%s).\n", tool.Executable, tool.SkgoVersion)
 	}
+	// Go cached executables have hashed names; expose the verified executable as
+	// skgo for recipes without writing into the cache or choosing a stale PATH host.
+	bin := filepath.Join(outside, "bin")
+	if err := os.MkdirAll(bin, 0755); err != nil {
+		return err
+	}
+	if err := os.Symlink(cli, filepath.Join(bin, "skgo")); err != nil {
+		return err
+	}
+	if err := unchangedFrontend(web, original); err != nil {
+		return err
+	}
+
 	if err := applyFrontend(web, stage); err != nil {
 		return err
 	}
-	childEnv := append(env, "PATH="+filepath.Dir(cli)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	childEnv := append(env, "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	projectRun := func(dir, name string, args ...string) error {
 		_, err := o.run(ctx, command{Dir: dir, Name: vp, Args: append([]string{"env", "exec", "--package-manager", "pnpm@" + toolchain.PNPM, name}, args...), Env: childEnv})
 		return err
@@ -198,10 +210,56 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 			return err
 		}
 	}
+	if err := completeNative(root, o.NativePlatform, o.NativePreset, projectRun); err != nil {
+		return err
+	}
 	fmt.Fprintln(o.Out, "Update complete: CLI, VitePlus, compatible dependencies, generation and application build passed. Application source was preserved; templates were not replayed. Rebuild plugins for the updated standalone or project Go-tool host before using new/add.")
 	return nil
 }
 func vpVersion(b []byte, want string) bool {
 	first, _, _ := strings.Cut(strings.TrimSpace(string(b)), "\n")
 	return strings.TrimSpace(first) == "vp v"+want
+}
+
+func projectTool(ctx context.Context, o Options, root, version string) (string, error) {
+	for attempt := 0; attempt < 2; attempt++ {
+		data, err := o.run(ctx, command{Dir: root, Name: "go", Args: []string{"tool", "skgo", "buildinfo", "--json"}, Quiet: true})
+		if err != nil {
+			return "", err
+		}
+		var tool buildinfo.Info
+		if err := json.Unmarshal(data, &tool); err != nil {
+			return "", err
+		}
+		if tool.SkgoVersion != version {
+			return "", fmt.Errorf("project Go tool resolved %s, expected %s", tool.SkgoVersion, version)
+		}
+		if filepath.IsAbs(tool.Executable) {
+			if st, err := os.Stat(tool.Executable); err == nil && !st.IsDir() {
+				fmt.Fprintf(o.Out, "Project Go tool verified: %s (%s).\n", tool.Executable, tool.SkgoVersion)
+				return tool.Executable, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("project Go tool did not resolve to a retained executable after compilation")
+}
+func completeNative(root, platform, preset string, run func(string, string, ...string) error) error {
+	_, err := os.Stat(filepath.Join(root, "native/skgo-native.json"))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if platform == "" {
+		platform = "macos"
+	}
+	args := []string{"native", "build", "--root", root, "--platform", platform}
+	if preset != "" {
+		args = append(args, "--preset", preset)
+	}
+	if err := run(root, "skgo", args...); err != nil {
+		return fmt.Errorf("web update completed; native generation/build for %s remains incomplete: %w", platform, err)
+	}
+	return nil
 }

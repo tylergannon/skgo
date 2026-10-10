@@ -130,3 +130,92 @@ func TestFrontendMigrationPreservesSourceAndPinsCompanion(t *testing.T) {
 		t.Fatal("mutated authored source")
 	}
 }
+
+func TestMigrationRejectsAuthoredConfigurationChanges(t *testing.T) {
+	for _, tc := range []struct{ name, file, before, after string }{
+		{"script", "package.json", `{"scripts":{"build":"my build"}}`, `{"scripts":{"build":"vp build"}}`},
+		{"runtime", "package.json", `{"devEngines":{"runtime":{"version":"24"}}}`, `{"devEngines":{"runtime":{"version":"26"}}}`},
+		{"application dependency", "package.json", `{"dependencies":{"my-library":"1.0.0"}}`, `{"dependencies":{"my-library":"2.0.0"}}`},
+		{"override", "pnpm-workspace.yaml", "overrides:\n  my-library: 1.0.0\n", "overrides:\n  my-library: 2.0.0\n"},
+		{"unrelated patch", "pnpm-workspace.yaml", "patchedDependencies:\n  my-library@1.0.0: patches/mine.patch\n", "patchedDependencies: {}\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source, stage := t.TempDir(), t.TempDir()
+			os.WriteFile(filepath.Join(source, tc.file), []byte(tc.before), 0644)
+			os.WriteFile(filepath.Join(stage, tc.file), []byte(tc.after), 0644)
+			if err := preservedFrontend(source, stage); err == nil || !strings.Contains(err.Error(), "authored configuration") {
+				t.Fatalf("configuration loss accepted: %v", err)
+			}
+		})
+	}
+	root := t.TempDir()
+	os.WriteFile(filepath.Join(root, "package.json"), []byte(`{"name":"original"}`), 0644)
+	original, err := frontendFiles(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(root, "package.json"), []byte(`{"name":"edited while staging"}`), 0644)
+	if err := unchangedFrontend(root, original); err == nil {
+		t.Fatal("concurrent edit accepted")
+	}
+}
+
+func TestTemporaryGoToolDoesNotBecomeInstallationDirectory(t *testing.T) {
+	for _, tc := range []struct {
+		path string
+		want bool
+	}{
+		{"/cache/aa/abc-d", true},
+		{"/private/var/folders/example/T/go-build1234/b001/exe/skgo", true},
+		{"/tmp/my-install/skgo", false},
+		{"/tmp/go-build-user/bin/skgo", false},
+		{"/usr/local/bin/skgo", false},
+	} {
+		if got := goToolExecutable("/cache", tc.path); got != tc.want {
+			t.Errorf("%s: %v", tc.path, got)
+		}
+	}
+}
+
+func TestProjectToolUsesRetainedExecutableAfterFirstCompilation(t *testing.T) {
+	root := t.TempDir()
+	cached := filepath.Join(root, "hash-d")
+	os.WriteFile(cached, []byte("retained tool"), 0755)
+	calls := 0
+	o := Options{Out: &bytes.Buffer{}, run: func(ctx context.Context, c command) ([]byte, error) {
+		calls++
+		if c.Dir != root || c.Name != "go" || !reflect.DeepEqual(c.Args, []string{"tool", "skgo", "buildinfo", "--json"}) {
+			t.Fatalf("wrong invocation %+v", c)
+		}
+		path := cached
+		if calls == 1 {
+			path = filepath.Join(root, "go-build123/b001/exe/skgo")
+		}
+		return json.Marshal(buildinfo.Info{SkgoVersion: "v9.1.0", Executable: path})
+	}}
+	got, err := projectTool(context.Background(), o, root, "v9.1.0")
+	if err != nil || got != cached || calls != 2 {
+		t.Fatalf("host=%s calls=%d err=%v", got, calls, err)
+	}
+}
+
+func TestUpdateConsumesNativeConfigurationAndReportsNativeFailure(t *testing.T) {
+	root := t.TempDir()
+	calls := 0
+	run := func(dir, name string, args ...string) error {
+		calls++
+		if dir != root || name != "skgo" || !reflect.DeepEqual(args, []string{"native", "build", "--root", root, "--platform", "simulator", "--preset", "synthetic"}) {
+			t.Fatalf("native command %s %s %v", dir, name, args)
+		}
+		return errors.New("Swift compilation failed")
+	}
+	if err := completeNative(root, "simulator", "synthetic", run); err != nil || calls != 0 {
+		t.Fatalf("non-native app: %v", err)
+	}
+	os.Mkdir(filepath.Join(root, "native"), 0755)
+	os.WriteFile(filepath.Join(root, "native/skgo-native.json"), []byte(`{"version":1}`), 0644)
+	err := completeNative(root, "simulator", "synthetic", run)
+	if err == nil || !strings.Contains(err.Error(), "native generation/build for simulator remains incomplete") || calls != 1 {
+		t.Fatalf("false completion: %v, calls %d", err, calls)
+	}
+}

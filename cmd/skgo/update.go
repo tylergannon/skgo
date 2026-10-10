@@ -14,6 +14,8 @@ func updateCommand(args []string) {
 	var o update.Options
 	fs.StringVar(&o.Root, "root", "", "application root; otherwise locate the current application")
 	fs.StringVar(&o.VP, "vp", "", "global vp executable; defaults to PATH")
+	fs.StringVar(&o.NativePlatform, "native-platform", "macos", "native build target when native configuration exists: macos, iphone or simulator")
+	fs.StringVar(&o.NativePreset, "native-preset", "", "native build preset from the application configuration")
 	fs.StringVar(&o.CompleteVersion, "complete-version", "", "internal completion phase: must match this executable")
 	fs.Parse(args)
 	if fs.NArg() != 0 {

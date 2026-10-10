@@ -235,6 +235,24 @@ just dev
 `skgo new` runs `sv create` through VitePlus and asks `sv`'s usual questions.
 Anything after `--` is passed to `sv create`.
 
+## Updating an application
+
+Run `skgo update` with Go installed to install the latest released CLI and let
+that new executable align global `vp`, the project's Go requirement, adapter,
+SvelteKit patch and frontend toolchain. The release selects an exact vp version
+and its qualified pnpm companion; commands run through vp's managed environment.
+Use `--vp /path/to/vp` to select the global installation explicitly.
+
+Inside an application, update stages frontend migration, rejects changes to
+authored sources or configuration, then installs, regenerates and builds using
+the verified project Go tool when declared. Native applications also regenerate
+Swift bindings and build macOS by default; select another build with
+`--native-platform simulator --native-preset synthetic`. A successful native
+build does not establish device installation or runtime behavior. Failures report
+an incomplete update; earlier CLI or dependency changes are not rolled back.
+Outside an application only the CLI and global vp are updated. Templates are
+never replayed, and native plugin binaries must be rebuilt for the updated host.
+
 ## Application add-ons and templates
 
 A native Go plugin exports `func SKGoPluginV1() templateapi.Plugin` from
@@ -250,7 +268,7 @@ skgo add --set text=Hello receipt
 
 The names above must be supplied by an installed plugin. See the
 [small external-plugin fixture](cmd/skgo/testdata/template-plugin/plugin.go)
-for an implementation that preserves existing files. Compatible updates and the recorder template remain subsequent parts of
+for an implementation that preserves existing files. Recorder template qualification remains part of
 [the application composition work](https://github.com/tylergannon/skgo/issues/293);
 this interface alone does not establish Voice Notes template delivery.
 
