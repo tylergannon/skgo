@@ -250,8 +250,7 @@ skgo add --set text=Hello receipt
 
 The names above must be supplied by an installed plugin. See the
 [small external-plugin fixture](cmd/skgo/testdata/template-plugin/plugin.go)
-for an implementation that preserves existing files. Go/native application
-foundations and compatible updates are subsequent parts of
+for an implementation that preserves existing files. Compatible updates and the recorder template remain subsequent parts of
 [the application composition work](https://github.com/tylergannon/skgo/issues/293);
 this interface alone does not establish Voice Notes template delivery.
 
