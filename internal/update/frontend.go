@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/toolchain"
+	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
 )
 
@@ -141,7 +142,7 @@ func preservedFrontend(source, stage string) error {
 	return preservedFiles(before, stage)
 }
 
-func preservedFiles(before map[string][]byte, stage string) error {
+func preservedFiles(before map[string][]byte, stage string, installedAdapter ...string) error {
 	after, err := frontendFiles(stage)
 	if err != nil {
 		return err
@@ -154,6 +155,9 @@ func preservedFiles(before map[string][]byte, stage string) error {
 		b, err := authoredConfig(name, after[name])
 		if err != nil {
 			return err
+		}
+		if name == "pnpm-workspace.yaml" && len(installedAdapter) == 1 {
+			preserveAdapterAgeException(a, b, installedAdapter[0])
 		}
 		if !reflect.DeepEqual(a, b) {
 			return fmt.Errorf("VitePlus update would change authored configuration in %s at %s; application configuration is untouched", name, changedConfigKey(a, b, ""))
@@ -170,6 +174,64 @@ func preservedFiles(before map[string][]byte, stage string) error {
 		}
 	}
 	return nil
+}
+
+// pnpm 12 persists exact release-age exceptions after a non-strict install.
+// Accept only the newly selected adapter version, never a wildcard, a removed
+// exemption or a changed age/strict policy. pnpm enforces strict policy before
+// this guard runs. Older adapter versions may be merged into an exact union.
+func preserveAdapterAgeException(before, after map[string]any, version string) {
+	const key = "minimumReleaseAgeExclude"
+	const prefix = "@skgo/sveltekit-adapter@"
+	if !semver.IsValid("v" + version) {
+		return
+	}
+	expand := func(raw any) (map[string]bool, bool) {
+		entries := map[string]bool{}
+		if raw == nil {
+			return entries, true
+		}
+		list, ok := raw.([]any)
+		if !ok {
+			return nil, false
+		}
+		for _, value := range list {
+			text, ok := value.(string)
+			if !ok {
+				return nil, false
+			}
+			if versions, ok := strings.CutPrefix(text, prefix); ok {
+				for _, part := range strings.Split(versions, "||") {
+					part = strings.TrimSpace(part)
+					if !semver.IsValid("v" + part) {
+						return nil, false
+					}
+					entries[prefix+part] = true
+				}
+			} else {
+				entries[text] = true
+			}
+		}
+		return entries, true
+	}
+	a, aOK := expand(before[key])
+	b, bOK := expand(after[key])
+	if !aOK || !bOK {
+		return
+	}
+	selected := prefix + version
+	if !a[selected] {
+		delete(b, selected)
+	}
+	if !reflect.DeepEqual(a, b) {
+		return
+	}
+	// Normalize only the comparison, keeping pnpm's persisted file intact.
+	if original, exists := before[key]; exists {
+		after[key] = original
+	} else {
+		delete(after, key)
+	}
 }
 
 func sortedFileNames(files map[string][]byte) []string {
