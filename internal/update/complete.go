@@ -159,7 +159,7 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 	if err := kitpatch.Verify(kitpatch.Options{Web: stage, PNPM: pnpm, Out: o.Out}); err != nil {
 		return err
 	}
-	if err := preservedFiles(original, stage); err != nil {
+	if err := preservedFiles(original, stage, adapterVersion); err != nil {
 		return err
 	}
 	if err := unchangedFrontend(web, original); err != nil {
