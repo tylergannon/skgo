@@ -1,0 +1,32 @@
+package main
+
+/*
+#include <stdlib.h>
+*/
+import "C"
+
+import (
+ "io/fs"
+ "log"
+ "net/http"
+ app "{{.Module}}"
+ "{{.Module}}/web"
+ "github.com/tylergannon/skgo/nativehost"
+)
+
+var host = nativehost.New(func(origin string)(http.Handler,error){
+ dist,err:=fs.Sub(web.Build,"build");if err!=nil{return nil,err}
+ handler,_,err:=app.NewHandler(dist,"",origin)
+ return handler,err
+})
+
+//export SKGoHostStart
+func SKGoHostStart() *C.char {
+ origin,err:=host.Start();if err!=nil{log.Print(err);return nil}
+ return C.CString(origin)
+}
+//export SKGoHostRecover
+func SKGoHostRecover() C.int {if err:=host.Recover();err!=nil{log.Print(err);return 0};return 1}
+//export SKGoHostStop
+func SKGoHostStop(){if err:=host.Stop();err!=nil{log.Print(err)}}
+func main(){}

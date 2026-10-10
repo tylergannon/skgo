@@ -14,6 +14,7 @@ import (
 	"github.com/tylergannon/skgo/internal/buildinfo"
 	"github.com/tylergannon/skgo/internal/newapp"
 	"github.com/tylergannon/skgo/internal/templates"
+	"github.com/tylergannon/skgo/nativeapp"
 	"golang.org/x/term"
 )
 
@@ -45,7 +46,7 @@ func plugins(out io.Writer) (*templates.Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	r, err := templates.Discover(os.Getenv("SKGO_PLUGIN_DIRS"), home, cwd, info.SkgoVersion)
+	r, err := templates.Discover(os.Getenv("SKGO_PLUGIN_DIRS"), home, cwd, info.SkgoVersion, nativeapp.Plugin(info.SkgoVersion))
 	if err != nil {
 		return nil, err
 	}
