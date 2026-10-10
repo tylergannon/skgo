@@ -206,6 +206,9 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if result.Starter != "minimal" || !strings.Contains(result.Instructions(), "just dev") {
 		t.Fatalf("result = %+v; instructions = %q", result, result.Instructions())
 	}
+	if got := readFile(t, filepath.Join(dir, "skgo.json")); got != "{\"version\":1,\"name\":\"hello-go\"}\n" {
+		t.Fatalf("application identity=%q", got)
+	}
 	commands := u.commands
 	if got, want := strings.Join(u.queueEvents, " "), "configure install verify"; got != want {
 		t.Fatalf("Kit queue setup events = %q, want %q", got, want)

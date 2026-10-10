@@ -235,6 +235,77 @@ just dev
 `skgo new` runs `sv create` through VitePlus and asks `sv`'s usual questions.
 Anything after `--` is passed to `sv create`.
 
+## Application add-ons and templates
+
+A native Go plugin exports `func SKGoPluginV1() templateapi.Plugin` from
+[`templateapi`](templateapi/template.go). `Describe` supplies help, options and
+ordered recipes; `Apply` performs one application change. A template applies
+those same add-ons after ordinary minimal TypeScript creation:
+
+```sh
+skgo new --template example --set message=Hello myapp
+cd myapp
+skgo add --set text=Hello receipt
+```
+
+The names above must be supplied by an installed plugin. See the
+[small external-plugin fixture](cmd/skgo/testdata/template-plugin/plugin.go)
+for an implementation that preserves existing files. Go/native application
+foundations and compatible updates are subsequent parts of
+[the application composition work](https://github.com/tylergannon/skgo/issues/293);
+this interface alone does not establish Voice Notes template delivery.
+
+`skgo new --help`, `skgo add --help`, `skgo add NAME --help` and
+`skgo new --template NAME --help` list compatible exports and their options.
+`--set NAME=VALUE` is repeatable; put flags before the destination/add-on name.
+New projects store application identity in `skgo.json`. Older projects must
+supply `skgo add --name NAME` explicitly; existing native identity requires
+verification before creating that file. Add-ons must report partial writes and
+conflicts; skgo stops at the failed step without rolling back third-party work.
+
+Plugins are trusted code, loaded only by the development CLI. Loading help can
+run their Go initializers. They must match the executing binary's Go toolchain,
+shared dependency sources and build settings, on a cgo-enabled macOS or Linux
+host. A same-version standalone CLI and `go tool skgo` can have different module
+graphs. Inspect the actual host using `skgo buildinfo --json` or
+`go tool skgo buildinfo --json`; `skgo env` remains application configuration
+resolution.
+
+Use the source-build helper to stage the plugin module, align its shared graph
+and settings, compile with the host's recorded Go toolchain, and check that the
+result loads into that host before installing it:
+
+```sh
+# Standalone CLI; plugin main declares var skgoVersion string and uses it in Describe.
+go run github.com/tylergannon/skgo/cmd/skgo-plugin-build@latest \
+  --host "$(command -v skgo)" --source ./plugin-source --package ./template \
+  --out "$HOME/.skgo/plugins/standalone/example.so"
+
+# A project's go-tool host. Keep its build in its own directory.
+go run github.com/tylergannon/skgo/cmd/skgo-plugin-build@latest \
+  --project ./myapp --source ./plugin-source --package ./template \
+  --out "$HOME/.skgo/plugins/myapp/example.so"
+```
+
+The helper does not change the source or consumer `go.mod`. `--version-symbol`
+defaults to `main.skgoVersion`; `--skgo-source` supplies an explicit checkout
+when qualifying an unreleased host. The source directory needs its own Go module;
+symlinks and unreproducible relative replacements are rejected. Staging excludes
+`.git`, `node_modules`, `ephemeral`, `.local`, `.cache`, `build`, `.build` and
+existing `.so` output. Plugin-only dependencies must also agree between plugins;
+the helper's one-plugin qualification does not prove coexistence.
+
+Unset/empty `SKGO_PLUGIN_DIRS` searches `~/.skgo/plugins`. A nonempty
+comma-separated value replaces it; directories are scanned immediately, without
+recursion. For the examples, set `SKGO_PLUGIN_DIRS=~/.skgo/plugins/standalone`
+for standalone commands or `SKGO_PLUGIN_DIRS=~/.skgo/plugins/myapp` for the
+project tool. Missing explicit directories are errors. Failed plugins warn and
+are excluded; their exports are unknown. Duplicate IDs invalidate those loaded
+plugins; duplicate names among loaded plugins are ambiguous and fail commands
+that select them. Diagnostics identify the files to remove or isolate.
+Ordinary untemplated creation does not load plugins. Generated apps do not need
+plugins installed to build or run.
+
 ## Build and deploy
 
 ```sh
