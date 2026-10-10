@@ -53,6 +53,16 @@ synchronization all come from there. Do not improvise a substitute.
 
 ## Rules
 
+**VitePlus (`vp`) owns the frontend tool environment.** SKGO declares the
+supported pins; `vp` resolves and runs the corresponding package manager. Use
+`vp install`, `vp build`, `vp run`, `vp exec` and `vp dlx` from the project
+containing those declarations. Do not invoke ambient `pnpm`, install or select
+its version manually, use mise to select pnpm, or tell developers to reconcile
+pnpm versions. A conflicting recipe, test prerequisite or older instruction is
+a defect to correct, not permission to bypass `vp`. Internal SKGO code may use
+the executable that `vp` resolved; that is not a developer-facing alternative.
+
+
 **This is a Go library.** Write Go. Test with `go test`. Build tooling as Go
 commands. JavaScript exists here only where SvelteKit itself requires it — the
 adapter package and generated stubs — never as the implementation language for

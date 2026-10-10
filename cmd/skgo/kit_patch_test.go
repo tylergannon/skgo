@@ -29,14 +29,6 @@ func TestKitPatchRequiresExactlyOneAction(t *testing.T) {
 }
 
 func TestKitPatchCLIConfiguresFilesAndDoesNotClaimInstallation(t *testing.T) {
-	pnpm, err := exec.LookPath("pnpm")
-	if err != nil {
-		t.Fatalf("native pnpm 12.9.1 is required: %v", err)
-	}
-	version, err := exec.Command(pnpm, "--version").CombinedOutput()
-	if err != nil || strings.TrimSpace(string(version)) != "12.9.1" {
-		t.Fatalf("native pnpm version = %q, %v; want 12.9.1", strings.TrimSpace(string(version)), err)
-	}
 	root := t.TempDir()
 	web := filepath.Join(root, "web")
 	if err := os.MkdirAll(web, 0o755); err != nil {
