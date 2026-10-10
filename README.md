@@ -222,7 +222,9 @@ regenerate their skgo bindings.
 
 You need Go, [VitePlus](https://viteplus.dev) **1.0.0** (`vp`) and
 [just](https://just.systems). This release qualifies that exact VitePlus toolchain;
-`skgo new` refuses other bootstrap versions before project creation.
+`skgo new` refuses other bootstrap versions before project creation. It uses
+vp’s managed environment with this release’s pnpm 12.9.1 companion and records
+that selection in the generated frontend, regardless of ambient pnpm settings.
 
 ```sh
 npm install --global vite-plus@1.0.0

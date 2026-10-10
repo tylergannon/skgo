@@ -88,11 +88,10 @@ type Options struct {
 }
 
 type command struct {
-	VitePlusVersion string
-	Dir             string
-	Name            string
-	Args            []string
-	Env             []string
+	Dir  string
+	Name string
+	Args []string
+	Env  []string
 }
 
 // Result contains the instructions printed only after every setup stage has
@@ -124,6 +123,7 @@ type project struct {
 	SVAddonSpec       string
 	AdapterDependency string
 	SVVersion         string
+	PNPM              string
 	stdout            io.Writer
 	configureKitQueue func(web string, out io.Writer) error
 	verifyKitQueue    func(web string) error
@@ -154,9 +154,16 @@ func Create(options Options) (Result, error) {
 		return Result{}, err
 	}
 
+	vp := options.VP
+	if vp == "" {
+		vp = "vp"
+	}
 	run := options.run
 	if run == nil {
-		run = realRunner(options.Stdout, options.Stderr)
+		run, p.PNPM, err = qualifiedRunner(vp, p.Dir, options.Stdout, options.Stderr)
+		if err != nil {
+			return Result{}, fmt.Errorf("skgo: preparing the frontend environment failed: %w", err)
+		}
 	}
 	if source, ok := strings.CutPrefix(p.SVAddonSpec, "file:"); ok {
 		staged, err := stageAddon(run, source, options.addonStage)
@@ -166,10 +173,6 @@ func Create(options Options) (Result, error) {
 		p.SVAddonSpec = "file:" + staged
 	}
 
-	vp := options.VP
-	if vp == "" {
-		vp = "vp"
-	}
 	// VitePlus's own questions are answered here; sv's are not. Without
 	// --no-interactive VitePlus leaves sv on the terminal, and sv asks about
 	// whatever svArgs does not already settle.
@@ -181,7 +184,7 @@ func Create(options Options) (Result, error) {
 	}
 	vpArgs = append(vpArgs, "--no-git", "--no-agent", "--no-editor", "--no-hooks",
 		"--approve-builds", "--package-manager", "pnpm", "--", "web")
-	if err := run(command{Dir: p.Dir, Name: vp, Args: append(vpArgs, svArgs...), Env: env, VitePlusVersion: toolchain.VitePlus}); err != nil {
+	if err := createFrontend(run, command{Dir: p.Dir, Name: vp, Args: append(vpArgs, svArgs...), Env: env}); err != nil {
 		return Result{}, fmt.Errorf("skgo: VitePlus project creation failed: %w", err)
 	}
 	web := filepath.Join(p.Dir, "web")
@@ -239,6 +242,24 @@ func Create(options Options) (Result, error) {
 	return finish(p, run)
 }
 
+// vp create takes its package-manager version from the enclosing project's
+// declaration, otherwise it downloads latest even inside vp env exec. Supply
+// that declaration while it creates web, then leave only the Go application
+// at the root. The target was checked empty before this file is written.
+func createFrontend(run func(command) error, c command) (err error) {
+	name := filepath.Join(c.Dir, "package.json")
+	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, os.Remove(name)) }()
+	_, writeErr := fmt.Fprintf(file, "{\"private\":true,\"packageManager\":\"pnpm@%s\"}\n", toolchain.PNPM)
+	if err := errors.Join(writeErr, file.Close()); err != nil {
+		return err
+	}
+	return run(c)
+}
+
 // finish installs what the installers declared, proves they took, and adds the
 // Go half.
 func finish(p project, run func(command) error) (Result, error) {
@@ -249,7 +270,7 @@ func finish(p project, run func(command) error) (Result, error) {
 	configureQueue := p.configureKitQueue
 	if configureQueue == nil {
 		configureQueue = func(web string, out io.Writer) error {
-			return kitpatch.Configure(kitpatch.Options{Web: web, Out: out})
+			return kitpatch.Configure(kitpatch.Options{Web: web, PNPM: p.PNPM, Out: out})
 		}
 	}
 	if err := configureQueue(web, p.stdout); err != nil {
@@ -265,7 +286,7 @@ func finish(p project, run func(command) error) (Result, error) {
 	}
 	verifyQueue := p.verifyKitQueue
 	if verifyQueue == nil {
-		verifyQueue = func(web string) error { return kitpatch.Verify(kitpatch.Options{Web: web}) }
+		verifyQueue = func(web string) error { return kitpatch.Verify(kitpatch.Options{Web: web, PNPM: p.PNPM}) }
 	}
 	if err := verifyQueue(web); err != nil {
 		return Result{}, fmt.Errorf("skgo: installed Kit prerender queue correction could not be verified: %w", err)
@@ -584,19 +605,6 @@ func realRunner(stdout, stderr io.Writer) func(command) error {
 		stderr = os.Stderr
 	}
 	return func(c command) error {
-		if c.VitePlusVersion != "" {
-			probe := exec.Command(c.Name, "--version")
-			probe.Dir, probe.Env = c.Dir, c.Env
-			output, err := probe.CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("checking VitePlus version: %w", err)
-			}
-			fields := strings.Fields(string(output))
-			if len(fields) < 2 || fields[0] != "vp" || fields[1] != "v"+c.VitePlusVersion {
-				firstLine := strings.SplitN(strings.TrimSpace(string(output)), "\n", 2)[0]
-				return fmt.Errorf("project creation requires qualified VitePlus %s; %s --version reported %q. Install that version before running skgo new", c.VitePlusVersion, c.Name, firstLine)
-			}
-		}
 		cmd := exec.Command(c.Name, c.Args...)
 		cmd.Dir = c.Dir
 		cmd.Env = c.Env
