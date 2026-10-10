@@ -6,3 +6,7 @@ decision: Per-host publication lock covers peer qualification and replacement. P
 friction: Isolating HOME for real private-repository qualification also hides macOS gh keyring access. Keep plugin storage isolated but let the test's Git credential helper use the existing caller HOME and Go policy; never copy credentials into receipts or source cache.
 friction: Full tests in a fresh worktree need `just install` and `just build` first. Staticcheck0.8.1 cannot parse Go1.27.2 export data here; the same targeted check succeeds with the repository's declared Go1.27.1 toolchain. Use that qualified toolchain for this run instead of altering unrelated analyzers.
 correction: A private qualification set must canonicalize paths too: macOS candidate paths under /var resolve to /private/var. Matching a canonical candidate against raw Entry paths incorrectly rejected a successfully loaded recorder.
+
+- Parse subprocess stdout independently from stderr: a first-use Go toolchain download announces itself on stderr and corrupted the GOROOT path when CombinedOutput was parsed. Preserve resolver JSON on nonzero exits for its actual module diagnostic.
+- Materialize the pinned Git commit with archive rather than checkout filters; skip its global PAX commit metadata while rejecting source symlinks. A real local Git fixture exposed that archive header.
+- Failed/removed installations can leave lock-only host directories. Discovery hints must count actual retained .so files, not those empty directories.

@@ -21,6 +21,7 @@ type Options struct {
 	Host                  buildinfo.Info
 	Home, CWD, ManualDirs string
 	Out                   io.Writer
+	fetchSource           func(context.Context, string, string, io.Writer) (source, func(), error)
 }
 type Exports struct {
 	Templates, Addons []string
@@ -53,7 +54,11 @@ func Install(ctx context.Context, ref string, o Options) error {
 		return err
 	}
 	fmt.Fprintf(o.Out, "Target host: %s, skgo %s, %s, SHA256 %s.\n", o.Host.Executable, o.Host.SkgoVersion, o.Host.Build.GoVersion, digest)
-	s, cleanup, err := fetch(ctx, ref, o.Host.Build.GoVersion, o.Out)
+	resolver := o.fetchSource
+	if resolver == nil {
+		resolver = fetch
+	}
+	s, cleanup, err := resolver(ctx, ref, o.Host.Build.GoVersion, o.Out)
 	if err != nil {
 		return err
 	}

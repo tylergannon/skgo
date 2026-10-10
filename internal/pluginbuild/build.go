@@ -3,6 +3,7 @@
 package pluginbuild
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -172,11 +173,18 @@ func Build(ctx context.Context, o Options) error {
 			env = append(env, key+"="+v)
 		}
 	}
+	var preparationErrors bytes.Buffer
 	run := func(args ...string) ([]byte, error) {
 		cmd := ChildCommand(ctx, "go", args...)
 		cmd.Dir = stage
 		cmd.Env = env
 		cmd.Stderr = o.Log
+		if len(args) == 3 && args[0] == "mod" && args[1] == "tidy" && args[2] == "-e" {
+			cmd.Stderr = &preparationErrors
+			if o.Log != nil {
+				cmd.Stderr = io.MultiWriter(o.Log, &preparationErrors)
+			}
+		}
 		out, err := cmd.Output()
 		if err != nil {
 			return nil, fmt.Errorf("go %s with host toolchain %s: %w", strings.Join(args, " "), host.Build.GoVersion, err)
@@ -197,7 +205,7 @@ func Build(ctx context.Context, o Options) error {
 			return err
 		}
 		if out, err := run("generate", pkg); err != nil {
-			return fmt.Errorf("prepare plugin: %w\n%s", err, out)
+			return fmt.Errorf("prepare plugin: %w\n%s\nPlugin authors must declare reachable generator dependencies in go.mod. Preparatory dependency diagnostics:\n%s", err, out, preparationErrors.String())
 		} else if o.Log != nil {
 			fmt.Fprint(o.Log, string(out))
 		}

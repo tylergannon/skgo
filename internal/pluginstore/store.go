@@ -65,14 +65,18 @@ func Hints(home, host string) ([]string, error) {
 			continue
 		}
 		path := filepath.Join(Hosts(home), dir.Name())
-		paths = append(paths, path)
 		files, e := os.ReadDir(path)
 		if e != nil {
 			return nil, e
 		}
+		hasPlugin := false
 		for _, f := range files {
 			if f.IsDir() || filepath.Ext(f.Name()) != ".so" {
 				continue
+			}
+			if !hasPlugin {
+				paths = append(paths, path)
+				hasPlugin = true
 			}
 			var s Source
 			b, e := os.ReadFile(Reference(filepath.Join(path, f.Name())))

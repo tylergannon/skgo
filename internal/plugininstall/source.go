@@ -2,6 +2,7 @@
 package plugininstall
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -68,9 +69,11 @@ func command(ctx context.Context, dir string, env []string, name string, args ..
 	c := pluginbuild.ChildCommand(ctx, name, args...)
 	c.Dir = dir
 	c.Env = append(os.Environ(), env...)
-	b, err := c.CombinedOutput()
+	var stderr bytes.Buffer
+	c.Stderr = &stderr
+	b, err := c.Output()
 	if err != nil {
-		return nil, fmt.Errorf("%s %s: %w\n%s", name, strings.Join(args, " "), err, b)
+		return b, fmt.Errorf("%s %s: %w\n%s", name, strings.Join(args, " "), err, stderr.String())
 	}
 	return b, nil
 }
@@ -113,15 +116,18 @@ func fetch(ctx context.Context, ref, goVersion string, out io.Writer) (s source,
 		s.Policy = "exempt by GONOSUMDB=" + p["GONOSUMDB"] + " (GOPRIVATE=" + p["GOPRIVATE"] + ")"
 	}
 	fmt.Fprintln(out, "Source checksum policy:", s.Policy)
-	b, err := command(ctx, temp, env, goexe, "mod", "download", "-json", path+"@"+query)
-	if err != nil {
-		return s, cleanup, err
-	}
+	b, downloadErr := command(ctx, temp, env, goexe, "mod", "download", "-json", path+"@"+query)
 	if err = json.Unmarshal(b, &s.resolution); err != nil {
+		if downloadErr != nil {
+			return s, cleanup, downloadErr
+		}
 		return s, cleanup, err
 	}
 	if s.Error != "" {
 		return s, cleanup, fmt.Errorf("resolve plugin source: %s", s.Error)
+	}
+	if downloadErr != nil {
+		return s, cleanup, downloadErr
 	}
 	o := s.Origin
 	if s.Path != path || s.Version == "" || s.Sum == "" || s.GoModSum == "" || o == nil || o.VCS != "git" || o.URL == "" || o.Hash == "" || strings.HasPrefix(o.URL, "-") || (o.Subdir != "" && (!filepath.IsLocal(o.Subdir) || filepath.Clean(o.Subdir) != o.Subdir)) {
@@ -131,22 +137,46 @@ func fetch(ctx context.Context, ref, goVersion string, out io.Writer) (s source,
 	if err = os.Mkdir(repo, 0755); err != nil {
 		return s, cleanup, err
 	}
-	for _, args := range [][]string{{"init", "--quiet"}, {"remote", "add", "origin", o.URL}, {"fetch", "--quiet", "--depth=1", "origin", o.Hash}, {"checkout", "--quiet", "--detach", "FETCH_HEAD"}} {
+	for _, args := range [][]string{{"init", "--quiet"}, {"remote", "add", "origin", o.URL}, {"fetch", "--quiet", "--depth=1", "origin", o.Hash}, {"update-ref", "HEAD", o.Hash}} {
 		if _, err = command(ctx, repo, nil, "git", args...); err != nil {
 			return s, cleanup, err
 		}
 	}
+	// Materialize the immutable commit with git archive, not checkout filters.
+	// The full tree preserves nested modules omitted by the canonical module zip.
+	archive, err := command(ctx, repo, nil, "git", "archive", "--format=tar", o.Hash)
+	if err != nil {
+		return s, cleanup, err
+	}
+	tree := filepath.Join(temp, "tree")
+	if err = extractTree(archive, tree); err != nil {
+		return s, cleanup, err
+	}
+	s.Root = filepath.Join(tree, o.Subdir)
+	if err = verifyCheckout(ctx, repo, &s); err != nil {
+		return s, cleanup, err
+	}
+	fmt.Fprintf(out, "Resolved %s to %s@%s, Git %s %s; module and go.mod hashes match.\n", ref, s.Path, s.Version, o.URL, o.Hash)
+	s.Package, err = manifest(s.Root)
+	if err != nil {
+		return s, cleanup, err
+	}
+	return s, cleanup, nil
+}
+
+func verifyCheckout(ctx context.Context, repo string, s *source) error {
+	o := s.Origin
 	head, err := command(ctx, repo, nil, "git", "rev-parse", "HEAD")
 	if err != nil {
-		return s, cleanup, err
+		return err
 	}
 	if strings.TrimSpace(string(head)) != o.Hash {
-		return s, cleanup, fmt.Errorf("checkout commit mismatch: want %s, got %s", o.Hash, head)
+		return fmt.Errorf("checkout commit mismatch: want %s, got %s", o.Hash, head)
 	}
-	zipPath := filepath.Join(temp, "source.zip")
+	zipPath := filepath.Join(repo, ".git", "skgo-verify.zip")
 	z, err := os.Create(zipPath)
 	if err != nil {
-		return s, cleanup, err
+		return err
 	}
 	err = modzip.CreateFromVCS(z, module.Version{Path: s.Path, Version: s.Version}, repo, o.Hash, o.Subdir)
 	closeErr := z.Close()
@@ -154,38 +184,83 @@ func fetch(ctx context.Context, ref, goVersion string, out io.Writer) (s source,
 		err = closeErr
 	}
 	if err != nil {
-		return s, cleanup, err
+		return err
 	}
 	sum, err := dirhash.HashZip(zipPath, dirhash.Hash1)
 	if err != nil {
-		return s, cleanup, err
+		return err
 	}
 	if sum != s.Sum {
-		return s, cleanup, fmt.Errorf("source checksum mismatch: want %s, got %s", s.Sum, sum)
+		return fmt.Errorf("source checksum mismatch: want %s, got %s", s.Sum, sum)
 	}
-	s.Root = filepath.Join(repo, o.Subdir)
+	if s.Root == "" {
+		s.Root = filepath.Join(repo, o.Subdir)
+	}
 	modBytes, err := os.ReadFile(filepath.Join(s.Root, "go.mod"))
 	if err != nil {
-		return s, cleanup, err
+		return err
 	}
 	sum, err = dirhash.Hash1([]string{"go.mod"}, func(string) (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(modBytes)), nil })
 	if err != nil {
-		return s, cleanup, err
+		return err
 	}
 	if sum != s.GoModSum {
-		return s, cleanup, fmt.Errorf("go.mod checksum mismatch: want %s, got %s", s.GoModSum, sum)
+		return fmt.Errorf("go.mod checksum mismatch: want %s, got %s", s.GoModSum, sum)
 	}
 	m, err := modfile.Parse("go.mod", modBytes, nil)
 	if err != nil {
-		return s, cleanup, err
+		return err
 	}
-	if m.Module == nil || m.Module.Mod.Path != path {
-		return s, cleanup, fmt.Errorf("checked-out module declaration does not match %s", path)
+	if m.Module == nil || m.Module.Mod.Path != s.Path {
+		return fmt.Errorf("checked-out module declaration does not match %s", s.Path)
 	}
-	s.Package, err = manifest(s.Root)
-	if err != nil {
-		return s, cleanup, err
+	return nil
+}
+func extractTree(data []byte, root string) error {
+	if err := os.MkdirAll(root, 0755); err != nil {
+		return err
 	}
-	fmt.Fprintf(out, "Resolved %s to %s@%s, Git %s %s; module and go.mod hashes match.\n", ref, s.Path, s.Version, o.URL, o.Hash)
-	return s, cleanup, nil
+	r := tar.NewReader(bytes.NewReader(data))
+	for {
+		h, err := r.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		// Git archives carry a global PAX commit comment, not a source entry.
+		if h.Typeflag == tar.TypeXGlobalHeader {
+			continue
+		}
+		name := strings.TrimSuffix(h.Name, "/")
+		if !filepath.IsLocal(name) || filepath.Clean(name) != name {
+			return fmt.Errorf("unsafe Git archive path %q", h.Name)
+		}
+		path := filepath.Join(root, name)
+		switch h.Typeflag {
+		case tar.TypeDir:
+			if err = os.MkdirAll(path, 0755); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			if err = os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				return err
+			}
+			f, e := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, os.FileMode(h.Mode)&0777)
+			if e != nil {
+				return e
+			}
+			_, err = io.Copy(f, r)
+			e = f.Close()
+			if err != nil {
+				return err
+			}
+			if e != nil {
+				return e
+			}
+		default:
+			return fmt.Errorf("source path %s is not a regular file or directory; symlinks and external submodules are unsupported", h.Name)
+		}
+	}
 }
