@@ -30,8 +30,8 @@ _default:
 
 # node deps for the example app and its Gherkin suite
 install:
-    cd example/web && mise x -- vp install
-    cd example/e2e && mise x -- vp install
+    cd example/web && vp install
+    cd example/e2e && vp install
 
 # the link tree, the throwing stubs, and the wire types
 generate:
@@ -42,7 +42,7 @@ generate:
 
 # build the frontend (do this first in a fresh tree)
 build:
-    cd example/web && ORIGIN="{{origin}}" mise x -- vp build
+    cd example/web && ORIGIN="{{origin}}" vp build
 
 # go vet, both modules
 vet:
@@ -56,9 +56,9 @@ tools:
         GOBIN="{{justfile_directory()}}/.tools/bin" go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
     fi
 
-# go test, both modules, in one invocation so their packages run side by side
+# go test, both modules; vp resolves the frontend tools from the project pins.
 test: tools
-    cd example && mise x npm:pnpm@12.9.1 -- go -C .. test -count=1 ./... ./example/...
+    cd example/web && vp exec go -C ../.. test -count=1 ./... ./example/...
 
 # the example server, against the built frontend
 serve:
@@ -85,7 +85,7 @@ dev:
     set -o pipefail
     go run ./cmd/skgo dev --root example --web web --cmd ./cmd \
         --listen 127.0.0.1:{{port}} --origin "{{origin}}" \
-        --vite-port {{devport}} --vite "mise x -- node_modules/.bin/vp dev" 2>&1 | tee "{{log}}"
+        --vite-port {{devport}} --vite "node_modules/.bin/vp dev" 2>&1 | tee "{{log}}"
 
 # Start the server yourself first: `just serve` for a production build, with
 # `just dev` alongside it for the proxied path. `vp run test` invokes the e2e
@@ -96,7 +96,7 @@ e2e_json_reporter := if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_FILE", "") !=
 
 # the Gherkin suite against a server you started
 e2e mode run=mode:
-    cd example/e2e && BASE_URL="{{origin}}" SKGO_EXPECTED_MODE={{mode}} SKGO_E2E_RUN={{run}} SKGO_LOG="{{log}}" mise x -- ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}}
+    cd example/e2e && BASE_URL="{{origin}}" SKGO_EXPECTED_MODE={{mode}} SKGO_E2E_RUN={{run}} SKGO_LOG="{{log}}" ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}}
 
 # `git worktree add -b` has silently landed an agent on main once, so the
 # branch is confirmed rather than assumed. Each worktree installs its own
