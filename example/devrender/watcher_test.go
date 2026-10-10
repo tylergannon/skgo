@@ -49,8 +49,17 @@ export default mergeConfig(base, {
     if (args[0]?.type === 'error') errors.push(args[0].err.message);
     return send.apply(this, args);
    };
-   server.middlewares.use('/__watcher_fixture', (req, res) => {
+   server.middlewares.use('/__watcher_fixture', async (req, res) => {
     if (new URL(req.url, 'http://fixture').searchParams.has('restore')) {
+     const delivery = trace.findLast(event => event.kind === 'change');
+     if (!delivery) { res.statusCode = 409; res.end('restore requires an observed edit'); return; }
+     // One-shot save barrier: get past nodefs-handler's separate 5 ms gate,
+     // while still aiming inside the 50 ms change throttle under examination.
+     // Do not touch watcher dispatch; delayed scheduling is reported by raw timing.
+     const target = delivery.ms + 10;
+     while (performance.now() < target) {
+      await new Promise(done => setTimeout(done, Math.ceil(target - performance.now())));
+     }
      record('restore-write', file);
      writeFileSync(file, 'export const probe = 1;\n');
     }
@@ -127,7 +136,8 @@ func TestSettledRestoreReachesViteModule(t *testing.T) {
 		t.Fatalf("edited module: %s", body)
 	}
 	// Same Node clock records the actual restore write and public raw witness.
-	// No Go rendering or quiet wait belongs in this race-sensitive interval.
+	// The fixture targets delivery+10ms to pass the separate 5ms watch gate.
+	// No Go rendering or wait beyond the defect's 50ms window belongs here.
 	observeWatcher(t, "?restore")
 	var final string
 	until = time.Now().Add(10 * time.Second)
@@ -155,7 +165,19 @@ func TestSettledRestoreReachesViteModule(t *testing.T) {
 			witness = event.MS
 		}
 	}
-	t.Logf("watcher.options=%s trace=%+v restore_raw_after_first_delivery_ms=%.3f in_window=%t", observation.Options, trace, witness-delivered, restored >= 0 && witness >= restored && delivered >= 0 && witness-delivered >= 0 && witness-delivered < 50)
+	backend := os.Getenv("SKGO_TEST_WATCHER_BACKEND")
+	if backend == "" {
+		backend = "fswatch"
+	}
+	t.Logf("watcher.backend=%s watcher.options=%s", backend, observation.Options)
+	for _, event := range trace {
+		relative, err := filepath.Rel(webRoot, event.File)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("watcher.event kind=%s ms=%.3f file=%s", event.Kind, event.MS, filepath.ToSlash(relative))
+	}
+	t.Logf("restore_raw_after_first_delivery_ms=%.3f in_window=%t (requires 5 < delta < 50 ms)", witness-delivered, restored >= 0 && witness >= restored && delivered >= 0 && witness-delivered > 5 && witness-delivered < 50)
 	disk, err := os.ReadFile(path)
 	if err != nil || string(disk) != original {
 		t.Fatalf("restored disk=%q error=%v", disk, err)
