@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 
 	"golang.org/x/tools/go/analysis/unitchecker"
 
@@ -33,6 +34,7 @@ import (
 const usage = `usage:
 	skgo new [flags] DIR [-- SV_CREATE_OPTIONS]
 	                          create a SvelteKit application served by Go
+	skgo plugin install MODULE[@QUERY] | plugin remove MODULE
 	skgo add [flags] ADDON    apply a reusable application change
 	skgo update [--root DIR] [--vp GLOBAL_VP]   align CLI and application toolchain
 	skgo native build [--platform macos|iphone|simulator] [--preset NAME]
@@ -69,6 +71,18 @@ func main() {
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "plugin":
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		if err := pluginCommand(ctx, os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	case "_plugin-probe":
+		if err := pluginProbe(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "update":
 		updateCommand(os.Args[2:])
 	case "native":
@@ -79,7 +93,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "add":
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		if err := addCommand(ctx, os.Args[2:], os.Stdout, os.Stderr); err != nil {
 			fmt.Fprintln(os.Stderr, err)

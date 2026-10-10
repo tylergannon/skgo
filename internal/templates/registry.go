@@ -128,7 +128,7 @@ func selection(kind, name string, found []Entry) error {
 		for _, e := range found {
 			paths = append(paths, e.Path)
 		}
-		return fmt.Errorf("%s %q is ambiguous: %s; remove a provider or isolate SKGO_PLUGIN_DIRS", kind, name, strings.Join(paths, ", "))
+		return fmt.Errorf("%s %q is ambiguous: %s; remove the manual provider or use skgo plugin remove MODULE for its managed selection", kind, name, strings.Join(paths, ", "))
 	}
 	return nil
 }
@@ -210,7 +210,7 @@ func apply(ctx context.Context, op Operation, project templateapi.Project) (resu
 }
 
 func (r *Registry) Help(out io.Writer, kind, name string) error {
-	fmt.Fprintln(out, "Plugins are trusted native code, loaded eagerly in sorted file order. They must match this host toolchain and shared dependencies; dependencies shared only between plugins must also match. Incompatible plugins cannot coexist: remove or isolate their .so files in separate SKGO_PLUGIN_DIRS.")
+	fmt.Fprintln(out, "Plugins are trusted native code, loaded eagerly in sorted file order. They must match this host toolchain and shared dependencies; dependencies shared only between plugins must also match. Incompatible plugins cannot coexist: remove conflicting manual files or use skgo plugin remove MODULE for current-host managed installations. SKGO_PLUGIN_DIRS only changes manual discovery.")
 	return r.help(out, kind, name)
 }
 

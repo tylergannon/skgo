@@ -3,18 +3,20 @@
 package pluginbuild
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"go/version"
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/buildinfo"
+	"github.com/tylergannon/skgo/internal/pluginstore"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/semver"
 )
@@ -22,6 +24,7 @@ import (
 type Options struct {
 	Host, Project, Source, Package, Output, SkgoSource, VersionSymbol string
 	Log                                                               io.Writer
+	Generate                                                          bool
 }
 
 func Build(ctx context.Context, o Options) error {
@@ -32,9 +35,9 @@ func Build(ctx context.Context, o Options) error {
 	// The first uncached go-tool run may execute a temporary binary. A second
 	// invocation resolves the same normal tool build from Go's persistent cache.
 	for attempt := 0; attempt < 2; attempt++ {
-		cmd := exec.CommandContext(ctx, o.Host, "buildinfo", "--json")
+		cmd := ChildCommand(ctx, o.Host, "buildinfo", "--json")
 		if o.Project != "" {
-			cmd = exec.CommandContext(ctx, "go", "tool", "skgo", "buildinfo", "--json")
+			cmd = ChildCommand(ctx, "go", "tool", "skgo", "buildinfo", "--json")
 			cmd.Dir = o.Project
 		}
 		data, err := cmd.Output()
@@ -89,6 +92,16 @@ func Build(ctx context.Context, o Options) error {
 	}
 	if mod.Module == nil || mod.Module.Mod.Path == "" {
 		return fmt.Errorf("plugin go.mod must declare a module path")
+	}
+	if mod.Go != nil && version.Compare("go"+mod.Go.Version, host.Build.GoVersion) > 0 {
+		return fmt.Errorf("plugin requires Go %s; executing host uses %s; rebuild the host with an admissible newer toolchain", mod.Go.Version, host.Build.GoVersion)
+	}
+	pkg := o.Package
+	if pkg == "" {
+		pkg = "."
+	}
+	if pkg != "." && (!strings.HasPrefix(pkg, "./") || !filepath.IsLocal(strings.TrimPrefix(pkg, "./")) || filepath.ToSlash(filepath.Clean(pkg)) != strings.TrimPrefix(pkg, "./") || strings.Contains(pkg, "...")) {
+		return fmt.Errorf("package must be . or a clean relative package within the source module")
 	}
 	var pinned []debug.Module
 	all := append([]*debug.Module{&host.Build.Main}, host.Build.Deps...)
@@ -154,25 +167,51 @@ func Build(ctx context.Context, o Options) error {
 	if err := os.WriteFile(filepath.Join(stage, "go.mod"), data, 0644); err != nil {
 		return err
 	}
-	env := append(os.Environ(), "GOWORK=off", "GOFLAGS=", "GOTOOLCHAIN="+host.Build.GoVersion)
+	env := append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod", "GOTOOLCHAIN="+host.Build.GoVersion)
 	for _, key := range []string{"GOOS", "GOARCH", "GOAMD64", "GOARM", "GOARM64", "GO386", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOEXPERIMENT", "CGO_ENABLED", "CGO_CFLAGS", "CGO_CPPFLAGS", "CGO_CXXFLAGS", "CGO_LDFLAGS"} {
 		if v, ok := settings[key]; ok {
 			env = append(env, key+"="+v)
 		}
 	}
+	var preparationErrors bytes.Buffer
 	run := func(args ...string) ([]byte, error) {
-		cmd := exec.CommandContext(ctx, "go", args...)
+		cmd := ChildCommand(ctx, "go", args...)
 		cmd.Dir = stage
 		cmd.Env = env
 		cmd.Stderr = o.Log
+		if len(args) == 3 && args[0] == "mod" && args[1] == "tidy" && args[2] == "-e" {
+			cmd.Stderr = &preparationErrors
+			if o.Log != nil {
+				cmd.Stderr = io.MultiWriter(o.Log, &preparationErrors)
+			}
+		}
 		out, err := cmd.Output()
 		if err != nil {
 			return nil, fmt.Errorf("go %s with host toolchain %s: %w", strings.Join(args, " "), host.Build.GoVersion, err)
 		}
 		return out, nil
 	}
-	if _, err := run("mod", "tidy"); err != nil {
+	tidyArgs := []string{"mod", "tidy"}
+	if o.Generate {
+		tidyArgs = append(tidyArgs, "-e")
+	}
+	if _, err := run(tidyArgs...); err != nil {
 		return err
+	}
+	if o.Generate {
+		// The preparatory tidy supplies sums but can prune requirements needed by
+		// source that does not exist yet. Keep their author/host-selected versions.
+		if err := os.WriteFile(filepath.Join(stage, "go.mod"), data, 0644); err != nil {
+			return err
+		}
+		if out, err := run("generate", pkg); err != nil {
+			return fmt.Errorf("prepare plugin: %w\n%s\nPlugin authors must declare reachable generator dependencies in go.mod. Preparatory dependency diagnostics:\n%s", err, out, preparationErrors.String())
+		} else if o.Log != nil {
+			fmt.Fprint(o.Log, string(out))
+		}
+		if _, err := run("mod", "tidy"); err != nil {
+			return err
+		}
 	}
 	graph, err := run("list", "-m", "-json", "all")
 	if err != nil {
@@ -220,21 +259,15 @@ func Build(ctx context.Context, o Options) error {
 	if len(ldflags) > 0 {
 		args = append(args, "-ldflags="+strings.Join(ldflags, " "))
 	}
-	pkg := o.Package
-	if pkg == "" {
-		pkg = "."
-	}
-	if pkg != "." && (!strings.HasPrefix(pkg, "./") || !filepath.IsLocal(strings.TrimPrefix(pkg, "./"))) {
-		return fmt.Errorf("package must be . or a relative package within the source module")
-	}
 	args = append(args, pkg)
 	if _, err := run(args...); err != nil {
 		return err
 	}
 	// Qualify the exact host before installation. It must discover at least one
 	// declared export and must not report a rejected candidate.
-	check := exec.CommandContext(ctx, host.Executable, "add", "--help")
-	check.Env = append(os.Environ(), "SKGO_PLUGIN_DIRS="+stage)
+	check := ChildCommand(ctx, host.Executable, "add", "--help")
+	filesJSON, _ := json.Marshal([]string{filepath.Join(stage, "plugin.so")})
+	check.Env = append(os.Environ(), "SKGO_PLUGIN_DIRS="+stage, pluginstore.ProbeFiles+"="+string(filesJSON))
 	checkOut, err := check.CombinedOutput()
 	if err != nil || strings.Contains(string(checkOut), "warning:") {
 		return fmt.Errorf("built plugin did not load into %s: %v\n%s", host.Executable, err, checkOut)
