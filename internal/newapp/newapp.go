@@ -31,6 +31,7 @@ import (
 
 	"github.com/tylergannon/skgo/internal/adapter"
 	"github.com/tylergannon/skgo/internal/kitpatch"
+	"github.com/tylergannon/skgo/internal/toolchain"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
@@ -180,7 +181,7 @@ func Create(options Options) (Result, error) {
 	}
 	vpArgs = append(vpArgs, "--no-git", "--no-agent", "--no-editor", "--no-hooks",
 		"--approve-builds", "--package-manager", "pnpm", "--", "web")
-	if err := run(command{Dir: p.Dir, Name: vp, Args: append(vpArgs, svArgs...), Env: env, VitePlusVersion: "1.0.0"}); err != nil {
+	if err := run(command{Dir: p.Dir, Name: vp, Args: append(vpArgs, svArgs...), Env: env, VitePlusVersion: toolchain.VitePlus}); err != nil {
 		return Result{}, fmt.Errorf("skgo: VitePlus project creation failed: %w", err)
 	}
 	web := filepath.Join(p.Dir, "web")
