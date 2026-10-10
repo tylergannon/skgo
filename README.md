@@ -245,8 +245,9 @@ SvelteKit patch and frontend toolchain. The release selects an exact vp version
 and its qualified pnpm companion; commands run through vp's managed environment.
 Use `--vp /path/to/vp` to select the global installation explicitly.
 
-Inside an application, update stages frontend migration, rejects changes to
-authored sources or configuration, then installs, regenerates and builds using
+Inside an existing VitePlus application, update stages dependency alignment
+without running whole-project migration. It rejects changes to authored sources
+or configuration, then installs, regenerates and builds using
 the verified project Go tool when declared. Native applications also regenerate
 Swift bindings and build macOS by default; select another build with
 `--native-platform simulator --native-preset synthetic`. A successful native

@@ -235,16 +235,32 @@ func authoredConfig(name string, data []byte) (map[string]any, error) {
 		case "vite-plus", "vite", "vitest", "@sveltejs/kit", "@skgo/sveltekit-adapter", "@skgo/sv":
 			return true
 		}
-		return strings.HasPrefix(k, "@vitest/")
+		return vitestSibling(k)
 	}
 	if name == "package.json" {
 		delete(p, "packageManager")
 		strip(p, "devEngines", func(k string, _ any) bool { return k == "packageManager" })
 		strip(p, "dependencies", managed)
 		strip(p, "devDependencies", managed)
+		strip(p, "optionalDependencies", managed)
+		strip(p, "peerDependencies", managed)
+		if pnpm, ok := p["pnpm"].(map[string]any); ok {
+			strip(pnpm, "overrides", managedOverride)
+			if len(pnpm) == 0 {
+				delete(p, "pnpm")
+			}
+		}
 	} else {
 		strip(p, "catalog", managed)
-		strip(p, "overrides", func(k string, v any) bool { return k == "vite@*" || k == "vitest@*" })
+		if catalogs, ok := p["catalogs"].(map[string]any); ok {
+			for name := range catalogs {
+				strip(catalogs, name, managed)
+			}
+			if len(catalogs) == 0 {
+				delete(p, "catalogs")
+			}
+		}
+		strip(p, "overrides", managedOverride)
 		strip(p, "patchedDependencies", func(k string, v any) bool {
 			path, ok := v.(string)
 			return ok && strings.HasPrefix(k, "@sveltejs/kit@") && strings.HasPrefix(path, "patches/skgo-kit-") && strings.HasSuffix(path, ".patch")
@@ -262,4 +278,8 @@ func unchangedFrontend(root string, original map[string][]byte) error {
 		return fmt.Errorf("frontend changed while update was staging; refusing to overwrite concurrent application edits")
 	}
 	return nil
+}
+
+func managedOverride(k string, _ any) bool {
+	return k == "vite" || k == "vite@*" || k == "vitest" || k == "vitest@*"
 }
