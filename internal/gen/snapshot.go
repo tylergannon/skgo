@@ -3,10 +3,12 @@ package gen
 import (
 	"bytes"
 	"fmt"
+	"go/build"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -23,11 +25,12 @@ type PackageLoader func(*packages.Config, ...string) ([]*packages.Package, error
 // sources. A snapshot is an invocation-scoped handoff, not a persistent cache.
 // Neither the packages nor their ASTs and type information may be mutated.
 type PackageSnapshot struct {
-	config      packages.Config
-	packages    map[string]*packages.Package
-	sources     map[string][]byte
-	directories map[string][]string
-	modules     map[string][]byte
+	config             packages.Config
+	packages           map[string]*packages.Package
+	sources            map[string][]byte
+	directories        map[string][]string
+	modules            map[string][]byte
+	trustedDirectories map[string]bool
 }
 
 // NewPackageSnapshot captures a package bundle produced by config. The caller
@@ -37,6 +40,12 @@ type PackageSnapshot struct {
 // Load with NeedModule and NeedFiles for the dependency graph (normally
 // NeedDeps). Custom parsers, external package drivers, and filesystem overlays
 // supplied through build flags are unsupported; use Config.Overlay instead.
+//
+// Toolchain source and versioned modules in GOMODCACHE are assumed immutable
+// for this invocation, as the Go command itself expects. Their source is not
+// copied or reread. Workspace, replacement and vendor source remains checked,
+// as does any dependency directory touched by Config.Overlay. Do not edit the
+// installed toolchain or module cache while using a snapshot.
 func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*PackageSnapshot, error) {
 	if config == nil {
 		return nil, fmt.Errorf("skgo: package snapshot requires its load configuration")
@@ -71,7 +80,7 @@ func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*P
 	if config.ParseFile != nil {
 		return nil, fmt.Errorf("skgo: package snapshots require the standard Go parser")
 	}
-	s := &PackageSnapshot{config: *config, packages: map[string]*packages.Package{}, sources: map[string][]byte{}, directories: map[string][]string{}, modules: map[string][]byte{}}
+	s := &PackageSnapshot{config: *config, packages: map[string]*packages.Package{}, sources: map[string][]byte{}, directories: map[string][]string{}, modules: map[string][]byte{}, trustedDirectories: map[string]bool{}}
 	s.config.Env = effectiveEnv(config.Env)
 	s.config.BuildFlags = append([]string(nil), config.BuildFlags...)
 	s.config.Dir, _ = filepath.Abs(config.Dir)
@@ -80,6 +89,21 @@ func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*P
 			return nil, fmt.Errorf("skgo: nil package in snapshot")
 		}
 	}
+	goroot := value("GOROOT")
+	if goroot == "" {
+		goroot = runtime.GOROOT()
+	}
+	modcache := value("GOMODCACHE")
+	if modcache == "" {
+		gopath := value("GOPATH")
+		if gopath == "" {
+			gopath = build.Default.GOPATH
+		}
+		if paths := filepath.SplitList(gopath); len(paths) > 0 {
+			modcache = filepath.Join(paths[0], "pkg", "mod")
+		}
+	}
+	overlaidDirs := overlayDirectories(config.Overlay)
 	var problem error
 	packages.Visit(roots, nil, func(p *packages.Package) {
 		if problem != nil {
@@ -91,6 +115,11 @@ func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*P
 		}
 		s.packages[p.PkgPath] = p
 		for _, path := range append(append([]string{}, p.GoFiles...), p.CompiledGoFiles...) {
+			dir := filepath.Dir(path)
+			if !overlaidDirs[dir] && immutablePackageSource(p, path, goroot, modcache) {
+				s.trustedDirectories[dir] = true
+				continue
+			}
 			if _, ok := s.sources[path]; ok {
 				continue
 			}
@@ -101,8 +130,10 @@ func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*P
 					return
 				}
 			}
-			s.sources[path] = bytes.Clone(data)
-			dir := filepath.Dir(path)
+			if ok {
+				data = bytes.Clone(data)
+			}
+			s.sources[path] = data
 			if _, ok := s.directories[dir]; !ok {
 				s.directories[dir], problem = goSourceNames(dir)
 				if problem != nil {
@@ -116,6 +147,9 @@ func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*P
 					continue
 				}
 				for _, path := range []string{mod.GoMod, filepath.Join(filepath.Dir(mod.GoMod), "go.sum")} {
+					if _, ok := s.modules[path]; ok {
+						continue
+					}
 					data, err := os.ReadFile(path)
 					if err != nil && !os.IsNotExist(err) {
 						problem = err
@@ -134,6 +168,9 @@ func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*P
 	for dir, names := range s.directories {
 		for _, name := range names {
 			path := filepath.Join(dir, name)
+			if _, ok := s.sources[path]; ok {
+				continue
+			}
 			data, ok := config.Overlay[path]
 			if !ok {
 				var err error
@@ -142,7 +179,10 @@ func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*P
 					return nil, err
 				}
 			}
-			s.sources[path] = bytes.Clone(data)
+			if ok {
+				data = bytes.Clone(data)
+			}
+			s.sources[path] = data
 		}
 	}
 	for dir := s.config.Dir; ; dir = filepath.Dir(dir) {
@@ -168,6 +208,40 @@ func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*P
 		}
 	}
 	return s, nil
+}
+
+func overlayDirectories(overlay map[string][]byte) map[string]bool {
+	dirs := map[string]bool{}
+	for path := range overlay {
+		dir := filepath.Dir(path)
+		if dirs[dir] {
+			continue
+		}
+		dirs[dir] = true
+		if physical, err := filepath.EvalSymlinks(dir); err == nil {
+			dirs[physical] = true
+		}
+	}
+	return dirs
+}
+
+// Cache trust is deliberately restricted to the known cache roots. A version
+// string alone does not make vendor or a local replacement immutable.
+func immutablePackageSource(pkg *packages.Package, path, goroot, modcache string) bool {
+	if pkg.Module == nil {
+		_, inside := withinDir(filepath.Join(goroot, "src"), path)
+		return goroot != "" && inside
+	}
+	mod := pkg.Module
+	if mod.Replace != nil {
+		mod = mod.Replace
+	}
+	if mod.Main || mod.Version == "" || modcache == "" {
+		return false
+	}
+	_, inside := withinDir(modcache, path)
+	_, owned := withinDir(mod.Dir, path)
+	return inside && owned
 }
 
 func effectiveEnv(env []string) []string {
@@ -225,6 +299,7 @@ func (s *PackageSnapshot) lookup(cfg *packages.Config, patterns []string) ([]*pa
 	}
 	valid := true
 	checked := map[string]bool{}
+	overlaidDirs := overlayDirectories(cfg.Overlay)
 	packages.Visit(roots, func(p *packages.Package) bool {
 		if !valid {
 			return false
@@ -234,6 +309,13 @@ func (s *PackageSnapshot) lookup(cfg *packages.Config, patterns []string) ([]*pa
 			return false
 		}
 		for _, path := range append(append([]string{}, p.GoFiles...), p.CompiledGoFiles...) {
+			if dir := filepath.Dir(path); s.trustedDirectories[dir] {
+				if overlaidDirs[dir] {
+					valid = false
+					return false
+				}
+				continue
+			}
 			expected, ok := s.sources[path]
 			if !ok {
 				valid = false

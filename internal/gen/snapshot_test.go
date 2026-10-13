@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -293,5 +294,152 @@ var _=skgo.Query(query)
 	supplied := Run(cfg)
 	if supplied == nil || supplied.Error() != ordinary.Error() {
 		t.Fatalf("diagnostics differ: ordinary %v; supplied %v", ordinary, supplied)
+	}
+}
+
+// This bundle is loaded from disk by an embedding caller. No SKGO callback or
+// generated overlay participates in its creation.
+func TestIndependentlyLoadedDomainReusesProjection(t *testing.T) {
+	root, cfg := foreignFixture(t, `package data
+import("context";"github.com/tylergannon/skgo";"example.com/app/domain")
+func query(context.Context)(domain.Reply,error){return domain.Reply{},nil}
+var _=skgo.Query(query)
+`, map[string]string{"app/domain/reply.go": `package domain
+// Reply is the independent caller's response.
+type Reply struct { Text string; Count int }
+`})
+	const domain = "example.com/app/domain"
+	domainLoads := 0
+	cfg.OnPackageLoad = func(config *packages.Config, patterns []string) {
+		for _, pattern := range patterns {
+			if pattern == domain {
+				domainLoads++
+			}
+		}
+	}
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if domainLoads != 1 {
+		t.Fatalf("ordinary generation performed %d domain loads, want 1", domainLoads)
+	}
+	expected := generatedTree(t, root)
+	load := &packages.Config{Dir: filepath.Join(root, "app"), Mode: grammar.LoadMode | packages.NeedDeps, BuildFlags: []string{"-tags=jsonschema"}}
+	loaded, err := packages.Load(load, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded) != 1 || len(loaded[0].Errors) > 0 {
+		t.Fatalf("caller domain load: %+v", loaded)
+	}
+	snapshot, err := NewPackageSnapshot(load, loaded...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Packages = []*PackageSnapshot{snapshot}
+	domainLoads = 0
+	cfg.LoadPackages = func(config *packages.Config, patterns ...string) ([]*packages.Package, error) {
+		for _, pattern := range patterns {
+			if pattern == domain {
+				return nil, fmt.Errorf("caller-loaded domain was loaded again")
+			}
+		}
+		return packages.Load(config, patterns...)
+	}
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if domainLoads != 0 {
+		t.Fatalf("supplied domain performed %d loads, want 0", domainLoads)
+	}
+	if !reflect.DeepEqual(expected, generatedTree(t, root)) {
+		t.Fatal("disk-loaded domain changed generated output")
+	}
+	projected, err := os.ReadFile(filepath.Join(root, "app/web/src/lib/skgo/domain/types.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"export type Reply", `"Text": string`, `"Count": number`} {
+		if !bytes.Contains(projected, []byte(want)) {
+			t.Fatalf("projection missing %q: %s", want, projected)
+		}
+	}
+}
+
+func TestSnapshotTrustsOnlyImmutableSourceDirectories(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "types.go")
+	for name, data := range map[string]string{"go.mod": "module snapshot.test\n\ngo 1.27.1\n", "types.go": "package example\nimport \"time\"\ntype Value struct { When time.Time }\n"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(data), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := &packages.Config{Dir: root, Mode: grammar.LoadMode | packages.NeedDeps}
+	roots, err := packages.Load(cfg, "snapshot.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := NewPackageSnapshot(cfg, roots...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := snapshot.sources[source]; !ok {
+		t.Fatal("workspace source was not captured")
+	}
+	if len(snapshot.trustedDirectories) == 0 {
+		t.Fatal("standard library source was not recognized")
+	}
+	for path := range snapshot.sources {
+		if _, inside := withinDir(filepath.Join(runtime.GOROOT(), "src"), path); inside {
+			t.Fatalf("copied immutable toolchain source %s", path)
+		}
+	}
+	var timePkg *packages.Package
+	packages.Visit(roots, nil, func(p *packages.Package) {
+		if p.PkgPath == "time" {
+			timePkg = p
+		}
+	})
+	if timePkg == nil || len(timePkg.GoFiles) == 0 {
+		t.Fatal("missing imported time source")
+	}
+	path := timePkg.GoFiles[0]
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	overlay := *cfg
+	overlay.Overlay = map[string][]byte{path: data}
+	if _, ok := snapshot.lookup(&overlay, []string{"snapshot.test"}); ok {
+		t.Fatal("new overlay reused a trusted dependency")
+	}
+	// An originally overlaid dependency is fully captured even when the bytes
+	// initially match disk, and a later overlay edit invalidates it.
+	overlaid, err := NewPackageSnapshot(&overlay, roots...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := overlaid.sources[path]; !ok {
+		t.Fatal("overlaid dependency source was not captured")
+	}
+	if _, ok := overlaid.lookup(&overlay, []string{"snapshot.test"}); !ok {
+		t.Fatal("unchanged dependency overlay was rejected")
+	}
+	overlay.Overlay = map[string][]byte{path: append(bytes.Clone(data), []byte("\n// changed\n")...)}
+	if _, ok := overlaid.lookup(&overlay, []string{"snapshot.test"}); ok {
+		t.Fatal("changed dependency overlay reused")
+	}
+	cache := filepath.Join(root, "pkg/mod")
+	module := &packages.Module{Path: "example.org/dep", Version: "v1.0.0", Dir: filepath.Join(cache, "example.org/dep@v1.0.0")}
+	if !immutablePackageSource(&packages.Package{Module: module}, filepath.Join(module.Dir, "dep.go"), "", cache) {
+		t.Fatal("versioned module cache source not trusted")
+	}
+	module.Dir = filepath.Join(root, "vendor/example.org/dep")
+	if immutablePackageSource(&packages.Package{Module: module}, filepath.Join(module.Dir, "dep.go"), "", cache) {
+		t.Fatal("vendor source trusted")
+	}
+	module.Replace = &packages.Module{Path: "../local", Dir: filepath.Join(root, "local")}
+	if immutablePackageSource(&packages.Package{Module: module}, filepath.Join(module.Replace.Dir, "dep.go"), "", cache) {
+		t.Fatal("local replacement trusted")
 	}
 }
