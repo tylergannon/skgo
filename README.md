@@ -391,13 +391,26 @@ ordinary generation, or `Prepare`, inspect `Prepared.Packages()` for your own
 analysis, then call `Prepared.Run` and `Prepared.Close`. The prepared graph
 shares the parsed remote/route source and its type information with the caller.
 
-Callers that already loaded packages can supply `NewPackageSnapshot` results
-through `Config.Packages`. Reuse requires matching source, build settings and
-the current generated overlays; incompatible snapshots fall back to normal
-loading. Polytype projections additionally require the `jsonschema` source
-view. Keep snapshots and their source immutable for the invocation, and obtain
-a fresh snapshot after edits. This is intended for tools that already need
-those packages; preloading solely for generation does not necessarily save work.
+Callers that already loaded plain domain packages can supply
+`NewPackageSnapshot` results through `Config.Packages` to reuse their type
+projections. For Polytype projections, load with
+`BuildFlags: []string{"-tags=jsonschema"}` and `grammar.LoadMode`, adding
+`packages.NeedDeps` when imported types also need source. Matching is
+conservative: source, load configuration, and flags must match exactly.
+Incompatible snapshots fall back to normal loading.
+
+Disk-loaded packages containing `skgo_gen.go`, including most route and locals
+packages, generally cannot be reused: generation replaces previously generated
+Go with intermediate overlays before analyzing current source. Use `Prepare`
+and its discovery graph when your tool needs to share route/remote analysis.
+`Config.OnPackageLoad` reports the fallback package patterns and configuration,
+so callers can see which loads remain; it does not report a mismatch reason.
+
+Keep snapshots and their source immutable for the invocation, and obtain fresh
+snapshots after edits. Installed toolchain and module-cache source must remain
+unchanged. Reuse is useful when the embedding tool already needs compatible
+packages; preloading solely for generation adds work, and the API does not
+guarantee a reduction in total generation time.
 
 ```sh
 just build      # go generate, vp build, go build → bin/myapp

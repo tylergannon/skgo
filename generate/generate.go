@@ -2,10 +2,17 @@
 //
 // Run and Check use the same implementation as the skgo CLI. Embedding callers
 // can hand off immutable go/packages bundles with NewPackageSnapshot and
-// Config.Packages. Reuse is checked against the current source view at every
-// phase; generated overlays, edited source, build tags, and load configuration
-// can require a fresh load. Use Config.LoadPackages to observe or customize
-// those remaining loads, while honoring the requested configuration.
+// Config.Packages. Plain domain packages can reuse their type projections.
+// Disk-loaded packages containing skgo_gen.go generally differ from the
+// generator's intermediate overlays and must be loaded again. Use Prepare
+// to share its route/remote discovery graph with the caller's own analysis.
+//
+// Reuse conservatively requires matching source, flags, and load configuration.
+// Polytype projections request BuildFlags: []string{"-tags=jsonschema"}.
+// Config.OnPackageLoad observes fallback patterns and configuration without
+// changing loading; it does not report mismatch reasons. Config.LoadPackages
+// replaces the loader and must honor the requested configuration. Preloading
+// solely for generation adds work; total generation time need not improve.
 package generate
 
 import (
@@ -43,6 +50,10 @@ func DeclaredConfig(cfg Config) (Config, error) { return gen.DeclaredConfig(cfg)
 // NewPackageSnapshot records an immutable, freshly loaded package bundle.
 // config must be the exact configuration that produced packages, and source
 // files must not change between loading and capture. Imports are included.
+// Plain domain packages are useful candidates. Packages containing generated
+// Go usually differ from the current generation phase's overlay and fall back
+// to normal loading. Installed toolchain and module-cache source must remain
+// unchanged for the invocation; mutable application source is checked.
 func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*PackageSnapshot, error) {
 	return gen.NewPackageSnapshot(config, roots...)
 }
