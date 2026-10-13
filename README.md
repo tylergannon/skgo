@@ -385,6 +385,20 @@ plugins installed to build or run.
 
 ## Build and deploy
 
+Go build tools can embed the same generator as the CLI through
+[`github.com/tylergannon/skgo/generate`](generate/generate.go). Call `Run` for
+ordinary generation, or `Prepare`, inspect `Prepared.Packages()` for your own
+analysis, then call `Prepared.Run` and `Prepared.Close`. The prepared graph
+shares the parsed remote/route source and its type information with the caller.
+
+Callers that already loaded packages can supply `NewPackageSnapshot` results
+through `Config.Packages`. Reuse requires matching source, build settings and
+the current generated overlays; incompatible snapshots fall back to normal
+loading. Polytype projections additionally require the `jsonschema` source
+view. Keep snapshots and their source immutable for the invocation, and obtain
+a fresh snapshot after edits. This is intended for tools that already need
+those packages; preloading solely for generation does not necessarily save work.
+
 ```sh
 just build      # go generate, vp build, go build → bin/myapp
 ./bin/myapp
