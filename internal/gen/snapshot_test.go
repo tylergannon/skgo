@@ -443,3 +443,55 @@ func TestSnapshotTrustsOnlyImmutableSourceDirectories(t *testing.T) {
 		t.Fatal("local replacement trusted")
 	}
 }
+
+func TestFreshAndMissingBindingsProjectTaggedDependency(t *testing.T) {
+	root, cfg := foreignFixture(t, `package data
+import("context";"github.com/tylergannon/skgo";"example.com/app/domain")
+func query(context.Context)(domain.Reply,error){return domain.Reply{},nil}
+var _=skgo.Query(query)
+`, map[string]string{
+		"app/domain/types.go": `package domain
+type Choice interface { choice() }
+type Text struct { Value string }
+func (Text) choice() {}
+type Reply struct { Choice Choice }
+`,
+		"app/domain/schema.go": `//go:build jsonschema
+
+package domain
+import "github.com/tylergannon/polytype"
+var _=polytype.SealedUnion[Choice]("kind")
+`,
+	})
+	// Fresh and deleted generated Go files both require a staged package view.
+	// The staging parser adds //line directives naming authored source paths.
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "app/web/src/lib/skgo/domain/types.ts")
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, text := range []string{`"kind": "Text"`, `"Value": string`} {
+		if !bytes.Contains(want, []byte(text)) {
+			t.Fatalf("missing projected tagged union %q: %s", text, want)
+		}
+	}
+	if err := os.Remove(filepath.Join(cfg.Out, "skgo_gen.go")); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(want, got) {
+		t.Fatal("tagged dependency projection changed after missing-output recovery")
+	}
+	if _, err := os.Stat(filepath.Join(cfg.Out, "skgo_gen.go")); err != nil {
+		t.Fatal(err)
+	}
+}
