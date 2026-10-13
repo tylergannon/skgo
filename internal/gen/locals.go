@@ -40,12 +40,7 @@ func prepareLocals(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	cleanup, err := preserveDependencyExports(load)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-	pkgs, err := packages.Load(load, cfg.LocalsPackage)
+	pkgs, err := cfg.loadPackages(load, cfg.LocalsPackage)
 	if err != nil {
 		return err
 	}
@@ -130,12 +125,7 @@ func validateHook(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	cleanup, err := preserveDependencyExports(load)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-	pkgs, err := packages.Load(load, cfg.HookPackage, paramsPath)
+	pkgs, err := cfg.loadPackages(load, cfg.HookPackage, paramsPath)
 	if err != nil {
 		return err
 	}

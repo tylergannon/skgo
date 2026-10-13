@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	gen "github.com/tylergannon/skgo/generate"
 	"github.com/tylergannon/skgo/internal/dev"
-	"github.com/tylergannon/skgo/internal/gen"
 )
 
 const devUsage = `usage: skgo dev [flags]
