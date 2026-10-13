@@ -112,7 +112,9 @@ func (p *Prepared) Packages() []*packages.Package {
 func (p *Prepared) Close() {
 	if p != nil && !p.closed {
 		p.closed = true
-		p.cfg.generation.close()
+		if p.cfg.generation != nil {
+			p.cfg.generation.close()
+		}
 	}
 }
 
@@ -210,7 +212,7 @@ func prepare(cfg Config) (prepared *Prepared, err error) {
 // Run publishes output from this prepared invocation. Call it at most once,
 // without changing source files after Prepare. Use a new Prepare after edits.
 func (p *Prepared) Run() error {
-	if p == nil || p.closed || p.ran {
+	if p == nil || p.cfg.generation == nil || p.closed || p.ran {
 		return fmt.Errorf("skgo: prepared generation is closed or already run")
 	}
 	p.ran = true

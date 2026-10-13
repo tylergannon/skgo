@@ -44,6 +44,9 @@ func (a *app) loadGrammar(dir string) (*grammar.Package, error) {
 				a.cfg.OnPackageLoad(cfg, []string{path})
 			}
 			if a.cfg.LoadPackages != nil {
+				// FromPackages cannot lazily load dependency source. A replacement
+				// loader must supply that source in this same type universe.
+				cfg.Mode |= packages.NeedDeps
 				roots, e := a.cfg.LoadPackages(cfg, path)
 				if e != nil {
 					return nil, e
