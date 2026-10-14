@@ -460,7 +460,7 @@ export function nodeTable(root, nodes) {
 	nodes.forEach((node, i) => {
 		if (node.universal) {
 			imports.push(`import * as U${i} from ${JSON.stringify(join(root, node.universal))};`);
-			loads.push(`U${i}.load`);
+			loads.push(`() => U${i}.load`);
 		} else {
 			loads.push('undefined');
 		}
@@ -469,9 +469,9 @@ export function nodeTable(root, nodes) {
 			return;
 		}
 		imports.push(`import N${i} from ${JSON.stringify(join(root, node.component))};`);
-		table.push(`N${i}`);
+		table.push(`() => N${i}`);
 	});
-	return `${imports.join('\n')}\nexport const components = [${table.join(', ')}];\nexport const universalLoads = [${loads.join(', ')}];\n`;
+	return `${imports.join('\n')}\nexport const componentLoaders = [${table.join(', ')}];\nexport const universalLoaders = [${loads.join(', ')}];\n`;
 }
 
 /**
@@ -613,26 +613,21 @@ function posix(p) {
  */
 function devNodeTable(manifest, root) {
 	if (!manifest) throw new Error('skgo: the live Kit manifest is not ready');
-	/** @type {string[]} */
-	const imports = [];
-	/** @type {string[]} */
-	const table = [];
+	const components = [];
 	const loads = [];
-	for (const [index, node] of manifest.nodes.entries()) {
-		if (node.universal) {
-			imports.push(`import * as U${index} from ${JSON.stringify(resolve(root, node.universal))};`);
-			loads.push(`U${index}.load`);
-		} else {
-			loads.push('undefined');
-		}
-		if (!node.component) {
-			table.push('undefined');
-			continue;
-		}
-		imports.push(`import N${index} from ${JSON.stringify(resolve(root, node.component))};`);
-		table.push(`N${index}`);
+	for (const node of manifest.nodes) {
+		// Kit's dev manifest supplies lazy component functions and resolves
+		// universal modules only when that node belongs to the requested page
+		// (exports/vite/dev/generate_manifest.js). Keep imports behind calls so
+		// bringing up the renderer cannot evaluate unrelated route modules.
+		components.push(node.component
+			? `() => import(${JSON.stringify(resolve(root, node.component))}).then(m => m.default)`
+			: 'undefined');
+		loads.push(node.universal
+			? `() => import(${JSON.stringify(resolve(root, node.universal))}).then(m => m.load)`
+			: 'undefined');
 	}
-	return `${imports.join('\n')}\nexport const components = [${table.join(', ')}];\nexport const universalLoads = [${loads.join(', ')}];\n`;
+	return `export const componentLoaders = [${components.join(', ')}];\nexport const universalLoaders = [${loads.join(', ')}];\n`;
 }
 
 /**
