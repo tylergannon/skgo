@@ -249,8 +249,10 @@ func main(){
  host:=httptest.NewServer(registry);defer host.Close()
  type result struct{Total,Initializations,Quantity int;Identity bool}
  var results []result
- // Keep every loaded mapping alive until this short-lived host exits. This
- // serial fixture does not claim that replacement mappings can be retired.
+ // Keep every CodeModule handle alive through host exit. The loader stores
+ // Go-owned metadata on these handles; this serial fixture does not claim
+ // that replacement mappings can be retired.
+ var loaded []*goloader.CodeModule
  original:=reflect.ValueOf(orders.Skgo_order).Pointer()
  check:=func(){
   response,err:=http.Get(host.URL+"/_app/remote/"+orderRemote.ID());if err!=nil{panic(err)}
@@ -269,6 +271,7 @@ func main(){
   if missing:=goloader.UnresolvedSymbols(linker,syms);len(missing)>0{panic(fmt.Sprint(missing))}
   runtime.LockOSThread();next,err:=goloader.Load(linker,syms);runtime.UnlockOSThread();if err!=nil{panic(err)}
   install,err:=orders.SkgoHotPrepare(next.Syms);if err!=nil{panic(err)};install()
+  loaded=append(loaded,next)
   runtime.GC();check()
  }
  // Mutate the authored package state after several swaps, then read it through
@@ -276,5 +279,6 @@ func main(){
  req,_:=http.NewRequest("POST",host.URL+"/_app/remote/"+quantityRemote.ID(),strings.NewReader("{\"payload\":\"WzNd\"}"));req.Header.Set("Content-Type","application/json");req.Header.Set("Origin","http://localhost")
  res,err:=http.DefaultClient.Do(req);if err!=nil{panic(err)};raw,_:=io.ReadAll(res.Body);res.Body.Close();if res.StatusCode!=200{panic(string(raw))};var command struct{Type,Data string};if err:=json.Unmarshal(raw,&command);err!=nil||command.Type!="result"{panic(string(raw))};if !strings.Contains(command.Data,orderRemote.ID()+"/"){panic("missing named-query refresh: "+string(raw))};check()
  if err:=json.NewEncoder(os.Stdout).Encode(results);err!=nil{panic(err)}
+ runtime.KeepAlive(loaded)
 }
 `
