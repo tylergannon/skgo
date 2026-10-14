@@ -36,6 +36,8 @@ github.com/tylergannon/polytype v1.6.0 h1:c+WwyX6aHRTczj3Sscvh6uE5ucPRPk5C8bgIqH
 github.com/tylergannon/polytype v1.6.0/go.mod h1:M0qJ9qMslFa1P+BXfjE8rbUkYNsoqXXEBoHboSDKTss=
 github.com/tylergannon/polytype v1.8.0 h1:4BGXyeJnlQSXAStD9c6UB9eCQxKM6pN1cT36exPcwmc=
 github.com/tylergannon/polytype v1.8.0/go.mod h1:M0qJ9qMslFa1P+BXfjE8rbUkYNsoqXXEBoHboSDKTss=
+github.com/tylergannon/polytype v1.9.0 h1:t+qhlALy3XBhm8QS2Eq8UohKKgumxP3h7YUjwVtEIVk=
+github.com/tylergannon/polytype v1.9.0/go.mod h1:go8LF2qxZ3cpymGOfA4/BfDodZL6446Aq4TmhLeoN6c=
 github.com/tylergannon/structtag v0.1.0 h1:Vn4ZEemGUtAfw9ddEtHQILKnIWqSWCSpciFTNPh1gcY=
 github.com/tylergannon/structtag v0.1.0/go.mod h1:Rjgg4hJfebaKNeyqoLh4n+zKhfVBdMyc7nBHIlQsVw0=
 golang.org/x/mod v0.42.0 h1:ICeL3t2L30ljSPHHxDnR4fqVcBt/zR2zJAb9juavmQg=

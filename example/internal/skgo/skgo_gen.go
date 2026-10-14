@@ -21,51 +21,51 @@ import (
 	pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th"
 	pkg_onzggl3sn52xizltf52g6zdpom "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom"
 	pkg_onzggl3sn52xizltf52g6zdpomxwoylumu "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu"
-	skgo5 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi"
-	skgo6 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu"
-	skgo7 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwe33voq"
+	skgo4 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi"
+	skgo5 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu"
+	skgo6 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwe33voq"
 	pkg_onzggl3sn52xizltf5qwg5djn5xhg "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
-	skgo9 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq"
-	skgo10 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq"
-	skgo11 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa"
-	skgo12 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq"
-	skgo13 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe"
-	skgo14 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq"
-	skgo15 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4"
-	skgo16 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi"
-	skgo17 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt"
-	skgo18 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3smvzhk3ttf5nxg3dvm5oq"
-	skgo19 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi"
-	skgo20 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm"
-	skgo21 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a"
-	skgo22 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2"
-	skgo23 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq"
-	skgo24 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t"
+	skgo8 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq"
+	skgo9 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq"
+	skgo10 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa"
+	skgo11 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq"
+	skgo12 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe"
+	skgo13 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq"
+	skgo14 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4"
+	skgo15 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi"
+	skgo16 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt"
+	skgo17 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3smvzhk3ttf5nxg3dvm5oq"
+	skgo18 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi"
+	skgo19 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm"
+	skgo20 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a"
+	skgo21 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2"
+	skgo22 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq"
+	skgo23 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t"
 	pkg_onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5"
-	skgo26 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu"
+	skgo25 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu"
 	pkg_onzggl3sn52xizltf5rgc5ddna "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna"
 	pkg_onzggl3sn52xizltf5rw63tumfrxi "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi"
 	pkg_onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5"
-	skgo30 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg"
+	skgo29 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg"
 	pkg_onzggl3sn52xizltf5sw24dupe "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe"
 	pkg_onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz"
 	pkg_onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za"
-	skgo34 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle"
+	skgo33 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle"
 	pkg_onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u"
-	skgo36 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa"
-	skgo37 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxmzlooqwwyylzn52xil23onswg5djn5xf2"
-	skgo38 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3a"
-	skgo39 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3c6zlomryg62looq"
-	skgo40 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y"
+	skgo35 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa"
+	skgo36 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxmzlooqwwyylzn52xil23onswg5djn5xf2"
+	skgo37 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3a"
+	skgo38 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3c6zlomryg62looq"
+	skgo39 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y"
 	pkg_onzggl3sn52xizltf5uxizlnomxvw2lelu "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu"
 	pkg_onzggl3sn52xizltf5wgs5tf "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf"
-	skgo43 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu"
-	skgo44 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2"
+	skgo42 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu"
+	skgo43 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2"
 	pkg_onzggl3sn52xizltf5xxa5djn5xgc3a "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
-	skgo46 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq"
-	skgo47 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a"
-	skgo48 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq"
-	skgo49 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq"
+	skgo45 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq"
+	skgo46 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a"
+	skgo47 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq"
+	skgo48 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq"
 	params "github.com/tylergannon/skgo/example/internal/skgo/params"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 	skgo50 "github.com/tylergannon/skgo/example/web/src/lib"
@@ -3612,7 +3612,7 @@ func remote_buildReceipt(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, skgo.BadRequest(err)
 	}
-	out, err := skgo7.Skgo_buildReceipt(ctx, in)
+	out, err := skgo6.Skgo_buildReceipt(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -3631,7 +3631,7 @@ func requestedArg_buildReceipt(arg any) (any, error) {
 
 // inputs_buildReceipt encodes declared build-time inputs for src/routes/about/about.remote.ts#buildReceipt.
 func inputs_buildReceipt(_ context.Context, _ skgo.Call) ([]any, error) {
-	values, err := skgo7.SkgoPrerenderInputs_buildReceipt()
+	values, err := skgo6.SkgoPrerenderInputs_buildReceipt()
 	if err != nil {
 		return nil, err
 	}
@@ -4166,7 +4166,7 @@ func remote_getRevision(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo38.Skgo_getRevision(ctx)
+	out, err := skgo37.Skgo_getRevision(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -4570,7 +4570,7 @@ func Remotes() []*skgo.Remote {
 			Kind:      skgo.KindPrerender,
 			Module:    "src/routes/about/about.remote.ts",
 			Name:      "buildReceipt",
-			Fn:        skgo7.Skgo_buildReceipt,
+			Fn:        skgo6.Skgo_buildReceipt,
 			Call:      remote_buildReceipt,
 			DecodeArg: requestedArg_buildReceipt,
 			Inputs:    inputs_buildReceipt,
@@ -4738,7 +4738,7 @@ func Remotes() []*skgo.Remote {
 			Kind:   skgo.KindQuery,
 			Module: "src/routes/go-dev/go-dev.remote.ts",
 			Name:   "getRevision",
-			Fn:     skgo38.Skgo_getRevision,
+			Fn:     skgo37.Skgo_getRevision,
 			Call:   remote_getRevision,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -4876,7 +4876,7 @@ func load_layout(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_about_page(ctx context.Context) (any, error) {
-	return skgo7.Skgo_pageLoad(skgo7.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo6.Skgo_pageLoad(skgo6.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_layout answers src/routes/account/+layout.server.ts.
@@ -4885,7 +4885,7 @@ func load_about_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_layout(ctx context.Context) (any, error) {
-	return skgo16.Skgo_layoutLoad(skgo16.SkgoLayoutRequestEvent(skgo.EventFrom(ctx)))
+	return skgo15.Skgo_layoutLoad(skgo15.SkgoLayoutRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_page answers src/routes/account/+page.server.ts.
@@ -4894,7 +4894,7 @@ func load_account_layout(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_page(ctx context.Context) (any, error) {
-	return skgo16.Skgo_pageLoad(skgo16.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo15.Skgo_pageLoad(skgo15.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_orders_page answers src/routes/account/orders/+page.server.ts.
@@ -4903,7 +4903,7 @@ func load_account_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_orders_page(ctx context.Context) (any, error) {
-	return skgo17.Skgo_pageLoad(skgo17.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo16.Skgo_pageLoad(skgo16.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_reruns_slug_page answers src/routes/account/reruns/[slug]/+page.server.ts.
@@ -4912,7 +4912,7 @@ func load_account_orders_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_reruns_slug_page(ctx context.Context) (any, error) {
-	return skgo18.Skgo_pageLoad(skgo18.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo17.Skgo_pageLoad(skgo17.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_account_statement_page answers src/routes/account/statement/+page.server.ts.
@@ -4921,7 +4921,7 @@ func load_account_reruns_slug_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_account_statement_page(ctx context.Context) (any, error) {
-	return skgo19.Skgo_pageLoad(skgo19.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo18.Skgo_pageLoad(skgo18.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_page answers src/routes/actions/+page.server.ts.
@@ -4939,7 +4939,7 @@ func load_actions_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_cross_receive_page(ctx context.Context) (any, error) {
-	return skgo9.Skgo_pageLoad(skgo9.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo8.Skgo_pageLoad(skgo8.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_default_saved_page answers src/routes/actions/default/saved/+page.server.ts.
@@ -4948,7 +4948,7 @@ func load_actions_cross_receive_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_default_saved_page(ctx context.Context) (any, error) {
-	return skgo11.Skgo_pageLoad(skgo11.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo10.Skgo_pageLoad(skgo10.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_options_noclient_page answers src/routes/actions/options/no-client/+page.server.ts.
@@ -4957,7 +4957,7 @@ func load_actions_default_saved_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_options_noclient_page(ctx context.Context) (any, error) {
-	return skgo12.Skgo_pageLoad(skgo12.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo11.Skgo_pageLoad(skgo11.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_options_nossr_page answers src/routes/actions/options/no-ssr/+page.server.ts.
@@ -4966,7 +4966,7 @@ func load_actions_options_noclient_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_options_nossr_page(ctx context.Context) (any, error) {
-	return skgo13.Skgo_pageLoad(skgo13.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo12.Skgo_pageLoad(skgo12.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_profiles_profile_page answers src/routes/actions/profiles/[profile]/+page.server.ts.
@@ -4975,7 +4975,7 @@ func load_actions_options_nossr_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_profiles_profile_page(ctx context.Context) (any, error) {
-	return skgo14.Skgo_pageLoad(skgo14.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo13.Skgo_pageLoad(skgo13.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_actions_signedin_page answers src/routes/actions/signed-in/+page.server.ts.
@@ -4984,7 +4984,7 @@ func load_actions_profiles_profile_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_actions_signedin_page(ctx context.Context) (any, error) {
-	return skgo15.Skgo_pageLoad(skgo15.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo14.Skgo_pageLoad(skgo14.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_destinations_page answers src/routes/destinations/+page.server.ts.
@@ -4993,7 +4993,7 @@ func load_actions_signedin_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_destinations_page(ctx context.Context) (any, error) {
-	return skgo30.Skgo_pageLoad(skgo30.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo29.Skgo_pageLoad(skgo29.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_empty_page answers src/routes/empty/+page.server.ts.
@@ -5011,7 +5011,7 @@ func load_empty_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_error_expected_page(ctx context.Context) (any, error) {
-	return skgo34.Skgo_pageLoad(skgo34.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo33.Skgo_pageLoad(skgo33.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_error_unexpected_page answers src/routes/error/unexpected/+page.server.ts.
@@ -5020,7 +5020,7 @@ func load_error_expected_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_error_unexpected_page(ctx context.Context) (any, error) {
-	return skgo36.Skgo_pageLoad(skgo36.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo35.Skgo_pageLoad(skgo35.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_eventlayout_section_layout answers src/routes/event-layout/[section]/+layout.server.ts.
@@ -5029,7 +5029,7 @@ func load_error_unexpected_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_eventlayout_section_layout(ctx context.Context) (any, error) {
-	return skgo37.Skgo_layoutLoad(skgo37.SkgoLayoutRequestEvent(skgo.EventFrom(ctx)))
+	return skgo36.Skgo_layoutLoad(skgo36.SkgoLayoutRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_godev_page answers src/routes/go-dev/+page.server.ts.
@@ -5038,7 +5038,7 @@ func load_eventlayout_section_layout(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_godev_page(ctx context.Context) (any, error) {
-	return skgo38.Skgo_pageLoad(skgo38.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo37.Skgo_pageLoad(skgo37.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_invoices_page answers src/routes/invoices/+page.server.ts.
@@ -5047,7 +5047,7 @@ func load_godev_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_invoices_page(ctx context.Context) (any, error) {
-	return skgo40.Skgo_pageLoad(skgo40.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo39.Skgo_pageLoad(skgo39.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_middleware_page answers src/routes/middleware/+page.server.ts.
@@ -5056,7 +5056,7 @@ func load_invoices_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_middleware_page(ctx context.Context) (any, error) {
-	return skgo43.Skgo_pageLoad(skgo43.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo42.Skgo_pageLoad(skgo42.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_middleware_slug_page answers src/routes/middleware/[slug]/+page.server.ts.
@@ -5065,7 +5065,7 @@ func load_middleware_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_middleware_slug_page(ctx context.Context) (any, error) {
-	return skgo44.Skgo_pageLoad(skgo44.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo43.Skgo_pageLoad(skgo43.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_prerender_slug_page answers src/routes/prerender/[slug]/+page.server.ts.
@@ -5074,7 +5074,7 @@ func load_middleware_slug_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_prerender_slug_page(ctx context.Context) (any, error) {
-	return skgo46.Skgo_load(skgo46.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo45.Skgo_load(skgo45.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_requestfetch_page answers src/routes/request-fetch/+page.server.ts.
@@ -5083,7 +5083,7 @@ func load_prerender_slug_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_requestfetch_page(ctx context.Context) (any, error) {
-	return skgo47.Skgo_pageLoad(skgo47.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo46.Skgo_pageLoad(skgo46.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_stream_page answers src/routes/stream/+page.server.ts.
@@ -5092,7 +5092,7 @@ func load_requestfetch_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_stream_page(ctx context.Context) (any, error) {
-	return skgo49.Skgo_pageLoad(skgo49.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo48.Skgo_pageLoad(skgo48.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_typeddependencies_aOrder_bOrder_ignored_page answers src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts.
@@ -5101,7 +5101,7 @@ func load_stream_page(ctx context.Context) (any, error) {
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_typeddependencies_aOrder_bOrder_ignored_page(ctx context.Context) (any, error) {
-	return skgo5.Skgo_load(skgo5.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo4.Skgo_load(skgo4.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_typedload_numberOrder_page answers src/routes/typed-load/[number=Order]/+page.server.ts.
@@ -5110,7 +5110,7 @@ func load_typeddependencies_aOrder_bOrder_ignored_page(ctx context.Context) (any
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_typedload_numberOrder_page(ctx context.Context) (any, error) {
-	return skgo6.Skgo_load(skgo6.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo5.Skgo_load(skgo5.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // Loads returns every server load declared in the app, ready to hand to
@@ -5119,33 +5119,33 @@ func Loads() []*skgo.ServerLoad {
 	return []*skgo.ServerLoad{
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/(marketing)/pricing/+page.server.ts", Run: load_marketing_pricing_page, Matchers: pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/+layout.server.ts", Run: load_layout, Matchers: pkg_onzggl3sn52xizlt.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/about/+page.server.ts", Run: load_about_page, Matchers: skgo7.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/+layout.server.ts", Run: load_account_layout, Matchers: skgo16.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/+page.server.ts", Run: load_account_page, Matchers: skgo16.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/orders/+page.server.ts", Run: load_account_orders_page, Matchers: skgo17.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/reruns/[slug]/+page.server.ts", Run: load_account_reruns_slug_page, Matchers: skgo18.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/statement/+page.server.ts", Run: load_account_statement_page, Matchers: skgo19.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/about/+page.server.ts", Run: load_about_page, Matchers: skgo6.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/+layout.server.ts", Run: load_account_layout, Matchers: skgo15.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/+page.server.ts", Run: load_account_page, Matchers: skgo15.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/orders/+page.server.ts", Run: load_account_orders_page, Matchers: skgo16.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/reruns/[slug]/+page.server.ts", Run: load_account_reruns_slug_page, Matchers: skgo17.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/statement/+page.server.ts", Run: load_account_statement_page, Matchers: skgo18.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/+page.server.ts", Run: load_actions_page, Matchers: pkg_onzggl3sn52xizltf5qwg5djn5xhg.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/cross/receive/+page.server.ts", Run: load_actions_cross_receive_page, Matchers: skgo9.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/default/saved/+page.server.ts", Run: load_actions_default_saved_page, Matchers: skgo11.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/options/no-client/+page.server.ts", Run: load_actions_options_noclient_page, Matchers: skgo12.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/options/no-ssr/+page.server.ts", Run: load_actions_options_nossr_page, Matchers: skgo13.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/profiles/[profile]/+page.server.ts", Run: load_actions_profiles_profile_page, Matchers: skgo14.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/signed-in/+page.server.ts", Run: load_actions_signedin_page, Matchers: skgo15.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/destinations/+page.server.ts", Run: load_destinations_page, Matchers: skgo30.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/cross/receive/+page.server.ts", Run: load_actions_cross_receive_page, Matchers: skgo8.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/default/saved/+page.server.ts", Run: load_actions_default_saved_page, Matchers: skgo10.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/options/no-client/+page.server.ts", Run: load_actions_options_noclient_page, Matchers: skgo11.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/options/no-ssr/+page.server.ts", Run: load_actions_options_nossr_page, Matchers: skgo12.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/profiles/[profile]/+page.server.ts", Run: load_actions_profiles_profile_page, Matchers: skgo13.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/signed-in/+page.server.ts", Run: load_actions_signedin_page, Matchers: skgo14.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/destinations/+page.server.ts", Run: load_destinations_page, Matchers: skgo29.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/empty/+page.server.ts", Run: load_empty_page, Matchers: pkg_onzggl3sn52xizltf5sw24dupe.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/expected/+page.server.ts", Run: load_error_expected_page, Matchers: skgo34.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/unexpected/+page.server.ts", Run: load_error_unexpected_page, Matchers: skgo36.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/event-layout/[section]/+layout.server.ts", Run: load_eventlayout_section_layout, Matchers: skgo37.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/go-dev/+page.server.ts", Run: load_godev_page, Matchers: skgo38.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/invoices/+page.server.ts", Run: load_invoices_page, Matchers: skgo40.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/middleware/+page.server.ts", Run: load_middleware_page, Matchers: skgo43.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/middleware/[slug]/+page.server.ts", Run: load_middleware_slug_page, Matchers: skgo44.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/prerender/[slug]/+page.server.ts", Run: load_prerender_slug_page, Matchers: skgo46.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/request-fetch/+page.server.ts", Run: load_requestfetch_page, Matchers: skgo47.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/stream/+page.server.ts", Run: load_stream_page, Matchers: skgo49.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts", Run: load_typeddependencies_aOrder_bOrder_ignored_page, Matchers: skgo5.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/typed-load/[number=Order]/+page.server.ts", Run: load_typedload_numberOrder_page, Matchers: skgo6.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/expected/+page.server.ts", Run: load_error_expected_page, Matchers: skgo33.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/unexpected/+page.server.ts", Run: load_error_unexpected_page, Matchers: skgo35.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/event-layout/[section]/+layout.server.ts", Run: load_eventlayout_section_layout, Matchers: skgo36.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/go-dev/+page.server.ts", Run: load_godev_page, Matchers: skgo37.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/invoices/+page.server.ts", Run: load_invoices_page, Matchers: skgo39.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/middleware/+page.server.ts", Run: load_middleware_page, Matchers: skgo42.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/middleware/[slug]/+page.server.ts", Run: load_middleware_slug_page, Matchers: skgo43.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/prerender/[slug]/+page.server.ts", Run: load_prerender_slug_page, Matchers: skgo45.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/request-fetch/+page.server.ts", Run: load_requestfetch_page, Matchers: skgo46.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/stream/+page.server.ts", Run: load_stream_page, Matchers: skgo48.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts", Run: load_typeddependencies_aOrder_bOrder_ignored_page, Matchers: skgo4.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/typed-load/[number=Order]/+page.server.ts", Run: load_typedload_numberOrder_page, Matchers: skgo5.SkgoParamMatchers()}),
 	}
 }
 
@@ -5186,60 +5186,60 @@ func action_actions_page_upload(ctx context.Context) (any, error) {
 }
 
 func action_actions_cross_receive_page_forbidden(ctx context.Context) (any, error) {
-	return nil, skgo9.Skgo_forbidden(ctx)
+	return nil, skgo8.Skgo_forbidden(ctx)
 }
 
 func action_actions_cross_receive_page_save(ctx context.Context) (any, error) {
-	return skgo9.Skgo_save(ctx)
+	return skgo8.Skgo_save(ctx)
 }
 
 func action_actions_cross_receive_page_signIn(ctx context.Context) (any, error) {
-	return nil, skgo9.Skgo_signIn(ctx)
+	return nil, skgo8.Skgo_signIn(ctx)
 }
 
 func action_actions_cross_receive_page_unavailable(ctx context.Context) (any, error) {
-	return nil, skgo9.Skgo_unavailable(ctx)
+	return nil, skgo8.Skgo_unavailable(ctx)
 }
 
 func action_actions_default_page_default(ctx context.Context) (any, error) {
-	return skgo10.Skgo_save(ctx)
+	return skgo9.Skgo_save(ctx)
 }
 
 func action_actions_options_noclient_page_forbidden(ctx context.Context) (any, error) {
-	return nil, skgo12.Skgo_forbidden(ctx)
+	return nil, skgo11.Skgo_forbidden(ctx)
 }
 
 func action_actions_options_noclient_page_save(ctx context.Context) (any, error) {
-	return skgo12.Skgo_save(ctx)
+	return skgo11.Skgo_save(ctx)
 }
 
 func action_actions_options_noclient_page_unavailable(ctx context.Context) (any, error) {
-	return nil, skgo12.Skgo_unavailable(ctx)
+	return nil, skgo11.Skgo_unavailable(ctx)
 }
 
 func action_actions_options_nossr_page_forbidden(ctx context.Context) (any, error) {
-	return nil, skgo13.Skgo_forbidden(ctx)
+	return nil, skgo12.Skgo_forbidden(ctx)
 }
 
 func action_actions_options_nossr_page_save(ctx context.Context) (any, error) {
-	return skgo13.Skgo_save(ctx)
+	return skgo12.Skgo_save(ctx)
 }
 
 func action_actions_options_nossr_page_signIn(ctx context.Context) (any, error) {
-	return nil, skgo13.Skgo_signIn(ctx)
+	return nil, skgo12.Skgo_signIn(ctx)
 }
 
 func action_actions_options_nossr_page_unavailable(ctx context.Context) (any, error) {
-	return nil, skgo13.Skgo_unavailable(ctx)
+	return nil, skgo12.Skgo_unavailable(ctx)
 }
 
 func action_actions_profiles_profile_page_save(ctx context.Context) (any, error) {
-	return skgo14.Skgo_save(ctx)
+	return skgo13.Skgo_save(ctx)
 }
 
-func action_godev_page_revise(ctx context.Context) (any, error) { return skgo38.Skgo_revise(ctx) }
+func action_godev_page_revise(ctx context.Context) (any, error) { return skgo37.Skgo_revise(ctx) }
 
-func action_middleware_page_default(ctx context.Context) (any, error) { return skgo43.Skgo_note(ctx) }
+func action_middleware_page_default(ctx context.Context) (any, error) { return skgo42.Skgo_note(ctx) }
 
 // Actions returns the Go handlers for classic page actions.
 func Actions() []*skgo.PageAction {
@@ -5276,19 +5276,19 @@ func Actions() []*skgo.PageAction {
 func Endpoints() []*skgo.Endpoint {
 	return []*skgo.Endpoint{
 		skgo.NewEndpoint("/actions", "POST", pkg_onzggl3sn52xizltf5qwg5djn5xhg.Skgo_endpointPost),
-		skgo.NewEndpoint("/actions/default", "GET", skgo10.Skgo_endpointGet),
-		skgo.NewEndpoint("/api/fatal", "GET", skgo20.Skgo_fail),
-		skgo.NewEndpoint("/api/replay-count", "GET", skgo21.Skgo_counts),
-		skgo.NewEndpoint("/api/replay/[kind]", "GET", skgo22.Skgo_get),
-		skgo.NewEndpoint("/api/replay/[kind]", "POST", skgo22.Skgo_post),
-		skgo.NewEndpoint("/api/request-fetch", "GET", skgo23.Skgo_fact),
-		skgo.NewEndpoint("/api/todos", "GET", skgo24.Skgo_list),
-		skgo.NewEndpoint("/api/todos", "POST", skgo24.Skgo_add),
-		skgo.NewEndpoint("/api/todos", "QUERY", skgo24.Skgo_search),
-		skgo.NewEndpoint("/async-ssr/control/[group]", "GET", skgo26.Skgo_status),
-		skgo.NewEndpoint("/async-ssr/control/[group]", "POST", skgo26.Skgo_release),
-		skgo.NewEndpoint("/go-dev/endpoint", "GET", skgo39.Skgo_get),
-		skgo.NewEndpoint("/shadow/[...rest]", "GET", skgo48.Skgo_get),
+		skgo.NewEndpoint("/actions/default", "GET", skgo9.Skgo_endpointGet),
+		skgo.NewEndpoint("/api/fatal", "GET", skgo19.Skgo_fail),
+		skgo.NewEndpoint("/api/replay-count", "GET", skgo20.Skgo_counts),
+		skgo.NewEndpoint("/api/replay/[kind]", "GET", skgo21.Skgo_get),
+		skgo.NewEndpoint("/api/replay/[kind]", "POST", skgo21.Skgo_post),
+		skgo.NewEndpoint("/api/request-fetch", "GET", skgo22.Skgo_fact),
+		skgo.NewEndpoint("/api/todos", "GET", skgo23.Skgo_list),
+		skgo.NewEndpoint("/api/todos", "POST", skgo23.Skgo_add),
+		skgo.NewEndpoint("/api/todos", "QUERY", skgo23.Skgo_search),
+		skgo.NewEndpoint("/async-ssr/control/[group]", "GET", skgo25.Skgo_status),
+		skgo.NewEndpoint("/async-ssr/control/[group]", "POST", skgo25.Skgo_release),
+		skgo.NewEndpoint("/go-dev/endpoint", "GET", skgo38.Skgo_get),
+		skgo.NewEndpoint("/shadow/[...rest]", "GET", skgo47.Skgo_get),
 	}
 }
 

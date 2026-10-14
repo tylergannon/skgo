@@ -64,6 +64,7 @@ func answerSource(literal string) string {
 }
 
 type session struct {
+	server *Server
 	t      *testing.T
 	root   string
 	base   string
@@ -140,6 +141,7 @@ func startSessionConfigured(t *testing.T, poll time.Duration, configure func(*Co
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.server = server
 	s.base = "http://" + addr.String()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel

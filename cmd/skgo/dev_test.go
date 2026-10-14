@@ -2,6 +2,10 @@ package main
 
 import (
 	"bytes"
+	"debug/dwarf"
+	"debug/elf"
+	"debug/macho"
+	"debug/pe"
 	"errors"
 	"io"
 	"net"
@@ -11,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -70,6 +75,8 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/__registry", func(w http.ResponseWriter, r *http.Request) {
+		exe, _ := os.Executable()
+		w.Header().Set("X-Fixture-Executable", exe)
 		fmt.Fprintf(w, "pid=%d actions=%d endpoints=%d", os.Getpid(), len(generated.Actions()), len(generated.Endpoints()))
 	})
 	mux.Handle("/", endpoints.Intercept(http.NotFoundHandler()))
@@ -490,7 +497,7 @@ func TestSkgoDevAdoptsAuthoredEndpointsAndActionsInOneLaunch(t *testing.T) {
 	base := "http://" + addr
 	log := &lockedBuffer{}
 	dev := exec.Command(skgoBin, "dev", "--root", app.root, "--web", "web", "--cmd", "./cmd",
-		"--listen", addr, "--origin", base, "--vite-url", vite.URL)
+		"--listen", addr, "--origin", base, "--vite-url", vite.URL, "--debug")
 	dev.Env = app.env
 	dev.Stdout, dev.Stderr = log, log
 	if err := dev.Start(); err != nil {
@@ -523,7 +530,8 @@ func TestSkgoDevAdoptsAuthoredEndpointsAndActionsInOneLaunch(t *testing.T) {
 	app.until("http://"+builtAddr+"/api/thing", endpoint(200, "Go endpoint revision one", "one"), "the built binary", log)
 
 	app.until(base+"/api/thing", endpoint(200, "Go endpoint revision one", "one"), "first build", log)
-	app.until(base+"/__registry", registry("actions=1 endpoints=1"), "first registry", log)
+	first := app.until(base+"/__registry", registry("actions=1 endpoints=1"), "first registry", log)
+	assertExecutableDWARF(t, first.header.Get("X-Fixture-Executable"))
 
 	// An endpoint's status, body and header change.
 	app.write("web/src/routes/api/thing/server.go", devEndpointTwo)
@@ -745,5 +753,42 @@ func TestSkgoDevListenFailureDoesNotStartViteChild(t *testing.T) {
 	}
 	if !strings.Contains(log.String(), "invalid-listen-address") {
 		t.Fatalf("missing listen diagnostic: %s", log.String())
+	}
+}
+
+// Read the actual child selected by the CLI, so dropping --debug wiring fails.
+func assertExecutableDWARF(t *testing.T, path string) {
+	t.Helper()
+	var data *dwarf.Data
+	var err error
+	switch runtime.GOOS {
+	case "darwin":
+		f, e := macho.Open(path)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer f.Close()
+		data, err = f.DWARF()
+	case "windows":
+		f, e := pe.Open(path)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer f.Close()
+		data, err = f.DWARF()
+	default:
+		f, e := elf.Open(path)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer f.Close()
+		data, err = f.DWARF()
+	}
+	if err != nil {
+		t.Fatalf("skgo dev --debug omitted DWARF: %v", err)
+	}
+	entry, err := data.Reader().Next()
+	if err != nil || entry == nil {
+		t.Fatalf("skgo dev --debug has empty DWARF: %v", err)
 	}
 }

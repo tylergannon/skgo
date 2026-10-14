@@ -60,7 +60,11 @@ type Config struct {
 	ViteCommand []string
 	// ViteEnv and Env append environment overrides for Vite and the app.
 	ViteEnv, Env []string
-	// BuildFlags are passed to go build before the package argument.
+	// Debug retains Go's default DWARF data for debuggers. Development builds
+	// otherwise omit DWARF to shorten linking; symbol tables remain intact.
+	Debug bool
+	// BuildFlags are passed to go build before the package argument. Explicit
+	// linker flags here or in GOFLAGS take precedence over the fast default.
 	BuildFlags []string
 	// StopBeforeStart is for applications holding exclusive resources such as
 	// a catalog lock. Compilation completes first, then the previous process
@@ -479,7 +483,11 @@ func (s *Server) build(ctx context.Context) *generation {
 	}
 	s.builds++
 	binary := filepath.Join(s.tmp, "app-"+strconv.Itoa(s.builds))
-	args := append([]string{"build", "-o", binary}, s.cfg.BuildFlags...)
+	flags, err := s.buildFlags(ctx)
+	if err != nil {
+		return s.failed(err.Error())
+	}
+	args := append([]string{"build", "-o", binary}, flags...)
 	args = append(args, s.cfg.Package)
 	compile := exec.CommandContext(ctx, "go", args...)
 	compile.Dir = s.cfg.Root

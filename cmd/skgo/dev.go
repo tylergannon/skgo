@@ -44,6 +44,7 @@ func devCommand(args []string) int {
 	origin := fs.String("origin", "", "public browser origin; defaults to http://--listen")
 	viteCmd := fs.String("vite", "node_modules/.bin/vp dev", "command that starts the Vite dev server in --web; --host, --port and --strictPort are appended")
 	vitePort := fs.Int("vite-port", 5173, "port Vite listens on; 0 picks a free one")
+	debug := fs.Bool("debug", false, "retain Go DWARF debug data for debuggers instead of faster linking")
 	viteURL := fs.String("vite-url", "", "attach to a Vite dev server that is already running instead of starting one")
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
@@ -111,7 +112,7 @@ func devCommand(args []string) int {
 	var worker gen.Worker
 	defer worker.Close()
 	server, err := dev.New(dev.Config{
-		Root: rootDir, Web: webDir, Out: outDir, Package: *pkg, Listen: *listen,
+		Root: rootDir, Web: webDir, Out: outDir, Package: *pkg, Listen: *listen, Debug: *debug,
 		Vite: vite, ViteCommand: viteCommand, ViteEnv: []string{"ORIGIN=" + *origin},
 		Args: func(private string) []string {
 			return []string{"-listen", private, "-proxy", vite.String(), "-origin", *origin}
