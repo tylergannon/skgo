@@ -13,6 +13,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"golang.org/x/tools/imports"
 )
 
 const generatedGoFile = "skgo_gen.go"
@@ -373,6 +375,23 @@ func finishGeneration(cfg Config) error {
 			}
 			g.files[path] = string(data)
 		}
+	}
+	// The published plan includes canonical import grouping. FormatOnly never
+	// resolves or changes imports, so complete generated source remains the
+	// sole input and warm replay needs no goimports subprocess.
+	for path, source := range cfg.generation.files {
+		if filepath.Ext(path) != ".go" {
+			continue
+		}
+		formatted, err := imports.Process(path, []byte(source), &imports.Options{Comments: true, TabIndent: true, TabWidth: 8, FormatOnly: true})
+		if err != nil {
+			return fmt.Errorf("skgo: formatting %s: %w", path, err)
+		}
+		cfg.generation.files[path] = string(formatted)
+	}
+	if cfg.cache != nil {
+		cfg.cache.capture(cfg)
+		return nil
 	}
 	return g.publish(cfg)
 }

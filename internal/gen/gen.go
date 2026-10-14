@@ -27,19 +27,39 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tylergannon/polytype/goload"
 	"golang.org/x/tools/go/packages"
 )
 
 // Config describes one app.
 type Config struct {
+	// CacheDir enables an optional persistent cache of successful generation
+	// plans for Run. Empty uses SKGO_CACHE_DIR when set, otherwise the user cache
+	// directory; "off" disables it.
+	// Prepare and Check always analyze source.
+	// Custom package loaders and snapshots bypass the disk cache. Local module
+	// source is captured before analysis. Installed toolchains, versioned module
+	// cache and Node packages must retain their installed immutable contents.
+	// External source views, vendoring and reached local cgo packages bypass
+	// persistence. Cache corruption or unavailable storage does not prevent Run.
+	CacheDir    string
+	cache       *generationCache
+	kitMetadata *kitRouteMetadata
+	sourceView  *generationSourceView
 	// Packages contains immutable, caller-loaded package snapshots. Incompatible
 	// snapshots are ignored and the current sources are loaded normally.
 	Packages []*PackageSnapshot
+	// Session shares compatible Go analysis within a caller-owned invocation.
+	// Persistent cache hits do not load anything through it. Keep source and
+	// returned compiler objects immutable while consumers use them. Nil uses
+	// the ordinary loader; supplied snapshots and LoadPackages take precedence.
+	Session *goload.Session
 	// LoadPackages optionally replaces the fallback loader. It receives the
 	// current logical source overlay before temporary staging. Nil uses the default loader.
 	LoadPackages PackageLoader
-	// OnPackageLoad observes fallback loads before temporary staging. It is not
-	// called for compatible snapshot hits and must not mutate its arguments.
+	// OnPackageLoad observes requests before session reuse or temporary staging.
+	// It is not called for compatible snapshot hits or persistent cache hits,
+	// and must not mutate its arguments. Session.Stats reports actual shared work.
 	OnPackageLoad func(*packages.Config, []string)
 
 	localsDir     string
@@ -120,6 +140,21 @@ func (p *Prepared) Close() {
 
 // Run scans, generates, and reports what it wrote.
 func Run(cfg Config) error {
+	if cfg.CacheDir == "" {
+		cfg.CacheDir = os.Getenv("SKGO_CACHE_DIR")
+	}
+	if cfg.CacheDir == "" {
+		if root, err := os.UserCacheDir(); err == nil {
+			cfg.CacheDir = filepath.Join(root, "skgo", "generate")
+		}
+	}
+	if cfg.CacheDir != "" && cfg.CacheDir != "off" && !cfg.ReadOnly && cfg.LoadPackages == nil && len(cfg.Packages) == 0 {
+		return runCached(cfg)
+	}
+	return runUncached(cfg)
+}
+
+func runUncached(cfg Config) error {
 	p, err := Prepare(cfg)
 	if err != nil {
 		return err
@@ -129,50 +164,11 @@ func Run(cfg Config) error {
 }
 
 func prepare(cfg Config) (prepared *Prepared, err error) {
-	if cfg.Logf == nil {
-		cfg.Logf = func(string, ...any) {}
-	}
-	web, err := filepath.Abs(cfg.Web)
+	cfg, err = normalizeConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
-	out, err := filepath.Abs(cfg.Out)
-	if err != nil {
-		return nil, err
-	}
-	cfg.Web, cfg.Out = web, out
-	if (cfg.SwiftOut == "") != (len(cfg.SwiftRemotes) == 0) {
-		return nil, fmt.Errorf("skgo: --swift-out and --swift-remote must be provided together")
-	}
-	if cfg.SwiftOut != "" {
-		cfg.SwiftOut, err = filepath.Abs(cfg.SwiftOut)
-		if err != nil {
-			return nil, err
-		}
-		if filepath.Ext(cfg.SwiftOut) != ".swift" {
-			return nil, fmt.Errorf("skgo: --swift-out must name a .swift file")
-		}
-	}
-	cfg.frontendFiles = map[string]struct{}{}
-	cfg.produced = map[string]struct{}{}
-	if cfg.Language == LanguageAuto {
-		cfg.Language = detectLanguage(web)
-	}
-	if cfg.Package == "" {
-		cfg.Package = filepath.Base(out)
-	}
-	if fi, err := os.Stat(filepath.Join(web, "src")); err != nil || !fi.IsDir() {
-		return nil, fmt.Errorf("skgo: %s does not look like a vite root: no src/ directory", web)
-	}
-
-	// The adapter kit builds the frontend with is an ordinary npm package the
-	// app installed, and it is the same contract as the stubs and the remote
-	// list below: what the adapter writes, this module's Go reads. Generating
-	// against one this module cannot read the output of is the mistake worth
-	// catching before a full frontend build rather than after it.
-	if err := checkInstalledAdapter(cfg); err != nil {
-		return nil, err
-	}
+	web := cfg.Web
 
 	files, err := findSourceFiles(web)
 	if err != nil {
@@ -207,6 +203,54 @@ func prepare(cfg Config) (prepared *Prepared, err error) {
 		}
 	}
 	return &Prepared{cfg: cfg, files: files, app: a}, nil
+}
+
+func normalizeConfig(cfg Config) (Config, error) {
+	if cfg.Logf == nil {
+		cfg.Logf = func(string, ...any) {}
+	}
+	web, err := filepath.Abs(cfg.Web)
+	if err != nil {
+		return cfg, err
+	}
+	out, err := filepath.Abs(cfg.Out)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Web, cfg.Out = web, out
+	if (cfg.SwiftOut == "") != (len(cfg.SwiftRemotes) == 0) {
+		return cfg, fmt.Errorf("skgo: --swift-out and --swift-remote must be provided together")
+	}
+	if cfg.SwiftOut != "" {
+		cfg.SwiftOut, err = filepath.Abs(cfg.SwiftOut)
+		if err != nil {
+			return cfg, err
+		}
+		if filepath.Ext(cfg.SwiftOut) != ".swift" {
+			return cfg, fmt.Errorf("skgo: --swift-out must name a .swift file")
+		}
+	}
+	cfg.frontendFiles = map[string]struct{}{}
+	cfg.produced = map[string]struct{}{}
+	if cfg.Language == LanguageAuto {
+		cfg.Language = detectLanguage(web)
+	}
+	if cfg.Package == "" {
+		cfg.Package = filepath.Base(out)
+	}
+	if fi, err := os.Stat(filepath.Join(web, "src")); err != nil || !fi.IsDir() {
+		return cfg, fmt.Errorf("skgo: %s does not look like a vite root: no src/ directory", web)
+	}
+
+	// The adapter kit builds the frontend with is an ordinary npm package the
+	// app installed, and it is the same contract as the stubs and the remote
+	// list below: what the adapter writes, this module's Go reads. Generating
+	// against one this module cannot read the output of is the mistake worth
+	// catching before a full frontend build rather than after it.
+	if err := checkInstalledAdapter(cfg); err != nil {
+		return cfg, err
+	}
+	return cfg, nil
 }
 
 // Run publishes output from this prepared invocation. Call it at most once,

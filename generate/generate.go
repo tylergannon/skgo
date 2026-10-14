@@ -1,7 +1,13 @@
 // Package generate exposes SKGO's application generator to Go build tools.
 //
-// Run and Check use the same implementation as the skgo CLI. Embedding callers
-// can hand off immutable go/packages bundles with NewPackageSnapshot and
+// Run uses a persistent generation-plan cache by default, like the skgo CLI.
+// Config.CacheDir selects its directory; "off" disables caching. Prepare and
+// Check always analyze source. See Config for the supported cache boundary.
+// Config.Session accepts an invocation-owned polytype/goload session for
+// compatible analysis reuse on misses. Captured source bytes are supplied
+// directly to its parser; private and original source views remain distinct.
+// Persistent hits leave the session unused.
+// Embedding callers can hand off immutable go/packages bundles with NewPackageSnapshot and
 // Config.Packages. Plain domain packages can reuse their type projections.
 // Disk-loaded packages containing skgo_gen.go generally differ from the
 // generator's intermediate overlays and must be loaded again. Use Prepare
@@ -9,8 +15,8 @@
 //
 // Reuse conservatively requires matching source, flags, and load configuration.
 // Polytype projections request BuildFlags: []string{"-tags=jsonschema"}.
-// Config.OnPackageLoad observes fallback patterns and configuration without
-// changing loading; it does not report mismatch reasons. Config.LoadPackages
+// Config.OnPackageLoad observes requested patterns and configuration before
+// session reuse, without changing loading; it does not report mismatch reasons. Config.LoadPackages
 // replaces the loader and must honor the requested configuration. Preloading
 // solely for generation adds work; total generation time need not improve.
 package generate

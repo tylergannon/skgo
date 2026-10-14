@@ -3,6 +3,7 @@ package example_test
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -24,6 +25,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	os.Setenv("SKGO_CACHE_DIR", filepath.Join(dir, "generation-cache"))
 	packageTemp = dir
 	code := m.Run()
 	os.RemoveAll(dir)

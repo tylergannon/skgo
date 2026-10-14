@@ -19,6 +19,9 @@ func (a *app) loadGrammar(dir string) (*grammar.Package, error) {
 		loaded, err = grammar.Load(dir)
 	} else {
 		cfg := &packages.Config{Dir: a.hostDir}
+		if a.cfg.sourceView != nil {
+			cfg.Env = a.cfg.sourceView.env
+		}
 		cfg.Overlay, err = a.cfg.generation.overlay()
 		if err != nil {
 			return nil, err
@@ -55,6 +58,8 @@ func (a *app) loadGrammar(dir string) (*grammar.Package, error) {
 					return nil, fmt.Errorf("skgo: cannot load projection package %s", path)
 				}
 				loaded, err = grammar.FromPackages(cfg, roots[0])
+			} else if a.cfg.Session != nil {
+				loaded, err = grammar.LoadWithLoader(cfg, a.cfg.loadSession, path)
 			} else {
 				cleanup, e := preserveDependencyExports(cfg)
 				if e != nil {
@@ -67,6 +72,9 @@ func (a *app) loadGrammar(dir string) (*grammar.Package, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	if a.cfg.sourceView != nil {
+		a.cfg.sourceView.noteTypes(loaded.Types())
 	}
 	if a.grammarPackages == nil {
 		a.grammarPackages = map[string]*grammar.Package{}

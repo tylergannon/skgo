@@ -41,17 +41,13 @@ jobs:
           working_directory: example
           export_path: false
 
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 12.9.1
 
       - uses: extractions/setup-just@v4
 
       - name: Install the example and browser
         run: |
           just install
-          cd example/e2e
-          pnpm exec playwright install --with-deps chromium
+          mise -C example/e2e exec -- vp exec playwright install --with-deps chromium
 
       - name: Build the candidate
         run: just build

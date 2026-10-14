@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/tylergannon/skgo/internal/toolchain"
 )
 
 var packageFiles = []string{
@@ -83,18 +85,19 @@ func TestAddonKeepsTheGoEmbedPlaceholderTrackable(t *testing.T) {
 
 func pack(t *testing.T) map[string][]byte {
 	t.Helper()
-	if _, err := exec.LookPath("pnpm"); err != nil {
-		t.Fatalf("pnpm is not on PATH, so this test cannot run: %v", err)
+	if _, err := exec.LookPath("vp"); err != nil {
+		t.Fatalf("vp is not on PATH, so this test cannot run: %v", err)
 	}
 	dest := t.TempDir()
-	cmd := exec.Command("pnpm", "pack", "--pack-destination", dest)
+	cmd := exec.Command("vp", "pm", "pack", "--pack-destination", dest)
+	cmd.Env = append(os.Environ(), "VP_PACKAGE_MANAGER=pnpm@"+toolchain.PNPM, "VP_PNPM_VERSION="+toolchain.PNPM)
 	cmd.Dir = "."
 	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("pnpm pack: %v\n%s", err, out)
+		t.Fatalf("vp pm pack: %v\n%s", err, out)
 	}
 	entries, err := filepath.Glob(filepath.Join(dest, "*.tgz"))
 	if err != nil || len(entries) != 1 {
-		t.Fatalf("pnpm pack wrote %v (%v); want one tarball", entries, err)
+		t.Fatalf("vp pm pack wrote %v (%v); want one tarball", entries, err)
 	}
 	return untar(t, entries[0])
 }

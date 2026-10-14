@@ -302,6 +302,9 @@ func (a *app) dirOf(pkg *types.Package) (dir, loadDir string, err error) {
 	}
 	cmd := exec.Command("go", "list", "-f", "{{.Dir}}", pkg.Path())
 	cmd.Dir = a.hostDir
+	if a.cfg.sourceView != nil {
+		cmd.Env = a.cfg.sourceView.env
+	}
 	cmd.Stderr = os.Stderr
 	raw, err := cmd.Output()
 	if err != nil {

@@ -198,6 +198,7 @@ func generate(args []string) {
 	localsType := fs.String("locals-type", "Locals", "application locals named struct")
 	hookPackage := fs.String("hook-package", "", "optional request hook Go import path")
 	hookSymbol := fs.String("hook-symbol", "Handle", "selected request hook symbol")
+	cacheDir := fs.String("cache-dir", "", "generation cache directory; defaults to the user cache; off disables caching")
 	quiet := fs.Bool("quiet", false, "do not list the files written")
 	swiftOut := fs.String("swift-out", "", "generated Swift source file")
 	var swiftRemotes []string
@@ -208,6 +209,7 @@ func generate(args []string) {
 	_ = fs.Parse(args)
 
 	cfg := gen.Config{Web: *web, Out: *out, Package: *pkg, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol}
+	cfg.CacheDir = *cacheDir
 	cfg.SwiftOut, cfg.SwiftRemotes = *swiftOut, swiftRemotes
 	if !*quiet {
 		cfg.Logf = logf

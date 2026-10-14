@@ -52,6 +52,8 @@ jobs:
     if: needs.version.outputs.version != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     permissions:
       contents: read
       # npm provenance: the attestation is signed with this release.yml
@@ -70,16 +72,15 @@ jobs:
           node-version: 24.21.0
           registry-url: https://registry.npmjs.org
 
-      # The adapter identity tests pack the exact package that will be
-      # published. They refuse to skip when pnpm is absent, so the release
-      # runner needs the same pinned package manager as the browser suite.
-      - uses: pnpm/action-setup@v6
+      # Use the repository's Node/VP pins; VP resolves the declared manager.
+      - uses: jdx/mise-action@v4
         with:
-          version: 12.9.1
+          working_directory: example
+          export_path: true
 
       - name: Install example dependencies for adapter tests
         working-directory: example/web
-        run: pnpm install --frozen-lockfile
+        run: vp install --frozen-lockfile
 
       # The adapter the app installs and the adapter the Go binary embeds are
       # the same files, and every build is refused at startup if they are not.
@@ -127,6 +128,8 @@ jobs:
     if: needs.version.outputs.version != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     permissions:
       contents: read
       id-token: write
@@ -143,17 +146,18 @@ jobs:
           node-version: 24.21.0
           registry-url: https://registry.npmjs.org
 
-      - uses: pnpm/action-setup@v6
+      - uses: jdx/mise-action@v4
         with:
-          version: 12.9.1
+          working_directory: example
+          export_path: true
 
       - name: Install the add-on's build-only dependencies
         working-directory: internal/sv
-        run: pnpm install --frozen-lockfile
+        run: vp install --frozen-lockfile
 
       - name: Build and verify the published add-on
         working-directory: internal/sv
-        run: pnpm run build
+        run: vp run build
 
       - name: The tarball is the self-contained native add-on
         run: go test ./internal/sv/

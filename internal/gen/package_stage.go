@@ -4,16 +4,19 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
+	"go/build"
 	"go/parser"
 	"go/scanner"
 	"go/token"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/tools/go/packages"
@@ -37,6 +40,66 @@ func withinDir(root, path string) (string, bool) {
 	rel, err := filepath.Rel(root, path)
 	return rel, err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
+
+// stagedEmbedPatterns uses Go's directive parser, including its quoted and
+// multiple-pattern syntax. All source variants are considered conservatively;
+// the actual package load remains responsible for build tags and diagnostics.
+func stagedEmbedPatterns(root, rel string, overlay map[string][]byte) []string {
+	dir := filepath.Join(root, rel)
+	ctx := build.Default
+	ctx.UseAllFiles = true
+	ctx.OpenFile = func(path string) (io.ReadCloser, error) {
+		if name, ok := withinDir(root, path); ok {
+			if source, found := overlay[name]; found {
+				return io.NopCloser(bytes.NewReader(source)), nil
+			}
+		}
+		return os.Open(path)
+	}
+	ctx.ReadDir = func(path string) ([]fs.FileInfo, error) {
+		entries, err := os.ReadDir(path)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		files := map[string]fs.FileInfo{}
+		for _, entry := range entries {
+			info, err := entry.Info()
+			if err != nil {
+				return nil, err
+			}
+			files[entry.Name()] = info
+		}
+		for name, source := range overlay {
+			if filepath.Dir(name) == rel {
+				files[filepath.Base(name)] = overlayFileInfo{filepath.Base(name), int64(len(source))}
+			}
+		}
+		var result []fs.FileInfo
+		for _, info := range files {
+			result = append(result, info)
+		}
+		sort.Slice(result, func(i, j int) bool { return result[i].Name() < result[j].Name() })
+		return result, nil
+	}
+	// Keep diagnostics with the real load, which has the selected build tags.
+	pkg, _ := ctx.ImportDir(dir, 0)
+	if pkg == nil {
+		return nil
+	}
+	return pkg.EmbedPatterns
+}
+
+type overlayFileInfo struct {
+	name string
+	size int64
+}
+
+func (f overlayFileInfo) Name() string       { return f.name }
+func (f overlayFileInfo) Size() int64        { return f.size }
+func (f overlayFileInfo) Mode() fs.FileMode  { return 0600 }
+func (f overlayFileInfo) ModTime() time.Time { return time.Time{} }
+func (f overlayFileInfo) IsDir() bool        { return false }
+func (f overlayFileInfo) Sys() any           { return nil }
 
 // stagePackageOverlay makes only the branches containing overlays real; other
 // entries are read through symlinks. Dependency modules stay at their original
@@ -79,6 +142,7 @@ func stagePackageOverlay(cfg *packages.Config) (func(), error) {
 	cleanup := func() { os.RemoveAll(view) }
 	fail := func(err error) (func(), error) { cleanup(); return noop, err }
 	populated := map[string]bool{}
+	embeddedTrees := map[string]bool{}
 	var populate func(string, bool) error
 	populate = func(rel string, embedded bool) error {
 		if populated[rel] {
@@ -93,30 +157,32 @@ func stagePackageOverlay(cfg *packages.Config) (func(), error) {
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
-		// The go command forbids symlinks in embedded assets. A package with
-		// embed directives needs regular sibling files and asset directories.
-		for _, entry := range entries {
-			if strings.HasSuffix(entry.Name(), ".go") {
-				raw, err := os.ReadFile(filepath.Join(physicalRoot, rel, entry.Name()))
-				if err != nil {
-					return err
+		if !embedded {
+			patterns := stagedEmbedPatterns(physicalRoot, rel, overlay)
+			for _, pattern := range patterns {
+				// Materialize candidates, not a second implementation of Go's
+				// embed resolver. Go still applies hidden-file/module exclusions
+				// and diagnoses invalid patterns or matches. In particular, a
+				// matched directory must include hidden descendants for all:.
+				pattern = strings.TrimPrefix(pattern, "all:")
+				matches, _ := fs.Glob(os.DirFS(filepath.Join(physicalRoot, rel)), pattern)
+				for _, match := range matches {
+					child := filepath.Join(rel, filepath.FromSlash(match))
+					embeddedTrees[child] = true
+					for parent := filepath.Dir(child); !branches[parent]; parent = filepath.Dir(parent) {
+						branches[parent] = true
+					}
 				}
-				embedded = embedded || bytes.Contains(raw, []byte("//go:embed"))
-			}
-		}
-		for path, raw := range overlay {
-			if filepath.Dir(path) == rel {
-				embedded = embedded || bytes.Contains(raw, []byte("//go:embed"))
 			}
 		}
 		for _, entry := range entries {
 			child := filepath.Join(rel, entry.Name())
-			if _, replaced := overlay[child]; replaced || branches[child] && !embedded {
+			if _, replaced := overlay[child]; replaced {
 				continue
 			}
 			source, dest := filepath.Join(physicalRoot, child), filepath.Join(view, child)
-			if entry.IsDir() && embedded {
-				if err := populate(child, true); err != nil {
+			if entry.IsDir() && (embedded || embeddedTrees[child] || branches[child]) {
+				if err := populate(child, embedded || embeddedTrees[child]); err != nil {
 					return err
 				}
 				continue
@@ -237,6 +303,13 @@ func stagePackageOverlay(cfg *packages.Config) (func(), error) {
 			}
 			uses = append(uses, &modfile.Use{Path: path, ModulePath: use.ModulePath})
 		}
+		// SetUse appends unchanged paths too; remove old directives first.
+		for _, old := range workspace.Use {
+			if err := workspace.DropUse(old.Path); err != nil {
+				return fail(err)
+			}
+		}
+		workspace.Cleanup()
 		workspace.SetUse(uses)
 		workspace.Cleanup()
 		for _, replace := range workspace.Replace {

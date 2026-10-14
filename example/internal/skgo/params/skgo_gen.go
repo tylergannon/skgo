@@ -4,11 +4,12 @@ package params
 
 import (
 	fmt "fmt"
+	http "net/http"
+	reflect "reflect"
+
 	skgo "github.com/tylergannon/skgo"
 	appstate "github.com/tylergannon/skgo/example/internal/app"
 	hooks "github.com/tylergannon/skgo/example/web/src"
-	http "net/http"
-	reflect "reflect"
 )
 
 type Params struct {
