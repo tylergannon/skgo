@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tylergannon/polytype/goload"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -399,16 +400,22 @@ func (cfg Config) loadPackages(load *packages.Config, patterns ...string) ([]*pa
 	if cfg.LoadPackages != nil {
 		return cfg.LoadPackages(load, patterns...)
 	}
-	cleanup, err := preserveDependencyExports(load)
-	if err != nil {
-		return nil, err
-	}
-	if cfg.generation != nil {
-		cfg.generation.cleanups = append(cfg.generation.cleanups, cleanup)
+	var loaded []*packages.Package
+	var err error
+	if cfg.Session != nil {
+		cfg.sessionSources(load)
+		loaded, err = cfg.loadShared(load, func(request *packages.Config, patterns ...string) ([]*packages.Package, error) {
+			work := *request
+			work.BuildFlags = append([]string(nil), request.BuildFlags...)
+			work.Overlay = cfg.ordinarySources(request.Overlay)
+			result, err := cfg.loadOrdinary(&work, patterns...)
+			// Existing ownership checks use the staging view's physical dir.
+			load.Dir = work.Dir
+			return result, err
+		}, patterns...)
 	} else {
-		defer cleanup()
+		loaded, err = cfg.loadOrdinary(load, patterns...)
 	}
-	loaded, err := packages.Load(load, patterns...)
 	if cfg.sourceView != nil {
 		packages.Visit(loaded, nil, func(p *packages.Package) {
 			if cfg.sourceView.cgoPackages[p.PkgPath] {
@@ -418,4 +425,69 @@ func (cfg Config) loadPackages(load *packages.Config, patterns ...string) ([]*pa
 		})
 	}
 	return loaded, err
+}
+
+// Preserve Go's dependency exports even when a session cannot serve a request.
+// Passing a raw Overlay to packages.Load would recheck the entire dependency
+// graph; the established loader also handles missing generated files.
+func (cfg Config) loadOrdinary(load *packages.Config, patterns ...string) ([]*packages.Package, error) {
+	cleanup, err := preserveDependencyExports(load)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.generation != nil {
+		cfg.generation.cleanups = append(cfg.generation.cleanups, cleanup)
+	} else {
+		defer cleanup()
+	}
+	return packages.Load(load, patterns...)
+}
+
+func (cfg Config) loadSession(load *packages.Config, patterns ...string) ([]*packages.Package, error) {
+	return cfg.loadShared(load, func(request *packages.Config, patterns ...string) ([]*packages.Package, error) {
+		work := *request
+		work.BuildFlags = append([]string(nil), request.BuildFlags...)
+		work.Overlay = cfg.ordinarySources(request.Overlay)
+		return cfg.loadOrdinary(&work, patterns...)
+	}, patterns...)
+}
+
+// The session parser can consume bytes already captured for persistence. The
+// current generation phase wins over the original captured source; generated
+// declarations are synthesized anew and never authoritative cache inputs.
+func (cfg Config) sessionSources(load *packages.Config) {
+	if cfg.sourceView == nil || len(cfg.sourceView.sources) == 0 {
+		return
+	}
+	overlay := make(map[string][]byte, len(cfg.sourceView.sources)+len(load.Overlay))
+	for path, source := range cfg.sourceView.sources {
+		overlay[path] = source
+	}
+	for path, source := range load.Overlay {
+		overlay[path] = source
+	}
+	load.Overlay = overlay
+}
+
+// Captured source is already materialized in generator-owned private modules.
+// The ordinary loader needs only phase overrides: carrying unchanged captures
+// across module boundaries prevents its missing-file staging and makes x/tools
+// reparse the entire dependency graph. This relies on private-view ownership,
+// never an equality check against mutable authored files.
+func (cfg Config) ordinarySources(overlay map[string][]byte) map[string][]byte {
+	if cfg.sourceView == nil {
+		return overlay
+	}
+	result := make(map[string][]byte, len(overlay))
+	for path, source := range overlay {
+		if captured, ok := cfg.sourceView.sources[path]; ok && bytes.Equal(captured, source) {
+			continue
+		}
+		result[path] = source
+	}
+	return result
+}
+
+func (cfg Config) loadShared(load *packages.Config, fallback goload.LoadFunc, patterns ...string) ([]*packages.Package, error) {
+	return cfg.Session.LoadWithFallback(load, fallback, patterns...)
 }

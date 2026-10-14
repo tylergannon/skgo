@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tylergannon/polytype/goload"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -48,11 +49,17 @@ type Config struct {
 	// Packages contains immutable, caller-loaded package snapshots. Incompatible
 	// snapshots are ignored and the current sources are loaded normally.
 	Packages []*PackageSnapshot
+	// Session shares compatible Go analysis within a caller-owned invocation.
+	// Persistent cache hits do not load anything through it. Keep source and
+	// returned compiler objects immutable while consumers use them. Nil uses
+	// the ordinary loader; supplied snapshots and LoadPackages take precedence.
+	Session *goload.Session
 	// LoadPackages optionally replaces the fallback loader. It receives the
 	// current logical source overlay before temporary staging. Nil uses the default loader.
 	LoadPackages PackageLoader
-	// OnPackageLoad observes fallback loads before temporary staging. It is not
-	// called for compatible snapshot hits and must not mutate its arguments.
+	// OnPackageLoad observes requests before session reuse or temporary staging.
+	// It is not called for compatible snapshot hits or persistent cache hits,
+	// and must not mutate its arguments. Session.Stats reports actual shared work.
 	OnPackageLoad func(*packages.Config, []string)
 
 	localsDir     string

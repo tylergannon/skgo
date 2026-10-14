@@ -27,6 +27,7 @@ import (
 // No file in the source view is hard-linked to an authored file.
 type generationSourceView struct {
 	env         []string
+	sources     map[string][]byte // captured Go bytes at private source paths
 	roots       map[string]string // original module directory -> private directory
 	cgoPackages map[string]bool
 	cgoUsed     bool
@@ -273,6 +274,9 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 						return err
 					}
 					if d.IsDir() {
+						// Go rejects a matched empty embed directory. Preserve
+						// membership separately from missing-file markers.
+						files[path+string(filepath.Separator)] = nil
 						return nil
 					}
 					return read(path)
@@ -389,6 +393,9 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 	cleanup := func() { _ = os.RemoveAll(root) }
 	fail := func(err error) (Config, func(), error) { cleanup(); return cfg, func() {}, err }
 	view := &generationSourceView{roots: map[string]string{}, cgoPackages: map[string]bool{}}
+	if cfg.Session != nil {
+		view.sources = make(map[string][]byte)
+	}
 	for path, data := range files {
 		if !strings.HasSuffix(path, ".go") || data == nil {
 			continue
@@ -438,6 +445,14 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 	}
 	for path, data := range files {
 		target := view.mapPath(path, true)
+		if strings.HasSuffix(path, string(filepath.Separator)) {
+			if target != path {
+				if err := os.MkdirAll(target, 0700); err != nil {
+					return fail(err)
+				}
+			}
+			continue
+		}
 		if target == path || data == nil || strings.Contains(path, string(filepath.Separator)+"node_modules"+string(filepath.Separator)) {
 			continue
 		}
@@ -446,6 +461,9 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 		}
 		if err := os.WriteFile(target, data, 0600); err != nil {
 			return fail(err)
+		}
+		if view.sources != nil && strings.HasSuffix(target, ".go") {
+			view.sources[target] = data
 		}
 	}
 	for _, m := range s.Modules {

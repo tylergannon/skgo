@@ -58,6 +58,9 @@ func (a *app) loadGrammar(dir string) (*grammar.Package, error) {
 					return nil, fmt.Errorf("skgo: cannot load projection package %s", path)
 				}
 				loaded, err = grammar.FromPackages(cfg, roots[0])
+			} else if a.cfg.Session != nil {
+				a.cfg.sessionSources(cfg)
+				loaded, err = grammar.LoadWithLoader(cfg, a.cfg.loadSession, path)
 			} else {
 				cleanup, e := preserveDependencyExports(cfg)
 				if e != nil {

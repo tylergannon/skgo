@@ -20,3 +20,7 @@ trap: removing pnpm/action-setup alone leaves package-tarball tests depending on
   those builds: CI inherited a cache fixture's temporary `GOWORK`. Tests that
   need process-level configuration run in an isolated test process; fresh Run
   probes preserve that intended workspace rather than TestMain resetting it.
+
+trap: passing captured source from local replacement modules into the ordinary missing-file staging fallback makes its host-only staging inapplicable. Remove only unchanged bytes already materialized in the owned private view before fallback; never compare against live authored files. The regression requires literal Restored=17 and exactly two root parses, not 1,093 dependency parses.
+
+trap: Go rejects matched empty embed directories. A files-only capture omits that input and can replay a stale success; retain directory membership in both the fingerprint and private materialization.

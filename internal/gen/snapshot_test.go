@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tylergannon/polytype/goload"
 	"github.com/tylergannon/polytype/grammar"
 	"golang.org/x/tools/go/packages"
 )
@@ -445,6 +446,14 @@ func TestSnapshotTrustsOnlyImmutableSourceDirectories(t *testing.T) {
 }
 
 func TestFreshAndMissingBindingsProjectTaggedDependency(t *testing.T) {
+	for _, shared := range []bool{false, true} {
+		t.Run(fmt.Sprintf("session=%t", shared), func(t *testing.T) {
+			testFreshAndMissingBindingsProjectTaggedDependency(t, shared)
+		})
+	}
+}
+
+func testFreshAndMissingBindingsProjectTaggedDependency(t *testing.T, shared bool) {
 	root, cfg := foreignFixture(t, `package data
 import("context";"github.com/tylergannon/skgo";"example.com/app/domain")
 func query(context.Context)(domain.Reply,error){return domain.Reply{},nil}
@@ -463,8 +472,12 @@ import "github.com/tylergannon/polytype"
 var _=polytype.SealedUnion[Choice]("kind")
 `,
 	})
-	// Fresh and deleted generated Go files both require a staged package view.
-	// The staging parser adds //line directives naming authored source paths.
+	cfg.CacheDir = "off"
+	if shared {
+		cfg.Session = new(goload.Session)
+	}
+	// Fresh and deleted generated Go files must be rebuilt from authored input.
+	// The ordinary loader stages paths; the session retains logical filenames.
 	if err := Run(cfg); err != nil {
 		t.Fatal(err)
 	}
