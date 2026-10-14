@@ -1,0 +1,20 @@
+generation cache miss
+{"detail":null,"milliseconds":14234.748,"phase":"cold-generation","stats":{"PlanHits":0,"SourceCaptures":2,"ProjectionParses":748,"TypeScriptRuns":21,"TypeScriptHits":0,"CodecRuns":1,"CodecHits":0}}
+{"detail":"","milliseconds":2342.133,"phase":"cold-build","stats":{"PlanHits":0,"SourceCaptures":2,"ProjectionParses":748,"TypeScriptRuns":21,"TypeScriptHits":0,"CodecRuns":1,"CodecHits":0}}
+COMPILED_HANDLER Go wire revision one
+generation projection hit
+{"detail":null,"milliseconds":507.971,"phase":"body-generation","stats":{"PlanHits":1,"SourceCaptures":3,"ProjectionParses":749,"TypeScriptRuns":21,"TypeScriptHits":0,"CodecRuns":1,"CodecHits":0}}
+{"detail":"","milliseconds":951.467,"phase":"body-build","stats":{"PlanHits":1,"SourceCaptures":3,"ProjectionParses":749,"TypeScriptRuns":21,"TypeScriptHits":0,"CodecRuns":1,"CodecHits":0}}
+COMPILED_HANDLER Worker body revision two
+generation projection hit
+{"detail":null,"milliseconds":373.457,"phase":"broken-body-generation","stats":{"PlanHits":2,"SourceCaptures":4,"ProjectionParses":750,"TypeScriptRuns":21,"TypeScriptHits":0,"CodecRuns":1,"CodecHits":0}}
+{"detail":"# github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5tw6llemv3a\ninternal/skgo/links/onzggl3sn52xizltf5tw6llemv3a/go-dev.remote.go:10:9: undefined: workerProbeMissing\n","milliseconds":132.453,"phase":"broken-body-build","stats":{"PlanHits":2,"SourceCaptures":4,"ProjectionParses":750,"TypeScriptRuns":21,"TypeScriptHits":0,"CodecRuns":1,"CodecHits":0}}
+generation projection hit
+{"detail":null,"milliseconds":1391.542,"phase":"repaired-body-generation","stats":{"PlanHits":3,"SourceCaptures":5,"ProjectionParses":751,"TypeScriptRuns":21,"TypeScriptHits":0,"CodecRuns":1,"CodecHits":0}}
+{"detail":"","milliseconds":778.412,"phase":"repaired-body-build","stats":{"PlanHits":3,"SourceCaptures":5,"ProjectionParses":751,"TypeScriptRuns":21,"TypeScriptHits":0,"CodecRuns":1,"CodecHits":0}}
+generation cache miss
+{"detail":null,"milliseconds":1732.242,"phase":"api-generation","stats":{"PlanHits":3,"SourceCaptures":7,"ProjectionParses":752,"TypeScriptRuns":22,"TypeScriptHits":20,"CodecRuns":2,"CodecHits":0}}
+generation projection hit
+{"detail":null,"milliseconds":297.106,"phase":"missing-output-generation","stats":{"PlanHits":4,"SourceCaptures":8,"ProjectionParses":752,"TypeScriptRuns":22,"TypeScriptHits":20,"CodecRuns":2,"CodecHits":0}}
+{"detail":186,"milliseconds":7093.663,"phase":"authoritative-generation","stats":{"PlanHits":4,"SourceCaptures":8,"ProjectionParses":752,"TypeScriptRuns":22,"TypeScriptHits":20,"CodecRuns":2,"CodecHits":0}}
+MATCHED 186 generated outputs

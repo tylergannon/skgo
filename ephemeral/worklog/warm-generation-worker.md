@@ -27,3 +27,23 @@ friction: The example's placeholder embedded build lacks skgo.manifest.json, req
   allocating aliases. Reversing discovery output is the focused regression;
   removing the sort must fail it. This avoids output churn without treating
   semantic equivalence as an excuse to relax exact authoritative comparison.
+- Disk-cache-enabled Workers were capturing body edits twice: once to reject the
+  old disk entry and again for the retained projection. Give an established
+  Worker plan priority; disk replay still initializes new Workers. The focused
+  mutation test restores the old branch and observes two captures instead of
+  one. Within each capture, overlapping Go/frontend/embed paths now share one
+  exact read; there is no cross-edit timestamp trust. A same-size edit with its
+  mtime restored, plus embed addition/deletion, must change captured bytes.
+- Capture no longer rereads every Go directory to discover native inputs or
+  invokes Go's embed parser where exact captured bytes contain no directive.
+  Native inputs come from the existing membership walk; possible directives
+  still go through Go's parser. Quiet paired frozen runs with disk cache enabled
+  measured8 body edits each: median343.504ms before,265.229ms after (ranges
+  339.238–364.471ms and259.815–290.651ms). Each new run retains1 capture/1 source
+  parse/0 projection backend calls; filesystem acquisition remains deliberate.
+- When the probe enables a disk cache for the retained Worker, explicitly disable
+  it for the final authoritative Run. Otherwise the expected output can come
+  from the same cached plan under test. The corrected full run matched186 files
+  after body/error/repair/API/missing-output edits; API and recovery wall times
+  were collected during concurrent browser/compiler work and are not controlled
+  latency comparisons.

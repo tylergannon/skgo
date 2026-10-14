@@ -147,6 +147,13 @@ func acquireCacheSources(cfg Config) (cacheSources, error) {
 // bytes on a warm lookup. Directory traversal discovers additions/deletions;
 // generated artifacts are excluded by ownership, never solely by filename.
 func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
+	return s.captureWithRead(cfg, os.ReadFile)
+}
+
+func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte, error)) (map[string][]byte, string, error) {
+	if cfg.worker != nil {
+		cfg.worker.stats.SourceCaptures++
+	}
 	for alias, original := range s.Aliases {
 		current, err := filepath.EvalSymlinks(alias)
 		if err != nil || current != original {
@@ -169,8 +176,15 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+	// A capture binds each path once, even when frontend and overlapping embed
+	// walks encounter it again. The next capture rereads every path.
+	readPaths := map[string]bool{}
 	read := func(path string) error {
-		data, err := os.ReadFile(path)
+		if readPaths[path] {
+			return nil
+		}
+		readPaths[path] = true
+		data, err := readFile(path)
 		if os.IsNotExist(err) {
 			files[path] = nil
 			return nil
@@ -184,7 +198,8 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 		files[path] = data
 		return nil
 	}
-	goDirs := map[string]bool{}
+	goDirs := map[string][]string{}
+	nativeFiles := map[string][]string{}
 	var embedPatterns []string
 	for _, m := range s.Modules {
 		err := filepath.WalkDir(m.Dir, func(path string, d fs.DirEntry, err error) error {
@@ -215,8 +230,11 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 					return err
 				}
 				if strings.HasSuffix(path, ".go") {
-					goDirs[filepath.Dir(path)] = true
+					goDirs[filepath.Dir(path)] = append(goDirs[filepath.Dir(path)], path)
 				}
+			}
+			if strings.HasSuffix(path, ".s") || strings.HasSuffix(path, ".h") || strings.HasSuffix(path, ".c") || strings.HasSuffix(path, ".syso") {
+				nativeFiles[filepath.Dir(path)] = append(nativeFiles[filepath.Dir(path)], path)
 			}
 			return nil
 		})
@@ -226,25 +244,24 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 	}
 	// Non-Go compilation inputs and embed resources belong to the same captured
 	// view. Go's own directive parser supplies patterns; Go still diagnoses them.
-	for dir := range goDirs {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return nil, "", err
+	for dir, paths := range goDirs {
+		for _, path := range nativeFiles[dir] {
+			if err := read(path); err != nil {
+				return nil, "", err
+			}
 		}
 		overlay := map[string][]byte{}
-		for _, entry := range entries {
-			path := filepath.Join(dir, entry.Name())
-			if entry.IsDir() {
-				continue
+		hasEmbed := false
+		for _, path := range paths {
+			if data, ok := files[path]; ok {
+				overlay[filepath.Base(path)] = data
+				hasEmbed = hasEmbed || bytes.Contains(data, []byte("//go:embed"))
 			}
-			if data, ok := files[path]; ok && strings.HasSuffix(path, ".go") {
-				overlay[entry.Name()] = data
-			}
-			if !strings.HasSuffix(path, ".go") && (strings.HasSuffix(path, ".s") || strings.HasSuffix(path, ".h") || strings.HasSuffix(path, ".c") || strings.HasSuffix(path, ".syso")) {
-				if err := read(path); err != nil {
-					return nil, "", err
-				}
-			}
+		}
+		// This is only a negative fast path over exact captured bytes. Go's
+		// directive parser still owns every possible embed directive.
+		if !hasEmbed {
+			continue
 		}
 		// Owned generated files are absent from the analysis view. Hide their
 		// directives from the embed scanner too, even if old output is broken.
@@ -255,11 +272,10 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 				break
 			}
 		}
-		for _, entry := range entries {
-			if strings.HasSuffix(entry.Name(), ".go") {
-				if _, ok := overlay[entry.Name()]; !ok {
-					overlay[entry.Name()] = []byte("package " + pkgName + "\n")
-				}
+		for _, path := range paths {
+			name := filepath.Base(path)
+			if _, ok := overlay[name]; !ok {
+				overlay[name] = []byte("package " + pkgName + "\n")
 			}
 		}
 		for _, pattern := range stagedEmbedPatterns(dir, ".", overlay) {

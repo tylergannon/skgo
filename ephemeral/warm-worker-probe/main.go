@@ -71,6 +71,9 @@ func main() {
 		}
 	}
 	cfg := generate.Config{Web: filepath.Join(sandbox, "web"), Out: filepath.Join(sandbox, "internal/skgo"), CacheDir: "off", LocalsPackage: "github.com/tylergannon/skgo/example/internal/app", HookPackage: "github.com/tylergannon/skgo/example/internal/serverhooks"}
+	if os.Getenv("SKGO_WORKER_DISK_CACHE") != "" {
+		cfg.CacheDir = filepath.Join(sandbox, ".generation-cache")
+	}
 	cfg.Logf = func(format string, args ...any) {
 		message := fmt.Sprintf(format, args...)
 		if strings.HasPrefix(message, "generation ") {
@@ -196,7 +199,9 @@ func main(){ got,err:=route.Skgo_getRevision(context.Background());if err!=nil |
 	}
 	before := outputs()
 	start := time.Now()
-	must(generate.Run(cfg))
+	fresh := cfg
+	fresh.CacheDir = "off"
+	must(generate.Run(fresh))
 	emit("authoritative-generation", start, len(before))
 	after := outputs()
 	if !reflect.DeepEqual(before, after) {

@@ -6,10 +6,11 @@ import (
 	"github.com/tylergannon/polytype/typegrammar"
 )
 
-// WorkerStats counts actual backend calls and omissions. Loading and lowering
+// WorkerStats counts source captures, parsing, backend calls and omissions. Loading and lowering
 // may still be needed after a declaration edit; a PlanHit omits those too.
 type WorkerStats struct {
 	PlanHits                       uint64
+	SourceCaptures                 uint64
 	ProjectionParses               uint64
 	TypeScriptRuns, TypeScriptHits uint64
 	CodecRuns, CodecHits           uint64
