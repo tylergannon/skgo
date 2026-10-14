@@ -14,3 +14,9 @@ trap: Vite can transform restored source before Chokidar's awaitWriteFinish deli
 trap: go generate injects GOFILE/GOLINE/GOPACKAGE and rewrites PATH. They describe the launcher rather than generation semantics; hashing them makes equivalent invocation styles evict the same target slot. Validate effective Go settings and resolved Node identity instead, while retaining actual frontend configuration inputs. Replay must also repeat Swift ownership preflight on the live destination, since private analysis deliberately omits old generated output.
 
 trap: removing pnpm/action-setup alone leaves package-tarball tests depending on ambient pnpm. Route those pack operations through VP with the supported manager pin too. A new devEngines manager declaration adds its own lockfile document even when dependency versions are unchanged; preserve that generated manager lock for reproducible installs.
+
+- `internal/gen` production fixtures start background builds before their
+  `t.Parallel` barrier. Even a sequential test's `t.Setenv` therefore races
+  those builds: CI inherited a cache fixture's temporary `GOWORK`. Tests that
+  need process-level configuration run in an isolated test process; fresh Run
+  probes preserve that intended workspace rather than TestMain resetting it.

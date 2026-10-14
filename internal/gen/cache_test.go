@@ -23,6 +23,24 @@ type cacheRunResult struct {
 	Error string
 }
 
+// These tests alter process configuration. Production fixture builds start
+// before their parallel-test barrier, so even a non-parallel test cannot safely
+// change the parent process environment while those builds run.
+func isolatedCacheEnvironment(t *testing.T) bool {
+	t.Helper()
+	if os.Getenv("SKGO_CACHE_ENV_TEST") == t.Name() {
+		return true
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=^"+t.Name()+"$", "-test.count=1", "-test.v")
+	cmd.Env = append(os.Environ(), "SKGO_CACHE_ENV_TEST="+t.Name())
+	output, err := cmd.CombinedOutput()
+	t.Logf("isolated environment test:\n%s", output)
+	if err != nil {
+		t.Fatalf("isolated environment test: %v", err)
+	}
+	return false
+}
+
 func TestGenerationCacheProcess(t *testing.T) {
 	raw := os.Getenv("SKGO_CACHE_TEST_CONFIG")
 	if raw == "" {
@@ -280,6 +298,9 @@ func TestGenerationCacheSourceIsCapturedBeforeAnalysis(t *testing.T) {
 }
 
 func TestGenerationCacheWorkspaceAndConfiguration(t *testing.T) {
+	if !isolatedCacheEnvironment(t) {
+		return
+	}
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	work := filepath.Join(root, "go.work")
@@ -367,6 +388,9 @@ func TestGenerationCachePrepareAndCheckRemainFresh(t *testing.T) {
 }
 
 func TestGenerationCacheChecksConsumedGoEnvironment(t *testing.T) {
+	if !isolatedCacheEnvironment(t) {
+		return
+	}
 	const marker = "cache_environment_value_do_not_persist"
 	t.Setenv("GOFLAGS", "-tags="+marker)
 	_, cfg := foreignFixture(t, cacheRemote, nil)
@@ -467,6 +491,9 @@ func TestGenerationCacheKeepsOneTargetSlot(t *testing.T) {
 }
 
 func TestGenerationCachePrivateCompilerIdentity(t *testing.T) {
+	if !isolatedCacheEnvironment(t) {
+		return
+	}
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	t.Setenv("GOFLAGS", "-tags=cacheprofile")
 	cacheWrite(t, filepath.Join(root, "wire/profile.go"), "//go:build cacheprofile\n\npackage wire\nconst Profile = 17\n")
@@ -543,6 +570,9 @@ func TestGenerationCacheRebasesElevenModules(t *testing.T) {
 }
 
 func TestGenerationCacheDefaultDirectory(t *testing.T) {
+	if !isolatedCacheEnvironment(t) {
+		return
+	}
 	_, cfg := foreignFixture(t, cacheRemote, nil)
 	dir := t.TempDir()
 	t.Setenv("SKGO_CACHE_DIR", dir)
@@ -586,6 +616,9 @@ func TestGenerationCacheSwiftOwnership(t *testing.T) {
 }
 
 func TestGenerationCacheSharesGoGenerateEnvironment(t *testing.T) {
+	if !isolatedCacheEnvironment(t) {
+		return
+	}
 	_, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	assertCacheResult(t, cfg, false)
