@@ -1,0 +1,5 @@
+correction: ctime, inode, size and mtime do not uniquely identify file contents. The released dev digest failed equal-size restored-mtime edits 5/5 on Docker Linux 6.12.76-linuxkit; APFS passing did not establish a portable guarantee. Removed metadata-authorized reuse on all platforms rather than adding sleeps, TTL or a filesystem assumption. Each scan owns only hash/scratch space and rereads bytes. Request-before-poll freshness stays mandatory.
+
+tradeoff: preliminary 768 x 8KB source-tree benchmark on Apple M4 measured about 2ms/request with the invalid cache and 13ms with current bytes. This is synthetic request overhead, not browser latency; removing stale-cache behavior cannot be represented as a performance gain. The scan has no global/shared mutex and no retained file contents.
+
+proof: Linux digest/fingerprint regression ran five repetitions, including 64 rapid equal-size writes with fixed mtime per repetition. All passed. The real supervisor handler regression now restores the edited source timestamp before its immediate request and asserts literal revision two from a new application PID.

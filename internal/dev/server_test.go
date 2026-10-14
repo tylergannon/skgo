@@ -393,7 +393,15 @@ func TestDevHoldsARequestThatArrivesBeforeThePollSeesTheEdit(t *testing.T) {
 	first := s.until("/", startsWith("revision one "), "initial build")
 	firstPID := pidOf(t, first.body)
 
+	file := filepath.Join(s.root, "answer", "answer.go")
+	before, err := os.Stat(file)
+	if err != nil {
+		t.Fatal(err)
+	}
 	s.write("answer/answer.go", answerSource("revision two"))
+	if err := os.Chtimes(file, before.ModTime(), before.ModTime()); err != nil {
+		t.Fatal(err)
+	}
 	got := s.get("/")
 	if got.status != 200 || !strings.HasPrefix(got.body, "revision two ") {
 		t.Fatalf("a request right after the edit was answered %d %q", got.status, got.body)

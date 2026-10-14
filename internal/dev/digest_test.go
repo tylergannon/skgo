@@ -22,18 +22,14 @@ func TestDigestScansOverlapAndValidateTheirOwnFileVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := &fileDigests{}
-	old := cache.scan()
+	old := &digestScan{}
 	if got, err := old.sum(file); err != nil || got != fmt.Sprintf("%x", sha256.Sum256(first)) {
-		old.close()
 		t.Fatalf("first digest %q: %v", got, err)
 	}
 	if err := os.WriteFile(file, second, 0644); err != nil {
-		old.close()
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(file, original.ModTime(), original.ModTime()); err != nil {
-		old.close()
 		t.Fatal(err)
 	}
 	type result struct {
@@ -42,37 +38,50 @@ func TestDigestScansOverlapAndValidateTheirOwnFileVersion(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		current := cache.scan()
+		current := &digestScan{}
 		sum, err := current.sum(file)
-		current.close()
 		done <- result{sum, err}
 	}()
 	select {
 	case r := <-done:
 		if r.err != nil || r.sum != fmt.Sprintf("%x", sha256.Sum256(second)) {
-			old.close()
 			t.Fatalf("concurrent edit digest %q: %v", r.sum, r.err)
 		}
 	case <-time.After(2 * time.Second):
-		old.close()
 		<-done
 		t.Fatal("second request's scan blocked behind the open first scan")
 	}
-	// An older scan can publish last, but its metadata cannot authorize replay
-	// of stale bytes: every later scan checks the current file version itself.
-	old.close()
-	latest := cache.scan()
+	// Scratch space owned by a prior scan cannot hide a subsequent edit.
+	latest := &digestScan{}
 	got, err := latest.sum(file)
-	latest.close()
 	if err != nil || got != fmt.Sprintf("%x", sha256.Sum256(second)) {
 		t.Fatalf("stale published digest %q: %v", got, err)
 	}
 	if err := os.Remove(file); err != nil {
 		t.Fatal(err)
 	}
-	empty := cache.scan()
-	empty.close()
-	if len(cache.entries) != 0 {
-		t.Fatal("cache retained a removed source")
+	if _, err := latest.sum(file); !os.IsNotExist(err) {
+		t.Fatalf("removed source: %v", err)
+	}
+}
+
+// ctime and mtime can both repeat across rapid writes. No timestamp needs to
+// advance for an edit to count, even when a caller reuses its scan scratch space.
+func TestDigestReadsRapidPreservedTimestampEdits(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "handler.go")
+	stamp := time.Unix(1700000000, 0)
+	scan := &digestScan{}
+	for i := 0; i < 64; i++ {
+		source := []byte(fmt.Sprintf("package fixture\nconst Value = %02d\n", i))
+		if err := os.WriteFile(file, source, 0644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(file, stamp, stamp); err != nil {
+			t.Fatal(err)
+		}
+		got, err := scan.sum(file)
+		if want := fmt.Sprintf("%x", sha256.Sum256(source)); err != nil || got != want {
+			t.Fatalf("edit %d digest %q, want %q: %v", i, got, want, err)
+		}
 	}
 }

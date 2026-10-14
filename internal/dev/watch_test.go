@@ -126,7 +126,7 @@ func TestAuthoredPathsPointAtTheFileTheDeveloperWrote(t *testing.T) {
 	}
 }
 
-func TestFingerprintReusesBytesAndDetectsPreservedMtimeEdits(t *testing.T) {
+func TestFingerprintDetectsPreservedMtimeEdits(t *testing.T) {
 	root := t.TempDir()
 	file := filepath.Join(root, "authored.go")
 	write := func(text string) {
@@ -140,8 +140,7 @@ func TestFingerprintReusesBytesAndDetectsPreservedMtimeEdits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := &fileDigests{}
-	in := inputs{root: root, web: filepath.Join(root, "web"), digests: cache}
+	in := inputs{root: root, web: filepath.Join(root, "web")}
 	fingerprint := func() string {
 		t.Helper()
 		sum, err := in.fingerprint()
@@ -155,9 +154,6 @@ func TestFingerprintReusesBytesAndDetectsPreservedMtimeEdits(t *testing.T) {
 		if got := fingerprint(); got != first {
 			t.Fatal("unchanged source changed fingerprint")
 		}
-	}
-	if !changeTime(original).IsZero() && cache.reads != 1 {
-		t.Fatalf("unchanged source reread %d times, want one initial read", cache.reads)
 	}
 	write("package fixture\nconst X=2\n")
 	if err := os.Chtimes(file, original.ModTime(), original.ModTime()); err != nil {
@@ -186,9 +182,6 @@ func TestFingerprintReusesBytesAndDetectsPreservedMtimeEdits(t *testing.T) {
 	}
 	if fingerprint() == third {
 		t.Fatal("deleted source ignored")
-	}
-	if len(cache.entries) != 0 {
-		t.Fatal("removed source remains in retained digest cache")
 	}
 	write("package fixture\nconst X=4\n")
 	if fingerprint() == third {
