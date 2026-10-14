@@ -28,6 +28,7 @@ import (
 type generationSourceView struct {
 	env         []string
 	sources     map[string][]byte // captured Go bytes at private source paths
+	moduleRoots map[string]string // module import path -> private directory
 	roots       map[string]string // original module directory -> private directory
 	cgoPackages map[string]bool
 	cgoUsed     bool
@@ -395,6 +396,7 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 	view := &generationSourceView{roots: map[string]string{}, cgoPackages: map[string]bool{}}
 	if cfg.Session != nil {
 		view.sources = make(map[string][]byte)
+		view.moduleRoots = make(map[string]string)
 	}
 	for path, data := range files {
 		if !strings.HasSuffix(path, ".go") || data == nil {
@@ -442,6 +444,9 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 	}
 	for i, m := range s.Modules {
 		view.roots[m.Dir] = filepath.Join(root, fmt.Sprintf("module-%d", i))
+		if view.moduleRoots != nil {
+			view.moduleRoots[m.Path] = view.roots[m.Dir]
+		}
 	}
 	for path, data := range files {
 		target := view.mapPath(path, true)

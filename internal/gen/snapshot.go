@@ -403,7 +403,6 @@ func (cfg Config) loadPackages(load *packages.Config, patterns ...string) ([]*pa
 	var loaded []*packages.Package
 	var err error
 	if cfg.Session != nil {
-		cfg.sessionSources(load)
 		loaded, err = cfg.loadShared(load, func(request *packages.Config, patterns ...string) ([]*packages.Package, error) {
 			work := *request
 			work.BuildFlags = append([]string(nil), request.BuildFlags...)
@@ -455,13 +454,55 @@ func (cfg Config) loadSession(load *packages.Config, patterns ...string) ([]*pac
 // The session parser can consume bytes already captured for persistence. The
 // current generation phase wins over the original captured source; generated
 // declarations are synthesized anew and never authoritative cache inputs.
-func (cfg Config) sessionSources(load *packages.Config) {
-	if cfg.sourceView == nil || len(cfg.sourceView.sources) == 0 {
+func (cfg Config) sessionSources(load *packages.Config, patterns ...string) {
+	if cfg.sourceView == nil || load.Mode&(packages.NeedTypes|packages.NeedSyntax|packages.NeedTypesInfo) == 0 {
 		return
 	}
-	overlay := make(map[string][]byte, len(cfg.sourceView.sources)+len(load.Overlay))
-	for path, source := range cfg.sourceView.sources {
-		overlay[path] = source
+	// Only roots are parsed by the session. Dependency exports are compiled from
+	// the immutable private tree, so overlaying the whole capture merely writes
+	// every unrelated source again for each Go metadata request. Selection is
+	// only a byte-reuse hint; Go still selects files, and unknown patterns use
+	// the session's ordinary reads from the same immutable private tree.
+	selected := make(map[string]bool)
+	for _, pattern := range patterns {
+		if name, ok := strings.CutPrefix(pattern, "file="); ok {
+			if !filepath.IsAbs(name) {
+				name = filepath.Join(load.Dir, name)
+			}
+			selected[filepath.Clean(name)] = true
+			continue
+		}
+		recursive := strings.HasSuffix(pattern, "/...")
+		pattern = strings.TrimSuffix(pattern, "/...")
+		dir := ""
+		switch {
+		case filepath.IsAbs(pattern):
+			dir = filepath.Clean(pattern)
+		case pattern == "." || pattern == ".." || strings.HasPrefix(pattern, "./") || strings.HasPrefix(pattern, "../"):
+			dir = filepath.Join(load.Dir, pattern)
+		default:
+			longest := ""
+			for module, root := range cfg.sourceView.moduleRoots {
+				if (pattern == module || strings.HasPrefix(pattern, module+"/")) && len(module) > len(longest) {
+					longest = module
+					dir = filepath.Join(root, strings.TrimPrefix(strings.TrimPrefix(pattern, module), "/"))
+				}
+			}
+		}
+		if dir == "" {
+			continue
+		}
+		for path := range cfg.sourceView.sources {
+			if filepath.Dir(path) == dir || (recursive && strings.HasPrefix(path, dir+string(filepath.Separator))) {
+				selected[path] = true
+			}
+		}
+	}
+	overlay := make(map[string][]byte, len(selected)+len(load.Overlay))
+	for path := range selected {
+		if source, ok := cfg.sourceView.sources[path]; ok {
+			overlay[path] = source
+		}
 	}
 	for path, source := range load.Overlay {
 		overlay[path] = source
@@ -489,5 +530,8 @@ func (cfg Config) ordinarySources(overlay map[string][]byte) map[string][]byte {
 }
 
 func (cfg Config) loadShared(load *packages.Config, fallback goload.LoadFunc, patterns ...string) ([]*packages.Package, error) {
-	return cfg.Session.LoadWithFallback(load, fallback, patterns...)
+	work := *load
+	work.Overlay = cfg.ordinarySources(load.Overlay)
+	cfg.sessionSources(&work, patterns...)
+	return cfg.Session.LoadWithFallback(&work, fallback, patterns...)
 }

@@ -143,3 +143,63 @@ func TestGenerationCapturesEmptyEmbedDirectoryMembership(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSessionCapturesOnlyRequestedParserSources(t *testing.T) {
+	root := t.TempDir()
+	var err error
+	root, err = filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cacheWrite(t, filepath.Join(root, "go.mod"), "module fixture.test/captured\n\ngo 1.27.1\n")
+	path := filepath.Join(root, "root.go")
+	cacheWrite(t, path, "package captured\nthis is not valid Go\n")
+	cacheWrite(t, filepath.Join(root, "dep/dep.go"), "package dep\nconst Number = 7\n")
+	source := []byte("package captured\nimport \"fixture.test/captured/dep\"\nconst Answer = dep.Number + 10\n")
+	phase := filepath.Join(root, "phase.go")
+	unrelated := filepath.Join(root, "unrelated/bad.go")
+	cfg := Config{Session: new(goload.Session), sourceView: &generationSourceView{
+		sources:     map[string][]byte{path: source, unrelated: []byte("invalid unrelated captured source")},
+		moduleRoots: map[string]string{"fixture.test/captured": root},
+	}}
+	load := &packages.Config{Dir: root, Mode: packages.NeedName | packages.NeedFiles | packages.NeedTypes | packages.NeedSyntax,
+		Overlay: map[string][]byte{phase: []byte("package captured\nconst Phase = 3\n")},
+	}
+	// The compiler reads dependencies from the already captured private tree.
+	// Only selected roots need a second representation for the session parser.
+	cfg.sessionSources(load, "fixture.test/captured")
+	if len(load.Overlay) != 2 || !bytes.Equal(load.Overlay[path], source) || load.Overlay[unrelated] != nil {
+		t.Fatalf("unrelated capture serialized: %v", load.Overlay)
+	}
+	roots, err := cfg.loadPackages(load, "fixture.test/captured")
+	if err != nil || len(roots) != 1 || len(roots[0].Errors) != 0 {
+		t.Fatalf("captured load: %v %v", roots, err)
+	}
+	for name, want := range map[string]string{"Answer": "17", "Phase": "3"} {
+		got, ok := roots[0].Types.Scope().Lookup(name).(*types.Const)
+		if !ok || got.Val().ExactString() != want {
+			t.Fatalf("%s=%v, want %s", name, got, want)
+		}
+	}
+	if stats := cfg.Session.Stats(); stats.FileReads != 0 || stats.FallbackLoads != 0 {
+		t.Fatalf("captured root reread: %+v", stats)
+	}
+	// Dependency phase overlays still control Go's compiler export input.
+	load.Overlay[filepath.Join(root, "dep/dep.go")] = []byte("package dep\nconst Number = 13\n")
+	roots, err = cfg.loadPackages(load, "fixture.test/captured")
+	if err != nil || len(roots) != 1 || len(roots[0].Errors) != 0 {
+		t.Fatalf("dependency phase load: %v %v", roots, err)
+	}
+	if got := roots[0].Types.Scope().Lookup("Answer").(*types.Const).Val().ExactString(); got != "23" {
+		t.Fatalf("dependency override lost: %s", got)
+	}
+	// An explicit phase overlay overrides even a captured root file.
+	load.Overlay[path] = []byte("package captured\nconst Answer = 29\n")
+	roots, err = cfg.loadPackages(load, "fixture.test/captured")
+	if err != nil || len(roots) != 1 || len(roots[0].Errors) != 0 {
+		t.Fatalf("phase load: %v %v", roots, err)
+	}
+	if got := roots[0].Types.Scope().Lookup("Answer").(*types.Const).Val().ExactString(); got != "29" {
+		t.Fatalf("phase override lost: %s", got)
+	}
+}
