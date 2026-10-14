@@ -33,7 +33,6 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -311,19 +310,45 @@ func untar(tgz []byte) (map[string][]byte, error) {
 	}
 }
 
-var versionField = regexp.MustCompile(`("version"\s*:\s*)"[^"]*"`)
-
-// stampVersion rewrites the one version field in package.json and leaves every
-// other byte of it as it was.
+// stampVersion rewrites the top-level package version and leaves every other
+// byte as it was, including nested tool and dependency versions.
 func stampVersion(dir, version string) error {
 	file := filepath.Join(dir, "package.json")
 	raw, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
-	if n := len(versionField.FindAllIndex(raw, -1)); n != 1 {
-		return fmt.Errorf("%s has %d version fields; want exactly one", file, n)
+	if !json.Valid(raw) {
+		return fmt.Errorf("%s is not valid JSON", file)
 	}
-	stamped := versionField.ReplaceAll(raw, []byte(`${1}"`+version+`"`))
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	opening, _ := decoder.Token()
+	if opening != json.Delim('{') {
+		return fmt.Errorf("%s must contain a package object", file)
+	}
+	var start, end, count int
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return err
+		}
+		if key == "version" {
+			if len(value) == 0 || value[0] != '"' {
+				return fmt.Errorf("%s package version must be a string", file)
+			}
+			count++
+			end = int(decoder.InputOffset())
+			start = end - len(value)
+		}
+	}
+	if count != 1 {
+		return fmt.Errorf("%s has %d top-level version fields; want exactly one", file, count)
+	}
+	encoded, _ := json.Marshal(version)
+	stamped := append(append(append([]byte{}, raw[:start]...), encoded...), raw[end:]...)
 	return os.WriteFile(file, stamped, 0o644)
 }
