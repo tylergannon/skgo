@@ -23,7 +23,7 @@ import {
 import { HandledHttpError } from '@sveltejs/kit/internal';
 import * as devalue from 'skgo:devalue';
 import { decoders, init_transport, parse } from 'skgo:kit/transport';
-import { components, universalLoads } from 'skgo:nodes';
+import { componentLoaders, universalLoaders } from 'skgo:nodes';
 import { transport } from 'skgo:hooks';
 import { serialize_data } from 'skgo:kit/serialize-data';
 import { create_universal_fetch } from 'skgo:kit/load-data';
@@ -227,13 +227,13 @@ async function build_props(req, url, event, state, fetched, serialized) {
 	};
 
 	const branch = req.branch ?? [];
-	const error_components = (req.error_components ?? []).map((i) =>
-		i == null ? undefined : components[i]
-	);
+	const error_components = await Promise.all((req.error_components ?? []).map((i) =>
+		i == null ? undefined : componentLoaders[i]?.()
+	));
 
 	const props = new Props({
 		page,
-		tree: new RenderNode(components[branch[0].node], undefined),
+		tree: new RenderNode(await componentLoaders[branch[0].node]?.(), undefined),
 		form,
 		error: req.error ?? undefined
 	});
@@ -243,7 +243,7 @@ async function build_props(req, url, event, state, fetched, serialized) {
 
 	for (let i = 0; i < branch.length; i += 1) {
 		const server_data = node_data(branch[i]);
-		const load = universalLoads[branch[i].node];
+		const load = await universalLoaders[branch[i].node]?.();
 		const parent_data = data;
 		const result = load
 			? await with_request_store({ event, state }, () =>
@@ -270,7 +270,7 @@ async function build_props(req, url, event, state, fetched, serialized) {
 
 		if (i < branch.length - 1) {
 			current_node = current_node.child = new RenderNode(
-				components[branch[i + 1].node],
+				await componentLoaders[branch[i + 1].node]?.(),
 				error_components[i + 1]
 			);
 		}
