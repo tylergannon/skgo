@@ -371,3 +371,11 @@ claim or permission to build a generic invalidation framework.
   pretending its old module is necessarily safe or retaining unlimited retries.
 
 Independent validation is pending; this section records local proof only.
+
+### Bounded delivery and continuation issue
+
+User directed landing the basic invocation-scoped loading session and completed cache/consumer improvements, while deferring warm cross-edit analysis and native integration to https://github.com/tylergannon/skgo/issues/311. Preserve these experiments; do not make the production releases depend on them.
+
+Prepared View work is preserved in Polytype commit c00e4f6, branch codex/shared-load-prepared-view-wip, worktree /Users/tyler/.codex/worktrees/polytype-prepared-view-wip. SKGO Worker/View and supervisor work is preserved in commit 4939b13, branch codex/dev-worker-prepared-view-wip, worktree /Users/tyler/.codex/worktrees/skgo-dev-worker-wip.
+
+The native POC independent reviewer was launched, but parent handoff found its listed processes gone and no review report. Its outcome is unconfirmed; the POC must not be described as independently reviewed. Resume session 234489dc-2bf4-4808-81bb-4b66b390ea7b or launch a fresh independent validation when this experiment resumes.
