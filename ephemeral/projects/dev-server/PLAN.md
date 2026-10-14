@@ -1,12 +1,18 @@
 # Rebuild SKGO development on borrowed upstream mechanisms
 
+## WITHDRAWN — premature outline, do not execute
+
+The user corrected this draft on 2026-10-14: the replacement is substantial functionality and requires deliberate design work together. This outline named upstream mechanisms and desired outcomes without establishing how their application boundaries compose into a working system. Its responsibility table and proposed milestones do not establish that design or its feasibility.
+
+The text below is preserved as an unaccepted outline, not an implementation plan or agent handoff. No replacement implementation is authorized by this document. The independently requested deletion in issue #321 remains valid. Develop the actual replacement design with the user from the authoritative sources and demonstrated application behavior before proposing an executable sequence.
+
 ## TL;DR
 
 **Delete first, then build a new Go development server.** [Issue #321](https://github.com/tylergannon/skgo/issues/321) owns complete removal of the existing development implementation. A period with no development command is intentional. The replacement starts from the post-deletion repository; there is no migration, compatibility phase, or reuse of the deleted development control flow.
 
 The result is ordinary `skgo dev`: Vite's frontend edit experience, gopls-style retained Go project state, native implementation replacement through the selected `pkujhd/goloader`, and Kit's own client refreshing the values Go serves. Meaningful compatible Go edits preserve initialized application state and the browser document. Structural edits are compiled and installed by this same new server.
 
-This is a planning draft for discussion, not authorization to start implementation. It supersedes the earlier instructions to extend the existing supervisor. The failed worktree `/Users/tyler/.codex/worktrees/73b6/skgo` remains preserved and unmodified; no failed implementation is a starting point.
+The deletion requirement supersedes earlier instructions to extend the existing supervisor; this withdrawn outline is not its replacement execution instruction. The failed worktree `/Users/tyler/.codex/worktrees/73b6/skgo` remains preserved and unmodified; no failed implementation is a starting point.
 
 - [What the developer gets](#what-the-developer-gets)
 - [Sources and what we borrow](#sources-and-what-we-borrow)
