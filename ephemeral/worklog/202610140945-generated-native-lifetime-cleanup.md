@@ -1,0 +1,3 @@
+friction: The serial generated-host fixture panics in pinned GoLoader `modulesinit` at its first object load on Go 1.27.2 darwin/arm64, before any HTTP assertion. Preserve the full panic output when qualifying this foundation; do not treat the earlier historical success note as current platform proof.
+decision: Keep all loaded fixture mappings alive until the short-lived host exits. The generated test's sequential requests and GC checks do not prove safe retirement or concurrent publication.
+decision: Keep alias-retention as source input to the classifier regression, but do not require a rebuild based on retention. The current classifier only preserves source-shape and reverse-caller compatibility checks; lifetime admission remains unimplemented.

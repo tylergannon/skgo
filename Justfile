@@ -77,12 +77,12 @@ e2e mode="prod":
 # pinned Kit source; follow ephemeral/sveltekit-current/SKILL.md.
 
 # a task worktree, on the branch it says it is on
-worktree branch:
+worktree branch base="main":
     #!/bin/sh
     set -e
     root=$(git rev-parse --show-toplevel)
     dest="$root/.claude/worktrees/{{branch}}"
-    git -C "$root" worktree add -b "{{branch}}" "$dest" main
+    git -C "$root" worktree add -b "{{branch}}" "$dest" "{{base}}"
     on=$(git -C "$dest" branch --show-current)
     [ "$on" = "{{branch}}" ] || { echo "expected branch {{branch}}, got $on" >&2; exit 1; }
     echo "$dest  ({{branch}})"
