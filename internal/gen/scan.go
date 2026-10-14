@@ -261,6 +261,10 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	if err != nil {
 		return nil, fmt.Errorf("skgo: loading remote packages: %w", err)
 	}
+	// Package discovery and retained analysis may return roots in different
+	// orders. Import aliases belong to the package set, not loader history.
+	loaded = append([]*packages.Package(nil), loaded...)
+	sort.Slice(loaded, func(i, j int) bool { return loaded[i].PkgPath < loaded[j].PkgPath })
 	a.loadedPackages = loaded
 	var loadErr error
 	packages.Visit(loaded, nil, func(p *packages.Package) {

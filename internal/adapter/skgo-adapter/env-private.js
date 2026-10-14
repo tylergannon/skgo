@@ -11,6 +11,7 @@ export function protectEnvironmentFiles({ root, kitOut, output, base = '/', toke
 	const files = [
 		resolve(root, '.svelte-kit/skgo-env-values.js'),
 		resolve(root, '.svelte-kit/skgo-env-runtime.json'),
+		resolve(root, '.svelte-kit/skgo-dev-supervisor.json'),
 		resolve(root, kitOut, 'generated/build/env/config.js'),
 		resolve(root, kitOut, 'generated/dev/env/config.js'),
 		resolve(root, output, 'env.json')

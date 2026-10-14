@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -146,6 +147,13 @@ func acquireCacheSources(cfg Config) (cacheSources, error) {
 // bytes on a warm lookup. Directory traversal discovers additions/deletions;
 // generated artifacts are excluded by ownership, never solely by filename.
 func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
+	return s.captureWithRead(cfg, os.ReadFile)
+}
+
+func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte, error)) (map[string][]byte, string, error) {
+	if cfg.worker != nil {
+		cfg.worker.stats.SourceCaptures++
+	}
 	for alias, original := range s.Aliases {
 		current, err := filepath.EvalSymlinks(alias)
 		if err != nil || current != original {
@@ -168,8 +176,15 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+	// A capture binds each path once, even when frontend and overlapping embed
+	// walks encounter it again. The next capture rereads every path.
+	readPaths := map[string]bool{}
 	read := func(path string) error {
-		data, err := os.ReadFile(path)
+		if readPaths[path] {
+			return nil
+		}
+		readPaths[path] = true
+		data, err := readFile(path)
 		if os.IsNotExist(err) {
 			files[path] = nil
 			return nil
@@ -183,7 +198,9 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 		files[path] = data
 		return nil
 	}
-	goDirs := map[string]bool{}
+	goDirs := map[string][]string{}
+	nativeFiles := map[string][]string{}
+	var embedPatterns []string
 	for _, m := range s.Modules {
 		err := filepath.WalkDir(m.Dir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
@@ -213,8 +230,11 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 					return err
 				}
 				if strings.HasSuffix(path, ".go") {
-					goDirs[filepath.Dir(path)] = true
+					goDirs[filepath.Dir(path)] = append(goDirs[filepath.Dir(path)], path)
 				}
+			}
+			if strings.HasSuffix(path, ".s") || strings.HasSuffix(path, ".h") || strings.HasSuffix(path, ".c") || strings.HasSuffix(path, ".syso") {
+				nativeFiles[filepath.Dir(path)] = append(nativeFiles[filepath.Dir(path)], path)
 			}
 			return nil
 		})
@@ -224,25 +244,24 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 	}
 	// Non-Go compilation inputs and embed resources belong to the same captured
 	// view. Go's own directive parser supplies patterns; Go still diagnoses them.
-	for dir := range goDirs {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return nil, "", err
+	for dir, paths := range goDirs {
+		for _, path := range nativeFiles[dir] {
+			if err := read(path); err != nil {
+				return nil, "", err
+			}
 		}
 		overlay := map[string][]byte{}
-		for _, entry := range entries {
-			path := filepath.Join(dir, entry.Name())
-			if entry.IsDir() {
-				continue
+		hasEmbed := false
+		for _, path := range paths {
+			if data, ok := files[path]; ok {
+				overlay[filepath.Base(path)] = data
+				hasEmbed = hasEmbed || bytes.Contains(data, []byte("//go:embed"))
 			}
-			if data, ok := files[path]; ok && strings.HasSuffix(path, ".go") {
-				overlay[entry.Name()] = data
-			}
-			if !strings.HasSuffix(path, ".go") && (strings.HasSuffix(path, ".s") || strings.HasSuffix(path, ".h") || strings.HasSuffix(path, ".c") || strings.HasSuffix(path, ".syso")) {
-				if err := read(path); err != nil {
-					return nil, "", err
-				}
-			}
+		}
+		// This is only a negative fast path over exact captured bytes. Go's
+		// directive parser still owns every possible embed directive.
+		if !hasEmbed {
+			continue
 		}
 		// Owned generated files are absent from the analysis view. Hide their
 		// directives from the embed scanner too, even if old output is broken.
@@ -253,14 +272,14 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 				break
 			}
 		}
-		for _, entry := range entries {
-			if strings.HasSuffix(entry.Name(), ".go") {
-				if _, ok := overlay[entry.Name()]; !ok {
-					overlay[entry.Name()] = []byte("package " + pkgName + "\n")
-				}
+		for _, path := range paths {
+			name := filepath.Base(path)
+			if _, ok := overlay[name]; !ok {
+				overlay[name] = []byte("package " + pkgName + "\n")
 			}
 		}
 		for _, pattern := range stagedEmbedPatterns(dir, ".", overlay) {
+			embedPatterns = append(embedPatterns, filepath.Join(dir, filepath.FromSlash(strings.TrimPrefix(pattern, "all:"))))
 			matches, err := fs.Glob(os.DirFS(dir), strings.TrimPrefix(pattern, "all:"))
 			if err != nil {
 				return nil, "", err
@@ -332,6 +351,15 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 		paths = append(paths, path)
 	}
 	sort.Strings(paths)
+	if cfg.worker != nil {
+		inputs := WorkerInputs{Files: append([]string(nil), paths...), EmbedPatterns: embedPatterns}
+		for _, module := range s.Modules {
+			inputs.Roots = append(inputs.Roots, module.Dir)
+		}
+		sort.Strings(inputs.Roots)
+		sort.Strings(inputs.EmbedPatterns)
+		cfg.worker.inputs = inputs
+	}
 	h := sha256.New()
 	encoder := json.NewEncoder(h)
 	for _, path := range paths {
@@ -379,20 +407,53 @@ func cacheOwned(cfg Config, path string, data []byte) bool {
 }
 
 func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, func(), error) {
-	root, err := os.MkdirTemp("", "skgo-analysis-")
-	if err != nil {
-		return cfg, func() {}, err
+	root := ""
+	if cfg.worker != nil && cfg.worker.root != "" && !reflect.DeepEqual(cfg.worker.modules, s.Modules) {
+		if cfg.worker.view != nil {
+			_ = cfg.worker.view.Close()
+			cfg.worker.view = nil
+		}
+		_ = os.RemoveAll(cfg.worker.root)
+		cfg.worker.root, cfg.worker.previous, cfg.worker.materialized = "", nil, nil
 	}
-	// Go resolves working directories physically. Keep diagnostic and output
-	// rebasing on that same identity (not /var versus /private/var aliases).
-	canonical, err := filepath.EvalSymlinks(root)
-	if err != nil {
+	if cfg.worker != nil {
+		root = cfg.worker.root
+	}
+	var err error
+	if root == "" {
+		root, err = os.MkdirTemp("", "skgo-analysis-")
+		if err != nil {
+			return cfg, func() {}, err
+		}
+		canonical, err := filepath.EvalSymlinks(root)
+		if err != nil {
+			_ = os.RemoveAll(root)
+			return cfg, func() {}, err
+		}
+		root = canonical
+		if cfg.worker != nil {
+			cfg.worker.root = root
+		}
+	}
+	cleanup := func() {
+		if cfg.worker == nil {
+			_ = os.RemoveAll(root)
+		}
+	}
+	fail := func(err error) (Config, func(), error) {
 		_ = os.RemoveAll(root)
+		if cfg.worker != nil {
+			cfg.worker.root = ""
+			cfg.worker.previous = nil
+			cfg.worker.materialized = nil
+			if cfg.worker.view != nil {
+				_ = cfg.worker.view.Close()
+				cfg.worker.view = nil
+			}
+		}
 		return cfg, func() {}, err
 	}
-	root = canonical
-	cleanup := func() { _ = os.RemoveAll(root) }
-	fail := func(err error) (Config, func(), error) { cleanup(); return cfg, func() {}, err }
+	materialized := map[string][]byte{}
 	view := &generationSourceView{roots: map[string]string{}, cgoPackages: map[string]bool{}}
 	if cfg.Session != nil {
 		view.sources = make(map[string][]byte)
@@ -448,6 +509,24 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 			view.moduleRoots[m.Path] = view.roots[m.Dir]
 		}
 	}
+	if cfg.worker != nil {
+		for path := range cfg.worker.previous {
+			if _, ok := files[path]; !ok || (files[path] == nil && !strings.HasSuffix(path, string(filepath.Separator))) {
+				target := view.mapPath(path, true)
+				if target != path {
+					var err error
+					if strings.HasSuffix(path, string(filepath.Separator)) {
+						err = os.RemoveAll(target)
+					} else {
+						err = os.Remove(target)
+					}
+					if err != nil && !os.IsNotExist(err) {
+						return fail(err)
+					}
+				}
+			}
+		}
+	}
 	for path, data := range files {
 		target := view.mapPath(path, true)
 		if strings.HasSuffix(path, string(filepath.Separator)) {
@@ -464,9 +543,7 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 		if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
 			return fail(err)
 		}
-		if err := os.WriteFile(target, data, 0600); err != nil {
-			return fail(err)
-		}
+		materialized[target] = data
 		if view.sources != nil && strings.HasSuffix(target, ".go") {
 			view.sources[target] = data
 		}
@@ -501,9 +578,7 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 		if err != nil {
 			return fail(err)
 		}
-		if err := os.WriteFile(target, data, 0600); err != nil {
-			return fail(err)
-		}
+		materialized[target] = data
 	}
 	// Freeze Go environment settings. Workspace selection is rewritten only in
 	// the private copy; original module/workspace files are never touched.
@@ -568,12 +643,20 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 		}
 		wf.Cleanup()
 		target := filepath.Join(root, "go.work")
-		if err := os.WriteFile(target, modfile.Format(wf.Syntax), 0600); err != nil {
-			return fail(err)
-		}
+		materialized[target] = modfile.Format(wf.Syntax)
 		env = append(env, "GOWORK="+target)
 	}
-	view.env = env
+	for path, data := range materialized {
+		if cfg.worker != nil {
+			if old, ok := cfg.worker.materialized[path]; ok && bytes.Equal(old, data) {
+				continue
+			}
+		}
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			return fail(err)
+		}
+	}
+	view.env = effectiveEnv(env)
 	cfg.Web, cfg.Out, cfg.SwiftOut = view.mapPath(cfg.Web, true), view.mapPath(cfg.Out, true), view.mapPath(cfg.SwiftOut, true)
 	// Empty source roots remain valid after the last remote is deleted.
 	if err := os.MkdirAll(filepath.Join(cfg.Web, "src"), 0700); err != nil {
@@ -592,7 +675,7 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 		if err := os.MkdirAll(cfg.Web, 0700); err != nil {
 			return fail(err)
 		}
-		if err := os.Symlink(filepath.Join(originalWeb, "node_modules"), filepath.Join(cfg.Web, "node_modules")); err != nil {
+		if err := os.Symlink(filepath.Join(originalWeb, "node_modules"), filepath.Join(cfg.Web, "node_modules")); err != nil && !os.IsExist(err) {
 			return fail(err)
 		}
 	}
@@ -600,6 +683,38 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 	originalLog := cfg.Logf
 	cfg.Logf = func(format string, args ...any) { originalLog("%s", view.originalText(fmt.Sprintf(format, args...))) }
 	cfg.sourceView = view
+	if cfg.worker != nil {
+		cfg.worker.previous = files
+		cfg.worker.materialized = materialized
+		cfg.worker.modules = append([]cacheModule(nil), s.Modules...)
+		cfg.worker.sources = &s
+		cfg.worker.sourceOut = view.mapPath(cfg.Out, false)
+		snapshot := make(map[string][]byte, len(files)+len(materialized))
+		for path, data := range files {
+			if strings.HasSuffix(path, string(filepath.Separator)) {
+				snapshot[filepath.Clean(view.mapPath(path, true))] = nil
+				continue
+			}
+			if view.mapPath(path, true) == path {
+				snapshot[path] = data
+			}
+		}
+		for path, data := range materialized {
+			snapshot[path] = data
+		}
+		if cfg.worker.view != nil && cfg.worker.viewSession != cfg.Session {
+			_ = cfg.worker.view.Close()
+			cfg.worker.view = nil
+		}
+		if cfg.worker.view == nil {
+			cfg.worker.view = cfg.Session.PrepareView(snapshot)
+			cfg.worker.viewSession = cfg.Session
+		} else {
+			if err := cfg.worker.view.Update(snapshot); err != nil {
+				return fail(err)
+			}
+		}
+	}
 	return cfg, cleanup, nil
 }
 

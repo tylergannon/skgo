@@ -29,7 +29,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { protectEnvironmentFiles } from './env-private.js';
 import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, posix as posixPath, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /**
@@ -1268,6 +1268,55 @@ function errorText(e) {
 // Values are validated by Go once before Kit loads its environment declaration.
 // This must be a real file: Kit imports env.ts in a separate Vite server with
 // configFile:false, where this adapter's virtual modules do not exist.
+// The Go supervisor publishes readiness through Vite's existing HMR protocol.
+// This is adapter glue: the browser keeps using Vite's own client and overlay.
+export function goSupervisorReload() {
+	return {
+		name: 'skgo-supervisor-reload',
+		configureServer(server) {
+			const token = randomBytes(32).toString('hex');
+			const file = join(server.config.root, '.svelte-kit/skgo-dev-supervisor.json');
+			// Vite's client imports @vite/env. Import analysis rewrites that to
+			// its installed env.mjs, either under root or through /@fs/. Publish
+			// only this exact bootstrap dependency, never an application prefix.
+			const envFile = app.resolve('vite/dist/client/env.mjs').replaceAll('\\', '/');
+			const root = server.config.root.replaceAll('\\', '/').replace(/\/$/, '');
+			const envURL = envFile.startsWith(root + '/') ? envFile.slice(root.length) : posixPath.join('/@fs/', envFile);
+			const clientFiles = [server.config.base.replace(/\/$/, '') + envURL];
+			mkdirSync(dirname(file), { recursive: true });
+			writeFileSync(file, JSON.stringify({ token, base: server.config.base, clientFiles }), { mode: 0o600 });
+			chmodSync(file, 0o600);
+			let failure;
+			server.ws.on('vite:client:connect', (_, client) => {
+				if (failure) client.send(failure);
+			});
+			server.middlewares.use((req, res, next) => {
+				if ((req.url || '').split('?')[0] !== '/__skgo_dev/supervisor') return next();
+				if (req.method !== 'POST' || req.headers['x-skgo-dev-token'] !== token) {
+					res.statusCode = 403; res.end('Forbidden'); return;
+				}
+				let body = '', size = 0;
+				req.setEncoding('utf8');
+				req.on('data', chunk => {
+					size += Buffer.byteLength(chunk);
+					if (size <= 1048576) body += chunk;
+				});
+				req.on('end', () => {
+					let message;
+					try { message = JSON.parse(body); } catch {}
+					if (size > 1048576 || !message || typeof message.diagnostic !== 'string') {
+						res.statusCode = 400; res.end('Invalid supervisor status'); return;
+					}
+					failure = message.diagnostic ? { type: 'error', err: { message: message.diagnostic, stack: '', plugin: 'skgo' } } : undefined;
+					// Kit also omits path for full-reload: app.html is not the page URL.
+					server.ws.send(failure || { type: 'full-reload' });
+					res.statusCode = 204; res.end();
+				});
+			});
+		}
+	};
+}
+
 export function goEnvironmentValues(output = 'build') {
 	let token = '';
 	let kitOut = '.svelte-kit';

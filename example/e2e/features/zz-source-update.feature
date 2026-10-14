@@ -28,7 +28,8 @@ Feature: The document follows the source being served
     Given I open "/go-dev"
     Then a cold document for "/go-dev" has "go-dev-load" reading "Go revision one" in dev or "Go revision one" in prod
     When "src/routes/go-dev/page.server.go" has "Go revision one" replaced with "Go revision two"
-    Then a cold document for "/go-dev" has "go-dev-load" reading "Go revision two" in dev or "Go revision one" in prod
+    Then the open page shows "go-dev-load" as "Go revision two" in dev or "Go revision one" in prod without manual navigation
+    And a cold document for "/go-dev" has "go-dev-load" reading "Go revision two" in dev or "Go revision one" in prod
     And client navigation from "/" to "/go-dev" shows "go-dev-load" as "Go revision two" in dev or "Go revision one" in prod
 
   Scenario: A remote whose Go result type changes is regenerated and invoked by Kit with the new shape in dev, and unchanged in prod
@@ -53,9 +54,11 @@ Feature: The document follows the source being served
   Scenario: A Go error is reported with its file and the same session recovers when it is corrected
     Given I open "/go-dev"
     When "src/routes/go-dev/page.server.go" has "PageData{Revision: \"Go revision one\"}" replaced with "PageData{Revision: 7}"
-    Then a request for "/go-dev" is answered by the build failure naming "page.server.go" in dev or by "go-dev-load" reading "Go revision one" in prod
+    Then the open page shows a Vite build error naming "page.server.go" in dev or "go-dev-load" reading "Go revision one" in prod
+    And a request for "/go-dev" is answered by the build failure naming "page.server.go" in dev or by "go-dev-load" reading "Go revision one" in prod
     When "src/routes/go-dev/page.server.go" has "PageData{Revision: 7}" replaced with "PageData{Revision: \"Go revision recovered\"}"
-    Then a cold document for "/go-dev" has "go-dev-load" reading "Go revision recovered" in dev or "Go revision one" in prod
+    Then the open page shows "go-dev-load" as "Go revision recovered" in dev or "Go revision one" in prod without manual navigation
+    And a cold document for "/go-dev" has "go-dev-load" reading "Go revision recovered" in dev or "Go revision one" in prod
 
   Scenario: An authored Go action edited while the servers run reaches Kit's enhanced form and a native form with scripting disabled in dev, and neither in prod
     Given I open "/go-dev"

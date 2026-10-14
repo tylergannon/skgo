@@ -63,3 +63,16 @@ func DeclaredConfig(cfg Config) (Config, error) { return gen.DeclaredConfig(cfg)
 func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*PackageSnapshot, error) {
 	return gen.NewPackageSnapshot(config, roots...)
 }
+
+// Worker retains a private source view and compatible generation results across
+// serial development edits. Its zero value is ready to use; call Close when done.
+// The default analysis session has bounded retention. If Config.Session supplies
+// a shared session instead, its owner must call SetMaxUniverses to bound retention
+// across edits; Worker does not change caller-owned session limits.
+type Worker = gen.Worker
+
+// WorkerStats reports backend work and reuse performed by a Worker.
+type WorkerStats = gen.WorkerStats
+
+// WorkerInputs identifies mutable roots, captured files and embed membership.
+type WorkerInputs = gen.WorkerInputs

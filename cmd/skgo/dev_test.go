@@ -2,6 +2,10 @@ package main
 
 import (
 	"bytes"
+	"debug/dwarf"
+	"debug/elf"
+	"debug/macho"
+	"debug/pe"
 	"errors"
 	"io"
 	"net"
@@ -11,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -70,6 +75,8 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/__registry", func(w http.ResponseWriter, r *http.Request) {
+		exe, _ := os.Executable()
+		w.Header().Set("X-Fixture-Executable", exe)
 		fmt.Fprintf(w, "pid=%d actions=%d endpoints=%d", os.Getpid(), len(generated.Actions()), len(generated.Endpoints()))
 	})
 	mux.Handle("/", endpoints.Intercept(http.NotFoundHandler()))
@@ -490,7 +497,7 @@ func TestSkgoDevAdoptsAuthoredEndpointsAndActionsInOneLaunch(t *testing.T) {
 	base := "http://" + addr
 	log := &lockedBuffer{}
 	dev := exec.Command(skgoBin, "dev", "--root", app.root, "--web", "web", "--cmd", "./cmd",
-		"--listen", addr, "--origin", base, "--vite-url", vite.URL)
+		"--listen", addr, "--origin", base, "--vite-url", vite.URL, "--debug")
 	dev.Env = app.env
 	dev.Stdout, dev.Stderr = log, log
 	if err := dev.Start(); err != nil {
@@ -523,7 +530,8 @@ func TestSkgoDevAdoptsAuthoredEndpointsAndActionsInOneLaunch(t *testing.T) {
 	app.until("http://"+builtAddr+"/api/thing", endpoint(200, "Go endpoint revision one", "one"), "the built binary", log)
 
 	app.until(base+"/api/thing", endpoint(200, "Go endpoint revision one", "one"), "first build", log)
-	app.until(base+"/__registry", registry("actions=1 endpoints=1"), "first registry", log)
+	first := app.until(base+"/__registry", registry("actions=1 endpoints=1"), "first registry", log)
+	assertExecutableDWARF(t, first.header.Get("X-Fixture-Executable"))
 
 	// An endpoint's status, body and header change.
 	app.write("web/src/routes/api/thing/server.go", devEndpointTwo)
@@ -694,7 +702,7 @@ func TestSkgoDevExternalCancellationRemainsCleanWithViteChild(t *testing.T) {
 	t.Logf("cancellation proof: supervisor exit=0; Vite pid=%d alive=false; process group=%d alive=false; listener=%s open=false", pid, pgid, listener)
 }
 
-func TestSkgoDevListenFailureStopsStartedViteChild(t *testing.T) {
+func TestSkgoDevListenFailureDoesNotStartViteChild(t *testing.T) {
 	app := newDevApp(t)
 	vite := buildDevFakeVite(t)
 	log := &lockedBuffer{}
@@ -737,26 +745,50 @@ func TestSkgoDevListenFailureStopsStartedViteChild(t *testing.T) {
 	if !errors.As(waitErr, &exitErr) || exitErr.ExitCode() == 0 {
 		t.Fatalf("invalid public listen address returned %v, want nonzero process exit:\n%s", waitErr, log.String())
 	}
-	pid, listener, ok := startedViteIdentity(log.String())
-	if !ok {
-		t.Fatalf("skgo dev did not report its started Vite child:\n%s", log.String())
+	if _, _, ok := startedViteIdentity(log.String()); ok {
+		t.Fatalf("Vite started before validating the public listen address:\n%s", log.String())
 	}
-	deadline := time.Now().Add(5 * time.Second)
-	for processOrGroupAlive(pid, true) && time.Now().Before(deadline) {
-		time.Sleep(20 * time.Millisecond)
+	if _, _, _, ok := fakeViteIdentity(log.String()); ok {
+		t.Fatalf("a Vite child ran despite invalid public address:\n%s", log.String())
 	}
-	pidAlive := processOrGroupAlive(pid, false)
-	groupAlive := processOrGroupAlive(pid, true)
-	conn, dialErr := net.DialTimeout("tcp", listener, 200*time.Millisecond)
-	listenerAlive := dialErr == nil
-	if conn != nil {
-		_ = conn.Close()
+	if !strings.Contains(log.String(), "invalid-listen-address") {
+		t.Fatalf("missing listen diagnostic: %s", log.String())
 	}
-	if pidAlive || groupAlive || listenerAlive {
-		t.Fatalf("owned Vite resources survived startup failure: pid=%d alive=%t group=%d alive=%t listener=%s open=%t\n%s", pid, pidAlive, pid, groupAlive, listener, listenerAlive, log.String())
+}
+
+// Read the actual child selected by the CLI, so dropping --debug wiring fails.
+func assertExecutableDWARF(t *testing.T, path string) {
+	t.Helper()
+	var data *dwarf.Data
+	var err error
+	switch runtime.GOOS {
+	case "darwin":
+		f, e := macho.Open(path)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer f.Close()
+		data, err = f.DWARF()
+	case "windows":
+		f, e := pe.Open(path)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer f.Close()
+		data, err = f.DWARF()
+	default:
+		f, e := elf.Open(path)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer f.Close()
+		data, err = f.DWARF()
 	}
-	if strings.Contains(log.String(), "vite exited unexpectedly:") {
-		t.Fatalf("intentional Vite shutdown during startup failure was reported as unexpected:\n%s", log.String())
+	if err != nil {
+		t.Fatalf("skgo dev --debug omitted DWARF: %v", err)
 	}
-	t.Logf("startup failure proof: supervisor exited nonzero; Vite pid=%d alive=false; process group=%d alive=false; listener=%s open=false", pid, pid, listener)
+	entry, err := data.Reader().Next()
+	if err != nil || entry == nil {
+		t.Fatalf("skgo dev --debug has empty DWARF: %v", err)
+	}
 }

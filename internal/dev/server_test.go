@@ -2,10 +2,12 @@ package dev
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -62,6 +64,7 @@ func answerSource(literal string) string {
 }
 
 type session struct {
+	server *Server
 	t      *testing.T
 	root   string
 	base   string
@@ -84,6 +87,10 @@ func startSession(t *testing.T) *session {
 }
 
 func startSessionPolling(t *testing.T, poll time.Duration) *session {
+	return startSessionConfigured(t, poll, nil)
+}
+
+func startSessionConfigured(t *testing.T, poll time.Duration, configure func(*Config)) *session {
 	t.Helper()
 	t.Setenv("GOWORK", "off")
 	root := t.TempDir()
@@ -105,7 +112,7 @@ func startSessionPolling(t *testing.T, poll time.Duration) *session {
 	}
 
 	s := &session{t: t, root: root, log: &syncBuffer{}, done: make(chan error, 1)}
-	server, err := New(Config{
+	cfg := Config{
 		Root: root, Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated"),
 		Package: "./cmd", Listen: "127.0.0.1:0",
 		Args:   func(listen string) []string { return []string{"-listen", listen} },
@@ -122,7 +129,11 @@ func startSessionPolling(t *testing.T, poll time.Duration) *session {
 			}
 			return nil, os.WriteFile(filepath.Join(root, "answer", "zz_gen.go"), []byte(fmt.Sprintf("// Code generated. DO NOT EDIT.\n\npackage answer\n\nconst Generation = %d\n", s.gens.Load())), 0o644)
 		},
-	})
+	}
+	if configure != nil {
+		configure(&cfg)
+	}
+	server, err := New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,6 +141,7 @@ func startSessionPolling(t *testing.T, poll time.Duration) *session {
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.server = server
 	s.base = "http://" + addr.String()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
@@ -496,5 +508,182 @@ func TestDevRebuildsForASaveCompletedDuringGeneration(t *testing.T) {
 	time.Sleep(time.Second)
 	if got := s.gens.Load(); got != 3 {
 		t.Fatalf("completed save: got %d generations, want 3\n%s", got, s.log.String())
+	}
+}
+
+func TestDevCanTransferAnExclusiveApplicationResource(t *testing.T) {
+	reloads := make(chan string, 4)
+	vite := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/__skgo_dev/supervisor" || r.Header.Get("X-Skgo-Dev-Token") != "exclusive-fixture" {
+			t.Errorf("unexpected Vite request %s", r.URL)
+			w.WriteHeader(403)
+			return
+		}
+		var body struct{ Diagnostic string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+		}
+		reloads <- body.Diagnostic
+		w.WriteHeader(204)
+	}))
+	defer vite.Close()
+	exclusive, err := freeAddr()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := startSessionConfigured(t, 20*time.Millisecond, func(cfg *Config) {
+		cfg.StopBeforeStart = true
+		cfg.Vite, _ = url.Parse(vite.URL)
+		if err := os.MkdirAll(filepath.Join(cfg.Web, ".svelte-kit"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(cfg.Web, ".svelte-kit/skgo-dev-supervisor.json"), []byte(`{"token":"exclusive-fixture","base":"/"}`), 0600); err != nil {
+			t.Fatal(err)
+		}
+		cfg.Env = []string{"EXCLUSIVE_ADDR=" + exclusive}
+		source := strings.Replace(fixtureMain, `"net/http"`, `"net/http"; "net"`, 1)
+		source = strings.Replace(source, "func main() {", `func main() {
+ lease,err:=net.Listen("tcp",os.Getenv("EXCLUSIVE_ADDR"));if err!=nil{panic(err)};defer lease.Close()
+`, 1)
+		if err := os.WriteFile(filepath.Join(cfg.Root, "cmd/main.go"), []byte(source), 0644); err != nil {
+			t.Fatal(err)
+		}
+	})
+	first := s.get("/")
+	if first.status != 200 || !strings.Contains(first.body, "revision one") {
+		t.Fatalf("first: %+v", first)
+	}
+	select {
+	case got := <-reloads:
+		t.Fatalf("initial readiness sent browser reload %q", got)
+	default:
+	}
+	s.write("answer/answer.go", answerSource("exclusive replacement"))
+	next := s.get("/")
+	if next.status != 200 || !strings.Contains(next.body, "exclusive replacement") {
+		t.Fatalf("replacement did not take exclusive resource: %+v\n%s", next, s.log.String())
+	}
+	select {
+	case got := <-reloads:
+		if got != "" {
+			t.Fatalf("replacement sent failure %q", got)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("exclusive replacement did not reload connected browser")
+	}
+}
+
+func TestDevExclusiveReplacementClosesEventStreams(t *testing.T) {
+	s := startSessionConfigured(t, 20*time.Millisecond, func(cfg *Config) {
+		cfg.StopBeforeStart = true
+		if err := os.WriteFile(filepath.Join(cfg.Root, "cmd/register.go"), []byte(`package main
+import("fmt";"net/http";"fixture/answer")
+func register(mux *http.ServeMux) {
+ mux.HandleFunc("/events",func(w http.ResponseWriter,r *http.Request){
+  w.Header().Set("Content-Type","text/event-stream; charset=utf-8")
+  fmt.Fprintf(w,"data: %s\n\n",answer.Text());w.(http.Flusher).Flush()
+  <-r.Context().Done()
+ })
+}
+`), 0644); err != nil {
+			t.Fatal(err)
+		}
+	})
+	response, err := http.Get(s.base + "/events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	prefix := make([]byte, len("data: revision one\n\n"))
+	if _, err := io.ReadFull(response.Body, prefix); err != nil {
+		t.Fatal(err)
+	}
+	if string(prefix) != "data: revision one\n\n" {
+		t.Fatalf("stream=%q", prefix)
+	}
+	ended := make(chan struct{})
+	go func() { io.Copy(io.Discard, response.Body); close(ended) }()
+	s.write("answer/answer.go", answerSource("after stream replacement"))
+	replaced := make(chan reply, 1)
+	go func() { replaced <- s.get("/") }()
+	select {
+	case got := <-replaced:
+		if got.status != 200 || !strings.HasPrefix(got.body, "after stream replacement ") {
+			t.Fatalf("replacement=%+v\n%s", got, s.log.String())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("open event stream held up replacement\n%s", s.log.String())
+	}
+	select {
+	case <-ended:
+	case <-time.After(time.Second):
+		t.Fatal("old event stream survived replacement")
+	}
+}
+
+func TestDevWatchesCapturedReplacementSourcesAndNewEmbedMatches(t *testing.T) {
+	dependency := t.TempDir()
+	put := func(path, text string) {
+		t.Helper()
+		path = filepath.Join(dependency, path)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(text), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put("go.mod", "module fixturedep\n\ngo 1.27.1\n")
+	put("answer.go", `package answer
+import("embed";"strconv")
+//go:embed texts/*.txt
+var assets embed.FS
+func Text() string { data,_:=assets.ReadFile("texts/value.txt");files,_:=assets.ReadDir("texts");return string(data)+" entries="+strconv.Itoa(len(files)) }
+`)
+	put("texts/value.txt", "dependency one")
+	s := startSessionConfigured(t, 20*time.Millisecond, func(cfg *Config) {
+		mod := fixtureMod + "\nrequire fixturedep v0.0.0\nreplace fixturedep => " + strconv.Quote(dependency) + "\n"
+		if err := os.WriteFile(filepath.Join(cfg.Root, "go.mod"), []byte(mod), 0644); err != nil {
+			t.Fatal(err)
+		}
+		source := strings.Replace(fixtureMain, `"fixture/answer"`, `answer "fixturedep"`, 1)
+		if err := os.WriteFile(filepath.Join(cfg.Root, "cmd/main.go"), []byte(source), 0644); err != nil {
+			t.Fatal(err)
+		}
+		cfg.WatchInputs = func() WatchInputs {
+			return WatchInputs{Roots: []string{dependency}, Files: []string{filepath.Join(dependency, "go.mod")}, EmbedPatterns: []string{filepath.Join(dependency, "texts/*.txt")}}
+		}
+	})
+	first := s.get("/")
+	if first.status != 200 || !strings.Contains(first.body, "dependency one entries=1") {
+		t.Fatalf("first=%+v\n%s", first, s.log.String())
+	}
+	dependencySource := filepath.Join(dependency, "answer.go")
+	original, err := os.ReadFile(dependencySource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	put("answer.go", strings.Replace(string(original), `return string(data)+`, `return "authored dependency " + string(data)+`, 1))
+	body := s.get("/")
+	if body.status != 200 || !strings.Contains(body.body, "authored dependency dependency one entries=1") {
+		t.Fatalf("external Go body edit=%+v\n%s", body, s.log.String())
+	}
+	file := filepath.Join(dependency, "texts/value.txt")
+	info, err := os.Stat(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	put("texts/value.txt", "dependency two")
+	if err := os.Chtimes(file, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	edited := s.get("/")
+	if edited.status != 200 || !strings.Contains(edited.body, "dependency two entries=1") {
+		t.Fatalf("preserved timestamp edit=%+v\n%s", edited, s.log.String())
+	}
+	put("texts/new.txt", "new embedded member")
+	added := s.get("/")
+	if added.status != 200 || !strings.Contains(added.body, "dependency two entries=2") {
+		t.Fatalf("new embed match=%+v\n%s", added, s.log.String())
 	}
 }
