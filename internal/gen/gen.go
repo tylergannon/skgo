@@ -45,6 +45,7 @@ type Config struct {
 	CacheDir    string
 	cache       *generationCache
 	kitMetadata *kitRouteMetadata
+	worker      *Worker
 	sourceView  *generationSourceView
 	// Packages contains immutable, caller-loaded package snapshots. Incompatible
 	// snapshots are ignored and the current sources are loaded normally.
@@ -148,7 +149,7 @@ func Run(cfg Config) error {
 			cfg.CacheDir = filepath.Join(root, "skgo", "generate")
 		}
 	}
-	if cfg.CacheDir != "" && cfg.CacheDir != "off" && !cfg.ReadOnly && cfg.LoadPackages == nil && len(cfg.Packages) == 0 {
+	if (cfg.worker != nil || cfg.CacheDir != "" && cfg.CacheDir != "off") && !cfg.ReadOnly && cfg.LoadPackages == nil && len(cfg.Packages) == 0 {
 		return runCached(cfg)
 	}
 	return runUncached(cfg)

@@ -533,5 +533,8 @@ func (cfg Config) loadShared(load *packages.Config, fallback goload.LoadFunc, pa
 	work := *load
 	work.Overlay = cfg.ordinarySources(load.Overlay)
 	cfg.sessionSources(&work, patterns...)
+	if cfg.worker != nil && cfg.sourceView != nil && cfg.worker.view != nil {
+		return cfg.worker.view.LoadWithFallback(&work, fallback, patterns...)
+	}
 	return cfg.Session.LoadWithFallback(&work, fallback, patterns...)
 }

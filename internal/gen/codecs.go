@@ -156,13 +156,21 @@ func (a *app) generateCodecs() error {
 		return err
 	}
 
-	out, err := codegen.Generate(defs.definitions, nodes, codegen.Options{
-		PackageName: a.cfg.Package,
-		ImportPath:  a.bindingsImportPath(),
-	})
-	if err != nil {
-		return fmt.Errorf("skgo: generating devalue codecs: %w", err)
+	var out []byte
+	if a.cfg.worker != nil {
+		out = a.cfg.worker.projectedCodecs("devalue", a.cfg.Package, a.bindingsImportPath(), defs.definitions, nodes)
 	}
+	if out == nil {
+		var err error
+		out, err = codegen.Generate(defs.definitions, nodes, codegen.Options{PackageName: a.cfg.Package, ImportPath: a.bindingsImportPath()})
+		if err != nil {
+			return fmt.Errorf("skgo: generating devalue codecs: %w", err)
+		}
+		if a.cfg.worker != nil {
+			a.cfg.worker.codecs["devalue"] = &codecProjection{definitions: defs.definitions, roots: nodes, packageName: a.cfg.Package, importPath: a.bindingsImportPath(), source: out, used: a.cfg.worker.revision}
+		}
+	}
+
 	if a.cfg.ReadOnly {
 		return nil
 	}

@@ -63,3 +63,13 @@ func DeclaredConfig(cfg Config) (Config, error) { return gen.DeclaredConfig(cfg)
 func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*PackageSnapshot, error) {
 	return gen.NewPackageSnapshot(config, roots...)
 }
+
+// Worker retains a private source view and compatible generation results across
+// serial development edits. Its zero value is ready to use; call Close when done.
+type Worker = gen.Worker
+
+// WorkerStats reports backend work and reuse performed by a Worker.
+type WorkerStats = gen.WorkerStats
+
+// WorkerInputs identifies mutable roots, captured files and embed membership.
+type WorkerInputs = gen.WorkerInputs

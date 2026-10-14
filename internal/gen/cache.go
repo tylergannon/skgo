@@ -18,7 +18,7 @@ import (
 	"golang.org/x/tools/imports"
 )
 
-const generationCacheFormat = "skgo-generation-plan-v1"
+const generationCacheFormat = "skgo-generation-plan-v2"
 const maxGenerationCacheBytes = 32 << 20
 
 // The cache stores SKGO's own completed, formatted file plan. It never tries to
@@ -209,26 +209,36 @@ func runCached(cfg Config) error {
 		return err
 	}
 	cfg.kitMetadata = metadata
-	if entry, ok := readGenerationEntry(path); ok && entry.InputHash == inputHash {
+	if entry, ok := readGenerationEntry(path); cfg.CacheDir != "off" && ok && entry.InputHash == inputHash {
 		host, _, moduleErr := moduleOf(cfg.Out)
 		environment, envErr := currentCacheEnvironment(host)
-		_, digest, err := entry.Sources.capture(cfg)
+		contents, digest, err := entry.Sources.capture(cfg)
 		a, _ := json.Marshal(metadata)
 		b, _ := json.Marshal(entry.Metadata)
 		if moduleErr == nil && envErr == nil && cacheEnvironmentHash(environment) == entry.Sources.EnvironmentHash && err == nil && digest == entry.SourceHash && bytes.Equal(a, b) {
 			cfg.Logf("generation cache hit")
+			if cfg.worker != nil {
+				key, _ := cfg.worker.projectionKey(inputHash, entry.Sources.EnvironmentHash, metadata, contents)
+				cfg.worker.planKey, cfg.worker.plan = key, &entry.Plan
+				cfg.worker.stats.PlanHits++
+			}
 			return publishGenerationPlan(cfg, entry.Plan)
 		}
 	}
+	sources, contents, digest, err := acquireGenerationSources(cfg)
+	if err != nil {
+		return bypass(err)
+	}
+	key := ""
+	if cfg.worker != nil {
+		key, _ = cfg.worker.projectionKey(inputHash, sources.EnvironmentHash, metadata, contents)
+		if key != "" && key == cfg.worker.planKey && cfg.worker.plan != nil {
+			cfg.Logf("generation projection hit")
+			cfg.worker.stats.PlanHits++
+			return publishGenerationPlan(cfg, *cfg.worker.plan)
+		}
+	}
 	cfg.Logf("generation cache miss")
-	sources, err := acquireCacheSources(cfg)
-	if err != nil {
-		return bypass(err)
-	}
-	contents, digest, err := sources.capture(cfg)
-	if err != nil {
-		return bypass(err)
-	}
 	view, cleanup, err := sources.materialize(cfg, contents)
 	if err != nil {
 		return bypass(err)
@@ -255,6 +265,12 @@ func runCached(cfg Config) error {
 	}
 	if view.sourceView.cgoUsed {
 		cfg.Logf("generation cache write skipped: local cgo source")
+		return nil
+	}
+	if cfg.worker != nil && key != "" {
+		cfg.worker.planKey, cfg.worker.plan = key, &plan
+	}
+	if cfg.CacheDir == "off" {
 		return nil
 	}
 	if err := writeGenerationEntry(path, generationEntry{InputHash: inputHash, Sources: sources, SourceHash: digest, Metadata: metadata, Plan: plan}); err != nil {
