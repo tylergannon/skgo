@@ -11,7 +11,11 @@ import (
 )
 
 // A request must not reread a project's source bytes just to serve a route.
-func BenchmarkDevRequestWithSourceTree(b *testing.B) {
+func BenchmarkDevRequestWithSourceTree(b *testing.B) { benchmarkDevRequests(b, false) }
+
+func BenchmarkDevConcurrentRequestsWithSourceTree(b *testing.B) { benchmarkDevRequests(b, true) }
+
+func benchmarkDevRequests(b *testing.B, parallel bool) {
 	root := b.TempDir()
 	content := append([]byte("package fixture\n//"), bytes.Repeat([]byte("x"), 8192)...)
 	for i := 0; i < 768; i++ {
@@ -30,11 +34,22 @@ func BenchmarkDevRequestWithSourceTree(b *testing.B) {
 	s.settle(&generation{proxy: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("current fixture response")) })})
 	b.ReportAllocs()
 	b.ResetTimer()
-	for b.Loop() {
+	request := func() {
 		w := httptest.NewRecorder()
 		s.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
 		if w.Code != 200 || w.Body.String() != "current fixture response" {
-			b.Fatal(w.Code, w.Body.String())
+			b.Error(w.Code, w.Body.String())
+		}
+	}
+	if parallel {
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				request()
+			}
+		})
+	} else {
+		for b.Loop() {
+			request()
 		}
 	}
 }
