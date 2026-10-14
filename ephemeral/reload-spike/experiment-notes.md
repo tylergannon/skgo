@@ -402,3 +402,38 @@ no projected declaration can skip generation while still requiring compilation
 and replacement of changed executable code. The next integration must compare
 targeted output bytes with full generation and count omitted producer calls;
 timing an unchanged whole-project cache hit alone cannot prove this capability.
+
+### Generator compilation is another avoidable dependency
+
+Read-only investigation of Gimbal PR #528 at checkpoint 762b385 found that the
+ordinary `go generate ./internal/skgo` directive runs `go run` on appgen. Some
+application code is therefore compiled before persistent generator caches run:
+
+- `internal/generate/appgen/main.go` imports `internal/observation` to call
+  Polytype's generic `Declare` for `InterviewRow` and `TurnRow`. Polytype v1.8.0
+  `configuration.go` extracts package path, type name and pointer status; its
+  actual code generation subsequently loads source. The observation store,
+  backend and session implementation enter the binary unnecessarily for that
+  identity-only use.
+- `internal/generate/definition.go` imports the root Gimbal runtime for
+  serializable `WorkflowDescription`, `WorkflowField`, and `WorkflowRole`
+  contracts. Runtime code and its dependencies come with that package.
+- `internal/builtin/workflows.go` depends on runtime role defaults, while the
+  same package's `workflow_pages.go` embeds generated pages. Generation rewrites
+  those pages, feeding output changes into the next generator build. A changed
+  executable also changes the analysis-cache producer digest.
+
+A stable generator could accept source type identities as data, share leaf
+metadata contracts with the runtime, and separate builtin defaults from
+generated-page embedding. Removing only the generic observation call would
+leave the other two couplings. This separation does not require gopls, and has
+not been implemented or timed.
+
+Do not generalize this to every workflow edit: authored `internal/workflows`
+packages are already selected by string and inspected as source, not directly
+imported into appgen. Such an edit may only trigger a later generator rebuild
+through changed embedded pages. The final changed-command fixture instead adds
+`SessionProof bool` with JSON name `session_proof` to
+`internal/observation/rows.go`'s `InterviewRow`, a direct appgen dependency.
+Its `go generate` timing must include generator recompilation and must be kept
+separate from the previously measured prebuilt-binary analysis comparison.
