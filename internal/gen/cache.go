@@ -10,11 +10,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
+
+	"golang.org/x/tools/imports"
 )
 
 const generationCacheFormat = "skgo-generation-plan-v1"
@@ -27,6 +28,7 @@ type generationPlan struct {
 	GoFiles []string
 }
 type generationEntry struct {
+	InputHash  string
 	Sources    cacheSources
 	SourceHash string
 	Metadata   *kitRouteMetadata
@@ -55,18 +57,18 @@ func cacheFileHash(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func generationCachePath(cfg Config) (string, error) {
+func generationCachePath(cfg Config) (string, string, error) {
 	producer, err := generatorIdentity()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	goPath, err := exec.LookPath("go")
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	goIdentity, err := cacheFileHash(goPath)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	// Keep only tool inputs. Arbitrary authored JS inputs are represented by its
 	// live semantic result, so environment values such as secrets aren't stored.
@@ -79,18 +81,20 @@ func generationCachePath(cfg Config) (string, error) {
 	}
 	sort.Strings(env)
 	input := struct {
-		Format, Producer, GoTool, Checker                                               string
+		Format, Producer, GoTool, Checker, ImportPrefix                                 string
 		Web, Out, Package, LocalsPackage, LocalsType, HookPackage, HookSymbol, SwiftOut string
 		SwiftRemotes                                                                    []string
 		Language                                                                        Language
 		Env                                                                             []string
-	}{generationCacheFormat, producer, goIdentity, runtime.Version(), cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.SwiftOut, cfg.SwiftRemotes, cfg.Language, env}
+	}{generationCacheFormat, producer, goIdentity, runtime.Version(), imports.LocalPrefix, cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.SwiftOut, cfg.SwiftRemotes, cfg.Language, env}
 	raw, err := json.Marshal(input)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	sum := sha256.Sum256(raw)
-	return filepath.Join(cfg.CacheDir, fmt.Sprintf("%x.plan", sum)), nil
+	target, _ := json.Marshal([]string{cfg.Web, cfg.Out, cfg.SwiftOut})
+	slot := sha256.Sum256(target)
+	return filepath.Join(cfg.CacheDir, fmt.Sprintf("%x.plan", slot)), fmt.Sprintf("%x", sum), nil
 }
 
 func readGenerationEntry(path string) (generationEntry, bool) {
@@ -177,7 +181,7 @@ func runCached(cfg Config) error {
 			return bypass(fmt.Errorf("external package driver"))
 		}
 	}
-	path, err := generationCachePath(cfg)
+	path, inputHash, err := generationCachePath(cfg)
 	if err != nil {
 		return bypass(err)
 	}
@@ -190,13 +194,13 @@ func runCached(cfg Config) error {
 		return err
 	}
 	cfg.kitMetadata = metadata
-	if entry, ok := readGenerationEntry(path); ok {
+	if entry, ok := readGenerationEntry(path); ok && entry.InputHash == inputHash {
 		host, _, moduleErr := moduleOf(cfg.Out)
 		environment, envErr := currentCacheEnvironment(host)
 		_, digest, err := entry.Sources.capture(cfg)
 		a, _ := json.Marshal(metadata)
 		b, _ := json.Marshal(entry.Metadata)
-		if moduleErr == nil && envErr == nil && reflect.DeepEqual(environment, entry.Sources.Environment) && err == nil && digest == entry.SourceHash && bytes.Equal(a, b) {
+		if moduleErr == nil && envErr == nil && cacheEnvironmentHash(environment) == entry.Sources.EnvironmentHash && err == nil && digest == entry.SourceHash && bytes.Equal(a, b) {
 			cfg.Logf("generation cache hit")
 			return publishGenerationPlan(cfg, entry.Plan)
 		}
@@ -238,7 +242,7 @@ func runCached(cfg Config) error {
 		cfg.Logf("generation cache write skipped: local cgo source")
 		return nil
 	}
-	if err := writeGenerationEntry(path, generationEntry{sources, digest, metadata, plan}); err != nil {
+	if err := writeGenerationEntry(path, generationEntry{InputHash: inputHash, Sources: sources, SourceHash: digest, Metadata: metadata, Plan: plan}); err != nil {
 		cfg.Logf("generation cache write skipped: %v", err)
 	}
 	return nil

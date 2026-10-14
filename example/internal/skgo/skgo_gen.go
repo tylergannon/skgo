@@ -6,6 +6,13 @@ import (
 	context "context"
 	json "encoding/json"
 	fmt "fmt"
+	math "math"
+	http "net/http"
+	reflect "reflect"
+	slices "slices"
+	strconv "strconv"
+	time "time"
+
 	devalue "github.com/tylergannon/devalue/v5"
 	skgo "github.com/tylergannon/skgo"
 	pkg_businesslogic "github.com/tylergannon/skgo/example/businesslogic"
@@ -62,12 +69,6 @@ import (
 	params "github.com/tylergannon/skgo/example/internal/skgo/params"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 	skgo50 "github.com/tylergannon/skgo/example/web/src/lib"
-	math "math"
-	http "net/http"
-	reflect "reflect"
-	slices "slices"
-	strconv "strconv"
-	time "time"
 )
 
 func RequestBoundary(cfg skgo.HandleConfig, next http.Handler) http.Handler {

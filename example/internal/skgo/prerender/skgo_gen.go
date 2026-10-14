@@ -4,10 +4,11 @@ package main
 
 import (
 	fmt "fmt"
-	skgo "github.com/tylergannon/skgo"
-	generated "github.com/tylergannon/skgo/example/internal/skgo"
 	log "log"
 	http "net/http"
+
+	skgo "github.com/tylergannon/skgo"
+	generated "github.com/tylergannon/skgo/example/internal/skgo"
 )
 
 func main() {

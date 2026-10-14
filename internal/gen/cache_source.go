@@ -39,15 +39,24 @@ type cacheModule struct {
 }
 
 type cacheSources struct {
-	Modules     []cacheModule
-	Environment map[string]string
-	Controls    []string
-	Aliases     map[string]string
+	Modules         []cacheModule
+	Environment     map[string]string `json:"-"`
+	EnvironmentHash string
+	Controls        []string
+	Aliases         map[string]string
 }
 
 // Only compiler/source selection settings are retained. Proxy and authentication
 // configuration stays in the invoking process environment, never in cache records.
 var cacheGoEnvironment = []string{"GO111MODULE", "GOARCH", "GOOS", "GOAMD64", "GOARM", "GOARM64", "GO386", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM", "GOEXPERIMENT", "GOFIPS140", "GOROOT", "GOPATH", "GOMODCACHE", "GOTOOLCHAIN", "GOFLAGS", "GOWORK", "GOENV", "CGO_ENABLED"}
+
+// Effective values are needed only while constructing a cold source view.
+// Persist their digest, including flags that may themselves contain secrets.
+func cacheEnvironmentHash(environment map[string]string) string {
+	raw, _ := json.Marshal(environment)
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
+}
 
 func currentCacheEnvironment(dir string) (map[string]string, error) {
 	cmd := exec.Command("go", append([]string{"env", "-json"}, cacheGoEnvironment...)...)
@@ -72,7 +81,7 @@ func acquireCacheSources(cfg Config) (cacheSources, error) {
 	if err != nil {
 		return cacheSources{}, err
 	}
-	s := cacheSources{Environment: environment, Aliases: map[string]string{}}
+	s := cacheSources{Environment: environment, EnvironmentHash: cacheEnvironmentHash(environment), Aliases: map[string]string{}}
 	if flags := s.Environment["GOFLAGS"]; strings.Contains(flags, "-overlay") || strings.Contains(flags, "-modfile") || strings.Contains(flags, "-mod=vendor") || strings.Contains(flags, "-toolexec") || strings.Contains(flags, "-pkgdir") {
 		return s, fmt.Errorf("external Go source views are not cached")
 	}

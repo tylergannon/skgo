@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"golang.org/x/tools/go/packages"
+	"golang.org/x/tools/imports"
 )
 
 type cacheRunResult struct {
@@ -364,6 +365,8 @@ func TestGenerationCachePrepareAndCheckRemainFresh(t *testing.T) {
 }
 
 func TestGenerationCacheChecksConsumedGoEnvironment(t *testing.T) {
+	const marker = "cache_environment_value_do_not_persist"
+	t.Setenv("GOFLAGS", "-tags="+marker)
 	_, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	assertCacheResult(t, cfg, false)
@@ -372,13 +375,20 @@ func TestGenerationCacheChecksConsumedGoEnvironment(t *testing.T) {
 		t.Fatalf("cache entries: %v %v", entries, err)
 	}
 	path := filepath.Join(cfg.CacheDir, entries[0].Name())
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(raw, []byte(marker)) {
+		t.Fatal("raw effective environment persisted")
+	}
 	entry, ok := readGenerationEntry(path)
 	if !ok {
 		t.Fatal("missing successful plan")
 	}
 	// Model a GOENV A->B->A during acquisition: the content fingerprint alone
 	// matches A, but the computation consumed B's effective build configuration.
-	entry.Sources.Environment["GOFLAGS"] = "-tags=anotherconfig"
+	entry.Sources.EnvironmentHash = cacheEnvironmentHash(map[string]string{"GOFLAGS": "-tags=anotherconfig"})
 	if err := writeGenerationEntry(path, entry); err != nil {
 		t.Fatal(err)
 	}
@@ -406,4 +416,50 @@ func TestGenerationCacheIgnoresToolingSymlinks(t *testing.T) {
 		t.Fatalf("explicit source omitted: %+v", result)
 	}
 	assertCacheFile(t, filepath.Join(cfg.Out, generatedGoFile), "Name:   \"query\"")
+}
+
+func TestGenerationCachePublishesCanonicalGo(t *testing.T) {
+	root, cfg := foreignFixture(t, cacheRemote, nil)
+	cfg.CacheDir = t.TempDir()
+	assertCacheResult(t, cfg, false)
+	assertCacheFile(t, filepath.Join(cfg.Out, generatedGoFile), "\n\n\tparams \"example.com/app/generated/params\"")
+	checked := 0
+	for path, source := range generatedTree(t, filepath.Join(root, "app")) {
+		if filepath.Ext(path) != ".go" {
+			continue
+		}
+		canonical, err := imports.Process(path, []byte(source), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(canonical) != source {
+			t.Fatalf("full goimports still changes %s", path)
+		}
+		checked++
+	}
+	if checked < 3 {
+		t.Fatalf("did not check actual generated Go: %d", checked)
+	}
+	assertCacheResult(t, cfg, true)
+	cfg.CacheDir = "off"
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	assertCacheFile(t, filepath.Join(cfg.Out, generatedGoFile), "\n\n\tparams \"example.com/app/generated/params\"")
+}
+
+func TestGenerationCacheKeepsOneTargetSlot(t *testing.T) {
+	_, cfg := foreignFixture(t, cacheRemote, nil)
+	cfg.CacheDir = t.TempDir()
+	assertCacheResult(t, cfg, false)
+	cfg.Language = LanguageJavaScript
+	assertCacheResult(t, cfg, false)
+	assertCacheResult(t, cfg, true)
+	entries, err := os.ReadDir(cfg.CacheDir)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("target accumulated plans: %v %v", entries, err)
+	}
+	cfg.Language = LanguageTypeScript
+	assertCacheResult(t, cfg, false)
+	assertCacheFile(t, filepath.Join(cfg.Web, "src/data/data.remote.ts"), "query")
 }

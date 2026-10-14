@@ -6,14 +6,15 @@ import (
 	context "context"
 	json "encoding/json"
 	fmt "fmt"
-	devalue "github.com/tylergannon/devalue/v5"
-	skgo "github.com/tylergannon/skgo"
-	skgo8 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
-	skgo45 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
 	math "math"
 	slices "slices"
 	strconv "strconv"
 	time "time"
+
+	devalue "github.com/tylergannon/devalue/v5"
+	skgo "github.com/tylergannon/skgo"
+	skgo8 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
+	skgo45 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
 )
 
 // Client uses the same enhanced Form endpoint as the browser.
