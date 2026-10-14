@@ -485,6 +485,11 @@ go tool skgo native build --platform simulator
 go tool skgo native build --platform iphone
 ```
 
+Release tooling can use `--prepare-only` to generate bindings, native libraries
+and the Xcode project without compiling a Debug app. `--reuse-web-build` uses an
+existing frontend build whose source revision the caller must match. `--jobs 4`
+limits Zig and Xcode build workers; Go honors its usual `GOFLAGS` and `GOMAXPROCS`.
+
 `native/skgo-native.json` is the application configuration (`nativeapp.Config`).
 The builder compiles `native/Sources` and, when `swiftRemotes` is nonempty,
 generates and compiles `native/Generated.swift`. Additional local Swift packages,

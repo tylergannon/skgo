@@ -20,8 +20,10 @@ import (
 )
 
 type Options struct {
-	Root, Platform, Preset string
-	Out                    io.Writer
+	Root, Platform, Preset     string
+	Out                        io.Writer
+	PrepareOnly, ReuseWebBuild bool
+	Jobs                       int
 }
 
 var component = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
@@ -33,6 +35,24 @@ func Build(ctx context.Context, o Options) error {
 	}
 	if runtime.GOOS != "darwin" {
 		return fmt.Errorf("native application builds require macOS and Xcode")
+	}
+	return build(o, func(dir string, env []string, name string, args ...string) ([]byte, error) {
+		cmd := exec.CommandContext(ctx, name, args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), env...)
+		var buf strings.Builder
+		cmd.Stdout = io.MultiWriter(&buf, o.Out)
+		cmd.Stderr = o.Out
+		if err := cmd.Run(); err != nil {
+			return nil, fmt.Errorf("%s %s: %w", name, strings.Join(args, " "), err)
+		}
+		return []byte(buf.String()), nil
+	})
+}
+
+func build(o Options, run func(string, []string, string, ...string) ([]byte, error)) error {
+	if o.Jobs < 0 {
+		return fmt.Errorf("native build jobs must be nonnegative")
 	}
 	p, _, err := templates.Project(o.Root, "")
 	if err != nil {
@@ -108,18 +128,7 @@ func Build(ctx context.Context, o Options) error {
 	if err := os.MkdirAll(out, 0755); err != nil {
 		return err
 	}
-	run := func(dir string, env []string, name string, args ...string) ([]byte, error) {
-		cmd := exec.CommandContext(ctx, name, args...)
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), env...)
-		var buf strings.Builder
-		cmd.Stdout = io.MultiWriter(&buf, o.Out)
-		cmd.Stderr = o.Out
-		if err := cmd.Run(); err != nil {
-			return nil, fmt.Errorf("%s %s: %w", name, strings.Join(args, " "), err)
-		}
-		return []byte(buf.String()), nil
-	}
+
 	data, err := run(p.Root, nil, "go", "list", "-m", "-json", "github.com/tylergannon/skgo")
 	if err != nil {
 		return err
@@ -143,10 +152,21 @@ func Build(ctx context.Context, o Options) error {
 	if _, err := run(p.Root, nil, "go", args...); err != nil {
 		return err
 	}
-	if _, err := run(p.Web, []string{"ORIGIN=http://127.0.0.1"}, filepath.Join(p.Web, "node_modules/.bin/vp"), "build"); err != nil {
-		return err
+	if o.ReuseWebBuild {
+		manifest, err := os.Stat(filepath.Join(p.Web, "build/skgo.manifest.json"))
+		if err != nil || !manifest.Mode().IsRegular() || manifest.Size() == 0 {
+			return fmt.Errorf("--reuse-web-build requires a built frontend at %s", filepath.Join(p.Web, "build/skgo.manifest.json"))
+		}
+	} else {
+		if _, err := run(p.Web, []string{"ORIGIN=http://127.0.0.1"}, filepath.Join(p.Web, "node_modules/.bin/vp"), "build"); err != nil {
+			return err
+		}
 	}
-	if _, err := run(filepath.Join(sdkRoot, "core"), nil, "mise", "-C", filepath.Join(sdkRoot, "core"), "exec", "--", "zig", "build", "library", "-Dtarget="+zigTarget, "-Doptimize=ReleaseFast"); err != nil {
+	zigArgs := []string{"-C", filepath.Join(sdkRoot, "core"), "exec", "--", "zig", "build", "library", "-Dtarget=" + zigTarget, "-Doptimize=ReleaseFast"}
+	if o.Jobs > 0 {
+		zigArgs = append(zigArgs, fmt.Sprintf("-j%d", o.Jobs))
+	}
+	if _, err := run(filepath.Join(sdkRoot, "core"), nil, "mise", zigArgs...); err != nil {
 		return err
 	}
 	clang, err := run(p.Root, nil, "xcrun", "--sdk", sdk, "-f", "clang")
@@ -178,7 +198,14 @@ func Build(ctx context.Context, o Options) error {
 	if _, err := run(p.Root, nil, "mise", "-C", sdkRoot, "exec", "--", "xcodegen", "generate", "--no-env", "--spec", specPath, "--project", out); err != nil {
 		return err
 	}
+	if o.PrepareOnly {
+		fmt.Fprintln(o.Out, "Prepared native project:", filepath.Join(out, p.Name+".xcodeproj"))
+		return nil
+	}
 	args = []string{"-project", filepath.Join(out, p.Name+".xcodeproj"), "-scheme", p.Name, "-configuration", "Debug", "-sdk", sdk, "-derivedDataPath", filepath.Join(out, "DerivedData"), "build"}
+	if o.Jobs > 0 {
+		args = append(args, "-jobs", fmt.Sprint(o.Jobs))
+	}
 	if team := os.Getenv("SKGO_DEVELOPMENT_TEAM"); team != "" {
 		args = append(args, "CODE_SIGNING_ALLOWED=YES", "CODE_SIGN_STYLE=Automatic", "DEVELOPMENT_TEAM="+team, "CODE_SIGN_IDENTITY=Apple Development", "-allowProvisioningUpdates")
 		if device := os.Getenv("SKGO_DEVICE_ID"); device != "" {

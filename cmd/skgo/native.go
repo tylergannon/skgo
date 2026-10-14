@@ -11,7 +11,7 @@ import (
 
 func nativeCommand(args []string) {
 	if len(args) == 0 || args[0] != "build" {
-		fmt.Fprintln(os.Stderr, "usage: skgo native build [--root DIR] [--platform macos|iphone|simulator] [--preset NAME]")
+		fmt.Fprintln(os.Stderr, "usage: skgo native build [--root DIR] [--platform macos|iphone|simulator] [--preset NAME] [--prepare-only] [--reuse-web-build] [--jobs N]")
 		os.Exit(2)
 	}
 	fs := flag.NewFlagSet("native build", flag.ExitOnError)
@@ -19,6 +19,9 @@ func nativeCommand(args []string) {
 	fs.StringVar(&o.Root, "root", ".", "application root")
 	fs.StringVar(&o.Platform, "platform", "macos", "macos, iphone or simulator")
 	fs.StringVar(&o.Preset, "preset", "", "application-defined build preset")
+	fs.BoolVar(&o.PrepareOnly, "prepare-only", false, "prepare bindings, native libraries and Xcode project without compiling a Debug app")
+	fs.BoolVar(&o.ReuseWebBuild, "reuse-web-build", false, "reuse an existing frontend build; caller must match its source revision")
+	fs.IntVar(&o.Jobs, "jobs", 0, "maximum Zig/Xcode build workers; zero uses the tool defaults")
 	fs.Parse(args[1:])
 	if fs.NArg() != 0 {
 		fs.Usage()
