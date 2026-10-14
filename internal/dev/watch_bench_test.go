@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// A request must not reread a project's source bytes just to serve a route.
+// Measure the source freshness check paid by requests before assigning an app.
 func BenchmarkDevRequestWithSourceTree(b *testing.B) { benchmarkDevRequests(b, false) }
 
 func BenchmarkDevConcurrentRequestsWithSourceTree(b *testing.B) { benchmarkDevRequests(b, true) }

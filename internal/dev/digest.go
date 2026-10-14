@@ -3,90 +3,33 @@ package dev
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"hash"
+	"io"
 	"os"
-	"sync"
-	"time"
 )
 
-// Only kernel change metadata permits reusing a content digest. In particular,
-// size and mtime alone miss equal-size writes followed by Chtimes. Platforms
-// without a change stamp reread bytes. Entries live for one source selection.
-type fileDigests struct {
-	mu      sync.Mutex
-	entries map[string]fileDigest
-	reads   uint64
-}
-
-type fileDigest struct {
-	info    os.FileInfo
-	changed time.Time
-	sum     string
-}
-
+// File metadata is not a content version: even ctime can remain equal across
+// rapid writes with restored mtime. Each freshness check reads current bytes.
+// A scan reuses only its scratch space, never file contents or digests.
 type digestScan struct {
-	cache    *fileDigests
-	previous map[string]fileDigest
-	next     map[string]fileDigest
-	reads    uint64
-}
-
-func (c *fileDigests) scan() *digestScan {
-	if c == nil {
-		return &digestScan{}
-	}
-	c.mu.Lock()
-	previous := c.entries
-	c.mu.Unlock()
-	// Published maps are immutable. Each request validates fresh file metadata
-	// against this snapshot without serializing its filesystem walk.
-	return &digestScan{cache: c, previous: previous, next: make(map[string]fileDigest, len(previous))}
-}
-
-func (s *digestScan) close() {
-	if s.cache != nil {
-		s.cache.mu.Lock()
-		s.cache.entries = s.next
-		s.cache.reads += s.reads
-		s.cache.mu.Unlock()
-	}
-}
-
-func sameVersion(a os.FileInfo, ac time.Time, b os.FileInfo, bc time.Time) bool {
-	return !ac.IsZero() && ac == bc && a.Size() == b.Size() && a.ModTime() == b.ModTime() && os.SameFile(a, b)
+	hash   hash.Hash
+	buffer []byte
 }
 
 func (s *digestScan) sum(path string) (string, error) {
-	if s.cache == nil {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return "", err
-		}
-		sum := sha256.Sum256(data)
-		return hex.EncodeToString(sum[:]), nil
-	}
-	info, err := os.Stat(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
-	changed := changeTime(info)
-	entry, ok := s.next[path]
-	if !ok {
-		entry, ok = s.previous[path]
+	defer f.Close()
+	if s.hash == nil {
+		s.hash = sha256.New()
+		s.buffer = make([]byte, 32*1024)
 	}
-	if ok && sameVersion(entry.info, entry.changed, info, changed) {
-		s.next[path] = entry
-		return entry.sum, nil
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
+	s.hash.Reset()
+	// Hide File.WriteTo so CopyBuffer uses this scan's scratch buffer.
+	if _, err := io.CopyBuffer(s.hash, struct{ io.Reader }{f}, s.buffer); err != nil {
 		return "", err
 	}
-	s.reads++
-	hash := sha256.Sum256(data)
-	sum := hex.EncodeToString(hash[:])
-	after, err := os.Stat(path)
-	if err == nil && sameVersion(info, changed, after, changeTime(after)) {
-		s.next[path] = fileDigest{info: info, changed: changed, sum: sum}
-	}
-	return sum, nil
+	return hex.EncodeToString(s.hash.Sum(nil)), nil
 }

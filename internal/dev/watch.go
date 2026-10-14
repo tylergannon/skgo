@@ -21,14 +21,12 @@ type inputs struct {
 	root, web, out string
 	extra          []string
 	roots, files   []string
-	digests        *fileDigests
 }
 
 // fingerprint summarises every authored input. Two equal fingerprints mean
 // nothing a build depends on has changed.
 func (in inputs) fingerprint() (string, error) {
-	scan := in.digests.scan()
-	defer scan.close()
+	scan := &digestScan{}
 	return in.fingerprintScan(scan)
 }
 

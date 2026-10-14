@@ -192,7 +192,7 @@ func New(cfg Config) (*Server, error) {
 	if cfg.StartTimeout == 0 {
 		cfg.StartTimeout = 90 * time.Second
 	}
-	s := &Server{cfg: cfg, in: inputs{root: cfg.Root, web: cfg.Web, out: cfg.Out, digests: &fileDigests{}, extra: append(append([]string(nil), cfg.ExtraWatch...), cfg.RestartFiles...)}, building: true, settled: make(chan struct{}), stopping: make(chan struct{}), reloads: make(chan string, 1)}
+	s := &Server{cfg: cfg, in: inputs{root: cfg.Root, web: cfg.Web, out: cfg.Out, extra: append(append([]string(nil), cfg.ExtraWatch...), cfg.RestartFiles...)}, building: true, settled: make(chan struct{}), stopping: make(chan struct{}), reloads: make(chan string, 1)}
 	if cfg.Vite != nil {
 		s.vite = &httputil.ReverseProxy{
 			Rewrite: func(p *httputil.ProxyRequest) {
