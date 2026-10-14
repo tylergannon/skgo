@@ -281,7 +281,7 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == "node_modules" || strings.HasPrefix(d.Name(), ".") {
+			if cacheToolingDirectory(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -369,6 +369,14 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 	if err != nil {
 		return cfg, func() {}, err
 	}
+	// Go resolves working directories physically. Keep diagnostic and output
+	// rebasing on that same identity (not /var versus /private/var aliases).
+	canonical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		_ = os.RemoveAll(root)
+		return cfg, func() {}, err
+	}
+	root = canonical
 	cleanup := func() { _ = os.RemoveAll(root) }
 	fail := func(err error) (Config, func(), error) { cleanup(); return cfg, func() {}, err }
 	view := &generationSourceView{roots: map[string]string{}, cgoPackages: map[string]bool{}}
