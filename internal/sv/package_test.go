@@ -137,3 +137,45 @@ func untar(t *testing.T, name string) map[string][]byte {
 		out[rel] = body
 	}
 }
+
+func TestReleasePublicationFromRepositoryRoot(t *testing.T) {
+	workflow, err := os.ReadFile("../../.github/workflows/release.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(workflow), "run: npm publish ./internal/sv --access public") {
+		t.Fatal("release must publish the add-on from the repository root")
+	}
+	// Exercise the real package declaration, including VP's manager version.
+	// A dry run never uploads; the tag permits the checkout's prerelease name.
+	cmd := exec.Command("npm", "publish", "./internal/sv", "--access", "public", "--dry-run", "--json", "--ignore-scripts", "--tag", "proof")
+	cmd.Dir = "../.."
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("release publication dry run: %v\n%s\n%s", err, out, stderr.Bytes())
+	}
+	var packages map[string]struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+		Files   []struct {
+			Path string `json:"path"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal(out, &packages); err != nil {
+		t.Fatal(err)
+	}
+	pkg := packages["@skgo/sv"]
+	if pkg.Name != "@skgo/sv" || pkg.Version != "0.0.0-dev" {
+		t.Fatalf("wrong published package: %s", out)
+	}
+	var paths []string
+	for _, file := range pkg.Files {
+		paths = append(paths, file.Path)
+	}
+	slices.Sort(paths)
+	if !slices.Equal(paths, []string{"LICENSE", "README.md", "package.json", "sv-addon.js"}) {
+		t.Fatalf("published files = %v", paths)
+	}
+}
