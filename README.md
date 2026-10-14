@@ -201,7 +201,7 @@ the public documentation.
 | Host-specific adapters and Node runtime deployment | Not supported | skgo uses its own adapter and a Go process; Kit's Node, serverless and edge adapters are different deployment targets. |
 
 The SvelteKit transport runtime is `github.com/tylergannon/devalue/v5`
-(v5.0.0, parity with JavaScript devalue 5.9.4). Polytype v1.5.0 generates
+(v5.0.0, parity with JavaScript devalue 5.9.4). Polytype v1.6.0 generates
 its typed codecs. Applications that imported `github.com/tylergannon/polytype/devalue`
 directly must move those imports to `github.com/tylergannon/devalue/v5` and
 regenerate their skgo bindings.

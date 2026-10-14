@@ -8,7 +8,7 @@ ignore ./web/node_modules
 
 require (
 	github.com/tylergannon/devalue/v5 v5.0.0
-	github.com/tylergannon/polytype v1.5.1-0.20261013232002-142c147021d4
+	github.com/tylergannon/polytype v1.6.0
 	github.com/tylergannon/skgo v0.0.0
 )
 
