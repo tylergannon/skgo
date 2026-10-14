@@ -47,3 +47,8 @@ friction: The example's placeholder embedded build lacks skgo.manifest.json, req
   after body/error/repair/API/missing-output edits; API and recovery wall times
   were collected during concurrent browser/compiler work and are not controlled
   latency comparisons.
+- A zero-limit caller-supplied goload.Session retains historical universes across
+  edits. Worker-owned sessions are bounded; external sessions keep their owner's
+  limit rather than silently changing a shared resource. State that distinction
+  in the public Worker contract and exercise sustained edits with a caller-set
+  bound, eviction, and final authoritative output equality.

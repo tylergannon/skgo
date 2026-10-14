@@ -66,6 +66,9 @@ func NewPackageSnapshot(config *packages.Config, roots ...*packages.Package) (*P
 
 // Worker retains a private source view and compatible generation results across
 // serial development edits. Its zero value is ready to use; call Close when done.
+// The default analysis session has bounded retention. If Config.Session supplies
+// a shared session instead, its owner must call SetMaxUniverses to bound retention
+// across edits; Worker does not change caller-owned session limits.
 type Worker = gen.Worker
 
 // WorkerStats reports backend work and reuse performed by a Worker.

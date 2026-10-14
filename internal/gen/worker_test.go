@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tylergannon/polytype/goload"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -462,5 +463,33 @@ func TestWorkerWithDiskCacheCapturesBodyEditOnce(t *testing.T) {
 	after := w.Stats()
 	if after.PlanHits != before.PlanHits+1 || after.SourceCaptures != before.SourceCaptures+1 {
 		t.Fatalf("body edit did redundant capture or projection: before=%+v after=%+v", before, after)
+	}
+}
+
+func TestWorkerCallerOwnedSessionEvictsAcrossEdits(t *testing.T) {
+	root, cfg := foreignFixture(t, cacheRemote, nil)
+	cfg.CacheDir = "off"
+	var session goload.Session
+	session.SetMaxUniverses(1)
+	cfg.Session = &session
+	var w Worker
+	defer w.Close()
+	for i := 0; i < 8; i++ {
+		cacheWrite(t, filepath.Join(root, "wire/wire.go"), fmt.Sprintf("package wire\ntype Thing struct { Revision%d bool `json:\"revision%d\"` }\n", i, i))
+		if err := w.Run(cfg); err != nil {
+			t.Fatal(err)
+		}
+		assertCacheFile(t, filepath.Join(cfg.Web, "src/lib/skgo/example.com/wire/types.ts"), fmt.Sprintf(`"revision%d": boolean`, i))
+	}
+	if session.Stats().UniverseEvictions == 0 {
+		t.Fatal("supplied bounded session did not evict historical graphs")
+	}
+	before := generatedTree(t, filepath.Join(root, "app"))
+	cfg.Session = nil
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, generatedTree(t, filepath.Join(root, "app"))) {
+		t.Fatal("eviction changed generated output")
 	}
 }

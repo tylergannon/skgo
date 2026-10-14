@@ -60,11 +60,11 @@ func main() {
 		cmd.Dir = sandbox
 		return cmd.CombinedOutput()
 	}
-	polytypeRoot := os.Getenv("SKGO_WORKER_POLYTYPE")
-	if polytypeRoot == "" {
-		polytypeRoot = "/Users/tyler/.codex/worktrees/polytype-warm-analysis"
+	replacements := [][]string{{"mod", "edit", "-replace=github.com/tylergannon/skgo=" + root}}
+	if polytypeRoot := os.Getenv("SKGO_WORKER_POLYTYPE"); polytypeRoot != "" {
+		replacements = append(replacements, []string{"mod", "edit", "-replace=github.com/tylergannon/polytype=" + polytypeRoot})
 	}
-	for _, args := range [][]string{{"mod", "edit", "-replace=github.com/tylergannon/skgo=" + root}, {"mod", "edit", "-replace=github.com/tylergannon/polytype=" + polytypeRoot}} {
+	for _, args := range replacements {
 		out, err := run(args...)
 		if err != nil {
 			panic(fmt.Sprintf("%v: %s", err, out))

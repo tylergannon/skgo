@@ -39,6 +39,8 @@ type Worker struct {
 // Body-only edits can reuse projections without type-checking implementation.
 // The development owner must compile the application after every successful Run;
 // fresh authored route bodies are always copied to their executable addresses.
+// A supplied Config.Session remains caller-owned, including its retention limit;
+// call SetMaxUniverses before sharing that session across development edits.
 func (w *Worker) Run(cfg Config) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
