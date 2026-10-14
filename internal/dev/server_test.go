@@ -398,7 +398,9 @@ func TestDevHoldsARequestThatArrivesBeforeThePollSeesTheEdit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.write("answer/answer.go", answerSource("revision two"))
+	if err := os.WriteFile(file, []byte(answerSource("revision two")), 0644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Chtimes(file, before.ModTime(), before.ModTime()); err != nil {
 		t.Fatal(err)
 	}

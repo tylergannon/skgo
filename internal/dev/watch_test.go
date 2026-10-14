@@ -140,10 +140,13 @@ func TestFingerprintDetectsPreservedMtimeEdits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	in := inputs{root: root, web: filepath.Join(root, "web")}
+	server, err := New(Config{Root: root, Web: filepath.Join(root, "web"), Args: func(string) []string { return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
 	fingerprint := func() string {
 		t.Helper()
-		sum, err := in.fingerprint()
+		sum, err := server.fingerprint()
 		if err != nil {
 			t.Fatal(err)
 		}
