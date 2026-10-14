@@ -185,8 +185,9 @@ jobs:
 
       - name: npm publish
         if: steps.changed.outputs.publish == 'true'
-        working-directory: internal/sv
-        run: npm publish --access public
+        # npm validates devEngines for its working directory. Keep VP
+        # responsible for the add-on build; publish its package from the root.
+        run: npm publish ./internal/sv --access public
 
   tag:
     name: Tag the published, qualified commit
