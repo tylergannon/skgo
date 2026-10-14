@@ -600,10 +600,37 @@ func (v *generationSourceView) mapPath(path string, toPrivate bool) string {
 	return mapped
 }
 func (v *generationSourceView) originalText(text string) string {
+	// Match longest roots first, then require a complete path component. In
+	// particular module-1 must never consume the prefix of module-10.
+	roots := make([]string, 0, len(v.roots))
+	originals := make(map[string]string, len(v.roots))
 	for from, to := range v.roots {
-		text = strings.ReplaceAll(text, to, from)
+		roots = append(roots, to)
+		originals[to] = from
 	}
-	return text
+	sort.Slice(roots, func(i, j int) bool { return len(roots[i]) > len(roots[j]) })
+	var result strings.Builder
+	for len(text) != 0 {
+		matched := false
+		for _, root := range roots {
+			if !strings.HasPrefix(text, root) {
+				continue
+			}
+			tail := text[len(root):]
+			if tail != "" && !strings.ContainsRune("/\\ \t\r\n\"':)]}", rune(tail[0])) {
+				continue
+			}
+			result.WriteString(originals[root])
+			text = tail
+			matched = true
+			break
+		}
+		if !matched {
+			result.WriteByte(text[0])
+			text = text[1:]
+		}
+	}
+	return result.String()
 }
 
 // Native headers can name files outside the module. Only reached local cgo

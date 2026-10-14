@@ -63,7 +63,7 @@ func TestCatalogRepairExamplesCompileAgainstThisSkgo(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Bootstrap the shared params leaf before tidy loads illustrative consumers.
-	if err := gen.Run(gen.Config{Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated"), LocalsPackage: "example.com/repairs/internal/app"}); err != nil {
+	if err := gen.Run(gen.Config{CacheDir: "off", Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated"), LocalsPackage: "example.com/repairs/internal/app"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{{"mod", "tidy"}, {"test", "./..."}} {
@@ -73,7 +73,7 @@ func TestCatalogRepairExamplesCompileAgainstThisSkgo(t *testing.T) {
 			if err := os.WriteFile(routePath, []byte(routeSource), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := gen.Run(gen.Config{Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated"), LocalsPackage: "example.com/repairs/internal/app"}); err != nil {
+			if err := gen.Run(gen.Config{CacheDir: "off", Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated"), LocalsPackage: "example.com/repairs/internal/app"}); err != nil {
 				t.Fatalf("generate route-param repair: %v", err)
 			}
 		}

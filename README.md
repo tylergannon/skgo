@@ -396,7 +396,8 @@ user cache directory. An unchanged invocation checks current source contents and
 live Kit route/matcher metadata, then restores its generated files without Go
 analysis or formatting. Owned generated output is disposable: missing or broken
 previous output does not become an analysis input. Set `Config.CacheDir` (or
-`--cache-dir`) to a custom directory, or `off` to disable caching. `Prepare` and
+`--cache-dir`) to a custom directory, or `off` to disable caching.
+`SKGO_CACHE_DIR` overrides the default when no directory is supplied. `Prepare` and
 `Check` always analyze current source.
 
 Cache misses analyze a captured copy of local modules, including workspace and

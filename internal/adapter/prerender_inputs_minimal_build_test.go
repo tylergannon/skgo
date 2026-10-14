@@ -22,6 +22,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	os.Setenv("SKGO_CACHE_DIR", filepath.Join(sharedInputsTemp, "generation-cache"))
 	code := m.Run()
 	if err := os.RemoveAll(sharedInputsTemp); err != nil {
 		fmt.Fprintln(os.Stderr, err)

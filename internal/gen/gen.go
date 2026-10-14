@@ -33,7 +33,8 @@ import (
 // Config describes one app.
 type Config struct {
 	// CacheDir enables an optional persistent cache of successful generation
-	// plans for Run. Empty uses the user cache directory; "off" disables it.
+	// plans for Run. Empty uses SKGO_CACHE_DIR when set, otherwise the user cache
+	// directory; "off" disables it.
 	// Prepare and Check always analyze source.
 	// Custom package loaders and snapshots bypass the disk cache. Local module
 	// source is captured before analysis. Installed toolchains, versioned module
@@ -132,6 +133,9 @@ func (p *Prepared) Close() {
 
 // Run scans, generates, and reports what it wrote.
 func Run(cfg Config) error {
+	if cfg.CacheDir == "" {
+		cfg.CacheDir = os.Getenv("SKGO_CACHE_DIR")
+	}
 	if cfg.CacheDir == "" {
 		if root, err := os.UserCacheDir(); err == nil {
 			cfg.CacheDir = filepath.Join(root, "skgo", "generate")

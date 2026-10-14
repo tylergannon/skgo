@@ -8,12 +8,13 @@ import (
 	"go/parser"
 	"go/scanner"
 	"go/token"
-	"golang.org/x/tools/imports"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"golang.org/x/tools/imports"
 )
 
 const generatedGoFile = "skgo_gen.go"

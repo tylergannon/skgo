@@ -6,3 +6,5 @@ trap: x/mod v0.42 WorkFile.SetUse retains an unchanged directive then appends it
 trap: temporary module roots must be canonicalized before handing their paths to Go. On macOS os.MkdirTemp may return /var while Go resolves /private/var; mixing the two broke copied-example type projections and diagnostic rebasing.
 
 trap: fresh private module paths change Go compiler action identities even with identical source. Private analysis prepends -trimpath to its captured GOFLAGS; caller flags remain last so explicit overrides survive. A compiler-export test compares two fresh roots and a literal tagged constant, rather than inferring reuse from elapsed time.
+
+trap: prefix-only text rebasing corrupts private module-10 when module-1 is replaced first. Rebase complete path components in one pass; a workspace with fewer than eleven modules will not expose this. Default-enabled caches also require subprocess test suites to set a temporary SKGO_CACHE_DIR, including go generate and dev callers.

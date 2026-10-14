@@ -32,6 +32,9 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if os.Getenv("SKGO_CACHE_TEST_CONFIG") == "" {
+		os.Setenv("SKGO_CACHE_DIR", filepath.Join(dir, "generation-cache"))
+	}
 	packageTemp = dir
 	code := m.Run()
 	os.RemoveAll(dir)

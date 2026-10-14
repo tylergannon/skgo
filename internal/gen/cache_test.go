@@ -526,3 +526,36 @@ func TestGenerationCachePrivateCompilerIdentity(t *testing.T) {
 		t.Fatalf("caller environment changed: %s", got)
 	}
 }
+
+func TestGenerationCacheRebasesElevenModules(t *testing.T) {
+	view := &generationSourceView{roots: map[string]string{}}
+	for i := range 11 {
+		view.roots[fmt.Sprintf("/authored/project-%d", i)] = fmt.Sprintf("/private/view/module-%d", i)
+	}
+	for range 20 {
+		got := view.originalText(`/private/view/module-10/types.go:7:2: /private/view/module-1/model.go; "/private/view/module-0"; /private/view/module-100/untouched.go`)
+		want := `/authored/project-10/types.go:7:2: /authored/project-1/model.go; "/authored/project-0"; /private/view/module-100/untouched.go`
+		if got != want {
+			t.Fatalf("module prefix corruption: %s", got)
+		}
+	}
+}
+
+func TestGenerationCacheDefaultDirectory(t *testing.T) {
+	_, cfg := foreignFixture(t, cacheRemote, nil)
+	dir := t.TempDir()
+	t.Setenv("SKGO_CACHE_DIR", dir)
+	cfg.CacheDir = ""
+	assertCacheResult(t, cfg, false)
+	assertCacheResult(t, cfg, true)
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("default directory not used: %v %v", entries, err)
+	}
+	cfg.CacheDir = t.TempDir()
+	assertCacheResult(t, cfg, false)
+	t.Setenv("SKGO_CACHE_DIR", "off")
+	cfg.CacheDir = ""
+	assertCacheResult(t, cfg, false)
+	assertCacheResult(t, cfg, false)
+}
