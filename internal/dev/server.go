@@ -594,7 +594,7 @@ func (s *Server) watchExit(g *generation) {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if s.vite != nil && (isUpgrade(r) || strings.HasPrefix(r.URL.Path, s.viteClientPath())) {
+	if s.vite != nil && (isUpgrade(r) || s.isViteClient(r.URL.Path)) {
 		s.vite.ServeHTTP(w, r)
 		return
 	}

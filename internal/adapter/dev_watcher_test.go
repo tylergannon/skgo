@@ -197,6 +197,8 @@ const control=JSON.parse(readFileSync(file,'utf8'));
 assert.equal(control.base,'/nested/');
 assert.equal(statSync(file).mode & 0o777,0o600);
 assert.equal(control.token.length,64);
+assert.equal(control.clientFiles.length,1);
+assert.match(control.clientFiles[0],/^\/nested\/@fs\/.+\/env\.mjs$/);
 const deliver=(body,token=control.token,method='POST')=>{
  const req=Object.assign(new EventEmitter(),{url:'/__skgo_dev/supervisor',headers:{'x-skgo-dev-token':token},method,setEncoding(){}});
  const res={statusCode:200,end(){}};
@@ -215,6 +217,19 @@ assert.deepEqual(newcomer,messages);
 assert.equal(deliver(JSON.stringify({diagnostic:''})),204);
 assert.deepEqual(messages[1],{type:'full-reload'});
 handlers.get('vite:client:connect')(undefined,{send:()=>assert.fail('stale error after repair')});
+// Exercise the installed Vite's own import analysis, including its rewritten
+// env.mjs URL. A mock of the websocket protocol cannot prove client bootstrap.
+const { createServer } = await import('vite');
+for (const base of ['/', '/nested/']) {
+ const server=await createServer({root,base,configFile:false,appType:'custom',plugins:[goSupervisorReload()],server:{middlewareMode:true,watch:null},optimizeDeps:{noDiscovery:true,include:[]}});
+ try {
+  const client=await server.transformRequest('/@vite/client');
+  const current=JSON.parse(readFileSync(file,'utf8'));
+  const dependency=client.code.match(/['"]([^'"]+\/env\.mjs)['"]/);
+  assert.ok(dependency,'installed Vite client did not import env.mjs');
+  assert.deepEqual(current.clientFiles,[dependency[1]],'supervisor cannot serve actual Vite client dependency');
+ } finally { await server.close(); }
+}
 `
 	cmd := exec.Command("node", "--input-type=module", "-e", source, module, t.TempDir())
 	cmd.Dir = app

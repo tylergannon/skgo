@@ -29,7 +29,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { protectEnvironmentFiles } from './env-private.js';
 import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, posix as posixPath, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /**
@@ -1276,8 +1276,15 @@ export function goSupervisorReload() {
 		configureServer(server) {
 			const token = randomBytes(32).toString('hex');
 			const file = join(server.config.root, '.svelte-kit/skgo-dev-supervisor.json');
+			// Vite's client imports @vite/env. Import analysis rewrites that to
+			// its installed env.mjs, either under root or through /@fs/. Publish
+			// only this exact bootstrap dependency, never an application prefix.
+			const envFile = app.resolve('vite/dist/client/env.mjs').replaceAll('\\', '/');
+			const root = server.config.root.replaceAll('\\', '/').replace(/\/$/, '');
+			const envURL = envFile.startsWith(root + '/') ? envFile.slice(root.length) : posixPath.join('/@fs/', envFile);
+			const clientFiles = [server.config.base.replace(/\/$/, '') + envURL];
 			mkdirSync(dirname(file), { recursive: true });
-			writeFileSync(file, JSON.stringify({ token, base: server.config.base }), { mode: 0o600 });
+			writeFileSync(file, JSON.stringify({ token, base: server.config.base, clientFiles }), { mode: 0o600 });
 			chmodSync(file, 0o600);
 			let failure;
 			server.ws.on('vite:client:connect', (_, client) => {

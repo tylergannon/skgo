@@ -14,8 +14,9 @@ import (
 )
 
 type viteControl struct {
-	Token string `json:"token"`
-	Base  string `json:"base"`
+	Token       string   `json:"token"`
+	Base        string   `json:"base"`
+	ClientFiles []string `json:"clientFiles"`
 }
 
 func (s *Server) control() (viteControl, error) {
@@ -118,4 +119,19 @@ func (s *Server) viteClientPath() string {
 		base = control.Base
 	}
 	return strings.TrimSuffix(base, "/") + "/@vite/"
+}
+
+func (s *Server) isViteClient(path string) bool {
+	base := "/"
+	control, err := s.control()
+	if err == nil {
+		base = control.Base
+		for _, file := range control.ClientFiles {
+			if path == file {
+				return true
+			}
+		}
+	}
+	prefix := strings.TrimSuffix(base, "/") + "/@vite/"
+	return path == prefix+"client" || path == prefix+"env"
 }

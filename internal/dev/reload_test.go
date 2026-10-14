@@ -75,6 +75,13 @@ func TestViteReceivesLatestBuildAfterStartingLate(t *testing.T) {
 
 func TestDiagnosticKeepsOnlyViteClientReachable(t *testing.T) {
 	root := t.TempDir()
+	const dependency = "/nested/node_modules/pinned-vite/dist/client/env.mjs"
+	if err := os.MkdirAll(filepath.Join(root, ".svelte-kit"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".svelte-kit/skgo-dev-supervisor.json"), []byte(`{"token":"fixture","base":"/nested/","clientFiles":["`+dependency+`"]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
 	vite := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "vite-client-fixture") }))
 	defer vite.Close()
 	target, _ := url.Parse(vite.URL)
@@ -84,7 +91,7 @@ func TestDiagnosticKeepsOnlyViteClientReachable(t *testing.T) {
 	}
 	s.built, _ = s.in.fingerprint()
 	s.settle(&generation{diagnostic: "literal broken Go <script>"})
-	for _, path := range []string{"/@vite/client", "/@vite/env"} {
+	for _, path := range []string{"/nested/@vite/client", "/nested/@vite/env", dependency} {
 		w := httptest.NewRecorder()
 		s.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		if w.Code != 200 || w.Body.String() != "vite-client-fixture" {
@@ -93,13 +100,20 @@ func TestDiagnosticKeepsOnlyViteClientReachable(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	s.ServeHTTP(w, httptest.NewRequest("GET", "/app", nil))
-	for _, want := range []string{"literal broken Go &lt;script&gt;", `src="/@vite/client"`} {
+	for _, want := range []string{"literal broken Go &lt;script&gt;", `src="/nested/@vite/client"`} {
 		if !strings.Contains(w.Body.String(), want) {
 			t.Fatalf("missing %q: %s", want, w.Body.String())
 		}
 	}
 	if w.Code != 500 {
 		t.Fatal(w.Code)
+	}
+	for _, path := range []string{"/nested/src/+page.svelte", "/nested/@vite/unrelated", dependency + "/other", "/nested/node_modules/pinned-vite/dist/client/other.mjs"} {
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 500 || !strings.Contains(w.Body.String(), "literal broken Go &lt;script&gt;") {
+			t.Fatalf("unrelated path bypasses Go diagnostic: %s %d %s", path, w.Code, w.Body.String())
+		}
 	}
 }
 
