@@ -362,3 +362,48 @@ func TestGenerationCachePrepareAndCheckRemainFresh(t *testing.T) {
 		t.Fatalf("Check used stale result: %v", err)
 	}
 }
+
+func TestGenerationCacheChecksConsumedGoEnvironment(t *testing.T) {
+	_, cfg := foreignFixture(t, cacheRemote, nil)
+	cfg.CacheDir = t.TempDir()
+	assertCacheResult(t, cfg, false)
+	entries, err := os.ReadDir(cfg.CacheDir)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("cache entries: %v %v", entries, err)
+	}
+	path := filepath.Join(cfg.CacheDir, entries[0].Name())
+	entry, ok := readGenerationEntry(path)
+	if !ok {
+		t.Fatal("missing successful plan")
+	}
+	// Model a GOENV A->B->A during acquisition: the content fingerprint alone
+	// matches A, but the computation consumed B's effective build configuration.
+	entry.Sources.Environment["GOFLAGS"] = "-tags=anotherconfig"
+	if err := writeGenerationEntry(path, entry); err != nil {
+		t.Fatal(err)
+	}
+	assertCacheResult(t, cfg, false)
+	assertCacheResult(t, cfg, true)
+}
+
+func TestGenerationCacheIgnoresToolingSymlinks(t *testing.T) {
+	root, cfg := foreignFixture(t, cacheRemote, nil)
+	cfg.CacheDir = t.TempDir()
+	tools := filepath.Join(root, "app/.claude/skills")
+	if err := os.MkdirAll(tools, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(t.TempDir(), filepath.Join(tools, "outside")); err != nil {
+		t.Fatal(err)
+	}
+	assertCacheResult(t, cfg, false)
+	assertCacheResult(t, cfg, true)
+	// Explicit imports change the boundary: such source is never silently omitted.
+	cacheWrite(t, filepath.Join(root, "app/.claude/value/value.go"), "package value\ntype Value int\n")
+	cacheWrite(t, filepath.Join(cfg.Web, "src/data/extra.go"), "package data\nimport \"example.com/app/.claude/value\"\nvar _ value.Value\n")
+	result := runCacheProcess(t, cfg)
+	if result.Error != "" || !strings.Contains(strings.Join(result.Logs, "\n"), "explicit import in tooling directory") {
+		t.Fatalf("explicit source omitted: %+v", result)
+	}
+	assertCacheFile(t, filepath.Join(cfg.Out, generatedGoFile), "Name:   \"query\"")
+}

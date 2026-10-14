@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"sort"
 	"strings"
@@ -190,10 +191,12 @@ func runCached(cfg Config) error {
 	}
 	cfg.kitMetadata = metadata
 	if entry, ok := readGenerationEntry(path); ok {
+		host, _, moduleErr := moduleOf(cfg.Out)
+		environment, envErr := currentCacheEnvironment(host)
 		_, digest, err := entry.Sources.capture(cfg)
 		a, _ := json.Marshal(metadata)
 		b, _ := json.Marshal(entry.Metadata)
-		if err == nil && digest == entry.SourceHash && bytes.Equal(a, b) {
+		if moduleErr == nil && envErr == nil && reflect.DeepEqual(environment, entry.Sources.Environment) && err == nil && digest == entry.SourceHash && bytes.Equal(a, b) {
 			cfg.Logf("generation cache hit")
 			return publishGenerationPlan(cfg, entry.Plan)
 		}

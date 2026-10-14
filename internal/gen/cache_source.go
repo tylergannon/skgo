@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"golang.org/x/mod/modfile"
@@ -48,21 +49,30 @@ type cacheSources struct {
 // configuration stays in the invoking process environment, never in cache records.
 var cacheGoEnvironment = []string{"GO111MODULE", "GOARCH", "GOOS", "GOAMD64", "GOARM", "GOARM64", "GO386", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM", "GOEXPERIMENT", "GOFIPS140", "GOROOT", "GOPATH", "GOMODCACHE", "GOTOOLCHAIN", "GOFLAGS", "GOWORK", "GOENV", "CGO_ENABLED"}
 
+func currentCacheEnvironment(dir string) (map[string]string, error) {
+	cmd := exec.Command("go", append([]string{"env", "-json"}, cacheGoEnvironment...)...)
+	cmd.Dir = dir
+	raw, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	var environment map[string]string
+	if err := json.Unmarshal(raw, &environment); err != nil {
+		return nil, err
+	}
+	return environment, nil
+}
+
 func acquireCacheSources(cfg Config) (cacheSources, error) {
 	host, _, err := moduleOf(cfg.Out)
 	if err != nil {
 		return cacheSources{}, err
 	}
-	envCmd := exec.Command("go", append([]string{"env", "-json"}, cacheGoEnvironment...)...)
-	envCmd.Dir = host
-	data, err := envCmd.Output()
+	environment, err := currentCacheEnvironment(host)
 	if err != nil {
 		return cacheSources{}, err
 	}
-	s := cacheSources{Environment: map[string]string{}, Aliases: map[string]string{}}
-	if err := json.Unmarshal(data, &s.Environment); err != nil {
-		return s, err
-	}
+	s := cacheSources{Environment: environment, Aliases: map[string]string{}}
 	if flags := s.Environment["GOFLAGS"]; strings.Contains(flags, "-overlay") || strings.Contains(flags, "-modfile") || strings.Contains(flags, "-mod=vendor") || strings.Contains(flags, "-toolexec") || strings.Contains(flags, "-pkgdir") {
 		return s, fmt.Errorf("external Go source views are not cached")
 	}
@@ -71,7 +81,7 @@ func acquireCacheSources(cfg Config) (cacheSources, error) {
 	}
 	cmd := exec.Command("go", "list", "-m", "-json", "all")
 	cmd.Dir = host
-	data, err = cmd.Output()
+	data, err := cmd.Output()
 	if err != nil {
 		return s, err
 	}
@@ -170,7 +180,7 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 			}
 			if d.IsDir() {
 				if path != m.Dir {
-					if roots[path] || d.Name() == ".git" || d.Name() == ".hg" || d.Name() == ".svn" || d.Name() == "node_modules" {
+					if roots[path] || cacheToolingDirectory(d.Name()) {
 						return filepath.SkipDir
 					}
 					if _, err := os.Stat(filepath.Join(path, "go.mod")); err == nil {
@@ -184,7 +194,7 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 			}
 			if d.Type()&os.ModeSymlink != 0 {
 				if fi, err := os.Stat(path); err == nil && fi.IsDir() {
-					return fmt.Errorf("symlinked module directories are not cached: %s", path)
+					return nil // Go directory walking ignores symlinks; explicit imports are checked below.
 				}
 			}
 			if strings.HasSuffix(path, ".go") || d.Name() == "go.mod" || d.Name() == "go.sum" {
@@ -371,6 +381,22 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 			continue
 		}
 		for _, imp := range parsed.Imports {
+			importPath, _ := strconv.Unquote(imp.Path.Value)
+			for _, m := range s.Modules {
+				if !strings.HasPrefix(importPath, m.Path+"/") {
+					continue
+				}
+				rel := strings.TrimPrefix(importPath, m.Path+"/")
+				for _, part := range strings.Split(rel, "/") {
+					if cacheToolingDirectory(part) {
+						return fail(fmt.Errorf("explicit import in tooling directory is not cached: %s", importPath))
+					}
+				}
+				dir := filepath.Join(m.Dir, filepath.FromSlash(rel))
+				if physical, err := filepath.EvalSymlinks(dir); err == nil && physical != dir {
+					return fail(fmt.Errorf("symlinked import directory is not cached: %s", importPath))
+				}
+			}
 			if imp.Path.Value != `"C"` {
 				continue
 			}
@@ -577,4 +603,12 @@ func (v *generationSourceView) noteTypes(root *types.Package) {
 		}
 	}
 	visit(root)
+}
+
+func cacheToolingDirectory(name string) bool {
+	switch name {
+	case ".git", ".hg", ".svn", ".claude", ".agents", ".codex", "node_modules":
+		return true
+	}
+	return false
 }
