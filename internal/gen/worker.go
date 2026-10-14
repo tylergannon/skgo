@@ -32,7 +32,6 @@ type Worker struct {
 	codecs          map[string]*codecProjection
 	revision        uint64
 	projectionFiles map[string]projectionFile
-	capturedFiles   map[string]capturedFile
 }
 
 // Run generates the current authored inputs, retaining compatible analysis for
@@ -95,7 +94,6 @@ func (w *Worker) Close() error {
 	w.stats, w.revision = WorkerStats{}, 0
 	w.inputs = WorkerInputs{}
 	w.projectionFiles = nil
-	w.capturedFiles = nil
 	w.root, w.session, w.previous, w.materialized, w.modules = "", nil, nil, nil, nil
 	return err
 }

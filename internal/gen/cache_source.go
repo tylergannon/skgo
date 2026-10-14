@@ -147,13 +147,6 @@ func acquireCacheSources(cfg Config) (cacheSources, error) {
 // bytes on a warm lookup. Directory traversal discovers additions/deletions;
 // generated artifacts are excluded by ownership, never solely by filename.
 func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
-	if cfg.worker != nil {
-		reader := captureReader{previous: cfg.worker.capturedFiles, next: map[string]capturedFile{}, readFile: os.ReadFile}
-		files, key, err := s.captureWithRead(cfg, reader.read)
-		// Keep only the current selection, even after an interrupted capture.
-		cfg.worker.capturedFiles = reader.next
-		return files, key, err
-	}
 	return s.captureWithRead(cfg, os.ReadFile)
 }
 
@@ -184,7 +177,7 @@ func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte,
 		return nil, "", err
 	}
 	// A capture binds each path once, even when frontend and overlapping embed
-	// walks encounter it again. The next capture validates every path again.
+	// walks encounter it again. The next capture rereads every path.
 	readPaths := map[string]bool{}
 	read := func(path string) error {
 		if readPaths[path] {
