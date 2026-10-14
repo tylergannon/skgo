@@ -379,3 +379,26 @@ User directed landing the basic invocation-scoped loading session and completed 
 Prepared View work is preserved in Polytype commit c00e4f6, branch codex/shared-load-prepared-view-wip, worktree /Users/tyler/.codex/worktrees/polytype-prepared-view-wip. SKGO Worker/View and supervisor work is preserved in commit 4939b13, branch codex/dev-worker-prepared-view-wip, worktree /Users/tyler/.codex/worktrees/skgo-dev-worker-wip.
 
 The native POC independent reviewer was launched, but parent handoff found its listed processes gone and no review report. Its outcome is unconfirmed; the POC must not be described as independently reviewed. Resume session 234489dc-2bf4-4808-81bb-4b66b390ea7b or launch a fresh independent validation when this experiment resumes.
+
+### Targeted generation and gopls continuation
+
+User clarified that avoiding unnecessary generation is the larger objective.
+The runnable [typerefs probe](typerefs-probe/README.md) pins actual gopls source
+and distinguishes package rediscovery, affected producer outputs, and native
+replacement. Type reachability is useful but does not represent workflow bodies,
+JSON tags, emitted comments, source positions, or every constant dependency.
+
+The full gopls snapshot test exposed a stale diagnostic at tools commit
+b8f586f8588e28f0c9fc12bcafd850db114ba049: an explicitly typed imported constant
+changes an indirectly returned array length but the client diagnostic does not
+update. The inferred-constant control does update. Independent validation added
+fresh-start, completed-work, delayed, saved-file/compiler, and importer-edit
+controls. A conservative initializer traversal patch repairs this fixture in
+both directions; its invalidation precision is unproven. This is research for
+issue #311, not an upstream patch or a production dependency.
+
+Keep producer invalidation and native replacement distinct. An edit that changes
+no projected declaration can skip generation while still requiring compilation
+and replacement of changed executable code. The next integration must compare
+targeted output bytes with full generation and count omitted producer calls;
+timing an unchanged whole-project cache hit alone cannot prove this capability.

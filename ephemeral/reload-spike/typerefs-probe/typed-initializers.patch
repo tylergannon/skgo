@@ -1,0 +1,12 @@
+--- a/internal/cache/typerefs/refs.go
++++ b/internal/cache/typerefs/refs.go
+@@ -443 +443,2 @@
+-		// Initializers only affect the type of a value spec if the type is unset.
++		// Values of typed constants can affect downstream types (array lengths)
++		// and generated enum output. Conservatively retain initializer edges.
+@@ -446,3 +447,2 @@
+-		} else { // only need to walk expr list if type is nil
+-			visitExprList(n.Values, f)
+-		}
++		}
++		visitExprList(n.Values, f)
