@@ -320,7 +320,9 @@ There is no revision cache, TTL, mtime expiry or generic incremental linker.
 Every compatible edit compiles fresh against frozen dependencies. The current
 conservative fence hashes dependency source names/bytes, export archives,
 compiler binaries and relevant environment before/after compilation. Any
-changed frozen input requires restart. Signature/import/global/type changes
+changed frozen input requires restart. The standalone watcher observes only
+the handler source; dependency/config changes are detected on the next reload
+attempt, not by a background dependency watcher. Signature/import/global/type changes
 are rejected before compiler/load. Module lifetime reclamation is separate.
 
 The admitted application is one source file with four fixed standard-library

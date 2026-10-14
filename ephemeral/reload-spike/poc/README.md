@@ -41,7 +41,10 @@ The `pause` argument exists to exercise a request blocked inside loaded code.
 
 Each accepted edit compiles fresh; there is no revision cache or expiry.
 Dependency source contents/membership, archives, compiler binaries and build
-environment are fenced. Dependency/configuration edits require restart.
+environment are fenced when a handler reload is attempted. The standalone
+watcher observes only the handler file; dependency/configuration edits alone
+do not trigger an automatic notice. Submitting another handler edit after
+such a change is rejected with an explicit restart requirement.
 Function-body source reverts are ordinary new compilations. Initial build and
 launch must use the same private inputs: this POC does not prove that an
 arbitrary prebuilt host matches newly discovered dependency archives.
