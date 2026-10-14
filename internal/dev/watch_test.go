@@ -125,3 +125,73 @@ func TestAuthoredPathsPointAtTheFileTheDeveloperWrote(t *testing.T) {
 		t.Errorf("a link-tree name survived:\n%s", got)
 	}
 }
+
+func TestFingerprintReusesBytesAndDetectsPreservedMtimeEdits(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "authored.go")
+	write := func(text string) {
+		t.Helper()
+		if err := os.WriteFile(file, []byte(text), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("package fixture\nconst X=1\n")
+	original, err := os.Stat(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache := &fileDigests{}
+	in := inputs{root: root, web: filepath.Join(root, "web"), digests: cache}
+	fingerprint := func() string {
+		t.Helper()
+		sum, err := in.fingerprint()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sum
+	}
+	first := fingerprint()
+	for i := 0; i < 4; i++ {
+		if got := fingerprint(); got != first {
+			t.Fatal("unchanged source changed fingerprint")
+		}
+	}
+	if !changeTime(original).IsZero() && cache.reads != 1 {
+		t.Fatalf("unchanged source reread %d times, want one initial read", cache.reads)
+	}
+	write("package fixture\nconst X=2\n")
+	if err := os.Chtimes(file, original.ModTime(), original.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	second := fingerprint()
+	if second == first {
+		t.Fatal("equal-size preserved-mtime write was hidden by cached digest")
+	}
+	replacement := filepath.Join(root, "replacement.tmp")
+	if err := os.WriteFile(replacement, []byte("package fixture\nconst X=3\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(replacement, original.ModTime(), original.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, file); err != nil {
+		t.Fatal(err)
+	}
+	third := fingerprint()
+	if third == second || third == first {
+		t.Fatal("atomic same-size preserved-mtime replacement ignored")
+	}
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if fingerprint() == third {
+		t.Fatal("deleted source ignored")
+	}
+	if len(cache.entries) != 0 {
+		t.Fatal("removed source remains in retained digest cache")
+	}
+	write("package fixture\nconst X=4\n")
+	if fingerprint() == third {
+		t.Fatal("recreated source ignored")
+	}
+}

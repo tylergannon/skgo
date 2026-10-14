@@ -30,6 +30,7 @@ const privatePaths = [
  '/.svelte-kit/generated/dev/env/config.js',
  '/.svelte-kit/skgo-env-values.js',
  '/.svelte-kit/skgo-env-runtime.json',
+ '/.svelte-kit/skgo-dev-supervisor.json',
  '/build/env.json', '/build/ssr/bundle.js'
 ];
 function check(url, want, headers={}) {

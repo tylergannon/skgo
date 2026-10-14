@@ -55,6 +55,26 @@ type Config struct {
 	// it, so the HMR socket stays connected while the application behind it is
 	// replaced. Nil routes everything to the application.
 	Vite *url.URL
+	// ViteCommand starts an owned Vite process in Web. It is the complete
+	// argv, including host and port matching Vite. Nil attaches to Vite instead.
+	ViteCommand []string
+	// ViteEnv and Env append environment overrides for Vite and the app.
+	ViteEnv, Env []string
+	// BuildFlags are passed to go build before the package argument.
+	BuildFlags []string
+	// StopBeforeStart is for applications holding exclusive resources such as
+	// a catalog lock. Compilation completes first, then the previous process
+	// drains and exits before its replacement starts.
+	StopBeforeStart bool
+	// ExtraWatch contains additional authored files or directories, relative to
+	// Root unless absolute. Their contents trigger the ordinary generation loop.
+	ExtraWatch []string
+	// RestartFiles are inputs compiled into a retained Generate callback. Editing
+	// them produces a restart-required diagnostic instead of using stale code.
+	RestartFiles []string
+	// WatchInputs returns discovery already owned by Generate, after it runs.
+	// The supervisor never invokes the Go tool to rediscover those inputs.
+	WatchInputs func() WatchInputs
 	// Generate regenerates what Kit and Go compile from authored source. Its
 	// output is shown with the diagnostic if it fails. Nil skips generation.
 	Generate func(ctx context.Context) ([]byte, error)
@@ -70,24 +90,28 @@ type Config struct {
 
 // Server supervises the application.
 type Server struct {
-	cfg  Config
-	in   inputs
-	vite http.Handler
+	cfg     Config
+	inputMu sync.RWMutex
+	in      inputs
+	vite    http.Handler
 
 	tmp      string
 	listener net.Listener
 
-	mu       sync.Mutex
-	settled  chan struct{} // closed while no build is in progress
-	building bool
-	current  *generation
+	mu         sync.Mutex
+	settled    chan struct{} // closed while no build is in progress
+	building   bool
+	current    *generation
+	hasSettled bool
 
 	// built is the fingerprint the last build started from.
 	built string
 
-	builds   int
-	children sync.WaitGroup
-	stopping chan struct{}
+	builds             int
+	children           sync.WaitGroup
+	stopping           chan struct{}
+	reloads            chan string
+	restartFingerprint string
 }
 
 // generation is what answers requests between two source changes: a running
@@ -98,6 +122,34 @@ type generation struct {
 	diagnostic string
 	pid        int
 	requests   sync.WaitGroup
+	streamMu   sync.Mutex
+	streams    map[*streamRequest]struct{}
+	retiring   bool
+}
+
+type streamRequest struct{ cancel context.CancelFunc }
+type streamRequestKey struct{}
+
+func (g *generation) trackStream(request *streamRequest) {
+	g.streamMu.Lock()
+	defer g.streamMu.Unlock()
+	if g.retiring {
+		request.cancel()
+		return
+	}
+	if g.streams == nil {
+		g.streams = make(map[*streamRequest]struct{})
+	}
+	g.streams[request] = struct{}{}
+}
+
+func (g *generation) closeStreams() {
+	g.streamMu.Lock()
+	defer g.streamMu.Unlock()
+	g.retiring = true
+	for request := range g.streams {
+		request.cancel()
+	}
 }
 
 // New prepares a session. Nothing is started until Run.
@@ -114,6 +166,9 @@ func New(cfg Config) (*Server, error) {
 		if cfg.Out, err = filepath.Abs(cfg.Out); err != nil {
 			return nil, err
 		}
+	}
+	if len(cfg.ViteCommand) > 0 && cfg.Vite == nil {
+		return nil, errors.New("skgo dev: owned Vite command requires its URL")
 	}
 	if cfg.Args == nil {
 		return nil, errors.New("skgo dev: no application arguments")
@@ -133,7 +188,7 @@ func New(cfg Config) (*Server, error) {
 	if cfg.StartTimeout == 0 {
 		cfg.StartTimeout = 90 * time.Second
 	}
-	s := &Server{cfg: cfg, in: inputs{root: cfg.Root, web: cfg.Web, out: cfg.Out}, building: true, settled: make(chan struct{}), stopping: make(chan struct{})}
+	s := &Server{cfg: cfg, in: inputs{root: cfg.Root, web: cfg.Web, out: cfg.Out, digests: &fileDigests{}, extra: append(append([]string(nil), cfg.ExtraWatch...), cfg.RestartFiles...)}, building: true, settled: make(chan struct{}), stopping: make(chan struct{}), reloads: make(chan string, 1)}
 	if cfg.Vite != nil {
 		s.vite = &httputil.ReverseProxy{
 			Rewrite: func(p *httputil.ProxyRequest) {
@@ -161,6 +216,45 @@ func (s *Server) Listen() (net.Addr, error) {
 
 // Run serves until ctx is cancelled, then stops the application it started.
 func (s *Server) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var err error
+	s.restartFingerprint, err = fingerprintPaths(s.cfg.Root, s.cfg.RestartFiles)
+	if err != nil {
+		return err
+	}
+	reloadDone := make(chan struct{})
+	go func() { defer close(reloadDone); s.reloadLoop(ctx) }()
+	defer func() { cancel(); <-reloadDone }()
+	if s.listener != nil {
+		defer s.listener.Close()
+	}
+	viteFailure := make(chan error, 1)
+	if len(s.cfg.ViteCommand) > 0 {
+		cmd := exec.Command(s.cfg.ViteCommand[0], s.cfg.ViteCommand[1:]...)
+		cmd.Dir = s.cfg.Web
+		cmd.Env = append(os.Environ(), s.cfg.ViteEnv...)
+		proc, err := StartProcess(cmd, s.cfg.Stdout, s.cfg.Stderr)
+		if err != nil {
+			return fmt.Errorf("skgo dev: starting Vite: %w", err)
+		}
+		s.logf("started vite pid %d on %s", proc.PID(), s.cfg.Vite.Host)
+		defer func() { cancel(); proc.Stop(5 * time.Second) }()
+		go func() {
+			select {
+			case <-ctx.Done():
+			case <-proc.Done():
+				if ctx.Err() == nil {
+					err := proc.ExitError()
+					if err == nil {
+						err = errors.New("process exited successfully")
+					}
+					viteFailure <- fmt.Errorf("skgo dev: vite exited unexpectedly: %w", err)
+					cancel()
+				}
+			}
+		}()
+	}
 	if s.listener == nil {
 		if _, err := s.Listen(); err != nil {
 			return err
@@ -183,13 +277,15 @@ func (s *Server) Run(ctx context.Context) error {
 		s.loop(ctx)
 	}()
 
+	var runErr error
 	select {
 	case <-ctx.Done():
 	case err := <-served:
 		if !errors.Is(err, http.ErrServerClosed) {
-			return err
+			runErr = err
 		}
 	}
+	cancel()
 	close(s.stopping)
 	<-loopDone
 	shutdown, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -205,7 +301,12 @@ func (s *Server) Run(ctx context.Context) error {
 		current.proc.Stop(3 * time.Second)
 	}
 	s.children.Wait()
-	return nil
+	select {
+	case err := <-viteFailure:
+		return err
+	default:
+		return runErr
+	}
 }
 
 func (s *Server) logf(format string, args ...any) {
@@ -230,7 +331,7 @@ func (s *Server) loop(ctx context.Context) {
 		s.setBuilding()
 		// Taken before generating: an edit that lands during the build
 		// differs from this and starts the next one.
-		fingerprint, _ := s.in.fingerprint()
+		fingerprint, _ := s.fingerprint()
 		s.mu.Lock()
 		s.built = fingerprint
 		s.mu.Unlock()
@@ -254,7 +355,7 @@ func (s *Server) awaitChange(ctx context.Context, built string) bool {
 			return false
 		case <-time.After(s.cfg.Poll):
 		}
-		now, err := s.in.fingerprint()
+		now, err := s.fingerprint()
 		if err != nil || now == built {
 			continue
 		}
@@ -264,7 +365,7 @@ func (s *Server) awaitChange(ctx context.Context, built string) bool {
 				return false
 			case <-time.After(s.cfg.Quiet):
 			}
-			again, err := s.in.fingerprint()
+			again, err := s.fingerprint()
 			if err != nil {
 				continue
 			}
@@ -290,30 +391,45 @@ func (s *Server) setBuilding() {
 func (s *Server) settle(next *generation) {
 	s.mu.Lock()
 	previous := s.current
+	broadcast := s.hasSettled || next.diagnostic != ""
+	s.hasSettled = true
 	s.current = next
 	s.building = false
 	close(s.settled)
 	s.mu.Unlock()
+	// Vite buffers full-reload when nobody is connected. Broadcasting initial
+	// success would reload the very first visitor unnecessarily on connection.
+	if broadcast {
+		s.reload(next.diagnostic)
+	}
 	if previous != nil && previous.proc != nil {
 		s.children.Add(1)
 		go func() {
 			defer s.children.Done()
-			// A module or streaming response already assigned to this process
-			// must finish before it is retired. New requests use next.
-			drained := make(chan struct{})
-			go func() { previous.requests.Wait(); close(drained) }()
-			timer := time.NewTimer(30 * time.Second)
-			select {
-			case <-drained:
-			case <-timer.C:
-				s.logf("application pid %d did not drain within 30s", previous.pid)
-			case <-s.stopping:
-			}
-			timer.Stop()
-			s.logf("stopping application pid %d", previous.pid)
-			previous.proc.Stop(3 * time.Second)
+			s.retire(context.Background(), previous)
 		}()
 	}
+}
+
+// retire preserves requests already assigned to the old process. Stop also
+// waits for the process to exit, which releases exclusive application resources.
+func (s *Server) retire(ctx context.Context, previous *generation) {
+	// EventSource responses intentionally never finish. Reconnect them to the
+	// replacement instead of spending the finite-response drain budget on them.
+	previous.closeStreams()
+	drained := make(chan struct{})
+	go func() { previous.requests.Wait(); close(drained) }()
+	timer := time.NewTimer(30 * time.Second)
+	defer timer.Stop()
+	select {
+	case <-drained:
+	case <-ctx.Done():
+	case <-s.stopping:
+	case <-timer.C:
+		s.logf("application pid %d did not drain within 30s", previous.pid)
+	}
+	s.logf("stopping application pid %d", previous.pid)
+	previous.proc.Stop(3 * time.Second)
 }
 
 func (s *Server) failed(report string) *generation {
@@ -324,25 +440,70 @@ func (s *Server) failed(report string) *generation {
 
 // build regenerates, compiles and starts one application.
 func (s *Server) build(ctx context.Context) *generation {
+	current, err := fingerprintPaths(s.cfg.Root, s.cfg.RestartFiles)
+	if err != nil {
+		return s.failed(err.Error())
+	}
+	if current != s.restartFingerprint {
+		return s.failed("Generator implementation changed. Restart the development command to load its new implementation.")
+	}
 	if s.cfg.Generate != nil {
-		s.logf("generating")
-		if out, err := s.cfg.Generate(ctx); err != nil {
+		for {
+			started := time.Now()
+			s.logf("generating")
+			if out, err := s.cfg.Generate(ctx); err != nil {
+				if ctx.Err() != nil {
+					return &generation{}
+				}
+				return s.failed(fmt.Sprintf("skgo generate failed: %v\n%s", err, out))
+			}
+			s.logf("generated in %s", time.Since(started).Round(time.Millisecond))
+			if !s.updateInputs() {
+				break
+			}
+			// A new source selection must be observed before generation. Repeat
+			// against the expanded watch set so an edit during capture cannot be
+			// acknowledged as built without entering the generator. Stable warm
+			// selections do not enter this branch.
+			fingerprint, err := s.fingerprint()
+			if err != nil {
+				return s.failed(err.Error())
+			}
+			s.mu.Lock()
+			s.built = fingerprint
+			s.mu.Unlock()
 			if ctx.Err() != nil {
 				return &generation{}
 			}
-			return s.failed(fmt.Sprintf("skgo generate failed: %v\n%s", err, out))
 		}
 	}
 	s.builds++
 	binary := filepath.Join(s.tmp, "app-"+strconv.Itoa(s.builds))
-	compile := exec.CommandContext(ctx, "go", "build", "-o", binary, s.cfg.Package)
+	args := append([]string{"build", "-o", binary}, s.cfg.BuildFlags...)
+	args = append(args, s.cfg.Package)
+	compile := exec.CommandContext(ctx, "go", args...)
 	compile.Dir = s.cfg.Root
 	s.logf("building %s", s.cfg.Package)
+	compileStarted := time.Now()
 	if out, err := compile.CombinedOutput(); err != nil {
 		if ctx.Err() != nil {
 			return &generation{}
 		}
 		return s.failed(fmt.Sprintf("go build %s failed: %v\n%s", s.cfg.Package, err, out))
+	}
+	s.logf("compiled in %s", time.Since(compileStarted).Round(time.Millisecond))
+	startTime := time.Now()
+	if s.cfg.StopBeforeStart {
+		s.mu.Lock()
+		previous := s.current
+		s.current = nil
+		s.mu.Unlock()
+		if previous != nil && previous.proc != nil {
+			s.retire(ctx, previous)
+		}
+	}
+	if ctx.Err() != nil {
+		return &generation{}
 	}
 	next, err := s.start(ctx, binary)
 	if err != nil {
@@ -351,6 +512,7 @@ func (s *Server) build(ctx context.Context) *generation {
 		}
 		return s.failed(err.Error())
 	}
+	s.logf("replacement ready in %s", time.Since(startTime).Round(time.Millisecond))
 	return next
 }
 
@@ -361,6 +523,7 @@ func (s *Server) start(ctx context.Context, binary string) (*generation, error) 
 	}
 	cmd := exec.Command(binary, s.cfg.Args(addr)...)
 	cmd.Dir = s.cfg.Root
+	cmd.Env = append(os.Environ(), s.cfg.Env...)
 	proc, err := StartProcess(cmd, s.cfg.Stdout, s.cfg.Stderr)
 	if err != nil {
 		return nil, err
@@ -387,7 +550,8 @@ func (s *Server) start(ctx context.Context, binary string) (*generation, error) 
 	}
 
 	target := &url.URL{Scheme: "http", Host: addr}
-	next := &generation{proc: proc, pid: proc.PID(), proxy: &httputil.ReverseProxy{
+	next := &generation{proc: proc, pid: proc.PID()}
+	next.proxy = &httputil.ReverseProxy{
 		Rewrite: func(p *httputil.ProxyRequest) {
 			p.SetURL(target)
 			p.Out.Host = p.In.Host
@@ -396,10 +560,19 @@ func (s *Server) start(ctx context.Context, binary string) (*generation, error) 
 		// Pages stream: a flushed chunk must reach the browser as it is
 		// written.
 		FlushInterval: -1,
+		ModifyResponse: func(response *http.Response) error {
+			kind, _, _ := strings.Cut(response.Header.Get("Content-Type"), ";")
+			if strings.EqualFold(strings.TrimSpace(kind), "text/event-stream") {
+				if request, ok := response.Request.Context().Value(streamRequestKey{}).(*streamRequest); ok {
+					next.trackStream(request)
+				}
+			}
+			return nil
+		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			http.Error(w, "skgo dev: the application at "+addr+" did not answer: "+err.Error(), http.StatusBadGateway)
 		},
-	}}
+	}
 	go s.watchExit(next)
 	return next, nil
 }
@@ -417,10 +590,11 @@ func (s *Server) watchExit(g *generation) {
 	report := fmt.Sprintf("the application (pid %d) exited: %v\n%s", g.pid, g.proc.ExitError(), g.proc.tail.String())
 	s.logf("%s", report)
 	s.current = &generation{diagnostic: report}
+	s.reload(report)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if s.vite != nil && isUpgrade(r) {
+	if s.vite != nil && (isUpgrade(r) || strings.HasPrefix(r.URL.Path, s.viteClientPath())) {
 		s.vite.ServeHTTP(w, r)
 		return
 	}
@@ -430,10 +604,18 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case g == nil:
 		http.Error(w, "skgo dev: the application is still building", http.StatusServiceUnavailable)
 	case g.diagnostic != "":
-		writeDiagnostic(w, g.diagnostic)
+		writeDiagnostic(w, g.diagnostic, s.vite != nil, s.viteClientPath()+"client")
 	default:
 		defer g.requests.Done()
-		g.proxy.ServeHTTP(w, r)
+		ctx, cancel := context.WithCancel(r.Context())
+		stream := &streamRequest{cancel: cancel}
+		defer func() {
+			cancel()
+			g.streamMu.Lock()
+			delete(g.streams, stream)
+			g.streamMu.Unlock()
+		}()
+		g.proxy.ServeHTTP(w, r.WithContext(context.WithValue(ctx, streamRequestKey{}, stream)))
 	}
 }
 
@@ -449,7 +631,7 @@ func (s *Server) noticeEdit() {
 	}
 	built := s.built
 	s.mu.Unlock()
-	fingerprint, err := s.in.fingerprint()
+	fingerprint, err := s.fingerprint()
 	if err != nil || fingerprint == built {
 		return
 	}
@@ -484,12 +666,15 @@ func (s *Server) awaitSettled(ctx context.Context) *generation {
 	}
 }
 
-func writeDiagnostic(w http.ResponseWriter, report string) {
+func writeDiagnostic(w http.ResponseWriter, report string, vite bool, clientPath string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Skgo-Dev-Error", "build")
 	w.WriteHeader(http.StatusInternalServerError)
 	fmt.Fprintf(w, "<!doctype html><title>skgo dev: build failed</title><h1>The Go application did not build</h1><pre data-testid=\"skgo-dev-diagnostic\">%s</pre><p>Fix the source; the server rebuilds by itself.</p>\n", html.EscapeString(report))
+	if vite {
+		fmt.Fprintf(w, "<script type=\"module\" src=\"%s\"></script>\n", html.EscapeString(clientPath))
+	}
 }
 
 func isUpgrade(r *http.Request) bool {

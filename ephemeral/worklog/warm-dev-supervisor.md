@@ -1,0 +1,9 @@
+# Warm development supervisor
+
+- decision: use pinned Kit3/Vite's existing `full-reload` and `error` payloads for Go readiness; Kit intentionally omits `path` because app.html is not the browser URL. Diagnostic documents need the real Vite client reachable while no Go application exists.
+- correction: Gimbal owns a catalog lock, so overlapping old and replacement application processes is invalid. Compile first, then explicitly drain/stop-before-start for such applications. Ordinary applications can retain overlapping startup.
+- friction: three producer worktrees changing during timings correctly invalidate captured source and produce fallback. Complete-source freezes are needed for controlled measurements, without interpreting concurrent-work numbers as performance regressions.
+- decision: watcher identity uses source contents, not only size/mtime; equal-size timestamp-preserving writes must still invalidate. The per-request polling cost needs measuring before claiming fast browser latency.
+- correction: first-ready suppression must use session settlement history, not presence of an old process; exclusive-resource handoff deliberately clears that process before successful settlement. The real TCP-lease test now also asserts the Vite reload notification.
+- correction: SSE responses never drain naturally. Close tracked event streams when retiring an application so EventSource can reconnect, while finite assigned responses retain their drain guarantee; a held real SSE response now exercises exclusive handoff.
+- measurement: the Go request benchmark with 768 source files (~6MiB) measured 12.38ms and 8.22MB allocations per request before digest reuse, versus 1.97ms and 0.85MB after. Reuse requires kernel change time plus inode, size and mtime; unsupported platforms reread bytes. Same-size timestamp-restored writes, atomic replacement and removal remain covered. A shell pipeline's ~80ms estimate was not the server's measured request overhead.

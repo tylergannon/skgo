@@ -1268,6 +1268,48 @@ function errorText(e) {
 // Values are validated by Go once before Kit loads its environment declaration.
 // This must be a real file: Kit imports env.ts in a separate Vite server with
 // configFile:false, where this adapter's virtual modules do not exist.
+// The Go supervisor publishes readiness through Vite's existing HMR protocol.
+// This is adapter glue: the browser keeps using Vite's own client and overlay.
+export function goSupervisorReload() {
+	return {
+		name: 'skgo-supervisor-reload',
+		configureServer(server) {
+			const token = randomBytes(32).toString('hex');
+			const file = join(server.config.root, '.svelte-kit/skgo-dev-supervisor.json');
+			mkdirSync(dirname(file), { recursive: true });
+			writeFileSync(file, JSON.stringify({ token, base: server.config.base }), { mode: 0o600 });
+			chmodSync(file, 0o600);
+			let failure;
+			server.ws.on('vite:client:connect', (_, client) => {
+				if (failure) client.send(failure);
+			});
+			server.middlewares.use((req, res, next) => {
+				if ((req.url || '').split('?')[0] !== '/__skgo_dev/supervisor') return next();
+				if (req.method !== 'POST' || req.headers['x-skgo-dev-token'] !== token) {
+					res.statusCode = 403; res.end('Forbidden'); return;
+				}
+				let body = '', size = 0;
+				req.setEncoding('utf8');
+				req.on('data', chunk => {
+					size += Buffer.byteLength(chunk);
+					if (size <= 1048576) body += chunk;
+				});
+				req.on('end', () => {
+					let message;
+					try { message = JSON.parse(body); } catch {}
+					if (size > 1048576 || !message || typeof message.diagnostic !== 'string') {
+						res.statusCode = 400; res.end('Invalid supervisor status'); return;
+					}
+					failure = message.diagnostic ? { type: 'error', err: { message: message.diagnostic, stack: '', plugin: 'skgo' } } : undefined;
+					// Kit also omits path for full-reload: app.html is not the page URL.
+					server.ws.send(failure || { type: 'full-reload' });
+					res.statusCode = 204; res.end();
+				});
+			});
+		}
+	};
+}
+
 export function goEnvironmentValues(output = 'build') {
 	let token = '';
 	let kitOut = '.svelte-kit';

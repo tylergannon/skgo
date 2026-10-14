@@ -173,3 +173,52 @@ assert.deepEqual(all, [edited, original]);
 		t.Fatalf("transform before settled change: %v\n%s", err, output)
 	}
 }
+
+func TestGoSupervisorUsesViteReloadAndErrorProtocol(t *testing.T) {
+	module, err := filepath.Abs("skgo-adapter/env.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := filepath.Abs("../../example/web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const source = `
+import { EventEmitter } from 'node:events';
+import { readFileSync, statSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import assert from 'node:assert/strict';
+const { goSupervisorReload } = await import(pathToFileURL(process.argv[1]));
+const root=process.argv[2], messages=[], handlers=new Map();
+let middleware;
+goSupervisorReload().configureServer({config:{root,base:'/nested/'},ws:{send:m=>messages.push(m),on:(e,f)=>handlers.set(e,f)},middlewares:{use:f=>middleware=f}});
+const file=root+'/.svelte-kit/skgo-dev-supervisor.json';
+const control=JSON.parse(readFileSync(file,'utf8'));
+assert.equal(control.base,'/nested/');
+assert.equal(statSync(file).mode & 0o777,0o600);
+assert.equal(control.token.length,64);
+const deliver=(body,token=control.token,method='POST')=>{
+ const req=Object.assign(new EventEmitter(),{url:'/__skgo_dev/supervisor',headers:{'x-skgo-dev-token':token},method,setEncoding(){}});
+ const res={statusCode:200,end(){}};
+ middleware(req,res,()=>assert.fail('control request fell through'));
+ req.emit('data',body);req.emit('end');return res.statusCode;
+};
+assert.equal(deliver(JSON.stringify({diagnostic:'broken source <literal>'}),'wrong'),403);
+assert.equal(messages.length,0);
+assert.equal(deliver('no json'),400);
+assert.equal(deliver('{}'),400);
+assert.equal(deliver(JSON.stringify({diagnostic:'broken source <literal>'})),204);
+assert.deepEqual(messages,[{type:'error',err:{message:'broken source <literal>',stack:'',plugin:'skgo'}}]);
+const newcomer=[];
+handlers.get('vite:client:connect')(undefined,{send:m=>newcomer.push(m)});
+assert.deepEqual(newcomer,messages);
+assert.equal(deliver(JSON.stringify({diagnostic:''})),204);
+assert.deepEqual(messages[1],{type:'full-reload'});
+handlers.get('vite:client:connect')(undefined,{send:()=>assert.fail('stale error after repair')});
+`
+	cmd := exec.Command("node", "--input-type=module", "-e", source, module, t.TempDir())
+	cmd.Dir = app
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("supervisor adapter: %v\n%s", err, out)
+	}
+}

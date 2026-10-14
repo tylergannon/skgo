@@ -480,6 +480,27 @@ Then(
 );
 
 Then(
+	'the open page shows {string} as {string} in dev or {string} in prod without manual navigation',
+	async ({ page }, testid: string, live: string, built: string) => {
+		await expect(page.getByTestId(testid)).toHaveText(expectedMode() === 'dev' ? live : built, {
+			timeout: expectedMode() === 'dev' ? developmentTimeout : 2_000
+		});
+		await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+	}
+);
+
+Then(
+	'the open page shows a Vite build error naming {string} in dev or {string} reading {string} in prod',
+	async ({ page }, file: string, testid: string, built: string) => {
+		if (expectedMode() === 'prod') {
+			await expect(page.getByTestId(testid)).toHaveText(built);
+			return;
+		}
+		await expect(page.locator('vite-error-overlay')).toContainText(file, { timeout: developmentTimeout });
+	}
+);
+
+Then(
 	'in dev a cold document for {string} has {string} reading {string}',
 	async ({ page }, path: string, testid: string, live: string) => {
 		const mode = expectedMode();

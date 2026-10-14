@@ -694,7 +694,7 @@ func TestSkgoDevExternalCancellationRemainsCleanWithViteChild(t *testing.T) {
 	t.Logf("cancellation proof: supervisor exit=0; Vite pid=%d alive=false; process group=%d alive=false; listener=%s open=false", pid, pgid, listener)
 }
 
-func TestSkgoDevListenFailureStopsStartedViteChild(t *testing.T) {
+func TestSkgoDevListenFailureDoesNotStartViteChild(t *testing.T) {
 	app := newDevApp(t)
 	vite := buildDevFakeVite(t)
 	log := &lockedBuffer{}
@@ -737,26 +737,13 @@ func TestSkgoDevListenFailureStopsStartedViteChild(t *testing.T) {
 	if !errors.As(waitErr, &exitErr) || exitErr.ExitCode() == 0 {
 		t.Fatalf("invalid public listen address returned %v, want nonzero process exit:\n%s", waitErr, log.String())
 	}
-	pid, listener, ok := startedViteIdentity(log.String())
-	if !ok {
-		t.Fatalf("skgo dev did not report its started Vite child:\n%s", log.String())
+	if _, _, ok := startedViteIdentity(log.String()); ok {
+		t.Fatalf("Vite started before validating the public listen address:\n%s", log.String())
 	}
-	deadline := time.Now().Add(5 * time.Second)
-	for processOrGroupAlive(pid, true) && time.Now().Before(deadline) {
-		time.Sleep(20 * time.Millisecond)
+	if _, _, _, ok := fakeViteIdentity(log.String()); ok {
+		t.Fatalf("a Vite child ran despite invalid public address:\n%s", log.String())
 	}
-	pidAlive := processOrGroupAlive(pid, false)
-	groupAlive := processOrGroupAlive(pid, true)
-	conn, dialErr := net.DialTimeout("tcp", listener, 200*time.Millisecond)
-	listenerAlive := dialErr == nil
-	if conn != nil {
-		_ = conn.Close()
+	if !strings.Contains(log.String(), "invalid-listen-address") {
+		t.Fatalf("missing listen diagnostic: %s", log.String())
 	}
-	if pidAlive || groupAlive || listenerAlive {
-		t.Fatalf("owned Vite resources survived startup failure: pid=%d alive=%t group=%d alive=%t listener=%s open=%t\n%s", pid, pidAlive, pid, groupAlive, listener, listenerAlive, log.String())
-	}
-	if strings.Contains(log.String(), "vite exited unexpectedly:") {
-		t.Fatalf("intentional Vite shutdown during startup failure was reported as unexpected:\n%s", log.String())
-	}
-	t.Logf("startup failure proof: supervisor exited nonzero; Vite pid=%d alive=false; process group=%d alive=false; listener=%s open=false", pid, pid, listener)
 }
