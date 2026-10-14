@@ -20,3 +20,10 @@ friction: The example's placeholder embedded build lacks skgo.manifest.json, req
   frozen body CPU profiling now points chiefly to filesystem capture (950ms of
   1430ms sampled CPU over8 edits). Do not claim the memo eliminates source
   acquisition, or weaken exact capture using timestamps/TTL to chase that cost.
+- Warming discovery changed root-package return order and therefore generated
+  `skgoN` import aliases; the real example's exact-output comparison caught two
+  differing bindings even though replacing each alias with its import path made
+  both whole files identical. Sort the returned root set by PkgPath before
+  allocating aliases. Reversing discovery output is the focused regression;
+  removing the sort must fail it. This avoids output churn without treating
+  semantic equivalence as an excuse to relax exact authoritative comparison.
