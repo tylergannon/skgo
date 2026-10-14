@@ -129,6 +129,8 @@ function messageSaying(page: Page, body: string): Locator {
 }
 
 When('the contact page has loaded', async ({ page }) => {
+	// The async inbox cannot settle before Kit finishes importing and hydrating.
+	await hydrated(page);
 	// The inbox query has to have resolved before anything is counted, and a
 	// boundary that fell over must not be mistaken for an empty page. The list
 	// is checked for attachment rather than visibility: an inbox with nothing
