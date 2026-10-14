@@ -387,3 +387,24 @@ func TestWorkerInputsIncludeReplacementsEmbedsAndPersistentHits(t *testing.T) {
 		t.Fatal("caller mutated worker input ownership")
 	}
 }
+
+func TestWorkerDeclarationEditWithEmbedDirectoriesRetainsDiscovery(t *testing.T) {
+	root, cfg := foreignFixture(t, cacheRemote, nil)
+	cfg.CacheDir = "off"
+	cacheWrite(t, filepath.Join(root, "wire/assets.go"), "package wire\nimport \"embed\"\n//go:embed data/*\nvar Files embed.FS\n")
+	cacheWrite(t, filepath.Join(root, "wire/data/one.txt"), "one")
+	var w Worker
+	defer w.Close()
+	if err := w.Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	before := w.session.Stats().MetadataLoads
+	cacheWrite(t, filepath.Join(root, "wire/wire.go"), "package wire\ntype Thing struct { Count int `json:\"count\"` }\n")
+	if err := w.Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if got := w.session.Stats().MetadataLoads; got != before {
+		t.Fatalf("declaration edit rediscovered metadata: %d -> %d", before, got)
+	}
+	assertCacheFile(t, filepath.Join(cfg.Web, "src/lib/skgo/example.com/wire/types.ts"), `"count": number`)
+}

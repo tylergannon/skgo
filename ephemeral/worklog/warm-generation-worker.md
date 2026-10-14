@@ -5,3 +5,18 @@ friction: WIP4939b13 predates the released narrow parser-source overlays. Portin
 friction: A controlled real-example field edit was initially measured while the local Polytype replacement was still being edited; conservative source-change verification reran generation. Freeze all mutable producer modules, not just the host repository, or benchmark a frozen copy. The corrected run omitted 20 of 21 TypeScript backend calls and matched all 186 generated outputs.
 decision: Warm CPU sampling attributed 350ms cumulative to projection fingerprinting and 400ms to capture across eight body edits (1.27s sampled CPU, 2.74s wall). Exact-content per-file projection digests remove unchanged-file parsing; no timestamp/TTL validity shortcut was added. Directory/file acquisition remains separately measurable work.
 friction: The example's placeholder embedded build lacks skgo.manifest.json, required even with --proxy. Generation/real Go build and literal compiled-handler checks can run independently; they are not an HTTP/browser startup proof. The supervisor lane supplies the complete frontend-built application.
+
+- Real API profiling found embedded-directory sentinels were passed with trailing
+  separators to `goload.View`; its snapshot clone cleaned keys but its header
+  index did not. Each declaration edit consequently looked structural and
+  discarded metadata. Normalize sentinels at capture; Polytype also repaired its
+  public boundary. The embed-directory + field-edit regression requires no new
+  metadata acquisition. Frozen example attribution dropped from 27 metadata Go
+  subprocesses (3.395s aggregate) to zero. The remaining 3 env/2 package-dir calls
+  total about85ms; only one of21 TS producers runs. Instrumented wall time was
+  5.867s before and1.698s after, with concurrent machine activity: use the causal
+  call elimination, not these as isolated latency promises.
+- Exact-content projection memo proves one parse per edited source file, but
+  frozen body CPU profiling now points chiefly to filesystem capture (950ms of
+  1430ms sampled CPU over8 edits). Do not claim the memo eliminates source
+  acquisition, or weaken exact capture using timestamps/TTL to chase that cost.

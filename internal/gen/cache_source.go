@@ -676,7 +676,7 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 		snapshot := make(map[string][]byte, len(files)+len(materialized))
 		for path, data := range files {
 			if strings.HasSuffix(path, string(filepath.Separator)) {
-				snapshot[view.mapPath(path, true)+string(filepath.Separator)] = nil
+				snapshot[filepath.Clean(view.mapPath(path, true))] = nil
 				continue
 			}
 			if view.mapPath(path, true) == path {

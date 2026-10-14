@@ -60,7 +60,11 @@ func main() {
 		cmd.Dir = sandbox
 		return cmd.CombinedOutput()
 	}
-	for _, args := range [][]string{{"mod", "edit", "-replace=github.com/tylergannon/skgo=" + root}, {"mod", "edit", "-replace=github.com/tylergannon/polytype=/Users/tyler/.codex/worktrees/polytype-warm-analysis"}} {
+	polytypeRoot := os.Getenv("SKGO_WORKER_POLYTYPE")
+	if polytypeRoot == "" {
+		polytypeRoot = "/Users/tyler/.codex/worktrees/polytype-warm-analysis"
+	}
+	for _, args := range [][]string{{"mod", "edit", "-replace=github.com/tylergannon/skgo=" + root}, {"mod", "edit", "-replace=github.com/tylergannon/polytype=" + polytypeRoot}} {
 		out, err := run(args...)
 		if err != nil {
 			panic(fmt.Sprintf("%v: %s", err, out))
@@ -108,6 +112,20 @@ func main(){ got,err:=route.Skgo_getRevision(context.Background());if err!=nil |
 	}
 
 	generation("cold-generation")
+	if profile := os.Getenv("SKGO_WORKER_API_CPU"); profile != "" {
+		domain := filepath.Join(sandbox, "businesslogic/store.go")
+		write(domain, bytes.Replace(read(domain), []byte("type Todo struct {"), []byte("type Todo struct {\n WorkerAdded bool `json:\"workerAdded\"`"), 1))
+		if trace := os.Getenv("SKGO_GO_TRACE"); trace != "" {
+			write(trace, nil)
+		}
+		f, err := os.Create(profile)
+		must(err)
+		must(pprof.StartCPUProfile(f))
+		generation("profile-api")
+		pprof.StopCPUProfile()
+		must(f.Close())
+		return
+	}
 	if profile := os.Getenv("SKGO_WORKER_CPU"); profile != "" {
 		f, err := os.Create(profile)
 		must(err)
