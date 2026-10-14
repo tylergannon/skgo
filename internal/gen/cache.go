@@ -70,23 +70,38 @@ func generationCachePath(cfg Config) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	nodePath, err := exec.LookPath("node")
+	if err != nil {
+		return "", "", err
+	}
+	nodePath, err = filepath.EvalSymlinks(nodePath)
+	if err != nil {
+		return "", "", err
+	}
+	nodeIdentity, err := cacheFileHash(nodePath)
+	if err != nil {
+		return "", "", err
+	}
+	// Effective Go settings are validated separately; launcher-only GOFILE,
+	// GOLINE and GOPACKAGE must not split go generate from direct invocations.
+	// PATH selects Node here; the frontend formatter is a fixed project path.
 	// Keep only tool inputs. Arbitrary authored JS inputs are represented by its
 	// live semantic result, so environment values such as secrets aren't stored.
 	var env []string
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
-		if strings.HasPrefix(key, "GO") || strings.HasPrefix(key, "CGO") || key == "CC" || key == "CXX" || key == "PKG_CONFIG" || key == "PATH" || key == "HOME" || key == "XDG_CONFIG_HOME" {
+		if key == "GODEBUG" || strings.HasPrefix(key, "CGO") || strings.HasPrefix(key, "NODE_") || key == "CC" || key == "CXX" || key == "PKG_CONFIG" || key == "HOME" || key == "XDG_CONFIG_HOME" {
 			env = append(env, entry)
 		}
 	}
 	sort.Strings(env)
 	input := struct {
-		Format, Producer, GoTool, Checker, ImportPrefix                                 string
+		Format, Producer, GoTool, NodePath, NodeTool, Checker, ImportPrefix             string
 		Web, Out, Package, LocalsPackage, LocalsType, HookPackage, HookSymbol, SwiftOut string
 		SwiftRemotes                                                                    []string
 		Language                                                                        Language
 		Env                                                                             []string
-	}{generationCacheFormat, producer, goIdentity, runtime.Version(), imports.LocalPrefix, cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.SwiftOut, cfg.SwiftRemotes, cfg.Language, env}
+	}{generationCacheFormat, producer, goIdentity, nodePath, nodeIdentity, runtime.Version(), imports.LocalPrefix, cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.SwiftOut, cfg.SwiftRemotes, cfg.Language, env}
 	raw, err := json.Marshal(input)
 	if err != nil {
 		return "", "", err
@@ -260,6 +275,11 @@ func (c *generationCache) capture(cfg Config) {
 }
 
 func publishGenerationPlan(cfg Config, plan generationPlan) error {
+	if cfg.SwiftOut != "" {
+		if err := checkSwiftOutput(cfg.SwiftOut); err != nil {
+			return err
+		}
+	}
 	g, err := newGeneration(cfg)
 	if err != nil {
 		return err
