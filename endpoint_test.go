@@ -508,28 +508,6 @@ func TestTrustedOriginsUseKitsFormCSRFRule(t *testing.T) {
 	}
 }
 
-// Kit skips its form-shaped cross-site mutation check in development mode.
-// The endpoint must run even though it retains the app origin for the rest of
-// its request context.
-func TestACrossSiteFormPostReachesTheEndpointInDev(t *testing.T) {
-	cfg := endpointFixture(nil, []string{"POST"}, nil)
-	cfg.Dev = true
-	h := newEndpoints(t, cfg, NewEndpoint("/api/thing", "POST", echo("thing")))
-
-	resp := request(t, h, http.MethodPost, "/api/thing", http.Header{
-		"Origin":       {"https://evil.test"},
-		"Content-Type": {"application/x-www-form-urlencoded"},
-	})
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want the endpoint's 200", resp.StatusCode)
-	}
-	if got := body(t, resp); got != "thing" {
-		t.Fatalf("body = %q, want proof that the endpoint ran", got)
-	}
-}
-
-// The event a server route reaches through its context is the route's, not the
-// request path's: the id kit matched and the parameters kit captured.
 func TestAnEndpointReachesItsRouteThroughTheEvent(t *testing.T) {
 	cfg := EndpointConfig{
 		AppDir: "_app",
@@ -748,13 +726,6 @@ func TestTheRegistryRefusesAFrontendItCannotServe(t *testing.T) {
 		t.Errorf("the error does not name the extra route: %v", err)
 	}
 
-	// Dev is the one place the two halves are allowed to disagree, because the
-	// frontend is vite's rather than this build's.
-	dev := cfg
-	dev.Dev = true
-	if _, err := NewEndpoints(dev, NewEndpoint("/api/thing", "GET", echo("thing"))); err != nil {
-		t.Errorf("dev refused a partial registry: %v", err)
-	}
 }
 
 func TestNegotiateFollowsKitsPreference(t *testing.T) {

@@ -164,7 +164,7 @@ func TestANestedUniversalFetchOfARenderedPageIsInTheColdDocument(t *testing.T) {
 // their own values back.
 func TestNestedRendersFinishUnderCapacityPressureWithEachVisitorsOwnValues(t *testing.T) {
 	for _, runtimes := range []int{1, 2} {
-		h, _, err := example.NewHandlerSized(prodDist(t), "", prodOrigin, runtimes)
+		h, err := example.NewHandlerSized(prodDist(t), prodOrigin, runtimes)
 		if err != nil {
 			t.Fatal(err)
 		}

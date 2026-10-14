@@ -24,7 +24,7 @@ When('I follow the universal fetch next step link', async ({ page }) => {
 });
 
 // What the bytes said, before a line of script ran: each element's whole text,
-// the same way for a built document and a dev one that adds a scoping class.
+// while allowing additional compiler-generated attributes.
 Then('the document already said these values:', async ({ documents }, table: DataTable) => {
 	expect(documents.last, 'no document response was observed').not.toBeNull();
 	const html = await documents.last!.text();

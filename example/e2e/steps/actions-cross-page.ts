@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, expectMode, hydrated, test } from './fixtures';
+import { expect, expectProduction, hydrated, test } from './fixtures';
 import type { Page, Response } from '@playwright/test';
 
 const { Given, When, Then } = createBdd(test);
@@ -28,7 +28,7 @@ async function assertSaved(page: Page, values: typeof fixture) {
 
 Given('I open the cross-page action sender', async ({ page, $testInfo }) => {
 	const response = await page.goto('/actions');
-	expectMode(response!);
+	expectProduction(response!);
 	await page.getByRole('link', { name: 'Submit to another page' }).click();
 	await expect(page).toHaveURL(/\/actions\/cross\/send$/);
 	if ($testInfo.project.name !== 'noscript') await hydrated(page);
@@ -60,7 +60,7 @@ When(/^I submit cross-page (success|validation|redirect|forbidden|unavailable) w
 	});
 	await form.getByRole('button').click();
 	const response: Response = await responsePromise;
-	expectMode(response);
+	expectProduction(response);
 	expect(before).toContain('/actions/cross/send');
 	const request = response.request();
 	if (submission === 'Kit enhancement') {
@@ -154,7 +154,7 @@ Then(/^the cross-page (success|validation|redirect|forbidden|unavailable) fixtur
 		await expect(page.getByTestId('cross-source-title')).toHaveText('Submit to another page');
 	}
 	const response = await page.goto('/actions/cross/receive');
-	expectMode(response!);
+	expectProduction(response!);
 	expect(response?.status()).toBe(200);
 	await expect(page.getByTestId('cross-destination-title')).toHaveText('Cross-page destination');
 	await assertSaved(page, outcome === 'success' ? grace : fixture);

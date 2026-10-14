@@ -3,8 +3,6 @@ package skgo
 import (
 	"math"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -75,25 +73,6 @@ func TestDocumentUsesTypedPublicEnvironmentAndStaticPlaceholders(t *testing.T) {
 	}
 	if strings.Contains(document, "</script><script>bad") {
 		t.Fatal("environment value escaped bootstrap script")
-	}
-}
-
-func TestDevProxyNeverForwardsPrivateModuleTransport(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Error("private bridge request reached Vite through browser proxy")
-		_, _ = w.Write([]byte("private receipt"))
-	}))
-	defer upstream.Close()
-	target, err := url.Parse(upstream.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	response := do(t, NewDevProxy(target, nil), "POST", "/__skgo_dev/module", nil)
-	if response.StatusCode != 404 {
-		t.Fatalf("status: %d", response.StatusCode)
-	}
-	if strings.Contains(body(t, response), "private receipt") {
-		t.Fatal("private bridge leaked through proxy")
 	}
 }
 

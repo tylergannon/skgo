@@ -172,11 +172,10 @@ func newFetchApp(t *testing.T, o fetchAppOptions) *fetchApp {
 			Endpoint: &ManifestEndpoint{Methods: ep.methods},
 		})
 	}
-	m := Manifest{AppDir: "_app", Base: o.base, Nodes: []string{"", "src/routes/a/b/+page.server.ts"}, Routes: routes,
+	m := Manifest{AppDir: "_app", Base: o.base, Nodes: []string{"", "src/routes/a/b/+page.server.ts"}, Loads: []string{"src/routes/a/b/+page.server.ts"}, Routes: routes,
 		Prerendered: []string{o.base + "/pre/static", o.base + "/pre/hello"}}
 
 	loadCfg := m.LoadConfig(origin)
-	loadCfg.Dev = true
 	loads, err := NewLoads(loadCfg, NewLoad("src/routes/a/b/+page.server.ts", func(ctx context.Context) (loaded, error) {
 		return app.loadFetch(ctx, EventFrom(ctx))
 	}))
@@ -185,7 +184,6 @@ func newFetchApp(t *testing.T, o fetchAppOptions) *fetchApp {
 	}
 
 	epCfg := m.EndpointConfig(origin)
-	epCfg.Dev = true
 	epCfg.OnPanic = func(string, string, any, []byte) {}
 	epCfg.HandleError = func(ctx context.Context, caught CaughtError) map[string]any {
 		resp, err := EventFrom(ctx).Fetch(ctx, mustRequest(t, "GET", "/api/echo?from=handleError", nil))

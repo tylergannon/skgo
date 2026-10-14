@@ -3,9 +3,8 @@ Feature: Fetches that reach the app's own rendered pages
   A universal load fetches a whole rendered page of the app, and a Go load
   fetches one of every kind of destination. In the document the page being
   rendered waits on a second render nested inside it. The values below are
-  fixed in the scenarios, not read off the app, and the same claims run
-  against the built bundle and `vp dev`. (In dev nothing is prerendered, so
-  the shadow route's dynamic half is a prod-only claim, made by the Go tests.)
+  fixed in the scenarios, not read off the app. The shadow route's dynamic
+  half is asserted by the Go tests.
 
   Scenario: A universal load's fetch of a rendered page is in the cold document, survives hydration and a Kit navigation
     Given I have signed in as "ada"

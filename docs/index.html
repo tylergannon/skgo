@@ -128,7 +128,7 @@ Without vp (VitePlus), use pnpm dlx instead, not npx: skgo projects use pnpm. Ad
           <li>A Go load's result type becomes the page's <code>data</code> type.</li>
           <li>Pages are rendered on the server. Streamed promises, <code>ssr = false</code> and <code>csr = false</code> work.</li>
           <li>Remote forms still work when JavaScript is disabled.</li>
-          <li>In development, <code>just dev</code> runs <code>vp dev</code> behind the Go server. The Go server renders pages and forwards modules and hot reloading.</li>
+          <li>Development mode is unavailable pending its separate replacement.</li>
           <li><code>skgo new</code> creates the project with <code>sv create</code>, then adds Vitest and Storybook.</li>
         </ul>
       </div>
@@ -154,7 +154,8 @@ Without vp (VitePlus), use pnpm dlx instead, not npx: skgo projects use pnpm. Ad
         <pre class="shell"><code>go install github.com/tylergannon/skgo/cmd/skgo@latest
 skgo new myapp
 cd myapp
-just dev</code></pre>
+just install
+just serve</code></pre>
         <p><code>skgo new</code> runs <code>sv create</code> through VitePlus and asks <code>sv</code>'s usual questions. Anything after <code>--</code> is passed to <code>sv create</code>.</p>
       </div>
       <div>

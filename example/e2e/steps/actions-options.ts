@@ -1,7 +1,6 @@
 import { createBdd } from 'playwright-bdd';
 import type { Page, Response } from '@playwright/test';
-import { readFileSync } from 'node:fs';
-import { booted, expect, expectMode, expectedMode, hydrated, test } from './fixtures';
+import { booted, expect, expectProduction, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 const lastPost = new WeakMap<Page, Response>();
@@ -19,7 +18,7 @@ async function post(page: Page, path: string, submit: () => Promise<void>, nativ
 	const answer = await response;
 	if (documentLoaded) await documentLoaded;
 	if (dataLoaded) await dataLoaded;
-	expectMode(answer);
+	expectProduction(answer);
 	lastPost.set(page, answer);
 	return answer;
 }
@@ -51,18 +50,12 @@ async function assertShell(response: Response, outcome: Outcome) {
 	expect(body).not.toContain('Action error 403');
 	expect(body).not.toContain('Action error 500');
 	expect(body).not.toContain('data-testid="no-ssr-title"');
-	if (expectedMode() === 'dev') {
-		const log = readFileSync(process.env.SKGO_LOG!, 'utf8');
-		const warning = outcome === 'forbidden' || outcome === 'unavailable'
-			? "The form action returned an error, but +error.svelte wasn't rendered because SSR is off."
-			: "The form action returned a value, but it isn't available in `page.form`, because SSR is off.";
-		expect(log).toContain(warning);
-	}
+
 }
 
 Given('I open the Actions page without client JavaScript', async ({ page }) => {
 	const response = await page.goto(paths.client);
-	expectMode(response!);
+	expectProduction(response!);
 	await expect(page.getByTestId('no-client-title')).toHaveText('Actions without client JavaScript');
 	await expect(page.getByTestId('no-client-saved-name')).toHaveText('Ada Lovelace');
 	await expect(page.getByTestId('no-client-saved-email')).toHaveText('ada@example.test');
@@ -163,7 +156,7 @@ Then('the no-client error branch renders the safe 500 section error with its own
 
 Given('I open the client-rendered Actions page after boot', async ({ page }) => {
 	const response = await page.goto(paths.ssr);
-	expectMode(response!);
+	expectProduction(response!);
 	expect(response!.status()).toBe(200);
 	const body = await response!.text();
 	expect(body).not.toContain('data-testid="no-ssr-title"');

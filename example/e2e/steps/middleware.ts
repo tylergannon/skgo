@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, expectMode, hydrated, test } from './fixtures';
+import { expect, expectProduction, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 
@@ -8,7 +8,7 @@ Given('the browser holds the stale visit cookie {string}', async ({ context }, v
 });
 
 Then('the document was authenticated by middleware as {string}', async ({ page, documents }, token: string) => {
-	expectMode(documents.last!);
+	expectProduction(documents.last!);
 	expect(documents.last!.status()).toBe(200);
 	expect(documents.last!.headers()['x-skgo-middleware']).toBe('/middleware data=false');
 	await expect(page.getByTestId('title')).toHaveText('Middleware');
@@ -54,7 +54,7 @@ When(/^I save the middleware note with (Kit enhancement|native form)$/, async ({
 	);
 	await page.getByTestId(`${enhanced ? 'enhanced' : 'native'}-note-form`).getByRole('button').click();
 	const response = await pending;
-	expectMode(response);
+	expectProduction(response);
 	expect(response.status()).toBe(200);
 	expect(response.request().headers()['x-sveltekit-action'] === 'true').toBe(enhanced);
 	expect(response.request().resourceType() === 'document').toBe(!enhanced);

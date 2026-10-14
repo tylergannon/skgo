@@ -1,5 +1,7 @@
 # SvelteKit compatibility journal
 
+Development mode and development qualification are unavailable after removal of the old server. References to development runs below record historical qualification only.
+
 This journal records upstream releases reviewed for skgo, the Go contracts they
 can affect, and the evidence for each adoption. A dependency pin or a successful
 build alone does not establish compatibility. Go owns HTTP, server loads, remote

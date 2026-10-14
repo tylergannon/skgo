@@ -14,11 +14,8 @@ Given('I open {string}', async ({ page, documents }, path: string) => {
 // capability this app has, so a link named for a page exists twice on it — once
 // in the nav and once in the index — and an unscoped `getByRole` matches both.
 When('I click the link to {string}', async ({ page }, path: string) => {
-	// Kit's router has to be the thing that answers the click. Go renders the
-	// document in dev too, so the nav is on screen and clickable before the
-	// browser has the modules that make it live, and a click in that window is
-	// an ordinary anchor: a second document, which is the opposite of what
-	// every scenario using this step goes on to claim.
+	// Kit's router must answer the click. The nav is visible before hydration;
+	// an earlier click is an ordinary anchor and causes a second document.
 	await hydrated(page);
 	await page.getByTestId('app-nav').getByRole('link', { name: linkName(path), exact: true }).click();
 });
@@ -34,10 +31,7 @@ Then('every part of the page loaded', async ({ page }) => {
 	// one scenario and passed against a page still showing "loading…" — the
 	// frame it left behind was a picture of nothing having happened yet.
 	// The app itself has to be on screen first. Both halves below are
-	// count-is-zero assertions, and an empty page satisfies them perfectly: in
-	// dev, where the first paint waits on vite's module graph, this step passed
-	// twice against a page that had rendered nothing at all and left two blank
-	// frames behind.
+	// count-is-zero assertions, and an empty page satisfies them perfectly.
 	await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 15_000 });
 	await expect(page.locator('[data-testid$="-pending"]')).toHaveCount(0, { timeout: 15_000 });
 	await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);
@@ -65,3 +59,12 @@ function linkName(path: string): string {
 	if (path === '/destinations') return 'Destinations';
 	throw new Error(`no nav link for ${path}`);
 }
+
+Then('the page never mentions {string}', async ({ page }, text: string) => {
+	await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 15_000 });
+	expect(await page.locator('body').innerText()).not.toContain(text);
+});
+
+Then('I see the words {string}', async ({ page }, text: string) => {
+	await expect(page.getByText(text, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
+});

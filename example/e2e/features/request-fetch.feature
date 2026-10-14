@@ -2,8 +2,7 @@ Feature: A Go load that fetches through its request event
 
   The page's Go load calls the Go endpoint /api/request-fetch with
   Event.Fetch and the endpoint's answer is what the page shows. The value is
-  fixed in the scenario, not read off the app. The same claims run against the
-  built bundle and `vp dev`.
+  fixed in the scenario, not read off the app.
 
   Scenario: The fetched value is in the document and again after a Kit navigation
     Given I have signed in as "ada"

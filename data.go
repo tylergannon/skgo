@@ -38,9 +38,8 @@ func stripDataSuffix(pathname string) string {
 // Intercept returns a handler that answers `__data.json` itself and passes
 // everything else to next.
 //
-// It must sit in front of whatever serves pages — the static handler in
-// production, the dev proxy in dev — so that `__data.json` never reaches
-// either of those, and in front of the remote registry too, since a `__data`
+// It must sit in front of the static handler so that `__data.json` never
+// reaches it, and in front of the remote registry too, since a `__data`
 // suffix and a remote call never share a path. Running the app's `handle`
 // hook is not this registry's business; see Handle, which mounts outermost
 // over this and everything else.
@@ -66,12 +65,6 @@ func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if rejectReservedQuery(w, r, true, false) {
 		return
-	}
-	if ls.devRefresh != nil {
-		if err := ls.devRefresh(); err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
 	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
@@ -113,8 +106,6 @@ func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // rootBranch is the single-node branch kit uses for a path that matches no
 // route: node 0, the root layout.
 func (ls *Loads) rootBranch() []*ServerLoad {
-	ls.mu.RLock()
-	defer ls.mu.RUnlock()
 	if len(ls.nodes) == 0 {
 		return []*ServerLoad{nil}
 	}
@@ -244,7 +235,7 @@ func (ls *Loads) runBranchWith(r *http.Request, req dataRequest, routeID string,
 	ctx := r.Context()
 
 	if jar == nil {
-		jar = requestCookieJar(r, secureCookieDefault(ls.cfg.Origin, ls.cfg.Dev))
+		jar = requestCookieJar(r, secureCookieDefault(ls.cfg.Origin))
 	}
 	shared := &loadRequest{
 		req:           r,

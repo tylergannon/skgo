@@ -8,8 +8,7 @@ Feature: Server loads written in Go
   The section is protected by one rule, written once in its layout, and the
   session that rule reads is derived once by the app's `handle` hook.
 
-  The same claims run against the bundle the adapter built and the modules
-  `vp dev` transforms. Go renders the document and owns every load in both.
+  Go renders the document from the embedded build and owns every load.
 
   Scenario: A named Go matcher result reaches a load after Kit navigation
     Given I open "/typed-load/0"

@@ -1,8 +1,7 @@
 Feature: Pages arrive rendered, and kit's client takes them over
 
-  Every scenario runs unchanged against the embedded production build and the
-  live modules transformed by `vp dev`. In both modes Go owns the document and
-  runs Kit's renderer; only the renderer's module source changes.
+  Go owns the document and runs Kit's renderer from the embedded production
+  build.
 
   What the document itself carries — the markup, the status, the error page, the
   hydration payload, the redirect — is asserted against the real handler in

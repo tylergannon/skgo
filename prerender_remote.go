@@ -75,7 +75,7 @@ func runPrerenderRemote(ctx context.Context, raw []byte, out io.Writer, transpor
 	for name, values := range input.Headers {
 		request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
 	}
-	registry, err := NewRemotes(RemoteConfig{Dev: true, Origin: pageURL.Scheme + "://" + pageURL.Host, Transport: transport}, remotes...)
+	registry, err := NewRemotes(RemoteConfig{Origin: pageURL.Scheme + "://" + pageURL.Host, Transport: transport}, remotes...)
 	if err != nil {
 		return err
 	}

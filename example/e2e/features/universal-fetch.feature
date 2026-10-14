@@ -3,8 +3,7 @@ Feature: A universal load's fetches are replayed into the page, not repeated
   A page's universal load fetches the app's own endpoints while the document is
   rendered, and again in the browser. Kit puts what the first run read in the
   document so the second finds it there. The numbers below are the number of
-  times the server's endpoints were really called, fixed in the scenarios; the
-  same claims run against the built bundle and `vp dev`.
+  times the server's endpoints were really called, fixed in the scenarios.
 
   Scenario: A cold document carries every answer and Kit's client hydrates without asking again
     Given I use a fresh replay run

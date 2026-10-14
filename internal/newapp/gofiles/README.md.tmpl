@@ -1,40 +1,34 @@
 # {{.App}}
 
 A SvelteKit application served by Go. VitePlus and `sv` created the frontend;
-skgo added the Go server and bindings. Node is a build-time and development
-dependency, not a production runtime dependency.
+skgo added the Go server and bindings. Node is a build-time dependency only.
 
 ## Prerequisites
 
 - Go {{.GoVersion}} or newer
 - Node 22.17 or newer
-- pnpm and `just`
+- VitePlus 1.0.0 (`vp`) and `just`
 
-The generator installed the frontend dependencies and made an initial frontend
-build{{if .ComponentTests}}, and installed Chromium for the Vitest component tests{{end}}. None of that is
-committed. In a fresh clone `just dev` installs the dependencies and makes that
-build once, when it finds them missing{{if .ComponentTests}}; the component tests additionally need
-`pnpm --dir web exec playwright install chromium`{{end}}.
-
-The project includes skgo's Kit 3.0.0 prerender queue correction in its pnpm
-configuration. `just dev` and the native VitePlus install apply it during a
-fresh install. To set it up in an existing application, run `go tool skgo
-kit-patch --web web --apply` from the Go app root, then run
-`node_modules/.bin/vp install --no-frozen-lockfile` from `web/`, followed by
-`go tool skgo kit-patch --web web --check` from the app root. The check confirms
-the correction is present in the installed Kit package.
-
-## Development
+The generator installed frontend dependencies and made an initial frontend
+build{{if .ComponentTests}}, and installed Chromium for Vitest component tests{{end}}.
+These outputs are not committed. In a fresh clone, run:
 
 ```sh
-just dev
+just install
+just serve
 ```
 
-Open {{.Origin}}. Edit a Svelte component under `web/src/` and the normal
-VitePlus development workflow updates the page. Edit Go source, a signature or
-a route and the same session regenerates the bindings, rebuilds the application
-and replaces it behind the same address, with no command to run; a compile error
-is shown in the browser and the terminal until it is corrected.
+Open {{.Origin}}. `just serve` generates bindings, builds the frontend and
+runs the standalone Go binary. Rebuild after edits with `just build`.
+Development mode is unavailable pending its separate replacement.
+{{if .ComponentTests}}
+Component tests additionally need `vp exec playwright install chromium` from `web/`.
+{{end}}
+The project includes skgo's Kit 3.0.0 prerender queue correction in its package
+configuration. VitePlus applies it during installation. For an existing app,
+run `go tool skgo kit-patch --web web --apply` from the Go app root, then
+`vp install --no-frozen-lockfile` from `web/`, followed by
+`go tool skgo kit-patch --web web --check` from the app root.
 
 Storybook and Vitest are ready to run:
 
@@ -51,7 +45,7 @@ just build
 ```
 
 The resulting binary embeds the frontend build and serves it without Node.
-From `web/`, `pnpm preview` runs `just serve` and previews that same Go binary.
+From `web/`, `vp run preview` runs `just serve` and previews that same Go binary.
 {{if .Examples}}
 ## Go examples
 

@@ -112,8 +112,8 @@ runs them. Do not audit diffs or re-derive claims from source as a substitute.
 
 **A passing command is not evidence on its own.** Whether skgo works is three
 things, and each catches what the other two cannot: `just test` green in
-seconds, which is every contract at the real handler; `just e2e` green in both
-modes on `main`, which is kit's client using Go's bytes; and a person who opened
+seconds, which is every contract at the real handler; `just e2e prod` green on `main`
+(development qualification is unavailable pending its separate replacement), which is kit's client using Go's bytes; and a person who opened
 the box. An exit code of zero is exactly what a silently skipped test prints, so
 skips are failures: a check that cannot run because its toolchain is missing has
 not passed, and must not be able to report that it did. An expensive command

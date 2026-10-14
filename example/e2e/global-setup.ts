@@ -1,11 +1,6 @@
 import type { FullConfig } from '@playwright/test';
 
-export default async function verifyServerMode(config: FullConfig): Promise<void> {
-	const expected = process.env.SKGO_EXPECTED_MODE;
-	if (expected !== 'dev' && expected !== 'prod') {
-		throw new Error(`SKGO_EXPECTED_MODE must be dev or prod, got ${JSON.stringify(expected)}`);
-	}
-
+export default async function verifyProductionServer(config: FullConfig): Promise<void> {
 	const baseURL = config.projects[0]?.use.baseURL;
 	if (typeof baseURL !== 'string') {
 		throw new Error(`BASE_URL must name the running skgo server, got ${JSON.stringify(baseURL)}`);
@@ -13,9 +8,9 @@ export default async function verifyServerMode(config: FullConfig): Promise<void
 
 	const response = await fetch(baseURL, { method: 'HEAD' });
 	const observed = response.headers.get('x-skgo-mode');
-	if (observed !== expected) {
+	if (observed !== 'prod') {
 		throw new Error(
-			`expected ${expected} mode at ${baseURL}, X-Skgo-Mode was ${JSON.stringify(observed)}`
+			`expected production handler at ${baseURL}, X-Skgo-Mode was ${JSON.stringify(observed)}`
 		);
 	}
 }

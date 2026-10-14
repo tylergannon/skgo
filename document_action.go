@@ -34,18 +34,16 @@ func classicFormWire(result *classicResult) any {
 func (s *SSR) runClassicAction(r *http.Request, route *dataRoute, params map[string]string) (result *classicResult, problem *HTTPError) {
 	location := actionLocation(r.URL)
 	actionError := func(err error) (*classicResult, *HTTPError) {
-		return &classicResult{location: location, jar: requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev)), headers: requestResponseHeaders(r), actionErr: err}, nil
+		return &classicResult{location: location, jar: requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin)), headers: requestResponseHeaders(r), actionErr: err}, nil
 	}
 	if len(route.nodes) == 0 {
 		return actionError(&HTTPError{Status: 405, Message: "POST method not allowed. No form actions exist for this page"})
 	}
 	leaf := route.nodes[len(route.nodes)-1]
-	s.loads.mu.RLock()
 	module := ""
 	if leaf >= 0 && leaf < len(s.loads.cfg.Nodes) {
 		module = s.loads.cfg.Nodes[leaf]
 	}
-	s.loads.mu.RUnlock()
 	if s.actions == nil || len(s.actions.byModule[module]) == 0 {
 		return actionError(&HTTPError{Status: 405, Message: "POST method not allowed. No form actions exist for this page"})
 	}
@@ -72,7 +70,7 @@ func (s *SSR) runClassicAction(r *http.Request, route *dataRoute, params map[str
 		}
 		return actionError(&HTTPError{Status: 415, Message: "Form actions expect form-encoded data — received " + contentType})
 	}
-	jar := requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev))
+	jar := requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin))
 	pageURL, _ := (HandleConfig{Origin: s.loads.cfg.Origin}).eventURL(r, s.loads.origin, s.loads.cfg.Base, false, false)
 	response := &loadRequest{responseState: newResponseState(r)}
 	ctx := withEvent(r.Context(), &Event{metadata: requestMetadataOf(r, pageURL, route.id, false), req: r, jar: jar, mutable: true, params: params, actionResponse: response})

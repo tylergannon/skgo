@@ -86,7 +86,7 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 	for name, values := range input.Headers {
 		request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
 	}
-	registry, err := NewLoads(LoadConfig{Dev: true, Origin: pageURL.Scheme + "://" + pageURL.Host, Transport: transport}, loads...)
+	registry, err := NewLoads(LoadConfig{Origin: pageURL.Scheme + "://" + pageURL.Host, Transport: transport}, loads...)
 	if err != nil {
 		return err
 	}

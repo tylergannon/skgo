@@ -104,7 +104,7 @@ type Result struct {
 }
 
 func (r Result) Instructions() string {
-	return fmt.Sprintf("skgo: created the %s project in %s. Now:\n\n\tcd %s\n\tjust dev\n\nThen open %s. Run `just storybook` for Storybook and `just test` for Vitest.\n", r.Starter, r.Dir, r.Dir, r.Origin)
+	return fmt.Sprintf("skgo: created the %s project in %s. Now:\n\n\tcd %s\n\tjust install\n\tjust serve\n\nThen open %s. Run `just storybook` for Storybook and `just test` for Vitest.\n", r.Starter, r.Dir, r.Dir, r.Origin)
 }
 
 type project struct {
@@ -806,6 +806,7 @@ func setPreviewScript(web string) error {
 	if scripts == nil {
 		return fmt.Errorf("web/package.json has no scripts for preview")
 	}
+	delete(scripts, "dev")
 	scripts["preview"] = "cd .. && just serve"
 	pkg["scripts"], err = json.Marshal(scripts)
 	if err != nil {
@@ -839,7 +840,7 @@ func verifyFrontend(root string) error {
 	if err != nil {
 		return err
 	}
-	for _, script := range []string{"dev", "build", "test:unit", "storybook"} {
+	for _, script := range []string{"build", "test:unit", "storybook"} {
 		if pkg.Scripts[script] == "" {
 			return fmt.Errorf("the upstream %s setup did not add the %q script", owner(script), script)
 		}

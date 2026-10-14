@@ -25,11 +25,9 @@ Feature: A batch query answers several components in one call
     navigates to this one itself. Four components each ask for one symbol, and
     "batch of 4" on every row is the server saying it was asked all four at once.
 
-    The count is of calls to this endpoint rather than of remote calls in
-    general, because in dev the page the browser started on is still fetching
-    its own values when this scenario begins — traffic that belongs to another
-    feature. Four calls answered by one request is the whole claim, and a batch
-    that had stopped batching would send four.
+    The count isolates this endpoint from the starting page's remote calls.
+    Four calls answered by one request is the whole claim, and a batch that
+    had stopped batching would send four.
 
     Given I open "/"
     And I note the remote request count

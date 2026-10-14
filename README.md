@@ -114,8 +114,7 @@ can build its client and manifests, which means every response comes from Go.
 - Pages are rendered on the server. Streamed promises, `ssr = false` and
   `csr = false` work.
 - Remote forms still work when JavaScript is disabled.
-- In development, `just dev` runs `vp dev` behind the Go server. The Go server
-  renders pages and forwards modules and hot reloading.
+- Development mode is unavailable pending its separate replacement.
 - `skgo new` creates the project with `sv create`, then adds Vitest and
   Storybook.
 
@@ -191,9 +190,9 @@ the public documentation.
 | --- | --- | --- |
 | [Create a project with `sv`](https://svelte.dev/docs/kit/creating-a-project) | Available | `skgo new` delegates to `sv create` and adds the Go adapter, Vitest and Storybook. |
 | Generate Go registrations and TypeScript types | Available | `skgo generate` produces typed bindings and throwing Kit stubs; [generator](internal/gen/gen.go). |
-| Development server and hot updates | Available | Go serves documents while Vite serves modules and HMR; [browser scenarios](example/e2e/features/zz-source-update.feature). |
+| Development server and hot updates | Unavailable | The old development server has been removed; its replacement is separate work. |
 | Single-binary build and static assets | Available | The generated project's [build recipe](internal/newapp/gofiles/Justfile.tmpl) embeds the client, assets and SSR bundle in a Go binary. Node is a build-time dependency. |
-| Go tests and browser scenarios | Available | `go test` and the [Gherkin/Playwright suite](example/e2e/features) cover the example; run both development and built-server modes. |
+| Go tests and browser scenarios | Available | `go test` and the [Gherkin/Playwright suite](example/e2e/features) cover the example; run `just e2e prod` against the built server. Development qualification is unavailable. |
 | Svelte and TypeScript checking | Available | The example has `svelte-kit sync && svelte-check`; [package script](example/web/package.json). This is not yet an integrated skgo command. |
 | Vitest component tests and Storybook | Available | `skgo new` provisions both through upstream tooling; [scaffolder](internal/newapp/newapp.go). |
 | Unified checking, linting and formatting | WIP | The separate agent-tooling task is developing a single skgo command; no `skgo check --fix` is released. |
@@ -231,7 +230,8 @@ npm install --global vite-plus@1.0.0
 go install github.com/tylergannon/skgo/cmd/skgo@latest
 skgo new myapp
 cd myapp
-just dev
+just install
+just serve
 ```
 
 `skgo new` runs `sv create` through VitePlus and asks `sv`'s usual questions.

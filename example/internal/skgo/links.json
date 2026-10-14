@@ -155,14 +155,6 @@
 			"target": "web/src/routes/event-layout/[section]"
 		},
 		{
-			"link": "internal/skgo/links/onzggl3sn52xizltf5tw6llemv3a",
-			"target": "web/src/routes/go-dev"
-		},
-		{
-			"link": "internal/skgo/links/onzggl3sn52xizltf5tw6llemv3c6zlomryg62looq",
-			"target": "web/src/routes/go-dev/endpoint"
-		},
-		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y",
 			"target": "web/src/routes/invoices"
 		},

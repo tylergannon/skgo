@@ -58,7 +58,7 @@ func start() string {
 	}
 	// More than one runtime is retained: reentrant rendering cannot use a
 	// single JavaScript runtime. This is the same production composition.
-	handler, _, err := example.NewHandlerSized(dist, "", origin, 2)
+	handler, err := example.NewHandlerSized(dist, origin, 2)
 	if err != nil {
 		listener.Close()
 		log.Print(err)
