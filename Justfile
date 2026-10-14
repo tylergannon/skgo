@@ -52,8 +52,8 @@ vet:
 tools:
     #!/usr/bin/env bash
     set -eu
-    if [ "$(.tools/bin/staticcheck -version 2>/dev/null | cut -d' ' -f1-2)" != "staticcheck 2026.2.1" ]; then
-        GOBIN="{{justfile_directory()}}/.tools/bin" go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
+    if [ "$(.tools/bin/staticcheck -version 2>/dev/null | cut -d' ' -f1-2)" != "staticcheck 2026.2.2" ]; then
+        GOBIN="{{justfile_directory()}}/.tools/bin" go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
     fi
 
 # go test, both modules; vp resolves the frontend tools from the project pins.

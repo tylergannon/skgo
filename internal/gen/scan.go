@@ -137,6 +137,8 @@ type goPackage struct {
 }
 
 type app struct {
+	loadedPackages []*packages.Package
+
 	environment *envspec.Schema
 
 	cfg Config
@@ -255,15 +257,11 @@ func loadApp(cfg Config, files []string) (*app, error) {
 			packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
 		Dir: a.hostDir, Overlay: overlay,
 	}
-	cleanup, err := preserveDependencyExports(loadCfg)
-	if err != nil {
-		return nil, fmt.Errorf("skgo: preparing remote package overlay: %w", err)
-	}
-	defer cleanup()
-	loaded, err := packages.Load(loadCfg, patterns...)
+	loaded, err := cfg.loadPackages(loadCfg, patterns...)
 	if err != nil {
 		return nil, fmt.Errorf("skgo: loading remote packages: %w", err)
 	}
+	a.loadedPackages = loaded
 	var loadErr error
 	packages.Visit(loaded, nil, func(p *packages.Package) {
 		for _, e := range p.Errors {

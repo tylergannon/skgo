@@ -26,10 +26,22 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"golang.org/x/tools/go/packages"
 )
 
 // Config describes one app.
 type Config struct {
+	// Packages contains immutable, caller-loaded package snapshots. Incompatible
+	// snapshots are ignored and the current sources are loaded normally.
+	Packages []*PackageSnapshot
+	// LoadPackages optionally replaces the fallback loader. It receives the
+	// current logical source overlay before temporary staging. Nil uses the default loader.
+	LoadPackages PackageLoader
+	// OnPackageLoad observes fallback loads before temporary staging. It is not
+	// called for compatible snapshot hits and must not mutate its arguments.
+	OnPackageLoad func(*packages.Config, []string)
+
 	localsDir     string
 	LocalsPackage string
 	LocalsType    string
@@ -71,30 +83,74 @@ type Config struct {
 	Language Language
 }
 
+// Prepared owns one generation invocation and its temporary source views.
+// Call Close when finished, including when the caller's analysis fails.
+// The package graph and generated output must not be mutated concurrently.
+type Prepared struct {
+	cfg         Config
+	files       []string
+	app         *app
+	closed, ran bool
+}
+
+// Prepare resolves the current generated source views and analyzes the app.
+// Embedding tools may inspect Packages before Run without loading them again.
+func Prepare(cfg Config) (*Prepared, error) { return prepare(cfg) }
+
+// Packages returns the discovery graph used for routes and remote functions.
+// Imported type identities belong to the same go/types universe. Dependency
+// syntax is present only when supplied by a compatible caller bundle.
+// Treat the graph as immutable. Source views remain valid until Close.
+func (p *Prepared) Packages() []*packages.Package {
+	if p == nil || p.app == nil {
+		return nil
+	}
+	return append([]*packages.Package(nil), p.app.loadedPackages...)
+}
+
+// Close releases the invocation's temporary source views. It is idempotent.
+func (p *Prepared) Close() {
+	if p != nil && !p.closed {
+		p.closed = true
+		if p.cfg.generation != nil {
+			p.cfg.generation.close()
+		}
+	}
+}
+
 // Run scans, generates, and reports what it wrote.
-func Run(cfg Config) (err error) {
+func Run(cfg Config) error {
+	p, err := Prepare(cfg)
+	if err != nil {
+		return err
+	}
+	defer p.Close()
+	return p.Run()
+}
+
+func prepare(cfg Config) (prepared *Prepared, err error) {
 	if cfg.Logf == nil {
 		cfg.Logf = func(string, ...any) {}
 	}
 	web, err := filepath.Abs(cfg.Web)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	out, err := filepath.Abs(cfg.Out)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	cfg.Web, cfg.Out = web, out
 	if (cfg.SwiftOut == "") != (len(cfg.SwiftRemotes) == 0) {
-		return fmt.Errorf("skgo: --swift-out and --swift-remote must be provided together")
+		return nil, fmt.Errorf("skgo: --swift-out and --swift-remote must be provided together")
 	}
 	if cfg.SwiftOut != "" {
 		cfg.SwiftOut, err = filepath.Abs(cfg.SwiftOut)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if filepath.Ext(cfg.SwiftOut) != ".swift" {
-			return fmt.Errorf("skgo: --swift-out must name a .swift file")
+			return nil, fmt.Errorf("skgo: --swift-out must name a .swift file")
 		}
 	}
 	cfg.frontendFiles = map[string]struct{}{}
@@ -106,7 +162,7 @@ func Run(cfg Config) (err error) {
 		cfg.Package = filepath.Base(out)
 	}
 	if fi, err := os.Stat(filepath.Join(web, "src")); err != nil || !fi.IsDir() {
-		return fmt.Errorf("skgo: %s does not look like a vite root: no src/ directory", web)
+		return nil, fmt.Errorf("skgo: %s does not look like a vite root: no src/ directory", web)
 	}
 
 	// The adapter kit builds the frontend with is an ordinary npm package the
@@ -115,30 +171,52 @@ func Run(cfg Config) (err error) {
 	// against one this module cannot read the output of is the mistake worth
 	// catching before a full frontend build rather than after it.
 	if err := checkInstalledAdapter(cfg); err != nil {
-		return err
+		return nil, err
 	}
 
 	files, err := findSourceFiles(web)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	cfg.generation, err = newGeneration(cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer cfg.generation.close()
+	defer func() {
+		if err != nil {
+			cfg.generation.close()
+		}
+	}()
 	if err := prepareLocals(&cfg); err != nil {
-		return err
+		return nil, err
 	}
 	if cfg.loadParams, err = prepareLoadParams(&cfg, files); err != nil {
-		return err
+		return nil, err
 	}
 	if err := validateHook(cfg); err != nil {
-		return err
+		return nil, err
 	}
 	if err := (&app{cfg: cfg}).writeRequestBoundary(); err != nil {
-		return err
+		return nil, err
 	}
+	var a *app
+	if len(files) > 0 {
+		a, err = loadApp(cfg, files)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &Prepared{cfg: cfg, files: files, app: a}, nil
+}
+
+// Run publishes output from this prepared invocation. Call it at most once,
+// without changing source files after Prepare. Use a new Prepare after edits.
+func (p *Prepared) Run() error {
+	if p == nil || p.cfg.generation == nil || p.closed || p.ran {
+		return fmt.Errorf("skgo: prepared generation is closed or already run")
+	}
+	p.ran = true
+	cfg, files := p.cfg, p.files
 	if len(files) == 0 {
 		if len(cfg.SwiftRemotes) != 0 {
 			return fmt.Errorf("skgo: no remote functions match the Swift selection")
@@ -177,10 +255,7 @@ func Run(cfg Config) (err error) {
 		return finishGeneration(cfg)
 	}
 
-	app, err := loadApp(cfg, files)
-	if err != nil {
-		return err
-	}
+	app := p.app
 	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.actions) == 0 && len(app.endpoints) == 0 && len(app.transported) == 0 && app.environment == nil {
 		return fmt.Errorf("skgo: found %d source file(s) but no skgo.Query, skgo.Command, skgo.LiveQuery, skgo.Load or skgo.GET declaration in any of them", len(files))
 	}

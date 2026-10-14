@@ -26,9 +26,9 @@ import (
 
 	"golang.org/x/tools/go/analysis/unitchecker"
 
+	gen "github.com/tylergannon/skgo/generate"
 	"github.com/tylergannon/skgo/internal/advice"
 	"github.com/tylergannon/skgo/internal/check"
-	"github.com/tylergannon/skgo/internal/gen"
 )
 
 const usage = `usage:

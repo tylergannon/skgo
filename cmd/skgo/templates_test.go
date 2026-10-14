@@ -366,9 +366,10 @@ func main(){}
 			t.Fatalf("%s: %v\n%s", name, err, &log)
 		}
 	}
+	fixtureHome := t.TempDir()
 	help := func(paths ...string) string {
 		cmd := exec.Command(skgoBin, "add", "--help")
-		cmd.Env = append(os.Environ(), "SKGO_PLUGIN_DIRS="+strings.Join(paths, ","))
+		cmd.Env = append(os.Environ(), "HOME="+fixtureHome, "SKGO_PLUGIN_DIRS="+strings.Join(paths, ","))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("help: %v\n%s", err, out)

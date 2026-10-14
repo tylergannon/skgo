@@ -336,23 +336,18 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 			return nil, err
 		}
 	}
-	cleanup, err := preserveDependencyExports(loadCfg)
-	if err != nil {
-		return nil, err
-	}
-	defer cleanup()
 	// Export data describes type relationships, not every source import. Load
 	// the complete import graph as metadata, independently of dependency syntax
 	// and type information, for the shared-params ownership check.
 	metadataCfg := *loadCfg
 	metadataCfg.Mode = packages.NeedName | packages.NeedImports | packages.NeedDeps
-	metadata, err := packages.Load(&metadataCfg, mod+"/"+filepath.ToSlash(rel))
+	metadata, err := cfg.loadPackages(&metadataCfg, mod+"/"+filepath.ToSlash(rel))
 	if err != nil {
 		return nil, err
 	}
 	imports := map[string]*packages.Package{}
 	packages.Visit(metadata, nil, func(p *packages.Package) { imports[p.PkgPath] = p })
-	loaded, err := packages.Load(loadCfg, mod+"/"+filepath.ToSlash(rel))
+	loaded, err := cfg.loadPackages(loadCfg, mod+"/"+filepath.ToSlash(rel))
 	if err != nil {
 		return nil, err
 	}
