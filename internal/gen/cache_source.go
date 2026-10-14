@@ -147,6 +147,13 @@ func acquireCacheSources(cfg Config) (cacheSources, error) {
 // bytes on a warm lookup. Directory traversal discovers additions/deletions;
 // generated artifacts are excluded by ownership, never solely by filename.
 func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
+	if cfg.worker != nil {
+		reader := captureReader{previous: cfg.worker.capturedFiles, next: map[string]capturedFile{}, readFile: os.ReadFile}
+		files, key, err := s.captureWithRead(cfg, reader.read)
+		// Keep only the current selection, even after an interrupted capture.
+		cfg.worker.capturedFiles = reader.next
+		return files, key, err
+	}
 	return s.captureWithRead(cfg, os.ReadFile)
 }
 
@@ -177,7 +184,7 @@ func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte,
 		return nil, "", err
 	}
 	// A capture binds each path once, even when frontend and overlapping embed
-	// walks encounter it again. The next capture rereads every path.
+	// walks encounter it again. The next capture validates every path again.
 	readPaths := map[string]bool{}
 	read := func(path string) error {
 		if readPaths[path] {
@@ -400,7 +407,7 @@ func cacheOwned(cfg Config, path string, data []byte) bool {
 			}
 		}
 	}
-	if withinTree(filepath.Join(cfg.Web, "src"), path) && generatedArtifact(data) {
+	if generatedArtifact(data) && withinTree(filepath.Join(cfg.Web, "src"), path) {
 		return generatedModuleName(filepath.Base(path)) || strings.HasPrefix(filepath.Base(path), "hooks.server.") || filepath.Base(path) == "env.ts" || filepath.Base(path) == "env.js"
 	}
 	return false
