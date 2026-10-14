@@ -39,9 +39,6 @@ jobs:
           working_directory: example
           export_path: false
 
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 12.9.1
 
       - uses: extractions/setup-just@v4
 
@@ -82,9 +79,6 @@ jobs:
         with:
           working_directory: native
           export_path: false
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 12.9.1
       - run: mise -C example install
       - run: mise -C example/web exec -- vp install --frozen-lockfile
       - run: go test -count=1 -race ./native ./internal/swiftgen
