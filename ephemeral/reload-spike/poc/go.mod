@@ -1,0 +1,7 @@
+module skgo-native-reload-poc
+
+go 1.27.2
+
+require github.com/pkujhd/goloader v0.0.0
+
+replace github.com/pkujhd/goloader => ../goloader

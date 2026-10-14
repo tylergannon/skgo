@@ -1,0 +1,60 @@
+=== RUN   TestNativeLifecycle
+    reload_test.go:163: pid=7531: exact HTTP edits, retained counter, held request, compile failure/recovery, literal after unload; loaded=5 unloaded=5 peak=2
+--- PASS: TestNativeLifecycle (1.70s)
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/signature
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/named-type
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/goroutine
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/new-call
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/anonymous-type
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/dependency
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/global
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/init
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/escaping-callback
+=== RUN   TestCompatibilityRejectsLifetimeAndABIChanges/pointer-write
+--- PASS: TestCompatibilityRejectsLifetimeAndABIChanges (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/signature (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/named-type (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/goroutine (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/new-call (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/anonymous-type (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/dependency (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/global (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/init (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/escaping-callback (0.00s)
+    --- PASS: TestCompatibilityRejectsLifetimeAndABIChanges/pointer-write (0.00s)
+=== RUN   TestRepeatedReloadWithConcurrentHTTPAndGC
+    reload_test.go:264: {"edit_to_http_ms":255.159791,"pid":7531,"response":"revision-1:1:21:/proof","revision":1,"timing":{"fence_ms":236.091167,"compile_ms":18.138834,"load_ms":0.122125,"drain_swap_unload_ms":0.421209}}
+    reload_test.go:264: {"edit_to_http_ms":250.340375,"pid":7531,"response":"revision-2:2:28:/proof","revision":2,"timing":{"fence_ms":231.963208,"compile_ms":17.338459,"load_ms":0.12241699999999998,"drain_swap_unload_ms":0.427417}}
+    reload_test.go:264: {"edit_to_http_ms":260.27858399999997,"pid":7531,"response":"revision-3:3:35:/proof","revision":3,"timing":{"fence_ms":242.31550000000001,"compile_ms":17.162459000000002,"load_ms":0.127125,"drain_swap_unload_ms":0.389}}
+    reload_test.go:264: {"edit_to_http_ms":251.911917,"pid":7531,"response":"revision-60:60:434:/proof","revision":60,"timing":{"fence_ms":233.509458,"compile_ms":17.416792,"load_ms":0.250875,"drain_swap_unload_ms":0.449375}}
+    reload_test.go:286: pid=7531: 60 replacements, 60 exact changed HTTP responses, 47928 concurrent literal requests, forced GC each revision, loaded=61 unloaded=61 peak=2
+--- PASS: TestRepeatedReloadWithConcurrentHTTPAndGC (16.39s)
+=== RUN   TestFrozenDependencyAndBuildInputs
+=== RUN   TestFrozenDependencyAndBuildInputs/GOFLAGS
+=== RUN   TestFrozenDependencyAndBuildInputs/GOEXPERIMENT
+=== RUN   TestFrozenDependencyAndBuildInputs/GOARCH
+=== RUN   TestFrozenDependencyAndBuildInputs/GOROOT
+=== NAME  TestFrozenDependencyAndBuildInputs
+    reload_test.go:372: actual strconv body edit (same mtime), dependency membership, compiler environment rejected; dependency and source reverts accepted with retained state
+--- PASS: TestFrozenDependencyAndBuildInputs (1.26s)
+    --- PASS: TestFrozenDependencyAndBuildInputs/GOFLAGS (0.00s)
+    --- PASS: TestFrozenDependencyAndBuildInputs/GOEXPERIMENT (0.00s)
+    --- PASS: TestFrozenDependencyAndBuildInputs/GOARCH (0.00s)
+    --- PASS: TestFrozenDependencyAndBuildInputs/GOROOT (0.00s)
+=== RUN   TestWatchedFileHost
+    watch_test.go:77: pid=8310 url=http://127.0.0.1:55200 source=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestWatchedFileHost812482778/001/handler.go
+    watch_test.go:129: watched source-write to HTTP pid=8310 literal="watched-literal" elapsed_ms=256.202
+    watch_test.go:135: {"fence_ms":227.556541,"compile_ms":17.385291000000002,"load_ms":0.148334,"drain_swap_unload_ms":0.341709}
+    watch_test.go:135: edit rejected; previous revision serves: compile: exit status 2: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/native-reload-2389445087/handler.go:16:2: declared and not used: n
+    watch_test.go:137: watched source-write to HTTP pid=8310 literal="repaired-literal" elapsed_ms=257.059
+    watch_test.go:139: watched source-write to HTTP pid=8310 literal="original-literal" elapsed_ms=254.381
+    watch_test.go:145: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/native-reload-2389445087/handler.go:18:72: undefined: missingIdentifier
+    watch_test.go:145: 
+    watch_test.go:145: {"fence_ms":231.681583,"compile_ms":17.105042,"load_ms":0.143459,"drain_swap_unload_ms":0.352042}
+    watch_test.go:145: {"fence_ms":226.333334,"compile_ms":17.556542,"load_ms":0.142875,"drain_swap_unload_ms":0.41691599999999995}
+    watch_test.go:145: edit rejected; previous revision serves: normal rebuild/restart required: imports, signatures or declarations changed
+    watch_test.go:147: actual watched-file host pid=8310 retained across edit, compiler error, repair, source revert and incompatible signature rejection
+--- PASS: TestWatchedFileHost (2.80s)
+PASS
+ok  	skgo-native-reload-poc	22.360s

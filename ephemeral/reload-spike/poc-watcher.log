@@ -1,0 +1,16 @@
+=== RUN   TestWatchedFileHost
+    watch_test.go:77: pid=3951 url=http://127.0.0.1:54992 source=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestWatchedFileHost2130603797/001/handler.go
+    watch_test.go:129: watched source-write to HTTP pid=3951 literal="watched-literal" elapsed_ms=441.736
+    watch_test.go:135: {"fence_ms":407.219375,"compile_ms":21.88125,"load_ms":0.320666,"drain_swap_unload_ms":2.0709999999999997}
+    watch_test.go:135: edit rejected; previous revision serves: compile: exit status 2: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/native-reload-1915340147/handler.go:16:2: declared and not used: n
+    watch_test.go:137: watched source-write to HTTP pid=3951 literal="repaired-literal" elapsed_ms=444.447
+    watch_test.go:139: watched source-write to HTTP pid=3951 literal="original-literal" elapsed_ms=451.133
+    watch_test.go:145: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/native-reload-1915340147/handler.go:18:72: undefined: missingIdentifier
+    watch_test.go:145: 
+    watch_test.go:145: {"fence_ms":415.18645799999996,"compile_ms":20.772875,"load_ms":0.17641600000000002,"drain_swap_unload_ms":2.749333}
+    watch_test.go:145: {"fence_ms":417.21304200000003,"compile_ms":19.231792000000002,"load_ms":4.258458,"drain_swap_unload_ms":0.487042}
+    watch_test.go:145: edit rejected; previous revision serves: normal rebuild/restart required: imports, signatures or declarations changed
+    watch_test.go:147: actual watched-file host pid=3951 retained across edit, compiler error, repair, source revert and incompatible signature rejection
+--- PASS: TestWatchedFileHost (3.82s)
+PASS
+ok  	skgo-native-reload-poc	3.999s

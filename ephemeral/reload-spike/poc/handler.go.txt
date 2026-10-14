@@ -1,0 +1,19 @@
+package hotcode
+
+import (
+ "fmt"
+ "net/http"
+ "strconv"
+ "sync/atomic"
+)
+
+//go:noinline
+func identity[T ~string](s T) T { return s }
+
+func Value(r *http.Request, counter *atomic.Int64, pause func()) string {
+ if r.URL.Path == "/hold" { pause() }
+ if r.URL.Path == "/literal" { return "original-literal" }
+ n, err := strconv.Atoi(r.URL.Query().Get("n"))
+ if err != nil { n = 2 }
+ return fmt.Sprintf("%s:%d:%d:%s", identity("original"), counter.Add(1), n * 3, r.URL.Path)
+}
