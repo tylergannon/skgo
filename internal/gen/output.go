@@ -374,6 +374,10 @@ func finishGeneration(cfg Config) error {
 			g.files[path] = string(data)
 		}
 	}
+	if cfg.cache != nil {
+		cfg.cache.capture(cfg)
+		return nil
+	}
 	return g.publish(cfg)
 }
 

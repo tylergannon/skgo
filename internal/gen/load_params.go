@@ -79,10 +79,21 @@ if (layouts) {
 console.log(JSON.stringify({ routes: ids.map(id => parse_route_id(id).params), names, children }));
 `
 
-// Refresh the event types before compiling application load bodies. Loading
-// the matcher package separately lets an edited matcher signature replace a
-// stale RouteParams even when the old load body no longer compiles.
-func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams, error) {
+// kitRouteMetadata contains only the observed result of Kit's route and matcher
+// discovery. Authored matcher modules execute when it is captured, so callers
+// need not infer their dependencies from JavaScript source.
+type kitRouteMetadata struct {
+	Dirs      []string
+	IDs       []string
+	LoadKinds map[string]map[string]bool
+	LoadDirs  map[string]bool
+	Routes    [][]skgo.ManifestParam `json:"routes"`
+	Names     []string               `json:"names"`
+	Children  map[string][]string    `json:"children"`
+	Empty     bool
+}
+
+func captureKitRouteMetadata(cfg Config, files []string) (*kitRouteMetadata, error) {
 	dirs := map[string]bool{}
 	loadKinds := map[string]map[string]bool{}
 	var modules, obsolete []string
@@ -121,7 +132,6 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 			}
 		}
 	}
-	result := map[string]*routeLoadParams{}
 	frontendParams := ""
 	for _, ext := range []string{".ts", ".js"} {
 		path := filepath.Join(cfg.Web, "src", "params"+ext)
@@ -141,7 +151,7 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 		return nil, err
 	}
 	if len(dirs) == 0 && frontendParams == "" {
-		return result, writeSharedParams(*cfg, result)
+		return &kitRouteMetadata{Empty: true}, nil
 	}
 	var ordered []string
 	ids := []string{}
@@ -183,17 +193,71 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 		}
 		return nil, fmt.Errorf("skgo: reading Kit route params: %w", err)
 	}
-	var metadata struct {
-		Routes   [][]skgo.ManifestParam `json:"routes"`
-		Names    []string               `json:"names"`
-		Children map[string][]string    `json:"children"`
-	}
+	metadata := kitRouteMetadata{Dirs: ordered, IDs: ids, LoadKinds: loadKinds, LoadDirs: loadDirs}
 	if err := json.Unmarshal(output, &metadata); err != nil {
 		return nil, err
 	}
 	if len(metadata.Routes) != len(ordered) {
 		return nil, fmt.Errorf("skgo: incomplete Kit route params")
 	}
+	return &metadata, nil
+}
+
+// rebase preserves Kit's route identities while moving Go's physical source
+// view. No JavaScript is evaluated in the relocated view.
+func (m *kitRouteMetadata) rebase(fromWeb, toWeb string) (*kitRouteMetadata, error) {
+	out := *m
+	out.Dirs = make([]string, len(m.Dirs))
+	out.LoadKinds = make(map[string]map[string]bool, len(m.LoadKinds))
+	out.LoadDirs = make(map[string]bool, len(m.LoadDirs))
+	move := func(path string) (string, error) {
+		rel, err := filepath.Rel(fromWeb, path)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return "", fmt.Errorf("skgo: route metadata path %s is outside %s", path, fromWeb)
+		}
+		return filepath.Join(toWeb, rel), nil
+	}
+	for i, dir := range m.Dirs {
+		path, err := move(dir)
+		if err != nil {
+			return nil, err
+		}
+		out.Dirs[i] = path
+	}
+	for dir, kinds := range m.LoadKinds {
+		path, err := move(dir)
+		if err != nil {
+			return nil, err
+		}
+		out.LoadKinds[path] = kinds
+	}
+	for dir, load := range m.LoadDirs {
+		path, err := move(dir)
+		if err != nil {
+			return nil, err
+		}
+		out.LoadDirs[path] = load
+	}
+	return &out, nil
+}
+
+// Refresh the event types before compiling application load bodies. Loading
+// the matcher package separately lets an edited matcher signature replace a
+// stale RouteParams even when the old load body no longer compiles.
+func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams, error) {
+	metadata := cfg.kitMetadata
+	if metadata == nil {
+		var err error
+		metadata, err = captureKitRouteMetadata(*cfg, files)
+		if err != nil {
+			return nil, err
+		}
+	}
+	result := map[string]*routeLoadParams{}
+	if metadata.Empty {
+		return result, writeSharedParams(*cfg, result)
+	}
+	ordered, ids, loadKinds, loadDirs := metadata.Dirs, metadata.IDs, metadata.LoadKinds, metadata.LoadDirs
 	matchers, err := readGoParamMatchers(*cfg)
 	if err != nil {
 		return nil, err

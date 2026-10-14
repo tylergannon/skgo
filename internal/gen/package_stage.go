@@ -303,6 +303,13 @@ func stagePackageOverlay(cfg *packages.Config) (func(), error) {
 			}
 			uses = append(uses, &modfile.Use{Path: path, ModulePath: use.ModulePath})
 		}
+		// SetUse appends unchanged paths too; remove old directives first.
+		for _, old := range workspace.Use {
+			if err := workspace.DropUse(old.Path); err != nil {
+				return fail(err)
+			}
+		}
+		workspace.Cleanup()
 		workspace.SetUse(uses)
 		workspace.Cleanup()
 		for _, replace := range workspace.Replace {

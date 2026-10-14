@@ -391,6 +391,24 @@ ordinary generation, or `Prepare`, inspect `Prepared.Packages()` for your own
 analysis, then call `Prepared.Run` and `Prepared.Close`. The prepared graph
 shares the parsed remote/route source and its type information with the caller.
 
+`Run` and `skgo generate` cache successful, formatted generation plans in the
+user cache directory. An unchanged invocation checks current source contents and
+live Kit route/matcher metadata, then restores its generated files without Go
+analysis or formatting. Owned generated output is disposable: missing or broken
+previous output does not become an analysis input. Set `Config.CacheDir` (or
+`--cache-dir`) to a custom directory, or `off` to disable caching. `Prepare` and
+`Check` always analyze current source.
+
+Cache misses analyze a captured copy of local modules, including workspace and
+local replacement dependencies. Additions, deletions, dependency source,
+configuration, tool identity and observed Kit metadata invalidate the plan.
+Installed Go toolchains, versioned module-cache content and installed Node
+packages follow their tools' immutability convention; reinstall or upgrade them
+rather than editing their installed source in place. External package drivers,
+caller package snapshots/loaders, vendoring, external Go overlays/modfiles, and
+reached local cgo packages use ordinary generation without a persistent result.
+An unavailable or corrupt cache is optional state and does not prevent generation.
+
 Callers that already loaded plain domain packages can supply
 `NewPackageSnapshot` results through `Config.Packages` to reuse their type
 projections. For Polytype projections, load with

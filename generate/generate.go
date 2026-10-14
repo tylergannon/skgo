@@ -1,6 +1,9 @@
 // Package generate exposes SKGO's application generator to Go build tools.
 //
-// Run and Check use the same implementation as the skgo CLI. Embedding callers
+// Run uses a persistent generation-plan cache by default, like the skgo CLI.
+// Config.CacheDir selects its directory; "off" disables caching. Prepare and
+// Check always analyze source. See Config for the supported cache boundary.
+// Embedding callers
 // can hand off immutable go/packages bundles with NewPackageSnapshot and
 // Config.Packages. Plain domain packages can reuse their type projections.
 // Disk-loaded packages containing skgo_gen.go generally differ from the

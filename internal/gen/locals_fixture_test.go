@@ -9,6 +9,9 @@ import (
 // The copied example already owns its domain type; miniature fixtures own an
 // empty named struct. This is test setup, never generator type inference.
 func fixtureConfig(cfg Config) Config {
+	if cfg.CacheDir == "" {
+		cfg.CacheDir = "off"
+	}
 	if cfg.Out == "" || cfg.LocalsPackage != "" {
 		return cfg
 	}

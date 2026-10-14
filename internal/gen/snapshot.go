@@ -385,6 +385,9 @@ func (s *PackageSnapshot) lookup(cfg *packages.Config, patterns []string) ([]*pa
 }
 
 func (cfg Config) loadPackages(load *packages.Config, patterns ...string) ([]*packages.Package, error) {
+	if cfg.sourceView != nil {
+		load.Env = cfg.sourceView.env
+	}
 	for _, snapshot := range cfg.Packages {
 		if found, ok := snapshot.lookup(load, patterns); ok {
 			return found, nil
@@ -405,5 +408,14 @@ func (cfg Config) loadPackages(load *packages.Config, patterns ...string) ([]*pa
 	} else {
 		defer cleanup()
 	}
-	return packages.Load(load, patterns...)
+	loaded, err := packages.Load(load, patterns...)
+	if cfg.sourceView != nil {
+		packages.Visit(loaded, nil, func(p *packages.Package) {
+			if cfg.sourceView.cgoPackages[p.PkgPath] {
+				cfg.sourceView.cgoUsed = true
+			}
+			cfg.sourceView.noteTypes(p.Types)
+		})
+	}
+	return loaded, err
 }
