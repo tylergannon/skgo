@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -85,6 +87,51 @@ func TestStampVersionRejectsInvalidPackageWithoutWriting(t *testing.T) {
 			}
 			if string(got) != input {
 				t.Fatalf("changed rejected package to %s", got)
+			}
+		})
+	}
+}
+
+func TestStampVersionSupportsPublishedManifests(t *testing.T) {
+	for _, fixture := range []struct{ dir, name string }{
+		{"adapter", "@skgo/sveltekit-adapter"},
+		{"sv", "@skgo/sv"},
+	} {
+		t.Run(fixture.dir, func(t *testing.T) {
+			raw, err := os.ReadFile(filepath.Join("..", "..", "internal", fixture.dir, "package.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var before map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &before); err != nil {
+				t.Fatal(err)
+			}
+			dir := t.TempDir()
+			file := filepath.Join(dir, "package.json")
+			if err := os.WriteFile(file, raw, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := stampVersion(dir, "0.31.0"); err != nil {
+				t.Fatal(err)
+			}
+			stamped, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var after map[string]json.RawMessage
+			if err := json.Unmarshal(stamped, &after); err != nil {
+				t.Fatal(err)
+			}
+			if string(after["version"]) != `"0.31.0"` {
+				t.Fatalf("package version = %s", after["version"])
+			}
+			if string(after["name"]) != `"`+fixture.name+`"` {
+				t.Fatalf("package name = %s", after["name"])
+			}
+			delete(before, "version")
+			delete(after, "version")
+			if !reflect.DeepEqual(before, after) {
+				t.Fatal("stamping changed unrelated package metadata")
 			}
 		})
 	}
