@@ -111,10 +111,23 @@ func TestSessionFallbackPreservesDependencyExports(t *testing.T) {
 func TestGenerationCapturesEmptyEmbedDirectoryMembership(t *testing.T) {
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
+	loads := 0
+	cfg.OnPackageLoad = func(*packages.Config, []string) { loads++ }
 	cacheWrite(t, filepath.Join(root, "wire/wire.go"), "package wire\nimport \"embed\"\n//go:embed data/*\nvar Files embed.FS\ntype Thing struct { Name string `json:\"name\"` }\n")
 	cacheWrite(t, filepath.Join(root, "wire/data/one.txt"), "one")
 	if err := Run(cfg); err != nil {
 		t.Fatal(err)
+	}
+	assertCacheFile(t, filepath.Join(cfg.Web, "src/lib/skgo/example.com/wire/types.ts"), `"name": string`)
+	if loads == 0 {
+		t.Fatal("initial generation did not analyze source")
+	}
+	loads = 0
+	if err := Run(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if loads != 0 {
+		t.Fatal("unchanged fixture did not use persistent cache")
 	}
 	empty := filepath.Join(root, "wire/data/empty")
 	if err := os.MkdirAll(empty, 0700); err != nil {
