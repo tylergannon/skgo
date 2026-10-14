@@ -1,0 +1,2 @@
+correction: User clarified that upstream adoption applies to work SKGO already performs, not every feasible upstream feature. Established patterns serve a fast, maintainable dev server; the research inventory does not create product responsibilities.
+decision: Select the next most impactful save-to-visible-update improvement, inspect the real result and complexity with the user after usable deliveries, and keep native replacement eligible before completing the adoption inventory. Update affected plan instructions in place rather than adding qualifications in an appendix.
