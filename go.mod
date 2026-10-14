@@ -6,7 +6,7 @@ require (
 	github.com/dop251/goja v0.0.0-20261008222547-e9f698900731
 	github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14
 	github.com/tylergannon/devalue/v5 v5.0.0
-	github.com/tylergannon/polytype v1.7.1-0.20261014043016-7063e17b8aff
+	github.com/tylergannon/polytype v1.8.0
 	golang.org/x/mod v0.42.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/term v0.47.0
