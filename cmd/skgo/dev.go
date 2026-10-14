@@ -8,16 +8,14 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
+	"github.com/tylergannon/skgo/dev"
 	gen "github.com/tylergannon/skgo/generate"
-	"github.com/tylergannon/skgo/internal/dev"
 )
 
 const devUsage = `usage: skgo dev [flags]
@@ -87,12 +85,8 @@ func devCommand(args []string) int {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	var vite *url.URL
-	var viteProc *dev.Process
-	viteFailure := make(chan error, 1)
+	var viteCommand []string
 	if *viteURL != "" {
 		if vite, err = url.Parse(*viteURL); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -106,75 +100,33 @@ func devCommand(args []string) int {
 				return 1
 			}
 		}
-		argv := strings.Fields(*viteCmd)
-		if len(argv) == 0 {
+		viteCommand = strings.Fields(*viteCmd)
+		if len(viteCommand) == 0 {
 			fmt.Fprintln(os.Stderr, "skgo dev: --vite is empty")
 			return 2
 		}
-		argv = append(argv, "--host", "127.0.0.1", "--port", strconv.Itoa(port), "--strictPort")
-		cmd := exec.Command(argv[0], argv[1:]...)
-		cmd.Dir = webDir
-		cmd.Env = append(os.Environ(), "ORIGIN="+*origin)
-		if viteProc, err = dev.StartProcess(cmd, os.Stdout, os.Stderr); err != nil {
-			fmt.Fprintf(os.Stderr, "skgo dev: starting vite: %v\n", err)
-			return 1
-		}
-		fmt.Fprintf(os.Stderr, "skgo dev: started vite pid %d on 127.0.0.1:%d\n", viteProc.PID(), port)
+		viteCommand = append(viteCommand, "--host", "127.0.0.1", "--port", strconv.Itoa(port), "--strictPort")
 		vite = &url.URL{Scheme: "http", Host: net.JoinHostPort("127.0.0.1", strconv.Itoa(port))}
-		go func() {
-			<-viteProc.Done()
-			if ctx.Err() == nil {
-				failure := viteProc.ExitError()
-				if failure == nil {
-					failure = fmt.Errorf("process exited successfully")
-				}
-				fmt.Fprintf(os.Stderr, "skgo dev: vite exited unexpectedly: %v\n", failure)
-				viteFailure <- failure
-				cancel()
-			}
-		}()
 	}
-	if viteProc != nil {
-		// The owned Vite process starts before the public listener and server
-		// setup. Stop it on every later return path, including startup errors.
-		defer func() {
-			cancel()
-			fmt.Fprintf(os.Stderr, "skgo dev: stopping vite pid %d\n", viteProc.PID())
-			viteProc.Stop(5 * time.Second)
-		}()
-	}
-
-	self, err := os.Executable()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
+	var worker gen.Worker
+	defer worker.Close()
 	server, err := dev.New(dev.Config{
 		Root: rootDir, Web: webDir, Out: outDir, Package: *pkg, Listen: *listen,
-		Vite: vite,
+		Vite: vite, ViteCommand: viteCommand, ViteEnv: []string{"ORIGIN=" + *origin},
 		Args: func(private string) []string {
 			return []string{"-listen", private, "-proxy", vite.String(), "-origin", *origin}
 		},
 		Generate: func(ctx context.Context) ([]byte, error) {
-			// The same invocation `go generate` makes: from the bindings
-			// package, so every path the generator reports is the one a
-			// developer sees.
-			cfg, err := gen.DeclaredConfig(gen.Config{Out: outDir})
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			cfg, err := gen.DeclaredConfig(gen.Config{Out: outDir, Web: webDir})
 			if err != nil {
 				return nil, err
 			}
-			args := []string{"generate", "--web", webDir, "--out", ".", "--quiet", "--locals-package", cfg.LocalsPackage}
-			if cfg.LocalsType != "" {
-				args = append(args, "--locals-type", cfg.LocalsType)
-			}
-			if cfg.HookPackage != "" {
-				args = append(args, "--hook-package", cfg.HookPackage, "--hook-symbol", cfg.HookSymbol)
-			}
-			cmd := exec.CommandContext(ctx, self, args...)
-			cmd.Dir = outDir
 			var output bytes.Buffer
-			cmd.Stdout, cmd.Stderr = &output, &output
-			err = cmd.Run()
+			cfg.Logf = func(format string, args ...any) { fmt.Fprintf(&output, format+"\n", args...) }
+			err = worker.Run(cfg)
 			return output.Bytes(), err
 		},
 	})
@@ -193,11 +145,6 @@ func devCommand(args []string) int {
 	if err := server.Run(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		code = 1
-	}
-	select {
-	case <-viteFailure:
-		code = 1
-	default:
 	}
 	return code
 }

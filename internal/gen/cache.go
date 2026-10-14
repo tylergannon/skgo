@@ -221,11 +221,7 @@ func runCached(cfg Config) error {
 		}
 	}
 	cfg.Logf("generation cache miss")
-	sources, err := acquireCacheSources(cfg)
-	if err != nil {
-		return bypass(err)
-	}
-	contents, digest, err := sources.capture(cfg)
+	sources, contents, digest, err := acquireGenerationSources(cfg)
 	if err != nil {
 		return bypass(err)
 	}

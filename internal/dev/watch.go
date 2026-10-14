@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Authored inputs are what a developer writes: Go source, the module files, and
@@ -19,12 +20,14 @@ import (
 // What the generator and the compiler write is deliberately not an input. A
 // watcher that counted its own output would regenerate forever.
 type inputs struct {
-	root, web, out string
+	root, web, out         string
+	mu                     sync.RWMutex
+	localRoots, embedPaths []string
 }
 
 // fingerprint summarises every authored input. Two equal fingerprints mean
 // nothing a build depends on has changed.
-func (in inputs) fingerprint() (string, error) {
+func (in *inputs) fingerprint() (string, error) {
 	var lines []string
 	srcDir := filepath.Join(in.web, "src")
 	skipped := map[string]bool{in.out: true, filepath.Join(in.web, "build"): true}
@@ -49,7 +52,7 @@ func (in inputs) fingerprint() (string, error) {
 		case withinDir(srcDir, path) && name == "go.mod":
 			// The route tree's module boundary is written by the generator.
 			return nil
-		case strings.HasSuffix(name, ".go") || name == "go.mod" || name == "go.sum":
+		case strings.HasSuffix(name, ".go") || name == "go.mod" || name == "go.sum" || name == "go.work" || name == "go.work.sum":
 			return in.stat(&lines, rel, d)
 		case withinDir(srcDir, path) && isRouteFile(name):
 			if routeModule(name) {
@@ -64,12 +67,15 @@ func (in inputs) fingerprint() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := in.dependencyFingerprint(&lines); err != nil {
+		return "", err
+	}
 	sort.Strings(lines)
 	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
 	return hex.EncodeToString(sum[:]), nil
 }
 
-func (in inputs) stat(lines *[]string, rel string, d fs.DirEntry) error {
+func (in *inputs) stat(lines *[]string, rel string, d fs.DirEntry) error {
 	info, err := d.Info()
 	if err != nil {
 		if os.IsNotExist(err) {

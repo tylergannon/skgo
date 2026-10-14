@@ -20,3 +20,24 @@ trap: removing pnpm/action-setup alone leaves package-tarball tests depending on
   those builds: CI inherited a cache fixture's temporary `GOWORK`. Tests that
   need process-level configuration run in an isolated test process; fresh Run
   probes preserve that intended workspace rather than TestMain resetting it.
+
+- A shared loader session is execution state, not a persistent-plan input.
+  Passing a fresh session must preserve a nil-session cache entry and perform
+  zero loader work on hits. Private captured module paths are a distinct source
+  view from another producer's original files; share only proven-compatible
+  views, and pass captured bytes with the current generated overlay taking
+  precedence instead of forcing path equivalence.
+
+- Captured local replacements add overlay paths outside the host module. Passing
+  those unchanged captures into the ordinary missing-file staging fallback makes
+  staging decline and leaves raw x/tools overlays, reparsing all dependencies.
+  Omit only captures already materialized in the generator-owned private view;
+  retain phase overrides. The cross-module fixture parsed 1,093 files before
+  this correction and exactly two roots afterward.
+
+- A dev-lifetime loader requires stable private addresses and bounded coherent
+  graph retention; retaining an invocation session alone neither supplies reuse
+  across randomized roots nor bounds memory. Worker updates are serialized, and
+  metadata reuse belongs to an explicit captured view with complete control and
+  membership inputs. Stage rewritten go.mod bytes before comparing writes: an
+  intermediate authored go.mod must never replace the retained rewritten file.

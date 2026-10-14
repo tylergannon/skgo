@@ -412,6 +412,20 @@ caller package snapshots/loaders, vendoring, external Go overlays/modfiles, and
 reached local cgo packages use ordinary generation without a persistent result.
 An unavailable or corrupt cache is optional state and does not prevent generation.
 
+Build tools can share a caller-owned `polytype/goload.Session` through
+`Config.Session`. It reuses compatible analysis on cache misses and remains
+unused on persistent hits. Captured Go source bytes go directly to its parser;
+private captured modules and original source paths remain separate views.
+
+For a development process, retain a `generate.Worker` and call its `Run` method
+for each edit; defer `Close` when the process ends. It keeps private capture
+addresses stable and bounds its default session to three coherent graph versions.
+A supplied `Config.Session` stays caller-owned. `dev.Run` (or `dev.New`) owns
+Vite, Go builds and application replacement behind one listener; its serial
+`Generate` callback can call the worker directly. `Config.Env`, `BuildFlags`,
+`ViteCommand` and `ViteEnv` adapt the application's launch without a second
+supervisor. A nil Vite command attaches to the supplied Vite URL.
+
 Callers that already loaded plain domain packages can supply
 `NewPackageSnapshot` results through `Config.Packages` to reuse their type
 projections. For Polytype projections, load with

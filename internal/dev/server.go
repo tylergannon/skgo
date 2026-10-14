@@ -55,6 +55,13 @@ type Config struct {
 	// it, so the HMR socket stays connected while the application behind it is
 	// replaced. Nil routes everything to the application.
 	Vite *url.URL
+	// ViteCommand starts an owned Vite process in Web. It is the complete
+	// argv, including host and port matching Vite. Nil attaches to Vite instead.
+	ViteCommand []string
+	// ViteEnv and Env append environment overrides for Vite and the app.
+	ViteEnv, Env []string
+	// BuildFlags are passed to go build before the package argument.
+	BuildFlags []string
 	// Generate regenerates what Kit and Go compile from authored source. Its
 	// output is shown with the diagnostic if it fails. Nil skips generation.
 	Generate func(ctx context.Context) ([]byte, error)
@@ -115,6 +122,9 @@ func New(cfg Config) (*Server, error) {
 			return nil, err
 		}
 	}
+	if len(cfg.ViteCommand) > 0 && cfg.Vite == nil {
+		return nil, errors.New("skgo dev: owned Vite command requires its URL")
+	}
 	if cfg.Args == nil {
 		return nil, errors.New("skgo dev: no application arguments")
 	}
@@ -161,6 +171,34 @@ func (s *Server) Listen() (net.Addr, error) {
 
 // Run serves until ctx is cancelled, then stops the application it started.
 func (s *Server) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	viteFailure := make(chan error, 1)
+	if len(s.cfg.ViteCommand) > 0 {
+		cmd := exec.Command(s.cfg.ViteCommand[0], s.cfg.ViteCommand[1:]...)
+		cmd.Dir = s.cfg.Web
+		cmd.Env = append(os.Environ(), s.cfg.ViteEnv...)
+		proc, err := StartProcess(cmd, s.cfg.Stdout, s.cfg.Stderr)
+		if err != nil {
+			return fmt.Errorf("skgo dev: starting Vite: %w", err)
+		}
+		s.logf("started vite pid %d on %s", proc.PID(), s.cfg.Vite.Host)
+		defer func() { cancel(); proc.Stop(5 * time.Second) }()
+		go func() {
+			select {
+			case <-ctx.Done():
+			case <-proc.Done():
+				if ctx.Err() == nil {
+					err := proc.ExitError()
+					if err == nil {
+						err = errors.New("process exited successfully")
+					}
+					viteFailure <- fmt.Errorf("skgo dev: vite exited unexpectedly: %w", err)
+					cancel()
+				}
+			}
+		}()
+	}
 	if s.listener == nil {
 		if _, err := s.Listen(); err != nil {
 			return err
@@ -183,13 +221,15 @@ func (s *Server) Run(ctx context.Context) error {
 		s.loop(ctx)
 	}()
 
+	var runErr error
 	select {
 	case <-ctx.Done():
 	case err := <-served:
 		if !errors.Is(err, http.ErrServerClosed) {
-			return err
+			runErr = err
 		}
 	}
+	cancel()
 	close(s.stopping)
 	<-loopDone
 	shutdown, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -205,7 +245,12 @@ func (s *Server) Run(ctx context.Context) error {
 		current.proc.Stop(3 * time.Second)
 	}
 	s.children.Wait()
-	return nil
+	select {
+	case err := <-viteFailure:
+		return err
+	default:
+		return runErr
+	}
 }
 
 func (s *Server) logf(format string, args ...any) {
@@ -335,7 +380,9 @@ func (s *Server) build(ctx context.Context) *generation {
 	}
 	s.builds++
 	binary := filepath.Join(s.tmp, "app-"+strconv.Itoa(s.builds))
-	compile := exec.CommandContext(ctx, "go", "build", "-o", binary, s.cfg.Package)
+	args := append([]string{"build", "-o", binary}, s.cfg.BuildFlags...)
+	args = append(args, s.cfg.Package)
+	compile := exec.CommandContext(ctx, "go", args...)
 	compile.Dir = s.cfg.Root
 	s.logf("building %s", s.cfg.Package)
 	if out, err := compile.CombinedOutput(); err != nil {
@@ -343,6 +390,12 @@ func (s *Server) build(ctx context.Context) *generation {
 			return &generation{}
 		}
 		return s.failed(fmt.Sprintf("go build %s failed: %v\n%s", s.cfg.Package, err, out))
+	}
+	if err := s.in.refresh(ctx, s.cfg); err != nil {
+		if ctx.Err() != nil {
+			return &generation{}
+		}
+		return s.failed(err.Error())
 	}
 	next, err := s.start(ctx, binary)
 	if err != nil {
@@ -361,6 +414,7 @@ func (s *Server) start(ctx context.Context, binary string) (*generation, error) 
 	}
 	cmd := exec.Command(binary, s.cfg.Args(addr)...)
 	cmd.Dir = s.cfg.Root
+	cmd.Env = append(os.Environ(), s.cfg.Env...)
 	proc, err := StartProcess(cmd, s.cfg.Stdout, s.cfg.Stderr)
 	if err != nil {
 		return nil, err

@@ -34,6 +34,8 @@ import (
 	"fixture/answer"
 )
 
+var buildMarker string
+
 func main() {
 	listen := flag.String("listen", "", "")
 	flag.String("proxy", "", "")
@@ -43,6 +45,7 @@ func main() {
 	register(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s pid=%d host=%s", answer.Text(), os.Getpid(), r.Host)
+		fmt.Fprintf(w, " env=%s build=%s", os.Getenv("DEV_PROOF"), buildMarker)
 	})
 	if err := http.ListenAndServe(*listen, mux); err != nil {
 		panic(err)
@@ -84,6 +87,10 @@ func startSession(t *testing.T) *session {
 }
 
 func startSessionPolling(t *testing.T, poll time.Duration) *session {
+	return startSessionConfigured(t, poll, nil)
+}
+
+func startSessionConfigured(t *testing.T, poll time.Duration, configure func(*Config)) *session {
 	t.Helper()
 	t.Setenv("GOWORK", "off")
 	root := t.TempDir()
@@ -105,7 +112,7 @@ func startSessionPolling(t *testing.T, poll time.Duration) *session {
 	}
 
 	s := &session{t: t, root: root, log: &syncBuffer{}, done: make(chan error, 1)}
-	server, err := New(Config{
+	cfg := Config{
 		Root: root, Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated"),
 		Package: "./cmd", Listen: "127.0.0.1:0",
 		Args:   func(listen string) []string { return []string{"-listen", listen} },
@@ -122,7 +129,11 @@ func startSessionPolling(t *testing.T, poll time.Duration) *session {
 			}
 			return nil, os.WriteFile(filepath.Join(root, "answer", "zz_gen.go"), []byte(fmt.Sprintf("// Code generated. DO NOT EDIT.\n\npackage answer\n\nconst Generation = %d\n", s.gens.Load())), 0o644)
 		},
-	})
+	}
+	if configure != nil {
+		configure(&cfg)
+	}
+	server, err := New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,5 +507,29 @@ func TestDevRebuildsForASaveCompletedDuringGeneration(t *testing.T) {
 	time.Sleep(time.Second)
 	if got := s.gens.Load(); got != 3 {
 		t.Fatalf("completed save: got %d generations, want 3\n%s", got, s.log.String())
+	}
+}
+
+func TestDevCustomEnvironmentBuildFlagsAndEmbeddedInput(t *testing.T) {
+	s := startSessionConfigured(t, 20*time.Millisecond, func(cfg *Config) {
+		cfg.Env = []string{"DEV_PROOF=from-supervisor"}
+		cfg.BuildFlags = []string{"-ldflags=-X main.buildMarker=compiled-proof"}
+		if err := os.WriteFile(filepath.Join(cfg.Root, "answer", "answer.go"), []byte("package answer\nimport _ \"embed\"\n//go:embed message.txt\nvar message string\nfunc Text() string { return message }\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(cfg.Root, "answer", "message.txt"), []byte("embedded first"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	})
+	first := s.until("/", func(r reply) bool { return r.status == 200 && strings.Contains(r.body, "embedded first") }, "first embedded response")
+	for _, literal := range []string{"env=from-supervisor", "build=compiled-proof"} {
+		if !strings.Contains(first.body, literal) {
+			t.Fatalf("missing %s: %s", literal, first.body)
+		}
+	}
+	s.write("answer/message.txt", "embedded second")
+	second := s.until("/", func(r reply) bool { return r.status == 200 && strings.Contains(r.body, "embedded second") }, "edited embedded response")
+	if pidOf(t, first.body) == pidOf(t, second.body) {
+		t.Fatal("embed edit was not compiled into a replacement process")
 	}
 }

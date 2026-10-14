@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/tylergannon/polytype/goload"
 )
 
 func TestLocalsConfigurationRejectsInvalidOwnershipAndTypes(t *testing.T) {
@@ -43,10 +45,20 @@ var _=skgo.Query(query)
 					t.Fatal(err)
 				}
 			}
-			for _, check := range []func(Config) error{Run, Check} {
+			// Both consumers examine this same immutable fixture. Share its
+			// invocation explicitly, without sharing state across table cases.
+			cfg.CacheDir = "off"
+			cfg.Session = new(goload.Session)
+			var before goload.Stats
+			for i, check := range []func(Config) error{Run, Check} {
 				if err := check(cfg); err == nil || !strings.Contains(err.Error(), tc.want) {
 					t.Fatalf("wanted %q, got %v", tc.want, err)
 				}
+				stats := cfg.Session.Stats()
+				if i == 1 && tc.name == "non-struct" && (stats.PackageChecks != before.PackageChecks || stats.PackageHits <= before.PackageHits) {
+					t.Fatalf("Run/Check rechecked immutable locals: before=%+v after=%+v", before, stats)
+				}
+				before = stats
 			}
 		})
 	}
