@@ -167,6 +167,12 @@ func TestDevSSRLoadsOnlyRequestedNodes(t *testing.T) {
 			t.Fatalf("first page fetched unrelated page %s", name)
 		}
 	}
+	// Kit isolates failed error-component imports from otherwise healthy pages.
+	write("", "+error.svelte", `<script>let broken = ;</script><h1>BROKEN_ERROR</h1>`)
+	expect(first, 200, "FIRST_ROUTE_41")
+	write("", "+error.svelte", `<h1>REPAIRED_ERROR_47</h1>`)
+	expect("/missing-lazy-route-47", 404, "REPAIRED_ERROR_47")
+	expect(first, 200, "UNIVERSAL_41")
 	// A compile error in an unvisited route must not break this page or startup.
 	write(other, "+page.svelte", `<script>let broken = ;</script><h1>UNVISITED_BROKEN</h1>`)
 	expect(first, 200, "FIRST_ROUTE_41")

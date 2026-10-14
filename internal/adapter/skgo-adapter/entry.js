@@ -227,9 +227,14 @@ async function build_props(req, url, event, state, fetched, serialized) {
 	};
 
 	const branch = req.branch ?? [];
-	const error_components = await Promise.all((req.error_components ?? []).map((i) =>
-		i == null ? undefined : componentLoaders[i]?.()
-	));
+	const error_components = await Promise.all((req.error_components ?? []).map(async (i) => {
+		try {
+			return i == null ? undefined : await componentLoaders[i]?.();
+		} catch {
+			// Kit skips error components that cannot load (runtime/error-chain.js).
+			return undefined;
+		}
+	}));
 
 	const props = new Props({
 		page,
