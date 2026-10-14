@@ -1014,8 +1014,8 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
  * way. Kit's own dev server has no answer to it: vite turns each report into a
  * hot update or a full page reload, and a reload throws away what a visitor
  * had typed and aborts the documents Go was rendering for them. So the dev
- * server remembers the content it last loaded or was told about, and lets
- * through only the reports whose content differs.
+ * server initializes its baseline from the first load, then advances it when
+ * the watcher reports a change, and lets through reports whose content differs.
  *
  * Content means the file's bytes, not the text vite decoded from them: two
  * different invalid byte sequences decode to the same replacement characters,
@@ -1040,7 +1040,7 @@ export function gojaDevEnvironment({ outDir = '.svelte-kit' } = {}) {
  * @returns {import('vite').Plugin}
  */
 export function gojaDevUnchangedFiles({ out = 'build' } = {}) {
-	/** What vite last loaded for a file, or last reported changed: its byte digest. */
+	/** The initial load or last delivered watcher content: its byte digest. */
 	const known = new Map();
 	const digest = (/** @type {Uint8Array} */ bytes) => createHash('sha256').update(bytes).digest('base64');
 	const read = (/** @type {string} */ file) => {
@@ -1050,8 +1050,12 @@ export function gojaDevUnchangedFiles({ out = 'build' } = {}) {
 			return null;
 		}
 	};
-	/** Remember a file by the bytes vite decoded `code` from, if they are the ones on disk now. */
+	/** Initialize a file from the bytes vite decoded, without consuming pending watcher changes. */
 	const remember = (/** @type {string} */ file, /** @type {string} */ code) => {
+		// A module request can transform new bytes while awaitWriteFinish is
+		// still settling their event. Only watcher delivery advances this baseline
+		// after initialization, or that real change would be suppressed.
+		if (known.has(posix(file))) return;
 		try {
 			const bytes = readFileSync(file);
 			if (bytes.toString('utf8') === code) known.set(posix(file), digest(bytes));

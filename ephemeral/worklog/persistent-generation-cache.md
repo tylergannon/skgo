@@ -8,3 +8,5 @@ trap: temporary module roots must be canonicalized before handing their paths to
 trap: fresh private module paths change Go compiler action identities even with identical source. Private analysis prepends -trimpath to its captured GOFLAGS; caller flags remain last so explicit overrides survive. A compiler-export test compares two fresh roots and a literal tagged constant, rather than inferring reuse from elapsed time.
 
 trap: prefix-only text rebasing corrupts private module-10 when module-1 is replaced first. Rebase complete path components in one pass; a workspace with fewer than eleven modules will not expose this. Default-enabled caches also require subprocess test suites to set a temporary SKGO_CACHE_DIR, including go generate and dev callers.
+
+trap: Vite can transform restored source before Chokidar's awaitWriteFinish delivers its change. Updating the unchanged-file baseline from every transform then consumes that pending event; initialize from the first transform and advance from watcher delivery. A deterministic actual-plugin order test exposes this even when the real fswatch integration happens to pass.
