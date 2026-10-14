@@ -18,6 +18,10 @@ type nativeCommand struct {
 func nativeFixture(t *testing.T) (Options, *[]nativeCommand, func(string, []string, string, ...string) ([]byte, error)) {
 	t.Helper()
 	root, sdk := t.TempDir(), t.TempDir()
+	root, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, dir := range []string{"web/build", "native"} {
 		if err := os.MkdirAll(filepath.Join(root, dir), 0755); err != nil {
 			t.Fatal(err)
@@ -63,14 +67,38 @@ func TestPrepareOnlyKeepsNativeWorkAndOmitsFrontendAndDebugBuild(t *testing.T) {
 	if !reflect.DeepEqual(names, []string{"go", "go", "mise", "xcrun", "xcrun", "go", "mise"}) {
 		t.Fatalf("preparation commands: %v", names)
 	}
-	if got := strings.Join((*commands)[2].args, " "); !strings.Contains(got, "zig build library") || strings.Count(got, "-j4") != 1 {
-		t.Fatalf("Zig worker limit: %s", got)
+	wantZig := []string{"-C", filepath.Join(o.Root, "native/build/macos/.sdk/core"), "exec", "--", "zig", "build", "library", "-Dtarget=aarch64-macos", "-Doptimize=ReleaseFast", "-j4"}
+	if got := (*commands)[2].args; !reflect.DeepEqual(got, wantZig) {
+		t.Fatalf("Zig command: %q", got)
 	}
 	if got := strings.Join((*commands)[5].args, " "); !strings.Contains(got, "-buildmode=c-archive") {
 		t.Fatalf("native Go archive not built: %s", got)
 	}
 	if got := strings.Join((*commands)[6].args, " "); !strings.Contains(got, "xcodegen generate") {
 		t.Fatalf("preparation did not finish at project generation: %s", got)
+	}
+}
+
+func TestNativeWorkerDefaultsAndInvalidLimit(t *testing.T) {
+	o, commands, run := nativeFixture(t)
+	o.Jobs = 0
+	if err := build(o, run); err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range *commands {
+		if command.name != "mise" && command.name != "xcodebuild" {
+			continue
+		}
+		for _, arg := range command.args {
+			if strings.HasPrefix(arg, "-j") {
+				t.Fatalf("default build overrides tool worker count: %+v", command)
+			}
+		}
+	}
+	o.Jobs = -1
+	*commands = nil
+	if err := build(o, run); err == nil || len(*commands) != 0 {
+		t.Fatalf("invalid worker count ran commands: err=%v commands=%v", err, *commands)
 	}
 }
 
