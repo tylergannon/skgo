@@ -400,7 +400,7 @@ func cacheOwned(cfg Config, path string, data []byte) bool {
 			}
 		}
 	}
-	if withinTree(filepath.Join(cfg.Web, "src"), path) && generatedArtifact(data) {
+	if generatedArtifact(data) && withinTree(filepath.Join(cfg.Web, "src"), path) {
 		return generatedModuleName(filepath.Base(path)) || strings.HasPrefix(filepath.Base(path), "hooks.server.") || filepath.Base(path) == "env.ts" || filepath.Base(path) == "env.js"
 	}
 	return false
