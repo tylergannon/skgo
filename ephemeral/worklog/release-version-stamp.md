@@ -1,0 +1,1 @@
+friction: Official release qualification passed both browser modes, but SV stamping then rejected VP's nested package-manager version as a duplicate package version. JSON package metadata must be traversed by top-level key; preserve all unrelated bytes and reject duplicate top-level versions before writing.

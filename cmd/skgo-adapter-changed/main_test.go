@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -33,5 +34,58 @@ func TestSVReleaseWorkflowRefusesAutomaticBootstrap(t *testing.T) {
 	}
 	if count := strings.Count(text, "-require-published"); count != 1 {
 		t.Fatalf("release workflow contains -require-published %d times, want only the sv-npm changed check", count)
+	}
+}
+
+func TestStampVersionPreservesNestedVersionsAndFormatting(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "package.json")
+	original := `{ "devEngines": {"packageManager": {"version": "12.9.1"}},
+  "version" : "0.0.0-dev", "nested": [{"version":"9"}] }
+`
+	want := `{ "devEngines": {"packageManager": {"version": "12.9.1"}},
+  "version" : "0.31.0", "nested": [{"version":"9"}] }
+`
+	if err := os.WriteFile(file, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := stampVersion(dir, "0.31.0"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != want {
+		t.Fatalf("stamped package = %s; want %s", got, want)
+	}
+}
+
+func TestStampVersionRejectsInvalidPackageWithoutWriting(t *testing.T) {
+	for _, input := range []string{
+		`{"nested":{"version":"1"}}`,
+		`{"version":"1","version":"2"}`,
+		`{"version":null}`,
+		`{"version":1}`,
+		`[{"version":"1"}]`,
+		`{"version":"1"} trailing`,
+	} {
+		t.Run(input, func(t *testing.T) {
+			dir := t.TempDir()
+			file := filepath.Join(dir, "package.json")
+			if err := os.WriteFile(file, []byte(input), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := stampVersion(dir, "0.31.0"); err == nil {
+				t.Fatal("accepted invalid package")
+			}
+			got, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != input {
+				t.Fatalf("changed rejected package to %s", got)
+			}
+		})
 	}
 }
