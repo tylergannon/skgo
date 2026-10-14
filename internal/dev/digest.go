@@ -24,8 +24,10 @@ type fileDigest struct {
 }
 
 type digestScan struct {
-	cache *fileDigests
-	next  map[string]fileDigest
+	cache    *fileDigests
+	previous map[string]fileDigest
+	next     map[string]fileDigest
+	reads    uint64
 }
 
 func (c *fileDigests) scan() *digestScan {
@@ -33,12 +35,18 @@ func (c *fileDigests) scan() *digestScan {
 		return &digestScan{}
 	}
 	c.mu.Lock()
-	return &digestScan{cache: c, next: make(map[string]fileDigest, len(c.entries))}
+	previous := c.entries
+	c.mu.Unlock()
+	// Published maps are immutable. Each request validates fresh file metadata
+	// against this snapshot without serializing its filesystem walk.
+	return &digestScan{cache: c, previous: previous, next: make(map[string]fileDigest, len(previous))}
 }
 
 func (s *digestScan) close() {
 	if s.cache != nil {
+		s.cache.mu.Lock()
 		s.cache.entries = s.next
+		s.cache.reads += s.reads
 		s.cache.mu.Unlock()
 	}
 }
@@ -63,7 +71,7 @@ func (s *digestScan) sum(path string) (string, error) {
 	changed := changeTime(info)
 	entry, ok := s.next[path]
 	if !ok {
-		entry, ok = s.cache.entries[path]
+		entry, ok = s.previous[path]
 	}
 	if ok && sameVersion(entry.info, entry.changed, info, changed) {
 		s.next[path] = entry
@@ -73,7 +81,7 @@ func (s *digestScan) sum(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	s.cache.reads++
+	s.reads++
 	hash := sha256.Sum256(data)
 	sum := hex.EncodeToString(hash[:])
 	after, err := os.Stat(path)
