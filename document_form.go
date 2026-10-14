@@ -124,10 +124,10 @@ func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect,
 	// Kit refuses a cross-site form submission before it looks anything up
 	// (`runtime/server/csrf.js`, `is_csrf_forbidden`): a mutating method with
 	// a form content type whose Origin is neither the app's own nor trusted.
-	// Development skips the check. The remote
+	// The remote
 	// endpoint's own check does not cover this request — that one is keyed on
 	// the `/_app/remote/` pathname, and this arrives on the page's URL.
-	if s.loads.origin != nil && csrfFormForbidden(r, s.loads.origin.String(), s.loads.cfg.TrustedOrigins, s.loads.cfg.Dev) {
+	if s.loads.origin != nil && csrfFormForbidden(r, s.loads.origin.String(), s.loads.cfg.TrustedOrigins) {
 		return nil, nil, &HTTPError{Status: 403, Message: "Cross-site POST form submissions are forbidden"}
 	}
 

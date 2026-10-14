@@ -231,9 +231,6 @@ type HandleConfig struct {
 	// Origin is the app's fixed origin. It makes the event's URL absolute and
 	// decides the `Secure` default of the cookies the hook writes, as in kit.
 	Origin string
-	// Dev reports that the app runs under `vite dev`, where cookies are not
-	// Secure by default.
-	Dev bool
 	// Version, when non-empty, is sent as the `x-sveltekit-version` response
 	// header on a request the hook refuses — the same header a successful
 	// data or remote response carries, so a client watching for a new
@@ -242,13 +239,13 @@ type HandleConfig struct {
 	// Matchers contains the app route matchers when Loads is unset.
 	Matchers map[string]ParamMatcher
 	// Loads, when set, is the route table the hook matches against. It is the
-	// one `__data.json` already uses, and in dev it follows the live routes;
+	// one `__data.json` already uses;
 	// without it the hook matches the manifest routes HandleConfig was made
 	// from.
 	Loads *Loads
 	// Static, when set, reports that a request is answered before Kit's server
-	// runs — a file out of `static/`, a prerendered page, a module vite serves
-	// in dev. Kit's adapters serve those ahead of `handle`, so the hook never
+	// runs — a file out of `static/` or a prerendered page.
+	// Kit's adapters serve those ahead of `handle`, so the hook never
 	// sees them.
 	Static func(r *http.Request) bool
 	// HandleError shapes errors raised by the handle hook as Kit's App.Error.

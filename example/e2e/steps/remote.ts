@@ -7,9 +7,7 @@ const { Given, When, Then } = createBdd(test);
 When('the todo list has loaded', async ({ page }) => {
 	// Both the list query and the live-count stream must have gone out before a
 	// scenario starts counting remote requests. The stream is opened while the
-	// page hydrates, so this has to outlast hydration: in dev the document is
-	// rendered and on screen long before the browser has the modules that make
-	// it live, and a count taken in that window catches the stream opening and
+	// page hydrates. Counting before hydration catches the stream opening and
 	// blames the scenario's own interaction for it.
 	await hydrated(page);
 	await expect(page.locator('[data-testid$="-failed"]')).toHaveCount(0);

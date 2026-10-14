@@ -19,12 +19,8 @@ async function documentText(documents: { last: import('@playwright/test').Respon
  * One tagged element, as a matcher that survives the attributes a compiler adds
  * around the claim.
  *
- * Svelte's dev compile keeps the scoping class on elements the build's compile
- * prunes it from, so the same component is `<p data-testid="site-name">skgo</p>`
- * in a built document and `<p data-testid="site-name" class="svelte-1uha8ag">skgo</p>`
- * in a served one. Both say the thing the scenario means. What is still exact is
- * everything the scenario is actually about: the element, its test id, and the
- * whole of its text.
+ * Extra compiler-generated attributes are harmless. The element, its test id
+ * and all of its text remain exact.
  */
 export function tagged(name: string, testid: string, text: string): RegExp {
 	const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

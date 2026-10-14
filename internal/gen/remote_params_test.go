@@ -166,7 +166,7 @@ import (
 )
 // These are literal Kit route patterns and parameter descriptors. The registry
 // has neither Loads nor a handle hook: frontend-only callers must still match.
-func registry(t *testing.T,dev bool)(*skgo.Remotes,map[string]*skgo.Remote){t.Helper()
+func registry(t *testing.T)(*skgo.Remotes,map[string]*skgo.Remote){t.Helper()
  routes:=[]skgo.ManifestRoute{
  {ID:"/numeric/[id=Numeric]",Pattern:"^/numeric/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"id",Matcher:"Numeric"}}},
  {ID:"/text/[id]",Pattern:"^/text/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"id"}}},
@@ -185,7 +185,7 @@ func registry(t *testing.T,dev bool)(*skgo.Remotes,map[string]*skgo.Remote){t.He
  }
  remotes:=generated.Remotes();byName:=map[string]*skgo.Remote{}
  for _,r:=range remotes{if r.Module()=="src/caller/caller.remote.ts" {byName[r.Name()]=r}}
- rs,err:=skgo.NewRemotes(skgo.RemoteConfig{Dev:dev,Routes:routes},remotes...);if err!=nil{t.Fatal(err)}
+ rs,err:=skgo.NewRemotes(skgo.RemoteConfig{Routes:routes},remotes...);if err!=nil{t.Fatal(err)}
  return rs,byName
 }
 func dispatch(rs *skgo.Remotes,fn *skgo.Remote,path,input string)*httptest.ResponseRecorder{
@@ -215,9 +215,8 @@ func result(rec *httptest.ResponseRecorder,form bool)(string,error){
  got,ok:=value.(string);if !ok{return "",fmt.Errorf("result %T: %s",value,env.Data)};return got,nil
 }
 func TestCallerHandlers(t *testing.T){
- for _,dev:=range []bool{false,true}{t.Run(fmt.Sprintf("dev=%t",dev),func(t *testing.T){
  matchers.LangCalls=0
- rs,fns:=registry(t,dev)
+ rs,fns:=registry(t)
  for _,tc:=range []struct{path,want string}{
  {"/numeric/42","numeric:Order #42"},{"/numeric/0","numeric:Order #0"},{"/text/42","string:42"},{"/absent","remote:absent"},{"/optional","remote:absent"},{"/optional/hi","string:hi"},
  {"/choice/42","numeric:Order #42"},{"/choice/word","string:word"},{"/choice/0","numeric:Order #0"},
@@ -244,12 +243,10 @@ func TestCallerHandlers(t *testing.T){
  c:=client.Client{FormClient:skgo.FormClient{BaseURL:server.URL}}
  got,err:=c.Submit(context.Background(),caller.Input{Name:"go-client"})
  if err!=nil || got!="go-client|remote:absent"{t.Fatalf("Go client: %q %v",got,err)}
- })}
 }
 func TestCallerOverlap(t *testing.T){
- for _,dev:=range []bool{false,true}{t.Run(fmt.Sprintf("dev=%t",dev),func(t *testing.T){
  for _,name:=range []string{"act","submit"}{t.Run(name,func(t *testing.T){
- rs,fns:=registry(t,dev)
+ rs,fns:=registry(t)
  caller.Enter=make(chan struct{},2);caller.Release=make(chan struct{})
  var wg sync.WaitGroup;results:=make(chan string,2)
  for _,path:=range []string{"/numeric/42","/text/word"}{wg.Add(1);go func(){defer wg.Done();got,err:=result(dispatch(rs,fns[name],path,"hold"),name=="submit");if err!=nil{got=err.Error()};results<-got}()}
@@ -257,7 +254,6 @@ func TestCallerOverlap(t *testing.T){
  close(caller.Release);wg.Wait();close(results)
  got:=map[string]int{};for value:=range results{got[value]++}
  if got["hold|numeric:Order #42"]!=1 || got["hold|string:word"]!=1{t.Fatalf("overlap receipts %v",got)}
- })}
  })}
 }
 `

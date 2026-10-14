@@ -435,7 +435,6 @@ func (f *requestFetcher) serve(ctx context.Context, src fetchSource, request *ht
 		subCtx = context.WithValue(subCtx, clientAddressKey{}, clientAddressOf(src.request))
 	}
 	subCtx = ssr.CarryDepth(subCtx, ctx)
-	subCtx = carryDevRender(subCtx, ctx)
 	request = request.WithContext(subCtx)
 	if request.Body == nil {
 		request.Body = http.NoBody

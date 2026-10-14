@@ -49,7 +49,6 @@ var packageFiles = []string{
 	"skgo-adapter/compat/kit-3.0.0-queue.json",
 	"skgo-adapter/compat/kit-3.0.0-queue.patch",
 	"skgo-adapter/entry.js",
-	"skgo-adapter/env-private.js",
 	"skgo-adapter/env.js",
 	"skgo-adapter/generated.js",
 	"skgo-adapter/identity.js",

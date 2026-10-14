@@ -223,8 +223,6 @@ func SkgoCallerRoutes() skgo.CallerRoutes {
 			return SkgoParams("/event-layout/[section]/[item]/two", values)
 		}},
 		"/fetch":                        {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/fetch", values) }},
-		"/go-dev":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/go-dev", values) }},
-		"/go-dev/endpoint":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/go-dev/endpoint", values) }},
 		"/invoices":                     {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/invoices", values) }},
 		"/items":                        {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/items", values) }},
 		"/items/[id]":                   {Params: []skgo.ManifestParam{{Name: "id", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/items/[id]", values) }},
@@ -435,8 +433,6 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			p.value_6974656d = ItemParam_String{Value: value}
 		}
 	case "/fetch":
-	case "/go-dev":
-	case "/go-dev/endpoint":
 	case "/invoices":
 	case "/items":
 	case "/items/[id]":

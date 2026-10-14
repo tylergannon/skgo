@@ -90,7 +90,7 @@ Then('the account layout greets {string}', async ({ page }, user: string) => {
 });
 
 Then(
-	'exactly {int} data requests were made since',
+	'exactly {int} data request(s) was/were made since',
 	async ({ page, data }, expected: number) => {
 		// A count of zero is also what a page whose client never started would
 		// show, so the client has to be running before the count means anything.

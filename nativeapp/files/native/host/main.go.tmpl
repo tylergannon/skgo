@@ -16,7 +16,7 @@ import (
 
 var host = nativehost.New(func(origin string)(http.Handler,error){
  dist,err:=fs.Sub(web.Build,"build");if err!=nil{return nil,err}
- handler,_,err:=app.NewHandler(dist,"",origin)
+ handler,err:=app.NewHandler(dist,origin)
  return handler,err
 })
 

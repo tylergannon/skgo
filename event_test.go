@@ -265,22 +265,20 @@ func TestEventOutsideARemoteFunction(t *testing.T) {
 func TestSecureCookieDefaultMirrorsKit(t *testing.T) {
 	for _, tc := range []struct {
 		origin string
-		dev    bool
 		want   bool
 	}{
-		{"http://localhost:5173", false, false},
-		{"http://localhost", false, false},
-		{"https://localhost", false, true},
+		{"http://localhost:5173", false},
+		{"http://localhost", false},
+		{"https://localhost", true},
 		// Kit's check is on the literal hostname "localhost", so the loopback
 		// address gets Secure cookies.
-		{"http://127.0.0.1:8080", false, true},
-		{"https://example.com", false, true},
-		{"http://example.com", false, true},
-		{"https://example.com", true, false},
-		{"", false, true},
+		{"http://127.0.0.1:8080", true},
+		{"https://example.com", true},
+		{"http://example.com", true},
+		{"", true},
 	} {
-		if got := secureCookieDefault(tc.origin, tc.dev); got != tc.want {
-			t.Errorf("secureCookieDefault(%q, dev=%v) = %v, want %v", tc.origin, tc.dev, got, tc.want)
+		if got := secureCookieDefault(tc.origin); got != tc.want {
+			t.Errorf("secureCookieDefault(%q) = %v, want %v", tc.origin, got, tc.want)
 		}
 	}
 }
@@ -305,18 +303,6 @@ func TestRegistryRefusesToStartWhenTheBuildDisagrees(t *testing.T) {
 	manifest = Manifest{AppDir: "_app", Remotes: []string{q.ID()}}
 	if _, err := NewRemotes(manifest.RemoteConfig("http://127.0.0.1:8080"), q); err != nil {
 		t.Fatalf("NewRemotes rejected a matching registry: %v", err)
-	}
-}
-
-func TestDevModeSkipsTheBuildCheck(t *testing.T) {
-	// In dev the client comes from vite, not from `build/`, so the manifest's
-	// list describes the last production build and says nothing about what is
-	// running.
-	q := NewQueryNoArg(testModule, "getTodos", func(ctx context.Context) (int, error) { return 1, nil })
-	cfg := Manifest{AppDir: "_app", Remotes: []string{"abc123/vanished"}}.RemoteConfig("")
-	cfg.Dev = true
-	if _, err := NewRemotes(cfg, q); err != nil {
-		t.Fatalf("NewRemotes refused in dev mode: %v", err)
 	}
 }
 

@@ -24,13 +24,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/tylergannon/devalue/v5"
-	"github.com/tylergannon/skgo/internal/adapter"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/internal/ssr"
-	"github.com/tylergannon/skgo/internal/vite"
 )
 
 // SSR renders page documents in this process.
@@ -65,27 +62,6 @@ type SSR struct {
 	prerendered                     map[string]bool
 	artifacts                       *prerenderArtifactStore
 	filterSerializedResponseHeaders func(name, value string) bool
-	// dev is non-nil only for a renderer backed by a running Vite server.
-	// devRenderMu keeps dev page renders serialised one at a time, as they
-	// always were: each engine runtime tracks its own cursor into vite's
-	// change log (vite.Runner.Refresh) entirely independently of devMu, so two
-	// renders in flight together could pick up different runtimes refreshed to
-	// different vite generations while sharing one frozen Go manifest snapshot
-	// -- an old Go node/route table paired with a runtime that already loaded
-	// the new one. Serialising renders is what keeps the pair moving together,
-	// exactly as before this render could pend on slow Go I/O. devMu's RWMutex
-	// then only has to pin that one render's snapshot against a concurrent
-	// refresh (RLock) while a refresh applies under an exclusive TryLock,
-	// skipping rather than blocking when the render holds it -- the next
-	// devRefresh call (from a Go endpoint or load, which touch no runtime and
-	// so carry none of this hazard) retries it instead of queuing behind the
-	// render. See serveDev/refreshDev.
-	dev          *vite.Dev
-	devBase      Manifest
-	devEndpoints *Endpoints
-	devVersion   int
-	devRenderMu  sync.Mutex
-	devMu        sync.RWMutex
 }
 
 // ErrorTemplate returns the Kit error.html used for fatal errors before page dispatch.
@@ -197,284 +173,6 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	return s, nil
 }
 
-// NewDevSSR builds a renderer that renders from a running `vite dev` server
-// rather than from a bundle.
-//
-// `vite dev` never runs an adapter — kit reaches `adapt()` only from the plugin
-// that finalises a build — so there is no SSR bundle in dev and never will be.
-// What there is instead is the same `goja` environment, declared in the dev
-// server by the same adapter plugin, and the engine pulls one transformed
-// module at a time out of it. Everything else on this side of the seam is the
-// production path, unchanged: the same loads answer the branch, the same
-// remote functions answer a query, the same document is assembled around the
-// same render.
-//
-// Three things a dev document says differently, and kit says all three
-// (`exports/vite/dev/index.js`, the dev manifest's `_.client`): the client
-// entry is served out of the installed package rather than out of a build, the
-// app module out of kit's generated dev tree, and neither carries an import,
-// stylesheet or font — vite serves a module's CSS through the module itself.
-// The boot global is `__sveltekit_dev` (`core/utils.js`, `get_global_name`).
-//
-// Routes, nodes, templates and branch options are read from Kit's live dev
-// graph. Adding or removing a route, or changing its page/layout composition,
-// therefore takes effect without rebuilding or restarting the Go process.
-func NewDevSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, devServer string, opts SSROptions) (*SSR, error) {
-	if m.SSR == nil {
-		return nil, errors.New("skgo: this build has no SSR description, so dev has no node table to render a branch through. Rebuild the frontend with an adapter that emits one.")
-	}
-	token := ""
-	if opts.Environment != nil {
-		token = opts.Environment.devToken
-	}
-	dev := vite.NewDev(devServer, token)
-	answer, err := dev.Await(devServerTimeout)
-	if err != nil {
-		return nil, err
-	}
-	live, err := manifestFromDev(m, answer)
-	if err != nil {
-		return nil, err
-	}
-	if remotes != nil {
-		if err := remotes.updateCallerRoutes(live.Routes); err != nil {
-			return nil, err
-		}
-	}
-	info := *live.SSR
-	template, errorPage, err := devDocumentTemplates(answer)
-	if err != nil {
-		return nil, err
-	}
-
-	s := &SSR{
-		environment:                     opts.Environment,
-		loads:                           loads,
-		remotes:                         remotes,
-		actions:                         opts.Actions,
-		info:                            info,
-		template:                        template,
-		errorPage:                       errorPage,
-		base:                            strings.TrimSuffix(m.Base, "/"),
-		version:                         m.Version,
-		onError:                         opts.OnError,
-		fetch:                           opts.Fetch,
-		handleFetch:                     opts.HandleFetch,
-		prerendered:                     prerenderedSet(m.Prerendered),
-		filterSerializedResponseHeaders: opts.FilterSerializedResponseHeaders,
-		dev:                             dev,
-		devBase:                         m,
-		devVersion:                      answer.Manifest.Version,
-	}
-	engine, err := ssr.NewDev(dev, answer.Entry, adapter.Polyfill(), poolSize(opts), s.console, environmentJSON(opts.Environment))
-	if err != nil {
-		return nil, err
-	}
-	s.engine = engine
-	return s, nil
-}
-
-// ReadDevManifest returns the route and node graph the running Kit dev server
-// is serving, overlaid only with build facts that cannot vary while that
-// server runs (the adapter identity and application version). It is the dev
-// counterpart of ReadManifest and lets registries be built from authored
-// source before the first document request.
-func ReadDevManifest(build fs.FS, devServer string) (Manifest, error) {
-	base, err := ReadManifest(build)
-	if err != nil {
-		return Manifest{}, err
-	}
-	answer, err := vite.NewDev(devServer).Await(devServerTimeout)
-	if err != nil {
-		return Manifest{}, err
-	}
-	return manifestFromDev(base, answer)
-}
-
-func manifestFromDev(base Manifest, answer vite.Info) (Manifest, error) {
-	if answer.Client.Start == "" || answer.Client.App == "" {
-		return Manifest{}, errors.New("skgo: the dev server named no client entry for a document to boot")
-	}
-	live := base
-	live.Version = ""
-	live.Nodes = append([]string(nil), answer.Manifest.Nodes...)
-	if err := json.Unmarshal(answer.Manifest.Routes, &live.Routes); err != nil {
-		return Manifest{}, fmt.Errorf("skgo: reading Kit's live routes: %w", err)
-	}
-	var info ManifestSSR
-	if err := json.Unmarshal(answer.Manifest.SSR, &info); err != nil {
-		return Manifest{}, fmt.Errorf("skgo: reading Kit's live SSR nodes: %w", err)
-	}
-	info.Bundle = ""
-	info.Target = ssrTarget
-	info.GlobalName = answer.GlobalName
-	info.Client = ManifestClient{
-		Start:                answer.Client.Start,
-		App:                  answer.Client.App,
-		UsesEnvDynamicPublic: answer.Client.UsesEnvDynamicPublic,
-	}
-	if len(info.Nodes) != len(live.Nodes) {
-		return Manifest{}, fmt.Errorf("skgo: Kit's dev manifest describes %d render node(s) and %d load node(s)", len(info.Nodes), len(live.Nodes))
-	}
-	live.SSR = &info
-	return live, nil
-}
-
-// serveDev binds one document to the live manifest snapshot current when its
-// render starts. Only one dev render runs at a time (devRenderMu): a route
-// edit can invalidate and renumber several nodes at once, and each engine
-// runtime refreshes itself against vite independently of the Go manifest, so
-// letting a second render start on a different runtime while this one still
-// pends on Go I/O could pair an old Go node table with a runtime that already
-// picked up the new one. Serialising renders keeps that pair moving together.
-// It does not affect Go endpoints or loads, which never touch a runtime and
-// so carry none of that hazard -- see refreshDev.
-func (s *SSR) serveDev(w http.ResponseWriter, r *http.Request, urlPath string) bool {
-	end, r, err := s.beginDevRenderFor(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return true
-	}
-	defer end()
-	return s.serve(w, r, urlPath)
-}
-
-type devRenderHeldKey struct{}
-
-// beginDevRenderFor is beginDevRender for a request. A page that fetches
-// another page is waiting inside a render that already holds both locks, and
-// its subrequest is part of that render: taking them again would wait for
-// itself, so the subrequest runs under the ones its ancestor holds and sees the
-// same manifest snapshot. The request it returns is marked as holding them, so
-// anything it fetches in turn does the same.
-func (s *SSR) beginDevRenderFor(r *http.Request) (func(), *http.Request, error) {
-	if r.Context().Value(devRenderHeldKey{}) != nil {
-		return func() {}, r, nil
-	}
-	end, err := s.beginDevRender()
-	if err != nil {
-		return nil, r, err
-	}
-	return end, r.WithContext(context.WithValue(r.Context(), devRenderHeldKey{}, true)), nil
-}
-
-// carryDevRender passes the mark beginDevRenderFor made on to a subrequest's
-// context, which otherwise inherits nothing.
-func carryDevRender(to, from context.Context) context.Context {
-	if from.Value(devRenderHeldKey{}) != nil {
-		return context.WithValue(to, devRenderHeldKey{}, true)
-	}
-	return to
-}
-
-// beginDevRender acquires the two locks a dev render holds for its whole
-// duration -- devRenderMu, then a refreshed devMu.RLock -- and returns the
-// func that releases them in reverse order. Split out from serveDev so the
-// exact sequence a render depends on is what a test exercises directly.
-func (s *SSR) beginDevRender() (end func(), err error) {
-	s.devRenderMu.Lock()
-	if err := s.refreshDev(); err != nil {
-		s.devRenderMu.Unlock()
-		return nil, err
-	}
-	s.devMu.RLock()
-	return func() {
-		s.devMu.RUnlock()
-		s.devRenderMu.Unlock()
-	}, nil
-}
-
-// refreshDev installs Kit's latest dev manifest before a route-shaped request
-// proceeds. It must never block behind an in-flight render: TryLock only
-// applies the update when no render currently holds the snapshot, and skips
-// otherwise, leaving the next devRefresh call (from any request) to retry.
-// That keeps Go endpoints and loads responsive while a page is pending on
-// Go I/O. Dev page renders remain serialized by devRenderMu.
-func (s *SSR) refreshDev() error {
-	if s.dev == nil {
-		return nil
-	}
-	if !s.devMu.TryLock() {
-		return nil
-	}
-	defer s.devMu.Unlock()
-	return s.refreshDevLocked()
-}
-
-func (s *SSR) refreshDevLocked() error {
-	if s.dev == nil {
-		return nil
-	}
-	answer, err := s.dev.Info()
-	if err != nil {
-		return err
-	}
-	if answer.Manifest.Version == s.devVersion {
-		return nil
-	}
-	live, err := manifestFromDev(s.devBase, answer)
-	if err != nil {
-		return err
-	}
-	template, errorPage, err := devDocumentTemplates(answer)
-	if err != nil {
-		return err
-	}
-	if s.remotes != nil {
-		if err := s.remotes.updateCallerRoutes(live.Routes); err != nil {
-			return err
-		}
-	}
-	if err := s.loads.updateManifest(live); err != nil {
-		return err
-	}
-	if s.devEndpoints != nil {
-		if err := s.devEndpoints.updateManifest(live); err != nil {
-			return err
-		}
-	}
-	s.info = *live.SSR
-	s.template = template
-	s.errorPage = errorPage
-	if s.devEndpoints != nil {
-		s.devEndpoints.SetErrorTemplate(errorPage)
-	}
-	s.version = ""
-	s.devVersion = answer.Manifest.Version
-	return nil
-}
-
-func devDocumentTemplates(answer vite.Info) (string, string, error) {
-	template := answer.Manifest.Template
-	errorPage := answer.Manifest.ErrorTemplate
-	if errorPage == "" {
-		return "", "", errors.New("skgo: Kit's dev manifest names no error template")
-	}
-	for _, tag := range []string{"%sveltekit.head%", "%sveltekit.body%"} {
-		if !strings.Contains(template, tag) {
-			return "", "", fmt.Errorf("skgo: the live app template is missing %s", tag)
-		}
-	}
-	return template, errorPage, nil
-}
-
-// devSSRInfo is the build's SSR description with the four things dev states
-// differently substituted in. Everything it keeps — the `ssr` and `csr` options
-// each node sets, the base, the assets path — is a fact about the app rather
-// than about how it was served.
-func devSSRInfo(m Manifest, dev *vite.Dev, answer vite.Info) (ManifestSSR, error) {
-	live, err := manifestFromDev(m, answer)
-	if err != nil {
-		return ManifestSSR{}, fmt.Errorf("skgo: reading the dev manifest at %s: %w", dev.Base(), err)
-	}
-	return *live.SSR, nil
-}
-
-// devServerTimeout is how long Go waits for `vite dev` to answer at startup.
-// The two are started together and either may win; a cold vite has a config to
-// resolve and dependencies to scan before it listens.
-const devServerTimeout = 60 * time.Second
-
 // documentTemplates reads `app.html` and kit's `error.html` out of a build, and
 // refuses a template that has lost the two placeholders Go substitutes into.
 func documentTemplates(build fs.FS, info ManifestSSR) (string, string, error) {
@@ -533,12 +231,10 @@ func (s *SSR) servePageMethod(w http.ResponseWriter, r *http.Request, urlPath st
 	allowed := []string{"GET", "HEAD", "OPTIONS"}
 	if len(route.nodes) > 0 {
 		leaf := route.nodes[len(route.nodes)-1]
-		s.loads.mu.RLock()
 		module := ""
 		if leaf >= 0 && leaf < len(s.loads.cfg.Nodes) {
 			module = s.loads.cfg.Nodes[leaf]
 		}
-		s.loads.mu.RUnlock()
 		if s.actions != nil && len(s.actions.byModule[module]) > 0 {
 			allowed = append(allowed, "POST")
 		}
@@ -679,11 +375,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 			} else if classic.actionErr != nil {
 				status = asHTTPError(classic.actionErr).Status
 			}
-			if s.loads.cfg.Dev && classic.actionErr != nil {
-				s.report(route.id, errors.New("The form action returned an error, but +error.svelte wasn't rendered because SSR is off. To get the error page with CSR, enhance your form with `use:enhance`. See https://svelte.dev/docs/kit/form-actions#progressive-enhancement-use-enhance"))
-			} else if s.loads.cfg.Dev && classic.tree != nil {
-				s.report(route.id, errors.New("The form action returned a value, but it isn't available in `page.form`, because SSR is off. To handle the returned value in CSR, enhance your form with `use:enhance`. See https://svelte.dev/docs/kit/form-actions#progressive-enhancement-use-enhance"))
-			}
+
 		}
 		plan := documentPlan{routeID: route.id, params: params, status: status, hydrate: hydrate, shell: true}
 		for _, index := range route.nodes {
@@ -697,7 +389,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 			jar = classic.jar
 		}
 		if jar == nil {
-			jar = requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev))
+			jar = requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin))
 		}
 		shared := &loadRequest{responseState: newResponseState(r), req: r, jar: jar, url: req.url, routeID: route.id, params: params}
 		if classic != nil {
@@ -920,7 +612,7 @@ func (s *SSR) respondWithErrorAnswers(w http.ResponseWriter, r *http.Request, re
 	hookRequest := &loadRequest{
 		responseState: newResponseState(r),
 		req:           r,
-		jar:           requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin, s.loads.cfg.Dev)),
+		jar:           requestCookieJar(r, secureCookieDefault(s.loads.cfg.Origin)),
 		url:           req.url, routeID: routeID, params: params,
 	}
 	pageError := s.documentError(hookContext(r, hookRequest), routeID, e, raw)
@@ -1020,7 +712,7 @@ func (s *SSR) failed(w http.ResponseWriter, r *http.Request, req dataRequest, ro
 // render fails after recording a prerender answer. Every other failure keeps
 // failed's existing response path and state boundary.
 func (s *SSR) failedAfterRender(w http.ResponseWriter, r *http.Request, req dataRequest, routeID string, params map[string]string, err error, answers map[string]map[string]answered) bool {
-	if s.dev != nil || len(answers["p"]) == 0 {
+	if len(answers["p"]) == 0 {
 		return s.failed(w, r, req, routeID, params, err)
 	}
 	s.report(routeID, err)
@@ -1511,7 +1203,7 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 404, Message: "Error: 404"}})
 	}
 
-	if fn.kind == KindPrerender && s.dev == nil {
+	if fn.kind == KindPrerender {
 		artifact, found, err := s.artifacts.lookup(id, payload, s.remotes.cfg.Transport)
 		if err != nil {
 			failure := &ssr.Error{Status: http.StatusInternalServerError, Message: "Internal Error"}

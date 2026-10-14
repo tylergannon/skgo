@@ -209,38 +209,24 @@ func runCached(cfg Config) error {
 		return err
 	}
 	cfg.kitMetadata = metadata
-	// Once a Worker owns a plan, its projection lookup supersedes disk replay.
-	// Trying the old disk entry first would capture every body edit twice.
-	if cfg.worker == nil || cfg.worker.plan == nil {
-		if entry, ok := readGenerationEntry(path); cfg.CacheDir != "off" && ok && entry.InputHash == inputHash {
-			host, _, moduleErr := moduleOf(cfg.Out)
-			environment, envErr := currentCacheEnvironment(host)
-			contents, digest, err := entry.Sources.capture(cfg)
-			a, _ := json.Marshal(metadata)
-			b, _ := json.Marshal(entry.Metadata)
-			if moduleErr == nil && envErr == nil && cacheEnvironmentHash(environment) == entry.Sources.EnvironmentHash && err == nil && digest == entry.SourceHash && bytes.Equal(a, b) {
-				cfg.Logf("generation cache hit")
-				if cfg.worker != nil {
-					key, _ := cfg.worker.projectionKey(inputHash, entry.Sources.EnvironmentHash, metadata, contents)
-					cfg.worker.planKey, cfg.worker.plan = key, &entry.Plan
-					cfg.worker.stats.PlanHits++
-				}
-				return publishGenerationPlan(cfg, entry.Plan)
-			}
+	if entry, ok := readGenerationEntry(path); cfg.CacheDir != "off" && ok && entry.InputHash == inputHash {
+		host, _, moduleErr := moduleOf(cfg.Out)
+		environment, envErr := currentCacheEnvironment(host)
+		_, digest, err := entry.Sources.capture(cfg)
+		a, _ := json.Marshal(metadata)
+		b, _ := json.Marshal(entry.Metadata)
+		if moduleErr == nil && envErr == nil && cacheEnvironmentHash(environment) == entry.Sources.EnvironmentHash && err == nil && digest == entry.SourceHash && bytes.Equal(a, b) {
+			cfg.Logf("generation cache hit")
+			return publishGenerationPlan(cfg, entry.Plan)
 		}
 	}
-	sources, contents, digest, err := acquireGenerationSources(cfg)
+	sources, err := acquireCacheSources(cfg)
 	if err != nil {
 		return bypass(err)
 	}
-	key := ""
-	if cfg.worker != nil {
-		key, _ = cfg.worker.projectionKey(inputHash, sources.EnvironmentHash, metadata, contents)
-		if key != "" && key == cfg.worker.planKey && cfg.worker.plan != nil {
-			cfg.Logf("generation projection hit")
-			cfg.worker.stats.PlanHits++
-			return publishGenerationPlan(cfg, *cfg.worker.plan)
-		}
+	contents, digest, err := sources.capture(cfg)
+	if err != nil {
+		return bypass(err)
 	}
 	cfg.Logf("generation cache miss")
 	view, cleanup, err := sources.materialize(cfg, contents)
@@ -270,9 +256,6 @@ func runCached(cfg Config) error {
 	if view.sourceView.cgoUsed {
 		cfg.Logf("generation cache write skipped: local cgo source")
 		return nil
-	}
-	if cfg.worker != nil && key != "" {
-		cfg.worker.planKey, cfg.worker.plan = key, &plan
 	}
 	if cfg.CacheDir == "off" {
 		return nil

@@ -7,23 +7,16 @@ on:
 permissions:
   contents: read
 
+# Development qualification is unavailable pending its separate replacement.
 jobs:
   qualification:
-    # One runner per mode, at the same time. Dev is where kit's client meets an
-    # unbundled module graph and a seconds-wide window before hydration, so it
-    # is a mode of its own and not a repeat of prod.
-    name: Example BDD (${{ matrix.mode }})
+    name: Example BDD (production)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [prod, dev]
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
       ORIGIN: http://127.0.0.1:8080
       SKGO_PORT: "8080"
-      SKGO_DEV_PORT: "5173"
 
     steps:
       - uses: actions/checkout@v7
@@ -53,20 +46,16 @@ jobs:
         run: just build
 
       - name: Install native core compiler
-        if: matrix.mode == 'prod'
         run: mise -C native install zig
 
-      # The Go suite is the same in both modes, so one runner carries it.
       - name: Vet and test the candidate
-        if: matrix.mode == 'prod'
         run: |
           just vet
           just test
 
       - name: Example BDD against the production build
-        if: matrix.mode == 'prod'
         run: |
-          bound=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
+          bound=$(lsof -t -i tcp:"$SKGO_PORT" 2>/dev/null || true)
           if [ -n "$bound" ]; then
             echo "::error title=Port already bound::pid(s) $bound already listen on the qualification ports."
             exit 1
@@ -83,35 +72,14 @@ jobs:
           fi
           just e2e prod
 
-      # The example owns the richer development claims, including editing an
-      # already-open page and proving it hot-updates without a document reload.
-      - name: Example BDD against development, including HMR
-        if: matrix.mode == 'dev'
-        run: |
-          just dev &
-          for _ in $(seq 120); do
-            curl -sf -o /dev/null "http://127.0.0.1:$SKGO_DEV_PORT/__skgo_dev/info" && break
-            sleep 1
-          done
-          for _ in $(seq 60); do
-            curl -sf -o /dev/null "$ORIGIN/" && break
-            sleep 1
-          done
-          mode=$(curl -sI "$ORIGIN/" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-skgo-mode"{print $2}')
-          if [ "$mode" != "dev" ]; then
-            echo "::error title=Wrong handler::Expected dev, got '${mode:-<absent>}'."
-            exit 1
-          fi
-          just e2e dev
-
       - name: Stop qualification servers
         if: always()
         run: |
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
+          pids=$(lsof -t -i tcp:"$SKGO_PORT" 2>/dev/null || true)
           [ -n "$pids" ] || exit 0
           kill $pids 2>/dev/null || true
           sleep 3
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" -i tcp:"$SKGO_DEV_PORT" 2>/dev/null || true)
+          pids=$(lsof -t -i tcp:"$SKGO_PORT" 2>/dev/null || true)
           [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
 
       # A green run leaves nothing to look at. A red one leaves Playwright's
@@ -121,7 +89,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: qualification-${{ matrix.mode }}-${{ github.sha }}
+          name: qualification-prod-${{ github.sha }}
           if-no-files-found: warn
           retention-days: 14
           path: |

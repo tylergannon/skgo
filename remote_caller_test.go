@@ -49,13 +49,11 @@ func TestRemoteCallerQueryRestrictionsAtServedEntries(t *testing.T) {
 		}
 		return yield(got)
 	})
-	p := NewRemote(RemoteSpec{Kind: KindPrerender, Module: testModule, Name: "restrictedPrerender", Call: func(ctx context.Context, _ Call) (any, error) { return restrictedCallerReceipt(ctx) }})
-	rs := testRemotes(t, RemoteConfig{Dev: true}, q, b, live, p)
+	rs := testRemotes(t, RemoteConfig{}, q, b, live)
 	for _, tc := range []struct{ name, method, path, body string }{
 		{"query", "GET", rs.Prefix() + q.ID(), ""},
 		{"batch", "POST", rs.Prefix() + b.ID(), `{"payloads":["WyJ4Il0"]}`},
 		{"live", "GET", rs.Prefix() + live.ID(), ""},
-		{"dev-prerender", "GET", rs.Prefix() + p.ID(), ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))

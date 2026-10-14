@@ -2,8 +2,7 @@ Feature: The engine's JavaScript is SvelteKit's own build
 
   The bundle the Go process renders pages with is an output of the app's
   SvelteKit build — a fourth environment of it, alongside the client, the server
-  and the service worker — folded into one script. Production evaluates the
-  bundle; development evaluates Kit's live module graph.
+  and the service worker — folded into one script and evaluated by Go.
 
   That every route renders its own page's heading inside the root layout is a
   claim about the document, and example/contracts_test.go walks every route for

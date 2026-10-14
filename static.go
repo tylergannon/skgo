@@ -1096,15 +1096,12 @@ func contentTypeFor(name string) string {
 
 // ServedAsFile returns the predicate HandleConfig.Static wants for pages: a
 // request the handler answers from a file of the build (a client asset, a
-// prerendered page) or, under `vite dev`, hands to vite as a module or static
-// file. Kit's adapters answer those before `handle` runs, so the hook must
+// prerendered page). Kit's adapters answer those before `handle` runs, so the hook must
 // not see them. It returns nil for a handler that is neither.
 func ServedAsFile(pages http.Handler) func(*http.Request) bool {
 	switch h := pages.(type) {
 	case *staticHandler:
 		return h.servesFile
-	case *devPages:
-		return h.servedByVite
 	}
 	return nil
 }

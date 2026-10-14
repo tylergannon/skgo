@@ -1,29 +1,18 @@
 origin := env("ORIGIN", "{{.Origin}}")
-dev_port := env("SKGO_DEV_PORT", "5173")
 
 _default:
     @just --list --unsorted
 
-# Run VitePlus and the Go application together, once. A fresh clone has neither
-# frontend dependencies nor the adapter manifest the Go server reads at startup,
-# so each is produced once, only while it is missing. `skgo dev` then keeps the
-# session current: editing Go source, signatures or routes regenerates the
-# bindings, rebuilds the application and replaces it behind the same address,
-# and a build error is the response to every request until it is fixed.
-dev:
-    #!/bin/sh
-    set -eu
-    go generate ./...
-    cd web
-    [ -x node_modules/.bin/vp ] || pnpm install --frozen-lockfile
-    [ -f build/skgo.manifest.json ] || ORIGIN="{{"{{origin}}"}}" node_modules/.bin/vp build
-    cd ..
-    exec go tool skgo dev --listen "{{.OriginHostPort}}" --origin "{{"{{origin}}"}}" --vite-port "{{"{{dev_port}}"}}"
+
+install:
+    cd web && vp install --frozen-lockfile
+
+# Development mode is unavailable pending its separate replacement.
 
 # Build the frontend and the standalone Go binary.
 build:
     go generate ./...
-    cd web && ORIGIN="{{"{{origin}}"}}" node_modules/.bin/vp build
+    cd web && ORIGIN="{{"{{origin}}"}}" vp build
     mkdir -p bin
     go build -ldflags "-X main.origin={{"{{origin}}"}}" -o bin/{{.App}} ./cmd
 
@@ -33,8 +22,8 @@ serve: build
 
 # Run the upstream-installed Vitest suite.
 test:
-    cd web && pnpm test
+    cd web && vp run test
 
 # Open the upstream-installed Storybook.
 storybook:
-    cd web && pnpm storybook --host 127.0.0.1
+    cd web && vp run storybook --host 127.0.0.1

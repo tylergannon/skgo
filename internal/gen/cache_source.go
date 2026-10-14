@@ -14,7 +14,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -151,9 +150,6 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 }
 
 func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte, error)) (map[string][]byte, string, error) {
-	if cfg.worker != nil {
-		cfg.worker.stats.SourceCaptures++
-	}
 	for alias, original := range s.Aliases {
 		current, err := filepath.EvalSymlinks(alias)
 		if err != nil || current != original {
@@ -200,7 +196,6 @@ func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte,
 	}
 	goDirs := map[string][]string{}
 	nativeFiles := map[string][]string{}
-	var embedPatterns []string
 	for _, m := range s.Modules {
 		err := filepath.WalkDir(m.Dir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
@@ -279,7 +274,6 @@ func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte,
 			}
 		}
 		for _, pattern := range stagedEmbedPatterns(dir, ".", overlay) {
-			embedPatterns = append(embedPatterns, filepath.Join(dir, filepath.FromSlash(strings.TrimPrefix(pattern, "all:"))))
 			matches, err := fs.Glob(os.DirFS(dir), strings.TrimPrefix(pattern, "all:"))
 			if err != nil {
 				return nil, "", err
@@ -351,15 +345,6 @@ func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte,
 		paths = append(paths, path)
 	}
 	sort.Strings(paths)
-	if cfg.worker != nil {
-		inputs := WorkerInputs{Files: append([]string(nil), paths...), EmbedPatterns: embedPatterns}
-		for _, module := range s.Modules {
-			inputs.Roots = append(inputs.Roots, module.Dir)
-		}
-		sort.Strings(inputs.Roots)
-		sort.Strings(inputs.EmbedPatterns)
-		cfg.worker.inputs = inputs
-	}
 	h := sha256.New()
 	encoder := json.NewEncoder(h)
 	for _, path := range paths {
@@ -407,52 +392,18 @@ func cacheOwned(cfg Config, path string, data []byte) bool {
 }
 
 func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, func(), error) {
-	root := ""
-	if cfg.worker != nil && cfg.worker.root != "" && !reflect.DeepEqual(cfg.worker.modules, s.Modules) {
-		if cfg.worker.view != nil {
-			_ = cfg.worker.view.Close()
-			cfg.worker.view = nil
-		}
-		_ = os.RemoveAll(cfg.worker.root)
-		cfg.worker.root, cfg.worker.previous, cfg.worker.materialized = "", nil, nil
-	}
-	if cfg.worker != nil {
-		root = cfg.worker.root
-	}
-	var err error
-	if root == "" {
-		root, err = os.MkdirTemp("", "skgo-analysis-")
-		if err != nil {
-			return cfg, func() {}, err
-		}
-		canonical, err := filepath.EvalSymlinks(root)
-		if err != nil {
-			_ = os.RemoveAll(root)
-			return cfg, func() {}, err
-		}
-		root = canonical
-		if cfg.worker != nil {
-			cfg.worker.root = root
-		}
-	}
-	cleanup := func() {
-		if cfg.worker == nil {
-			_ = os.RemoveAll(root)
-		}
-	}
-	fail := func(err error) (Config, func(), error) {
-		_ = os.RemoveAll(root)
-		if cfg.worker != nil {
-			cfg.worker.root = ""
-			cfg.worker.previous = nil
-			cfg.worker.materialized = nil
-			if cfg.worker.view != nil {
-				_ = cfg.worker.view.Close()
-				cfg.worker.view = nil
-			}
-		}
+	root, err := os.MkdirTemp("", "skgo-analysis-")
+	if err != nil {
 		return cfg, func() {}, err
 	}
+	canonical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		_ = os.RemoveAll(root)
+		return cfg, func() {}, err
+	}
+	root = canonical
+	cleanup := func() { _ = os.RemoveAll(root) }
+	fail := func(err error) (Config, func(), error) { cleanup(); return cfg, func() {}, err }
 	materialized := map[string][]byte{}
 	view := &generationSourceView{roots: map[string]string{}, cgoPackages: map[string]bool{}}
 	if cfg.Session != nil {
@@ -507,24 +458,6 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 		view.roots[m.Dir] = filepath.Join(root, fmt.Sprintf("module-%d", i))
 		if view.moduleRoots != nil {
 			view.moduleRoots[m.Path] = view.roots[m.Dir]
-		}
-	}
-	if cfg.worker != nil {
-		for path := range cfg.worker.previous {
-			if _, ok := files[path]; !ok || (files[path] == nil && !strings.HasSuffix(path, string(filepath.Separator))) {
-				target := view.mapPath(path, true)
-				if target != path {
-					var err error
-					if strings.HasSuffix(path, string(filepath.Separator)) {
-						err = os.RemoveAll(target)
-					} else {
-						err = os.Remove(target)
-					}
-					if err != nil && !os.IsNotExist(err) {
-						return fail(err)
-					}
-				}
-			}
 		}
 	}
 	for path, data := range files {
@@ -647,11 +580,6 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 		env = append(env, "GOWORK="+target)
 	}
 	for path, data := range materialized {
-		if cfg.worker != nil {
-			if old, ok := cfg.worker.materialized[path]; ok && bytes.Equal(old, data) {
-				continue
-			}
-		}
 		if err := os.WriteFile(path, data, 0600); err != nil {
 			return fail(err)
 		}
@@ -683,38 +611,6 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 	originalLog := cfg.Logf
 	cfg.Logf = func(format string, args ...any) { originalLog("%s", view.originalText(fmt.Sprintf(format, args...))) }
 	cfg.sourceView = view
-	if cfg.worker != nil {
-		cfg.worker.previous = files
-		cfg.worker.materialized = materialized
-		cfg.worker.modules = append([]cacheModule(nil), s.Modules...)
-		cfg.worker.sources = &s
-		cfg.worker.sourceOut = view.mapPath(cfg.Out, false)
-		snapshot := make(map[string][]byte, len(files)+len(materialized))
-		for path, data := range files {
-			if strings.HasSuffix(path, string(filepath.Separator)) {
-				snapshot[filepath.Clean(view.mapPath(path, true))] = nil
-				continue
-			}
-			if view.mapPath(path, true) == path {
-				snapshot[path] = data
-			}
-		}
-		for path, data := range materialized {
-			snapshot[path] = data
-		}
-		if cfg.worker.view != nil && cfg.worker.viewSession != cfg.Session {
-			_ = cfg.worker.view.Close()
-			cfg.worker.view = nil
-		}
-		if cfg.worker.view == nil {
-			cfg.worker.view = cfg.Session.PrepareView(snapshot)
-			cfg.worker.viewSession = cfg.Session
-		} else {
-			if err := cfg.worker.view.Update(snapshot); err != nil {
-				return fail(err)
-			}
-		}
-	}
 	return cfg, cleanup, nil
 }
 

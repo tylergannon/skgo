@@ -21,7 +21,7 @@ import {
  remoteEndpoint,
 	remoteLoad
 } from './skgo-adapter/prerender.js';
-import { gojaDevEnvironment, gojaDevUnchangedFiles, gojaEnvironment, goEnvironmentValues, goSupervisorReload, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
+import { gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 import { prerenderModules } from './skgo-adapter/prerender-modules.js';
 import { identity } from './skgo-adapter/identity.js';
 import { checkEndpoints, validateGenerated } from './skgo-adapter/generated.js';
@@ -110,13 +110,8 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
 				})
 			};
 		},
-		// Both halves of the same environment. Kit hands `vite.plugins.post` to
-		// vite unconditionally — it is a member of the plugin array kit returns
-		// whether it is building or serving — so the environment the build
-		// compiles the SSR bundle in is also declared in `vite dev`, where Go
-		// pulls one transformed module at a time out of it instead. Each plugin
-		// states its own `apply`, so only one of them is ever live.
-		vite: { plugins: { pre: [prerenderOwnerPlugin, prerenderModules()], post: [environment.plugin, goSupervisorReload(), goja.plugin, gojaDevEnvironment(), gojaDevUnchangedFiles({ out })] } },
+		// Kit builds the embedded SSR bundle through this environment.
+		vite: { plugins: { pre: [prerenderOwnerPlugin, prerenderModules()], post: [environment.plugin, goja.plugin] } },
 		async adapt(builder) {
 			let failure;
 			try {

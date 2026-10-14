@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"os"
-	"path/filepath"
 	"reflect"
 
 	"github.com/tylergannon/skgo/internal/envspec"
@@ -25,9 +23,8 @@ func Environment[T any]() struct{} { return struct{}{} }
 // EnvironmentSnapshot contains the values validated once for this application.
 // Accessors return copies so callers cannot change the renderer's environment.
 type EnvironmentSnapshot struct {
-	devToken string
-	schema   envspec.Schema
-	values   map[string]any
+	schema envspec.Schema
+	values map[string]any
 }
 
 func (s *EnvironmentSnapshot) project(public, dynamic bool) map[string]any {
@@ -123,28 +120,4 @@ func loadEnvironmentSchema[T any](schema envspec.Schema, lookup func(string) (st
 		}
 	}
 	return result, &EnvironmentSnapshot{schema: schema, values: values}, nil
-}
-
-// LoadDevEnvironment reads Vite's resolved development environment. Start the
-// Vite development server first; restart both servers after changing .env files.
-// The adapter keeps this private snapshot outside browser-served files.
-func LoadDevEnvironment[T any](web string) (T, *EnvironmentSnapshot, error) {
-	var zero T
-	data, err := os.ReadFile(filepath.Join(web, ".svelte-kit", "skgo-env-runtime.json"))
-	if err != nil {
-		return zero, nil, fmt.Errorf("skgo: read development environment: %w", err)
-	}
-	var payload struct {
-		envspec.Schema
-		Values map[string]string `json:"values"`
-		Token  string            `json:"token"`
-	}
-	if err = json.Unmarshal(data, &payload); err != nil {
-		return zero, nil, fmt.Errorf("skgo: invalid development environment")
-	}
-	result, snapshot, err := loadEnvironmentSchema[T](payload.Schema, func(name string) (string, bool) { v, ok := payload.Values[name]; return v, ok })
-	if snapshot != nil {
-		snapshot.devToken = payload.Token
-	}
-	return result, snapshot, err
 }

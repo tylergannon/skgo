@@ -27,6 +27,7 @@ func mwManifest(base string) Manifest {
 		AppDir: "_app",
 		Base:   base,
 		Nodes:  []string{"", "src/routes/items/[id]/+page.server.ts", ""},
+		Loads:  []string{"src/routes/items/[id]/+page.server.ts"},
 		Routes: []ManifestRoute{
 			{ID: "/", Pattern: `^\/$`, Page: &ManifestPage{Layouts: []int{0}, Leaf: 2}},
 			{
@@ -62,7 +63,6 @@ func mwBuild(t *testing.T, base string, mw Middleware, pages http.Handler, tweak
 		return pageData{Greeting: fmt.Sprintf("user=%s session=%s id=%s", who, session, e.Param("id"))}, nil
 	})
 	loadCfg := m.LoadConfig(mwOrigin)
-	loadCfg.Dev = true
 	ls, err := NewLoads(loadCfg, load)
 	if err != nil {
 		t.Fatal(err)

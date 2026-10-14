@@ -5,12 +5,5 @@ node = "24.21.0"
 "npm:vite-plus" = "1.0.0"
 
 [env]
-# SvelteKit checks the dev server's SSR environment with `isRunnableDevEnvironment`,
-# which is an `instanceof` against the *project's* resolved `vite`
-# (node_modules/@sveltejs/kit/src/runner.js). The mise-global `npm:vite-plus`
-# install ships its own copy of @voidzero-dev/vite-plus-core, so a dev server
-# created by that binary carries classes from a different module realm and the
-# check fails with "The configured Vite SSR environment must be a
-# RunnableDevEnvironment". Putting the project's bin dir first on PATH makes
-# `mise x -- vp ...` resolve the copy that shares a realm with the project's kit.
+# Resolve frontend tools from this project's pinned installation.
 _.path = ["./web/node_modules/.bin"]
