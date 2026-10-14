@@ -490,6 +490,10 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 			env = append(env, key+"="+value)
 		}
 	}
+	// Private roots are disposable; stable module identities let Go reuse export
+	// artifacts across misses. The caller's flags come last, preserving explicit
+	// overrides (including -trimpath=false), quoting, tags and compiler options.
+	env = append(env, "GOFLAGS="+strings.TrimSpace("-trimpath "+s.Environment["GOFLAGS"]))
 	env = append(env, "GOENV=off", "GOWORK=off")
 	if work := s.Environment["GOWORK"]; work != "" && work != "off" {
 		wf, err := modfile.ParseWork(work, files[work], nil)

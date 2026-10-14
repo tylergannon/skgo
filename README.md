@@ -400,7 +400,9 @@ previous output does not become an analysis input. Set `Config.CacheDir` (or
 `Check` always analyze current source.
 
 Cache misses analyze a captured copy of local modules, including workspace and
-local replacement dependencies. Additions, deletions, dependency source,
+local replacement dependencies. Private analysis enables Go's `-trimpath` to
+reuse compiler artifacts across temporary roots; explicit caller flags still
+take precedence. Additions, deletions, dependency source,
 configuration, tool identity and observed Kit metadata invalidate the plan.
 Installed Go toolchains, versioned module-cache content and installed Node
 packages follow their tools' immutability convention; reinstall or upgrade them

@@ -4,3 +4,5 @@ decision: gopls caches serializable derived facts, hashes source/dependency inpu
 trap: x/mod v0.42 WorkFile.SetUse retains an unchanged directive then appends it again. Before replacing workspace paths, DropUse existing entries and Cleanup; relative-only fixtures miss this failure.
 
 trap: temporary module roots must be canonicalized before handing their paths to Go. On macOS os.MkdirTemp may return /var while Go resolves /private/var; mixing the two broke copied-example type projections and diagnostic rebasing.
+
+trap: fresh private module paths change Go compiler action identities even with identical source. Private analysis prepends -trimpath to its captured GOFLAGS; caller flags remain last so explicit overrides survive. A compiler-export test compares two fresh roots and a literal tagged constant, rather than inferring reuse from elapsed time.

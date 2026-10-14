@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/types"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -185,7 +186,7 @@ func TestGenerationCacheDependencyAndMembership(t *testing.T) {
 	extra := filepath.Join(cfg.Web, "src/data/added.go")
 	cacheWrite(t, extra, "package data\nconst added = missingSymbol\n")
 	broken := runCacheProcess(t, cfg)
-	if broken.Error == "" || !strings.Contains(broken.Error, "missingSymbol") {
+	if !strings.Contains(broken.Error, "missingSymbol") || !strings.Contains(broken.Error, "web/src/data/added.go:2:15") {
 		t.Fatalf("invalid addition hidden: %+v", broken)
 	}
 	if err := os.Remove(extra); err != nil {
@@ -462,4 +463,66 @@ func TestGenerationCacheKeepsOneTargetSlot(t *testing.T) {
 	cfg.Language = LanguageTypeScript
 	assertCacheResult(t, cfg, false)
 	assertCacheFile(t, filepath.Join(cfg.Web, "src/data/data.remote.ts"), "query")
+}
+
+func TestGenerationCachePrivateCompilerIdentity(t *testing.T) {
+	root, cfg := foreignFixture(t, cacheRemote, nil)
+	t.Setenv("GOFLAGS", "-tags=cacheprofile")
+	cacheWrite(t, filepath.Join(root, "wire/profile.go"), "//go:build cacheprofile\n\npackage wire\nconst Profile = 17\n")
+	cfg.Logf = func(string, ...any) {}
+	cfg.Web, _ = sourcePath(cfg.Web)
+	cfg.Out, _ = sourcePath(cfg.Out)
+	acquire := func() Config {
+		t.Helper()
+		sources, err := acquireCacheSources(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		contents, _, err := sources.capture(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		view, cleanup, err := sources.materialize(cfg, contents)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(cleanup)
+		return view
+	}
+	load := func(view Config) *packages.Package {
+		t.Helper()
+		pkgs, err := packages.Load(&packages.Config{Dir: filepath.Dir(view.Web), Env: view.sourceView.env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedExportFile | packages.NeedTypes}, "example.com/wire")
+		if err != nil || len(pkgs) != 1 {
+			t.Fatalf("load: %v %v", pkgs, err)
+		}
+		p := pkgs[0]
+		if len(p.Errors) != 0 {
+			t.Fatal(p.Errors)
+		}
+		value, ok := p.Types.Scope().Lookup("Profile").(*types.Const)
+		if !ok || value.Val().ExactString() != "17" {
+			t.Fatalf("caller build tag lost: %v", value)
+		}
+		if p.ExportFile == "" {
+			t.Fatal("no actual compiler artifact")
+		}
+		return p
+	}
+	firstView, secondView := acquire(), acquire()
+	if firstView.Out == secondView.Out {
+		t.Fatal("views must have fresh roots")
+	}
+	first, second := load(firstView), load(secondView)
+	if first.ExportFile != second.ExportFile {
+		t.Fatalf("identical modules compiled separately: %s != %s", first.ExportFile, second.ExportFile)
+	}
+	// A caller can explicitly opt out; its flag must win over the private default.
+	t.Setenv("GOFLAGS", "-tags=cacheprofile -trimpath=false")
+	third, fourth := load(acquire()), load(acquire())
+	if third.ExportFile == fourth.ExportFile {
+		t.Fatal("explicit -trimpath=false ignored")
+	}
+	if got := os.Getenv("GOFLAGS"); got != "-tags=cacheprofile -trimpath=false" {
+		t.Fatalf("caller environment changed: %s", got)
+	}
 }
