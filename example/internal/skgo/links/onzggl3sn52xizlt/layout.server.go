@@ -32,7 +32,7 @@ const scriptSafeFixture = `</script><script>globalThis.__skgo_injected=true</scr
 // scenario can ask for it and no other request can stumble into it.
 func layoutLoad(event LayoutRequestEvent) (RootLayoutData, error) {
 	ctx := event.Context()
-	if boom, _ := event.SearchParam("boom"); boom == "root-layout" {
+	if event.Locals.RootLayoutFailure {
 		return RootLayoutData{}, skgo.Errorf(503, "The root layout could not reach the database")
 	}
 	// Every page is under this layout, so this is where a browser is given
@@ -42,7 +42,7 @@ func layoutLoad(event LayoutRequestEvent) (RootLayoutData, error) {
 		return RootLayoutData{}, err
 	}
 	data := RootLayoutData{Deployment: "skgo example"}
-	if proof, _ := event.SearchParam("proof"); proof == "script-safe" {
+	if event.Locals.ScriptSafeProof {
 		data.ScriptSafe = scriptSafeFixture
 	}
 	return data, nil
