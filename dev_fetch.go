@@ -61,7 +61,10 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		request.Header = input.Headers
+		request.Header = http.Header{}
+		for name, values := range input.Headers {
+			request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
+		}
 		exchange = &devFetchExchange{ctx: ctx, cancel: cancel, next: make(chan *http.Request), reply: make(chan *http.Response), result: make(chan devFetchResult, 1)}
 		token := make([]byte, 24)
 		if _, err := rand.Read(token); err != nil {
@@ -127,7 +130,11 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 			http.Error(w, "invalid fetch response", 400)
 			return
 		}
-		response := &http.Response{StatusCode: metadata.Status, Header: metadata.Headers, Body: r.Body}
+		headers := http.Header{}
+		for name, values := range metadata.Headers {
+			headers[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
+		}
+		response := &http.Response{StatusCode: metadata.Status, Header: headers, Body: r.Body}
 		select {
 		case exchange.reply <- response:
 		case <-exchange.ctx.Done():

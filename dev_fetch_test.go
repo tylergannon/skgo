@@ -8,8 +8,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestNativeFetchKeepsGoHookAroundKitContinuation(t *testing.T) {
@@ -20,6 +22,9 @@ func TestNativeFetchKeepsGoHookAroundKitContinuation(t *testing.T) {
 	exchanges := &devFetchRequests{}
 	defer exchanges.close()
 	d := &NativeDevelopment{renderer: &SSR{handleFetch: func(ctx context.Context, request *http.Request, next Fetch) (*http.Response, error) {
+		if got := request.Header.Get("X-Js-Lowercase"); got != "literal-input-660" {
+			t.Errorf("lowercase JS request header = %q", got)
+		}
 		request.Header.Set("X-Go-Before", "literal-771")
 		request.URL.Path = "/native-kit-page"
 		response, err := next(request)
@@ -31,7 +36,7 @@ func TestNativeFetchKeepsGoHookAroundKitContinuation(t *testing.T) {
 	}}}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { d.fetch(w, r, sessions, exchanges, r.URL.Path) }))
 	defer server.Close()
-	body, _ := json.Marshal(devFetchInput{Handle: "owner", URL: "http://example.test/original", Method: "GET", Headers: http.Header{}})
+	body, _ := json.Marshal(devFetchInput{Handle: "owner", URL: "http://example.test/original", Method: "GET", Headers: http.Header{"x-js-lowercase": {"literal-input-660"}}})
 	response, err := http.Post(server.URL+"/fetch-begin", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
@@ -85,4 +90,50 @@ func TestNativeFetchRejectsUnknownRequestOwner(t *testing.T) {
 	if recorder.Code != 409 {
 		t.Fatalf("status=%d", recorder.Code)
 	}
+}
+
+func TestNativeFetchLowercaseLengthIsParsableByNode(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	entry := &prerenderRequest{request: httptest.NewRequest("GET", "http://app.test/parent", nil).WithContext(ctx)}
+	sessions := &prerenderRequests{entries: map[string]*prerenderRequest{"literal-owner": entry}}
+	exchanges := &devFetchRequests{}
+	defer exchanges.close()
+	d := &NativeDevelopment{renderer: &SSR{}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { d.fetch(w, r, sessions, exchanges, r.URL.Path) }))
+	defer server.Close()
+	const program = `
+import assert from 'node:assert/strict';
+import {request} from 'node:http';
+const origin=process.argv[1];
+function call(path,body,headers={}) {
+ return new Promise((resolve,reject)=>{
+  const req=request(origin+path,{method:'POST',headers},response=>{
+   let body='';response.setEncoding('utf8');response.on('data',chunk=>body+=chunk);
+   response.on('end',()=>resolve({status:response.statusCode,headers:response.headers,body}));
+   response.on('error',reject);
+  });req.on('error',reject);req.end(body);
+ });
+}
+const begin=await call('/fetch-begin',JSON.stringify({handle:'literal-owner',url:'http://app.test/inner',method:'GET',headers:{}}),{'content-type':'application/json'});
+assert.equal(begin.status,204);
+const id=begin.headers['x-skgo-fetch'];
+// Headers() iteration in native Kit produces these lowercase names. Their
+// casing must survive JSON but acquire Go HTTP map semantics at the boundary.
+const metadata={status:201,headers:{'content-length':['31'],'content-type':['text/html'],'x-kit-page':['literal-993']}};
+const result=await call('/fetch-response','native Kit document literal-664',{'content-type':'application/octet-stream','x-skgo-fetch':id,'x-skgo-response':Buffer.from(JSON.stringify(metadata)).toString('base64')});
+assert.equal(result.status,201);
+assert.equal(result.headers['content-length'],'31');
+assert.equal(result.headers['transfer-encoding'],undefined);
+assert.equal(result.headers['x-kit-page'],'literal-993');
+assert.equal(result.body,'native Kit document literal-664');
+assert.equal((await call('/fetch-end','',{'x-skgo-fetch':id})).status,204);
+`
+	commandCtx, stop := context.WithTimeout(context.Background(), 10*time.Second)
+	defer stop()
+	command := exec.CommandContext(commandCtx, "node", "--input-type=module", "-e", program, server.URL)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("lowercase Kit response framing: %v\n%s", err, output)
+	}
+	entry.active.Wait()
 }
