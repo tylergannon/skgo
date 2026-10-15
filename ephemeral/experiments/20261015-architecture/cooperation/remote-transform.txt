@@ -1,0 +1,7 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/lib/value.remote.ts");import * as __remote from "/@fs/Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_3fba9d125588406c91ff67b52ec9f4c3/node_modules/@sveltejs/kit/src/runtime/client/remote-functions/index.js?v=14b64bb0";
+
+export const value = __remote.query('4o58so/value');
+
+import.meta.hot?.accept();
+
+//# sourceMappingURL=data:application/json;base64,eyJtYXBwaW5ncyI6IkFBQUEsU0FBUSxhQUFZO0FBQWMsT0FBTyxNQUFNLFFBQU0sWUFBVTtDQUFDLE1BQU0sSUFBSSxNQUFNLDBCQUEwQjtBQUFFLENBQUMiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsidmFsdWUucmVtb3RlLnRzIl0sInZlcnNpb24iOjMsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7cXVlcnl9IGZyb20gJyRhcHAvc2VydmVyJztleHBvcnQgY29uc3QgdmFsdWU9cXVlcnkoKCk9Pnt0aHJvdyBuZXcgRXJyb3IoJ05PREVfUkVNT1RFX01VU1RfTk9UX1JVTicpO30pOyJdfQ==

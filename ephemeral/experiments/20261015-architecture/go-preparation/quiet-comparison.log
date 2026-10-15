@@ -1,0 +1,295 @@
+=== RUN   TestArchitectureGoPreparation
+    architecture_preparation_test.go:236: SAMPLE mode=baseline-full-overlay iteration=1
+    architecture_preparation_test.go:284: stage=source-classify elapsed=393.459µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=725.5665ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=454.916µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.083875ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=339.792µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=7µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=26.2265ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=100.150708ms
+    architecture_preparation_test.go:237: stage=total elapsed=854.235792ms
+    architecture_preparation_test.go:237: mode=baseline-full-overlay packages=261 syntaxFiles=1487 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=2.011792ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=1000
+    architecture_preparation_test.go:236: SAMPLE mode=baseline-full-overlay iteration=2
+    architecture_preparation_test.go:284: stage=source-classify elapsed=298.042µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=994.897ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=1.112625ms
+    architecture_preparation_test.go:284: stage=Lower elapsed=2.492333ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=761.209µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=26.75µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=45.80175ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=118.105416ms
+    architecture_preparation_test.go:237: stage=total elapsed=1.163511542s
+    architecture_preparation_test.go:237: mode=baseline-full-overlay packages=261 syntaxFiles=1487 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.4805ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=2000
+    architecture_preparation_test.go:236: SAMPLE mode=baseline-full-overlay iteration=3
+    architecture_preparation_test.go:284: stage=source-classify elapsed=346.542µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=764.966458ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=604.875µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.249792ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=359.791µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=8.667µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=27.485375ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=118.206ms
+    architecture_preparation_test.go:237: stage=total elapsed=913.244292ms
+    architecture_preparation_test.go:237: mode=baseline-full-overlay packages=261 syntaxFiles=1487 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.803083ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=3000
+    architecture_preparation_test.go:249: CONTROL mode=baseline-full-overlay syntax-rejected=/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestArchitectureGoPreparation358376529/001/application/generated/links/onzggl3sn52xizltf5xxezdfojzq/orders.remote.go:11:85: expected ')', found '}' (and 3 more errors)
+    architecture_preparation_test.go:251: literalHTTP=3000
+    architecture_preparation_test.go:252: REPAIR mode=baseline-full-overlay
+    architecture_preparation_test.go:284: stage=source-classify elapsed=230.333µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=701.865375ms
+    architecture_preparation_test.go:253: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=472.75µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.105958ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=351.167µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=8.083µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=27.973042ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=121.342042ms
+    architecture_preparation_test.go:253: stage=total elapsed=853.367375ms
+    architecture_preparation_test.go:253: mode=baseline-full-overlay packages=261 syntaxFiles=1487 rootSyntaxFiles=3
+    architecture_preparation_test.go:257: stage=install elapsed=1.753833ms pid=75988
+    architecture_preparation_test.go:257: literalHTTP=4000
+    architecture_preparation_test.go:236: SAMPLE mode=exports-root iteration=1
+    architecture_preparation_test.go:284: stage=source-classify elapsed=253.25µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=133.101667ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=732.375µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.459167ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=355.458µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=7.167µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=26.154333ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=110.435917ms
+    architecture_preparation_test.go:237: stage=total elapsed=272.514084ms
+    architecture_preparation_test.go:237: mode=exports-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.754416ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=1000
+    architecture_preparation_test.go:236: SAMPLE mode=exports-root iteration=2
+    architecture_preparation_test.go:284: stage=source-classify elapsed=478.5µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=158.246708ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=607.917µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.507333ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=347.167µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=6.75µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=28.086ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=112.574208ms
+    architecture_preparation_test.go:237: stage=total elapsed=301.871291ms
+    architecture_preparation_test.go:237: mode=exports-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.479791ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=2000
+    architecture_preparation_test.go:236: SAMPLE mode=exports-root iteration=3
+    architecture_preparation_test.go:284: stage=source-classify elapsed=365.958µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=159.256292ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=474.666µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.122167ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=363.958µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=10.667µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=26.661792ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=107.746916ms
+    architecture_preparation_test.go:237: stage=total elapsed=296.017791ms
+    architecture_preparation_test.go:237: mode=exports-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.578708ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=3000
+    architecture_preparation_test.go:249: CONTROL mode=exports-root syntax-rejected=/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestArchitectureGoPreparation358376529/001/application/generated/links/onzggl3sn52xizltf5xxezdfojzq/orders.remote.go:11:85: expected ')', found '}' (and 3 more errors)
+    architecture_preparation_test.go:251: literalHTTP=3000
+    architecture_preparation_test.go:252: REPAIR mode=exports-root
+    architecture_preparation_test.go:284: stage=source-classify elapsed=247.375µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=150.460875ms
+    architecture_preparation_test.go:253: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=452.375µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.140917ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=364.958µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=7.5µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.936334ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=108.8835ms
+    architecture_preparation_test.go:253: stage=total elapsed=287.512667ms
+    architecture_preparation_test.go:253: mode=exports-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:257: stage=install elapsed=1.428333ms pid=75988
+    architecture_preparation_test.go:257: literalHTTP=4000
+    architecture_preparation_test.go:236: SAMPLE mode=retained-root iteration=1
+    architecture_preparation_test.go:284: stage=source-classify elapsed=298.25µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=125.426541ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=498.5µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.178459ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=387.916µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=7.25µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.802542ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=110.091542ms
+    architecture_preparation_test.go:237: stage=total elapsed=263.723541ms
+    architecture_preparation_test.go:237: mode=retained-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.379625ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=1000
+    architecture_preparation_test.go:236: SAMPLE mode=retained-root iteration=2
+    architecture_preparation_test.go:284: stage=source-classify elapsed=287.084µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=128.214041ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=871.709µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.199375ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=387.333µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=7µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=26.00275ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=109.807125ms
+    architecture_preparation_test.go:237: stage=total elapsed=266.819834ms
+    architecture_preparation_test.go:237: mode=retained-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.616666ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=2000
+    architecture_preparation_test.go:236: SAMPLE mode=retained-root iteration=3
+    architecture_preparation_test.go:284: stage=source-classify elapsed=291.625µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=131.018125ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=520.625µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.400625ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=386.584µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=7.5µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.193708ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=111.424333ms
+    architecture_preparation_test.go:237: stage=total elapsed=270.261917ms
+    architecture_preparation_test.go:237: mode=retained-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=2.179625ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=3000
+    architecture_preparation_test.go:249: CONTROL mode=retained-root syntax-rejected=/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestArchitectureGoPreparation358376529/001/application/generated/links/onzggl3sn52xizltf5xxezdfojzq/orders.remote.go:11:85: expected ')', found '}' (and 3 more errors)
+    architecture_preparation_test.go:251: literalHTTP=3000
+    architecture_preparation_test.go:252: REPAIR mode=retained-root
+    architecture_preparation_test.go:284: stage=source-classify elapsed=244.292µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=137.455916ms
+    architecture_preparation_test.go:253: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=530.542µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.141292ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=379.583µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=7.375µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.840375ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=109.071792ms
+    architecture_preparation_test.go:253: stage=total elapsed=274.689458ms
+    architecture_preparation_test.go:253: mode=retained-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:257: stage=install elapsed=1.521875ms pid=75988
+    architecture_preparation_test.go:257: literalHTTP=4000
+    architecture_preparation_test.go:236: SAMPLE mode=retained-view iteration=1
+    architecture_preparation_test.go:284: stage=source-classify elapsed=299.875µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=131.98525ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=471.416µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.118167ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=369.625µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=7.917µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.642208ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=110.547833ms
+    architecture_preparation_test.go:237: stage=total elapsed=270.462458ms
+    architecture_preparation_test.go:237: mode=retained-view packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.354375ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=1000
+    architecture_preparation_test.go:236: SAMPLE mode=retained-view iteration=2
+    architecture_preparation_test.go:284: stage=source-classify elapsed=331.708µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=2.296417ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=404.833µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.143375ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=302.667µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=8.167µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.98625ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=107.772125ms
+    architecture_preparation_test.go:237: stage=total elapsed=138.261417ms
+    architecture_preparation_test.go:237: mode=retained-view packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.707125ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=2000
+    architecture_preparation_test.go:236: SAMPLE mode=retained-view iteration=3
+    architecture_preparation_test.go:284: stage=source-classify elapsed=301.125µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=1.6325ms
+    architecture_preparation_test.go:237: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=402.333µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.132ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=349.542µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=6.458µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.933125ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=107.635209ms
+    architecture_preparation_test.go:237: stage=total elapsed=137.409458ms
+    architecture_preparation_test.go:237: mode=retained-view packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:241: stage=install elapsed=1.394708ms pid=75988
+    architecture_preparation_test.go:241: literalHTTP=3000
+    architecture_preparation_test.go:249: CONTROL mode=retained-view syntax-rejected=/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestArchitectureGoPreparation358376529/001/application/generated/links/onzggl3sn52xizltf5xxezdfojzq/orders.remote.go:11:85: expected ')', found '}' (and 3 more errors)
+    architecture_preparation_test.go:251: literalHTTP=3000
+    architecture_preparation_test.go:252: REPAIR mode=retained-view
+    architecture_preparation_test.go:284: stage=source-classify elapsed=259.5µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=1.719833ms
+    architecture_preparation_test.go:253: dependencyAnalysisLiteral=0
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=413.125µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.136917ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=323.625µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=6.458µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.758917ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=110.443708ms
+    architecture_preparation_test.go:253: stage=total elapsed=140.078667ms
+    architecture_preparation_test.go:253: mode=retained-view packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:257: stage=install elapsed=1.597125ms pid=75988
+    architecture_preparation_test.go:257: literalHTTP=4000
+    architecture_preparation_test.go:266: CONTROL stage=dependency-archive-refresh elapsed=151.294542ms
+    architecture_preparation_test.go:268: DEPENDENCY mode=baseline-full-overlay
+    architecture_preparation_test.go:284: stage=source-classify elapsed=592.792µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=754.235291ms
+    architecture_preparation_test.go:269: dependencyAnalysisLiteral=77
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=467.542µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.118ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=339.458µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=7.375µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=27.151209ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=134.327083ms
+    architecture_preparation_test.go:269: stage=total elapsed=918.256208ms
+    architecture_preparation_test.go:269: mode=baseline-full-overlay packages=261 syntaxFiles=1487 rootSyntaxFiles=3
+    architecture_preparation_test.go:273: stage=install elapsed=1.94025ms pid=75988
+    architecture_preparation_test.go:273: literalHTTP=5077
+    architecture_preparation_test.go:268: DEPENDENCY mode=exports-root
+    architecture_preparation_test.go:284: stage=source-classify elapsed=259.541µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=145.038584ms
+    architecture_preparation_test.go:269: dependencyAnalysisLiteral=77
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=726.166µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.597ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=350.292µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=8.833µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.925292ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=108.653292ms
+    architecture_preparation_test.go:269: stage=total elapsed=282.573833ms
+    architecture_preparation_test.go:269: mode=exports-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:273: stage=install elapsed=1.616041ms pid=75988
+    architecture_preparation_test.go:273: literalHTTP=5077
+    architecture_preparation_test.go:268: DEPENDENCY mode=retained-root
+    architecture_preparation_test.go:284: stage=source-classify elapsed=461.666µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=141.38875ms
+    architecture_preparation_test.go:269: dependencyAnalysisLiteral=77
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=502.084µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.252ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=331.083µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=6.5µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=25.675583ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=116.421042ms
+    architecture_preparation_test.go:269: stage=total elapsed=286.053708ms
+    architecture_preparation_test.go:269: mode=retained-root packages=261 syntaxFiles=3 rootSyntaxFiles=3
+    architecture_preparation_test.go:273: stage=install elapsed=1.414417ms pid=75988
+    architecture_preparation_test.go:273: literalHTTP=5077
+    architecture_preparation_test.go:268: DEPENDENCY mode=retained-view
+    architecture_preparation_test.go:284: stage=source-classify elapsed=252.333µs
+    architecture_preparation_test.go:284: stage=packages.Load elapsed=5.278083ms
+    architecture_preparation_test.go:269: dependencyAnalysisLiteral=77
+    architecture_preparation_test.go:284: stage=typed-classify elapsed=433.125µs
+    architecture_preparation_test.go:284: stage=Lower elapsed=1.38275ms
+    architecture_preparation_test.go:284: stage=candidate-file-write elapsed=425.292µs
+    architecture_preparation_test.go:284: stage=numericRevision elapsed=8.542µs
+    architecture_preparation_test.go:284: stage=go-tool-compile elapsed=26.260333ms
+    architecture_preparation_test.go:284: stage=artifact-identity elapsed=105.653542ms
+    architecture_preparation_test.go:269: stage=total elapsed=139.711208ms
+    architecture_preparation_test.go:269: mode=retained-view packages=261 syntaxFiles=4 rootSyntaxFiles=3
+    architecture_preparation_test.go:273: stage=install elapsed=1.717667ms pid=75988
+    architecture_preparation_test.go:273: literalHTTP=5077
+    architecture_preparation_test.go:275: SESSION stats={MetadataLoads:5 PackageChecks:5 PackageHits:0 FileReads:0 FileParses:15 ExportImports:20 FallbackLoads:0 UniverseEvictions:2 MetadataHits:0}
+    architecture_preparation_test.go:276: VIEW stats={MetadataLoads:1 PackageChecks:6 PackageHits:0 FileReads:0 FileParses:16 ExportImports:4 FallbackLoads:0 UniverseEvictions:2 MetadataHits:4}
+--- PASS: TestArchitectureGoPreparation (11.41s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/hotreload	11.784s

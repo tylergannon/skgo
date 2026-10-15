@@ -1,0 +1,97 @@
+=== RUN   TestRendererArchitecture
+    renderer_test.go:270: /full wall=772.5155ms vite={"milliseconds":772.0957500000001}
+    renderer_test.go:271: POOL name=bundle.js artifact_bytes=123897 prepare_us=5654
+    renderer_test.go:272: RENDER stage=artifact-initial elapsed_us=231 module_calls=0 wire_bytes=0 runtimes=1 expected="Component A: Dependency A"
+    renderer_test.go:273: /runtime wall=111.832792ms vite={"milliseconds":111.44699999999989}
+    renderer_test.go:274: POOL name=runtime.js artifact_bytes=66349 prepare_us=3012
+    renderer_test.go:275: RENDER stage=live-initial-cold elapsed_us=347808 module_calls=410 wire_bytes=3607330 runtimes=1 expected="Component A: Dependency A"
+    renderer_test.go:276: RENDER stage=live-initial-warm elapsed_us=261 module_calls=1 wire_bytes=25 runtimes=1 expected="Component A: Dependency A"
+    renderer_test.go:277: HTTP stage=live-initial-concurrent requests=8 pool_created=2 pool_size=2 literal="Component A: Dependency A"
+    renderer_test.go:278: HTTP stage=artifact-initial-concurrent requests=8 pool_created=2 pool_size=2 literal="Component A: Dependency A"
+    renderer_test.go:279: POOL name=retained.js artifact_bytes=66636 prepare_us=2087
+    renderer_test.go:280: RENDER stage=retained-initial elapsed_us=145842 module_calls=411 wire_bytes=3607485 runtimes=1 expected="Component A: Dependency A"
+    renderer_test.go:281: HTTP stage=retained-initial-concurrent requests=8 pool_created=2 pool_size=2 literal="Component A: Dependency A"
+    renderer_test.go:285: RENDER stage=retained-dependency-1 elapsed_us=148292 module_calls=411 wire_bytes=3607678 runtimes=2 expected="Component A: Dependency 1"
+    renderer_test.go:286: HTTP stage=retained-dependency-1-concurrent requests=8 pool_created=2 pool_size=2 literal="Component A: Dependency 1"
+    renderer_test.go:287: /update wall=40.593708ms vite={"milliseconds":40.26175000000012}
+    renderer_test.go:288: POOL name=bundle.js artifact_bytes=123897 prepare_us=3205
+    renderer_test.go:289: RENDER stage=artifact-dependency-1 elapsed_us=187 module_calls=0 wire_bytes=0 runtimes=1 expected="Component A: Dependency 1"
+    renderer_test.go:290: POOL name=runtime.js artifact_bytes=66349 prepare_us=2081
+    renderer_test.go:291: RENDER stage=live-dependency-1 elapsed_us=143457 module_calls=410 wire_bytes=3607463 runtimes=1 expected="Component A: Dependency 1"
+    renderer_test.go:292: RENDER stage=live-warm-1 elapsed_us=299 module_calls=1 wire_bytes=25 runtimes=1 expected="Component A: Dependency 1"
+    renderer_test.go:285: RENDER stage=retained-dependency-2 elapsed_us=147767 module_calls=411 wire_bytes=3607678 runtimes=2 expected="Component A: Dependency 2"
+    renderer_test.go:286: HTTP stage=retained-dependency-2-concurrent requests=8 pool_created=2 pool_size=2 literal="Component A: Dependency 2"
+    renderer_test.go:287: /update wall=39.379875ms vite={"milliseconds":39.07579100000021}
+    renderer_test.go:288: POOL name=bundle.js artifact_bytes=123897 prepare_us=3271
+    renderer_test.go:289: RENDER stage=artifact-dependency-2 elapsed_us=196 module_calls=0 wire_bytes=0 runtimes=1 expected="Component A: Dependency 2"
+    renderer_test.go:290: POOL name=runtime.js artifact_bytes=66349 prepare_us=2049
+    renderer_test.go:291: RENDER stage=live-dependency-2 elapsed_us=146738 module_calls=410 wire_bytes=3607463 runtimes=1 expected="Component A: Dependency 2"
+    renderer_test.go:292: RENDER stage=live-warm-2 elapsed_us=304 module_calls=1 wire_bytes=25 runtimes=1 expected="Component A: Dependency 2"
+    renderer_test.go:285: RENDER stage=retained-dependency-3 elapsed_us=144274 module_calls=411 wire_bytes=3607678 runtimes=2 expected="Component A: Dependency 3"
+    renderer_test.go:286: HTTP stage=retained-dependency-3-concurrent requests=8 pool_created=2 pool_size=2 literal="Component A: Dependency 3"
+    renderer_test.go:287: /update wall=39.464542ms vite={"milliseconds":39.154583}
+    renderer_test.go:288: POOL name=bundle.js artifact_bytes=123897 prepare_us=3243
+    renderer_test.go:289: RENDER stage=artifact-dependency-3 elapsed_us=205 module_calls=0 wire_bytes=0 runtimes=1 expected="Component A: Dependency 3"
+    renderer_test.go:290: POOL name=runtime.js artifact_bytes=66349 prepare_us=2059
+    renderer_test.go:291: RENDER stage=live-dependency-3 elapsed_us=149810 module_calls=410 wire_bytes=3607463 runtimes=1 expected="Component A: Dependency 3"
+    renderer_test.go:292: RENDER stage=live-warm-3 elapsed_us=289 module_calls=1 wire_bytes=25 runtimes=1 expected="Component A: Dependency 3"
+    renderer_test.go:285: RENDER stage=retained-dependency-4 elapsed_us=142590 module_calls=411 wire_bytes=3607678 runtimes=2 expected="Component A: Dependency 4"
+    renderer_test.go:286: HTTP stage=retained-dependency-4-concurrent requests=8 pool_created=2 pool_size=2 literal="Component A: Dependency 4"
+    renderer_test.go:287: /update wall=42.713041ms vite={"milliseconds":42.29866600000014}
+    renderer_test.go:288: POOL name=bundle.js artifact_bytes=123897 prepare_us=3351
+    renderer_test.go:289: RENDER stage=artifact-dependency-4 elapsed_us=196 module_calls=0 wire_bytes=0 runtimes=1 expected="Component A: Dependency 4"
+    renderer_test.go:290: POOL name=runtime.js artifact_bytes=66349 prepare_us=2045
+    renderer_test.go:291: RENDER stage=live-dependency-4 elapsed_us=142231 module_calls=410 wire_bytes=3607463 runtimes=1 expected="Component A: Dependency 4"
+    renderer_test.go:292: RENDER stage=live-warm-4 elapsed_us=294 module_calls=1 wire_bytes=25 runtimes=1 expected="Component A: Dependency 4"
+    renderer_test.go:298: RENDER stage=retained-import-edge elapsed_us=149625 module_calls=414 wire_bytes=3609522 runtimes=2 expected="New imported component: 69"
+    renderer_test.go:299: /update wall=39.280666ms vite={"milliseconds":39.12854200000038}
+    renderer_test.go:300: POOL name=bundle.js artifact_bytes=124053 prepare_us=3289
+    renderer_test.go:301: RENDER stage=artifact-import-edge elapsed_us=197 module_calls=0 wire_bytes=0 runtimes=1 expected="New imported component: 69"
+    renderer_test.go:302: POOL name=runtime.js artifact_bytes=66349 prepare_us=2141
+    renderer_test.go:303: RENDER stage=live-import-edge elapsed_us=150010 module_calls=413 wire_bytes=3609305 runtimes=1 expected="New imported component: 69"
+    renderer_test.go:304: HTTP stage=live-import-edge-concurrent requests=8 pool_created=2 pool_size=2 literal="Component B: Dependency 4"
+    renderer_test.go:305: HTTP stage=artifact-import-edge-concurrent requests=8 pool_created=2 pool_size=2 literal="Component B: Dependency 4"
+    renderer_test.go:318: EXPECTED_FAILURE artifact status=500 diagnostic=Build failed with 1 error:
+        
+        [31m[PARSE_ERROR] [0mUnexpected token
+           [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/routes/message.js:1:22 [38;5;246m][0m
+           [38;5;246m│[0m
+         [38;5;246m1 │[0m [38;5;249me[0m[38;5;249mx[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249ml[0m[38;5;249ma[0m[38;5;249mb[0m[38;5;249me[0m[38;5;249ml[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0m;
+         [38;5;240m  │[0m                      ┬  
+         [38;5;240m  │[0m                      ╰── 
+        [38;5;246m───╯[0m
+        
+            at aggregateBindingErrorsIntoJsError (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/error-C7pxws0W.mjs:48:18)
+            at unwrapBindingResult (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/error-C7pxws0W.mjs:18:128)
+            at #build (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/rolldown-Bue0gNT5.mjs:133:34)
+            at async buildEnvironment (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:39809:66)
+            at async Object.build (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:40230:19)
+            at async Object.build (/Users/tyler/.codex/worktrees/5f35/skgo/internal/adapter/skgo-adapter/env.js:381:3)
+            at async file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.vite-temp/vite.config.js.timestamp-1792091224129-d9b074054e2d08.mjs:409:37
+    renderer_test.go:319: RENDER stage=artifact-last-good-after-error elapsed_us=251 module_calls=0 wire_bytes=0 runtimes=2 expected="Component B: Dependency 4"
+    renderer_test.go:320: POOL name=runtime.js artifact_bytes=66349 prepare_us=2392
+    renderer_test.go:325: EXPECTED_FAILURE live module fetch: RolldownError: Parse failure: Parse failed with 1 error:
+        Unexpected token
+        1: export const label = ;
+                                ^
+        At file: /src/routes/message.js:1:21
+            at error (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/logs-D6uA606S.mjs:166:24)
+            at normalizeParseError (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/parse-ast-index.mjs:25:9)
+            at wrap (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/parse-ast-index.mjs:5:39)
+            at parseAstAsync (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/parse-ast-index.mjs:54:9)
+            at async ssrTransformScript (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:21012:9)
+            at async loadAndTransform (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:25385:64)
+            at async fetchModule (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:41088:15)
+            at async file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.vite-temp/vite.config.js.timestamp-1792091224129-d9b074054e2d08.mjs:425:16
+    renderer_test.go:329: RETAINED_LIVE_AFTER_ERROR err=<nil> body="<!--[--><!--[--><!--[0--><!--[--><main><!--[--><!--[-1--><!--[--><h1>Component B: Dependency 4</h1><section>New imported component: 69</section><!----><!--]--><!--]--><!--]--><!----></main><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->"
+    renderer_test.go:331: /update wall=39.815875ms vite={"milliseconds":39.64495799999986}
+    renderer_test.go:332: POOL name=bundle.js artifact_bytes=124053 prepare_us=3427
+    renderer_test.go:333: RENDER stage=artifact-repair elapsed_us=207 module_calls=0 wire_bytes=0 runtimes=1 expected="Component B: Repaired 901"
+    renderer_test.go:334: POOL name=runtime.js artifact_bytes=66349 prepare_us=2241
+    renderer_test.go:335: RENDER stage=live-repair elapsed_us=156578 module_calls=413 wire_bytes=3609299 runtimes=1 expected="Component B: Repaired 901"
+    renderer_test.go:336: HTTP stage=live-repair-concurrent requests=8 pool_created=2 pool_size=2 literal="Component B: Repaired 901"
+    renderer_test.go:337: HTTP stage=artifact-repair-concurrent requests=8 pool_created=2 pool_size=2 literal="Component B: Repaired 901"
+    renderer_test.go:344: RESOURCE final_go_heap_bytes=92853904 heap_objects=308053 goroutines=3 module_calls_total=9014 module_bytes_total=78271685 (single observation, not bounded-retention proof)
+--- PASS: TestRendererArchitecture (5.45s)
+PASS
+ok  	github.com/tylergannon/skgo/ephemeral/experiments/20261015-architecture/renderer	5.630s

@@ -1,0 +1,4 @@
+correction: Vite fetchModule externalizes bare imports with importer independently of noExternal. An OXC lowering helper resolved through Vite's pluginContainer to a virtual ID and fetched as already resolved allowed actual upstream ModuleRunner to render Kit in goja; do not infer a need for a Go module graph from missing require.
+correction: A fresh-runner graph import is not a retained-runner update measurement. Actual upstream HMR was tested separately; this fixture emits full-reload and upstream clears evaluated modules, so both perform a full closure import here.
+friction: Symlinking installed node_modules shares Vite's default optimizer cache across fixtures. Set explicit fixture-local cacheDir for every created server before comparing independent runs.
+correction: ssr.Engine.Created counts lifetime runtime construction. A failed render discards one VM and a healthy replacement increases Created without exceeding the pool's active-slot bound.
