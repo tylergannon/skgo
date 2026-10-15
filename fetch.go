@@ -426,6 +426,9 @@ func (f *requestFetcher) dispatch(ctx context.Context, src fetchSource, request 
 // if the handler is still running; the handler's own context is cancelled too,
 // so a well-behaved one stops.
 func (f *requestFetcher) serve(ctx context.Context, src fetchSource, request *http.Request) (*http.Response, error) {
+	if development, ok := ctx.Value(devKitTransportKey{}).(*NativeDevelopment); ok {
+		return development.kitFetch(ctx, src.request, request)
+	}
 	if f.handler == nil {
 		return nil, errors.New("skgo: no handler is configured to answer a fetch of this app's own routes")
 	}

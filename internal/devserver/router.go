@@ -83,6 +83,8 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		p.SetURL(upstream.URL)
 		p.Out.Host = p.In.Host
 		p.SetXForwarded()
+		p.Out.Header.Del("X-Skgo-Internal-Fetch")
+		p.Out.Header.Del("X-Skgo-Fetch-Depth")
 		// Headers from the public client are untrusted. Derive this from the socket.
 		address, _, err := net.SplitHostPort(p.In.RemoteAddr)
 		if err != nil {

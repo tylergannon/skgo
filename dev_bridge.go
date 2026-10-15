@@ -26,13 +26,18 @@ type devStreamingLoadKey struct{}
 // retained; Kit, rather than an embedded engine, supplies the page response.
 type NativeDevelopment struct {
 	fs.FS
-	renderer *SSR
-	manifest Manifest
-	secret   string
+	renderer     *SSR
+	manifest     Manifest
+	secret       string
+	kitTransport *http.Transport
 }
 
-func NewNativeDevelopment(build fs.FS, secret string) *NativeDevelopment {
-	return &NativeDevelopment{FS: build, secret: secret}
+func NewNativeDevelopment(build fs.FS, secret string, kitSocket ...string) *NativeDevelopment {
+	d := &NativeDevelopment{FS: build, secret: secret}
+	if len(kitSocket) > 0 {
+		d.kitTransport = nativeKitTransport(kitSocket[0])
+	}
+	return d
 }
 
 // Handler mounts private callbacks beside the application's browser remote
@@ -55,7 +60,8 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 	sessions := &prerenderRequests{ctx: ctx, development: true, entries: map[string]*prerenderRequest{}, options: PrerenderServiceOptions{
 		BindRequest: func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				app.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), devContinuationKey{}, next)))
+				ctx := context.WithValue(r.Context(), devKitTransportKey{}, d)
+				app.ServeHTTP(w, r.WithContext(context.WithValue(ctx, devContinuationKey{}, next)))
 			})
 		},
 		Matchers: s.loads.cfg.Matchers, FilterSerializedResponseHeaders: s.filterSerializedResponseHeaders,
@@ -64,7 +70,7 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 	callbacks := prerenderHandler(d.secret, s.loads.cfg.Transport, loads, remotes, nil, sessions)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/_skgo/dev/") {
-			app.ServeHTTP(w, r)
+			app.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), devKitTransportKey{}, d)))
 			return
 		}
 		if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+d.secret)) != 1 {
@@ -98,7 +104,7 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 			raw, _ := json.Marshal(input)
 			r.Body = io.NopCloser(bytes.NewReader(raw))
 		}
-		if path == "/load" || path == "/action" || path == "/endpoint" {
+		if path == "/load" || path == "/action" || path == "/endpoint" || path == "/remote" {
 			raw, err := io.ReadAll(r.Body)
 			if err != nil {
 				http.Error(w, err.Error(), 400)
@@ -118,7 +124,12 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 			}
 			defer entry.active.Done()
 			ctx, cancel := context.WithCancel(entry.request.Context())
-			stop := context.AfterFunc(r.Context(), func() { cancel(); entry.cancel() })
+			stop := context.AfterFunc(r.Context(), func() {
+				cancel()
+				if path != "/remote" {
+					entry.cancel()
+				}
+			})
 			defer func() { stop(); cancel() }()
 			ctx = context.WithValue(ctx, prerenderRequestKey{}, entry.request)
 			ctx = context.WithValue(ctx, devRendererKey{}, s)
@@ -127,7 +138,9 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 				entry.endpoints.Intercept(http.NotFoundHandler()).ServeHTTP(w, request)
 				return
 			}
-			if path == "/action" {
+			if path == "/remote" {
+				err = d.remote(ctx, raw, w)
+			} else if path == "/action" {
 				err = d.action(ctx, raw, w)
 			} else {
 				w.Header().Set("Content-Type", "application/x-ndjson")
@@ -144,7 +157,14 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 		}
 		callbacks.ServeHTTP(w, r)
 	})
-	return handler, func() { cancel(); exchanges.close(); sessions.close() }, nil
+	return handler, func() {
+		cancel()
+		exchanges.close()
+		sessions.close()
+		if d.kitTransport != nil {
+			d.kitTransport.CloseIdleConnections()
+		}
+	}, nil
 }
 
 func (d *NativeDevelopment) response(w http.ResponseWriter, r *http.Request, sessions *prerenderRequests) {

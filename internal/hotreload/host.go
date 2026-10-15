@@ -521,7 +521,7 @@ func injectCarry(name string, body []byte) ([]byte, error) {
 }
 func hostSource(app, function string, paths []string) ([]byte, error) {
 	var b strings.Builder
-	b.WriteString("package main\nimport(\"encoding/json\";\"fmt\";\"net\";\"net/http\";\"os\";\"strings\";\"sync\";\"io\";\"io/fs\"\n")
+	b.WriteString("package main\nimport(\"encoding/json\";\"fmt\";\"net\";\"net/http\";\"os\";\"strings\";\"sync\";\"io\";\"io/fs\";\"path/filepath\"\n")
 	fmt.Fprintf(&b, "app %q\n", app)
 	b.WriteString("skgo \"github.com/tylergannon/skgo\"\n")
 	if len(paths) > 0 {
@@ -537,7 +537,7 @@ func hostSource(app, function string, paths []string) ([]byte, error) {
 	for i := range paths {
 		fmt.Fprintf(&b, "if e:=hot%d.SkgoHotInitSymbols(32,symbols);e!=nil{fail(e);return}\n", i)
 	}
-	fmt.Fprintf(&b, "origin:=os.Getenv(\"SKGO_DEV_ORIGIN\");var mu sync.RWMutex;var handler http.Handler;var nativeClose func();defer func(){if nativeClose!=nil{nativeClose()}}();reload:=func(dist string)error{var buildfs fs.FS=os.DirFS(dist);var native *skgo.NativeDevelopment;if os.Getenv(\"SKGO_DEV_NATIVE_KIT\")==\"true\"{native=skgo.NewNativeDevelopment(buildfs,os.Getenv(\"SKGO_DEV_SERVICE_SECRET\"));buildfs=native};h,e:=app.%s(buildfs,origin);if e!=nil{return e};if native!=nil{var close func();h,close,e=native.Handler(h);if e!=nil{return e};if nativeClose!=nil{nativeClose()};nativeClose=close};", function)
+	fmt.Fprintf(&b, "origin:=os.Getenv(\"SKGO_DEV_ORIGIN\");var mu sync.RWMutex;var handler http.Handler;var nativeClose func();defer func(){if nativeClose!=nil{nativeClose()}}();reload:=func(dist string)error{var buildfs fs.FS=os.DirFS(dist);var native *skgo.NativeDevelopment;if os.Getenv(\"SKGO_DEV_NATIVE_KIT\")==\"true\"{native=skgo.NewNativeDevelopment(buildfs,os.Getenv(\"SKGO_DEV_SERVICE_SECRET\"),filepath.Join(filepath.Dir(os.Getenv(\"SKGO_DEV_SOCKET\")),\"vite.sock\"));buildfs=native};h,e:=app.%s(buildfs,origin);if e!=nil{return e};if native!=nil{var close func();h,close,e=native.Handler(h);if e!=nil{return e};if nativeClose!=nil{nativeClose()};nativeClose=close};", function)
 	for i := range paths {
 		fmt.Fprintf(&b, "h=hot%d.SkgoHotHandler(h);", i)
 	}

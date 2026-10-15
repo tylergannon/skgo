@@ -44,6 +44,7 @@ type prerenderRequestInput struct {
 	IsSubRequest  bool              `json:"isSubRequest"`
 	Manifest      Manifest          `json:"manifest"`
 	Params        map[string]string `json:"params"`
+	FetchDepth    int               `json:"fetchDepth"`
 	ClientAddress string            `json:"clientAddress"`
 }
 type prerenderResponse struct {
@@ -160,7 +161,15 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 		return prerenderRequestAnswer{}, err
 	}
 	if input.IsSubRequest {
-		request = request.WithContext(withFetchDepth(request.Context(), 1))
+		depth := 1
+		if s.development && input.FetchDepth > 0 {
+			depth = input.FetchDepth
+		}
+		if depth > maxFetchDepth {
+			cancel()
+			return prerenderRequestAnswer{}, fmt.Errorf("skgo: maximum internal fetch depth exceeded")
+		}
+		request = request.WithContext(withFetchDepth(request.Context(), depth))
 	}
 	request.RemoteAddr = input.ClientAddress
 	request.Header = http.Header{}

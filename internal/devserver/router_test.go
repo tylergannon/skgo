@@ -41,6 +41,10 @@ func TestPublicRouterUsesKitForPagesDataActionsEndpointsAndGoForRemotes(t *testi
 		fmt.Fprintf(w, "GO731 %s %s %s %s", r.Method, r.Host, r.Header.Get("Cookie"), body)
 	}))
 	front, _ := privateHTTP(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Skgo-Internal-Fetch") != "" || r.Header.Get("X-Skgo-Fetch-Depth") != "" {
+			http.Error(w, "forged private fetch metadata", 500)
+			return
+		}
 		fmt.Fprintf(w, "KIT419 %s %s", r.URL.RequestURI(), r.Header.Get("X-Skgo-Client-Address"))
 	}))
 	route := &router{}
@@ -80,6 +84,8 @@ func TestPublicRouterUsesKitForPagesDataActionsEndpointsAndGoForRemotes(t *testi
 	for _, path := range []string{"/orders", "/orders/__data.json", "/orders?/save", "/api/endpoint", "/@vite/client"} {
 		req, _ := http.NewRequest("GET", public.URL+path, nil)
 		req.Header.Set("X-Skgo-Client-Address", "FORGED_882")
+		req.Header.Set("X-Skgo-Internal-Fetch", "FORGED_SECRET_191")
+		req.Header.Set("X-Skgo-Fetch-Depth", "9")
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatal(err)
