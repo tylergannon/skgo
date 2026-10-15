@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
 const outputDir = '.features-gen';
+const mode = process.env.SKGO_E2E_MODE ?? 'prod';
 
 // Every project collects canonical generated names and nothing else:
 // `<outputDir>/features/**/<name>.feature.spec.js`, exactly what bddgen writes
@@ -43,9 +44,9 @@ export default defineConfig({
 	// leaves nothing behind.
 	reporter: [
 		['list'],
-		['html', { open: 'never', outputFolder: 'playwright-report/prod' }]
+		['html', { open: 'never', outputFolder: `playwright-report/${mode}` }]
 	],
-	outputDir: 'test-results/prod',
+	outputDir: `test-results/${mode}`,
 	use: {
 		baseURL: process.env.BASE_URL,
 		trace: 'retain-on-failure',

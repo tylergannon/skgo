@@ -21,14 +21,7 @@ type fixture struct {
 
 func newFixture(t *testing.T, installed bool) fixture {
 	t.Helper()
-	pnpm, err := exec.LookPath("pnpm")
-	if err != nil {
-		t.Fatalf("native pnpm 12.9.1 is required for config behavior tests: %v", err)
-	}
-	version, err := exec.Command(pnpm, "--version").CombinedOutput()
-	if err != nil || strings.TrimSpace(string(version)) != pnpmVersion {
-		t.Fatalf("native pnpm version = %q, %v; want %s", strings.TrimSpace(string(version)), err, pnpmVersion)
-	}
+	pnpm := mustPNPM(t)
 	web := filepath.Join(t.TempDir(), "web")
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
@@ -813,9 +806,13 @@ func getNativePatchedDependencies(t *testing.T, f fixture) map[string]string {
 
 func mustPNPM(t *testing.T) string {
 	t.Helper()
-	path, err := exec.LookPath("pnpm")
+	output, err := exec.Command("vp", "env", "exec", "--package-manager", "pnpm@"+pnpmVersion, "which", "pnpm").CombinedOutput()
 	if err != nil {
-		t.Fatal("native pnpm 12.9.1 is required")
+		t.Fatalf("resolve VitePlus-managed pnpm: %v: %s", err, output)
+	}
+	path := strings.TrimSpace(string(output))
+	if !filepath.IsAbs(path) {
+		t.Fatalf("VitePlus returned invalid pnpm path %q", path)
 	}
 	return path
 }

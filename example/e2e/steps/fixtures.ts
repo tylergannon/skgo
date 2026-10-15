@@ -187,10 +187,11 @@ export const test = base.extend<{
 	}
 });
 
-/** Requires responses from the built Go production handler. */
-export function expectProduction(response: { headers(): Record<string, string> }): void {
+/** Requires responses from the explicitly selected running server mode. */
+export function expectServerMode(response: { headers(): Record<string, string> }): void {
 	const observed = response.headers()['x-skgo-mode'];
-	expect(observed, `expected production handler, X-Skgo-Mode was ${JSON.stringify(observed)}`).toBe('prod');
+	const mode = process.env.SKGO_E2E_MODE ?? 'prod';
+	expect(observed, `expected ${mode} handler, X-Skgo-Mode was ${JSON.stringify(observed)}`).toBe(mode);
 }
 
 /** Waits for a real delegated handler, which inert SSR markup cannot have. */

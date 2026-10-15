@@ -1,6 +1,6 @@
 import { createBdd } from 'playwright-bdd';
 import type { Page, Response } from '@playwright/test';
-import { booted, expect, expectProduction, hydrated, test } from './fixtures';
+import { booted, expect, expectServerMode, hydrated, test } from './fixtures';
 
 const { Given, When, Then } = createBdd(test);
 const lastPost = new WeakMap<Page, Response>();
@@ -18,7 +18,7 @@ async function post(page: Page, path: string, submit: () => Promise<void>, nativ
 	const answer = await response;
 	if (documentLoaded) await documentLoaded;
 	if (dataLoaded) await dataLoaded;
-	expectProduction(answer);
+	expectServerMode(answer);
 	lastPost.set(page, answer);
 	return answer;
 }
@@ -55,7 +55,7 @@ async function assertShell(response: Response, outcome: Outcome) {
 
 Given('I open the Actions page without client JavaScript', async ({ page }) => {
 	const response = await page.goto(paths.client);
-	expectProduction(response!);
+	expectServerMode(response!);
 	await expect(page.getByTestId('no-client-title')).toHaveText('Actions without client JavaScript');
 	await expect(page.getByTestId('no-client-saved-name')).toHaveText('Ada Lovelace');
 	await expect(page.getByTestId('no-client-saved-email')).toHaveText('ada@example.test');
@@ -156,7 +156,7 @@ Then('the no-client error branch renders the safe 500 section error with its own
 
 Given('I open the client-rendered Actions page after boot', async ({ page }) => {
 	const response = await page.goto(paths.ssr);
-	expectProduction(response!);
+	expectServerMode(response!);
 	expect(response!.status()).toBe(200);
 	const body = await response!.text();
 	expect(body).not.toContain('data-testid="no-ssr-title"');

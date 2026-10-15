@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, expectProduction, hydrated, test } from './fixtures';
+import { expect, expectServerMode, hydrated, test } from './fixtures';
 import { resolve } from 'node:path';
 import type { Page, Response } from '@playwright/test';
 
@@ -11,7 +11,7 @@ async function send(page: Page, formName: string, buttonName: string, submission
 	const response = page.waitForResponse((candidate) => candidate.request().method() === 'POST' && new URL(candidate.url()).pathname === '/actions' && new URL(candidate.url()).searchParams.has(formName));
 	await page.getByTestId(`${submission === 'Kit enhancement' ? 'enhanced' : 'native'}-${formName === '/upload' ? 'upload' : 'encoding'}-form`).getByRole('button', { name: buttonName }).click();
 	const answer = await response;
-	expectProduction(answer);
+	expectServerMode(answer);
 	expect(answer.status()).toBe(200);
 	expect(answer.request().headers()['x-sveltekit-action'] === 'true').toBe(submission === 'Kit enhancement');
 	expect(answer.request().resourceType() === 'document').toBe(submission !== 'Kit enhancement');

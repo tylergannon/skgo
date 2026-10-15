@@ -650,6 +650,10 @@ func runPnpm(options Options, dir string, args ...string) ([]byte, error) {
 	runner := options.run
 	if runner == nil {
 		runner = func(dir, name string, args ...string) ([]byte, error) {
+			if options.PNPM == "" {
+				args = append([]string{"env", "exec", "--package-manager", "pnpm@" + pnpmVersion, "pnpm"}, args...)
+				name = "vp"
+			}
 			cmd := exec.Command(name, args...)
 			cmd.Dir = dir
 			return cmd.CombinedOutput()
@@ -662,7 +666,7 @@ func runPnpm(options Options, dir string, args ...string) ([]byte, error) {
 	const bootstrapMode = "--pm-on-fail=ignore"
 	versionOutput, err := runner(dir, name, bootstrapMode, "--version")
 	if err != nil {
-		return versionOutput, fmt.Errorf("pnpm is required (install VitePlus/pnpm 12.9.1): %w%s", err, formatOutput(versionOutput))
+		return versionOutput, fmt.Errorf("VitePlus could not run its supported pnpm: %w%s", err, formatOutput(versionOutput))
 	}
 	if strings.TrimSpace(string(versionOutput)) != pnpmVersion {
 		return versionOutput, fmt.Errorf("pnpm %s is required, found %q", pnpmVersion, strings.TrimSpace(string(versionOutput)))
