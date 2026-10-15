@@ -95,7 +95,11 @@ func (d *NativeDevelopment) remote(ctx context.Context, raw []byte, w http.Respo
 		}
 		// Browser remote HTTP bypasses Kit. This callback is the unenhanced page
 		// POST; reuse its Go execution with files, keys and empty requested sets.
-		clone := request.Clone(ctx)
+		caller, err := rs.matchCaller(request)
+		if err != nil {
+			return answer(nil, err)
+		}
+		clone := request.Clone(callerContext(ctx, caller))
 		if request.GetBody != nil {
 			body, err := request.GetBody()
 			if err != nil {

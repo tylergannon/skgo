@@ -372,12 +372,44 @@ function responseFrom(value, method) {
     { status: value.status, headers },
   );
 }
-function incomingResponse(upstream, method, finish = async () => {}) {
+// HTTP framing belongs to each socket hop. Node already decoded chunked
+// framing; carrying it into a Web Response can conflict with Kit's own length.
+const hopHeaders = new Set([
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+]);
+const bridgeHeaders = new Set([
+  "x-skgo-fetch",
+  "x-skgo-fetch-state",
+  "x-skgo-fetch-request",
+  "x-skgo-effects",
+]);
+function incomingHeaders(upstream) {
   const headers = new Headers();
+  const connectionHeaders = new Set(
+    String(upstream.headers.connection ?? "")
+      .split(",")
+      .map((value) => value.trim().toLowerCase()),
+  );
   for (let i = 0; i < upstream.rawHeaders.length; i += 2) {
-    if (!upstream.rawHeaders[i].toLowerCase().startsWith("x-skgo-"))
+    const name = upstream.rawHeaders[i].toLowerCase();
+    if (
+      !hopHeaders.has(name) &&
+      !connectionHeaders.has(name) &&
+      !bridgeHeaders.has(name)
+    )
       headers.append(upstream.rawHeaders[i], upstream.rawHeaders[i + 1]);
   }
+  return headers;
+}
+function incomingResponse(upstream, method, finish = async () => {}) {
+  const headers = incomingHeaders(upstream);
   if (method === "HEAD" || [204, 205, 304].includes(upstream.statusCode)) {
     upstream.resume();
     void finish();
@@ -496,46 +528,7 @@ export async function requestHandle(event, resolve) {
       },
       body: response.body,
     });
-    const outHeaders = new Headers();
-    for (let i = 0; i < upstream.rawHeaders.length; i += 2)
-      outHeaders.append(upstream.rawHeaders[i], upstream.rawHeaders[i + 1]);
-    const iterator = upstream[Symbol.asyncIterator]();
-    const body = new ReadableStream(
-      {
-        async pull(controller) {
-          try {
-            const next = await iterator.next();
-            if (next.done) {
-              await end();
-              controller.close();
-            } else controller.enqueue(next.value);
-          } catch (e) {
-            await end();
-            controller.error(e);
-          }
-        },
-        async cancel() {
-          upstream.destroy();
-          await end();
-        },
-      },
-      { highWaterMark: 0 },
-    );
-    if (
-      event.request.method === "HEAD" ||
-      [204, 205, 304].includes(upstream.statusCode)
-    ) {
-      upstream.resume();
-      await end();
-      return new Response(null, {
-        status: upstream.statusCode,
-        headers: outHeaders,
-      });
-    }
-    return new Response(body, {
-      status: upstream.statusCode,
-      headers: outHeaders,
-    });
+    return incomingResponse(upstream, event.request.method, end);
   } catch (e) {
     await end();
     throw e;

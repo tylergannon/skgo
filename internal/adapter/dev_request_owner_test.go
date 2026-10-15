@@ -51,6 +51,10 @@ func TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies(t *testing.T) {
 		case "/_skgo/dev/fetch-end":
 			w.WriteHeader(204)
 		case "/_skgo/dev/response":
+			_ = http.NewResponseController(w).EnableFullDuplex()
+			w.Header().Set("X-Skgo-Middleware", "literal-app-header-846")
+			w.Header().Set("Connection", "keep-alive")
+			w.(http.Flusher).Flush()
 			io.Copy(w, r.Body)
 		case "/_skgo/dev/end":
 			io.WriteString(w, `{}`)
@@ -67,6 +71,7 @@ func TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies(t *testing.T) {
 	const program = `
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createServer,get} from 'node:http';
 let source=readFileSync(process.argv[1],'utf8');
 source=source.replace(/import \{ error, redirect, fail \} from "@sveltejs\/kit";/,'const error=(status,body)=>{throw Object.assign(new Error("http error"),{status,body})}; const redirect=()=>{throw new Error("unexpected redirect")}; const fail=()=>{};');
 source=source.replace(/import \{ ValidationError \} from "@sveltejs\/kit\/internal";/,'class ValidationError extends Error {}');
@@ -80,7 +85,22 @@ const response=await requestHandle(traced,async()=>{
  }});
  return new Response(await fetched.text());
 });
-assert.equal(await response.text(),'literal-Kit-continuation-935');
+const text=await response.text();
+assert.equal(text,'literal-Kit-continuation-935');
+assert.equal(response.headers.get('x-skgo-middleware'),'literal-app-header-846');
+// Kit can buffer a fetched body before returning the page with its own length.
+// Reframe the real decoded upstream response and let Node parse the HTTP bytes.
+const server=createServer((_request,result)=>{
+ for(const [name,value]of response.headers)result.setHeader(name,value);
+ result.setHeader('content-length',Buffer.byteLength(text));result.end(text);
+});
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+try {
+ const actual=await new Promise((resolve,reject)=>get('http://127.0.0.1:'+server.address().port,result=>{
+  let body='';result.on('data',chunk=>body+=chunk);result.on('end',()=>resolve(body));result.on('error',reject);
+ }).on('error',reject));
+ assert.equal(actual,'literal-Kit-continuation-935');
+}finally{await new Promise(resolve=>server.close(resolve));}
 `
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

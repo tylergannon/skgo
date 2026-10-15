@@ -198,3 +198,72 @@ func TestNativeRemoteErrorKeepsConfiguredPublicBody(t *testing.T) {
 	}
 	buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": handle}, nil)
 }
+
+func TestNativeUnenhancedFormBindsTypedPageCaller(t *testing.T) {
+	fn := NewForm(testModule, "typedNativeForm", func(ctx context.Context, arg struct {
+		Name string `json:"name"`
+	}) (string, error) {
+		route, values := RemoteCallerValues(EventFrom(ctx))
+		number, ok := values["n"].(fixtureNumber)
+		if !ok {
+			return "typed caller absent", nil
+		}
+		return route + " " + number.Label() + " " + arg.Name, nil
+	})
+	const module = "src/routes/typed/[n=Number]/+page.server.ts"
+	manifest := Manifest{Remotes: []string{fn.id}, Loads: []string{module}, Nodes: []string{module}, Routes: []ManifestRoute{{ID: "/typed/[n=Number]", Pattern: `^/typed/([^/]+?)/?$`, Params: []ManifestParam{{Name: "n", Matcher: "Number"}}, Page: &ManifestPage{Leaf: 0}}}}
+	matchers := map[string]ParamMatcher{"Number": func(raw string) (any, bool) {
+		if raw == "00042" {
+			return fixtureNumber(42), true
+		}
+		return nil, false
+	}}
+	cfg := manifest.LoadConfig("http://app.test")
+	cfg.Matchers = matchers
+	loads, err := NewLoads(cfg, NewServerLoad(LoadSpec{Module: module, Run: func(context.Context) (any, error) { return map[string]any{}, nil }}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remoteCfg := manifest.RemoteConfig("http://app.test")
+	fn.callerMatchers = CallerMatchers(matchers)
+	fn.callerRoutes = CallerRoutes{"/typed/[n=Number]": {Params: []ManifestParam{{Name: "n", Matcher: "Number"}}, NewParams: func(map[string]any) (any, error) { return struct{}{}, nil }}}
+	remotes, err := NewRemotes(remoteCfg, fn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	if _, err := NewSSR(development, manifest, loads, remotes, SSROptions{}); err != nil {
+		t.Fatal(err)
+	}
+	pages, err := NewStaticHandler(development)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handleCfg := manifest.HandleConfig()
+	handleCfg.Origin = "http://app.test"
+	handleCfg.Matchers = matchers
+	handleCfg.Loads = loads
+	hook := hookMiddleware(func(ctx context.Context, event hookEvent, resolve hookResolve) (*http.Response, error) {
+		return resolve(ctx, event)
+	})
+	handler, cleanup, err := development.Handler(hook.Intercept(handleCfg, func(*Event) (struct{}, error) { return struct{}{}, nil }, loads.Intercept(remotes.Intercept(pages))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	for _, suffix := range []string{"", `/"key-713"`} {
+		controls := url.Values{}
+		controls.Set("name/"+fn.id, "literal-name-824")
+		var begin prerenderRequestAnswer
+		buildOperation(t, handler, "/_skgo/dev/begin", prerenderRequestInput{URL: "http://app.test/typed/00042?/remote=" + url.QueryEscape(fn.id+suffix), Method: "POST", RouteID: "/typed/[n=Number]", Headers: http.Header{"Origin": {"http://app.test"}, "Content-Type": {"application/x-www-form-urlencoded"}}, Body: []byte(controls.Encode())}, &begin)
+		var answer struct {
+			Type string `json:"type"`
+			Data string `json:"data"`
+		}
+		buildOperation(t, handler, "/_skgo/dev/remote", map[string]string{"handle": begin.Handle, "module": testModule, "name": "typedNativeForm"}, &answer)
+		if answer.Type != "result" || !strings.Contains(answer.Data, "/typed/[n=Number] number:42 literal-name-824") {
+			t.Fatalf("key=%q answer=%+v", suffix, answer)
+		}
+		buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": begin.Handle}, nil)
+	}
+}
