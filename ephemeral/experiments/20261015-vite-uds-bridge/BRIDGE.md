@@ -1,0 +1,74 @@
+# Native Kit development SSR: Go application boundary
+
+Native Kit development SSR removes the separate bundled renderer/client graph. It does **not** make `handleFetch` a complete Go application bridge. Keep Kit's development server responsible for document, data, action and route orchestration; replace generated server callback bodies with Go delegation. Go remains the application implementation. Production Go/goja is unchanged.
+
+This is a source mapping, not an implemented or runtime-qualified bridge. Authoritative source: installed `example/web/node_modules/@sveltejs/kit`, package version **3.0.0**, following `ephemeral/sveltekit-current/SKILL.md` and token-cache `index/dev-framework-runtime.md`. Source anchors below are relative to the repository; `Kit/` means that installed package's `src/`.
+
+## Routing contract
+
+The public Go listener forwards application requests, Vite modules/assets and HMR upgrades to Vite's UDS, retaining the public origin. Vite's native Kit dispatcher owns:
+
+| Request or call | Kit owns | Go owns |
+|---|---|---|
+| Document and `__data.json` | Live branch/node identities, invalidation, universal loads, rendering, serialization | Generated server-load callbacks |
+| Page action POST, enhanced or ordinary | Action selection, content-type/CSRF checks, failure/redirect interpretation, action response and subsequent loads | Named/default action callback |
+| `+server` HTTP route | Route matching, page/endpoint negotiation, method dispatch | Handler callback returning status/headers/body |
+| Browser remote HTTP | Remote dispatch, validation/wrapper restrictions, caching/batching/refresh protocol | Remote callback body |
+| Server-direct remote call | Native Kit remote wrapper and request-store restrictions | Callback body, including iterator operations for live queries |
+| `event.fetch` | Kit credential/cookie/internal-subrequest semantics | Application endpoint execution and Go handleFetch hook |
+
+This avoids forwarding Go's existing complete `__data.json` representation: that would bring back the second node table. The public proxy needs no application route inventory. Browser remotes and endpoint requests are exceptions to *rendering*, not necessarily exceptions to proxy routing: prefer sending them through Kit too, with their generated callback delegated to Go. Existing Go remote HTTP handlers remain production interfaces; reusing them behind a direct browser route is possible only as a separately proven shortcut. Their complete wire envelopes must not be returned as a Kit callback's value.
+
+Pinned anchors: `Kit/runtime/server/respond.js:635-667` dispatches remote/data/endpoint; `Kit/runtime/server/page/index.js:52,70` dispatches actions; `Kit/runtime/server/page/actions.js:225-265` selects and directly invokes `action(traced_event)`; `Kit/runtime/server/page/load_data.js:36,91-94` directly invokes `node.server.load`. None of these calls becomes a fetch merely because a fetch hook exists.
+
+`Kit/runtime/app/server/remote/shared.js:145-150` directly invokes the callback in Kit's request store. Query, batch, prerender and command wrappers reach this seam. Preserve the wrappers: command's actual restriction is mutative method, outside query/prerender and rendering (`remote/command.js:68-85`), not a blanket prohibition on all server-direct mutation. Live query generators need an iterator/stream bridge, not a one-shot JSON callback.
+
+Concrete negative: current `example/web/src/routes/items/[id]/item.remote.ts` query callback throws `skgo: implemented in Go`; `example/web/src/routes/actions/+page.server.ts` load and action callbacks also throw. A UDS override of `handleFetch` changes neither body. Fetch-only endpoint POC success does not qualify the current example's Go loads/remotes/actions.
+
+## Reuse the existing bridge, with explicit adaptations
+
+`internal/adapter/skgo-adapter/prerender-modules.js:15-123` already replaces generated callback bodies while retaining Kit modules and wrappers. It verifies generated provenance and replaces loads, endpoint methods, prerender callbacks and server hooks. It is currently **build-only** (`apply:'build'`), recognizes only `prerender(...)` remotes, and does not replace actions. A development plugin must support actions and all generated remote kinds, preserve Kit's remote initialization/transforms, and invalidate with the existing Vite graph. Do not run a second manifest/bundle build to supply it.
+
+`internal/adapter/skgo-adapter/prerender.js:674-780` already carries Go load parent values, transport/devalue values, structured redirects/errors and remote arguments. `:783-886` carries request effects and keeps a Go request boundary alive through `begin -> callbacks -> response -> end`. `prerender_request.go:133-249` actually runs `BindRequest` around a blocking continuation: Go locals and context stay in Go rather than being JSON copies. `:102-131` rejects unknown/closing handles and waits for active callbacks. This lifecycle is the useful reuse seam.
+
+Required adaptations are concrete:
+
+- Resolve transport hooks and route information from the **live Vite environment**. Existing `prerender.js:636-655,674-700,799-813` imports built hooks/manifest and caches runtime initialization; those imports cannot back native dev SSR.
+- Generalize remote callback execution. `prerender_remote.go:89` currently rejects every kind except `KindPrerender`. Keep Kit's validation, readonly/mutation rules and cache orchestration outside the callback; invoke the matching Go body with the corresponding Go context and transport codecs. Actions need a callback result contract mapping success, `fail`, redirect and error into Kit's own values.
+- Preserve the actual application's Go composition/defaults. The generated prerender entry uses generated `RequestBoundary`, not the example's full custom `NewHandler` configuration. A dev host must supply equivalent hooks, error handling and endpoint configuration; do not silently substitute generated defaults.
+- Run service operations over the selected Go UDS. `prerender_service.go:37` currently opens private TCP and authenticates operations; session-private socket permissions replace location exposure, not request ownership checks.
+
+## Fetch and context are not implied by UDS
+
+`Kit/runtime/server/fetch.js` calls `hooks.handleFetch` before its supplied default fetch attaches inherited same-origin authorization/cookies and applies pending cookie state. Its default also enforces credentials, handles internal routes and records response cookies. An early replacement that only copies `event.request.headers` misses cookies set earlier in this request. Existing `prerender.js:888-904` wraps the supplied Kit fetch, then relays internal Set-Cookie effects to the Go request handle; it does not replace transport. Prefer preserving Kit internal routing to generated endpoint callbacks, and delegate the application's Go fetch hook with equivalent before/after semantics. If direct endpoint UDS fetch is retained, separately prove credential omit, explicit cookie override, pending cookies, authorization and response Set-Cookie behavior. Global JS fetch is not intercepted by handleFetch; generated application callbacks must never use it to implement Go application I/O.
+
+`Kit/exports/vite/dev/index.js:431-435` obtains client address from `req.socket.remoteAddress` and throws when absent. A Unix socket does not carry the original browser address. Carry public client address and origin in supervisor-owned trusted context, stripping any browser-supplied impersonation fields; make the Kit event and Go request boundary read that trusted value. Merely setting Host is insufficient.
+
+Pin a Go process **and native revision** for one logical Kit request. Begin acquires that lease; callbacks, internal endpoint fetches, response and end all use it. Replacing the current Go socket target must not redirect an old handle into the new process. A process/generation-qualified token resolves to its original live owner or fails; never retry a failed old callback on the new owner. New root requests may use the replacement while old leases drain. Existing request tokens are useful but do not by themselves freeze native revision selection inside one process.
+
+## Current hard limits, not claimed solved
+
+The current prerender bridge buffers request and response bodies (`prerender.js:816,855`), buffers endpoint responses, and settles deferred Go load promises before returning all chunks (`prerender_load.go`, `prerender.js:740`). Therefore it does not preserve progressive deferred HTML/data, endpoint streaming, or live query streaming. Reusing it unchanged would make native Kit appear to support streams while delaying their values. Arbitrary Go middleware inspecting/replacing a whole rendered response also conflicts with progressive output; the dev contract must use the same supported streaming behavior as production, with an explicit streaming transport rather than claim parity from this buffered path.
+
+Cancellation needs per-request teardown, not the build helper's fatal-owner behavior: `prerender_service_test.go:262` deliberately tests abandoned callback failure of the whole helper. Current synchronous ResolveOptions relay (`prerender.js:938`) uses Atomics and the prerender worker topology; it cannot be transplanted into a dev main event loop without proving the reply path remains runnable. These are specific reuse gaps, not reasons to retain the split renderer graph.
+
+## Small runtime qualification needed
+
+The separate UDS runtime POC owned by `listener_ownership` tests native Kit SSR `event.fetch('/go/value')`, public TCP proxy, two UDS listeners, HMR and literal cookie/header transport. It is deliberately a transport slice. This mapping has run no additional tests and claims no complete application delegation.
+
+Next bounded proof should replace generated callbacks in one ordinary application and use literal Go-only values: document plus client navigation from a Go load, direct query during SSR, named action with failure/redirect/cookie and following load, and an endpoint requested both directly and via `event.fetch`. Use actual app hooks to set a Go local and pending cookie consumed by later callbacks. One delayed load/cancel and one replacement during a paused render must demonstrate streaming/cancellation and same-owner behavior, or expose those as remaining limitations. Existing real-handler prerender tests provide reusable cases (`prerender_service_test.go:47,95,126,184,218`; `prerender_remote_test.go:11,74`) but are build-bridge tests, not a native Kit dev qualification.
+
+Architecture conclusion: native Kit SSR removes the demonstrated renderer rebuild gate and dual frontend graphs. The remaining integration is a callback/lifecycle bridge plus Go registration updates, not a second Kit dispatcher. Registration changes must be visible before their generated module is served; compatible Go body edits can keep the existing native install path and notify Kit refresh only after publication. No performance number for this new complete topology has yet been measured.
+
+Actionable worklog: A successful endpoint-fetch prototype cannot establish all-Go application execution because generated loads, actions and remote bodies are direct calls. Keep data/action routing in Kit to avoid recreating node-number coupling. Existing build bridge is a strong lifecycle precedent, but its buffered streams and fatal cancellation are material dev differences.
+
+### Remote mutation metadata: an unresolved adapter seam
+
+The all-Kit routing recommendation above is an ownership target, **not** a claim that returning the Go callback value implements it. Kit `runtime/server/remote-functions.js:280-325` initializes requested refreshes, calls the wrapper, then collects query/live updates and ignored keys into its own result envelope. `runtime/app/server/remote/query.js:397-487` supplies Kit's refresh/set behavior. Go `remote.go:850-905` independently initializes its refresh set, invokes the command, collects `q`/`l`, ignored `i`, and explicit-update `r`, then writes the complete remote response. The prerender callback protocol currently carries a value/errors/redirect/cookie effects; it lacks requested refreshes and update/ignore operations. Thus merely extending KindPrerender to KindCommand/Form would lose single-flight behavior.
+
+Two concrete interfaces can implement this without writing a second JS wire protocol:
+
+1. For complete Kit-owned browser dispatch, expose Go callback effects as semantic operations and apply them through the corresponding **Kit wrappers** (query `refresh`/`set`, live reconnect/update, request cookie APIs and Kit redirect/failure), preserving Kit's requested-key validation. This needs a narrow proof that all existing Go effects are expressible, including argument-keyed updates and ignored requests. No such proof is claimed here.
+2. Until that seam is demonstrated, route the reserved browser remote prefix to the existing Go remote **wire handler** over Go UDS. It already owns the complete mutation envelopes and restrictions. Native Kit still owns documents/data/actions/endpoints, and direct SSR remote callbacks use the generated-body bridge. This is a feasible smaller initial boundary, at the cost of preserving two remote orchestration paths; do not route `__data.json` to Go along with it. Ensure the same Go request boundary/hooks and revision lease applies to both.
+
+For implementation planning, choose option 2 as the bounded initial browser-remote exception unless the semantic-effect proof succeeds first. This corrects any inference from the initial table that browser remote callback delegation is already complete. Query-only SSR success cannot qualify forms/commands or their requested refreshes. Actual Kit action callbacks remain a separate missing bridge operation; they cannot be replaced by posting to the existing full Go page-action handler and pretending that HTTP envelope is a callback value.
