@@ -22,6 +22,7 @@ import (
 type Lowered struct {
 	Host, Candidate map[string][]byte
 	Functions       []string
+	Storage         []string
 }
 
 // Lower adapts got-reload's named-wrapper transformation (rewriteFunc at
@@ -47,7 +48,17 @@ func Lower(p *packages.Package, sources map[string][]byte) (*Lowered, error) {
 		}
 	}
 	sort.Strings(out.Functions)
-	var binds, registrations strings.Builder
+	var fields, initial, registrations strings.Builder
+	storage := map[string]bool{}
+	for _, obj := range p.TypesInfo.Uses {
+		if v, ok := obj.(*types.Var); ok && v.Pkg() == p.Types && v.Parent() == p.Types.Scope() {
+			storage[symbolPrefix(p.PkgPath)+"."+v.Name()] = true
+		}
+	}
+	for name := range storage {
+		out.Storage = append(out.Storage, name)
+	}
+	sort.Strings(out.Storage)
 	for _, f := range p.Syntax {
 		name := p.Fset.Position(f.Pos()).Filename
 		// Resolve identities before generating either view, so shadowed locals
@@ -97,34 +108,45 @@ func Lower(p *packages.Package, sources map[string][]byte) (*Lowered, error) {
 						decls = append(decls, d)
 						continue
 					}
-					if candidate {
-						ast.Inspect(d.Body, func(n ast.Node) bool {
-							call, ok := n.(*ast.CallExpr)
-							if !ok {
-								return true
-							}
-							id, ok := call.Fun.(*ast.Ident)
-							if !ok {
-								return true
-							}
-							if obj, ok := uses[fs.Position(id.Pos()).Offset].(*types.Func); ok && functions[obj.Name()] == obj {
-								id.Name = bodyName(obj.Name())
-							}
+					ast.Inspect(d.Body, func(n ast.Node) bool {
+						call, ok := n.(*ast.CallExpr)
+						if !ok {
 							return true
-						})
+						}
+						id, ok := call.Fun.(*ast.Ident)
+						if !ok {
+							return true
+						}
+						if obj, ok := uses[fs.Position(id.Pos()).Offset].(*types.Func); ok && functions[obj.Name()] == obj {
+							id.Name = bodyName(obj.Name())
+						}
+						return true
+					})
+					if candidate {
 						stable := *d
 						stable.Body = nil
 						d.Name = ast.NewIdent(bodyName(d.Name.Name))
 						decls = append(decls, &stable, d)
 					} else {
 						args, variadic := nameArguments(d.Type)
-						target := "_skgo_target_" + d.Name.Name
+						target := "_skgo_targets_for(nil)." + d.Name.Name
+						if len(args) > 0 {
+							if sig := functions[d.Name.Name].Type().(*types.Signature); sig.Params().Len() > 0 && types.TypeString(sig.Params().At(0).Type(), nil) == "context.Context" {
+								arg, _ := formatSource(fs, args[0])
+								target = "_skgo_targets_for(" + string(arg) + ")." + d.Name.Name
+							}
+						}
 						typ, _ := formatSource(fs, d.Type)
-						fmt.Fprintf(&binds, "var %s %s = %s\n", target, typ, bodyName(d.Name.Name))
+						fmt.Fprintf(&fields, "%s %s\n", d.Name.Name, typ)
+						fmt.Fprintf(&initial, "%s: %s,\n", d.Name.Name, bodyName(d.Name.Name))
 						fmt.Fprintf(&registrations, "if syms[%q] == 0 { return nil, fmt.Errorf(\"missing replacement entry: %%s\", %q) }; entry_%s := new(uintptr); *entry_%s = syms[%q]; next_%s := *(*%s)(unsafe.Pointer(&entry_%s));\n", symbolPrefix(p.PkgPath)+"."+bodyName(d.Name.Name), d.Name.Name, d.Name.Name, d.Name.Name, symbolPrefix(p.PkgPath)+"."+bodyName(d.Name.Name), d.Name.Name, typ, d.Name.Name)
 						body := *d
 						body.Name = ast.NewIdent(bodyName(d.Name.Name))
-						call := &ast.CallExpr{Fun: ast.NewIdent(target), Args: args}
+						selector, err := parser.ParseExpr(target)
+						if err != nil {
+							return nil, err
+						}
+						call := &ast.CallExpr{Fun: selector, Args: args}
 						if variadic {
 							call.Ellipsis = token.Pos(1)
 						}
@@ -191,7 +213,7 @@ func Lower(p *packages.Package, sources map[string][]byte) (*Lowered, error) {
 	}
 	// Imports for typed target declarations are drawn from the package's
 	// checked files; distinct aliases for one package are rejected by Go itself.
-	imports := map[string]string{"fmt": "fmt", "unsafe": "unsafe"}
+	imports := map[string]string{"fmt": "fmt", "unsafe": "unsafe", "_skgo_context": "context", "_skgo_http": "net/http", "_skgo_atomic": "sync/atomic", "_skgo_sync": "sync", "_skgo_runtime": "runtime", "_skgo_loader": "github.com/pkujhd/goloader"}
 	for _, f := range p.Syntax {
 		for _, imp := range f.Imports {
 			path, _ := strconv.Unquote(imp.Path.Value)
@@ -220,15 +242,18 @@ func Lower(p *packages.Package, sources map[string][]byte) (*Lowered, error) {
 	for _, alias := range aliases {
 		fmt.Fprintf(&generated, "%s %q\n", alias, imports[alias])
 	}
-	generated.WriteString(")\n" + binds.String() + "\nfunc SkgoHotPrepare(syms map[string]uintptr)(func(),error){\n" + registrations.String() + "return func(){\n")
+	generated.WriteString(")\ntype _skgo_targets struct {\n" + fields.String() + "}\n")
+	generated.WriteString("var _skgo_current _skgo_atomic.Pointer[_skgo_targets]\nfunc _skgo_initial() *_skgo_targets { return &_skgo_targets{\n" + initial.String() + "} }\nfunc init(){ _skgo_current.Store(_skgo_initial()) }\n")
+	generated.WriteString("func _skgo_prepare(syms map[string]uintptr)(*_skgo_targets,error){\n" + registrations.String() + "return &_skgo_targets{\n")
 	for _, fn := range out.Functions {
-		fmt.Fprintf(&generated, "_skgo_target_%s = next_%s\n", fn, fn)
+		fmt.Fprintf(&generated, "%s: next_%s,\n", fn, fn)
 	}
 	generated.WriteString("},nil\n}\nfunc SkgoHotTypes() []any { return []any{")
 	for _, fn := range out.Functions {
 		fmt.Fprintf(&generated, "%s,", fn)
 	}
 	generated.WriteString("} }\n")
+	generated.WriteString(strings.ReplaceAll(nativeRuntime, "PACKAGE", p.PkgPath))
 	fs := token.NewFileSet()
 	a, err := parser.ParseFile(fs, "skgo_hot.go", generated.String(), 0)
 	if err != nil {

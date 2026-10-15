@@ -110,7 +110,7 @@ func declarations(sources map[string][]byte) ([]byte, error) {
 		}
 		f.Comments = nil
 		for _, decl := range f.Decls {
-			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name != "init" {
+			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name != "init" && fn.Recv == nil {
 				fn.Body = nil
 				fn.Doc = nil
 			}

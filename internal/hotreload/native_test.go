@@ -1,9 +1,10 @@
 package hotreload
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -158,80 +159,161 @@ func TestGeneratedNativeState(t *testing.T) {
 	run("build", "-ldflags=-s=false", "-o", bin, "./cmd")
 	importcfg := run("list", "-export", "-deps", "-f", "{{if .Export}}packagefile {{.ImportPath}}={{.Export}}{{end}}", pkgPath)
 	write("importcfg", importcfg)
-	var objects []string
-	for revision, discount := range []int{0, 10, 20} {
-		captured := map[string][]byte{}
-		for file, raw := range sources {
-			captured[file] = raw
+	baseline := map[string][]byte{}
+	for file, raw := range sources {
+		baseline[file] = raw
+	}
+	baseline[filepath.Join(linkDir, "skgo_hot.go")] = []byte("package orders\n")
+	captured := func(source string) map[string][]byte {
+		next := map[string][]byte{}
+		for file, raw := range baseline {
+			next[file] = raw
 		}
-		file := filepath.Join(linkDir, "orders.remote.go")
-		captured[file] = []byte(strings.Replace(orderSource, "return total", fmt.Sprintf("return total * %d / 100", 100-discount), 1))
-		captured[filepath.Join(linkDir, "skgo_hot.go")] = []byte("package orders\n")
-		// Type-check the captured authored revision, not the transformed host.
-		p := load(captured)
-		baseline := map[string][]byte{}
-		for file, raw := range sources {
-			baseline[file] = raw
-		}
-		baseline[filepath.Join(linkDir, "skgo_hot.go")] = []byte("package orders\n")
-		if err := Classify(baseline, captured, []*packages.Package{p}, []*packages.Package{p}); err != nil {
-			t.Fatalf("pricing revision admission: %v", err)
-		}
-		next, err := Lower(p, captured)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var files []string
-		for name, raw := range next.Candidate {
-			rel := filepath.Join(fmt.Sprintf("candidate%d", revision), name)
-			write(rel, raw)
-			files = append(files, filepath.Join(app, rel))
-		}
-		object := filepath.Join(app, fmt.Sprintf("candidate%d.o", revision))
-		args := append([]string{"tool", "compile", "-p", pkgPath, "-lang=go1.27", "-importcfg", filepath.Join(app, "importcfg"), "-o", object}, files...)
-		run(args...)
-		objects = append(objects, object)
+		next[filepath.Join(linkDir, "orders.remote.go")] = []byte(source)
+		return next
+	}
+	compile := func(name, source string) (Candidate, error) {
+		return tc.Compile(ctx, app, pkgPath, filepath.Join(app, "importcfg"), filepath.Join(app, name), baseline, captured(source))
+	}
+	candidate20, err := compile("discount20", strings.Replace(orderSource, "return total", "return total * 80 / 100", 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	missing, err := compile("missing", strings.Replace(orderSource, "return total", "unusedStorage++;return total", 1))
+	if err != nil {
+		t.Fatal(err)
 	}
 	cmd := tc.command(ctx, app)
 	cmd.Path = bin
-	cmd.Args = append([]string{bin}, objects...)
-	output, err := cmd.CombinedOutput()
+	cmd.Args = []string{bin}
+	in, err := cmd.StdinPipe()
 	if err != nil {
-		t.Fatalf("generated host: %v\n%s", err, output)
-	}
-	t.Logf("%s", output)
-	var results []struct {
-		Total, Initializations, Quantity int
-		Identity                         bool
-	}
-	if err := json.Unmarshal(output, &results); err != nil {
 		t.Fatal(err)
 	}
-	if len(results) != 4 {
-		t.Fatalf("want four actual HTTP observations: %s", output)
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
 	}
-	for i, total := range []int{3000, 2700, 2400, 3360} {
-		quantity := 2
-		if i == 3 {
-			quantity = 3
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		in.Close()
+		if cmd.ProcessState == nil {
+			cmd.Process.Kill()
+			cmd.Wait()
 		}
-		if results[i].Total != total || results[i].Quantity != quantity || results[i].Initializations != 1 || !results[i].Identity {
-			t.Fatalf("revision %d: %s, want total %d, initializer 1 and host type identity", i, output, total)
+	}()
+	decoder, encoder := json.NewDecoder(out), json.NewEncoder(in)
+	type observation struct {
+		Total, Again, Summary, Initializations, Quantity, PID int
+		Identity, Refreshed                                   bool
+		Error                                                 string
+	}
+	var pid int
+	call := func(op string, candidate Candidate) observation {
+		t.Helper()
+		if err := encoder.Encode(struct {
+			Op        string
+			Candidate Candidate
+		}{op, candidate}); err != nil {
+			t.Fatal(err)
 		}
+		var result observation
+		if err := decoder.Decode(&result); err != nil {
+			t.Fatalf("%s: %v\n%s", op, err, stderr.String())
+		}
+		t.Logf("%s: %+v", op, result)
+		return result
+	}
+	check := func(op string, want int) observation {
+		t.Helper()
+		result := call(op, Candidate{})
+		if pid == 0 {
+			pid = result.PID
+		}
+		if result.Error != "" || result.Total != want || result.Again != want || (op != "release" && result.Summary != want) || result.Initializations != 1 || result.Quantity != 3 || result.PID != pid || !result.Identity {
+			t.Fatalf("%s: %+v, want coherent %d, quantity 3, init 1, stable PID/types", op, result, want)
+		}
+		return result
+	}
+	// The quantity command must run before any replacement, so subsequent
+	// calculations demonstrate request-mutated host storage surviving swaps.
+	if result := check("mutate", 4200); !result.Refreshed {
+		t.Fatal("missing named query refresh before replacement")
+	}
+	if result := call("hold", Candidate{}); result.Error != "" {
+		t.Fatal(result.Error)
+	}
+	// Failed captured source compilation occurs while the initialized host lives.
+	if _, err := compile("broken", strings.Replace(orderSource, "return total", "return (", 1)); err == nil {
+		t.Fatal("syntax error compiled")
+	}
+	check("check", 4200)
+	candidate10, err := compile("discount10", strings.Replace(orderSource, "return total", "return total * 90 / 100", 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := compile("method", strings.Replace(orderSource, `return "order"`, `return "changed"`, 1)); err == nil {
+		t.Fatal("method edit admitted")
+	} else {
+		var rebuild *CompleteBuild
+		if !errors.As(err, &rebuild) {
+			t.Fatalf("method edit: %v", err)
+		}
+	}
+	if result := call("install", missing); !strings.Contains(result.Error, "missing host storage") {
+		t.Fatalf("missing storage was not refused: %+v", result)
+	}
+	if result := call("install", Candidate{Object: "does-not-exist.o", Storage: missing.Storage}); !strings.Contains(result.Error, "missing host storage") {
+		t.Fatalf("storage checked after object access: %+v", result)
+	}
+	check("check", 4200)
+	if result := call("install", candidate10); result.Error != "" {
+		t.Fatal(result.Error)
+	}
+	// This new HTTP request must finish while the old one is still held.
+	check("check", 3780)
+	check("release", 4200)
+	if result := call("install", candidate20); result.Error != "" {
+		t.Fatal(result.Error)
+	}
+	check("check", 3360)
+	if result := check("mutate", 3360); !result.Refreshed {
+		t.Fatal("missing named query refresh after replacement")
+	}
+	if result := call("install", candidate10); !strings.Contains(result.Error, "retained revision budget exhausted") {
+		t.Fatalf("third load was not refused: %+v", result)
+	}
+	// A nonexistent object gives the same result: admission must precede reading
+	// or mapping another object, rather than noticing the budget after loading.
+	if result := call("install", Candidate{Object: "does-not-exist.o"}); !strings.Contains(result.Error, "retained revision budget exhausted") {
+		t.Fatalf("budget checked after object access: %+v", result)
+	}
+	check("check", 3360)
+	call("finish", Candidate{})
+	in.Close()
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("generated host: %v\n%s", err, stderr.String())
 	}
 }
 
 const orderSource = `package orders
 import("context";"github.com/tylergannon/skgo";"example.com/nativefixture/generated/params")
-type Order struct { Total int ` + "`json:\"total\"`" + `; Initializations int ` + "`json:\"initializations\"`" + `; Quantity int ` + "`json:\"quantity\"`" + ` }
+type Order struct { Total int ` + "`json:\"total\"`" + `; Again int ` + "`json:\"again\"`" + `; Initializations int ` + "`json:\"initializations\"`" + `; Quantity int ` + "`json:\"quantity\"`" + ` }
+func (Order) Label() string { return "order" }
+type Hold struct { Entered, Release chan struct{} }
 type serviceState struct { quantity int; note string }
 var service = &serviceState{quantity:2}
 var initializations int
+var unusedStorage int
 func init(){ initializations++ }
 func price() int { total:=service.quantity*1200+600;return total }
-func order(context.Context)(Order,error){ return Order{price(),initializations,service.quantity},nil }
+func order(ctx context.Context)(Order,error){ before:=price();if hold,ok:=ctx.Value("hold").(*Hold);ok { close(hold.Entered);<-hold.Release };return Order{before,price(),initializations,service.quantity},nil }
 func summary(context.Context)(int,error){ return price(),nil }
-func Box() any {return Order{price(),initializations,service.quantity}}
+func Box() any {return Order{price(),price(),initializations,service.quantity}}
 func quantity(ctx context.Context,event params.RequestEvent,n int)(Order,error){service.quantity=n;if err:=skgo.RefreshNoArg(ctx,order);err!=nil{return Order{},err};return order(ctx)}
 var _=skgo.Query(order)
 var _=skgo.Query(summary)
@@ -239,46 +321,61 @@ var _=skgo.Command(quantity)
 `
 
 const nativeHost = `package main
-import("encoding/json";"fmt";"io";"net/http";"net/http/httptest";"os";"reflect";"runtime";"strings";"github.com/pkujhd/goloader";"github.com/tylergannon/devalue/v5";"github.com/tylergannon/skgo";"example.com/nativefixture/generated";orders "PACKAGE")
+import("context";"encoding/json";"fmt";"io";"net/http";"net/http/httptest";"os";"reflect";"runtime";"strings";"time";"github.com/tylergannon/devalue/v5";"github.com/tylergannon/skgo";"example.com/nativefixture/generated";orders "PACKAGE")
 func main(){
- syms:=map[string]uintptr{};if err:=goloader.RegSymbol(syms);err!=nil{panic(err)}
- goloader.RegTypes(syms,orders.SkgoHotTypes()...)
+ if err:=orders.SkgoHotInit(2);err!=nil{panic(err)}
  remotes:=generated.Remotes();registry,err:=skgo.NewRemotes(skgo.RemoteConfig{Origin:"http://localhost"},remotes...);if err!=nil{panic(err)}
- var orderRemote,quantityRemote *skgo.Remote;for _,r:=range remotes {if strings.HasSuffix(r.ID(),"/order"){orderRemote=r};if strings.HasSuffix(r.ID(),"/quantity"){quantityRemote=r}}
- if orderRemote==nil||quantityRemote==nil{panic("missing generated remotes")}
- host:=httptest.NewServer(registry);defer host.Close()
- type result struct{Total,Initializations,Quantity int;Identity bool}
- var results []result
- // Keep every CodeModule handle alive through host exit. The loader stores
- // Go-owned metadata on these handles; this serial fixture does not claim
- // that replacement mappings can be retired.
- var loaded []*goloader.CodeModule
+ var orderRemote,summaryRemote,quantityRemote *skgo.Remote;for _,r:=range remotes {if strings.HasSuffix(r.ID(),"/order"){orderRemote=r};if strings.HasSuffix(r.ID(),"/summary"){summaryRemote=r};if strings.HasSuffix(r.ID(),"/quantity"){quantityRemote=r}}
+ if orderRemote==nil||summaryRemote==nil||quantityRemote==nil{panic("missing generated remotes")}
+ var hold *orders.Hold
+ withHold:=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){if r.Header.Get("X-Hold")=="yes" {r=r.WithContext(context.WithValue(r.Context(),"hold",hold))};registry.ServeHTTP(w,r)})
+ host:=httptest.NewServer(orders.SkgoHotHandler(withHold));defer host.Close()
+ type observation struct{Total,Again,Summary,Initializations,Quantity,PID int;Identity,Refreshed bool;Error string}
  original:=reflect.ValueOf(orders.Skgo_order).Pointer()
- check:=func(){
-  response,err:=http.Get(host.URL+"/_app/remote/"+orderRemote.ID());if err!=nil{panic(err)}
+ fetch:=func(remote *skgo.Remote,held bool) any {
+  req,_:=http.NewRequest("GET",host.URL+"/_app/remote/"+remote.ID(),nil);if held{req.Header.Set("X-Hold","yes")}
+  response,err:=http.DefaultClient.Do(req);if err!=nil{panic(err)}
   raw,err:=io.ReadAll(response.Body);response.Body.Close();if err!=nil{panic(err)}
   var envelope struct{Type,Data string};if err:=json.Unmarshal(raw,&envelope);err!=nil{panic(err)}
-  if envelope.Type!="result"{panic(string(raw))}
-  // Decode actual HTTP bytes; expected values are independent literals in
-  // the test driver. A separate loaded interface result must assert to the
-  // host's existing named application type, not a second type descriptor.
-  tree,err:=devalue.Parse(envelope.Data,nil);if err!=nil{panic(err)};object,ok:=tree.(*devalue.Object);if !ok{panic(string(raw))};orderValue,ok:=object.Get("_");if !ok{panic(string(raw))};value,err:=generated.DecodeOrder(orderValue);if err!=nil{panic(err)}
-  boxed:=orders.Box();typed,same:=boxed.(orders.Order);same=same&&typed.Total==value.Total
-  results=append(results,result{value.Total,value.Initializations,value.Quantity,same&&reflect.ValueOf(orders.Skgo_order).Pointer()==original})
+  if response.StatusCode!=200||envelope.Type!="result"{panic(string(raw))}
+  tree,err:=devalue.Parse(envelope.Data,nil);if err!=nil{panic(err)};object,ok:=tree.(*devalue.Object);if !ok{panic(string(raw))};value,ok:=object.Get("_");if !ok{panic(string(raw))};return value
  }
- for _,object:=range os.Args[1:] {
-  linker,err:=goloader.ReadObjs([]string{object},[]string{"PACKAGE"});if err!=nil{panic(err)}
-  if missing:=goloader.UnresolvedSymbols(linker,syms);len(missing)>0{panic(fmt.Sprint(missing))}
-  runtime.LockOSThread();next,err:=goloader.Load(linker,syms);runtime.UnlockOSThread();if err!=nil{panic(err)}
-  install,err:=orders.SkgoHotPrepare(next.Syms);if err!=nil{panic(err)};install()
-  loaded=append(loaded,next)
-  runtime.GC();check()
+ observe:=func(value any) observation {
+  order,err:=generated.DecodeOrder(value);if err!=nil{panic(err)}
+  return observation{Total:order.Total,Again:order.Again,Initializations:order.Initializations,Quantity:order.Quantity,PID:os.Getpid(),Identity:reflect.ValueOf(orders.Skgo_order).Pointer()==original}
  }
- // Mutate the authored package state after several swaps, then read it through
- // both the generated command and query, including named-query refresh.
- req,_:=http.NewRequest("POST",host.URL+"/_app/remote/"+quantityRemote.ID(),strings.NewReader("{\"payload\":\"WzNd\"}"));req.Header.Set("Content-Type","application/json");req.Header.Set("Origin","http://localhost")
- res,err:=http.DefaultClient.Do(req);if err!=nil{panic(err)};raw,_:=io.ReadAll(res.Body);res.Body.Close();if res.StatusCode!=200{panic(string(raw))};var command struct{Type,Data string};if err:=json.Unmarshal(raw,&command);err!=nil||command.Type!="result"{panic(string(raw))};if !strings.Contains(command.Data,orderRemote.ID()+"/"){panic("missing named-query refresh: "+string(raw))};check()
- if err:=json.NewEncoder(os.Stdout).Encode(results);err!=nil{panic(err)}
- runtime.KeepAlive(loaded)
+ check:=func() observation {
+  runtime.GC()
+  result:=observe(fetch(orderRemote,false))
+  summary,ok:=fetch(summaryRemote,false).(float64);if !ok{panic("invalid summary wire value")};result.Summary=int(summary)
+  boxed:=orders.Box();typed,same:=boxed.(orders.Order);result.Identity=result.Identity&&same&&typed.Total==result.Total&&typed.Again==result.Again
+  return result
+ }
+ old:=make(chan observation,1)
+ decoder,encoder:=json.NewDecoder(os.Stdin),json.NewEncoder(os.Stdout)
+ for {
+  var command struct{Op string;Candidate struct{Object string;Storage []string}}
+  if err:=decoder.Decode(&command);err!=nil{panic(err)}
+  var result observation
+  switch command.Op {
+  case "mutate":
+   req,_:=http.NewRequest("POST",host.URL+"/_app/remote/"+quantityRemote.ID(),strings.NewReader("{\"payload\":\"WzNd\"}"));req.Header.Set("Content-Type","application/json");req.Header.Set("Origin","http://localhost")
+   res,err:=http.DefaultClient.Do(req);if err!=nil{panic(err)};raw,_:=io.ReadAll(res.Body);res.Body.Close();if res.StatusCode!=200{panic(string(raw))};var envelope struct{Type,Data string};if err:=json.Unmarshal(raw,&envelope);err!=nil||envelope.Type!="result"{panic(string(raw))}
+   result=check();result.Refreshed=strings.Contains(envelope.Data,orderRemote.ID()+"/")
+  case "hold":
+   hold=&orders.Hold{Entered:make(chan struct{}),Release:make(chan struct{})}
+   go func(){old<-observe(fetch(orderRemote,true))}()
+   select{case <-hold.Entered:case <-time.After(5*time.Second):panic("old request did not enter")}
+  case "release":
+   close(hold.Release)
+   select{case result=<-old:case <-time.After(5*time.Second):panic("old request did not complete")}
+  case "install":
+   if err:=orders.SkgoHotInstall(command.Candidate.Object,command.Candidate.Storage);err!=nil{result.Error=err.Error()}
+  case "check": result=check()
+  case "finish": if err:=encoder.Encode(result);err!=nil{panic(err)};return
+  default: panic(fmt.Sprint("unknown operation: ",command.Op))
+  }
+  if err:=encoder.Encode(result);err!=nil{panic(err)}
+ }
 }
 `
