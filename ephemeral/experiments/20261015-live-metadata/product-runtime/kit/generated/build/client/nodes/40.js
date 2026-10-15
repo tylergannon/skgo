@@ -1,0 +1,1 @@
+export { default as component } from "../../../../../../../../../example/web/src/routes/event-layout/[section]/[item]/one/+page.svelte";

@@ -1,0 +1,205 @@
+diff --git a/cmd/skgo/main.go b/cmd/skgo/main.go
+index 911d09c..4be3367 100644
+--- a/cmd/skgo/main.go
++++ b/cmd/skgo/main.go
+@@ -39,6 +39,7 @@ const usage = `usage:
+ 	skgo update [--root DIR] [--vp GLOBAL_VP]   align CLI and application toolchain
+ 	skgo native build [--platform macos|iphone|simulator] [--preset NAME]
+ 	skgo buildinfo [--json]   identify this executing CLI and its Go build
++	skgo dev [--root DIR] [--listen HOST:PORT]   develop with Go and Vite
+ 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
+ 	skgo check [flags]        check Go, Svelte, lint and formatting without edits
+ 	skgo kit-patch [--web web] (--apply | --check)
+@@ -105,6 +106,13 @@ func main() {
+ 		}
+ 	case "new":
+ 		newProject(os.Args[2:])
++	case "dev":
++		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
++		defer stop()
++		if err := devCommand(ctx, os.Args[2:], os.Stdout, os.Stderr); err != nil {
++			fmt.Fprintln(os.Stderr, err)
++			os.Exit(1)
++		}
+ 	case "generate":
+ 		generate(os.Args[2:])
+ 	case "check":
+diff --git a/internal/adapter/package.json b/internal/adapter/package.json
+index 4509f41..a47ebb4 100644
+--- a/internal/adapter/package.json
++++ b/internal/adapter/package.json
+@@ -37,6 +37,7 @@
+ 		"skgo-adapter/app-server.js",
+ 		"skgo-adapter/compat/kit-3.0.0-queue.json",
+ 		"skgo-adapter/compat/kit-3.0.0-queue.patch",
++		"skgo-adapter/dev.js",
+ 		"skgo-adapter/entry.js",
+ 		"skgo-adapter/env.js",
+ 		"skgo-adapter/generated.js",
+diff --git a/internal/adapter/package_test.go b/internal/adapter/package_test.go
+index e76d283..65415dc 100644
+--- a/internal/adapter/package_test.go
++++ b/internal/adapter/package_test.go
+@@ -33,7 +33,7 @@ import (
+ // what actually leaves for the registry, and nothing about editing a runtime
+ // file makes anyone remember it. These tests are what remembers.
+ 
+-// packageFiles is what a developer who runs `pnpm add -D @skgo/sveltekit-adapter` must
++// packageFiles is what a developer who runs `vp add -D @skgo/sveltekit-adapter` must
+ // receive, written out here rather than read from the package: the entry vite
+ // imports, every runtime file the SSR build reaches for, the types the app's
+ // `vite.config.ts` is checked against, and the three files npm carries for any
+@@ -48,6 +48,7 @@ var packageFiles = []string{
+ 	"skgo-adapter/app-server.js",
+ 	"skgo-adapter/compat/kit-3.0.0-queue.json",
+ 	"skgo-adapter/compat/kit-3.0.0-queue.patch",
++	"skgo-adapter/dev.js",
+ 	"skgo-adapter/entry.js",
+ 	"skgo-adapter/env.js",
+ 	"skgo-adapter/generated.js",
+diff --git a/internal/adapter/skgo-adapter.js b/internal/adapter/skgo-adapter.js
+index c4d2c7c..1969f67 100644
+--- a/internal/adapter/skgo-adapter.js
++++ b/internal/adapter/skgo-adapter.js
+@@ -23,6 +23,7 @@ import {
+ } from './skgo-adapter/prerender.js';
+ import { gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
+ import { prerenderModules } from './skgo-adapter/prerender-modules.js';
++import { development, developmentEnvironment, rendererOwner } from './skgo-adapter/dev.js';
+ import { identity } from './skgo-adapter/identity.js';
+ import { checkEndpoints, validateGenerated } from './skgo-adapter/generated.js';
+ import { authorizePrerenderedScripts } from './skgo-adapter/prerender-csp.js';
+@@ -69,6 +70,22 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
+ 	// runs, so the plugin that declares the environment has to exist here; the
+ 	// build itself waits until adapt() knows the node table.
+ 	const goja = gojaEnvironment();
++	if (process.env.SKGO_DEV_RENDER_BUILD) {
++		rendererOwner(goja);
++		return { name: 'skgo-development-renderer', vite: ({ config }) => {
++			config.outDir = join(process.env.SKGO_DEV_DIR, 'kit');
++			config.paths.origin = process.env.SKGO_DEV_ORIGIN;
++			// Svelte disables standalone-component anchor elision under HMR.
++			// The server and dev client must use the same marker grammar.
++			config.compilerOptions = { ...config.compilerOptions, hmr: true };
++			const environment = developmentEnvironment(config);
++			return { plugins: { post: [environment.plugin, goja.plugin] } };
++		}, async adapt() {} };
++	}
++	if (process.env.SKGO_DEV_ORIGIN && process.env.SKGO_DEV_DIR) {
++		return { name: 'skgo-development', vite: args => development(args, SKGO, universalHooks, globalName),
++			async adapt() { throw new Error('skgo: development adapter cannot publish a production build'); } };
++	}
+ 	const environment = goEnvironmentValues(out);
+ 	let prerenderOwner;
+ 	const prerenderOwnerPlugin = {
+diff --git a/internal/adapter/skgo-adapter/env.js b/internal/adapter/skgo-adapter/env.js
+index 3afe72f..b33f551 100644
+--- a/internal/adapter/skgo-adapter/env.js
++++ b/internal/adapter/skgo-adapter/env.js
+@@ -191,7 +191,7 @@ export function gojaEnvironment() {
+ 		'skgo:hooks': () => state.hooks,
+ 		// esm-env's DEV/BROWSER are vite conditions kit's server build resolves
+ 		// through package exports; this environment states them outright.
+-		'skgo:esm-env': () => 'export const DEV = false; export const BROWSER = false;',
++		'skgo:esm-env': () => `export const DEV = ${!!process.env.SKGO_DEV_ORIGIN}; export const BROWSER = false;`,
+ 		// `get_hooks` carries `reroute` and nothing else the engine needs; Go
+ 		// does the routing.
+ 		'skgo:generated': () => 'export const get_hooks = () => ({});',
+@@ -223,6 +223,7 @@ export function gojaEnvironment() {
+ 			return {
+ 				environments: {
+ 					goja: {
++						define: process.env.SKGO_DEV_ORIGIN ? { __SVELTEKIT_DEV__: 'true', __SVELTEKIT_GLOBAL_NAME__: JSON.stringify('__sveltekit_dev') } : {},
+ 						consumer: 'server',
+ 						resolve: {
+ 							noExternal: true,
+@@ -362,7 +363,8 @@ export function gojaEnvironment() {
+ 	 * @param {{ nodes: string, hooks: string, log?: (message: string) => void }} generated
+ 	 * @param {string} outfile
+ 	 */
+-	async function build({ nodes, hooks, log = () => {} }, outfile) {
++	async function build({ nodes, hooks, log = () => {} }, outfile, builder) {
++		if (builder) state.builder = builder;
+ 		if (!state.builder) {
+ 			throw new Error(
+ 				"skgo: vite never handed the adapter its builder, so the goja environment cannot be built. The adapter's `vite.plugins.post` hook did not reach kit."
+@@ -420,7 +422,7 @@ export function gojaEnvironment() {
+  * Where the environment's own output goes before it is folded. It is removed
+  * once the fold has read it; nothing downstream ever sees it.
+  */
+-const GOJA_OUT = 'build/.goja';
++const GOJA_OUT = process.env.SKGO_DEV_DIR ? join(process.env.SKGO_DEV_DIR, 'goja-intermediate') : 'build/.goja';
+ 
+ /** @param {string} file */
+ function basenameOf(file) {
+@@ -515,40 +517,46 @@ function needsLowering(code, id) {
+ 	return false;
+ }
+ 
+-export function goEnvironmentValues(output = 'build') {
++export function goEnvironmentValues(output = 'build', privateValuesFile) {
+ 	let fields = [];
+ 	let values = {};
+ 	return {
+ 		plugin: {
+ 			name: 'skgo-environment-values',
+-			configResolved(config) {
+-				const schema = join(config.root, 'skgo.env.json');
+-				if (!existsSync(schema)) return;
+-				fields = JSON.parse(readFileSync(schema, 'utf8')).fields;
+-				const setup = config.plugins.find((p) => p.name === 'vite-plugin-sveltekit-setup');
+-				const kit = setup?.api?.options;
+-				if (!kit) throw new Error('skgo: Kit environment configuration is unavailable');
+-				const raw = loadEnv(config.mode, resolve(config.root, kit.env.dir), '');
+-				// Pass only declared values; diagnostics never echo the full process env.
+-				const input = Object.fromEntries(fields.filter((f) => f.name in raw).map((f) => [f.name, raw[f.name]]));
+-				try {
+-					values = JSON.parse(execFileSync('go', ['tool', 'skgo', 'env', '--schema', schema], {
+-						cwd: config.root, input: JSON.stringify(input), encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe']
+-					}));
+-				} catch (error) {
+-					throw new Error('skgo: Go environment validation failed\n' + String(error.stderr || error.message));
+-				}
+-				const file = join(config.root, '.svelte-kit/skgo-env-values.js');
+-				mkdirSync(dirname(file), { recursive: true });
+-				writeFileSync(file, 'export const values = ' + JSON.stringify(values) + ';\n', { mode: 0o600 });
+-				chmodSync(file, 0o600);
+-
+-			},
++			configResolved: refresh,
++			load: { order: 'pre', handler(id) {
++				if (privateValuesFile && id.split('?')[0] === privateValuesFile && (this.environment.name === 'client' || this.environment.name === 'goja')) throw new Error('skgo: environment build inputs are private');
++			} },
+ 		},
++		refresh,
+ 		artifact() {
+ 			return { fields, static: Object.fromEntries(fields.filter((f) => f.static && f.name in values).map((f) => [f.name, values[f.name]])) };
+ 		}
+ 	};
++	function refresh(config) {
++		const schema = join(config.root, 'skgo.env.json');
++		if (!existsSync(schema)) { fields = []; values = {}; return; }
++		fields = JSON.parse(readFileSync(schema, 'utf8')).fields;
++		const setup = config.plugins.find((p) => p.name === 'vite-plugin-sveltekit-setup');
++		const kit = setup?.api?.options;
++		if (!kit) throw new Error('skgo: Kit environment configuration is unavailable');
++		const raw = loadEnv(config.mode, resolve(config.root, kit.env.dir), '');
++		// Pass only declared values; diagnostics never echo the full process env.
++		const input = Object.fromEntries(fields.filter((f) => f.name in raw).map((f) => [f.name, raw[f.name]]));
++		try {
++			values = JSON.parse(execFileSync('go', ['tool', 'skgo', 'env', '--schema', schema], {
++				cwd: config.root, input: JSON.stringify(input), encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe']
++			}));
++		} catch (error) {
++			throw new Error('skgo: Go environment validation failed\n' + String(error.stderr || error.message));
++		}
++		const file = privateValuesFile ?? join(config.root, '.svelte-kit/skgo-env-values.js');
++		mkdirSync(dirname(file), { recursive: true });
++		const source = 'export const values = ' + JSON.stringify(values) + ';\n';
++		if (!existsSync(file) || readFileSync(file, 'utf8') !== source) writeFileSync(file, source, { mode: 0o600 });
++		chmodSync(file, 0o600);
++	}
++
+ }
+ 
+ // Kit's public/private modules snapshot these properties during evaluation.

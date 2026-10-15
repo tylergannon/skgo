@@ -1,0 +1,98 @@
+skgo dev: preparing generated application
+skgo dev: starting Vite
+3:21:52 PM [vite+] (ssr) connected.
+3:21:53 PM [vite+] (client) Forced re-optimization of dependencies
+
+  VITE+ v1.0.0  
+
+  ➜  Local:   http://127.0.0.1:56135/
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 10174..10182
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 10190..10198
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 10534..10542
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 10550..10558
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 10604..10612
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 10620..10628
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 10636..10644
+
+skgo dev: building native application host
+skgo dev: http://127.0.0.1:56811 (Go pid 26452, Vite http://127.0.0.1:56135)
+skgo dev: published revision 2 (Go pid 26452)
+skgo dev: published revision 3 (Go pid 27026)
+3:22:16 PM [vite+] (client) [console.warn] Failed to hydrate:  HierarchyRequestError: Failed to execute 'appendChild' on 'Node': This node type does not support this method.
+    at Module.child (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:3335:43)
+    at _layout (http://127.0.0.1:56811/src/routes/+layout.svelte:147:17)
+    at http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/index-client-Cj29gbZE.js?v=5e96d286:250:62
+    at update_reaction (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4201:16)
+    at update_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4313:18)
+    at create_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:3618:4)
+    at branch (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:3827:9)
+    at http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/index-client-Cj29gbZE.js?v=5e96d286:247:13
+    at update_reaction (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4201:16)
+    at update_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4313:18)
+3:23:19 PM [vite+] (client) [console.warn] Failed to hydrate:  HierarchyRequestError: Failed to execute 'appendChild' on 'Node': This node type does not support this method.
+    at Module.child (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:3335:43)
+    at _layout (http://127.0.0.1:56811/src/routes/+layout.svelte:147:17)
+    at http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/index-client-Cj29gbZE.js?v=5e96d286:250:62
+    at update_reaction (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4201:16)
+    at update_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4313:18)
+    at create_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:3618:4)
+    at branch (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:3827:9)
+    at http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/index-client-Cj29gbZE.js?v=5e96d286:247:13
+    at update_reaction (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4201:16)
+    at update_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4313:18)
+3:24:56 PM [vite+] (client) [console.warn] Failed to hydrate:  HierarchyRequestError: Failed to execute 'appendChild' on 'Node': This node type does not support this method.
+    at Module.child (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:3335:43)
+    at _layout (http://127.0.0.1:56811/src/routes/+layout.svelte:147:17)
+    at http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/index-client-Cj29gbZE.js?v=5e96d286:250:62
+    at update_reaction (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4201:16)
+    at update_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4313:18)
+    at create_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:3618:4)
+    at branch (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:3827:9)
+    at http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/index-client-Cj29gbZE.js?v=5e96d286:247:13
+    at update_reaction (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4201:16)
+    at update_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-2412119449/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=5e96d286:4313:18)
+skgo dev: published revision 4 (Go pid 27026)
+skgo dev: published revision 5 (Go pid 27026)
+native host initialization: skgo: the frontend build and this program come from different skgo versions.
+	the @skgo/sveltekit-adapter that built it: skgo 0.0.0-dev (adapter 96a4c5e8720c)
+	this program:                    skgo devel (adapter c168c7004d2a)
+The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.
+Install the one this program publishes — `vp add -D @skgo/sveltekit-adapter` — then run `go generate ./...` and build the frontend again.
+native host initialization: skgo: the frontend build and this program come from different skgo versions.
+	the @skgo/sveltekit-adapter that built it: skgo 0.0.0-dev (adapter 96a4c5e8720c)
+	this program:                    skgo devel (adapter c168c7004d2a)
+The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.
+Install the one this program publishes — `vp add -D @skgo/sveltekit-adapter` — then run `go generate ./...` and build the frontend again.
+native host initialization: skgo: the frontend build and this program come from different skgo versions.
+	the @skgo/sveltekit-adapter that built it: skgo 0.0.0-dev (adapter 96a4c5e8720c)
+	this program:                    skgo devel (adapter f204312e81d1)
+The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.
+Install the one this program publishes — `vp add -D @skgo/sveltekit-adapter` — then run `go generate ./...` and build the frontend again.
+native host initialization: skgo: the frontend build and this program come from different skgo versions.
+	the @skgo/sveltekit-adapter that built it: skgo 0.0.0-dev (adapter 96a4c5e8720c)
+	this program:                    skgo devel (adapter f204312e81d1)
+The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.
+Install the one this program publishes — `vp add -D @skgo/sveltekit-adapter` — then run `go generate ./...` and build the frontend again.
+native host initialization: skgo: the frontend build and this program come from different skgo versions.
+	the @skgo/sveltekit-adapter that built it: skgo 0.0.0-dev (adapter 96a4c5e8720c)
+	this program:                    skgo devel (adapter f204312e81d1)
+The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.
+Install the one this program publishes — `vp add -D @skgo/sveltekit-adapter` — then run `go generate ./...` and build the frontend again.
+native host initialization: skgo: the frontend build and this program come from different skgo versions.
+	the @skgo/sveltekit-adapter that built it: skgo 0.0.0-dev (adapter 96a4c5e8720c)
+	this program:                    skgo devel (adapter f204312e81d1)
+The adapter and the Go that reads what it writes are one contract, so they have to be the same skgo.
+Install the one this program publishes — `vp add -D @skgo/sveltekit-adapter` — then run `go generate ./...` and build the frontend again.

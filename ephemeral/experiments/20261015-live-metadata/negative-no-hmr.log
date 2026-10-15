@@ -1,0 +1,36 @@
+=== RUN   TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler
+    development_test.go:197: snapshot1 routes2 nodes4
+    development_test.go:198: /z-existing expected200 "CHILD_ANCHOR</span><!---->" got200 <!doctype html><html><head><script type="module" src="/__skgo/dev/client.js"></script></head><body><!--[--><!--[--><!--[0--><!--[--><!--[--><!--[0--><span>CHILD_ANCHOR</span><!--]--><!--]--><main><!--[--><!--[-1--><!--[--><h1>EXISTING</h1><p>Go value: 8426</p><!--]--><!--]--><!--]--><!----></main><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
+        			<script>
+        				{
+        					__sveltekit_dev = {
+        						base: new URL(".", location).pathname.slice(0, -1),
+        						version: "1792100025262"
+        					};
+        
+        					const element = document.currentScript.parentElement;
+        
+        					import("/@fs/Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_3fba9d125588406c91ff67b52ec9f4c3/node_modules/@sveltejs/kit/src/runtime/client/entry.js").then(async (kit) => {
+        						kit.init(__sveltekit_dev);
+        						const app = await import("/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler2621845340/001/session/kit/generated/dev/client/app.js");
+        						kit.start(app, element, {
+        							node_ids: [0, 3],
+        							data: [null,{type:"data",data:{value:8426},uses:{}}],
+        							error: null,
+        							form: null
+        						});
+        					});
+        				}
+        			</script>
+        		</body></html>
+    development_test.go:90: 3:33:45 PM [vite+] (ssr) connected.
+        3:33:45 PM [vite+] (client) Forced re-optimization of dependencies
+        
+          VITE+ v1.0.0  
+        
+          ➜  Local:   http://127.0.0.1:58677/
+        
+--- FAIL: TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler (0.99s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	1.190s
+FAIL

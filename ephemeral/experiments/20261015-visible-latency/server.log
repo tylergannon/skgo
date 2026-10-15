@@ -1,0 +1,189 @@
+skgo dev: preparing generated application
+skgo dev: starting Vite
+skgo dev: Vite child pid 98051
+3:57:00 PM [vite+] (ssr) connected.
+3:57:00 PM [vite+] (client) Forced re-optimization of dependencies
+
+  VITE+ v1.0.0  
+
+  ➜  Local:   http://127.0.0.1:64546/
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 13657..13665
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 13673..13681
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 14017..14025
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14033..14041
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 14087..14095
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14103..14111
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 14119..14127
+
+skgo dev: building native application host
+skgo dev: http://127.0.0.1:57231 (Go pid 98460, Vite http://127.0.0.1:64546)
+skgo dev: published revision 2 (Go pid 98460, prepare 51.568ms, install 0s, rebuild false)
+skgo dev: published revision 3 (Go pid 98460, prepare 822.025ms, install 449µs, rebuild false)
+skgo dev: rebuilding revision 4: complete build required: application dependency, configuration or resource changed: /Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-visible-latency/main.go
+skgo dev: published revision 4 (Go pid 1441, prepare 45.18ms, install 0s, rebuild true)
+skgo dev: published revision 5 (Go pid 1441, prepare 618.383ms, install 582µs, rebuild false)
+skgo dev: published revision 6 (Go pid 1441, prepare 354.184ms, install 1.052ms, rebuild false)
+skgo dev: published revision 7 (Go pid 1441, prepare 207.631ms, install 625µs, rebuild false)
+skgo dev: published revision 8 (Go pid 1441, prepare 202.938ms, install 461µs, rebuild false)
+skgo dev: published revision 9 (Go pid 1441, prepare 213.724ms, install 1.24ms, rebuild false)
+skgo dev: published revision 10 (Go pid 1441, prepare 199.24ms, install 520µs, rebuild false)
+4:01:16 PM [vite+] (client) hmr update /src/routes/items/[id]/+page.svelte
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 13657..13665
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 13673..13681
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 14017..14025
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14033..14041
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 14087..14095
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14103..14111
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 14119..14127
+
+skgo dev: published revision 11 (Go pid 1441, prepare 35.497ms, install 0s, rebuild false)
+4:02:05 PM [vite+] (client) hmr update /src/routes/items/[id]/+page.svelte
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 13657..13665
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 13673..13681
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 14017..14025
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14033..14041
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 14087..14095
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14103..14111
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 14119..14127
+
+skgo dev: published revision 12 (Go pid 1441, prepare 34.511ms, install 0s, rebuild false)
+4:02:18 PM [vite+] (client) hmr update /src/routes/items/[id]/+page.svelte
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 13657..13665
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 13673..13681
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 14017..14025
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14033..14041
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 14087..14095
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14103..14111
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 14119..14127
+
+skgo dev: published revision 13 (Go pid 1441, prepare 34.52ms, install 0s, rebuild false)
+4:02:32 PM [vite+] (client) hmr update /src/routes/items/[id]/+page.svelte
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 13657..13665
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 13673..13681
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 14017..14025
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14033..14041
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 14087..14095
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14103..14111
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 14119..14127
+
+skgo dev: published revision 14 (Go pid 1441, prepare 37.755ms, install 0s, rebuild false)
+4:02:46 PM [vite+] (client) hmr update /src/routes/items/[id]/+page.svelte
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 13657..13665
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 13673..13681
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 14017..14025
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14033..14041
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 14087..14095
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14103..14111
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 14119..14127
+
+skgo dev: published revision 15 (Go pid 1441, prepare 33.774ms, install 0s, rebuild false)
+4:02:59 PM [vite+] (client) hmr update /src/routes/items/[id]/+page.svelte
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 13657..13665
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 13673..13681
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 14017..14025
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14033..14041
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 14087..14095
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 14103..14111
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 14119..14127
+
+skgo dev: published revision 16 (Go pid 1441, prepare 39.935ms, install 0s, rebuild false)
+skgo dev: rebuilding revision 17: complete build required: declaration, initialization, import or build-selection changed
+skgo dev: published revision 17 (Go pid 10144, prepare 36.105ms, install 0s, rebuild true)
+skgo dev: rebuilding revision 18: complete build required: declaration, initialization, import or build-selection changed
+skgo dev: published revision 18 (Go pid 11062, prepare 498.499ms, install 0s, rebuild true)
+skgo dev: rebuilding revision 19: complete build required: declaration, initialization, import or build-selection changed
+skgo dev: published revision 19 (Go pid 11705, prepare 412.02ms, install 0s, rebuild true)
+skgo dev: published revision 20 (Go pid 11705, prepare 607.263ms, install 484µs, rebuild false)
+skgo dev: published revision 21 (Go pid 11705, prepare 202.415ms, install 540µs, rebuild false)
+skgo dev watch: acquire changed source "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-overlap-answer/run.log": open /Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-overlap-answer/runtime/app/web: no such file or directory

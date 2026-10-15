@@ -23,6 +23,7 @@ import {
 } from './skgo-adapter/prerender.js';
 import { gojaEnvironment, goEnvironmentValues, nodeTable, SSR_TARGET } from './skgo-adapter/env.js';
 import { prerenderModules } from './skgo-adapter/prerender-modules.js';
+import { development, developmentEnvironment, rendererOwner } from './skgo-adapter/dev.js';
 import { identity } from './skgo-adapter/identity.js';
 import { checkEndpoints, validateGenerated } from './skgo-adapter/generated.js';
 import { authorizePrerenderedScripts } from './skgo-adapter/prerender-csp.js';
@@ -69,6 +70,22 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
 	// runs, so the plugin that declares the environment has to exist here; the
 	// build itself waits until adapt() knows the node table.
 	const goja = gojaEnvironment();
+	if (process.env.SKGO_DEV_RENDER_BUILD) {
+		rendererOwner(goja);
+		return { name: 'skgo-development-renderer', vite: ({ config }) => {
+			config.outDir = join(process.env.SKGO_DEV_DIR, 'kit');
+			config.paths.origin = process.env.SKGO_DEV_ORIGIN;
+			// Svelte disables standalone-component anchor elision under HMR.
+			// The server and dev client must use the same marker grammar.
+			config.compilerOptions = { ...config.compilerOptions, hmr: true };
+			const environment = developmentEnvironment(config);
+			return { plugins: { post: [environment.plugin, goja.plugin] } };
+		}, async adapt() {} };
+	}
+	if (process.env.SKGO_DEV_ORIGIN && process.env.SKGO_DEV_DIR) {
+		return { name: 'skgo-development', vite: args => development(args, SKGO, universalHooks, globalName),
+			async adapt() { throw new Error('skgo: development adapter cannot publish a production build'); } };
+	}
 	const environment = goEnvironmentValues(out);
 	let prerenderOwner;
 	const prerenderOwnerPlugin = {

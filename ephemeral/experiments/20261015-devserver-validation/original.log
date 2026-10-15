@@ -1,0 +1,8 @@
+=== RUN   TestPublicRouterKeepsApplicationAndToolingOwnershipAcrossReplacement
+--- PASS: TestPublicRouterKeepsApplicationAndToolingOwnershipAcrossReplacement (0.00s)
+=== RUN   TestPublicUpgradeSurvivesPrivateApplicationReplacement
+--- PASS: TestPublicUpgradeSurvivesPrivateApplicationReplacement (0.00s)
+=== RUN   TestListenerOwnsActualPortWhenRequestedPortOccupied
+--- PASS: TestListenerOwnsActualPortWhenRequestedPortOccupied (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/devserver	0.206s

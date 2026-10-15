@@ -33,7 +33,7 @@ import (
 // what actually leaves for the registry, and nothing about editing a runtime
 // file makes anyone remember it. These tests are what remembers.
 
-// packageFiles is what a developer who runs `pnpm add -D @skgo/sveltekit-adapter` must
+// packageFiles is what a developer who runs `vp add -D @skgo/sveltekit-adapter` must
 // receive, written out here rather than read from the package: the entry vite
 // imports, every runtime file the SSR build reaches for, the types the app's
 // `vite.config.ts` is checked against, and the three files npm carries for any
@@ -48,6 +48,7 @@ var packageFiles = []string{
 	"skgo-adapter/app-server.js",
 	"skgo-adapter/compat/kit-3.0.0-queue.json",
 	"skgo-adapter/compat/kit-3.0.0-queue.patch",
+	"skgo-adapter/dev.js",
 	"skgo-adapter/entry.js",
 	"skgo-adapter/env.js",
 	"skgo-adapter/generated.js",

@@ -1,0 +1,6 @@
+=== RUN   TestCapturedNativeHTTPHost
+    host_test.go:132: real handler got status=200 body="literal-4101:7" headers=map[Content-Length:[14] Content-Type:[text/plain; charset=utf-8] Date:[Thu, 15 Oct 2026 21:19:18 GMT] X-App-Hook:[preserved] X-Literal:[native-hook]] err=<nil>; want "literal-5202:7"
+--- FAIL: TestCapturedNativeHTTPHost (6.01s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/hotreload	6.263s
+FAIL

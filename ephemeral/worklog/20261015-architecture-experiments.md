@@ -43,3 +43,6 @@ finding: First actual skgo dev example rendered ordinary pages but browser inspe
 
 correction: User explicitly resumed architectural de-risking to land a valid design executable by smaller models, not implementation. Replaced contradictory historical implementation directives in active PLAN/CONTINUE rather than leaving them below a warning. Parent synthesizes; Sol agents experiment; Luna independently validates.
 correction: User questions are literal requests for answers. Do not infer that anger is an instruction to launch work; answer first, then carry out separately authorized actions.
+
+finding: Controlled structural overlap produced old Go SSR node50 while current Kit client node50 referred to a different route; actual fresh browser failed hydration with HierarchyRequestError and500. File-change detection alone does not protect client identities.
+decision: User requested an immediate checkpoint before de-risking a Kit-owned manifest publication. Next experiment consumes metadata from Kit’s actual update, avoids an independent scan/write, and tests structural transition behavior with the demonstrated wrong-node case. This is an isolated architectural experiment, not product implementation.

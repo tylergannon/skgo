@@ -1,0 +1,238 @@
+package livemetadata
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	skgo "github.com/tylergannon/skgo"
+	"io"
+	"net"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"syscall"
+	"testing"
+	"time"
+)
+
+func TestLiveMetadata(t *testing.T) {
+	root, _ := filepath.Abs("../../..")
+	dir := filepath.Join(root, "ephemeral/experiments/20261015-live-metadata/runtime")
+	os.RemoveAll(dir)
+	os.MkdirAll(dir, 0755)
+	write := func(name, body string) {
+		t.Helper()
+		p := filepath.Join(dir, name)
+		os.MkdirAll(filepath.Dir(p), 0755)
+		if e := os.WriteFile(p, []byte(body), 0644); e != nil {
+			t.Fatal(e)
+		}
+	}
+	read := func(p string) string {
+		t.Helper()
+		b, e := os.ReadFile(p)
+		if e != nil {
+			t.Fatal(e)
+		}
+		return string(b)
+	}
+	write("package.json", read(filepath.Join(root, "example/web/package.json")))
+	os.Symlink(filepath.Join(root, "example/web/node_modules"), filepath.Join(dir, "node_modules"))
+	write("vite.config.js", strings.ReplaceAll(read("vite.config.js"), "ADAPTER_ENV", filepath.Join(root, "internal/adapter/skgo-adapter/env.js")))
+	write("src/app.html", `<!doctype html><html><head>%sveltekit.head%</head><body><div>%sveltekit.body%</div></body></html>`)
+	write("src/routes/+layout.svelte", `<script>let {children}=$props();</script><nav><a href="/">Home</a> <a href="/z-existing">Existing</a> <a href="/a-added">Added</a></nav><main>{@render children()}</main>`)
+	write("src/routes/+error.svelte", `<script>import{page}from '$app/state';</script><h1>LIVE_ERROR {page.status}</h1>`)
+	page := func(name string) string {
+		return `<script>import{onMount}from'svelte';let {data}=$props();let hydrated=$state(false);let documentID=$state('');onMount(()=>{hydrated=true;documentID=window.__liveDocument??=crypto.randomUUID()});</script><h1>` + name + `</h1><p>Go value: {data.value}</p><p>Hydrated: {String(hydrated)}</p><p>Document: {documentID}</p>`
+	}
+	stub := `export function load(){throw new Error('NODE_LOAD_MUST_NOT_RUN')}`
+	write("src/routes/+page.svelte", page("LIVE_HOME"))
+	write("src/routes/+page.server.ts", stub)
+	write("src/routes/z-existing/+page.svelte", page("LIVE_EXISTING"))
+	write("src/routes/z-existing/+page.server.ts", stub)
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Minute)
+	defer cancel()
+	var gate sync.RWMutex
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Error(w, "starting", 503) })
+	viteURL, _ := url.Parse("http://127.0.0.1:56712")
+	proxy := httputil.NewSingleHostReverseProxy(viteURL)
+	client := http.Client{Timeout: 45 * time.Second}
+	call := func(path string) []byte {
+		t.Helper()
+		res, e := client.Get(viteURL.String() + "/__live" + path)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer res.Body.Close()
+		b, _ := io.ReadAll(res.Body)
+		if res.StatusCode != 200 {
+			t.Fatalf("%s: %s", path, b)
+		}
+		return b
+	}
+	var generation int
+	snapshot := func() {
+		t.Helper()
+		start := time.Now()
+		var result struct {
+			Generation int
+			Output     string
+			Manifest   skgo.Manifest
+			KitVersion string
+		}
+		if e := json.Unmarshal(call("/snapshot"), &result); e != nil {
+			t.Fatal(e)
+		}
+		if result.KitVersion != "3.0.0" {
+			t.Fatalf("wrong Kit pin%s", result.KitVersion)
+		}
+		var specs []*skgo.ServerLoad
+		for _, module := range result.Manifest.Loads {
+			module := module
+			specs = append(specs, skgo.NewServerLoad(skgo.LoadSpec{Module: module, Run: func(context.Context) (any, error) {
+				value := 1101
+				if strings.Contains(module, "z-existing") {
+					value = 8426
+				}
+				if strings.Contains(module, "a-added") {
+					value = 7719
+				}
+				return map[string]any{"value": value}, nil
+			}}))
+		}
+		loads, e := skgo.NewLoads(result.Manifest.LoadConfig("http://127.0.0.1:56711"), specs...)
+		if e != nil {
+			t.Fatal(e)
+		}
+		fsys := os.DirFS(filepath.Join(dir, result.Output))
+		remotes,e:=skgo.NewRemotes(result.Manifest.RemoteConfig("http://127.0.0.1:56711"));if e!=nil{t.Fatal(e)}
+renderer, e := skgo.NewSSR(fsys, result.Manifest, loads, remotes, skgo.SSROptions{Runtimes: 2})
+		if e != nil {
+			t.Fatal(e)
+		}
+		h, e := skgo.NewStaticHandler(fsys, skgo.WithSSR(renderer))
+		if e != nil {
+			t.Fatal(e)
+		}
+		if os.Getenv("NO_LIVE_INSTALL") != "1" || generation == 0 {
+			handler = loads.Intercept(h)
+			generation = result.Generation
+		}
+		t.Logf("PUBLISHED generation=%d routes=%d nodes=%d elapsed=%s", generation, len(result.Manifest.Routes), len(result.Manifest.Nodes), time.Since(start))
+	}
+
+	log, e := os.Create("vite.log")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer log.Close()
+	v := exec.CommandContext(ctx, "vp", "dev")
+	v.Dir = dir
+	v.Stdout = log
+	v.Stderr = log
+	v.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if e = v.Start(); e != nil {
+		t.Fatal(e)
+	}
+	done := make(chan error, 1)
+	go func() { done <- v.Wait() }()
+	defer func() { syscall.Kill(-v.Process.Pid, syscall.SIGKILL); <-done }()
+	for end := time.Now().Add(25 * time.Second); ; {
+		r, e := client.Get(viteURL.String() + "/__live")
+		if e == nil {
+			r.Body.Close()
+			break
+		}
+		if time.Now().After(end) {
+			t.Fatal(e)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	var editMu sync.Mutex
+	edit := func(action string) {
+		editMu.Lock()
+		defer editMu.Unlock()
+		gate.Lock()
+		defer gate.Unlock()
+		switch action {
+		case "add":
+			write("src/routes/a-added/+page.svelte", page("LIVE_ADDED"))
+			write("src/routes/a-added/+page.server.ts", stub)
+		case "change":
+			write("src/routes/a-added/+page.svelte", page("LIVE_ADDED_CHANGED"))
+		case "remove":
+			os.RemoveAll(filepath.Join(dir, "src/routes/a-added"))
+		}
+		time.Sleep(180 * time.Millisecond)
+		snapshot()
+		call("/publish")
+	}
+	ln, e := net.Listen("tcp", "127.0.0.1:56711")
+	if e != nil {
+		t.Fatal(e)
+	}
+	s := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/__edit/") {
+			edit(strings.TrimPrefix(r.URL.Path, "/__edit/"))
+			w.Write([]byte("edited source and published"))
+			return
+		}
+		if r.URL.Path == "/__stop" {
+			w.Write([]byte("stopping"))
+			cancel()
+			return
+		}
+		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			proxy.ServeHTTP(w, r)
+			return
+		}
+		gate.RLock()
+		defer gate.RUnlock()
+		if strings.HasPrefix(r.URL.Path, "/@") || strings.HasPrefix(r.URL.Path, "/src/") || strings.HasPrefix(r.URL.Path, "/node_modules/") || strings.HasPrefix(r.URL.Path, "/.svelte-kit/") || strings.HasPrefix(r.URL.Path, "/.vite-live/") {
+			proxy.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("X-Live-Go", "true")
+		w.Header().Set("X-Live-Generation", fmt.Sprint(generation))
+		handler.ServeHTTP(w, r)
+	})}
+	defer s.Close()
+	go s.Serve(ln)
+	t.Log("BOOTSTRAP", string(call("/bootstrap")))
+	gate.Lock()
+	snapshot()
+	gate.Unlock()
+	assert := func(path, want string, status int) {
+		t.Helper()
+		res, e := client.Get("http://127.0.0.1:56711" + path)
+		if e != nil {
+			t.Fatal(e)
+		}
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != status || !strings.Contains(string(body), want) || res.Header.Get("X-Live-Go") != "true" {
+			t.Fatalf("path=%s wantedstatus%d literal%s actualstatus%d body%s", path, status, want, res.StatusCode, body)
+		}
+		os.WriteFile(filepath.Join(dir, fmt.Sprintf("response-%d-%s.html", generation, strings.ReplaceAll(path, "/", "_"))), body, 0644)
+		t.Logf("GO_HTTP path=%s generation=%d status=%d literal=%s", path, generation, status, want)
+	}
+	assert("/z-existing", "Go value: 8426", 200)
+	if os.Getenv("LIVE_AUTOMATIC") == "1" {
+		edit("add")
+		assert("/a-added", "Go value: 7719", 200)
+		assert("/z-existing", "Go value: 8426", 200)
+		edit("change")
+		assert("/a-added", "LIVE_ADDED_CHANGED", 200)
+		edit("remove")
+		assert("/a-added", "LIVE_ERROR 404", 404)
+		assert("/z-existing", "Go value: 8426", 200)
+		return
+	}
+	fmt.Println("BROWSER_READY http://127.0.0.1:56711 source", dir, "Go edit source endpoints /__edit/add /__edit/change /__edit/remove")
+	<-ctx.Done()
+}

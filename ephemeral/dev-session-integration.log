@@ -1,0 +1,8 @@
+=== RUN   TestRealSessionNativeRecoveryAndIsolation
+    session_integration_test.go:183: Kit fixed-origin define did not follow bound listener: status=200 public=http://127.0.0.1:61028 occupied=127.0.0.1:61027 transformed=export const publicOrigin = __SVELTEKIT_PATHS_ORIGIN__;
+        
+        //# sourceMappingURL=data:application/json;base64,eyJtYXBwaW5ncyI6IkFBQUEsT0FBTyxNQUFNLGVBQWUiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsib3JpZ2luLnRzIl0sInZlcnNpb24iOjMsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBjb25zdCBwdWJsaWNPcmlnaW4gPSBfX1NWRUxURUtJVF9QQVRIU19PUklHSU5fXzsiXX0=
+--- FAIL: TestRealSessionNativeRecoveryAndIsolation (8.67s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/devserver	8.921s
+FAIL

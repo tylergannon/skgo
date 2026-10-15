@@ -1,0 +1,7 @@
+=== RUN   TestLiveMetadata
+    live_test.go:206: BOOTSTRAP built
+    live_test.go:208: skgo: the build has no remote-function list; re-run `skgo generate` and rebuild the frontend
+--- FAIL: TestLiveMetadata (1.52s)
+FAIL
+FAIL	github.com/tylergannon/skgo/ephemeral/experiments/20261015-live-metadata	1.772s
+FAIL

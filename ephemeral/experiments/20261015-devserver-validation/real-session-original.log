@@ -1,0 +1,42 @@
+=== RUN   TestRealSessionNativeRecoveryAndIsolation
+    session_integration_test.go:196: ALPHA
+        skgo dev: preparing generated application
+        skgo dev: starting Vite
+        skgo dev: Vite child pid 53434
+        3:34:29 PM [vite+] (ssr) connected.
+        3:34:29 PM [vite+] (client) Forced re-optimization of dependencies
+        
+          VITE+ v1.0.0  
+        
+          ➜  Local:   http://127.0.0.1:58847/
+        skgo dev: building native application host
+        skgo dev: http://127.0.0.1:58842 (Go pid 53546, Vite http://127.0.0.1:58847)
+        skgo dev: published revision 2 (Go pid 53546, prepare 22.773ms, install 0s, rebuild false)
+        skgo dev: published revision 3 (Go pid 53546, prepare 515.065ms, install 666µs, rebuild false)
+        skgo dev: rebuilding revision 4: complete build required: declaration, initialization, import or build-selection changed
+        skgo dev: published revision 4 (Go pid 53921, prepare 20.451ms, install 0s, rebuild true)
+        skgo dev: recovered Go pid 54089
+        skgo dev: Vite child pid 54090
+        3:34:46 PM [vite+] (ssr) connected.
+        
+          VITE+ v1.0.0  
+        
+          ➜  Local:   http://127.0.0.1:59063/
+        skgo dev: published revision 4 (Go pid 54089, prepare 57.624ms, install 0s, rebuild false)
+        
+        BETA
+        skgo dev: preparing generated application
+        skgo dev: starting Vite
+        skgo dev: Vite child pid 53581
+        3:34:33 PM [vite+] (ssr) connected.
+        3:34:33 PM [vite+] (client) Forced re-optimization of dependencies
+        
+          VITE+ v1.0.0  
+        
+          ➜  Local:   http://127.0.0.1:58859/
+        skgo dev: building native application host
+        skgo dev: http://127.0.0.1:58853 (Go pid 53687, Vite http://127.0.0.1:58859)
+        skgo dev: published revision 2 (Go pid 53687, prepare 32.976ms, install 0s, rebuild false)
+--- PASS: TestRealSessionNativeRecoveryAndIsolation (19.72s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/devserver	19.948s

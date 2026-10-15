@@ -39,6 +39,7 @@ const usage = `usage:
 	skgo update [--root DIR] [--vp GLOBAL_VP]   align CLI and application toolchain
 	skgo native build [--platform macos|iphone|simulator] [--preset NAME]
 	skgo buildinfo [--json]   identify this executing CLI and its Go build
+	skgo dev [--root DIR] [--listen HOST:PORT]   develop with Go and Vite
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
 	skgo check [flags]        check Go, Svelte, lint and formatting without edits
 	skgo kit-patch [--web web] (--apply | --check)
@@ -105,6 +106,13 @@ func main() {
 		}
 	case "new":
 		newProject(os.Args[2:])
+	case "dev":
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		if err := devCommand(ctx, os.Args[2:], os.Stdout, os.Stderr); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "generate":
 		generate(os.Args[2:])
 	case "check":

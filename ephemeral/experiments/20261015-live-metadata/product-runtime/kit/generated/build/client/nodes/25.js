@@ -1,0 +1,1 @@
+export { default as component } from "../../../../../../../../../example/web/src/routes/async-ssr/[mode]/[group]/+page.svelte";

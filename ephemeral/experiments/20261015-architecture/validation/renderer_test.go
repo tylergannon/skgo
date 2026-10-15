@@ -1,3 +1,5 @@
+//go:build skgo_archived_experiment
+
 package renderer
 
 import (

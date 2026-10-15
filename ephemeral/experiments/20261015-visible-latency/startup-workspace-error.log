@@ -1,0 +1,2 @@
+skgo dev: preparing generated application
+skgo: revision 1: skgo: locals package github.com/tylergannon/skgo/example/internal/app must be owned by the application module
