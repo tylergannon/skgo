@@ -1,0 +1,7 @@
+READY ALPHA public=http://127.0.0.1:57331 sockets=/private/tmp/skgo-uds-2510439863/ALPHA/go.sock /private/tmp/skgo-uds-2510439863/ALPHA/vite.sock node={"socket":"/private/tmp/skgo-uds-2510439863/ALPHA/vite.sock","httpServerIsNull":true,"pid":6542}
+READY BETA public=http://127.0.0.1:57332 sockets=/private/tmp/skgo-uds-2510439863/BETA/go.sock /private/tmp/skgo-uds-2510439863/BETA/vite.sock node={"socket":"/private/tmp/skgo-uds-2510439863/BETA/vite.sock","httpServerIsNull":true,"pid":6545}
+PASS nativeKitSSR ALPHA ALPHA_4101 cookie auth marker publichost
+PASS nativeKitSSR BETA BETA_5202 cookie auth marker publichost
+EXPECTED FAIL ALPHA literal on deliberately wrong Go UDS target; got BETA_5202 despite200
+PASS restored ALPHA target
+HTTP CHECKS FINISHED; live for browser; stop via ALPHA /__poc/stop

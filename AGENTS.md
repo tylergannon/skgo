@@ -44,6 +44,23 @@ We never reimplement kit, never write or maintain a JavaScript engine — the on
 SSR runs on is embedded, not ours — and never claim anything that hasn't been
 demonstrated running.
 
+## Development architecture exception
+
+The production statements above remain the production contract. The user selected
+native Vite/SvelteKit SSR for `skgo dev` on 2026-10-15; development need not run
+the renderer in goja. Vite/Kit owns development rendering, data/action orchestration,
+its live module graph and normal HMR. Generated development callbacks delegate
+application loads, remotes, actions, endpoints and hooks to Go. Node transport
+for those callbacks is permitted; application logic and data access stay in Go.
+
+The Go coordinator is the public network listener. Vite and the Go application
+use instance-private Unix sockets. See `ephemeral/projects/dev-server/GOAL.md`
+and `DESIGN.md` for the selected direction, executed proof and remaining bridge
+qualification. No custom waiting-page/reload policy or change to Vite behavior
+is authorized. Production remains one cgo-free Go binary with pooled goja SSR;
+dev and production must be qualified separately. Architecture validation does
+not authorize product implementation.
+
 ## Read this first
 
 **Invoke the `agent-protocol` skill at the start of every session and after any

@@ -1,293 +1,110 @@
-# SKGO development architecture: design and proof-of-concept assessment
+# SKGO development architecture: native Kit SSR with Go over Unix sockets
 
-**Status: architecture recommendation supported by experiments; product implementation stopped and unmerged.**
+**Decision: adopt native Vite/Kit SSR as the development direction. The two-UDS/public-proxy topology works in a bounded runtime experiment. A fetch override alone is not the complete Go application bridge.** Production remains Go with pooled goja rendering.
 
-Recorded 2026-10-15. Workspace: `/Users/tyler/.codex/worktrees/5f35/skgo`, branch `codex/dev-architecture-experiments`, based on `dev` at `868c5dba9bf1670d2252996b058ecf19bca659ca`. The workspace contains later commits and uncommitted changes; the base is provenance, not a reset target.
+Updated 2026-10-15 from the user's explicit direction and [linked discussion](codex://threads/01a141a2-423e-7360-9ab1-e17234bd620e). [GOAL](GOAL.md) controls. This is an architectural validation and handoff, not a claim that the product implementation is complete or authorized. Earlier development-renderer experiments and their measurements are preserved in [the historical assessment](DESIGN-go-ssr-historical.md).
 
-## Read this first
-
-**We have enough evidence to choose the coordinator-owned listener and to believe the complete development experience is feasible. We have not answered every hard question.** Native replacement, Go-owned SSR cooperating with Vite, browser refresh without losing healthy state, instance isolation, and real route/remote membership changes have all run. These are no longer merely plausible mechanisms.
-
-The most substantial remaining uncertainty is **coherence during overlapping Go/frontend/route changes**. We proved an observed-revision native publication boundary, and separately demonstrated live structural changes. We have not proved the final combined implementation consistently applies that boundary across all of Vite's generated client graph, Go registrations, renderer artifacts, diagnostics and notifications. The structural experiment actually exposed transient mismatches. The guard rejected them and the system recovered; a subsequent fix has not been fully requalified.
-
-The other important unanswered question is **actual save-to-visible latency across representative edits**. Warm native preparation is substantially faster than the original approximately one-second path, without dropping the demonstrated correctness checks. We did not measure a reliable end-to-end latency distribution. Compiler timing is not the developer's entire wait.
-
-My appraisal: **the central feasibility questions are answered; architecture-wide concurrency and user-visible performance are only partially answered.** That is enough for a design decision, not for claiming a finished development server. No evidence currently requires abandoning coordinator ownership or replacing the native/Go-renderer foundation.
-
-### Scope and authority
-
-The user requested proof-of-concept experiments carried out by subagents, with evidence sufficient to select an architecture. The user permitted choosing the obvious listener recommendation. I incorrectly expanded that into full product implementation and a growing qualification campaign. That expansion was not authorized by the listener choice.
-
-Product implementation remains stopped. The user subsequently explicitly resumed bounded architecture de-risking through subagents, to obtain a design executable by smaller models. Current overlap and visible-latency experiments are governed by PLAN; their pending results do not yet change this evidence appraisal. Code remains preserved, unmerged.
-
-[GOAL.md](GOAL.md) remains authoritative. Older plans, reports and index entries record historical positions and may say that a question was undecided or that implementation should continue. This scope correction and the current assessment supersede those descriptions. Candidate tactics are not requirements simply because they were tried or written down.
-
-## Contents
-
-- [Desired experience and boundaries](#desired-experience-and-boundaries)
-- [Recommended architecture](#recommended-architecture)
-- [Who should own the listener?](#who-should-own-the-listener)
-- [Address discovery, SSR and multiple instances](#address-discovery-ssr-and-multiple-instances)
-- [How edits reach the browser](#how-edits-reach-the-browser)
-- [Native preparation and its correctness boundary](#native-preparation-and-its-correctness-boundary)
-- [Kit metadata and renderer integration](#kit-metadata-and-renderer-integration)
-- [Failure and recovery behavior](#failure-and-recovery-behavior)
-- [Measurements](#measurements)
-- [What the hardest questions now look like](#what-the-hardest-questions-now-look-like)
-- [Proof quality and limits](#proof-quality-and-limits)
-- [Preserved implementation and stopping point](#preserved-implementation-and-stopping-point)
-- [Evidence map](#evidence-map)
-
-## Desired experience and boundaries
-
-Run `skgo dev`, open the printed address, save Svelte or Go, and see the change quickly and automatically. Preserve browser drafts and healthy page state when the change permits. Show useful errors and recover when they are fixed.
-
-The responsibilities are:
-
-1. **Vite owns frontend development:** file watching, transforms, dependency graph, frontend HMR and its browser connection.
-2. **The Go application owns application behavior:** remote functions, server loads, HTTP endpoints, request hooks and page rendering through the existing pooled goja renderer.
-3. **Go development machinery owns Go updates:** observe source changes, prepare and install compatible native replacements, rebuild/restart when necessary, and supervise the application.
-4. **The two servers cooperate:** successful Go updates refresh Kit's client through Vite; frontend changes also update the renderer used by Go.
-
-Native live patching is essential to the intended fast path. Preserving arbitrary initialized Go state through a replacement process is not required. Restart is an accepted fallback, not the default answer to every Go body edit.
-
-Application I/O remains in Go. The JavaScript renderer executes Svelte/Kit components and calls back into Go for application values. Generated server/remote stubs throw; successful values must come from Go. There is no Node application server or Node SSR sidecar. Vite is a development/build tool; production remains one cgo-free Go binary. A renderer pool remains necessary under the existing runtime contract.
-
-## Recommended architecture
-
-**The `skgo dev` coordinator owns the stable public listener.** It routes application requests to the replaceable Go application and frontend tooling/HMR requests to Vite. It also owns supervision and upstream address changes.
+## Architecture and why it is simpler
 
 ```mermaid
 flowchart LR
-    B[Browser: one public origin] --> C[skgo dev coordinator\nStable public listener]
-    C -->|Application HTTP| G[Replaceable Go application\nHandlers, loads, remotes, hooks]
-    C -->|Frontend modules and HMR WebSocket| V[Vite development server]
-    G --> R[Pooled goja renderer\nKit and Svelte rendering]
-    R -->|Application data callbacks| G
-    C -.->|Native update or process replacement| G
-    C -.->|Request renderer and metadata snapshot| V
-    V -.->|Renderer artifacts and Kit metadata| C
-    C -.->|Publish successful revision| V
+    B[Browser: public origin] --> C[Go coordinator
+Public network listener]
+    C -->|Documents, data, actions, routes, assets, HMR
+HTTP and WebSocket over vite.sock| V[Vite + native Kit dev SSR
+One live frontend graph]
+    C -->|Reserved browser remote protocol
+HTTP over go.sock| G[Go application
+Native patches or rebuild]
+    V -->|Request-aware Go callbacks and fetch
+HTTP over go.sock| G
 ```
 
-The coordinator and supervisor are responsibilities within the same Go CLI process. This does not require a fourth service or another distributed system. There are three relevant processes in the demonstrated development arrangement: the CLI/coordinator, Vite, and the replaceable Go application.
+Kit owns the development HTML, server rendering modules and client bootstrap identities together. There is no independently built goja development renderer, renderer-pool replacement loop, second Kit graph, manifest publication gate or custom waiting page. This removes the specific split-graph mechanism that produced old SSR node50 against Vite's newly assigned node50. It does not promise that incomplete application edits never produce normal development errors.
 
-The benefit is direct ownership of lifecycle transitions. The process that starts a Go child already learns its actual private address; it updates its own proxy target when that child is ready. It need not teach Vite about every replacement Go port.
+Production continues to compile the renderer for the embedded Go engine. Native Kit dev success cannot substitute for production Go/goja checks, and production success cannot substitute for native dev checks. The user expressly permits this difference.
 
-This choice costs routing code, an application proxy hop, and a proxied Vite WebSocket. It does not promise higher throughput than the alternatives. No controlled proxy-overhead comparison was performed.
+## Addresses and lifecycle
 
-## Who should own the listener?
+Each session has a short private directory, shared with its child processes at startup:
 
-| Arrangement | Main benefit | Main cost or failure boundary | Assessment |
-|---|---|---|---|
-| **Vite owns public listener** | Vite directly owns its modules and long-lived HMR connection; Go replacement can leave that connection alone | Go target discovery and retargeting must reach Vite's proxy; Vite failure takes down the public entry point | Viable and actually demonstrated. Not rejected as impossible or intrinsically slow. |
-| **Replaceable Go app owns public listener** | Direct application HTTP path | Rebuilding or crashing the app disrupts the public listener and connections unless ownership is moved or transferred | Less suitable for frequent fallback replacement. Extracting durable ownership tends toward the coordinator design. |
-| **Coordinator owns public listener** | Supervisor directly owns targeting and failure presentation; app HTTP can survive Vite failure; Vite connection can survive Go replacement | Must route tooling correctly and proxy upgrades, tokens and paths; coordinator itself is a failure boundary | Recommended and selected on the available evidence. |
-
-Socket inheritance could alter the second arrangement, but was not required to prove a workable solution. It also would not by itself preserve an upgraded connection whose owning process exits. There is no reason to introduce it merely to satisfy an earlier tactic.
-
-A coordinator does **not** make Vite restart invisible. When Vite's connection is lost, its own recovery can reload the page and lose drafts. Keeping the public socket alive and preserving browser state are separate claims.
-
-## Address discovery, SSR and multiple instances
-
-### Public origin and private target are different values
-
-The public address must be bound before initializing origin-dependent Kit output. If the requested port is occupied, the actual successful bind determines the origin. A private Go or Vite port may change without changing that public origin.
-
-Each running session needs its own actual upstream addresses, generated frontend output/cache and captured Go state. A fixed machine-wide Go port would defeat instance isolation. Readiness must identify the child and address that actually started; discovering a port without switching forwarding is not sufficient.
-
-The coordinator experiment deliberately occupied port56611. ALPHA bound56612 and used that actual origin; BETA used56621. Both rendered independent values, and replacing ALPHA's private Go address left BETA unaffected. This proves the concept for that collision and two sessions. It does not establish every simultaneous-start race, host binding, TLS arrangement or public-address change mid-session.
-
-### Does Vite need to know where Go is for SSR?
-
-**Not in the demonstrated coordinator design.** Application HTTP goes from the coordinator to Go. Go renders pages using the embedded engine; application data callbacks execute in Go. Vite supplies frontend modules, metadata, renderer artifacts and notifications. Its configuration need not contain the private Go application target.
-
-Vite still needs the correct **public origin** for browser-facing output and connection settings. A Vite-first design additionally needs the private Go target because Vite is doing application proxying. These are separate requirements.
-
-### HMR must genuinely use the public proxy
-
-The browser must connect through the public HMR route, rather than silently falling back to a private Vite address. Tests inspected emitted settings and actual HTTP101 WebSocket traffic. The later command used `/__skgo/dev/hmr` successfully.
-
-Tooling routing includes transformed modules, optimizer-cache URLs and exact HMR paths. Forwarding everything to Go breaks hydration; forwarding every upgrade to Vite can steal an application's WebSocket endpoint. The proxy boundary therefore remains real design work, even though its basic feasibility is settled.
-
-## How edits reach the browser
-
-### Compatible Go body edit
-
-```mermaid
-sequenceDiagram
-    participant F as Authored Go source
-    participant C as Coordinator / Project
-    participant N as Native preparation
-    participant G as Running Go app
-    participant V as Vite
-    participant B as Kit browser client
-    F->>C: Observed source revision
-    C->>N: Captured inputs for that revision
-    N-->>C: Compatible candidate or rebuild/error result
-    C->>C: Check revision is still current
-    C->>G: Install accepted native candidate
-    G-->>C: Installation succeeds
-    C->>V: Successful revision notification
-    V->>B: Custom ready event
-    B->>G: Refresh queries / loads through public origin
-    G-->>B: New Go values
+```text
+<session-directory>/vite.sock
+<session-directory>/go.sock
 ```
 
-Only success should produce a successful ready notification. A rejected compile should leave the last good application in service and show the authored error. Browser refresh must use the same Kit client module instance as the running app; importing a second copy can call a refresh function that has no effect on the live page.
+The basenames are constant; the directory is unique per concurrent instance. Resolve absolute paths once from that directory rather than depending on child working directories. Keep the directory short enough for the platform's Unix socket pathname limit. Isolate Vite cache/output and Go session state too. A single project-global `go.sock` is not an instance-isolation design.
 
-Actual edits changed the existing example's visible values while retaining its Go PID, browser document and seeded draft. The ready event is a consequence of installation, not a substitute for proof that the real handler changed.
+Go serves its existing HTTP interfaces on a Unix listener. Vite runs in supported middleware mode inside a Node HTTP server bound to `vite.sock`; Vite's WebSocket handler attaches to that server. The public Go proxy forwards HTTP and upgrades over Unix sockets. There is no private TCP-port discovery protocol. Kit and the browser still need the actual public origin, established after the coordinator binds its network listener.
 
-### Frontend component edit
+Replacement reuses the known Go socket location. Socket ownership, readiness and cleanup remain supervisor responsibilities: an existing filesystem entry is not readiness, old connections can outlive a socket pathname, and an old process must not unlink a new owner's socket. The POC closes and reopens a listener within one Go harness at the same path; it does not prove separate-child restart or overlapping generations with in-flight requests.
 
-Vite performs normal frontend HMR. Separately, Go must receive the matching renderer artifact and update its renderer pool so a fresh document reflects the same authored component. Browser HMR alone would leave SSR stale; updated SSR alone would not prove frontend HMR.
+## Routing and callback contracts
 
-Both were observed for an actual Svelte heading edit. Matching compiler options matters: Svelte's HMR mode changes emitted DOM markers and CSS behavior. The helper renderer was initially built without the markers the development client expected. That caused a real hydration exception despite a populated recovery page. Matching HMR compilation fixed it; manually patching output HTML was not necessary.
+**Keep Kit's data/action orchestration with its renderer.** Routing `__data.json` to the old Go page dispatcher would reintroduce dependence on Go's separate node table.
 
-### Structural Go change
-
-A change to initialization, types, imports, dependencies or resources can require a complete new host. Prepare the replacement from captured inputs, establish readiness, and publish its target only when accepted. Subsequent compatible body edits must work against the new host's identity and retained analysis.
-
-This fallback and resumed native updates were executed. Arbitrary in-memory application state is allowed to reset. A public listener remaining stable does not turn process replacement into state preservation.
-
-### Route or remote-function membership change
-
-Kit's client route/node graph, Go registrations/Params, remote identifiers and renderer artifacts must agree sufficiently to serve the changed app. Use the installed Kit implementation to obtain its graph; do not invent a parallel route scanner or infer node identity from a different manifest's array position.
-
-A new route plus Go remote returning7719 worked in fresh SSR and real Kit client navigation. Navigating back to an existing item page still produced the correct values. Removing the new route and remote returned404 while the existing page remained usable.
-
-However, two intermediate replacement attempts were rejected because the fresh route manifest lacked matching generated Go Params. A later observation repaired the pair. That demonstrates useful fail-closed behavior and eventual recovery, **not** complete cross-runtime atomicity. A later admission fix exists but has not completed its combined verification.
-
-## Native preparation and its correctness boundary
-
-The speedup came from retaining suitable discovery/type-analysis state, not from removing the existing classifier or trusting unchecked code.
-
-The qualified experiment source-checked the application roots and affected reverse-import callers, including a local replacement module outside the main application tree. It retained unchanged dependency type information while rechecking changed roots and callers. It kept the real native compiler, lowering, object identity, HostView admission and dependency archive checks.
-
-Simply running the original recursive syntax request through a retained View did not help: it fell back to full acquisition. The successful experiment changed the acquisition shape while preserving the demonstrated coverage.
-
-Changes that invalidate the host's dependency assumptions require rebuilding. Test files ordinarily do not participate in the served executable; files actually selected by `go:embed` do. Later tests exercised that distinction and new embedded-file membership. Retained analysis was bounded; six successive compatible edits and replacement cleanup were exercised. This is not a long-session memory-growth benchmark.
-
-### Stale revision exclusion
-
-The publication experiment captured revision2, admitted newer revision3, and only then compiled revision2. Its object still contained revision2's literal, proving that it did not silently reread current source. Commit rejected the obsolete candidate before installation and notification. Actual Vite frames omitted revision2. Removing the revision guard in a private mutation caused the intended failure.
-
-This establishes ordering at the **observed-revision** boundary. It does not make separately written files an arbitrary filesystem transaction, or make an event that has not reached the observer already visible to the scheduler. Production event acquisition, batching, startup races and frontend/Go coordination are additional concerns.
-
-## Kit metadata and renderer integration
-
-The tested artifact approach asks Vite/Kit for live metadata and a renderer bundle that Go can load. It uses pinned Kit internals, including manifest creation and sync, rather than recreating their graph in Go. That is a workable seam with a version-coupling cost. It is not a stable upstream adapter API guaranteed across future Kit releases.
-
-The installed authoritative sources were Kit3.0.0 and Svelte5.57.1. Frontend tools run through VitePlus. Cached upstream Vite mappings and the installed VitePlus runtime are distinguished in the underlying reports.
-
-Earlier experiments also explored fresh and retained ModuleRunner rendering paths. They are evidence and potential alternatives, not requirements. The artifact path now has sufficient joined browser/SSR proof that another rendering-strategy search is not needed to choose the listener architecture. No controlled end-to-end comparison establishes it as universally fastest.
-
-Development differs from production in more than HMR. For example, Kit executes prerender remote functions during development while production may use recorded output. The real About page exposed that gap. Explicit development-mode Go dispatch and handler/SSR tests now exist, preserving production recorded-output guards; final combined browser confirmation of that change was not performed.
-
-The final focused adapter checks also exercised static files, validated public/private environment values, public environment rendering, private-module refusal and Vite instance identity after an internal restart. Those are focused handler/adapter results, not a claim that every final change ran together in the real example browser.
-
-## Failure and recovery behavior
-
-| Event | Demonstrated behavior | Limit |
-|---|---|---|
-| Bad Go source | Last-good values remain; authored file/line appears; repair refreshes data and clears overlay | Not every error class or arbitrary edit sequence tested |
-| Go process crash | Stable coordinator reports unavailable during absence, replaces target after readiness; observed Vite connection and browser state survive in the coordinator fixture | Arbitrary initialized Go state does not survive by promise |
-| Vite process failure | Application HTTP remains available; tooling is unavailable until restart | Vite's browser reconnect can reload and lose drafts |
-| Structural route edit | New route/remote becomes usable, existing route survives node shift, removal works | Transient metadata mismatch occurred; final admission fix not fully verified |
-| Coordinator failure | It owns the public listener, so the public entry point is lost | No coordinator high-availability claim or requirement |
-| Concurrent sessions | Two sessions kept independent values, origins and recovery | Not a stress test of many sessions or all startup races |
-
-Earlier crash recovery reinstalled a known successful candidate without recompiling it. Other paths rebuild a host from captured good inputs. These are different implementation tactics; the architectural result is that only a ready usable target is published, not that all recovery must use one mechanism.
-
-## Measurements
-
-These are observed samples, primarily on Go1.27.2, darwin/arm64, cgo disabled. They are not statistical service-level objectives. Initial and warm costs differ, and the fixtures do not all perform identical work.
-
-| Measurement | Observed time | What it establishes |
-|---|---:|---|
-| Original joined full-preparation path | roughly0.9–1.1s per successful detected Go edit; some runs slower | The approximately one-second cost was repeated work, not just startup |
-| Same-app full whole-application preparation | 831.933–880.496ms | Controlled comparison baseline |
-| Whole-app retained preparation | 548.236ms cold;150.521–168.108ms warm | Retention materially reduces preparation while keeping exercised checks |
-| Installation in that retained comparison | about3.8–3.9ms | Installation is a small additional stage in this fixture |
-| Retained preparation joined to a real browser fixture | 793.424ms cold;161.491–176.658ms warm, plus about3.7–3.9ms install | Speedup survives actual native handler/browser updates; frontend was production-built in this fixture |
-| Captured Project preparation plus native preparation | approximately217–227ms in one joined lane; roughly48ms Project +161ms native in a later sample | Capturing/generating inputs adds real cost beyond the compiler-only number |
-| Actual development command, three successful native revisions | 729.434ms,255.784ms,193.975ms preparation;0.480ms,1.008ms,0.560ms install | Real example native updates and browser refresh worked; these timings exclude Project capture/generation and paint |
-| Structural host rebuild/profile/readiness | 2.359s, one cached fixture | Rebuild fallback can produce a usable host and resume patching |
-| Renderer artifact/pool replacement | roughly72–78ms in bounded earlier fixtures | This stage can be small; not complete frontend save-to-visible latency |
-
-**The historical137–138ms result was not a false lead.** It was a narrower experiment that motivated the retained approach. The richer whole-app checks subsequently measured150–177ms warm preparation in their fixtures. The actual command samples were different again. Promoting137ms to a promise for every Go save would be false.
-
-We did not measure: a representative save-to-paint distribution; a reliable worst case; many-file application scaling; proxy throughput/overhead; long-session memory growth; or equivalent results across supported operating systems and toolchains. In particular, the one-second question is answered as a mechanism question—repeated full preparation is avoidable—but not as a universal end-to-end performance guarantee.
-
-## What the hardest questions now look like
-
-| Question | Honest answer | Confidence boundary |
-|---|---|---|
-| Can Vite development and Go-owned application/SSR coexist without Node application I/O? | **Yes.** Real pages hydrate, frontend HMR works, Go supplies application values and SSR. | Bounded apps and pinned versions |
-| Can ordinary Go edits avoid full rebuild and remain meaningfully fast? | **Yes.** Actual native updates and retained whole-app checks ran; same-app preparation improved substantially. | Not every Go change is patchable; total visible latency remains unmeasured |
-| Can the browser refresh those values without losing healthy state? | **Yes for the exercised compatible edits and repair.** Draft/document/PID were observed. | Structural frontend changes and Vite restart can reload |
-| Can multiple sessions find the right Go process without fixed ports? | **Yes for demonstrated sessions.** Actual private readiness and coordinator-owned target replacement worked. | Final expanded collision/startup implementation checks are incomplete |
-| Must Vite know the private Go port for SSR? | **No in this composition.** Go owns SSR/data; Vite supplies tooling/artifacts. | Vite still needs the correct public origin |
-| Can real Kit route/remote membership be synchronized into Go? | **Yes as a demonstrated mechanism.** Added7719 route/remote, client navigation, existing route and removal all worked. | Cross-runtime behavior during overlapping revisions remains partly open |
-| Can obsolete native work be prevented from publishing? | **Yes at the exercised Observe/Commit boundary.** Private mutation proved the guard matters. | Final unified scheduler and all acquisition races are not established |
-| Is the final combined implementation correct and release-ready? | **No such conclusion is supported.** | Full final regression and several combined runtime checks did not complete |
-
-### The remaining hard design question
-
-The central remaining question is the behavior of **overlapping structural and ordinary updates**: what the browser may observe while Vite has changed client metadata but Go is still preparing its corresponding host and renderer.
-
-That is more than a missing unit test. It requires a clear publication policy and proof that the actual cooperating processes follow it. However, demanding globally atomic arbitrary file writes would introduce a new requirement the user did not ask for. The useful design target is concrete: avoid falsely announcing readiness, avoid silently serving incompatible metadata, preserve last-good behavior where possible, and recover predictably. Whether a brief visible error/reload during a structural save is acceptable should be an explicit UX/design decision, not an accidental consequence or an invented perfection requirement.
-
-The other unresolved questions—total latency, long-run retention, startup/restart edge cases and Kit-version coupling—matter for a dependable implementation. They do not currently overturn the selected topology. If later implementation is authorized, those are the focused questions to settle; another open-ended architecture search is not justified by the evidence we have.
-
-## Proof quality and limits
-
-We did not rely only on green commands. Independent private mutations exercised whether the assertions were meaningful:
-
-- A successful-looking no-op native install left the old literal and failed the real-handler expectation.
-- Removing the observed-revision guard admitted obsolete installation and failed the stale-publication assertion.
-- Routing tooling to the app failed HTTP identity and WebSocket-upgrade expectations.
-- Keeping the old Go proxy target after replacement failed the new literal expectation despite a replacement being logged.
-- Disabling the matching HMR compiler setting failed the expected SSR marker assertion.
-- Dependency/caller controls rejected incompatible input; an actual privately altered dependency archive was rejected by HostView admission.
-
-Browser observations separately checked visible literal values, hydration errors, drafts and document identity. Paired structural manifests/client output were retained for the later route experiment. Some earlier screenshots were inspected but not saved; this document does not claim screenshot artifacts that do not exist.
-
-Evidence was accumulated across different revisions and fixtures. No single run proves every row in this document simultaneously. Earlier successful lifecycle tests remain evidence for their executed revision. Later startup/currentness, combined-update and internal-Vite-restart changes are not automatically covered by those earlier passes.
-
-The final expanded coordinator run failed an assumption about where Kit's origin substitution would appear, first in a tree-shaken renderer bundle and then in a requested frontend module. That is **an incomplete validation**, not demonstrated origin misrouting and not a pass. An earlier coordinator experiment did demonstrate actual occupied-port origin handling. Both facts must remain visible.
-
-The final focused adapter checks passed in4.128s; explicit dev-prerender handler/SSR plus production guard checks passed in0.233s. The final combined normal Go and production browser suites were not run to completion. They are not prerequisites for believing the POC feasible, but would be required evidence before claiming a completed product change.
-
-## Preserved implementation and stopping point
-
-Implementation work exceeded the intended POC scope. It includes:
-
-- CLI/coordinator work in `cmd/skgo/dev.go`, command dispatch, and `internal/devserver/`.
-- Maintained native host/captured input/retained analysis work in `internal/hotreload/`.
-- Development adapter/renderer/metadata/environment glue in `internal/adapter/`.
-- Explicit development prerender behavior in the root Go handler/manifest surfaces.
-- Tests, README changes, experimental source archives and worklogs.
-
-Some work is locally committed, including `7fa4bc6` (native host API), `69038f2` (native bounds/admission/cleanup) and `78f02f5` (development prerender behavior); coordinator/adapter work also remains uncommitted. None of this is represented here as a reviewed merge-ready delivery. No PR or merge is part of this assessment.
-
-The authorized endpoint is a valid, evidence-backed architecture executable by smaller models. The resumed bounded overlap and visible-latency experiments must settle the remaining design questions and be integrated here. Product edits, broad benchmark campaigns and final product regression remain outside that mission. Existing product work remains available for later adoption, revision or removal.
-
-## Evidence map
-
-The token cache is `/Users/tyler/src/skgo-token-cache`; entrypoint `index/README.md`. The current product-observation route is `index/dev-product-command.md`, with explicit scope and evidence limits. Use it to retrieve source slices, not as an authority overriding GOAL or the user.
-
-| Topic | Primary local evidence |
+| Surface | Development owner and delegation |
 |---|---|
-| User goal | [GOAL](GOAL.md), corrected [PLAN](PLAN.md), corrected [CONTINUE](CONTINUE.md) |
-| Three listener alternatives and pinned source | [Listener ownership](../../experiments/20261015-listener-ownership/README.md) |
-| Two actual coordinator-fronted browsers, collision and recovery | [Coordinator report](../../experiments/20261015-coordinator-integration/REPORT.md), [browser observations](../../experiments/20261015-coordinator-integration/browser/OBSERVATIONS.md) |
-| Same-app preparation comparison, correctness and browser join | [Retained qualification](../../experiments/20261015-retained-qualification/REPORT.md), [independent validation](../../experiments/20261015-retained-validation/REPORT.md) |
-| Captured input, obsolete exclusion, actual Vite events and rebuild | [Publication report](../../experiments/20261015-retained-publication/REPORT.md), [mutation validation](../../experiments/20261015-publication-validation/REPORT.md) |
-| Actual command browser observations | [Browser log](../../dev-browser.log), [structural/clean hydration/HMR observations](../../experiments/20261015-product-structure/OBSERVATIONS.md) |
-| Real session and wrong-target negative control | [Original](../../experiments/20261015-devserver-validation/real-session-original.log), [mutation failure](../../experiments/20261015-devserver-validation/real-session-mutant.log) |
-| Native install negative control | [Original](../../experiments/20261015-native-host-validation/original.log), [no-op failure](../../experiments/20261015-native-host-validation/noop-install.log) |
-| Final focused adapter check and causal HMR marker control | [Focused run](../../experiments/20261015-live-metadata/product-final-all-controls.log), [no-HMR failure](../../experiments/20261015-live-metadata/negative-no-hmr.log) |
-| Development prerender / preserved production guards | [Handler and SSR results](../../development-prerender-test.log) |
-| Latest expanded coordinator attempt, not a qualified pass | [Latest log](../../dev-session-integration.log), [earlier origin assumption](../../dev-session-integration-origin-assumption.log) |
-| Scope correction and traps worth preserving | [Worklog](../../worklog/20261015-architecture-experiments.md) |
+| Page document and `__data.json` | Kit owns branch selection, node identities, universal loads and serialization. Generated server-load bodies call Go. |
+| Page action POST | Kit owns action selection, CSRF/content negotiation, action response and following loads. Generated action bodies call Go and map success/failure/redirect/error into Kit values. |
+| `+server` route | Kit owns route/method/page-versus-endpoint selection. Generated endpoint body calls the Go handler and returns its status, headers and body. |
+| Browser remote HTTP | Use the existing Go remote wire handler at the reserved remote prefix. It already implements requested refreshes, updates, ignored keys, batching and mutations. This is a narrow proxy exception, not a second page router. |
+| Remote call during SSR | Preserve Kit's actual remote wrapper and replace only the generated callback body with Go delegation. Do not return a complete Go HTTP remote envelope as a callback value. |
+| SSR `event.fetch` | Use Kit's supported `handleFetch` integration and the request-aware Go bridge. Selected direct UDS endpoint fetches need equivalent credential/cookie behavior; ordinary internal routing can retain Kit's continuation and reach a generated Go endpoint callback. |
+| Modules, static assets and HMR | Vite/Kit normally, through the public proxy. No private HMR TCP fallback or custom HMR/reload policy. |
+
+The browser-remote exception is the smallest initial boundary because the existing prerender bridge does not express all remote mutation effects. Sending browser remotes through Kit callback bodies would first require translating Go refresh/set/ignore effects into Kit's actual wrapper operations. That is not necessary to prove UDS/native SSR, and is not selected as additional work here. Cross-path remote IDs, argument encodings and SSR hydration/query-cache seeding still need a joined ordinary-query proof before this bridge is called complete.
+
+`handleFetch` does not intercept every application operation. Pinned Kit directly calls server loads, actions and remote callback bodies. Current generated stubs still throw if left unchanged. Overriding Node's global fetch would not repair those calls and would affect unrelated tooling. Generated development delegation is required; the production stubs and Go ownership contract remain.
+
+## Existing bridge to reuse
+
+The repository already runs Kit in Node while calling Go during prerendering. Reuse its callback transformation, transport codecs and request lifecycle rather than inventing another Kit dispatcher:
+
+- `internal/adapter/skgo-adapter/prerender-modules.js`: generated-body transformations preserving Kit's wrappers; currently build-only and incomplete for ordinary remotes/actions.
+- `internal/adapter/skgo-adapter/prerender.js`: Go callback transport, load parent values, structured errors/redirects, cookie effects and request begin/response/end.
+- `prerender_request.go`: real Go request boundary and Go-owned locals/context; unknown or closing request handles are rejected.
+
+The [source mapping](../../experiments/20261015-vite-uds-bridge/BRIDGE.md) provides exact pinned Kit and Go anchors and the missing operations. Development must resolve modules/hooks through the live Vite environment, not import cached production build manifests. Preserve the application's actual Go hooks/configuration rather than substituting the prerender generator's defaults.
+
+## Request semantics that the bridge must preserve
+
+A logical Kit request has one Go request-handle owner. Its callbacks and completion use that owner. A restart must not silently recreate an old request in a new process or replay mutations there. Graceful completion on the old owner or a clear request failure are valid behaviors; seamless replacement during a render has not been demonstrated. This does **not** add a requirement to freeze native code revision across every long-running request.
+
+UDS changes transport, not the logical URL. Preserve the public host/origin, method, path/query, body and cancellation. The coordinator supplies trusted client-address context; Unix sockets do not provide the original browser address, and pinned Kit's default dev `getClientAddress` reads the socket address. The bridge must expose trusted forwarded context through supported integration without changing Kit/Vite internals.
+
+A direct `handleFetch` return bypasses the supplied Kit fetch continuation. That continuation normally manages inherited authorization, credentials, pending cookies, internal routing and response cookies. The POC explicitly exposes this: direct Go responses contain two Set-Cookie headers, while the outer SSR document does not receive them through the minimal override. This matters only when an SSR subrequest sets a cookie intended for the browser, such as refreshing a session. Server-side code can read response.headers.getSetCookie(); pinned Kit already parses internal-fetch response cookies and records them in the outer request at runtime/server/fetch.js:152-164. This is an existing behavior to preserve, not an architectural blocker or a need to expose cookies to browser JavaScript. The minimal override skipped it. Prefer preserving Kit's normal internal request path where generated endpoint delegation makes that possible.
+
+The existing prerender bridge buffers bodies and deferred values, supports only prerender remote kinds, lacks action/general-remote effect delegation, and has build-specific cancellation and synchronous callback machinery. It cannot simply be renamed into a complete dev bridge. Streaming/deferred values, cancellation and blocking resolve callbacks remain concrete qualification work; no claim of parity is made from the narrow POC.
+
+## What ran and what did not
+
+The bounded POC uses installed Kit3.0.0 and the pinned VitePlus environment. It runs an actual Kit page and ordinary Go HTTP handlers; it does not yet run the complete generated SKGO application bridge.
+
+| Claim | Evidence |
+|---|---|
+| Native Kit SSR through a public Go proxy and Vite UDS | ALPHA public57331 renders independently supplied Go value4101; BETA public57332 renders5202. Both Vite middleware hosts report no Vite-created HTTP listener and bind their own Unix sockets. |
+| Separate Go UDS targets and instance isolation | Separate session directories; public/direct UDS observations agree. Deliberately sending ALPHA SSR to BETA returns200 but fails the required ALPHA literal; restoring the socket target repairs it. |
+| Request forwarding in the narrow fixture | Cookie8831, authorization9942, load marker7719, public Host, POST query/body were observed at Go. Complete Kit context and cookie semantics are not implied. |
+| Normal browser hydration/HMR through UDS | Actual browser interaction and public HMR101; Svelte ONE→TWO updated over the same observed WebSocket without custom lifecycle handling. Edited component local count reset under ordinary HMR; no universal state-preservation claim. |
+| Same-path Go listener replacement | Fresh Kit SSR returned ALPHA7407 after replacement without restarting or retargeting Vite; BETA stayed5202. This is listener replacement within one Go harness, not child-process crash recovery or an in-flight-render drain proof. The existing browser needed manual reload; automatic Go invalidation was not part of this fixture. |
+| Complete Go loads/remotes/actions/hooks in native Kit dev | Not yet executed. Source mapping establishes the existing reuse seam and missing operations. |
+| Complete streaming, cancellation and response cookies | Not established; the minimal fetch override demonstrably omits outer response-cookie propagation. |
+| New architecture latency | Not benchmarked. Earlier507ms warm-Go and7.574s fallback medians belong to the old composition, not this one. |
+
+Evidence: [runtime POC](../../experiments/20261015-vite-uds-ssr/REPORT.md), [callback mapping](../../experiments/20261015-vite-uds-bridge/BRIDGE.md), and [independent validation](../../experiments/20261015-vite-uds-validation/ASSESSMENT.md). All owned POC processes and generated runtime directories were cleaned after validation. These are final bounded findings, not pending experiments.
+
+## Handoff boundaries
+
+The topology is valid and removes the demonstrated duplicated-renderer problem. The proposition is **not** a claim that changing `fetch` alone completes SKGO development. The remaining integration is explicit and bounded:
+
+1. **Transport/session mission:** public origin, per-session sockets, HTTP/upgrades, trusted client context, same-path replacement and owned cleanup. Accept actual Kit SSR/HMR and wrong-target controls, not only open sockets.
+2. **Go callback mission:** generated dev loads, direct SSR queries, actions and endpoints preserve Kit wrappers and real Go request context. Accept independently supplied Go values through document and client navigation, a mutation/failure/redirect/cookie case, and parity of remote IDs/transport with the existing browser Go handler.
+3. **Lifecycle/stream mission:** demonstrate a delayed value and cancellation, and process replacement during a paused render without silently crossing request ownership. Preserve normal Kit behavior; do not add waiting pages or global edit transactions.
+4. **Go edit mission:** retain the existing native preparation/admission path and normal rebuild fallback; publish refresh only after successful Go installation. Go registrations and generated stubs still need ordinary readiness/error recovery; they no longer carry a second frontend renderer graph.
+
+These are future implementation/qualification boundaries, not authorization to implement them now. Before declaring the complete architecture qualified, the joined callback/lifecycle slice must run. No further split-renderer gates, forced navigation, Vite modifications or broad benchmark campaign is warranted by this validation.
+
+## Primary references
+
+The installed pin is authoritative. External API corroboration: [Vite middleware mode](https://vite.dev/config/server-options#server-middlewaremode), [Vite custom WebSocket server](https://vite.dev/config/server-options#server-ws), [Node HTTP Unix socket transport](https://nodejs.org/api/http.html#httprequestoptions-callback), and [Kit handleFetch](https://svelte.dev/docs/kit/hooks#Server-hooks-handleFetch). These APIs establish extension points; the local runtime records establish what was actually executed.

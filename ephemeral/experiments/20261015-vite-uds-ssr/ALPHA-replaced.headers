@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+Content-Length: 1431
+Content-Type: text/html
+Date: Thu, 15 Oct 2026 23:06:07 GMT
+Etag: "80j9ms"
+Vary: Origin
+X-Sveltekit-Page: true
+

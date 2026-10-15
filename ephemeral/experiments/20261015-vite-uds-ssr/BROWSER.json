@@ -1,0 +1,50 @@
+{
+  "recordKind": "Transcribed exact CUA observations; full paired tool records are in chat. Screenshots were inspected, not saved locally.",
+  "tab": "1635532212",
+  "baseline": {
+    "url": "http://127.0.0.1:57331/",
+    "heading": "UDS_FRONT_ONE",
+    "literal": "ALPHA_4101",
+    "cookie": "NONE",
+    "marker": "LOAD_7719",
+    "host": "127.0.0.1:57331",
+    "interaction": "Clicked Count0 and saw Count1; hydration works"
+  },
+  "websocket": {
+    "requestId": "69778.84",
+    "url": "ws://127.0.0.1:57331/__hmr?token=BDLgsAVfZDdg",
+    "handshakeSequence": 96,
+    "status": 101,
+    "protocol": "vite-hmr",
+    "Origin": "http://127.0.0.1:57331"
+  },
+  "hmr": {
+    "frameSequence": 449,
+    "requestId": "69778.84",
+    "payloadData": "{\"type\":\"update\",\"updates\":[{\"type\":\"js-update\",\"timestamp\":1792105550585,\"path\":\"/src/routes/+page.svelte\",\"acceptedPath\":\"/src/routes/+page.svelte\",\"explicitImportRequired\":false,\"isWithinCircularImport\":false}]}",
+    "after": {
+      "heading": "UDS_FRONT_TWO",
+      "literal": "ALPHA_4101",
+      "count": 0
+    },
+    "consoleErrorsOrWarnings": [],
+    "stateBoundary": "Edited component's Count1 reset0; no preservation claim",
+    "documentIdentityLimit": "No pre-HMR timeOrigin was recorded; same WS update does not establish preserved document identity by itself"
+  },
+  "goReplacement": {
+    "operation": "Closed Go HTTP listener, reopened same ALPHA/go.sock with ALPHA_7407. No Vite restart or proxy target change.",
+    "freshHTTP": "ALPHA-replaced.html contains UDS_FRONT_TWO and ALPHA_7407",
+    "existingBrowserBeforeManualReload": "ALPHA_4101",
+    "afterExplicitManualReload": {
+      "heading": "UDS_FRONT_TWO",
+      "literal": "ALPHA_7407",
+      "hydration": "Clicked Count0\u21921",
+      "consoleErrorsOrWarnings": [],
+      "timeOrigin": 1792105585456.2
+    },
+    "limit": "No automatic Go-ready/browser invalidation mechanism exists in this transport POC"
+  },
+  "betaIsolation": {
+    "freshHTTP": "BETA-after-alpha-replace.html contains UDS_FRONT_ONE and BETA_5202"
+  }
+}

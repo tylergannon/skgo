@@ -1,38 +1,21 @@
-# Continue architectural de-risking, not implementation
+# Continue from the native Kit SSR / UDS architecture
 
-Read [GOAL.md](GOAL.md), [PLAN.md](PLAN.md), and [DESIGN.md](DESIGN.md) in that order. The user explicitly resumed architectural experiments on 2026-10-15 to obtain a valid architecture executable by smaller models. Product implementation remains outside scope.
+Read [GOAL](GOAL.md), [DESIGN](DESIGN.md), then [PLAN](PLAN.md). The current task is architecture validation/documentation. Product implementation is not authorized.
 
-## Current ownership
+The user explicitly permits development SSR in Vite/Kit and production SSR in Go/goja. Both child servers use constant socket filenames in a unique session directory; only the Go coordinator binds the network interface. Older no-Node-dev and separate-renderer instructions are superseded. Preserve Kit's normal HMR/browser behavior.
 
-- `listener_ownership` (Sol 6.1): overlap publication experiment, private ports57131/57132, `ephemeral/experiments/20261015-overlap-answer/`.
-- `native_dev_host` (Sol 6.1): actual save-to-DOM latency and state retention, private port57231, `ephemeral/experiments/20261015-visible-latency/`.
-- `retained_result_check` (Luna): independent controls and evidence audit, `ephemeral/experiments/20261015-open-questions-validation/`.
-- Parent: integrate findings into the architecture and small-model handoff, maintain these requested documents. Do not take over product implementation.
+Current evidence lives under:
 
-These processes and ownership descriptions are a checkpoint, not a promise they remain live. Read agent status before starting anything. Do not cancel ongoing agents. Coordinate quiet measurement windows; preserve evidence before cleaning only owned fixtures.
+- `ephemeral/experiments/20261015-vite-uds-ssr/`: actual two-instance KitSSR/UDS/public-proxy/HMR and sequential replacement POC, wrong-target control.
+- `ephemeral/experiments/20261015-vite-uds-bridge/BRIDGE.md`: pinned-source callback and lifecycle mapping; fetch-only is incomplete.
+- `ephemeral/experiments/20261015-vite-uds-validation/`: independent verdict and limits.
 
-## What is settled
+Read agent status before treating any fixture as live; owners clean only their own processes. Do not cancel other agents. Do not restart old split-renderer or forced-navigation experiments.
 
-Coordinator owns public listener and actual private-target changes. Bind public origin before Kit initialization. Vite owns frontend tooling/HMR; Go owns application HTTP/data and embedded pooled SSR. Native patching with retained analysis is feasible and improves compiler preparation; rebuild handles incompatible changes. Two-instance isolation, actual child replacement, authored compile errors/repair and route/remote addition/removal have been demonstrated within the recorded scopes.
+The remaining proof is the general Go callback bridge, not UDS support or another graph-publication mechanism. Native Kit owns documents, __data and actions; generated callback bodies execute Go. Use the existing complete Go wire handler for browser remotes initially, subject to joined SSR/browser ID/transport/cache proof. Preserve one Go process/request context across a render or fail clearly on loss; do not invent native-revision transactionality.
 
-Use DESIGN's evidence map and `/Users/tyler/src/skgo-token-cache/index/README.md`. Read current index leaves before their cited source slices. Neither older cache plans nor preserved product code authorizes implementation.
+The minimal handleFetch POC did not propagate Go response cookies to outer SSR. Existing prerender integration has useful lifecycle/codecs but buffers streams and is build-specific. Do not claim it already solves ordinary remote/action, streaming or cancellation behavior. DESIGN lists concrete handoff missions and accepted proof.
 
-## What must still be answered
+Token cache: `/Users/tyler/src/skgo-token-cache/index/README.md`. Prefer the native-Kit/UDS route once indexed. Earlier evidence and measurements are preserved in [DESIGN-go-ssr-historical.md](DESIGN-go-ssr-historical.md); they do not describe the selected architecture's measured performance.
 
-1. The precise publication policy across Vite client metadata, Go registration/renderer changes and notification when revisions overlap. Existing observed-revision Commit proof does not automatically cover notifications outside its boundary or independently changing frontend modules.
-2. Actual visible latency and state retention per edit class. Earlier150–177ms measurements were preparation, not the complete wait. New raw samples are being validated; do not promote agent updates into final benchmark conclusions before their artifacts are checked.
-3. Translate those answers into implementer-facing contracts and bounded acceptance examples. Distinguish architecture blockers from routine later product qualification.
-
-The endpoint is the bounded architecture handoff in PLAN, not all tests on the preserved implementation passing. No broad regression campaign, PR, merge or product edits are authorized by this continuation.
-
-## Traps worth preserving
-
-- The parent repeatedly treated questions as rhetorical work instructions. Answer the literal question first. Frustration is not authorization to expand scope.
-- Old PLAN/CONTINUE contained imperative implementation missions below a scope warning. They were replaced, not merely prefixed again. Their history remains in Git.
-- A first latency pilot observed only after the edit; another overlapped the experiment's own helper-source rebuild. Keep these records but exclude them from clean warm-native samples with explicit reasons.
-- A source write before release does not prove a newer revision was observed before release. Save the direct observer-state capture and ordering.
-- Frontend HMR can replace component state even when document identity survives. Prove the actual state behavior; do not equate no navigation with preservation.
-- Ordinary archived `.go` fixtures polluted package discovery. Preserve snapshots as `.go.txt`; never count a stale process or a cached live-server test as fresh evidence.
-- Product source includes existing unmerged work. Do not reset it or claim final combined regression passed. Earlier successful runs establish their recorded revisions only.
-
-After the bounded experiments finish, update DESIGN with validated figures, the chosen overlap policy, diagrams and executable handoff contracts. Mark any unanswered architectural question plainly. Refresh relevant retrieval pointers without a broad index rebuild. Checkpoint only the owned documentation/evidence; do not sweep unrelated files into a commit.
+Answer user questions literally before action. Do not interpret permission to choose or validate an architecture as permission to implement the product.

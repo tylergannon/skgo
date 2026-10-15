@@ -1,20 +1,23 @@
-# SKGO development experience: goal and architectural responsibilities
+# SKGO development experience: goal and responsibilities
 
-**We do not yet know the solution. Research multiple plausible strategies before choosing one.** These responsibilities define what we are trying to accomplish; they do not prescribe a particular implementation, integration mechanism, library, transport, or sequence of small tasks.
+Run `skgo dev`, open the application, edit Svelte or Go, and see the change quickly and automatically. Preserve healthy browser drafts and state where the change permits. Show useful errors and recover when fixed.
 
-Run `skgo dev`, open the application, edit Svelte or Go, and see the change quickly and automatically. Preserve browser drafts and healthy page state whenever the change permits. Show useful errors and recover when they are fixed.
+## User-selected development direction — 2026-10-15
 
-1. **A Vite development server does Vite's job.** It watches frontend files, transforms them, manages their dependencies, performs frontend HMR and maintains its browser connection.
-2. **A Go application server serves the application.** It contains SKGO and application code, answers application HTTP requests, and uses the existing embedded renderer.
-3. **Our Go development machinery supervises the Go application.** It observes Go changes, prepares updates and patches the running application quickly. It rebuilds/restarts when necessary. This is a responsibility distinction; it does not prescribe additional services.
-4. **The two servers cooperate.** Frontend edits follow Vite's existing development flow. Go edits use our native patching work, and successful changes reach the browser through integration with Vite. The work is making that cooperation fast and reliable.
+Development and production may use different rendering arrangements; both must be tested. The user explicitly selected native Vite/SvelteKit SSR during development, with Go supplying application behavior. This supersedes the earlier requirement that the development Go process also run the renderer.
 
-**Live patching is essential. Preserving arbitrary initialized Go state is not required.** Restart is fallback. The user's reported six-to-ten-second rebuild/link delay is the reason ordinary edits need the fast live-patching path. Long-running workflows do not have to survive inside the replaceable HTTP server.
+1. **Vite/Kit owns development rendering and frontend development.** It owns its live server/client modules, route/node identities, SSR, transforms, watching and normal HMR. Do not copy that graph into a separately built Go development renderer or alter Vite's browser lifecycle.
+2. **Go owns application behavior.** Loads, remotes, actions, endpoint bodies, request hooks and application data access remain Go implementations. Generated development glue delegates to Go; it is not a second TypeScript application mode.
+3. **The Go coordinator owns the public listener and supervision.** Vite and the Go application use Unix sockets with constant basenames inside an instance-private directory; the coordinator alone binds the network interface. Public origin remains distinct from private transport location.
+4. **The two servers cooperate through a request-aware bridge.** SSR fetch can delegate to Go over UDS. Calls that Kit executes directly, including generated loads and remote callbacks, also require delegation. Preserve Kit's cookies, credentials, transport values and request behavior rather than assuming URL rewriting covers them.
+5. **Go changes retain the native fast path.** Prepare and install compatible edits; rebuild/restart when needed. Arbitrary initialized Go state need not survive process replacement.
 
-## Research mission
+Production remains one cgo-free Go binary with pooled goja SSR, no Node at request time. The development exception permits Node SSR and transport glue; it does not move application logic or data access to JavaScript.
 
-Gather comprehensive documentation, source and prior art in this token cache. Use Luna researchers to discover and investigate a broad set of plausible strategies and combinations. Preserve competing hypotheses and their evidence, costs, uncertainties and possible discriminating experiments. Follow promising new directions found during research. No current candidate list is exhaustive, and no favorite mechanism or single research question defines the research boundary.
+## Scope
 
-After the research rounds, use Sol 6.1 to index the material so alternatives and their source evidence can be found. Then compare the maybes and choose inexpensive proof-of-concept experiments. Source support and existing partial proofs are not proof that an entire proposed integration works. Research breadth does not turn candidate tactics into architectural requirements.
+Validate the architecture through bounded subagent experiments and source evidence, then leave a design smaller models can execute. Do not implement the product as part of this task. Tactics from earlier experiments are not requirements. No forced waiting page, custom reload policy or deliberate browser state loss is authorized; preserve Kit's normal behavior and disclose any unavoidable tradeoff.
 
-This document records the user's explicit four-part architecture and correction on 2026-10-15. The source plan, issues, older index routes and experiment notes are context; they must not override this goal or silently choose a solution.
+Use `/Users/tyler/src/skgo-token-cache/index/README.md` and the semantic index for prior work. Map the installed Kit pin before proposing mirrored behavior. Distinguish demonstrated runtime behavior, source-backed feasibility and remaining integration proof.
+
+The source discussion is chat `01a141a2-423e-7360-9ab1-e17234bd620e`, especially the decisions to permit native development SSR, use per-instance UDS, and inspect `handleFetch`. The current user request selects this direction and asks for validation/documentation. [DESIGN.md](DESIGN.md) records the result and its limits.
