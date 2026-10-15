@@ -4,23 +4,50 @@ package hotreload
 // never import the loader, whose object reader requires the prepared GOROOT.
 const nativeRuntime = `
 type _skgo_revision_key struct{}
-func _skgo_targets_for(ctx _skgo_context.Context) *_skgo_targets {
- if ctx != nil { if targets, ok := ctx.Value(_skgo_revision_key{}).(*_skgo_targets); ok { return targets } }
- if targets := _skgo_current.Load(); targets != nil { return targets }; return _skgo_initial()
+type _skgo_revision struct {
+ module *_skgo_loader.CodeModule
+ consumers int
+ reclaim, retired bool
 }
-// SkgoHotHandler snapshots the dispatch revision for synchronous requests,
-// including generated command refresh calls and serialization.
+// Acquisition shares publication's lock so no reader can observe a retired,
+// unpinned target between loading the dispatch table and claiming ownership.
+func _skgo_acquire(ctx _skgo_context.Context) (*_skgo_targets, func()) {
+ if ctx != nil { if targets, ok := ctx.Value(_skgo_revision_key{}).(*_skgo_targets); ok && targets != nil { return targets, func(){} } }
+ _skgo_mu.Lock()
+ targets := _skgo_current.Load()
+ revision := targets._skgo_revision
+ if revision != nil { revision.consumers++ }
+ _skgo_mu.Unlock()
+ return targets, func(){
+  if revision == nil { return }
+  _skgo_mu.Lock(); defer _skgo_mu.Unlock()
+  revision.consumers--
+  _skgo_retire(revision)
+ }
+}
+// The outer handler owns consumption through response serialization/writing.
+// Nested generated calls borrow its revision. Direct stable calls acquire their
+// own synchronous lease; only the positive numeric class can be reclaimed.
 func SkgoHotHandler(next _skgo_http.Handler) _skgo_http.Handler {
  return _skgo_http.HandlerFunc(func(w _skgo_http.ResponseWriter, r *_skgo_http.Request) {
-  ctx := _skgo_context.WithValue(r.Context(), _skgo_revision_key{}, _skgo_current.Load())
+  targets, release := _skgo_acquire(r.Context()); defer release()
+  ctx := _skgo_context.WithValue(r.Context(), _skgo_revision_key{}, targets)
   next.ServeHTTP(w, r.WithContext(ctx))
  })
+}
+func _skgo_retire(revision *_skgo_revision) {
+ if !revision.retired || !revision.reclaim || revision.consumers != 0 { return }
+ revision.module.Unload()
+ for i, loaded := range _skgo_modules { if loaded == revision {
+  _skgo_modules = append(_skgo_modules[:i], _skgo_modules[i+1:]...)
+  break
+ } }
 }
 type SkgoHotHostReplacement struct { Reason string }
 func (e *SkgoHotHostReplacement) Error() string { return "host replacement required: " + e.Reason }
 var _skgo_mu _skgo_sync.Mutex
 var _skgo_symbols map[string]uintptr
-var _skgo_modules []*_skgo_loader.CodeModule
+var _skgo_modules []*_skgo_revision
 var _skgo_budget int
 // SkgoHotInit registers the initialized host once, before serving requests.
 func SkgoHotInit(budget int) error {
@@ -32,9 +59,9 @@ func SkgoHotInit(budget int) error {
  _skgo_symbols = syms; _skgo_budget = budget
  return nil
 }
-// SkgoHotInstall retains module handles and their Go-owned backing for the
-// host's lifetime. Refusal never publishes a partial dispatch table.
-func SkgoHotInstall(object string, storage []string) error {
+// SkgoHotInstall publishes one coherent table. Reclaim is set only by the
+// compiler's positive numeric class; compatibility by itself retains backing.
+func SkgoHotInstall(object string, storage []string, reclaim ...bool) error {
  _skgo_mu.Lock(); defer _skgo_mu.Unlock()
  if _skgo_symbols == nil { return fmt.Errorf("native host is not initialized") }
  if len(_skgo_modules) >= _skgo_budget { return &SkgoHotHostReplacement{"retained revision budget exhausted"} }
@@ -47,11 +74,17 @@ func SkgoHotInstall(object string, storage []string) error {
  module, err := _skgo_loader.Load(linker, _skgo_symbols)
  _skgo_runtime.UnlockOSThread()
  if err != nil { return err }
- // Retain even if a later preparation error prevents publication: loading has
- // already registered native mappings with the runtime.
- _skgo_modules = append(_skgo_modules, module)
+ // Retain uncertain preparation even when publication cannot proceed.
+ revision := &_skgo_revision{module:module}
+ _skgo_modules = append(_skgo_modules, revision)
  targets, err := _skgo_prepare(module.Syms); if err != nil { return err }
- _skgo_current.Store(targets)
+ revision.reclaim = len(reclaim) == 1 && reclaim[0]
+ targets._skgo_revision = revision
+ previous := _skgo_current.Swap(targets)
+ if previous._skgo_revision != nil {
+  previous._skgo_revision.retired = true
+  _skgo_retire(previous._skgo_revision)
+ }
  return nil
 }
 `

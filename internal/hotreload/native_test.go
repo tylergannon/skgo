@@ -23,7 +23,31 @@ var loaderTests embed.FS
 
 // A separate unstripped executable contains the loader. Neither this normally
 // stripped test driver nor the production SDK links it.
-func TestGeneratedNativeState(t *testing.T) {
+func TestGeneratedNativeState(t *testing.T) { testGeneratedNativeState(t, false) }
+
+func TestGeneratedNativeLifetime(t *testing.T) { testGeneratedNativeState(t, true) }
+
+func testGeneratedNativeState(t *testing.T, lifetime bool) {
+	source := orderSource
+	hostSource := nativeHost
+	if lifetime {
+		hostSource = strings.Replace(hostSource, `"context";`, "", 1)
+		source = strings.Replace(source, "note string", "note string; callback func() int", 1)
+		source = strings.Replace(source, `if hold,ok:=ctx.Value("hold").(*Hold);ok { close(hold.Entered);<-hold.Release };`, "", 1)
+		source = strings.Replace(source, "func Box() any", "func Box() Order", 1)
+		source = strings.Replace(source, "if err:=skgo.RefreshNoArg(ctx,order);err!=nil{return Order{},err};return order(ctx)", "return order(nil)", 1)
+		hostSource = strings.Replace(hostSource, `;Reclaim bool}`, `;Reclaim bool};Ranges []nativeRange`, 1)
+		hostSource = strings.Replace(hostSource, `case "check": result=check()`, `case "snapshot": result.Ranges=orders.SkgoHotRanges();result.Saved,result.Backing=orders.SkgoHotSaved()
+ case "probe": result.Ranges=orders.SkgoHotProbe(command.Ranges);result.Saved,result.Backing=orders.SkgoHotSaved()
+ case "check": result=check()`, 1)
+		hostSource = strings.Replace(hostSource, `type observation struct{`, `type nativeRange = orders.SkgoNativeRange
+ type observation struct{`, 1)
+		hostSource = strings.Replace(hostSource, `Error string}`, `Error string;Ranges []nativeRange;Saved int;Backing uintptr}`, 1)
+		hostSource = strings.Replace(hostSource, `func main(){`, `type heldWriter struct{http.ResponseWriter;hold *orders.Hold}
+ func(w *heldWriter) Write(p []byte)(int,error){close(w.hold.Entered);<-w.hold.Release;return w.ResponseWriter.Write(p)}
+ func main(){`, 1)
+		hostSource = strings.Replace(hostSource, `withHold:=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){if r.Header.Get("X-Hold")=="yes" {r=r.WithContext(context.WithValue(r.Context(),"hold",hold))};registry.ServeHTTP(w,r)})`, `withHold:=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){if r.Header.Get("X-Hold")=="yes" {w=&heldWriter{ResponseWriter:w,hold:hold}};registry.ServeHTTP(w,r)})`, 1)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	t.Setenv("GOWORK", "off")
@@ -61,7 +85,7 @@ func TestGeneratedNativeState(t *testing.T) {
 	write("go.mod", mod)
 	write("internal/app/locals.go", []byte("package app\ntype Locals struct{}\n"))
 	write("web/package.json", []byte(`{"type":"module"}`))
-	write("web/src/routes/orders/orders.remote.go", []byte(orderSource))
+	write("web/src/routes/orders/orders.remote.go", []byte(source))
 	sums, err := os.ReadFile(filepath.Join(root, "go.sum"))
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +154,7 @@ func TestGeneratedNativeState(t *testing.T) {
 			changed[path] = raw
 		}
 		file := filepath.Join(linkDir, "orders.remote.go")
-		changed[file] = []byte(strings.Replace(orderSource, "service.quantity=n", `alias:=service;alias.note="retained";alias.quantity=n`, 1))
+		changed[file] = []byte(strings.Replace(source, "service.quantity=n", `alias:=service;alias.note="retained";alias.quantity=n`, 1))
 		next := load(changed)
 		err := Classify(sources, changed, []*packages.Package{next}, []*packages.Package{next})
 		if err != nil {
@@ -146,7 +170,7 @@ func TestGeneratedNativeState(t *testing.T) {
 			for path, raw := range sources {
 				changed[path] = raw
 			}
-			changed[filepath.Join(linkDir, "orders.remote.go")] = []byte(strings.Replace(orderSource, "service.quantity=n", fixture.body, 1))
+			changed[filepath.Join(linkDir, "orders.remote.go")] = []byte(strings.Replace(source, "service.quantity=n", fixture.body, 1))
 			next := load(changed)
 			if err := Classify(sources, changed, []*packages.Package{next}, []*packages.Package{next}); err != nil {
 				t.Errorf("ordinary synchronous body rejected: %v", err)
@@ -160,7 +184,10 @@ func TestGeneratedNativeState(t *testing.T) {
 	for name, raw := range lowered.Host {
 		write(filepath.Join(linkRel, name), raw)
 	}
-	write("cmd/main.go", []byte(strings.ReplaceAll(nativeHost, "PACKAGE", pkgPath)))
+	if lifetime {
+		write(filepath.Join(linkRel, "skgo_probe.go"), []byte(lifetimeProbe))
+	}
+	write("cmd/main.go", []byte(strings.ReplaceAll(hostSource, "PACKAGE", pkgPath)))
 	loaderDir, err := tc.PrepareLoader(ctx, app, filepath.Join(work, "native"))
 	if err != nil {
 		t.Fatal(err)
@@ -221,6 +248,9 @@ func TestGeneratedNativeState(t *testing.T) {
 		baseline[file] = raw
 	}
 	baseline[filepath.Join(linkDir, "skgo_hot.go")] = []byte("package orders\n")
+	if lifetime {
+		baseline[filepath.Join(linkDir, "skgo_probe.go")] = []byte("package orders\n")
+	}
 	captured := func(source string) map[string][]byte {
 		next := map[string][]byte{}
 		for file, raw := range baseline {
@@ -232,11 +262,11 @@ func TestGeneratedNativeState(t *testing.T) {
 	compile := func(name, source string) (Candidate, error) {
 		return tc.Compile(ctx, app, pkgPath, filepath.Join(app, "importcfg"), filepath.Join(app, name), baseline, captured(source))
 	}
-	candidate20, err := compile("discount20", strings.Replace(orderSource, "return total", "return total * 80 / 100", 1))
+	candidate20, err := compile("discount20", strings.Replace(source, "return total", "return total * 80 / 100", 1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	missing, err := compile("missing", strings.Replace(orderSource, "return total", "unusedStorage++;return total", 1))
+	missing, err := compile("missing", strings.Replace(source, "return total", "unusedStorage++;return total", 1))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,23 +298,30 @@ func TestGeneratedNativeState(t *testing.T) {
 		Total, Again, Summary, Initializations, Quantity, PID int
 		Identity, Refreshed                                   bool
 		Error                                                 string
+		Ranges                                                []nativeRange
+		Saved                                                 int
+		Backing                                               uintptr
 	}
 	var pid int
-	call := func(op string, candidate Candidate) observation {
+	invoke := func(op string, candidate Candidate, ranges []nativeRange) observation {
 		t.Helper()
 		if err := encoder.Encode(struct {
 			Op        string
 			Candidate Candidate
-		}{op, candidate}); err != nil {
+			Ranges    []nativeRange
+		}{op, candidate, ranges}); err != nil {
 			t.Fatal(err)
 		}
 		var result observation
 		if err := decoder.Decode(&result); err != nil {
 			t.Fatalf("%s: %v\n%s", op, err, stderr.String())
 		}
-		t.Logf("%s: %+v", op, result)
+		if op != "probe" {
+			t.Logf("%s: %+v", op, result)
+		}
 		return result
 	}
+	call := func(op string, candidate Candidate) observation { return invoke(op, candidate, nil) }
 	check := func(op string, want int) observation {
 		t.Helper()
 		result := call(op, Candidate{})
@@ -296,6 +333,119 @@ func TestGeneratedNativeState(t *testing.T) {
 		}
 		return result
 	}
+	if lifetime {
+		if !candidate20.Reclaim || missing.Reclaim {
+			t.Fatalf("numeric/unsupported class: numeric=%v unsupported=%v", candidate20.Reclaim, missing.Reclaim)
+		}
+		check("mutate", 4200)
+		candidate10, err := compile("discount10", strings.Replace(source, "return total", "return total * 90 / 100", 1))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !candidate10.Reclaim {
+			t.Fatal("numeric helper did not qualify")
+		}
+		if result := call("install", candidate10); result.Error != "" {
+			t.Fatal(result.Error)
+		}
+		check("check", 3780)
+		ranges := call("snapshot", Candidate{}).Ranges
+		if len(ranges) != 2 {
+			t.Fatalf("expected text/data ranges: %+v", ranges)
+		}
+		for _, r := range ranges {
+			if !r.Mapped || r.Base == 0 || r.Size == 0 {
+				t.Fatalf("missing native range: %+v", r)
+			}
+		}
+		call("hold", Candidate{})
+		if result := call("install", candidate20); result.Error != "" {
+			t.Fatal(result.Error)
+		}
+		check("check", 3360)
+		held := invoke("probe", Candidate{}, ranges).Ranges
+		if len(held) != 2 {
+			t.Fatalf("missing held mapping observations: %+v", held)
+		}
+		for _, r := range held {
+			if !r.Mapped {
+				t.Fatalf("unmapped while response held: %+v", r)
+			}
+		}
+		check("release", 3780)
+		var released []nativeRange
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			released = invoke("probe", Candidate{}, ranges).Ranges
+			mapped := false
+			for _, r := range released {
+				mapped = mapped || r.Mapped
+			}
+			if !mapped || time.Now().After(deadline) {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if len(released) != 2 {
+			t.Fatalf("missing retirement observations: %+v", released)
+		}
+		for _, r := range released {
+			if r.Mapped {
+				t.Fatalf("retired native mapping remains: %+v\n%s", r, stderr.String())
+			}
+		}
+		t.Logf("released native ranges: %+v", released)
+		retained, err := compile("retained", strings.Replace(source, "return total", `service.callback=func()int{return 71};return total * 70 / 100`, 1))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if retained.Reclaim {
+			t.Fatal("escaping closure incorrectly reclaimable")
+		}
+		if result := call("install", retained); result.Error != "" {
+			t.Fatal(result.Error)
+		}
+		check("check", 2940)
+		backing := call("snapshot", Candidate{})
+		if backing.Saved != 71 || backing.Backing == 0 {
+			t.Fatalf("candidate closure not installed: %+v", backing)
+		}
+		backed := false
+		for _, r := range backing.Ranges {
+			if backing.Backing >= r.Base && backing.Backing < r.Base+r.Size && r.Mapped {
+				backed = true
+			}
+		}
+		if !backed {
+			t.Fatalf("saved closure does not point into candidate mappings: %+v", backing)
+		}
+		if result := call("install", candidate20); result.Error != "" {
+			t.Fatal(result.Error)
+		}
+		check("check", 3360)
+		survived := invoke("probe", Candidate{}, backing.Ranges)
+		if survived.Saved != 71 || survived.Backing != backing.Backing || len(survived.Ranges) != 2 {
+			t.Fatalf("retained closure lost after swaps/GC: %+v", survived)
+		}
+		for _, r := range survived.Ranges {
+			if !r.Mapped {
+				t.Fatalf("retained backing unmapped: %+v", r)
+			}
+		}
+		t.Logf("retained closure after swap/GC: value=%d address=%x ranges=%+v", survived.Saved, survived.Backing, survived.Ranges)
+		for _, candidate := range []Candidate{candidate10, {Object: "does-not-exist.o"}} {
+			if result := call("install", candidate); !strings.Contains(result.Error, "retained revision budget exhausted") {
+				t.Fatalf("retained budget refusal: %+v", result)
+			}
+		}
+		check("check", 3360)
+		call("finish", Candidate{})
+		in.Close()
+		if err := cmd.Wait(); err != nil {
+			t.Fatalf("generated lifetime host: %v\n%s", err, stderr.String())
+		}
+		return
+	}
 	// The quantity command must run before any replacement, so subsequent
 	// calculations demonstrate request-mutated host storage surviving swaps.
 	if result := check("mutate", 4200); !result.Refreshed {
@@ -305,15 +455,15 @@ func TestGeneratedNativeState(t *testing.T) {
 		t.Fatal(result.Error)
 	}
 	// Failed captured source compilation occurs while the initialized host lives.
-	if _, err := compile("broken", strings.Replace(orderSource, "return total", "return (", 1)); err == nil {
+	if _, err := compile("broken", strings.Replace(source, "return total", "return (", 1)); err == nil {
 		t.Fatal("syntax error compiled")
 	}
 	check("check", 4200)
-	candidate10, err := compile("discount10", strings.Replace(orderSource, "return total", "return total * 90 / 100", 1))
+	candidate10, err := compile("discount10", strings.Replace(source, "return total", "return total * 90 / 100", 1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := compile("method", strings.Replace(orderSource, `return "order"`, `return "changed"`, 1)); err == nil {
+	if _, err := compile("method", strings.Replace(source, `return "order"`, `return "changed"`, 1)); err == nil {
 		t.Fatal("method edit admitted")
 	} else {
 		var rebuild *CompleteBuild
@@ -405,13 +555,13 @@ func main(){
   runtime.GC()
   result:=observe(fetch(orderRemote,false))
   summary,ok:=fetch(summaryRemote,false).(float64);if !ok{panic("invalid summary wire value")};result.Summary=int(summary)
-  boxed:=orders.Box();typed,same:=boxed.(orders.Order);result.Identity=result.Identity&&same&&typed.Total==result.Total&&typed.Again==result.Again
+  boxed:=any(orders.Box());typed,same:=boxed.(orders.Order);result.Identity=result.Identity&&same&&typed.Total==result.Total&&typed.Again==result.Again
   return result
  }
  old:=make(chan observation,1)
  decoder,encoder:=json.NewDecoder(os.Stdin),json.NewEncoder(os.Stdout)
  for {
-  var command struct{Op string;Candidate struct{Object string;Storage []string}}
+  var command struct{Op string;Candidate struct{Object string;Storage []string;Reclaim bool}}
   if err:=decoder.Decode(&command);err!=nil{panic(err)}
   var result observation
   switch command.Op {
@@ -427,7 +577,7 @@ func main(){
    close(hold.Release)
    select{case result=<-old:case <-time.After(5*time.Second):panic("old request did not complete")}
   case "install":
-   if err:=orders.SkgoHotInstall(command.Candidate.Object,command.Candidate.Storage);err!=nil{result.Error=err.Error()}
+   if err:=orders.SkgoHotInstall(command.Candidate.Object,command.Candidate.Storage,command.Candidate.Reclaim);err!=nil{result.Error=err.Error()}
   case "check": result=check()
   case "finish": if err:=encoder.Encode(result);err!=nil{panic(err)};return
   default: panic(fmt.Sprint("unknown operation: ",command.Op))

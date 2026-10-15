@@ -107,4 +107,4 @@ jobs:
           working_directory: example
           export_path: false
       - run: mise -C example/web exec -- vp install --frozen-lockfile
-      - run: mise -C example exec -- go -C .. test ./internal/hotreload -run TestGeneratedNativeState -count=1 -v
+      - run: mise -C example exec -- go -C .. test ./internal/hotreload -run 'TestGeneratedNative(State|Lifetime)$' -count=1 -v

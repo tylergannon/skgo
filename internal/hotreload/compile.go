@@ -15,6 +15,7 @@ import (
 type Candidate struct {
 	Object  string
 	Storage []string
+	Reclaim bool
 }
 
 // Compile uses the host's toolchain and dependency archives. before and after
@@ -61,6 +62,7 @@ func (t Toolchain) Compile(ctx context.Context, dir, pkgPath, importcfg, output 
 	}
 	candidate.Object = filepath.Join(output, "candidate.o")
 	candidate.Storage = lowered.Storage
+	candidate.Reclaim = numericRevision(p, after)
 	args := append([]string{"tool", "compile", "-p", pkgPath, "-lang=go1.27", "-importcfg", importcfg, "-o", candidate.Object}, files...)
 	raw, err := t.command(ctx, dir, args...).CombinedOutput()
 	if err != nil {

@@ -129,11 +129,11 @@ func Lower(p *packages.Package, sources map[string][]byte) (*Lowered, error) {
 						decls = append(decls, &stable, d)
 					} else {
 						args, variadic := nameArguments(d.Type)
-						target := "_skgo_targets_for(nil)." + d.Name.Name
+						targetContext := "nil"
 						if len(args) > 0 {
 							if sig := functions[d.Name.Name].Type().(*types.Signature); sig.Params().Len() > 0 && types.TypeString(sig.Params().At(0).Type(), nil) == "context.Context" {
 								arg, _ := formatSource(fs, args[0])
-								target = "_skgo_targets_for(" + string(arg) + ")." + d.Name.Name
+								targetContext = string(arg)
 							}
 						}
 						typ, _ := formatSource(fs, d.Type)
@@ -142,7 +142,7 @@ func Lower(p *packages.Package, sources map[string][]byte) (*Lowered, error) {
 						fmt.Fprintf(&registrations, "if syms[%q] == 0 { return nil, fmt.Errorf(\"missing replacement entry: %%s\", %q) }; entry_%s := new(uintptr); *entry_%s = syms[%q]; next_%s := *(*%s)(unsafe.Pointer(&entry_%s));\n", symbolPrefix(p.PkgPath)+"."+bodyName(d.Name.Name), d.Name.Name, d.Name.Name, d.Name.Name, symbolPrefix(p.PkgPath)+"."+bodyName(d.Name.Name), d.Name.Name, typ, d.Name.Name)
 						body := *d
 						body.Name = ast.NewIdent(bodyName(d.Name.Name))
-						selector, err := parser.ParseExpr(target)
+						selector, err := parser.ParseExpr("_skgo_targets." + d.Name.Name)
 						if err != nil {
 							return nil, err
 						}
@@ -154,7 +154,12 @@ func Lower(p *packages.Package, sources map[string][]byte) (*Lowered, error) {
 						if d.Type.Results != nil && len(d.Type.Results.List) > 0 {
 							stmt = &ast.ReturnStmt{Results: []ast.Expr{call}}
 						}
-						d.Body = &ast.BlockStmt{List: []ast.Stmt{stmt}}
+						setup, err := parser.ParseFile(token.NewFileSet(), "lease.go", "package p; func f(){ _skgo_targets, _skgo_release := _skgo_acquire("+targetContext+"); defer _skgo_release() }", 0)
+						if err != nil {
+							return nil, err
+						}
+						prefix := setup.Decls[0].(*ast.FuncDecl).Body.List
+						d.Body = &ast.BlockStmt{List: append(prefix, stmt)}
 						decls = append(decls, d, &body)
 					}
 				case *ast.GenDecl:
@@ -242,7 +247,7 @@ func Lower(p *packages.Package, sources map[string][]byte) (*Lowered, error) {
 	for _, alias := range aliases {
 		fmt.Fprintf(&generated, "%s %q\n", alias, imports[alias])
 	}
-	generated.WriteString(")\ntype _skgo_targets struct {\n" + fields.String() + "}\n")
+	generated.WriteString(")\ntype _skgo_targets struct {\n_skgo_revision *_skgo_revision\n" + fields.String() + "}\n")
 	generated.WriteString("var _skgo_current _skgo_atomic.Pointer[_skgo_targets]\nfunc _skgo_initial() *_skgo_targets { return &_skgo_targets{\n" + initial.String() + "} }\nfunc init(){ _skgo_current.Store(_skgo_initial()) }\n")
 	generated.WriteString("func _skgo_prepare(syms map[string]uintptr)(*_skgo_targets,error){\n" + registrations.String() + "return &_skgo_targets{\n")
 	for _, fn := range out.Functions {
