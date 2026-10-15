@@ -426,7 +426,7 @@ func (f *requestFetcher) dispatch(ctx context.Context, src fetchSource, request 
 // if the handler is still running; the handler's own context is cancelled too,
 // so a well-behaved one stops.
 func (f *requestFetcher) serve(ctx context.Context, src fetchSource, request *http.Request) (*http.Response, error) {
-	if development, ok := ctx.Value(devKitTransportKey{}).(*NativeDevelopment); ok {
+	if development, ok := ctx.Value(devKitTransportKey{}).(*NativeDevelopment); ok && !development.isRemoteProtocol(request) {
 		return development.kitFetch(ctx, src.request, request)
 	}
 	if f.handler == nil {
@@ -443,6 +443,9 @@ func (f *requestFetcher) serve(ctx context.Context, src fetchSource, request *ht
 		base = f.carryContext(base, ctx)
 	}
 	subCtx := context.WithValue(base, requestFetcherKey{}, f)
+	if development, ok := ctx.Value(devKitTransportKey{}).(*NativeDevelopment); ok {
+		subCtx = context.WithValue(subCtx, devKitTransportKey{}, development)
+	}
 	subCtx = withFetchDepth(subCtx, fetchDepthOf(ctx)+1)
 	if src.request != nil {
 		subCtx = context.WithValue(subCtx, clientAddressKey{}, clientAddressOf(src.request))

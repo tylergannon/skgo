@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/tylergannon/devalue/v5"
@@ -70,6 +71,10 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 	callbacks := prerenderHandler(d.secret, s.loads.cfg.Transport, loads, remotes, nil, sessions)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/_skgo/dev/") {
+			if address := r.Header.Get("X-Skgo-Client-Address"); address != "" {
+				r = r.Clone(r.Context())
+				r.RemoteAddr = address
+			}
 			app.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), devKitTransportKey{}, d)))
 			return
 		}
@@ -93,10 +98,46 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 		r = r.Clone(context.WithValue(r.Context(), devRendererKey{}, s))
 		r.URL.Path = path
 		if path == "/begin" {
-			var input prerenderRequestInput
-			if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-				http.Error(w, "invalid begin", 400)
+			var fields map[string]json.RawMessage
+			if err := json.NewDecoder(r.Body).Decode(&fields); err != nil {
+				http.Error(w, "invalid begin: "+err.Error(), 400)
 				return
+			}
+			// Kit3 matcher outcomes may be typed values. Go independently
+			// reconstructs raw and converted parameters from its pinned route.
+			delete(fields, "params")
+			rawInput, _ := json.Marshal(fields)
+			var input prerenderRequestInput
+			if err := json.Unmarshal(rawInput, &input); err != nil {
+				http.Error(w, "invalid begin: "+err.Error(), 400)
+				return
+			}
+
+			for _, route := range d.manifest.Routes {
+				if route.ID == input.RouteID {
+					logical := input.LogicalURL
+					if logical == "" {
+						logical = input.URL
+					}
+					pageURL, err := url.Parse(logical)
+					if err != nil {
+						http.Error(w, "invalid logical URL", 400)
+						return
+					}
+					routePath, ok := requestRoutingPath(pageURL)
+					if !ok {
+						http.Error(w, "invalid route path", 400)
+						return
+					}
+					routePath = strings.TrimPrefix(routePath, d.manifest.Base)
+					if routePath == "" {
+						routePath = "/"
+					}
+					input.RoutePattern = route.Pattern
+					input.RouteParams = route.Params
+					input.RoutePath = routePath
+					break
+				}
 			}
 			if len(input.Manifest.Routes) == 0 {
 				input.Manifest = d.manifest

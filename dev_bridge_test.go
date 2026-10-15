@@ -319,3 +319,138 @@ func TestNativeDevelopmentDeferredValueArrivesAfterInitialData(t *testing.T) {
 	}
 	buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": handle}, nil)
 }
+
+func TestNativeDevelopmentDerivesTypedAndRawParamsFromOriginalURL(t *testing.T) {
+	const module = "src/routes/typed/[n=Number]/+page.server.ts"
+	manifest := Manifest{Remotes: []string{}, Loads: []string{module}, Nodes: []string{module}, Routes: []ManifestRoute{{ID: "/typed/[n=Number]", Pattern: `^/typed/([^/]+?)/?$`, Params: []ManifestParam{{Name: "n", Matcher: "Number"}}, Page: &ManifestPage{Leaf: 0}}}}
+	matchers := map[string]ParamMatcher{"Number": func(raw string) (any, bool) {
+		if raw == "00042" {
+			return fixtureNumber(42), true
+		}
+		return nil, false
+	}}
+	load := NewServerLoad(LoadSpec{Module: module, Run: func(ctx context.Context) (any, error) {
+		event := EventFrom(ctx)
+		return map[string]any{"typed": LoadParamValue[fixtureNumber](event, "n").Label(), "raw": event.Param("n")}, nil
+	}})
+	cfg := manifest.LoadConfig("http://app.test")
+	cfg.Matchers = matchers
+	loads, err := NewLoads(cfg, load)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remotes, err := NewRemotes(manifest.RemoteConfig("http://app.test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	NewSSR(development, manifest, loads, remotes, SSROptions{})
+	pages, _ := NewStaticHandler(development)
+	handleCfg := manifest.HandleConfig()
+	handleCfg.Origin = "http://app.test"
+	handleCfg.Matchers = matchers
+	handleCfg.Loads = loads
+	hook := hookMiddleware(func(ctx context.Context, event hookEvent, resolve hookResolve) (*http.Response, error) {
+		if event.Param("n") != "00042" {
+			return nil, fmt.Errorf("hook lost raw matched parameter")
+		}
+		return resolve(ctx, event)
+	})
+	handler, cleanup, err := development.Handler(hook.Intercept(handleCfg, func(*Event) (struct{}, error) { return struct{}{}, nil }, loads.Intercept(pages)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	var begin prerenderRequestAnswer
+	buildOperation(t, handler, "/_skgo/dev/begin", map[string]any{"url": "http://app.test/typed/00042", "logicalUrl": "http://app.test/typed/00042", "method": "GET", "routeId": "/typed/[n=Number]", "params": map[string]any{"n": 42}}, &begin)
+	if !begin.Resolve {
+		t.Fatalf("begin: %+v", begin)
+	}
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest("POST", "/_skgo/dev/load", strings.NewReader(fmt.Sprintf(`{"handle":%q,"module":%q,"url":"http://app.test/typed/00042"}`, begin.Handle, module)))
+	request.Header.Set("Authorization", "Bearer secret")
+	handler.ServeHTTP(response, request)
+	if !strings.Contains(response.Body.String(), `"number:42"`) || !strings.Contains(response.Body.String(), `"00042"`) {
+		t.Fatal(response.Body.String())
+	}
+	buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": begin.Handle}, nil)
+}
+
+func TestNativeDevelopmentClientAddressPreservesPublicPeerAndConfiguredProvider(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		provider func(*http.Request) (string, error)
+		want     string
+	}{
+		{name: "default", want: "127.0.0.1"},
+		{name: "application", provider: func(*http.Request) (string, error) { return "literal-configured-address-827", nil }, want: "literal-configured-address-827"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fn := NewRemote(RemoteSpec{Kind: KindQuery, Module: "src/peer.remote.ts", Name: "peer", Call: func(ctx context.Context, _ Call) (any, error) { return EventFrom(ctx).ClientAddress() }})
+			loads, _ := NewLoads(LoadConfig{Origin: "http://app.test"}, NewServerLoad(LoadSpec{Module: "peer", Run: func(ctx context.Context) (any, error) {
+				address, err := EventFrom(ctx).ClientAddress()
+				return map[string]any{"address": address}, err
+			}}))
+			remotes, _ := NewRemotes(RemoteConfig{Origin: "http://app.test"}, fn)
+			development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+			NewSSR(development, Manifest{}, loads, remotes, SSROptions{})
+			pages, _ := NewStaticHandler(development)
+			hook := hookMiddleware(func(ctx context.Context, event hookEvent, resolve hookResolve) (*http.Response, error) {
+				return resolve(ctx, event)
+			})
+			app := hook.Intercept(HandleConfig{Origin: "http://app.test", ClientAddress: test.provider}, func(*Event) (struct{}, error) { return struct{}{}, nil }, remotes.Intercept(pages))
+			handler, cleanup, err := development.Handler(app)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer cleanup()
+			request := httptest.NewRequest("GET", remotes.Prefix()+fn.ID(), nil)
+			request.RemoteAddr = "@"
+			request.Header.Set("X-Skgo-Client-Address", "127.0.0.1")
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != 200 || !strings.Contains(response.Body.String(), test.want) {
+				t.Fatalf("remote address status=%d %s", response.Code, response.Body.String())
+			}
+			var begin prerenderRequestAnswer
+			buildOperation(t, handler, "/_skgo/dev/begin", prerenderRequestInput{URL: "http://app.test/page", Method: "GET", ClientAddress: "127.0.0.1"}, &begin)
+			recorder := httptest.NewRecorder()
+			callback := httptest.NewRequest("POST", "/_skgo/dev/load", strings.NewReader(fmt.Sprintf(`{"handle":%q,"module":"peer","url":"http://app.test/page"}`, begin.Handle)))
+			callback.Header.Set("Authorization", "Bearer secret")
+			handler.ServeHTTP(recorder, callback)
+			if recorder.Code != 200 || !strings.Contains(recorder.Body.String(), test.want) {
+				t.Fatalf("Kit callback address status=%d %s", recorder.Code, recorder.Body.String())
+			}
+			buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": begin.Handle}, nil)
+
+		})
+	}
+}
+
+func TestNativeDevelopmentHookRefusalKeepsHandledPublicError(t *testing.T) {
+	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	loads, _ := NewLoads(LoadConfig{Origin: "http://app.test"})
+	remotes, _ := NewRemotes(RemoteConfig{Origin: "http://app.test"})
+	NewSSR(development, Manifest{}, loads, remotes, SSROptions{})
+	pages, _ := NewStaticHandler(development)
+	var calls atomic.Int32
+	hook := hookMiddleware(func(context.Context, hookEvent, hookResolve) (*http.Response, error) {
+		return nil, Errorf(403, "literal-refusal-551")
+	})
+	cfg := HandleConfig{Origin: "http://app.test", HandleError: func(context.Context, CaughtError) map[string]any {
+		calls.Add(1)
+		return map[string]any{"supportId": "literal-case-781"}
+	}}
+	app := hook.Intercept(cfg, func(*Event) (struct{}, error) { return struct{}{}, nil }, pages)
+	handler, cleanup, err := development.Handler(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	var answer prerenderRequestAnswer
+	buildOperation(t, handler, "/_skgo/dev/begin", prerenderRequestInput{URL: "http://app.test/action", Method: "POST", Headers: http.Header{"Accept": {"application/json"}}}, &answer)
+	if answer.Error == nil || answer.Error.Status != 403 || !strings.Contains(string(answer.Body), `"supportId":"literal-case-781"`) || !strings.Contains(string(answer.Body), `"message":"literal-refusal-551"`) || calls.Load() != 1 {
+		t.Fatalf("answer=%+v public=%s hookCalls=%d", answer, string(answer.Body), calls.Load())
+	}
+	buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": answer.Handle}, nil)
+}

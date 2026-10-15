@@ -38,7 +38,7 @@ func TestPublicRouterUsesKitForPagesDataActionsEndpointsAndGoForRemotes(t *testi
 		w.Header().Add("Set-Cookie", "one=1; Path=/")
 		w.Header().Add("Set-Cookie", "two=2; Path=/")
 		w.WriteHeader(201)
-		fmt.Fprintf(w, "GO731 %s %s %s %s", r.Method, r.Host, r.Header.Get("Cookie"), body)
+		fmt.Fprintf(w, "GO731 %s %s %s %s %s", r.Method, r.Host, r.Header.Get("Cookie"), body, r.Header.Get("X-Skgo-Client-Address"))
 	}))
 	front, _ := privateHTTP(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Skgo-Internal-Fetch") != "" || r.Header.Get("X-Skgo-Fetch-Depth") != "" {
@@ -58,6 +58,7 @@ func TestPublicRouterUsesKitForPagesDataActionsEndpointsAndGoForRemotes(t *testi
 	defer public.Close()
 	req, _ := http.NewRequest("POST", public.URL+"/_app/remote/query", strings.NewReader("BODY983"))
 	req.Header.Set("Cookie", "draft=601")
+	req.Header.Set("X-Skgo-Client-Address", "FORGED_REMOTE_828")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +68,7 @@ func TestPublicRouterUsesKitForPagesDataActionsEndpointsAndGoForRemotes(t *testi
 	if got := res.Header.Values("X-Skgo-Mode"); !slices.Equal(got, []string{"dev"}) {
 		t.Fatalf("public mode headers = %q, want exactly one dev", got)
 	}
-	want := "GO731 POST " + strings.TrimPrefix(public.URL, "http://") + " draft=601 BODY983"
+	want := "GO731 POST " + strings.TrimPrefix(public.URL, "http://") + " draft=601 BODY983 127.0.0.1"
 	if res.StatusCode != 201 || string(raw) != want || len(res.Cookies()) != 2 {
 		t.Fatalf("status=%d body=%s cookies=%v", res.StatusCode, raw, res.Cookies())
 	}

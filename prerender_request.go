@@ -55,6 +55,7 @@ type prerenderResponse struct {
 }
 type prerenderRequestAnswer struct {
 	Handle   string                   `json:"handle,omitempty"`
+	Body     json.RawMessage          `json:"body,omitempty"`
 	Resolve  bool                     `json:"resolve,omitempty"`
 	Response *prerenderResponse       `json:"response,omitempty"`
 	Redirect *prerenderRedirect       `json:"redirect,omitempty"`
@@ -282,6 +283,9 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 				return prerenderRequestAnswer{}, err
 			}
 			entry.answer.Response = &prerenderResponse{Status: response.StatusCode, Headers: response.Header, Body: body}
+			if entry.answer.Error != nil && strings.Contains(response.Header.Get("Content-Type"), "application/json") && json.Valid(body) {
+				entry.answer.Body = json.RawMessage(body)
+			}
 		}
 		if entry.failure != nil {
 			s.end(handle)

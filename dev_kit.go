@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 // Native internal fetches enter Kit before application middleware. Kit owns
@@ -39,4 +40,8 @@ func nativeKitTransport(socket string) *http.Transport {
 	return &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", socket)
 	}}
+}
+
+func (d *NativeDevelopment) isRemoteProtocol(request *http.Request) bool {
+	return d.renderer != nil && d.renderer.remotes != nil && strings.HasPrefix(request.URL.Path, d.renderer.remotes.Prefix())
 }
