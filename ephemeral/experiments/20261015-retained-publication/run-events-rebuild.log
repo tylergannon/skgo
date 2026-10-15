@@ -1,0 +1,42 @@
+=== RUN   TestRetainedNativePublication
+    browser_experiment_test.go:109: PROJECT_PREPARE revision=1 elapsed=730.998375ms
+    browser_timing_experiment_test.go:210: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:2 PackageChecks:8 PackageHits:10 FileReads:0 FileParses:13 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:0}
+    browser_experiment_test.go:109: LEASE_NATIVE_COMPILED revision=1 compile=521.406833ms files=485 current=true
+    browser_experiment_test.go:114: HTTP literal=endpoint:3000 pid=89970
+    browser_experiment_test.go:114: HTTP literal=<h1>Order total 3000</h1> pid=89970
+    browser_experiment_test.go:115: OBSERVED revision=2 literal=4101 marker=old4101
+    browser_experiment_test.go:122: OBSERVED revision=3 literal=5202 marker=current5202
+    browser_timing_experiment_test.go:210: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:2 PackageChecks:12 PackageHits:22 FileReads:0 FileParses:21 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:2}
+    browser_experiment_test.go:123: LEASE_NATIVE_COMPILED revision=2 compile=182.566167ms files=485 current=false
+    browser_experiment_test.go:128: IMMUTABLE_MULTIFILE_CAPTURE old native object contains old4101, not current5202, despite newer physical+observed source
+    browser_experiment_test.go:129: PROJECT_PREPARE revision=3 elapsed=50.760125ms
+    browser_timing_experiment_test.go:210: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:2 PackageChecks:16 PackageHits:34 FileReads:0 FileParses:29 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:4}
+    browser_experiment_test.go:129: LEASE_NATIVE_COMPILED revision=3 compile=169.678541ms files=485 current=true
+    browser_experiment_test.go:144: HTTP literal=<h1>Order total 3000</h1> pid=89970
+    browser_experiment_test.go:144: HTTP literal=endpoint:3000 pid=89970
+    browser_experiment_test.go:149: HTTP literal=<h1>Order total 5202</h1> pid=89970
+    browser_experiment_test.go:149: HTTP literal=current5202:5202 pid=89970
+    browser_experiment_test.go:156: OBSOLETE_CONTROL install/event revisions=[1 3]; stale revision2 rejected before host callback
+    browser_experiment_test.go:159: OBSERVED revision=4 literal=6303 marker=linear6303
+    browser_experiment_test.go:160: PROJECT_PREPARE revision=4 elapsed=50.646291ms
+    browser_timing_experiment_test.go:210: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:2 PackageChecks:20 PackageHits:46 FileReads:0 FileParses:37 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:6}
+    browser_experiment_test.go:160: LEASE_NATIVE_COMPILED revision=4 compile=165.390041ms files=485 current=true
+    browser_experiment_test.go:193: HTTP literal=<h1>Order total 6303</h1> pid=89970
+    browser_experiment_test.go:193: HTTP literal=linear6303:6303 pid=89970
+    browser_experiment_test.go:194: PROJECT_PREPARE revision=5 elapsed=47.945083ms
+    browser_timing_experiment_test.go:210: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:2 PackageChecks:24 PackageHits:58 FileReads:0 FileParses:45 ExportImports:18 FallbackLoads:0 UniverseEvictions:1 MetadataHits:8}
+    browser_experiment_test.go:194: LEASE_NATIVE_COMPILED revision=5 compile=161.233375ms files=485 current=true
+    browser_experiment_test.go:199: HTTP literal=<h1>Order total 7407</h1> pid=89970
+    browser_experiment_test.go:199: HTTP literal=linear6303:7407 pid=89970
+    browser_experiment_test.go:200: LINEARIZED native publication then Observe; installed/events=[1 3 4 5]
+    architecture_preparation_test.go:114: ACTUAL_VITE_WEBSOCKET revisions=[1 3 4 5] (obsolete2 absent)
+    browser_experiment_test.go:202: REBUILD_SELECTED revision=6 reason=complete build required: declaration, initialization, import or build-selection changed
+    browser_experiment_test.go:202: REBUILD_PUBLISHED revision=6 oldPID=89970 newPID=90129 elapsed=2.359159292s literalHTTP=9000
+    browser_timing_experiment_test.go:210: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:2 PackageChecks:8 PackageHits:10 FileReads:0 FileParses:13 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:0}
+    browser_experiment_test.go:202: POST_REBUILD_NATIVE revision=7 prepare=553.261584ms pid=90129 literalHTTP=9101
+    browser_timing_experiment_test.go:210: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:2 PackageChecks:12 PackageHits:22 FileReads:0 FileParses:21 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:2}
+    browser_experiment_test.go:202: POST_REBUILD_NATIVE revision=8 prepare=159.322334ms pid=90129 literalHTTP=9202
+    architecture_preparation_test.go:114: ACTUAL_VITE_WEBSOCKET revisions=[1 3 4 5 6 7 8] (obsolete2 absent)
+--- PASS: TestRetainedNativePublication (13.27s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/hotreload	13.554s

@@ -1,0 +1,2 @@
+decision: Validate native revision admission by removing only `ProjectBuild.Commit`'s current-snapshot comparison in a private Go overlay; the joined publication test then reaches the obsolete candidate's real host callback and fails its independent install assertion.
+correction: Multi-file capture here proves one observed `ProjectBuild` snapshot stays immutable across later writes; it does not prove atomic capture against arbitrary concurrent filesystem writes.

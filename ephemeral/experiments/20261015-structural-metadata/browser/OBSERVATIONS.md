@@ -1,0 +1,6 @@
+- App server: 127.0.0.1:56521, pid 88550 during browser observation.
+- Home showed `New structural route` with href `/aaa-structural`.
+- Clicked that visible link using Kit client. Browser URL became `/aaa-structural`, AX tree showed heading `STRUCTURAL_LITERAL_7719` and a Home link.
+- CDP `Network.requestWillBeSent` after a fresh home reload recorded `type=Script`, `initiator=script`, same document `loaderId` for `/_app/immutable/nodes/10.1s576_ef.js` and `/_app/immutable/chunks/Ddb2yGAN.js`; no document request was returned in this captured set.
+- Browser console warning/error logs were empty after navigation.
+- The first click attempt was ambiguous because two Home links existed; no click occurred. The final recorded link used the unique `a[href='/aaa-structural']` locator.

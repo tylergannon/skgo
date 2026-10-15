@@ -1,0 +1,9 @@
+{
+  "Replace": {
+    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/compile.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-publication/compile.go.txt",
+    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/browser_timing_experiment_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-publication/loader_test.go.txt",
+    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/browser_experiment_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-publication/publication_helper_test.go.txt",
+    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/contract_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-publication/contract_test.go.txt",
+    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/architecture_preparation_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-publication/events.go.txt"
+  }
+}

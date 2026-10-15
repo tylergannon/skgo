@@ -1,0 +1,11 @@
+=== RUN   TestCoordinatorIntegration
+    browser_experiment_test.go:128: go [build -ldflags=-s=false -o /Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-coordinator-integration/runtime/application/host ./cmd]: exit status 1
+        # example.com/nativefixture/cmd
+        cmd/main.go:3:2: "net" imported and not used
+        cmd/main.go:4:2: "net/http/httputil" imported and not used
+        cmd/main.go:5:2: "net/url" imported and not used
+        cmd/main.go:6:2: "sync/atomic" imported and not used
+--- FAIL: TestCoordinatorIntegration (2.03s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/hotreload	2.290s
+FAIL

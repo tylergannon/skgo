@@ -4,7 +4,7 @@
 
 [GOAL.md](GOAL.md) is authoritative. Run `skgo dev`, open the app, edit Svelte or Go, and see the change quickly and automatically. Preserve healthy browser state where the change permits; report useful errors and recover after repair. Vite owns frontend development; Go owns every application endpoint and pooled goja rendering; Go development machinery prepares native patches and supervises rebuild/restart fallback. Arbitrary initialized Go state continuity is not required.
 
-**No listener architecture has been selected.** This plan replaces the older prescribed build sequence. Coordinator ownership, renderer delivery, IPC, watcher details and caching mechanisms are candidates to test, not requirements inherited from that sequence. Existing native patching is the fast-path foundation; rebuilding is fallback. We choose an architecture from working compositions and their observed costs, then build the command. Research and continuation documents are not the deliverable.
+**Selected: the `skgo dev` Go coordinator owns the public listener and proxies application traffic to the replaceable Go host and frontend tooling/HMR to Vite.** The user authorized the recommended choice after the real coordinator experiment. The coordinator binds before initializing Kit origin and owns process readiness, target updates and unavailable responses. Renderer delivery, IPC and watcher details remain implementation choices informed by the experiments, not inherited requirements. Existing native patching is the fast-path foundation; rebuilding is fallback. Research and continuation documents are not the deliverable.
 
 Current worktree is based on `origin/dev` at `868c5dba9bf1670d2252996b058ecf19bca659ca`, on `codex/dev-architecture-experiments`. Retained qualification is checkpointed at `ce877ff`. Inspect current Git state before resuming; these identifiers are provenance, not reset targets.
 
@@ -16,15 +16,17 @@ Current worktree is based on `origin/dev` at `868c5dba9bf1670d2252996b058ecf19bc
 | Fast repeated preparation with whole-app checks | Same-app full preparation measured832–880ms; retained preparation measured150–168ms warm plus about4ms installation. First retained run548ms. Independent caller, dependency and real archive-byte mismatch controls reject unsafe candidates. |
 | Retained preparation joined to a real browser | Actual source4101→5202→6303, malformed source retaining6303, repair7407. Warm preparation161–177ms plus about4ms installation; first cold793ms. Draft/count/hydration/document/PID preserved. This fixture uses production Kit assets and a Vite event connection; it is not the complete frontend development loop or save-to-paint timing. |
 | Vite-public development composition | Actual Svelte HMR and Go SSR updates; two isolated instances; actual native edits and a Go child crash recovered on a new private port while preserving the observed Vite connection and healthy browser state. This older fixture used full preparation, separately from the retained timing proof. |
-| Coordinator proxy primitive | Standard Go ReverseProxy preserves a synthetic upgraded stream across app replacement. Actual coordinator-fronted Kit/browser behavior is the next experiment, not established by that synthetic test. |
+| Coordinator-public Kit composition | Two actual instances, collision-resolved public origin, real native edits, child crash recovery and Svelte HMR now work through a Go coordinator. Go crash preserved browser state and HMR connection; Vite outage retained app HTTP, but Vite recovery reloaded the document and lost its draft. Renderer reinitialization after Vite restart was explicitly invoked in the harness. |
 
 Sources: [retained qualification](../../experiments/20261015-retained-qualification/REPORT.md), [independent validation](../../experiments/20261015-retained-validation/REPORT.md), [browser observation](../../experiments/20261015-retained-browser/OBSERVATIONS.md), [Vite composition](../../experiments/20261015-vite-listener/REPORT.md), [listener comparison](../../experiments/20261015-listener-ownership/README.md).
 
+Coordinator browser observations: [independent browser and HTTP controls](../../experiments/20261015-coordinator-integration/browser/OBSERVATIONS.md). The comparison used the older full compilation fixture; its timing does not measure the retained path.
+
 The historical137–138ms root-only result was a promising narrower experiment. Current whole-app and browser measurements support the speedup without borrowing that narrower figure or claiming an end-to-end bound.
 
-## Current experiments: remove the uncertainties that decide architecture
+## Remaining implementation missions
 
-These missions run in parallel under separate ownership. Start discovery at `/Users/tyler/src/skgo-token-cache/index/README.md`, follow its current leaves, then inspect cited source. Kit's installed pin is the specification. Builders map it themselves; a dispatcher's preferred mechanism is not evidence.
+Implement the selected composition using the qualified pieces; remaining integration work runs in parallel under separate ownership. Start discovery at `/Users/tyler/src/skgo-token-cache/index/README.md`, follow its current leaves, then inspect cited source. Kit's installed pin is the specification. Builders map it themselves; a dispatcher's preferred mechanism is not evidence.
 
 ### Listener ownership and lifecycle
 
@@ -34,7 +36,7 @@ These missions run in parallel under separate ownership. Start discovery at `/Us
 
 **Accepted proof:** Supplied literal values in fresh Go SSR and hydrated pages; correct public HMR URL without private-port fallback; coherent Kit origin after public-port collision; multiple isolated instances; actual Go child replacement/crash; explicit Vite failure and reconnection behavior. Observe browser drafts/document identity and useful unavailable/recovery behavior. Preserve failures as well as successes.
 
-**Decision:** Compare coordinator-owned target updates and public error handling against Vite-owned listener/HMR simplicity. Count actual lifecycle and routing responsibilities. The replaceable Go application owning the public socket remains a candidate if evidence supports its restart behavior. A coordinator need not be another executable. Vite does not need the private Go address for the already tested artifact/goja or ModuleRunner rendering paths when a coordinator routes application traffic directly.
+**Decision resolved:** Use coordinator-owned targeting and public error handling. The actual experiment demonstrated origin initialization, both instances, Go crash recovery, Vite outage and natural recovery, and subsequent Svelte HMR. Integrate this into the command with automatic renderer-tooling reinitialization after Vite restart. The coordinator is the existing CLI/session process, not another required executable; Vite needs the public origin but not the private Go target.
 
 ### Current captured inputs through native publication
 
@@ -42,7 +44,7 @@ These missions run in parallel under separate ownership. Start discovery at `/Us
 
 **Owner:** Retained capture/publication integration. Preserve exercised whole-app, reverse-caller, dependency and HostView admission.
 
-**Accepted proof:** Controlled overlapping edits hold obsolete work across a newer desired revision; independent literals show no stale installation or notification. Multi-file changes yield a coherent selected capture or an explicit rejection, followed by working repair. The current browser watcher's reread-before-install has a race; the separately passing Project stale-generation test is not joined native-publication proof. After that boundary works, demonstrate automatic rebuild/restart for a rejected structural/dependency change, rather than merely returning CompleteBuild.
+**Accepted proof:** Controlled overlapping edits hold obsolete work across a newer desired revision; independent literals show no stale installation or notification. Multi-file changes yield a coherent selected capture or an explicit rejection, followed by working repair. The new ProjectBuild experiment and independent mutation control now establish currentness through real native installation and actual Vite frames. Removing the revision guard admitted the obsolete callback and failed the test. Structural initializer fallback rebuilt a new HostView in2.36s and resumed native edits. Carry this working boundary into the command; Observe batching still needs a deliberate filesystem capture policy. See [publication](../../experiments/20261015-retained-publication/REPORT.md) and [independent validation](../../experiments/20261015-publication-validation/REPORT.md).
 
 ### Structural Kit metadata
 
@@ -54,9 +56,9 @@ These missions run in parallel under separate ownership. Start discovery at `/Us
 
 ## Architecture selection and implementation
 
-Bring the results together in one comparison with topology diagrams, measured intervals, correctness/recovery observations and concrete remaining costs. Recommend the composition supported by those results and present the architecture choice to the user. Continue independent work while a choice is pending; do not invent a permission gate for already-authorized experiments or fixes.
+The selected composition is coordinator → Go application / Vite. Build it into the actual Go-owned development command and Vite-required adapter glue. Carry the demonstrated source/currentness boundary, origin initialization and process ownership into that implementation. Finish live route/remote metadata publication and automatic renderer reinitialization after Vite restart. Preserve production generation/build isolation. Use the existing generator, typed registries and pooled renderer rather than reimplementing Kit or its frontend graph.
 
-After selection, integrate the demonstrated pieces into the actual Go-owned development command and Vite-required adapter glue. Carry the source/currentness boundary, origin initialization, metadata publication and process ownership into that implementation. Preserve production generation/build isolation. Use the existing generator, typed registries and pooled renderer rather than reimplementing Kit or its frontend graph.
+The full-build route addition/removal experiment establishes a fallback boundary, including real Kit client navigation; it does not establish live dev graph identity. Its raw paired manifests were removed during cleanup and no account-route node-index equivalence is claimed. The live-metadata mission must preserve exact artifacts and show the actual shared graph before claiming this gap closed.
 
 A representative automatic loop must cover:
 

@@ -1,0 +1,23 @@
+<!doctype html><html><head><script type="module" src="/@vite/client"></script></head><body><div><!--[--><!--[--><!--[0--><!--[--><main><!--[--><!--[-1--><!--[--><h1>ALPHA FRONTEND_TWO</h1><p id="hydrated">Hydrated: false</p><label>Draft <input id="draft" value=""/></label><button>Increment</button><p id="count">Count: 0</p> <!--[!--><p>Loading Go</p><!--]--> <p id="ssr-value">Go SSR total: 4101</p><p id="notices">Notices: 0</p><p id="status">Ready</p><p id="document">Document: </p><!--]--><!--]--><!--]--><!----></main><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
+			<script>
+				{
+					__sveltekit_dev = {
+						base: "",
+						version: ""
+					};
+
+					const element = document.currentScript.parentElement;
+
+					import("/@fs/Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_3fba9d125588406c91ff67b52ec9f4c3/node_modules/@sveltejs/kit/src/runtime/client/entry.js").then(async (kit) => {
+						kit.init(__sveltekit_dev);
+						const app = await import("/@fs/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-coordinator-integration/runtime/ALPHA/.svelte-kit/generated/dev/client/app.js");
+						kit.start(app, element, {
+							node_ids: [0, 2],
+							data: [null,{type:"data",data:{value:{again:4101,initializations:1,quantity:2,total:4101}},uses:{}}],
+							error: null,
+							form: null
+						});
+					});
+				}
+			</script>
+		</div></body></html>

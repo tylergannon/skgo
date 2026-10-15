@@ -1,0 +1,12 @@
+=== RUN   TestActiveInstanceIdentityAndValue
+=== RUN   TestActiveInstanceIdentityAndValue/ALPHA
+    identity_test.go:39: X-Application-Origin="http://127.0.0.1:56621", want "http://127.0.0.1:56612"
+    identity_test.go:43: response body lacks independent literal "ALPHA"
+    identity_test.go:43: response body lacks independent literal "Go SSR total: 4101"
+=== RUN   TestActiveInstanceIdentityAndValue/BETA
+--- FAIL: TestActiveInstanceIdentityAndValue (0.00s)
+    --- FAIL: TestActiveInstanceIdentityAndValue/ALPHA (0.00s)
+    --- PASS: TestActiveInstanceIdentityAndValue/BETA (0.00s)
+FAIL
+FAIL	github.com/tylergannon/skgo/ephemeral/experiments/20261015-coordinator-integration/browser/httpcheck	0.143s
+FAIL
