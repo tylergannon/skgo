@@ -95,6 +95,8 @@ jobs:
     timeout-minutes: 15
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+      CGO_ENABLED: '0'
+      CC: /skgo-fixture/no-c-compiler
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7

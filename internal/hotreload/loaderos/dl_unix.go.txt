@@ -1,0 +1,51 @@
+//go:build darwin || linux
+
+// Adapted from pkujhd/goloader 2695cfc53506 libdl/dl_unix.go (Apache-2.0).
+// Keep its process/library lookup semantics using pinned purego's OS ABI.
+package libdl
+
+import (
+	"fmt"
+	"runtime"
+
+	"github.com/ebitengine/purego"
+)
+
+var openProcess func(uintptr, int) uintptr
+var errorString func() string
+
+func init() {
+	address, err := purego.Dlsym(purego.RTLD_DEFAULT, "dlopen")
+	if err != nil {
+		panic(err)
+	}
+	purego.RegisterFunc(&openProcess, address)
+	address, err = purego.Dlsym(purego.RTLD_DEFAULT, "dlerror")
+	if err != nil {
+		panic(err)
+	}
+	purego.RegisterFunc(&errorString, address)
+}
+
+func Open(name string) (uintptr, error) {
+	if name != "" {
+		return purego.Dlopen(name, purego.RTLD_NOW|purego.RTLD_GLOBAL)
+	}
+	// A string argument produces a non-NULL C string even when empty. The
+	// original API instead calls dlopen(NULL), which opens the current process.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	handle := openProcess(0, purego.RTLD_NOW|purego.RTLD_GLOBAL)
+	if handle == 0 {
+		return 0, fmt.Errorf("%s", errorString())
+	}
+	return handle, nil
+}
+
+func LookupSymbol(handle uintptr, name string) (uintptr, error) {
+	address, err := purego.Dlsym(handle, name)
+	if err != nil {
+		return 0, fmt.Errorf("failed to lookup symbol %s: %w", name, err)
+	}
+	return address, nil
+}

@@ -29,7 +29,8 @@ type Toolchain struct {
 // modifying shared source through a symlink. Its parent is caller-owned.
 func PrepareToolchain(ctx context.Context, goTool, parent string) (Toolchain, error) {
 	var t Toolchain
-	cmd := exec.CommandContext(ctx, goTool, "env", "-json", "GOROOT", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "CC")
+	cmd := exec.CommandContext(ctx, goTool, "env", "-json", "GOROOT", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED")
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 	raw, err := cmd.Output()
 	if err != nil {
 		return t, fmt.Errorf("inspect Go toolchain: %w", err)
@@ -45,16 +46,6 @@ func PrepareToolchain(ctx context.Context, goTool, parent string) (Toolchain, er
 	if profile != "darwin/arm64" && profile != "linux/amd64" {
 		return t, fmt.Errorf("native development is not qualified on %s", profile)
 	}
-	if env["CGO_ENABLED"] != "1" {
-		return t, fmt.Errorf("native development requires CGO_ENABLED=1 and a C compiler (Linux also requires libdl)")
-	}
-	cc := strings.Fields(env["CC"])
-	if len(cc) == 0 {
-		return t, fmt.Errorf("native development requires a configured C compiler")
-	}
-	if _, err := exec.LookPath(cc[0]); err != nil {
-		return t, fmt.Errorf("native development C compiler: %w", err)
-	}
 	root := env["GOROOT"]
 	// Bind the actual tool executable as well as its version/path. The object
 	// reader is copied from the same installation, not a separately chosen Go.
@@ -65,7 +56,14 @@ func PrepareToolchain(ctx context.Context, goTool, parent string) (Toolchain, er
 	h := sha256.New()
 	h.Write(raw)
 	h.Write(compile)
-	h.Write([]byte("skgo-object-source-v1:" + LoaderVersion))
+	h.Write([]byte("skgo-object-source-v2-nocgo:" + LoaderVersion + ":" + PuregoVersion))
+	for _, name := range []string{"dl_unix.go.txt", "mmap_darwin_arm64.go.txt"} {
+		source, err := loaderOS.ReadFile("loaderos/" + name)
+		if err != nil {
+			return t, err
+		}
+		h.Write(source)
+	}
 	objSource := filepath.Join(root, "src/cmd/internal")
 	readerSources := map[string][]byte{}
 	err = filepath.WalkDir(objSource, func(path string, d fs.DirEntry, walkErr error) error {
@@ -150,6 +148,6 @@ func PrepareToolchain(ctx context.Context, goTool, parent string) (Toolchain, er
 func (t Toolchain) command(ctx context.Context, dir string, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, t.Go, args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GOROOT="+t.Root, "GOWORK=off", "GOTOOLCHAIN=local")
+	cmd.Env = append(os.Environ(), "GOROOT="+t.Root, "GOWORK=off", "GOTOOLCHAIN=local", "CGO_ENABLED=0")
 	return cmd
 }

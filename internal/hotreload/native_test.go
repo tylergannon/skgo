@@ -3,9 +3,12 @@ package hotreload
 import (
 	"bytes"
 	"context"
+	"debug/buildinfo"
+	"embed"
 	"encoding/json"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,12 +18,17 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+//go:embed loaderos/dl_unix_test.go.txt
+var loaderTests embed.FS
+
 // A separate unstripped executable contains the loader. Neither this normally
 // stripped test driver nor the production SDK links it.
 func TestGeneratedNativeState(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	t.Setenv("GOWORK", "off")
+	t.Setenv("CGO_ENABLED", "0")
+	t.Setenv("CC", filepath.Join(t.TempDir(), "no-c-compiler"))
 	root, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatal(err)
@@ -153,10 +161,59 @@ func TestGeneratedNativeState(t *testing.T) {
 		write(filepath.Join(linkRel, name), raw)
 	}
 	write("cmd/main.go", []byte(strings.ReplaceAll(nativeHost, "PACKAGE", pkgPath)))
-	run("mod", "edit", "-require=github.com/pkujhd/goloader@"+LoaderVersion)
+	loaderDir, err := tc.PrepareLoader(ctx, app, filepath.Join(work, "native"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	run("mod", "tidy")
 	bin := filepath.Join(app, "host")
 	run("build", "-ldflags=-s=false", "-o", bin, "./cmd")
+	info, err := buildinfo.ReadFile(bin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cgoDisabled := false
+	for _, setting := range info.Settings {
+		if setting.Key == "CGO_ENABLED" {
+			cgoDisabled = setting.Value == "0"
+		}
+	}
+	if !cgoDisabled {
+		t.Fatal("native host was not built with CGO_ENABLED=0")
+	}
+	t.Logf("native host: %s %s/%s, CGO_ENABLED=0, no C compiler", info.GoVersion, tc.OS, tc.Arch)
+	// The HTTP fixture contains no C imports, so exercise the exposed OS lookup
+	// adapter separately against actual process and library symbols.
+	lookupTest, err := loaderTests.ReadFile("loaderos/dl_unix_test.go.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(loaderDir, "libdl/dl_unix_test.go"), lookupTest, 0644); err != nil {
+		t.Fatal(err)
+	}
+	lookupOutput, err := tc.command(ctx, loaderDir, "test", "-mod=mod", "./libdl", "-run", "^TestProcessAndLibraryLookup$", "-count=1", "-v").CombinedOutput()
+	if err != nil {
+		t.Fatalf("process/library lookup: %v\n%s", err, lookupOutput)
+	}
+	t.Logf("%s", lookupOutput)
+	// The production CLI uses the authored root, without the private loader
+	// replacement or a prepared GOROOT, after the development host was built.
+	production := exec.CommandContext(ctx, "go", "build", "-o", filepath.Join(work, "production-cli"), "./cmd/skgo")
+	production.Dir = root
+	production.Env = append(os.Environ(), "CGO_ENABLED=0", "GOWORK=off", "GOTOOLCHAIN=local")
+	if raw, err := production.CombinedOutput(); err != nil {
+		t.Fatalf("production build after native preparation: %v\n%s", err, raw)
+	}
+	productionInfo, err := buildinfo.ReadFile(filepath.Join(work, "production-cli"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dependency := range productionInfo.Deps {
+		if dependency.Path == "github.com/pkujhd/goloader" || dependency.Path == "github.com/ebitengine/purego" {
+			t.Fatalf("development dependency in production CLI: %s", dependency.Path)
+		}
+	}
+
 	importcfg := run("list", "-export", "-deps", "-f", "{{if .Export}}packagefile {{.ImportPath}}={{.Export}}{{end}}", pkgPath)
 	write("importcfg", importcfg)
 	baseline := map[string][]byte{}
