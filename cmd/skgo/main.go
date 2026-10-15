@@ -38,6 +38,7 @@ const usage = `usage:
 	skgo add [flags] ADDON    apply a reusable application change
 	skgo update [--root DIR] [--vp GLOBAL_VP]   align CLI and application toolchain
 	skgo native build [--platform macos|iphone|simulator] [--preset NAME]
+	skgo build [--root DIR]   incrementally generate and build the frontend
 	skgo buildinfo [--json]   identify this executing CLI and its Go build
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
 	skgo dev [flags]          run Vite and the Go application, rebuilding Go as it changes
@@ -71,6 +72,11 @@ func main() {
 		os.Exit(2)
 	}
 	switch os.Args[1] {
+	case "build":
+		if err := buildCommand(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "plugin":
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()

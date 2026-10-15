@@ -30,3 +30,6 @@ ephemeral/screenshots/
 **/.build/
 /native/build/
 /example/native/build/
+
+# Project-local frontend build freshness cache.
+.skgo/

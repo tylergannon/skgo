@@ -43,6 +43,15 @@ func nativeFixture(t *testing.T) (Options, *[]nativeCommand, func(string, []stri
 	var commands []nativeCommand
 	run := func(_ string, _ []string, name string, args ...string) ([]byte, error) {
 		commands = append(commands, nativeCommand{name, append([]string(nil), args...)})
+		if name == "go" && args[0] == "build" {
+			for i, arg := range args {
+				if arg == "-o" {
+					if err := os.WriteFile(args[i+1], []byte("fixture archive"), 0644); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
 		if name == "go" && args[0] == "list" {
 			return json.Marshal(map[string]string{"Dir": sdk})
 		}
@@ -54,28 +63,24 @@ func nativeFixture(t *testing.T) (Options, *[]nativeCommand, func(string, []stri
 	return Options{Root: root, Out: io.Discard, Jobs: 4}, &commands, run
 }
 
-func TestPrepareOnlyKeepsNativeWorkAndOmitsFrontendAndDebugBuild(t *testing.T) {
+func TestPrepareOnlyOmitsDebugBuild(t *testing.T) {
 	o, commands, run := nativeFixture(t)
-	o.PrepareOnly, o.ReuseWebBuild = true, true
+	o.PrepareOnly = true
 	if err := build(o, run); err != nil {
 		t.Fatal(err)
 	}
-	var names []string
+	var zig, archive, project bool
 	for _, command := range *commands {
-		names = append(names, filepath.Base(command.name))
+		args := strings.Join(command.args, " ")
+		if command.name == "xcodebuild" {
+			t.Fatal("prepare compiled Debug")
+		}
+		zig = zig || strings.Contains(args, "zig build library -Dtarget=aarch64-macos -Doptimize=ReleaseFast -j4")
+		archive = archive || strings.Contains(args, "-buildmode=c-archive")
+		project = project || strings.Contains(args, "xcodegen generate")
 	}
-	if !reflect.DeepEqual(names, []string{"go", "go", "mise", "xcrun", "xcrun", "go", "mise"}) {
-		t.Fatalf("preparation commands: %v", names)
-	}
-	wantZig := []string{"-C", filepath.Join(o.Root, "native/build/macos/.sdk/core"), "exec", "--", "zig", "build", "library", "-Dtarget=aarch64-macos", "-Doptimize=ReleaseFast", "-j4"}
-	if got := (*commands)[2].args; !reflect.DeepEqual(got, wantZig) {
-		t.Fatalf("Zig command: %q", got)
-	}
-	if got := strings.Join((*commands)[5].args, " "); !strings.Contains(got, "-buildmode=c-archive") {
-		t.Fatalf("native Go archive not built: %s", got)
-	}
-	if got := strings.Join((*commands)[6].args, " "); !strings.Contains(got, "xcodegen generate") {
-		t.Fatalf("preparation did not finish at project generation: %s", got)
+	if !zig || !archive || !project {
+		t.Fatalf("missing native preparation: %v", *commands)
 	}
 }
 
@@ -107,37 +112,16 @@ func TestOrdinaryNativeBuildCompilesWebAndDebugWithWorkerLimit(t *testing.T) {
 	if err := build(o, run); err != nil {
 		t.Fatal(err)
 	}
-	if command := (*commands)[2]; filepath.Base(command.name) != "vp" || !reflect.DeepEqual(command.args, []string{"build"}) {
-		t.Fatalf("frontend was not built: %+v", command)
+	found := false
+	for _, command := range *commands {
+		found = found || filepath.Base(command.name) == "vp" && reflect.DeepEqual(command.args, []string{"build"})
+	}
+	if !found {
+		t.Fatal("frontend was not built")
 	}
 	last := (*commands)[len(*commands)-1]
 	args := strings.Join(last.args, " ")
 	if last.name != "xcodebuild" || !strings.Contains(args, "-configuration Debug") || strings.Count(args, "-jobs 4") != 1 {
 		t.Fatalf("Debug build and worker limit: %+v", last)
-	}
-}
-
-func TestReuseRequiresNonemptyFrontendManifest(t *testing.T) {
-	for _, missing := range []bool{false, true} {
-		o, commands, run := nativeFixture(t)
-		o.ReuseWebBuild = true
-		manifest := filepath.Join(o.Root, "web/build/skgo.manifest.json")
-		var err error
-		if missing {
-			err = os.Remove(manifest)
-		} else {
-			err = os.WriteFile(manifest, nil, 0644)
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := build(o, run); err == nil || !strings.Contains(err.Error(), "requires a built frontend") {
-			t.Fatalf("missing=%v: %v", missing, err)
-		}
-		for _, command := range *commands {
-			if filepath.Base(command.name) == "vp" || command.name == "xcodebuild" {
-				t.Fatalf("invalid prepared inputs reached compilation: %+v", command)
-			}
-		}
 	}
 }
