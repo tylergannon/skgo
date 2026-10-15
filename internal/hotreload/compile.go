@@ -20,27 +20,58 @@ type Candidate struct {
 
 // Compile uses the host's toolchain and dependency archives. before and after
 // contain captured authored sources, not the transformed development host.
-// This initial boundary replaces one complete generated route package.
+// This package-only entry is for an already checked executable boundary. Use
+// CompileApplication when admitting an application revision.
 func (t Toolchain) Compile(ctx context.Context, dir, pkgPath, importcfg, output string, before, after map[string][]byte) (Candidate, error) {
+	return t.compile(ctx, dir, pkgPath, importcfg, output, before, after, nil)
+}
+
+// CompileApplication checks executable callers in the selected application
+// package patterns before producing an object. Use the same captured overlay
+// for this analysis and compilation. Uninstrumented callers select rebuilding.
+func (t Toolchain) CompileApplication(ctx context.Context, dir, pkgPath, importcfg, output string, before, after map[string][]byte, application ...string) (Candidate, error) {
+	if len(application) == 0 {
+		application = []string{"./..."}
+	}
+	return t.compile(ctx, dir, pkgPath, importcfg, output, before, after, application)
+}
+
+func (t Toolchain) compile(ctx context.Context, dir, pkgPath, importcfg, output string, before, after map[string][]byte, application []string) (Candidate, error) {
 	var candidate Candidate
+	if err := t.checkFlags(); err != nil {
+		return candidate, err
+	}
 	if err := Classify(before, after, nil, nil); err != nil {
 		return candidate, err
 	}
+	patterns := append([]string{pkgPath}, application...)
 	pkgs, err := packages.Load(&packages.Config{
 		Context: ctx, Dir: dir, Env: t.command(ctx, dir).Env, Overlay: after,
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule,
-	}, pkgPath)
+	}, patterns...)
 	if err != nil {
 		return candidate, err
 	}
-	if len(pkgs) != 1 {
-		return candidate, fmt.Errorf("expected one replacement package, got %d", len(pkgs))
+	// Local replacements may live outside ./... but still contain executable
+	// callers (or inlined copies). Inspect the complete loaded import graph.
+	var applicationPackages []*packages.Package
+	packages.Visit(pkgs, nil, func(loaded *packages.Package) { applicationPackages = append(applicationPackages, loaded) })
+	var p *packages.Package
+	for _, loaded := range pkgs {
+		if len(loaded.Errors) != 0 {
+			return candidate, fmt.Errorf("type-check application %s: %v", loaded.PkgPath, loaded.Errors)
+		}
+		if loaded.PkgPath == pkgPath {
+			p = loaded
+		}
 	}
-	p := pkgs[0]
-	if err := Classify(before, after, []*packages.Package{p}, []*packages.Package{p}); err != nil {
+	if p == nil {
+		return candidate, fmt.Errorf("replacement package %s not loaded", pkgPath)
+	}
+	if err := Classify(before, after, []*packages.Package{p}, applicationPackages); err != nil {
 		return candidate, err
 	}
-	lowered, err := Lower(p, after)
+	lowered, err := LowerAuthored(p, after, t.AuthoredPaths)
 	if err != nil {
 		return candidate, err
 	}
@@ -67,6 +98,9 @@ func (t Toolchain) Compile(ctx context.Context, dir, pkgPath, importcfg, output 
 	raw, err := t.command(ctx, dir, args...).CombinedOutput()
 	if err != nil {
 		return Candidate{}, fmt.Errorf("compile captured replacement: %w\n%s", err, raw)
+	}
+	if err := t.writeArtifact(candidate.Object, pkgPath, importcfg); err != nil {
+		return Candidate{}, err
 	}
 	return candidate, nil
 }

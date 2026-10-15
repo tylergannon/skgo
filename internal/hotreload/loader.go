@@ -23,9 +23,9 @@ var loaderOS embed.FS
 // application source. Its dependency declaration points at this private copy.
 func (t Toolchain) PrepareLoader(ctx context.Context, dir, parent string) (string, error) {
 	cmd := t.command(ctx, dir, "mod", "download", "-json", "github.com/pkujhd/goloader@"+LoaderVersion)
-	raw, err := cmd.Output()
+	raw, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("download native loader: %w", err)
+		return "", fmt.Errorf("download native loader: %w\n%s", err, raw)
 	}
 	var module struct {
 		Dir, Version string
@@ -90,6 +90,30 @@ func (t Toolchain) PrepareLoader(ctx context.Context, dir, parent string) (strin
 	linkerSource = []byte(strings.Replace(string(linkerSource), original, "type Linker struct {\nReclaimable bool", 1))
 	if err := os.WriteFile(linkerPath, linkerSource, 0644); err != nil {
 		return "", err
+	}
+	// Go's runtime uses ^uint32(0) for absent funcdata. Upstream used zero
+	// internally, then relocated that zero with type/itab backing: functions
+	// without open-coded defers acquired a false defer-info pointer and a
+	// replacement panic killed the process with "missing deferreturn".
+	// Preserve an explicit sentinel, including real metadata at offset zero.
+	for _, patch := range []struct{ file, old, next string }{
+		{"link/ld.go", "Func.FuncData = append(Func.FuncData, (uintptr)(0))", "Func.FuncData = append(Func.FuncData, ^uintptr(0))"},
+		{"link/ld.go", "sym.Func.FuncData[index] += uintptr(segment.noPtrTypeDataLen + segment.noPtrItabDataLen)", "if sym.Func.FuncData[index] != ^uintptr(0) { sym.Func.FuncData[index] += uintptr(segment.noPtrTypeDataLen + segment.noPtrItabDataLen) }"},
+		{"link/inlinetree.go", "sym.Func.FuncData = append(sym.Func.FuncData, uintptr(0))", "sym.Func.FuncData = append(sym.Func.FuncData, ^uintptr(0))"},
+		{"link/functab.1.18.go", "if v != 0 {", "if v != ^uintptr(0) {"},
+	} {
+		file := filepath.Join(dest, patch.file)
+		body, err := os.ReadFile(file)
+		if err != nil {
+			return "", err
+		}
+		if !strings.Contains(string(body), patch.old) {
+			return "", fmt.Errorf("native loader funcdata differs from pinned source: %s", patch.file)
+		}
+		body = []byte(strings.ReplaceAll(string(body), patch.old, patch.next))
+		if err := os.WriteFile(file, body, 0644); err != nil {
+			return "", err
+		}
 	}
 	run := func(dir string, args ...string) error {
 		output, err := t.command(ctx, dir, args...).CombinedOutput()

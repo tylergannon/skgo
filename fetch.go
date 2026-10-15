@@ -84,6 +84,11 @@ type FetchConfig struct {
 	// is not it — that mounts this very fetcher — so assemble the handler first
 	// and hand it over by reference. Nil refuses same-origin fetches.
 	Handler http.Handler
+	// CarryContext preserves an owning host's execution lifetime on an internal
+	// fetch. It receives a fresh subrequest context and the originating context;
+	// return the fresh context with only that host token added. Request events,
+	// locals and arbitrary request values must remain isolated.
+	CarryContext func(subrequest, originating context.Context) context.Context
 	// HandleFetch intercepts every fetch before credential inheritance.
 	HandleFetch HandleFetch
 	// Client sends requests that leave the app. Nil uses http.DefaultClient.
@@ -97,7 +102,7 @@ type FetchConfig struct {
 // Intercept makes Event.Fetch available to everything beneath next. Mount it
 // outermost, so Handle's own event can fetch as well.
 func (c FetchConfig) Intercept(next http.Handler) http.Handler {
-	f := &requestFetcher{handler: c.Handler, hook: c.HandleFetch, client: c.Client, base: normalizeFetchBase(c.Base), prerendered: prerenderedSet(c.Prerendered)}
+	f := &requestFetcher{handler: c.Handler, hook: c.HandleFetch, client: c.Client, base: normalizeFetchBase(c.Base), prerendered: prerenderedSet(c.Prerendered), carryContext: c.CarryContext}
 	if origin, err := url.Parse(c.Origin); err == nil && origin.Host != "" {
 		f.origin = origin
 	}
@@ -207,12 +212,13 @@ type fetchSource struct {
 // requestFetcher is Kit's create_fetch, shared by Event.Fetch and the
 // render-time bridge so both apply one set of rules.
 type requestFetcher struct {
-	handler     http.Handler
-	hook        HandleFetch
-	client      *http.Client
-	base        string
-	origin      *url.URL
-	prerendered map[string]bool
+	carryContext func(context.Context, context.Context) context.Context
+	handler      http.Handler
+	hook         HandleFetch
+	client       *http.Client
+	base         string
+	origin       *url.URL
+	prerendered  map[string]bool
 }
 
 func prerenderedSet(paths []string) map[string]bool {
@@ -429,7 +435,11 @@ func (f *requestFetcher) serve(ctx context.Context, src fetchSource, request *ht
 	// of the server — here the client's address — and how deep it is; and the
 	// engine needs to know how many renders are waiting on this one.
 	sub := valuelessContext{ctx}
-	subCtx := context.WithValue(sub, requestFetcherKey{}, f)
+	var base context.Context = sub
+	if f.carryContext != nil {
+		base = f.carryContext(base, ctx)
+	}
+	subCtx := context.WithValue(base, requestFetcherKey{}, f)
 	subCtx = withFetchDepth(subCtx, fetchDepthOf(ctx)+1)
 	if src.request != nil {
 		subCtx = context.WithValue(subCtx, clientAddressKey{}, clientAddressOf(src.request))
