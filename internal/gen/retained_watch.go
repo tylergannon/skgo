@@ -14,7 +14,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
+	"syscall"
+	"time"
 )
 
 type projectWatcher struct {
@@ -57,16 +60,21 @@ func (p *Project) Watch() (<-chan error, error) {
 	// trees). This detects a newly created go.work and preserved-mtime writes.
 	for _, control := range p.sources.Controls {
 		dir := filepath.Dir(control)
-		if dir == filepath.Dir(dir) {
-			continue
-		} // kqueue cannot watch the volume root with dangling system symlinks.
 		if !w.dirs[dir] {
-			if err := watcher.Add(dir); err != nil && !os.IsNotExist(err) {
+			if err := w.addWatch(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
 				_ = watcher.Close()
 				cancel()
 				return nil, err
 			}
 			w.dirs[dir] = true
+		}
+		// An earlier kqueue Add may have registered the directory before a
+		// transient child-enumeration failure. Confirm selected existing
+		// controls explicitly rather than relying on that partial enumeration.
+		if err := w.armFile(control); err != nil {
+			_ = watcher.Close()
+			cancel()
+			return nil, err
 		}
 	}
 	p.watch = w
@@ -83,13 +91,13 @@ func (w *projectWatcher) watchDir(dir string) error {
 			return err
 		}
 		if !entry.IsDir() {
-			return nil
+			return w.armFile(path)
 		}
 		if path != dir && cacheToolingDirectory(entry.Name()) {
 			return filepath.SkipDir
 		}
 		if !w.dirs[path] {
-			if err := w.fs.Add(path); err != nil {
+			if err := w.addWatch(path); err != nil {
 				return err
 			}
 			w.dirs[path] = true
@@ -97,6 +105,66 @@ func (w *projectWatcher) watchDir(dir string) error {
 		return nil
 	})
 }
+
+// addWatch adapts gopls watchDir's bounded retry to a disappearing child in
+// kqueue's directory enumeration or an inode descriptor retired concurrently
+// with a rebind. The requested path must still exist; all
+// other errors and exhausted attempts remain visible to the project owner.
+func (w *projectWatcher) addWatch(path string) error {
+	var err error
+	for attempt := 0; attempt < 5; attempt++ {
+		err = w.fs.Add(path)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.EBADF) {
+			return err
+		}
+		if _, statErr := os.Stat(path); statErr != nil {
+			return err
+		}
+		if attempt == 4 {
+			break
+		}
+		timer := time.NewTimer((2 * time.Millisecond) << attempt)
+		select {
+		case <-w.ctx.Done():
+			timer.Stop()
+			return w.ctx.Err()
+		case <-timer.C:
+		}
+	}
+	return err
+}
+
+// fsnotify's kqueue backend delivers Create before it registers the new inode.
+// Confirm that registration before acquiring bytes: after source publication,
+// an immediate in-place write must already have a watch to deliver its event.
+func (w *projectWatcher) armFile(path string) error {
+	switch runtime.GOOS {
+	case "darwin", "freebsd", "openbsd", "netbsd", "dragonfly":
+	default:
+		return nil
+	}
+	info, err := os.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	} // deletion is acquired by Observe
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return nil
+	}
+	err = w.addWatch(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		if _, now := os.Stat(path); errors.Is(now, fs.ErrNotExist) {
+			return nil
+		}
+	}
+	return err
+}
+
 func (w *projectWatcher) report(err error) {
 	select {
 	case w.errors <- err:
@@ -169,6 +237,10 @@ func (w *projectWatcher) run() {
 						delete(w.dirs, dir)
 					}
 				}
+			}
+			if err := w.armFile(event.Name); err != nil {
+				w.report(err)
+				continue
 			}
 			if _, _, err := w.project.Observe(w.ctx, event.Name); err != nil && w.ctx.Err() == nil {
 				w.report(err)
