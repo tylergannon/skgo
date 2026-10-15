@@ -86,7 +86,11 @@ func runPrerenderRemote(ctx context.Context, raw []byte, out io.Writer, transpor
 			break
 		}
 	}
-	if fn == nil || fn.kind != KindPrerender {
+	development, dev := ctx.Value(devRendererKey{}).(*SSR)
+	if dev {
+		registry = development.remotes
+	}
+	if fn == nil || (!dev && fn.kind != KindPrerender) || (dev && fn.kind != KindQuery && fn.kind != KindPrerender) {
 		return fmt.Errorf("skgo: no generated Go prerender remote for %s#%s", input.Module, input.Name)
 	}
 	result := registry.invokePayload(withEvent(request.Context(), registry.newEvent(request, false)), fn, input.Payload)

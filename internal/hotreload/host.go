@@ -32,6 +32,8 @@ type HostOptions struct {
 	Inputs                                                            *gen.CompilerInputs
 	WorkDir, GoTool, Origin, DistDir, HandlerPackage, HandlerFunction string
 	Output                                                            io.Writer
+	SocketPath, ServiceSecret                                         string
+	NativeKit                                                         bool
 }
 type hostPackage struct {
 	path, dir, importcfg string
@@ -261,7 +263,7 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	h.replies = replyRead
 	h.cmd = exec.CommandContext(ctx, binary)
 	h.cmd.Dir = o.Inputs.Dir
-	h.cmd.Env = append(os.Environ(), "SKGO_DEV_ORIGIN="+o.Origin, "SKGO_DEV_DIST="+o.DistDir)
+	h.cmd.Env = append(os.Environ(), "SKGO_DEV_ORIGIN="+o.Origin, "SKGO_DEV_DIST="+o.DistDir, "SKGO_DEV_SOCKET="+o.SocketPath, "SKGO_DEV_SERVICE_SECRET="+o.ServiceSecret, "SKGO_DEV_NATIVE_KIT="+strconv.FormatBool(o.NativeKit))
 	h.cmd.ExtraFiles = []*os.File{commandRead, replyWrite}
 	h.cmd.Stdout = o.Output
 	h.cmd.Stderr = o.Output
@@ -519,8 +521,9 @@ func injectCarry(name string, body []byte) ([]byte, error) {
 }
 func hostSource(app, function string, paths []string) ([]byte, error) {
 	var b strings.Builder
-	b.WriteString("package main\nimport(\"encoding/json\";\"fmt\";\"net\";\"net/http\";\"os\";\"strings\";\"sync\";\"io\"\n")
+	b.WriteString("package main\nimport(\"encoding/json\";\"fmt\";\"net\";\"net/http\";\"os\";\"strings\";\"sync\";\"io\";\"io/fs\"\n")
 	fmt.Fprintf(&b, "app %q\n", app)
+	b.WriteString("skgo \"github.com/tylergannon/skgo\"\n")
 	if len(paths) > 0 {
 		b.WriteString("loader \"github.com/pkujhd/goloader\"\n")
 	}
@@ -534,11 +537,11 @@ func hostSource(app, function string, paths []string) ([]byte, error) {
 	for i := range paths {
 		fmt.Fprintf(&b, "if e:=hot%d.SkgoHotInitSymbols(32,symbols);e!=nil{fail(e);return}\n", i)
 	}
-	fmt.Fprintf(&b, "origin:=os.Getenv(\"SKGO_DEV_ORIGIN\");var mu sync.RWMutex;var handler http.Handler;reload:=func(dist string)error{h,e:=app.%s(os.DirFS(dist),origin);if e!=nil{return e};", function)
+	fmt.Fprintf(&b, "origin:=os.Getenv(\"SKGO_DEV_ORIGIN\");var mu sync.RWMutex;var handler http.Handler;var nativeClose func();defer func(){if nativeClose!=nil{nativeClose()}}();reload:=func(dist string)error{var buildfs fs.FS=os.DirFS(dist);var native *skgo.NativeDevelopment;if os.Getenv(\"SKGO_DEV_NATIVE_KIT\")==\"true\"{native=skgo.NewNativeDevelopment(buildfs,os.Getenv(\"SKGO_DEV_SERVICE_SECRET\"));buildfs=native};h,e:=app.%s(buildfs,origin);if e!=nil{return e};if native!=nil{var close func();h,close,e=native.Handler(h);if e!=nil{return e};if nativeClose!=nil{nativeClose()};nativeClose=close};", function)
 	for i := range paths {
 		fmt.Fprintf(&b, "h=hot%d.SkgoHotHandler(h);", i)
 	}
-	b.WriteString("mu.Lock();handler=h;mu.Unlock();return nil};if e:=reload(os.Getenv(\"SKGO_DEV_DIST\"));e!=nil{fail(e);return};listener,e:=net.Listen(\"tcp\",\"127.0.0.1:0\");if e!=nil{fail(e);return};server:=&http.Server{Handler:http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){mu.RLock();h:=handler;mu.RUnlock();h.ServeHTTP(w,r)})};defer server.Close();go server.Serve(listener);enc.Encode(reply{URL:\"http://\"+listener.Addr().String(),PID:os.Getpid()});dec:=json.NewDecoder(os.NewFile(3,\"commands\"));for{var c command;if e:=dec.Decode(&c);e!=nil{if e!=io.EOF{fmt.Fprintln(os.Stderr,e)};return};var e error;switch c.Op{case \"reload\":e=reload(c.Dist);case \"install\":switch c.Package{")
+	b.WriteString("mu.Lock();handler=h;mu.Unlock();return nil};if e:=reload(os.Getenv(\"SKGO_DEV_DIST\"));e!=nil{fail(e);return};network,address:=\"tcp\",\"127.0.0.1:0\";if socket:=os.Getenv(\"SKGO_DEV_SOCKET\");socket!=\"\"{network,address=\"unix\",socket};listener,e:=net.Listen(network,address);if e!=nil{fail(e);return};defer listener.Close();server:=&http.Server{Handler:http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){mu.RLock();h:=handler;mu.RUnlock();h.ServeHTTP(w,r)})};defer server.Close();go server.Serve(listener);enc.Encode(reply{URL:\"http://\"+listener.Addr().String(),PID:os.Getpid()});dec:=json.NewDecoder(os.NewFile(3,\"commands\"));for{var c command;if e:=dec.Decode(&c);e!=nil{if e!=io.EOF{fmt.Fprintln(os.Stderr,e)};return};var e error;switch c.Op{case \"reload\":e=reload(c.Dist);case \"install\":switch c.Package{")
 	for i, p := range paths {
 		fmt.Fprintf(&b, "case %s:e=hot%d.SkgoHotInstall(c.Candidate.Object,c.Candidate.Storage,c.Candidate.Reclaim);", strconv.Quote(p), i)
 	}

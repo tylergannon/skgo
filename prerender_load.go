@@ -44,6 +44,7 @@ type prerenderCookie struct {
 }
 
 type prerenderLoadOutput struct {
+	Body     json.RawMessage    `json:"body,omitempty"`
 	Data     json.RawMessage    `json:"data,omitempty"`
 	Chunks   []prerenderChunk   `json:"chunks,omitempty"`
 	Error    *HTTPError         `json:"error,omitempty"`
@@ -51,6 +52,7 @@ type prerenderLoadOutput struct {
 	Redirect *prerenderRedirect `json:"redirect,omitempty"`
 	Headers  http.Header        `json:"headers,omitempty"`
 	Cookies  []prerenderCookie  `json:"cookies,omitempty"`
+	Uses     usesWire           `json:"uses"`
 }
 
 type prerenderChunk struct {
@@ -90,6 +92,9 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 	if err != nil {
 		return err
 	}
+	if development, ok := ctx.Value(devRendererKey{}).(*SSR); ok {
+		registry = development.loads
+	}
 	load := registry.byModule[input.Module]
 	if load == nil {
 		return fmt.Errorf("skgo: no generated Go load for %s", input.Module)
@@ -119,7 +124,7 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 	previousHeaders := requestResponseHeaders(request).Clone()
 	shared, nodes := registry.runBranchWith(request, dataRequest{url: pageURL, converted: converted}, input.RouteID, input.Params, []*ServerLoad{parent, load}, nil, nil, nil)
 	node := nodes[1]
-	answer := prerenderLoadOutput{Headers: shared.headers.Clone()}
+	answer := prerenderLoadOutput{Headers: shared.headers.Clone(), Uses: node.uses.serialize()}
 	for name := range previousHeaders {
 		delete(answer.Headers, name)
 	}
@@ -127,8 +132,17 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 		answer.Redirect = &prerenderRedirect{Status: node.redir.status(), Location: node.redir.Location}
 	} else if node.err != nil {
 		answer.Error = node.err
+		if development, ok := ctx.Value(devRendererKey{}).(*SSR); ok {
+			handled := development.loads.dataError(ctx, input.RouteID, node.err, node.raw)
+			body, err := jsonBytes(errorNodeExtra(handled))
+			if err != nil {
+				return err
+			}
+			answer.Body = body
+			answer.Error = &HTTPError{Status: handled.Status, Message: handled.Message}
+		}
 		var authored *HTTPError
-		if node.raw != nil && !errors.As(node.raw, &authored) {
+		if node.raw != nil && !errors.As(node.raw, &authored) && ctx.Value(devRendererKey{}) == nil {
 			message := node.raw.Error()
 			answer.Failure = &message
 		}
@@ -144,6 +158,16 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 			return fmt.Errorf("skgo: serialize prerender load %s: %w", input.Module, err)
 		}
 		answer.Data = json.RawMessage(serialized)
+		streaming, _ := ctx.Value(devStreamingLoadKey{}).(bool)
+		if streaming {
+			answer.Cookies = prerenderCookies(shared.jar)
+			if err := json.NewEncoder(out).Encode(answer); err != nil {
+				return err
+			}
+			if flush, ok := out.(http.Flusher); ok {
+				flush.Flush()
+			}
+		}
 		var chunkErr error
 		promises.settled(request.Context(), func(id int, value any, settleErr error) {
 			chunk := prerenderChunk{ID: id}
@@ -160,10 +184,22 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 					chunkErr = fmt.Errorf("skgo: encode deferred value in %s: %w", input.Module, err)
 				}
 			}
-			answer.Chunks = append(answer.Chunks, chunk)
+			if streaming {
+				if err := json.NewEncoder(out).Encode(chunk); err != nil {
+					chunkErr = err
+				}
+				if flush, ok := out.(http.Flusher); ok {
+					flush.Flush()
+				}
+			} else {
+				answer.Chunks = append(answer.Chunks, chunk)
+			}
 		})
 		if chunkErr != nil {
 			return chunkErr
+		}
+		if streaming {
+			return request.Context().Err()
 		}
 	}
 	answer.Cookies = prerenderCookies(shared.jar)

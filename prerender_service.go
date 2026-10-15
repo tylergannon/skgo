@@ -168,6 +168,9 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			stop := context.AfterFunc(r.Context(), cancel)
 			defer func() { stop(); cancel() }()
 			ctx = context.WithValue(ctx, prerenderRequestKey{}, entry.request)
+			if development, ok := r.Context().Value(devRendererKey{}).(*SSR); ok {
+				ctx = context.WithValue(ctx, devRendererKey{}, development)
+			}
 			// The request context carries the app locals and cancellation.
 			r = r.WithContext(ctx)
 		}

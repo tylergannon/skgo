@@ -108,6 +108,12 @@ type SSROptions struct {
 // NewSSR builds a renderer over an adapter build. It fails if the build carries
 // no SSR bundle, if the bundle does not parse, or if it does not come up.
 func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROptions) (*SSR, error) {
+	if development, ok := build.(*NativeDevelopment); ok {
+		s := &SSR{loads: loads, remotes: remotes, actions: opts.Actions, fetch: opts.Fetch, handleFetch: opts.HandleFetch, filterSerializedResponseHeaders: opts.FilterSerializedResponseHeaders, errorPage: "<html><body>%sveltekit.error.message%</body></html>"}
+		development.renderer = s
+		development.manifest = m
+		return s, nil
+	}
 	if remotes != nil {
 		if err := remotes.updateCallerRoutes(m.Routes); err != nil {
 			return nil, err

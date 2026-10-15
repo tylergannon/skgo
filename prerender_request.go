@@ -32,22 +32,25 @@ type prerenderManifestKey struct{}
 type prerenderRefusalKey struct{}
 type prerenderBodyFailureKey struct{}
 type prerenderRequestInput struct {
-	URL          string          `json:"url"`
-	LogicalURL   string          `json:"logicalUrl"`
-	Method       string          `json:"method"`
-	Headers      http.Header     `json:"headers"`
-	Body         []byte          `json:"body"`
-	RouteID      string          `json:"routeId"`
-	RoutePattern string          `json:"routePattern"`
-	RouteParams  []ManifestParam `json:"routeParams"`
-	RoutePath    string          `json:"routePath"`
-	IsSubRequest bool            `json:"isSubRequest"`
-	Manifest     Manifest        `json:"manifest"`
+	URL           string            `json:"url"`
+	LogicalURL    string            `json:"logicalUrl"`
+	Method        string            `json:"method"`
+	Headers       http.Header       `json:"headers"`
+	Body          []byte            `json:"body"`
+	RouteID       string            `json:"routeId"`
+	RoutePattern  string            `json:"routePattern"`
+	RouteParams   []ManifestParam   `json:"routeParams"`
+	RoutePath     string            `json:"routePath"`
+	IsSubRequest  bool              `json:"isSubRequest"`
+	Manifest      Manifest          `json:"manifest"`
+	Params        map[string]string `json:"params"`
+	ClientAddress string            `json:"clientAddress"`
 }
 type prerenderResponse struct {
 	Status  int         `json:"status"`
 	Headers http.Header `json:"headers"`
 	Body    []byte      `json:"body"`
+	Reader  io.Reader   `json:"-"`
 }
 type prerenderRequestAnswer struct {
 	Handle   string                   `json:"handle,omitempty"`
@@ -78,12 +81,14 @@ type prerenderRequest struct {
 	active    sync.WaitGroup
 	failure   error
 	closing   bool
+	stream    *downstream
 }
 type prerenderRequests struct {
-	mu      sync.Mutex
-	entries map[string]*prerenderRequest
-	ctx     context.Context
-	options PrerenderServiceOptions
+	mu          sync.Mutex
+	entries     map[string]*prerenderRequest
+	ctx         context.Context
+	options     PrerenderServiceOptions
+	development bool
 }
 
 func (s *prerenderRequests) close() {
@@ -157,6 +162,7 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 	if input.IsSubRequest {
 		request = request.WithContext(withFetchDepth(request.Context(), 1))
 	}
+	request.RemoteAddr = input.ClientAddress
 	request.Header = http.Header{}
 	for name, values := range input.Headers {
 		request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
@@ -205,27 +211,40 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 				w.Header()[http.CanonicalHeaderKey(k)] = append([]string(nil), v...)
 			}
 			w.WriteHeader(response.Status)
-			_, _ = w.Write(response.Body)
+			if response.Reader != nil {
+				_, _ = io.Copy(w, response.Reader)
+			} else {
+				_, _ = w.Write(response.Body)
+			}
 		case <-r.Context().Done():
 			panic(http.ErrAbortHandler)
 		}
 	})
-	go func() {
-		defer close(entry.done)
-		defer func() {
-			if value := recover(); value != nil {
-				entry.failure = fmt.Errorf("skgo: prerender response aborted: %v", value)
+	if s.development {
+		entry.stream = launchDownstream(logical, logical, s.options.BindRequest(next), request, true)
+		entry.done = entry.stream.ended
+	} else {
+		go func() {
+			defer close(entry.done)
+			defer func() {
+				if value := recover(); value != nil {
+					entry.failure = fmt.Errorf("skgo: prerender response aborted: %v", value)
+				}
+			}()
+			writer := httptest.NewRecorder()
+			s.options.BindRequest(next).ServeHTTP(writer, request)
+			if entry.answer.Error == nil && entry.answer.Redirect == nil {
+				entry.answer.Response = &prerenderResponse{Status: writer.Code, Headers: writer.Header().Clone(), Body: writer.Body.Bytes()}
 			}
 		}()
-		writer := httptest.NewRecorder()
-		s.options.BindRequest(next).ServeHTTP(writer, request)
-		if entry.answer.Error == nil && entry.answer.Redirect == nil {
-			entry.answer.Response = &prerenderResponse{Status: writer.Code, Headers: writer.Header().Clone(), Body: writer.Body.Bytes()}
-		}
-	}()
+	}
+
 	select {
 	case r := <-entry.ready:
 		entry.request = r
+		if endpoints, ok := r.Context().Value(devEndpointsKey{}).(*Endpoints); ok {
+			entry.endpoints = endpoints
+		}
 		if chosen := requestResolveOptions(r.Context()); chosen != nil {
 			entry.options = *chosen
 		}
@@ -233,7 +252,22 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 			entry.options.FilterSerializedResponseHeaders = s.options.FilterSerializedResponseHeaders
 		}
 		return prerenderRequestAnswer{Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: requestResponseHeaders(r).Clone(), Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
-	case <-entry.done:
+	case <-func() <-chan struct{} {
+		if entry.stream != nil {
+			return entry.stream.committed
+		}
+		return entry.done
+	}():
+		if entry.stream != nil {
+			response := entry.stream.response(request)
+			body, err := io.ReadAll(response.Body)
+			response.Body.Close()
+			if err != nil {
+				s.end(handle)
+				return prerenderRequestAnswer{}, err
+			}
+			entry.answer.Response = &prerenderResponse{Status: response.StatusCode, Headers: response.Header, Body: body}
+		}
 		if entry.failure != nil {
 			s.end(handle)
 			return prerenderRequestAnswer{}, entry.failure

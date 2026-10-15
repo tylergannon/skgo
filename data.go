@@ -45,6 +45,10 @@ func stripDataSuffix(pathname string) string {
 // over this and everything else.
 func (ls *Loads) Intercept(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Context().Value(devContinuationKey{}) != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if hasDataSuffix(r.URL.Path) {
 			if path, ok := normalizePath(r.URL.Path); ok && ls.prerendered[path] {
 				next.ServeHTTP(w, r)

@@ -697,6 +697,10 @@ func (rs *Remotes) Lookup(id string) (*Remote, bool) {
 // everything else to next. It must sit in front of the static handler.
 func (rs *Remotes) Intercept(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Context().Value(devContinuationKey{}) != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, rs.prefix) {
 			// Kit's prerender function writes a static response at this path.
 			// The static handler owns it, including a missing asset's 404.
