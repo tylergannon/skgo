@@ -40,6 +40,8 @@ func filterSerializedResponseHeaders(name, value string) bool {
 // away from every page under /account without any of those pages knowing.
 func initialize(ctx context.Context, event params.RequestEvent) (params.RequestEvent, error) {
 	request := event.Request()
+	event.Locals.RootLayoutFailure = request.URL.Query().Get("boom") == "root-layout"
+	event.Locals.ScriptSafeProof = request.URL.Query().Get("proof") == "script-safe"
 	if request.Method == http.MethodPost && request.URL.Path == "/actions" {
 		switch request.URL.Query().Get("hook") {
 		case "sign-in":

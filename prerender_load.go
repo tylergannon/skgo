@@ -23,6 +23,7 @@ type PrerenderLoadInput struct {
 	Params       map[string]string `json:"params"`
 	Headers      http.Header       `json:"headers"`
 	Parent       map[string]any    `json:"parent"`
+	ParentData   string            `json:"parentData,omitempty"`
 	RoutePattern string            `json:"routePattern,omitempty"`
 	RouteParams  []ManifestParam   `json:"routeParams,omitempty"`
 	RoutePath    string            `json:"routePath,omitempty"`
@@ -72,6 +73,20 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 	var input PrerenderLoadInput
 	if err := json.NewDecoder(in).Decode(&input); err != nil {
 		return fmt.Errorf("skgo: decode prerender load request: %w", err)
+	}
+	if input.ParentData != "" {
+		decoded, err := devalue.Parse(input.ParentData, transport.revivers())
+		if err != nil {
+			return fmt.Errorf("skgo: decode native parent data: %w", err)
+		}
+		object, ok := decoded.(*devalue.Object)
+		if !ok {
+			return fmt.Errorf("skgo: native parent data is not an object")
+		}
+		input.Parent = map[string]any{}
+		for _, key := range object.Keys() {
+			input.Parent[key], _ = object.Get(key)
+		}
 	}
 	pageURL, err := url.Parse(input.URL)
 	if err != nil || pageURL.Scheme == "" || pageURL.Host == "" {

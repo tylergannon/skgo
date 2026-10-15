@@ -1,2 +1,6 @@
 correction: Node workers inherit execArgv; a Go harness launching node --input-type=module made the synchronous predicate worker fail before it could wake the blocked main thread. Give the file-backed worker an empty execArgv and test the actual blocked-main UDS round trip.
 decision: Native handleFetch must suspend Go's supplied continuation and call Kit's supplied fetch in JS. Dispatching every URL through Go's existing fetch router would send native Kit page subfetches to a static 404.
+correction: Generated +server exports alias a shared `unimplemented` identifier, not arrow callbacks. Regression now uses that actual generated shape; only exported method initializers change.
+correction: Kit remote query callbacks receive an event with url/params/route forbidden. Native callbacks need only request-owner handle plus arguments; do not read redundant event URL fields.
+correction: Kit disables a prerendered branch's server-load searchParams even in dev. The example root load's boom/proof controls relied on the old bridge omitting uses replay; move those fixture controls into the existing Go Handle locals, where search reads are legal.
+decision: Native no-JavaScript form callback is only the page POST because browser remote HTTP bypasses Kit. Reuse the existing Go unenhanced-form execution rather than inventing another file/key/validation parser.

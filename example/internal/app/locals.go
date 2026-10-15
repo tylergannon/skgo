@@ -6,9 +6,11 @@ import (
 )
 
 type Locals struct {
-	Session businesslogic.Session
-	Visit   businesslogic.Visit
-	Visitor string
+	Session           businesslogic.Session
+	Visit             businesslogic.Visit
+	Visitor           string
+	RootLayoutFailure bool
+	ScriptSafeProof   bool
 }
 
 type RequestEvent[P any] = skgo.RequestEvent[P, Locals]

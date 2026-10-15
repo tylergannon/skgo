@@ -29,6 +29,8 @@ const load=header+'export const load=async(event)=>{throw new Error("Go");}; exp
 const result=plugin.transform(load,join(process.cwd(),'src/routes/+page.server.ts'),{ssr:true});
 assert.ok(result.includes('$skgo.load("src/routes/+page.server.ts",event)'));
 assert.ok(result.includes('$skgo.action("src/routes/+page.server.ts","save",event)'));
+const endpoint=plugin.transform(header+'const unimplemented=()=>{throw new Error("Go")}; export const GET=unimplemented;',join(process.cwd(),'src/routes/api/+server.ts'),{ssr:true});
+assert.ok(endpoint.includes('export const GET=(event) => $skgo.endpoint(event)'));
 const hook=plugin.transform(header+'export {};',join(process.cwd(),'src/hooks.server.ts'),{ssr:true});
 assert.ok(hook.includes('requestHandle(event,resolve)'));
 const bridge=plugin.load(plugin.resolveId('virtual:skgo-dev-bridge'));

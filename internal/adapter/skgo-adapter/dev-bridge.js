@@ -7,6 +7,7 @@ import {
   receiveMessageOnPort,
 } from "node:worker_threads";
 import { error, redirect, fail } from "@sveltejs/kit";
+import { ValidationError } from "@sveltejs/kit/internal";
 
 let predicates;
 let predicateID = 0;
@@ -41,6 +42,8 @@ function headers(event) {
   const result = Object.fromEntries(
     [...event.request.headers].map(([k, v]) => [k, [v]]),
   );
+  delete result["x-skgo-internal-fetch"];
+  delete result["x-skgo-fetch-depth"];
   const cookies = event.cookies.getAll();
   if (cookies.length)
     result.cookie = [
@@ -53,7 +56,7 @@ function headers(event) {
     ];
   return result;
 }
-function call(kind, payload, event, raw) {
+function call(kind, payload, event, raw, signalOverride) {
   return new Promise((resolve, reject) => {
     const request = httpRequest(
       {
@@ -71,9 +74,17 @@ function call(kind, payload, event, raw) {
           !["response", "endpoint"].includes(kind) &&
           response.headers["x-skgo-fetch-state"] !== "final"
         ) {
-          response.resume();
-          reject(
-            new Error(`skgo: development ${kind} HTTP ${response.statusCode}`),
+          let detail = "";
+          response.setEncoding("utf8");
+          response.on("data", (chunk) => {
+            if (detail.length < 2048) detail += chunk;
+          });
+          response.on("end", () =>
+            reject(
+              new Error(
+                `skgo: development ${kind} HTTP ${response.statusCode}: ${detail.trim()}`,
+              ),
+            ),
           );
           return;
         }
@@ -81,7 +92,7 @@ function call(kind, payload, event, raw) {
       },
     );
     request.on("error", reject);
-    const signal = event?.request.signal;
+    const signal = signalOverride ?? event?.request.signal;
     const abort = () => request.destroy(new Error("skgo: request aborted"));
     signal?.addEventListener("abort", abort, { once: true });
     request.on("close", () => signal?.removeEventListener("abort", abort));
@@ -131,18 +142,31 @@ function effects(event, answer) {
 function exceptional(answer) {
   if (answer.redirect)
     redirect(answer.redirect.status, answer.redirect.location);
-  if (answer.error) error(answer.error.status, answer.body ?? answer.error.message);
+  if (answer.error)
+    error(answer.error.status, answer.body ?? answer.error.message);
   if (answer.failure && typeof answer.failure === "string")
     throw new Error(answer.failure);
 }
 const owner = (event) => event.platform?.skgoRequestHandle;
 export async function load(module, event) {
   const metadata = event.untrack(() => ({
-    url: event.url.href, routeId: event.route.id, params: {...event.params}, parent: event.parent()
+    url: event.url.href,
+    routeId: event.route.id,
+    params: { ...event.params },
+    parent: event.parent(),
   }));
-  const response = await call("load", {
-    handle: owner(event), module, ...metadata, parent: await metadata.parent, headers: headers(event)
-  }, event);
+  const response = await call(
+    "load",
+    {
+      handle: owner(event),
+      module,
+      ...metadata,
+      parentData: transport.stringify(await metadata.parent),
+      headers: headers(event),
+    },
+    event,
+  );
+  response.setEncoding("utf8");
   const iterator = response[Symbol.asyncIterator]();
   let buffered = "";
   async function line() {
@@ -168,9 +192,11 @@ export async function load(module, event) {
   const answer = await line();
   effects(event, answer);
   exceptional(answer);
-  for (const dependency of answer.uses?.dependencies ?? []) event.depends(dependency);
+  for (const dependency of answer.uses?.dependencies ?? [])
+    event.depends(dependency);
   for (const name of answer.uses?.params ?? []) void event.params[name];
-  for (const name of answer.uses?.search_params ?? []) event.url.searchParams.get(name);
+  for (const name of answer.uses?.search_params ?? [])
+    event.url.searchParams.get(name);
   if (answer.uses?.parent) await event.parent();
   if (answer.uses?.route) void event.route.id;
   if (answer.uses?.url) void event.url.href;
@@ -208,8 +234,6 @@ export async function remote(module, name, arg, event) {
       handle: owner(event),
       module,
       name,
-      url: event.url.href,
-      headers: headers(event),
       payload:
         arg === undefined
           ? ""
@@ -220,15 +244,100 @@ export async function remote(module, name, arg, event) {
   if (answer.type === "redirect")
     redirect(answer.redirect.status, answer.redirect.location);
   if (answer.type === "error") {
-    if (answer.kind === "app") error(answer.error.status, answer.error.message);
+    if (answer.kind === "app")
+      error(answer.error.status, answer.body ?? answer.error.message);
     throw new Error(answer.diagnostic ?? answer.error?.message);
   }
   if (answer.type !== "result")
     throw new Error("skgo: malformed remote result");
+  effects(event, answer);
   const value = transport.parse(answer.data);
+  if (answer.invalid) throw new ValidationError(value.issues);
   if (!Object.hasOwn(value, "_"))
     throw new Error("skgo: missing remote result");
   return value._;
+}
+export function form(module, name, _arg, event) {
+  return remote(module, name, undefined, event);
+}
+export async function batch(module, name, args, event) {
+  const answer = await json(
+    "remote",
+    {
+      handle: owner(event),
+      module,
+      name,
+      payloads: args.map((arg) =>
+        arg === undefined
+          ? ""
+          : Buffer.from(transport.stringify(arg)).toString("base64url"),
+      ),
+    },
+    event,
+  );
+  if (answer.type === "redirect")
+    redirect(answer.redirect.status, answer.redirect.location);
+  if (answer.type === "error")
+    error(answer.error.status, answer.body ?? answer.error.message);
+  const values = transport.parse(answer.data)._;
+  if (!Array.isArray(values) || values.length !== args.length)
+    throw new Error("skgo: malformed native batch result");
+  return (_arg, index) => values[index];
+}
+export function live(module, name, arg, event) {
+  const controller = new AbortController();
+  let response;
+  const iterator = produce();
+  const close = iterator.return.bind(iterator);
+  iterator.return = (value) => {
+    controller.abort();
+    response?.destroy();
+    return close(value);
+  };
+  return iterator;
+  async function* produce() {
+    const abort = () => controller.abort();
+    event.request.signal.addEventListener("abort", abort, { once: true });
+    try {
+      response = await call(
+        "remote",
+        {
+          handle: owner(event),
+          module,
+          name,
+          payload:
+            arg === undefined
+              ? ""
+              : Buffer.from(transport.stringify(arg)).toString("base64url"),
+        },
+        event,
+        undefined,
+        controller.signal,
+      );
+      response.setEncoding("utf8");
+      let buffered = "";
+      for await (const chunk of response) {
+        buffered += chunk;
+        for (;;) {
+          const end = buffered.indexOf("\n");
+          if (end < 0) break;
+          const answer = JSON.parse(buffered.slice(0, end));
+          buffered = buffered.slice(end + 1);
+          if (answer.type === "redirect")
+            redirect(answer.redirect.status, answer.redirect.location);
+          if (answer.type === "error")
+            error(answer.error.status, answer.body ?? answer.error.message);
+          yield transport.parse(answer.data)._;
+        }
+      }
+      if (buffered.trim())
+        throw new Error("skgo: incomplete native live frame");
+    } finally {
+      controller.abort();
+      response?.destroy();
+      event.request.signal.removeEventListener("abort", abort);
+    }
+  }
 }
 export async function action(module, name, event) {
   const answer = await json(
@@ -240,7 +349,10 @@ export async function action(module, name, event) {
   if (answer.type === "redirect")
     redirect(answer.status, answer.location ?? answer.redirect?.location);
   if (answer.type === "error")
-    error(answer.status, answer.body ?? answer.error?.message ?? answer.message);
+    error(
+      answer.status,
+      answer.body ?? answer.error?.message ?? answer.message,
+    );
   exceptional(answer);
   const data =
     answer.data === undefined ? undefined : transport.parse(answer.data);
@@ -300,6 +412,12 @@ export async function endpoint(event) {
   return incomingResponse(response, event.request.method);
 }
 export async function requestHandle(event, resolve) {
+  const internalFetch =
+    event.request.headers.get("x-skgo-internal-fetch") ===
+    process.env.SKGO_DEV_SERVICE_SECRET;
+  const fetchDepth = internalFetch
+    ? Number(event.request.headers.get("x-skgo-fetch-depth") ?? "0")
+    : 0;
   const address = event.request.headers.get("x-skgo-client-address");
   if (address) event.getClientAddress = () => address;
   const answer = await json(
@@ -316,7 +434,8 @@ export async function requestHandle(event, resolve) {
           ),
       routeId: event.route.id ?? "",
       params: event.params,
-      isSubRequest: event.isSubRequest,
+      isSubRequest: event.isSubRequest || internalFetch,
+      fetchDepth,
       clientAddress: address ?? "",
     },
     event,

@@ -83,7 +83,7 @@ export function devModules({ base = "" } = {}) {
               );
             }
           } else if (/\/\+server\.(ts|js)$/.test(module))
-            replace(fn, "(event) => $skgo.endpoint(event)");
+            edits.push([fn.start, fn.end, "(event) => $skgo.endpoint(event)"]);
           else if (
             /\.remote\.(ts|js)$/.test(module) &&
             fn?.type === "CallExpression"
@@ -99,7 +99,7 @@ export function devModules({ base = "" } = {}) {
               );
             replace(
               callback,
-              `(arg) => $skgo.remote(${JSON.stringify(module)},${JSON.stringify(name)},arg,$skgoEvent())`,
+              `(arg) => $skgo.${fn.callee.type === "MemberExpression" && fn.callee.property.name === "batch" ? "batch" : fn.callee.type === "MemberExpression" && fn.callee.property.name === "live" ? "live" : fn.callee.name === "form" ? "form" : "remote"}(${JSON.stringify(module)},${JSON.stringify(name)},arg,$skgoEvent())`,
             );
           }
         }
