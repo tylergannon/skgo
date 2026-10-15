@@ -1,5 +1,14 @@
 # Build the SKGO development experience
 
+Current consolidated architecture and honest evidence appraisal: [DESIGN.md](DESIGN.md).
+
+## Scope correction from the user — 2026-10-15
+
+The authorized task is to prove the concept through subagents and present architecture evidence, measurements, diagrams and unresolved questions for selection. The user permitted choosing the obvious listener recommendation; that did NOT authorize implementing the product. The parent incorrectly expanded the task into product implementation and incorrectly described that expansion below as authorization.
+
+Further implementation and new verification runs are stopped. Already-running agents/checks are allowed to finish and preserve their results; do not cancel them. Existing code and evidence are preserved unmerged. Resume only the bounded proof-of-concept assessment unless the user explicitly authorizes implementation. The historical implementation missions below record work undertaken, not current instructions or user requirements. Later coordinator changes are incompletely qualified; do not claim the final combined implementation passes full regression.
+
+
 ## Goal and decision state
 
 [GOAL.md](GOAL.md) is authoritative. Run `skgo dev`, open the app, edit Svelte or Go, and see the change quickly and automatically. Preserve healthy browser state where the change permits; report useful errors and recover after repair. Vite owns frontend development; Go owns every application endpoint and pooled goja rendering; Go development machinery prepares native patches and supervises rebuild/restart fallback. Arbitrary initialized Go state continuity is not required.
@@ -26,7 +35,11 @@ The historical137–138ms root-only result was a promising narrower experiment. 
 
 ## Current integration findings
 
-The actual command serves the real example through Go and connects Vite HMR through the public `/__skgo/dev/hmr` path (observed HTTP101). Native APIs are maintained and checkpointed; an actual compatible item query edit published on the same Go PID and changed fresh SSR. Two client integration defects remain: initial hydration throws on a closing comment where the compiled layout expects its main element, and the open page did not refresh the changed query despite retaining its draft. These are the next concrete fixes, not reasons to revisit listener ownership. Independent validation is checking real coordinator routing assertions while those fixes proceed. See [continuation](CONTINUE.md) for ownership and exact evidence boundaries.
+The actual command now serves the real example with clean hydration, public Vite HMR, Go-only native updates and automatic Kit query/load refresh. Actual edits preserved the Go PID, document and seeded draft; malformed Go showed authored diagnostics and retained last-good output; repair dismissed the overlay. Svelte HMR changed the browser and fresh Go SSR on the same host. The actual route/remote addition rendered7719 through Go and Kit client navigation; existing Item42 remained correct after the graph shift, and removal returned404.
+
+The maintained real-session Go test exercises two instances, native edits, structural fallback, Go crash and Vite restart/republication. Independent private mutation kept the old app target after replacement and failed the new literal assertion. Native tests cross six compatible edits, replacement cleanup and embedded-resource/test-file admission. No overall completion claim follows from these individual checks.
+
+Remaining concrete checks: verify the new metadata admission fix eliminates transient mixed generated Params/manifest failures; verify development prerender behavior on About; qualify static assets and configured environment values; run occupied-port/public-origin and combined-change tests, then the normal Go and production browser suites. Go prerender handler/SSR tests already pass, including production recorded-only guards. See [continuation](CONTINUE.md) and [actual structural browser observations](../../experiments/20261015-product-structure/OBSERVATIONS.md).
 
 ## Remaining implementation missions
 
