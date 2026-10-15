@@ -10,6 +10,7 @@ package gen
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"io/fs"
 	"os"
@@ -165,6 +166,44 @@ func (w *projectWatcher) armFile(path string) error {
 	return err
 }
 
+// kqueue can discover a replacement in its Remove handler, then fail its
+// internal lstat after that short-lived staging name has already been renamed.
+// Restore registration and fresh acquisition for just its selected parent;
+// absence is ordinary membership, not an uncertain whole-project overflow.
+func (w *projectWatcher) reconcileMissingEntry(err error) (bool, error) {
+	var pathErr *fs.PathError
+	if !errors.As(err, &pathErr) || pathErr.Op != "lstat" || !errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	parent := filepath.Dir(pathErr.Path)
+	if !w.dirs[parent] {
+		return false, nil
+	}
+	w.project.mu.Lock()
+	selected := false
+	for _, module := range w.project.sources.Modules {
+		if withinTree(module.Dir, parent) {
+			selected = true
+			break
+		}
+	}
+	w.project.mu.Unlock()
+	if !selected {
+		return false, nil
+	}
+	if info, statErr := os.Stat(parent); statErr != nil || !info.IsDir() {
+		return false, nil
+	}
+	if err := w.watchDir(parent); err != nil {
+		return true, fmt.Errorf("register staging parent %q: %w", parent, err)
+	}
+	_, _, err = w.project.Observe(w.ctx, parent)
+	if err != nil {
+		return true, fmt.Errorf("acquire staging parent %q: %w", parent, err)
+	}
+	return true, nil
+}
+
 func (w *projectWatcher) report(err error) {
 	select {
 	case w.errors <- err:
@@ -182,7 +221,13 @@ func (w *projectWatcher) run() {
 			if !ok {
 				return
 			}
-			w.report(err)
+			if handled, acquireErr := w.reconcileMissingEntry(err); handled {
+				if acquireErr != nil && w.ctx.Err() == nil {
+					w.report(acquireErr)
+				}
+				continue
+			}
+			w.report(fmt.Errorf("fsnotify event delivery: %w", err))
 			// Overflow means event completeness is unknown. Reconcile all selected
 			// module scopes rather than trusting their retained byte handles.
 			w.project.mu.Lock()
@@ -239,11 +284,11 @@ func (w *projectWatcher) run() {
 				}
 			}
 			if err := w.armFile(event.Name); err != nil {
-				w.report(err)
+				w.report(fmt.Errorf("register changed source %q: %w", event.Name, err))
 				continue
 			}
 			if _, _, err := w.project.Observe(w.ctx, event.Name); err != nil && w.ctx.Err() == nil {
-				w.report(err)
+				w.report(fmt.Errorf("acquire changed source %q: %w", event.Name, err))
 			}
 			// A module/workspace event may introduce another local replacement.
 			if filepath.Base(event.Name) == "go.mod" || filepath.Base(event.Name) == "go.work" {
