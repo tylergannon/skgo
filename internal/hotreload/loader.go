@@ -101,6 +101,7 @@ func (t Toolchain) PrepareLoader(ctx context.Context, dir, parent string) (strin
 		{"link/ld.go", "sym.Func.FuncData[index] += uintptr(segment.noPtrTypeDataLen + segment.noPtrItabDataLen)", "if sym.Func.FuncData[index] != ^uintptr(0) { sym.Func.FuncData[index] += uintptr(segment.noPtrTypeDataLen + segment.noPtrItabDataLen) }"},
 		{"link/inlinetree.go", "sym.Func.FuncData = append(sym.Func.FuncData, uintptr(0))", "sym.Func.FuncData = append(sym.Func.FuncData, ^uintptr(0))"},
 		{"link/functab.1.18.go", "if v != 0 {", "if v != ^uintptr(0) {"},
+		{"stackobject/stackobject.go", "Func.FuncData[dataindex.FUNCDATA_StackObjects] != 0", "Func.FuncData[dataindex.FUNCDATA_StackObjects] != ^uintptr(0)"},
 	} {
 		file := filepath.Join(dest, patch.file)
 		body, err := os.ReadFile(file)

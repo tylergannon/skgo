@@ -18,7 +18,7 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-//go:embed loaderos/dl_unix_test.go.txt
+//go:embed loaderos/dl_unix_test.go.txt loaderos/stackobject_test.go.txt
 var loaderTests embed.FS
 
 // A separate unstripped executable contains the loader. Neither this normally
@@ -218,7 +218,14 @@ func testGeneratedNativeState(t *testing.T, lifetime bool) {
 	if err := os.WriteFile(filepath.Join(loaderDir, "libdl/dl_unix_test.go"), lookupTest, 0644); err != nil {
 		t.Fatal(err)
 	}
-	lookupOutput, err := tc.command(ctx, loaderDir, "test", "-mod=mod", "./libdl", "-run", "^TestProcessAndLibraryLookup$", "-count=1", "-v").CombinedOutput()
+	stackTest, err := loaderTests.ReadFile("loaderos/stackobject_test.go.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(loaderDir, "stackobject/stackobject_test.go"), stackTest, 0644); err != nil {
+		t.Fatal(err)
+	}
+	lookupOutput, err := tc.command(ctx, loaderDir, "test", "-mod=mod", "./libdl", "./stackobject", "-run", "^(TestProcessAndLibraryLookup|TestAbsentAndZeroStackObjectMetadata)$", "-count=1", "-v").CombinedOutput()
 	if err != nil {
 		t.Fatalf("process/library lookup: %v\n%s", err, lookupOutput)
 	}
