@@ -24,6 +24,14 @@ Kit owns the development HTML, server rendering modules and client bootstrap ide
 
 Production continues to compile the renderer for the embedded Go engine. Native Kit dev success cannot substitute for production Go/goja checks, and production success cannot substitute for native dev checks. The user expressly permits this difference.
 
+## Accepted limitation and parallel cookie research
+
+The user explicitly accepts missing automatic SSR subfetch response-cookie propagation as a **known, non-blocking limitation**. Continue the architecture and handoff without waiting for a cookie fix. This acceptance concerns the SSR bridge; it does not silently relax unrelated authentication, inbound-cookie or direct browser-response behavior.
+
+Response cookies are already readable inside the server hook through `response.headers.getSetCookie()`. The missing behavior in the minimal POC is applying them to Kit's pending request-cookie state and outer HTML response. Kit3 explicitly documents `event.cookies.parse()` followed by `event.cookies.set()` for importing cookies from an external response (`types/index.d.ts:369-391`). This is a supported candidate remedy, not yet runtime-qualified here. Preserve cookie attributes/scope and avoid exposing cookie values in serialized page data. A later custom UDS fetch also needs pending-cookie state rather than blindly copying the original inbound Cookie header.
+
+[Cookie findings](../../experiments/20261015-vite-uds-cookies/FINDINGS.md) distinguish header access, same-request visibility, outer-response propagation and universal-load serialization restrictions. The subagent completed the upstream assessment: neither the documented replacement hook nor external fetch continuation promises automatic cookie adoption. Only Kit's internal-route continuation adopts response cookies. Recommend a documentation clarification first; an optional transport-only continuation could improve ergonomics, but existing public parse/set APIs already offer a remedy. Unconditional adoption outside the hook could change third-party/synthetic-response handling, duplicate cookie effects and apply the wrong rewritten-URL scope. It is not established as a non-breaking fix. No issue or message has been sent to SvelteKit, and the user has not authorized external posting.
+
 ## Addresses and lifecycle
 
 Each session has a short private directory, shared with its child processes at startup:
@@ -50,7 +58,7 @@ Replacement reuses the known Go socket location. Socket ownership, readiness and
 | `+server` route | Kit owns route/method/page-versus-endpoint selection. Generated endpoint body calls the Go handler and returns its status, headers and body. |
 | Browser remote HTTP | Use the existing Go remote wire handler at the reserved remote prefix. It already implements requested refreshes, updates, ignored keys, batching and mutations. This is a narrow proxy exception, not a second page router. |
 | Remote call during SSR | Preserve Kit's actual remote wrapper and replace only the generated callback body with Go delegation. Do not return a complete Go HTTP remote envelope as a callback value. |
-| SSR `event.fetch` | Use Kit's supported `handleFetch` integration and the request-aware Go bridge. Selected direct UDS endpoint fetches need equivalent credential/cookie behavior; ordinary internal routing can retain Kit's continuation and reach a generated Go endpoint callback. |
+| SSR `event.fetch` | Use Kit's supported `handleFetch` integration and the request-aware Go bridge. Selected direct UDS endpoint fetches preserve request semantics; automatic response-cookie propagation is an accepted temporary limitation; ordinary internal routing can retain Kit's continuation and reach a generated Go endpoint callback. |
 | Modules, static assets and HMR | Vite/Kit normally, through the public proxy. No private HMR TCP fallback or custom HMR/reload policy. |
 
 The browser-remote exception is the smallest initial boundary because the existing prerender bridge does not express all remote mutation effects. Sending browser remotes through Kit callback bodies would first require translating Go refresh/set/ignore effects into Kit's actual wrapper operations. That is not necessary to prove UDS/native SSR, and is not selected as additional work here. Cross-path remote IDs, argument encodings and SSR hydration/query-cache seeding still need a joined ordinary-query proof before this bridge is called complete.
@@ -89,7 +97,8 @@ The bounded POC uses installed Kit3.0.0 and the pinned VitePlus environment. It 
 | Normal browser hydration/HMR through UDS | Actual browser interaction and public HMR101; Svelte ONE→TWO updated over the same observed WebSocket without custom lifecycle handling. Edited component local count reset under ordinary HMR; no universal state-preservation claim. |
 | Same-path Go listener replacement | Fresh Kit SSR returned ALPHA7407 after replacement without restarting or retargeting Vite; BETA stayed5202. This is listener replacement within one Go harness, not child-process crash recovery or an in-flight-render drain proof. The existing browser needed manual reload; automatic Go invalidation was not part of this fixture. |
 | Complete Go loads/remotes/actions/hooks in native Kit dev | Not yet executed. Source mapping establishes the existing reuse seam and missing operations. |
-| Complete streaming, cancellation and response cookies | Not established; the minimal fetch override demonstrably omits outer response-cookie propagation. |
+| Complete streaming and cancellation | Not established for the development bridge. |
+| Automatic SSR response-cookie propagation | Missing in the minimal override and explicitly accepted as non-blocking; supported parse/set remedy is source-mapped but unrun. |
 | New architecture latency | Not benchmarked. Earlier507ms warm-Go and7.574s fallback medians belong to the old composition, not this one. |
 
 Evidence: [runtime POC](../../experiments/20261015-vite-uds-ssr/REPORT.md), [callback mapping](../../experiments/20261015-vite-uds-bridge/BRIDGE.md), and [independent validation](../../experiments/20261015-vite-uds-validation/ASSESSMENT.md). All owned POC processes and generated runtime directories were cleaned after validation. These are final bounded findings, not pending experiments.
@@ -99,11 +108,11 @@ Evidence: [runtime POC](../../experiments/20261015-vite-uds-ssr/REPORT.md), [cal
 The topology is valid and removes the demonstrated duplicated-renderer problem. The proposition is **not** a claim that changing `fetch` alone completes SKGO development. The remaining integration is explicit and bounded:
 
 1. **Transport/session mission:** public origin, per-session sockets, HTTP/upgrades, trusted client context, same-path replacement and owned cleanup. Accept actual Kit SSR/HMR and wrong-target controls, not only open sockets.
-2. **Go callback mission:** generated dev loads, direct SSR queries, actions and endpoints preserve Kit wrappers and real Go request context. Accept independently supplied Go values through document and client navigation, a mutation/failure/redirect/cookie case, and parity of remote IDs/transport with the existing browser Go handler.
+2. **Go callback mission:** generated dev loads, direct SSR queries, actions and endpoints preserve Kit wrappers and real Go request context. Accept independently supplied Go values through document and client navigation, a mutation/failure/redirect case, existing cookie behavior outside the accepted SSR propagation limitation, and parity of remote IDs/transport with the existing browser Go handler.
 3. **Lifecycle/stream mission:** demonstrate a delayed value and cancellation, and process replacement during a paused render without silently crossing request ownership. Preserve normal Kit behavior; do not add waiting pages or global edit transactions.
 4. **Go edit mission:** retain the existing native preparation/admission path and normal rebuild fallback; publish refresh only after successful Go installation. Go registrations and generated stubs still need ordinary readiness/error recovery; they no longer carry a second frontend renderer graph.
 
-These are future implementation/qualification boundaries, not authorization to implement them now. Before declaring the complete architecture qualified, the joined callback/lifecycle slice must run. No further split-renderer gates, forced navigation, Vite modifications or broad benchmark campaign is warranted by this validation.
+These are future implementation/qualification boundaries, not authorization to implement them now. The joined callback/lifecycle slice remains necessary evidence before claiming complete integration. The accepted SSR response-cookie limitation is not a condition for proceeding or handing off the architecture. No further split-renderer gates, forced navigation, Vite modifications or broad benchmark campaign is warranted by this validation.
 
 ## Primary references
 

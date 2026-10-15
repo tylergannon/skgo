@@ -21,3 +21,7 @@ Validate the architecture through bounded subagent experiments and source eviden
 Use `/Users/tyler/src/skgo-token-cache/index/README.md` and the semantic index for prior work. Map the installed Kit pin before proposing mirrored behavior. Distinguish demonstrated runtime behavior, source-backed feasibility and remaining integration proof.
 
 The source discussion is chat `01a141a2-423e-7360-9ab1-e17234bd620e`, especially the decisions to permit native development SSR, use per-instance UDS, and inspect `handleFetch`. The current user request selects this direction and asks for validation/documentation. [DESIGN.md](DESIGN.md) records the result and its limits.
+
+## Accepted temporary limitation
+
+The user accepts absent automatic response-cookie propagation from a direct SSR UDS fetch into Kit's pending cookies/outer page response. This is non-blocking for architecture work. Research a supported remedy in parallel; do not make it a new implementation gate. SSR header access itself is available. All other scope and behavior constraints remain.

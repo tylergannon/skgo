@@ -54,3 +54,5 @@ finding: Actual two-instance native Kit SSR/UDS POC rendered independent Go valu
 correction: Do not turn process/request ownership into a new whole-render native-revision transaction requirement. The source mapper withdrew that unsupported strengthening.
 
 clarification: SSR subrequest response cookies are readable server-side via getSetCookie; pinned Kit already propagates same-origin internal response cookies into outer request cookie state. The bare UDS POC skipped this existing path. It matters for SSR cookie effects, not data-only calls; describe it as bridge parity work, not a topology blocker.
+
+decision: User accepts automatic SSR response-cookie propagation as a known non-blocking limitation. Continue architecture documentation while a subagent researches supported remedy and possible tiny upstream request; no external posting authorized. Kit3 already documents cookies.parse/set for external-response relay, source-only finding. Persist active task and exact evidence boundaries before compaction.
