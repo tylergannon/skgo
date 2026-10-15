@@ -1,0 +1,334 @@
+//go:build skgo_listener_experiment
+
+package hotreload
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+
+	"os"
+	"os/exec"
+	"path/filepath"
+
+	"strings"
+	"sync"
+	"syscall"
+	"testing"
+	"time"
+
+	skgo "github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/generate"
+	"golang.org/x/tools/go/packages"
+)
+
+// Run only with the explicit build tag. Owns both child processes for a bounded
+// interactive browser experiment; it is not a normal regression test.
+func TestViteListenerIntegration(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+	defer cancel()
+	t.Setenv("GOWORK", "off")
+	t.Setenv("CGO_ENABLED", "0")
+	root, _ := filepath.Abs("../..")
+	work := filepath.Join(root, "ephemeral/experiments/20261015-vite-listener/runtime")
+	os.RemoveAll(work)
+	os.MkdirAll(work, 0755)
+	work, _ = filepath.EvalSymlinks(work)
+	app := filepath.Join(work, "application")
+	fixture := filepath.Join(root, "ephemeral/experiments/20261015-vite-listener")
+	write := func(name string, b []byte) {
+		t.Helper()
+		path := filepath.Join(app, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, b, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func(path string) []byte {
+		t.Helper()
+		b, e := os.ReadFile(path)
+		if e != nil {
+			t.Fatal(e)
+		}
+		return b
+	}
+	write("go.mod", []byte(strings.ReplaceAll(strings.ReplaceAll(string(read(filepath.Join(root, "example/go.mod"))), "module github.com/tylergannon/skgo/example", "module example.com/nativefixture"), "=> ../", "=> "+filepath.ToSlash(root))))
+	write("go.sum", read(filepath.Join(root, "go.sum")))
+	write("internal/app/locals.go", []byte("package app\ntype Locals struct{}\n"))
+	write("web/package.json", read(filepath.Join(root, "example/web/package.json")))
+	write("web/src/app.html", read(filepath.Join(root, "example/web/src/app.html")))
+	write("web/vite.config.js", []byte(strings.NewReplacer("ADAPTER_ENV", filepath.Join(root, "internal/adapter/skgo-adapter/env.js"), "WORK_ROOT", root).Replace(string(read(filepath.Join(fixture, "vite.config.js"))))))
+	write("web/src/routes/orders/+page.svelte", read(filepath.Join(fixture, "page.svelte")))
+write("web/src/routes/orders/+page.server.ts",[]byte(`export function load(){throw new Error("NODE_LOAD_MUST_NOT_RUN")}`))
+	write("web/src/routes/+layout.svelte", []byte(`<script>let {children}=$props();</script><main>{@render children()}</main>`))
+	write("web/src/routes/+error.svelte", []byte(`<script>import {page} from '$app/state';</script><h1>GO_ERROR {page.status}</h1>`))
+	
+	write("web/src/routes/orders/orders.remote.go", []byte(orderSource))
+	if err := os.Symlink(filepath.Join(root, "example/web/node_modules"), filepath.Join(app, "web/node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	tc, err := PrepareToolchain(ctx, "go", filepath.Join(work, "toolchain"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) []byte {
+		t.Helper()
+		raw, err := tc.command(ctx, app, args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("go %v: %v\n%s", args, err, raw)
+		}
+		return raw
+	}
+	run("mod", "download")
+	prepared, err := generate.Prepare(generate.Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "generated"), LocalsPackage: "example.com/nativefixture/internal/app", LocalsType: "Locals", CacheDir: "off"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer prepared.Close()
+	if err = prepared.Run(); err != nil {
+		t.Fatal(err)
+	}
+	links, err := os.ReadDir(filepath.Join(app, "generated/links"))
+	if err != nil || len(links) != 1 {
+		t.Fatalf("links: %v %v", links, err)
+	}
+	rel := filepath.Join("generated/links", links[0].Name())
+	dir := filepath.Join(app, rel)
+	pkg := "example.com/nativefixture/" + filepath.ToSlash(rel)
+	run("mod", "tidy")
+	pp, err := packages.Load(&packages.Config{Context: ctx, Dir: app, Env: tc.command(ctx, app).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}, pkg)
+	if err != nil || len(pp) != 1 {
+		t.Fatalf("load: %v %v", pp, err)
+	}
+	sources := map[string][]byte{}
+	for _, file := range pp[0].CompiledGoFiles {
+		sources[file] = read(file)
+	}
+	lowered, err := Lower(pp[0], sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, raw := range lowered.Host {
+		write(filepath.Join(rel, name), raw)
+	}
+	write("cmd/main.go", []byte(strings.ReplaceAll(listenerHost, "PACKAGE", pkg)))
+	if _, err = tc.PrepareLoader(ctx, app, filepath.Join(work, "native")); err != nil {
+		t.Fatal(err)
+	}
+	run("mod", "tidy")
+	bin := filepath.Join(app, "host")
+	run("build", "-ldflags=-s=false", "-o", bin, "./cmd")
+	write("importcfg", run("list", "-export", "-deps", "-f", "{{if .Export}}packagefile {{.ImportPath}}={{.Export}}{{end}}", pkg))
+	baseline := map[string][]byte{}
+	for file, raw := range sources {
+		baseline[file] = raw
+	}
+	baseline[filepath.Join(dir, "skgo_hot.go")] = []byte("package orders\n")
+	client := &http.Client{Timeout: 45 * time.Second}
+	call := func(origin, path string) error {
+		res, e := client.Get(origin + path)
+		if e != nil {
+			return e
+		}
+		defer res.Body.Close()
+		b, _ := io.ReadAll(res.Body)
+		if res.StatusCode != 200 {
+			return fmt.Errorf("HTTP %d %s", res.StatusCode, b)
+		}
+		return nil
+	}
+	var compileMu sync.Mutex
+	for index, port := range []int{56411, 56421} {
+		label := []string{"ALPHA", "BETA"}[index]
+		web := filepath.Join(work, label)
+		os.MkdirAll(filepath.Join(web,"client"),0755)
+		// Independent Vite roots and optimizer caches; generated Go host is deliberately identical.
+		cp := exec.Command("cp", "-R", filepath.Join(app, "web")+"/.", web)
+		if b, e := cp.CombinedOutput(); e != nil {
+			t.Fatalf("copy %v %s", e, b)
+		}
+		pagePath := filepath.Join(web, "src/routes/orders/+page.svelte")
+		os.WriteFile(pagePath, []byte(strings.ReplaceAll(string(read(pagePath)), "INSTANCE_LABEL", label)), 0644)
+		os.WriteFile(filepath.Join(web, "backend-address"), []byte("http://127.0.0.1:1"), 0644)
+		os.WriteFile(filepath.Join(web,"index.html"),[]byte("SPA_FALLBACK"),0644)
+  os.WriteFile(filepath.Join(web, "error.html"), []byte("<h1>%sveltekit.status%</h1>"), 0644)
+		// Dev document must connect to this public Vite's own websocket.
+		os.WriteFile(filepath.Join(web, "src/app.html"), []byte(`<!doctype html><html><head>%sveltekit.head%<script type="module" src="/@vite/client"></script></head><body><div>%sveltekit.body%</div></body></html>`), 0644)
+		origin := fmt.Sprintf("http://127.0.0.1:%d", port)
+		vctx, vcancel := context.WithCancel(ctx)
+		defer vcancel()
+		v := exec.CommandContext(vctx, "vp", "dev")
+		v.Dir = web
+		v.Env = append(os.Environ(), "PUBLIC_PORT="+fmt.Sprint(port), "PUBLIC_ORIGIN="+origin, "INSTANCE="+label)
+		v.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		vl, _ := os.Create(filepath.Join(web, "vite.log"))
+		defer vl.Close()
+		v.Stdout = vl
+		v.Stderr = vl
+		if e := v.Start(); e != nil {
+			t.Fatal(e)
+		}
+		vdone := make(chan error, 1)
+		go func() { vdone <- v.Wait() }()
+		defer func() { syscall.Kill(-v.Process.Pid, syscall.SIGKILL); <-vdone }()
+		for deadline := time.Now().Add(30 * time.Second); ; {
+			if e := call(origin, "/__tool/identity"); e == nil {
+				break
+			} else if time.Now().After(deadline) {
+				t.Fatal(e)
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		if e := call(origin, "/__tool/build"); e != nil {
+			t.Fatal(e)
+		}
+		kit, _ := filepath.EvalSymlinks(filepath.Join(web, "node_modules/@sveltejs/kit"))
+		m := skgo.Manifest{AppDir: "_app", Nodes: []string{"", "", "src/routes/orders/+page.server.ts"}, Loads:[]string{"src/routes/orders/+page.server.ts"}, Routes: []skgo.ManifestRoute{{ID: "/orders", Pattern: "^/orders/?$", Page: &skgo.ManifestPage{Layouts: []int{0}, Errors: []int{1}, Leaf: 2}}}, SSR: &skgo.ManifestSSR{Bundle: "bundle.js", Template: "src/app.html", ErrorTemplate: "error.html", Target: "es2022", GlobalName: "__sveltekit_dev", Client: skgo.ManifestClient{Start: "/@fs" + kit + "/src/runtime/client/entry.js", App: "/@fs" + web + "/.svelte-kit/generated/dev/client/app.js"}, Nodes: []skgo.ManifestSSRNode{{Index: 0, Component: true}, {Index: 1, Component: true}, {Index: 2, Component: true}}}}
+		raw, _ := json.Marshal(m)
+		os.WriteFile(filepath.Join(web, "skgo.manifest.json"), raw, 0644)
+		var host *exec.Cmd
+		var enc *json.Encoder
+		var dec *json.Decoder
+		var hostMu sync.Mutex
+		var pid int
+		var backend string
+		startHost := func() error {
+			host = exec.CommandContext(ctx, bin)
+			host.Dir = app
+			host.Env = append(os.Environ(), "WEB="+web, "PUBLIC_ORIGIN="+origin)
+			in, _ := host.StdinPipe()
+			out, _ := host.StdoutPipe()
+			host.Stderr = vl
+			if e := host.Start(); e != nil {
+				return e
+			}
+			enc = json.NewEncoder(in)
+			dec = json.NewDecoder(out)
+			var ready struct {
+				URL string
+				PID int
+			}
+			if e := dec.Decode(&ready); e != nil {
+				return e
+			}
+			pid = ready.PID
+			backend = ready.URL
+			tmp := filepath.Join(web, "backend-address.new")
+			os.WriteFile(tmp, []byte(backend), 0644)
+			os.Rename(tmp, filepath.Join(web, "backend-address"))
+			t.Logf("HOST instance=%s pid=%d discovered=%s public=%s", label, pid, backend, origin)
+			return nil
+		}
+		if e := startHost(); e != nil {
+			t.Fatal(e)
+		}
+		defer func() { host.Process.Kill(); host.Wait() }()
+		sourceFile := filepath.Join(web, "source.remote.go")
+		os.WriteFile(sourceFile, []byte(orderSource), 0644)
+		// Native installation and frontend artifact replacement both follow observed source saves.
+		go func() {
+			lastGo := string(read(sourceFile))
+			lastPage := string(read(pagePath))
+			revision := 0
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(75 * time.Millisecond):
+				}
+				b, _ := os.ReadFile(sourceFile)
+				if string(b) != lastGo {
+					lastGo = string(b)
+					revision++
+					start := time.Now()
+					changed := map[string][]byte{}
+					for f, b := range baseline {
+						changed[f] = b
+					}
+					changed[filepath.Join(dir, "orders.remote.go")] = b
+					compileMu.Lock()
+					candidate, e := tc.Compile(ctx, app, pkg, filepath.Join(app, "importcfg"), filepath.Join(web, fmt.Sprintf("revision-%d", revision)), baseline, changed)
+					compileMu.Unlock()
+					hostMu.Lock()
+					if e == nil {
+						e = enc.Encode(candidate)
+						var installed struct {
+							PID   int
+							Error string
+						}
+						if e == nil {
+							e = dec.Decode(&installed)
+						}
+						if e == nil && installed.Error != "" {
+							e = fmt.Errorf("%s", installed.Error)
+						}
+						if e == nil && installed.PID != pid {
+							e = fmt.Errorf("wrong host pid %d expected %d", installed.PID, pid)
+						}
+					}
+					hostMu.Unlock()
+					if e != nil {
+						t.Logf("REJECT instance=%s revision=%d error=%v", label, revision, e)
+						call(origin, "/__tool/notify?error=GO_COMPILE_REJECTED")
+					} else {
+						t.Logf("NATIVE instance=%s revision=%d pid=%d saveObservedToInstalled=%s", label, revision, pid, time.Since(start))
+						if ne:=call(origin, "/__tool/notify");ne!=nil{t.Logf("NOTIFY_FAILED instance=%s error=%v",label,ne)}
+					}
+				}
+				b, _ = os.ReadFile(pagePath)
+				if string(b) != lastPage {
+					lastPage = string(b)
+					start := time.Now()
+					e := call(origin, "/__tool/rebuild")
+					if e == nil {
+						hostMu.Lock()
+						e = enc.Encode(map[string]any{"Reload": true})
+						var ack map[string]any
+						if e == nil {
+							e = dec.Decode(&ack)
+						}
+						hostMu.Unlock()
+					}
+					t.Logf("SVELTE instance=%s artifactAndPool=%s error=%v", label, time.Since(start), e)
+				}
+				restart := filepath.Join(web, "restart")
+				if _, e := os.Stat(restart); e == nil {
+					os.Remove(restart)
+					hostMu.Lock()
+					oldPID, oldURL := pid, backend
+					host.Process.Kill()
+					host.Wait()
+					e = startHost()
+					hostMu.Unlock()
+					t.Logf("RESTART instance=%s oldPID=%d oldURL=%s newPID=%d newURL=%s error=%v", label, oldPID, oldURL, pid, backend, e)
+					if e == nil {
+						if ne:=call(origin, "/__tool/notify");ne!=nil{t.Logf("NOTIFY_FAILED instance=%s error=%v",label,ne)}
+					}
+				}
+			}
+		}()
+		res, e := client.Get(origin + "/orders")
+		if e != nil {
+			t.Fatal(e)
+		}
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		os.WriteFile(filepath.Join(web, "initial.html"), body, 0644)
+		if res.StatusCode != 200 || !strings.Contains(string(body), "Go SSR total: 3000") || !strings.Contains(string(body), label) {
+			t.Fatalf("initial instance=%s status=%d body=%s", label, res.StatusCode, body)
+		}
+		t.Logf("READY instance=%s public=%s/orders source=%s page=%s restart=touch %s", label, origin, sourceFile, pagePath, filepath.Join(web, "restart"))
+	}
+	t.Log("BOTH_READY; native source saves are watched automatically; no value control endpoint exists")
+	<-ctx.Done()
+}
+
+const listenerHost = `package main
+import("context";"encoding/json";"net/http";"net/http/httptest";"os";"sync";"github.com/tylergannon/skgo";"example.com/nativefixture/generated";orders "PACKAGE")
+func main(){if e:=orders.SkgoHotInit(32);e!=nil{panic(e)};web:=os.Getenv("WEB");registry,e:=skgo.NewRemotes(skgo.RemoteConfig{Origin:os.Getenv("PUBLIC_ORIGIN")},generated.Remotes()...);if e!=nil{panic(e)};raw,e:=os.ReadFile(web+"/skgo.manifest.json");if e!=nil{panic(e)};var m skgo.Manifest;json.Unmarshal(raw,&m);loads,e:=skgo.NewLoads(m.LoadConfig(os.Getenv("PUBLIC_ORIGIN")),skgo.NewServerLoad(skgo.LoadSpec{Module:"src/routes/orders/+page.server.ts",Run:func(context.Context)(any,error){return map[string]any{"value":orders.Box()},nil}}));if e!=nil{panic(e)};var mu sync.RWMutex;var handler http.Handler
+reload:=func()error{r,e:=skgo.NewSSR(os.DirFS(web),m,loads,registry,skgo.SSROptions{Runtimes:2});if e!=nil{return e};h,e:=skgo.NewStaticHandler(os.DirFS(web),skgo.WithSSR(r));if e!=nil{return e};mu.Lock();handler=registry.Intercept(loads.Intercept(h));mu.Unlock();return nil};if e=reload();e!=nil{panic(e)};server:=httptest.NewServer(orders.SkgoHotHandler(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Application-Origin",os.Getenv("PUBLIC_ORIGIN"));mu.RLock();h:=handler;mu.RUnlock();h.ServeHTTP(w,r)})));defer server.Close();enc,dec:=json.NewEncoder(os.Stdout),json.NewDecoder(os.Stdin);enc.Encode(struct{URL string;PID int}{server.URL,os.Getpid()});for{var c struct{Object string;Storage []string;Reclaim bool;Reload bool};if e:=dec.Decode(&c);e!=nil{return};var e error;if c.Reload{e=reload()}else{e=orders.SkgoHotInstall(c.Object,c.Storage,c.Reclaim)};msg:="";if e!=nil{msg=e.Error()};enc.Encode(struct{PID int;Error string}{os.Getpid(),msg})}}
+`

@@ -1,0 +1,11 @@
+    browser_experiment_test.go:278: NATIVE instance=BETA revision=1 pid=18276 saveObservedToInstalled=894.10625ms
+    browser_experiment_test.go:275: REJECT instance=ALPHA revision=2 error=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/application/generated/links/onzggl3sn52xizltf5xxezdfojzq/orders.remote.go:12:6: expected '(', found order (and 2 more errors)
+    browser_experiment_test.go:278: NATIVE instance=ALPHA revision=3 pid=18250 saveObservedToInstalled=1.056459458s
+
+ALPHA repaired response
+ALPHA FRONTEND_ONE
+Go SSR total: 6303
+
+BETA unchanged response
+BETA FRONTEND_ONE
+Go SSR total: 5202

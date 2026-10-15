@@ -1,0 +1,19 @@
+1:51:18 PM [vite+] (ssr) connected.
+1:51:19 PM [vite+] (client) Forced re-optimization of dependencies
+
+  VITE+ v1.0.0  
+
+  ➜  Local:   http://127.0.0.1:56421/
+(node:22536) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22536) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+1:51:19 PM [vite+] http proxy error: /orders
+Error: connect ECONNREFUSED 127.0.0.1:1
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:2083:16)
+
+Run npm run preview to preview your production build locally.
+
+> Using listener-experiment
+✔ done
+1:51:20 PM [vite+] (client) page reload initial.html
