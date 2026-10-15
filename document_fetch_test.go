@@ -2,6 +2,7 @@ package skgo
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -156,4 +157,26 @@ func responseHeader(response *ssr.FetchResponse, name string) string {
 		}
 	}
 	return ""
+}
+
+// A renderer uses its own requestFetcher, but must preserve the owning host's
+// execution lifetime through the same fresh-subrequest boundary as Event.Fetch.
+func TestRenderFetchCarriesOnlyConfiguredHostLifetime(t *testing.T) {
+	type hostKey struct{}
+	type privateKey struct{}
+	ctx := context.WithValue(context.Background(), hostKey{}, "revision-73")
+	ctx = context.WithValue(ctx, privateKey{}, "parent-private")
+	ctx = context.WithValue(ctx, localsKey{}, "parent-locals")
+	ctx = withEvent(ctx, &Event{})
+	ctx = context.WithValue(renderParent(ctx), requestFetcherKey{}, &requestFetcher{carryContext: func(dst, src context.Context) context.Context {
+		return context.WithValue(dst, hostKey{}, src.Value(hostKey{}))
+	}})
+	renderer := &SSR{fetch: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "revision=%v,event=%t,locals=%t,private=%t", r.Context().Value(hostKey{}), EventFrom(r.Context()) != nil, r.Context().Value(localsKey{}) != nil, r.Context().Value(privateKey{}) != nil)
+	})}
+	answer := renderer.fetchAnswer(ctx, ssr.FetchRequest{URL: "http://example.test/child"})
+	const want = "revision=revision-73,event=false,locals=false,private=false"
+	if answer.Error != "" || answer.Response == nil || answer.Response.Status != 200 || answer.Response.Body != want {
+		t.Fatalf("rendered fetch answer: %+v, response %+v; want %q", answer, answer.Response, want)
+	}
 }
