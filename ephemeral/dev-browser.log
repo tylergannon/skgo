@@ -1,0 +1,13 @@
+Actual command baseline, public http://127.0.0.1:56811, parent Chrome/CUA observation.
+Home rendered the real example navigation, Hello skgo greeting and Go-backed site name. Clicked observed Item42 link; visible headingItem42 and Widget42 twice, authored routepath, form fields. Screenshot inspected: styled page, not blank.
+This was NOT clean hydration/HMR proof. Console initial page warning:
+Failed to hydrate: HierarchyRequestError: Failed to execute 'appendChild' on 'Node': This node type does not support this method.
+Frame: Svelte Module.child; authored +layout.svelte:147; root.svelte.
+Intentional reload captured actual WebSocket request88299.131 URL ws://127.0.0.1:56811/?token=<session-token>, handshake sent, frameerror then closed; no101. The emitted root path disagreed with coordinator's reserved tooling route. Coordinator preserved arbitrary app WebSocket ownership rather than redirecting all upgrades.
+Next /error/unexpected navigation failed connectionrefused because coordinator owner intentionally stopped the session for adapter patching. Error hook was not verified in this browser baseline. Do not label that stop an application crash.
+
+Product session at56811, second launch:
+- CDP request22584.8 public ws://127.0.0.1:56811/__skgo/dev/hmr receivedHTTP101; vite-hmr, publicOrigin. Vite connected21:22:16.
+- Fresh21:22:16.968 hydration HierarchyRequestError still present, runtime-ZiJdurWt.js?v=5e96d286:3335, generated_layout147. Independent debugger: child(main) receives comment `]`, notElement. Do not count clientfallback as hydrationPASS.
+- Actualitembodyedit Widget %s→DEV_WIDGET %s: publicationrev4 Go27026, freshSSR contains DEV_WIDGET42 threeoccurrences; openpage remainsWidget42 twice. SeededPreviewmessage draft survives. No automaticvisible refresh demonstrated.
+- Rev3 alreadychangedPID26452→27026 beforeitemedit; rev4samePIDproves nativepath for bodyedit. Restoredexactoriginal source afterward.

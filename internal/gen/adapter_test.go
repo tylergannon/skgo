@@ -63,7 +63,7 @@ func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
 	// one is behind — and the fingerprint, because two installs can call
 	// themselves the same version.
 	for _, want := range []string{
-		theirVersion, adapter.Fingerprint(), adapter.Version(), adapter.Package, "pnpm add",
+		theirVersion, adapter.Fingerprint(), adapter.Version(), adapter.Package, "vp add",
 	} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the refusal does not name %q:\n%v", want, err)

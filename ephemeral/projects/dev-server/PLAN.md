@@ -24,6 +24,10 @@ Coordinator browser observations: [independent browser and HTTP controls](../../
 
 The historical137–138ms root-only result was a promising narrower experiment. Current whole-app and browser measurements support the speedup without borrowing that narrower figure or claiming an end-to-end bound.
 
+## Current integration findings
+
+The actual command serves the real example through Go and connects Vite HMR through the public `/__skgo/dev/hmr` path (observed HTTP101). Native APIs are maintained and checkpointed; an actual compatible item query edit published on the same Go PID and changed fresh SSR. Two client integration defects remain: initial hydration throws on a closing comment where the compiled layout expects its main element, and the open page did not refresh the changed query despite retaining its draft. These are the next concrete fixes, not reasons to revisit listener ownership. Independent validation is checking real coordinator routing assertions while those fixes proceed. See [continuation](CONTINUE.md) for ownership and exact evidence boundaries.
+
 ## Remaining implementation missions
 
 Implement the selected composition using the qualified pieces; remaining integration work runs in parallel under separate ownership. Start discovery at `/Users/tyler/src/skgo-token-cache/index/README.md`, follow its current leaves, then inspect cited source. Kit's installed pin is the specification. Builders map it themselves; a dispatcher's preferred mechanism is not evidence.

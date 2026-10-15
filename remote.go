@@ -533,7 +533,7 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 		return m, fmt.Errorf("skgo: parsing skgo.manifest.json: %w", err)
 	}
 	if m.SkgoAdapter != adapter.Fingerprint() {
-		install := "pnpm add -D " + adapter.Package
+		install := "vp add -D " + adapter.Package
 		if version := adapter.Version(); version != "devel" {
 			install = adapter.InstallCommand(version)
 		}

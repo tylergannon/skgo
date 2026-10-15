@@ -104,7 +104,7 @@ func RegistrySpec(version string) string {
 // InstallCommand is the shell command that installs the package paired with a
 // Go module release, quoted because the range starts with a redirect.
 func InstallCommand(version string) string {
-	return "pnpm add -D '" + Package + "@" + RegistrySpec(version) + "'"
+	return "vp add -D '" + Package + "@" + RegistrySpec(version) + "'"
 }
 
 // Fingerprint identifies the adapter by its own bytes. It is the half of the

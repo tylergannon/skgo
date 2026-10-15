@@ -1,0 +1,52 @@
+ok  	github.com/tylergannon/skgo/internal/gen	5.648s
+--- FAIL: TestThePublishedPackageHoldsExactlyWhatTheAdapterNeeds (0.09s)
+    package_test.go:74: `pnpm pack` would publish:
+          LICENSE
+          README.md
+          index.d.ts
+          package.json
+          skgo-adapter.js
+          skgo-adapter/app-paths.js
+          skgo-adapter/app-server.js
+          skgo-adapter/compat/kit-3.0.0-queue.json
+          skgo-adapter/compat/kit-3.0.0-queue.patch
+          skgo-adapter/entry.js
+          skgo-adapter/env.js
+          skgo-adapter/generated.js
+          skgo-adapter/identity.js
+          skgo-adapter/polyfill.js
+          skgo-adapter/prerender-csp.js
+          skgo-adapter/prerender-modules.js
+          skgo-adapter/prerender.d.ts
+          skgo-adapter/prerender.js
+        the adapter needs:
+          LICENSE
+          README.md
+          index.d.ts
+          package.json
+          skgo-adapter.js
+          skgo-adapter/app-paths.js
+          skgo-adapter/app-server.js
+          skgo-adapter/compat/kit-3.0.0-queue.json
+          skgo-adapter/compat/kit-3.0.0-queue.patch
+          skgo-adapter/dev.js
+          skgo-adapter/entry.js
+          skgo-adapter/env.js
+          skgo-adapter/generated.js
+          skgo-adapter/identity.js
+          skgo-adapter/polyfill.js
+          skgo-adapter/prerender-csp.js
+          skgo-adapter/prerender-modules.js
+          skgo-adapter/prerender.d.ts
+          skgo-adapter/prerender.js
+        package.json's `files` decides this.
+--- FAIL: TestThePublishedPackageIsTheAdapterThisModuleEmbeds (0.09s)
+    package_test.go:97: the Go binary embeds skgo-adapter/dev.js and the published package does not carry it; every build made with that package would be refused at startup
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	12.884s
+FAIL
+
+Later focused generator verification (fresh uncached execution):
+go test -count=1 ./internal/gen -run 'Test.*(Adapter|Registry|Package)'
+ok github.com/tylergannon/skgo/internal/gen 3.661s
+The earlier adapterpackage failure remains recorded above; frontend owner independently reran its corrected package list tests.

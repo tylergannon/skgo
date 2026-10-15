@@ -50,7 +50,7 @@ func checkInstalledAdapter(cfg Config) error {
 	// A checkout has no released version to name; the package it is paired
 	// with is the one in its own tree. A released skgo names the npm package
 	// paired with its Go module version.
-	install := "`pnpm add -D " + adapter.Package + "`"
+	install := "`vp add -D " + adapter.Package + "`"
 	if v := adapter.Version(); v != "devel" {
 		install = "`" + adapter.InstallCommand(v) + "`"
 	}

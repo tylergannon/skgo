@@ -16,6 +16,16 @@ Every parent and subagent must start source discovery at the token cache's seman
 
 Use Sol6.1 for experiments, comparison and indexing; Luna for research and independent validation. Apply relevant skills and their model resolution. Delegate reasonable work as missions: capability, accepted proof, owned scope and non-negotiable constraints; let the agent map Kit and choose its path. Give explicit nonoverlapping ownership and warn that others are editing. Keep temporary material in ephemeral/, never docs/ without express permission. Do not invent gate runners, ledgers or proof machinery. Ordinary real-handler Go tests, Kit-client tests and opening the box are the verification surfaces.
 
+## Current product integration checkpoint
+
+The real command now builds the example and serves Go SSR plus Vite frontend modules. Maintained native host APIs are checkpointed at `7fa4bc6`; CLI/coordinator and adapter bridge are still being integrated. Inspect current files and active agents instead of restarting older experiment fixtures.
+
+The first product browser check found two distinct defects: the default Vite WebSocket URL went to the application route, and hydration recovered by discarding SSR after a `HierarchyRequestError`. The explicit `/__skgo/dev/hmr` path now produces an observed public HTTP101. Hydration remains unresolved: independent browser debugging caught `child(main)` receiving a closing `]` comment, around the layout boundary/conditional. A visually populated recovered page is not clean hydration proof.
+
+A compatible edit of actual `items/[id]/item.remote.go` from `Widget %s` to `DEV_WIDGET %s` published revision4 in unchanged Go PID27026 and fresh SSR contained the new literal. The already open page kept its draft but stayed at `Widget 42`: browser refresh delivery still needs repair. The prior PID26452→27026 replacement was revision3, before this edit, and is not evidence that the edit rebuilt. The literal was restored exactly. Logs are `ephemeral/dev-browser.log` and the coordinator-owned startup/product logs; active ports/processes change during fixes, so obtain current readiness from their owner.
+
+Current ownership: listener_ownership owns CLI/session lifecycle and restarts; vite_listener_integration owns hydration, adapter metadata and client refresh; retained_result_check independently validates coordinator assertions with private mutations. Parent owns actual browser inspection and integration validation. Never stop another owner's live process without coordinating. Next proof must show clean hydration, native edits visibly refreshing while preserving a seeded draft, frontend HMR and fresh SSR, structural membership, error/repair and instance/recovery behavior in the actual command.
+
 ## Evidence worth retaining
 
 All paths below are workspace-relative unless identified as cache-relative. Open the reports and cited raw outputs before relying on a claim.
@@ -33,7 +43,7 @@ All paths below are workspace-relative unless identified as cache-relative. Open
 
 Matching corpus lives under `/Users/tyler/src/skgo-token-cache/experiments/`, especially `architecture-20261015`, `listener-ownership-20261015`, `instance-discovery-20261015`, `vite-listener-20261015`, `vite-listener-validation-20261015`, `retained-qualification-20261015`, `retained-validation-20261015` and `retained-browser-20261015`. The index distinguishes historical toy controls from actual joined native/browser proof; preserve those limits when updating it. Independent fresh retrieval checked the five new listener questions and41 anchors; see `index/.semantic-index/listener-retrieval-20261015.md`.
 
-## Real blockers and traps
+## Earlier experiment blockers and traps (see current checkpoint above)
 
 **Structural metadata:** adding `/listener-added` changed Kit's generated client route/node membership and shifted `/orders` from node2 to3; Go's fixed manifest stayed unchanged, served GO_ERROR404 and emitted stale node2. The browser saw generated-node import failure/HMR reload. `structural.log`, `structural-client-metadata.js`, `browser/structural-route-probe.json` preserve it. Removing the route repaired the fixture. Ordinary component artifact replacement does not solve route/node/matcher/remote membership synchronization. Kit's watcher/internal manifest update is the spec, not already a Go metadata publication API. Remote export additions and structural Go rebuild fallback were not executed.
 
