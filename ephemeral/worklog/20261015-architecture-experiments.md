@@ -58,3 +58,6 @@ clarification: SSR subrequest response cookies are readable server-side via getS
 decision: User accepts automatic SSR response-cookie propagation as a known non-blocking limitation. Continue architecture documentation while a subagent researches supported remedy and possible tiny upstream request; no external posting authorized. Kit3 already documents cookies.parse/set for external-response relay, source-only finding. Persist active task and exact evidence boundaries before compaction.
 
 correction: User explicitly authorized bounded implementation after assessment on 2026-10-15. Earlier architecture-only instructions are superseded for the selected design. Parent delegates to Sol6.1; five missions in PLAN retain nonblocking cookie limitation and forbid renewed split-renderer/waiting-page machinery.
+
+decision: Native development must preserve the real app.NewHandler configuration. A fresh bridge from generated registries loses configured hooks; use a typed development build carrier and the original request continuation.
+friction: A Go HandleFetch continuation cannot route all same-origin fetches back into the now-rendererless Go stack; page subfetches must retain Kit's supplied fetch. Synchronous Kit ResolveOptions predicates need a dedicated transport worker whose event loop remains live while Vite waits.

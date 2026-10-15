@@ -75,6 +75,12 @@ The repository already runs Kit in Node while calling Go during prerendering. Re
 
 The [source mapping](../../experiments/20261015-vite-uds-bridge/BRIDGE.md) provides exact pinned Kit and Go anchors and the missing operations. Development must resolve modules/hooks through the live Vite environment, not import cached production build manifests. Preserve the application's actual Go hooks/configuration rather than substituting the prerender generator's defaults.
 
+## Application configuration seam
+
+Implementation retains the application's real handler constructor. A typed native-development build carrier lets the existing SSR/static construction register its configured Go registries and options without creating goja runtimes. The Go request still traverses the application's FetchConfig and request hooks; the native Kit response returns through that same continuation. This avoids reconstructing application configuration from generated defaults. Production uses its ordinary build filesystem and renderer.
+
+Kit's synchronous ResolveOptions predicates require a small dedicated transport worker because blocking the Vite main thread cannot also service its own asynchronous socket reply. The worker handles only those predicate calls, not rendering or routing. Go HandleFetch needs a continuation back to Kit's supplied fetch so internal page subrequests remain Kit-owned; directly fetching every internal URL through Go would reach a renderer that development deliberately no longer runs. These are narrow integration seams, not additional frontend graphs.
+
 ## Request semantics that the bridge must preserve
 
 A logical Kit request has one Go request-handle owner. Its callbacks and completion use that owner. A restart must not silently recreate an old request in a new process or replay mutations there. Graceful completion on the old owner or a clear request failure are valid behaviors; seamless replacement during a render has not been demonstrated. This does **not** add a requirement to freeze native code revision across every long-running request.
