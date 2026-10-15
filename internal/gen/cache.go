@@ -278,6 +278,8 @@ func (c *generationCache) capture(cfg Config) {
 }
 
 func publishGenerationPlan(cfg Config, plan generationPlan) error {
+	// A retained owner replays many plans; destination ownership is per replay.
+	cfg.produced = map[string]struct{}{}
 	if cfg.SwiftOut != "" {
 		if err := checkSwiftOutput(cfg.SwiftOut); err != nil {
 			return err

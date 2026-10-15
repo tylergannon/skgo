@@ -82,6 +82,56 @@ console.log(JSON.stringify({ routes: ids.map(id => parse_route_id(id).params), n
 // kitRouteMetadata contains only the observed result of Kit's route and matcher
 // discovery. Authored matcher modules execute when it is captured, so callers
 // need not infer their dependencies from JavaScript source.
+// RouteMetadata is Kit-owned route discovery, consumed by generation. Dirs,
+// LoadDirs and LoadKinds use absolute authored source paths; IDs and Routes
+// are parallel to Dirs. Names have already passed Kit frontend validation.
+type RouteMetadata = kitRouteMetadata
+
+func cloneRouteMetadata(m *RouteMetadata) *RouteMetadata {
+	if m == nil {
+		return nil
+	}
+	data, _ := json.Marshal(m)
+	var copy RouteMetadata
+	_ = json.Unmarshal(data, &copy)
+	return &copy
+}
+
+func canonicalRouteMetadata(m *RouteMetadata) (*RouteMetadata, error) {
+	if m == nil {
+		return nil, nil
+	}
+	out := cloneRouteMetadata(m)
+	out.LoadDirs = map[string]bool{}
+	out.LoadKinds = map[string]map[string]bool{}
+	for i, dir := range out.Dirs {
+		canonical, err := sourcePath(dir)
+		if err != nil {
+			return nil, err
+		}
+		out.Dirs[i] = canonical
+	}
+	for dir, kinds := range m.LoadKinds {
+		canonical, err := sourcePath(dir)
+		if err != nil {
+			return nil, err
+		}
+		copy := map[string]bool{}
+		for name, value := range kinds {
+			copy[name] = value
+		}
+		out.LoadKinds[canonical] = copy
+	}
+	for dir, load := range m.LoadDirs {
+		canonical, err := sourcePath(dir)
+		if err != nil {
+			return nil, err
+		}
+		out.LoadDirs[canonical] = load
+	}
+	return out, nil
+}
+
 type kitRouteMetadata struct {
 	Dirs      []string
 	IDs       []string
@@ -252,6 +302,9 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 		if err != nil {
 			return nil, err
 		}
+	}
+	if len(metadata.Dirs) != len(metadata.IDs) || len(metadata.Dirs) != len(metadata.Routes) {
+		return nil, fmt.Errorf("skgo: incomplete supplied Kit route metadata")
 	}
 	result := map[string]*routeLoadParams{}
 	if metadata.Empty {

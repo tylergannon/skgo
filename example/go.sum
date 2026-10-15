@@ -12,6 +12,8 @@ github.com/dop251/goja v0.0.0-20261008222547-e9f698900731 h1:j4pHbSFW20XvSKGrXR/
 github.com/dop251/goja v0.0.0-20261008222547-e9f698900731/go.mod h1:GrCNKUrVplXZj0juFue0Cj2Xt/eL2Nuu2+y3UTanEo8=
 github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14 h1:3U8dTgyNBhEQ/GVw0jZW5q+93Zw2gAZPRWhJ9TwV3rM=
 github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14/go.mod h1:Tb7Xxye4LX7cT3i8YLvmPMGCV92IOi4CDZvm/V8ylc0=
+github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
+github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
 github.com/go-sourcemap/sourcemap v2.1.4+incompatible h1:a+iTbH5auLKxaNwQFg0B+TCYl6lbukKPc7b5x0n1s6Q=
 github.com/go-sourcemap/sourcemap v2.1.4+incompatible/go.mod h1:F8jJfvm2KbVjc5NqelyYJmf/v5J0dwNLS2mL4sNA1Jg=
 github.com/goccy/go-yaml v1.19.2 h1:PmFC1S6h8ljIz6gMRBopkjP1TVT7xuwrButHID66PoM=
@@ -32,10 +34,6 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/tylergannon/devalue/v5 v5.0.0 h1:UZuNeNpVXHnn79lOS/l7gEWcC4jKoILHUb0s3F2+3J8=
 github.com/tylergannon/devalue/v5 v5.0.0/go.mod h1:F3VxJn5uu/ROJxoVB3zhxFwuWl+jUrv6n6EJC5yB3z8=
-github.com/tylergannon/polytype v1.6.0 h1:c+WwyX6aHRTczj3Sscvh6uE5ucPRPk5C8bgIqHh/Dso=
-github.com/tylergannon/polytype v1.6.0/go.mod h1:M0qJ9qMslFa1P+BXfjE8rbUkYNsoqXXEBoHboSDKTss=
-github.com/tylergannon/polytype v1.8.0 h1:4BGXyeJnlQSXAStD9c6UB9eCQxKM6pN1cT36exPcwmc=
-github.com/tylergannon/polytype v1.8.0/go.mod h1:M0qJ9qMslFa1P+BXfjE8rbUkYNsoqXXEBoHboSDKTss=
 github.com/tylergannon/polytype v1.9.0 h1:t+qhlALy3XBhm8QS2Eq8UohKKgumxP3h7YUjwVtEIVk=
 github.com/tylergannon/polytype v1.9.0/go.mod h1:go8LF2qxZ3cpymGOfA4/BfDodZL6446Aq4TmhLeoN6c=
 github.com/tylergannon/structtag v0.1.0 h1:Vn4ZEemGUtAfw9ddEtHQILKnIWqSWCSpciFTNPh1gcY=
