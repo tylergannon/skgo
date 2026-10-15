@@ -2,7 +2,7 @@
 
 **Decision: adopt native Vite/Kit SSR as the development direction. The two-UDS/public-proxy topology works in a bounded runtime experiment. A fetch override alone is not the complete Go application bridge.** Production remains Go with pooled goja rendering.
 
-Updated 2026-10-15 from the user's explicit direction and [linked discussion](codex://threads/01a141a2-423e-7360-9ab1-e17234bd620e). [GOAL](GOAL.md) controls. This is an architectural validation and handoff, not a claim that the product implementation is complete or authorized. Earlier development-renderer experiments and their measurements are preserved in [the historical assessment](DESIGN-go-ssr-historical.md).
+Updated 2026-10-15 from the user's explicit direction and [linked discussion](codex://threads/01a141a2-423e-7360-9ab1-e17234bd620e). [GOAL](GOAL.md) controls. This records the architectural validation and implementation contract. The user authorized delegated implementation on 2026-10-15; it is not a claim that the product is complete. Earlier development-renderer experiments and their measurements are preserved in [the historical assessment](DESIGN-go-ssr-historical.md).
 
 ## Architecture and why it is simpler
 
@@ -112,7 +112,7 @@ The topology is valid and removes the demonstrated duplicated-renderer problem. 
 3. **Lifecycle/stream mission:** demonstrate a delayed value and cancellation, and process replacement during a paused render without silently crossing request ownership. Preserve normal Kit behavior; do not add waiting pages or global edit transactions.
 4. **Go edit mission:** retain the existing native preparation/admission path and normal rebuild fallback; publish refresh only after successful Go installation. Go registrations and generated stubs still need ordinary readiness/error recovery; they no longer carry a second frontend renderer graph.
 
-These are future implementation/qualification boundaries, not authorization to implement them now. The joined callback/lifecycle slice remains necessary evidence before claiming complete integration. The accepted SSR response-cookie limitation is not a condition for proceeding or handing off the architecture. No further split-renderer gates, forced navigation, Vite modifications or broad benchmark campaign is warranted by this validation.
+These are the implementation/qualification boundaries authorized by the user on 2026-10-15. The joined callback/lifecycle slice remains necessary evidence before claiming complete integration. The accepted SSR response-cookie limitation is not a condition for proceeding or handing off the architecture. No further split-renderer gates, forced navigation, Vite modifications or broad benchmark campaign is warranted by this validation.
 
 ## Primary references
 

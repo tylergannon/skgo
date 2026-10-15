@@ -16,7 +16,7 @@ Production remains one cgo-free Go binary with pooled goja SSR, no Node at reque
 
 ## Scope
 
-Validate the architecture through bounded subagent experiments and source evidence, then leave a design smaller models can execute. Do not implement the product as part of this task. Tactics from earlier experiments are not requirements. No forced waiting page, custom reload policy or deliberate browser state loss is authorized; preserve Kit's normal behavior and disclose any unavoidable tradeoff.
+Architecture validation is complete enough to begin bounded implementation. On 2026-10-15 the user authorized 3–5 work chunks implemented by Sol 6.1 subagents, with the parent monitoring scope and simplicity. Implement and qualify the selected architecture; do not reopen alternatives without a concrete incompatibility. Tactics from earlier experiments are not requirements. No forced waiting page, custom reload policy or deliberate browser state loss is authorized; preserve Kit's normal behavior and disclose any unavoidable tradeoff.
 
 Use `/Users/tyler/src/skgo-token-cache/index/README.md` and the semantic index for prior work. Map the installed Kit pin before proposing mirrored behavior. Distinguish demonstrated runtime behavior, source-backed feasibility and remaining integration proof.
 

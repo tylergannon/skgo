@@ -1,23 +1,16 @@
 # Resume here after compaction
 
-Updated 2026-10-15. Workspace `/Users/tyler/.codex/worktrees/5f35/skgo`, branch `codex/dev-architecture-experiments`, based on dev868c5dba. Read agent-protocol, then [GOAL](GOAL.md), [DESIGN](DESIGN.md), [PLAN](PLAN.md). Current task: architecture documentation and bounded research, **not product implementation**.
+Updated 2026-10-15. Workspace `/Users/tyler/.codex/worktrees/5f35/skgo`, branch `codex/dev-architecture-experiments`, based on dev868c5dba. Read agent-protocol, then GOAL, DESIGN and PLAN.
 
-## Latest user instructions
+## Current authorization and active workers
 
-- Native Vite/SvelteKit SSR during development. Production remains Go+pooled goja. Dev/prod differences are explicitly allowed and qualified separately.
-- Both Vite and Go listen on UDS using constant basenames within an instance-private directory. Go supervisor/proxy alone listens on the public network interface.
-- SSR fetch delegates Go application work. Direct Kit loads/actions/remotes also require generated callback delegation; fetch alone cannot intercept them.
-- Missing automatic SSR response-cookie propagation is an accepted **non-blocking limitation**. Continue architecture docs; investigate a remedy in parallel. Do not turn this into another gate.
-- User suggested a tiny non-breaking SvelteKit upstream request might be appropriate. This is permission to investigate, **not to post/send** an issue or message.
-- Most recent request: persist everything necessary for post-compaction. This file is that checkpoint.
+The user explicitly requested assessment followed, if ready, by 3–5 implementation chunks using Sol 6.1 subagents. Parent assessed architecture ready to begin bounded implementation; full joined semantics still require proof. Earlier architecture-only prohibition is superseded. Five chunks and endpoint are in PLAN.
 
-## Active work / next action
+Active Sol 6.1 workers: `/root/uds_supervisor` owns public coordinator/process/transport, internal/devserver, command wrapper and adapter dev.js; `/root/kit_callbacks` owns adapter callback JS and generation; `/root/go_request_bridge` owns root Go callback/request service and internal/hotreload generated host. All share this worktree; coordinate interface and commits, never revert others. Parent owns planning files and scope monitoring. Native-edit integration follows these seams; fresh independent Sol6.1 validation follows runnable integration. No PR merge/release or upstream posting authorized.
 
-`native_dev_host` (Sol6.1) completed the source-only follow-up under `ephemeral/experiments/20261015-vite-uds-cookies/FINDINGS.md`. Initial finding is saved in commit31a56bc: Kit3 explicitly documents getSetCookie -> cookies.parse -> cookies.set for external response relay. Final follow-up is saved in commit ea9fc81: no documented promise of automatic response-cookie adoption; only the default INTERNAL-route continuation adopts cookies, while the external continuation returns fetch directly. Recommend upstream documentation clarification first; optional opt-in transport continuation is an ergonomics idea, not a requirement. Existing public cookies.parse/set can solve our case without an upstream change. Automatic global adoption risks third-party/synthetic responses, duplicate effects and rewritten-URL path/scope changes. No issue was posted and no runtime test was added. All three delegated lanes have completed; check status before new dispatch, and do not cancel any independently ongoing agents.
+Do not cancel independently ongoing agents. Read their status/messages after compaction rather than redispatching duplicate work. They must use token-cache index and pinned Kit source. Existing unrelated untracked experiment artifacts are not owned by this task.
 
-The other agents `listener_ownership` and `retained_result_check` completed UDS validation. Their owned POC processes and generated runtime dirs were cleaned. No UDS fixture should be assumed live. Do not restart old experiments to recreate already-recorded evidence.
-
-The cookie follow-up is folded into DESIGN as a non-blocking source finding. Parent has persisted the architecture, decisions, evidence, accepted limitations and handoff boundaries. Resume architecture/documentation work only as needed by the next user instruction; there is no pending agent result to await and no authorized product implementation. Do not infer that unresolved bridge qualification authorizes implementing the product. Answer literal user questions first; frustration is not rhetorical authorization.
+Cookie response propagation from direct SSR subfetch is accepted non-blocking. The public Kit3 cookies.parse/set remedy is source-mapped, not runtime-qualified. No upstream change is required and no issue was posted. Prior POC processes were cleaned; do not assume fixtures live.
 
 ## Selected architecture
 
