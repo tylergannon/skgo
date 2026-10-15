@@ -32,7 +32,7 @@ Implement the selected composition using the qualified pieces; remaining integra
 
 **Capability:** A real Kit browser uses Go application responses through a stable public address, while tooling and app processes change independently.
 
-**Owner:** Coordinator composition experiment. Compare against the existing Vite-first fixture; do not replace it with another synthetic transport test.
+**Owner:** CLI/coordinator implementation. Reuse the completed composition experiment; implement the real command, private process lifecycle and routing with meaningful tests.
 
 **Accepted proof:** Supplied literal values in fresh Go SSR and hydrated pages; correct public HMR URL without private-port fallback; coherent Kit origin after public-port collision; multiple isolated instances; actual Go child replacement/crash; explicit Vite failure and reconnection behavior. Observe browser drafts/document identity and useful unavailable/recovery behavior. Preserve failures as well as successes.
 
@@ -42,7 +42,7 @@ Implement the selected composition using the qualified pieces; remaining integra
 
 **Capability:** Fast preparation consumes one coherent source revision, and only a still-current revision can install or publish diagnostics/browser events.
 
-**Owner:** Retained capture/publication integration. Preserve exercised whole-app, reverse-caller, dependency and HostView admission.
+**Owner:** Native host and retained compiler integration, coordinated with the session owner at ProjectBuild.Commit. Preserve exercised whole-app, reverse-caller, dependency and HostView admission. The product must build and serve the real generated app, not a hardcoded fixture.
 
 **Accepted proof:** Controlled overlapping edits hold obsolete work across a newer desired revision; independent literals show no stale installation or notification. Multi-file changes yield a coherent selected capture or an explicit rejection, followed by working repair. The new ProjectBuild experiment and independent mutation control now establish currentness through real native installation and actual Vite frames. Removing the revision guard admitted the obsolete callback and failed the test. Structural initializer fallback rebuilt a new HostView in2.36s and resumed native edits. Carry this working boundary into the command; Observe batching still needs a deliberate filesystem capture policy. See [publication](../../experiments/20261015-retained-publication/REPORT.md) and [independent validation](../../experiments/20261015-publication-validation/REPORT.md).
 
@@ -50,7 +50,7 @@ Implement the selected composition using the qualified pieces; remaining integra
 
 **Capability:** Route and remote additions, changes and removals keep Go routing/registries and Kit's client node identities coherent.
 
-**Owner:** Structural metadata investigation and bounded running prototype.
+**Owner:** Vite adapter and renderer integration. Prove the live metadata seam, then use it in the real command; the frontend remains Kit/Vite-owned.
 
 **Accepted proof:** Newly added route works by direct Go response and actual client navigation; existing routes keep the correct node identity; removal behaves correctly; remote membership/types follow Kit's constraints. Map Kit's own lifecycle from pinned source before selecting a synchronization mechanism. Existing evidence of Go404 plus stale client node imports establishes the problem; a renderer-only rebuild or reload notification does not solve it.
 

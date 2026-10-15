@@ -43,9 +43,9 @@ Matching corpus lives under `/Users/tyler/src/skgo-token-cache/experiments/`, es
 
 **Lifecycle/diagnostics:** killing only the go-test wrapper orphaned test/Vite children. Stale HTTP200 then masqueraded as readiness while the replacement failed strictPort. Require own-root/instance/child identity; clean owned descendants, not unrelated processes. Compiler rejection reached the browser only as generic GO_COMPILE_REJECTED; useful authored file/line diagnostics remain unqualified. Missing load registry also crashed early fixture SSR; real handlers need coherent composition.
 
-## Next missions and what winning looks like
+## Active implementation and what winning looks like
 
-Coordinator ownership is selected; these are implementation missions and remaining integration boundaries.
+Coordinator ownership is selected; these are implementation missions and remaining integration boundaries. Active responsibilities: listener_ownership implements cmd/skgo and the coordinator; native_dev_host implements maintained internal/hotreload host/build/retained APIs; vite_listener_integration proves live Kit metadata and integrates the adapter. Parent owns plan/worklog and independent real-command validation. They coordinate narrow interfaces directly; no further listener experiments are needed.
 
 - Implement the **selected coordinator-fronted command** using the now-executed coordinator corpus. It binds the public listener before Kit initialization, owns private target updates and preserves Vite through Go replacement. Actual Go crash preserved browser draft/document/HMR; Vite outage left Go HTTP usable but Vite restart naturally reloaded/lost draft. Renderer artifact initialization after Vite restart was explicitly invoked in the experiment and must become automatic. Multiple instances and HTTP wrong-target assertion controls passed; no throughput/overhead winner was measured.
 - Establish Kit-owned route/remote metadata synchronization through real add/change/remove membership. Winning includes new route usable via direct Go response and client navigation; existing routes retain matching node identities; removed routes behave correctly; remote additions/removals/types match Kit constraints. Use Kit's installed source as spec. A newly generated client manifest beside stale Go tables is failure.
