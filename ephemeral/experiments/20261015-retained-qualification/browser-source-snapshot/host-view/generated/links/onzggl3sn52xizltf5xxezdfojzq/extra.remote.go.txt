@@ -1,0 +1,111 @@
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:1
+package orders
+
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+import (
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ "context"
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ "io"
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ "net/http"
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ "strconv"
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ "github.com/tylergannon/skgo"
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ "example.com/nativefixture/internal/app"
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+)
+
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:3
+func nested(ctx context.Context) (Order, error) {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ _skgo_targets, _skgo_release := _skgo_acquire(ctx)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ defer _skgo_release()
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ return _skgo_targets.nested(ctx)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:1
+}
+
+func _skgo_body_nested(ctx context.Context) (Order, error) {
+																				callback := _skgo_body_price
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:4
+ before := callback()
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:4
+ if hold, ok := ctx.Value("hold").(*Hold); ok {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:4
+  close(hold.Entered)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:4
+  <-hold.Release
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:4
+ }
+																				request, _ := http.NewRequestWithContext(ctx, "GET", "http://127.0.0.1:56511/orders?raw=1", nil)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:5
+ request.Header.Set("Accept", "application/json")
+																				response, err := skgo.EventFrom(ctx).Fetch(ctx, request)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ if err != nil {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+  return Order{}, err
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ }
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ defer response.Body.Close()
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ body, err := io.ReadAll(response.Body)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ if err != nil {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+  return Order{}, err
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ }
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ after, err := strconv.Atoi(string(body)[9:])
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ if second := callback(); second != after {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+  return Order{}, skgo.Errorf(500, "mixed helper alias")
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ }
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:6
+ return Order{before, after, initializations, service.quantity}, err
+}
+func failure(_skgo_arg_0 context.Context) (Order, error) {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ _skgo_targets, _skgo_release := _skgo_acquire(_skgo_arg_0)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ defer _skgo_release()
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ return _skgo_targets.failure(_skgo_arg_0)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:1
+}
+
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:8
+func _skgo_body_failure(_skgo_arg_0 context.Context) (Order, error) {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:8
+ return Order{}, skgo.Errorf(418, "fixture-teapot")
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:8
+}
+func coins(_skgo_arg_0 context.Context) (app.Money, error) {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ _skgo_targets, _skgo_release := _skgo_acquire(_skgo_arg_0)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ defer _skgo_release()
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:2
+ return _skgo_targets.coins(_skgo_arg_0)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:1
+}
+
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:9
+func _skgo_body_coins(_skgo_arg_0 context.Context) (app.Money, error) {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:9
+ return app.Money{Cents: _skgo_body_price()}, nil
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:9
+}
+
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/extra.remote.go:10
+var _ = skgo.Query(nested)
+var _ = skgo.Query(failure)
+var _ = skgo.Query(coins)

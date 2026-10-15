@@ -1,0 +1,141 @@
+=== RUN   TestRetainedWholeApplicationQualification
+    contract_test.go:201: STAGE mode=baseline sample=0 name=source-classify elapsed=1.244167ms
+    contract_test.go:201: STAGE mode=baseline sample=0 name=analysis elapsed=712.829708ms
+    contract_test.go:201: STAGE mode=baseline sample=0 name=typed-classify elapsed=825.625µs
+    contract_test.go:201: STAGE mode=baseline sample=0 name=lower elapsed=1.877417ms
+    contract_test.go:201: STAGE mode=baseline sample=0 name=candidate-files elapsed=498.833µs
+    contract_test.go:201: STAGE mode=baseline sample=0 name=native-compile elapsed=32.907917ms
+    contract_test.go:201: STAGE mode=baseline sample=0 name=artifact-identity elapsed=100.439958ms
+    contract_test.go:217: SAMPLE mode=baseline sample=0 total=850.806625ms install=4.075458ms literalHTTP=1000 pid=54500
+    contract_test.go:201: STAGE mode=baseline sample=1 name=source-classify elapsed=558.792µs
+    contract_test.go:201: STAGE mode=baseline sample=1 name=analysis elapsed=713.644542ms
+    contract_test.go:201: STAGE mode=baseline sample=1 name=typed-classify elapsed=795.25µs
+    contract_test.go:201: STAGE mode=baseline sample=1 name=lower elapsed=1.917458ms
+    contract_test.go:201: STAGE mode=baseline sample=1 name=candidate-files elapsed=496.667µs
+    contract_test.go:201: STAGE mode=baseline sample=1 name=native-compile elapsed=34.0955ms
+    contract_test.go:201: STAGE mode=baseline sample=1 name=artifact-identity elapsed=87.988791ms
+    contract_test.go:217: SAMPLE mode=baseline sample=1 total=839.517583ms install=3.940042ms literalHTTP=2000 pid=54500
+    contract_test.go:201: STAGE mode=baseline sample=2 name=source-classify elapsed=811.458µs
+    contract_test.go:201: STAGE mode=baseline sample=2 name=analysis elapsed=695.963333ms
+    contract_test.go:201: STAGE mode=baseline sample=2 name=typed-classify elapsed=833µs
+    contract_test.go:201: STAGE mode=baseline sample=2 name=lower elapsed=1.913125ms
+    contract_test.go:201: STAGE mode=baseline sample=2 name=candidate-files elapsed=529.875µs
+    contract_test.go:201: STAGE mode=baseline sample=2 name=native-compile elapsed=32.5085ms
+    contract_test.go:201: STAGE mode=baseline sample=2 name=artifact-identity elapsed=106.892959ms
+    contract_test.go:217: SAMPLE mode=baseline sample=2 total=839.486833ms install=3.793333ms literalHTTP=3000 pid=54500
+    contract_test.go:219: STATS mode=baseline {MetadataLoads:0 PackageChecks:0 PackageHits:0 FileReads:0 FileParses:0 ExportImports:0 FallbackLoads:0 UniverseEvictions:0 MetadataHits:0}
+    contract_test.go:201: STAGE mode=exact-view sample=0 name=source-classify elapsed=619.875µs
+    contract_test.go:201: STAGE mode=exact-view sample=0 name=analysis elapsed=791.405458ms
+    contract_test.go:201: STAGE mode=exact-view sample=0 name=typed-classify elapsed=796.125µs
+    contract_test.go:201: STAGE mode=exact-view sample=0 name=lower elapsed=1.77475ms
+    contract_test.go:201: STAGE mode=exact-view sample=0 name=candidate-files elapsed=505.042µs
+    contract_test.go:201: STAGE mode=exact-view sample=0 name=native-compile elapsed=32.850333ms
+    contract_test.go:201: STAGE mode=exact-view sample=0 name=artifact-identity elapsed=89.896917ms
+    contract_test.go:217: SAMPLE mode=exact-view sample=0 total=917.875458ms install=3.891834ms literalHTTP=1000 pid=54500
+    contract_test.go:201: STAGE mode=exact-view sample=1 name=source-classify elapsed=689.042µs
+    contract_test.go:201: STAGE mode=exact-view sample=1 name=analysis elapsed=768.011375ms
+    contract_test.go:201: STAGE mode=exact-view sample=1 name=typed-classify elapsed=797.666µs
+    contract_test.go:201: STAGE mode=exact-view sample=1 name=lower elapsed=1.8575ms
+    contract_test.go:201: STAGE mode=exact-view sample=1 name=candidate-files elapsed=455.792µs
+    contract_test.go:201: STAGE mode=exact-view sample=1 name=native-compile elapsed=32.916583ms
+    contract_test.go:201: STAGE mode=exact-view sample=1 name=artifact-identity elapsed=88.448417ms
+    contract_test.go:217: SAMPLE mode=exact-view sample=1 total=893.206084ms install=3.801334ms literalHTTP=2000 pid=54500
+    contract_test.go:201: STAGE mode=exact-view sample=2 name=source-classify elapsed=682µs
+    contract_test.go:201: STAGE mode=exact-view sample=2 name=analysis elapsed=762.854083ms
+    contract_test.go:201: STAGE mode=exact-view sample=2 name=typed-classify elapsed=831.917µs
+    contract_test.go:201: STAGE mode=exact-view sample=2 name=lower elapsed=1.871333ms
+    contract_test.go:201: STAGE mode=exact-view sample=2 name=candidate-files elapsed=521.75µs
+    contract_test.go:201: STAGE mode=exact-view sample=2 name=native-compile elapsed=33.090959ms
+    contract_test.go:201: STAGE mode=exact-view sample=2 name=artifact-identity elapsed=98.11575ms
+    contract_test.go:217: SAMPLE mode=exact-view sample=2 total=898.000042ms install=3.740333ms literalHTTP=3000 pid=54500
+    contract_test.go:219: STATS mode=exact-view {MetadataLoads:0 PackageChecks:0 PackageHits:0 FileReads:0 FileParses:0 ExportImports:0 FallbackLoads:3 UniverseEvictions:0 MetadataHits:0}
+    contract_test.go:201: STAGE mode=whole-retained sample=0 name=source-classify elapsed=581.708µs
+    browser_timing_experiment_test.go:161: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:1 PackageChecks:8 PackageHits:10 FileReads:0 FileParses:13 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:1}
+    contract_test.go:201: STAGE mode=whole-retained sample=0 name=analysis elapsed=278.844042ms
+    contract_test.go:201: STAGE mode=whole-retained sample=0 name=typed-classify elapsed=806.375µs
+    contract_test.go:201: STAGE mode=whole-retained sample=0 name=lower elapsed=1.879ms
+    contract_test.go:201: STAGE mode=whole-retained sample=0 name=candidate-files elapsed=529.583µs
+    contract_test.go:201: STAGE mode=whole-retained sample=0 name=native-compile elapsed=31.984834ms
+    contract_test.go:201: STAGE mode=whole-retained sample=0 name=artifact-identity elapsed=87.372375ms
+    contract_test.go:217: SAMPLE mode=whole-retained sample=0 total=402.021292ms install=3.808208ms literalHTTP=1000 pid=54500
+    contract_test.go:201: STAGE mode=whole-retained sample=1 name=source-classify elapsed=648.708µs
+    browser_timing_experiment_test.go:161: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:2 PackageChecks:12 PackageHits:22 FileReads:0 FileParses:21 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:2}
+    contract_test.go:201: STAGE mode=whole-retained sample=1 name=analysis elapsed=300.855458ms
+    contract_test.go:201: STAGE mode=whole-retained sample=1 name=typed-classify elapsed=839.125µs
+    contract_test.go:201: STAGE mode=whole-retained sample=1 name=lower elapsed=1.919292ms
+    contract_test.go:201: STAGE mode=whole-retained sample=1 name=candidate-files elapsed=544.667µs
+    contract_test.go:201: STAGE mode=whole-retained sample=1 name=native-compile elapsed=32.102208ms
+    contract_test.go:201: STAGE mode=whole-retained sample=1 name=artifact-identity elapsed=89.037958ms
+    contract_test.go:217: SAMPLE mode=whole-retained sample=1 total=425.9785ms install=3.708375ms literalHTTP=2000 pid=54500
+    contract_test.go:201: STAGE mode=whole-retained sample=2 name=source-classify elapsed=688.25µs
+    browser_timing_experiment_test.go:161: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:3 PackageChecks:16 PackageHits:34 FileReads:0 FileParses:29 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:3}
+    contract_test.go:201: STAGE mode=whole-retained sample=2 name=analysis elapsed=294.887333ms
+    contract_test.go:201: STAGE mode=whole-retained sample=2 name=typed-classify elapsed=1.85775ms
+    contract_test.go:201: STAGE mode=whole-retained sample=2 name=lower elapsed=2.447084ms
+    contract_test.go:201: STAGE mode=whole-retained sample=2 name=candidate-files elapsed=487.083µs
+    contract_test.go:201: STAGE mode=whole-retained sample=2 name=native-compile elapsed=31.776958ms
+    contract_test.go:201: STAGE mode=whole-retained sample=2 name=artifact-identity elapsed=89.39425ms
+    contract_test.go:217: SAMPLE mode=whole-retained sample=2 total=421.564959ms install=3.883916ms literalHTTP=3000 pid=54500
+    contract_test.go:219: STATS mode=whole-retained {MetadataLoads:3 PackageChecks:16 PackageHits:34 FileReads:0 FileParses:29 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:3}
+    contract_test.go:244: GET /orders: {Status:200 PID:54500 Initializations:1 Consumers:0 Body:<!doctype html><html><head><link href="./_app/immutable/entry/start.BkuCRlON.js" rel="modulepreload">
+        		<link href="./_app/immutable/entry/payload.DSmR2FwN.js" rel="modulepreload">
+        		<link href="./_app/immutable/chunks/uBIymjUX.js" rel="modulepreload">
+        		<link href="./_app/immutable/chunks/C3TbfEnL.js" rel="modulepreload">
+        		<link href="./_app/immutable/chunks/D3o8vxEE.js" rel="modulepreload">
+        		<link href="./_app/immutable/chunks/ZBCXn-1f.js" rel="modulepreload">
+        		<link href="./_app/immutable/chunks/D185aQpA.js" rel="modulepreload">
+        		<link href="./_app/immutable/entry/app.4_7bb8YH.js" rel="modulepreload">
+        		<link href="./_app/immutable/nodes/0.CudrqxCJ.js" rel="modulepreload">
+        		<link href="./_app/immutable/nodes/2.DQ-CZkzW.js" rel="modulepreload">
+        		</head><body><!--[--><!--[--><!--[0--><!--[--><!--[--><!--[-1--><!--[--><h1>Order total 3000</h1><p>Again 3000; initialized 1; quantity 3</p><!--[-1--><!--]--><!--[--><p>Waiting</p><!--]--><!--]--><!--]--><!--]--><!----><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
+        			<script>
+        				{
+        					const deferred = new Map();
+        
+        					__sveltekit_r4v5jx = {
+        						base: new URL(".", location).pathname.slice(0, -1),
+        						version: "1792096174796",
+        						defer: (id) => new Promise((fulfil, reject) => {
+        							deferred.set(id, { fulfil, reject });
+        						}),
+        						resolve: async (id, fn) => {
+        							const kit = await import("./_app/immutable/entry/start.BkuCRlON.js");
+        							kit.init(__sveltekit_r4v5jx);
+        							const app = await import("./_app/immutable/entry/app.4_7bb8YH.js");
+        							const [data, error] = fn(app);
+        
+        							const try_to_resolve = () => {
+        								if (!deferred.has(id)) {
+        									setTimeout(try_to_resolve, 0);
+        									return;
+        								}
+        								const { fulfil, reject } = deferred.get(id);
+        								deferred.delete(id);
+        								if (error) reject(error);
+        								else fulfil(data);
+        							}
+        							try_to_resolve();
+        						}
+        					};
+        
+        					const element = document.currentScript.parentElement;
+        
+        					import("./_app/immutable/entry/start.BkuCRlON.js").then(async (kit) => {
+        						kit.init(__sveltekit_r4v5jx);
+        						const app = await import("./_app/immutable/entry/app.4_7bb8YH.js");
+        						kit.start(app, element, {
+        							node_ids: [0, 2],
+        							data: [null,{type:"data",data:{later:__sveltekit_r4v5jx.defer(1),order:{again:3000,initializations:1,quantity:3,total:3000}},uses:{}}],
+        							error: null,
+        							form: null
+        						});
+        					});
+        				}
+        			</script>
+        		</body></html>
+        <script>__sveltekit_r4v5jx.resolve(1, () => [3000])</script>
+         Error: Diagnostic: Headers:map[Cache-Control:[private, no-cache] Content-Type:[text/html; charset=utf-8] Date:[Thu, 15 Oct 2026 20:29:46 GMT] Vary:[Accept] X-Sveltekit-Page:[true] X-Sveltekit-Version:[1792096174796]]}; want status 200 body "<h1>Order total 4200</h1>" stable PID/init1
+--- FAIL: TestRetainedWholeApplicationQualification (13.45s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/hotreload	13.797s
+FAIL
