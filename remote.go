@@ -471,6 +471,10 @@ func DecodeForm(arg any, into any) error {
 // RemoteConfig describes the app the registry is serving. Everything but
 // Origin comes straight from the built manifest.
 type RemoteConfig struct {
+	// Development mirrors Kit's development dispatch for prerender remotes.
+	// Production registries serve only their recorded static artifacts.
+	Development bool
+
 	// AppDir is kit's appDir; empty means "_app".
 	AppDir string
 	// Base is kit's paths.base, without a trailing slash.
@@ -512,13 +516,14 @@ type RemoteConfig struct {
 // RemoteConfig derives a registry configuration from a build manifest.
 func (m Manifest) RemoteConfig(origin string) RemoteConfig {
 	return RemoteConfig{
-		AppDir:   m.AppDir,
-		Base:     m.Base,
-		Version:  m.Version,
-		Origin:   origin,
-		Remotes:  m.Remotes,
-		Routes:   m.Routes,
-		manifest: true,
+		Development: m.Development,
+		AppDir:      m.AppDir,
+		Base:        m.Base,
+		Version:     m.Version,
+		Origin:      origin,
+		Remotes:     m.Remotes,
+		Routes:      m.Routes,
+		manifest:    true,
 	}
 }
 
@@ -695,7 +700,7 @@ func (rs *Remotes) Intercept(next http.Handler) http.Handler {
 		if strings.HasPrefix(r.URL.Path, rs.prefix) {
 			// Kit's prerender function writes a static response at this path.
 			// The static handler owns it, including a missing asset's 404.
-			if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			if !rs.cfg.Development && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
 				rest := strings.TrimPrefix(r.URL.Path, rs.prefix)
 				parts := strings.Split(rest, "/")
 				if len(parts) >= 2 {
@@ -759,8 +764,39 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case KindForm:
 		rs.serveForm(w, r, fn)
 	case KindPrerender:
-		rs.writeError(w, notFound())
+		if rs.cfg.Development {
+			payload := ""
+			if len(parts) > 2 {
+				payload = parts[2]
+			}
+			rs.servePrerender(w, r, fn, payload)
+		} else {
+			rs.writeError(w, notFound())
+		}
 	}
+}
+
+// servePrerender mirrors Kit's development handler: its argument is the
+// third path segment, not query's payload parameter. The normal immutable
+// remote event and result envelope retain transport, errors and redirects.
+func (rs *Remotes) servePrerender(w http.ResponseWriter, r *http.Request, fn *Remote, payload string) {
+	call, err := rs.parsePayload(payload)
+	if err != nil {
+		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
+		return
+	}
+	event := rs.newEvent(r, false)
+	value, err := rs.call(withEvent(r.Context(), event), fn, call)
+	if err != nil {
+		if redirect := asRedirect(err); redirect != nil {
+			rs.writeResult(w, event, map[string]any{"redirect": redirect.Location})
+			return
+		}
+		rs.writeError(w, asHTTPError(err))
+		return
+	}
+	key := fn.id + "/" + payload
+	rs.writeResult(w, event, map[string]any{"_": value, "p": map[string]any{key: map[string]any{"v": value}}})
 }
 
 // notFound reproduces the body kit's `error(404)` produces.
