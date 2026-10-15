@@ -100,16 +100,11 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	}
 	// Package loading uses only the immutable selected tree. Production source is
 	// never rewritten and generated native support exists only in HostView.
-	cfg := &packages.Config{Context: ctx, Dir: o.Inputs.Dir, Env: tc.command(ctx, o.Inputs.Dir).Env, Mode: packages.NeedEmbedFiles | packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
+	cfg := &packages.Config{Context: ctx, Dir: o.Inputs.Dir, Env: tc.command(ctx, o.Inputs.Dir).Env, Mode: packages.NeedEmbedPatterns | packages.NeedEmbedFiles | packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
 	roots, err := packages.Load(cfg, "./...")
 	if err != nil {
 		return nil, err
 	}
-	packages.Visit(roots, nil, func(p *packages.Package) {
-		for _, name := range p.EmbedFiles {
-			h.resources[name] = true
-		}
-	})
 	var constructors []*packages.Package
 	for _, p := range roots {
 		if p.Name != "main" && (o.HandlerPackage == "" || p.PkgPath == o.HandlerPackage) {
@@ -129,6 +124,28 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	h.application = []string{app.PkgPath}
 	var executable []*packages.Package
 	packages.Visit([]*packages.Package{app}, nil, func(p *packages.Package) { executable = append(executable, p) })
+
+	for _, p := range executable {
+		for _, name := range p.EmbedFiles {
+			h.resources[name] = true
+		}
+		for _, pattern := range p.EmbedPatterns {
+			pattern = strings.Replace(pattern, string(filepath.Separator)+"all:", string(filepath.Separator), 1)
+			prefix := pattern
+			if wildcard := strings.IndexAny(pattern, "*?["); wildcard >= 0 {
+				prefix = filepath.Dir(pattern[:wildcard])
+				if strings.HasSuffix(pattern[:wildcard], string(filepath.Separator)) {
+					prefix = filepath.Clean(pattern[:wildcard])
+				}
+			} else {
+				info, err := os.Stat(prefix)
+				if err != nil || !info.IsDir() {
+					continue
+				}
+			}
+			h.resources[prefix+string(filepath.Separator)] = true
+		}
+	}
 	for _, p := range executable {
 		if len(p.Errors) > 0 {
 			return nil, fmt.Errorf("load captured application %s: %v", p.PkgPath, p.Errors)
@@ -364,7 +381,7 @@ func (h *Host) Prepare(ctx context.Context, next *gen.CompilerInputs, outputDir 
 	for path, b := range next.Files() {
 		base, ok := h.authored[capturedKey(next, path)]
 		if !ok {
-			if !nativeInput(path, h.resources) {
+			if !nativeInput(h.inputs.PrivatePath(next.AuthoredPath(path)), h.resources) {
 				continue
 			}
 			return nil, &CompleteBuild{"application file membership changed"}
@@ -538,5 +555,10 @@ func capturedKey(i *gen.CompilerInputs, path string) string {
 	return key
 }
 func nativeInput(path string, resources map[string]bool) bool {
-	return strings.HasSuffix(path, ".go") || filepath.Base(path) == "go.mod" || filepath.Base(path) == "go.sum" || resources[path]
+	for scope := range resources {
+		if strings.HasSuffix(scope, string(filepath.Separator)) && strings.HasPrefix(path, scope) {
+			return true
+		}
+	}
+	return resources[path] || strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") || filepath.Base(path) == "go.mod" || filepath.Base(path) == "go.sum"
 }

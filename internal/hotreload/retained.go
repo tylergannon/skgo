@@ -36,6 +36,7 @@ func (q *retainedApplication) Load(c *packages.Config, patterns ...string) ([]*p
 		files[p] = b
 	}
 	if q.view == nil {
+		q.session.SetMaxUniverses(4)
 		q.view = q.session.PrepareView(files)
 	} else if e = q.view.Update(files); e != nil {
 		return nil, e

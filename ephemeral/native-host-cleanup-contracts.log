@@ -1,0 +1,77 @@
+=== RUN   TestCapturedNativeHTTPHost
+--- PASS: TestCapturedNativeHTTPHost (15.51s)
+=== RUN   TestGeneratedNativeState
+=== RUN   TestGeneratedNativeState/AliasRetention
+=== RUN   TestGeneratedNativeState/PrimitiveAlias
+=== RUN   TestGeneratedNativeState/LocalString
+=== NAME  TestGeneratedNativeState
+    native_test.go:211: native host: go1.27.2 darwin/arm64, CGO_ENABLED=0, no C compiler
+    native_test.go:232: === RUN   TestProcessAndLibraryLookup
+        --- PASS: TestProcessAndLibraryLookup (0.00s)
+        PASS
+        ok  	github.com/pkujhd/goloader/libdl	0.119s
+        === RUN   TestAbsentAndZeroStackObjectMetadata
+        --- PASS: TestAbsentAndZeroStackObjectMetadata (0.00s)
+        PASS
+        ok  	github.com/pkujhd/goloader/stackobject	0.102s
+    native_test.go:331: mutate: {Total:4200 Again:4200 Summary:4200 Initializations:1 Quantity:3 PID:38819 Identity:true Refreshed:true Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: hold: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:4200 Again:4200 Summary:4200 Initializations:1 Quantity:3 PID:38819 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error:host replacement required: missing host storage: example.com/nativefixture/generated/links/onzggl3sn52xizltf5xxezdfojzq.unusedStorage Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error:host replacement required: missing host storage: example.com/nativefixture/generated/links/onzggl3sn52xizltf5xxezdfojzq.unusedStorage Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:4200 Again:4200 Summary:4200 Initializations:1 Quantity:3 PID:38819 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:3780 Again:3780 Summary:3780 Initializations:1 Quantity:3 PID:38819 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: release: {Total:4200 Again:4200 Summary:0 Initializations:1 Quantity:3 PID:38819 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:3360 Again:3360 Summary:3360 Initializations:1 Quantity:3 PID:38819 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: mutate: {Total:3360 Again:3360 Summary:3360 Initializations:1 Quantity:3 PID:38819 Identity:true Refreshed:true Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error:host replacement required: retained revision budget exhausted Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error:host replacement required: retained revision budget exhausted Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:3360 Again:3360 Summary:3360 Initializations:1 Quantity:3 PID:38819 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: finish: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+--- PASS: TestGeneratedNativeState (12.50s)
+    --- PASS: TestGeneratedNativeState/AliasRetention (0.99s)
+    --- PASS: TestGeneratedNativeState/PrimitiveAlias (1.27s)
+    --- PASS: TestGeneratedNativeState/LocalString (1.07s)
+=== RUN   TestGeneratedNativeLifetime
+=== RUN   TestGeneratedNativeLifetime/AliasRetention
+=== RUN   TestGeneratedNativeLifetime/PrimitiveAlias
+=== RUN   TestGeneratedNativeLifetime/LocalString
+=== NAME  TestGeneratedNativeLifetime
+    native_test.go:211: native host: go1.27.2 darwin/arm64, CGO_ENABLED=0, no C compiler
+    native_test.go:232: === RUN   TestProcessAndLibraryLookup
+        --- PASS: TestProcessAndLibraryLookup (0.00s)
+        PASS
+        ok  	github.com/pkujhd/goloader/libdl	0.110s
+        === RUN   TestAbsentAndZeroStackObjectMetadata
+        --- PASS: TestAbsentAndZeroStackObjectMetadata (0.00s)
+        PASS
+        ok  	github.com/pkujhd/goloader/stackobject	0.104s
+    native_test.go:331: mutate: {Total:4200 Again:4200 Summary:4200 Initializations:1 Quantity:3 PID:39562 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:3780 Again:3780 Summary:3780 Initializations:1 Quantity:3 PID:39562 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: snapshot: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[{Base:5119197184 Size:4096 Object:4246740953701296935 Mapped:true} {Base:5119213568 Size:8192 Object:12002867592509716593 Mapped:true}] Saved:0 Backing:0}
+    native_test.go:331: hold: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:3360 Again:3360 Summary:3360 Initializations:1 Quantity:3 PID:39562 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: release: {Total:3780 Again:3780 Summary:0 Initializations:1 Quantity:3 PID:39562 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:407: released native ranges: [{Base:5119197184 Size:4096 Object:4246740953701296935 Mapped:false} {Base:5119213568 Size:8192 Object:12002867592509716593 Mapped:false}]
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:2940 Again:2940 Summary:2940 Initializations:1 Quantity:3 PID:39562 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: snapshot: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[{Base:5119197184 Size:4096 Object:1826779851686505591 Mapped:true} {Base:5119213568 Size:8192 Object:15275780844375400900 Mapped:true}] Saved:71 Backing:5119197728}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:3360 Again:3360 Summary:3360 Initializations:1 Quantity:3 PID:39562 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:445: retained closure after swap/GC: value=71 address=13120c220 ranges=[{Base:5119197184 Size:4096 Object:1826779851686505591 Mapped:true} {Base:5119213568 Size:8192 Object:15275780844375400900 Mapped:true}]
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error:host replacement required: retained revision budget exhausted Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: install: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error:host replacement required: retained revision budget exhausted Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: check: {Total:3360 Again:3360 Summary:3360 Initializations:1 Quantity:3 PID:39562 Identity:true Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+    native_test.go:331: finish: {Total:0 Again:0 Summary:0 Initializations:0 Quantity:0 PID:0 Identity:false Refreshed:false Error: Ranges:[] Saved:0 Backing:0}
+--- PASS: TestGeneratedNativeLifetime (10.89s)
+    --- PASS: TestGeneratedNativeLifetime/AliasRetention (1.20s)
+    --- PASS: TestGeneratedNativeLifetime/PrimitiveAlias (0.86s)
+    --- PASS: TestGeneratedNativeLifetime/LocalString (0.88s)
+=== RUN   TestRetainedApplicationCallerAndDependencyGuards
+--- PASS: TestRetainedApplicationCallerAndDependencyGuards (0.10s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/hotreload	39.267s

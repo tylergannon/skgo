@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/tylergannon/skgo/internal/gen"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -57,9 +58,13 @@ var _=skgo.GET(get)
 `
 	write("web/src/routes/orders/server.go", source)
 	write("web/src/routes/second/server.go", strings.ReplaceAll(strings.Replace(source, "package orders", "package second", 1), "4101", "8808"))
+	write("assets/one.txt", "asset-one")
+	write("assets/keep.txt", "keep-member")
 	write("server.go", `package nativehost
-import("io/fs";"net/http";"github.com/tylergannon/skgo";generated "example.com/nativehost/generated")
-func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.NewEndpoints(skgo.EndpointConfig{Origin:origin,Routes:[]skgo.ManifestRoute{{ID:"/orders",Pattern:"^/orders/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}},{ID:"/second",Pattern:"^/second/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}}}},generated.Endpoints()...);if e!=nil{return nil,e};return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-App-Hook","preserved");endpoints.Intercept(http.NotFoundHandler()).ServeHTTP(w,r)}),nil}
+import("embed";"io/fs";"net/http";"github.com/tylergannon/skgo";generated "example.com/nativehost/generated")
+//go:embed assets
+var resources embed.FS
+func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.NewEndpoints(skgo.EndpointConfig{Origin:origin,Routes:[]skgo.ManifestRoute{{ID:"/orders",Pattern:"^/orders/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}},{ID:"/second",Pattern:"^/second/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}}}},generated.Endpoints()...);if e!=nil{return nil,e};return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){data,_:=resources.ReadFile("assets/one.txt");w.Header().Set("X-Resource",string(data));w.Header().Set("X-App-Hook","preserved");endpoints.Intercept(http.NotFoundHandler()).ServeHTTP(w,r)}),nil}
 `)
 
 	project, err := gen.OpenProject(gen.Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "generated"), LocalsPackage: "example.com/nativehost/locals", LocalsType: "Locals", CacheDir: "off"})
@@ -90,7 +95,7 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.New
 		}
 		defer response.Body.Close()
 		body, e := io.ReadAll(response.Body)
-		if e != nil || response.StatusCode != 200 || string(body) != want || response.Header.Get("X-App-Hook") != "preserved" || response.Header.Get("X-Literal") != "native-hook" {
+		if e != nil || response.StatusCode != 200 || string(body) != want || response.Header.Get("X-App-Hook") != "preserved" || response.Header.Get("X-Literal") != "native-hook" || response.Header.Get("X-Resource") != "asset-one" {
 			t.Fatalf("real handler got status=%d body=%q headers=%v err=%v; want %q", response.StatusCode, body, response.Header, e, want)
 		}
 	}
@@ -112,6 +117,24 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.New
 	if u, err := host.Prepare(ctx, frontend.Inputs, filepath.Join(work, "frontend")); err != nil || u != nil {
 		t.Fatalf("frontend-only edit compiled Go: %v, %v", u, err)
 	}
+
+	testOnlyPath := filepath.Join(app, "server_test.go")
+	for _, body := range []string{"package nativehost\n// initial test-only source\n", "package nativehost\n// changed test-only source\n", ""} {
+		if body == "" {
+			if err := os.Remove(testOnlyPath); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			write("server_test.go", body)
+		}
+		if _, _, err := project.Observe(ctx, testOnlyPath); err != nil {
+			t.Fatal(err)
+		}
+		testsOnly := prepare()
+		if u, err := host.Prepare(ctx, testsOnly.Inputs, filepath.Join(work, "tests-only")); err != nil || u != nil {
+			t.Fatalf("test-only source changed served executable: %v, %v", u, err)
+		}
+	}
 	edit := func(next string) *gen.ProjectBuild {
 		t.Helper()
 		write("web/src/routes/orders/server.go", next)
@@ -120,7 +143,7 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.New
 		}
 		return prepare()
 	}
-	for n, literal := range []string{"5202", "6303"} {
+	for n, literal := range []string{"5202", "6303", "6404", "6505", "6606", "6707"} {
 		b := edit(strings.Replace(source, "4101", literal, 1))
 		u, e := host.Prepare(ctx, b.Inputs, filepath.Join(work, fmt.Sprintf("candidate-%d", n)))
 		if e != nil {
@@ -144,7 +167,7 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.New
 	if err := host.Install(ctx, secondUpdate); err != nil {
 		t.Fatal(err)
 	}
-	check(host, "literal-6303:7")
+	check(host, "literal-6707:7")
 	response, err = http.Get(host.URL + "/second")
 	if err != nil {
 		t.Fatal(err)
@@ -153,6 +176,33 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.New
 	response.Body.Close()
 	if err != nil || string(secondBody) != "literal-9909:7" {
 		t.Fatalf("second package update body%q err%v", secondBody, err)
+	}
+
+	for _, resource := range []struct{ name, body string }{{"assets/one.txt", "asset-changed"}, {"assets/new.txt", "new-member"}, {"assets/one.txt", ""}} {
+		if resource.body == "" {
+			if err := os.Remove(filepath.Join(app, resource.name)); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			write(resource.name, resource.body)
+		}
+		if _, _, err := project.Observe(ctx, filepath.Join(app, resource.name)); err != nil {
+			t.Fatal(err)
+		}
+		changedResource := prepare()
+		_, err := host.Prepare(ctx, changedResource.Inputs, filepath.Join(work, "resource"))
+		var rebuild *CompleteBuild
+		if !errors.As(err, &rebuild) {
+			t.Fatalf("embedded resource admitted without rebuilding: %s, %v", resource.name, err)
+		}
+		if resource.name == "assets/one.txt" {
+			write(resource.name, "asset-one")
+		} else if err := os.Remove(filepath.Join(app, resource.name)); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := project.Observe(ctx, filepath.Join(app, resource.name)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	b := edit(strings.Replace(source, "initial=7", "initial=9", 1))
 	if _, err = host.Prepare(ctx, b.Inputs, filepath.Join(work, "structural")); err == nil {
@@ -181,4 +231,47 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.New
 		t.Fatal(err)
 	}
 	check(replacement, "literal-7407:9")
+	// Replacement must retire the actual OS process and listener, including
+	// after retained compilation allocated its private source view.
+	retired := func(h *Host) {
+		t.Helper()
+		if err := h.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := h.Close(); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case <-h.Done():
+		default:
+			t.Fatal("closed native process has not exited")
+		}
+		if h.cmd.ProcessState == nil {
+			t.Fatal("native child was not reaped")
+		}
+		for _, pipe := range []*os.File{h.commands, h.replies} {
+			if _, err := pipe.Stat(); !errors.Is(err, os.ErrClosed) {
+				t.Fatalf("native control pipe remains open: %v", err)
+			}
+		}
+		connection, err := net.DialTimeout("tcp", strings.TrimPrefix(h.URL, "http://"), 200*time.Millisecond)
+		if err == nil {
+			connection.Close()
+			t.Fatal("retired native listener still accepts connections")
+		}
+	}
+	retired(host)
+	third, err := BuildHost(ctx, HostOptions{Inputs: repaired.Inputs, WorkDir: filepath.Join(work, "third"), Origin: "http://localhost", DistDir: work, Output: os.Stderr})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer third.Close()
+	if third.PID == replacement.PID || third.PID == host.PID {
+		t.Fatal("second replacement reused an existing child")
+	}
+	check(third, "literal-7407:9")
+	retired(replacement)
+	check(third, "literal-7407:9")
+	retired(third)
+
 }
