@@ -27,6 +27,7 @@ func TestBuildReusesCurrentOutputsAndRebuildsChanges(t *testing.T) {
 	write("web/src/page.svelte", "original")
 	write("web/node_modules/.bin/vp", "fixture")
 	write("server.go", "package app")
+	write("web/build/.gitkeep", "")
 	var builds, installs, generations, nativeGenerations int
 	moduleData := []byte(`{"Path":"fixture"}`)
 	fail := false
@@ -58,6 +59,9 @@ func TestBuildReusesCurrentOutputsAndRebuildsChanges(t *testing.T) {
 		if fail {
 			return nil, fmt.Errorf("frontend failed")
 		}
+		if err := os.RemoveAll(filepath.Join(root, "web/build")); err != nil {
+			return nil, err
+		}
 		write("web/build/skgo.manifest.json", `{"version":1}`)
 		write("web/build/page.html", "built page")
 		return nil, nil
@@ -71,6 +75,9 @@ func TestBuildReusesCurrentOutputsAndRebuildsChanges(t *testing.T) {
 	build()
 	if builds != 1 || installs != 1 || generations != 1 {
 		t.Fatalf("initial work: %d %d %d", builds, installs, generations)
+	}
+	if _, err := os.Stat(filepath.Join(root, "web/build/.gitkeep")); err != nil {
+		t.Fatal("build removed tracked embed placeholder")
 	}
 	manifest := filepath.Join(root, "web/build/skgo.manifest.json")
 	old := time.Unix(1000, 0)

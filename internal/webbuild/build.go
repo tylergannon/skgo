@@ -100,8 +100,15 @@ func Build(root string, out io.Writer, run Runner) error {
 	if err != nil {
 		return err
 	}
+	keepPath := filepath.Join(web, "build/.gitkeep")
+	keep, keepErr := os.ReadFile(keepPath)
 	if _, err := run(web, nil, filepath.Join(web, "node_modules/.bin/vp"), "build"); err != nil {
 		return err
+	}
+	if keepErr == nil {
+		if err := os.WriteFile(keepPath, keep, 0644); err != nil {
+			return err
+		}
 	}
 	manifest, err = os.Stat(filepath.Join(web, "build/skgo.manifest.json"))
 	if err != nil {
@@ -247,7 +254,8 @@ func treeHash(root string, inputs bool) (string, error) {
 			return nil
 		}
 		if inputs && d.IsDir() && path != root {
-			if filepath.ToSlash(rel) == "web/build" || filepath.ToSlash(rel) == "native/build" {
+			normalized := filepath.ToSlash(rel)
+			if normalized == "web/build" || normalized == "native/build" || strings.HasSuffix(normalized, "/web/build") || strings.HasSuffix(normalized, "/native/build") {
 				return filepath.SkipDir
 			}
 			switch d.Name() {
