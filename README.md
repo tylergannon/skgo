@@ -486,8 +486,10 @@ go tool skgo native build --platform iphone
 ```
 
 Release tooling can use `--prepare-only` to generate bindings, native libraries
-and the Xcode project without compiling a Debug app. `--reuse-web-build` uses an
-existing frontend build whose source revision the caller must match. `--jobs 4`
+and the Xcode project without compiling a Debug app. Frontend outputs and native
+compiler caches are reused automatically; there is no reuse flag. `skgo build`
+uses the same incremental frontend preparation. Delete `.skgo/` to invalidate
+frontend freshness, or `native/build/` to remove native compiler caches. `--jobs 4`
 limits Zig and Xcode build workers; Go honors its usual `GOFLAGS` and `GOMAXPROCS`.
 
 `native/skgo-native.json` is the application configuration (`nativeapp.Config`).

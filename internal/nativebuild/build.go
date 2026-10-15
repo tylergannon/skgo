@@ -3,6 +3,7 @@
 package nativebuild
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,14 +17,15 @@ import (
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/templates"
+	"github.com/tylergannon/skgo/internal/webbuild"
 	"github.com/tylergannon/skgo/nativeapp"
 )
 
 type Options struct {
-	Root, Platform, Preset     string
-	Out                        io.Writer
-	PrepareOnly, ReuseWebBuild bool
-	Jobs                       int
+	Root, Platform, Preset string
+	Out                    io.Writer
+	PrepareOnly            bool
+	Jobs                   int
 }
 
 var component = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
@@ -41,7 +43,10 @@ func Build(ctx context.Context, o Options) error {
 		cmd.Dir = dir
 		cmd.Env = append(os.Environ(), env...)
 		var buf strings.Builder
-		cmd.Stdout = io.MultiWriter(&buf, o.Out)
+		cmd.Stdout = &buf
+		if name != "go" || len(args) == 0 || args[0] != "list" {
+			cmd.Stdout = io.MultiWriter(&buf, o.Out)
+		}
 		cmd.Stderr = o.Out
 		if err := cmd.Run(); err != nil {
 			return nil, fmt.Errorf("%s %s: %w", name, strings.Join(args, " "), err)
@@ -140,27 +145,8 @@ func build(o Options, run func(string, []string, string, ...string) ([]byte, err
 	if err := copySDK(filepath.Join(module.Dir, "native"), sdkRoot); err != nil {
 		return err
 	}
-	// Generate one shared Go/Swift projection using the native selection. The
-	// ordinary scaffold's locals and hook packages remain the integration points.
-	args := []string{"tool", "skgo", "generate", "--web", p.Web, "--out", filepath.Join(p.Root, "internal/skgo"), "--locals-package", p.Module + "/internal/app", "--hook-package", p.Module + "/internal/serverhooks"}
-	if len(c.SwiftRemotes) > 0 {
-		args = append(args, "--swift-out", filepath.Join(p.Root, "native/Generated.swift"))
-	}
-	for _, remote := range c.SwiftRemotes {
-		args = append(args, "--swift-remote", remote)
-	}
-	if _, err := run(p.Root, nil, "go", args...); err != nil {
+	if err := webbuild.Build(p.Root, o.Out, run); err != nil {
 		return err
-	}
-	if o.ReuseWebBuild {
-		manifest, err := os.Stat(filepath.Join(p.Web, "build/skgo.manifest.json"))
-		if err != nil || !manifest.Mode().IsRegular() || manifest.Size() == 0 {
-			return fmt.Errorf("--reuse-web-build requires a built frontend at %s", filepath.Join(p.Web, "build/skgo.manifest.json"))
-		}
-	} else {
-		if _, err := run(p.Web, []string{"ORIGIN=http://127.0.0.1"}, filepath.Join(p.Web, "node_modules/.bin/vp"), "build"); err != nil {
-			return err
-		}
 	}
 	zigArgs := []string{"-C", filepath.Join(sdkRoot, "core"), "exec", "--", "zig", "build", "library", "-Dtarget=" + zigTarget, "-Doptimize=ReleaseFast"}
 	if o.Jobs > 0 {
@@ -178,7 +164,7 @@ func build(o Options, run func(string, []string, string, ...string) ([]byte, err
 		return err
 	}
 	archive := filepath.Join(out, "skgo-host.a")
-	args = []string{"build", "-buildmode=c-archive", "-o", archive}
+	args := []string{"build", "-buildmode=c-archive", "-o", archive + ".tmp"}
 	if len(preset.GoTags) > 0 {
 		args = append(args, "-tags", strings.Join(preset.GoTags, ","))
 	}
@@ -187,12 +173,20 @@ func build(o Options, run func(string, []string, string, ...string) ([]byte, err
 	if _, err := run(p.Root, env, "go", args...); err != nil {
 		return err
 	}
+	if data, err := os.ReadFile(archive + ".tmp"); err != nil {
+		return err
+	} else if err := writeChanged(archive, data, 0644); err != nil {
+		return err
+	}
+	if err := os.Remove(archive + ".tmp"); err != nil {
+		return err
+	}
 	data, err = json.MarshalIndent(spec, "", "  ")
 	if err != nil {
 		return err
 	}
 	specPath := filepath.Join(out, "project.json")
-	if err := os.WriteFile(specPath, data, 0644); err != nil {
+	if err := writeChanged(specPath, data, 0644); err != nil {
 		return err
 	}
 	if _, err := run(p.Root, nil, "mise", "-C", sdkRoot, "exec", "--", "xcodegen", "generate", "--no-env", "--spec", specPath, "--project", out); err != nil {
@@ -291,12 +285,10 @@ func projectSpec(root, name, out, sdk, platform, minVersion string, c nativeapp.
 	return map[string]any{"name": name, "packages": packages, "targets": map[string]any{name: target}}, nil
 }
 func copySDK(source, dest string) error {
-	// This location is disposable build output. Replace stale SDK artifacts when
-	// the application changes skgo versions; never compile inside the module cache.
-	if err := os.RemoveAll(dest); err != nil {
-		return err
-	}
-	return filepath.WalkDir(source, func(path string, d fs.DirEntry, err error) error {
+	// Synchronize SDK source without changing identical compiler inputs or
+	// deleting compiler-owned caches. Remove source deleted by an SDK upgrade.
+	files := map[string]bool{}
+	err := filepath.WalkDir(source, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -308,7 +300,11 @@ func copySDK(source, dest string) error {
 			if d.Name() == ".build" || d.Name() == ".zig-cache" || d.Name() == "zig-out" || d.Name() == "zig-pkg" || d.Name() == "node_modules" {
 				return filepath.SkipDir
 			}
-			return os.MkdirAll(filepath.Join(dest, rel), 0755)
+			target := filepath.Join(dest, rel)
+			if info, err := os.Lstat(target); err == nil && info.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf("native SDK output contains a symlink: %s", target)
+			}
+			return os.MkdirAll(target, 0755)
 		}
 		if d.Type()&os.ModeSymlink != 0 {
 			return fmt.Errorf("native SDK contains a symlink: %s", rel)
@@ -317,6 +313,40 @@ func copySDK(source, dest string) error {
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(filepath.Join(dest, rel), b, 0644)
+		files[rel] = true
+		return writeChanged(filepath.Join(dest, rel), b, 0644)
 	})
+	if err != nil {
+		return err
+	}
+	return filepath.WalkDir(dest, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".build", ".zig-cache", "zig-out", "zig-pkg", "node_modules", ".swiftpm":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		rel, err := filepath.Rel(dest, path)
+		if err != nil {
+			return err
+		}
+		if !files[rel] {
+			return os.Remove(path)
+		}
+		return nil
+	})
+}
+
+func writeChanged(path string, data []byte, mode fs.FileMode) error {
+	if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("native output contains a symlink: %s", path)
+	}
+	if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, data) {
+		return nil
+	}
+	return os.WriteFile(path, data, mode)
 }
