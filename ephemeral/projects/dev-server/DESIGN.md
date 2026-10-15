@@ -18,7 +18,7 @@ My appraisal: **the central feasibility questions are answered; architecture-wid
 
 The user requested proof-of-concept experiments carried out by subagents, with evidence sufficient to select an architecture. The user permitted choosing the obvious listener recommendation. I incorrectly expanded that into full product implementation and a growing qualification campaign. That expansion was not authorized by the listener choice.
 
-Further implementation and new experiments have stopped. Already-running checks were allowed to finish; agents were not cancelled. Code and evidence remain preserved, unmerged. This document consolidates the design and assesses the evidence; it is not authorization to resume implementation.
+Product implementation remains stopped. The user subsequently explicitly resumed bounded architecture de-risking through subagents, to obtain a design executable by smaller models. Current overlap and visible-latency experiments are governed by PLAN; their pending results do not yet change this evidence appraisal. Code remains preserved, unmerged.
 
 [GOAL.md](GOAL.md) remains authoritative. Older plans, reports and index entries record historical positions and may say that a question was undecided or that implementation should continue. This scope correction and the current assessment supersede those descriptions. Candidate tactics are not requirements simply because they were tried or written down.
 
@@ -271,7 +271,7 @@ Implementation work exceeded the intended POC scope. It includes:
 
 Some work is locally committed, including `7fa4bc6` (native host API), `69038f2` (native bounds/admission/cleanup) and `78f02f5` (development prerender behavior); coordinator/adapter work also remains uncommitted. None of this is represented here as a reviewed merge-ready delivery. No PR or merge is part of this assessment.
 
-The authorized endpoint is this consolidated design and evidence appraisal. No further product edits, benchmark campaigns or regression runs are started by writing it. Existing work remains available if the user later chooses to adopt, revise or discard it.
+The authorized endpoint is a valid, evidence-backed architecture executable by smaller models. The resumed bounded overlap and visible-latency experiments must settle the remaining design questions and be integrated here. Product edits, broad benchmark campaigns and final product regression remain outside that mission. Existing product work remains available for later adoption, revision or removal.
 
 ## Evidence map
 
