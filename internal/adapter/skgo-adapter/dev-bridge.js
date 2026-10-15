@@ -147,12 +147,15 @@ function exceptional(answer) {
   if (answer.failure && typeof answer.failure === "string")
     throw new Error(answer.failure);
 }
-const owner = (event) => event.platform?.skgoRequestHandle;
+// Kit traces handle by shallow-copying the event, while fetch closes over
+// the original. Its locals object is the shared request-owned identity.
+const requestOwner = Symbol("skgo development request owner");
+const owner = (event) =>
+  event.locals?.[requestOwner] ?? event.platform?.skgoRequestHandle;
 export async function load(module, event) {
   const metadata = event.untrack(() => ({
     url: event.url.href,
     routeId: event.route.id,
-    params: { ...event.params },
     parent: event.parent(),
   }));
   const response = await call(
@@ -433,7 +436,6 @@ export async function requestHandle(event, resolve) {
             "base64",
           ),
       routeId: event.route.id ?? "",
-      params: event.params,
       isSubRequest: event.isSubRequest || internalFetch,
       fetchDepth,
       clientAddress: address ?? "",
@@ -457,8 +459,7 @@ export async function requestHandle(event, resolve) {
       await end();
       return response;
     }
-    event.platform ??= {};
-    event.platform.skgoRequestHandle = handle;
+    event.locals[requestOwner] = handle;
     const options = {};
     options.transformPageChunk = async ({ html, done }) => {
       if (answer.options?.transform) {
