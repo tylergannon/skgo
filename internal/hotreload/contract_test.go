@@ -81,7 +81,9 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	write("web/src/app.html", `<!doctype html><html><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>`)
 	write("web/src/hooks.go", `package hooks;import("github.com/tylergannon/skgo";"example.com/nativefixture/internal/app");var _=skgo.Transported[app.Money]("Money")`)
 	write("web/src/hooks.ts", `export const transport={Money:{encode:()=>false,decode:(value)=>value}};`)
-	write("web/src/routes/orders/+page.svelte", `<script>import "./orders.remote";import "./extra.remote";let {data}=$props();</script><h1>Order total {data.order.total}</h1><p>Again {data.order.again}; initialized {data.order.initializations}; quantity {data.order.quantity}</p>{#await data.later}<p>Waiting</p>{:then value}<p>Deferred {value}</p>{/await}`)
+	write("web/src/routes/orders/+page.svelte", `<script>import "./orders.remote";import "./extra.remote";let {data}=$props();</script><h1>Order total {data.order.total}</h1><p>Again {data.order.again}; initialized {data.order.initializations}; quantity {data.order.quantity}</p>{#if data.fetched}<p>Fetched {data.fetched}</p>{/if}{#await data.later}<p>Waiting</p>{:then value}<p>Deferred {value}</p>{/await}`)
+	write("web/src/routes/orders/+page.ts", `export const load=async({data,fetch,url})=>{if(!url.searchParams.has('render'))return data;const response=await fetch('/orders?raw=1&renderHold=1',{headers:{accept:'application/json'}});return {...data,fetched:await response.text()}};`)
+
 	source := strings.Replace(orderSource, "service.quantity=n", `service.quantity=n;if err:=event.SetCookie("quantity","3",skgo.CookieOptions{});err!=nil{return Order{},err}`, 1)
 	write("web/src/routes/orders/orders.remote.go", source)
 	write("web/src/routes/orders/page.server.go", contractPage)
@@ -341,6 +343,16 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	process.mustCall(t, contractCommand{Op: "install", Candidate: c90})
 	check("GET", "/orders?panic=1", "", "endpoint:3780:healthy", 200, jsonHeaders)
 	check("GET", "/orders", "", "<h1>Order total 3780</h1>", 200, html)
+	// A real Kit universal load calls fetch during the goja render. Hold its
+	// Go HandleFetch hook before internal dispatch, publish, then require both
+	// the earlier Go server load and this later fetch to use the old table.
+	process.mustCall(t, contractCommand{Op: "start", Path: "/orders?render=1", Headers: map[string]string{"Accept": "text/html", "X-Hold": "render"}})
+	process.mustCall(t, contractCommand{Op: "install", Candidate: c80})
+	rendered := process.mustCall(t, contractCommand{Op: "release"})
+	if rendered.Status != 200 || !strings.Contains(rendered.Body, "<h1>Order total 3780</h1>") || !strings.Contains(rendered.Body, "<p>Fetched endpoint:3780</p>") {
+		t.Fatalf("render-time fetch mixed enclosing revision: %+v", rendered)
+	}
+	check("GET", "/orders?render=1", "", "<p>Fetched endpoint-v2:3360</p>", 200, html)
 	process.stop()
 	// No restore step: development used private overlays/module declarations.
 	// Ordinary generation/build now consumes the exact same authored tree.
@@ -538,15 +550,15 @@ func main(){
  endpoints,err:=skgo.NewEndpoints(ec,generated.Endpoints()...);if err!=nil{panic(err)}
  actions,err:=skgo.NewActions(generated.Actions()...);if err!=nil{panic(err)}
  var handler http.Handler
+ var hold *orders.Hold
  internal:=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){handler.ServeHTTP(w,r)})
- renderer,err:=skgo.NewSSR(os.DirFS("web/build"),manifest,loads,remotes,skgo.SSROptions{Runtimes:2,Fetch:internal,Actions:actions});if err!=nil{panic(err)}
+ renderer,err:=skgo.NewSSR(os.DirFS("web/build"),manifest,loads,remotes,skgo.SSROptions{Runtimes:2,Fetch:internal,Actions:actions,HandleFetch:func(ctx context.Context,r *http.Request,next skgo.Fetch)(*http.Response,error){if r.URL.Query().Has("renderHold")&&hold!=nil{close(hold.Entered);<-hold.Release};return next(r)}});if err!=nil{panic(err)}
  pages,err:=skgo.NewStaticHandler(os.DirFS("web/build"),skgo.WithSSR(renderer));if err!=nil{panic(err)}
  endpoints.SetErrorTemplate(renderer.ErrorTemplate());hc.Origin="http://localhost";hc.Loads=loads;hc.Static=skgo.ServedAsFile(pages)
  app:=generated.RequestBoundary(hc,loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
  fetchConfig:=skgo.FetchConfig{Origin:"http://localhost",Handler:internal}
  // HOT_FETCH
  stack:=fetchConfig.Intercept(app)
- var hold *orders.Hold
  handler=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){switch r.Header.Get("X-Hold"){case "execution":r=r.WithContext(context.WithValue(r.Context(),"hold",hold));case "serialization":w=&heldWriter{ResponseWriter:w,hold:hold}};stack.ServeHTTP(w,r)})
  // HOT_HANDLER
  streamEntered,streamRelease:=make(chan struct{}),make(chan struct{})
@@ -563,7 +575,7 @@ func main(){
  case "request":result=request(c)
  case "install":if err:=install(c.Candidate);err!=nil{result.Error=err.Error()}
  case "start":hold=&orders.Hold{Entered:make(chan struct{}),Release:make(chan struct{})};if c.Headers["X-Hold"]=="deferred"{orders.DeferredGate=hold};go func(){old<-request(c)}();select{case<-hold.Entered:case<-time.After(5*time.Second):result.Error="held consumer did not enter"}
- case "release":close(hold.Release);select{case result=<-old:case<-time.After(5*time.Second):result.Error="held consumer did not complete"};orders.DeferredGate=nil
+ case "release":close(hold.Release);select{case result=<-old:case<-time.After(5*time.Second):result.Error="held consumer did not complete"};orders.DeferredGate=nil;hold=nil
  case "stream":go func(){streamDone<-request(command{Path:"/host-stream"})}();select{case<-streamEntered:case<-time.After(5*time.Second):result.Error="host stream did not enter"}
  case "endstream":close(streamRelease);select{case result=<-streamDone:case<-time.After(5*time.Second):result.Error="host stream did not complete"}
  case "diagnostics":mu.Lock();result.Diagnostic=diagnostic;mu.Unlock()

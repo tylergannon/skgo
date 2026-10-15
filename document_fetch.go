@@ -77,6 +77,12 @@ func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAn
 		filter = s.filterSerializedResponseHeaders
 	}
 	fetcher := &requestFetcher{handler: s.fetch, hook: s.handleFetch, base: s.base, prerendered: s.prerendered}
+	// A render belongs to the enclosing Go request's installed revision.
+	// Reuse only its host-lifetime carry hook; serve still creates a fresh
+	// event/locals context and keeps the renderer's own fetch configuration.
+	if enclosing, ok := ctx.Value(requestFetcherKey{}).(*requestFetcher); ok && enclosing != nil {
+		fetcher.carryContext = enclosing.carryContext
+	}
 	source := fetchSource{url: parent.url, request: parent.request, jar: parent.jar}
 	if source.jar == nil {
 		if event := EventFrom(ctx); event != nil {
