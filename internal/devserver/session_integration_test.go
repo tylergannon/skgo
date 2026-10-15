@@ -160,11 +160,16 @@ func NewHandler(dist fs.FS,origin string)(http.Handler,error){
 	check := func(s *session, label, body string) {
 		t.Helper()
 		deadline := time.Now().Add(75 * time.Second)
+		reported := false
 		for time.Now().Before(deadline) {
 			r, e := http.Get(s.origin + "/orders")
 			if e == nil {
 				b, _ := io.ReadAll(r.Body)
 				r.Body.Close()
+				if r.StatusCode >= 500 && !reported {
+					t.Logf("initial upstream failure status=%d body=%s\n%s", r.StatusCode, b, s.log.String())
+					reported = true
+				}
 				if r.StatusCode == 200 && string(b) == body && r.Header.Get("X-Session") == label && r.Header.Get("X-Origin") == s.origin {
 					return
 				}
