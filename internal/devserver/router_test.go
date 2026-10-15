@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -59,6 +60,9 @@ func TestPublicRouterUsesKitForPagesDataActionsEndpointsAndGoForRemotes(t *testi
 	}
 	raw, _ := io.ReadAll(res.Body)
 	res.Body.Close()
+	if got := res.Header.Values("X-Skgo-Mode"); !slices.Equal(got, []string{"dev"}) {
+		t.Fatalf("public mode headers = %q, want exactly one dev", got)
+	}
 	want := "GO731 POST " + strings.TrimPrefix(public.URL, "http://") + " draft=601 BODY983"
 	if res.StatusCode != 201 || string(raw) != want || len(res.Cookies()) != 2 {
 		t.Fatalf("status=%d body=%s cookies=%v", res.StatusCode, raw, res.Cookies())
@@ -82,6 +86,9 @@ func TestPublicRouterUsesKitForPagesDataActionsEndpointsAndGoForRemotes(t *testi
 		}
 		raw, _ := io.ReadAll(res.Body)
 		res.Body.Close()
+		if got := res.Header.Values("X-Skgo-Mode"); !slices.Equal(got, []string{"dev"}) {
+			t.Fatalf("public Kit mode headers = %q, want exactly one dev", got)
+		}
 		if string(raw) != "KIT419 "+path+" 127.0.0.1" {
 			t.Fatalf("Kit ownership/context: %s", raw)
 		}

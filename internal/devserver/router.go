@@ -57,9 +57,9 @@ func (r *router) setFrontend(socket string, _ []string) error {
 	return nil
 }
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("X-Skgo-Mode", "dev")
 	switch req.URL.Path {
 	case "/__skgo/dev/state", "/__skgo/dev/snapshot", "/__skgo/dev/published":
+		w.Header().Set("X-Skgo-Mode", "dev")
 		http.NotFound(w, req)
 		return
 	}
@@ -72,6 +72,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		upstream = r.app.Load()
 	}
 	unavailable := func(w http.ResponseWriter, _ *http.Request, e error) {
+		w.Header().Set("X-Skgo-Mode", "dev")
 		http.Error(w, "Development upstream unavailable", http.StatusServiceUnavailable)
 	}
 	if upstream == nil {
