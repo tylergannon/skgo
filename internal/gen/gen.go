@@ -45,7 +45,11 @@ type Config struct {
 	CacheDir    string
 	cache       *generationCache
 	kitMetadata *kitRouteMetadata
-	sourceView  *generationSourceView
+	// RouteMetadata supplies Kit-owned route discovery and frontend-validated
+	// matcher names. Generation validates the paired Go declarations.
+	RouteMetadata *RouteMetadata
+	sourceView    *generationSourceView
+	analysisView  *goload.View
 	// Packages contains immutable, caller-loaded package snapshots. Incompatible
 	// snapshots are ignored and the current sources are loaded normally.
 	Packages []*PackageSnapshot
@@ -206,6 +210,9 @@ func prepare(cfg Config) (prepared *Prepared, err error) {
 }
 
 func normalizeConfig(cfg Config) (Config, error) {
+	if cfg.RouteMetadata != nil && cfg.kitMetadata == nil {
+		cfg.kitMetadata = cloneRouteMetadata(cfg.RouteMetadata)
+	}
 	if cfg.Logf == nil {
 		cfg.Logf = func(string, ...any) {}
 	}

@@ -94,6 +94,9 @@ func acquireCacheSources(cfg Config) (cacheSources, error) {
 	cmd.Dir = host
 	data, err := cmd.Output()
 	if err != nil {
+		if exit, ok := err.(*exec.ExitError); ok {
+			return s, fmt.Errorf("skgo: reading Go modules: %w: %s", err, exit.Stderr)
+		}
 		return s, err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
@@ -206,7 +209,7 @@ func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte,
 					if roots[path] || cacheToolingDirectory(d.Name()) {
 						return filepath.SkipDir
 					}
-					if _, err := os.Stat(filepath.Join(path, "go.mod")); err == nil {
+					if data, err := os.ReadFile(filepath.Join(path, "go.mod")); err == nil && !cacheOwned(cfg, filepath.Join(path, "go.mod"), data) {
 						return filepath.SkipDir
 					}
 				}
@@ -392,7 +395,17 @@ func cacheOwned(cfg Config, path string, data []byte) bool {
 }
 
 func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, func(), error) {
-	root, err := os.MkdirTemp("", "skgo-analysis-")
+	return s.materializeIn(cfg, files, "")
+}
+
+// materializeIn also supports an owner-serialized analysis tree. Compiler
+// consumers always get a separate immutable materialize lease.
+func (s cacheSources) materializeIn(cfg Config, files map[string][]byte, root string) (Config, func(), error) {
+	var err error
+	owned := root == ""
+	if owned {
+		root, err = os.MkdirTemp("", "skgo-analysis-")
+	}
 	if err != nil {
 		return cfg, func() {}, err
 	}
@@ -402,7 +415,11 @@ func (s cacheSources) materialize(cfg Config, files map[string][]byte) (Config, 
 		return cfg, func() {}, err
 	}
 	root = canonical
-	cleanup := func() { _ = os.RemoveAll(root) }
+	cleanup := func() {
+		if owned {
+			_ = os.RemoveAll(root)
+		}
+	}
 	fail := func(err error) (Config, func(), error) { cleanup(); return cfg, func() {}, err }
 	materialized := map[string][]byte{}
 	view := &generationSourceView{roots: map[string]string{}, cgoPackages: map[string]bool{}}
