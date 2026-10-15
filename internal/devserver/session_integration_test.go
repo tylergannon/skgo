@@ -249,6 +249,28 @@ func NewHandler(dist fs.FS,origin string)(http.Handler,error){
 
 	check(alpha, "ALPHA", "literal-7407:9")
 
+	// A bad Go edit retains the running application, reports a real compiler
+	// diagnostic, and a repaired body can still take the native fast path.
+	beforeError := alpha.log.lastPID()
+	if err := os.WriteFile(route, []byte("package orders\nthis is invalid Go\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(30 * time.Second)
+	for !strings.Contains(alpha.log.String(), "expected declaration") && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if !strings.Contains(alpha.log.String(), "expected declaration") {
+		t.Fatalf("missing compiler diagnostic\n%s", alpha.log.String())
+	}
+	check(alpha, "ALPHA", "literal-7407:9")
+	if err := os.WriteFile(route, []byte(sessionRoute("8508", 9)), 0644); err != nil {
+		t.Fatal(err)
+	}
+	check(alpha, "ALPHA", "literal-8508:9")
+	if alpha.log.lastPID() != beforeError {
+		t.Fatalf("repair of compatible body replaced host\n%s", alpha.log.String())
+	}
+
 	// Recovering Vite keeps the Go process and stable public origin.
 	vitePID := alpha.log.vitePID()
 	if vitePID == 0 {
@@ -265,7 +287,7 @@ func NewHandler(dist fs.FS,origin string)(http.Handler,error){
 		t.Fatalf("Vite not restarted\n%s", alpha.log.String())
 	}
 
-	check(alpha, "ALPHA", "literal-7407:9")
+	check(alpha, "ALPHA", "literal-8508:9")
 	check(beta, "BETA", "literal-4101:7")
 	t.Logf("ALPHA\n%s\nBETA\n%s", alpha.log.String(), beta.log.String())
 }

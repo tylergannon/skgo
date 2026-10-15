@@ -176,23 +176,26 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 		cancel()
 		return prerenderRequestAnswer{}, fmt.Errorf("skgo: invalid logical request URL")
 	}
-	origin := pageURL.Scheme + "://" + pageURL.Host
-	endpointConfig := input.Manifest.EndpointConfig(origin)
-	endpointConfig.Matchers = s.options.Matchers
-	endpoints, err := NewEndpoints(endpointConfig, s.options.Endpoints...)
-	if err != nil {
-		cancel()
-		return prerenderRequestAnswer{}, err
+	if !s.development {
+		origin := pageURL.Scheme + "://" + pageURL.Host
+		endpointConfig := input.Manifest.EndpointConfig(origin)
+		endpointConfig.Matchers = s.options.Matchers
+		endpoints, err := NewEndpoints(endpointConfig, s.options.Endpoints...)
+		if err != nil {
+			cancel()
+			return prerenderRequestAnswer{}, err
+		}
+		entry.endpoints = endpoints
+		var fetchHandler http.Handler
+		dispatch := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), prerenderManifestKey{}, input.Manifest)
+			fetchHandler.ServeHTTP(w, r.WithContext(ctx))
+		})
+		fetchHandler = s.options.BindRequest(endpoints.Intercept(http.NotFoundHandler()))
+		fetcher := &requestFetcher{origin: pageURL, base: normalizeFetchBase(input.Manifest.Base), handler: dispatch}
+		request = request.WithContext(context.WithValue(request.Context(), requestFetcherKey{}, fetcher))
+
 	}
-	entry.endpoints = endpoints
-	var fetchHandler http.Handler
-	dispatch := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), prerenderManifestKey{}, input.Manifest)
-		fetchHandler.ServeHTTP(w, r.WithContext(ctx))
-	})
-	fetchHandler = s.options.BindRequest(endpoints.Intercept(http.NotFoundHandler()))
-	fetcher := &requestFetcher{origin: pageURL, base: normalizeFetchBase(input.Manifest.Base), handler: dispatch}
-	request = request.WithContext(context.WithValue(request.Context(), requestFetcherKey{}, fetcher))
 
 	token := make([]byte, 24)
 	if _, err := rand.Read(token); err != nil {
@@ -242,6 +245,9 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 	select {
 	case r := <-entry.ready:
 		entry.request = r
+		if s.development {
+			entry.request = r.WithContext(context.WithValue(r.Context(), devContinuationKey{}, nil))
+		}
 		if endpoints, ok := r.Context().Value(devEndpointsKey{}).(*Endpoints); ok {
 			entry.endpoints = endpoints
 		}

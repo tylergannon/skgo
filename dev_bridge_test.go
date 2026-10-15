@@ -233,3 +233,89 @@ func TestNativeDevelopmentActionResultsAndConfiguredErrorHook(t *testing.T) {
 	}
 	buildOperation(t, configured, "/_skgo/dev/end", map[string]string{"handle": handle}, nil)
 }
+
+func TestNativeDevelopmentEndpointManifestUsesOriginalRegistry(t *testing.T) {
+	manifest := Manifest{Remotes: []string{}, Loads: []string{}, Routes: []ManifestRoute{{ID: "/orders", Pattern: `^/orders/?$`, Endpoint: &ManifestEndpoint{Methods: []string{"GET"}}}}}
+	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	loads, err := NewLoads(manifest.LoadConfig("http://app.test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remotes, err := NewRemotes(manifest.RemoteConfig("http://app.test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = NewSSR(development, manifest, loads, remotes, SSROptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pages, err := NewStaticHandler(development)
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpoints, err := NewEndpoints(manifest.EndpointConfig("http://app.test"), NewEndpoint("/orders", "GET", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Original-Endpoint", "literal-718")
+		io.WriteString(w, "original-orders-502")
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Match the real generated-host fixture: its ordinary constructor declares
+	// endpoint routes, but does not install an outer FetchConfig.
+	app := endpoints.Intercept(pages)
+	handler, close, err := development.Handler(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer close()
+	var begin prerenderRequestAnswer
+	buildOperation(t, handler, "/_skgo/dev/begin", prerenderRequestInput{URL: "http://app.test/orders", LogicalURL: "http://app.test/orders", Method: "GET", RouteID: "/orders"}, &begin)
+	if !begin.Resolve {
+		t.Fatalf("begin: %+v", begin)
+	}
+	request := httptest.NewRequest("POST", "/_skgo/dev/endpoint", strings.NewReader(fmt.Sprintf(`{"handle":%q}`, begin.Handle)))
+	request.Header.Set("Authorization", "Bearer secret")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != 200 || response.Body.String() != "original-orders-502" || response.Header().Get("X-Original-Endpoint") != "literal-718" {
+		t.Fatalf("endpoint %d %v %s", response.Code, response.Header(), response.Body.String())
+	}
+	buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": begin.Handle}, nil)
+}
+
+func TestNativeDevelopmentDeferredValueArrivesAfterInitialData(t *testing.T) {
+	release := make(chan struct{})
+	load := NewServerLoad(LoadSpec{Module: "page", Run: func(ctx context.Context) (any, error) {
+		return map[string]any{"now": "literal-now-121", "later": Async(ctx, func(ctx context.Context) (string, error) {
+			select {
+			case <-release:
+				return "literal-later-934", nil
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
+		})}, nil
+	}})
+	handler, cleanup, _ := nativeFixture(t, load)
+	defer cleanup()
+	handle := beginNative(t, handler)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	request, _ := http.NewRequest("POST", server.URL+"/_skgo/dev/load", strings.NewReader(fmt.Sprintf(`{"handle":%q,"module":"page","url":"http://app.test/page"}`, handle)))
+	request.Header.Set("Authorization", "Bearer secret")
+	response, err := server.Client().Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	reader := bufio.NewReader(response.Body)
+	first, err := reader.ReadString('\n')
+	if err != nil || !strings.Contains(first, "literal-now-121") || strings.Contains(first, "literal-later-934") {
+		t.Fatalf("initial %q %v", first, err)
+	}
+	close(release)
+	next, err := reader.ReadString('\n')
+	if err != nil || !strings.Contains(next, `"id":1`) || !strings.Contains(next, "literal-later-934") {
+		t.Fatalf("deferred %q %v", next, err)
+	}
+	buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": handle}, nil)
+}
