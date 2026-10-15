@@ -1,6 +1,6 @@
 # SKGO development architecture: native Kit SSR with Go over Unix sockets
 
-**Decision: adopt native Vite/Kit SSR as the development direction. The two-UDS/public-proxy topology works in a bounded runtime experiment. A fetch override alone is not the complete Go application bridge.** Production remains Go with pooled goja rendering.
+**Decision: adopt native Vite/Kit SSR as the development direction. The two-UDS/public-proxy topology is implemented in ordinary `skgo dev`; joined qualification is in progress. A fetch override alone is not the complete Go application bridge.** Production remains Go with pooled goja rendering.
 
 Updated 2026-10-15 from the user's explicit direction and [linked discussion](codex://threads/01a141a2-423e-7360-9ab1-e17234bd620e). [GOAL](GOAL.md) controls. This records the architectural validation and implementation contract. The user authorized delegated implementation on 2026-10-15; it is not a claim that the product is complete. Earlier development-renderer experiments and their measurements are preserved in [the historical assessment](DESIGN-go-ssr-historical.md).
 
@@ -45,7 +45,7 @@ The basenames are constant; the directory is unique per concurrent instance. Res
 
 Go serves its existing HTTP interfaces on a Unix listener. Vite runs in supported middleware mode inside a Node HTTP server bound to `vite.sock`; Vite's WebSocket handler attaches to that server. The public Go proxy forwards HTTP and upgrades over Unix sockets. There is no private TCP-port discovery protocol. Kit and the browser still need the actual public origin, established after the coordinator binds its network listener.
 
-Replacement reuses the known Go socket location. Socket ownership, readiness and cleanup remain supervisor responsibilities: an existing filesystem entry is not readiness, old connections can outlive a socket pathname, and an old process must not unlink a new owner's socket. The POC closes and reopens a listener within one Go harness at the same path; it does not prove separate-child restart or overlapping generations with in-flight requests.
+Replacement reuses the known Go socket location. Socket ownership, readiness and cleanup remain supervisor responsibilities: an existing filesystem entry is not readiness, old connections can outlive a socket pathname, and an old process must not unlink a new owner's socket. The original POC only reopened a listener in one harness. The later real-session integration test demonstrates Go and Vite child crash recovery, stable public origin and isolated instances. Request-owner tests separately reject stale handles without replaying mutations; this does not promise seamless in-flight completion after a crash.
 
 ## Routing and callback contracts
 
@@ -61,9 +61,9 @@ Replacement reuses the known Go socket location. Socket ownership, readiness and
 | SSR `event.fetch` | Use Kit's supported `handleFetch` integration and the request-aware Go bridge. Selected direct UDS endpoint fetches preserve request semantics; automatic response-cookie propagation is an accepted temporary limitation; ordinary internal routing can retain Kit's continuation and reach a generated Go endpoint callback. |
 | Modules, static assets and HMR | Vite/Kit normally, through the public proxy. No private HMR TCP fallback or custom HMR/reload policy. |
 
-The browser-remote exception is the smallest initial boundary because the existing prerender bridge does not express all remote mutation effects. Sending browser remotes through Kit callback bodies would first require translating Go refresh/set/ignore effects into Kit's actual wrapper operations. That is not necessary to prove UDS/native SSR, and is not selected as additional work here. Cross-path remote IDs, argument encodings and SSR hydration/query-cache seeding still need a joined ordinary-query proof before this bridge is called complete.
+The browser-remote exception is the smallest initial boundary because the existing prerender bridge does not express all remote mutation effects. Sending browser remotes through Kit callback bodies would first require translating Go refresh/set/ignore effects into Kit's actual wrapper operations. That is not necessary to prove UDS/native SSR, and is not selected as additional work here. Joined browser checks now demonstrate ordinary query SSR/hydration without duplicate initial calls, transported class values and browser mutations/refreshes across these paths. This evidence covers the exercised scenarios, not every possible remote operation.
 
-`handleFetch` does not intercept every application operation. Pinned Kit directly calls server loads, actions and remote callback bodies. Current generated stubs still throw if left unchanged. Overriding Node's global fetch would not repair those calls and would affect unrelated tooling. Generated development delegation is required; the production stubs and Go ownership contract remain.
+`handleFetch` does not intercept every application operation. Pinned Kit directly calls server loads, actions and remote callback bodies. Production generated stubs throw; development transformations replace their bodies with Go callbacks. Overriding Node's global fetch would not repair those calls and would affect unrelated tooling. Generated development delegation is required; the production stubs and Go ownership contract remain.
 
 ## Existing bridge to reuse
 
@@ -79,7 +79,7 @@ The [source mapping](../../experiments/20261015-vite-uds-bridge/BRIDGE.md) provi
 
 Implementation retains the application's real handler constructor. A typed native-development build carrier lets the existing SSR/static construction register its configured Go registries and options without creating goja runtimes. The Go request still traverses the application's FetchConfig and request hooks; the native Kit response returns through that same continuation. This avoids reconstructing application configuration from generated defaults. Production uses its ordinary build filesystem and renderer.
 
-Kit's synchronous ResolveOptions predicates require a small dedicated transport worker because blocking the Vite main thread cannot also service its own asynchronous socket reply. The worker handles only those predicate calls, not rendering or routing. Go HandleFetch needs a continuation back to Kit's supplied fetch so internal page subrequests remain Kit-owned; directly fetching every internal URL through Go would reach a renderer that development deliberately no longer runs. These are narrow integration seams, not additional frontend graphs.
+Kit's synchronous ResolveOptions predicates require a small dedicated transport worker because blocking the Vite main thread cannot also service its own asynchronous socket reply. The worker handles only those predicate calls, not rendering or routing. Go HandleFetch needs a continuation back to Kit's supplied fetch so internal page subrequests remain Kit-owned; directly fetching every internal URL through Go would reach a renderer that development deliberately no longer runs. These are narrow integration seams, not additional frontend graphs. Go-origin internal fetches likewise enter native Kit before the Go application request boundary, so Kit creates the subrequest and Go hooks run once. They must not fall through the old rendererless Go page handler or use its separate data-node table.
 
 ## Request semantics that the bridge must preserve
 
@@ -89,9 +89,17 @@ UDS changes transport, not the logical URL. Preserve the public host/origin, met
 
 A direct `handleFetch` return bypasses the supplied Kit fetch continuation. That continuation normally manages inherited authorization, credentials, pending cookies, internal routing and response cookies. The POC explicitly exposes this: direct Go responses contain two Set-Cookie headers, while the outer SSR document does not receive them through the minimal override. This matters only when an SSR subrequest sets a cookie intended for the browser, such as refreshing a session. Server-side code can read response.headers.getSetCookie(); pinned Kit already parses internal-fetch response cookies and records them in the outer request at runtime/server/fetch.js:152-164. This is an existing behavior to preserve, not an architectural blocker or a need to expose cookies to browser JavaScript. The minimal override skipped it. Prefer preserving Kit's normal internal request path where generated endpoint delegation makes that possible.
 
-The existing prerender bridge buffers bodies and deferred values, supports only prerender remote kinds, lacks action/general-remote effect delegation, and has build-specific cancellation and synchronous callback machinery. It cannot simply be renamed into a complete dev bridge. Streaming/deferred values, cancellation and blocking resolve callbacks remain concrete qualification work; no claim of parity is made from the narrow POC.
+The existing prerender bridge buffers bodies and deferred values, supports only prerender remote kinds, lacks action/general-remote effect delegation, and has build-specific cancellation and synchronous callback machinery. It cannot simply be renamed into a complete dev bridge. The implemented development bridge adds progressive responses, deferred values, per-request cancellation and a synchronous predicate transport worker. Focused handler/transport tests exercise these operations; no claim of complete parity follows from the narrow POC alone.
 
-## What ran and what did not
+## Current implementation qualification
+
+The original app handler constructor remains authoritative. Native loads, actions, endpoints, remote callbacks and hooks execute Go while Kit owns development rendering. Real-session integration passed at `f7871d7`: same-process native Go edits, initializer rebuild, Go/Vite crash recovery, two-instance isolation, combined Svelte/Go edits, and compile-error retention/repair.
+
+Independent browser qualification has exercised 27 selected native development scenarios. At `45708d9`, all but one distinct selected scenario have passed across focused runs: the remaining nested universal-fetch case rejects conflicting HTTP framing. Typed bare/keyed form callers now pass. Clean browser Svelte HMR preserved a seeded draft through an edit and restoration. Full Go and separate production-browser checks follow the framing repair; do not treat selected development coverage as a complete development-suite pass.
+
+No new-topology latency benchmark has been run. The accepted direct SSR subfetch cookie limitation remains. [PLAN](PLAN.md) defines the bounded endpoint and [CONTINUE](CONTINUE.md) records exact current handoff state.
+
+## Original architecture POC evidence
 
 The bounded POC uses installed Kit3.0.0 and the pinned VitePlus environment. It runs an actual Kit page and ordinary Go HTTP handlers; it does not yet run the complete generated SKGO application bridge.
 
@@ -111,14 +119,14 @@ Evidence: [runtime POC](../../experiments/20261015-vite-uds-ssr/REPORT.md), [cal
 
 ## Handoff boundaries
 
-The topology is valid and removes the demonstrated duplicated-renderer problem. The proposition is **not** a claim that changing `fetch` alone completes SKGO development. The remaining integration is explicit and bounded:
+The topology is valid and removes the demonstrated duplicated-renderer problem. The proposition is **not** a claim that changing `fetch` alone completes SKGO development. The implementation and qualification responsibilities are explicit and bounded:
 
 1. **Transport/session mission:** public origin, per-session sockets, HTTP/upgrades, trusted client context, same-path replacement and owned cleanup. Accept actual Kit SSR/HMR and wrong-target controls, not only open sockets.
 2. **Go callback mission:** generated dev loads, direct SSR queries, actions and endpoints preserve Kit wrappers and real Go request context. Accept independently supplied Go values through document and client navigation, a mutation/failure/redirect case, existing cookie behavior outside the accepted SSR propagation limitation, and parity of remote IDs/transport with the existing browser Go handler.
 3. **Lifecycle/stream mission:** demonstrate a delayed value and cancellation, and process replacement during a paused render without silently crossing request ownership. Preserve normal Kit behavior; do not add waiting pages or global edit transactions.
 4. **Go edit mission:** retain the existing native preparation/admission path and normal rebuild fallback; publish refresh only after successful Go installation. Go registrations and generated stubs still need ordinary readiness/error recovery; they no longer carry a second frontend renderer graph.
 
-These are the implementation/qualification boundaries authorized by the user on 2026-10-15. The joined callback/lifecycle slice remains necessary evidence before claiming complete integration. The accepted SSR response-cookie limitation is not a condition for proceeding or handing off the architecture. No further split-renderer gates, forced navigation, Vite modifications or broad benchmark campaign is warranted by this validation.
+These are the implementation/qualification boundaries authorized by the user on 2026-10-15. Joined callback/lifecycle evidence is recorded above; final validation must resolve the concrete remaining failure and report coverage accurately. The accepted SSR response-cookie limitation is not a condition for proceeding or handing off the architecture. No further split-renderer gates, forced navigation, Vite modifications or broad benchmark campaign is warranted by this validation.
 
 ## Primary references
 
