@@ -165,7 +165,12 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			boundRequest = entry
 			defer entry.active.Done()
 			ctx, cancel := context.WithCancel(entry.request.Context())
-			stop := context.AfterFunc(r.Context(), cancel)
+			stop := context.AfterFunc(r.Context(), func() {
+				cancel()
+				if sessions[0].development {
+					entry.cancel()
+				}
+			})
 			defer func() { stop(); cancel() }()
 			ctx = context.WithValue(ctx, prerenderRequestKey{}, entry.request)
 			if development, ok := r.Context().Value(devRendererKey{}).(*SSR); ok {

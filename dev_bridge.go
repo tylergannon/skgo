@@ -118,7 +118,7 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 			}
 			defer entry.active.Done()
 			ctx, cancel := context.WithCancel(entry.request.Context())
-			stop := context.AfterFunc(r.Context(), cancel)
+			stop := context.AfterFunc(r.Context(), func() { cancel(); entry.cancel() })
 			defer func() { stop(); cancel() }()
 			ctx = context.WithValue(ctx, prerenderRequestKey{}, entry.request)
 			ctx = context.WithValue(ctx, devRendererKey{}, s)
