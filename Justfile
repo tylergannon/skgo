@@ -40,9 +40,14 @@ generate:
 # example/web/dist.go embeds `all:build`; its tracked placeholder keeps a fresh
 # checkout compilable before the frontend build has run.
 
-# build the frontend (do this first in a fresh tree)
+# Generate and build the frontend, reusing current outputs automatically.
 build:
-    cd example/web && ORIGIN="{{origin}}" vp build
+    ORIGIN="{{origin}}" go run ./cmd/skgo build --root example
+
+# Explicitly discard example build caches; normal builds always reuse them.
+clean:
+    rm -rf example/.skgo example/native/build example/web/.svelte-kit
+    find example/web/build -mindepth 1 ! -name .gitkeep -delete
 
 # go vet, both modules
 vet:
