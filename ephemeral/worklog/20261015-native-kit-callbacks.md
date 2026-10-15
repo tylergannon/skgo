@@ -1,0 +1,2 @@
+correction: Node workers inherit execArgv; a Go harness launching node --input-type=module made the synchronous predicate worker fail before it could wake the blocked main thread. Give the file-backed worker an empty execArgv and test the actual blocked-main UDS round trip.
+decision: Native handleFetch must suspend Go's supplied continuation and call Kit's supplied fetch in JS. Dispatching every URL through Go's existing fetch router would send native Kit page subfetches to a static 404.
