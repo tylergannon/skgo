@@ -37,6 +37,10 @@ func (t Toolchain) CompileApplication(ctx context.Context, dir, pkgPath, importc
 }
 
 func (t Toolchain) compile(ctx context.Context, dir, pkgPath, importcfg, output string, before, after map[string][]byte, application []string) (Candidate, error) {
+	return t.compileWithLoader(ctx, dir, pkgPath, importcfg, output, before, after, application, packages.Load)
+}
+
+func (t Toolchain) compileWithLoader(ctx context.Context, dir, pkgPath, importcfg, output string, before, after map[string][]byte, application []string, load func(*packages.Config, ...string) ([]*packages.Package, error)) (Candidate, error) {
 	var candidate Candidate
 	if err := t.checkFlags(); err != nil {
 		return candidate, err
@@ -45,7 +49,7 @@ func (t Toolchain) compile(ctx context.Context, dir, pkgPath, importcfg, output 
 		return candidate, err
 	}
 	patterns := append([]string{pkgPath}, application...)
-	pkgs, err := packages.Load(&packages.Config{
+	pkgs, err := load(&packages.Config{
 		Context: ctx, Dir: dir, Env: t.command(ctx, dir).Env, Overlay: after,
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule,
 	}, patterns...)

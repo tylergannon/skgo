@@ -79,11 +79,16 @@ func SkgoHotUsage()(int,int){
  return len(_skgo_modules),consumers
 }
 // SkgoHotInit registers the initialized host once, before serving requests.
-func SkgoHotInit(budget int) error {
+func SkgoHotInit(budget int) error { return SkgoHotInitSymbols(budget,nil) }
+// SkgoHotInitSymbols shares one executable registration across all private
+// package tables. Each package owns a copy before registering its own types.
+func SkgoHotInitSymbols(budget int, registered map[string]uintptr) error {
  _skgo_mu.Lock(); defer _skgo_mu.Unlock()
  if _skgo_symbols != nil || budget < 1 { return fmt.Errorf("invalid native host initialization") }
  syms := map[string]uintptr{}
- if err := _skgo_loader.RegSymbol(syms); err != nil { return fmt.Errorf("native host symbols unavailable; build with -ldflags=-s=false: %w",err) }
+ if registered == nil {
+  if err := _skgo_loader.RegSymbol(syms); err != nil { return fmt.Errorf("native host symbols unavailable; build with -ldflags=-s=false: %w",err) }
+ } else { for name,address := range registered { syms[name]=address } }
  _skgo_loader.RegTypes(syms, SkgoHotTypes()...)
  _skgo_symbols = syms; _skgo_budget = budget
  return nil
