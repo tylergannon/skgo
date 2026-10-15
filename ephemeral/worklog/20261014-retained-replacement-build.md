@@ -19,3 +19,7 @@ friction: A fresh worktree's ordinary Go suite requires the production frontend 
 decision: Independent primary-source research distinguishes a quota policy from reclamation eligibility. Got-reload demonstrates a compiled-host/interpreted-body seam whose Go-owned execution graphs could remove native unmapping from the problem; qualify state/type interoperation and retained callbacks with the same generated fixture before choosing it. eh-steve provides actual no-cgo native mechanisms but has an older runtime boundary; removing cgo alone does not solve native metadata lifetime.
 
 correction: User rejected stopping with incomplete work. Emulated Linux failure is not an established native-platform blocker. Continue with the identical generated-host test on native GitHub Ubuntu, preserve the agreed scope, and investigate any reproduced failure rather than requiring another planning cycle.
+
+correction: The identical test passed on native Ubuntu AMD64 and native Mac ARM64 with Go1.27.2 (CI run38658130587, source a1789cb). A failing emulated execution environment was insufficient evidence for stopping native-platform development. Target-platform comparison resolved the checkpoint without a speculative runtime change. The exact cause of the emulated crash remains unproved; do not promise emulation support.
+
+friction: mise -C example exec changes the command's directory to example. Qualification must use go -C .. to reach the root module; a path-not-found setup failure is not an application failure.
