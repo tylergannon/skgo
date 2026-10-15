@@ -126,23 +126,42 @@ func acquireCacheSources(cfg Config) (cacheSources, error) {
 		return s, fmt.Errorf("no mutable module source found")
 	}
 	sort.Slice(s.Modules, func(i, j int) bool { return s.Modules[i].Dir < s.Modules[j].Dir })
-	for _, name := range []string{"GOENV", "GOWORK"} {
-		if path := s.Environment[name]; path != "" && path != "off" {
-			s.Controls = append(s.Controls, path)
-			if name == "GOWORK" {
-				s.Controls = append(s.Controls, path+".sum")
-			}
-		}
+	if path := s.Environment["GOENV"]; path != "" && path != "off" {
+		s.Controls = append(s.Controls, path)
 	}
-	// A newly created ancestor go.work changes selection even when no workspace
-	// existed when this entry was created.
+	s.Controls = append(s.Controls, workspaceControlPaths(host, os.Getenv("GOWORK"), s.Environment)...)
+
+	return s, nil
+}
+
+// workspaceControlPaths follows cmd/go's Loader.FindGoWork/findWorkspaceFile
+// (Go 1.27.2, cmd/go/internal/modload/init.go). Off disables workspace selection;
+// an explicit path bypasses ancestor search; automatic search stops at the
+// selected workspace, the filesystem root, or the GOROOT boundary. go env
+// reports the selected absolute file, so retain the requested mode separately.
+func workspaceControlPaths(host, requested string, environment map[string]string) []string {
+	selected := environment["GOWORK"]
+	if selected == "off" {
+		return nil
+	}
+	var paths []string
+	if selected != "" {
+		paths = append(paths, selected, selected+".sum")
+	}
+	if requested != "" && requested != "auto" {
+		return paths
+	}
 	for dir := host; ; dir = filepath.Dir(dir) {
-		s.Controls = append(s.Controls, filepath.Join(dir, "go.work"), filepath.Join(dir, "go.work.sum"))
-		if filepath.Dir(dir) == dir {
+		candidate := filepath.Join(dir, "go.work")
+		if candidate != selected {
+			paths = append(paths, candidate)
+		}
+		parent := filepath.Dir(dir)
+		if candidate == selected || parent == dir || parent == environment["GOROOT"] {
 			break
 		}
 	}
-	return s, nil
+	return paths
 }
 
 // capture reads the bytes that will be used for cold computation, and the same
