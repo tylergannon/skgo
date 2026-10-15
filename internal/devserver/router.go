@@ -1,13 +1,14 @@
 package devserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"html"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -15,70 +16,79 @@ import (
 )
 
 type target struct {
-	URL     *url.URL
-	Tooling []string
+	URL       *url.URL
+	Transport *http.Transport
 }
 type router struct {
 	app, frontend atomic.Pointer[target]
-	message       atomic.Pointer[string]
-	blocked       atomic.Bool
+	remotePrefix  atomic.Pointer[string]
 }
 
-func (r *router) status(message string) { r.message.Store(&message) }
-func (r *router) setApp(address string) error {
-	u, e := url.Parse(address)
+func (r *router) setRemotePrefix(prefix string) { r.remotePrefix.Store(&prefix) }
+
+// Each target has its own transport, so pooled connections never cross instances.
+func socketTarget(socket string) (*target, error) {
+	if !filepath.IsAbs(socket) {
+		return nil, fmt.Errorf("private socket must be absolute: %q", socket)
+	}
+	u, _ := url.Parse("http://skgo.invalid")
+	return &target{URL: u, Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "unix", socket)
+	}}}, nil
+}
+func (r *router) setApp(socket string) error {
+	t, e := socketTarget(socket)
 	if e != nil {
 		return e
 	}
-	if u.Scheme != "http" || u.Host == "" {
-		return fmt.Errorf("invalid private application URL %q", address)
+	if old := r.app.Swap(t); old != nil {
+		old.Transport.CloseIdleConnections()
 	}
-	r.app.Store(&target{URL: u})
 	return nil
 }
-func (r *router) setFrontend(address string, prefixes []string) error {
-	u, e := url.Parse(address)
+func (r *router) setFrontend(socket string, _ []string) error {
+	t, e := socketTarget(socket)
 	if e != nil {
 		return e
 	}
-	if u.Scheme != "http" || u.Host == "" {
-		return fmt.Errorf("invalid private Vite URL %q", address)
+	if old := r.frontend.Swap(t); old != nil {
+		old.Transport.CloseIdleConnections()
 	}
-	r.frontend.Store(&target{URL: u, Tooling: append([]string(nil), prefixes...)})
 	return nil
 }
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	front := r.frontend.Load()
-	tooling := strings.HasPrefix(req.URL.Path, "/__skgo/dev/")
-	if front != nil {
-		for _, p := range front.Tooling {
-			if strings.HasPrefix(req.URL.Path, p) {
-				tooling = true
-				break
-			}
-		}
+	w.Header().Set("X-Skgo-Mode", "dev")
+	switch req.URL.Path {
+	case "/__skgo/dev/state", "/__skgo/dev/snapshot", "/__skgo/dev/published":
+		http.NotFound(w, req)
+		return
 	}
-	upstream := r.app.Load()
-	name := "application"
-	if tooling {
-		upstream = front
-		name = "frontend tooling"
+	upstream := r.frontend.Load()
+	prefix := "/_app/remote/"
+	if p := r.remotePrefix.Load(); p != nil {
+		prefix = *p
+	}
+	if strings.HasPrefix(req.URL.Path, prefix) {
+		upstream = r.app.Load()
 	}
 	unavailable := func(w http.ResponseWriter, _ *http.Request, e error) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-store")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		message := "Starting " + name
-		if m := r.message.Load(); m != nil {
-			message = *m
-		}
-		fmt.Fprintf(w, "<!doctype html><title>skgo dev</title><h1>Application is updating</h1><pre>%s</pre>", html.EscapeString(message))
+		http.Error(w, "Development upstream unavailable", http.StatusServiceUnavailable)
 	}
-	if upstream == nil || (!tooling && r.blocked.Load()) {
+	if upstream == nil {
 		unavailable(w, req, nil)
 		return
 	}
-	proxy := httputil.ReverseProxy{Rewrite: func(p *httputil.ProxyRequest) { p.SetURL(upstream.URL); p.Out.Host = p.In.Host }, ErrorHandler: unavailable}
+	proxy := httputil.ReverseProxy{Transport: upstream.Transport, ModifyResponse: func(res *http.Response) error { res.Header.Set("X-Skgo-Mode", "dev"); return nil }, Rewrite: func(p *httputil.ProxyRequest) {
+		p.SetURL(upstream.URL)
+		p.Out.Host = p.In.Host
+		p.SetXForwarded()
+		// Headers from the public client are untrusted. Derive this from the socket.
+		address, _, err := net.SplitHostPort(p.In.RemoteAddr)
+		if err != nil {
+			address = p.In.RemoteAddr
+		}
+		p.Out.Header.Set("X-Skgo-Client-Address", address)
+	}, ErrorHandler: unavailable}
 	proxy.ServeHTTP(w, req)
 }
 

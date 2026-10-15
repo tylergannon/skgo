@@ -4,6 +4,8 @@ package devserver
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -41,11 +43,10 @@ func Run(ctx context.Context, o Options) error {
 	}
 	origin := "http://" + net.JoinHostPort(host, fmt.Sprint(address.Port))
 	route := &router{}
-	route.status("Starting Go and Vite")
 	server := &http.Server{Handler: route}
 	defer server.Close()
 	go server.Serve(ln)
-	work, e := os.MkdirTemp("", "skgo-dev-")
+	work, e := os.MkdirTemp("/tmp", "skgo-")
 	if e != nil {
 		return e
 	}
@@ -84,12 +85,17 @@ func Run(ctx context.Context, o Options) error {
 		break
 	}
 	fmt.Fprintln(o.Output, "skgo dev: starting Vite")
-	front, e := startFrontend(ctx, o, cfg.Web, filepath.Join(work, "vite"), origin)
+	secretBytes := make([]byte, 32)
+	if _, e = rand.Read(secretBytes); e != nil {
+		return e
+	}
+	secret := hex.EncodeToString(secretBytes)
+	front, e := startFrontend(ctx, o, cfg.Web, work, origin, secret)
 	if e != nil {
 		return e
 	}
 	defer func() { front.close() }()
-	if e = route.setFrontend(front.ready.URL, front.ready.Tooling); e != nil {
+	if e = route.setFrontend(front.ready.Socket, front.ready.Tooling); e != nil {
 		return e
 	}
 retryStartup:
@@ -97,12 +103,13 @@ retryStartup:
 	if e != nil {
 		return e
 	}
+	route.setRemotePrefix(snapshot.RemotePrefix)
 	if snapshot.Metadata != nil {
 		if _, _, e = project.ObserveRoutes(snapshot.Metadata); e != nil {
 			return e
 		}
 	}
-	// Publish generated registrations before the frontend builds the paired graph.
+	// Publish Go registrations discovered by Kit's installed route scanner.
 	seed, e := project.Prepare(ctx)
 	if e != nil {
 		return e
@@ -132,15 +139,20 @@ retryStartup:
 	serial := 0
 	hostDirs := make(map[*hotreload.Host]string)
 	closeHost := func(host *hotreload.Host) {
+		if _, owned := hostDirs[host]; !owned {
+			return
+		}
 		_ = host.Close()
+		_ = os.Remove(filepath.Join(work, "go.sock"))
 		_ = os.RemoveAll(hostDirs[host])
 		delete(hostDirs, host)
 	}
 	makeHost := func(inputs *gen.CompilerInputs, dist string) (*hotreload.Host, error) {
 		serial++
 		dir := filepath.Join(work, fmt.Sprintf("host-%d", serial))
-		host, err := hotreload.BuildHost(ctx, hotreload.HostOptions{Inputs: inputs, WorkDir: dir, GoTool: o.GoTool, Origin: origin, DistDir: dist, Output: o.Output})
+		host, err := hotreload.BuildHost(ctx, hotreload.HostOptions{Inputs: inputs, WorkDir: dir, GoTool: o.GoTool, Origin: origin, DistDir: dist, SocketPath: filepath.Join(work, "go.sock"), NativeKit: true, ServiceSecret: secret, Output: o.Output})
 		if err != nil {
+			_ = os.Remove(filepath.Join(work, "go.sock"))
 			_ = os.RemoveAll(dir)
 			return nil, err
 		}
@@ -158,7 +170,7 @@ retryStartup:
 		}
 		return fmt.Errorf("Go development host: %s", message)
 	}
-	if e = build.Commit(func(*gen.CompilerInputs) error { return route.setApp(active.URL) }); e != nil {
+	if e = build.Commit(func(*gen.CompilerInputs) error { return route.setApp(filepath.Join(work, "go.sock")) }); e != nil {
 		closeHost(active)
 		build.Cancel()
 		build.Inputs.Close()
@@ -177,14 +189,13 @@ retryStartup:
 			goodInputs.Close()
 		}
 	}()
-	route.status("")
-	fmt.Fprintf(o.Output, "skgo dev: %s (Go pid %d, Vite %s)\n", origin, active.PID, front.ready.URL)
+	fmt.Fprintf(o.Output, "skgo dev: %s (Go pid %d, Vite %s)\n", origin, active.PID, front.ready.Socket)
 	ticker := time.NewTicker(300 * time.Millisecond)
 	defer ticker.Stop()
 	lastFrontend := snapshot.Revision
 	dirtyFrontend := false
-	graphChanged := false
 	pending := false
+	goChanged := false
 	for {
 		if !pending {
 			select {
@@ -196,9 +207,10 @@ retryStartup:
 				}
 				continue
 			case <-project.Changes():
+				goChanged = true
 				pending = true
 			case <-active.Done():
-				route.status("Restarting the Go application")
+				closeHost(active)
 				next, err := makeHost(goodInputs, goodDist)
 				if err != nil {
 					return fmt.Errorf("recover Go application: %w", err)
@@ -209,19 +221,17 @@ retryStartup:
 				}
 				active = next
 				hostInputs = goodInputs
-				_ = route.setApp(active.URL)
-				route.status("")
+				_ = route.setApp(filepath.Join(work, "go.sock"))
 				_ = front.notify(ctx, goodRevision, "", false)
 				fmt.Fprintf(o.Output, "skgo dev: recovered Go pid %d\n", active.PID)
 				continue
 			case <-front.done:
-				route.status("Restarting Vite")
 				front.close()
-				front, e = startFrontend(ctx, o, cfg.Web, filepath.Join(work, "vite"), origin)
+				front, e = startFrontend(ctx, o, cfg.Web, work, origin, secret)
 				if e != nil {
 					return e
 				}
-				if e = route.setFrontend(front.ready.URL, front.ready.Tooling); e != nil {
+				if e = route.setFrontend(front.ready.Socket, front.ready.Tooling); e != nil {
 					return e
 				}
 				dirtyFrontend = true
@@ -229,8 +239,8 @@ retryStartup:
 				lastFrontend = ""
 			case <-ticker.C:
 				if changed, err := front.refresh(); err == nil && changed {
-					fmt.Fprintf(o.Output, "skgo dev: Vite restarted (instance %s, %s)\n", front.ready.Instance, front.ready.URL)
-					if err = route.setFrontend(front.ready.URL, front.ready.Tooling); err != nil {
+					fmt.Fprintf(o.Output, "skgo dev: Vite restarted (instance %s, %s)\n", front.ready.Instance, front.ready.Socket)
+					if err = route.setFrontend(front.ready.Socket, front.ready.Tooling); err != nil {
 						return err
 					}
 					dirtyFrontend = true
@@ -267,22 +277,23 @@ retryStartup:
 		if dirtyFrontend {
 			next, err := front.snapshot(ctx)
 			if err != nil {
-				route.status(err.Error())
 				fmt.Fprintln(o.Output, err)
 				_ = front.notify(ctx, project.Revision(), err.Error(), false)
 				continue
 			}
 			snapshot = next
+			route.setRemotePrefix(next.RemotePrefix)
 			lastFrontend = next.Revision
+			changed := false
 			if next.Metadata != nil {
-				var changed bool
-				if _, changed, err = project.ObserveRoutes(next.Metadata); err == nil && changed {
-					graphChanged = true
-					route.blocked.Store(true)
-				}
+				_, changed, err = project.ObserveRoutes(next.Metadata)
 				if err != nil {
 					return err
 				}
+			}
+			if !changed && !goChanged {
+				dirtyFrontend = false
+				continue
 			}
 		}
 		nextBuild, err := project.Prepare(ctx)
@@ -292,7 +303,6 @@ retryStartup:
 				continue
 			}
 			project.Diagnose(err)
-			route.status(err.Error())
 			fmt.Fprintln(o.Output, err)
 			_ = front.notify(ctx, project.Revision(), err.Error(), false)
 			continue
@@ -310,10 +320,7 @@ retryStartup:
 			fmt.Fprintf(o.Output, "skgo dev: rebuilding revision %d: %v\n", nextBuild.Revision, complete)
 			err = nil
 		}
-		if err == nil && update != nil && dirtyFrontend {
-			rebuild = true
-			fmt.Fprintf(o.Output, "skgo dev: rebuilding revision %d: Go and renderer changed together\n", nextBuild.Revision)
-		}
+
 		if err == nil && !rebuild {
 			err = nextBuild.Commit(func(*gen.CompilerInputs) error {
 				if update != nil {
@@ -324,9 +331,7 @@ retryStartup:
 						return e
 					}
 				}
-				if dirtyFrontend {
-					return active.Reload(ctx, snapshot.Dist)
-				}
+
 				return nil
 			})
 			if errors.As(err, &complete) {
@@ -336,23 +341,23 @@ retryStartup:
 			}
 		}
 		if err == nil && rebuild {
-			// New declarations must reach Kit's transform before making its artifact.
+			// Publish new Go declarations, then capture their registration configuration.
 			if err = nextBuild.Commit(nil); err == nil {
 				snapshot, err = front.snapshot(ctx)
 				if err == nil && snapshot.Metadata != nil {
 					var changed bool
 					_, changed, err = project.ObserveRoutes(snapshot.Metadata)
 					if err == nil && changed {
-						// Kit may discover a route before the polling tick. Admit that
-						// graph and regenerate its Go callers before building a host.
-						graphChanged = true
+						// Regenerate Go callers if Kit discovered new route membership.
 						dirtyFrontend = true
-						route.blocked.Store(true)
 						err = gen.ErrObsolete
 					}
 				}
 				if err == nil {
 					var replacement *hotreload.Host
+					// Replacement owns the same private pathname. Stop its prior owner first;
+					// outstanding request handles fail rather than migrate into a new process.
+					closeHost(active)
 					replacement, err = makeHost(nextBuild.Inputs, snapshot.Dist)
 					if err == nil {
 						// A new lease keeps replacement publication guarded after a long build.
@@ -365,7 +370,7 @@ retryStartup:
 							closeHost(replacement)
 							err = gen.ErrObsolete
 						} else {
-							err = current.Commit(func(*gen.CompilerInputs) error { return route.setApp(replacement.URL) })
+							err = current.Commit(func(*gen.CompilerInputs) error { return route.setApp(filepath.Join(work, "go.sock")) })
 							current.Inputs.Close()
 							if err == nil {
 								old := active
@@ -388,7 +393,6 @@ retryStartup:
 			if !errors.Is(err, gen.ErrObsolete) {
 				nextBuild.Diagnose(err)
 				message := nextBuild.Inputs.AuthoredText(err.Error())
-				route.status(message)
 				fmt.Fprintln(o.Output, message)
 				_ = front.notify(ctx, nextBuild.Revision, message, false)
 			} else {
@@ -404,13 +408,13 @@ retryStartup:
 		goodInputs = nextBuild.Inputs
 		goodRevision = nextBuild.Revision
 		goodDist = snapshot.Dist
-		route.status("")
-		route.blocked.Store(false)
-		if err = front.notify(ctx, goodRevision, "", graphChanged); err != nil {
+
+		if err = front.notify(ctx, goodRevision, "", false); err != nil {
 			fmt.Fprintf(o.Output, "skgo dev notify: %v\n", err)
 		}
 		dirtyFrontend = false
-		graphChanged = false
+		goChanged = false
+
 		fmt.Fprintf(o.Output, "skgo dev: published revision %d (Go pid %d, prepare %s, install %s, rebuild %t)\n", goodRevision, active.PID, prepareElapsed.Round(time.Microsecond), installElapsed.Round(time.Microsecond), rebuild)
 	}
 }

@@ -7,92 +7,123 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
 
-func TestPublicRouterKeepsApplicationAndToolingOwnershipAcrossReplacement(t *testing.T) {
-	app := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func privateHTTP(t *testing.T, handler http.Handler) (string, *http.Server) {
+	t.Helper()
+	dir, err := os.MkdirTemp("/tmp", "skgo-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	socket := filepath.Join(dir, "server.sock")
+	ln, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &http.Server{Handler: handler}
+	go server.Serve(ln)
+	t.Cleanup(func() { server.Close() })
+	return socket, server
+}
+func TestPublicRouterUsesKitForPagesDataActionsEndpointsAndGoForRemotes(t *testing.T) {
+	app, _ := privateHTTP(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		w.Header().Add("Set-Cookie", "one=1; Path=/")
 		w.Header().Add("Set-Cookie", "two=2; Path=/")
 		w.WriteHeader(201)
-		fmt.Fprintf(w, "APP731 %s %s %s %s", r.Method, r.Host, r.Header.Get("Cookie"), body)
+		fmt.Fprintf(w, "GO731 %s %s %s %s", r.Method, r.Host, r.Header.Get("Cookie"), body)
 	}))
-	defer app.Close()
-	tools := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "VITE419 "+r.URL.RequestURI()) }))
-	defer tools.Close()
+	front, _ := privateHTTP(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "KIT419 %s %s", r.URL.RequestURI(), r.Header.Get("X-Skgo-Client-Address"))
+	}))
+	route := &router{}
+	if err := route.setApp(app); err != nil {
+		t.Fatal(err)
+	}
+	if err := route.setFrontend(front, nil); err != nil {
+		t.Fatal(err)
+	}
+	public := httptest.NewServer(route)
+	defer public.Close()
+	req, _ := http.NewRequest("POST", public.URL+"/_app/remote/query", strings.NewReader("BODY983"))
+	req.Header.Set("Cookie", "draft=601")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	want := "GO731 POST " + strings.TrimPrefix(public.URL, "http://") + " draft=601 BODY983"
+	if res.StatusCode != 201 || string(raw) != want || len(res.Cookies()) != 2 {
+		t.Fatalf("status=%d body=%s cookies=%v", res.StatusCode, raw, res.Cookies())
+	}
+	route.setRemotePrefix("/base/custom/remote/")
+	res, err = http.Get(public.URL + "/base/custom/remote/query")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ = io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != 201 || !strings.HasPrefix(string(raw), "GO731 GET ") {
+		t.Fatalf("configured base/appDir: status=%d body=%s", res.StatusCode, raw)
+	}
+	for _, path := range []string{"/orders", "/orders/__data.json", "/orders?/save", "/api/endpoint", "/@vite/client"} {
+		req, _ := http.NewRequest("GET", public.URL+path, nil)
+		req.Header.Set("X-Skgo-Client-Address", "FORGED_882")
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if string(raw) != "KIT419 "+path+" 127.0.0.1" {
+			t.Fatalf("Kit ownership/context: %s", raw)
+		}
+	}
+}
+func TestPrivateInstancesAndSameSocketReplacement(t *testing.T) {
+	a, server := privateHTTP(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "ALPHA4101") }))
+	b, _ := privateHTTP(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "BETA5202") }))
 	r := &router{}
-	if e := r.setApp(app.URL); e != nil {
-		t.Fatal(e)
-	}
-	if e := r.setFrontend(tools.URL, []string{"/@", "/.cache/", "/__hmr"}); e != nil {
-		t.Fatal(e)
-	}
+	r.setFrontend(a, nil)
 	public := httptest.NewServer(r)
 	defer public.Close()
-	request, _ := http.NewRequest("POST", public.URL+"/orders", strings.NewReader("BODY983"))
-	request.Header.Set("Cookie", "draft=601")
-	res, e := http.DefaultClient.Do(request)
-	if e != nil {
-		t.Fatal(e)
-	}
-	b, _ := io.ReadAll(res.Body)
-	res.Body.Close()
-	want := "APP731 POST " + strings.TrimPrefix(public.URL, "http://") + " draft=601 BODY983"
-	if res.StatusCode != 201 || string(b) != want || len(res.Cookies()) != 2 {
-		t.Fatalf("status%d cookies%v body%s", res.StatusCode, res.Cookies(), b)
-	}
-	for _, p := range []string{"/@vite/client", "/.cache/deps/module.js?x=2"} {
-		res, e = http.Get(public.URL + p)
-		if e != nil {
-			t.Fatal(e)
+	get := func(want string) {
+		t.Helper()
+		res, err := http.Get(public.URL)
+		if err != nil {
+			t.Fatal(err)
 		}
-		b, _ = io.ReadAll(res.Body)
+		raw, _ := io.ReadAll(res.Body)
 		res.Body.Close()
-		if string(b) != "VITE419 "+p {
-			t.Fatalf("tooling stolen: %s", b)
+		if string(raw) != want {
+			t.Fatalf("got %s want %s", raw, want)
 		}
 	}
-	app.Close()
-	r.status("compiler.go:7: missing value <repair>")
-	res, e = http.Get(public.URL + "/orders")
-	if e != nil {
-		t.Fatal(e)
+	get("ALPHA4101")
+	r.setFrontend(b, nil)
+	get("BETA5202")
+	r.setFrontend(a, nil)
+	get("ALPHA4101")
+	server.Close()
+	ln, err := net.Listen("unix", a)
+	if err != nil {
+		t.Fatal(err)
 	}
-	b, _ = io.ReadAll(res.Body)
-	res.Body.Close()
-	if res.StatusCode != 503 || !strings.Contains(string(b), "compiler.go:7: missing value &lt;repair&gt;") {
-		t.Fatalf("unavailable status%d %s", res.StatusCode, b)
-	}
-	replacement := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "APP887") }))
+	replacement := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "REPLACED7407") })}
+	go replacement.Serve(ln)
 	defer replacement.Close()
-	r.setApp(replacement.URL)
-	res, e = http.Get(public.URL + "/orders")
-	if e != nil {
-		t.Fatal(e)
-	}
-	b, _ = io.ReadAll(res.Body)
-	res.Body.Close()
-	if string(b) != "APP887" {
-		t.Fatalf("target was stale: %s", b)
-	}
-	r.blocked.Store(true)
-	res, _ = http.Get(public.URL + "/orders")
-	res.Body.Close()
-	if res.StatusCode != 503 {
-		t.Fatal("incoherent structural publication was served")
-	}
-	res, _ = http.Get(public.URL + "/@vite/client")
-	res.Body.Close()
-	if res.StatusCode != 200 {
-		t.Fatal("structural gate blocked tooling")
-	}
+	get("REPLACED7407")
 }
 
 func TestPublicUpgradeSurvivesPrivateApplicationReplacement(t *testing.T) {
-	tools := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	socket, _ := privateHTTP(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Sec-WebSocket-Protocol") != "vite-hmr" || r.URL.Query().Get("token") != "449" {
 			http.Error(w, "wrong transport", 400)
 			return
@@ -113,9 +144,9 @@ func TestPublicUpgradeSurvivesPrivateApplicationReplacement(t *testing.T) {
 			b.Flush()
 		}
 	}))
-	defer tools.Close()
+
 	r := &router{}
-	r.setFrontend(tools.URL, []string{"/__hmr"})
+	r.setFrontend(socket, nil)
 	public := httptest.NewServer(r)
 	defer public.Close()
 	c, e := net.Dial("tcp", strings.TrimPrefix(public.URL, "http://"))
@@ -130,7 +161,7 @@ func TestPublicUpgradeSurvivesPrivateApplicationReplacement(t *testing.T) {
 	if e != nil || response.StatusCode != 101 {
 		t.Fatalf("upgrade %v %v", response, e)
 	}
-	r.setApp("http://127.0.0.1:1")
+	r.setApp(filepath.Join(t.TempDir(), "unavailable.sock"))
 	fmt.Fprintln(c, "AFTER_APP_REPLACEMENT983")
 	got, e := reader.ReadString('\n')
 	if e != nil || got != "AFTER_APP_REPLACEMENT983\n" {

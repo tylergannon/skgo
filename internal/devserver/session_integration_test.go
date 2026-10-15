@@ -76,13 +76,23 @@ func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) {
 		write("web/vite.config.ts", `import {sveltekit} from '@sveltejs/kit/vite'; import {defineConfig} from 'vite-plus'; import skgo from '@skgo/sveltekit-adapter'; export default defineConfig({plugins:[sveltekit({adapter:skgo(),paths:{origin:process.env.ORIGIN},experimental:{remoteFunctions:true},compilerOptions:{experimental:{async:true}}})]});`)
 		write("web/src/app.html", `<!doctype html><html><head>%sveltekit.head%</head><body><div>%sveltekit.body%</div></body></html>`)
 		write("web/src/routes/+page.svelte", `<h1>literal session frontend</h1>`)
-		write("web/src/origin.ts", `export const publicOrigin = __SVELTEKIT_PATHS_ORIGIN__;`)
 		write("locals/locals.go", "package locals\ntype Locals struct{}\n")
 		write("generated/config.go", "package generated\n//go:generate go tool skgo generate --web ../web --locals-package example.com/sessionfixture/locals --locals-type Locals\n")
 		write("web/src/routes/orders/server.go", sessionRoute("4101", 7))
 		write("server.go", fmt.Sprintf(`package sessionfixture
 import("io/fs";"net/http";"github.com/tylergannon/skgo"; generated "example.com/sessionfixture/generated")
-func NewHandler(_ fs.FS,origin string)(http.Handler,error){e,err:=skgo.NewEndpoints(skgo.EndpointConfig{Origin:origin,Routes:[]skgo.ManifestRoute{{ID:"/orders",Pattern:"^/orders/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}}}},generated.Endpoints()...);if err!=nil{return nil,err};return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);e.Intercept(http.NotFoundHandler()).ServeHTTP(w,r)}),nil}
+func NewHandler(dist fs.FS,origin string)(http.Handler,error){
+ manifest,err:=skgo.ReadManifest(dist);if err!=nil{return nil,err}
+ remotes,err:=skgo.NewRemotes(manifest.RemoteConfig(origin),generated.Remotes()...);if err!=nil{return nil,err}
+ loads,err:=skgo.NewLoads(manifest.LoadConfig(origin),generated.Loads()...);if err!=nil{return nil,err}
+ actions,err:=skgo.NewActions(generated.Actions()...);if err!=nil{return nil,err}
+ renderer,err:=skgo.NewSSR(dist,manifest,loads,remotes,skgo.SSROptions{Actions:actions});if err!=nil{return nil,err}
+ pages,err:=skgo.NewStaticHandler(dist,skgo.WithSSR(renderer));if err!=nil{return nil,err}
+ endpoints,err:=skgo.NewEndpoints(manifest.EndpointConfig(origin),generated.Endpoints()...);if err!=nil{return nil,err}
+ cfg:=manifest.HandleConfig();cfg.Origin=origin;cfg.Loads=loads
+ app:=generated.RequestBoundary(cfg,loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
+ return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);app.ServeHTTP(w,r)}),nil
+}
 `, label))
 		ln, e := net.Listen("tcp", "127.0.0.1:0")
 		if e != nil {
@@ -143,18 +153,7 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){e,err:=skgo.NewEndpoi
 			if s.origin == "http://"+address {
 				t.Fatalf("did not discover a different public origin\n%s", s.log.String())
 			}
-			r, e := http.Get(s.origin + "/src/origin.ts")
-			if e != nil {
-				t.Fatal(e)
-			}
-			transformed, e := io.ReadAll(r.Body)
-			r.Body.Close()
-			if e != nil {
-				t.Fatal(e)
-			}
-			if r.StatusCode != 200 || !strings.Contains(string(transformed), s.origin) || strings.Contains(string(transformed), "http://"+address) {
-				t.Fatalf("Kit fixed-origin define did not follow bound listener: status=%d public=%s occupied=%s transformed=%s", r.StatusCode, s.origin, address, transformed)
-			}
+
 		}
 		return s
 	}
@@ -230,29 +229,22 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){e,err:=skgo.NewEndpoi
 		t.Fatal(e)
 	}
 	check(alpha, "ALPHA", "literal-7407:9")
-	deadline = time.Now().Add(30 * time.Second)
-	for alpha.log.lastPID() == beforeCombined && time.Now().Before(deadline) {
-		time.Sleep(50 * time.Millisecond)
+	if alpha.log.lastPID() != beforeCombined {
+		t.Fatalf("compatible Go body + Svelte edit replaced host\n%s", alpha.log.String())
 	}
-	if alpha.log.lastPID() == beforeCombined || !strings.Contains(alpha.log.String(), "Go and renderer changed together") {
-		t.Fatalf("combined revision did not replace atomically\n%s", alpha.log.String())
+	res, err := http.Get(alpha.origin + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	markup, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != 200 || !strings.Contains(string(markup), "literal combined frontend TWO") {
+		t.Fatalf("native Kit SSR status=%d markup=%s", res.StatusCode, markup)
 	}
 
-	beforeEnv := strings.Count(alpha.log.String(), "skgo dev: published revision")
-	if e := os.WriteFile(filepath.Join(alpha.app, "web/.env"), []byte("PUBLIC_SESSION_LITERAL=env9937\n"), 0644); e != nil {
-		t.Fatal(e)
-	}
-	deadline = time.Now().Add(45 * time.Second)
-	for (!strings.Contains(alpha.log.String(), "skgo dev: Vite restarted (instance") || strings.Count(alpha.log.String(), "skgo dev: published revision") <= beforeEnv) && time.Now().Before(deadline) {
-		time.Sleep(100 * time.Millisecond)
-	}
-	if !strings.Contains(alpha.log.String(), "skgo dev: Vite restarted (instance") || strings.Count(alpha.log.String(), "skgo dev: published revision") <= beforeEnv {
-		t.Fatalf("same-process Vite restart not republished\n%s", alpha.log.String())
-	}
 	check(alpha, "ALPHA", "literal-7407:9")
 
-	// Recovering Vite must reinitialize its renderer and keep the stable app origin.
-	publishedBefore := strings.Count(alpha.log.String(), "skgo dev: published revision")
+	// Recovering Vite keeps the Go process and stable public origin.
 	vitePID := alpha.log.vitePID()
 	if vitePID == 0 {
 		t.Fatalf("missing Vite child PID\n%s", alpha.log.String())
@@ -267,13 +259,7 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){e,err:=skgo.NewEndpoi
 	if alpha.log.vitePID() == vitePID {
 		t.Fatalf("Vite not restarted\n%s", alpha.log.String())
 	}
-	deadline = time.Now().Add(60 * time.Second)
-	for strings.Count(alpha.log.String(), "skgo dev: published revision") <= publishedBefore && time.Now().Before(deadline) {
-		time.Sleep(100 * time.Millisecond)
-	}
-	if strings.Count(alpha.log.String(), "skgo dev: published revision") <= publishedBefore {
-		t.Fatalf("Vite renderer not republished after restart\n%s", alpha.log.String())
-	}
+
 	check(alpha, "ALPHA", "literal-7407:9")
 	check(beta, "BETA", "literal-4101:7")
 	t.Logf("ALPHA\n%s\nBETA\n%s", alpha.log.String(), beta.log.String())
