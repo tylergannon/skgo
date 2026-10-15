@@ -357,6 +357,9 @@ func testGeneratedNativeState(t *testing.T, lifetime bool) {
 			if !r.Mapped || r.Base == 0 || r.Size == 0 {
 				t.Fatalf("missing native range: %+v", r)
 			}
+			if tc.OS == "darwin" && r.Object == 0 {
+				t.Fatal("missing native kernel object identity")
+			}
 		}
 		call("hold", Candidate{})
 		if result := call("install", candidate20); result.Error != "" {

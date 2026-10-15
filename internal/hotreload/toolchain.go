@@ -56,8 +56,8 @@ func PrepareToolchain(ctx context.Context, goTool, parent string) (Toolchain, er
 	h := sha256.New()
 	h.Write(raw)
 	h.Write(compile)
-	h.Write([]byte("skgo-object-source-v2-nocgo:" + LoaderVersion + ":" + PuregoVersion))
-	for _, name := range []string{"dl_unix.go.txt", "mmap_darwin_arm64.go.txt"} {
+	h.Write([]byte("skgo-object-source-v3-retirement:" + LoaderVersion + ":" + PuregoVersion))
+	for _, name := range []string{"dl_unix.go.txt", "mmap_darwin_arm64.go.txt", "typelink_go127.go.txt"} {
 		source, err := loaderOS.ReadFile("loaderos/" + name)
 		if err != nil {
 			return t, err

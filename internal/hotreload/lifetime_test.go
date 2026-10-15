@@ -4,29 +4,34 @@ package hotreload
 // addresses. No loader live-count or reported unload success is the oracle.
 type nativeRange struct {
 	Base, Size uintptr
+	Object     uint64
 	Mapped     bool
 }
 
 const lifetimeProbe = `package orders
 import("fmt";"os";"reflect";"runtime";"syscall";"unsafe";"github.com/ebitengine/purego")
-type SkgoNativeRange struct{Base,Size uintptr;Mapped bool}
+type SkgoNativeRange struct{Base,Size uintptr;Object uint64;Mapped bool}
 var nativeMincore func(uintptr,uintptr,*byte) int32
 var nativeErrno func() *int32
-var nativeRegion func(uint32,*uint64,*uint64,int32,*int32,*uint32,*uint32) int32
-var nativeDeallocate func(uint32,uint32) int32
+var nativeRegion func(uint32,*uint64,*uint64,*uint32,*int32,*uint32) int32
 var nativeTask uint32
 func init(){
  library,errno:="libc.so.6","__errno_location";if runtime.GOOS=="darwin"{library,errno="/usr/lib/libSystem.B.dylib","__error"}
  handle,err:=purego.Dlopen(library,purego.RTLD_NOW|purego.RTLD_GLOBAL);if err!=nil{panic(err)}
  purego.RegisterLibFunc(&nativeMincore,handle,"mincore");purego.RegisterLibFunc(&nativeErrno,handle,errno)
  if runtime.GOOS=="darwin" {
-  purego.RegisterLibFunc(&nativeRegion,handle,"mach_vm_region")
-  purego.RegisterLibFunc(&nativeDeallocate,handle,"mach_port_deallocate")
+  purego.RegisterLibFunc(&nativeRegion,handle,"mach_vm_region_recurse")
   address,err:=purego.Dlsym(handle,"mach_task_self_");if err!=nil{panic(err)};nativeTask=*(*uint32)(unsafe.Pointer(address))
  }
 }
 func SkgoHotProbe(ranges []SkgoNativeRange) []SkgoNativeRange {
- _skgo_mu.Lock();defer _skgo_mu.Unlock();runtime.GC()
+ _skgo_mu.Lock();defer _skgo_mu.Unlock()
+ module:=reflect.ValueOf(_skgo_current.Load()._skgo_revision.module).Elem().FieldByName("module").Elem()
+ it:=module.FieldByName("typemap").MapRange()
+ for it.Next(){ptr:=it.Value().Pointer();for _,old:=range ranges{if ptr>=old.Base&&ptr<old.Base+old.Size{
+  fmt.Fprintf(os.Stderr,"successor typemap pointer %x references predecessor range %x+%x\n",ptr,old.Base,old.Size);os.Exit(99)
+ }}}
+ runtime.GC()
  return nativeProbe(ranges)
 }
 func nativeProbe(ranges []SkgoNativeRange) []SkgoNativeRange {
@@ -35,11 +40,18 @@ func nativeProbe(ranges []SkgoNativeRange) []SkgoNativeRange {
   r:=&ranges[i];mapped,missing:=false,false
   for off:=uintptr(0);off<r.Size;off+=uintptr(os.Getpagesize()) {
    if runtime.GOOS=="darwin" {
-    address:=uint64(r.Base+off);var size uint64;var info [9]int32;count:=uint32(len(info));var object uint32
-    status:=nativeRegion(nativeTask,&address,&size,9,&info[0],&count,&object)
-    if object!=0 {if status:=nativeDeallocate(nativeTask,object);status!=0{panic(fmt.Sprintf("mach_port_deallocate: %d",status))}}
-    if status!=0 && status!=1 {panic(fmt.Sprintf("mach_vm_region: %d",status))}
-    if status==1||address>uint64(r.Base+off) {missing=true}else{mapped=true}
+    address:=uint64(r.Base+off);var size uint64;var info [21]int32;count:=uint32(len(info));depth:=^uint32(0)
+    status:=nativeRegion(nativeTask,&address,&size,&depth,&info[0],&count)
+    if status==0 && info[12]!=0 {panic("mach_vm_region_recurse returned a submap")}
+    if status!=0 && status!=1 {panic(fmt.Sprintf("mach_vm_region_recurse: %d",status))}
+    if status==1||address>uint64(r.Base+off) {missing=true}else{
+     // macOS may immediately reuse an unmapped address for unrelated backing.
+     // Compare the original kernel object, not permanent address vacancy.
+     object:=uint64(uint32(info[17]))|uint64(uint32(info[18]))<<32
+     if object==0 {panic("native mapping has no kernel object identity")}
+     if r.Object==0 {r.Object=object}
+     if r.Object==object {mapped=true}else{missing=true}
+    }
     continue
    }
    var residency byte

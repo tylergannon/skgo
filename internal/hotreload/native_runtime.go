@@ -70,6 +70,7 @@ func SkgoHotInstall(object string, storage []string, reclaim ...bool) error {
  }
  linker, err := _skgo_loader.ReadObjs([]string{object}, []string{"PACKAGE"}); if err != nil { return err }
  if missing := _skgo_loader.UnresolvedSymbols(linker, _skgo_symbols); len(missing) > 0 { return fmt.Errorf("unresolved host symbols: %v", missing) }
+ linker.Reclaimable = len(reclaim) == 1 && reclaim[0]
  _skgo_runtime.LockOSThread()
  module, err := _skgo_loader.Load(linker, _skgo_symbols)
  _skgo_runtime.UnlockOSThread()
