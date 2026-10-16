@@ -1,5 +1,0 @@
-{
-  "Replace": {
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/host.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-native-host-validation/host-noop-install.go.txt"
-  }
-}

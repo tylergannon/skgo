@@ -1,2 +1,0 @@
-PASS VITE_DOWN public56612 /orders status200 literal=Go SSR total: 4101
-PASS VITE_DOWN public56612 /@vite/client status503 literal=COORDINATOR_VITE_UNAVAILABLE

@@ -1,8 +1,0 @@
-HTTP/1.1 200 OK
-Set-Cookie: go_one=one; Path=/; HttpOnly
-Set-Cookie: go_two=two; Path=/; SameSite=Lax
-X-Go-Instance: ALPHA
-Date: Thu, 15 Oct 2026 23:05:50 GMT
-Content-Length: 157
-Content-Type: text/plain; charset=utf-8
-

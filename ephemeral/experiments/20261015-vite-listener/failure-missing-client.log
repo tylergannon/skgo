@@ -1,6 +1,0 @@
-=== RUN   TestViteListenerIntegration
-    browser_experiment_test.go:225: EOF
---- FAIL: TestViteListenerIntegration (4.78s)
-FAIL
-FAIL	github.com/tylergannon/skgo/internal/hotreload	5.131s
-FAIL

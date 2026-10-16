@@ -1,8 +1,0 @@
-friction: `vp exec vite` in this symlinked fixture resolved an ambient Vite 6 binary; `vp dev` correctly selected pinned VitePlus 1.0.0. The mistaken binary triggered Kit's RunnableDevEnvironment guard; it was tooling identity, not evidence against the architecture.
-correction: direct upstream ModuleRunner IIFE failed on dynamic import syntax, but standard pinned Rolldown CJS lowering executed the runner unchanged in goja. Do not promote the initial parse failure into a Node-runtime requirement.
-finding: a retained ViteBuilder rebuilding only the existing adapter goja environment rendered real component and dependency edits in tens of milliseconds on the tiny fixture; this does not establish application-scale latency or fresh route metadata.
-finding: actual Vite-served Svelte graph traversal through the unchanged runner reached a virtual-module URL error in the installed URL implementation. Stop at this bounded compatibility result rather than build custom module machinery to rescue the candidate.
-
-finding: full-graph runner failure is precisely `new URL("file:///\u0000skgo:skgo:esm-env")`; pinned Node encodes NUL as `%00`, while pinned goja_nodejs passes it to net/url.Parse and rejects it. Classify this as an existing URL compatibility edge, not evidence that custom runner machinery is required.
-
-finding: one experiment-only normalization of NUL file URL to `%00` passed the initial URL edge. Full-graph traversal next externalized the existing lowering helper `@oxc-project/runtime/helpers/awaitAsyncGenerator`; default external import reached absent `require`. Stop this probe here. No basis yet for rejecting the runner; Vite inlining of injected helpers remains an untested integration question.

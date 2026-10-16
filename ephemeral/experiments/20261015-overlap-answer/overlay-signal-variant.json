@@ -1,7 +1,0 @@
-{
-  "Replace": {
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/devserver/session.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-overlap-answer/session-signal-variant.go.txt",
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/devserver/session_integration_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-overlap-answer/harness_test.go.txt",
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/gen/retained.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-overlap-answer/retained-signal-variant.go.txt"
-  }
-}

@@ -1,1 +1,0 @@
-{"instance":"BETA","pid":81344,"root":"/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-coordinator-integration/runtime/BETA","address":{"address":"127.0.0.1","family":"IPv4","port":56623},"publicOrigin":"http://127.0.0.1:56621"}

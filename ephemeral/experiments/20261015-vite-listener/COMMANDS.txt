@@ -1,8 +1,0 @@
-# Combined fixture (interactive; intentionally remains running for browser checks)
-go test -overlay ephemeral/experiments/20261015-vite-listener/overlay.json -tags skgo_listener_experiment ./internal/hotreload -run '^TestViteListenerIntegration$' -count=1 -v -timeout 50m
-# Public-port collision probe while ALPHA occupies 56411; child is cleaned automatically
-go run ./ephemeral/experiments/20261015-vite-listener/collision
-# Structural add/remove probe after browser state tests; fixture must remain running
-go run ./ephemeral/experiments/20261015-vite-listener/structural
-# Bounded actual child-exit recovery followup; run after stopping first fixture
-go test -overlay ephemeral/experiments/20261015-vite-listener/recovery-overlay.json -tags skgo_listener_experiment ./internal/hotreload -run '^TestViteListenerRecovery$' -count=1 -v -timeout 50m

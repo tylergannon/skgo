@@ -1,1 +1,0 @@
-export { default as component } from "../../../../../../../../../example/web/src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.svelte";

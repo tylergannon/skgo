@@ -1,8 +1,0 @@
-=== RUN   TestActiveInstanceIdentityAndValue
-=== RUN   TestActiveInstanceIdentityAndValue/ALPHA
-=== RUN   TestActiveInstanceIdentityAndValue/BETA
---- PASS: TestActiveInstanceIdentityAndValue (0.00s)
-    --- PASS: TestActiveInstanceIdentityAndValue/ALPHA (0.00s)
-    --- PASS: TestActiveInstanceIdentityAndValue/BETA (0.00s)
-PASS
-ok  	github.com/tylergannon/skgo/ephemeral/experiments/20261015-coordinator-integration/browser/httpcheck	0.117s

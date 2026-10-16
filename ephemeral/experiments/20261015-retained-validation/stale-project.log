@@ -1,4 +1,0 @@
-=== RUN   TestRetainedProjectStaleGeneration
---- PASS: TestRetainedProjectStaleGeneration (0.35s)
-PASS
-ok  	github.com/tylergannon/skgo/internal/gen	0.600s

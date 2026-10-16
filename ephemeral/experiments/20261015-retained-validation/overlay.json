@@ -1,8 +1,0 @@
-{
-  "Replace": {
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/compile.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-validation/compile.go.txt",
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/browser_timing_experiment_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-validation/loader_test.go.txt",
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/retained_validation_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-validation/contract_test.go.txt",
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/retained_validation_inputs_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-validation/input_test.go.txt"
-  }
-}

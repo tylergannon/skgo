@@ -1,6 +1,0 @@
-panic: owned port still open56611
-
-goroutine 1 [running]:
-main.main()
-	/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-coordinator-integration/cleanup/main.go:3 +0x1c0
-exit status 2

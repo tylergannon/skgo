@@ -1,1 +1,0 @@
-export { default as component } from "../../../../../../../../../example/web/src/routes/actions/profiles/[profile]/+page.svelte";

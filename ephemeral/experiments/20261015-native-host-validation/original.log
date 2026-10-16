@@ -1,6 +1,0 @@
-=== RUN   TestCapturedNativeHTTPHost
---- PASS: TestCapturedNativeHTTPHost (12.92s)
-=== RUN   TestRetainedApplicationCallerAndDependencyGuards
---- PASS: TestRetainedApplicationCallerAndDependencyGuards (0.09s)
-PASS
-ok  	github.com/tylergannon/skgo/internal/hotreload	13.259s

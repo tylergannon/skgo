@@ -1,7 +1,0 @@
-ALPHA public HTTP, after ALPHA-only native source save
-ALPHA FRONTEND_ONE
-Go SSR total: 4101
-
-BETA public HTTP, unchanged source
-BETA FRONTEND_ONE
-Go SSR total: 3000

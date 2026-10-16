@@ -1,7 +1,0 @@
-=== RUN   TestViteListenerIntegration
-    browser_experiment_test.go:222: HOST instance=ALPHA pid=16316 discovered=http://127.0.0.1:62285 public=http://127.0.0.1:56411
-    browser_experiment_test.go:321: initial instance=ALPHA status=502 body=
---- FAIL: TestViteListenerIntegration (3.66s)
-FAIL
-FAIL	github.com/tylergannon/skgo/internal/hotreload	4.025s
-FAIL

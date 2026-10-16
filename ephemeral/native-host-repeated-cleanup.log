@@ -1,4 +1,0 @@
-=== RUN   TestCapturedNativeHTTPHost
---- PASS: TestCapturedNativeHTTPHost (14.11s)
-PASS
-ok  	github.com/tylergannon/skgo/internal/hotreload	14.363s
