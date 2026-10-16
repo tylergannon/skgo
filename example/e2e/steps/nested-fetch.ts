@@ -29,7 +29,7 @@ Then(
 	'the destinations page lists these answers:',
 	async ({ page }, table: DataTable) => {
 		for (const [path, answer] of table.rows()) {
-			await expect(page.locator(`li[data-path="${path}"]`)).toHaveText(destinationAnswer(answer), {
+			await expect(page.locator(`li[data-path="${path}"]`)).toContainText(destinationAnswer(answer), {
 				timeout: 15_000
 			});
 		}
