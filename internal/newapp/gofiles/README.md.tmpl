@@ -5,7 +5,7 @@ skgo added the Go server and bindings. Production needs no Node at request time;
 
 ## Prerequisites
 
-- Go {{.GoVersion}} or newer
+- Go {{.GoVersion}} or newer for production builds; exactly Go 1.27.2 for `skgo dev`
 - Node 22.17 or newer
 - VitePlus 1.0.0 (`vp`) and `just`
 
@@ -21,7 +21,22 @@ just serve
 Open {{.Origin}}. `just serve` generates bindings, builds the frontend and
 runs the standalone Go binary. Rebuild after edits with `just build`.
 Run `go tool skgo dev` from the application root for native Kit development
-rendering, frontend HMR and native Go updates. `NewDevelopmentHandler` and
+rendering, frontend HMR and native Go updates. Development currently accepts only
+macOS ARM64 and Linux AMD64, builds the Go host without cgo, and requires Node
+while running. Other platforms and Go versions are rejected at startup.
+Compatible Go edits update the running host; changes classified as requiring a
+full rebuild replace it and may reset in-memory Go state. An observed
+native-loader failure emitted raw `R_ADDROFF` stderr while old code kept serving,
+without a normal revision/Vite error notification or automatic rebuild.
+Subsequent edit/restart recovery is unverified; see
+[issue #330](https://github.com/tylergannon/skgo/issues/330).
+Browser draft preservation and full browser-suite coverage
+of this development topology are not established. Direct SSR subfetch response
+cookies over the private Go socket are not automatically relayed to the page
+response. Check authentication in both development and production; see
+[skgo's development limitations](https://github.com/tylergannon/skgo#development).
+
+`NewDevelopmentHandler` and
 `NewHandler` share the application's setup in `server.go`; the explicit
 `*skgo.NativeDevelopment` selects rendering through `development.NewSSR` and
 `development.NewStaticHandler`. A nil value selects production Go/goja rendering.

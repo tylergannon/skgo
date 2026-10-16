@@ -7,7 +7,8 @@ on:
 permissions:
   contents: read
 
-# Development qualification is unavailable pending its separate replacement.
+# This workflow qualifies production. The replacement dev server has focused
+# checks; a complete development browser-suite pass is not established.
 jobs:
   qualification:
     name: Example BDD (production)

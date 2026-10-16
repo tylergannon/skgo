@@ -806,7 +806,11 @@ func getNativePatchedDependencies(t *testing.T, f fixture) map[string]string {
 
 func mustPNPM(t *testing.T) string {
 	t.Helper()
-	output, err := exec.Command(vitePlusExecutable(), "env", "exec", "--package-manager", "pnpm@"+pnpmVersion, "which", "pnpm").CombinedOutput()
+	cmd := exec.Command(vitePlusExecutable(), "exec", "which", "pnpm")
+	// Resolve from the same pinned project as the ordinary test recipe. The
+	// package directory itself is not a frontend project.
+	cmd.Dir = filepath.Join("..", "..", "example", "web")
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("resolve VitePlus-managed pnpm: %v: %s", err, output)
 	}

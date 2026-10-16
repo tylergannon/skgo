@@ -1,12 +1,17 @@
 # SvelteKit compatibility journal
 
-Development mode and development qualification are unavailable after removal of the old server. References to development runs below record historical qualification only.
+`skgo dev` uses native Vite/Kit rendering with application callbacks to Go.
+The [development handoff](ephemeral/projects/dev-server/CONTINUE.md) records
+focused browser checks and real session integration; a complete development
+browser-suite pass is not established. References to earlier development runs
+below qualify the retired server, not this topology.
 
 This journal records upstream releases reviewed for skgo, the Go contracts they
 can affect, and the evidence for each adoption. A dependency pin or a successful
 build alone does not establish compatibility. Go owns HTTP, server loads, remote
-functions, actions and dynamic SSR; Goja runs the renderer. Node is build-time
-only. Browser behavior and prerender output also depend on upstream Kit code.
+functions and actions. Production runs the renderer in Goja and needs Node only
+at build time; development runs Kit's renderer in Node. Browser behavior and
+prerender output also depend on upstream Kit code.
 
 ## Maintaining the journal
 
@@ -42,8 +47,9 @@ This is a manual maintenance procedure; it creates no scheduled task.
 released Kit 3.0.0, with main integration through
 [PR #237](https://github.com/tylergannon/skgo/pull/237). Runtime qualification on
 released base `bfea45a` is recorded below. This review does not claim full Kit
-parity. Publication uses the existing Release gate: both browser modes qualify
-the merged commit before npm publication and tagging.
+parity. At that adoption, the Release gate qualified both browser modes before npm
+publication and tagging. Those historical runs do not qualify the replacement
+development server.
 
 **Consumer compatibility:** the adapter now requires stable Kit `^3.0.0`, the
 addon requires sv `^1.0.1`, and new project creation requires VitePlus exactly

@@ -46,6 +46,8 @@ func Run(ctx context.Context, o Options) error {
 	server := &http.Server{Handler: route}
 	defer server.Close()
 	go server.Serve(ln)
+	// Keep Unix socket paths below platform limits; the macOS temp root alone
+	// can consume most of the available pathname. Development is Unix-only.
 	work, e := os.MkdirTemp("/tmp", "skgo-")
 	if e != nil {
 		return e
@@ -137,27 +139,45 @@ retryStartup:
 		return e
 	}
 	serial := 0
-	hostDirs := make(map[*hotreload.Host]string)
+	type hostFiles struct{ dir, socket string }
+	hostDirs := make(map[*hotreload.Host]hostFiles)
 	closeHost := func(host *hotreload.Host) {
 		if _, owned := hostDirs[host]; !owned {
 			return
 		}
 		_ = host.Close()
-		_ = os.Remove(filepath.Join(work, "go.sock"))
-		_ = os.RemoveAll(hostDirs[host])
+		_ = os.Remove(hostDirs[host].socket)
+		_ = os.RemoveAll(hostDirs[host].dir)
 		delete(hostDirs, host)
 	}
 	makeHost := func(inputs *gen.CompilerInputs, dist string) (*hotreload.Host, error) {
 		serial++
 		dir := filepath.Join(work, fmt.Sprintf("host-%d", serial))
-		host, err := hotreload.BuildHost(ctx, hotreload.HostOptions{Inputs: inputs, WorkDir: dir, GoTool: o.GoTool, Origin: origin, DistDir: dist, SocketPath: filepath.Join(work, "go.sock"), NativeKit: true, ServiceSecret: secret, Output: o.Output})
+		socket := filepath.Join(work, fmt.Sprintf("go-%d.sock", serial))
+		host, err := hotreload.BuildHost(ctx, hotreload.HostOptions{Inputs: inputs, WorkDir: dir, GoTool: o.GoTool, Origin: origin, DistDir: dist, SocketPath: socket, NativeKit: true, ServiceSecret: secret, Output: o.Output})
 		if err != nil {
-			_ = os.Remove(filepath.Join(work, "go.sock"))
+			_ = os.Remove(socket)
 			_ = os.RemoveAll(dir)
 			return nil, err
 		}
-		hostDirs[host] = dir
+		hostDirs[host] = hostFiles{dir, socket}
 		return host, nil
+	}
+	publishHost := func(host *hotreload.Host) error {
+		// Vite dials a stable pathname; each candidate owns its own listener so
+		// compilation and initialization cannot disturb the healthy application.
+		// Publish only the ready, current candidate, then retire the old owner.
+		socket := hostDirs[host].socket
+		alias := filepath.Join(work, "go.sock")
+		staged := alias + ".next"
+		if err := os.Symlink(socket, staged); err != nil {
+			return err
+		}
+		defer os.Remove(staged)
+		if err := os.Rename(staged, alias); err != nil {
+			return err
+		}
+		return route.setApp(socket)
 	}
 	fmt.Fprintln(o.Output, "skgo dev: building native application host")
 	active, e := makeHost(build.Inputs, snapshot.Dist)
@@ -170,7 +190,7 @@ retryStartup:
 		}
 		return fmt.Errorf("Go development host: %s", message)
 	}
-	if e = build.Commit(func(*gen.CompilerInputs) error { return route.setApp(filepath.Join(work, "go.sock")) }); e != nil {
+	if e = build.Commit(func(*gen.CompilerInputs) error { return publishHost(active) }); e != nil {
 		closeHost(active)
 		build.Cancel()
 		build.Inputs.Close()
@@ -227,7 +247,9 @@ retryStartup:
 				}
 				active = next
 				hostInputs = goodInputs
-				_ = route.setApp(filepath.Join(work, "go.sock"))
+				if err := publishHost(active); err != nil {
+					return err
+				}
 				_ = front.notify(ctx, goodRevision, "", false)
 				fmt.Fprintf(o.Output, "skgo dev: recovered Go pid %d\n", active.PID)
 				continue
@@ -372,9 +394,6 @@ retryStartup:
 				}
 				if err == nil {
 					var replacement *hotreload.Host
-					// Replacement owns the same private pathname. Stop its prior owner first;
-					// outstanding request handles fail rather than migrate into a new process.
-					closeHost(active)
 					replacement, err = makeHost(nextBuild.Inputs, snapshot.Dist)
 					if err == nil {
 						// A new lease keeps replacement publication guarded after a long build.
@@ -384,10 +403,11 @@ retryStartup:
 							err = prepareErr
 						} else if current.Revision != nextBuild.Revision {
 							current.Cancel()
+							current.Inputs.Close()
 							closeHost(replacement)
 							err = gen.ErrObsolete
 						} else {
-							err = current.Commit(func(*gen.CompilerInputs) error { return route.setApp(filepath.Join(work, "go.sock")) })
+							err = current.Commit(func(*gen.CompilerInputs) error { return publishHost(replacement) })
 							current.Inputs.Close()
 							if err == nil {
 								old := active
