@@ -49,7 +49,7 @@ func TestKitPatchCLIConfiguresFilesAndDoesNotClaimInstallation(t *testing.T) {
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := []byte(`{"name":"cli-fixture","dependencies":{"@sveltejs/kit":"^3.1.0"},"devEngines":{"packageManager":{"name":"pnpm","version":"12.9.1","onFail":"download"}}}`)
+	manifest := []byte(`{"name":"cli-fixture","dependencies":{"@sveltejs/kit":"^3.1.0"},"devEngines":{"packageManager":{"name":"pnpm","version":"12.14.0","onFail":"download"}}}`)
 	if err := os.WriteFile(filepath.Join(web, "package.json"), manifest, 0o644); err != nil {
 		t.Fatal(err)
 	}
