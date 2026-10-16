@@ -59,7 +59,7 @@ func (p *Project) Watch() (<-chan error, error) {
 	}
 	// Selection controls outside modules need parent watches (not whole ancestor
 	// trees). This detects a newly created go.work and preserved-mtime writes.
-	for _, control := range p.sources.Controls {
+	for _, control := range append(append([]string{}, p.sources.Controls...), p.rawControls...) {
 		dir := filepath.Dir(control)
 		if !w.dirs[dir] {
 			if err := w.addWatch(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -197,6 +197,7 @@ func (w *projectWatcher) reconcileMissingEntry(err error) (bool, error) {
 	if err := w.watchDir(parent); err != nil {
 		return true, fmt.Errorf("register staging parent %q: %w", parent, err)
 	}
+	w.project.RecordRaw(false, parent)
 	_, _, err = w.project.Observe(w.ctx, parent)
 	if err != nil {
 		return true, fmt.Errorf("acquire staging parent %q: %w", parent, err)
@@ -227,6 +228,7 @@ func (w *projectWatcher) run() {
 				}
 				continue
 			}
+			w.project.RecordRaw(true)
 			w.report(fmt.Errorf("fsnotify event delivery: %w", err))
 			// Overflow means event completeness is unknown. Reconcile all selected
 			// module scopes rather than trusting their retained byte handles.
@@ -254,16 +256,24 @@ func (w *projectWatcher) run() {
 					break
 				}
 			}
-			for _, control := range w.project.sources.Controls {
+			for _, control := range append(append([]string{}, w.project.sources.Controls...), w.project.rawControls...) {
 				if event.Name == control {
 					interested = true
 					break
 				}
 			}
+
+			// Known implementation outputs are outside application generation and
+			// source acquisition. In particular, Node cache churn must not fill the
+			// event queue or force broad reconciliation while a helper is running.
+			if w.project.rawChanges != nil && w.project.rawToolingPath(event.Name) {
+				interested = false
+			}
 			w.project.mu.Unlock()
 			if !interested {
 				continue
 			}
+			w.project.RecordRaw(false, event.Name)
 			// Ownership, not merely a filename suffix, prevents output feedback loops.
 			if data, err := os.ReadFile(event.Name); err == nil && cacheOwned(w.project.cfg, event.Name, data) {
 				continue

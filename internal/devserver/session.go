@@ -62,12 +62,52 @@ func Run(ctx context.Context, o Options) error {
 		return e
 	}
 	defer project.Close()
+	if o.GeneratorConfig != "" {
+		config := o.GeneratorConfig
+		if !filepath.IsAbs(config) {
+			config = filepath.Join(o.Root, config)
+		}
+		config, e = filepath.Abs(config)
+		if e != nil {
+			return e
+		}
+		if e = project.WatchRawFile(config); e != nil {
+			return e
+		}
+	}
 	watchErrors, e := project.Watch()
 	if e != nil {
 		return e
 	}
-	fmt.Fprintln(o.Output, "skgo dev: preparing generated application")
+	var applicationGenerator *generator
+	var rawChanges <-chan struct{}
+	if o.GeneratorConfig != "" {
+		applicationGenerator, e = newGenerator(o, work)
+		if e != nil {
+			return e
+		}
+		defer applicationGenerator.close()
+		rawChanges = project.RawChanges()
+		project.RecordRaw(true)
+	}
+	guardBuild := func(build *gen.ProjectBuild) {
+		if applicationGenerator != nil {
+			build.RequireEventEpoch(applicationGenerator.epoch)
+		}
+	}
+	announcedPreparation := false
 	for {
+		if applicationGenerator != nil {
+			if err := applicationGenerator.pass(ctx, project); errors.Is(err, gen.ErrObsolete) {
+				continue
+			} else if err != nil {
+				return fmt.Errorf("application generator startup: %w", err)
+			}
+		}
+		if !announcedPreparation {
+			fmt.Fprintln(o.Output, "skgo dev: preparing generated application")
+			announcedPreparation = true
+		}
 		initial, err := project.Prepare(ctx)
 		if errors.Is(err, gen.ErrObsolete) {
 			continue
@@ -75,6 +115,7 @@ func Run(ctx context.Context, o Options) error {
 		if err != nil {
 			return err
 		}
+		guardBuild(initial)
 		err = initial.Commit(nil)
 		initial.Inputs.Close()
 		if errors.Is(err, gen.ErrObsolete) {
@@ -101,6 +142,17 @@ func Run(ctx context.Context, o Options) error {
 		return e
 	}
 retryStartup:
+	if applicationGenerator != nil {
+		for {
+			if e = applicationGenerator.pass(ctx, project); errors.Is(e, gen.ErrObsolete) {
+				continue
+			}
+			if e != nil {
+				return fmt.Errorf("application generator startup: %w", e)
+			}
+			break
+		}
+	}
 	snapshot, e := front.snapshot(ctx)
 	if e != nil {
 		return e
@@ -116,6 +168,7 @@ retryStartup:
 	if e != nil {
 		return e
 	}
+	guardBuild(seed)
 	if e = seed.Commit(nil); e != nil {
 		seed.Cancel()
 		seed.Inputs.Close()
@@ -201,6 +254,7 @@ retryStartup:
 		}
 		return fmt.Errorf("Go development host: %s", message)
 	}
+	guardBuild(build)
 	if e = build.Commit(func(*gen.CompilerInputs) error { return publishHost(active) }); e != nil {
 		closeHost(active)
 		build.Cancel()
@@ -209,6 +263,9 @@ retryStartup:
 			goto retryStartup
 		}
 		return e
+	}
+	if applicationGenerator != nil {
+		applicationGenerator.rebuild = false
 	}
 	hostInputs, goodInputs := build.Inputs, build.Inputs
 	goodRevision := build.Revision
@@ -237,6 +294,8 @@ retryStartup:
 					fmt.Fprintf(o.Output, "skgo dev watch: %v\n", err)
 				}
 				continue
+			case <-rawChanges:
+				pending = true
 			case <-project.Changes():
 				goChanged = true
 				pending = true
@@ -312,6 +371,18 @@ retryStartup:
 			}
 		}
 		pending = false
+		if applicationGenerator != nil {
+			if err := applicationGenerator.pass(ctx, project); err != nil {
+				if errors.Is(err, gen.ErrObsolete) {
+					pending = true
+				} else {
+					fmt.Fprintln(o.Output, err)
+					_ = front.notify(ctx, project.Revision(), err.Error(), false)
+				}
+				continue
+			}
+			goChanged = goChanged || project.Revision() != goodRevision || applicationGenerator.rebuild
+		}
 		// A Go event can arrive before the frontend polling tick. Observe the
 		// current frontend revision before deciding whether native installation
 		// alone can publish this captured application revision.
@@ -355,13 +426,17 @@ retryStartup:
 			_ = front.notify(ctx, project.Revision(), err.Error(), false)
 			continue
 		}
+		guardBuild(nextBuild)
 		serial++
 		candidateDir := filepath.Join(work, fmt.Sprintf("candidate-%d", serial))
 		prepareStarted := time.Now()
-		update, err := active.Prepare(ctx, nextBuild.Inputs, candidateDir)
+		var update *hotreload.HostUpdate
+		rebuild := applicationGenerator != nil && applicationGenerator.rebuild
+		if !rebuild {
+			update, err = active.Prepare(ctx, nextBuild.Inputs, candidateDir)
+		}
 		prepareElapsed := time.Since(prepareStarted)
 		var installElapsed time.Duration
-		rebuild := false
 		var complete *hotreload.CompleteBuild
 		if errors.As(err, &complete) {
 			rebuild = true
@@ -412,12 +487,13 @@ retryStartup:
 						if prepareErr != nil {
 							closeHost(replacement)
 							err = prepareErr
-						} else if current.Revision != nextBuild.Revision {
+						} else if current.Revision != nextBuild.Revision || (applicationGenerator != nil && project.RawSelection().Epoch != applicationGenerator.epoch) {
 							current.Cancel()
 							current.Inputs.Close()
 							closeHost(replacement)
 							err = gen.ErrObsolete
 						} else {
+							guardBuild(current)
 							old := active
 							stopped := false
 							err = current.Commit(func(*gen.CompilerInputs) error {
@@ -483,6 +559,9 @@ retryStartup:
 		}
 		if goodInputs != hostInputs {
 			goodInputs.Close()
+		}
+		if rebuild && applicationGenerator != nil {
+			applicationGenerator.rebuild = false
 		}
 		goodInputs = nextBuild.Inputs
 		goodRevision = nextBuild.Revision

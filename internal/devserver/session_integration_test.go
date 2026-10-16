@@ -23,7 +23,11 @@ import (
 
 // This opt-in contract runs real Vite and native application children. Missing
 // prerequisites are failures, never silently skipped qualification.
-func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) {
+func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) { realSession(t, false) }
+
+func TestRealSessionApplicationGeneration(t *testing.T) { realSession(t, true) }
+
+func realSession(t *testing.T, withGenerator bool) {
 	if _, err := exec.LookPath("vp"); err != nil {
 		t.Fatal(err)
 	}
@@ -113,6 +117,12 @@ func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) {
 		write("locals/locals.go", "package locals\ntype Locals struct{}\n")
 		write("generated/config.go", "package generated\n//go:generate go tool skgo generate --web ../web --locals-package example.com/sessionfixture/locals --locals-type Locals\n")
 		write("web/src/routes/orders/server.go", sessionRoute("4101", 7))
+		if withGenerator {
+			write("generator.json", `{"package":"./tool"}`)
+			write("producer.txt", "literal-generated-101")
+			write("applicationoutput/value.go", "package applicationoutput\nconst Value=\"bootstrap\"\n")
+			write("tool/main.go", sessionGeneratorSource)
+		}
 		write("server.go", fmt.Sprintf(`package sessionfixture
 import("io/fs";"net/http";"os";"strconv";"strings";"sync";"syscall";"errors";appenv "example.com/sessionfixture/web/src";"github.com/tylergannon/skgo"; generated "example.com/sessionfixture/generated")
 func NewHandler(dist fs.FS,origin string)(http.Handler,error){return newHandler(dist,origin,nil)}
@@ -142,6 +152,15 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
  return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Project-State",string(durable));w.Header().Set("X-Go-Pid",strconv.Itoa(os.Getpid()));w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);w.Header().Set("X-Environment",envValues.Receipt);w.Header().Set("X-App-Dir",manifest.AppDir);w.Header().Set("X-Trusted-Origins",strings.Join(manifest.TrustedOrigins,","));app.ServeHTTP(w,r)}),nil
 }
 `, filepath.Join(projectDir, "owner.lock"), filepath.Join(projectDir, "catalog"), label))
+		if withGenerator {
+			source, err := os.ReadFile(filepath.Join(app, "server.go"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := strings.Replace(string(source), `import("io/fs";`, `import(data "example.com/sessionfixture/applicationoutput";"io/fs";`, 1)
+			body = strings.Replace(body, `w.Header().Set("X-Project-State",string(durable));`, `w.Header().Set("X-Generated",data.Value);w.Header().Set("X-Project-State",string(durable));`, 1)
+			write("server.go", body)
+		}
 		ln, e := net.Listen("tcp", "127.0.0.1:0")
 		if e != nil {
 			t.Fatal(e)
@@ -155,8 +174,55 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 		}
 		childCtx, stop := context.WithCancel(ctx)
 		s := &session{origin: "http://" + address, log: &sessionLog{}, done: make(chan error, 1), cancel: stop, app: app}
+		if withGenerator {
+			// Keep both repository-conventional and explicitly configured Node cache
+			// writes active while the real coordinator starts, replaces and recovers.
+			caches := []string{filepath.Join(app, ".cache", "node-compile"), filepath.Join(app, "explicit-node-cache")}
+			for _, cache := range caches {
+				if err := os.MkdirAll(cache, 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(cache, "entry"), []byte("initial cache"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			t.Setenv("NODE_COMPILE_CACHE", caches[1])
+			cacheStopped := make(chan struct{})
+			go func() {
+				defer close(cacheStopped)
+				tick := time.NewTicker(10 * time.Millisecond)
+				defer tick.Stop()
+				for n := 0; ; n++ {
+					select {
+					case <-childCtx.Done():
+						return
+					case <-tick.C:
+						for _, cache := range caches {
+							_ = os.WriteFile(filepath.Join(cache, "entry"), []byte(strconv.Itoa(n)), 0600)
+						}
+					}
+				}
+			}()
+			t.Cleanup(func() { stop(); <-cacheStopped })
+			var startupEvent sync.Once
+			s.log.observe = func(message string) {
+				if strings.Contains(message, "preparing generated application") {
+					startupEvent.Do(func() {
+						// Inject a raw non-Go edit after the first successful generator pass and
+						// before initial Prepare/Commit, then stop editing and require convergence.
+						write("startup-observed.json", `{"literal":"startup-event-17"}`)
+						time.Sleep(100 * time.Millisecond)
+					})
+				}
+			}
+		}
 		go func() {
-			s.done <- Run(childCtx, Options{Root: app, Listen: address, StrictPort: !occupied, Output: s.log})
+			s.done <- Run(childCtx, Options{Root: app, Listen: address, StrictPort: !occupied, Output: s.log, GeneratorConfig: func() string {
+				if withGenerator {
+					return "generator.json"
+				}
+				return ""
+			}()})
 		}()
 		t.Cleanup(func() {
 			stop()
@@ -234,6 +300,10 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 	}
 	alpha := start("ALPHA")
 	check(alpha, "ALPHA", "literal-4101:8")
+	if withGenerator {
+		exerciseSessionGenerator(t, alpha.app, alpha.origin, alpha.log)
+		return
+	}
 	beta := start("BETA")
 	check(beta, "BETA", "literal-4101:7")
 	pid := alpha.log.lastPID()
@@ -515,11 +585,20 @@ var _=skgo.GET(get)
 
 type sessionLog struct {
 	sync.Mutex
-	b strings.Builder
+	b       strings.Builder
+	observe func(string)
 }
 
-func (l *sessionLog) Write(p []byte) (int, error) { l.Lock(); defer l.Unlock(); return l.b.Write(p) }
-func (l *sessionLog) String() string              { l.Lock(); defer l.Unlock(); return l.b.String() }
+func (l *sessionLog) Write(p []byte) (int, error) {
+	l.Lock()
+	n, err := l.b.Write(p)
+	l.Unlock()
+	if l.observe != nil {
+		l.observe(string(p))
+	}
+	return n, err
+}
+func (l *sessionLog) String() string { l.Lock(); defer l.Unlock(); return l.b.String() }
 func (l *sessionLog) lastPID() int {
 	matches := regexp.MustCompile(`(?:Go pid |recovered Go pid )(\d+)`).FindAllStringSubmatch(l.String(), -1)
 	if len(matches) == 0 {
@@ -535,4 +614,167 @@ func (l *sessionLog) vitePID() int {
 	}
 	p, _ := strconv.Atoi(matches[len(matches)-1][1])
 	return p
+}
+
+const sessionGeneratorSource = `package main
+import("context";"bytes";"fmt";"os";"strings";"github.com/tylergannon/skgo/devgen")
+const helperVersion="helper-v1"
+func main(){passes:=0;if err:=devgen.Serve(context.Background(),func(_ context.Context,r devgen.Request)(bool,error){
+ passes++
+ fmt.Fprintf(os.Stderr,"generator fixture pid=%d pass=%d request id=%d epoch=%d paths=%q\n",os.Getpid(),passes,r.ID,r.Epoch,r.Paths)
+ data,err:=os.ReadFile("producer.txt");if err!=nil{return false,err}
+ input:=string(data);fail:=strings.HasPrefix(input,"fail:");crash:=strings.HasPrefix(input,"crash:")
+ input=strings.TrimPrefix(strings.TrimPrefix(input,"fail:"),"crash:")
+ body:=[]byte(fmt.Sprintf("package applicationoutput\nconst Value=%q\n",input+":"+helperVersion))
+ previous,_:=os.ReadFile("applicationoutput/value.go");changed:=!bytes.Equal(previous,body)
+ if changed{if err:=os.WriteFile("applicationoutput/value.go",body,0644);err!=nil{return false,err}}
+ if crash{os.Exit(19)}
+ if fail{return changed,fmt.Errorf("literal partial generation failure")}
+ return changed,nil
+ });err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}}
+`
+
+func exerciseSessionGenerator(t *testing.T, app, origin string, log *sessionLog) {
+	t.Helper()
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(app, name), []byte(body), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	request := func(want string) string {
+		t.Helper()
+		deadline := time.Now().Add(60 * time.Second)
+		var actual string
+		for time.Now().Before(deadline) {
+			res, err := http.Get(origin + "/orders")
+			if err == nil {
+				body, _ := io.ReadAll(res.Body)
+				res.Body.Close()
+				actual = fmt.Sprintf("%d %s %s", res.StatusCode, res.Header.Get("X-Generated"), body)
+				if res.StatusCode == 200 && res.Header.Get("X-Generated") == want && string(body) == "literal-4101:8" && res.Header.Get("X-Project-State") == "saved-project-340" {
+					return res.Header.Get("X-Go-Pid")
+				}
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		t.Fatalf("want generated %q, got %s\n%s", want, actual, log.String())
+		return ""
+	}
+	waitDiagnostic := func(start int, want string) {
+		t.Helper()
+		deadline := time.Now().Add(30 * time.Second)
+		for time.Now().Before(deadline) {
+			if strings.Contains(log.String()[start:], want) {
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		t.Fatalf("missing %q\n%s", want, log.String())
+	}
+	helperPID := func() string {
+		t.Helper()
+		matches := regexp.MustCompile(`generator fixture pid=(\d+)`).FindAllStringSubmatch(log.String(), -1)
+		if len(matches) == 0 {
+			t.Fatal("missing helper PID")
+		}
+		return matches[len(matches)-1][1]
+	}
+	first := request("literal-generated-101:helper-v1")
+	firstHelper := helperPID()
+	write("producer.txt", "literal-generated-202")
+	second := request("literal-generated-202:helper-v1")
+	if helperPID() != firstHelper {
+		t.Fatal("application replacement discarded retained helper")
+	}
+	if second == first {
+		t.Fatal("generated Go output used native patch instead of replacement")
+	}
+	// Equal-byte publication preserves the healthy process even after analysis.
+	before, err := os.Stat(filepath.Join(app, "applicationoutput/value.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	startEqual := len(log.String())
+	write("producer.txt", "literal-generated-202")
+	waitDiagnostic(startEqual, "producer.txt")
+	if pid := request("literal-generated-202:helper-v1"); pid != second {
+		t.Fatalf("equal output replaced application %s -> %s", second, pid)
+	}
+	after, err := os.Stat(filepath.Join(app, "applicationoutput/value.go"))
+	if err != nil || !after.ModTime().Equal(before.ModTime()) {
+		t.Fatal("equal output changed mtime")
+	}
+	start := len(log.String())
+	write("producer.txt", "fail:literal-generated-303")
+	waitDiagnostic(start, "literal partial generation failure")
+	if pid := request("literal-generated-202:helper-v1"); pid != second {
+		t.Fatal("partial failure retired healthy application")
+	}
+	write("producer.txt", "literal-generated-303")
+	third := request("literal-generated-303:helper-v1")
+	if third == second {
+		t.Fatal("no-op retry erased full rebuild obligation")
+	}
+	start = len(log.String())
+	write("producer.txt", "crash:literal-generated-404")
+	waitDiagnostic(start, "generator")
+	if pid := request("literal-generated-303:helper-v1"); pid != third {
+		t.Fatal("lost reply retired healthy application")
+	}
+	write("producer.txt", "literal-generated-404")
+	fourth := request("literal-generated-404:helper-v1")
+	afterCrashHelper := helperPID()
+	if afterCrashHelper == firstHelper {
+		t.Fatal("dead helper was not replaced")
+	}
+	if fourth == third {
+		t.Fatal("helper restart erased full rebuild obligation")
+	}
+	if err := os.Remove(filepath.Join(app, "applicationoutput/value.go")); err != nil {
+		t.Fatal(err)
+	}
+	repaired := request("literal-generated-404:helper-v1")
+	// Request may briefly reach the old process while repair is pending: observe
+	// replacement before asserting a subsequent helper freshness transition.
+	deadline := time.Now().Add(30 * time.Second)
+	for repaired == fourth && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+		repaired = request("literal-generated-404:helper-v1")
+	}
+	if repaired == fourth {
+		t.Fatal("deleted owned output was not repaired and rebuilt")
+	}
+	source, err := os.ReadFile(filepath.Join(app, "tool/main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	start = len(log.String())
+	write("tool/main.go", "package main\ninvalid helper syntax\n")
+	waitDiagnostic(start, "build generator")
+	if pid := request("literal-generated-404:helper-v1"); pid != repaired {
+		t.Fatal("broken helper retired healthy application")
+	}
+	write("tool/main.go", strings.Replace(string(source), `helper-v1`, `helper-v2`, 1))
+	fresh := request("literal-generated-404:helper-v2")
+	if helperPID() == afterCrashHelper {
+		t.Fatal("changed helper code reused stale process")
+	}
+	if fresh == repaired {
+		t.Fatal("helper source edit did not use fresh code")
+	}
+	start = len(log.String())
+	if err := os.Remove(filepath.Join(app, "producer.txt")); err != nil {
+		t.Fatal(err)
+	}
+	waitDiagnostic(start, "producer.txt")
+	if pid := request("literal-generated-404:helper-v2"); pid != fresh {
+		t.Fatal("missing non-Go input retired healthy application")
+	}
+	write("producer.txt", "literal-generated-505")
+	final := request("literal-generated-505:helper-v2")
+	if final == fresh {
+		t.Fatal("non-Go recreate did not replace application")
+	}
+	t.Logf("generic generation runtime: initial=%s changed=%s partial-recovery=%s lost-reply-recovery=%s output-repair=%s helper-refresh=%s recreated-input=%s\n%s", first, second, third, fourth, repaired, fresh, final, log.String())
 }

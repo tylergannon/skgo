@@ -46,6 +46,12 @@ type Project struct {
 	plans          map[[32]byte]generationPlan
 	pending        map[[32]byte]*generationFuture
 	watch          *projectWatcher
+	rawEpoch       uint64
+	rawFull        uint64
+	rawPaths       map[string]uint64
+	rawChanges     chan struct{}
+	rawControls    []string
+	rawNodeCaches  []string
 }
 
 type projectSnapshot struct {
@@ -404,13 +410,14 @@ func (i *CompilerInputs) Close() {
 // ProjectBuild owns prepared output and compiler inputs until Commit or Cancel.
 // Prepare never publishes generated files or diagnostics into the authored tree.
 type ProjectBuild struct {
-	Revision Revision
-	Inputs   *CompilerInputs
-	project  *Project
-	snapshot *projectSnapshot
-	plan     generationPlan
-	mu       sync.Mutex
-	closed   bool
+	Revision   Revision
+	Inputs     *CompilerInputs
+	project    *Project
+	snapshot   *projectSnapshot
+	plan       generationPlan
+	mu         sync.Mutex
+	closed     bool
+	eventEpoch *uint64
 }
 
 // Prepare shares generation by consumed declaration key. Each consumer gets its
@@ -576,7 +583,7 @@ func (b *ProjectBuild) Commit(admit func(*CompilerInputs) error) error {
 	p := b.project
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.closed || p.current != b.snapshot {
+	if p.closed || p.current != b.snapshot || (b.eventEpoch != nil && p.rawEpoch != *b.eventEpoch) {
 		return ErrObsolete
 	}
 	if admit != nil {
@@ -731,3 +738,7 @@ func (p *Project) generate(ctx context.Context, s *projectSnapshot, sources cach
 	}
 	return result.plan, nil
 }
+
+// RequireEventEpoch additionally guards admission against raw generator inputs.
+// Call before Commit; the event check and application admission share the lock.
+func (b *ProjectBuild) RequireEventEpoch(epoch uint64) { b.eventEpoch = &epoch }
