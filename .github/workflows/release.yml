@@ -94,6 +94,10 @@ jobs:
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: go run ./cmd/skgo-release build "$VERSION" "$GITHUB_SHA"
+      - name: Exercise the packaged CLI and an external Go plugin
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        run: SKGO_RELEASE_ARCHIVE="$PWD/dist/skgo_${RELEASE_VERSION#v}_linux_${{ matrix.arch }}.tar.gz" go test -tags release ./cmd/skgo-release -run '^TestPackagedCLI$' -count=1 -v
       - uses: actions/upload-artifact@v7
         with:
           name: cli-linux-${{ matrix.arch }}
@@ -140,6 +144,10 @@ jobs:
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: nice -n 10 go run ./cmd/skgo-release build "$VERSION" "$GITHUB_SHA"
+      - name: Exercise the signed archive and an external Go plugin
+        env:
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        run: SKGO_RELEASE_ARCHIVE="$PWD/dist/skgo_${RELEASE_VERSION#v}_darwin_arm64.tar.gz" go test -tags release ./cmd/skgo-release -run '^TestPackagedCLI$' -count=1 -v
       - uses: actions/upload-artifact@v7
         with:
           name: cli-darwin-arm64
