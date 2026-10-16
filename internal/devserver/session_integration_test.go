@@ -57,6 +57,11 @@ func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) {
 	start := func(label string) *session {
 		t.Helper()
 		app := filepath.Join(t.TempDir(), "app")
+		// Durable application state lives outside captured compiler inputs.
+		projectDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(projectDir, "catalog"), []byte("saved-project-340"), 0600); err != nil {
+			t.Fatal(err)
+		}
 		write := func(name, body string) {
 			t.Helper()
 			p := filepath.Join(app, name)
@@ -109,10 +114,19 @@ func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) {
 		write("generated/config.go", "package generated\n//go:generate go tool skgo generate --web ../web --locals-package example.com/sessionfixture/locals --locals-type Locals\n")
 		write("web/src/routes/orders/server.go", sessionRoute("4101", 7))
 		write("server.go", fmt.Sprintf(`package sessionfixture
-import("io/fs";"net/http";"os";"strconv";"strings";appenv "example.com/sessionfixture/web/src";"github.com/tylergannon/skgo"; generated "example.com/sessionfixture/generated")
+import("io/fs";"net/http";"os";"strconv";"strings";"sync";"syscall";"errors";appenv "example.com/sessionfixture/web/src";"github.com/tylergannon/skgo"; generated "example.com/sessionfixture/generated")
 func NewHandler(dist fs.FS,origin string)(http.Handler,error){return newHandler(dist,origin,nil)}
 func NewDevelopmentHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Handler,error){return newHandler(dist,origin,native)}
+var rejectStartup bool
+var projectOwner=sync.OnceValues(func()(*os.File,error){
+ lock,err:=os.OpenFile(%q,os.O_CREATE|os.O_RDWR,0600);if err!=nil{return nil,err}
+ if err:=syscall.Flock(int(lock.Fd()),syscall.LOCK_EX|syscall.LOCK_NB);err!=nil{lock.Close();return nil,err}
+ return lock,nil
+})
 func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Handler,error){
+ if _,err:=projectOwner();err!=nil{return nil,err}
+ if rejectStartup{return nil,errors.New("literal startup rejection 340")}
+ durable,err:=os.ReadFile(%q);if err!=nil{return nil,err}
  manifest,err:=skgo.ReadManifest(dist);if err!=nil{return nil,err}
  remotes,err:=skgo.NewRemotes(manifest.RemoteConfig(origin),generated.Remotes()...);if err!=nil{return nil,err}
  loads,err:=skgo.NewLoads(manifest.LoadConfig(origin),generated.Loads()...);if err!=nil{return nil,err}
@@ -125,9 +139,9 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
  endpoints,err:=skgo.NewEndpoints(manifest.EndpointConfig(origin),generated.Endpoints()...);if err!=nil{return nil,err}
  cfg:=manifest.HandleConfig();cfg.Origin=origin;cfg.Loads=loads
  app:=generated.RequestBoundary(cfg,loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
- return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Go-Pid",strconv.Itoa(os.Getpid()));w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);w.Header().Set("X-Environment",envValues.Receipt);w.Header().Set("X-App-Dir",manifest.AppDir);w.Header().Set("X-Trusted-Origins",strings.Join(manifest.TrustedOrigins,","));app.ServeHTTP(w,r)}),nil
+ return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Project-State",string(durable));w.Header().Set("X-Go-Pid",strconv.Itoa(os.Getpid()));w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);w.Header().Set("X-Environment",envValues.Receipt);w.Header().Set("X-App-Dir",manifest.AppDir);w.Header().Set("X-Trusted-Origins",strings.Join(manifest.TrustedOrigins,","));app.ServeHTTP(w,r)}),nil
 }
-`, label))
+`, filepath.Join(projectDir, "owner.lock"), filepath.Join(projectDir, "catalog"), label))
 		ln, e := net.Listen("tcp", "127.0.0.1:0")
 		if e != nil {
 			t.Fatal(e)
@@ -204,7 +218,7 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 					t.Logf("initial upstream failure status=%d body=%s\n%s", r.StatusCode, b, s.log.String())
 					reported = true
 				}
-				if r.StatusCode == 200 && string(b) == body && r.Header.Get("X-Session") == label && r.Header.Get("X-Origin") == s.origin {
+				if r.StatusCode == 200 && string(b) == body && r.Header.Get("X-Session") == label && r.Header.Get("X-Origin") == s.origin && r.Header.Get("X-Project-State") == "saved-project-340" {
 					return
 				}
 			}
@@ -371,6 +385,43 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 		t.Fatalf("valid structural repair did not replace host\n%s", alpha.log.String())
 	}
 
+	// Recovery must retain admitted native edits newer than the last executable.
+	if err := os.WriteFile(route, []byte(sessionRoute("8754", 9)), 0644); err != nil {
+		t.Fatal(err)
+	}
+	check(alpha, "ALPHA", "literal-8754:9")
+
+	// A candidate can compile but reject initialization. It must release its
+	// project lock and restore the previous captured inputs rather than strand service.
+	goodApplication := append(append([]byte(nil), healthySource...), []byte("func brokenDeclaration() int { return 10 }\n")...)
+	logStart = len(alpha.log.String())
+	rejected := append(append([]byte(nil), goodApplication...), []byte("func init() { rejectStartup = true }\n")...)
+	if err := os.WriteFile(applicationSource, rejected, 0644); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(40 * time.Second)
+	for time.Now().Before(deadline) && !strings.Contains(alpha.log.String()[logStart:], "restored previous application") {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if !strings.Contains(alpha.log.String()[logStart:], "restored previous application") || !strings.Contains(alpha.log.String()[logStart:], "literal startup rejection 340") {
+		t.Fatalf("failed initialization did not restore previous executable\n%s", alpha.log.String())
+	}
+	check(alpha, "ALPHA", "literal-8754:9")
+	// A subsequent valid edit must still recover through the normal rebuild path.
+	logStart = len(alpha.log.String())
+	goodApplication = []byte(strings.Replace(string(goodApplication), "return 10", "return 11", 1))
+	if err := os.WriteFile(applicationSource, goodApplication, 0644); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(40 * time.Second)
+	for time.Now().Before(deadline) && !strings.Contains(alpha.log.String()[logStart:], "rebuild true") {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if !strings.Contains(alpha.log.String()[logStart:], "rebuild true") {
+		t.Fatalf("repair after rejected initialization did not rebuild\n%s", alpha.log.String())
+	}
+	check(alpha, "ALPHA", "literal-8754:9")
+
 	// Recovering Vite keeps the Go process and stable public origin.
 	vitePID := alpha.log.vitePID()
 	if vitePID == 0 {
@@ -387,7 +438,7 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 		t.Fatalf("Vite not restarted\n%s", alpha.log.String())
 	}
 
-	check(alpha, "ALPHA", "literal-8508:9")
+	check(alpha, "ALPHA", "literal-8754:9")
 	check(beta, "BETA", "literal-4101:7")
 
 	// Real Vite restarts must publish changed constructor inputs, not just a
@@ -413,13 +464,13 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 		}
 		t.Fatalf("configuration never became current at %s: %s\n%s", path, actual, alpha.log.String())
 	}
-	request("/orders", 200, "literal-8508:9", "ENV_101", "_app", "https://initial.test")
+	request("/orders", 200, "literal-8754:9", "ENV_101", "_app", "https://initial.test")
 	request("/", 200, "literal combined frontend TWO ENV_101", "", "", "")
 	pid = alpha.log.lastPID()
 	if err := os.WriteFile(filepath.Join(alpha.app, "web/vite.config.ts"), []byte(sessionConfig("/base", "assets", "https://updated.test")), 0644); err != nil {
 		t.Fatal(err)
 	}
-	request("/base/orders", 200, "literal-8508:9", "ENV_101", "assets", "https://updated.test")
+	request("/base/orders", 200, "literal-8754:9", "ENV_101", "assets", "https://updated.test")
 	request("/base/assets/remote/missing", 200, `"type":"error"`, "ENV_101", "assets", "https://updated.test")
 	if alpha.log.lastPID() != pid {
 		t.Fatalf("configuration edit unnecessarily replaced Go host\n%s", alpha.log.String())
@@ -427,7 +478,7 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 	if err := os.WriteFile(filepath.Join(alpha.app, "web/.env.development"), []byte("PUBLIC_RECEIPT=ENV_202\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	request("/base/orders", 200, "literal-8508:9", "ENV_202", "assets", "https://updated.test")
+	request("/base/orders", 200, "literal-8754:9", "ENV_202", "assets", "https://updated.test")
 	request("/base/", 200, "literal combined frontend TWO ENV_202", "", "", "")
 	if alpha.log.lastPID() != pid {
 		t.Fatalf("dotenv edit unnecessarily replaced Go host\n%s", alpha.log.String())

@@ -150,11 +150,11 @@ retryStartup:
 		_ = os.RemoveAll(hostDirs[host].dir)
 		delete(hostDirs, host)
 	}
-	makeHost := func(inputs *gen.CompilerInputs, dist string) (*hotreload.Host, error) {
+	compileHost := func(inputs *gen.CompilerInputs, dist string) (*hotreload.Host, error) {
 		serial++
 		dir := filepath.Join(work, fmt.Sprintf("host-%d", serial))
 		socket := filepath.Join(work, fmt.Sprintf("go-%d.sock", serial))
-		host, err := hotreload.BuildHost(ctx, hotreload.HostOptions{Inputs: inputs, WorkDir: dir, GoTool: o.GoTool, Origin: origin, DistDir: dist, SocketPath: socket, NativeKit: true, ServiceSecret: secret, Output: o.Output})
+		host, err := hotreload.CompileHost(ctx, hotreload.HostOptions{Inputs: inputs, WorkDir: dir, GoTool: o.GoTool, Origin: origin, DistDir: dist, SocketPath: socket, NativeKit: true, ServiceSecret: secret, Output: o.Output})
 		if err != nil {
 			_ = os.Remove(socket)
 			_ = os.RemoveAll(dir)
@@ -163,10 +163,21 @@ retryStartup:
 		hostDirs[host] = hostFiles{dir, socket}
 		return host, nil
 	}
+	makeHost := func(inputs *gen.CompilerInputs, dist string) (*hotreload.Host, error) {
+		host, err := compileHost(inputs, dist)
+		if err != nil {
+			return nil, err
+		}
+		if err := host.Start(ctx); err != nil {
+			closeHost(host)
+			return nil, err
+		}
+		return host, nil
+	}
 	publishHost := func(host *hotreload.Host) error {
 		// Vite dials a stable pathname; each candidate owns its own listener so
-		// compilation and initialization cannot disturb the healthy application.
-		// Publish only the ready, current candidate, then retire the old owner.
+		// compilation cannot disturb the healthy application. Initialization runs
+		// after its predecessor exits and releases exclusive application resources.
 		socket := hostDirs[host].socket
 		alias := filepath.Join(work, "go.sock")
 		staged := alias + ".next"
@@ -394,7 +405,7 @@ retryStartup:
 				}
 				if err == nil {
 					var replacement *hotreload.Host
-					replacement, err = makeHost(nextBuild.Inputs, snapshot.Dist)
+					replacement, err = compileHost(nextBuild.Inputs, snapshot.Dist)
 					if err == nil {
 						// A new lease keeps replacement publication guarded after a long build.
 						current, prepareErr := project.Prepare(ctx)
@@ -407,10 +418,41 @@ retryStartup:
 							closeHost(replacement)
 							err = gen.ErrObsolete
 						} else {
-							err = current.Commit(func(*gen.CompilerInputs) error { return publishHost(replacement) })
+							old := active
+							stopped := false
+							err = current.Commit(func(*gen.CompilerInputs) error {
+								// Compilation and revision admission succeeded. Stop and wait before
+								// any replacement constructor can claim application-owned resources.
+								closeHost(old)
+								stopped = true
+								if err := replacement.Start(ctx); err != nil {
+									return err
+								}
+								return publishHost(replacement)
+							})
 							current.Inputs.Close()
+							if err != nil && stopped {
+								closeHost(replacement)
+								// Restore the last admitted inputs, including any installed native
+								// edits newer than the previous process's original executable.
+								recovered, recoveryErr := makeHost(goodInputs, goodDist)
+								if recoveryErr == nil {
+									recoveryErr = publishHost(recovered)
+								}
+								if recoveryErr != nil {
+									if recovered != nil {
+										closeHost(recovered)
+									}
+									return fmt.Errorf("replacement failed: %v; restore previous application: %w", err, recoveryErr)
+								}
+								active = recovered
+								if hostInputs != goodInputs {
+									hostInputs.Close()
+								}
+								hostInputs = goodInputs
+								fmt.Fprintf(o.Output, "skgo dev: restored previous application (Go pid %d) after replacement failure\n", active.PID)
+							}
 							if err == nil {
-								old := active
 								active = replacement
 								closeHost(old)
 								if hostInputs != goodInputs {

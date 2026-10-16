@@ -28,6 +28,7 @@ func TestCapturedNativeHTTPHost(t *testing.T) {
 	}
 	app := filepath.Join(work, "app")
 	t.Setenv("SKGO_NATIVE_CAPTURE_RECEIPT", "captured-env-412")
+	t.Setenv("SKGO_NATIVE_CAPTURE_OWNER", filepath.Join(work, "owner.lock"))
 	write := func(name, body string) {
 		t.Helper()
 		path := filepath.Join(app, name)
@@ -90,10 +91,13 @@ var _=skgo.GET(get)
 	write("assets/one.txt", "asset-one")
 	write("assets/keep.txt", "keep-member")
 	write("server.go", `package nativehost
-import("embed";"io/fs";"net/http";"os";"example.com/shared";"example.com/replaced";"example.com/nativehost/other";"github.com/tylergannon/skgo";generated "example.com/nativehost/generated")
+import("embed";"io/fs";"net/http";"os";"syscall";"example.com/shared";"example.com/replaced";"example.com/nativehost/other";"github.com/tylergannon/skgo";generated "example.com/nativehost/generated")
 //go:embed assets
 var resources embed.FS
-func NewHandler(_ fs.FS,origin string)(http.Handler,error){unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.FetchConfig;fetch:=FetchAlias{Origin:origin};endpoints,e:=skgo.NewEndpoints(skgo.EndpointConfig{Origin:origin,Routes:[]skgo.ManifestRoute{{ID:"/orders",Pattern:"^/orders/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}},{ID:"/second",Pattern:"^/second/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}}}},generated.Endpoints()...);if e!=nil{return nil,e};return fetch.Intercept(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Workspace",shared.Receipt);w.Header().Set("X-Workspace-Replacement",replaced.Receipt);w.Header().Set("X-Captured-Environment",os.Getenv("SKGO_NATIVE_CAPTURE_RECEIPT"));w.Header().Set("X-Unrelated",unrelated.Value);data,_:=resources.ReadFile("assets/one.txt");w.Header().Set("X-Resource",string(data));w.Header().Set("X-App-Hook","preserved");endpoints.Intercept(http.NotFoundHandler()).ServeHTTP(w,r)})),nil}
+var ownerLock *os.File
+func NewHandler(_ fs.FS,origin string)(http.Handler,error){
+if ownerLock==nil{lock,err:=os.OpenFile(os.Getenv("SKGO_NATIVE_CAPTURE_OWNER"),os.O_CREATE|os.O_RDWR,0600);if err!=nil{return nil,err};if err:=syscall.Flock(int(lock.Fd()),syscall.LOCK_EX|syscall.LOCK_NB);err!=nil{lock.Close();return nil,err};ownerLock=lock}
+unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.FetchConfig;fetch:=FetchAlias{Origin:origin};endpoints,e:=skgo.NewEndpoints(skgo.EndpointConfig{Origin:origin,Routes:[]skgo.ManifestRoute{{ID:"/orders",Pattern:"^/orders/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}},{ID:"/second",Pattern:"^/second/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}}}},generated.Endpoints()...);if e!=nil{return nil,e};return fetch.Intercept(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Workspace",shared.Receipt);w.Header().Set("X-Workspace-Replacement",replaced.Receipt);w.Header().Set("X-Captured-Environment",os.Getenv("SKGO_NATIVE_CAPTURE_RECEIPT"));w.Header().Set("X-Unrelated",unrelated.Value);data,_:=resources.ReadFile("assets/one.txt");w.Header().Set("X-Resource",string(data));w.Header().Set("X-App-Hook","preserved");endpoints.Intercept(http.NotFoundHandler()).ServeHTTP(w,r)})),nil}
 `)
 
 	project, err := gen.OpenProject(gen.Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "generated"), LocalsPackage: "example.com/nativehost/locals", LocalsType: "Locals", CacheDir: "off"})
@@ -244,11 +248,21 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){unrelated:=other.Fetc
 			t.Fatal(err)
 		}
 	}
-	replacement, err := BuildHost(ctx, HostOptions{Inputs: b.Inputs, WorkDir: filepath.Join(work, "replacement"), Origin: "http://localhost", DistDir: work, Output: os.Stderr})
+	replacement, err := CompileHost(ctx, HostOptions{Inputs: b.Inputs, WorkDir: filepath.Join(work, "replacement"), Origin: "http://localhost", DistDir: work, Output: os.Stderr})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer replacement.Close()
+	if replacement.PID != 0 {
+		t.Fatal("compilation started the replacement application")
+	}
+	check(host, "literal-6707:7")
+	if err := host.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := replacement.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
 	if replacement.PID == host.PID {
 		t.Fatal("replacement PID unchanged")
 	}
@@ -292,11 +306,16 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){unrelated:=other.Fetc
 		}
 	}
 	retired(host)
-	third, err := BuildHost(ctx, HostOptions{Inputs: repaired.Inputs, WorkDir: filepath.Join(work, "third"), Origin: "http://localhost", DistDir: work, Output: os.Stderr})
+	third, err := CompileHost(ctx, HostOptions{Inputs: repaired.Inputs, WorkDir: filepath.Join(work, "third"), Origin: "http://localhost", DistDir: work, Output: os.Stderr})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer third.Close()
+	check(replacement, "literal-7407:9")
+	retired(replacement)
+	if err := third.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
 	if third.PID == replacement.PID || third.PID == host.PID {
 		t.Fatal("second replacement reused an existing child")
 	}
