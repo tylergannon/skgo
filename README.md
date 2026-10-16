@@ -150,9 +150,14 @@ when the port is occupied, the next available port is selected before Kit is
 initialized. Add `--strict-port` to require that exact port.
 
 Compatible Go edits install into the running host and refresh Kit queries and
-loads. Other edits, including declaration, initialization and import changes,
-rebuild and replace the Go application; arbitrary in-memory Go state need not
-survive. Svelte edits use Vite HMR. Compile errors show the authored location and
+loads. Changes classified as requiring a full rebuild, including declaration,
+initialization and import changes, replace the Go application; arbitrary
+in-memory Go state need not survive. Native-loader failures do not always take
+that rebuild path: an observed edit to a function with deferred
+`sync.Mutex.Unlock` reported an `R_ADDROFF` relocation error and kept serving the
+old code without publishing the edit or rebuilding during a 75-second check.
+Recovery from that error through another edit or a restart has not been verified.
+Svelte edits use Vite HMR. Compile errors show the authored location and
 keep the last working application; repairing the source clears the error.
 Browser draft preservation is not established: a recorded Svelte title edit
 updated without manual reload but lost an unsent form draft. Vite restarts can

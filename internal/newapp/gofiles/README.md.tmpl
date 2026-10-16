@@ -24,8 +24,11 @@ Run `go tool skgo dev` from the application root for native Kit development
 rendering, frontend HMR and native Go updates. Development currently accepts only
 macOS ARM64 and Linux AMD64, builds the Go host without cgo, and requires Node
 while running. Other platforms and Go versions are rejected at startup.
-Compatible Go edits update the running host; other edits rebuild it and may reset
-in-memory Go state. Browser draft preservation and full browser-suite coverage
+Compatible Go edits update the running host; changes classified as requiring a
+full rebuild replace it and may reset in-memory Go state. Native-loader errors
+can instead report a diagnostic and keep serving old code without an automatic
+rebuild. Recovery from an observed `R_ADDROFF` relocation failure has not been
+verified. Browser draft preservation and full browser-suite coverage
 of this development topology are not established. Direct SSR subfetch response
 cookies over the private Go socket are not automatically relayed to the page
 response. Check authentication in both development and production; see
