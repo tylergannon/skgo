@@ -62,6 +62,8 @@ type Host struct {
 	done              chan struct{}
 	mu                sync.Mutex
 	closeOnce         sync.Once
+	options           HostOptions
+	binary            string
 }
 type HostUpdate struct {
 	packagePath string
@@ -79,7 +81,22 @@ type hostReply struct {
 	Rebuild bool
 }
 
-func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
+// BuildHost compiles and starts an application for initial startup or recovery.
+func BuildHost(ctx context.Context, o HostOptions) (*Host, error) {
+	h, err := CompileHost(ctx, o)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.Start(ctx); err != nil {
+		h.Close()
+		return nil, err
+	}
+	return h, nil
+}
+
+// CompileHost prepares the executable without running application initialization.
+// The caller can keep its healthy host serving until compilation has succeeded.
+func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	if o.Inputs == nil {
 		return nil, fmt.Errorf("native host requires captured compiler inputs")
 	}
@@ -266,19 +283,30 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	if raw, e := hostTC.command(ctx, o.Inputs.Dir, "build", "-ldflags=-s=false", "-o", binary, "./skgo_development_host").CombinedOutput(); e != nil {
 		return nil, fmt.Errorf("build native host: %w\n%s", e, raw)
 	}
+	h.options, h.binary = o, binary
+	return h, nil
+}
+
+// Start initializes a compiled application after the previous process exits.
+func (h *Host) Start(ctx context.Context) (err error) {
+	if h.cmd != nil {
+		return fmt.Errorf("native host is already started")
+	}
+	o := h.options
+	h.done = make(chan struct{})
 	commandRead, commandWrite, err := os.Pipe()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	replyRead, replyWrite, err := os.Pipe()
 	if err != nil {
 		commandRead.Close()
 		commandWrite.Close()
-		return nil, err
+		return err
 	}
 	h.commands = commandWrite
 	h.replies = replyRead
-	h.cmd = exec.CommandContext(ctx, binary)
+	h.cmd = exec.CommandContext(ctx, h.binary)
 	h.cmd.Dir = o.Inputs.Dir
 	h.cmd.Env = append(append([]string(nil), o.Inputs.Env...), "SKGO_DEV_ORIGIN="+o.Origin, "SKGO_DEV_DIST="+o.DistDir, "SKGO_DEV_SOCKET="+o.SocketPath, "SKGO_DEV_SERVICE_SECRET="+o.ServiceSecret, "SKGO_DEV_NATIVE_KIT="+strconv.FormatBool(o.NativeKit))
 	h.cmd.ExtraFiles = []*os.File{commandRead, replyWrite}
@@ -289,11 +317,13 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 		commandWrite.Close()
 		replyRead.Close()
 		replyWrite.Close()
-		return nil, err
+		h.cmd = nil
+		return err
 	}
 	commandRead.Close()
 	replyWrite.Close()
-	go func() { _ = h.cmd.Wait(); close(h.done) }()
+	cmd, done := h.cmd, h.done
+	go func() { _ = cmd.Wait(); close(done) }()
 	defer func() {
 		if err != nil {
 			_ = h.Close()
@@ -301,14 +331,14 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	}()
 	var ready hostReply
 	if err = h.receive(ctx, &ready); err != nil {
-		return nil, fmt.Errorf("native host readiness: %w", err)
+		return fmt.Errorf("native host readiness: %w", err)
 	}
 	if ready.Error != "" {
-		return nil, fmt.Errorf("native host initialization: %s", ready.Error)
+		return fmt.Errorf("native host initialization: %s", ready.Error)
 	}
 	h.URL = ready.URL
 	h.PID = ready.PID
-	return h, nil
+	return nil
 }
 func constructor(p *packages.Package, name string, development bool) bool {
 	if p.Types == nil {
@@ -332,6 +362,7 @@ func constructor(p *packages.Package, name string, development bool) bool {
 	return types.TypeString(s.Params().At(0).Type(), nil) == "io/fs.FS" && types.TypeString(s.Params().At(1).Type(), nil) == "string" && types.TypeString(s.Results().At(0).Type(), nil) == "net/http.Handler" && types.TypeString(s.Results().At(1).Type(), nil) == "error"
 }
 func (h *Host) Done() <-chan struct{} { return h.done }
+
 func (h *Host) Close() error {
 	h.closeOnce.Do(func() {
 		if h.cmd != nil && h.cmd.Process != nil {
