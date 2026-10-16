@@ -16,6 +16,10 @@ import { identity } from "./identity.js";
 import { validateGenerated } from "./generated.js";
 import { goEnvironmentValues } from "./env.js";
 
+const kitVersion = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+).peerDependencies["@sveltejs/kit"];
+
 export function developmentEnvironment(config) {
   const file = join(process.env.SKGO_DEV_DIR, "skgo-env-values.js");
   mkdirSync(dirname(file), { recursive: true });
@@ -34,9 +38,10 @@ export function development({ config }) {
   const version = JSON.parse(
     readFileSync(join(kit, "package.json"), "utf8"),
   ).version;
-  if (version !== "3.0.0")
+  if (version !== kitVersion)
     throw new Error(
-      `skgo development requires Kit 3.0.0, installed ${version}`,
+      `skgo development requires @sveltejs/kit@${kitVersion}, installed ${version}. ` +
+        `Run vp add -D --save-exact @sveltejs/kit@${kitVersion}.`,
     );
   // Kit's generated environment module lives in the private outDir, outside
   // the application's node_modules ancestry. Keep its exported runtime import

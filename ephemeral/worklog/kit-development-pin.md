@@ -1,0 +1,1 @@
+decision: Issue #339 is a declared support-contract mismatch: only Kit 3.0.0 is qualified, while the published adapter allowed ^3.0.0. Publish the exact peer pin and read that same peer pin in the development gate; accepting unqualified 3.0.1 would conceal the mismatch rather than establish compatibility.
