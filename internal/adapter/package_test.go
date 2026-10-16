@@ -157,8 +157,8 @@ func TestThePublishedPackageDeclaresWhatAnAdapterDeclares(t *testing.T) {
 	if _, ok := pkg.Exports["./sv"]; ok {
 		t.Error("the runtime adapter still exports the installer add-on; that belongs only to @skgo/sv")
 	}
-	if pkg.PeerDependencies["@sveltejs/kit"] == "" {
-		t.Errorf("the adapter does not declare @sveltejs/kit as a peer dependency; every kit adapter does")
+	if got := pkg.PeerDependencies["@sveltejs/kit"]; got != "3.0.0" {
+		t.Errorf("adapter Kit peer = %q; want the qualified exact pin 3.0.0", got)
 	}
 	if pkg.PeerDependencies["sv"] != "" {
 		t.Error("the runtime adapter declares an sv peer; installer dependencies belong only to @skgo/sv")
