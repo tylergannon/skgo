@@ -25,6 +25,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
+          # The full test recipe includes native development contracts.
           go-version: '1.27.2'
           cache: false
 
