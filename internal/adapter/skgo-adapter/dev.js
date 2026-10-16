@@ -1,11 +1,12 @@
 // Native Kit owns development rendering and the live module graph.
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -45,8 +46,12 @@ export function development({ config }) {
     "@sveltejs/kit/internal/env": join(kit, "src/exports/internal/env.js"),
   };
   const environment = developmentEnvironment(config);
+  // Vite replaces its configuration and middleware in-process. A new adapter
+  // instance must be observable even when no application source file changed.
+  const instance = randomUUID();
   const hash = () => {
     const h = createHash("sha256");
+    h.update(instance);
     function walk(dir) {
       if (!existsSync(dir)) return;
       for (const name of readdirSync(dir).sort()) {
@@ -124,8 +129,7 @@ export function development({ config }) {
     const generated = validateGenerated(
       JSON.parse(readFileSync(join(root, "skgo.remotes.json"), "utf8")),
     );
-    const stamp = identity(),
-      dist = join(work, "application", hash());
+    const stamp = identity();
     const manifest = {
       development: true,
       skgo: stamp.version,
@@ -158,12 +162,16 @@ export function development({ config }) {
       prerendered: [],
       precompressed: false,
     };
+    const manifestJSON = JSON.stringify(manifest);
+    const environmentJSON = JSON.stringify(environment.artifact());
+    const application = createHash("sha256")
+      .update(manifestJSON)
+      .update(environmentJSON)
+      .digest("hex");
+    const dist = join(work, "application", application);
     mkdirSync(dist, { recursive: true });
-    writeFileSync(join(dist, "skgo.manifest.json"), JSON.stringify(manifest));
-    writeFileSync(
-      join(dist, "env.json"),
-      JSON.stringify(environment.artifact()),
-    );
+    writeFileSync(join(dist, "skgo.manifest.json"), manifestJSON);
+    writeFileSync(join(dist, "env.json"), environmentJSON);
     writeFileSync(join(dist, "index.html"), "");
     return {
       dist,
@@ -265,6 +273,14 @@ import.meta.hot.on('skgo:go-ready',async()=>{for(const overlay of document.query
                 );
               }
             });
+            return () => {
+              const file = process.env.SKGO_DEV_READY;
+              writeFileSync(file + ".tmp", JSON.stringify({
+                socket: process.env.SKGO_DEV_VITE_SOCKET,
+                instance,
+              }), { mode: 0o600 });
+              renameSync(file + ".tmp", file);
+            };
           },
         },
       ],

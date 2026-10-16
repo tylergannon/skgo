@@ -3,6 +3,7 @@
 package devserver
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -33,6 +34,17 @@ func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "example/web/node_modules/@sveltejs/kit/package.json")); err != nil {
 		t.Fatal(err)
 	}
+	sharedTypes := filepath.Join(root, "example/web/node_modules/$app/types/index.d.ts")
+	originalTypes, err := os.ReadFile(sharedTypes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		after, err := os.ReadFile(sharedTypes)
+		if err != nil || !bytes.Equal(after, originalTypes) {
+			t.Errorf("session fixture changed shared Kit types: %v", err)
+		}
+	})
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 	type session struct {
@@ -70,28 +82,50 @@ func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) {
 			t.Fatal(e)
 		}
 		write("web/package.json", string(pkg))
-		if e = os.Symlink(filepath.Join(root, "example/web/node_modules"), filepath.Join(app, "web/node_modules")); e != nil {
+		dependencies := filepath.Join(root, "example/web/node_modules")
+		modules := filepath.Join(app, "web/node_modules")
+		if e = os.MkdirAll(modules, 0755); e != nil {
 			t.Fatal(e)
 		}
-		write("web/vite.config.ts", `import {sveltekit} from '@sveltejs/kit/vite'; import {defineConfig} from 'vite-plus'; import skgo from '@skgo/sveltekit-adapter'; export default defineConfig({plugins:[sveltekit({adapter:skgo(),paths:{origin:process.env.ORIGIN},experimental:{remoteFunctions:true},compilerOptions:{experimental:{async:true}}})]});`)
+		entries, e := os.ReadDir(dependencies)
+		if e != nil {
+			t.Fatal(e)
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			if name == "$app" || strings.HasPrefix(name, "$app.") || name == ".cache" || strings.HasPrefix(name, ".vite") {
+				continue
+			}
+			if e = os.Symlink(filepath.Join(dependencies, name), filepath.Join(modules, name)); e != nil {
+				t.Fatal(e)
+			}
+		}
+		write("web/vite.config.ts", sessionConfig("", "_app", "https://initial.test"))
 		write("web/src/app.html", `<!doctype html><html><head>%sveltekit.head%</head><body><div>%sveltekit.body%</div></body></html>`)
-		write("web/src/routes/+page.svelte", `<h1>literal session frontend</h1>`)
+		write("web/src/routes/+page.svelte", `<script>import{PUBLIC_RECEIPT}from'$app/env/public';</script><h1>literal session frontend {PUBLIC_RECEIPT}</h1>`)
+		write("web/.env.development", "PUBLIC_RECEIPT=ENV_101\n")
+		write("web/src/env.go", "package appenv\nimport s \"github.com/tylergannon/skgo\"\ntype Config struct { Receipt string `env:\"PUBLIC_RECEIPT,public,static\"` }\nvar _ = s.Environment[Config]()\n")
 		write("locals/locals.go", "package locals\ntype Locals struct{}\n")
 		write("generated/config.go", "package generated\n//go:generate go tool skgo generate --web ../web --locals-package example.com/sessionfixture/locals --locals-type Locals\n")
 		write("web/src/routes/orders/server.go", sessionRoute("4101", 7))
 		write("server.go", fmt.Sprintf(`package sessionfixture
-import("io/fs";"net/http";"github.com/tylergannon/skgo"; generated "example.com/sessionfixture/generated")
-func NewHandler(dist fs.FS,origin string)(http.Handler,error){
+import("io/fs";"net/http";"os";"strings";appenv "example.com/sessionfixture/web/src";"github.com/tylergannon/skgo"; generated "example.com/sessionfixture/generated")
+func NewHandler(dist fs.FS,origin string)(http.Handler,error){return newHandler(dist,origin,nil)}
+func NewDevelopmentHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Handler,error){return newHandler(dist,origin,native)}
+func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Handler,error){
  manifest,err:=skgo.ReadManifest(dist);if err!=nil{return nil,err}
  remotes,err:=skgo.NewRemotes(manifest.RemoteConfig(origin),generated.Remotes()...);if err!=nil{return nil,err}
  loads,err:=skgo.NewLoads(manifest.LoadConfig(origin),generated.Loads()...);if err!=nil{return nil,err}
  actions,err:=skgo.NewActions(generated.Actions()...);if err!=nil{return nil,err}
- renderer,err:=skgo.NewSSR(dist,manifest,loads,remotes,skgo.SSROptions{Actions:actions});if err!=nil{return nil,err}
- pages,err:=skgo.NewStaticHandler(dist,skgo.WithSSR(renderer));if err!=nil{return nil,err}
+ envValues,envSnapshot,err:=skgo.LoadEnvironment[appenv.Config](dist,os.LookupEnv);if err!=nil{return nil,err}
+ var renderer *skgo.SSR;var pages http.Handler
+ options:=skgo.SSROptions{Actions:actions,Environment:envSnapshot}
+ if native==nil{renderer,err=skgo.NewSSR(dist,manifest,loads,remotes,options)}else{renderer,err=native.NewSSR(dist,manifest,loads,remotes,options)};if err!=nil{return nil,err}
+ if native==nil{pages,err=skgo.NewStaticHandler(dist,skgo.WithSSR(renderer))}else{pages,err=native.NewStaticHandler(dist,skgo.WithSSR(renderer))};if err!=nil{return nil,err}
  endpoints,err:=skgo.NewEndpoints(manifest.EndpointConfig(origin),generated.Endpoints()...);if err!=nil{return nil,err}
  cfg:=manifest.HandleConfig();cfg.Origin=origin;cfg.Loads=loads
  app:=generated.RequestBoundary(cfg,loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
- return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);app.ServeHTTP(w,r)}),nil
+ return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);w.Header().Set("X-Environment",envValues.Receipt);w.Header().Set("X-App-Dir",manifest.AppDir);w.Header().Set("X-Trusted-Origins",strings.Join(manifest.TrustedOrigins,","));app.ServeHTTP(w,r)}),nil
 }
 `, label))
 		ln, e := net.Listen("tcp", "127.0.0.1:0")
@@ -230,7 +264,7 @@ func NewHandler(dist fs.FS,origin string)(http.Handler,error){
 	if e := os.WriteFile(route, []byte(sessionRoute("7407", 9)), 0644); e != nil {
 		t.Fatal(e)
 	}
-	if e := os.WriteFile(filepath.Join(alpha.app, "web/src/routes/+page.svelte"), []byte(`<h1>literal combined frontend TWO</h1>`), 0644); e != nil {
+	if e := os.WriteFile(filepath.Join(alpha.app, "web/src/routes/+page.svelte"), []byte(`<script>import{PUBLIC_RECEIPT}from'$app/env/public';</script><h1>literal combined frontend TWO {PUBLIC_RECEIPT}</h1>`), 0644); e != nil {
 		t.Fatal(e)
 	}
 	check(alpha, "ALPHA", "literal-7407:9")
@@ -289,7 +323,68 @@ func NewHandler(dist fs.FS,origin string)(http.Handler,error){
 
 	check(alpha, "ALPHA", "literal-8508:9")
 	check(beta, "BETA", "literal-4101:7")
+
+	// Real Vite restarts must publish changed constructor inputs, not just a
+	// fresh frontend graph. Independent literals exercise both sides of the seam.
+	request := func(path string, status int, body, environment, appDir, trusted string) {
+		t.Helper()
+		deadline := time.Now().Add(30 * time.Second)
+		var actual string
+		for time.Now().Before(deadline) {
+			res, err := http.Get(alpha.origin + path)
+			if err == nil {
+				b, _ := io.ReadAll(res.Body)
+				res.Body.Close()
+				actual = fmt.Sprintf("status=%d headers=%v body=%s", res.StatusCode, res.Header, b)
+				if res.StatusCode == status && strings.Contains(string(b), body) &&
+					(environment == "" || (res.Header.Get("X-Environment") == environment && res.Header.Get("X-Origin") == alpha.origin && res.Header.Get("X-Session") == "ALPHA")) &&
+					(appDir == "" || res.Header.Get("X-App-Dir") == appDir) &&
+					(trusted == "" || res.Header.Get("X-Trusted-Origins") == trusted) {
+					return
+				}
+			}
+			time.Sleep(80 * time.Millisecond)
+		}
+		t.Fatalf("configuration never became current at %s: %s\n%s", path, actual, alpha.log.String())
+	}
+	request("/orders", 200, "literal-8508:9", "ENV_101", "_app", "https://initial.test")
+	request("/", 200, "literal combined frontend TWO ENV_101", "", "", "")
+	pid = alpha.log.lastPID()
+	if err := os.WriteFile(filepath.Join(alpha.app, "web/vite.config.ts"), []byte(sessionConfig("/base", "assets", "https://updated.test")), 0644); err != nil {
+		t.Fatal(err)
+	}
+	request("/base/orders", 200, "literal-8508:9", "ENV_101", "assets", "https://updated.test")
+	request("/base/assets/remote/missing", 200, `"type":"error"`, "ENV_101", "assets", "https://updated.test")
+	if alpha.log.lastPID() != pid {
+		t.Fatalf("configuration edit unnecessarily replaced Go host\n%s", alpha.log.String())
+	}
+	if err := os.WriteFile(filepath.Join(alpha.app, "web/.env.development"), []byte("PUBLIC_RECEIPT=ENV_202\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	request("/base/orders", 200, "literal-8508:9", "ENV_202", "assets", "https://updated.test")
+	request("/base/", 200, "literal combined frontend TWO ENV_202", "", "", "")
+	if alpha.log.lastPID() != pid {
+		t.Fatalf("dotenv edit unnecessarily replaced Go host\n%s", alpha.log.String())
+	}
+	// A subsequent compatible body edit still uses the retained native path.
+	if err := os.WriteFile(route, []byte(sessionRoute("9609", 9)), 0644); err != nil {
+		t.Fatal(err)
+	}
+	request("/base/orders", 200, "literal-9609:9", "ENV_202", "assets", "https://updated.test")
+	if alpha.log.lastPID() != pid {
+		t.Fatalf("body edit after config reload replaced Go host\n%s", alpha.log.String())
+	}
+	if err := syscall.Kill(pid, syscall.SIGKILL); err != nil {
+		t.Fatal(err)
+	}
+	request("/base/orders", 200, "literal-9609:9", "ENV_202", "assets", "https://updated.test")
+	request("/base/", 200, "literal combined frontend TWO ENV_202", "", "", "")
+	check(beta, "BETA", "literal-4101:7")
 	t.Logf("ALPHA\n%s\nBETA\n%s", alpha.log.String(), beta.log.String())
+}
+
+func sessionConfig(base, appDir, trusted string) string {
+	return fmt.Sprintf(`import {sveltekit} from '@sveltejs/kit/vite'; import {defineConfig} from 'vite-plus'; import skgo from '@skgo/sveltekit-adapter'; export default defineConfig({plugins:[sveltekit({adapter:skgo(),paths:{origin:process.env.ORIGIN,base:%q},appDir:%q,csrf:{trustedOrigins:[%q]},experimental:{remoteFunctions:true},compilerOptions:{experimental:{async:true}}})]});`, base, appDir, trusted)
 }
 
 func sessionRoute(value string, initial int) string {

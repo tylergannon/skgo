@@ -282,7 +282,6 @@ retryStartup:
 				continue
 			}
 			snapshot = next
-			route.setRemotePrefix(next.RemotePrefix)
 			lastFrontend = next.Revision
 			changed := false
 			if next.Metadata != nil {
@@ -291,7 +290,7 @@ retryStartup:
 					return err
 				}
 			}
-			if !changed && !goChanged {
+			if !changed && !goChanged && next.Dist == goodDist {
 				dirtyFrontend = false
 				continue
 			}
@@ -331,7 +330,9 @@ retryStartup:
 						return e
 					}
 				}
-
+				if snapshot.Dist != goodDist {
+					return active.Reload(ctx, snapshot.Dist)
+				}
 				return nil
 			})
 			if errors.As(err, &complete) {
@@ -408,6 +409,7 @@ retryStartup:
 		goodInputs = nextBuild.Inputs
 		goodRevision = nextBuild.Revision
 		goodDist = snapshot.Dist
+		route.setRemotePrefix(snapshot.RemotePrefix)
 
 		if err = front.notify(ctx, goodRevision, "", false); err != nil {
 			fmt.Fprintf(o.Output, "skgo dev notify: %v\n", err)
