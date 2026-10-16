@@ -69,6 +69,9 @@ function call(kind, payload, event, raw, signalOverride) {
         },
       },
       (response) => {
+        // An owning request may abort a fetch nobody consumed. Keep that
+        // cancellation observable to iterators without an unhandled event.
+        response.on("error", () => {});
         if (
           (response.statusCode < 200 || response.statusCode >= 300) &&
           !["response", "endpoint"].includes(kind) &&
@@ -93,7 +96,12 @@ function call(kind, payload, event, raw, signalOverride) {
     );
     request.on("error", reject);
     const signal = signalOverride ?? event?.request.signal;
-    const abort = () => request.destroy(new Error("skgo: request aborted"));
+    let cancelBody;
+    const abort = () => {
+      const error = new Error("skgo: request aborted");
+      cancelBody?.(error);
+      request.destroy(error);
+    };
     signal?.addEventListener("abort", abort, { once: true });
     request.on("close", () => signal?.removeEventListener("abort", abort));
     if (signal?.aborted) {
@@ -102,14 +110,46 @@ function call(kind, payload, event, raw, signalOverride) {
     }
     if (raw?.body) {
       (async () => {
+        const reader = raw.body.getReader?.();
+        if (reader)
+          cancelBody = (error) => {
+            void reader.cancel(error).catch(() => {});
+          };
+        const chunks = reader
+          ? (async function* () {
+              for (;;) {
+                const next = await reader.read();
+                if (next.done) return;
+                yield next.value;
+              }
+            })()
+          : raw.body;
         try {
-          for await (const chunk of raw.body) {
+          for await (const chunk of chunks) {
             if (!request.write(chunk))
-              await new Promise((resolve) => request.once("drain", resolve));
+              await new Promise((resolve, reject) => {
+                const clear = () => {
+                  request.off("drain", drained);
+                  request.off("error", failed);
+                };
+                const drained = () => {
+                  clear();
+                  resolve();
+                };
+                const failed = (error) => {
+                  clear();
+                  reject(error);
+                };
+                request.once("drain", drained);
+                request.once("error", failed);
+              });
           }
           request.end();
         } catch (e) {
           request.destroy(e);
+        } finally {
+          cancelBody = undefined;
+          reader?.releaseLock();
         }
       })();
     } else request.end(raw ? undefined : JSON.stringify(payload));
@@ -151,24 +191,34 @@ function exceptional(answer) {
 // the original. Its locals object is the shared request-owned identity.
 const requestOwner = Symbol("skgo development request owner");
 const owner = (event) =>
-  event.locals?.[requestOwner] ?? event.platform?.skgoRequestHandle;
+  event.locals?.[requestOwner]?.handle ?? event.platform?.skgoRequestHandle;
 export async function load(module, event) {
   const metadata = event.untrack(() => ({
     url: event.url.href,
     routeId: event.route.id,
-    parent: event.parent(),
   }));
-  const response = await call(
-    "load",
-    {
-      handle: owner(event),
-      module,
-      ...metadata,
-      parentData: transport.stringify(await metadata.parent),
-      headers: headers(event),
-    },
-    event,
-  );
+  let replyParent;
+  const parentReply = new Promise((resolve) => {
+    replyParent = resolve;
+  });
+  const invocation = {
+    handle: owner(event),
+    module,
+    ...metadata,
+    parentOnDemand: true,
+    headers: headers(event),
+  };
+  const response = await call("load", null, event, {
+    headers: { "content-type": "application/x-ndjson" },
+    body: (async function* () {
+      yield JSON.stringify(invocation) + "\n";
+      const reply = await parentReply;
+      if (reply !== undefined) yield JSON.stringify(reply) + "\n";
+    })(),
+  }).catch((error) => {
+    replyParent(undefined);
+    throw error;
+  });
   response.setEncoding("utf8");
   const iterator = response[Symbol.asyncIterator]();
   let buffered = "";
@@ -192,7 +242,20 @@ export async function load(module, event) {
       buffered += next.value.toString();
     }
   }
-  const answer = await line();
+  let answer;
+  try {
+    answer = await line();
+    if (answer?.parent) {
+      replyParent({ parentData: transport.stringify(await event.parent()) });
+      answer = await line();
+    }
+  } catch (error) {
+    replyParent({ parentError: String(error) });
+    response.destroy();
+    throw error;
+  } finally {
+    replyParent(undefined);
+  }
   effects(event, answer);
   exceptional(answer);
   for (const dependency of answer.uses?.dependencies ?? [])
@@ -200,7 +263,6 @@ export async function load(module, event) {
   for (const name of answer.uses?.params ?? []) void event.params[name];
   for (const name of answer.uses?.search_params ?? [])
     event.url.searchParams.get(name);
-  if (answer.uses?.parent) await event.parent();
   if (answer.uses?.route) void event.route.id;
   if (answer.uses?.url) void event.url.href;
   const pending = new Map();
@@ -387,7 +449,7 @@ const hopHeaders = new Set([
 const bridgeHeaders = new Set([
   "x-skgo-fetch",
   "x-skgo-fetch-state",
-  "x-skgo-fetch-request",
+  "x-skgo-fetch-metadata",
   "x-skgo-effects",
 ]);
 function incomingHeaders(upstream) {
@@ -476,10 +538,12 @@ export async function requestHandle(event, resolve) {
   );
   const handle = answer.handle;
   if (!handle) throw new Error("skgo: begin omitted request owner");
+  const state = { handle, controller: new AbortController() };
   let ended = false;
   const end = async () => {
     if (!ended) {
       ended = true;
+      state.controller.abort();
       await json("end", { handle });
     }
   };
@@ -491,7 +555,7 @@ export async function requestHandle(event, resolve) {
       await end();
       return response;
     }
-    event.locals[requestOwner] = handle;
+    event.locals[requestOwner] = state;
     const options = {};
     options.transformPageChunk = async ({ html, done }) => {
       if (answer.options?.transform) {
@@ -537,11 +601,16 @@ export async function requestHandle(event, resolve) {
 export async function requestFetch({ event, request, fetch }) {
   // The Go hook surrounds Kit's supplied continuation rather than replacing
   // Kit's credential inheritance, cookie handling or live page dispatcher.
+  const ownerSignal = event.locals?.[requestOwner]?.controller.signal;
+  const signal = ownerSignal
+    ? AbortSignal.any([request.signal, ownerSignal])
+    : request.signal;
   let id;
   const finish = async () => {
     if (!id) return;
     const current = id;
     id = undefined;
+    if (ownerSignal?.aborted) return;
     const response = await call("fetch-end", null, undefined, {
       headers: { "x-skgo-fetch": current },
     });
@@ -562,16 +631,14 @@ export async function requestFetch({ event, request, fetch }) {
           : Buffer.from(await request.clone().arrayBuffer()).toString("base64"),
       },
       event,
+      undefined,
+      signal,
     );
     id = response.headers["x-skgo-fetch"];
     while (response.headers["x-skgo-fetch-state"] === "next") {
-      const input = JSON.parse(
-        Buffer.from(
-          response.headers["x-skgo-fetch-request"],
-          "base64",
-        ).toString(),
-      );
-      response.resume();
+      let payload = "";
+      for await (const chunk of response) payload += chunk;
+      const input = JSON.parse(payload);
       const headers = new Headers();
       for (const [key, values] of Object.entries(input.headers ?? {}))
         for (const value of values) headers.append(key, value);
@@ -581,7 +648,7 @@ export async function requestFetch({ event, request, fetch }) {
         credentials: request.credentials,
         mode: request.mode,
         redirect: request.redirect,
-        signal: request.signal,
+        signal,
         ...(!["GET", "HEAD"].includes(input.method)
           ? { body: Buffer.from(input.body ?? "", "base64") }
           : {}),
@@ -591,20 +658,54 @@ export async function requestFetch({ event, request, fetch }) {
         [...result.headers].map(([key, value]) => [key, [value]]),
       );
       resultHeaders["set-cookie"] = result.headers.getSetCookie();
-      response = await call("fetch-response", null, event, {
-        headers: {
-          "content-type": "application/octet-stream",
-          "x-skgo-fetch": id,
-          "x-skgo-response": Buffer.from(
-            JSON.stringify({ status: result.status, headers: resultHeaders }),
-          ).toString("base64"),
+      response = await call(
+        "fetch-response",
+        null,
+        event,
+        {
+          headers: {
+            "content-type": "application/octet-stream",
+            "x-skgo-fetch": id,
+            "x-skgo-response": Buffer.from(
+              JSON.stringify({
+                status: result.status,
+                headers: resultHeaders,
+                url: result.url,
+                redirected: result.redirected,
+                type: result.type,
+              }),
+            ).toString("base64"),
+          },
+          body: result.body,
         },
-        body: result.body,
-      });
+        signal,
+      );
     }
-    return incomingResponse(response, request.method, finish);
+    const encoded = response.headers["x-skgo-fetch-metadata"];
+    const metadata = encoded
+      ? JSON.parse(Buffer.from(encoded, "base64").toString())
+      : undefined;
+    return fetchResponseMetadata(
+      incomingResponse(response, request.method, finish),
+      metadata,
+    );
   } catch (error) {
     await finish();
     throw error;
   }
+}
+
+// These Fetch properties have no Response constructor options. Define the
+// relayed values on the response and its clones, leaving the native body and
+// header implementation (including brand checks) intact.
+function fetchResponseMetadata(response, metadata) {
+  if (!metadata) return response;
+  for (const name of ["url", "redirected", "type"])
+    Object.defineProperty(response, name, {
+      value: metadata[name],
+      configurable: true,
+    });
+  const clone = response.clone.bind(response);
+  response.clone = () => fetchResponseMetadata(clone(), metadata);
+  return response;
 }

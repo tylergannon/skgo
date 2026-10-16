@@ -2,7 +2,6 @@ package adapter
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net"
@@ -42,8 +41,7 @@ func TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies(t *testing.T) {
 			}
 			w.Header().Set("X-Skgo-Fetch", "literal-fetch-824")
 			w.Header().Set("X-Skgo-Fetch-State", "next")
-			w.Header().Set("X-Skgo-Fetch-Request", base64.StdEncoding.EncodeToString([]byte(`{"url":"http://app.test/inner","method":"GET","headers":{}}`)))
-			w.WriteHeader(204)
+			io.WriteString(w, `{"url":"http://app.test/inner","method":"GET","headers":{}}`)
 		case "/_skgo/dev/fetch-response":
 			w.Header().Set("X-Skgo-Fetch", "literal-fetch-824")
 			w.Header().Set("X-Skgo-Fetch-State", "final")

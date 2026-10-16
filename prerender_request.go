@@ -27,6 +27,7 @@ type PrerenderServiceOptions struct {
 }
 
 type prerenderRequestKey struct{}
+type devRequestKey struct{}
 type prerenderMatchKey struct{}
 type prerenderManifestKey struct{}
 type prerenderRefusalKey struct{}
@@ -70,20 +71,21 @@ type prerenderResolveOptions struct {
 	Preload   bool `json:"preload"`
 }
 type prerenderRequest struct {
-	input     prerenderRequestInput
-	options   ResolveOptions
-	endpoints *Endpoints
-	cancel    context.CancelFunc
-	ready     chan *http.Request
-	response  chan prerenderResponse
-	done      chan struct{}
-	request   *http.Request
-	answer    prerenderRequestAnswer
-	mu        sync.Mutex
-	active    sync.WaitGroup
-	failure   error
-	closing   bool
-	stream    *downstream
+	input         prerenderRequestInput
+	options       ResolveOptions
+	endpoints     *Endpoints
+	cancel        context.CancelFunc
+	ready         chan *http.Request
+	response      chan prerenderResponse
+	done          chan struct{}
+	request       *http.Request
+	answer        prerenderRequestAnswer
+	mu            sync.Mutex
+	active        sync.WaitGroup
+	failure       error
+	closing       bool
+	stream        *downstream
+	headerEffects map[*responseState]http.Header
 }
 type prerenderRequests struct {
 	mu          sync.Mutex
@@ -143,6 +145,9 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 	}
 	logical, cancel := context.WithCancel(s.ctx)
 	entry := &prerenderRequest{input: input, cancel: cancel, ready: make(chan *http.Request, 1), response: make(chan prerenderResponse, 1), done: make(chan struct{})}
+	if s.development {
+		logical = context.WithValue(logical, devRequestKey{}, entry)
+	}
 	logical = context.WithValue(logical, prerenderBodyFailureKey{}, func(err error) { entry.failure = err })
 	logical = context.WithValue(logical, prerenderMatchKey{}, input)
 	logical = context.WithValue(logical, prerenderManifestKey{}, input.Manifest)
@@ -267,7 +272,13 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 		if entry.options.FilterSerializedResponseHeaders == nil {
 			entry.options.FilterSerializedResponseHeaders = s.options.FilterSerializedResponseHeaders
 		}
-		return prerenderRequestAnswer{Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: requestResponseHeaders(r).Clone(), Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
+		headers := requestResponseHeaders(r).Clone()
+		if s.development {
+			if state := hookStateOf(r.Context()); state != nil {
+				headers = developmentHeaders(r.Context(), state.response.responseState)
+			}
+		}
+		return prerenderRequestAnswer{Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: headers, Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
 	case <-func() <-chan struct{} {
 		if entry.stream != nil {
 			return entry.stream.committed
@@ -488,4 +499,35 @@ func runPrerenderResolveOption(ctx context.Context, entry *prerenderRequest, raw
 	default:
 		return fmt.Errorf("skgo: unknown prerender resolve option %q", input.Kind)
 	}
+}
+
+// A hook, actions and concurrent loads share response state. Relay each effect
+// once; Server-Timing is the one header Kit permits to accumulate.
+func developmentHeaders(ctx context.Context, state *responseState) http.Header {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	entry, ok := ctx.Value(devRequestKey{}).(*prerenderRequest)
+	if !ok {
+		return state.headers.Clone()
+	}
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+	if entry.headerEffects == nil {
+		entry.headerEffects = map[*responseState]http.Header{}
+	}
+	previous := entry.headerEffects[state]
+	delta := state.headers.Clone()
+	for name, values := range previous {
+		if strings.EqualFold(name, "Server-Timing") {
+			before := strings.Join(values, ", ")
+			after := delta.Get(name)
+			if after != before && strings.HasPrefix(after, before+", ") {
+				delta.Set(name, strings.TrimPrefix(after, before+", "))
+				continue
+			}
+		}
+		delete(delta, name)
+	}
+	entry.headerEffects[state] = state.headers.Clone()
+	return delta
 }

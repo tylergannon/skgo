@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/http"
 	"net/url"
 	"strings"
@@ -21,20 +20,19 @@ type devContinuationKey struct{}
 type devEndpointsKey struct{}
 type devRendererKey struct{}
 type devStreamingLoadKey struct{}
+type devParentKey struct{}
 
-// NativeDevelopment carries development-only rendering through the application's
-// ordinary constructor. Its configured Go registries and request middleware are
+// NativeDevelopment configures the application's explicit development constructor. Its configured Go registries and request middleware are
 // retained; Kit, rather than an embedded engine, supplies the page response.
 type NativeDevelopment struct {
-	fs.FS
 	renderer     *SSR
 	manifest     Manifest
 	secret       string
 	kitTransport *http.Transport
 }
 
-func NewNativeDevelopment(build fs.FS, secret string, kitSocket ...string) *NativeDevelopment {
-	d := &NativeDevelopment{FS: build, secret: secret}
+func NewNativeDevelopment(secret string, kitSocket ...string) *NativeDevelopment {
+	d := &NativeDevelopment{secret: secret}
 	if len(kitSocket) > 0 {
 		d.kitTransport = nativeKitTransport(kitSocket[0])
 	}
@@ -146,13 +144,21 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 			r.Body = io.NopCloser(bytes.NewReader(raw))
 		}
 		if path == "/load" || path == "/action" || path == "/endpoint" || path == "/remote" {
-			raw, err := io.ReadAll(r.Body)
+			// Native loads can ask for Kit parent data while their invocation
+			// body is still open. Keep this one callback full-duplex.
+			if path == "/load" {
+				_ = http.NewResponseController(w).EnableFullDuplex()
+			}
+			decoder := json.NewDecoder(r.Body)
+			var raw json.RawMessage
+			err := decoder.Decode(&raw)
 			if err != nil {
 				http.Error(w, err.Error(), 400)
 				return
 			}
 			var identity struct {
-				Handle string `json:"handle"`
+				Handle         string `json:"handle"`
+				ParentOnDemand bool   `json:"parentOnDemand"`
 			}
 			if json.Unmarshal(raw, &identity) != nil {
 				http.Error(w, "invalid callback", 400)
@@ -185,6 +191,27 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 				err = d.action(ctx, raw, w)
 			} else {
 				w.Header().Set("Content-Type", "application/x-ndjson")
+				if identity.ParentOnDemand {
+					ctx = context.WithValue(ctx, devParentKey{}, func() (map[string]any, error) {
+						if err := json.NewEncoder(w).Encode(map[string]bool{"parent": true}); err != nil {
+							return nil, err
+						}
+						if err := http.NewResponseController(w).Flush(); err != nil {
+							return nil, err
+						}
+						var input struct {
+							ParentData  string `json:"parentData"`
+							ParentError string `json:"parentError"`
+						}
+						if err := decoder.Decode(&input); err != nil {
+							return nil, err
+						}
+						if input.ParentError != "" {
+							return nil, fmt.Errorf("skgo: Kit parent failed: %s", input.ParentError)
+						}
+						return decodePrerenderParent(input.ParentData, s.loads.cfg.Transport)
+					})
+				}
 				err = runPrerenderLoad(context.WithValue(ctx, devStreamingLoadKey{}, true), bytes.NewReader(raw), w, s.loads.cfg.Transport, loads)
 			}
 			if err != nil {
@@ -292,7 +319,7 @@ func (d *NativeDevelopment) action(ctx context.Context, raw []byte, out io.Write
 	}
 	event.actionResponse = &loadRequest{responseState: newResponseState(request)}
 	value, callErr := action.run(withEvent(ctx, event))
-	answer := map[string]any{"type": "success", "status": 200, "headers": requestResponseHeaders(request), "cookies": prerenderCookies(requestCookieJar(request, false))}
+	answer := map[string]any{"type": "success", "status": 200, "headers": developmentHeaders(ctx, event.actionResponse.responseState), "cookies": prerenderCookies(event.jar)}
 	var failure *actionFailure
 	switch {
 	case errors.As(callErr, &failure):

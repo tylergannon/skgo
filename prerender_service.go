@@ -120,6 +120,7 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			return
 		}
 		callbackContext := r.Context()
+		callbackPath := r.URL.Path
 		if abandoned != nil {
 			var identity struct {
 				Module string `json:"module"`
@@ -127,7 +128,7 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			}
 			json.Unmarshal(raw, &identity)
 			report := func() {
-				abandoned(fmt.Errorf("skgo: prerender %s %s#%s: callback canceled before response completion: %w", r.URL.Path, identity.Module, identity.Name, callbackContext.Err()))
+				abandoned(fmt.Errorf("skgo: prerender %s %s#%s: callback canceled before response completion: %w", callbackPath, identity.Module, identity.Name, callbackContext.Err()))
 			}
 			finished := make(chan struct{})
 			defer close(finished)

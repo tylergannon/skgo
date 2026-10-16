@@ -75,17 +75,10 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 		return fmt.Errorf("skgo: decode prerender load request: %w", err)
 	}
 	if input.ParentData != "" {
-		decoded, err := devalue.Parse(input.ParentData, transport.revivers())
+		var err error
+		input.Parent, err = decodePrerenderParent(input.ParentData, transport)
 		if err != nil {
-			return fmt.Errorf("skgo: decode native parent data: %w", err)
-		}
-		object, ok := decoded.(*devalue.Object)
-		if !ok {
-			return fmt.Errorf("skgo: native parent data is not an object")
-		}
-		input.Parent = map[string]any{}
-		for _, key := range object.Keys() {
-			input.Parent[key], _ = object.Get(key)
+			return err
 		}
 	}
 	pageURL, err := url.Parse(input.URL)
@@ -114,9 +107,14 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 	if load == nil {
 		return fmt.Errorf("skgo: no generated Go load for %s", input.Module)
 	}
-	// Kit has already evaluated parent loads before calling this stub. A
-	// synthetic preceding node lets skgo.Parent read the same merged values.
-	parent := &ServerLoad{run: func(context.Context) (any, error) { return input.Parent, nil }}
+	// This node is skipped unless the actual Go load calls Parent. In dev its
+	// callback asks Kit for parent data; build prerender supplies it up front.
+	parent := &ServerLoad{run: func(context.Context) (any, error) {
+		if parent, ok := ctx.Value(devParentKey{}).(func() (map[string]any, error)); ok {
+			return parent()
+		}
+		return input.Parent, nil
+	}}
 	var converted map[string]any
 	if state := hookStateOf(ctx); state != nil {
 		input.Params, converted = state.params, state.converted
@@ -136,12 +134,20 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 			return fmt.Errorf("skgo: Go matchers reject Kit prerender route %s at %s", input.RouteID, input.RoutePath)
 		}
 	}
-	previousHeaders := requestResponseHeaders(request).Clone()
-	shared, nodes := registry.runBranchWith(request, dataRequest{url: pageURL, converted: converted}, input.RouteID, input.Params, []*ServerLoad{parent, load}, nil, nil, nil)
+	var previousHeaders http.Header
+	if ctx.Value(devRendererKey{}) == nil {
+		previousHeaders = requestResponseHeaders(request).Clone()
+	}
+	shared, nodes := registry.runBranchWith(request, dataRequest{url: pageURL, converted: converted}, input.RouteID, input.Params, []*ServerLoad{parent, load}, []bool{false, true}, nil, nil)
 	node := nodes[1]
-	answer := prerenderLoadOutput{Headers: shared.headers.Clone(), Uses: node.uses.serialize()}
-	for name := range previousHeaders {
-		delete(answer.Headers, name)
+	answer := prerenderLoadOutput{Uses: node.uses.serialize()}
+	if _, development := ctx.Value(devRendererKey{}).(*SSR); development {
+		answer.Headers = developmentHeaders(ctx, shared.responseState)
+	} else {
+		answer.Headers = shared.headers.Clone()
+		for name := range previousHeaders {
+			delete(answer.Headers, name)
+		}
 	}
 	if node.redir != nil {
 		answer.Redirect = &prerenderRedirect{Status: node.redir.status(), Location: node.redir.Location}
@@ -219,4 +225,20 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 	}
 	answer.Cookies = prerenderCookies(shared.jar)
 	return json.NewEncoder(out).Encode(answer)
+}
+
+func decodePrerenderParent(data string, transport Transport) (map[string]any, error) {
+	decoded, err := devalue.Parse(data, transport.revivers())
+	if err != nil {
+		return nil, fmt.Errorf("skgo: decode native parent data: %w", err)
+	}
+	object, ok := decoded.(*devalue.Object)
+	if !ok {
+		return nil, fmt.Errorf("skgo: native parent data is not an object")
+	}
+	parent := map[string]any{}
+	for _, key := range object.Keys() {
+		parent[key], _ = object.Get(key)
+	}
+	return parent, nil
 }

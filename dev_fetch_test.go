@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -42,11 +43,11 @@ func TestNativeFetchKeepsGoHookAroundKitContinuation(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := response.Header.Get("X-Skgo-Fetch")
-	response.Body.Close()
+	defer response.Body.Close()
 	if response.Header.Get("X-Skgo-Fetch-State") != "next" {
 		t.Fatal("hook failed to yield Kit continuation")
 	}
-	raw, err := base64.StdEncoding.DecodeString(response.Header.Get("X-Skgo-Fetch-Request"))
+	raw, err := io.ReadAll(response.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +117,7 @@ function call(path,body,headers={}) {
  });
 }
 const begin=await call('/fetch-begin',JSON.stringify({handle:'literal-owner',url:'http://app.test/inner',method:'GET',headers:{}}),{'content-type':'application/json'});
-assert.equal(begin.status,204);
+assert.equal(begin.status,200);
 const id=begin.headers['x-skgo-fetch'];
 // Headers() iteration in native Kit produces these lowercase names. Their
 // casing must survive JSON but acquire Go HTTP map semantics at the boundary.
@@ -136,4 +137,56 @@ assert.equal((await call('/fetch-end','',{'x-skgo-fetch':id})).status,204);
 		t.Fatalf("lowercase Kit response framing: %v\n%s", err, output)
 	}
 	entry.active.Wait()
+}
+
+func TestNativeFetchOwnerRetiresUnreadAndPendingExchanges(t *testing.T) {
+	for _, completed := range []bool{false, true} {
+		t.Run(fmt.Sprint(completed), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			done := make(chan struct{})
+			close(done)
+			entry := &prerenderRequest{request: httptest.NewRequest("GET", "http://app.test/page", nil).WithContext(ctx), cancel: cancel, done: done}
+			sessions := &prerenderRequests{entries: map[string]*prerenderRequest{"owner": entry}}
+			exchanges := &devFetchRequests{}
+			defer exchanges.close()
+			development := &NativeDevelopment{renderer: &SSR{}}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { development.fetch(w, r, sessions, exchanges, r.URL.Path) }))
+			defer server.Close()
+			begin, err := http.Post(server.URL+"/fetch-begin", "application/json", strings.NewReader(`{"handle":"owner","url":"http://app.test/check","method":"GET"}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			id := begin.Header.Get("X-Skgo-Fetch")
+			io.Copy(io.Discard, begin.Body)
+			begin.Body.Close()
+			if id == "" {
+				t.Fatal("no exchange")
+			}
+			var unread *http.Response
+			if completed {
+				response, _ := http.NewRequest("POST", server.URL+"/fetch-response", strings.NewReader("literal-unread-739"))
+				response.Header.Set("X-Skgo-Fetch", id)
+				response.Header.Set("X-Skgo-Response", base64.StdEncoding.EncodeToString([]byte(`{"status":200,"headers":{}}`)))
+				unread, err = server.Client().Do(response)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer unread.Body.Close()
+				if unread.StatusCode != 200 {
+					t.Fatal(unread.Status)
+				}
+			}
+			// No /fetch-end and no body drain: request ownership must suffice.
+			if err := sessions.end("owner"); err != nil {
+				t.Fatal(err)
+			}
+			exchanges.mu.Lock()
+			count := len(exchanges.entries)
+			exchanges.mu.Unlock()
+			if count != 0 {
+				t.Fatalf("ended owner retained %d fetches", count)
+			}
+		})
+	}
 }

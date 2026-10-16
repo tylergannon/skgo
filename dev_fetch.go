@@ -10,17 +10,33 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 )
 
 // A fetch exchange suspends only the Go hook's supplied continuation. Kit
 // performs that continuation using its live router, credentials and cookies.
 type devFetchExchange struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	next   chan *http.Request
-	reply  chan *http.Response
-	result chan devFetchResult
+	ctx      context.Context
+	cancel   context.CancelFunc
+	next     chan devFetchContinuation
+	mu       sync.Mutex
+	reply    chan *http.Response
+	result   chan devFetchResult
+	metadata map[*http.Request]devFetchMetadata
+}
+type devFetchContinuation struct {
+	request *http.Request
+	reply   chan *http.Response
+}
+type devFetchMetadata struct {
+	URL        string `json:"url"`
+	Redirected bool   `json:"redirected"`
+	Type       string `json:"type"`
+}
+type devFetchReply struct {
+	prerenderResponse
+	devFetchMetadata
 }
 type devFetchResult struct {
 	response *http.Response
@@ -65,7 +81,7 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 		for name, values := range input.Headers {
 			request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
 		}
-		exchange = &devFetchExchange{ctx: ctx, cancel: cancel, next: make(chan *http.Request), reply: make(chan *http.Response), result: make(chan devFetchResult, 1)}
+		exchange = &devFetchExchange{ctx: ctx, cancel: cancel, next: make(chan devFetchContinuation), result: make(chan devFetchResult, 1), metadata: map[*http.Request]devFetchMetadata{}}
 		token := make([]byte, 24)
 		if _, err := rand.Read(token); err != nil {
 			entry.active.Done()
@@ -80,16 +96,21 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 		}
 		exchanges.entries[id] = exchange
 		exchanges.mu.Unlock()
+		// Body consumption is optional. The logical owner, rather than EOF in
+		// a Web Response, is the final lifetime boundary for every exchange.
+		entry.active.Add(1)
+		context.AfterFunc(ctx, func() { defer entry.active.Done(); exchanges.remove(id, exchange) })
 		go func() {
 			defer entry.active.Done()
 			next := func(request *http.Request) (*http.Response, error) {
+				reply := make(chan *http.Response)
 				select {
-				case exchange.next <- request:
+				case exchange.next <- devFetchContinuation{request, reply}:
 				case <-ctx.Done():
 					return nil, ctx.Err()
 				}
 				select {
-				case response := <-exchange.reply:
+				case response := <-reply:
 					return response, nil
 				case <-ctx.Done():
 					return nil, ctx.Err()
@@ -125,7 +146,7 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 			return
 		}
 		raw, err := base64.StdEncoding.DecodeString(r.Header.Get("X-Skgo-Response"))
-		var metadata prerenderResponse
+		var metadata devFetchReply
 		if err != nil || json.Unmarshal(raw, &metadata) != nil || metadata.Status < 200 || metadata.Status > 599 {
 			http.Error(w, "invalid fetch response", 400)
 			return
@@ -135,8 +156,27 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 			headers[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
 		}
 		response := &http.Response{StatusCode: metadata.Status, Header: headers, Body: r.Body}
+		if metadata.URL != "" {
+			finalURL, err := url.Parse(metadata.URL)
+			if err != nil {
+				http.Error(w, "invalid fetch response URL", 400)
+				return
+			}
+			response.Request = &http.Request{URL: finalURL}
+			exchange.mu.Lock()
+			exchange.metadata[response.Request] = metadata.devFetchMetadata
+			exchange.mu.Unlock()
+		}
+		exchange.mu.Lock()
+		reply := exchange.reply
+		exchange.reply = nil
+		exchange.mu.Unlock()
+		if reply == nil {
+			http.Error(w, "no pending development fetch", 409)
+			return
+		}
 		select {
-		case exchange.reply <- response:
+		case reply <- response:
 		case <-exchange.ctx.Done():
 			http.Error(w, "request owner ended", 409)
 			return
@@ -147,7 +187,11 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 	}
 	w.Header().Set("X-Skgo-Fetch", id)
 	select {
-	case request := <-exchange.next:
+	case continuation := <-exchange.next:
+		exchange.mu.Lock()
+		exchange.reply = continuation.reply
+		exchange.mu.Unlock()
+		request := continuation.request
 		var body []byte
 		if request.Body != nil {
 			var err error
@@ -165,16 +209,27 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 			return
 		}
 		w.Header().Set("X-Skgo-Fetch-State", "next")
-		w.Header().Set("X-Skgo-Fetch-Request", base64.StdEncoding.EncodeToString(raw))
-		w.WriteHeader(204)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(raw)
 	case result := <-exchange.result:
 		if result.err != nil {
 			http.Error(w, result.err.Error(), 500)
 			return
 		}
+		if result.response.Body == nil {
+			result.response.Body = http.NoBody
+		}
 		defer result.response.Body.Close()
 		for name, values := range result.response.Header {
 			w.Header()[name] = values
+		}
+		exchange.mu.Lock()
+		metadata, hasMetadata := exchange.metadata[result.response.Request]
+		exchange.mu.Unlock()
+		if hasMetadata {
+			metadata.URL = result.response.Request.URL.String()
+			raw, _ := json.Marshal(metadata)
+			w.Header().Set("X-Skgo-Fetch-Metadata", base64.StdEncoding.EncodeToString(raw))
 		}
 		w.Header().Set("X-Skgo-Fetch-State", "final")
 		w.WriteHeader(result.response.StatusCode)
@@ -212,4 +267,12 @@ func (s *devFetchRequests) close() {
 	for _, entry := range entries {
 		entry.cancel()
 	}
+}
+
+func (s *devFetchRequests) remove(id string, exchange *devFetchExchange) {
+	s.mu.Lock()
+	if s.entries[id] == exchange {
+		delete(s.entries, id)
+	}
+	s.mu.Unlock()
 }
