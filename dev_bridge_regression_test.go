@@ -257,12 +257,32 @@ func TestNativeBridgeConcurrentFetchContinuationsKeepTheirReplies(t *testing.T) 
 			err      error
 		}
 		results := make(chan result, 2)
+		firstReceived, secondReceived := make(chan struct{}), make(chan struct{})
 		for _, path := range []string{"/first", "/second"} {
 			go func(path string) {
+				if path == "/second" {
+					select {
+					case <-firstReceived:
+					case <-ctx.Done():
+						results <- result{err: ctx.Err()}
+						return
+					}
+				}
 				child := request.Clone(ctx)
 				child.URL.Path = path
 				response, err := next(child)
 				if err == nil {
+					if path == "/first" {
+						close(firstReceived)
+						select {
+						case <-secondReceived:
+						case <-ctx.Done():
+							results <- result{err: ctx.Err()}
+							return
+						}
+					} else {
+						close(secondReceived)
+					}
 					body, readErr := io.ReadAll(response.Body)
 					response.Body.Close()
 					if readErr != nil {
@@ -353,5 +373,24 @@ assert.equal(await page.text(),'literal-effects-final-328');
 assert.equal(e.applied['x-first'],'literal-first-127');
 assert.equal(e.applied['x-second'],'literal-second-127');
 assert.deepEqual(e.applied['server-timing'].split(', ').sort(),['first;dur=4','hook;dur=1','second;dur=4']);
+`)
+}
+
+func TestNativeBridgeContinuationBodyStreamsBeforeCompletion(t *testing.T) {
+	handler := nativeBridgeRegressionFixture(t, nil, nil, SSROptions{}, false)
+	runNativeBridgeRegression(t, handler, `
+const e=event();
+const page=await requestHandle(e,async()=>{
+ let producer;
+ const response=await requestFetch({event:e,request:new Request('http://app.test/stream'),fetch:async()=>new Response(new ReadableStream({start(controller){producer=controller;controller.enqueue(new TextEncoder().encode('literal-first-389'));}}))});
+ const reader=response.body.getReader();
+ const first=await reader.read();assert.equal(new TextDecoder().decode(first.value),'literal-first-389');assert.equal(first.done,false);
+ // The producer only completes after Go has forwarded the first bytes.
+ producer.enqueue(new TextEncoder().encode('literal-last-763'));producer.close();
+ const last=await reader.read();assert.equal(new TextDecoder().decode(last.value),'literal-last-763');assert.equal(last.done,false);
+ assert.equal((await reader.read()).done,true);
+ return new Response('literal-stream-final-492');
+});
+assert.equal(await page.text(),'literal-stream-final-492');
 `)
 }

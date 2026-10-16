@@ -25,6 +25,7 @@ func TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies(t *testing.T) {
 		t.Fatal(err)
 	}
 	reached := make(chan string, 1)
+	uploaded := make(chan []byte, 1)
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/_skgo/dev/begin":
@@ -43,9 +44,13 @@ func TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies(t *testing.T) {
 			w.Header().Set("X-Skgo-Fetch-State", "next")
 			io.WriteString(w, `{"url":"http://app.test/inner","method":"GET","headers":{}}`)
 		case "/_skgo/dev/fetch-response":
+			body, _ := io.ReadAll(r.Body)
+			uploaded <- body
+			w.WriteHeader(204)
+		case "/_skgo/dev/fetch-next":
 			w.Header().Set("X-Skgo-Fetch", "literal-fetch-824")
 			w.Header().Set("X-Skgo-Fetch-State", "final")
-			io.Copy(w, r.Body)
+			w.Write(<-uploaded)
 		case "/_skgo/dev/fetch-end":
 			w.WriteHeader(204)
 		case "/_skgo/dev/response":

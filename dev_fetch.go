@@ -17,13 +17,14 @@ import (
 // A fetch exchange suspends only the Go hook's supplied continuation. Kit
 // performs that continuation using its live router, credentials and cookies.
 type devFetchExchange struct {
-	ctx      context.Context
-	cancel   context.CancelFunc
-	next     chan devFetchContinuation
-	mu       sync.Mutex
-	reply    chan *http.Response
-	result   chan devFetchResult
-	metadata map[*http.Request]devFetchMetadata
+	ctx       context.Context
+	cancel    context.CancelFunc
+	next      chan devFetchContinuation
+	mu        sync.Mutex
+	reply     chan *http.Response
+	continued chan struct{}
+	result    chan devFetchResult
+	metadata  map[*http.Request]devFetchMetadata
 }
 type devFetchContinuation struct {
 	request *http.Request
@@ -145,43 +146,75 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 			w.WriteHeader(204)
 			return
 		}
-		raw, err := base64.StdEncoding.DecodeString(r.Header.Get("X-Skgo-Response"))
-		var metadata devFetchReply
-		if err != nil || json.Unmarshal(raw, &metadata) != nil || metadata.Status < 200 || metadata.Status > 599 {
-			http.Error(w, "invalid fetch response", 400)
-			return
-		}
-		headers := http.Header{}
-		for name, values := range metadata.Headers {
-			headers[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
-		}
-		response := &http.Response{StatusCode: metadata.Status, Header: headers, Body: r.Body}
-		if metadata.URL != "" {
-			finalURL, err := url.Parse(metadata.URL)
-			if err != nil {
-				http.Error(w, "invalid fetch response URL", 400)
+		if operation == "/fetch-next" {
+			exchange.mu.Lock()
+			accepted := exchange.continued
+			exchange.mu.Unlock()
+			if accepted == nil {
+				http.Error(w, "no pending development fetch", 409)
 				return
 			}
-			response.Request = &http.Request{URL: finalURL}
+			select {
+			case <-accepted:
+			case <-exchange.ctx.Done():
+				http.Error(w, "request owner ended", 409)
+				return
+			case <-r.Context().Done():
+				exchange.cancel()
+				return
+			}
+		} else {
+			raw, err := base64.StdEncoding.DecodeString(r.Header.Get("X-Skgo-Response"))
+			var metadata devFetchReply
+			if err != nil || json.Unmarshal(raw, &metadata) != nil || metadata.Status < 200 || metadata.Status > 599 {
+				http.Error(w, "invalid fetch response", 400)
+				return
+			}
+			headers := http.Header{}
+			for name, values := range metadata.Headers {
+				headers[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
+			}
+			body := &devFetchBody{ReadCloser: r.Body, done: make(chan struct{})}
+			response := &http.Response{StatusCode: metadata.Status, Header: headers, Body: body}
+			if metadata.URL != "" {
+				finalURL, err := url.Parse(metadata.URL)
+				if err != nil {
+					http.Error(w, "invalid fetch response URL", 400)
+					return
+				}
+				response.Request = &http.Request{URL: finalURL}
+				exchange.mu.Lock()
+				exchange.metadata[response.Request] = metadata.devFetchMetadata
+				exchange.mu.Unlock()
+			}
 			exchange.mu.Lock()
-			exchange.metadata[response.Request] = metadata.devFetchMetadata
+			reply := exchange.reply
+			accepted := exchange.continued
+			exchange.reply = nil
 			exchange.mu.Unlock()
-		}
-		exchange.mu.Lock()
-		reply := exchange.reply
-		exchange.reply = nil
-		exchange.mu.Unlock()
-		if reply == nil {
-			http.Error(w, "no pending development fetch", 409)
-			return
-		}
-		select {
-		case reply <- response:
-		case <-exchange.ctx.Done():
-			http.Error(w, "request owner ended", 409)
-			return
-		case <-r.Context().Done():
-			exchange.cancel()
+			if reply == nil {
+				http.Error(w, "no pending development fetch", 409)
+				return
+			}
+			select {
+			case reply <- response:
+				close(accepted)
+			case <-exchange.ctx.Done():
+				http.Error(w, "request owner ended", 409)
+				return
+			case <-r.Context().Done():
+				exchange.cancel()
+				return
+			}
+			// net/http owns the uploaded body until this handler returns. The
+			// separate /fetch-next exchange can advance while Go reads it.
+			select {
+			case <-body.done:
+			case <-exchange.ctx.Done():
+			case <-r.Context().Done():
+				exchange.cancel()
+			}
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 	}
@@ -190,6 +223,7 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 	case continuation := <-exchange.next:
 		exchange.mu.Lock()
 		exchange.reply = continuation.reply
+		exchange.continued = make(chan struct{})
 		exchange.mu.Unlock()
 		request := continuation.request
 		var body []byte
@@ -275,4 +309,25 @@ func (s *devFetchRequests) remove(id string, exchange *devFetchExchange) {
 		delete(s.entries, id)
 	}
 	s.mu.Unlock()
+}
+
+// Releasing a continuation response body releases its upload handler. A body
+// may be streamed, ignored until later, or closed without being read.
+type devFetchBody struct {
+	io.ReadCloser
+	done chan struct{}
+	once sync.Once
+}
+
+func (b *devFetchBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if err != nil {
+		b.once.Do(func() { close(b.done) })
+	}
+	return n, err
+}
+func (b *devFetchBody) Close() error {
+	err := b.ReadCloser.Close()
+	b.once.Do(func() { close(b.done) })
+	return err
 }

@@ -85,7 +85,7 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 			return
 		}
 		path := "/" + strings.TrimPrefix(r.URL.Path, "/_skgo/dev/")
-		if path == "/fetch-begin" || path == "/fetch-response" || path == "/fetch-end" {
+		if path == "/fetch-begin" || path == "/fetch-response" || path == "/fetch-next" || path == "/fetch-end" {
 			d.fetch(w, r, sessions, exchanges, path)
 			return
 		}

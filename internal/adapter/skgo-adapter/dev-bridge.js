@@ -602,19 +602,26 @@ export async function requestFetch({ event, request, fetch }) {
   // The Go hook surrounds Kit's supplied continuation rather than replacing
   // Kit's credential inheritance, cookie handling or live page dispatcher.
   const ownerSignal = event.locals?.[requestOwner]?.controller.signal;
-  const signal = ownerSignal
-    ? AbortSignal.any([request.signal, ownerSignal])
-    : request.signal;
+  const continuation = new AbortController();
+  const signal = AbortSignal.any([
+    request.signal,
+    continuation.signal,
+    ...(ownerSignal ? [ownerSignal] : []),
+  ]);
   let id;
   const finish = async () => {
-    if (!id) return;
     const current = id;
     id = undefined;
-    if (ownerSignal?.aborted) return;
-    const response = await call("fetch-end", null, undefined, {
-      headers: { "x-skgo-fetch": current },
-    });
-    response.resume();
+    try {
+      if (current && !ownerSignal?.aborted) {
+        const response = await call("fetch-end", null, undefined, {
+          headers: { "x-skgo-fetch": current },
+        });
+        response.resume();
+      }
+    } finally {
+      continuation.abort();
+    }
   };
   try {
     let response = await call(
@@ -658,7 +665,9 @@ export async function requestFetch({ event, request, fetch }) {
         [...result.headers].map(([key, value]) => [key, [value]]),
       );
       resultHeaders["set-cookie"] = result.headers.getSetCookie();
-      response = await call(
+      // Upload ownership lasts until Go releases this body. Negotiate the
+      // next step separately so another continuation can run in the meantime.
+      void call(
         "fetch-response",
         null,
         event,
@@ -678,6 +687,17 @@ export async function requestFetch({ event, request, fetch }) {
           },
           body: result.body,
         },
+        signal,
+      )
+        .then((acknowledgment) => acknowledgment.resume())
+        .catch((error) => {
+          if (!signal.aborted) continuation.abort(error);
+        });
+      response = await call(
+        "fetch-next",
+        null,
+        event,
+        { headers: { "x-skgo-fetch": id } },
         signal,
       );
     }

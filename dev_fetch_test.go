@@ -62,7 +62,7 @@ func TestNativeFetchKeepsGoHookAroundKitContinuation(t *testing.T) {
 	callback, _ := http.NewRequest("POST", server.URL+"/fetch-response", strings.NewReader("native Kit document literal-664"))
 	callback.Header.Set("X-Skgo-Fetch", id)
 	callback.Header.Set("X-Skgo-Response", base64.StdEncoding.EncodeToString(metadata))
-	final, err := http.DefaultClient.Do(callback)
+	final, err := nativeFetchUploadAndNext(t, server.Client(), server.URL, callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,12 +122,14 @@ const id=begin.headers['x-skgo-fetch'];
 // Headers() iteration in native Kit produces these lowercase names. Their
 // casing must survive JSON but acquire Go HTTP map semantics at the boundary.
 const metadata={status:201,headers:{'content-length':['31'],'content-type':['text/html'],'x-kit-page':['literal-993']}};
-const result=await call('/fetch-response','native Kit document literal-664',{'content-type':'application/octet-stream','x-skgo-fetch':id,'x-skgo-response':Buffer.from(JSON.stringify(metadata)).toString('base64')});
+const uploaded=call('/fetch-response','native Kit document literal-664',{'content-type':'application/octet-stream','x-skgo-fetch':id,'x-skgo-response':Buffer.from(JSON.stringify(metadata)).toString('base64')});
+const result=await call('/fetch-next','',{'x-skgo-fetch':id});
 assert.equal(result.status,201);
 assert.equal(result.headers['content-length'],'31');
 assert.equal(result.headers['transfer-encoding'],undefined);
 assert.equal(result.headers['x-kit-page'],'literal-993');
 assert.equal(result.body,'native Kit document literal-664');
+assert.equal((await uploaded).status,204);
 assert.equal((await call('/fetch-end','',{'x-skgo-fetch':id})).status,204);
 `
 	commandCtx, stop := context.WithTimeout(context.Background(), 10*time.Second)
@@ -168,7 +170,7 @@ func TestNativeFetchOwnerRetiresUnreadAndPendingExchanges(t *testing.T) {
 				response, _ := http.NewRequest("POST", server.URL+"/fetch-response", strings.NewReader("literal-unread-739"))
 				response.Header.Set("X-Skgo-Fetch", id)
 				response.Header.Set("X-Skgo-Response", base64.StdEncoding.EncodeToString([]byte(`{"status":200,"headers":{}}`)))
-				unread, err = server.Client().Do(response)
+				unread, err = nativeFetchUploadAndNext(t, server.Client(), server.URL, response)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -189,4 +191,33 @@ func TestNativeFetchOwnerRetiresUnreadAndPendingExchanges(t *testing.T) {
 			}
 		})
 	}
+}
+
+func nativeFetchUploadAndNext(t *testing.T, client *http.Client, origin string, request *http.Request) (*http.Response, error) {
+	t.Helper()
+	uploaded := make(chan error, 1)
+	go func() {
+		response, err := client.Do(request)
+		if err == nil {
+			_, err = io.Copy(io.Discard, response.Body)
+			response.Body.Close()
+			if err == nil && response.StatusCode != 204 {
+				err = fmt.Errorf("upload acknowledgment: %s", response.Status)
+			}
+		}
+		uploaded <- err
+	}()
+	t.Cleanup(func() {
+		select {
+		case err := <-uploaded:
+			if err != nil {
+				t.Error(err)
+			}
+		case <-time.After(time.Second):
+			t.Error("upload did not finish")
+		}
+	})
+	next, _ := http.NewRequest("POST", origin+"/fetch-next", nil)
+	next.Header.Set("X-Skgo-Fetch", request.Header.Get("X-Skgo-Fetch"))
+	return client.Do(next)
 }
