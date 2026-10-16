@@ -130,7 +130,11 @@ func build(tag, sha string) error {
 	if err = command(nil, binary, "buildinfo"); err != nil {
 		return err
 	}
-	if err = command([]string{"SKGO_PLUGIN_DIRS=" + filepath.Join(stage, "empty-plugins")}, binary, "--help"); err != nil {
+	emptyPlugins := filepath.Join(stage, "empty-plugins")
+	if err = os.Mkdir(emptyPlugins, 0700); err != nil {
+		return err
+	}
+	if err = command([]string{"SKGO_PLUGIN_DIRS=" + emptyPlugins}, binary, "--help"); err != nil {
 		return err
 	}
 	if runtime.GOOS == "darwin" {
