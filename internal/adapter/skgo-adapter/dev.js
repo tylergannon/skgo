@@ -142,6 +142,7 @@ export function development({ config }) {
       base: config.paths.base,
       version: config.version.name,
       trustedOrigins: config.csrf.trustedOrigins,
+      tracingServer: config.tracing.server,
       nodes: data.nodes.map((n) => n.server ?? ""),
       loads: generated.loads,
       actions: generated.actions,

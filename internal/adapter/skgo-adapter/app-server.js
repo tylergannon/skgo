@@ -22,6 +22,7 @@
 // and an export kit adds arrives without an edit here. An explicit export
 // below shadows the star, which is how the four substitutions take effect.
 import * as real from 'skgo:kit/remote';
+import { getRequestEvent } from '@sveltejs/kit/internal/server';
 import { stringify_remote_arg } from 'skgo:kit/shared';
 import { HandledHttpError, HttpError, Redirect } from '@sveltejs/kit/internal';
 import { DEV } from 'esm-env';
@@ -46,7 +47,7 @@ export * from 'skgo:kit/app-server';
  * a render works for the same reason it works in the browser.
  */
 async function host(id, payload) {
-	const raw = await globalThis.__skgo_remote(id, payload);
+	const raw = await globalThis.__skgo_remote(id, payload, getRequestEvent().tracing.current._skgo);
 	const res = JSON.parse(raw);
 	if (res.h) {
 		throw new HandledHttpError(res.h);

@@ -21,6 +21,9 @@ import (
 // `cookies.delete`. skgo enforces the same rules; the difference is that a Go
 // handler returns the refusal rather than throwing it.
 type Event struct {
+	// Tracing provides the framework root and current OpenTelemetry spans.
+	Tracing Tracing
+
 	// metadata survives remote derivation; its URL and route remain guarded by query.
 	metadata *requestMetadata
 	remote   bool
@@ -75,6 +78,14 @@ func EventFrom(ctx context.Context) *Event {
 
 // withEvent is how the dispatcher makes the event reachable.
 func withEvent(ctx context.Context, e *Event) context.Context {
+	if e != nil {
+		copy := *e
+		e = &copy
+		e.Tracing = tracingOf(ctx)
+		if e.req != nil {
+			e.req = e.req.WithContext(ctx)
+		}
+	}
 	return context.WithValue(ctx, eventKey{}, e)
 }
 

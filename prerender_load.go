@@ -45,15 +45,16 @@ type prerenderCookie struct {
 }
 
 type prerenderLoadOutput struct {
-	Body     json.RawMessage    `json:"body,omitempty"`
-	Data     json.RawMessage    `json:"data,omitempty"`
-	Chunks   []prerenderChunk   `json:"chunks,omitempty"`
-	Error    *HTTPError         `json:"error,omitempty"`
-	Failure  *string            `json:"failure,omitempty"`
-	Redirect *prerenderRedirect `json:"redirect,omitempty"`
-	Headers  http.Header        `json:"headers,omitempty"`
-	Cookies  []prerenderCookie  `json:"cookies,omitempty"`
-	Uses     usesWire           `json:"uses"`
+	NativeError *nativeErrorDiagnostic `json:"nativeError,omitempty"`
+	Body        json.RawMessage        `json:"body,omitempty"`
+	Data        json.RawMessage        `json:"data,omitempty"`
+	Chunks      []prerenderChunk       `json:"chunks,omitempty"`
+	Error       *HTTPError             `json:"error,omitempty"`
+	Failure     *string                `json:"failure,omitempty"`
+	Redirect    *prerenderRedirect     `json:"redirect,omitempty"`
+	Headers     http.Header            `json:"headers,omitempty"`
+	Cookies     []prerenderCookie      `json:"cookies,omitempty"`
+	Uses        usesWire               `json:"uses"`
 }
 
 type prerenderChunk struct {
@@ -160,6 +161,7 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 				return err
 			}
 			answer.Body = body
+			answer.NativeError = nativeErrorFor(node.raw)
 			answer.Error = &HTTPError{Status: handled.Status, Message: handled.Message}
 		}
 		var authored *HTTPError

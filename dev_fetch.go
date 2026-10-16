@@ -71,7 +71,10 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 			http.Error(w, err.Error(), 409)
 			return
 		}
-		ctx, cancel := context.WithCancel(entry.request.Context())
+		if writer, ok := w.(*nativeTraceWriter); ok {
+			writer.add(entry.request.Context())
+		}
+		ctx, cancel := context.WithCancel(inheritNativeTracing(entry.request.Context(), r.Context()))
 		request, err := http.NewRequestWithContext(ctx, input.Method, input.URL, bytes.NewReader(input.Body))
 		if err != nil {
 			entry.active.Done()

@@ -49,7 +49,7 @@ export function devModules({ base = "" } = {}) {
       )
         return;
       if (/\/hooks\.server\.(ts|js)$/.test(module))
-        return `import { requestHandle, requestFetch } from '${helper}';\n${code}\nexport const handle = ({event,resolve}) => requestHandle(event,resolve);\nexport const handleFetch = input => requestFetch(input);`;
+        return `import { requestHandle, requestFetch, handleGoError } from '${helper}';\n${code}\nexport const handle = ({event,resolve}) => requestHandle(event,resolve);\nexport const handleFetch = input => requestFetch(input);\nexport const handleError = input => handleGoError(input);`;
       const parsed = parseSync(id, code);
       if (parsed.errors.length)
         throw new Error(

@@ -27,7 +27,7 @@
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, rmSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /**
@@ -456,7 +456,7 @@ export function nodeTable(root, nodes) {
 		imports.push(`import N${i} from ${JSON.stringify(join(root, node.component))};`);
 		table.push(`() => N${i}`);
 	});
-	return `${imports.join('\n')}\nexport const componentLoaders = [${table.join(', ')}];\nexport const universalLoaders = [${loads.join(', ')}];\n`;
+	return `${imports.join('\n')}\nexport const componentLoaders = [${table.join(', ')}];\nexport const universalLoaders = [${loads.join(', ')}];\nexport const universalLoadIds = ${JSON.stringify(nodes.map(n=>n.universal ? relative(root,n.universal).split(sep).join('/') : ''))};\n`;
 }
 
 /**

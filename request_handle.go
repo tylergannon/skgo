@@ -130,6 +130,11 @@ func RequestSequence[P, L any](hooks ...RequestMiddleware[P, L]) RequestMiddlewa
 				}
 				return resolve(ctx, event, *parent)
 			}
+			name := traceHookName(chain[i], i)
+			ctx, span := traceSequence(ctx, name)
+			defer endSequenceSpan(span, name)
+			ctx, event = bindRequestEvent(ctx, event)
+			event.Tracing = tracingOf(ctx)
 			response, err := callRequestHook(chain[i], ctx, event, guardedRequestResolve(func(ctx context.Context, selected RequestEvent[P, L], options ...ResolveOptions) (*http.Response, error) {
 				own, err := singleResolveOptions(options)
 				if err != nil {
@@ -137,6 +142,7 @@ func RequestSequence[P, L any](hooks ...RequestMiddleware[P, L]) RequestMiddlewa
 				}
 				return apply(i+1, ctx, selected, composeResolveOptions(own, parent))
 			}))
+			traceError(span, name, err)
 			return response, requestHookError(ctx, err)
 		}
 		return apply(0, ctx, event, nil)

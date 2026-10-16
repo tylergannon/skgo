@@ -1001,7 +1001,11 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 	filter := s.documentOptions(r).filter
 	var answersMu sync.Mutex
 	finished := false
+	tracing := newRendererTracing(ctx)
+	defer tracing.close()
 	result, _, err := s.engine.Render(ctx, plan.routeID, request, ssr.Hosts{
+		Tracing:       tracing.call,
+		TraceContext:  tracing.context,
 		ClientAddress: clientAddressOf(r).get,
 		Remote: func(ctx context.Context, id, payload string) ([]byte, error) {
 			local := map[string]map[string]answered{}

@@ -21,6 +21,9 @@ import (
 // Manifest is the build description written by the skgo SvelteKit adapter to
 // `skgo.manifest.json`. Only the fields the server needs are modelled.
 type Manifest struct {
+	// TracingServer is the resolved SvelteKit tracing.server build setting.
+	TracingServer bool `json:"tracingServer,omitempty"`
+
 	// Development identifies a Vite development snapshot. Kit executes
 	// prerender remotes on demand in development instead of reading artifacts.
 	Development bool `json:"development,omitempty"`

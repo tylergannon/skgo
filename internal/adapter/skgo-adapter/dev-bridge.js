@@ -56,6 +56,27 @@ function headers(event) {
     ];
   return result;
 }
+function tracingHeaders(event) {
+  if (!event?.tracing) return {};
+  const info = span => ({...span.spanContext(),recording:span.isRecording(),traceState:span.spanContext().traceState?.serialize?.() ?? ''});
+  return {'x-skgo-tracing':Buffer.from(JSON.stringify({enabled:event.tracing.enabled,root:info(event.tracing.root),current:info(event.tracing.current)})).toString('base64')};
+}
+function tracingEffects(event, encoded) {
+  if (!encoded || !event?.tracing) return;
+  const spans=[event.tracing.root,event.tracing.current];
+  for (const operation of JSON.parse(Buffer.from(encoded,'base64').toString())) {
+    const span=spans.find(s=>s.spanContext().spanId===operation.id);
+    if (!span) continue;
+    switch(operation.method) {
+      case 'attributes':span.setAttributes(operation.attributes);break;
+      case 'name':span.updateName(operation.name);break;
+      case 'status':span.setStatus(operation.status);break;
+      case 'event':span.addEvent(operation.name,operation.attributes);break;
+      case 'end':span.end();break;
+      case 'link':span.addLink(operation.link);break;
+    }
+  }
+}
 function call(kind, payload, event, raw, signalOverride) {
   return new Promise((resolve, reject) => {
     const request = httpRequest(
@@ -65,10 +86,13 @@ function call(kind, payload, event, raw, signalOverride) {
         method: "POST",
         headers: {
           authorization: `Bearer ${process.env.SKGO_DEV_SERVICE_SECRET}`,
+          ...tracingHeaders(event),
           ...(raw ? raw.headers : { "content-type": "application/json" }),
         },
       },
       (response) => {
+        tracingEffects(event,response.headers['x-skgo-tracing']);
+        response.on('end',()=>tracingEffects(event,response.trailers['x-skgo-tracing-after']));
         // An owning request may abort a fetch nobody consumed. Keep that
         // cancellation observable to iterators without an unhandled event.
         response.on("error", () => {});
@@ -183,7 +207,28 @@ function effects(event, answer) {
       ...(cookie.raw ? { encode: (value) => value } : {}),
     });
 }
+const handledGoErrors=new WeakMap();
+function throwGoError(answer) {
+  if (!answer.nativeError) return;
+  const diagnostic=answer.nativeError;
+  const body=answer.body ?? {status:answer.error?.status ?? answer.status ?? 500,message:answer.error?.message ?? 'Internal Error'};
+  let failure;
+  if (diagnostic.kind==='known') {
+    try { error(diagnostic.status,diagnostic.message); } catch(caught) {failure=caught;}
+  } else failure=new Error(diagnostic.message);
+  handledGoErrors.set(failure,body);
+  throw failure;
+}
+export function handleGoError({kind,error,issues}) {
+  const body=handledGoErrors.get(error);
+  if (body) return body;
+  // Preserve Kit's default behavior for errors originating in native Kit or
+  // universal JavaScript rather than a completed Go handleError invocation.
+  if (kind==='unknown') console.error(error);
+  else if (kind==='validation') console.error('Remote function schema validation failed:',issues);
+}
 function exceptional(answer) {
+  throwGoError(answer);
   if (answer.redirect)
     redirect(answer.redirect.status, answer.redirect.location);
   if (answer.error)
@@ -417,11 +462,13 @@ export async function action(module, name, event) {
   effects(event, answer);
   if (answer.type === "redirect")
     redirect(answer.status, answer.location ?? answer.redirect?.location);
-  if (answer.type === "error")
+  if (answer.type === "error") {
+    throwGoError(answer);
     error(
       answer.status,
       answer.body ?? answer.error?.message ?? answer.message,
     );
+  }
   exceptional(answer);
   const data =
     answer.data === undefined ? undefined : transport.parse(answer.data);
@@ -455,6 +502,9 @@ const bridgeHeaders = new Set([
   "x-skgo-fetch-state",
   "x-skgo-fetch-metadata",
   "x-skgo-effects",
+  "x-skgo-tracing",
+  "x-skgo-tracing-after",
+  "x-skgo-native-error",
 ]);
 function incomingHeaders(upstream) {
   const headers = new Headers();
@@ -507,6 +557,10 @@ async function incomingResponse(upstream, method, finish = async () => {}) {
 }
 export async function endpoint(event) {
   const response = await call("endpoint", { handle: owner(event) }, event);
+  if (response.headers['x-skgo-native-error']) {
+    response.resume();
+    exceptional(JSON.parse(Buffer.from(response.headers['x-skgo-native-error'],'base64').toString()));
+  }
   const encoded = response.headers["x-skgo-effects"];
   if (encoded)
     effects(event, JSON.parse(Buffer.from(encoded, "base64").toString()));
@@ -542,7 +596,7 @@ export async function requestHandle(event, resolve) {
   );
   const handle = answer.handle;
   if (!handle) throw new Error("skgo: begin omitted request owner");
-  const state = { handle, controller: new AbortController() };
+  const state = { handle, controller: new AbortController(), tracing:event.tracing };
   let ended = false;
   const end = async () => {
     if (!ended) {
@@ -581,7 +635,13 @@ export async function requestHandle(event, resolve) {
         predicate(handle, "filter", { name, value });
     if (answer.options?.preload)
       options.preload = (input) => predicate(handle, "preload", { input });
-    const response = await resolve(event, options);
+    let response;
+    if (event.tracing?.enabled && answer.tracingParent?.traceId) {
+      const api=await import('@opentelemetry/api');
+      const parent=answer.tracingParent;
+      const spanContext={traceId:parent.traceId,spanId:parent.spanId,traceFlags:parent.traceFlags,isRemote:true,traceState:api.createTraceState(parent.traceState)};
+      response=await api.context.with(api.trace.setSpanContext(api.context.active(),spanContext),()=>resolve(event,options));
+    } else response=await resolve(event,options);
     const responseHeaders = Object.fromEntries(
       [...response.headers].map(([k, v]) => [k, [v]]),
     );
@@ -608,6 +668,11 @@ export async function requestHandle(event, resolve) {
   }
 }
 export async function requestFetch({ event, request, fetch }) {
+  const tracing=event.locals?.[requestOwner]?.tracing;
+  if (tracing?.enabled) {
+    const api=await import('@opentelemetry/api');
+    event={...event,tracing:{...tracing,current:api.trace.getSpan(api.context.active()) ?? tracing.current}};
+  }
   // The Go hook surrounds Kit's supplied continuation rather than replacing
   // Kit's credential inheritance, cookie handling or live page dispatcher.
   const ownerSignal = event.locals?.[requestOwner]?.controller.signal;
