@@ -185,16 +185,14 @@ func TestPublicUpdatePassesSelectedAdapterToGuard(t *testing.T) {
 			stop := errors.New("stopped before Go project mutation")
 			reachedMutation, dispatched := false, false
 			var opts Options
-			opts = Options{Root: root, VP: "/qualified/vp", packages: func(string) (string, string, error) { return "0.28.2", "0.17.1", nil }, info: func() (buildinfo.Info, error) { return buildinfo.Info{Executable: host, SkgoVersion: "v0.28.2"}, nil }}
+			staged := filepath.Join(bin, ".downloaded-skgo")
+			writeAlignmentFile(t, bin, ".downloaded-skgo", "released fixture")
+			opts = Options{Root: root, VP: "/qualified/vp", release: func(context.Context, string) (string, string, error) { return staged, "v0.28.2", nil }, packages: func(string) (string, string, error) { return "0.28.2", "0.17.1", nil }, info: func() (buildinfo.Info, error) { return buildinfo.Info{Executable: host, SkgoVersion: "v0.28.2"}, nil }}
 			opts.run = func(ctx context.Context, c command) ([]byte, error) {
 				switch {
 				case c.Name == "go" && slices.Equal(c.Args, []string{"env", "-json", "GOBIN", "GOPATH", "GOCACHE"}):
 					return json.Marshal(map[string]string{"GOBIN": bin, "GOCACHE": filepath.Join(root, "cache")})
-				case c.Name == "go" && slices.Equal(c.Args, []string{"list", "-m", "-json", "github.com/tylergannon/skgo@latest"}):
-					return []byte(`{"Version":"v0.28.2"}`), nil
-				case c.Name == "go" && slices.Equal(c.Args, []string{"install", "github.com/tylergannon/skgo/cmd/skgo@v0.28.2"}):
-					return nil, nil
-				case c.Name == host && slices.Equal(c.Args, []string{"buildinfo", "--json"}):
+				case c.Name == staged && slices.Equal(c.Args, []string{"buildinfo", "--json"}):
 					return []byte(`{"skgoVersion":"v0.28.2"}`), nil
 				case c.Name == host && len(c.Args) > 0 && c.Args[0] == "update":
 					if !slices.Equal(c.Args, []string{"update", "--complete-version", "v0.28.2", "--root", root, "--vp", "/qualified/vp"}) {

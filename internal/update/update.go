@@ -27,6 +27,7 @@ type Options struct {
 	run                          func(context.Context, command) ([]byte, error)
 	info                         func() (buildinfo.Info, error)
 	packages                     func(string) (string, string, error)
+	release                      func(context.Context, string) (string, string, error)
 }
 type command struct {
 	Dir, Name string
@@ -43,6 +44,9 @@ func Run(ctx context.Context, o Options) error {
 	}
 	if o.packages == nil {
 		o.packages = newapp.CompatiblePackages
+	}
+	if o.release == nil {
+		o.release = downloadLatestRelease
 	}
 	if o.run == nil {
 		o.run = func(ctx context.Context, c command) ([]byte, error) {
@@ -110,23 +114,13 @@ func Run(ctx context.Context, o Options) error {
 	}
 	probe.Close()
 	os.Remove(probe.Name())
-	data, err = o.run(ctx, command{Name: "go", Args: []string{"list", "-m", "-json", buildinfo.Module + "@latest"}, Env: []string{"GOWORK=off"}, Quiet: true})
+	fmt.Fprintln(o.Out, "Downloading the latest published SKGO release from GitHub.")
+	staged, version, err := o.release(ctx, dir)
 	if err != nil {
 		return err
 	}
-	var latest struct{ Version string }
-	if err = json.Unmarshal(data, &latest); err != nil {
-		return err
-	}
-	if !semver.IsValid(latest.Version) || semver.Prerelease(latest.Version) != "" {
-		return fmt.Errorf("latest skgo version is not a stable release: %q", latest.Version)
-	}
-	fmt.Fprintf(o.Out, "Installing skgo %s with Go.\n", latest.Version)
-	if _, err = o.run(ctx, command{Name: "go", Args: []string{"install", buildinfo.Module + "/cmd/skgo@" + latest.Version}, Env: []string{"GOWORK=off", "GOBIN=" + dir}}); err != nil {
-		return err
-	}
-	installed := filepath.Join(dir, "skgo")
-	data, err = o.run(ctx, command{Name: installed, Args: []string{"buildinfo", "--json"}, Quiet: true})
+	defer os.Remove(staged)
+	data, err = o.run(ctx, command{Name: staged, Args: []string{"buildinfo", "--json"}, Quiet: true})
 	if err != nil {
 		return err
 	}
@@ -134,8 +128,12 @@ func Run(ctx context.Context, o Options) error {
 	if err = json.Unmarshal(data, &next); err != nil {
 		return err
 	}
-	if next.SkgoVersion != latest.Version {
-		return fmt.Errorf("installed CLI reports %s, expected %s", next.SkgoVersion, latest.Version)
+	if !semver.IsValid(version) || semver.Prerelease(version) != "" || next.SkgoVersion != version {
+		return fmt.Errorf("downloaded CLI reports %s, expected stable release %s", next.SkgoVersion, version)
+	}
+	installed := filepath.Join(dir, "skgo")
+	if err = os.Rename(staged, installed); err != nil {
+		return fmt.Errorf("install released CLI: %w", err)
 	}
 	fmt.Fprintf(o.Out, "CLI installed: %s (%s) -> %s (%s).\n", info.Executable, info.SkgoVersion, installed, next.SkgoVersion)
 	pathBin, e := exec.LookPath("skgo")
@@ -151,7 +149,7 @@ func Run(ctx context.Context, o Options) error {
 	if pathBin != canonical {
 		fmt.Fprintf(o.Out, "PATH still resolves skgo to %q; use %s or adjust PATH.\n", pathBin, installed)
 	}
-	args := []string{"update", "--complete-version", latest.Version}
+	args := []string{"update", "--complete-version", version}
 	if root != "" {
 		args = append(args, "--root", root)
 	}
@@ -165,7 +163,7 @@ func Run(ctx context.Context, o Options) error {
 		args = append(args, "--native-preset", o.NativePreset)
 	}
 	if _, err = o.run(ctx, command{Name: installed, Args: args}); err != nil {
-		return fmt.Errorf("CLI %s is installed, but toolchain/project update is incomplete: %w", latest.Version, err)
+		return fmt.Errorf("CLI %s is installed, but toolchain/project update is incomplete: %w", version, err)
 	}
 	return nil
 }
