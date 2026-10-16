@@ -33,19 +33,20 @@ func TestNewExecutableOwnsCompletionAndCacheIsNotInstalledOver(t *testing.T) {
 			os.WriteFile(old, []byte("original host"), 0755)
 			var calls []command
 			var out bytes.Buffer
+			staged := filepath.Join(bin, ".downloaded-skgo")
+			if err := os.WriteFile(staged, []byte("released executable fixture"), 0755); err != nil {
+				t.Fatal(err)
+			}
+			downloaded := false
 			run := func(ctx context.Context, c command) ([]byte, error) {
 				calls = append(calls, c)
 				switch {
 				case reflect.DeepEqual(c.Args, []string{"env", "-json", "GOBIN", "GOPATH", "GOCACHE"}):
 					return json.Marshal(map[string]string{"GOBIN": bin, "GOCACHE": cache})
-				case reflect.DeepEqual(c.Args, []string{"list", "-m", "-json", buildinfo.Module + "@latest"}):
-					return []byte(`{"Version":"v9.1.0"}`), nil
-				case len(c.Args) > 0 && c.Args[0] == "install":
-					if !reflect.DeepEqual(c.Env, []string{"GOWORK=off", "GOBIN=" + bin}) {
-						t.Fatalf("install env %v", c.Env)
-					}
-					return nil, nil
 				case reflect.DeepEqual(c.Args, []string{"buildinfo", "--json"}):
+					if c.Name != staged {
+						t.Fatalf("did not verify staged release before replacement: %+v", c)
+					}
 					return []byte(`{"skgoVersion":"v9.1.0"}`), nil
 				case len(c.Args) > 0 && c.Args[0] == "update":
 					if c.Name != filepath.Join(bin, "skgo") || !reflect.DeepEqual(c.Args, []string{"update", "--complete-version", "v9.1.0", "--vp", "/chosen/vp"}) {
@@ -56,15 +57,25 @@ func TestNewExecutableOwnsCompletionAndCacheIsNotInstalledOver(t *testing.T) {
 				t.Fatalf("old executable tried extra work: %+v", c)
 				return nil, nil
 			}
-			err = Run(context.Background(), Options{Out: &out, VP: "/chosen/vp", run: run, info: func() (buildinfo.Info, error) { return buildinfo.Info{Executable: old, SkgoVersion: "v9.0.0"}, nil }})
+			err = Run(context.Background(), Options{Out: &out, VP: "/chosen/vp", run: run, release: func(_ context.Context, dir string) (string, string, error) {
+				if dir != bin {
+					t.Fatalf("wrong install directory %s", dir)
+				}
+				downloaded = true
+				return staged, "v9.1.0", nil
+			}, info: func() (buildinfo.Info, error) { return buildinfo.Info{Executable: old, SkgoVersion: "v9.0.0"}, nil }})
 			if err == nil || !strings.Contains(err.Error(), "installed, but toolchain/project update is incomplete") {
 				t.Fatalf("partial outcome %v", err)
 			}
-			if len(calls) != 5 {
+			if len(calls) != 3 || !downloaded {
 				t.Fatalf("calls=%v", calls)
 			}
-			if b, _ := os.ReadFile(old); string(b) != "original host" {
-				t.Fatal("overwrote original/cache host in test")
+			want := "released executable fixture"
+			if cached {
+				want = "original host"
+			}
+			if b, _ := os.ReadFile(old); string(b) != want {
+				t.Fatalf("host content %q, want %q", b, want)
 			}
 		})
 	}

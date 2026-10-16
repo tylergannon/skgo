@@ -1,0 +1,2 @@
+correction: User explicitly requires skgo update to download the latest actual published GitHub release, not go install and not delegation to brew upgrade. Candidate Git tags are not releases; select releases/latest and its platform archive/checksum. Preserve the published executable bytes and existing completion/project-tool behavior.
+friction: Existing update tests require the declared frontend environment; ambient pnpm was 12.11.2 and Kit source was absent. Install with VP and run these tests through example/web's vp exec, which resolves the declared 12.9.1 manager.

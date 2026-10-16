@@ -16,6 +16,22 @@ is not needed to run the production binary.
 > loads and API routes are not supported. The [example app](example/) shows what
 > works today.
 
+## Install
+
+On Apple Silicon macOS, install the signed and notarized CLI with Homebrew:
+
+```sh
+brew install --cask tylergannon/skgo/skgo
+```
+
+Linux AMD64 and ARM64 archives are available from
+[GitHub Releases](https://github.com/tylergannon/skgo/releases), alongside
+`checksums.txt`. Extract the archive's `skgo` executable onto your PATH.
+
+`skgo update` downloads the latest published release, verifies its checksum,
+and installs that binary before aligning your toolchain and project. macOS
+updates retain the release's Developer ID signature.
+
 ## Agent skills
 
 skgo publishes skills that teach a coding agent how to build with it: the
