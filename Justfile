@@ -67,7 +67,9 @@ serve:
 
 e2e_json_reporter := if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_FILE", "") != "" { " --add-reporter=json" } else if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_NAME", "") != "" { " --add-reporter=json" } else { "" }
 
-# The browser suite against an already running server in the explicit mode.
+# The shared browser scenarios against an already running server. Global setup
+# checks X-Skgo-Mode against the explicit mode; it does not start the server.
+# A complete pass on the replacement dev topology is not yet established.
 e2e mode="prod":
     @case "{{mode}}" in prod|dev) ;; *) echo "Expected prod or dev" >&2; exit 1;; esac
     cd example/e2e && BASE_URL="{{origin}}" SKGO_E2E_MODE="{{mode}}" SKGO_LOG="{{log}}" ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}}

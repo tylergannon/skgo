@@ -25,8 +25,8 @@
       <h1>A Go backend for SvelteKit.</h1>
       <div class="hero-grid">
         <div>
-          <p class="lede">skgo lets you write the server side of a SvelteKit app in Go. Remote functions, server loads and API routes are Go code that sits next to the Svelte files that use them. skgo generates TypeScript types and bindings from that code, so you write a function in Go and await it in Svelte, the same way you would call any SvelteKit remote function. Pages are rendered by SvelteKit's own renderer running inside the Go process, and the app deploys as a single Go binary. Node is only needed to build it.</p>
-          <p class="status"><strong>Status:</strong> pre-1.0. skgo tracks the SvelteKit 3 prerelease pinned in its repository. All server code is written in Go: TypeScript remote functions, loads and API routes are not supported. The <a href="https://github.com/tylergannon/skgo/tree/main/example">example app</a> shows what works today.</p>
+          <p class="lede">skgo lets you write the server side of a SvelteKit app in Go. Remote functions, server loads and API routes are Go code that sits next to the Svelte files that use them. skgo generates TypeScript types and bindings from that code, so you write a function in Go and await it in Svelte, the same way you would call any SvelteKit remote function. In production, pages are rendered by SvelteKit's own renderer running inside the Go process, and the app deploys as a single Go binary. Node is needed for builds and the Vite/Kit development server; the production binary runs without it.</p>
+          <p class="status"><strong>Status:</strong> pre-1.0. skgo uses SvelteKit 3.0.0, reviewed in the <a href="https://github.com/tylergannon/skgo/blob/main/SVELTEKIT_COMPATIBILITY.md">compatibility journal</a>. All server code is written in Go: TypeScript remote functions, loads and API routes are not supported. The <a href="https://github.com/tylergannon/skgo/tree/main/example">example app</a> shows what works today.</p>
           <div class="actions">
             <a class="button primary" href="#start">Start a project</a>
             <a class="button" href="./features.html">Feature support</a>
@@ -43,7 +43,7 @@
 <span class="cmd">vp dlx skills add tylergannon/skgo -y</span>
 <span class="cmd">vp dlx skills add tylergannon/polytype -y</span>
 
-Without vp (VitePlus), use pnpm dlx instead, not npx: skgo projects use pnpm. Add -g to install them for all projects. Then read the skgo skill before writing skgo code.</pre>
+Use VitePlus (vp) for frontend tooling. SKGO declares the pins; vp manages the underlying package-manager version. Do not install or select pnpm separately. Add -g to install the skills for all projects. Then read the skgo skill before writing skgo code.</pre>
           </div>
           <ul class="skill-links">
             <li><a href="https://github.com/tylergannon/skgo/tree/main/skills/skgo">skgo skill</a><span>Remote functions, loads, API routes, generation, development and deployment</span></li>
@@ -103,14 +103,14 @@ Without vp (VitePlus), use pnpm dlx instead, not npx: skgo projects use pnpm. Ad
           </tbody>
         </table>
       </div>
-      <p class="note">The generated TypeScript function bodies throw an error. They exist so SvelteKit can build its client and manifests, which means every response comes from Go.</p>
+      <p class="note">The generated TypeScript function bodies throw an error. They exist so SvelteKit can build its client and manifests. In development, the adapter replaces those bodies with callbacks to Go; application server logic stays in Go in both modes.</p>
     </section>
 
     <section class="section wrap audiences">
       <div>
         <h2>For Go developers</h2>
         <ul>
-          <li>The build embeds the frontend, its assets and the server-rendering bundle in one binary. Node runs at build time only.</li>
+          <li>The production build embeds the frontend, its assets and server-rendering bundle in one binary. That binary needs no Node at request time.</li>
           <li>A remote function is an ordinary Go function that takes a <code>context.Context</code> and returns <code>(T, error)</code>. A one-line marker such as <code>skgo.Query(todos)</code> registers it.</li>
           <li>API routes are <code>http.Handler</code>s. You assemble loads, remote functions, API routes and page rendering into your own <code>net/http</code> server (see <a href="https://github.com/tylergannon/skgo/blob/main/example/server.go">example/server.go</a>).</li>
           <li>The request and its cookies are available from <code>skgo.EventFrom(ctx)</code>.</li>
@@ -128,17 +128,25 @@ Without vp (VitePlus), use pnpm dlx instead, not npx: skgo projects use pnpm. Ad
           <li>A Go load's result type becomes the page's <code>data</code> type.</li>
           <li>Pages are rendered on the server. Streamed promises, <code>ssr = false</code> and <code>csr = false</code> work.</li>
           <li>Remote forms still work when JavaScript is disabled.</li>
-          <li>Development mode is unavailable pending its separate replacement.</li>
+          <li><code>skgo dev</code> runs native Vite/Kit rendering and HMR, with application callbacks to Go. See <a href="#development">development requirements and limits</a>.</li>
           <li><code>skgo new</code> creates the project with <code>sv create</code>, then adds Vitest and Storybook.</li>
         </ul>
       </div>
+    </section>
+
+    <section id="development" class="section wrap">
+      <h2>Development</h2>
+      <p>Run <code>go tool skgo dev</code> from the application root after installing frontend dependencies with <code>vp install</code> in <code>web/</code>. Open the address it prints. The Go coordinator owns the public listener; Vite/Kit renders pages and supplies HMR while application loads, actions, remotes, endpoints and hooks run in Go.</p>
+      <p>Development requires exactly <strong>Go 1.27.2</strong>, Node 22.17 or newer and the project's VitePlus 1.0.0 environment. The startup gate accepts macOS ARM64 and Linux AMD64 on the running platform. Other platforms and Go versions are rejected. The Go host builds without cgo. These restrictions apply to development, separately from the production build.</p>
+      <p>Compatible Go edits update the running host; other edits rebuild it and may reset in-memory Go state. Browser draft preservation is not established: a recorded Svelte title edit lost an unsent form draft. Direct SSR subfetch response cookies over the private Go socket are not automatically relayed into Kit's pending cookies or the page response. Check your authentication flow in both modes.</p>
+      <p>Focused browser checks and session integration have passed; a complete development browser-suite pass, complete platform qualification and a latency benchmark for this topology are not established. Existing apps must add <code>NewDevelopmentHandler</code> and share their production setup. See the <a href="https://github.com/tylergannon/skgo#development">development guide</a> for the migration contract and current evidence.</p>
     </section>
 
     <section class="section wrap">
       <h2>Current limitations</h2>
       <ul class="limits">
         <li>TypeScript server code. Remote functions, loads and API routes must be written in Go.</li>
-        <li>Classic form actions are WIP. Use a remote <code>form</code> in released skgo versions.</li>
+        <li>Development has the toolchain, platform, draft-preservation and cookie-relay limits <a href="#development">described above</a>; complete development browser qualification remains open.</li>
         <li>Prerendering a page whose route has a Go server load.</li>
         <li>Pointer, map and interface types in remote function signatures. Use value types, named structs or <code>polytype.Nullable</code>.</li>
         <li><code>output.bundleStrategy: 'inline'</code> and <code>router.resolution: 'server'</code>.</li>
@@ -150,7 +158,7 @@ Without vp (VitePlus), use pnpm dlx instead, not npx: skgo projects use pnpm. Ad
     <section id="start" class="section wrap steps">
       <div>
         <h2>Start a project</h2>
-        <p>You need Go, <a href="https://viteplus.dev">VitePlus</a> (<code>vp</code>) and <a href="https://just.systems">just</a>.</p>
+        <p>You need Go, <a href="https://viteplus.dev">VitePlus</a> 1.0.0 (<code>vp</code>) and <a href="https://just.systems">just</a>.</p>
         <pre class="shell"><code>go install github.com/tylergannon/skgo/cmd/skgo@latest
 skgo new myapp
 cd myapp
