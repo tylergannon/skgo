@@ -216,7 +216,9 @@ function throwGoError(answer) {
   if (diagnostic.kind==='known') {
     try { error(diagnostic.status,diagnostic.message); } catch(caught) {failure=caught;}
   } else failure=new Error(diagnostic.message);
-  handledGoErrors.set(failure,body);
+  // Kit passes HttpError.body to handleError, but passes an unexpected
+  // Error itself. Preserve the body under the identity its hook receives.
+  handledGoErrors.set(diagnostic.kind==='known' ? failure.body : failure,body);
   throw failure;
 }
 export function handleGoError({kind,error,issues}) {
