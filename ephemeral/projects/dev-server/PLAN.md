@@ -16,6 +16,14 @@ The topology, native Kit SSR/HMR and isolated sockets have executed successfully
 
 Chunks 1–3 run concurrently with explicit ownership and shared-interface coordination. Chunk 4 depends on their joined interfaces. Chunk 5 follows runnable integration. The parent owns architecture/plan/handoff consistency and scope decisions, not a competing implementation.
 
+## Delivered state
+
+All five missions were executed through Sol6.1 owners and an independent Sol6.1 validator. Ordinary `skgo dev` now uses the selected topology; real-session tests demonstrate native edits/rebuilds and child recovery, while browser checks demonstrate native Kit rendering, callbacks, navigation and HMR. No separate development renderer graph was retained.
+
+Final `just test -v` passed at `f8b6485`: 34 packages, 958 top-level tests, zero failures/skips. All27 selected distinct native browser scenarios passed across recorded runs; the entire development browser suite was not run. Production passed175scenarios in the full run and the remaining scenario on a targeted retry after restoring its original media-type-prefix assertion. The validator inspected native and production pages and HMR draft preservation. Owned servers, sockets and browser tabs were cleaned.
+
+Two qualifications remain explicit: automatic direct SSR subfetch cookie relay is the accepted limitation; an earlier native lifetime mapping assertion failed intermittently and its cause remains unexplained despite seven focused passes and the final full-concurrency pass with unchanged assertion. No new latency benchmark or release qualification is claimed. See DESIGN for architecture and CONTINUE for exact evidence/recovery details. This bounded implementation is delivered; do not start another feature or verification campaign without a concrete reason.
+
 ## Bounded endpoint
 
 Finish when ordinary `skgo dev` uses this topology with Go-owned application behavior and the joined claims above are demonstrated, or identify a concrete architectural incompatibility requiring a user decision. No PR merge/release, upstream request, broad benchmark campaign, extra platform framework or token-cache rebuild is part of this task. The accepted SSR subfetch response-cookie limitation remains non-blocking.
