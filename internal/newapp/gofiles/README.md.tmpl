@@ -25,10 +25,12 @@ rendering, frontend HMR and native Go updates. Development currently accepts onl
 macOS ARM64 and Linux AMD64, builds the Go host without cgo, and requires Node
 while running. Other platforms and Go versions are rejected at startup.
 Compatible Go edits update the running host; changes classified as requiring a
-full rebuild replace it and may reset in-memory Go state. Native-loader errors
-can instead report a diagnostic and keep serving old code without an automatic
-rebuild. Recovery from an observed `R_ADDROFF` relocation failure has not been
-verified. Browser draft preservation and full browser-suite coverage
+full rebuild replace it and may reset in-memory Go state. An observed
+native-loader failure emitted raw `R_ADDROFF` stderr while old code kept serving,
+without a normal revision/Vite error notification or automatic rebuild.
+Subsequent edit/restart recovery is unverified; see
+[issue #330](https://github.com/tylergannon/skgo/issues/330).
+Browser draft preservation and full browser-suite coverage
 of this development topology are not established. Direct SSR subfetch response
 cookies over the private Go socket are not automatically relayed to the page
 response. Check authentication in both development and production; see

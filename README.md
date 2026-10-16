@@ -154,9 +154,10 @@ loads. Changes classified as requiring a full rebuild, including declaration,
 initialization and import changes, replace the Go application; arbitrary
 in-memory Go state need not survive. Native-loader failures do not always take
 that rebuild path: an observed edit to a function with deferred
-`sync.Mutex.Unlock` reported an `R_ADDROFF` relocation error and kept serving the
-old code without publishing the edit or rebuilding during a 75-second check.
-Recovery from that error through another edit or a restart has not been verified.
+`sync.Mutex.Unlock` emitted raw `R_ADDROFF` relocation stderr and kept serving the
+old code without a normal revision/Vite error notification, publication or
+rebuild during a 75-second check. Recovery through another edit or a restart
+has not been verified; see [issue #330](https://github.com/tylergannon/skgo/issues/330).
 Svelte edits use Vite HMR. Compile errors show the authored location and
 keep the last working application; repairing the source clears the error.
 Browser draft preservation is not established: a recorded Svelte title edit

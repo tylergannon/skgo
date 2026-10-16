@@ -27,10 +27,12 @@ replaced the host and returned `literal-8508:9`. The identical test with the
 pre-fix runtime supplied through a Go overlay failed that assertion with HTTP
 500. This proves that recovery case, not arbitrary native-loader recovery.
 
-A separate native body edit involving deferred `sync.Mutex.Unlock` reported an
-`R_ADDROFF` relocation error and kept serving old code with HTTP 200 without
-publishing the edit or automatically rebuilding during a 75-second check.
-Recovery from that failure through another edit or a restart remains unverified.
+A separate native body edit involving deferred `sync.Mutex.Unlock` emitted raw
+`R_ADDROFF` relocation stderr and kept serving old code with HTTP 200 without a
+normal revision/Vite error notification, publication or automatic rebuild during
+a 75-second check. Recovery through another edit or a restart remains unverified.
+[Issue #330](https://github.com/tylergannon/skgo/issues/330) tracks the observed
+failure; a stalled loader call or event loop is a hypothesis, not a proven cause.
 The final repair review and Gimbal consumer upgrade remain separate acceptance
 work; the PR #327 review result does not close either one.
 

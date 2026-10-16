@@ -112,9 +112,11 @@ The Go coordinator owns the public listener. Use ordinary `go tool skgo dev`.
 Development currently requires exactly Go 1.27.2 on macOS ARM64 or Linux AMD64,
 Node 22.17+ and the project's VitePlus 1.0.0 environment. The Go host builds
 without cgo. Compatible Go edits update the host; changes classified as requiring
-a full rebuild replace it and may reset Go state. Native-loader errors can
-instead retain old code and report a diagnostic without rebuilding; recovery
-from an observed `R_ADDROFF` relocation failure remains unverified.
+a full rebuild replace it and may reset Go state. An observed native-loader
+failure emitted raw `R_ADDROFF` stderr while old code kept serving, without a
+normal revision/Vite error notification or automatic rebuild. Subsequent
+edit/restart recovery is unverified; see
+[issue #330](https://github.com/tylergannon/skgo/issues/330).
 Do not promise browser draft preservation or complete development
 browser qualification. Direct SSR socket subfetch response cookies are not
 automatically relayed to Kit's pending cookies or the outer page response;
