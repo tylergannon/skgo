@@ -56,8 +56,8 @@ tools:
     fi
 
 # go test, both modules; vp resolves the frontend tools from the project pins.
-test: tools
-    cd example/web && vp exec go -C ../.. test -count=1 ./... ./example/...
+test *args: tools
+    cd example/web && vp exec go -C ../.. test {{args}} -count=1 ./... ./example/...
 
 # the example server, against the built frontend
 serve:

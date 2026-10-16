@@ -652,7 +652,7 @@ func runPnpm(options Options, dir string, args ...string) ([]byte, error) {
 		runner = func(dir, name string, args ...string) ([]byte, error) {
 			if options.PNPM == "" {
 				args = append([]string{"env", "exec", "--package-manager", "pnpm@" + pnpmVersion, "pnpm"}, args...)
-				name = "vp"
+				name = vitePlusExecutable()
 			}
 			cmd := exec.Command(name, args...)
 			cmd.Dir = dir
@@ -742,4 +742,13 @@ func readRegularFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s is not a regular file", path)
 	}
 	return os.ReadFile(path)
+}
+
+// VP_CLI_BIN is supplied by VitePlus when it prepends project tool shims to
+// PATH. Its global executable owns env; the local frontend shim does not.
+func vitePlusExecutable() string {
+	if executable := os.Getenv("VP_CLI_BIN"); executable != "" {
+		return executable
+	}
+	return "vp"
 }

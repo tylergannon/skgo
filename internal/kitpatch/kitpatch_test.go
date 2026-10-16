@@ -806,7 +806,7 @@ func getNativePatchedDependencies(t *testing.T, f fixture) map[string]string {
 
 func mustPNPM(t *testing.T) string {
 	t.Helper()
-	output, err := exec.Command("vp", "env", "exec", "--package-manager", "pnpm@"+pnpmVersion, "which", "pnpm").CombinedOutput()
+	output, err := exec.Command(vitePlusExecutable(), "env", "exec", "--package-manager", "pnpm@"+pnpmVersion, "which", "pnpm").CombinedOutput()
 	if err != nil {
 		t.Fatalf("resolve VitePlus-managed pnpm: %v: %s", err, output)
 	}
