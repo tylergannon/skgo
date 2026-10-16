@@ -10,11 +10,29 @@ Read [GOAL](GOAL.md), [DESIGN](DESIGN.md) and the installed
 and Kit rendering/orchestration within those boundaries. `vp` owns frontend
 tools. Preserve unrelated untracked experiments in existing worktrees.
 
-The shipped source passed 968 top-level Go tests across 34 packages, production
-build, vet, 176 production browser scenarios and real two-session native
-recovery/configuration integration. Independent reviews of the final product
-repairs found no remaining findings. Selected native browser scenarios passed;
-a complete development browser-suite pass is not established.
+At the PR #327 snapshot, the source passed 968 top-level Go tests across 34
+packages, production build, vet, 176 production browser scenarios and real
+two-session native recovery/configuration integration. Its independent reviews
+reported no remaining findings at that time. Those are historical results;
+later merge-readiness review found additional defects. Selected native browser
+scenarios passed, but a complete development browser-suite pass is not
+established.
+
+[PR #329](https://github.com/tylergannon/skgo/pull/329) repairs project-local
+VitePlus invocation and failed structural rebuilds. At `78c04cd`, an independent
+run of `TestRealSessionNativeRecoveryAndIsolation` with the
+`skgo_dev_integration` build tag passed without skips: a type-invalid application
+constructor left the same Go PID serving `literal-8508:73`; repairing the source
+replaced the host and returned `literal-8508:9`. The identical test with the
+pre-fix runtime supplied through a Go overlay failed that assertion with HTTP
+500. This proves that recovery case, not arbitrary native-loader recovery.
+
+A separate native body edit involving deferred `sync.Mutex.Unlock` reported an
+`R_ADDROFF` relocation error and kept serving old code with HTTP 200 without
+publishing the edit or automatically rebuilding during a 75-second check.
+Recovery from that failure through another edit or a restart remains unverified.
+The final repair review and Gimbal consumer upgrade remain separate acceptance
+work; the PR #327 review result does not close either one.
 
 A native UI smoke rendered todos and Widget 42. A temporary Svelte title edit
 appeared without manual reload but lost the unsent Add draft. Draft preservation
