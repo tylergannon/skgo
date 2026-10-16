@@ -11,6 +11,15 @@ import (
 
 // NewHandler builds the Go-owned application stack over the embedded build.
 func NewHandler(dist fs.FS, origin string) (http.Handler, error) {
+ return newHandler(dist,origin,nil)
+}
+
+// NewDevelopmentHandler keeps application behavior in Go while Kit renders pages.
+func NewDevelopmentHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) (http.Handler,error) {
+ return newHandler(dist,origin,development)
+}
+
+func newHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) (http.Handler,error) {
 	manifest, err := skgo.ReadManifest(dist)
 	if err != nil {
 		return nil, err
@@ -34,7 +43,7 @@ func NewHandler(dist fs.FS, origin string) (http.Handler, error) {
 	}
 	var pages func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
 		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
-			renderer, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+			renderer, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
 				Fetch: internal,
 				Actions: actions,
 			})
@@ -43,7 +52,7 @@ func NewHandler(dist fs.FS, origin string) (http.Handler, error) {
 			}
 			endpoints.SetErrorTemplate(renderer.ErrorTemplate())
  handleConfig.ErrorTemplate = renderer.ErrorTemplate()
-			return skgo.NewStaticHandler(dist, skgo.WithSSR(renderer))
+			return development.NewStaticHandler(dist, skgo.WithSSR(renderer))
 		}
 
 	remotes, err := skgo.NewRemotes(remoteConfig, generated.Remotes()...)

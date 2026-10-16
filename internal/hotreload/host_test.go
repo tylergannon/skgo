@@ -27,6 +27,7 @@ func TestCapturedNativeHTTPHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	app := filepath.Join(work, "app")
+	t.Setenv("SKGO_NATIVE_CAPTURE_RECEIPT", "captured-env-412")
 	write := func(name, body string) {
 		t.Helper()
 		path := filepath.Join(app, name)
@@ -41,12 +42,40 @@ func TestCapturedNativeHTTPHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	write("go.mod", strings.ReplaceAll(strings.ReplaceAll(string(mod), "module github.com/tylergannon/skgo/example", "module example.com/nativehost"), "=> ../", "=> "+filepath.ToSlash(root)))
+	write("go.mod", strings.ReplaceAll(strings.ReplaceAll(string(mod), "module github.com/tylergannon/skgo/example", "module example.com/nativehost"), "=> ../", "=> "+filepath.ToSlash(root))+"\nrequire example.com/replaced v0.0.0\n")
 	sums, err := os.ReadFile(filepath.Join(root, "example/go.sum"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	write("go.sum", string(sums))
+	// The same retained inputs must select this sibling during analysis, native
+	// host build and subsequent body-edit preparation. No module replace exists.
+	shared := filepath.Join(work, "shared")
+	if err := os.MkdirAll(shared, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(shared, "go.mod"), []byte("module example.com/shared\ngo 1.27.2\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(shared, "shared.go"), []byte("package shared\nconst Receipt=\"workspace-912\"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	replacementDependency := filepath.Join(work, "replacement")
+	if err := os.MkdirAll(replacementDependency, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(replacementDependency, "go.mod"), []byte("module example.com/replaced\ngo 1.27.2\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(replacementDependency, "value.go"), []byte("package replaced\nconst Receipt=\"workspace-replace-314\"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	workspace := filepath.Join(work, "go.work")
+	if err := os.WriteFile(workspace, []byte("go 1.27.2\nuse (\n./app\n./shared\n)\nreplace example.com/replaced v0.0.0 => ./replacement\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOWORK", workspace)
+	write("other/config.go", "package other\ntype FetchConfig struct{ Value string }\n")
 	write("web/package.json", `{"name":"native-host-contract","type":"module"}`)
 	write("web/src/components/Notice.svelte", `<p>first frontend</p>`)
 	write("locals/locals.go", "package locals\ntype Locals struct{}")
@@ -61,10 +90,10 @@ var _=skgo.GET(get)
 	write("assets/one.txt", "asset-one")
 	write("assets/keep.txt", "keep-member")
 	write("server.go", `package nativehost
-import("embed";"io/fs";"net/http";"github.com/tylergannon/skgo";generated "example.com/nativehost/generated")
+import("embed";"io/fs";"net/http";"os";"example.com/shared";"example.com/replaced";"example.com/nativehost/other";"github.com/tylergannon/skgo";generated "example.com/nativehost/generated")
 //go:embed assets
 var resources embed.FS
-func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.NewEndpoints(skgo.EndpointConfig{Origin:origin,Routes:[]skgo.ManifestRoute{{ID:"/orders",Pattern:"^/orders/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}},{ID:"/second",Pattern:"^/second/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}}}},generated.Endpoints()...);if e!=nil{return nil,e};return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){data,_:=resources.ReadFile("assets/one.txt");w.Header().Set("X-Resource",string(data));w.Header().Set("X-App-Hook","preserved");endpoints.Intercept(http.NotFoundHandler()).ServeHTTP(w,r)}),nil}
+func NewHandler(_ fs.FS,origin string)(http.Handler,error){unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.FetchConfig;fetch:=FetchAlias{Origin:origin};endpoints,e:=skgo.NewEndpoints(skgo.EndpointConfig{Origin:origin,Routes:[]skgo.ManifestRoute{{ID:"/orders",Pattern:"^/orders/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}},{ID:"/second",Pattern:"^/second/?$",Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}}}},generated.Endpoints()...);if e!=nil{return nil,e};return fetch.Intercept(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Workspace",shared.Receipt);w.Header().Set("X-Workspace-Replacement",replaced.Receipt);w.Header().Set("X-Captured-Environment",os.Getenv("SKGO_NATIVE_CAPTURE_RECEIPT"));w.Header().Set("X-Unrelated",unrelated.Value);data,_:=resources.ReadFile("assets/one.txt");w.Header().Set("X-Resource",string(data));w.Header().Set("X-App-Hook","preserved");endpoints.Intercept(http.NotFoundHandler()).ServeHTTP(w,r)})),nil}
 `)
 
 	project, err := gen.OpenProject(gen.Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "generated"), LocalsPackage: "example.com/nativehost/locals", LocalsType: "Locals", CacheDir: "off"})
@@ -82,11 +111,13 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.New
 		return b
 	}
 	first := prepare()
+	t.Setenv("SKGO_NATIVE_CAPTURE_RECEIPT", "ambient-env-881")
 	host, err := BuildHost(ctx, HostOptions{Inputs: first.Inputs, WorkDir: filepath.Join(work, "first"), Origin: "http://localhost", DistDir: work, Output: os.Stderr})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer host.Close()
+	t.Setenv("SKGO_NATIVE_CAPTURE_RECEIPT", "captured-env-412")
 	check := func(h *Host, want string) {
 		t.Helper()
 		response, e := http.Get(h.URL + "/orders")
@@ -95,7 +126,7 @@ func NewHandler(_ fs.FS,origin string)(http.Handler,error){endpoints,e:=skgo.New
 		}
 		defer response.Body.Close()
 		body, e := io.ReadAll(response.Body)
-		if e != nil || response.StatusCode != 200 || string(body) != want || response.Header.Get("X-App-Hook") != "preserved" || response.Header.Get("X-Literal") != "native-hook" || response.Header.Get("X-Resource") != "asset-one" {
+		if e != nil || response.StatusCode != 200 || string(body) != want || response.Header.Get("X-App-Hook") != "preserved" || response.Header.Get("X-Literal") != "native-hook" || response.Header.Get("X-Resource") != "asset-one" || response.Header.Get("X-Workspace") != "workspace-912" || response.Header.Get("X-Unrelated") != "unrelated-413" || response.Header.Get("X-Workspace-Replacement") != "workspace-replace-314" || response.Header.Get("X-Captured-Environment") != "captured-env-412" {
 			t.Fatalf("real handler got status=%d body=%q headers=%v err=%v; want %q", response.StatusCode, body, response.Header, e, want)
 		}
 	}

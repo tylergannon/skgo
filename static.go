@@ -336,15 +336,7 @@ func WithSSR(s *SSR) StaticOption {
 // a path matching a route from the manifest; and the boot document with status
 // 404 for anything else, so kit's client router can render `+error.svelte`.
 func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error) {
-	if _, ok := build.(*NativeDevelopment); ok {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if next, ok := r.Context().Value(devContinuationKey{}).(http.Handler); ok {
-				next.ServeHTTP(w, r)
-				return
-			}
-			http.NotFound(w, r)
-		}), nil
-	}
+
 	document, err := fs.ReadFile(build, "index.html")
 	if err != nil {
 		return nil, fmt.Errorf("skgo: reading index.html from the build: %w", err)

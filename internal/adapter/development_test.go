@@ -265,7 +265,8 @@ func TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler(t *testing.T) {
 			t.Fatalf("missing Kit metadata/revision: %s", b)
 		}
 		environmentArtifact = filepath.Join(s.Dist, "env.json")
-		fsys := skgo.NewNativeDevelopment(os.DirFS(s.Dist), secret, viteSocket)
+		fsys := os.DirFS(s.Dist)
+		development := skgo.NewNativeDevelopment(secret, viteSocket)
 		if _, err := os.Stat(filepath.Join(s.Dist, "ssr/bundle.js")); !os.IsNotExist(err) {
 			t.Fatal("native development unexpectedly published a renderer bundle")
 		}
@@ -304,17 +305,17 @@ func TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler(t *testing.T) {
 		if values.Receipt != expectedReceipt || values.Secret != "PRIVATE_9943" {
 			t.Fatalf("Go environment=%#v", values)
 		}
-		renderer, e := skgo.NewSSR(fsys, m, loads, remotes, skgo.SSROptions{Runtimes: 2, Environment: environment})
+		renderer, e := development.NewSSR(fsys, m, loads, remotes, skgo.SSROptions{Runtimes: 2, Environment: environment})
 		if e != nil {
 			t.Fatal(e)
 		}
-		h, e := skgo.NewStaticHandler(fsys, skgo.WithSSR(renderer))
+		h, e := development.NewStaticHandler(fsys, skgo.WithSSR(renderer))
 		if e != nil {
 			t.Fatal(e)
 		}
 		generation++
 		t.Logf("snapshot%d routes%d nodes%d", generation, len(m.Routes), len(m.Nodes))
-		handler, cleanup, e := fsys.Handler(loads.Intercept(remotes.Intercept(h)))
+		handler, cleanup, e := development.Handler(loads.Intercept(remotes.Intercept(h)))
 		if e != nil {
 			t.Fatal(e)
 		}

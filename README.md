@@ -132,20 +132,27 @@ packages with `vp install` in the frontend directory first. Use `--web` and
 `--out` for non-default frontend and generated-binding directories.
 
 Open the address printed by the command. The Go coordinator keeps that public
-listener while Vite transforms frontend code and the application serves requests
-and renders pages in Go. `--listen 127.0.0.1:8080` selects the requested address;
+listener while Vite/Kit owns development rendering and HMR, and Go supplies
+application loads, actions, endpoints, remotes and request hooks. `--listen 127.0.0.1:8080` selects the requested address;
 when the port is occupied, the next available port is selected before Kit is
 initialized. Add `--strict-port` to require that exact port.
 
 Compatible Go edits install into the running host and refresh Kit queries and
 loads while preserving healthy browser state. Changes that require a new Go
-program rebuild and replace it. Svelte edits use Vite HMR and refresh the Go
-renderer. Compile errors show the authored location and keep the last working
+program rebuild and replace it. Svelte edits use Vite HMR. Compile errors show the authored location and keep the last working
 application; repairing the source clears the error. A Vite restart or structural
 frontend change can reload the document and discard a browser draft.
 
-The production build still produces one Go binary. The Vite process is a
-frontend development tool; application endpoints and SSR remain in Go.
+The application provides `NewDevelopmentHandler(build fs.FS, origin string,
+development *skgo.NativeDevelopment) (http.Handler, error)`. Share the ordinary
+production constructor's setup and use `development.NewSSR(build, ...)` and
+`development.NewStaticHandler(build, ...)` in that setup. Passing a nil
+development value selects the production implementations. The filesystem stays
+ordinary `fs.FS`, including decorators and subdirectories. Newly generated apps
+include both entry points; existing apps must add the development entry point.
+
+The production build still produces one Go binary with Go/goja rendering and
+needs no Node at request time. Native Kit rendering is development-only.
 
 ## SvelteKit feature support
 

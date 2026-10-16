@@ -43,7 +43,7 @@ func TestNativeInternalFetchUsesKitAfterGoCredentialsAndHook(t *testing.T) {
 	})}
 	go server.Serve(listener)
 	defer server.Close()
-	development := NewNativeDevelopment(nil, "literal-secret-180", socket)
+	development := NewNativeDevelopment("literal-secret-180", socket)
 	defer development.kitTransport.CloseIdleConnections()
 	source, _ := http.NewRequest("GET", "http://public.test/parent", nil)
 	source.Header.Set("Authorization", "literal-auth-547")
@@ -87,7 +87,7 @@ func TestNativeInternalFetchUsesKitAfterGoCredentialsAndHook(t *testing.T) {
 	}
 }
 func TestNativeInternalFetchDepthLimit(t *testing.T) {
-	development := NewNativeDevelopment(nil, "secret")
+	development := NewNativeDevelopment("secret")
 	request, _ := http.NewRequest("GET", "http://public.test/recursive", nil)
 	_, err := development.kitFetch(withFetchDepth(context.Background(), maxFetchDepth), nil, request)
 	if err == nil || !strings.Contains(err.Error(), "maximum depth") {
@@ -101,7 +101,7 @@ func TestNativeInternalRemoteProtocolKeepsGoWireOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	development := NewNativeDevelopment(nil, "secret")
+	development := NewNativeDevelopment("secret")
 	development.renderer = &SSR{remotes: remotes}
 	ctx := context.WithValue(context.Background(), devKitTransportKey{}, development)
 	source, _ := http.NewRequest("GET", "http://public.test/parent", nil)

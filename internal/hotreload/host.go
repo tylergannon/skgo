@@ -27,7 +27,8 @@ import (
 
 // HostOptions binds a captured application to a private native HTTP process.
 // Inputs remains caller-owned and must live until Host.Close. The application
-// constructor is used intact; its FetchConfig only gains native request context.
+// constructor is used intact; NativeKit selects the explicit development entry.
+// Actual SKGO FetchConfig values only gain native execution-lifetime context.
 type HostOptions struct {
 	Inputs                                                            *gen.CompilerInputs
 	WorkDir, GoTool, Origin, DistDir, HandlerPackage, HandlerFunction string
@@ -91,7 +92,7 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	if err = os.MkdirAll(o.WorkDir, 0755); err != nil {
 		return nil, err
 	}
-	tc, err := PrepareToolchain(ctx, o.GoTool, filepath.Join(o.WorkDir, "toolchain"))
+	tc, err := prepareToolchain(ctx, o.GoTool, filepath.Join(o.WorkDir, "toolchain"), o.Inputs.Env)
 	if err != nil {
 		return nil, err
 	}
@@ -113,14 +114,25 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 			name := o.HandlerFunction
 			if name == "" {
 				name = "NewHandler"
+				if o.NativeKit {
+					name = "NewDevelopmentHandler"
+				}
 			}
-			if constructor(p, name) {
+			if constructor(p, name, o.NativeKit) {
 				constructors = append(constructors, p)
 			}
 		}
 	}
 	if len(constructors) != 1 {
-		return nil, fmt.Errorf("native host requires exactly one application NewHandler(fs.FS,string) (http.Handler,error); found %d (set HandlerPackage/HandlerFunction for an explicit constructor)", len(constructors))
+		expected := "NewHandler(fs.FS, string) (http.Handler, error)"
+		if o.NativeKit {
+			expected = "NewDevelopmentHandler(fs.FS, string, *skgo.NativeDevelopment) (http.Handler, error), sharing production setup and calling development.NewSSR and development.NewStaticHandler"
+		}
+		names := make([]string, len(constructors))
+		for i, p := range constructors {
+			names[i] = p.PkgPath
+		}
+		return nil, fmt.Errorf("native host requires exactly one application %s; found %d matching packages: %v. Keep the exported application entry point in one package", expected, len(constructors), names)
 	}
 	app := constructors[0]
 	h.application = []string{app.PkgPath}
@@ -155,6 +167,9 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	}
 	if o.HandlerFunction == "" {
 		o.HandlerFunction = "NewHandler"
+		if o.NativeKit {
+			o.HandlerFunction = "NewDevelopmentHandler"
+		}
 	}
 	overlays := map[string][]byte{}
 
@@ -219,7 +234,7 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	overlays[filepath.Join(appDir, "skgo_development_context.go")] = carry
 	for _, name := range app.CompiledGoFiles {
 		body := h.files[name]
-		patched, e := injectCarry(name, body)
+		patched, e := injectCarry(app, name, body)
 		if e != nil {
 			return nil, e
 		}
@@ -227,7 +242,7 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 			overlays[name] = patched
 		}
 	}
-	main, err := hostSource(app.PkgPath, o.HandlerFunction, paths)
+	main, err := hostSource(app.PkgPath, o.HandlerFunction, paths, o.NativeKit)
 	if err != nil {
 		return nil, err
 	}
@@ -242,8 +257,10 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if raw, e := hostTC.command(ctx, o.Inputs.Dir, "mod", "tidy").CombinedOutput(); e != nil {
-		return nil, fmt.Errorf("native host dependencies: %w\n%s", e, raw)
+	if hostTC.ModFile != "" {
+		if raw, e := hostTC.command(ctx, o.Inputs.Dir, "mod", "tidy").CombinedOutput(); e != nil {
+			return nil, fmt.Errorf("native host dependencies: %w\n%s", e, raw)
+		}
 	}
 	binary := filepath.Join(o.WorkDir, "host")
 	if raw, e := hostTC.command(ctx, o.Inputs.Dir, "build", "-ldflags=-s=false", "-o", binary, "./skgo_development_host").CombinedOutput(); e != nil {
@@ -263,7 +280,7 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	h.replies = replyRead
 	h.cmd = exec.CommandContext(ctx, binary)
 	h.cmd.Dir = o.Inputs.Dir
-	h.cmd.Env = append(os.Environ(), "SKGO_DEV_ORIGIN="+o.Origin, "SKGO_DEV_DIST="+o.DistDir, "SKGO_DEV_SOCKET="+o.SocketPath, "SKGO_DEV_SERVICE_SECRET="+o.ServiceSecret, "SKGO_DEV_NATIVE_KIT="+strconv.FormatBool(o.NativeKit))
+	h.cmd.Env = append(append([]string(nil), o.Inputs.Env...), "SKGO_DEV_ORIGIN="+o.Origin, "SKGO_DEV_DIST="+o.DistDir, "SKGO_DEV_SOCKET="+o.SocketPath, "SKGO_DEV_SERVICE_SECRET="+o.ServiceSecret, "SKGO_DEV_NATIVE_KIT="+strconv.FormatBool(o.NativeKit))
 	h.cmd.ExtraFiles = []*os.File{commandRead, replyWrite}
 	h.cmd.Stdout = o.Output
 	h.cmd.Stderr = o.Output
@@ -293,7 +310,7 @@ func BuildHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	h.PID = ready.PID
 	return h, nil
 }
-func constructor(p *packages.Package, name string) bool {
+func constructor(p *packages.Package, name string, development bool) bool {
 	if p.Types == nil {
 		return false
 	}
@@ -302,7 +319,14 @@ func constructor(p *packages.Package, name string) bool {
 		return false
 	}
 	s := obj.Type().(*types.Signature)
-	if s.Params().Len() != 2 || s.Results().Len() != 2 {
+	params := 2
+	if development {
+		params = 3
+	}
+	if s.Params().Len() != params || s.Results().Len() != 2 {
+		return false
+	}
+	if development && types.TypeString(s.Params().At(2).Type(), nil) != "*github.com/tylergannon/skgo.NativeDevelopment" {
 		return false
 	}
 	return types.TypeString(s.Params().At(0).Type(), nil) == "io/fs.FS" && types.TypeString(s.Params().At(1).Type(), nil) == "string" && types.TypeString(s.Results().At(0).Type(), nil) == "net/http.Handler" && types.TypeString(s.Results().At(1).Type(), nil) == "error"
@@ -376,6 +400,9 @@ func (h *Host) Install(ctx context.Context, u *HostUpdate) error {
 func (h *Host) Prepare(ctx context.Context, next *gen.CompilerInputs, outputDir string) (*HostUpdate, error) {
 	h.prepareMu.Lock()
 	defer h.prepareMu.Unlock()
+	if next.EnvironmentIdentity != h.inputs.EnvironmentIdentity {
+		return nil, &CompleteBuild{"Go source-selection environment changed"}
+	}
 	h.stateMu.Lock()
 	installed := h.installed
 	h.stateMu.Unlock()
@@ -483,11 +510,34 @@ func carrySource(pkg string, paths []string) ([]byte, error) {
 	b.WriteString("return dst}\nfunc skgoDevelopmentComposeCarryContext(original func(context.Context,context.Context)context.Context)func(context.Context,context.Context)context.Context{return func(dst,src context.Context)context.Context{if original!=nil{dst=original(dst,src)};return skgoDevelopmentCarryContext(dst,src)}}\n")
 	return format.Source([]byte(b.String()))
 }
-func injectCarry(name string, body []byte) ([]byte, error) {
+func injectCarry(pkg *packages.Package, name string, body []byte) ([]byte, error) {
 	fs := token.NewFileSet()
-	f, err := parser.ParseFile(fs, name, body, 0)
+	f, err := parser.ParseFile(fs, name, body, parser.ParseComments)
 	if err != nil {
 		return nil, err
+	}
+	// Resolve the actual Go type before changing syntax. This recognizes aliases
+	// and leaves identically named configurations from other packages untouched.
+	targets := map[int]bool{}
+	for _, file := range pkg.Syntax {
+		if pkg.Fset.Position(file.Pos()).Filename != name {
+			continue
+		}
+		ast.Inspect(file, func(n ast.Node) bool {
+			lit, ok := n.(*ast.CompositeLit)
+			if !ok {
+				return true
+			}
+			typ := pkg.TypesInfo.TypeOf(lit)
+			if typ == nil {
+				return true
+			}
+			named, ok := types.Unalias(typ).(*types.Named)
+			if ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == "github.com/tylergannon/skgo" && named.Obj().Name() == "FetchConfig" {
+				targets[pkg.Fset.Position(lit.Pos()).Offset] = true
+			}
+			return true
+		})
 	}
 	changed := false
 	ast.Inspect(f, func(n ast.Node) bool {
@@ -495,8 +545,7 @@ func injectCarry(name string, body []byte) ([]byte, error) {
 		if !ok {
 			return true
 		}
-		sel, ok := lit.Type.(*ast.SelectorExpr)
-		if !ok || sel.Sel.Name != "FetchConfig" {
+		if !targets[fs.Position(lit.Pos()).Offset] {
 			return true
 		}
 		for _, e := range lit.Elts {
@@ -519,7 +568,7 @@ func injectCarry(name string, body []byte) ([]byte, error) {
 	err = format.Node(&out, fs, f)
 	return out.Bytes(), err
 }
-func hostSource(app, function string, paths []string) ([]byte, error) {
+func hostSource(app, function string, paths []string, nativeKit bool) ([]byte, error) {
 	var b strings.Builder
 	b.WriteString("package main\nimport(\"encoding/json\";\"fmt\";\"net\";\"net/http\";\"os\";\"strings\";\"sync\";\"io\";\"io/fs\";\"path/filepath\"\n")
 	fmt.Fprintf(&b, "app %q\n", app)
@@ -537,7 +586,11 @@ func hostSource(app, function string, paths []string) ([]byte, error) {
 	for i := range paths {
 		fmt.Fprintf(&b, "if e:=hot%d.SkgoHotInitSymbols(32,symbols);e!=nil{fail(e);return}\n", i)
 	}
-	fmt.Fprintf(&b, "origin:=os.Getenv(\"SKGO_DEV_ORIGIN\");var mu sync.RWMutex;var handler http.Handler;var nativeClose func();defer func(){if nativeClose!=nil{nativeClose()}}();reload:=func(dist string)error{var buildfs fs.FS=os.DirFS(dist);var native *skgo.NativeDevelopment;if os.Getenv(\"SKGO_DEV_NATIVE_KIT\")==\"true\"{native=skgo.NewNativeDevelopment(buildfs,os.Getenv(\"SKGO_DEV_SERVICE_SECRET\"),filepath.Join(filepath.Dir(os.Getenv(\"SKGO_DEV_SOCKET\")),\"vite.sock\"));buildfs=native};h,e:=app.%s(buildfs,origin);if e!=nil{return e};if native!=nil{var close func();h,close,e=native.Handler(h);if e!=nil{return e};if nativeClose!=nil{nativeClose()};nativeClose=close};", function)
+	arguments := "buildfs,origin"
+	if nativeKit {
+		arguments += ",native"
+	}
+	fmt.Fprintf(&b, "origin:=os.Getenv(\"SKGO_DEV_ORIGIN\");var mu sync.RWMutex;var handler http.Handler;var nativeClose func();defer func(){if nativeClose!=nil{nativeClose()}}();reload:=func(dist string)error{var buildfs fs.FS=os.DirFS(dist);var native *skgo.NativeDevelopment;if os.Getenv(\"SKGO_DEV_NATIVE_KIT\")==\"true\"{native=skgo.NewNativeDevelopment(os.Getenv(\"SKGO_DEV_SERVICE_SECRET\"),filepath.Join(filepath.Dir(os.Getenv(\"SKGO_DEV_SOCKET\")),\"vite.sock\"));};h,e:=app.%s(%s);if e!=nil{return e};if native!=nil{var close func();h,close,e=native.Handler(h);if e!=nil{return e};if nativeClose!=nil{nativeClose()};nativeClose=close};", function, arguments)
 	for i := range paths {
 		fmt.Fprintf(&b, "h=hot%d.SkgoHotHandler(h);", i)
 	}
@@ -563,5 +616,5 @@ func nativeInput(path string, resources map[string]bool) bool {
 			return true
 		}
 	}
-	return resources[path] || strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") || filepath.Base(path) == "go.mod" || filepath.Base(path) == "go.sum"
+	return resources[path] || strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") || filepath.Base(path) == "go.mod" || filepath.Base(path) == "go.sum" || filepath.Base(path) == "go.work" || filepath.Base(path) == "go.work.sum"
 }

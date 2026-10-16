@@ -20,7 +20,7 @@ import (
 func nativeFixture(t *testing.T, load *ServerLoad, actions ...*PageAction) (http.Handler, func(), *atomic.Int32) {
 	t.Helper()
 	calls := new(atomic.Int32)
-	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	development := NewNativeDevelopment("secret")
 	loads, err := NewLoads(LoadConfig{Origin: "http://app.test"}, load)
 	if err != nil {
 		t.Fatal(err)
@@ -33,10 +33,10 @@ func nativeFixture(t *testing.T, load *ServerLoad, actions ...*PageAction) (http
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = NewSSR(development, Manifest{}, loads, remotes, SSROptions{Actions: actionRegistry}); err != nil {
+	if _, err = development.NewSSR(fstest.MapFS{}, Manifest{}, loads, remotes, SSROptions{Actions: actionRegistry}); err != nil {
 		t.Fatal(err)
 	}
-	pages, err := NewStaticHandler(development)
+	pages, err := development.NewStaticHandler(fstest.MapFS{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,13 +211,13 @@ func TestNativeDevelopmentActionResultsAndConfiguredErrorHook(t *testing.T) {
 	// A configured Go error hook, captured from the actual app renderer, retains
 	// its App.Error fields instead of replacing them with a JS transport failure.
 	// Build a second constructor explicitly to supply the application's config.
-	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	development := NewNativeDevelopment("secret")
 	loads, _ := NewLoads(LoadConfig{Origin: "http://app.test", HandleError: func(context.Context, CaughtError) map[string]any {
 		return map[string]any{"message": "literal-public-834", "supportId": "literal-case-335"}
 	}}, NewServerLoad(LoadSpec{Module: "page", Run: func(context.Context) (any, error) { return nil, fmt.Errorf("private-database-detail") }}))
 	remotes, _ := NewRemotes(RemoteConfig{Origin: "http://app.test"})
-	NewSSR(development, Manifest{}, loads, remotes, SSROptions{})
-	pages, _ := NewStaticHandler(development)
+	development.NewSSR(fstest.MapFS{}, Manifest{}, loads, remotes, SSROptions{})
+	pages, _ := development.NewStaticHandler(fstest.MapFS{})
 	configured, closeConfigured, err := development.Handler(pages)
 	if err != nil {
 		t.Fatal(err)
@@ -236,7 +236,7 @@ func TestNativeDevelopmentActionResultsAndConfiguredErrorHook(t *testing.T) {
 
 func TestNativeDevelopmentEndpointManifestUsesOriginalRegistry(t *testing.T) {
 	manifest := Manifest{Remotes: []string{}, Loads: []string{}, Routes: []ManifestRoute{{ID: "/orders", Pattern: `^/orders/?$`, Endpoint: &ManifestEndpoint{Methods: []string{"GET"}}}}}
-	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	development := NewNativeDevelopment("secret")
 	loads, err := NewLoads(manifest.LoadConfig("http://app.test"))
 	if err != nil {
 		t.Fatal(err)
@@ -245,11 +245,11 @@ func TestNativeDevelopmentEndpointManifestUsesOriginalRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = NewSSR(development, manifest, loads, remotes, SSROptions{})
+	_, err = development.NewSSR(fstest.MapFS{}, manifest, loads, remotes, SSROptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	pages, err := NewStaticHandler(development)
+	pages, err := development.NewStaticHandler(fstest.MapFS{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,9 +343,9 @@ func TestNativeDevelopmentDerivesTypedAndRawParamsFromOriginalURL(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
-	NewSSR(development, manifest, loads, remotes, SSROptions{})
-	pages, _ := NewStaticHandler(development)
+	development := NewNativeDevelopment("secret")
+	development.NewSSR(fstest.MapFS{}, manifest, loads, remotes, SSROptions{})
+	pages, _ := development.NewStaticHandler(fstest.MapFS{})
 	handleCfg := manifest.HandleConfig()
 	handleCfg.Origin = "http://app.test"
 	handleCfg.Matchers = matchers
@@ -392,9 +392,9 @@ func TestNativeDevelopmentClientAddressPreservesPublicPeerAndConfiguredProvider(
 				return map[string]any{"address": address}, err
 			}}))
 			remotes, _ := NewRemotes(RemoteConfig{Origin: "http://app.test"}, fn)
-			development := NewNativeDevelopment(fstest.MapFS{}, "secret")
-			NewSSR(development, Manifest{}, loads, remotes, SSROptions{})
-			pages, _ := NewStaticHandler(development)
+			development := NewNativeDevelopment("secret")
+			development.NewSSR(fstest.MapFS{}, Manifest{}, loads, remotes, SSROptions{})
+			pages, _ := development.NewStaticHandler(fstest.MapFS{})
 			hook := hookMiddleware(func(ctx context.Context, event hookEvent, resolve hookResolve) (*http.Response, error) {
 				return resolve(ctx, event)
 			})
@@ -428,11 +428,11 @@ func TestNativeDevelopmentClientAddressPreservesPublicPeerAndConfiguredProvider(
 }
 
 func TestNativeDevelopmentHookRefusalKeepsHandledPublicError(t *testing.T) {
-	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	development := NewNativeDevelopment("secret")
 	loads, _ := NewLoads(LoadConfig{Origin: "http://app.test"})
 	remotes, _ := NewRemotes(RemoteConfig{Origin: "http://app.test"})
-	NewSSR(development, Manifest{}, loads, remotes, SSROptions{})
-	pages, _ := NewStaticHandler(development)
+	development.NewSSR(fstest.MapFS{}, Manifest{}, loads, remotes, SSROptions{})
+	pages, _ := development.NewStaticHandler(fstest.MapFS{})
 	var calls atomic.Int32
 	hook := hookMiddleware(func(context.Context, hookEvent, hookResolve) (*http.Response, error) {
 		return nil, Errorf(403, "literal-refusal-551")

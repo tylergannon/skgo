@@ -37,8 +37,8 @@ func (t Toolchain) writeArtifact(object, pkg, importcfg string) error {
 }
 
 func (t Toolchain) checkFlags() error {
-	for _, flag := range strings.Fields(os.Getenv("GOFLAGS")) {
-		if strings.HasPrefix(flag, "-gcflags") || strings.HasPrefix(flag, "-tags") || strings.HasPrefix(flag, "-race") || strings.HasPrefix(flag, "-msan") || strings.HasPrefix(flag, "-asan") || strings.HasPrefix(flag, "-trimpath") {
+	for _, flag := range strings.Fields(t.envValue("GOFLAGS")) {
+		if strings.HasPrefix(flag, "-gcflags") || strings.HasPrefix(flag, "-tags") || strings.HasPrefix(flag, "-race") || strings.HasPrefix(flag, "-msan") || strings.HasPrefix(flag, "-asan") || (strings.HasPrefix(flag, "-trimpath") && (t.Env == nil || flag != "-trimpath")) {
 			return fmt.Errorf("native development profile does not support GOFLAGS %s", flag)
 		}
 	}

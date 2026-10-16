@@ -19,7 +19,7 @@ import (
 
 func nativeRemoteFixture(t *testing.T, functions ...*Remote) (http.Handler, func()) {
 	t.Helper()
-	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	development := NewNativeDevelopment("secret")
 	loads, err := NewLoads(LoadConfig{Origin: "http://app.test", HandleError: func(context.Context, CaughtError) map[string]any {
 		return map[string]any{"message": "literal-safe-441", "supportId": "literal-case-552"}
 	}})
@@ -30,10 +30,10 @@ func nativeRemoteFixture(t *testing.T, functions ...*Remote) (http.Handler, func
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewSSR(development, Manifest{}, loads, remotes, SSROptions{}); err != nil {
+	if _, err := development.NewSSR(fstest.MapFS{}, Manifest{}, loads, remotes, SSROptions{}); err != nil {
 		t.Fatal(err)
 	}
-	pages, err := NewStaticHandler(development)
+	pages, err := development.NewStaticHandler(fstest.MapFS{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestNativeParentTransportRestoresGoTypeBeforeParentRead(t *testing.T) {
 		}](ctx)
 		return map[string]any{"literalParentCents": parent.Amount.Cents}, err
 	}})
-	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
+	development := NewNativeDevelopment("secret")
 	loads, err := NewLoads(LoadConfig{Origin: "http://app.test", Transport: transport}, load)
 	if err != nil {
 		t.Fatal(err)
@@ -164,10 +164,10 @@ func TestNativeParentTransportRestoresGoTypeBeforeParentRead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewSSR(development, Manifest{}, loads, remotes, SSROptions{}); err != nil {
+	if _, err := development.NewSSR(fstest.MapFS{}, Manifest{}, loads, remotes, SSROptions{}); err != nil {
 		t.Fatal(err)
 	}
-	pages, err := NewStaticHandler(development)
+	pages, err := development.NewStaticHandler(fstest.MapFS{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,11 +231,11 @@ func TestNativeUnenhancedFormBindsTypedPageCaller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	development := NewNativeDevelopment(fstest.MapFS{}, "secret")
-	if _, err := NewSSR(development, manifest, loads, remotes, SSROptions{}); err != nil {
+	development := NewNativeDevelopment("secret")
+	if _, err := development.NewSSR(fstest.MapFS{}, manifest, loads, remotes, SSROptions{}); err != nil {
 		t.Fatal(err)
 	}
-	pages, err := NewStaticHandler(development)
+	pages, err := development.NewStaticHandler(fstest.MapFS{})
 	if err != nil {
 		t.Fatal(err)
 	}
