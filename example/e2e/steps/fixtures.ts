@@ -187,21 +187,11 @@ export const test = base.extend<{
 	}
 });
 
-/** The mode named by the test invocation, independent of the server under test. */
-export function expectedMode(): 'dev' | 'prod' {
-	const mode = process.env.SKGO_EXPECTED_MODE;
-	expect(['dev', 'prod'], `SKGO_EXPECTED_MODE was ${JSON.stringify(mode)}`).toContain(mode);
-	return mode as 'dev' | 'prod';
-}
-
-/** Refuses a server other than the one this test leg intended to exercise. */
-export function expectMode(response: { headers(): Record<string, string> }): 'dev' | 'prod' {
-	const expected = expectedMode();
+/** Requires responses from the explicitly selected running server mode. */
+export function expectServerMode(response: { headers(): Record<string, string> }): void {
 	const observed = response.headers()['x-skgo-mode'];
-	expect(observed, `expected ${expected} mode, X-Skgo-Mode was ${JSON.stringify(observed)}`).toBe(
-		expected
-	);
-	return expected;
+	const mode = process.env.SKGO_E2E_MODE ?? 'prod';
+	expect(observed, `expected ${mode} handler, X-Skgo-Mode was ${JSON.stringify(observed)}`).toBe(mode);
 }
 
 /** Waits for a real delegated handler, which inert SSR markup cannot have. */
@@ -220,14 +210,8 @@ export async function interactive(page: Page, testid: string): Promise<void> {
 /**
  * Waits until kit's client has hydrated the document and started its router.
  *
- * It exists because Go now renders the document in dev too, and a rendered
- * document is on screen — and clickable — before the browser has finished
- * loading the several hundred unbundled modules `vp dev` serves. A step that
- * typed into an input and clicked a button in that window lost both: Svelte's
- * `bind:value` writes the component's own empty state over what was typed the
- * moment it hydrates, and a click before that reaches a form with no handler on
- * it. In dev the window is seconds wide; in prod the bundle closes it, which is
- * why nobody had seen it.
+ * The rendered document is visible before hydration attaches handlers. Waiting
+ * prevents inputs or clicks from being lost while Kit takes over the page.
  *
  * `history.scrollRestoration` is kit's own marker rather than one this suite
  * invented: `_start_router` sets it to "manual" as its first statement

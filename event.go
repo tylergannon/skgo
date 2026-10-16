@@ -609,12 +609,9 @@ func (c *cookieWriter) Flush() {
 func (c *cookieWriter) Unwrap() http.ResponseWriter { return c.ResponseWriter }
 
 // secureCookieDefault reproduces kit's `secure` default
-// (`runtime/server/cookie.js`): cookies are Secure unless the app is running in
-// dev, or is being served over plain HTTP from localhost.
-func secureCookieDefault(origin string, dev bool) bool {
-	if dev {
-		return false
-	}
+// (`runtime/server/cookie.js`): cookies are Secure unless the app is served over
+// plain HTTP from localhost.
+func secureCookieDefault(origin string) bool {
 	host := origin
 	if i := strings.Index(host, "://"); i >= 0 {
 		scheme := host[:i]

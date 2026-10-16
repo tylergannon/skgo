@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -172,11 +173,10 @@ func newFetchApp(t *testing.T, o fetchAppOptions) *fetchApp {
 			Endpoint: &ManifestEndpoint{Methods: ep.methods},
 		})
 	}
-	m := Manifest{AppDir: "_app", Base: o.base, Nodes: []string{"", "src/routes/a/b/+page.server.ts"}, Routes: routes,
+	m := Manifest{AppDir: "_app", Base: o.base, Nodes: []string{"", "src/routes/a/b/+page.server.ts"}, Loads: []string{"src/routes/a/b/+page.server.ts"}, Routes: routes,
 		Prerendered: []string{o.base + "/pre/static", o.base + "/pre/hello"}}
 
 	loadCfg := m.LoadConfig(origin)
-	loadCfg.Dev = true
 	loads, err := NewLoads(loadCfg, NewLoad("src/routes/a/b/+page.server.ts", func(ctx context.Context) (loaded, error) {
 		return app.loadFetch(ctx, EventFrom(ctx))
 	}))
@@ -185,7 +185,6 @@ func newFetchApp(t *testing.T, o fetchAppOptions) *fetchApp {
 	}
 
 	epCfg := m.EndpointConfig(origin)
-	epCfg.Dev = true
 	epCfg.OnPanic = func(string, string, any, []byte) {}
 	epCfg.HandleError = func(ctx context.Context, caught CaughtError) map[string]any {
 		resp, err := EventFrom(ctx).Fetch(ctx, mustRequest(t, "GET", "/api/echo?from=handleError", nil))
@@ -1022,4 +1021,41 @@ func fetchLocal(ctx context.Context) fetchLocals {
 		return *p
 	}
 	return fetchLocals{}
+}
+
+// Native development may preserve its execution table through an internal
+// fetch, while Kit still requires a fresh event and locals for that request.
+func TestFetchCarriesOnlyHostLifetimeIntoFreshSubrequest(t *testing.T) {
+	type hostKey struct{}
+	type privateKey struct{}
+	const origin = "http://localhost"
+	var stack http.Handler
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { stack.ServeHTTP(w, r) })
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/child" {
+			fmt.Fprintf(w, "revision=%v,event=%t,locals=%t,private=%t", r.Context().Value(hostKey{}), EventFrom(r.Context()) != nil, r.Context().Value(localsKey{}) != nil, r.Context().Value(privateKey{}) != nil)
+			return
+		}
+		ctx := context.WithValue(r.Context(), hostKey{}, "revision-73")
+		ctx = context.WithValue(ctx, privateKey{}, "parent-only")
+		ctx = context.WithValue(ctx, localsKey{}, "parent-locals")
+		event := &Event{req: r.WithContext(ctx), jar: newCookieJar(r, false)}
+		ctx = withEvent(ctx, event)
+		request, _ := http.NewRequestWithContext(ctx, "GET", origin+"/child", nil)
+		response, err := event.Fetch(ctx, request)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer response.Body.Close()
+		io.Copy(w, response.Body)
+	})
+	stack = FetchConfig{Origin: origin, Handler: inner, CarryContext: func(dst, src context.Context) context.Context {
+		return context.WithValue(dst, hostKey{}, src.Value(hostKey{}))
+	}}.Intercept(handler)
+	rec := httptest.NewRecorder()
+	stack.ServeHTTP(rec, httptest.NewRequest("GET", origin+"/outer", nil))
+	if want := "revision=revision-73,event=false,locals=false,private=false"; rec.Code != 200 || rec.Body.String() != want {
+		t.Fatalf("status %d body %q; want %q", rec.Code, rec.Body.String(), want)
+	}
 }

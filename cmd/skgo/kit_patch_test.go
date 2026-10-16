@@ -29,12 +29,27 @@ func TestKitPatchRequiresExactlyOneAction(t *testing.T) {
 }
 
 func TestKitPatchCLIConfiguresFilesAndDoesNotClaimInstallation(t *testing.T) {
+	// Exercise the project-local CLI used in CI and consumer recipes. It has
+	// no global-only `env` command; exec must honor the selected project pin.
+	vp, err := filepath.Abs(filepath.Join("..", "..", "example", "web", "node_modules", ".bin", "vp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("VP_CLI_BIN", vp)
 	root := t.TempDir()
+	bin := filepath.Join(root, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "pnpm"), []byte("#!/bin/sh\necho 'ambient pnpm must not run' >&2\nexit 97\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	web := filepath.Join(root, "web")
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := []byte(`{"name":"cli-fixture","dependencies":{"@sveltejs/kit":"^3.0.0"}}`)
+	manifest := []byte(`{"name":"cli-fixture","dependencies":{"@sveltejs/kit":"^3.0.0"},"devEngines":{"packageManager":{"name":"pnpm","version":"12.9.1","onFail":"download"}}}`)
 	if err := os.WriteFile(filepath.Join(web, "package.json"), manifest, 0o644); err != nil {
 		t.Fatal(err)
 	}

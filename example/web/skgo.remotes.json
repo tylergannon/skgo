@@ -39,8 +39,7 @@
     "toba7i/getValue",
     "toba7i/watchValue",
     "wx3cst/watchBoard",
-    "x3uq7o/getQuotes",
-    "zwa0ht/getRevision"
+    "x3uq7o/getQuotes"
   ],
   "loads": [
     "src/routes/(marketing)/pricing/+page.server.ts",
@@ -63,7 +62,6 @@
     "src/routes/error/expected/+page.server.ts",
     "src/routes/error/unexpected/+page.server.ts",
     "src/routes/event-layout/[section]/+layout.server.ts",
-    "src/routes/go-dev/+page.server.ts",
     "src/routes/invoices/+page.server.ts",
     "src/routes/middleware/+page.server.ts",
     "src/routes/middleware/[slug]/+page.server.ts",
@@ -96,7 +94,6 @@
     "src/routes/actions/options/no-ssr/+page.server.ts",
     "src/routes/actions/options/no-ssr/+page.server.ts",
     "src/routes/actions/profiles/[profile]/+page.server.ts",
-    "src/routes/go-dev/+page.server.ts",
     "src/routes/middleware/+page.server.ts"
   ],
   "endpoints": {
@@ -108,7 +105,6 @@
     "/api/request-fetch": ["GET"],
     "/api/todos": ["GET", "POST", "QUERY"],
     "/async-ssr/control/[group]": ["GET", "POST"],
-    "/go-dev/endpoint": ["GET"],
     "/shadow/[...rest]": ["GET"]
   },
   "prerender": {
@@ -211,12 +207,6 @@
     },
     "src/routes/event-layout/[section]/+layout.server.ts": {
       "source": "src/routes/event-layout/[section]/layout.server.go"
-    },
-    "src/routes/go-dev/+page.server.ts": {
-      "source": "src/routes/go-dev/page.server.go"
-    },
-    "src/routes/go-dev/endpoint/+server.ts": {
-      "endpoint": true
     },
     "src/routes/invoices/+page.server.ts": {
       "source": "src/routes/invoices/page.server.go"

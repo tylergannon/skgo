@@ -121,7 +121,7 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 	if u, err := url.Parse(cfg.Origin); err == nil && u.Host != "" {
 		origin = u
 	}
-	secure := secureCookieDefault(cfg.Origin, cfg.Dev)
+	secure := secureCookieDefault(cfg.Origin)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cfg := cfg
@@ -141,7 +141,7 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 			if u, err := url.Parse(logicalURL); err == nil && u.Host != "" {
 				origin = u
 				cfg.Origin = u.Scheme + "://" + u.Host
-				secure = secureCookieDefault(cfg.Origin, cfg.Dev)
+				secure = secureCookieDefault(cfg.Origin)
 			}
 		}
 		appDir := cfg.AppDir
@@ -152,11 +152,6 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		remotePrefix := assetPrefix + "remote/"
 		path := r.URL.Path
 
-		// A websocket upgrade is not a request kit's server answers.
-		if isUpgrade(r) {
-			next.ServeHTTP(w, r)
-			return
-		}
 		// Kit's `handle` never sees a static asset: its adapters answer those
 		// before the server does. skgo's equivalent is the app directory,
 		// which holds nothing but the immutable bundle — and the remote
@@ -213,15 +208,6 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		hasPage := false
 		_, buildRequest := r.Context().Value(prerenderMatchKey{}).(prerenderRequestInput)
 		if !skipRoute && !buildRequest {
-			// Handle runs before the registries, so it must validate the
-			// live graph before its own match too. Let the owning handler
-			// report refresh failures in the request kind's normal format.
-			if cfg.Loads != nil && cfg.Loads.devRefresh != nil {
-				if err := cfg.Loads.devRefresh(); err != nil {
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
 			if route, params, converted, ok := cfg.matchRoute(routePath); ok {
 				state.converted = converted
 				state.routeID, state.params, hasPage = route.id, params, route.hasPage
@@ -236,7 +222,7 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 				}
 			}
 			state.routeID = build.RouteID
-			state.params, state.converted = nil, nil
+			state.params, state.converted = build.Params, nil
 			if build.RoutePattern != "" {
 				pattern, compileErr := regexp.Compile(kitPattern(build.RoutePattern))
 				if compileErr != nil {

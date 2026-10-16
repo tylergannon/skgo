@@ -5,6 +5,7 @@ go 1.27.1
 require (
 	github.com/dop251/goja v0.0.0-20261008222547-e9f698900731
 	github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/tylergannon/devalue/v5 v5.0.0
 	github.com/tylergannon/polytype v1.9.0
 	golang.org/x/mod v0.42.0

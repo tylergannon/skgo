@@ -13,13 +13,13 @@
 package skgo
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html"
 	"log"
 	"net/http"
 	"net/url"
-	"path"
 	"regexp"
 	"runtime/debug"
 	"sort"
@@ -123,7 +123,7 @@ func NewEndpoint(routeID, method string, fn http.HandlerFunc) *Endpoint {
 }
 
 // EndpointConfig describes the app whose server routes a registry answers.
-// Everything but Origin and Dev comes from the built manifest.
+// Everything but Origin comes from the built manifest.
 type EndpointConfig struct {
 	// AppDir is kit's appDir; empty means "_app".
 	AppDir string
@@ -131,13 +131,11 @@ type EndpointConfig struct {
 	Base string
 	// Origin is the app's configured origin. It is the "self" origin of kit's
 	// CSRF check on form-shaped mutations; leaving it empty turns that check
-	// off. Dev skips the check without discarding the configured origin.
+	// off.
 	Origin string
 	// TrustedOrigins are the extra origins kit's `csrf.trustedOrigins` allows
 	// to submit forms to this app.
 	TrustedOrigins []string
-	// Dev skips Kit's production-only CSRF and build-drift checks.
-	Dev bool
 	// OnPanic is called when an endpoint handler panics, with the route id and
 	// method, the recovered value, and the stack. Leaving it nil logs the same
 	// three things, because a panicking handler that reports nowhere is a bug
@@ -192,16 +190,13 @@ type Endpoints struct {
 	cfg    EndpointConfig
 	base   string
 	origin string
-	// The dev renderer can refresh error.html after the registry is built.
+	// The renderer supplies the build's error.html.
 	errorTemplate string
 	prerendered   map[string]bool
 
 	routes []*endpointRoute
 	// byRoute is every registered method, keyed by route id then method.
 	byRoute map[string]map[string]http.HandlerFunc
-	// devRefresh installs Kit's latest route graph before a route-shaped
-	// request is matched. Nil in production.
-	devRefresh func() error
 }
 
 // endpointRoute is one route of the manifest, with whatever Go answers on it.
@@ -282,7 +277,7 @@ func NewEndpoints(cfg EndpointConfig, eps ...*Endpoint) (*Endpoints, error) {
 
 // SetErrorTemplate installs Kit's error.html after the renderer has read it.
 // The renderer is built after the endpoint registry because its internal fetch
-// dispatches through that registry. Dev may call this again after a refresh.
+// dispatches through that registry.
 func (es *Endpoints) SetErrorTemplate(template string) {
 	es.mu.Lock()
 	es.errorTemplate = template
@@ -314,21 +309,6 @@ func endpointRouting(routes []ManifestRoute, byRoute map[string]map[string]http.
 	return out, nil
 }
 
-func (es *Endpoints) updateManifest(m Manifest) error {
-	if !es.cfg.Dev {
-		return errors.New("skgo: refusing to replace a production endpoint manifest")
-	}
-	routes, err := endpointRouting(m.Routes, es.byRoute)
-	if err != nil {
-		return err
-	}
-	es.mu.Lock()
-	es.cfg.Routes = m.Routes
-	es.routes = routes
-	es.mu.Unlock()
-	return nil
-}
-
 func validEndpointMethod(method string) bool {
 	if method == fallbackMethod {
 		return true
@@ -350,7 +330,7 @@ func validEndpointMethod(method string) bool {
 // where those two disagree; this is the other half — the binary refusing a
 // build it cannot answer.
 func (es *Endpoints) checkDrift() error {
-	if es.cfg.Dev || !es.cfg.manifest {
+	if !es.cfg.manifest {
 		return nil
 	}
 
@@ -405,11 +385,15 @@ func (es *Endpoints) checkDrift() error {
 // Intercept returns a handler that answers this app's server routes and passes
 // everything else to next.
 //
-// It must sit in front of whatever serves pages — the static handler in
-// production, the dev proxy in dev — for the same reason the remote registry
-// does: kit's own dev server would otherwise run the generated stub and throw.
+// It must sit in front of the static handler so declared server routes
+// reach their Go handlers.
 func (es *Endpoints) Intercept(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Context().Value(devContinuationKey{}) != nil {
+			r = r.WithContext(context.WithValue(r.Context(), devEndpointsKey{}, es))
+			next.ServeHTTP(w, r)
+			return
+		}
 		es.serve(w, r, next)
 	})
 }
@@ -437,12 +421,6 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 	if kitSuffix(urlPath) != "" {
 		next.ServeHTTP(w, r)
 		return
-	}
-	if es.devRefresh != nil && path.Ext(urlPath) == "" {
-		if err := es.devRefresh(); err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
 	}
 
 	// Kit refuses a form-shaped cross-site mutation at the very top of
@@ -544,7 +522,7 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 
 	shared := &loadRequest{
 		req:           r,
-		jar:           requestCookieJar(r, secureCookieDefault(es.cfg.Origin, es.cfg.Dev)),
+		jar:           requestCookieJar(r, secureCookieDefault(es.cfg.Origin)),
 		responseState: newResponseState(r),
 		url:           &pageURL,
 		routeID:       route.id,
@@ -621,8 +599,6 @@ func (es *Endpoints) fatalError(w http.ResponseWriter, r *http.Request, routeID 
 // configured base already removed.
 func (es *Endpoints) matchRequest(r *http.Request, path string) (*endpointRoute, map[string]string, bool) {
 	if state := hookStateOf(r.Context()); state != nil && state.routing {
-		es.mu.RLock()
-		defer es.mu.RUnlock()
 		for _, route := range es.routes {
 			if route.id == state.routeID {
 				return route, state.params, true
@@ -634,8 +610,6 @@ func (es *Endpoints) matchRequest(r *http.Request, path string) (*endpointRoute,
 }
 
 func (es *Endpoints) match(routePath string) (*endpointRoute, map[string]string, bool) {
-	es.mu.RLock()
-	defer es.mu.RUnlock()
 	for _, route := range es.routes {
 		loc := route.pattern.FindStringSubmatchIndex(routePath)
 		if loc == nil {
@@ -676,11 +650,11 @@ func (es *Endpoints) normalize(urlPath string, u *url.URL) (location string, red
 // form-shaped mutation from another origin is refused before the handler runs.
 // Kit applies it to every non-remote request, which includes every endpoint.
 func (es *Endpoints) csrfForbidden(r *http.Request) bool {
-	return csrfFormForbidden(r, es.origin, es.cfg.TrustedOrigins, es.cfg.Dev)
+	return csrfFormForbidden(r, es.origin, es.cfg.TrustedOrigins)
 }
 
-func csrfFormForbidden(r *http.Request, origin string, trustedOrigins []string, dev bool) bool {
-	if dev || origin == "" {
+func csrfFormForbidden(r *http.Request, origin string, trustedOrigins []string) bool {
+	if origin == "" {
 		return false
 	}
 	switch r.Method {

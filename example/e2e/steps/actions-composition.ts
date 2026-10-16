@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, expectMode, hydrated, test } from './fixtures';
+import { expect, expectServerMode, hydrated, test } from './fixtures';
 import type { Page, Response } from '@playwright/test';
 
 const { When, Then } = createBdd(test);
@@ -27,7 +27,7 @@ async function actionResponse(page: Page, path: string, submit: () => Promise<vo
 	const response = page.waitForResponse((candidate) => candidate.request().method() === 'POST' && new URL(candidate.url()).pathname === path);
 	await submit();
 	const answer = await response;
-	expectMode(answer);
+	expectServerMode(answer);
 	return answer;
 }
 
@@ -82,7 +82,7 @@ Then('the default action shows the exact Grace receipt and profile', async ({ pa
 
 Then('a later Go load reads the stored default Grace profile', async ({ page }) => {
 	const response = await page.goto('/actions/default/saved');
-	expectMode(response!);
+	expectServerMode(response!);
 	expect(response?.status()).toBe(200);
 	await expect(page.getByTestId('default-stored-title')).toHaveText('Stored default profile');
 	await expect(page.getByTestId('default-stored-name')).toHaveText('Grace Hopper');
@@ -173,7 +173,7 @@ Then(/^only (ada|grace) has the literal edited values$/, async ({ page }, select
 Then('a later profile GET retains both literal records', async ({ page }) => {
 	const selected = page.url().includes('/profiles/ada') ? 'ada' : 'grace';
 	const response = await page.goto(`/actions/profiles/${selected}`);
-	expectMode(response!);
+	expectServerMode(response!);
 	expect(response?.status()).toBe(200);
 	await expect(page.getByTestId('profiles-title')).toHaveText('Two visitor profiles');
 	await assertRecord(page, selected, edits[selected]);

@@ -1,0 +1,46 @@
+//go:build go1.27 && !go1.28
+// +build go1.27,!go1.28
+
+// Adapted from pkujhd/goloader2695cfc (Apache-2.0).
+// Numeric revisions cannot supply canonical type backing to later revisions.
+package link
+
+import (
+	"unsafe"
+
+	"github.com/pkujhd/goloader/constants"
+)
+
+func (t *_type) DescriptorSize() int { return _DescriptorSize(t) }
+
+// !IMPORTANT: only init firstmodule type, avoid load multiple objs but unload non-sequence errors
+func typelinksRegister(symPtr map[string]uintptr) {
+	md := firstmoduledata
+	p := md.types
+	p += constants.PtrSize
+
+	for p < md.types+md.typedesclen {
+		p = alignUp(p, constants.PtrSize)
+		typ := (*_type)(unsafe.Pointer(p))
+		registerType(typ, symPtr)
+		p = p + uintptr(typ.DescriptorSize())
+	}
+}
+
+func (linker *Linker) AddTypeLink(codeModule *CodeModule) {
+	codeModule.module.typedesclen = uintptr(len(linker.NoPtrTypeData))
+	if linker.Reclaimable {
+		// The positive numeric class cannot export candidate-owned descriptors.
+		// Keep the actual descriptor bytes and type address range for execution,
+		// but omit discovery so a successor cannot canonicalize to this revision.
+		// A preconstructed map also avoids runtime process-lifetime map pinning.
+		codeModule.module.typedesclen = 0
+		codeModule.module.typemap = make(map[*_type]*_type)
+	}
+}
+
+func removeModuleToTypelinks(md *moduledata) {
+	lock(moduleToTypelinksLock)
+	delete(*moduleToTypelinks, md)
+	unlock(moduleToTypelinksLock)
+}

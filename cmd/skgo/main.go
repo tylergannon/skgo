@@ -40,8 +40,8 @@ const usage = `usage:
 	skgo native build [--platform macos|iphone|simulator] [--preset NAME]
 	skgo build [--root DIR]   incrementally generate and build the frontend
 	skgo buildinfo [--json]   identify this executing CLI and its Go build
+	skgo dev [--root DIR] [--listen HOST:PORT]   develop with Go and Vite
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
-	skgo dev [flags]          run Vite and the Go application, rebuilding Go as it changes
 	skgo check [flags]        check Go, Svelte, lint and formatting without edits
 	skgo kit-patch [--web web] (--apply | --check)
 	                          configure or verify Kit 3.0.0's declared-Inputs queue correction
@@ -112,10 +112,15 @@ func main() {
 		}
 	case "new":
 		newProject(os.Args[2:])
+	case "dev":
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		if err := devCommand(ctx, os.Args[2:], os.Stdout, os.Stderr); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "generate":
 		generate(os.Args[2:])
-	case "dev":
-		os.Exit(devCommand(os.Args[2:]))
 	case "check":
 		checkProject(os.Args[2:])
 	case "kit-patch":

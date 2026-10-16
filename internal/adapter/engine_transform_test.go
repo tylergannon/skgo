@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Exercise the transform used by both build and dev on actual JavaScript
+// Exercise the transform used by the production build on actual JavaScript
 // syntax: comments and quoted text must not downlevel native private fields.
 func TestEngineLoweringUsesSyntaxRatherThanComments(t *testing.T) {
 	t.Parallel()

@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, expectMode, hydrated, test } from './fixtures';
+import { expect, expectServerMode, hydrated, test } from './fixtures';
 import type { Page, Response } from '@playwright/test';
 
 const { When, Then } = createBdd(test);
@@ -115,7 +115,7 @@ When('I save Grace with Kit enhancement', async ({ page, documents, notes }) => 
 	);
 	await form.getByRole('button', { name: 'Save profile' }).click();
 	const saved = await response;
-	expectMode(saved);
+	expectServerMode(saved);
 	expect(saved.status()).toBe(200);
 	const result = await saved.json();
 	expect(result.type).toBe('success');
@@ -138,7 +138,7 @@ When('I save Grace with the native form', async ({ page, documents, notes, $test
 	);
 	await form.getByRole('button', { name: 'Save profile' }).click();
 	const saved = await response;
-	expectMode(saved);
+	expectServerMode(saved);
 	expect(saved.status()).toBe(200);
 	const html = await saved.text();
 	expect(html).toContain('form: {');
@@ -185,7 +185,7 @@ Then('the Grace receipt and saved profile survive hydration', async ({ page, not
 Then('a later Actions GET retains the Grace profile', async ({ page }) => {
 	const response = await page.goto('/actions');
 	expect(response?.request().method()).toBe('GET');
-	expectMode(response!);
+	expectServerMode(response!);
 	await profile(page, { ...grace, state: 'Active' });
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
 });
@@ -205,7 +205,7 @@ When('I submit an invalid Grace edit with Kit enhancement', async ({ page, docum
 	);
 	await form.getByRole('button', { name: 'Save profile' }).click();
 	const failed = await response;
-	expectMode(failed);
+	expectServerMode(failed);
 	expect(failed.status()).toBe(422);
 	const result = await failed.json();
 	expect(result.type).toBe('failure');
@@ -231,7 +231,7 @@ When('I submit an invalid Grace edit with the native form', async ({ page, docum
 	);
 	await form.getByRole('button', { name: 'Save profile' }).click();
 	const failed = await response;
-	expectMode(failed);
+	expectServerMode(failed);
 	expect(failed.status()).toBe(422);
 	await inspectNativeHTML(page, await failed.text(), rejected);
 	notes.set('native-failure-checked', 1);
@@ -256,7 +256,7 @@ Then('the retained failure and Ada profile survive hydration', async ({ page, no
 Then('a later Actions GET retains the Ada profile', async ({ page }) => {
 	const response = await page.goto('/actions');
 	expect(response?.request().method()).toBe('GET');
-	expectMode(response!);
+	expectServerMode(response!);
 	await profile(page, ada);
 	await expect(page.getByTestId('page-status')).toHaveText('Page status 200');
 	await expect(page.getByTestId('no-receipt')).toBeVisible();
@@ -274,7 +274,7 @@ When('I archive with Kit enhancement', async ({ page, documents, notes }) => {
 	);
 	await page.getByTestId('enhanced-archive-form').getByRole('button', { name: 'Archive profile' }).click();
 	const saved = await response;
-	expectMode(saved);
+	expectServerMode(saved);
 	expect(saved.status()).toBe(200);
 	const result = await saved.json();
 	expect(result.type).toBe('success');
@@ -299,7 +299,7 @@ When('I archive with the native form', async ({ page, documents, notes, $testInf
 	);
 	await page.getByTestId('native-archive-form').getByRole('button', { name: 'Archive profile' }).click();
 	const saved = await response;
-	expectMode(saved);
+	expectServerMode(saved);
 	expect(saved.status()).toBe(200);
 	const html = await saved.text();
 	expect(html).toContain('form: null');
@@ -326,7 +326,7 @@ Then('Ada Archived without a receipt survives hydration', async ({ page, notes }
 Then('a later Actions GET retains Ada Archived', async ({ page }) => {
 	const response = await page.goto('/actions');
 	expect(response?.request().method()).toBe('GET');
-	expectMode(response!);
+	expectServerMode(response!);
 	await archived(page);
 });
 
@@ -352,7 +352,7 @@ async function submitExtra(
 	await page.getByTestId(`${enhanced ? 'enhanced' : 'native'}-${action.toLowerCase()}-form`)
 		.getByRole('button').click();
 	const submitted = await response;
-	expectMode(submitted);
+	expectServerMode(submitted);
 	expect(submitted.request().headers()['x-sveltekit-action'] === 'true').toBe(enhanced);
 	notes.set('extra-enhanced', enhanced ? 1 : 0);
 	notes.set('extra-response-checked', 1);
@@ -394,7 +394,7 @@ Then('the signed-in greeting survives hydration', async ({ page, notes }) => {
 
 Then('a later signed-in GET still greets ada', async ({ page }) => {
 	const response = await page.goto('/actions/signed-in');
-	expectMode(response!);
+	expectServerMode(response!);
 	expect(response?.request().method()).toBe('GET');
 	await expect(page.getByTestId('signed-in-title')).toHaveText('Signed in as ada');
 });

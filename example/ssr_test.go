@@ -71,12 +71,9 @@ func TestPrerenderedGoRemoteIsReusedByProductionSSR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, mode, err := example.NewHandler(oneFileOverlay{FS: dist, name: nativePath, data: replacement}, "", prodOrigin)
+	h, err := example.NewHandler(oneFileOverlay{FS: dist, name: nativePath, data: replacement}, prodOrigin)
 	if err != nil {
 		t.Fatalf("assembling production handler with an independent artifact literal: %v", err)
-	}
-	if mode != "prod" {
-		t.Fatalf("mode = %q", mode)
 	}
 	response := get(t, h, "/prerender-consumer")
 	if response.Code != http.StatusOK {

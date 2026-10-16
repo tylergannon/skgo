@@ -52,7 +52,7 @@ func section() Manifest {
 func mustLoads(t *testing.T, tweak func(*LoadConfig), loads ...*ServerLoad) *Loads {
 	t.Helper()
 	cfg := section().LoadConfig("http://127.0.0.1:8080")
-	cfg.Dev = true // the drift check is about a real build, not a fixture
+	cfg.manifest = false // These isolated routing fixtures intentionally register only the loads under test.
 	if tweak != nil {
 		tweak(&cfg)
 	}
@@ -795,7 +795,6 @@ func TestRestParametersAreNamed(t *testing.T) {
 		}},
 	}
 	cfg := m.LoadConfig("http://127.0.0.1:8080")
-	cfg.Dev = true
 	ls, err := NewLoads(cfg)
 	if err != nil {
 		t.Fatal(err)

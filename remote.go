@@ -471,6 +471,10 @@ func DecodeForm(arg any, into any) error {
 // RemoteConfig describes the app the registry is serving. Everything but
 // Origin comes straight from the built manifest.
 type RemoteConfig struct {
+	// Development mirrors Kit's development dispatch for prerender remotes.
+	// Production registries serve only their recorded static artifacts.
+	Development bool
+
 	// AppDir is kit's appDir; empty means "_app".
 	AppDir string
 	// Base is kit's paths.base, without a trailing slash.
@@ -478,22 +482,12 @@ type RemoteConfig struct {
 	// Version, when non-empty, is sent as the `x-sveltekit-version` response
 	// header. It must equal the version baked into the client — a different
 	// value makes the client force a reload — so leave it empty whenever the
-	// client did not come from this build (dev mode).
+	// client did not come from this build.
 	Version string
 	// Origin is the app's configured origin, e.g. "http://127.0.0.1:8080".
 	// When non-empty, a non-GET remote request from a different origin is
-	// refused with 403. Empty disables the check, which is what kit does in
-	// dev.
+	// refused with 403. Empty disables the check.
 	Origin string
-	// Dev reports that the client is being served by a `vp dev` server rather
-	// than by this build. It relaxes the cookie `secure` default exactly as
-	// kit's own `__SVELTEKIT_DEV__` does, and it turns off the check against
-	// Manifest.Remotes, which describes the last production build and not the
-	// files vite is serving.
-	Dev bool
-	// CookieOrigin is the origin whose scheme and host decide the `secure`
-	// cookie default. It defaults to Origin.
-	CookieOrigin string
 	// Transport is the app's `transport` hook: the Go half of the encode/decode
 	// pairs `src/hooks.ts` declares. It is optional; without it a custom type
 	// goes out as whatever encoding/json makes of it, which is a plain object
@@ -522,13 +516,14 @@ type RemoteConfig struct {
 // RemoteConfig derives a registry configuration from a build manifest.
 func (m Manifest) RemoteConfig(origin string) RemoteConfig {
 	return RemoteConfig{
-		AppDir:   m.AppDir,
-		Base:     m.Base,
-		Version:  m.Version,
-		Origin:   origin,
-		Remotes:  m.Remotes,
-		Routes:   m.Routes,
-		manifest: true,
+		Development: m.Development,
+		AppDir:      m.AppDir,
+		Base:        m.Base,
+		Version:     m.Version,
+		Origin:      origin,
+		Remotes:     m.Remotes,
+		Routes:      m.Routes,
+		manifest:    true,
 	}
 }
 
@@ -543,7 +538,7 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 		return m, fmt.Errorf("skgo: parsing skgo.manifest.json: %w", err)
 	}
 	if m.SkgoAdapter != adapter.Fingerprint() {
-		install := "pnpm add -D " + adapter.Package
+		install := "vp add -D " + adapter.Package
 		if version := adapter.Version(); version != "devel" {
 			install = adapter.InstallCommand(version)
 		}
@@ -564,11 +559,10 @@ func ReadManifest(build fs.FS) (Manifest, error) {
 // Remotes is a registry of remote functions and the http.Handler that answers
 // calls to them.
 type Remotes struct {
-	callers    callerRouting
-	devRefresh func() error
-	cfg        RemoteConfig
-	prefix     string
-	fns        map[string]*Remote
+	callers callerRouting
+	cfg     RemoteConfig
+	prefix  string
+	fns     map[string]*Remote
 	// byFunc indexes the registrations by the code pointer of the Go function
 	// each one publishes, which is how skgo.Refresh turns `getTodo` into the
 	// id half of a refresh key.
@@ -588,11 +582,6 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 	}
 	cfg.Base = base
 
-	cookieOrigin := cfg.CookieOrigin
-	if cookieOrigin == "" {
-		cookieOrigin = cfg.Origin
-	}
-
 	if err := cfg.Transport.validate(); err != nil {
 		return nil, err
 	}
@@ -602,7 +591,7 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 		prefix:        base + "/" + cfg.AppDir + "/remote/",
 		fns:           make(map[string]*Remote, len(fns)),
 		byFunc:        make(map[uintptr]*Remote, len(fns)),
-		secureCookies: secureCookieDefault(cookieOrigin, cfg.Dev),
+		secureCookies: secureCookieDefault(cfg.Origin),
 		callers:       callerRouting{matchers: CallerMatchers{}},
 	}
 	for _, fn := range fns {
@@ -654,7 +643,7 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 // with it is serving a client that will get 404s from half its remote calls —
 // or, worse, silently stale behaviour. Better to not start.
 func (rs *Remotes) checkDrift() error {
-	if rs.cfg.Dev || !rs.cfg.manifest {
+	if !rs.cfg.manifest {
 		return nil
 	}
 	if rs.cfg.Remotes == nil {
@@ -705,18 +694,21 @@ func (rs *Remotes) Lookup(id string) (*Remote, bool) {
 }
 
 // Intercept returns a handler that answers remote calls itself and passes
-// everything else to next. It must sit in front of both the dev proxy (or
-// kit's dev server would run its throwing stub) and the static handler.
+// everything else to next. It must sit in front of the static handler.
 func (rs *Remotes) Intercept(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Context().Value(devContinuationKey{}) != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, rs.prefix) {
 			// Kit's prerender function writes a static response at this path.
 			// The static handler owns it, including a missing asset's 404.
-			if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			if !rs.cfg.Development && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
 				rest := strings.TrimPrefix(r.URL.Path, rs.prefix)
 				parts := strings.Split(rest, "/")
 				if len(parts) >= 2 {
-					if fn := rs.fns[parts[0]+"/"+parts[1]]; fn != nil && fn.kind == KindPrerender && !rs.cfg.Dev {
+					if fn := rs.fns[parts[0]+"/"+parts[1]]; fn != nil && fn.kind == KindPrerender {
 						next.ServeHTTP(w, r)
 						return
 					}
@@ -757,12 +749,6 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if fn.kind == KindCommand || fn.kind == KindForm {
-		if rs.devRefresh != nil {
-			if err := rs.devRefresh(); err != nil {
-				rs.writeError(w, asHTTPError(err))
-				return
-			}
-		}
 		caller, err := rs.matchCaller(r)
 		if err != nil {
 			rs.writeErrorStatus(w, asHTTPError(err), 400)
@@ -782,30 +768,39 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case KindForm:
 		rs.serveForm(w, r, fn)
 	case KindPrerender:
-		rs.servePrerender(w, r, fn, parts)
+		if rs.cfg.Development {
+			payload := ""
+			if len(parts) > 2 {
+				payload = parts[2]
+			}
+			rs.servePrerender(w, r, fn, payload)
+		} else {
+			rs.writeError(w, notFound())
+		}
 	}
 }
 
-// In development Kit has no prerendered file yet. Its client still calls the
-// same path, so Go answers it from the registered function. Production serves
-// the file Kit wrote during the build instead.
-func (rs *Remotes) servePrerender(w http.ResponseWriter, r *http.Request, fn *Remote, parts []string) {
-	if !rs.cfg.Dev || r.Method != http.MethodGet || len(parts) > 3 {
-		rs.writeError(w, notFound())
+// servePrerender mirrors Kit's development handler: its argument is the
+// third path segment, not query's payload parameter. The normal immutable
+// remote event and result envelope retain transport, errors and redirects.
+func (rs *Remotes) servePrerender(w http.ResponseWriter, r *http.Request, fn *Remote, payload string) {
+	call, err := rs.parsePayload(payload)
+	if err != nil {
+		rs.writeError(w, &HTTPError{Status: 400, Message: "Bad Request"})
 		return
 	}
-	payload := ""
-	if len(parts) == 3 {
-		payload = parts[2]
-	}
-	ev := rs.newEvent(r, false)
-	result := rs.invokePayload(withEvent(r.Context(), ev), fn, payload)
-	value, err := result.value, result.err
+	event := rs.newEvent(r, false)
+	value, err := rs.call(withEvent(r.Context(), event), fn, call)
 	if err != nil {
+		if redirect := asRedirect(err); redirect != nil {
+			rs.writeResult(w, event, map[string]any{"redirect": redirect.Location})
+			return
+		}
 		rs.writeError(w, asHTTPError(err))
 		return
 	}
-	rs.writeResult(w, ev, map[string]any{"_": value})
+	key := fn.id + "/" + payload
+	rs.writeResult(w, event, map[string]any{"_": value, "p": map[string]any{key: map[string]any{"v": value}}})
 }
 
 // notFound reproduces the body kit's `error(404)` produces.

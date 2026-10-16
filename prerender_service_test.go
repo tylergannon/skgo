@@ -215,7 +215,7 @@ func TestPrerenderServiceLoadSettlesTransportedDeferredValue(t *testing.T) {
 	}
 }
 
-func TestPrerenderServiceRemoteSharesTransportAndPublicSanitization(t *testing.T) {
+func TestPrerenderServiceRemoteTransportAndBuildDiagnostics(t *testing.T) {
 	transport := Transport{"Money": {Type: reflect.TypeFor[money](), Encode: func(value any) (any, error) { return []any{float64(value.(money).Cents)}, nil }, Decode: func(value any) (any, error) { return money{Cents: int(value.([]any)[0].(float64))}, nil }}}
 	fn := NewRemote(RemoteSpec{Kind: KindPrerender, Module: "price.remote.ts", Name: "price", Call: func(ctx context.Context, call Call) (any, error) {
 		if EventFrom(ctx).Request().Header.Get("X-Fail") == "yes" {
@@ -227,12 +227,7 @@ func TestPrerenderServiceRemoteSharesTransportAndPublicSanitization(t *testing.T
 		}
 		return call.Transported(value)
 	}})
-	registry, err := NewRemotes(RemoteConfig{Dev: true, Transport: transport}, fn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The argument codec receives Kit's transport tag and the result encoder uses
-	// that same tag, on both the build and public HTTP boundaries.
+	// The build operation decodes and encodes the literal Money transport value.
 	encoded, err := devalue.StringifyWith(money{Cents: 780}, transport.reducers())
 	if err != nil {
 		t.Fatal(err)
@@ -243,13 +238,12 @@ func TestPrerenderServiceRemoteSharesTransportAndPublicSanitization(t *testing.T
 	if err := callBuildOperation("/remote", strings.NewReader(string(input)), &build, transport, nil, []*Remote{fn}); err != nil {
 		t.Fatal(err)
 	}
-	public := httptest.NewRecorder()
-	registry.ServeHTTP(public, httptest.NewRequest(http.MethodGet, registry.Prefix()+fn.id+"/"+payload, nil))
-	var buildResult, publicResult remoteResponse
-	json.Unmarshal([]byte(build.String()), &buildResult)
-	json.Unmarshal(public.Body.Bytes(), &publicResult)
-	if buildResult.Type != "result" || publicResult.Type != "result" || buildResult.Data != publicResult.Data {
-		t.Fatalf("build=%s public=%s", build.String(), public.Body.String())
+	var buildResult remoteResponse
+	if err := json.Unmarshal([]byte(build.String()), &buildResult); err != nil {
+		t.Fatal(err)
+	}
+	if buildResult.Type != "result" {
+		t.Fatalf("build=%s", build.String())
 	}
 	value, err := devalue.Parse(buildResult.Data, map[string]func(any) (any, error){"Money": func(value any) (any, error) { return transport["Money"].Decode(value) }})
 	if err != nil || field(t, value, "_") != (money{Cents: 780}) {
@@ -262,13 +256,6 @@ func TestPrerenderServiceRemoteSharesTransportAndPublicSanitization(t *testing.T
 	}
 	if !strings.Contains(failedBuild.String(), `"diagnostic":"private database detail"`) {
 		t.Fatalf("build lost original header or failure detail: %s", failedBuild.String())
-	}
-	request := httptest.NewRequest(http.MethodGet, registry.Prefix()+fn.id, nil)
-	request.Header.Set("X-Fail", "yes")
-	failed := httptest.NewRecorder()
-	registry.ServeHTTP(failed, request)
-	if strings.Contains(failed.Body.String(), "private database detail") || !strings.Contains(failed.Body.String(), "Internal Error") {
-		t.Fatalf("public error leaked: %s", failed.Body.String())
 	}
 }
 

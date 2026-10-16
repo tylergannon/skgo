@@ -27,30 +27,36 @@ type PrerenderServiceOptions struct {
 }
 
 type prerenderRequestKey struct{}
+type devRequestKey struct{}
 type prerenderMatchKey struct{}
 type prerenderManifestKey struct{}
 type prerenderRefusalKey struct{}
 type prerenderBodyFailureKey struct{}
 type prerenderRequestInput struct {
-	URL          string          `json:"url"`
-	LogicalURL   string          `json:"logicalUrl"`
-	Method       string          `json:"method"`
-	Headers      http.Header     `json:"headers"`
-	Body         []byte          `json:"body"`
-	RouteID      string          `json:"routeId"`
-	RoutePattern string          `json:"routePattern"`
-	RouteParams  []ManifestParam `json:"routeParams"`
-	RoutePath    string          `json:"routePath"`
-	IsSubRequest bool            `json:"isSubRequest"`
-	Manifest     Manifest        `json:"manifest"`
+	URL           string            `json:"url"`
+	LogicalURL    string            `json:"logicalUrl"`
+	Method        string            `json:"method"`
+	Headers       http.Header       `json:"headers"`
+	Body          []byte            `json:"body"`
+	RouteID       string            `json:"routeId"`
+	RoutePattern  string            `json:"routePattern"`
+	RouteParams   []ManifestParam   `json:"routeParams"`
+	RoutePath     string            `json:"routePath"`
+	IsSubRequest  bool              `json:"isSubRequest"`
+	Manifest      Manifest          `json:"manifest"`
+	Params        map[string]string `json:"params"`
+	FetchDepth    int               `json:"fetchDepth"`
+	ClientAddress string            `json:"clientAddress"`
 }
 type prerenderResponse struct {
 	Status  int         `json:"status"`
 	Headers http.Header `json:"headers"`
 	Body    []byte      `json:"body"`
+	Reader  io.Reader   `json:"-"`
 }
 type prerenderRequestAnswer struct {
 	Handle   string                   `json:"handle,omitempty"`
+	Body     json.RawMessage          `json:"body,omitempty"`
 	Resolve  bool                     `json:"resolve,omitempty"`
 	Response *prerenderResponse       `json:"response,omitempty"`
 	Redirect *prerenderRedirect       `json:"redirect,omitempty"`
@@ -65,25 +71,28 @@ type prerenderResolveOptions struct {
 	Preload   bool `json:"preload"`
 }
 type prerenderRequest struct {
-	input     prerenderRequestInput
-	options   ResolveOptions
-	endpoints *Endpoints
-	cancel    context.CancelFunc
-	ready     chan *http.Request
-	response  chan prerenderResponse
-	done      chan struct{}
-	request   *http.Request
-	answer    prerenderRequestAnswer
-	mu        sync.Mutex
-	active    sync.WaitGroup
-	failure   error
-	closing   bool
+	input         prerenderRequestInput
+	options       ResolveOptions
+	endpoints     *Endpoints
+	cancel        context.CancelFunc
+	ready         chan *http.Request
+	response      chan prerenderResponse
+	done          chan struct{}
+	request       *http.Request
+	answer        prerenderRequestAnswer
+	mu            sync.Mutex
+	active        sync.WaitGroup
+	failure       error
+	closing       bool
+	stream        *downstream
+	headerEffects map[*responseState]http.Header
 }
 type prerenderRequests struct {
-	mu      sync.Mutex
-	entries map[string]*prerenderRequest
-	ctx     context.Context
-	options PrerenderServiceOptions
+	mu          sync.Mutex
+	entries     map[string]*prerenderRequest
+	ctx         context.Context
+	options     PrerenderServiceOptions
+	development bool
 }
 
 func (s *prerenderRequests) close() {
@@ -136,6 +145,9 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 	}
 	logical, cancel := context.WithCancel(s.ctx)
 	entry := &prerenderRequest{input: input, cancel: cancel, ready: make(chan *http.Request, 1), response: make(chan prerenderResponse, 1), done: make(chan struct{})}
+	if s.development {
+		logical = context.WithValue(logical, devRequestKey{}, entry)
+	}
 	logical = context.WithValue(logical, prerenderBodyFailureKey{}, func(err error) { entry.failure = err })
 	logical = context.WithValue(logical, prerenderMatchKey{}, input)
 	logical = context.WithValue(logical, prerenderManifestKey{}, input.Manifest)
@@ -155,8 +167,17 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 		return prerenderRequestAnswer{}, err
 	}
 	if input.IsSubRequest {
-		request = request.WithContext(withFetchDepth(request.Context(), 1))
+		depth := 1
+		if s.development && input.FetchDepth > 0 {
+			depth = input.FetchDepth
+		}
+		if depth > maxFetchDepth {
+			cancel()
+			return prerenderRequestAnswer{}, fmt.Errorf("skgo: maximum internal fetch depth exceeded")
+		}
+		request = request.WithContext(withFetchDepth(request.Context(), depth))
 	}
+	request.RemoteAddr = input.ClientAddress
 	request.Header = http.Header{}
 	for name, values := range input.Headers {
 		request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
@@ -170,23 +191,26 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 		cancel()
 		return prerenderRequestAnswer{}, fmt.Errorf("skgo: invalid logical request URL")
 	}
-	origin := pageURL.Scheme + "://" + pageURL.Host
-	endpointConfig := input.Manifest.EndpointConfig(origin)
-	endpointConfig.Matchers = s.options.Matchers
-	endpoints, err := NewEndpoints(endpointConfig, s.options.Endpoints...)
-	if err != nil {
-		cancel()
-		return prerenderRequestAnswer{}, err
+	if !s.development {
+		origin := pageURL.Scheme + "://" + pageURL.Host
+		endpointConfig := input.Manifest.EndpointConfig(origin)
+		endpointConfig.Matchers = s.options.Matchers
+		endpoints, err := NewEndpoints(endpointConfig, s.options.Endpoints...)
+		if err != nil {
+			cancel()
+			return prerenderRequestAnswer{}, err
+		}
+		entry.endpoints = endpoints
+		var fetchHandler http.Handler
+		dispatch := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), prerenderManifestKey{}, input.Manifest)
+			fetchHandler.ServeHTTP(w, r.WithContext(ctx))
+		})
+		fetchHandler = s.options.BindRequest(endpoints.Intercept(http.NotFoundHandler()))
+		fetcher := &requestFetcher{origin: pageURL, base: normalizeFetchBase(input.Manifest.Base), handler: dispatch}
+		request = request.WithContext(context.WithValue(request.Context(), requestFetcherKey{}, fetcher))
+
 	}
-	entry.endpoints = endpoints
-	var fetchHandler http.Handler
-	dispatch := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), prerenderManifestKey{}, input.Manifest)
-		fetchHandler.ServeHTTP(w, r.WithContext(ctx))
-	})
-	fetchHandler = s.options.BindRequest(endpoints.Intercept(http.NotFoundHandler()))
-	fetcher := &requestFetcher{origin: pageURL, base: normalizeFetchBase(input.Manifest.Base), handler: dispatch}
-	request = request.WithContext(context.WithValue(request.Context(), requestFetcherKey{}, fetcher))
 
 	token := make([]byte, 24)
 	if _, err := rand.Read(token); err != nil {
@@ -205,35 +229,75 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 				w.Header()[http.CanonicalHeaderKey(k)] = append([]string(nil), v...)
 			}
 			w.WriteHeader(response.Status)
-			_, _ = w.Write(response.Body)
+			if response.Reader != nil {
+				_, _ = io.Copy(w, response.Reader)
+			} else {
+				_, _ = w.Write(response.Body)
+			}
 		case <-r.Context().Done():
 			panic(http.ErrAbortHandler)
 		}
 	})
-	go func() {
-		defer close(entry.done)
-		defer func() {
-			if value := recover(); value != nil {
-				entry.failure = fmt.Errorf("skgo: prerender response aborted: %v", value)
+	if s.development {
+		entry.stream = launchDownstream(logical, logical, s.options.BindRequest(next), request, true)
+		entry.done = entry.stream.ended
+	} else {
+		go func() {
+			defer close(entry.done)
+			defer func() {
+				if value := recover(); value != nil {
+					entry.failure = fmt.Errorf("skgo: prerender response aborted: %v", value)
+				}
+			}()
+			writer := httptest.NewRecorder()
+			s.options.BindRequest(next).ServeHTTP(writer, request)
+			if entry.answer.Error == nil && entry.answer.Redirect == nil {
+				entry.answer.Response = &prerenderResponse{Status: writer.Code, Headers: writer.Header().Clone(), Body: writer.Body.Bytes()}
 			}
 		}()
-		writer := httptest.NewRecorder()
-		s.options.BindRequest(next).ServeHTTP(writer, request)
-		if entry.answer.Error == nil && entry.answer.Redirect == nil {
-			entry.answer.Response = &prerenderResponse{Status: writer.Code, Headers: writer.Header().Clone(), Body: writer.Body.Bytes()}
-		}
-	}()
+	}
+
 	select {
 	case r := <-entry.ready:
 		entry.request = r
+		if s.development {
+			entry.request = r.WithContext(context.WithValue(r.Context(), devContinuationKey{}, nil))
+		}
+		if endpoints, ok := r.Context().Value(devEndpointsKey{}).(*Endpoints); ok {
+			entry.endpoints = endpoints
+		}
 		if chosen := requestResolveOptions(r.Context()); chosen != nil {
 			entry.options = *chosen
 		}
 		if entry.options.FilterSerializedResponseHeaders == nil {
 			entry.options.FilterSerializedResponseHeaders = s.options.FilterSerializedResponseHeaders
 		}
-		return prerenderRequestAnswer{Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: requestResponseHeaders(r).Clone(), Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
-	case <-entry.done:
+		headers := requestResponseHeaders(r).Clone()
+		if s.development {
+			if state := hookStateOf(r.Context()); state != nil {
+				headers = developmentHeaders(r.Context(), state.response.responseState)
+			}
+		}
+		return prerenderRequestAnswer{Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: headers, Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
+	case <-func() <-chan struct{} {
+		if entry.stream != nil {
+			return entry.stream.committed
+		}
+		return entry.done
+	}():
+		if entry.stream != nil {
+			response := entry.stream.response(request)
+			body, err := io.ReadAll(response.Body)
+			response.Body.Close()
+			if err != nil {
+				s.end(handle)
+				return prerenderRequestAnswer{}, err
+			}
+			entry.answer.Response = &prerenderResponse{Status: response.StatusCode, Headers: response.Header, Body: body}
+			if entry.answer.Error != nil && strings.Contains(response.Header.Get("Content-Type"), "application/json") && json.Valid(body) {
+				entry.answer.Body = json.RawMessage(body)
+			}
+		}
 		if entry.failure != nil {
 			s.end(handle)
 			return prerenderRequestAnswer{}, entry.failure
@@ -435,4 +499,35 @@ func runPrerenderResolveOption(ctx context.Context, entry *prerenderRequest, raw
 	default:
 		return fmt.Errorf("skgo: unknown prerender resolve option %q", input.Kind)
 	}
+}
+
+// A hook, actions and concurrent loads share response state. Relay each effect
+// once; Server-Timing is the one header Kit permits to accumulate.
+func developmentHeaders(ctx context.Context, state *responseState) http.Header {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	entry, ok := ctx.Value(devRequestKey{}).(*prerenderRequest)
+	if !ok {
+		return state.headers.Clone()
+	}
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+	if entry.headerEffects == nil {
+		entry.headerEffects = map[*responseState]http.Header{}
+	}
+	previous := entry.headerEffects[state]
+	delta := state.headers.Clone()
+	for name, values := range previous {
+		if strings.EqualFold(name, "Server-Timing") {
+			before := strings.Join(values, ", ")
+			after := delta.Get(name)
+			if after != before && strings.HasPrefix(after, before+", ") {
+				delta.Set(name, strings.TrimPrefix(after, before+", "))
+				continue
+			}
+		}
+		delete(delta, name)
+	}
+	entry.headerEffects[state] = state.headers.Clone()
+	return delta
 }

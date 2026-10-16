@@ -34,12 +34,9 @@ const prodOrigin = "http://127.0.0.1:8080"
 func newProdHandler(t *testing.T) http.Handler {
 	t.Helper()
 
-	h, mode, err := example.NewHandler(prodDist(t), "", prodOrigin)
+	h, err := example.NewHandler(prodDist(t), prodOrigin)
 	if err != nil {
 		t.Fatalf("assembling the production stack: %v", err)
-	}
-	if mode != "prod" {
-		t.Fatalf("mode = %q, want prod", mode)
 	}
 	return h
 }

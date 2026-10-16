@@ -433,36 +433,23 @@ func (a *app) projectTypes(set *namedTypes) error {
 		names map[typegrammar.Name]string
 		files []projectedFile
 	)
-	projectionID := fmt.Sprintf("%s/%s", set.pkg.Path(), a.cfg.Language)
-	var cached *typeProjection
-	if a.cfg.worker != nil {
-		cached = a.cfg.worker.projectedTypes(projectionID, defs)
-	}
-	if cached != nil {
-		names, files = cached.names, cached.files
-	} else {
-		if a.cfg.Language.JavaScript() {
-			result, err := javascript.Generate(defs, javascript.Options{})
-			if err != nil {
-				return fmt.Errorf("skgo: polytype could not declare the types in %s: %w", set.pkg.Path(), err)
-			}
-			names = result.Names
-			for _, file := range result.Files {
-				files = append(files, projectedFile{name: file.Name, content: file.Content})
-			}
-		} else {
-			result, err := typescript.Generate(defs, typescript.Options{})
-			if err != nil {
-				return fmt.Errorf("skgo: polytype could not declare the types in %s: %w", set.pkg.Path(), err)
-			}
-			names = result.Names
-			for _, file := range result.Files {
-				files = append(files, projectedFile{name: file.Name, content: file.Content})
-			}
+	if a.cfg.Language.JavaScript() {
+		result, err := javascript.Generate(defs, javascript.Options{})
+		if err != nil {
+			return fmt.Errorf("skgo: polytype could not declare the types in %s: %w", set.pkg.Path(), err)
 		}
-
-		if a.cfg.worker != nil {
-			a.cfg.worker.types[projectionID] = &typeProjection{definitions: defs, names: names, files: files, used: a.cfg.worker.revision}
+		names = result.Names
+		for _, file := range result.Files {
+			files = append(files, projectedFile{name: file.Name, content: file.Content})
+		}
+	} else {
+		result, err := typescript.Generate(defs, typescript.Options{})
+		if err != nil {
+			return fmt.Errorf("skgo: polytype could not declare the types in %s: %w", set.pkg.Path(), err)
+		}
+		names = result.Names
+		for _, file := range result.Files {
+			files = append(files, projectedFile{name: file.Name, content: file.Content})
 		}
 	}
 

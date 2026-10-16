@@ -18,7 +18,6 @@ import (
 	"runtime/debug"
 	"sort"
 	"strings"
-	"sync"
 )
 
 // Load declares fn as a SvelteKit server load. Write it beside the function, in
@@ -84,7 +83,7 @@ func NewServerLoad(spec LoadSpec) *ServerLoad {
 }
 
 // LoadConfig describes the app whose loads a registry answers. Everything but
-// Origin and Dev comes from the built manifest.
+// Origin comes from the built manifest.
 type LoadConfig struct {
 	// AppDir is kit's appDir; empty means "_app".
 	AppDir string
@@ -102,8 +101,6 @@ type LoadConfig struct {
 	// TrustedOrigins are the extra origins Kit permits for form-shaped page
 	// submissions. They follow the same CSRF rule as endpoint submissions.
 	TrustedOrigins []string
-	// Dev relaxes the checks that only describe a production build.
-	Dev bool
 	// Transport is the app's `transport` hook: the Go half of the encode/decode
 	// pairs `src/hooks.ts` declares. It is optional; without it a custom type
 	// goes out as whatever encoding/json makes of it, which is a plain object
@@ -156,7 +153,6 @@ func (m Manifest) LoadConfig(origin string) LoadConfig {
 // Loads is a registry of server loads and the http.Handler that answers
 // `__data.json`.
 type Loads struct {
-	mu     sync.RWMutex
 	cfg    LoadConfig
 	base   string
 	origin *url.URL
@@ -170,9 +166,6 @@ type Loads struct {
 	// routes is the route table, in manifest order.
 	routes   []*dataRoute
 	matchers map[string]ParamMatcher
-	// devRefresh installs Kit's latest authored route/node graph before a
-	// data request is matched. Nil in production.
-	devRefresh func() error
 }
 
 // dataRoute is one page route: what to match, what to name the captures, and
@@ -283,31 +276,10 @@ func loadRouting(cfg LoadConfig, byModule map[string]*ServerLoad) ([]*ServerLoad
 	return nodes, routes, nil
 }
 
-// updateManifest atomically replaces the routing view in dev. Registrations
-// stay the compiled Go functions; only Kit's mapping from authored routes and
-// node numbers to those registrations changes.
-func (ls *Loads) updateManifest(m Manifest) error {
-	if !ls.cfg.Dev {
-		return errors.New("skgo: refusing to replace a production load manifest")
-	}
-	cfg := ls.cfg
-	cfg.Nodes = m.Nodes
-	cfg.Routes = m.Routes
-	nodes, routes, err := loadRouting(cfg, ls.byModule)
-	if err != nil {
-		return err
-	}
-	ls.mu.Lock()
-	ls.cfg.Nodes, ls.cfg.Routes = cfg.Nodes, cfg.Routes
-	ls.nodes, ls.routes = nodes, routes
-	ls.mu.Unlock()
-	return nil
-}
-
 // checkDrift refuses to build a registry whose loads are not the ones the built
 // frontend declares.
 func (ls *Loads) checkDrift() error {
-	if ls.cfg.Dev || !ls.cfg.manifest {
+	if !ls.cfg.manifest {
 		return nil
 	}
 
@@ -361,8 +333,6 @@ func (ls *Loads) match(routePath string) (*dataRoute, map[string]string, bool) {
 // request never re-runs application matchers as it enters a registry.
 func (ls *Loads) matchRequest(r *http.Request, path string) (*dataRoute, map[string]string, map[string]any, bool) {
 	if state := hookStateOf(r.Context()); state != nil && state.routing {
-		ls.mu.RLock()
-		defer ls.mu.RUnlock()
 		for _, route := range ls.routes {
 			if route.id == state.routeID {
 				return route, state.params, state.converted, true
@@ -374,8 +344,6 @@ func (ls *Loads) matchRequest(r *http.Request, path string) (*dataRoute, map[str
 }
 
 func (ls *Loads) matchValues(routePath string) (*dataRoute, map[string]string, map[string]any, bool) {
-	ls.mu.RLock()
-	defer ls.mu.RUnlock()
 	for _, route := range ls.routes {
 		loc := route.pattern.FindStringSubmatchIndex(routePath)
 		if loc == nil {

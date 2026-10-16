@@ -105,27 +105,9 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 		}
 	}
 
-	var styleTags []string
-	if s.dev != nil {
-		styles, err := s.dev.Styles(indices)
-		if err != nil {
-			return "", nil, documentHeaders{}, err
-		}
-		style := strings.Join(styles, "\n")
-		if style != "" {
-			csp.AddStyle(style)
-			attributes := ` data-sveltekit`
-			if csp.StyleNeedsNonce() {
-				attributes += ` nonce="` + csp.nonce + `"`
-			}
-			styleTags = append(styleTags, "<style"+attributes+">"+style+"</style>")
-		}
-	}
-
 	// Kit's five buckets, in kit's order: http-equiv tags, link tags, whatever
 	// the components put in `<svelte:head>`, style tags, stylesheet links.
 	headItems := append(append([]string{}, linkTags...), result.Head)
-	headItems = append(headItems, styleTags...)
 	headItems = append(headItems, stylesheetLinks...)
 	head := strings.Join(headItems, "\n\t\t")
 

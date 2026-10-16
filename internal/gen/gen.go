@@ -45,8 +45,11 @@ type Config struct {
 	CacheDir    string
 	cache       *generationCache
 	kitMetadata *kitRouteMetadata
-	worker      *Worker
-	sourceView  *generationSourceView
+	// RouteMetadata supplies Kit-owned route discovery and frontend-validated
+	// matcher names. Generation validates the paired Go declarations.
+	RouteMetadata *RouteMetadata
+	sourceView    *generationSourceView
+	analysisView  *goload.View
 	// Packages contains immutable, caller-loaded package snapshots. Incompatible
 	// snapshots are ignored and the current sources are loaded normally.
 	Packages []*PackageSnapshot
@@ -149,7 +152,7 @@ func Run(cfg Config) error {
 			cfg.CacheDir = filepath.Join(root, "skgo", "generate")
 		}
 	}
-	if (cfg.worker != nil || cfg.CacheDir != "" && cfg.CacheDir != "off") && !cfg.ReadOnly && cfg.LoadPackages == nil && len(cfg.Packages) == 0 {
+	if cfg.CacheDir != "" && cfg.CacheDir != "off" && !cfg.ReadOnly && cfg.LoadPackages == nil && len(cfg.Packages) == 0 {
 		return runCached(cfg)
 	}
 	return runUncached(cfg)
@@ -207,6 +210,9 @@ func prepare(cfg Config) (prepared *Prepared, err error) {
 }
 
 func normalizeConfig(cfg Config) (Config, error) {
+	if cfg.RouteMetadata != nil && cfg.kitMetadata == nil {
+		cfg.kitMetadata = cloneRouteMetadata(cfg.RouteMetadata)
+	}
 	if cfg.Logf == nil {
 		cfg.Logf = func(string, ...any) {}
 	}

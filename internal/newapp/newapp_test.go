@@ -203,7 +203,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Starter != "minimal" || !strings.Contains(result.Instructions(), "just dev") {
+	if result.Starter != "minimal" || !strings.Contains(result.Instructions(), "just serve") {
 		t.Fatalf("result = %+v; instructions = %q", result, result.Instructions())
 	}
 	if got := readFile(t, filepath.Join(dir, "skgo.json")); got != "{\"version\":1,\"name\":\"hello-go\"}\n" {
@@ -219,7 +219,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if got := strings.Join(commands[4].Args, " "); got != "--dir web exec playwright install chromium" {
 		t.Fatalf("the mandatory component tests need Chromium; command 5 = %q", got)
 	}
-	if readme := readFile(t, filepath.Join(dir, "README.md")); !strings.Contains(readme, "pnpm --dir web exec playwright install chromium") {
+	if readme := readFile(t, filepath.Join(dir, "README.md")); !strings.Contains(readme, "vp exec playwright install chromium") {
 		t.Errorf("the README does not tell a fresh clone how to get the component tests' browser:\n%s", readme)
 	}
 	if got := commands[0].Args[1]; got != "svelte@1.0.1" {
@@ -280,7 +280,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(justfile), "pnpm storybook --host 127.0.0.1") {
+	if !strings.Contains(string(justfile), "vp run storybook --host 127.0.0.1") {
 		t.Fatalf("generated Storybook instruction does not pass its host option correctly:\n%s", justfile)
 	}
 	pkg, err := readPackage(filepath.Join(dir, "web"))
@@ -290,12 +290,15 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if pkg.Scripts["preview"] != "cd .. && just serve" {
 		t.Fatalf("generated preview starts %q, want the Go production build", pkg.Scripts["preview"])
 	}
-	for _, name := range []string{"dev", "build", "test:unit", "storybook"} {
+	if pkg.Scripts["dev"] != "" {
+		t.Fatalf("generated application still advertises development: %q", pkg.Scripts["dev"])
+	}
+	for _, name := range []string{"build", "test:unit", "storybook"} {
 		if pkg.Scripts[name] == "" {
 			t.Errorf("preview rewrite removed the %s script", name)
 		}
 	}
-	if !strings.Contains(readFile(t, filepath.Join(dir, "README.md")), "pnpm preview") {
+	if !strings.Contains(readFile(t, filepath.Join(dir, "README.md")), "vp run preview") {
 		t.Error("generated README does not explain the Go-backed preview")
 	}
 }
@@ -400,7 +403,7 @@ func TestCreatePassesExplicitChoicesThroughAndAppliesNothingTwice(t *testing.T) 
 		}
 	}
 	readme := readFile(t, filepath.Join(dir, "README.md"))
-	if !strings.Contains(readme, "installed the frontend dependencies") || strings.Contains(strings.ToLower(readme), "chromium") {
+	if !strings.Contains(readme, "installed frontend dependencies") || strings.Contains(strings.ToLower(readme), "chromium") {
 		t.Errorf("a unit-only project's README must describe the install without a browser:\n%s", readme)
 	}
 	if browserInstalls(u.commands) != 0 {
@@ -734,61 +737,6 @@ func TestCreateHandsSvAnIsolatedPackedAddonNotTheCheckout(t *testing.T) {
 	}
 	if got, err := os.ReadFile(filepath.Join(checkout, "sv-addon.js")); err != nil || string(got) != "live checkout bytes" {
 		t.Fatalf("checkout add-on = %q, %v; a write through sv's link reached the checkout", got, err)
-	}
-}
-
-// A clone of a generated project has no node_modules and no adapter build,
-// and the Go dev server reads the adapter manifest at startup. The documented
-// first command has to produce both, once.
-func TestGeneratedDevRecipeBootstrapsAFreshCloneOnce(t *testing.T) {
-	just, err := exec.LookPath("just")
-	if err != nil {
-		t.Fatalf("the generated Justfile cannot be exercised without just: %v", err)
-	}
-	root := t.TempDir()
-	clone := filepath.Join(root, "clone")
-	if err := writeGoFiles(project{Dir: clone, App: "clone", Module: "clone", Origin: defaultOrigin, OriginHostPort: "127.0.0.1:8080", GoVersion: "1.25", BindingsImport: "clone/internal/skgo", SkgoVersion: "v0.4.1"}); err != nil {
-		t.Fatal(err)
-	}
-	log := filepath.Join(root, "log")
-	bin := filepath.Join(root, "bin")
-	vp := "#!/bin/sh\necho \"vp $1\" >> " + log + "\nif [ \"$1\" = build ]; then mkdir -p build && echo '{}' > build/skgo.manifest.json; fi\n"
-	writeFiles(t, bin, map[string]string{
-		// go tool skgo dev stands in for the supervisor, which is what starts vite.
-		"go":   "#!/bin/sh\necho \"go $*\" >> " + log + "\n",
-		"pnpm": "#!/bin/sh\necho \"pnpm $*\" >> " + log + "\nmkdir -p node_modules/.bin\ncat > node_modules/.bin/vp <<'VP'\n" + vp + "VP\nchmod +x node_modules/.bin/vp\n",
-	})
-	for _, name := range []string{"go", "pnpm"} {
-		if err := os.Chmod(filepath.Join(bin, name), 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	dev := func() []string {
-		t.Helper()
-		if err := os.RemoveAll(log); err != nil {
-			t.Fatal(err)
-		}
-		cmd := exec.Command(just, "dev")
-		cmd.Dir = clone
-		cmd.Env = []string{"PATH=" + bin + ":/usr/bin:/bin", "HOME=" + root}
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("just dev: %v\n%s", err, out)
-		}
-		body, err := os.ReadFile(log)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return strings.Split(strings.TrimSpace(string(body)), "\n")
-	}
-
-	supervisor := "go tool skgo dev --listen 127.0.0.1:8080 --origin " + defaultOrigin + " --vite-port 5173"
-	first := dev()
-	if want := []string{"go generate ./...", "pnpm install --frozen-lockfile", "vp build", supervisor}; !slices.Equal(first, want) {
-		t.Fatalf("first start in a fresh clone ran %q, want %q", first, want)
-	}
-	second := dev()
-	if want := []string{"go generate ./...", supervisor}; !slices.Equal(second, want) {
-		t.Fatalf("second start ran %q, want %q: nothing was missing, so nothing is reinstalled or rebuilt, and the one long-running command is the supervisor that rebuilds Go itself", second, want)
 	}
 }
 

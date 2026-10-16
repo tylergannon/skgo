@@ -24,7 +24,7 @@ func handler(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, _, err := example.NewHandler(dist, "", origin)
+	h, err := example.NewHandler(dist, origin)
 	if err != nil {
 		t.Fatalf("assembling the production stack: %v", err)
 	}

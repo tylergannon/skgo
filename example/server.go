@@ -12,9 +12,7 @@ package example
 import (
 	"context"
 	"io/fs"
-	"log"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/tylergannon/skgo"
@@ -51,9 +49,7 @@ func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 	return extra
 }
 
-// NewHandler builds the app's server over the build in dist. With a non-empty
-// proxy it forwards pages to a running `vp dev` server; otherwise it serves the
-// embedded build.
+// NewHandler builds the app's server over the embedded production build in dist.
 //
 // The order is kit's own dispatch order, turned inside out into middleware.
 // Handle is outermost because kit runs `handle` before it dispatches to
@@ -62,27 +58,27 @@ func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 // `__data.json` must never reach the static handler, which would answer it
 // with the boot document. Then remote functions, which live under the app
 // directory and are not routes at all. Then the server routes, which own
-// every path kit compiled a `+server.ts` for — in dev too, where kit's own
-// server would otherwise run the generated stub and throw. Pages are last,
+// every path kit compiled a `+server.ts` for. Pages are last,
 // because in kit they are what answers when nothing else did.
-func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) {
-	return NewHandlerSized(dist, proxy, origin, 0)
+func NewHandler(dist fs.FS, origin string) (http.Handler, error) {
+	return newHandler(dist, origin, 0, nil)
+}
+
+// NewDevelopmentHandler uses the same application stack with Kit-owned rendering.
+func NewDevelopmentHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) (http.Handler, error) {
+	return newHandler(dist, origin, 0, development)
 }
 
 // NewHandlerSized is NewHandler with the number of page renders that may run
 // at once. Zero is the renderer's default, one per CPU.
-func NewHandlerSized(dist fs.FS, proxy, origin string, runtimes int) (http.Handler, string, error) {
-	// The manifest is read in both modes: it is where appDir and base come
-	// from, and those decide the URL prefix remote calls arrive on.
+func NewHandlerSized(dist fs.FS, origin string, runtimes int) (http.Handler, error) {
+	return newHandler(dist, origin, runtimes, nil)
+}
+func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.NativeDevelopment) (http.Handler, error) {
+	// The manifest defines the URL prefix remote calls arrive on.
 	manifest, err := skgo.ReadManifest(dist)
 	if err != nil {
-		return nil, "", err
-	}
-	if proxy != "" {
-		manifest, err = skgo.ReadDevManifest(dist, proxy)
-		if err != nil {
-			return nil, "", err
-		}
+		return nil, err
 	}
 
 	remoteCfg := manifest.RemoteConfig(origin)
@@ -94,11 +90,9 @@ func NewHandlerSized(dist fs.FS, proxy, origin string, runtimes int) (http.Handl
 	handleCfg.Matchers = generated.Matchers()
 	handleCfg.Origin = origin
 
-	mode := "prod"
 	var pages http.Handler
 	// build makes the page handler once both registries exist: the renderer
 	// needs the loads and the remote functions, and they need the manifest.
-	// Both modes render, so both go through it.
 	var build func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
 	// Declared here, ahead of the closure below that reaches into it: the
 	// closure runs after NewEndpoints has filled this in, but a closure
@@ -113,64 +107,23 @@ func NewHandlerSized(dist fs.FS, proxy, origin string, runtimes int) (http.Handl
 	internal := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.ServeHTTP(w, r) })
 	actions, err := skgo.NewActions(generated.Actions()...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	if proxy != "" {
-		target, err := url.Parse(proxy)
+	build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
+		// A render-time `event.fetch` of the app's own routes is answered
+		// by the whole stack, pages included; see `app`.
+		ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+			Runtimes:    runtimes,
+			Fetch:       internal,
+			HandleFetch: handleFetch,
+			Actions:     actions,
+		})
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
-		// In dev the client is served by vite, not by this build, so its
-		// baked version differs from the manifest's — sending
-		// x-sveltekit-version would make it reload in a loop. Kit skips the
-		// remote CSRF check in dev too.
-		remoteCfg = manifest.RemoteConfig("")
-		remoteCfg.Version = ""
-		remoteCfg.Dev = true
-		remoteCfg.CookieOrigin = origin
-		loadCfg.Version = ""
-		loadCfg.Dev = true
-		endpointCfg.Dev = true
-		handleCfg.Version = ""
-		handleCfg.Dev = true
-		mode = "dev"
-		// Go renders the document in dev too. `vp dev` never runs an adapter,
-		// so there is no bundle here; the engine pulls one module at a time
-		// out of the same `goja` environment the build compiles, which the
-		// adapter also declares in the dev server. Everything that is not a
-		// document — modules, their CSS, the files in static/, the HMR socket —
-		// still goes through to vite, so the browser only ever talks to Go.
-		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
-			ssr, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
-				Runtimes:    runtimes,
-				Fetch:       internal,
-				HandleFetch: handleFetch,
-				Actions:     actions,
-			})
-			if err != nil {
-				return nil, err
-			}
-			handleCfg.ErrorTemplate = ssr.ErrorTemplate()
-			endpoints.SetErrorTemplate(ssr.ErrorTemplate())
-			return skgo.NewDevPages(target, manifest, ssr, log.Printf, endpoints), nil
-		}
-	} else {
-		build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
-			// A render-time `event.fetch` of the app's own routes is answered
-			// by the whole stack, pages included; see `app`.
-			ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-				Runtimes:    runtimes,
-				Fetch:       internal,
-				HandleFetch: handleFetch,
-				Actions:     actions,
-			})
-			if err != nil {
-				return nil, err
-			}
-			handleCfg.ErrorTemplate = ssr.ErrorTemplate()
-			endpoints.SetErrorTemplate(ssr.ErrorTemplate())
-			return skgo.NewStaticHandler(dist, skgo.WithSSR(ssr))
-		}
+		handleCfg.ErrorTemplate = ssr.ErrorTemplate()
+		endpoints.SetErrorTemplate(ssr.ErrorTemplate())
+		return development.NewStaticHandler(dist, skgo.WithSSR(ssr))
 	}
 
 	// The `transport` hook, declared in web/src/hooks.go beside the
@@ -178,10 +131,6 @@ func NewHandlerSized(dist fs.FS, proxy, origin string, runtimes int) (http.Handl
 	// custom type reaches the browser through a remote function and through a
 	// server load alike.
 	//
-	// After the branch above, not before it: the dev arm replaces remoteCfg
-	// wholesale with a fresh manifest.RemoteConfig, so anything set earlier is
-	// dropped. Setting it above cost a run — the suite was green in prod and
-	// the pricing page threw `price.format is not a function` in dev.
 	remoteCfg.Transport = generated.Transport()
 	loadCfg.Transport = generated.Transport()
 	loadCfg.HandleError = HandleError
@@ -190,18 +139,18 @@ func NewHandlerSized(dist fs.FS, proxy, origin string, runtimes int) (http.Handl
 
 	remotes, err := skgo.NewRemotes(remoteCfg, generated.Remotes()...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	loads, err := skgo.NewLoads(loadCfg, generated.Loads()...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	endpoints, err = skgo.NewEndpoints(endpointCfg, generated.Endpoints()...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	if pages, err = build(loads, remotes); err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	handleCfg.Loads = loads
 	handleCfg.Static = skgo.ServedAsFile(pages)
@@ -221,7 +170,7 @@ func NewHandlerSized(dist fs.FS, proxy, origin string, runtimes int) (http.Handl
 		Handler:     internal,
 		HandleFetch: handleFetch,
 		Prerendered: manifest.Prerendered,
-	}.Intercept(app), mode, nil
+	}.Intercept(app), nil
 }
 
 // The example hook rewrites an API alias query before dispatch and marks the

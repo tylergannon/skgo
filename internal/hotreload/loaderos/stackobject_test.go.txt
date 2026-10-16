@@ -1,0 +1,42 @@
+package stackobject
+
+import (
+	"testing"
+	"unsafe"
+
+	"github.com/pkujhd/goloader/obj"
+	"github.com/pkujhd/goloader/objabi/dataindex"
+)
+
+var fixtureStackObjects struct {
+	count  uintptr
+	record stackObjectRecord
+}
+
+func TestAbsentAndZeroStackObjectMetadata(t *testing.T) {
+	const name = "fixture"
+	data := make([]uintptr, dataindex.FUNCDATA_StackObjects+1)
+	for i := range data {
+		data[i] = ^uintptr(0)
+	}
+	symbols := map[string]*obj.Sym{name: {Func: &obj.Func{FuncData: data}}}
+	// An absent slot must never be dereferenced. Adding this deliberately
+	// unusable base to the sentinel wraps to nil in the broken implementation.
+	if err := AddStackObject(name, symbols, nil, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	// Offset zero is real metadata, not the missing-slot sentinel. Supply one
+	// independent record and require its mask offset to be patched to literal 73.
+	fixtureStackObjects.count = 1
+	fixtureStackObjects.record = stackObjectRecord{}
+	data[dataindex.FUNCDATA_StackObjects] = 0
+	symbols[name+".stkobj"] = &obj.Sym{Reloc: []obj.Reloc{{SymName: "fixture-mask"}}}
+	base := uintptr(unsafe.Pointer(&fixtureStackObjects))
+	if err := AddStackObject(name, symbols, map[string]uintptr{"fixture-mask": base + 73}, base); err != nil {
+		t.Fatal(err)
+	}
+	if fixtureStackObjects.record.gcdataoff != 73 {
+		t.Fatalf("zero-offset stack metadata was skipped: mask offset %d, want 73", fixtureStackObjects.record.gcdataoff)
+	}
+}

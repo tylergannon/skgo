@@ -21,6 +21,10 @@ import (
 // Manifest is the build description written by the skgo SvelteKit adapter to
 // `skgo.manifest.json`. Only the fields the server needs are modelled.
 type Manifest struct {
+	// Development identifies a Vite development snapshot. Kit executes
+	// prerender remotes on demand in development instead of reading artifacts.
+	Development bool `json:"development,omitempty"`
+
 	// Skgo is the version of skgo whose adapter wrote this build, as the
 	// adapter stamped it: a released version, or "devel" for an adapter
 	// written by a skgo built from a checkout.
@@ -332,6 +336,7 @@ func WithSSR(s *SSR) StaticOption {
 // a path matching a route from the manifest; and the boot document with status
 // 404 for anything else, so kit's client router can render `+error.svelte`.
 func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error) {
+
 	document, err := fs.ReadFile(build, "index.html")
 	if err != nil {
 		return nil, fmt.Errorf("skgo: reading index.html from the build: %w", err)
@@ -1096,15 +1101,12 @@ func contentTypeFor(name string) string {
 
 // ServedAsFile returns the predicate HandleConfig.Static wants for pages: a
 // request the handler answers from a file of the build (a client asset, a
-// prerendered page) or, under `vite dev`, hands to vite as a module or static
-// file. Kit's adapters answer those before `handle` runs, so the hook must
+// prerendered page). Kit's adapters answer those before `handle` runs, so the hook must
 // not see them. It returns nil for a handler that is neither.
 func ServedAsFile(pages http.Handler) func(*http.Request) bool {
 	switch h := pages.(type) {
 	case *staticHandler:
 		return h.servesFile
-	case *devPages:
-		return h.servedByVite
 	}
 	return nil
 }

@@ -180,18 +180,14 @@ func stage2GoTest(t *testing.T, app, pattern string) {
 
 func TestStage2LayoutMetadataAcrossLanguageSwitches(t *testing.T) {
 	app, cfg := stage2Fixture(t)
-	root, err := repoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Use the actual fixture the dev browser scenario installs.
-	for _, name := range []string{"page.server.go", "+page.svelte"} {
-		source, err := os.ReadFile(filepath.Join(root, "example/e2e/fixtures/go-dev-added", name+".txt"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		writeSharedFixture(t, app, "web/src/routes/go-dev-added/"+name, string(source))
-	}
+	// This production generation fixture is independent of browser source-edit tests.
+	writeSharedFixture(t, app, "web/src/routes/added-route/page.server.go", `package addedroute
+import "github.com/tylergannon/skgo"
+type PageData struct { Revision string `+"`json:\"revision\"`"+` }
+func pageLoad(event PageRequestEvent) (PageData, error) { return PageData{Revision: "New Go route revision one"}, nil }
+var _ = skgo.Load(pageLoad)
+`)
+	writeSharedFixture(t, app, "web/src/routes/added-route/+page.svelte", `<script lang="ts">let { data } = $props();</script><h1>Added Go route</h1><p>{data.revision}</p>`)
 	initial := start(func() error { return Run(cfg) })
 	t.Parallel()
 	if err := initial(); err != nil {
@@ -228,9 +224,9 @@ func TestStage2LayoutMetadataAcrossLanguageSwitches(t *testing.T) {
 		writeSharedFixture(t, app, "generated/added_route_test.go", `package generated
 import("net/http/httptest";"strings";"testing";"github.com/tylergannon/skgo")
 func TestAddedRoute(t *testing.T){
- cfg:=skgo.LoadConfig{Origin:"http://example.test",Nodes:[]string{"src/routes/go-dev-added/+page.server`+language.ext()+`"},Routes:[]skgo.ManifestRoute{{ID:"/go-dev-added",Pattern:"^/go-dev-added/?$",Page:&skgo.ManifestPage{Leaf:0}}}}
+ cfg:=skgo.LoadConfig{Origin:"http://example.test",Nodes:[]string{"src/routes/added-route/+page.server`+language.ext()+`"},Routes:[]skgo.ManifestRoute{{ID:"/added-route",Pattern:"^/added-route/?$",Page:&skgo.ManifestPage{Leaf:0}}}}
  h,err:=skgo.NewLoads(cfg,Loads()...);if err!=nil{t.Fatal(err)}
- rec:=httptest.NewRecorder();h.ServeHTTP(rec,httptest.NewRequest("GET","http://example.test/go-dev-added/__data.json",nil))
+ rec:=httptest.NewRecorder();h.ServeHTTP(rec,httptest.NewRequest("GET","http://example.test/added-route/__data.json",nil))
  if rec.Code!=200 || !strings.Contains(rec.Body.String(),"New Go route revision one"){t.Fatalf("added route: %d %s",rec.Code,rec.Body.String())}
 }
 `)

@@ -3,27 +3,26 @@ package app
 
 import (
 	"io/fs"
-	"log"
 	"net/http"
-	"net/url"
 
 	"github.com/tylergannon/skgo"
 	generated "{{.BindingsImport}}"
 )
 
-// NewHandler builds the same Go-owned application stack in development and
-// production. VitePlus supplies modules and assets in development; Go still
-// owns the socket, endpoints, remote functions, loads, and page rendering.
-func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) {
+// NewHandler builds the Go-owned application stack over the embedded build.
+func NewHandler(dist fs.FS, origin string) (http.Handler, error) {
+ return newHandler(dist,origin,nil)
+}
+
+// NewDevelopmentHandler keeps application behavior in Go while Kit renders pages.
+func NewDevelopmentHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) (http.Handler,error) {
+ return newHandler(dist,origin,development)
+}
+
+func newHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) (http.Handler,error) {
 	manifest, err := skgo.ReadManifest(dist)
 	if err != nil {
-		return nil, "", err
-	}
-	if proxy != "" {
-		manifest, err = skgo.ReadDevManifest(dist, proxy)
-		if err != nil {
-			return nil, "", err
-		}
+		return nil, err
 	}
 
 	remoteConfig := manifest.RemoteConfig(origin)
@@ -36,17 +35,15 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
  handleConfig.Matchers = generated.Matchers()
  var bound http.Handler
  internal := http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){ bound.ServeHTTP(w,r) })
- mode := "production"
 
 	var endpoints *skgo.Endpoints
 	actions, err := skgo.NewActions(generated.Actions()...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	var pages func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
-	if proxy == "" {
 		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
-			renderer, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+			renderer, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
 				Fetch: internal,
 				Actions: actions,
 			})
@@ -55,55 +52,27 @@ func NewHandler(dist fs.FS, proxy, origin string) (http.Handler, string, error) 
 			}
 			endpoints.SetErrorTemplate(renderer.ErrorTemplate())
  handleConfig.ErrorTemplate = renderer.ErrorTemplate()
-			return skgo.NewStaticHandler(dist, skgo.WithSSR(renderer))
+			return development.NewStaticHandler(dist, skgo.WithSSR(renderer))
 		}
-	} else {
-		mode = "development"
-		target, err := url.Parse(proxy)
-		if err != nil {
-			return nil, "", err
-		}
-		remoteConfig = manifest.RemoteConfig("")
-		remoteConfig.Version = ""
-		remoteConfig.Dev = true
-		remoteConfig.CookieOrigin = origin
-		loadConfig.Version = ""
-		loadConfig.Dev = true
-		endpointConfig.Dev = true
- handleConfig.Dev = true
- handleConfig.Version = ""
-		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
-			renderer, err := skgo.NewDevSSR(dist, manifest, loads, remotes, proxy, skgo.SSROptions{
-				Fetch: internal,
-				Actions: actions,
-			})
-			if err != nil {
-				return nil, err
-			}
-			endpoints.SetErrorTemplate(renderer.ErrorTemplate())
- handleConfig.ErrorTemplate = renderer.ErrorTemplate()
-			return skgo.NewDevPages(target, manifest, renderer, log.Printf, endpoints), nil
-		}
-	}
 
 	remotes, err := skgo.NewRemotes(remoteConfig, generated.Remotes()...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	loads, err := skgo.NewLoads(loadConfig, generated.Loads()...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	endpoints, err = skgo.NewEndpoints(endpointConfig, generated.Endpoints()...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	pageHandler, err := pages(loads, remotes)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	handleConfig.Loads = loads
  handleConfig.Static = skgo.ServedAsFile(pageHandler)
  bound = generated.RequestBoundary(handleConfig,loads.Intercept(remotes.Intercept(endpoints.Intercept(pageHandler))))
- return skgo.FetchConfig{Origin:origin,Base:manifest.Base,Handler:internal,Prerendered:manifest.Prerendered}.Intercept(bound), mode, nil
+ return skgo.FetchConfig{Origin:origin,Base:manifest.Base,Handler:internal,Prerendered:manifest.Prerendered}.Intercept(bound), nil
 }
