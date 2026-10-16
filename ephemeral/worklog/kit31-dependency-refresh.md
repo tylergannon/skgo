@@ -16,3 +16,9 @@
 - Adapter source edits invalidate the example build fingerprint. Run production
   handler qualification after the final adapter build, not alongside edits to
   its embedded JavaScript.
+
+- Native import pruning guessed default package names from import-path tails.
+  The docs site's real `devalue.Date` pages exposed the bug: `/v5` was mistaken
+  for the package name and the live lowering removed the required import, while
+  ordinary production compiled. Resolve names from checked Go packages in all
+  lowering paths; do not alias or weaken consumer types to hide this error.
