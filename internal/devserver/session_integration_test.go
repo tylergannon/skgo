@@ -109,7 +109,7 @@ func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) {
 		write("generated/config.go", "package generated\n//go:generate go tool skgo generate --web ../web --locals-package example.com/sessionfixture/locals --locals-type Locals\n")
 		write("web/src/routes/orders/server.go", sessionRoute("4101", 7))
 		write("server.go", fmt.Sprintf(`package sessionfixture
-import("io/fs";"net/http";"os";"strings";appenv "example.com/sessionfixture/web/src";"github.com/tylergannon/skgo"; generated "example.com/sessionfixture/generated")
+import("io/fs";"net/http";"os";"strconv";"strings";appenv "example.com/sessionfixture/web/src";"github.com/tylergannon/skgo"; generated "example.com/sessionfixture/generated")
 func NewHandler(dist fs.FS,origin string)(http.Handler,error){return newHandler(dist,origin,nil)}
 func NewDevelopmentHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Handler,error){return newHandler(dist,origin,native)}
 func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Handler,error){
@@ -125,7 +125,7 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
  endpoints,err:=skgo.NewEndpoints(manifest.EndpointConfig(origin),generated.Endpoints()...);if err!=nil{return nil,err}
  cfg:=manifest.HandleConfig();cfg.Origin=origin;cfg.Loads=loads
  app:=generated.RequestBoundary(cfg,loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
- return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);w.Header().Set("X-Environment",envValues.Receipt);w.Header().Set("X-App-Dir",manifest.AppDir);w.Header().Set("X-Trusted-Origins",strings.Join(manifest.TrustedOrigins,","));app.ServeHTTP(w,r)}),nil
+ return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Go-Pid",strconv.Itoa(os.Getpid()));w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);w.Header().Set("X-Environment",envValues.Receipt);w.Header().Set("X-App-Dir",manifest.AppDir);w.Header().Set("X-Trusted-Origins",strings.Join(manifest.TrustedOrigins,","));app.ServeHTTP(w,r)}),nil
 }
 `, label))
 		ln, e := net.Listen("tcp", "127.0.0.1:0")
@@ -305,6 +305,72 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 		t.Fatalf("repair of compatible body replaced host\n%s", alpha.log.String())
 	}
 
+	// A declaration change can require a full rebuild before type checking.
+	// Give the live application state that a restart cannot recreate, then
+	// require every request through the failed build to retain that state/PID.
+	stateResponse, err := http.Get(alpha.origin + "/orders?initial=73")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stateBody, _ := io.ReadAll(stateResponse.Body)
+	stateResponse.Body.Close()
+	if stateResponse.StatusCode != 200 || string(stateBody) != "literal-8508:73" {
+		t.Fatalf("set live state: status=%d body=%s", stateResponse.StatusCode, stateBody)
+	}
+	healthyPID := stateResponse.Header.Get("X-Go-Pid")
+	if healthyPID != strconv.Itoa(beforeError) {
+		t.Fatalf("live Go PID=%q, want %d", healthyPID, beforeError)
+	}
+	logStart := len(alpha.log.String())
+	applicationSource := filepath.Join(alpha.app, "server.go")
+	healthySource, err := os.ReadFile(applicationSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Route packages are type-checked during generation. An ordinary helper
+	// in the application constructor package reaches full host compilation.
+	if err := os.WriteFile(applicationSource, append(healthySource, []byte("func brokenDeclaration() int { return \"type-invalid\" }\n")...), 0644); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(30 * time.Second)
+	diagnostic := false
+	var observedUntil time.Time
+	for time.Now().Before(deadline) {
+		res, err := http.Get(alpha.origin + "/orders")
+		if err != nil {
+			t.Fatalf("failed structural edit interrupted healthy application: %v\n%s", err, alpha.log.String())
+		}
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != 200 || string(body) != "literal-8508:73" || res.Header.Get("X-Go-Pid") != healthyPID {
+			t.Fatalf("failed structural edit lost healthy application: status=%d body=%s PID=%s, want 200 literal-8508:73 PID=%s\n%s", res.StatusCode, body, res.Header.Get("X-Go-Pid"), healthyPID, alpha.log.String())
+		}
+		if !diagnostic && strings.Contains(alpha.log.String()[logStart:], `cannot use "type-invalid"`) {
+			diagnostic = true
+			observedUntil = time.Now().Add(time.Second)
+		}
+		if diagnostic && time.Now().After(observedUntil) {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if !diagnostic || !strings.Contains(alpha.log.String()[logStart:], "rebuilding revision") {
+		t.Fatalf("structural edit did not reach rebuild/type diagnostic\n%s", alpha.log.String())
+	}
+	// Repairing the declaration must replace the host and restore its initial
+	// state, proving the failed candidate did not wedge subsequent rebuilds.
+	if err := os.WriteFile(applicationSource, append(healthySource, []byte("func brokenDeclaration() int { return 10 }\n")...), 0644); err != nil {
+		t.Fatal(err)
+	}
+	check(alpha, "ALPHA", "literal-8508:9")
+	deadline = time.Now().Add(10 * time.Second)
+	for alpha.log.lastPID() == beforeError && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if alpha.log.lastPID() == beforeError {
+		t.Fatalf("valid structural repair did not replace host\n%s", alpha.log.String())
+	}
+
 	// Recovering Vite keeps the Go process and stable public origin.
 	vitePID := alpha.log.vitePID()
 	if vitePID == 0 {
@@ -389,9 +455,9 @@ func sessionConfig(base, appDir, trusted string) string {
 
 func sessionRoute(value string, initial int) string {
 	return fmt.Sprintf(`package orders
-import("fmt";"net/http";"github.com/tylergannon/skgo")
+import("fmt";"net/http";"strconv";"github.com/tylergannon/skgo")
 var initial=%d
-func get(w http.ResponseWriter,r *http.Request){fmt.Fprintf(w,"literal-%s:%%d",initial)}
+func get(w http.ResponseWriter,r *http.Request){if value:=r.URL.Query().Get("initial");value!=""{initial,_=strconv.Atoi(value)};fmt.Fprintf(w,"literal-%s:%%d",initial)}
 var _=skgo.GET(get)
 `, initial, value)
 }
