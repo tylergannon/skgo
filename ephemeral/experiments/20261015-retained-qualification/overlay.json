@@ -1,7 +1,0 @@
-{
-  "Replace": {
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/compile.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-qualification/compile.go.txt",
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/browser_timing_experiment_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-qualification/loader_test.go.txt",
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/contract_test.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-retained-qualification/contract_test.go.txt"
-  }
-}

@@ -1,1 +1,0 @@
-export { default as component } from "../../../../../../../../../../../../../Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-overlap-answer/runtime/app/web/src/routes/optional/+page.svelte";

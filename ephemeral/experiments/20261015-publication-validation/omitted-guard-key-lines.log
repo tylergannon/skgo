@@ -1,9 +1,0 @@
-Private overlay: `omitted-commit-guard-overlay.json` replaces only `ProjectBuild.Commit`'s revision-currentness comparison with the original closed-project check.
-
-=== RUN   TestRetainedNativePublication
-IMMUTABLE_MULTIFILE_CAPTURE old native object contains old4101, not current5202, despite newer physical+observed source
-obsolete native install admitted err=<nil> callback=true
---- FAIL: TestRetainedNativePublication (9.68s)
-FAIL
-FAIL	github.com/tylergannon/skgo/internal/hotreload	9.938s
-

@@ -1,7 +1,0 @@
-Expected ALPHA public, deliberately misrouted to BETA backend
-HTTP/1.1 200 OK
-x-application-origin: http://127.0.0.1:56421
-
-Expected BETA public, unchanged
-HTTP/1.1 200 OK
-x-application-origin: http://127.0.0.1:56421

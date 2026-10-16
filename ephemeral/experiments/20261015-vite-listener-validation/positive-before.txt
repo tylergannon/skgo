@@ -1,8 +1,0 @@
-=== RUN   TestActiveInstanceIdentityAndValue
-=== RUN   TestActiveInstanceIdentityAndValue/ALPHA
-=== RUN   TestActiveInstanceIdentityAndValue/BETA
---- PASS: TestActiveInstanceIdentityAndValue (0.01s)
-    --- PASS: TestActiveInstanceIdentityAndValue/ALPHA (0.00s)
-    --- PASS: TestActiveInstanceIdentityAndValue/BETA (0.00s)
-PASS
-ok  	example.com/skgo-listener-httpcheck	0.240s

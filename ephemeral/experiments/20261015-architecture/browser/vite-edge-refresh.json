@@ -1,6 +1,0 @@
-{
-  "time": "2026-10-15T19:11:48.143Z",
-  "url": "http://127.0.0.1:56311/",
-  "dom": "- main:\n  - heading \"COOPERATION_FRONTEND_TWO\" [level=1]\n  - paragraph: \"Go load: 1200\"\n  - paragraph: \"Hydrated: true\"\n  - text: Draft\n  - textbox \"Draft\": VITE_EDGE_KEEP_52\n  - button \"Count 1\" [active]\n  - button \"Go value 2400\"\n  - button \"Break Go load\"\n  - button \"Repair Go load\"\n  - button \"Edit Svelte\"\n  - paragraph: \"Update ms: 0.00\"\n  - paragraph",
-  "logs": []
-}

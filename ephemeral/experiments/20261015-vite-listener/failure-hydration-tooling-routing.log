@@ -1,6 +1,0 @@
-=== RUN   TestViteListenerIntegration
-    browser_experiment_test.go:223: HOST instance=ALPHA pid=17616 discovered=http://127.0.0.1:62399 public=http://127.0.0.1:56411
-    browser_experiment_test.go:324: READY instance=ALPHA public=http://127.0.0.1:56411/orders source=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/ALPHA/source.remote.go page=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/ALPHA/src/routes/orders/+page.svelte restart=touch /Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/ALPHA/restart
-    browser_experiment_test.go:223: HOST instance=BETA pid=17627 discovered=http://127.0.0.1:62408 public=http://127.0.0.1:56421
-    browser_experiment_test.go:324: READY instance=BETA public=http://127.0.0.1:56421/orders source=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/BETA/source.remote.go page=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/BETA/src/routes/orders/+page.svelte restart=touch /Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/BETA/restart
-    browser_experiment_test.go:326: BOTH_READY; native source saves are watched automatically; no value control endpoint exists

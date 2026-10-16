@@ -1,6 +1,0 @@
-=== RUN   TestOverlapAnswer
-    session_integration_test.go:62: skgo: revision 1: skgo: locals package github.com/tylergannon/skgo/example/internal/app must be owned by the application module
---- FAIL: TestOverlapAnswer (1.15s)
-FAIL
-FAIL	github.com/tylergannon/skgo/internal/devserver	1.369s
-FAIL

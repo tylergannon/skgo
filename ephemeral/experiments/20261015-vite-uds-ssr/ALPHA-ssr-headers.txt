@@ -1,1 +1,0 @@
-map[Content-Length:[1463] Content-Type:[text/html] Date:[Thu, 15 Oct 2026 23:05:14 GMT] Etag:["1d75kvg"] Vary:[Origin] X-Sveltekit-Page:[true]]

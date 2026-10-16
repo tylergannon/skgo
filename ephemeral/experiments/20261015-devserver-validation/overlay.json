@@ -1,5 +1,0 @@
-{
-  "Replace": {
-    "/Users/tyler/.codex/worktrees/5f35/skgo/internal/devserver/router.go": "/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-devserver-validation/router_mutant.go.txt"
-  }
-}

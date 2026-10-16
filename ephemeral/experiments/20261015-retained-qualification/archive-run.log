@@ -1,6 +1,0 @@
-=== RUN   TestRetainedActualArchiveMismatch
-    browser_timing_experiment_test.go:201: WHOLE retained applicationRoots=8 typedRoots=8 graphPackages=265 affected=4 stats={MetadataLoads:2 PackageChecks:8 PackageHits:10 FileReads:0 FileParses:13 ExportImports:18 FallbackLoads:0 UniverseEvictions:0 MetadataHits:0}
-    contract_test.go:247: ACTUAL_ARCHIVE_CHANGED native compile succeeded; actual HostView rejected=native host/object profile mismatch: object={Version:go1.27.2 OS:darwin Arch:arm64 Identity:9c8143691dbad1fb42864f9a2a6fc25b87c379de1ceeea805ba27c7f23e329c7 Package:example.com/nativefixture/generated/links/onzggl3sn52xizltf5xxezdfojzq SHA256:49414d7a994143bdb88a127d5e79b32f32096947450698a20c14b85ceca52aef Dependencies:dfae4ddc856a917ad1aacc1b7cdcebdcaa41228bfd085311503e5383f1102cdc CompilerProfile:go1.27-native-v1} host=go1.27.2 darwin/arm64; literalHTTP=3000 pid=63982
---- PASS: TestRetainedActualArchiveMismatch (7.74s)
-PASS
-ok  	github.com/tylergannon/skgo/internal/hotreload	8.065s

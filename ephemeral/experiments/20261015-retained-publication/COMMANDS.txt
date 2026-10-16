@@ -1,3 +1,0 @@
-# Native publication/immutable-capture, actual Vite websocket events, captured HostView rebuild and resumed fast edits.
-GOWORK=off go test -mod=mod -modfile ephemeral/experiments/20261015-retained-publication/experiment.mod -overlay ephemeral/experiments/20261015-retained-publication/overlay.json -tags skgo_retained_qualification ./internal/hotreload -run '^TestRetainedNativePublication$' -count=1 -v -timeout 15m
-# Independent load-bearing mutation: in a separate overlay of internal/gen/retained.go, remove only ProjectBuild.Commit's p.current != b.snapshot currentness rejection. Keep the existing assertions. The old native-install callback must run and the ErrObsolete/callback assertion must fail. Do not modify production source.

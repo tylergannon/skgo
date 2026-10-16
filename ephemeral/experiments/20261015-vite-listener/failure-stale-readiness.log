@@ -1,6 +1,0 @@
-=== RUN   TestViteListenerRecovery
-    browser_experiment_test.go:248: EOF
---- FAIL: TestViteListenerRecovery (4.02s)
-FAIL
-FAIL	github.com/tylergannon/skgo/internal/hotreload	4.337s
-FAIL

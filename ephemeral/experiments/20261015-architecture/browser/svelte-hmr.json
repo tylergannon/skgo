@@ -1,5 +1,0 @@
-{
-  "time": "2026-10-15T19:10:22.296Z",
-  "dom": "- main:\n  - heading \"COOPERATION_FRONTEND_TWO\" [level=1]\n  - paragraph: \"Go load: 2400\"\n  - paragraph: \"Hydrated: true\"\n  - text: Draft\n  - textbox \"Draft\"\n  - button \"Count 0\"\n  - button \"Go value 2400\"\n  - button \"Break Go load\"\n  - button \"Repair Go load\"\n  - button \"Edit Svelte\"\n  - paragraph: \"Update ms: 0.00\"\n  - paragraph",
-  "logs": []
-}

@@ -1,8 +1,0 @@
-package main
-import("fmt";"os";"path/filepath";"io";"net/http";"strings";"time")
-func main(){root,_:=filepath.Abs("ephemeral/experiments/20261015-vite-listener/runtime/ALPHA");path:=filepath.Join(root,"src/routes/listener-added/+page.svelte");os.MkdirAll(filepath.Dir(path),0755);os.WriteFile(path,[]byte(`<h1>STRUCTURAL_LITERAL_8847</h1><a href="/orders">Orders</a>`),0644);defer os.RemoveAll(filepath.Dir(path))
-client:=http.Client{Timeout:20*time.Second};fetch:=func(path string)(int,string){r,e:=client.Get("http://127.0.0.1:56411"+path);if e!=nil{panic(e)};defer r.Body.Close();b,_:=io.ReadAll(r.Body);return r.StatusCode,string(b)}
-metadataPath:="/.svelte-kit/generated/dev/client/app.js";var metadata string;for end:=time.Now().Add(10*time.Second);;{_,metadata=fetch(metadataPath);if strings.Contains(metadata,"listener-added"){break};if time.Now().After(end){panic("Kit generated client metadata did not acquire new route")};time.Sleep(100*time.Millisecond)}
-os.WriteFile(filepath.Join(root,"../structural-client-metadata.js"),[]byte(metadata),0644);status,body:=fetch("/listener-added");fmt.Printf("Kit-client-metadata-add=true; public-new-route-status=%d body=%q\n",status,body);if strings.Contains(body,"STRUCTURAL_LITERAL_8847"){panic("unexpected: Go was dynamically updated; investigate changed premise")}
-os.RemoveAll(filepath.Dir(path));for end:=time.Now().Add(10*time.Second);;{_,metadata=fetch(metadataPath);if !strings.Contains(metadata,"listener-added"){break};if time.Now().After(end){panic("Kit client metadata retained removed route")};time.Sleep(100*time.Millisecond)};status,body=fetch("/listener-added");fmt.Printf("Kit-client-metadata-remove=true; public-removed-route-status=%d body=%q\n",status,body)
-}

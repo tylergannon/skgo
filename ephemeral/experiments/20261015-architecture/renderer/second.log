@@ -1,8 +1,0 @@
-=== RUN   TestRendererArchitecture
-    renderer_test.go:161: /full wall=1.166629875s vite={"milliseconds":1166.119875}
-    renderer_test.go:162: bundle.js bytes=123897 pool-init=6.009458ms render=228.708µs body=<!--[--><!--[--><!--[0--><!--[--><main><!--[--><!--[-1--><!--[--><h1>Component A: Dependency A</h1><!--]--><!--]--><!--]--><!----></main><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
-    renderer_test.go:163: /runtime wall=112.554959ms vite={"milliseconds":112.025666}
-    renderer_test.go:194: actual Kit through ModuleRunner rendered in 405.683708ms: <!--[--><!--[--><!--[0--><!--[--><main><!--[--><!--[-1--><!--[--><h1>Component A: Dependency A</h1><!--]--><!--]--><!--]--><!----></main><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
---- PASS: TestRendererArchitecture (2.42s)
-PASS
-ok  	github.com/tylergannon/skgo/ephemeral/experiments/20261015-architecture/renderer	2.585s

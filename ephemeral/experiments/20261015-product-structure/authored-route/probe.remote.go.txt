@@ -1,9 +1,0 @@
-package probe
-
-import (
- "context"
- "github.com/tylergannon/skgo"
-)
-
-func readProbe(ctx context.Context) (int, error) { return 7719, nil }
-var _ = skgo.Query(readProbe)

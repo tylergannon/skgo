@@ -1,5 +1,0 @@
-go test -overlay ephemeral/experiments/20261015-architecture/validation/omitted-install-overlay.json -tags 'skgo_architecture_experiment skgo_browser_experiment' ./internal/hotreload -run '^TestArchitectureGoPreparation$' -count=1 -timeout=6m -v
-go test -overlay ephemeral/experiments/20261015-architecture/validation/stale-types-overlay.json -tags 'skgo_architecture_experiment skgo_browser_experiment' ./internal/hotreload -run '^TestArchitectureGoPreparation$' -count=1 -timeout=6m -v
-go test -tags 'skgo_architecture_experiment skgo_browser_experiment' ./internal/hotreload -run '^TestArchitectureGoPreparation$' -count=1 -timeout=6m -v
-go test -overlay ephemeral/experiments/20261015-architecture/validation/renderer-no-events-overlay.json ./ephemeral/experiments/20261015-architecture/validation -run '^TestRendererArchitecture$' -count=1 -timeout=6m -v
-go test ./ephemeral/experiments/20261015-architecture/validation -run '^TestRendererArchitecture$' -count=1 -timeout=6m -v

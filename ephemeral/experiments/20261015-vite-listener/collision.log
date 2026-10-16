@@ -1,2 +1,0 @@
-actual-bound-identity {"instance":"COLLISION","address":{"address":"127.0.0.1","family":"IPv4","port":56412},"backend":"http://127.0.0.1:62554"}
-configured-kit-origin http://127.0.0.1:56411

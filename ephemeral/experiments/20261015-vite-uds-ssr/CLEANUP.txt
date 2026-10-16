@@ -1,1 +1,0 @@
-Harness session19636 exited0. Node PIDs6542/6545 absent. Public57331/57332 LISTEN absent. Private socket directory absent. Only owned generated runtime removed after validating parent and no symlink; authored inputs and observations retained. No other agent processes operated.
