@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -186,13 +187,25 @@ func TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler(t *testing.T) {
 		}
 	}()
 	var ready struct{ Socket, Instance string }
+	var listenErr error
 	for end := time.Now().Add(45 * time.Second); ; {
 		b, _ := os.ReadFile(readyPath)
 		if json.Unmarshal(b, &ready) == nil && ready.Socket == viteSocket {
-			break
+			// configureServer publishes its epoch before dev-host binds the
+			// external listener. Wait for that listener, without retrying or
+			// concealing any HTTP errors in the assertions below.
+			var connection net.Conn
+			connection, listenErr = net.DialTimeout("unix", viteSocket, time.Second)
+			if listenErr == nil {
+				connection.Close()
+				break
+			}
+			if !errors.Is(listenErr, syscall.ENOENT) && !errors.Is(listenErr, syscall.ECONNREFUSED) {
+				t.Fatalf("Vite listener readiness: %v", listenErr)
+			}
 		}
 		if time.Now().After(end) {
-			t.Fatal("Vite readiness missing")
+			t.Fatalf("Vite readiness missing: listener error %v", listenErr)
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
@@ -413,25 +426,27 @@ func TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler(t *testing.T) {
 	}
 	expectedReceipt = "ENV_9937"
 	// Vite reloads its environment inside the existing private middleware host.
-	// The public Go listener and private socket stay stable.
-	time.Sleep(500 * time.Millisecond)
+	// Its new configuration epoch is announced while the private socket stays stable.
 	for end := time.Now().Add(10 * time.Second); ; {
 		b, _ := os.ReadFile(readyPath)
-		_ = json.Unmarshal(b, &ready)
-		r, e := client.Get(public.URL + "/__skgo/dev/state")
-		if e == nil {
-			r.Body.Close()
-			if r.StatusCode == 200 {
-				break
+		if json.Unmarshal(b, &ready) == nil && ready.Instance != initialInstance {
+			if ready.Instance == "" || ready.Socket != initialSocket {
+				t.Fatalf("invalid dotenv restart readiness: %+v", ready)
 			}
+			r, e := client.Get(public.URL + "/__skgo/dev/state")
+			if e != nil {
+				t.Fatal(e)
+			}
+			r.Body.Close()
+			if r.StatusCode != 200 {
+				t.Fatalf("dotenv restart state: HTTP%d", r.StatusCode)
+			}
+			break
 		}
 		if time.Now().After(end) {
 			t.Fatal("Vite did not recover after dotenv edit")
 		}
 		time.Sleep(25 * time.Millisecond)
-	}
-	if ready.Socket != initialSocket || ready.Instance != initialInstance {
-		t.Fatal("environment reload replaced the owned middleware host")
 	}
 	snapshot()
 	assert("/z-existing", "ENV_9937", 200)
