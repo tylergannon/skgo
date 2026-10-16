@@ -1,4 +1,4 @@
-name: Release gate
+name: Release
 
 # npm's trusted publisher is bound to this workflow path. Keep qualification,
 # publication, and tagging in this top-level workflow so its OIDC identity is
@@ -18,12 +18,16 @@ permissions:
 jobs:
   qualification:
     name: Example qualification
+    needs: version
+    if: needs.version.outputs.version != ''
     uses: ./.github/workflows/qualification.yml
 
   version:
-    name: Choose the qualified version
-    needs: qualification
-    runs-on: ubuntu-latest
+    name: Reserve the candidate version
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, X64, skgo-release]
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -33,12 +37,16 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: '1.27.2'
+          cache: false
 
       - name: Derive the release from Conventional Commits
         id: version
         run: |
-          version=$(go run ./cmd/skgo-release-version)
+          version=$(git tag --points-at HEAD | sort -V | tail -1)
+          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            version=$(go run ./cmd/skgo-release-version)
+          fi
           if [ "$version" = "none" ]; then
             echo "No feat, fix, perf, revert, or breaking commit since the last release."
             echo "version=" >> "$GITHUB_OUTPUT"
@@ -46,9 +54,105 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      # Candidate tags are reserved before qualification, as in Gimbal. All
+      # publication waits for the gates below. GITHUB_TOKEN can create this
+      # tag because builds are jobs in this workflow, not a tag-push workflow.
+      - name: Reserve the exact source tag
+        if: steps.version.outputs.version != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if git rev-parse "$VERSION^{commit}" >/dev/null 2>&1; then
+            test "$(git rev-parse "$VERSION^{commit}")" = "$GITHUB_SHA"
+          else
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' tag -a "$VERSION" "$GITHUB_SHA" -m "$VERSION"
+            git push origin "$VERSION"
+          fi
+
+  linux-cli:
+    name: CLI (${{ matrix.arch }})
+    needs: version
+    if: needs.version.outputs.version != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: [self-hosted, Linux, X64, skgo-release]
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.2'
+          cache: false
+      - name: Build and package the versioned CLI
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: go run ./cmd/skgo-release build "$VERSION" "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cli-linux-${{ matrix.arch }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 2
+
+  macos-cli:
+    name: Signed and notarized macOS CLI
+    needs: version
+    if: needs.version.outputs.version != ''
+    runs-on: [self-hosted, macOS, ARM64, skgo-release]
+    environment: release
+    timeout-minutes: 40
+    env:
+      GOMAXPROCS: '4'
+      GOFLAGS: -p=4
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.2'
+          cache: false
+      - name: Fetch signing credentials from Doppler
+        id: doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534 # v2.0.0
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+      - name: Validate Doppler destination
+        env:
+          PROJECT: ${{ steps.doppler.outputs.DOPPLER_PROJECT }}
+          CONFIG: ${{ steps.doppler.outputs.DOPPLER_CONFIG }}
+        run: test "$PROJECT" = skgo && test "$CONFIG" = stg
+      - name: Prepare temporary signing keychain
+        env:
+          DEVELOPER_ID_CERTIFICATE_P12_BASE64: ${{ steps.doppler.outputs.DEVELOPER_ID_CERTIFICATE_P12_BASE64 }}
+          DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ steps.doppler.outputs.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ steps.doppler.outputs.APPLE_TEAM_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ steps.doppler.outputs.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ steps.doppler.outputs.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ steps.doppler.outputs.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+        run: go run ./cmd/skgo-release signing setup
+      - name: Build, sign and notarize the CLI
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: nice -n 10 go run ./cmd/skgo-release build "$VERSION" "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cli-darwin-arm64
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 2
+      - name: Remove signing credentials
+        if: always()
+        run: go run ./cmd/skgo-release signing cleanup
+
   adapter-npm:
     name: Publish @skgo/sveltekit-adapter
-    needs: version
+    needs: [version, qualification, linux-cli, macos-cli]
     if: needs.version.outputs.version != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -124,7 +228,7 @@ jobs:
 
   sv-npm:
     name: Publish @skgo/sv
-    needs: version
+    needs: [version, qualification, linux-cli, macos-cli]
     if: needs.version.outputs.version != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -189,11 +293,13 @@ jobs:
         # responsible for the add-on build; publish its package from the root.
         run: npm publish ./internal/sv --access public
 
-  tag:
-    name: Tag the published, qualified commit
-    needs: [version, adapter-npm, sv-npm]
+  publish:
+    name: Publish GitHub Release and Homebrew cask
+    needs: [version, qualification, linux-cli, macos-cli, adapter-npm, sv-npm]
     if: needs.version.outputs.version != ''
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, skgo-release]
+    environment: release
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
@@ -201,12 +307,47 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Tag the exact qualified SHA
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.2'
+          cache: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: cli-*
+          path: dist
+          merge-multiple: true
+      - name: Verify all archives and calculate final checksums
         env:
           VERSION: ${{ needs.version.outputs.version }}
+        run: go run ./cmd/skgo-release checksums dist "$VERSION"
+      - name: Publish the qualified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git tag -a "$VERSION" "$GITHUB_SHA" -m "$VERSION"
-          git push origin "$VERSION"
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            gh release upload "$VERSION" --clobber dist/*.tar.gz dist/checksums.txt
+            gh release edit "$VERSION" --draft=false --latest --title "SKGO $VERSION"
+          else
+            gh release create "$VERSION" --verify-tag --latest --title "SKGO $VERSION" --generate-notes dist/*.tar.gz dist/checksums.txt
+          fi
+      - name: Fetch Homebrew publisher from Doppler
+        id: doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534 # v2.0.0
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+      - name: Validate Doppler destination
+        env:
+          PROJECT: ${{ steps.doppler.outputs.DOPPLER_PROJECT }}
+          CONFIG: ${{ steps.doppler.outputs.DOPPLER_CONFIG }}
+        run: test "$PROJECT" = skgo && test "$CONFIG" = stg
+      - uses: actions/checkout@v7
+        with:
+          repository: tylergannon/homebrew-skgo
+          ref: main
+          path: homebrew-tap
+          ssh-key: ${{ steps.doppler.outputs.TAP_DEPLOY_KEY }}
+      - name: Update Homebrew cask
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: go run ./cmd/skgo-release tap homebrew-tap "$VERSION"

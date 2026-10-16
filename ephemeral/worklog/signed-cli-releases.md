@@ -1,0 +1,4 @@
+decision: User requested Gimbal's Developer ID/notary/Homebrew CLI delivery for SKGO, with Linux work on Bob and macOS work on the Mac. Reuse its six Apple credentials, not its desktop/Sparkle secrets or repository-specific SSH keys.
+friction: The four existing bob-skgo runners are registered to tylergannon/skgo-project, a different repository. Preserve them and register dedicated skgo release runners.
+friction: Main release qualification selected go.mod's Go 1.27.1 while hotreload tests require 1.27.2; use the qualified patch in release jobs.
+decision: Reserve a candidate tag before parallel qualification/builds, as Gimbal does. Build the tagged module with go install so embedded module versions identify the release everywhere, including plugin dependency pinning. Publish GitHub assets and Homebrew only after qualification and notarization succeed; retries reuse the same source tag.
