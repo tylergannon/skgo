@@ -33,3 +33,6 @@ ephemeral/screenshots/
 
 # Project-local frontend build freshness cache.
 .skgo/
+
+# Locally packaged release archives.
+/dist/

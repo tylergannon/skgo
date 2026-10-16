@@ -99,4 +99,5 @@ ports:
     lsof -nP -iTCP -sTCP:LISTEN
 
 # Releases have no local recipe. A Conventional Commit merged to main starts
-# release.yml; only its browser-qualified SHA is published and tagged.
+# release.yml; it reserves a candidate tag, then publishes the qualified,
+# signed CLI and npm packages and updates Homebrew.
