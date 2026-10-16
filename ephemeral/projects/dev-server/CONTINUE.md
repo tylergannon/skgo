@@ -50,3 +50,16 @@ Original POC evidence is linked from DESIGN; it did not prove complete callbacks
 Use installed Kit3.0.0 at `example/web/node_modules/@sveltejs/kit`, following `ephemeral/sveltekit-current/SKILL.md`. `vp` owns frontend tools. Keep experiments/harnesses in Go; JS is framework glue only. Worklog records actionable traps at `ephemeral/worklog/20261015-architecture-experiments.md`.
 
 Unrelated untracked historical directories under ephemeral/experiments (kit-publication-poc, kit-publication-validation, live-metadata/runtime, overlap-answer/runtime, visible-latency app/binaries) are not owned by this task. Do not delete or stage them. All task source is checkpointed; final doc changes may be pending. Inspect Git rather than inferring cleanliness from this file.
+
+## Review repairs authorized — 2026-10-15
+
+The user has now requested implementation of the full review findings, using
+subagents in parallel and review of changed code. Worktree remains 5f35 on
+`codex/dev-server-review-fixes`, baseline `1d9e23e`. Earlier statements that
+there is no active assignment are superseded by this request. The review and
+its concrete reproductions are in
+`/Users/tyler/.codex/worktrees/9b3a/skgo-project/ephemeral/reviews/20261015-skgo-development-server-review.md`.
+Three owners repair configuration publication, request bridge semantics, and
+native compilation/application composition. Keep current GOAL boundaries and
+accepted temporary limitations. Parent coordinates shared-file boundaries,
+joined validation and fresh independent review. Preserve all untracked experiments.

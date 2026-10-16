@@ -1,0 +1,2 @@
+decision: User explicitly authorizes implementing the reviewed development-server repairs with parallel subagents and review of changed code. Baseline 1d9e23e1760266cc83367c00999105e28db19944; preserve native Kit/Go UDS architecture.
+decision: Reuse worktree 5f35 on codex/dev-server-review-fixes; preserve all historical untracked experiments. Three disjoint implementation owners: supervisor configuration, request bridge, native compiler/application integration. Parent coordinates and owns handoff; fresh independent reviewers follow implementation.
