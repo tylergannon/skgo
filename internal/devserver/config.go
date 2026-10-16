@@ -12,9 +12,9 @@ import (
 // Options describes a local development session. Application selections come
 // from its existing go:generate declaration, shared with production generation.
 type Options struct {
-	Root, Web, Out, Listen, GoTool, VitePlus string
-	StrictPort                               bool
-	Output                                   io.Writer
+	Root, Web, Out, Listen, GoTool, VitePlus, GeneratorConfig string
+	StrictPort                                                bool
+	Output                                                    io.Writer
 }
 
 func applicationConfig(o Options) (gen.Config, error) {
