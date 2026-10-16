@@ -184,23 +184,11 @@ jobs:
           node-version: 24.21.0
           registry-url: https://registry.npmjs.org
 
-      # Use the repository's Node/VP pins; VP resolves the declared manager.
-      - uses: jdx/mise-action@v4
-        with:
-          working_directory: example
-          export_path: true
-
-      - name: Install example dependencies for adapter tests
-        working-directory: example/web
-        run: vp install --frozen-lockfile
-
-      # The adapter the app installs and the adapter the Go binary embeds are
-      # the same files, and every build is refused at startup if they are not.
-      # These tests are what checks that the tarball leaving here really holds
-      # them — a `files` list that forgot a runtime module publishes an adapter
-      # that names itself something no skgo will accept.
-      - name: The tarball is the adapter this module embeds
-        run: go test ./internal/adapter/
+      # The qualification dependency already ran the full adapter package,
+      # including tarball checks and Kit's live graph, against the built example
+      # at this exact SHA. Publication consumes that result; it needs no second
+      # frontend installation or integration-test run. Package comparison and
+      # stamping below are standalone Go commands.
 
       # A release whose package is byte-for-byte the newest one on the registry
       # publishes nothing: skgo pairs with the newest adapter at or below its
