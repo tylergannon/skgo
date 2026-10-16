@@ -1,0 +1,2 @@
+friction: CI installs the npm/project VitePlus CLI, which deliberately rejects global-only `vp env exec`. Kit patch configuration must use ordinary `vp exec` from the selected frontend so VitePlus resolves its declared package manager; `VP_CLI_BIN` is not evidence that `env` exists.
+correction: Tooling regressions must exercise the installed project VitePlus CLI with an unusable ambient pnpm. A developer's global CLI can otherwise hide this consumer and CI failure.
