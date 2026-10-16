@@ -30,17 +30,17 @@
 		"sv-addon.js"
 	],
 	"peerDependencies": {
-		"sv": "^1.0.1"
+		"sv": "^1.1.1"
 	},
 	"devEngines": {
 		"packageManager": {
 			"name": "pnpm",
-			"version": "12.9.1",
+			"version": "12.14.0",
 			"onFail": "download"
 		}
 	},
 	"devDependencies": {
-		"@sveltejs/sv-utils": "1.0.0",
-		"tsdown": "0.23.0"
+		"@sveltejs/sv-utils": "1.0.2",
+		"tsdown": "0.23.1"
 	}
 }

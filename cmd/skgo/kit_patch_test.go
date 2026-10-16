@@ -49,7 +49,7 @@ func TestKitPatchCLIConfiguresFilesAndDoesNotClaimInstallation(t *testing.T) {
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := []byte(`{"name":"cli-fixture","dependencies":{"@sveltejs/kit":"^3.0.0"},"devEngines":{"packageManager":{"name":"pnpm","version":"12.9.1","onFail":"download"}}}`)
+	manifest := []byte(`{"name":"cli-fixture","dependencies":{"@sveltejs/kit":"^3.1.0"},"devEngines":{"packageManager":{"name":"pnpm","version":"12.9.1","onFail":"download"}}}`)
 	if err := os.WriteFile(filepath.Join(web, "package.json"), manifest, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -57,21 +57,21 @@ func TestKitPatchCLIConfiguresFilesAndDoesNotClaimInstallation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("kit-patch --apply: %v\n%s", err, output)
 	}
-	if !strings.Contains(output, "Configured the Kit 3.0.0") || !strings.Contains(output, "Installation is still required") || !strings.Contains(output, "--check") {
+	if !strings.Contains(output, "Configured the Kit 3.1.0") || !strings.Contains(output, "Installation is still required") || !strings.Contains(output, "--check") {
 		t.Fatalf("CLI overstated or omitted install/check instructions:\n%s", output)
 	}
 	manifestBytes, err := os.ReadFile(filepath.Join(web, "package.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Contains(manifestBytes, []byte(`"@sveltejs/kit":"3.0.0"`)) {
+	if !bytes.Contains(manifestBytes, []byte(`"@sveltejs/kit":"3.1.0"`)) {
 		t.Fatalf("CLI did not pin Kit exactly: %s", manifestBytes)
 	}
 	_, wantPatch, err := adapter.KitQueueCompatibility()
 	if err != nil {
 		t.Fatal(err)
 	}
-	gotPatch, err := os.ReadFile(filepath.Join(web, "patches", "skgo-kit-3.0.0-queue.patch"))
+	gotPatch, err := os.ReadFile(filepath.Join(web, "patches", "skgo-kit-3.1.0-queue.patch"))
 	if err != nil || !bytes.Equal(gotPatch, wantPatch) {
 		t.Fatalf("CLI patch copy differs from the packaged bytes: %v", err)
 	}

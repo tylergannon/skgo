@@ -39,7 +39,7 @@ act on rather than as an unrelated error later.
 
 ## Kit prerender queue compatibility
 
-Declared prerender `Inputs` require the Kit 3.0.0 queue correction shipped with
+Declared prerender `Inputs` require the Kit 3.1.0 queue correction shipped with
 skgo. New projects receive the project-local patch configuration during
 scaffolding. For an existing project, run `go tool skgo kit-patch --web web
 --apply` from the Go application root, then install with the frontend's native

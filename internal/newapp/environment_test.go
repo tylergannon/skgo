@@ -14,11 +14,11 @@ import (
 
 func TestCreationUsesQualifiedVPEnvironment(t *testing.T) {
 	for _, tc := range []struct{ vp, pnpm, wantError string }{
-		{"v0.3.3", "12.9.1", "requires qualified VitePlus 1.0.0"},
-		{"v1.0.0-beta.1", "12.9.1", "requires qualified VitePlus 1.0.0"},
-		{"v1.0.1", "12.9.1", "requires qualified VitePlus 1.0.0"},
-		{"v1.0.0", "12.10.1", "vp environment requires pnpm 12.9.1"},
-		{"v1.0.0", "12.9.1", ""},
+		{"v0.3.3", "12.14.0", "requires qualified VitePlus 1.3.0"},
+		{"v1.3.0-beta.1", "12.14.0", "requires qualified VitePlus 1.3.0"},
+		{"v1.3.1", "12.14.0", "requires qualified VitePlus 1.3.0"},
+		{"v1.3.0", "12.10.1", "vp environment requires pnpm 12.14.0"},
+		{"v1.3.0", "12.14.0", ""},
 	} {
 		t.Run(tc.vp+"-"+tc.pnpm, func(t *testing.T) {
 			root := t.TempDir()
@@ -38,9 +38,9 @@ if [ "$1" = create ]; then
  printf 'created with %s' "$(pnpm --version)"
  exit "${FIXTURE_CREATE_EXIT:-0}"
 fi
-[ "$1 $2 $3 $4" = 'env exec --package-manager pnpm@12.9.1' ] || exit 41
-[ "$VP_PACKAGE_MANAGER" = pnpm@12.9.1 ] || exit 42
-[ "$VP_PNPM_VERSION" = 12.9.1 ] || exit 43
+[ "$1 $2 $3 $4" = 'env exec --package-manager pnpm@12.14.0' ] || exit 41
+[ "$VP_PACKAGE_MANAGER" = pnpm@12.14.0 ] || exit 42
+[ "$VP_PNPM_VERSION" = 12.14.0 ] || exit 43
 shift 4
 export PATH="$FIXTURE_BIN:$PATH"
 if [ "$1 $2" = 'which pnpm' ]; then
@@ -83,7 +83,7 @@ exec "$@"
 			t.Setenv("FIXTURE_CREATE_EXIT", "0")
 			t.Setenv("FIXTURE_BOOTSTRAP_RECEIPT", "")
 			if tc.wantError == "" {
-				if createErr == nil || !strings.Contains(createErr.Error(), "VitePlus project creation failed") || creation.String() != "created with 12.9.1" {
+				if createErr == nil || !strings.Contains(createErr.Error(), "VitePlus project creation failed") || creation.String() != "created with 12.14.0" {
 					t.Fatalf("ordinary creation did not reach the qualified creator: %v, %q", createErr, &creation)
 				}
 				assertBootstrapSelection(t, receipt)
@@ -115,14 +115,14 @@ exec "$@"
 			if err := run(command{Dir: root, Name: "vp", Args: []string{"create"}, Env: env}); err != nil {
 				t.Fatal(err)
 			}
-			if got := out.String(); got != "created with 12.9.1" {
+			if got := out.String(); got != "created with 12.14.0" {
 				t.Fatalf("creation = %q", got)
 			}
 			out.Reset()
 			if err := run(command{Dir: root, Name: "pnpm", Args: []string{"--version"}, Env: env}); err != nil {
 				t.Fatal(err)
 			}
-			if got := strings.TrimSpace(out.String()); got != "12.9.1" {
+			if got := strings.TrimSpace(out.String()); got != "12.14.0" {
 				t.Fatalf("child companion = %q", got)
 			}
 			if strings.Join(env, "\n") != before || os.Getenv("VP_PNPM_VERSION") != "99.0.0" {
@@ -164,7 +164,7 @@ func assertBootstrapSelection(t *testing.T, path string) {
 		Private        bool   `json:"private"`
 		PackageManager string `json:"packageManager"`
 	}
-	if err := json.Unmarshal(data, &pkg); err != nil || !pkg.Private || pkg.PackageManager != "pnpm@12.9.1" {
+	if err := json.Unmarshal(data, &pkg); err != nil || !pkg.Private || pkg.PackageManager != "pnpm@12.14.0" {
 		t.Fatalf("upstream creation bootstrap selection = %s, %v", data, err)
 	}
 }

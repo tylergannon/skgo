@@ -19,12 +19,12 @@ func TestKitQueueCompatibilityAssetsAreCanonical(t *testing.T) {
 	}
 	want := KitQueueMetadata{
 		Package:         "@sveltejs/kit",
-		Version:         "3.0.0",
+		Version:         "3.1.0",
 		QueuePath:       "src/core/postbuild/queue.js",
 		StockSHA256:     "dbe8bbacab35cbd119d6f5bcf9b527ce0f7a1bfa63954b5ebe047df49f46c6d5",
 		CorrectedSHA256: "400bf34544e2b3c5512e489eb5a0ca99a7483f0b6d733f70cab9e81e28f3a0f5",
 		PatchSHA256:     "0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf6e0106c4",
-		CorrectionID:    "skgo-kit-3.0.0-prerender-queue-v1",
+		CorrectionID:    "skgo-kit-3.1.0-prerender-queue-v1",
 	}
 	if metadata != want {
 		t.Fatalf("Kit queue metadata = %#v, want %#v", metadata, want)
@@ -32,7 +32,7 @@ func TestKitQueueCompatibilityAssetsAreCanonical(t *testing.T) {
 	if got := sha256Hex(patch); got != metadata.PatchSHA256 {
 		t.Fatalf("canonical queue patch SHA-256 = %s, want %s", got, metadata.PatchSHA256)
 	}
-	metadataBytes, err := files.ReadFile(filepath.ToSlash(filepath.Join(filesDir, "compat", "kit-3.0.0-queue.json")))
+	metadataBytes, err := files.ReadFile(filepath.ToSlash(filepath.Join(filesDir, "compat", "kit-3.1.0-queue.json")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestPrerenderInputsRejectsUnpatchedPinnedKitBeforeHTTP(t *testing.T) {
 	}
 	appRoot := filepath.Join(t.TempDir(), "app")
 	kitRoot := filepath.Join(appRoot, "node_modules", "@sveltejs", "kit")
-	writeQueueFixture(t, filepath.Join(kitRoot, "package.json"), []byte(`{"name":"@sveltejs/kit","version":"3.0.0"}`))
+	writeQueueFixture(t, filepath.Join(kitRoot, "package.json"), []byte(`{"name":"@sveltejs/kit","version":"3.1.0"}`))
 	writeQueueFixture(t, filepath.Join(kitRoot, filepath.FromSlash(metadata.QueuePath)), stock)
 	adapterRoot := filepath.Join(appRoot, "node_modules", "@skgo", "sveltekit-adapter")
 	writeQueueFixture(t, filepath.Join(adapterRoot, "package.json"), []byte(`{"name":"@skgo/sveltekit-adapter","exports":{"./package.json":"./package.json"}}`))
@@ -66,7 +66,7 @@ func TestPrerenderInputsRejectsUnpatchedPinnedKitBeforeHTTP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeQueueFixture(t, filepath.Join(adapterRoot, "skgo-adapter", "compat", "kit-3.0.0-queue.json"), metadataBytes)
+	writeQueueFixture(t, filepath.Join(adapterRoot, "skgo-adapter", "compat", "kit-3.1.0-queue.json"), metadataBytes)
 	program := `
 import { pathToFileURL } from 'node:url';
 const { remoteInputs } = await import(pathToFileURL(process.env.SKGO_PRERENDER_MODULE).href);
@@ -76,7 +76,7 @@ try {
 } catch (error) {
   if (error.name !== 'SKGO_KIT_PRERENDER_QUEUE' || error.code !== 'SKGO_KIT_PRERENDER_QUEUE') throw error;
   if (!error.message.includes(process.env.SKGO_STOCK_SHA256) || !error.message.includes(process.env.SKGO_CORRECTED_SHA256)) throw error;
-  if (!error.message.includes('@sveltejs/kit@3.0.0')) throw error;
+  if (!error.message.includes('@sveltejs/kit@3.1.0')) throw error;
   if (!error.message.includes('kit-patch --web web --apply') || !error.message.includes('kit-patch --web web --check')) throw error;
   console.log('incompatible Kit queue rejected before HTTP with setup guidance');
 }
@@ -133,7 +133,7 @@ func TestKitQueuePatchMatchesPinnedSourceAndChangesQueueBehavior(t *testing.T) {
 	if installedHash == metadata.CorrectedSHA256 {
 		stockPath := filepath.Join(stockRoot, filepath.FromSlash(metadata.QueuePath))
 		writeQueueFixture(t, stockPath, installedQueue)
-		patchPath := filepath.Join(t.TempDir(), "kit-3.0.0-queue.patch")
+		patchPath := filepath.Join(t.TempDir(), "kit-3.1.0-queue.patch")
 		writeQueueFixture(t, patchPath, patch)
 		apply := exec.Command("git", "apply", "--reverse", patchPath)
 		apply.Dir = stockRoot
@@ -152,7 +152,7 @@ func TestKitQueuePatchMatchesPinnedSourceAndChangesQueueBehavior(t *testing.T) {
 	stockRoot = filepath.Join(t.TempDir(), "stock-control")
 	stockPath := filepath.Join(stockRoot, filepath.FromSlash(metadata.QueuePath))
 	writeQueueFixture(t, stockPath, stock)
-	patchPath := filepath.Join(t.TempDir(), "kit-3.0.0-queue.patch")
+	patchPath := filepath.Join(t.TempDir(), "kit-3.1.0-queue.patch")
 	writeQueueFixture(t, patchPath, patch)
 	applyCheck := exec.Command("git", "apply", "--check", patchPath)
 	applyCheck.Dir = stockRoot
@@ -325,7 +325,7 @@ func pinnedStockQueue(t *testing.T, metadata KitQueueMetadata, patch []byte) []b
 	case metadata.CorrectedSHA256:
 		stockRoot := t.TempDir()
 		stockPath := filepath.Join(stockRoot, filepath.FromSlash(metadata.QueuePath))
-		patchPath := filepath.Join(t.TempDir(), "kit-3.0.0-queue.patch")
+		patchPath := filepath.Join(t.TempDir(), "kit-3.1.0-queue.patch")
 		writeQueueFixture(t, stockPath, installed)
 		writeQueueFixture(t, patchPath, patch)
 		apply := exec.Command("git", "apply", "--reverse", patchPath)

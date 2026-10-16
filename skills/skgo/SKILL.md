@@ -110,7 +110,7 @@ loads, actions, remotes, endpoints and hooks to Go over private Unix sockets.
 The Go coordinator owns the public listener. Use ordinary `go tool skgo dev`.
 
 Development currently requires exactly Go 1.27.2 on macOS ARM64 or Linux AMD64,
-Node 22.17+ and the project's VitePlus 1.0.0 environment. The Go host builds
+Node 22.17+ and the project's VitePlus 1.3.0 environment. The Go host builds
 without cgo. Compatible Go edits update the host; changes classified as requiring
 a full rebuild replace it and may reset Go state. An observed native-loader
 failure emitted raw `R_ADDROFF` stderr while old code kept serving, without a

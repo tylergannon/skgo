@@ -64,8 +64,8 @@ func TestQualifiedPNPMAdapterAgeException(t *testing.T) {
 		t.Fatal(err)
 	}
 	version, err := exec.Command(pnpm, "--version").Output()
-	if err != nil || strings.TrimSpace(string(version)) != "12.9.1" {
-		t.Fatalf("requires qualified pnpm12.9.1: %s %v", version, err)
+	if err != nil || strings.TrimSpace(string(version)) != "12.14.0" {
+		t.Fatalf("requires qualified pnpm12.14.0: %s %v", version, err)
 	}
 	var archive bytes.Buffer
 	gz := gzip.NewWriter(&archive)
@@ -104,8 +104,10 @@ func TestQualifiedPNPMAdapterAgeException(t *testing.T) {
 			name = "authored strict"
 		}
 		t.Run(name, func(t *testing.T) {
+			// The executable is already qualified above. Omit package-manager metadata
+			// so pnpm does not fetch its own distribution from this adapter-only registry.
 			source, stage := t.TempDir(), t.TempDir()
-			writeAlignmentFile(t, source, "package.json", `{"private":true,"packageManager":"pnpm@12.9.1","devDependencies":{"@skgo/sveltekit-adapter":"0.22.1"}}`)
+			writeAlignmentFile(t, source, "package.json", `{"private":true,"devDependencies":{"@skgo/sveltekit-adapter":"0.22.1"}}`)
 			policy := "allowBuilds:\n  esbuild: true\n"
 			if strict {
 				policy += "minimumReleaseAge: 1440\n"
@@ -119,7 +121,7 @@ func TestQualifiedPNPMAdapterAgeException(t *testing.T) {
 			if err := copyFrontend(source, stage); err != nil {
 				t.Fatal(err)
 			}
-			writeAlignmentFile(t, stage, "package.json", `{"private":true,"packageManager":"pnpm@12.9.1","devDependencies":{"@skgo/sveltekit-adapter":"0.28.2"}}`)
+			writeAlignmentFile(t, stage, "package.json", `{"private":true,"devDependencies":{"@skgo/sveltekit-adapter":"0.28.2"}}`)
 			cmd := exec.Command(pnpm, "install", "--no-frozen-lockfile", "--ignore-scripts", "--registry", registry.URL)
 			cmd.Dir = stage
 			cmd.Env = append(os.Environ(), "CI=1")
@@ -176,7 +178,7 @@ func TestPublicUpdatePassesSelectedAdapterToGuard(t *testing.T) {
 			bin := filepath.Join(t.TempDir(), "bin")
 			host := filepath.Join(bin, "skgo")
 			writeAlignmentFile(t, root, "go.mod", "module example.com/age-update\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo v0.27.0\n")
-			writeAlignmentFile(t, root, "web/package.json", `{"private":true,"devDependencies":{"vite-plus":"1.0.0","@skgo/sveltekit-adapter":"0.22.1"},"scripts":{"receipt":"echo keep"}}`)
+			writeAlignmentFile(t, root, "web/package.json", `{"private":true,"devDependencies":{"vite-plus":"1.3.0","@skgo/sveltekit-adapter":"0.22.1"},"scripts":{"receipt":"echo keep"}}`)
 			writeAlignmentFile(t, root, "web/pnpm-workspace.yaml", "allowBuilds:\n  esbuild: true\n")
 			before, err := frontendFiles(root)
 			if err != nil {
@@ -203,21 +205,21 @@ func TestPublicUpdatePassesSelectedAdapterToGuard(t *testing.T) {
 					next.CompleteVersion = "v0.28.2"
 					return nil, Run(ctx, next)
 				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"--version"}):
-					return []byte("vp v1.0.0\n"), nil
+					return []byte("vp v1.3.0\n"), nil
 				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"toolchain", "--global", "--json", "vite", "vitest"}):
 					return []byte(qualifiedVPGraph), nil
-				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.9.1", "which", "pnpm"}):
+				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.14.0", "which", "pnpm"}):
 					return []byte(pnpm), nil
-				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.9.1", pnpm, "--version"}):
-					return []byte("12.9.1\n"), nil
-				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.9.1", "/qualified/vp", "install", "--no-frozen-lockfile"}):
+				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.14.0", pnpm, "--version"}):
+					return []byte("12.14.0\n"), nil
+				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.14.0", "/qualified/vp", "install", "--no-frozen-lockfile"}):
 					path := filepath.Join(c.Dir, "pnpm-workspace.yaml")
 					b, err := os.ReadFile(path)
 					if err != nil {
 						t.Fatal(err)
 					}
 					writeAlignmentFile(t, c.Dir, "pnpm-workspace.yaml", string(b)+"minimumReleaseAgeExclude: ['"+exception+"']\n")
-					writeAlignmentFile(t, c.Dir, "node_modules/@sveltejs/kit/package.json", `{"name":"@sveltejs/kit","version":"3.0.0"}`)
+					writeAlignmentFile(t, c.Dir, "node_modules/@sveltejs/kit/package.json", `{"name":"@sveltejs/kit","version":"3.1.0"}`)
 					writeAlignmentFile(t, c.Dir, "node_modules/@sveltejs/kit/src/core/postbuild/queue.js", string(kitQueue))
 					return nil, nil
 				case c.Name == "go" && slices.Equal(c.Args, []string{"get", "github.com/tylergannon/skgo@v0.28.2"}):

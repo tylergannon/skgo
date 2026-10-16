@@ -3,5 +3,5 @@
 // since upstream vp also allows project/environment package-manager selection.
 package toolchain
 
-const VitePlus = "1.0.0"
-const PNPM = "12.9.1"
+const VitePlus = "1.3.0"
+const PNPM = "12.14.0"

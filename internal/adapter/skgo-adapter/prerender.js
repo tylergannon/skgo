@@ -47,7 +47,7 @@ function verifyKitQueue(root) {
     const adapterPackage = appRequire.resolve("@skgo/sveltekit-adapter/package.json");
     metadata = JSON.parse(
       readFileSync(
-        join(dirname(adapterPackage), "skgo-adapter/compat/kit-3.0.0-queue.json"),
+        join(dirname(adapterPackage), "skgo-adapter/compat/kit-3.1.0-queue.json"),
         "utf8",
       ),
     );
@@ -86,7 +86,8 @@ function vitePlusBuildParent(root) {
   try {
     const appRequire = createRequire(join(root, "package.json"));
     const vpRequire = createRequire(appRequire.resolve("vite-plus/package.json"));
-    const expected = realpathSync(join(dirname(vpRequire.resolve("vite")), "cli.js"));
+    // VitePlus 1.3 launches Vite's executable entry, not its CLI module.
+    const expected = realpathSync(join(dirname(vpRequire.resolve("vite")), "../bin/vite.js"));
     return realpathSync(process.argv[1]) === expected && process.ppid > 1 ? process.ppid : null;
   } catch {
     return null;

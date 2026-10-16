@@ -93,6 +93,7 @@ var cspDirectiveOrder = []string{
 var cspQuoted = map[string]bool{
 	"self": true, "unsafe-eval": true, "unsafe-hashes": true, "unsafe-inline": true,
 	"none": true, "strict-dynamic": true, "report-sample": true,
+	"report-sha256": true, "report-sha384": true, "report-sha512": true,
 	"wasm-unsafe-eval": true, "script": true,
 }
 

@@ -64,6 +64,29 @@ func TestCSPHeaderMatchesKit_HashMode(t *testing.T) {
 	}
 }
 
+// Literal output from Kit 3.1.0's Csp with these policies, before add_script.
+// report-sha* are CSP keywords, not URL sources or hash source expressions.
+func TestCSPHashReportingKeywordsMatchKit31(t *testing.T) {
+	cfg := &ManifestCSP{
+		Mode: "hash",
+		Directives: map[string]CSPDirectiveValue{
+			"script-src": sources("self", "report-sha256", "report-sha384", "report-sha512"),
+		},
+		ReportOnly: map[string]CSPDirectiveValue{
+			"script-src": sources("self", "report-sha256", "report-sha384", "report-sha512"),
+			"report-uri": sources("/reports"),
+		},
+	}
+	doc := newDocumentCSPWithNonce(cfg, "unused")
+	const want = "script-src 'self' 'report-sha256' 'report-sha384' 'report-sha512'"
+	if got := doc.Header(); got != want {
+		t.Fatalf("enforced policy = %q, want %q", got, want)
+	}
+	if got := doc.ReportOnlyHeader(); got != want+"; report-uri /reports" {
+		t.Fatalf("report-only policy = %q", got)
+	}
+}
+
 func TestCSPHeaderMatchesKit_NonceMode(t *testing.T) {
 	const nonce = "13UIKoaLNvWlm6hFuylfFw=="
 	cfg := &ManifestCSP{Mode: "nonce", Directives: map[string]CSPDirectiveValue{"script-src": sources("self")}}

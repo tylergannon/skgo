@@ -7,7 +7,7 @@ description: Map SvelteKit 3 behavior from skgo's pinned Kit source before chang
 
 Treat Kit as the specification. Before changing a mirrored feature, read its
 implementation in the installed `example/web/node_modules/@sveltejs/kit`
-package, verified as version `3.0.0` against the frozen lockfile. Each worktree
+package, verified as version `3.1.0` against the frozen lockfile. Each worktree
 installs its own pinned package; do not depend on another checkout's ignored
 reference directory. Use the official GitHub release for the target tag to
 identify migrations since the prior pin.
@@ -46,3 +46,10 @@ Kit 3 facts that overturn older SvelteKit assumptions:
 
 When the dependency pin advances, update the verified version and this list
 only for facts verified in that source or the official release notes.
+
+Verified 3.1.0 changes: endpoint server tracing creates `sveltekit.endpoint`;
+CSP quotes `report-sha256`, `report-sha384`, and `report-sha512`. Prerender MIME
+extensions come from generated files. Kit sync compares physical generated-file
+contents before rewriting; the browser inherits iframe focus and service-worker
+deployment recovery fixes. The exact declared-Inputs queue correction remains
+required and is qualified against 3.1.0.

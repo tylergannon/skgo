@@ -19,7 +19,7 @@ type vpDependencies struct{ Core, Vitest string }
 
 // This exact peer exception is emitted by skgo's sv add-on for its qualified
 // Storybook/VitePlus pair. Other peer exceptions remain application-owned.
-const storybookVPPeer = "storybook@10.6.1>vite-plus"
+const storybookVPPeer = "storybook@10.6.2>vite-plus"
 
 // The qualified global CLI reports its own bundled versions, independent of
 // the old application's installation. Vite's upstream version is not the

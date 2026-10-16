@@ -11,7 +11,7 @@ renderer running inside the Go process, and the app deploys as a single Go
 binary. Node is needed for builds and for the Vite/Kit development server; it
 is not needed to run the production binary.
 
-> **Status:** pre-1.0. skgo uses SvelteKit 3.0.0, reviewed in the
+> **Status:** pre-1.0. skgo uses SvelteKit 3.1.0, reviewed in the
 > [compatibility journal](SVELTEKIT_COMPATIBILITY.md). All server code is written in Go: TypeScript remote functions,
 > loads and API routes are not supported. The [example app](example/) shows what
 > works today.
@@ -140,7 +140,7 @@ bodies with callbacks to Go; application server logic stays in Go in both modes.
 ## Development
 
 `skgo dev` currently requires **Go 1.27.2 exactly**, Node 22.17 or newer and the
-project's VitePlus 1.0.0 environment. Its startup gate accepts only macOS ARM64
+project's VitePlus 1.3.0 environment. Its startup gate accepts only macOS ARM64
 (`darwin/arm64`) and Linux AMD64 (`linux/amd64`) on the running platform;
 Windows, Intel Macs, Linux ARM64 and other Go versions are rejected. These are
 development-host restrictions, separate from production deployment. The native
@@ -308,14 +308,14 @@ regenerate their skgo bindings.
 
 ## Start a project
 
-You need Go, [VitePlus](https://viteplus.dev) **1.0.0** (`vp`) and
+You need Go, [VitePlus](https://viteplus.dev) **1.3.0** (`vp`) and
 [just](https://just.systems). This release qualifies that exact VitePlus toolchain;
 `skgo new` refuses other bootstrap versions before project creation. It uses
-vp’s managed environment with this release’s pnpm 12.9.1 companion and records
+vp’s managed environment with this release’s pnpm 12.14.0 companion and records
 that selection in the generated frontend, regardless of ambient pnpm settings.
 
 ```sh
-npm install --global vite-plus@1.0.0
+curl -fsSL https://vite.plus | VP_VERSION=1.3.0 bash
 go install github.com/tylergannon/skgo/cmd/skgo@latest
 skgo new myapp
 cd myapp

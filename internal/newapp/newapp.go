@@ -129,7 +129,7 @@ type project struct {
 	verifyKitQueue    func(web string) error
 }
 
-const storybookVersion = "10.6.1"
+const storybookVersion = "10.6.2"
 
 // escapeAddonOption produces an sv community add-on option value. sv uses "+"
 // between options, while JavaScript's decodeURIComponent does not translate

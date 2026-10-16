@@ -23,7 +23,7 @@ import (
 
 const (
 	kitPackageName = "@sveltejs/kit"
-	ownedPatchName = "skgo-kit-3.0.0-queue.patch"
+	ownedPatchName = "skgo-kit-3.1.0-queue.patch"
 	pnpmVersion    = toolchain.PNPM
 )
 
@@ -73,7 +73,7 @@ func Configure(options Options) error {
 	}
 	if !bytes.Equal(p.packageBytes, p.packageUpdate) {
 		if err := atomicReplace(p.packagePath, p.packageUpdate); err != nil {
-			return fmt.Errorf("write Kit 3.0.0 pin to %s: %w", p.packagePath, err)
+			return fmt.Errorf("write Kit 3.1.0 pin to %s: %w", p.packagePath, err)
 		}
 	}
 	if _, configured := p.patched[patchKey(p)]; !configured {
@@ -83,7 +83,7 @@ func Configure(options Options) error {
 		}
 	}
 	if options.Out != nil {
-		fmt.Fprintf(options.Out, "Configured the Kit 3.0.0 prerender queue correction in %s.\n", p.root)
+		fmt.Fprintf(options.Out, "Configured the Kit 3.1.0 prerender queue correction in %s.\n", p.root)
 		fmt.Fprintf(options.Out, "Files authored: %s, %s, and %s.\n", p.packagePath, p.patchPath, filepath.Join(p.root, "pnpm-workspace.yaml"))
 		fmt.Fprintf(options.Out, "Installation is still required: run `%s install --no-frozen-lockfile` from %s, then run `go tool skgo kit-patch --web %s --check` from the Go app root.\n", filepath.Join("node_modules", ".bin", "vp"), p.web, p.web)
 	}
@@ -126,7 +126,7 @@ func prepare(options Options) (*project, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load packaged Kit queue correction: %w", err)
 	}
-	if metadata.Package != kitPackageName || metadata.Version != "3.0.0" || metadata.QueuePath != "src/core/postbuild/queue.js" {
+	if metadata.Package != kitPackageName || metadata.Version != "3.1.0" || metadata.QueuePath != "src/core/postbuild/queue.js" {
 		return nil, fmt.Errorf("unsupported packaged Kit queue correction metadata: package=%q version=%q path=%q", metadata.Package, metadata.Version, metadata.QueuePath)
 	}
 	if digest(patch) != metadata.PatchSHA256 {
@@ -412,7 +412,7 @@ func checkInstalledIfPresent(p *project) error {
 		return fmt.Errorf("installed Kit is %s@%s; supported package is %s@%s", name, version, p.metadata.Package, p.metadata.Version)
 	}
 	if queueHash != p.metadata.StockSHA256 && queueHash != p.metadata.CorrectedSHA256 {
-		return fmt.Errorf("installed Kit 3.0.0 queue source has unexpected SHA-256 %s; expected stock %s or corrected %s", queueHash, p.metadata.StockSHA256, p.metadata.CorrectedSHA256)
+		return fmt.Errorf("installed Kit 3.1.0 queue source has unexpected SHA-256 %s; expected stock %s or corrected %s", queueHash, p.metadata.StockSHA256, p.metadata.CorrectedSHA256)
 	}
 	return nil
 }

@@ -31,7 +31,7 @@ func newFixture(t *testing.T, installed bool) fixture {
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@sveltejs/kit": "^3.0.0",
+    "@sveltejs/kit": "^3.1.0",
     "preserved-runtime": "workspace:*"
   },
   "devDependencies": {
@@ -45,7 +45,7 @@ func newFixture(t *testing.T, installed bool) fixture {
 		t.Fatal(err)
 	}
 	if installed {
-		installStockKit(t, web, "3.0.0", "@sveltejs/kit")
+		installStockKit(t, web, "3.1.0", "@sveltejs/kit")
 	}
 	return fixture{web: web, pnpm: pnpm}
 }
@@ -92,7 +92,7 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@sveltejs/kit": "^3.0.0",
+    "@sveltejs/kit": "^3.1.0",
     "preserved-runtime": "workspace:*"
   },
   "devDependencies": {
@@ -101,7 +101,7 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
   "scripts": {"build": "vp build"},
   "custom": {"keep": [1, true, "same"]}
 }
-`), []byte(`"@sveltejs/kit": "^3.0.0"`), []byte(`"@sveltejs/kit": "3.0.0"`), 1)
+`), []byte(`"@sveltejs/kit": "^3.1.0"`), []byte(`"@sveltejs/kit": "3.1.0"`), 1)
 	if !bytes.Equal(gotManifest, wantManifest) {
 		t.Fatalf("manifest changes escaped the Kit pin:\n%s\nwant:\n%s", gotManifest, wantManifest)
 	}
@@ -370,7 +370,7 @@ func TestNativeEnvironmentAmbiguityDoesNotMutateSelectedTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"3.0.0"}}`)
+		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"3.1.0"}}`)
 		if err := os.WriteFile(filepath.Join(f.web, "package.json"), manifest, 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -425,7 +425,7 @@ func TestRunPnpmUsesNonBootstrappingNativeReads(t *testing.T) {
 func TestConfigureRefusesDuplicateKitJSONKeysWithoutRewritingPackage(t *testing.T) {
 	f := newFixture(t, true)
 	manifestPath := filepath.Join(f.web, "package.json")
-	manifest := []byte(`{"dependencies":{"@sveltejs/kit":"catalog:","@sveltejs/kit":"^3.0.0"}}`)
+	manifest := []byte(`{"dependencies":{"@sveltejs/kit":"catalog:","@sveltejs/kit":"^3.1.0"}}`)
 	if err := os.WriteFile(manifestPath, manifest, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -455,19 +455,19 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 	})
 	t.Run("altered installed queue", func(t *testing.T) {
 		f := newFixture(t, false)
-		installStockKitBytes(t, f.web, "3.0.0", "@sveltejs/kit", []byte("altered source\n"))
+		installStockKitBytes(t, f.web, "3.1.0", "@sveltejs/kit", []byte("altered source\n"))
 		assertConfigureRefusesWithoutWrites(t, f, "unexpected SHA-256")
 	})
 	t.Run("incompatible exact Kit patch", func(t *testing.T) {
 		f := newFixture(t, true)
-		if err := setNativePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.0.0": "patches/other-kit.patch"}); err != nil {
+		if err := setNativePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": "patches/other-kit.patch"}); err != nil {
 			t.Fatal(err)
 		}
 		beforeConfig, err := os.ReadFile(filepath.Join(f.web, "pnpm-workspace.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertConfigureRefusesWithoutWrites(t, f, "conflicting @sveltejs/kit@3.0.0")
+		assertConfigureRefusesWithoutWrites(t, f, "conflicting @sveltejs/kit@3.1.0")
 		assertBytesUnchanged(t, filepath.Join(f.web, "pnpm-workspace.yaml"), beforeConfig)
 	})
 	t.Run("absolute owned patch path", func(t *testing.T) {
@@ -483,7 +483,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := setNativePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.0.0": patchPath}); err != nil {
+		if err := setNativePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": patchPath}); err != nil {
 			t.Fatal(err)
 		}
 		assertConfigureRefusesWithoutWrites(t, f, "portable relative path")
@@ -514,7 +514,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.MkdirAll(web, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.0.0"}}`), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"}}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		parentConfig := filepath.Join(parent, "pnpm-workspace.yaml")
@@ -529,7 +529,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 			t.Fatalf("parent workspace was not refused: %v", err)
 		}
 		assertBytesUnchanged(t, parentConfig, before)
-		assertBytesUnchanged(t, filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.0.0"}}`))
+		assertBytesUnchanged(t, filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"}}`))
 		if _, err := os.Stat(filepath.Join(web, "patches")); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("refusal created patch directory: %v", err)
 		}
@@ -540,7 +540,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.MkdirAll(web, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.0.0"}}`), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"}}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		parentConfig := filepath.Join(parent, "pnpm-workspace.yaml")
@@ -569,7 +569,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.MkdirAll(web, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"^3.0.0"}}`)
+		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"}}`)
 		if err := os.WriteFile(filepath.Join(web, "package.json"), manifest, 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -612,22 +612,22 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 
 func TestPinKitChangesOnlyTheExistingDeclaration(t *testing.T) {
 	input := []byte("{\n  \"dependencies\": {\n    \"@sveltejs/kit\": \"catalog:\",\n    \"keep\": \"workspace:*\"\n  },\n  \"catalog\": {\n    \"keep\": \"^1\"\n  }\n}\n")
-	_, declaration, got, err := pinKit(input, "3.0.0")
+	_, declaration, got, err := pinKit(input, "3.1.0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := bytes.Replace(input, []byte(`"@sveltejs/kit": "catalog:"`), []byte(`"@sveltejs/kit": "3.0.0"`), 1)
+	want := bytes.Replace(input, []byte(`"@sveltejs/kit": "catalog:"`), []byte(`"@sveltejs/kit": "3.1.0"`), 1)
 	if declaration != "catalog:" || !bytes.Equal(got, want) {
 		t.Fatalf("pin changed unrelated package bytes or declaration = %q:\n%s", declaration, got)
 	}
-	if _, _, _, err := pinKit([]byte(`{"dependencies":{"@sveltejs/kit":"^3"},"devDependencies":{"@sveltejs/kit":"^3"}}`), "3.0.0"); err == nil {
+	if _, _, _, err := pinKit([]byte(`{"dependencies":{"@sveltejs/kit":"^3"},"devDependencies":{"@sveltejs/kit":"^3"}}`), "3.1.0"); err == nil {
 		t.Fatal("duplicate Kit dependency sections were accepted")
 	}
 	for _, input := range []string{
-		`{"dependencies":{"@sveltejs/kit":"catalog:","@sveltejs/kit":"^3.0.0"}}`,
-		`{"dependencies":{"@sveltejs/kit":"catalog:"},"dependencies":{"@sveltejs/kit":"^3.0.0"}}`,
+		`{"dependencies":{"@sveltejs/kit":"catalog:","@sveltejs/kit":"^3.1.0"}}`,
+		`{"dependencies":{"@sveltejs/kit":"catalog:"},"dependencies":{"@sveltejs/kit":"^3.1.0"}}`,
 	} {
-		if _, _, _, err := pinKit([]byte(input), "3.0.0"); err == nil {
+		if _, _, _, err := pinKit([]byte(input), "3.1.0"); err == nil {
 			t.Fatalf("duplicate package JSON keys were accepted: %s", input)
 		}
 	}
@@ -685,7 +685,7 @@ func installStockKit(t *testing.T, web, version, name string) {
 	if err := json.Unmarshal(stockManifest, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if manifest["name"] != kitPackageName || manifest["version"] != "3.0.0" {
+	if manifest["name"] != kitPackageName || manifest["version"] != "3.1.0" {
 		t.Fatalf("authoritative installed Kit identity = %v@%v", manifest["name"], manifest["version"])
 	}
 	queue, err := os.ReadFile(filepath.Join(stockDir, "src", "core", "postbuild", "queue.js"))

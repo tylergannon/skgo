@@ -302,8 +302,8 @@ export default defineAddon({
 		const vitePlus = fs.existsSync(vitePlusPackage)
 			? JSON.parse(fs.readFileSync(vitePlusPackage, 'utf8'))
 			: undefined;
-		if (vitePlus && vitePlus.version !== '1.0.0') {
-			throw new Error(`skgo qualifies VitePlus 1.0.0; found ${vitePlus.version}. Install the qualified version before adding skgo.`);
+		if (vitePlus && vitePlus.version !== '1.3.0') {
+			throw new Error(`skgo qualifies VitePlus 1.3.0; found ${vitePlus.version}. Install the qualified version before adding skgo.`);
 		}
 		const vitestVersion = vitePlus?.dependencies?.vitest;
 
@@ -345,14 +345,14 @@ export default defineAddon({
 		// catalog. It applies only to the generated project's installs; the
 		// separate Storybook dlx environment receives its own explicit flag.
 		sv.file('pnpm-workspace.yaml', pnpm.allowBuilds({ cwd, packages: ['esbuild'] }));
-		if (vitePlus?.version === '1.0.0') {
-			// Storybook 10.6.1's optional peer predates VitePlus 1.0. The
+		if (vitePlus?.version === '1.3.0') {
+			// Storybook 10.6.2's optional peer predates VitePlus 1.0. The
 			// generated Storybook build is qualified with this exact pair.
 			sv.file('pnpm-workspace.yaml', transforms.yaml(({ data }) => {
 				const rules = data.get('peerDependencyRules');
 				const value = rules?.toJSON?.() ?? rules ?? {};
 				value.allowedVersions ??= {};
-				value.allowedVersions['storybook@10.6.1>vite-plus'] = '1.0.0';
+				value.allowedVersions['storybook@10.6.2>vite-plus'] = '1.3.0';
 				data.set('peerDependencyRules', value);
 			}));
 		}
