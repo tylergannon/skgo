@@ -210,9 +210,15 @@ retryStartup:
 				goChanged = true
 				pending = true
 			case <-active.Done():
+				if ctx.Err() != nil {
+					return nil
+				}
 				closeHost(active)
 				next, err := makeHost(goodInputs, goodDist)
 				if err != nil {
+					if ctx.Err() != nil {
+						return nil
+					}
 					return fmt.Errorf("recover Go application: %w", err)
 				}
 				closeHost(active)
@@ -227,10 +233,20 @@ retryStartup:
 				continue
 			case <-front.done:
 				front.close()
-				front, e = startFrontend(ctx, o, cfg.Web, work, origin, secret)
-				if e != nil {
-					return e
+				if ctx.Err() != nil {
+					return nil
 				}
+				nextFrontend, err := startFrontend(ctx, o, cfg.Web, work, origin, secret)
+				if ctx.Err() != nil {
+					if nextFrontend != nil {
+						nextFrontend.close()
+					}
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				front = nextFrontend
 				if e = route.setFrontend(front.ready.Socket, front.ready.Tooling); e != nil {
 					return e
 				}
