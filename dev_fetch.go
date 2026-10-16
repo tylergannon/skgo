@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"sync/atomic"
 )
 
 // A fetch exchange suspends only the Go hook's supplied continuation. Kit
@@ -315,11 +316,15 @@ func (s *devFetchRequests) remove(id string, exchange *devFetchExchange) {
 // may be streamed, ignored until later, or closed without being read.
 type devFetchBody struct {
 	io.ReadCloser
-	done chan struct{}
-	once sync.Once
+	done   chan struct{}
+	once   sync.Once
+	closed atomic.Bool
 }
 
 func (b *devFetchBody) Read(p []byte) (int, error) {
+	if b.closed.Load() {
+		return 0, http.ErrBodyReadAfterClose
+	}
 	n, err := b.ReadCloser.Read(p)
 	if err != nil {
 		b.once.Do(func() { close(b.done) })
@@ -327,7 +332,10 @@ func (b *devFetchBody) Read(p []byte) (int, error) {
 	return n, err
 }
 func (b *devFetchBody) Close() error {
-	err := b.ReadCloser.Close()
+	// Closing net/http's server body here can drain an unfinished producer.
+	// Release its handler instead; the acknowledgment cancels the JS upload,
+	// and net/http remains responsible for closing its own request body.
+	b.closed.Store(true)
 	b.once.Do(func() { close(b.done) })
-	return err
+	return nil
 }

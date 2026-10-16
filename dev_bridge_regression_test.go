@@ -394,3 +394,36 @@ const page=await requestHandle(e,async()=>{
 assert.equal(await page.text(),'literal-stream-final-492');
 `)
 }
+
+func TestNativeBridgeContinuationCloseCancelsUnfinishedProducer(t *testing.T) {
+	handler := nativeBridgeRegressionFixture(t, nil, nil, SSROptions{HandleFetch: func(ctx context.Context, request *http.Request, next Fetch) (*http.Response, error) {
+		response, err := next(request)
+		if err != nil {
+			return nil, err
+		}
+		if err = response.Body.Close(); err != nil {
+			return nil, err
+		}
+		return &http.Response{StatusCode: 202, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("literal-substitute-472"))}, nil
+	}}, false)
+	runNativeBridgeRegression(t, handler, `
+const e=event();let timer,observeCancel;
+const cancelled=new Promise(resolve=>observeCancel=resolve);
+try {
+ const page=await requestHandle(e,async()=>{
+  const expired=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('continuation Body.Close blocked on unfinished producer')),700);});
+  const result=await Promise.race([
+   requestFetch({event:e,request:new Request('http://app.test/stream'),fetch:async()=>new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('literal-open-stream-883'));},cancel(){observeCancel();}}))}),
+   expired
+  ]);
+  // Cancellation must happen before reading the substituted result, which
+  // otherwise finishes the whole fetch and could conceal a blocked producer.
+  await Promise.race([cancelled,expired]);
+  assert.equal(result.url,'');assert.equal(result.redirected,false);
+  assert.equal(result.status,202);assert.equal(await result.text(),'literal-substitute-472');
+  return new Response('literal-close-final-913');
+ });
+ assert.equal(await page.text(),'literal-close-final-913');
+}finally{clearTimeout(timer);}
+`)
+}

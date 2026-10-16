@@ -72,6 +72,10 @@ function call(kind, payload, event, raw, signalOverride) {
         // An owning request may abort a fetch nobody consumed. Keep that
         // cancellation observable to iterators without an unhandled event.
         response.on("error", () => {});
+        // Go has released this continuation body. Stop its producer before
+        // net/http closes (and otherwise drains) the uploaded request body.
+        if (kind === "fetch-response" && response.statusCode === 204)
+          cancelBody?.();
         if (
           (response.statusCode < 200 || response.statusCode >= 300) &&
           !["response", "endpoint"].includes(kind) &&
