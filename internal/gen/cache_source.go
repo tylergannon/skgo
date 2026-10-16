@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -172,6 +173,18 @@ func (s cacheSources) capture(cfg Config) (map[string][]byte, string, error) {
 }
 
 func (s cacheSources) captureWithRead(cfg Config, readFile func(string) ([]byte, error)) (map[string][]byte, string, error) {
+	// WalkDir can enumerate a directory just before an editor removes or renames
+	// it. Discard the entire partial view and rediscover membership; ignoring
+	// that error could retain bytes already captured by an earlier walk.
+	for attempt := 0; ; attempt++ {
+		files, key, err := s.captureOnce(cfg, readFile)
+		if !errors.Is(err, fs.ErrNotExist) || attempt == 2 {
+			return files, key, err
+		}
+	}
+}
+
+func (s cacheSources) captureOnce(cfg Config, readFile func(string) ([]byte, error)) (map[string][]byte, string, error) {
 	for alias, original := range s.Aliases {
 		current, err := filepath.EvalSymlinks(alias)
 		if err != nil || current != original {
