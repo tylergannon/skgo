@@ -164,7 +164,7 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 		} else {
 			entry.answer.Error = asHTTPError(err)
 			if s.development {
-				entry.answer.NativeError = nativeErrorFor(err)
+				entry.answer.NativeError = nativeErrorFor(logical, err)
 			}
 		}
 	})

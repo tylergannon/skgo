@@ -17,7 +17,9 @@ import (
 	"github.com/tylergannon/skgo/internal/formdata"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
@@ -28,8 +30,14 @@ func tracingRecorder(t *testing.T) *tracetest.SpanRecorder {
 	recorder := tracetest.NewSpanRecorder()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
 	previous := otel.GetTracerProvider()
+	previousPropagator := otel.GetTextMapPropagator()
+	otel.SetTextMapPropagator(propagation.TraceContext{})
 	otel.SetTracerProvider(provider)
-	t.Cleanup(func() { otel.SetTracerProvider(previous); _ = provider.Shutdown(context.Background()) })
+	t.Cleanup(func() {
+		otel.SetTracerProvider(previous)
+		otel.SetTextMapPropagator(previousPropagator)
+		_ = provider.Shutdown(context.Background())
+	})
 	return recorder
 }
 func tracedHandler(m Manifest, next http.Handler) http.Handler {
@@ -72,7 +80,7 @@ func tracingEvent(t *testing.T, ctx context.Context) {
 		t.Fatal("missing enabled tracing event")
 	}
 	current := trace.SpanFromContext(ctx)
-	if current.SpanContext().SpanID() != event.Tracing.Current.SpanContext().SpanID() {
+	if current.SpanContext().SpanID() != event.Tracing.Current.SpanContext().SpanID() || EventFrom(event.Request().Context()) != event || trace.SpanFromContext(event.Request().Context()).SpanContext().SpanID() != current.SpanContext().SpanID() {
 		t.Fatal("context/current span mismatch")
 	}
 	event.Tracing.Root.SetAttributes(attribute.String("receipt.root", "ROOT_7819"))
@@ -569,5 +577,52 @@ func TestTracingInternalGoFetch(t *testing.T) {
 				t.Fatal("Go fetch lost active parent", nested)
 			}
 		})
+	}
+}
+
+func TestTracingConfiguredPropagator(t *testing.T) {
+	recorder := tracingRecorder(t)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	m := section()
+	m.TracingServer = true
+	loads := mustLoads(t, nil, NewServerLoad(LoadSpec{Module: "src/routes/a/+page.server.ts", Run: func(ctx context.Context) (any, error) {
+		return map[string]any{"tenant": baggage.FromContext(ctx).Member("tenant").Value()}, nil
+	}}))
+	request := httptest.NewRequest("GET", "http://app.test/a/__data.json", nil)
+	request.Header.Set("Traceparent", "00-11111111111111111111111111111111-2222222222222222-01")
+	request.Header.Set("Baggage", "tenant=atlas")
+	response := httptest.NewRecorder()
+	tracedHandler(m, loads.Intercept(http.NotFoundHandler())).ServeHTTP(response, request)
+	if response.Code != 200 || !strings.Contains(response.Body.String(), "atlas") {
+		t.Fatal("configured baggage propagator was ignored", response.Code, response.Body.String())
+	}
+	root := namedSpan(t, recorder, "sveltekit.handle.root")
+	if root.Parent().SpanID().String() != "2222222222222222" {
+		t.Fatal("configured composite propagator lost parent", root)
+	}
+}
+
+func TestNativeTracingAnnotationBudget(t *testing.T) {
+	sink := &nativeTraceSink{}
+	// A single large value used to overflow Node's HTTP callback parser.
+	sink.append(nativeTraceOp{Method: "attributes", Attributes: map[string]any{"large": strings.Repeat("x", 20000)}})
+	sink.append(nativeTraceOp{Method: "attributes", Attributes: map[string]any{"receipt": "RETAINED_5307"}})
+	for range 1000 {
+		sink.append(nativeTraceOp{Method: "event", Name: strings.Repeat("y", 100)})
+	}
+	if sink.bytes > nativeTraceBudget {
+		t.Fatal("unbounded pending annotations", sink.bytes)
+	}
+	writer := &nativeTraceWriter{sinks: []*nativeTraceSink{sink}}
+	encoded := writer.annotations()
+	if len(encoded) > 4096 {
+		t.Fatal("unbounded annotation header", len(encoded))
+	}
+	raw, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil || !strings.Contains(string(raw), "RETAINED_5307") {
+		t.Fatal("small annotation lost alongside oversized operation", string(raw), err)
+	}
+	if len(sink.ops) != 0 || sink.bytes != 0 {
+		t.Fatal("draining annotations retained pending operations")
 	}
 }

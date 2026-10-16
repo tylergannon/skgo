@@ -78,15 +78,19 @@ func EventFrom(ctx context.Context) *Event {
 
 // withEvent is how the dispatcher makes the event reachable.
 func withEvent(ctx context.Context, e *Event) context.Context {
-	if e != nil {
-		copy := *e
-		e = &copy
-		e.Tracing = tracingOf(ctx)
-		if e.req != nil {
-			e.req = e.req.WithContext(ctx)
-		}
+	// Framework operations may run concurrently (for example sibling loads).
+	// Bind each operation's copy into its own request context, preserving remote
+	// restrictions when helpers recover the event from Request().Context().
+	if e == nil {
+		return context.WithValue(ctx, eventKey{}, e)
 	}
-	return context.WithValue(ctx, eventKey{}, e)
+	copy := *e
+	copy.Tracing = tracingOf(ctx)
+	ctx = context.WithValue(ctx, eventKey{}, &copy)
+	if copy.req != nil {
+		copy.req = copy.req.WithContext(ctx)
+	}
+	return ctx
 }
 
 // Request is the HTTP request that carried this call, or nil outside a remote

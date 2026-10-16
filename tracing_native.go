@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -37,9 +38,10 @@ func nativeInfo(span trace.Span) nativeSpanInfo {
 }
 
 type nativeTraceInput struct {
-	Enabled bool           `json:"enabled"`
-	Root    nativeSpanInfo `json:"root"`
-	Current nativeSpanInfo `json:"current"`
+	Enabled     bool              `json:"enabled"`
+	Propagation map[string]string `json:"propagation"`
+	Root        nativeSpanInfo    `json:"root"`
+	Current     nativeSpanInfo    `json:"current"`
 }
 type nativeTraceOp struct {
 	ID         string         `json:"id"`
@@ -49,22 +51,39 @@ type nativeTraceOp struct {
 	Status     map[string]any `json:"status,omitempty"`
 	Link       map[string]any `json:"link,omitempty"`
 }
+
+// Keep annotations below the callback client's header budget. Telemetry is
+// best effort: oversized operations and a full queue are dropped, never allowed
+// to prevent application response delivery. Both retained memory and wire bytes
+// are bounded, including callbacks which never flush a response.
+const nativeTraceBudget = 3 * 1024
+
 type nativeTraceSink struct {
-	mu  sync.Mutex
-	ops []nativeTraceOp
+	mu    sync.Mutex
+	ops   []json.RawMessage
+	bytes int
 }
 type nativeTraceSinkKey struct{}
 
 func (s *nativeTraceSink) append(op nativeTraceOp) {
+	raw, err := json.Marshal(op)
+	if err != nil || len(raw)+2 > nativeTraceBudget {
+		return
+	}
 	s.mu.Lock()
-	s.ops = append(s.ops, op)
-	s.mu.Unlock()
+	defer s.mu.Unlock()
+	if s.bytes+len(raw)+1 > nativeTraceBudget-2 {
+		return
+	}
+	s.ops = append(s.ops, raw)
+	s.bytes += len(raw) + 1
 }
-func (s *nativeTraceSink) drain() []nativeTraceOp {
+func (s *nativeTraceSink) drain() []json.RawMessage {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	ops := s.ops
 	s.ops = nil
+	s.bytes = 0
 	return ops
 }
 
@@ -138,6 +157,7 @@ func nativeTracingContext(ctx context.Context, header string) context.Context {
 	if json.Unmarshal(raw, &input) != nil {
 		return ctx
 	}
+	ctx = otel.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier(input.Propagation))
 	sink := &nativeTraceSink{}
 	root, current := trace.Span(noSpan), trace.Span(noSpan)
 	if input.Enabled {
@@ -155,6 +175,12 @@ func inheritNativeTracing(ctx, from context.Context) context.Context {
 	if !ok || !state.native {
 		return ctx
 	}
+	// The continuation has its own cancellation/values, but retains standard
+	// propagated context (for example application-configured baggage).
+	carrier := propagation.MapCarrier{}
+	propagator := otel.GetTextMapPropagator()
+	propagator.Inject(from, carrier)
+	ctx = propagator.Extract(ctx, carrier)
 	ctx = context.WithValue(ctx, tracingKey{}, state)
 	if sink, ok := from.Value(nativeTraceSinkKey{}).(*nativeTraceSink); ok {
 		ctx = context.WithValue(ctx, nativeTraceSinkKey{}, sink)
@@ -183,9 +209,16 @@ func (w *nativeTraceWriter) add(ctx context.Context) {
 	w.sinks = append(w.sinks, sink)
 }
 func (w *nativeTraceWriter) annotations() string {
-	var ops []nativeTraceOp
+	var ops []json.RawMessage
+	bytes := 2 // enclosing array
 	for _, sink := range w.sinks {
-		ops = append(ops, sink.drain()...)
+		for _, op := range sink.drain() {
+			if bytes+len(op)+1 > nativeTraceBudget {
+				continue
+			}
+			ops = append(ops, op)
+			bytes += len(op) + 1
+		}
 	}
 	if len(ops) == 0 {
 		return ""
@@ -193,6 +226,7 @@ func (w *nativeTraceWriter) annotations() string {
 	raw, _ := json.Marshal(ops)
 	return base64.StdEncoding.EncodeToString(raw)
 }
+
 func (w *nativeTraceWriter) WriteHeader(status int) {
 	if !w.sent {
 		w.sent = true
@@ -238,8 +272,8 @@ type nativeErrorDiagnostic struct {
 	Status  int    `json:"status,omitempty"`
 }
 
-func nativeErrorFor(err error) *nativeErrorDiagnostic {
-	if err == nil {
+func nativeErrorFor(ctx context.Context, err error) *nativeErrorDiagnostic {
+	if err == nil || !tracingOf(ctx).Enabled {
 		return nil
 	}
 	var panicError *tracingPanicError

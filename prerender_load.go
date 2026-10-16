@@ -161,7 +161,7 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 				return err
 			}
 			answer.Body = body
-			answer.NativeError = nativeErrorFor(node.raw)
+			answer.NativeError = nativeErrorFor(ctx, node.raw)
 			answer.Error = &HTTPError{Status: handled.Status, Message: handled.Message}
 		}
 		var authored *HTTPError

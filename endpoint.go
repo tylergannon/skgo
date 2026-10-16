@@ -14,7 +14,6 @@ package skgo
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -575,8 +574,13 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 func (es *Endpoints) fatalError(w http.ResponseWriter, r *http.Request, routeID string, raw error) {
 	e := handleErrorAndJSONify(r.Context(), routeID, es.cfg.HandleError, nil, raw, nil)
 	if state, ok := r.Context().Value(tracingKey{}).(tracingState); ok && state.native {
-		metadata, _ := json.Marshal(map[string]any{"nativeError": nativeErrorFor(raw), "body": errorNodeExtra(e), "error": map[string]any{"status": e.Status, "message": e.Message}})
-		w.Header().Set("X-Skgo-Native-Error", base64.StdEncoding.EncodeToString(metadata))
+		// The callback body can carry arbitrary diagnostics and App.Error fields;
+		// putting either in a header can exceed Node's HTTP parser limit.
+		w.Header().Set("X-Skgo-Native-Error", "1")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(e.Status)
+		_ = json.NewEncoder(w).Encode(map[string]any{"nativeError": nativeErrorFor(r.Context(), raw), "body": errorNodeExtra(e), "error": map[string]any{"status": e.Status, "message": e.Message}})
+		return
 	}
 	accept := r.Header.Get("Accept")
 	if accept == "" {

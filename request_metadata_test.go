@@ -169,6 +169,12 @@ func restrictedMetadataReceiptWithCookies(ctx context.Context, allowCookies bool
 }
 
 func TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprint(enabled), func(t *testing.T) { remoteRequestMetadataAndQueryRestrictionsAtServedEntries(t, enabled) })
+	}
+}
+
+func remoteRequestMetadataAndQueryRestrictionsAtServedEntries(t *testing.T, enabled bool) {
 	const base = "/base"
 	q := NewQueryNoArg(testModule, "metadataQuery", restrictedMetadataReceipt)
 	b := NewBatchQuery(testModule, "metadataBatch", func(ctx context.Context, inputs []string) ([]string, error) {
@@ -193,6 +199,7 @@ func TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries(t *testing.T) 
 	})
 	form := NewForm(testModule, "metadataForm", func(ctx context.Context, in draft) (string, error) { return metadataReceipt(EventFrom(ctx)), nil })
 	manifest := metadataManifest(base)
+	manifest.TracingServer = enabled
 	rs := testRemotes(t, RemoteConfig{Base: base, Origin: "http://fixture.test"}, q, b, live, command, form)
 	cfg := manifest.HandleConfig()
 	cfg.Origin = "http://fixture.test"
@@ -260,6 +267,12 @@ func TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries(t *testing.T) 
 }
 
 func TestNestedSSRQueryKeepsPageRequestFlags(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprint(enabled), func(t *testing.T) { nestedSSRQueryKeepsPageRequestFlags(t, enabled) })
+	}
+}
+
+func nestedSSRQueryKeepsPageRequestFlags(t *testing.T, enabled bool) {
 	q := NewQueryNoArg(testModule, "metadataSSR", restrictedMetadataReceipt)
 	rs := testRemotes(t, RemoteConfig{}, q)
 	bundle := fmt.Sprintf(`globalThis.__skgo_ping=()=> 'ok';globalThis.__skgo_render=()=>{const result={done:false};__skgo_remote(%q,'').then(value=>{result.body=value;result.done=true},error=>{result.failure=String(error);result.done=true});return result;};`, q.ID())
@@ -272,7 +285,9 @@ func TestNestedSSRQueryKeepsPageRequestFlags(t *testing.T) {
 		event.Locals.Name = "ssr-local"
 		return resolve(ctx, event)
 	})
-	h := hook.Intercept(metadataManifest("").HandleConfig(), emptyHookParams, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	manifest := metadataManifest("")
+	manifest.TracingServer = enabled
+	h := hook.Intercept(manifest.HandleConfig(), emptyHookParams, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		result, _, err := renderer.renderPlan(r, dataRequest{url: mustURL(t, "http://fixture.test/items/42")}, documentPlan{routeID: "/items/[id]", status: 200}, newDocumentCSPWithNonce(nil, "fixed"))
 		if err != nil {
 			http.Error(w, err.Error(), 500)

@@ -56,28 +56,38 @@ function headers(event) {
     ];
   return result;
 }
-function tracingHeaders(event) {
+async function tracingHeaders(event) {
   if (!event?.tracing) return {};
+  const propagation = {};
+  if (event.tracing.enabled) {
+    const api = await import('@opentelemetry/api');
+    api.propagation.inject(api.context.active(), propagation);
+  }
   const info = span => ({...span.spanContext(),recording:span.isRecording(),traceState:span.spanContext().traceState?.serialize?.() ?? ''});
-  return {'x-skgo-tracing':Buffer.from(JSON.stringify({enabled:event.tracing.enabled,root:info(event.tracing.root),current:info(event.tracing.current)})).toString('base64')};
+  return {'x-skgo-tracing':Buffer.from(JSON.stringify({enabled:event.tracing.enabled,root:info(event.tracing.root),current:info(event.tracing.current),propagation})).toString('base64')};
 }
 function tracingEffects(event, encoded) {
   if (!encoded || !event?.tracing) return;
   const spans=[event.tracing.root,event.tracing.current];
-  for (const operation of JSON.parse(Buffer.from(encoded,'base64').toString())) {
-    const span=spans.find(s=>s.spanContext().spanId===operation.id);
-    if (!span) continue;
-    switch(operation.method) {
-      case 'attributes':span.setAttributes(operation.attributes);break;
-      case 'name':span.updateName(operation.name);break;
-      case 'status':span.setStatus(operation.status);break;
-      case 'event':span.addEvent(operation.name,operation.attributes);break;
-      case 'end':span.end();break;
-      case 'link':span.addLink(operation.link);break;
+  try {
+    for (const operation of JSON.parse(Buffer.from(encoded,'base64').toString())) {
+      const span=spans.find(s=>s.spanContext().spanId===operation.id);
+      if (!span) continue;
+      switch(operation.method) {
+        case 'attributes':span.setAttributes(operation.attributes);break;
+        case 'name':span.updateName(operation.name);break;
+        case 'status':span.setStatus(operation.status);break;
+        case 'event':span.addEvent(operation.name,operation.attributes);break;
+        case 'end':span.end();break;
+        case 'link':span.addLink(operation.link);break;
+      }
     }
+  } catch {
+    // Best-effort telemetry must not interrupt application response delivery.
   }
 }
-function call(kind, payload, event, raw, signalOverride) {
+async function call(kind, payload, event, raw, signalOverride) {
+  const traceHeaders = await tracingHeaders(event);
   return new Promise((resolve, reject) => {
     const request = httpRequest(
       {
@@ -86,7 +96,7 @@ function call(kind, payload, event, raw, signalOverride) {
         method: "POST",
         headers: {
           authorization: `Bearer ${process.env.SKGO_DEV_SERVICE_SECRET}`,
-          ...tracingHeaders(event),
+          ...traceHeaders,
           ...(raw ? raw.headers : { "content-type": "application/json" }),
         },
       },
@@ -560,8 +570,9 @@ async function incomingResponse(upstream, method, finish = async () => {}) {
 export async function endpoint(event) {
   const response = await call("endpoint", { handle: owner(event) }, event);
   if (response.headers['x-skgo-native-error']) {
-    response.resume();
-    exceptional(JSON.parse(Buffer.from(response.headers['x-skgo-native-error'],'base64').toString()));
+    let text = "";
+    for await (const chunk of response) text += chunk;
+    exceptional(JSON.parse(text));
   }
   const encoded = response.headers["x-skgo-effects"];
   if (encoded)

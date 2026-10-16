@@ -25,6 +25,8 @@ import (
 	"github.com/tylergannon/skgo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
@@ -98,7 +100,7 @@ func assertJoinedTrace(t *testing.T, spans []emittedTraceSpan, endpoint bool) {
 	child := one("application.work")
 	if endpoint {
 		operation := one("sveltekit.endpoint")
-		if operation.Parent != resolve.ID || child.Parent != operation.ID || operation.Attributes["receipt.current"] != "ENDPOINT_4361" {
+		if operation.Parent != resolve.ID || child.Parent != operation.ID || operation.Attributes["receipt.current"] != "ENDPOINT_4361" || operation.Attributes["receipt.tenant"] != "atlas" {
 			t.Fatalf("endpoint ancestry/annotations %#v", spans)
 		}
 		return
@@ -145,6 +147,31 @@ func assertInternalFetchTrace(t *testing.T, spans []emittedTraceSpan) {
 		if span.Name == "application.work" && span.Parent != endpoint.ID {
 			t.Fatalf("endpoint application span has wrong parent %#v", spans)
 		}
+	}
+}
+
+func assertGoFetchTrace(t *testing.T, spans []emittedTraceSpan, override bool) {
+	t.Helper()
+	var load, nested, endpoint emittedTraceSpan
+	for _, span := range spans {
+		switch {
+		case span.Name == "sveltekit.load" && span.Attributes["sveltekit.load.node_id"] == "src/routes/+page.server.ts":
+			load = span
+		case span.Name == "sveltekit.handle.root" && span.Attributes["http.route"] == "/api":
+			nested = span
+		case span.Name == "sveltekit.endpoint":
+			endpoint = span
+		}
+	}
+	if nested.ID == "" || load.ID == "" || endpoint.ID == "" || endpoint.Attributes["receipt.tenant"] != "atlas" {
+		t.Fatalf("Go fetch request or configured baggage was lost: %#v", spans)
+	}
+	if override {
+		if nested.Trace != "33333333333333333333333333333333" || nested.Parent != "4444444444444444" {
+			t.Fatalf("explicit incoming parent was overwritten: %#v", nested)
+		}
+	} else if nested.Trace != load.Trace || nested.Parent != load.ID {
+		t.Fatalf("Go fetch active parent was lost: %#v %#v", load, nested)
 	}
 }
 
@@ -245,8 +272,14 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 	recorder := tracetest.NewSpanRecorder()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
 	previous := otel.GetTracerProvider()
+	previousPropagator := otel.GetTextMapPropagator()
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	otel.SetTracerProvider(provider)
-	defer func() { otel.SetTracerProvider(previous); provider.Shutdown(context.Background()) }()
+	defer func() {
+		otel.SetTracerProvider(previous)
+		otel.SetTextMapPropagator(previousPropagator)
+		provider.Shutdown(context.Background())
+	}()
 	viteSocket, goSocket := filepath.Join(work, "vite.sock"), filepath.Join(work, "go.sock")
 	transport := &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", viteSocket)
@@ -330,10 +363,13 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 	development := skgo.NewNativeDevelopment("tracing-secret", viteSocket)
 	var hookCalls atomic.Int32
 	loadConfig := m.LoadConfig(public.URL)
-	loadConfig.HandleError = func(_ context.Context, caught skgo.CaughtError) map[string]any {
+	loadConfig.HandleError = func(ctx context.Context, caught skgo.CaughtError) map[string]any {
 		count := hookCalls.Add(1)
 		if caught.Kind == "app" {
 			return map[string]any{"status": 429, "message": "PUBLIC_KNOWN_6302", "code": "CUSTOM_KNOWN_6389", "hookCalls": count}
+		}
+		if skgo.EventFrom(ctx).Request().URL.Query().Get("large") == "1" {
+			return map[string]any{"status": 429, "message": "PUBLIC_FAILURE_1306", "code": "CUSTOM_6389", "detail": strings.Repeat("PUBLIC_DETAIL_9174", 2000)}
 		}
 		return map[string]any{"message": "PUBLIC_FAILURE_1306", "code": "CUSTOM_6389"}
 	}
@@ -342,8 +378,25 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 		if !e.Tracing.Enabled || e.Tracing.Current.SpanContext().SpanID() != trace.SpanFromContext(ctx).SpanContext().SpanID() {
 			return nil, errors.New("native current context mismatch")
 		}
+		if e.Request().URL.Query().Get("large") == "1" {
+			e.Tracing.Current.SetAttributes(attribute.String("db.query.text", strings.Repeat("x", 20000)))
+			e.Tracing.Current.AddEvent("large", trace.WithAttributes(attribute.String("text", strings.Repeat("y", 20000))))
+		}
 		e.Tracing.Root.SetAttributes(attribute.String("receipt.root", "ROOT_7819"))
 		e.Tracing.Current.SetAttributes(attribute.String("receipt.current", "LOAD_4361"))
+		if mode := e.Request().URL.Query().Get("gofetch"); mode != "" {
+			request, _ := http.NewRequest("GET", "/api", nil)
+			if mode == "override" {
+				request.Header.Set("Traceparent", "00-33333333333333333333333333333333-4444444444444444-01")
+			}
+			response, err := e.Fetch(ctx, request)
+			if err != nil {
+				return nil, err
+			}
+			defer response.Body.Close()
+			body, err := io.ReadAll(response.Body)
+			return map[string]any{"load": string(body)}, err
+		}
 		return map[string]any{"load": "LOAD_1937"}, nil
 	}}), skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/failure/+page.server.ts", Run: func(ctx context.Context) (any, error) {
 		if skgo.EventFrom(ctx).Request().URL.Query().Get("known") == "1" {
@@ -360,14 +413,24 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 	}
 	endpointConfig := m.EndpointConfig(public.URL)
 	endpointConfig.HandleError = loadConfig.HandleError
+	endpointConfig.OnPanic = func(string, string, any, []byte) {}
 	endpoints, err := skgo.NewEndpoints(endpointConfig, skgo.NewEndpoint("/api", "GET", func(w http.ResponseWriter, r *http.Request) {
 		e := skgo.EventFrom(r.Context())
+		if r.URL.Query().Get("large") == "1" {
+			e.Tracing.Current.SetAttributes(attribute.String("db.query.text", strings.Repeat("x", 20000)))
+		}
+		e.Tracing.Current.SetAttributes(attribute.String("receipt.tenant", baggage.FromContext(r.Context()).Member("tenant").Value()))
 		e.Tracing.Root.SetAttributes(attribute.String("receipt.root", "ROOT_7819"))
 		e.Tracing.Current.SetAttributes(attribute.String("receipt.current", "ENDPOINT_4361"))
 		_, span := otel.Tracer("application").Start(r.Context(), "application.work")
 		span.End()
 		io.WriteString(w, "ENDPOINT_6419")
-	}), skgo.NewEndpoint("/panic", "GET", func(http.ResponseWriter, *http.Request) { panic("UNEXPECTED_ENDPOINT_783") }))
+	}), skgo.NewEndpoint("/panic", "GET", func(_ http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("large") == "1" {
+			panic("UNEXPECTED_ENDPOINT_783" + strings.Repeat("PRIVATE_DETAIL_9128", 2000))
+		}
+		panic("UNEXPECTED_ENDPOINT_783")
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,7 +453,9 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 		return resolve(ctx, event)
 	}
 	hook := skgo.RequestSequence[struct{}, struct{}](noop, noop)
-	h := hook.Intercept(m.HandleConfig(), func(*skgo.Event) (struct{}, error) { return struct{}{}, nil }, endpoints.Intercept(loads.Intercept(remotes.Intercept(pages))))
+	var h http.Handler
+	h = hook.Intercept(m.HandleConfig(), func(*skgo.Event) (struct{}, error) { return struct{}{}, nil }, endpoints.Intercept(loads.Intercept(remotes.Intercept(pages))))
+	h = skgo.FetchConfig{Origin: public.URL, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { h.ServeHTTP(w, r) })}.Intercept(h)
 	native, closeNative, err := development.Handler(h)
 	if err != nil {
 		t.Fatal(err)
@@ -403,6 +468,7 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 		t.Helper()
 		request, _ := http.NewRequest("GET", base+path, nil)
 		request.Header.Set("Traceparent", "00-11111111111111111111111111111111-2222222222222222-01")
+		request.Header.Set("Baggage", "tenant=atlas")
 		res, err := client.Do(request)
 		if err != nil {
 			t.Fatal(err)
@@ -420,6 +486,7 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 		t.Helper()
 		request, _ := http.NewRequest(method, base+path, strings.NewReader("value=literal"))
 		request.Header.Set("Traceparent", "00-11111111111111111111111111111111-2222222222222222-01")
+		request.Header.Set("Baggage", "tenant=atlas")
 		request.Header.Set("Accept", "application/json")
 		if method == "POST" {
 			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -441,6 +508,9 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 		if err != nil || strings.Contains(string(body), diagnostic) || !strings.Contains(string(body), "PUBLIC_FAILURE_1306") || !strings.Contains(string(body), "CUSTOM_6389") {
 			t.Fatalf("private error leaked or custom Go handleError lost: %d %s %v", response.StatusCode, body, err)
 		}
+		if strings.Contains(path, "large=1") && (response.StatusCode != 429 || !strings.Contains(string(body), strings.Repeat("PUBLIC_DETAIL_9174", 2000))) {
+			t.Fatal("large custom public error body was lost")
+		}
 		spans := readEmittedSpans(t, traceFile)
 		var found *emittedTraceSpan
 		for i := range spans {
@@ -461,6 +531,7 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 		t.Helper()
 		request, _ := http.NewRequest(method, base+path, strings.NewReader("value=literal"))
 		request.Header.Set("Traceparent", "00-11111111111111111111111111111111-2222222222222222-01")
+		request.Header.Set("Baggage", "tenant=atlas")
 		request.Header.Set("Accept", "application/json")
 		request.Header.Set("X-Reset-Hook-Calls", "RESET_5291")
 		if method == "POST" {
@@ -499,7 +570,7 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 	}
 
 	t.Run("native document", func(t *testing.T) {
-		visit(t, public.URL, "/", "TRACING_1973 LOAD_1937 REMOTE_2841")
+		visit(t, public.URL, "/?large=1", "TRACING_1973 LOAD_1937 REMOTE_2841")
 		for deadline := time.Now().Add(3 * time.Second); ; {
 			if raw, _ := os.ReadFile(nodeTraceFile); bytes.Contains(raw, []byte(`"name":"sveltekit.handle.root"`)) {
 				break
@@ -515,7 +586,7 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 	recorder.Reset()
 	os.WriteFile(nodeTraceFile, nil, 0600)
 	t.Run("native endpoint", func(t *testing.T) {
-		visit(t, public.URL, "/api", "ENDPOINT_6419")
+		visit(t, public.URL, "/api?large=1", "ENDPOINT_6419")
 		for deadline := time.Now().Add(3 * time.Second); ; {
 			if raw, _ := os.ReadFile(nodeTraceFile); bytes.Contains(raw, []byte(`"name":"sveltekit.handle.root"`)) {
 				break
@@ -534,6 +605,15 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 		assertInternalFetchTrace(t, append(readEmittedSpans(t, nodeTraceFile), exportGoSpans(recorder)...))
 	})
 
+	for _, mode := range []string{"active", "override"} {
+		t.Run("native Go fetch "+mode, func(t *testing.T) {
+			recorder.Reset()
+			os.WriteFile(nodeTraceFile, nil, 0600)
+			visit(t, public.URL, "/?gofetch="+mode, "TRACING_1973 ENDPOINT_6419 REMOTE_2841")
+			assertGoFetchTrace(t, append(readEmittedSpans(t, nodeTraceFile), exportGoSpans(recorder)...), mode == "override")
+		})
+	}
+
 	for _, tc := range []struct{ name, path, method, span, diagnostic string }{
 		{"load", "/failure/__data.json", "GET", "sveltekit.load", "UNEXPECTED_LOAD_781"},
 		{"action", "/failure?/save", "POST", "sveltekit.form_action", "UNEXPECTED_ACTION_782"},
@@ -545,6 +625,12 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 			negative(t, public.URL, tc.path, tc.method, nodeTraceFile, tc.span, tc.diagnostic)
 		})
 	}
+
+	t.Run("native large endpoint error", func(t *testing.T) {
+		recorder.Reset()
+		os.WriteFile(nodeTraceFile, nil, 0600)
+		negative(t, public.URL, "/panic?large=1", "GET", nodeTraceFile, "sveltekit.endpoint", "UNEXPECTED_ENDPOINT_783"+strings.Repeat("PRIVATE_DETAIL_9128", 2000))
+	})
 
 	for _, tc := range []struct{ name, path, method, span, original string }{
 		{"load", "/failure/__data.json?known=1", "GET", "sveltekit.load", "ORIGINAL_KNOWN_LOAD_784"},
@@ -604,6 +690,14 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 		visit(t, base, "/fetch", "FETCH_1438 ENDPOINT_6419")
 		assertInternalFetchTrace(t, readEmittedSpans(t, productionTrace))
 	})
+	for _, mode := range []string{"active", "override"} {
+		t.Run("standalone Go fetch "+mode, func(t *testing.T) {
+			os.WriteFile(productionTrace, nil, 0600)
+			visit(t, base, "/?gofetch="+mode, "TRACING_1973 ENDPOINT_6419 REMOTE_2841")
+			assertGoFetchTrace(t, readEmittedSpans(t, productionTrace), mode == "override")
+		})
+	}
+
 	for _, tc := range []struct{ name, path, method, span, diagnostic string }{
 		{"load", "/failure/__data.json", "GET", "sveltekit.load", "UNEXPECTED_LOAD_781"},
 		{"action", "/failure?/save", "POST", "sveltekit.form_action", "UNEXPECTED_ACTION_782"},
@@ -627,12 +721,12 @@ func main(){err:=skgo.RunPrerenderService(nil,[]*skgo.ServerLoad{skgo.NewServerL
 }
 
 const tracingProductionProgram = `package main
-import("context";"encoding/json";"errors";"fmt";"net";"net/http";"os";"sync";"sync/atomic";"github.com/tylergannon/skgo";"go.opentelemetry.io/otel";"go.opentelemetry.io/otel/attribute";sdk "go.opentelemetry.io/otel/sdk/trace")
+import("context";"encoding/json";"errors";"fmt";"io";"net";"net/http";"os";"sync";"sync/atomic";"github.com/tylergannon/skgo";"go.opentelemetry.io/otel";"go.opentelemetry.io/otel/attribute";sdk "go.opentelemetry.io/otel/sdk/trace";"go.opentelemetry.io/otel/propagation";"go.opentelemetry.io/otel/baggage")
 type exporter struct{mu sync.Mutex}
 func(e *exporter)ExportSpans(_ context.Context,spans []sdk.ReadOnlySpan)error{e.mu.Lock();defer e.mu.Unlock();f,err:=os.OpenFile(os.Getenv("TRACE_FILE"),os.O_CREATE|os.O_APPEND|os.O_WRONLY,0600);if err!=nil{return err};defer f.Close();for _,s:=range spans{attrs:=map[string]any{};for _,a:=range s.Attributes(){attrs[string(a.Key)]=a.Value.AsInterface()};if err:=json.NewEncoder(f).Encode(map[string]any{"name":s.Name(),"id":s.SpanContext().SpanID().String(),"parent":s.Parent().SpanID().String(),"trace":s.SpanContext().TraceID().String(),"attributes":attrs,"status":map[string]any{"code":int(s.Status().Code)},"events":s.Events()});err!=nil{return err}};return nil}
 func(*exporter)Shutdown(context.Context)error{return nil}
-func main(){otel.SetTracerProvider(sdk.NewTracerProvider(sdk.WithSyncer(&exporter{})));build:=os.DirFS("web/build");m,err:=skgo.ReadManifest(build);if err!=nil{panic(err)};if !m.TracingServer{panic("production manifest lost tracing.server")}
-var hookCalls atomic.Int32;loadConfig:=m.LoadConfig("http://app.test");loadConfig.HandleError=func(_ context.Context,caught skgo.CaughtError)map[string]any{count:=hookCalls.Add(1);if caught.Kind=="app"{return map[string]any{"status":429,"message":"PUBLIC_KNOWN_6302","code":"CUSTOM_KNOWN_6389","hookCalls":count}};return map[string]any{"message":"PUBLIC_FAILURE_1306","code":"CUSTOM_6389"}};loads,err:=skgo.NewLoads(loadConfig,skgo.NewServerLoad(skgo.LoadSpec{Module:"src/routes/+page.server.ts",Run:func(ctx context.Context)(any,error){e:=skgo.EventFrom(ctx);e.Tracing.Root.SetAttributes(attribute.String("receipt.root","ROOT_7819"));e.Tracing.Current.SetAttributes(attribute.String("receipt.current","LOAD_4361"));return map[string]any{"load":"LOAD_1937"},nil}}),skgo.NewServerLoad(skgo.LoadSpec{Module:"src/routes/failure/+page.server.ts",Run:func(ctx context.Context)(any,error){if skgo.EventFrom(ctx).Request().URL.Query().Get("known")=="1"{return nil,skgo.Errorf(418,"ORIGINAL_KNOWN_LOAD_784")};return nil,errors.New("UNEXPECTED_LOAD_781")}}));if err!=nil{panic(err)}
+func main(){otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}));otel.SetTracerProvider(sdk.NewTracerProvider(sdk.WithSyncer(&exporter{})));build:=os.DirFS("web/build");m,err:=skgo.ReadManifest(build);if err!=nil{panic(err)};if !m.TracingServer{panic("production manifest lost tracing.server")}
+var hookCalls atomic.Int32;loadConfig:=m.LoadConfig("http://app.test");loadConfig.HandleError=func(_ context.Context,caught skgo.CaughtError)map[string]any{count:=hookCalls.Add(1);if caught.Kind=="app"{return map[string]any{"status":429,"message":"PUBLIC_KNOWN_6302","code":"CUSTOM_KNOWN_6389","hookCalls":count}};return map[string]any{"message":"PUBLIC_FAILURE_1306","code":"CUSTOM_6389"}};loads,err:=skgo.NewLoads(loadConfig,skgo.NewServerLoad(skgo.LoadSpec{Module:"src/routes/+page.server.ts",Run:func(ctx context.Context)(any,error){e:=skgo.EventFrom(ctx);e.Tracing.Root.SetAttributes(attribute.String("receipt.root","ROOT_7819"));e.Tracing.Current.SetAttributes(attribute.String("receipt.current","LOAD_4361"));if mode:=e.Request().URL.Query().Get("gofetch");mode!=""{request,_:=http.NewRequest("GET","/api",nil);if mode=="override"{request.Header.Set("Traceparent","00-33333333333333333333333333333333-4444444444444444-01")};response,err:=e.Fetch(ctx,request);if err!=nil{return nil,err};defer response.Body.Close();body,err:=io.ReadAll(response.Body);return map[string]any{"load":string(body)},err};return map[string]any{"load":"LOAD_1937"},nil}}),skgo.NewServerLoad(skgo.LoadSpec{Module:"src/routes/failure/+page.server.ts",Run:func(ctx context.Context)(any,error){if skgo.EventFrom(ctx).Request().URL.Query().Get("known")=="1"{return nil,skgo.Errorf(418,"ORIGINAL_KNOWN_LOAD_784")};return nil,errors.New("UNEXPECTED_LOAD_781")}}));if err!=nil{panic(err)}
 remotes,err:=skgo.NewRemotes(m.RemoteConfig("http://app.test"),skgo.NewRemote(skgo.RemoteSpec{Module:"src/routes/trace.remote.ts",Name:"value",Kind:skgo.KindQuery,Call:func(ctx context.Context,_ skgo.Call)(any,error){_,span:=otel.Tracer("application").Start(ctx,"application.work");span.End();return "REMOTE_2841",nil}}));if err!=nil{panic(err)}
-endpointConfig:=m.EndpointConfig("http://app.test");endpointConfig.HandleError=loadConfig.HandleError;endpoints,err:=skgo.NewEndpoints(endpointConfig,skgo.NewEndpoint("/api","GET",func(w http.ResponseWriter,r *http.Request){e:=skgo.EventFrom(r.Context());e.Tracing.Root.SetAttributes(attribute.String("receipt.root","ROOT_7819"));e.Tracing.Current.SetAttributes(attribute.String("receipt.current","ENDPOINT_4361"));_,span:=otel.Tracer("application").Start(r.Context(),"application.work");span.End();w.Write([]byte("ENDPOINT_6419"))}),skgo.NewEndpoint("/panic","GET",func(http.ResponseWriter,*http.Request){panic("UNEXPECTED_ENDPOINT_783")}));if err!=nil{panic(err)}
-actions,err:=skgo.NewActions(skgo.NewPageAction(skgo.ActionSpec{Module:"src/routes/failure/+page.server.ts",Name:"save",Run:func(context.Context)(any,error){return nil,errors.New("UNEXPECTED_ACTION_782")}}),skgo.NewPageAction(skgo.ActionSpec{Module:"src/routes/failure/+page.server.ts",Name:"known",Run:func(context.Context)(any,error){return nil,skgo.Errorf(418,"ORIGINAL_KNOWN_ACTION_785")}}));if err!=nil{panic(err)};var h http.Handler;renderer,err:=skgo.NewSSR(build,m,loads,remotes,skgo.SSROptions{Actions:actions,Fetch:http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){h.ServeHTTP(w,r)})});if err!=nil{panic(err)};pages,err:=skgo.NewStaticHandler(build,skgo.WithSSR(renderer));if err!=nil{panic(err)};noop:=func(ctx context.Context,event skgo.RequestEvent[struct{},struct{}],resolve skgo.RequestResolve[struct{},struct{}])(*http.Response,error){if event.Request().Header.Get("X-Reset-Hook-Calls")=="RESET_5291"{hookCalls.Store(0)};return resolve(ctx,event)};hook:=skgo.RequestSequence[struct{},struct{}](noop,noop);h=hook.Intercept(m.HandleConfig(),func(*skgo.Event)(struct{},error){return struct{}{},nil},endpoints.Intercept(loads.Intercept(remotes.Intercept(pages))));listener,err:=net.Listen("tcp4","127.0.0.1:0");if err!=nil{panic(err)};fmt.Println("http://"+listener.Addr().String());if err:=http.Serve(listener,h);err!=nil{panic(err)}}`
+endpointConfig:=m.EndpointConfig("http://app.test");endpointConfig.HandleError=loadConfig.HandleError;endpoints,err:=skgo.NewEndpoints(endpointConfig,skgo.NewEndpoint("/api","GET",func(w http.ResponseWriter,r *http.Request){e:=skgo.EventFrom(r.Context());e.Tracing.Current.SetAttributes(attribute.String("receipt.tenant",baggage.FromContext(r.Context()).Member("tenant").Value()));e.Tracing.Root.SetAttributes(attribute.String("receipt.root","ROOT_7819"));e.Tracing.Current.SetAttributes(attribute.String("receipt.current","ENDPOINT_4361"));_,span:=otel.Tracer("application").Start(r.Context(),"application.work");span.End();w.Write([]byte("ENDPOINT_6419"))}),skgo.NewEndpoint("/panic","GET",func(http.ResponseWriter,*http.Request){panic("UNEXPECTED_ENDPOINT_783")}));if err!=nil{panic(err)}
+actions,err:=skgo.NewActions(skgo.NewPageAction(skgo.ActionSpec{Module:"src/routes/failure/+page.server.ts",Name:"save",Run:func(context.Context)(any,error){return nil,errors.New("UNEXPECTED_ACTION_782")}}),skgo.NewPageAction(skgo.ActionSpec{Module:"src/routes/failure/+page.server.ts",Name:"known",Run:func(context.Context)(any,error){return nil,skgo.Errorf(418,"ORIGINAL_KNOWN_ACTION_785")}}));if err!=nil{panic(err)};var h http.Handler;renderer,err:=skgo.NewSSR(build,m,loads,remotes,skgo.SSROptions{Actions:actions,Fetch:http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){h.ServeHTTP(w,r)})});if err!=nil{panic(err)};pages,err:=skgo.NewStaticHandler(build,skgo.WithSSR(renderer));if err!=nil{panic(err)};noop:=func(ctx context.Context,event skgo.RequestEvent[struct{},struct{}],resolve skgo.RequestResolve[struct{},struct{}])(*http.Response,error){if event.Request().Header.Get("X-Reset-Hook-Calls")=="RESET_5291"{hookCalls.Store(0)};return resolve(ctx,event)};hook:=skgo.RequestSequence[struct{},struct{}](noop,noop);h=hook.Intercept(m.HandleConfig(),func(*skgo.Event)(struct{},error){return struct{}{},nil},endpoints.Intercept(loads.Intercept(remotes.Intercept(pages))));h=skgo.FetchConfig{Origin:"http://app.test",Handler:http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){h.ServeHTTP(w,r)})}.Intercept(h);listener,err:=net.Listen("tcp4","127.0.0.1:0");if err!=nil{panic(err)};fmt.Println("http://"+listener.Addr().String());if err:=http.Serve(listener,h);err!=nil{panic(err)}}`

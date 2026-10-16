@@ -343,7 +343,7 @@ func (d *NativeDevelopment) action(ctx context.Context, raw []byte, out io.Write
 		return json.NewEncoder(out).Encode(answer)
 	case callErr != nil:
 		answer["type"] = "error"
-		answer["nativeError"] = nativeErrorFor(callErr)
+		answer["nativeError"] = nativeErrorFor(ctx, callErr)
 		handled := s.loads.dataError(ctx, "", asHTTPError(callErr), callErr)
 		body, encodeErr := jsonBytes(errorNodeExtra(handled))
 		if encodeErr != nil {

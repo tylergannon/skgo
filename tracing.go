@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -166,8 +165,6 @@ func (w *tracingWriter) WriteHeader(status int)      { w.end(); w.ResponseWriter
 func (w *tracingWriter) Write(p []byte) (int, error) { w.end(); return w.ResponseWriter.Write(p) }
 func (w *tracingWriter) Flush()                      { w.end(); _ = http.NewResponseController(w.ResponseWriter).Flush() }
 func (w *tracingWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
-
-var w3cTrace = propagation.TraceContext{}
 
 func remoteTraceKind(kind Kind) string {
 	switch kind {

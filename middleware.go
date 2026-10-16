@@ -3,6 +3,7 @@ package skgo
 import (
 	"context"
 	"errors"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"io"
@@ -256,7 +257,7 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		nativeState, native := rootCtx.Value(tracingKey{}).(tracingState)
 		if !native || !nativeState.native {
 			if cfg.tracing {
-				rootCtx = w3cTrace.Extract(rootCtx, propagation.HeaderCarrier(r.Header))
+				rootCtx = otel.GetTextMapPropagator().Extract(rootCtx, propagation.HeaderCarrier(r.Header))
 				rootCtx = context.WithValue(rootCtx, tracingKey{}, tracingState{enabled: true})
 				rootCtx, rootSpan = traceOperation(rootCtx, "sveltekit.handle.root",
 					attribute.String("http.route", knownRoute(state.routeID)),
