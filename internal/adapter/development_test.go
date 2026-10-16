@@ -88,8 +88,36 @@ func TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.Symlink(filepath.Join(root, "example/web/node_modules"), filepath.Join(web, "node_modules")); err != nil {
+	// Kit 3 writes project-specific $app types and tsconfigs in node_modules.
+	// Share installed dependencies, but give these outputs their own directory.
+	dependencies := filepath.Join(root, "example/web/node_modules")
+	sharedTypes := filepath.Join(dependencies, "$app/types/index.d.ts")
+	originalTypes, err := os.ReadFile(sharedTypes)
+	if err != nil {
 		t.Fatal(err)
+	}
+	defer func() {
+		after, err := os.ReadFile(sharedTypes)
+		if err != nil || !bytes.Equal(after, originalTypes) {
+			t.Errorf("fixture changed real application's Kit route types: %v", err)
+		}
+	}()
+	modules := filepath.Join(web, "node_modules")
+	if err := os.MkdirAll(modules, 0755); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == "$app" || strings.HasPrefix(name, "$app.") || name == ".cache" || strings.HasPrefix(name, ".vite") {
+			continue
+		}
+		if err := os.Symlink(filepath.Join(dependencies, name), filepath.Join(modules, name)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	packageJSON, err := os.ReadFile(filepath.Join(root, "example/web/package.json"))
 	if err != nil {
@@ -167,6 +195,18 @@ func TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler(t *testing.T) {
 			t.Fatal("Vite readiness missing")
 		}
 		time.Sleep(25 * time.Millisecond)
+	}
+	localTypes := filepath.Join(modules, "$app/types/index.d.ts")
+	resolvedTypes, err := filepath.EvalSymlinks(localTypes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolvedTypes != localTypes {
+		t.Fatalf("fixture Kit types escaped local node_modules: %s", resolvedTypes)
+	}
+	types, err := os.ReadFile(localTypes)
+	if err != nil || !strings.Contains(string(types), "/z-existing") {
+		t.Fatalf("missing fixture-specific local route types: %s (%v)", types, err)
 	}
 	initialInstance := ready.Instance
 	if initialInstance == "" {
