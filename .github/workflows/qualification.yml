@@ -32,7 +32,9 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           working_directory: example
-          export_path: false
+          # Generation changes directories. Export the pinned executables;
+          # a mise shim cannot resolve example's Node pin from the repo root.
+          export_path: true
 
 
       - uses: extractions/setup-just@v4
