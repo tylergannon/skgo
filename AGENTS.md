@@ -70,6 +70,15 @@ synchronization all come from there. Do not improvise a substitute.
 
 ## Rules
 
+**After a merge to `main`, install the published release through Homebrew.**
+Wait for the automated release workflow to succeed and the Homebrew cask to
+reference that release, then run `brew update` and
+`brew reinstall --cask tylergannon/skgo/skgo` (use `brew install --cask` with
+the same cask if it is not installed yet). Verify that `skgo` on PATH resolves
+to the Homebrew installation and reports the published version. Do not replace
+it with a local build, `go install`, or `skgo update`. If the merge produces no
+release, no reinstall is needed; if publication fails, report the blocker.
+
 **VitePlus (`vp`) owns the frontend tool environment.** SKGO declares the
 supported pins; `vp` resolves and runs the corresponding package manager. Use
 `vp install`, `vp build`, `vp run`, `vp exec` and `vp dlx` from the project
