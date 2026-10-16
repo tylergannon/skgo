@@ -40,8 +40,7 @@ export function development({ config }) {
   ).version;
   if (version !== kitVersion)
     throw new Error(
-      `skgo development requires @sveltejs/kit@${kitVersion}, installed ${version}. ` +
-        `Run vp add -D --save-exact @sveltejs/kit@${kitVersion}.`,
+      `skgo development requires @sveltejs/kit@${kitVersion}, installed ${version}.`,
     );
   // Kit's generated environment module lives in the private outDir, outside
   // the application's node_modules ancestry. Keep its exported runtime import

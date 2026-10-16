@@ -49,7 +49,7 @@ try {
   development({config: {paths: {}}});
   throw new Error('development unexpectedly accepted incompatible Kit');
 } catch (error) {
-  const expected = 'skgo development requires @sveltejs/kit@' + process.env.SKGO_EXPECTED_PIN + ', installed ' + process.env.SKGO_VERSION + '. Run vp add -D --save-exact @sveltejs/kit@' + process.env.SKGO_EXPECTED_PIN + '.';
+  const expected = 'skgo development requires @sveltejs/kit@' + process.env.SKGO_EXPECTED_PIN + ', installed ' + process.env.SKGO_VERSION + '.';
   if (error.message !== expected) throw error;
   console.log(error.message);
 }
