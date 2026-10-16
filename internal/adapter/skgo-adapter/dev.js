@@ -9,7 +9,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { identity } from "./identity.js";
 import { validateGenerated } from "./generated.js";
@@ -37,6 +37,13 @@ export function development({ config }) {
     throw new Error(
       `skgo development requires Kit 3.0.0, installed ${version}`,
     );
+  // Kit's generated environment module lives in the private outDir, outside
+  // the application's node_modules ancestry. Keep its exported runtime import
+  // bound to the same installed Kit package as the application.
+  config.alias = {
+    ...config.alias,
+    "@sveltejs/kit/internal/env": join(kit, "src/exports/internal/env.js"),
+  };
   const environment = developmentEnvironment(config);
   const hash = () => {
     const h = createHash("sha256");
@@ -153,6 +160,10 @@ export function development({ config }) {
     };
     mkdirSync(dist, { recursive: true });
     writeFileSync(join(dist, "skgo.manifest.json"), JSON.stringify(manifest));
+    writeFileSync(
+      join(dist, "env.json"),
+      JSON.stringify(environment.artifact()),
+    );
     writeFileSync(join(dist, "index.html"), "");
     return {
       dist,
@@ -194,6 +205,27 @@ import {ErrorOverlay} from '/@vite/client';
 import.meta.hot.on('skgo:go-ready',async()=>{for(const overlay of document.querySelectorAll('vite-error-overlay'))if(overlay instanceof ErrorOverlay)overlay.close();await refreshAll();});`;
           },
           configureServer(server) {
+            // These Go-only snapshots contain private values. Refuse both
+            // ordinary and ?raw /@fs reads before Vite's file middleware.
+            server.middlewares.use((req, res, next) => {
+              let file;
+              try {
+                const path = decodeURIComponent((req.url ?? "").split("?")[0]);
+                if (path.startsWith("/@fs/"))
+                  file = realpathSync(path.slice(4));
+              } catch {}
+              if (
+                file &&
+                (file === join(work, "skgo-env-values.js") ||
+                  (file.startsWith(join(work, "application") + sep) &&
+                    basename(file) === "env.json"))
+              ) {
+                res.statusCode = 403;
+                res.end("skgo: environment build inputs are private");
+                return;
+              }
+              next();
+            });
             server.middlewares.use("/__skgo/dev", async (req, res, next) => {
               if (req.url === "/client.js") return next();
               try {
