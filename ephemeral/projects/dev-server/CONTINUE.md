@@ -1,10 +1,10 @@
 # Native Kit development: continuation
 
-Updated 2026-10-15. Worktree `/Users/tyler/.codex/worktrees/5f35/skgo`, branch `codex/dev-architecture-experiments`, based on dev868c5dba. Read agent-protocol, [GOAL](GOAL.md), [DESIGN](DESIGN.md), then [PLAN](PLAN.md). Never reset to historical hashes.
+Updated 2026-10-15. Worktree `/Users/tyler/.codex/worktrees/5f35/skgo`, branch `codex/dev-server-review-fixes`, based on dev868c5dba. Read agent-protocol, [GOAL](GOAL.md), [DESIGN](DESIGN.md), then [PLAN](PLAN.md). Never reset to historical hashes.
 
 ## Authorization and endpoint
 
-The user explicitly authorized assessment followed by 3–5 implementation chunks using Sol6.1 subagents. Earlier architecture-only restrictions were superseded. Parent orchestrates/synthesizes; owners implement. No PR, merge, release, upstream posting or new feature campaign is authorized. Do not cancel ongoing subagents. Use `/Users/tyler/src/skgo-token-cache/index/README.md` and `index/dev-native-kit-uds.md`; cached old plans are historical, linked workspace files authoritative.
+The user explicitly authorized assessment followed by 3–5 implementation chunks using Sol6.1 subagents. Earlier architecture-only restrictions were superseded. Parent orchestrates/synthesizes; owners implement. The user subsequently authorized shipping on 2026-10-15 after review repairs. Open an integration PR against the existing `dev` baseline and request native squash auto-merge; do not bypass checks or claim a queued merge is complete. No separate release or upstream posting is requested. Do not cancel ongoing subagents. Use `/Users/tyler/src/skgo-token-cache/index/README.md` and `index/dev-native-kit-uds.md`; cached old plans are historical, linked workspace files authoritative.
 
 Five missions in PLAN have implemented the selected topology. Independent validation is complete at f8b6485, with the qualifications below. Preserve bounded scope; remaining failures go to their owners, not a new architecture exercise.
 
@@ -63,3 +63,35 @@ Three owners repair configuration publication, request bridge semantics, and
 native compilation/application composition. Keep current GOAL boundaries and
 accepted temporary limitations. Parent coordinates shared-file boundaries,
 joined validation and fresh independent review. Preserve all untracked experiments.
+
+
+## Shipping handoff — 2026-10-15
+
+Product repairs are checkpointed through `380f943`; `02c1a9a` corrects the real
+adapter fixture to await its listener and changed configuration epoch. The
+filesystem carrier is replaced by an explicit application development constructor
+sharing production setup. Captured compiler/workspace/runtime inputs, Vite
+configuration publication, header effects, demand-driven parent data, fetch body
+transport/metadata/ownership and cancellation are repaired. Independent review
+found and repaired two further continuation-body lifetime defects; both final
+full-target reviews report no findings. Review artifacts are in
+`ephemeral/reviews/20261015-dev-{repairs,changed-code}-round-*.md`.
+
+The actual two-session recovery/configuration integration passed at the final
+product source (75.95s), with all eight owned child PIDs and both session
+directories confirmed gone. Production build and `just vet` passed. Full
+production browser run: 176 passed, zero skipped, flaky or unexpected cases
+(41.6s), including JavaScript-off forms. A separate UI reader used the running
+production todo editor and item preview form, restored its edit, and inspected
+healthy visible content. Logs: `/tmp/skgo-dev-repairs-final-session.log`,
+`/tmp/skgo-dev-repairs-final-build.log`, `/tmp/skgo-dev-repairs-vet.log`,
+`/tmp/skgo-dev-repairs-prod-browser.{log,json}`.
+
+The first broad Go run exposed stale readiness assumptions in one adapter test;
+those are fixed without relaxing post-readiness HTTP assertions. Final `just test -v` passed: 34 packages, 968 top-level tests, zero failures
+or skips (`/tmp/skgo-dev-repairs-final-go.log`). Native UI smoke rendered todos and Widget 42. A temporary Svelte title edit
+appeared without manual reload, but the unsent Add draft was lost. This is an
+observed limitation; draft preservation is not certified. The edit was restored. The user requested shipment
+without another full local browser suite because CI repeats the suites. A full
+development browser-suite pass remains unclaimed. Existing accepted cookie,
+platform, historical lifetime-flake and benchmark evidence boundaries remain.
