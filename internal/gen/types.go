@@ -657,8 +657,13 @@ func (a *app) transportedNamed(named *types.Named) (*transportedType, bool) {
 	if named == nil || named.Obj() == nil {
 		return nil, false
 	}
+	// Package analysis can supply source and export-data objects for the same
+	// declaration. Compare the fully qualified Go type, as codec roots do,
+	// rather than object pointers. Include type arguments: Box[int] and
+	// Box[string] share a TypeName but are different transported types.
+	id := types.TypeString(named, nil)
 	for _, entry := range a.transported {
-		if entry.named.Obj() == named.Obj() {
+		if types.TypeString(entry.named, nil) == id {
 			return entry, true
 		}
 	}
