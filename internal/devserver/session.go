@@ -42,7 +42,10 @@ func Run(ctx context.Context, o Options) error {
 		host = "127.0.0.1"
 	}
 	origin := "http://" + net.JoinHostPort(host, fmt.Sprint(address.Port))
-	route := &router{}
+	// Vite can become ready before the first admitted Go host, including when
+	// a captured startup build becomes obsolete. Keep public dispatch waiting.
+	route := &router{requests: requestAdmission{ready: make(chan struct{})}}
+	defer route.requests.close()
 	server := &http.Server{Handler: route}
 	defer server.Close()
 	go server.Serve(ln)
@@ -277,6 +280,8 @@ retryStartup:
 			goodInputs.Close()
 		}
 	}()
+	route.setRemotePrefix(snapshot.RemotePrefix)
+	route.requests.resume()
 	fmt.Fprintf(o.Output, "skgo dev: %s (Go pid %d, Vite %s)\n", origin, active.PID, front.ready.Socket)
 	ticker := time.NewTicker(300 * time.Millisecond)
 	defer ticker.Stop()
@@ -303,6 +308,9 @@ retryStartup:
 				if ctx.Err() != nil {
 					return nil
 				}
+				if err := route.requests.pause(ctx, requestDrain); err != nil {
+					return nil
+				}
 				closeHost(active)
 				next, err := makeHost(goodInputs, goodDist)
 				if err != nil {
@@ -320,6 +328,7 @@ retryStartup:
 				if err := publishHost(active); err != nil {
 					return err
 				}
+				route.requests.resume()
 				_ = front.notify(ctx, goodRevision, "", false)
 				fmt.Fprintf(o.Output, "skgo dev: recovered Go pid %d\n", active.PID)
 				continue
@@ -496,9 +505,14 @@ retryStartup:
 							guardBuild(current)
 							old := active
 							stopped := false
+							paused := false
 							err = current.Commit(func(*gen.CompilerInputs) error {
 								// Compilation and revision admission succeeded. Stop and wait before
 								// any replacement constructor can claim application-owned resources.
+								if err := route.requests.pause(ctx, requestDrain); err != nil {
+									return err
+								}
+								paused = true
 								closeHost(old)
 								stopped = true
 								if err := replacement.Start(ctx); err != nil {
@@ -529,6 +543,7 @@ retryStartup:
 								fmt.Fprintf(o.Output, "skgo dev: restored previous application (Go pid %d) after replacement failure\n", active.PID)
 							}
 							if err == nil {
+								route.setRemotePrefix(snapshot.RemotePrefix)
 								active = replacement
 								closeHost(old)
 								if hostInputs != goodInputs {
@@ -537,6 +552,9 @@ retryStartup:
 								hostInputs = nextBuild.Inputs
 							} else {
 								closeHost(replacement)
+							}
+							if paused {
+								route.requests.resume()
 							}
 						}
 					}

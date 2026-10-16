@@ -2,6 +2,7 @@ package devserver
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -169,12 +170,16 @@ func TestPublicUpgradeSurvivesPrivateApplicationReplacement(t *testing.T) {
 	}
 	defer c.Close()
 	c.SetDeadline(time.Now().Add(3 * time.Second))
-	fmt.Fprintf(c, "GET /__hmr?token=449 HTTP/1.1\r\nHost: %s\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Protocol: vite-hmr\r\n\r\n", strings.TrimPrefix(public.URL, "http://"))
+	fmt.Fprintf(c, "GET /__skgo/dev/hmr?token=449 HTTP/1.1\r\nHost: %s\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Protocol: vite-hmr\r\n\r\n", strings.TrimPrefix(public.URL, "http://"))
 	reader := bufio.NewReader(c)
 	response, e := http.ReadResponse(reader, nil)
 	if e != nil || response.StatusCode != 101 {
 		t.Fatalf("upgrade %v %v", response, e)
 	}
+	if err := r.requests.pause(context.Background(), time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	defer r.requests.resume()
 	r.setApp(filepath.Join(t.TempDir(), "unavailable.sock"))
 	fmt.Fprintln(c, "AFTER_APP_REPLACEMENT983")
 	got, e := reader.ReadString('\n')

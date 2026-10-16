@@ -474,11 +474,11 @@ function incomingHeaders(upstream) {
   }
   return headers;
 }
-function incomingResponse(upstream, method, finish = async () => {}) {
+async function incomingResponse(upstream, method, finish = async () => {}) {
   const headers = incomingHeaders(upstream);
   if (method === "HEAD" || [204, 205, 304].includes(upstream.statusCode)) {
     upstream.resume();
-    void finish();
+    await finish();
     return new Response(null, { status: upstream.statusCode, headers });
   }
   const iterator = upstream[Symbol.asyncIterator]();
@@ -596,7 +596,12 @@ export async function requestHandle(event, resolve) {
       },
       body: response.body,
     });
-    return incomingResponse(upstream, event.request.method, end);
+    const result = await incomingResponse(upstream, event.request.method, end);
+    // A declared length lets the public proxy finish after N bytes, before
+    // this stream's final read has awaited Go request cleanup. Let Kit frame
+    // body responses at their actual completion; HEAD keeps its metadata.
+    if (result.body) result.headers.delete("content-length");
+    return result;
   } catch (e) {
     await end();
     throw e;
@@ -710,7 +715,7 @@ export async function requestFetch({ event, request, fetch }) {
       ? JSON.parse(Buffer.from(encoded, "base64").toString())
       : undefined;
     return fetchResponseMetadata(
-      incomingResponse(response, request.method, finish),
+      await incomingResponse(response, request.method, finish),
       metadata,
     );
   } catch (error) {

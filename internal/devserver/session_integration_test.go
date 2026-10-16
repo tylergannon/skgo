@@ -23,11 +23,13 @@ import (
 
 // This opt-in contract runs real Vite and native application children. Missing
 // prerequisites are failures, never silently skipped qualification.
-func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) { realSession(t, false) }
+func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) { realSession(t, false, false) }
 
-func TestRealSessionApplicationGeneration(t *testing.T) { realSession(t, true) }
+func TestRealSessionApplicationGeneration(t *testing.T) { realSession(t, true, false) }
 
-func realSession(t *testing.T, withGenerator bool) {
+func TestRealSessionRequestHandoff(t *testing.T) { realSession(t, false, true) }
+
+func realSession(t *testing.T, withGenerator, withHandoff bool) {
 	if _, err := exec.LookPath("vp"); err != nil {
 		t.Fatal(err)
 	}
@@ -123,6 +125,23 @@ func realSession(t *testing.T, withGenerator bool) {
 			write("applicationoutput/value.go", "package applicationoutput\nconst Value=\"bootstrap\"\n")
 			write("tool/main.go", sessionGeneratorSource)
 		}
+		if withHandoff {
+			write("web/src/routes/handoff/+page.svelte", `<script>let {data}=$props();</script><p>{data.receipt}</p>`)
+			write("web/src/routes/handoff/page.server.go", fmt.Sprintf(`package handoff
+import("context";"io";"os";"github.com/tylergannon/skgo")
+type PageData struct{Receipt string `+"`json:\"receipt\"`"+`}
+func load(event PageRequestEvent)(PageData,error){return PageData{Receipt:"literal-handoff-data-347"},nil}
+func save(ctx context.Context)(PageData,error){
+ request:=skgo.EventFrom(ctx).Request();if err:=request.ParseForm();err!=nil{return PageData{},err}
+ receipt:=request.PostForm.Get("receipt")
+ file,err:=os.OpenFile(%q,os.O_CREATE|os.O_APPEND|os.O_WRONLY,0600);if err!=nil{return PageData{},err};defer file.Close()
+ if _,err:=io.WriteString(file,receipt+"\n");err!=nil{return PageData{},err}
+ return PageData{Receipt:receipt},nil
+}
+var _=skgo.Load(load)
+var _=skgo.Action(save)
+`, filepath.Join(projectDir, "effects")))
+		}
 		write("server.go", fmt.Sprintf(`package sessionfixture
 import("io/fs";"net/http";"os";"strconv";"strings";"sync";"syscall";"errors";appenv "example.com/sessionfixture/web/src";"github.com/tylergannon/skgo"; generated "example.com/sessionfixture/generated")
 func NewHandler(dist fs.FS,origin string)(http.Handler,error){return newHandler(dist,origin,nil)}
@@ -152,6 +171,26 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
  return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Project-State",string(durable));w.Header().Set("X-Go-Pid",strconv.Itoa(os.Getpid()));w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);w.Header().Set("X-Environment",envValues.Receipt);w.Header().Set("X-App-Dir",manifest.AppDir);w.Header().Set("X-Trusted-Origins",strings.Join(manifest.TrustedOrigins,","));app.ServeHTTP(w,r)}),nil
 }
 `, filepath.Join(projectDir, "owner.lock"), filepath.Join(projectDir, "catalog"), label))
+		if withHandoff {
+			source, err := os.ReadFile(filepath.Join(app, "server.go"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := strings.Replace(string(source), `import("io/fs";`, `import("time";"io/fs";`, 1)
+			body = strings.Replace(body, `var rejectStartup bool`, fmt.Sprintf(`var rejectStartup bool
+var holdStartup=true
+const handoffState=%q
+func waitForReadiness() error {
+ if !holdStartup{return nil}
+ if err:=os.WriteFile(handoffState+".entered",[]byte("literal-constructor-entered-347"),0600);err!=nil{return err}
+ deadline:=time.Now().Add(10*time.Second)
+ for time.Now().Before(deadline){if _,err:=os.Stat(handoffState+".release");err==nil{return nil};time.Sleep(5*time.Millisecond)}
+ return errors.New("literal held constructor timed out")
+}
+`, filepath.Join(projectDir, "startup")), 1)
+			body = strings.Replace(body, `if rejectStartup{`, `if err:=waitForReadiness();err!=nil{return nil,err};if rejectStartup{`, 1)
+			write("server.go", body)
+		}
 		if withGenerator {
 			source, err := os.ReadFile(filepath.Join(app, "server.go"))
 			if err != nil {
@@ -166,7 +205,7 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 			t.Fatal(e)
 		}
 		address := ln.Addr().String()
-		occupied := label == "ALPHA"
+		occupied := label == "ALPHA" && !withHandoff
 		if occupied {
 			t.Cleanup(func() { ln.Close() })
 		} else {
@@ -299,7 +338,14 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 		t.Fatalf("want %s %s at %s\n%s", label, body, s.origin, s.log.String())
 	}
 	alpha := start("ALPHA")
+	if withHandoff {
+		exerciseColdSessionHandoff(t, alpha.app, alpha.origin, alpha.log)
+	}
 	check(alpha, "ALPHA", "literal-4101:8")
+	if withHandoff {
+		exerciseSessionHandoff(t, alpha.app, alpha.origin, alpha.log)
+		return
+	}
 	if withGenerator {
 		exerciseSessionGenerator(t, alpha.app, alpha.origin, alpha.log)
 		return
@@ -572,6 +618,218 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
 
 func sessionConfig(base, appDir, trusted string) string {
 	return fmt.Sprintf(`import {sveltekit} from '@sveltejs/kit/vite'; import {defineConfig} from 'vite-plus'; import skgo from '@skgo/sveltekit-adapter'; export default defineConfig({plugins:[sveltekit({adapter:skgo(),paths:{origin:process.env.ORIGIN,base:%q},appDir:%q,csrf:{trustedOrigins:[%q]},experimental:{remoteFunctions:true},compilerOptions:{experimental:{async:true}}})]});`, base, appDir, trusted)
+}
+
+func exerciseColdSessionHandoff(t *testing.T, app, origin string, log *sessionLog) {
+	t.Helper()
+	source, err := os.ReadFile(filepath.Join(app, "server.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`const handoffState=("[^"]+")`).FindStringSubmatch(string(source))
+	if len(match) != 2 {
+		t.Fatal("missing startup fixture state")
+	}
+	state, err := strconv.Unquote(match[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(time.Minute)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(state + ".entered"); err == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if _, err := os.Stat(state + ".entered"); err != nil {
+		t.Fatalf("initial constructor not reached: %v\n%s", err, log.String())
+	}
+	type result struct {
+		status int
+		body   string
+		err    error
+	}
+	requests := make([]<-chan result, 0, 2)
+	for _, path := range []string{"/handoff", "/handoff/__data.json"} {
+		done := make(chan result, 1)
+		requests = append(requests, done)
+		go func() {
+			res, err := http.Get(origin + path)
+			if err != nil {
+				done <- result{err: err}
+				return
+			}
+			defer res.Body.Close()
+			body, err := io.ReadAll(res.Body)
+			done <- result{res.StatusCode, string(body), err}
+		}()
+	}
+	for _, request := range requests {
+		select {
+		case res := <-request:
+			t.Fatalf("cold request dispatched without an admitted host: %+v", res)
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+	// Change the captured source while initial readiness is held. Whether the
+	// watch event invalidates this publication or immediately follows it, public
+	// requests must wait for an admitted host instead of seeing an absent socket.
+	if err := os.WriteFile(filepath.Join(app, "web/src/routes/orders/server.go"), []byte(sessionRoute("4101", 8)), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(state+".release", []byte("ready"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, request := range requests {
+		select {
+		case res := <-request:
+			if res.err != nil || res.status != 200 || !strings.Contains(res.body, "literal-handoff-data-347") {
+				t.Fatalf("cold handoff = %+v\n%s", res, log.String())
+			}
+		case <-time.After(30 * time.Second):
+			t.Fatalf("cold request did not resume\n%s", log.String())
+		}
+	}
+}
+
+func exerciseSessionHandoff(t *testing.T, app, origin string, log *sessionLog) {
+	t.Helper()
+	sourcePath := filepath.Join(app, "server.go")
+	source, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`const handoffState=("[^"]+")`).FindStringSubmatch(string(source))
+	if len(match) != 2 {
+		t.Fatal("missing fixture handoff state")
+	}
+	state, err := strconv.Unquote(match[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Leave cold-start readiness released until its source edit has reached the
+	// expected /orders response. Reset the latch only for this deliberate handoff.
+	for _, suffix := range []string{".entered", ".release"} {
+		if err := os.Remove(state + suffix); err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+	}
+	const receipt = "literal-handoff-data-347"
+	type response struct {
+		status int
+		body   string
+		err    error
+	}
+	request := func(ctx context.Context, method, path, body string) <-chan response {
+		done := make(chan response, 1)
+		go func() {
+			req, err := http.NewRequestWithContext(ctx, method, origin+path, strings.NewReader(body))
+			if err != nil {
+				done <- response{err: err}
+				return
+			}
+			if method == "POST" {
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				req.Header.Set("Origin", origin)
+				req.Header.Set("Accept", "application/json")
+			}
+			res, err := http.DefaultClient.Do(req)
+			if err != nil {
+				done <- response{err: err}
+				return
+			}
+			defer res.Body.Close()
+			raw, err := io.ReadAll(res.Body)
+			done <- response{res.StatusCode, string(raw), err}
+		}()
+		return done
+	}
+	assertResponse := func(done <-chan response, want string) {
+		t.Helper()
+		select {
+		case res := <-done:
+			if res.err != nil || res.status != 200 || !strings.Contains(res.body, want) {
+				t.Fatalf("handoff response = %+v, want %s\n%s", res, want, log.String())
+			}
+		case <-time.After(15 * time.Second):
+			t.Fatalf("handoff request did not resume\n%s", log.String())
+		}
+	}
+	waitConstructor := func() {
+		t.Helper()
+		deadline := time.Now().Add(60 * time.Second)
+		for time.Now().Before(deadline) {
+			if body, err := os.ReadFile(state + ".entered"); err == nil && string(body) == "literal-constructor-entered-347" {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		t.Fatalf("replacement did not enter held constructor\n%s", log.String())
+	}
+	release := func() {
+		t.Helper()
+		if err := os.WriteFile(state+".release", []byte("ready"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertResponse(request(context.Background(), "GET", "/handoff", ""), receipt)
+	assertResponse(request(context.Background(), "GET", "/handoff/__data.json", ""), receipt)
+	held := append(append([]byte(nil), source...), []byte("\nfunc init(){holdStartup=true}\n")...)
+	if err := os.WriteFile(sourcePath, held, 0644); err != nil {
+		t.Fatal(err)
+	}
+	waitConstructor()
+	document := request(context.Background(), "GET", "/handoff", "")
+	data := request(context.Background(), "GET", "/handoff/__data.json", "")
+	action := request(context.Background(), "POST", "/handoff?/save", "receipt=literal-action-once-347")
+	canceled, cancel := context.WithCancel(context.Background())
+	abandoned := request(canceled, "POST", "/handoff?/save", "receipt=must-not-execute-347")
+	// Keep the actual no-backend interval open long enough to distinguish a
+	// held first dispatch from either a Kit 500 or an immediately rejected POST.
+	select {
+	case res := <-document:
+		t.Fatalf("document escaped readiness barrier: %+v", res)
+	case res := <-data:
+		t.Fatalf("Kit data escaped readiness barrier: %+v", res)
+	case res := <-action:
+		t.Fatalf("action escaped readiness barrier: %+v", res)
+	case <-time.After(100 * time.Millisecond):
+	}
+	cancel()
+	if res := <-abandoned; res.err == nil {
+		t.Fatalf("canceled queued action succeeded: %+v", res)
+	}
+	release()
+	assertResponse(document, receipt)
+	assertResponse(data, receipt)
+	assertResponse(action, "literal-action-once-347")
+	effects, err := os.ReadFile(filepath.Join(filepath.Dir(state), "effects"))
+	if err != nil || string(effects) != "literal-action-once-347\n" {
+		t.Fatalf("durable effects = %q, err = %v", effects, err)
+	}
+	// A compiled replacement that rejects startup must keep the same barrier
+	// closed until the last admitted application is restored.
+	for _, path := range []string{state + ".release", state + ".entered"} {
+		if err := os.Remove(path); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rejected := append(append([]byte(nil), held...), []byte("func init(){rejectStartup=true}\n")...)
+	if err := os.WriteFile(sourcePath, rejected, 0644); err != nil {
+		t.Fatal(err)
+	}
+	waitConstructor()
+	recovered := request(context.Background(), "GET", "/handoff/__data.json", "")
+	select {
+	case res := <-recovered:
+		t.Fatalf("request escaped rejected initialization: %+v", res)
+	case <-time.After(50 * time.Millisecond):
+	}
+	release()
+	assertResponse(recovered, receipt)
+	if !strings.Contains(log.String(), "restored previous application") {
+		t.Fatalf("missing last-good recovery\n%s", log.String())
+	}
 }
 
 func sessionRoute(value string, initial int) string {
