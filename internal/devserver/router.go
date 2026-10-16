@@ -22,6 +22,7 @@ type target struct {
 type router struct {
 	app, frontend atomic.Pointer[target]
 	remotePrefix  atomic.Pointer[string]
+	requests      requestAdmission
 }
 
 func (r *router) setRemotePrefix(prefix string) { r.remotePrefix.Store(&prefix) }
@@ -63,12 +64,28 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.NotFound(w, req)
 		return
 	}
+	// Vite owns this persistent tooling connection. It must not hold a Go
+	// application drain open or wait for a replacement application constructor.
+	hmr := strings.HasSuffix(req.URL.Path, "/__skgo/dev/hmr") && strings.EqualFold(req.Header.Get("Upgrade"), "websocket") && req.Header.Get("Sec-WebSocket-Protocol") == "vite-hmr"
+	if !hmr {
+		ctx, finish, err := r.requests.enter(req.Context(), requestWait)
+		if err != nil {
+			if req.Context().Err() == nil {
+				w.Header().Set("X-Skgo-Mode", "dev")
+				w.Header().Set("Retry-After", "1")
+				http.Error(w, "Development application restarting", http.StatusServiceUnavailable)
+			}
+			return
+		}
+		defer finish()
+		req = req.WithContext(ctx)
+	}
 	upstream := r.frontend.Load()
 	prefix := "/_app/remote/"
 	if p := r.remotePrefix.Load(); p != nil {
 		prefix = *p
 	}
-	if strings.HasPrefix(req.URL.Path, prefix) {
+	if !hmr && strings.HasPrefix(req.URL.Path, prefix) {
 		upstream = r.app.Load()
 	}
 	unavailable := func(w http.ResponseWriter, _ *http.Request, e error) {

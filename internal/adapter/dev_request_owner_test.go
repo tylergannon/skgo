@@ -3,15 +3,126 @@ package adapter
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
+
+func TestNativeResponseWaitsForLogicalRequestEnd(t *testing.T) {
+	for _, test := range []struct {
+		method string
+		status int
+		body   bool
+	}{{"HEAD", 200, false}, {"GET", 204, false}, {"GET", 200, true}} {
+		t.Run(fmt.Sprintf("%s-%d", test.method, test.status), func(t *testing.T) {
+			dir, err := os.MkdirTemp("/tmp", "skgo-empty-owner-")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(dir)
+			socket := filepath.Join(dir, "go.sock")
+			listener, err := net.Listen("unix", socket)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ending, release := make(chan struct{}), make(chan struct{})
+			var once sync.Once
+			finish := func() { once.Do(func() { close(release) }) }
+			defer finish()
+			server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/_skgo/dev/begin":
+					io.WriteString(w, `{"handle":"literal-empty-owner-347","resolve":true}`)
+				case "/_skgo/dev/response":
+					if test.body || test.method == "HEAD" {
+						w.Header().Set("Content-Length", "1")
+					}
+					w.WriteHeader(test.status)
+					if test.body {
+						io.WriteString(w, "X")
+					}
+				case "/_skgo/dev/end":
+					close(ending)
+					<-release
+					io.WriteString(w, `{}`)
+				default:
+					http.NotFound(w, r)
+				}
+			})}
+			go server.Serve(listener)
+			defer server.Close()
+			module, err := filepath.Abs("skgo-adapter/dev-bridge.js")
+			if err != nil {
+				t.Fatal(err)
+			}
+			program := fmt.Sprintf(`
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createServer,get} from 'node:http';
+import {pathToFileURL} from 'node:url';
+const {setResponse}=await import(pathToFileURL(process.argv[2]).href);
+let source=readFileSync(process.argv[1],'utf8');
+source=source.replace(/import \{ error, redirect, fail \} from "@sveltejs\/kit";/,'const error=()=>{throw new Error("unexpected")}; const redirect=error; const fail=error;');
+source=source.replace(/import \{ ValidationError \} from "@sveltejs\/kit\/internal";/,'class ValidationError extends Error {}');
+source='const devBase="";\n'+source;
+const {requestHandle}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const event={request:new Request('http://app.test/empty',{method:%q}),url:new URL('http://app.test/empty'),locals:{},route:{id:'/empty'},cookies:{getAll:()=>[]},setHeaders:()=>{}};
+const respond=()=>requestHandle(event,async()=>new Response(%s,{status:%d,headers:%s}));
+if (%t) {
+ const server=createServer(async(_req,res)=>setResponse(res,await respond()));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const text=await new Promise((resolve,reject)=>get('http://127.0.0.1:'+server.address().port,res=>{
+  let body='';res.on('data',chunk=>body+=chunk);res.on('end',()=>resolve(body));res.on('error',reject);
+ }).on('error',reject));
+ assert.equal(text,'X');
+} else {
+ const response=await respond();assert.equal(response.status,%d);
+ if(event.request.method==='HEAD')assert.equal(response.headers.get('content-length'),'1');
+}
+process.exit(0);
+`, test.method, map[bool]string{false: "null", true: "'X'"}[test.body], test.status, map[bool]string{false: "{}", true: "{'content-length':'1'}"}[test.body], test.body, test.status)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			kitNode, err := filepath.Abs("../../example/web/node_modules/@sveltejs/kit/src/exports/node/index.js")
+			if err != nil {
+				t.Fatal(err)
+			}
+			command := exec.CommandContext(ctx, "node", "--input-type=module", "-e", program, module, kitNode)
+			command.Env = append(os.Environ(), "SKGO_DEV_GO_SOCKET="+socket, "SKGO_DEV_SERVICE_SECRET=literal-secret")
+			done := make(chan error, 1)
+			go func() {
+				output, err := command.CombinedOutput()
+				if err != nil {
+					err = fmt.Errorf("%w: %s", err, output)
+				}
+				done <- err
+			}()
+			select {
+			case <-ending:
+			case err := <-done:
+				t.Fatalf("response completed before end: %v", err)
+			case <-ctx.Done():
+				t.Fatal(ctx.Err())
+			}
+			select {
+			case err := <-done:
+				t.Fatalf("response completed while end was held: %v", err)
+			case <-time.After(20 * time.Millisecond):
+			}
+			finish()
+			if err := <-done; err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
 
 func TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies(t *testing.T) {
 	dir, err := os.MkdirTemp("", "skgo-owner-")
