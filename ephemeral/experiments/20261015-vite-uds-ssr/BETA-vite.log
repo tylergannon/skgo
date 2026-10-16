@@ -1,0 +1,6 @@
+5:05:14 PM [vite+] (ssr) connected.
+5:05:14 PM [vite+] (client) Forced re-optimization of dependencies
+200 GET /
+200 GET /
+200 GET /
+404 GET /favicon.ico

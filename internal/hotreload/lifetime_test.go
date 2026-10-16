@@ -3,14 +3,14 @@ package hotreload
 // Kernel observations are made in the native host against its actual code/data
 // addresses. No loader live-count or reported unload success is the oracle.
 type nativeRange struct {
-	Base, Size uintptr
-	Object     uint64
-	Mapped     bool
+	Base, Size                                     uintptr
+	Object, Offset, ObservedObject, ObservedOffset uint64
+	Mapped                                         bool
 }
 
 const lifetimeProbe = `package orders
 import("fmt";"os";"reflect";"runtime";"syscall";"unsafe";"github.com/ebitengine/purego")
-type SkgoNativeRange struct{Base,Size uintptr;Object uint64;Mapped bool}
+type SkgoNativeRange struct{Base,Size uintptr;Object,Offset,ObservedObject,ObservedOffset uint64;Mapped bool}
 var nativeMincore func(uintptr,uintptr,*byte) int32
 var nativeErrno func() *int32
 var nativeRegion func(uint32,*uint64,*uint64,*uint32,*int32,*uint32) int32
@@ -49,7 +49,9 @@ func nativeProbe(ranges []SkgoNativeRange) []SkgoNativeRange {
      // Compare the original kernel object, not permanent address vacancy.
      object:=uint64(uint32(info[17]))|uint64(uint32(info[18]))<<32
      if object==0 {panic("native mapping has no kernel object identity")}
-     if r.Object==0 {r.Object=object}
+     offset:=uint64(uint32(info[3]))|uint64(uint32(info[4]))<<32;offset+=uint64(r.Base+off)-address
+     r.ObservedObject,r.ObservedOffset=object,offset
+     if r.Object==0 {r.Object=object;r.Offset=offset}
      if r.Object==object {mapped=true}else{missing=true}
     }
     continue

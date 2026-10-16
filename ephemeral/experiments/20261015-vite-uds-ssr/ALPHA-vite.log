@@ -1,0 +1,14 @@
+5:05:13 PM [vite+] (ssr) connected.
+5:05:13 PM [vite+] (client) Forced re-optimization of dependencies
+200 GET /
+200 GET /
+200 GET /
+200 GET /
+200 GET /
+200 GET /
+5:05:50 PM [vite+] (client) hmr update /src/routes/+page.svelte
+5:05:50 PM [vite+] (ssr) page reload src/routes/+page.svelte
+5:05:50 PM [vite+] (ssr) program reload
+200 GET /
+200 GET /
+200 GET /

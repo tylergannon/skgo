@@ -1,0 +1,6 @@
+{
+  "alpha": "- main:\n  - heading \"ALPHA FRONTEND_ONE\" [level=1]\n  - paragraph: \"Hydrated: true\"\n  - text: Draft\n  - textbox \"Draft\": ALPHA_DRAFT_73\n  - button \"Increment\" [active]\n  - paragraph: \"Count: 2\"\n  - paragraph: \"Go total: 3000\"\n  - paragraph: \"Go SSR total: 3000\"\n  - paragraph: \"Notices: 4\"\n  - paragraph: Published ALPHA\n  - paragraph: \"Document: 26771b22-a074-4a49-a2dd-fb49ac68d1a5\"",
+  "beta": "- main:\n  - heading \"BETA FRONTEND_ONE\" [level=1]\n  - paragraph: \"Hydrated: true\"\n  - text: Draft\n  - textbox \"Draft\": BETA_DRAFT_91\n  - button \"Increment\" [active]\n  - paragraph: \"Count: 1\"\n  - paragraph: \"Go total: 5202\"\n  - paragraph: \"Go SSR total: 5202\"\n  - paragraph: \"Notices: 1\"\n  - paragraph: Published BETA\n  - paragraph: \"Document: 4619343f-88ef-4509-9eb7-8742c81c30fd\"",
+  "alphaLogs": [],
+  "betaLogs": []
+}

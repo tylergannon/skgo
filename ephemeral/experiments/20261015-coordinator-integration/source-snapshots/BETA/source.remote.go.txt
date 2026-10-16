@@ -1,0 +1,18 @@
+package orders
+import("context";"github.com/tylergannon/skgo";"example.com/nativefixture/generated/params")
+type Order struct { Total int `json:"total"`; Again int `json:"again"`; Initializations int `json:"initializations"`; Quantity int `json:"quantity"` }
+func (Order) Label() string { return "order" }
+type Hold struct { Entered, Release chan struct{} }
+type serviceState struct { quantity int; note string }
+var service = &serviceState{quantity:2}
+var initializations int
+var unusedStorage int
+func init(){ initializations++ }
+func price() int { total:=service.quantity*1200+600;return total + 2202 }
+func order(ctx context.Context)(Order,error){ before:=price();if hold,ok:=ctx.Value("hold").(*Hold);ok { close(hold.Entered);<-hold.Release };return Order{before,price(),initializations,service.quantity},nil }
+func summary(context.Context)(int,error){ return price(),nil }
+func Box() any {return Order{price(),price(),initializations,service.quantity}}
+func quantity(ctx context.Context,event params.RequestEvent,n int)(Order,error){service.quantity=n;if err:=skgo.RefreshNoArg(ctx,order);err!=nil{return Order{},err};return order(ctx)}
+var _=skgo.Query(order)
+var _=skgo.Query(summary)
+var _=skgo.Command(quantity)

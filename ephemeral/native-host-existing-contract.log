@@ -1,0 +1,10 @@
+=== RUN   TestGeneratedNativeHandlerContract
+    contract_test.go:107: skgo: the @skgo/sveltekit-adapter installed in this app is not the one this skgo publishes.
+        	installed in /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestGeneratedNativeHandlerContract2218219749/002/app/web/node_modules/@skgo/sveltekit-adapter: skgo 0.0.0-dev (adapter c77c698078a9)
+        	this program:  skgo devel (adapter e511ad836588)
+        They are one contract in two languages, released together, so the frontend this would build could not be served by the program that generated it.
+        Install the matching one — `pnpm add -D @skgo/sveltekit-adapter` — and run `go generate ./...` again.
+--- FAIL: TestGeneratedNativeHandlerContract (0.14s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/hotreload	0.386s
+FAIL

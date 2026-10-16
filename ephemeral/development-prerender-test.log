@@ -1,0 +1,18 @@
+=== RUN   TestDevelopmentPrerenderHTTPUsesGoAndPathArguments
+--- PASS: TestDevelopmentPrerenderHTTPUsesGoAndPathArguments (0.00s)
+=== RUN   TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects
+=== RUN   TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects/app-error
+=== RUN   TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects/redirect
+--- PASS: TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects (0.00s)
+    --- PASS: TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects/app-error (0.00s)
+    --- PASS: TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects/redirect (0.00s)
+=== RUN   TestDevelopmentPrerenderSSRDocumentRunsGoWithoutRecordedArtifact
+--- PASS: TestDevelopmentPrerenderSSRDocumentRunsGoWithoutRecordedArtifact (0.00s)
+=== RUN   TestSSRUsesRecordedPrerenderRemoteAndKeepsOriginalHydrationKey
+--- PASS: TestSSRUsesRecordedPrerenderRemoteAndKeepsOriginalHydrationKey (0.00s)
+=== RUN   TestSSRPrerenderMissIsOpaqueAndNeverCallsGo
+--- PASS: TestSSRPrerenderMissIsOpaqueAndNeverCallsGo (0.00s)
+=== RUN   TestMalformedClientPrerenderErrorIsOpaqueAndNeverCallsGo
+--- PASS: TestMalformedClientPrerenderErrorIsOpaqueAndNeverCallsGo (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo	0.233s

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/mod/modfile"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,8 +73,36 @@ func (t Toolchain) HostView(ctx context.Context, dir, parent string, sources map
 	if err := os.WriteFile(t.Overlay, raw, 0644); err != nil {
 		return Toolchain{}, err
 	}
-	if _, err := t.PrepareLoader(ctx, dir, filepath.Join(parent, "native")); err != nil {
+	// -modfile is forbidden in workspace mode. Prepare loader requirements in
+	// the private modfile, then add the private loader as a workspace member.
+	// All captured application members and workspace replacements stay selected.
+	work := t.envValue("GOWORK")
+	loaderTC := t
+	if work != "" && work != "off" {
+		loaderTC.Env = append(t.environment(), "GOWORK=off")
+	}
+	loader, err := loaderTC.PrepareLoader(ctx, dir, filepath.Join(parent, "native"))
+	if err != nil {
 		return Toolchain{}, err
+	}
+	if work != "" && work != "off" {
+		raw, err := os.ReadFile(work)
+		if err != nil {
+			return Toolchain{}, err
+		}
+		wf, err := modfile.ParseWork(work, raw, nil)
+		if err != nil {
+			return Toolchain{}, err
+		}
+		if err = wf.AddUse(loader, ""); err != nil {
+			return Toolchain{}, err
+		}
+		privateWork := filepath.Join(parent, "go.work")
+		if err = os.WriteFile(privateWork, modfile.Format(wf.Syntax), 0644); err != nil {
+			return Toolchain{}, err
+		}
+		t.ModFile = ""
+		t.Env = append(t.environment(), "GOWORK="+privateWork)
 	}
 	return t, nil
 }

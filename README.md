@@ -114,9 +114,45 @@ can build its client and manifests, which means every response comes from Go.
 - Pages are rendered on the server. Streamed promises, `ssr = false` and
   `csr = false` work.
 - Remote forms still work when JavaScript is disabled.
-- Development mode is unavailable pending its separate replacement.
+- `skgo dev` runs Vite for frontend HMR and a Go application with native updates
+  for compatible Go edits. Structural changes rebuild the Go host.
 - `skgo new` creates the project with `sv create`, then adds Vitest and
   Storybook.
+
+## Development
+
+From an application root with its existing generation declaration, run:
+
+```sh
+go tool skgo dev
+```
+
+In this checkout, run `go run ./cmd/skgo dev --root example`. Install frontend
+packages with `vp install` in the frontend directory first. Use `--web` and
+`--out` for non-default frontend and generated-binding directories.
+
+Open the address printed by the command. The Go coordinator keeps that public
+listener while Vite/Kit owns development rendering and HMR, and Go supplies
+application loads, actions, endpoints, remotes and request hooks. `--listen 127.0.0.1:8080` selects the requested address;
+when the port is occupied, the next available port is selected before Kit is
+initialized. Add `--strict-port` to require that exact port.
+
+Compatible Go edits install into the running host and refresh Kit queries and
+loads while preserving healthy browser state. Changes that require a new Go
+program rebuild and replace it. Svelte edits use Vite HMR. Compile errors show the authored location and keep the last working
+application; repairing the source clears the error. A Vite restart or structural
+frontend change can reload the document and discard a browser draft.
+
+The application provides `NewDevelopmentHandler(build fs.FS, origin string,
+development *skgo.NativeDevelopment) (http.Handler, error)`. Share the ordinary
+production constructor's setup and use `development.NewSSR(build, ...)` and
+`development.NewStaticHandler(build, ...)` in that setup. Passing a nil
+development value selects the production implementations. The filesystem stays
+ordinary `fs.FS`, including decorators and subdirectories. Newly generated apps
+include both entry points; existing apps must add the development entry point.
+
+The production build still produces one Go binary with Go/goja rendering and
+needs no Node at request time. Native Kit rendering is development-only.
 
 ## SvelteKit feature support
 
@@ -190,9 +226,9 @@ the public documentation.
 | --- | --- | --- |
 | [Create a project with `sv`](https://svelte.dev/docs/kit/creating-a-project) | Available | `skgo new` delegates to `sv create` and adds the Go adapter, Vitest and Storybook. |
 | Generate Go registrations and TypeScript types | Available | `skgo generate` produces typed bindings and throwing Kit stubs; [generator](internal/gen/gen.go). |
-| Development server and hot updates | Unavailable | The old development server has been removed; its replacement is separate work. |
+| Development server and hot updates | Available | `skgo dev` combines Vite HMR, native Go body updates, rebuild fallback and process recovery; see [Development](#development). |
 | Single-binary build and static assets | Available | The generated project's [build recipe](internal/newapp/gofiles/Justfile.tmpl) embeds the client, assets and SSR bundle in a Go binary. Node is a build-time dependency. |
-| Go tests and browser scenarios | Available | `go test` and the [Gherkin/Playwright suite](example/e2e/features) cover the example; run `just e2e prod` against the built server. Development qualification is unavailable. |
+| Go tests and browser scenarios | Available | `go test` and the [Gherkin/Playwright suite](example/e2e/features) cover the example; run `just e2e prod` against the built server. The development session has a real Go integration test (`go test -tags skgo_dev_integration ./internal/devserver`); the Gherkin suite remains production-only. |
 | Svelte and TypeScript checking | Available | The example has `svelte-kit sync && svelte-check`; [package script](example/web/package.json). This is not yet an integrated skgo command. |
 | Vitest component tests and Storybook | Available | `skgo new` provisions both through upstream tooling; [scaffolder](internal/newapp/newapp.go). |
 | Unified checking, linting and formatting | WIP | The separate agent-tooling task is developing a single skgo command; no `skgo check --fix` is released. |

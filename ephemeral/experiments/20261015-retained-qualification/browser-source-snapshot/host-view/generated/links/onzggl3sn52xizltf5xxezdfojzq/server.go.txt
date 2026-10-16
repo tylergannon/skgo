@@ -1,0 +1,42 @@
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:1
+package orders
+
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:2
+import (
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:2
+ "fmt"
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:2
+ "net/http"
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:2
+ "github.com/tylergannon/skgo"
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:2
+)
+
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:3
+func endpoint(w http.ResponseWriter, r *http.Request) {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:2
+ _skgo_targets, _skgo_release := _skgo_acquire(r.Context())
+																				defer _skgo_release()
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:1
+ _skgo_targets.endpoint(w, r)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:1
+}
+
+func _skgo_body_endpoint(w http.ResponseWriter, r *http.Request) {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:3
+ suffix := ""
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:3
+ if r.URL.Query().Has("panic") {
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:3
+  suffix = ":" + _skgo_body_health()
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:3
+ }
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:3
+ w.Header().Set("Content-Type", "application/json")
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:3
+ fmt.Fprintf(w, "endpoint:%d%s", _skgo_body_price(), suffix)
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:3
+}
+
+//line /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRetainedWholeApplicationBrowser1660679078/002/app/web/src/routes/orders/server.go:4
+var _ = skgo.GET(endpoint)

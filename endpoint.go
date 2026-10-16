@@ -13,6 +13,7 @@
 package skgo
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html"
@@ -388,6 +389,11 @@ func (es *Endpoints) checkDrift() error {
 // reach their Go handlers.
 func (es *Endpoints) Intercept(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Context().Value(devContinuationKey{}) != nil {
+			r = r.WithContext(context.WithValue(r.Context(), devEndpointsKey{}, es))
+			next.ServeHTTP(w, r)
+			return
+		}
 		es.serve(w, r, next)
 	})
 }

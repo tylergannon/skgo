@@ -9,7 +9,7 @@ the Go process renders pages with, and a manifest naming the routes, remote
 functions and server loads Go must answer.
 
 ```sh
-pnpm add -D '@skgo/sveltekit-adapter@<=VERSION'
+vp add -D '@skgo/sveltekit-adapter@<=VERSION'
 ```
 
 `VERSION` is the `github.com/tylergannon/skgo` requirement in your `go.mod`

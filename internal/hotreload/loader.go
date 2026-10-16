@@ -117,7 +117,14 @@ func (t Toolchain) PrepareLoader(ctx context.Context, dir, parent string) (strin
 		}
 	}
 	run := func(dir string, args ...string) error {
-		output, err := t.command(ctx, dir, args...).CombinedOutput()
+		tool := t
+		if dir == dest {
+			// Loader edits belong to its own module, never the application's modfile.
+			tool.ModFile = ""
+			tool.Overlay = ""
+			tool.Env = append(t.environment(), "GOWORK=off")
+		}
+		output, err := tool.command(ctx, dir, args...).CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("prepare native loader %v: %w\n%s", args, err, output)
 		}

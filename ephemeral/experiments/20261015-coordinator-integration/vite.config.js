@@ -1,0 +1,10 @@
+import {sveltekit} from '@sveltejs/kit/vite';
+import {createBuilder} from 'vite';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {gojaEnvironment,nodeTable} from 'ADAPTER_ENV';
+const goja=gojaEnvironment();
+const generated={nodes:nodeTable(process.cwd(),[{component:'src/routes/+layout.svelte'},{component:'src/routes/+error.svelte'},{component:'src/routes/orders/+page.svelte'}]),hooks:'export const transport = {};'};
+const adapter={name:'listener-experiment',vite:{plugins:{post:[goja.plugin]}},async adapt(){await goja.build(generated,'bundle.js');globalThis.__rebuild=()=>goja.build(generated,'bundle.js');}};
+const config={cacheDir:'.vite-coordinator',server:{host:'127.0.0.1',port:Number(process.env.PRIVATE_VITE_PORT),strictPort:true,ws:{host:'127.0.0.1',clientPort:Number(process.env.PUBLIC_PORT),path:'__hmr'},fs:{allow:['WORK_ROOT']}},plugins:[sveltekit({adapter,paths:{origin:process.env.PUBLIC_ORIGIN},experimental:{remoteFunctions:true},compilerOptions:{experimental:{async:true}}}),{name:'listener-tooling',configureServer(server){server.middlewares.use('/__tool',async(req,res)=>{try{if(req.url==='/build'){const old=process.env.NODE_ENV;process.env.NODE_ENV='production';try{const b=await createBuilder({configFile:resolve('vite.config.js'),logLevel:'error'});await b.buildApp();}finally{process.env.NODE_ENV=old;}}else if(req.url==='/rebuild'){await globalThis.__rebuild();}else if(req.url.startsWith('/notify')){const q=new URL(req.url,'http://localhost').searchParams;server.hot.send({type:'custom',event:'skgo:published',data:{instance:process.env.INSTANCE,error:q.get('error')||'',published:Date.now()}});}else if(req.url==='/identity'){res.end(JSON.stringify({instance:process.env.INSTANCE,pid:process.pid,root:process.cwd(),address:server.httpServer.address(),publicOrigin:process.env.PUBLIC_ORIGIN}));return;}res.end('ok');}catch(e){res.statusCode=500;res.end(e.stack);}});}}]};
+export default config;

@@ -1,0 +1,12 @@
+=== RUN   TestActiveInstanceIdentityAndValue
+=== RUN   TestActiveInstanceIdentityAndValue/ALPHA
+    identity_test.go:37: X-Application-Origin="http://127.0.0.1:56421", want "http://127.0.0.1:56411"
+    identity_test.go:41: response body lacks independent literal "ALPHA"
+    identity_test.go:41: response body lacks independent literal "Go SSR total: 7407"
+=== RUN   TestActiveInstanceIdentityAndValue/BETA
+--- FAIL: TestActiveInstanceIdentityAndValue (0.01s)
+    --- FAIL: TestActiveInstanceIdentityAndValue/ALPHA (0.00s)
+    --- PASS: TestActiveInstanceIdentityAndValue/BETA (0.00s)
+FAIL
+FAIL	example.com/skgo-listener-httpcheck	0.143s
+FAIL

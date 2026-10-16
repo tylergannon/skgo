@@ -1,0 +1,6 @@
+=== RUN   TestExampleDevelopmentHost
+    example_host_test.go:44: native host initialization: skgo: reading skgo.manifest.json from the build: open skgo.manifest.json: no such file or directory
+--- FAIL: TestExampleDevelopmentHost (8.70s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/hotreload	8.984s
+FAIL

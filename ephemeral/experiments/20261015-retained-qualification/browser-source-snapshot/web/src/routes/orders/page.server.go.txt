@@ -1,0 +1,16 @@
+package orders
+import("context";"fmt";"github.com/tylergannon/skgo")
+type PageData struct{Order Order `json:"order"`;Later skgo.Deferred[int] `json:"later"`}
+var DeferredGate *Hold
+func ExportedPrice()int{callback:=price;return callback()}
+func health()string{return "healthy"}
+func pageLoad(event PageRequestEvent)(PageData,error){
+ ctx:=event.Context();value,err:=order(ctx);if err!=nil{return PageData{},err}
+ later:=skgo.Resolved(price());if event.Request().URL.Query().Has("defer"){later=skgo.Async(ctx,deferredPrice)}
+ return PageData{Order:value,Later:later},nil
+}
+func deferredPrice(ctx context.Context)(int,error){if hold:=DeferredGate;hold!=nil{close(hold.Entered);select{case<-hold.Release:case<-ctx.Done():return 0,ctx.Err()}};return price(),nil}
+type SaveResult struct{Receipt string `json:"receipt"`}
+func save(ctx context.Context)(SaveResult,error){if err:=skgo.EventFrom(ctx).SetCookie("saved","yes",skgo.CookieOptions{});err!=nil{return SaveResult{},err};return SaveResult{Receipt:fmt.Sprintf("saved:%d",price())},nil}
+var _=skgo.Load(pageLoad)
+var _=skgo.Action(save)

@@ -1,0 +1,11 @@
+// Supported CUA tab capability; read-only browser evaluation, no DOM injection.
+const latencyCdp = await measureTab.capabilities.get("cdp");
+const readLatency = `(()=>{const p=document.querySelector('[data-testid="item-name"]');const load=document.querySelector('[data-testid="load-item-name"]');const heading=document.querySelector('[data-testid="title"]');const input=document.querySelector('[aria-label="latency draft"]');const count=[...document.querySelectorAll('button')].find(b=>b.textContent.startsWith('Latency count '));const r=p?.getBoundingClientRect();return {wall:Date.now(),origin:performance.timeOrigin,go:p?.innerText,load:load?.innerText,heading:heading?.innerText,draft:input?.value,count:count?.innerText,visible:!!r&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight}})()`;
+// Per observation (run repeatedly before the scheduled source save):
+const sent = Date.now();
+const result = await latencyCdp.send("Runtime.evaluate", {expression:readLatency,returnByValue:true});
+const received = Date.now();
+const value = result.result?.value;
+const matched = !!value?.visible && (kind === "svelte" ? value.heading === literal : value.go === literal && value.load === literal);
+// Keep first observation, last !matched, first matched, full poll count and RTT
+// min/median/max. Each expected literal was supplied before its source save.

@@ -1,0 +1,6 @@
+=== RUN   TestExampleDevelopmentHost
+    example_host_test.go:44: native host initialization: skgo: evaluating the SSR bundle: ReferenceError: __SVELTEKIT_MANIFEST_IMMUTABLE__ is not defined at ssr/bundle.js:12789:2(4376)
+--- FAIL: TestExampleDevelopmentHost (12.29s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/hotreload	12.548s
+FAIL

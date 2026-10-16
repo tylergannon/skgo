@@ -348,14 +348,17 @@ func readProjectFileWith(ctx context.Context, path string, read func(string) ([]
 // frozen selection environment. Stock Go owns compilation and artifact caching.
 // Files returns a copy so consumers cannot mutate retained handles.
 type CompilerInputs struct {
-	Revision      Revision
-	Dir, Web, Out string
-	Env           []string
-	view          *generationSourceView
-	links         *routeLinks
-	files         map[string][]byte
-	close         func()
-	once          sync.Once
+	Revision Revision
+	// EnvironmentIdentity identifies captured Go source-selection settings,
+	// independently of the disposable materialization paths in Env.
+	EnvironmentIdentity string
+	Dir, Web, Out       string
+	Env                 []string
+	view                *generationSourceView
+	links               *routeLinks
+	files               map[string][]byte
+	close               func()
+	once                sync.Once
 }
 
 func (i *CompilerInputs) Files() map[string][]byte {
@@ -493,7 +496,7 @@ func (p *Project) Prepare(ctx context.Context) (*ProjectBuild, error) {
 	if err != nil {
 		return fail(err)
 	}
-	inputs := &CompilerInputs{Revision: s.revision, Dir: dir, Web: cfg.Web, Out: cfg.Out, Env: append([]string(nil), cfg.sourceView.env...), view: cfg.sourceView, files: map[string][]byte{}, close: cleanup}
+	inputs := &CompilerInputs{Revision: s.revision, EnvironmentIdentity: s.environmentHash, Dir: dir, Web: cfg.Web, Out: cfg.Out, Env: append([]string(nil), cfg.sourceView.env...), view: cfg.sourceView, files: map[string][]byte{}, close: cleanup}
 
 	inputs.links, err = newRouteLinks(cfg, dir, module)
 	if err != nil {

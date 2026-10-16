@@ -61,12 +61,20 @@ func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 // every path kit compiled a `+server.ts` for. Pages are last,
 // because in kit they are what answers when nothing else did.
 func NewHandler(dist fs.FS, origin string) (http.Handler, error) {
-	return NewHandlerSized(dist, origin, 0)
+	return newHandler(dist, origin, 0, nil)
+}
+
+// NewDevelopmentHandler uses the same application stack with Kit-owned rendering.
+func NewDevelopmentHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) (http.Handler, error) {
+	return newHandler(dist, origin, 0, development)
 }
 
 // NewHandlerSized is NewHandler with the number of page renders that may run
 // at once. Zero is the renderer's default, one per CPU.
 func NewHandlerSized(dist fs.FS, origin string, runtimes int) (http.Handler, error) {
+	return newHandler(dist, origin, runtimes, nil)
+}
+func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.NativeDevelopment) (http.Handler, error) {
 	// The manifest defines the URL prefix remote calls arrive on.
 	manifest, err := skgo.ReadManifest(dist)
 	if err != nil {
@@ -104,7 +112,7 @@ func NewHandlerSized(dist fs.FS, origin string, runtimes int) (http.Handler, err
 	build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 		// A render-time `event.fetch` of the app's own routes is answered
 		// by the whole stack, pages included; see `app`.
-		ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+		ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
 			Runtimes:    runtimes,
 			Fetch:       internal,
 			HandleFetch: handleFetch,
@@ -115,7 +123,7 @@ func NewHandlerSized(dist fs.FS, origin string, runtimes int) (http.Handler, err
 		}
 		handleCfg.ErrorTemplate = ssr.ErrorTemplate()
 		endpoints.SetErrorTemplate(ssr.ErrorTemplate())
-		return skgo.NewStaticHandler(dist, skgo.WithSSR(ssr))
+		return development.NewStaticHandler(dist, skgo.WithSSR(ssr))
 	}
 
 	// The `transport` hook, declared in web/src/hooks.go beside the

@@ -148,7 +148,7 @@ func LowerAuthored(p *packages.Package, sources map[string][]byte, authoredPaths
 						decls = append(decls, d)
 						continue
 					}
-					// Function values handed to Refresh identify the named host entry.
+					// Function values handed to remote refresh/request APIs identify the named host entry.
 					// All other helper uses (including callbacks/aliases) belong
 					// to this revision, just like direct calls.
 					stable := map[*ast.Ident]bool{}
@@ -162,7 +162,7 @@ func LowerAuthored(p *packages.Package, sources map[string][]byte, authoredPaths
 							return true
 						}
 						obj, ok := uses[fs.Position(sel.Sel.Pos()).Offset].(*types.Func)
-						if ok && obj.Pkg() != nil && obj.Pkg().Path() == "github.com/tylergannon/skgo" && strings.HasPrefix(obj.Name(), "Refresh") {
+						if ok && obj.Pkg() != nil && obj.Pkg().Path() == "github.com/tylergannon/skgo" && remoteIdentityAPI(obj.Name()) {
 							for _, arg := range call.Args {
 								if id, ok := arg.(*ast.Ident); ok {
 									stable[id] = true
@@ -413,4 +413,15 @@ func removeUnusedImports(f *ast.File) {
 		decls = append(decls, d)
 	}
 	f.Decls = decls
+}
+
+// These APIs resolve an authored function through the remote registry's stable
+// identity. Callback APIs such as Async intentionally retain revision bodies.
+func remoteIdentityAPI(name string) bool {
+	switch name {
+	case "Refresh", "RefreshNoArg", "Requested", "RefreshRequested", "IgnoreRequested", "RefreshRequestedNoArg", "IgnoreRequestedNoArg", "ReconnectRequested", "ReconnectRequestedNoArg":
+		return true
+	default:
+		return false
+	}
 }

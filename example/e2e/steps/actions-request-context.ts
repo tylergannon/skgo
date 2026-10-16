@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, expectProduction, hydrated, test } from './fixtures';
+import { expect, expectServerMode, hydrated, test } from './fixtures';
 import type { Page, Response } from '@playwright/test';
 
 const { When, Then } = createBdd(test);
@@ -11,7 +11,7 @@ async function submit(page: Page, selector: string, submission: Submission): Pro
 	const pending = page.waitForResponse((candidate) => candidate.request().method() === 'POST' && new URL(candidate.url()).pathname === '/actions');
 	await page.getByTestId(`${modeOf(submission)}-${selector}-form`).getByRole('button').click();
 	const response = await pending;
-	expectProduction(response);
+	expectServerMode(response);
 	expect(response.request().headers()['x-sveltekit-action'] === 'true').toBe(submission === 'Kit enhancement');
 	expect(response.request().resourceType() === 'document').toBe(submission === 'native form');
 	return response;
@@ -51,7 +51,7 @@ Then('the submitting response and page show the immediate cookie', async ({ page
 
 Then('a later editor GET still shows the literal cookie and Ada fixture', async ({ page, $testInfo }) => {
 	const response = await page.goto('/actions');
-	expectProduction(response!);
+	expectServerMode(response!);
 	expect(response?.status()).toBe(200);
 	await ada(page);
 	await expect(page.getByTestId('action-cookie-value')).toHaveText('violet-42');
@@ -134,7 +134,7 @@ Then("the hook refusal has Kit's response and visible page behavior", async ({ p
 
 Then('a later editor GET still has every Ada fixture field', async ({ page, $testInfo }) => {
 	const response = await page.goto('/actions');
-	expectProduction(response!);
+	expectServerMode(response!);
 	expect(response?.status()).toBe(200);
 	await ada(page);
 	await expect(page.getByTestId('no-receipt')).toBeVisible();

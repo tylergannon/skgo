@@ -1,0 +1,24 @@
+{
+  "checkout_head": "13ea7b8912e79d15a4318f74131c2862ce0535f6",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "go": "go version go1.27.2 darwin/arm64",
+  "files": {
+    "example/web/node_modules/@sveltejs/kit/package.json": "28c77dafe7dc002f6e9fcf6bc2ca20eb805090d0e35f77e13b0a4dd6a0dbbcd5",
+    "example/web/node_modules/svelte/package.json": "5a0d57cb27afe0365075723a85b19123006e3c8f00a518283272773f52b9b2dc",
+    "example/web/node_modules/@sveltejs/vite-plugin-svelte/package.json": "c12c58f945517825eb264fdb22474d5fbdcdb5be924e9ce0a22089ae9a1d6824",
+    "example/web/node_modules/vite/package.json": "f9c112b2726d0727cf320bdb26d70c7a5e0e707ef06983ec0d7952f9119860ca",
+    "example/web/node_modules/vite/dist/vite/node/module-runner.js": "22f865735c612f2a38df1ee1610366d1b76eff4d62c29eb55a39d933e26740b7",
+    "example/web/node_modules/vite/dist/vite/node/chunks/node.js": "b3ac3f6d08d8d56af46c2707b992ace78fd4e37e84fc34c9e9a1e78e7a433858",
+    "internal/adapter/skgo-adapter/env.js": "4f63ff9a7f56118d4c27a11fa85e5b1f927305b8f2e3ab342144f90e53e30588",
+    "internal/adapter/skgo-adapter/polyfill.js": "85c76d23fa52072c03746eaee896483b6e31349924c5110ad2dced2756e7f441",
+    "internal/ssr/ssr.go": "8ac30a0d923330075efa2dff7dac81549fc09b34e53b4c60db1bb515d3a9b6fe",
+    "ephemeral/experiments/20261015-architecture/renderer/vite.config.js": "130f9199d33744ee6304f970b4807455c3e3a27ab7defeab3b59b41b768e8462",
+    "ephemeral/experiments/20261015-architecture/renderer/renderer_test.go": "a73878d64de6a9a8fa3103703da4ce14ccc3da8b3b346fb0ddee5e3a5ea76db3"
+  },
+  "packages": {
+    "example/web/node_modules/@sveltejs/kit/package.json": "3.0.0",
+    "example/web/node_modules/svelte/package.json": "5.57.1",
+    "example/web/node_modules/@sveltejs/vite-plugin-svelte/package.json": "7.3.1",
+    "example/web/node_modules/vite/package.json": "1.0.0"
+  }
+}

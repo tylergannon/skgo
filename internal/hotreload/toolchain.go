@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 const LoaderVersion = "v0.0.26-0.20260915095715-2695cfc53506"
@@ -25,6 +26,7 @@ type Toolchain struct {
 	Go, Root, Version, OS, Arch, Identity string
 	// Private host build inputs, empty for ordinary candidate compilation.
 	ModFile, Overlay string
+	Env              []string
 	AuthoredPaths    map[string]string
 	Settings         map[string]string
 }
@@ -33,12 +35,16 @@ type Toolchain struct {
 // follows GoLoader's documented cmd/internal -> cmd/objfile preparation, without
 // modifying shared source through a symlink. Its parent is caller-owned.
 func PrepareToolchain(ctx context.Context, goTool, parent string) (Toolchain, error) {
-	var t Toolchain
+	return prepareToolchain(ctx, goTool, parent, nil)
+}
+
+func prepareToolchain(ctx context.Context, goTool, parent string, environment []string) (Toolchain, error) {
+	t := Toolchain{Env: environment}
 	if err := t.checkFlags(); err != nil {
 		return t, err
 	}
 	cmd := exec.CommandContext(ctx, goTool, "env", "-json", "GOROOT", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOAMD64", "GOARM64", "GOFLAGS")
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+	cmd.Env = append(t.environment(), "CGO_ENABLED=0")
 	raw, err := cmd.Output()
 	if err != nil {
 		return t, fmt.Errorf("inspect Go toolchain: %w", err)
@@ -161,18 +167,18 @@ func PrepareToolchain(ctx context.Context, goTool, parent string) (Toolchain, er
 			return t, fmt.Errorf("prepare private object reader: %w", err)
 		}
 	}
-	return Toolchain{Go: filepath.Join(private, "bin/go"), Root: private, Version: env["GOVERSION"], OS: env["GOOS"], Arch: env["GOARCH"], Identity: identity, Settings: map[string]string{"GOOS": env["GOOS"], "GOARCH": env["GOARCH"], "GOEXPERIMENT": env["GOEXPERIMENT"], "GOAMD64": env["GOAMD64"], "GOARM64": env["GOARM64"], "GOFLAGS": env["GOFLAGS"]}}, nil
+	return Toolchain{Env: append([]string(nil), environment...), Go: filepath.Join(private, "bin/go"), Root: private, Version: env["GOVERSION"], OS: env["GOOS"], Arch: env["GOARCH"], Identity: identity, Settings: map[string]string{"GOOS": env["GOOS"], "GOARCH": env["GOARCH"], "GOEXPERIMENT": env["GOEXPERIMENT"], "GOAMD64": env["GOAMD64"], "GOARM64": env["GOARM64"], "GOFLAGS": env["GOFLAGS"]}}, nil
 }
 
 func (t Toolchain) command(ctx context.Context, dir string, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, t.Go, args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GOROOT="+t.Root, "GOWORK=off", "GOTOOLCHAIN=local", "CGO_ENABLED=0")
+	cmd.Env = append(t.environment(), "GOROOT="+t.Root, "GOTOOLCHAIN=local", "CGO_ENABLED=0")
 	for name, value := range t.Settings {
 		cmd.Env = append(cmd.Env, name+"="+value)
 	}
 	if t.ModFile != "" || t.Overlay != "" {
-		flags := os.Getenv("GOFLAGS")
+		flags := t.envValue("GOFLAGS")
 		if t.Settings != nil {
 			flags = t.Settings["GOFLAGS"]
 		}
@@ -185,4 +191,22 @@ func (t Toolchain) command(ctx context.Context, dir string, args ...string) *exe
 		cmd.Env = append(cmd.Env, "GOFLAGS="+flags)
 	}
 	return cmd
+}
+
+// Captured inputs own source selection. Standalone toolchain users retain the
+// explicit non-workspace profile used by the native compiler fixtures.
+func (t Toolchain) environment() []string {
+	if t.Env != nil {
+		return append([]string(nil), t.Env...)
+	}
+	return append(os.Environ(), "GOWORK=off")
+}
+func (t Toolchain) envValue(name string) string {
+	env := t.environment()
+	for i := len(env) - 1; i >= 0; i-- {
+		if value, ok := strings.CutPrefix(env[i], name+"="); ok {
+			return value
+		}
+	}
+	return ""
 }

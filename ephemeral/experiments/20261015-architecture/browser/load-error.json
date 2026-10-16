@@ -1,0 +1,5 @@
+{
+  "time": "2026-10-15T19:10:38.476Z",
+  "dom": "- main:\n  - heading \"GO_LOAD_ERROR 500\" [level=1]\n  - paragraph: Internal Error\n  - link \"Recover by navigation\":\n    - /url: /",
+  "logs": []
+}

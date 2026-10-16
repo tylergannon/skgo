@@ -1,0 +1,32 @@
+=== RUN   TestLiveMetadata
+    live_test.go:206: BOOTSTRAP built
+    live_test.go:208: PUBLISHED generation=1 routes=2 nodes=4 elapsed=56.276667ms
+    live_test.go:224: GO_HTTP path=/z-existing generation=1 status=200 literal=Go value: 8426
+    live_test.go:172: PUBLISHED generation=1 routes=3 nodes=5 elapsed=68.261166ms
+    live_test.go:227: path=/a-added wantedstatus200 literalGo value: 7719 actualstatus404 body<!doctype html><html><head><script type="module" src="/@vite/client"></script></head><body><div><!--[--><!--[--><!--[0--><!--[--><nav><a href="/">Home</a> <a href="/z-existing">Existing</a> <a href="/a-added">Added</a></nav><main><!--[--><!--[-1--><!--[--><h1>LIVE_ERROR 404</h1><!--]--><!--]--><!--]--><!----></main><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
+        			<script>
+        				{
+        					__sveltekit_dev = {
+        						base: "",
+        						version: ""
+        					};
+        
+        					const element = document.currentScript.parentElement;
+        
+        					import("/@fs/Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_3fba9d125588406c91ff67b52ec9f4c3/node_modules/@sveltejs/kit/src/runtime/client/entry.js").then(async (kit) => {
+        						kit.init(__sveltekit_dev);
+        						const app = await import("/@fs/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-live-metadata/runtime/.svelte-kit/generated/dev/client/app.js");
+        						kit.start(app, element, {
+        							node_ids: [0, 1],
+        							data: [null,null],
+        							error: {message:"Not Found",status:404},
+        							form: null
+        						});
+        					});
+        				}
+        			</script>
+        		</div></body></html>
+--- FAIL: TestLiveMetadata (1.87s)
+FAIL
+FAIL	github.com/tylergannon/skgo/ephemeral/experiments/20261015-live-metadata	2.092s
+FAIL

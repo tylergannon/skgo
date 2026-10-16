@@ -1,0 +1,28 @@
+Actual command baseline, public http://127.0.0.1:56811, parent Chrome/CUA observation.
+Home rendered the real example navigation, Hello skgo greeting and Go-backed site name. Clicked observed Item42 link; visible headingItem42 and Widget42 twice, authored routepath, form fields. Screenshot inspected: styled page, not blank.
+This was NOT clean hydration/HMR proof. Console initial page warning:
+Failed to hydrate: HierarchyRequestError: Failed to execute 'appendChild' on 'Node': This node type does not support this method.
+Frame: Svelte Module.child; authored +layout.svelte:147; root.svelte.
+Intentional reload captured actual WebSocket request88299.131 URL ws://127.0.0.1:56811/?token=<session-token>, handshake sent, frameerror then closed; no101. The emitted root path disagreed with coordinator's reserved tooling route. Coordinator preserved arbitrary app WebSocket ownership rather than redirecting all upgrades.
+Next /error/unexpected navigation failed connectionrefused because coordinator owner intentionally stopped the session for adapter patching. Error hook was not verified in this browser baseline. Do not label that stop an application crash.
+
+Product session at56811, second launch:
+- CDP request22584.8 public ws://127.0.0.1:56811/__skgo/dev/hmr receivedHTTP101; vite-hmr, publicOrigin. Vite connected21:22:16.
+- Fresh21:22:16.968 hydration HierarchyRequestError still present, runtime-ZiJdurWt.js?v=5e96d286:3335, generated_layout147. Independent debugger: child(main) receives comment `]`, notElement. Do not count clientfallback as hydrationPASS.
+- Actualitembodyedit Widget %s→DEV_WIDGET %s: publicationrev4 Go27026, freshSSR contains DEV_WIDGET42 threeoccurrences; openpage remainsWidget42 twice. SeededPreviewmessage draft survives. No automaticvisible refresh demonstrated.
+- Rev3 alreadychangedPID26452→27026 beforeitemedit; rev4samePIDproves nativepath for bodyedit. Restoredexactoriginal source afterward.
+
+Third launch (Go37897 initially), canonicalKitclient bridge:
+Fresh21:28:46.835 hydrationstillfailed, cache3961474601 v7a6910e8.
+PriorSDKtestchanges ledrev5/6 replacement, thenfilesfrozen.
+Go42094 rev7 DEV_6303 andrev8 DEV_7407 visiblyupdatedtwoqueryparagraphs. Same timeOrigin1792099726000.4 and Previewmessage draft5202retained throughout.
+Malformedrev9 keptDEV_7407, showed item.remote.go:30:26 stringliteralnotterminated.
+Exactoriginal repairrev10 restoredWidget42 andretaineddraft/document, butViteerroroverlayremainedvisible.
+Hostprepare/install rev7=729.434ms/480us,rev8=255.784ms/1.008ms,rev10=193.975ms/560us. ExcludesProjectprepare/save-to-paint.
+Sourceoriginalrestored. Coordinatorownerstoppedsessionforfixes; rawlogarchivedproduct-startup/native-refresh-and-error-repair.log.
+
+Fourth launch Go49562/privateVite58530:
+Initial Item42 hydration clean: no fresh warning/error after21:32, timeOrigin1792099991223.4.
+MalformedGo authoredlineoverlay appeared; exactrepair clearedoverlay and preservedhealthy draft7719+document.
+Svelte titleedit HMR_8426 visiblychangedItem42 andfreshGoSSR; PID49562 unchanged, draftanddocumentpreserved. Originalrestored.
+Structuralroute+remoteaddition/removal evidence now in experiments/20261015-product-structure/OBSERVATIONS.md with exactpairedartifacts; includes successfulclientnavigation and existingroute identity, plus observedAboutprerenderfailure and transientmixedmetadatarefusals underrepair.

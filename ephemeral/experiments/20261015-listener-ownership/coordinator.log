@@ -1,0 +1,8 @@
+=== RUN   TestCoordinatorRetainsPublicListenerAcrossAppReplacement
+    coordinator_test.go:80: public http://127.0.0.1:62073 -> 200 APP_731 host=127.0.0.1:62073 origin=http://127.0.0.1:62073
+    coordinator_test.go:103: public http://127.0.0.1:62073 -> 503 GO_APP_UNAVAILABLE
+    coordinator_test.go:109: public http://127.0.0.1:62073 -> 200 APP_887 host=127.0.0.1:62073 origin=http://127.0.0.1:62073
+    coordinator_test.go:114: same public origin and same upgraded tool connection survived app absence and replacement on a different private port
+--- PASS: TestCoordinatorRetainsPublicListenerAcrossAppReplacement (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/ephemeral/experiments/20261015-listener-ownership	0.205s

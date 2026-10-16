@@ -1,0 +1,6 @@
+=== RUN   TestRealSessionNativeRecoveryAndIsolation
+    session_integration_test.go:188: Kit fixed origin did not follow bound listener: public=http://127.0.0.1:60969 occupied=127.0.0.1:60968
+--- FAIL: TestRealSessionNativeRecoveryAndIsolation (8.94s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/devserver	9.248s
+FAIL

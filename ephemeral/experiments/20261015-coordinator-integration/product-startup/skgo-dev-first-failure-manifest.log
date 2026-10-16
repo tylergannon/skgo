@@ -1,0 +1,31 @@
+skgo dev: preparing generated application
+skgo dev: starting Vite
+3:16:08 PM [vite+] (ssr) connected.
+3:16:08 PM [vite+] (client) Forced re-optimization of dependencies
+
+  VITE+ v1.0.0  
+
+  ➜  Local:   http://127.0.0.1:54709/
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 10174..10182
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 10190..10198
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 10534..10542
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 10550..10558
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 10604..10612
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 10620..10628
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 10636..10644
+
+skgo dev: building native application host
+Go development host: native host initialization: skgo: evaluating the SSR bundle: ReferenceError: __SVELTEKIT_MANIFEST_IMMUTABLE__ is not defined at ssr/bundle.js:12789:2(4376)

@@ -18,7 +18,7 @@ Feature: Fetches that reach the app's own rendered pages
 
   Scenario: A Go load's fetches of every kind of destination are in the cold document and again after a Kit navigation
     When I visit "/destinations"
-    Then the document already said 'data-path="/shadow/fixed">200 text/html; charset=utf-8'
+    Then the document already lists destination "/shadow/fixed" as "200 text/html; charset=utf-8"
     And the destinations page lists these answers:
       | path                                                   | answer                          |
       | /request-fetch                                         | 200 text/html; charset=utf-8    |

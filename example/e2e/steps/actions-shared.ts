@@ -1,5 +1,5 @@
 import { createBdd } from 'playwright-bdd';
-import { expect, expectProduction, hydrated, test } from './fixtures';
+import { expect, expectServerMode, hydrated, test } from './fixtures';
 import type { Page, Response } from '@playwright/test';
 
 const { When, Then } = createBdd(test);
@@ -10,7 +10,7 @@ async function postResponse(page: Page, predicate: (response: Response) => boole
 	const waiting = page.waitForResponse((response) => response.request().method() === 'POST' && predicate(response));
 	await submit();
 	const response = await waiting;
-	expectProduction(response);
+	expectServerMode(response);
 	return response;
 }
 

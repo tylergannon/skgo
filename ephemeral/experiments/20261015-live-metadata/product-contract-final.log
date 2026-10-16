@@ -1,0 +1,23 @@
+=== RUN   TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler
+    development_test.go:225: snapshot1 routes2 nodes4
+    development_test.go:242: snapshot2 routes3 nodes5
+    development_test.go:247: snapshot3 routes3 nodes5
+    development_test.go:254: snapshot4 routes2 nodes4
+    development_test.go:263: Get "http://127.0.0.1:60808/__skgo/dev/snapshot": dial tcp 127.0.0.1:60808: connect: connection refused
+    development_test.go:106: 3:40:51 PM [vite+] (ssr) connected.
+        3:40:51 PM [vite+] (client) Forced re-optimization of dependencies
+        
+          VITE+ v1.0.0  
+        
+          ➜  Local:   http://127.0.0.1:60808/
+        3:40:52 PM [vite+] Internal server error: skgo: environment build inputs are private
+              at LoadPluginContext.handler (file:///Users/tyler/.codex/worktrees/5f35/skgo/internal/adapter/skgo-adapter/env.js:528:152)
+              at EnvironmentPluginContainer.load (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:11273:56)
+              at async loadAndTransform (file:///Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.19.1_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:25304:21)
+        3:40:52 PM [vite+] .env.development changed, restarting server...
+        3:40:52 PM [vite+] (ssr) connected.
+        
+--- FAIL: TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler (3.82s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	4.123s
+FAIL

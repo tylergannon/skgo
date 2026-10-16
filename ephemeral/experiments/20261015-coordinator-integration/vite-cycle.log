@@ -1,0 +1,4 @@
+STOP_VITE ownRoot=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-coordinator-integration/runtime/ALPHA pid=81326 group=81324
+VITE_DOWN waiting own VITE_RESTART marker
+RESTART_VITE launcher=87838 publicOriginUnchanged=http://127.0.0.1:56612
+OWNED RESTARTED VITE STOP

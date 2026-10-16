@@ -650,6 +650,10 @@ func runPnpm(options Options, dir string, args ...string) ([]byte, error) {
 	runner := options.run
 	if runner == nil {
 		runner = func(dir, name string, args ...string) ([]byte, error) {
+			if options.PNPM == "" {
+				args = append([]string{"env", "exec", "--package-manager", "pnpm@" + pnpmVersion, "pnpm"}, args...)
+				name = vitePlusExecutable()
+			}
 			cmd := exec.Command(name, args...)
 			cmd.Dir = dir
 			return cmd.CombinedOutput()
@@ -662,7 +666,7 @@ func runPnpm(options Options, dir string, args ...string) ([]byte, error) {
 	const bootstrapMode = "--pm-on-fail=ignore"
 	versionOutput, err := runner(dir, name, bootstrapMode, "--version")
 	if err != nil {
-		return versionOutput, fmt.Errorf("pnpm is required (install VitePlus/pnpm 12.9.1): %w%s", err, formatOutput(versionOutput))
+		return versionOutput, fmt.Errorf("VitePlus could not run its supported pnpm: %w%s", err, formatOutput(versionOutput))
 	}
 	if strings.TrimSpace(string(versionOutput)) != pnpmVersion {
 		return versionOutput, fmt.Errorf("pnpm %s is required, found %q", pnpmVersion, strings.TrimSpace(string(versionOutput)))
@@ -738,4 +742,13 @@ func readRegularFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s is not a regular file", path)
 	}
 	return os.ReadFile(path)
+}
+
+// VP_CLI_BIN is supplied by VitePlus when it prepends project tool shims to
+// PATH. Its global executable owns env; the local frontend shim does not.
+func vitePlusExecutable() string {
+	if executable := os.Getenv("VP_CLI_BIN"); executable != "" {
+		return executable
+	}
+	return "vp"
 }

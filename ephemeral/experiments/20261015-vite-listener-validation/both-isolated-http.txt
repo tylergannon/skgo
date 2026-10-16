@@ -1,0 +1,7 @@
+ALPHA public HTTP after sequential ALPHA/BETA native saves
+ALPHA FRONTEND_ONE
+Go SSR total: 4101
+
+BETA public HTTP after sequential ALPHA/BETA native saves
+BETA FRONTEND_ONE
+Go SSR total: 5202

@@ -222,7 +222,7 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 				}
 			}
 			state.routeID = build.RouteID
-			state.params, state.converted = nil, nil
+			state.params, state.converted = build.Params, nil
 			if build.RoutePattern != "" {
 				pattern, compileErr := regexp.Compile(kitPattern(build.RoutePattern))
 				if compileErr != nil {

@@ -1,0 +1,20 @@
+=== RUN   TestRealSessionNativeRecoveryAndIsolation
+    session_integration_test.go:153: initializer change did not replace host
+        skgo dev: preparing generated application
+        skgo dev: starting Vite
+        skgo dev: Vite child pid 49946
+        3:33:01 PM [vite+] (ssr) connected.
+        3:33:01 PM [vite+] (client) Forced re-optimization of dependencies
+        
+          VITE+ v1.0.0  
+        
+          ➜  Local:   http://127.0.0.1:58570/
+        skgo dev: building native application host
+        skgo dev: http://127.0.0.1:58565 (Go pid 50027, Vite http://127.0.0.1:58570)
+        skgo dev: published revision 2 (Go pid 50027, prepare 28.271ms, install 0s, rebuild false)
+        skgo dev: published revision 3 (Go pid 50027, prepare 512.792ms, install 890µs, rebuild false)
+        skgo dev: rebuilding revision 4: complete build required: declaration, initialization, import or build-selection changed
+--- FAIL: TestRealSessionNativeRecoveryAndIsolation (13.43s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/devserver	13.715s
+FAIL

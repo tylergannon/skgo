@@ -56,8 +56,8 @@ tools:
     fi
 
 # go test, both modules; vp resolves the frontend tools from the project pins.
-test: tools
-    cd example/web && vp exec go -C ../.. test -count=1 ./... ./example/...
+test *args: tools
+    cd example/web && vp exec go -C ../.. test {{args}} -count=1 ./... ./example/...
 
 # the example server, against the built frontend
 serve:
@@ -67,10 +67,10 @@ serve:
 
 e2e_json_reporter := if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_FILE", "") != "" { " --add-reporter=json" } else if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_NAME", "") != "" { " --add-reporter=json" } else { "" }
 
-# The production browser suite; start `just serve` first. Development qualification is unavailable.
+# The browser suite against an already running server in the explicit mode.
 e2e mode="prod":
-    @test "{{mode}}" = prod || { echo "Development qualification is unavailable pending its replacement." >&2; exit 1; }
-    cd example/e2e && BASE_URL="{{origin}}" SKGO_LOG="{{log}}" ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}}
+    @case "{{mode}}" in prod|dev) ;; *) echo "Expected prod or dev" >&2; exit 1;; esac
+    cd example/e2e && BASE_URL="{{origin}}" SKGO_E2E_MODE="{{mode}}" SKGO_LOG="{{log}}" ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}}
 
 # `git worktree add -b` has silently landed an agent on main once, so the
 # branch is confirmed rather than assumed. Each worktree installs its own

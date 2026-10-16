@@ -1,0 +1,6 @@
+# Whole-application same-app comparison followed by original full generated HostView contract
+go test -overlay ephemeral/experiments/20261015-retained-qualification/overlay.json -tags skgo_retained_qualification ./internal/hotreload -run '^TestRetainedWholeApplicationQualification$' -count=1 -v -timeout 15m
+# Actual qualified source-save/native/Kit-browser join (interactive until app/stop-browser marker)
+go test -overlay ephemeral/experiments/20261015-retained-qualification/browser-overlay.json -tags skgo_retained_qualification ./internal/hotreload -run '^TestRetainedWholeApplicationBrowser$' -count=1 -v -timeout 50m
+# Actual changed archive bytes -> native compiler -> real HostView refusal, preserving real old handler
+go test -overlay ephemeral/experiments/20261015-retained-qualification/archive-overlay.json -tags skgo_retained_qualification ./internal/hotreload -run '^TestRetainedActualArchiveMismatch$' -count=1 -v -timeout 15m

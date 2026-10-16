@@ -1,0 +1,22 @@
+=== RUN   TestCooperation
+    cooperation_test.go:107: build built
+    cooperation_test.go:241: verified port=56312 path=/ bytes=1450 owner=Go
+    cooperation_test.go:241: verified port=56312 path=/__data.json bytes=83 owner=Go
+    cooperation_test.go:241: verified port=56312 path=/static-marker.txt bytes=13 owner=Go
+    cooperation_test.go:241: verified port=56312 path=/_app/remote/4o58so/value bytes=83 owner=Go
+    cooperation_test.go:266: document latency port=56312 n=30 p50=0.335ms p95=0.904ms raw_sorted=[0.243 0.243 0.245 0.251 0.254 0.271 0.273 0.277 0.282 0.289 0.294 0.304 0.309 0.314 0.323 0.335 0.336 0.391 0.452 0.593 0.619 0.649 0.692 0.821 0.824 0.869 0.875 0.88 0.904 1.764]
+    cooperation_test.go:241: verified port=56313 path=/ bytes=1450 owner=Go
+    cooperation_test.go:241: verified port=56313 path=/__data.json bytes=83 owner=Go
+    cooperation_test.go:241: verified port=56313 path=/static-marker.txt bytes=13 owner=Go
+    cooperation_test.go:241: verified port=56313 path=/_app/remote/4o58so/value bytes=83 owner=Go
+    cooperation_test.go:266: document latency port=56313 n=30 p50=0.238ms p95=0.794ms raw_sorted=[0.196 0.199 0.201 0.21 0.217 0.219 0.222 0.223 0.223 0.224 0.227 0.232 0.232 0.234 0.236 0.238 0.251 0.252 0.264 0.301 0.31 0.332 0.351 0.374 0.479 0.622 0.655 0.711 0.794 0.819]
+    cooperation_test.go:241: verified port=56311 path=/ bytes=1450 owner=Go
+    cooperation_test.go:241: verified port=56311 path=/__data.json bytes=83 owner=Go
+    cooperation_test.go:241: verified port=56311 path=/static-marker.txt bytes=13 owner=Go
+    cooperation_test.go:241: verified port=56311 path=/_app/remote/4o58so/value bytes=83 owner=Go
+    cooperation_test.go:266: document latency port=56311 n=30 p50=0.881ms p95=1.628ms raw_sorted=[0.607 0.639 0.64 0.656 0.66 0.665 0.719 0.721 0.734 0.737 0.747 0.796 0.824 0.839 0.848 0.881 0.92 0.94 0.999 1.007 1.032 1.165 1.193 1.365 1.377 1.501 1.506 1.581 1.628 1.68]
+    cooperation_test.go:268: READY Go-edge=http://127.0.0.1:56313 Vite-edge=http://127.0.0.1:56311 remote=4o58so/value fixture=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-architecture/cooperation/fixture
+    cooperation_test.go:202: frontend artifact+pool=77.126666ms builder={"milliseconds":70.04649999999674}
+--- PASS: TestCooperation (273.33s)
+PASS
+ok  	github.com/tylergannon/skgo/ephemeral/experiments/20261015-architecture/cooperation	273.509s

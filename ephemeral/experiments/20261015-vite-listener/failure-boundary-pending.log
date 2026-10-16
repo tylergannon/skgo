@@ -1,0 +1,29 @@
+=== RUN   TestViteListenerIntegration
+    browser_experiment_test.go:222: HOST instance=ALPHA pid=17019 discovered=http://127.0.0.1:62371 public=http://127.0.0.1:56411
+    browser_experiment_test.go:321: initial instance=ALPHA status=200 body=<!doctype html><html><head><script type="module" src="/@vite/client"></script></head><body><div><!--[--><!--[--><!--[0--><!--[--><main><!--[--><!--[-1--><!--[--><h1>ALPHA FRONTEND_ONE</h1><p id="hydrated">Hydrated: false</p><label>Draft <input id="draft" value=""/></label><button>Increment</button><p id="count">Count: 0</p> <!--[!--><p>Loading Go</p><!--]--> <p id="notices">Notices: 0</p><p id="status">Ready</p><p id="document">Document: </p><!--]--><!--]--><!--]--><!----></main><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
+        			<script>
+        				{
+        					__sveltekit_dev = {
+        						base: "",
+        						version: ""
+        					};
+        
+        					const element = document.currentScript.parentElement;
+        
+        					import("/@fs/Users/tyler/.codex/worktrees/5f35/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.0.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_3fba9d125588406c91ff67b52ec9f4c3/node_modules/@sveltejs/kit/src/runtime/client/entry.js").then(async (kit) => {
+        						kit.init(__sveltekit_dev);
+        						const app = await import("/@fs/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/ALPHA/.svelte-kit/generated/dev/client/app.js");
+        						kit.start(app, element, {
+        							node_ids: [0, 2],
+        							data: [null,null],
+        							error: null,
+        							form: null
+        						});
+        					});
+        				}
+        			</script>
+        		</div></body></html>
+--- FAIL: TestViteListenerIntegration (3.68s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/hotreload	3.967s
+FAIL

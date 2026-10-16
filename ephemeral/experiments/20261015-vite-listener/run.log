@@ -1,0 +1,13 @@
+=== RUN   TestViteListenerIntegration
+    browser_experiment_test.go:223: HOST instance=ALPHA pid=18250 discovered=http://127.0.0.1:62554 public=http://127.0.0.1:56411
+    browser_experiment_test.go:324: READY instance=ALPHA public=http://127.0.0.1:56411/orders source=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/ALPHA/source.remote.go page=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/ALPHA/src/routes/orders/+page.svelte restart=touch /Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/ALPHA/restart
+    browser_experiment_test.go:223: HOST instance=BETA pid=18276 discovered=http://127.0.0.1:62564 public=http://127.0.0.1:56421
+    browser_experiment_test.go:324: READY instance=BETA public=http://127.0.0.1:56421/orders source=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/BETA/source.remote.go page=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/BETA/src/routes/orders/+page.svelte restart=touch /Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/BETA/restart
+    browser_experiment_test.go:326: BOTH_READY; native source saves are watched automatically; no value control endpoint exists
+    browser_experiment_test.go:278: NATIVE instance=ALPHA revision=1 pid=18250 saveObservedToInstalled=957.035416ms
+    browser_experiment_test.go:278: NATIVE instance=BETA revision=1 pid=18276 saveObservedToInstalled=894.10625ms
+    browser_experiment_test.go:275: REJECT instance=ALPHA revision=2 error=/Users/tyler/.codex/worktrees/5f35/skgo/ephemeral/experiments/20261015-vite-listener/runtime/application/generated/links/onzggl3sn52xizltf5xxezdfojzq/orders.remote.go:12:6: expected '(', found order (and 2 more errors)
+    browser_experiment_test.go:278: NATIVE instance=ALPHA revision=3 pid=18250 saveObservedToInstalled=1.056459458s
+    browser_experiment_test.go:223: HOST instance=ALPHA pid=20664 discovered=http://127.0.0.1:62781 public=http://127.0.0.1:56411
+    browser_experiment_test.go:307: RESTART instance=ALPHA oldPID=18250 oldURL=http://127.0.0.1:62554 newPID=20664 newURL=http://127.0.0.1:62781 error=<nil>
+    browser_experiment_test.go:296: SVELTE instance=ALPHA artifactAndPool=78.081916ms error=<nil>

@@ -1,0 +1,9 @@
+RESTORED_VITE_ARTIFACT_BUILDER startup handshake200
+PASS ALPHA /orders publicOrigin=http://127.0.0.1:56612
+PASS ALPHA /__tool/identity publicOrigin=http://127.0.0.1:56612
+PASS ALPHA /@vite/client publicOrigin=http://127.0.0.1:56612
+PASS ALPHA /__coordinator/identity publicOrigin=http://127.0.0.1:56612
+PASS BETA /orders publicOrigin=http://127.0.0.1:56621
+PASS BETA /__tool/identity publicOrigin=http://127.0.0.1:56621
+PASS BETA /@vite/client publicOrigin=http://127.0.0.1:56621
+PASS BETA /__coordinator/identity publicOrigin=http://127.0.0.1:56621

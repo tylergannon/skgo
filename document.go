@@ -47,10 +47,11 @@ type SSR struct {
 	template    string
 	// errorPage is kit's `error.html`: the last-resort document, for a request
 	// whose error page cannot itself be rendered.
-	errorPage string
-	base      string
-	version   string
-	onError   func(routeID string, err error)
+	errorPage   string
+	base        string
+	version     string
+	development bool
+	onError     func(routeID string, err error)
 	// fetch answers a render-time `event.fetch` of the app's own routes. It is
 	// the server-route registry's own Intercept, with nothing beneath it: a
 	// fetch that matches no `+server.ts` refuses rather than falling through
@@ -107,6 +108,7 @@ type SSROptions struct {
 // NewSSR builds a renderer over an adapter build. It fails if the build carries
 // no SSR bundle, if the bundle does not parse, or if it does not come up.
 func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROptions) (*SSR, error) {
+
 	if remotes != nil {
 		if err := remotes.updateCallerRoutes(m.Routes); err != nil {
 			return nil, err
@@ -155,6 +157,7 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		errorPage:                       errorPage,
 		base:                            strings.TrimSuffix(m.Base, "/"),
 		version:                         m.Version,
+		development:                     m.Development,
 		onError:                         opts.OnError,
 		fetch:                           opts.Fetch,
 		handleFetch:                     opts.HandleFetch,
@@ -1203,7 +1206,7 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 		return json.Marshal(remoteAnswer{E: &ssr.Error{Status: 404, Message: "Error: 404"}})
 	}
 
-	if fn.kind == KindPrerender {
+	if fn.kind == KindPrerender && !s.development {
 		artifact, found, err := s.artifacts.lookup(id, payload, s.remotes.cfg.Transport)
 		if err != nil {
 			failure := &ssr.Error{Status: http.StatusInternalServerError, Message: "Internal Error"}

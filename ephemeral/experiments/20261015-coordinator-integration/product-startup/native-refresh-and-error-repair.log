@@ -1,0 +1,54 @@
+skgo dev: preparing generated application
+skgo dev: starting Vite
+3:28:13 PM [vite+] (ssr) connected.
+3:28:13 PM [vite+] (client) Forced re-optimization of dependencies
+
+  VITE+ v1.0.0  
+
+  ➜  Local:   http://127.0.0.1:57352/
+3:28:15 PM [vite+] (client) [optimizer] bundling dependencies...
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-client/+page.ts'
+ -  in \0skgo:skgo:nodes at 10174..10182
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/actions/options/no-ssr/+page.ts'
+ -  in \0skgo:skgo:nodes at 10190..10198
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/plain/+page.ts'
+ -  in \0skgo:skgo:nodes at 10534..10542
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/prerender/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 10550..10558
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/runes-class/+page.ts'
+ -  in \0skgo:skgo:nodes at 10604..10612
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/shadow/[slug]/+page.ts'
+ -  in \0skgo:skgo:nodes at 10620..10628
+
+[33m[IMPORT_IS_UNDEFINED] [0mImport `load` will always be undefined because there is no matching export in 'src/routes/spa/+page.ts'
+ -  in \0skgo:skgo:nodes at 10636..10644
+
+skgo dev: building native application host
+skgo dev: http://127.0.0.1:56811 (Go pid 37897, Vite http://127.0.0.1:57352)
+skgo dev: published revision 2 (Go pid 37897, prepare 44.778ms, install 0s, rebuild false)
+3:28:46 PM [vite+] (client) [console.warn] Failed to hydrate:  HierarchyRequestError: Failed to execute 'appendChild' on 'Node': This node type does not support this method.
+    at Module.child (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-3961474601/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=7a6910e8:3335:43)
+    at _layout (http://127.0.0.1:56811/src/routes/+layout.svelte:147:17)
+    at http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-3961474601/vite/vite-cache/deps/index-client-Cj29gbZE.js?v=7a6910e8:250:62
+    at update_reaction (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-3961474601/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=7a6910e8:4201:16)
+    at update_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-3961474601/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=7a6910e8:4313:18)
+    at create_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-3961474601/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=7a6910e8:3618:4)
+    at branch (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-3961474601/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=7a6910e8:3827:9)
+    at http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-3961474601/vite/vite-cache/deps/index-client-Cj29gbZE.js?v=7a6910e8:247:13
+    at update_reaction (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-3961474601/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=7a6910e8:4201:16)
+    at update_effect (http://127.0.0.1:56811/@fs/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-dev-3961474601/vite/vite-cache/deps/runtime-ZiJdurWt.js?v=7a6910e8:4313:18)
+skgo dev: rebuilding revision 4: complete build required: application dependency, configuration or resource changed: /Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/host_test.go
+skgo dev: rebuilding revision 5: complete build required: application dependency, configuration or resource changed: /Users/tyler/.codex/worktrees/5f35/skgo/internal/hotreload/host_test.go
+skgo dev: published revision 5 (Go pid 40726, prepare 32.881ms, install 0s, rebuild true)
+skgo dev: published revision 5 (Go pid 40726, prepare 80.698ms, install 0s, rebuild false)
+skgo dev: rebuilding revision 6: complete build required: application file membership changed
+skgo dev: published revision 6 (Go pid 42094, prepare 30.254ms, install 0s, rebuild true)
+skgo dev: published revision 7 (Go pid 42094, prepare 729.434ms, install 480µs, rebuild false)
+skgo dev: published revision 8 (Go pid 42094, prepare 255.784ms, install 1.008ms, rebuild false)
+skgo: revision 9: /Users/tyler/.codex/worktrees/5f35/skgo/example/web/src/routes/items/[id]/item.remote.go:30:26: string literal not terminated (and 12 more errors)
+skgo dev: published revision 10 (Go pid 42094, prepare 193.975ms, install 560µs, rebuild false)

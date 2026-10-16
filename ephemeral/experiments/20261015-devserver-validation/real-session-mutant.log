@@ -1,0 +1,21 @@
+=== RUN   TestRealSessionNativeRecoveryAndIsolation
+    session_integration_test.go:150: want ALPHA literal-6303:9 at http://127.0.0.1:59098
+        skgo dev: preparing generated application
+        skgo dev: starting Vite
+        skgo dev: Vite child pid 54327
+        3:34:58 PM [vite+] (ssr) connected.
+        3:34:58 PM [vite+] (client) Forced re-optimization of dependencies
+        
+          VITE+ v1.0.0  
+        
+          ➜  Local:   http://127.0.0.1:59103/
+        skgo dev: building native application host
+        skgo dev: http://127.0.0.1:59098 (Go pid 54550, Vite http://127.0.0.1:59103)
+        skgo dev: published revision 2 (Go pid 54550, prepare 23.931ms, install 0s, rebuild false)
+        skgo dev: published revision 3 (Go pid 54550, prepare 512.863ms, install 663µs, rebuild false)
+        skgo dev: rebuilding revision 4: complete build required: declaration, initialization, import or build-selection changed
+        skgo dev: published revision 4 (Go pid 54893, prepare 22.726ms, install 0s, rebuild true)
+--- FAIL: TestRealSessionNativeRecoveryAndIsolation (86.89s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/devserver	87.133s
+FAIL
