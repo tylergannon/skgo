@@ -1,0 +1,1 @@
+friction: First qualified-platform release accepted Apple notarization and passed all three packaged-plugin checks, but Bob's example build failed when go generate changed directories and Node's mise shim could no longer see example/mise.toml. Export pinned executable paths in qualification rather than relying on ambient Node or setting a machine-global default.
