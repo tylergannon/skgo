@@ -3,6 +3,8 @@ package skgo
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"net"
 	"net/http"
 	"strconv"
@@ -23,6 +25,11 @@ func (d *NativeDevelopment) kitFetch(ctx context.Context, source *http.Request, 
 	}
 	request = request.Clone(ctx)
 	request.RequestURI = ""
+	// Match Kit's request boundary: explicit incoming context overrides the
+	// caller's active context, using the application's configured propagator.
+	propagator := otel.GetTextMapPropagator()
+	carrier := propagation.HeaderCarrier(request.Header)
+	propagator.Inject(propagator.Extract(ctx, carrier), carrier)
 	request.Header.Set("X-Skgo-Internal-Fetch", d.secret)
 	request.Header.Set("X-Skgo-Fetch-Depth", strconv.Itoa(depth))
 	if source != nil {

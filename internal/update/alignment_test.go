@@ -16,7 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const qualifiedVPGraph = `{"schemaVersion":1,"source":{"scope":"global","vitePlusVersion":"1.0.0"},"nodes":[{"name":"vite","version":"8.3.1"},{"name":"@voidzero-dev/vite-plus-core","version":"1.0.0"},{"name":"vitest","version":"5.0.1"}]}`
+const qualifiedVPGraph = `{"schemaVersion":1,"source":{"scope":"global","vitePlusVersion":"1.3.0"},"nodes":[{"name":"vite","version":"8.3.4"},{"name":"@voidzero-dev/vite-plus-core","version":"1.3.0"},{"name":"vitest","version":"5.0.5"}]}`
 
 func TestAlignmentKeepsAuthoredManifestOperatorsReadable(t *testing.T) {
 	root := t.TempDir()
@@ -31,7 +31,7 @@ func TestAlignmentKeepsAuthoredManifestOperatorsReadable(t *testing.T) {
 	}{
 		{"pin dependencies", func() error { return pinDependencies(root, "0.28.0", "0.28.0", "3.0.0") }},
 		{"align VitePlus", func() error {
-			return alignVPDependencies(root, vpDependencies{Core: "1.0.0", Vitest: "5.0.1"})
+			return alignVPDependencies(root, vpDependencies{Core: "1.3.0", Vitest: "5.0.5"})
 		}},
 	} {
 		t.Run(step.name, func(t *testing.T) {
@@ -53,16 +53,16 @@ func TestAlignmentKeepsAuthoredManifestOperatorsReadable(t *testing.T) {
 
 func TestQualifiedVPDependencyVersions(t *testing.T) {
 	got, err := parseVPToolchain([]byte(qualifiedVPGraph))
-	if err != nil || got != (vpDependencies{Core: "1.0.0", Vitest: "5.0.1"}) {
+	if err != nil || got != (vpDependencies{Core: "1.3.0", Vitest: "5.0.5"}) {
 		t.Fatalf("qualified dependencies = %+v, %v", got, err)
 	}
 	for _, tc := range []struct{ name, old, replacement string }{
-		{"wrong CLI", `"vitePlusVersion":"1.0.0"`, `"vitePlusVersion":"1.0.1"`},
+		{"wrong CLI", `"vitePlusVersion":"1.3.0"`, `"vitePlusVersion":"1.0.1"`},
 		{"local CLI", `"scope":"global"`, `"scope":"local"`},
 		{"unknown schema", `"schemaVersion":1`, `"schemaVersion":2`},
 		{"missing core", `"@voidzero-dev/vite-plus-core"`, `"not-core"`},
 		{"missing Vitest", `"name":"vitest"`, `"name":"not-vitest"`},
-		{"invalid pin", `"version":"5.0.1"`, `"version":"latest"`},
+		{"invalid pin", `"version":"5.0.5"`, `"version":"latest"`},
 		{"duplicate pin", `"name":"vite"`, `"name":"vitest"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -134,19 +134,19 @@ func TestAlignmentPreservesAuthoredFilesAndUnrelatedSelections(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := alignVPDependencies(root, vpDependencies{Core: "1.0.0", Vitest: "5.0.1"}); err != nil {
+			if err := alignVPDependencies(root, vpDependencies{Core: "1.3.0", Vitest: "5.0.5"}); err != nil {
 				t.Fatal(err)
 			}
 			aligned := readAlignmentJSON(t, filepath.Join(root, "package.json"))
 			deps := aligned["devDependencies"].(map[string]any)
-			wantVP, wantVite := "1.0.0", "npm:@voidzero-dev/vite-plus-core@1.0.0"
+			wantVP, wantVite := "1.3.0", "npm:@voidzero-dev/vite-plus-core@1.3.0"
 			if layout == "catalog" {
 				wantVP, wantVite = "catalog:", "catalog:"
 			}
 			if layout == "named-catalog" {
 				wantVP, wantVite = "catalog:tools", "catalog:tools"
 			}
-			for key, want := range map[string]string{"vite-plus": wantVP, "vite": wantVite, "vitest": "5.0.1", "@vitest/browser-playwright": "5.0.1", "@vitest/browser-webdriverio": "5.0.0", "@vitest/eslint-plugin": "1.3.4", "vitest-browser-svelte": "3.1.0", "application-library": "2.3.4"} {
+			for key, want := range map[string]string{"vite-plus": wantVP, "vite": wantVite, "vitest": "5.0.5", "@vitest/browser-playwright": "5.0.5", "@vitest/browser-webdriverio": "5.0.0", "@vitest/eslint-plugin": "1.3.4", "vitest-browser-svelte": "3.1.0", "application-library": "2.3.4"} {
 				if deps[key] != want {
 					t.Errorf("%s = %v; want %s", key, deps[key], want)
 				}
@@ -154,7 +154,7 @@ func TestAlignmentPreservesAuthoredFilesAndUnrelatedSelections(t *testing.T) {
 			if !reflect.DeepEqual(aligned["scripts"], pkg["scripts"]) || !reflect.DeepEqual(aligned["devEngines"], pkg["devEngines"]) {
 				t.Fatalf("authored manifest configuration changed: %v", aligned)
 			}
-			if !reflect.DeepEqual(aligned["optionalDependencies"], map[string]any{"vitest": "5.0.1", "optional-app": "2.3.4"}) || !reflect.DeepEqual(aligned["peerDependencies"], map[string]any{"vite": "npm:@voidzero-dev/vite-plus-core@1.0.0", "peer-app": "2.3.4"}) {
+			if !reflect.DeepEqual(aligned["optionalDependencies"], map[string]any{"vitest": "5.0.5", "optional-app": "2.3.4"}) || !reflect.DeepEqual(aligned["peerDependencies"], map[string]any{"vite": "npm:@voidzero-dev/vite-plus-core@1.3.0", "peer-app": "2.3.4"}) {
 				t.Fatalf("optional/peer selections were not preserved and aligned: %v", aligned)
 			}
 			config := readAlignmentYAML(t, filepath.Join(root, "pnpm-workspace.yaml"))
@@ -170,7 +170,7 @@ func TestAlignmentPreservesAuthoredFilesAndUnrelatedSelections(t *testing.T) {
 			if !bytes.Contains(workspaceBytes, []byte("\n  application-library: 2.3.4 # Do not float this dependency.\n")) {
 				t.Errorf("alignment rewrote the two-space authored override: %s", workspaceBytes)
 			}
-			// The qualified pnpm 12.9.1 ignores package.json's legacy pnpm
+			// The qualified pnpm 12.14.0 ignores package.json's legacy pnpm
 			// field. The executable-level test below verifies this boundary.
 			overrides := config["overrides"].(map[string]any)
 			if layout == "package-overrides" {
@@ -179,7 +179,7 @@ func TestAlignmentPreservesAuthoredFilesAndUnrelatedSelections(t *testing.T) {
 					t.Fatalf("legacy unrelated override was changed: %v", legacy)
 				}
 			}
-			if overrides["vitest@*"] != "5.0.1" {
+			if overrides["vitest@*"] != "5.0.5" {
 				t.Fatalf("missing effective Vitest override: %v", overrides)
 			}
 			if overrides["application-library"] != "2.3.4" || config["allowBuilds"].(map[string]any)["esbuild"] != true {
@@ -193,7 +193,7 @@ func TestAlignmentPreservesAuthoredFilesAndUnrelatedSelections(t *testing.T) {
 				if layout == "named-catalog" {
 					catalog = config["catalogs"].(map[string]any)["tools"].(map[string]any)
 				}
-				if !reflect.DeepEqual(catalog, map[string]any{"vite": "npm:@voidzero-dev/vite-plus-core@1.0.0", "vite-plus": "1.0.0", "vitest": "5.0.1", "application-library": "2.3.4"}) {
+				if !reflect.DeepEqual(catalog, map[string]any{"vite": "npm:@voidzero-dev/vite-plus-core@1.3.0", "vite-plus": "1.3.0", "vitest": "5.0.5", "application-library": "2.3.4"}) {
 					t.Fatalf("catalog alignment: %v", catalog)
 				}
 			}
@@ -220,24 +220,24 @@ func TestAlignmentAndGuardAgreeOnOwnedWorkspaceSelections(t *testing.T) {
 peerDependencyRules:
   allowAny: [vite]
   allowedVersions:
-    storybook@10.6.1>vite-plus: 0.9.0
-    storybook@11.0.0>vite-plus: 0.7.0
+    storybook@10.6.2>vite-plus: 0.9.0
+    storybook@11.3.0>vite-plus: 0.7.0
     application-library: ^2
 `)
 	before, err := frontendFiles(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := alignVPDependencies(root, vpDependencies{Core: "1.0.0", Vitest: "5.0.1"}); err != nil {
+	if err := alignVPDependencies(root, vpDependencies{Core: "1.3.0", Vitest: "5.0.5"}); err != nil {
 		t.Fatal(err)
 	}
 	config := readAlignmentYAML(t, filepath.Join(root, "pnpm-workspace.yaml"))
-	wantOverrides := map[string]any{"vite-plus": "1.0.0", "vite-plus@*": "1.0.0", "@vitest/browser-playwright": "5.0.1", "@vitest/browser-playwright@*": "5.0.1", "@vitest/eslint-plugin": "1.3.4", "application-library": "2.3.4", "vitest@*": "5.0.1"}
+	wantOverrides := map[string]any{"vite-plus": "1.3.0", "vite-plus@*": "1.3.0", "@vitest/browser-playwright": "5.0.5", "@vitest/browser-playwright@*": "5.0.5", "@vitest/eslint-plugin": "1.3.4", "application-library": "2.3.4", "vitest@*": "5.0.5"}
 	if !reflect.DeepEqual(config["overrides"], wantOverrides) {
 		t.Fatalf("workspace override alignment: %v", config["overrides"])
 	}
 	rules := config["peerDependencyRules"].(map[string]any)
-	if !reflect.DeepEqual(rules["allowedVersions"], map[string]any{"storybook@10.6.1>vite-plus": "1.0.0", "storybook@11.0.0>vite-plus": "0.7.0", "application-library": "^2"}) || !reflect.DeepEqual(rules["allowAny"], []any{"vite"}) {
+	if !reflect.DeepEqual(rules["allowedVersions"], map[string]any{"storybook@10.6.2>vite-plus": "1.3.0", "storybook@11.3.0>vite-plus": "0.7.0", "application-library": "^2"}) || !reflect.DeepEqual(rules["allowAny"], []any{"vite"}) {
 		t.Fatalf("generated peer pin or unrelated peer rules changed incorrectly: %v", rules)
 	}
 	pkg := readAlignmentJSON(t, filepath.Join(root, "package.json"))
@@ -253,14 +253,14 @@ func TestAlignmentPreservesCommentOnlyWorkspace(t *testing.T) {
 	root := t.TempDir()
 	writeAlignmentFile(t, root, "package.json", `{"devDependencies":{"vite-plus":"0.9.0"}}`)
 	writeAlignmentFile(t, root, "pnpm-workspace.yaml", "# Application workspace policy\n# Keep this explanation when adding tool pins.\n")
-	if err := alignVPDependencies(root, vpDependencies{Core: "1.0.0", Vitest: "5.0.1"}); err != nil {
+	if err := alignVPDependencies(root, vpDependencies{Core: "1.3.0", Vitest: "5.0.5"}); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(root, "pnpm-workspace.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, literal := range []string{"# Application workspace policy\n", "# Keep this explanation when adding tool pins.\n", "overrides:\n  vitest@*: 5.0.1\n"} {
+	for _, literal := range []string{"# Application workspace policy\n", "# Keep this explanation when adding tool pins.\n", "overrides:\n  vitest@*: 5.0.5\n"} {
 		if !bytes.Contains(data, []byte(literal)) {
 			t.Errorf("workspace lost %q: %s", literal, data)
 		}
@@ -291,21 +291,21 @@ func TestPreservationRefusalNamesDeterministicChangedKeyAndSource(t *testing.T) 
 func TestAlignmentPublishesOverridesConsumedByQualifiedPNPM(t *testing.T) {
 	pnpm, err := exec.LookPath("pnpm")
 	if err != nil {
-		t.Fatal("qualified pnpm 12.9.1 is required:", err)
+		t.Fatal("qualified pnpm 12.14.0 is required:", err)
 	}
 	version, err := exec.Command(pnpm, "--version").Output()
-	if err != nil || strings.TrimSpace(string(version)) != "12.9.1" {
-		t.Fatalf("qualified pnpm version = %q, %v; want 12.9.1", version, err)
+	if err != nil || strings.TrimSpace(string(version)) != "12.14.0" {
+		t.Fatalf("qualified pnpm version = %q, %v; want 12.14.0", version, err)
 	}
 	for _, existingWorkspace := range []bool{false, true} {
 		root := t.TempDir()
 		writeAlignmentFile(t, root, "package.json", `{"devDependencies":{"vite-plus":"0.9.0"},"pnpm":{"overrides":{"vitest@*":"4.1.0","ignored-legacy-selection":"7.8.9"}}}`)
-		want := map[string]string{"vitest@*": "5.0.1"}
+		want := map[string]string{"vitest@*": "5.0.5"}
 		if existingWorkspace {
 			writeAlignmentFile(t, root, "pnpm-workspace.yaml", "overrides:\n  application-library: 2.3.4\n")
 			want["application-library"] = "2.3.4"
 		}
-		if err := alignVPDependencies(root, vpDependencies{Core: "1.0.0", Vitest: "5.0.1"}); err != nil {
+		if err := alignVPDependencies(root, vpDependencies{Core: "1.3.0", Vitest: "5.0.5"}); err != nil {
 			t.Fatal(err)
 		}
 		cmd := exec.Command(pnpm, "config", "get", "overrides", "--json")
@@ -326,14 +326,14 @@ func TestAlignmentPublishesOverridesConsumedByQualifiedPNPM(t *testing.T) {
 
 func TestAlignmentDoesNotExemptUnrelatedNestedConfiguration(t *testing.T) {
 	for _, tc := range []struct{ name, file, before, after string }{
-		{"optional dependency", "package.json", `{"optionalDependencies":{"application-library":"1.0.0"}}`, `{"optionalDependencies":{"application-library":"2.0.0"}}`},
-		{"peer dependency", "package.json", `{"peerDependencies":{"application-library":"1.0.0"}}`, `{"peerDependencies":{"application-library":"2.0.0"}}`},
-		{"pnpm override", "package.json", `{"pnpm":{"overrides":{"application-library":"1.0.0"}}}`, `{"pnpm":{"overrides":{"application-library":"2.0.0"}}}`},
-		{"legacy pnpm Vitest override", "package.json", `{"pnpm":{"overrides":{"vitest":"4.1.0"}}}`, `{"pnpm":{"overrides":{"vitest":"5.0.1"}}}`},
-		{"independent Vitest plugin", "package.json", `{"devDependencies":{"@vitest/eslint-plugin":"1.3.4"}}`, `{"devDependencies":{"@vitest/eslint-plugin":"5.0.1"}}`},
-		{"named catalog", "pnpm-workspace.yaml", "catalogs:\n  tools:\n    application-library: 1.0.0\n", "catalogs:\n  tools:\n    application-library: 2.0.0\n"},
-		{"unrelated peer rule", "pnpm-workspace.yaml", "peerDependencyRules:\n  allowedVersions:\n    storybook@11.0.0>vite-plus: 0.7.0\n", "peerDependencyRules:\n  allowedVersions:\n    storybook@11.0.0>vite-plus: 1.0.0\n"},
-		{"independent Vitest override", "pnpm-workspace.yaml", "overrides:\n  '@vitest/eslint-plugin': 1.3.4\n", "overrides:\n  '@vitest/eslint-plugin': 5.0.1\n"},
+		{"optional dependency", "package.json", `{"optionalDependencies":{"application-library":"1.3.0"}}`, `{"optionalDependencies":{"application-library":"2.0.0"}}`},
+		{"peer dependency", "package.json", `{"peerDependencies":{"application-library":"1.3.0"}}`, `{"peerDependencies":{"application-library":"2.0.0"}}`},
+		{"pnpm override", "package.json", `{"pnpm":{"overrides":{"application-library":"1.3.0"}}}`, `{"pnpm":{"overrides":{"application-library":"2.0.0"}}}`},
+		{"legacy pnpm Vitest override", "package.json", `{"pnpm":{"overrides":{"vitest":"4.1.0"}}}`, `{"pnpm":{"overrides":{"vitest":"5.0.5"}}}`},
+		{"independent Vitest plugin", "package.json", `{"devDependencies":{"@vitest/eslint-plugin":"1.3.4"}}`, `{"devDependencies":{"@vitest/eslint-plugin":"5.0.5"}}`},
+		{"named catalog", "pnpm-workspace.yaml", "catalogs:\n  tools:\n    application-library: 1.3.0\n", "catalogs:\n  tools:\n    application-library: 2.0.0\n"},
+		{"unrelated peer rule", "pnpm-workspace.yaml", "peerDependencyRules:\n  allowedVersions:\n    storybook@11.3.0>vite-plus: 0.7.0\n", "peerDependencyRules:\n  allowedVersions:\n    storybook@11.3.0>vite-plus: 1.3.0\n"},
+		{"independent Vitest override", "pnpm-workspace.yaml", "overrides:\n  '@vitest/eslint-plugin': 1.3.4\n", "overrides:\n  '@vitest/eslint-plugin': 5.0.5\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source, stage := t.TempDir(), t.TempDir()
@@ -350,7 +350,7 @@ func TestCompletionUsesDependencyAlignmentForExistingVP(t *testing.T) {
 	root := t.TempDir()
 	writeAlignmentFile(t, root, "go.mod", "module example.com/alignment\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo v0.27.0\n")
 	writeAlignmentFile(t, root, "web/package.json", `{"scripts":{"test":"pnpm run test:unit --run"},"devDependencies":{"vite-plus":"catalog:","vite":"catalog:","vitest":"4.1.0","application-library":"2.3.4"}}`)
-	writeAlignmentFile(t, root, "web/pnpm-workspace.yaml", "# Keep the shared toolchain in the catalog.\ncatalog:\n  vite-plus: 0.9.0\n  vite: npm:@voidzero-dev/vite-plus-core@0.9.0\npeerDependencyRules:\n  allowedVersions:\n    storybook@10.6.1>vite-plus: 0.9.0\n")
+	writeAlignmentFile(t, root, "web/pnpm-workspace.yaml", "# Keep the shared toolchain in the catalog.\ncatalog:\n  vite-plus: 0.9.0\n  vite: npm:@voidzero-dev/vite-plus-core@0.9.0\npeerDependencyRules:\n  allowedVersions:\n    storybook@10.6.2>vite-plus: 0.9.0\n")
 	writeAlignmentFile(t, root, "web/src/receipt.ts", "export const receipt = 'preserve me' ;\n")
 	before, err := frontendFiles(root)
 	if err != nil {
@@ -367,26 +367,26 @@ func TestCompletionUsesDependencyAlignmentForExistingVP(t *testing.T) {
 				t.Fatalf("consumer mutation or unexpected executable before staged verification: %+v", c)
 			}
 			if reflect.DeepEqual(c.Args, []string{"--version"}) {
-				return []byte("vp v1.0.0\n"), nil
+				return []byte("vp v1.3.0\n"), nil
 			}
 			if reflect.DeepEqual(c.Args, []string{"toolchain", "--global", "--json", "vite", "vitest"}) {
 				return []byte(qualifiedVPGraph), nil
 			}
-			if reflect.DeepEqual(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.9.1", "which", "pnpm"}) {
+			if reflect.DeepEqual(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.14.0", "which", "pnpm"}) {
 				stage = c.Dir
 				if stage == root || stage == filepath.Join(root, "web") {
 					t.Fatal("alignment ran in the consumer")
 				}
 				pkg := readAlignmentJSON(t, filepath.Join(stage, "package.json"))
 				deps := pkg["devDependencies"].(map[string]any)
-				if deps["vite"] != "catalog:" || deps["vitest"] != "5.0.1" || deps["vite-plus"] != "catalog:" || deps["application-library"] != "2.3.4" || pkg["scripts"].(map[string]any)["test"] != "pnpm run test:unit --run" {
+				if deps["vite"] != "catalog:" || deps["vitest"] != "5.0.5" || deps["vite-plus"] != "catalog:" || deps["application-library"] != "2.3.4" || pkg["scripts"].(map[string]any)["test"] != "pnpm run test:unit --run" {
 					t.Fatalf("completion did not preserve and align stage: %v", pkg)
 				}
 				config := readAlignmentYAML(t, filepath.Join(stage, "pnpm-workspace.yaml"))
-				if !reflect.DeepEqual(config["catalog"], map[string]any{"vite-plus": "1.0.0", "vite": "npm:@voidzero-dev/vite-plus-core@1.0.0"}) {
+				if !reflect.DeepEqual(config["catalog"], map[string]any{"vite-plus": "1.3.0", "vite": "npm:@voidzero-dev/vite-plus-core@1.3.0"}) {
 					t.Fatalf("completion did not align the referenced catalog: %v", config)
 				}
-				if config["peerDependencyRules"].(map[string]any)["allowedVersions"].(map[string]any)["storybook@10.6.1>vite-plus"] != "1.0.0" {
+				if config["peerDependencyRules"].(map[string]any)["allowedVersions"].(map[string]any)["storybook@10.6.2>vite-plus"] != "1.3.0" {
 					t.Fatalf("completion left the generated peer rule stale: %v", config)
 				}
 				inspected = true

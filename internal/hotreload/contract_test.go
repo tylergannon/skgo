@@ -76,7 +76,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("web/package.json", `{"name":"native-handler-contract","private":true,"type":"module","devDependencies":{"vite-plus":"1.0.0"},"devEngines":{"packageManager":{"name":"pnpm","version":"12.9.1","onFail":"download"}}}`)
+	write("web/package.json", `{"name":"native-handler-contract","private":true,"type":"module","devDependencies":{"vite-plus":"1.3.0"},"devEngines":{"packageManager":{"name":"pnpm","version":"12.14.0","onFail":"download"}}}`)
 	write("web/vite.config.ts", `import {sveltekit} from '@sveltejs/kit/vite';import {defineConfig} from 'vite-plus';import skgo from '@skgo/sveltekit-adapter';export default defineConfig({plugins:[sveltekit({adapter:skgo({precompress:false}),paths:{origin:'http://localhost'},experimental:{remoteFunctions:true}})]});`)
 	write("web/src/app.html", `<!doctype html><html><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>`)
 	write("web/src/hooks.go", `package hooks;import("github.com/tylergannon/skgo";"example.com/nativefixture/internal/app");var _=skgo.Transported[app.Money]("Money")`)

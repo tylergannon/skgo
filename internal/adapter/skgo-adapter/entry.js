@@ -23,7 +23,7 @@ import {
 import { HandledHttpError } from '@sveltejs/kit/internal';
 import * as devalue from 'skgo:devalue';
 import { decoders, init_transport, parse } from 'skgo:kit/transport';
-import { componentLoaders, universalLoaders } from 'skgo:nodes';
+import { componentLoaders, universalLoaders, universalLoadIds } from 'skgo:nodes';
 import { transport } from 'skgo:hooks';
 import { serialize_data } from 'skgo:kit/serialize-data';
 import { create_universal_fetch } from 'skgo:kit/load-data';
@@ -60,6 +60,37 @@ function handle_error(error) {
  * kit's remote wrappers read during a render are populated. is_in_render is
  * what makes kit refuse a command.
  */
+// Span objects are in-process Go proxies. The renderer never loads an SDK or
+// exports telemetry; the same Go provider owns application and framework spans.
+function tracing_call(value) {
+    return JSON.parse(globalThis.__skgo_trace(JSON.stringify(value)));
+}
+function span_proxy(id, context) {
+    const span = {
+        _skgo: id,
+        spanContext: () => ({traceId:context.traceId,spanId:context.spanId,traceFlags:context.traceFlags}),
+        isRecording: () => !!context.recording,
+        setAttribute: (key,value) => span.setAttributes({[key]:value}),
+        setAttributes: (attributes) => { tracing_call({op:'attributes',id,attributes}); return span; },
+        addEvent: (name,attributes) => { tracing_call({op:'event',id,name,attributes}); return span; },
+        setStatus: (status) => { tracing_call({op:'status',id,status}); return span; },
+        updateName: (name) => { tracing_call({op:'name',id,name}); return span; },
+        recordException: (error) => { tracing_call({op:'exception',id,attributes:{'exception.type':error.name ?? 'Error','exception.message':error.message ?? String(error)}}); return span; },
+        end: () => tracing_call({op:'end',id}),
+        addLink: (link) => {tracing_call({op:'link',id,link}); return span;},
+        addLinks: (links) => {for (const link of links) span.addLink(link);return span;}
+    };
+    return span;
+}
+function renderer_tracing() {
+    const info=tracing_call({op:'info'});
+    return {enabled:!!info.enabled,root:span_proxy('root',info.root ?? {}),current:span_proxy('current',info.current ?? {})};
+}
+function trace_load_error(id,error) {
+    const kind=error instanceof Redirect ? 'redirect' : error instanceof HttpError ? 'known_error' : 'unknown_error';
+    tracing_call({op:'error',id,name:'sveltekit.load',error:{kind,status:error.status,message:error.body?.message ?? error.message ?? String(error),location:error.location}});
+}
+
 function make_state(req) {
 	return {
 		getClientAddress: () => __skgo_client_address(),
@@ -123,7 +154,7 @@ function resolve_options(serialized) {
  * @param {URL} url
  * @param {Set<string>} serialized
  */
-function create_fetch(req, url, serialized) {
+function create_fetch(req, url, serialized, tracing) {
 	return async function (input, init) {
 		const request = input instanceof Request ? input : new Request(new URL(input, url).href, init);
 		const target = new URL(request.url, url);
@@ -137,7 +168,7 @@ function create_fetch(req, url, serialized) {
 			const bytes = new Uint8Array(await request._consume());
 			if (bytes.length) envelope.bodyBase64 = bytes_to_base64(bytes);
 		}
-		const answer = JSON.parse(await globalThis.__skgo_fetch(JSON.stringify(envelope)));
+		const answer = JSON.parse(await globalThis.__skgo_fetch(JSON.stringify(envelope), (tracing ?? req.tracing).current._skgo));
 		if (answer.error) throw new TypeError(answer.error);
 		const value = answer.response;
 		for (const [name, header, allowed] of value.headers ?? []) {
@@ -162,6 +193,7 @@ function create_fetch(req, url, serialized) {
  * is `fetch`'s in-process call back into Go for one of the app's own routes.
  */
 function make_event(req, url, serialized) {
+    req.tracing = renderer_tracing();
 	return {
 		cookies: {
 			get: (name) => (req.cookies ?? {})[name],
@@ -182,7 +214,7 @@ function make_event(req, url, serialized) {
 		isDataRequest: !!req.is_data_request,
 		isSubRequest: !!req.is_sub_request,
 		isRemoteRequest: !!req.is_remote_request,
-		tracing: { enabled: false }
+		tracing: req.tracing
 	};
 }
 
@@ -250,9 +282,18 @@ async function build_props(req, url, event, state, fetched, serialized) {
 		const server_data = node_data(branch[i]);
 		const load = await universalLoaders[branch[i].node]?.();
 		const parent_data = data;
-		const result = load
-			? await with_request_store({ event, state }, () =>
-				load.call(null, {
+		let current=event.tracing.current;
+        if (load) {
+            const node_id=universalLoadIds[branch[i].node] ?? 'unknown';
+            const started=tracing_call({op:'start',parent:current._skgo,name:'sveltekit.load',attributes:{'sveltekit.load.node_id':node_id,'sveltekit.load.node_type':node_id.includes('+layout.')?'layout':'page','sveltekit.load.environment':'server','http.route':req.route_id || 'unknown'}});
+            current=span_proxy(started.id,started);
+        }
+        const traced_event={...event,tracing:{...event.tracing,current}};
+        traced_event.fetch=create_fetch(req,url,serialized,traced_event.tracing);
+        let result;
+        try { result = load
+            ? await with_request_store({ event:traced_event, state }, () =>
+                load.call(null, {
 					url,
 					params: req.params ?? {},
 					data: server_data,
@@ -260,14 +301,17 @@ async function build_props(req, url, event, state, fetched, serialized) {
 					parent: async () => parent_data,
 					depends: () => {},
 					untrack: (fn) => fn(),
-					fetch: create_universal_fetch(event, undefined, fetched, req.csr, resolve_options(serialized)),
+					fetch: create_universal_fetch(traced_event, undefined, fetched, req.csr, resolve_options(serialized)),
+                    tracing:traced_event.tracing,
 					setHeaders: () => {
 						throw new Error('skgo: universal load setHeaders is not supported during rendering');
 					}
 				})
 			)
-			: server_data;
-		if (result != null && Object.getPrototypeOf(result) !== Object.prototype) {
+            : server_data;
+        } catch(error) { if (load) trace_load_error(current._skgo,error); throw error; }
+        finally { if (load) current.end(); }
+        if (result != null && Object.getPrototypeOf(result) !== Object.prototype) {
 			throw new Error('skgo: universal load must return a plain object');
 		}
 		data = { ...data, ...result };

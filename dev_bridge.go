@@ -84,6 +84,11 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 			http.Error(w, "Method Not Allowed", 405)
 			return
 		}
+		r = r.WithContext(nativeTracingContext(r.Context(), r.Header.Get("X-Skgo-Tracing")))
+		tracedWriter := &nativeTraceWriter{ResponseWriter: w}
+		tracedWriter.add(r.Context())
+		defer tracedWriter.finish()
+		w = tracedWriter
 		path := "/" + strings.TrimPrefix(r.URL.Path, "/_skgo/dev/")
 		if path == "/fetch-begin" || path == "/fetch-response" || path == "/fetch-next" || path == "/fetch-end" {
 			d.fetch(w, r, sessions, exchanges, path)
@@ -170,7 +175,8 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 				return
 			}
 			defer entry.active.Done()
-			ctx, cancel := context.WithCancel(entry.request.Context())
+			tracedWriter.add(entry.request.Context())
+			ctx, cancel := context.WithCancel(inheritNativeTracing(entry.request.Context(), r.Context()))
 			stop := context.AfterFunc(r.Context(), func() {
 				cancel()
 				if path != "/remote" {
@@ -243,6 +249,9 @@ func (d *NativeDevelopment) response(w http.ResponseWriter, r *http.Request, ses
 		return
 	}
 	defer entry.active.Done()
+	if writer, ok := w.(*nativeTraceWriter); ok {
+		writer.add(entry.request.Context())
+	}
 	raw, err := base64.StdEncoding.DecodeString(r.Header.Get("X-Skgo-Response"))
 	if err != nil {
 		http.Error(w, "invalid response metadata", 400)
@@ -318,7 +327,7 @@ func (d *NativeDevelopment) action(ctx context.Context, raw []byte, out io.Write
 		event.params = state.params
 	}
 	event.actionResponse = &loadRequest{responseState: newResponseState(request)}
-	value, callErr := action.run(withEvent(ctx, event))
+	value, callErr := developmentAction(withEvent(ctx, event), action, input.Name, traceRoute(ctx))
 	answer := map[string]any{"type": "success", "status": 200, "headers": developmentHeaders(ctx, event.actionResponse.responseState), "cookies": prerenderCookies(event.jar)}
 	var failure *actionFailure
 	switch {
@@ -334,6 +343,7 @@ func (d *NativeDevelopment) action(ctx context.Context, raw []byte, out io.Write
 		return json.NewEncoder(out).Encode(answer)
 	case callErr != nil:
 		answer["type"] = "error"
+		answer["nativeError"] = nativeErrorFor(ctx, callErr)
 		handled := s.loads.dataError(ctx, "", asHTTPError(callErr), callErr)
 		body, encodeErr := jsonBytes(errorNodeExtra(handled))
 		if encodeErr != nil {

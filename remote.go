@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/attribute"
 	"io/fs"
 	"log"
 	"net/http"
@@ -736,18 +737,26 @@ func (rs *Remotes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rest := strings.TrimPrefix(r.URL.Path, rs.prefix)
+	ctx, span := traceOperation(r.Context(), "sveltekit.remote.call", attribute.String("sveltekit.remote.call.id", rest))
+	r = r.WithContext(ctx)
+	tw := &tracingWriter{ResponseWriter: w, finish: func() { span.End() }}
+	defer tw.end()
+	w = tw
 	parts := strings.Split(rest, "/")
 	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		traceError(span, "sveltekit.remote.call", notFound())
 		rs.writeError(w, notFound())
 		return
 	}
 
 	fn, ok := rs.fns[parts[0]+"/"+parts[1]]
 	if !ok {
+		traceError(span, "sveltekit.remote.call", notFound())
 		rs.writeError(w, notFound())
 		return
 	}
 
+	span.SetAttributes(attribute.String("sveltekit.remote.call.type", remoteTraceKind(fn.kind)), attribute.String("sveltekit.remote.call.name", fn.name))
 	if fn.kind == KindCommand || fn.kind == KindForm {
 		caller, err := rs.matchCaller(r)
 		if err != nil {

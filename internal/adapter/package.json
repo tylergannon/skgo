@@ -35,8 +35,8 @@
 		"skgo-adapter.js",
 		"skgo-adapter/app-paths.js",
 		"skgo-adapter/app-server.js",
-		"skgo-adapter/compat/kit-3.0.0-queue.json",
-		"skgo-adapter/compat/kit-3.0.0-queue.patch",
+		"skgo-adapter/compat/kit-3.1.0-queue.json",
+		"skgo-adapter/compat/kit-3.1.0-queue.patch",
 		"skgo-adapter/dev.js",
 		"skgo-adapter/dev-host.js",
 		"skgo-adapter/dev-modules.js",
@@ -53,6 +53,12 @@
 		"skgo-adapter/prerender.d.ts"
 	],
 	"peerDependencies": {
-		"@sveltejs/kit": "3.0.0"
+		"@sveltejs/kit": "3.1.0",
+		"@opentelemetry/api": "^1.9.0"
+	},
+	"peerDependenciesMeta": {
+		"@opentelemetry/api": {
+			"optional": true
+		}
 	}
 }

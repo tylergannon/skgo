@@ -1,8 +1,10 @@
 package skgo
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"go.opentelemetry.io/otel/attribute"
 	"net/http"
 	"net/url"
 	"strings"
@@ -80,7 +82,7 @@ func (s *SSR) runClassicAction(r *http.Request, route *dataRoute, params map[str
 			problem = nil
 		}
 	}()
-	value, err := action.run(ctx)
+	value, err := runTracedAction(ctx, action, name, route.id)
 	var failure *actionFailure
 	if err != nil {
 		if !errors.As(err, &failure) {
@@ -172,4 +174,21 @@ func (s *SSR) writeActionJSON(w http.ResponseWriter, r *http.Request, req dataRe
 		response.Status = 204
 	}
 	_ = json.NewEncoder(w).Encode(response)
+}
+
+func runTracedAction(ctx context.Context, action *PageAction, name, routeID string) (value any, err error) {
+	ctx, span := traceOperation(ctx, "sveltekit.form_action", attribute.String("sveltekit.form_action.name", name), attribute.String("http.route", knownRoute(routeID)))
+	if event := EventFrom(ctx); event != nil {
+		ctx = withEvent(ctx, event)
+	}
+	defer func() {
+		if value := recover(); value != nil {
+			tracePanic(span, "sveltekit.form_action", value)
+			span.End()
+			panic(value)
+		}
+		traceError(span, "sveltekit.form_action", err)
+		span.End()
+	}()
+	return action.run(ctx)
 }

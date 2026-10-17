@@ -362,6 +362,8 @@ type runtime struct {
 	fetch         Fetch
 	match         Match
 	clientAddress func() (string, error)
+	tracing       func(context.Context, []byte) ([]byte, error)
+	traceContext  func(context.Context, string) context.Context
 	// calls records the `<id>` and payload of every remote call the current
 	// render made, in order.
 	calls []Call
@@ -461,6 +463,9 @@ type Hosts struct {
 	Fetch Fetch
 	// Match answers a `$app/paths` `match()` lookup.
 	Match Match
+	// Tracing serves in-process span proxies; it never performs JavaScript I/O.
+	Tracing      func(context.Context, []byte) ([]byte, error)
+	TraceContext func(context.Context, string) context.Context
 }
 
 // New compiles the bundle and returns an engine that will create at most size
@@ -539,30 +544,41 @@ func (e *Engine) newRuntime() (*runtime, error) {
 		return nil, err
 	}
 
-	if err := rt.vm.Set("__skgo_remote", func(id, payload string) *goja.Promise {
+	if err := rt.vm.Set("__skgo_remote", func(id, payload, tracing string) *goja.Promise {
 		rt.calls = append(rt.calls, Call{ID: id, Payload: payload})
 		host := rt.host
-		return rt.promise(func(ctx context.Context) ([]byte, error) {
+		operationCtx := rt.operationContext(tracing)
+		return rt.promise(func(_ context.Context) ([]byte, error) {
 			if host == nil {
 				return nil, fmt.Errorf("skgo: nothing is answering remote functions for this render (%s)", id)
 			}
-			return host(ctx, id, payload)
+			return host(operationCtx, id, payload)
 		})
 	}); err != nil {
 		return nil, err
 	}
-	if err := rt.vm.Set("__skgo_fetch", func(payload string) *goja.Promise {
+	if err := rt.vm.Set("__skgo_fetch", func(payload, tracing string) *goja.Promise {
 		fetch := rt.fetch
-		return rt.promise(func(ctx context.Context) ([]byte, error) {
+		operationCtx := rt.operationContext(tracing)
+		return rt.promise(func(_ context.Context) ([]byte, error) {
 			if fetch == nil {
 				return nil, errors.New("skgo: nothing is answering event.fetch for this render")
 			}
-			return fetch(ctx, []byte(payload))
+			return fetch(operationCtx, []byte(payload))
 		})
 	}); err != nil {
 		return nil, err
 	}
 
+	if err := rt.vm.Set("__skgo_trace", func(payload string) (string, error) {
+		if rt.work == nil || rt.tracing == nil {
+			return `{"enabled":false}`, nil
+		}
+		raw, err := rt.tracing(rt.work.ctx, []byte(payload))
+		return string(raw), err
+	}); err != nil {
+		return nil, err
+	}
 	if err := rt.vm.Set("__skgo_client_address", func() (string, error) {
 		if rt.clientAddress == nil {
 			return "", errors.New("skgo: client address is unavailable in this request context")
@@ -662,6 +678,7 @@ func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hos
 		}
 	}()
 
+	rt.tracing, rt.traceContext = hosts.Tracing, hosts.TraceContext
 	rt.host = hosts.Remote
 	rt.fetch = hosts.Fetch
 	rt.match = hosts.Match
@@ -669,7 +686,15 @@ func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hos
 	rt.calls = nil
 	rt.failed = nil
 	rt.route = routeID
-	defer func() { rt.host = nil; rt.fetch = nil; rt.match = nil; rt.clientAddress = nil; rt.route = "" }()
+	defer func() {
+		rt.host = nil
+		rt.fetch = nil
+		rt.match = nil
+		rt.clientAddress = nil
+		rt.tracing = nil
+		rt.traceContext = nil
+		rt.route = ""
+	}()
 
 	// Whatever the last render left on the macrotask queue belongs to a request
 	// that is over. It is dropped rather than run: it would run against this
@@ -878,4 +903,14 @@ func (e *Engine) acquire(ctx context.Context, p *pool) (*runtime, error) {
 		rt.pool = p
 		return rt, nil
 	}
+}
+
+func (rt *runtime) operationContext(id string) context.Context {
+	if rt.work == nil {
+		return context.Background()
+	}
+	if rt.traceContext == nil || id == "" {
+		return rt.work.ctx
+	}
+	return rt.traceContext(rt.work.ctx, id)
 }

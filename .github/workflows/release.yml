@@ -181,7 +181,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 24.21.0
+          node-version: 24.22.0
           registry-url: https://registry.npmjs.org
 
       # The qualification dependency already ran the full adapter package,
@@ -243,7 +243,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 24.21.0
+          node-version: 24.22.0
           registry-url: https://registry.npmjs.org
 
       - uses: jdx/mise-action@v4

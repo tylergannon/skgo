@@ -200,6 +200,7 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
 						base: builder.config.paths.base,
 						version: builder.config.version.name,
 						trustedOrigins: builder.config.csrf.trustedOrigins,
+                        tracingServer: builder.config.tracing.server,
 						// One entry per node, positionally: the vite-root-relative
 						// path of its `+*.server.ts`, or "" for a node that has
 						// none. It is how Go finds the load that answers a slot of

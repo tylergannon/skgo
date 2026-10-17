@@ -24,6 +24,7 @@ package skgo
 import (
 	"encoding/json"
 	"errors"
+	"go.opentelemetry.io/otel/attribute"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -121,6 +122,9 @@ func setFormKey(arg any, keyJSON string) error {
 // the error page at the status the error carried, which is what kit does by
 // rethrowing `action_result.error` at the leaf node.
 func (s *SSR) runFormAction(r *http.Request, id string) (*formAction, *Redirect, *HTTPError) {
+	ctx, span := traceOperation(r.Context(), "sveltekit.remote.form.post", attribute.String("sveltekit.remote.form.post.id", id))
+	defer span.End()
+	r = r.WithContext(ctx)
 	// Kit refuses a cross-site form submission before it looks anything up
 	// (`runtime/server/csrf.js`, `is_csrf_forbidden`): a mutating method with
 	// a form content type whose Origin is neither the app's own nor trusted.

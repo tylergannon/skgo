@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/attribute"
 	"log"
 	"net/http"
 	"net/url"
@@ -469,7 +470,27 @@ func execMatchedParams(path string, loc []int, params []ManifestParam, matchers 
 // unexpected throw from a load with the same opaque 500 it gives any
 // unexpected error, and so does this.
 func (ls *Loads) runLoad(ctx context.Context, load *ServerLoad) (v any, err error) {
-	defer func() { err = ls.recovered(load.module, recover(), err) }()
+	nodeType := "page"
+	if strings.Contains(load.module, "+layout.server.") {
+		nodeType = "layout"
+	}
+	ctx, span := traceOperation(ctx, "sveltekit.load", attribute.String("sveltekit.load.node_id", load.module), attribute.String("sveltekit.load.node_type", nodeType), attribute.String("sveltekit.load.environment", "server"), attribute.String("http.route", traceRoute(ctx)))
+	if event := EventFrom(ctx); event != nil {
+		ctx = withEvent(ctx, event)
+	}
+	defer func() {
+		value := recover()
+		if value != nil {
+			tracePanic(span, "sveltekit.load", value)
+		} else {
+			traceError(span, "sveltekit.load", err)
+		}
+		span.End()
+		err = ls.recovered(load.module, value, err)
+		if state, ok := ctx.Value(tracingKey{}).(tracingState); ok && state.native && value != nil {
+			err = fmt.Errorf("%v", value)
+		}
+	}()
 	return load.run(ctx)
 }
 

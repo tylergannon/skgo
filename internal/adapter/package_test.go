@@ -46,8 +46,8 @@ var packageFiles = []string{
 	"skgo-adapter.js",
 	"skgo-adapter/app-paths.js",
 	"skgo-adapter/app-server.js",
-	"skgo-adapter/compat/kit-3.0.0-queue.json",
-	"skgo-adapter/compat/kit-3.0.0-queue.patch",
+	"skgo-adapter/compat/kit-3.1.0-queue.json",
+	"skgo-adapter/compat/kit-3.1.0-queue.patch",
 	"skgo-adapter/dev-bridge.js",
 	"skgo-adapter/dev-host.js",
 	"skgo-adapter/dev-modules.js",
@@ -157,8 +157,8 @@ func TestThePublishedPackageDeclaresWhatAnAdapterDeclares(t *testing.T) {
 	if _, ok := pkg.Exports["./sv"]; ok {
 		t.Error("the runtime adapter still exports the installer add-on; that belongs only to @skgo/sv")
 	}
-	if got := pkg.PeerDependencies["@sveltejs/kit"]; got != "3.0.0" {
-		t.Errorf("adapter Kit peer = %q; want the qualified exact pin 3.0.0", got)
+	if got := pkg.PeerDependencies["@sveltejs/kit"]; got != "3.1.0" {
+		t.Errorf("adapter Kit peer = %q; want the qualified exact pin 3.1.0", got)
 	}
 	if pkg.PeerDependencies["sv"] != "" {
 		t.Error("the runtime adapter declares an sv peer; installer dependencies belong only to @skgo/sv")

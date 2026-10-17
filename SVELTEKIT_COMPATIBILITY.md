@@ -41,6 +41,54 @@ For every reviewed or adopted Kit release:
 
 This is a manual maintenance procedure; it creates no scheduled task.
 
+## 3.1.0 — reviewed 2026-10-16
+
+This working branch adopts stable Kit 3.1.0 from 3.0.0. Publication and deployed
+measurements remain separate. Reviewed the complete official releases for
+[3.0.1](https://github.com/sveltejs/kit/releases/tag/%40sveltejs%2Fkit%403.0.1)
+and [3.1.0](https://github.com/sveltejs/kit/releases/tag/%40sveltejs%2Fkit%403.1.0),
+and compared their installed source.
+
+| Released change | SKGO disposition |
+| --- | --- |
+| 3.0.1: generated relative type imports support NodeNext | Inherited Kit type generation. |
+| CSP `report-sha256`, `report-sha384`, `report-sha512` | Go now quotes all three keywords in enforced and report-only policies. `TestCSPHashReportingKeywordsMatchKit31` uses literal output obtained from Kit 3.1's `Csp`; `TestProductionCSPHashReportingKeywords` exercises the production document handler. |
+| `sveltekit.endpoint` span | Implemented with framework tracing; Go production mirrors Kit's operation, native development preserves Kit's existing span. See tracing handler and development integration contracts. |
+| Project inside a `server` directory incorrectly classified server-only | Inherited Kit Vite import guard; no replacement Go module classifier. |
+| Failed service-worker update no longer blocks deployment recovery | Inherited Kit browser client; no Go service-worker update implementation. |
+| Prerender MIME inferred from generated physical files | Inherited adapter builder MIME map. Go's static handler independently pins `.html` and handles other extensions; existing `TestAPrerenderedPageIsServedFromItsFile` contracts cover HTML, data and XML artifacts. |
+| Leave unchanged generated files alone | Inherited Kit sync compares physical bytes across processes. Go generation already compares formatted output before writes; `TestWriteFormatsGeneratedSourceBeforeComparing` verifies unchanged output retains its modification time. |
+| Preserve parent focus for unfocused iframe startup/navigation | Inherited Kit browser focus implementation; no Go focus implementation. |
+| Do not warn about Storybook `transformIndexHtml` plugins | Inherited Kit Vite plugin handling; the current generated Storybook is built in qualification. |
+
+The declared-Inputs queue is unchanged from stock 3.0.0 and still closes too
+early without SKGO's correction. The identical patch is requalified and packaged
+for exact 3.1.0; stock/corrected digests and producer lifecycle controls remain
+load-bearing. An unqualified Kit version continues to fail explicitly.
+
+Dependency refresh selects Kit 3.1.0, Svelte 5.57.2, svelte-check 4.7.7,
+VitePlus/core 1.3.0 (managed Vite 8.3.4, Vitest 5.0.5, Rolldown 1.2.14),
+pnpm 12.14.0, Node LTS 24.22.0/types 24.19.2, Prettier 3.9.10/Svelte plugin
+4.1.1, bits-ui 2.19.5, Playwright 1.64.1, sv 1.1.1/sv-utils 1.0.2/tsdown
+0.23.1, and Storybook 10.6.2. TypeScript stays 6.0.3: latest stable 7.0.2
+violates Kit's and svelte-check's peer contracts. Vite/Vitest remain VitePlus's
+managed family. Go advances to 1.27.2, current Goja/Node compatibility packages,
+Polytype 1.10.0 and current compatible dependencies. OpenTelemetry uses Go
+1.47.0, Node API 1.9.1 and Node SDK 2.12.0. Node's current major is 26; the
+supported application toolchain retains its LTS 24 line.
+
+VitePlus 1.3 changed its executable launch path. The adapter's exact owner
+recognition follows `bin/vite.js`, preserving outer-CLI signal cleanup; the
+existing blocked-producer lifecycle test verifies this behavior.
+
+Local dependency qualification: current example production build passed. Fresh
+TypeScript minimal and JSDoc demo apps created by the real CLI both passed
+production builds, Svelte check with zero diagnostics, Storybook 10.6.2 builds,
+and their two Vitest tests including a Chromium component test. Queue,
+newapp, update and addon suites passed. Full tracing/browser qualification is
+recorded with the final integrated change; this entry does not certify every
+upstream edge described above.
+
 ## 3.0.0 — reviewed 2026-10-03
 
 **Adoption:** this change moves skgo's committed toolchain from next.28 to

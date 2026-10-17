@@ -14,8 +14,10 @@ package skgo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/attribute"
 	"html"
 	"log"
 	"net/http"
@@ -536,13 +538,18 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 	e.mutable = false
 	e.endpoint = true
 	e.load.uses.tracking = false
-	r = r.WithContext(withEvent(r.Context(), e))
+	ctx, span := traceOperation(r.Context(), "sveltekit.endpoint", attribute.String("http.route", knownRoute(route.id)), attribute.String("http.method", r.Method))
+	r = r.WithContext(withEvent(ctx, e))
+	tw := &tracingWriter{ResponseWriter: w, finish: func() { span.End() }}
+	defer tw.end()
+	w = tw
 	// A fetch the handler makes may bring cookies back for the visitor, and
 	// Kit adds them to the response whoever built it.
 	w = &cookieWriter{ResponseWriter: w, jar: shared.jar}
 
 	defer func() {
 		value := recover()
+		tracePanic(span, "sveltekit.endpoint", value)
 		if value == nil {
 			return
 		}
@@ -566,6 +573,15 @@ func (es *Endpoints) run(w http.ResponseWriter, r *http.Request, route *endpoint
 // server log, never the default client response.
 func (es *Endpoints) fatalError(w http.ResponseWriter, r *http.Request, routeID string, raw error) {
 	e := handleErrorAndJSONify(r.Context(), routeID, es.cfg.HandleError, nil, raw, nil)
+	if state, ok := r.Context().Value(tracingKey{}).(tracingState); ok && state.native {
+		// The callback body can carry arbitrary diagnostics and App.Error fields;
+		// putting either in a header can exceed Node's HTTP parser limit.
+		w.Header().Set("X-Skgo-Native-Error", "1")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(e.Status)
+		_ = json.NewEncoder(w).Encode(map[string]any{"nativeError": nativeErrorFor(r.Context(), raw), "body": errorNodeExtra(e), "error": map[string]any{"status": e.Status, "message": e.Message}})
+		return
+	}
 	accept := r.Header.Get("Accept")
 	if accept == "" {
 		accept = "text/html"

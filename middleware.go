@@ -3,6 +3,9 @@ package skgo
 import (
 	"context"
 	"errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	"io"
 	"log"
 	"net/http"
@@ -106,7 +109,10 @@ func (e *Event) Params() map[string]string {
 // the server answers. A nil Middleware is a plain pass-through.
 func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler {
 	if m == nil {
-		return next
+		if !cfg.tracing {
+			return next
+		}
+		m = func(ctx context.Context, _ *Event, resolve Resolve) (*http.Response, error) { return resolve(ctx) }
 	}
 	return m.intercept(cfg, next, nil)
 }
@@ -131,6 +137,7 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		if manifest, ok := r.Context().Value(prerenderManifestKey{}).(Manifest); ok {
 			build := manifest.HandleConfig()
 			cfg.routes = build.routes
+			cfg.tracing = build.tracing
 			cfg.Base = build.Base
 			cfg.AppDir = build.AppDir
 			base = cfg.Base
@@ -245,9 +252,27 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		state.jar = newCookieJarAt(r, pageURL.Host, pageURL.Path, secure)
 
 		r = withClientAddress(r, cfg.ClientAddress)
+		rootCtx := r.Context()
+		rootSpan := noSpan
+		nativeState, native := rootCtx.Value(tracingKey{}).(tracingState)
+		if !native || !nativeState.native {
+			if cfg.tracing {
+				rootCtx = otel.GetTextMapPropagator().Extract(rootCtx, propagation.HeaderCarrier(r.Header))
+				rootCtx = context.WithValue(rootCtx, tracingKey{}, tracingState{enabled: true})
+				rootCtx, rootSpan = traceOperation(rootCtx, "sveltekit.handle.root",
+					attribute.String("http.route", knownRoute(state.routeID)),
+					attribute.String("http.method", r.Method), attribute.String("http.url", pageURL.String()),
+					attribute.Bool("sveltekit.is_data_request", isData), attribute.Bool("sveltekit.is_sub_request", state.isSub))
+				rootCtx = context.WithValue(rootCtx, tracingKey{}, tracingState{enabled: true, root: rootSpan})
+			} else {
+				rootCtx = context.WithValue(rootCtx, tracingKey{}, tracingState{})
+			}
+		}
+		defer rootSpan.End()
+		r = r.WithContext(rootCtx)
 		metadata := &requestMetadata{url: pageURL, routeID: state.routeID, isData: isData, isRemote: isRemote, isSub: state.isSub, routing: state.routing}
 		r = r.WithContext(context.WithValue(r.Context(), requestMetadataKey{}, metadata))
-		event := &Event{metadata: metadata, req: r, jar: state.jar, mutable: true, hook: state, actionResponse: state.response}
+		event := &Event{Tracing: tracingOf(rootCtx), metadata: metadata, req: r, jar: state.jar, mutable: true, hook: state, actionResponse: state.response}
 		ctx := withEvent(r.Context(), event)
 		ctx = context.WithValue(ctx, hookStateKey{}, state)
 		if bind != nil {
@@ -279,7 +304,14 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 				// A different cancellation context still forwards the selected object.
 				base = context.WithValue(base, localsKey{}, locals)
 			}
-			resolved, response = startDownstream(rctx, base, next, r)
+			resolveCtx, resolveSpan := traceOperation(base, "sveltekit.resolve", attribute.String("http.route", knownRoute(state.routeID)))
+			defer endSequenceSpan(resolveSpan, "sveltekit.resolve")
+			resolved, response = startDownstream(rctx, resolveCtx, next, r)
+			size := response.Header.Get("Content-Length")
+			if size == "" {
+				size = "unknown"
+			}
+			resolveSpan.SetAttributes(attribute.Int("http.response.status_code", response.StatusCode), attribute.String("http.response.body.size", size))
 			// Kit adds the headers and cookies in the same place it stops
 			// accepting them: when `resolve` has its response.
 			state.response.mu.Lock()
@@ -293,6 +325,8 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		}
 
 		response, err := m.runGuarded(ctx, cfg, event, resolve)
+		traceError(rootSpan, "sveltekit.handle.root", err)
+		rootSpan.End()
 		if err == nil && response == nil {
 			err = Errorf(http.StatusInternalServerError, "skgo: the handle hook returned no response")
 		}
@@ -431,7 +465,7 @@ func (m Middleware) runGuarded(ctx context.Context, cfg HandleConfig, event *Eve
 		} else {
 			log.Printf("skgo: handle hook panicked: %v\n%s", value, stack)
 		}
-		response, err = nil, requestHookError(ctx, &HTTPError{Status: 500, Message: "Internal Error"})
+		response, err = nil, requestHookError(ctx, &tracingPanicError{value: value})
 	}()
 	return m(ctx, event, resolve)
 }

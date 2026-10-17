@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"go.opentelemetry.io/otel/trace"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -55,15 +56,17 @@ type prerenderResponse struct {
 	Reader  io.Reader   `json:"-"`
 }
 type prerenderRequestAnswer struct {
-	Handle   string                   `json:"handle,omitempty"`
-	Body     json.RawMessage          `json:"body,omitempty"`
-	Resolve  bool                     `json:"resolve,omitempty"`
-	Response *prerenderResponse       `json:"response,omitempty"`
-	Redirect *prerenderRedirect       `json:"redirect,omitempty"`
-	Error    *HTTPError               `json:"error,omitempty"`
-	Headers  http.Header              `json:"headers,omitempty"`
-	Cookies  []prerenderCookie        `json:"cookies,omitempty"`
-	Options  *prerenderResolveOptions `json:"options,omitempty"`
+	NativeError   *nativeErrorDiagnostic   `json:"nativeError,omitempty"`
+	TracingParent *nativeSpanInfo          `json:"tracingParent,omitempty"`
+	Handle        string                   `json:"handle,omitempty"`
+	Body          json.RawMessage          `json:"body,omitempty"`
+	Resolve       bool                     `json:"resolve,omitempty"`
+	Response      *prerenderResponse       `json:"response,omitempty"`
+	Redirect      *prerenderRedirect       `json:"redirect,omitempty"`
+	Error         *HTTPError               `json:"error,omitempty"`
+	Headers       http.Header              `json:"headers,omitempty"`
+	Cookies       []prerenderCookie        `json:"cookies,omitempty"`
+	Options       *prerenderResolveOptions `json:"options,omitempty"`
 }
 type prerenderResolveOptions struct {
 	Transform bool `json:"transform"`
@@ -144,6 +147,7 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 		return prerenderRequestAnswer{}, fmt.Errorf("skgo: prerender service requires BindRequest")
 	}
 	logical, cancel := context.WithCancel(s.ctx)
+	logical = inheritNativeTracing(logical, ctx)
 	entry := &prerenderRequest{input: input, cancel: cancel, ready: make(chan *http.Request, 1), response: make(chan prerenderResponse, 1), done: make(chan struct{})}
 	if s.development {
 		logical = context.WithValue(logical, devRequestKey{}, entry)
@@ -159,6 +163,9 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 			entry.answer.Redirect = &prerenderRedirect{Status: redirect.status(), Location: redirect.Location}
 		} else {
 			entry.answer.Error = asHTTPError(err)
+			if s.development {
+				entry.answer.NativeError = nativeErrorFor(logical, err)
+			}
 		}
 	})
 	request, err := http.NewRequestWithContext(logical, input.Method, input.URL, bytes.NewReader(input.Body))
@@ -278,7 +285,8 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 				headers = developmentHeaders(r.Context(), state.response.responseState)
 			}
 		}
-		return prerenderRequestAnswer{Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: headers, Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
+		parent := nativeInfo(trace.SpanFromContext(r.Context()))
+		return prerenderRequestAnswer{TracingParent: &parent, Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: headers, Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
 	case <-func() <-chan struct{} {
 		if entry.stream != nil {
 			return entry.stream.committed

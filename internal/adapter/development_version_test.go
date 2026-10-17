@@ -15,18 +15,18 @@ func TestDevelopmentEnforcesPublishedKitPin(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ pin, installed string }{
-		{"3.0.0", "3.0.1"},
-		{"3.0.0", "2.55.0"},
-		{"3.0.0", "3.0.0-next.28"},
+		{"3.1.0", "3.0.0"},
+		{"3.1.0", "2.55.0"},
+		{"3.1.0", "3.0.0-next.28"},
 		// Changing only the published peer declaration must change the gate.
-		{"3.0.1", "3.0.0"},
+		{"3.1.1", "3.1.0"},
 	} {
 		t.Run(tc.pin+"-rejects-"+tc.installed, func(t *testing.T) {
 			app := t.TempDir()
 			writeQueueFixture(t, filepath.Join(app, "node_modules/@sveltejs/kit/package.json"), []byte(`{"version":"`+tc.installed+`"}`))
 			adapterRoot := filepath.Join(app, "adapter")
 			for name, body := range pack(t) {
-				if name == "package.json" && tc.pin != "3.0.0" {
+				if name == "package.json" && tc.pin != "3.1.0" {
 					var pkg map[string]any
 					if err := json.Unmarshal(body, &pkg); err != nil {
 						t.Fatal(err)

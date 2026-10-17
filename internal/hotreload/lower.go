@@ -113,7 +113,7 @@ func LowerAuthored(p *packages.Package, sources map[string][]byte, authoredPaths
 				declarations = append(declarations, d)
 			}
 			a.Decls = declarations
-			removeUnusedImports(a)
+			removeUnusedImports(a, p.Types)
 			raw, err := formatSource(fs, a)
 			if err != nil {
 				return nil, err
@@ -276,7 +276,7 @@ func LowerAuthored(p *packages.Package, sources map[string][]byte, authoredPaths
 				}
 			}
 			a.Decls = decls
-			removeUnusedImports(a)
+			removeUnusedImports(a, p.Types)
 			// Preserve authored PCs through wrapper insertion and formatting. The
 			// generated links may be symlinks to the authored route file.
 			var mapped bytes.Buffer
@@ -340,7 +340,7 @@ func LowerAuthored(p *packages.Package, sources map[string][]byte, authoredPaths
 	if err != nil {
 		return nil, err
 	}
-	removeUnusedImports(a)
+	removeUnusedImports(a, p.Types)
 	raw, err := formatSource(fs, a)
 	if err != nil {
 		return nil, err
@@ -380,7 +380,13 @@ func nameArguments(typ *ast.FuncType) ([]ast.Expr, bool) {
 	return args, variadic
 }
 
-func removeUnusedImports(f *ast.File) {
+func removeUnusedImports(f *ast.File, pkg *types.Package) {
+	// An unaliased import uses its declared package name, which need not
+	// match the final path component (for example devalue/v5 is devalue).
+	packageNames := map[string]string{}
+	for _, imported := range pkg.Imports() {
+		packageNames[imported.Path()] = imported.Name()
+	}
 	used := map[string]bool{}
 	ast.Inspect(f, func(n ast.Node) bool {
 		if s, ok := n.(*ast.SelectorExpr); ok {
@@ -398,6 +404,9 @@ func removeUnusedImports(f *ast.File) {
 				imp := spec.(*ast.ImportSpec)
 				path, _ := strconv.Unquote(imp.Path.Value)
 				alias := filepath.Base(path)
+				if name := packageNames[path]; name != "" {
+					alias = name
+				}
 				if imp.Name != nil {
 					alias = imp.Name.Name
 				}

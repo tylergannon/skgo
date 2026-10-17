@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/baggage"
+	"go.opentelemetry.io/otel/trace"
 	"io"
 	"net/http"
 	"net/url"
@@ -442,6 +444,10 @@ func (f *requestFetcher) serve(ctx context.Context, src fetchSource, request *ht
 	if f.carryContext != nil {
 		base = f.carryContext(base, ctx)
 	}
+	// Trace identity is a request facility, like depth and client address.
+	// Carry the active span without restoring events, locals or other values.
+	base = trace.ContextWithSpan(base, trace.SpanFromContext(ctx))
+	base = baggage.ContextWithBaggage(base, baggage.FromContext(ctx))
 	subCtx := context.WithValue(base, requestFetcherKey{}, f)
 	if development, ok := ctx.Value(devKitTransportKey{}).(*NativeDevelopment); ok {
 		subCtx = context.WithValue(subCtx, devKitTransportKey{}, development)

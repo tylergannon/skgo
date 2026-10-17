@@ -44,7 +44,7 @@ const usage = `usage:
 	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
 	skgo check [flags]        check Go, Svelte, lint and formatting without edits
 	skgo kit-patch [--web web] (--apply | --check)
-	                          configure or verify Kit 3.0.0's declared-Inputs queue correction
+	                          configure or verify Kit 3.1.0's declared-Inputs queue correction
 	skgo advice [--json] [SKGO001..SKGO008]
 	                          show installed rule guidance and repair examples
 	skgo mcp                 serve check and advice tools over stdio MCP

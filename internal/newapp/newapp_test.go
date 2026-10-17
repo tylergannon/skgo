@@ -243,7 +243,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if commands[1].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[1].Dir) != "web" {
 		t.Fatalf("the skgo integration was not added through the project's VitePlus: %#v", commands[1])
 	}
-	if got := strings.Join(commands[2].Args, " "); !strings.Contains(got, "dlx --allow-build=esbuild --package create-storybook@10.6.1 --package @storybook/sveltekit@10.6.1 create-storybook") {
+	if got := strings.Join(commands[2].Args, " "); !strings.Contains(got, "dlx --allow-build=esbuild --package create-storybook@10.6.2 --package @storybook/sveltekit@10.6.2 create-storybook") {
 		t.Fatalf("Storybook did not use its upstream installer with pnpm approval: %s", got)
 	}
 	if joined := strings.Join(commands[2].Env, "\n"); strings.Contains(joined, "npm_config_force=") {
@@ -830,14 +830,14 @@ func TestNewAppPinsAnUpstreamKitUpdateBeforeQueueConfiguration(t *testing.T) {
 	for _, tc := range []struct {
 		version  string
 		commands int
-	}{{"3.0.1", 1}, {"3.0.0", 0}} {
+	}{{"3.0.0", 1}, {"3.1.0", 0}} {
 		if err := os.WriteFile(installed, []byte(`{"version":"`+tc.version+`"}`), 0644); err != nil {
 			t.Fatal(err)
 		}
 		calls := 0
 		err := installSupportedKit(web, func(c command) error {
 			calls++
-			if c.Dir != web || c.Name != filepath.Join("node_modules", ".bin", "vp") || !slices.Equal(c.Args, []string{"add", "--save-dev", "--save-exact", "@sveltejs/kit@3.0.0"}) {
+			if c.Dir != web || c.Name != filepath.Join("node_modules", ".bin", "vp") || !slices.Equal(c.Args, []string{"add", "--save-dev", "--save-exact", "@sveltejs/kit@3.1.0"}) {
 				t.Fatalf("wrong pin command: %#v", c)
 			}
 			return nil
