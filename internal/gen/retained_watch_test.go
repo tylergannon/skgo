@@ -142,7 +142,7 @@ func TestRetainedWorkspaceSelectionEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 	work := filepath.Join(root, "go.work")
-	cacheWrite(t, work, "go 1.27.1\nuse ./app\n")
+	cacheWrite(t, work, "go 1.27.2\nuse ./app\n")
 	requested := work
 	if mode == "auto" {
 		requested = "auto"
@@ -175,7 +175,7 @@ func TestRetainedWorkspaceSelectionEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const revised = "go 1.27.1\nuse (\n ./app\n ./wire\n)\n"
+	const revised = "go 1.27.2\nuse (\n ./app\n ./wire\n)\n"
 	cacheWrite(t, work, revised)
 	waitRetainedFiles(t, p, errs, func(files map[string][]byte) bool { return string(files[work]) == revised })
 	verify := func() {
@@ -201,7 +201,7 @@ func TestRetainedWorkspaceSelectionEvents(t *testing.T) {
 		runRetained(t, b, "asset-one:1:body-one")
 	}
 	verify()
-	const nearerSource = "go 1.27.1\nuse (\n .\n ../wire\n)\n"
+	const nearerSource = "go 1.27.2\nuse (\n .\n ../wire\n)\n"
 	revision := p.Revision()
 	cacheWrite(t, nearer, nearerSource)
 	if mode == "auto" {
@@ -254,7 +254,7 @@ func TestRetainedAutoWorkspaceDanglingAncestor(t *testing.T) {
 	// Go searches beyond the module's parent. This new workspace must actually
 	// become the selected compiler workspace, with both supplied modules.
 	work := filepath.Join(scope, "go.work")
-	const source = "go 1.27.1\nuse (\n ./project/app\n ./project/wire\n)\n"
+	const source = "go 1.27.2\nuse (\n ./project/app\n ./project/wire\n)\n"
 	cacheWrite(t, work, source)
 	waitRetainedFiles(t, p, errs, func(files map[string][]byte) bool {
 		return string(files[work]) == source && p.sources.Environment["GOWORK"] == work

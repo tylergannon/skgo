@@ -23,3 +23,7 @@ correction: A tracing event copy must be bound into its own Request().Context();
 correction: Native annotation operations cannot be unbounded response headers. Cap retained/serialized operations to a 3 KiB JSON budget (4 KiB base64 header), drop oversized/excess telemetry, and never let annotation application interrupt delivery. Private endpoint diagnostics and custom public error bodies use the existing callback response body with a fixed header discriminator, rather than another unbounded metadata header.
 
 correction: Use the application's global OTel propagator for extraction/injection, extracting explicit incoming fetch headers over the active context before injection. Standard propagation context must cross native continuation boundaries too; carrying spans alone loses baggage. Internal Go fetch retains standard baggage alongside span identity while keeping ordinary request values isolated.
+
+friction: Generator foreign app fixtures inherit the repository's current Go requirement. Selected workspace fixtures must declare at least that version; otherwise Go refuses module discovery before the intended cache/watch assertions can run. The GOWORK=off fixture deliberately remains independent of its ignored ancestor workspace.
+
+correction: The adapter records the production document policy at manifest.ssr.csp. Mutating a nonexistent root manifest.csp silently leaves the original policy in force, so a CSP handler fixture must modify the SSR description to exercise its literal header expectations.

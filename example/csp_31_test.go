@@ -23,7 +23,11 @@ func TestProductionCSPHashReportingKeywords(t *testing.T) {
 	if err := json.Unmarshal(raw, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	manifest["csp"] = map[string]any{
+	ssr, ok := manifest["ssr"].(map[string]any)
+	if !ok {
+		t.Fatal("build manifest has no SSR description")
+	}
+	ssr["csp"] = map[string]any{
 		"mode":       "nonce",
 		"directives": map[string]any{"script-src": []string{"self", "report-sha256", "report-sha384", "report-sha512"}},
 		"reportOnly": map[string]any{"script-src": []string{"self", "report-sha256", "report-sha384", "report-sha512"}, "report-uri": []string{"/reports"}},

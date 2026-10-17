@@ -304,7 +304,7 @@ func TestGenerationCacheWorkspaceAndConfiguration(t *testing.T) {
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	work := filepath.Join(root, "go.work")
-	cacheWrite(t, work, "go 1.27.1\nuse (\n"+filepath.Join(root, "app")+"\n"+filepath.Join(root, "wire")+"\n"+filepath.Join(root, "skgo")+"\n)\n")
+	cacheWrite(t, work, "go 1.27.2\nuse (\n"+filepath.Join(root, "app")+"\n"+filepath.Join(root, "wire")+"\n"+filepath.Join(root, "skgo")+"\n)\n")
 	t.Setenv("GOWORK", work)
 	assertCacheResult(t, cfg, false)
 	assertCacheResult(t, cfg, true)
