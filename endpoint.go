@@ -499,6 +499,12 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 		methodNotAllowed(w, route.allowed(), r.Method)
 		return
 	}
+	if r.Method == http.MethodHead && method == http.MethodGet {
+		// Kit's HEAD fallback keeps the GET headers but drops its body. Mark
+		// Content-Length present so net/http does not infer one from the bytes
+		// the GET handler writes. An explicit length still takes precedence.
+		w.Header()[http.CanonicalHeaderKey("Content-Length")] = nil
+	}
 
 	es.run(w, r, route, params, method, handler)
 }
