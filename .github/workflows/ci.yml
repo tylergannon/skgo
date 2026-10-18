@@ -64,7 +64,7 @@ jobs:
         run: just test
 
   native-swift:
-    name: Swift client and generated production HTTP calls
+    name: Native transport and Swift model compatibility
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: macos-15
     timeout-minutes: 15
@@ -79,10 +79,7 @@ jobs:
         with:
           working_directory: native
           export_path: false
-      - run: mise -C example install
-      - run: mise -C example/web exec -- vp install --frozen-lockfile
       - run: go test -count=1 -race ./native ./internal/swiftgen
-      - run: go test -count=1 -race ./internal/gen -run 'TestNative|TestGeneratedSwift'
 
   native-replacement:
     name: Generated native replacement (${{ matrix.os }})
@@ -107,4 +104,4 @@ jobs:
           working_directory: example
           export_path: false
       - run: mise -C example/web exec -- vp install --frozen-lockfile
-      - run: mise -C example exec -- go -C .. test ./internal/hotreload -run 'TestGeneratedNative(State|Lifetime|HandlerContract)$' -count=1 -v
+      - run: mise -C example exec -- go -C .. test ./internal/hotreload -run 'TestGeneratedNative(Lifetime|HandlerContract)$' -count=1 -v

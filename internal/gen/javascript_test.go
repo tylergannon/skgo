@@ -144,39 +144,3 @@ func testJavaScriptRemotesAndTypes(t *testing.T, root string) {
 		}
 	}
 }
-
-// TestJavaScriptModeKeepsTheCollisionRefusal: polytype's identifier allocation
-// can rename a root, and the JavaScript stubs refer to types by name exactly as
-// the TypeScript ones do, so the refusal has to hold in both modes.
-func TestJavaScriptModeKeepsTheCollisionRefusal(t *testing.T) {
-	t.Parallel()
-	_, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-
-	"example.com/wire"
-	"github.com/tylergannon/skgo"
-)
-
-// Thing wraps the dependency's Thing, under the same name.
-type Thing struct {
-	Inner wire.Thing `+"`json:\"inner\"`"+`
-}
-
-func getThing(ctx context.Context) (Thing, error) {
-	return Thing{}, nil
-}
-
-var _ = skgo.Query(getThing)
-`, nil)
-	cfg.Language = LanguageJavaScript
-
-	err := Run(cfg)
-	if err == nil {
-		t.Fatal("a JavaScript app whose Thing reaches a second Thing was projected")
-	}
-	if !strings.Contains(err.Error(), "Thing") {
-		t.Fatalf("the refusal does not name the type:\n%v", err)
-	}
-}

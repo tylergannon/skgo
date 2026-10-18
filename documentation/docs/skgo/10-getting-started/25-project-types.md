@@ -2,7 +2,7 @@
 title: Project types
 summary: Which kinds of application SKGo builds today, and which it does not target.
 proof:
-  - TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch
+  - TestEveryPrerenderedPathIsServedFromItsFile
   - example/e2e/features/actions-options.feature
 ---
 

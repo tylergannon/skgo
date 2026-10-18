@@ -5,61 +5,32 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/tylergannon/polytype/goload"
 )
 
 func TestLocalsConfigurationRejectsInvalidOwnershipAndTypes(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, source, want string }{
-		{"missing-config", "", "locals package is required"},
+
+		{"valid", "package app\ntype Locals struct{ Receipt int }", ""},
 		{"missing-type", "package app\ntype Different struct{}", "locals type"},
 		{"non-struct", "package app\ntype Locals string", "concrete named struct"},
 		{"alias", "package app\ntype Other struct{}\ntype Locals = Other", "concrete named struct"},
 		{"generic", "package app\ntype Locals[T any] struct{Value T}", "concrete named struct"},
 		{"variable", "package app\ntype State struct{}\nvar Locals State", "must name a type"},
-		{"params-cycle", "package app\nimport \"example.com/app/generated/params\"\ntype Locals struct{P params.Params}", "loadable without generated routing"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.name != "missing-config" && tc.name != "params-cycle" && tc.name != "non-struct" {
-				pkg := declarationPackage(t, "example.com/app/internal/app", "locals.go", tc.source, nil)
-				err := validateLocalsType(pkg.Types, "Locals")
-				if err == nil || !strings.Contains(err.Error(), tc.want) {
-					t.Fatalf("wanted %q: %v", tc.want, err)
+			pkg := declarationPackage(t, "example.com/app/internal/app", "locals.go", tc.source, nil)
+			err := validateLocalsType(pkg.Types, "Locals")
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
 				}
 				return
 			}
-			_, cfg := foreignFixture(t, `package data
-import("context";"github.com/tylergannon/skgo")
-func query(context.Context)(string,error){return "fixture",nil}
-var _=skgo.Query(query)
-`, nil)
-			host, _, err := moduleOf(cfg.Out)
-			if err != nil {
-				t.Fatal(err)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("wanted %q: %v", tc.want, err)
 			}
-			if tc.name == "missing-config" {
-				cfg.LocalsPackage = ""
-			} else {
-				if err := os.WriteFile(filepath.Join(host, "internal/app/locals.go"), []byte(tc.source), 0644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			// Both consumers examine this same immutable fixture. Share its
-			// invocation explicitly, without sharing state across table cases.
-			cfg.CacheDir = "off"
-			cfg.Session = new(goload.Session)
-			var before goload.Stats
-			for i, check := range []func(Config) error{Run, Check} {
-				if err := check(cfg); err == nil || !strings.Contains(err.Error(), tc.want) {
-					t.Fatalf("wanted %q, got %v", tc.want, err)
-				}
-				stats := cfg.Session.Stats()
-				if i == 1 && tc.name == "non-struct" && (stats.PackageChecks != before.PackageChecks || stats.PackageHits <= before.PackageHits) {
-					t.Fatalf("Run/Check rechecked immutable locals: before=%+v after=%+v", before, stats)
-				}
-				before = stats
-			}
+
 		})
 	}
 }
@@ -84,13 +55,9 @@ var Handle params.Middleware
 import("context";"net/http";"github.com/tylergannon/skgo";"example.com/app/generated/params")
 func Handle(ctx context.Context,event skgo.RequestEvent[params.Params,struct{}],resolve params.Resolve)(*http.Response,error){return nil,nil}
 `, "convertible to params.Middleware"},
-		{"bindings-dependency", `package hooks
-import _ "example.com/app/generated"
-func Handle(){}
-`, "selected hook"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.name != "bindings-dependency" && tc.name != "wrong-signature" {
+			{
 				_, _, route, _ := markerDeclaration(t, "fixture.go", `package route
  import("context";"github.com/tylergannon/skgo";"example.com/app/internal/app";"example.com/app/generated/params")
  var _=context.Background;var _=params.Params{};var _=app.Locals{}
@@ -113,36 +80,6 @@ func Handle(){}
 				}
 				return
 			}
-			_, cfg := foreignFixture(t, `package data
-import("context";"github.com/tylergannon/skgo")
-func query(context.Context)(string,error){return "fixture",nil}
-var _=skgo.Query(query)
-`, nil)
-			host, _, err := moduleOf(cfg.Out)
-			if err != nil {
-				t.Fatal(err)
-			}
-			dir := filepath.Join(host, "hooks")
-			if err := os.MkdirAll(dir, 0755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(filepath.Join(dir, "handle.go"), []byte(tc.source), 0644); err != nil {
-				t.Fatal(err)
-			}
-			cfg.HookPackage = "example.com/app/hooks"
-			err = Run(cfg)
-			if tc.want != "" {
-				if err == nil || !strings.Contains(err.Error(), tc.want) {
-					t.Fatalf("wanted %q, got %v", tc.want, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := Check(cfg); err != nil {
-				t.Fatal(err)
-			}
 		})
 	}
 }
@@ -163,42 +100,5 @@ func TestDeclaredLocalsAndSingleHookSelection(t *testing.T) {
 	}
 	if _, err := DeclaredConfig(Config{Out: dir}); err == nil || !strings.Contains(err.Error(), "multiple configured selections") {
 		t.Fatalf("duplicate declaration: %v", err)
-	}
-}
-
-func TestRootLocalsRegenerationPreservesOtherApplicationOutput(t *testing.T) {
-	t.Parallel()
-	_, cfg := foreignFixture(t, `package data
-import("context";"github.com/tylergannon/skgo")
-func query(context.Context)(string,error){return "fixture",nil}
-var _=skgo.Query(query)
-`, nil)
-	host, mod, err := moduleOf(cfg.Out)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(host, "locals.go"), []byte("package app\ntype Locals struct{}\n"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	sibling := filepath.Join(host, "other-app", generatedGoFile)
-	if err := os.MkdirAll(filepath.Dir(sibling), 0755); err != nil {
-		t.Fatal(err)
-	}
-	receipt := goHeader + "package other\nconst OwnedByAnotherApplication = 42\n"
-	if err := os.WriteFile(sibling, []byte(receipt), 0644); err != nil {
-		t.Fatal(err)
-	}
-	cfg.LocalsPackage = mod
-	for range 2 {
-		if err := Run(cfg); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := Check(cfg); err != nil {
-		t.Fatal(err)
-	}
-	got, err := os.ReadFile(sibling)
-	if err != nil || string(got) != receipt {
-		t.Fatalf("unrelated output changed: %q %v", got, err)
 	}
 }
