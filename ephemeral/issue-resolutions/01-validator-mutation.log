@@ -1,0 +1,147 @@
+=== RUN   TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal
+=== PAUSE TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal
+=== RUN   TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner
+=== PAUSE TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner
+=== CONT  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal
+=== RUN   TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+=== CONT  TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner
+=== PAUSE TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+=== RUN   TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+=== PAUSE TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+=== CONT  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+=== CONT  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+=== NAME  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+    prerender_owner_failure_test.go:145: SIGTERM failed-drain interruption:
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+=== NAME  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+    prerender_owner_failure_test.go:145: SIGINT failed-drain interruption:
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+=== NAME  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+=== NAME  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+    prerender_owner_failure_test.go:148: interrupted owner did not terminate promptly: signal: killed deadline=context deadline exceeded
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+=== NAME  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+    prerender_owner_failure_test.go:148: interrupted owner did not terminate promptly: signal: killed deadline=context deadline exceeded
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+--- FAIL: TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal (0.00s)
+    --- FAIL: TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt (3.00s)
+    --- FAIL: TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated (3.00s)
+=== NAME  TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner
+    prerender_predicate_failure_build_test.go:235: broken transform transport native build:
+        skgo prerender service started (pid 2290)
+        (node:2267) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        (node:2267) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        Error: skgo prerender transform returned no HTML
+            at options.transformPageChunk (../adapter/skgo-adapter/prerender.js:868:54)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async render_response (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/render.js:618:4)
+            at async render_page (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/index.js:332:10)
+            at async resolve (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/respond.js:672:19)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async requestHandle (../adapter/skgo-adapter/prerender.js:876:24)
+        Error: skgo prerender transform returned no HTML
+            at options.transformPageChunk (../adapter/skgo-adapter/prerender.js:868:54)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async render_response (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/render.js:618:4)
+            at async respond_with_error (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/respond_with_error.js:85:10)
+            at async render_page (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/index.js:356:10)
+            at async resolve (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/respond.js:672:19)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async requestHandle (../adapter/skgo-adapter/prerender.js:876:24)
+        [1m[31m500[39m[22m GET /
+        transforming...
+        ✓ 2 modules transformed.
+        rendering chunks...
+        ✓ built in 3ms
+        
+        Run npm run preview to preview your production build locally.
+        
+        > Using skgo
+        (node:2267) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        skgo prerender service stopped (pid 2290)
+        ✔ done
+        BUILD_APP_RESOLVED
+    prerender_predicate_failure_build_test.go:237: broken transform bridge became permissive build success: <nil> deadline=false
+        skgo prerender service started (pid 2290)
+        (node:2267) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        (node:2267) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        Error: skgo prerender transform returned no HTML
+            at options.transformPageChunk (../adapter/skgo-adapter/prerender.js:868:54)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async render_response (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/render.js:618:4)
+            at async render_page (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/index.js:332:10)
+            at async resolve (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/respond.js:672:19)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async requestHandle (../adapter/skgo-adapter/prerender.js:876:24)
+        Error: skgo prerender transform returned no HTML
+            at options.transformPageChunk (../adapter/skgo-adapter/prerender.js:868:54)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async render_response (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/render.js:618:4)
+            at async respond_with_error (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/respond_with_error.js:85:10)
+            at async render_page (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/index.js:356:10)
+            at async resolve (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/respond.js:672:19)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async requestHandle (../adapter/skgo-adapter/prerender.js:876:24)
+        [1m[31m500[39m[22m GET /
+        transforming...
+        ✓ 2 modules transformed.
+        rendering chunks...
+        ✓ built in 3ms
+        
+        Run npm run preview to preview your production build locally.
+        
+        > Using skgo
+        (node:2267) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        skgo prerender service stopped (pid 2290)
+        ✔ done
+        BUILD_APP_RESOLVED
+--- FAIL: TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner (9.53s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	9.819s
+FAIL

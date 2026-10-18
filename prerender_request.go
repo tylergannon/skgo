@@ -511,6 +511,12 @@ func runPrerenderCookies(ctx context.Context, raw []byte, out io.Writer) error {
 	return json.NewEncoder(out).Encode(struct{}{})
 }
 
+// A transform is an asynchronous application callback. Its error belongs to
+// Kit's page error policy, unlike an unavailable or malformed bridge response.
+type prerenderTransformError struct{ error }
+
+func (e prerenderTransformError) Unwrap() error { return e.error }
+
 // Kit calls these against the suspended request, after its loads have run.
 // A panic is a transport failure, not a false predicate answer.
 func runPrerenderResolveOption(ctx context.Context, entry *prerenderRequest, raw []byte, out io.Writer) (err error) {
@@ -537,7 +543,7 @@ func runPrerenderResolveOption(ctx context.Context, entry *prerenderRequest, raw
 		}
 		html, err := entry.options.TransformPageChunk(ctx, input.HTML, input.Done)
 		if err != nil {
-			return err
+			return prerenderTransformError{err}
 		}
 		return json.NewEncoder(out).Encode(struct {
 			HTML string `json:"html"`

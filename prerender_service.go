@@ -234,9 +234,15 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 		w.Header().Set("Content-Type", "application/json")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			kind := ""
+			var transformError prerenderTransformError
+			if errors.As(err, &transformError) {
+				kind = "app"
+			}
 			json.NewEncoder(w).Encode(struct {
 				Error string `json:"error"`
-			}{err.Error()})
+				Kind  string `json:"kind,omitempty"`
+			}{err.Error(), kind})
 			return
 		}
 		w.Write(answer.Bytes())

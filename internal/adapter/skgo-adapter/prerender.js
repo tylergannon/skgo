@@ -510,6 +510,7 @@ export function createPrerenderOwner(root = appRoot(), prerenderPackage) {
         for (const job of owner.jobs) {
           try {
             await stopJob(job, job === owner.service);
+            owner.jobs.delete(job);
           } catch (error) {
             errors.push(error);
           } finally {
@@ -521,16 +522,22 @@ export function createPrerenderOwner(root = appRoot(), prerenderPackage) {
             if (value === undefined) delete process.env[key];
             else process.env[key] = value;
           }
+        if (errors.length)
+          throw new AggregateError(errors, "skgo could not drain owned prerender processes");
+        if (owner.dir) rmSync(owner.dir, { recursive: true, force: true });
         for (const [signal, handler] of owner.signals) process.off(signal, handler);
         if (owner.parentObserver) clearInterval(owner.parentObserver);
         process.off("exit", owner.exitHandler);
-        if (!errors.length && owner.dir) rmSync(owner.dir, { recursive: true, force: true });
         owners.delete(root);
-        if (owner.service && !errors.length)
+        if (owner.service)
           process.stderr.write(`skgo prerender service stopped (pid ${owner.service.child.pid})\n`);
-        if (errors.length)
-          throw new AggregateError(errors, "skgo could not drain owned prerender processes");
-      })();
+      })().catch((error) => {
+        // A failed drain still owns its live jobs, scratch directory and exit
+        // fallback. Keep the owner discoverable and permit an explicit retry.
+        owner.cleanupFailure = error;
+        owner.cleanupPromise = null;
+        throw error;
+      });
       return owner.cleanupPromise;
     },
   };
@@ -551,6 +558,10 @@ export function createPrerenderOwner(root = appRoot(), prerenderPackage) {
       reportOwnerFailure(error);
     }
     process.exitCode = 1;
+    // Failed cleanup retains handlers for an explicit recovery attempt. This
+    // path is terminating instead: restore the signal's default disposition
+    // before forwarding it, or our retained handler catches its own signal.
+    for (const [name, handler] of owner.signals) process.off(name, handler);
     try {
       process.kill(process.pid, signal);
     } catch {
@@ -627,10 +638,22 @@ async function invokeService(request) {
       signal: controller.signal,
     });
     const raw = await response.text();
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+    if (!response.ok) {
+      if (request.kind === "resolve-option" && request.option === "transform") {
+        let answer;
+        try { answer = JSON.parse(raw); } catch {}
+        if (response.status === 500 && answer?.kind === "app" && typeof answer.error === "string") {
+          const error = new Error(answer.error);
+          error.applicationTransform = true;
+          throw error;
+        }
+      }
+      throw new Error(`HTTP ${response.status}: ${raw}`);
+    }
     validateEnvelope(request, raw);
     return raw;
   } catch (error) {
+    if (error.applicationTransform) throw error;
     if (controller.signal.aborted) {
       const message = `skgo prerender ${identity} timed out after ${CALLBACK_TIMEOUT}ms`;
       process.stderr.write(`${message}\n`);
@@ -859,7 +882,10 @@ export async function requestHandle(event, resolveRequest) {
           const result = JSON.parse(await invokeService({ kind: "resolve-option", option: "transform", handle, html, done }));
           if (typeof result.html !== "string") throw new Error("skgo prerender transform returned no HTML");
           return result.html;
-        } catch (error) { failPredicateRelay(error); }
+        } catch (error) {
+          if (error.applicationTransform) throw error;
+          failPredicateRelay(error);
+        }
       };
       if (answer.options?.filter) options.filterSerializedResponseHeaders = (name, value) => predicate(handle, "filter", { name, value });
       if (answer.options?.preload) options.preload = (input) => predicate(handle, "preload", { input });
