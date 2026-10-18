@@ -3,6 +3,7 @@ package skgo
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -161,5 +162,52 @@ func TestRemoteCallerURLKeepsEscapedPath(t *testing.T) {
 		if got := field(t, data, "_"); got != path {
 			t.Fatalf("caller URL want literal %q got %v", path, got)
 		}
+	}
+}
+
+func TestRemoteCommandFetchResolvesAgainstLogicalCallerPage(t *testing.T) {
+	const origin = "http://fixture.test"
+	manifest := Manifest{Routes: []ManifestRoute{{
+		ID: "/items/data", Pattern: `^/items/data/?$`, Endpoint: &ManifestEndpoint{Methods: []string{"GET"}},
+	}}}
+	endpoints, err := NewEndpoints(manifest.EndpointConfig(origin), NewEndpoint("/items/data", http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "endpoint:"+r.URL.Path)
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := NewCommandNoArg(testModule, "fetchRelative", func(ctx context.Context) (string, error) {
+		request, err := http.NewRequest(http.MethodGet, "data", nil)
+		if err != nil {
+			return "", err
+		}
+		response, err := EventFrom(ctx).Fetch(ctx, request)
+		if err != nil {
+			return "", err
+		}
+		defer response.Body.Close()
+		body, err := io.ReadAll(response.Body)
+		return string(body), err
+	})
+	remotes := testRemotes(t, RemoteConfig{Origin: origin}, command)
+	handleConfig := manifest.HandleConfig()
+	handleConfig.Origin = origin
+	var handler http.Handler
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handler.ServeHTTP(w, r) })
+	boundary := RequestMiddleware[struct{}, hookLocals](nil).Intercept(handleConfig, emptyHookParams, remotes.Intercept(endpoints.Intercept(http.NotFoundHandler())))
+	handler = FetchConfig{Origin: origin, Handler: inner}.Intercept(boundary)
+
+	request := httptest.NewRequest(http.MethodPost, remotes.Prefix()+command.ID(), strings.NewReader(`{"payload":"","refreshes":[]}`))
+	request.Header.Set("Origin", origin)
+	request.Header.Set("X-Sveltekit-Pathname", "/items/42")
+	request.Header.Set("X-Sveltekit-Search", "")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("command status=%d body=%q", recorder.Code, recorder.Body.String())
+	}
+	_, data, _ := envelope(t, recorder.Body.Bytes())
+	if got := field(t, data, "_"); got != "endpoint:/items/data" {
+		t.Fatalf("relative command fetch = %v; want literal endpoint receipt %q", got, "endpoint:/items/data")
 	}
 }
