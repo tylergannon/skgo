@@ -1,0 +1,18 @@
+=== RUN   TestRealSessionRouteEditDuringPendingLoad
+    session_integration_test.go:381: $ bddgen ⊘ cache disabled
+        
+        $ playwright test --grep 'route structure changes during pending Go I/O' --project chromium --workers 1 ⊘ cache disabled
+        
+        Running 1 test using 1 worker
+        
+        (node:11508) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+          ✓  1 [chromium] › .features-gen/features/dev-pending-edit.feature.spec.js:6:3 › Route edits while a development load waits for Go I/O › A route structure changes during pending Go I/O @dev-session (3.9s)
+        
+          1 passed (4.7s)
+        
+        ---
+        vp run: 2/2 successful. (Run `vp run --last-details` for full details)
+--- PASS: TestRealSessionRouteEditDuringPendingLoad (15.98s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/devserver	16.352s

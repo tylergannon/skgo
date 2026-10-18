@@ -20,7 +20,7 @@ import (
 // Browser orchestration and source edits stay in Go. Only the actual Kit client
 // assertions live in the existing Gherkin suite.
 func TestRealSessionRouteEditDuringPendingLoad(t *testing.T) {
-	realSession(t, false, false, "pending-browser")
+	realSession(t, false, false, false, "pending-browser")
 }
 
 func setupPendingBrowser(t *testing.T, app string, write func(string, string)) {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/tylergannon/skgo"
 
-	generated "{{.BindingsImport}}"
 	application "{{.Module}}/internal/app"
+	generated "{{.BindingsImport}}"
 )
 
 // NewHandler builds the Go-owned application stack over the embedded build.
@@ -51,7 +51,7 @@ func newHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) 
 	pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 		renderer, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
 			Fetch:                           internal,
-			HandleFetch: application.Config.HandleFetch,
+			HandleFetch:                     application.Config.HandleFetch,
 			FilterSerializedResponseHeaders: application.Config.FilterSerializedResponseHeaders,
 			Actions:                         actions,
 		})

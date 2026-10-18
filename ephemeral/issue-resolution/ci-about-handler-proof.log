@@ -1,0 +1,4 @@
+=== RUN   TestEveryPrerenderedPathIsServedFromItsFile
+--- PASS: TestEveryPrerenderedPathIsServedFromItsFile (0.04s)
+PASS
+ok  	github.com/tylergannon/skgo/example	0.366s

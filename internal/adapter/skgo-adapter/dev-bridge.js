@@ -252,7 +252,6 @@ export function handleGoError({event,kind,error,issues}) {
     cause: kind==='unknown' ? ((error && (error.stack || error.message)) || String(error)) : ''
   }, event);
 }
-}
 function exceptional(answer) {
   throwGoError(answer);
   if (answer.redirect)

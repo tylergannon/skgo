@@ -1,0 +1,417 @@
+﻿2026-10-18T19:44:24.1937080Z Current runner version: '2.337.0'
+2026-10-18T19:44:24.1981290Z ##[group]Runner Image Provisioner
+2026-10-18T19:44:24.1982020Z Hosted Compute Agent
+2026-10-18T19:44:24.1982430Z Version: 20260828.587
+2026-10-18T19:44:24.1982860Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+2026-10-18T19:44:24.1983360Z Build Date: 2026-08-28T16:44:25Z
+2026-10-18T19:44:24.1983810Z Worker ID: {65e8be7c-7d78-4015-ab65-9368d96a28ca}
+2026-10-18T19:44:24.1984300Z Azure Region: westus
+2026-10-18T19:44:24.1984670Z ##[endgroup]
+2026-10-18T19:44:24.1985800Z ##[group]Operating System
+2026-10-18T19:44:24.1986220Z macOS
+2026-10-18T19:44:24.1986560Z 15.7.9
+2026-10-18T19:44:24.1986910Z 24G830
+2026-10-18T19:44:24.1987250Z ##[endgroup]
+2026-10-18T19:44:24.1987620Z ##[group]Runner Image
+2026-10-18T19:44:24.1988000Z Image: macos-15-arm64
+2026-10-18T19:44:24.1989960Z Version: 20260907.0337.1
+2026-10-18T19:44:24.1992380Z Included Software: https://github.com/actions/runner-images/blob/macos-15-arm64/20260907.0337/images/macos/macos-15-arm64-Readme.md
+2026-10-18T19:44:24.1995290Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-15-arm64%2F20260907.0337
+2026-10-18T19:44:24.1997120Z ##[endgroup]
+2026-10-18T19:44:24.1999140Z ##[group]GITHUB_TOKEN Permissions
+2026-10-18T19:44:24.2003720Z Contents: read
+2026-10-18T19:44:24.2004760Z Metadata: read
+2026-10-18T19:44:24.2005710Z ##[endgroup]
+2026-10-18T19:44:24.2009820Z Secret source: Actions
+2026-10-18T19:44:24.2013330Z Cache mode: write
+2026-10-18T19:44:24.2014650Z Prepare workflow directory
+2026-10-18T19:44:24.2607210Z Prepare all required actions
+2026-10-18T19:44:24.2649240Z Getting action download info
+2026-10-18T19:44:24.6747360Z Download action repository 'actions/checkout@v7' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-10-18T19:44:25.0053330Z Download action repository 'actions/setup-go@v7' (SHA:b7ad1dad31e06c5925ef5d2fc7ad053ef454303e)
+2026-10-18T19:44:25.5029450Z Download action repository 'jdx/mise-action@v4' (SHA:c2a87611a18de5b3828c5652fe268e992400cb5c)
+2026-10-18T19:44:26.1052440Z Complete job name: Swift client and generated production HTTP calls
+2026-10-18T19:44:26.2303080Z ##[group]Run actions/checkout@v7
+2026-10-18T19:44:26.2305310Z with:
+2026-10-18T19:44:26.2306350Z   repository: tylergannon/skgo
+2026-10-18T19:44:26.2310610Z   token: ***
+2026-10-18T19:44:26.2311050Z   ssh-strict: true
+2026-10-18T19:44:26.2311560Z   ssh-user: git
+2026-10-18T19:44:26.2311920Z   persist-credentials: true
+2026-10-18T19:44:26.2312310Z   clean: true
+2026-10-18T19:44:26.2312670Z   sparse-checkout-cone-mode: true
+2026-10-18T19:44:26.2313080Z   fetch-depth: 1
+2026-10-18T19:44:26.2313420Z   fetch-tags: false
+2026-10-18T19:44:26.2313780Z   show-progress: true
+2026-10-18T19:44:26.2314140Z   lfs: false
+2026-10-18T19:44:26.2314470Z   submodules: false
+2026-10-18T19:44:26.2314850Z   set-safe-directory: true
+2026-10-18T19:44:26.2315250Z   allow-unsafe-pr-checkout: false
+2026-10-18T19:44:26.2316260Z env:
+2026-10-18T19:44:26.2316690Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/skgo/skgo
+2026-10-18T19:44:26.2317230Z ##[endgroup]
+2026-10-18T19:44:26.8662130Z Syncing repository: tylergannon/skgo
+2026-10-18T19:44:26.8666260Z ##[group]Getting Git version info
+2026-10-18T19:44:26.8667730Z Working directory is '/Users/runner/work/skgo/skgo'
+2026-10-18T19:44:26.8670000Z [command]/opt/homebrew/bin/git version
+2026-10-18T19:44:26.9310090Z git version 2.55.0
+2026-10-18T19:44:26.9327440Z ##[endgroup]
+2026-10-18T19:44:26.9336950Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/d1870aea-95b6-4911-8914-a581abf28371/.gitconfig'
+2026-10-18T19:44:26.9372640Z Temporarily overriding HOME='/Users/runner/work/_temp/d1870aea-95b6-4911-8914-a581abf28371' before making global git config changes
+2026-10-18T19:44:26.9381810Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-18T19:44:26.9457130Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/skgo/skgo
+2026-10-18T19:44:26.9588770Z Deleting the contents of '/Users/runner/work/skgo/skgo'
+2026-10-18T19:44:26.9593340Z ##[group]Determining repository object format
+2026-10-18T19:44:26.9596540Z ##[endgroup]
+2026-10-18T19:44:26.9599770Z ##[group]Initializing the repository
+2026-10-18T19:44:26.9604610Z [command]/opt/homebrew/bin/git init /Users/runner/work/skgo/skgo
+2026-10-18T19:44:26.9981660Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-18T19:44:26.9984640Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-18T19:44:26.9987210Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-18T19:44:26.9990680Z hint: call:
+2026-10-18T19:44:26.9991600Z hint:
+2026-10-18T19:44:26.9992810Z hint: 	git config --global init.defaultBranch <name>
+2026-10-18T19:44:26.9994110Z hint:
+2026-10-18T19:44:26.9995490Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-18T19:44:26.9997490Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-18T19:44:26.9999320Z hint:
+2026-10-18T19:44:27.0000230Z hint: 	git branch -m <name>
+2026-10-18T19:44:27.0001310Z hint:
+2026-10-18T19:44:27.0002700Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-18T19:44:27.0007220Z Initialized empty Git repository in /Users/runner/work/skgo/skgo/.git/
+2026-10-18T19:44:27.0011000Z [command]/opt/homebrew/bin/git remote add origin https://github.com/tylergannon/skgo
+2026-10-18T19:44:27.0124780Z ##[endgroup]
+2026-10-18T19:44:27.0125450Z ##[group]Disabling automatic garbage collection
+2026-10-18T19:44:27.0126180Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-10-18T19:44:27.0203580Z ##[endgroup]
+2026-10-18T19:44:27.0205210Z ##[group]Setting up auth
+2026-10-18T19:44:27.0206580Z Removing SSH command configuration
+2026-10-18T19:44:27.0208530Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-18T19:44:27.0286560Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-18T19:44:27.1719670Z Removing HTTP extra header
+2026-10-18T19:44:27.1722690Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-18T19:44:27.1813970Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-18T19:44:27.2971050Z Removing includeIf entries pointing to credentials config files
+2026-10-18T19:44:27.2972590Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-18T19:44:27.3054540Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-18T19:44:27.4080670Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-18T19:44:27.4169450Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/Users/runner/work/skgo/skgo/.git.path /Users/runner/work/_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config
+2026-10-18T19:44:27.4251640Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/Users/runner/work/skgo/skgo/.git/worktrees/*.path /Users/runner/work/_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config
+2026-10-18T19:44:27.4337060Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config
+2026-10-18T19:44:27.4424630Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config
+2026-10-18T19:44:27.4497730Z ##[endgroup]
+2026-10-18T19:44:27.4499020Z ##[group]Fetching the repository
+2026-10-18T19:44:27.4500750Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +9ef8a93720f6c9ed1fe40136acc8b171a18b7d80:refs/remotes/origin/codex/reliability-fixes
+2026-10-18T19:44:28.5316210Z From https://github.com/tylergannon/skgo
+2026-10-18T19:44:28.5319840Z  * [new ref]         9ef8a93720f6c9ed1fe40136acc8b171a18b7d80 -> origin/codex/reliability-fixes
+2026-10-18T19:44:28.5331820Z [command]/opt/homebrew/bin/git branch --list --remote origin/codex/reliability-fixes
+2026-10-18T19:44:28.5454790Z   origin/codex/reliability-fixes
+2026-10-18T19:44:28.5565540Z [command]/opt/homebrew/bin/git rev-parse refs/remotes/origin/codex/reliability-fixes
+2026-10-18T19:44:28.5570040Z 9ef8a93720f6c9ed1fe40136acc8b171a18b7d80
+2026-10-18T19:44:28.5575840Z ##[endgroup]
+2026-10-18T19:44:28.5576870Z ##[group]Determining the checkout info
+2026-10-18T19:44:28.5577920Z ##[endgroup]
+2026-10-18T19:44:28.5579000Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2026-10-18T19:44:28.5723600Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-18T19:44:28.5837720Z ##[group]Checking out the ref
+2026-10-18T19:44:28.5848600Z [command]/opt/homebrew/bin/git checkout --progress --force -B codex/reliability-fixes refs/remotes/origin/codex/reliability-fixes
+2026-10-18T19:44:29.0853970Z Switched to a new branch 'codex/reliability-fixes'
+2026-10-18T19:44:29.0862630Z branch 'codex/reliability-fixes' set up to track 'origin/codex/reliability-fixes'.
+2026-10-18T19:44:29.0916170Z ##[endgroup]
+2026-10-18T19:44:29.1082160Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2026-10-18T19:44:29.1166240Z 9ef8a93720f6c9ed1fe40136acc8b171a18b7d80
+2026-10-18T19:44:29.1557520Z ##[group]Run actions/setup-go@v7
+2026-10-18T19:44:29.1559650Z with:
+2026-10-18T19:44:29.1560380Z   go-version-file: go.mod
+2026-10-18T19:44:29.1561090Z   check-latest: false
+2026-10-18T19:44:29.1574780Z   token: ***
+2026-10-18T19:44:29.1575420Z   cache: true
+2026-10-18T19:44:29.1576010Z env:
+2026-10-18T19:44:29.1576700Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/skgo/skgo
+2026-10-18T19:44:29.1577580Z ##[endgroup]
+2026-10-18T19:44:29.3249820Z Setup go version spec 1.27.2
+2026-10-18T19:44:29.3260580Z Attempting to download 1.27.2...
+2026-10-18T19:44:29.9502160Z matching 1.27.2...
+2026-10-18T19:44:29.9708160Z Acquiring 1.27.2 from https://github.com/actions/go-versions/releases/download/1.27.2-37875086547/go-1.27.2-darwin-arm64.tar.gz
+2026-10-18T19:44:30.7134540Z Extracting Go...
+2026-10-18T19:44:30.7281170Z [command]/usr/bin/tar xz -C /Users/runner/work/_temp/5a3f7472-9b32-44c9-bb36-353c6c345b98 -f /Users/runner/work/_temp/92a8757e-7143-46b4-b641-c487076fc0fb
+2026-10-18T19:44:34.5094220Z Successfully extracted go to /Users/runner/work/_temp/5a3f7472-9b32-44c9-bb36-353c6c345b98
+2026-10-18T19:44:34.5096120Z Adding to the cache ...
+2026-10-18T19:44:50.7619990Z Successfully cached go to /Users/runner/hostedtoolcache/go/1.27.2/arm64
+2026-10-18T19:44:50.7642280Z Added go to the path
+2026-10-18T19:44:50.7643470Z Successfully set up Go version 1.27.2
+2026-10-18T19:44:50.9827880Z [command]/Users/runner/hostedtoolcache/go/1.27.2/arm64/bin/go env GOMODCACHE
+2026-10-18T19:44:50.9865590Z [command]/Users/runner/hostedtoolcache/go/1.27.2/arm64/bin/go env GOCACHE
+2026-10-18T19:44:50.9939080Z /Users/runner/go/pkg/mod
+2026-10-18T19:44:50.9942220Z /Users/runner/Library/Caches/go-build
+2026-10-18T19:44:51.2705110Z Cache hit for: setup-go-macOS-arm64-go-1.27.2-916105579536b84c313d0b9e4b553c94bbff0aae5b95308bd6b991ec0315bd69
+2026-10-18T19:44:52.5808250Z Received 0 of 139805720 (0.0%), 0.0 MBs/sec
+2026-10-18T19:44:53.5813200Z Received 62914560 of 139805720 (45.0%), 30.0 MBs/sec
+2026-10-18T19:44:54.6577840Z Received 134217728 of 139805720 (96.0%), 41.7 MBs/sec
+2026-10-18T19:44:55.0640750Z Received 139805720 of 139805720 (100.0%), 38.4 MBs/sec
+2026-10-18T19:44:55.0740910Z Cache Size: ~133 MB (139805720 B)
+2026-10-18T19:44:55.0748970Z [command]/opt/homebrew/bin/gtar -xf /Users/runner/work/_temp/4b0318d1-c73c-415d-b14f-e8a352962da0/cache.tzst -P -C /Users/runner/work/skgo/skgo --delay-directory-restore --use-compress-program unzstd
+2026-10-18T19:45:00.1264100Z Cache restored successfully
+2026-10-18T19:45:00.1379290Z Cache restored from key: setup-go-macOS-arm64-go-1.27.2-916105579536b84c313d0b9e4b553c94bbff0aae5b95308bd6b991ec0315bd69
+2026-10-18T19:45:00.1490170Z go version go1.27.2 darwin/arm64
+2026-10-18T19:45:00.1490480Z 
+2026-10-18T19:45:00.1491220Z ##[group]go env
+2026-10-18T19:45:03.8479850Z AR='ar'
+2026-10-18T19:45:03.8480690Z CC='clang'
+2026-10-18T19:45:03.8482220Z CGO_CFLAGS='-O2 -g'
+2026-10-18T19:45:03.8483060Z CGO_CPPFLAGS=''
+2026-10-18T19:45:03.8489850Z CGO_CXXFLAGS='-O2 -g'
+2026-10-18T19:45:03.8490760Z CGO_ENABLED='1'
+2026-10-18T19:45:03.8499940Z CGO_FFLAGS='-O2 -g'
+2026-10-18T19:45:03.8500640Z CGO_LDFLAGS='-O2 -g'
+2026-10-18T19:45:03.8501220Z CXX='clang++'
+2026-10-18T19:45:03.8501710Z GCCGO='gccgo'
+2026-10-18T19:45:03.8502370Z GO111MODULE=''
+2026-10-18T19:45:03.8502810Z GOARCH='arm64'
+2026-10-18T19:45:03.8503440Z GOARM64='v8.0'
+2026-10-18T19:45:03.8504030Z GOAUTH='netrc'
+2026-10-18T19:45:03.8504670Z GOBIN='/Users/runner/go/bin'
+2026-10-18T19:45:03.8505320Z GOCACHE='/Users/runner/Library/Caches/go-build'
+2026-10-18T19:45:03.8516910Z GOCACHEPROG=''
+2026-10-18T19:45:03.8518430Z GODEBUG=''
+2026-10-18T19:45:03.8525100Z GOENV='/Users/runner/Library/Application Support/go/env'
+2026-10-18T19:45:03.8527160Z GOEXE=''
+2026-10-18T19:45:03.8556840Z GOEXPERIMENT=''
+2026-10-18T19:45:03.8557480Z GOFIPS140='off'
+2026-10-18T19:45:03.8557820Z GOFLAGS=''
+2026-10-18T19:45:03.8560170Z GOGCCFLAGS='-fPIC -arch arm64 -pthread -fno-caret-diagnostics -Qunused-arguments -fmessage-length=0 -ffile-prefix-map=/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/go-build2645497322=/tmp/go-build -gno-record-gcc-switches -fno-common'
+2026-10-18T19:45:03.8561820Z GOHOSTARCH='arm64'
+2026-10-18T19:45:03.8562200Z GOHOSTOS='darwin'
+2026-10-18T19:45:03.8562780Z GOINSECURE=''
+2026-10-18T19:45:03.8563160Z GOMOD='/Users/runner/work/skgo/skgo/go.mod'
+2026-10-18T19:45:03.8563570Z GOMODCACHE='/Users/runner/go/pkg/mod'
+2026-10-18T19:45:03.8564020Z GONOPROXY=''
+2026-10-18T19:45:03.8564400Z GONOSUMDB=''
+2026-10-18T19:45:03.8564790Z GOOS='darwin'
+2026-10-18T19:45:03.8565130Z GOPACKAGESDRIVER=''
+2026-10-18T19:45:03.8565550Z GOPATH='/Users/runner/go'
+2026-10-18T19:45:03.8565960Z GOPRIVATE=''
+2026-10-18T19:45:03.8566510Z GOPROXY='https://proxy.golang.org,direct'
+2026-10-18T19:45:03.8583860Z GOROOT='/Users/runner/hostedtoolcache/go/1.27.2/arm64'
+2026-10-18T19:45:03.8587400Z GOSUMDB='sum.golang.org'
+2026-10-18T19:45:03.8588250Z GOTELEMETRY='local'
+2026-10-18T19:45:03.8589700Z GOTELEMETRYDIR='/Users/runner/Library/Application Support/go/telemetry'
+2026-10-18T19:45:03.8635220Z GOTMPDIR=''
+2026-10-18T19:45:03.8638580Z GOTOOLCHAIN='local'
+2026-10-18T19:45:03.8639440Z GOTOOLDIR='/Users/runner/hostedtoolcache/go/1.27.2/arm64/pkg/tool/darwin_arm64'
+2026-10-18T19:45:03.8640050Z GOVCS=''
+2026-10-18T19:45:03.8640300Z GOVERSION='go1.27.2'
+2026-10-18T19:45:03.8640710Z GOWORK='/Users/runner/work/skgo/skgo/go.work'
+2026-10-18T19:45:03.8641200Z PKG_CONFIG='pkg-config'
+2026-10-18T19:45:03.8641340Z 
+2026-10-18T19:45:03.8642080Z ##[endgroup]
+2026-10-18T19:45:03.9300190Z ##[group]Run jdx/mise-action@v4
+2026-10-18T19:45:03.9300560Z with:
+2026-10-18T19:45:03.9300830Z   working_directory: native
+2026-10-18T19:45:03.9301120Z   export_path: false
+2026-10-18T19:45:03.9301450Z   install: true
+2026-10-18T19:45:03.9301710Z   bootstrap: false
+2026-10-18T19:45:03.9301960Z   cache: true
+2026-10-18T19:45:03.9302220Z   cache_save: true
+2026-10-18T19:45:03.9302370Z   cache_key_prefix: mise-v1
+2026-10-18T19:45:03.9302610Z   experimental: false
+2026-10-18T19:45:03.9302900Z   log_level: info
+2026-10-18T19:45:03.9303130Z   reshim: false
+2026-10-18T19:45:03.9303330Z   add_shims_to_path: true
+2026-10-18T19:45:03.9305600Z   github_token: ***
+2026-10-18T19:45:03.9305800Z   fetch_from_github: true
+2026-10-18T19:45:03.9312810Z   env: true
+2026-10-18T19:45:03.9313090Z   wings_enabled: false
+2026-10-18T19:45:03.9313390Z env:
+2026-10-18T19:45:03.9313660Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/skgo/skgo
+2026-10-18T19:45:03.9314080Z   GOTOOLCHAIN: local
+2026-10-18T19:45:03.9314410Z ##[endgroup]
+2026-10-18T19:45:04.1507670Z ##[group]Restoring mise cache
+2026-10-18T19:45:05.0279880Z Cache hit for: mise-v1-macos-arm64-macos15-c9d02b6b515e2b1157bcfb685c6d337f44445056cbc6fca78a3895c7c1a448e4
+2026-10-18T19:45:06.3148240Z Received 0 of 133433799 (0.0%), 0.0 MBs/sec
+2026-10-18T19:45:07.3144430Z Received 58720256 of 133433799 (44.0%), 28.0 MBs/sec
+2026-10-18T19:45:08.3195730Z Received 129239495 of 133433799 (96.9%), 41.0 MBs/sec
+2026-10-18T19:45:08.3970990Z Received 133433799 of 133433799 (100.0%), 41.3 MBs/sec
+2026-10-18T19:45:08.3990780Z Cache Size: ~127 MB (133433799 B)
+2026-10-18T19:45:08.4499100Z [command]/opt/homebrew/bin/gtar -xf /Users/runner/work/_temp/a4646f14-c920-4a3d-ac65-9430a3b2b862/cache.tzst -P -C /Users/runner/work/skgo/skgo --delay-directory-restore --use-compress-program unzstd
+2026-10-18T19:45:11.4671510Z Cache restored successfully
+2026-10-18T19:45:11.4713040Z mise cache restored from key: mise-v1-macos-arm64-macos15-c9d02b6b515e2b1157bcfb685c6d337f44445056cbc6fca78a3895c7c1a448e4
+2026-10-18T19:45:11.4732340Z ##[group]Setting env vars
+2026-10-18T19:45:11.4733710Z Setting MISE_LOG_LEVEL=info
+2026-10-18T19:45:11.4788560Z Setting MISE_GITHUB_TOKEN=***
+2026-10-18T19:45:11.4789040Z Setting MISE_YES=1
+2026-10-18T19:45:11.4789370Z Adding /Users/runner/.local/share/mise/shims to PATH
+2026-10-18T19:45:11.4790000Z ##[group]Running mise --version
+2026-10-18T19:45:11.4790380Z [command]/Users/runner/.local/share/mise/bin/mise --version
+2026-10-18T19:45:11.5226520Z 2026.10.12 macos-arm64 (2026-10-16)
+2026-10-18T19:45:11.5249550Z ##[endgroup]
+2026-10-18T19:45:11.5408660Z Detected a mise lock file, running `mise install --locked`
+2026-10-18T19:45:11.5409910Z ##[group]Running mise install --locked
+2026-10-18T19:45:11.5426860Z [command]/Users/runner/.local/share/mise/bin/mise install --locked
+2026-10-18T19:45:11.5693390Z [2mmise[0m [2mby @jdx[0m – installing 2 tools
+2026-10-18T19:45:11.9154570Z [2mmise[0m [38;5;10m✓[0m [34maqua:yonaskolb/XcodeGen[0m@2.46.0  341ms  [2mxcodegen.zip[0m
+2026-10-18T19:45:14.5764320Z [2mmise[0m [36m████████[0m[31m[0m[2m░░░░░░░░[0m 1/2 · 3.0s
+2026-10-18T19:45:14.5864560Z   [34mzig[0m@0.17.0                      mirror 1/17 zig-aarch64-macos-0.17.0.tar.xz  3.0s
+2026-10-18T19:45:17.6219280Z [2mmise[0m [36m████████[0m[31m[0m[2m░░░░░░░░[0m 1/2 · 6.1s
+2026-10-18T19:45:17.6220740Z   [34mzig[0m@0.17.0                      mirror 1/17 zig-aarch64-macos-0.17.0.tar.xz  6.0s
+2026-10-18T19:45:20.6551190Z [2mmise[0m [36m██████████████[0m[31m[0m[2m░░[0m 1/2 · 9.1s
+2026-10-18T19:45:20.6565400Z   [34mzig[0m@0.17.0                      verifying checksum  9.1s  36.2/54.0 MB
+2026-10-18T19:45:23.7355910Z [2mmise[0m [36m██████████████[0m[31m[0m[2m░░[0m 1/2 · 12.2s
+2026-10-18T19:45:23.7458070Z   [34mzig[0m@0.17.0                      extracting  12.2s
+2026-10-18T19:45:26.7732740Z [2mmise[0m [36m██████████████[0m[31m[0m[2m░░[0m 1/2 · 15.2s
+2026-10-18T19:45:26.7738150Z   [34mzig[0m@0.17.0                      extracting  15.2s
+2026-10-18T19:45:29.8428050Z [2mmise[0m [36m██████████████[0m[31m[0m[2m░░[0m 1/2 · 18.3s
+2026-10-18T19:45:29.8429380Z   [34mzig[0m@0.17.0                      extracting  18.3s
+2026-10-18T19:45:32.9826940Z [2mmise[0m [36m██████████████[0m[31m[0m[2m░░[0m 1/2 · 21.4s
+2026-10-18T19:45:32.9828000Z   [34mzig[0m@0.17.0                      extracting  21.4s
+2026-10-18T19:45:33.9399810Z [2mmise[0m [34mzig[0m@0.17.0 0.17.0
+2026-10-18T19:45:33.9904780Z [2mmise[0m [38;5;10m✓[0m [34mzig[0m@0.17.0                      22.4s
+2026-10-18T19:45:33.9931810Z [2mmise[0m [36m████████████████[0m[31m[0m[2m[0m 2/2 · installed 2 tools in 22.4s
+2026-10-18T19:45:34.0656790Z ##[endgroup]
+2026-10-18T19:45:34.0662250Z ##[group]Running mise ls
+2026-10-18T19:45:34.0700010Z [command]/Users/runner/.local/share/mise/bin/mise ls
+2026-10-18T19:45:34.1134980Z aqua:yonaskolb/XcodeGen  2.46.0   ~/work/skgo/skgo/native/mise.toml  2.46.0
+2026-10-18T19:45:34.1136360Z node                     24.22.0
+2026-10-18T19:45:34.1137120Z npm:vite-plus            1.3.0
+2026-10-18T19:45:34.1138000Z zig                      0.17.0   ~/work/skgo/skgo/native/mise.toml  0.17.0
+2026-10-18T19:45:34.1143360Z ##[endgroup]
+2026-10-18T19:45:34.1147670Z ##[group]Exporting mise environment variables
+2026-10-18T19:45:34.1508970Z [command]/Users/runner/.local/share/mise/bin/mise env --json
+2026-10-18T19:45:34.1663710Z {
+2026-10-18T19:45:34.1668960Z   "PATH": "/Users/runner/.local/share/mise/installs/zig/0.17.0/bin:/Users/runner/.local/share/mise/installs/aqua-yonaskolb-xcode-gen/2.46.0/xcodegen/bin:/Users/runner/.local/share/mise/shims:/Users/runner/.local/share/mise/bin:/Users/runner/go/bin:/Users/runner/hostedtoolcache/go/1.27.2/arm64/bin:/opt/homebrew/lib/ruby/gems/3.3.0/bin:/opt/homebrew/opt/ruby@3.3/bin:/Users/runner/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/runner/.cargo/bin:/usr/local/opt/curl/bin:/usr/local/bin:/usr/local/sbin:/Users/runner/bin:/Users/runner/.yarn/bin:/Users/runner/Library/Android/sdk/tools:/Users/runner/Library/Android/sdk/platform-tools:/Library/Frameworks/Python.framework/Versions/Current/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/usr/bin:/bin:/usr/sbin:/sbin:/Users/runner/.dotnet/tools"
+2026-10-18T19:45:34.1671700Z }
+2026-10-18T19:45:34.1678740Z ##[endgroup]
+2026-10-18T19:45:34.2554030Z ##[group]Run mise -C example install
+2026-10-18T19:45:34.2555210Z [36;1mmise -C example install[0m
+2026-10-18T19:45:34.4383210Z shell: /bin/bash -e {0}
+2026-10-18T19:45:34.4383650Z env:
+2026-10-18T19:45:34.4384030Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/skgo/skgo
+2026-10-18T19:45:34.4384460Z   GOTOOLCHAIN: local
+2026-10-18T19:45:34.4384750Z   MISE_LOG_LEVEL: info
+2026-10-18T19:45:34.4388000Z   MISE_GITHUB_TOKEN: ***
+2026-10-18T19:45:34.4388340Z   MISE_YES: 1
+2026-10-18T19:45:34.4388630Z ##[endgroup]
+2026-10-18T19:45:34.5662170Z [2mmise[0m [2mby @jdx[0m – installing 2 tools
+2026-10-18T19:45:34.5677810Z [2mmise[0m [38;5;11m⇢[0m node@24.22.0         1ms · already installed
+2026-10-18T19:45:34.5689180Z [2mmise[0m [38;5;11m⇢[0m npm:vite-plus@1.3.0  1ms · already installed
+2026-10-18T19:45:34.5691190Z [2mmise[0m [36m████████████████[0m[31m[0m[2m[0m 2/2 · installed 0 tools · 2 already installed in 3ms
+2026-10-18T19:45:34.5693880Z [2mmise[0m all tools are installed
+2026-10-18T19:45:34.5905220Z ##[group]Run mise -C example/web exec -- vp install --frozen-lockfile
+2026-10-18T19:45:34.5905990Z [36;1mmise -C example/web exec -- vp install --frozen-lockfile[0m
+2026-10-18T19:45:34.5978200Z shell: /bin/bash -e {0}
+2026-10-18T19:45:34.5978620Z env:
+2026-10-18T19:45:34.5979040Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/skgo/skgo
+2026-10-18T19:45:34.5979530Z   GOTOOLCHAIN: local
+2026-10-18T19:45:34.5979770Z   MISE_LOG_LEVEL: info
+2026-10-18T19:45:34.5982420Z   MISE_GITHUB_TOKEN: ***
+2026-10-18T19:45:34.5982800Z   MISE_YES: 1
+2026-10-18T19:45:34.5983030Z ##[endgroup]
+2026-10-18T19:45:36.0513310Z ? Verifying lockfile against supply-chain policies (206 entries)...
+2026-10-18T19:45:36.3454130Z Downloading @oxlint/binding-darwin-arm64@1.88.0: 0.00 B/5.51 MB
+2026-10-18T19:45:36.4389240Z Packages are cloned from the content-addressable store to the virtual store.
+2026-10-18T19:45:36.4511250Z   Content-addressable store is at: /Users/runner/Library/pnpm/store/v11
+2026-10-18T19:45:36.4654350Z   Virtual store is at:             node_modules/.pnpm
+2026-10-18T19:45:36.6272330Z Downloading @voidzero-dev/vite-plus-darwin-arm64@1.3.0: 0.00 B/18.83 MB
+2026-10-18T19:45:36.7036480Z Downloading @oxlint-tsgolint/darwin-arm64@7.0.2004: 0.00 B/7.50 MB
+2026-10-18T19:45:37.7248490Z ✓ Lockfile passes supply-chain policies (206 entries in 1.7s)
+2026-10-18T19:45:37.7249920Z Lockfile is up to date, resolution step is skipped
+2026-10-18T19:45:38.7898280Z Progress: resolved 137, reused 0, downloaded 135, added 128
+2026-10-18T19:45:38.9327270Z Packages: +137
+2026-10-18T19:45:38.9338560Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-10-18T19:45:38.9904110Z Progress: resolved 137, reused 0, downloaded 137, added 137, done
+2026-10-18T19:45:39.1112250Z 
+2026-10-18T19:45:39.1151920Z dependencies:
+2026-10-18T19:45:39.1205950Z + bits-ui 2.19.5
+2026-10-18T19:45:39.1207660Z + yaml 2.9.1
+2026-10-18T19:45:39.1207960Z 
+2026-10-18T19:45:39.1208260Z devDependencies:
+2026-10-18T19:45:39.1208740Z + @opentelemetry/api 1.9.1
+2026-10-18T19:45:39.1209230Z + @opentelemetry/sdk-trace-base 2.12.0
+2026-10-18T19:45:39.1211260Z + @opentelemetry/sdk-trace-node 2.12.0
+2026-10-18T19:45:39.1240110Z + @skgo/sveltekit-adapter <- ../../internal/adapter
+2026-10-18T19:45:39.1254410Z + @sveltejs/kit 3.1.0
+2026-10-18T19:45:39.1254950Z + @sveltejs/vite-plugin-svelte 7.3.1
+2026-10-18T19:45:39.1255320Z + @types/node 24.19.2
+2026-10-18T19:45:39.1255670Z + prettier 3.9.10
+2026-10-18T19:45:39.1256000Z + prettier-plugin-svelte 4.1.1
+2026-10-18T19:45:39.1256610Z + svelte 5.57.2
+2026-10-18T19:45:39.1257030Z + svelte-check 4.7.7
+2026-10-18T19:45:39.1257310Z + typescript 6.0.3
+2026-10-18T19:45:39.1257670Z + vite <- @voidzero-dev/vite-plus-core 1.3.0
+2026-10-18T19:45:39.1258070Z + vite-plus 1.3.0
+2026-10-18T19:45:39.1258400Z 
+2026-10-18T19:45:39.1258650Z Done in 3.3s using pnpm v12.14.0
+2026-10-18T19:45:39.1388910Z ##[group]Run go test -count=1 -race ./native ./internal/swiftgen
+2026-10-18T19:45:39.1389510Z [36;1mgo test -count=1 -race ./native ./internal/swiftgen[0m
+2026-10-18T19:45:39.1451220Z shell: /bin/bash -e {0}
+2026-10-18T19:45:39.1451470Z env:
+2026-10-18T19:45:39.1451710Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/skgo/skgo
+2026-10-18T19:45:39.1452020Z   GOTOOLCHAIN: local
+2026-10-18T19:45:39.1452220Z   MISE_LOG_LEVEL: info
+2026-10-18T19:45:39.1457150Z   MISE_GITHUB_TOKEN: ***
+2026-10-18T19:45:39.1457360Z   MISE_YES: 1
+2026-10-18T19:45:39.1457530Z ##[endgroup]
+2026-10-18T19:49:06.6285010Z ok  	github.com/tylergannon/skgo/native	172.764s
+2026-10-18T19:49:06.6286470Z ok  	github.com/tylergannon/skgo/internal/swiftgen	14.857s
+2026-10-18T19:49:07.2150710Z ##[group]Run go test -count=1 -race ./internal/gen -run 'TestNative|TestGeneratedSwift'
+2026-10-18T19:49:07.2151550Z [36;1mgo test -count=1 -race ./internal/gen -run 'TestNative|TestGeneratedSwift'[0m
+2026-10-18T19:49:07.2490630Z shell: /bin/bash -e {0}
+2026-10-18T19:49:07.2490990Z env:
+2026-10-18T19:49:07.2491280Z   MISE_TRUSTED_CONFIG_PATHS: /Users/runner/work/skgo/skgo
+2026-10-18T19:49:07.2491670Z   GOTOOLCHAIN: local
+2026-10-18T19:49:07.2491910Z   MISE_LOG_LEVEL: info
+2026-10-18T19:49:07.2494590Z   MISE_GITHUB_TOKEN: ***
+2026-10-18T19:49:07.2494910Z   MISE_YES: 1
+2026-10-18T19:49:07.2495120Z ##[endgroup]
+2026-10-18T19:50:16.7337780Z --- FAIL: TestNativeSelectionAndOutputAdmission (1.07s)
+2026-10-18T19:50:16.7341150Z     --- FAIL: TestNativeSelectionAndOutputAdmission/unknown (0.40s)
+2026-10-18T19:50:16.7344880Z         swift_test.go:261: error=skgo: github.com/tylergannon/skgo: -: # github.com/tylergannon/skgo
+2026-10-18T19:50:16.7544180Z ##[error]            /private/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/TestNativeSelectionAndOutputAdmissionunknown2810643848/001/skgo/skgo.go:139:10: undefined: Reroute; want unknown Swift remote
+2026-10-18T19:50:16.7567610Z     --- FAIL: TestNativeSelectionAndOutputAdmission/duplicate (0.30s)
+2026-10-18T19:50:16.7568730Z         swift_test.go:261: error=skgo: github.com/tylergannon/skgo: -: # github.com/tylergannon/skgo
+2026-10-18T19:50:16.7572860Z ##[error]            /private/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/TestNativeSelectionAndOutputAdmissionduplicate707246540/001/skgo/skgo.go:139:10: undefined: Reroute; want duplicate Swift selection
+2026-10-18T19:50:16.7577160Z --- FAIL: TestNativeUnsupportedKindsAndTransports (0.72s)
+2026-10-18T19:50:16.7577830Z     --- FAIL: TestNativeUnsupportedKindsAndTransports/live (0.38s)
+2026-10-18T19:50:16.7578730Z         swift_test.go:292: error=skgo: github.com/tylergannon/skgo: -: # github.com/tylergannon/skgo
+2026-10-18T19:50:16.7593890Z ##[error]            /private/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/TestNativeUnsupportedKindsAndTransportslive3186454605/001/skgo/skgo.go:139:10: undefined: Reroute
+2026-10-18T19:50:16.7595760Z     --- FAIL: TestNativeUnsupportedKindsAndTransports/transport (0.34s)
+2026-10-18T19:50:16.7596850Z         swift_test.go:292: error=skgo: github.com/tylergannon/skgo: -: # github.com/tylergannon/skgo
+2026-10-18T19:50:16.7598550Z ##[error]            /private/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/TestNativeUnsupportedKindsAndTransportstransport3711755533/001/skgo/skgo.go:139:10: undefined: Reroute
+2026-10-18T19:50:16.7600280Z FAIL
+2026-10-18T19:50:16.7601380Z FAIL	github.com/tylergannon/skgo/internal/gen	53.667s
+2026-10-18T19:50:16.7602110Z FAIL
+2026-10-18T19:50:16.8136560Z ##[error]Process completed with exit code 1.
+2026-10-18T19:50:16.8425210Z Post job cleanup.
+2026-10-18T19:50:17.2647010Z [command]/opt/homebrew/bin/git version
+2026-10-18T19:50:17.2864020Z git version 2.55.0
+2026-10-18T19:50:17.2887300Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/d6cb3a3b-6fa0-4391-84f6-1cda0547e4f0/.gitconfig'
+2026-10-18T19:50:17.2897390Z Temporarily overriding HOME='/Users/runner/work/_temp/d6cb3a3b-6fa0-4391-84f6-1cda0547e4f0' before making global git config changes
+2026-10-18T19:50:17.2899340Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-18T19:50:17.2903860Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/skgo/skgo
+2026-10-18T19:50:17.3039040Z Removing SSH command configuration
+2026-10-18T19:50:17.3049450Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-18T19:50:17.3120860Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-18T19:50:17.4374770Z Removing HTTP extra header
+2026-10-18T19:50:17.4383240Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-18T19:50:17.4468260Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-18T19:50:17.5453130Z Removing includeIf entries pointing to credentials config files
+2026-10-18T19:50:17.5555300Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-18T19:50:17.5659990Z includeif.gitdir:/Users/runner/work/skgo/skgo/.git.path
+2026-10-18T19:50:17.5661330Z includeif.gitdir:/Users/runner/work/skgo/skgo/.git/worktrees/*.path
+2026-10-18T19:50:17.5699770Z includeif.gitdir:/github/workspace/.git.path
+2026-10-18T19:50:17.5700520Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-18T19:50:17.5701630Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/Users/runner/work/skgo/skgo/.git.path
+2026-10-18T19:50:17.5702450Z /Users/runner/work/_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config
+2026-10-18T19:50:17.5834000Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/Users/runner/work/skgo/skgo/.git.path \/Users\/runner\/work\/_temp\/git\-credentials\-dc796f9c\-00c5\-46a0\-92cb\-32c6ffb792f0\.config
+2026-10-18T19:50:17.5835580Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/Users/runner/work/skgo/skgo/.git/worktrees/*.path
+2026-10-18T19:50:17.5902920Z /Users/runner/work/_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config
+2026-10-18T19:50:17.5920020Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/Users/runner/work/skgo/skgo/.git/worktrees/*.path \/Users\/runner\/work\/_temp\/git\-credentials\-dc796f9c\-00c5\-46a0\-92cb\-32c6ffb792f0\.config
+2026-10-18T19:50:17.6011410Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-18T19:50:17.6094770Z /github/runner_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config
+2026-10-18T19:50:17.6100360Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-dc796f9c\-00c5\-46a0\-92cb\-32c6ffb792f0\.config
+2026-10-18T19:50:17.6170680Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-18T19:50:17.6230110Z /github/runner_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config
+2026-10-18T19:50:17.6235560Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-dc796f9c\-00c5\-46a0\-92cb\-32c6ffb792f0\.config
+2026-10-18T19:50:17.6306440Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-18T19:50:17.7253050Z Removing credentials config '/Users/runner/work/_temp/git-credentials-dc796f9c-00c5-46a0-92cb-32c6ffb792f0.config'
+2026-10-18T19:50:17.7384650Z Cleaning up orphan processes

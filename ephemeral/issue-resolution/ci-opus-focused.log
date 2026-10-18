@@ -1,0 +1,46 @@
+### adapter: TestPrerenderRerouteFetchPrecedesLogicalRequest (shipped prerender.js)
+=== RUN   TestPrerenderRerouteFetchPrecedesLogicalRequest
+--- PASS: TestPrerenderRerouteFetchPrecedesLogicalRequest (0.21s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	0.405s
+exit=0
+
+### mutation: same test against HEAD (pre-fix) prerender.js via /tmp overlay — expected FAIL
+=== RUN   TestPrerenderRerouteFetchPrecedesLogicalRequest
+    prerender_reroute_test.go:91: pre-handle reroute callback: exit status 1
+        file:///private/tmp/skgo-reroute-mutation/skgo-adapter/prerender.js:965
+                response.on("end", () => reject(new Error(`skgo prerender ${kind} HTTP ${response.statusCode}: ${detail}`)));
+                                                ^
+        
+        Error: skgo prerender fetch-begin HTTP 409: no logical request exists before reroute
+        
+            at IncomingMessage.<anonymous> (file:///private/tmp/skgo-reroute-mutation/skgo-adapter/prerender.js:965:41)
+            at IncomingMessage.emit (node:events:526:24)
+            at endReadableNT (node:internal/streams/readable:1783:12)
+            at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+        
+        Node.js v24.22.0
+--- FAIL: TestPrerenderRerouteFetchPrecedesLogicalRequest (0.22s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	0.442s
+FAIL
+exit=1
+
+### example: existing repair-build dist (no rebuild)
+=== RUN   TestGoRerouteSelectsApplicationRoutes
+=== RUN   TestGoRerouteSelectsApplicationRoutes//go-alias/page?receipt=handler
+=== RUN   TestGoRerouteSelectsApplicationRoutes//go-alias/page/__data.json?receipt=handler&x-sveltekit-invalidated=11
+=== RUN   TestGoRerouteSelectsApplicationRoutes//go-alias/endpoint?receipt=handler
+=== RUN   TestGoRerouteSelectsApplicationRoutes//rerouted/42?receipt=direct
+=== RUN   TestGoRerouteSelectsApplicationRoutes//api/rerouted/12?receipt=direct
+--- PASS: TestGoRerouteSelectsApplicationRoutes (0.10s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//go-alias/page?receipt=handler (0.00s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//go-alias/page/__data.json?receipt=handler&x-sveltekit-invalidated=11 (0.00s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//go-alias/endpoint?receipt=handler (0.00s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//rerouted/42?receipt=direct (0.00s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//api/rerouted/12?receipt=direct (0.00s)
+=== RUN   TestEveryPrerenderedPathIsServedFromItsFile
+--- PASS: TestEveryPrerenderedPathIsServedFromItsFile (0.06s)
+PASS
+ok  	github.com/tylergannon/skgo/example	0.435s
+exit=0

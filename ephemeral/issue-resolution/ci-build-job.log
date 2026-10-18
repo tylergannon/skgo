@@ -1,0 +1,913 @@
+﻿2026-10-18T19:44:15.6722430Z Current runner version: '2.337.0'
+2026-10-18T19:44:15.6743639Z ##[group]Runner Image Provisioner
+2026-10-18T19:44:15.6744454Z Hosted Compute Agent
+2026-10-18T19:44:15.6744952Z Version: 20261012.601
+2026-10-18T19:44:15.6745478Z Commit: f3dc54e1fb89da6852db922499a0233137369e1d
+2026-10-18T19:44:15.6746112Z Build Date: 2026-10-12T17:48:21Z
+2026-10-18T19:44:15.6746667Z Worker ID: {e78714cb-7255-42f6-a702-b08046f8d449}
+2026-10-18T19:44:15.6747244Z Region: westus3
+2026-10-18T19:44:15.6747783Z Cloud: Azure
+2026-10-18T19:44:15.6748308Z ##[endgroup]
+2026-10-18T19:44:15.6749695Z ##[group]Operating System
+2026-10-18T19:44:15.6750265Z Ubuntu
+2026-10-18T19:44:15.6750711Z 24.04.5
+2026-10-18T19:44:15.6751191Z LTS
+2026-10-18T19:44:15.6751625Z ##[endgroup]
+2026-10-18T19:44:15.6752102Z ##[group]Runner Image
+2026-10-18T19:44:15.6752629Z Image: ubuntu-24.04
+2026-10-18T19:44:15.6753132Z Version: 20261012.334.1
+2026-10-18T19:44:15.6754206Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261012.334/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-18T19:44:15.6755439Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261012.334
+2026-10-18T19:44:15.6756228Z ##[endgroup]
+2026-10-18T19:44:15.6757180Z ##[group]GITHUB_TOKEN Permissions
+2026-10-18T19:44:15.6758792Z Contents: read
+2026-10-18T19:44:15.6759405Z Metadata: read
+2026-10-18T19:44:15.6759941Z ##[endgroup]
+2026-10-18T19:44:15.6761676Z Secret source: Actions
+2026-10-18T19:44:15.6762520Z Cache mode: write
+2026-10-18T19:44:15.6763080Z Prepare workflow directory
+2026-10-18T19:44:15.7168467Z Prepare all required actions
+2026-10-18T19:44:15.7206681Z Getting action download info
+2026-10-18T19:44:16.0151133Z Download action repository 'actions/checkout@v7' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-10-18T19:44:16.0974911Z Download action repository 'actions/setup-go@v7' (SHA:b7ad1dad31e06c5925ef5d2fc7ad053ef454303e)
+2026-10-18T19:44:16.9061256Z Download action repository 'jdx/mise-action@v4' (SHA:c2a87611a18de5b3828c5652fe268e992400cb5c)
+2026-10-18T19:44:17.8647883Z Download action repository 'extractions/setup-just@v4' (SHA:53165ef7e734c5c07cb06b3c8e7b647c5aa16db3)
+2026-10-18T19:44:18.1759323Z Getting action download info
+2026-10-18T19:44:18.2985099Z Download action repository 'extractions/setup-crate@0551596312d4008a6dfbc4d3c38fa20eaef46d2d' (SHA:0551596312d4008a6dfbc4d3c38fa20eaef46d2d)
+2026-10-18T19:44:18.7261118Z Complete job name: Build, tests, and Conventional Commit
+2026-10-18T19:44:18.7780825Z ##[group]Run actions/checkout@v7
+2026-10-18T19:44:18.7781235Z with:
+2026-10-18T19:44:18.7781419Z   repository: tylergannon/skgo
+2026-10-18T19:44:18.7783333Z   token: ***
+2026-10-18T19:44:18.7783519Z   ssh-strict: true
+2026-10-18T19:44:18.7783695Z   ssh-user: git
+2026-10-18T19:44:18.7783878Z   persist-credentials: true
+2026-10-18T19:44:18.7784072Z   clean: true
+2026-10-18T19:44:18.7784264Z   sparse-checkout-cone-mode: true
+2026-10-18T19:44:18.7784487Z   fetch-depth: 1
+2026-10-18T19:44:18.7784677Z   fetch-tags: false
+2026-10-18T19:44:18.7784875Z   show-progress: true
+2026-10-18T19:44:18.7785047Z   lfs: false
+2026-10-18T19:44:18.7785204Z   submodules: false
+2026-10-18T19:44:18.7785376Z   set-safe-directory: true
+2026-10-18T19:44:18.7785581Z   allow-unsafe-pr-checkout: false
+2026-10-18T19:44:18.7785922Z env:
+2026-10-18T19:44:18.7786125Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/skgo/skgo
+2026-10-18T19:44:18.7786382Z ##[endgroup]
+2026-10-18T19:44:18.8565882Z Syncing repository: tylergannon/skgo
+2026-10-18T19:44:18.8567461Z ##[group]Getting Git version info
+2026-10-18T19:44:18.8567912Z Working directory is '/home/runner/work/skgo/skgo'
+2026-10-18T19:44:18.8568725Z [command]/usr/bin/git version
+2026-10-18T19:44:18.8792999Z git version 2.55.0
+2026-10-18T19:44:18.8808830Z ##[endgroup]
+2026-10-18T19:44:18.8817596Z Temporarily overriding HOME='/home/runner/work/_temp/b63f0e1b-242f-4d31-99aa-3f155e23f91d' before making global git config changes
+2026-10-18T19:44:18.8818755Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-18T19:44:18.8822945Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/skgo/skgo
+2026-10-18T19:44:18.8866426Z Deleting the contents of '/home/runner/work/skgo/skgo'
+2026-10-18T19:44:18.8869564Z ##[group]Determining repository object format
+2026-10-18T19:44:18.8870831Z ##[endgroup]
+2026-10-18T19:44:18.8871416Z ##[group]Initializing the repository
+2026-10-18T19:44:18.8874149Z [command]/usr/bin/git init /home/runner/work/skgo/skgo
+2026-10-18T19:44:18.8946898Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-18T19:44:18.8947635Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-18T19:44:18.9018763Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-18T19:44:18.9019452Z hint: call:
+2026-10-18T19:44:18.9019711Z hint:
+2026-10-18T19:44:18.9020060Z hint: 	git config --global init.defaultBranch <name>
+2026-10-18T19:44:18.9020461Z hint:
+2026-10-18T19:44:18.9020857Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-18T19:44:18.9021539Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-18T19:44:18.9022023Z hint:
+2026-10-18T19:44:18.9022329Z hint: 	git branch -m <name>
+2026-10-18T19:44:18.9022633Z hint:
+2026-10-18T19:44:18.9023075Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-18T19:44:18.9024071Z Initialized empty Git repository in /home/runner/work/skgo/skgo/.git/
+2026-10-18T19:44:18.9025886Z [command]/usr/bin/git remote add origin https://github.com/tylergannon/skgo
+2026-10-18T19:44:18.9027268Z ##[endgroup]
+2026-10-18T19:44:18.9027926Z ##[group]Disabling automatic garbage collection
+2026-10-18T19:44:18.9028445Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-18T19:44:18.9059105Z ##[endgroup]
+2026-10-18T19:44:18.9059879Z ##[group]Setting up auth
+2026-10-18T19:44:18.9060248Z Removing SSH command configuration
+2026-10-18T19:44:18.9064688Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-18T19:44:18.9096449Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-18T19:44:19.0175979Z Removing HTTP extra header
+2026-10-18T19:44:19.0181037Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-18T19:44:19.0210573Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-18T19:44:19.0394624Z Removing includeIf entries pointing to credentials config files
+2026-10-18T19:44:19.0398162Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-18T19:44:19.0428233Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-18T19:44:19.0616245Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-18T19:44:19.0648991Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/skgo/skgo/.git.path /home/runner/work/_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config
+2026-10-18T19:44:19.0677167Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/skgo/skgo/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config
+2026-10-18T19:44:19.0708093Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config
+2026-10-18T19:44:19.0737363Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config
+2026-10-18T19:44:19.0764152Z ##[endgroup]
+2026-10-18T19:44:19.0764598Z ##[group]Fetching the repository
+2026-10-18T19:44:19.0769982Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +9ef8a93720f6c9ed1fe40136acc8b171a18b7d80:refs/remotes/origin/codex/reliability-fixes
+2026-10-18T19:44:21.0327441Z From https://github.com/tylergannon/skgo
+2026-10-18T19:44:21.0328685Z  * [new ref]         9ef8a93720f6c9ed1fe40136acc8b171a18b7d80 -> origin/codex/reliability-fixes
+2026-10-18T19:44:21.0335332Z [command]/usr/bin/git branch --list --remote origin/codex/reliability-fixes
+2026-10-18T19:44:21.0361485Z   origin/codex/reliability-fixes
+2026-10-18T19:44:21.0375847Z [command]/usr/bin/git rev-parse refs/remotes/origin/codex/reliability-fixes
+2026-10-18T19:44:21.0393367Z 9ef8a93720f6c9ed1fe40136acc8b171a18b7d80
+2026-10-18T19:44:21.0396654Z ##[endgroup]
+2026-10-18T19:44:21.0397178Z ##[group]Determining the checkout info
+2026-10-18T19:44:21.0397765Z ##[endgroup]
+2026-10-18T19:44:21.0401365Z [command]/usr/bin/git sparse-checkout disable
+2026-10-18T19:44:21.0446510Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-18T19:44:21.0482173Z ##[group]Checking out the ref
+2026-10-18T19:44:21.0482926Z [command]/usr/bin/git checkout --progress --force -B codex/reliability-fixes refs/remotes/origin/codex/reliability-fixes
+2026-10-18T19:44:21.2789589Z Switched to a new branch 'codex/reliability-fixes'
+2026-10-18T19:44:21.2798324Z branch 'codex/reliability-fixes' set up to track 'origin/codex/reliability-fixes'.
+2026-10-18T19:44:21.2803448Z ##[endgroup]
+2026-10-18T19:44:21.2846584Z [command]/usr/bin/git log -1 --format=%H
+2026-10-18T19:44:21.2874114Z 9ef8a93720f6c9ed1fe40136acc8b171a18b7d80
+2026-10-18T19:44:21.3087748Z ##[group]Run actions/setup-go@v7
+2026-10-18T19:44:21.3087979Z with:
+2026-10-18T19:44:21.3088146Z   go-version: 1.27.2
+2026-10-18T19:44:21.3088386Z   cache-dependency-path: go.sum
+go.work.sum
+example/go.sum
+
+2026-10-18T19:44:21.3088697Z   check-latest: false
+2026-10-18T19:44:21.3090689Z   token: ***
+2026-10-18T19:44:21.3090859Z   cache: true
+2026-10-18T19:44:21.3091023Z env:
+2026-10-18T19:44:21.3091227Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/skgo/skgo
+2026-10-18T19:44:21.3091481Z ##[endgroup]
+2026-10-18T19:44:21.3971683Z Setup go version spec 1.27.2
+2026-10-18T19:44:21.3977061Z Attempting to download 1.27.2...
+2026-10-18T19:44:22.3290179Z matching 1.27.2...
+2026-10-18T19:44:22.3301141Z Acquiring 1.27.2 from https://github.com/actions/go-versions/releases/download/1.27.2-37875086547/go-1.27.2-linux-x64.tar.gz
+2026-10-18T19:44:22.8839080Z Extracting Go...
+2026-10-18T19:44:22.8929389Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/9a486732-07c9-4102-a4d6-7adc14bd4251 -f /home/runner/work/_temp/06bac42c-8898-4306-a5ab-c91babe4520e
+2026-10-18T19:44:24.3233388Z Successfully extracted go to /home/runner/work/_temp/9a486732-07c9-4102-a4d6-7adc14bd4251
+2026-10-18T19:44:24.3233888Z Adding to the cache ...
+2026-10-18T19:44:29.2546762Z Successfully cached go to /opt/hostedtoolcache/go/1.27.2/x64
+2026-10-18T19:44:29.2548626Z Added go to the path
+2026-10-18T19:44:29.2550417Z Successfully set up Go version 1.27.2
+2026-10-18T19:44:29.2713421Z [command]/opt/hostedtoolcache/go/1.27.2/x64/bin/go env GOMODCACHE
+2026-10-18T19:44:29.2740403Z [command]/opt/hostedtoolcache/go/1.27.2/x64/bin/go env GOCACHE
+2026-10-18T19:44:29.2767007Z /home/runner/go/pkg/mod
+2026-10-18T19:44:29.2780402Z /home/runner/.cache/go-build
+2026-10-18T19:44:29.4808548Z Cache hit for: setup-go-Linux-x64-ubuntu24-go-1.27.2-174ae9008b7a6d85bd0955c4a6a785df4c52946508205f8d5d4e3f57425f742e
+2026-10-18T19:44:30.6969085Z Received 33554432 of 493320490 (6.8%), 32.0 MBs/sec
+2026-10-18T19:44:31.6978806Z Received 205520896 of 493320490 (41.7%), 98.0 MBs/sec
+2026-10-18T19:44:32.6974727Z Received 398458880 of 493320490 (80.8%), 126.6 MBs/sec
+2026-10-18T19:44:33.3145662Z Received 493320490 of 493320490 (100.0%), 130.0 MBs/sec
+2026-10-18T19:44:33.3146625Z Cache Size: ~470 MB (493320490 B)
+2026-10-18T19:44:33.3214363Z [command]/usr/bin/tar -xf /home/runner/work/_temp/7c07c040-e1c5-4861-ac00-7baa7a482fc3/cache.tzst -P -C /home/runner/work/skgo/skgo --use-compress-program unzstd
+2026-10-18T19:44:38.5890423Z Cache restored successfully
+2026-10-18T19:44:38.6085331Z Cache restored from key: setup-go-Linux-x64-ubuntu24-go-1.27.2-174ae9008b7a6d85bd0955c4a6a785df4c52946508205f8d5d4e3f57425f742e
+2026-10-18T19:44:38.6103605Z go version go1.27.2 linux/amd64
+2026-10-18T19:44:38.6103773Z 
+2026-10-18T19:44:38.6104033Z ##[group]go env
+2026-10-18T19:44:38.7506660Z AR='ar'
+2026-10-18T19:44:38.7506942Z CC='gcc'
+2026-10-18T19:44:38.7507217Z CGO_CFLAGS='-O2 -g'
+2026-10-18T19:44:38.7507510Z CGO_CPPFLAGS=''
+2026-10-18T19:44:38.7507812Z CGO_CXXFLAGS='-O2 -g'
+2026-10-18T19:44:38.7508109Z CGO_ENABLED='1'
+2026-10-18T19:44:38.7508386Z CGO_FFLAGS='-O2 -g'
+2026-10-18T19:44:38.7508658Z CGO_LDFLAGS='-O2 -g'
+2026-10-18T19:44:38.7508951Z CXX='g++'
+2026-10-18T19:44:38.7509354Z GCCGO='gccgo'
+2026-10-18T19:44:38.7509618Z GO111MODULE=''
+2026-10-18T19:44:38.7509873Z GOAMD64='v1'
+2026-10-18T19:44:38.7510138Z GOARCH='amd64'
+2026-10-18T19:44:38.7510383Z GOAUTH='netrc'
+2026-10-18T19:44:38.7510690Z GOBIN='/home/runner/go/bin'
+2026-10-18T19:44:38.7511033Z GOCACHE='/home/runner/.cache/go-build'
+2026-10-18T19:44:38.7511384Z GOCACHEPROG=''
+2026-10-18T19:44:38.7511636Z GODEBUG=''
+2026-10-18T19:44:38.7511927Z GOENV='/home/runner/.config/go/env'
+2026-10-18T19:44:38.7512181Z GOEXE=''
+2026-10-18T19:44:38.7512343Z GOEXPERIMENT=''
+2026-10-18T19:44:38.7512523Z GOFIPS140='off'
+2026-10-18T19:44:38.7512688Z GOFLAGS=''
+2026-10-18T19:44:38.7513468Z GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build2593860277=/tmp/go-build -gno-record-gcc-switches'
+2026-10-18T19:44:38.7513991Z GOHOSTARCH='amd64'
+2026-10-18T19:44:38.7514180Z GOHOSTOS='linux'
+2026-10-18T19:44:38.7514352Z GOINSECURE=''
+2026-10-18T19:44:38.7514544Z GOMOD='/home/runner/work/skgo/skgo/go.mod'
+2026-10-18T19:44:38.7514797Z GOMODCACHE='/home/runner/go/pkg/mod'
+2026-10-18T19:44:38.7515017Z GONOPROXY=''
+2026-10-18T19:44:38.7515184Z GONOSUMDB=''
+2026-10-18T19:44:38.7515343Z GOOS='linux'
+2026-10-18T19:44:38.7515508Z GOPACKAGESDRIVER=''
+2026-10-18T19:44:38.7515700Z GOPATH='/home/runner/go'
+2026-10-18T19:44:38.7515895Z GOPRIVATE=''
+2026-10-18T19:44:38.7516125Z GOPROXY='https://proxy.golang.org,direct'
+2026-10-18T19:44:38.7516396Z GOROOT='/opt/hostedtoolcache/go/1.27.2/x64'
+2026-10-18T19:44:38.7516646Z GOSUMDB='sum.golang.org'
+2026-10-18T19:44:38.7516849Z GOTELEMETRY='local'
+2026-10-18T19:44:38.7517068Z GOTELEMETRYDIR='/home/runner/.config/go/telemetry'
+2026-10-18T19:44:38.7517314Z GOTMPDIR=''
+2026-10-18T19:44:38.7517482Z GOTOOLCHAIN='local'
+2026-10-18T19:44:38.7517759Z GOTOOLDIR='/opt/hostedtoolcache/go/1.27.2/x64/pkg/tool/linux_amd64'
+2026-10-18T19:44:38.7518054Z GOVCS=''
+2026-10-18T19:44:38.7518232Z GOVERSION='go1.27.2'
+2026-10-18T19:44:38.7518452Z GOWORK='/home/runner/work/skgo/skgo/go.work'
+2026-10-18T19:44:38.7518711Z PKG_CONFIG='pkg-config'
+2026-10-18T19:44:38.7518829Z 
+2026-10-18T19:44:38.7519294Z ##[endgroup]
+2026-10-18T19:44:38.7782315Z ##[group]Run jdx/mise-action@v4
+2026-10-18T19:44:38.7782542Z with:
+2026-10-18T19:44:38.7782718Z   working_directory: example
+2026-10-18T19:44:38.7782920Z   export_path: false
+2026-10-18T19:44:38.7783119Z   install: true
+2026-10-18T19:44:38.7783291Z   bootstrap: false
+2026-10-18T19:44:38.7783461Z   cache: true
+2026-10-18T19:44:38.7783627Z   cache_save: true
+2026-10-18T19:44:38.7783800Z   cache_key_prefix: mise-v1
+2026-10-18T19:44:38.7783997Z   experimental: false
+2026-10-18T19:44:38.7784176Z   log_level: info
+2026-10-18T19:44:38.7784345Z   reshim: false
+2026-10-18T19:44:38.7784520Z   add_shims_to_path: true
+2026-10-18T19:44:38.7786401Z   github_token: ***
+2026-10-18T19:44:38.7786597Z   fetch_from_github: true
+2026-10-18T19:44:38.7786791Z   env: true
+2026-10-18T19:44:38.7786956Z   wings_enabled: false
+2026-10-18T19:44:38.7787161Z env:
+2026-10-18T19:44:38.7787572Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/skgo/skgo
+2026-10-18T19:44:38.7787834Z   GOTOOLCHAIN: local
+2026-10-18T19:44:38.7788047Z ##[endgroup]
+2026-10-18T19:44:38.8752579Z ##[group]Restoring mise cache
+2026-10-18T19:44:38.8783554Z [command]/usr/bin/ldd --version
+2026-10-18T19:44:38.8949998Z ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39
+2026-10-18T19:44:38.8951698Z Copyright (C) 2024 Free Software Foundation, Inc.
+2026-10-18T19:44:38.8952595Z This is free software; see the source for copying conditions.  There is NO
+2026-10-18T19:44:38.8953692Z warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+2026-10-18T19:44:38.8954558Z Written by Roland McGrath and Ulrich Drepper.
+2026-10-18T19:44:39.4947457Z Cache hit for: mise-v1-linux-x64-ubuntu24-c9d02b6b515e2b1157bcfb685c6d337f44445056cbc6fca78a3895c7c1a448e4
+2026-10-18T19:44:40.7139355Z Received 33554432 of 149711530 (22.4%), 32.0 MBs/sec
+2026-10-18T19:44:41.4294454Z Received 149711530 of 149711530 (100.0%), 83.2 MBs/sec
+2026-10-18T19:44:41.4294984Z Cache Size: ~143 MB (149711530 B)
+2026-10-18T19:44:41.4406705Z [command]/usr/bin/tar -xf /home/runner/work/_temp/ccc34867-ae60-46ee-ae9d-1b6898b4bf8d/cache.tzst -P -C /home/runner/work/skgo/skgo --use-compress-program unzstd
+2026-10-18T19:44:42.2338876Z Cache restored successfully
+2026-10-18T19:44:42.2786212Z mise cache restored from key: mise-v1-linux-x64-ubuntu24-c9d02b6b515e2b1157bcfb685c6d337f44445056cbc6fca78a3895c7c1a448e4
+2026-10-18T19:44:42.2793247Z ##[group]Setting env vars
+2026-10-18T19:44:42.2793591Z Setting MISE_LOG_LEVEL=info
+2026-10-18T19:44:42.2797480Z Setting MISE_GITHUB_TOKEN=***
+2026-10-18T19:44:42.2797825Z Setting MISE_YES=1
+2026-10-18T19:44:42.2798173Z Adding /home/runner/.local/share/mise/shims to PATH
+2026-10-18T19:44:42.2798882Z ##[group]Running mise --version
+2026-10-18T19:44:42.2813648Z [command]/home/runner/.local/share/mise/bin/mise --version
+2026-10-18T19:44:42.2876345Z 2026.10.12 linux-x64 (2026-10-16)
+2026-10-18T19:44:42.2891202Z ##[endgroup]
+2026-10-18T19:44:42.2978125Z ##[group]Running mise install
+2026-10-18T19:44:42.2989900Z [command]/home/runner/.local/share/mise/bin/mise install
+2026-10-18T19:44:42.3081378Z [2mmise[0m [2mby @jdx[0m – installing 2 tools
+2026-10-18T19:44:42.3086239Z [2mmise[0m [38;5;11m⇢[0m node@24.22.0         0ms · already installed
+2026-10-18T19:44:42.3086712Z [2mmise[0m [38;5;11m⇢[0m npm:vite-plus@1.3.0  0ms · already installed
+2026-10-18T19:44:42.3088341Z [2mmise[0m [36m████████████████[0m[31m[0m[2m[0m 2/2 · installed 0 tools · 2 already installed in 0ms
+2026-10-18T19:44:42.3089687Z [2mmise[0m all tools are installed
+2026-10-18T19:44:42.3143375Z ##[endgroup]
+2026-10-18T19:44:42.3143877Z ##[group]Running mise ls
+2026-10-18T19:44:42.3155396Z [command]/home/runner/.local/share/mise/bin/mise ls
+2026-10-18T19:44:42.3250695Z node           24.22.0  ~/work/skgo/skgo/example/mise.toml  24.22.0
+2026-10-18T19:44:42.3251155Z npm:vite-plus  1.3.0    ~/work/skgo/skgo/example/mise.toml  1.3.0
+2026-10-18T19:44:42.3260859Z ##[endgroup]
+2026-10-18T19:44:42.3262446Z ##[group]Exporting mise environment variables
+2026-10-18T19:44:42.3391997Z [command]/home/runner/.local/share/mise/bin/mise env --json
+2026-10-18T19:44:42.3489539Z {
+2026-10-18T19:44:42.3491923Z   "PATH": "/home/runner/work/skgo/skgo/example/web/node_modules/.bin:/home/runner/.local/share/mise/installs/node/24.22.0/bin:/home/runner/.local/share/mise/installs/npm-vite-plus/1.3.0/node_modules/.bin:/home/runner/.local/share/mise/shims:/home/runner/.local/share/mise/bin:/home/runner/go/bin:/opt/hostedtoolcache/go/1.27.2/x64/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+2026-10-18T19:44:42.3493532Z }
+2026-10-18T19:44:42.3505848Z ##[endgroup]
+2026-10-18T19:44:42.4518390Z ##[group]Run extractions/setup-just@v4
+2026-10-18T19:44:42.4518644Z with:
+2026-10-18T19:44:42.4520905Z   github-token: ***
+2026-10-18T19:44:42.4521098Z env:
+2026-10-18T19:44:42.4521322Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/skgo/skgo
+2026-10-18T19:44:42.4521588Z   GOTOOLCHAIN: local
+2026-10-18T19:44:42.4521770Z   MISE_LOG_LEVEL: info
+2026-10-18T19:44:42.4523604Z   MISE_GITHUB_TOKEN: ***
+2026-10-18T19:44:42.4523808Z   MISE_YES: 1
+2026-10-18T19:44:42.4523978Z ##[endgroup]
+2026-10-18T19:44:42.4576838Z ##[start-action display=Run extractions/setup-crate@0551596312d4008a6dfbc4d3c38fa20eaef46d2d;id=__extractions_setup-just.__extractions_setup-crate]
+2026-10-18T19:44:42.4947794Z ##[group]Run extractions/setup-crate@0551596312d4008a6dfbc4d3c38fa20eaef46d2d
+2026-10-18T19:44:42.4948121Z with:
+2026-10-18T19:44:42.4948293Z   repo: casey/just
+2026-10-18T19:44:42.4950503Z   github-token: ***
+2026-10-18T19:44:42.4950700Z env:
+2026-10-18T19:44:42.4950986Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/skgo/skgo
+2026-10-18T19:44:42.4951268Z   GOTOOLCHAIN: local
+2026-10-18T19:44:42.4951457Z   MISE_LOG_LEVEL: info
+2026-10-18T19:44:42.4953360Z   MISE_GITHUB_TOKEN: ***
+2026-10-18T19:44:42.4953562Z   MISE_YES: 1
+2026-10-18T19:44:42.4953733Z ##[endgroup]
+2026-10-18T19:44:43.8051321Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/4eccb199-5ade-4419-ac1a-802fe7e2b88d -f /home/runner/work/_temp/6a927c6d-1381-432b-87f8-3fa53fc244dc
+2026-10-18T19:44:44.0622914Z Successfully setup just v1.59.0
+2026-10-18T19:44:44.0710411Z ##[end-action id=__extractions_setup-just.__extractions_setup-crate;outcome=success;conclusion=success;duration_ms=1613]
+2026-10-18T19:44:44.1159345Z ##[group]Run go run ./cmd/skgo-release-version --check HEAD
+2026-10-18T19:44:44.1159754Z [36;1mgo run ./cmd/skgo-release-version --check HEAD[0m
+2026-10-18T19:44:44.2950551Z shell: /usr/bin/bash -e {0}
+2026-10-18T19:44:44.2950897Z env:
+2026-10-18T19:44:44.2951259Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/skgo/skgo
+2026-10-18T19:44:44.2951686Z   GOTOOLCHAIN: local
+2026-10-18T19:44:44.2951990Z   MISE_LOG_LEVEL: info
+2026-10-18T19:44:44.2955764Z   MISE_GITHUB_TOKEN: ***
+2026-10-18T19:44:44.2956087Z   MISE_YES: 1
+2026-10-18T19:44:44.2956352Z ##[endgroup]
+2026-10-18T19:44:44.4088311Z test: reconcile entries and error policy after rebase
+2026-10-18T19:44:44.4142068Z ##[group]Run just install
+2026-10-18T19:44:44.4142339Z [36;1mjust install[0m
+2026-10-18T19:44:44.4198817Z shell: /usr/bin/bash -e {0}
+2026-10-18T19:44:44.4199036Z env:
+2026-10-18T19:44:44.4199418Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/skgo/skgo
+2026-10-18T19:44:44.4199700Z   GOTOOLCHAIN: local
+2026-10-18T19:44:44.4199894Z   MISE_LOG_LEVEL: info
+2026-10-18T19:44:44.4201839Z   MISE_GITHUB_TOKEN: ***
+2026-10-18T19:44:44.4202047Z   MISE_YES: 1
+2026-10-18T19:44:44.4202225Z ##[endgroup]
+2026-10-18T19:44:44.4551566Z cd example/web && vp install
+2026-10-18T19:44:45.1506703Z ? Verifying lockfile against supply-chain policies (206 entries)...
+2026-10-18T19:44:45.2879030Z Downloading @oxlint/binding-linux-x64-gnu@1.88.0: 0.00 B/6.35 MB
+2026-10-18T19:44:45.2952415Z Downloading @oxlint-tsgolint/linux-x64@7.0.2004: 0.00 B/7.81 MB
+2026-10-18T19:44:45.3621998Z Downloading @voidzero-dev/vite-plus-linux-x64-gnu@1.3.0: 0.00 B/14.47 MB
+2026-10-18T19:44:45.5620819Z Packages are hard linked from the content-addressable store to the virtual store.
+2026-10-18T19:44:45.5621683Z   Content-addressable store is at: /home/runner/.local/share/pnpm/store/v11
+2026-10-18T19:44:45.5622337Z   Virtual store is at:             node_modules/.pnpm
+2026-10-18T19:44:46.2333470Z ✓ Lockfile passes supply-chain policies (206 entries in 1.1s)
+2026-10-18T19:44:46.2333888Z Lockfile is up to date, resolution step is skipped
+2026-10-18T19:44:46.2353168Z Packages: +136
+2026-10-18T19:44:46.2353571Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-10-18T19:44:46.2500638Z Progress: resolved 136, reused 0, downloaded 136, added 136, done
+2026-10-18T19:44:46.4031809Z 
+2026-10-18T19:44:46.4032495Z dependencies:
+2026-10-18T19:44:46.4032800Z + bits-ui 2.19.5
+2026-10-18T19:44:46.4033371Z + yaml 2.9.1
+2026-10-18T19:44:46.4033513Z 
+2026-10-18T19:44:46.4033633Z devDependencies:
+2026-10-18T19:44:46.4033892Z + @opentelemetry/api 1.9.1
+2026-10-18T19:44:46.4034240Z + @opentelemetry/sdk-trace-base 2.12.0
+2026-10-18T19:44:46.4034581Z + @opentelemetry/sdk-trace-node 2.12.0
+2026-10-18T19:44:46.4034968Z + @skgo/sveltekit-adapter <- ../../internal/adapter
+2026-10-18T19:44:46.4035332Z + @sveltejs/kit 3.1.0
+2026-10-18T19:44:46.4035653Z + @sveltejs/vite-plugin-svelte 7.3.1
+2026-10-18T19:44:46.4035923Z + @types/node 24.19.2
+2026-10-18T19:44:46.4036110Z + prettier 3.9.10
+2026-10-18T19:44:46.4036311Z + prettier-plugin-svelte 4.1.1
+2026-10-18T19:44:46.4036527Z + svelte 5.57.2
+2026-10-18T19:44:46.4036707Z + svelte-check 4.7.7
+2026-10-18T19:44:46.4036894Z + typescript 6.0.3
+2026-10-18T19:44:46.4037150Z + vite <- @voidzero-dev/vite-plus-core 1.3.0
+2026-10-18T19:44:46.4037395Z + vite-plus 1.3.0
+2026-10-18T19:44:46.4037500Z 
+2026-10-18T19:44:46.4868771Z Done in 1.4s using pnpm v12.14.0
+2026-10-18T19:44:46.5777952Z cd example/e2e && vp install
+2026-10-18T19:44:46.6561570Z ? Verifying lockfile against supply-chain policies (42 entries)...
+2026-10-18T19:44:46.6612317Z Packages are hard linked from the content-addressable store to the virtual store.
+2026-10-18T19:44:46.6619334Z   Content-addressable store is at: /home/runner/.local/share/pnpm/store/v11
+2026-10-18T19:44:46.6619979Z   Virtual store is at:             node_modules/.pnpm
+2026-10-18T19:44:47.1961451Z ✓ Lockfile passes supply-chain policies (42 entries in 540ms)
+2026-10-18T19:44:47.1961870Z Lockfile is up to date, resolution step is skipped
+2026-10-18T19:44:47.1966438Z Packages: +42
+2026-10-18T19:44:47.1966679Z ++++++++++++++++++++++++++++++++++++++++++
+2026-10-18T19:44:47.1995548Z Progress: resolved 42, reused 7, downloaded 35, added 42, done
+2026-10-18T19:44:47.3045130Z 
+2026-10-18T19:44:47.3045591Z devDependencies:
+2026-10-18T19:44:47.3045859Z + @playwright/test 1.64.1
+2026-10-18T19:44:47.3046093Z + @types/node 24.19.2
+2026-10-18T19:44:47.3046348Z + playwright-bdd 9.2.1
+2026-10-18T19:44:47.3046551Z + typescript 6.0.3
+2026-10-18T19:44:47.3046657Z 
+2026-10-18T19:44:47.3219503Z Done in 684ms using pnpm v12.14.0
+2026-10-18T19:44:47.3445270Z ##[group]Run just build
+2026-10-18T19:44:47.3445508Z [36;1mjust build[0m
+2026-10-18T19:44:47.3502225Z shell: /usr/bin/bash -e {0}
+2026-10-18T19:44:47.3502433Z env:
+2026-10-18T19:44:47.3502660Z   MISE_TRUSTED_CONFIG_PATHS: /home/runner/work/skgo/skgo
+2026-10-18T19:44:47.3502930Z   GOTOOLCHAIN: local
+2026-10-18T19:44:47.3503118Z   MISE_LOG_LEVEL: info
+2026-10-18T19:44:47.3505057Z   MISE_GITHUB_TOKEN: ***
+2026-10-18T19:44:47.3505271Z   MISE_YES: 1
+2026-10-18T19:44:47.3505443Z ##[endgroup]
+2026-10-18T19:44:47.3969784Z ORIGIN="http://127.0.0.1:8080" go run ./cmd/skgo build --root example
+2026-10-18T19:44:50.6368484Z Already up to date
+2026-10-18T19:44:50.6368841Z Done in 1ms using pnpm v12.14.0
+2026-10-18T19:44:51.2138969Z skgo: generation cache miss
+2026-10-18T19:44:57.8435373Z skgo: projected the types in github.com/tylergannon/skgo/example/actiondemo to /home/runner/work/skgo/skgo/example/web/src/lib/skgo/actiondemo/types.ts
+2026-10-18T19:44:57.9346045Z skgo: projected the types in github.com/tylergannon/skgo/example/businesslogic to /home/runner/work/skgo/skgo/example/web/src/lib/skgo/businesslogic/types.ts
+2026-10-18T19:44:58.0760039Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt to /home/runner/work/skgo/skgo/example/web/src/routes/types.ts
+2026-10-18T19:44:58.2153436Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th to /home/runner/work/skgo/skgo/example/web/src/routes/(marketing)/pricing/types.ts
+2026-10-18T19:44:58.3601381Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom to /home/runner/work/skgo/skgo/example/web/src/routes/todos/types.ts
+2026-10-18T19:44:58.5020818Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu to /home/runner/work/skgo/skgo/example/web/src/routes/todos/gate/types.ts
+2026-10-18T19:44:58.6402160Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52heyldmvsa to /home/runner/work/skgo/skgo/example/web/src/routes/traced/types.ts
+2026-10-18T19:44:58.7746288Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf53gc3djmrqxi2lpny to /home/runner/work/skgo/skgo/example/web/src/routes/validation/types.ts
+2026-10-18T19:44:58.9318677Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg to /home/runner/work/skgo/skgo/example/web/src/routes/actions/types.ts
+2026-10-18T19:44:59.1403492Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt to /home/runner/work/skgo/skgo/example/web/src/routes/account/orders/types.ts
+2026-10-18T19:44:59.2873443Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5 to /home/runner/work/skgo/skgo/example/web/src/routes/async-ssr/[mode]/[group]/types.ts
+2026-10-18T19:44:59.4219008Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna to /home/runner/work/skgo/skgo/example/web/src/routes/batch/types.ts
+2026-10-18T19:44:59.5574487Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi to /home/runner/work/skgo/skgo/example/web/src/routes/contact/types.ts
+2026-10-18T19:44:59.6924454Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5 to /home/runner/work/skgo/skgo/example/web/src/routes/docs/[...rest]/types.ts
+2026-10-18T19:44:59.8468417Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg to /home/runner/work/skgo/skgo/example/web/src/routes/destinations/types.ts
+2026-10-18T19:44:59.9843722Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe to /home/runner/work/skgo/skgo/example/web/src/routes/empty/types.ts
+2026-10-18T19:45:00.1152918Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz to /home/runner/work/skgo/skgo/example/web/src/routes/error/boundary/types.ts
+2026-10-18T19:45:00.2523181Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za to /home/runner/work/skgo/skgo/example/web/src/routes/error/command/types.ts
+2026-10-18T19:45:00.3877713Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u to /home/runner/work/skgo/skgo/example/web/src/routes/error/redirect/types.ts
+2026-10-18T19:45:00.5401896Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y to /home/runner/work/skgo/skgo/example/web/src/routes/invoices/types.ts
+2026-10-18T19:45:00.6788240Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu to /home/runner/work/skgo/skgo/example/web/src/routes/items/[id]/types.ts
+2026-10-18T19:45:00.8101937Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf to /home/runner/work/skgo/skgo/example/web/src/routes/live/types.ts
+2026-10-18T19:45:00.9421947Z skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a to /home/runner/work/skgo/skgo/example/web/src/routes/optional/types.ts
+2026-10-18T19:45:02.1882434Z skgo: copied internal/skgo/links/onzggl3sn52xizlt/skgo_gen.go from web/src/routes/skgo_gen.go
+2026-10-18T19:45:02.1883648Z skgo: copied internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th/skgo_gen.go from web/src/routes/(marketing)/pricing/skgo_gen.go
+2026-10-18T19:45:02.1884571Z skgo: copied internal/skgo/links/onzggl3sn52xizltf52g6zdpom/skgo_gen.go from web/src/routes/todos/skgo_gen.go
+2026-10-18T19:45:02.1885353Z skgo: copied internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu/skgo_gen.go from web/src/routes/todos/gate/skgo_gen.go
+2026-10-18T19:45:02.1886163Z skgo: copied internal/skgo/links/onzggl3sn52xizltf52heyldmvsa/skgo_gen.go from web/src/routes/traced/skgo_gen.go
+2026-10-18T19:45:02.1887404Z skgo: copied internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi/skgo_gen.go from web/src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/skgo_gen.go
+2026-10-18T19:45:02.1888850Z skgo: copied internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu/skgo_gen.go from web/src/routes/typed-load/[number=Order]/skgo_gen.go
+2026-10-18T19:45:02.1890000Z skgo: copied internal/skgo/links/onzggl3sn52xizltf53gc3djmrqxi2lpny/skgo_gen.go from web/src/routes/validation/skgo_gen.go
+2026-10-18T19:45:02.1890848Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwe33voq/skgo_gen.go from web/src/routes/about/skgo_gen.go
+2026-10-18T19:45:02.1892027Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg/skgo_gen.go from web/src/routes/actions/skgo_gen.go
+2026-10-18T19:45:02.1893332Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq/skgo_gen.go from web/src/routes/actions/cross/receive/skgo_gen.go
+2026-10-18T19:45:02.1894562Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq/skgo_gen.go from web/src/routes/actions/default/skgo_gen.go
+2026-10-18T19:45:02.1895945Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa/skgo_gen.go from web/src/routes/actions/default/saved/skgo_gen.go
+2026-10-18T19:45:02.1897450Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq/skgo_gen.go from web/src/routes/actions/options/no-client/skgo_gen.go
+2026-10-18T19:45:02.1899400Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe/skgo_gen.go from web/src/routes/actions/options/no-ssr/skgo_gen.go
+2026-10-18T19:45:02.1900926Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq/skgo_gen.go from web/src/routes/actions/profiles/[profile]/skgo_gen.go
+2026-10-18T19:45:02.1901856Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4/skgo_gen.go from web/src/routes/actions/signed-in/skgo_gen.go
+2026-10-18T19:45:02.1902615Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi/skgo_gen.go from web/src/routes/account/skgo_gen.go
+2026-10-18T19:45:02.1903353Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt/skgo_gen.go from web/src/routes/account/orders/skgo_gen.go
+2026-10-18T19:45:02.1904186Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3smvzhk3ttf5nxg3dvm5oq/skgo_gen.go from web/src/routes/account/reruns/[slug]/skgo_gen.go
+2026-10-18T19:45:02.1905065Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi/skgo_gen.go from web/src/routes/account/statement/skgo_gen.go
+2026-10-18T19:45:02.1905837Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm/skgo_gen.go from web/src/routes/api/fatal/skgo_gen.go
+2026-10-18T19:45:02.1906618Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a/skgo_gen.go from web/src/routes/api/replay-count/skgo_gen.go
+2026-10-18T19:45:02.1907441Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2/skgo_gen.go from web/src/routes/api/replay/[kind]/skgo_gen.go
+2026-10-18T19:45:02.1908265Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq/skgo_gen.go from web/src/routes/api/request-fetch/skgo_gen.go
+2026-10-18T19:45:02.1909094Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxe33vorss25dbojtwk5a/skgo_gen.go from web/src/routes/api/reroute-target/skgo_gen.go
+2026-10-18T19:45:02.1910938Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxe33vorswil23nz2w2ytfoi6u64temvzf2/skgo_gen.go from web/src/routes/api/rerouted/[number=Order]/skgo_gen.go
+2026-10-18T19:45:02.1911745Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t/skgo_gen.go from web/src/routes/api/todos/skgo_gen.go
+2026-10-18T19:45:02.1920306Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5/skgo_gen.go from web/src/routes/async-ssr/[mode]/[group]/skgo_gen.go
+2026-10-18T19:45:02.1940327Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu/skgo_gen.go from web/src/routes/async-ssr/control/[group]/skgo_gen.go
+2026-10-18T19:45:02.1950233Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5rgc5ddna/skgo_gen.go from web/src/routes/batch/skgo_gen.go
+2026-10-18T19:45:02.1951257Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi/skgo_gen.go from web/src/routes/contact/skgo_gen.go
+2026-10-18T19:45:02.1952412Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5/skgo_gen.go from web/src/routes/docs/[...rest]/skgo_gen.go
+2026-10-18T19:45:02.1953448Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg/skgo_gen.go from web/src/routes/destinations/skgo_gen.go
+2026-10-18T19:45:02.1954107Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5sw24dupe/skgo_gen.go from web/src/routes/empty/skgo_gen.go
+2026-10-18T19:45:02.1954768Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz/skgo_gen.go from web/src/routes/error/boundary/skgo_gen.go
+2026-10-18T19:45:02.1955491Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za/skgo_gen.go from web/src/routes/error/command/skgo_gen.go
+2026-10-18T19:45:02.1956209Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle/skgo_gen.go from web/src/routes/error/expected/skgo_gen.go
+2026-10-18T19:45:02.1957243Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u/skgo_gen.go from web/src/routes/error/redirect/skgo_gen.go
+2026-10-18T19:45:02.1958017Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa/skgo_gen.go from web/src/routes/error/unexpected/skgo_gen.go
+2026-10-18T19:45:02.1958838Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxmzlooqwwyylzn52xil23onswg5djn5xf2/skgo_gen.go from web/src/routes/event-layout/[section]/skgo_gen.go
+2026-10-18T19:45:02.1959702Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y/skgo_gen.go from web/src/routes/invoices/skgo_gen.go
+2026-10-18T19:45:02.1960371Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu/skgo_gen.go from web/src/routes/items/[id]/skgo_gen.go
+2026-10-18T19:45:02.1961077Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5wgc3thf5nvw3dbnztv2xi/skgo_gen.go from web/src/routes/lang/[[lang]]/skgo_gen.go
+2026-10-18T19:45:02.1961719Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5wgs5tf/skgo_gen.go from web/src/routes/live/skgo_gen.go
+2026-10-18T19:45:02.1962418Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5wws43tnfxgol23fyxc44dboruf2/skgo_gen.go from web/src/routes/missing/[...path]/skgo_gen.go
+2026-10-18T19:45:02.1963140Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu/skgo_gen.go from web/src/routes/middleware/skgo_gen.go
+2026-10-18T19:45:02.1963867Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2/skgo_gen.go from web/src/routes/middleware/[slug]/skgo_gen.go
+2026-10-18T19:45:02.1964608Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a/skgo_gen.go from web/src/routes/optional/skgo_gen.go
+2026-10-18T19:45:02.1965317Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq/skgo_gen.go from web/src/routes/prerender/[slug]/skgo_gen.go
+2026-10-18T19:45:02.1966215Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3gmfwgyytbmnvs6w3oovwwezlshvhxezdfojoq/skgo_gen.go from web/src/routes/routing/fallback/[number=Order]/skgo_gen.go
+2026-10-18T19:45:02.1967298Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3gmfwgyytbmnvs6w3wmfwhkzk5/skgo_gen.go from web/src/routes/routing/fallback/[value]/skgo_gen.go
+2026-10-18T19:45:02.1968259Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3pob2gs33omfwc6w23nz2w2ytfoi6u64temvzf2xi/skgo_gen.go from web/src/routes/routing/optional/[[number=Order]]/skgo_gen.go
+2026-10-18T19:45:02.1969456Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3smvvgky3uf5nw45lnmjsxepkpojsgk4s5/skgo_gen.go from web/src/routes/routing/reject/[number=Order]/skgo_gen.go
+2026-10-18T19:45:02.1970368Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpmfwhoylzom/skgo_gen.go from web/src/routes/routing/slash/always/skgo_gen.go
+2026-10-18T19:45:02.1971293Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpmfygs/skgo_gen.go from web/src/routes/routing/slash/api/skgo_gen.go
+2026-10-18T19:45:02.1972241Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnftw433smu/skgo_gen.go from web/src/routes/routing/slash/ignore/skgo_gen.go
+2026-10-18T19:45:02.1973395Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnvuxqzle/skgo_gen.go from web/src/routes/routing/slash/mixed/skgo_gen.go
+2026-10-18T19:45:02.1974293Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnzsxmzls/skgo_gen.go from web/src/routes/routing/slash/never/skgo_gen.go
+2026-10-18T19:45:02.1975228Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a/skgo_gen.go from web/src/routes/request-fetch/skgo_gen.go
+2026-10-18T19:45:02.1976155Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zgk4tpov2gkzbplnxhk3lcmvzd2t3smrsxexi/skgo_gen.go from web/src/routes/rerouted/[number=Order]/skgo_gen.go
+2026-10-18T19:45:02.1977128Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq/skgo_gen.go from web/src/routes/shadow/[...rest]/skgo_gen.go
+2026-10-18T19:45:02.1978096Z skgo: copied internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq/skgo_gen.go from web/src/routes/stream/skgo_gen.go
+2026-10-18T19:45:03.1069287Z Finished in 780ms on 128 files using 4 threads.
+2026-10-18T19:45:03.1675862Z No config found, using defaults. Please add a config file or try `vp fmt --init` if needed.
+2026-10-18T19:45:03.2619950Z note: You are running `vp build` as a Vite+ built-in command. If you meant to run the build npm script, use `vpr build` instead.
+2026-10-18T19:45:06.2210259Z skgo prerender service started (pid 5044)
+2026-10-18T19:45:06.2332025Z transforming...
+2026-10-18T19:45:07.6935302Z ✓ 997 modules transformed.
+2026-10-18T19:45:07.7458571Z rendering chunks...
+2026-10-18T19:45:07.8390212Z computing gzip size...
+2026-10-18T19:45:07.8428366Z .svelte-kit/output/server/.vite/manifest.json                                                                 58.15 kB │ gzip:  5.02 kB
+2026-10-18T19:45:07.8429328Z .svelte-kit/output/server/_app/immutable/assets/_page.CX0uyD_A.css                                             0.05 kB │ gzip:  0.06 kB
+2026-10-18T19:45:07.8430274Z .svelte-kit/output/server/_app/immutable/assets/_layout.C8cvvF3A.css                                           0.05 kB │ gzip:  0.07 kB
+2026-10-18T19:45:07.8431021Z .svelte-kit/output/server/_app/immutable/assets/_page.DBzYX_k5.css                                             0.06 kB │ gzip:  0.07 kB
+2026-10-18T19:45:07.8431758Z .svelte-kit/output/server/_app/immutable/assets/_page.B0CDdk1M.css                                             0.07 kB │ gzip:  0.09 kB
+2026-10-18T19:45:07.8432486Z .svelte-kit/output/server/_app/immutable/assets/_page.CskoiPxQ.css                                             0.11 kB │ gzip:  0.12 kB
+2026-10-18T19:45:07.8433237Z .svelte-kit/output/server/_app/immutable/assets/_page.Ds093uQL.css                                             0.11 kB │ gzip:  0.12 kB
+2026-10-18T19:45:07.8433977Z .svelte-kit/output/server/_app/immutable/assets/_page.D2SWzK3b.css                                             0.18 kB │ gzip:  0.13 kB
+2026-10-18T19:45:07.8434995Z .svelte-kit/output/server/_app/immutable/assets/_error.fbzpji-s.css                                            0.20 kB │ gzip:  0.16 kB
+2026-10-18T19:45:07.8435729Z .svelte-kit/output/server/_app/immutable/assets/_error.CJLRcl0d.css                                            0.23 kB │ gzip:  0.17 kB
+2026-10-18T19:45:07.8436463Z .svelte-kit/output/server/_app/immutable/assets/_page.yGOLC7jZ.css                                             0.23 kB │ gzip:  0.18 kB
+2026-10-18T19:45:07.8437420Z .svelte-kit/output/server/_app/immutable/assets/_page.Ctw3DW5X.css                                             0.31 kB │ gzip:  0.18 kB
+2026-10-18T19:45:07.8438334Z .svelte-kit/output/server/_app/immutable/assets/_page.QE5ZuEV4.css                                             0.34 kB │ gzip:  0.18 kB
+2026-10-18T19:45:07.8439383Z .svelte-kit/output/server/_app/immutable/assets/_page.Doiftu4P.css                                             0.37 kB │ gzip:  0.22 kB
+2026-10-18T19:45:07.8440403Z .svelte-kit/output/server/_app/immutable/assets/_page.C9dXXnve.css                                             0.37 kB │ gzip:  0.22 kB
+2026-10-18T19:45:07.8441576Z .svelte-kit/output/server/_app/immutable/assets/_page.DvAAoNG5.css                                             0.44 kB │ gzip:  0.23 kB
+2026-10-18T19:45:07.8442717Z .svelte-kit/output/server/_app/immutable/assets/_page.DKMEu08C.css                                             0.53 kB │ gzip:  0.27 kB
+2026-10-18T19:45:07.8443838Z .svelte-kit/output/server/_app/immutable/assets/_page.Cbb-gis8.css                                             0.70 kB │ gzip:  0.31 kB
+2026-10-18T19:45:07.8444966Z .svelte-kit/output/server/_app/immutable/assets/_page.Bc56o2ZQ.css                                             0.86 kB │ gzip:  0.39 kB
+2026-10-18T19:45:07.8445657Z .svelte-kit/output/server/_app/immutable/assets/_page.BcwEQrgR.css                                             0.88 kB │ gzip:  0.40 kB
+2026-10-18T19:45:07.8446640Z .svelte-kit/output/server/_app/immutable/assets/_layout.BvC4dEWY.css                                           1.09 kB │ gzip:  0.58 kB
+2026-10-18T19:45:07.8447413Z .svelte-kit/output/server/_app/immutable/assets/_page.Cgv7NP6R.css                                             1.72 kB │ gzip:  0.62 kB
+2026-10-18T19:45:07.8448093Z .svelte-kit/output/server/_app/immutable/assets/_page.CYvOZ37k.css                                             2.00 kB │ gzip:  0.77 kB
+2026-10-18T19:45:07.8448743Z .svelte-kit/output/server/entries/hooks.universal.js                                                           0.07 kB │ gzip:  0.09 kB
+2026-10-18T19:45:07.8449568Z .svelte-kit/output/server/remote-entry.js                                                                      0.10 kB │ gzip:  0.10 kB
+2026-10-18T19:45:07.8450238Z .svelte-kit/output/server/entries/pages/spa/_page.ts.js                                                        0.11 kB │ gzip:  0.12 kB │ map:   0.31 kB
+2026-10-18T19:45:07.8451001Z .svelte-kit/output/server/entries/pages/actions/options/no-ssr/_page.ts.js                                     0.13 kB │ gzip:  0.13 kB │ map:   0.20 kB
+2026-10-18T19:45:07.8451767Z .svelte-kit/output/server/entries/pages/actions/options/no-client/_page.ts.js                                  0.13 kB │ gzip:  0.13 kB │ map:   0.20 kB
+2026-10-18T19:45:07.8452534Z .svelte-kit/output/server/entries/pages/prerender/_slug_/_page.ts.js                                           0.14 kB │ gzip:  0.13 kB │ map:   0.20 kB
+2026-10-18T19:45:07.8453345Z .svelte-kit/output/server/chunks/forms.js                                                                      0.15 kB │ gzip:  0.13 kB │ map:   0.55 kB
+2026-10-18T19:45:07.8454551Z .svelte-kit/output/server/entries/pages/routing/slash/_layout.ts.js                                            0.15 kB │ gzip:  0.14 kB │ map:   0.21 kB
+2026-10-18T19:45:07.8455883Z .svelte-kit/output/server/entries/pages/routing/slash/never/_page.ts.js                                        0.15 kB │ gzip:  0.13 kB │ map:   0.21 kB
+2026-10-18T19:45:07.8457448Z .svelte-kit/output/server/entries/pages/routing/slash/ignore/_page.ts.js                                       0.15 kB │ gzip:  0.13 kB │ map:   0.21 kB
+2026-10-18T19:45:07.8458801Z .svelte-kit/output/server/entries/pages/universal-fetch/no-script/_page.ts.js                                  0.18 kB │ gzip:  0.15 kB │ map:   0.39 kB
+2026-10-18T19:45:07.8460320Z .svelte-kit/output/server/entries/pages/shadow/_slug_/_page.ts.js                                              0.19 kB │ gzip:  0.17 kB │ map:   0.40 kB
+2026-10-18T19:45:07.8461158Z .svelte-kit/output/server/chunks/index-server.js                                                               0.20 kB │ gzip:  0.16 kB │ map:   1.61 kB
+2026-10-18T19:45:07.8461818Z .svelte-kit/output/server/chunks/remote-4cga8b.js                                                              0.22 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8462449Z .svelte-kit/output/server/chunks/remote-4rw8ae.js                                                              0.22 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8463099Z .svelte-kit/output/server/chunks/remote-9lqpme.js                                                              0.22 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8463733Z .svelte-kit/output/server/chunks/remote-ezl04l.js                                                              0.22 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8464351Z .svelte-kit/output/server/chunks/remote-1eqvn7x.js                                                             0.22 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8464968Z .svelte-kit/output/server/chunks/remote-1sgmw1.js                                                              0.22 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8465607Z .svelte-kit/output/server/chunks/remote-ks8sip.js                                                              0.22 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8466638Z .svelte-kit/output/server/chunks/remote-toba7i.js                                                              0.22 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8467861Z .svelte-kit/output/server/chunks/remote-wx3cst.js                                                              0.22 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8468589Z .svelte-kit/output/server/chunks/remote-16h93j5.js                                                             0.23 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8469394Z .svelte-kit/output/server/chunks/remote-nv8t2.js                                                               0.23 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8470022Z .svelte-kit/output/server/chunks/remote-x3uq7o.js                                                              0.23 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8470739Z .svelte-kit/output/server/entries/pages/actions/default/_page.server.ts.js                                     0.23 kB │ gzip:  0.19 kB │ map:   0.63 kB
+2026-10-18T19:45:07.8471485Z .svelte-kit/output/server/entries/pages/runes-class/_page.ts.js                                                0.23 kB │ gzip:  0.19 kB │ map:   0.30 kB
+2026-10-18T19:45:07.8472168Z .svelte-kit/output/server/chunks/remote-1lcpbfl.js                                                             0.23 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8472793Z .svelte-kit/output/server/chunks/remote-atq1x5.js                                                              0.23 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8473411Z .svelte-kit/output/server/chunks/remote-gu007f.js                                                              0.23 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8474035Z .svelte-kit/output/server/chunks/remote-14q4me9.js                                                             0.23 kB │ gzip:  0.15 kB
+2026-10-18T19:45:07.8474654Z .svelte-kit/output/server/chunks/remote-1klskj7.js                                                             0.23 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8475278Z .svelte-kit/output/server/chunks/remote-62gfcm.js                                                              0.23 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8476018Z .svelte-kit/output/server/chunks/remote-83n4w1.js                                                              0.23 kB │ gzip:  0.14 kB
+2026-10-18T19:45:07.8476677Z .svelte-kit/output/server/chunks/remote-1627chi.js                                                             0.24 kB │ gzip:  0.15 kB
+2026-10-18T19:45:07.8477365Z .svelte-kit/output/server/entries/pages/contact/_page.svelte.js                                                0.25 kB │ gzip:  0.20 kB │ map:   0.18 kB
+2026-10-18T19:45:07.8478113Z .svelte-kit/output/server/entries/pages/missing/_...path_/_page.svelte.js                                      0.25 kB │ gzip:  0.20 kB │ map:   0.18 kB
+2026-10-18T19:45:07.8478863Z .svelte-kit/output/server/entries/pages/prerender-consumer/_page.ts.js                                         0.26 kB │ gzip:  0.20 kB │ map:   0.36 kB
+2026-10-18T19:45:07.8479702Z .svelte-kit/output/server/entries/pages/error/render/_page.svelte.js                                           0.26 kB │ gzip:  0.21 kB │ map:   0.55 kB
+2026-10-18T19:45:07.8480447Z .svelte-kit/output/server/entries/endpoints/actions/_server.ts.js                                              0.29 kB │ gzip:  0.22 kB │ map:   0.88 kB
+2026-10-18T19:45:07.8481175Z .svelte-kit/output/server/entries/endpoints/api/fatal/_server.ts.js                                            0.29 kB │ gzip:  0.22 kB │ map:   0.88 kB
+2026-10-18T19:45:07.8481936Z .svelte-kit/output/server/entries/pages/event-layout/_section_/_item_/one/_page.svelte.js                      0.29 kB │ gzip:  0.23 kB │ map:   0.23 kB
+2026-10-18T19:45:07.8482725Z .svelte-kit/output/server/entries/pages/event-layout/_section_/_item_/two/_page.svelte.js                      0.29 kB │ gzip:  0.23 kB │ map:   0.23 kB
+2026-10-18T19:45:07.8483503Z .svelte-kit/output/server/entries/endpoints/actions/default/_server.ts.js                                      0.30 kB │ gzip:  0.23 kB │ map:   0.89 kB
+2026-10-18T19:45:07.8484375Z .svelte-kit/output/server/entries/endpoints/api/replay-count/_server.ts.js                                     0.30 kB │ gzip:  0.23 kB │ map:   0.89 kB
+2026-10-18T19:45:07.8485644Z .svelte-kit/output/server/entries/endpoints/shadow/_...rest_/_server.ts.js                                     0.30 kB │ gzip:  0.23 kB │ map:   0.89 kB
+2026-10-18T19:45:07.8486416Z .svelte-kit/output/server/entries/endpoints/api/request-fetch/_server.ts.js                                    0.30 kB │ gzip:  0.23 kB │ map:   0.89 kB
+2026-10-18T19:45:07.8487197Z .svelte-kit/output/server/entries/endpoints/routing/slash/api/_server.ts.js                                    0.30 kB │ gzip:  0.23 kB │ map:   0.89 kB
+2026-10-18T19:45:07.8487960Z .svelte-kit/output/server/entries/endpoints/api/reroute-target/_server.ts.js                                   0.30 kB │ gzip:  0.23 kB │ map:   0.89 kB
+2026-10-18T19:45:07.8488883Z .svelte-kit/output/server/entries/endpoints/routing/slash/mixed/_server.ts.js                                  0.30 kB │ gzip:  0.23 kB │ map:   0.90 kB
+2026-10-18T19:45:07.8489813Z .svelte-kit/output/server/entries/pages/about/_page.ts.js                                                      0.30 kB │ gzip:  0.22 kB │ map:   0.59 kB
+2026-10-18T19:45:07.8490494Z .svelte-kit/output/server/env.js                                                                               0.31 kB │ gzip:  0.19 kB │ map:   0.57 kB
+2026-10-18T19:45:07.8491213Z .svelte-kit/output/server/entries/endpoints/api/rerouted/_number_Order_/_server.ts.js                          0.31 kB │ gzip:  0.23 kB │ map:   0.90 kB
+2026-10-18T19:45:07.8491962Z .svelte-kit/output/server/entries/params.js                                                                    0.32 kB │ gzip:  0.23 kB │ map:   0.56 kB
+2026-10-18T19:45:07.8492638Z .svelte-kit/output/server/entries/pages/plain/_page.ts.js                                                      0.35 kB │ gzip:  0.26 kB │ map:   0.42 kB
+2026-10-18T19:45:07.8493328Z .svelte-kit/output/server/entries/pages/items/_id_/_page.ts.js                                                 0.36 kB │ gzip:  0.25 kB │ map:   0.77 kB
+2026-10-18T19:45:07.8494169Z .svelte-kit/output/server/entries/hooks.server.js                                                              0.39 kB │ gzip:  0.22 kB │ map:   0.58 kB
+2026-10-18T19:45:07.8494907Z .svelte-kit/output/server/entries/pages/lang/__lang__/_page.svelte.js                                          0.41 kB │ gzip:  0.28 kB │ map:   0.40 kB
+2026-10-18T19:45:07.8495652Z .svelte-kit/output/server/entries/pages/error/expected/_page.svelte.js                                         0.41 kB │ gzip:  0.28 kB │ map:   0.41 kB
+2026-10-18T19:45:07.8496394Z .svelte-kit/output/server/entries/pages/error/unexpected/_page.svelte.js                                       0.42 kB │ gzip:  0.28 kB │ map:   0.41 kB
+2026-10-18T19:45:07.8497151Z .svelte-kit/output/server/entries/pages/routing/slash/mixed/_page.svelte.js                                    0.42 kB │ gzip:  0.26 kB │ map:   0.42 kB
+2026-10-18T19:45:07.8497899Z .svelte-kit/output/server/entries/pages/routing/slash/never/_page.svelte.js                                    0.42 kB │ gzip:  0.26 kB │ map:   0.42 kB
+2026-10-18T19:45:07.8498673Z .svelte-kit/output/server/entries/pages/routing/slash/always/_page.svelte.js                                   0.42 kB │ gzip:  0.26 kB │ map:   0.43 kB
+2026-10-18T19:45:07.8499528Z .svelte-kit/output/server/entries/pages/routing/slash/ignore/_page.svelte.js                                   0.42 kB │ gzip:  0.26 kB │ map:   0.43 kB
+2026-10-18T19:45:07.8500312Z .svelte-kit/output/server/entries/pages/account/statement/_page.svelte.js                                      0.43 kB │ gzip:  0.29 kB │ map:   0.42 kB
+2026-10-18T19:45:07.8501082Z .svelte-kit/output/server/entries/pages/routing/fallback/_value_/_page.svelte.js                               0.43 kB │ gzip:  0.26 kB │ map:   0.43 kB
+2026-10-18T19:45:07.8501856Z .svelte-kit/output/server/entries/pages/routing/reject/_number_Order_/_page.svelte.js                          0.43 kB │ gzip:  0.27 kB │ map:   0.43 kB
+2026-10-18T19:45:07.8502749Z .svelte-kit/output/server/entries/pages/routing/fallback/_number_Order_/_page.svelte.js                        0.43 kB │ gzip:  0.27 kB │ map:   0.44 kB
+2026-10-18T19:45:07.8503557Z .svelte-kit/output/server/entries/pages/routing/optional/__number_Order__/_page.svelte.js                      0.44 kB │ gzip:  0.27 kB │ map:   0.44 kB
+2026-10-18T19:45:07.8504315Z .svelte-kit/output/server/entries/pages/account/_page.svelte.js                                                0.44 kB │ gzip:  0.30 kB │ map:   0.43 kB
+2026-10-18T19:45:07.8505025Z .svelte-kit/output/server/entries/fallbacks/layout.svelte.js                                                   0.45 kB │ gzip:  0.33 kB │ map:   0.48 kB
+2026-10-18T19:45:07.8505769Z .svelte-kit/output/server/entries/pages/prerender-consumer/_page.svelte.js                                     0.45 kB │ gzip:  0.29 kB │ map:   0.45 kB
+2026-10-18T19:45:07.8506573Z .svelte-kit/output/server/entries/pages/prerender/_slug_/_page.svelte.js                                       0.46 kB │ gzip:  0.30 kB │ map:   0.47 kB
+2026-10-18T19:45:07.8507718Z .svelte-kit/output/server/entries/pages/universal-fetch/no-script/_page.svelte.js                              0.48 kB │ gzip:  0.32 kB │ map:   0.48 kB
+2026-10-18T19:45:07.8508471Z .svelte-kit/output/server/entries/pages/shadow/_slug_/_page.svelte.js                                          0.48 kB │ gzip:  0.30 kB │ map:   0.44 kB
+2026-10-18T19:45:07.8509261Z .svelte-kit/output/server/chunks/server2.js                                                                    0.49 kB │ gzip:  0.30 kB │ map:   0.73 kB
+2026-10-18T19:45:07.8509966Z .svelte-kit/output/server/entries/endpoints/api/replay/_kind_/_server.ts.js                                    0.49 kB │ gzip:  0.25 kB │ map:   1.23 kB
+2026-10-18T19:45:07.8510701Z .svelte-kit/output/server/entries/pages/account/_error.svelte.js                                               0.49 kB │ gzip:  0.30 kB │ map:   0.86 kB
+2026-10-18T19:45:07.8511585Z .svelte-kit/output/server/entries/endpoints/async-ssr/control/_group_/_server.ts.js                            0.50 kB │ gzip:  0.25 kB │ map:   1.24 kB
+2026-10-18T19:45:07.8512279Z .svelte-kit/output/server/chunks/server.js                                                                     0.51 kB │ gzip:  0.32 kB
+2026-10-18T19:45:07.8512979Z .svelte-kit/output/server/entries/pages/typed-load/_number_Order_/_page.svelte.js                              0.51 kB │ gzip:  0.34 kB │ map:   0.52 kB
+2026-10-18T19:45:07.8513735Z .svelte-kit/output/server/entries/pages/nested-universal/_page.ts.js                                           0.53 kB │ gzip:  0.32 kB │ map:   1.10 kB
+2026-10-18T19:45:07.8514463Z .svelte-kit/output/server/entries/pages/validation/_page.svelte.js                                             0.54 kB │ gzip:  0.33 kB │ map:   0.95 kB
+2026-10-18T19:45:07.8515182Z .svelte-kit/output/server/entries/pages/error/command/_page.svelte.js                                          0.55 kB │ gzip:  0.32 kB │ map:   0.75 kB
+2026-10-18T19:45:07.8515934Z .svelte-kit/output/server/entries/pages/error/redirect/_page.svelte.js                                         0.55 kB │ gzip:  0.32 kB │ map:   0.69 kB
+2026-10-18T19:45:07.8516653Z .svelte-kit/output/server/entries/pages/traced/_page.svelte.js                                                 0.56 kB │ gzip:  0.33 kB │ map:   0.65 kB
+2026-10-18T19:45:07.8517391Z .svelte-kit/output/server/entries/pages/rerouted/_number_Order_/_page.svelte.js                                0.57 kB │ gzip:  0.37 kB │ map:   0.57 kB
+2026-10-18T19:45:07.8518108Z .svelte-kit/output/server/entries/pages/invoices/_page.ts.js                                                   0.57 kB │ gzip:  0.34 kB │ map:   1.09 kB
+2026-10-18T19:45:07.8518819Z .svelte-kit/output/server/entries/fallbacks/error.svelte.js                                                    0.59 kB │ gzip:  0.38 kB │ map:   0.60 kB
+2026-10-18T19:45:07.8519610Z .svelte-kit/output/server/entries/pages/fetch/_page.ts.js                                                      0.64 kB │ gzip:  0.39 kB │ map:   1.25 kB
+2026-10-18T19:45:07.8520437Z .svelte-kit/output/server/entries/pages/nested-universal/_page.svelte.js                                       0.64 kB │ gzip:  0.35 kB │ map:   0.67 kB
+2026-10-18T19:45:07.8521183Z .svelte-kit/output/server/entries/pages/request-fetch/_page.svelte.js                                          0.64 kB │ gzip:  0.38 kB │ map:   0.65 kB
+2026-10-18T19:45:07.8521917Z .svelte-kit/output/server/entries/endpoints/api/todos/_server.ts.js                                            0.68 kB │ gzip:  0.25 kB │ map:   1.56 kB
+2026-10-18T19:45:07.8522631Z .svelte-kit/output/server/entries/pages/error/_error.svelte.js                                                 0.68 kB │ gzip:  0.35 kB │ map:   0.92 kB
+2026-10-18T19:45:07.8523343Z .svelte-kit/output/server/entries/pages/missing/_error.svelte.js                                               0.69 kB │ gzip:  0.36 kB │ map:   0.92 kB
+2026-10-18T19:45:07.8524061Z .svelte-kit/output/server/entries/pages/spa/_page.svelte.js                                                    0.70 kB │ gzip:  0.37 kB │ map:   0.72 kB
+2026-10-18T19:45:07.8524743Z .svelte-kit/output/server/chunks/site.remote.js                                                                0.71 kB │ gzip:  0.38 kB │ map:   0.75 kB
+2026-10-18T19:45:07.8525413Z .svelte-kit/output/server/chunks/navigation.js                                                                 0.72 kB │ gzip:  0.38 kB │ map:   1.32 kB
+2026-10-18T19:45:07.8526088Z .svelte-kit/output/server/chunks/traced.remote.js                                                              0.73 kB │ gzip:  0.37 kB │ map:   0.77 kB
+2026-10-18T19:45:07.8526882Z .svelte-kit/output/server/chunks/board.remote.js                                                               0.73 kB │ gzip:  0.38 kB │ map:   0.79 kB
+2026-10-18T19:45:07.8528071Z .svelte-kit/output/server/entries/pages/docs/_...rest_/_page.svelte.js                                         0.74 kB │ gzip:  0.39 kB │ map:   0.93 kB
+2026-10-18T19:45:07.8528980Z .svelte-kit/output/server/entries/pages/account/_layout.svelte.js                                              0.75 kB │ gzip:  0.40 kB │ map:   0.86 kB
+2026-10-18T19:45:07.8529953Z .svelte-kit/output/server/chunks/docs.remote.js                                                                0.75 kB │ gzip:  0.39 kB │ map:   0.80 kB
+2026-10-18T19:45:07.8530640Z .svelte-kit/output/server/chunks/item.remote.js                                                                0.75 kB │ gzip:  0.40 kB │ map:   0.80 kB
+2026-10-18T19:45:07.8531341Z .svelte-kit/output/server/chunks/quotes.remote.js                                                              0.76 kB │ gzip:  0.40 kB │ map:   0.86 kB
+2026-10-18T19:45:07.8532177Z .svelte-kit/output/server/chunks/RoutingReceipt.js                                                             0.76 kB │ gzip:  0.40 kB │ map:   0.85 kB
+2026-10-18T19:45:07.8532886Z .svelte-kit/output/server/chunks/optional.remote.js                                                            0.77 kB │ gzip:  0.39 kB │ map:   0.82 kB
+2026-10-18T19:45:07.8533582Z .svelte-kit/output/server/chunks/redirect.remote.js                                                            0.77 kB │ gzip:  0.39 kB │ map:   0.80 kB
+2026-10-18T19:45:07.8534256Z .svelte-kit/output/server/chunks/functions.js                                                                  0.78 kB │ gzip:  0.47 kB │ map:   1.10 kB
+2026-10-18T19:45:07.8535367Z .svelte-kit/output/server/chunks/boundary.remote.js                                                            0.79 kB │ gzip:  0.39 kB │ map:   0.79 kB
+2026-10-18T19:45:07.8536390Z .svelte-kit/output/server/chunks/coexist.remote.js                                                             0.80 kB │ gzip:  0.40 kB │ map:   0.87 kB
+2026-10-18T19:45:07.8537461Z .svelte-kit/output/server/entries/pages/_layout.server.ts.js                                                   0.80 kB │ gzip:  0.38 kB │ map:   1.48 kB
+2026-10-18T19:45:07.8538742Z .svelte-kit/output/server/entries/pages/runes-class/_page.svelte.js                                            0.80 kB │ gzip:  0.44 kB │ map:   1.19 kB
+2026-10-18T19:45:07.8540042Z .svelte-kit/output/server/entries/pages/todos/_id_/_page.svelte.js                                             0.81 kB │ gzip:  0.42 kB │ map:   0.87 kB
+2026-10-18T19:45:07.8541252Z .svelte-kit/output/server/entries/pages/about/_page.server.ts.js                                               0.81 kB │ gzip:  0.38 kB │ map:   1.56 kB
+2026-10-18T19:45:07.8542430Z .svelte-kit/output/server/entries/pages/empty/_page.server.ts.js                                               0.81 kB │ gzip:  0.38 kB │ map:   1.47 kB
+2026-10-18T19:45:07.8543178Z .svelte-kit/output/server/entries/pages/stream/_page.server.ts.js                                              0.81 kB │ gzip:  0.39 kB │ map:   1.60 kB
+2026-10-18T19:45:07.8543897Z .svelte-kit/output/server/entries/pages/traced/_page.server.ts.js                                              0.81 kB │ gzip:  0.38 kB │ map:   1.47 kB
+2026-10-18T19:45:07.8544641Z .svelte-kit/output/server/entries/pages/account/_page.server.ts.js                                             0.82 kB │ gzip:  0.39 kB │ map:   1.47 kB
+2026-10-18T19:45:07.8545367Z .svelte-kit/output/server/entries/pages/invoices/_page.server.ts.js                                            0.82 kB │ gzip:  0.39 kB │ map:   1.55 kB
+2026-10-18T19:45:07.8546094Z .svelte-kit/output/server/entries/pages/account/_layout.server.ts.js                                           0.82 kB │ gzip:  0.39 kB │ map:   1.51 kB
+2026-10-18T19:45:07.8546847Z .svelte-kit/output/server/entries/pages/plain/_page.svelte.js                                                  0.83 kB │ gzip:  0.40 kB │ map:   0.72 kB
+2026-10-18T19:45:07.8547567Z .svelte-kit/output/server/entries/pages/destinations/_page.server.ts.js                                        0.83 kB │ gzip:  0.39 kB │ map:   1.53 kB
+2026-10-18T19:45:07.8548308Z .svelte-kit/output/server/entries/pages/destinations/_page.svelte.js                                           0.83 kB │ gzip:  0.47 kB │ map:   0.73 kB
+2026-10-18T19:45:07.8549460Z .svelte-kit/output/server/entries/pages/lang/__lang__/_page.server.ts.js                                       0.83 kB │ gzip:  0.39 kB │ map:   1.49 kB
+2026-10-18T19:45:07.8550248Z .svelte-kit/output/server/entries/pages/request-fetch/_page.server.ts.js                                       0.83 kB │ gzip:  0.39 kB │ map:   1.50 kB
+2026-10-18T19:45:07.8550973Z .svelte-kit/output/server/entries/pages/about/_page.svelte.js                                                  0.84 kB │ gzip:  0.43 kB │ map:   0.87 kB
+2026-10-18T19:45:07.8551708Z .svelte-kit/output/server/entries/pages/account/orders/_page.server.ts.js                                      0.84 kB │ gzip:  0.39 kB │ map:   1.58 kB
+2026-10-18T19:45:07.8552450Z .svelte-kit/output/server/entries/pages/error/expected/_page.server.ts.js                                      0.84 kB │ gzip:  0.39 kB │ map:   1.49 kB
+2026-10-18T19:45:07.8553219Z .svelte-kit/output/server/entries/pages/error/unexpected/_page.server.ts.js                                    0.84 kB │ gzip:  0.39 kB │ map:   1.50 kB
+2026-10-18T19:45:07.8554226Z .svelte-kit/output/server/entries/pages/account/statement/_page.server.ts.js                                   0.85 kB │ gzip:  0.39 kB │ map:   1.50 kB
+2026-10-18T19:45:07.8555495Z .svelte-kit/output/server/entries/pages/actions/signed-in/_page.server.ts.js                                   0.85 kB │ gzip:  0.39 kB │ map:   1.52 kB
+2026-10-18T19:45:07.8556260Z .svelte-kit/output/server/entries/pages/middleware/_slug_/_page.server.ts.js                                   0.85 kB │ gzip:  0.40 kB │ map:   1.55 kB
+2026-10-18T19:45:07.8557020Z .svelte-kit/output/server/entries/pages/missing/_...path_/_page.server.ts.js                                   0.85 kB │ gzip:  0.40 kB │ map:   1.50 kB
+2026-10-18T19:45:07.8557769Z .svelte-kit/output/server/entries/pages/(marketing)/pricing/_page.server.ts.js                                 0.85 kB │ gzip:  0.40 kB │ map:   1.59 kB
+2026-10-18T19:45:07.8558678Z .svelte-kit/output/server/entries/pages/routing/slash/mixed/_page.server.ts.js                                 0.85 kB │ gzip:  0.40 kB │ map:   1.51 kB
+2026-10-18T19:45:07.8559641Z .svelte-kit/output/server/entries/pages/routing/slash/never/_page.server.ts.js                                 0.85 kB │ gzip:  0.39 kB │ map:   1.51 kB
+2026-10-18T19:45:07.8560397Z .svelte-kit/output/server/entries/pages/error/boundary/_page.svelte.js                                         0.85 kB │ gzip:  0.41 kB │ map:   1.05 kB
+2026-10-18T19:45:07.8561153Z .svelte-kit/output/server/entries/pages/routing/slash/always/_page.server.ts.js                                0.86 kB │ gzip:  0.40 kB │ map:   1.52 kB
+2026-10-18T19:45:07.8561912Z .svelte-kit/output/server/entries/pages/routing/slash/ignore/_page.server.ts.js                                0.86 kB │ gzip:  0.40 kB │ map:   1.52 kB
+2026-10-18T19:45:07.8562690Z .svelte-kit/output/server/entries/pages/account/reruns/_slug_/_page.server.ts.js                               0.86 kB │ gzip:  0.40 kB │ map:   1.56 kB
+2026-10-18T19:45:07.8563449Z .svelte-kit/output/server/entries/pages/actions/default/saved/_page.server.ts.js                               0.86 kB │ gzip:  0.40 kB │ map:   1.61 kB
+2026-10-18T19:45:07.8564220Z .svelte-kit/output/server/entries/pages/rerouted/_number_Order_/_page.server.ts.js                             0.86 kB │ gzip:  0.40 kB │ map:   1.52 kB
+2026-10-18T19:45:07.8564985Z .svelte-kit/output/server/entries/pages/routing/fallback/_value_/_page.server.ts.js                            0.87 kB │ gzip:  0.40 kB │ map:   1.53 kB
+2026-10-18T19:45:07.8565769Z .svelte-kit/output/server/entries/pages/event-layout/_section_/_layout.server.ts.js                            0.87 kB │ gzip:  0.40 kB │ map:   1.63 kB
+2026-10-18T19:45:07.8566540Z .svelte-kit/output/server/entries/pages/typed-load/_number_Order_/_page.server.ts.js                           0.87 kB │ gzip:  0.40 kB │ map:   1.53 kB
+2026-10-18T19:45:07.8567419Z .svelte-kit/output/server/chunks/command.remote.js                                                             0.87 kB │ gzip:  0.41 kB │ map:   0.89 kB
+2026-10-18T19:45:07.8568154Z .svelte-kit/output/server/entries/pages/routing/reject/_number_Order_/_page.server.ts.js                       0.88 kB │ gzip:  0.41 kB │ map:   1.54 kB
+2026-10-18T19:45:07.8568946Z .svelte-kit/output/server/entries/pages/routing/fallback/_number_Order_/_page.server.ts.js                     0.89 kB │ gzip:  0.41 kB │ map:   1.55 kB
+2026-10-18T19:45:07.8569925Z .svelte-kit/output/server/entries/pages/routing/optional/__number_Order__/_page.server.ts.js                   0.89 kB │ gzip:  0.41 kB │ map:   1.55 kB
+2026-10-18T19:45:07.8570648Z .svelte-kit/output/server/chunks/state.js                                                                      0.90 kB │ gzip:  0.41 kB │ map:   2.36 kB
+2026-10-18T19:45:07.8571325Z .svelte-kit/output/server/chunks/catalog.remote.js                                                             0.91 kB │ gzip:  0.42 kB │ map:   0.95 kB
+2026-10-18T19:45:07.8572003Z .svelte-kit/output/server/chunks/auth.remote.js                                                                0.91 kB │ gzip:  0.43 kB │ map:   1.03 kB
+2026-10-18T19:45:07.8572709Z .svelte-kit/output/server/entries/pages/middleware/_page.server.ts.js                                          0.94 kB │ gzip:  0.43 kB │ map:   1.85 kB
+2026-10-18T19:45:07.8573515Z .svelte-kit/output/server/entries/pages/typed-dependencies/_a_Order_/_b_Order_/_ignored_/_page.server.ts.js    0.94 kB │ gzip:  0.42 kB │ map:   1.64 kB
+2026-10-18T19:45:07.8574336Z .svelte-kit/output/server/entries/pages/middleware/_slug_/_page.svelte.js                                      0.96 kB │ gzip:  0.45 kB │ map:   1.21 kB
+2026-10-18T19:45:07.8575249Z .svelte-kit/output/server/entries/pages/console/_page.svelte.js                                                0.97 kB │ gzip:  0.57 kB │ map:   1.06 kB
+2026-10-18T19:45:07.8576291Z .svelte-kit/output/server/entries/pages/actions/profiles/_profile_/_page.server.ts.js                          0.98 kB │ gzip:  0.44 kB │ map:   1.97 kB
+2026-10-18T19:45:07.8577142Z .svelte-kit/output/server/chunks/gate.remote.js                                                                0.99 kB │ gzip:  0.45 kB │ map:   1.09 kB
+2026-10-18T19:45:07.8577992Z .svelte-kit/output/server/entries/pages/prerender/_slug_/_page.server.ts.js                                    1.00 kB │ gzip:  0.44 kB │ map:   1.78 kB
+2026-10-18T19:45:07.8578851Z .svelte-kit/output/server/chunks/pricing.remote.js                                                             1.01 kB │ gzip:  0.46 kB │ map:   1.14 kB
+2026-10-18T19:45:07.8579864Z .svelte-kit/output/server/entries/pages/account/orders/_page.svelte.js                                         1.02 kB │ gzip:  0.50 kB │ map:   0.83 kB
+2026-10-18T19:45:07.8580769Z .svelte-kit/output/server/entries/pages/typed-dependencies/_a_Order_/_b_Order_/_ignored_/_page.svelte.js       1.05 kB │ gzip:  0.46 kB │ map:   1.13 kB
+2026-10-18T19:45:07.8581681Z .svelte-kit/output/server/entries/pages/account/reruns/_slug_/_page.svelte.js                                  1.06 kB │ gzip:  0.48 kB │ map:   1.36 kB
+2026-10-18T19:45:07.8582512Z .svelte-kit/output/server/chunks/contact.remote.js                                                             1.07 kB │ gzip:  0.47 kB │ map:   1.19 kB
+2026-10-18T19:45:07.8583300Z .svelte-kit/output/server/chunks/empty.remote.js                                                               1.08 kB │ gzip:  0.45 kB │ map:   1.09 kB
+2026-10-18T19:45:07.8584083Z .svelte-kit/output/server/chunks/about.remote.js                                                               1.10 kB │ gzip:  0.50 kB │ map:   1.40 kB
+2026-10-18T19:45:07.8584896Z .svelte-kit/output/server/entries/pages/invoices/_page.svelte.js                                               1.10 kB │ gzip:  0.55 kB │ map:   1.17 kB
+2026-10-18T19:45:07.8585773Z .svelte-kit/output/server/entries/pages/event-layout/_section_/_layout.svelte.js                               1.11 kB │ gzip:  0.47 kB │ map:   1.23 kB
+2026-10-18T19:45:07.8586794Z .svelte-kit/output/server/entries/pages/actions/options/no-client/_page.server.ts.js                           1.16 kB │ gzip:  0.46 kB │ map:   2.51 kB
+2026-10-18T19:45:07.8587705Z .svelte-kit/output/server/entries/pages/actions/default/saved/_page.svelte.js                                  1.19 kB │ gzip:  0.50 kB │ map:   1.34 kB
+2026-10-18T19:45:07.8588593Z .svelte-kit/output/server/entries/pages/actions/_error.svelte.js                                               1.21 kB │ gzip:  0.53 kB │ map:   1.57 kB
+2026-10-18T19:45:07.8589560Z .svelte-kit/output/server/entries/pages/actions/cross/receive/_page.server.ts.js                               1.24 kB │ gzip:  0.46 kB │ map:   2.68 kB
+2026-10-18T19:45:07.8590455Z .svelte-kit/output/server/entries/pages/actions/options/no-ssr/_page.server.ts.js                              1.24 kB │ gzip:  0.46 kB │ map:   2.69 kB
+2026-10-18T19:45:07.8591377Z .svelte-kit/output/server/entries/pages/error/server-only/_page.svelte.js                                      1.24 kB │ gzip:  0.68 kB │ map:   1.26 kB
+2026-10-18T19:45:07.8592190Z .svelte-kit/output/server/chunks/todos.remote.js                                                               1.29 kB │ gzip:  0.50 kB │ map:   1.55 kB
+2026-10-18T19:45:07.8593011Z .svelte-kit/output/server/entries/pages/actions/cross/_error.svelte.js                                         1.37 kB │ gzip:  0.59 kB │ map:   1.72 kB
+2026-10-18T19:45:07.8593814Z .svelte-kit/output/server/chunks/probe.remote.js                                                               1.39 kB │ gzip:  0.53 kB │ map:   1.59 kB
+2026-10-18T19:45:07.8594617Z .svelte-kit/output/server/entries/pages/items/_id_/_page.svelte.js                                             1.40 kB │ gzip:  0.55 kB │ map:   1.31 kB
+2026-10-18T19:45:07.8595451Z .svelte-kit/output/server/entries/pages/actions/signed-in/_page.svelte.js                                      1.47 kB │ gzip:  0.65 kB │ map:   1.82 kB
+2026-10-18T19:45:07.8596401Z .svelte-kit/output/server/entries/pages/actions/_page.server.ts.js                                             1.63 kB │ gzip:  0.49 kB │ map:   3.83 kB
+2026-10-18T19:45:07.8597253Z .svelte-kit/output/server/entries/pages/render-paths/_page.svelte.js                                           1.66 kB │ gzip:  0.76 kB │ map:   2.44 kB
+2026-10-18T19:45:07.8598080Z .svelte-kit/output/server/entries/pages/fetch/_page.svelte.js                                                  1.66 kB │ gzip:  0.75 kB │ map:   1.59 kB
+2026-10-18T19:45:07.8598921Z .svelte-kit/output/server/entries/pages/stream/_page.svelte.js                                                 1.68 kB │ gzip:  0.59 kB │ map:   1.52 kB
+2026-10-18T19:45:07.8599842Z .svelte-kit/output/server/chunks/hooks.js                                                                      1.68 kB │ gzip:  0.92 kB │ map:   2.89 kB
+2026-10-18T19:45:07.8600607Z .svelte-kit/output/server/entries/pages/live/_page.svelte.js                                                   1.74 kB │ gzip:  0.68 kB │ map:   1.82 kB
+2026-10-18T19:45:07.8601446Z .svelte-kit/output/server/entries/pages/todos/pair/_page.svelte.js                                             1.81 kB │ gzip:  0.65 kB │ map:   3.12 kB
+2026-10-18T19:45:07.8602320Z .svelte-kit/output/server/entries/pages/(marketing)/pricing/_page.svelte.js                                    1.81 kB │ gzip:  0.62 kB │ map:   3.74 kB
+2026-10-18T19:45:07.8603160Z .svelte-kit/output/server/entries/pages/middleware/_page.svelte.js                                             1.86 kB │ gzip:  0.84 kB │ map:   2.44 kB
+2026-10-18T19:45:07.8603974Z .svelte-kit/output/server/entries/pages/api/_page.svelte.js                                                    1.91 kB │ gzip:  0.87 kB │ map:   5.04 kB
+2026-10-18T19:45:07.8604821Z .svelte-kit/output/server/entries/pages/error/component-boundary/_page.svelte.js                               2.13 kB │ gzip:  0.78 kB │ map:   2.76 kB
+2026-10-18T19:45:07.8605804Z .svelte-kit/output/server/entries/pages/universal-fetch/_page.svelte.js                                        2.25 kB │ gzip:  0.82 kB │ map:   2.88 kB
+2026-10-18T19:45:07.8606642Z .svelte-kit/output/server/entries/pages/batch/_page.svelte.js                                                  2.35 kB │ gzip:  0.91 kB │ map:   2.45 kB
+2026-10-18T19:45:07.8607397Z .svelte-kit/output/server/index.js                                                                             2.44 kB │ gzip:  1.02 kB │ map:   3.46 kB
+2026-10-18T19:45:07.8608176Z .svelte-kit/output/server/entries/pages/todos/_page.svelte.js                                                  2.47 kB │ gzip:  0.83 kB │ map:   3.02 kB
+2026-10-18T19:45:07.8609011Z .svelte-kit/output/server/entries/pages/actions/default/_page.svelte.js                                        2.51 kB │ gzip:  1.00 kB │ map:   3.08 kB
+2026-10-18T19:45:07.8610012Z .svelte-kit/output/server/entries/pages/optional/_page.svelte.js                                               2.79 kB │ gzip:  0.89 kB │ map:   3.81 kB
+2026-10-18T19:45:07.8610869Z .svelte-kit/output/server/entries/pages/async-ssr/_mode_/_group_/_page.svelte.js                               2.89 kB │ gzip:  0.75 kB │ map:   3.06 kB
+2026-10-18T19:45:07.8611805Z .svelte-kit/output/server/entries/pages/actions/profiles/_profile_/_page.svelte.js                             3.06 kB │ gzip:  1.08 kB │ map:   4.31 kB
+2026-10-18T19:45:07.8612760Z .svelte-kit/output/server/entries/pages/todos/gate/_page.svelte.js                                             3.10 kB │ gzip:  0.95 kB │ map:   5.11 kB
+2026-10-18T19:45:07.8613663Z .svelte-kit/output/server/entries/pages/actions/cross/receive/_page.svelte.js                                  3.40 kB │ gzip:  1.11 kB │ map:   4.49 kB
+2026-10-18T19:45:07.8614548Z .svelte-kit/output/server/entries/pages/actions/cross/send/_page.svelte.js                                     3.41 kB │ gzip:  1.08 kB │ map:   4.24 kB
+2026-10-18T19:45:07.8615586Z .svelte-kit/output/server/entries/pages/actions/options/no-ssr/_page.svelte.js                                 3.88 kB │ gzip:  1.27 kB │ map:   5.25 kB
+2026-10-18T19:45:07.8616467Z .svelte-kit/output/server/entries/pages/actions/options/no-client/_page.svelte.js                              4.65 kB │ gzip:  1.24 kB │ map:   5.66 kB
+2026-10-18T19:45:07.8617223Z .svelte-kit/output/server/entries/pages/empty/_page.svelte.js                                                  5.51 kB │ gzip:  1.11 kB │ map:   5.39 kB
+2026-10-18T19:45:07.8618047Z .svelte-kit/output/server/entries/pages/universal-fetch/_page.ts.js                                            5.55 kB │ gzip:  1.70 kB │ map:  11.32 kB
+2026-10-18T19:45:07.8618766Z .svelte-kit/output/server/entries/pages/_page.svelte.js                                                        9.40 kB │ gzip:  3.59 kB │ map:  14.39 kB
+2026-10-18T19:45:07.8619593Z .svelte-kit/output/server/entries/pages/_layout.svelte.js                                                     11.98 kB │ gzip:  2.73 kB │ map:  18.58 kB
+2026-10-18T19:45:07.8620393Z .svelte-kit/output/server/entries/pages/actions/_page.svelte.js                                               13.97 kB │ gzip:  2.91 kB │ map:  19.55 kB
+2026-10-18T19:45:07.8621085Z .svelte-kit/output/server/chunks/uneval.js                                                                    19.41 kB │ gzip:  5.37 kB │ map:  40.86 kB
+2026-10-18T19:45:07.8621746Z .svelte-kit/output/server/chunks/server-errors.js                                                             24.28 kB │ gzip:  4.63 kB │ map:  35.01 kB
+2026-10-18T19:45:07.8622416Z .svelte-kit/output/server/chunks/prerender.js                                                                 25.42 kB │ gzip:  7.43 kB │ map:  69.63 kB
+2026-10-18T19:45:07.8623069Z .svelte-kit/output/server/chunks/remote.js                                                                    55.40 kB │ gzip: 11.96 kB │ map:  90.78 kB
+2026-10-18T19:45:07.8623828Z .svelte-kit/output/server/chunks/internal.js                                                                 113.80 kB │ gzip: 30.29 kB │ map: 238.29 kB
+2026-10-18T19:45:07.8624602Z .svelte-kit/output/server/chunks/server3.js                                                                  120.87 kB │ gzip: 31.77 kB │ map: 363.23 kB
+2026-10-18T19:45:07.8625262Z .svelte-kit/output/server/chunks/instance.js                                                                 128.26 kB │ gzip: 33.75 kB │ map: 263.62 kB
+2026-10-18T19:45:07.8625944Z .svelte-kit/output/server/entries/pages/bits-ui/_page.svelte.js                                              152.90 kB │ gzip: 32.05 kB │ map: 386.23 kB
+2026-10-18T19:45:07.8626289Z 
+2026-10-18T19:45:07.8626462Z [32m✓ built in 1.62s[39m
+2026-10-18T19:45:07.8626691Z Analysing routes
+2026-10-18T19:45:08.4310618Z Building app
+2026-10-18T19:45:08.4426670Z transforming...
+2026-10-18T19:45:09.9346653Z ✓ 1069 modules transformed.
+2026-10-18T19:45:09.9767943Z rendering chunks...
+2026-10-18T19:45:10.0730088Z computing gzip size...
+2026-10-18T19:45:10.0735292Z .svelte-kit/output/client/_app/version.json                           0.02 kB │ gzip:  0.04 kB
+2026-10-18T19:45:10.0736240Z .svelte-kit/output/client/.vite/manifest.json                        38.57 kB │ gzip:  3.49 kB
+2026-10-18T19:45:10.0737365Z .svelte-kit/output/client/_app/immutable/assets/73.CX0uyD_A.css       0.05 kB │ gzip:  0.06 kB
+2026-10-18T19:45:10.0738454Z .svelte-kit/output/client/_app/immutable/assets/7.C8cvvF3A.css        0.05 kB │ gzip:  0.07 kB
+2026-10-18T19:45:10.0739523Z .svelte-kit/output/client/_app/immutable/assets/28.DBzYX_k5.css       0.06 kB │ gzip:  0.07 kB
+2026-10-18T19:45:10.0740339Z .svelte-kit/output/client/_app/immutable/assets/49.B0CDdk1M.css       0.07 kB │ gzip:  0.09 kB
+2026-10-18T19:45:10.0741076Z .svelte-kit/output/client/_app/immutable/assets/21.Ds093uQL.css       0.11 kB │ gzip:  0.12 kB
+2026-10-18T19:45:10.0742006Z .svelte-kit/output/client/_app/immutable/assets/51.CskoiPxQ.css       0.11 kB │ gzip:  0.12 kB
+2026-10-18T19:45:10.0742874Z .svelte-kit/output/client/_app/immutable/assets/5.fbzpji-s.css        0.20 kB │ gzip:  0.16 kB
+2026-10-18T19:45:10.0744021Z .svelte-kit/output/client/_app/immutable/assets/4.CJLRcl0d.css        0.23 kB │ gzip:  0.17 kB
+2026-10-18T19:45:10.0744901Z .svelte-kit/output/client/_app/immutable/assets/25.yGOLC7jZ.css       0.23 kB │ gzip:  0.18 kB
+2026-10-18T19:45:10.0745805Z .svelte-kit/output/client/_app/immutable/assets/76.CnGPOG6F.css       0.26 kB │ gzip:  0.17 kB
+2026-10-18T19:45:10.0746690Z .svelte-kit/output/client/_app/immutable/assets/75.Ctw3DW5X.css       0.31 kB │ gzip:  0.18 kB
+2026-10-18T19:45:10.0747564Z .svelte-kit/output/client/_app/immutable/assets/29.QE5ZuEV4.css       0.34 kB │ gzip:  0.18 kB
+2026-10-18T19:45:10.0748443Z .svelte-kit/output/client/_app/immutable/assets/50.Doiftu4P.css       0.37 kB │ gzip:  0.22 kB
+2026-10-18T19:45:10.0749452Z .svelte-kit/output/client/_app/immutable/assets/20.C9dXXnve.css       0.37 kB │ gzip:  0.22 kB
+2026-10-18T19:45:10.0750002Z .svelte-kit/output/client/_app/immutable/assets/19.DvAAoNG5.css       0.44 kB │ gzip:  0.23 kB
+2026-10-18T19:45:10.0750557Z .svelte-kit/output/client/_app/immutable/assets/24.DKMEu08C.css       0.53 kB │ gzip:  0.27 kB
+2026-10-18T19:45:10.0751117Z .svelte-kit/output/client/_app/immutable/assets/18.Cbb-gis8.css       0.70 kB │ gzip:  0.31 kB
+2026-10-18T19:45:10.0751700Z .svelte-kit/output/client/_app/immutable/assets/22.Bc56o2ZQ.css       0.86 kB │ gzip:  0.39 kB
+2026-10-18T19:45:10.0752230Z .svelte-kit/output/client/_app/immutable/assets/23.BcwEQrgR.css       0.88 kB │ gzip:  0.40 kB
+2026-10-18T19:45:10.0752766Z .svelte-kit/output/client/_app/immutable/assets/0.BvC4dEWY.css        1.09 kB │ gzip:  0.58 kB
+2026-10-18T19:45:10.0753293Z .svelte-kit/output/client/_app/immutable/assets/17.Cgv7NP6R.css       1.72 kB │ gzip:  0.62 kB
+2026-10-18T19:45:10.0753821Z .svelte-kit/output/client/_app/immutable/assets/10.CYvOZ37k.css       2.00 kB │ gzip:  0.77 kB
+2026-10-18T19:45:10.0754403Z .svelte-kit/output/client/_app/immutable/chunks/-V-Ki_aR.js           0.02 kB │ gzip:  0.04 kB
+2026-10-18T19:45:10.0755124Z .svelte-kit/output/client/_app/immutable/chunks/uqbGM8hy.js           0.03 kB │ gzip:  0.05 kB
+2026-10-18T19:45:10.0755658Z .svelte-kit/output/client/_app/immutable/chunks/IZrzv1Qa.js           0.05 kB │ gzip:  0.06 kB
+2026-10-18T19:45:10.0756191Z .svelte-kit/output/client/_app/immutable/entry/payload.DSmR2FwN.js    0.06 kB │ gzip:  0.07 kB
+2026-10-18T19:45:10.0756874Z .svelte-kit/output/client/_app/immutable/chunks/BLWpUomT.js           0.07 kB │ gzip:  0.08 kB
+2026-10-18T19:45:10.0757405Z .svelte-kit/output/client/_app/immutable/chunks/B2pjlNpM.js           0.07 kB │ gzip:  0.09 kB
+2026-10-18T19:45:10.0757952Z .svelte-kit/output/client/_app/immutable/chunks/DK3Fl9T5.js           0.15 kB │ gzip:  0.15 kB
+2026-10-18T19:45:10.0758490Z .svelte-kit/output/client/_app/immutable/nodes/52.CmxRAXQI.js         0.16 kB │ gzip:  0.15 kB
+2026-10-18T19:45:10.0759025Z .svelte-kit/output/client/_app/immutable/nodes/31.__HMKG_o.js         0.18 kB │ gzip:  0.16 kB
+2026-10-18T19:45:10.0759766Z .svelte-kit/output/client/_app/immutable/nodes/40.BG2fQfOn.js         0.18 kB │ gzip:  0.17 kB
+2026-10-18T19:45:10.0760297Z .svelte-kit/output/client/_app/immutable/nodes/61.BCjL8iEP.js         0.18 kB │ gzip:  0.15 kB
+2026-10-18T19:45:10.0760822Z .svelte-kit/output/client/_app/immutable/nodes/62.BCjL8iEP.js         0.18 kB │ gzip:  0.15 kB
+2026-10-18T19:45:10.0761340Z .svelte-kit/output/client/_app/immutable/nodes/63.BCjL8iEP.js         0.18 kB │ gzip:  0.15 kB
+2026-10-18T19:45:10.0761860Z .svelte-kit/output/client/_app/immutable/nodes/64.BCjL8iEP.js         0.18 kB │ gzip:  0.15 kB
+2026-10-18T19:45:10.0762377Z .svelte-kit/output/client/_app/immutable/nodes/65.BCjL8iEP.js         0.18 kB │ gzip:  0.15 kB
+2026-10-18T19:45:10.0763248Z .svelte-kit/output/client/_app/immutable/nodes/67.BCjL8iEP.js         0.18 kB │ gzip:  0.15 kB
+2026-10-18T19:45:10.0763938Z .svelte-kit/output/client/_app/immutable/nodes/43.DUTVNsnX.js         0.19 kB │ gzip:  0.17 kB
+2026-10-18T19:45:10.0764512Z .svelte-kit/output/client/_app/immutable/nodes/44.Bja3V2qo.js         0.19 kB │ gzip:  0.18 kB
+2026-10-18T19:45:10.0765213Z .svelte-kit/output/client/_app/immutable/nodes/9.CZnVszG_.js          0.24 kB │ gzip:  0.20 kB
+2026-10-18T19:45:10.0765750Z .svelte-kit/output/client/_app/immutable/chunks/C3b7TI5n.js           0.25 kB │ gzip:  0.17 kB
+2026-10-18T19:45:10.0766292Z .svelte-kit/output/client/_app/immutable/chunks/VqyqBXJi.js           0.27 kB │ gzip:  0.21 kB
+2026-10-18T19:45:10.0766835Z .svelte-kit/output/client/_app/immutable/nodes/48.Iw5srO5N.js         0.28 kB │ gzip:  0.23 kB
+2026-10-18T19:45:10.0767359Z .svelte-kit/output/client/_app/immutable/nodes/68.B6PnYxAK.js         0.28 kB │ gzip:  0.21 kB
+2026-10-18T19:45:10.0767887Z .svelte-kit/output/client/_app/immutable/nodes/66.D5F1t8xF.js         0.28 kB │ gzip:  0.21 kB
+2026-10-18T19:45:10.0768422Z .svelte-kit/output/client/_app/immutable/nodes/38.C4Fg182B.js         0.29 kB │ gzip:  0.23 kB
+2026-10-18T19:45:10.0768970Z .svelte-kit/output/client/_app/immutable/nodes/42._PGzgYAY.js         0.29 kB │ gzip:  0.23 kB
+2026-10-18T19:45:10.0769682Z .svelte-kit/output/client/_app/immutable/nodes/16.aEg-swmz.js         0.30 kB │ gzip:  0.23 kB
+2026-10-18T19:45:10.0770220Z .svelte-kit/output/client/_app/immutable/nodes/13.BG53cZcw.js         0.33 kB │ gzip:  0.26 kB
+2026-10-18T19:45:10.0770747Z .svelte-kit/output/client/_app/immutable/nodes/1.DJ4EiCyB.js          0.35 kB │ gzip:  0.26 kB
+2026-10-18T19:45:10.0771269Z .svelte-kit/output/client/_app/immutable/nodes/30.C-sB1w-E.js         0.37 kB │ gzip:  0.26 kB
+2026-10-18T19:45:10.0771793Z .svelte-kit/output/client/_app/immutable/nodes/79.CWX7_ZMt.js         0.39 kB │ gzip:  0.28 kB
+2026-10-18T19:45:10.0772318Z .svelte-kit/output/client/_app/immutable/nodes/39.DuJ2Cghi.js         0.43 kB │ gzip:  0.31 kB
+2026-10-18T19:45:10.0772846Z .svelte-kit/output/client/_app/immutable/nodes/56.BSgvRxg5.js         0.43 kB │ gzip:  0.30 kB
+2026-10-18T19:45:10.0773380Z .svelte-kit/output/client/_app/immutable/nodes/60.CxIVLPN6.js         0.45 kB │ gzip:  0.31 kB
+2026-10-18T19:45:10.0774063Z .svelte-kit/output/client/_app/immutable/nodes/36.iqV4uv5Q.js         0.45 kB │ gzip:  0.32 kB
+2026-10-18T19:45:10.0774599Z .svelte-kit/output/client/_app/immutable/nodes/3.BsT63W2X.js          0.46 kB │ gzip:  0.31 kB
+2026-10-18T19:45:10.0775125Z .svelte-kit/output/client/_app/immutable/nodes/81.BJGOs2qS.js         0.47 kB │ gzip:  0.33 kB
+2026-10-18T19:45:10.0775658Z .svelte-kit/output/client/_app/immutable/nodes/41.4PA3WOFx.js         0.48 kB │ gzip:  0.34 kB
+2026-10-18T19:45:10.0776178Z .svelte-kit/output/client/_app/immutable/nodes/57.BcdHXEDU.js         0.50 kB │ gzip:  0.33 kB
+2026-10-18T19:45:10.0776713Z .svelte-kit/output/client/_app/immutable/nodes/32.OaK-CQ3f.js         0.52 kB │ gzip:  0.37 kB
+2026-10-18T19:45:10.0777234Z .svelte-kit/output/client/_app/immutable/nodes/59.CNq36L16.js         0.54 kB │ gzip:  0.36 kB
+2026-10-18T19:45:10.0777750Z .svelte-kit/output/client/_app/immutable/nodes/70.mr_EhxI_.js         0.57 kB │ gzip:  0.37 kB
+2026-10-18T19:45:10.0778281Z .svelte-kit/output/client/_app/immutable/nodes/35.BBd_cLFq.js         0.60 kB │ gzip:  0.39 kB
+2026-10-18T19:45:10.0778803Z .svelte-kit/output/client/_app/immutable/nodes/6.7BjPFnFT.js          0.62 kB │ gzip:  0.38 kB
+2026-10-18T19:45:10.0779481Z .svelte-kit/output/client/_app/immutable/nodes/8.7BjPFnFT.js          0.62 kB │ gzip:  0.38 kB
+2026-10-18T19:45:10.0780163Z .svelte-kit/output/client/_app/immutable/entry/start.WV1K7_Dv.js      0.62 kB │ gzip:  0.35 kB
+2026-10-18T19:45:10.0781058Z .svelte-kit/output/client/_app/immutable/nodes/55.BTumFmNX.js         0.65 kB │ gzip:  0.41 kB
+2026-10-18T19:45:10.0781954Z .svelte-kit/output/client/_app/immutable/nodes/14.BvcNaZRt.js         0.66 kB │ gzip:  0.41 kB
+2026-10-18T19:45:10.0782873Z .svelte-kit/output/client/_app/immutable/chunks/Dcg78drg.js           0.66 kB │ gzip:  0.37 kB
+2026-10-18T19:45:10.0783792Z .svelte-kit/output/client/_app/immutable/nodes/2.Cs92BDPh.js          0.69 kB │ gzip:  0.43 kB
+2026-10-18T19:45:10.0784722Z .svelte-kit/output/client/_app/immutable/nodes/69.BGpj9EyM.js         0.71 kB │ gzip:  0.45 kB
+2026-10-18T19:45:10.0785873Z .svelte-kit/output/client/_app/immutable/nodes/77.C1lYKtxt.js         0.72 kB │ gzip:  0.45 kB
+2026-10-18T19:45:10.0786529Z .svelte-kit/output/client/_app/immutable/nodes/71.C0HfabCX.js         0.72 kB │ gzip:  0.45 kB
+2026-10-18T19:45:10.0787071Z .svelte-kit/output/client/_app/immutable/nodes/82.DXYmBBDn.js         0.77 kB │ gzip:  0.48 kB
+2026-10-18T19:45:10.0787599Z .svelte-kit/output/client/_app/immutable/nodes/51.C3-HK5jz.js         0.80 kB │ gzip:  0.46 kB
+2026-10-18T19:45:10.0788116Z .svelte-kit/output/client/_app/immutable/nodes/33.RlJVeyCb.js         0.87 kB │ gzip:  0.51 kB
+2026-10-18T19:45:10.0788653Z .svelte-kit/output/client/_app/immutable/nodes/12.ZAjtaMpM.js         0.92 kB │ gzip:  0.53 kB
+2026-10-18T19:45:10.0789360Z .svelte-kit/output/client/_app/immutable/nodes/7.BH5i3NDx.js          0.92 kB │ gzip:  0.43 kB
+2026-10-18T19:45:10.0790039Z .svelte-kit/output/client/_app/immutable/nodes/53.Cj0dXnBj.js         0.94 kB │ gzip:  0.52 kB
+2026-10-18T19:45:10.0790591Z .svelte-kit/output/client/_app/immutable/nodes/78.CsH2XdIX.js         0.97 kB │ gzip:  0.46 kB
+2026-10-18T19:45:10.0791138Z .svelte-kit/output/client/_app/immutable/nodes/21.D_8azL23.js         1.02 kB │ gzip:  0.53 kB
+2026-10-18T19:45:10.0791660Z .svelte-kit/output/client/_app/immutable/nodes/15.B5GHiyfo.js         1.17 kB │ gzip:  0.60 kB
+2026-10-18T19:45:10.0792178Z .svelte-kit/output/client/_app/immutable/nodes/46.DQRaOoKr.js         1.18 kB │ gzip:  0.66 kB
+2026-10-18T19:45:10.0792707Z .svelte-kit/output/client/_app/immutable/nodes/47.BgdULsnt.js         1.20 kB │ gzip:  0.65 kB
+2026-10-18T19:45:10.0793241Z .svelte-kit/output/client/_app/immutable/nodes/4.g5bMt9TZ.js          1.20 kB │ gzip:  0.65 kB
+2026-10-18T19:45:10.0793786Z .svelte-kit/output/client/_app/immutable/nodes/49.AOrRNQwK.js         1.24 kB │ gzip:  0.71 kB
+2026-10-18T19:45:10.0794318Z .svelte-kit/output/client/_app/immutable/nodes/5.BErv7xfp.js          1.24 kB │ gzip:  0.67 kB
+2026-10-18T19:45:10.0794864Z .svelte-kit/output/client/_app/immutable/nodes/72.CReMcafM.js         1.30 kB │ gzip:  0.58 kB
+2026-10-18T19:45:10.0795398Z .svelte-kit/output/client/_app/immutable/nodes/58.B_yyGZKX.js         1.31 kB │ gzip:  0.75 kB
+2026-10-18T19:45:10.0795926Z .svelte-kit/output/client/_app/immutable/nodes/25.Ban039xM.js         1.31 kB │ gzip:  0.72 kB
+2026-10-18T19:45:10.0796453Z .svelte-kit/output/client/_app/immutable/chunks/Bjy-W4x2.js           1.36 kB │ gzip:  0.65 kB
+2026-10-18T19:45:10.0796972Z .svelte-kit/output/client/_app/immutable/nodes/74.CmnAIqQH.js         1.39 kB │ gzip:  0.81 kB
+2026-10-18T19:45:10.0797499Z .svelte-kit/output/client/_app/immutable/nodes/28.Cr9Xw9yZ.js         1.47 kB │ gzip:  0.84 kB
+2026-10-18T19:45:10.0798023Z .svelte-kit/output/client/_app/immutable/chunks/DCi5CeUw.js           1.49 kB │ gzip:  0.77 kB
+2026-10-18T19:45:10.0798547Z .svelte-kit/output/client/_app/immutable/nodes/50.Dk6pciIc.js         1.50 kB │ gzip:  0.82 kB
+2026-10-18T19:45:10.0799084Z .svelte-kit/output/client/_app/immutable/chunks/CRzLMJPS.js           1.53 kB │ gzip:  0.80 kB
+2026-10-18T19:45:10.0799907Z .svelte-kit/output/client/_app/immutable/nodes/73.BN3uuyag.js         1.67 kB │ gzip:  0.88 kB
+2026-10-18T19:45:10.0800459Z .svelte-kit/output/client/_app/immutable/nodes/45.C4baN-Ox.js         1.70 kB │ gzip:  0.90 kB
+2026-10-18T19:45:10.0800988Z .svelte-kit/output/client/_app/immutable/chunks/DNIZDAds.js           1.89 kB │ gzip:  0.79 kB
+2026-10-18T19:45:10.0801516Z .svelte-kit/output/client/_app/immutable/nodes/11.BEUKZ6NP.js         1.93 kB │ gzip:  0.92 kB
+2026-10-18T19:45:10.0802039Z .svelte-kit/output/client/_app/immutable/nodes/76.BByuPaEo.js         2.00 kB │ gzip:  0.98 kB
+2026-10-18T19:45:10.0802557Z .svelte-kit/output/client/_app/immutable/nodes/27.CELxFCen.js         2.01 kB │ gzip:  0.85 kB
+2026-10-18T19:45:10.0803083Z .svelte-kit/output/client/_app/immutable/nodes/20.Dy9tU7yv.js         2.20 kB │ gzip:  1.03 kB
+2026-10-18T19:45:10.0803622Z .svelte-kit/output/client/_app/immutable/nodes/37.PZMJ2DZm.js         2.37 kB │ gzip:  1.13 kB
+2026-10-18T19:45:10.0804167Z .svelte-kit/output/client/_app/immutable/nodes/80.Cl5cmDVH.js         2.40 kB │ gzip:  1.06 kB
+2026-10-18T19:45:10.0804699Z .svelte-kit/output/client/_app/immutable/chunks/CVa-PHYT.js           2.48 kB │ gzip:  1.16 kB
+2026-10-18T19:45:10.0805224Z .svelte-kit/output/client/_app/immutable/chunks/CHumLCH1.js           2.48 kB │ gzip:  0.64 kB
+2026-10-18T19:45:10.0805747Z .svelte-kit/output/client/_app/immutable/nodes/24.CnAa5Zan.js         2.86 kB │ gzip:  1.22 kB
+2026-10-18T19:45:10.0806264Z .svelte-kit/output/client/_app/immutable/nodes/19.CkAEAqDz.js         3.17 kB │ gzip:  1.07 kB
+2026-10-18T19:45:10.0806786Z .svelte-kit/output/client/_app/immutable/nodes/54.C6E2B8px.js         3.27 kB │ gzip:  1.30 kB
+2026-10-18T19:45:10.0807302Z .svelte-kit/output/client/_app/immutable/nodes/26.Dz6bvhRV.js         3.39 kB │ gzip:  1.55 kB
+2026-10-18T19:45:10.0807947Z .svelte-kit/output/client/_app/immutable/nodes/75.DzpV7wYs.js         3.41 kB │ gzip:  1.41 kB
+2026-10-18T19:45:10.0808482Z .svelte-kit/output/client/_app/immutable/nodes/18.CDpuTzFe.js         3.45 kB │ gzip:  1.41 kB
+2026-10-18T19:45:10.0809009Z .svelte-kit/output/client/_app/immutable/nodes/23.DpPBtklp.js         3.52 kB │ gzip:  1.41 kB
+2026-10-18T19:45:10.0809674Z .svelte-kit/output/client/_app/immutable/chunks/Cfulb68b.js           3.58 kB │ gzip:  1.70 kB
+2026-10-18T19:45:10.0810204Z .svelte-kit/output/client/_app/immutable/chunks/CRKnO3q2.js           3.66 kB │ gzip:  1.42 kB
+2026-10-18T19:45:10.0810731Z .svelte-kit/output/client/_app/immutable/nodes/34.D582JDoU.js         3.67 kB │ gzip:  1.14 kB
+2026-10-18T19:45:10.0811252Z .svelte-kit/output/client/_app/immutable/nodes/22.cDXLn7XF.js         4.40 kB │ gzip:  1.38 kB
+2026-10-18T19:45:10.0811782Z .svelte-kit/output/client/_app/immutable/nodes/0.Btyp56UN.js         10.60 kB │ gzip:  3.43 kB
+2026-10-18T19:45:10.0812313Z .svelte-kit/output/client/_app/immutable/entry/app.DoBbgi4k.js       14.44 kB │ gzip:  3.75 kB
+2026-10-18T19:45:10.0812853Z .svelte-kit/output/client/_app/immutable/nodes/17.tMukkajv.js        14.64 kB │ gzip:  3.91 kB
+2026-10-18T19:45:10.0813391Z .svelte-kit/output/client/_app/immutable/chunks/Bk3TZGiS.js          27.93 kB │ gzip:  9.61 kB
+2026-10-18T19:45:10.0813921Z .svelte-kit/output/client/_app/immutable/chunks/BLI1l6YN.js          48.26 kB │ gzip: 17.50 kB
+2026-10-18T19:45:10.0814453Z .svelte-kit/output/client/_app/immutable/chunks/D3I6LOIX.js          54.51 kB │ gzip: 20.80 kB
+2026-10-18T19:45:10.0814977Z .svelte-kit/output/client/_app/immutable/nodes/29.sShHB9Pv.js        68.85 kB │ gzip: 19.18 kB
+2026-10-18T19:45:10.0815505Z .svelte-kit/output/client/_app/immutable/nodes/10.6xj91WxI.js       103.78 kB │ gzip: 33.31 kB
+2026-10-18T19:45:10.0815766Z 
+2026-10-18T19:45:10.0815943Z [32m✓ built in 1.64s[39m
+2026-10-18T19:45:10.5800602Z Prerendering
+2026-10-18T19:45:10.6041808Z [1m[31m500[39m[22m GET /about
+2026-10-18T19:45:10.6045584Z [1m[31m
+2026-10-18T19:45:10.6045891Z prerender_http_error
+2026-10-18T19:45:10.6046208Z Failed to prerender `/about`
+2026-10-18T19:45:10.6046847Z https://svelte.dev/e/kit/prerender_http_error
+2026-10-18T19:45:10.6047146Z [39m[22m
+2026-10-18T19:45:10.6054574Z To suppress or handle this error, implement `handleHttpError` in https://svelte.dev/docs/kit/@sveltejs-kit-vite#prerender
+2026-10-18T19:45:10.6055045Z 
+2026-10-18T19:45:10.6168110Z skgo prerender service stopped (pid 5044)
+2026-10-18T19:45:10.6169076Z [31merror during build:
+2026-10-18T19:45:10.6169638Z [Error: Prerendering failed][39m
+2026-10-18T19:45:10.6537456Z /home/runner/work/skgo/skgo/example/web/node_modules/.bin/vp [build]: exit status 1
+2026-10-18T19:45:10.6543671Z exit status 1
+2026-10-18T19:45:10.6612488Z error: recipe `build` failed on line 44 with exit code 1
+2026-10-18T19:45:10.6626673Z ##[error]Process completed with exit code 1.
+2026-10-18T19:45:10.6728569Z Post job cleanup.
+2026-10-18T19:45:10.7418326Z [command]/usr/bin/git version
+2026-10-18T19:45:10.7462573Z git version 2.55.0
+2026-10-18T19:45:10.7492569Z Temporarily overriding HOME='/home/runner/work/_temp/2632edcb-63c6-4f82-bc47-6cc7d2f96551' before making global git config changes
+2026-10-18T19:45:10.7493694Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-18T19:45:10.7495444Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/skgo/skgo
+2026-10-18T19:45:10.7522117Z Removing SSH command configuration
+2026-10-18T19:45:10.7527352Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-18T19:45:10.7557816Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-18T19:45:10.7773665Z Removing HTTP extra header
+2026-10-18T19:45:10.7779577Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-18T19:45:10.7811342Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-18T19:45:10.8022080Z Removing includeIf entries pointing to credentials config files
+2026-10-18T19:45:10.8028793Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-18T19:45:10.8054376Z includeif.gitdir:/home/runner/work/skgo/skgo/.git.path
+2026-10-18T19:45:10.8055131Z includeif.gitdir:/home/runner/work/skgo/skgo/.git/worktrees/*.path
+2026-10-18T19:45:10.8055949Z includeif.gitdir:/github/workspace/.git.path
+2026-10-18T19:45:10.8056485Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-18T19:45:10.8062033Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/skgo/skgo/.git.path
+2026-10-18T19:45:10.8085081Z /home/runner/work/_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config
+2026-10-18T19:45:10.8092910Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/skgo/skgo/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-0d6e92ad\-ba84\-46e7\-acd1\-95356fc71956\.config
+2026-10-18T19:45:10.8126756Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/skgo/skgo/.git/worktrees/*.path
+2026-10-18T19:45:10.8153844Z /home/runner/work/_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config
+2026-10-18T19:45:10.8164702Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/skgo/skgo/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-0d6e92ad\-ba84\-46e7\-acd1\-95356fc71956\.config
+2026-10-18T19:45:10.8196515Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-18T19:45:10.8220035Z /github/runner_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config
+2026-10-18T19:45:10.8225817Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-0d6e92ad\-ba84\-46e7\-acd1\-95356fc71956\.config
+2026-10-18T19:45:10.8257541Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-18T19:45:10.8278936Z /github/runner_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config
+2026-10-18T19:45:10.8284888Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-0d6e92ad\-ba84\-46e7\-acd1\-95356fc71956\.config
+2026-10-18T19:45:10.8843672Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-18T19:45:10.9037506Z Removing credentials config '/home/runner/work/_temp/git-credentials-0d6e92ad-ba84-46e7-acd1-95356fc71956.config'
+2026-10-18T19:45:10.9168226Z Cleaning up orphan processes

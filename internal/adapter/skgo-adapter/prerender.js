@@ -903,14 +903,22 @@ export async function requestHandle(event, resolveRequest) {
 
 /** Kit has applied internal response cookies before its supplied fetch returns. */
 export async function requestFetch({ event, request, fetch }) {
-  const continuedFetch = async (continued) => {
-    const target = new URL(continued.url);
-    if (target.origin === event.url.origin && target.pathname.endsWith('/reroute')) {
-      const manifest = await rerouteManifest();
-      if (target.pathname !== `${manifest.base}/${manifest.appDir}/reroute`) return fetch(continued);
-      const answer = await invokeService({kind:'reroute',url:target.searchParams.get('url'),headers:Object.fromEntries([...event.request.headers].map(([key,value])=>[key,[value]])),manifest});
-      return new Response(answer,{headers:{'content-type':'application/json'}});
+  // Kit invokes universal reroute before handle creates a logical request.
+  // Its Go forwarding endpoint must be reachable before the fetch exchange,
+  // which belongs to an already-bound application request.
+  const target = new URL(request.url);
+  if (target.origin === event.url.origin && target.pathname.endsWith("/reroute")) {
+    const manifest = await rerouteManifest();
+    if (target.pathname === `${manifest.base}/${manifest.appDir}/reroute`) {
+      const answer = await invokeService({
+        kind: "reroute", url: target.searchParams.get("url"),
+        headers: Object.fromEntries([...event.request.headers].map(([key, value]) => [key, [value]])),
+        manifest,
+      });
+      return new Response(answer, { headers: { "content-type": "application/json" } });
     }
+  }
+  const continuedFetch = async (continued) => {
     const scope = { internal: false };
     return internalFetch.run(scope, async () => {
       const response = await fetch(continued);

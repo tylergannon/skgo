@@ -15,7 +15,7 @@ import (
 )
 
 func TestRealSessionNativeRelocationRecovery(t *testing.T) {
-	realSession(t, false, false, "relocation")
+	realSession(t, false, false, false, "relocation")
 }
 
 func mutexSessionRoute(value string, initial int) string {

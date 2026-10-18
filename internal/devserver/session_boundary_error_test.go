@@ -13,7 +13,7 @@ import (
 )
 
 func TestRealSessionComponentBoundaryErrorHook(t *testing.T) {
-	realSession(t, false, false, "boundary-error")
+	realSession(t, false, false, false, "boundary-error")
 }
 
 func setupBoundaryError(t *testing.T, write func(string, string)) {

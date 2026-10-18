@@ -61,6 +61,7 @@ func foreignFixtureIn(t *testing.T, root string, remote string, extra map[string
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"reflect"
 )
 
@@ -92,6 +93,8 @@ type RequestMiddleware[P,L any] func(context.Context,RequestEvent[P,L],RequestRe
 type RequestHandle[P,L any] func(context.Context,RequestEvent[P,L])(RequestEvent[P,L],error)
 type ResolveOptions struct{}
 type Fetch func(*http.Request) (*http.Response, error)
+type RerouteEvent struct {URL *url.URL; Fetch Fetch}
+type Reroute func(context.Context, RerouteEvent) (*string, error)
 type HandleFetch func(context.Context, *http.Request, Fetch) (*http.Response, error)
 type CaughtError struct {Kind string; Status int; Message string; Err error}
 type HandleError func(context.Context, CaughtError) map[string]any

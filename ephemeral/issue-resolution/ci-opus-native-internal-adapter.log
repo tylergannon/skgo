@@ -1,0 +1,64 @@
+=== RUN   TestNativeResponseWaitsForLogicalRequestEnd
+=== RUN   TestNativeResponseWaitsForLogicalRequestEnd/HEAD-200
+=== RUN   TestNativeResponseWaitsForLogicalRequestEnd/GET-204
+=== RUN   TestNativeResponseWaitsForLogicalRequestEnd/GET-200
+--- PASS: TestNativeResponseWaitsForLogicalRequestEnd (0.22s)
+    --- PASS: TestNativeResponseWaitsForLogicalRequestEnd/HEAD-200 (0.07s)
+    --- PASS: TestNativeResponseWaitsForLogicalRequestEnd/GET-204 (0.07s)
+    --- PASS: TestNativeResponseWaitsForLogicalRequestEnd/GET-200 (0.08s)
+=== RUN   TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies
+--- PASS: TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies (0.05s)
+=== RUN   TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler
+    development_test.go:370: snapshot1 routes2 nodes4
+    development_test.go:407: snapshot2 routes3 nodes5
+    development_test.go:412: snapshot3 routes3 nodes5
+    development_test.go:419: snapshot4 routes2 nodes4
+    development_test.go:451: snapshot5 routes2 nodes4
+--- PASS: TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler (3.84s)
+=== RUN   TestTracingNativeKitAndProduction
+=== RUN   TestTracingNativeKitAndProduction/native_document
+=== RUN   TestTracingNativeKitAndProduction/native_endpoint
+=== RUN   TestTracingNativeKitAndProduction/native_internal_fetch
+=== RUN   TestTracingNativeKitAndProduction/native_Go_fetch_active
+=== RUN   TestTracingNativeKitAndProduction/native_Go_fetch_override
+=== RUN   TestTracingNativeKitAndProduction/native_unexpected_load
+=== RUN   TestTracingNativeKitAndProduction/native_unexpected_action
+=== RUN   TestTracingNativeKitAndProduction/native_unexpected_endpoint
+=== RUN   TestTracingNativeKitAndProduction/native_large_endpoint_error
+=== RUN   TestTracingNativeKitAndProduction/native_known_load
+=== RUN   TestTracingNativeKitAndProduction/native_known_action
+=== RUN   TestTracingNativeKitAndProduction/standalone_universal_document
+=== RUN   TestTracingNativeKitAndProduction/standalone_endpoint
+=== RUN   TestTracingNativeKitAndProduction/standalone_internal_fetch
+=== RUN   TestTracingNativeKitAndProduction/standalone_Go_fetch_active
+=== RUN   TestTracingNativeKitAndProduction/standalone_Go_fetch_override
+=== RUN   TestTracingNativeKitAndProduction/standalone_unexpected_load
+=== RUN   TestTracingNativeKitAndProduction/standalone_unexpected_action
+=== RUN   TestTracingNativeKitAndProduction/standalone_unexpected_endpoint
+=== RUN   TestTracingNativeKitAndProduction/standalone_known_load
+=== RUN   TestTracingNativeKitAndProduction/standalone_known_action
+--- PASS: TestTracingNativeKitAndProduction (3.91s)
+    --- PASS: TestTracingNativeKitAndProduction/native_document (0.27s)
+    --- PASS: TestTracingNativeKitAndProduction/native_endpoint (0.01s)
+    --- PASS: TestTracingNativeKitAndProduction/native_internal_fetch (0.01s)
+    --- PASS: TestTracingNativeKitAndProduction/native_Go_fetch_active (0.01s)
+    --- PASS: TestTracingNativeKitAndProduction/native_Go_fetch_override (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/native_unexpected_load (0.01s)
+    --- PASS: TestTracingNativeKitAndProduction/native_unexpected_action (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/native_unexpected_endpoint (0.01s)
+    --- PASS: TestTracingNativeKitAndProduction/native_large_endpoint_error (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/native_known_load (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/native_known_action (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_universal_document (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_endpoint (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_internal_fetch (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_Go_fetch_active (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_Go_fetch_override (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_unexpected_load (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_unexpected_action (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_unexpected_endpoint (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_known_load (0.00s)
+    --- PASS: TestTracingNativeKitAndProduction/standalone_known_action (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	8.242s
+exit=0
