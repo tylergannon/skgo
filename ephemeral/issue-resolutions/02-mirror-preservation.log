@@ -1,0 +1,6 @@
+=== RUN   TestFailedPageLoadGenerationPreservesPublishedMirrors
+=== PAUSE TestFailedPageLoadGenerationPreservesPublishedMirrors
+=== CONT  TestFailedPageLoadGenerationPreservesPublishedMirrors
+--- PASS: TestFailedPageLoadGenerationPreservesPublishedMirrors (2.27s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	2.612s

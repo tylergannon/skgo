@@ -1,0 +1,5 @@
+Independently validate issue #253 on the current feature branch. Read the full issue, comments, cache annotations, goal and proof in ephemeral/issue-resolutions/02-generation.md and the implementer's adjacent focused output.
+
+Only determine whether current failed generation preserves generated mirrors and satisfies the intentional typed-parameter refresh behavior, and whether this resolution creates a VERIFIED reproducible bug. Historical reset machinery was removed; judge the actual current publication path. Tests must exercise the real generator with independent supplied fixtures and be load-bearing. Run focused proof once, reuse output for multiple assertions, and avoid full CI, repeated expensive builds, new proof machinery or scope expansion. Do not make implementation changes or commits. Restore any temporary mutation. Keep temporary files under ephemeral/ and use Go tests for regressions.
+
+Return concise PASS/FAIL, actual commands/results and any verified actionable finding with reproduction. If the defect already no longer reproduces and a load-bearing qualification test proves the current contract, do not demand an unnecessary production rewrite.
