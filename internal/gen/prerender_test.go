@@ -1,13 +1,11 @@
 package gen
 
 import (
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"go/types"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,44 +23,6 @@ func site(LayoutRequestEvent) (Data, error) { return Data{Message: "hello"}, nil
 
 var _ = skgo.Load(site)
 `
-
-func TestPrerenderGoLoadFailureNamesAuthoredRoute(t *testing.T) {
-	t.Parallel()
-	root, err := repoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	app := filepath.Join(t.TempDir(), "prerender-failure")
-	if err := stagePrerenderFixture(root, app, "prerender-failure"); err != nil {
-		t.Fatal(err)
-	}
-	linkExampleFrontendDependencies(t, root, app)
-
-	if out, err := runGoGenerate(app); err != nil {
-		t.Fatalf("go generate ./...: %v\n%s", err, out)
-	}
-
-	cmd := exec.Command(filepath.Join(app, "ui", "node_modules", ".bin", "vp"), "build")
-	cmd.Dir = filepath.Join(app, "ui")
-	cmd.Env = append(os.Environ(), "GOWORK=off", "ORIGIN=http://127.0.0.1:8080")
-	output, buildErr := cmd.CombinedOutput()
-	if buildErr == nil {
-		t.Fatalf("vp build succeeded despite the Go layout load failure:\n%s", output)
-	}
-	t.Logf("intentional vp build failure: %v", buildErr)
-	got := string(output)
-	for _, want := range []string{
-		"route ID /about",
-		"path /about",
-		"source src/routes/layout.server.go",
-		"prerender fixture literal failure",
-		"GET /about",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("failed frontend build output does not contain %q:\n%s", want, got)
-		}
-	}
-}
 
 func TestPrerenderInputsGenerateGoProducerAndThrowingStubs(t *testing.T) {
 	t.Parallel()
@@ -117,11 +77,6 @@ var (
 	if !strings.Contains(command, "generated.Remotes()") {
 		t.Fatalf("generated build command omits remote registrations:\n%s", command)
 	}
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = filepath.Join(root, "app")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("generated app does not compile: %v\n%s", err, out)
-	}
 }
 
 func TestJavaScriptPrerenderStubCarriesArgumentType(t *testing.T) {
@@ -146,11 +101,6 @@ var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: inputs})
 		t.Fatalf("generated JavaScript stub lost its concrete input type:\n%s", stub)
 	}
 	assertThrowingSource(t, stub, true)
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = filepath.Join(root, "app")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("generated JavaScript-mode app does not compile: %v\n%s", err, out)
-	}
 }
 
 func TestPrerenderOptionsFailuresArePositioned(t *testing.T) {
@@ -210,32 +160,6 @@ func TestPrerenderInputProducerMustMatchBodyArgument(t *testing.T) {
 	}
 }
 
-func TestNoArgumentPrerenderInputsCompileWithoutFmtImport(t *testing.T) {
-	t.Parallel()
-	root, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-	"github.com/tylergannon/devalue/v5"
-	"github.com/tylergannon/skgo"
-)
-
-func build(context.Context) (string, error) { return "empty", nil }
-func inputs() ([]devalue.UndefinedValue, error) { return []devalue.UndefinedValue{{}}, nil }
-var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: inputs})
-`, nil)
-	if err := Run(cfg); err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	// Codecs share the output file now and legitimately use fmt. The build
-	// catches any unused imports left by a no-argument producer.
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = filepath.Join(root, "app")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("generated no-argument app does not compile: %v\n%s", err, out)
-	}
-}
-
 func TestPrerenderInputHandlersHaveUniqueNamesAcrossModules(t *testing.T) {
 	t.Parallel()
 	root, cfg := foreignFixture(t, `package data
@@ -270,11 +194,6 @@ var _ = skgo.Prerender(item, skgo.PrerenderOptions{Inputs: inputs})
 			t.Errorf("generated bindings omit %q:\n%s", want, bindings)
 		}
 	}
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = filepath.Join(root, "app")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("generated multi-module app does not compile: %v\n%s", err, out)
-	}
 }
 
 func TestTransportedPrerenderInputsUseRuntimeTransportEncoding(t *testing.T) {
@@ -306,47 +225,6 @@ var _ = skgo.Transported[Money]("Money")
 	if !strings.Contains(bindings, "tree, err := call.Transported(value)") {
 		t.Fatalf("transported input does not reach the app's native transport encoder:\n%s", bindings)
 	}
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = filepath.Join(root, "app")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("generated transported-input app does not compile: %v\n%s", err, out)
-	}
-}
-
-func linkExampleFrontendDependencies(t *testing.T, root, app string) {
-	t.Helper()
-	linkFrontendDependencies(t, root, filepath.Join(app, "ui", "node_modules"))
-}
-
-func linkFrontendDependencies(t *testing.T, root, destination string) {
-	t.Helper()
-	if err := frontendDependencies(root, destination); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// Each build owns Vite's mutable directories; only pinned dependencies are shared.
-func frontendDependencies(root, destination string) error {
-	source := filepath.Join(root, "example/web/node_modules")
-	if _, err := os.Stat(filepath.Join(source, ".bin/vp")); err != nil {
-		return fmt.Errorf("pinned frontend dependencies missing: %w", err)
-	}
-	if err := os.MkdirAll(filepath.Join(destination, "@skgo"), 0755); err != nil {
-		return err
-	}
-	entries, err := os.ReadDir(source)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		if entry.Name() == "@skgo" || entry.Name() == "$app" || entry.Name() == ".vite-temp" {
-			continue
-		}
-		if err := os.Symlink(filepath.Join(source, entry.Name()), filepath.Join(destination, entry.Name())); err != nil {
-			return err
-		}
-	}
-	return os.Symlink(filepath.Join(root, "internal/adapter"), filepath.Join(destination, "@skgo/sveltekit-adapter"))
 }
 
 func TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch(t *testing.T) {

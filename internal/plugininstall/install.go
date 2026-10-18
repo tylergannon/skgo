@@ -22,6 +22,8 @@ type Options struct {
 	Home, CWD, ManualDirs string
 	Out                   io.Writer
 	fetchSource           func(context.Context, string, string, io.Writer) (source, func(), error)
+	build                 func(context.Context, pluginbuild.Options) error
+	probe                 func(context.Context, string, string, []string) (Exports, error)
 }
 type Exports struct {
 	Templates, Addons []string
@@ -69,7 +71,11 @@ func Install(ctx context.Context, ref string, o Options) error {
 	}
 	defer os.RemoveAll(candidateDir)
 	candidate := filepath.Join(candidateDir, "plugin.so")
-	if err = pluginbuild.Build(ctx, pluginbuild.Options{Host: o.Host.Executable, Source: s.Root, Package: s.Package, Output: candidate, VersionSymbol: "main.skgoVersion", Generate: true, Log: o.Out}); err != nil {
+	build := o.build
+	if build == nil {
+		build = pluginbuild.Build
+	}
+	if err = build(ctx, pluginbuild.Options{Host: o.Host.Executable, Source: s.Root, Package: s.Package, Output: candidate, VersionSymbol: "main.skgoVersion", Generate: true, Log: o.Out}); err != nil {
 		return err
 	}
 	fmt.Fprintln(o.Out, "Acquire host installation lock:", filepath.Join(dir, ".install.lock"))
@@ -97,7 +103,11 @@ func Install(ctx context.Context, ref string, o Options) error {
 		}
 	}
 	peers = append(peers, candidate)
-	exports, err := qualify(ctx, o.Host.Executable, candidate, peers)
+	probe := o.probe
+	if probe == nil {
+		probe = qualify
+	}
+	exports, err := probe(ctx, o.Host.Executable, candidate, peers)
 	if err != nil {
 		hints, hintErr := pluginstore.RemovalHints(dir)
 		if hintErr != nil {

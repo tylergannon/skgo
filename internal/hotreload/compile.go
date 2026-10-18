@@ -18,28 +18,6 @@ type Candidate struct {
 	Reclaim bool
 }
 
-// Compile uses the host's toolchain and dependency archives. before and after
-// contain captured authored sources, not the transformed development host.
-// This package-only entry is for an already checked executable boundary. Use
-// CompileApplication when admitting an application revision.
-func (t Toolchain) Compile(ctx context.Context, dir, pkgPath, importcfg, output string, before, after map[string][]byte) (Candidate, error) {
-	return t.compile(ctx, dir, pkgPath, importcfg, output, before, after, nil)
-}
-
-// CompileApplication checks executable callers in the selected application
-// package patterns before producing an object. Use the same captured overlay
-// for this analysis and compilation. Uninstrumented callers select rebuilding.
-func (t Toolchain) CompileApplication(ctx context.Context, dir, pkgPath, importcfg, output string, before, after map[string][]byte, application ...string) (Candidate, error) {
-	if len(application) == 0 {
-		application = []string{"./..."}
-	}
-	return t.compile(ctx, dir, pkgPath, importcfg, output, before, after, application)
-}
-
-func (t Toolchain) compile(ctx context.Context, dir, pkgPath, importcfg, output string, before, after map[string][]byte, application []string) (Candidate, error) {
-	return t.compileWithLoader(ctx, dir, pkgPath, importcfg, output, before, after, application, packages.Load)
-}
-
 func (t Toolchain) compileWithLoader(ctx context.Context, dir, pkgPath, importcfg, output string, before, after map[string][]byte, application []string, load func(*packages.Config, ...string) ([]*packages.Package, error)) (Candidate, error) {
 	var candidate Candidate
 	if err := t.checkFlags(); err != nil {

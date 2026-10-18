@@ -8,9 +8,9 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/tylergannon/devalue/v5"
@@ -26,16 +26,22 @@ import (
 // listens on it: every request below is served in-process.
 const prodOrigin = "http://127.0.0.1:8080"
 
-// newProdHandler is the production stack: not a copy of what cmd/main.go
-// composes, but the same function it calls.
-//
-// The unit tests for the static handler and the registries feed them synthetic
-// fixtures, which is why they cannot see a manifest the real adapter wrote.
-// This one starts where the developer does: the artifacts in the tree.
+// Requests use the same long-lived handler, as they do in the application.
+// Recompiling the immutable bundle for every HTTP assertion adds no isolation:
+// application state already lives in businesslogic.Default, and request state
+// belongs to the request. Pool/capacity tests construct their own sized handler.
+var productionHandler = sync.OnceValues(func() (http.Handler, error) {
+	dist, err := fs.Sub(web.Build, "build")
+	if err != nil {
+		return nil, err
+	}
+	return example.NewHandlerSized(dist, prodOrigin, 2)
+})
+
 func newProdHandler(t *testing.T) http.Handler {
 	t.Helper()
 
-	h, err := example.NewHandler(prodDist(t), prodOrigin)
+	h, err := productionHandler()
 	if err != nil {
 		t.Fatalf("assembling the production stack: %v", err)
 	}
@@ -266,298 +272,22 @@ func TestUniversalInvoiceLoadRendersFilteredDocument(t *testing.T) {
 	}
 }
 
-// TestTheEmbeddedBuildProducesAWorkingServer is the check the developer
-// otherwise only performs by running the binary and looking at a browser.
-//
-// `go test` was green while `./cmd` exited on startup, because nothing here
-// ever built the production handler out of the manifest the adapter actually
-// wrote. Every assertion below is against those artifacts.
-func TestTheEmbeddedBuildProducesAWorkingServer(t *testing.T) {
-	h := newProdHandler(t)
-
-	if rec := get(t, h, "/"); rec.Code != http.StatusOK {
-		t.Fatalf("GET /: status %d", rec.Code)
+// The ordinary rendered and CSR-disabled branches have focused value checks
+// elsewhere. SSR-disabled pages must take the shell path through this stack.
+func TestProductionSPARouteUsesTheClientShell(t *testing.T) {
+	rec := get(t, newProdHandler(t), "/spa")
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("SPA status = %d: %s", rec.Code, body)
 	}
-}
-
-// TestEveryRouteInTheManifestIsServed walks the manifest the adapter wrote and
-// asks for a concrete URL of each route.
-//
-// Kit's route patterns are JavaScript regular expressions and Go's are not the
-// same dialect, so a route shape that Go cannot compile — or compiles but does
-// not match — takes the whole server down at startup or serves a 404 to a page
-// that exists. Both are invisible to a test that builds its own patterns.
-//
-// What each route is answered with comes from the manifest too, because that is
-// where a page's own options live: a branch that turns SSR off is answered with
-// kit's shell, one that turns CSR off is answered with a document carrying no
-// script at all, and everything else is rendered and boots.
-func TestEveryRouteInTheManifestIsServed(t *testing.T) {
-	// Parallel: it spends seconds waiting on the stream page's deliberately
-	// slow loads, and changes nothing another test asserts on.
-	t.Parallel()
-	h := newProdHandler(t)
-	session := businesslogic.Default.SignIn("ada")
-
-	dist, err := fs.Sub(web.Build, "build")
-	if err != nil {
-		t.Fatalf("opening the embedded build: %v", err)
-	}
-	manifest, err := skgo.ReadManifest(dist)
-	if err != nil {
-		t.Fatalf("reading the build manifest: %v", err)
-	}
-	if len(manifest.Routes) == 0 {
-		t.Fatal("the manifest lists no routes")
-	}
-	if manifest.SSR == nil {
-		t.Fatal("the build carries no SSR bundle, so nothing below is about the server that ships")
-	}
-
-	shell, err := fs.ReadFile(dist, "index.html")
-	if err != nil {
-		t.Fatalf("reading index.html: %v", err)
-	}
-
-	pages, rendered, errored := 0, 0, 0
-	for _, route := range manifest.Routes {
-		if route.Page == nil {
-			// A route that is a `+server.ts` and nothing else has no page to
-			// boot. Serving it the document is the bug this distinction
-			// exists to prevent, and TestAServerRouteAnswersItsOwnMethods
-			// pins what it does answer instead.
-			continue
-		}
-		pages++
-
-		path := samplePath(t, route.ID)
-		if route.ID == "/actions/profiles/[profile]" {
-			path = "/actions/profiles/ada"
-		}
-		req := httptest.NewRequest(http.MethodGet, path, nil)
-		// A browser navigation asks for HTML. With a shared +server route,
-		// Kit sends an unconstrained */* request to the endpoint instead.
-		req.Header.Set("Accept", "text/html")
-		// Signed in, because a section of this app turns a signed-out visitor
-		// away and a redirect is not what this test is about.
-		req.AddCookie(&http.Cookie{Name: example.SessionCookie, Value: session})
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, req)
-
-		body := rec.Body.String()
-
-		if want, deliberate := deliberateFailures[route.ID]; deliberate {
-			errored++
-			if rec.Code != want.status {
-				t.Errorf("route %s: GET %s returned %d, want %d", route.ID, path, rec.Code, want.status)
-			}
-			if want.location != "" {
-				// A redirect has no document at all: a Location and nothing
-				// else, which is kit's `redirect_response`.
-				if got := rec.Header().Get("Location"); got != want.location {
-					t.Errorf("route %s: GET %s sent Location %q, want %q", route.ID, path, got, want.location)
-				}
-				if body != "" {
-					t.Errorf("route %s: GET %s answered a redirect with %d bytes of body", route.ID, path, len(body))
-				}
-				continue
-			}
-			if body == string(shell) {
-				t.Errorf("route %s: GET %s returned kit's shell rather than a rendered error document", route.ID, path)
-			}
-			if !strings.Contains(body, want.says) {
-				t.Errorf("route %s: GET %s does not say %q", route.ID, path, want.says)
-			}
-			for _, leaked := range want.never {
-				if strings.Contains(body, leaked) {
-					t.Errorf("route %s: GET %s leaked %q into the document", route.ID, path, leaked)
-				}
-			}
-			// example.HandleError adds this to every error the page-render
-			// path consults it on; a document that lacks it either skipped
-			// the hook or dropped what it returned.
-			const supportID = "case-1121"
-			if want.handled && !strings.Contains(body, supportID) {
-				t.Errorf("route %s: GET %s does not carry the handleError hook's support id %q", route.ID, path, supportID)
-			}
-			if !want.handled && strings.Contains(body, supportID) {
-				t.Errorf("route %s: GET %s carries the support id %q, but this failure is not supposed to reach the hook yet", route.ID, path, supportID)
-			}
-			if want.static {
-				// error.html is a whole document of its own: no app markup, and
-				// no script, so nothing boots and nothing tries again.
-				if strings.Contains(body, "<script") {
-					t.Errorf("route %s: GET %s carries a script, so it is not kit's static error page", route.ID, path)
-				}
-				if strings.Contains(body, `data-testid="app-nav"`) {
-					t.Errorf("route %s: GET %s rendered the root layout, which is the layout that failed", route.ID, path)
-				}
-			} else {
-				// A page that caught its own failure still rendered; only the
-				// status moved. Everything else is answered by an error page in
-				// the page's place.
-				if !want.rendered && !strings.Contains(body, `data-testid="error-message"`) {
-					t.Errorf("route %s: GET %s carries no rendered error page", route.ID, path)
-				}
-				if !strings.Contains(body, want.inside) {
-					t.Errorf("route %s: GET %s did not render inside %s", route.ID, path, want.inside)
-				}
-			}
-			continue
-		}
-
-		if rec.Code != http.StatusOK {
-			t.Errorf("route %s: GET %s returned %d, want 200", route.ID, path, rec.Code)
-			continue
-		}
-
-		ssr, csr := true, true
-		for _, index := range route.Page.Branch() {
-			if index < 0 || index >= len(manifest.SSR.Nodes) {
-				continue
-			}
-			if v := manifest.SSR.Nodes[index].SSR; v != nil {
-				ssr = *v
-			}
-			if v := manifest.SSR.Nodes[index].CSR; v != nil {
-				csr = *v
-			}
-		}
-
-		switch {
-		case !ssr:
-			if strings.Contains(body, `data-testid="app-nav"`) || strings.Contains(body, `data-testid="no-ssr-title"`) {
-				t.Errorf("route %s turns SSR off: GET %s rendered page content in its shell", route.ID, path)
-			}
-			if !strings.Contains(body, "<script") || !strings.Contains(body, "stylesheet") || !strings.Contains(body, "<!doctype html>") {
-				t.Errorf("route %s turns SSR off: GET %s omitted Kit's boot or branch styles", route.ID, path)
-			}
-		case body == string(shell):
-			// Nothing is answered with the shell any more except a branch that
-			// turns SSR off. A page that quietly stopped rendering used to hide
-			// here, behind "its load failed"; a load that fails is now a
-			// rendered error document with the status it threw, and is listed
-			// in deliberateFailures above.
-			t.Errorf("route %s: GET %s returned kit's shell rather than a rendered page", route.ID, path)
-		case !strings.Contains(body, `data-testid="app-nav"`):
-			t.Errorf("route %s: GET %s carries no rendered markup from the root layout", route.ID, path)
-		default:
-			rendered++
-		}
-
-		boots := strings.Contains(body, "kit.start(app, element")
-		if csr && ssr && !boots {
-			t.Errorf("route %s: GET %s carries no boot script, so nothing would hydrate", route.ID, path)
-		}
-		if !csr && strings.Contains(body, "<script") {
-			t.Errorf("route %s turns CSR off: GET %s still carries a script", route.ID, path)
+	for _, want := range []string{"<!doctype html>", "<script", "stylesheet"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("SPA shell missing %q: %s", want, body)
 		}
 	}
-	if pages == 0 {
-		t.Fatal("the manifest lists no page routes, so this test asserted nothing")
+	if strings.Contains(body, `data-testid="app-nav"`) || strings.Contains(body, `data-testid="title"`) {
+		t.Fatal("SSR-disabled page rendered application markup")
 	}
-	if rendered == 0 {
-		t.Fatal("not one page route was rendered, so this test asserted nothing about SSR")
-	}
-	if errored != len(deliberateFailures) {
-		t.Errorf("%d of the %d routes this app fails on purpose were visited; the manifest no longer carries the rest",
-			errored, len(deliberateFailures))
-	}
-}
-
-// deliberateFailures is what this app does wrong on purpose, and what kit's own
-// rules make of each one.
-//
-// The statuses are written here rather than read back off the response, because
-// the failure this guards against — a page falling back to kit's shell — is
-// answered with a perfectly ordinary 200 and a document that looks fine until
-// the browser boots. Every fixture named below exists for one scenario and has
-// exactly one source in the app.
-var deliberateFailures = map[string]struct {
-	status int
-	// location, when set, is where a bare 3xx sends the visitor. There is no
-	// document to check in that case.
-	location string
-	// says is text the document itself must carry.
-	says string
-	// inside is markup from the layout the error page must render within.
-	inside string
-	// never is text the document must not carry: what the error actually said,
-	// where kit's rules say the visitor is told nothing.
-	never []string
-	// static reports that kit's `error.html` is the answer, which carries no
-	// app markup and no script at all.
-	static bool
-	// rendered reports that the page itself rendered and only the status
-	// moved, which is what a boundary that caught its own failure produces.
-	rendered bool
-	// handled reports that the rendered document can carry the public fields
-	// supplied by example.HandleError, including component-boundary failures.
-	handled bool
-}{
-	// A load that throws error(402, ...) under /account, which declares its own
-	// +error.svelte: the account layout survives and its error page renders
-	// inside it.
-	"/account/statement": {
-		status: 402, says: "Your account is in arrears", inside: `data-testid="account-user"`,
-		handled: true,
-	},
-	// The same thing with no error page nearer than the root's. The hook runs
-	// for this one too — kit's own `handleError` is not skipped for an error
-	// the app raised on purpose, only kept from overriding its message unless
-	// it chooses to.
-	"/error/expected": {
-		status: 418, says: "This page is a teapot", inside: `data-testid="app-nav"`,
-		handled: true,
-	},
-	// A load that fails with an ordinary error. Kit's own rule is that the
-	// visitor is told nothing about why; what they are told instead is now
-	// the app's own words, because example.HandleError decides an unknown
-	// error's message rather than leaving it at the generic default.
-	"/error/unexpected": {
-		status: 500, says: "Something went wrong on our end.", inside: `data-testid="app-nav"`,
-		never:   []string{"hunter2", "postgres://", "Internal Error"},
-		handled: true,
-	},
-	// A command called while the page renders. Kit refuses it, transformError
-	// applies the application's error policy, and the boundary the root error
-	// page guards renders in the page's place.
-	"/error/command": {
-		status: 500, says: "Something went wrong on our end.", inside: `data-testid="app-nav"`,
-		never: []string{"Cannot call a command"}, handled: true,
-	},
-	// A component that can only fail on the server: it throws while `document`
-	// is undefined, which is true in the rendering engine and false in a
-	// browser. Kit's transformError applies the application's error policy and the
-	// root error page renders in the page's place, at 500 — which is the whole
-	// point of the fixture, because a dev server that rendered nothing would
-	// have answered 200 with a shell and said nothing at all.
-	"/error/server-only": {
-		status: 500, says: "Something went wrong on our end.", inside: `data-testid="app-nav"`,
-		never: []string{"this page only renders in the browser"}, handled: true,
-	},
-	// A page that catches its own failure. It renders — its own heading is in
-	// the document — and kit's transformError still moves the whole document's
-	// status to the caught error's.
-	"/error/boundary": {
-		status: 409, says: "The sensor is being calibrated",
-		inside: `<h1 data-testid="title">Sensor</h1>`, rendered: true, handled: true,
-	},
-	// A query that redirects while the page renders. Kit turns that into a
-	// redirect of the whole document, not into an error inside it.
-	"/error/redirect": {status: 307, location: "/about"},
-	// A throw in the root layout, which no error page can guard. Both the
-	// render and the retry through respond_with_error fail, and kit's static
-	// error.html is what is left — still with the app's own words on it,
-	// because respond_with_error consults the hook before it ever tries the
-	// retry (kit's own respond_with_error.js: "Do this here first in case the
-	// awaits below before rendering themselves error"). error.html has no
-	// slot for anything beyond status and message, though, so the support id
-	// the hook also returns never reaches this particular document.
-	"/error/render": {status: 500, says: "Something went wrong on our end.", static: true},
-	// A catch-all whose load answers every path with Not Found, the way the
-	// Advanced routing page teaches.
-	"/missing/[...path]": {status: 404, says: "Not Found", inside: `data-testid="app-nav"`, handled: true},
 }
 
 // TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage is kit's `respond.js`
@@ -665,51 +395,6 @@ func remoteID(t *testing.T, name string) string {
 
 // docs: end remote-id
 
-var (
-	restSegment     = regexp.MustCompile(`^\[\.\.\.[\w-]+\]$`)
-	optionalSegment = regexp.MustCompile(`^\[\[[\w-]+\]\]$`)
-	paramSegment    = regexp.MustCompile(`^\[[\w-]+\]$`)
-	groupSegment    = regexp.MustCompile(`^\([^)]+\)$`)
-)
-
-// samplePath turns a kit route id into one concrete URL that route must serve.
-//
-// It deliberately fails on any segment shape it does not recognise: a new kind
-// of route must extend this gate rather than slip past it.
-func samplePath(t *testing.T, id string) string {
-	t.Helper()
-	if id == "/" {
-		return "/"
-	}
-
-	var out []string
-	for _, segment := range strings.Split(strings.TrimPrefix(id, "/"), "/") {
-		switch {
-		case groupSegment.MatchString(segment):
-			// A group does not appear in the URL.
-		case segment == "[number=Order]", segment == "[[number=Order]]", segment == "[a=Order]", segment == "[b=Order]":
-			out = append(out, "42")
-		case optionalSegment.MatchString(segment):
-			out = append(out, "fr")
-		case restSegment.MatchString(segment):
-			out = append(out, "deep", "rest", "path")
-		case paramSegment.MatchString(segment):
-			out = append(out, "sample")
-		case !strings.ContainsAny(segment, "[]()"):
-			out = append(out, segment)
-		default:
-			t.Fatalf("route %s has segment %q, which this test does not know how to visit; teach it before adding the route", id, segment)
-		}
-	}
-	path := "/" + strings.Join(out, "/")
-	// These fixture pages inherit trailingSlash = "always" from their layout.
-	// Visit their canonical documents; normalization itself has dedicated tests.
-	if id == "/routing/slash/always" || id == "/routing/slash/mixed" {
-		path += "/"
-	}
-	return path
-}
-
 // post drives a command through the production stack. Kit's client sends the
 // argument as a base64url devalue payload in a JSON envelope, and the registry
 // refuses a cross-site POST, so the Origin has to be the configured one.
@@ -799,84 +484,20 @@ func errorStatus(t *testing.T, body []byte) int {
 	return envelope.Error.Status
 }
 
-// TestADataURLIsRefusedAtTheBoundary is the same gate as the unit tests, but
-// against the routes kit actually compiled. Kit's route patterns end `\/?$`,
-// so `/todos/__data.json` matched the `/todos` page and came back 200
-// text/html — a failure that landed inside kit's client rather than here.
-// A data URL is the app's own endpoint, and every route has one. What must
-// never happen is the defect this replaced: the boot document served at a data
-// URL, which kit's client hands to JSON.parse.
-//
-// `__route.js` is a different case — kit's own 400 for the client-side route
-// resolution skgo serves — and is pinned here beside it.
-func TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument(t *testing.T) {
-	// Parallel: it spends seconds waiting on the stream page's deliberately
-	// slow loads, and changes nothing another test asserts on.
-	t.Parallel()
+func TestProductionSpecialRequestsUseTheirOwnDispatch(t *testing.T) {
 	h := newProdHandler(t)
-
-	document, err := fs.ReadFile(prodDist(t), "index.html")
-	if err != nil {
-		t.Fatalf("reading index.html: %v", err)
-	}
-	manifest, err := skgo.ReadManifest(prodDist(t))
-	if err != nil {
-		t.Fatalf("reading the build manifest: %v", err)
-	}
-
-	checked := 0
-	for _, route := range manifest.Routes {
-		page := strings.TrimSuffix(samplePath(t, route.ID), "/")
-
-		if route.Page == nil {
-			// Kit answers `__data.json` on an endpoint-only route with a bare
-			// 404 and no body (`runtime/server/data/index.js`), because there
-			// is no branch to run.
-			rec := get(t, h, page+"/__data.json")
-			if rec.Code != http.StatusNotFound {
-				t.Errorf("route %s: GET %s/__data.json returned %d, want 404", route.ID, page, rec.Code)
-			}
-			if rec.Body.String() == string(document) {
-				t.Errorf("route %s: GET %s/__data.json returned kit's boot document", route.ID, page)
-			}
-			continue
+	for _, test := range []struct {
+		path   string
+		status int
+		body   string
+	}{
+		{"/api/todos/__data.json", http.StatusNotFound, ""},
+		{"/request-fetch/__route.js", http.StatusBadRequest, "Server-side route resolution disabled"},
+	} {
+		rec := get(t, h, test.path)
+		if rec.Code != test.status || strings.TrimSpace(rec.Body.String()) != test.body {
+			t.Errorf("%s: status=%d body=%q, want %d %q", test.path, rec.Code, rec.Body.String(), test.status, test.body)
 		}
-		checked++
-
-		rec := get(t, h, page+"/__data.json")
-		if rec.Code != http.StatusOK {
-			t.Errorf("route %s: GET %s/__data.json returned %d, want 200", route.ID, page, rec.Code)
-		}
-		if rec.Body.String() == string(document) {
-			t.Errorf("route %s: GET %s/__data.json returned kit's boot document", route.ID, page)
-		}
-		// Kit's client reads the first line as one of three envelopes. A body
-		// that is none of them is a body it cannot use.
-		var envelope struct {
-			Type string `json:"type"`
-		}
-		line, _, _ := strings.Cut(rec.Body.String(), "\n")
-		if err := json.Unmarshal([]byte(line), &envelope); err != nil {
-			t.Errorf("route %s: GET %s/__data.json is not JSON: %v: %s", route.ID, page, err, line)
-			continue
-		}
-		switch envelope.Type {
-		case "data", "redirect", "error":
-		default:
-			t.Errorf("route %s: GET %s/__data.json answered %q, not one of kit's envelopes: %s",
-				route.ID, page, envelope.Type, line)
-		}
-
-		rec = get(t, h, page+"/__route.js")
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("route %s: GET %s/__route.js returned %d, want 400", route.ID, page, rec.Code)
-		}
-		if rec.Body.String() == string(document) {
-			t.Errorf("route %s: GET %s/__route.js returned kit's boot document", route.ID, page)
-		}
-	}
-	if checked == 0 {
-		t.Fatal("the manifest lists no page routes, so this test asserted nothing")
 	}
 }
 

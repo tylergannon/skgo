@@ -2,8 +2,9 @@
 title: Server composition
 summary: How server.go assembles loads, remote functions, endpoints, actions and the renderer into one http.Handler.
 proof:
-  - TestEveryRouteInTheManifestIsServed
-  - TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument
+  - TestProductionSPARouteUsesTheClientShell
+  - TestProductionSpecialRequestsUseTheirOwnDispatch
+  - TestAClientNavigationGetsTheLoadsFetchedValueFromGo
   - TestAFatalServerRouteUsesTheAppsErrorTemplate
 ---
 

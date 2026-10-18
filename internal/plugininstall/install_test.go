@@ -3,17 +3,20 @@ package plugininstall
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"runtime/debug"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/tylergannon/skgo/internal/buildinfo"
+	"github.com/tylergannon/skgo/internal/pluginbuild"
 	"github.com/tylergannon/skgo/internal/pluginstore"
 )
 
@@ -65,158 +68,143 @@ func TestHostLockSerializesAndCancellationReleasesWait(t *testing.T) {
 	third()
 }
 
-func TestInstallQualifiesReplacementAndPreservesWorkingSelectionOnFailure(t *testing.T) {
-	repo, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	root := t.TempDir()
-	write := func(path string, data []byte) {
-		t.Helper()
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, data, 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	read := func(path string) []byte {
-		t.Helper()
-		b, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return b
-	}
-	// Build through a real consuming module so the host records its replacement;
-	// Install deliberately rejects an unidentifiable development-checkout host.
-	hostModule := filepath.Join(root, "host-module")
-	write(filepath.Join(hostModule, "go.mod"), []byte("module example.test/install-host\n\ngo 1.27.1\n\nrequire github.com/tylergannon/skgo v0.0.0\nreplace github.com/tylergannon/skgo => "+repo+"\n"))
-	host := filepath.Join(root, "skgo")
-	cmd := exec.Command("go", "build", "-mod=mod", "-o", host, "github.com/tylergannon/skgo/cmd/skgo")
-	cmd.Dir = hostModule
-	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=")
-	if b, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build actual installer host: %v\n%s", err, b)
-	}
-	b, err := exec.Command(host, "buildinfo", "--json").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var info buildinfo.Info
-	if err := json.Unmarshal(b, &info); err != nil {
-		t.Fatal(err)
-	}
-	if info.Build == nil || info.Build.Main.Replace == nil || info.Build.Main.Replace.Path != repo {
-		t.Fatalf("host does not record its source: %s", b)
-	}
-	fixture := read(filepath.Join(repo, "cmd/skgo/testdata/template-plugin/plugin.go"))
-	const mainModule = "example.test/install-main"
-	const peerModule = "example.test/install-peer"
-	sources := map[string]source{}
-	makeSource := func(module, version, leaf string, code []byte) string {
-		t.Helper()
-		dir := filepath.Join(root, "sources", leaf)
-		write(filepath.Join(dir, "go.mod"), []byte(fmt.Sprintf("module %s\n\ngo 1.27.1\n\nrequire github.com/tylergannon/skgo v0.0.0\n", module)))
-		write(filepath.Join(dir, "main.go"), code)
-		ref := module + "@" + version
-		sources[ref] = source{resolution: resolution{Path: module, Version: version}, Root: dir, Package: "."}
-		return ref
-	}
-	first := makeSource(mainModule, "v1.0.0", "first", fixture)
-	peerCode := bytes.ReplaceAll(fixture, []byte(`"external-fixture"`), []byte(`"other-fixture"`))
-	peerCode = bytes.ReplaceAll(peerCode, []byte(`"receipt"`), []byte(`"peer-receipt"`))
-	peerCode = bytes.ReplaceAll(peerCode, []byte(`"receipt-app"`), []byte(`"peer-app"`))
-	peer := makeSource(peerModule, "v1.0.0", "peer", peerCode)
-	replacementCode := bytes.Replace(fixture, []byte(`Version: "1"`), []byte(`Version: "2"`), 1)
-	replacement := makeSource(mainModule, "v1.1.0", "replacement", replacementCode)
-	conflictCode := bytes.ReplaceAll(replacementCode, []byte(`"receipt"`), []byte(`"peer-receipt"`))
-	conflict := makeSource(mainModule, "v1.2.0", "conflict", conflictCode)
-	brokenCode := append([]byte("//go:generate go run ./gen\n"), replacementCode...)
-	broken := makeSource(mainModule, "v1.3.0", "broken", brokenCode)
-	write(filepath.Join(sources[broken].Root, "gen/main.go"), []byte("package main\nimport \"os\"\nfunc main(){os.Stderr.WriteString(\"intentional preparation failure\\n\");os.Exit(1)}\n"))
-	// Only remote resolution is replaced; staging, generation, native plugin
-	// compilation, actual-host probes, locking and publication remain real.
-	var output bytes.Buffer
-	cleaned := 0
-	o := Options{Host: info, Home: filepath.Join(root, "home"), CWD: root, Out: &output,
-		fetchSource: func(_ context.Context, ref, version string, _ io.Writer) (source, func(), error) {
-			if version != info.Build.GoVersion {
-				t.Fatalf("resolver lost host toolchain: %q", version)
+// The compiler and executable probe have their own boundary tests. Exercise
+// Install's real orchestration and filesystem publication without building
+// another host and four plugins for these decisions.
+func TestInstallPublishesOnlyAfterBuildAndPeerQualification(t *testing.T) {
+	for _, stage := range []string{"success", "build failure", "probe failure", "canceled"} {
+		t.Run(stage, func(t *testing.T) {
+			t.Parallel()
+			root, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
 			}
-			s, ok := sources[ref]
-			if !ok {
-				t.Fatalf("unexpected source request %q", ref)
-			}
-			return s, func() { cleaned++ }, nil
-		}}
-	install := func(ref string) error {
-		t.Helper()
-		output.Reset()
-		return Install(context.Background(), ref, o)
-	}
-	for _, ref := range []string{first, peer, replacement} {
-		if err := install(ref); err != nil {
-			t.Fatalf("install %s: %v\n%s", ref, err, &output)
-		}
-		if !strings.Contains(output.String(), "Installed "+ref+" for this host") {
-			t.Fatalf("missing installed source receipt: %s", &output)
-		}
-	}
-	digest, err := pluginstore.Digest(host)
-	if err != nil {
-		t.Fatal(err)
-	}
-	slot := pluginstore.Slot(o.Home, digest, mainModule)
-	peerSlot := pluginstore.Slot(o.Home, digest, peerModule)
-	retained := map[string][]byte{}
-	for _, path := range []string{slot, pluginstore.Reference(slot), peerSlot, pluginstore.Reference(peerSlot), host} {
-		retained[path] = read(path)
-	}
-	if string(retained[pluginstore.Reference(slot)]) != `{"module":"example.test/install-main","version":"v1.1.0"}` {
-		t.Fatalf("replacement reference: %s", retained[pluginstore.Reference(slot)])
-	}
-	for _, tc := range []struct{ ref, diagnostic, log string }{
-		{conflict, `add-on "peer-receipt" conflicts`, ""},
-		{broken, "prepare plugin", "intentional preparation failure"},
-	} {
-		t.Run(tc.ref, func(t *testing.T) {
-			err := install(tc.ref)
-			if err == nil || !strings.Contains(err.Error(), tc.diagnostic) {
-				t.Fatalf("bad candidate accepted or wrong failure: %v\n%s", err, &output)
-			}
-			if tc.ref == conflict && !strings.Contains(err.Error(), "skgo plugin remove "+peerModule) {
-				t.Fatalf("conflict lacks source removal command: %v", err)
-			}
-			if !strings.Contains(output.String(), tc.log) {
-				t.Fatalf("missing preparation diagnostics: %s", &output)
-			}
-			for path, want := range retained {
-				if got := read(path); !bytes.Equal(got, want) {
-					t.Fatalf("failed install changed %s", path)
+			write := func(path, body string) {
+				t.Helper()
+				if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+					t.Fatal(err)
 				}
 			}
+			read := func(path string) string {
+				t.Helper()
+				body, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return string(body)
+			}
+			const hostBytes = "literal installer host"
+			host := filepath.Join(root, "skgo")
+			write(host, hostBytes)
+			home := filepath.Join(root, "home")
+			digest := fmt.Sprintf("%x", sha256.Sum256([]byte(hostBytes)))
+			dir := filepath.Join(home, ".skgo", "plugins", "hosts", digest)
+			slot := filepath.Join(dir, fmt.Sprintf("%x.so", sha256.Sum256([]byte("example.test/main"))))
+			peer := filepath.Join(dir, fmt.Sprintf("%x.so", sha256.Sum256([]byte("example.test/peer"))))
+			ref := strings.TrimSuffix(slot, ".so") + ".json"
+			peerRef := strings.TrimSuffix(peer, ".so") + ".json"
+			const oldRef = `{"module":"example.test/main","version":"v1.0.0"}`
+			const peerSource = `{"module":"example.test/peer","version":"v1.0.0"}`
+			write(slot, "working prior binary")
+			write(ref, oldRef)
+			write(peer, "working peer binary")
+			write(peerRef, peerSource)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			buildFailure, probeFailure := errors.New("compiler refused fixture"), errors.New("candidate conflicts with peer")
+			builds, probes, cleanups := 0, 0, 0
+			var output bytes.Buffer
+			sourceDir := filepath.Join(root, "source")
+			o := Options{Host: buildinfo.Info{Executable: host, SkgoVersion: "v1.0.0", Build: &debug.BuildInfo{GoVersion: "go1.27.2", Main: debug.Module{Path: buildinfo.Module, Version: "v1.0.0"}}}, Home: home, CWD: root, Out: &output,
+				fetchSource: func(_ context.Context, ref, version string, _ io.Writer) (source, func(), error) {
+					if ref != "example.test/main@v1.1.0" || version != "go1.27.2" {
+						t.Fatalf("source selection: %s %s", ref, version)
+					}
+					return source{resolution: resolution{Path: "example.test/main", Version: "v1.1.0"}, Root: sourceDir, Package: "."}, func() { cleanups++ }, nil
+				},
+				build: func(_ context.Context, opts pluginbuild.Options) error {
+					builds++
+					if opts.Host != host || opts.Source != sourceDir || opts.Package != "." || !opts.Generate || opts.VersionSymbol != "main.skgoVersion" {
+						t.Fatalf("build options: %+v", opts)
+					}
+					if stage == "build failure" {
+						return buildFailure
+					}
+					return os.WriteFile(opts.Output, []byte("qualified replacement"), 0755)
+				},
+				probe: func(_ context.Context, actualHost, candidate string, files []string) (Exports, error) {
+					probes++
+					lockContext, stopLock := context.WithTimeout(t.Context(), 10*time.Millisecond)
+					defer stopLock()
+					if unlock, lockErr := lock(lockContext, filepath.Join(dir, ".install.lock")); lockErr == nil {
+						unlock()
+						t.Fatal("qualification ran without the host installation lock")
+					} else if !errors.Is(lockErr, context.DeadlineExceeded) {
+						t.Fatalf("check qualification lock: %v", lockErr)
+					}
+					if actualHost != host || read(candidate) != "qualified replacement" {
+						t.Fatal("wrong candidate passed to actual host probe")
+					}
+					if len(files) != 2 || !slices.Contains(files, peer) || !slices.Contains(files, candidate) || slices.Contains(files, slot) {
+						t.Fatalf("qualification set: %v", files)
+					}
+					if read(slot) != "working prior binary" || read(ref) != oldRef {
+						t.Fatal("published before qualification")
+					}
+					if stage == "probe failure" {
+						return Exports{}, probeFailure
+					}
+					if stage == "canceled" {
+						cancel()
+					}
+					return Exports{Templates: []string{"receipt-template"}, Addons: []string{"receipt-addon"}}, nil
+				},
+			}
+			err = Install(ctx, "example.test/main@v1.1.0", o)
+			lockContext, stopLock := context.WithTimeout(t.Context(), 20*time.Millisecond)
+			defer stopLock()
+			unlock, lockErr := lock(lockContext, filepath.Join(dir, ".install.lock"))
+			if lockErr != nil {
+				t.Fatalf("installation left its lock held: %v", lockErr)
+			}
+			unlock()
+			wantProbes := 1
+			if stage == "build failure" {
+				wantProbes = 0
+			}
+			if builds != 1 || probes != wantProbes || cleanups != 1 {
+				t.Fatalf("pipeline calls: builds=%d probes=%d cleanup=%d", builds, probes, cleanups)
+			}
+			if stage == "success" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if read(slot) != "qualified replacement" || read(ref) != `{"module":"example.test/main","version":"v1.1.0"}` {
+					t.Fatal("qualified replacement was not published")
+				}
+				for _, want := range []string{"Installed example.test/main@v1.1.0", "Templates: receipt-template", "Add-ons: receipt-addon"} {
+					if !strings.Contains(output.String(), want) {
+						t.Fatalf("missing %q in %s", want, &output)
+					}
+				}
+			} else {
+				want := map[string]error{"build failure": buildFailure, "probe failure": probeFailure, "canceled": context.Canceled}[stage]
+				if !errors.Is(err, want) {
+					t.Fatalf("error=%v, want %v", err, want)
+				}
+				if read(slot) != "working prior binary" || read(ref) != oldRef {
+					t.Fatal("failed installation changed prior selection")
+				}
+				if stage == "probe failure" && !strings.Contains(err.Error(), "skgo plugin remove example.test/peer") {
+					t.Fatalf("missing peer removal hint: %v", err)
+				}
+			}
+			if read(peer) != "working peer binary" || read(peerRef) != peerSource || read(host) != hostBytes {
+				t.Fatal("installation changed its peer or host")
+			}
 		})
-	}
-	if cleaned != 5 {
-		t.Fatalf("source cleanup calls=%d, want 5", cleaned)
-	}
-	// Byte preservation alone is insufficient: use the prior plugin through
-	// ordinary managed discovery, with no private probe or manual directory.
-	app := filepath.Join(root, "consumer")
-	write(filepath.Join(app, "go.mod"), []byte("module example.test/preserved\n\ngo 1.27.1\n"))
-	if err := os.Mkdir(filepath.Join(app, "web"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	cmd = exec.Command(host, "add", "--root", app, "--name", "StillWorks", "--set", "text=retained installation", "receipt")
-	cmd.Env = append(os.Environ(), "HOME="+o.Home, "SKGO_PLUGIN_DIRS=", pluginstore.ProbeFiles+"=")
-	if b, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("retained plugin no longer usable: %v\n%s", err, b)
-	}
-	if b := read(filepath.Join(app, "receipt.txt")); string(b) != "StillWorks\nexample.test/preserved\nretained installation\n" {
-		t.Fatalf("retained plugin result: %q", b)
-	}
-	if b := read(filepath.Join(sources[broken].Root, "main.go")); !bytes.Equal(b, brokenCode) {
-		t.Fatal("preparation edited source checkout")
 	}
 }

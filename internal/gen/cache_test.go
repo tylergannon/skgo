@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go/types"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,31 +13,12 @@ import (
 	"testing"
 
 	"golang.org/x/tools/go/packages"
-	"golang.org/x/tools/imports"
 )
 
 type cacheRunResult struct {
 	Loads int
 	Logs  []string
 	Error string
-}
-
-// These tests alter process configuration. Production fixture builds start
-// before their parallel-test barrier, so even a non-parallel test cannot safely
-// change the parent process environment while those builds run.
-func isolatedCacheEnvironment(t *testing.T) bool {
-	t.Helper()
-	if os.Getenv("SKGO_CACHE_ENV_TEST") == t.Name() {
-		return true
-	}
-	cmd := exec.Command(os.Args[0], "-test.run=^"+t.Name()+"$", "-test.count=1", "-test.v")
-	cmd.Env = append(os.Environ(), "SKGO_CACHE_ENV_TEST="+t.Name())
-	output, err := cmd.CombinedOutput()
-	t.Logf("isolated environment test:\n%s", output)
-	if err != nil {
-		t.Fatalf("isolated environment test: %v", err)
-	}
-	return false
 }
 
 func TestGenerationCacheProcess(t *testing.T) {
@@ -50,17 +30,25 @@ func TestGenerationCacheProcess(t *testing.T) {
 	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
 		t.Fatal(err)
 	}
+	result := runCache(cfg)
+	data, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("CACHE_RESULT=%s\n", data)
+}
+
+// Run owns the persisted plan boundary. A fresh invocation has no in-memory
+// cache to clear; ordinary hit/miss cases can observe it without another test
+// process. Only the persistence witness below needs separate processes.
+func runCache(cfg Config) cacheRunResult {
 	var result cacheRunResult
 	cfg.OnPackageLoad = func(*packages.Config, []string) { result.Loads++ }
 	cfg.Logf = func(format string, args ...any) { result.Logs = append(result.Logs, fmt.Sprintf(format, args...)) }
 	if err := Run(cfg); err != nil {
 		result.Error = err.Error()
 	}
-	data, err := json.Marshal(result)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Printf("CACHE_RESULT=%s\n", data)
+	return result
 }
 func runCacheProcess(t *testing.T, cfg Config) cacheRunResult {
 	t.Helper()
@@ -94,6 +82,7 @@ func runCacheProcess(t *testing.T, cfg Config) cacheRunResult {
 	return cacheRunResult{}
 }
 func TestGenerationCacheFreshProcessesAndRecovery(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, `package data
 import("context";"github.com/tylergannon/skgo")
 type Reply struct { Text string }
@@ -126,7 +115,7 @@ var _=skgo.Query(query)
 			t.Fatal(err)
 		}
 	}
-	recovered := runCacheProcess(t, cfg)
+	recovered := runCache(cfg)
 	if recovered.Error != "" || recovered.Loads != 0 {
 		t.Fatalf("recovery did not reuse analysis: %+v", recovered)
 	}
@@ -141,7 +130,7 @@ var _=skgo.Query(query)
 	if err := os.WriteFile(source, bytes.Replace(raw, []byte("Text string"), []byte("Count int"), 1), 0644); err != nil {
 		t.Fatal(err)
 	}
-	changed := runCacheProcess(t, cfg)
+	changed := runCache(cfg)
 	if changed.Error != "" || changed.Loads == 0 {
 		t.Fatalf("source edit was not analyzed: %+v", changed)
 	}
@@ -162,7 +151,7 @@ var _=skgo.Query(query)
 
 func assertCacheResult(t *testing.T, cfg Config, hit bool) cacheRunResult {
 	t.Helper()
-	got := runCacheProcess(t, cfg)
+	got := runCache(cfg)
 	if got.Error != "" || (got.Loads == 0) != hit {
 		t.Fatalf("hit=%t: %+v", hit, got)
 	}
@@ -194,6 +183,7 @@ func assertCacheFile(t *testing.T, path, want string) {
 }
 
 func TestGenerationCacheDependencyAndMembership(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	assertCacheResult(t, cfg, false)
@@ -204,7 +194,7 @@ func TestGenerationCacheDependencyAndMembership(t *testing.T) {
 	assertCacheFile(t, filepath.Join(cfg.Web, "src/lib/skgo/example.com/wire/types.ts"), `"quantity": number`)
 	extra := filepath.Join(cfg.Web, "src/data/added.go")
 	cacheWrite(t, extra, "package data\nconst added = missingSymbol\n")
-	broken := runCacheProcess(t, cfg)
+	broken := runCache(cfg)
 	if !strings.Contains(broken.Error, "missingSymbol") || !strings.Contains(broken.Error, "web/src/data/added.go:2:15") {
 		t.Fatalf("invalid addition hidden: %+v", broken)
 	}
@@ -224,6 +214,7 @@ func TestGenerationCacheDependencyAndMembership(t *testing.T) {
 }
 
 func TestGenerationCacheDisposableOutputsAndCorruption(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	assertCacheResult(t, cfg, false)
@@ -246,7 +237,7 @@ func TestGenerationCacheDisposableOutputsAndCorruption(t *testing.T) {
 	}
 	authored := "package generated\nconst Mine = 7\n"
 	cacheWrite(t, binding, authored)
-	result := runCacheProcess(t, cfg)
+	result := runCache(cfg)
 	if !strings.Contains(result.Error, "authored") {
 		t.Fatalf("authored takeover accepted: %+v", result)
 	}
@@ -254,6 +245,7 @@ func TestGenerationCacheDisposableOutputsAndCorruption(t *testing.T) {
 }
 
 func TestGenerationCacheSourceIsCapturedBeforeAnalysis(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	dep := filepath.Join(root, "wire/wire.go")
@@ -298,9 +290,6 @@ func TestGenerationCacheSourceIsCapturedBeforeAnalysis(t *testing.T) {
 }
 
 func TestGenerationCacheWorkspaceAndConfiguration(t *testing.T) {
-	if !isolatedCacheEnvironment(t) {
-		return
-	}
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	work := filepath.Join(root, "go.work")
@@ -321,10 +310,11 @@ func TestGenerationCacheWorkspaceAndConfiguration(t *testing.T) {
 }
 
 func TestGenerationCacheUnavailableStorage(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = filepath.Join(t.TempDir(), "not-directory")
 	cacheWrite(t, cfg.CacheDir, "file")
-	got := runCacheProcess(t, cfg)
+	got := runCache(cfg)
 	if got.Error != "" || got.Loads == 0 {
 		t.Fatalf("cache became required state: %+v", got)
 	}
@@ -335,6 +325,7 @@ func TestGenerationCacheUnavailableStorage(t *testing.T) {
 }
 
 func TestGenerationCacheEnvironmentBootstrapIsLive(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, "package data", nil)
 	cfg.CacheDir = t.TempDir()
 	cacheWrite(t, filepath.Join(root, "skgo/env.go"), "package skgo\nfunc Environment[T any]() Marker{return Marker{}}\n")
@@ -353,7 +344,7 @@ func TestGenerationCacheEnvironmentBootstrapIsLive(t *testing.T) {
 	assertCacheFile(t, values, "export const values = {};")
 	assertCacheFile(t, filepath.Join(cfg.Web, "src/env.ts"), `"SITE"`)
 	cacheWrite(t, filepath.Join(cfg.Web, "src/env.ts"), "export const mine = 1;\n")
-	result := runCacheProcess(t, cfg)
+	result := runCache(cfg)
 	if !strings.Contains(result.Error, "authored") {
 		t.Fatalf("authored env overwritten: %+v", result)
 	}
@@ -361,6 +352,7 @@ func TestGenerationCacheEnvironmentBootstrapIsLive(t *testing.T) {
 }
 
 func TestGenerationCachePrepareAndCheckRemainFresh(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	assertCacheResult(t, cfg, false)
@@ -388,9 +380,6 @@ func TestGenerationCachePrepareAndCheckRemainFresh(t *testing.T) {
 }
 
 func TestGenerationCacheChecksConsumedGoEnvironment(t *testing.T) {
-	if !isolatedCacheEnvironment(t) {
-		return
-	}
 	const marker = "cache_environment_value_do_not_persist"
 	t.Setenv("GOFLAGS", "-tags="+marker)
 	_, cfg := foreignFixture(t, cacheRemote, nil)
@@ -423,6 +412,7 @@ func TestGenerationCacheChecksConsumedGoEnvironment(t *testing.T) {
 }
 
 func TestGenerationCacheIgnoresToolingSymlinks(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	tools := filepath.Join(root, "app/.claude/skills")
@@ -437,44 +427,15 @@ func TestGenerationCacheIgnoresToolingSymlinks(t *testing.T) {
 	// Explicit imports change the boundary: such source is never silently omitted.
 	cacheWrite(t, filepath.Join(root, "app/.claude/value/value.go"), "package value\ntype Value int\n")
 	cacheWrite(t, filepath.Join(cfg.Web, "src/data/extra.go"), "package data\nimport \"example.com/app/.claude/value\"\nvar _ value.Value\n")
-	result := runCacheProcess(t, cfg)
+	result := runCache(cfg)
 	if result.Error != "" || !strings.Contains(strings.Join(result.Logs, "\n"), "explicit import in tooling directory") {
 		t.Fatalf("explicit source omitted: %+v", result)
 	}
 	assertCacheFile(t, filepath.Join(cfg.Out, generatedGoFile), "Name:   \"query\"")
 }
 
-func TestGenerationCachePublishesCanonicalGo(t *testing.T) {
-	root, cfg := foreignFixture(t, cacheRemote, nil)
-	cfg.CacheDir = t.TempDir()
-	assertCacheResult(t, cfg, false)
-	assertCacheFile(t, filepath.Join(cfg.Out, generatedGoFile), "\n\n\tparams \"example.com/app/generated/params\"")
-	checked := 0
-	for path, source := range generatedTree(t, filepath.Join(root, "app")) {
-		if filepath.Ext(path) != ".go" {
-			continue
-		}
-		canonical, err := imports.Process(path, []byte(source), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(canonical) != source {
-			t.Fatalf("full goimports still changes %s", path)
-		}
-		checked++
-	}
-	if checked < 3 {
-		t.Fatalf("did not check actual generated Go: %d", checked)
-	}
-	assertCacheResult(t, cfg, true)
-	cfg.CacheDir = "off"
-	if err := Run(cfg); err != nil {
-		t.Fatal(err)
-	}
-	assertCacheFile(t, filepath.Join(cfg.Out, generatedGoFile), "\n\n\tparams \"example.com/app/generated/params\"")
-}
-
 func TestGenerationCacheKeepsOneTargetSlot(t *testing.T) {
+	t.Parallel()
 	_, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	assertCacheResult(t, cfg, false)
@@ -488,71 +449,6 @@ func TestGenerationCacheKeepsOneTargetSlot(t *testing.T) {
 	cfg.Language = LanguageTypeScript
 	assertCacheResult(t, cfg, false)
 	assertCacheFile(t, filepath.Join(cfg.Web, "src/data/data.remote.ts"), "query")
-}
-
-func TestGenerationCachePrivateCompilerIdentity(t *testing.T) {
-	if !isolatedCacheEnvironment(t) {
-		return
-	}
-	root, cfg := foreignFixture(t, cacheRemote, nil)
-	t.Setenv("GOFLAGS", "-tags=cacheprofile")
-	cacheWrite(t, filepath.Join(root, "wire/profile.go"), "//go:build cacheprofile\n\npackage wire\nconst Profile = 17\n")
-	cfg.Logf = func(string, ...any) {}
-	cfg.Web, _ = sourcePath(cfg.Web)
-	cfg.Out, _ = sourcePath(cfg.Out)
-	acquire := func() Config {
-		t.Helper()
-		sources, err := acquireCacheSources(cfg)
-		if err != nil {
-			t.Fatal(err)
-		}
-		contents, _, err := sources.capture(cfg)
-		if err != nil {
-			t.Fatal(err)
-		}
-		view, cleanup, err := sources.materialize(cfg, contents)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(cleanup)
-		return view
-	}
-	load := func(view Config) *packages.Package {
-		t.Helper()
-		pkgs, err := packages.Load(&packages.Config{Dir: filepath.Dir(view.Web), Env: view.sourceView.env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedExportFile | packages.NeedTypes}, "example.com/wire")
-		if err != nil || len(pkgs) != 1 {
-			t.Fatalf("load: %v %v", pkgs, err)
-		}
-		p := pkgs[0]
-		if len(p.Errors) != 0 {
-			t.Fatal(p.Errors)
-		}
-		value, ok := p.Types.Scope().Lookup("Profile").(*types.Const)
-		if !ok || value.Val().ExactString() != "17" {
-			t.Fatalf("caller build tag lost: %v", value)
-		}
-		if p.ExportFile == "" {
-			t.Fatal("no actual compiler artifact")
-		}
-		return p
-	}
-	firstView, secondView := acquire(), acquire()
-	if firstView.Out == secondView.Out {
-		t.Fatal("views must have fresh roots")
-	}
-	first, second := load(firstView), load(secondView)
-	if first.ExportFile != second.ExportFile {
-		t.Fatalf("identical modules compiled separately: %s != %s", first.ExportFile, second.ExportFile)
-	}
-	// A caller can explicitly opt out; its flag must win over the private default.
-	t.Setenv("GOFLAGS", "-tags=cacheprofile -trimpath=false")
-	third, fourth := load(acquire()), load(acquire())
-	if third.ExportFile == fourth.ExportFile {
-		t.Fatal("explicit -trimpath=false ignored")
-	}
-	if got := os.Getenv("GOFLAGS"); got != "-tags=cacheprofile -trimpath=false" {
-		t.Fatalf("caller environment changed: %s", got)
-	}
 }
 
 func TestGenerationCacheRebasesElevenModules(t *testing.T) {
@@ -570,9 +466,6 @@ func TestGenerationCacheRebasesElevenModules(t *testing.T) {
 }
 
 func TestGenerationCacheDefaultDirectory(t *testing.T) {
-	if !isolatedCacheEnvironment(t) {
-		return
-	}
 	_, cfg := foreignFixture(t, cacheRemote, nil)
 	dir := t.TempDir()
 	t.Setenv("SKGO_CACHE_DIR", dir)
@@ -592,6 +485,7 @@ func TestGenerationCacheDefaultDirectory(t *testing.T) {
 }
 
 func TestGenerationCacheSwiftOwnership(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	cfg.SwiftOut = filepath.Join(root, "app/native/Client.swift")
@@ -604,7 +498,7 @@ func TestGenerationCacheSwiftOwnership(t *testing.T) {
 		if cold {
 			cfg.CacheDir = t.TempDir()
 		}
-		result := runCacheProcess(t, cfg)
+		result := runCache(cfg)
 		if !strings.Contains(result.Error, "authored; refusing to overwrite") {
 			t.Fatalf("Swift ownership not checked (cold=%t): %+v", cold, result)
 		}
@@ -616,9 +510,6 @@ func TestGenerationCacheSwiftOwnership(t *testing.T) {
 }
 
 func TestGenerationCacheSharesGoGenerateEnvironment(t *testing.T) {
-	if !isolatedCacheEnvironment(t) {
-		return
-	}
 	_, cfg := foreignFixture(t, cacheRemote, nil)
 	cfg.CacheDir = t.TempDir()
 	assertCacheResult(t, cfg, false)

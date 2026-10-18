@@ -137,10 +137,7 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
 			const serverIds = nodes.map((node) => node.server);
 			checkServerLoads(allServerIds, generated.loads, generated.actions);
 
-			for (const route of builder.routes) {
-                const keys=Object.keys(route.config ?? {});
-                if(keys.length) throw new Error(`skgo: route ${route.id} exports unsupported adapter config (${keys.join(', ')}). Remove config; skgo has no adapter-specific route configuration.`);
-            }
+			checkRouteConfigs(builder.routes);
             const slashPolicies = new Map(await Promise.all(kit._.routes.map(async route => [route.id,
                 route.page ? [...route.page.layouts,route.page.leaf].reduce((value,index)=>nodes[index]?.trailingSlash ?? value,'never') : (await route.endpoint?.())?.trailingSlash ?? 'never'
             ])));
@@ -672,7 +669,7 @@ function describeSSR(builder, kit, nodes) {
  * @param {string[]} remotes
  * @returns {Set<string>} the module hashes kit compiled
  */
-function checkRemoteHashes(kit, remotes) {
+export function checkRemoteHashes(kit, remotes) {
 	if (!kit._ || typeof kit._.remotes !== 'object' || kit._.remotes === null) {
 		throw new Error(
 			"skgo: kit's generated manifest has no `remotes` map. The adapter cannot tell which remote modules were compiled, so it cannot check them; this build of SvelteKit is not one skgo has been taught to read."
@@ -692,6 +689,14 @@ function checkRemoteHashes(kit, remotes) {
 		);
 	}
 	return built;
+}
+
+/** Refuse route configuration that this adapter cannot implement. */
+export function checkRouteConfigs(routes) {
+	for (const route of routes) {
+		const keys = Object.keys(route.config ?? {});
+		if (keys.length) throw new Error(`skgo: route ${route.id} exports unsupported adapter config (${keys.join(', ')}). Remove config; skgo has no adapter-specific route configuration.`);
+	}
 }
 
 /**
@@ -720,7 +725,7 @@ function checkRemoteHashes(kit, remotes) {
  * @param {string[]} remotes
  * @param {Set<string>} hashes the module hashes kit compiled
  */
-function checkRemoteIds(clientDir, remotes, hashes) {
+export function checkRemoteIds(clientDir, remotes, hashes) {
 	const declared = new Set(remotes);
 	const called = new Map();
 
@@ -768,7 +773,7 @@ function* walk(dir) {
  * @param {string[]} loads
  * @param {string[]} actions
  */
-function checkServerLoads(nodes, loads, actions) {
+export function checkServerLoads(nodes, loads, actions) {
 	const built = new Set(nodes.filter(Boolean));
 	const declared = new Set([...loads, ...actions]);
 

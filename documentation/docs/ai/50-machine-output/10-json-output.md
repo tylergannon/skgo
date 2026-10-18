@@ -2,7 +2,7 @@
 title: JSON output
 summary: The JSON that skgo check, skgo advice and skgo buildinfo print with --json.
 proof:
-  - TestCLIAndInitializedStdioMCPExposeSameAdviceAndFailedCheck
+  - TestFailedCheckReturnsStructuredOutputAndNonzeroExit
   - TestWireContractDiagnosticCode
   - TestAdviceJSONZeroExitStillReportsFinding
 ---

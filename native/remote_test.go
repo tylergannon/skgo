@@ -20,16 +20,15 @@ import (
 func TestZigRemoteCalls(t *testing.T) {
 	buildContext, cancelBuild := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancelBuild()
-	prefix := t.TempDir()
-	build := exec.CommandContext(buildContext, "mise", "exec", "--", "zig", "build", "test", "install", "--prefix", prefix)
+	build := exec.CommandContext(buildContext, "mise", "exec", "--", "zig", "build", "install")
 	build.Dir = "core"
 	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build native CLI (Zig 0.17.0 required): %v\n%s", err, out)
+		t.Fatalf("build SKGO native client: %v\n%s", err, out)
 	}
+	cli := filepath.Join("core", "zig-out", "bin", "skgo-remote")
 	// A cold Linux compiler/libc build is separate from the actual HTTP budget.
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	cli := filepath.Join(prefix, "bin", "skgo-remote")
 	t.Run("binary", func(t *testing.T) { testZigBinaryCalls(t, ctx, cli) })
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

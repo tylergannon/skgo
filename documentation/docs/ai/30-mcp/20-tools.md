@@ -2,7 +2,7 @@
 title: Tools
 summary: Reference for the skgo_check and skgo_advice tools that skgo mcp serves.
 proof:
-  - TestCLIAndInitializedStdioMCPExposeSameAdviceAndFailedCheck
+  - TestMCPInitializesDispatchesAndKeepsOutputStructured
 ---
 
 The [SKGo MCP server](mcp) provides the following tools to the model you are using, which decides when to call them during a session.

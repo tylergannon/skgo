@@ -2,7 +2,7 @@
 title: Testing
 summary: Go tests against the production handler, generated form clients, component tests with Vitest, and browser tests against the binary.
 proof:
-  - TestTheEmbeddedBuildProducesAWorkingServer
+  - TestARenderedPageCarriesGosAnswerToTheBrowser
   - TestTheServerAnswersARealRemoteCall
   - TestGeneratedFormClientOverHTTPAndUDS
 ---

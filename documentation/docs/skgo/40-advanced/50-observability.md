@@ -8,7 +8,7 @@ proof:
   - TestTracingActionsAndSequencedHooks
   - TestTracingConfiguredPropagator
   - TestNativeTracingAnnotationBudget
-  - TestTracingNativeKitAndProduction
+  - TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies
 ---
 
 SKGo emits the same server-side [OpenTelemetry](https://opentelemetry.io) spans that SvelteKit does, and creates them in Go. You annotate them, and add your own child spans, from Go loads, actions, remote functions, `+server` routes and the `handle` hook. The Go OpenTelemetry SDK collects and exports them. Kit's `src/instrumentation.server.ts` has no place in an SKGo app.

@@ -1,1 +1,0 @@
-<h1>Rejected header must not reach this page</h1>

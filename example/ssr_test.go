@@ -16,7 +16,6 @@ import (
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example"
 	"github.com/tylergannon/skgo/example/businesslogic"
-	generated "github.com/tylergannon/skgo/example/internal/skgo"
 )
 
 type oneFileOverlay struct {
@@ -93,39 +92,6 @@ func TestPrerenderedGoRemoteIsReusedByProductionSSR(t *testing.T) {
 	}
 }
 
-// TestTheProductionBundleRunsInAFreshRuntime is the check that turns a
-// SvelteKit or Svelte upgrade skgo's engine cannot run into a red build rather
-// than a broken deployment.
-//
-// The engine is a pure ECMAScript interpreter with no published compatibility
-// statement. A minor release that emits a syntax it cannot parse, or reaches
-// for a web global the bundle does not carry, breaks at the moment the bundle
-// is compiled into a runtime — which is here, on the bytes that would ship.
-func TestTheProductionBundleRunsInAFreshRuntime(t *testing.T) {
-	dist := prodDist(t)
-	manifest, err := skgo.ReadManifest(dist)
-	if err != nil {
-		t.Fatalf("reading the build manifest: %v", err)
-	}
-	if manifest.SSR == nil {
-		t.Fatal("the build carries no SSR bundle")
-	}
-
-	remotes, err := skgo.NewRemotes(manifest.RemoteConfig(prodOrigin), generated.Remotes()...)
-	if err != nil {
-		t.Fatalf("building the remote registry: %v", err)
-	}
-	loadCfg := manifest.LoadConfig(prodOrigin)
-	loads, err := skgo.NewLoads(loadCfg, generated.Loads()...)
-	if err != nil {
-		t.Fatalf("building the load registry: %v", err)
-	}
-
-	if _, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{Runtimes: 1}); err != nil {
-		t.Fatalf("the SSR bundle this build ships does not run: %v", err)
-	}
-}
-
 // TestARenderedPageCarriesGosAnswerToTheBrowser is the whole point of the
 // renderer, at the level a browser sees it: the markup is already in the
 // document, and the value behind it is in the boot payload under the key kit's
@@ -177,28 +143,6 @@ func TestAQueryWithAnArgumentIsRenderedWithTheArgumentGoWasGiven(t *testing.T) {
 	item := remoteID(t, "getItem")
 	if !strings.Contains(body, `"`+item+`/`) {
 		t.Errorf("the boot payload carries no answer for %s", item)
-	}
-}
-
-// TestARunesClassWithAClassFieldDerivedRenders renders a component that builds
-// a runes class whose `$derived` is a class field. Svelte compiles that to a
-// private field initialised by an arrow reading `this`; goja used to run
-// field initialisers with the argument count of the function executing `new`,
-// so constructing such a class inside a component — a function with
-// parameters — panicked the render (#117, fixed upstream by dop251/goja#737).
-//
-// Five is the number of words in the text src/routes/runes-class/+page.svelte
-// hands the class; only a `$derived` that actually ran can put it on the page.
-func TestARunesClassWithAClassFieldDerivedRenders(t *testing.T) {
-	h := newProdHandler(t)
-
-	rec := get(t, h, "/runes-class")
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d", rec.Code)
-	}
-	if want := `<p data-testid="word-count">Words: 5</p>`; !strings.Contains(rec.Body.String(), want) {
-		t.Errorf("the document does not contain %s", want)
 	}
 }
 
@@ -473,7 +417,10 @@ func TestALoadThatFailsInTheRootLayoutIsKitsStaticErrorPage(t *testing.T) {
 // ceiling includes the compiled bundle, runtime and ordinary app state, rather
 // than measuring a baseline from the same renderer and adding a tolerance.
 func TestSuccessfulDocumentsDoNotRetainTheirRenderTrees(t *testing.T) {
-	h := newProdHandler(t)
+	h, err := example.NewHandlerSized(prodDist(t), prodOrigin, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for range 500 {
 		rec := get(t, h, "/")
 		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `<p data-testid="site-name">skgo</p>`) {

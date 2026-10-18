@@ -2,7 +2,8 @@
 title: Native targets
 summary: "macOS and iOS today: released Swift clients, an application shell to try, and what is not finished."
 proof:
-  - TestGeneratedSwiftCallsTheGeneratedGoHandlers
+  - TestNativeSwiftGeneration
+  - TestNativeNumericGuardEmitter
   - TestApplicationNativeContributions
 ---
 

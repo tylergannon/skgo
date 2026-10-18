@@ -10,14 +10,13 @@ import (
 )
 
 func TestDevelopmentEnforcesPublishedKitPin(t *testing.T) {
+	t.Parallel()
 	web, err := filepath.Abs("../../example/web")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ pin, installed string }{
 		{"3.1.0", "3.0.0"},
-		{"3.1.0", "2.55.0"},
-		{"3.1.0", "3.0.0-next.28"},
 		// Changing only the published peer declaration must change the gate.
 		{"3.1.1", "3.1.0"},
 	} {

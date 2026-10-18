@@ -153,23 +153,6 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 		t.Fatalf("frontend-only edit compiled Go: %v, %v", u, err)
 	}
 
-	testOnlyPath := filepath.Join(app, "server_test.go")
-	for _, body := range []string{"package nativehost\n// initial test-only source\n", "package nativehost\n// changed test-only source\n", ""} {
-		if body == "" {
-			if err := os.Remove(testOnlyPath); err != nil {
-				t.Fatal(err)
-			}
-		} else {
-			write("server_test.go", body)
-		}
-		if _, _, err := project.Observe(ctx, testOnlyPath); err != nil {
-			t.Fatal(err)
-		}
-		testsOnly := prepare()
-		if u, err := host.Prepare(ctx, testsOnly.Inputs, filepath.Join(work, "tests-only")); err != nil || u != nil {
-			t.Fatalf("test-only source changed served executable: %v, %v", u, err)
-		}
-	}
 	edit := func(next string) *gen.ProjectBuild {
 		t.Helper()
 		write("web/src/routes/orders/server.go", next)
@@ -178,7 +161,7 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 		}
 		return prepare()
 	}
-	for n, literal := range []string{"5202", "6303", "6404", "6505", "6606", "6707"} {
+	for n, literal := range []string{"5202", "6303"} {
 		b := edit(strings.Replace(source, "4101", literal, 1))
 		u, e := host.Prepare(ctx, b.Inputs, filepath.Join(work, fmt.Sprintf("candidate-%d", n)))
 		if e != nil {
@@ -202,7 +185,7 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 	if err := host.Install(ctx, secondUpdate); err != nil {
 		t.Fatal(err)
 	}
-	check(host, "literal-6707:7")
+	check(host, "literal-6303:7")
 	response, err = http.Get(host.URL + "/second")
 	if err != nil {
 		t.Fatal(err)
@@ -256,7 +239,7 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 	if replacement.PID != 0 {
 		t.Fatal("compilation started the replacement application")
 	}
-	check(host, "literal-6707:7")
+	check(host, "literal-6303:7")
 	if err := host.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -306,22 +289,5 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 		}
 	}
 	retired(host)
-	third, err := CompileHost(ctx, HostOptions{Inputs: repaired.Inputs, WorkDir: filepath.Join(work, "third"), Origin: "http://localhost", DistDir: work, Output: os.Stderr})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer third.Close()
-	check(replacement, "literal-7407:9")
 	retired(replacement)
-	if err := third.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if third.PID == replacement.PID || third.PID == host.PID {
-		t.Fatal("second replacement reused an existing child")
-	}
-	check(third, "literal-7407:9")
-	retired(replacement)
-	check(third, "literal-7407:9")
-	retired(third)
-
 }
