@@ -66,7 +66,7 @@ Unchanged. `entries` in `+page.ts` lists the parameter sets of a dynamic route t
 
 ## trailingSlash
 
-Unchanged, and honoured by the Go server for pages and `server.go` routes alike: a request with the wrong form of a path gets Kit's redirect before anything is dispatched, and a prerendered page is found under either form.
+Not yet per route. The Go server applies Kit's default of `never` to every route, and `always` to the root of an application with a `paths.base`; a request with the other form of a path gets Kit's redirect before anything is dispatched, and a prerendered page is found under either form. Per-route `trailingSlash` is [#163](https://github.com/tylergannon/skgo/issues/163).
 
 ## config
 

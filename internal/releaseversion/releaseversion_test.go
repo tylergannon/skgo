@@ -14,7 +14,8 @@ func TestAnalyzeConventionalCommits(t *testing.T) {
 		{"breaking marker", []string{"feat(api)!: remove the old constructor"}, Major},
 		{"breaking footer", []string{"fix: correct transport\n\nBREAKING CHANGE: old payloads are rejected"}, Major},
 		{"largest wins", []string{"fix: one", "feat: two"}, Minor},
-		{"non-release type", []string{"docs: explain the origin"}, None},
+		{"documentation", []string{"docs: explain the origin"}, Patch},
+		{"non-release type", []string{"chore: tidy the Justfile"}, None},
 		{"historical subject", []string{"Fix the thing (#12)", "feat: new behavior"}, Minor},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
