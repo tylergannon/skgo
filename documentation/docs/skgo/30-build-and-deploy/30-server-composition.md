@@ -66,6 +66,7 @@ A request passes through the handlers from the outside in:
 /// include: example/server.go#ssr-options
 ```
 
+- `Init` runs `initServer` once before this application instance can serve any request. A failure stops construction; it also runs under native development and when page rendering is disabled.
 - `Runtimes` bounds how many pages render at once; zero means one per CPU. Each runtime holds its own copy of the app's module state, so this trades memory for throughput and nothing else.
 - `Fetch` is the in-process handler for a render-time `fetch` of the app's own routes. Leaving it nil refuses every such fetch.
 - `OnError` hears about failures the visitor is never shown; nil logs them. See [Errors](errors).

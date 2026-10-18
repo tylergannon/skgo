@@ -30,7 +30,7 @@ SKGo runs SvelteKit %kit%'s own router, client and renderer, so anything not lis
 - **`handle`** is `var Handle params.Middleware` in `internal/serverhooks`, with Kit's `resolve` and `ResolveOptions` (`TransformPageChunk`, `FilterSerializedResponseHeaders`, `Preload`), composed with `params.Sequence`. See [Hooks](hooks).
 - **`handleFetch`** is a Go `HandleFetch` on `FetchConfig` for Go-side fetches and on `SSROptions` for render-time fetches.
 - **`handleError`** is a Go `HandleError`, set on the load, endpoint and handle configurations in `server.go`. See [Error handling](#Error-handling).
-- **`init`** has no Go equivalent; startup work goes in `cmd/main.go` before the server listens ([#168](https://github.com/tylergannon/skgo/issues/168)).
+- **`init`** is `SSROptions.Init`, a Go `ServerInit` hook awaited once during application construction in development and production. A failure prevents the application from serving.
 - **Validation errors** use `RemoteConfig.HandleError` with `caught.Kind == "validation"` and private `caught.Issues`, matching Kit 3's replacement for `handleValidationError`. The default public result is `400 Bad Request`.
 - **`transport`** works: declare the Go types with `skgo.Transported` in `src/hooks.go` beside the encoders and decoders in `src/hooks.ts`. See [Types and transport](transport#Transport).
 - **`event.platform`** does not exist ([#170](https://github.com/tylergannon/skgo/issues/170)).

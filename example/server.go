@@ -54,6 +54,10 @@ func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 // docs: end handle-error
 
 // docs: new-handler
+// initServer initializes shared application resources once before this
+// application instance serves requests, in development and production.
+func initServer() error { return nil }
+
 // NewHandler builds the app's server over the embedded production build in dist.
 //
 // The order is kit's own dispatch order, turned inside out into middleware.
@@ -125,6 +129,7 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 		// by the whole stack, pages included; see `app`.
 		// docs: ssr-options
 		ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+			Init:        initServer,
 			Runtimes:    runtimes,
 			Fetch:       internal,
 			HandleFetch: handleFetch,

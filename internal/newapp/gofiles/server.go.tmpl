@@ -9,6 +9,10 @@ import (
 	generated "{{.BindingsImport}}"
 )
 
+// initServer initializes shared application resources once before this
+// application instance serves requests, in development and production.
+func initServer() error { return nil }
+
 // NewHandler builds the Go-owned application stack over the embedded build.
 func NewHandler(dist fs.FS, origin string) (http.Handler, error) {
  return newHandler(dist,origin,nil)
@@ -44,6 +48,7 @@ func newHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) 
 	var pages func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
 		pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 			renderer, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+				Init: initServer,
 				Fetch: internal,
 				Actions: actions,
 			})

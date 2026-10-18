@@ -44,6 +44,11 @@ NewSSR builds a renderer over an adapter build. It fails if the build carries no
 
 ```go
 type SSROptions struct {
+	// Init is the Go server startup hook. Construction waits for it once per
+	// application instance and returns no renderer if it fails. The complete
+	// application handler must be assembled only after this constructor succeeds.
+	Init ServerInit
+
 	// Environment is the Go-validated startup snapshot shared by Go and Kit.
 	Environment *EnvironmentSnapshot
 	// Actions are the Go handlers generated for classic page form actions.

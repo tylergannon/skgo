@@ -70,6 +70,11 @@ func (s *SSR) ErrorTemplate() string { return s.errorPage }
 
 // SSROptions configures the renderer.
 type SSROptions struct {
+	// Init is the Go server startup hook. Construction waits for it once per
+	// application instance and returns no renderer if it fails. The complete
+	// application handler must be assembled only after this constructor succeeds.
+	Init ServerInit
+
 	// Environment is the Go-validated startup snapshot shared by Go and Kit.
 	Environment *EnvironmentSnapshot
 	// Actions are the Go handlers generated for classic page form actions.
@@ -173,6 +178,9 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		return nil, err
 	}
 	s.engine = engine
+	if err := initializeServer(opts.Init); err != nil {
+		return nil, err
+	}
 	return s, nil
 }
 

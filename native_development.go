@@ -14,6 +14,9 @@ func (d *NativeDevelopment) NewSSR(build fs.FS, m Manifest, loads *Loads, remote
 		return NewSSR(build, m, loads, remotes, opts)
 	}
 	s := &SSR{loads: loads, remotes: remotes, actions: opts.Actions, fetch: opts.Fetch, handleFetch: opts.HandleFetch, filterSerializedResponseHeaders: opts.FilterSerializedResponseHeaders, errorPage: "<html><body>%sveltekit.error.message%</body></html>"}
+	if err := initializeServer(opts.Init); err != nil {
+		return nil, err
+	}
 	d.renderer = s
 	d.manifest = m
 	return s, nil

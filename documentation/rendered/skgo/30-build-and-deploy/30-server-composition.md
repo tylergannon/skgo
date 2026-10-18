@@ -11,6 +11,10 @@ The generated file exports a production constructor and a development one that s
 
 ```go
 /// file: server.go
+// initServer initializes shared application resources once before this
+// application instance serves requests, in development and production.
+func initServer() error { return nil }
+
 // NewHandler builds the app's server over the embedded production build in dist.
 //
 // The order is kit's own dispatch order, turned inside out into middleware.
@@ -104,6 +108,10 @@ func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 }
 
 
+// initServer initializes shared application resources once before this
+// application instance serves requests, in development and production.
+func initServer() error { return nil }
+
 // NewHandler builds the app's server over the embedded production build in dist.
 //
 // The order is kit's own dispatch order, turned inside out into middleware.
@@ -171,6 +179,7 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 		// A render-time `event.fetch` of the app's own routes is answered
 		// by the whole stack, pages included; see `app`.
 		ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+			Init:        initServer,
 			Runtimes:    runtimes,
 			Fetch:       internal,
 			HandleFetch: handleFetch,
@@ -295,6 +304,7 @@ A request passes through the handlers from the outside in:
 ```go
 /// file: server.go
 ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+	Init:        initServer,
 	Runtimes:    runtimes,
 	Fetch:       internal,
 	HandleFetch: handleFetch,
@@ -302,6 +312,7 @@ ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
 })
 ```
 
+- `Init` runs `initServer` once before this application instance can serve any request. A failure stops construction; it also runs under native development and when page rendering is disabled.
 - `Runtimes` bounds how many pages render at once; zero means one per CPU. Each runtime holds its own copy of the app's module state, so this trades memory for throughput and nothing else.
 - `Fetch` is the in-process handler for a render-time `fetch` of the app's own routes. Leaving it nil refuses every such fetch.
 - `OnError` hears about failures the visitor is never shown; nil logs them. See [Errors](errors).

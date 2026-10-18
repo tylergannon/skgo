@@ -253,7 +253,9 @@ The hook sees the request before SKGo adds the page's cookies and `Authorization
 
 ## init
 
-Kit's `init` hook is not supported. Initialise database clients and other shared state in `newHandler` in `server.go`, which both `NewHandler` and `NewDevelopmentHandler` call. The [development server](development-server) builds the app from `NewDevelopmentHandler` and never runs `main`, so `main` is not a place for application setup.
+Set `SSROptions.Init` to a `skgo.ServerInit` function (`func() error`) in the shared `newHandler` in `server.go`. The scaffold supplies `initServer` for application setup such as opening database clients. `NewSSR` and `NativeDevelopment.NewSSR` wait for it before returning the application instance, including when every page sets `ssr = false`. Complete the handler stack and start listening only after the constructor succeeds, so initialization also precedes endpoint and remote requests.
+
+The hook runs once per constructed application instance, independently of request counts or renderer-pool size. It has no request event. A returned error fails construction with `skgo: server init failed:` and preserves its cause; no application handler is published. A replacement development application initializes again. Go package `init` and `main` are different lifecycles: [`skgo dev`](development-server) never runs your `main`.
 
 ## reroute
 
