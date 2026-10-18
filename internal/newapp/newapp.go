@@ -166,7 +166,7 @@ func Create(options Options) (Result, error) {
 		}
 	}
 	if source, ok := strings.CutPrefix(p.SVAddonSpec, "file:"); ok {
-		staged, err := stageAddon(run, source, options.addonStage)
+		staged, err := stageAddon(run, vp, source, options.addonStage)
 		if err != nil {
 			return Result{}, fmt.Errorf("skgo: staging the sv add-on from %s failed: %w", source, err)
 		}
@@ -224,15 +224,15 @@ func Create(options Options) (Result, error) {
 		return finish(p, run)
 	}
 	if err := run(command{
-		Dir: filepath.Join(p.Dir, "web"), Name: "pnpm",
+		Dir: web, Name: localVP,
 		Args: []string{
-			"dlx", "--allow-build=esbuild",
+			"dlx",
 			"--package", "create-storybook@" + storybookVersion,
 			"--package", "@storybook/sveltekit@" + storybookVersion,
 			"create-storybook", "--package-manager", "pnpm", "--skip-install",
 			"--no-dev", "--no-features", "--yes", "--disable-telemetry",
 		},
-		// Supplying the exact framework package in pnpm's isolated dlx
+		// Supplying the exact framework package in the isolated dlx
 		// environment lets create-storybook resolve its own templates locally,
 		// instead of falling back to an npm registry lookup from the project.
 		Env: append(os.Environ(), "CI=1"),
@@ -305,7 +305,7 @@ func finish(p project, run func(command) error) (Result, error) {
 	}
 	p.ComponentTests = pkg.DevDependencies["playwright"] != ""
 	if p.ComponentTests {
-		if err := run(command{Dir: p.Dir, Name: "pnpm", Args: []string{"--dir", "web", "exec", "playwright", "install", "chromium"}, Env: os.Environ()}); err != nil {
+		if err := run(command{Dir: web, Name: filepath.Join("node_modules", ".bin", "vp"), Args: []string{"exec", "playwright", "install", "chromium"}, Env: os.Environ()}); err != nil {
 			return Result{}, fmt.Errorf("skgo: installing the browser required by Vitest failed: %w", err)
 		}
 	}
@@ -513,7 +513,7 @@ func verifyIntegration(web string, examples bool) error {
 // an unrelated `skgo new` overwrite tracked files. The stage is a fixed
 // per-user directory rather than a temporary one: a dangling link would break
 // that later extraction instead.
-func stageAddon(run func(command) error, source, stage string) (string, error) {
+func stageAddon(run func(command) error, vp, source, stage string) (string, error) {
 	source, err := filepath.Abs(source)
 	if err != nil {
 		return "", err
@@ -531,7 +531,7 @@ func stageAddon(run func(command) error, source, stage string) (string, error) {
 	if err := os.MkdirAll(stage, 0o755); err != nil {
 		return "", err
 	}
-	if err := run(command{Dir: source, Name: "pnpm", Args: []string{"pack", "--pack-destination", stage}, Env: os.Environ()}); err != nil {
+	if err := run(command{Dir: source, Name: vp, Args: []string{"pm", "pack", "--pack-destination", stage}, Env: os.Environ()}); err != nil {
 		return "", err
 	}
 	tarballs, err := filepath.Glob(filepath.Join(stage, "*.tgz"))
@@ -539,7 +539,7 @@ func stageAddon(run func(command) error, source, stage string) (string, error) {
 		return "", err
 	}
 	if len(tarballs) != 1 {
-		return "", fmt.Errorf("pnpm pack left %d tarballs in %s, want 1", len(tarballs), stage)
+		return "", fmt.Errorf("vp pm pack left %d tarballs in %s, want 1", len(tarballs), stage)
 	}
 	if err := unpackTarball(tarballs[0], stage); err != nil {
 		return "", err
@@ -548,7 +548,7 @@ func stageAddon(run func(command) error, source, stage string) (string, error) {
 	addon := filepath.Join(stage, "package")
 	// Node resolves the add-on's imports from the link's target, not from sv's
 	// directory, so the staged copy needs its own sv peer.
-	if err := run(command{Dir: addon, Name: "pnpm", Args: []string{"install", "--prod", "--ignore-workspace"}, Env: os.Environ()}); err != nil {
+	if err := run(command{Dir: addon, Name: vp, Args: []string{"install", "--prod", "--", "--ignore-workspace"}, Env: os.Environ()}); err != nil {
 		return "", err
 	}
 	return addon, nil

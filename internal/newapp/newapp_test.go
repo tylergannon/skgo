@@ -99,7 +99,7 @@ func (u *upstream) run(c command) error {
 		files := merge(map[string]string{"src/routes/+page.svelte": "sv's page\n", "node_modules/.bin/vp": ""}, u.created)
 		writeFiles(u.t, filepath.Join(c.Dir, "web"), files)
 		u.writePackage(filepath.Join(c.Dir, "web"))
-	case c.Name == localVP && c.Args[0] == "dlx" && !u.skipAdd:
+	case c.Name == localVP && c.Args[0] == "dlx" && strings.HasPrefix(c.Args[1], "sv@") && !u.skipAdd:
 		joined := strings.Join(c.Args, " ")
 		if strings.Contains(joined, "vitest=") {
 			u.devDeps["vitest"] = "^4.1.8"
@@ -122,13 +122,13 @@ func (u *upstream) run(c command) error {
 		u.writePackage(c.Dir)
 	case c.Name == localVP && slices.Equal(c.Args, []string{"install", "--no-frozen-lockfile"}):
 		u.queueEvents = append(u.queueEvents, "install")
-	case c.Name == "pnpm" && slices.Contains(c.Args, "playwright"):
-		// What pnpm does for real: there is no such binary unless upstream
+	case c.Name == localVP && c.Args[0] == "exec" && slices.Contains(c.Args, "playwright"):
+		// What vp exec does for real: there is no such binary unless upstream
 		// declared the dependency.
 		if u.devDeps["playwright"] == "" {
 			return fmt.Errorf(`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "playwright" not found`)
 		}
-	case c.Name == "pnpm" && slices.Contains(c.Args, "create-storybook") && !u.skipBook:
+	case c.Name == localVP && c.Args[0] == "dlx" && slices.Contains(c.Args, "create-storybook") && !u.skipBook:
 		u.scripts["storybook"] = "storybook dev -p 6006"
 		writeFiles(u.t, c.Dir, map[string]string{".storybook/main.ts": "export default {}", "src/stories/Button.stories.svelte": "story", "node_modules/.bin/storybook": ""})
 		u.writePackage(c.Dir)
@@ -216,7 +216,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if len(commands) != 10 {
 		t.Fatalf("got %d commands; want VitePlus create, sv add, Storybook, VitePlus install, Playwright, go get tool, go generate, go mod tidy, VitePlus check --fix, initial VitePlus build", len(commands))
 	}
-	if got := strings.Join(commands[4].Args, " "); got != "--dir web exec playwright install chromium" {
+	if got := strings.Join(commands[4].Args, " "); got != "exec playwright install chromium" || commands[4].Dir != filepath.Join(dir, "web") {
 		t.Fatalf("the mandatory component tests need Chromium; command 5 = %q", got)
 	}
 	if readme := readFile(t, filepath.Join(dir, "README.md")); !strings.Contains(readme, "vp exec playwright install chromium") {
@@ -243,8 +243,8 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	if commands[1].Name != filepath.Join("node_modules", ".bin", "vp") || filepath.Base(commands[1].Dir) != "web" {
 		t.Fatalf("the skgo integration was not added through the project's VitePlus: %#v", commands[1])
 	}
-	if got := strings.Join(commands[2].Args, " "); !strings.Contains(got, "dlx --allow-build=esbuild --package create-storybook@10.6.2 --package @storybook/sveltekit@10.6.2 create-storybook") {
-		t.Fatalf("Storybook did not use its upstream installer with pnpm approval: %s", got)
+	if got := strings.Join(commands[2].Args, " "); commands[2].Name != filepath.Join("node_modules", ".bin", "vp") || !strings.HasPrefix(got, "dlx --package create-storybook@10.6.2 --package @storybook/sveltekit@10.6.2 create-storybook") {
+		t.Fatalf("Storybook did not use its upstream installer through the project's VitePlus: %s %s", commands[2].Name, got)
 	}
 	if joined := strings.Join(commands[2].Env, "\n"); strings.Contains(joined, "npm_config_force=") {
 		t.Fatalf("Storybook installer received broad npm force override:\n%s", joined)
@@ -424,7 +424,7 @@ func TestCreatePassesExplicitChoicesThroughAndAppliesNothingTwice(t *testing.T) 
 func browserInstalls(commands []command) int {
 	n := 0
 	for _, c := range commands {
-		if c.Name == "pnpm" && slices.Contains(c.Args, "playwright") {
+		if c.Name == filepath.Join("node_modules", ".bin", "vp") && c.Args[0] == "exec" && slices.Contains(c.Args, "playwright") {
 			n++
 		}
 	}
@@ -681,9 +681,9 @@ func TestCreateHandsSvAnIsolatedPackedAddonNotTheCheckout(t *testing.T) {
 	u := &upstream{t: t}
 	runner := func(c command) error {
 		switch {
-		case c.Name == "pnpm" && c.Args[0] == "pack":
+		case c.Name == "vp-test" && slices.Equal(c.Args[:2], []string{"pm", "pack"}):
 			if c.Dir != checkout {
-				t.Errorf("pnpm pack ran in %s, want the add-on source %s", c.Dir, checkout)
+				t.Errorf("vp pm pack ran in %s, want the add-on source %s", c.Dir, checkout)
 			}
 			destination := c.Args[slices.Index(c.Args, "--pack-destination")+1]
 			writeTarball(t, filepath.Join(destination, "skgo-sv-0.0.0-dev.tgz"), map[string]string{
@@ -718,13 +718,13 @@ func TestCreateHandsSvAnIsolatedPackedAddonNotTheCheckout(t *testing.T) {
 		t.Fatalf("sv was handed %q, want the staged package %q", linked, want)
 	}
 	if got, err := os.ReadFile(filepath.Join(linked, "sv-addon.js")); err != nil || string(got) != "packed bytes" {
-		t.Fatalf("staged add-on = %q, %v; want the bytes pnpm packed", got, err)
+		t.Fatalf("staged add-on = %q, %v; want the bytes vp packed", got, err)
 	}
 	if _, err := os.Stat(filepath.Join(linked, "left-by-an-earlier-run.js")); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("an earlier qualification's file survived into this stage: %v", err)
 	}
 	installed := slices.ContainsFunc(commands, func(c command) bool {
-		return c.Name == "pnpm" && c.Dir == want && slices.Equal(c.Args, []string{"install", "--prod", "--ignore-workspace"})
+		return c.Name == "vp-test" && c.Dir == want && slices.Equal(c.Args, []string{"install", "--prod", "--", "--ignore-workspace"})
 	})
 	if !installed {
 		t.Errorf("the staged add-on was not given its own sv peer: %#v", commands)
