@@ -218,6 +218,14 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 			if route, params, converted, ok := cfg.matchRoute(routePath); ok {
 				state.converted = converted
 				state.routeID, state.params, hasPage = route.id, params, route.hasPage
+				if !isData && !isRemote {
+					if location, redirect := routeNormalization(pageURL.EscapedPath(), base, route.trailingSlash, pageURL); redirect {
+						w.Header().Set("X-Sveltekit-Normalize", "1")
+						w.Header().Set("Location", location)
+						w.WriteHeader(http.StatusPermanentRedirect)
+						return
+					}
+				}
 			}
 		}
 		if build, ok := r.Context().Value(prerenderMatchKey{}).(prerenderRequestInput); ok {

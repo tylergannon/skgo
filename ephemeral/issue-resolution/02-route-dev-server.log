@@ -1,0 +1,88 @@
+skgo dev: preparing generated application
+skgo dev: starting Vite
+skgo dev: Vite child pid 8004
+12:09:07 PM [vite+] (ssr) connected.
+12:09:07 PM [vite+] (client) Forced re-optimization of dependencies
+skgo dev: building native application host
+skgo dev: http://127.0.0.1:8081 (Go pid 8204, Vite /private/tmp/skgo-2694562652/vite.sock)
+skgo dev: published revision 2 (Go pid 8204, prepare 43.723ms, install 0s, rebuild false)
+skgo dev: published revision 3 (Go pid 8204, prepare 46.806ms, install 0s, rebuild false)
+200 GET /routing/optional
+404 GET /favicon.ico
+200 GET /routing/optional
+200 GET /routing/optional/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/optional/42
+200 GET /routing/optional/42/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/fallback/7
+200 GET /routing/fallback/7/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/fallback/no-order
+200 GET /routing/fallback/no-order/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/optional/42/__data.json?x-sveltekit-invalidated=01
+200 GET /routing/reject/42
+200 GET /routing/reject/42/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/slash/always/
+200 GET /routing/slash/always/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=1
+200 GET /routing/slash/never
+200 GET /routing/slash/never/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/slash/ignore
+200 GET /routing/slash/ignore/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/slash/ignore/
+200 GET /routing/slash/ignore/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=1
+200 GET /routing/slash/mixed/
+200 GET /routing/slash/mixed/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=1
+308 GET /routing/slash/always?q=a%2Bb
+308 GET /routing/slash/never/?q=a%2Bb
+308 GET /routing/slash/mixed?q=a%2Bb
+308 GET /routing/slash/mixed?q=a%2Bb
+308 GET /routing/slash/api/?q=a%2Bb
+200 GET /routing/slash/api
+200 GET /routing/slash/mixed/
+404 GET /routing/optional/rejected
+404 GET /routing/reject/no-order
+skgo dev: published revision 4 (Go pid 8204, prepare 79.18ms, install 0s, rebuild false)
+200 GET /routing/optional/42/__data.json?x-sveltekit-invalidated=11
+200 GET /routing/fallback/no-order/__data.json?x-sveltekit-invalidated=01
+200 HEAD /
+200 GET /routing/optional/42
+200 GET /routing/optional
+200 GET /routing/slash/always/
+200 GET /routing/fallback/7/__data.json?x-sveltekit-invalidated=01
+200 GET /routing/optional/42/__data.json?x-sveltekit-invalidated=01
+200 GET /routing/slash/never/__data.json?x-sveltekit-invalidated=001
+200 GET /routing/fallback/no-order/__data.json?x-sveltekit-invalidated=01
+200 GET /routing/optional/__data.json?x-sveltekit-invalidated=01
+200 GET /routing/slash/ignore/__data.json?x-sveltekit-trailing-slash=1&x-sveltekit-invalidated=001
+200 GET /routing/slash/always/__data.json?x-sveltekit-trailing-slash=1&x-sveltekit-invalidated=001
+skgo dev: rebuilding revision 7: complete build required: application dependency, configuration or resource changed: /Users/tyler/.codex/worktrees/286c/skgo/internal/gen/endpoints.go
+skgo dev: published revision 7 (Go pid 9911, prepare 79.46ms, install 0s, rebuild true)
+skgo dev: published revision 7 (Go pid 9911, prepare 43.366ms, install 0s, rebuild false)
+200 GET /routing/optional
+200 GET /routing/optional/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/optional/42
+200 GET /routing/optional/42/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/fallback/7
+200 GET /routing/fallback/7/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/fallback/no-order
+200 GET /routing/fallback/no-order/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/reject/42
+200 GET /routing/reject/42/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/slash/always/
+200 GET /routing/slash/always/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=1
+200 GET /routing/slash/never
+200 GET /routing/slash/never/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/slash/ignore
+200 GET /routing/slash/ignore/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=0
+200 GET /routing/slash/ignore/
+200 GET /routing/slash/ignore/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=1
+200 GET /routing/slash/mixed/
+200 GET /routing/slash/mixed/__data.json?x-sveltekit-invalidated=111111&x-sveltekit-trailing-slash=1
+308 GET /routing/slash/always?q=a%2Bb
+308 GET /routing/slash/never/?q=a%2Bb
+308 GET /routing/slash/mixed?q=a%2Bb
+308 GET /routing/slash/mixed?q=a%2Bb
+308 GET /routing/slash/api/?q=a%2Bb
+200 GET /routing/slash/api
+200 GET /routing/slash/mixed/
+404 GET /routing/optional/rejected
+404 GET /routing/reject/no-order
+308 HEAD /routing/slash/never/?q=1

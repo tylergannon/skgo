@@ -195,6 +195,42 @@
 			"target": "web/src/routes/prerender/[slug]"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3gmfwgyytbmnvs6w3oovwwezlshvhxezdfojoq",
+			"target": "web/src/routes/routing/fallback/[number=Order]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3gmfwgyytbmnvs6w3wmfwhkzk5",
+			"target": "web/src/routes/routing/fallback/[value]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3pob2gs33omfwc6w23nz2w2ytfoi6u64temvzf2xi",
+			"target": "web/src/routes/routing/optional/[[number=Order]]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3smvvgky3uf5nw45lnmjsxepkpojsgk4s5",
+			"target": "web/src/routes/routing/reject/[number=Order]"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpmfwhoylzom",
+			"target": "web/src/routes/routing/slash/always"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpmfygs",
+			"target": "web/src/routes/routing/slash/api"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnftw433smu",
+			"target": "web/src/routes/routing/slash/ignore"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnvuxqzle",
+			"target": "web/src/routes/routing/slash/mixed"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnzsxmzls",
+			"target": "web/src/routes/routing/slash/never"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a",
 			"target": "web/src/routes/request-fetch"
 		},

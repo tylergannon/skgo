@@ -1119,6 +1119,12 @@ func (a *app) writeGo(path, content string) error {
 }
 
 func (a *app) write(path, content string) error {
+	switch filepath.Base(path) {
+	case "+server.ts", "+server.js", "+page.server.ts", "+page.server.js", "+layout.server.ts", "+layout.server.js":
+		if err := refuseGeneratedServerOptions(path); err != nil {
+			return err
+		}
+	}
 	return write(a.cfg, path, content)
 }
 

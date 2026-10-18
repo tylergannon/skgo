@@ -225,7 +225,7 @@ for the new development server.
 | [Client-side navigation](https://svelte.dev/docs/kit/routing) | Available | Kit's client navigates without a document reload; [browser scenario](example/e2e/features/app.feature). |
 | [Layouts, route groups and nested error pages](https://svelte.dev/docs/kit/routing) | Available | [Grouped routes](example/e2e/features/colocation.feature), [nested loads](example/e2e/features/loads.feature) and [error boundaries](example/e2e/features/showcase.feature). |
 | [Dynamic and rest route parameters](https://svelte.dev/docs/kit/advanced-routing) | Available | Parameters reach colocated Go handlers; [browser scenarios](example/e2e/features/colocation.feature). |
-| [Optional parameters and parameter matchers](https://svelte.dev/docs/kit/advanced-routing) | Limited | Optional captures are decoded; JavaScript parameter matcher functions are not run by Go. |
+| [Optional parameters and parameter matchers](https://svelte.dev/docs/kit/advanced-routing) | Available | Optional captures and paired Go matchers select loads and endpoints; matcher rejection tries the next route before 404. [Client navigation scenarios](example/e2e/features/routing-options.feature) run in development and production. |
 | [Page and layout server loads](https://svelte.dev/docs/kit/load) | Available | Go loads produce typed `data` in documents and `__data.json`; [browser scenarios](example/e2e/features/loads.feature). |
 | [Universal JavaScript loads](https://svelte.dev/docs/kit/load#Universal-vs-server) | Not verified | Page options in `+page.ts` work, but there is no demonstrated universal `load`; application I/O in JavaScript is outside skgo's contract. |
 | [Parent load data, URL, params and route ID](https://svelte.dev/docs/kit/load) | Available | Go exposes `Parent` and request data through `EventFrom`; [nested example](example/web/src/routes/account/page.server.go). |
@@ -235,7 +235,7 @@ for the new development server.
 | [`ssr = false` and `csr = false`](https://svelte.dev/docs/kit/page-options) | Available | SPA fallback and script-free HTML are [browser exercised](example/e2e/features/ssr.feature). |
 | [Prerendering](https://svelte.dev/docs/kit/page-options#prerender) | Limited | Kit-built static files are served; a branch with a Go server load cannot be prerendered, and prerendered redirects are refused. |
 | [Dynamic prerender entries](https://svelte.dev/docs/kit/page-options#entries) | Not verified | There is no demonstrated `entries` generator in the example. |
-| [Trailing slash and route config options](https://svelte.dev/docs/kit/page-options) | Limited | Default trailing-slash redirect is [exercised](example/e2e/features/routes.feature); other per-route options are not established. |
+| [Trailing slash and route config options](https://svelte.dev/docs/kit/page-options) | Limited | Page `trailingSlash` supports `never`, `always` and `ignore`, including layout inheritance and overrides; [routing contracts](example/routing_options_test.go) and [client navigation](example/e2e/features/routing-options.feature) cover development and production. Endpoint-only routes use Kit's default `never`; authored server-only slash overrides and nonempty adapter `config` are refused at generation/build with a source or route diagnostic. |
 
 ### Requests and server behavior
 

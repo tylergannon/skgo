@@ -557,17 +557,28 @@ func TestKitsPrivateParametersNeverReachTheLoad(t *testing.T) {
 	}
 }
 
-func TestTrailingSlashIsRestoredOntoThePath(t *testing.T) {
-	var seen string
-	page := NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (pageData, error) {
-		seen = EventFrom(ctx).URL().Path
-		return pageData{Greeting: "ok"}, nil
-	})
-	ls := mustLoads(t, nil, page)
-	get(t, ls, "/a/__data.json?x-sveltekit-trailing-slash=1&x-sveltekit-invalidated=111")
-
-	if seen != "/a/" {
-		t.Errorf("the load saw path %q, want /a/", seen)
+func TestDataLoadURLFollowsRouteSlashPolicy(t *testing.T) {
+	for _, test := range []struct{ policy, hint, want string }{
+		{"never", "1", "/a"}, {"always", "", "/a/"}, {"ignore", "1", "/a/"}, {"ignore", "", "/a"},
+	} {
+		t.Run(test.policy+test.hint, func(t *testing.T) {
+			var seen string
+			page := NewLoad("src/routes/a/+page.server.ts", func(ctx context.Context) (pageData, error) {
+				seen = EventFrom(ctx).URL().Path
+				return pageData{Greeting: "slash-load-receipt"}, nil
+			})
+			ls := mustLoads(t, func(cfg *LoadConfig) {
+				for i := range cfg.Routes {
+					if cfg.Routes[i].ID == "/a" {
+						cfg.Routes[i].TrailingSlash = test.policy
+					}
+				}
+			}, page)
+			rec := get(t, ls, "/a/__data.json?x-sveltekit-trailing-slash="+test.hint+"&x-sveltekit-invalidated=111")
+			if rec.Code != 200 || !strings.Contains(rec.Body.String(), "slash-load-receipt") || seen != test.want {
+				t.Fatalf("status=%d body=%s load URL=%q want %q", rec.Code, rec.Body.String(), seen, test.want)
+			}
+		})
 	}
 }
 

@@ -70,6 +70,14 @@
     "src/routes/missing/[...path]/+page.server.ts",
     "src/routes/prerender/[slug]/+page.server.ts",
     "src/routes/request-fetch/+page.server.ts",
+    "src/routes/routing/fallback/[number=Order]/+page.server.ts",
+    "src/routes/routing/fallback/[value]/+page.server.ts",
+    "src/routes/routing/optional/[[number=Order]]/+page.server.ts",
+    "src/routes/routing/reject/[number=Order]/+page.server.ts",
+    "src/routes/routing/slash/always/+page.server.ts",
+    "src/routes/routing/slash/ignore/+page.server.ts",
+    "src/routes/routing/slash/mixed/+page.server.ts",
+    "src/routes/routing/slash/never/+page.server.ts",
     "src/routes/stream/+page.server.ts",
     "src/routes/traced/+page.server.ts",
     "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts",
@@ -109,6 +117,8 @@
     "/api/request-fetch": ["GET"],
     "/api/todos": ["GET", "POST", "QUERY"],
     "/async-ssr/control/[group]": ["GET", "POST"],
+    "/routing/slash/api": ["GET"],
+    "/routing/slash/mixed": ["GET"],
     "/shadow/[...rest]": ["GET"]
   },
   "prerender": {
@@ -232,6 +242,36 @@
     },
     "src/routes/request-fetch/+page.server.ts": {
       "source": "src/routes/request-fetch/page.server.go"
+    },
+    "src/routes/routing/fallback/[number=Order]/+page.server.ts": {
+      "source": "src/routes/routing/fallback/[number=Order]/page.server.go"
+    },
+    "src/routes/routing/fallback/[value]/+page.server.ts": {
+      "source": "src/routes/routing/fallback/[value]/page.server.go"
+    },
+    "src/routes/routing/optional/[[number=Order]]/+page.server.ts": {
+      "source": "src/routes/routing/optional/[[number=Order]]/page.server.go"
+    },
+    "src/routes/routing/reject/[number=Order]/+page.server.ts": {
+      "source": "src/routes/routing/reject/[number=Order]/page.server.go"
+    },
+    "src/routes/routing/slash/always/+page.server.ts": {
+      "source": "src/routes/routing/slash/always/page.server.go"
+    },
+    "src/routes/routing/slash/api/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/routing/slash/ignore/+page.server.ts": {
+      "source": "src/routes/routing/slash/ignore/page.server.go"
+    },
+    "src/routes/routing/slash/mixed/+page.server.ts": {
+      "source": "src/routes/routing/slash/mixed/page.server.go"
+    },
+    "src/routes/routing/slash/mixed/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/routing/slash/never/+page.server.ts": {
+      "source": "src/routes/routing/slash/never/page.server.go"
     },
     "src/routes/shadow/[...rest]/+server.ts": {
       "endpoint": true

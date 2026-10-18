@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"go/token"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -189,4 +190,40 @@ func (a *app) endpointsByPackage() map[*goPackage][]*endpointFn {
 // same way it decides a remote or load stub's.
 func endpointStubPath(path string, lang Language) string {
 	return filepath.Join(filepath.Dir(path), "+server"+lang.ext())
+}
+
+// Server stubs are wholly generated. Refuse authored options before replacing
+// their file, rather than silently discarding a Kit route policy.
+func refuseGeneratedServerOptions(path string) error {
+	source, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	tokens := jsTokens(string(source))
+	for i, token := range tokens {
+		if token != "export" || i+2 >= len(tokens) {
+			continue
+		}
+		var names []string
+		switch tokens[i+1] {
+		case "const", "let", "var", "function", "class":
+			names = []string{tokens[i+2]}
+		case "{":
+			for _, name := range tokens[i+2:] {
+				if name == "}" {
+					break
+				}
+				names = append(names, strings.Trim(name, "\"'"))
+			}
+		}
+		for _, name := range names {
+			if name == "trailingSlash" || name == "config" {
+				return fmt.Errorf("skgo: %s exports unsupported server route option %s; generated Go server stubs cannot retain authored options. Declare page options in +page.ts or +layout.ts; endpoint-only overrides are not supported", path, name)
+			}
+		}
+	}
+	return nil
 }

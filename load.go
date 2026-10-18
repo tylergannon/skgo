@@ -177,9 +177,10 @@ type Loads struct {
 // dataRoute is one page route: what to match, what to name the captures, and
 // which load answers each slot of the branch.
 type dataRoute struct {
-	id      string
-	pattern *regexp.Regexp
-	params  []ManifestParam
+	trailingSlash string
+	id            string
+	pattern       *regexp.Regexp
+	params        []ManifestParam
 	// branch is `[...layouts, leaf]`; an entry is nil when that node has no
 	// server load, which is what the client is told with a `null` node.
 	branch []*ServerLoad
@@ -268,7 +269,7 @@ func loadRouting(cfg LoadConfig, byModule map[string]*ServerLoad) ([]*ServerLoad
 		if err != nil {
 			return nil, nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
 		}
-		dr := &dataRoute{id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil, errors: route.Page.ErrorPages()}
+		dr := &dataRoute{trailingSlash: route.TrailingSlash, id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil, errors: route.Page.ErrorPages()}
 		for _, index := range route.Page.Branch() {
 			dr.nodes = append(dr.nodes, index)
 			if index < 0 || index >= len(nodes) {

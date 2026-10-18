@@ -137,7 +137,14 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
 			const serverIds = nodes.map((node) => node.server);
 			checkServerLoads(allServerIds, generated.loads, generated.actions);
 
-			const endpoints = checkEndpoints(builder, generated.endpoints);
+			for (const route of builder.routes) {
+                const keys=Object.keys(route.config ?? {});
+                if(keys.length) throw new Error(`skgo: route ${route.id} exports unsupported adapter config (${keys.join(', ')}). Remove config; skgo has no adapter-specific route configuration.`);
+            }
+            const slashPolicies = new Map(await Promise.all(kit._.routes.map(async route => [route.id,
+                route.page ? [...route.page.layouts,route.page.leaf].reduce((value,index)=>nodes[index]?.trailingSlash ?? value,'never') : (await route.endpoint?.())?.trailingSlash ?? 'never'
+            ])));
+            const endpoints = checkEndpoints(builder, generated.endpoints);
 			const prerenderedEndpoints = Object.fromEntries(builder.routes
 				.filter((route) => route.prerender === true && endpoints.has(route.id))
 				.map((route) => [route.id, endpoints.get(route.id)]));
@@ -213,6 +220,7 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
 						ssr: describeSSR(builder, kit, nodes),
 						routes: kit._.routes.map((/** @type {any} */ route) => ({
 							id: route.id,
+                            trailingSlash: slashPolicies.get(route.id),
 							pattern: route.pattern.source,
 							params: route.params,
 							// The methods kit's build says the compiled `+server.ts`
@@ -499,6 +507,7 @@ async function readNodes(builder, source, kit) {
 			throw new Error(`skgo: kit's manifest imports nodes/${index}.js, which the build did not write`);
 		}
 		const module = await import(pathToFileURL(file).href);
+        if(module.server?.trailingSlash !== undefined) throw new Error(`skgo: ${module.server_id} exports unsupported server trailingSlash. Declare trailingSlash in +page.ts or +layout.ts instead.`);
 
 		nodes.push({
 			index,
@@ -509,7 +518,8 @@ async function readNodes(builder, source, kit) {
 			stylesheets: module.stylesheets ?? [],
 			fonts: module.fonts ?? [],
 			ssr: option(module, 'ssr'),
-			csr: option(module, 'csr')
+			csr: option(module, 'csr'),
+            trailingSlash: option(module, 'trailingSlash')
 		});
 	}
 
@@ -526,7 +536,8 @@ async function readNodes(builder, source, kit) {
  *   stylesheets: string[],
  *   fonts: Array<{ file: string, filename: string }>,
  *   ssr: boolean | null,
- *   csr: boolean | null
+ *   csr: boolean | null,
+ *   trailingSlash: string | null
  * }} Node
  */
 
@@ -536,7 +547,7 @@ async function readNodes(builder, source, kit) {
  * (packages/kit/src/utils/page_nodes.js); Go does the reduction over the branch.
  *
  * @param {any} module
- * @param {'ssr' | 'csr'} option
+ * @param {'ssr' | 'csr' | 'trailingSlash'} option
  */
 function option(module, option) {
 	return module.universal?.[option] ?? module.server?.[option] ?? null;

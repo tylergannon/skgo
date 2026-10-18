@@ -1,6 +1,7 @@
 package skgo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -821,5 +822,55 @@ func TestNegotiateFollowsKitsPreference(t *testing.T) {
 		if got := negotiate(tc.accept, "*", "text/html"); got != tc.want {
 			t.Errorf("negotiate(%q) = %q, want %q", tc.accept, got, tc.want)
 		}
+	}
+}
+
+func TestRouteSlashPoliciesPrecedeEndpointAndPageDispatch(t *testing.T) {
+	for _, policy := range []string{"never", "always", "ignore"} {
+		cfg := endpointFixture(nil, []string{"GET"}, []string{"GET"})
+		for i := range cfg.Routes {
+			cfg.Routes[i].TrailingSlash = policy
+		}
+		h := newEndpoints(t, cfg, NewEndpoint("/api/thing", "GET", echo("endpoint-receipt")), NewEndpoint("/dual", "GET", echo("mixed-endpoint-receipt")))
+		for _, test := range []struct{ path, accept, receipt string }{
+			{"/api/thing", "text/plain", "endpoint-receipt"}, {"/plain", "text/html", "page"}, {"/dual", "text/plain", "mixed-endpoint-receipt"}, {"/dual", "text/html", "page"},
+		} {
+			for _, slash := range []string{"", "/"} {
+				target := test.path + slash + "?q=a%2Bb"
+				response := request(t, h, "GET", target, http.Header{"Accept": {test.accept}})
+				wantLocation := ""
+				if policy == "always" && slash == "" {
+					wantLocation = "./" + strings.TrimPrefix(test.path[strings.LastIndex(test.path, "/"):], "/") + "/?q=a%2Bb"
+				}
+				if policy == "never" && slash == "/" {
+					wantLocation = "../" + test.path[strings.LastIndex(test.path, "/")+1:] + "?q=a%2Bb"
+				}
+				if wantLocation != "" {
+					if response.StatusCode != 308 || response.Header.Get("Location") != wantLocation || response.Header.Get("X-Sveltekit-Normalize") != "1" {
+						t.Errorf("%s %s %s: status=%d headers=%v want location %s", policy, test.accept, target, response.StatusCode, response.Header, wantLocation)
+					}
+				} else if response.StatusCode != 200 || body(t, response) != test.receipt {
+					t.Errorf("%s %s %s: status=%d", policy, test.accept, target, response.StatusCode)
+				}
+			}
+		}
+	}
+}
+
+func TestRouteSlashNormalizationPrecedesHandle(t *testing.T) {
+	manifest := Manifest{Routes: []ManifestRoute{{ID: "/always", Pattern: `^/always/?$`, TrailingSlash: "always", Page: &ManifestPage{Leaf: 1}}}}
+	calls := 0
+	hook := Middleware(func(ctx context.Context, event *Event, resolve Resolve) (*http.Response, error) {
+		calls++
+		return resolve(ctx)
+	})
+	h := hook.Intercept(manifest.HandleConfig(), echo("canonical-page-receipt"))
+	wrong := get(t, h, "/always?q=one")
+	if wrong.Code != 308 || wrong.Header().Get("Location") != "./always/?q=one" || calls != 0 {
+		t.Fatalf("redirect after hook: status=%d headers=%v calls=%d", wrong.Code, wrong.Header(), calls)
+	}
+	right := get(t, h, "/always/")
+	if right.Code != 200 || right.Body.String() != "canonical-page-receipt" || calls != 1 {
+		t.Fatalf("canonical request status=%d body=%s calls=%d", right.Code, right.Body.String(), calls)
 	}
 }

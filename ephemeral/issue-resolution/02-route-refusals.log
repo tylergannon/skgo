@@ -1,0 +1,71 @@
+=== RUN   TestGenerationRefusesEndpointSlashOptions
+=== RUN   TestGenerationRefusesEndpointSlashOptions/always
+=== RUN   TestGenerationRefusesEndpointSlashOptions/ignore
+--- PASS: TestGenerationRefusesEndpointSlashOptions (0.38s)
+    --- PASS: TestGenerationRefusesEndpointSlashOptions/always (0.19s)
+    --- PASS: TestGenerationRefusesEndpointSlashOptions/ignore (0.19s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	0.676s
+=== RUN   TestAdapterRouteConfigIsRefusedAtBuild
+    route_options_build_test.go:31: expected adapter config refusal:
+        note: You are running `vp build` as a Vite+ built-in command. If you meant to run the build npm script, use `vpr build` instead.
+        transforming...
+        ✓ 147 modules transformed.
+        rendering chunks...
+        computing gzip size...
+        .svelte-kit/output/server/.vite/manifest.json                   5.13 kB │ gzip:  0.64 kB
+        .svelte-kit/output/server/entries/pages/_page.ts.js             0.13 kB │ gzip:  0.13 kB │ map:   0.20 kB
+        .svelte-kit/output/server/entries/pages/_page.svelte.js         0.24 kB │ gzip:  0.20 kB │ map:   0.17 kB
+        .svelte-kit/output/server/env.js                                0.31 kB │ gzip:  0.19 kB │ map:   0.57 kB
+        .svelte-kit/output/server/entries/fallbacks/layout.svelte.js    0.53 kB │ gzip:  0.37 kB │ map:   0.56 kB
+        .svelte-kit/output/server/entries/fallbacks/error.svelte.js     1.50 kB │ gzip:  0.57 kB │ map:   3.02 kB
+        .svelte-kit/output/server/index.js                              2.48 kB │ gzip:  1.05 kB │ map:   3.54 kB
+        .svelte-kit/output/server/chunks/uneval.js                     19.66 kB │ gzip:  5.42 kB │ map:  41.11 kB
+        .svelte-kit/output/server/chunks/server-errors.js              24.44 kB │ gzip:  4.67 kB │ map:  35.17 kB
+        .svelte-kit/output/server/chunks/server.js                     45.51 kB │ gzip: 12.14 kB │ map: 128.76 kB
+        .svelte-kit/output/server/remote-entry.js                      55.90 kB │ gzip: 12.01 kB │ map:  91.33 kB
+        .svelte-kit/output/server/chunks/internal.js                  108.23 kB │ gzip: 28.14 kB │ map: 232.11 kB
+        .svelte-kit/output/server/chunks/instance.js                  133.84 kB │ gzip: 35.20 kB │ map: 271.39 kB
+        
+        ✓ built in 72ms
+        Analysing routes
+        (node:7605) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        Building app
+        transforming...
+        ✓ 175 modules transformed.
+        rendering chunks...
+        computing gzip size...
+        .svelte-kit/output/client/_app/version.json                          0.02 kB │ gzip:  0.04 kB
+        .svelte-kit/output/client/.vite/manifest.json                        5.35 kB │ gzip:  0.71 kB
+        .svelte-kit/output/client/_app/immutable/entry/payload.DSmR2FwN.js   0.06 kB │ gzip:  0.07 kB
+        .svelte-kit/output/client/_app/immutable/nodes/0.ggg6luIZ.js         0.14 kB │ gzip:  0.13 kB
+        .svelte-kit/output/client/_app/immutable/nodes/1.BAQ4gjPp.js         0.32 kB │ gzip:  0.24 kB
+        .svelte-kit/output/client/_app/immutable/nodes/2.D5_8Srue.js         0.37 kB │ gzip:  0.30 kB
+        .svelte-kit/output/client/_app/immutable/entry/start.DNJe1ntQ.js     0.52 kB │ gzip:  0.30 kB
+        .svelte-kit/output/client/_app/immutable/entry/app.Bd9KNSeP.js       1.06 kB │ gzip:  0.53 kB
+        .svelte-kit/output/client/_app/immutable/chunks/Bjy-W4x2.js          1.36 kB │ gzip:  0.65 kB
+        .svelte-kit/output/client/_app/immutable/chunks/CRzLMJPS.js          1.53 kB │ gzip:  0.80 kB
+        .svelte-kit/output/client/_app/immutable/chunks/CRNesrzd.js          4.29 kB │ gzip:  1.93 kB
+        .svelte-kit/output/client/_app/immutable/chunks/Dp9tdwdu.js         34.03 kB │ gzip: 13.15 kB
+        .svelte-kit/output/client/_app/immutable/chunks/GDAl5XRg.js         39.70 kB │ gzip: 14.64 kB
+        
+        ✓ built in 65ms
+        (node:7605) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        
+        Run npm run preview to preview your production build locally.
+        
+        > Using skgo
+        error during build:
+        Error: skgo: route / exports unsupported adapter config (region). Remove config; skgo has no adapter-specific route configuration.
+            at adapt (file:///Users/tyler/.codex/worktrees/286c/skgo/internal/adapter/skgo-adapter.js:142:39)
+            at async adapt (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/core/adapt/index.js:59:2)
+            at async finalise (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/vite/build/index.js:909:7)
+            at async file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/vite/index.js:672:31
+            at async BasicMinimalPluginContext.handler (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/vite/build/index.js:1014:5)
+            at async Object.buildApp (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:40495:5)
+            at async CAC.<anonymous> (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/cli.js:783:3)
+--- PASS: TestAdapterRouteConfigIsRefusedAtBuild (3.01s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	3.284s

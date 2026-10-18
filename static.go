@@ -179,8 +179,11 @@ type ManifestSSRNode struct {
 
 // ManifestRoute is one entry of Manifest.Routes.
 type ManifestRoute struct {
-	ID      string `json:"id"`
-	Pattern string `json:"pattern"`
+	// TrailingSlash is Kit's resolved route policy: never, always or ignore.
+	// Empty means never, Kit's default. Page policies include layout inheritance.
+	TrailingSlash string `json:"trailingSlash,omitempty"`
+	ID            string `json:"id"`
+	Pattern       string `json:"pattern"`
 	// Params names the route's parameters in the order the pattern captures
 	// them.
 	Params []ManifestParam `json:"params,omitempty"`

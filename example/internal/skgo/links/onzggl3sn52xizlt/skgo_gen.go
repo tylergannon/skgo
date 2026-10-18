@@ -25,6 +25,7 @@ type LayoutParams struct {
 	valueRest    *string
 	valueSection *string
 	valueSlug    *string
+	valueValue   *string
 }
 
 func (p LayoutParams) A() *hooks.OrderNumber { skgo.TrackLoadParam(p.event, "a"); return p.valueA }
@@ -52,7 +53,8 @@ func (p LayoutParams) Section() *string {
 	skgo.TrackLoadParam(p.event, "section")
 	return p.valueSection
 }
-func (p LayoutParams) Slug() *string { skgo.TrackLoadParam(p.event, "slug"); return p.valueSlug }
+func (p LayoutParams) Slug() *string  { skgo.TrackLoadParam(p.event, "slug"); return p.valueSlug }
+func (p LayoutParams) Value() *string { skgo.TrackLoadParam(p.event, "value"); return p.valueValue }
 
 type LayoutRequestEvent = skgo.RequestEvent[LayoutParams, appstate.Locals]
 
@@ -75,6 +77,7 @@ func skgoLayoutParams(event *skgo.Event) LayoutParams {
 	p.valueRest = skgo.OptionalLoadParamValue[string](event, "rest")
 	p.valueSection = skgo.OptionalLoadParamValue[string](event, "section")
 	p.valueSlug = skgo.OptionalLoadParamValue[string](event, "slug")
+	p.valueValue = skgo.OptionalLoadParamValue[string](event, "value")
 
 	return p
 }

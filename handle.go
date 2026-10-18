@@ -274,10 +274,11 @@ type HandleConfig struct {
 }
 
 type handleRoute struct {
-	id      string
-	pattern *regexp.Regexp
-	params  []ManifestParam
-	hasPage bool
+	trailingSlash string
+	id            string
+	pattern       *regexp.Regexp
+	params        []ManifestParam
+	hasPage       bool
 }
 
 // HandleConfig derives a Handle's configuration from a build manifest.
@@ -285,7 +286,7 @@ func (m Manifest) HandleConfig() HandleConfig {
 	cfg := HandleConfig{AppDir: m.AppDir, Base: m.Base, Version: m.Version, tracing: m.TracingServer}
 	for _, route := range m.Routes {
 		if re, err := regexp.Compile(kitPattern(route.Pattern)); err == nil {
-			cfg.routes = append(cfg.routes, handleRoute{id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil})
+			cfg.routes = append(cfg.routes, handleRoute{trailingSlash: route.TrailingSlash, id: route.ID, pattern: re, params: route.Params, hasPage: route.Page != nil})
 		}
 	}
 	return cfg
@@ -298,7 +299,7 @@ func (cfg HandleConfig) matchRoute(routePath string) (handleRoute, map[string]st
 		if !ok {
 			return handleRoute{}, nil, nil, false
 		}
-		return handleRoute{id: route.id, hasPage: route.hasPage}, params, converted, true
+		return handleRoute{trailingSlash: route.trailingSlash, id: route.id, hasPage: route.hasPage}, params, converted, true
 	}
 	for _, route := range cfg.routes {
 		loc := route.pattern.FindStringSubmatchIndex(routePath)
