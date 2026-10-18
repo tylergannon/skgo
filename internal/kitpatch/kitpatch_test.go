@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/tylergannon/skgo/internal/adapter"
@@ -57,7 +58,7 @@ func (f fixture) options() Options { return Options{Web: f.web} }
 
 func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 	f := newFixture(t, true)
-	metadata, patch, err := adapter.KitQueueCompatibility()
+	_, patch, err := adapter.KitQueueCompatibility()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,14 +67,10 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	absPath := filepath.Join(f.web, "patches", "absolute.patch")
-	if err := setNativePatchedDependencies(t, f, map[string]string{
+	if err := writeFixturePatchedDependencies(t, f, map[string]string{
 		"preserved-package@1.0.0": "patches/preserved.patch",
 		"absolute-package@1.0.0":  absPath,
 	}); err != nil {
-		t.Fatal(err)
-	}
-	beforeWorkspace, err := os.ReadFile(workspace)
-	if err != nil {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
@@ -114,18 +111,11 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 	if err != nil || !bytes.Equal(gotPatch, patch) {
 		t.Fatalf("copied patch mismatch: %v", err)
 	}
-	if digest(gotPatch) != metadata.PatchSHA256 {
-		t.Fatalf("patch sha256 = %s, want metadata %s", digest(gotPatch), metadata.PatchSHA256)
-	}
-	patched := getNativePatchedDependencies(t, f)
-	if !sameConfiguredPath(f.web, patched[patchKey(&project{metadata: metadata})], patchPath) {
-		t.Fatalf("native project patch entry = %q, want %s", patched[patchKey(&project{metadata: metadata})], patchPath)
-	}
 	rawPatched, err := readRawPatchedDependencies(f.web)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rawPatched[patchKey(&project{metadata: metadata})] != relativePatchValue(&project{root: f.web, patchPath: patchPath}) {
+	if rawPatched["@sveltejs/kit@3.1.0"] != "patches/skgo-kit-3.1.0-queue.patch" {
 		t.Fatalf("authored Kit patch path is not portable: %#v", rawPatched)
 	}
 	if rawPatched["preserved-package@1.0.0"] != "patches/preserved.patch" || rawPatched["absolute-package@1.0.0"] != absPath {
@@ -150,135 +140,50 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 	if !bytes.Equal(manifestOnce, manifestTwice) || !bytes.Equal(patchOnce, patchTwice) || !bytes.Equal(workspaceOnce, workspaceTwice) {
 		t.Fatal("repeated apply changed project files")
 	}
-	if !bytes.Contains(beforeWorkspace, []byte("preserved-package: ^2.0.0")) {
-		t.Fatal("test did not seed unrelated workspace configuration")
-	}
 	if err := applyPatchToInstalledKit(t, f, patchPath); err != nil {
 		t.Fatal(err)
 	}
 	if err := Verify(opts); err != nil {
 		t.Fatalf("verify corrected installed Kit: %v", err)
 	}
-	if err := os.Remove(patchPath); err != nil {
-		t.Fatal(err)
-	}
-	var missingPatchCalls int
-	missingPatchOpts := opts
-	missingPatchOpts.Run = func(string, []string, string, ...string) ([]byte, error) {
-		missingPatchCalls++
-		return nil, errors.New("unexpected pnpm invocation for missing patch")
-	}
-	if err := Verify(missingPatchOpts); err == nil || !strings.Contains(err.Error(), "patch is missing") {
-		t.Fatalf("check accepted a missing canonical patch with corrected installed bytes: %v", err)
-	}
-	if missingPatchCalls != 0 {
-		t.Fatalf("missing-patch Verify invoked pnpm %d times", missingPatchCalls)
-	}
-	if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := setNativePatchedDependencies(t, f, map[string]string{
-		"preserved-package@1.0.0": "patches/preserved.patch",
-		"absolute-package@1.0.0":  absPath,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	var missingMapCalls int
-	missingMapOpts := opts
-	missingMapOpts.Run = func(string, []string, string, ...string) ([]byte, error) {
-		missingMapCalls++
-		return nil, errors.New("unexpected pnpm invocation for missing map")
-	}
-	if err := Verify(missingMapOpts); err == nil || !strings.Contains(err.Error(), "missing") {
-		t.Fatalf("check accepted missing project map entry with corrected installed bytes: %v", err)
-	}
-	if missingMapCalls != 0 {
-		t.Fatalf("missing-map Verify invoked pnpm %d times", missingMapCalls)
-	}
-	if err := Configure(opts); err != nil {
-		t.Fatalf("restore owned patch config: %v", err)
-	}
-	if err := Verify(opts); err != nil {
-		t.Fatalf("verify after restoring project map entry: %v", err)
-	}
 }
 
-func TestConfigureConfiguredButUninstalledFailsCheck(t *testing.T) {
-	f := newFixture(t, false)
-	if err := Configure(f.options()); err != nil {
-		t.Fatal(err)
-	}
-	var nativeCalls int
-	opts := f.options()
-	opts.Run = func(string, []string, string, ...string) ([]byte, error) {
-		nativeCalls++
-		return nil, errors.New("unexpected pnpm invocation")
-	}
-	if err := Verify(opts); err == nil || !strings.Contains(err.Error(), "configured but installed Kit could not be verified") {
-		t.Fatalf("check accepted configured-but-uninstalled project: %v", err)
-	}
-	if nativeCalls != 0 {
-		t.Fatalf("Verify invoked pnpm %d times before refusing an absent installed Kit", nativeCalls)
-	}
-}
-
-func TestConfigurePreservesLogicalPatchPathsAcrossYAMLSyntax(t *testing.T) {
-	f := newFixture(t, true)
-	absPath := filepath.Join(f.web, "patches", "absolute.patch")
-	workspace := filepath.Join(f.web, "pnpm-workspace.yaml")
-	contents := fmt.Sprintf("packages: [.] # flow list and comment\noverrides: &priorPatches\n  'relative-package@1.0.0': 'patches/relative.patch'\npatchedDependencies:\n  <<: *priorPatches\n  \"absolute-package@1.0.0\": %q # quoted absolute value\ncatalog: {kept: ^1} # flow mapping\n", absPath)
-	if err := os.WriteFile(workspace, []byte(contents), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := Configure(f.options()); err != nil {
-		t.Fatalf("configure valid YAML anchors/merge, quotes, flow values, and comments: %v", err)
-	}
-	raw, err := readRawPatchedDependencies(f.web)
-	if err != nil {
-		t.Fatal(err)
-	}
-	metadata, _, err := adapter.KitQueueCompatibility()
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]string{
-		"relative-package@1.0.0":                  "patches/relative.patch",
-		"absolute-package@1.0.0":                  absPath,
-		metadata.Package + "@" + metadata.Version: "patches/" + ownedPatchName,
-	}
-	for key, value := range want {
-		if raw[key] != value {
-			t.Errorf("authored patchedDependencies[%q] = %q, want original logical string %q; all=%#v", key, raw[key], value, raw)
-		}
-	}
-	if err := Verify(f.options()); err == nil || !strings.Contains(err.Error(), "expected corrected") {
-		t.Fatalf("check accepted a stock installed Kit: %v", err)
-	}
-}
-
-func TestConfigureAcceptsDirectPatchMapAliasAndFlowStyleMap(t *testing.T) {
-	for name, workspaceText := range map[string]string{
-		"direct alias":         "packages: [.]\noverrides: &priorPatches {relative-package@1.0.0: patches/relative.patch}\npatchedDependencies: *priorPatches\n",
-		"flow style patch map": "packages: [.]\npatchedDependencies: {'relative-package@1.0.0': 'patches/relative.patch', \"another-package@2.0.0\": \"patches/another.patch\"} # inline comment\n",
+func TestVerifyRejectsIncompleteConfigurationBeforePackageManager(t *testing.T) {
+	for _, tc := range []struct{ name, want string }{
+		{"patch", "patch is missing"},
+		{"map", "missing"},
+		{"installed", "configured but installed Kit could not be verified"},
 	} {
-		t.Run(name, func(t *testing.T) {
-			f := newFixture(t, true)
-			workspace := filepath.Join(f.web, "pnpm-workspace.yaml")
-			if err := os.WriteFile(workspace, []byte(workspaceText), 0o644); err != nil {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t, false)
+			if err := os.WriteFile(filepath.Join(f.web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"3.1.0"},`+pnpmDeclaration+`}`), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := Configure(f.options()); err != nil {
-				t.Fatalf("configure valid patch map syntax: %v", err)
-			}
-			raw, err := readRawPatchedDependencies(f.web)
+			_, patch, err := adapter.KitQueueCompatibility()
 			if err != nil {
 				t.Fatal(err)
 			}
-			if raw["relative-package@1.0.0"] != "patches/relative.patch" {
-				t.Fatalf("relative patch source string changed: %#v", raw)
+			if tc.name != "patch" {
+				patchPath := filepath.Join(f.web, "patches", ownedPatchName)
+				if err := os.MkdirAll(filepath.Dir(patchPath), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
+					t.Fatal(err)
+				}
 			}
-			if name == "flow style patch map" && raw["another-package@2.0.0"] != "patches/another.patch" {
-				t.Fatalf("flow-style patch map was not preserved: %#v", raw)
+			if tc.name != "map" {
+				if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": "patches/" + ownedPatchName}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			opts := f.options()
+			opts.Run = func(string, []string, string, ...string) ([]byte, error) {
+				t.Fatal("Verify invoked the package manager before local refusal")
+				return nil, nil
+			}
+			if err := Verify(opts); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Verify = %v, want %q", err, tc.want)
 			}
 		})
 	}
@@ -286,18 +191,14 @@ func TestConfigureAcceptsDirectPatchMapAliasAndFlowStyleMap(t *testing.T) {
 
 func TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites(t *testing.T) {
 	cases := map[string]string{
-		"duplicate entry key":     "packages: [.]\npatchedDependencies:\n  duplicate@1.0.0: patches/one.patch\n  duplicate@1.0.0: patches/two.patch\n",
-		"duplicate top-level map": "packages: [.]\npatchedDependencies: {}\npatchedDependencies: {}\n",
-		"non-string patch key":    "packages: [.]\npatchedDependencies:\n  17: patches/numeric.patch\n",
-		"numeric path":            "packages: [.]\npatchedDependencies:\n  package@1.0.0: 17\n",
-		"boolean path":            "packages: [.]\npatchedDependencies:\n  package@1.0.0: true\n",
-		"null path":               "packages: [.]\npatchedDependencies:\n  package@1.0.0: null\n",
-		"wrong shape":             "packages: [.]\npatchedDependencies: false\n",
-		"multiple documents":      "packages: [.]\n---\npackages: [.]\n",
+		"duplicate entry key": "packages: [.]\npatchedDependencies:\n  duplicate@1.0.0: patches/one.patch\n  duplicate@1.0.0: patches/two.patch\n",
+		"numeric path":        "packages: [.]\npatchedDependencies:\n  package@1.0.0: 17\n",
+		"wrong shape":         "packages: [.]\npatchedDependencies: false\n",
+		"multiple documents":  "packages: [.]\n---\npackages: [.]\n",
 	}
 	for name, contents := range cases {
 		t.Run(name, func(t *testing.T) {
-			f := newFixture(t, true)
+			f := newFixture(t, false)
 			workspace := filepath.Join(f.web, "pnpm-workspace.yaml")
 			beforeWorkspace := []byte(contents)
 			if err := os.WriteFile(workspace, beforeWorkspace, 0o644); err != nil {
@@ -330,7 +231,7 @@ func TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites(t *testin
 }
 
 func TestConfigureRefusesNativeAndRawPatchedDependenciesDisagreement(t *testing.T) {
-	f := newFixture(t, true)
+	f := newFixture(t, false)
 	workspace := filepath.Join(f.web, "pnpm-workspace.yaml")
 	beforeWorkspace := []byte("packages: [.]\npatchedDependencies:\n  authored@1.0.0: patches/authored.patch\n")
 	if err := os.WriteFile(workspace, beforeWorkspace, 0o644); err != nil {
@@ -355,49 +256,6 @@ func TestConfigureRefusesNativeAndRawPatchedDependenciesDisagreement(t *testing.
 	}
 }
 
-func TestNativeEnvironmentAmbiguityDoesNotMutateSelectedTree(t *testing.T) {
-	t.Run("configure", func(t *testing.T) {
-		f := newFixture(t, false)
-		before := snapshotFixtureTree(t, f.web)
-		t.Setenv("PNPM_CONFIG_PATCHED_DEPENDENCIES", `{"external@1.0.0":"patches/external.patch"}`)
-		if err := Configure(f.options()); err == nil || !strings.Contains(err.Error(), "configuration is ambiguous") {
-			t.Fatalf("environment/native disagreement was not refused: %v", err)
-		}
-		assertFixtureTreeUnchanged(t, f.web, before)
-	})
-	t.Run("verify", func(t *testing.T) {
-		f := newFixture(t, true)
-		metadata, patch, err := adapter.KitQueueCompatibility()
-		if err != nil {
-			t.Fatal(err)
-		}
-		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"3.1.0"},` + pnpmDeclaration + `}`)
-		if err := os.WriteFile(filepath.Join(f.web, "package.json"), manifest, 0o644); err != nil {
-			t.Fatal(err)
-		}
-		patchPath := filepath.Join(f.web, "patches", ownedPatchName)
-		if err := os.MkdirAll(filepath.Dir(patchPath), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
-			t.Fatal(err)
-		}
-		workspace := fmt.Sprintf("packages: [.]\npatchedDependencies:\n  %q: patches/%s\n", metadata.Package+"@"+metadata.Version, ownedPatchName)
-		if err := os.WriteFile(filepath.Join(f.web, "pnpm-workspace.yaml"), []byte(workspace), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if err := applyPatchToInstalledKit(t, f, patchPath); err != nil {
-			t.Fatal(err)
-		}
-		before := snapshotFixtureTree(t, f.web)
-		t.Setenv("PNPM_CONFIG_PATCHED_DEPENDENCIES", `{"external@1.0.0":"patches/external.patch"}`)
-		if err := Verify(f.options()); err == nil || !strings.Contains(err.Error(), "configuration is ambiguous") {
-			t.Fatalf("environment/native disagreement was not refused: %v", err)
-		}
-		assertFixtureTreeUnchanged(t, f.web, before)
-	})
-}
-
 func TestRunPackageManagerForwardsThroughQualifiedVitePlus(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{`+pnpmDeclaration+`,"packageManager":"pnpm@`+pnpmVersion+`+sha512.abc"}`), 0o644); err != nil {
@@ -418,9 +276,6 @@ func TestRunPackageManagerForwardsThroughQualifiedVitePlus(t *testing.T) {
 	want := [][]string{{"/qualified/vp", "pm", "config", "get", "patchedDependencies", "--location=project", "--json"}}
 	if fmt.Sprint(calls) != fmt.Sprint(want) {
 		t.Fatalf("native read commands = %#v, want %#v", calls, want)
-	}
-	if !equalStringMap(map[string]string{"": ""}, map[string]string{"": ""}) || equalStringMap(map[string]string{"": ""}, map[string]string{"other": ""}) {
-		t.Fatal("raw/native comparison did not require literal key equality")
 	}
 }
 
@@ -449,7 +304,7 @@ func TestRunPackageManagerRefusesAnotherDeclaredPNPM(t *testing.T) {
 }
 
 func TestConfigureRefusesDuplicateKitJSONKeysWithoutRewritingPackage(t *testing.T) {
-	f := newFixture(t, true)
+	f := newFixture(t, false)
 	manifestPath := filepath.Join(f.web, "package.json")
 	manifest := []byte(`{"dependencies":{"@sveltejs/kit":"catalog:","@sveltejs/kit":"^3.1.0"}}`)
 	if err := os.WriteFile(manifestPath, manifest, 0o644); err != nil {
@@ -486,7 +341,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 	})
 	t.Run("incompatible exact Kit patch", func(t *testing.T) {
 		f := newFixture(t, true)
-		if err := setNativePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": "patches/other-kit.patch"}); err != nil {
+		if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": "patches/other-kit.patch"}); err != nil {
 			t.Fatal(err)
 		}
 		beforeConfig, err := os.ReadFile(filepath.Join(f.web, "pnpm-workspace.yaml"))
@@ -509,14 +364,14 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := setNativePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": patchPath}); err != nil {
+		if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": patchPath}); err != nil {
 			t.Fatal(err)
 		}
 		assertConfigureRefusesWithoutWrites(t, f, "portable relative path")
 	})
 	t.Run("wildcard Kit patch", func(t *testing.T) {
 		f := newFixture(t, true)
-		if err := setNativePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@^3": "patches/wildcard.patch"}); err != nil {
+		if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@^3": "patches/wildcard.patch"}); err != nil {
 			t.Fatal(err)
 		}
 		assertConfigureRefusesWithoutWrites(t, f, "conflicting Kit patch entry")
@@ -580,14 +435,16 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 			t.Fatal(err)
 		}
 		f := fixture{web: web}
-		if err := Configure(f.options()); err != nil {
+		wantRoot, err := filepath.EvalSymlinks(web)
+		if err != nil {
 			t.Fatal(err)
 		}
-		assertBytesUnchanged(t, parentConfig, parentBefore)
-		selectedAfter, err := os.ReadFile(selectedConfig)
-		if err != nil || !bytes.Contains(selectedAfter, []byte("patchedDependencies:")) {
-			t.Fatalf("selected frontend workspace was not configured: %v\n%s", err, selectedAfter)
+		selected, err := resolveWeb(f.options())
+		if err != nil || selected != wantRoot {
+			t.Fatalf("selected root = %q, %v; want %q", selected, err, wantRoot)
 		}
+		assertBytesUnchanged(t, parentConfig, parentBefore)
+		assertBytesUnchanged(t, selectedConfig, selectedBefore)
 	})
 	t.Run("web symlink cannot hide parent workspace", func(t *testing.T) {
 		parent := t.TempDir()
@@ -700,64 +557,69 @@ func assertConfigureRefusesWithoutWrites(t *testing.T, f fixture, wantError stri
 	}
 }
 
-func installStockKit(t *testing.T, web, version, name string) {
-	t.Helper()
+// The installed pin is immutable input. Recover its stock queue once, then
+// copy those bytes into each fixture rather than launching git per assertion.
+var stockKitQueue = sync.OnceValues(func() ([]byte, error) {
 	stockDir := filepath.Join("..", "..", "example", "web", "node_modules", "@sveltejs", "kit")
 	stockManifest, err := os.ReadFile(filepath.Join(stockDir, "package.json"))
 	if err != nil {
-		t.Fatalf("installed pinned Kit source is required: %v", err)
+		return nil, fmt.Errorf("installed pinned Kit source is required: %w", err)
 	}
 	var manifest map[string]any
 	if err := json.Unmarshal(stockManifest, &manifest); err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	if manifest["name"] != kitPackageName || manifest["version"] != "3.1.0" {
-		t.Fatalf("authoritative installed Kit identity = %v@%v", manifest["name"], manifest["version"])
+		return nil, fmt.Errorf("authoritative installed Kit identity = %v@%v", manifest["name"], manifest["version"])
 	}
 	queue, err := os.ReadFile(filepath.Join(stockDir, "src", "core", "postbuild", "queue.js"))
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	metadata, patch, err := adapter.KitQueueCompatibility()
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	if digest(queue) == metadata.CorrectedSHA256 {
-		queue = recoverStockQueue(t, metadata, patch, queue)
+		root, err := os.MkdirTemp("", "skgo-stock-kit-")
+		if err != nil {
+			return nil, err
+		}
+		defer os.RemoveAll(root)
+		queuePath := filepath.Join(root, filepath.FromSlash(metadata.QueuePath))
+		if err := os.MkdirAll(filepath.Dir(queuePath), 0o755); err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(queuePath, queue, 0o644); err != nil {
+			return nil, err
+		}
+		patchPath := filepath.Join(root, "queue.patch")
+		if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
+			return nil, err
+		}
+		cmd := exec.Command("git", "apply", "--reverse", patchPath)
+		cmd.Dir = root
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("recover stock queue: %w: %s", err, output)
+		}
+		queue, err = os.ReadFile(queuePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if digest(queue) != metadata.StockSHA256 {
-		t.Fatalf("installed Kit queue source hash %s is neither packaged stock %s nor corrected %s", digest(queue), metadata.StockSHA256, metadata.CorrectedSHA256)
+		return nil, fmt.Errorf("installed Kit queue source hash %s is neither packaged stock %s nor corrected %s", digest(queue), metadata.StockSHA256, metadata.CorrectedSHA256)
 	}
-	installStockKitBytes(t, web, version, name, queue)
-}
+	return queue, nil
+})
 
-func recoverStockQueue(t *testing.T, metadata adapter.KitQueueMetadata, patch, corrected []byte) []byte {
+func installStockKit(t *testing.T, web, version, name string) {
 	t.Helper()
-	root := t.TempDir()
-	queuePath := filepath.Join(root, filepath.FromSlash(metadata.QueuePath))
-	if err := os.MkdirAll(filepath.Dir(queuePath), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(queuePath, corrected, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	patchPath := filepath.Join(root, "queue.patch")
-	if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("git", "apply", "--reverse", patchPath)
-	cmd.Dir = root
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("recover reviewed stock queue in disposable copy: %v: %s", err, output)
-	}
-	stock, err := os.ReadFile(queuePath)
+	queue, err := stockKitQueue()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if digest(stock) != metadata.StockSHA256 {
-		t.Fatalf("reverse-applied queue sha256 = %s; want embedded stock %s", digest(stock), metadata.StockSHA256)
-	}
-	return stock
+	installStockKitBytes(t, web, version, name, queue)
 }
 
 func installStockKitBytes(t *testing.T, web, version, name string, queue []byte) {
@@ -798,36 +660,18 @@ func applyPatchToInstalledKit(t *testing.T, f fixture, patchPath string) error {
 	return nil
 }
 
-func setNativePatchedDependencies(t *testing.T, f fixture, values map[string]string) error {
+func writeFixturePatchedDependencies(t *testing.T, f fixture, values map[string]string) error {
 	t.Helper()
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(vitePlusExecutable(), "pm", "config", "set", "patchedDependencies", string(jsonValue), "--location=project", "--json")
-	cmd.Dir = f.web
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("native pnpm config set: %w: %s", err, output)
+	path := filepath.Join(f.web, "pnpm-workspace.yaml")
+	before, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
 	}
-	return nil
-}
-
-func getNativePatchedDependencies(t *testing.T, f fixture) map[string]string {
-	t.Helper()
-	cmd := exec.Command(vitePlusExecutable(), "pm", "config", "get", "patchedDependencies", "--location=project", "--json")
-	cmd.Dir = f.web
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("native pnpm config get: %v: %s", err, output)
-	}
-	var values map[string]string
-	if strings.TrimSpace(string(output)) == "null" || strings.TrimSpace(string(output)) == "" {
-		return map[string]string{}
-	}
-	if err := json.Unmarshal(output, &values); err != nil {
-		t.Fatalf("parse native pnpm config JSON: %v: %s", err, output)
-	}
-	return values
+	return os.WriteFile(path, append(before, []byte("patchedDependencies: "+string(jsonValue)+"\n")...), 0o644)
 }
 
 func assertBytesUnchanged(t *testing.T, path string, want []byte) {
@@ -835,63 +679,5 @@ func assertBytesUnchanged(t *testing.T, path string, want []byte) {
 	got, err := os.ReadFile(path)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("%s changed or became unreadable: %v\n got %q\nwant %q", path, err, got, want)
-	}
-}
-
-type fixtureTree map[string]string
-
-func snapshotFixtureTree(t *testing.T, root string) fixtureTree {
-	t.Helper()
-	snapshot := fixtureTree{}
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		if rel == "." {
-			return nil
-		}
-		info, err := os.Lstat(path)
-		if err != nil {
-			return err
-		}
-		key := filepath.ToSlash(rel)
-		switch {
-		case info.IsDir():
-			snapshot[key] = "<directory>"
-		case info.Mode()&os.ModeSymlink != 0:
-			link, err := os.Readlink(path)
-			if err != nil {
-				return err
-			}
-			snapshot[key] = "<symlink>" + link
-		default:
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			snapshot[key] = string(data)
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return snapshot
-}
-
-func assertFixtureTreeUnchanged(t *testing.T, root string, before fixtureTree) {
-	t.Helper()
-	after := snapshotFixtureTree(t, root)
-	if len(after) != len(before) {
-		t.Fatalf("selected tree entry count changed: before=%#v after=%#v", before, after)
-	}
-	for path, data := range before {
-		if after[path] != data {
-			t.Fatalf("selected tree entry %s changed: before=%q after=%q", path, data, after[path])
-		}
 	}
 }

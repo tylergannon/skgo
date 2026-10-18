@@ -1,3 +1,5 @@
+//go:build skgo_qualification
+
 package main
 
 import (

@@ -121,20 +121,11 @@ func testJavaScriptRemotesAndTypes(t *testing.T, root string) {
 	}
 
 	types := readFixtureFile(t, root, "app/web/src/data/types.js")
-	for _, want := range []string{
-		"@typedef {Object} Status",
-		"@property {string} message",
-		"@property {number} writes",
-		"@property {string} [note]",
-		"@property {string | null} parent",
-		"@typedef {Object} FormInput",
-		"@property {string} text",
-		"@property {number} [count]",
-		"export {};",
-	} {
-		if !strings.Contains(types, want) {
-			t.Errorf("types.js does not carry:\n%s\n---\n%s", want, types)
-		}
+
+	// Backend selection and artifact ownership are SKGO's. Scalar, optional and
+	// nullable property rendering belongs to polytype and is not requalified here.
+	if !strings.Contains(types, "@typedef {Object} Status") {
+		t.Fatalf("JavaScript type declarations missing:\n%s", types)
 	}
 
 	// No `.ts` counterparts: the generator wrote JavaScript for this app.

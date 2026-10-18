@@ -1,10 +1,11 @@
 name: CI
 
-# Pull requests get the comparatively fast structural checks. Browser-level
-# product qualification belongs to release.yml after a commit reaches
-# main, where a ten-minute run does not block review iteration.
+# One ordinary check per development revision. Release qualification owns main;
+# reserved release tags do not launch another copy of development CI.
 on:
   push:
+    branches-ignore: [main]
+    tags-ignore: ['**']
   pull_request:
 
 concurrency:
@@ -16,92 +17,71 @@ permissions:
 
 jobs:
   checks:
-    name: Build, tests, and Conventional Commit
+    name: Go contracts and Conventional Commit
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Fork code stays off the persistent LAN runners.
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
+    timeout-minutes: 20
+    outputs:
+      native: ${{ steps.changes.outputs.native }}
+      production: ${{ steps.changes.outputs.production }}
+      development: ${{ steps.changes.outputs.development }}
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-
     steps:
       - uses: actions/checkout@v7
-
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-go@v7
         with:
           go-version: 1.27.2
+          cache: ${{ github.event_name == 'pull_request' }}
           cache-dependency-path: |
             go.sum
             go.work.sum
             example/go.sum
-
       - uses: jdx/mise-action@v4
         with:
           working_directory: example
-          export_path: false
-
-
+          export_path: true
       - uses: extractions/setup-just@v4
-
-      # Push CI is the same-repository PR gate, so HEAD is the commit whose
-      # subject will drive an eventual release. Squash PR titles must follow
-      # the same form or the resulting main commit immediately goes red.
       - name: HEAD uses a Conventional Commit subject
         run: go run ./cmd/skgo-release-version --check HEAD
-
-      - name: Install build dependencies
-        run: just install
-
-      - name: Build
-        run: just build
-
-      - name: Install native core compiler
-        run: mise -C native install zig
-
+      - name: Select qualification from changed inputs
+        id: changes
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # Qualify all changes in the candidate, even when a later docs-only
+          # push cancels an earlier run that had not finished qualification.
+          base=$(git merge-base HEAD "${PR_BASE:-origin/main}")
+          paths=$(git diff --name-only "$base" HEAD)
+          for kind in native production development; do
+            case "$kind" in
+              native) pattern='^([^/]+\.go$|internal/(gen|hotreload|swiftgen|nativebuild|pluginbuild|plugininstall|toolchain)/|native/|go\.(mod|sum|work)|example/(go\.|mise|web/(package|pnpm|vite))|\.github/workflows/|Justfile)' ;;
+              production) pattern='(\.go$|^internal/(adapter|sv|kitpatch|gen)/|^example/|^go\.|^\.github/workflows/|^Justfile)' ;;
+              development) pattern='^([^/]+\.go$|internal/(devserver|adapter|gen|hotreload|kitpatch|toolchain|nativebuild)/|cmd/skgo/|example/(go\.|mise|web/)|go\.|\.github/workflows/|Justfile)' ;;
+            esac
+            if printf '%s\n' "$paths" | grep -Eq "$pattern"; then
+              echo "$kind=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$kind=false" >> "$GITHUB_OUTPUT"
+            fi
+          done
+      - name: Install pinned frontend tools
+        run: cd example/web && vp install --frozen-lockfile
       - name: Vet
         run: just vet
-
-      - name: Unit and focused integration tests
+      - name: Routine Go contracts (normal test cache)
         run: just test
 
-  native-swift:
-    name: Native transport and Swift model compatibility
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: macos-15
-    timeout-minutes: 15
-    env:
-      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-      - uses: jdx/mise-action@v4
-        with:
-          working_directory: native
-          export_path: false
-      - run: go test -count=1 -race ./native ./internal/swiftgen
-
-  native-replacement:
-    name: Generated native replacement (${{ matrix.os }})
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-15]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
-    env:
-      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-      CGO_ENABLED: '0'
-      CC: /skgo-fixture/no-c-compiler
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version: '1.27.2'
-      - uses: jdx/mise-action@v4
-        with:
-          working_directory: example
-          export_path: false
-      - run: mise -C example/web exec -- vp install --frozen-lockfile
-      - run: mise -C example exec -- go -C .. test ./internal/hotreload -run 'TestGeneratedNative(Lifetime|HandlerContract)$' -count=1 -v
+  qualification:
+    name: Relevant compiler and application qualification
+    needs: checks
+    if: needs.checks.outputs.native == 'true' || needs.checks.outputs.production == 'true' || needs.checks.outputs.development == 'true'
+    uses: ./.github/workflows/qualification.yml
+    with:
+      native: ${{ needs.checks.outputs.native == 'true' }}
+      production: ${{ needs.checks.outputs.production == 'true' }}
+      development: ${{ needs.checks.outputs.development == 'true' }}

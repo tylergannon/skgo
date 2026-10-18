@@ -7,9 +7,6 @@ import (
 	"testing"
 )
 
-// packageTemp holds the generation cache and shared endpoint emitter fixture.
-var packageTemp string
-
 func TestMain(m *testing.M) {
 	// Every go command these tests start runs in a sandbox or a fixture module
 	// outside this checkout's workspace, so it has to see that module's own
@@ -33,7 +30,6 @@ func TestMain(m *testing.M) {
 	if os.Getenv("SKGO_CACHE_TEST_CONFIG") == "" {
 		os.Setenv("SKGO_CACHE_DIR", filepath.Join(dir, "generation-cache"))
 	}
-	packageTemp = dir
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)

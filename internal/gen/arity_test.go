@@ -1,119 +1,47 @@
 package gen
 
 import (
-	"os"
-	"path/filepath"
+	"go/types"
 	"strings"
 	"testing"
 )
 
-// A remote function that takes no argument is an ordinary Go function that
-// takes no argument. Kit's `query(fn)` accepts `(arg?) => Output` — the
-// argument is optional and there is no placeholder type — so the marker takes
-// `any` and the arity is read from the declaration itself.
-//
-// Both halves of the projection have to agree with that reading. The stub is
-// kit's no-validator overload, which is not cosmetic: `create_validator` reads
-// the factory's arity, and the one-argument form installs the validator that
-// answers 400 to any argument but `undefined`. The registration is the
-// no-argument constructor, which is where the compiler checks the function
-// again.
-func TestANoArgumentRemoteFunctionIsAnOrdinaryGoFunction(t *testing.T) {
+// The factory arity and Go argument admission must agree for each owned kind.
+func TestRemoteArityEmitters(t *testing.T) {
 	t.Parallel()
-	root, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-
-	"github.com/tylergannon/skgo"
- "example.com/app/generated/params"
-)
-
-func getThing(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func doThing(ctx context.Context, event params.RequestEvent) (string, error) {
-	return "", nil
-}
-
-func watchThing(ctx context.Context, yield func(int) error) error {
-	return nil
-}
-
-func getNamed(ctx context.Context, name string) (string, error) {
-	return "", nil
-}
-
-var (
-	_ = skgo.Query(getThing)
-	_ = skgo.Command(doThing)
-	_ = skgo.LiveQuery(watchThing)
-	_ = skgo.Query(getNamed)
-)
-`, nil)
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("generating an app whose remote functions take no argument: %v", err)
-	}
-
-	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.ts")
-	for _, want := range []string{
-		"export const getThing = query((): string => unimplemented());",
-		"export const doThing = command((): string => unimplemented());",
-		"export const watchThing = query.live((): AsyncIterable<number> => unimplemented());",
-		// The one that does take an argument still declares it, and still says
-		// `'unchecked'`: without a validator kit refuses every argument.
-		"export const getNamed = query('unchecked', (_arg: string): string => unimplemented());",
+	for _, tc := range []struct {
+		name                  string
+		kind                  remoteKind
+		in, out               types.Type
+		codec, stub, argument string
+	}{
+		{"getThing", kindQuery, nil, types.Typ[types.String], "",
+			"export const getThing = query((): string => unimplemented());\n",
+			"\tif err := skgo.RefuseArgument(call); err != nil {\n\t\treturn nil, err\n\t}\n"},
+		{"doThing", kindCommand, nil, types.Typ[types.String], "",
+			"export const doThing = command((): string => unimplemented());\n",
+			"\tif err := skgo.RefuseArgument(call); err != nil {\n\t\treturn nil, err\n\t}\n"},
+		{"watchThing", kindLive, nil, types.Typ[types.Int], "",
+			"export const watchThing = query.live((): AsyncIterable<number> => unimplemented());\n",
+			"\tif err := skgo.RefuseArgument(call); err != nil {\n\t\treturn nil, err\n\t}\n"},
+		{"getNamed", kindQuery, types.Typ[types.String], types.Typ[types.String], "Root0",
+			"export const getNamed = query('unchecked', (_arg: string): string => unimplemented());\n",
+			"\tif err := skgo.RequireArgument(call); err != nil {\n\t\treturn nil, err\n\t}\n\tin, err := DecodeRoot0(call.Arg)\n\tif err != nil {\n\t\treturn nil, call.RejectArgument(err)\n\t}\n"},
 	} {
-		if !strings.Contains(stub, want) {
-			t.Errorf("the stub does not carry %q:\n%s", want, stub)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			a := &app{}
+			fn := &remoteFn{name: tc.name, kind: tc.kind, in: tc.in, out: tc.out, inCodec: tc.codec}
+			stub, err := a.stubSignature(fn)
+			if err != nil || stub != tc.stub {
+				t.Fatalf("stub = %q, %v; want %q", stub, err, tc.stub)
+			}
+			var argument strings.Builder
+			a.writeArgument(&argument, fn, "\t", "return nil, err")
+			if got := argument.String(); got != tc.argument {
+				t.Fatalf("argument = %q; want %q", got, tc.argument)
+			}
+		})
 	}
-	if strings.Contains(stub, "tylergannon/skgo") {
-		t.Errorf("the stub imports a declaration of an skgo type:\n%s", stub)
-	}
-	if _, err := os.Stat(filepath.Join(root, "app", "generated", "wiretypes")); !os.IsNotExist(err) {
-		t.Errorf("a declaration package was written for a type skgo owns: %v", err)
-	}
-
-	// The registration names the kind and the module; the handler beside it is
-	// where the arity shows, because that is where the argument is refused or
-	// required. Kit draws the same line: `create_validator` reads the arity and
-	// installs the refusal.
-	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
-	for _, want := range []string{
-		`skgo.KindQuery,`,
-		`skgo.KindCommand,`,
-		`skgo.KindLive,`,
-		`"getThing",`,
-		`"doThing",`,
-		`"watchThing",`,
-		`"getNamed",`,
-		// No argument: any argument at all is refused.
-		"func remote_getThing(ctx context.Context, call skgo.Call) (any, error) {\n\tif err := skgo.RefuseArgument(call); err != nil {",
-		"func remote_doThing(ctx context.Context, call skgo.Call) (any, error) {\n\tif err := skgo.RefuseArgument(call); err != nil {",
-		// An argument: it is required, and decoded by the codec generated for
-		// its own type.
-		"func remote_getNamed(ctx context.Context, call skgo.Call) (any, error) {\n\tif err := skgo.RequireArgument(call); err != nil {",
-	} {
-		if !strings.Contains(bindings, want) {
-			t.Errorf("the bindings file does not carry %q:\n%s", want, bindings)
-		}
-	}
-	// Nothing in the declaring package but the functions themselves.
-	published := readFixtureFile(t, root, "app/web/src/data/skgo_gen.go")
-	for _, want := range []string{
-		"Skgo_getThing = getThing",
-		"Skgo_doThing = doThing",
-		"Skgo_watchThing = watchThing",
-		"Skgo_getNamed = getNamed",
-	} {
-		if !strings.Contains(published, want) {
-			t.Errorf("the declaring package does not publish %q:\n%s", want, published)
-		}
-	}
-
 }
 
 // The marker takes `any`, so it is `skgo generate` that has to report a
@@ -193,52 +121,22 @@ var _ = skgo.LiveQuery(watchThing)`,
 	}
 }
 
-// A `query.batch` is the one kind whose Go signature is not the shape the page
-// calls. Go is handed the whole batch and answers all of it; kit's client still
-// calls it one argument at a time and gets one value back. So the projection
-// has to read the element types out of the two slices — those are what crosses
-// the wire per entry — and emit kit's own factory shape:
-// `(args: In[]) => (arg: In, idx: number) => Out`.
 func TestABatchQueryIsProjectedFromItsElementTypes(t *testing.T) {
 	t.Parallel()
-	root, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-
-	"github.com/tylergannon/skgo"
-)
-
-type Quote struct {
-	Symbol string `+"`json:\"symbol\"`"+`
-}
-
-func getQuotes(ctx context.Context, symbols []string) ([]Quote, error) {
-	return nil, nil
-}
-
-var _ = skgo.BatchQuery(getQuotes)
-`, nil)
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("generating an app with a batch query: %v", err)
+	fn := declarationFunction(t, `package data
+import "context"
+type Quote struct { Symbol string }
+func getQuotes(context.Context, []string) ([]Quote,error) {return nil,nil}
+`, "getQuotes")
+	in, out, err := remoteSignature(kindBatch, fn)
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.ts")
-	want := "export const getQuotes = query.batch('unchecked', (_args: string[]): ((arg: string, idx: number) => Quote) => unimplemented());"
-	if !strings.Contains(stub, want) {
-		t.Errorf("the stub does not carry %q:\n%s", want, stub)
+	stub, err := (&app{}).stubSignature(&remoteFn{name: "getQuotes", kind: kindBatch, in: in, out: out})
+	const want = "export const getQuotes = query.batch('unchecked', (_args: string[]): ((arg: string, idx: number) => Quote) => unimplemented());\n"
+	if err != nil || stub != want {
+		t.Fatalf("stub = %q, %v; want %q", stub, err, want)
 	}
-	// `query.batch` is a property of `query`, so that is the import.
-	if !strings.Contains(stub, "import { query } from '$app/server';") {
-		t.Errorf("the stub does not import query:\n%s", stub)
-	}
-
-	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
-	if want := `skgo.KindBatch,`; !strings.Contains(bindings, want) {
-		t.Errorf("the registration file does not carry %q:\n%s", want, bindings)
-	}
-
 }
 
 // The shapes a batch query is not. Kit's `batch(fn)` with no validator refuses

@@ -1,3 +1,5 @@
+//go:build skgo_qualification
+
 // Package example_test checks the two halves of the app against each other:
 // the remote functions the Go binary serves, and the ones the built frontend
 // calls. They are generated together and must never be allowed to drift apart

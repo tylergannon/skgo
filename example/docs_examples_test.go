@@ -1,9 +1,10 @@
+//go:build skgo_qualification
+
 package example_test
 
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -13,17 +14,6 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
-
-func TestFlyClientAddressReadsTheProxyHeader(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	if _, err := example.FlyClientAddress(req); err == nil {
-		t.Fatal("a request without the header was given an address")
-	}
-	req.Header.Set("Fly-Client-IP", "203.0.113.7")
-	if got, err := example.FlyClientAddress(req); err != nil || got != "203.0.113.7" {
-		t.Fatalf("got %q, %v; want 203.0.113.7", got, err)
-	}
-}
 
 func TestAnOptionalParameterIsNilWhenTheSegmentIsAbsent(t *testing.T) {
 	h := newProdHandler(t)

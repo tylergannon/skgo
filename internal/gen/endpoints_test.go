@@ -1,88 +1,39 @@
 package gen
 
 import (
-	"fmt"
+	"go/format"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
-	"sync"
 	"testing"
 )
 
-// endpointSource is a `server.go` declaring the two methods a route answers.
-const endpointSource = `package thing
-
-import (
-	"net/http"
-
-	"github.com/tylergannon/skgo"
-)
-
-func read(w http.ResponseWriter, r *http.Request)  { _, _ = w.Write([]byte("read")) }
-func write(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("write")) }
-
-var (
-	_ = skgo.GET(read)
-	_ = skgo.POST(write)
-)
-`
-
-// Both consumers read the same immutable generation. Its directory belongs
-// to the package, so one test finishing cannot remove another test's input.
-var endpointFixture struct {
-	once sync.Once
-	root string
-	err  error
-}
-
-func generatedEndpointFixture(t *testing.T) string {
-	t.Helper()
-	endpointFixture.once.Do(func() {
-		endpointFixture.err = fmt.Errorf("endpoint fixture setup did not complete")
-		root, cfg := foreignFixtureIn(t, filepath.Join(packageTemp, "endpoint"), "", map[string]string{
-			"app/web/src/routes/api/thing/server.go": endpointSource,
-		})
-		endpointFixture.root = root
-		endpointFixture.err = Run(cfg)
-	})
-	if endpointFixture.err != nil {
-		t.Fatal(endpointFixture.err)
-	}
-	return endpointFixture.root
-}
-
-// A `server.go` becomes the `+server.ts` kit compiles, with one export per
-// marker, named exactly as kit names them — kit dispatches by looking the
-// request's method up on the module's exports, so the names are the interface.
-func TestAServerRouteBecomesTheModuleKitCompiles(t *testing.T) {
+func TestServerRouteRegistrationEmitter(t *testing.T) {
 	t.Parallel()
-	root := generatedEndpointFixture(t)
-
-	stub := readFixtureFile(t, root, "app/web/src/routes/api/thing/+server.ts")
-	for _, want := range []string{"export const GET: RequestHandler =", "export const POST: RequestHandler ="} {
-		if !strings.Contains(stub, want) {
-			t.Errorf("the generated +server.ts has no %q:\n%s", want, stub)
-		}
+	root := t.TempDir()
+	a := &app{cfg: Config{Out: root, Package: "generated", Logf: func(string, ...any) {}}}
+	gp := &goPackage{alias: "handlers"}
+	a.endpoints = []*endpointFn{
+		{method: "GET", name: "read", routeID: "/api/thing", goPkg: gp},
+		{method: "fallback", name: "other", routeID: "/(admin)/[id]", goPkg: gp},
 	}
-	// Every body throws, so a real response proves Go answered rather than this
-	// module — the same rule the remote and load stubs follow.
-	if !strings.Contains(stub, "throw new Error('skgo: implemented in Go')") {
-		t.Errorf("the generated +server.ts does not throw:\n%s", stub)
+	if err := a.writeAppBindings(); err != nil {
+		t.Fatal(err)
 	}
-
-	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
-	for _, want := range []string{
-		`skgo.NewEndpoint("/api/thing", "GET", skgo0.Skgo_read)`,
-		`skgo.NewEndpoint("/api/thing", "POST", skgo0.Skgo_write)`,
-	} {
-		if !strings.Contains(bindings, want) {
-			t.Errorf("the registration file has no %q:\n%s", want, bindings)
-		}
+	got := readFixtureFile(t, root, generatedGoFile)
+	const want = `func Endpoints() []*skgo.Endpoint {
+ return []*skgo.Endpoint{
+  skgo.NewEndpoint("/api/thing", "GET", handlers.Skgo_read),
+  skgo.NewEndpoint("/(admin)/[id]", "*", handlers.Skgo_other),
+ }
+}`
+	expected, err := format.Source([]byte("package generated\n" + want))
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	list := readFixtureFile(t, root, "app/web/skgo.remotes.json")
-	if !strings.Contains(list, `"/api/thing"`) || !strings.Contains(list, `"GET"`) {
-		t.Errorf("skgo.remotes.json does not describe the route:\n%s", list)
+	if !strings.Contains(got, strings.TrimPrefix(string(expected), "package generated\n\n")) {
+		t.Fatalf("route registration lost its methods/paths/handlers:\n%s", got)
 	}
 }
 
@@ -154,7 +105,7 @@ export const fallback = unimplemented;
 		t.Errorf("a +server.ts survived beside the +server.js: %v", err)
 	}
 
-	if got := a.endpointList()["/api/thing"]; len(got) != 9 || got[0] != "*" || got[8] != "QUERY" {
+	if got := a.endpointList()["/api/thing"]; !slices.Equal(got, []string{"*", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "QUERY"}) {
 		t.Fatalf("endpoint manifest methods: %v", got)
 	}
 
