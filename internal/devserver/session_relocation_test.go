@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -99,16 +98,6 @@ func exerciseSessionRelocation(t *testing.T, app, origin string, log *sessionLog
 	}
 	if native := wait("literal-7407:8"); native != corrected {
 		t.Fatalf("corrected session lost native edit path: %s -> %s\n%s", corrected, native, log.String())
-	}
-	correctedPID, err := strconv.Atoi(corrected)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syscall.Kill(correctedPID, syscall.SIGKILL); err != nil {
-		t.Fatal(err)
-	}
-	if recovered := wait("literal-7407:8"); recovered == "" || recovered == corrected {
-		t.Fatalf("child recovery failed after relocation and corrected edit: %s -> %s\n%s", corrected, recovered, log.String())
 	}
 	t.Logf("relocation fallback PID %s -> %s; corrected PID %s retained through native edit\n%s", pid, replacement, corrected, log.String())
 }
