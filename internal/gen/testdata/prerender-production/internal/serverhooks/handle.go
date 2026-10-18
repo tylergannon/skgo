@@ -71,6 +71,19 @@ var lifecycleHandle = params.Middleware(func(ctx context.Context, event params.R
 
 var Handle = params.Sequence(
 	params.Middleware(func(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error) {
+		if event.IsSubRequest() {
+			switch event.URL().Path {
+			case "/hook-refused":
+				return nil, skgo.Errorf(418, "teapot literal")
+			case "/hook-redirected":
+				return nil, &skgo.Redirect{Status: 307, Location: "/hook-target"}
+			}
+		}
+		if event.URL().Path == "/hook-refusals" {
+			return resolve(ctx, event, skgo.ResolveOptions{
+				FilterSerializedResponseHeaders: func(name, _ string) bool { return name == "location" },
+			})
+		}
 		if event.URL().Path != "/options" && event.URL().Path != "/options-rejected" {
 			return resolve(ctx, event)
 		}

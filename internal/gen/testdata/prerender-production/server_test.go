@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -228,6 +229,27 @@ func TestProductionRedirectServing(t *testing.T) {
 	recorder := get(handler, "/ordinary?from=legacy")
 	if recorder.Code != 200 || !strings.Contains(recorder.Body.String(), "<h1>Ordinary SSR route</h1>") {
 		t.Fatalf("dynamic destination status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestProductionHookRefusalMapping(t *testing.T) {
+	dist := buildFS(t)
+	html, err := fs.ReadFile(dist, "prerendered/hook-refusals.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), `418 {"status":418,"message":"teapot literal"}`) {
+		t.Errorf("prerendered hook refusal lacks Kit's literal 418 JSON body: %s", html)
+	}
+	if !strings.Contains(string(html), `<p>307 /hook-target</p>`) {
+		t.Errorf("prerendered hook redirect lacks literal status 307 and Location /hook-target: %s", html)
+	}
+	marker := os.Getenv("SKGO_FIXTURE_REFUSED_LOAD_MARKER")
+	if marker == "" {
+		t.Fatal("missing independent refused-load marker path")
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("the refused Go load ran: marker %q stat error=%v", marker, err)
 	}
 }
 

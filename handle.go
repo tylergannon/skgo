@@ -225,9 +225,10 @@ func NewResponse(status int, header http.Header, body io.Reader) *http.Response 
 }
 
 // HandleConfig is what Intercept needs to recognise the requests kit's own
-// `handle` never sees and to resolve what kit resolves before it runs. AppDir
-// and Base come straight from the built manifest; an app has nothing else to
-// decide.
+// `handle` never sees and to resolve what Kit resolves before it runs.
+// Manifest.HandleConfig fills AppDir, Base, Version, tracing and the route
+// table. The caller supplies Origin, ClientAddress, Matchers, Loads, Static,
+// HandleError, ErrorTemplate and OnPanic.
 type HandleConfig struct {
 	tracing bool
 

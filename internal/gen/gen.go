@@ -83,7 +83,7 @@ type Config struct {
 	// what kit hashes into a remote function's id.
 	Web string
 	// Out is the directory of the generated bindings package, normally
-	// `<app>/generated`. It must be inside the same Go module as the remote
+	// `<app>/internal/skgo`. It must be inside the same Go module as the remote
 	// functions.
 	Out string
 	// Package is the name of the generated bindings package. It defaults to

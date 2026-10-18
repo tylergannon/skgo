@@ -15,7 +15,7 @@ startup and returns the snapshot the server keeps.
 func Environment[T any]() struct{}
 ```
 
-Environment declares the application's environment in src/env.go. T must be a struct with exported string, bool, int or float64 fields tagged `env:"NAME[,public][,static]"`. Pointer fields are optional. Strings retain their exact contents; booleans accept true/false and yes/no, case-insensitively. Integers use base ten and must fit both Go int and JavaScript's safe integer range. float64 values must be finite decimal numbers. Whitespace is not trimmed. Unset required fields fail at build and startup; an empty string is valid only for string fields. Static fields bind at build, dynamic fields at startup. This marker does not read values. Run skgo generate after editing it.
+Environment declares the application's environment in src/env.go. T must be a struct with exported string, bool, int or float64 fields tagged `env:"NAME[,public][,static]"`. Pointer fields are optional. Strings retain their exact contents; booleans accept true/false and yes/no, case-insensitively. Integers use base ten and must fit both Go int and JavaScript's safe integer range. float64 values must be finite decimal numbers. Whitespace is not trimmed. NAME must be a JavaScript identifier and not a JavaScript reserved word, `eval`, `arguments` or `__proto__`, because Kit exports each variable as a `const`. Unset required fields fail at build and startup; an empty string is valid only for string fields. Static fields bind at build, dynamic fields at startup. This marker does not read values. Run skgo generate after editing it.
 
 ## LoadEnvironment
 

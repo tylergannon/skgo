@@ -62,9 +62,11 @@ func prepareProductionFixture(customDefaults bool) (productionFixture, error) {
 			return productionFixture{}, err
 		}
 	} else {
-		// This intentional Kit error belongs only to the permissive options
-		// fixture. Ordinary lifecycle proof uses the generated command and
-		// Kit's strict defaults, including unseen-route and HTTP errors.
+		// The hook-refusal scenario intentionally emits one 418 internal fetch;
+		// keep every other production prerender HTTP error fatal.
+		if err := replaceOnce(filepath.Join(app, "ui", "vite.config.ts"), "adapter: skgo(),", "adapter: skgo(),\n      prerender: {handleHttpError: ({path, message}) => { if (path === '/hook-refused' || path === '/hook-target') return; throw new Error(message); }},"); err != nil {
+			return productionFixture{}, err
+		}
 		if err := os.RemoveAll(filepath.Join(app, "ui", "src", "routes", "options-rejected")); err != nil {
 			return productionFixture{}, err
 		}
@@ -117,7 +119,7 @@ func buildProductionFixture(fixture productionFixture, err error) (productionFix
 	}
 	build := exec.Command(filepath.Join(ui, "node_modules", ".bin", "vp"), "build")
 	build.Dir = ui
-	build.Env = append(os.Environ(), "ORIGIN=http://127.0.0.1:8080")
+	build.Env = append(os.Environ(), "ORIGIN=http://127.0.0.1:8080", "SKGO_FIXTURE_REFUSED_LOAD_MARKER="+filepath.Join(fixture.app, "hook-refused-load-ran"))
 	output, err := build.CombinedOutput()
 	fixture.buildOutput = string(output)
 	if err != nil {
@@ -168,6 +170,7 @@ func (f productionFixture) run(t *testing.T, name string) {
 	t.Helper()
 	cmd := exec.Command(f.tests, "-test.run=^"+name+"$", "-test.v")
 	cmd.Dir = f.app
+	cmd.Env = append(os.Environ(), "SKGO_FIXTURE_REFUSED_LOAD_MARKER="+filepath.Join(f.app, "hook-refused-load-ran"))
 	output, err := cmd.CombinedOutput()
 	t.Logf("compiled production handler contract:\n%s", output)
 	if err != nil {

@@ -23,7 +23,8 @@ type Deferred[T any] struct{ d *deferred }
 // goroutine, so the load can return before fn has finished; ctx is the load's
 // context and stays alive until the response is complete.
 //
-//	func load(ctx context.Context) (Data, error) {
+//	func load(event PageRequestEvent) (Data, error) {
+//		ctx := event.Context()
 //		return Data{
 //			Total:  store.Total(),
 //			Orders: skgo.Async(ctx, store.Orders),

@@ -33,7 +33,7 @@ Kit derives a restricted event for every remote function (`runtime/app/server/re
 func EventFrom(ctx context.Context) *Event
 ```
 
-EventFrom returns the remote function's event, mirroring kit's `getRequestEvent()`. Outside a remote function it returns nil, and every method below is safe on a nil \*Event, so a helper shared with non-remote code does not have to branch.
+EventFrom returns the request event bound to ctx, mirroring Kit's `getRequestEvent()`. Remote functions, server loads, page actions, server routes and `handle` all have an event. With no event it returns nil, and every method below is safe on a nil \*Event.
 
 ### ClientAddress
 
@@ -129,9 +129,9 @@ Params is a copy of the matched route's parameters, or nil when no route matched
 func (e *Event) Request() *http.Request
 ```
 
-Request is the HTTP request that carried this call, or nil outside a remote function.
+Request is the HTTP request that carried this event, or nil when the event has no request.
 
-Note that its URL is the remote-function endpoint — `/_app/remote/<hash>/<name>` — not the page the user is looking at. Kit is stricter still: reading `event.url`, `event.params` or `event.route` inside a query throws, because a query's result is cached by its argument and would go stale, so the client would keep showing an answer computed for a page it has since left. Anything a remote function needs about the page belongs in its argument.
+Inside a remote function, its URL is the remote-function endpoint — `/_app/remote/<hash>/<name>` — not the page the user is looking at. Kit is stricter still: reading `event.url`, `event.params` or `event.route` inside a query throws, because a query's result is cached by its argument and would go stale, so the client would keep showing an answer computed for a page it has since left. Anything a remote function needs about the page belongs in its argument.
 
 ### RouteID
 
@@ -157,7 +157,7 @@ func (e *Event) SetCookie(name, value string, opts CookieOptions) error
 
 SetCookie writes a cookie on the response.
 
-Only a `command` may do this. Kit throws "Cannot set cookies in `query` or `prerender` functions" everywhere else, because a query's result is cached by its argument and replayed from that cache, so a cookie it wrote would be written once and then silently skipped.
+Commands, forms, server loads, page actions and `handle` may set cookies. Queries and prerender functions cannot, because a query's result is cached by its argument and replayed from that cache, so a cookie it wrote would be written once and then silently skipped. Server routes write cookies on their `http.ResponseWriter`. SetCookie also returns an error when called from a sealed `handle` response.
 
 ### SetHeader
 
@@ -165,7 +165,7 @@ Only a `command` may do this. Kit throws "Cannot set cookies in `query` or `prer
 func (e *Event) SetHeader(name, value string) error
 ```
 
-SetHeader puts a header on the response the whole navigation shares. It is kit's `setHeaders`, and it enforces kit's rules: cookies go through SetCookie, and a header may not be set twice — except `server-timing`, which accumulates.
+SetHeader sets a header on the response for the current page or `__data.json` request. It is Kit's `setHeaders` and works in server loads, page actions and `handle`. Cookies go through SetCookie, and a header may not be set twice except `server-timing`, which accumulates. In a remote function or server route it returns an error; a server route sets headers on its `http.ResponseWriter`.
 
 ### URL
 
@@ -217,10 +217,11 @@ RequestLocals returns the application's selected object, or nil outside a bound 
 
 ```go
 type CookieOptions struct {
-	// Path defaults to "/". Kit requires an absolute path in a remote
-	// function; SetCookie returns an error for anything else.
+	// Path defaults to "/". A non-empty path must start with "/"; SetCookie
+	// returns an error otherwise.
 	Path string
-	// Domain defaults to the request host.
+	// Domain is empty by default, so the cookie has no Domain attribute and is
+	// host-only.
 	Domain string
 	// MaxAge is the cookie's lifetime in seconds. Zero omits the attribute,
 	// making a session cookie, exactly as kit does.

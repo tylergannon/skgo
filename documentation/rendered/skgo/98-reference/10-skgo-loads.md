@@ -73,7 +73,8 @@ func Async[T any](ctx context.Context, fn func(context.Context) (T, error)) Defe
 Async starts fn and returns a Deferred for its result. fn runs on its own goroutine, so the load can return before fn has finished; ctx is the load's context and stays alive until the response is complete.
 
 ```go
-func load(ctx context.Context) (Data, error) {
+func load(event PageRequestEvent) (Data, error) {
+	ctx := event.Context()
 	return Data{
 		Total:  store.Total(),
 		Orders: skgo.Async(ctx, store.Orders),
@@ -227,7 +228,7 @@ type LoadConfig struct {
 }
 ```
 
-LoadConfig describes the app whose loads a registry answers. Everything but Origin comes from the built manifest.
+LoadConfig describes the app whose loads a registry answers. Manifest.LoadConfig fills AppDir, Base, Version, TrustedOrigins, Nodes, LoadModules, Prerendered and Routes. The caller supplies Origin, Transport, HandleError and Matchers.
 
 ## LoadSpec
 

@@ -125,7 +125,9 @@ func NewEndpoint(routeID, method string, fn http.HandlerFunc) *Endpoint {
 }
 
 // EndpointConfig describes the app whose server routes a registry answers.
-// Everything but Origin comes from the built manifest.
+// Manifest.EndpointConfig fills AppDir, Base, TrustedOrigins, Routes,
+// Prerendered and PrerenderedEndpoints. The caller supplies Origin, OnPanic,
+// HandleError, ErrorTemplate and Matchers.
 type EndpointConfig struct {
 	// AppDir is kit's appDir; empty means "_app".
 	AppDir string

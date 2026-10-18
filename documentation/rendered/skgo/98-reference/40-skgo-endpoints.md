@@ -203,7 +203,7 @@ type EndpointConfig struct {
 }
 ```
 
-EndpointConfig describes the app whose server routes a registry answers. Everything but Origin comes from the built manifest.
+EndpointConfig describes the app whose server routes a registry answers. Manifest.EndpointConfig fills AppDir, Base, TrustedOrigins, Routes, Prerendered and PrerenderedEndpoints. The caller supplies Origin, OnPanic, HandleError, ErrorTemplate and Matchers.
 
 ## NewEndpoint
 

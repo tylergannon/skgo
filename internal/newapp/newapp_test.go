@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/format"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -664,6 +665,33 @@ func TestGeneratorAddonAndAdapterAgreeOnTheEmbedKeepFile(t *testing.T) {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("%s does not contain %q", file, want)
 		}
+	}
+}
+
+func TestGeneratedGitignoreExcludesLocalBuildCache(t *testing.T) {
+	dir := t.TempDir()
+	if err := writeGoFiles(project{Dir: dir, Module: "example.com/hello-go", BindingsImport: "example.com/hello-go/internal/skgo"}); err != nil {
+		t.Fatal(err)
+	}
+	got := readFile(t, filepath.Join(dir, ".gitignore"))
+	if !strings.Contains(got, "/.skgo/\n") {
+		t.Fatalf("generated .gitignore does not exclude the application-local build cache:\n%s", got)
+	}
+}
+
+func TestGeneratedServerGoIsFormatted(t *testing.T) {
+	dir := t.TempDir()
+	if err := writeGoFiles(project{Dir: dir, Module: "example.com/hello-go", BindingsImport: "example.com/hello-go/internal/skgo"}); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "server.go")
+	source := []byte(readFile(t, path))
+	formatted, err := format.Source(source)
+	if err != nil {
+		t.Fatalf("generated server.go is invalid Go: %v", err)
+	}
+	if !bytes.Equal(source, formatted) {
+		t.Fatalf("generated server.go has gofmt diagnostics:\n%s", string(formatted))
 	}
 }
 

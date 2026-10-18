@@ -247,10 +247,12 @@ func (e *Event) Untrack(fn func()) {
 	fn()
 }
 
-// SetHeader puts a header on the response the whole navigation shares. It is
-// kit's `setHeaders`, and it enforces kit's rules: cookies go through
-// SetCookie, and a header may not be set twice — except `server-timing`, which
-// accumulates.
+// SetHeader sets a header on the response for the current page or
+// `__data.json` request. It is Kit's `setHeaders` and works in server loads,
+// page actions and `handle`. Cookies go through SetCookie, and a header may
+// not be set twice except `server-timing`, which accumulates. In a remote
+// function or server route it returns an error; a server route sets headers on
+// its `http.ResponseWriter`.
 func (e *Event) SetHeader(name, value string) error {
 	if e == nil || (e.load == nil && e.actionResponse == nil) {
 		return Errorf(500, "skgo: response headers can only be set from a server load or page action")
