@@ -69,7 +69,9 @@ func newGeneration(cfg Config) (*generatedOutput, error) {
 				return err
 			}
 			if entry.IsDir() {
-				if entry.Name() == "node_modules" || strings.HasPrefix(entry.Name(), ".") {
+				// The link tree belongs to links.sync; its skgo_gen.go entries
+				// are links to generated files, not generated files.
+				if entry.Name() == "node_modules" || strings.HasPrefix(entry.Name(), ".") || path == links.root {
 					return filepath.SkipDir
 				}
 				return nil

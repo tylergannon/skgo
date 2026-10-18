@@ -32,9 +32,8 @@ func (a *app) checkWireFields() error {
 	return nil
 }
 
-// Go packages can load current authored route bytes through an overlay while
-// polytype still sees the committed generated route copy. Check direct fields
-// from the current go/types graph before reporting that copy as stale.
+// checkNestedWireFields checks direct fields from the current go/types graph,
+// so a load's nested wire fields are judged by the bytes this run loaded.
 func (a *app) checkNestedWireFields(typ types.Type, fset *token.FileSet, promises bool) error {
 	seen := map[types.Type]bool{}
 	var visit func(types.Type) error

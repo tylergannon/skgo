@@ -510,9 +510,11 @@ func (p *Project) Prepare(ctx context.Context) (*ProjectBuild, error) {
 		inputs.Close()
 		return nil, err
 	}
-	// Include the actual route link copies and rewritten build controls that Go
-	// consumes, as well as authored files and resources. This walk is over the
-	// selected immutable private tree; it never reacquires mutable project bytes.
+	// Include the route links and rewritten build controls that Go consumes, as
+	// well as authored files and resources. A route link is a relative file
+	// symlink inside the same private tree, recorded at the address Go compiles.
+	// This walk is over the selected immutable private tree; it never
+	// reacquires mutable project bytes.
 	for _, root := range cfg.sourceView.roots {
 		err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
@@ -522,7 +524,9 @@ func (p *Project) Prepare(ctx context.Context) (*ProjectBuild, error) {
 				return nil
 			}
 			if entry.Type()&os.ModeSymlink != 0 {
-				return nil
+				if fi, e := os.Stat(path); e != nil || fi.IsDir() {
+					return nil
+				}
 			}
 			data, e := os.ReadFile(path)
 			if e != nil {
