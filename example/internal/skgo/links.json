@@ -8,7 +8,8 @@
 	"links": [
 		{
 			"link": "internal/skgo/links/onzggl3sn52xizlt",
-			"target": "web/src/routes"
+			"target": "web/src/routes",
+			"perFile": true
 		},
 		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th",

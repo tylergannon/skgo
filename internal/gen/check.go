@@ -80,9 +80,6 @@ func Check(cfg Config) error {
 			return fmt.Errorf("skgo: %s: result of %s: %w", fn.pos, fn.name, err)
 		}
 	}
-	if err := a.links.verify(); err != nil {
-		return err
-	}
 	if err := a.generateTypes(); err != nil {
 		return err
 	}

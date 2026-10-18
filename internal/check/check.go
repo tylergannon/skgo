@@ -101,13 +101,7 @@ func Run(ctx context.Context, o Options) Report {
 	}
 	routes, err := loadRoutes(out)
 	if err != nil {
-		add(Check{Name: "go-overlay", Status: "failed", Message: "cannot read generated route inventory: " + err.Error()})
-	}
-	overlayPath, cleanup, overlayErr := makeOverlay(root, routes)
-	if overlayErr != nil {
-		add(Check{Name: "go-overlay", Status: "failed", Message: "cannot prepare authored route overlay: " + overlayErr.Error()})
-	} else {
-		defer cleanup()
+		add(Check{Name: "route-links", Status: "failed", Message: "cannot read generated route inventory: " + err.Error()})
 	}
 
 	c, ds := checkGoImports(ctx, root, out)
@@ -158,16 +152,14 @@ func Run(ctx context.Context, o Options) Report {
 		add(Check{Name: "svelte-check", Status: "failed", Message: "project svelte-check is missing"})
 	}
 	goEnv := readonlyGoEnv()
-	if overlayPath != "" {
-		goEnv = appendGoFlag(goEnv, "-overlay="+overlayPath)
-	}
+	pkgs := goPackages(routes)
 	goCompileFailed := false
 	for _, spec := range []struct {
 		name string
 		args []string
 	}{
-		{"go-build", []string{"build", "./..."}},
-		{"go-vet", []string{"vet", "./..."}},
+		{"go-build", append([]string{"build"}, pkgs...)},
+		{"go-vet", append([]string{"vet"}, pkgs...)},
 	} {
 		output, err := command(ctx, root, goEnv, "go", spec.args...)
 		c, ds := checkGoOutput(spec.name, root, routes, output, err)
@@ -181,14 +173,14 @@ func Run(ctx context.Context, o Options) Report {
 		add(c, ds...)
 	}
 	if bin, err := exec.LookPath("staticcheck"); err == nil {
-		output, runErr := command(ctx, root, goEnv, bin, "-f", "json", "./...")
+		output, runErr := command(ctx, root, goEnv, bin, append([]string{"-f", "json"}, pkgs...)...)
 		c, ds := checkStaticcheck(root, routes, output, runErr)
 		add(c, ds...)
 	} else {
 		add(Check{Name: "staticcheck", Status: "failed", Message: "Staticcheck is missing from PATH"})
 	}
 	if exe, err := os.Executable(); err == nil {
-		output, runErr := command(ctx, root, goEnv, "go", "vet", "-json", "-vettool="+exe, "./...")
+		output, runErr := command(ctx, root, goEnv, "go", append([]string{"vet", "-json", "-vettool=" + exe}, pkgs...)...)
 		c, ds := parseAdvice(root, routes, output, runErr)
 		if goCompileFailed && c.Status == "complete" {
 			c.Status = "incomplete"
@@ -231,16 +223,6 @@ func readonlyGoEnv() []string {
 		flags += " -mod=readonly"
 	}
 	return append(env, "GOFLAGS="+strings.TrimSpace(flags))
-}
-
-func appendGoFlag(env []string, flag string) []string {
-	for i := len(env) - 1; i >= 0; i-- {
-		if strings.HasPrefix(env[i], "GOFLAGS=") {
-			env[i] += " " + flag
-			return env
-		}
-	}
-	return append(env, "GOFLAGS="+flag)
 }
 
 func localBin(web, name string) string {

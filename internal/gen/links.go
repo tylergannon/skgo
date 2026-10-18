@@ -22,16 +22,18 @@ import (
 // `go build ./...` walks into `[id]` and dies with `invalid char '['` before it
 // has compiled anything at all.
 //
-// Second, the package tree: for every route directory holding Go files, a copy
-// under `<out>/links/` whose name Go *can* spell. The copy is an ordinary
-// directory of the app's module, so `<module>/generated/links/<enc>` is a real
-// import path — that is the path the generated bindings import and the path
-// `packages.Load` is given. Kit never sees any of this; the `.remote.ts` sits
-// beside the authored Go file and kit hashes the authored path, as always.
+// Second, the link tree: for every route directory holding Go files, a
+// relative symlink under `<out>/links/` whose name Go *can* spell. The link is
+// an ordinary directory of the app's module, so
+// `<module>/generated/links/<enc>` is a real import path — that is the path the
+// generated bindings import and the path `packages.Load` is given. Kit never
+// sees any of this; the `.remote.ts` sits beside the authored Go file and kit
+// hashes the authored path, as always.
 //
-// The files are copied rather than symlinked because Go module archives omit
-// symlink contents. Everything under `links/` is disposable output, rebuilt
-// from the route tree on every run, and must never be edited by hand.
+// The links are committed. Git stores only a symlink's target, so editing a
+// route never changes anything under `links/`, and a clean checkout builds
+// without a generate step. Everything under `links/` is rebuilt from the route
+// tree on every run and must never be edited by hand.
 
 // linkRootName is the directory, inside the generated bindings package, that
 // holds the link tree.
@@ -54,7 +56,14 @@ type routeLink struct {
 	Link string `json:"link"`
 	// Target is the authored directory the link stands for, relative to the
 	// host module root.
-	Target     string `json:"target"`
+	Target string `json:"target"`
+	// PerFile marks the route tree's own root directory. A directory symlink
+	// there would point at a directory containing the boundary `go.mod`, and
+	// Go would read it as a different module; so that one link is a real
+	// directory of per-file symlinks, and the boundary is simply not among
+	// them.
+	PerFile bool `json:"perFile,omitempty"`
+
 	dir        string // absolute authored directory
 	linkDir    string // absolute link directory
 	importPath string
@@ -124,6 +133,7 @@ func newRouteLinks(cfg Config, hostDir, hostModule string) (*routeLinks, error) 
 		link := &routeLink{
 			Link:    filepath.ToSlash(mustRel(hostDir, filepath.Join(t.root, name))),
 			Target:  filepath.ToSlash(mustRel(hostDir, dir)),
+			PerFile: dir == t.routes,
 			dir:     dir,
 			linkDir: filepath.Join(t.root, name),
 		}
@@ -207,7 +217,13 @@ func (t *routeLinks) sync() error {
 	keep := map[string]bool{}
 	for _, link := range t.links {
 		keep[filepath.Base(link.linkDir)] = true
-		if err := t.syncPackage(link); err != nil {
+		if link.PerFile {
+			if err := t.syncPerFile(link); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := t.syncDirLink(link); err != nil {
 			return err
 		}
 	}
@@ -217,57 +233,69 @@ func (t *routeLinks) sync() error {
 	return t.writeInventory()
 }
 
-// overlay lets go/packages type-check current authored route files through the
-// generated import addresses without changing their committed copies.
-func (t *routeLinks) overlay() (map[string][]byte, error) {
-	overlay := map[string][]byte{}
-	for _, link := range t.links {
-		names, err := goFileNames(link.dir)
-		if err != nil {
-			return nil, err
-		}
-		for _, name := range names {
-			source := filepath.Join(link.dir, name)
-			copy := filepath.Join(link.linkDir, name)
-			a, err := os.ReadFile(source)
-			if err != nil {
-				return nil, err
-			}
-
-			overlay[copy] = a
-		}
-	}
-	return overlay, nil
-}
-
+// verify reports a link that is missing or no longer points at its route
+// directory. A read-only run cannot repair the tree, and Go's own report of a
+// missing import path does not say what to do about it.
 func (t *routeLinks) verify() error {
 	for _, link := range t.links {
+		stale := fmt.Errorf("skgo: %s: generated route link is missing or stale; run skgo generate", link.Link)
+		if !link.PerFile {
+			target, err := filepath.Rel(filepath.Dir(link.linkDir), link.dir)
+			if err != nil {
+				return err
+			}
+			if existing, err := os.Readlink(link.linkDir); err != nil || existing != target {
+				return stale
+			}
+			continue
+		}
 		names, err := goFileNames(link.dir)
 		if err != nil {
 			return err
 		}
 		for _, name := range names {
-			source := filepath.Join(link.dir, name)
-			copy := filepath.Join(link.linkDir, name)
-			a, err := os.ReadFile(source)
+			target, err := filepath.Rel(link.linkDir, filepath.Join(link.dir, name))
 			if err != nil {
 				return err
 			}
-			b, err := os.ReadFile(copy)
-			if err != nil || string(a) != string(b) {
-				return fmt.Errorf("skgo: %s: generated route link is missing or stale; run skgo generate", source)
+			if existing, err := os.Readlink(filepath.Join(link.linkDir, name)); err != nil || existing != target {
+				return stale
 			}
 		}
 	}
 	return nil
 }
 
-// syncPackage copies the Go source that makes one authored route package into
-// its Go-nameable generated address. `go.mod` is deliberately not copied: it
-// is only the boundary that keeps the parent module from walking the route
-// tree. Copying every route package also makes the generated application valid
-// after `go mod download`, whose module archive cannot carry symlinks.
-func (t *routeLinks) syncPackage(link *routeLink) error {
+// syncDirLink points one link at one route directory. Whatever stood at the
+// address before — a stale link, or a copied package from an older skgo — is
+// replaced.
+func (t *routeLinks) syncDirLink(link *routeLink) error {
+	target, err := filepath.Rel(filepath.Dir(link.linkDir), link.dir)
+	if err != nil {
+		return err
+	}
+	if existing, err := os.Readlink(link.linkDir); err == nil && existing == target {
+		return nil
+	}
+	if err := removeLinkEntry(link.linkDir); err != nil {
+		return err
+	}
+	if err := os.Symlink(target, link.linkDir); err != nil {
+		return err
+	}
+	t.logf("linked %s -> %s", link.Link, link.Target)
+	return nil
+}
+
+// syncPerFile builds the route root's link as a real directory of file
+// symlinks. `go.mod` is deliberately left out: that file is the boundary, and a
+// package directory that contains one is a different module.
+//
+// The directory holds the links and nothing else. Everything generated for
+// this package lands in its authored directory and is linked from there like
+// the developer's own files, so anything else found here is left over from an
+// earlier run and goes.
+func (t *routeLinks) syncPerFile(link *routeLink) error {
 	if fi, err := os.Lstat(link.linkDir); err == nil && (fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir()) {
 		if err := os.Remove(link.linkDir); err != nil {
 			return err
@@ -284,24 +312,21 @@ func (t *routeLinks) syncPackage(link *routeLink) error {
 	keep := map[string]bool{}
 	for _, name := range names {
 		keep[name] = true
-		source := filepath.Join(link.dir, name)
-		content, err := os.ReadFile(source)
+		path := filepath.Join(link.linkDir, name)
+		target, err := filepath.Rel(link.linkDir, filepath.Join(link.dir, name))
 		if err != nil {
 			return err
 		}
-		path := filepath.Join(link.linkDir, name)
-		if existing, err := os.ReadFile(path); err == nil && string(existing) == string(content) {
+		if existing, err := os.Readlink(path); err == nil && existing == target {
 			continue
 		}
-		if info, err := os.Lstat(path); err == nil && (info.Mode()&os.ModeSymlink != 0 || info.IsDir()) {
-			if err := os.RemoveAll(path); err != nil {
-				return err
-			}
-		}
-		if err := os.WriteFile(path, content, 0o644); err != nil {
+		if err := os.RemoveAll(path); err != nil {
 			return err
 		}
-		t.logf("copied %s from %s", filepath.Join(link.Link, name), filepath.Join(link.Target, name))
+		if err := os.Symlink(target, path); err != nil {
+			return err
+		}
+		t.logf("linked %s -> %s", filepath.Join(link.Link, name), filepath.Join(link.Target, name))
 	}
 
 	entries, err := os.ReadDir(link.linkDir)
@@ -319,7 +344,7 @@ func (t *routeLinks) syncPackage(link *routeLink) error {
 	return nil
 }
 
-// prune removes package-tree entries this run does not want. It refuses to
+// prune removes link-tree entries this run does not want. It refuses to
 // delete regular files at the root, so a misconfigured output directory cannot
 // cost anybody their source.
 func (t *routeLinks) prune(keep map[string]bool) error {
@@ -342,7 +367,8 @@ func (t *routeLinks) prune(keep map[string]bool) error {
 	return nil
 }
 
-// removeLinkEntry deletes one generated package directory or a legacy symlink.
+// removeLinkEntry deletes one link, or a link directory (the route root's, or
+// a copied package left by an older skgo).
 // It refuses a regular file, because skgo never writes one at this level and a
 // file that has appeared is the signal that the output directory is not what
 // its owner thinks it is. RemoveAll does not follow symlinks, so nothing it does

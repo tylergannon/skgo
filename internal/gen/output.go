@@ -238,8 +238,10 @@ func mergeGo(parts []string) (string, error) {
 	return string(formatted), err
 }
 
-// overlay includes new packages and refreshed copies of every authored route
-// file, so roots and dependencies have the same view even on first generation.
+// overlay presents output that is not yet published. Generated files are
+// shown at their destinations, and every route file also at its link address:
+// on a first generation the link does not exist yet, and a generated file in a
+// route directory is otherwise invisible through its link until publication.
 func (g *generatedOutput) overlay() (map[string][]byte, error) {
 	overlay := map[string][]byte{}
 	for path := range g.owned {
