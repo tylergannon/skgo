@@ -1,0 +1,13 @@
+skgo: generation cache miss
+skgo: projected the types in example.com/migration/web/src/lib/data to /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/web/src/lib/data/types.ts
+skgo: wrote /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/internal/generated/skgo_gen.go
+skgo: wrote /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/web/skgo.remotes.json
+skgo: wrote /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/web/src/hooks.server.ts
+skgo: wrote /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/web/src/lib/data/data.remote.ts
+skgo: wrote /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/web/src/lib/data/skgo_gen.go
+skgo: wrote /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/web/src/lib/data/types.ts
+skgo: wrote /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/web/src/routes/api/receipt/+server.ts
+skgo: wrote /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/web/src/routes/receipt/+page.server.ts
+skgo: wrote /Users/tyler/.codex/worktrees/0aa3/skgo/ephemeral/issues/application-lifecycle-and-tooling/203-app/web/src/routes/receipt/skgo_gen.go
+skgo: copied internal/generated/links/onzggl3sn52xizltf5qxa2jpojswgzljob2a/skgo_gen.go from web/src/routes/api/receipt/skgo_gen.go
+skgo: copied internal/generated/links/onzggl3sn52xizltf5zgky3fnfyhi/skgo_gen.go from web/src/routes/receipt/skgo_gen.go

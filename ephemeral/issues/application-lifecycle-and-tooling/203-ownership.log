@@ -1,0 +1,16 @@
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership
+=== PAUSE TestLanguageCleanupRespectsGeneratorOwnership
+=== CONT  TestLanguageCleanupRespectsGeneratorOwnership
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/skgo
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/legacy_polytype
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/another_generator
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/similarly_named_generator
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/authored
+--- PASS: TestLanguageCleanupRespectsGeneratorOwnership (0.00s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/skgo (0.00s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/legacy_polytype (0.00s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/another_generator (0.00s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/similarly_named_generator (0.00s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/authored (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	0.339s

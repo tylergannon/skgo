@@ -1,0 +1,44 @@
+=== RUN   TestJavaScriptModeEmitsJSDocServerRoute
+=== PAUSE TestJavaScriptModeEmitsJSDocServerRoute
+=== RUN   TestTypeScriptModeServerRouteStubIsUnchanged
+=== PAUSE TestTypeScriptModeServerRouteStubIsUnchanged
+=== RUN   TestSwitchingLanguageReplacesTheServerRouteStub
+=== PAUSE TestSwitchingLanguageReplacesTheServerRouteStub
+=== RUN   TestGeneratedLanguageApplications
+=== PAUSE TestGeneratedLanguageApplications
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership
+=== PAUSE TestLanguageCleanupRespectsGeneratorOwnership
+=== RUN   TestStage2LayoutMetadataAcrossLanguageSwitches
+=== PAUSE TestStage2LayoutMetadataAcrossLanguageSwitches
+=== CONT  TestJavaScriptModeEmitsJSDocServerRoute
+=== CONT  TestGeneratedLanguageApplications
+=== CONT  TestSwitchingLanguageReplacesTheServerRouteStub
+=== CONT  TestTypeScriptModeServerRouteStubIsUnchanged
+=== CONT  TestStage2LayoutMetadataAcrossLanguageSwitches
+=== CONT  TestLanguageCleanupRespectsGeneratorOwnership
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/skgo
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/legacy_polytype
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/another_generator
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/similarly_named_generator
+=== RUN   TestLanguageCleanupRespectsGeneratorOwnership/authored
+--- PASS: TestLanguageCleanupRespectsGeneratorOwnership (0.02s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/skgo (0.00s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/legacy_polytype (0.00s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/another_generator (0.00s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/similarly_named_generator (0.00s)
+    --- PASS: TestLanguageCleanupRespectsGeneratorOwnership/authored (0.00s)
+--- PASS: TestJavaScriptModeEmitsJSDocServerRoute (0.36s)
+--- PASS: TestTypeScriptModeServerRouteStubIsUnchanged (0.37s)
+--- PASS: TestSwitchingLanguageReplacesTheServerRouteStub (0.84s)
+=== RUN   TestGeneratedLanguageApplications/TypeScriptLoadStub
+=== RUN   TestGeneratedLanguageApplications/JavaScriptRemotesAndTypes
+=== RUN   TestGeneratedLanguageApplications/JavaScriptLoadActions
+=== RUN   TestGeneratedLanguageApplications/JavaScriptTransportedLoad
+--- PASS: TestGeneratedLanguageApplications (1.66s)
+    --- PASS: TestGeneratedLanguageApplications/TypeScriptLoadStub (0.00s)
+    --- PASS: TestGeneratedLanguageApplications/JavaScriptRemotesAndTypes (0.00s)
+    --- PASS: TestGeneratedLanguageApplications/JavaScriptLoadActions (0.00s)
+    --- PASS: TestGeneratedLanguageApplications/JavaScriptTransportedLoad (0.00s)
+--- PASS: TestStage2LayoutMetadataAcrossLanguageSwitches (5.53s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	5.757s

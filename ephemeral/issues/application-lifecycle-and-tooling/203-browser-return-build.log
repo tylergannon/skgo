@@ -1,0 +1,71 @@
+note: You are running `vp build` as a Vite+ built-in command. If you meant to run the build npm script, use `vpr build` instead.
+skgo prerender service started (pid 97653)
+transforming...
+✓ 154 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/server/.vite/manifest.json                            5.81 kB │ gzip:  0.75 kB
+.svelte-kit/output/server/remote-entry.js                                0.10 kB │ gzip:  0.10 kB
+.svelte-kit/output/server/chunks/remote-1332tjg.js                       0.22 kB │ gzip:  0.14 kB
+.svelte-kit/output/server/entries/pages/_page.svelte.js                  0.26 kB │ gzip:  0.21 kB │ map:   0.20 kB
+.svelte-kit/output/server/entries/endpoints/api/receipt/_server.ts.js    0.29 kB │ gzip:  0.22 kB │ map:   0.88 kB
+.svelte-kit/output/server/env.js                                         0.31 kB │ gzip:  0.19 kB │ map:   0.57 kB
+.svelte-kit/output/server/entries/fallbacks/layout.svelte.js             0.48 kB │ gzip:  0.34 kB │ map:   0.50 kB
+.svelte-kit/output/server/entries/pages/receipt/_page.server.ts.js       0.81 kB │ gzip:  0.39 kB │ map:   1.62 kB
+.svelte-kit/output/server/entries/pages/receipt/_page.svelte.js          0.84 kB │ gzip:  0.47 kB │ map:   1.04 kB
+.svelte-kit/output/server/chunks/data.remote.js                          1.05 kB │ gzip:  0.55 kB │ map:   0.81 kB
+.svelte-kit/output/server/entries/fallbacks/error.svelte.js              1.39 kB │ gzip:  0.54 kB │ map:   2.92 kB
+.svelte-kit/output/server/index.js                                       2.43 kB │ gzip:  1.03 kB │ map:   3.49 kB
+.svelte-kit/output/server/entries/hooks.server.js                       13.45 kB │ gzip:  4.36 kB │ map:  49.43 kB
+.svelte-kit/output/server/chunks/uneval.js                              19.50 kB │ gzip:  5.38 kB │ map:  40.94 kB
+.svelte-kit/output/server/chunks/server-errors.js                       24.34 kB │ gzip:  4.64 kB │ map:  35.07 kB
+.svelte-kit/output/server/chunks/server.js                              44.54 kB │ gzip: 12.10 kB │ map: 127.68 kB
+.svelte-kit/output/server/chunks/remote.js                              55.53 kB │ gzip: 11.96 kB │ map:  90.96 kB
+.svelte-kit/output/server/chunks/internal.js                           109.55 kB │ gzip: 28.99 kB │ map: 234.51 kB
+.svelte-kit/output/server/chunks/instance.js                           129.57 kB │ gzip: 33.87 kB │ map: 265.74 kB
+
+✓ built in 71ms
+Analysing routes
+(node:97625) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Building app
+transforming...
+✓ 197 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/client/_app/version.json                          0.02 kB │ gzip:  0.04 kB
+.svelte-kit/output/client/.vite/manifest.json                        5.33 kB │ gzip:  0.72 kB
+.svelte-kit/output/client/_app/immutable/chunks/Du8FF-QP.js          0.05 kB │ gzip:  0.06 kB
+.svelte-kit/output/client/_app/immutable/entry/payload.DSmR2FwN.js   0.06 kB │ gzip:  0.07 kB
+.svelte-kit/output/client/_app/immutable/nodes/0.DuIVL_vX.js         0.14 kB │ gzip:  0.14 kB
+.svelte-kit/output/client/_app/immutable/nodes/2.DJYRLmM6.js         0.20 kB │ gzip:  0.18 kB
+.svelte-kit/output/client/_app/immutable/nodes/1.Dp2y2-td.js         0.32 kB │ gzip:  0.24 kB
+.svelte-kit/output/client/_app/immutable/entry/start.D5Rgph5U.js     0.54 kB │ gzip:  0.31 kB
+.svelte-kit/output/client/_app/immutable/entry/app.pfQpANuJ.js       1.21 kB │ gzip:  0.58 kB
+.svelte-kit/output/client/_app/immutable/chunks/Bjy-W4x2.js          1.36 kB │ gzip:  0.65 kB
+.svelte-kit/output/client/_app/immutable/chunks/CRzLMJPS.js          1.53 kB │ gzip:  0.80 kB
+.svelte-kit/output/client/_app/immutable/chunks/DAVkiqzM.js          4.45 kB │ gzip:  2.00 kB
+.svelte-kit/output/client/_app/immutable/nodes/3.BOEFyMc9.js         6.81 kB │ gzip:  2.78 kB
+.svelte-kit/output/client/_app/immutable/chunks/DrLcD-ys.js         34.32 kB │ gzip: 13.24 kB
+.svelte-kit/output/client/_app/immutable/chunks/Bxzoogsu.js         43.94 kB │ gzip: 16.16 kB
+
+✓ built in 89ms
+(node:97625) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Run npm run preview to preview your production build locally.
+
+> Using skgo
+(node:97625) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+transforming...
+✓ 152 modules transformed.
+rendering chunks...
+computing gzip size...
+build/.goja/bundle.js  197.77 kB │ gzip: 49.60 kB
+
+✓ built in 55ms
+skgo: lowered to es2017 for the engine's parser: 7 module(s)
+skgo: wrote build/
+skgo prerender service stopped (pid 97653)
+✔ done

@@ -1,0 +1,23 @@
+=== RUN   TestApplicationLanguageMigrationRoundTrip
+    language_migration_test.go:184: stage 1 (ts): checker accepted correct consumers and rejected wrong argument/result, VP build completed, preserved authored/foreign-generator bytes
+        === RUN   TestMigrationHandler
+            server_test.go:81: ts: literal remote 1332tjg/receipt, server data, rendered load, action and endpoint all answered through the production handler
+        --- PASS: TestMigrationHandler (0.01s)
+        PASS
+        ok  	example.com/migration	0.145s
+    language_migration_test.go:184: stage 2 (js): checker accepted correct consumers and rejected wrong argument/result, VP build completed, preserved authored/foreign-generator bytes
+        === RUN   TestMigrationHandler
+            server_test.go:81: js: literal remote 3v3jv6/receipt, server data, rendered load, action and endpoint all answered through the production handler
+        --- PASS: TestMigrationHandler (0.01s)
+        PASS
+        ok  	example.com/migration	0.152s
+    language_migration_test.go:184: stage 3 (ts): checker accepted correct consumers and rejected wrong argument/result, VP build completed, preserved authored/foreign-generator bytes
+        === RUN   TestMigrationHandler
+            server_test.go:81: ts: literal remote 1332tjg/receipt, server data, rendered load, action and endpoint all answered through the production handler
+        --- PASS: TestMigrationHandler (0.01s)
+        PASS
+        ok  	example.com/migration	0.254s
+    language_migration_test.go:186: application: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestApplicationLanguageMigrationRoundTrip4088356427/001; serve with go run ./cmd from that directory
+--- PASS: TestApplicationLanguageMigrationRoundTrip (18.01s)
+PASS
+ok  	github.com/tylergannon/skgo/cmd/skgo	23.514s

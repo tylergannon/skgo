@@ -1,0 +1,20 @@
+Parent used the in-app browser through CUA, clicked real controls, and inspected the rendered screenshots. No browser script or simulated remote calls.
+
+Initial TS, http://127.0.0.1:8080/
+- Click Open Go receipt: page /receipt displayed Go load: migration (11).
+- Click Request Go remote: displayed Go remote: browser (7).
+- Click Save with Go: returned usable page /receipt?/save displaying Go action: saved.
+
+TS -> JS through config rename and GOWORK=off go generate ./..., followed by VP build from web/.
+- Another task occupied 8080, so only this disposable fixture's Go origin, Vite origin and listener were changed to 55803. The canonical test fixture was not edited.
+- Initial form refusal during address change was traced to the remaining old Go origin. After aligning origins and opening a fresh GET, normal action succeeded. No product defect claimed from that setup mistake.
+- At http://127.0.0.1:55803/, click Open Go receipt: Go load: migration (11).
+- Click Request Go remote: Go remote: browser (7).
+- Click Save with Go: Go action: saved. Click remote again: all three literal receipts visible together. Screenshot inspected.
+
+JS -> TS through reverse config rename and the same normal generate/build commands, keeping aligned 55803 origins/listener.
+- Fresh GET /, then click Open Go receipt: Go load: migration (11).
+- Click Save with Go: Go action: saved.
+- Click Request Go remote: Go remote: browser (7). Screenshot inspected with all three receipts present, no error boundary or blank content.
+
+This is targeted production Kit-client round-trip proof, not a complete development/browser-suite claim.
