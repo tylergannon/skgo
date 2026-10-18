@@ -1,0 +1,3 @@
+Revalidate only the package.json preservation fix for your sole #350 finding. Keep the completed functional/live verdict and prior mutation evidence; do not repeat browser qualification, scaffold installation, native builds or full CI. This is a small preservation consistency fix; JSON scripts always retained equivalent semantics.
+
+Run the focused authored-script/format regression and check it is load-bearing, then report concise PASS/FAIL with actual results. Do not expand scope to a general JSON-format preservation framework or unrelated improvements. Restore any temporary mutation and remove scratch after use. Do not implement or commit.
