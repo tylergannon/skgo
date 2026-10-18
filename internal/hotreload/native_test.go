@@ -97,14 +97,14 @@ func TestGeneratedNativeLifetime(t *testing.T) {
 	if err := prepared.Run(); err != nil {
 		t.Fatal(err)
 	}
-	links, err := os.ReadDir(filepath.Join(app, "generated/links"))
+	links, err := os.ReadDir(filepath.Join(app, "generated/_links"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(links) != 1 {
 		t.Fatalf("fixture route packages: %v", links)
 	}
-	linkRel := filepath.Join("generated/links", links[0].Name())
+	linkRel := filepath.Join("generated/_links", links[0].Name())
 	linkDir := filepath.Join(app, linkRel)
 	pkgPath := "example.com/nativefixture/" + filepath.ToSlash(linkRel)
 	run := func(args ...string) []byte {

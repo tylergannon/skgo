@@ -21,7 +21,7 @@ import (
 	"github.com/tylergannon/skgo"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
 	"github.com/tylergannon/skgo/example/internal/skgo/client"
-	optional "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
+	optional "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5xxa5djn5xgc3a"
 )
 
 // Captured from Kit 3.0.0-next.27 serialize_binary_form function

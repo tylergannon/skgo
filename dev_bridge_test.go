@@ -504,9 +504,9 @@ func TestNativeDevelopmentLoadDiagnosticsWithoutTracing(t *testing.T) {
 }
 
 func TestDevelopmentPanicFramesUseAuthoredRoute(t *testing.T) {
-	stack := "goroutine 1 [running]:\nexample.com/app/generated/links/onzggl3sn52xizlt/panicLoad()\n\t/private/app/generated/links/onzggl3sn52xizlt/page.server.go:9 +0x12\n"
+	stack := "goroutine 1 [running]:\nexample.com/app/generated/_links/onzggl3sn52xizlt/panicLoad()\n\t/private/app/generated/_links/onzggl3sn52xizlt/page.server.go:9 +0x12\n"
 	got := authoredDevelopmentStack(stack)
-	if !strings.Contains(got, "\tsrc/routes/page.server.go:9 +0x12") || strings.Contains(got, "/generated/links/onzggl3sn52xizlt/page.server.go") {
+	if !strings.Contains(got, "\tsrc/routes/page.server.go:9 +0x12") || strings.Contains(got, "/generated/_links/onzggl3sn52xizlt/page.server.go") {
 		t.Fatal(got)
 	}
 }

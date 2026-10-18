@@ -32,6 +32,15 @@ func loadRoutes(out string) (routeInventory, error) {
 	return v, nil
 }
 
+// packages is ./... plus every route link package, which ./... skips.
+func (v routeInventory) packages() []string {
+	out := []string{"./..."}
+	for _, link := range v.Links {
+		out = append(out, "./"+filepath.ToSlash(link.Link))
+	}
+	return out
+}
+
 func authoredPath(root string, v routeInventory, path string) string {
 	clean := strings.TrimPrefix(relative(root, path), "./")
 	for _, link := range v.Links {

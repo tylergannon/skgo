@@ -14,9 +14,9 @@ import (
 	// names. SvelteKit spells route directories `[id]` and `(marketing)`,
 	// which Go cannot, so skgo puts the route tree behind its own module
 	// boundary and gives each route package a Go-nameable address under
-	// generated/links. That address is the only way to reach one, and it is
+	// internal/skgo/_links. That address is the only way to reach one, and it is
 	// base32 of the directory: this one is "src/routes/todos".
-	todos "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom"
+	todos "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf52g6zdpom"
 )
 
 // docs: end links

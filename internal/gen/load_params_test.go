@@ -134,7 +134,7 @@ func TestGeneratedParameterDependencies(t *testing.T) {
  }) }
 }
 `
-	const linkPrefix = "github.com/tylergannon/skgo/example/internal/skgo/links/"
+	const linkPrefix = "github.com/tylergannon/skgo/example/internal/skgo/_links/"
 	linkedConsumer := strings.NewReplacer(
 		"PARAMS_PACKAGE", linkPrefix+encodeLinkName("src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]"),
 		"OPTIONAL_PARAMS_PACKAGE", linkPrefix+encodeLinkName("src/routes/typed-optional/[[n=Order]]"),

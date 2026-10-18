@@ -26,7 +26,15 @@ Requests a browser would make need the same shape in a test:
 - a form action is a `POST` to `<path>?/<name>` with a form content type and an `Origin` header equal to the origin the handler was built with; without it SKGo refuses the submission as cross-site, as Kit does
 - cookies go on the request with `req.AddCookie` and come back in `rec.Result().Cookies()`
 
-Route directories under `web/src/routes` sit behind a module boundary, so a test cannot import a route package by its path. `skgo generate` links each route directory's Go files, tests included, into its link package under `internal/skgo/links/`, and `go test ./...` compiles them there; `internal/skgo/links.json` maps each link package to its route. Import a route's types through the link package.
+Route directories under `web/src/routes` sit behind a module boundary, so a test cannot import a route package by its path. `skgo generate` links each route directory's Go files, tests included, into its link package under `internal/skgo/_links/`; `internal/skgo/links.json` maps each link package to its route. Import a route's types through the link package.
+
+`go test ./...` skips `_links/`, as it skips every directory that starts with `_`, so it does not run tests in route directories. Name the link packages to run them:
+
+```bash
+go test $(go list -deps ./internal/skgo | grep /_links/)
+```
+
+`skgo check` names them itself, so `go vet` and Staticcheck cover route code.
 
 ## Testing remote functions
 

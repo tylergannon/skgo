@@ -13,8 +13,8 @@ import (
 
 	devalue "github.com/tylergannon/devalue/v5"
 	skgo "github.com/tylergannon/skgo"
-	skgo9 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
-	skgo48 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
+	skgo9 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5qwg5djn5xhg"
+	skgo48 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5xxa5djn5xgc3a"
 )
 
 // Client uses the same enhanced Form endpoint as the browser.

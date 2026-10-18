@@ -8,8 +8,8 @@ import (
 
 func TestRouteLinkDiagnosticsNameTheAuthoredFile(t *testing.T) {
 	root := t.TempDir()
-	link := filepath.Join(root, "internal", "skgo", "links", "todos", "todos.remote.go")
-	routes := routeInventory{Links: []routeLink{{Link: "internal/skgo/links/todos", Target: "web/src/routes/todos"}}}
+	link := filepath.Join(root, "internal", "skgo", "_links", "todos", "todos.remote.go")
+	routes := routeInventory{Links: []routeLink{{Link: "internal/skgo/_links/todos", Target: "web/src/routes/todos"}}}
 	if got := authoredPath(root, routes, link); got != "web/src/routes/todos/todos.remote.go" {
 		t.Fatalf("mapped path=%q", got)
 	}

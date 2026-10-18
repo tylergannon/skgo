@@ -100,7 +100,7 @@ The binary's entry point. It serves `web.Build` through `NewHandler` and takes t
 
 ### internal/skgo
 
-The generated bindings package. `config.go` holds the one line you own, the `go:generate` directive that runs `skgo generate` with this project's web directory, locals package and hook package; everything else in the directory is generated. `params/` is the typed route parameters and the hook types your code imports, `prerender/` is the program that answers Kit's prerender at build time, and `skgo_gen.go` is the registration `server.go` mounts. Once a route directory holds Go files, `links/` and `links.json` appear too: committed symlinks to your route packages' Go files, under names Go can import.
+The generated bindings package. `config.go` holds the one line you own, the `go:generate` directive that runs `skgo generate` with this project's web directory, locals package and hook package; everything else in the directory is generated. `params/` is the typed route parameters and the hook types your code imports, `prerender/` is the program that answers Kit's prerender at build time, and `skgo_gen.go` is the registration `server.go` mounts. Once a route directory holds Go files, `_links/` and `links.json` appear too: committed symlinks to your route packages' Go files, under names Go can import. The underscore keeps them out of `./...`, so renaming or deleting a route never stops `go generate ./...` from running.
 
 ### web
 

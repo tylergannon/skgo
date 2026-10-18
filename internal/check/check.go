@@ -153,12 +153,15 @@ func Run(ctx context.Context, o Options) Report {
 	}
 	goEnv := readonlyGoEnv()
 	goCompileFailed := false
+	// ./... skips the route link tree; name its packages so route code is
+	// vetted and analyzed too.
+	packages := routes.packages()
 	for _, spec := range []struct {
 		name string
 		args []string
 	}{
 		{"go-build", []string{"build", "./..."}},
-		{"go-vet", []string{"vet", "./..."}},
+		{"go-vet", append([]string{"vet"}, packages...)},
 	} {
 		output, err := command(ctx, root, goEnv, "go", spec.args...)
 		c, ds := checkGoOutput(spec.name, root, routes, output, err)
@@ -172,14 +175,14 @@ func Run(ctx context.Context, o Options) Report {
 		add(c, ds...)
 	}
 	if bin, err := exec.LookPath("staticcheck"); err == nil {
-		output, runErr := command(ctx, root, goEnv, bin, "-f", "json", "./...")
+		output, runErr := command(ctx, root, goEnv, bin, append([]string{"-f", "json"}, packages...)...)
 		c, ds := checkStaticcheck(root, routes, output, runErr)
 		add(c, ds...)
 	} else {
 		add(Check{Name: "staticcheck", Status: "failed", Message: "Staticcheck is missing from PATH"})
 	}
 	if exe, err := os.Executable(); err == nil {
-		output, runErr := command(ctx, root, goEnv, "go", "vet", "-json", "-vettool="+exe, "./...")
+		output, runErr := command(ctx, root, goEnv, "go", append([]string{"vet", "-json", "-vettool=" + exe}, packages...)...)
 		c, ds := parseAdvice(root, routes, output, runErr)
 		if goCompileFailed && c.Status == "complete" {
 			c.Status = "incomplete"
@@ -269,7 +272,7 @@ func checkGoImports(ctx context.Context, root, out string) (Check, []Diagnostic)
 			return err
 		}
 		if d.IsDir() {
-			if p == filepath.Join(out, "links") {
+			if p == filepath.Join(out, "_links") {
 				return filepath.SkipDir
 			}
 			if p != root && (d.Name() == ".git" || d.Name() == "node_modules" || d.Name() == "vendor" || d.Name() == "testdata" || d.Name() == "ephemeral" || d.Name() == "generated" || d.Name() == "build") {

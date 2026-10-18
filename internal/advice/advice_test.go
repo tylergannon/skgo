@@ -9,8 +9,8 @@ import (
 )
 
 func TestAdvice(t *testing.T) {
-	const route = "a/links/onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2"
-	const nestedRoute = "a/links/onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2l23ln2gcys5luxvwlrofz2gc2lmlu"
+	const route = "a/_links/onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2"
+	const nestedRoute = "a/_links/onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2l23ln2gcys5luxvwlrofz2gc2lmlu"
 	// One package load checks every registered-handler fixture. analysistest
 	// matches messages at their authored locations; these literal counts also
 	// pin the SKGO rule identifiers exposed to CLI and editor consumers.
@@ -51,7 +51,7 @@ func TestRouteKnowledge(t *testing.T) {
 	if routeParams(filepath.Join("app", "src", "routes", "[id]", "layout.server.go")) != nil {
 		t.Fatal("shared layout was treated as a single known route")
 	}
-	linked := filepath.Join("app", "internal", "skgo", "links", "onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2", "page.server.go")
+	linked := filepath.Join("app", "internal", "skgo", "_links", "onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2", "page.server.go")
 	if !routeParams(linked)["customerID"] {
 		t.Fatal("generated route link did not recover the authored parameter")
 	}
