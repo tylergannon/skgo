@@ -57,3 +57,28 @@ func TestAssembleTemplateAllPlaceholders(t *testing.T) {
 		t.Errorf("CSP header: got %q, want %q", headers.CSP, wantCSP)
 	}
 }
+
+func TestAssembleAssetsDefaultToBaseForAbsolutePaths(t *testing.T) {
+	s := streamer(nil)
+	s.base = "/app"
+	s.info.Relative = false
+	s.info.Client.Imports = []string{"_app/immutable/entry/start.js", "_app/immutable/entry/app.js"}
+	s.info.Client.Stylesheets = []string{"_app/immutable/assets/app.css"}
+	plan := plannedPage()
+	req := dataRequest{url: mustURL(t, "http://fixture.test/app/account/orders")}
+	document, _, _, err := s.assemble(req, plan, rendered(), nil, newDocumentCSPWithNonce(nil, "fixed"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`href="/app/_app/immutable/entry/start.js" rel="modulepreload"`,
+		`href="/app/_app/immutable/entry/app.js" rel="modulepreload"`,
+		`href="/app/_app/immutable/assets/app.css" rel="stylesheet"`,
+		`import("/app/_app/immutable/entry/start.js")`,
+		`import("/app/_app/immutable/entry/app.js")`,
+	} {
+		if !strings.Contains(document, want) {
+			t.Errorf("document is missing literal base-prefixed asset URL %q:\n%s", want, document)
+		}
+	}
+}

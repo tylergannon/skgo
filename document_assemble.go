@@ -54,6 +54,9 @@ func (s *SSR) assemble(req dataRequest, plan documentPlan, result ssr.Result, an
 			assets = base
 		}
 	}
+	if assets == "" {
+		assets = s.base
+	}
 
 	prefixed := func(path string) string {
 		if strings.HasPrefix(path, "/") {
