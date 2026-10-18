@@ -279,6 +279,10 @@ func (p *apiPackage) markdown(text string, resolve linkResolver) string {
 	parsed := p.doc.Parser().Parse(text)
 	pr := p.doc.Printer()
 	pr.HeadingLevel = 4
+	// The markdown printer appends " {#id}" to a heading when HeadingID
+	// gives one; the site assigns its own ids and Svelte reads "{#" as a
+	// block, so headings carry none.
+	pr.HeadingID = func(*comment.Heading) string { return "" }
 	pr.DocLinkURL = func(link *comment.DocLink) string {
 		return resolve(link.ImportPath, link.Recv, link.Name)
 	}

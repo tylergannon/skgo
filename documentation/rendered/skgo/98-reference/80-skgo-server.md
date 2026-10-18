@@ -491,7 +491,7 @@ export const transport = {
 
 Kit puts the transport on a \*universal\* hook because both sides need it, and skgo keeps that: the browser half stays in `src/hooks.ts` where kit looks for it, and this is the server half.
 
-#### Why a Transport changes how results are encoded {#hdr-Why_a_Transport_changes_how_results_are_encoded}
+#### Why a Transport changes how results are encoded
 
 Kit hands devalue the real object graph, so its encoders see a `Money` instance. skgo cannot: devalue refuses an arbitrary Go struct, so a result reaches it through a `json.Marshal`/`json.Unmarshal` round trip that has already turned every struct into a `map[string]any`. A reducer running after that sees an anonymous map and has nothing left to recognise — which is precisely why a domain type arrives in the browser as a plain object today.
 
