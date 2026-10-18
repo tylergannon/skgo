@@ -1,0 +1,156 @@
+Counterfactual: actual prerender.js from issue revision68e8db304786b8beb07feaf56899789bef5b241b. Its public createPrerenderOwner and installPrerenderFailureBoundary are unchanged; export private createJob solely to attach controlled Go process fixture. Same helper/reap gate/rejection assertions as current test.
+=== RUN   TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== PAUSE TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== CONT  TestPrerenderFailureWaitsForNativeExitedGroupReap
+    prerender_native_darwin_test.go:115: native exited-group cleanup:
+        NATIVE_EXITED_GROUP:{"group":19725,"probe":"EPERM","state":"19733 19732 19725   501 Z    <defunct>","leaderClosed":true}
+        REJECTION_RESOURCES:{"probe":"EPERM","privateDirExists":true,"reaped":false,"cleanupError":"skgo could not drain every owned prerender process tree","cleanupErrors":[{"message":"kill EPERM","code":"EPERM"}]}
+        FIXTURE_REAPER_EXITED
+        node:internal/modules/run_main:107
+            triggerUncaughtException(
+            ^
+        
+        AssertionError [ERR_ASSERTION]: native exited-group bookkeeping became a cleanup failure
+        + actual - expected
+        
+        + AggregateError: skgo could not drain every owned prerender process tree
+        +     at file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:416:20
+        +     at async Object.cleanup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:449:5)
+        +     at async Object.wrapped [as buildApp] (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:573:6)
+        +     at async waitForActual (node:assert:646:5)
+        +     at async strict.rejects (node:assert:769:25)
+        +     at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+        +   [errors]: [
+        +     Error: kill EPERM
+        +         at process.kill (node:internal/process/per_thread:277:13)
+        +         at signalTree (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:142:11)
+        +         at stopGroup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:155:2)
+        +         at file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:409:13
+        +         at async Object.cleanup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:449:5)
+        +         at async Object.wrapped [as buildApp] (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:573:6)
+        +         at async waitForActual (node:assert:646:5)
+        +         at async strict.rejects (node:assert:769:25)
+        +         at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+        +       code: 'EPERM',
+        +       errno: -1,
+        +       syscall: 'kill'
+        +     }
+        +   ]
+        + }
+        - undefined
+        
+            at Object.<anonymous> (file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:31:10)
+            at expectedException (node:assert:578:17)
+            at expectsError (node:assert:703:21)
+            at strict.rejects (node:assert:769:3)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+          generatedMessage: false,
+          code: 'ERR_ASSERTION',
+          actual: AggregateError: skgo could not drain every owned prerender process tree
+              at file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:416:20
+              at async Object.cleanup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:449:5)
+              at async Object.wrapped [as buildApp] (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:573:6)
+              at async waitForActual (node:assert:646:5)
+              at async strict.rejects (node:assert:769:25)
+              at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+            [errors]: [
+              Error: kill EPERM
+                  at process.kill (node:internal/process/per_thread:277:13)
+                  at signalTree (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:142:11)
+                  at stopGroup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:155:2)
+                  at file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:409:13
+                  at async Object.cleanup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:449:5)
+                  at async Object.wrapped [as buildApp] (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:573:6)
+                  at async waitForActual (node:assert:646:5)
+                  at async strict.rejects (node:assert:769:25)
+                  at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+                errno: -1,
+                code: 'EPERM',
+                syscall: 'kill'
+              }
+            ]
+          },
+          expected: undefined,
+          operator: 'strictEqual',
+          diff: 'simple'
+        }
+        
+        Node.js v24.22.0
+    prerender_native_darwin_test.go:117: native exited-group cleanup: exit status 1
+        NATIVE_EXITED_GROUP:{"group":19725,"probe":"EPERM","state":"19733 19732 19725   501 Z    <defunct>","leaderClosed":true}
+        REJECTION_RESOURCES:{"probe":"EPERM","privateDirExists":true,"reaped":false,"cleanupError":"skgo could not drain every owned prerender process tree","cleanupErrors":[{"message":"kill EPERM","code":"EPERM"}]}
+        FIXTURE_REAPER_EXITED
+        node:internal/modules/run_main:107
+            triggerUncaughtException(
+            ^
+        
+        AssertionError [ERR_ASSERTION]: native exited-group bookkeeping became a cleanup failure
+        + actual - expected
+        
+        + AggregateError: skgo could not drain every owned prerender process tree
+        +     at file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:416:20
+        +     at async Object.cleanup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:449:5)
+        +     at async Object.wrapped [as buildApp] (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:573:6)
+        +     at async waitForActual (node:assert:646:5)
+        +     at async strict.rejects (node:assert:769:25)
+        +     at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+        +   [errors]: [
+        +     Error: kill EPERM
+        +         at process.kill (node:internal/process/per_thread:277:13)
+        +         at signalTree (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:142:11)
+        +         at stopGroup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:155:2)
+        +         at file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:409:13
+        +         at async Object.cleanup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:449:5)
+        +         at async Object.wrapped [as buildApp] (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:573:6)
+        +         at async waitForActual (node:assert:646:5)
+        +         at async strict.rejects (node:assert:769:25)
+        +         at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+        +       code: 'EPERM',
+        +       errno: -1,
+        +       syscall: 'kill'
+        +     }
+        +   ]
+        + }
+        - undefined
+        
+            at Object.<anonymous> (file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:31:10)
+            at expectedException (node:assert:578:17)
+            at expectsError (node:assert:703:21)
+            at strict.rejects (node:assert:769:3)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+          generatedMessage: false,
+          code: 'ERR_ASSERTION',
+          actual: AggregateError: skgo could not drain every owned prerender process tree
+              at file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:416:20
+              at async Object.cleanup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:449:5)
+              at async Object.wrapped [as buildApp] (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:573:6)
+              at async waitForActual (node:assert:646:5)
+              at async strict.rejects (node:assert:769:25)
+              at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+            [errors]: [
+              Error: kill EPERM
+                  at process.kill (node:internal/process/per_thread:277:13)
+                  at signalTree (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:142:11)
+                  at stopGroup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:155:2)
+                  at file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:409:13
+                  at async Object.cleanup (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:449:5)
+                  at async Object.wrapped [as buildApp] (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderFailureWaitsForNativeExitedGroupReap3414519143/001/owner.js:573:6)
+                  at async waitForActual (node:assert:646:5)
+                  at async strict.rejects (node:assert:769:25)
+                  at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+                errno: -1,
+                code: 'EPERM',
+                syscall: 'kill'
+              }
+            ]
+          },
+          expected: undefined,
+          operator: 'strictEqual',
+          diff: 'simple'
+        }
+        
+        Node.js v24.22.0
+--- FAIL: TestPrerenderFailureWaitsForNativeExitedGroupReap (0.45s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	0.749s
+FAIL

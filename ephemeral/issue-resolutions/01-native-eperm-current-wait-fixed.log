@@ -1,0 +1,15 @@
+=== RUN   TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain
+=== PAUSE TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain
+=== RUN   TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== PAUSE TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== CONT  TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain
+=== CONT  TestPrerenderFailureWaitsForNativeExitedGroupReap
+    prerender_native_darwin_test.go:122: native exited-group cleanup:
+        NATIVE_EXITED_GROUP:{"group":39973,"probe":"EPERM","state":"39983 39982 39973   501 Z    <defunct>","leaderClosed":true}
+        REJECTION_RESOURCES:{"probe":"ESRCH","privateDirExists":false,"reaped":true}
+        NATIVE_EXITED_GROUP_REAPED_BEFORE_REJECTION
+        FIXTURE_REAPER_EXITED:reaped: signal: terminated
+--- PASS: TestPrerenderFailureWaitsForNativeExitedGroupReap (0.64s)
+--- PASS: TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain (7.17s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	7.416s
