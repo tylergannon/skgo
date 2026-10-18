@@ -28,6 +28,9 @@ func prepareLocals(cfg *Config) error {
 	if cfg.LocalsType == "" {
 		cfg.LocalsType = "Locals"
 	}
+	if cfg.ConfigSymbol == "" {
+		cfg.ConfigSymbol = "Config"
+	}
 	if cfg.HookSymbol == "" {
 		cfg.HookSymbol = "Handle"
 	}

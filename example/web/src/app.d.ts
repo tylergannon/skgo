@@ -12,6 +12,8 @@ declare global {
      */
     interface Error {
       supportId?: string;
+      /** An authored error field retained when handleError returns a partial override. */
+      original?: string;
     }
     // interface Locals {}
     // interface PageData {}

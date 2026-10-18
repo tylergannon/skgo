@@ -128,14 +128,16 @@ Under `params.Sequence`, options combine as Kit combines them: an inner hook's t
 
 ```go
 /// file: server.go
-/// include: example/server.go#handle-fetch
+/// include: example/internal/app/config.go#handle-fetch
 ```
 
-The hook sees the request before SKGo adds the page's cookies and `Authorization` header to it. Calling `next` dispatches without re-entering the hook. Pass the function in both places in `server.go`: as `HandleFetch` on the `skgo.SSROptions` given to `NewSSR`, for render-time fetches, and on the `skgo.FetchConfig` that wraps the app, for `event.Fetch` from Go. Credentials follow Kit's [rules](https://svelte.dev/docs/kit/hooks#Server-hooks-handleFetch); [Cookies](cookies#Cookies-and-server-fetch) covers them. `handleFetch` does not run during prerendering ([#278](https://github.com/tylergannon/skgo/issues/278)).
+The hook sees the request before SKGo adds the page's cookies and `Authorization` header to it. Calling `next` dispatches without re-entering the hook. Pass the function in both places in `server.go`: as `HandleFetch` on the `skgo.SSROptions` given to `NewSSR`, for render-time fetches, and on the `skgo.FetchConfig` that wraps the app, for `event.Fetch` from Go. Credentials follow Kit's [rules](https://svelte.dev/docs/kit/hooks#Server-hooks-handleFetch); [Cookies](cookies#Cookies-and-server-fetch) covers them. Select the same function through [shared application configuration](prerendering#Shared-application-configuration) to run it during prerendering too.
 
 ## handleError
 
-`handleError` decides what the error page and `page.error` receive. It is a Go function on the remote, load, endpoint and handle configurations in `server.go`; [Errors](errors#Where-handleError-runs) shows it and lists where it runs. In the browser, Kit's own `handleError` from `src/hooks.client.ts` applies.
+
+`handleError` decides what the error page and `page.error` receive. It is a Go function on the load, remote, endpoint and handle configurations in `server.go`; [Errors](errors#Where-handleError-runs) shows it and lists where it runs. In the browser, Kit's own `handleError` from `src/hooks.client.ts` applies.
+
 
 ## init
 

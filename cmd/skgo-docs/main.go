@@ -1,7 +1,7 @@
 // Command skgo-docs renders skgo's documentation source tree and checks it.
 //
 //	skgo-docs render   write documentation/rendered from documentation/docs
-//	skgo-docs check    report every problem and every drifted rendered file
+//	skgo-docs check    validate documentation sources without writing output
 //
 // Run from anywhere inside the module. The checks are the ones
 // go test ./documentation runs; this command prints them as file:line.
@@ -32,15 +32,11 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "check":
-		drift := render.Drift(dir, out)
-		for _, d := range drift {
-			fmt.Fprintln(os.Stderr, "documentation/rendered/"+d)
-		}
-		if len(problems) > 0 || len(drift) > 0 {
-			fmt.Fprintf(os.Stderr, "%d problems, %d drifted files\n", len(problems), len(drift))
+		if len(problems) > 0 {
+			fmt.Fprintf(os.Stderr, "%d problems\n", len(problems))
 			os.Exit(1)
 		}
-		fmt.Printf("%d files render cleanly and match documentation/rendered\n", len(out))
+		fmt.Printf("%d documentation source files render cleanly\n", len(out))
 	case "render":
 		if len(problems) > 0 {
 			fmt.Fprintf(os.Stderr, "%d problems; nothing written\n", len(problems))

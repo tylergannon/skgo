@@ -168,7 +168,7 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 			raw, _ := json.Marshal(input)
 			r.Body = io.NopCloser(bytes.NewReader(raw))
 		}
-		if path == "/load" || path == "/action" || path == "/endpoint" || path == "/remote" {
+		if path == "/load" || path == "/action" || path == "/endpoint" || path == "/remote" || path == "/error" {
 			// Native loads can ask for Kit parent data while their invocation
 			// body is still open. Keep this one callback full-duplex.
 			if path == "/load" {
@@ -211,7 +211,16 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 				entry.endpoints.Intercept(http.NotFoundHandler()).ServeHTTP(w, request)
 				return
 			}
-			if path == "/remote" {
+			if path == "/error" {
+				request := entry.request.WithContext(ctx)
+				shared := &loadRequest{responseState: newResponseState(request), req: request, jar: requestCookieJar(request, s.remotes.secureCookies), url: request.URL, routeID: entry.input.RouteID, params: entry.input.Params}
+				var body []byte
+				body, err = s.boundaryError(hookContext(request, shared), entry.input.RouteID, raw)
+				if err == nil {
+					w.Header().Set("Content-Type", "application/json")
+					_, err = w.Write(body)
+				}
+			} else if path == "/remote" {
 				err = d.remote(ctx, raw, w)
 			} else if path == "/action" {
 				err = d.action(ctx, raw, w)

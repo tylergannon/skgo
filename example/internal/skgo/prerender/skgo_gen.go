@@ -8,13 +8,15 @@ import (
 	http "net/http"
 
 	skgo "github.com/tylergannon/skgo"
+	application "github.com/tylergannon/skgo/example/internal/app"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
 	apphooks "github.com/tylergannon/skgo/example/web/src"
 )
 
 func main() {
-	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{Reroute: apphooks.Reroute, BindRequest: func(next http.Handler) http.Handler {
-		return generated.RequestBoundary(skgo.HandleConfig{Matchers: generated.Matchers(), ClientAddress: func(*http.Request) (string, error) {
+	config := application.Config
+	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{Reroute: apphooks.Reroute, HandleFetch: config.HandleFetch, HandleError: config.HandleError, FilterSerializedResponseHeaders: config.FilterSerializedResponseHeaders, BindRequest: func(next http.Handler) http.Handler {
+		return generated.RequestBoundary(skgo.HandleConfig{HandleError: config.HandleError, Matchers: generated.Matchers(), ClientAddress: func(*http.Request) (string, error) {
 			return "", fmt.Errorf("skgo: client address unavailable during prerender")
 		}}, next)
 	}, Entries: generated.Entries(), Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {

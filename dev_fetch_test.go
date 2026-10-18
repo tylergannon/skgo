@@ -189,6 +189,19 @@ func TestNativeFetchOwnerRetiresUnreadAndPendingExchanges(t *testing.T) {
 			if count != 0 {
 				t.Fatalf("ended owner retained %d fetches", count)
 			}
+
+			// Kit may discard a response before its background body consumer
+			// finishes. Late cleanup after its logical owner ends is harmless.
+			finish, _ := http.NewRequest("POST", server.URL+"/fetch-end", nil)
+			finish.Header.Set("X-Skgo-Fetch", id)
+			ended, err := server.Client().Do(finish)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ended.Body.Close()
+			if ended.StatusCode != http.StatusNoContent {
+				t.Fatalf("late fetch cleanup: %s", ended.Status)
+			}
 		})
 	}
 }

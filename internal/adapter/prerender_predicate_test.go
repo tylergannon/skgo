@@ -23,6 +23,13 @@ func TestPrerenderPredicateRelayBooleanErrorsAndTerminalLateReply(t *testing.T) 
 	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
 		t.Fatal(err)
 	}
+	bridge, err := os.ReadFile("skgo-adapter/fetch-bridge.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(path), "fetch-bridge.js"), bridge, 0600); err != nil {
+		t.Fatal(err)
+	}
 	const program = `import {Worker,BroadcastChannel} from 'node:worker_threads';
 import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';

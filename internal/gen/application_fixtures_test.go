@@ -23,6 +23,7 @@ func TestProductionApplication(t *testing.T) {
 	t.Run("GoPagePrerenderRedirectBuildsKitsNativeArtifact", testGoPagePrerenderRedirectBuildsKitsNativeArtifact)
 	t.Run("GoHookRefusalsMapToKitsNativeResponses", testGoHookRefusalsMapToKitsNativeResponses)
 	t.Run("RealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse", testRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse)
+	t.Run("PrerenderFetchReportsUnavailableAppDestinations", testPrerenderFetchReportsUnavailableAppDestinations)
 	t.Run("CompiledProductionPrerenderedEndpointsAndPages", testCompiledProductionPrerenderedEndpointsAndPages)
 	t.Run("RealProductionStartsWithPrerenderedEndpoints", testRealProductionStartsWithPrerenderedEndpoints)
 	t.Run("CompiledProductionNoArgumentNullReachesTheArtifactLookup", testCompiledProductionNoArgumentNullReachesTheArtifactLookup)
@@ -39,6 +40,7 @@ func TestProductionOptionsApplication(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Run("RealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads", testRealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads)
+	t.Run("RealKitBuildAndRuntimeShareApplicationHooks", testRealKitBuildAndRuntimeShareApplicationHooks)
 }
 
 func TestCheckApplication(t *testing.T) {

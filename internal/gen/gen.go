@@ -71,6 +71,10 @@ type Config struct {
 	LocalsType    string
 	HookPackage   string
 	HookSymbol    string
+	// ConfigPackage selects the Go package exporting shared ApplicationConfig.
+	ConfigPackage string
+	// ConfigSymbol selects its value; empty means "Config".
+	ConfigSymbol  string
 	generation    *generatedOutput
 	matchers      map[string]goParamMatcher
 	loadParams    map[string]*routeLoadParams
@@ -194,6 +198,9 @@ func prepare(cfg Config) (prepared *Prepared, err error) {
 		return nil, err
 	}
 	if err := validateHook(cfg); err != nil {
+		return nil, err
+	}
+	if err := validateApplicationConfig(cfg); err != nil {
 		return nil, err
 	}
 	if err := (&app{cfg: cfg}).writeRequestBoundary(); err != nil {

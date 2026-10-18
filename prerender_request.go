@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/tylergannon/skgo/internal/ssr"
 	"go.opentelemetry.io/otel/trace"
 	"io"
 	"net/http"
@@ -25,12 +26,17 @@ type PrerenderServiceOptions struct {
 	Entries     []*RouteEntries
 	Endpoints   []*Endpoint
 	Matchers    map[string]ParamMatcher
+	// HandleFetch surrounds Kit's fetch continuation and Go Event.Fetch.
+	HandleFetch HandleFetch
+	// HandleError shapes build-time errors with the runtime's application policy.
+	HandleError HandleError
 	// FilterSerializedResponseHeaders supplies the same default passed to
 	// SSROptions when a request's hooks do not select their own filter.
 	FilterSerializedResponseHeaders func(name, value string) bool
 }
 
 type prerenderRequestKey struct{}
+type prerenderOptionsKey struct{}
 type devRequestKey struct{}
 type prerenderMatchKey struct{}
 type prerenderManifestKey struct{}
@@ -62,6 +68,7 @@ type prerenderRequestAnswer struct {
 	NativeError   *nativeErrorDiagnostic   `json:"nativeError,omitempty"`
 	TracingParent *nativeSpanInfo          `json:"tracingParent,omitempty"`
 	Handle        string                   `json:"handle,omitempty"`
+	ErrorHook     bool                     `json:"errorHook,omitempty"`
 	Body          json.RawMessage          `json:"body,omitempty"`
 	Resolve       bool                     `json:"resolve,omitempty"`
 	Response      *prerenderResponse       `json:"response,omitempty"`
@@ -150,6 +157,7 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 		return prerenderRequestAnswer{}, fmt.Errorf("skgo: prerender service requires BindRequest")
 	}
 	logical, cancel := context.WithCancel(s.ctx)
+	logical = context.WithValue(logical, prerenderOptionsKey{}, s.options)
 	logical = inheritNativeTracing(logical, ctx)
 	entry := &prerenderRequest{input: input, cancel: cancel, ready: make(chan *http.Request, 1), response: make(chan prerenderResponse, 1), done: make(chan struct{})}
 	if s.development {
@@ -158,7 +166,7 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 	logical = context.WithValue(logical, prerenderBodyFailureKey{}, func(err error) { entry.failure = err })
 	logical = context.WithValue(logical, prerenderMatchKey{}, input)
 	logical = context.WithValue(logical, prerenderManifestKey{}, input.Manifest)
-	logical = context.WithValue(logical, prerenderRefusalKey{}, func(err error, state *hookState) {
+	logical = context.WithValue(logical, prerenderRefusalKey{}, func(ctx context.Context, err error, state *hookState) error {
 		if asRedirect(err) != nil {
 			entry.answer.Cookies = prerenderCookies(state.jar)
 		}
@@ -166,10 +174,17 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 			entry.answer.Redirect = &prerenderRedirect{Status: redirect.status(), Location: redirect.Location}
 		} else {
 			entry.answer.Error = asHTTPError(err)
+			if s.options.HandleError != nil {
+				handled := handleErrorAndJSONify(ctx, input.RouteID, s.options.HandleError, asHTTPError(err), err, nil)
+				entry.answer.Error = &HTTPError{Status: handled.Status, Message: handled.Message}
+				entry.answer.Body, _ = json.Marshal(handled)
+				err = &ssr.HandledError{Body: handled}
+			}
 			if s.development {
 				entry.answer.NativeError = nativeErrorFor(logical, err)
 			}
 		}
+		return err
 	})
 	request, err := http.NewRequestWithContext(logical, input.Method, input.URL, bytes.NewReader(input.Body))
 	if err != nil {
@@ -205,6 +220,7 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 		origin := pageURL.Scheme + "://" + pageURL.Host
 		endpointConfig := input.Manifest.EndpointConfig(origin)
 		endpointConfig.Matchers = s.options.Matchers
+		endpointConfig.HandleError = s.options.HandleError
 		endpoints, err := NewEndpoints(endpointConfig, s.options.Endpoints...)
 		if err != nil {
 			cancel()
@@ -217,7 +233,7 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 			fetchHandler.ServeHTTP(w, r.WithContext(ctx))
 		})
 		fetchHandler = s.options.BindRequest(endpoints.Intercept(http.NotFoundHandler()))
-		fetcher := &requestFetcher{origin: pageURL, base: normalizeFetchBase(input.Manifest.Base), handler: dispatch}
+		fetcher := &requestFetcher{origin: pageURL, base: normalizeFetchBase(input.Manifest.Base), handler: dispatch, hook: s.options.HandleFetch, unavailable: prerenderFetchUnavailable(endpoints)}
 		request = request.WithContext(context.WithValue(request.Context(), requestFetcherKey{}, fetcher))
 
 	}
@@ -289,7 +305,7 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 			}
 		}
 		parent := nativeInfo(trace.SpanFromContext(r.Context()))
-		return prerenderRequestAnswer{TracingParent: &parent, Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: headers, Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
+		return prerenderRequestAnswer{ErrorHook: s.options.HandleError != nil, TracingParent: &parent, Options: &prerenderResolveOptions{Transform: entry.options.TransformPageChunk != nil, Filter: entry.options.FilterSerializedResponseHeaders != nil, Preload: entry.options.Preload != nil}, Handle: handle, Resolve: true, Headers: headers, Cookies: prerenderCookies(requestCookieJar(r, false))}, nil
 	case <-func() <-chan struct{} {
 		if entry.stream != nil {
 			return entry.stream.committed
@@ -321,6 +337,39 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 	case <-ctx.Done():
 		s.end(handle)
 		return prerenderRequestAnswer{}, ctx.Err()
+	}
+}
+
+// A build has Go endpoint dispatch but no continuation into its owning Kit
+// worker. A destination requiring that context must reject Event.Fetch, rather
+// than returning the fallback 404 and silently baking a missing-page branch.
+func prerenderFetchUnavailable(endpoints *Endpoints) func(*http.Request) error {
+	return func(request *http.Request) error {
+		pathname, ok := requestRoutingPath(request.URL)
+		if !ok {
+			return nil // The ordinary handler owns malformed-path responses.
+		}
+		kind := ""
+		if strings.HasPrefix(pathname, endpoints.appPrefix()+"remote/") {
+			kind = "remote"
+		} else {
+			path := strings.TrimPrefix(stripDataSuffix(pathname), endpoints.base)
+			if path == "" {
+				path = "/"
+			}
+			route, _, matched := endpoints.match(path)
+			if matched && route.hasPage {
+				if hasDataSuffix(pathname) {
+					kind = "data"
+				} else if kitSuffix(pathname) == "" && !route.answers(request) {
+					kind = "page"
+				}
+			}
+		}
+		if kind == "" {
+			return nil
+		}
+		return fmt.Errorf("skgo: prerender Event.Fetch cannot dispatch %s destination %s %s: Kit request context is unavailable", kind, request.Method, request.URL.Path)
 	}
 }
 func prerenderCookies(jar *cookieJar) []prerenderCookie {

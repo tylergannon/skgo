@@ -75,7 +75,7 @@ Module-level state in a Svelte file lives per runtime. Shared state belongs in G
 
 ## cmd/main.go
 
-The example's `main` reads its flags, embeds the build, serves `NewHandler` through a mux and drains in-flight requests on `SIGTERM`. The scaffolded `main` is shorter: it serves `NewHandler` with `http.ListenAndServe` and installs no signal handling.
+The example's `run` reads its flags, embeds the build, serves `NewHandler` through a mux and drains in-flight requests on `SIGTERM` or interrupt. The scaffold uses the same shutdown policy with `NewHandler` directly. Both keep application initialization and deferred cleanup in `run`; `main` reports an error and exits nonzero only after those defers finish.
 
 ```go
 /// file: cmd/main.go

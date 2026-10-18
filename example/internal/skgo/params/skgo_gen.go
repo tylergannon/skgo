@@ -228,6 +228,7 @@ func SkgoCallerRoutes() skgo.CallerRoutes {
 		"/error":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error", values) }},
 		"/error/boundary":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/boundary", values) }},
 		"/error/command":               {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/command", values) }},
+		"/error/component-boundary":    {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/component-boundary", values) }},
 		"/error/expected":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/expected", values) }},
 		"/error/redirect":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/redirect", values) }},
 		"/error/render":                {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/render", values) }},
@@ -395,6 +396,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 	case "/error":
 	case "/error/boundary":
 	case "/error/command":
+	case "/error/component-boundary":
 	case "/error/expected":
 	case "/error/redirect":
 	case "/error/render":

@@ -21,6 +21,8 @@ const NOSCRIPT = canonical('[^/]*form-noscript');
 const testDir = defineBddConfig({
 	features: 'features/**/*.feature',
 	steps: 'steps/**/*.ts',
+	// Source-edit scenarios need the isolated Go development-session fixture.
+	tags: process.env.SKGO_E2E_PENDING_EDIT ? '@dev-session' : 'not @dev-session',
 	outputDir
 });
 

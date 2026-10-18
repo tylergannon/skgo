@@ -61,6 +61,7 @@ func foreignFixtureIn(t *testing.T, root string, remote string, extra map[string
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"reflect"
 )
 
@@ -91,7 +92,18 @@ type RequestResolve[P,L any] func(context.Context,RequestEvent[P,L],...ResolveOp
 type RequestMiddleware[P,L any] func(context.Context,RequestEvent[P,L],RequestResolve[P,L])(*http.Response,error)
 type RequestHandle[P,L any] func(context.Context,RequestEvent[P,L])(RequestEvent[P,L],error)
 type ResolveOptions struct{}
-type HandleConfig struct {Matchers map[string]ParamMatcher;ClientAddress func(*http.Request)(string,error)}
+type Fetch func(*http.Request) (*http.Response, error)
+type RerouteEvent struct {URL *url.URL; Fetch Fetch}
+type Reroute func(context.Context, RerouteEvent) (*string, error)
+type HandleFetch func(context.Context, *http.Request, Fetch) (*http.Response, error)
+type CaughtError struct {Kind string; Status int; Message string; Err error}
+type HandleError func(context.Context, CaughtError) map[string]any
+type ApplicationConfig struct {
+	HandleFetch HandleFetch
+	HandleError HandleError
+	FilterSerializedResponseHeaders func(name, value string) bool
+}
+type HandleConfig struct {Matchers map[string]ParamMatcher;ClientAddress func(*http.Request)(string,error);HandleError HandleError}
 func HookValues(*Event)(string,map[string]any){return "",nil}
 func Errorf(int,string,...any)error{return nil}
 func (h RequestHandle[P,L]) Middleware() RequestMiddleware[P,L]{return nil}
@@ -177,7 +189,16 @@ type RemoteSpec struct {
 
 func NewRemote(spec RemoteSpec) *Remote { _ = spec; return &Remote{} }
 
-type PrerenderServiceOptions struct {BindRequest func(http.Handler)http.Handler; Entries []*RouteEntries; Endpoints []*Endpoint;Matchers map[string]ParamMatcher}
+type PrerenderServiceOptions struct {
+ BindRequest func(http.Handler)http.Handler
+ Entries []*RouteEntries
+ Endpoints []*Endpoint
+ Matchers map[string]ParamMatcher
+ HandleFetch HandleFetch
+ HandleError HandleError
+ FilterSerializedResponseHeaders func(name, value string) bool
+ Reroute Reroute
+}
 func RunPrerenderService(any, []*ServerLoad, []*Remote,PrerenderServiceOptions) error { return nil }
 
 func BadRequest(detail error) error { return detail }

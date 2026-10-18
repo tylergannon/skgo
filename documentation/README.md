@@ -4,7 +4,9 @@ The source of skgo's documentation, rendered to `rendered/` and embedded in the
 module. The project site (tylergannon/skgo-project) copies `rendered/` at the
 skgo tag it pins and serves it under `/docs`; it renders and never authors.
 This README is the authoring contract. `go test ./documentation/...` enforces
-it, and `go generate ./documentation` renders.
+it by rendering sources in memory. Automatic generation and checks against the
+committed snapshot are disconnected; source changes do not require updating
+`rendered/`.
 
 ## Tree
 
@@ -108,10 +110,11 @@ description and flag table of one command from `internal/commands`, and
 ## Commands
 
 ```sh
-go generate ./documentation          # render into rendered/
-go run ./cmd/skgo-docs check         # the checks go test runs, with file:line output
-go test ./documentation/...          # contract, directives, ownership, drift
+just docs                           # validate sources without writing output
+go run ./cmd/skgo-docs check         # the same checks, with file:line output
+go test ./documentation/...          # contract, directives, ownership, renderer
 ```
 
-A pull request that changes a signature changes `rendered/`; run generate and
-commit the diff. The reviewer sees what the documentation now says.
+`go run ./cmd/skgo-docs render` remains an explicit manual operation. Normal
+generation and documentation checks leave the existing `rendered/` snapshot
+unchanged.

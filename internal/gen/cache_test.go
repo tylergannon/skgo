@@ -68,10 +68,10 @@ func runCacheProcess(t *testing.T, cfg Config) cacheRunResult {
 	cfg.OnPackageLoad = nil
 	// Config's callbacks are intentionally outside the persisted consumer contract.
 	raw, err := json.Marshal(struct {
-		Web, Out, Package, LocalsPackage, LocalsType, HookPackage, HookSymbol, SwiftOut, CacheDir string
-		SwiftRemotes                                                                              []string
-		Language                                                                                  Language
-	}{cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.SwiftOut, cfg.CacheDir, cfg.SwiftRemotes, cfg.Language})
+		Web, Out, Package, LocalsPackage, LocalsType, HookPackage, HookSymbol, ConfigPackage, ConfigSymbol, SwiftOut, CacheDir string
+		SwiftRemotes                                                                                                           []string
+		Language                                                                                                               Language
+	}{cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.ConfigPackage, cfg.ConfigSymbol, cfg.SwiftOut, cfg.CacheDir, cfg.SwiftRemotes, cfg.Language})
 	if err != nil {
 		t.Fatal(err)
 	}

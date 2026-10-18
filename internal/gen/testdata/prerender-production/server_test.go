@@ -115,6 +115,53 @@ func get(handler http.Handler, path string) *httptest.ResponseRecorder {
 	return recorder
 }
 
+func TestPrerenderFetchDestinationsMatchServedCapabilities(t *testing.T) {
+	dist := buildFS(t)
+	artifact, err := fs.ReadFile(dist, "prerendered/fetch-capabilities.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := newHandler(t, dist, nil)
+	served := get(handler, "/fetch-capabilities")
+	if served.Code != 200 || served.Body.String() != string(artifact) {
+		t.Fatalf("prerender artifact was not served unchanged: %d %s", served.Code, served.Body)
+	}
+	for _, literal := range []string{
+		"<h1>Prerender fetch capability</h1>",
+		"<p>skgo: prerender Event.Fetch cannot dispatch page destination GET /fetch-target: Kit request context is unavailable</p>",
+		"<p>skgo: prerender Event.Fetch cannot dispatch data destination GET /fetch-target/__data.json: Kit request context is unavailable</p>",
+		"<p>skgo: prerender Event.Fetch cannot dispatch remote destination GET /_app/remote/18787o2/noargValue: Kit request context is unavailable</p>",
+		"<p>response:404:404 page not found</p>",
+		"<p>response:200:Go fetch: own locals 10</p>",
+	} {
+		if !strings.Contains(string(artifact), literal) {
+			t.Errorf("real build omitted %q: %s", literal, artifact)
+		}
+	}
+	for _, tc := range []struct {
+		path     string
+		literals []string
+	}{
+		{"/fetch-target", []string{"<h1>Literal fetch target 272</h1>", "<p>literal-fetch-target-data-272</p>"}},
+		{"/fetch-target/__data.json", []string{`"type":"data"`, `"receipt"`, `"literal-fetch-target-data-272"`}},
+		{"/_app/remote/18787o2/noargValue", []string{nativeResult}},
+	} {
+		response := get(handler, tc.path)
+		if response.Code != 200 {
+			t.Fatalf("live destination %s status=%d body=%s", tc.path, response.Code, response.Body)
+		}
+		for _, literal := range tc.literals {
+			if !strings.Contains(response.Body.String(), literal) {
+				t.Errorf("live destination %s lacks %q: %s", tc.path, literal, response.Body)
+			}
+		}
+	}
+	missing := get(handler, "/literal-missing-destination-272")
+	if missing.Code != 404 || !strings.Contains(missing.Body.String(), "Not Found") {
+		t.Fatalf("genuinely missing destination: %d %s", missing.Code, missing.Body)
+	}
+}
+
 func assertPEntry(t *testing.T, document, key string, required ...string) {
 	t.Helper()
 	start := strings.Index(document, "\""+key+"\":")

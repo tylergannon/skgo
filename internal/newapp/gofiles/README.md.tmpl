@@ -66,6 +66,11 @@ just build
 
 The resulting binary embeds the frontend build and serves it without Node.
 From `web/`, `vp run preview` runs `just serve` and previews that same Go binary.
+`SIGTERM` or interrupt stops new connections and drains active HTTP requests for
+up to ten seconds, then closes any remaining connections, including live-query
+streams. Put application initialization and deferred cleanup in `run` in
+`cmd/main.go`; cleanup finishes before the process exits. Keep your hosting
+platform's termination grace period longer than this timeout.
 {{if .Examples}}
 ## Go examples
 

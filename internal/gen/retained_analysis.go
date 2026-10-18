@@ -121,7 +121,7 @@ func (p *Project) cloneSnapshot(before *projectSnapshot, files map[string][]byte
 		}
 	}
 	for _, pkg := range s.graph.packages {
-		if pkg.path == p.cfg.LocalsPackage || pkg.path == p.cfg.HookPackage {
+		if pkg.path == p.cfg.LocalsPackage || pkg.path == p.cfg.HookPackage || pkg.path == p.cfg.ConfigPackage {
 			roots[pkg.dir] = true
 		}
 	}

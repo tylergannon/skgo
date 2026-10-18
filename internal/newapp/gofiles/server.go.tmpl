@@ -7,6 +7,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 
+	application "{{.Module}}/internal/app"
 	generated "{{.BindingsImport}}"
 )
 
@@ -29,9 +30,13 @@ func newHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) 
 	remoteConfig := manifest.RemoteConfig(origin)
 	loadConfig := manifest.LoadConfig(origin)
 	endpointConfig := manifest.EndpointConfig(origin)
+	remoteConfig.HandleError = application.Config.HandleError
+	loadConfig.HandleError = application.Config.HandleError
+	endpointConfig.HandleError = application.Config.HandleError
 	loadConfig.Matchers = generated.Matchers()
 	endpointConfig.Matchers = generated.Matchers()
 	handleConfig := manifest.HandleConfig()
+	handleConfig.HandleError = application.Config.HandleError
 	handleConfig.Origin = origin
 	handleConfig.Matchers = generated.Matchers()
 	var bound http.Handler
@@ -45,8 +50,10 @@ func newHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) 
 	var pages func(*skgo.Loads, *skgo.Remotes) (http.Handler, error)
 	pages = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 		renderer, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-			Fetch:   internal,
-			Actions: actions,
+			Fetch:                           internal,
+			HandleFetch:                     application.Config.HandleFetch,
+			FilterSerializedResponseHeaders: application.Config.FilterSerializedResponseHeaders,
+			Actions:                         actions,
 		})
 		if err != nil {
 			return nil, err
@@ -75,5 +82,5 @@ func newHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) 
 	handleConfig.Loads = loads
 	handleConfig.Static = skgo.ServedAsFile(pageHandler)
 	bound = generated.RequestBoundary(handleConfig, loads.Intercept(remotes.Intercept(endpoints.Intercept(pageHandler))))
-	return skgo.FetchConfig{Origin: origin, Base: manifest.Base, Handler: internal, Prerendered: manifest.Prerendered}.Intercept(bound), nil
+	return skgo.FetchConfig{HandleFetch: application.Config.HandleFetch, Origin: origin, Base: manifest.Base, Handler: internal, Prerendered: manifest.Prerendered}.Intercept(bound), nil
 }

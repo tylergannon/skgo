@@ -26,7 +26,7 @@ func TestBuildRouteEntriesBeforeRequestOwnership(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			registrations := []*RouteEntries{NewRouteEntries("src/routes/catalog/[slug]/+page.server.ts", tc.fn)}
-			handler := prerenderHandler("secret", nil, nil, nil, nil, &prerenderRequests{options: PrerenderServiceOptions{Entries: registrations}})
+			handler := prerenderHandler("secret", nil, nil, nil, nil, &prerenderRequests{ctx: t.Context(), options: PrerenderServiceOptions{Entries: registrations}})
 			request := httptest.NewRequest(http.MethodPost, "/entries", strings.NewReader(`{"module":"src/routes/catalog/[slug]/+page.server.ts"}`))
 			request.Header.Set("Authorization", "Bearer secret")
 			response := httptest.NewRecorder()

@@ -216,13 +216,14 @@ var _ = skgo.Prerender(buildReceipt, skgo.PrerenderOptions{Inputs: buildReceiptI
 		}
 		writeFixtureFile(t, filepath.Join(fixture, "web", "jsconfig.json"), `{"extends":"$app/tsconfig","compilerOptions":{"allowJs":true,"checkJs":true,"strict":true}}`)
 	}
+	installInputsErrorPolicy(t, fixture)
 	generate := exec.Command("go", "generate", "./...")
 	generate.Dir = fixture
 	generate.Env = append(fixtureBuildEnv(), "GOWORK=off", "SKGO_INPUTS_RECEIPT="+inputReceipt, "SKGO_EMPTY_INPUTS_RECEIPT="+emptyReceipt, "SKGO_MONEY_INPUTS_RECEIPT="+moneyReceipt, "SKGO_PAGE_INPUTS_RECEIPT="+pageInputsReceipt, "SKGO_ERROR_INPUTS_RECEIPT="+errorInputsReceipt, "SKGO_IDENTIFIER_RECEIPT="+identifierReceipt)
 	if output, err := timedFixtureOutput(t, "generate", generate); err != nil {
 		t.Fatalf("go generate: %v\n%s", err, output)
 	}
-	installInputsErrorPolicy(t, fixture, language)
+	installInputsRemoteImports(t, fixture, language)
 	if language == "js" {
 		var config map[string]any
 		if err := json.Unmarshal(tsconfigData, &config); err != nil {
@@ -488,34 +489,51 @@ func linkFixtureDependencyTree(source, destination, adapterPath string) error {
 	return os.Symlink(adapterPath, filepath.Join(destination, "@skgo", "sveltekit-adapter"))
 }
 
-// The native error-policy contract injects only its test policy after the
-// generator has installed the Go-owned handle. Applications cannot author it.
-func installInputsErrorPolicy(t *testing.T, fixture, extension string) {
+// Exercise the same selected Go policy applications use. Generated hook
+// modules remain Go-owned and the plugin supplies their Kit callbacks.
+func installInputsErrorPolicy(t *testing.T, fixture string) {
+	t.Helper()
+	path := filepath.Join(fixture, "internal", "skgo", "config.go")
+	source, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const selection = "--locals-package github.com/tylergannon/skgo/example/internal/app"
+	if strings.Count(string(source), selection) != 1 {
+		t.Fatal("fixture has no unique application configuration declaration")
+	}
+	writeFixtureFile(t, path, strings.Replace(string(source), selection, selection+" --config-package github.com/tylergannon/skgo/example/internal/app", 1))
+	writeFixtureFile(t, filepath.Join(fixture, "internal", "app", "error_policy.go"), `package app
+import (
+ "context"
+ "fmt"
+ "os"
+ "github.com/tylergannon/skgo"
+)
+var Config = skgo.ApplicationConfig{HandleError: func(ctx context.Context, caught skgo.CaughtError) map[string]any {
+ diagnostic:=caught.Message
+ if caught.Err!=nil {diagnostic=caught.Err.Error()}
+ file,err:=os.OpenFile(os.Getenv("SKGO_NATIVE_ERROR_RECEIPT"),os.O_CREATE|os.O_APPEND|os.O_WRONLY,0600)
+ if err!=nil {panic(err)}
+ defer file.Close()
+ if _,err:=fmt.Fprintf(file,"%s|%s\n",caught.Kind,diagnostic);err!=nil {panic(err)}
+ message:="Internal Error"
+ if caught.Kind=="app" {message="app-policy"}
+ return map[string]any{"message":message}
+}}
+`)
+}
+
+func installInputsRemoteImports(t *testing.T, fixture, extension string) {
 	t.Helper()
 	path := filepath.Join(fixture, "web", "src", "hooks.server."+extension)
 	source, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	annotation := "({ error, kind }: { error: unknown; kind: string })"
-	if extension == "js" {
-		annotation = "({ error, kind })"
-	}
 	source = append(source, []byte(`
-import { appendFileSync } from "node:fs";
 import { getDeclaredSite, moneyRemote, noArgumentRemote, appFailureRemote, unknownFailureRemote, redirectRemote } from "./routes/declared.remote";
 void [getDeclaredSite, moneyRemote, noArgumentRemote, appFailureRemote, unknownFailureRemote, redirectRemote];
-/** @param {{ error: unknown, kind: string }} input */
-export const handleError = `+annotation+` => {
- const diagnostic = error instanceof Error ? error.message : JSON.stringify(error);
- appendFileSync(process.env.SKGO_NATIVE_ERROR_RECEIPT`+func() string {
-		if extension == "ts" {
-			return "!"
-		}
-		return " ?? \"\""
-	}()+`, kind + "|" + diagnostic + "\n");
- return { message: kind === "app" ? "app-policy" : "Internal Error" };
-};
 `)...)
 	if err := os.WriteFile(path, source, 0644); err != nil {
 		t.Fatal(err)

@@ -48,6 +48,9 @@ func Check(cfg Config) error {
 	if err := validateHook(cfg); err != nil {
 		return err
 	}
+	if err := validateApplicationConfig(cfg); err != nil {
+		return err
+	}
 	if len(files) == 0 {
 		return nil
 	}

@@ -372,8 +372,8 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 				ctx = refusal.ctx
 				err = refusal.err
 			}
-			if refusal, ok := r.Context().Value(prerenderRefusalKey{}).(func(error, *hookState)); ok {
-				refusal(err, state)
+			if refusal, ok := r.Context().Value(prerenderRefusalKey{}).(func(context.Context, error, *hookState) error); ok {
+				err = refusal(ctx, err, state)
 			}
 			cfg.refuse(w, r.WithContext(ctx), ctx, state.jar, state.routeID, err, isData, isRemote, hasPage)
 			return

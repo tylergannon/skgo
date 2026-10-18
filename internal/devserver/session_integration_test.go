@@ -31,7 +31,15 @@ func TestRealSessionRequestHandoff(t *testing.T) { realSession(t, false, true, f
 
 func TestRealSessionDevelopmentLoadDiagnostics(t *testing.T) { realSession(t, false, false, true) }
 
-func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool) {
+func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool, scenario ...string) {
+	mode := ""
+	if len(scenario) > 0 {
+		mode = scenario[0]
+	}
+	routeSource := sessionRoute
+	if mode == "relocation" {
+		routeSource = mutexSessionRoute
+	}
 	if _, err := exec.LookPath("vp"); err != nil {
 		t.Fatal(err)
 	}
@@ -121,12 +129,18 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool)
 		write("web/src/env.go", "package appenv\nimport s \"github.com/tylergannon/skgo\"\ntype Config struct { Receipt string `env:\"PUBLIC_RECEIPT,public,static\"` }\nvar _ = s.Environment[Config]()\n")
 		write("locals/locals.go", "package locals\ntype Locals struct{}\n")
 		write("generated/config.go", "package generated\n//go:generate go tool skgo generate --web ../web --locals-package example.com/sessionfixture/locals --locals-type Locals\n")
-		write("web/src/routes/orders/server.go", sessionRoute("4101", 7))
+		write("web/src/routes/orders/server.go", routeSource("4101", 7))
 		if withDiagnostics {
 			for _, kind := range []string{"returned", "panic"} {
 				write("web/src/routes/"+kind+"/+page.svelte", `<script>let {data}=$props();</script><h1>DIAG_SUCCESS_243 {data.receipt}</h1>`)
 				write("web/src/routes/"+kind+"/page.server.go", diagnosticSessionLoad(kind, false))
 			}
+		}
+		if mode == "pending-browser" {
+			setupPendingBrowser(t, app, write)
+		}
+		if mode == "boundary-error" {
+			setupBoundaryError(t, write)
 		}
 		if withGenerator {
 			write("generator.json", `{"package":"./tool"}`)
@@ -180,6 +194,9 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
  return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Project-State",string(durable));w.Header().Set("X-Go-Pid",strconv.Itoa(os.Getpid()));w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);w.Header().Set("X-Environment",envValues.Receipt);w.Header().Set("X-App-Dir",manifest.AppDir);w.Header().Set("X-Trusted-Origins",strings.Join(manifest.TrustedOrigins,","));app.ServeHTTP(w,r)}),nil
 }
 `, filepath.Join(projectDir, "owner.lock"), filepath.Join(projectDir, "catalog"), label))
+		if mode == "boundary-error" {
+			configureBoundaryErrorHook(t, app)
+		}
 		if withHandoff {
 			source, err := os.ReadFile(filepath.Join(app, "server.go"))
 			if err != nil {
@@ -289,7 +306,7 @@ func waitForReadiness() error {
 				deadline := time.Now().Add(60 * time.Second)
 				for time.Now().Before(deadline) {
 					if strings.Contains(s.log.String(), "building native application host") {
-						if err := os.WriteFile(filepath.Join(app, "web/src/routes/orders/server.go"), []byte(sessionRoute("4101", 8)), 0644); err != nil {
+						if err := os.WriteFile(filepath.Join(app, "web/src/routes/orders/server.go"), []byte(routeSource("4101", 8)), 0644); err != nil {
 							s.log.Write([]byte(err.Error()))
 						}
 						return
@@ -356,6 +373,18 @@ func waitForReadiness() error {
 		exerciseColdSessionHandoff(t, alpha.app, alpha.origin, alpha.log)
 	}
 	check(alpha, "ALPHA", "literal-4101:8")
+	if mode == "relocation" {
+		exerciseSessionRelocation(t, alpha.app, alpha.origin, alpha.log)
+		return
+	}
+	if mode == "pending-browser" {
+		exercisePendingBrowser(t, alpha.app, alpha.origin, alpha.log)
+		return
+	}
+	if mode == "boundary-error" {
+		exerciseBoundaryError(t, alpha.origin, alpha.log)
+		return
+	}
 	if withHandoff {
 		exerciseSessionHandoff(t, alpha.app, alpha.origin, alpha.log)
 		return

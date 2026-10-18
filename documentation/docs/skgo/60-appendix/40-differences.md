@@ -29,20 +29,17 @@ SKGo runs SvelteKit %kit%'s own router, client and renderer, so anything not lis
 
 - **`handle`** is `var Handle params.Middleware` in `internal/serverhooks`, with Kit's `resolve` and `ResolveOptions` (`TransformPageChunk`, `FilterSerializedResponseHeaders`, `Preload`), composed with `params.Sequence`. See [Hooks](hooks).
 - **`handleFetch`** is a Go `HandleFetch` on `FetchConfig` for Go-side fetches and on `SSROptions` for render-time fetches.
-- **`handleError`** is a Go `HandleError`, set on the load, endpoint and handle configurations in `server.go`. See [Error handling](#Error-handling).
+- **`handleError`** is a Go `HandleError`, set on the load, remote, endpoint and handle configurations in `server.go`. See [Error handling](#Error-handling).
 - **`init`** has no Go equivalent; startup work goes in `cmd/main.go` before the server listens ([#168](https://github.com/tylergannon/skgo/issues/168)).
-- **`handleValidationError`** has no Go equivalent. An argument that does not decode into the Go type gets `400 Bad Request` ([#166](https://github.com/tylergannon/skgo/issues/166)).
+- **Remote argument validation** uses `HandleError` with `CaughtError.Kind == "validation"`, as in Kit %kit%. The hook receives private decoder issues and chooses the public error fields; see [Validation errors](errors#Validation-errors).
 - **`transport`** works: declare the Go types with `skgo.Transported` in `src/hooks.go` beside the encoders and decoders in `src/hooks.ts`. See [Types and transport](transport#Transport).
 - **`event.platform`** does not exist ([#170](https://github.com/tylergannon/skgo/issues/170)).
 
 ## Error handling
 
-- **Error kinds.** `CaughtError.Kind` is `"app"` for any `*skgo.HTTPError`, including the ones SKGo makes itself for a 404, and `"unknown"` for any other Go error, whose original value is in `caught.Err`. Kit's `framework` and `validation` kinds do not exist.
-- **Remote functions skip `HandleError`.** `RemoteConfig` has no error hook: an `HTTPError` is returned as is, and any other error or a panic becomes an opaque `500` ([#354](https://github.com/tylergannon/skgo/issues/354)).
+- **Error kinds.** `CaughtError.Kind` is `"app"` for any `*skgo.HTTPError`, including the ones SKGo makes itself for a 404, `"validation"` for a rejected generated remote argument, and `"unknown"` for other Go errors, whose original value is in `caught.Err`. Kit's `framework` kind is represented as `"app"`.
 - **Server routes** write their own error responses, so `HandleError` sees only a panic.
 - **The `handle` hook.** An error the hook returns reaches `HandleError` for page requests; a `__data.json` or remote request gets the JSON refusal Kit's client expects without it.
-- **Svelte boundaries.** An error a `<svelte:boundary>` catches during a production render skips `HandleError` ([#353](https://github.com/tylergannon/skgo/issues/353)).
-- **Prerendering.** `HandleError` and `HandleFetch` are not carried into the prerender ([#278](https://github.com/tylergannon/skgo/issues/278)).
 
 See [Errors](errors).
 
@@ -81,10 +78,8 @@ See [Cookies](cookies).
 
 ## Prerendering
 
-- **`entries`** must be exported from `+page.ts` or `+layout.ts`; a Go load cannot supply them ([#352](https://github.com/tylergannon/skgo/issues/352)).
 - **Errors.** A `TransformPageChunk` failure during prerendering is always terminal ([#276](https://github.com/tylergannon/skgo/issues/276)).
-- **Fetch.** During prerendering, `Event.Fetch` of an existing page or data route returns a 404 ([#272](https://github.com/tylergannon/skgo/issues/272)).
-- **Header filter.** The renderer's `FilterSerializedResponseHeaders` is not applied while prerendering ([#275](https://github.com/tylergannon/skgo/issues/275)).
+- **Fetch.** During prerendering, Go `Event.Fetch` reaches server routes. An existing page, its data route or the remote-function service returns an explicit capability error because it requires Kit's request context; fetch those destinations from a universal load.
 
 See [Prerendering](prerendering).
 
@@ -99,7 +94,7 @@ See [Prerendering](prerendering).
 ## Deployment
 
 - **Configuration.** adapter-node's environment variables are not read. The origin is compiled in by `just build` and overridden with `-origin`; the address is `-listen`. See [Deploying](deploying).
-- **Shutdown.** The generated `cmd/main.go` has no graceful shutdown and no server timeouts ([#361](https://github.com/tylergannon/skgo/issues/361)).
+- **Shutdown.** The generated `cmd/main.go` drains active HTTP requests for up to ten seconds on `SIGTERM` or interrupt, then closes remaining connections and runs application cleanup. No per-request server timeouts are configured. See [Deploying](deploying#Shutdown).
 - **Hosting.** Serverless platforms are not supported; see [Project types](project-types#Serverless-app).
 
 ## Development

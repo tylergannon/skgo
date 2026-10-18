@@ -97,7 +97,8 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 	for name, values := range input.Headers {
 		request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
 	}
-	registry, err := NewLoads(LoadConfig{Origin: pageURL.Scheme + "://" + pageURL.Host, Transport: transport}, loads...)
+	options, _ := ctx.Value(prerenderOptionsKey{}).(PrerenderServiceOptions)
+	registry, err := NewLoads(LoadConfig{Origin: pageURL.Scheme + "://" + pageURL.Host, Transport: transport, HandleError: options.HandleError}, loads...)
 	if err != nil {
 		return err
 	}
@@ -163,9 +164,16 @@ func runPrerenderLoad(ctx context.Context, in io.Reader, out io.Writer, transpor
 			answer.Body = body
 			answer.NativeError = nativeErrorFor(ctx, node.raw)
 			answer.Error = &HTTPError{Status: handled.Status, Message: handled.Message}
+		} else if options.HandleError != nil {
+			handled := registry.dataError(hookContext(request, shared), input.RouteID, node.err, node.raw)
+			answer.Body, err = json.Marshal(handled)
+			if err != nil {
+				return err
+			}
+			answer.Error = &HTTPError{Status: handled.Status, Message: handled.Message}
 		}
 		var authored *HTTPError
-		if node.raw != nil && !errors.As(node.raw, &authored) && ctx.Value(devRendererKey{}) == nil {
+		if node.raw != nil && !errors.As(node.raw, &authored) && ctx.Value(devRendererKey{}) == nil && options.HandleError == nil {
 			message := node.raw.Error()
 			answer.Failure = &message
 		}

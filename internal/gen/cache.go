@@ -96,12 +96,12 @@ func generationCachePath(cfg Config) (string, string, error) {
 	}
 	sort.Strings(env)
 	input := struct {
-		Format, Producer, GoTool, NodePath, NodeTool, Checker, ImportPrefix             string
-		Web, Out, Package, LocalsPackage, LocalsType, HookPackage, HookSymbol, SwiftOut string
-		SwiftRemotes                                                                    []string
-		Language                                                                        Language
-		Env                                                                             []string
-	}{generationCacheFormat, producer, goIdentity, nodePath, nodeIdentity, runtime.Version(), imports.LocalPrefix, cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.SwiftOut, cfg.SwiftRemotes, cfg.Language, env}
+		Format, Producer, GoTool, NodePath, NodeTool, Checker, ImportPrefix                                          string
+		Web, Out, Package, LocalsPackage, LocalsType, HookPackage, HookSymbol, ConfigPackage, ConfigSymbol, SwiftOut string
+		SwiftRemotes                                                                                                 []string
+		Language                                                                                                     Language
+		Env                                                                                                          []string
+	}{generationCacheFormat, producer, goIdentity, nodePath, nodeIdentity, runtime.Version(), imports.LocalPrefix, cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.ConfigPackage, cfg.ConfigSymbol, cfg.SwiftOut, cfg.SwiftRemotes, cfg.Language, env}
 	raw, err := json.Marshal(input)
 	if err != nil {
 		return "", "", err

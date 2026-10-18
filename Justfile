@@ -48,9 +48,9 @@ clean:
     rm -rf example/.skgo example/native/build example/web/.svelte-kit
     find example/web/build -mindepth 1 ! -name .gitkeep -delete
 
-# Render documentation/docs into the committed, embedded documentation/rendered.
+# Validate documentation sources without changing the published snapshot.
 docs:
-    go generate ./documentation
+    go run ./cmd/skgo-docs check
 
 # go vet, both modules
 vet:

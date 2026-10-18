@@ -1,15 +1,12 @@
 // Server hook: the Go side of SvelteKit's `handleError`.
 //
 // Kit's `handle_error_and_jsonify` (runtime/server/errors.js) runs the app's
-// `handleError` hook for every error that reaches a page response —
+// `handleError` hook for every error that reaches its response policy —
 // whatever kind it is, `error()` thrown on purpose or an ordinary bug — and
 // merges what the hook returns over the error's own status and message. The
-// same function was ported into the SSR bundle with the hook removed (see
-// `internal/adapter/skgo-adapter.js`'s `handle_error`), because the hook is
-// application code and application code is Go, not JavaScript. This file is
-// where Go answers that call for both page wires: a load that fails while Go
-// renders a document or while `Loads` answers a client navigation's
-// `__data.json`, and the last-resort root-layout render.
+// hook is application code and application code is Go. This file shares that
+// policy across documents, navigation data, remote-function responses and
+// errors caught during component rendering.
 package skgo
 
 import (
@@ -24,8 +21,8 @@ import (
 )
 
 // CaughtError is the safe error and private diagnostic supplied to HandleError.
-// Validation errors describe a generated remote argument schema refusal;
-// their decoder details are available only in Issues.
+// It follows Kit's discriminated CaughtError while retaining validation
+// decoder details privately in Issues.
 type CaughtError struct {
 	// Kind is "app", "unknown" or "validation".
 	Kind string
@@ -46,24 +43,21 @@ type CaughtError struct {
 
 // HandleError is skgo's mirror of kit's `handleError` hook
 // (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app
-// decides what a failed page or rejected remote argument exposes publicly.
-// Set it on RemoteConfig to customize generated schema refusals: kind
-// "validation" has safe status 400/message "Bad Request" and private Issues.
+// decides what a failed request exposes publicly, including rejected remote
+// arguments. Validation refusals have safe status 400/message "Bad Request";
+// decoder details are available only in Issues.
 //
-// It runs for errors from server loads and page rendering on document
-// responses, page actions on document responses, load failures on
-// `__data.json`, `handle` errors on document requests, and server-route
-// panics. It does not run for redirects, production remote-function errors,
-// `handle` errors on data or remote requests, or during production
-// prerendering. An already-handled built-prerender error reuses its recorded
-// App.Error body without running the hook again. An error raised on purpose
-// with Errorf still reaches the hook: Kit exempts an "app"-kind error only
-// from having its message replaced by default.
+// It runs for errors from server loads, page rendering, actions, navigation data,
+// server-route panics, remote functions, and their single-flight refreshes.
+// Remote envelopes and live-query frames carry the same public fields as page
+// errors. Redirects and already-handled errors bypass the hook. During production
+// prerendering, recorded App.Error bodies are reused without running the hook
+// again. Kit still invokes it for app-kind errors raised with Errorf.
 //
 // Returning nil keeps kit's own defaults exactly: an "app" error's message
 // survives untouched, and an "unknown" error's stays the generic "Internal
 // Error" a real one never leaks through. Returning a map adds or overrides
-// fields on the JSON object the error page and the client both see —
+// fields on the JSON object the error page or remote caller sees —
 // "status" and "message" included, if the hook chooses to replace them — the
 // same partial-override rule kit's own type comment states: "the hook
 // returns only the properties it wants to override; anything it omits ... is

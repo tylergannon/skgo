@@ -55,6 +55,7 @@ var packageFiles = []string{
 	"skgo-adapter/dev.js",
 	"skgo-adapter/entry.js",
 	"skgo-adapter/env.js",
+	"skgo-adapter/fetch-bridge.js",
 	"skgo-adapter/generated.js",
 	"skgo-adapter/identity.js",
 	"skgo-adapter/polyfill.js",
