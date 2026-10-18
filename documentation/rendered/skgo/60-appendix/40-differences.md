@@ -99,7 +99,7 @@ See [Prerendering](prerendering).
 ## Deployment
 
 - **Configuration.** adapter-node's environment variables are not read. The origin is compiled in by `just build` and overridden with `-origin`; the address is `-listen`. See [Deploying](deploying).
-- **Shutdown.** The generated `cmd/main.go` has no graceful shutdown and no server timeouts ([#361](https://github.com/tylergannon/skgo/issues/361)).
+- **Shutdown.** The generated `cmd/main.go` drains active HTTP requests for up to ten seconds on `SIGTERM` or interrupt, then closes remaining connections and runs application cleanup. No per-request server timeouts are configured. See [Deploying](deploying#Shutdown).
 - **Hosting.** Serverless platforms are not supported; see [Project types](project-types#Serverless-app).
 
 ## Development

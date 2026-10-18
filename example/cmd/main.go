@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -22,6 +23,13 @@ import (
 
 // docs: main
 func main() {
+	if err := run(); err != nil {
+		log.Printf("skgo-example: %v", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	listen := flag.String("listen", "127.0.0.1:8080", "address to listen on")
 	origin := flag.String("origin", "", "app origin used for the remote-function CSRF check; empty derives it from --listen")
 	pprofAddr := flag.String("pprof", "", "address for the net/http/pprof server; empty leaves profiling off")
@@ -33,12 +41,12 @@ func main() {
 
 	dist, err := fs.Sub(web.Build, "build")
 	if err != nil {
-		log.Fatalf("skgo-example: %v", err)
+		return err
 	}
 	// docs: mux
 	handler, err := example.NewHandler(dist, *origin)
 	if err != nil {
-		log.Fatalf("skgo-example: %v", err)
+		return err
 	}
 
 	mux := http.NewServeMux()
@@ -57,22 +65,26 @@ func main() {
 	log.Printf("skgo-example: pid %d listening on http://%s in production mode", os.Getpid(), *listen)
 	// docs: shutdown
 	srv := &http.Server{Addr: *listen, Handler: mux}
+	defer srv.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
-
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("skgo-example: %v", err)
-		}
-	}()
-
-	<-ctx.Done()
+	served := make(chan error, 1)
+	go func() { served <- srv.ListenAndServe() }()
+	select {
+	case err := <-served:
+		return err
+	case <-ctx.Done():
+	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Print(err)
+		return fmt.Errorf("shutdown: %w", err)
+	}
+	if err := <-served; err != http.ErrServerClosed {
+		return err
 	}
 	// docs: end shutdown
+	return nil
 }
 
 // docs: end main

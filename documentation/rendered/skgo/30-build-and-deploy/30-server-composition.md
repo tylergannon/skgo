@@ -316,11 +316,18 @@ Module-level state in a Svelte file lives per runtime. Shared state belongs in G
 
 ## cmd/main.go
 
-The example's `main` reads its flags, embeds the build, serves `NewHandler` through a mux and drains in-flight requests on `SIGTERM`. The scaffolded `main` is shorter: it serves `NewHandler` with `http.ListenAndServe` and installs no signal handling.
+The example's `run` reads its flags, embeds the build, serves `NewHandler` through a mux and drains in-flight requests on `SIGTERM` or interrupt. The scaffold uses the same shutdown policy with `NewHandler` directly. Both keep application initialization and deferred cleanup in `run`; `main` reports an error and exits nonzero only after those defers finish.
 
 ```go
 /// file: cmd/main.go
 func main() {
+	if err := run(); err != nil {
+		log.Printf("skgo-example: %v", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	listen := flag.String("listen", "127.0.0.1:8080", "address to listen on")
 	origin := flag.String("origin", "", "app origin used for the remote-function CSRF check; empty derives it from --listen")
 	pprofAddr := flag.String("pprof", "", "address for the net/http/pprof server; empty leaves profiling off")
@@ -332,11 +339,11 @@ func main() {
 
 	dist, err := fs.Sub(web.Build, "build")
 	if err != nil {
-		log.Fatalf("skgo-example: %v", err)
+		return err
 	}
 	handler, err := example.NewHandler(dist, *origin)
 	if err != nil {
-		log.Fatalf("skgo-example: %v", err)
+		return err
 	}
 
 	mux := http.NewServeMux()
@@ -351,21 +358,25 @@ func main() {
 
 	log.Printf("skgo-example: pid %d listening on http://%s in production mode", os.Getpid(), *listen)
 	srv := &http.Server{Addr: *listen, Handler: mux}
+	defer srv.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
-
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("skgo-example: %v", err)
-		}
-	}()
-
-	<-ctx.Done()
+	served := make(chan error, 1)
+	go func() { served <- srv.ListenAndServe() }()
+	select {
+	case err := <-served:
+		return err
+	case <-ctx.Done():
+	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Print(err)
+		return fmt.Errorf("shutdown: %w", err)
 	}
+	if err := <-served; err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 ```
 
@@ -379,7 +390,7 @@ In the scaffold, `origin` is a package variable set by `-ldflags "-X main.origin
 /// file: cmd/main.go
 handler, err := example.NewHandler(dist, *origin)
 if err != nil {
-	log.Fatalf("skgo-example: %v", err)
+	return err
 }
 
 mux := http.NewServeMux()

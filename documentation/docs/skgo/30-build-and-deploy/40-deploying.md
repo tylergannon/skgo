@@ -101,14 +101,16 @@ ENTRYPOINT ["/myapp", "-listen", "0.0.0.0:8080"]
 
 ## Shutdown
 
-The scaffolded `main` installs no signal handler, so `SIGTERM` ends the process with requests in flight. To drain them, serve through an `http.Server` and wait for `Shutdown` before `main` returns, as the example's `main` does:
+The scaffold and example handle `SIGTERM` and interrupt by closing the listener and draining active HTTP requests for up to ten seconds. They wait for `Shutdown` before returning from `run`:
 
 ```go
 /// file: cmd/main.go
 /// include: example/cmd/main.go#shutdown
 ```
 
-`Shutdown` returns once every request has finished or the deadline passes. Keep the deadline inside your platform's kill timeout.
+At the deadline, the deferred `Server.Close` closes remaining connections, including unfinished live-query streams and responses with pending deferred values. A timeout is logged and the process exits with a nonzero status. Hijacked connections, such as WebSockets, require application-owned shutdown because `http.Server` does not track them. Keep the deadline inside your platform's kill timeout.
+
+Put application initialization and deferred cleanup in `run`, alongside server setup. Its defers run after requests drain or remaining connections close, before `main` logs any error and exits. For example, defer your OpenTelemetry provider's shutdown there so it can flush the final request spans.
 
 ## Version skew
 

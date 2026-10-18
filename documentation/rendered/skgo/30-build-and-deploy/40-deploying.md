@@ -104,29 +104,34 @@ ENTRYPOINT ["/myapp", "-listen", "0.0.0.0:8080"]
 
 ## Shutdown
 
-The scaffolded `main` installs no signal handler, so `SIGTERM` ends the process with requests in flight. To drain them, serve through an `http.Server` and wait for `Shutdown` before `main` returns, as the example's `main` does:
+The scaffold and example handle `SIGTERM` and interrupt by closing the listener and draining active HTTP requests for up to ten seconds. They wait for `Shutdown` before returning from `run`:
 
 ```go
 /// file: cmd/main.go
 srv := &http.Server{Addr: *listen, Handler: mux}
+defer srv.Close()
 ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 defer stop()
-
-go func() {
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("skgo-example: %v", err)
-	}
-}()
-
-<-ctx.Done()
+served := make(chan error, 1)
+go func() { served <- srv.ListenAndServe() }()
+select {
+case err := <-served:
+	return err
+case <-ctx.Done():
+}
 shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 defer cancel()
 if err := srv.Shutdown(shutdownCtx); err != nil {
-	log.Print(err)
+	return fmt.Errorf("shutdown: %w", err)
+}
+if err := <-served; err != http.ErrServerClosed {
+	return err
 }
 ```
 
-`Shutdown` returns once every request has finished or the deadline passes. Keep the deadline inside your platform's kill timeout.
+At the deadline, the deferred `Server.Close` closes remaining connections, including unfinished live-query streams and responses with pending deferred values. A timeout is logged and the process exits with a nonzero status. Hijacked connections, such as WebSockets, require application-owned shutdown because `http.Server` does not track them. Keep the deadline inside your platform's kill timeout.
+
+Put application initialization and deferred cleanup in `run`, alongside server setup. Its defers run after requests drain or remaining connections close, before `main` logs any error and exits. For example, defer your OpenTelemetry provider's shutdown there so it can flush the final request spans.
 
 ## Version skew
 

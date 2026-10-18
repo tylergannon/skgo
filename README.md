@@ -538,6 +538,13 @@ remote calls. If the origin changes, rebuild. Behind a reverse proxy the listen
 address can differ from the origin. Put your usual TLS proxy or load balancer in
 front.
 
+Generated servers handle `SIGTERM` and interrupt by closing the listener and
+draining active HTTP requests for up to ten seconds. At the deadline, remaining
+connections close, including unfinished live-query or deferred-response streams.
+Put application initialization and deferred cleanup, such as flushing a tracing
+provider, in `run`; its defers finish before `main` reports an error and exits.
+Keep your platform's termination grace period longer than the shutdown timeout.
+
 ## Example app
 
 | Route | Shows |
