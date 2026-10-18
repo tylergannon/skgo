@@ -151,7 +151,7 @@ func (q RequestedQuery[In]) Ignore()
 
 Ignore explicitly declines this instance. Its current client-side value is left alone, and the instance's key is returned in Kit's `i` response field so the client knows the handler handled the request deliberately.
 
-Kit 3.0.0-next.27 made this distinction load-bearing: a requested key that is neither refreshed, reconnected nor ignored makes the mutation fail.
+An unhandled key fails its query instance on the client with status 400; the command or form itself still succeeds.
 
 ### Refresh
 
@@ -249,7 +249,7 @@ There is no RequestedNoArg beside this. Requested exists so a handler can pick b
 func IgnoreRequested[In, Out any](ctx context.Context, fn func(context.Context, In) (Out, error), limit int) error
 ```
 
-IgnoreRequested explicitly declines up to limit of the instances of fn the client asked this command or form to refresh. Kit returns those keys in `i`, leaving their current client-side values untouched. A requested key that is neither accepted nor ignored makes Kit 3.0.0-next.27 reject the mutation.
+IgnoreRequested explicitly declines up to limit of the instances of fn the client asked this command or form to refresh. Kit returns those keys in `i`, leaving their current client-side values untouched. An unhandled key fails its query instance on the client with status 400; the command or form itself still succeeds.
 
 ## IgnoreRequestedNoArg
 
@@ -519,7 +519,7 @@ type RemoteConfig struct {
 }
 ```
 
-RemoteConfig describes the app the registry is serving. Everything but Origin comes straight from the built manifest.
+RemoteConfig describes the app the registry is serving. Manifest.RemoteConfig fills Development, AppDir, Base, Version, Remotes and Routes. The caller supplies Origin, Transport and OnPanic.
 
 ## RemoteSpec
 

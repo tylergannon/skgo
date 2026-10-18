@@ -173,7 +173,7 @@ type refreshSet struct {
 	// any of its payloads becomes an entry below.
 	requested map[string][]string
 	// ignored is the ordered set of client-requested keys the handler
-	// explicitly declined. Kit 3.0.0-next.27 returns these as `i`, allowing
+	// explicitly declined. Kit returns these as `i`, allowing
 	// the client to distinguish a deliberate stale value from a refresh the
 	// handler forgot to handle.
 	ignored     []any

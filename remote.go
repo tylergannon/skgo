@@ -412,11 +412,9 @@ func BatchQuery(fn any) Marker { _ = fn; return Marker{} }
 // schema is the strict decoder polytype generated from the Go parameter type,
 // so this is the same refusal at the same moment.
 //
-// What the client is told is kit's opaque "Bad Request". The decoder's own
-// diagnostic — which names a JSON-pointer path into the argument — is kept on
-// the error for the server's logs and never put on the wire, because it
-// describes the shape the server expected and an unauthenticated caller has
-// not earned that.
+// The client receives Kit's opaque "Bad Request". The decoder's diagnostic,
+// which names a JSON-pointer path into the argument, remains available through
+// `Error()` on the returned error; SKGo does not send it to the client or log it.
 func BadRequest(detail error) error { return badRequest{detail: detail} }
 
 type badRequest struct{ detail error }
@@ -469,8 +467,9 @@ func DecodeForm(arg any, into any) error {
 	return nil
 }
 
-// RemoteConfig describes the app the registry is serving. Everything but
-// Origin comes straight from the built manifest.
+// RemoteConfig describes the app the registry is serving. Manifest.RemoteConfig
+// fills Development, AppDir, Base, Version, Remotes and Routes. The caller
+// supplies Origin, Transport and OnPanic.
 type RemoteConfig struct {
 	// Development mirrors Kit's development dispatch for prerender remotes.
 	// Production registries serve only their recorded static artifacts.

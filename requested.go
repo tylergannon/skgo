@@ -8,10 +8,10 @@
 // in exactly one place — `requested(fn, limit)` in
 // `runtime/app/server/remote/requested.js` — which a command or form handler
 // has to call, naming the query it is willing to run and how many instances of
-// it. A handler that says nothing refreshes nothing. Since Kit
-// 3.0.0-next.27 it must also explicitly ignore anything it deliberately leaves
-// stale; the client rejects a mutation response with requested keys left
-// unhandled.
+// it. A handler that says nothing refreshes nothing. It must also explicitly
+// ignore anything it deliberately leaves stale; an unhandled key fails its
+// query instance on the client with status 400, while the command or form
+// itself succeeds.
 //
 // That gate is the whole point, and kit's own documentation says why: the list
 // is in the network tab. Without a gate, a visitor who has seen the app once
@@ -71,8 +71,8 @@ func (q RequestedQuery[In]) Refresh() { q.register() }
 // left alone, and the instance's key is returned in Kit's `i` response field
 // so the client knows the handler handled the request deliberately.
 //
-// Kit 3.0.0-next.27 made this distinction load-bearing: a requested key that
-// is neither refreshed, reconnected nor ignored makes the mutation fail.
+// An unhandled key fails its query instance on the client with status 400; the
+// command or form itself still succeeds.
 func (q RequestedQuery[In]) Ignore() {
 	if q.set == nil {
 		return
@@ -145,8 +145,9 @@ func RefreshRequested[In, Out any](ctx context.Context, fn func(context.Context,
 
 // IgnoreRequested explicitly declines up to limit of the instances of fn the
 // client asked this command or form to refresh. Kit returns those keys in `i`,
-// leaving their current client-side values untouched. A requested key that is
-// neither accepted nor ignored makes Kit 3.0.0-next.27 reject the mutation.
+// leaving their current client-side values untouched. An unhandled key fails
+// its query instance on the client with status 400; the command or form itself
+// still succeeds.
 func IgnoreRequested[In, Out any](ctx context.Context, fn func(context.Context, In) (Out, error), limit int) error {
 	requests, err := requestedInstances[In](ctx, fn, limit, KindQuery, "IgnoreRequested", "refresh")
 	if err != nil {

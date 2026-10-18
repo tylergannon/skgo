@@ -51,7 +51,7 @@ type Transporter struct {
 // the same object skgo is mirroring here —
 //
 //	export const transport = {
-//		Money: { encode: (v) => v instanceof Money && [v.cents], decode: ([cents]) => new Money(cents) }
+//		Money: { encode: (v) => v instanceof Money && { cents: v.cents }, decode: (data) => new Money(data.cents) }
 //	};
 //
 // — so a key skgo serializes under and a key `src/hooks.ts` declares must be
@@ -249,6 +249,7 @@ func (rs *Remotes) parsePayload(payload string) (Call, error) {
 
 // Transported declares that T crosses the wire as a custom type under key, and
 // is skgo's mirror of one entry of kit's `transport` hook.
+// The encoded object shape is the polytype projection of T's JSON fields.
 //
 // It goes in `src/hooks.go`, beside the `src/hooks.ts` that holds the browser
 // half, because kit's transport is a universal hook and both halves are one
@@ -260,8 +261,8 @@ func (rs *Remotes) parsePayload(payload string) (Call, error) {
 //	// src/hooks.ts
 //	export const transport = {
 //		Money: {
-//			encode: (v) => v instanceof Money && [v.cents],
-//			decode: ([cents]) => new Money(cents)
+//			encode: (v) => v instanceof Money && { cents: v.cents },
+//			decode: (data) => new Money(data.cents)
 //		}
 //	};
 //

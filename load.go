@@ -83,8 +83,9 @@ func NewServerLoad(spec LoadSpec) *ServerLoad {
 	return &ServerLoad{module: spec.Module, run: spec.Run, matchers: spec.Matchers}
 }
 
-// LoadConfig describes the app whose loads a registry answers. Everything but
-// Origin comes from the built manifest.
+// LoadConfig describes the app whose loads a registry answers. Manifest.LoadConfig
+// fills AppDir, Base, Version, TrustedOrigins, Nodes, LoadModules, Prerendered
+// and Routes. The caller supplies Origin, Transport, HandleError and Matchers.
 type LoadConfig struct {
 	// AppDir is kit's appDir; empty means "_app".
 	AppDir string

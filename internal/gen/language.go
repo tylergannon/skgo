@@ -18,7 +18,8 @@ type Language string
 
 const (
 	// LanguageAuto asks Run to choose from the app itself. A jsconfig.json
-	// beside the frontend means JavaScript; anything else is TypeScript.
+	// with no tsconfig.json beside it means JavaScript; anything else is
+	// TypeScript.
 	LanguageAuto Language = ""
 	// LanguageTypeScript emits `.ts` modules, the original and default output.
 	LanguageTypeScript Language = "ts"

@@ -22,8 +22,8 @@ type Schema struct {
 	Static map[string]any `json:"static,omitempty"`
 }
 
-// Kit next.28 generates const exports, so its reserved words are forbidden.
-// __proto__ is also excluded because declarations use JavaScript object keys.
+// Environment names must be JavaScript identifiers and not reserved words,
+// eval, arguments or __proto__, because Kit exports each variable as a const.
 var reservedNames = " __proto__ do if in for let new try var case else enum eval null this true void with await break catch class const false super throw while yield delete export import public return static switch typeof default extends finally package private continue debugger function arguments interface protected implements instanceof "
 
 var namePattern = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)

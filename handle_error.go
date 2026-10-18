@@ -52,12 +52,15 @@ type CaughtError struct {
 // (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app
 // decides what a failed page's visitor is told, beyond status and message.
 //
-// It runs for every error that reaches a page response except a redirect,
-// which is not a failure and never reaches it, and an already-handled
-// built-prerender error whose recorded App.Error body is reused without
-// running the hook again. That includes an error the app raised on purpose
-// with Errorf: kit's own type never exempts an "app"-kind error from the
-// hook, only from having its message replaced by default.
+// It runs for errors from server loads and page rendering on document
+// responses, page actions on document responses, load failures on
+// `__data.json`, `handle` errors on document requests, and server-route
+// panics. It does not run for redirects, production remote-function errors,
+// `handle` errors on data or remote requests, or during production
+// prerendering. An already-handled built-prerender error reuses its recorded
+// App.Error body without running the hook again. An error raised on purpose
+// with Errorf still reaches the hook: Kit exempts an "app"-kind error only
+// from having its message replaced by default.
 //
 // Returning nil keeps kit's own defaults exactly: an "app" error's message
 // survives untouched, and an "unknown" error's stays the generic "Internal
@@ -72,8 +75,8 @@ type CaughtError struct {
 //
 // The hook must never panic — kit's own doc comment says so too. One that
 // does is logged and treated as returning nothing, except that the message
-// is forced back to the fallback's default even for an "app" error: kit's
-// own catch does the same (`log_handle_error_hook_failure`), because a hook
+// becomes "Internal Error" even for an "app" error: Kit's own catch does the
+// same (`log_handle_error_hook_failure`), because a hook
 // that failed to run is not a hook whose omissions can be trusted.
 type HandleError func(ctx context.Context, caught CaughtError) map[string]any
 

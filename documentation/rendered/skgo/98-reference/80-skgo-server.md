@@ -483,7 +483,7 @@ The keys are the wire, not a Go detail. Kit's client builds its decoders from th
 
 ```go
 export const transport = {
-	Money: { encode: (v) => v instanceof Money && [v.cents], decode: ([cents]) => new Money(cents) }
+	Money: { encode: (v) => v instanceof Money && { cents: v.cents }, decode: (data) => new Money(data.cents) }
 };
 ```
 
@@ -535,7 +535,7 @@ Type is not decoration. skgo has to know, before it serializes anything, which G
 func Transported[T any](key string) Marker
 ```
 
-Transported declares that T crosses the wire as a custom type under key, and is skgo's mirror of one entry of kit's `transport` hook.
+Transported declares that T crosses the wire as a custom type under key, and is skgo's mirror of one entry of kit's `transport` hook. The encoded object shape is the polytype projection of T's JSON fields.
 
 It goes in `src/hooks.go`, beside the `src/hooks.ts` that holds the browser half, because kit's transport is a universal hook and both halves are one declaration:
 
@@ -546,8 +546,8 @@ var _ = skgo.Transported[businesslogic.Money]("Money")
 // src/hooks.ts
 export const transport = {
 	Money: {
-		encode: (v) => v instanceof Money && [v.cents],
-		decode: ([cents]) => new Money(cents)
+		encode: (v) => v instanceof Money && { cents: v.cents },
+		decode: (data) => new Money(data.cents)
 	}
 };
 ```

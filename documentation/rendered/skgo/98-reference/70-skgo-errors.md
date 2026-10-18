@@ -46,7 +46,7 @@ BadRequest turns a generated decoder's refusal into the answer kit gives.
 
 Kit's `create_validator` answers 400 to an argument its schema rejects, and to any argument at all when the function was declared without one. skgo's schema is the strict decoder polytype generated from the Go parameter type, so this is the same refusal at the same moment.
 
-What the client is told is kit's opaque "Bad Request". The decoder's own diagnostic — which names a JSON-pointer path into the argument — is kept on the error for the server's logs and never put on the wire, because it describes the shape the server expected and an unauthenticated caller has not earned that.
+The client receives Kit's opaque "Bad Request". The decoder's diagnostic, which names a JSON-pointer path into the argument, remains available through `Error()` on the returned error; SKGo does not send it to the client or log it.
 
 ## Invalid
 
