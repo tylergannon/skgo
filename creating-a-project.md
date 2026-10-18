@@ -42,17 +42,7 @@ skgo new my-app -- --template demo --types jsdoc --add tailwindcss=plugins:none
 
 Two kinds of answer are refused, because the result would not be an application Go can serve. `sv`'s `library` and `addon` templates are packages, not applications. Add-ons that write JavaScript server code, such as a `hooks.server.ts`, a `+server.ts` or `src/lib/server`, are reported by file name, and you create the project again without them. `--install` and `--no-install` are not available: VitePlus installs the project.
 
-After `sv` has written the frontend, SKGo adds what every SKGo application has. `sv add` applies Vitest, unless you chose it, and the `@skgo/sv` integration, which sets `@skgo/sveltekit-adapter` as the adapter and turns on remote functions. Storybook is installed unless you chose it. Kit is pinned to the version this release was built with, and the project-local patch to its prerender queue is configured ([`skgo kit-patch`](/docs/cli/kit-patch) explains why). Then `vp install` installs the dependencies, the Go files are written, `go generate ./...` produces the bindings, `go mod tidy` settles the module, `vp check --fix` formats the frontend, and `vp build` makes the first frontend build. When it finishes, `skgo new` prints what to do next:
-
-```sh
-skgo: created the minimal project in my-app. Now:
-
-	cd my-app
-	just install
-	just serve
-
-Then open http://127.0.0.1:8080. Run `just storybook` for Storybook and `just test` for Vitest.
-```
+After `sv` has written the frontend, SKGo adds what every SKGo application has. `sv add` applies Vitest, unless you chose it, and the `@skgo/sv` integration, which sets `@skgo/sveltekit-adapter` as the adapter and turns on remote functions. Storybook is installed unless you chose it. Kit is pinned to the version this release was built with, and the project-local patch to its prerender queue is configured ([`skgo kit-patch`](/docs/cli/kit-patch) explains why). Then `vp install` installs the dependencies, the Go files are written, `go generate ./...` produces the bindings, `go mod tidy` settles the module, `vp check --fix` formats the frontend, and `vp build` makes the first frontend build. When it finishes, `skgo new` names the next steps: `cd my-app`, `just install` and `just serve`, then open the origin, `http://127.0.0.1:8080` by default.
 
 If you chose `sv`'s `demo` template, the starter is `examples` instead of `minimal`: `sv`'s demo server routes are replaced by a Go query and command in `web/src/routes/example.remote.go`, and the home page calls them.
 

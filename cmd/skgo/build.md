@@ -10,10 +10,5 @@ Generates and builds the frontend only when its inputs changed. The Justfile's `
 
 ## Usage
 
-`skgo build --help` prints:
-
-```text
-Usage of build:
-  -root string
-    	application root (default ".")
+```text skgo build -h
 ```

@@ -63,20 +63,9 @@ Locations name the files you wrote, never the generated route links under the bi
 
 ## skgo advice --json
 
-[`skgo advice`](/docs/cli/advice) prints an array of entries: all eight, or the one named by a code argument, as in `skgo advice --json SKGO002`.
+[`skgo advice`](/docs/cli/advice) prints an array of entries: all eight, or the one named by a code argument:
 
-```json
-[
-  {
-    "code": "SKGO002",
-    "title": "Page input in a query",
-    "version": "v…",
-    "kitVersion": "…",
-    "consequence": "Kit keys the query cache by its arguments, not the current page URL or route.",
-    "repair": "Pass the page value as a typed query argument from the caller.",
-    "example": "func article(ctx context.Context, slug string) (string, error) { return slug, nil }\nvar _ = skgo.Query(article) // the page calls article(page.params.slug)"
-  }
-]
+```text skgo advice --json SKGO002
 ```
 
 `version` is the SKGo version of the running binary, `(devel)` for a build without one, and `kitVersion` is the Kit release that binary mirrors. `example` is a Go fragment that shows valid usage; it is not an edit to apply.
@@ -85,18 +74,7 @@ Locations name the files you wrote, never the generated route links under the bi
 
 [`skgo buildinfo`](/docs/cli/buildinfo) identifies the running binary:
 
-```json
-{
-  "executable": "/Users/you/go/bin/skgo",
-  "skgoVersion": "v…",
-  "build": {
-    "GoVersion": "go…",
-    "Path": "github.com/tylergannon/skgo/cmd/skgo",
-    "Main": { "Path": "github.com/tylergannon/skgo", "Version": "v…", "Sum": "h1:…" },
-    "Deps": [{ "Path": "github.com/tylergannon/polytype", "Version": "…", "Sum": "h1:…" }],
-    "Settings": [{ "Key": "GOOS", "Value": "darwin" }]
-  }
-}
+```text skgo buildinfo --json
 ```
 
 `executable` is the resolved path of the binary that answered, which for `go tool skgo` is a file in Go's build cache. `build` is Go's [`debug.BuildInfo`](https://pkg.go.dev/runtime/debug#BuildInfo), encoded with its Go field names.

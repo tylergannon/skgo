@@ -29,43 +29,12 @@ buildinfo` says which binary is answering.
 
 ## Commands
 
-`skgo --help` lists every command, followed by the templates and add-ons this
+`skgo -h` lists every command, followed by the templates and add-ons this
 binary knows:
 
-```text
-usage:
-	skgo new [flags] DIR [-- SV_CREATE_OPTIONS]
-		create a SvelteKit application served by Go
-	skgo plugin install MODULE[@QUERY] | remove MODULE
-		install or remove trusted plugin source for this executable
-	skgo add [flags] ADDON
-		apply a reusable application change
-	skgo update [flags]
-		align CLI and application toolchain
-	skgo native build [flags]
-		build the macOS or iOS application
-	skgo build [flags]
-		incrementally generate and build the frontend
-	skgo buildinfo [flags]
-		identify this executing CLI and its Go build
-	skgo dev [flags]
-		develop with Go and Vite
-	skgo generate [flags]
-		generate the glue between the Go server and the SvelteKit app
-	skgo check [flags]
-		check Go, Svelte, lint and formatting without edits
-	skgo kit-patch [flags] (--apply | --check)
-		configure or verify Kit's declared-Inputs queue correction
-	skgo advice [flags] [SKGO001..SKGO008]
-		show installed rule guidance and repair examples
-	skgo env [flags]
-		resolve declared environment variables from JSON on stdin
-	skgo mcp
-		serve check and advice tools over stdio MCP
-
-Run skgo COMMAND --help for the command's flags.
+```text skgo -h
 ```
 
-Every command accepts `--help` and prints its flags. The pages in this
+Every command except `skgo mcp` accepts `--help` and prints its flags. The pages in this
 section show that output for each command; the binary you run is the
 authority for its own version.

@@ -10,18 +10,5 @@ Run it after installing a newer `skgo`. It moves the application's module, adapt
 
 ## Usage
 
-`skgo update --help` prints:
-
-```text
-Usage of update:
-  -complete-version string
-    	internal completion phase: must match this executable
-  -native-platform string
-    	native build target when native configuration exists: macos, iphone or simulator (default "macos")
-  -native-preset string
-    	native build preset from the application configuration
-  -root string
-    	application root; otherwise locate the current application
-  -vp string
-    	global vp executable; defaults to PATH
+```text skgo update -h
 ```

@@ -10,19 +10,5 @@ SKGo corrects Kit's post-build prerender queue with a project-local pnpm patch. 
 
 ## Usage
 
-`skgo kit-patch --help` prints:
-
-```text
-usage: go tool skgo kit-patch [--web web] [--workspace web] (--apply | --check)
-
---workspace, when supplied, must equal --web. Parent workspace mutation is refused.
---apply configures files only; run the frontend's VitePlus install, then use --check.
-  -apply
-    	pin the supported Kit release and configure the project-local pnpm patch (does not install)
-  -check
-    	verify configured files and actual installed Kit queue bytes
-  -web string
-    	selected frontend root containing package.json (default "web")
-  -workspace string
-    	assert the selected frontend is this root; parent workspaces are never modified
+```text skgo kit-patch -h
 ```

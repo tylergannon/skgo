@@ -10,12 +10,5 @@ Plugins contribute templates to `skgo new` and add-ons to `skgo add`. They are b
 
 ## Usage
 
-`skgo plugin --help` prints:
-
-```text
-usage: skgo plugin install MODULE[@QUERY]
-       skgo plugin remove MODULE
-
-Install trusted Git source for this executable. Requires Git, Go and cgo. Source generation and plugin initialization execute code.
-Removal affects only this host's managed selection.
+```text skgo plugin -h
 ```

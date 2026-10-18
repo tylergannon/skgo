@@ -10,10 +10,5 @@ Each rule `skgo check` and `go vet` enforce has a code, a consequence, a repair 
 
 ## Usage
 
-`skgo advice --help` prints:
-
-```text
-Usage of advice:
-  -json
-    	write structured JSON guidance
+```text skgo advice -h
 ```

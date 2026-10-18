@@ -10,10 +10,5 @@ Takes the generated environment declaration and a JSON object of raw values on s
 
 ## Usage
 
-`skgo env --help` prints:
-
-```text
-Usage of env:
-  -schema string
-    	generated environment declaration (default "skgo.env.json")
+```text skgo env -h
 ```
