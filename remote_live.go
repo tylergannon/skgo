@@ -27,10 +27,8 @@ type liveRedirectFrame struct {
 }
 
 type liveErrorFrame struct {
-
 	Type  string     `json:"type"`
 	Error *ssr.Error `json:"error"`
-
 }
 
 // serveLive answers a `query.live` call with an SSE stream. The producer runs

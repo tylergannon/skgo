@@ -1,0 +1,12 @@
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership/catalog
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership/empty
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership/failure
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership/panic
+--- PASS: TestBuildRouteEntriesBeforeRequestOwnership (0.00s)
+    --- PASS: TestBuildRouteEntriesBeforeRequestOwnership/catalog (0.00s)
+    --- PASS: TestBuildRouteEntriesBeforeRequestOwnership/empty (0.00s)
+    --- PASS: TestBuildRouteEntriesBeforeRequestOwnership/failure (0.00s)
+    --- PASS: TestBuildRouteEntriesBeforeRequestOwnership/panic (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo	0.225s

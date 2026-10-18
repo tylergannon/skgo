@@ -1,0 +1,51 @@
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership/catalog
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership/empty
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership/failure
+=== RUN   TestBuildRouteEntriesBeforeRequestOwnership/panic
+--- PASS: TestBuildRouteEntriesBeforeRequestOwnership (0.00s)
+    --- PASS: TestBuildRouteEntriesBeforeRequestOwnership/catalog (0.00s)
+    --- PASS: TestBuildRouteEntriesBeforeRequestOwnership/empty (0.00s)
+    --- PASS: TestBuildRouteEntriesBeforeRequestOwnership/failure (0.00s)
+    --- PASS: TestBuildRouteEntriesBeforeRequestOwnership/panic (0.00s)
+=== RUN   TestRemoteSchemaValidationDefaultsAndClassification
+=== RUN   TestRemoteSchemaValidationDefaultsAndClassification/absent
+=== RUN   TestRemoteSchemaValidationDefaultsAndClassification/nil
+=== RUN   TestRemoteSchemaValidationDefaultsAndClassification/partial
+=== RUN   TestRemoteSchemaValidationDefaultsAndClassification/panic
+2026/10/18 13:43:21 skgo: route : skgo: the handleError hook panicked: private hook panic
+goroutine 49 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.runHandleError.func1()
+	/Users/tyler/.codex/worktrees/e413/skgo/handle_error.go:128 +0x48
+panic({0x1055a8c10?, 0x1054765f0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestRemoteSchemaValidationDefaultsAndClassification.func3({0x2da6abe166e8?, 0x104ab49bc?}, {{0x10, 0x10551ec40}, 0x1055074c8, {0x2da6abfe4d60, 0x1054a6ee0}, {0xf, 0x104c5f68a}, {0xa, ...}})
+	/Users/tyler/.codex/worktrees/e413/skgo/remote_validation_test.go:93 +0x2c
+github.com/tylergannon/skgo.runHandleError({0x10567eeb8?, 0x2da6abfecab0?}, {0x0?, 0x2da6abe94430?}, 0x2da6abe167a8?, {{0x104c5f68a, 0xa}, 0x190, {0x104c607ab, 0xb}, ...}, ...)
+	/Users/tyler/.codex/worktrees/e413/skgo/handle_error.go:141 +0x94
+github.com/tylergannon/skgo.handleErrorAndJSONify({0x10567eeb8, 0x2da6abfecab0}, {0x0, 0x0}, 0x10568a290, 0x2da6abeb0a50, {0x105676a10, 0x2da6abfe4d30}, 0x0)
+	/Users/tyler/.codex/worktrees/e413/skgo/handle_error.go:112 +0x1f4
+github.com/tylergannon/skgo.(*Remotes).callError(0x2da6abf35680, {0x10567eeb8, 0x2da6abfec9f0}, {0x105676a10, 0x2da6abfe4d30})
+	/Users/tyler/.codex/worktrees/e413/skgo/remote.go:1083 +0x164
+github.com/tylergannon/skgo.(*Remotes).writeCallError(0x2da6abf35680, {0x10567c848, 0x2da6abfec8d0}, {0x10567eeb8, 0x2da6abfec9f0}, {0x105676a10, 0x2da6abfe4d30})
+	/Users/tyler/.codex/worktrees/e413/skgo/remote.go:1090 +0x14c
+github.com/tylergannon/skgo.(*Remotes).serveQuery(0x2da6abf35680, {0x10567c848, 0x2da6abfec8d0}, 0x2da6abff0500, 0x2da6abf499e0)
+	/Users/tyler/.codex/worktrees/e413/skgo/remote.go:846 +0x274
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x2da6abf35680, {0x10567c728, 0x2da6abfde680}, 0x2da6abff03c0)
+	/Users/tyler/.codex/worktrees/e413/skgo/remote.go:771 +0xad4
+github.com/tylergannon/skgo.TestRemoteSchemaValidationDefaultsAndClassification.func4(0x2da6abfe8488)
+	/Users/tyler/.codex/worktrees/e413/skgo/remote_validation_test.go:101 +0x1e8
+testing.tRunner(0x2da6abfe8488, 0x2da6abfec720)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 45
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+--- PASS: TestRemoteSchemaValidationDefaultsAndClassification (0.00s)
+    --- PASS: TestRemoteSchemaValidationDefaultsAndClassification/absent (0.00s)
+    --- PASS: TestRemoteSchemaValidationDefaultsAndClassification/nil (0.00s)
+    --- PASS: TestRemoteSchemaValidationDefaultsAndClassification/partial (0.00s)
+    --- PASS: TestRemoteSchemaValidationDefaultsAndClassification/panic (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo	0.318s
+exit=0

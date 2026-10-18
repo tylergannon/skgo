@@ -1,6 +1,7 @@
 # Reliability fixes
 
 - decision: The user requires one shared feature branch, ordered issue groups, independent token-cache annotation before implementation, and Claude Opus validation constrained to issue goals, load-bearing proof and reproducible introduced bugs. Avoid redundant full CI and new proof machinery.
+- correction: Rebasing shared application configuration across main's Entries/Reroute/validation hooks must preserve policy branches moved out of server.go. The first composition omitted the catalog validation policy; independent documentation reconciliation caught it before final validation. Regenerate route metadata after combining generator changes, and preserve same-named prior test captures under distinct filenames.
 - correction: #113's 2026-10-18 triage supersedes its historic goja render-lock instructions. Native Vite/Kit owns development rendering; keep the retained browser behavior regression.
 
 - correction: #330 reproduces as a returned Mutex.Unlock R_ADDROFF relocation error, not a demonstrated stuck loader. Session fallback only recognized CompleteBuild, leaving old literal HTTP 200 indefinitely after that error; promote failed native installation through that existing fallback and never reuse an acknowledgement stream after a timed-out read.

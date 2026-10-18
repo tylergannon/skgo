@@ -31,7 +31,9 @@ func TestRealSessionRequestHandoff(t *testing.T) { realSession(t, false, true, f
 
 func TestRealSessionDevelopmentLoadDiagnostics(t *testing.T) { realSession(t, false, false, true) }
 
-func TestRealSessionPendingBrowser(t *testing.T) { realSession(t, false, false, false, "pending-browser") }
+func TestRealSessionPendingBrowser(t *testing.T) {
+	realSession(t, false, false, false, "pending-browser")
+}
 
 func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool, scenario ...string) {
 	mode := ""

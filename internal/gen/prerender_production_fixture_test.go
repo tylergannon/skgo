@@ -86,10 +86,14 @@ func prepareProductionFixture(customDefaults bool) (productionFixture, error) {
 			return productionFixture{}, err
 		}
 		entries, err := os.ReadDir(filepath.Join(app, "ui/src/routes"))
-		if err != nil { return productionFixture{}, err }
+		if err != nil {
+			return productionFixture{}, err
+		}
 		for _, entry := range entries {
 			if strings.HasPrefix(entry.Name(), "shared-") {
-				if err := os.RemoveAll(filepath.Join(app, "ui/src/routes", entry.Name())); err != nil { return productionFixture{}, err }
+				if err := os.RemoveAll(filepath.Join(app, "ui/src/routes", entry.Name())); err != nil {
+					return productionFixture{}, err
+				}
 			}
 		}
 		// Ordinary lifecycle proof uses strict defaults, including unseen-route and HTTP errors.

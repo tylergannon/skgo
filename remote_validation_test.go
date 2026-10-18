@@ -2,6 +2,7 @@ package skgo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http/httptest"
 	"strings"
@@ -103,24 +104,56 @@ func TestRemoteSchemaValidationDefaultsAndClassification(t *testing.T) {
 			}
 		})
 	}
-	hooks := 0
-	hook := func(context.Context, CaughtError) map[string]any {
-		hooks++
-		return map[string]any{"message": "WRONG classification"}
+	var caught []CaughtError
+	hook := func(_ context.Context, failure CaughtError) map[string]any {
+		caught = append(caught, failure)
+		return map[string]any{"reference": "application-policy-441"}
 	}
-	for _, returned := range []error{BadRequest(fmt.Errorf("application bad request")), Errorf(400, "ordinary app error")} {
-		fn := NewRemote(RemoteSpec{Kind: KindQuery, Module: testModule, Name: "app", Call: func(context.Context, Call) (any, error) { return nil, returned }})
+	for _, tc := range []struct {
+		returned error
+		kind     string
+		status   int
+		message  string
+		hooks    int
+	}{
+		{BadRequest(fmt.Errorf("private application bad request")), "app", 400, "Bad Request", 1},
+		{Errorf(400, "ordinary app error"), "app", 400, "ordinary app error", 2},
+		{fmt.Errorf("private unknown failure"), "unknown", 500, "Internal Error", 3},
+	} {
+		fn := NewRemote(RemoteSpec{Kind: KindQuery, Module: testModule, Name: "app", Call: func(context.Context, Call) (any, error) { return nil, tc.returned }})
 		rs := testRemotes(t, RemoteConfig{HandleError: hook}, fn)
 		for _, query := range []string{"", "?payload=malformed"} {
 			rec := httptest.NewRecorder()
 			rs.ServeHTTP(rec, httptest.NewRequest("GET", rs.Prefix()+fn.id+query, nil))
-			if rec.Code != 200 || strings.Contains(rec.Body.String(), "WRONG") {
+			var answer struct {
+				Type  string
+				Error struct {
+					Status             int
+					Message, Reference string
+				}
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &answer); err != nil {
+				t.Fatal(err)
+			}
+			if rec.Code != 200 || answer.Type != "error" || strings.Contains(rec.Body.String(), "private") || len(caught) != tc.hooks {
+				t.Fatalf("body=%s hooks=%d, want %d", rec.Body.String(), len(caught), tc.hooks)
+			}
+			if query != "" {
+				// Malformed transport never reaches a remote body or its policy.
+				if answer.Error.Status != 400 || answer.Error.Message != "Bad Request" || answer.Error.Reference != "" {
+					t.Fatal(rec.Body.String())
+				}
+				continue
+			}
+			failure := caught[tc.hooks-1]
+			if failure.Kind != tc.kind || failure.Status != tc.status || failure.Message != tc.message || len(failure.Issues) != 0 ||
+				(tc.kind == "unknown" && failure.Err != tc.returned) || (tc.kind == "app" && failure.Err != nil) {
+				t.Fatalf("non-schema classification: %+v", failure)
+			}
+			if answer.Error.Status != tc.status || answer.Error.Message != tc.message || answer.Error.Reference != "application-policy-441" {
 				t.Fatal(rec.Body.String())
 			}
 		}
-	}
-	if hooks != 0 {
-		t.Fatalf("non-schema errors called schema hook %d times", hooks)
 	}
 	form := NewForm(testModule, "formIssues", func(context.Context, struct {
 		From string `json:"from"`
@@ -129,8 +162,8 @@ func TestRemoteSchemaValidationDefaultsAndClassification(t *testing.T) {
 	})
 	rs := testRemotes(t, RemoteConfig{HandleError: hook}, form)
 	rec := formRequest(t, rs, form, formGoldenSubmission)
-	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "business issue-884") || hooks != 0 {
-		t.Fatalf("form=%s hooks=%d", rec.Body.String(), hooks)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "business issue-884") || len(caught) != 3 {
+		t.Fatalf("form=%s hooks=%d", rec.Body.String(), len(caught))
 	}
 	if caught, ok := validationCaught(RefuseArgument(Call{Present: true})); ok {
 		t.Fatalf("no-schema argument refusal classified validation: %+v", caught)
