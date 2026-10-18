@@ -15,11 +15,11 @@ decision: the environment-variables page is the one page whose Go fences are
 decision: page options have no Go spelling; the page says so and documents
   what each Kit option means when the server is Go, with the prerender,
   ssr=false and csr=false example routes as its includes.
-friction: `go test ./...` in `example/` fails in `example/web`
-  (TestBuildEmbedsImmutableAssets) and `example/native/host` without a
-  `web/build` from `vp build`; this machine has vp 1.0.0 and the pins want
-  %vp%, so the Go-only packages were run instead and CI is the gate for the
-  rest -> local only.
+friction: `go test ./...` in `example/` fails in the root package,
+  `businesslogic/visitor`, `web` and `native/host` whenever the worktree has no
+  `web/build` and `web/node_modules` (missing `skgo.manifest.json`, missing
+  `svelte-check`); this machine has vp 1.0.0 and the pins want %vp%, so the
+  production-stack tests cannot run here and CI is the gate -> local only.
 friction: gofmt moved two region markers that the insertion script wrote at
   column 0 inside a function body; markers inside a body must be indented
   with the code, and the include strips the common indent anyway.
