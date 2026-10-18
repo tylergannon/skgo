@@ -79,6 +79,26 @@ func TestTypedHookForwardingAndIncomingContexts(t *testing.T) {
 	}
 }
 
+func TestTypedSequenceRejectsRepeatedOuterResolveBeforeInnerHook(t *testing.T) {
+	innerCalls := 0
+	outer := hookMiddleware(func(ctx context.Context, event hookEvent, resolve hookResolve) (*http.Response, error) {
+		response, err := resolve(ctx, event)
+		if err != nil {
+			return nil, err
+		}
+		_, _ = resolve(ctx, event)
+		return response, nil
+	})
+	inner := hookMiddleware(func(ctx context.Context, event hookEvent, resolve hookResolve) (*http.Response, error) {
+		innerCalls++
+		return resolve(ctx, event)
+	})
+	rec := get(t, RequestSequence(outer, inner).Intercept(HandleConfig{}, emptyHookParams, localsEndpoint(t)), "/locals")
+	if rec.Code != 200 || innerCalls != 1 {
+		t.Fatalf("served sequence: status=%d inner hook calls=%d; want status=200 and exactly one inner call", rec.Code, innerCalls)
+	}
+}
+
 func TestTypedBeforeHookAndNoHookInitialization(t *testing.T) {
 	before := RequestHandle[struct{}, hookLocals](func(ctx context.Context, event hookEvent) (hookEvent, error) {
 		event.Locals = &hookLocals{Name: "before-returned"}
