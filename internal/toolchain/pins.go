@@ -10,6 +10,17 @@
 // new-application README).
 package toolchain
 
+import (
+	"bytes"
+	_ "embed"
+)
+
+//go:embed pins.go
+var source []byte
+
+// MatchesSource checks that a generator and application use the same qualified pins.
+func MatchesSource(data []byte) bool { return bytes.Equal(data, source) }
+
 // Kit is the @sveltejs/kit version skgo mirrors and patches.
 const Kit = "3.1.0"
 
@@ -19,8 +30,11 @@ const Svelte = "5.57.2"
 // Go is the Go release the module declares and native development requires.
 const Go = "1.27.2"
 
-// NodeMinimum is the oldest Node release the frontend tool environment accepts.
+// NodeMinimum is Kit's Node floor; Node is the full qualified frontend range.
 const NodeMinimum = "22.17"
+
+// Node is the Node range required by the qualified VitePlus release.
+const Node = "^22.18.0 || ^24.11.0 || >=26.0.0"
 
 // VitePlus is the qualified vp release.
 const VitePlus = "1.3.0"

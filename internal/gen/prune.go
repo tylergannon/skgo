@@ -71,7 +71,7 @@ func generatedModuleName(name string) bool {
 			continue
 		}
 		switch base {
-		case "types", "+page.server", "+layout.server", "+server":
+		case "types", "+page.server", "+layout.server", "+server", "skgo.versions":
 			return true
 		}
 		if strings.HasSuffix(base, ".remote") {

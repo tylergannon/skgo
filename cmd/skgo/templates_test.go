@@ -111,7 +111,8 @@ func main(){if !semver.IsValid("v1.0.0"){panic("semver")};if e:=os.MkdirAll("gen
 	if b, _ := os.ReadFile(filepath.Join(project, "receipt.txt")); string(b) != "MyApp\nexample.test/consumer\nliteral receipt\n" {
 		t.Fatalf("lost edit=%q", b)
 	}
-	// A project tool has its own module graph and recorded version.
+	// A project tool has its own module graph. Its local replacement reports
+	// development identity rather than the require-line placeholder version.
 	toolMod := "module example.test/toolhost\n\ngo 1.27.1\n\nrequire github.com/tylergannon/skgo v0.0.0\nreplace github.com/tylergannon/skgo => " + repo + "\ntool github.com/tylergannon/skgo/cmd/skgo\n"
 	os.WriteFile(filepath.Join(project, "go.mod"), []byte(toolMod), 0644)
 	cmd = exec.Command("go", "mod", "tidy")
@@ -137,7 +138,7 @@ func main(){if !semver.IsValid("v1.0.0"){panic("semver")};if e:=os.MkdirAll("gen
 	if err := json.Unmarshal(out, &info); err != nil {
 		t.Fatal(err)
 	}
-	if info.SkgoVersion != "v0.0.0" || info.Build.Main.Path != "github.com/tylergannon/skgo" || info.Executable == skgoBin {
+	if info.SkgoVersion != "(devel)" || info.Build.Main.Path != "github.com/tylergannon/skgo" || info.Executable == skgoBin {
 		t.Fatalf("actual tool identity=%s", out)
 	}
 	toolPlugins := filepath.Join(root, "tool-plugins")

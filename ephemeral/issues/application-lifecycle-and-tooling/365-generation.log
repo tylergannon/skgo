@@ -1,0 +1,18 @@
+=== RUN   TestQualifiedVersionsConsumerAndGeneration
+=== RUN   TestQualifiedVersionsConsumerAndGeneration/ts
+=== RUN   TestQualifiedVersionsConsumerAndGeneration/js
+=== RUN   TestQualifiedVersionsConsumerAndGeneration/ts#01
+=== NAME  TestQualifiedVersionsConsumerAndGeneration
+    versions_test.go:148: real consumer replacement v0.99.7 => checkout reports devel; TS/JS/TS module imports agree on all six literal values; cached unchanged writes and authored output protected
+--- PASS: TestQualifiedVersionsConsumerAndGeneration (5.65s)
+    --- PASS: TestQualifiedVersionsConsumerAndGeneration/ts (1.31s)
+    --- PASS: TestQualifiedVersionsConsumerAndGeneration/js (1.88s)
+    --- PASS: TestQualifiedVersionsConsumerAndGeneration/ts#01 (1.45s)
+=== RUN   TestQualifiedVersionsRefusesDifferentPinSource
+--- PASS: TestQualifiedVersionsRefusesDifferentPinSource (0.16s)
+=== RUN   TestQualifiedVersionsRefusesPublishedDependencyWithDevelopmentGenerator
+--- PASS: TestQualifiedVersionsRefusesPublishedDependencyWithDevelopmentGenerator (0.02s)
+=== RUN   TestQualifiedVersionsLanguageCleanupPreservesOtherProducer
+--- PASS: TestQualifiedVersionsLanguageCleanupPreservesOtherProducer (0.08s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	6.172s

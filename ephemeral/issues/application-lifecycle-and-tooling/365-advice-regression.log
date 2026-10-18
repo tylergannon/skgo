@@ -1,0 +1,4 @@
+=== RUN   TestCatalogRepairExamplesCompileAgainstThisSkgo
+--- PASS: TestCatalogRepairExamplesCompileAgainstThisSkgo (1.29s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/advice	1.515s

@@ -220,9 +220,9 @@ func TestRetainedRepeatedEditsStayBounded(t *testing.T) {
 		}
 		b.Inputs.Close()
 		stats := p.Stats()
-		// The fixture supplies six Go files: app locals, probe, remote,
-		// wire, wire/other/wire, and the skgo stand-in.
-		if stats.Analyses != 6 || stats.Plans != 1 || stats.Pending != 0 {
+		// The fixture supplies seven Go files: app locals, probe, remote,
+		// wire, wire/other/wire, the skgo stand-in, and its qualified pins.
+		if stats.Analyses != 7 || stats.Plans != 1 || stats.Pending != 0 {
 			t.Fatalf("retained state after fixture %d: %+v", n, stats)
 		}
 	}

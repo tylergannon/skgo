@@ -308,7 +308,7 @@ func publishGenerationPlan(cfg Config, plan generationPlan) error {
 	}
 	_, environment := g.files[filepath.Join(cfg.Web, "skgo.env.json")]
 	ownedEnvironment := false
-	for _, stem := range []string{"env", "hooks.server"} {
+	for _, stem := range []string{"env", "hooks.server", "skgo.versions"} {
 		for _, ext := range []string{".ts", ".js"} {
 			path := filepath.Join(cfg.Web, "src", stem+ext)
 			data, err := os.ReadFile(path)

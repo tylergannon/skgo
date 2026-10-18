@@ -33,12 +33,30 @@ func Current() (Info, error) {
 }
 
 func Version(b *debug.BuildInfo) string {
+	if b == nil {
+		return "(devel)"
+	}
+	version := func(m debug.Module) string {
+		if m.Replace != nil || m.Version == "" {
+			return "(devel)"
+		}
+		return m.Version
+	}
 	if b.Main.Path == Module {
-		return b.Main.Version
+		// Go 1.27 stamps checkout builds with a tag or pseudo-version, even
+		// though no released module was selected. VCS settings are only
+		// stamped for a local main module; go install module@version does
+		// not carry them. A clean tagged checkout is still a checkout.
+		for _, setting := range b.Settings {
+			if setting.Key == "vcs" {
+				return "(devel)"
+			}
+		}
+		return version(b.Main)
 	}
 	for _, d := range b.Deps {
 		if d.Path == Module {
-			return d.Version
+			return version(*d)
 		}
 	}
 	return "(devel)"

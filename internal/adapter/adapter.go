@@ -31,6 +31,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/tylergannon/skgo/internal/buildinfo"
 )
 
 // The adapter as files: the entry `vite.config.ts` imports, and beside it the
@@ -87,9 +89,6 @@ func KitQueueCompatibility() (KitQueueMetadata, []byte, error) {
 	}
 	return metadata, patch, nil
 }
-
-// module is the module path the version is looked up under.
-const module = "github.com/tylergannon/skgo"
 
 // RegistrySpec is the npm range that names the package paired with a Go
 // module release: the newest version at or below it. A release publishes the
@@ -203,27 +202,7 @@ func Version() string {
 	if !ok {
 		return "devel"
 	}
-	v := ""
-	// The `skgo` command is skgo's own main module; an app's server carries it
-	// as a dependency.
-	if bi.Main.Path == module && bi.Main.Replace == nil {
-		v = bi.Main.Version
-	}
-	for _, dep := range bi.Deps {
-		if dep.Path != module {
-			continue
-		}
-		// A replaced module reports the version its require line names, which
-		// is whatever placeholder the replacing developer wrote — this
-		// repository's own example says v0.0.0. The code being built is a
-		// checkout, so it is devel, and saying so keeps the stamp the same in
-		// every tree that builds from a checkout.
-		if dep.Replace != nil {
-			v = ""
-			break
-		}
-		v = dep.Version
-	}
+	v := buildinfo.Version(bi)
 	if v == "" || v == "(devel)" {
 		return "devel"
 	}

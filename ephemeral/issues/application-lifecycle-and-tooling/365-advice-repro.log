@@ -1,0 +1,7 @@
+=== RUN   TestCatalogRepairExamplesCompileAgainstThisSkgo
+    catalog_test.go:67: skgo: reading application's SKGo module: exit status 1: go: updates to go.mod needed; to update it:
+        	go mod tidy
+--- FAIL: TestCatalogRepairExamplesCompileAgainstThisSkgo (0.07s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/advice	0.269s
+FAIL

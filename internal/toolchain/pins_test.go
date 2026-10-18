@@ -81,3 +81,32 @@ func TestPinsLookLikeVersions(t *testing.T) {
 		}
 	}
 }
+
+func TestNodeRangeMatchesQualifiedVitePlus(t *testing.T) {
+	var manifest struct {
+		Version string
+		Engines struct{ Node string }
+	}
+	if err := json.Unmarshal([]byte(read(t, "../../example/web/node_modules/vite-plus/package.json")), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Version != VitePlus || manifest.Engines.Node != Node {
+		t.Fatalf("qualified VitePlus=%s Node=%q, pins=%s %q", manifest.Version, manifest.Engines.Node, VitePlus, Node)
+	}
+	if Node != "^22.18.0 || ^24.11.0 || >=26.0.0" {
+		t.Fatalf("unexpected qualified Node range %q", Node)
+	}
+}
+
+func TestKitMatchesQueuePatch(t *testing.T) {
+	if !strings.Contains(read(t, "../kitpatch/kitpatch.go"), `ownedPatchName = "skgo-kit-`+Kit+`-queue.patch"`) {
+		t.Fatal("Kit pin and owned compatibility patch disagree")
+	}
+	var metadata struct{ Version string }
+	if err := json.Unmarshal([]byte(read(t, "../adapter/skgo-adapter/compat/kit-"+Kit+"-queue.json")), &metadata); err != nil {
+		t.Fatal(err)
+	}
+	if metadata.Version != Kit {
+		t.Fatal("Kit pin and adapter compatibility metadata disagree")
+	}
+}

@@ -268,6 +268,9 @@ func (p *Prepared) Run() error {
 	}
 	p.ran = true
 	cfg, files := p.cfg, p.files
+	if err := (&app{cfg: cfg}).writeVersions(); err != nil {
+		return err
+	}
 	if len(files) == 0 {
 		if len(cfg.SwiftRemotes) != 0 {
 			return fmt.Errorf("skgo: no remote functions match the Swift selection")

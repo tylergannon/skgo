@@ -55,6 +55,11 @@ func foreignFixtureIn(t *testing.T, root string, remote string, extra map[string
 		}
 	}
 
+	pins, err := os.ReadFile(filepath.Join("..", "toolchain", "pins.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("skgo/internal/toolchain/pins.go", string(pins))
 	write("skgo/go.mod", "module github.com/tylergannon/skgo\n\ngo 1.27.1\n")
 	write("skgo/skgo.go", `package skgo
 

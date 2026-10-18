@@ -1,0 +1,99 @@
+{
+  "duration_api_ms": 128829,
+  "stop_reason": "end_turn",
+  "session_id": "5e3c7f14-ea52-483e-942c-dbb916d60c19",
+  "total_cost_usd": 0.9605914000000003,
+  "usage": {
+    "input_tokens": 8,
+    "cache_creation_input_tokens": 5491,
+    "cache_read_input_tokens": 269927,
+    "output_tokens": 2317,
+    "output_tokens_details": {
+      "thinking_tokens": 611
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 5491,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1150,
+        "cache_read_input_tokens": 69497,
+        "cache_creation_input_tokens": 923,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 923
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "modelUsage": {
+    "claude-opus-5-5": {
+      "inputTokens": 44,
+      "outputTokens": 12951,
+      "thinkingTokens": 4288,
+      "cacheReadInputTokens": 1091257,
+      "cacheCreationInputTokens": 60393,
+      "webSearchRequests": 0,
+      "costUSD": 0.9605914000000003,
+      "contextWindow": 200000,
+      "maxOutputTokens": 128000,
+      "canonicalModel": "claude-opus-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "safety_stops": 0,
+  "is_error": false,
+  "num_turns": 4,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: ACCEPT.** The targeted query fixes both regressions. Release and pin safety, the bootstrap deferral and the refusal of a broken module graph all still hold.\n\n**What changed:** only `applicationVersions` in `internal/gen/versions.go`, plus one worklog line. It now runs `go list -m -e -json github.com/tylergannon/skgo`, which looks up SKGo alone. The full-graph query it replaces made the two regressed tests fail with `go: updates to go.mod needed … go mod tidy`; `365-advice-repro.log` shows that failure.\n\n**Generation only skips writing the versions file in one case:**\n- Go's JSON `Error` field must say exactly `module github.com/tylergannon/skgo: not a known dependency`.\n- The entry must also have no version, no replacement and no directory.\n\nEvery other outcome is an error: the command failing, JSON that doesn't parse, any other `Error` text, or a different module path coming back.\n\n**Adopted apps still get the full checks.** The version comparison, replacement handling and `pins.go` comparison come after that branch and are unchanged. The tests for the real consumer, a different pin source and a published dependency with a development generator all still pass.\n\n**The bootstrap tests check both directions.** The bootstrap half of `TestQualifiedVersionsBootstrapAndBrokenModuleGraph` only passes if Go 1.27 really emits that exact error string. The unavailable-dependency half still requires the \"reading application's SKGo module\" error, so a broken graph is never mistaken for a bootstrap app.\n\n**Commands run (all pass, no skips):**\n- `go test ./internal/advice -run '^TestCatalogRepairExamplesCompileAgainstThisSkgo$' -count=1 -v`: PASS, the first regression is fixed.\n- `go test ./internal/gen -run '^(TestAppMatchersWithoutGoLoads|TestGeneratingAnEmptyAppNeedsNoInstalledAdapter|TestGeneratingAgainstThisModulesAdapterIsAllowed|TestEmptyAppRemovesOldFormClient|TestRetainedRepeatedEditsStayBounded|TestQualifiedVersions.*)$' -count=1 -v`: all 10 pass, including `TestAppMatchersWithoutGoLoads` (the second regression), the three bootstrap tests, the 7-file retention test and all six `TestQualifiedVersions*` tests.\n\nI relied on the earlier accepted proofs for the parts that didn't change: the project-tool identity, the docs and the TS/JS migration. I didn't rerun the browser suite or the production build. I made no changes or commits and found no new defects.",
+  "ttft_ms": 2727,
+  "type": "result",
+  "duration_ms": 30124,
+  "uuid": "bf52ccfc-0fd0-45ae-b91e-e4e1198262cd",
+  "ttft_stream_ms": 724,
+  "time_to_request_ms": 39,
+  "first_content_frame_ms": 724,
+  "queued_turn_count": 0,
+  "result_index": 0
+}
