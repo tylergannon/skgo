@@ -15,4 +15,4 @@ page streams in after the first response, and the `LoadParam` helpers read a
 route parameter with the type its matcher produced.
 
 > PACKAGE: github.com/tylergannon/skgo
-> SYMBOLS: Load Parent Deferred Async Resolved NewLoads NewServerLoad LoadParamValue OptionalLoadParamValue LoadRouteIDValue TrackLoadParam Prerender PreloadInput PrerenderLoadInput LoadConfig LoadSpec Loads ServerLoad
+> SYMBOLS: Entries RouteEntries NewRouteEntries Load Parent Deferred Async Resolved NewLoads NewServerLoad LoadParamValue OptionalLoadParamValue LoadRouteIDValue TrackLoadParam Prerender PreloadInput PrerenderLoadInput LoadConfig LoadSpec Loads ServerLoad

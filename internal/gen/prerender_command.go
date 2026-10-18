@@ -37,7 +37,7 @@ func (a *app) writePrerenderCommand() error {
 	if len(a.transportKeyOrder()) != 0 {
 		transport = "generated.Transport()"
 	}
-	fmt.Fprintf(&b, "\tif err := skgo.RunPrerenderService(%s, generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{%sBindRequest: func(next http.Handler) http.Handler {return generated.RequestBoundary(skgo.HandleConfig{Matchers: generated.Matchers(), ClientAddress: func(*http.Request)(string,error){return \"\",fmt.Errorf(\"skgo: client address unavailable during prerender\")}}, next)}, Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {\n", transport, reroute)
+	fmt.Fprintf(&b, "\tif err := skgo.RunPrerenderService(%s, generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{%sBindRequest: func(next http.Handler) http.Handler {return generated.RequestBoundary(skgo.HandleConfig{Matchers: generated.Matchers(), ClientAddress: func(*http.Request)(string,error){return \"\",fmt.Errorf(\"skgo: client address unavailable during prerender\")}}, next)}, Entries: generated.Entries(), Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {\n", transport, reroute)
 	b.WriteString("\t\tlog.Fatal(err)\n\t}\n}\n")
 	if err := a.writeGo(filepath.Join(a.cfg.Out, "prerender", generatedGoFile), b.String()); err != nil {
 		return err
@@ -70,7 +70,7 @@ func (a *app) writePrerenderHook() error {
 }
 
 func (a *app) hasPrerenderWork() bool {
-	if len(a.loads) > 0 || len(a.endpoints) > 0 || a.cfg.HookPackage != "" || a.reroute != nil {
+	if len(a.entries) > 0 || len(a.loads) > 0 || len(a.endpoints) > 0 || a.cfg.HookPackage != "" || a.reroute != nil {
 		return true
 	}
 	for _, fn := range a.remotes {

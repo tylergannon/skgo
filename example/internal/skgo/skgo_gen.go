@@ -5519,6 +5519,12 @@ func Endpoints() []*skgo.Endpoint {
 	}
 }
 
+func Entries() []*skgo.RouteEntries {
+	return []*skgo.RouteEntries{
+		skgo.NewRouteEntries("src/routes/prerender/[slug]/+page.server.ts", skgo48.Skgo_entries),
+	}
+}
+
 // Transport is the app's `transport` hook: the Go half of the encode/decode
 // pairs src/hooks.ts declares. Hand it to skgo.RemoteConfig.Transport and
 // skgo.LoadConfig.Transport.

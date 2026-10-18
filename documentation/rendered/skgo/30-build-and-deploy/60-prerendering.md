@@ -32,7 +32,7 @@ func main() {
 		return generated.RequestBoundary(skgo.HandleConfig{Matchers: generated.Matchers(), ClientAddress: func(*http.Request) (string, error) {
 			return "", fmt.Errorf("skgo: client address unavailable during prerender")
 		}}, next)
-	}, Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {
+	}, Entries: generated.Entries(), Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -122,6 +122,13 @@ func load(event PageRequestEvent) (PageData, error) {
 }
 
 var _ = skgo.Load(load)
+
+// The catalog lives only in Go. Kit requests these raw URL values during analyse.
+func entries() ([]EntryParams, error) {
+	return []EntryParams{{Slug: "atlas"}, {Slug: "beacon"}}, nil
+}
+
+var _ = skgo.Entries(entries)
 ```
 
 `entries` is a page option, so there is no Go spelling of it. When the list lives in Go, write it to a JSON file from `go generate` and return that file's contents from `entries`.

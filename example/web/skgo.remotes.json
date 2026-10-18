@@ -247,6 +247,7 @@
       "source": "src/routes/missing/[...path]/page.server.go"
     },
     "src/routes/prerender/[slug]/+page.server.ts": {
+      "entries": true,
       "source": "src/routes/prerender/[slug]/page.server.go"
     },
     "src/routes/request-fetch/+page.server.ts": {

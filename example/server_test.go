@@ -217,6 +217,9 @@ func TestDynamicPrerenderEntriesAreServedFromFiles(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if !strings.Contains(string(data), "Go entry load: "+slug) {
+			t.Fatalf("data artifact %s lacks Go receipt", path)
+		}
 		rec = get(t, h, path+"/__data.json")
 		if rec.Code != http.StatusOK || rec.Body.String() != string(data) {
 			t.Errorf("%s/__data.json: status %d, Go did not serve Kit's file", path, rec.Code)
@@ -225,8 +228,10 @@ func TestDynamicPrerenderEntriesAreServedFromFiles(t *testing.T) {
 	if slices.Contains(manifest.Prerendered, "/prerender/third") {
 		t.Error("the build listed a path entries() never returned")
 	}
-	if rec := get(t, h, "/prerender/third"); rec.Code != http.StatusNotFound {
-		t.Errorf("an unlisted entry returned status %d, want 404", rec.Code)
+	for _, path := range []string{"/prerender/third", "/prerender/third/__data.json"} {
+		if rec := get(t, h, path); rec.Code != http.StatusNotFound {
+			t.Errorf("unlisted %s returned status %d, want 404", path, rec.Code)
+		}
 	}
 }
 

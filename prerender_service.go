@@ -115,7 +115,7 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			return
 		}
 		lifecycle := r.URL.Path == "/begin" || r.URL.Path == "/response" || r.URL.Path == "/end"
-		if r.URL.Path != "/load" && r.URL.Path != "/remote" && r.URL.Path != "/inputs" && r.URL.Path != "/endpoint" && r.URL.Path != "/cookies" && r.URL.Path != "/resolve-option" && r.URL.Path != "/reroute" && !lifecycle {
+		if r.URL.Path != "/load" && r.URL.Path != "/remote" && r.URL.Path != "/inputs" && r.URL.Path != "/endpoint" && r.URL.Path != "/cookies" && r.URL.Path != "/resolve-option" && r.URL.Path != "/reroute" && r.URL.Path != "/entries" && !lifecycle {
 			http.NotFound(w, r)
 			return
 		}
@@ -153,7 +153,7 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 		var answer bytes.Buffer
 		ctx := r.Context()
 		var boundRequest *prerenderRequest
-		if len(sessions) > 0 && !lifecycle && r.URL.Path != "/inputs" && r.URL.Path != "/reroute" {
+		if len(sessions) > 0 && !lifecycle && r.URL.Path != "/inputs" && r.URL.Path != "/reroute" && r.URL.Path != "/entries" {
 			var identity struct {
 				Handle string `json:"handle"`
 			}
@@ -182,6 +182,8 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 		}
 		ctx = r.Context()
 		switch {
+		case r.URL.Path == "/entries" && len(sessions) > 0:
+			err = runPrerenderEntries(raw, &answer, sessions[0].options.Entries)
 		case r.URL.Path == "/reroute" && len(sessions) > 0:
 			err = sessions[0].reroute(r.Context(), raw, &answer)
 		case lifecycle && len(sessions) > 0:

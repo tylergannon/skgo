@@ -82,7 +82,8 @@ export function devModules({ base = "", appDir = "_app" } = {}) {
                 `(event) => $skgo.action(${JSON.stringify(module)},${JSON.stringify(action)},event)`,
               );
             }
-          } else if (/\/\+server\.(ts|js)$/.test(module))
+          } else if (name === "entries") continue;
+          else if (/\/\+server\.(ts|js)$/.test(module))
             edits.push([fn.start, fn.end, "(event) => $skgo.endpoint(event)"]);
           else if (
             /\.remote\.(ts|js)$/.test(module) &&

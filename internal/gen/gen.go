@@ -307,7 +307,7 @@ func (p *Prepared) Run() error {
 	}
 
 	app := p.app
-	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.actions) == 0 && len(app.endpoints) == 0 && len(app.transported) == 0 && app.environment == nil && app.reroute == nil {
+	if len(app.remotes) == 0 && len(app.loads) == 0 && len(app.actions) == 0 && len(app.endpoints) == 0 && len(app.transported) == 0 && app.environment == nil && app.reroute == nil && len(app.entries) == 0 {
 		return fmt.Errorf("skgo: found %d source file(s) but no skgo.Query, skgo.Command, skgo.LiveQuery, skgo.Load or skgo.GET declaration in any of them", len(files))
 	}
 	if err := app.writeEnvironment(); err != nil {

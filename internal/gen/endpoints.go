@@ -95,6 +95,13 @@ func (a *app) writeEndpointStubs() error {
 	for _, ep := range a.endpoints {
 		byStub[ep.stub] = append(byStub[ep.stub], ep)
 	}
+	for _, entry := range a.entries {
+		if strings.Contains(entry.module, "/+server.") {
+			if _, ok := byStub[entry.stub]; !ok {
+				byStub[entry.stub] = nil
+			}
+		}
+	}
 	var stubs []string
 	for stub := range byStub {
 		stubs = append(stubs, stub)
@@ -133,6 +140,8 @@ func (a *app) writeEndpointStubs() error {
 				}
 			}
 		}
+		module, _ := webRel(a.cfg.Web, stub)
+		a.writeEntriesStub(&b, module)
 		if err := a.write(stub, b.String()); err != nil {
 			return err
 		}

@@ -33,6 +33,7 @@ type routeLoadParams struct {
 	params       []skgo.ManifestParam
 	matchers     map[string]goParamMatcher
 	page, layout bool
+	entries      bool
 	children     map[string]*routeLoadParams
 }
 
@@ -149,7 +150,12 @@ func captureKitRouteMetadata(cfg Config, files []string) (*kitRouteMetadata, err
 	var modules, obsolete []string
 	hasLayouts := false
 	for _, path := range files {
-		if _, ok := loadFileNames[filepath.Base(path)]; ok {
+		_, isLoad := loadFileNames[filepath.Base(path)]
+		entries, err := fileHasEntries(path)
+		if err != nil {
+			return nil, err
+		}
+		if isLoad || (filepath.Base(path) == serverFileName && entries) {
 			dir := filepath.Dir(path)
 			dirs[dir] = true
 			if loadKinds[dir] == nil {
@@ -326,7 +332,17 @@ func prepareLoadParams(cfg *Config, files []string) (map[string]*routeLoadParams
 		cfg.matchers[name] = matcher
 	}
 	for i, dir := range ordered {
-		info := &routeLoadParams{params: metadata.Routes[i], matchers: map[string]goParamMatcher{}, page: loadKinds[dir]["page.server.go"], layout: loadKinds[dir]["layout.server.go"]}
+		entries := false
+		for _, file := range files {
+			if filepath.Dir(file) == dir {
+				declared, err := fileHasEntries(file)
+				if err != nil {
+					return nil, err
+				}
+				entries = entries || declared
+			}
+		}
+		info := &routeLoadParams{entries: entries, params: metadata.Routes[i], matchers: map[string]goParamMatcher{}, page: loadKinds[dir]["page.server.go"], layout: loadKinds[dir]["layout.server.go"]}
 		for name, matcher := range matchers {
 			if names[name] {
 				info.matchers[name] = matcher
@@ -522,6 +538,22 @@ func writeLoadParams(cfg Config, dir string, info *routeLoadParams) error {
 	}
 	imports := &fileImports{used: map[string]bool{"skgo": true}, byPkg: map[*types.Package]string{}}
 	var body strings.Builder
+	if info.entries {
+		body.WriteString("// EntryParams supplies raw URL values to Kit before matcher conversion.\ntype EntryParams struct {\n")
+		for _, param := range info.params {
+			field := paramField(param.Name)
+			if !token.IsIdentifier(field) {
+				return fmt.Errorf("skgo: invalid entry parameter %q", param.Name)
+			}
+			typ, tag := "string", param.Name
+			if param.Optional {
+				typ = "*string"
+				tag += ",omitempty"
+			}
+			fmt.Fprintf(&body, "%s %s `json:%q`\n", field, typ, tag)
+		}
+		body.WriteString("}\n")
+	}
 	if info.page {
 		if err := writeConcreteLoadDomain(&body, imports, cfg, "RouteParams", "Page", info.params, info.matchers); err != nil {
 			return err
@@ -546,7 +578,10 @@ func writeLoadParams(cfg Config, dir string, info *routeLoadParams) error {
 	body.WriteString("}\n}\n")
 	var b strings.Builder
 	b.WriteString(goHeader)
-	fmt.Fprintf(&b, "package %s\n\nimport (skgo %q; appstate %q)\n\n", pkg, skgoPkg, cfg.LocalsPackage)
+	fmt.Fprintf(&b, "package %s\n\nimport skgo %q\n", pkg, skgoPkg)
+	if info.page || info.layout {
+		fmt.Fprintf(&b, "import appstate %q\n", cfg.LocalsPackage)
+	}
 	imports.writeTo(&b)
 	b.WriteString(body.String())
 	formatted, err := format.Source([]byte(b.String()))

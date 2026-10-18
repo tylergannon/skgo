@@ -29,8 +29,9 @@ export function prerenderModules() {
 				if (!module.startsWith('src/') || module.split('/').some((part) => part === '.' || part === '..') || !/\.(ts|js)$/.test(module) || !declaration || typeof declaration !== 'object' || Array.isArray(declaration)) {
 					throw new Error(`skgo: malformed build declaration for ${module}; run \`go generate ./...\`.`);
 				}
-				const fields = Object.keys(declaration);
-				if (fields.length !== 1 || !['source', 'remotes', 'endpoint', 'hook'].includes(fields[0]) ||
+				const fields = Object.keys(declaration).filter((field) => field !== 'entries');
+				if ((fields.length !== 1 && !(fields.length === 0 && declaration.entries === true)) ||
+                    ('entries' in declaration && declaration.entries !== true) || (fields.length && !['source', 'remotes', 'endpoint', 'hook'].includes(fields[0])) ||
 					('source' in declaration && (typeof declaration.source !== 'string' || !declaration.source)) ||
 					('remotes' in declaration && (!Array.isArray(declaration.remotes) || !declaration.remotes.length)) ||
 					('endpoint' in declaration && declaration.endpoint !== true) ||
@@ -66,7 +67,14 @@ export function prerenderModules() {
 			const fail = () => { throw new Error(`skgo: build declarations disagree with ${module}; run \`go generate ./...\`.`); };
 			const edits = [];
 			let imports = '';
-			if (exports.has('load')) {
+			if (exports.has('entries')) {
+                if (declaration?.entries !== true) fail();
+                const fn = exports.get('entries');
+                if (fn?.type !== 'ArrowFunctionExpression' || fn.params.length !== 0) fail();
+                imports += `import { routeEntries as $skgoEntries } from '${helper}';\n`;
+                edits.push([fn.start, fn.end, `() => $skgoEntries(${JSON.stringify(module)})`]);
+            } else if (declaration?.entries) fail();
+            if (exports.has('load')) {
 				if (!declaration?.source || !generated.loads.includes(module)) fail();
 				const fn = exports.get('load');
 				if (fn?.type !== 'ArrowFunctionExpression' || fn.params.length !== 1) fail();
@@ -83,8 +91,9 @@ export function prerenderModules() {
 }`]);
 			} else if (declaration?.source) fail();
 			if (/\/\+server\.(ts|js)$/.test(module)) {
-				if (declaration?.endpoint !== true) fail();
-				for (const fn of exports.values()) {
+				if (declaration?.endpoint !== true && declaration?.entries !== true) fail();
+				for (const [name, fn] of exports) {
+                    if (name === 'entries') continue;
 					if (!fn) fail();
 					edits.push([fn.start, fn.end, `(event) => {
 	const bridge = event.platform?.skgoPrerenderEndpoint;

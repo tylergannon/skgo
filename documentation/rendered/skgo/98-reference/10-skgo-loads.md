@@ -14,6 +14,32 @@ A load receives a `context.Context` carrying the request. `EventFrom` on the
 page streams in after the first response, and the `LoadParam` helpers read a
 route parameter with the type its matcher produced.
 
+## Entries
+
+```go
+func Entries[P any](fn func() ([]P, error)) Marker
+```
+
+Entries declares a route's build-time entry producer in page.server.go or server.go. The function takes no RequestEvent and returns this route's generated EntryParams values. Kit invokes it during route analysis, before prerendering; universal +page.ts entries take precedence over server entries.
+
+## RouteEntries
+
+```go
+type RouteEntries struct {
+	// contains filtered or unexported fields
+}
+```
+
+RouteEntries is a generated registration for a route's build-time entries. Application code declares the producer with Entries.
+
+## NewRouteEntries
+
+```go
+func NewRouteEntries[P any](module string, fn func() ([]P, error)) *RouteEntries
+```
+
+NewRouteEntries connects a generated entry producer to the build service.
+
 ## Load
 
 ```go

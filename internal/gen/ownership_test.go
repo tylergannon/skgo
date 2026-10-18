@@ -119,6 +119,9 @@ func EventFrom(context.Context) *Event { return &Event{} }
 func TrackLoadParam(*Event, string) {}
 func LoadParamValue[T any](*Event, string) T { var zero T; return zero }
 func OptionalLoadParamValue[T any](*Event, string) *T { return nil }
+type RouteEntries struct{}
+func Entries[P any](func()([]P,error))Marker{return Marker{}}
+func NewRouteEntries[P any](string,func()([]P,error))*RouteEntries{return nil}
 func Load[P,L, Out any](fn func(RequestEvent[P,L]) (Out, error)) Marker { _ = fn; return Marker{} }
 
 func Command(fn any) Marker { _ = fn; return Marker{} }

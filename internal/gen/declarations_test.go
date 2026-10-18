@@ -66,6 +66,7 @@ type RequestResolve[P,L any] func(context.Context,RequestEvent[P,L],...ResolveOp
 type RequestMiddleware[P,L any] func(context.Context,RequestEvent[P,L],RequestResolve[P,L])(*http.Response,error)
 type RequestEvent[P,L any] struct{}
 func Load(any)int{return 0}
+func Entries(any)int{return 0}
 func Query(any)int{return 0}
 type PrerenderOptions struct{Inputs any}
 func Prerender(any,...PrerenderOptions)int{return 0}

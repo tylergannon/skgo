@@ -390,7 +390,13 @@ func (a *app) writePackageBindings() error {
 		loads := loadsByPkg[gp]
 		actions := actionsByPkg[gp]
 		endpoints := endpointsByPkg[gp]
-		if len(fns) == 0 && len(loads) == 0 && len(actions) == 0 && len(endpoints) == 0 {
+		var entries []*entriesFn
+		for _, entry := range a.entries {
+			if entry.goPkg == gp {
+				entries = append(entries, entry)
+			}
+		}
+		if len(fns) == 0 && len(loads) == 0 && len(actions) == 0 && len(endpoints) == 0 && len(entries) == 0 {
 			continue
 		}
 		// The aliases are rendered first, because rendering them is what
@@ -420,6 +426,9 @@ func (a *app) writePackageBindings() error {
 		}
 		for _, action := range actions {
 			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(action.fnName), action.fnName)
+		}
+		for _, entry := range entries {
+			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(entry.name), entry.name)
 		}
 		for _, ep := range endpoints {
 			fmt.Fprintf(&b, "\t// %s is %s, published as %s %s.\n", exportedName(ep.name), ep.name, endpointWireMethod(ep.method), ep.routeID)
@@ -729,6 +738,11 @@ func (a *app) writeAppBindings() error {
 	}
 	b.WriteString("\t}\n}\n")
 
+	b.WriteString("\nfunc Entries() []*skgo.RouteEntries {return []*skgo.RouteEntries{\n")
+	for _, entry := range a.entries {
+		fmt.Fprintf(&b, "skgo.NewRouteEntries(%q,%s),\n", entry.module, a.published(entry.goPkg, entry.name))
+	}
+	b.WriteString("}}\n")
 	a.writeTransportBinding(&b)
 	return a.writeGo(filepath.Join(a.cfg.Out, generatedGoFile), b.String())
 }
@@ -1036,6 +1050,7 @@ type remoteList struct {
 // buildDeclaration describes Go declarations whose bodies Kit invokes during
 // its Node build. It carries no application JavaScript or wire-type copies.
 type buildDeclaration struct {
+	Entries  bool                     `json:"entries,omitempty"`
 	Source   string                   `json:"source,omitempty"`
 	Remotes  []buildRemoteDeclaration `json:"remotes,omitempty"`
 	Endpoint bool                     `json:"endpoint,omitempty"`
@@ -1073,6 +1088,9 @@ func (a *app) writeRemoteList() error {
 	}
 	if a.hasPrerenderWork() {
 		declaration("src/hooks.server" + a.cfg.Language.ext()).Hook = true
+	}
+	for _, entry := range a.entries {
+		declaration(entry.module).Entries = true
 	}
 	for _, ep := range a.endpoints {
 		declaration(ep.module).Endpoint = true

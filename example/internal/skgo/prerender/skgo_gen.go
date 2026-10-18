@@ -17,7 +17,7 @@ func main() {
 		return generated.RequestBoundary(skgo.HandleConfig{Matchers: generated.Matchers(), ClientAddress: func(*http.Request) (string, error) {
 			return "", fmt.Errorf("skgo: client address unavailable during prerender")
 		}}, next)
-	}, Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {
+	}, Entries: generated.Entries(), Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {
 		log.Fatal(err)
 	}
 }

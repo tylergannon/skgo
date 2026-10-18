@@ -104,7 +104,9 @@ function validateEnvelope(request, raw) {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("skgo prerender command returned a non-object response");
   if (["begin", "response", "end", "endpoint", "cookies", "resolve-option", "reroute"].includes(request.kind)) return;
-  if (request.kind === "remote-inputs") {
+  if (request.kind === "entries") {
+    if (!Array.isArray(value.entries)) throw new Error("skgo prerender entries response has no array");
+  } else if (request.kind === "remote-inputs") {
     if (typeof value.inputs !== "string")
       throw new Error("skgo prerender inputs response has no devalue payload");
   } else if (request.kind === "remote") {
@@ -608,7 +610,7 @@ async function invokeService(request) {
   const identity = request.kind === "resolve-option" ? `${request.option} resolve callback` : `${request.kind} ${request.module}/${request.name ?? ""}`;
   if (!url || !secret) throw new Error(`skgo prerender service unavailable for ${identity}`);
   const { kind, ...body } = request;
-  const path = { load: "/load", remote: "/remote", "remote-inputs": "/inputs", begin: "/begin", response: "/response", end: "/end", endpoint: "/endpoint", cookies: "/cookies", "resolve-option": "/resolve-option", reroute: "/reroute" }[kind];
+  const path = { load: "/load", remote: "/remote", "remote-inputs": "/inputs", begin: "/begin", response: "/response", end: "/end", endpoint: "/endpoint", cookies: "/cookies", "resolve-option": "/resolve-option", reroute: "/reroute", entries: "/entries" }[kind];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CALLBACK_TIMEOUT);
   try {
@@ -657,6 +659,11 @@ let runtimePromise;
 function runtime() {
   if (!runtimePromise) runtimePromise = kitRuntime(appRoot());
   return runtimePromise;
+}
+
+/** Kit calls route entries during analyse, without a RequestEvent. */
+export async function routeEntries(module) {
+  return JSON.parse(await invokeService({ kind: "entries", module })).entries;
 }
 
 /** Called by the generated native Kit input producer. */

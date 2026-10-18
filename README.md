@@ -233,8 +233,8 @@ for the new development server.
 | [Streaming load promises](https://svelte.dev/docs/kit/load#Streaming-with-promises) | Available | Deferred Go values stream into HTML and client navigation; [browser scenarios](example/e2e/features/stream.feature). |
 | [Expected errors, redirects and error pages](https://svelte.dev/docs/kit/errors) | Available | Go load and remote outcomes use Kit's page/error behavior; [browser scenarios](example/e2e/features/ssr.feature). |
 | [`ssr = false` and `csr = false`](https://svelte.dev/docs/kit/page-options) | Available | SPA fallback and script-free HTML are [browser exercised](example/e2e/features/ssr.feature). |
-| [Prerendering](https://svelte.dev/docs/kit/page-options#prerender) | Limited | Kit-built static files are served; a branch with a Go server load cannot be prerendered, and prerendered redirects are refused. |
-| [Dynamic prerender entries](https://svelte.dev/docs/kit/page-options#entries) | Not verified | There is no demonstrated `entries` generator in the example. |
+| [Prerendering](https://svelte.dev/docs/kit/page-options#prerender) | Available | Kit renders Go loads at build time; Go serves the emitted static files and redirects. |
+| [Dynamic prerender entries](https://svelte.dev/docs/kit/page-options#entries) | Available | `skgo.Entries` enumerates raw route parameters from Go during Kit analysis; [static serving contract](example/server_test.go). |
 | [Trailing slash and route config options](https://svelte.dev/docs/kit/page-options) | Limited | Page `trailingSlash` supports `never`, `always` and `ignore`, including layout inheritance and overrides; [routing contracts](example/routing_options_test.go) and [client navigation](example/e2e/features/routing-options.feature) cover development and production. Endpoint-only routes use Kit's default `never`; authored server-only slash overrides and nonempty adapter `config` are refused at generation/build with a source or route diagnostic. |
 
 ### Requests and server behavior
@@ -300,7 +300,6 @@ regenerate their skgo bindings.
 - Development requires the exact toolchain and host platforms listed above.
   Full development browser qualification and draft preservation remain open;
   direct SSR socket subfetch response cookies are not automatically relayed.
-- Prerendering a page whose route has a Go server load.
 - Pointer, map and interface types in remote function signatures. Use value
   types, named structs or `polytype.Nullable`.
 - `output.bundleStrategy: 'inline'` and `router.resolution: 'server'`.

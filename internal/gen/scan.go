@@ -144,6 +144,7 @@ type app struct {
 
 	cfg Config
 
+	entries   []*entriesFn
 	remotes   []*remoteFn
 	loads     []*loadFn
 	actions   []*actionFn
@@ -313,6 +314,9 @@ func loadApp(cfg Config, files []string) (*app, error) {
 			if err != nil {
 				return nil, err
 			}
+			if len(a.entries) > 0 && a.entries[len(a.entries)-1].goPkg == gp {
+				found = true
+			}
 			if len(fns) > 0 || len(loads) > 0 || len(actions) > 0 || len(endpoints) > 0 {
 				found = true
 			}
@@ -380,6 +384,9 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 		return nil, nil, nil, nil, err
 	}
 
+	if err := a.scanEntries(gp, p, file, path, mod, stub); err != nil {
+		return nil, nil, nil, nil, err
+	}
 	routeID := ""
 	if isServerFile {
 		if routeID, err = routeIDFor(mod); err != nil {
