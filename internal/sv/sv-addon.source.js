@@ -311,9 +311,9 @@ export default defineAddon({
 			file.package,
 			transforms.json(({ data }) => {
 				data.name = applicationName;
-				// Vitest's upstream add-on writes `npm run`, but VitePlus records
-				// pnpm as the only valid package manager in devEngines.
-				data.scripts.test = 'pnpm run test:unit --run';
+				// Vitest's upstream add-on writes `npm run`; VitePlus owns the
+				// package manager, so the test entry runs through it.
+				data.scripts.test = 'vp run test:unit --run';
 				if (vitestVersion) {
 					if (data.devDependencies?.['vitest-browser-svelte']) {
 						data.devDependencies['vitest-browser-svelte'] = '3.1.0';

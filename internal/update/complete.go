@@ -138,25 +138,17 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 			return err
 		}
 	}
-	pm, err := stageRun(true, "which", "pnpm")
-	if err != nil {
-		return fmt.Errorf("resolve vp-managed pnpm: %w", err)
+	// kitpatch confirms that vp resolves the pinned pnpm before forwarding to it.
+	kitRun := func(dir string, env []string, name string, args ...string) ([]byte, error) {
+		return o.run(ctx, command{Dir: dir, Name: name, Args: args, Env: env, Quiet: true})
 	}
-	pnpm := strings.TrimSpace(string(pm))
-	if !filepath.IsAbs(pnpm) {
-		return fmt.Errorf("vp did not report an absolute pnpm executable: %q", pnpm)
-	}
-	pmVersion, err := stageRun(true, pnpm, "--version")
-	if err != nil || strings.TrimSpace(string(pmVersion)) != toolchain.PNPM {
-		return fmt.Errorf("vp environment requires pnpm %s; reported %q (%v)", toolchain.PNPM, pmVersion, err)
-	}
-	if err := kitpatch.Configure(kitpatch.Options{Web: stage, PNPM: pnpm, Out: o.Out}); err != nil {
+	if err := kitpatch.Configure(kitpatch.Options{Web: stage, VP: vp, Run: kitRun, Out: o.Out}); err != nil {
 		return err
 	}
 	if _, err := stageRun(false, vp, "install", "--no-frozen-lockfile"); err != nil {
 		return err
 	}
-	if err := kitpatch.Verify(kitpatch.Options{Web: stage, PNPM: pnpm, Out: o.Out}); err != nil {
+	if err := kitpatch.Verify(kitpatch.Options{Web: stage, VP: vp, Run: kitRun, Out: o.Out}); err != nil {
 		return err
 	}
 	if err := preservedFiles(original, stage, adapterVersion); err != nil {
@@ -204,7 +196,7 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 	if err := projectRun(web, vp, "install", "--no-frozen-lockfile"); err != nil {
 		return err
 	}
-	if err := kitpatch.Verify(kitpatch.Options{Web: web, PNPM: pnpm, Out: o.Out}); err != nil {
+	if err := kitpatch.Verify(kitpatch.Options{Web: web, VP: vp, Run: kitRun, Out: o.Out}); err != nil {
 		return err
 	}
 	if version, err := adapter.VersionOf(filepath.Join(web, "node_modules", adapter.Package)); err != nil || version != adapterVersion {

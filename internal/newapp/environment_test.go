@@ -67,7 +67,7 @@ exec "$@"
 			// Resolve the selected executable before running from another directory.
 			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 			var out bytes.Buffer
-			run, pnpm, err := qualifiedRunner("vp", root, &out, io.Discard)
+			run, kitVP, err := qualifiedRunner("vp", root, &out, io.Discard)
 			// Exercise ordinary Create's wiring too. Stop at the actual creator
 			// subprocess so this focused bootstrap test needs no frontend install.
 			var creation bytes.Buffer
@@ -97,7 +97,7 @@ exec "$@"
 				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
 					t.Fatalf("error = %v; want %s", err, tc.wantError)
 				}
-				if run != nil || pnpm != "" || out.Len() != 0 {
+				if run != nil || kitVP != "" || out.Len() != 0 {
 					t.Fatal("unqualified environment became usable")
 				}
 				return
@@ -105,8 +105,8 @@ exec "$@"
 			if err != nil {
 				t.Fatal(err)
 			}
-			if pnpm != filepath.Join(managed, "pnpm") {
-				t.Fatalf("Kit patch executable = %q", pnpm)
+			if kitVP != vp {
+				t.Fatalf("Kit patch VitePlus = %q, want the qualified %q", kitVP, vp)
 			}
 			// Every child, including project-local vp and Go generation, must inherit
 			// the same companion selection without mutating the caller's environment.

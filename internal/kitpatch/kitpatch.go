@@ -30,9 +30,13 @@ const (
 type Options struct {
 	Web       string
 	Workspace string
-	PNPM      string
-	Out       io.Writer
-	run       func(dir, name string, args ...string) ([]byte, error)
+	// VP is the VitePlus executable that forwards pnpm configuration commands.
+	// Empty selects VP_CLI_BIN, then vp from PATH.
+	VP  string
+	Out io.Writer
+	// Run executes VitePlus in dir with env appended to the process
+	// environment and returns its standard output. Nil runs it directly.
+	Run func(dir string, env []string, name string, args ...string) ([]byte, error)
 }
 
 type project struct {
@@ -529,7 +533,7 @@ func atomicReplace(path string, data []byte) error {
 }
 
 func getPatchedDependencies(options Options, web string) (map[string]string, error) {
-	output, err := runPnpm(options, web, "config", "get", "patchedDependencies", "--location=project", "--json")
+	output, err := runPackageManager(options, web, "config", "get", "patchedDependencies", "--location=project", "--json")
 	if err != nil {
 		return nil, fmt.Errorf("read project pnpm patchedDependencies: %w%s", err, formatOutput(output))
 	}
@@ -639,39 +643,80 @@ func setPatchedDependencies(options Options, p *project) error {
 	if err != nil {
 		return err
 	}
-	output, err := runPnpm(options, p.web, "config", "set", "patchedDependencies", string(data), "--location=project", "--json")
+	output, err := runPackageManager(options, p.web, "config", "set", "patchedDependencies", string(data), "--location=project", "--json")
 	if err != nil {
 		return fmt.Errorf("pnpm could not write project patchedDependencies: %w%s", err, formatOutput(output))
 	}
 	return nil
 }
 
-func runPnpm(options Options, dir string, args ...string) ([]byte, error) {
-	runner := options.run
-	if runner == nil {
-		runner = func(dir, name string, args ...string) ([]byte, error) {
-			if options.PNPM == "" {
-				args = append([]string{"exec", "pnpm"}, args...)
-				name = vitePlusExecutable()
-			}
-			cmd := exec.Command(name, args...)
-			cmd.Dir = dir
-			return cmd.CombinedOutput()
+// runPackageManager forwards a pnpm command through VitePlus. VitePlus runs the
+// pnpm the project declares, so that declaration must be the qualified one.
+func runPackageManager(options Options, dir string, args ...string) ([]byte, error) {
+	declared, err := declaredPackageManagers(dir)
+	if err != nil {
+		return nil, err
+	}
+	if len(declared) == 0 {
+		return nil, fmt.Errorf("%s declares no package manager; VitePlus needs pnpm@%s in devEngines.packageManager", filepath.Join(dir, "package.json"), pnpmVersion)
+	}
+	for _, selection := range declared {
+		if selection != "pnpm@"+pnpmVersion {
+			return nil, fmt.Errorf("pnpm %s is required, %s declares %s", pnpmVersion, filepath.Join(dir, "package.json"), selection)
 		}
 	}
-	name := options.PNPM
-	if name == "" {
-		name = "pnpm"
+	runner := options.Run
+	if runner == nil {
+		runner = func(dir string, env []string, name string, args ...string) ([]byte, error) {
+			var stdout, stderr bytes.Buffer
+			cmd := exec.Command(name, args...)
+			cmd.Dir = dir
+			cmd.Env = append(os.Environ(), env...)
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			if err := cmd.Run(); err != nil {
+				return append(stdout.Bytes(), stderr.Bytes()...), err
+			}
+			return stdout.Bytes(), nil
+		}
 	}
-	const bootstrapMode = "--pm-on-fail=ignore"
-	versionOutput, err := runner(dir, name, bootstrapMode, "--version")
+	vp := options.VP
+	if vp == "" {
+		vp = vitePlusExecutable()
+	}
+	// pnpm must not manage its own version from devEngines, or record that in a
+	// lockfile, while VitePlus forwards a configuration read or write.
+	return runner(dir, []string{"pnpm_config_pm_on_fail=ignore"}, vp, append([]string{"pm"}, args...)...)
+}
+
+// declaredPackageManagers returns each name@version selection in dir's
+// package.json, from devEngines.packageManager and packageManager.
+func declaredPackageManagers(dir string) ([]string, error) {
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
 	if err != nil {
-		return versionOutput, fmt.Errorf("VitePlus could not run its supported pnpm: %w%s", err, formatOutput(versionOutput))
+		return nil, err
 	}
-	if strings.TrimSpace(string(versionOutput)) != pnpmVersion {
-		return versionOutput, fmt.Errorf("pnpm %s is required, found %q", pnpmVersion, strings.TrimSpace(string(versionOutput)))
+	var manifest struct {
+		PackageManager string `json:"packageManager"`
+		DevEngines     struct {
+			PackageManager struct {
+				Name    string `json:"name"`
+				Version string `json:"version"`
+			} `json:"packageManager"`
+		} `json:"devEngines"`
 	}
-	return runner(dir, name, append([]string{bootstrapMode}, args...)...)
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", filepath.Join(dir, "package.json"), err)
+	}
+	var declared []string
+	if engine := manifest.DevEngines.PackageManager; engine.Name != "" || engine.Version != "" {
+		declared = append(declared, engine.Name+"@"+engine.Version)
+	}
+	if manifest.PackageManager != "" {
+		selection, _, _ := strings.Cut(manifest.PackageManager, "+")
+		declared = append(declared, selection)
+	}
+	return declared, nil
 }
 
 func formatOutput(output []byte) string {

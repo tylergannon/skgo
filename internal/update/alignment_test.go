@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -289,14 +289,6 @@ func TestPreservationRefusalNamesDeterministicChangedKeyAndSource(t *testing.T) 
 }
 
 func TestAlignmentPublishesOverridesConsumedByQualifiedPNPM(t *testing.T) {
-	pnpm, err := exec.LookPath("pnpm")
-	if err != nil {
-		t.Fatal("qualified pnpm 12.14.0 is required:", err)
-	}
-	version, err := exec.Command(pnpm, "--version").Output()
-	if err != nil || strings.TrimSpace(string(version)) != "12.14.0" {
-		t.Fatalf("qualified pnpm version = %q, %v; want 12.14.0", version, err)
-	}
 	for _, existingWorkspace := range []bool{false, true} {
 		root := t.TempDir()
 		writeAlignmentFile(t, root, "package.json", `{"devDependencies":{"vite-plus":"0.9.0"},"pnpm":{"overrides":{"vitest@*":"4.1.0","ignored-legacy-selection":"7.8.9"}}}`)
@@ -308,9 +300,7 @@ func TestAlignmentPublishesOverridesConsumedByQualifiedPNPM(t *testing.T) {
 		if err := alignVPDependencies(root, vpDependencies{Core: "1.3.0", Vitest: "5.0.5"}); err != nil {
 			t.Fatal(err)
 		}
-		cmd := exec.Command(pnpm, "config", "get", "overrides", "--json")
-		cmd.Dir = root
-		data, err := cmd.Output()
+		data, err := qualifiedVP(t, root, "pm", "config", "get", "overrides", "--json").Output()
 		if err != nil {
 			t.Fatalf("read actual pnpm override selection: %v", err)
 		}
@@ -366,13 +356,8 @@ func TestCompletionUsesDependencyAlignmentForExistingVP(t *testing.T) {
 			if c.Name != "/qualified/vp" {
 				t.Fatalf("consumer mutation or unexpected executable before staged verification: %+v", c)
 			}
-			if reflect.DeepEqual(c.Args, []string{"--version"}) {
-				return []byte("vp v1.3.0\n"), nil
-			}
-			if reflect.DeepEqual(c.Args, []string{"toolchain", "--global", "--json", "vite", "vitest"}) {
-				return []byte(qualifiedVPGraph), nil
-			}
-			if reflect.DeepEqual(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.14.0", "which", "pnpm"}) {
+			// Kit patching is the first package-manager step after alignment.
+			if len(c.Args) > 0 && c.Args[0] == "pm" && slices.Contains(c.Env, "pnpm_config_pm_on_fail=ignore") {
 				stage = c.Dir
 				if stage == root || stage == filepath.Join(root, "web") {
 					t.Fatal("alignment ran in the consumer")
@@ -391,6 +376,12 @@ func TestCompletionUsesDependencyAlignmentForExistingVP(t *testing.T) {
 				}
 				inspected = true
 				return nil, stop
+			}
+			if reflect.DeepEqual(c.Args, []string{"--version"}) {
+				return []byte("vp v1.3.0\n"), nil
+			}
+			if reflect.DeepEqual(c.Args, []string{"toolchain", "--global", "--json", "vite", "vitest"}) {
+				return []byte(qualifiedVPGraph), nil
 			}
 			t.Fatalf("existing vp project attempted migration or an unexpected step: %+v", c)
 			return nil, nil

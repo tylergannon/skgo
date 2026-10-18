@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -15,13 +16,14 @@ import (
 )
 
 type fixture struct {
-	web  string
-	pnpm string
+	web string
 }
+
+// pnpmDeclaration is how every skgo frontend tells VitePlus which pnpm to run.
+const pnpmDeclaration = `"devEngines":{"packageManager":{"name":"pnpm","version":"` + pnpmVersion + `","onFail":"download"}}`
 
 func newFixture(t *testing.T, installed bool) fixture {
 	t.Helper()
-	pnpm := mustPNPM(t)
 	web := filepath.Join(t.TempDir(), "web")
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
@@ -38,7 +40,8 @@ func newFixture(t *testing.T, installed bool) fixture {
     "preserved-tool": "catalog:"
   },
   "scripts": {"build": "vp build"},
-  "custom": {"keep": [1, true, "same"]}
+  "custom": {"keep": [1, true, "same"]},
+  ` + pnpmDeclaration + `
 }
 `)
 	if err := os.WriteFile(filepath.Join(web, "package.json"), manifest, 0o644); err != nil {
@@ -47,10 +50,10 @@ func newFixture(t *testing.T, installed bool) fixture {
 	if installed {
 		installStockKit(t, web, "3.1.0", "@sveltejs/kit")
 	}
-	return fixture{web: web, pnpm: pnpm}
+	return fixture{web: web}
 }
 
-func (f fixture) options() Options { return Options{Web: f.web, PNPM: f.pnpm} }
+func (f fixture) options() Options { return Options{Web: f.web} }
 
 func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 	f := newFixture(t, true)
@@ -99,7 +102,8 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
     "preserved-tool": "catalog:"
   },
   "scripts": {"build": "vp build"},
-  "custom": {"keep": [1, true, "same"]}
+  "custom": {"keep": [1, true, "same"]},
+  `+pnpmDeclaration+`
 }
 `), []byte(`"@sveltejs/kit": "^3.1.0"`), []byte(`"@sveltejs/kit": "3.1.0"`), 1)
 	if !bytes.Equal(gotManifest, wantManifest) {
@@ -160,7 +164,7 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 	}
 	var missingPatchCalls int
 	missingPatchOpts := opts
-	missingPatchOpts.run = func(string, string, ...string) ([]byte, error) {
+	missingPatchOpts.Run = func(string, []string, string, ...string) ([]byte, error) {
 		missingPatchCalls++
 		return nil, errors.New("unexpected pnpm invocation for missing patch")
 	}
@@ -181,7 +185,7 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 	}
 	var missingMapCalls int
 	missingMapOpts := opts
-	missingMapOpts.run = func(string, string, ...string) ([]byte, error) {
+	missingMapOpts.Run = func(string, []string, string, ...string) ([]byte, error) {
 		missingMapCalls++
 		return nil, errors.New("unexpected pnpm invocation for missing map")
 	}
@@ -206,7 +210,7 @@ func TestConfigureConfiguredButUninstalledFailsCheck(t *testing.T) {
 	}
 	var nativeCalls int
 	opts := f.options()
-	opts.run = func(string, string, ...string) ([]byte, error) {
+	opts.Run = func(string, []string, string, ...string) ([]byte, error) {
 		nativeCalls++
 		return nil, errors.New("unexpected pnpm invocation")
 	}
@@ -306,7 +310,7 @@ func TestConfigureRejectsAmbiguousOrMalformedWorkspaceYAMLBeforeWrites(t *testin
 			}
 			options := f.options()
 			var nativeCalls int
-			options.run = func(string, string, ...string) ([]byte, error) {
+			options.Run = func(string, []string, string, ...string) ([]byte, error) {
 				nativeCalls++
 				return nil, errors.New("unexpected native pnpm invocation for malformed YAML")
 			}
@@ -338,10 +342,7 @@ func TestConfigureRefusesNativeAndRawPatchedDependenciesDisagreement(t *testing.
 		t.Fatal(err)
 	}
 	options := f.options()
-	options.run = func(_ string, _ string, args ...string) ([]byte, error) {
-		if len(args) == 2 && args[0] == "--pm-on-fail=ignore" && args[1] == "--version" {
-			return []byte(pnpmVersion), nil
-		}
+	options.Run = func(_ string, _ []string, _ string, args ...string) ([]byte, error) {
 		return []byte(`{"external@1.0.0":"/outside/patch.patch"}`), nil
 	}
 	if err := Configure(options); err == nil || !strings.Contains(err.Error(), "configuration is ambiguous") {
@@ -370,7 +371,7 @@ func TestNativeEnvironmentAmbiguityDoesNotMutateSelectedTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"3.1.0"}}`)
+		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"3.1.0"},` + pnpmDeclaration + `}`)
 		if err := os.WriteFile(filepath.Join(f.web, "package.json"), manifest, 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -397,28 +398,53 @@ func TestNativeEnvironmentAmbiguityDoesNotMutateSelectedTree(t *testing.T) {
 	})
 }
 
-func TestRunPnpmUsesNonBootstrappingNativeReads(t *testing.T) {
+func TestRunPackageManagerForwardsThroughQualifiedVitePlus(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{`+pnpmDeclaration+`,"packageManager":"pnpm@`+pnpmVersion+`+sha512.abc"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	var calls [][]string
-	options := Options{run: func(_ string, _ string, args ...string) ([]byte, error) {
-		calls = append(calls, append([]string(nil), args...))
-		if len(args) == 2 && args[1] == "--version" {
-			return []byte(pnpmVersion), nil
+	options := Options{VP: "/qualified/vp", Run: func(_ string, env []string, name string, args ...string) ([]byte, error) {
+		if !slices.Equal(env, []string{"pnpm_config_pm_on_fail=ignore"}) {
+			t.Errorf("pnpm may manage its own version: env %q", env)
 		}
+		calls = append(calls, append([]string{name}, args...))
 		return []byte("null\n"), nil
 	}}
-	_, err := runPnpm(options, t.TempDir(), "config", "get", "patchedDependencies", "--location=project", "--json")
+	_, err := runPackageManager(options, dir, "config", "get", "patchedDependencies", "--location=project", "--json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := [][]string{
-		{"--pm-on-fail=ignore", "--version"},
-		{"--pm-on-fail=ignore", "config", "get", "patchedDependencies", "--location=project", "--json"},
-	}
+	want := [][]string{{"/qualified/vp", "pm", "config", "get", "patchedDependencies", "--location=project", "--json"}}
 	if fmt.Sprint(calls) != fmt.Sprint(want) {
 		t.Fatalf("native read commands = %#v, want %#v", calls, want)
 	}
 	if !equalStringMap(map[string]string{"": ""}, map[string]string{"": ""}) || equalStringMap(map[string]string{"": ""}, map[string]string{"other": ""}) {
 		t.Fatal("raw/native comparison did not require literal key equality")
+	}
+}
+
+func TestRunPackageManagerRefusesAnotherDeclaredPNPM(t *testing.T) {
+	for name, manifest := range map[string]string{
+		"undeclared":           `{"private":true}`,
+		"other devEngines":     `{"devEngines":{"packageManager":{"name":"pnpm","version":"12.10.1"}}}`,
+		"other packageManager": `{` + pnpmDeclaration + `,"packageManager":"pnpm@12.10.1"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(manifest), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			forwarded := false
+			options := Options{Run: func(string, []string, string, ...string) ([]byte, error) {
+				forwarded = true
+				return nil, nil
+			}}
+			_, err := runPackageManager(options, dir, "config", "set", "patchedDependencies", "{}", "--location=project", "--json")
+			if err == nil || forwarded {
+				t.Fatalf("another pnpm was accepted: err=%v forwarded=%t", err, forwarded)
+			}
+		})
 	}
 }
 
@@ -431,7 +457,7 @@ func TestConfigureRefusesDuplicateKitJSONKeysWithoutRewritingPackage(t *testing.
 	}
 	options := f.options()
 	var nativeCalls int
-	options.run = func(string, string, ...string) ([]byte, error) {
+	options.Run = func(string, []string, string, ...string) ([]byte, error) {
 		nativeCalls++
 		return nil, errors.New("unexpected native pnpm invocation for duplicate package key")
 	}
@@ -514,7 +540,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.MkdirAll(web, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"}}`), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"},`+pnpmDeclaration+`}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		parentConfig := filepath.Join(parent, "pnpm-workspace.yaml")
@@ -522,14 +548,14 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.WriteFile(parentConfig, before, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		f := fixture{web: web, pnpm: mustPNPM(t)}
+		f := fixture{web: web}
 		opts := f.options()
 		opts.Workspace = parent
 		if err := Configure(opts); err == nil || !strings.Contains(err.Error(), "refusing to modify parent pnpm workspace") {
 			t.Fatalf("parent workspace was not refused: %v", err)
 		}
 		assertBytesUnchanged(t, parentConfig, before)
-		assertBytesUnchanged(t, filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"}}`))
+		assertBytesUnchanged(t, filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"},`+pnpmDeclaration+`}`))
 		if _, err := os.Stat(filepath.Join(web, "patches")); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("refusal created patch directory: %v", err)
 		}
@@ -540,7 +566,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.MkdirAll(web, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"}}`), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"},`+pnpmDeclaration+`}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		parentConfig := filepath.Join(parent, "pnpm-workspace.yaml")
@@ -553,7 +579,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.WriteFile(selectedConfig, selectedBefore, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		f := fixture{web: web, pnpm: mustPNPM(t)}
+		f := fixture{web: web}
 		if err := Configure(f.options()); err != nil {
 			t.Fatal(err)
 		}
@@ -569,7 +595,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.MkdirAll(web, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"}}`)
+		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"},` + pnpmDeclaration + `}`)
 		if err := os.WriteFile(filepath.Join(web, "package.json"), manifest, 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -582,7 +608,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.Symlink(web, alias); err != nil {
 			t.Fatal(err)
 		}
-		f := fixture{web: alias, pnpm: mustPNPM(t)}
+		f := fixture{web: alias}
 		if err := Configure(f.options()); err == nil || !strings.Contains(err.Error(), "refusing to modify parent pnpm workspace") {
 			t.Fatalf("physical parent workspace was not refused through web symlink: %v", err)
 		}
@@ -646,7 +672,7 @@ func assertConfigureRefusesWithoutWrites(t *testing.T, f fixture, wantError stri
 	beforePatch, patchErr := os.ReadFile(patchPath)
 	options := f.options()
 	var nativeCalls int
-	options.run = func(string, string, ...string) ([]byte, error) {
+	options.Run = func(string, []string, string, ...string) ([]byte, error) {
 		nativeCalls++
 		return nil, errors.New("unexpected native pnpm invocation for local refusal")
 	}
@@ -778,7 +804,7 @@ func setNativePatchedDependencies(t *testing.T, f fixture, values map[string]str
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(f.pnpm, "config", "set", "patchedDependencies", string(jsonValue), "--location=project", "--json")
+	cmd := exec.Command(vitePlusExecutable(), "pm", "config", "set", "patchedDependencies", string(jsonValue), "--location=project", "--json")
 	cmd.Dir = f.web
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("native pnpm config set: %w: %s", err, output)
@@ -788,9 +814,9 @@ func setNativePatchedDependencies(t *testing.T, f fixture, values map[string]str
 
 func getNativePatchedDependencies(t *testing.T, f fixture) map[string]string {
 	t.Helper()
-	cmd := exec.Command(f.pnpm, "config", "get", "patchedDependencies", "--location=project", "--json")
+	cmd := exec.Command(vitePlusExecutable(), "pm", "config", "get", "patchedDependencies", "--location=project", "--json")
 	cmd.Dir = f.web
-	output, err := cmd.CombinedOutput()
+	output, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("native pnpm config get: %v: %s", err, output)
 	}
@@ -802,23 +828,6 @@ func getNativePatchedDependencies(t *testing.T, f fixture) map[string]string {
 		t.Fatalf("parse native pnpm config JSON: %v: %s", err, output)
 	}
 	return values
-}
-
-func mustPNPM(t *testing.T) string {
-	t.Helper()
-	cmd := exec.Command(vitePlusExecutable(), "exec", "which", "pnpm")
-	// Resolve from the same pinned project as the ordinary test recipe. The
-	// package directory itself is not a frontend project.
-	cmd.Dir = filepath.Join("..", "..", "example", "web")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("resolve VitePlus-managed pnpm: %v: %s", err, output)
-	}
-	path := strings.TrimSpace(string(output))
-	if !filepath.IsAbs(path) {
-		t.Fatalf("VitePlus returned invalid pnpm path %q", path)
-	}
-	return path
 }
 
 func assertBytesUnchanged(t *testing.T, path string, want []byte) {

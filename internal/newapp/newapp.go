@@ -123,7 +123,7 @@ type project struct {
 	SVAddonSpec       string
 	AdapterDependency string
 	SVVersion         string
-	PNPM              string
+	VP                string // the qualified VitePlus Kit patching forwards pnpm through
 	stdout            io.Writer
 	configureKitQueue func(web string, out io.Writer) error
 	verifyKitQueue    func(web string) error
@@ -160,7 +160,7 @@ func Create(options Options) (Result, error) {
 	}
 	run := options.run
 	if run == nil {
-		run, p.PNPM, err = qualifiedRunner(vp, p.Dir, options.Stdout, options.Stderr)
+		run, p.VP, err = qualifiedRunner(vp, p.Dir, options.Stdout, options.Stderr)
 		if err != nil {
 			return Result{}, fmt.Errorf("skgo: preparing the frontend environment failed: %w", err)
 		}
@@ -270,7 +270,7 @@ func finish(p project, run func(command) error) (Result, error) {
 	configureQueue := p.configureKitQueue
 	if configureQueue == nil {
 		configureQueue = func(web string, out io.Writer) error {
-			return kitpatch.Configure(kitpatch.Options{Web: web, PNPM: p.PNPM, Out: out})
+			return kitpatch.Configure(kitpatch.Options{Web: web, VP: p.VP, Out: out})
 		}
 	}
 	if err := configureQueue(web, p.stdout); err != nil {
@@ -286,7 +286,7 @@ func finish(p project, run func(command) error) (Result, error) {
 	}
 	verifyQueue := p.verifyKitQueue
 	if verifyQueue == nil {
-		verifyQueue = func(web string) error { return kitpatch.Verify(kitpatch.Options{Web: web, PNPM: p.PNPM}) }
+		verifyQueue = func(web string) error { return kitpatch.Verify(kitpatch.Options{Web: web, VP: p.VP}) }
 	}
 	if err := verifyQueue(web); err != nil {
 		return Result{}, fmt.Errorf("skgo: installed Kit prerender queue correction could not be verified: %w", err)
