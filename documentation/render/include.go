@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -98,7 +99,7 @@ func expandIncludes(root string, page *Page) (string, []Problem) {
 // named region, or the whole file without marker lines when region is empty,
 // with common indentation removed.
 func includeRegion(root, rel, region string) (string, error) {
-	if strings.HasPrefix(rel, "/") || strings.Contains(rel, "..") {
+	if strings.HasPrefix(rel, "/") || escapesRoot(rel) {
 		return "", fmt.Errorf("include %s: paths are relative to the module root", rel)
 	}
 	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
@@ -175,4 +176,16 @@ func dedent(lines []string) string {
 		}
 	}
 	return strings.Join(out, "\n")
+}
+
+// escapesRoot reports whether a slash-separated path has a ".." segment once
+// cleaned. Only whole segments count, so Kit rest-parameter directories such
+// as [...rest] are fine.
+func escapesRoot(rel string) bool {
+	for _, seg := range strings.Split(path.Clean(rel), "/") {
+		if seg == ".." {
+			return true
+		}
+	}
+	return false
 }
