@@ -1,0 +1,14 @@
+$ bddgen ⊘ cache disabled
+
+$ playwright test --grep 'Kit navigates to a Go-selected route' ⊘ cache disabled
+
+Running 1 test using 1 worker
+
+(node:57465) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › .features-gen/features/reroute.feature.spec.js:6:3 › Go owns universal reroute selection › Kit navigates to a Go-selected route while keeping its alias URL (585ms)
+
+  1 passed (2.1s)
+
+---
+vp run: 2/2 successful. (Run `vp run --last-details` for full details)

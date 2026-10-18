@@ -81,12 +81,12 @@ func TestRequestMetadataThroughServedLoadsEndpointsAndActions(t *testing.T) {
 			})
 			h := hook.Intercept(cfg, emptyHookParams, loads.Intercept(endpoints.Intercept(served)))
 			for _, tc := range []struct {
-				name, method, path, logical, route, flags string
-				status                                    int
+				name, method, path, logical, loadLogical, route, flags string
+				status                                                 int
 			}{
-				{"data", "GET", base + "/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1", "http://fixture.test" + base + "/items/42/?q=blue", "/items/[id]", "true,false,false", 200},
-				{"endpoint", "GET", base + "/api?q=blue", "http://fixture.test" + base + "/api?q=blue", "/api", "false,false,false", 200},
-				{"action", "POST", base + "/items/42?/save&q=blue", "http://fixture.test" + base + "/items/42?/save&q=blue", "/items/[id]", "false,false,false", 200},
+				{"data", "GET", base + "/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1", "http://fixture.test" + base + "/items/42/?q=blue", "http://fixture.test" + base + "/items/42?q=blue", "/items/[id]", "true,false,false", 200},
+				{"endpoint", "GET", base + "/api?q=blue", "http://fixture.test" + base + "/api?q=blue", "http://fixture.test" + base + "/api?q=blue", "/api", "false,false,false", 200},
+				{"action", "POST", base + "/items/42?/save&q=blue", "http://fixture.test" + base + "/items/42?/save&q=blue", "http://fixture.test" + base + "/items/42?/save&q=blue", "/items/[id]", "false,false,false", 200},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					r := httptest.NewRequest(tc.method, tc.path, strings.NewReader("name=Ada"))
@@ -99,7 +99,10 @@ func TestRequestMetadataThroughServedLoadsEndpointsAndActions(t *testing.T) {
 					}
 					rec := httptest.NewRecorder()
 					h.ServeHTTP(rec, r)
+					// Kit restores the data URL before handle, then render_data clones
+					// and normalizes only the load event according to trailingSlash.
 					want := tc.path + "|" + tc.logical + "|" + tc.route + "|" + tc.flags + "|2001:db8::7"
+					wantLoad := tc.path + "|" + tc.loadLogical + "|" + tc.route + "|" + tc.flags + "|2001:db8::7"
 					body := rec.Body.String()
 					if tc.name == "action" {
 						var answer struct {
@@ -114,10 +117,10 @@ func TestRequestMetadataThroughServedLoadsEndpointsAndActions(t *testing.T) {
 						}
 						body = fmt.Sprint(value)
 					}
-					if rec.Code != tc.status || rec.Header().Get("X-Hook-Metadata") != want || !strings.Contains(body, want) {
-						t.Fatalf("want metadata %q; got %d hook=%q body=%s", want, rec.Code, rec.Header().Get("X-Hook-Metadata"), rec.Body.String())
+					if rec.Code != tc.status || rec.Header().Get("X-Hook-Metadata") != want || !strings.Contains(body, wantLoad) {
+						t.Fatalf("want hook metadata %q and load metadata %q; got %d hook=%q body=%s", want, wantLoad, rec.Code, rec.Header().Get("X-Hook-Metadata"), rec.Body.String())
 					}
-					if tc.name == "data" && strings.Count(rec.Body.String(), want) != 2 {
+					if tc.name == "data" && strings.Count(rec.Body.String(), wantLoad) != 2 {
 						t.Fatalf("both layout and page must report matched page: %s", rec.Body.String())
 					}
 				})

@@ -1,0 +1,14 @@
+=== RUN   TestGoRerouteSelectsApplicationRoutes
+=== RUN   TestGoRerouteSelectsApplicationRoutes//go-alias/page?receipt=handler
+=== RUN   TestGoRerouteSelectsApplicationRoutes//go-alias/page/__data.json?receipt=handler&x-sveltekit-invalidated=11
+=== RUN   TestGoRerouteSelectsApplicationRoutes//go-alias/endpoint?receipt=handler
+=== RUN   TestGoRerouteSelectsApplicationRoutes//rerouted/42?receipt=direct
+=== RUN   TestGoRerouteSelectsApplicationRoutes//api/rerouted/12?receipt=direct
+--- PASS: TestGoRerouteSelectsApplicationRoutes (0.17s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//go-alias/page?receipt=handler (0.01s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//go-alias/page/__data.json?receipt=handler&x-sveltekit-invalidated=11 (0.00s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//go-alias/endpoint?receipt=handler (0.00s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//rerouted/42?receipt=direct (0.01s)
+    --- PASS: TestGoRerouteSelectsApplicationRoutes//api/rerouted/12?receipt=direct (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/example	0.425s

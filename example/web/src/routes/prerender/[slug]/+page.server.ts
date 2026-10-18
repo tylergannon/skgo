@@ -4,3 +4,7 @@ import type { RequestEvent } from "@sveltejs/kit";
 export const load = async (event: RequestEvent): Promise<{ slug: string; receipt: string }> => {
   throw new Error("skgo: implemented in Go");
 };
+
+export const entries: import("./$types").EntryGenerator = async () => {
+  throw new Error("skgo: entries implemented in Go");
+};

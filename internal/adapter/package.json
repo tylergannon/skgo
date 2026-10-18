@@ -27,7 +27,11 @@
 			"types": "./skgo-adapter/prerender.d.ts",
 			"import": "./skgo-adapter/prerender.js"
 		},
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./reroute": {
+			"types": "./skgo-adapter/reroute.d.ts",
+			"import": "./skgo-adapter/reroute.js"
+		}
 	},
 	"types": "index.d.ts",
 	"files": [
@@ -50,7 +54,9 @@
 		"skgo-adapter/prerender-csp.js",
 		"skgo-adapter/prerender-modules.js",
 		"skgo-adapter/prerender.js",
-		"skgo-adapter/prerender.d.ts"
+		"skgo-adapter/prerender.d.ts",
+		"skgo-adapter/reroute.js",
+		"skgo-adapter/reroute.d.ts"
 	],
 	"peerDependencies": {
 		"@sveltejs/kit": "3.1.0",

@@ -225,15 +225,25 @@ function throwGoError(answer) {
   let failure;
   if (diagnostic.kind==='known') {
     try { error(diagnostic.status,diagnostic.message); } catch(caught) {failure=caught;}
-  } else failure=new Error(diagnostic.message);
+  } else {
+    failure=new Error(diagnostic.message);
+    if (diagnostic.stack) failure.stack=`Error: ${diagnostic.message}\n${diagnostic.stack}`;
+    else if (diagnostic.source) failure.stack=`Error: ${diagnostic.message}\n    at ${diagnostic.source}`;
+  }
   // Kit passes HttpError.body to handleError, but passes an unexpected
   // Error itself. Preserve the body under the identity its hook receives.
-  handledGoErrors.set(diagnostic.kind==='known' ? failure.body : failure,body);
+  handledGoErrors.set(diagnostic.kind==='known' ? failure.body : failure,{body,diagnostic});
   throw failure;
 }
 export function handleGoError({kind,error,issues}) {
-  const body=handledGoErrors.get(error);
-  if (body) return body;
+  const handled=handledGoErrors.get(error);
+  if (handled) {
+    // Vite fixes JavaScript stacks before invoking this hook. Go frames are
+    // already authored locations and must not go through its JS sourcemapper.
+    const {body,diagnostic}=handled;
+    if (kind==='unknown') console.error(`Error: ${diagnostic.message}\n${diagnostic.stack || (diagnostic.source ? `    at ${diagnostic.source}` : '')}`);
+    return body;
+  }
   // Preserve Kit's default behavior for errors originating in native Kit or
   // universal JavaScript rather than a completed Go handleError invocation.
   if (kind==='unknown') console.error(error);
@@ -681,6 +691,11 @@ export async function requestHandle(event, resolve) {
   }
 }
 export async function requestFetch({ event, request, fetch }) {
+  const target=new URL(request.url);
+  if(target.origin===event.url.origin && target.pathname===`${devBase}/${devAppDir}/reroute`) {
+    const answer=await json('reroute',{url:target.searchParams.get('url'),headers:headers(event)},event);
+    return new Response(JSON.stringify(answer),{headers:{'content-type':'application/json'}});
+  }
   const tracing=event.locals?.[requestOwner]?.tracing;
   if (tracing?.enabled) {
     const api=await import('@opentelemetry/api');

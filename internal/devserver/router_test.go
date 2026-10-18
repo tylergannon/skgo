@@ -83,6 +83,15 @@ func TestPublicRouterUsesKitForPagesDataActionsEndpointsAndGoForRemotes(t *testi
 	if res.StatusCode != 201 || !strings.HasPrefix(string(raw), "GO731 GET ") {
 		t.Fatalf("configured base/appDir: status=%d body=%s", res.StatusCode, raw)
 	}
+	res, err = http.Get(public.URL + "/base/custom/reroute?url=alias")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ = io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != 201 || !strings.HasPrefix(string(raw), "GO731 GET ") {
+		t.Fatalf("reroute bridge missed Go application: status=%d body=%s", res.StatusCode, raw)
+	}
 	for _, path := range []string{"/orders", "/orders/__data.json", "/orders?/save", "/api/endpoint", "/@vite/client"} {
 		req, _ := http.NewRequest("GET", public.URL+path, nil)
 		req.Header.Set("X-Skgo-Client-Address", "FORGED_882")

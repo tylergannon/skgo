@@ -23,6 +23,13 @@ import (
 // The marker is resolved through go/types like every other one — by the package
 // the identifier belongs to, never by matching the text `skgo.Transported`.
 func (a *app) scanHooks(gp *goPackage, p *packages.Package, file *ast.File, path string) error {
+	if symbol := p.Types.Scope().Lookup("Reroute"); symbol != nil {
+		core := p.Imports[skgoPkg]
+		if core == nil || core.Types.Scope().Lookup("Reroute") == nil || !types.ConvertibleTo(symbol.Type(), core.Types.Scope().Lookup("Reroute").Type()) {
+			return fmt.Errorf("skgo: %s: Reroute must be convertible to skgo.Reroute", path)
+		}
+		a.reroute = gp
+	}
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)
 		if !ok || gd.Tok != token.VAR {

@@ -337,6 +337,14 @@ Call is one remote call as it reaches the generated closure that answers it.
 
 Arg is the argument exactly as it came off the wire: the devalue value model tree kit's client sent, before anything has decided what Go type it is. Deciding that is the job of the strict decoder polytype generated for this function's own parameter type, and of nothing else. That decoder lives in the generated bindings package with the closure that calls it, which is why there is no type parameter here and no Go value of the app's own types passing through this struct.
 
+### RejectArgument
+
+```go
+func (Call) RejectArgument(detail error) error
+```
+
+RejectArgument marks a generated strict decoder's schema refusal. Ordinary application BadRequest errors, malformed transport and form issues do not use this boundary. Generated registrations call it before the remote body.
+
 ### Transported
 
 ```go
@@ -480,6 +488,8 @@ NewRemotes builds a registry. Two functions with the same module and export name
 
 ```go
 type RemoteConfig struct {
+	// HandleError customizes generated argument schema refusals with kind validation.
+	HandleError HandleError
 	// Development mirrors Kit's development dispatch for prerender remotes.
 	// Production registries serve only their recorded static artifacts.
 	Development bool

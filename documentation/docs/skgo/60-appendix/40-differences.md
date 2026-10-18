@@ -23,7 +23,7 @@ SKGo runs SvelteKit %kit%'s own router, client and renderer, so anything not lis
 
 - **Trailing slashes.** Go has no per-route `trailingSlash` option: every route takes Kit's default of `never`, except the root of an application with a `paths.base`, which Kit forces to `always`. A mismatched URL gets Kit's redirect ([#163](https://github.com/tylergannon/skgo/issues/163)).
 - **Param matchers.** The server runs Go matchers declared in `src/params.go`. Every matcher `src/params.ts` declares needs a Go matcher of the same name, or `skgo generate` fails with `requires a Go matcher in src/params.go` ([#159](https://github.com/tylergannon/skgo/issues/159)). See [Matching](routing#Route-parameters-Matching).
-- **`reroute`.** The Go server does not apply a `reroute` hook from `src/hooks.ts` ([#167](https://github.com/tylergannon/skgo/issues/167)).
+- **`reroute`.** Write the hook body in Go and export the adapter's universal forwarding hook from `src/hooks.ts`; see [Hooks](hooks#reroute). An arbitrary JavaScript reroute body is not executed by the Go server.
 
 ## Hooks
 

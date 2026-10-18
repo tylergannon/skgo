@@ -1,0 +1,6 @@
+=== RUN   TestKitMetadataObservesLiveMatcherInputs
+--- PASS: TestKitMetadataObservesLiveMatcherInputs (0.31s)
+=== RUN   TestKitMetadataUsesKitRouteRecordsInsteadOfEveryDirectory
+--- PASS: TestKitMetadataUsesKitRouteRecordsInsteadOfEveryDirectory (0.10s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	0.660s

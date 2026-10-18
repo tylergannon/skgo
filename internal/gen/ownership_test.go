@@ -119,6 +119,9 @@ func EventFrom(context.Context) *Event { return &Event{} }
 func TrackLoadParam(*Event, string) {}
 func LoadParamValue[T any](*Event, string) T { var zero T; return zero }
 func OptionalLoadParamValue[T any](*Event, string) *T { return nil }
+type RouteEntries struct{}
+func Entries[P any](func()([]P,error))Marker{return Marker{}}
+func NewRouteEntries[P any](string,func()([]P,error))*RouteEntries{return nil}
 func Load[P,L, Out any](fn func(RequestEvent[P,L]) (Out, error)) Marker { _ = fn; return Marker{} }
 
 func Command(fn any) Marker { _ = fn; return Marker{} }
@@ -147,6 +150,7 @@ type Call struct {
 	Present bool
 }
 
+func (Call) RejectArgument(err error)error{return err}
 func (c Call) Transported(v any) (any, error) { return v, nil }
 
 type RemoteFunc func(ctx context.Context, call Call) (any, error)
@@ -173,7 +177,7 @@ type RemoteSpec struct {
 
 func NewRemote(spec RemoteSpec) *Remote { _ = spec; return &Remote{} }
 
-type PrerenderServiceOptions struct {BindRequest func(http.Handler)http.Handler; Endpoints []*Endpoint;Matchers map[string]ParamMatcher}
+type PrerenderServiceOptions struct {BindRequest func(http.Handler)http.Handler; Entries []*RouteEntries; Endpoints []*Endpoint;Matchers map[string]ParamMatcher}
 func RunPrerenderService(any, []*ServerLoad, []*Remote,PrerenderServiceOptions) error { return nil }
 
 func BadRequest(detail error) error { return detail }
@@ -191,6 +195,7 @@ type Deferred[T any] struct{}
 func Transported[T any](tag string) Marker { _ = tag; return Marker{} }
 
 type LoadSpec struct {
+	Source string
 	Module string
 	Run    func(ctx context.Context) (any, error)
 	Matchers map[string]ParamMatcher

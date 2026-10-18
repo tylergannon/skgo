@@ -69,6 +69,13 @@ func load(event PageRequestEvent) (PageData, error) {
 }
 
 var _ = skgo.Load(load)
+
+// The catalog lives only in Go. Kit requests these raw URL values during analyse.
+func entries() ([]EntryParams, error) {
+	return []EntryParams{{Slug: "atlas"}, {Slug: "beacon"}}, nil
+}
+
+var _ = skgo.Entries(entries)
 ```
 
 `PageRequestEvent` and its typed `Params` are generated into `skgo_gen.go` beside the file. `error()` becomes a returned `skgo.Errorf`, `redirect()` a returned `*skgo.Redirect`, `parent()` is `skgo.Parent[LayoutData](event.Context())`, and a streamed promise is a `skgo.Deferred` field. See [Loading data](load).

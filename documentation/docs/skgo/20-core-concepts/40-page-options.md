@@ -19,10 +19,6 @@ A prerendered page is rendered once, at build time, and served as a file. `expor
 /// file: src/routes/prerender/[slug]/+page.ts
 export const prerender = true;
 
-// Kit asks for these parameters during route analysis, before prerendering.
-export function entries() {
-  return [{ slug: "atlas" }, { slug: "beacon" }];
-}
 ```
 
 ```go
@@ -54,7 +50,11 @@ Kit's rule is the rule: a page is prerenderable only if every visitor gets the s
 
 ## entries
 
-Unchanged. `entries` in `+page.ts` lists the parameter sets of a dynamic route to prerender, as above; Kit also discovers pages by crawling links from the prerendered pages it already has.
+Declare a named `func() ([]EntryParams, error)` with `skgo.Entries` in `page.server.go` or `server.go`, as in the Go catalog above. The generated `EntryParams` has exported fields named after the route parameters, with raw `string` values and `*string` for optional parameters. Leave an optional pointer nil to omit it. These are URL inputs; the request's `RouteParams` still contains the values your matchers convert them into.
+
+Kit calls the producer during route analysis, before prerendering and without a request event. Read your catalog directly from Go. A returned error or panic fails the build with the route's module named. Kit then resolves the raw parameters into paths and rejects entries whose matcher selects a different route or no route.
+
+An `entries` export in universal `+page.ts` takes precedence over Go page entries. Page entries take precedence over endpoint entries when both exist. Kit also discovers pages by crawling links from the prerendered pages it already has. `entries` lists routes; it does not enable `prerender` by itself.
 
 ## ssr
 

@@ -1,0 +1,127 @@
+skgo: generation cache miss
+skgo: projected the types in github.com/tylergannon/skgo/example/actiondemo to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/lib/skgo/actiondemo/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/businesslogic to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/lib/skgo/businesslogic/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/(marketing)/pricing/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/todos/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/todos/gate/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52heyldmvsa to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/traced/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/actions/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/account/orders/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5 to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/async-ssr/[mode]/[group]/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/batch/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/contact/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5 to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/docs/[...rest]/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/destinations/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/empty/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/error/boundary/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/error/command/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/error/redirect/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/invoices/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/items/[id]/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/live/types.ts
+skgo: projected the types in github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a to /Users/tyler/.codex/worktrees/286c/skgo/example/web/src/routes/optional/types.ts
+skgo: wrote /Users/tyler/.codex/worktrees/286c/skgo/example/internal/skgo/params/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizlt/skgo_gen.go from web/src/routes/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th/skgo_gen.go from web/src/routes/(marketing)/pricing/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf52g6zdpom/skgo_gen.go from web/src/routes/todos/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu/skgo_gen.go from web/src/routes/todos/gate/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf52heyldmvsa/skgo_gen.go from web/src/routes/traced/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi/skgo_gen.go from web/src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu/skgo_gen.go from web/src/routes/typed-load/[number=Order]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwe33voq/skgo_gen.go from web/src/routes/about/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg/skgo_gen.go from web/src/routes/actions/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq/skgo_gen.go from web/src/routes/actions/cross/receive/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq/skgo_gen.go from web/src/routes/actions/default/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa/skgo_gen.go from web/src/routes/actions/default/saved/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq/skgo_gen.go from web/src/routes/actions/options/no-client/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe/skgo_gen.go from web/src/routes/actions/options/no-ssr/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq/skgo_gen.go from web/src/routes/actions/profiles/[profile]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4/skgo_gen.go from web/src/routes/actions/signed-in/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi/skgo_gen.go from web/src/routes/account/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt/skgo_gen.go from web/src/routes/account/orders/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3smvzhk3ttf5nxg3dvm5oq/skgo_gen.go from web/src/routes/account/reruns/[slug]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi/skgo_gen.go from web/src/routes/account/statement/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm/skgo_gen.go from web/src/routes/api/fatal/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a/skgo_gen.go from web/src/routes/api/replay-count/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2/skgo_gen.go from web/src/routes/api/replay/[kind]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq/skgo_gen.go from web/src/routes/api/request-fetch/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxe33vorss25dbojtwk5a/skgo_gen.go from web/src/routes/api/reroute-target/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxe33vorswil23nz2w2ytfoi6u64temvzf2/skgo_gen.go from web/src/routes/api/rerouted/[number=Order]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t/skgo_gen.go from web/src/routes/api/todos/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5/skgo_gen.go from web/src/routes/async-ssr/[mode]/[group]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu/skgo_gen.go from web/src/routes/async-ssr/control/[group]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5rgc5ddna/skgo_gen.go from web/src/routes/batch/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi/skgo_gen.go from web/src/routes/contact/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5/skgo_gen.go from web/src/routes/docs/[...rest]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg/skgo_gen.go from web/src/routes/destinations/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sw24dupe/skgo_gen.go from web/src/routes/empty/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz/skgo_gen.go from web/src/routes/error/boundary/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za/skgo_gen.go from web/src/routes/error/command/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle/skgo_gen.go from web/src/routes/error/expected/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u/skgo_gen.go from web/src/routes/error/redirect/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa/skgo_gen.go from web/src/routes/error/unexpected/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5sxmzlooqwwyylzn52xil23onswg5djn5xf2/skgo_gen.go from web/src/routes/event-layout/[section]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y/skgo_gen.go from web/src/routes/invoices/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu/skgo_gen.go from web/src/routes/items/[id]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5wgc3thf5nvw3dbnztv2xi/skgo_gen.go from web/src/routes/lang/[[lang]]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5wgs5tf/skgo_gen.go from web/src/routes/live/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5wws43tnfxgol23fyxc44dboruf2/skgo_gen.go from web/src/routes/missing/[...path]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu/skgo_gen.go from web/src/routes/middleware/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2/skgo_gen.go from web/src/routes/middleware/[slug]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a/skgo_gen.go from web/src/routes/optional/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq/skgo_gen.go from web/src/routes/prerender/[slug]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3gmfwgyytbmnvs6w3oovwwezlshvhxezdfojoq/skgo_gen.go from web/src/routes/routing/fallback/[number=Order]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3gmfwgyytbmnvs6w3wmfwhkzk5/skgo_gen.go from web/src/routes/routing/fallback/[value]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3pob2gs33omfwc6w23nz2w2ytfoi6u64temvzf2xi/skgo_gen.go from web/src/routes/routing/optional/[[number=Order]]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3smvvgky3uf5nw45lnmjsxepkpojsgk4s5/skgo_gen.go from web/src/routes/routing/reject/[number=Order]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpmfwhoylzom/skgo_gen.go from web/src/routes/routing/slash/always/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpmfygs/skgo_gen.go from web/src/routes/routing/slash/api/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnftw433smu/skgo_gen.go from web/src/routes/routing/slash/ignore/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnvuxqzle/skgo_gen.go from web/src/routes/routing/slash/mixed/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnzsxmzls/skgo_gen.go from web/src/routes/routing/slash/never/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a/skgo_gen.go from web/src/routes/request-fetch/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zgk4tpov2gkzbplnxhk3lcmvzd2t3smrsxexi/skgo_gen.go from web/src/routes/rerouted/[number=Order]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq/skgo_gen.go from web/src/routes/shadow/[...rest]/skgo_gen.go
+skgo: copied internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq/skgo_gen.go from web/src/routes/stream/skgo_gen.go
+Finished in 572ms on 126 files using 10 threads.
+No config found, using defaults. Please add a config file or try `vp fmt --init` if needed.
+note: You are running `vp build` as a Vite+ built-in command. If you meant to run the build npm script, use `vpr build` instead.
+skgo prerender service started (pid 49180)
+transforming...
+✓ 991 modules transformed.
+rendering chunks...
+✗ Build failed in 820ms
+skgo prerender service stopped (pid 49180)
+error during build:
+Build failed with 2 errors:
+
+[31m[MISSING_EXPORT] [0m"base" is not exported by "node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/app/paths/index.js".
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../internal/adapter/skgo-adapter/reroute.js:1:10 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m [0mbase[38;5;249m,[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249m_[0m[38;5;249md[0m[38;5;249mi[0m[38;5;249mr[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m$[0m[38;5;249ma[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249m/[0m[38;5;249mp[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mh[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m          ──┬─  
+ [38;5;240m  │[0m            ╰─── Missing export
+[38;5;246m───╯[0m
+
+[31m[MISSING_EXPORT] [0m"app_dir" is not exported by "node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/app/paths/index.js".
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../internal/adapter/skgo-adapter/reroute.js:1:16 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m [0m[38;5;249mb[0m[38;5;249ma[0m[38;5;249ms[0m[38;5;249me[0m[38;5;249m,[0m[38;5;249m [0mapp_dir[38;5;249m [0m[38;5;249m}[0m[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m$[0m[38;5;249ma[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249m/[0m[38;5;249mp[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mh[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m                ───┬───  
+ [38;5;240m  │[0m                   ╰───── Missing export
+[38;5;246m───╯[0m
+
+    at aggregateBindingErrorsIntoJsError (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/error-CBG33oNV.mjs:49:18)
+    at unwrapBindingResult (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/error-CBG33oNV.mjs:19:128)
+    at #build (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/rolldown-CZJswp_e.mjs:146:34)
+    at async buildEnvironment (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:40080:66)
+    at async Object.build (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:40501:19)
+    at async BasicMinimalPluginContext.buildApp (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/vite/build/index.js:449:20)
+    at async BasicMinimalPluginContext.replacement (file:///Users/tyler/.codex/worktrees/286c/skgo/internal/adapter/skgo-adapter/prerender.js:585:24)
+    at async Object.buildApp (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:40495:5)
+    at async CAC.<anonymous> (file:///Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/cli.js:783:3) {
+  errors: [Getter/Setter]
+}
+/Users/tyler/.codex/worktrees/286c/skgo/example/web/node_modules/.bin/vp [build]: exit status 1
+exit status 1

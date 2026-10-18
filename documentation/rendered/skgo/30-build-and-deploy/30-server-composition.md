@@ -71,6 +71,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
+	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
 // SessionCookie is the cookie the session id travels in. This is the one place
@@ -97,6 +98,9 @@ const supportID = "case-1121"
 // real one, for a hook that wants to log it before replacing it.
 func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 	extra := map[string]any{"supportId": supportID}
+	if caught.Kind == "validation" && strings.HasSuffix(skgo.EventFrom(ctx).Request().URL.Path, "/validateCatalog") {
+		return map[string]any{"message": "Choose a catalog name.", "reference": "catalog-validation-166"}
+	}
 	if caught.Kind == "unknown" {
 		extra["message"] = "Something went wrong on our end."
 	}
@@ -143,6 +147,7 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 	loadCfg := manifest.LoadConfig(origin)
 	endpointCfg := manifest.EndpointConfig(origin)
 	handleCfg := manifest.HandleConfig()
+	handleCfg.Reroute = hooks.Reroute
 	loadCfg.Matchers = generated.Matchers()
 	endpointCfg.Matchers = generated.Matchers()
 	handleCfg.Matchers = generated.Matchers()
@@ -191,6 +196,7 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 	//
 	remoteCfg.Transport = generated.Transport()
 	loadCfg.Transport = generated.Transport()
+	remoteCfg.HandleError = HandleError
 	loadCfg.HandleError = HandleError
 	endpointCfg.HandleError = HandleError
 	handleCfg.HandleError = HandleError

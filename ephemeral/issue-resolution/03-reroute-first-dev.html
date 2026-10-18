@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+		<style data-sveltekit>
+  :root {
+    --ink: #13251f;
+    --paper: #f8f6ef;
+    --green: #174f3d;
+    --lime: #c7f36b;
+    --line: rgba(19, 37, 31, 0.16);
+    font-family:
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    max-width: 76rem;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+  nav.svelte-12qhfyh {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  nav.svelte-12qhfyh a:where(.svelte-12qhfyh) {
+    flex: none;
+    padding: 0.45rem 0.65rem;
+    color: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  nav.svelte-12qhfyh a:where(.svelte-12qhfyh):hover {
+    background: var(--lime);
+  }
+  main.svelte-12qhfyh {
+    min-height: calc(100vh - 9rem);
+    padding: 2rem 0 5rem;
+  }
+  footer[data-testid="deployment"] {
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--line);
+    color: #687670;
+    font:
+      700 0.75rem ui-monospace,
+      monospace;
+  }
+  [data-testid="script-safe"].svelte-12qhfyh {
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, monospace;
+  }
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+ .svelte-12qhfyh{}
+
+  .issue.svelte-1he4tv0 {
+    color: #b00020;
+    margin: 0.125rem 0 0.5rem;
+  }
+
+  label.svelte-1he4tv0 {
+    display: block;
+    margin-top: 0.75rem;
+  }
+ .svelte-1he4tv0{}</style>
+  <script type="module" src="/__skgo/dev/client.js"></script></head>
+  <body>
+    <div style="display: contents"><!--[--><!--[--><!--[0--><!--[--><!--[-1--><!--]--> <nav data-testid="app-nav" class="svelte-12qhfyh"><a href="/" class="svelte-12qhfyh">Home</a> <a href="/about" class="svelte-12qhfyh">About</a> <a href="/items/42" class="svelte-12qhfyh">Item 42</a> <a href="/items/42?retain=1" class="svelte-12qhfyh">Item 42 retained</a> <a href="/todos" class="svelte-12qhfyh">Todos</a> <a href="/empty" class="svelte-12qhfyh">Empty</a> <a href="/api" class="svelte-12qhfyh">API</a> <a href="/fetch" class="svelte-12qhfyh">Server fetch</a> <a href="/request-fetch" class="svelte-12qhfyh">Request fetch</a> <a href="/nested-universal" class="svelte-12qhfyh">Nested fetch</a> <a href="/destinations" class="svelte-12qhfyh">Destinations</a> <a href="/pricing" class="svelte-12qhfyh">Pricing</a> <a href="/actions" class="svelte-12qhfyh">Actions</a> <a href="/docs/guide/getting-started" class="svelte-12qhfyh">Docs</a> <a href="/account" class="svelte-12qhfyh">Account</a> <a href="/stream" class="svelte-12qhfyh">Stream</a> <a href="/live" class="svelte-12qhfyh">Live</a> <a href="/batch" class="svelte-12qhfyh">Batch</a></nav> <!--[--><!--[0--><!--[--><!--[-1--><span data-testid="session">Signed out</span> <form><input data-testid="user" name="user" value="" placeholder="your name"/> <button data-testid="sign-in" type="submit">Sign in</button></form><!--]--><!--]--><!----><!--]--><!--]--> <!--[-1--><!--]--> <main class="svelte-12qhfyh"><!--[--><!--[-1--><!--[--><h1>Go reroute</h1> <p data-testid="reroute-receipt">page|route=/rerouted/[number=Order]|param=Order #73|url=/go-alias/page?receipt=first</p> <nav aria-label="Reroute examples"><a href="/go-alias/page?receipt=alias">Go alias</a> <a href="/rerouted/42?receipt=direct">Direct route</a></nav><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--></main> <footer data-testid="deployment" class="svelte-12qhfyh">skgo example</footer><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
+			
+			<script nonce="K96tC7qEnzcR59IuJMtt7g==">
+				{
+					__sveltekit_dev = {
+						base: new URL("..", location).pathname.slice(0, -1),
+						version: "1792347699520",
+						env: {}
+					};
+
+					const element = document.currentScript.parentElement;
+
+					import("../node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/client/entry.js").then(async (kit) => {
+						kit.init(__sveltekit_dev);
+						const app = await import("../@fs/private/tmp/skgo-3038201168/kit/generated/dev/client/app.js");
+						__sveltekit_dev.data = {q:{"4cga8b/whoami/":{v:{user:""}}}};
+
+						kit.start(app, element, {
+							node_ids: [0, 59],
+							data: [{type:"data",data:{deployment:"skgo example",scriptSafe:""},uses:{}},{type:"data",data:{receipt:"page|route=/rerouted/[number=Order]|param=Order #73|url=/go-alias/page?receipt=first"},uses:{params:["number"],route:1,url:1}}],
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
+  </body>
+</html>

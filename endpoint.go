@@ -205,9 +205,10 @@ type Endpoints struct {
 
 // endpointRoute is one route of the manifest, with whatever Go answers on it.
 type endpointRoute struct {
-	id      string
-	pattern *regexp.Regexp
-	params  []ManifestParam
+	trailingSlash string
+	id            string
+	pattern       *regexp.Regexp
+	params        []ManifestParam
 	// hasPage is true when the route also has a `+page`, which is what makes
 	// "page or endpoint?" a question kit answers by content negotiation.
 	hasPage bool
@@ -296,11 +297,12 @@ func endpointRouting(routes []ManifestRoute, byRoute map[string]map[string]http.
 			return nil, fmt.Errorf("skgo: route %s has an unusable pattern %q: %w", route.ID, route.Pattern, err)
 		}
 		er := &endpointRoute{
-			id:       route.ID,
-			pattern:  re,
-			params:   route.Params,
-			hasPage:  route.Page != nil,
-			handlers: byRoute[route.ID],
+			id:            route.ID,
+			trailingSlash: route.TrailingSlash,
+			pattern:       re,
+			params:        route.Params,
+			hasPage:       route.Page != nil,
+			handlers:      byRoute[route.ID],
 		}
 		if route.Endpoint != nil {
 			er.declared = map[string]bool{}
@@ -465,7 +467,7 @@ func (es *Endpoints) serve(w http.ResponseWriter, r *http.Request, next http.Han
 	// decides whether a page or an endpoint answers, and answers a mismatch
 	// with a 308 carrying a *relative* location (`runtime/server/respond.js`;
 	// `normalize_path` and `relative_pathname` in `utils/url.js`).
-	if location, redirect := es.normalize(urlPath, r.URL); redirect {
+	if location, redirect := routeNormalization(urlPath, es.base, route.trailingSlash, r.URL); redirect && r.Context().Value(devRendererKey{}) == nil {
 		w.Header().Set("x-sveltekit-normalize", "1")
 		w.Header().Set("Location", location)
 		w.WriteHeader(http.StatusPermanentRedirect)
@@ -648,26 +650,33 @@ func (es *Endpoints) match(routePath string) (*endpointRoute, map[string]string,
 	return nil, nil, false
 }
 
-// normalize is kit's trailing-slash rule. skgo has no per-route trailingSlash
-// option, so every route takes kit's default of `never` — except the root of a
-// based app, which kit forces to `always` because `paths.base` names a
-// directory.
-func (es *Endpoints) normalize(urlPath string, u *url.URL) (location string, redirect bool) {
-	normalized := strings.TrimSuffix(urlPath, "/")
-	if urlPath == es.base || urlPath == es.base+"/" {
-		normalized = es.base + "/"
-	}
-	if normalized == "" || normalized == urlPath {
+// routeNormalization mirrors normalize_path and relative_pathname in Kit's
+// utils/url.js. Its base root always denotes a directory, even with ignore.
+func routeNormalization(urlPath, base, policy string, u *url.URL) (location string, redirect bool) {
+	normalized := normalizeRoutePath(urlPath, base, policy)
+	if normalized == urlPath {
 		return "", false
 	}
-
-	// Relative, exactly as kit sends it, so that a path prefix the app cannot
-	// see — a reverse proxy's, say — is preserved.
 	location = relativePathname(urlPath, normalized)
 	if u.RawQuery != "" {
 		location += "?" + u.RawQuery
 	}
 	return location, true
+}
+func normalizeRoutePath(urlPath, base, policy string) string {
+	if urlPath == base || urlPath == base+"/" {
+		return base + "/"
+	}
+	if urlPath == "/" || policy == "ignore" {
+		return urlPath
+	}
+	if policy == "always" {
+		if !strings.HasSuffix(urlPath, "/") {
+			return urlPath + "/"
+		}
+		return urlPath
+	}
+	return strings.TrimSuffix(urlPath, "/")
 }
 
 // csrfForbidden is kit's `is_csrf_forbidden` (`runtime/server/csrf.js`): a

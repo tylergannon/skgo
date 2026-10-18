@@ -217,6 +217,9 @@ func TestDynamicPrerenderEntriesAreServedFromFiles(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if !strings.Contains(string(data), "Go entry load: "+slug) {
+			t.Fatalf("data artifact %s lacks Go receipt", path)
+		}
 		rec = get(t, h, path+"/__data.json")
 		if rec.Code != http.StatusOK || rec.Body.String() != string(data) {
 			t.Errorf("%s/__data.json: status %d, Go did not serve Kit's file", path, rec.Code)
@@ -225,8 +228,10 @@ func TestDynamicPrerenderEntriesAreServedFromFiles(t *testing.T) {
 	if slices.Contains(manifest.Prerendered, "/prerender/third") {
 		t.Error("the build listed a path entries() never returned")
 	}
-	if rec := get(t, h, "/prerender/third"); rec.Code != http.StatusNotFound {
-		t.Errorf("an unlisted entry returned status %d, want 404", rec.Code)
+	for _, path := range []string{"/prerender/third", "/prerender/third/__data.json"} {
+		if rec := get(t, h, path); rec.Code != http.StatusNotFound {
+			t.Errorf("unlisted %s returned status %d, want 404", path, rec.Code)
+		}
 	}
 }
 
@@ -688,7 +693,7 @@ func samplePath(t *testing.T, id string) string {
 		switch {
 		case groupSegment.MatchString(segment):
 			// A group does not appear in the URL.
-		case segment == "[number=Order]", segment == "[a=Order]", segment == "[b=Order]":
+		case segment == "[number=Order]", segment == "[[number=Order]]", segment == "[a=Order]", segment == "[b=Order]":
 			out = append(out, "42")
 		case optionalSegment.MatchString(segment):
 			out = append(out, "fr")
@@ -702,7 +707,13 @@ func samplePath(t *testing.T, id string) string {
 			t.Fatalf("route %s has segment %q, which this test does not know how to visit; teach it before adding the route", id, segment)
 		}
 	}
-	return "/" + strings.Join(out, "/")
+	path := "/" + strings.Join(out, "/")
+	// These fixture pages inherit trailingSlash = "always" from their layout.
+	// Visit their canonical documents; normalization itself has dedicated tests.
+	if id == "/routing/slash/always" || id == "/routing/slash/mixed" {
+		path += "/"
+	}
+	return path
 }
 
 // post drives a command through the production stack. Kit's client sends the

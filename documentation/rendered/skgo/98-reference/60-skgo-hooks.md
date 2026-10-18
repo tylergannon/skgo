@@ -10,6 +10,27 @@ on the server; `HandleError` shapes what an unexpected error reports.
 `sequence` does, and `RequestSequence` is the same for the typed
 `RequestMiddleware`. Kit's guide is [Hooks](https://svelte.dev/docs/kit/hooks).
 
+## Reroute
+
+```go
+type Reroute func(context.Context, RerouteEvent) (*string, error)
+```
+
+Reroute selects a pathname before routing and handle run. Return nil to keep the pathname, or a pointer to the replacement pathname. It changes route and params, never the request URL. A returned error or panic produces Kit's opaque 500 response. Configure the same function on HandleConfig and export the adapter's reroute from src/hooks.ts for Kit client navigation.
+
+Like Kit's universal hook, it must be pure and idempotent: the client caches its result per full URL. Go calls it synchronously with request cancellation; the function may wait for its Fetch or other Go work before returning.
+
+## RerouteEvent
+
+```go
+type RerouteEvent struct {
+	URL   *url.URL
+	Fetch Fetch
+}
+```
+
+RerouteEvent has the pre-routing URL and fetch Kit supplies to reroute. URL is a copy; changing it does not change the request. Fetch resolves relative requests against that original URL. Its HandleFetch event has no route, params or initialized application locals because handle has not run yet.
+
 ## Handle
 
 ```go
@@ -51,6 +72,8 @@ Middleware is the hook as a Middleware that runs h before the application.
 
 ```go
 type HandleConfig struct {
+	// Reroute selects the effective pathname before matching or handle.
+	Reroute Reroute
 
 	// ClientAddress resolves the visitor address from the original HTTP request.
 	// Nil uses the peer IP in RemoteAddr. Proxy headers require an explicit provider.
@@ -103,7 +126,7 @@ HandleConfig is what Intercept needs to recognise the requests kit's own `handle
 type HandleError func(ctx context.Context, caught CaughtError) map[string]any
 ```
 
-HandleError is skgo's mirror of kit's `handleError` hook (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app decides what a failed page's visitor is told, beyond status and message.
+HandleError is skgo's mirror of kit's `handleError` hook (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app decides what a failed page or rejected remote argument exposes publicly. Set it on RemoteConfig to customize generated schema refusals: kind "validation" has safe status 400/message "Bad Request" and private Issues.
 
 It runs for errors from server loads and page rendering on document responses, page actions on document responses, load failures on `__data.json`, `handle` errors on document requests, and server-route panics. It does not run for redirects, production remote-function errors, `handle` errors on data or remote requests, or during production prerendering. An already-handled built-prerender error reuses its recorded App.Error body without running the hook again. An error raised on purpose with Errorf still reaches the hook: Kit exempts an "app"-kind error only from having its message replaced by default.
 

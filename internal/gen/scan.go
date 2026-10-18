@@ -60,7 +60,8 @@ type loadFn struct {
 	stub string
 	// source is the vite-root-relative path of the authored Go file. It names
 	// the load in diagnostics without exposing a machine-specific absolute path.
-	source string
+	source     string
+	sourceLine int
 	// out is the load's result type, straight out of the marker's generic
 	// instantiation.
 	out types.Type
@@ -143,12 +144,14 @@ type app struct {
 
 	cfg Config
 
+	entries   []*entriesFn
 	remotes   []*remoteFn
 	loads     []*loadFn
 	actions   []*actionFn
 	endpoints []*endpointFn
 	// transported are the app's `transport` hook entries, from src/hooks.go.
 	transported []*transportedType
+	reroute     *goPackage
 	// pkgs is every package that declares remote functions, loads or server
 	// routes, in load order.
 	pkgs []*goPackage
@@ -311,6 +314,9 @@ func loadApp(cfg Config, files []string) (*app, error) {
 			if err != nil {
 				return nil, err
 			}
+			if len(a.entries) > 0 && a.entries[len(a.entries)-1].goPkg == gp {
+				found = true
+			}
 			if len(fns) > 0 || len(loads) > 0 || len(actions) > 0 || len(endpoints) > 0 {
 				found = true
 			}
@@ -378,6 +384,9 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 		return nil, nil, nil, nil, err
 	}
 
+	if err := a.scanEntries(gp, p, file, path, mod, stub); err != nil {
+		return nil, nil, nil, nil, err
+	}
 	routeID := ""
 	if isServerFile {
 		if routeID, err = routeIDFor(mod); err != nil {
@@ -548,13 +557,14 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 			return nil, nil, nil, nil, err
 		}
 		return nil, &loadFn{
-			name:   target.Name(),
-			goPkg:  gp,
-			module: mod,
-			stub:   stub,
-			source: source,
-			out:    sig.Results().At(0).Type(),
-			pos:    pos,
+			name:       target.Name(),
+			goPkg:      gp,
+			module:     mod,
+			stub:       stub,
+			source:     source,
+			sourceLine: p.Fset.Position(target.Pos()).Line,
+			out:        sig.Results().At(0).Type(),
+			pos:        pos,
 		}, nil, nil, nil
 	}
 	if isAction {

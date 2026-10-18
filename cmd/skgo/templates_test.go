@@ -148,8 +148,14 @@ func main(){if !semver.IsValid("v1.0.0"){panic("semver")};if e:=os.MkdirAll("gen
 	if err := pluginbuild.Build(context.Background(), pluginbuild.Options{Project: project, Source: source, Output: filepath.Join(toolPlugins, "receipt.so"), Generate: true, VersionSymbol: "main.skgoVersion", Log: &buildLog}); err != nil {
 		t.Fatalf("project-tool source-build recipe: %v\n%s", err, buildLog.String())
 	}
-	if out := call(info.Executable, []string{"SKGO_PLUGIN_DIRS=" + toolPlugins}, "add", "receipt", "--help"); !strings.Contains(out, "Receipt text") {
-		t.Fatal(out)
+	// Go may remove the first uncached tool executable as soon as it exits.
+	// Exercise the consumer's real tool entrypoint rather than retaining that
+	// earlier buildinfo process path beyond its lifetime.
+	cmd = exec.Command("go", "tool", "skgo", "add", "receipt", "--help")
+	cmd.Dir = project
+	cmd.Env = append(os.Environ(), "GOWORK=off", "SKGO_PLUGIN_DIRS="+toolPlugins)
+	if out, err := cmd.CombinedOutput(); err != nil || !strings.Contains(string(out), "Receipt text") {
+		t.Fatalf("project tool plugin help: %v\n%s", err, out)
 	}
 	badSource := filepath.Join(root, "missing-module")
 	os.Mkdir(badSource, 0755)

@@ -1026,7 +1026,34 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 			ctx = context.WithValue(ctx, fetchParentKey{}, fetchParent{request: r, url: req.url, jar: plan.jar, filter: filter})
 			return s.fetchDispatch(ctx, payload)
 		},
-		Match: s.matchDispatch,
+		Match: func(target string) (string, map[string]string, bool) {
+			original, err := url.Parse(target)
+			if err != nil {
+				return "", nil, false
+			}
+			if original.Host == "" {
+				original = req.url.ResolveReference(original)
+			}
+			pathname := original.EscapedPath()
+			if hook, ok := ctx.Value(rerouteHookKey{}).(Reroute); ok {
+				effective, err := runReroute(ctx, hook, r, original)
+				if err != nil {
+					return "", nil, false
+				}
+				if effective != nil {
+					pathname = *effective
+				}
+			}
+			pathname, err = decodePathname(pathname)
+			if err != nil {
+				return "", nil, false
+			}
+			pathname = strings.TrimPrefix(pathname, s.base)
+			if pathname == "" {
+				pathname = "/"
+			}
+			return s.matchDispatch(pathname)
+		},
 	})
 	answersMu.Lock()
 	finished = true

@@ -228,7 +228,11 @@ func TestNativeDevelopmentActionResultsAndConfiguredErrorHook(t *testing.T) {
 	request := httptest.NewRequest("POST", "/_skgo/dev/load", strings.NewReader(fmt.Sprintf(`{"handle":%q,"module":"page","url":"http://app.test/page"}`, handle)))
 	request.Header.Set("Authorization", "Bearer secret")
 	configured.ServeHTTP(recorder, request)
-	if !strings.Contains(recorder.Body.String(), `"supportId":"literal-case-335"`) || !strings.Contains(recorder.Body.String(), `"message":"literal-public-834"`) || strings.Contains(recorder.Body.String(), "private-database-detail") {
+	var configuredAnswer prerenderLoadOutput
+	if err := json.Unmarshal(recorder.Body.Bytes(), &configuredAnswer); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(configuredAnswer.Body), `"supportId":"literal-case-335"`) || !strings.Contains(string(configuredAnswer.Body), `"message":"literal-public-834"`) || strings.Contains(string(configuredAnswer.Body), "private-database-detail") || configuredAnswer.NativeError == nil || configuredAnswer.NativeError.Message != "private-database-detail" {
 		t.Fatal(recorder.Body.String())
 	}
 	buildOperation(t, configured, "/_skgo/dev/end", map[string]string{"handle": handle}, nil)
@@ -453,4 +457,56 @@ func TestNativeDevelopmentHookRefusalKeepsHandledPublicError(t *testing.T) {
 		t.Fatalf("answer=%+v public=%s hookCalls=%d", answer, string(answer.Body), calls.Load())
 	}
 	buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": answer.Handle}, nil)
+}
+
+func TestNativeDevelopmentLoadDiagnosticsWithoutTracing(t *testing.T) {
+	for _, test := range []struct {
+		name, literal string
+		run           func(context.Context) (any, error)
+	}{
+		{"returned", "DEV_DIAG_RETURNED_243", func(context.Context) (any, error) { return nil, fmt.Errorf("DEV_DIAG_RETURNED_243") }},
+		{"panic", "DEV_DIAG_PANIC_243", func(context.Context) (any, error) { panic("DEV_DIAG_PANIC_243") }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var healthy atomic.Bool
+			load := NewServerLoad(LoadSpec{Module: "page", Source: "src/routes/diagnostic/page.server.go:17", Run: func(ctx context.Context) (any, error) {
+				if healthy.Load() {
+					return map[string]any{"receipt": "DEV_DIAG_HEALTHY_243"}, nil
+				}
+				return test.run(ctx)
+			}})
+			handler, close, _ := nativeFixture(t, load)
+			defer close()
+			invoke := func() prerenderLoadOutput {
+				handle := beginNative(t, handler)
+				var answer prerenderLoadOutput
+				buildOperation(t, handler, "/_skgo/dev/load", map[string]string{"handle": handle, "module": "page", "url": "http://app.test/page"}, &answer)
+				buildOperation(t, handler, "/_skgo/dev/end", map[string]string{"handle": handle}, nil)
+				return answer
+			}
+			answer := invoke()
+			if answer.Error == nil || answer.Error.Status != 500 || answer.NativeError == nil || answer.NativeError.Message != test.literal || answer.NativeError.Source != "src/routes/diagnostic/page.server.go:17" {
+				t.Fatalf("missing private diagnostic: %+v", answer)
+			}
+			if strings.Contains(string(answer.Body), test.literal) || strings.Contains(string(answer.Body), "page.server.go") {
+				t.Fatalf("private diagnostic in public body: %s", answer.Body)
+			}
+			if test.name == "panic" && !strings.Contains(answer.NativeError.Stack, "dev_bridge_test.go:") {
+				t.Fatalf("panic lost actual Go stack: %+v", answer.NativeError)
+			}
+			healthy.Store(true)
+			next := invoke()
+			if next.Error != nil || !strings.Contains(string(next.Data), "DEV_DIAG_HEALTHY_243") {
+				t.Fatalf("recovery failed: %+v", next)
+			}
+		})
+	}
+}
+
+func TestDevelopmentPanicFramesUseAuthoredRoute(t *testing.T) {
+	stack := "goroutine 1 [running]:\nexample.com/app/generated/links/onzggl3sn52xizlt/panicLoad()\n\t/private/app/generated/links/onzggl3sn52xizlt/page.server.go:9 +0x12\n"
+	got := authoredDevelopmentStack(stack)
+	if !strings.Contains(got, "\tsrc/routes/page.server.go:9 +0x12") || strings.Contains(got, "/generated/links/onzggl3sn52xizlt/page.server.go") {
+		t.Fatal(got)
+	}
 }

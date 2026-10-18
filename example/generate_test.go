@@ -27,7 +27,6 @@ import (
 func TestNothingGeneratedWasWrittenByHand(t *testing.T) {
 	t.Parallel()
 	requireFrontendToolchain(t)
-	startSandboxes()
 	g := regenerated()
 	if g.setupErr != nil {
 		t.Fatal(g.setupErr)

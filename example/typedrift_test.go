@@ -31,7 +31,8 @@ import (
 //     in its own file and line, and svelte-check reports every error in every
 //     file, so one run answers for all of them.
 //
-// The three start together the first time any test asks for one.
+// Type-drift tests start all three together; a generation-only check starts
+// just the regenerated sandbox.
 //
 // Everything happens in throwaway copies of this module. The tests used to
 // edit the developer's own source and put it back in t.Cleanup, which meant a
@@ -275,15 +276,25 @@ func generate(app string) (string, error) {
 // svelteCheck runs the app's own type check, which is what `svelte-check`
 // exists for: TypeScript alone cannot read a `.svelte` file.
 func svelteCheck(app string) (string, error) {
-	cmd := exec.Command("mise", "x", "--",
-		"node", filepath.Join("node_modules", "svelte-check", "bin", "svelte-check"),
-		"--tsconfig", "./tsconfig.json", "--output", "human")
-	cmd.Dir = filepath.Join(app, "web")
-	// svelte-check colours its file names whenever CI is set, and the
-	// diagnostics are matched against plain paths.
-	cmd.Env = append(os.Environ(), "NO_COLOR=1")
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	// Kit's generated $app/tsconfig carries rootDirs for the build that wrote
+	// it, which may have been outside the checkout. Sync in the sandbox so
+	// route-local $types resolve against this copy, including regenerated stubs.
+	var out bytes.Buffer
+	for _, args := range [][]string{
+		{"svelte-kit", "sync"},
+		{"svelte-check", "--tsconfig", "./tsconfig.json", "--output", "human"},
+	} {
+		cmd := exec.Command("mise", append([]string{"x", "--", "vp", "exec"}, args...)...)
+		cmd.Dir = filepath.Join(app, "web")
+		// svelte-check colours its file names whenever CI is set, and the
+		// diagnostics are matched against plain paths.
+		cmd.Env = append(os.Environ(), "NO_COLOR=1")
+		cmd.Stdout, cmd.Stderr = &out, &out
+		if err := cmd.Run(); err != nil {
+			return out.String(), fmt.Errorf("vp exec %s: %w", strings.Join(args, " "), err)
+		}
+	}
+	return out.String(), nil
 }
 
 // newSandbox copies this module into app, so a test that has to mutate

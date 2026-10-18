@@ -48,6 +48,11 @@ func (a *app) writeLoadStubs() error {
 			modules = append(modules, module)
 		}
 	}
+	for _, entry := range a.entries {
+		if strings.Contains(entry.module, "/+page.server.") && byModule[entry.module] == nil && len(actions[entry.module]) == 0 {
+			modules = append(modules, entry.module)
+		}
+	}
 	sort.Strings(modules)
 	for _, module := range modules {
 		load := byModule[module]
@@ -77,7 +82,11 @@ func (a *app) writeLoadStubs() error {
 		if load != nil {
 			stub = load.stub
 		} else {
-			stub = actions[module][0].stub
+			if len(actions[module]) > 0 {
+				stub = actions[module][0].stub
+			} else {
+				stub = a.entryFor(module).stub
+			}
 		}
 		dir := filepath.Dir(stub)
 		imports := map[string][]string{}
@@ -242,6 +251,7 @@ func (a *app) writeLoadStubs() error {
 			b.WriteString("};\n")
 		}
 
+		a.writeEntriesStub(&b, module)
 		if err := a.write(stub, b.String()); err != nil {
 			return err
 		}

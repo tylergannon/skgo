@@ -329,6 +329,9 @@ The hook is a Go function set on the server's configuration, and what it returns
 // real one, for a hook that wants to log it before replacing it.
 func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 	extra := map[string]any{"supportId": supportID}
+	if caught.Kind == "validation" && strings.HasSuffix(skgo.EventFrom(ctx).Request().URL.Path, "/validateCatalog") {
+		return map[string]any{"message": "Choose a catalog name.", "reference": "catalog-validation-166"}
+	}
 	if caught.Kind == "unknown" {
 		extra["message"] = "Something went wrong on our end."
 	}

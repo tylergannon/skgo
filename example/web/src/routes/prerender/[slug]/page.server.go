@@ -15,3 +15,10 @@ func load(event PageRequestEvent) (PageData, error) {
 }
 
 var _ = skgo.Load(load)
+
+// The catalog lives only in Go. Kit requests these raw URL values during analyse.
+func entries() ([]EntryParams, error) {
+	return []EntryParams{{Slug: "atlas"}, {Slug: "beacon"}}, nil
+}
+
+var _ = skgo.Entries(entries)

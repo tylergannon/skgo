@@ -1,0 +1,4 @@
+=== RUN   TestApplicationRemoteArgumentValidation
+--- PASS: TestApplicationRemoteArgumentValidation (0.04s)
+PASS
+ok  	github.com/tylergannon/skgo/example	0.306s

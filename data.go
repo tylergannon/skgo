@@ -104,6 +104,11 @@ func (ls *Loads) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Kit normalizes only the load event URL for data requests; it does not
+	// redirect the __data.json request or change the outer handle event URL.
+	normalized := normalizeRoutePath(req.url.EscapedPath(), ls.base, route.trailingSlash)
+	req.url.Path, _ = url.PathUnescape(normalized)
+	req.url.RawPath = normalized
 	ls.serveBranch(w, r, req, route.id, params, route.branch, req.invalidated)
 }
 

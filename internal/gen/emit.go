@@ -390,7 +390,13 @@ func (a *app) writePackageBindings() error {
 		loads := loadsByPkg[gp]
 		actions := actionsByPkg[gp]
 		endpoints := endpointsByPkg[gp]
-		if len(fns) == 0 && len(loads) == 0 && len(actions) == 0 && len(endpoints) == 0 {
+		var entries []*entriesFn
+		for _, entry := range a.entries {
+			if entry.goPkg == gp {
+				entries = append(entries, entry)
+			}
+		}
+		if len(fns) == 0 && len(loads) == 0 && len(actions) == 0 && len(endpoints) == 0 && len(entries) == 0 {
 			continue
 		}
 		// The aliases are rendered first, because rendering them is what
@@ -420,6 +426,9 @@ func (a *app) writePackageBindings() error {
 		}
 		for _, action := range actions {
 			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(action.fnName), action.fnName)
+		}
+		for _, entry := range entries {
+			fmt.Fprintf(&b, "\t%s = %s\n", exportedName(entry.name), entry.name)
 		}
 		for _, ep := range endpoints {
 			fmt.Fprintf(&b, "\t// %s is %s, published as %s %s.\n", exportedName(ep.name), ep.name, endpointWireMethod(ep.method), ep.routeID)
@@ -703,7 +712,7 @@ func (a *app) writeAppBindings() error {
 	b.WriteString("// skgo.NewLoads.\n")
 	b.WriteString("func Loads() []*skgo.ServerLoad {\n\treturn []*skgo.ServerLoad{\n")
 	for _, load := range a.loads {
-		fmt.Fprintf(&b, "\t\tskgo.NewServerLoad(skgo.LoadSpec{Module: %q, Run: %s, Matchers: %s.SkgoParamMatchers()}),\n", load.module, load.handler, load.goPkg.alias)
+		fmt.Fprintf(&b, "\t\tskgo.NewServerLoad(skgo.LoadSpec{Module: %q, Source: %q, Run: %s, Matchers: %s.SkgoParamMatchers()}),\n", load.module, fmt.Sprintf("%s:%d", load.source, load.sourceLine), load.handler, load.goPkg.alias)
 	}
 	b.WriteString("\t}\n}\n")
 	if len(a.actions) > 0 {
@@ -729,6 +738,11 @@ func (a *app) writeAppBindings() error {
 	}
 	b.WriteString("\t}\n}\n")
 
+	b.WriteString("\nfunc Entries() []*skgo.RouteEntries {return []*skgo.RouteEntries{\n")
+	for _, entry := range a.entries {
+		fmt.Fprintf(&b, "skgo.NewRouteEntries(%q,%s),\n", entry.module, a.published(entry.goPkg, entry.name))
+	}
+	b.WriteString("}}\n")
 	a.writeTransportBinding(&b)
 	return a.writeGo(filepath.Join(a.cfg.Out, generatedGoFile), b.String())
 }
@@ -833,7 +847,7 @@ func (a *app) writeHandler(b *strings.Builder, fn *remoteFn) {
 		b.WriteString("\tfor i, call := range calls {\n")
 		b.WriteString("\t\tif err := skgo.RequireArgument(call); err != nil {\n\t\t\treturn nil, err\n\t\t}\n")
 		fmt.Fprintf(b, "\t\tdecoded, err := Decode%s(call.Arg)\n", fn.inCodec)
-		b.WriteString("\t\tif err != nil {\n\t\t\treturn nil, skgo.BadRequest(err)\n\t\t}\n")
+		b.WriteString("\t\tif err != nil {\n\t\t\treturn nil, call.RejectArgument(err)\n\t\t}\n")
 		b.WriteString("\t\tin[i] = decoded\n\t}\n")
 		fmt.Fprintf(b, "\touts, err := %s(ctx, in)\n", a.published(fn.goPkg, fn.name))
 		b.WriteString("\tif err != nil {\n\t\treturn nil, err\n\t}\n")
@@ -874,7 +888,7 @@ func (a *app) writeHandler(b *strings.Builder, fn *remoteFn) {
 		fmt.Fprintf(b, "// decoder %s uses.\n", fn.handler)
 		fmt.Fprintf(b, "func %s(arg any) (any, error) {\n", fn.requestedArg)
 		fmt.Fprintf(b, "\tin, err := Decode%s(arg)\n", fn.inCodec)
-		b.WriteString("\tif err != nil {\n\t\treturn nil, skgo.BadRequest(err)\n\t}\n\treturn in, nil\n}\n")
+		b.WriteString("\tif err != nil {\n\t\treturn nil, (skgo.Call{}).RejectArgument(err)\n\t}\n\treturn in, nil\n}\n")
 	}
 }
 
@@ -912,9 +926,9 @@ func (a *app) writeArgument(b *strings.Builder, fn *remoteFn, indent, fail strin
 	case fn.inCodec != "":
 		fmt.Fprintf(b, "%sif err := skgo.RequireArgument(call); err != nil {\n%s\t%s\n%s}\n", indent, indent, fail, indent)
 		fmt.Fprintf(b, "%sin, err := Decode%s(call.Arg)\n", indent, fn.inCodec)
-		fmt.Fprintf(b, "%sif err != nil {\n%s\t%s\n%s}\n", indent, indent, strings.Replace(fail, "err", "skgo.BadRequest(err)", 1), indent)
+		fmt.Fprintf(b, "%sif err != nil {\n%s\t%s\n%s}\n", indent, indent, strings.Replace(fail, "err", "call.RejectArgument(err)", 1), indent)
 		if fn.nativeIn != "" {
-			fmt.Fprintf(b, "%sif err := %s(in, \"\", 0); err != nil { %s }\n", indent, fn.nativeIn, strings.Replace(fail, "err", "skgo.BadRequest(err)", 1))
+			fmt.Fprintf(b, "%sif err := %s(in, \"\", 0); err != nil { %s }\n", indent, fn.nativeIn, strings.Replace(fail, "err", "call.RejectArgument(err)", 1))
 		}
 	default:
 		fmt.Fprintf(b, "%sif err := skgo.RefuseArgument(call); err != nil {\n%s\t%s\n%s}\n", indent, indent, fail, indent)
@@ -1036,6 +1050,7 @@ type remoteList struct {
 // buildDeclaration describes Go declarations whose bodies Kit invokes during
 // its Node build. It carries no application JavaScript or wire-type copies.
 type buildDeclaration struct {
+	Entries  bool                     `json:"entries,omitempty"`
 	Source   string                   `json:"source,omitempty"`
 	Remotes  []buildRemoteDeclaration `json:"remotes,omitempty"`
 	Endpoint bool                     `json:"endpoint,omitempty"`
@@ -1073,6 +1088,9 @@ func (a *app) writeRemoteList() error {
 	}
 	if a.hasPrerenderWork() {
 		declaration("src/hooks.server" + a.cfg.Language.ext()).Hook = true
+	}
+	for _, entry := range a.entries {
+		declaration(entry.module).Entries = true
 	}
 	for _, ep := range a.endpoints {
 		declaration(ep.module).Endpoint = true
@@ -1119,6 +1137,12 @@ func (a *app) writeGo(path, content string) error {
 }
 
 func (a *app) write(path, content string) error {
+	switch filepath.Base(path) {
+	case "+server.ts", "+server.js", "+page.server.ts", "+page.server.js", "+layout.server.ts", "+layout.server.js":
+		if err := refuseGeneratedServerOptions(path); err != nil {
+			return err
+		}
+	}
 	return write(a.cfg, path, content)
 }
 

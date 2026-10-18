@@ -8,6 +8,11 @@ import (
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
+// EntryParams supplies raw URL values to Kit before matcher conversion.
+type EntryParams struct {
+	Slug string `json:"slug"`
+}
+
 // RouteParams stores converted values; only accessors record load dependencies.
 type RouteParams struct {
 	event     *skgo.Event
@@ -38,5 +43,6 @@ func SkgoParamMatchers() map[string]skgo.ParamMatcher {
 // skgo.Refresh finds a query by the code pointer of the function it names.
 var (
 	// Skgo_load is load, published as the server load of src/routes/prerender/[slug]/+page.server.ts.
-	Skgo_load = load
+	Skgo_load    = load
+	Skgo_entries = entries
 )

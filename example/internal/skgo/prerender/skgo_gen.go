@@ -9,14 +9,15 @@ import (
 
 	skgo "github.com/tylergannon/skgo"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
+	apphooks "github.com/tylergannon/skgo/example/web/src"
 )
 
 func main() {
-	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{BindRequest: func(next http.Handler) http.Handler {
+	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{Reroute: apphooks.Reroute, BindRequest: func(next http.Handler) http.Handler {
 		return generated.RequestBoundary(skgo.HandleConfig{Matchers: generated.Matchers(), ClientAddress: func(*http.Request) (string, error) {
 			return "", fmt.Errorf("skgo: client address unavailable during prerender")
 		}}, next)
-	}, Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {
+	}, Entries: generated.Entries(), Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {
 		log.Fatal(err)
 	}
 }

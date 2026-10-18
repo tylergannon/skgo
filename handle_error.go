@@ -23,17 +23,11 @@ import (
 	"github.com/tylergannon/skgo/internal/ssr"
 )
 
-// CaughtError is the error a page's `handleError` hook is told about — kit's
-// own discriminated `CaughtError` (`exports/hooks/public.d.ts`), narrowed to
-// what a Go port can express without modelling kit's `SvelteKitError` and
-// `ValidationError` classes as distinct Go types the way skgo's `HTTPError`
-// does not yet: "app" for an error already shaped as one — an *HTTPError,
-// whether the app raised it itself with Errorf or skgo manufactured it for a
-// framework failure such as a 404 — and "unknown" for anything else, which is
-// where kit's real distinction still matters: the visitor is never shown an
-// unknown error's own message, only what the hook explicitly returns.
+// CaughtError is the safe error and private diagnostic supplied to HandleError.
+// Validation errors describe a generated remote argument schema refusal;
+// their decoder details are available only in Issues.
 type CaughtError struct {
-	// Kind is "app" or "unknown".
+	// Kind is "app", "unknown" or "validation".
 	Kind string
 	// Status and Message are the error's own fallback: what the visitor sees
 	// if the hook returns nothing. For "app" this is the app's own status and
@@ -46,11 +40,15 @@ type CaughtError struct {
 	// further with errors.As, reads it from here; it is never shown to the
 	// visitor unless the hook copies something from it into what it returns.
 	Err error
+	// Issues contains private decoder diagnostics only for kind "validation".
+	Issues []ValidationIssue
 }
 
 // HandleError is skgo's mirror of kit's `handleError` hook
 // (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app
-// decides what a failed page's visitor is told, beyond status and message.
+// decides what a failed page or rejected remote argument exposes publicly.
+// Set it on RemoteConfig to customize generated schema refusals: kind
+// "validation" has safe status 400/message "Bad Request" and private Issues.
 //
 // It runs for errors from server loads and page rendering on document
 // responses, page actions on document responses, load failures on
@@ -116,6 +114,9 @@ func handleErrorAndJSONify(ctx context.Context, routeID string, hook HandleError
 	}
 
 	caught := CaughtError{Kind: "app", Status: fallback.Status, Message: fallback.Message}
+	if validation, ok := validationCaught(raw); ok {
+		return mergeCaughtError(fallback, runHandleError(ctx, routeID, hook, validation, report))
+	}
 	var httpErr *HTTPError
 	if raw != nil && !errors.As(raw, &httpErr) {
 		caught.Kind = "unknown"

@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"mime"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"sort"
@@ -179,8 +180,11 @@ type ManifestSSRNode struct {
 
 // ManifestRoute is one entry of Manifest.Routes.
 type ManifestRoute struct {
-	ID      string `json:"id"`
-	Pattern string `json:"pattern"`
+	// TrailingSlash is Kit's resolved route policy: never, always or ignore.
+	// Empty means never, Kit's default. Page policies include layout inheritance.
+	TrailingSlash string `json:"trailingSlash,omitempty"`
+	ID            string `json:"id"`
+	Pattern       string `json:"pattern"`
 	// Params names the route's parameters in the order the pattern captures
 	// them.
 	Params []ManifestParam `json:"params,omitempty"`
@@ -629,6 +633,19 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Files are indexed by their decoded names, but an encoded slash in a
 	// dynamic parameter is not a path separator until after route matching.
 	urlPath := r.URL.Path
+	if effective, rerouted := r.Context().Value(reroutePathKey{}).(string); rerouted {
+		var err error
+		routingPath, err = decodePathname(effective)
+		if err != nil {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		urlPath, err = url.PathUnescape(effective)
+		if err != nil {
+			http.Error(w, "bad request", 400)
+			return
+		}
+	}
 	if urlPath == "" {
 		urlPath = "/"
 	}

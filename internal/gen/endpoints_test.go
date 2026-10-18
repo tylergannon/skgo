@@ -367,3 +367,55 @@ var (
 		t.Errorf("the error does not name the method: %v", err)
 	}
 }
+
+func TestGeneratedServerOptionsAreRefusedBeforeOverwrite(t *testing.T) {
+	for _, name := range []string{"+server.ts", "+page.server.ts", "+layout.server.ts"} {
+		for _, option := range []string{`export const trailingSlash = 'always';`, `const mode='ignore';export { mode as trailingSlash };`, `export const config = { region: 'earth' };`} {
+			t.Run(name+option, func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), name)
+				if err := os.WriteFile(path, []byte(option), 0644); err != nil {
+					t.Fatal(err)
+				}
+				a := &app{}
+				err := a.write(path, "generated replacement")
+				if err == nil || !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "unsupported server route option") {
+					t.Fatalf("lost authored option without actionable refusal: %v", err)
+				}
+				source, readErr := os.ReadFile(path)
+				if readErr != nil || string(source) != option {
+					t.Fatalf("authored option was overwritten: %q %v", source, readErr)
+				}
+			})
+		}
+	}
+}
+
+func TestGenerationRefusesEndpointSlashOptions(t *testing.T) {
+	for _, policy := range []string{"always", "ignore"} {
+		t.Run(policy, func(t *testing.T) {
+			root, cfg := foreignFixture(t, "", map[string]string{
+				"app/web/src/routes/options/server.go":  endpointSource,
+				"app/web/src/routes/options/+server.ts": "export const trailingSlash = '" + policy + "';\n",
+			})
+			err := Run(cfg)
+			if err == nil || !strings.Contains(err.Error(), "+server.ts") || !strings.Contains(err.Error(), "unsupported server route option trailingSlash") {
+				t.Fatalf("generation accepted endpoint-only %s override: %v", policy, err)
+			}
+			source := readFixtureFile(t, root, "app/web/src/routes/options/+server.ts")
+			if source != "export const trailingSlash = '"+policy+"';\n" {
+				t.Fatalf("generation destroyed authored policy: %s", source)
+			}
+		})
+	}
+}
+
+func TestServerOptionRefusalDoesNotReadLoadDataFieldsAsExports(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "+page.server.ts")
+	source := `export const load = async (): Promise<{config:string;trailingSlash:string}> => { throw new Error('skgo: implemented in Go'); };`
+	if err := os.WriteFile(path, []byte(source), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := refuseGeneratedServerOptions(path); err != nil {
+		t.Fatalf("load data fields mistaken for route options: %v", err)
+	}
+}

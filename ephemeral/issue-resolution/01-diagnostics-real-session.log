@@ -1,0 +1,111 @@
+=== RUN   TestRealSessionDevelopmentLoadDiagnostics
+    session_integration_test.go:352: authored development diagnostics and repair
+        skgo dev: preparing generated application
+        skgo dev: starting Vite
+        skgo dev: Vite child pid 81575
+        11:58:41 AM [vite+] (ssr) connected.
+        11:58:41 AM [vite+] (client) Forced re-optimization of dependencies
+        skgo dev: building native application host
+        skgo dev: http://127.0.0.1:60265 (Go pid 81834, Vite /private/tmp/skgo-2215246845/vite.sock)
+        skgo dev: published revision 2 (Go pid 81834, prepare 28.978ms, install 0s, rebuild false)
+        200 GET /orders
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        2026/10/18 11:58:45 skgo: server load src/routes/panic/+page.server.ts panicked: DEV_DIAG_PANIC_REAL_243
+        goroutine 71 [running]:
+        runtime/debug.Stack()
+        	runtime/debug/stack.go:26 +0x64
+        github.com/tylergannon/skgo.(*Loads).recovered(0x509e82e28b40, {0x10327c0dd, 0x20}, {0x103a744c0, 0x10395c240}, {0x0?, 0x0?})
+        	github.com/tylergannon/skgo@v0.0.0/load.go:523 +0x7c
+        github.com/tylergannon/skgo.(*Loads).runLoad.func1()
+        	github.com/tylergannon/skgo@v0.0.0/load.go:497 +0x100
+        panic({0x103a744c0?, 0x10395c240?})
+        	runtime/panic.go:859 +0x120
+        example.com/sessionfixture/generated/links/onzggl3sn52xizltf5ygc3tjmm._skgo_body_load({0x103b2e790?, {0x509e83246a50?}, 0x0?})
+        	/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRealSessionDevelopmentLoadDiagnostics317884072/001/app/web/src/routes/panic/page.server.go:5 +0x2c
+        example.com/sessionfixture/generated/links/onzggl3sn52xizltf5ygc3tjmm.load({0x509e83203440?, {0x509e83203440?}, 0x103d48ee0?})
+        	/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRealSessionDevelopmentLoadDiagnostics317884072/001/app/web/src/routes/panic/page.server.go:3 +0x80
+        example.com/sessionfixture/generated.load_panic_page({0x103b2e790?, 0x509e83246a20?})
+        	example.com/sessionfixture/generated/skgo_gen.go:37 +0x68
+        github.com/tylergannon/skgo.(*Loads).runLoad(0x509e82e28b40, {0x103b2e790, 0x509e832469f0}, 0x509e83826d50)
+        	github.com/tylergannon/skgo@v0.0.0/load.go:507 +0x3ac
+        github.com/tylergannon/skgo.(*Loads).runBranchWith.func1()
+        	github.com/tylergannon/skgo@v0.0.0/data.go:282 +0x10c
+        sync.OnceValue[...].func1.1()
+        	sync/oncefunc.go:66 +0x5c
+        sync.(*Once).doSlow(0x509e82eaa6b8?, 0x102d0cb48?)
+        	sync/once.go:78 +0xdc
+        sync.(*Once).Do(0x509e82eaa600?, 0x102b6a7e4?)
+        	sync/once.go:69 +0x24
+        sync.OnceValue[...].func1()
+        	sync/oncefunc.go:58 +0x58
+        github.com/tylergannon/skgo.(*Loads).runBranchWith.func2()
+        	github.com/tylergannon/skgo@v0.0.0/data.go:305 +0x74
+        created by github.com/tylergannon/skgo.(*Loads).runBranchWith in goroutine 55
+        	github.com/tylergannon/skgo@v0.0.0/data.go:303 +0x5c4
+        Error: DEV_DIAG_PANIC_REAL_243
+        goroutine 71 [running]:
+        runtime/debug.Stack()
+        	runtime/debug/stack.go:26 +0x64
+        github.com/tylergannon/skgo.(*Loads).runLoad.func1()
+        	github.com/tylergannon/skgo@v0.0.0/load.go:495 +0xd0
+        panic({0x103a744c0?, 0x10395c240?})
+        	runtime/panic.go:859 +0x120
+        example.com/sessionfixture/generated/links/onzggl3sn52xizltf5ygc3tjmm._skgo_body_load({0x103b2e790?, {0x509e83246a50?}, 0x0?})
+        	/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRealSessionDevelopmentLoadDiagnostics317884072/001/app/web/src/routes/panic/page.server.go:5 +0x2c
+        example.com/sessionfixture/generated/links/onzggl3sn52xizltf5ygc3tjmm.load({0x509e83203440?, {0x509e83203440?}, 0x103d48ee0?})
+        	/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestRealSessionDevelopmentLoadDiagnostics317884072/001/app/web/src/routes/panic/page.server.go:3 +0x80
+        example.com/sessionfixture/generated.load_panic_page({0x103b2e790?, 0x509e83246a20?})
+        	example.com/sessionfixture/generated/skgo_gen.go:37 +0x68
+        github.com/tylergannon/skgo.(*Loads).runLoad(0x509e82e28b40, {0x103b2e790, 0x509e832469f0}, 0x509e83826d50)
+        	github.com/tylergannon/skgo@v0.0.0/load.go:507 +0x3ac
+        github.com/tylergannon/skgo.(*Loads).runBranchWith.func1()
+        	github.com/tylergannon/skgo@v0.0.0/data.go:282 +0x10c
+        sync.OnceValue[...].func1.1()
+        	sync/oncefunc.go:66 +0x5c
+        sync.(*Once).doSlow(0x509e82eaa6b8?, 0x102d0cb48?)
+        	sync/once.go:78 +0xdc
+        sync.(*Once).Do(0x509e82eaa600?, 0x102b6a7e4?)
+        	sync/once.go:69 +0x24
+        sync.OnceValue[...].func1()
+        	sync/oncefunc.go:58 +0x58
+        github.com/tylergannon/skgo.(*Loads).runBranchWith.func2()
+        	github.com/tylergannon/skgo@v0.0.0/data.go:305 +0x74
+        created by github.com/tylergannon/skgo.(*Loads).runBranchWith in goroutine 55
+        	github.com/tylergannon/skgo@v0.0.0/data.go:303 +0x5c4
+        
+        500 GET /panic
+        200 GET /orders
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        Error: DEV_DIAG_RETURNED_REAL_243
+            at src/routes/returned/page.server.go:4
+        500 GET /returned
+        skgo dev: published revision 3 (Go pid 81834, prepare 614.783ms, install 5.543ms, rebuild false)
+        200 GET /returned
+--- PASS: TestRealSessionDevelopmentLoadDiagnostics (9.16s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/devserver	9.428s

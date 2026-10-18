@@ -1,9 +1,9 @@
 ---
 title: "Hooks"
-summary: "Write handle, handleFetch and handleError in Go, and pair Go and TypeScript transport hooks."
+summary: "Write request hooks and reroute in Go, and pair Go and TypeScript transport hooks."
 ---
 
-Kit's [hooks](https://svelte.dev/docs/kit/hooks) are app-wide functions the framework calls at fixed points. In SKGo the server hooks are Go, because Go answers every request. The universal hooks stay in `src/hooks.ts`, and Kit runs them as usual; SKGo adds a Go half for `transport`.
+Kit's [hooks](https://svelte.dev/docs/kit/hooks) are app-wide functions the framework calls at fixed points. In SKGo the server hooks are Go, because Go answers every request. The universal hooks stay in `src/hooks.ts`, and Kit runs them as usual; SKGo adds a Go half for `transport` and a Go-backed `reroute`.
 
 | Kit hook      | In SKGo                                                       |
 | ------------- | ------------------------------------------------------------- |
@@ -11,7 +11,7 @@ Kit's [hooks](https://svelte.dev/docs/kit/hooks) are app-wide functions the fram
 | `handleFetch` | a Go function you pass to `server.go`                         |
 | `handleError` | a Go function you pass to `server.go`; the client half is Kit |
 | `init`        | not supported; initialise in `newHandler`                     |
-| `reroute`     | not supported                                                 |
+| `reroute`     | a Go function on `HandleConfig`, with Kit's universal forwarding hook |
 | `transport`   | `src/hooks.ts` plus a Go marker in `src/hooks.go`             |
 
 `src/hooks.server.ts` is generated, and contains only `export {};`. `skgo generate` refuses to overwrite one you wrote, so move its logic to Go; see [Project structure](project-structure). SKGo does not generate or read `src/hooks.client.ts`; Kit's client hooks run in the browser as Kit documents them.
@@ -249,7 +249,7 @@ The hook sees the request before SKGo adds the page's cookies and `Authorization
 
 ## handleError
 
-`handleError` decides what the error page and `page.error` receive. It is a Go function on the load, endpoint and handle configurations in `server.go`; [Errors](errors#Where-handleError-runs) shows it and lists where it runs. In the browser, Kit's own `handleError` from `src/hooks.client.ts` applies.
+`handleError` decides what the error page and `page.error` receive. It is a Go function on the remote, load, endpoint and handle configurations in `server.go`; [Errors](errors#Where-handleError-runs) shows it and lists where it runs. In the browser, Kit's own `handleError` from `src/hooks.client.ts` applies.
 
 ## init
 
@@ -257,7 +257,49 @@ Kit's `init` hook is not supported. Initialise database clients and other shared
 
 ## reroute
 
-`reroute` is not supported. Go matches routes on the server without it, so a `reroute` export in `src/hooks.ts` would make the browser and the server disagree about which route a URL belongs to ([#167](https://github.com/tylergannon/skgo/issues/167)).
+```ts
+// src/hooks.ts
+export { reroute } from '@skgo/sveltekit-adapter/reroute';
+```
+
+Put the Go hook in `src/hooks.go` and configure the same function on your application's `HandleConfig`:
+
+```go
+/// file: src/hooks.go
+// Reroute selects a route from Go while preserving the visitor's alias URL.
+var Reroute skgo.Reroute = func(ctx context.Context, event skgo.RerouteEvent) (*string, error) {
+	if !strings.HasPrefix(event.URL.Path, "/go-alias/") {
+		return nil, nil
+	}
+	name := strings.TrimPrefix(event.URL.Path, "/go-alias/")
+	request, err := http.NewRequestWithContext(ctx, "GET", "/api/reroute-target?name="+name, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := event.Fetch(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	path := string(body)
+	return &path, nil
+}
+```
+
+```go
+/// file: server.go
+handleCfg.Reroute = hooks.Reroute
+```
+
+Return a pointer to the pathname Kit should match, or `nil` to keep the incoming pathname. The selected route and parameters change; the original `event.url`, request URL and browser address stay intact. The example fetches its destination from a Go endpoint, then reaches a typed Go load or another Go endpoint through the alias. The generator includes an exported `Reroute` from `src/hooks.go` in the build service as well.
+
+The hook receives a URL copy and a request-aware `Fetch`. It runs before `handle`, so its fetch hook has no selected route, parameters or initialized application locals. You can wait for Go work and use the request context for cancellation. A returned error or panic answers with Kit's opaque `Internal Server Error` response before `handle` runs.
+
+Keep the hook pure and idempotent. Kit caches each browser result by full URL and owns that cache; server requests run the Go function independently. The universal TypeScript export only transports calls to Go, so the application logic and data access stay in Go in development and production.
 
 ## transport
 

@@ -58,9 +58,45 @@ SKGo raises Kit's framework errors itself, with Kit's messages. A path that matc
 
 ## Validation errors
 
-Kit's `'validation'` kind does not occur. A Go remote function decodes its argument into its Go parameter type, and an argument that does not decode gets a 400 with the message `Bad Request`. The decoder's detail stays on the server. Kit's [`handleValidationError`](https://svelte.dev/docs/kit/remote-functions#Handling-validation-errors) and its `issues` array have no Go counterpart yet ([#166](https://github.com/tylergannon/skgo/issues/166)).
+Set `RemoteConfig.HandleError` to customize a rejected generated remote argument before the Go body runs. Kit 3.1.0 uses the ordinary `handleError` hook with `caught.Kind == "validation"`; the historical separate `handleValidationError` hook is gone.
 
-Call `skgo.BadRequest(err)` yourself to answer the same way. The visitor gets `Bad Request` and `err` is kept off the wire, so log it yourself where it matters.
+`caught.Status` and `caught.Message` are the safe defaults `400` and `Bad Request`. `caught.Issues` holds private decoder diagnostics as messages. Return a map to override the public message or add application fields; omitted fields retain their defaults. Return `nil` to keep the safe result. A panicking hook keeps status 400 and replaces the message with `Internal Error`.
+
+The example chooses `Choose a catalog name.` and a `reference` for its catalog remote:
+
+```go
+/// file: src/routes/validation/catalog.remote.go
+package validation
+
+import (
+	"context"
+	"fmt"
+	"sync/atomic"
+
+	"github.com/tylergannon/skgo"
+)
+
+var bodyCalls atomic.Int64
+
+type CatalogInput struct {
+	Name string `json:"name"`
+}
+
+func validateCatalog(ctx context.Context, input CatalogInput) (string, error) {
+	calls := bodyCalls.Add(1)
+	return fmt.Sprintf("Go accepted %s|body-calls=%d", input.Name, calls), nil
+}
+
+var _ = skgo.Query(validateCatalog)
+
+func validationBodyCalls(ctx context.Context) (int64, error) { return bodyCalls.Load(), nil }
+
+var _ = skgo.Query(validationBodyCalls)
+```
+
+The same hook shapes query, command, batch and live schema failures in development and production. A batch argument refusal rejects the batch before its body runs; a live failure arrives in its error frame. Production prerender remotes serve their built files, while development validates calls normally.
+
+An ordinary application `skgo.BadRequest(err)`, a malformed transport payload, an argument sent to a no-argument function and a form's business `Invalid` issues do not become argument-schema failures. Form submissions keep their normal issue result. Decoder details are never copied to the public result automatically.
 
 ## Unknown errors
 
@@ -85,16 +121,17 @@ The Go `handleError` hook runs, for any error but a redirect, on:
 
 - a load or action that fails while Go renders a document;
 - a load that fails while answering a client navigation's `__data.json`;
+- a generated remote argument schema refusal, through `RemoteConfig.HandleError`;
 - a path that matches no route;
 - an error `handle` returns for a document request; data and remote requests get JSON without the hook;
 - a panic in a `+server` route, answered as JSON or as the fallback error page depending on `Accept`.
 
 It does not run:
 
-- for remote functions. `RemoteConfig` has no `HandleError`. A remote function's `*HTTPError` reaches the caller as it is, and any other error becomes `{ "status": 500, "message": "Internal Error" }`. A query error that a `<svelte:boundary>` catches during server rendering therefore skips the hook in production. Under [`skgo dev`](development-server) the same error goes through the load configuration's hook.
+- for errors returned by a remote body. A remote function's `*HTTPError` reaches the caller as it is, and any other error becomes `{ "status": 500, "message": "Internal Error" }`. A query error that a `<svelte:boundary>` catches during server rendering therefore skips the hook in production. Under [`skgo dev`](development-server) the same error goes through the load configuration's hook.
 - while [prerendering](prerendering) ([#278](https://github.com/tylergannon/skgo/issues/278)).
 
-Set it as `HandleError` on the load, endpoint and handle configurations in `server.go`; [Server composition](server-composition) shows where. The example application uses it to attach a support id to every failure and to replace the message of an unknown error:
+Set it as `HandleError` on the remote, load, endpoint and handle configurations in `server.go`; [Server composition](server-composition) shows where. The example application uses it to attach a support id to every failure and to replace the message of an unknown error:
 
 ```go
 /// file: server.go
@@ -112,6 +149,9 @@ Set it as `HandleError` on the load, endpoint and handle configurations in `serv
 // real one, for a hook that wants to log it before replacing it.
 func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 	extra := map[string]any{"supportId": supportID}
+	if caught.Kind == "validation" && strings.HasSuffix(skgo.EventFrom(ctx).Request().URL.Path, "/validateCatalog") {
+		return map[string]any{"message": "Choose a catalog name.", "reference": "catalog-validation-166"}
+	}
 	if caught.Kind == "unknown" {
 		extra["message"] = "Something went wrong on our end."
 	}
@@ -119,7 +159,7 @@ func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 }
 ```
 
-`caught.Status` and `caught.Message` are what the visitor gets if the hook returns `nil`. `caught.Kind` is only `"app"` or `"unknown"`. `caught.Err` is the original error, set only for `"unknown"`; classify it with `errors.As`. The map you return overrides fields: `"status"` must be an `int` and `"message"` a `string`, and other keys become extra `App.Error` fields. The hook's event is read-only, so it cannot set cookies. A hook that panics is logged, and the message becomes `"Internal Error"`, even for an `"app"` error.
+`caught.Status` and `caught.Message` are what the visitor gets if the hook returns `nil`. `caught.Kind` is `"app"`, `"unknown"` or `"validation"`. Validation carries separate private `caught.Issues`. `caught.Err` is the original error, set only for `"unknown"`; classify it with `errors.As`. The map you return overrides fields: `"status"` must be an `int` and `"message"` a `string`, and other keys become extra `App.Error` fields. The hook's event is read-only, so it cannot set cookies. A hook that panics is logged, and the message becomes `"Internal Error"`, even for an `"app"` error.
 
 ## Error boundaries
 

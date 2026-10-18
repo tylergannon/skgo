@@ -33,6 +33,7 @@ func TestKitMetadataObservesLiveMatcherInputs(t *testing.T) {
 	write(filepath.Join(web, "src", "params.js"), "import { name } from '../../names.mjs';\nexport const params = { [process.env.SKGO_TEST_MATCHER || name]: value => value };\n")
 	t.Setenv("SKGO_TEST_MATCHER", "")
 	files := []string{filepath.Join(route, "page.server.go")}
+	write(files[0], "package route\n")
 	cfg := Config{Web: web, Language: LanguageTypeScript}
 	first, err := captureKitRouteMetadata(cfg, files)
 	if err != nil {
@@ -78,5 +79,36 @@ func TestKitMetadataObservesLiveMatcherInputs(t *testing.T) {
 	}
 	if first.Dirs[1] != route || !reflect.DeepEqual(relocated.IDs, []string{"/", "/[id=First]"}) || !reflect.DeepEqual(relocated.Names, []string{"First"}) {
 		t.Fatal("rebasing mutated original metadata or route semantics")
+	}
+}
+
+func TestKitMetadataUsesKitRouteRecordsInsteadOfEveryDirectory(t *testing.T) {
+	root, err := repoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	web := filepath.Join(t.TempDir(), "web")
+	for _, dir := range []string{"src/routes/(empty)/nested", "src/routes/layout-only", "src/routes/page"} {
+		if err := os.MkdirAll(filepath.Join(web, dir), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(filepath.Join(root, "example/web/node_modules"), filepath.Join(web, "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	for path, source := range map[string]string{"src/routes/layout-only/+layout.svelte": "<slot />", "src/routes/page/page.server.go": "package page\n"} {
+		if err := os.WriteFile(filepath.Join(web, path), []byte(source), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	metadata, err := captureKitRouteMetadata(Config{Web: web, Language: LanguageTypeScript}, []string{filepath.Join(web, "src/routes/page/page.server.go")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(metadata.IDs, []string{"/", "/layout-only", "/page"}) {
+		t.Fatalf("Kit identities=%v", metadata.IDs)
+	}
+	if len(metadata.Dirs) != 3 || metadata.Dirs[1] != filepath.Join(web, "src/routes/layout-only") || len(metadata.Routes) != 3 {
+		t.Fatalf("inconsistent Kit metadata=%+v", metadata)
 	}
 }

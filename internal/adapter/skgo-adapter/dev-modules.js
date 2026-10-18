@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Transform generated callback bodies before Kit sees the module. Kit still
 // owns the wrapper, its ID, validation, request store and hydration cache.
-export function devModules({ base = "" } = {}) {
+export function devModules({ base = "", appDir = "_app" } = {}) {
   let root, parseSync;
   const helper = "virtual:skgo-dev-bridge";
   return {
@@ -31,7 +31,7 @@ export function devModules({ base = "" } = {}) {
         "utf8",
       );
       return (
-        `const devBase = ${JSON.stringify(base)};\nconst predicateWorkerURL = ${JSON.stringify(pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), "dev-predicates.js")).href)};\nimport * as transport from ${JSON.stringify(join(kit, "src/runtime/app/internal/transport.js"))};\nimport * as devalue from ${JSON.stringify(require.resolve("devalue"))};\n` +
+        `const devBase = ${JSON.stringify(base)};\nconst devAppDir = ${JSON.stringify(appDir)};\nconst predicateWorkerURL = ${JSON.stringify(pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), "dev-predicates.js")).href)};\nimport * as transport from ${JSON.stringify(join(kit, "src/runtime/app/internal/transport.js"))};\nimport * as devalue from ${JSON.stringify(require.resolve("devalue"))};\n` +
         bridge
       );
     },
@@ -82,7 +82,8 @@ export function devModules({ base = "" } = {}) {
                 `(event) => $skgo.action(${JSON.stringify(module)},${JSON.stringify(action)},event)`,
               );
             }
-          } else if (/\/\+server\.(ts|js)$/.test(module))
+          } else if (name === "entries") continue;
+          else if (/\/\+server\.(ts|js)$/.test(module))
             edits.push([fn.start, fn.end, "(event) => $skgo.endpoint(event)"]);
           else if (
             /\.remote\.(ts|js)$/.test(module) &&
