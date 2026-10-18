@@ -1,0 +1,1 @@
+../../../../web/src/routes/shadow/[...rest]/skgo_gen.go

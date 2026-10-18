@@ -1,0 +1,1 @@
+../../../../web/src/routes/actions/options/no-ssr/skgo_gen.go

@@ -1,0 +1,1 @@
+../../../../web/src/routes/missing/[...path]/skgo_gen.go

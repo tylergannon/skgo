@@ -1,0 +1,1 @@
+../../../../web/src/routes/prerender/[slug]/skgo_gen.go

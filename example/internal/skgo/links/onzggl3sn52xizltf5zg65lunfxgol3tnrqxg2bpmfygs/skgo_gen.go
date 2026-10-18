@@ -1,0 +1,1 @@
+../../../../web/src/routes/routing/slash/api/skgo_gen.go

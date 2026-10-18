@@ -1,0 +1,1 @@
+../../../../web/src/routes/rerouted/[number=Order]/skgo_gen.go

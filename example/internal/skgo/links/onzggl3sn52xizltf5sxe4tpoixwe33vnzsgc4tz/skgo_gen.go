@@ -1,0 +1,1 @@
+../../../../web/src/routes/error/boundary/skgo_gen.go

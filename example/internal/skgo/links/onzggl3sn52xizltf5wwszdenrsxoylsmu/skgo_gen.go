@@ -1,0 +1,1 @@
+../../../../web/src/routes/middleware/skgo_gen.go

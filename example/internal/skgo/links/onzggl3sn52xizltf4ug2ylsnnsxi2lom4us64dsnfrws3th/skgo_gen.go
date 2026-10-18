@@ -1,0 +1,1 @@
+../../../../web/src/routes/(marketing)/pricing/skgo_gen.go

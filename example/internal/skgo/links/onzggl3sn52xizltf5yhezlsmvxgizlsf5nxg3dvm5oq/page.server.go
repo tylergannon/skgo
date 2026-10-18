@@ -1,0 +1,1 @@
+../../../../web/src/routes/prerender/[slug]/page.server.go

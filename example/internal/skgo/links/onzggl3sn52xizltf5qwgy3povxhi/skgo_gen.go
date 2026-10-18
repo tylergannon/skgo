@@ -1,0 +1,1 @@
+../../../../web/src/routes/account/skgo_gen.go

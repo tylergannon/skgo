@@ -1,0 +1,1 @@
+../../../../web/src/routes/actions/cross/receive/skgo_gen.go

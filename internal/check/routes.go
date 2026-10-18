@@ -32,17 +32,6 @@ func loadRoutes(out string) (routeInventory, error) {
 	return v, nil
 }
 
-// goPackages names every package the Go checks cover. A route package lives
-// behind a directory symlink, and `./...` does not follow one, so each link is
-// named as well.
-func goPackages(v routeInventory) []string {
-	pkgs := []string{"./..."}
-	for _, link := range v.Links {
-		pkgs = append(pkgs, "./"+link.Link)
-	}
-	return pkgs
-}
-
 func authoredPath(root string, v routeInventory, path string) string {
 	clean := strings.TrimPrefix(relative(root, path), "./")
 	for _, link := range v.Links {

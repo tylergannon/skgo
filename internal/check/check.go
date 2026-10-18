@@ -152,14 +152,13 @@ func Run(ctx context.Context, o Options) Report {
 		add(Check{Name: "svelte-check", Status: "failed", Message: "project svelte-check is missing"})
 	}
 	goEnv := readonlyGoEnv()
-	pkgs := goPackages(routes)
 	goCompileFailed := false
 	for _, spec := range []struct {
 		name string
 		args []string
 	}{
-		{"go-build", append([]string{"build"}, pkgs...)},
-		{"go-vet", append([]string{"vet"}, pkgs...)},
+		{"go-build", []string{"build", "./..."}},
+		{"go-vet", []string{"vet", "./..."}},
 	} {
 		output, err := command(ctx, root, goEnv, "go", spec.args...)
 		c, ds := checkGoOutput(spec.name, root, routes, output, err)
@@ -173,14 +172,14 @@ func Run(ctx context.Context, o Options) Report {
 		add(c, ds...)
 	}
 	if bin, err := exec.LookPath("staticcheck"); err == nil {
-		output, runErr := command(ctx, root, goEnv, bin, append([]string{"-f", "json"}, pkgs...)...)
+		output, runErr := command(ctx, root, goEnv, bin, "-f", "json", "./...")
 		c, ds := checkStaticcheck(root, routes, output, runErr)
 		add(c, ds...)
 	} else {
 		add(Check{Name: "staticcheck", Status: "failed", Message: "Staticcheck is missing from PATH"})
 	}
 	if exe, err := os.Executable(); err == nil {
-		output, runErr := command(ctx, root, goEnv, "go", append([]string{"vet", "-json", "-vettool=" + exe}, pkgs...)...)
+		output, runErr := command(ctx, root, goEnv, "go", "vet", "-json", "-vettool="+exe, "./...")
 		c, ds := parseAdvice(root, routes, output, runErr)
 		if goCompileFailed && c.Status == "complete" {
 			c.Status = "incomplete"

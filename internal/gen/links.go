@@ -23,12 +23,15 @@ import (
 // has compiled anything at all.
 //
 // Second, the link tree: for every route directory holding Go files, a
-// relative symlink under `<out>/links/` whose name Go *can* spell. The link is
-// an ordinary directory of the app's module, so
-// `<module>/generated/links/<enc>` is a real import path — that is the path the
-// generated bindings import and the path `packages.Load` is given. Kit never
-// sees any of this; the `.remote.ts` sits beside the authored Go file and kit
-// hashes the authored path, as always.
+// directory under `<out>/links/` whose name Go *can* spell, holding one
+// relative symlink per Go file. It is an ordinary directory of the app's
+// module, so `<module>/generated/links/<enc>` is a real import path — that is
+// the path the generated bindings import and the path `packages.Load` is
+// given — and `./...` reaches it, so `go test` and `go vet` cover route code.
+// A symlink to the whole route directory would be neither: `./...` does not
+// follow directory symlinks, and the route root's directory holds the boundary
+// `go.mod`. Kit never sees any of this; the `.remote.ts` sits beside the
+// authored Go file and kit hashes the authored path, as always.
 //
 // The links are committed. Git stores only a symlink's target, so editing a
 // route never changes anything under `links/`, and a clean checkout builds
@@ -56,14 +59,7 @@ type routeLink struct {
 	Link string `json:"link"`
 	// Target is the authored directory the link stands for, relative to the
 	// host module root.
-	Target string `json:"target"`
-	// PerFile marks the route tree's own root directory. A directory symlink
-	// there would point at a directory containing the boundary `go.mod`, and
-	// Go would read it as a different module; so that one link is a real
-	// directory of per-file symlinks, and the boundary is simply not among
-	// them.
-	PerFile bool `json:"perFile,omitempty"`
-
+	Target     string `json:"target"`
 	dir        string // absolute authored directory
 	linkDir    string // absolute link directory
 	importPath string
@@ -133,7 +129,6 @@ func newRouteLinks(cfg Config, hostDir, hostModule string) (*routeLinks, error) 
 		link := &routeLink{
 			Link:    filepath.ToSlash(mustRel(hostDir, filepath.Join(t.root, name))),
 			Target:  filepath.ToSlash(mustRel(hostDir, dir)),
-			PerFile: dir == t.routes,
 			dir:     dir,
 			linkDir: filepath.Join(t.root, name),
 		}
@@ -217,13 +212,7 @@ func (t *routeLinks) sync() error {
 	keep := map[string]bool{}
 	for _, link := range t.links {
 		keep[filepath.Base(link.linkDir)] = true
-		if link.PerFile {
-			if err := t.syncPerFile(link); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := t.syncDirLink(link); err != nil {
+		if err := t.syncLink(link); err != nil {
 			return err
 		}
 	}
@@ -238,17 +227,6 @@ func (t *routeLinks) sync() error {
 // missing import path does not say what to do about it.
 func (t *routeLinks) verify() error {
 	for _, link := range t.links {
-		stale := fmt.Errorf("skgo: %s: generated route link is missing or stale; run skgo generate", link.Link)
-		if !link.PerFile {
-			target, err := filepath.Rel(filepath.Dir(link.linkDir), link.dir)
-			if err != nil {
-				return err
-			}
-			if existing, err := os.Readlink(link.linkDir); err != nil || existing != target {
-				return stale
-			}
-			continue
-		}
 		names, err := goFileNames(link.dir)
 		if err != nil {
 			return err
@@ -259,43 +237,23 @@ func (t *routeLinks) verify() error {
 				return err
 			}
 			if existing, err := os.Readlink(filepath.Join(link.linkDir, name)); err != nil || existing != target {
-				return stale
+				return fmt.Errorf("skgo: %s: generated route link is missing or stale; run skgo generate", filepath.Join(link.dir, name))
 			}
 		}
 	}
 	return nil
 }
 
-// syncDirLink points one link at one route directory. Whatever stood at the
-// address before — a stale link, or a copied package from an older skgo — is
-// replaced.
-func (t *routeLinks) syncDirLink(link *routeLink) error {
-	target, err := filepath.Rel(filepath.Dir(link.linkDir), link.dir)
-	if err != nil {
-		return err
-	}
-	if existing, err := os.Readlink(link.linkDir); err == nil && existing == target {
-		return nil
-	}
-	if err := removeLinkEntry(link.linkDir); err != nil {
-		return err
-	}
-	if err := os.Symlink(target, link.linkDir); err != nil {
-		return err
-	}
-	t.logf("linked %s -> %s", link.Link, link.Target)
-	return nil
-}
-
-// syncPerFile builds the route root's link as a real directory of file
-// symlinks. `go.mod` is deliberately left out: that file is the boundary, and a
-// package directory that contains one is a different module.
+// syncLink builds one route's link as a real directory of relative file
+// symlinks. `go.mod` is deliberately left out: in the route root that file is
+// the boundary, and a package directory that contains one is a different
+// module.
 //
 // The directory holds the links and nothing else. Everything generated for
 // this package lands in its authored directory and is linked from there like
-// the developer's own files, so anything else found here is left over from an
-// earlier run and goes.
-func (t *routeLinks) syncPerFile(link *routeLink) error {
+// the developer's own files, so anything else found here — a copied file left
+// by an older skgo included — goes.
+func (t *routeLinks) syncLink(link *routeLink) error {
 	if fi, err := os.Lstat(link.linkDir); err == nil && (fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir()) {
 		if err := os.Remove(link.linkDir); err != nil {
 			return err
@@ -367,8 +325,7 @@ func (t *routeLinks) prune(keep map[string]bool) error {
 	return nil
 }
 
-// removeLinkEntry deletes one link, or a link directory (the route root's, or
-// a copied package left by an older skgo).
+// removeLinkEntry deletes one link directory, or a legacy directory symlink.
 // It refuses a regular file, because skgo never writes one at this level and a
 // file that has appeared is the signal that the output directory is not what
 // its owner thinks it is. RemoveAll does not follow symlinks, so nothing it does

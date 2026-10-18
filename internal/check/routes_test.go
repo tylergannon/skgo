@@ -18,9 +18,6 @@ func TestRouteLinkDiagnosticsNameTheAuthoredFile(t *testing.T) {
 	if d.Location == nil || d.Location.File != "web/src/routes/todos/todos.remote.go" || d.Location.Line != 2 {
 		t.Fatalf("authored diagnostic=%+v", d)
 	}
-	if got := goPackages(routes); len(got) != 2 || got[0] != "./..." || got[1] != "./internal/skgo/links/todos" {
-		t.Fatalf("checked packages=%q", got)
-	}
 }
 
 func TestAuthoredPathThroughSymlinkedRoot(t *testing.T) {
