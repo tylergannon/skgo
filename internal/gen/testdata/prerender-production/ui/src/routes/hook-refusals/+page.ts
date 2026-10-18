@@ -5,6 +5,6 @@ export async function load({ fetch }) {
 	const redirected = await fetch('/hook-redirected');
 	return {
 		refused: `${refused.status} ${await refused.text()}`,
-		redirected: `${redirected.status}`
+		redirected: `${redirected.status} ${redirected.headers.get('location')}`
 	};
 }

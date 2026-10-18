@@ -79,6 +79,11 @@ var Handle = params.Sequence(
 				return nil, &skgo.Redirect{Status: 307, Location: "/hook-target"}
 			}
 		}
+		if event.URL().Path == "/hook-refusals" {
+			return resolve(ctx, event, skgo.ResolveOptions{
+				FilterSerializedResponseHeaders: func(name, _ string) bool { return name == "location" },
+			})
+		}
 		if event.URL().Path != "/options" && event.URL().Path != "/options-rejected" {
 			return resolve(ctx, event)
 		}

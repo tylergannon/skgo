@@ -119,7 +119,7 @@ func buildProductionFixture(fixture productionFixture, err error) (productionFix
 	}
 	build := exec.Command(filepath.Join(ui, "node_modules", ".bin", "vp"), "build")
 	build.Dir = ui
-	build.Env = append(os.Environ(), "ORIGIN=http://127.0.0.1:8080")
+	build.Env = append(os.Environ(), "ORIGIN=http://127.0.0.1:8080", "SKGO_FIXTURE_REFUSED_LOAD_MARKER="+filepath.Join(fixture.app, "hook-refused-load-ran"))
 	output, err := build.CombinedOutput()
 	fixture.buildOutput = string(output)
 	if err != nil {
@@ -170,6 +170,7 @@ func (f productionFixture) run(t *testing.T, name string) {
 	t.Helper()
 	cmd := exec.Command(f.tests, "-test.run=^"+name+"$", "-test.v")
 	cmd.Dir = f.app
+	cmd.Env = append(os.Environ(), "SKGO_FIXTURE_REFUSED_LOAD_MARKER="+filepath.Join(f.app, "hook-refused-load-ran"))
 	output, err := cmd.CombinedOutput()
 	t.Logf("compiled production handler contract:\n%s", output)
 	if err != nil {
