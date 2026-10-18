@@ -15,6 +15,7 @@ import (
 // Fact is the one value the page shows. Nothing else in the app produces it.
 const Fact = "harbour-lamp-4096"
 
+// docs: locals
 func fact(w http.ResponseWriter, r *http.Request) {
 	session := app.LocalsFrom(r.Context()).Session
 	visitor := "guest"
@@ -26,3 +27,5 @@ func fact(w http.ResponseWriter, r *http.Request) {
 }
 
 var _ = skgo.GET(fact)
+
+// docs: end locals

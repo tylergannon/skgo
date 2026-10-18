@@ -1,10 +1,10 @@
-// Package documentation embeds skgo's rendered documentation: the tree under
+// Package skgodocs embeds skgo's rendered documentation: the tree under
 // rendered/, produced from the sources under docs/ by cmd/skgo-docs. The
 // project site copies the same tree at the tag it pins; `skgo` itself can
 // print a page offline from this copy.
-//
+package skgodocs
+
 //go:generate go run github.com/tylergannon/skgo/cmd/skgo-docs render
-package documentation
 
 import (
 	"embed"

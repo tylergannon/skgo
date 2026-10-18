@@ -1,4 +1,4 @@
-package documentation
+package skgodocs
 
 import (
 	"io/fs"

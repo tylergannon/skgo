@@ -21,3 +21,13 @@ page does not exist yet; the link checker refuses a link to a page that is
 not in the tree, and that rule stays.
 discovery: `native/` has no Go package (tests and Zig/Swift sources only), so
 the plan's `skgo/native` reference page does not exist.
+
+friction: go/build silently ignores every file declaring `package
+documentation` (a doc-only pseudo-package), reporting "build constraints
+exclude all Go files" -> the embed package is `skgodocs` in directory
+`documentation/`.
+discovery: a fresh `skgo new` could not be run here to confirm the project
+tree on the Project structure page: `skgo new` requires the global vp at the
+pinned version and this machine has vp 1.0.0. The tree was derived from
+internal/newapp and internal/gen sources and a real project; confirm with a
+fresh scaffold on a machine with the pinned vp.

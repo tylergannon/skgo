@@ -48,6 +48,10 @@ clean:
     rm -rf example/.skgo example/native/build example/web/.svelte-kit
     find example/web/build -mindepth 1 ! -name .gitkeep -delete
 
+# Render documentation/docs into the committed, embedded documentation/rendered.
+docs:
+    go generate ./documentation
+
 # go vet, both modules
 vet:
     go vet ./... ./example/...

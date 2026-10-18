@@ -42,6 +42,7 @@ type Message struct {
 	AttachmentDigest string `json:"attachmentDigest"`
 }
 
+// docs: draft
 // Draft is what the form submits. Each field's name matches the path the page
 // uses in `sendMessage.fields...`, which is what joins a control to a Go field.
 type Draft struct {
@@ -64,6 +65,8 @@ type Draft struct {
 	// all — this is Go's side of that json tag, not the page's.
 	ForKey string `json:"id"`
 }
+
+// docs: end draft
 
 // Receipt is what a successful submission returns, which kit's client puts on
 // `sendMessage.result`.
