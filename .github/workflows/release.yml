@@ -184,11 +184,9 @@ jobs:
           node-version: 24.22.0
           registry-url: https://registry.npmjs.org
 
-      # The qualification dependency already ran the full adapter package,
-      # including tarball checks and Kit's live graph, against the built example
-      # at this exact SHA. Publication consumes that result; it needs no second
-      # frontend installation or integration-test run. Package comparison and
-      # stamping below are standalone Go commands.
+      # Qualification already exercised the adapter against the built example
+      # at this SHA. Package comparison and stamping are standalone Go commands;
+      # publication needs no second frontend installation or test run.
 
       # A release whose package is byte-for-byte the newest one on the registry
       # publishes nothing: skgo pairs with the newest adapter at or below its
@@ -222,49 +220,34 @@ jobs:
         working-directory: internal/adapter
         run: npm publish --access public
 
-  sv-npm:
-    name: Publish @skgo/sv
-    needs: [version, qualification, linux-cli, macos-cli]
+  sv-package:
+    name: Prepare @skgo/sv on Bob
+    needs: version
     if: needs.version.outputs.version != ''
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, skgo-release]
     timeout-minutes: 15
+    outputs:
+      publish: ${{ steps.changed.outputs.publish }}
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-    permissions:
-      contents: read
-      id-token: write
-
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24.22.0
-          registry-url: https://registry.npmjs.org
-
+          cache: false
       - uses: jdx/mise-action@v4
         with:
           working_directory: example
           export_path: true
-
       - name: Install the add-on's build-only dependencies
         working-directory: internal/sv
         run: vp install --frozen-lockfile
-
-      - name: Build and verify the published add-on
+      - name: Build the add-on once
         working-directory: internal/sv
         run: vp run build
-
-      - name: The tarball is the self-contained native add-on
+      - name: Check the self-contained add-on
         run: go test ./internal/sv/
-
-      # Both sparse npm packages use the Go release version whenever they
-      # change. `skgo new` can therefore select each independently as the
-      # newest exact version not newer than its own module version.
       - name: Is the package any different from the published one?
         id: changed
         run: |
@@ -274,25 +257,50 @@ jobs:
             unchanged) echo "publish=false" >> "$GITHUB_OUTPUT" ;;
             *) echo "skgo-adapter-changed answered '$result'"; exit 1 ;;
           esac
-
-      - name: Stamp the tag's version
+      - name: Stamp and pack the candidate
         if: steps.changed.outputs.publish == 'true'
         env:
           RELEASE_VERSION: ${{ needs.version.outputs.version }}
         run: |
           go run ./cmd/skgo-adapter-changed -dir internal/sv -package @skgo/sv -stamp "$RELEASE_VERSION"
-          echo "publishing @skgo/sv@${RELEASE_VERSION#v}"
-
-      - name: npm publish
+          mkdir -p "$RUNNER_TEMP/sv-package"
+          cd internal/sv
+          vp pm pack --pack-destination "$RUNNER_TEMP/sv-package"
+      - uses: actions/upload-artifact@v7
         if: steps.changed.outputs.publish == 'true'
-        # npm validates devEngines for its working directory. Keep VP
-        # responsible for the add-on build; publish its package from the root.
-        run: npm publish ./internal/sv --access public
+        with:
+          name: sv-package
+          path: ${{ runner.temp }}/sv-package/*.tgz
+          if-no-files-found: error
+          retention-days: 2
+
+  sv-npm:
+    name: Publish @skgo/sv
+    needs: [version, qualification, linux-cli, macos-cli, sv-package]
+    if: needs.sv-package.outputs.publish == 'true'
+    # npm's trusted publisher requires this hosted workflow identity. Consume
+    # Bob's exact stamped tarball; no build or dependency install happens here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.22.0
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v8
+        with:
+          name: sv-package
+          path: sv-package
+      - name: npm publish
+        run: npm publish ./sv-package/*.tgz --access public
 
   publish:
     name: Publish GitHub Release and Homebrew cask
-    needs: [version, qualification, linux-cli, macos-cli, adapter-npm, sv-npm]
-    if: needs.version.outputs.version != ''
+    needs: [version, qualification, linux-cli, macos-cli, adapter-npm, sv-package, sv-npm]
+    if: ${{ !cancelled() && needs.version.outputs.version != '' && needs.qualification.result == 'success' && needs.linux-cli.result == 'success' && needs.macos-cli.result == 'success' && needs.adapter-npm.result == 'success' && (needs.sv-npm.result == 'success' || needs.sv-npm.result == 'skipped') && needs.sv-package.result == 'success' }}
     runs-on: [self-hosted, Linux, X64, skgo-release]
     environment: release
     timeout-minutes: 15

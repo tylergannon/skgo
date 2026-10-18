@@ -1,3 +1,5 @@
+//go:build skgo_qualification
+
 package hotreload
 
 // Kernel observations are made in the native host against its actual code/data

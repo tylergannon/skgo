@@ -13,28 +13,30 @@ import (
 
 func TestNativeSwiftGeneration(t *testing.T) {
 	t.Parallel()
-	root, cfg := foreignFixture(t, `package data
-import("context";"github.com/tylergannon/skgo";"example.com/app/generated/params")
-func read(context.Context)(int64,error){return 42,nil}
-func save(context.Context,params.RequestEvent,int64)(int64,error){return 42,nil}
-var _=skgo.Query(read)
-var _=skgo.Command(save)
-`, nil)
-	cfg.SwiftOut = filepath.Join(root, "app", "Generated.swift")
-	cfg.SwiftRemotes = []string{"src/data/data.remote.ts#read", "src/data/data.remote.ts#save"}
-	if err := Run(cfg); err != nil {
+	root := t.TempDir()
+	a, gp := emitterPackage(t, root, "package data\n")
+	a.cfg.SwiftOut = filepath.Join(root, "Generated.swift")
+	a.cfg.SwiftRemotes = []string{"src/lib/todos.remote.ts#read", "src/lib/todos.remote.ts#save"}
+	a.remotes = []*remoteFn{
+		{name: "read", module: "src/lib/todos.remote.ts", handler: "remote_read", kind: kindQuery, goPkg: gp, out: types.Typ[types.Int64]},
+		{name: "save", module: "src/lib/todos.remote.ts", handler: "remote_save", kind: kindCommand, goPkg: gp, in: types.Typ[types.Int64], out: types.Typ[types.Int64]},
+	}
+	if err := a.planCodecs(); err != nil {
 		t.Fatal(err)
 	}
-	source, err := os.ReadFile(cfg.SwiftOut)
-	if err != nil {
+	if err := a.writeSwiftClient(); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"func read(", "func save(", "Int64"} {
+	if err := a.writeAppBindings(); err != nil {
+		t.Fatal(err)
+	}
+	source := a.cfg.generation.files[a.cfg.SwiftOut]
+	for _, want := range []string{"public func read() async throws -> Int64", "public func save(_ argument: Int64, updates: [QueryUpdate] = []) async throws -> Int64", `core.call("worolc/read", kind: .query, argument: nil)`, `core.call("worolc/save", kind: .command, argument: argument, updates: updates)`} {
 		if !strings.Contains(string(source), want) {
 			t.Fatalf("Swift output lacks %q:\n%s", want, source)
 		}
 	}
-	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
+	bindings := a.cfg.generation.files[filepath.Join(a.cfg.Out, generatedGoFile)]
 	for _, want := range []string{`skgoNativeCheck0(in, "", 0)`, `skgoNativeCheck0(out, "", 0)`, "9007199254740991", "Skgo_save(event.Context(), event, in)"} {
 		if !strings.Contains(bindings, want) {
 			t.Fatalf("native binding lacks %q:\n%s", want, bindings)
@@ -72,14 +74,14 @@ func TestNativeSelectionAdmission(t *testing.T) {
 		out        types.Type
 		want       string
 	}{
-		{"missing", []string{"src/data.remote.ts#absent"}, kindQuery, types.Typ[types.String], "unknown Swift remote"},
-		{"duplicate", []string{"src/data.remote.ts#read", "src/data.remote.ts#read"}, kindQuery, types.Typ[types.String], "duplicate Swift selection"},
-		{"live", []string{"src/data.remote.ts#read"}, kindLive, types.Typ[types.String], "supports ordinary queries and commands"},
-		{"transport", []string{"src/data.remote.ts#read"}, kindQuery, named, "custom transport unsupported"},
+		{"missing", []string{"src/lib/todos.remote.ts#absent"}, kindQuery, types.Typ[types.String], "unknown Swift remote"},
+		{"duplicate", []string{"src/lib/todos.remote.ts#read", "src/lib/todos.remote.ts#read"}, kindQuery, types.Typ[types.String], "duplicate Swift selection"},
+		{"live", []string{"src/lib/todos.remote.ts#read"}, kindLive, types.Typ[types.String], "supports ordinary queries and commands"},
+		{"transport", []string{"src/lib/todos.remote.ts#read"}, kindQuery, named, "custom transport unsupported"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "Generated.swift")
-			a := &app{cfg: Config{SwiftOut: path, SwiftRemotes: tc.selections}, remotes: []*remoteFn{{name: "read", module: "src/data.remote.ts", kind: tc.kind, out: tc.out}}, transported: []*transportedType{{key: "Money", named: named}}}
+			a := &app{cfg: Config{SwiftOut: path, SwiftRemotes: tc.selections}, remotes: []*remoteFn{{name: "read", module: "src/lib/todos.remote.ts", kind: tc.kind, out: tc.out}}, transported: []*transportedType{{key: "Money", named: named}}}
 			if err := a.writeSwiftClient(); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error=%v want %q", err, tc.want)
 			}

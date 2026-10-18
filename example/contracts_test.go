@@ -1,3 +1,5 @@
+//go:build skgo_qualification
+
 package example_test
 
 // The claims in this file used to be browser scenarios. Each one was about

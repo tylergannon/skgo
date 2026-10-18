@@ -2,6 +2,7 @@ package gen
 
 import (
 	"go/ast"
+	"go/format"
 	"go/parser"
 	"go/token"
 	"go/types"
@@ -26,81 +27,74 @@ var _ = skgo.Load(site)
 
 func TestPrerenderInputsGenerateGoProducerAndThrowingStubs(t *testing.T) {
 	t.Parallel()
-	root, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-
-	"github.com/tylergannon/devalue/v5"
-	"github.com/tylergannon/skgo"
-)
-
-func build(ctx context.Context, name string) (string, error) { return name, nil }
-func noArgument(ctx context.Context) (string, error) { return "empty", nil }
-func names() ([]string, error) { return []string{"atlas", "beacon"}, nil }
-func empty() ([]devalue.UndefinedValue, error) { return []devalue.UndefinedValue{{}}, nil }
-
-var (
-	_ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: names})
-	_ = skgo.Prerender(noArgument, skgo.PrerenderOptions{Inputs: empty})
-)
-`, nil)
-	if err := Run(cfg); err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
-	for _, want := range []string{
-		"func inputs_build(_ context.Context, _ skgo.Call) ([]any, error)",
-		"values, err := skgo0.SkgoPrerenderInputs_build()",
-		"tree, err := EncodeRoot0(value)",
-		"Inputs:    inputs_build,",
-		"func inputs_noArgument(_ context.Context, _ skgo.Call) ([]any, error)",
-		"values, err := skgo0.SkgoPrerenderInputs_noArgument()",
-		"encoded[i] = value",
-		"Inputs: inputs_noArgument,",
+	for _, tc := range []struct {
+		name string
+		in   types.Type
+		want string
+	}{
+		{"build", types.Typ[types.String], `
+// inputs_build encodes declared build-time inputs for src/data.remote.ts#build.
+func inputs_build(_ context.Context, _ skgo.Call) ([]any, error) {
+ values, err := data.SkgoPrerenderInputs_build()
+ if err != nil { return nil, err }
+ encoded := make([]any, len(values))
+ for i, value := range values {
+  tree, err := EncodeRoot0(value)
+  if err != nil { return nil, fmt.Errorf("skgo: encode prerender input %d: %w", i, err) }
+  encoded[i] = tree
+ }
+ return encoded, nil
+}
+`},
+		{"noArgument", nil, `
+// inputs_noArgument encodes declared build-time inputs for src/data.remote.ts#noArgument.
+func inputs_noArgument(_ context.Context, _ skgo.Call) ([]any, error) {
+ values, err := data.SkgoPrerenderInputs_noArgument()
+ if err != nil { return nil, err }
+ encoded := make([]any, len(values))
+ for i, value := range values { encoded[i] = value }
+ return encoded, nil
+}
+`},
 	} {
-		if !strings.Contains(bindings, want) {
-			t.Errorf("generated bindings omit %q:\n%s", want, bindings)
-		}
-	}
-	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.ts")
-	for _, want := range []string{
-		"export const build = prerender('unchecked', async (_arg: string): Promise<string> => unimplemented());",
-		"export const noArgument = prerender(async (): Promise<string> => unimplemented());",
-	} {
-		if !strings.Contains(stub, want) {
-			t.Errorf("generated remote module omits %q:\n%s", want, stub)
-		}
-	}
-	assertThrowingSource(t, stub, false)
-	command := readFixtureFile(t, root, "app/generated/prerender/skgo_gen.go")
-	if !strings.Contains(command, "generated.Remotes()") {
-		t.Fatalf("generated build command omits remote registrations:\n%s", command)
+		t.Run(tc.name, func(t *testing.T) {
+			a := &app{}
+			fn := &remoteFn{name: tc.name, module: "src/data.remote.ts", goPkg: &goPackage{alias: "data"}, in: tc.in, inCodec: "Root0", inputsHandler: "inputs_" + tc.name}
+			var got strings.Builder
+			a.writePrerenderInputs(&got, fn)
+			// gofmt makes indentation irrelevant without deriving expected bytes from the emitter.
+			actual, err := format.Source([]byte("package generated\n" + got.String()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want, err := format.Source([]byte("package generated\n" + tc.want))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(actual) != string(want) {
+				t.Fatalf("producer:\n%s\nwant:\n%s", actual, want)
+			}
+		})
 	}
 }
 
-func TestJavaScriptPrerenderStubCarriesArgumentType(t *testing.T) {
+func TestPrerenderStubSignatures(t *testing.T) {
 	t.Parallel()
-	root, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-	"github.com/tylergannon/skgo"
-)
-
-func build(context.Context, string) (string, error) { return "", nil }
-func inputs() ([]string, error) { return []string{"atlas"}, nil }
-var _ = skgo.Prerender(build, skgo.PrerenderOptions{Inputs: inputs})
-`, nil)
-	cfg.Language = LanguageJavaScript
-	if err := Run(cfg); err != nil {
-		t.Fatalf("Run: %v", err)
+	for _, tc := range []struct {
+		language Language
+		in       types.Type
+		want     string
+	}{
+		{LanguageTypeScript, types.Typ[types.String], "export const build = prerender('unchecked', async (_arg: string): Promise<string> => unimplemented());\n"},
+		{LanguageTypeScript, nil, "export const build = prerender(async (): Promise<string> => unimplemented());\n"},
+		{LanguageJavaScript, types.Typ[types.String], "/** @type {import('$app/server').RemotePrerenderFunction<string, string>} */\nexport const build = prerender('unchecked', async (_arg) => unimplemented());\n"},
+	} {
+		a := &app{cfg: Config{Language: tc.language}}
+		got, err := a.stubSignature(&remoteFn{name: "build", kind: kindPrerender, in: tc.in, out: types.Typ[types.String]})
+		if err != nil || got != tc.want {
+			t.Fatalf("stub=%q, %v; want %q", got, err, tc.want)
+		}
 	}
-	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.js")
-	if !strings.Contains(stub, "@type {import('$app/server').RemotePrerenderFunction<string, string>}") {
-		t.Fatalf("generated JavaScript stub lost its concrete input type:\n%s", stub)
-	}
-	assertThrowingSource(t, stub, true)
 }
 
 func TestPrerenderOptionsFailuresArePositioned(t *testing.T) {

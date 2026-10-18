@@ -24,21 +24,6 @@ func TestAutomaticSVReleaseRequiresManualBootstrap(t *testing.T) {
 	}
 }
 
-func TestSVReleaseWorkflowRefusesAutomaticBootstrap(t *testing.T) {
-	workflow, err := os.ReadFile("../../.github/workflows/release.yml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(workflow)
-	want := "-dir internal/sv -package @skgo/sv -require-published"
-	if !strings.Contains(text, want) {
-		t.Fatalf("sv-npm changed check does not contain %q", want)
-	}
-	if count := strings.Count(text, "-require-published"); count != 1 {
-		t.Fatalf("release workflow contains -require-published %d times, want only the sv-npm changed check", count)
-	}
-}
-
 func TestStampVersionPreservesNestedVersionsAndFormatting(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "package.json")

@@ -2,6 +2,16 @@ name: Release qualification
 
 on:
   workflow_call:
+    inputs:
+      native:
+        type: boolean
+        default: true
+      production:
+        type: boolean
+        default: true
+      development:
+        type: boolean
+        default: true
   workflow_dispatch:
 
 permissions:
@@ -12,8 +22,8 @@ permissions:
 jobs:
   qualification:
     name: Example BDD (production)
-    if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, X64, skgo-release]
+    if: github.event_name == 'workflow_dispatch' || inputs.production
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
     timeout-minutes: 45
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -22,12 +32,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - uses: actions/setup-go@v7
         with:
-          # The full test recipe includes native development contracts.
           go-version: '1.27.2'
-          cache: false
+          cache: ${{ github.event_name == 'pull_request' }}
 
       - uses: jdx/mise-action@v4
         with:
@@ -47,13 +58,8 @@ jobs:
       - name: Build the candidate
         run: just build
 
-      - name: Install native core compiler
-        run: mise -C native install zig
-
-      - name: Vet and test the candidate
-        run: |
-          just vet
-          just test
+      - name: Built-example handler contracts
+        run: go test -tags skgo_qualification -count=1 ./example/...
 
       - name: Example BDD against the production build
         run: |
@@ -98,3 +104,82 @@ jobs:
             example/e2e/test-results/
             example/e2e/playwright-report/
             example/e2e/server.log
+
+  native-linux:
+    name: Generated consumers and native replacement (Linux)
+    if: github.event_name == 'workflow_dispatch' || inputs.native
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
+    timeout-minutes: 20
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.2'
+          cache: ${{ github.event_name == 'pull_request' }}
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: example
+          export_path: true
+      - run: cd example/web && vp install --frozen-lockfile
+      - name: Preserve Zig compiler caches across checkout cleanup
+        run: |
+          echo "ZIG_GLOBAL_CACHE_DIR=$HOME/.cache/zig" >> "$GITHUB_ENV"
+          echo "ZIG_LOCAL_CACHE_DIR=$HOME/.cache/skgo-zig-local" >> "$GITHUB_ENV"
+      - run: mise -C native install zig
+      - name: Fresh compiler and process witnesses
+        run: go test -tags skgo_qualification -count=1 ./internal/gen ./internal/hotreload ./native -run '^(TestTypedLoadActualParameterDependencies|TestGeneratedLanguageApplications|TestGenerationCacheFreshProcessesAndRecovery|TestATypeFromAnotherModuleCrossesTheWire|TestRetainedProjectSelectedCompilerInputs|TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost|TestZigRemoteCalls)$'
+
+  native-macos:
+    name: Native replacement and Swift consumer (macOS)
+    if: github.event_name == 'workflow_dispatch' || inputs.native
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["macos-15"]' || '["self-hosted","macOS","ARM64","skgo-release"]') }}
+    timeout-minutes: 20
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.2'
+          cache: ${{ github.event_name == 'pull_request' }}
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: example
+          export_path: true
+      - run: cd example/web && vp install --frozen-lockfile
+      - name: Preserve Zig compiler caches across checkout cleanup
+        run: |
+          echo "ZIG_GLOBAL_CACHE_DIR=$HOME/.cache/zig" >> "$GITHUB_ENV"
+          echo "ZIG_LOCAL_CACHE_DIR=$HOME/.cache/skgo-zig-local" >> "$GITHUB_ENV"
+      - run: mise -C native install zig
+      - name: Fresh native host, Zig exchange and Swift compiler witnesses
+        run: go test -tags skgo_qualification -count=1 ./internal/hotreload ./internal/swiftgen ./native -run '^(TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost|TestGeneratedModelsCompileAndEnforceTheWireShape|TestZigRemoteCalls)$'
+
+  development:
+    name: Vite and Go session boundary
+    if: github.event_name == 'workflow_dispatch' || inputs.development
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
+    timeout-minutes: 20
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.2'
+          cache: ${{ github.event_name == 'pull_request' }}
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: example
+          export_path: true
+      - run: cd example/web && vp install --frozen-lockfile
+      - name: Fresh application generation and recovery witnesses
+        run: go test -tags skgo_dev_integration -count=1 ./internal/devserver -run '^TestRealSession(NativeRecoveryAndIsolation|ApplicationGeneration)$' -v

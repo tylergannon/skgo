@@ -65,10 +65,10 @@ tools:
     fi
 
 # go test, both modules; vp resolves the frontend tools from the project pins.
-# Bound compiler-heavy package/test concurrency and child Go schedulers so
-# independent fixtures can overlap without each subprocess claiming every CPU.
+# Compiler/process and built-example witnesses are selected explicitly by CI
+# with skgo_qualification; ordinary contracts use Go's normal test cache.
 test *args: tools
-    cd example/web && GOMAXPROCS=2 vp exec go -C ../.. test -p=4 -parallel=4 {{args}} -count=1 ./... ./example/...
+    cd example/web && vp exec go -C ../.. test {{args}} ./... ./example/...
 
 # the example server, against the built frontend
 serve:

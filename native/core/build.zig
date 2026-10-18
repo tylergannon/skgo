@@ -16,7 +16,10 @@ pub fn build(b: *std.Build) void {
     const cli_mod = b.createModule(.{ .root_source_file = b.path("src/cli.zig"), .target = target, .optimize = optimize });
     cli_mod.addImport("skgo", core);
     const cli = b.addExecutable(.{ .name = "skgo-remote", .root_module = cli_mod });
-    b.installArtifact(cli);
+    const install_cli = b.addInstallArtifact(cli, .{});
+    b.getInstallStep().dependOn(&install_cli.step);
+    const cli_step = b.step("cli", "Install only the native remote client executable");
+    cli_step.dependOn(&install_cli.step);
     const abi = b.createModule(.{ .root_source_file = b.path("src/abi.zig"), .target = target, .optimize = optimize, .link_libc = true });
     abi.addImport("skgo", core);
     const library = b.addLibrary(.{ .name = "skgo_native_core", .root_module = abi, .linkage = .static });

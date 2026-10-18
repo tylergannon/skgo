@@ -1,3 +1,5 @@
+//go:build skgo_qualification
+
 package native_test
 
 import (
@@ -20,13 +22,14 @@ import (
 func TestZigRemoteCalls(t *testing.T) {
 	buildContext, cancelBuild := context.WithTimeout(t.Context(), 5*time.Minute)
 	defer cancelBuild()
-	build := exec.CommandContext(buildContext, "mise", "exec", "--", "zig", "build", "install")
+	prefix := t.TempDir()
+	build := exec.CommandContext(buildContext, "mise", "exec", "--", "zig", "build", "cli", "--prefix", prefix)
 	build.Dir = "core"
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build SKGO native client: %v\n%s", err, out)
 	}
-	cli := filepath.Join("core", "zig-out", "bin", "skgo-remote")
-	// A cold Linux compiler/libc build is separate from the actual HTTP budget.
+	cli := filepath.Join(prefix, "bin", "skgo-remote")
+	// Compilation has its own budget; every HTTP assertion reuses this executable.
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	t.Run("binary", func(t *testing.T) { testZigBinaryCalls(t, ctx, cli) })

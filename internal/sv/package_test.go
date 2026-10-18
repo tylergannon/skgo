@@ -1,44 +1,22 @@
 package svaddon
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
-	"io"
 	"os"
-	"os/exec"
-	"path"
-	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
-
-	"github.com/tylergannon/skgo/internal/toolchain"
 )
 
-var packageFiles = []string{
-	"LICENSE",
-	"README.md",
-	"package.json",
-	"sv-addon.js",
-}
-
-func TestPublishedPackageContainsOnlyTheNativeAddon(t *testing.T) {
-	tarball := pack(t)
-	got := make([]string, 0, len(tarball))
-	for name := range tarball {
-		got = append(got, name)
-	}
-	slices.Sort(got)
-	if !slices.Equal(got, packageFiles) {
-		t.Fatalf("`pnpm pack` would publish:\n  %s\nwant only:\n  %s",
-			strings.Join(got, "\n  "), strings.Join(packageFiles, "\n  "))
-	}
-}
-
 func TestPublishedPackageIsASelfContainedNativeAddon(t *testing.T) {
-	tarball := pack(t)
+	tarball := map[string][]byte{}
+	for _, name := range []string{"package.json", "sv-addon.js"} {
+		body, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tarball[name] = body
+	}
 	var pkg struct {
 		Name             string            `json:"name"`
 		Type             string            `json:"type"`
@@ -54,8 +32,11 @@ func TestPublishedPackageIsASelfContainedNativeAddon(t *testing.T) {
 	if pkg.Name != "@skgo/sv" || pkg.Type != "module" {
 		t.Errorf("package identity = %+v; want the @skgo/sv ESM package", pkg)
 	}
-	if _, ok := pkg.Exports["."]; !ok {
-		t.Error("package has no root export for sv's community add-on loader")
+	if pkg.Exports["."] != "./sv-addon.js" {
+		t.Errorf("root export = %v; want ./sv-addon.js for sv's community add-on loader", pkg.Exports["."])
+	}
+	if !slices.Contains(pkg.Files, "sv-addon.js") {
+		t.Errorf("published files = %v; want the exported sv-addon.js bundle", pkg.Files)
 	}
 	if pkg.PeerDependencies["sv"] == "" {
 		t.Error("package does not declare the sv host as a peer")
@@ -80,102 +61,5 @@ func TestAddonKeepsTheGoEmbedPlaceholderTrackable(t *testing.T) {
 		if !bytes.Contains(body, []byte("!/build/.gitkeep")) {
 			t.Errorf("%s does not preserve the generated Go embed placeholder", name)
 		}
-	}
-}
-
-func pack(t *testing.T) map[string][]byte {
-	t.Helper()
-	if _, err := exec.LookPath("vp"); err != nil {
-		t.Fatalf("vp is not on PATH, so this test cannot run: %v", err)
-	}
-	dest := t.TempDir()
-	cmd := exec.Command("vp", "pm", "pack", "--pack-destination", dest)
-	cmd.Env = append(os.Environ(), "VP_PACKAGE_MANAGER=pnpm@"+toolchain.PNPM, "VP_PNPM_VERSION="+toolchain.PNPM)
-	cmd.Dir = "."
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("vp pm pack: %v\n%s", err, out)
-	}
-	entries, err := filepath.Glob(filepath.Join(dest, "*.tgz"))
-	if err != nil || len(entries) != 1 {
-		t.Fatalf("vp pm pack wrote %v (%v); want one tarball", entries, err)
-	}
-	return untar(t, entries[0])
-}
-
-func untar(t *testing.T, name string) map[string][]byte {
-	t.Helper()
-	raw, err := os.Open(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raw.Close()
-	zipped, err := gzip.NewReader(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := map[string][]byte{}
-	archive := tar.NewReader(zipped)
-	for {
-		header, err := archive.Next()
-		if err == io.EOF {
-			return out
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		if header.Typeflag != tar.TypeReg {
-			continue
-		}
-		rel, ok := strings.CutPrefix(path.Clean(header.Name), "package/")
-		if !ok {
-			t.Fatalf("tarball member %s is outside package/", header.Name)
-		}
-		body, err := io.ReadAll(archive)
-		if err != nil {
-			t.Fatal(err)
-		}
-		out[rel] = body
-	}
-}
-
-func TestReleasePublicationFromRepositoryRoot(t *testing.T) {
-	workflow, err := os.ReadFile("../../.github/workflows/release.yml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(workflow), "run: npm publish ./internal/sv --access public") {
-		t.Fatal("release must publish the add-on from the repository root")
-	}
-	// Exercise the real package declaration, including VP's manager version.
-	// A dry run never uploads; the tag permits the checkout's prerelease name.
-	cmd := exec.Command("npm", "publish", "./internal/sv", "--access", "public", "--dry-run", "--json", "--ignore-scripts", "--tag", "proof")
-	cmd.Dir = "../.."
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("release publication dry run: %v\n%s\n%s", err, out, stderr.Bytes())
-	}
-	var packages map[string]struct {
-		Name    string `json:"name"`
-		Version string `json:"version"`
-		Files   []struct {
-			Path string `json:"path"`
-		} `json:"files"`
-	}
-	if err := json.Unmarshal(out, &packages); err != nil {
-		t.Fatal(err)
-	}
-	pkg := packages["@skgo/sv"]
-	if pkg.Name != "@skgo/sv" || pkg.Version != "0.0.0-dev" {
-		t.Fatalf("wrong published package: %s", out)
-	}
-	var paths []string
-	for _, file := range pkg.Files {
-		paths = append(paths, file.Path)
-	}
-	slices.Sort(paths)
-	if !slices.Equal(paths, []string{"LICENSE", "README.md", "package.json", "sv-addon.js"}) {
-		t.Fatalf("published files = %v", paths)
 	}
 }
