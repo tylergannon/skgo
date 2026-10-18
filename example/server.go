@@ -29,6 +29,7 @@ const SessionCookie = "skgo_session"
 // without asking the app what it just rendered.
 const supportID = "case-1121"
 
+// docs: handle-error
 // HandleError is the app's `handleError` hook — kit's own contract, mirrored:
 // it runs for every error a page render raises, expected or not
 // (`exports/hooks/public.d.ts`: "runs for every error thrown ... except
@@ -48,6 +49,8 @@ func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 	}
 	return extra
 }
+
+// docs: end handle-error
 
 // NewHandler builds the app's server over the embedded production build in dist.
 //

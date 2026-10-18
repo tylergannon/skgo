@@ -14,15 +14,15 @@ Every page is rendered on the server by the Go binary and then hydrated in the b
 
 ## Static site generation
 
-Pages with `prerender = true` are rendered at build time, including pages whose branch has a Go server load, and the binary serves them as files. See [Prerendering](https://svelte.dev/docs/kit/page-options#prerender).
+Pages with `prerender = true` are rendered at build time, including pages whose branch has a Go server load, and the binary serves them as files. See [Prerendering](page-options#prerender).
 
 ## Single-page app
 
-A route with `ssr = false` is still served by the Go binary: Go answers with Kit's shell document, which boots the client, and your Go loads, remote functions and endpoints still serve the data. Set it in the root layout to make the whole app client-rendered. See [Page options](https://svelte.dev/docs/kit/page-options).
+A route with `ssr = false` is still served by the Go binary: Go answers with Kit's shell document, which boots the client, and your Go loads, remote functions and endpoints still serve the data. Set it in the root layout to make the whole app client-rendered. See [Page options](page-options).
 
 ## Multi-page app
 
-`csr = false` sends no JavaScript for that page, as in [Kit](https://svelte.dev/docs/kit/page-options#csr). Form actions and remote `form` functions keep working with native form submissions, because Go answers the POST.
+`csr = false` sends no JavaScript for that page, as in [Kit](page-options#csr). Form actions and remote `form` functions keep working with native form submissions, because Go answers the POST.
 
 ## Your own server
 

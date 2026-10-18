@@ -111,6 +111,7 @@ type Ack struct {
 	Wrote int `json:"wrote"`
 }
 
+// docs: gate
 // writeNotes changes both notes and the banner.
 //
 // The page asks for three instances back — both notes and the banner. One line
@@ -137,6 +138,8 @@ func writeNotes(ctx context.Context, event params.RequestEvent, arg Write) (Ack,
 	}
 	return Ack{Wrote: 3}, nil
 }
+
+// docs: end gate
 
 var (
 	_ = skgo.Query(getNote)

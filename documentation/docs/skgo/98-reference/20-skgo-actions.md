@@ -7,7 +7,7 @@ The Go side of a `+page.server.ts` `actions` export. Each action is a Go
 function marked with `Action` or one of its variants; a browser with
 JavaScript off posts the form and gets a full page back, a browser with
 JavaScript on gets the result without a reload, exactly as in Kit. Kit's guide
-is [Form actions](https://svelte.dev/docs/kit/form-actions).
+is [Form actions](form-actions).
 
 `Fail` returns validation data with a 4xx status and keeps the page rendered;
 a `*Redirect` from the [errors and redirects](skgo-errors) page sends the

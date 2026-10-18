@@ -37,6 +37,7 @@ func getTodos(ctx context.Context) ([]businesslogic.Todo, error) {
 
 // docs: end query
 
+// docs: query-arg
 // getTodo looks one todo up by id.
 func getTodo(ctx context.Context, id string) (businesslogic.Todo, error) {
 	todo, ok := visitor.Store(ctx).Todo(id, signedIn(ctx))
@@ -46,6 +47,9 @@ func getTodo(ctx context.Context, id string) (businesslogic.Todo, error) {
 	return todo, nil
 }
 
+// docs: end query-arg
+
+// docs: command
 // addTodo appends a todo to the list.
 //
 // The page writes `addTodo(text).updates(getTodos())`, and the line below is
@@ -59,6 +63,8 @@ func addTodo(ctx context.Context, event params.RequestEvent, text string) (busin
 	}
 	return visitor.Store(ctx).Add(text), skgo.RefreshRequestedNoArg(ctx, getTodos)
 }
+
+// docs: end command
 
 // Rename is the argument of the renameTodo command.
 type Rename struct {
@@ -101,6 +107,7 @@ type Retitle struct {
 	RefreshID string `json:"refreshId"`
 }
 
+// docs: refresh
 // retitleTodo changes one todo's text and refreshes a getTodo from Go.
 //
 // The page that calls this passes no `updates(...)`: the browser never says
@@ -114,6 +121,8 @@ func retitleTodo(ctx context.Context, event params.RequestEvent, arg Retitle) (b
 	}
 	return todo, skgo.Refresh(ctx, getTodo, arg.RefreshID)
 }
+
+// docs: end refresh
 
 // watchCount pushes the number of todos this visitor may see, now and after
 // every change, until the client disconnects.

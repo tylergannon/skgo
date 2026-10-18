@@ -8,7 +8,7 @@ one Go function per HTTP method, marked with `GET`, `POST`, `PUT`, `PATCH`,
 `DELETE`, `HEAD`, `OPTIONS` or `QUERY`, plus an optional `Fallback` for every
 other method. Each handler is an ordinary `net/http` handler signature; the
 server mounts it at the route Kit would have mounted the TypeScript one. Kit's
-guide is [Routing](https://svelte.dev/docs/kit/routing#server).
+guide is [Routing](routing#server).
 
 `NewResponse` builds an `*http.Response` for the composition points that
 return one instead of writing to a `ResponseWriter`, such as hooks.

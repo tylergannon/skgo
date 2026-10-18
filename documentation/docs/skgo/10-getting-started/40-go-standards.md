@@ -12,7 +12,7 @@ SvelteKit's server code is written against [web standards](https://svelte.dev/do
 
 ## context.Context
 
-Every Go handler receives the request's context: remote functions and actions as their first argument, loads through `event.Context()`, and `+server` handlers through `r.Context()`. `skgo.EventFrom(ctx)` returns the request event from that context. It is the Go counterpart of [`getRequestEvent`](https://svelte.dev/docs/kit/load#Using-getRequestEvent), so a helper several calls deep can read a cookie without the event being passed down:
+Every Go handler receives the request's context: remote functions and actions as their first argument, loads through `event.Context()`, and `+server` handlers through `r.Context()`. `skgo.EventFrom(ctx)` returns the request event from that context. It is the Go counterpart of [`getRequestEvent`](load#Using-getRequestEvent), so a helper several calls deep can read a cookie without the event being passed down:
 
 ```go
 /// file: src/routes/todos/todos.remote.go
@@ -49,7 +49,7 @@ A `handle` hook written as a `Middleware` returns a `*http.Response`; build one 
 
 ### Headers
 
-Headers are `http.Header`. In an endpoint, set them on the `http.ResponseWriter`, as above. In a server load, a page action or the `handle` hook before `resolve`, `Event.SetHeader(name, value)` is Kit's [`setHeaders`](https://svelte.dev/docs/kit/load#Headers) with Kit's rules: it refuses `set-cookie`, and a header set twice is an error except `server-timing`, which accumulates. Cookies go through `Event.Cookie`, `SetCookie` and `DeleteCookie`.
+Headers are `http.Header`. In an endpoint, set them on the `http.ResponseWriter`, as above. In a server load, a page action or the `handle` hook before `resolve`, `Event.SetHeader(name, value)` is Kit's [`setHeaders`](load#Headers) with Kit's rules: it refuses `set-cookie`, and a header set twice is an error except `server-timing`, which accumulates. Cookies go through `Event.Cookie`, `SetCookie` and `DeleteCookie`.
 
 ### Beyond the standard library
 
@@ -76,7 +76,7 @@ A remote `form` function receives a typed Go struct instead of `FormData`. Each 
 /// include: example/web/src/routes/contact/contact.remote.go#draft
 ```
 
-A remote form body is limited to 32 MiB. See [Form actions](https://svelte.dev/docs/kit/form-actions) and [Remote functions](https://svelte.dev/docs/kit/remote-functions).
+A remote form body is limited to 32 MiB. See [Form actions](form-actions) and [Remote functions](remote-functions).
 
 ## Fetch
 
@@ -93,7 +93,7 @@ Read the body to the end or close it, as with any `net/http` response. Fetching 
 
 Instead of `ReadableStream` and promises, SKGo uses goroutines.
 
-A load streams a value by returning a `skgo.Deferred[T]` field, created with `skgo.Async(ctx, fn)`. `fn` runs on its own goroutine, the page renders before it finishes, and the value arrives on the same response, as [streaming with promises](https://svelte.dev/docs/kit/load#Streaming-with-promises) does in Kit:
+A load streams a value by returning a `skgo.Deferred[T]` field, created with `skgo.Async(ctx, fn)`. `fn` runs on its own goroutine, the page renders before it finishes, and the value arrives on the same response, as [streaming with promises](load#Streaming-with-promises) does in Kit:
 
 ```go
 /// file: src/routes/account/orders/page.server.go

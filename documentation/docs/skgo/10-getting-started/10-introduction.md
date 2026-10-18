@@ -21,7 +21,7 @@ SvelteKit is the application framework for Svelte. It provides routing, server r
 
 In SvelteKit, server code is JavaScript, run by Node or a serverless platform through an adapter.
 
-SKGo replaces that server with Go. You write [server loads](https://svelte.dev/docs/kit/load), [form actions](https://svelte.dev/docs/kit/form-actions), [remote functions](https://svelte.dev/docs/kit/remote-functions), [`+server` routes](https://svelte.dev/docs/kit/routing) and the [`handle` hook](https://svelte.dev/docs/kit/hooks) as Go files beside your Svelte files. A query looks like this:
+SKGo replaces that server with Go. You write [server loads](load), [form actions](form-actions), [remote functions](remote-functions), [`+server` routes](routing#server) and the [`handle` hook](https://svelte.dev/docs/kit/hooks) as Go files beside your Svelte files. A query looks like this:
 
 ```go
 /// file: src/routes/todos/todos.remote.go

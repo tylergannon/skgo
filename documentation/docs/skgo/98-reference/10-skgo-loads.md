@@ -6,7 +6,7 @@ summary: "The server-load API: Load, Parent, Deferred and the parameter helpers.
 The Go side of a `+page.server.ts` or `+layout.server.ts` load. You write a
 function and mark it with `Load`; `skgo generate` writes the TypeScript stub
 Kit compiles and the registration the server mounts. Kit's guide is
-[Loading data](https://svelte.dev/docs/kit/load); the Go side follows it.
+[Loading data](load); the Go side follows it.
 
 A load receives a `context.Context` carrying the request. `EventFrom` on the
 [request event](skgo-request-event) page gets you the URL, params, cookies and
