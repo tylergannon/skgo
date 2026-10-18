@@ -1,0 +1,12 @@
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest/no_index.html
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest/no_manifest
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest/bad_manifest_json
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest/bad_route_pattern
+--- PASS: TestNewStaticHandlerRequiresIndexAndManifest (0.00s)
+    --- PASS: TestNewStaticHandlerRequiresIndexAndManifest/no_index.html (0.00s)
+    --- PASS: TestNewStaticHandlerRequiresIndexAndManifest/no_manifest (0.00s)
+    --- PASS: TestNewStaticHandlerRequiresIndexAndManifest/bad_manifest_json (0.00s)
+    --- PASS: TestNewStaticHandlerRequiresIndexAndManifest/bad_route_pattern (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo	0.255s

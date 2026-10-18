@@ -1,0 +1,10 @@
+=== RUN   TestFrontendPreparationBeforeGoGeneration
+=== RUN   TestFrontendPreparationBeforeGoGeneration/missing
+=== RUN   TestFrontendPreparationBeforeGoGeneration/malformed
+=== RUN   TestFrontendPreparationBeforeGoGeneration/invalid-shape
+--- PASS: TestFrontendPreparationBeforeGoGeneration (13.40s)
+    --- PASS: TestFrontendPreparationBeforeGoGeneration/missing (4.59s)
+    --- PASS: TestFrontendPreparationBeforeGoGeneration/malformed (4.38s)
+    --- PASS: TestFrontendPreparationBeforeGoGeneration/invalid-shape (4.44s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	13.678s

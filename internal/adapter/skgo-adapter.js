@@ -82,18 +82,22 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
 	}
 	const environment = goEnvironmentValues(out);
 	let prerenderOwner;
+	let buildConfig;
 	const prerenderOwnerPlugin = {
 		name: 'skgo-prerender-main-owner',
 		apply: 'build',
 		configResolved(config) {
-			prerenderOwner = createPrerenderOwner(process.cwd(), prerenderPackage);
-			installPrerenderFailureBoundary(config, prerenderOwner);
+			buildConfig = config;
 		},
 		// Kit captures its app environment in config/configResolved. Vite awaits
 		// all of those before this hook; publication here cannot enter that snapshot.
 		buildApp: {
 			order: 'pre',
 			async handler() {
+				// Kit's install-time sync also resolves Vite with command=build.
+				// Generated Go inputs belong to the actual build, not config loading.
+				prerenderOwner = createPrerenderOwner(process.cwd(), prerenderPackage);
+				installPrerenderFailureBoundary(buildConfig, prerenderOwner);
 				await prerenderOwner?.prepare();
 				prerenderOwner?.publish();
 			}

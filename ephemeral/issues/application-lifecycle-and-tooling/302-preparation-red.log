@@ -1,0 +1,60 @@
+=== RUN   TestFrontendPreparationBeforeGoGeneration
+=== RUN   TestFrontendPreparationBeforeGoGeneration/missing
+    preparation_test.go:35: fresh frontend sync: exit status 1
+        > ENOENT: no such file or directory, open '/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestFrontendPreparationBeforeGoGeneration4231567856/001/example/web/skgo.remotes.json'
+            at readFileSync (node:fs:483:20)
+            at createPrerenderOwner (file:///Users/tyler/.codex/worktrees/0aa3/skgo/internal/adapter/skgo-adapter/prerender.js:331:31)
+            at BasicMinimalPluginContext.configResolved (file:///Users/tyler/.codex/worktrees/0aa3/skgo/internal/adapter/skgo-adapter.js:89:21)
+            at file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:43040:87
+            at Array.map (<anonymous>)
+            at Module.resolveConfig (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:43040:68)
+            at async file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/cli.js:102:23
+=== RUN   TestFrontendPreparationBeforeGoGeneration/malformed
+    preparation_test.go:35: fresh frontend sync: exit status 1
+        <anonymous_script>:1
+        {broken
+         ^
+        
+        SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+            at JSON.parse (<anonymous>)
+            at createPrerenderOwner (file:///Users/tyler/.codex/worktrees/0aa3/skgo/internal/adapter/skgo-adapter/prerender.js:331:25)
+            at BasicMinimalPluginContext.configResolved (file:///Users/tyler/.codex/worktrees/0aa3/skgo/internal/adapter/skgo-adapter.js:89:21)
+            at file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:43040:87
+            at Array.map (<anonymous>)
+            at Module.resolveConfig (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:43040:68)
+            at async file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/cli.js:102:23
+        
+        Node.js v24.22.0
+=== RUN   TestFrontendPreparationBeforeGoGeneration/invalid-shape
+    preparation_test.go:56: actual build must reject invalid-shape generated input with "malformed": exit status 1
+        note: You are running `vp build` as a Vite+ built-in command. If you meant to run the build npm script, use `vpr build` instead.
+        ✓ 0 modules transformed.
+        ✗ Build failed in 10ms
+        error during build:
+        Build failed with 1 error:
+        
+        [plugin skgo-prerender-modules]
+        Error: skgo: skgo.remotes.json has no `remotes` array. Run `go generate ./...` before building the frontend.
+            at validateGenerated (file:///Users/tyler/.codex/worktrees/0aa3/skgo/internal/adapter/skgo-adapter/generated.js:17:9)
+            at PluginContextImpl.buildStart (file:///Users/tyler/.codex/worktrees/0aa3/skgo/internal/adapter/skgo-adapter/prerender-modules.js:24:16)
+            at PluginContextImpl.handler (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:40339:13)
+            at plugin (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/bindingify-input-options-Cg9rKNUz.mjs:1637:17)
+            at file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/bindingify-input-options-Cg9rKNUz.mjs:2122:21
+            at plugin.<computed> (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/bindingify-input-options-Cg9rKNUz.mjs:2320:18)
+            at aggregateBindingErrorsIntoJsError (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/error-CBG33oNV.mjs:49:18)
+            at unwrapBindingResult (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/error-CBG33oNV.mjs:19:128)
+            at #build (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/rolldown-CZJswp_e.mjs:146:34)
+            at async buildEnvironment (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:40080:66)
+            at async Object.build (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:40501:19)
+            at async BasicMinimalPluginContext.buildApp (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/vite/build/index.js:449:20)
+            at async Object.buildApp (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/chunks/node.js:40495:5)
+            at async CAC.<anonymous> (file:///Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.3.0_@types+node@24.19.2_typescript@6.0.3_yaml@2.9.1/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/cli.js:783:3) {
+          errors: [Getter/Setter]
+        }
+--- FAIL: TestFrontendPreparationBeforeGoGeneration (1.64s)
+    --- FAIL: TestFrontendPreparationBeforeGoGeneration/missing (0.66s)
+    --- FAIL: TestFrontendPreparationBeforeGoGeneration/malformed (0.32s)
+    --- FAIL: TestFrontendPreparationBeforeGoGeneration/invalid-shape (0.65s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	1.927s
+FAIL
