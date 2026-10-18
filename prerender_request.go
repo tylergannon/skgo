@@ -19,6 +19,8 @@ import (
 // PrerenderServiceOptions installs the application's ordinary request boundary
 // in the build service. Endpoints answer Go-backed event.fetch calls.
 type PrerenderServiceOptions struct {
+	// Reroute is the app's universal Go hook, before build-time route selection.
+	Reroute     Reroute
 	BindRequest func(http.Handler) http.Handler
 	Endpoints   []*Endpoint
 	Matchers    map[string]ParamMatcher

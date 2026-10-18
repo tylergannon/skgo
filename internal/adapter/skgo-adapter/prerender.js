@@ -103,7 +103,7 @@ function validateEnvelope(request, raw) {
   }
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("skgo prerender command returned a non-object response");
-  if (["begin", "response", "end", "endpoint", "cookies", "resolve-option"].includes(request.kind)) return;
+  if (["begin", "response", "end", "endpoint", "cookies", "resolve-option", "reroute"].includes(request.kind)) return;
   if (request.kind === "remote-inputs") {
     if (typeof value.inputs !== "string")
       throw new Error("skgo prerender inputs response has no devalue payload");
@@ -608,7 +608,7 @@ async function invokeService(request) {
   const identity = request.kind === "resolve-option" ? `${request.option} resolve callback` : `${request.kind} ${request.module}/${request.name ?? ""}`;
   if (!url || !secret) throw new Error(`skgo prerender service unavailable for ${identity}`);
   const { kind, ...body } = request;
-  const path = { load: "/load", remote: "/remote", "remote-inputs": "/inputs", begin: "/begin", response: "/response", end: "/end", endpoint: "/endpoint", cookies: "/cookies", "resolve-option": "/resolve-option" }[kind];
+  const path = { load: "/load", remote: "/remote", "remote-inputs": "/inputs", begin: "/begin", response: "/response", end: "/end", endpoint: "/endpoint", cookies: "/cookies", "resolve-option": "/resolve-option", reroute: "/reroute" }[kind];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CALLBACK_TIMEOUT);
   try {
@@ -887,6 +887,13 @@ export async function requestHandle(event, resolveRequest) {
 
 /** Kit has applied internal response cookies before its supplied fetch returns. */
 export async function requestFetch({ event, request, fetch }) {
+  const target=new URL(request.url);
+  if(target.origin===event.url.origin && target.pathname.endsWith('/reroute')) {
+    const manifest=await rerouteManifest();
+    if(target.pathname!==`${manifest.base}/${manifest.appDir}/reroute`) return fetch(request);
+    const answer=await invokeService({kind:'reroute',url:target.searchParams.get('url'),headers:Object.fromEntries([...event.request.headers].map(([key,value])=>[key,[value]])),manifest});
+    return new Response(answer,{headers:{'content-type':'application/json'}});
+  }
   const scope = { internal: false };
   return internalFetch.run(scope, async () => {
     const response = await fetch(request);
@@ -951,4 +958,12 @@ function predicate(handle, option, args) {
     if (reply.error !== undefined) throw new Error(reply.error);
     return reply.value;
   } catch (error) { return failPredicateRelay(error); }
+}
+
+async function rerouteManifest() {
+ const {manifest}=await import(pathToFileURL(join(appRoot(),'.svelte-kit/output/server/manifest-full.js')).href);
+ const prefix=manifest.app_path.slice(0,-manifest.app_dir.length);
+ const base=prefix ? '/'+prefix.slice(0,-1) : '';
+ const routes=await Promise.all(manifest.routes.map(async route=>({id:route.id,pattern:route.pattern.source,params:route.params,...(route.page?{page:route.page}:{}),...(route.endpoint?{endpoint:{methods:Object.keys(await route.endpoint()).filter(key=>['GET','POST','PUT','PATCH','DELETE','OPTIONS','HEAD','QUERY','fallback'].includes(key)).map(key=>key==='fallback'?'*':key)}}:{})})));
+ return {appDir:manifest.app_dir,base,routes};
 }

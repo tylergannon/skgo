@@ -18,6 +18,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
+	hooks "github.com/tylergannon/skgo/example/web/src"
 )
 
 // SessionCookie is the cookie the session id travels in. This is the one place
@@ -96,6 +97,9 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 	loadCfg := manifest.LoadConfig(origin)
 	endpointCfg := manifest.EndpointConfig(origin)
 	handleCfg := manifest.HandleConfig()
+	// docs: reroute-config
+	handleCfg.Reroute = hooks.Reroute
+	// docs: end reroute-config
 	loadCfg.Matchers = generated.Matchers()
 	endpointCfg.Matchers = generated.Matchers()
 	handleCfg.Matchers = generated.Matchers()

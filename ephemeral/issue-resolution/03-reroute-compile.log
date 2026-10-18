@@ -1,0 +1,5 @@
+# github.com/tylergannon/skgo/internal/gen [github.com/tylergannon/skgo/internal/gen.test]
+internal/gen/prerender_command.go:31:48: a.reroute.path undefined (type *goPackage has no field or method path)
+ok  	github.com/tylergannon/skgo	0.254s
+FAIL	github.com/tylergannon/skgo/internal/gen [build failed]
+FAIL

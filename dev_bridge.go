@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 
@@ -90,6 +91,25 @@ func (d *NativeDevelopment) Handler(app http.Handler) (http.Handler, func(), err
 		defer tracedWriter.finish()
 		w = tracedWriter
 		path := "/" + strings.TrimPrefix(r.URL.Path, "/_skgo/dev/")
+		if path == "/reroute" {
+			var input struct {
+				URL     string      `json:"url"`
+				Headers http.Header `json:"headers"`
+			}
+			if json.NewDecoder(r.Body).Decode(&input) != nil {
+				http.Error(w, "Bad Request", 400)
+				return
+			}
+			target, err := url.Parse(input.URL)
+			if err != nil || target.Host == "" {
+				http.Error(w, "Bad Request", 400)
+				return
+			}
+			request := httptest.NewRequest("GET", target.Scheme+"://"+target.Host+rerouteBridgePath(d.manifest.Base, d.manifest.AppDir)+"?url="+url.QueryEscape(input.URL), nil).WithContext(r.Context())
+			request.Header = input.Headers
+			app.ServeHTTP(w, request)
+			return
+		}
 		if path == "/fetch-begin" || path == "/fetch-response" || path == "/fetch-next" || path == "/fetch-end" {
 			d.fetch(w, r, sessions, exchanges, path)
 			return

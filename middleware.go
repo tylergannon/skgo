@@ -109,7 +109,7 @@ func (e *Event) Params() map[string]string {
 // the server answers. A nil Middleware is a plain pass-through.
 func (m Middleware) Intercept(cfg HandleConfig, next http.Handler) http.Handler {
 	if m == nil {
-		if !cfg.tracing {
+		if !cfg.tracing && cfg.Reroute == nil {
 			return next
 		}
 		m = func(ctx context.Context, _ *Event, resolve Resolve) (*http.Response, error) { return resolve(ctx) }
@@ -158,6 +158,10 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		assetPrefix := base + "/" + appDir + "/"
 		remotePrefix := assetPrefix + "remote/"
 		path := r.URL.Path
+		if path == rerouteBridgePath(base, appDir) {
+			cfg.serveReroute(w, r)
+			return
+		}
 
 		// Kit's `handle` never sees a static asset: its adapters answer those
 		// before the server does. skgo's equivalent is the app directory,
@@ -184,6 +188,20 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		// Kit answers a path outside the configured base before it matches a
 		// route or runs the hook.
 		pathname := pageURL.EscapedPath()
+		if !isRemote && cfg.Reroute != nil {
+			effective, rerouteErr := runReroute(r.Context(), cfg.Reroute, r, pageURL)
+			if rerouteErr != nil {
+				rerouteFailure(w)
+				return
+			}
+			r = r.WithContext(context.WithValue(r.Context(), rerouteHookKey{}, cfg.Reroute))
+			if effective != nil {
+				pathname = *effective
+				r = r.WithContext(context.WithValue(r.Context(), reroutePathKey{}, pathname))
+			}
+		} else if effective, ok := r.Context().Value(reroutePathKey{}).(string); ok {
+			pathname = effective
+		}
 		if isRemote && !skipRoute {
 			pathname = r.Header.Get("x-sveltekit-pathname")
 		}
@@ -244,13 +262,17 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 					http.Error(w, compileErr.Error(), 500)
 					return
 				}
-				match := pattern.FindStringSubmatchIndex(build.RoutePath)
+				matchPath := build.RoutePath
+				if _, ok := r.Context().Value(reroutePathKey{}).(string); ok {
+					matchPath = routePath
+				}
+				match := pattern.FindStringSubmatchIndex(matchPath)
 				if match == nil {
 					http.Error(w, "skgo: invalid build route", 500)
 					return
 				}
 				var accepted bool
-				state.params, state.converted, accepted = execMatchedParams(build.RoutePath, match, build.RouteParams, cfg.Matchers)
+				state.params, state.converted, accepted = execMatchedParams(matchPath, match, build.RouteParams, cfg.Matchers)
 				if !accepted {
 					http.Error(w, "skgo: Go matchers reject build route", 500)
 					return

@@ -10,6 +10,27 @@ on the server; `HandleError` shapes what an unexpected error reports.
 `sequence` does, and `RequestSequence` is the same for the typed
 `RequestMiddleware`. Kit's guide is [Hooks](https://svelte.dev/docs/kit/hooks).
 
+## Reroute
+
+```go
+type Reroute func(context.Context, RerouteEvent) (*string, error)
+```
+
+Reroute selects a pathname before routing and handle run. Return nil to keep the pathname, or a pointer to the replacement pathname. It changes route and params, never the request URL. A returned error or panic produces Kit's opaque 500 response. Configure the same function on HandleConfig and export the adapter's reroute from src/hooks.ts for Kit client navigation.
+
+Like Kit's universal hook, it must be pure and idempotent: the client caches its result per full URL. Go calls it synchronously with request cancellation; the function may wait for its Fetch or other Go work before returning.
+
+## RerouteEvent
+
+```go
+type RerouteEvent struct {
+	URL   *url.URL
+	Fetch Fetch
+}
+```
+
+RerouteEvent has the pre-routing URL and fetch Kit supplies to reroute. URL is a copy; changing it does not change the request. Fetch resolves relative requests against that original URL. Its HandleFetch event has no route, params or initialized application locals because handle has not run yet.
+
 ## Handle
 
 ```go
@@ -51,6 +72,8 @@ Middleware is the hook as a Middleware that runs h before the application.
 
 ```go
 type HandleConfig struct {
+	// Reroute selects the effective pathname before matching or handle.
+	Reroute Reroute
 
 	// ClientAddress resolves the visitor address from the original HTTP request.
 	// Nil uses the peer IP in RemoteAddr. Proxy headers require an explicit provider.

@@ -75,7 +75,7 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
 		return { name: 'skgo-development', vite: args => {
 			const config = development(args, SKGO, universalHooks, globalName);
 			config.plugins ??= {};
-			config.plugins.pre = [...(config.plugins.pre ?? []), devModules({ base: args.config.paths.base })];
+			config.plugins.pre = [...(config.plugins.pre ?? []), devModules({ base: args.config.paths.base, appDir: args.config.appDir })];
 			return config;
 		},
 			async adapt() { throw new Error('skgo: development adapter cannot publish a production build'); } };

@@ -39,7 +39,7 @@ It refuses any VitePlus other than %vp%. `skgo new`, not the add-on, configures 
 | --- | --- |
 | `drizzle` | `src/lib/server/db/`, a `drizzle.config.*` and `.env` entries |
 | `better-auth` | `src/lib/server/auth.*`, `src/hooks.server.*` and demo `+page.server.*` routes |
-| `paraglide` | a middleware in `src/hooks.server.*` and a `reroute` hook, which SKGo does not support |
+| `paraglide` | JavaScript middleware and reroute logic must be ported to Go; the generated add-on is not directly supported |
 | `sveltekit-adapter` | another adapter in place of `@skgo/sveltekit-adapter` |
 
 Added later with `sv add`, they collide with what SKGo generates: an authored `src/hooks.server.*` stops `skgo generate`, which owns that file, and the server files beside a route are generated from your Go. Write the equivalent in Go instead; [Differences](/docs/skgo/differences) lists each departure. Never run `sveltekit-adapter` on an SKGo project.

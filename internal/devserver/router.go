@@ -85,7 +85,7 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if p := r.remotePrefix.Load(); p != nil {
 		prefix = *p
 	}
-	if !hmr && strings.HasPrefix(req.URL.Path, prefix) {
+	if !hmr && (strings.HasPrefix(req.URL.Path, prefix) || req.URL.Path == strings.TrimSuffix(prefix, "remote/")+"reroute") {
 		upstream = r.app.Load()
 	}
 	unavailable := func(w http.ResponseWriter, _ *http.Request, e error) {

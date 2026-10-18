@@ -103,6 +103,14 @@
 			"target": "web/src/routes/api/request-fetch"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxe33vorss25dbojtwk5a",
+			"target": "web/src/routes/api/reroute-target"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxe33vorswil23nz2w2ytfoi6u64temvzf2",
+			"target": "web/src/routes/api/rerouted/[number=Order]"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t",
 			"target": "web/src/routes/api/todos"
 		},
@@ -233,6 +241,10 @@
 		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a",
 			"target": "web/src/routes/request-fetch"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5zgk4tpov2gkzbplnxhk3lcmvzd2t3smrsxexi",
+			"target": "web/src/routes/rerouted/[number=Order]"
 		},
 		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq",

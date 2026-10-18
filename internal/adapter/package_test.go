@@ -62,6 +62,8 @@ var packageFiles = []string{
 	"skgo-adapter/prerender-modules.js",
 	"skgo-adapter/prerender.d.ts",
 	"skgo-adapter/prerender.js",
+	"skgo-adapter/reroute.d.ts",
+	"skgo-adapter/reroute.js",
 }
 
 func TestThePublishedPackageHoldsExactlyWhatTheAdapterNeeds(t *testing.T) {

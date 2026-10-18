@@ -691,6 +691,11 @@ export async function requestHandle(event, resolve) {
   }
 }
 export async function requestFetch({ event, request, fetch }) {
+  const target=new URL(request.url);
+  if(target.origin===event.url.origin && target.pathname===`${devBase}/${devAppDir}/reroute`) {
+    const answer=await json('reroute',{url:target.searchParams.get('url'),headers:headers(event)},event);
+    return new Response(JSON.stringify(answer),{headers:{'content-type':'application/json'}});
+  }
   const tracing=event.locals?.[requestOwner]?.tracing;
   if (tracing?.enabled) {
     const api=await import('@opentelemetry/api');

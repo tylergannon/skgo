@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"mime"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"sort"
@@ -632,6 +633,19 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Files are indexed by their decoded names, but an encoded slash in a
 	// dynamic parameter is not a path separator until after route matching.
 	urlPath := r.URL.Path
+	if effective, rerouted := r.Context().Value(reroutePathKey{}).(string); rerouted {
+		var err error
+		routingPath, err = decodePathname(effective)
+		if err != nil {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		urlPath, err = url.PathUnescape(effective)
+		if err != nil {
+			http.Error(w, "bad request", 400)
+			return
+		}
+	}
 	if urlPath == "" {
 		urlPath = "/"
 	}

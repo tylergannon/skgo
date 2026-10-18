@@ -70,6 +70,7 @@
     "src/routes/missing/[...path]/+page.server.ts",
     "src/routes/prerender/[slug]/+page.server.ts",
     "src/routes/request-fetch/+page.server.ts",
+    "src/routes/rerouted/[number=Order]/+page.server.ts",
     "src/routes/routing/fallback/[number=Order]/+page.server.ts",
     "src/routes/routing/fallback/[value]/+page.server.ts",
     "src/routes/routing/optional/[[number=Order]]/+page.server.ts",
@@ -115,6 +116,8 @@
     "/api/replay-count": ["GET"],
     "/api/replay/[kind]": ["GET", "POST"],
     "/api/request-fetch": ["GET"],
+    "/api/reroute-target": ["GET"],
+    "/api/rerouted/[number=Order]": ["GET"],
     "/api/todos": ["GET", "POST", "QUERY"],
     "/async-ssr/control/[group]": ["GET", "POST"],
     "/routing/slash/api": ["GET"],
@@ -201,6 +204,12 @@
     "src/routes/api/request-fetch/+server.ts": {
       "endpoint": true
     },
+    "src/routes/api/reroute-target/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/api/rerouted/[number=Order]/+server.ts": {
+      "endpoint": true
+    },
     "src/routes/api/todos/+server.ts": {
       "endpoint": true
     },
@@ -242,6 +251,9 @@
     },
     "src/routes/request-fetch/+page.server.ts": {
       "source": "src/routes/request-fetch/page.server.go"
+    },
+    "src/routes/rerouted/[number=Order]/+page.server.ts": {
+      "source": "src/routes/rerouted/[number=Order]/page.server.go"
     },
     "src/routes/routing/fallback/[number=Order]/+page.server.ts": {
       "source": "src/routes/routing/fallback/[number=Order]/page.server.go"

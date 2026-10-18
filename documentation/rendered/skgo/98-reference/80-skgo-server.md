@@ -581,6 +581,8 @@ PrerenderOptions configures build-time inputs for a prerender remote. Dynamic an
 
 ```go
 type PrerenderServiceOptions struct {
+	// Reroute is the app's universal Go hook, before build-time route selection.
+	Reroute     Reroute
 	BindRequest func(http.Handler) http.Handler
 	Endpoints   []*Endpoint
 	Matchers    map[string]ParamMatcher

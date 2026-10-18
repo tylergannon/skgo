@@ -150,6 +150,7 @@ type app struct {
 	endpoints []*endpointFn
 	// transported are the app's `transport` hook entries, from src/hooks.go.
 	transported []*transportedType
+	reroute     *goPackage
 	// pkgs is every package that declares remote functions, loads or server
 	// routes, in load order.
 	pkgs []*goPackage

@@ -36,3 +36,6 @@ export const transport: Transport = {
     decode: (data: { cents: number }) => new Money(data.cents),
   },
 };
+
+// Kit owns invocation and client caching; Go owns the universal hook body.
+export { reroute } from "@skgo/sveltekit-adapter/reroute";

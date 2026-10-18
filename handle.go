@@ -230,6 +230,8 @@ func NewResponse(status int, header http.Header, body io.Reader) *http.Response 
 // table. The caller supplies Origin, ClientAddress, Matchers, Loads, Static,
 // HandleError, ErrorTemplate and OnPanic.
 type HandleConfig struct {
+	// Reroute selects the effective pathname before matching or handle.
+	Reroute Reroute
 	tracing bool
 
 	// ClientAddress resolves the visitor address from the original HTTP request.
