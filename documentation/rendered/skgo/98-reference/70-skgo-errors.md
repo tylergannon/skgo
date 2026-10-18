@@ -42,11 +42,17 @@ func (e *HTTPError) Error() string
 func BadRequest(detail error) error
 ```
 
-BadRequest turns a generated decoder's refusal into the answer kit gives.
+BadRequest returns an opaque 400 while retaining detail on the server. It is an application refusal, not a generated argument-schema rejection; it does not invoke RemoteConfig.HandleError with kind "validation".
 
-Kit's `create_validator` answers 400 to an argument its schema rejects, and to any argument at all when the function was declared without one. skgo's schema is the strict decoder polytype generated from the Go parameter type, so this is the same refusal at the same moment.
+## ValidationIssue
 
-The client receives Kit's opaque "Bad Request". The decoder's diagnostic, which names a JSON-pointer path into the argument, remains available through `Error()` on the returned error; SKGo does not send it to the client or log it.
+```go
+type ValidationIssue struct {
+	Message string `json:"message"`
+}
+```
+
+ValidationIssue is a private argument-decoder diagnostic supplied to HandleError for kind "validation". It reaches the client only if the hook deliberately includes it in its public result.
 
 ## Invalid
 
@@ -148,7 +154,7 @@ func (r *Redirect) Error() string
 
 ```go
 type CaughtError struct {
-	// Kind is "app" or "unknown".
+	// Kind is "app", "unknown" or "validation".
 	Kind string
 	// Status and Message are the error's own fallback: what the visitor sees
 	// if the hook returns nothing. For "app" this is the app's own status and
@@ -161,7 +167,9 @@ type CaughtError struct {
 	// further with errors.As, reads it from here; it is never shown to the
 	// visitor unless the hook copies something from it into what it returns.
 	Err error
+	// Issues contains private decoder diagnostics only for kind "validation".
+	Issues []ValidationIssue
 }
 ```
 
-CaughtError is the error a page's `handleError` hook is told about — kit's own discriminated `CaughtError` (`exports/hooks/public.d.ts`), narrowed to what a Go port can express without modelling kit's `SvelteKitError` and `ValidationError` classes as distinct Go types the way skgo's `HTTPError` does not yet: "app" for an error already shaped as one — an \*HTTPError, whether the app raised it itself with Errorf or skgo manufactured it for a framework failure such as a 404 — and "unknown" for anything else, which is where kit's real distinction still matters: the visitor is never shown an unknown error's own message, only what the hook explicitly returns.
+CaughtError is the safe error and private diagnostic supplied to HandleError. Validation errors describe a generated remote argument schema refusal; their decoder details are available only in Issues.

@@ -126,7 +126,7 @@ HandleConfig is what Intercept needs to recognise the requests kit's own `handle
 type HandleError func(ctx context.Context, caught CaughtError) map[string]any
 ```
 
-HandleError is skgo's mirror of kit's `handleError` hook (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app decides what a failed page's visitor is told, beyond status and message.
+HandleError is skgo's mirror of kit's `handleError` hook (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app decides what a failed page or rejected remote argument exposes publicly. Set it on RemoteConfig to customize generated schema refusals: kind "validation" has safe status 400/message "Bad Request" and private Issues.
 
 It runs for errors from server loads and page rendering on document responses, page actions on document responses, load failures on `__data.json`, `handle` errors on document requests, and server-route panics. It does not run for redirects, production remote-function errors, `handle` errors on data or remote requests, or during production prerendering. An already-handled built-prerender error reuses its recorded App.Error body without running the hook again. An error raised on purpose with Errorf still reaches the hook: Kit exempts an "app"-kind error only from having its message replaced by default.
 

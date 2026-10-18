@@ -259,7 +259,7 @@ func (rs *Remotes) resolveExplicit(ctx context.Context, set *refreshSet) (q, l m
 
 			// A refusal is already this key's answer; nothing runs.
 			if entry.err != nil {
-				into[key] = map[string]any{"e": errorNode(asHTTPError(entry.err))}
+				into[key] = map[string]any{"e": errorNodeExtra(rs.remoteError(ctx, entry.err))}
 				continue
 			}
 
@@ -278,7 +278,7 @@ func (rs *Remotes) resolveExplicit(ctx context.Context, set *refreshSet) (q, l m
 				value, err = rs.call(ctx, entry.fn, entry.call)
 			}
 			if err != nil {
-				into[key] = map[string]any{"e": errorNode(asHTTPError(err))}
+				into[key] = map[string]any{"e": errorNodeExtra(rs.remoteError(ctx, err))}
 				continue
 			}
 			into[key] = map[string]any{"v": value}

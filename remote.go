@@ -405,16 +405,9 @@ func LiveQuery(fn any) Marker { _ = fn; return Marker{} }
 // for why fn is any.
 func BatchQuery(fn any) Marker { _ = fn; return Marker{} }
 
-// BadRequest turns a generated decoder's refusal into the answer kit gives.
-//
-// Kit's `create_validator` answers 400 to an argument its schema rejects, and
-// to any argument at all when the function was declared without one. skgo's
-// schema is the strict decoder polytype generated from the Go parameter type,
-// so this is the same refusal at the same moment.
-//
-// The client receives Kit's opaque "Bad Request". The decoder's diagnostic,
-// which names a JSON-pointer path into the argument, remains available through
-// `Error()` on the returned error; SKGo does not send it to the client or log it.
+// BadRequest returns an opaque 400 while retaining detail on the server.
+// It is an application refusal, not a generated argument-schema rejection;
+// it does not invoke RemoteConfig.HandleError with kind "validation".
 func BadRequest(detail error) error { return badRequest{detail: detail} }
 
 type badRequest struct{ detail error }
@@ -447,7 +440,7 @@ func RefuseArgument(call Call) error {
 // schema-validated functions refuse the same call.
 func RequireArgument(call Call) error {
 	if !call.Present {
-		return &HTTPError{Status: 400, Message: "Bad Request"}
+		return call.RejectArgument(fmt.Errorf("required remote argument is missing"))
 	}
 	return nil
 }
@@ -471,6 +464,8 @@ func DecodeForm(arg any, into any) error {
 // fills Development, AppDir, Base, Version, Remotes and Routes. The caller
 // supplies Origin, Transport and OnPanic.
 type RemoteConfig struct {
+	// HandleError customizes generated argument schema refusals with kind validation.
+	HandleError HandleError
 	// Development mirrors Kit's development dispatch for prerender remotes.
 	// Production registries serve only their recorded static artifacts.
 	Development bool
@@ -804,7 +799,7 @@ func (rs *Remotes) servePrerender(w http.ResponseWriter, r *http.Request, fn *Re
 			rs.writeResult(w, event, map[string]any{"redirect": redirect.Location})
 			return
 		}
-		rs.writeError(w, asHTTPError(err))
+		rs.writeError(w, rs.remoteError(withEvent(r.Context(), event), err))
 		return
 	}
 	key := fn.id + "/" + payload
@@ -838,7 +833,7 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 			rs.writeResult(w, ev, map[string]any{"redirect": redirect.Location})
 			return
 		}
-		rs.writeError(w, asHTTPError(err))
+		rs.writeError(w, rs.remoteError(withEvent(r.Context(), ev), err))
 		return
 	}
 
@@ -886,7 +881,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 		// A redirect in a command response makes the client throw, so it is
 		// reported as an ordinary error instead. Cookies written before the
 		// failure are dropped with it.
-		rs.writeError(w, asHTTPError(err))
+		rs.writeError(w, rs.remoteError(withEvent(r.Context(), ev), err))
 		return
 	}
 
@@ -1057,13 +1052,13 @@ func (rs *Remotes) writeResult(w http.ResponseWriter, ev *Event, data map[string
 	writeJSON(w, remoteResponse{Type: "result", Data: serialized})
 }
 
-func (rs *Remotes) writeError(w http.ResponseWriter, e *HTTPError) {
+func (rs *Remotes) writeError(w http.ResponseWriter, e any) {
 	// Kit answers runtime remote errors with HTTP 200 and an error envelope;
 	// the client reads the envelope either way.
 	rs.writeErrorStatus(w, e, http.StatusOK)
 }
 
-func (rs *Remotes) writeErrorStatus(w http.ResponseWriter, e *HTTPError, status int) {
+func (rs *Remotes) writeErrorStatus(w http.ResponseWriter, e any, status int) {
 	h := rs.header(w)
 	h.Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -1071,9 +1066,9 @@ func (rs *Remotes) writeErrorStatus(w http.ResponseWriter, e *HTTPError, status 
 }
 
 type remoteResponse struct {
-	Type  string     `json:"type"`
-	Data  string     `json:"data,omitempty"`
-	Error *HTTPError `json:"error,omitempty"`
+	Type  string `json:"type"`
+	Data  string `json:"data,omitempty"`
+	Error any    `json:"error,omitempty"`
 }
 
 func errorNode(e *HTTPError) *devalue.Object {

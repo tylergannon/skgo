@@ -874,3 +874,22 @@ func TestRouteSlashNormalizationPrecedesHandle(t *testing.T) {
 		t.Fatalf("canonical request status=%d body=%s calls=%d", right.Code, right.Body.String(), calls)
 	}
 }
+
+func TestRouteResolutionPrecedesSlashNormalizationAndHandle(t *testing.T) {
+	manifest := Manifest{Routes: []ManifestRoute{
+		{ID: "/always", Pattern: `^/always/?$`, TrailingSlash: "always", Page: &ManifestPage{Leaf: 1}},
+		{ID: "/mixed", Pattern: `^/mixed/?$`, TrailingSlash: "always", Page: &ManifestPage{Leaf: 1}, Endpoint: &ManifestEndpoint{Methods: []string{"GET"}}},
+	}}
+	calls := 0
+	hook := Middleware(func(ctx context.Context, event *Event, resolve Resolve) (*http.Response, error) {
+		calls++
+		return resolve(ctx)
+	})
+	app := hook.Intercept(manifest.HandleConfig(), newTestHandler(t))
+	for _, path := range []string{"/always/__route.js", "/mixed/__route.js", "/always.html__route.js"} {
+		rec := get(t, app, path)
+		if rec.Code != 400 || strings.TrimSpace(rec.Body.String()) != "Server-side route resolution disabled" || rec.Header().Get("Location") != "" || calls != 0 {
+			t.Fatalf("%s status=%d headers=%v body=%s hookCalls=%d", path, rec.Code, rec.Header(), rec.Body.String(), calls)
+		}
+	}
+}

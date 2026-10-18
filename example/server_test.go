@@ -693,7 +693,7 @@ func samplePath(t *testing.T, id string) string {
 		switch {
 		case groupSegment.MatchString(segment):
 			// A group does not appear in the URL.
-		case segment == "[number=Order]", segment == "[a=Order]", segment == "[b=Order]":
+		case segment == "[number=Order]", segment == "[[number=Order]]", segment == "[a=Order]", segment == "[b=Order]":
 			out = append(out, "42")
 		case optionalSegment.MatchString(segment):
 			out = append(out, "fr")
@@ -707,7 +707,13 @@ func samplePath(t *testing.T, id string) string {
 			t.Fatalf("route %s has segment %q, which this test does not know how to visit; teach it before adding the route", id, segment)
 		}
 	}
-	return "/" + strings.Join(out, "/")
+	path := "/" + strings.Join(out, "/")
+	// These fixture pages inherit trailingSlash = "always" from their layout.
+	// Visit their canonical documents; normalization itself has dedicated tests.
+	if id == "/routing/slash/always" || id == "/routing/slash/mixed" {
+		path += "/"
+	}
+	return path
 }
 
 // post drives a command through the production stack. Kit's client sends the

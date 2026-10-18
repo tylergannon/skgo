@@ -150,6 +150,7 @@ type Call struct {
 	Present bool
 }
 
+func (Call) RejectArgument(err error)error{return err}
 func (c Call) Transported(v any) (any, error) { return v, nil }
 
 type RemoteFunc func(ctx context.Context, call Call) (any, error)
@@ -176,7 +177,7 @@ type RemoteSpec struct {
 
 func NewRemote(spec RemoteSpec) *Remote { _ = spec; return &Remote{} }
 
-type PrerenderServiceOptions struct {BindRequest func(http.Handler)http.Handler; Endpoints []*Endpoint;Matchers map[string]ParamMatcher}
+type PrerenderServiceOptions struct {BindRequest func(http.Handler)http.Handler; Entries []*RouteEntries; Endpoints []*Endpoint;Matchers map[string]ParamMatcher}
 func RunPrerenderService(any, []*ServerLoad, []*Remote,PrerenderServiceOptions) error { return nil }
 
 func BadRequest(detail error) error { return detail }

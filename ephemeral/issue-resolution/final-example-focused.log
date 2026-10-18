@@ -1,0 +1,53 @@
+2026/10/18 12:57:43 skgo: rendering /console: console.error: skgo-console-probe: this page reported a failure while rendering
+2026/10/18 12:57:43 skgo: rendering /error/render: skgo: the page threw while rendering: Error: skgo: the root layout cannot render /error/render
+	at failTheWholeDocument (ssr/bundle.js:6403:11(3))
+	at ssr/bundle.js:6405:105(25)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at _layout$2 (ssr/bundle.js:6392:23(4))
+	at ssr/bundle.js:3347:19(44)
+	at boundary (ssr/bundle.js:2380:31(54))
+	at node (ssr/bundle.js:3341:24(30))
+	at ssr/bundle.js:3381:8(40)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at Root (ssr/bundle.js:3316:23(4))
+	at #open_render (ssr/bundle.js:2775:14(32))
+	at #render_async (ssr/bundle.js:2680:27(23))
+	at ssr/bundle.js:2577:159(5)
+	at with_render_context (ssr/bundle.js:1002:13(38))
+2026/10/18 12:57:43 skgo: rendering /error/render: skgo: the page threw while rendering: Error: skgo: the root layout cannot render /error/render
+	at failTheWholeDocument (ssr/bundle.js:6403:11(3))
+	at ssr/bundle.js:6405:105(25)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at _layout$2 (ssr/bundle.js:6392:23(4))
+	at ssr/bundle.js:3347:19(44)
+	at boundary (ssr/bundle.js:2380:31(54))
+	at node (ssr/bundle.js:3341:24(30))
+	at ssr/bundle.js:3381:8(40)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at Root (ssr/bundle.js:3316:23(4))
+	at #open_render (ssr/bundle.js:2775:14(32))
+	at #render_async (ssr/bundle.js:2680:27(23))
+	at ssr/bundle.js:2577:159(5)
+	at with_render_context (ssr/bundle.js:1002:13(38))
+--- FAIL: TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument (3.69s)
+    server_test.go:872: route /routing/slash/always: GET /routing/slash/always/__route.js returned 308, want 400
+    server_test.go:872: route /routing/slash/mixed: GET /routing/slash/mixed/__route.js returned 308, want 400
+--- FAIL: TestEveryRouteInTheManifestIsServed (5.33s)
+    server_test.go:410: route /routing/slash/always: GET /routing/slash/always returned 308, want 200
+    server_test.go:410: route /routing/slash/mixed: GET /routing/slash/mixed returned 308, want 200
+--- FAIL: TestNothingGeneratedWasWrittenByHand (24.67s)
+    generate_test.go:87: `go generate ./...` does not reproduce these files:
+          internal/skgo/params/skgo_gen.go
+        Either they were edited by hand — remote functions are written in Go, not in .remote.ts —
+        or the generator has not been run since the Go source changed. Run `go generate ./...` in example/internal/skgo.
+FAIL
+FAIL	github.com/tylergannon/skgo/example	42.532s
+FAIL

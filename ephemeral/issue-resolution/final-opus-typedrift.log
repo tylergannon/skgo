@@ -1,0 +1,33 @@
+=== RUN   TestChangingAGoTypeBreaksTheComponentThatUsesIt
+=== PAUSE TestChangingAGoTypeBreaksTheComponentThatUsesIt
+=== RUN   TestGeneratedActionTypesRejectWrongUses
+=== PAUSE TestGeneratedActionTypesRejectWrongUses
+=== CONT  TestChangingAGoTypeBreaksTheComponentThatUsesIt
+=== CONT  TestGeneratedActionTypesRejectWrongUses
+=== RUN   TestGeneratedActionTypesRejectWrongUses/success
+=== NAME  TestChangingAGoTypeBreaksTheComponentThatUsesIt
+    typedrift_test.go:191: caught before the browser:
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-315668739/drifted/web/src/routes/actions/action-types.check.ts:17:34
+        Error: Property 'emailError' does not exist on type '{ receipt: string; price: Money; }'. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-315668739/drifted/web/src/routes/actions/action-types.check.ts:18:39
+        Error: Property 'receipt' does not exist on type '{ name: string; email: string; biography: string; emailError: string; }'. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-315668739/drifted/web/src/routes/todos/TodoList.svelte:8:40
+        Error: Property 'text' does not exist on type 'Todo'. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-315668739/drifted/web/src/routes/todos/PairPanel.svelte:9:51
+        Error: Property 'text' does not exist on type 'Todo'. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-315668739/drifted/web/src/routes/todos/TodoDetail.svelte:26:51
+        Error: Property 'text' does not exist on type 'Todo'. (ts)
+        
+        ====================================
+        svelte-check found 5 errors and 0 warnings in 4 files
+--- PASS: TestChangingAGoTypeBreaksTheComponentThatUsesIt (84.18s)
+=== RUN   TestGeneratedActionTypesRejectWrongUses/failure
+--- PASS: TestGeneratedActionTypesRejectWrongUses (84.18s)
+    --- PASS: TestGeneratedActionTypesRejectWrongUses/success (0.00s)
+    --- PASS: TestGeneratedActionTypesRejectWrongUses/failure (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/example	85.382s

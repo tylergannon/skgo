@@ -1,0 +1,841 @@
+cd example/web && vp exec go -C ../.. test  -count=1 ./... ./example/...
+2026/10/18 12:52:16 skgo: server load page panicked: DEV_DIAG_PANIC_243
+goroutine 454 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Loads).recovered(0x55d03119e000, {0x1054bdf26, 0x4}, {0x105e03308, 0x105cd2670}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/load.go:524 +0x7c
+github.com/tylergannon/skgo.(*Loads).runLoad.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/load.go:498 +0x100
+panic({0x105e03308?, 0x105cd2670?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestNativeDevelopmentLoadDiagnosticsWithoutTracing.func2({0x55d031601900?, 0x105edb090?})
+	/Users/tyler/.codex/worktrees/286c/skgo/dev_bridge_test.go:468 +0x2c
+github.com/tylergannon/skgo.TestNativeDevelopmentLoadDiagnosticsWithoutTracing.func3.1({0x105ed8308?, 0x55d031503980?})
+	/Users/tyler/.codex/worktrees/286c/skgo/dev_bridge_test.go:476 +0xac
+github.com/tylergannon/skgo.(*Loads).runLoad(0x55d03119e000, {0x105ed8308, 0x55d031503950}, 0x55d031502990)
+	/Users/tyler/.codex/worktrees/286c/skgo/load.go:508 +0x3ac
+github.com/tylergannon/skgo.(*Loads).runBranchWith.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/data.go:287 +0x10c
+sync.OnceValue[...].func1.1()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/sync/oncefunc.go:66 +0x5c
+sync.(*Once).doSlow(0x55d0312d5e48?, 0x105ecfb20?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/sync/once.go:78 +0xdc
+sync.(*Once).Do(0x55d0315aabe0?, 0x55d031503140?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/sync/once.go:69 +0x24
+sync.OnceValue[...].func1()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/sync/oncefunc.go:58 +0x58
+github.com/tylergannon/skgo.(*Loads).runBranchWith.func2()
+	/Users/tyler/.codex/worktrees/286c/skgo/data.go:310 +0x74
+created by github.com/tylergannon/skgo.(*Loads).runBranchWith in goroutine 451
+	/Users/tyler/.codex/worktrees/286c/skgo/data.go:308 +0x5c4
+2026/10/18 12:52:16 skgo: rendering /x: skgo: the handleError hook panicked: the hook itself has a bug
+goroutine 725 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.runHandleError.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/handle_error.go:131 +0x48
+panic({0x105e03308?, 0x105cd25c0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestDocumentErrorRecoversAPanickingHook.func1({0x55d031607a78?, 0x1053180bc?}, {{0x0, 0x0}, 0x105d62890, {0x55d031681470, 0x105d01f58}, {0x55d031182388, 0x0}, {0x0, ...}})
+	/Users/tyler/.codex/worktrees/286c/skgo/handle_error_test.go:102 +0x2c
+github.com/tylergannon/skgo.runHandleError({0x105ed81f0?, 0x1060e7ba0?}, {0x1054bd587?, 0x55d031182390?}, 0x1054bd587?, {{0x1054bd90c, 0x3}, 0x1a2, {0x1054d2944, 0x15}, ...}, ...)
+	/Users/tyler/.codex/worktrees/286c/skgo/handle_error.go:144 +0x94
+github.com/tylergannon/skgo.handleErrorAndJSONify({0x105ed81f0, 0x1060e7ba0}, {0x1054bd587, 0x2}, 0x105ee3028, 0x55d031607c40, {0x0, 0x0}, 0x55d031607f48)
+	/Users/tyler/.codex/worktrees/286c/skgo/handle_error.go:123 +0x1bc
+github.com/tylergannon/skgo.(*SSR).documentError(...)
+	/Users/tyler/.codex/worktrees/286c/skgo/handle_error.go:90
+github.com/tylergannon/skgo.TestDocumentErrorRecoversAPanickingHook(0x55d0313e7b08)
+	/Users/tyler/.codex/worktrees/286c/skgo/handle_error_test.go:105 +0xec
+testing.tRunner(0x55d0313e7b08, 0x105ee2360)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+2026/10/18 12:52:16 skgo: handler panicked while writing its response: late failure
+goroutine 1058 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.launchDownstream.func1.1()
+	/Users/tyler/.codex/worktrees/286c/skgo/downstream.go:112 +0x64
+panic({0x105e03308?, 0x105cd2580?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestMiddlewareAbortsTheConnectionWhenTheApplicationPanicsMidBody.func1({0x105ed5c38, 0x55d0312dd6c0}, 0x1?)
+	/Users/tyler/.codex/worktrees/286c/skgo/middleware_test.go:798 +0xd8
+net/http.HandlerFunc.ServeHTTP(0x55d0313547b0?, {0x105ed5c38?, 0x55d0312dd6c0?}, 0x0?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Endpoints).serve(0x55d031692240, {0x105ed5c38, 0x55d0312dd6c0}, 0x55d03159da40, {0x105ecfb20, 0x105ee3160})
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:477 +0x760
+github.com/tylergannon/skgo.(*Endpoints).Intercept.func1({0x105ed5c38, 0x55d0312dd6c0}, 0x55d03159da40)
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:401 +0xe4
+net/http.HandlerFunc.ServeHTTP(0x55d031354754?, {0x105ed5c38?, 0x55d0312dd6c0?}, 0x0?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Remotes).Intercept.func1({0x105ed5c38, 0x55d0312dd6c0}, 0x55d03159da40)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:714 +0x1c4
+net/http.HandlerFunc.ServeHTTP(0x55d031354754?, {0x105ed5c38?, 0x55d0312dd6c0?}, 0x0?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Loads).Intercept.func1({0x105ed5c38, 0x55d0312dd6c0}, 0x55d03159da40)
+	/Users/tyler/.codex/worktrees/286c/skgo/data.go:60 +0x118
+net/http.HandlerFunc.ServeHTTP(0x0?, {0x105ed5c38?, 0x55d0312dd6c0?}, 0x55d0311a3b40?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.launchDownstream.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/downstream.go:128 +0xc0
+created by github.com/tylergannon/skgo.launchDownstream in goroutine 1057
+	/Users/tyler/.codex/worktrees/286c/skgo/downstream.go:107 +0x310
+2026/10/18 12:52:16 skgo: batch query worolc/getQuotes failed: skgo: batch query getQuotes was given 2 arguments and answered 1 results
+2026/10/18 12:52:18 skgo: remote function worolc/boom panicked: the database handle was nil
+goroutine 1362 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x55d03140cfc0, 0x55d0314a6630, {0x105e03308, 0x105cd24d0}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:997 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_execution.go:26 +0x9c
+panic({0x105e03308?, 0x105cd24d0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestAPanickingQueryAnswersInsteadOfResettingTheConnection.func1({0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_panic_test.go:38 +0x2c
+github.com/tylergannon/skgo.doubleCallNoArg[...].func1({{0x0, 0x0}, 0x40?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/registration_double_test.go:74 +0x80
+github.com/tylergannon/skgo.(*Remotes).invoke(0x105ed8340?, {0x105ed8308?, 0x55d03132e7b0?}, 0x104cc9448?, {{0x0?, 0x0?}, 0x48?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_execution.go:29 +0x90
+github.com/tylergannon/skgo.(*Remotes).call(...)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:962
+github.com/tylergannon/skgo.(*Remotes).serveQuery(0x55d03140cfc0, {0x105ed5c98, 0x55d03132e6c0}, 0x55d031405540, 0x55d0314a6630)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:829 +0x1c0
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x55d03140cfc0, {0x105ed5f98, 0x55d031070f00}, 0x55d031405400)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:763 +0xad4
+net/http.serverHandler.ServeHTTP({0x55d031488100?}, {0x105ed5f98?, 0x55d031070f00?}, 0x1?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3436 +0xb0
+net/http.(*conn).serve(0x55d03175f170, {0x105ed8308, 0x55d0311af800})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2157 +0x5a0
+created by net/http.(*Server).Serve in goroutine 1322
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3604 +0x3e8
+2026/10/18 12:52:18 skgo: remote function worolc/boom panicked: nil map write
+goroutine 1358 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x55d031522360, 0x55d03175f680, {0x105e03308, 0x105cd2500}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:997 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_execution.go:26 +0x9c
+panic({0x105e03308?, 0x105cd2500?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestAPanickingCommandAnswersInsteadOfResettingTheConnection.func1({0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_panic_test.go:69 +0x2c
+github.com/tylergannon/skgo.doubleCallNoArg[...].func1({{0x0, 0x0}, 0x8?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/registration_double_test.go:74 +0x80
+github.com/tylergannon/skgo.(*Remotes).invoke(0x105ed8308?, {0x105ed8308?, 0x55d03132f290?}, 0x55d0313a43c0?, {{0x0?, 0x0?}, 0xb8?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_execution.go:29 +0x90
+github.com/tylergannon/skgo.(*Remotes).call(...)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:962
+github.com/tylergannon/skgo.(*Remotes).serveCommand(0x55d031522360, {0x105ed5c98, 0x55d03132f080}, 0x55d0313a4500, 0x55d03175f680)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:878 +0x214
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x55d031522360, {0x105ed5f98, 0x55d0310711d0}, 0x55d0314fe000)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:769 +0xab8
+net/http.serverHandler.ServeHTTP({0x10?}, {0x105ed5f98?, 0x55d0310711d0?}, 0x1?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3436 +0xb0
+net/http.(*conn).serve(0x55d03163b050, {0x105ed8308, 0x55d03132efc0})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2157 +0x5a0
+created by net/http.(*Server).Serve in goroutine 1367
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3604 +0x3e8
+2026/10/18 12:52:18 skgo: remote function worolc/boom panicked: the refresh exploded
+goroutine 1327 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x55d03140d200, 0x55d0314a6b40, {0x105e03308, 0x105cd24f0}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:997 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_execution.go:26 +0x9c
+panic({0x105e03308?, 0x105cd24f0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestAPanickingRefreshDoesNotDestroyTheCommandsAnswer.func1({0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_panic_test.go:91 +0x2c
+github.com/tylergannon/skgo.doubleCallNoArg[...].func1({{0x0, 0x0}, 0x30?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/registration_double_test.go:74 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke(0x105daa018?, {0x105ed8308?, 0x55d03132f860?}, 0xc?, {{0x0?, 0x0?}, 0x58?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_execution.go:29 +0x90
+github.com/tylergannon/skgo.(*Remotes).call(...)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:962
+github.com/tylergannon/skgo.(*Remotes).resolveExplicit(0x55d03140d200, {0x105ed8308, 0x55d03132f860}, 0x55d031718b40)
+	/Users/tyler/.codex/worktrees/286c/skgo/refresh.go:278 +0x188
+github.com/tylergannon/skgo.(*Remotes).collectRefreshes(0x55d03140d200, {0x105ed8308, 0x55d03132f530}, 0x55d031222510)
+	/Users/tyler/.codex/worktrees/286c/skgo/refresh.go:386 +0x58
+github.com/tylergannon/skgo.(*Remotes).serveCommand(0x55d03140d200, {0x105ed5c98, 0x55d03132f500}, 0x55d0313a4dc0, 0x55d0314a6ab0)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:891 +0x328
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x55d03140d200, {0x105ed5f98, 0x55d0310712c0}, 0x55d03136ac80)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:769 +0xab8
+net/http.serverHandler.ServeHTTP({0x10?}, {0x105ed5f98?, 0x55d0310712c0?}, 0x1?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3436 +0xb0
+net/http.(*conn).serve(0x55d0314a6ea0, {0x105ed8308, 0x55d0311db710})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2157 +0x5a0
+created by net/http.(*Server).Serve in goroutine 1325
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3604 +0x3e8
+2026/10/18 12:52:18 skgo: remote function worolc/boom panicked: the subscription exploded
+goroutine 1397 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x55d03140d8c0, 0x55d0314a7200, {0x105e03308, 0x105cd24e0}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:997 +0x74
+github.com/tylergannon/skgo.(*Remotes).callLive.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:978 +0x4c
+panic({0x105e03308?, 0x105cd24e0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestAPanickingLiveQueryDoesNotTakeTheProcessDown.func1({0x38?, 0x105e7dc10?}, 0x55d031681220?)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_panic_test.go:129 +0x4c
+github.com/tylergannon/skgo.NewLiveQueryNoArg[...].func1({{0x0, 0x0}, 0xf8?, 0x0?}, 0x55d0311d4d40?)
+	/Users/tyler/.codex/worktrees/286c/skgo/registration_double_test.go:154 +0x148
+github.com/tylergannon/skgo.(*Remotes).callLive(0x20?, {0x105ed8308?, 0x55d0312c7290?}, 0x55d03136b2c0?, {{0x0?, 0x0?}, 0xa0?, 0x0?}, 0x55d0313a3758?)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:981 +0x88
+github.com/tylergannon/skgo.(*Remotes).serveLive.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_live.go:82 +0xe8
+created by github.com/tylergannon/skgo.(*Remotes).serveLive in goroutine 1395
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_live.go:81 +0x498
+2026/10/18 12:52:18 skgo: batch query worolc/validation failed: skgo: invalid remote argument: private catalog schema /name
+2026/10/18 12:52:18 skgo: route : skgo: the handleError hook panicked: private hook panic
+goroutine 1448 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.runHandleError.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/handle_error.go:131 +0x48
+panic({0x105e03308?, 0x105cd24c0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestRemoteSchemaValidationDefaultsAndClassification.func3({0x55d031600838?, 0x105335cc4?}, {{0x10, 0x105d79ea8}, 0x105d62890, {0x55d0312abdc0, 0x105d01f58}, {0xf, 0x1054c5059}, {0xa, ...}})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_validation_test.go:92 +0x2c
+github.com/tylergannon/skgo.runHandleError({0x105ed8308?, 0x55d03132ef30?}, {0x0?, 0x55d03160c658?}, 0x130?, {{0x1054c5059, 0xa}, 0x190, {0x1054c6152, 0xb}, ...}, ...)
+	/Users/tyler/.codex/worktrees/286c/skgo/handle_error.go:144 +0x94
+github.com/tylergannon/skgo.(*Remotes).remoteError(0x55d03153fb00, {0x105ed8308, 0x55d03132ef30}, {0x105ecfe60, 0x55d0312abdb0})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_validation.go:52 +0xf8
+github.com/tylergannon/skgo.(*Remotes).serveQuery(0x55d03153fb00, {0x105ed5c98, 0x55d03132ee10}, 0x55d0313dc780, 0x55d03163b5f0)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:835 +0x26c
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x55d03153fb00, {0x105ed5b78, 0x55d03131ae00}, 0x55d0313dc640)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:763 +0xad4
+github.com/tylergannon/skgo.TestRemoteSchemaValidationDefaultsAndClassification.func4(0x55d0313af688)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_validation_test.go:100 +0x1e8
+testing.tRunner(0x55d0313af688, 0x55d03132ec00)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 1444
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+--- FAIL: TestRequestMetadataThroughServedLoadsEndpointsAndActions (0.00s)
+    --- FAIL: TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00 (0.00s)
+        --- FAIL: TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00/data (0.00s)
+            request_metadata_test.go:118: want metadata "/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1|http://fixture.test/items/42/?q=blue|/items/[id]|true,false,false|2001:db8::7"; got 200 hook="/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1|http://fixture.test/items/42/?q=blue|/items/[id]|true,false,false|2001:db8::7" body={"type":"data","nodes":[{"type":"data","data":["/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1|http://fixture.test/items/42?q=blue|/items/[id]|true,false,false|2001:db8::7"],"uses":{"route":1,"url":1}},{"type":"data","data":["/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1|http://fixture.test/items/42?q=blue|/items/[id]|true,false,false|2001:db8::7"],"uses":{"route":1,"url":1}}]}
+    --- FAIL: TestRequestMetadataThroughServedLoadsEndpointsAndActions//base (0.00s)
+        --- FAIL: TestRequestMetadataThroughServedLoadsEndpointsAndActions//base/data (0.00s)
+            request_metadata_test.go:118: want metadata "/base/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1|http://fixture.test/base/items/42/?q=blue|/items/[id]|true,false,false|2001:db8::7"; got 200 hook="/base/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1|http://fixture.test/base/items/42/?q=blue|/items/[id]|true,false,false|2001:db8::7" body={"type":"data","nodes":[{"type":"data","data":["/base/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1|http://fixture.test/base/items/42?q=blue|/items/[id]|true,false,false|2001:db8::7"],"uses":{"route":1,"url":1}},{"type":"data","data":["/base/items/42/__data.json?q=blue&x-sveltekit-invalidated=11&x-sveltekit-trailing-slash=1|http://fixture.test/base/items/42?q=blue|/items/[id]|true,false,false|2001:db8::7"],"uses":{"route":1,"url":1}}]}
+2026/10/18 12:52:18 skgo: rendering /: transform exploded
+2026/10/18 12:52:18 skgo: rendering /: transform exploded
+2026/10/18 12:52:18 skgo: remote function 1m4e06z/item panicked: private panic
+goroutine 2840 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x55d031528000, 0x55d0312b2a20, {0x105e03308, 0x105cd2570}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:997 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_execution.go:26 +0x9c
+panic({0x105e03308?, 0x105cd2570?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestPrerenderRemotePreservesNativeErrorOrigin.func3({0x0?, 0x0?}, {{0x1400000000?, 0x108353120?}, 0x58?, 0x1053322fc?})
+	/Users/tyler/.codex/worktrees/286c/skgo/prerender_remote_test.go:34 +0x2c
+github.com/tylergannon/skgo.(*Remotes).invoke(0x0?, {0x105ed8308?, 0x55d0312aca80?}, 0x105ec6888?, {{0x0?, 0x0?}, 0xc8?, 0x0?})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_execution.go:29 +0x90
+github.com/tylergannon/skgo.(*Remotes).invokePayload(0x55d031528000, {0x105ed8308, 0x55d0312aca80}, 0x55d0312b2a20, {0x0, 0x0})
+	/Users/tyler/.codex/worktrees/286c/skgo/remote_execution.go:41 +0x188
+github.com/tylergannon/skgo.runPrerenderRemote({0x105ed81f0, 0x1060e7ba0}, {0x55d031314c00, 0x4b, 0x200}, {0x105ecfd20, 0x55d0312ac8d0}, 0x0, {0x55d031593f40, 0x1, ...})
+	/Users/tyler/.codex/worktrees/286c/skgo/prerender_remote.go:96 +0x68c
+github.com/tylergannon/skgo.prerenderHandler.func1({0x105ed5b78, 0x55d031197840}, 0x55d03150adc0)
+	/Users/tyler/.codex/worktrees/286c/skgo/prerender_service.go:194 +0xac0
+net/http.HandlerFunc.ServeHTTP(...)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358
+github.com/tylergannon/skgo.callBuildOperation({0x1054c12d4?, 0x105e6d0d0?}, {0x105ecfb60, 0x55d0311d42c0}, {0x105ecfa40, 0x55d0311d42a0}, 0x0, {0x0, 0x0, 0x0}, ...)
+	/Users/tyler/.codex/worktrees/286c/skgo/prerender_service_test.go:25 +0x224
+github.com/tylergannon/skgo.TestPrerenderRemotePreservesNativeErrorOrigin.func5(0x55d0313af208)
+	/Users/tyler/.codex/worktrees/286c/skgo/prerender_remote_test.go:51 +0x120
+testing.tRunner(0x55d0313af208, 0x55d031220660)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 983
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+FAIL
+FAIL	github.com/tylergannon/skgo	5.063s
+--- FAIL: TestNativePluginHelpApplicationAndProjectTool (29.52s)
+    templates_test.go:151: [add receipt --help]: fork/exec /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/go-build948599335/b001/exe/skgo: no such file or directory
+FAIL
+FAIL	github.com/tylergannon/skgo/cmd/skgo	78.107s
+ok  	github.com/tylergannon/skgo/cmd/skgo-adapter-changed	0.154s
+?   	github.com/tylergannon/skgo/cmd/skgo-docs	[no test files]
+?   	github.com/tylergannon/skgo/cmd/skgo-plugin-build	[no test files]
+ok  	github.com/tylergannon/skgo/cmd/skgo-release	0.365s
+?   	github.com/tylergannon/skgo/cmd/skgo-release-version	[no test files]
+ok  	github.com/tylergannon/skgo/devgen	0.138s
+ok  	github.com/tylergannon/skgo/documentation	0.592s
+ok  	github.com/tylergannon/skgo/documentation/render	0.131s
+ok  	github.com/tylergannon/skgo/generate	0.206s [no tests to run]
+ok  	github.com/tylergannon/skgo/internal/adapter	146.784s
+ok  	github.com/tylergannon/skgo/internal/advice	8.696s
+?   	github.com/tylergannon/skgo/internal/buildinfo	[no test files]
+ok  	github.com/tylergannon/skgo/internal/check	0.395s
+?   	github.com/tylergannon/skgo/internal/commands	[no test files]
+ok  	github.com/tylergannon/skgo/internal/devserver	9.483s
+?   	github.com/tylergannon/skgo/internal/envspec	[no test files]
+ok  	github.com/tylergannon/skgo/internal/formdata	0.138s
+--- FAIL: TestKitMetadataObservesLiveMatcherInputs (0.00s)
+    kit_metadata_test.go:39: open /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestKitMetadataObservesLiveMatcherInputs3066411660/001/web/src/routes/[id=First]/page.server.go: no such file or directory
+--- FAIL: TestNoArgumentPrerenderInputsCompileWithoutFmtImport (1.92s)
+    prerender_test.go:235: generated no-argument app does not compile: exit status 1
+        # example.com/app/generated/prerender
+        generated/prerender/skgo_gen.go:19:5: unknown field Entries in struct literal of type skgo.PrerenderServiceOptions
+--- FAIL: TestPrerenderInputsGenerateGoProducerAndThrowingStubs (1.91s)
+    prerender_test.go:123: generated app does not compile: exit status 1
+        # example.com/app/generated/prerender
+        generated/prerender/skgo_gen.go:19:5: unknown field Entries in struct literal of type skgo.PrerenderServiceOptions
+--- FAIL: TestJavaScriptPrerenderStubCarriesArgumentType (2.48s)
+    prerender_test.go:152: generated JavaScript-mode app does not compile: exit status 1
+        # example.com/app/generated/prerender
+        generated/prerender/skgo_gen.go:19:5: unknown field Entries in struct literal of type skgo.PrerenderServiceOptions
+--- FAIL: TestPrerenderInputHandlersHaveUniqueNamesAcrossModules (1.37s)
+    prerender_test.go:276: generated multi-module app does not compile: exit status 1
+        # example.com/app/generated/prerender
+        generated/prerender/skgo_gen.go:19:5: unknown field Entries in struct literal of type skgo.PrerenderServiceOptions
+--- FAIL: TestTransportedPrerenderInputsUseRuntimeTransportEncoding (1.81s)
+    prerender_test.go:312: generated transported-input app does not compile: exit status 1
+        # example.com/app/generated/prerender
+        generated/prerender/skgo_gen.go:19:5: unknown field Entries in struct literal of type skgo.PrerenderServiceOptions
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	220.992s
+ok  	github.com/tylergannon/skgo/internal/hotreload	184.471s
+ok  	github.com/tylergannon/skgo/internal/kithash	0.120s
+ok  	github.com/tylergannon/skgo/internal/kitpatch	5.542s
+ok  	github.com/tylergannon/skgo/internal/nativebuild	0.177s
+ok  	github.com/tylergannon/skgo/internal/newapp	89.545s
+?   	github.com/tylergannon/skgo/internal/newapp/gofiles/web	[no test files]
+?   	github.com/tylergannon/skgo/internal/pluginbuild	[no test files]
+ok  	github.com/tylergannon/skgo/internal/plugininstall	20.228s
+ok  	github.com/tylergannon/skgo/internal/pluginstore	0.220s
+ok  	github.com/tylergannon/skgo/internal/releaseversion	0.182s
+ok  	github.com/tylergannon/skgo/internal/remotearg	0.143s
+ok  	github.com/tylergannon/skgo/internal/ssr	0.850s
+ok  	github.com/tylergannon/skgo/internal/sv	3.173s
+ok  	github.com/tylergannon/skgo/internal/swiftgen	2.712s
+ok  	github.com/tylergannon/skgo/internal/templates	0.249s
+ok  	github.com/tylergannon/skgo/internal/toolchain	0.133s
+ok  	github.com/tylergannon/skgo/internal/update	2.983s
+ok  	github.com/tylergannon/skgo/internal/webbuild	0.275s
+ok  	github.com/tylergannon/skgo/native	106.983s
+ok  	github.com/tylergannon/skgo/nativeapp	0.339s
+ok  	github.com/tylergannon/skgo/nativehost	0.198s
+?   	github.com/tylergannon/skgo/templateapi	[no test files]
+2026/10/18 12:52:27 skgo: rendering /console: console.error: skgo-console-probe: this page reported a failure while rendering
+2026/10/18 12:52:29 skgo: rendering /error/render: skgo: the page threw while rendering: Error: skgo: the root layout cannot render /error/render
+	at failTheWholeDocument (ssr/bundle.js:6403:11(3))
+	at ssr/bundle.js:6405:105(25)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at _layout$2 (ssr/bundle.js:6392:23(4))
+	at ssr/bundle.js:3347:19(44)
+	at boundary (ssr/bundle.js:2380:31(54))
+	at node (ssr/bundle.js:3341:24(30))
+	at ssr/bundle.js:3381:8(40)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at Root (ssr/bundle.js:3316:23(4))
+	at #open_render (ssr/bundle.js:2775:14(32))
+	at #render_async (ssr/bundle.js:2680:27(23))
+	at ssr/bundle.js:2577:159(5)
+	at with_render_context (ssr/bundle.js:1002:13(38))
+2026/10/18 12:52:29 skgo: rendering /error/render: skgo: the page threw while rendering: Error: skgo: the root layout cannot render /error/render
+	at failTheWholeDocument (ssr/bundle.js:6403:11(3))
+	at ssr/bundle.js:6405:105(25)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at _layout$2 (ssr/bundle.js:6392:23(4))
+	at ssr/bundle.js:3347:19(44)
+	at boundary (ssr/bundle.js:2380:31(54))
+	at node (ssr/bundle.js:3341:24(30))
+	at ssr/bundle.js:3381:8(40)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at Root (ssr/bundle.js:3316:23(4))
+	at #open_render (ssr/bundle.js:2775:14(32))
+	at #render_async (ssr/bundle.js:2680:27(23))
+	at ssr/bundle.js:2577:159(5)
+	at with_render_context (ssr/bundle.js:1002:13(38))
+2026/10/18 12:52:37 skgo: the GET handler for /api/fatal panicked: private endpoint failure
+goroutine 2602 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Endpoints).run.func2()
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:561 +0xbc
+panic({0x101f847c8?, 0x101e56f50?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm.fail({0x20?, 0x101ff8378?}, 0x37d64c5630e0?)
+	/Users/tyler/.codex/worktrees/286c/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm/server.go:12 +0x2c
+github.com/tylergannon/skgo.(*Endpoints).run(0x37d64d373d40, {0x102051550, 0x37d64ce7c160}, 0x37d64c2bb180, 0x37d64c558960, 0x37d64c7664b0, {0x37d64c384018, 0x3}, 0x10205ef70)
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:570 +0x684
+github.com/tylergannon/skgo.(*Endpoints).serve(0x37d64d373d40, {0x102051550, 0x37d64ce7c160}, 0x37d64c2bb180, {0x10204b0b0, 0x37d64d387c20})
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:503 +0x710
+github.com/tylergannon/skgo.(*Endpoints).Intercept.func1({0x102051550, 0x37d64ce7c160}, 0x37d64c2bb180)
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:401 +0xe4
+net/http.HandlerFunc.ServeHTTP(0x37d64c38401c?, {0x102051550?, 0x37d64ce7c160?}, 0x101b74808?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Remotes).Intercept.func1({0x102051550, 0x37d64ce7c160}, 0x37d64c2bb180)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:714 +0x1c4
+net/http.HandlerFunc.ServeHTTP(0x37d64c38401c?, {0x102051550?, 0x37d64ce7c160?}, 0x100d74590?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Loads).Intercept.func1({0x102051550, 0x37d64ce7c160}, 0x37d64c2bb180)
+	/Users/tyler/.codex/worktrees/286c/skgo/data.go:60 +0x118
+net/http.HandlerFunc.ServeHTTP(0x37d64cd7a5c0?, {0x102051550?, 0x37d64ce7c160?}, 0x100e2e590?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.launchDownstream.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/downstream.go:128 +0xc0
+created by github.com/tylergannon/skgo.launchDownstream in goroutine 2600
+	/Users/tyler/.codex/worktrees/286c/skgo/downstream.go:107 +0x310
+2026/10/18 12:52:37 skgo: the GET handler for /api/fatal panicked: private endpoint failure
+goroutine 2680 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Endpoints).run.func2()
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:561 +0xbc
+panic({0x101f847c8?, 0x101e56f50?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm.fail({0x102053918?, 0x37d64c2c5d10?}, 0x37d64c480fc0?)
+	/Users/tyler/.codex/worktrees/286c/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm/server.go:12 +0x2c
+github.com/tylergannon/skgo.(*Endpoints).run(0x37d64d373d40, {0x102051550, 0x37d64c612120}, 0x37d64d452500, 0x37d64c558960, 0x37d64c2c4420, {0x37d64c60e000, 0x3}, 0x10205ef70)
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:570 +0x684
+github.com/tylergannon/skgo.(*Endpoints).serve(0x37d64d373d40, {0x102051550, 0x37d64c612120}, 0x37d64d452500, {0x10204b0b0, 0x37d64d387c20})
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:503 +0x710
+github.com/tylergannon/skgo.(*Endpoints).Intercept.func1({0x102051550, 0x37d64c612120}, 0x37d64d452500)
+	/Users/tyler/.codex/worktrees/286c/skgo/endpoint.go:401 +0xe4
+net/http.HandlerFunc.ServeHTTP(0x37d64c60e004?, {0x102051550?, 0x37d64c612120?}, 0x102244910?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Remotes).Intercept.func1({0x102051550, 0x37d64c612120}, 0x37d64d452500)
+	/Users/tyler/.codex/worktrees/286c/skgo/remote.go:714 +0x1c4
+net/http.HandlerFunc.ServeHTTP(0x37d64c60e004?, {0x102051550?, 0x37d64c612120?}, 0x37d64bf6cb40?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Loads).Intercept.func1({0x102051550, 0x37d64c612120}, 0x37d64d452500)
+	/Users/tyler/.codex/worktrees/286c/skgo/data.go:60 +0x118
+net/http.HandlerFunc.ServeHTTP(0x37d64c144840?, {0x102051550?, 0x37d64c612120?}, 0x0?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.launchDownstream.func1()
+	/Users/tyler/.codex/worktrees/286c/skgo/downstream.go:128 +0xc0
+created by github.com/tylergannon/skgo.launchDownstream in goroutine 2600
+	/Users/tyler/.codex/worktrees/286c/skgo/downstream.go:107 +0x310
+2026/10/18 12:52:38 skgo: rendering /: 503 The root layout could not reach the database
+--- FAIL: TestEveryDataURLIsAnsweredByGoAndNeverByTheDocument (0.37s)
+    server_test.go:829: route /routing/optional/[[number=Order]] has segment "[[number=Order]]", which this test does not know how to visit; teach it before adding the route
+2026/10/18 12:52:43 skgo: rendering /console: console.error: skgo-console-probe: this page reported a failure while rendering
+2026/10/18 12:52:43 skgo: rendering /error/render: skgo: the page threw while rendering: Error: skgo: the root layout cannot render /error/render
+	at failTheWholeDocument (ssr/bundle.js:6403:11(3))
+	at ssr/bundle.js:6405:105(25)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at _layout$2 (ssr/bundle.js:6392:23(4))
+	at ssr/bundle.js:3347:19(44)
+	at boundary (ssr/bundle.js:2380:31(54))
+	at node (ssr/bundle.js:3341:24(30))
+	at ssr/bundle.js:3381:8(40)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at Root (ssr/bundle.js:3316:23(4))
+	at #open_render (ssr/bundle.js:2775:14(32))
+	at #render_async (ssr/bundle.js:2680:27(23))
+	at ssr/bundle.js:2577:159(5)
+	at with_render_context (ssr/bundle.js:1002:13(38))
+2026/10/18 12:52:43 skgo: rendering /error/render: skgo: the page threw while rendering: Error: skgo: the root layout cannot render /error/render
+	at failTheWholeDocument (ssr/bundle.js:6403:11(3))
+	at ssr/bundle.js:6405:105(25)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at _layout$2 (ssr/bundle.js:6392:23(4))
+	at ssr/bundle.js:3347:19(44)
+	at boundary (ssr/bundle.js:2380:31(54))
+	at node (ssr/bundle.js:3341:24(30))
+	at ssr/bundle.js:3381:8(40)
+	at ssr/bundle.js:2424:14(7)
+	at child (ssr/bundle.js:2345:21(37))
+	at component (ssr/bundle.js:2422:14(9))
+	at Root (ssr/bundle.js:3316:23(4))
+	at #open_render (ssr/bundle.js:2775:14(32))
+	at #render_async (ssr/bundle.js:2680:27(23))
+	at ssr/bundle.js:2577:159(5)
+	at with_render_context (ssr/bundle.js:1002:13(38))
+--- FAIL: TestEveryRouteInTheManifestIsServed (1.90s)
+    server_test.go:333: route /routing/optional/[[number=Order]] has segment "[[number=Order]]", which this test does not know how to visit; teach it before adding the route
+--- FAIL: TestChangingAGoTypeBreaksTheComponentThatUsesIt (17.92s)
+    typedrift_test.go:171: the app does not type-check before the change: exit status 1
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/about/+page.ts:7:45
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/+page.server.ts:57:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/+page.svelte:5:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/action-types.check.ts:17:1
+        Error: Unused '@ts-expect-error' directive. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/action-types.check.ts:19:1
+        Error: Unused '@ts-expect-error' directive. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/cross/receive/+page.server.ts:29:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/cross/receive/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/default/+page.server.ts:16:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/default/+page.svelte:4:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/default/saved/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/options/no-client/+page.server.ts:28:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/options/no-client/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/options/no-ssr/+page.server.ts:31:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/options/no-ssr/+page.svelte:4:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/profiles/[profile]/+page.server.ts:16:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/profiles/[profile]/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/signed-in/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/async-ssr/[mode]/[group]/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/docs/[...rest]/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/fetch/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/fetch/+page.ts:5:40
+        Error: Binding element 'fetch' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/fetch/+page.ts:5:47
+        Error: Binding element 'url' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:3:34
+        Error: Binding element 'data' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:3:40
+        Error: Binding element 'url' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:6:11
+        Error: Parameter 'invoice' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:10:14
+        Error: Parameter 'invoice' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:11:12
+        Error: Parameter 'a' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:11:15
+        Error: Parameter 'b' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:14:34
+        Error: Parameter 'total' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:14:41
+        Error: Parameter 'invoice' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/items/[id]/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/items/[id]/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/items/[id]/+page.ts:6:40
+        Error: Binding element 'params' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/items/[id]/+page.ts:6:48
+        Error: Binding element 'url' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/middleware/+page.server.ts:15:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/middleware/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/middleware/[slug]/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/nested-universal/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/nested-universal/+page.ts:5:40
+        Error: Binding element 'fetch' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/prerender/[slug]/+page.server.ts:8:30
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/shadow/[slug]/+page.ts:4:27
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/todos/[id]/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/universal-fetch/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/universal-fetch/+page.ts:109:40
+        Error: Binding element 'fetch' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/universal-fetch/+page.ts:109:47
+        Error: Binding element 'url' implicitly has an 'any' type. 
+        
+        ====================================
+        svelte-check found 46 errors and 0 warnings in 30 files
+--- FAIL: TestGeneratedActionTypesRejectWrongUses (109.76s)
+    typedrift_test.go:228: valid generated action types did not compile: exit status 1
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/about/+page.ts:7:45
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/+page.server.ts:57:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/+page.svelte:5:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/action-types.check.ts:17:1
+        Error: Unused '@ts-expect-error' directive. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/action-types.check.ts:19:1
+        Error: Unused '@ts-expect-error' directive. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/cross/receive/+page.server.ts:29:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/cross/receive/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/default/+page.server.ts:16:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/default/+page.svelte:4:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/default/saved/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/options/no-client/+page.server.ts:28:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/options/no-client/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/options/no-ssr/+page.server.ts:31:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/options/no-ssr/+page.svelte:4:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/profiles/[profile]/+page.server.ts:16:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/profiles/[profile]/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/actions/signed-in/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/async-ssr/[mode]/[group]/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/docs/[...rest]/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/fetch/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/fetch/+page.ts:5:40
+        Error: Binding element 'fetch' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/fetch/+page.ts:5:47
+        Error: Binding element 'url' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:3:34
+        Error: Binding element 'data' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:3:40
+        Error: Binding element 'url' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:6:11
+        Error: Parameter 'invoice' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:10:14
+        Error: Parameter 'invoice' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:11:12
+        Error: Parameter 'a' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:11:15
+        Error: Parameter 'b' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:14:34
+        Error: Parameter 'total' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/invoices/+page.ts:14:41
+        Error: Parameter 'invoice' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/items/[id]/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/items/[id]/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/items/[id]/+page.ts:6:40
+        Error: Binding element 'params' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/items/[id]/+page.ts:6:48
+        Error: Binding element 'url' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/middleware/+page.server.ts:15:2
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/middleware/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/middleware/[slug]/+page.svelte:2:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/nested-universal/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/nested-universal/+page.ts:5:40
+        Error: Binding element 'fetch' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/prerender/[slug]/+page.server.ts:8:30
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/shadow/[slug]/+page.ts:4:27
+        Error: Cannot find module './$types.js' or its corresponding type declarations. (this likely means that SvelteKit's type generation didn't run yet - try running it by executing 'npm run dev' or 'npm run build') 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/todos/[id]/+page.svelte:3:34
+        Error: Cannot find module './$types' or its corresponding type declarations. (ts)
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/universal-fetch/+page.ts:1:31
+        Error: Cannot find module './$types' or its corresponding type declarations. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/universal-fetch/+page.ts:109:40
+        Error: Binding element 'fetch' implicitly has an 'any' type. 
+        
+        /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-example-test-240878544/checked/web/src/routes/universal-fetch/+page.ts:109:47
+        Error: Binding element 'url' implicitly has an 'any' type. 
+        
+        ====================================
+        svelte-check found 46 errors and 0 warnings in 30 files
+--- FAIL: TestNothingGeneratedWasWrittenByHand (110.02s)
+    generate_test.go:87: `go generate ./...` does not reproduce these files:
+          internal/skgo/params/skgo_gen.go
+        Either they were edited by hand — remote functions are written in Go, not in .remote.ts —
+        or the generator has not been run since the Go source changed. Run `go generate ./...` in example/internal/skgo.
+FAIL
+FAIL	github.com/tylergannon/skgo/example	129.443s
+?   	github.com/tylergannon/skgo/example/actiondemo	[no test files]
+ok  	github.com/tylergannon/skgo/example/businesslogic	0.171s
+ok  	github.com/tylergannon/skgo/example/businesslogic/visitor	0.413s
+?   	github.com/tylergannon/skgo/example/cmd	[no test files]
+?   	github.com/tylergannon/skgo/example/cmd/form-client	[no test files]
+?   	github.com/tylergannon/skgo/example/cmd/prerender	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/app	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/serverhooks	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/client	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizlt	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpomxwoylumu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52heyldmvsa	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwy33bmqxvw3tvnvrgk4r5j5zgizlslu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf53gc3djmrqxi2lpny	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwe33voq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3dojxxg4zpojswgzljozsq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3emvtgc5lmoqxxgylwmvsa	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znmnwgszlooq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3pob2gs33oomxw43znonzxe	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3qojxwm2lmmvzs6w3qojxwm2lmmvoq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhgl3tnftw4zlefvuw4	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3pojsgk4tt	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3smvzhk3ttf5nxg3dvm5oq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwgy3povxhil3torqxizlnmvxhi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpmzqxiylm	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpewwg33vnz2a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxa3dbpexvw23jnzsf2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxc5lfon2c2ztforrwq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxe33vorss25dbojtwk5a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jpojsxe33vorswil23nz2w2ytfoi6u64temvzf2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxa2jporxwi33t	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5nw233emvos6w3hojxxk4c5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qxg6lommwxg43sf5rw63tuojxwyl23m5zg65lqlu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rgc5ddna	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5rw63tumfrxi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sg6y3tf5ns4lroojsxg5c5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sgk43unfxgc5djn5xhg	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sw24dupe	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwg33nnvqw4za	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixwk6dqmvrxizle	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxezlenfzgky3u	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxe4tpoixxk3tfpbygky3umvsa	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5sxmzlooqwwyylzn52xil23onswg5djn5xf2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uw45tpnfrwk4y	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5uxizlnomxvw2lelu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgc3thf5nvw3dbnztv2xi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wgs5tf	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wws43tnfxgol23fyxc44dboruf2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmuxvw43movtv2	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5yhezlsmvxgizlsf5nxg3dvm5oq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3gmfwgyytbmnvs6w3oovwwezlshvhxezdfojoq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3gmfwgyytbmnvs6w3wmfwhkzk5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3pob2gs33omfwc6w23nz2w2ytfoi6u64temvzf2xi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3smvvgky3uf5nw45lnmjsxepkpojsgk4s5	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpmfwhoylzom	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpmfygs	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnftw433smu	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnvuxqzle	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnzsxmzls	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zgk4tpov2gkzbplnxhk3lcmvzd2t3smrsxexi	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zxi4tfmfwq	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/params	[no test files]
+?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+?   	github.com/tylergannon/skgo/example/native/cmd/build	[no test files]
+ok  	github.com/tylergannon/skgo/example/native/host	0.447s
+ok  	github.com/tylergannon/skgo/example/web	0.164s
+ok  	github.com/tylergannon/skgo/example/web/src	0.294s
+?   	github.com/tylergannon/skgo/example/web/src/lib	[no test files]
+FAIL
+error: recipe `test` failed on line 69 with exit code 1

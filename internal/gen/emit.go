@@ -847,7 +847,7 @@ func (a *app) writeHandler(b *strings.Builder, fn *remoteFn) {
 		b.WriteString("\tfor i, call := range calls {\n")
 		b.WriteString("\t\tif err := skgo.RequireArgument(call); err != nil {\n\t\t\treturn nil, err\n\t\t}\n")
 		fmt.Fprintf(b, "\t\tdecoded, err := Decode%s(call.Arg)\n", fn.inCodec)
-		b.WriteString("\t\tif err != nil {\n\t\t\treturn nil, skgo.BadRequest(err)\n\t\t}\n")
+		b.WriteString("\t\tif err != nil {\n\t\t\treturn nil, call.RejectArgument(err)\n\t\t}\n")
 		b.WriteString("\t\tin[i] = decoded\n\t}\n")
 		fmt.Fprintf(b, "\touts, err := %s(ctx, in)\n", a.published(fn.goPkg, fn.name))
 		b.WriteString("\tif err != nil {\n\t\treturn nil, err\n\t}\n")
@@ -888,7 +888,7 @@ func (a *app) writeHandler(b *strings.Builder, fn *remoteFn) {
 		fmt.Fprintf(b, "// decoder %s uses.\n", fn.handler)
 		fmt.Fprintf(b, "func %s(arg any) (any, error) {\n", fn.requestedArg)
 		fmt.Fprintf(b, "\tin, err := Decode%s(arg)\n", fn.inCodec)
-		b.WriteString("\tif err != nil {\n\t\treturn nil, skgo.BadRequest(err)\n\t}\n\treturn in, nil\n}\n")
+		b.WriteString("\tif err != nil {\n\t\treturn nil, (skgo.Call{}).RejectArgument(err)\n\t}\n\treturn in, nil\n}\n")
 	}
 }
 
@@ -926,9 +926,9 @@ func (a *app) writeArgument(b *strings.Builder, fn *remoteFn, indent, fail strin
 	case fn.inCodec != "":
 		fmt.Fprintf(b, "%sif err := skgo.RequireArgument(call); err != nil {\n%s\t%s\n%s}\n", indent, indent, fail, indent)
 		fmt.Fprintf(b, "%sin, err := Decode%s(call.Arg)\n", indent, fn.inCodec)
-		fmt.Fprintf(b, "%sif err != nil {\n%s\t%s\n%s}\n", indent, indent, strings.Replace(fail, "err", "skgo.BadRequest(err)", 1), indent)
+		fmt.Fprintf(b, "%sif err != nil {\n%s\t%s\n%s}\n", indent, indent, strings.Replace(fail, "err", "call.RejectArgument(err)", 1), indent)
 		if fn.nativeIn != "" {
-			fmt.Fprintf(b, "%sif err := %s(in, \"\", 0); err != nil { %s }\n", indent, fn.nativeIn, strings.Replace(fail, "err", "skgo.BadRequest(err)", 1))
+			fmt.Fprintf(b, "%sif err := %s(in, \"\", 0); err != nil { %s }\n", indent, fn.nativeIn, strings.Replace(fail, "err", "call.RejectArgument(err)", 1))
 		}
 	default:
 		fmt.Fprintf(b, "%sif err := skgo.RefuseArgument(call); err != nil {\n%s\t%s\n%s}\n", indent, indent, fail, indent)

@@ -19,14 +19,18 @@ import (
 
 func nativeRemoteFixture(t *testing.T, functions ...*Remote) (http.Handler, func()) {
 	t.Helper()
-	development := NewNativeDevelopment("secret")
-	loads, err := NewLoads(LoadConfig{Origin: "http://app.test", HandleError: func(context.Context, CaughtError) map[string]any {
+	return nativeRemoteFixtureWithHook(t, func(context.Context, CaughtError) map[string]any {
 		return map[string]any{"message": "literal-safe-441", "supportId": "literal-case-552"}
-	}})
+	}, functions...)
+}
+func nativeRemoteFixtureWithHook(t *testing.T, hook HandleError, functions ...*Remote) (http.Handler, func()) {
+	t.Helper()
+	development := NewNativeDevelopment("secret")
+	loads, err := NewLoads(LoadConfig{Origin: "http://app.test", HandleError: hook})
 	if err != nil {
 		t.Fatal(err)
 	}
-	remotes, err := NewRemotes(RemoteConfig{Origin: "http://app.test"}, functions...)
+	remotes, err := NewRemotes(RemoteConfig{Origin: "http://app.test", HandleError: hook}, functions...)
 	if err != nil {
 		t.Fatal(err)
 	}

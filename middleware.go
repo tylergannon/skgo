@@ -222,6 +222,13 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 			}
 		}
 
+		// Kit resolves these internal requests before route matching, slash
+		// normalization and handle. The downstream static boundary owns its
+		// client-resolution refusal; reroute and base checks have already run.
+		if suffix := kitSuffix(path); suffix == routeSuffix || suffix == htmlRouteSuffix {
+			next.ServeHTTP(w, r)
+			return
+		}
 		state := &hookState{
 			routing:  cfg.Loads != nil || len(cfg.routes) > 0,
 			url:      pageURL,

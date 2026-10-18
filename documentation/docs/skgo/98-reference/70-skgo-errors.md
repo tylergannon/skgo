@@ -12,4 +12,4 @@ browser elsewhere, from a load, an action or a command. `CaughtError` is what
 `HandleError` receives. Kit's guide is [Errors](https://svelte.dev/docs/kit/errors).
 
 > PACKAGE: github.com/tylergannon/skgo
-> SYMBOLS: HTTPError BadRequest Invalid Issue Redirect CaughtError
+> SYMBOLS: HTTPError BadRequest ValidationIssue Invalid Issue Redirect CaughtError

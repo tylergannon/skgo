@@ -32,13 +32,19 @@ var _=skgo.Entries(entries)
 	for _, route := range []string{"universal", "precedence"} {
 		write("web/src/routes/"+route+"/[slug]/+page.ts", `export const prerender = true;`)
 		write("web/src/routes/"+route+"/[slug]/+page.svelte", `<script lang="ts">let { data } = $props();</script><h1>{data.receipt}</h1>`)
-		producer := `return []EntryParams{{Slug:"page"}},nil`
+		producer := `if err:=os.WriteFile(os.Getenv("SKGO_ENTRIES_RECEIPT")+".page",[]byte("Go page entries: page"),0600);err!=nil{return nil,err};return []EntryParams{{Slug:"page"}},nil`
+		imports := `import("os";"github.com/tylergannon/skgo")`
 		if route == "universal" {
 			producer = `panic("universal entries must override Go server entries")`
+			imports = `import "github.com/tylergannon/skgo"`
 			write("web/src/routes/universal/[slug]/+page.ts", `export const prerender=true;export const entries=()=>[{slug:'universal'}];`)
+		} else {
+			// Kit rejects prerendering a page and endpoint at the same route.
+			// Entries precedence is still resolved during analyse for this route.
+			write("web/src/routes/precedence/[slug]/+page.ts", `export const prerender = false;`)
 		}
 		write("web/src/routes/"+route+"/[slug]/page.server.go", `package route
-import "github.com/tylergannon/skgo"
+`+imports+`
 type Data struct{Receipt string `+"`json:\"receipt\"`"+`}
 func load(e PageRequestEvent)(Data,error){return Data{Receipt:"Go selected: "+e.Params.Slug()},nil}
 var _=skgo.Load(load)
@@ -81,7 +87,7 @@ var _=skgo.GET(get)
 				if err != nil {
 					t.Fatalf("build: %v", err)
 				}
-				for path, want := range map[string]string{"catalog/atlas.html": "Go catalog: atlas|original", "catalog/beacon/v2.html": "Go catalog: beacon|v2", "universal/universal.html": "Go selected: universal", "precedence/page.html": "Go selected: page"} {
+				for path, want := range map[string]string{"catalog/atlas.html": "Go catalog: atlas|original", "catalog/beacon/v2.html": "Go catalog: beacon|v2", "universal/universal.html": "Go selected: universal"} {
 					data, readErr := os.ReadFile(filepath.Join(fixture, "web/build/prerendered", path))
 					if readErr != nil || !strings.Contains(string(data), want) {
 						t.Fatalf("artifact %s: err=%v missing literal %q", path, readErr, want)
@@ -90,6 +96,10 @@ var _=skgo.GET(get)
 				data, readErr := os.ReadFile(receipt)
 				if readErr != nil || string(data) != "Go endpoint entries: endpoint" {
 					t.Fatalf("endpoint analyse receipt=%q err=%v", data, readErr)
+				}
+				data, readErr = os.ReadFile(receipt + ".page")
+				if readErr != nil || string(data) != "Go page entries: page" {
+					t.Fatalf("page-over-endpoint analyse receipt=%q err=%v", data, readErr)
 				}
 				for _, path := range []string{"catalog/atlas/__data.json", "catalog/beacon/v2/__data.json"} {
 					if _, err := os.Stat(filepath.Join(fixture, "web/build/prerendered", path)); err != nil {
