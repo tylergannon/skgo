@@ -23,7 +23,6 @@ import (
 	"github.com/tylergannon/skgo/example/web"
 )
 
-// docs: prod-handler
 // prodOrigin is the origin the handler under test is configured with. Nothing
 // listens on it: every request below is served in-process.
 const prodOrigin = "http://127.0.0.1:8080"
@@ -65,8 +64,6 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 	return rec
 }
-
-// docs: end prod-handler
 
 func TestTypedDependencySerialsBelongToEachCaller(t *testing.T) {
 	h := newProdHandler(t)
@@ -381,7 +378,6 @@ func TestTheServerAnswersARealRemoteCall(t *testing.T) {
 	}
 }
 
-// docs: remote-id
 // remoteID finds the `<hash>/<name>` id of a remote function by its name, so
 // the tests never hard-code a hash kit derives from a file path.
 func remoteID(t *testing.T, name string) string {
@@ -394,8 +390,6 @@ func remoteID(t *testing.T, name string) string {
 	t.Fatalf("no remote function named %s is registered", name)
 	return ""
 }
-
-// docs: end remote-id
 
 // post drives a command through the production stack. Kit's client sends the
 // argument as a base64url devalue payload in a JSON envelope, and the registry

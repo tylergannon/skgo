@@ -219,16 +219,30 @@ work already visible in the diff. The worklog exists for actionable
 intelligence — corrections, traps, things that will change a future decision —
 and nothing else.
 
+## Documentation
+
+Guide pages are markdown files committed beside the code they describe: core
+pages in the module root, CLI and AI pages in `cmd/skgo/`, a page about
+another package in that package's directory. Location carries no meaning; the
+frontmatter does. Keys: `title`, `description` (one sentence, under twenty
+words) and `division` (`skgo`, `cli` or `ai`) are required; `section`,
+`subsection`, `slug` (when it differs from the file name) and `order` place the
+page in the site's navigation. Reference documentation is godoc.
+
+A page never contains Go, Svelte or TypeScript text. A `go`, `svelte` or `ts`
+fence has an empty body and an info string naming its source: a Go Example
+function as go/doc names it (`ExampleLoad_parent`, `generate.ExamplePrepare`),
+or a whole file by its path from the repository root
+(`example/web/src/routes/invoices/+page.svelte`). Examples live in `_test.go`
+files in the external test package, so `go test` compiles them and checks any
+`// Output:`. The project site (tylergannon/skgo-project) extracts pages,
+samples and godoc from the tagged release when it builds; nothing derived is
+committed here.
+
 ## Layout
 
 - `ephemeral/` — tracked working material: worklogs, plans, downloaded
   artifacts. Never write to `docs/` without express permission.
-- `documentation/` — the documentation source, its renderer and the committed
-  rendered tree the project site serves. `documentation/README.md` is the
-  authoring contract; `go test ./documentation` and `just docs` validate the
-  authored sources in memory. Automatic rendering and committed-output drift
-  checks are disconnected. Do not regenerate or commit `documentation/rendered/`
-  as part of application changes.
 - `example/web/node_modules/@sveltejs/kit/` — authoritative Kit source at the
   example's installed pin. Resolve Kit's transitive package sources from its
   real package directory under pnpm.

@@ -2,7 +2,6 @@ package app
 
 import "strings"
 
-// docs: serialized-header
 // SerializedHeader chooses which response headers a universal load's
 // hydration data carries. The handle hook and the prerender service pass the
 // same filter, so a prerendered page and a live one serialize the same headers.
@@ -15,5 +14,3 @@ func SerializedHeader(name, value string) bool {
 	}
 	return false
 }
-
-// docs: end serialized-header

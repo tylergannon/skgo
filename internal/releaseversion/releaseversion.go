@@ -47,13 +47,10 @@ func Analyze(messages []string) Level {
 		if match[3] == "!" || breakingFooter(message) {
 			candidate = Major
 		} else {
-			// docs releases: the documentation ships in the module and the
-			// site serves the pinned tag, so a docs change reaches readers
-			// only through a release.
 			switch match[1] {
 			case "feat":
 				candidate = Minor
-			case "fix", "perf", "revert", "docs":
+			case "fix", "perf", "revert":
 				candidate = Patch
 			}
 		}

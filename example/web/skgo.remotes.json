@@ -10,15 +10,28 @@
     "16h93j5/renameTodo",
     "16h93j5/retitleTodo",
     "16h93j5/watchCount",
+    "18nwl34/watchCount",
+    "1e30lht/getMessages",
+    "1e30lht/sendMessage",
+    "1eny1lu/addNote",
     "1eqvn7x/getBanner",
     "1eqvn7x/getNote",
     "1eqvn7x/writeNotes",
     "1klskj7/sendRemoteNote",
     "1lcpbfl/receipt",
+    "1lfw7vk/getNote",
+    "1lfw7vk/getNotes",
+    "1mcy3mj/double",
+    "1mcy3mj/shout",
+    "1mcy3mj/signUp",
+    "1opprig/countTodos",
+    "1py2vlf/renameNote",
     "1sgmw1/getKnownReport",
     "1sgmw1/getModels",
     "1sgmw1/getReport",
     "1sgmw1/reparse",
+    "1ue4a72/greet",
+    "1w0sqgi/profile",
     "4cga8b/signIn",
     "4cga8b/signOut",
     "4cga8b/whoami",
@@ -35,6 +48,8 @@
     "ks8sip/buildReceipt",
     "nv8t2/bumpTally",
     "nv8t2/getTally",
+    "pczot4/addTodo",
+    "pczot4/getTodos",
     "toba7i/getBatch",
     "toba7i/getDependent",
     "toba7i/getHeld",
@@ -42,7 +57,8 @@
     "toba7i/getValue",
     "toba7i/watchValue",
     "wx3cst/watchBoard",
-    "x3uq7o/getQuotes"
+    "x3uq7o/getQuotes",
+    "zkw7a/sendNote"
   ],
   "loads": [
     "src/routes/(marketing)/pricing/+page.server.ts",
@@ -81,6 +97,10 @@
     "src/routes/routing/slash/ignore/+page.server.ts",
     "src/routes/routing/slash/mixed/+page.server.ts",
     "src/routes/routing/slash/never/+page.server.ts",
+    "src/routes/samples/form-actions/validation/+page.server.ts",
+    "src/routes/samples/load/page-data/+page.server.ts",
+    "src/routes/samples/load/untrack/[slug]/+page.server.ts",
+    "src/routes/samples/prerendering/[slug]/+page.server.ts",
     "src/routes/stream/+page.server.ts",
     "src/routes/traced/+page.server.ts",
     "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts",
@@ -109,7 +129,18 @@
     "src/routes/actions/options/no-ssr/+page.server.ts",
     "src/routes/actions/options/no-ssr/+page.server.ts",
     "src/routes/actions/profiles/[profile]/+page.server.ts",
-    "src/routes/middleware/+page.server.ts"
+    "src/routes/middleware/+page.server.ts",
+    "src/routes/samples/auth/+page.server.ts",
+    "src/routes/samples/auth/+page.server.ts",
+    "src/routes/samples/form-actions/default/+page.server.ts",
+    "src/routes/samples/form-actions/enhance/+page.server.ts",
+    "src/routes/samples/form-actions/named/+page.server.ts",
+    "src/routes/samples/form-actions/named/+page.server.ts",
+    "src/routes/samples/form-actions/sign-in/+page.server.ts",
+    "src/routes/samples/form-actions/sign-in/+page.server.ts",
+    "src/routes/samples/form-actions/validation/+page.server.ts",
+    "src/routes/samples/go-standards/+page.server.ts",
+    "src/routes/samples/migrating/+page.server.ts"
   ],
   "endpoints": {
     "/actions": ["POST"],
@@ -124,6 +155,7 @@
     "/async-ssr/control/[group]": ["GET", "POST"],
     "/routing/slash/api": ["GET"],
     "/routing/slash/mixed": ["GET"],
+    "/samples/cookies": ["GET"],
     "/shadow/[...rest]": ["GET"]
   },
   "prerender": {
@@ -287,6 +319,21 @@
     },
     "src/routes/routing/slash/never/+page.server.ts": {
       "source": "src/routes/routing/slash/never/page.server.go"
+    },
+    "src/routes/samples/cookies/+server.ts": {
+      "endpoint": true
+    },
+    "src/routes/samples/form-actions/validation/+page.server.ts": {
+      "source": "src/routes/samples/form-actions/validation/page.server.go"
+    },
+    "src/routes/samples/load/page-data/+page.server.ts": {
+      "source": "src/routes/samples/load/page-data/page.server.go"
+    },
+    "src/routes/samples/load/untrack/[slug]/+page.server.ts": {
+      "source": "src/routes/samples/load/untrack/[slug]/page.server.go"
+    },
+    "src/routes/samples/prerendering/[slug]/+page.server.ts": {
+      "source": "src/routes/samples/prerendering/[slug]/page.server.go"
     },
     "src/routes/shadow/[...rest]/+server.ts": {
       "endpoint": true

@@ -1,8 +1,7 @@
 // Package commands is the table of the skgo command's subcommands: name,
 // arguments, flags and the sentences that describe them. The command prints
-// its usage from this table and the documentation renders the CLI reference
-// from it, so the two cannot disagree. A test in cmd/skgo keeps the flag
-// entries equal to the flag sets the commands actually define.
+// its usage from this table. A test in cmd/skgo keeps the flag entries equal
+// to the flag sets the commands actually define.
 package commands
 
 import (

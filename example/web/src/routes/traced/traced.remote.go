@@ -12,7 +12,6 @@ type Receipt struct {
 	Kind string `json:"kind"`
 }
 
-// docs: traced-remote
 func receipt(ctx context.Context) (Receipt, error) {
 	skgo.EventFrom(ctx).Tracing.Current.SetAttributes(attribute.String("receipt", "remote"))
 	_, span := otel.Tracer("myapp").Start(ctx, "receipt.build")
@@ -21,5 +20,3 @@ func receipt(ctx context.Context) (Receipt, error) {
 }
 
 var _ = skgo.Query(receipt)
-
-// docs: end traced-remote

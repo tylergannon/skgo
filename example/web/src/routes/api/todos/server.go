@@ -19,7 +19,6 @@ import (
 	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
 
-// docs: get
 // list answers `GET /api/todos` with the todos this visitor may see.
 //
 // Who the visitor is comes from the app's Handle hook, exactly as it does in a
@@ -29,8 +28,6 @@ func list(w http.ResponseWriter, r *http.Request) {
 	session := app.LocalsFrom(r.Context()).Session
 	writeJSON(w, http.StatusOK, visitor.Store(r.Context()).Todos(session.User != ""))
 }
-
-// docs: end get
 
 // newTodo is the body `POST /api/todos` accepts.
 type newTodo struct {
@@ -84,11 +81,8 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// docs: methods
 var (
 	_ = skgo.GET(list)
 	_ = skgo.POST(add)
 	_ = skgo.QUERY(search)
 )
-
-// docs: end methods

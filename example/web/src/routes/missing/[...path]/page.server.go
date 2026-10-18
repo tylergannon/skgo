@@ -11,11 +11,8 @@ type PageData struct {
 	Path string `json:"path"`
 }
 
-// docs: not-found
 func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{}, skgo.Errorf(http.StatusNotFound, "Not Found")
 }
 
 var _ = skgo.Load(pageLoad)
-
-// docs: end not-found

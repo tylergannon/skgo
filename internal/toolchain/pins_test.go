@@ -71,13 +71,4 @@ func TestPinsLookLikeVersions(t *testing.T) {
 			t.Errorf("%s = %q is not a version", name, value)
 		}
 	}
-	data, err := json.Marshal(Current())
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, key := range []string{`"kit"`, `"svelte"`, `"go"`, `"node"`, `"vitePlus"`, `"pnpm"`} {
-		if !strings.Contains(string(data), key) {
-			t.Errorf("versions JSON lacks %s: %s", key, data)
-		}
-	}
 }

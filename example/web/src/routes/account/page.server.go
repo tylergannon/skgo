@@ -12,7 +12,6 @@ type PageData struct {
 	ParentUser string `json:"parentUser"`
 }
 
-// docs: parent
 func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	parent, err := skgo.Parent[LayoutData](ctx)
@@ -21,7 +20,5 @@ func pageLoad(event PageRequestEvent) (PageData, error) {
 	}
 	return PageData{ParentUser: parent.AccountUser}, nil
 }
-
-// docs: end parent
 
 var _ = skgo.Load(pageLoad)

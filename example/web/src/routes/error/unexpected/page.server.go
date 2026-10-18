@@ -21,11 +21,8 @@ type PageData struct {
 	Secret string `json:"secret"`
 }
 
-// docs: unexpected
 func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{}, errors.New("the connection string is postgres://ada:hunter2@db")
 }
-
-// docs: end unexpected
 
 var _ = skgo.Load(pageLoad)

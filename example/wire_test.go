@@ -31,7 +31,6 @@ func payload(document string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(document))
 }
 
-// docs: call-query
 // callQuery asks a query the way kit's client does.
 func callQuery(t *testing.T, h http.Handler, id, document string) *httptest.ResponseRecorder {
 	t.Helper()
@@ -42,9 +41,6 @@ func callQuery(t *testing.T, h http.Handler, id, document string) *httptest.Resp
 	return get(t, h, url)
 }
 
-// docs: end call-query
-
-// docs: call-command
 // callCommand posts a command the way kit's client does.
 func callCommand(t *testing.T, h http.Handler, id, document string) *httptest.ResponseRecorder {
 	t.Helper()
@@ -60,8 +56,6 @@ func callCommand(t *testing.T, h http.Handler, id, document string) *httptest.Re
 	h.ServeHTTP(rec, req)
 	return rec
 }
-
-// docs: end call-command
 
 // callBatch posts a whole `query.batch` the way kit's client does.
 func callBatch(t *testing.T, h http.Handler, id string, documents ...string) *httptest.ResponseRecorder {

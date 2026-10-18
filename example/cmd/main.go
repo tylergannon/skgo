@@ -21,7 +21,6 @@ import (
 	"github.com/tylergannon/skgo/example/web"
 )
 
-// docs: main
 func main() {
 	if err := run(); err != nil {
 		log.Printf("skgo-example: %v", err)
@@ -43,7 +42,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// docs: mux
 	handler, err := example.NewHandler(dist, *origin)
 	if err != nil {
 		return err
@@ -54,16 +52,12 @@ func run() error {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.Handle("/", withMode(handler))
-	// docs: end mux
 
-	// docs: pprof
 	if *pprofAddr != "" {
 		go func() { log.Println(http.ListenAndServe(*pprofAddr, nil)) }()
 	}
-	// docs: end pprof
 
 	log.Printf("skgo-example: pid %d listening on http://%s in production mode", os.Getpid(), *listen)
-	// docs: shutdown
 	srv := &http.Server{Addr: *listen, Handler: mux}
 	defer srv.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
@@ -83,11 +77,8 @@ func run() error {
 	if err := <-served; err != http.ErrServerClosed {
 		return err
 	}
-	// docs: end shutdown
 	return nil
 }
-
-// docs: end main
 
 // withMode stamps every response so a test can tell which server answered it.
 func withMode(next http.Handler) http.Handler {
