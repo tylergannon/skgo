@@ -69,7 +69,9 @@ func newGeneration(cfg Config) (*generatedOutput, error) {
 				return err
 			}
 			if entry.IsDir() {
-				if entry.Name() == "node_modules" || strings.HasPrefix(entry.Name(), ".") {
+				// The link tree belongs to links.sync; its skgo_gen.go entries
+				// are links to generated files, not generated files.
+				if entry.Name() == "node_modules" || strings.HasPrefix(entry.Name(), ".") || path == links.root {
 					return filepath.SkipDir
 				}
 				return nil
@@ -238,8 +240,10 @@ func mergeGo(parts []string) (string, error) {
 	return string(formatted), err
 }
 
-// overlay includes new packages and refreshed copies of every authored route
-// file, so roots and dependencies have the same view even on first generation.
+// overlay presents output that is not yet published. Generated files are
+// shown at their destinations, and every route file also at its link address:
+// on a first generation the link does not exist yet, and a generated file in a
+// route directory is otherwise invisible through its link until publication.
 func (g *generatedOutput) overlay() (map[string][]byte, error) {
 	overlay := map[string][]byte{}
 	for path := range g.owned {

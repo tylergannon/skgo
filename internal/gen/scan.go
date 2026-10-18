@@ -233,8 +233,7 @@ func loadApp(cfg Config, files []string) (*app, error) {
 			return nil, err
 		}
 	} else if cfg.ReadOnly {
-		overlay, err = a.links.overlay()
-		if err != nil {
+		if err := a.links.verify(); err != nil {
 			return nil, err
 		}
 	} else if err := a.links.sync(); err != nil {
@@ -273,13 +272,18 @@ func loadApp(cfg Config, files []string) (*app, error) {
 	packages.Visit(loaded, nil, func(p *packages.Package) {
 		for _, e := range p.Errors {
 			if loadErr == nil {
-				if cfg.ReadOnly {
-					for _, link := range a.links.links {
-						if p.PkgPath == link.importPath {
-							if m := overlayError.FindStringSubmatch(e.Error()); m != nil {
-								loadErr = fmt.Errorf("skgo: %s:%s:%s: %s", filepath.Join(link.dir, m[1]), m[2], m[3], m[4])
-								break
-							}
+				// Go reports a route file at its link address, or at the
+				// overlay's backing copy; the developer knows it by the file
+				// they wrote.
+				for _, link := range a.links.links {
+					if prefix := link.linkDir + string(filepath.Separator); strings.HasPrefix(e.Pos, prefix) {
+						loadErr = fmt.Errorf("skgo: %s: %s", filepath.Join(link.dir, strings.TrimPrefix(e.Pos, prefix)), e.Msg)
+						break
+					}
+					if p.PkgPath == link.importPath {
+						if m := overlayError.FindStringSubmatch(e.Error()); m != nil {
+							loadErr = fmt.Errorf("skgo: %s:%s:%s: %s", filepath.Join(link.dir, m[1]), m[2], m[3], m[4])
+							break
 						}
 					}
 				}

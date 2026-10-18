@@ -1,13 +1,1 @@
-package routing
-
-import "github.com/tylergannon/skgo"
-
-type PageData struct {
-	Receipt string `json:"receipt"`
-}
-
-func load(event PageRequestEvent) (PageData, error) {
-	return PageData{Receipt: "matched|" + event.Params.Number().Label()}, nil
-}
-
-var _ = skgo.Load(load)
+../../../../web/src/routes/routing/fallback/[number=Order]/page.server.go

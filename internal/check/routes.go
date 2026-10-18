@@ -1,7 +1,6 @@
 package check
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -31,55 +30,6 @@ func loadRoutes(out string) (routeInventory, error) {
 		return v, err
 	}
 	return v, nil
-}
-
-// makeOverlay gives the Go toolchain the current authored route bytes while
-// leaving committed generated link copies untouched. The temporary JSON file
-// is removed by the caller before check returns.
-func makeOverlay(root string, v routeInventory) (string, func(), error) {
-	replace := map[string]string{}
-	for _, link := range v.Links {
-		dir := filepath.Join(root, filepath.FromSlash(link.Target))
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return "", nil, err
-		}
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
-				continue
-			}
-			source := filepath.Join(dir, entry.Name())
-			copy := filepath.Join(root, filepath.FromSlash(link.Link), entry.Name())
-			a, err := os.ReadFile(source)
-			if err != nil {
-				return "", nil, err
-			}
-			b, _ := os.ReadFile(copy)
-			if !bytes.Equal(a, b) {
-				replace[copy] = source
-			}
-		}
-	}
-	if len(replace) == 0 {
-		return "", func() {}, nil
-	}
-	f, err := os.CreateTemp(root, ".skgo-check-overlay-*.json")
-	if err != nil {
-		return "", nil, err
-	}
-	cleanup := func() { _ = os.Remove(f.Name()) }
-	if err := json.NewEncoder(f).Encode(struct {
-		Replace map[string]string `json:"Replace"`
-	}{replace}); err != nil {
-		_ = f.Close()
-		cleanup()
-		return "", nil, err
-	}
-	if err := f.Close(); err != nil {
-		cleanup()
-		return "", nil, err
-	}
-	return f.Name(), cleanup, nil
 }
 
 func authoredPath(root string, v routeInventory, path string) string {

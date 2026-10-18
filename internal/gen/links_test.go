@@ -1,15 +1,10 @@
 package gen
 
 import (
-	"archive/zip"
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"golang.org/x/mod/module"
-	modzip "golang.org/x/mod/zip"
 )
 
 // fakeApp lays out a vite root inside a Go module, with Go files in the route
@@ -96,66 +91,6 @@ func TestEveryRouteDirectoryBecomesAnImportableGoPackage(t *testing.T) {
 			t.Fatalf("authoredPath(%s) = %s", file, got)
 		}
 	}
-}
-
-// TestGeneratedRoutePackagesContainFilesNotSymlinks proves the generated tree
-// survives a Go module archive, which never includes symlink contents.
-func TestGeneratedRoutePackagesContainFilesNotSymlinks(t *testing.T) {
-	t.Parallel()
-	cfg := fakeApp(t, "src/routes", "src/routes/todos")
-	tree := linksFor(t, cfg)
-	if err := tree.sync(); err != nil {
-		t.Fatalf("sync: %v", err)
-	}
-
-	linkDir := filepath.Join(cfg.Out, linkRootName, encodeLinkName("src/routes"))
-	fi, err := os.Lstat(linkDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() {
-		t.Fatal("the generated route package is not a real directory")
-	}
-	entries, err := os.ReadDir(linkDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var names []string
-	for _, e := range entries {
-		if e.Type()&os.ModeSymlink != 0 || e.IsDir() {
-			t.Fatalf("%s is not a regular file", e.Name())
-		}
-		names = append(names, e.Name())
-	}
-	if len(names) != 1 || names[0] != "data.remote.go" {
-		t.Fatalf("route root link holds %v, want just the Go source", names)
-	}
-	if _, err := os.Lstat(filepath.Join(linkDir, "go.mod")); err == nil {
-		t.Fatal("the boundary go.mod was linked into the package")
-	}
-}
-
-func TestGeneratedRoutePackagesSurviveAModuleArchive(t *testing.T) {
-	t.Parallel()
-	cfg := fakeApp(t, "src/routes/todos/[id]")
-	if err := linksFor(t, cfg).sync(); err != nil {
-		t.Fatal(err)
-	}
-	var archive bytes.Buffer
-	if err := modzip.CreateFromDir(&archive, module.Version{Path: "example.com/app", Version: "v1.0.0"}, filepath.Dir(cfg.Web)); err != nil {
-		t.Fatal(err)
-	}
-	zr, err := zip.NewReader(bytes.NewReader(archive.Bytes()), int64(archive.Len()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := "example.com/app@v1.0.0/generated/links/" + encodeLinkName("src/routes/todos/[id]") + "/data.remote.go"
-	for _, file := range zr.File {
-		if file.Name == want {
-			return
-		}
-	}
-	t.Fatalf("module archive omitted generated route source %s", want)
 }
 
 // TestTheBoundaryStopsTheParentModuleWalkingIn checks the file whose absence
@@ -278,11 +213,11 @@ func TestRemovingTheLastGoFileRemovesTheBoundary(t *testing.T) {
 	}
 }
 
-// TestTheRoutePackageHoldsOnlyGeneratedCopies: the route package is a directory
+// TestTheRouteRootLinkHoldsOnlyLinks: a route's link is a directory
 // skgo rebuilds from the route tree on every run, so whatever an earlier run
 // left in it — polytype's CLI output once lived there, because `go:embed`
 // cannot follow a symlink — is removed rather than compiled into the package.
-func TestTheRoutePackageHoldsOnlyGeneratedCopies(t *testing.T) {
+func TestTheRouteRootLinkHoldsOnlyLinks(t *testing.T) {
 	t.Parallel()
 	cfg := fakeApp(t, "src/routes")
 	tree := linksFor(t, cfg)

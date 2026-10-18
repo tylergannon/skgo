@@ -101,13 +101,7 @@ func Run(ctx context.Context, o Options) Report {
 	}
 	routes, err := loadRoutes(out)
 	if err != nil {
-		add(Check{Name: "go-overlay", Status: "failed", Message: "cannot read generated route inventory: " + err.Error()})
-	}
-	overlayPath, cleanup, overlayErr := makeOverlay(root, routes)
-	if overlayErr != nil {
-		add(Check{Name: "go-overlay", Status: "failed", Message: "cannot prepare authored route overlay: " + overlayErr.Error()})
-	} else {
-		defer cleanup()
+		add(Check{Name: "route-links", Status: "failed", Message: "cannot read generated route inventory: " + err.Error()})
 	}
 
 	c, ds := checkGoImports(ctx, root, out)
@@ -158,9 +152,6 @@ func Run(ctx context.Context, o Options) Report {
 		add(Check{Name: "svelte-check", Status: "failed", Message: "project svelte-check is missing"})
 	}
 	goEnv := readonlyGoEnv()
-	if overlayPath != "" {
-		goEnv = appendGoFlag(goEnv, "-overlay="+overlayPath)
-	}
 	goCompileFailed := false
 	for _, spec := range []struct {
 		name string
@@ -231,16 +222,6 @@ func readonlyGoEnv() []string {
 		flags += " -mod=readonly"
 	}
 	return append(env, "GOFLAGS="+strings.TrimSpace(flags))
-}
-
-func appendGoFlag(env []string, flag string) []string {
-	for i := len(env) - 1; i >= 0; i-- {
-		if strings.HasPrefix(env[i], "GOFLAGS=") {
-			env[i] += " " + flag
-			return env
-		}
-	}
-	return append(env, "GOFLAGS="+flag)
 }
 
 func localBin(web, name string) string {
