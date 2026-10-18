@@ -31,3 +31,8 @@ tree on the Project structure page: `skgo new` requires the global vp at the
 pinned version and this machine has vp 1.0.0. The tree was derived from
 internal/newapp and internal/gen sources and a real project; confirm with a
 fresh scaffold on a machine with the pinned vp.
+
+friction: internal/gen TestRetainedAutoWorkspaceDanglingAncestor hangs on this
+machine (macOS, IO wait on its self-spawned child) on untouched main as well
+as on this branch, while CI passes it -> local; run the rest of the suite
+with -skip or rely on CI for that package until the cause is found.
