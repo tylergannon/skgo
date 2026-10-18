@@ -667,6 +667,17 @@ func TestGeneratorAddonAndAdapterAgreeOnTheEmbedKeepFile(t *testing.T) {
 	}
 }
 
+func TestGeneratedGitignoreExcludesLocalBuildCache(t *testing.T) {
+	dir := t.TempDir()
+	if err := writeGoFiles(project{Dir: dir}); err != nil {
+		t.Fatal(err)
+	}
+	got := readFile(t, filepath.Join(dir, ".gitignore"))
+	if !strings.Contains(got, "/.skgo/\n") {
+		t.Fatalf("generated .gitignore does not exclude the application-local build cache:\n%s", got)
+	}
+}
+
 // sv installs a file: add-on as a symlink inside its own directory in the
 // shared pnpm store, and extracts every later registry add-on through whatever
 // is there. A link to the live checkout therefore let an ordinary `skgo new`
