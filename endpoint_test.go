@@ -220,6 +220,80 @@ func TestHeadIsAnsweredByTheGetHandler(t *testing.T) {
 	}
 }
 
+func TestHeadGetFallbackDoesNotInferContentLength(t *testing.T) {
+	h := newEndpoints(t, endpointFixture(nil, []string{"GET"}, nil), NewEndpoint("/api/thing", "GET", func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("case") {
+		case "explicit":
+			w.Header().Set("Content-Length", "5")
+			fmt.Fprint(w, "thing")
+		case "early-status":
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "thing")
+		case "http-error":
+			http.Error(w, "literal failure", http.StatusTeapot)
+		default:
+			fmt.Fprint(w, "thing")
+		}
+	}))
+
+	for _, protocol := range []struct {
+		name   string
+		server func(http.Handler) *httptest.Server
+		major  int
+	}{
+		{"http1", httptest.NewServer, 1},
+		{"http2", func(handler http.Handler) *httptest.Server {
+			server := httptest.NewUnstartedServer(handler)
+			server.EnableHTTP2 = true
+			server.StartTLS()
+			return server
+		}, 2},
+	} {
+		t.Run(protocol.name, func(t *testing.T) {
+			server := protocol.server(h)
+			defer server.Close()
+			for _, fixture := range []struct {
+				name       string
+				status     int
+				contentLen string
+			}{
+				{"implicit", http.StatusOK, ""},
+				{"explicit", http.StatusOK, "5"},
+				{"early-status", http.StatusOK, ""},
+				// http.Error explicitly sets the error body's length after
+				// deleting existing length metadata, so that explicit value stays.
+				{"http-error", http.StatusTeapot, "16"},
+			} {
+				t.Run(fixture.name, func(t *testing.T) {
+					resp, err := server.Client().Head(server.URL + "/api/thing?case=" + fixture.name)
+					if err != nil {
+						t.Fatalf("HEAD: %v", err)
+					}
+					defer resp.Body.Close()
+					if resp.ProtoMajor != protocol.major {
+						t.Fatalf("protocol = %s, want HTTP/%d", resp.Proto, protocol.major)
+					}
+					if resp.StatusCode != fixture.status {
+						t.Errorf("status = %d, want %d", resp.StatusCode, fixture.status)
+					}
+					if got := resp.Header.Get("Content-Length"); got != fixture.contentLen {
+						t.Errorf("Content-Length = %q, want %q", got, fixture.contentLen)
+					}
+					if _, exists := resp.Header["Content-Length"]; fixture.contentLen == "" && exists {
+						t.Errorf("response contains an inferred Content-Length key: %#v", resp.Header["Content-Length"])
+					}
+					if got := body(t, resp); got != "" {
+						t.Errorf("HEAD returned a body %q", got)
+					}
+					if got := resp.Header.Get("Content-Type"); got != "text/plain; charset=utf-8" {
+						t.Errorf("Content-Type = %q; HEAD must carry the GET response type", got)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestAnUndeclaredMethodGetsKitsMethodNotAllowed(t *testing.T) {
 	h := newEndpoints(t, endpointFixture(nil, []string{"GET", "PUT"}, nil),
 		NewEndpoint("/api/thing", "GET", echo("thing")),
