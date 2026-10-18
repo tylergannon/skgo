@@ -33,21 +33,14 @@ The adapter writes the setting into the build manifest, and the Go server reads 
 
 ## Configuring a provider
 
-SKGo uses the global OpenTelemetry tracer provider and text-map propagator. Set both in `newHandler`, not in `main`: `skgo dev` builds the app from `NewDevelopmentHandler` and never runs `main`.
+SKGo uses the global OpenTelemetry tracer provider and text-map propagator. Install both from `newHandler`, not from `main`: `skgo dev` builds the app from `NewDevelopmentHandler` and never runs `main`. A function like this does it; the options are the provider's, so the exporter stays your choice:
 
 ```go
-func newHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) (http.Handler, error) {
-	exporter, err := otlptracehttp.New(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithBatcher(exporter)))
-	otel.SetTextMapPropagator(propagation.TraceContext{})
-	// ...
-}
+/// file: tracing.go
+/// include: example/tracing.go#tracing-setup
 ```
 
-The packages are `go.opentelemetry.io/otel`, `go.opentelemetry.io/otel/sdk/trace`, `go.opentelemetry.io/otel/propagation` and an exporter, here `go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp`. The root span reads an incoming `traceparent` header through the global propagator. If you leave the propagator unset, every request starts a new trace even when a proxy or client sent trace context. Call the provider's `Shutdown` when the server stops, so that batched spans are flushed.
+The packages are `go.opentelemetry.io/otel`, `go.opentelemetry.io/otel/sdk/trace` and `go.opentelemetry.io/otel/propagation`, plus an exporter such as `go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp`, whose `otlptracehttp.New` result you pass as `sdktrace.WithBatcher(exporter)`. The root span reads an incoming `traceparent` header through the global propagator. If you leave the propagator unset, every request starts a new trace even when a proxy or client sent trace context. Call the provider's `Shutdown` when the server stops, so that batched spans are flushed.
 
 ## Spans SKGo emits
 
@@ -83,30 +76,15 @@ type Tracing struct {
 `Root` is the `sveltekit.handle.root` span. `Current` is the span for whatever is running your code: the load, the action, the endpoint or the remote call. Set attributes on either one. To add a child span, start it from the request context, because that context carries `Current`:
 
 ```go
-func pageLoad(event PageRequestEvent) (PageData, error) {
-	event.Tracing.Root.SetAttributes(attribute.String("user.id", "42"))
-	event.Tracing.Current.SetAttributes(attribute.String("report.kind", "monthly"))
-
-	_, span := otel.Tracer("myapp").Start(event.Context(), "report.prepare")
-	defer span.End()
-
-	return PageData{TraceID: event.Tracing.Current.SpanContext().TraceID().String()}, nil
-}
-
-var _ = skgo.Load(pageLoad)
+/// file: src/routes/traced/page.server.go
+/// include: example/web/src/routes/traced/page.server.go#traced-load
 ```
 
 Code that receives a `context.Context` gets the event with `skgo.EventFrom`. This covers remote functions, actions and `+server` handlers, where the context is `r.Context()`:
 
 ```go
-func receipt(ctx context.Context) (Receipt, error) {
-	skgo.EventFrom(ctx).Tracing.Current.SetAttributes(attribute.String("receipt", "remote"))
-	_, span := otel.Tracer("myapp").Start(ctx, "receipt.build")
-	defer span.End()
-	return Receipt{}, nil
-}
-
-var _ = skgo.Query(receipt)
+/// file: src/routes/traced/traced.remote.go
+/// include: example/web/src/routes/traced/traced.remote.go#traced-remote
 ```
 
 ## In development

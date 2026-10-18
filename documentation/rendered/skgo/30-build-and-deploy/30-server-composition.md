@@ -10,14 +10,36 @@ A Kit adapter hides its server inside the build output. In SKGo the server is Go
 The generated file exports a production constructor and a development one that share every line of setup:
 
 ```go
-// NewHandler builds the Go-owned application stack over the embedded build.
+/// file: server.go
+// NewHandler builds the app's server over the embedded production build in dist.
+//
+// The order is kit's own dispatch order, turned inside out into middleware.
+// Handle is outermost because kit runs `handle` before it dispatches to
+// anything, for every kind of request — that is not the loads registry's
+// business even though this app also has one. Under it, the loads registry:
+// `__data.json` must never reach the static handler, which would answer it
+// with the boot document. Then remote functions, which live under the app
+// directory and are not routes at all. Then the server routes, which own
+// every path kit compiled a `+server.ts` for. Pages are last,
+// because in kit they are what answers when nothing else did.
 func NewHandler(dist fs.FS, origin string) (http.Handler, error) {
-	return newHandler(dist, origin, nil)
+	return newHandler(dist, origin, 0, nil)
 }
 
-// NewDevelopmentHandler keeps application behavior in Go while Kit renders pages.
+// NewDevelopmentHandler uses the same application stack with Kit-owned rendering.
 func NewDevelopmentHandler(dist fs.FS, origin string, development *skgo.NativeDevelopment) (http.Handler, error) {
-	return newHandler(dist, origin, development)
+	return newHandler(dist, origin, 0, development)
+}
+```
+
+`NewHandlerSized` is `NewHandler` with the number of page renders that may run at once; zero is the renderer's default, one per CPU. A native host, which shares a phone with the rest of the app, uses it to keep the pool small:
+
+```go
+/// file: server.go
+// NewHandlerSized is NewHandler with the number of page renders that may run
+// at once. Zero is the renderer's default, one per CPU.
+func NewHandlerSized(dist fs.FS, origin string, runtimes int) (http.Handler, error) {
+	return newHandler(dist, origin, runtimes, nil)
 }
 ```
 
@@ -42,6 +64,7 @@ package example
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -101,11 +124,14 @@ func NewDevelopmentHandler(dist fs.FS, origin string, development *skgo.NativeDe
 	return newHandler(dist, origin, 0, development)
 }
 
+
 // NewHandlerSized is NewHandler with the number of page renders that may run
 // at once. Zero is the renderer's default, one per CPU.
 func NewHandlerSized(dist fs.FS, origin string, runtimes int) (http.Handler, error) {
 	return newHandler(dist, origin, runtimes, nil)
 }
+
+
 func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.NativeDevelopment) (http.Handler, error) {
 	// The manifest defines the URL prefix remote calls arrive on.
 	manifest, err := skgo.ReadManifest(dist)
@@ -227,6 +253,17 @@ func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*
 	}
 	return response, err
 }
+
+
+// FlyClientAddress reads the client address from the header Fly's proxy sets.
+// Install it with handleCfg.ClientAddress only when every request arrives
+// through that proxy.
+func FlyClientAddress(r *http.Request) (string, error) {
+	if ip := r.Header.Get("Fly-Client-IP"); ip != "" {
+		return ip, nil
+	}
+	return "", errors.New("no Fly-Client-IP header")
+}
 ```
 
 Reading it from the top:
@@ -252,7 +289,17 @@ A request passes through the handlers from the outside in:
 
 ## The renderer
 
-`skgo.NewSSR` runs the compiled Svelte server code in a pool of goja runtimes, one render per runtime at a time. [`SSROptions`](skgo-server#SSROptions) is where you tune it:
+`skgo.NewSSR` runs the compiled Svelte server code in a pool of goja runtimes, one render per runtime at a time. [`SSROptions`](skgo-server#SSROptions) is where you tune it. The example sets four of its fields:
+
+```go
+/// file: server.go
+ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
+	Runtimes:    runtimes,
+	Fetch:       internal,
+	HandleFetch: handleFetch,
+	Actions:     actions,
+})
+```
 
 - `Runtimes` bounds how many pages render at once; zero means one per CPU. Each runtime holds its own copy of the app's module state, so this trades memory for throughput and nothing else.
 - `Fetch` is the in-process handler for a render-time `fetch` of the app's own routes. Leaving it nil refuses every such fetch.
@@ -263,53 +310,80 @@ Module-level state in a Svelte file lives per runtime. Shared state belongs in G
 
 ## cmd/main.go
 
-The generated `main` is short. It reads two flags, embeds the build and serves `NewHandler` with `http.ListenAndServe`:
+The example's `main` reads its flags, embeds the build, serves `NewHandler` through a mux and drains in-flight requests on `SIGTERM`. The scaffolded `main` is shorter: it serves `NewHandler` with `http.ListenAndServe` and installs no signal handling.
 
 ```go
-var origin = "http://127.0.0.1:8080"
-
+/// file: cmd/main.go
 func main() {
-	listen := flag.String("listen", hostPort(origin), "address to listen on")
-	trusted := flag.String("origin", origin, "public browser origin")
+	listen := flag.String("listen", "127.0.0.1:8080", "address to listen on")
+	origin := flag.String("origin", "", "app origin used for the remote-function CSRF check; empty derives it from --listen")
+	pprofAddr := flag.String("pprof", "", "address for the net/http/pprof server; empty leaves profiling off")
 	flag.Parse()
+
+	if *origin == "" {
+		*origin = "http://" + *listen
+	}
 
 	dist, err := fs.Sub(web.Build, "build")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("skgo-example: %v", err)
 	}
-	handler, err := app.NewHandler(dist, *trusted)
+	handler, err := example.NewHandler(dist, *origin)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("skgo-example: %v", err)
 	}
-	log.Printf("myapp: listening on http://%s", *listen)
-	if err := http.ListenAndServe(*listen, handler); err != nil {
-		log.Fatal(err)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.Handle("/", withMode(handler))
+
+	if *pprofAddr != "" {
+		go func() { log.Println(http.ListenAndServe(*pprofAddr, nil)) }()
+	}
+
+	log.Printf("skgo-example: pid %d listening on http://%s in production mode", os.Getpid(), *listen)
+	srv := &http.Server{Addr: *listen, Handler: mux}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer stop()
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("skgo-example: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Print(err)
 	}
 }
 ```
 
-`origin` is set by `-ldflags "-X main.origin=…"` in the `build` recipe, so `-listen` defaults to the origin's host and port and `-origin` to the origin itself. There is no signal handling; [Deploying](deploying#Shutdown) adds it.
+In the scaffold, `origin` is a package variable set by `-ldflags "-X main.origin=…"` in the `build` recipe, so `-listen` defaults to the origin's host and port and `-origin` to the origin itself. The example derives the origin from `-listen` when `-origin` is empty. [Deploying](deploying#Shutdown) covers the shutdown, and [Performance](performance#Diagnosing-issues) the `-pprof` flag.
 
 ## Embedding in your own server
 
 `NewHandler` returns an ordinary `http.Handler`. Mount it on a mux beside other Go handlers, or under your own `http.Server`:
 
 ```go
-handler, err := app.NewHandler(dist, *trusted)
+/// file: cmd/main.go
+handler, err := example.NewHandler(dist, *origin)
 if err != nil {
-	log.Fatal(err)
+	log.Fatalf("skgo-example: %v", err)
 }
 
 mux := http.NewServeMux()
 mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 })
-mux.Handle("/", handler)
-
-log.Fatal(http.ListenAndServe(*listen, mux))
+mux.Handle("/", withMode(handler))
 ```
 
-A route the mux claims never reaches SKGo, so `handle` does not run for it, and `event.Fetch` cannot reach it either: a fetch of `/healthz` from a load is dispatched through `internal`, which is the Kit app, not your mux.
+`withMode` is the example's own middleware, which stamps every response with the mode that served it. A route the mux claims never reaches SKGo, so `handle` does not run for it, and `event.Fetch` cannot reach it either: a fetch of `/healthz` from a load is dispatched through `internal`, which is the Kit app, not your mux.
 
 Mount the handler at the root. To serve the app under a prefix, set Kit's [`paths.base`](https://svelte.dev/docs/kit/configuration#paths) and rebuild; the handler expects request paths that still carry the base, and a request outside it is a 404, so do not wrap it in `http.StripPrefix`.
 
@@ -318,8 +392,9 @@ Mount the handler at the root. To serve the app under a prefix, set Kit's [`path
 Middleware that observes requests, for logging or metrics, wraps the returned handler like any other. Middleware that stores values in the request context needs one more thought: a subrequest made with `event.Fetch` starts from a fresh context that keeps cancellation, the trace span and baggage, the client address and the fetch depth, and nothing else, as Kit's `fork_state_for_subrequest` keeps its request facilities and drops the rest. A value added outside the stack reaches the page's request but not a route the page fetches in process. To see it on both, add it inside the stack, around the handler `internal` dispatches to:
 
 ```go
-app = withStore(store, generated.RequestBoundary(handleCfg,
-	loads.Intercept(remotes.Intercept(endpoints.Intercept(pages)))))
+/// file: server.go
+app = generated.RequestBoundary(handleCfg,
+	loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
 ```
 
-`withStore` is your own `func(*Store, http.Handler) http.Handler`. Per-visitor data belongs in `Locals`, which the `handle` hook fills afresh for every subrequest, as in Kit.
+To add your own, wrap the right-hand side of that assignment in a `func(http.Handler) http.Handler`; it then runs inside `FetchConfig` and ahead of `handle`, for the page's request and for every subrequest. Per-visitor data belongs in `Locals`, which the `handle` hook fills afresh for every subrequest, as in Kit.

@@ -20,8 +20,11 @@ type Destination struct {
 	Where string `json:"where"`
 }
 
+// docs: redirect
 func whereTo(_ context.Context) (Destination, error) {
 	return Destination{}, &skgo.Redirect{Status: 307, Location: "/about"}
 }
+
+// docs: end redirect
 
 var _ = skgo.Query(whereTo)

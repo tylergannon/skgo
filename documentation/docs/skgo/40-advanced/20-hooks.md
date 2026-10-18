@@ -43,7 +43,12 @@ A nil `Handle` passes every request through. `internal/skgo/config.go` names the
 func(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error)
 ```
 
-The event is the one loads see: the URL, the matched route and its typed parameters, cookies, locals, and the request-kind flags `IsDataRequest`, `IsRemoteRequest` and `IsSubRequest`. Because a hook runs for every route, its parameters are the app-wide `params.Params`; see [Advanced routing](advanced-routing#Matching-Typed-parameter-values).
+The event is the one loads see: the URL, the matched route and its typed parameters, cookies, locals, and the request-kind flags `IsDataRequest`, `IsRemoteRequest` and `IsSubRequest`. Because a hook runs for every route, its parameters are the app-wide `params.Params`; see [Advanced routing](advanced-routing#Matching-Typed-parameter-values). The example's `visitSlug` reads the `slug` parameter that way:
+
+```go
+/// file: internal/serverhooks/handle.go
+/// include: example/internal/serverhooks/handle.go#visit-slug
+```
 
 Return without calling `resolve` to answer the request yourself, with `skgo.NewResponse` or a response you built. Return a `*skgo.Redirect` or an `*skgo.HTTPError` to refuse it, as Kit's `redirect()` and `error()` do. SKGo shapes the refusal for the request: a real redirect or error page for a document, the JSON Kit's client expects for a data request or a remote call. Headers the hook set are added only to a response `resolve` produced; its cookies are also added to a returned `*skgo.Redirect`, but not to a response the hook builds itself. See [Cookies](cookies#Where-cookies-can-be-written).
 
@@ -53,10 +58,11 @@ Static files and prerendered pages are answered before `handle`, so the hook nev
 
 ### Before-only hooks
 
-Most hooks only need to run before the app. `params.Handle` takes the event and returns the event to forward, and its `Middleware` method turns it into a middleware. `params.Sequence` chains middleware as Kit's [`sequence`](https://svelte.dev/docs/kit/@sveltejs-kit-hooks#sequence) does:
+Most hooks only need to run before the app. `params.Handle` takes the event and returns the event to forward, and its `Middleware` method turns it into a middleware. `params.Sequence` chains middleware as Kit's [`sequence`](https://svelte.dev/docs/kit/@sveltejs-kit-hooks#sequence) does. The example chains its before-only hook with three middleware:
 
 ```go
-var Handle = params.Sequence(params.Handle(initialize).Middleware(), VisitMiddleware)
+/// file: internal/serverhooks/handle.go
+/// include: example/internal/serverhooks/handle.go#handle
 ```
 
 The example application's `initialize` reads the session cookie once and refuses two requests on purpose:
@@ -93,28 +99,34 @@ Pass a `skgo.ResolveOptions` as `resolve`'s last argument to change how this req
 - `FilterSerializedResponseHeaders` decides which headers of a universal load's `fetch` responses the hydration data carries. Without it, the renderer's `SSROptions.FilterSerializedResponseHeaders` applies, and without that, none.
 - `Preload` decides which files the document preloads. By default JavaScript and CSS are preloaded and fonts are not; stylesheets are always linked.
 
+The example passes a transform that marks the root element, and a filter that lets a few headers through, from a middleware that wraps the response:
+
 ```go
-response, err := resolve(ctx, event, skgo.ResolveOptions{
-	TransformPageChunk: func(ctx context.Context, html string, done bool) (string, error) {
-		return strings.Replace(html, "old", "new", 1), nil
-	},
-})
+/// file: internal/serverhooks/handle.go
+/// include: example/internal/serverhooks/handle.go#mark-transformed
 ```
+
+```go
+/// file: internal/serverhooks/handle.go
+/// include: example/internal/serverhooks/handle.go#serialized-headers
+```
+
+```go
+/// file: internal/serverhooks/handle.go
+/// include: example/internal/serverhooks/handle.go#visit-middleware
+```
+
+`VisitMiddleware` also sets a cookie before it calls `resolve`, the way [Cookies](cookies) describes.
 
 Under `params.Sequence`, options combine as Kit combines them: an inner hook's transform runs before an outer one's, and the outermost `FilterSerializedResponseHeaders` and `Preload` win.
 
 ## handleFetch
 
-`handleFetch` changes or replaces a fetch the server makes on the page's behalf: `fetch` in a universal load during server rendering, and `event.Fetch` from Go. Its signature is `func(ctx context.Context, request *http.Request, next skgo.Fetch) (*http.Response, error)`, and `skgo.EventFrom(ctx)` is the originating request's event:
+`handleFetch` changes or replaces a fetch the server makes on the page's behalf: `fetch` in a universal load during server rendering, and `event.Fetch` from Go. Its signature is `func(ctx context.Context, request *http.Request, next skgo.Fetch) (*http.Response, error)`, and `skgo.EventFrom(ctx)` is the originating request's event. The example rewrites a query parameter before dispatch and marks the response:
 
 ```go
-func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*http.Response, error) {
-	if request.URL.Host == "api.yourapp.com" {
-		request = request.Clone(ctx)
-		request.URL.Scheme, request.URL.Host = "http", "localhost:9999"
-	}
-	return next(request)
-}
+/// file: server.go
+/// include: example/server.go#handle-fetch
 ```
 
 The hook sees the request before SKGo adds the page's cookies and `Authorization` header to it. Calling `next` dispatches without re-entering the hook. Pass the function in both places in `server.go`: as `HandleFetch` on the `skgo.SSROptions` given to `NewSSR`, for render-time fetches, and on the `skgo.FetchConfig` that wraps the app, for `event.Fetch` from Go. Credentials follow Kit's [rules](https://svelte.dev/docs/kit/hooks#Server-hooks-handleFetch); [Cookies](cookies#Cookies-and-server-fetch) covers them. `handleFetch` does not run during prerendering ([#278](https://github.com/tylergannon/skgo/issues/278)).

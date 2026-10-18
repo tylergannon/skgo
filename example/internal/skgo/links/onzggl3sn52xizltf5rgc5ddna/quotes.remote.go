@@ -33,6 +33,7 @@ var prices = map[string]int{
 	"SVLT": 7845,
 }
 
+// docs: batch
 // getQuotes answers a whole batch of symbols in one call.
 //
 // The page still asks for one symbol at a time — `getQuotes('SKGO')` — and kit
@@ -53,3 +54,5 @@ func getQuotes(ctx context.Context, symbols []string) ([]Quote, error) {
 }
 
 var _ = skgo.BatchQuery(getQuotes)
+
+// docs: end batch

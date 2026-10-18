@@ -20,19 +20,8 @@ During `vp build` the adapter compiles the Go package named by its [`prerenderPa
 The generated service is a `package main` of its own:
 
 ```go
-func main() {
-	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{
-		BindRequest: func(next http.Handler) http.Handler {
-			return generated.RequestBoundary(skgo.HandleConfig{Matchers: generated.Matchers(), ClientAddress: func(*http.Request) (string, error) {
-				return "", fmt.Errorf("skgo: client address unavailable during prerender")
-			}}, next)
-		},
-		Endpoints: generated.Endpoints(),
-		Matchers:  generated.Matchers(),
-	}); err != nil {
-		log.Fatal(err)
-	}
-}
+/// file: internal/skgo/prerender/skgo_gen.go
+/// include: example/internal/skgo/prerender/skgo_gen.go
 ```
 
 It imports your route packages, so package-level `var` and `init` code runs at build time, but it never calls `main` or `NewHandler`; a database you open there is not open during the build. `BindRequest` is your `handle` hook, so each build-time request has typed `Locals` as a live one would, and `event.ClientAddress()` returns an error because there is no client. Go code has no `building` flag; universal code can still read [`building`](https://svelte.dev/docs/kit/$app-env#building) from `$app/env`.
@@ -112,38 +101,8 @@ A Go load that returns a `*skgo.Redirect` while prerendering produces Kit's redi
 The generated service binds your `handle` hook, endpoints, matchers and transport, and nothing you set on `SSROptions` in `server.go`. To share a setting with the build, write your own `package main` around [`RunPrerenderService`](skgo-server#RunPrerenderService) and point the adapter's `prerenderPackage` at it:
 
 ```go
-package main
-
-import (
-	"fmt"
-	"log"
-	"net/http"
-
-	"github.com/tylergannon/skgo"
-
-	"example.com/myapp/internal/app"
-	generated "example.com/myapp/internal/skgo"
-)
-
-func main() {
-	err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{
-		BindRequest: func(next http.Handler) http.Handler {
-			return generated.RequestBoundary(skgo.HandleConfig{
-				Matchers: generated.Matchers(),
-				ClientAddress: func(*http.Request) (string, error) {
-					return "", fmt.Errorf("unavailable during prerender")
-				},
-			}, next)
-		},
-		Endpoints: generated.Endpoints(),
-		Matchers:  generated.Matchers(),
-		// The same filter server.go passes to SSROptions.
-		FilterSerializedResponseHeaders: app.SerializedHeader,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+/// file: buildservice/main.go
+/// include: example/cmd/prerender/main.go
 ```
 
 ```ts

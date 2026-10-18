@@ -17,20 +17,8 @@ Route syntax is Kit's. Rest parameters, optional parameters, matchers, sorting, 
 A `[...rest]` segment matches any number of path segments, as in [Kit](https://svelte.dev/docs/kit/advanced-routing#Rest-parameters). In a Go load, endpoint or remote function, the parameter is one `string` holding the matched segments joined by `/`, and the empty string when nothing matched:
 
 ```go
-package shadowrest
-
-import (
-	"net/http"
-
-	"github.com/tylergannon/skgo"
-)
-
-func get(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, _ = w.Write([]byte("dynamic-rest:" + skgo.EventFrom(r.Context()).Param("rest")))
-}
-
-var _ = skgo.GET(get)
+/// file: src/routes/shadow/[...rest]/server.go
+/// include: example/web/src/routes/shadow/[...rest]/server.go#rest-route
 ```
 
 A load on a rest route gets the same value from its generated accessor, `event.Params.Rest()`.
@@ -40,11 +28,8 @@ A load on a rest route gets the same value from its generated accessor, `event.P
 Kit's pattern for a [custom 404 inside a subtree](https://svelte.dev/docs/kit/advanced-routing#Rest-parameters-404-pages) works with a Go load. Add a `[...path]` route under the subtree and return a 404 from its load:
 
 ```go
-func pageLoad(event PageRequestEvent) (PageData, error) {
-	return PageData{}, skgo.Errorf(http.StatusNotFound, "Not Found")
-}
-
-var _ = skgo.Load(pageLoad)
+/// file: src/routes/missing/[...path]/page.server.go
+/// include: example/web/src/routes/missing/[...path]/page.server.go#not-found
 ```
 
 The nearest `+error.svelte` above the route renders the error, as [Errors](errors#App-errors) describes.
@@ -54,13 +39,8 @@ The nearest `+error.svelte` above the route renders the error, as [Errors](error
 A `[[lang]]` segment may be absent, as in [Kit](https://svelte.dev/docs/kit/advanced-routing#Optional-parameters). Its Go accessor returns a pointer, `nil` when the segment is missing:
 
 ```go
-func pageLoad(event PageRequestEvent) (PageData, error) {
-	lang := "en"
-	if value := event.Params.Lang(); value != nil {
-		lang = *value
-	}
-	return PageData{Lang: lang}, nil
-}
+/// file: src/routes/lang/[[lang]]/page.server.go
+/// include: example/web/src/routes/lang/[[lang]]/page.server.go#optional-param
 ```
 
 An optional parameter with a matcher, such as `[[n=Order]]`, returns a pointer to the matcher's type. When the matcher rejects a segment, the segment is not consumed and the next parameter or route gets a chance at it, as in Kit.

@@ -36,7 +36,17 @@ A nil `Handle` passes every request through. `internal/skgo/config.go` names the
 func(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error)
 ```
 
-The event is the one loads see: the URL, the matched route and its typed parameters, cookies, locals, and the request-kind flags `IsDataRequest`, `IsRemoteRequest` and `IsSubRequest`. Because a hook runs for every route, its parameters are the app-wide `params.Params`; see [Advanced routing](advanced-routing#Matching-Typed-parameter-values).
+The event is the one loads see: the URL, the matched route and its typed parameters, cookies, locals, and the request-kind flags `IsDataRequest`, `IsRemoteRequest` and `IsSubRequest`. Because a hook runs for every route, its parameters are the app-wide `params.Params`; see [Advanced routing](advanced-routing#Matching-Typed-parameter-values). The example's `visitSlug` reads the `slug` parameter that way:
+
+```go
+/// file: internal/serverhooks/handle.go
+func visitSlug(p params.Params) string {
+	if value, ok := p.Slug().(params.SlugParam_String); ok {
+		return value.Value
+	}
+	return ""
+}
+```
 
 Return without calling `resolve` to answer the request yourself, with `skgo.NewResponse` or a response you built. Return a `*skgo.Redirect` or an `*skgo.HTTPError` to refuse it, as Kit's `redirect()` and `error()` do. SKGo shapes the refusal for the request: a real redirect or error page for a document, the JSON Kit's client expects for a data request or a remote call. Headers the hook set are added only to a response `resolve` produced; its cookies are also added to a returned `*skgo.Redirect`, but not to a response the hook builds itself. See [Cookies](cookies#Where-cookies-can-be-written).
 
@@ -46,10 +56,11 @@ Static files and prerendered pages are answered before `handle`, so the hook nev
 
 ### Before-only hooks
 
-Most hooks only need to run before the app. `params.Handle` takes the event and returns the event to forward, and its `Middleware` method turns it into a middleware. `params.Sequence` chains middleware as Kit's [`sequence`](https://svelte.dev/docs/kit/@sveltejs-kit-hooks#sequence) does:
+Most hooks only need to run before the app. `params.Handle` takes the event and returns the event to forward, and its `Middleware` method turns it into a middleware. `params.Sequence` chains middleware as Kit's [`sequence`](https://svelte.dev/docs/kit/@sveltejs-kit-hooks#sequence) does. The example chains its before-only hook with three middleware:
 
 ```go
-var Handle = params.Sequence(params.Handle(initialize).Middleware(), VisitMiddleware)
+/// file: internal/serverhooks/handle.go
+var Handle = params.Sequence(params.Handle(initialize).Middleware(), SerializedHeaders, PreloadFonts, VisitMiddleware)
 ```
 
 The example application's `initialize` reads the session cookie once and refuses two requests on purpose:
@@ -135,27 +146,102 @@ Pass a `skgo.ResolveOptions` as `resolve`'s last argument to change how this req
 - `FilterSerializedResponseHeaders` decides which headers of a universal load's `fetch` responses the hydration data carries. Without it, the renderer's `SSROptions.FilterSerializedResponseHeaders` applies, and without that, none.
 - `Preload` decides which files the document preloads. By default JavaScript and CSS are preloaded and fonts are not; stylesheets are always linked.
 
+The example passes a transform that marks the root element, and a filter that lets a few headers through, from a middleware that wraps the response:
+
 ```go
-response, err := resolve(ctx, event, skgo.ResolveOptions{
-	TransformPageChunk: func(ctx context.Context, html string, done bool) (string, error) {
-		return strings.Replace(html, "old", "new", 1), nil
-	},
-})
+/// file: internal/serverhooks/handle.go
+// markTransformed is the document transform of the /middleware pages and of
+// /stream, whose deferred values must still reach kit's client behind a
+// transformed shell: the one place a middleware chooses to rewrite the
+// assembled document, here by marking the root element so a scenario can see
+// kit's client hydrate a transformed page.
+func markTransformed(_ context.Context, html string, _ bool) (string, error) {
+	return strings.Replace(html, `<html lang="en">`, `<html lang="en" data-middleware-transformed="yes">`, 1), nil
+}
 ```
+
+```go
+/// file: internal/serverhooks/handle.go
+// SerializedHeaders is the app's choice of which headers a universal load's
+// hydration data carries. It is made here, per request, rather than on the
+// renderer, so the whole universal-fetch suite runs through the request-local
+// path.
+func SerializedHeaders(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error) {
+	return resolve(ctx, event, skgo.ResolveOptions{FilterSerializedResponseHeaders: app.SerializedHeader})
+}
+```
+
+```go
+/// file: internal/serverhooks/handle.go
+// VisitMiddleware is the part of the app's `handle` hook that wraps the
+// response. For the /middleware pages it establishes a visit before anything
+// answers — refreshing the visit cookie when it is missing or stale, so the
+// load that runs next reads the token from the same cookie jar the visitor
+// receives it from — and marks the response it gets back with what it
+// observed on the matched event.
+func VisitMiddleware(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error) {
+	route := event.RouteID()
+	if route == "/stream" {
+		response, err := resolve(ctx, event, skgo.ResolveOptions{TransformPageChunk: markTransformed})
+		if err != nil {
+			return nil, err
+		}
+		response.Header.Set("X-Skgo-Middleware", route+" data="+strconv.FormatBool(event.IsDataRequest()))
+		return response, nil
+	}
+	if route != "/middleware" && !strings.HasPrefix(route, "/middleware/") {
+		return resolve(ctx, event)
+	}
+	token, _ := event.Cookie(businesslogic.VisitCookie)
+	if !strings.HasPrefix(token, "visit-") {
+		token = businesslogic.FreshVisitToken
+		if err := event.SetCookie(businesslogic.VisitCookie, token, skgo.CookieOptions{}); err != nil {
+			return nil, err
+		}
+	}
+	event.Locals.Visit = businesslogic.Visit{
+		Token: token, Route: route, Slug: visitSlug(event.Params), Data: event.IsDataRequest(),
+	}
+	response, err := resolve(ctx, event, skgo.ResolveOptions{TransformPageChunk: markTransformed})
+	if err != nil {
+		return nil, err
+	}
+	response.Header.Set("X-Skgo-Middleware", route+" data="+strconv.FormatBool(event.IsDataRequest()))
+	return response, nil
+}
+```
+
+`VisitMiddleware` also sets a cookie before it calls `resolve`, the way [Cookies](cookies) describes.
 
 Under `params.Sequence`, options combine as Kit combines them: an inner hook's transform runs before an outer one's, and the outermost `FilterSerializedResponseHeaders` and `Preload` win.
 
 ## handleFetch
 
-`handleFetch` changes or replaces a fetch the server makes on the page's behalf: `fetch` in a universal load during server rendering, and `event.Fetch` from Go. Its signature is `func(ctx context.Context, request *http.Request, next skgo.Fetch) (*http.Response, error)`, and `skgo.EventFrom(ctx)` is the originating request's event:
+`handleFetch` changes or replaces a fetch the server makes on the page's behalf: `fetch` in a universal load during server rendering, and `event.Fetch` from Go. Its signature is `func(ctx context.Context, request *http.Request, next skgo.Fetch) (*http.Response, error)`, and `skgo.EventFrom(ctx)` is the originating request's event. The example rewrites a query parameter before dispatch and marks the response:
 
 ```go
+/// file: server.go
+// The example hook rewrites an API alias query before dispatch and marks the
+// response. Fetching this API in a universal load still reuses its response
+// during hydration; the hook itself only runs in Go.
 func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*http.Response, error) {
-	if request.URL.Host == "api.yourapp.com" {
-		request = request.Clone(ctx)
-		request.URL.Scheme, request.URL.Host = "http", "localhost:9999"
+	request = request.Clone(ctx)
+	if request.URL.Path == "/api/todos" {
+		query := request.URL.Query()
+		query.Del("via")
+		request.URL.RawQuery = query.Encode()
 	}
-	return next(request)
+	if strings.HasPrefix(request.URL.Path, "/api/replay/") && request.URL.Query().Has("alias") {
+		query := request.URL.Query()
+		query.Del("alias")
+		query.Set("step", "rewritten")
+		request.URL.RawQuery = query.Encode()
+	}
+	response, err := next(request)
+	if err == nil && strings.HasPrefix(request.URL.Path, "/api/") {
+		response.Header.Set("X-Fetch-Hook", "Go")
+	}
+	return response, err
 }
 ```
 

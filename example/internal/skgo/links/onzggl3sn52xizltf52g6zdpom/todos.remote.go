@@ -18,6 +18,7 @@ import (
 // sessionCookie is the name of the cookie the auth functions in src/lib set.
 const sessionCookie = "skgo_session"
 
+// docs: event-from
 // signedIn reports whether the caller has a live session. The request is
 // reachable from the context, the way kit reaches it with `getRequestEvent()`.
 // A query may read cookies; only a command may write them.
@@ -26,11 +27,17 @@ func signedIn(ctx context.Context) bool {
 	return businesslogic.Default.Session(id).User != ""
 }
 
+// docs: end event-from
+
+// docs: query
 // getTodos lists the todos this visitor may see.
 func getTodos(ctx context.Context) ([]businesslogic.Todo, error) {
 	return visitor.Store(ctx).Todos(signedIn(ctx)), nil
 }
 
+// docs: end query
+
+// docs: query-arg
 // getTodo looks one todo up by id.
 func getTodo(ctx context.Context, id string) (businesslogic.Todo, error) {
 	todo, ok := visitor.Store(ctx).Todo(id, signedIn(ctx))
@@ -40,6 +47,9 @@ func getTodo(ctx context.Context, id string) (businesslogic.Todo, error) {
 	return todo, nil
 }
 
+// docs: end query-arg
+
+// docs: command
 // addTodo appends a todo to the list.
 //
 // The page writes `addTodo(text).updates(getTodos())`, and the line below is
@@ -53,6 +63,8 @@ func addTodo(ctx context.Context, event params.RequestEvent, text string) (busin
 	}
 	return visitor.Store(ctx).Add(text), skgo.RefreshRequestedNoArg(ctx, getTodos)
 }
+
+// docs: end command
 
 // Rename is the argument of the renameTodo command.
 type Rename struct {
@@ -95,6 +107,7 @@ type Retitle struct {
 	RefreshID string `json:"refreshId"`
 }
 
+// docs: refresh
 // retitleTodo changes one todo's text and refreshes a getTodo from Go.
 //
 // The page that calls this passes no `updates(...)`: the browser never says
@@ -109,6 +122,8 @@ func retitleTodo(ctx context.Context, event params.RequestEvent, arg Retitle) (b
 	return todo, skgo.Refresh(ctx, getTodo, arg.RefreshID)
 }
 
+// docs: end refresh
+
 // watchCount pushes the number of todos this visitor may see, now and after
 // every change, until the client disconnects.
 //
@@ -121,6 +136,7 @@ func retitleTodo(ctx context.Context, event params.RequestEvent, arg Retitle) (b
 // await. When the cookie changes, kit's answer is not to re-read it but to
 // restart the stream: the command that wrote it reconnects the live query in
 // the same flight, which is what signIn and signOut do.
+// docs: live
 func watchCount(ctx context.Context, yield func(int) error) error {
 	updates, unsubscribe, now := visitor.Store(ctx).Watch(signedIn(ctx))
 	defer unsubscribe()
@@ -140,6 +156,8 @@ func watchCount(ctx context.Context, yield func(int) error) error {
 	}
 }
 
+// docs: end live
+
 // AcceptSessionRefreshes accepts the refreshes a page asks for when the
 // visitor's identity changes: the list re-runs, and the count — a live query,
 // whose event is a snapshot of the request that opened its stream — reconnects
@@ -158,6 +176,7 @@ func AcceptSessionRefreshes(ctx context.Context) error {
 	return skgo.ReconnectRequestedNoArg(ctx, watchCount)
 }
 
+// docs: markers
 var (
 	_ = skgo.Query(getTodos)
 	_ = skgo.Query(getTodo)
@@ -166,3 +185,5 @@ var (
 	_ = skgo.Command(retitleTodo)
 	_ = skgo.LiveQuery(watchCount)
 )
+
+// docs: end markers

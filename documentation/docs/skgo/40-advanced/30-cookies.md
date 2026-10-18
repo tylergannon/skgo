@@ -73,17 +73,11 @@ The `Secure` default looks at the origin the server was given, not the request. 
 
 A query's result is cached by its argument and can be served again without running, so Kit refuses cookie writes there, and so does SKGo: `SetCookie` returns `cannot set cookies in a query; only a command may write them`. A query that a command calls directly from Go runs with the command's event and can still write ([#271](https://github.com/tylergannon/skgo/issues/271)). `skgo check` reports the attempt as `SKGO001`, and [skgo advice](/docs/cli/advice) explains the fix, which is to move the write to a command or form.
 
-A `+server` route writes its own response, so its event refuses `SetCookie` with `a server route writes its own response — use http.SetCookie`. `http.Cookie` has no defaults, so set the attributes yourself:
+A `+server` route writes its own response, so its event refuses `SetCookie` with `a server route writes its own response — use http.SetCookie`. `http.Cookie` has no defaults, so set the attributes you want yourself: `HttpOnly`, `Secure` and `SameSite` are all off unless you name them. This route sets two cookies when asked, and names only `Path`:
 
 ```go
-func post(w http.ResponseWriter, r *http.Request) {
-	if _, ok := skgo.EventFrom(r.Context()).Cookie("lamp"); !ok {
-		http.SetCookie(w, &http.Cookie{Name: "lamp", Value: "glow", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode})
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-var _ = skgo.POST(post)
+/// file: src/routes/api/replay/[kind]/server.go
+/// include: example/web/src/routes/api/replay/[kind]/server.go#cookie
 ```
 
 The `handle` hook can write cookies before it calls `resolve`. Once the response exists, a write returns `cannot set cookies after the response has been generated`. Cookies the hook writes are added to the response `resolve` produced, and to a redirect the hook returns, but not to a response the hook builds itself. See [Hooks](hooks#handle).

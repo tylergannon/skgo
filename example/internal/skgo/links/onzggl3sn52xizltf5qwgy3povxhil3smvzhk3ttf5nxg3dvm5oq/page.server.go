@@ -18,6 +18,7 @@ var runs = struct {
 	byVisitor map[string]int
 }{byVisitor: map[string]int{}}
 
+// docs: url
 func pageLoad(event PageRequestEvent) (PageData, error) {
 	ctx := event.Context()
 	slug := event.Params.Slug()
@@ -30,5 +31,7 @@ func pageLoad(event PageRequestEvent) (PageData, error) {
 	runs.Unlock()
 	return PageData{Slug: slug, Filter: filter, Serial: serial}, nil
 }
+
+// docs: end url
 
 var _ = skgo.Load(pageLoad)

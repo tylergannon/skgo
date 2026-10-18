@@ -9,15 +9,16 @@ Most of Kit's [performance guide](https://svelte.dev/docs/kit/performance) is ab
 
 Measure the binary, not the development server. Under `skgo dev` Kit renders in Node through Vite, which says nothing about how the embedded renderer behaves. Run `just build`, start `bin/<app>`, and use your browser's network and performance tools or [PageSpeed Insights](https://pagespeed.web.dev/) against it.
 
-The server is an ordinary Go process, so Go's profiler works. Serve `net/http/pprof` on a private listener, never on the public address:
+The server is an ordinary Go process, so Go's profiler works. Blank-import `net/http/pprof` and serve it on a private listener, never on the public address. The example's `main` does it behind a flag that is off by default:
 
 ```go
-import _ "net/http/pprof"
-
-go func() { log.Println(http.ListenAndServe("127.0.0.1:6060", nil)) }()
+/// file: cmd/main.go
+if *pprofAddr != "" {
+	go func() { log.Println(http.ListenAndServe(*pprofAddr, nil)) }()
+}
 ```
 
-`go tool pprof http://127.0.0.1:6060/debug/pprof/profile` then shows where CPU time goes, in your Go code and in the JavaScript engine alike. With Kit's `tracing.server` option on, each request also emits Kit's spans from Go; see [Observability](observability).
+Started with `-pprof 127.0.0.1:6060`, `go tool pprof http://127.0.0.1:6060/debug/pprof/profile` shows where CPU time goes, in your Go code and in the JavaScript engine alike. With Kit's `tracing.server` option on, each request also emits Kit's spans from Go; see [Observability](observability).
 
 ## The renderer pool
 
@@ -36,7 +37,10 @@ Only files from the build are compressed. Pages, `__data.json` and remote respon
 A document preloads its JavaScript and CSS and not its fonts. To preload a font, answer `Preload` from the `handle` hook's `resolve`, as Kit's `resolve(event, { preload })` does:
 
 ```go
-func preloadFonts(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error) {
+/// file: internal/serverhooks/handle.go
+// PreloadFonts adds WOFF2 fonts to the assets Kit preloads. The default
+// preloads scripts and styles only.
+func PreloadFonts(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error) {
 	return resolve(ctx, event, skgo.ResolveOptions{
 		Preload: func(input skgo.PreloadInput) bool {
 			return input.Type == "js" || input.Type == "css" ||

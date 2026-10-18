@@ -10,12 +10,15 @@ import (
 	"github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 
+// docs: input
 type Input struct {
 	Name    string                    `json:"name"`
 	Count   polytype.Optional[int]    `json:"count,omitzero"`
 	Enabled polytype.Optional[bool]   `json:"enabled,omitzero"`
 	Label   polytype.Optional[string] `json:"label,omitzero"`
 }
+
+// docs: end input
 
 type Result struct {
 	Name       string `json:"name"`
@@ -30,6 +33,7 @@ var operations = struct {
 	byName map[string]int
 }{byName: make(map[string]int)}
 
+// docs: submit
 func submit(ctx context.Context, _ params.RequestEvent, in Input) (Result, error) {
 	if in.Name == "" {
 		return Result{}, skgo.Invalidf("name", "A name is required")
@@ -53,5 +57,7 @@ func submit(ctx context.Context, _ params.RequestEvent, in Input) (Result, error
 	operations.Unlock()
 	return result, nil
 }
+
+// docs: end submit
 
 var _ = skgo.Form(submit)
