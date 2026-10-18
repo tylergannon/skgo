@@ -11,4 +11,4 @@ on the server; `HandleError` shapes what an unexpected error reports.
 `RequestMiddleware`. Kit's guide is [Hooks](https://svelte.dev/docs/kit/hooks).
 
 > PACKAGE: github.com/tylergannon/skgo
-> SYMBOLS: Reroute RerouteEvent Handle HandleConfig HandleError HandleFetch Middleware RequestHandle RequestMiddleware RequestResolve Resolve ResolveOptions HookValues
+> SYMBOLS: ApplicationConfig Reroute RerouteEvent Handle HandleConfig HandleError HandleFetch Middleware RequestHandle RequestMiddleware RequestResolve Resolve ResolveOptions HookValues

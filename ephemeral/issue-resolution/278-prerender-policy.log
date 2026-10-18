@@ -1,0 +1,10 @@
+=== RUN   TestPrerenderConfiguredErrorPolicyUsesLogicalRequest
+=== RUN   TestPrerenderConfiguredErrorPolicyUsesLogicalRequest/load
+=== RUN   TestPrerenderConfiguredErrorPolicyUsesLogicalRequest/render
+=== RUN   TestPrerenderConfiguredErrorPolicyUsesLogicalRequest/refusal
+--- PASS: TestPrerenderConfiguredErrorPolicyUsesLogicalRequest (0.00s)
+    --- PASS: TestPrerenderConfiguredErrorPolicyUsesLogicalRequest/load (0.00s)
+    --- PASS: TestPrerenderConfiguredErrorPolicyUsesLogicalRequest/render (0.00s)
+    --- PASS: TestPrerenderConfiguredErrorPolicyUsesLogicalRequest/refusal (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo	0.258s

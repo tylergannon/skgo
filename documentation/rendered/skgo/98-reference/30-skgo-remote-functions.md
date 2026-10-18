@@ -488,8 +488,6 @@ NewRemotes builds a registry. Two functions with the same module and export name
 
 ```go
 type RemoteConfig struct {
-	// HandleError customizes generated argument schema refusals with kind validation.
-	HandleError HandleError
 	// Development mirrors Kit's development dispatch for prerender remotes.
 	// Production registries serve only their recorded static artifacts.
 	Development bool
@@ -518,7 +516,8 @@ type RemoteConfig struct {
 	Remotes []string
 	// Routes is Kit's ordered caller route table, including routes without loads.
 	Routes []ManifestRoute
-	// HandleError shapes failures returned by remote functions, including
+	// HandleError customizes generated argument schema refusals (kind
+	// "validation") and shapes failures returned by remote functions, including
 	// unexpected panics and errors from single-flight refreshes. Use the same
 	// hook as LoadConfig.HandleError for one application error policy. Redirects
 	// and already-handled errors bypass the hook; nil keeps safe defaults.
@@ -533,10 +532,6 @@ type RemoteConfig struct {
 	// contains filtered or unexported fields
 }
 ```
-
-
-RemoteConfig describes the app the registry is serving. Manifest.RemoteConfig supplies build-owned fields; application code configures the origin and hooks.
-
 
 ## RemoteSpec
 

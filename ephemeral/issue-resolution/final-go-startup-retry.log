@@ -1,0 +1,208 @@
+=== RUN   TestKitQueryArgGoldens
+=== RUN   TestKitQueryArgGoldens/null
+=== RUN   TestKitQueryArgGoldens/empty_object
+=== RUN   TestKitQueryArgGoldens/set_of_numbers
+=== RUN   TestKitQueryArgGoldens/flat_object
+=== RUN   TestKitQueryArgGoldens/flat_object,_reordered
+=== RUN   TestKitQueryArgGoldens/go_map_matches_the_sorted_object
+=== RUN   TestKitQueryArgGoldens/nested_object
+=== RUN   TestKitQueryArgGoldens/null-prototype_object
+=== RUN   TestKitQueryArgGoldens/nested_maps
+=== RUN   TestKitQueryArgGoldens/cycle_and_repeated_reference
+=== RUN   TestKitQueryArgGoldens/self_reference
+=== RUN   TestKitQueryArgGoldens/date
+=== RUN   TestKitQueryArgGoldens/sparse_array
+=== RUN   TestKitQueryArgGoldens/array_with_undefined
+=== RUN   TestKitQueryArgGoldens/array_of_objects
+=== RUN   TestKitQueryArgGoldens/integer-like_keys
+=== RUN   TestKitQueryArgGoldens/non-ascii_keys_below_U+E000
+=== RUN   TestKitQueryArgGoldens/astral_vs_private-use_object_keys
+=== RUN   TestKitQueryArgGoldens/astral_vs_private-use_object_keys,_reordered
+=== RUN   TestKitQueryArgGoldens/astral_vs_private-use_set_items
+=== RUN   TestKitQueryArgGoldens/astral_vs_private-use_map_keys
+=== RUN   TestKitQueryArgGoldens/astral_divergence_after_a_common_prefix
+=== RUN   TestKitQueryArgGoldens/astral_against_astral
+--- PASS: TestKitQueryArgGoldens (0.00s)
+    --- PASS: TestKitQueryArgGoldens/null (0.00s)
+    --- PASS: TestKitQueryArgGoldens/empty_object (0.00s)
+    --- PASS: TestKitQueryArgGoldens/set_of_numbers (0.00s)
+    --- PASS: TestKitQueryArgGoldens/flat_object (0.00s)
+    --- PASS: TestKitQueryArgGoldens/flat_object,_reordered (0.00s)
+    --- PASS: TestKitQueryArgGoldens/go_map_matches_the_sorted_object (0.00s)
+    --- PASS: TestKitQueryArgGoldens/nested_object (0.00s)
+    --- PASS: TestKitQueryArgGoldens/null-prototype_object (0.00s)
+    --- PASS: TestKitQueryArgGoldens/nested_maps (0.00s)
+    --- PASS: TestKitQueryArgGoldens/cycle_and_repeated_reference (0.00s)
+    --- PASS: TestKitQueryArgGoldens/self_reference (0.00s)
+    --- PASS: TestKitQueryArgGoldens/date (0.00s)
+    --- PASS: TestKitQueryArgGoldens/sparse_array (0.00s)
+    --- PASS: TestKitQueryArgGoldens/array_with_undefined (0.00s)
+    --- PASS: TestKitQueryArgGoldens/array_of_objects (0.00s)
+    --- PASS: TestKitQueryArgGoldens/integer-like_keys (0.00s)
+    --- PASS: TestKitQueryArgGoldens/non-ascii_keys_below_U+E000 (0.00s)
+    --- PASS: TestKitQueryArgGoldens/astral_vs_private-use_object_keys (0.00s)
+    --- PASS: TestKitQueryArgGoldens/astral_vs_private-use_object_keys,_reordered (0.00s)
+    --- PASS: TestKitQueryArgGoldens/astral_vs_private-use_set_items (0.00s)
+    --- PASS: TestKitQueryArgGoldens/astral_vs_private-use_map_keys (0.00s)
+    --- PASS: TestKitQueryArgGoldens/astral_divergence_after_a_common_prefix (0.00s)
+    --- PASS: TestKitQueryArgGoldens/astral_against_astral (0.00s)
+=== RUN   TestKitCommandArgGoldens
+=== RUN   TestKitCommandArgGoldens/flat_object
+=== RUN   TestKitCommandArgGoldens/flat_object,_reordered
+=== RUN   TestKitCommandArgGoldens/nested_object_keeps_its_order
+=== RUN   TestKitCommandArgGoldens/file
+--- PASS: TestKitCommandArgGoldens (0.00s)
+    --- PASS: TestKitCommandArgGoldens/flat_object (0.00s)
+    --- PASS: TestKitCommandArgGoldens/flat_object,_reordered (0.00s)
+    --- PASS: TestKitCommandArgGoldens/nested_object_keeps_its_order (0.00s)
+    --- PASS: TestKitCommandArgGoldens/file (0.00s)
+=== RUN   TestCommandArgRejectsGoMaps
+=== RUN   TestCommandArgRejectsGoMaps/at_the_root
+=== RUN   TestCommandArgRejectsGoMaps/empty_at_the_root
+=== RUN   TestCommandArgRejectsGoMaps/inside_an_object
+=== RUN   TestCommandArgRejectsGoMaps/inside_an_array
+=== RUN   TestCommandArgRejectsGoMaps/inside_a_set
+=== RUN   TestCommandArgRejectsGoMaps/as_a_map_value
+=== RUN   TestCommandArgRejectsGoMaps/as_a_map_key
+=== RUN   TestCommandArgRejectsGoMaps/two_levels_down
+--- PASS: TestCommandArgRejectsGoMaps (0.00s)
+    --- PASS: TestCommandArgRejectsGoMaps/at_the_root (0.00s)
+    --- PASS: TestCommandArgRejectsGoMaps/empty_at_the_root (0.00s)
+    --- PASS: TestCommandArgRejectsGoMaps/inside_an_object (0.00s)
+    --- PASS: TestCommandArgRejectsGoMaps/inside_an_array (0.00s)
+    --- PASS: TestCommandArgRejectsGoMaps/inside_a_set (0.00s)
+    --- PASS: TestCommandArgRejectsGoMaps/as_a_map_value (0.00s)
+    --- PASS: TestCommandArgRejectsGoMaps/as_a_map_key (0.00s)
+    --- PASS: TestCommandArgRejectsGoMaps/two_levels_down (0.00s)
+=== RUN   TestQueryArgAcceptsGoMaps
+--- PASS: TestQueryArgAcceptsGoMaps (0.00s)
+=== RUN   TestUndefinedIsNotNil
+--- PASS: TestUndefinedIsNotNil (0.00s)
+=== RUN   TestQueryArgGoldens
+--- PASS: TestQueryArgGoldens (0.00s)
+=== RUN   TestQueryArgUndefinedIsEmpty
+--- PASS: TestQueryArgUndefinedIsEmpty (0.00s)
+=== RUN   TestReorderedPlainObjectProperties
+--- PASS: TestReorderedPlainObjectProperties (0.00s)
+=== RUN   TestReorderedNestedPlainObjectProperties
+--- PASS: TestReorderedNestedPlainObjectProperties (0.00s)
+=== RUN   TestReorderedNullPrototypeObjectProperties
+--- PASS: TestReorderedNullPrototypeObjectProperties (0.00s)
+=== RUN   TestGoMapMatchesSortedObject
+--- PASS: TestGoMapMatchesSortedObject (0.00s)
+=== RUN   TestReorderedMapEntries
+--- PASS: TestReorderedMapEntries (0.00s)
+=== RUN   TestReorderedSetItems
+--- PASS: TestReorderedSetItems (0.00s)
+=== RUN   TestDoesNotMutateInput
+--- PASS: TestDoesNotMutateInput (0.00s)
+=== RUN   TestRoundTripsCyclesAndRepeatedReferences
+--- PASS: TestRoundTripsCyclesAndRepeatedReferences (0.00s)
+=== RUN   TestRoundTripsBuiltins
+--- PASS: TestRoundTripsBuiltins (0.00s)
+=== RUN   TestRejectsRegExp
+--- PASS: TestRejectsRegExp (0.00s)
+=== RUN   TestRejectsClassInstances
+--- PASS: TestRejectsClassInstances (0.00s)
+=== RUN   TestRoundTripsSparseArrays
+--- PASS: TestRoundTripsSparseArrays (0.01s)
+=== RUN   TestCommandArgPreservesOrdering
+--- PASS: TestCommandArgPreservesOrdering (0.00s)
+=== RUN   TestCommandArgSerializesFiles
+--- PASS: TestCommandArgSerializesFiles (0.00s)
+=== RUN   TestParsePayloadEmpty
+--- PASS: TestParsePayloadEmpty (0.00s)
+=== RUN   TestParsePayloadSelfReferential
+--- PASS: TestParsePayloadSelfReferential (0.00s)
+=== RUN   TestParsePayloadRestoresNullPrototypeObjects
+--- PASS: TestParsePayloadRestoresNullPrototypeObjects (0.00s)
+=== RUN   TestParsePayloadMapOrdering
+--- PASS: TestParsePayloadMapOrdering (0.00s)
+=== RUN   TestParsePayloadSetOrdering
+--- PASS: TestParsePayloadSetOrdering (0.00s)
+=== RUN   TestPayloadIsURLAndFilenameSafe
+--- PASS: TestPayloadIsURLAndFilenameSafe (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/remotearg	0.242s
+=== RUN   TestWorkerHoldsItsHostSlotUntilCompletionIsHandedOff
+--- PASS: TestWorkerHoldsItsHostSlotUntilCompletionIsHandedOff (0.20s)
+=== RUN   TestCancelledWorkerReleasesItsSlotWithoutDeadlock
+--- PASS: TestCancelledWorkerReleasesItsSlotWithoutDeadlock (0.00s)
+=== RUN   TestTheEngineParsesAURLTheWayTheWebDoes
+--- PASS: TestTheEngineParsesAURLTheWayTheWebDoes (0.00s)
+=== RUN   TestTheEngineOriginIsTheStandardsOrigin
+--- PASS: TestTheEngineOriginIsTheStandardsOrigin (0.00s)
+=== RUN   TestTheEngineSeesTwoPortsAsTwoSites
+--- PASS: TestTheEngineSeesTwoPortsAsTwoSites (0.00s)
+=== RUN   TestTheEngineRefusesAURLThatIsNotOne
+--- PASS: TestTheEngineRefusesAURLThatIsNotOne (0.00s)
+=== RUN   TestTheEngineEncodesTextAsUTF8
+--- PASS: TestTheEngineEncodesTextAsUTF8 (0.00s)
+=== RUN   TestTheEngineDecodesUTF8BackToTheSameText
+--- PASS: TestTheEngineDecodesUTF8BackToTheSameText (0.00s)
+=== RUN   TestTheEngineMovesBetweenBinaryAndBase64
+--- PASS: TestTheEngineMovesBetweenBinaryAndBase64 (0.00s)
+=== RUN   TestTheEngineRefusesToBase64ACharacterThatIsNotAByte
+--- PASS: TestTheEngineRefusesToBase64ACharacterThatIsNotAByte (0.00s)
+=== RUN   TestTheEngineHasNoWayToLoadAnything
+--- PASS: TestTheEngineHasNoWayToLoadAnything (0.00s)
+=== RUN   TestIndependentHostCallsStartBeforeAnyCompletes
+--- PASS: TestIndependentHostCallsStartBeforeAnyCompletes (0.00s)
+=== RUN   TestCancelledRenderCannotResumeInReusedPool
+--- PASS: TestCancelledRenderCannotResumeInReusedPool (0.00s)
+=== RUN   TestWaitingForAPoolSlotCanBeCancelled
+--- PASS: TestWaitingForAPoolSlotCanBeCancelled (0.03s)
+=== RUN   TestHostConcurrencyIsBoundedAndQueuedCallsProgress
+--- PASS: TestHostConcurrencyIsBoundedAndQueuedCallsProgress (0.00s)
+=== RUN   TestHostPanicBecomesRenderFailure
+--- PASS: TestHostPanicBecomesRenderFailure (0.00s)
+=== RUN   TestCancellationInterruptsJavaScriptAndReplacesRuntime
+--- PASS: TestCancellationInterruptsJavaScriptAndReplacesRuntime (0.02s)
+=== RUN   TestFetchAndRemoteCallsShareTheAsyncScheduler
+--- PASS: TestFetchAndRemoteCallsShareTheAsyncScheduler (0.00s)
+=== RUN   TestLeakedHostCallsExhaustTheEnginesSharedBudget
+--- PASS: TestLeakedHostCallsExhaustTheEnginesSharedBudget (0.31s)
+=== RUN   TestEnvironmentExistsBeforeTopLevelApplicationEvaluation
+--- PASS: TestEnvironmentExistsBeforeTopLevelApplicationEvaluation (0.00s)
+=== RUN   TestConcurrentRendersDoNotShareARuntime
+--- PASS: TestConcurrentRendersDoNotShareARuntime (0.00s)
+=== RUN   TestARenderThatNeverFinishesIsAnError
+--- PASS: TestARenderThatNeverFinishesIsAnError (0.00s)
+=== RUN   TestAHostFailureIsAGoError
+--- PASS: TestAHostFailureIsAGoError (0.00s)
+=== RUN   TestABundleTheEngineCannotRunIsRefusedAtStartup
+=== RUN   TestABundleTheEngineCannotRunIsRefusedAtStartup/defines_no_entry
+=== RUN   TestABundleTheEngineCannotRunIsRefusedAtStartup/does_not_come_up
+=== RUN   TestABundleTheEngineCannotRunIsRefusedAtStartup/throws_on_evaluation
+=== RUN   TestABundleTheEngineCannotRunIsRefusedAtStartup/does_not_parse
+--- PASS: TestABundleTheEngineCannotRunIsRefusedAtStartup (0.00s)
+    --- PASS: TestABundleTheEngineCannotRunIsRefusedAtStartup/defines_no_entry (0.00s)
+    --- PASS: TestABundleTheEngineCannotRunIsRefusedAtStartup/does_not_come_up (0.00s)
+    --- PASS: TestABundleTheEngineCannotRunIsRefusedAtStartup/throws_on_evaluation (0.00s)
+    --- PASS: TestABundleTheEngineCannotRunIsRefusedAtStartup/does_not_parse (0.00s)
+=== RUN   TestAClassFieldDerivedRendersInsideAComponent
+--- PASS: TestAClassFieldDerivedRendersInsideAComponent (0.00s)
+=== RUN   TestTheEngineReusesItsRuntimes
+--- PASS: TestTheEngineReusesItsRuntimes (0.00s)
+=== RUN   TestFetchIsACallBackIntoGoNeverASocket
+--- PASS: TestFetchIsACallBackIntoGoNeverASocket (0.00s)
+=== RUN   TestFetchWithNoHostRefuses
+--- PASS: TestFetchWithNoHostRefuses (0.00s)
+=== RUN   TestMatchIsACallBackIntoGo
+--- PASS: TestMatchIsACallBackIntoGo (0.00s)
+=== RUN   TestARenderReportsTheStatusAndErrorItEndedWith
+--- PASS: TestARenderReportsTheStatusAndErrorItEndedWith (0.00s)
+=== RUN   TestARedirectThrownDuringARenderIsNotAFailure
+--- PASS: TestARedirectThrownDuringARenderIsNotAFailure (0.00s)
+=== RUN   TestAnExtraAppErrorFieldReachesTheComponentAndSurvivesTheRoundTrip
+--- PASS: TestAnExtraAppErrorFieldReachesTheComponentAndSurvivesTheRoundTrip (0.00s)
+=== RUN   TestTheEngineConsoleReachesGo
+--- PASS: TestTheEngineConsoleReachesGo (0.00s)
+=== RUN   TestTheEngineHasTheGlobalsKitAssumes
+--- PASS: TestTheEngineHasTheGlobalsKitAssumes (0.00s)
+=== RUN   TestARenderIsDrivenPastItsMacrotasks
+--- PASS: TestARenderIsDrivenPastItsMacrotasks (0.00s)
+=== RUN   TestWorkOneRenderAbandonedDoesNotRunInTheNext
+--- PASS: TestWorkOneRenderAbandonedDoesNotRunInTheNext (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/ssr	0.780s

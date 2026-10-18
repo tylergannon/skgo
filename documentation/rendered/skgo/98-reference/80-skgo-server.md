@@ -587,6 +587,10 @@ type PrerenderServiceOptions struct {
 	Entries     []*RouteEntries
 	Endpoints   []*Endpoint
 	Matchers    map[string]ParamMatcher
+	// HandleFetch surrounds Kit's fetch continuation and Go Event.Fetch.
+	HandleFetch HandleFetch
+	// HandleError shapes build-time errors with the runtime's application policy.
+	HandleError HandleError
 	// FilterSerializedResponseHeaders supplies the same default passed to
 	// SSROptions when a request's hooks do not select their own filter.
 	FilterSerializedResponseHeaders func(name, value string) bool

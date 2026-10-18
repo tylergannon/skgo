@@ -9,7 +9,7 @@ proof:
   - TestEveryPrerenderedPathIsServedFromItsFile
 ---
 
-Kit's [page options](https://svelte.dev/docs/kit/page-options) are exported from `+page.ts`, `+page.server.ts`, `+layout.ts` or `+layout.server.ts`. In SKGo the server files are generated, so the options live in `+page.ts` and `+layout.ts`, as TypeScript, and apply to the whole route with Kit's usual inheritance. There is no Go spelling of a page option. This page is about what each option means when the server is Go.
+Kit's [page options](https://svelte.dev/docs/kit/page-options) are exported from `+page.ts`, `+page.server.ts`, `+layout.ts` or `+layout.server.ts`. In SKGo the server files are generated, so the options live in `+page.ts` and `+layout.ts`, as TypeScript, and apply to the whole route with Kit's usual inheritance. `skgo.Entries` supplies the server-side `entries` producer in Go; the other page options stay TypeScript. This page is about what each option means when the server is Go.
 
 ## prerender
 

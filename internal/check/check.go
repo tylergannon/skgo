@@ -50,7 +50,7 @@ type Report struct {
 	Diagnostics []Diagnostic `json:"diagnostics"`
 }
 
-type Options struct{ Root, Web, Out, LocalsPackage, LocalsType, HookPackage, HookSymbol string }
+type Options struct{ Root, Web, Out, LocalsPackage, LocalsType, HookPackage, HookSymbol, ConfigPackage, ConfigSymbol string }
 
 // Run always attempts each independent checker. A diagnostic exit is distinct
 // from a checker that failed or stopped before publishing a complete result.
@@ -198,7 +198,7 @@ func Run(ctx context.Context, o Options) Report {
 	} else {
 		add(Check{Name: "skgo-advice", Status: "failed", Message: "cannot locate this skgo executable: " + err.Error()})
 	}
-	cfg := gen.Config{Web: web, Out: out, LocalsPackage: o.LocalsPackage, LocalsType: o.LocalsType, HookPackage: o.HookPackage, HookSymbol: o.HookSymbol}
+	cfg := gen.Config{Web: web, Out: out, LocalsPackage: o.LocalsPackage, LocalsType: o.LocalsType, HookPackage: o.HookPackage, HookSymbol: o.HookSymbol, ConfigPackage: o.ConfigPackage, ConfigSymbol: o.ConfigSymbol}
 	var configErr error
 	if cfg.LocalsPackage == "" {
 		cfg, configErr = gen.DeclaredConfig(cfg)

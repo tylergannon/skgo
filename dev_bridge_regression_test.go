@@ -93,7 +93,7 @@ globalThis.bridgeDevalue=devalue;
 let source=readFileSync(process.argv[1],'utf8');
 source=source.replace(/import \{ error, redirect, fail \} from "@sveltejs\/kit";/,'const error=(status,body)=>{throw Object.assign(new Error("http error"),{status,body})}; const redirect=(status,location)=>{throw Object.assign(new Error("redirect"),{status,location})}; const fail=(status,data)=>({status,data});');
 source=source.replace(/import \{ ValidationError \} from "@sveltejs\/kit\/internal";/,'class ValidationError extends Error {}');
-source='const devBase=""; const devAppDir="_app"; const devalue=globalThis.bridgeDevalue; const transport={stringify:devalue.stringify,parse:devalue.parse,decoders:{}};\n'+source;
+source='import {bridgeFetch,incomingResponse} from '+JSON.stringify(pathToFileURL(process.argv[1].replace(/dev-bridge\.js$/,'fetch-bridge.js')).href)+';\nconst devBase=""; const devAppDir="_app"; const devalue=globalThis.bridgeDevalue; const transport={stringify:devalue.stringify,parse:devalue.parse,decoders:{}};\n'+source;
 const {requestHandle,requestFetch,load,action}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 function event() {
  const applied={};

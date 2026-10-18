@@ -35,7 +35,7 @@ func DeclaredConfig(cfg Config) (Config, error) {
 			for i := 0; i < len(args); i++ {
 				name, value, inline := strings.Cut(strings.TrimLeft(args[i], "-"), "=")
 				switch name {
-				case "locals-package", "locals-type", "hook-package", "hook-symbol":
+				case "locals-package", "locals-type", "hook-package", "hook-symbol", "config-package", "config-symbol":
 					if seen[name] {
 						return cfg, fmt.Errorf("skgo: multiple configured selections for --%s", name)
 					}
@@ -56,6 +56,10 @@ func DeclaredConfig(cfg Config) (Config, error) {
 						cfg.HookPackage = value
 					case "hook-symbol":
 						cfg.HookSymbol = value
+					case "config-package":
+						cfg.ConfigPackage = value
+					case "config-symbol":
+						cfg.ConfigSymbol = value
 					}
 				}
 			}

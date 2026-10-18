@@ -174,7 +174,7 @@ The hook is a Go function set on the server's configuration, and what it returns
 
 ```go
 /// file: server.go
-/// include: example/server.go#handle-error
+/// include: example/internal/app/config.go#handle-error
 ```
 
 The `skgo advice SKGO004` analyzer check flags an SKGo operation whose error is discarded.

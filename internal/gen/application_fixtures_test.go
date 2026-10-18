@@ -40,6 +40,7 @@ func TestProductionOptionsApplication(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Run("RealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads", testRealKitBuildSharesExplicitRendererDefaultsAndRejectsHeaderReads)
+ t.Run("RealKitBuildAndRuntimeShareApplicationHooks",testRealKitBuildAndRuntimeShareApplicationHooks)
 }
 
 func TestCheckApplication(t *testing.T) {

@@ -22,6 +22,8 @@ func NewHandler(dist fs.FS, middleware skgo.Middleware) (http.Handler, error) {
 	}
 	remoteCfg := manifest.RemoteConfig(origin)
 	loadCfg := manifest.LoadConfig(origin)
+	remoteCfg.HandleError = appstate.Config.HandleError
+	loadCfg.HandleError = appstate.Config.HandleError
 	remotes, err := skgo.NewRemotes(remoteCfg, generated.Remotes()...)
 	if err != nil {
 		return nil, err
@@ -30,7 +32,9 @@ func NewHandler(dist fs.FS, middleware skgo.Middleware) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	endpoints, err := skgo.NewEndpoints(manifest.EndpointConfig(origin), generated.Endpoints()...)
+	endpointCfg := manifest.EndpointConfig(origin)
+	endpointCfg.HandleError = appstate.Config.HandleError
+	endpoints, err := skgo.NewEndpoints(endpointCfg, generated.Endpoints()...)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +46,8 @@ func NewHandler(dist fs.FS, middleware skgo.Middleware) (http.Handler, error) {
 	internal := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.ServeHTTP(w, r) })
 	ssr, err := skgo.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
 		Runtimes:                        2,
-		FilterSerializedResponseHeaders: appstate.SerializedHeader,
+		FilterSerializedResponseHeaders: appstate.Config.FilterSerializedResponseHeaders,
+		HandleFetch:                     appstate.Config.HandleFetch,
 		Fetch:                           internal,
 		Actions:                         actions,
 	})
@@ -54,6 +59,7 @@ func NewHandler(dist fs.FS, middleware skgo.Middleware) (http.Handler, error) {
 		return nil, err
 	}
 	handleCfg := manifest.HandleConfig()
+	handleCfg.HandleError = appstate.Config.HandleError
 	handleCfg.Origin = origin
 	handleCfg.Loads = loads
 	handleCfg.Static = skgo.ServedAsFile(pages)
@@ -62,6 +68,6 @@ func NewHandler(dist fs.FS, middleware skgo.Middleware) (http.Handler, error) {
 	app = skgo.Sequence(skgo.Handle(func(context.Context) error { return nil }).Middleware(), middleware).Intercept(
 		handleCfg, loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
 	return skgo.FetchConfig{
-		Origin: origin, Base: manifest.Base, Handler: internal, Prerendered: manifest.Prerendered,
+		HandleFetch: appstate.Config.HandleFetch, Origin: origin, Base: manifest.Base, Handler: internal, Prerendered: manifest.Prerendered,
 	}.Intercept(app), nil
 }

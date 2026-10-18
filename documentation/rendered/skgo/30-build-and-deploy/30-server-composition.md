@@ -67,9 +67,9 @@ import (
 	"errors"
 	"io/fs"
 	"net/http"
-	"strings"
 
 	"github.com/tylergannon/skgo"
+	appconfig "github.com/tylergannon/skgo/example/internal/app"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
 	hooks "github.com/tylergannon/skgo/example/web/src"
 )
@@ -84,29 +84,10 @@ const SessionCookie = "skgo_session"
 // without asking the app what it just rendered.
 const supportID = "case-1121"
 
-// HandleError is the app's `handleError` hook — kit's own contract, mirrored:
-// it runs for page and remote-function failures, expected or not
-// (`exports/hooks/public.d.ts`: "runs for every error thrown ... except
-// redirects"), and whatever it returns is merged over what the error already
-// carries.
-//
-// Every failure gets a support id, which is the one thing a real error page
-// almost always adds and kit's own default has no room for. An error nobody
-// meant to happen also loses its own message here: this app makes no promise
-// about what an arbitrary Go error's text might contain, so the visitor is
-// told something a person wrote instead of it. caught.Err still carries the
-// real one, for a hook that wants to log it before replacing it.
+// HandleError exposes the example's configured application error policy.
 func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
-	extra := map[string]any{"supportId": supportID}
-	if caught.Kind == "validation" && strings.HasSuffix(skgo.EventFrom(ctx).Request().URL.Path, "/validateCatalog") {
-		return map[string]any{"message": "Choose a catalog name.", "reference": "catalog-validation-166"}
-	}
-	if caught.Kind == "unknown" {
-		extra["message"] = "Something went wrong on our end."
-	}
-	return extra
+	return appconfig.Config.HandleError(ctx, caught)
 }
-
 
 // NewHandler builds the app's server over the embedded production build in dist.
 //
@@ -176,10 +157,11 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 		// A render-time `event.fetch` of the app's own routes is answered
 		// by the whole stack, pages included; see `app`.
 		ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-			Runtimes:    runtimes,
-			Fetch:       internal,
-			HandleFetch: handleFetch,
-			Actions:     actions,
+			Runtimes:                        runtimes,
+			Fetch:                           internal,
+			HandleFetch:                     appconfig.Config.HandleFetch,
+			FilterSerializedResponseHeaders: appconfig.Config.FilterSerializedResponseHeaders,
+			Actions:                         actions,
 		})
 		if err != nil {
 			return nil, err
@@ -196,10 +178,10 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 	//
 	remoteCfg.Transport = generated.Transport()
 	loadCfg.Transport = generated.Transport()
-	remoteCfg.HandleError = HandleError
-	loadCfg.HandleError = HandleError
-	endpointCfg.HandleError = HandleError
-	handleCfg.HandleError = HandleError
+	remoteCfg.HandleError = appconfig.Config.HandleError
+	loadCfg.HandleError = appconfig.Config.HandleError
+	endpointCfg.HandleError = appconfig.Config.HandleError
+	handleCfg.HandleError = appconfig.Config.HandleError
 
 	remotes, err := skgo.NewRemotes(remoteCfg, generated.Remotes()...)
 	if err != nil {
@@ -232,34 +214,15 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 		Origin:      origin,
 		Base:        manifest.Base,
 		Handler:     internal,
-		HandleFetch: handleFetch,
+		HandleFetch: appconfig.Config.HandleFetch,
 		Prerendered: manifest.Prerendered,
 	}.Intercept(app), nil
 }
 
-// The example hook rewrites an API alias query before dispatch and marks the
-// response. Fetching this API in a universal load still reuses its response
-// during hydration; the hook itself only runs in Go.
+// handleFetch retains the example package's focused hook tests.
 func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*http.Response, error) {
-	request = request.Clone(ctx)
-	if request.URL.Path == "/api/todos" {
-		query := request.URL.Query()
-		query.Del("via")
-		request.URL.RawQuery = query.Encode()
-	}
-	if strings.HasPrefix(request.URL.Path, "/api/replay/") && request.URL.Query().Has("alias") {
-		query := request.URL.Query()
-		query.Del("alias")
-		query.Set("step", "rewritten")
-		request.URL.RawQuery = query.Encode()
-	}
-	response, err := next(request)
-	if err == nil && strings.HasPrefix(request.URL.Path, "/api/") {
-		response.Header.Set("X-Fetch-Hook", "Go")
-	}
-	return response, err
+	return appconfig.Config.HandleFetch(ctx, request, next)
 }
-
 
 // FlyClientAddress reads the client address from the header Fly's proxy sets.
 // Install it with handleCfg.ClientAddress only when every request arrives
@@ -300,10 +263,11 @@ A request passes through the handlers from the outside in:
 ```go
 /// file: server.go
 ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
-	Runtimes:    runtimes,
-	Fetch:       internal,
-	HandleFetch: handleFetch,
-	Actions:     actions,
+	Runtimes:                        runtimes,
+	Fetch:                           internal,
+	HandleFetch:                     appconfig.Config.HandleFetch,
+	FilterSerializedResponseHeaders: appconfig.Config.FilterSerializedResponseHeaders,
+	Actions:                         actions,
 })
 ```
 

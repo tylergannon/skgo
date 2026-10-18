@@ -327,11 +327,13 @@ The hook is a Go function set on the server's configuration, and what it returns
 // about what an arbitrary Go error's text might contain, so the visitor is
 // told something a person wrote instead of it. caught.Err still carries the
 // real one, for a hook that wants to log it before replacing it.
-func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
-	extra := map[string]any{"supportId": supportID}
-	if caught.Kind == "validation" && strings.HasSuffix(skgo.EventFrom(ctx).Request().URL.Path, "/validateCatalog") {
-		return map[string]any{"message": "Choose a catalog name.", "reference": "catalog-validation-166"}
+func handleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
+	if caught.Kind == "validation" {
+		if event := skgo.EventFrom(ctx); event != nil && event.Request() != nil && strings.HasSuffix(event.Request().URL.Path, "/validateCatalog") {
+			return map[string]any{"message": "Choose a catalog name.", "reference": "catalog-validation-166"}
+		}
 	}
+	extra := map[string]any{"supportId": "case-1121"}
 	if caught.Kind == "unknown" {
 		extra["message"] = "Something went wrong on our end."
 	}

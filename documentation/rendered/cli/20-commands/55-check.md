@@ -23,4 +23,6 @@ same check as a tool.
 | `--locals-type` | `Locals` | application locals named struct |
 | `--hook-package` |  | optional request hook Go import path |
 | `--hook-symbol` | `Handle` | selected request hook symbol |
+| `--config-package` |  | optional shared ApplicationConfig Go import path |
+| `--config-symbol` | `Config` | selected ApplicationConfig value |
 | `--json` | `false` | write a structured JSON report |

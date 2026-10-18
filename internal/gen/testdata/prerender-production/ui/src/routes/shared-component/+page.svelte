@@ -1,0 +1,1 @@
+<script>import Failure from "./Failure.svelte";</script><h1>Shared component policy</h1><svelte:boundary><Failure />{#snippet failed(error)}<p>{error.status}|{error.message}|{error.supportId}|{error.hookCalls}</p>{/snippet}</svelte:boundary>

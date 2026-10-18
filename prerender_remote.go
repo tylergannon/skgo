@@ -75,7 +75,8 @@ func runPrerenderRemote(ctx context.Context, raw []byte, out io.Writer, transpor
 	for name, values := range input.Headers {
 		request.Header[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
 	}
-	registry, err := NewRemotes(RemoteConfig{Origin: pageURL.Scheme + "://" + pageURL.Host, Transport: transport}, remotes...)
+	options, _ := ctx.Value(prerenderOptionsKey{}).(PrerenderServiceOptions)
+	registry, err := NewRemotes(RemoteConfig{Origin: pageURL.Scheme + "://" + pageURL.Host, Transport: transport, HandleError: options.HandleError}, remotes...)
 	if err != nil {
 		return err
 	}
@@ -93,7 +94,8 @@ func runPrerenderRemote(ctx context.Context, raw []byte, out io.Writer, transpor
 	if fn == nil || (!dev && fn.kind != KindPrerender) || (dev && fn.kind != KindQuery && fn.kind != KindPrerender) {
 		return fmt.Errorf("skgo: no generated Go prerender remote for %s#%s", input.Module, input.Name)
 	}
-	result := registry.invokePayload(withEvent(request.Context(), registry.newEvent(request, false)), fn, input.Payload)
+	callContext := withEvent(request.Context(), registry.newEvent(request, false))
+	result := registry.invokePayload(callContext, fn, input.Payload)
 	if result.argumentError {
 		return fmt.Errorf("skgo: decode prerender argument for %s: %s", fn.id, result.diagnostic)
 	}
@@ -117,11 +119,20 @@ func runPrerenderRemote(ctx context.Context, raw []byte, out io.Writer, transpor
 			kind = "app"
 		}
 		response := struct {
-			Type       string     `json:"type"`
-			Kind       string     `json:"kind"`
-			Error      *HTTPError `json:"error"`
-			Diagnostic *string    `json:"diagnostic,omitempty"`
+			Type       string          `json:"type"`
+			Kind       string          `json:"kind"`
+			Error      *HTTPError      `json:"error"`
+			Diagnostic *string         `json:"diagnostic,omitempty"`
+			Body       json.RawMessage `json:"body,omitempty"`
 		}{Type: "error", Kind: kind, Error: asHTTPError(err)}
+		if options.HandleError != nil {
+			handled := registry.callError(callContext, err)
+			response.Body, err = json.Marshal(handled)
+			if err != nil {
+				return err
+			}
+			response.Error = &HTTPError{Status: handled.Status, Message: handled.Message}
+		}
 		if kind == "unknown" {
 			response.Diagnostic = &diagnostic
 		}

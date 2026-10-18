@@ -99,6 +99,10 @@ func servePrerenderService(ctx context.Context, control io.ReadWriteCloser, tran
 }
 
 func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, remotes []*Remote, abandoned func(error), sessions ...*prerenderRequests) http.Handler {
+	exchanges := &devFetchRequests{}
+	if len(sessions) > 0 {
+		context.AfterFunc(sessions[0].ctx, exchanges.close)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		expected := "Bearer " + secret
 		if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte(expected)) != 1 {
@@ -109,13 +113,17 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		if len(sessions) > 0 && (r.URL.Path == "/fetch-begin" || r.URL.Path == "/fetch-response" || r.URL.Path == "/fetch-next" || r.URL.Path == "/fetch-end") {
+			serveFetchHook(w, r, sessions[0], exchanges, r.URL.Path, sessions[0].options.HandleFetch)
+			return
+		}
 		raw, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
 		lifecycle := r.URL.Path == "/begin" || r.URL.Path == "/response" || r.URL.Path == "/end"
-		if r.URL.Path != "/load" && r.URL.Path != "/remote" && r.URL.Path != "/inputs" && r.URL.Path != "/endpoint" && r.URL.Path != "/cookies" && r.URL.Path != "/resolve-option" && r.URL.Path != "/reroute" && r.URL.Path != "/entries" && !lifecycle {
+		if r.URL.Path != "/load" && r.URL.Path != "/remote" && r.URL.Path != "/inputs" && r.URL.Path != "/endpoint" && r.URL.Path != "/cookies" && r.URL.Path != "/error" && r.URL.Path != "/resolve-option" && r.URL.Path != "/reroute" && r.URL.Path != "/entries" && !lifecycle {
 			http.NotFound(w, r)
 			return
 		}
@@ -192,6 +200,17 @@ func prerenderHandler(secret string, transport Transport, loads []*ServerLoad, r
 			err = runPrerenderLoad(r.Context(), bytes.NewReader(raw), &answer, transport, loads)
 		case r.URL.Path == "/remote":
 			err = runPrerenderRemote(r.Context(), raw, &answer, transport, remotes)
+		case r.URL.Path == "/error":
+			if boundRequest == nil {
+				err = fmt.Errorf("skgo: error hook needs a logical request")
+			} else {
+				request := boundRequest.request.WithContext(r.Context())
+				shared := &loadRequest{responseState: newResponseState(request), req: request, jar: requestCookieJar(request, false), url: request.URL, routeID: boundRequest.input.RouteID, params: boundRequest.input.Params}
+				policy := &SSR{loads: &Loads{cfg: LoadConfig{HandleError: sessions[0].options.HandleError}}}
+				var body []byte
+				body, err = policy.boundaryError(hookContext(request, shared), boundRequest.input.RouteID, raw)
+				answer.Write(body)
+			}
 		case r.URL.Path == "/endpoint":
 			if boundRequest == nil {
 				err = fmt.Errorf("skgo: endpoint needs a logical request")

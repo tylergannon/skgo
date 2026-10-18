@@ -20,7 +20,7 @@ Errors in SKGo follow [Kit's model](https://svelte.dev/docs/kit/errors). An erro
 
 The error a page receives is an `App.Error`: `{ status, message }` plus any fields your [`handleError`](hooks#handleError) hook adds. SKGo builds it in Go and hands it to Kit, so `page.error` in `+error.svelte` and the `error` of a `failed` snippet have the same shape as in any Kit app.
 
-Kit's hook sees one of four kinds: `'app'`, `'framework'`, `'validation'` or `'unknown'`. The Go hook sees two. `"app"` is an error with a status: your own `*skgo.HTTPError`, or one SKGo raised itself. `"unknown"` covers everything else.
+Kit's hook sees one of four kinds: `'app'`, `'framework'`, `'validation'` or `'unknown'`. The Go hook sees three: `"app"` for an error with a status, including your own `*skgo.HTTPError` and errors SKGo raises itself; `"validation"` for a rejected generated remote argument; and `"unknown"` for other failures.
 
 ## App errors
 
@@ -88,25 +88,20 @@ The Go `handleError` hook runs, for any error but a redirect, on:
 - a load that fails while answering a client navigation's `__data.json`;
 
 - a remote function that returns an error or panics, including streamed query errors and query refreshes;
+- a rejected generated remote argument, before its Go body runs;
 - an error a Svelte boundary catches during server rendering, in production and development;
 
 - a path that matches no route;
 - an error `handle` returns for a document request; data and remote requests get JSON without the hook;
 - a panic in a `+server` route, answered as JSON or as the fallback error page depending on `Accept`.
 
-It does not run:
-
-
-
-- while [prerendering](prerendering) ([#278](https://github.com/tylergannon/skgo/issues/278)).
-
+Select it through [shared application configuration](prerendering#Shared-application-configuration) to apply the same policy during prerendering.
 
 Set the same `HandleError` on the load, remote, endpoint and handle configurations in `server.go`; [Server composition](server-composition) shows where. The load configuration supplies the hook for Svelte component boundaries. Already-handled errors reuse their public body without running the hook again. The example application uses it to attach a support id to every failure and to replace the message of an unknown error:
 
-
 ```go
-/// file: server.go
-/// include: example/server.go#handle-error
+/// file: internal/app/config.go
+/// include: example/internal/app/config.go#handle-error
 ```
 
 `caught.Status` and `caught.Message` are what the visitor gets if the hook returns `nil`. `caught.Kind` is `"app"`, `"unknown"` or `"validation"`. Validation carries separate private `caught.Issues`. `caught.Err` is the original error, set only for `"unknown"`; classify it with `errors.As`. The map you return overrides fields: `"status"` must be an `int` and `"message"` a `string`, and other keys become extra `App.Error` fields. The hook's event is read-only, so it cannot set cookies. A hook that panics is logged, and the message becomes `"Internal Error"`, even for an `"app"` error.

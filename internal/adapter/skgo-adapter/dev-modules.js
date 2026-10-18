@@ -31,7 +31,7 @@ export function devModules({ base = "", appDir = "_app" } = {}) {
         "utf8",
       );
       return (
-        `const devBase = ${JSON.stringify(base)};\nconst devAppDir = ${JSON.stringify(appDir)};\nconst predicateWorkerURL = ${JSON.stringify(pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), "dev-predicates.js")).href)};\nimport * as transport from ${JSON.stringify(join(kit, "src/runtime/app/internal/transport.js"))};\nimport * as devalue from ${JSON.stringify(require.resolve("devalue"))};\n` +
+        `import {bridgeFetch,incomingResponse} from ${JSON.stringify(join(dirname(fileURLToPath(import.meta.url)), "fetch-bridge.js"))};\nconst devBase = ${JSON.stringify(base)};\nconst devAppDir = ${JSON.stringify(appDir)};\nconst predicateWorkerURL = ${JSON.stringify(pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), "dev-predicates.js")).href)};\nimport * as transport from ${JSON.stringify(join(kit, "src/runtime/app/internal/transport.js"))};\nimport * as devalue from ${JSON.stringify(require.resolve("devalue"))};\n` +
         bridge
       );
     },

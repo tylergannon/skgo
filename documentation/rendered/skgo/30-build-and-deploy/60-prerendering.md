@@ -23,13 +23,15 @@ import (
 	http "net/http"
 
 	skgo "github.com/tylergannon/skgo"
+	application "github.com/tylergannon/skgo/example/internal/app"
 	generated "github.com/tylergannon/skgo/example/internal/skgo"
 	apphooks "github.com/tylergannon/skgo/example/web/src"
 )
 
 func main() {
-	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{Reroute: apphooks.Reroute, BindRequest: func(next http.Handler) http.Handler {
-		return generated.RequestBoundary(skgo.HandleConfig{Matchers: generated.Matchers(), ClientAddress: func(*http.Request) (string, error) {
+	config := application.Config
+	if err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{Reroute: apphooks.Reroute, HandleFetch: config.HandleFetch, HandleError: config.HandleError, FilterSerializedResponseHeaders: config.FilterSerializedResponseHeaders, BindRequest: func(next http.Handler) http.Handler {
+		return generated.RequestBoundary(skgo.HandleConfig{HandleError: config.HandleError, Matchers: generated.Matchers(), ClientAddress: func(*http.Request) (string, error) {
 			return "", fmt.Errorf("skgo: client address unavailable during prerender")
 		}}, next)
 	}, Entries: generated.Entries(), Endpoints: generated.Endpoints(), Matchers: generated.Matchers()}); err != nil {
@@ -91,7 +93,7 @@ Kit's rules for [when not to prerender](page-options#prerender-When-not-to-prere
 
 ## Dynamic entries
 
-For a dynamic route no crawled link reaches, export [`entries`](https://svelte.dev/docs/kit/page-options#entries) from `+page.ts`. The Go load runs once per entry:
+For a dynamic route no crawled link reaches, export [`entries`](https://svelte.dev/docs/kit/page-options#entries) from `+page.ts`, or register a Go producer with [`skgo.Entries`](skgo-loads#Entries) in `page.server.go` or `server.go`. The Go load runs once per entry:
 
 ```ts
 /// file: src/routes/prerender/[slug]/+page.ts
@@ -131,7 +133,7 @@ func entries() ([]EntryParams, error) {
 var _ = skgo.Entries(entries)
 ```
 
-`entries` is a page option, so there is no Go spelling of it. When the list lives in Go, write it to a JSON file from `go generate` and return that file's contents from `entries`.
+A Go producer takes no request event and returns the route's generated `EntryParams` values. Kit calls it during route analysis, before prerendering. An `entries` export in universal `+page.ts` takes precedence over Go page entries; page entries take precedence over endpoint entries.
 
 ## Prerendering server routes
 
@@ -178,55 +180,59 @@ go tool skgo kit-patch --web web --check
 
 A Go load that returns a `*skgo.Redirect` while prerendering produces Kit's redirect artifact, an HTML file with a script and a `<meta http-equiv="refresh">` pointing at the destination. The binary serves that file with status 200 and no `Location` header, as Kit's static output is served, and answers `POST` to it with a 405. The crawler follows the redirect, so a prerenderable destination is prerendered too; a dynamic destination stays dynamic.
 
-## Custom prerender service
+## Shared application configuration
 
-The generated service binds your `handle` hook, endpoints, matchers and transport, and nothing you set on `SSROptions` in `server.go`. To share a setting with the build, write your own `package main` around [`RunPrerenderService`](skgo-server#RunPrerenderService) and point the adapter's `prerenderPackage` at it:
+Keep `HandleFetch`, `HandleError` and the default serialized-header filter in one
+[`ApplicationConfig`](skgo-hooks#ApplicationConfig) value:
 
 ```go
-/// file: buildservice/main.go
-// Command prerender is a hand-written prerender build service: the generated
-// one plus the response-header filter the handle hook uses. Point the adapter's
-// prerenderPackage option at it to use it.
-package main
-
-import (
-	"fmt"
-	"log"
-	"net/http"
-
-	"github.com/tylergannon/skgo"
-
-	"github.com/tylergannon/skgo/example/internal/app"
-	generated "github.com/tylergannon/skgo/example/internal/skgo"
-)
-
-func main() {
-	err := skgo.RunPrerenderService(generated.Transport(), generated.Loads(), generated.Remotes(), skgo.PrerenderServiceOptions{
-		BindRequest: func(next http.Handler) http.Handler {
-			return generated.RequestBoundary(skgo.HandleConfig{
-				Matchers: generated.Matchers(),
-				ClientAddress: func(*http.Request) (string, error) {
-					return "", fmt.Errorf("unavailable during prerender")
-				},
-			}, next)
-		},
-		Endpoints: generated.Endpoints(),
-		Matchers:  generated.Matchers(),
-		// The same filter the handle hook passes to resolve.
-		FilterSerializedResponseHeaders: app.SerializedHeader,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+/// file: internal/app/config.go
+// Config is the application policy selected by go:generate and read by server.go.
+// Generated registrations and the request boundary remain generated.
+var Config = skgo.ApplicationConfig{
+	HandleFetch:                     handleFetch,
+	HandleError:                     handleError,
+	FilterSerializedResponseHeaders: SerializedHeader,
 }
 ```
 
-```ts
-/// file: web/vite.config.ts
-adapter: skgo({ prerenderPackage: "./buildservice" });
+Select that value in the generation declaration:
+
+```go
+/// file: internal/skgo/config.go
+// Package skgo holds the generated implementation for the example application.
+package skgo
+
+//go:generate go tool skgo generate --web ../../web --config-package github.com/tylergannon/skgo/example/internal/app --locals-package github.com/tylergannon/skgo/example/internal/app --hook-package github.com/tylergannon/skgo/example/internal/serverhooks
 ```
 
-`generated.Transport()` exists only when `src/hooks.go` declares `Transported` types; pass `nil` otherwise. [`PrerenderServiceOptions`](skgo-server#PrerenderServiceOptions) lists what the service can take.
+`--config-package` names the Go package; `--config-symbol` selects an exported
+`ApplicationConfig` variable and defaults to `Config`. Keep its package loadable
+before generation: use the runtime's `skgo.RequestLocals` when a hook needs typed
+locals, rather than depending on a generated helper.
+
+The default generated prerender command reads the selected value. It still owns
+the generated loads, remotes, endpoints, matchers, transport and request boundary.
+No custom entry point or adapter setting is needed. The same value configures the
+runtime stack in `server.go`: `HandleError` on the load, remote, endpoint and
+request configs, `HandleFetch` on both `FetchConfig` and `SSROptions`, and the
+header filter on `SSROptions`. `skgo new` wires these assignments for you.
+
+At build time the fetch hook surrounds Kit's supplied fetch continuation for a
+universal load, and Go's dispatcher for `event.Fetch`. The error hook runs for
+build-time loads, remotes, endpoints and render errors; an already-handled remote
+error reuses its public body. An explicit per-request
+`ResolveOptions.FilterSerializedResponseHeaders` replaces the shared default in
+both modes. Without a selected config, the generated service keeps its existing
+defaults: no fetch hook or application error hook, and no serialized headers.
+
+### Custom prerender service
+
+[`prerenderPackage`](adapter#Options-prerenderPackage) remains available when the
+build needs an application-owned entry point. Such an entry calls
+[`RunPrerenderService`](skgo-server#RunPrerenderService) and supplies its generated
+registrations itself. [`PrerenderServiceOptions`](skgo-server#PrerenderServiceOptions)
+lists the available settings.
 
 ## Static-only output
 
@@ -235,5 +241,3 @@ SKGo has no static export. Even when every page is prerendered, the build is sha
 ## Limitations
 
 - At build time, `event.Fetch` from Go reaches `server.go` routes. A known page, its `__data.json` path or the remote-function service needs Kit's request context, which the Go build callback cannot enter. These fetches return a Go error naming the unavailable destination; they do not return a misleading 404. A genuinely missing route still returns 404. Fetch page/data/remote destinations from a universal load when Kit must handle them during prerendering.
-- `HandleFetch` and `HandleError` are not carried into the build; `PrerenderServiceOptions` has no field for them.
-- The generated service does not see the `FilterSerializedResponseHeaders` you give `SSROptions`. Use a [custom service](#Custom-prerender-service) to share it.

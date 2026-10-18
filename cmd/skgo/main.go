@@ -164,13 +164,15 @@ func checkProject(args []string) {
 	localsType := fs.String("locals-type", "Locals", "application locals named struct")
 	hookPackage := fs.String("hook-package", "", "optional request hook Go import path")
 	hookSymbol := fs.String("hook-symbol", "Handle", "selected request hook symbol")
+	configPackage := fs.String("config-package", "", "optional shared ApplicationConfig Go import path")
+	configSymbol := fs.String("config-symbol", "Config", "selected ApplicationConfig value")
 	jsonOutput := fs.Bool("json", false, "write a structured JSON report")
 	_ = fs.Parse(args)
 	if fs.NArg() != 0 {
 		fs.Usage()
 		os.Exit(2)
 	}
-	report := check.Run(context.Background(), check.Options{Root: *root, Web: *web, Out: *out, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol})
+	report := check.Run(context.Background(), check.Options{Root: *root, Web: *web, Out: *out, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol, ConfigPackage: *configPackage, ConfigSymbol: *configSymbol})
 	if *jsonOutput {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
@@ -193,6 +195,8 @@ func generate(args []string) {
 	localsType := fs.String("locals-type", "Locals", "application locals named struct")
 	hookPackage := fs.String("hook-package", "", "optional request hook Go import path")
 	hookSymbol := fs.String("hook-symbol", "Handle", "selected request hook symbol")
+	configPackage := fs.String("config-package", "", "optional shared ApplicationConfig Go import path")
+	configSymbol := fs.String("config-symbol", "Config", "selected ApplicationConfig value")
 	cacheDir := fs.String("cache-dir", "", "generation cache directory; defaults to the user cache; off disables caching")
 	quiet := fs.Bool("quiet", false, "do not list the files written")
 	swiftOut := fs.String("swift-out", "", "generated Swift source file")
@@ -203,7 +207,7 @@ func generate(args []string) {
 	})
 	_ = fs.Parse(args)
 
-	cfg := gen.Config{Web: *web, Out: *out, Package: *pkg, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol}
+	cfg := gen.Config{Web: *web, Out: *out, Package: *pkg, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol, ConfigPackage: *configPackage, ConfigSymbol: *configSymbol}
 	cfg.CacheDir = *cacheDir
 	cfg.SwiftOut, cfg.SwiftRemotes = *swiftOut, swiftRemotes
 	if !*quiet {
@@ -225,7 +229,7 @@ func rejectMultipleSelections(args []string) {
 	for _, arg := range args {
 		name, _, _ := strings.Cut(strings.TrimLeft(arg, "-"), "=")
 		switch name {
-		case "locals-package", "locals-type", "hook-package", "hook-symbol":
+		case "locals-package", "locals-type", "hook-package", "hook-symbol", "config-package", "config-symbol":
 			if seen[name] {
 				fmt.Fprintf(os.Stderr, "skgo: multiple configured selections for %s\n", name)
 				os.Exit(2)

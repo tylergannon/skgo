@@ -57,6 +57,14 @@ type devFetchInput struct {
 }
 
 func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessions *prerenderRequests, exchanges *devFetchRequests, operation string) {
+	var hook HandleFetch
+	if d.renderer != nil {
+		hook = d.renderer.handleFetch
+	}
+	serveFetchHook(w, r, sessions, exchanges, operation, hook)
+}
+
+func serveFetchHook(w http.ResponseWriter, r *http.Request, sessions *prerenderRequests, exchanges *devFetchRequests, operation string, hook HandleFetch) {
 	_ = http.NewResponseController(w).EnableFullDuplex()
 	id := r.Header.Get("X-Skgo-Fetch")
 	var exchange *devFetchExchange
@@ -121,7 +129,6 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 					return nil, ctx.Err()
 				}
 			}
-			hook := d.renderer.handleFetch
 			var response *http.Response
 			var callErr error
 			if hook == nil {
@@ -138,6 +145,10 @@ func (d *NativeDevelopment) fetch(w http.ResponseWriter, r *http.Request, sessio
 		exchanges.mu.Lock()
 		exchange = exchanges.entries[id]
 		exchanges.mu.Unlock()
+		if exchange == nil && operation == "/fetch-end" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if exchange == nil {
 			http.Error(w, "unknown development fetch", 409)
 			return

@@ -79,12 +79,13 @@ export function prerenderModules() {
 				const fn = exports.get('load');
 				if (fn?.type !== 'ArrowFunctionExpression' || fn.params.length !== 1) fail();
 				const event = fn.params[0].name;
-				imports += "import { error as $skgoError, redirect as $skgoRedirect } from '@sveltejs/kit';\n";
+				imports += "import { error as $skgoError, redirect as $skgoRedirect } from '@sveltejs/kit';\nimport {HandledHttpError as $skgoHandled} from '@sveltejs/kit/internal';\n";
 				edits.push([fn.body.start, fn.body.end, `{
 	const bridge = ${event}.platform?.skgoPrerenderLoad;
 	if (!bridge) throw new Error('skgo: prerender Go load bridge unavailable');
 	const answer = await bridge(${JSON.stringify(module)}, ${JSON.stringify(declaration.source)}, ${event});
 	if (answer.redirect) $skgoRedirect(answer.redirect.status, answer.redirect.location);
+	if (answer.body) throw new $skgoHandled(answer.body);
 	if (answer.error) $skgoError(answer.error.status, answer.error.message);
 	if (answer.data === undefined) throw new Error('skgo: prerender Go load returned no data');
 	return answer.data;
@@ -125,11 +126,12 @@ export function prerenderModules() {
 				if (remote.inputs) edits.push([callback.end, callback.end, `, { inputs: () => $skgoInputs(${JSON.stringify(module)}, ${JSON.stringify(remote.name)}) }`]);
 			}
 			if (/\/hooks\.server\.(ts|js)$/.test(module)) {
-				if (declaration?.hook !== true || exports.has('handle') || exports.has('handleFetch')) fail();
-				return `import { requestHandle, requestFetch } from '${helper}';
+				if (declaration?.hook !== true || exports.has('handle') || exports.has('handleFetch') || exports.has('handleError')) fail();
+				return `import { requestHandle, requestFetch, requestError } from '${helper}';
 ${code}
 export const handle = ({ event, resolve }) => requestHandle(event, resolve);
 export const handleFetch = (input) => requestFetch(input);
+export const handleError = (input) => requestError(input);
 `;
 			}
 			if (!edits.length) return;

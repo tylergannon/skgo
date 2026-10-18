@@ -45,6 +45,7 @@
 		"skgo-adapter/dev-host.js",
 		"skgo-adapter/dev-modules.js",
 		"skgo-adapter/dev-bridge.js",
+		"skgo-adapter/fetch-bridge.js",
 		"skgo-adapter/dev-predicates.js",
 		"skgo-adapter/entry.js",
 		"skgo-adapter/env.js",

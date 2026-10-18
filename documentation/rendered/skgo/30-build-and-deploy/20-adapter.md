@@ -58,7 +58,7 @@ Writes `.br` and `.gz` copies of the files under `client/` and `prerendered/`. I
 
 ### prerenderPackage
 
-The Go package that answers Kit's build-time requests, relative to your Go module root. It defaults to the entry `skgo generate` writes under `internal/skgo/prerender`. Set it when the build should share settings with your production renderer; see [Custom prerender service](prerendering#Custom-prerender-service).
+The Go package that answers Kit's build-time requests, relative to your Go module root. It defaults to the entry `skgo generate` writes under `internal/skgo/prerender`. Share application hooks and renderer defaults through [application configuration](prerendering#Shared-application-configuration). Set `prerenderPackage` only for an application-owned build entry point.
 
 ## What the adapter writes
 

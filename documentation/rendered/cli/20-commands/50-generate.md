@@ -28,6 +28,8 @@ see, and the Go registration the server mounts. New applications run it from a
 | `--locals-type` | `Locals` | application locals named struct |
 | `--hook-package` |  | optional request hook Go import path |
 | `--hook-symbol` | `Handle` | selected request hook symbol |
+| `--config-package` |  | optional shared ApplicationConfig Go import path |
+| `--config-symbol` | `Config` | selected ApplicationConfig value |
 | `--cache-dir` |  | generation cache directory; defaults to the user cache; off disables caching |
 | `--quiet` | `false` | do not list the files written |
 | `--swift-out` |  | generated Swift source file |

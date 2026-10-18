@@ -9,6 +9,8 @@ import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { isMainThread, BroadcastChannel, receiveMessageOnPort } from "node:worker_threads";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { request as httpRequest } from "node:http";
+import { bridgeFetch } from "./fetch-bridge.js";
 
 const owners = new Map();
 const SERVICE_URL = "SKGO_PRERENDER_SERVICE_URL";
@@ -103,7 +105,7 @@ function validateEnvelope(request, raw) {
   }
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("skgo prerender command returned a non-object response");
-  if (["begin", "response", "end", "endpoint", "cookies", "resolve-option", "reroute"].includes(request.kind)) return;
+  if (["begin", "response", "end", "endpoint", "cookies", "error", "resolve-option", "reroute"].includes(request.kind)) return;
   if (request.kind === "entries") {
     if (!Array.isArray(value.entries)) throw new Error("skgo prerender entries response has no array");
   } else if (request.kind === "remote-inputs") {
@@ -610,7 +612,11 @@ async function invokeService(request) {
   const identity = request.kind === "resolve-option" ? `${request.option} resolve callback` : `${request.kind} ${request.module}/${request.name ?? ""}`;
   if (!url || !secret) throw new Error(`skgo prerender service unavailable for ${identity}`);
   const { kind, ...body } = request;
-  const path = { load: "/load", remote: "/remote", "remote-inputs": "/inputs", begin: "/begin", response: "/response", end: "/end", endpoint: "/endpoint", cookies: "/cookies", "resolve-option": "/resolve-option", reroute: "/reroute", entries: "/entries" }[kind];
+  if (kind === "error") {
+    body.kind = body.errorKind;
+    delete body.errorKind;
+  }
+  const path = { load: "/load", remote: "/remote", "remote-inputs": "/inputs", begin: "/begin", response: "/response", end: "/end", endpoint: "/endpoint", cookies: "/cookies", error: "/error", "resolve-option": "/resolve-option", reroute: "/reroute", entries: "/entries" }[kind];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CALLBACK_TIMEOUT);
   try {
@@ -774,6 +780,7 @@ export async function remoteFunction(module, name, arg, event) {
     headers,
   });
   const answer = JSON.parse(raw);
+  if (answer.type === "error" && answer.body) throw new internal.HandledHttpError(answer.body);
   if (answer.type === "error" && answer.kind === "app") throw new internal.HttpError(answer.error);
   if (answer.type === "error" && answer.kind === "unknown") throw new Error(answer.diagnostic);
   if (answer.type === "redirect")
@@ -839,11 +846,13 @@ export async function requestHandle(event, resolveRequest) {
     applyRequestEffects(event, answer);
     const { internal } = await runtime();
     if (answer.redirect) throw new internal.Redirect(answer.redirect.status, answer.redirect.location);
+    if (answer.body) throw new internal.HandledHttpError(answer.body);
     if (answer.error) throw new internal.HttpError(answer.error);
     let final = answer.response;
     if (answer.resolve) {
       event.platform ??= {};
       event.platform.skgoRequestHandle = handle;
+ event.platform.skgoErrorHook = answer.errorHook === true;
       const options = {};
       if (answer.options?.transform) options.transformPageChunk = async ({ html, done }) => {
         try {
@@ -894,26 +903,93 @@ export async function requestHandle(event, resolveRequest) {
 
 /** Kit has applied internal response cookies before its supplied fetch returns. */
 export async function requestFetch({ event, request, fetch }) {
-  const target=new URL(request.url);
-  if(target.origin===event.url.origin && target.pathname.endsWith('/reroute')) {
-    const manifest=await rerouteManifest();
-    if(target.pathname!==`${manifest.base}/${manifest.appDir}/reroute`) return fetch(request);
-    const answer=await invokeService({kind:'reroute',url:target.searchParams.get('url'),headers:Object.fromEntries([...event.request.headers].map(([key,value])=>[key,[value]])),manifest});
-    return new Response(answer,{headers:{'content-type':'application/json'}});
-  }
-  const scope = { internal: false };
-  return internalFetch.run(scope, async () => {
-    const response = await fetch(request);
-    const cookies = response.headers.getSetCookie();
-    const handle = event.platform?.skgoRequestHandle;
-    if (scope.internal && handle && cookies.length) {
-      // Match the order in which Kit applied concurrent fetch responses.
-      const previous = cookieRelays.get(event.platform) ?? Promise.resolve();
-      const relay = previous.then(() => invokeService({ kind: "cookies", handle, url: request.url, cookies }));
-      cookieRelays.set(event.platform, relay);
-      await relay;
+  const continuedFetch = async (continued) => {
+    const target = new URL(continued.url);
+    if (target.origin === event.url.origin && target.pathname.endsWith('/reroute')) {
+      const manifest = await rerouteManifest();
+      if (target.pathname !== `${manifest.base}/${manifest.appDir}/reroute`) return fetch(continued);
+      const answer = await invokeService({kind:'reroute',url:target.searchParams.get('url'),headers:Object.fromEntries([...event.request.headers].map(([key,value])=>[key,[value]])),manifest});
+      return new Response(answer,{headers:{'content-type':'application/json'}});
     }
-    return response;
+    const scope = { internal: false };
+    return internalFetch.run(scope, async () => {
+      const response = await fetch(continued);
+      const cookies = response.headers.getSetCookie();
+      const handle = event.platform?.skgoRequestHandle;
+      if (scope.internal && handle && cookies.length) {
+        // Kit applies these cookies to the actual continuation URL, before
+        // handleFetch resumes. Rewrites and multiple continuations keep that
+        // same path and ordering in the originating Go event's cookie jar.
+        const previous = cookieRelays.get(event.platform) ?? Promise.resolve();
+        const relay = previous.then(() => invokeService({ kind: "cookies", handle, url: continued.url, cookies }));
+        cookieRelays.set(event.platform, relay);
+        await relay;
+      }
+      return response;
+    });
+  };
+  return bridgeFetch({event,request,fetch:continuedFetch}, buildFetchCall, event.platform?.skgoRequestHandle, event.request.signal);
+}
+
+// Application errors use the same Go policy as served documents. Go-originated
+// errors already carry a HandledHttpError body and Kit bypasses this hook.
+export function requestError({ event, kind, error, issues }) {
+ if (!event.platform?.skgoErrorHook) {
+ if(kind === "validation") console.error("Remote function schema validation failed:",issues);
+ if(kind === "unknown") {let cause=error;while(cause instanceof Error){if(cause.stack)console.error(cause.stack);cause=cause.cause;}}
+ return;
+ }
+  return invokeService({
+    kind: "error", handle: event.platform?.skgoRequestHandle,
+    body: kind === "unknown" ? {status:500,message:"Internal Error"} : error,
+    cause: kind === "unknown" ? (error?.stack || error?.message || String(error)) : "",
+    // The operation name and Kit's classification have separate owners.
+    errorKind: kind,
+  }).then(JSON.parse);
+}
+
+// The fetch exchange is shared with native development. Only its authenticated
+// HTTP address differs; Kit still performs every supplied continuation.
+function buildFetchCall(kind, payload, event, raw, signal) {
+  return new Promise((resolve, reject) => {
+    const request = httpRequest(new URL("/" + kind, process.env[SERVICE_URL]), {
+      method: "POST",
+      headers: {authorization:`Bearer ${process.env[SERVICE_SECRET]}`, ...(raw?.headers ?? {"content-type":"application/json"})},
+    }, response => {
+      response.on("error", () => {});
+      if (kind === "fetch-response" && response.statusCode === 204) cancelBody?.();
+      if ((response.statusCode < 200 || response.statusCode >= 300) && response.headers["x-skgo-fetch-state"] !== "final") {
+        let detail="";
+        response.setEncoding("utf8");
+        response.on("data", chunk => {detail+=chunk;});
+        response.on("end", () => reject(new Error(`skgo prerender ${kind} HTTP ${response.statusCode}: ${detail}`)));
+      } else resolve(response);
+    });
+    let cancelBody;
+    const abort = () => {cancelBody?.();request.destroy(new Error("skgo prerender fetch aborted"));};
+    signal?.addEventListener("abort", abort, {once:true});
+    request.on("close", () => signal?.removeEventListener("abort", abort));
+    request.on("error", reject);
+    if (signal?.aborted) {abort();return;}
+    if (!raw?.body) {request.end(raw ? undefined : JSON.stringify(payload));return;}
+    void (async () => {
+      const reader=raw.body.getReader();
+      cancelBody=() => {void reader.cancel().catch(() => {});};
+      try {
+        for (;;) {
+          const chunk=await reader.read();
+          if (chunk.done) break;
+          if (!request.write(chunk.value)) await new Promise((resolve,reject) => {
+            const clear=()=>{request.off("drain",drained);request.off("error",failed);};
+            const drained=()=>{clear();resolve();};
+            const failed=(error)=>{clear();reject(error);};
+            request.once("drain",drained);request.once("error",failed);
+          });
+        }
+        request.end();
+      } catch(error) {request.destroy(error);}
+      finally {cancelBody=undefined;reader.releaseLock();}
+    })();
   });
 }
 

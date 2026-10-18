@@ -1,0 +1,14 @@
+=== RUN   TestApplicationConfigSelectionIsExplicitAndTyped
+=== PAUSE TestApplicationConfigSelectionIsExplicitAndTyped
+=== CONT  TestApplicationConfigSelectionIsExplicitAndTyped
+=== RUN   TestApplicationConfigSelectionIsExplicitAndTyped/selected
+=== RUN   TestApplicationConfigSelectionIsExplicitAndTyped/wrong-type
+=== RUN   TestApplicationConfigSelectionIsExplicitAndTyped/function
+=== RUN   TestApplicationConfigSelectionIsExplicitAndTyped/missing
+--- PASS: TestApplicationConfigSelectionIsExplicitAndTyped (0.00s)
+    --- PASS: TestApplicationConfigSelectionIsExplicitAndTyped/selected (0.00s)
+    --- PASS: TestApplicationConfigSelectionIsExplicitAndTyped/wrong-type (0.00s)
+    --- PASS: TestApplicationConfigSelectionIsExplicitAndTyped/function (0.00s)
+    --- PASS: TestApplicationConfigSelectionIsExplicitAndTyped/missing (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	0.252s

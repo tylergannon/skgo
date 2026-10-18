@@ -48,7 +48,7 @@ func prepareProductionFixture(customDefaults bool) (productionFixture, error) {
 		}
 		for _, entry := range entries {
 			switch entry.Name() {
-			case "options-default", "options-rejected", "options-served", "options-api", "options-live-api":
+			case "options", "options-default", "options-rejected", "options-served", "options-api", "options-live-api", "typed-load", "lifecycle", "lifecycle-api", "lifecycle-cookies", "shared-fetch", "shared-fetch-served", "shared-api", "shared-live-api", "shared-error", "shared-error-served", "shared-component", "shared-component-served":
 			default:
 				if err := os.RemoveAll(filepath.Join(routes, entry.Name())); err != nil {
 					return productionFixture{}, err
@@ -58,15 +58,41 @@ func prepareProductionFixture(customDefaults bool) (productionFixture, error) {
 		if err := copySandboxFile(filepath.Join(root, "internal/gen/testdata/prerender-options/server_test.go"), filepath.Join(app, "server_test.go")); err != nil {
 			return productionFixture{}, err
 		}
-		if err := replaceOnce(filepath.Join(app, "ui", "vite.config.ts"), "adapter: skgo(),", "adapter: skgo({prerenderPackage: './buildservice'}),\n prerender: {handleHttpError: 'ignore', handleUnseenRoutes: 'ignore'},"); err != nil {
+		if err := replaceOnce(filepath.Join(app, "ui", "vite.config.ts"), "adapter: skgo(),", "adapter: skgo(),\n prerender: {handleHttpError: 'ignore', handleUnseenRoutes: 'ignore'},"); err != nil {
+			return productionFixture{}, err
+		}
+		if err := replaceOnce(filepath.Join(app, "internal/skgo/config.go"), "--hook-package", "--config-package github.com/tylergannon/skgo/example/internal/app --hook-package"); err != nil {
+			return productionFixture{}, err
+		}
+		if err := copySandboxFile(filepath.Join(root, "internal/gen/testdata/prerender-options/config.go"), filepath.Join(app, "internal/app/config.go")); err != nil {
+			return productionFixture{}, err
+		}
+		if err := replaceOnce(filepath.Join(app, "server.go"), "app = skgo.Sequence(skgo.Handle(func(context.Context) error { return nil }).Middleware(), middleware).Intercept(\n\t\thandleCfg, loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))", "app=generated.RequestBoundary(handleCfg,loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))"); err != nil {
+			return productionFixture{}, err
+		}
+		if err := replaceOnce(filepath.Join(app, "server.go"), "\"context\"", ""); err != nil {
+			return productionFixture{}, err
+		}
+		if err := replaceOnce(filepath.Join(app, "internal/serverhooks/handle.go"), "if strings.HasPrefix(event.URL().Path, \"/lifecycle/\") && !event.IsSubRequest() {\n\t\tif response.StatusCode", "if strings.HasPrefix(event.URL().Path, \"/shared-fetch\") {cookie,_:=event.Cookie(\"shared\");if cookie!=\"literal-cookie-278\" {return nil,fmt.Errorf(\"rewritten Kit fetch lost cookie path: %q\",cookie)}}\n if strings.HasPrefix(event.URL().Path, \"/lifecycle/\") && !event.IsSubRequest() {\n\t\tif response.StatusCode"); err != nil {
+			return productionFixture{}, err
+		}
+		if err := os.RemoveAll(filepath.Join(app, "buildservice")); err != nil {
 			return productionFixture{}, err
 		}
 	} else {
 		// The hook-refusal scenario intentionally emits one 418 internal fetch;
 		// keep every other production prerender HTTP error fatal.
-		if err := replaceOnce(filepath.Join(app, "ui", "vite.config.ts"), "adapter: skgo(),", "adapter: skgo(),\n      prerender: {handleHttpError: ({path, message}) => { if (path === '/hook-refused' || path === '/hook-target') return; throw new Error(message); }},"); err != nil {
+		if err := replaceOnce(filepath.Join(app, "ui", "vite.config.ts"), "adapter: skgo(),", "adapter: skgo(),\n      prerender: {handleHttpError: ({path, message}) => { if (path === '/hook-refused' || path === '/hook-target') return; throw new Error(message); }} ,"); err != nil {
 			return productionFixture{}, err
 		}
+		entries, err := os.ReadDir(filepath.Join(app, "ui/src/routes"))
+		if err != nil { return productionFixture{}, err }
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), "shared-") {
+				if err := os.RemoveAll(filepath.Join(app, "ui/src/routes", entry.Name())); err != nil { return productionFixture{}, err }
+			}
+		}
+		// Ordinary lifecycle proof uses strict defaults, including unseen-route and HTTP errors.
 		if err := os.RemoveAll(filepath.Join(app, "ui", "src", "routes", "options-rejected")); err != nil {
 			return productionFixture{}, err
 		}

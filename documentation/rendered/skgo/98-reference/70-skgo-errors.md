@@ -172,5 +172,4 @@ type CaughtError struct {
 }
 ```
 
-
-CaughtError is the error the application's `handleError` hook is told about — kit's own discriminated `CaughtError` (`exports/hooks/public.d.ts`), narrowed to what a Go port can express without modelling kit's `SvelteKitError` and `ValidationError` classes as distinct Go types the way skgo's `HTTPError` does not yet: "app" for an error already shaped as one — an \*HTTPError, whether the app raised it itself with Errorf or skgo manufactured it for a framework failure such as a 404 — and "unknown" for anything else, which is where kit's real distinction still matters: the visitor is never shown an unknown error's own message, only what the hook explicitly returns.
+CaughtError is the safe error and private diagnostic supplied to HandleError. It follows Kit's discriminated CaughtError while retaining validation decoder details privately in Issues.
