@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/tylergannon/skgo/internal/buildinfo"
+	"github.com/tylergannon/skgo/internal/toolchain"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -59,14 +60,6 @@ func TestAdapterAgeExceptionPreservesPolicy(t *testing.T) {
 // after the real release ages out. This executes the qualified package manager
 // that produced #297's failure, including its strict-policy refusal.
 func TestQualifiedPNPMAdapterAgeException(t *testing.T) {
-	pnpm, err := exec.LookPath("pnpm")
-	if err != nil {
-		t.Fatal(err)
-	}
-	version, err := exec.Command(pnpm, "--version").Output()
-	if err != nil || strings.TrimSpace(string(version)) != "12.14.0" {
-		t.Fatalf("requires qualified pnpm12.14.0: %s %v", version, err)
-	}
 	var archive bytes.Buffer
 	gz := gzip.NewWriter(&archive)
 	tw := tar.NewWriter(gz)
@@ -104,8 +97,8 @@ func TestQualifiedPNPMAdapterAgeException(t *testing.T) {
 			name = "authored strict"
 		}
 		t.Run(name, func(t *testing.T) {
-			// The executable is already qualified above. Omit package-manager metadata
-			// so pnpm does not fetch its own distribution from this adapter-only registry.
+			// VitePlus selects the qualified pnpm. Omit package-manager metadata so pnpm
+			// does not fetch its own distribution from this adapter-only registry.
 			source, stage := t.TempDir(), t.TempDir()
 			writeAlignmentFile(t, source, "package.json", `{"private":true,"devDependencies":{"@skgo/sveltekit-adapter":"0.22.1"}}`)
 			policy := "allowBuilds:\n  esbuild: true\n"
@@ -122,9 +115,8 @@ func TestQualifiedPNPMAdapterAgeException(t *testing.T) {
 				t.Fatal(err)
 			}
 			writeAlignmentFile(t, stage, "package.json", `{"private":true,"devDependencies":{"@skgo/sveltekit-adapter":"0.28.2"}}`)
-			cmd := exec.Command(pnpm, "install", "--no-frozen-lockfile", "--ignore-scripts", "--registry", registry.URL)
-			cmd.Dir = stage
-			cmd.Env = append(os.Environ(), "CI=1")
+			cmd := qualifiedVP(t, stage, "install", "--no-frozen-lockfile", "--ignore-scripts", "--", "--registry", registry.URL)
+			cmd.Env = append(cmd.Env, "CI=1")
 			output, installErr := cmd.CombinedOutput()
 			t.Logf("pnpm install: %s", output)
 			after, err := os.ReadFile(filepath.Join(stage, "pnpm-workspace.yaml"))
@@ -164,7 +156,8 @@ func TestQualifiedPNPMAdapterAgeException(t *testing.T) {
 // commands. The real pnpm behavior is covered above; this checks that the
 // selected exception reaches the production guard before any project mutation.
 func TestPublicUpdatePassesSelectedAdapterToGuard(t *testing.T) {
-	pnpm, err := exec.LookPath("pnpm")
+	// Kit patching forwards pnpm configuration through a real VitePlus.
+	realVP, err := exec.LookPath("vp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,14 +197,15 @@ func TestPublicUpdatePassesSelectedAdapterToGuard(t *testing.T) {
 					next := opts
 					next.CompleteVersion = "v0.28.2"
 					return nil, Run(ctx, next)
+				case c.Name == "/qualified/vp" && len(c.Args) > 0 && c.Args[0] == "pm":
+					cmd := exec.Command(realVP, c.Args...)
+					cmd.Dir = c.Dir
+					cmd.Env = append(os.Environ(), c.Env...)
+					return cmd.Output()
 				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"--version"}):
 					return []byte("vp v1.3.0\n"), nil
 				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"toolchain", "--global", "--json", "vite", "vitest"}):
 					return []byte(qualifiedVPGraph), nil
-				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.14.0", "which", "pnpm"}):
-					return []byte(pnpm), nil
-				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.14.0", pnpm, "--version"}):
-					return []byte("12.14.0\n"), nil
 				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.14.0", "/qualified/vp", "install", "--no-frozen-lockfile"}):
 					path := filepath.Join(c.Dir, "pnpm-workspace.yaml")
 					b, err := os.ReadFile(path)
@@ -246,4 +240,18 @@ func TestPublicUpdatePassesSelectedAdapterToGuard(t *testing.T) {
 			}
 		})
 	}
+}
+
+// qualifiedVP runs VitePlus with this release's pnpm selected, without letting
+// pnpm manage its own version from the project.
+func qualifiedVP(t *testing.T, dir string, args ...string) *exec.Cmd {
+	t.Helper()
+	vp, err := exec.LookPath("vp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(vp, args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "VP_PACKAGE_MANAGER=pnpm@"+toolchain.PNPM, "VP_PNPM_VERSION="+toolchain.PNPM, "pnpm_config_pm_on_fail=ignore")
+	return cmd
 }

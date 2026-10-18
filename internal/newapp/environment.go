@@ -14,7 +14,7 @@ import (
 
 // qualifiedRunner keeps every creation step in the environment owned by the
 // qualified vp, including nested package-manager invocations from Go generators.
-// Kit patching runs in-process, so it receives the same resolved pnpm directly.
+// Kit patching runs in-process, so it receives that qualified vp directly.
 func qualifiedRunner(vp, dir string, stdout, stderr io.Writer) (func(command) error, string, error) {
 	requestedVP := vp
 	resolved, err := exec.LookPath(vp)
@@ -66,7 +66,7 @@ func qualifiedRunner(vp, dir string, stdout, stderr io.Writer) (func(command) er
 		c.Name = vp
 		c.Env = companionEnv(c.Env)
 		return run(c)
-	}, pnpm, nil
+	}, vp, nil
 }
 
 func companionEnv(env []string) []string {
