@@ -1,4 +1,0 @@
-=== RUN   TestPrerenderRerouteFetchPrecedesLogicalRequest
---- PASS: TestPrerenderRerouteFetchPrecedesLogicalRequest (0.11s)
-PASS
-ok  	github.com/tylergannon/skgo/internal/adapter	0.353s

@@ -1,5 +1,0 @@
-=== RUN   TestGeneratedServerGoIsFormatted
---- PASS: TestGeneratedServerGoIsFormatted (0.00s)
-PASS
-ok  	github.com/tylergannon/skgo/internal/newapp	0.209s
-exit=0
