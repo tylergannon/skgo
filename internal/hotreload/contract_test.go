@@ -15,11 +15,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/generate"
+	"github.com/tylergannon/skgo/internal/adapter"
 	"golang.org/x/tools/go/packages"
 )
 
-// One generated app, one real native host, one Kit build. Every request goes
+// One generated app and one real native host. A literal renderer fixture keeps
+// Svelte compilation out of the native reload contract. Every request goes
 // through the same generated registry/SSR/endpoint/action composition as its
 // production binary. Expectations below are supplied fixture literals.
 func TestGeneratedNativeHandlerContract(t *testing.T) {
@@ -47,10 +50,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	tc, err := PrepareToolchain(ctx, "go", filepath.Join(work, "toolchain"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	tc := sharedNativeToolchain(t, ctx)
 	mod, err := os.ReadFile(filepath.Join(root, "example/go.mod"))
 	if err != nil {
 		t.Fatal(err)
@@ -62,19 +62,12 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	}
 	write("go.sum", string(sums))
 	write("internal/app/locals.go", `package app; type Locals struct{};type Money struct { Cents int `+"`json:\"cents\"`"+` };func(m Money)Label()string{return "native-money"}`)
-	// The only browser dependencies are this worktree's installed frozen pin.
-	deps := filepath.Join(root, "example/web/node_modules")
-	for _, entry := range mustReadDir(t, deps) {
-		if entry.Name() == "$app" || entry.Name() == ".vite-temp" {
-			continue
-		}
-		target := filepath.Join(app, "web/node_modules", entry.Name())
-		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Symlink(filepath.Join(deps, entry.Name()), target); err != nil {
-			t.Fatal(err)
-		}
+	// Generation reads the installed Kit pin, but does not build Kit.
+	if err := os.MkdirAll(filepath.Join(app, "web/node_modules/@sveltejs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "example/web/node_modules/@sveltejs/kit"), filepath.Join(app, "web/node_modules/@sveltejs/kit")); err != nil {
+		t.Fatal(err)
 	}
 	write("web/package.json", `{"name":"native-handler-contract","private":true,"type":"module","devDependencies":{"vite-plus":"1.3.0"},"devEngines":{"packageManager":{"name":"pnpm","version":"12.14.0","onFail":"download"}}}`)
 	write("web/vite.config.ts", `import {sveltekit} from '@sveltejs/kit/vite';import {defineConfig} from 'vite-plus';import skgo from '@skgo/sveltekit-adapter';export default defineConfig({plugins:[sveltekit({adapter:skgo({precompress:false}),paths:{origin:'http://localhost'},experimental:{remoteFunctions:true}})]});`)
@@ -107,15 +100,10 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	run(tc, "mod", "tidy")
-	build := exec.CommandContext(ctx, filepath.Join(deps, ".bin/vp"), "build")
-	build.Dir = filepath.Join(app, "web")
-	build.Env = append(os.Environ(), "GOWORK=off", "CGO_ENABLED=0")
-	if raw, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build pinned Kit fixture: %v\n%s", err, raw)
-	}
+	writeNativeRendererFixture(t, app, write)
 	pkgPath := "example.com/nativefixture/generated/links/onzggl3sn52xizltf5xxezdfojzq"
 	linkDir := filepath.Join(app, "generated/links/onzggl3sn52xizltf5xxezdfojzq")
-	config := &packages.Config{Context: ctx, Dir: app, Env: tc.command(ctx, app).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
+	config := &packages.Config{Context: ctx, Dir: app, Env: tc.command(ctx, app).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
 	pkgs, err := packages.Load(config, pkgPath)
 	if err != nil || len(pkgs) != 1 {
 		t.Fatalf("load route: %v %v", pkgs, err)
@@ -343,7 +331,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	process.mustCall(t, contractCommand{Op: "install", Candidate: c90})
 	check("GET", "/orders?panic=1", "", "endpoint:3780:healthy", 200, jsonHeaders)
 	check("GET", "/orders", "", "<h1>Order total 3780</h1>", 200, html)
-	// A real Kit universal load calls fetch during the goja render. Hold its
+	// The renderer fixture calls Go fetch during a goja render. Hold its
 	// Go HandleFetch hook before internal dispatch, publish, then require both
 	// the earlier Go server load and this later fetch to use the old table.
 	process.mustCall(t, contractCommand{Op: "start", Path: "/orders?render=1", Headers: map[string]string{"Accept": "text/html", "X-Hold": "render"}})
@@ -366,11 +354,8 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(linkDir, "skgo_hot.go")); !os.IsNotExist(err) {
 		t.Fatalf("host dispatch escaped into generated production tree: %v", err)
 	}
-	generation := exec.CommandContext(ctx, "go", "generate", "./...")
-	generation.Dir = app
-	generation.Env = append(os.Environ(), "CGO_ENABLED=0", "GOWORK=off", "GOTOOLCHAIN=local")
-	if raw, err := generation.CombinedOutput(); err != nil {
-		t.Fatalf("ordinary production generation: %v\n%s", err, raw)
+	if err := generate.Run(cfg); err != nil {
+		t.Fatal(err)
 	}
 	productionBin := filepath.Join(work, "production")
 	ordinary := exec.CommandContext(ctx, "go", "build", "-o", productionBin, "./cmd")
@@ -395,15 +380,6 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 		t.Fatalf("ordinary production result: %+v", result)
 	}
 	t.Logf("same generated application: development PID %d; production PID %d, supplied result 3000, no loader dependencies", pid, result.PID)
-}
-
-func mustReadDir(t *testing.T, path string) []os.DirEntry {
-	t.Helper()
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return entries
 }
 
 type contractCommand struct {
@@ -585,3 +561,39 @@ func main(){
  }
 }
 `
+
+func writeNativeRendererFixture(t *testing.T, app string, write func(string, string)) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(app, "web/skgo.remotes.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest skgo.Manifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest.SkgoAdapter = adapter.Fingerprint()
+	manifest.AppDir = "_app"
+	manifest.Nodes = []string{"src/routes/orders/+page.server.ts"}
+	manifest.Routes = []skgo.ManifestRoute{{ID: "/orders", Pattern: "^/orders/?$", Page: &skgo.ManifestPage{Leaf: 0}, Endpoint: &skgo.ManifestEndpoint{Methods: []string{"GET"}}}}
+	manifest.SSR = &skgo.ManifestSSR{Bundle: "bundle.js", Template: "app.html", ErrorTemplate: "error.html", Target: "es2022", GlobalName: "__native_fixture", Nodes: []skgo.ManifestSSRNode{{Index: 0, Component: true}}}
+	raw, err = json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("web/build/skgo.manifest.json", string(raw))
+	write("web/build/client/.keep", "")
+	write("web/build/index.html", "<!doctype html><html><body>fallback</body></html>")
+	write("web/build/app.html", "<!doctype html><html><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>")
+	write("web/build/error.html", "<!doctype html>%sveltekit.status% %sveltekit.error.message%")
+	write("web/build/bundle.js", `globalThis.__skgo_ping=()=>"ok";
+globalThis.__skgo_render=raw=>{
+ const req=JSON.parse(raw),graph=JSON.parse(req.branch[0].data),order=graph[graph[0].order];
+ const out={done:true,status:req.status,head:"",body:"<h1>Order total "+graph[order.total]+"</h1>"};
+ if(req.url.includes("render=1")){
+ out.done=false;__skgo_fetch(JSON.stringify({method:"GET",url:"http://localhost/orders?raw=1&renderHold=1",headers:{accept:"application/json"}})).then(raw=>{
+ const answer=JSON.parse(raw);if(answer.error)throw Error(answer.error);out.body+="<p>Fetched "+answer.response.body+"</p>";out.done=true;
+ },error=>{out.failure=String(error);out.done=true;});
+ }return out;
+};`)
+}

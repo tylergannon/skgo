@@ -3,8 +3,21 @@ package gen
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
+
+func replaceOnce(path, old, replacement string) error {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	updated := strings.Replace(string(content), old, replacement, 1)
+	if updated == string(content) {
+		return os.ErrNotExist
+	}
+	return os.WriteFile(path, []byte(updated), 0o644)
+}
 
 // This mutable application owns its matcher and consumers. Only dependency
 // bootstrap comes from the example, whose module identity is part of the test.

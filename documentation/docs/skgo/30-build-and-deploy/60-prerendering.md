@@ -10,7 +10,7 @@ proof:
   - TestAPrerenderedRedirectUsesKitsCanonicalHTMLArtifact
   - TestAPrerenderedFetchCarriesNothingOfThePageAndKeepsTheClientAddress
   - TestPrerenderFetchRefusesUnavailableDestinationsAndKeepsEndpointIsolation
-  - TestProductionOptionsApplication
+  - TestPrerenderResolveOptionDefaultsAndFailures
 ---
 
 Prerendering works as it does in [Kit](https://svelte.dev/docs/kit/page-options#prerender): mark a page with `export const prerender = true`, and `vp build` writes it to a file. What differs is where the data comes from. Server loads, `server.go` routes and remote functions are Go, so the build calls Go. [Page options](page-options#prerender) covers the option itself; this page covers the machinery and its edges.

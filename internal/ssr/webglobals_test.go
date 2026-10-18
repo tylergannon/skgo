@@ -32,50 +32,7 @@ func evaluate(t *testing.T, expression string) string {
 	return value.String()
 }
 
-func TestTheEngineParsesAURLTheWayTheWebDoes(t *testing.T) {
-	for _, c := range []struct {
-		expression string
-		want       string
-	}{
-		// The shape entry.js parses on every render.
-		{`new URL('http://127.0.0.1:8080/items/93?from=nav#top').pathname`, "/items/93"},
-		{`new URL('http://127.0.0.1:8080/items/93?from=nav#top').search`, "?from=nav"},
-		{`new URL('http://127.0.0.1:8080/items/93?from=nav#top').hash`, "#top"},
-		{`new URL('http://127.0.0.1:8080/a').port`, "8080"},
-		{`new URL('http://127.0.0.1:8080/a').host`, "127.0.0.1:8080"},
-		{`new URL('http://127.0.0.1:8080/a').protocol`, "http:"},
-		// A relative reference against a base, which is how kit builds a link.
-		{`new URL('../c', 'https://example.com/a/b/x').href`, "https://example.com/c"},
-		{`new URL('/d', 'https://example.com/a/b').href`, "https://example.com/d"},
-		// Percent-encoding survives, and a space in a query becomes %20.
-		{`new URL('https://example.com/a b?q=x y').search`, "?q=x%20y"},
-		// The one kit's `utils/url.js` constructs at module scope, which is why
-		// a runtime with no URL cannot even evaluate the bundle.
-		{`new URL('a://').protocol`, "a:"},
-		// Search parameters, which kit reads a remote function's payload out of.
-		{`new URL('https://e.com/?payload=abc&x=1').searchParams.get('payload')`, "abc"},
-		{`new URLSearchParams('a=1&a=2').getAll('a').join(',')`, "1,2"},
-		{`String(new URLSearchParams({ a: '1', b: 'two words' }))`, "a=1&b=two+words"},
-	} {
-		if got := evaluate(t, c.expression); got != c.want {
-			t.Errorf("%s = %q, want %q", c.expression, got, c.want)
-		}
-	}
-}
-
-// TestTheEngineOriginLeavesThePortOut pins the one place the engine's URL is
-// not the web's. The standard says the origin of `http://127.0.0.1:8080/` is
-// `http://127.0.0.1:8080`; goja_nodejs answers `http://127.0.0.1`, and defines
-// the accessor as non-configurable, so it cannot be corrected from outside.
-//
-// It is written down rather than fixed because it cannot be fixed from here:
-// the object goja_nodejs's URL constructor returns is a Go host object, which
-// goja refuses to define an accessor property on, so there is no per-instance
-// shadow either. What reads an origin instead avoids the accessor: the one
-// render path that compares origins — `event.fetch`'s refusal to leave this
-// app, in skgo-adapter/entry.js — compares protocol, hostname and port itself,
-// with a comment pointing here. Anything else that comes to need an origin has
-// to do the same, which is what this test exists to say.
+// SKGO corrects the dependency's origin accessor to include non-default ports.
 func TestTheEngineOriginIsTheStandardsOrigin(t *testing.T) {
 	for _, c := range []struct{ expression, want string }{
 		{`new URL('http://127.0.0.1:8080/a').origin`, "http://127.0.0.1:8080"},
@@ -90,45 +47,6 @@ func TestTheEngineOriginIsTheStandardsOrigin(t *testing.T) {
 		if got := evaluate(t, c.expression); got != c.want {
 			t.Errorf("%s = %q, want %q", c.expression, got, c.want)
 		}
-	}
-}
-
-// TestTheEngineSeesTwoPortsAsTwoSites is the substrate `event.fetch`'s refusal
-// to leave this app stands on: kit's universal fetch compares `url.origin`s, and
-// a page on one port fetching a URL on another has to come out as two sites.
-// The last row is the one a hostname-only origin gets wrong.
-func TestTheEngineSeesTwoPortsAsTwoSites(t *testing.T) {
-	const here = `new URL('http://127.0.0.1:8080/a')`
-	const there = `new URL('http://127.0.0.1:9999/a')`
-	for _, c := range []struct {
-		field string
-		want  string
-	}{
-		{"protocol", "http:|http:"},
-		{"hostname", "127.0.0.1|127.0.0.1"},
-		{"port", "8080|9999"},
-		{"origin", "http://127.0.0.1:8080|http://127.0.0.1:9999"},
-	} {
-		expression := "[" + here + "." + c.field + ", " + there + "." + c.field + "].join('|')"
-		if got := evaluate(t, expression); got != c.want {
-			t.Errorf("%s = %q, want %q", expression, got, c.want)
-		}
-	}
-}
-
-func TestTheEngineRefusesAURLThatIsNotOne(t *testing.T) {
-	rt := &runtime{vm: goja.New()}
-	if err := rt.installGlobals(func(string, string, string) {}); err != nil {
-		t.Fatal(err)
-	}
-	if err := rt.installWebGlobals(); err != nil {
-		t.Fatal(err)
-	}
-	// Kit's Redirect constructor builds a URL inside a try/catch to decide
-	// whether a location is usable. A parser that accepted anything would let
-	// an unusable location through as a 3xx nobody can follow.
-	if _, err := rt.vm.RunString(`new URL('not a url')`); err == nil {
-		t.Fatal("the engine accepted 'not a url' as a URL")
 	}
 }
 

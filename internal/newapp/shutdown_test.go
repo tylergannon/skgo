@@ -3,6 +3,9 @@ package newapp
 import (
 	"bytes"
 	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"net"
 	"net/http"
@@ -32,6 +35,42 @@ func TestGeneratedApplicationShutdown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Pin the shipped deadline independently, then exercise expiration at 100ms.
+	// The scaffold's signal/drain/cleanup behavior is the contract; waiting ten
+	// seconds adds no coverage once the default expression has been checked.
+	parsed, err := parser.ParseFile(token.NewFileSet(), mainPath, source, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deadline *ast.BinaryExpr
+	ast.Inspect(parsed, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || len(call.Args) != 2 {
+			return true
+		}
+		selector, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || selector.Sel.Name != "WithTimeout" {
+			return true
+		}
+		deadline, _ = call.Args[1].(*ast.BinaryExpr)
+		return true
+	})
+	if deadline == nil || deadline.Op != token.MUL {
+		t.Fatal("generated shutdown must have a bounded default")
+	}
+	duration, ok := deadline.X.(*ast.BasicLit)
+	unit, unitOK := deadline.Y.(*ast.SelectorExpr)
+	pkg, pkgOK := func() (*ast.Ident, bool) {
+		if !unitOK {
+			return nil, false
+		}
+		v, ok := unit.X.(*ast.Ident)
+		return v, ok
+	}()
+	if !ok || duration.Value != "10" || !unitOK || unit.Sel.Name != "Second" || !pkgOK || pkg.Name != "time" {
+		t.Fatal("generated shutdown default must be ten seconds")
+	}
+	source = append(append(append([]byte(nil), source[:deadline.Pos()-1]...), []byte("100*time.Millisecond")...), source[deadline.End()-1:]...)
 	// A developer's application cleanup belongs in run, beside initialization.
 	// Add only that deferred observer; leave generated serving code untouched.
 	body := strings.Replace(string(source), "func run() error {", `func run() error {
@@ -114,8 +153,8 @@ func TestGeneratedApplicationShutdown(t *testing.T) {
 			t.Fatal("shutdown deadline did not report failure")
 		}
 		elapsed := time.Since(started)
-		if elapsed < 9*time.Second || elapsed > 13*time.Second {
-			t.Fatalf("stream shutdown took %s, want the scaffold's ten-second bound", elapsed)
+		if elapsed < 75*time.Millisecond || elapsed > time.Second {
+			t.Fatalf("stream shutdown took %s, want the controlled 100ms bound", elapsed)
 		}
 		if !strings.Contains(process.log.String(), "shutdown: context deadline exceeded") {
 			t.Fatalf("shutdown timeout diagnostic missing:\n%s", process.log.String())

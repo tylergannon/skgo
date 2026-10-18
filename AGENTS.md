@@ -94,6 +94,17 @@ commands. JavaScript exists here only where SvelteKit itself requires it — the
 adapter package and generated stubs — never as the implementation language for
 anything skgo owns. No `.mjs` harnesses, no shell test runners.
 
+**Test SKGO's behavior, never a dependency's behavior.** Do not carry tests of
+Svelte, SvelteKit, goja, TypeScript, devalue or other third-party functionality.
+Test the decisions, generated declarations, protocol bytes and callbacks SKGO
+owns directly. A full Vite build or compiler invocation needs a SKGO-owned
+claim that cannot be checked at that boundary; do not rebuild an application to
+exercise a small validation branch. Reuse immutable setup, call Go functions
+in-process, and reserve subprocesses for claims about actual process boundaries.
+Do not preserve a one-off bug reproducer merely because the bug once occurred.
+Keep tests for supported capabilities and remove redundant or negligible-value
+cases instead of maintaining a permanent catalogue of past mistakes.
+
 **Build the software.** Not ledgers, sprint files, chapter docs, acceptance-gate
 runners, adjudication records, proof directories, or evidence manifests. When
 asked to build something, build that thing. Verification is ordinary Go tests

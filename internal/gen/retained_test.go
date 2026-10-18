@@ -56,6 +56,19 @@ func runRetained(t *testing.T, b *ProjectBuild, want string) {
 		t.Fatalf("revision %d actual compiler/handler result = %q, %v; want %q", b.Revision, output, err, want)
 	}
 }
+
+func assertRetainedFile(t *testing.T, b *ProjectBuild, authored, want string) {
+	t.Helper()
+	private := b.Inputs.PrivatePath(authored)
+	if got := string(b.Inputs.Files()[private]); got != want {
+		t.Fatalf("revision %d captured %s = %q, want %q", b.Revision, authored, got, want)
+	}
+	// Assert the file the compiler consumes, not just the retained handle.
+	data, err := os.ReadFile(b.Inputs.CompiledPath(authored))
+	if err != nil || string(data) != want {
+		t.Fatalf("revision %d compiler input %s = %q, %v; want %q", b.Revision, authored, data, err, want)
+	}
+}
 func observeRetained(t *testing.T, p *Project, path string) {
 	t.Helper()
 	if _, changed, err := p.Observe(context.Background(), path); err != nil || !changed {
@@ -63,6 +76,7 @@ func observeRetained(t *testing.T, p *Project, path string) {
 	}
 }
 func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
+	t.Parallel()
 	root, cfg := retainedFixture(t)
 	root, _ = filepath.EvalSymlinks(root)
 	p, err := OpenProject(cfg)
@@ -102,9 +116,12 @@ func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
 	cacheWrite(t, filepath.Join(root, "wire/assets/one.txt"), "asset-two")
 	observeRetained(t, p, filepath.Join(root, "wire/assets/one.txt"))
 	third := prepareRetained(t, p)
-	runRetained(t, first, "asset-one:1:body-one")
-	runRetained(t, second, "asset-one:1:body-two")
-	runRetained(t, third, "asset-two:1:body-two")
+	assertRetainedFile(t, first, path, retainedRemote)
+	assertRetainedFile(t, first, filepath.Join(root, "wire/assets/one.txt"), "asset-one")
+	assertRetainedFile(t, second, path, changed)
+	assertRetainedFile(t, second, filepath.Join(root, "wire/assets/one.txt"), "asset-one")
+	assertRetainedFile(t, third, path, changed)
+	assertRetainedFile(t, third, filepath.Join(root, "wire/assets/one.txt"), "asset-two")
 	if err := second.Commit(func(*CompilerInputs) error { t.Fatal("obsolete compiler input admitted"); return nil }); !errors.Is(err, ErrObsolete) {
 		t.Fatalf("old commit: %v", err)
 	}
@@ -125,7 +142,8 @@ func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
 	cacheWrite(t, filepath.Join(root, "wire/assets/two.txt"), "new-match")
 	observeRetained(t, p, filepath.Join(root, "wire/assets"))
 	fourth := prepareRetained(t, p)
-	runRetained(t, fourth, "dependency-asset-two:2:body-two")
+	assertRetainedFile(t, fourth, filepath.Join(root, "wire/wire.go"), strings.Replace(retainedWire, "%s:%d", "dependency-%s:%d", 1))
+	assertRetainedFile(t, fourth, filepath.Join(root, "wire/assets/two.txt"), "new-match")
 	if p.Stats().Generations != 1 {
 		t.Fatalf("compiler-only edits regenerated declarations: %+v", p.Stats())
 	}
@@ -140,6 +158,7 @@ func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
 }
 
 func TestRetainedProjectDeclarationsDirectoriesAndRepair(t *testing.T) {
+	t.Parallel()
 	root, cfg := retainedFixture(t)
 	root, _ = filepath.EvalSymlinks(root)
 	p, err := OpenProject(cfg)
@@ -246,6 +265,7 @@ func observeRetainedWrite(t *testing.T, p *Project, path, source string) {
 }
 
 func TestRetainedProjectStaleGeneration(t *testing.T) {
+	t.Parallel()
 	_, cfg := retainedFixture(t)
 	entered, release := make(chan struct{}), make(chan struct{})
 	var once sync.Once
@@ -291,6 +311,7 @@ func TestRetainedProjectStaleGeneration(t *testing.T) {
 }
 
 func TestRetainedProjectFilesystemEvents(t *testing.T) {
+	t.Parallel()
 	root, cfg := retainedFixture(t)
 	root, _ = filepath.EvalSymlinks(root)
 	p, err := OpenProject(cfg)
@@ -351,6 +372,7 @@ func TestRetainedProjectFilesystemEvents(t *testing.T) {
 }
 
 func TestRetainedProjectTypedMatcherPublication(t *testing.T) {
+	t.Parallel()
 	app := t.TempDir()
 	root, err := repoRoot()
 	if err != nil {
@@ -480,6 +502,7 @@ func TestRetainedTypedHandlers(t *testing.T){
 `
 
 func TestRetainedProjectConsumedConstantAndMarker(t *testing.T) {
+	t.Parallel()
 	root, cfg := foreignFixture(t, cacheRemote, nil)
 	p, err := OpenProject(cfg)
 	if err != nil {
@@ -525,6 +548,7 @@ func TestRetainedProjectConsumedConstantAndMarker(t *testing.T) {
 }
 
 func TestRetainedSharedGenerationWaiterCancellation(t *testing.T) {
+	t.Parallel()
 	f := newGenerationFuture()
 	entered, release := make(chan struct{}, 1), make(chan struct{})
 	var mu sync.Mutex
@@ -586,6 +610,7 @@ func TestRetainedSharedGenerationWaiterCancellation(t *testing.T) {
 }
 
 func TestRetainedReadStabilizesEmptyAndAdmitsEmpty(t *testing.T) {
+	t.Parallel()
 	reads := 0
 	data, err := readProjectFileWith(context.Background(), "fixture.go", func(string) ([]byte, error) {
 		reads++
@@ -605,6 +630,7 @@ func TestRetainedReadStabilizesEmptyAndAdmitsEmpty(t *testing.T) {
 }
 
 func TestRetainedProjectEquivalentPendingGeneration(t *testing.T) {
+	t.Parallel()
 	_, cfg := retainedFixture(t)
 	entered, release := make(chan struct{}), make(chan struct{})
 	var once sync.Once
@@ -667,6 +693,7 @@ func TestRetainedProjectEquivalentPendingGeneration(t *testing.T) {
 }
 
 func TestRetainedProjectModuleSelectionRepair(t *testing.T) {
+	t.Parallel()
 	root, cfg := retainedFixture(t)
 	p, err := OpenProject(cfg)
 	if err != nil {

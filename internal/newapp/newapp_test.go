@@ -21,6 +21,7 @@ import (
 )
 
 func TestHighestVersionIncludesPrereleasesButNotAnotherMajor(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"0.17.0":{},"1.0.0-next.7":{},"1.0.0":{},"1.1.0-beta.2":{},"2.0.0-alpha.1":{}}}`)
 	got, err := highestVersion(registry.Client(), registry.URL, "sv", func(version string) bool {
 		return strings.HasPrefix(version, "1.")
@@ -45,6 +46,7 @@ func (versionResponseTransport) RoundTrip(request *http.Request) (*http.Response
 }
 
 func TestCreatePassesCustomOriginToNativeAddon(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "custom-origin")
 	u := &upstream{t: t}
 	options := Options{
@@ -197,6 +199,7 @@ func (u *upstream) options(dir string, registry *httptest.Server) Options {
 }
 
 func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.0-next.6":{},"1.0.1":{},"1.1.0-beta.2":{},"2.0.0":{}}}`)
 	dir := filepath.Join(t.TempDir(), "hello-go")
 	u := &upstream{t: t}
@@ -305,6 +308,7 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 }
 
 func TestCreateSurfacesVitePlusFrontendCheckFailure(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	u := &upstream{t: t, failCheck: true}
 	dir := filepath.Join(t.TempDir(), "frontend-check-failure")
@@ -323,6 +327,7 @@ func TestCreateSurfacesVitePlusFrontendCheckFailure(t *testing.T) {
 }
 
 func TestCreateRequiresKitQueueCorrectionBeforeAndAfterNativeInstall(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	t.Run("configuration failure stops before install", func(t *testing.T) {
 		u := &upstream{t: t, queueConfigureErr: errors.New("refused parent workspace")}
@@ -360,6 +365,7 @@ func TestCreateRequiresKitQueueCorrectionBeforeAndAfterNativeInstall(t *testing.
 // and Storybook selections are not applied a second time, and sv's demo becomes
 // the skgo example rather than a JavaScript server application.
 func TestCreatePassesExplicitChoicesThroughAndAppliesNothingTwice(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	dir := filepath.Join(t.TempDir(), "chosen")
 	u := &upstream{
@@ -435,6 +441,7 @@ func browserInstalls(commands []command) int {
 // A developer who chose component testing got Playwright from sv, and its
 // browser still has to be installed although Vitest is not applied again.
 func TestCreateInstallsChromiumForAChosenComponentVitest(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	u := &upstream{
 		t: t,
@@ -462,6 +469,7 @@ func TestCreateInstallsChromiumForAChosenComponentVitest(t *testing.T) {
 // In a terminal the questions are sv's. skgo answers none of them in advance,
 // because sv shows its add-on picker only when no add-on was named.
 func TestCreateInATerminalLeavesEveryChoiceToSv(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	u := &upstream{t: t}
 	o := u.options(filepath.Join(t.TempDir(), "asked"), registry)
@@ -492,6 +500,7 @@ func TestCreateInATerminalLeavesEveryChoiceToSv(t *testing.T) {
 }
 
 func TestCreateRejectsWhatIsNotASkgoApplication(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	for name, tc := range map[string]struct {
 		args []string
@@ -548,6 +557,7 @@ func TestCreateRejectsWhatIsNotASkgoApplication(t *testing.T) {
 
 // sv exits 0 when it reaches the end of its input before applying an add-on.
 func TestCreateRefusesAnSvAddThatAppliedNothing(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	u := &upstream{t: t, skipAdd: true, created: map[string]string{"src/routes/sverdle/+page.server.ts": ""}}
 	dir := filepath.Join(t.TempDir(), "unapplied")
@@ -561,6 +571,7 @@ func TestCreateRefusesAnSvAddThatAppliedNothing(t *testing.T) {
 }
 
 func TestEscapeAddonOptionRoundTripsSpacesAndPlusSigns(t *testing.T) {
+	t.Parallel()
 	got := escapeAddonOption("file:/tmp/adapter with+plus")
 	if got != "file%3A%2Ftmp%2Fadapter%20with%2Bplus" {
 		t.Fatalf("escapeAddonOption = %q", got)
@@ -571,6 +582,7 @@ func TestEscapeAddonOptionRoundTripsSpacesAndPlusSigns(t *testing.T) {
 }
 
 func TestCreateRefusesSwallowedStorybookFailure(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	dir := filepath.Join(t.TempDir(), "incomplete")
 	u := &upstream{t: t, skipBook: true}
@@ -584,6 +596,7 @@ func TestCreateRefusesSwallowedStorybookFailure(t *testing.T) {
 }
 
 func TestCreateReportsVitePlusCancellation(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	dir := filepath.Join(t.TempDir(), "cancelled")
 	_, err := Create(Options{
@@ -597,6 +610,7 @@ func TestCreateReportsVitePlusCancellation(t *testing.T) {
 }
 
 func TestResolveSelectsExactIndependentCompatiblePackageVersions(t *testing.T) {
+	t.Parallel()
 	registry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		switch r.URL.Path {
@@ -643,6 +657,7 @@ func registryServer(t *testing.T, body string) *httptest.Server {
 // output tree. When they disagreed, the documented production build deleted a
 // tracked file and the next commit produced a clone that did not compile.
 func TestGeneratorAddonAndAdapterAgreeOnTheEmbedKeepFile(t *testing.T) {
+	t.Parallel()
 	const keep = ".gitkeep"
 	if _, err := goFiles.ReadFile("gofiles/web/build/dot-gitkeep"); err != nil {
 		t.Errorf("generator does not track web/build/%s: %v", keep, err)
@@ -669,6 +684,7 @@ func TestGeneratorAddonAndAdapterAgreeOnTheEmbedKeepFile(t *testing.T) {
 }
 
 func TestGeneratedGitignoreExcludesLocalBuildCache(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := writeGoFiles(project{Dir: dir, Module: "example.com/hello-go", BindingsImport: "example.com/hello-go/internal/skgo"}); err != nil {
 		t.Fatal(err)
@@ -680,6 +696,7 @@ func TestGeneratedGitignoreExcludesLocalBuildCache(t *testing.T) {
 }
 
 func TestGeneratedServerGoIsFormatted(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := writeGoFiles(project{Dir: dir, Module: "example.com/hello-go", BindingsImport: "example.com/hello-go/internal/skgo"}); err != nil {
 		t.Fatal(err)
@@ -700,6 +717,7 @@ func TestGeneratedServerGoIsFormatted(t *testing.T) {
 // is there. A link to the live checkout therefore let an ordinary `skgo new`
 // overwrite tracked files in it. The checkout may be packed from, never linked.
 func TestCreateHandsSvAnIsolatedPackedAddonNotTheCheckout(t *testing.T) {
+	t.Parallel()
 	registry := registryServer(t, `{"versions":{"1.0.1":{}}}`)
 	checkout := filepath.Join(t.TempDir(), "internal", "sv")
 	writeFiles(t, checkout, map[string]string{"sv-addon.js": "live checkout bytes", "package.json": `{"name":"@skgo/sv"}`})
@@ -819,6 +837,7 @@ func readFile(t *testing.T, name string) string {
 // Exercise the Go steps of Create for a rendered demo, using the installed Kit
 // pin. The UI installer is irrelevant to whether our shipped command compiles.
 func TestDemoStarterGeneratesAndCompiles(t *testing.T) {
+	t.Parallel()
 	repo, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -850,6 +869,7 @@ func TestDemoStarterGeneratesAndCompiles(t *testing.T) {
 }
 
 func TestNewAppPinsAnUpstreamKitUpdateBeforeQueueConfiguration(t *testing.T) {
+	t.Parallel()
 	web := t.TempDir()
 	installed := filepath.Join(web, "node_modules", "@sveltejs", "kit", "package.json")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {

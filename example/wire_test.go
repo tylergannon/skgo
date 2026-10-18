@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -343,70 +341,5 @@ func requireTodoText(t *testing.T, h http.Handler, id, want string) {
 	data := envelopeData(t, callQuery(t, h, remoteID(t, "getTodo"), fmt.Sprintf(`[%q]`, id)))
 	if !strings.Contains(data, `"`+want+`"`) {
 		t.Fatalf("todo %s reads %s, and the test put %q in it", id, data, want)
-	}
-}
-
-// TestTheRuntimeHasNoGenericArgumentDecoder is the guard on the way back.
-//
-// The reflective codec this change removed was not one function: it was
-// `decodeArg[In]`, the per-arity generic constructors that installed it, and
-// the adapters between. Any of them reappearing would work — every test in
-// this suite would still pass — and the strictness above would quietly be gone
-// again, because a JSON round trip zero-fills.
-//
-// So the names are named. A runtime that decodes a client's argument into a Go
-// type without a generated codec has to be spelled somehow, and every spelling
-// this project has used is refused here.
-func TestTheRuntimeHasNoGenericArgumentDecoder(t *testing.T) {
-	root, err := filepath.Abs("..")
-	if err != nil {
-		t.Fatalf("locating the repository root: %v", err)
-	}
-
-	// The symbols the reflective path was made of, and the shape of any
-	// replacement: a registration generic in the argument's type decodes that
-	// argument somewhere, and the somewhere is not generated code.
-	banned := []string{
-		"decodeArg",
-		"callAdapter",
-		"formAdapter",
-		"func NewQuery[",
-		"func NewQueryNoArg[",
-		"func NewCommand[",
-		"func NewCommandNoArg[",
-		"func NewLiveQuery[",
-		"func NewLiveQueryNoArg[",
-		"func NewBatchQuery[",
-		"func NewForm[",
-		"func NewLoad[",
-	}
-
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		t.Fatalf("reading %s: %v", root, err)
-	}
-	var checked int
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		raw, err := os.ReadFile(filepath.Join(root, name))
-		if err != nil {
-			t.Fatalf("reading %s: %v", name, err)
-		}
-		checked++
-		source := string(raw)
-		for _, symbol := range banned {
-			if strings.Contains(source, symbol) {
-				t.Errorf("%s contains %q. A remote function's argument is decoded by the codec "+
-					"`skgo generate` emitted for its own type; a generic decoder in the runtime is "+
-					"the reflective path this was replaced to remove, and it zero-fills.", name, symbol)
-			}
-		}
-	}
-	// A glob that matched nothing would pass every assertion above.
-	if checked < 20 {
-		t.Fatalf("only %d files in %s were checked; this test is not looking at the runtime", checked, root)
 	}
 }

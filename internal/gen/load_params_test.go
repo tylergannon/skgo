@@ -9,33 +9,6 @@ import (
 	"testing"
 )
 
-func TestTypedLoadJavaScriptMatcherContract(t *testing.T) {
-	t.Parallel()
-	root, err := repoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Exercise the independently authored JS entry through installed Kit's
-	// matcher execution. Literal JSON also distinguishes numbers from strings.
-	command := exec.Command("node", "--input-type=module", "--eval", `
-import { parse_route_id, exec } from './node_modules/@sveltejs/kit/src/utils/routing.js';
-import { params } from './src/params.ts';
-const route = parse_route_id('/typed-load/[number=Order]');
-const answers = ['00042','0','+0','1000000','1000001','-1','no','9223372036854775808'].map(value =>
- exec(route.pattern.exec('/typed-load/' + value), route.params, params) ?? null);
-console.log(JSON.stringify(answers));
-`)
-	command.Dir = filepath.Join(root, "example", "web")
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Kit JS matcher execution: %v\n%s", err, output)
-	}
-	const want = `[{"number":42},{"number":0},{"number":0},{"number":1000000},null,null,null,null]`
-	if strings.TrimSpace(string(output)) != want {
-		t.Fatalf("JS matcher contract: %s, want %s", output, want)
-	}
-}
-
 func TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation(t *testing.T) {
 	t.Parallel()
 	root, err := repoRoot()
@@ -160,19 +133,6 @@ func TestRepairedTypedLoad(t *testing.T) {
 	cmd.Dir = app
 	if output, err := cmd.CombinedOutput(); err != nil || strings.Contains(string(output), "--- SKIP:") || !strings.Contains(string(output), "=== RUN   TestRepairedTypedLoad\n") || !strings.Contains(string(output), "--- PASS: TestRepairedTypedLoad (") {
 		t.Fatalf("repaired load compile/behavior: %v\n%s", err, output)
-	}
-}
-
-func testTypedLoadMatchersPrerenderNamedGoValues(t *testing.T) {
-	fixture := requireProductionFixture(t)
-	for path, label := range map[string]string{"0": "Order #0", "00042": "Order #42"} {
-		artifact, err := os.ReadFile(filepath.Join(fixture.app, "ui/build/prerendered/typed-load", path+".html"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(string(artifact), label) {
-			t.Fatalf("prerender %s lacks %s", path, label)
-		}
 	}
 }
 

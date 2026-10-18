@@ -1,1 +1,0 @@
-<script>let { data } = $props();</script><h1>Prerender seed</h1><p>{data.value}</p>

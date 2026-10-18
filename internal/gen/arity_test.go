@@ -71,6 +71,12 @@ var (
 			t.Errorf("the stub does not carry %q:\n%s", want, stub)
 		}
 	}
+	if strings.Contains(stub, "tylergannon/skgo") {
+		t.Errorf("the stub imports a declaration of an skgo type:\n%s", stub)
+	}
+	if _, err := os.Stat(filepath.Join(root, "app", "generated", "wiretypes")); !os.IsNotExist(err) {
+		t.Errorf("a declaration package was written for a type skgo owns: %v", err)
+	}
 
 	// The registration names the kind and the module; the handler beside it is
 	// where the arity shows, because that is where the argument is refused or
@@ -114,40 +120,6 @@ var (
 	cmd.Dir = filepath.Join(root, "app")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("`go build ./...` in the generated app: %v\n%s", err, out)
-	}
-}
-
-// No skgo type reaches the type projector any more. `skgo.None` was the only
-// one that ever did — it was a remote function's argument, so it was projected
-// like any other — and a placeholder that has to be projected is a placeholder
-// that can fail to be.
-func TestNoArgumentMeansNothingToProject(t *testing.T) {
-	t.Parallel()
-	root, cfg := foreignFixture(t, `package data
-
-import (
-	"context"
-
-	"github.com/tylergannon/skgo"
-)
-
-func getThing(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-var _ = skgo.Query(getThing)
-`, nil)
-
-	if err := Run(cfg); err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-
-	stub := readFixtureFile(t, root, "app/web/src/data/data.remote.ts")
-	if strings.Contains(stub, "tylergannon/skgo") {
-		t.Errorf("the stub imports a declaration of an skgo type:\n%s", stub)
-	}
-	if _, err := os.Stat(filepath.Join(root, "app", "generated", "wiretypes")); !os.IsNotExist(err) {
-		t.Errorf("a declaration package was written for a type skgo owns: %v", err)
 	}
 }
 

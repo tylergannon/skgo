@@ -89,7 +89,7 @@ func runSkgoCommand(t *testing.T, args ...string) (string, error) {
 
 func runSkgoCommandIn(t *testing.T, dir string, args ...string) (string, error) {
 	t.Helper()
-	cmd := exec.Command(skgoBin, args...)
+	cmd := exec.Command(skgoBinary(t), args...)
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	return string(output), err

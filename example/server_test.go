@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/tylergannon/devalue/v5"
@@ -26,16 +27,22 @@ import (
 // listens on it: every request below is served in-process.
 const prodOrigin = "http://127.0.0.1:8080"
 
-// newProdHandler is the production stack: not a copy of what cmd/main.go
-// composes, but the same function it calls.
-//
-// The unit tests for the static handler and the registries feed them synthetic
-// fixtures, which is why they cannot see a manifest the real adapter wrote.
-// This one starts where the developer does: the artifacts in the tree.
+// Requests use the same long-lived handler, as they do in the application.
+// Recompiling the immutable bundle for every HTTP assertion adds no isolation:
+// application state already lives in businesslogic.Default, and request state
+// belongs to the request. Pool/capacity tests construct their own sized handler.
+var productionHandler = sync.OnceValues(func() (http.Handler, error) {
+	dist, err := fs.Sub(web.Build, "build")
+	if err != nil {
+		return nil, err
+	}
+	return example.NewHandlerSized(dist, prodOrigin, 2)
+})
+
 func newProdHandler(t *testing.T) http.Handler {
 	t.Helper()
 
-	h, err := example.NewHandler(prodDist(t), prodOrigin)
+	h, err := productionHandler()
 	if err != nil {
 		t.Fatalf("assembling the production stack: %v", err)
 	}

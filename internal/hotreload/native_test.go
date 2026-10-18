@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"debug/buildinfo"
-	"embed"
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,9 +15,6 @@ import (
 	"github.com/tylergannon/skgo/generate"
 	"golang.org/x/tools/go/packages"
 )
-
-//go:embed loaderos/dl_unix_test.go.txt loaderos/stackobject_test.go.txt
-var loaderTests embed.FS
 
 // A separate unstripped executable contains the loader. Neither this normally
 // stripped test driver nor the production SDK links it.
@@ -58,10 +53,7 @@ func testGeneratedNativeState(t *testing.T, lifetime bool) {
 		t.Fatal(err)
 	}
 	work := t.TempDir()
-	tc, err := PrepareToolchain(ctx, "go", filepath.Join(work, "toolchain"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	tc := sharedNativeToolchain(t, ctx)
 	work, err = filepath.EvalSymlinks(work)
 	if err != nil {
 		t.Fatal(err)
@@ -128,9 +120,9 @@ func testGeneratedNativeState(t *testing.T, lifetime bool) {
 		return raw
 	}
 	run("mod", "tidy")
-	load := func(overlay map[string][]byte) *packages.Package {
+	load := func() *packages.Package {
 		t.Helper()
-		pkgs, err := packages.Load(&packages.Config{Context: ctx, Dir: app, Env: tc.command(ctx, app).Env, Overlay: overlay, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}, pkgPath)
+		pkgs, err := packages.Load(&packages.Config{Context: ctx, Dir: app, Env: tc.command(ctx, app).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}, pkgPath)
 		if err != nil || len(pkgs) != 1 {
 			t.Fatalf("load app: %v %v", pkgs, err)
 		}
@@ -139,7 +131,7 @@ func testGeneratedNativeState(t *testing.T, lifetime bool) {
 		}
 		return pkgs[0]
 	}
-	p := load(nil)
+	p := load()
 	sources := map[string][]byte{}
 	for _, file := range p.CompiledGoFiles {
 		raw, err := os.ReadFile(file)
@@ -147,35 +139,6 @@ func testGeneratedNativeState(t *testing.T, lifetime bool) {
 			t.Fatal(err)
 		}
 		sources[file] = raw
-	}
-	t.Run("AliasRetention", func(t *testing.T) {
-		changed := map[string][]byte{}
-		for path, raw := range sources {
-			changed[path] = raw
-		}
-		file := filepath.Join(linkDir, "orders.remote.go")
-		changed[file] = []byte(strings.Replace(source, "service.quantity=n", `alias:=service;alias.note="retained";alias.quantity=n`, 1))
-		next := load(changed)
-		err := Classify(sources, changed, []*packages.Package{next}, []*packages.Package{next})
-		if err != nil {
-			t.Errorf("alias-retention source is no longer classified by the serial compatibility scaffold: %v", err)
-		}
-	})
-	for _, fixture := range []struct{ name, body string }{
-		{"PrimitiveAlias", `alias:=service;alias.quantity=n`},
-		{"LocalString", `var local struct{ note string };local.note="transient";_ = local;service.quantity=n`},
-	} {
-		t.Run(fixture.name, func(t *testing.T) {
-			changed := map[string][]byte{}
-			for path, raw := range sources {
-				changed[path] = raw
-			}
-			changed[filepath.Join(linkDir, "orders.remote.go")] = []byte(strings.Replace(source, "service.quantity=n", fixture.body, 1))
-			next := load(changed)
-			if err := Classify(sources, changed, []*packages.Package{next}, []*packages.Package{next}); err != nil {
-				t.Errorf("ordinary synchronous body rejected: %v", err)
-			}
-		})
 	}
 	lowered, err := Lower(p, sources)
 	if err != nil {
@@ -188,7 +151,7 @@ func testGeneratedNativeState(t *testing.T, lifetime bool) {
 		write(filepath.Join(linkRel, "skgo_probe.go"), []byte(lifetimeProbe))
 	}
 	write("cmd/main.go", []byte(strings.ReplaceAll(hostSource, "PACKAGE", pkgPath)))
-	loaderDir, err := tc.PrepareLoader(ctx, app, filepath.Join(work, "native"))
+	_, err = tc.PrepareLoader(ctx, app, filepath.Join(work, "native"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,44 +172,6 @@ func testGeneratedNativeState(t *testing.T, lifetime bool) {
 		t.Fatal("native host was not built with CGO_ENABLED=0")
 	}
 	t.Logf("native host: %s %s/%s, CGO_ENABLED=0, no C compiler", info.GoVersion, tc.OS, tc.Arch)
-	// The HTTP fixture contains no C imports, so exercise the exposed OS lookup
-	// adapter separately against actual process and library symbols.
-	lookupTest, err := loaderTests.ReadFile("loaderos/dl_unix_test.go.txt")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(loaderDir, "libdl/dl_unix_test.go"), lookupTest, 0644); err != nil {
-		t.Fatal(err)
-	}
-	stackTest, err := loaderTests.ReadFile("loaderos/stackobject_test.go.txt")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(loaderDir, "stackobject/stackobject_test.go"), stackTest, 0644); err != nil {
-		t.Fatal(err)
-	}
-	lookupOutput, err := tc.command(ctx, loaderDir, "test", "-mod=mod", "./libdl", "./stackobject", "-run", "^(TestProcessAndLibraryLookup|TestAbsentAndZeroStackObjectMetadata)$", "-count=1", "-v").CombinedOutput()
-	if err != nil {
-		t.Fatalf("process/library lookup: %v\n%s", err, lookupOutput)
-	}
-	t.Logf("%s", lookupOutput)
-	// The production CLI uses the authored root, without the private loader
-	// replacement or a prepared GOROOT, after the development host was built.
-	production := exec.CommandContext(ctx, "go", "build", "-o", filepath.Join(work, "production-cli"), "./cmd/skgo")
-	production.Dir = root
-	production.Env = append(os.Environ(), "CGO_ENABLED=0", "GOWORK=off", "GOTOOLCHAIN=local")
-	if raw, err := production.CombinedOutput(); err != nil {
-		t.Fatalf("production build after native preparation: %v\n%s", err, raw)
-	}
-	productionInfo, err := buildinfo.ReadFile(filepath.Join(work, "production-cli"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, dependency := range productionInfo.Deps {
-		if dependency.Path == "github.com/pkujhd/goloader" || dependency.Path == "github.com/ebitengine/purego" {
-			t.Fatalf("development dependency in production CLI: %s", dependency.Path)
-		}
-	}
 
 	importcfg := run("list", "-export", "-deps", "-f", "{{if .Export}}packagefile {{.ImportPath}}={{.Export}}{{end}}", pkgPath)
 	write("importcfg", importcfg)

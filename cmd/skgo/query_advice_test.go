@@ -47,7 +47,7 @@ func TestCheckReportsQueryAdviceAtAuthoredLocations(t *testing.T) {
 	if output, err := command(root, "go", "mod", "tidy"); err != nil {
 		t.Fatalf("prepare CLI fixture: %v\n%s", err, output)
 	}
-	bin := skgoBin
+	bin := skgoBinary(t)
 	output, runErr := command(root, bin, "check", "--root", root, "--json")
 	var report check.Report
 	if err := json.Unmarshal(output, &report); err != nil {

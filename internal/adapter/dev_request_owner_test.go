@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -126,6 +127,7 @@ process.exit(0);
 }
 
 func TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies(t *testing.T) {
+	t.Parallel()
 	dir, err := os.MkdirTemp("", "skgo-owner-")
 	if err != nil {
 		t.Fatal(err)
@@ -141,6 +143,18 @@ func TestNativeFetchUsesSharedOwnerAcrossKitTracedEventCopies(t *testing.T) {
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/_skgo/dev/begin":
+			trace, err := base64.StdEncoding.DecodeString(r.Header.Get("X-Skgo-Tracing"))
+			var value struct {
+				Enabled       bool `json:"enabled"`
+				Root, Current struct {
+					SpanID    string `json:"spanId"`
+					Recording bool   `json:"recording"`
+				}
+			}
+			if err != nil || json.Unmarshal(trace, &value) != nil || value.Enabled || value.Root.SpanID != "root-713" || value.Current.SpanID != "current-824" || !value.Root.Recording || !value.Current.Recording {
+				t.Errorf("tracing metadata = %s, %v", trace, err)
+			}
+			w.Header().Set("X-Skgo-Tracing", base64.StdEncoding.EncodeToString([]byte(`[{"id":"root-713","method":"attributes","attributes":{"literal-go":"effect-935"}}]`)))
 			io.WriteString(w, `{"handle":"literal-owner-713","resolve":true}`)
 		case "/_skgo/dev/fetch-begin":
 			var input struct {
@@ -193,7 +207,9 @@ source=source.replace(/import \{ ValidationError \} from "@sveltejs\/kit\/intern
 const shared=await import('node:url');
 source='import {bridgeFetch,incomingResponse} from '+JSON.stringify(shared.pathToFileURL(process.argv[1].replace(/dev-bridge\.js$/,'fetch-bridge.js')).href)+';\nconst devBase=""; const devAppDir="_app";\n'+source;
 const {requestHandle,requestFetch}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
-const original={request:new Request('http://app.test/nested'),url:new URL('http://app.test/nested'),locals:{},route:{id:'/nested'},params:{},cookies:{getAll:()=>[]},setHeaders:()=>{}};
+const effects=[];
+const span=id=>({spanContext:()=>({traceId:'literal-trace-624',spanId:id,traceFlags:1}),isRecording:()=>true,setAttributes:value=>effects.push({id,value})});
+const original={request:new Request('http://app.test/nested'),url:new URL('http://app.test/nested'),locals:{},route:{id:'/nested'},params:{},cookies:{getAll:()=>[]},setHeaders:()=>{},tracing:{enabled:false,root:span('root-713'),current:span('current-824')}};
 const traced={...original};
 const response=await requestHandle(traced,async()=>{
  const fetched=await requestFetch({event:original,request:new Request('http://app.test/inner'),fetch:async(request)=>{
@@ -204,6 +220,7 @@ const response=await requestHandle(traced,async()=>{
 const text=await response.text();
 assert.equal(text,'literal-Kit-continuation-935');
 assert.equal(response.headers.get('x-skgo-middleware'),'literal-app-header-846');
+assert.deepEqual(effects,[{id:'root-713',value:{'literal-go':'effect-935'}}]);
 // Kit can buffer a fetched body before returning the page with its own length.
 // Reframe the real decoded upstream response and let Node parse the HTTP bytes.
 const server=createServer((_request,result)=>{

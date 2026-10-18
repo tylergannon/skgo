@@ -2,6 +2,10 @@ package newapp
 
 import (
 	"bytes"
+	"encoding/json"
+	"github.com/tylergannon/skgo"
+	"github.com/tylergannon/skgo/generate"
+	"github.com/tylergannon/skgo/internal/adapter"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,8 +13,8 @@ import (
 	"testing"
 )
 
-// Build a custom-module starter from the actual shipped templates. One frontend
-// build supplies every served assertion, including both internal-fetch entries.
+// The shipped Go templates compose real generated handlers. A literal adapter
+// artifact supplies the renderer boundary; no Svelte compiler runs here.
 func TestStarterTypedLocalsThroughBothFetchPaths(t *testing.T) {
 	repo, err := filepath.Abs("../..")
 	if err != nil {
@@ -31,37 +35,13 @@ func TestStarterTypedLocalsThroughBothFetchPaths(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, file := range []string{"package.json", "tsconfig.json", "src/app.html"} {
-		source, err := os.ReadFile(filepath.Join(repo, "example/web", file))
-		if err != nil {
-			t.Fatal(err)
-		}
-		write("web/"+file, string(source))
-	}
-	// Kit writes app-specific $app types during sync/build. Share installed
-	// packages, while keeping generated types and Vite's temp files local.
-	dependencies := filepath.Join(repo, "example/web/node_modules")
-	target := filepath.Join(dir, "web/node_modules")
-	if err := os.MkdirAll(target, 0755); err != nil {
+	write("web/package.json", `{"type":"module"}`)
+	if err := os.MkdirAll(filepath.Join(dir, "web/node_modules/@sveltejs"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	entries, err := os.ReadDir(dependencies)
-	if err != nil {
+	if err := os.Symlink(filepath.Join(repo, "example/web/node_modules/@sveltejs/kit"), filepath.Join(dir, "web/node_modules/@sveltejs/kit")); err != nil {
 		t.Fatal(err)
 	}
-	for _, entry := range entries {
-		if entry.Name() == "$app" || entry.Name() == ".vite-temp" {
-			continue
-		}
-		if err := os.Symlink(filepath.Join(dependencies, entry.Name()), filepath.Join(target, entry.Name())); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	write("web/vite.config.ts", `import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite-plus';
-import skgo from '@skgo/sveltekit-adapter';
-export default defineConfig({plugins:[sveltekit({adapter:skgo(),paths:{origin:'http://localhost:8080'},experimental:{remoteFunctions:true},compilerOptions:{experimental:{async:true}}})]});`)
 	write("domain/principal.go", "package domain\ntype Principal struct{Name string}\n")
 	locals := `package app
 import("github.com/tylergannon/skgo";"example.com/custom-locals/domain")
@@ -139,16 +119,17 @@ var _=skgo.GET(get)
 	}
 	write("go.sum", string(sums))
 	run("", "go", "get", "-tool", "github.com/tylergannon/skgo/cmd/skgo@v0.0.0")
-	run("", "go", "generate", "./...")
+	if err := generate.Run(generate.Config{Web: filepath.Join(dir, "web"), Out: filepath.Join(dir, "internal/skgo"), LocalsPackage: "example.com/custom-locals/internal/app", LocalsType: "Locals", HookPackage: "example.com/custom-locals/internal/serverhooks", ConfigPackage: "example.com/custom-locals/internal/app", CacheDir: "off"}); err != nil {
+		t.Fatal(err)
+	}
 	run("", "go", "mod", "tidy")
-	run("", "go", "generate", "./...")
 	for _, file := range []struct{ path, source string }{{"internal/app/locals.go", locals}, {"internal/serverhooks/handle.go", hooks}} {
 		got, err := os.ReadFile(filepath.Join(dir, file.path))
 		if err != nil || string(got) != file.source {
 			t.Fatalf("authored %s changed", file.path)
 		}
 	}
-	run("web", filepath.Join(repo, "example/web/node_modules/.bin/vp"), "build")
+	writeStarterRendererFixture(t, dir, write)
 	run("", "go", "test", "-count=1", "-v", "./...")
 	// The template and module-specific directive are part of the observed result.
 	cfg, err := os.ReadFile(filepath.Join(dir, "internal/skgo/config.go"))
@@ -200,3 +181,43 @@ func TestServedStarterNoHook(t *testing.T){
  }
 }
 `
+
+// This fixture renders the values supplied to SKGO's engine boundary and makes
+// one fetch through its Go callback. It deliberately contains no Kit/Svelte.
+func writeStarterRendererFixture(t *testing.T, dir string, write func(string, string)) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(dir, "web/skgo.remotes.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest skgo.Manifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest.SkgoAdapter = adapter.Fingerprint()
+	manifest.AppDir = "_app"
+	manifest.Nodes = []string{"src/routes/+layout.server.ts", "src/routes/+page.server.ts"}
+	manifest.Routes = []skgo.ManifestRoute{{ID: "/", Pattern: "^/$", Page: &skgo.ManifestPage{Layouts: []int{0}, Leaf: 1}}, {ID: "/api/locals", Pattern: "^/api/locals/?$", Endpoint: &skgo.ManifestEndpoint{Methods: []string{"GET"}}}}
+	manifest.SSR = &skgo.ManifestSSR{Bundle: "bundle.js", Template: "app.html", ErrorTemplate: "error.html", Target: "es2022", GlobalName: "__starter_fixture", Nodes: []skgo.ManifestSSRNode{{Index: 0, Component: true}, {Index: 1, Component: true}}}
+	raw, err = json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("web/build/skgo.manifest.json", string(raw))
+	write("web/build/client/.keep", "")
+	write("web/build/index.html", "<!doctype html><html><body>fallback</body></html>")
+	write("web/build/app.html", "<!doctype html><html><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>")
+	write("web/build/error.html", "<!doctype html>%sveltekit.status% %sveltekit.error.message%")
+	write("web/build/bundle.js", `globalThis.__skgo_ping=()=>"ok";
+globalThis.__skgo_render=raw=>{
+ const req=JSON.parse(raw),out={done:false,status:req.status,head:"",body:""};
+ const data=req.branch.map(n=>{if(!n.data)return {};const graph=JSON.parse(n.data);const fields={};for(const key in graph[0])fields[key]=graph[graph[0][key]];return fields;});
+ const page=data[1]||{},layout=data[0]||{};
+ __skgo_fetch(JSON.stringify({method:"GET",url:"http://localhost:8080/api/locals"})).then(raw=>{
+ const answer=JSON.parse(raw);if(answer.error)throw Error(answer.error);
+ out.body='<p id="locals">'+[page.name,layout.layoutName,page.nested,page.goFetch,answer.response.body].map(v=>v||"").join("|")+"</p>";
+ if(req.form)out.body+="<p>"+req.form.name+"</p>";
+ out.done=true;
+ },error=>{out.failure=String(error);out.done=true;});return out;
+};`)
+}

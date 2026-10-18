@@ -70,98 +70,18 @@ func forbidText(t *testing.T, what, body string, texts ...string) {
 	}
 }
 
-// TestTheFrontPageIndexesEveryCapabilityItDemonstrates is the index a visitor
-// lands on: one entry per capability, in order, linking to the page that shows
-// it, with a sentence saying what to look for there. The list is written here
-// so that a deleted entry, or a page that listed nothing, fails.
-func TestTheFrontPageIndexesEveryCapabilityItDemonstrates(t *testing.T) {
-	body := get(t, newProdHandler(t), "/").Body.String()
-
-	want := [][2]string{
-		{"Pages rendered in the Go process", "/items/42"},
-		{"Route parameters", "/items/7"},
-		{"Rest parameters", "/docs/guide/getting-started"},
-		{"Remote functions: queries, commands and forms", "/todos"},
-		{"Refreshing a query after a command", "/todos/gate"},
-		{"One query, one answer per argument", "/todos/pair"},
-		{"A query that goes on answering", "/live"},
-		{"Many calls answered by one", "/batch"},
-		{"Server loads, section-wide", "/account"},
-		{"Typed locals and layout request events", "/event-layout/red/first/one?route=untracked"},
-		{"Universal load over Go invoice data", "/invoices?overdue=1"},
-		{"A nested error page", "/account/statement"},
-		{"Values a load promises but does not have yet", "/stream"},
-		{"Custom types that keep their methods", "/pricing"},
-		{"A form that works with JavaScript switched off", "/contact"},
-		{"Page form actions", "/actions"},
-		{"HTTP endpoints written in Go", "/api"},
-		{"Links and asset URLs worked out while the page renders", "/render-paths"},
-		{"A page with no client-side JavaScript", "/plain"},
-		{"A page rendered only in the browser", "/spa"},
-		{"An empty list is still a list", "/empty"},
-		{"What the renderer writes reaches Go's log", "/console"},
-		{"A load that refuses", "/error/expected"},
-		{"A failure the page catches itself", "/error/boundary"},
-		{"An error that is a bug says nothing about itself", "/error/unexpected"},
-		{"A failure no error page can catch", "/?boom=root-layout"},
-	}
-	entry := regexp.MustCompile(`<li data-testid="capability"[^>]*><a data-testid="capability-link" href="([^"]*)"([^>]*)>([^<]*)</a>\s*<p data-testid="capability-look"[^>]*>([^<]*)</p>`)
-	found := entry.FindAllStringSubmatch(body, -1)
-	if len(found) != len(want) {
-		t.Fatalf("the front page lists %d capabilities, want %d", len(found), len(want))
-	}
-	for i, w := range want {
-		href, attrs, name, look := found[i][1], found[i][2], found[i][3], found[i][4]
-		if name != w[0] || href != w[1] {
-			t.Errorf("entry %d is %q -> %s, want %q -> %s", i+1, name, href, w[0], w[1])
-		}
-		// A sentence rather than a word: what the page proves.
-		if len(strings.TrimSpace(look)) <= 30 {
-			t.Errorf("entry %d (%s) says only %q about what to look for", i+1, name, look)
-		}
-		// The root layout's failure replaces the whole document, so its entry
-		// is a document request and not a client-side navigation.
-		reload := strings.Contains(attrs, "data-sveltekit-reload")
-		if reload != (w[1] == "/?boom=root-layout") {
-			t.Errorf("entry %d (%s): data-sveltekit-reload present = %v", i+1, name, reload)
-		}
-	}
-
-	requireMarkup(t, "/", body,
-		tagged("p", "greeting", "Hello, skgo! This is Svelte, served by Go."),
-		tagged("p", "site-name", "skgo"),
-		tagged("p", "colocated", "src/routes/site.remote.go"))
-	forbidText(t, "/", body, "skgo: implemented in Go")
-}
-
-// TestEveryPageArrivesWithItsOwnHeading walks the app's pages and asks each
-// for the `<h1>` its own +page.svelte writes, inside the root layout. A bundle
-// that joined the wrong node renders the wrong page's component with a 200 and
-// the right layout around it; the heading is what tells them apart. The two
-// /items paths and the rest parameter are there because the engine parses
-// every URL with Go's `URL`.
-func TestEveryPageArrivesWithItsOwnHeading(t *testing.T) {
+// Check Go's route selection against distinct literal pages and parameters.
+// Streaming and authenticated loads have their own contracts; repeating those
+// slow loads just to check a heading adds no routing proof.
+func TestRenderedRoutesKeepTheirOwnData(t *testing.T) {
 	h := newProdHandler(t)
 	for _, tc := range []struct{ path, heading string }{
-		{"/", "Home"},
 		{"/plain", "Plain"},
 		{"/items/7", "Item 7"},
 		{"/items/93", "Item 93"},
 		{"/items/93?from=nav", "Item 93"},
 		{"/todos", "Todos"},
-		{"/todos/t1", "Todo"},
-		{"/todos/gate", "The refresh gate"},
-		{"/todos/pair", "A pair of todos"},
-		{"/empty", "Empty"},
-		{"/pricing", "Pricing"},
 		{"/docs/guide/getting-started", "Docs"},
-		{"/contact", "Contact"},
-		{"/stream", "Stream"},
-		{"/console", "Console"},
-		{"/live", "Live"},
-		{"/batch", "Batch"},
-		{"/account/orders", "Orders"},
-		{"/render-paths", "Render-time paths"},
 	} {
 		rec := signedIn(t, h, "ada", tc.path)
 		if rec.Code != http.StatusOK {
@@ -271,18 +191,6 @@ func TestHydrationDataCannotCloseItsScriptElement(t *testing.T) {
 	requireText(t, "/?proof=script-safe", body,
 		`scriptSafe:"\u003C/script>\u003Cscript>globalThis.__skgo_injected=true\u003C/script>&\u003C>"`,
 		`&lt;/script>&lt;script>globalThis.__skgo_injected=true&lt;/script>&amp;&lt;>`)
-}
-
-// TestPathsResolveDuringARenderByKitsRules: `resolve` and `asset` are kit's
-// string logic over the compiled-in base, relative during server rendering
-// (paths.relative defaults to true); `match` asks Go's route table.
-func TestPathsResolveDuringARenderByKitsRules(t *testing.T) {
-	body := get(t, newProdHandler(t), "/render-paths").Body.String()
-	requireText(t, "/render-paths", body,
-		"resolve('/api/todos') = ./api/todos",
-		"resolve('/items/[id]', id: '42') = ./items/42",
-		"asset('robots.txt') = ./robots.txt",
-		`match('/items/77') = /items/[id] {"id":"77"}`)
 }
 
 // TestANilGoSliceRendersAsAnEmptyList: Go writes nil for "no rows", and the

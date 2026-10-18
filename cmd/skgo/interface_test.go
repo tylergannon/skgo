@@ -21,7 +21,7 @@ func TestCLIAndInitializedStdioMCPExposeSameAdviceAndFailedCheck(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bin := skgoBin
+	bin := skgoBinary(t)
 	output, err := exec.Command(bin, "advice", "--json").CombinedOutput()
 	if err != nil {
 		t.Fatalf("CLI advice: %v\n%s", err, output)

@@ -188,9 +188,8 @@ func pageLoad(event PageRequestEvent) (PageData, error) { return PageData{Revisi
 var _ = skgo.Load(pageLoad)
 `)
 	writeSharedFixture(t, app, "web/src/routes/added-route/+page.svelte", `<script lang="ts">let { data } = $props();</script><h1>Added Go route</h1><p>{data.revision}</p>`)
-	initial := start(func() error { return Run(cfg) })
 	t.Parallel()
-	if err := initial(); err != nil {
+	if err := Run(cfg); err != nil {
 		t.Fatal(err)
 	}
 	for i, language := range []Language{LanguageTypeScript, LanguageJavaScript, LanguageTypeScript} {

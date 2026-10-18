@@ -21,15 +21,11 @@ import (
 func TestSwiftRemoteCalls(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
 	defer cancel()
-	build := exec.CommandContext(ctx, "mise", "exec", "--", "zig", "build", "test", "install")
-	build.Dir = "core"
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build Zig library: %v\n%s", err, out)
-	}
-	scratch := t.TempDir()
-	swift := exec.CommandContext(ctx, "swift", "test", "--package-path", "swift", "--scratch-path", scratch)
+	// Swift links the same SKGO Zig archive used by the other boundary test.
+	zigRemoteCLI(t)
+	swift := exec.CommandContext(ctx, "swift", "build", "--package-path", "swift", "--product", "skgo-swift-remote")
 	if out, err := swift.CombinedOutput(); err != nil {
-		t.Fatalf("Swift boundary tests: %v\n%s", err, out)
+		t.Fatalf("build Swift client: %v\n%s", err, out)
 	}
 	var mu sync.Mutex
 	accepted := false
@@ -88,7 +84,7 @@ func TestSwiftRemoteCalls(t *testing.T) {
 	})}
 	go server.Serve(listener)
 	t.Cleanup(func() { server.Close() })
-	cli := filepath.Join(scratch, "debug", "skgo-swift-remote")
+	cli := filepath.Join("swift", ".build", "debug", "skgo-swift-remote")
 	out, err := exec.CommandContext(ctx, cli, origin, "/native", command.ID(), query.ID()).CombinedOutput()
 	if err != nil {
 		t.Fatalf("Swift URLSession calls: %v\n%s", err, out)

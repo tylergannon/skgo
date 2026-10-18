@@ -36,7 +36,7 @@ func TestRetainedApplicationCallerAndDependencyGuards(t *testing.T) {
 			q.view.Close()
 		}
 	}()
-	cfg := &packages.Config{Context: context.Background(), Dir: root, Env: append(os.Environ(), "GOWORK=off"), Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
+	cfg := &packages.Config{Context: context.Background(), Dir: root, Env: append(os.Environ(), "GOWORK=off"), Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
 	if _, err := q.Load(cfg, "example.com/retained/target", "./..."); err != nil {
 		t.Fatal(err)
 	}

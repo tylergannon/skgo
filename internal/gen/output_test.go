@@ -73,9 +73,8 @@ var _ = skgo.Form(save)
 		}
 		return out
 	}
-	initial := start(func() error { return Run(cfg) })
 	t.Parallel()
-	if err := initial(); err != nil {
+	if err := Run(cfg); err != nil {
 		t.Fatal(err)
 	}
 	expected := snapshot()
