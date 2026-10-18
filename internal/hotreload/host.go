@@ -61,6 +61,7 @@ type Host struct {
 	commands, replies *os.File
 	done              chan struct{}
 	mu                sync.Mutex
+	controlErr        error
 	closeOnce         sync.Once
 	options           HostOptions
 	binary            string
@@ -385,20 +386,50 @@ func (h *Host) Close() error {
 }
 func (h *Host) receive(ctx context.Context, r *hostReply) error {
 	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Now().Add(30 * time.Second)
+	limit := time.Now().Add(30 * time.Second)
+	if !ok || limit.Before(deadline) {
+		deadline = limit
 	}
 	_ = h.replies.SetReadDeadline(deadline)
+	// Session cancellation must interrupt a pipe read even when its deadline is
+	// farther away. Wait for an already running callback before the next exchange
+	// can set its deadline.
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		_ = h.replies.SetReadDeadline(time.Now())
+		close(interrupted)
+	})
+	defer func() {
+		if !stop() {
+			<-interrupted
+		}
+	}()
 	return json.NewDecoder(h.replies).Decode(r)
 }
 func (h *Host) exchange(ctx context.Context, m hostMessage) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if h.controlErr != nil {
+		return h.controlErr
+	}
+	deadline, ok := ctx.Deadline()
+	limit := time.Now().Add(30 * time.Second)
+	if !ok || limit.Before(deadline) {
+		deadline = limit
+	}
+	_ = h.commands.SetWriteDeadline(deadline)
 	if err := json.NewEncoder(h.commands).Encode(m); err != nil {
+		h.controlErr = err
 		return err
 	}
 	var r hostReply
 	if err := h.receive(ctx, &r); err != nil {
+		// The child may reply after this read times out. Reusing the control
+		// stream could acknowledge another revision with that stale reply.
+		h.controlErr = err
 		return err
 	}
 	if r.Rebuild {
@@ -416,8 +447,16 @@ func (h *Host) Install(ctx context.Context, u *HostUpdate) error {
 	if u == nil {
 		return nil
 	}
-	if err := h.exchange(ctx, hostMessage{Op: "install", Package: u.packagePath, Candidate: u.candidate}); err != nil {
-		return err
+	install, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if err := h.exchange(install, hostMessage{Op: "install", Package: u.packagePath, Candidate: u.candidate}); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		// A compatible object can still fail relocation or stall inside the
+		// loader. The unchanged healthy host stays alive while the session
+		// prepares a complete replacement; this is never a successful install.
+		return &CompleteBuild{Reason: "native installation failed: " + err.Error()}
 	}
 	h.stateMu.Lock()
 	h.installed = u.files
