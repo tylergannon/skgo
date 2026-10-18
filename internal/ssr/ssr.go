@@ -364,6 +364,7 @@ type runtime struct {
 	clientAddress func() (string, error)
 	tracing       func(context.Context, []byte) ([]byte, error)
 	traceContext  func(context.Context, string) context.Context
+	handleError   func(context.Context, []byte) ([]byte, error)
 	// calls records the `<id>` and payload of every remote call the current
 	// render made, in order.
 	calls []Call
@@ -455,6 +456,8 @@ type Match func(pathname string) (routeID string, params map[string]string, ok b
 // optional; leaving one nil means a render that reaches it gets a well-defined
 // refusal rather than a ReferenceError.
 type Hosts struct {
+	// HandleError applies Go application policy to a component-boundary error.
+	HandleError func(context.Context, []byte) ([]byte, error)
 	// ClientAddress answers getClientAddress lazily from the hosting boundary.
 	ClientAddress func() (string, error)
 	// Remote answers a remote-function call.
@@ -579,6 +582,21 @@ func (e *Engine) newRuntime() (*runtime, error) {
 	}); err != nil {
 		return nil, err
 	}
+	if err := rt.vm.Set("__skgo_handle_error", func(payload string) (string, error) {
+		if rt.handleError == nil {
+			var input struct {
+				Body json.RawMessage `json:"body"`
+			}
+			if err := json.Unmarshal([]byte(payload), &input); err != nil {
+				return "", err
+			}
+			return string(input.Body), nil
+		}
+		body, err := rt.handleError(rt.work.ctx, []byte(payload))
+		return string(body), err
+	}); err != nil {
+		return nil, err
+	}
 	if err := rt.vm.Set("__skgo_client_address", func() (string, error) {
 		if rt.clientAddress == nil {
 			return "", errors.New("skgo: client address is unavailable in this request context")
@@ -683,6 +701,7 @@ func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hos
 	rt.fetch = hosts.Fetch
 	rt.match = hosts.Match
 	rt.clientAddress = hosts.ClientAddress
+	rt.handleError = hosts.HandleError
 	rt.calls = nil
 	rt.failed = nil
 	rt.route = routeID
@@ -691,6 +710,7 @@ func (e *Engine) Render(ctx context.Context, routeID string, request []byte, hos
 		rt.fetch = nil
 		rt.match = nil
 		rt.clientAddress = nil
+		rt.handleError = nil
 		rt.tracing = nil
 		rt.traceContext = nil
 		rt.route = ""

@@ -235,7 +235,7 @@ function throwGoError(answer) {
   handledGoErrors.set(diagnostic.kind==='known' ? failure.body : failure,{body,diagnostic});
   throw failure;
 }
-export function handleGoError({kind,error,issues}) {
+export function handleGoError({event,kind,error,issues}) {
   const handled=handledGoErrors.get(error);
   if (handled) {
     // Vite fixes JavaScript stacks before invoking this hook. Go frames are
@@ -244,10 +244,14 @@ export function handleGoError({kind,error,issues}) {
     if (kind==='unknown') console.error(`Error: ${diagnostic.message}\n${diagnostic.stack || (diagnostic.source ? `    at ${diagnostic.source}` : '')}`);
     return body;
   }
-  // Preserve Kit's default behavior for errors originating in native Kit or
-  // universal JavaScript rather than a completed Go handleError invocation.
-  if (kind==='unknown') console.error(error);
-  else if (kind==='validation') console.error('Remote function schema validation failed:',issues);
+  // Preserve errors already handled by Go above; route Kit and JavaScript
+  // errors through the same application policy used by request handling.
+  return json('error', {
+    handle: owner(event), kind,
+    body: kind==='unknown' ? {status:500,message:'Internal Error'} : error,
+    cause: kind==='unknown' ? ((error && (error.stack || error.message)) || String(error)) : ''
+  }, event);
+}
 }
 function exceptional(answer) {
   throwGoError(answer);

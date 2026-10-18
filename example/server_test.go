@@ -491,14 +491,8 @@ var deliberateFailures = map[string]struct {
 	// rendered reports that the page itself rendered and only the status
 	// moved, which is what a boundary that caught its own failure produces.
 	rendered bool
-	// handled reports that this failure reaches Go's own serveLoadError or
-	// respondWithError — the page-render path the app's handleError hook is
-	// wired into (example.HandleError) — so the document must carry the
-	// support id that hook adds to every error it sees. A failure caught by
-	// the SSR bundle's own error boundary (transformError) does not set this:
-	// that path does not consult the hook yet, so a document from it must
-	// NOT carry the support id either, or this check would stop meaning
-	// anything.
+	// handled reports that the rendered document can carry the public fields
+	// supplied by example.HandleError, including component-boundary failures.
 	handled bool
 }{
 	// A load that throws error(402, ...) under /account, which declares its own
@@ -526,28 +520,28 @@ var deliberateFailures = map[string]struct {
 		handled: true,
 	},
 	// A command called while the page renders. Kit refuses it, transformError
-	// turns the refusal into Internal Error, and the boundary the root error
+	// applies the application's error policy, and the boundary the root error
 	// page guards renders in the page's place.
 	"/error/command": {
-		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
-		never: []string{"Cannot call a command"},
+		status: 500, says: "Something went wrong on our end.", inside: `data-testid="app-nav"`,
+		never: []string{"Cannot call a command"}, handled: true,
 	},
 	// A component that can only fail on the server: it throws while `document`
 	// is undefined, which is true in the rendering engine and false in a
-	// browser. Kit's transformError turns the throw into Internal Error and the
+	// browser. Kit's transformError applies the application's error policy and the
 	// root error page renders in the page's place, at 500 — which is the whole
 	// point of the fixture, because a dev server that rendered nothing would
 	// have answered 200 with a shell and said nothing at all.
 	"/error/server-only": {
-		status: 500, says: "Internal Error", inside: `data-testid="app-nav"`,
-		never: []string{"this page only renders in the browser"},
+		status: 500, says: "Something went wrong on our end.", inside: `data-testid="app-nav"`,
+		never: []string{"this page only renders in the browser"}, handled: true,
 	},
 	// A page that catches its own failure. It renders — its own heading is in
 	// the document — and kit's transformError still moves the whole document's
 	// status to the caught error's.
 	"/error/boundary": {
 		status: 409, says: "The sensor is being calibrated",
-		inside: `<h1 data-testid="title">Sensor</h1>`, rendered: true,
+		inside: `<h1 data-testid="title">Sensor</h1>`, rendered: true, handled: true,
 	},
 	// A query that redirects while the page renders. Kit turns that into a
 	// redirect of the whole document, not into an error inside it.

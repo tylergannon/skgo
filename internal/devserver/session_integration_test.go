@@ -141,6 +141,9 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool,
 		if mode == "pending-browser" {
 			setupPendingBrowser(t, app, write)
 		}
+		if mode == "boundary-error" {
+			setupBoundaryError(t, write)
+		}
 		if withGenerator {
 			write("generator.json", `{"package":"./tool"}`)
 			write("producer.txt", "literal-generated-101")
@@ -193,6 +196,9 @@ func newHandler(dist fs.FS,origin string,native *skgo.NativeDevelopment)(http.Ha
  return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Project-State",string(durable));w.Header().Set("X-Go-Pid",strconv.Itoa(os.Getpid()));w.Header().Set("X-Session",%q);w.Header().Set("X-Origin",origin);w.Header().Set("X-Environment",envValues.Receipt);w.Header().Set("X-App-Dir",manifest.AppDir);w.Header().Set("X-Trusted-Origins",strings.Join(manifest.TrustedOrigins,","));app.ServeHTTP(w,r)}),nil
 }
 `, filepath.Join(projectDir, "owner.lock"), filepath.Join(projectDir, "catalog"), label))
+		if mode == "boundary-error" {
+			configureBoundaryErrorHook(t, app)
+		}
 		if withHandoff {
 			source, err := os.ReadFile(filepath.Join(app, "server.go"))
 			if err != nil {
@@ -375,6 +381,10 @@ func waitForReadiness() error {
 	}
 	if mode == "pending-browser" {
 		exercisePendingBrowser(t, alpha.app, alpha.origin, alpha.log)
+		return
+	}
+	if mode == "boundary-error" {
+		exerciseBoundaryError(t, alpha.origin, alpha.log)
 		return
 	}
 	if withHandoff {

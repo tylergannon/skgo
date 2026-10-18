@@ -9,3 +9,7 @@
 
 - correction: http.Server.Shutdown returning at its deadline does not close active connections; explicit Server.Close must precede application cleanup. Keep application initialization and deferred cleanup in run, with main handling exit status only after run returns. A process-exit-only stream test can mask a missing Close; observe request-context cancellation before cleanup completes.
 - decision: Generated server cleanup belongs in run(), before main translates errors to exit status. Go Shutdown returns ErrServerClosed from Serve immediately but must itself be awaited, and timeout does not close active connections; explicit server Close must precede application cleanup.
+
+- correction: Kit 3.1.0 ordinary HttpError still invokes handleError; only already-handled bodies and redirects bypass it. Preserve an unexpected remote panic as an unknown error until the shared public policy runs, while keeping OnPanic reporting independent; reducing it to HTTPError first loses classification and the original private cause.
+
+- correction: Remote HTTP envelopes do not cover Kit collect_remote_data during SSR. Assert the specific hydration query error entry, not merely a hook field elsewhere in the document. Single and batch SSR answers must record the transformed body and mark it handled before Svelte receives it, or a boundary runs the hook again.

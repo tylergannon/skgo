@@ -41,18 +41,20 @@ import { create_universal_fetch } from 'skgo:kit/load-data';
 init_transport(transport ?? {});
 
 /**
- * kit's handle_error_and_jsonify (runtime/server/errors.js) with no
- * handleError hook: an HttpError keeps the body the app chose, a framework
- * error keeps its status and text, a validation failure is a Bad Request, and
- * anything else is Internal Error with the real cause left on the server.
- * skgo has no handleError hook, so there is nothing here to await or merge.
+ * Kit's error classification, delegated to the same Go application policy as
+ * document/load failures. Already-handled bodies bypass the hook. Unknown
+ * diagnostics are sent privately to Go and never become the public fallback.
  */
 function handle_error(error) {
 	if (error instanceof HandledHttpError) return error.body;
-	if (error instanceof HttpError) return error.body;
-	if (error instanceof SvelteKitError) return { status: error.status, message: error.text };
-	if (error instanceof ValidationError) return { status: 400, message: 'Bad Request' };
-	return { status: 500, message: 'Internal Error' };
+	let kind, body;
+	if (error instanceof HttpError) { kind = 'app'; body = error.body; }
+	else if (error instanceof SvelteKitError) { kind = 'framework'; body = { status: error.status, message: error.text }; }
+	else if (error instanceof ValidationError) { kind = 'validation'; body = { status: 400, message: 'Bad Request' }; }
+	else { kind = 'unknown'; body = { status: 500, message: 'Internal Error' }; }
+	return JSON.parse(globalThis.__skgo_handle_error(JSON.stringify({
+		kind, body, cause: kind === 'unknown' ? ((error && (error.stack || error.message)) || String(error)) : ''
+	})));
 }
 
 /**
@@ -207,7 +209,7 @@ function make_event(req, url, serialized) {
 		locals: {},
 		params: req.params ?? {},
 		platform: undefined,
-		request: { headers: new Headers(req.headers), method: req.method ?? 'GET' },
+		request: { url: req.url, headers: new Headers(req.headers), method: req.method ?? 'GET' },
 		route: { id: req.route_id ?? null },
 		setHeaders: () => {},
 		url,

@@ -1004,6 +1004,11 @@ func (s *SSR) renderPlan(r *http.Request, req dataRequest, plan documentPlan, cs
 	tracing := newRendererTracing(ctx)
 	defer tracing.close()
 	result, _, err := s.engine.Render(ctx, plan.routeID, request, ssr.Hosts{
+		HandleError: func(ctx context.Context, payload []byte) ([]byte, error) {
+			request := r.WithContext(ctx)
+			shared := &loadRequest{responseState: newResponseState(request), req: request, jar: plan.jar, url: req.url, routeID: plan.routeID, params: plan.params}
+			return s.boundaryError(hookContext(request, shared), plan.routeID, payload)
+		},
 		Tracing:       tracing.call,
 		TraceContext:  tracing.context,
 		ClientAddress: clientAddressOf(r).get,
