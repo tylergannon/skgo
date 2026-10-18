@@ -23,6 +23,7 @@ func TestProductionApplication(t *testing.T) {
 	t.Run("GoPagePrerenderRedirectBuildsKitsNativeArtifact", testGoPagePrerenderRedirectBuildsKitsNativeArtifact)
 	t.Run("GoHookRefusalsMapToKitsNativeResponses", testGoHookRefusalsMapToKitsNativeResponses)
 	t.Run("RealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse", testRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse)
+	t.Run("PrerenderFetchReportsUnavailableAppDestinations", testPrerenderFetchReportsUnavailableAppDestinations)
 	t.Run("CompiledProductionPrerenderedEndpointsAndPages", testCompiledProductionPrerenderedEndpointsAndPages)
 	t.Run("RealProductionStartsWithPrerenderedEndpoints", testRealProductionStartsWithPrerenderedEndpoints)
 	t.Run("CompiledProductionNoArgumentNullReachesTheArtifactLookup", testCompiledProductionNoArgumentNullReachesTheArtifactLookup)

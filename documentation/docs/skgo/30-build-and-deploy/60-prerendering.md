@@ -9,6 +9,7 @@ proof:
   - TestPrerenderedGoRemoteIsAStaticAnswer
   - TestAPrerenderedRedirectUsesKitsCanonicalHTMLArtifact
   - TestAPrerenderedFetchCarriesNothingOfThePageAndKeepsTheClientAddress
+  - TestPrerenderFetchRefusesUnavailableDestinationsAndKeepsEndpointIsolation
 ---
 
 Prerendering works as it does in [Kit](https://svelte.dev/docs/kit/page-options#prerender): mark a page with `export const prerender = true`, and `vp build` writes it to a file. What differs is where the data comes from. Server loads, `server.go` routes and remote functions are Go, so the build calls Go. [Page options](page-options#prerender) covers the option itself; this page covers the machinery and its edges.
@@ -118,6 +119,6 @@ SKGo has no static export. Even when every page is prerendered, the build is sha
 
 ## Limitations
 
-- At build time, `event.Fetch` from Go reaches `server.go` routes only. A fetch of a page or a `__data.json` path is a 404 during the build.
+- At build time, `event.Fetch` from Go reaches `server.go` routes. A known page, its `__data.json` path or the remote-function service needs Kit's request context, which the Go build callback cannot enter. These fetches return a Go error naming the unavailable destination; they do not return a misleading 404. A genuinely missing route still returns 404. Fetch page/data/remote destinations from a universal load when Kit must handle them during prerendering.
 - `HandleFetch` and `HandleError` are not carried into the build; `PrerenderServiceOptions` has no field for them.
 - The generated service does not see the `FilterSerializedResponseHeaders` you give `SSROptions`. Use a [custom service](#Custom-prerender-service) to share it.

@@ -217,7 +217,7 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 			fetchHandler.ServeHTTP(w, r.WithContext(ctx))
 		})
 		fetchHandler = s.options.BindRequest(endpoints.Intercept(http.NotFoundHandler()))
-		fetcher := &requestFetcher{origin: pageURL, base: normalizeFetchBase(input.Manifest.Base), handler: dispatch}
+		fetcher := &requestFetcher{origin: pageURL, base: normalizeFetchBase(input.Manifest.Base), handler: dispatch, unavailable: prerenderFetchUnavailable(endpoints)}
 		request = request.WithContext(context.WithValue(request.Context(), requestFetcherKey{}, fetcher))
 
 	}
@@ -321,6 +321,39 @@ func (s *prerenderRequests) begin(ctx context.Context, input prerenderRequestInp
 	case <-ctx.Done():
 		s.end(handle)
 		return prerenderRequestAnswer{}, ctx.Err()
+	}
+}
+
+// A build has Go endpoint dispatch but no continuation into its owning Kit
+// worker. A destination requiring that context must reject Event.Fetch, rather
+// than returning the fallback 404 and silently baking a missing-page branch.
+func prerenderFetchUnavailable(endpoints *Endpoints) func(*http.Request) error {
+	return func(request *http.Request) error {
+		pathname, ok := requestRoutingPath(request.URL)
+		if !ok {
+			return nil // The ordinary handler owns malformed-path responses.
+		}
+		kind := ""
+		if strings.HasPrefix(pathname, endpoints.appPrefix()+"remote/") {
+			kind = "remote"
+		} else {
+			path := strings.TrimPrefix(stripDataSuffix(pathname), endpoints.base)
+			if path == "" {
+				path = "/"
+			}
+			route, _, matched := endpoints.match(path)
+			if matched && route.hasPage {
+				if hasDataSuffix(pathname) {
+					kind = "data"
+				} else if kitSuffix(pathname) == "" && !route.answers(request) {
+					kind = "page"
+				}
+			}
+		}
+		if kind == "" {
+			return nil
+		}
+		return fmt.Errorf("skgo: prerender Event.Fetch cannot dispatch %s destination %s %s: Kit request context is unavailable", kind, request.Method, request.URL.Path)
 	}
 }
 func prerenderCookies(jar *cookieJar) []prerenderCookie {

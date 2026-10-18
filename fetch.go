@@ -221,6 +221,7 @@ type requestFetcher struct {
 	base         string
 	origin       *url.URL
 	prerendered  map[string]bool
+	unavailable  func(*http.Request) error
 }
 
 func prerenderedSet(paths []string) map[string]bool {
@@ -430,6 +431,11 @@ func (f *requestFetcher) dispatch(ctx context.Context, src fetchSource, request 
 func (f *requestFetcher) serve(ctx context.Context, src fetchSource, request *http.Request) (*http.Response, error) {
 	if development, ok := ctx.Value(devKitTransportKey{}).(*NativeDevelopment); ok && !development.isRemoteProtocol(request) {
 		return development.kitFetch(ctx, src.request, request)
+	}
+	if f.unavailable != nil {
+		if err := f.unavailable(request); err != nil {
+			return nil, err
+		}
 	}
 	if f.handler == nil {
 		return nil, errors.New("skgo: no handler is configured to answer a fetch of this app's own routes")
