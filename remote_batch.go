@@ -53,7 +53,7 @@ func (rs *Remotes) serveBatch(w http.ResponseWriter, r *http.Request, fn *Remote
 			rs.writeResult(w, ev, map[string]any{"redirect": redirect.Location})
 			return
 		}
-		rs.writeError(w, asHTTPError(err))
+		rs.writeCallError(w, withEvent(r.Context(), ev), err)
 		return
 	}
 

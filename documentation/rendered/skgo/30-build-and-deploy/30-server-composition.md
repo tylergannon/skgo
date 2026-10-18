@@ -191,6 +191,7 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 	//
 	remoteCfg.Transport = generated.Transport()
 	loadCfg.Transport = generated.Transport()
+	remoteCfg.HandleError = HandleError
 	loadCfg.HandleError = HandleError
 	endpointCfg.HandleError = HandleError
 	handleCfg.HandleError = HandleError

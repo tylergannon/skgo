@@ -23,21 +23,16 @@ import (
 	"github.com/tylergannon/skgo/internal/ssr"
 )
 
-// CaughtError is the error a page's `handleError` hook is told about — kit's
-// own discriminated `CaughtError` (`exports/hooks/public.d.ts`), narrowed to
-// what a Go port can express without modelling kit's `SvelteKitError` and
-// `ValidationError` classes as distinct Go types the way skgo's `HTTPError`
-// does not yet: "app" for an error already shaped as one — an *HTTPError,
-// whether the app raised it itself with Errorf or skgo manufactured it for a
-// framework failure such as a 404 — and "unknown" for anything else, which is
-// where kit's real distinction still matters: the visitor is never shown an
-// unknown error's own message, only what the hook explicitly returns.
+// CaughtError is the error passed to the application's HandleError hook.
+// Kind distinguishes an app HTTPError, private argument-validation issues,
+// and an unknown failure whose original error must not reach the visitor.
 type CaughtError struct {
-	// Kind is "app" or "unknown".
+	// Kind is "app", "validation" or "unknown".
 	Kind string
 	// Status and Message are the error's own fallback: what the visitor sees
 	// if the hook returns nothing. For "app" this is the app's own status and
-	// message; for "unknown" it is always 500 and "Internal Error".
+	// message; for "validation" it is 400 and "Bad Request"; for "unknown"
+	// it is always 500 and "Internal Error".
 	Status  int
 	Message string
 	// Err is the original error skgo caught, set only for kind "unknown" — an
@@ -46,13 +41,19 @@ type CaughtError struct {
 	// further with errors.As, reads it from here; it is never shown to the
 	// visitor unless the hook copies something from it into what it returns.
 	Err error
+	// Issues contains private decoder diagnostics only for kind "validation".
+	// Their messages may describe the expected argument shape. They are never
+	// published unless the hook explicitly copies them into its returned body.
+	// Field is empty when the decoder supplies no separate form-field path.
+	Issues []Issue
 }
 
 // HandleError is skgo's mirror of kit's `handleError` hook
 // (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app
-// decides what a failed page's visitor is told, beyond status and message.
+// decides what a failed request's visitor is told, beyond status and message.
 //
-// It runs for every error that reaches a page response except a redirect,
+// RemoteConfig uses it for rejected schema arguments. It also runs for every
+// error that reaches a page response except a redirect,
 // which is not a failure and never reaches it, and an already-handled
 // built-prerender error whose recorded App.Error body is reused without
 // running the hook again. That includes an error the app raised on purpose
@@ -113,8 +114,14 @@ func handleErrorAndJSONify(ctx context.Context, routeID string, hook HandleError
 	}
 
 	caught := CaughtError{Kind: "app", Status: fallback.Status, Message: fallback.Message}
+	var rejected badRequest
 	var httpErr *HTTPError
-	if raw != nil && !errors.As(raw, &httpErr) {
+	if errors.As(raw, &rejected) {
+		caught.Kind = "validation"
+		if rejected.detail != nil {
+			caught.Issues = []Issue{{Message: rejected.detail.Error()}}
+		}
+	} else if raw != nil && !errors.As(raw, &httpErr) {
 		caught.Kind = "unknown"
 		caught.Err = raw
 	}

@@ -56,7 +56,8 @@ async function host(id, payload) {
 		throw new Redirect(res.r.status, res.r.location);
 	}
 	if (res.e) {
-		throw new HttpError({ status: res.e.status ?? 500, message: res.e.message });
+		// Go selected the public App.Error body, including application fields.
+		throw new HttpError({ ...res.e, status: res.e.status ?? 500 });
 	}
 	return parse(res.v);
 }
@@ -99,7 +100,7 @@ async function host_batch(id, args) {
 		throw new Redirect(res.r.status, res.r.location);
 	}
 	if (res.e) {
-		throw new HttpError({ status: res.e.status ?? 500, message: res.e.message });
+		throw new HttpError({ ...res.e, status: res.e.status ?? 500 });
 	}
 	const nodes = res.n ?? [];
 	return (_arg, i) => {
@@ -108,7 +109,7 @@ async function host_batch(id, args) {
 			throw new HttpError({ status: 500, message: 'Internal Error' });
 		}
 		if (node.e) {
-			throw new HttpError({ status: node.e.status ?? 500, message: node.e.message });
+			throw new HttpError({ ...node.e, status: node.e.status ?? 500 });
 		}
 		return parse(node.v);
 	};

@@ -43,7 +43,10 @@ func (d *NativeDevelopment) remote(ctx context.Context, raw []byte, w http.Respo
 			if redirect := asRedirect(err); redirect != nil {
 				return json.NewEncoder(w).Encode(map[string]any{"type": "redirect", "redirect": map[string]any{"status": redirect.status(), "location": redirect.Location}})
 			}
-			handled := d.renderer.loads.dataError(ctx, "", asHTTPError(err), err)
+			handled := rs.validationError(ctx, err)
+			if handled == nil {
+				handled = d.renderer.loads.dataError(ctx, "", asHTTPError(err), err)
+			}
 			body, encodeErr := jsonBytes(errorNodeExtra(handled))
 			if encodeErr != nil {
 				return encodeErr

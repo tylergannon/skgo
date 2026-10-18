@@ -325,7 +325,7 @@ func requestedInstances[In any](ctx context.Context, fn any, limit int, want Kin
 		// same answer: this instance is refused, and the rest are unaffected.
 		arg, err := decodeRequested[In](target, instance)
 		if err != nil {
-			set.add(key, refreshEntry{fn: target, err: asHTTPError(err)})
+			set.add(key, refreshEntry{fn: target, err: err})
 			continue
 		}
 

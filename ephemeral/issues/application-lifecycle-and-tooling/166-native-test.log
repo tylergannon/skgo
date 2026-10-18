@@ -1,0 +1,9 @@
+=== RUN   TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler
+    development_test.go:392: snapshot1 routes3 nodes5
+    development_test.go:438: snapshot2 routes4 nodes6
+    development_test.go:443: snapshot3 routes4 nodes6
+    development_test.go:450: snapshot4 routes3 nodes5
+    development_test.go:482: snapshot5 routes3 nodes5
+--- PASS: TestDevelopmentSnapshotUsesLiveKitGraphAtGoHandler (4.47s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	4.693s

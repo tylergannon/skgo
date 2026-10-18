@@ -26,8 +26,8 @@ type liveRedirectFrame struct {
 }
 
 type liveErrorFrame struct {
-	Type  string     `json:"type"`
-	Error *HTTPError `json:"error"`
+	Type  string `json:"type"`
+	Error any    `json:"error"`
 }
 
 // serveLive answers a `query.live` call with an SSE stream. The producer runs
@@ -140,7 +140,7 @@ func (rs *Remotes) serveLive(w http.ResponseWriter, r *http.Request, fn *Remote)
 				rs.sendFrame(w, flusher, liveRedirectFrame{Type: "redirect", Location: redirect.Location})
 				return
 			}
-			rs.sendFrame(w, flusher, liveErrorFrame{Type: "error", Error: asHTTPError(err)})
+			rs.sendFrame(w, flusher, liveErrorFrame{Type: "error", Error: rs.remoteError(withEvent(ctx, ev), err)})
 			return
 		}
 	}

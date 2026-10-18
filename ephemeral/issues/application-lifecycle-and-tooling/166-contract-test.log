@@ -1,0 +1,2074 @@
+=== RUN   TestNewActionsEnforcesKitDeclarationRules
+=== RUN   TestNewActionsEnforcesKitDeclarationRules/named_actions
+=== RUN   TestNewActionsEnforcesKitDeclarationRules/a_JavaScript_page
+=== RUN   TestNewActionsEnforcesKitDeclarationRules/default_only
+=== RUN   TestNewActionsEnforcesKitDeclarationRules/same_names_on_different_pages
+=== RUN   TestNewActionsEnforcesKitDeclarationRules/duplicate_name
+=== RUN   TestNewActionsEnforcesKitDeclarationRules/default_then_named
+=== RUN   TestNewActionsEnforcesKitDeclarationRules/named_then_default
+=== RUN   TestNewActionsEnforcesKitDeclarationRules/layout_placement
+=== RUN   TestNewActionsEnforcesKitDeclarationRules/JavaScript_layout_placement
+--- PASS: TestNewActionsEnforcesKitDeclarationRules (0.00s)
+    --- PASS: TestNewActionsEnforcesKitDeclarationRules/named_actions (0.00s)
+    --- PASS: TestNewActionsEnforcesKitDeclarationRules/a_JavaScript_page (0.00s)
+    --- PASS: TestNewActionsEnforcesKitDeclarationRules/default_only (0.00s)
+    --- PASS: TestNewActionsEnforcesKitDeclarationRules/same_names_on_different_pages (0.00s)
+    --- PASS: TestNewActionsEnforcesKitDeclarationRules/duplicate_name (0.00s)
+    --- PASS: TestNewActionsEnforcesKitDeclarationRules/default_then_named (0.00s)
+    --- PASS: TestNewActionsEnforcesKitDeclarationRules/named_then_default (0.00s)
+    --- PASS: TestNewActionsEnforcesKitDeclarationRules/layout_placement (0.00s)
+    --- PASS: TestNewActionsEnforcesKitDeclarationRules/JavaScript_layout_placement (0.00s)
+=== RUN   TestCallerManifestDriftBeforeFallback
+=== RUN   TestCallerManifestDriftBeforeFallback/unknown_key
+=== RUN   TestCallerManifestDriftBeforeFallback/unknown_matcher_first_candidate
+=== RUN   TestCallerManifestDriftBeforeFallback/known_matcher_changed
+=== RUN   TestCallerManifestDriftBeforeFallback/optional_changed
+=== RUN   TestCallerManifestDriftBeforeFallback/missing_constructor
+=== RUN   TestCallerManifestDriftBeforeFallback/constructor_rejects
+=== RUN   TestCallerManifestDriftBeforeFallback/unknown_route
+=== RUN   TestCallerManifestDriftBeforeFallback/outside_selected_route
+--- PASS: TestCallerManifestDriftBeforeFallback (0.00s)
+    --- PASS: TestCallerManifestDriftBeforeFallback/unknown_key (0.00s)
+    --- PASS: TestCallerManifestDriftBeforeFallback/unknown_matcher_first_candidate (0.00s)
+    --- PASS: TestCallerManifestDriftBeforeFallback/known_matcher_changed (0.00s)
+    --- PASS: TestCallerManifestDriftBeforeFallback/optional_changed (0.00s)
+    --- PASS: TestCallerManifestDriftBeforeFallback/missing_constructor (0.00s)
+    --- PASS: TestCallerManifestDriftBeforeFallback/constructor_rejects (0.00s)
+    --- PASS: TestCallerManifestDriftBeforeFallback/unknown_route (0.00s)
+    --- PASS: TestCallerManifestDriftBeforeFallback/outside_selected_route (0.00s)
+=== RUN   TestCallerManifestRequiresGeneratedMetadata
+--- PASS: TestCallerManifestRequiresGeneratedMetadata (0.00s)
+=== RUN   TestCallerManifestDoesNotRequireQueryCallerMetadata
+--- PASS: TestCallerManifestDoesNotRequireQueryCallerMetadata (0.00s)
+=== RUN   TestCSPHeaderMatchesKit_HashMode
+--- PASS: TestCSPHeaderMatchesKit_HashMode (0.00s)
+=== RUN   TestCSPHashReportingKeywordsMatchKit31
+--- PASS: TestCSPHashReportingKeywordsMatchKit31 (0.00s)
+=== RUN   TestCSPHeaderMatchesKit_NonceMode
+--- PASS: TestCSPHeaderMatchesKit_NonceMode (0.00s)
+=== RUN   TestCSPHeaderMatchesKit_DeclarationOrderNotConfigOrder
+--- PASS: TestCSPHeaderMatchesKit_DeclarationOrderNotConfigOrder (0.00s)
+=== RUN   TestCSPHeaderMatchesKit_UnsafeInlineNeedsNoCSP
+--- PASS: TestCSPHeaderMatchesKit_UnsafeInlineNeedsNoCSP (0.00s)
+=== RUN   TestCSPHeaderMatchesKit_StrictDynamicStillNeedsCSP
+--- PASS: TestCSPHeaderMatchesKit_StrictDynamicStillNeedsCSP (0.00s)
+=== RUN   TestCSPHeaderMatchesKit_FlagDirective
+--- PASS: TestCSPHeaderMatchesKit_FlagDirective (0.00s)
+=== RUN   TestCSPAutoModeBehavesAsNonceBecauseSkgoNeverPrerenders
+--- PASS: TestCSPAutoModeBehavesAsNonceBecauseSkgoNeverPrerenders (0.00s)
+=== RUN   TestCSPScriptSrcElemMergesSeparatelyFromScriptSrc
+--- PASS: TestCSPScriptSrcElemMergesSeparatelyFromScriptSrc (0.00s)
+=== RUN   TestCSPHeaderEmptyWhenNothingConfigured
+--- PASS: TestCSPHeaderEmptyWhenNothingConfigured (0.00s)
+=== RUN   TestValidateReportOnlyRequiresAReportChannel
+--- PASS: TestValidateReportOnlyRequiresAReportChannel (0.00s)
+=== RUN   TestManifestCSPUnmarshalsFromAdapterJSON
+--- PASS: TestManifestCSPUnmarshalsFromAdapterJSON (0.00s)
+=== RUN   TestAssembleHashMode_ScriptTagCarriesNoNonceAndHeaderCarriesItsHash
+--- PASS: TestAssembleHashMode_ScriptTagCarriesNoNonceAndHeaderCarriesItsHash (0.00s)
+=== RUN   TestAssembleNonceMode_ScriptTagNonceMatchesHeaderNonce
+--- PASS: TestAssembleNonceMode_ScriptTagNonceMatchesHeaderNonce (0.00s)
+=== RUN   TestAssembleNoCSPConfigured_LeavesTheDocumentUnchanged
+--- PASS: TestAssembleNoCSPConfigured_LeavesTheDocumentUnchanged (0.00s)
+=== RUN   TestSetCSPHeaders
+--- PASS: TestSetCSPHeaders (0.00s)
+=== RUN   TestStreamedChunkCarriesTheSameNonceAsTheBootScript
+--- PASS: TestStreamedChunkCarriesTheSameNonceAsTheBootScript (0.01s)
+=== RUN   TestStreamedChunkCarriesNoAttributeInHashMode
+--- PASS: TestStreamedChunkCarriesNoAttributeInHashMode (0.01s)
+=== RUN   TestCSPAutoMode_DynamicIsNonceModePrerenderedWouldBeHashMode
+--- PASS: TestCSPAutoMode_DynamicIsNonceModePrerenderedWouldBeHashMode (0.00s)
+=== RUN   TestDataSuffix
+--- PASS: TestDataSuffix (0.00s)
+=== RUN   TestNodesArrayIsPositional
+--- PASS: TestNodesArrayIsPositional (0.00s)
+=== RUN   TestUninvalidatedNodeIsSkipped
+--- PASS: TestUninvalidatedNodeIsSkipped (0.00s)
+=== RUN   TestAbsentInvalidatedParamRunsEveryNode
+--- PASS: TestAbsentInvalidatedParamRunsEveryNode (0.00s)
+=== RUN   TestSkippedNodeStillRunsForParent
+--- PASS: TestSkippedNodeStillRunsForParent (0.00s)
+=== RUN   TestParentMergesOutermostFirst
+--- PASS: TestParentMergesOutermostFirst (0.00s)
+=== RUN   TestLoadErrorIsANodeAtHTTP200
+--- PASS: TestLoadErrorIsANodeAtHTTP200 (0.00s)
+=== RUN   TestAnUnexpectedErrorSaysNothing
+--- PASS: TestAnUnexpectedErrorSaysNothing (0.00s)
+=== RUN   TestADataErrorConsultsTheAppsHandleErrorHook
+--- PASS: TestADataErrorConsultsTheAppsHandleErrorHook (0.00s)
+=== RUN   TestAnEnvelopeSerializationFailureConsultsHandleError
+--- PASS: TestAnEnvelopeSerializationFailureConsultsHandleError (0.00s)
+=== RUN   TestRedirectIsJSONAtHTTP200
+--- PASS: TestRedirectIsJSONAtHTTP200 (0.00s)
+=== RUN   TestRedirectDefaultsTo307
+--- PASS: TestRedirectDefaultsTo307 (0.00s)
+=== RUN   TestParentPropagatesTheRedirect
+--- PASS: TestParentPropagatesTheRedirect (0.00s)
+=== RUN   TestDeferredValueStreams
+--- PASS: TestDeferredValueStreams (0.02s)
+=== RUN   TestDeferredFailureIsAnErrorChunk
+--- PASS: TestDeferredFailureIsAnErrorChunk (0.00s)
+=== RUN   TestADeferredBelowTheTopLevelStreams
+--- PASS: TestADeferredBelowTheTopLevelStreams (0.00s)
+=== RUN   TestAPromisedValueMayItselfPromise
+--- PASS: TestAPromisedValueMayItselfPromise (0.00s)
+=== RUN   TestChunksAreSentInTheOrderTheySettleOnTheDataPath
+--- PASS: TestChunksAreSentInTheOrderTheySettleOnTheDataPath (0.15s)
+=== RUN   TestUsesRecordsWhatTheLoadRead
+--- PASS: TestUsesRecordsWhatTheLoadRead (0.00s)
+=== RUN   TestKitsPrivateParametersNeverReachTheLoad
+--- PASS: TestKitsPrivateParametersNeverReachTheLoad (0.00s)
+=== RUN   TestTrailingSlashIsRestoredOntoThePath
+--- PASS: TestTrailingSlashIsRestoredOntoThePath (0.00s)
+=== RUN   TestUnmatchedPathAsksForTheRootLayoutOnly
+--- PASS: TestUnmatchedPathAsksForTheRootLayoutOnly (0.00s)
+=== RUN   TestEndpointRouteHasNoData
+--- PASS: TestEndpointRouteHasNoData (0.00s)
+=== RUN   TestDataRequestsNeverReachTheNextHandler
+--- PASS: TestDataRequestsNeverReachTheNextHandler (0.00s)
+=== RUN   TestRouteParameters
+--- PASS: TestRouteParameters (0.00s)
+=== RUN   TestALoadMayWriteCookiesAndHeaders
+--- PASS: TestALoadMayWriteCookiesAndHeaders (0.00s)
+=== RUN   TestTwoLoadsOfOneBranchMayWriteCookiesAtOnce
+--- PASS: TestTwoLoadsOfOneBranchMayWriteCookiesAtOnce (0.00s)
+=== RUN   TestVersionHeaderIsOnlySentWhenConfigured
+--- PASS: TestVersionHeaderIsOnlySentWhenConfigured (0.00s)
+=== RUN   TestDriftBetweenTheBuildAndTheBinaryStopsTheServer
+--- PASS: TestDriftBetweenTheBuildAndTheBinaryStopsTheServer (0.00s)
+=== RUN   TestOnlyGETAndHEAD
+--- PASS: TestOnlyGETAndHEAD (0.00s)
+=== RUN   TestRestParametersAreNamed
+--- PASS: TestRestParametersAreNamed (0.00s)
+=== RUN   TestNativeBridgeActionEffectsOnceWithAndWithoutHook
+=== RUN   TestNativeBridgeActionEffectsOnceWithAndWithoutHook/true
+=== RUN   TestNativeBridgeActionEffectsOnceWithAndWithoutHook/false
+--- PASS: TestNativeBridgeActionEffectsOnceWithAndWithoutHook (0.19s)
+    --- PASS: TestNativeBridgeActionEffectsOnceWithAndWithoutHook/true (0.10s)
+    --- PASS: TestNativeBridgeActionEffectsOnceWithAndWithoutHook/false (0.08s)
+=== RUN   TestNativeBridgeIndependentLoadsOverlapAndParentIsDemanded
+--- PASS: TestNativeBridgeIndependentLoadsOverlapAndParentIsDemanded (0.06s)
+=== RUN   TestNativeBridgeFetchBodyMetadataAndUnreadCancellation
+--- PASS: TestNativeBridgeFetchBodyMetadataAndUnreadCancellation (0.08s)
+=== RUN   TestNativeBridgeConcurrentFetchContinuationsKeepTheirReplies
+--- PASS: TestNativeBridgeConcurrentFetchContinuationsKeepTheirReplies (0.06s)
+=== RUN   TestNativeBridgeParentFailurePreservesKitErrorAndCancelsGo
+--- PASS: TestNativeBridgeParentFailurePreservesKitErrorAndCancelsGo (0.06s)
+=== RUN   TestNativeBridgeConcurrentLoadEffectsOnlyApplyOnce
+--- PASS: TestNativeBridgeConcurrentLoadEffectsOnlyApplyOnce (0.06s)
+=== RUN   TestNativeBridgeContinuationBodyStreamsBeforeCompletion
+--- PASS: TestNativeBridgeContinuationBodyStreamsBeforeCompletion (0.06s)
+=== RUN   TestNativeBridgeContinuationCloseCancelsUnfinishedProducer
+--- PASS: TestNativeBridgeContinuationCloseCancelsUnfinishedProducer (0.06s)
+=== RUN   TestNativeDevelopmentOriginalHookContextAndStreamedResponse
+--- PASS: TestNativeDevelopmentOriginalHookContextAndStreamedResponse (0.00s)
+=== RUN   TestNativeDevelopmentDeferredCancellationAndOwnerReplacement
+--- PASS: TestNativeDevelopmentDeferredCancellationAndOwnerReplacement (0.00s)
+=== RUN   TestNativeDevelopmentActionResultsAndConfiguredErrorHook
+=== RUN   TestNativeDevelopmentActionResultsAndConfiguredErrorHook/success
+=== RUN   TestNativeDevelopmentActionResultsAndConfiguredErrorHook/failure
+=== RUN   TestNativeDevelopmentActionResultsAndConfiguredErrorHook/redirect
+--- PASS: TestNativeDevelopmentActionResultsAndConfiguredErrorHook (0.00s)
+    --- PASS: TestNativeDevelopmentActionResultsAndConfiguredErrorHook/success (0.00s)
+    --- PASS: TestNativeDevelopmentActionResultsAndConfiguredErrorHook/failure (0.00s)
+    --- PASS: TestNativeDevelopmentActionResultsAndConfiguredErrorHook/redirect (0.00s)
+=== RUN   TestNativeDevelopmentEndpointManifestUsesOriginalRegistry
+--- PASS: TestNativeDevelopmentEndpointManifestUsesOriginalRegistry (0.00s)
+=== RUN   TestNativeDevelopmentDeferredValueArrivesAfterInitialData
+--- PASS: TestNativeDevelopmentDeferredValueArrivesAfterInitialData (0.00s)
+=== RUN   TestNativeDevelopmentDerivesTypedAndRawParamsFromOriginalURL
+--- PASS: TestNativeDevelopmentDerivesTypedAndRawParamsFromOriginalURL (0.00s)
+=== RUN   TestNativeDevelopmentClientAddressPreservesPublicPeerAndConfiguredProvider
+=== RUN   TestNativeDevelopmentClientAddressPreservesPublicPeerAndConfiguredProvider/default
+=== RUN   TestNativeDevelopmentClientAddressPreservesPublicPeerAndConfiguredProvider/application
+--- PASS: TestNativeDevelopmentClientAddressPreservesPublicPeerAndConfiguredProvider (0.00s)
+    --- PASS: TestNativeDevelopmentClientAddressPreservesPublicPeerAndConfiguredProvider/default (0.00s)
+    --- PASS: TestNativeDevelopmentClientAddressPreservesPublicPeerAndConfiguredProvider/application (0.00s)
+=== RUN   TestNativeDevelopmentHookRefusalKeepsHandledPublicError
+--- PASS: TestNativeDevelopmentHookRefusalKeepsHandledPublicError (0.00s)
+=== RUN   TestNativeFetchKeepsGoHookAroundKitContinuation
+--- PASS: TestNativeFetchKeepsGoHookAroundKitContinuation (0.00s)
+=== RUN   TestNativeFetchRejectsUnknownRequestOwner
+--- PASS: TestNativeFetchRejectsUnknownRequestOwner (0.00s)
+=== RUN   TestNativeFetchLowercaseLengthIsParsableByNode
+--- PASS: TestNativeFetchLowercaseLengthIsParsableByNode (0.05s)
+=== RUN   TestNativeFetchOwnerRetiresUnreadAndPendingExchanges
+=== RUN   TestNativeFetchOwnerRetiresUnreadAndPendingExchanges/false
+=== RUN   TestNativeFetchOwnerRetiresUnreadAndPendingExchanges/true
+--- PASS: TestNativeFetchOwnerRetiresUnreadAndPendingExchanges (0.00s)
+    --- PASS: TestNativeFetchOwnerRetiresUnreadAndPendingExchanges/false (0.00s)
+    --- PASS: TestNativeFetchOwnerRetiresUnreadAndPendingExchanges/true (0.00s)
+=== RUN   TestNativeInternalFetchUsesKitAfterGoCredentialsAndHook
+--- PASS: TestNativeInternalFetchUsesKitAfterGoCredentialsAndHook (0.00s)
+=== RUN   TestNativeInternalFetchDepthLimit
+--- PASS: TestNativeInternalFetchDepthLimit (0.00s)
+=== RUN   TestNativeInternalRemoteProtocolKeepsGoWireOwner
+--- PASS: TestNativeInternalRemoteProtocolKeepsGoWireOwner (0.00s)
+=== RUN   TestNativeBatchInvokesOneGoBatchForKitResolver
+--- PASS: TestNativeBatchInvokesOneGoBatchForKitResolver (0.00s)
+=== RUN   TestNativeLiveStreamsFirstValueAndCancelsProducer
+--- PASS: TestNativeLiveStreamsFirstValueAndCancelsProducer (0.00s)
+=== RUN   TestNativeUnenhancedFormKeepsKitResultAndIssues
+--- PASS: TestNativeUnenhancedFormKeepsKitResultAndIssues (0.00s)
+=== RUN   TestNativeParentTransportRestoresGoTypeBeforeParentRead
+--- PASS: TestNativeParentTransportRestoresGoTypeBeforeParentRead (0.00s)
+=== RUN   TestNativeRemoteErrorKeepsConfiguredPublicBody
+--- PASS: TestNativeRemoteErrorKeepsConfiguredPublicBody (0.00s)
+=== RUN   TestNativeUnenhancedFormBindsTypedPageCaller
+--- PASS: TestNativeUnenhancedFormBindsTypedPageCaller (0.00s)
+=== RUN   TestWireEmitsDevalueBytes
+=== PAUSE TestWireEmitsDevalueBytes
+=== RUN   TestWireAcceptsDevalueBytes
+=== PAUSE TestWireAcceptsDevalueBytes
+=== RUN   TestDevelopmentPrerenderHTTPUsesGoAndPathArguments
+--- PASS: TestDevelopmentPrerenderHTTPUsesGoAndPathArguments (0.00s)
+=== RUN   TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects
+=== RUN   TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects/app-error
+=== RUN   TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects/redirect
+--- PASS: TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects (0.00s)
+    --- PASS: TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects/app-error (0.00s)
+    --- PASS: TestDevelopmentPrerenderHTTPPreservesErrorsAndRedirects/redirect (0.00s)
+=== RUN   TestDevelopmentPrerenderSSRDocumentRunsGoWithoutRecordedArtifact
+--- PASS: TestDevelopmentPrerenderSSRDocumentRunsGoWithoutRecordedArtifact (0.01s)
+=== RUN   TestAssembleTemplateAllPlaceholders
+--- PASS: TestAssembleTemplateAllPlaceholders (0.00s)
+=== RUN   TestConcurrentRemoteCallsMergeIntoTheSameAnswersMapSafely
+--- PASS: TestConcurrentRemoteCallsMergeIntoTheSameAnswersMapSafely (0.00s)
+=== RUN   TestEnvironmentEndpointOverridesPrerenderedBuildValues
+--- PASS: TestEnvironmentEndpointOverridesPrerenderedBuildValues (0.00s)
+=== RUN   TestDocumentUsesTypedPublicEnvironmentAndStaticPlaceholders
+--- PASS: TestDocumentUsesTypedPublicEnvironmentAndStaticPlaceholders (0.00s)
+=== RUN   TestEnvironmentPlaceholdersUseJavaScriptNumberFormatting
+--- PASS: TestEnvironmentPlaceholdersUseJavaScriptNumberFormatting (0.00s)
+=== RUN   TestFetchDispatchRunsInProcess
+--- PASS: TestFetchDispatchRunsInProcess (0.00s)
+=== RUN   TestFetchDispatchWithNoRouteRefuses
+--- PASS: TestFetchDispatchWithNoRouteRefuses (0.00s)
+=== RUN   TestFetchDispatchCarriesA404Through
+--- PASS: TestFetchDispatchCarriesA404Through (0.00s)
+=== RUN   TestMatchDispatchFindsTheSameRouteEndpointsAnswers
+--- PASS: TestMatchDispatchFindsTheSameRouteEndpointsAnswers (0.00s)
+=== RUN   TestRenderFetchCarriesCancellationToTheGoHandler
+--- PASS: TestRenderFetchCarriesCancellationToTheGoHandler (0.00s)
+=== RUN   TestRenderFetchCarriesOnlyConfiguredHostLifetime
+--- PASS: TestRenderFetchCarriesOnlyConfiguredHostLifetime (0.00s)
+=== RUN   TestARemoteFormLeavesTheFormSlotNull
+--- PASS: TestARemoteFormLeavesTheFormSlotNull (0.00s)
+=== RUN   TestTheSubmissionIsInTheFormSlotOfTheRemoteData
+--- PASS: TestTheSubmissionIsInTheFormSlotOfTheRemoteData (0.00s)
+=== RUN   TestARefusedSubmissionCarriesItsIssuesAndInput
+--- PASS: TestARefusedSubmissionCarriesItsIssuesAndInput (0.00s)
+=== RUN   TestSubmittedInputLeavesAnUntouchedFileFieldUndefined
+--- PASS: TestSubmittedInputLeavesAnUntouchedFileFieldUndefined (0.00s)
+=== RUN   TestADocumentThatAnswersNoSubmissionHasNoFormSlot
+--- PASS: TestADocumentThatAnswersNoSubmissionHasNoFormSlot (0.00s)
+=== RUN   TestTheActionIDIsTheRemoteSearchParameter
+--- PASS: TestTheActionIDIsTheRemoteSearchParameter (0.00s)
+=== RUN   TestARedactedControlIsTheOneKitRedacts
+--- PASS: TestARedactedControlIsTheOneKitRedacts (0.00s)
+=== RUN   TestSplitActionIDIsKitsHashNameRestSplit
+=== RUN   TestSplitActionIDIsKitsHashNameRestSplit/no_third_segment_is_an_unkeyed_form
+=== RUN   TestSplitActionIDIsKitsHashNameRestSplit/a_string_key
+=== RUN   TestSplitActionIDIsKitsHashNameRestSplit/a_numeric_key
+=== RUN   TestSplitActionIDIsKitsHashNameRestSplit/an_empty_trailing_segment_is_not_a_key
+=== RUN   TestSplitActionIDIsKitsHashNameRestSplit/a_key_whose_JSON_text_itself_contains_a_slash
+--- PASS: TestSplitActionIDIsKitsHashNameRestSplit (0.00s)
+    --- PASS: TestSplitActionIDIsKitsHashNameRestSplit/no_third_segment_is_an_unkeyed_form (0.00s)
+    --- PASS: TestSplitActionIDIsKitsHashNameRestSplit/a_string_key (0.00s)
+    --- PASS: TestSplitActionIDIsKitsHashNameRestSplit/a_numeric_key (0.00s)
+    --- PASS: TestSplitActionIDIsKitsHashNameRestSplit/an_empty_trailing_segment_is_not_a_key (0.00s)
+    --- PASS: TestSplitActionIDIsKitsHashNameRestSplit/a_key_whose_JSON_text_itself_contains_a_slash (0.00s)
+=== RUN   TestSetFormKeyMirrorsKitsIDInjection
+=== RUN   TestSetFormKeyMirrorsKitsIDInjection/a_string_key_becomes_the_id_field
+=== RUN   TestSetFormKeyMirrorsKitsIDInjection/a_numeric_key_parses_as_a_number,_not_a_string
+=== RUN   TestSetFormKeyMirrorsKitsIDInjection/a_form_that_already_declared_its_own_id_field_is_left_alone
+--- PASS: TestSetFormKeyMirrorsKitsIDInjection (0.00s)
+    --- PASS: TestSetFormKeyMirrorsKitsIDInjection/a_string_key_becomes_the_id_field (0.00s)
+    --- PASS: TestSetFormKeyMirrorsKitsIDInjection/a_numeric_key_parses_as_a_number,_not_a_string (0.00s)
+    --- PASS: TestSetFormKeyMirrorsKitsIDInjection/a_form_that_already_declared_its_own_id_field_is_left_alone (0.00s)
+=== RUN   TestAKeyedFormSubmissionDeliversItsKeyAsTheIDField
+--- PASS: TestAKeyedFormSubmissionDeliversItsKeyAsTheIDField (0.00s)
+=== RUN   TestSSRUsesRecordedPrerenderRemoteAndKeepsOriginalHydrationKey
+--- PASS: TestSSRUsesRecordedPrerenderRemoteAndKeepsOriginalHydrationKey (0.00s)
+=== RUN   TestSSRPrerenderMissIsOpaqueAndNeverCallsGo
+--- PASS: TestSSRPrerenderMissIsOpaqueAndNeverCallsGo (0.00s)
+=== RUN   TestMergePrerenderAnswersRetainsPageCacheAndPrefersErrorRenderEntries
+--- PASS: TestMergePrerenderAnswersRetainsPageCacheAndPrefersErrorRenderEntries (0.00s)
+=== RUN   TestMalformedClientPrerenderErrorIsOpaqueAndNeverCallsGo
+--- PASS: TestMalformedClientPrerenderErrorIsOpaqueAndNeverCallsGo (0.00s)
+=== RUN   TestSSRPrerenderErrorIsAlreadyHandled
+--- PASS: TestSSRPrerenderErrorIsAlreadyHandled (0.00s)
+=== RUN   TestDocumentCarriesTheDeferredPlaceholderAndKitsPlumbing
+--- PASS: TestDocumentCarriesTheDeferredPlaceholderAndKitsPlumbing (0.00s)
+=== RUN   TestADocumentWithNothingOutstandingCarriesNoPlumbing
+--- PASS: TestADocumentWithNothingOutstandingCarriesNoPlumbing (0.00s)
+=== RUN   TestATransportedValueStreamsThroughTheAppsDecoder
+--- PASS: TestATransportedValueStreamsThroughTheAppsDecoder (0.00s)
+=== RUN   TestADeferredValueThatFailedStreamsAsAHoleAndAnError
+--- PASS: TestADeferredValueThatFailedStreamsAsAHoleAndAnError (0.00s)
+=== RUN   TestAssembledDocumentShowsWhatTheHandleErrorHookReturnedForADeferredFailure
+--- PASS: TestAssembledDocumentShowsWhatTheHandleErrorHookReturnedForADeferredFailure (0.00s)
+=== RUN   TestAStreamedDocumentCarriesNeitherTheStatusNorAnEtag
+--- PASS: TestAStreamedDocumentCarriesNeitherTheStatusNorAnEtag (0.02s)
+=== RUN   TestChunksAreSentInTheOrderTheySettle
+--- PASS: TestChunksAreSentInTheOrderTheySettle (0.05s)
+=== RUN   TestAPromisedValueCrossesIntoTheEngineAsAPromise
+--- PASS: TestAPromisedValueCrossesIntoTheEngineAsAPromise (0.00s)
+=== RUN   TestNilSliceIsAnEmptyArrayInAQueryResult
+--- PASS: TestNilSliceIsAnEmptyArrayInAQueryResult (0.00s)
+=== RUN   TestNilSliceIsAnEmptyArrayAsTheWholeResult
+--- PASS: TestNilSliceIsAnEmptyArrayAsTheWholeResult (0.00s)
+=== RUN   TestNilSliceIsAnEmptyArrayInACommandResult
+--- PASS: TestNilSliceIsAnEmptyArrayInACommandResult (0.00s)
+=== RUN   TestNilSliceIsAnEmptyArrayInAFormResult
+--- PASS: TestNilSliceIsAnEmptyArrayInAFormResult (0.00s)
+=== RUN   TestNilSliceIsAnEmptyArrayInALiveQueryFrame
+--- PASS: TestNilSliceIsAnEmptyArrayInALiveQueryFrame (0.00s)
+=== RUN   TestNilSliceIsAnEmptyArrayInLoadData
+--- PASS: TestNilSliceIsAnEmptyArrayInLoadData (0.00s)
+=== RUN   TestOnlyANilSliceBecomesAnArray
+=== RUN   TestOnlyANilSliceBecomesAnArray/every_other_null_survives
+=== RUN   TestOnlyANilSliceBecomesAnArray/a_shallower_field_shadows_a_promoted_slice
+=== RUN   TestOnlyANilSliceBecomesAnArray/a_tagged_name_beats_an_untagged_one_at_the_same_depth
+=== RUN   TestOnlyANilSliceBecomesAnArray/an_ambiguous_name_is_nobody's_property
+--- PASS: TestOnlyANilSliceBecomesAnArray (0.00s)
+    --- PASS: TestOnlyANilSliceBecomesAnArray/every_other_null_survives (0.00s)
+    --- PASS: TestOnlyANilSliceBecomesAnArray/a_shallower_field_shadows_a_promoted_slice (0.00s)
+    --- PASS: TestOnlyANilSliceBecomesAnArray/a_tagged_name_beats_an_untagged_one_at_the_same_depth (0.00s)
+    --- PASS: TestOnlyANilSliceBecomesAnArray/an_ambiguous_name_is_nobody's_property (0.00s)
+=== RUN   TestTheTransportWalkAgreesAboutNilSlices
+--- PASS: TestTheTransportWalkAgreesAboutNilSlices (0.00s)
+=== RUN   TestAnEndpointRouteNeverGetsThePageHandler
+--- PASS: TestAnEndpointRouteNeverGetsThePageHandler (0.00s)
+=== RUN   TestPrerenderedCanonicalPathAndSlashAliasBypassWildcardEndpoint
+--- PASS: TestPrerenderedCanonicalPathAndSlashAliasBypassWildcardEndpoint (0.00s)
+=== RUN   TestFullyPrerenderedEndpointsCheckDriftWithoutDynamicDispatch
+--- PASS: TestFullyPrerenderedEndpointsCheckDriftWithoutDynamicDispatch (0.00s)
+=== RUN   TestHeadIsAnsweredByTheGetHandler
+--- PASS: TestHeadIsAnsweredByTheGetHandler (0.00s)
+=== RUN   TestAnUndeclaredMethodGetsKitsMethodNotAllowed
+--- PASS: TestAnUndeclaredMethodGetsKitsMethodNotAllowed (0.00s)
+=== RUN   TestAFallbackAnswersEveryOtherMethod
+--- PASS: TestAFallbackAnswersEveryOtherMethod (0.00s)
+=== RUN   TestQueryAndTheFallbackReachTheGoHandlers
+--- PASS: TestQueryAndTheFallbackReachTheGoHandlers (0.00s)
+=== RUN   TestARouteWithBothAPageAndAnEndpointNegotiates
+--- PASS: TestARouteWithBothAPageAndAnEndpointNegotiates (0.00s)
+=== RUN   TestAPageAnswersWhatItsEndpointCannot
+--- PASS: TestAPageAnswersWhatItsEndpointCannot (0.00s)
+=== RUN   TestAPageRouteIsPassedStraightThrough
+--- PASS: TestAPageRouteIsPassedStraightThrough (0.00s)
+=== RUN   TestTheTrailingSlashIsNormalizedBeforeAnythingAnswers
+--- PASS: TestTheTrailingSlashIsNormalizedBeforeAnythingAnswers (0.00s)
+=== RUN   TestABasedRootRedirectCannotTurnAColonIntoAURLScheme
+--- PASS: TestABasedRootRedirectCannotTurnAColonIntoAURLScheme (0.00s)
+=== RUN   TestACrossSiteFormPostIsRefused
+--- PASS: TestACrossSiteFormPostIsRefused (0.00s)
+=== RUN   TestTrustedOriginsUseKitsFormCSRFRule
+--- PASS: TestTrustedOriginsUseKitsFormCSRFRule (0.00s)
+=== RUN   TestAnEndpointReachesItsRouteThroughTheEvent
+--- PASS: TestAnEndpointReachesItsRouteThroughTheEvent (0.00s)
+=== RUN   TestAnEndpointsEventRefusesToWrite
+--- PASS: TestAnEndpointsEventRefusesToWrite (0.00s)
+=== RUN   TestAPanickingEndpointBecomesA500
+--- PASS: TestAPanickingEndpointBecomesA500 (0.00s)
+=== RUN   TestAPanickingEndpointNegotiatesJSONAndErrorTemplate
+--- PASS: TestAPanickingEndpointNegotiatesJSONAndErrorTemplate (0.00s)
+=== RUN   TestEndpointFlushReachesClientBeforeTheLastChunk
+--- PASS: TestEndpointFlushReachesClientBeforeTheLastChunk (0.00s)
+=== RUN   TestTheRegistryRefusesAFrontendItCannotServe
+--- PASS: TestTheRegistryRefusesAFrontendItCannotServe (0.00s)
+=== RUN   TestNegotiateFollowsKitsPreference
+--- PASS: TestNegotiateFollowsKitsPreference (0.00s)
+=== RUN   TestEnvironmentTypedStartupSnapshot
+--- PASS: TestEnvironmentTypedStartupSnapshot (0.00s)
+=== RUN   TestEnvironmentRejectsInvalidWithoutValues
+--- PASS: TestEnvironmentRejectsInvalidWithoutValues (0.00s)
+=== RUN   TestEnvironmentEmptyStringAndOptionalPresence
+--- PASS: TestEnvironmentEmptyStringAndOptionalPresence (0.00s)
+=== RUN   TestCommandSetsCookieWithKitDefaults
+--- PASS: TestCommandSetsCookieWithKitDefaults (0.00s)
+=== RUN   TestCommandDeleteCookieExpiresIt
+--- PASS: TestCommandDeleteCookieExpiresIt (0.00s)
+=== RUN   TestCookieWrittenInCallIsVisibleToTheSameCall
+--- PASS: TestCookieWrittenInCallIsVisibleToTheSameCall (0.00s)
+=== RUN   TestDeletedCookieReadsAsAbsent
+--- PASS: TestDeletedCookieReadsAsAbsent (0.00s)
+=== RUN   TestRefreshedQuerySeesTheCookieTheCommandJustSet
+--- PASS: TestRefreshedQuerySeesTheCookieTheCommandJustSet (0.00s)
+=== RUN   TestRelativeCookiePathIsRefused
+--- PASS: TestRelativeCookiePathIsRefused (0.00s)
+=== RUN   TestQueryCannotWriteCookies
+--- PASS: TestQueryCannotWriteCookies (0.00s)
+=== RUN   TestARefreshedQueryStillCannotWriteCookies
+--- PASS: TestARefreshedQueryStillCannotWriteCookies (0.00s)
+=== RUN   TestEventOutsideARemoteFunction
+--- PASS: TestEventOutsideARemoteFunction (0.00s)
+=== RUN   TestSecureCookieDefaultMirrorsKit
+--- PASS: TestSecureCookieDefaultMirrorsKit (0.00s)
+=== RUN   TestRegistryRefusesToStartWhenTheBuildDisagrees
+--- PASS: TestRegistryRefusesToStartWhenTheBuildDisagrees (0.00s)
+=== RUN   TestHandBuiltConfigIsNotCheckedAgainstAManifest
+--- PASS: TestHandBuiltConfigIsNotCheckedAgainstAManifest (0.00s)
+=== RUN   TestDocumentErrorWithNoHookKeepsTheFallbackExactly
+--- PASS: TestDocumentErrorWithNoHookKeepsTheFallbackExactly (0.00s)
+=== RUN   TestDocumentErrorConsultsTheHookForAnAppRaisedErrorToo
+--- PASS: TestDocumentErrorConsultsTheHookForAnAppRaisedErrorToo (0.00s)
+=== RUN   TestDocumentErrorClassifiesAnOrdinaryGoErrorAsUnknown
+--- PASS: TestDocumentErrorClassifiesAnOrdinaryGoErrorAsUnknown (0.00s)
+=== RUN   TestDocumentErrorOverridesStatusToo
+--- PASS: TestDocumentErrorOverridesStatusToo (0.00s)
+=== RUN   TestDocumentErrorRecoversAPanickingHook
+2026/10/18 12:00:21 skgo: rendering /x: skgo: the handleError hook panicked: the hook itself has a bug
+goroutine 583 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.runHandleError.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:136 +0x48
+panic({0x105421a48?, 0x1052f25a0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestDocumentErrorRecoversAPanickingHook.func1({0x2b542e484aa8?, 0x10494f7c8?}, {{0x2b542e484b18, 0x112e39fe8}, 0x1077db6f8, {0x1077d4060, 0x1077db6f8}, {0x2b542df56070, 0x2b542dfd7008}, {0x10494f794, ...}})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error_test.go:102 +0x2c
+github.com/tylergannon/skgo.runHandleError({0x1054f53f0?, 0x1057039a0?}, {0x104ae8367?, 0x2b542e17b180?}, 0x36?, {{0x104ae86e9, 0x3}, 0x1a2, {0x104afd432, 0x15}, ...}, ...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:149 +0x94
+github.com/tylergannon/skgo.handleErrorAndJSONify({0x1054f53f0, 0x1057039a0}, {0x104ae8367, 0x2}, 0x1055001c8, 0x2b542e484c40, {0x0, 0x0}, 0x2b542e484f48)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:128 +0x234
+github.com/tylergannon/skgo.(*SSR).documentError(...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:92
+github.com/tylergannon/skgo.TestDocumentErrorRecoversAPanickingHook(0x2b542e390248)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error_test.go:105 +0xec
+testing.tRunner(0x2b542e390248, 0x1054ff548)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+--- PASS: TestDocumentErrorRecoversAPanickingHook (0.00s)
+=== RUN   TestAPanickingHandleHookAnswersInsteadOfResettingTheConnection
+--- PASS: TestAPanickingHandleHookAnswersInsteadOfResettingTheConnection (0.00s)
+=== RUN   TestAPanickingHandleHookDoesNotResetAPageRequest
+--- PASS: TestAPanickingHandleHookDoesNotResetAPageRequest (0.00s)
+=== RUN   TestHandleShapesItsRefusalForEachKindOfRequest
+--- PASS: TestHandleShapesItsRefusalForEachKindOfRequest (0.00s)
+=== RUN   TestHandleDoesNotRunForTheBundle
+--- PASS: TestHandleDoesNotRunForTheBundle (0.00s)
+=== RUN   TestHandleWritesCookiesThatReachTheVisitor
+--- PASS: TestHandleWritesCookiesThatReachTheVisitor (0.00s)
+=== RUN   TestLocalsCrossFromHandleToLoad
+--- PASS: TestLocalsCrossFromHandleToLoad (0.00s)
+=== RUN   TestRequestLocalsReachARemoteFunctionWithoutALoadsRegistry
+--- PASS: TestRequestLocalsReachARemoteFunctionWithoutALoadsRegistry (0.00s)
+=== RUN   TestHandleRunsExactlyOnceForOneRequest
+--- PASS: TestHandleRunsExactlyOnceForOneRequest (0.00s)
+=== RUN   TestAPanickingLoadAnswersInsteadOfResettingTheConnection
+--- PASS: TestAPanickingLoadAnswersInsteadOfResettingTheConnection (0.00s)
+=== RUN   TestAPanickingLoadDoesNotTakeItsSiblingsDown
+--- PASS: TestAPanickingLoadDoesNotTakeItsSiblingsDown (0.00s)
+=== RUN   TestAManifestFromAnotherSkgosAdapterIsRefused
+--- PASS: TestAManifestFromAnotherSkgosAdapterIsRefused (0.00s)
+=== RUN   TestAManifestFromAnAdapterTooOldToSayIsRefused
+--- PASS: TestAManifestFromAnAdapterTooOldToSayIsRefused (0.00s)
+=== RUN   TestAManifestFromThisModulesAdapterIsRead
+--- PASS: TestAManifestFromThisModulesAdapterIsRead (0.00s)
+=== RUN   TestMiddlewareRunsBeforeResolveAndAfterInOrder
+--- PASS: TestMiddlewareRunsBeforeResolveAndAfterInOrder (0.00s)
+=== RUN   TestMiddlewareCanWrapTheBody
+--- PASS: TestMiddlewareCanWrapTheBody (0.00s)
+=== RUN   TestMiddlewareShortCircuitNeverCallsDownstream
+--- PASS: TestMiddlewareShortCircuitNeverCallsDownstream (0.00s)
+=== RUN   TestMiddlewareLocalsAndRefreshedCookiesReachEveryDownstreamKind
+=== RUN   TestMiddlewareLocalsAndRefreshedCookiesReachEveryDownstreamKind/server_load
+=== RUN   TestMiddlewareLocalsAndRefreshedCookiesReachEveryDownstreamKind/server_route
+=== RUN   TestMiddlewareLocalsAndRefreshedCookiesReachEveryDownstreamKind/remote_query
+--- PASS: TestMiddlewareLocalsAndRefreshedCookiesReachEveryDownstreamKind (0.00s)
+    --- PASS: TestMiddlewareLocalsAndRefreshedCookiesReachEveryDownstreamKind/server_load (0.00s)
+    --- PASS: TestMiddlewareLocalsAndRefreshedCookiesReachEveryDownstreamKind/server_route (0.00s)
+    --- PASS: TestMiddlewareLocalsAndRefreshedCookiesReachEveryDownstreamKind/remote_query (0.00s)
+=== RUN   TestMiddlewareSeesTheMatchedEventForEachRequestShape
+--- PASS: TestMiddlewareSeesTheMatchedEventForEachRequestShape (0.00s)
+=== RUN   TestMiddlewareAnswersAPathOutsideBaseBeforeTheHook
+--- PASS: TestMiddlewareAnswersAPathOutsideBaseBeforeTheHook (0.00s)
+=== RUN   TestMiddlewareStaysOutOfStaticFilesAndTheBundle
+--- PASS: TestMiddlewareStaysOutOfStaticFilesAndTheBundle (0.00s)
+=== RUN   TestMiddlewareCookieAndHeaderLifecycleMatchesKit
+--- PASS: TestMiddlewareCookieAndHeaderLifecycleMatchesKit (0.00s)
+=== RUN   TestMiddlewareServerTimingAccumulatesLikeKit
+--- PASS: TestMiddlewareServerTimingAccumulatesLikeKit (0.00s)
+=== RUN   TestMiddlewareRefusalsKeepKitsShapesPerRequestKind
+=== RUN   TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/native_page_navigation
+=== RUN   TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/data_request
+=== RUN   TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/enhanced_action
+=== RUN   TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/remote_call
+=== RUN   TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/error_on_a_data_request_is_JSON_without_cookies
+=== RUN   TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/enhanced_action_error
+=== RUN   TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/remote_error_is_an_envelope_at_200
+--- PASS: TestMiddlewareRefusalsKeepKitsShapesPerRequestKind (0.00s)
+    --- PASS: TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/native_page_navigation (0.00s)
+    --- PASS: TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/data_request (0.00s)
+    --- PASS: TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/enhanced_action (0.00s)
+    --- PASS: TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/remote_call (0.00s)
+    --- PASS: TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/error_on_a_data_request_is_JSON_without_cookies (0.00s)
+    --- PASS: TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/enhanced_action_error (0.00s)
+    --- PASS: TestMiddlewareRefusalsKeepKitsShapesPerRequestKind/remote_error_is_an_envelope_at_200 (0.00s)
+=== RUN   TestMiddlewareDeliberateRedirectOnADataRequestBecomesTheRedirectNodeWithoutCookies
+--- PASS: TestMiddlewareDeliberateRedirectOnADataRequestBecomesTheRedirectNodeWithoutCookies (0.00s)
+=== RUN   TestMiddlewareAnswersAMatchingEtagWith304
+--- PASS: TestMiddlewareAnswersAMatchingEtagWith304 (0.00s)
+=== RUN   TestMiddlewareKeepsConcurrentRequestsApart
+--- PASS: TestMiddlewareKeepsConcurrentRequestsApart (0.00s)
+=== RUN   TestRemoteFunctionBodiesGetNoRequestEventFromTheHook
+--- PASS: TestRemoteFunctionBodiesGetNoRequestEventFromTheHook (0.00s)
+=== RUN   TestMiddlewareCalledResolveTwiceAndPanicsAreContained
+--- PASS: TestMiddlewareCalledResolveTwiceAndPanicsAreContained (0.00s)
+=== RUN   TestMiddlewareStreamsTheFirstChunkBeforeALaterValueResolves
+--- PASS: TestMiddlewareStreamsTheFirstChunkBeforeALaterValueResolves (0.00s)
+=== RUN   TestMiddlewareCancelsTheApplicationWhenTheClientGoesAway
+--- PASS: TestMiddlewareCancelsTheApplicationWhenTheClientGoesAway (0.00s)
+=== RUN   TestMiddlewareThatDiscardsTheApplicationResponseCancelsIt
+--- PASS: TestMiddlewareThatDiscardsTheApplicationResponseCancelsIt (0.00s)
+=== RUN   TestMiddlewareAbortsTheConnectionWhenTheApplicationPanicsMidBody
+2026/10/18 12:00:21 skgo: handler panicked while writing its response: late failure
+goroutine 1028 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.launchDownstream.func1.1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/downstream.go:112 +0x64
+panic({0x105421a48?, 0x1052f2560?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestMiddlewareAbortsTheConnectionWhenTheApplicationPanicsMidBody.func1({0x1054f2e38, 0x2b542e01a880}, 0x104b82d38?)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/middleware_test.go:798 +0xd8
+net/http.HandlerFunc.ServeHTTP(0x2b542e4c6240?, {0x1054f2e38?, 0x2b542e01a880?}, 0x2b542e3f6120?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Endpoints).serve(0x2b542e4c6240, {0x1054f2e38, 0x2b542e01a880}, 0x2b542e2c7180, {0x1054ecd80, 0x105500300})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/endpoint.go:475 +0x6f4
+github.com/tylergannon/skgo.(*Endpoints).Intercept.func1({0x1054f2e38, 0x2b542e01a880}, 0x2b542e2c7180)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/endpoint.go:399 +0xe4
+net/http.HandlerFunc.ServeHTTP(0x2b542e392074?, {0x1054f2e38?, 0x2b542e01a880?}, 0x8?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Remotes).Intercept.func1({0x1054f2e38, 0x2b542e01a880}, 0x2b542e2c7180)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:728 +0x1c4
+net/http.HandlerFunc.ServeHTTP(0x2b542e392074?, {0x1054f2e38?, 0x2b542e01a880?}, 0x0?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.(*Loads).Intercept.func1({0x1054f2e38, 0x2b542e01a880}, 0x2b542e2c7180)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/data.go:60 +0x118
+net/http.HandlerFunc.ServeHTTP(0x2b542e489f58?, {0x1054f2e38?, 0x2b542e01a880?}, 0x1057039a0?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358 +0x38
+github.com/tylergannon/skgo.launchDownstream.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/downstream.go:128 +0xc0
+created by github.com/tylergannon/skgo.launchDownstream in goroutine 1027
+	/Users/tyler/.codex/worktrees/0aa3/skgo/downstream.go:107 +0x310
+--- PASS: TestMiddlewareAbortsTheConnectionWhenTheApplicationPanicsMidBody (0.00s)
+=== RUN   TestNativeDevelopmentComposesThroughOrdinaryFilesystem
+--- PASS: TestNativeDevelopmentComposesThroughOrdinaryFilesystem (0.00s)
+=== RUN   TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors
+=== RUN   TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors/missing_status
+=== RUN   TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors/string_status
+=== RUN   TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors/missing_message
+=== RUN   TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors/non-string_message
+--- PASS: TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors (0.00s)
+    --- PASS: TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors/missing_status (0.00s)
+    --- PASS: TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors/string_status (0.00s)
+    --- PASS: TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors/missing_message (0.00s)
+    --- PASS: TestPrerenderErrorFieldsAreValidatedByStaticAndSSRConstructors/non-string_message (0.00s)
+=== RUN   TestPrerenderArtifactLookupUsesClientFirstAndManifestAuthority
+--- PASS: TestPrerenderArtifactLookupUsesClientFirstAndManifestAuthority (0.00s)
+=== RUN   TestPrerenderArtifactLookupAllowsClientOnlyAndNoArgumentNativeKeys
+--- PASS: TestPrerenderArtifactLookupAllowsClientOnlyAndNoArgumentNativeKeys (0.00s)
+=== RUN   TestPrerenderArtifactSyntaxAndNativeRedirectSemantics
+--- PASS: TestPrerenderArtifactSyntaxAndNativeRedirectSemantics (0.00s)
+=== RUN   TestSSRArtifactUsesResultTransportReviverAtConstruction
+--- PASS: TestSSRArtifactUsesResultTransportReviverAtConstruction (0.00s)
+=== RUN   TestPrerenderArtifactStoreRejectsMissingAndMalformedRecordedFiles
+=== RUN   TestPrerenderArtifactStoreRejectsMissingAndMalformedRecordedFiles/missing
+=== RUN   TestPrerenderArtifactStoreRejectsMissingAndMalformedRecordedFiles/malformed
+--- PASS: TestPrerenderArtifactStoreRejectsMissingAndMalformedRecordedFiles (0.00s)
+    --- PASS: TestPrerenderArtifactStoreRejectsMissingAndMalformedRecordedFiles/missing (0.00s)
+    --- PASS: TestPrerenderArtifactStoreRejectsMissingAndMalformedRecordedFiles/malformed (0.00s)
+=== RUN   TestPrerenderTypedLoadConvertsRawPathToNamedMatcherResult
+--- PASS: TestPrerenderTypedLoadConvertsRawPathToNamedMatcherResult (0.00s)
+=== RUN   TestPrerenderLoadReceivesKitsEventAndReturnsGoEffects
+--- PASS: TestPrerenderLoadReceivesKitsEventAndReturnsGoEffects (0.00s)
+=== RUN   TestPrerenderLoadReturnsGoErrorAndRedirect
+=== RUN   TestPrerenderLoadReturnsGoErrorAndRedirect/error
+=== RUN   TestPrerenderLoadReturnsGoErrorAndRedirect/redirect
+--- PASS: TestPrerenderLoadReturnsGoErrorAndRedirect (0.00s)
+    --- PASS: TestPrerenderLoadReturnsGoErrorAndRedirect/error (0.00s)
+    --- PASS: TestPrerenderLoadReturnsGoErrorAndRedirect/redirect (0.00s)
+=== RUN   TestPrerenderLoadPreservesUnexpectedFailureForBuildDiagnostic
+--- PASS: TestPrerenderLoadPreservesUnexpectedFailureForBuildDiagnostic (0.00s)
+=== RUN   TestPrerenderServiceReturnsDeclaredInputsWithoutRequestContext
+--- PASS: TestPrerenderServiceReturnsDeclaredInputsWithoutRequestContext (0.00s)
+=== RUN   TestPrerenderServiceInputsErrorsFailBuildAndRejectExtraFields
+--- PASS: TestPrerenderServiceInputsErrorsFailBuildAndRejectExtraFields (0.00s)
+=== RUN   TestPrerenderServiceInputsSerializesExplicitUndefined
+--- PASS: TestPrerenderServiceInputsSerializesExplicitUndefined (0.00s)
+=== RUN   TestPrerenderRemotePreservesNativeErrorOrigin
+=== PAUSE TestPrerenderRemotePreservesNativeErrorOrigin
+=== RUN   TestPrerenderRemoteRedirectStaysStructuredForKit
+=== PAUSE TestPrerenderRemoteRedirectStaysStructuredForKit
+=== RUN   TestPrerenderLogicalRequestSharesLocalsAndRealResponse
+--- PASS: TestPrerenderLogicalRequestSharesLocalsAndRealResponse (0.00s)
+=== RUN   TestPrerenderRefusalsSkipResolutionAndPreserveMeaning
+=== RUN   TestPrerenderRefusalsSkipResolutionAndPreserveMeaning/redirect
+=== RUN   TestPrerenderRefusalsSkipResolutionAndPreserveMeaning/error
+=== RUN   TestPrerenderRefusalsSkipResolutionAndPreserveMeaning/response
+--- PASS: TestPrerenderRefusalsSkipResolutionAndPreserveMeaning (0.00s)
+    --- PASS: TestPrerenderRefusalsSkipResolutionAndPreserveMeaning/redirect (0.00s)
+    --- PASS: TestPrerenderRefusalsSkipResolutionAndPreserveMeaning/error (0.00s)
+    --- PASS: TestPrerenderRefusalsSkipResolutionAndPreserveMeaning/response (0.00s)
+=== RUN   TestPrerenderInternalFetchCookiesKeepScopeAndTombstones
+--- PASS: TestPrerenderInternalFetchCookiesKeepScopeAndTombstones (0.00s)
+=== RUN   TestPrerenderEndCancelsDeferredCallbackAndReleasesState
+--- PASS: TestPrerenderEndCancelsDeferredCallbackAndReleasesState (0.00s)
+=== RUN   TestPrerenderBodyFailureCannotReturnSuccessfulTruncatedResponse
+--- PASS: TestPrerenderBodyFailureCannotReturnSuccessfulTruncatedResponse (0.00s)
+=== RUN   TestPrerenderKeepsKitLogicalURLAndOriginalRequestDistinct
+--- PASS: TestPrerenderKeepsKitLogicalURLAndOriginalRequestDistinct (0.00s)
+=== RUN   TestPrerenderResolveOptionsUseComposedPostLoadState
+--- PASS: TestPrerenderResolveOptionsUseComposedPostLoadState (0.00s)
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/nil
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/renderer_default
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/hook_overrides_default
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/transform
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/panic
+--- PASS: TestPrerenderResolveOptionDefaultsAndFailures (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/nil (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/renderer_default (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/hook_overrides_default (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/transform (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/panic (0.00s)
+=== RUN   TestPrerenderServiceRequiresAuthentication
+--- PASS: TestPrerenderServiceRequiresAuthentication (0.00s)
+=== RUN   TestPrerenderServiceConcurrentCallsKeepOriginalRequestsSeparate
+--- PASS: TestPrerenderServiceConcurrentCallsKeepOriginalRequestsSeparate (0.00s)
+=== RUN   TestPrerenderServiceDisconnectCancelsInputs
+--- PASS: TestPrerenderServiceDisconnectCancelsInputs (0.00s)
+=== RUN   TestPrerenderServiceOwnerEOFStopsListenerAndCancelsWork
+--- PASS: TestPrerenderServiceOwnerEOFStopsListenerAndCancelsWork (0.00s)
+=== RUN   TestPrerenderServiceLoadSettlesTransportedDeferredValue
+--- PASS: TestPrerenderServiceLoadSettlesTransportedDeferredValue (0.00s)
+=== RUN   TestPrerenderServiceRemoteTransportAndBuildDiagnostics
+--- PASS: TestPrerenderServiceRemoteTransportAndBuildDiagnostics (0.00s)
+=== RUN   TestPrerenderServiceAbandonedCallbackFailsHelper
+--- PASS: TestPrerenderServiceAbandonedCallbackFailsHelper (0.00s)
+=== RUN   TestRefreshKeyMatchesKitsForTheArgumentGiven
+--- PASS: TestRefreshKeyMatchesKitsForTheArgumentGiven (0.00s)
+=== RUN   TestRefreshOfOneArgumentDoesNotTouchAnother
+--- PASS: TestRefreshOfOneArgumentDoesNotTouchAnother (0.00s)
+=== RUN   TestRefreshOfANoArgumentQueryUsesTheEmptyPayload
+--- PASS: TestRefreshOfANoArgumentQueryUsesTheEmptyPayload (0.00s)
+=== RUN   TestRefreshRunsAfterTheHandlerBody
+--- PASS: TestRefreshRunsAfterTheHandlerBody (0.00s)
+=== RUN   TestRefreshSeesACookieTheCommandJustWrote
+--- PASS: TestRefreshSeesACookieTheCommandJustWrote (0.00s)
+=== RUN   TestRefreshFailureDoesNotFailTheCommand
+--- PASS: TestRefreshFailureDoesNotFailTheCommand (0.00s)
+=== RUN   TestARefreshedQueryCanRegisterAnother
+--- PASS: TestARefreshedQueryCanRegisterAnother (0.00s)
+=== RUN   TestOneKeyNamedByBothChannelsIsAnsweredOnce
+--- PASS: TestOneKeyNamedByBothChannelsIsAnsweredOnce (0.00s)
+=== RUN   TestBothChannelsAreAnsweredTogether
+--- PASS: TestBothChannelsAreAnsweredTogether (0.00s)
+=== RUN   TestRefreshRejectsWhatCannotBeRefreshed
+=== RUN   TestRefreshRejectsWhatCannotBeRefreshed/a_command_is_not_a_query
+=== RUN   TestRefreshRejectsWhatCannotBeRefreshed/an_unregistered_function
+=== RUN   TestRefreshRejectsWhatCannotBeRefreshed/outside_a_command
+--- PASS: TestRefreshRejectsWhatCannotBeRefreshed (0.00s)
+    --- PASS: TestRefreshRejectsWhatCannotBeRefreshed/a_command_is_not_a_query (0.00s)
+    --- PASS: TestRefreshRejectsWhatCannotBeRefreshed/an_unregistered_function (0.00s)
+    --- PASS: TestRefreshRejectsWhatCannotBeRefreshed/outside_a_command (0.00s)
+=== RUN   TestNewRemotesRefusesTwoRegistrationsOfOneFunction
+--- PASS: TestNewRemotesRefusesTwoRegistrationsOfOneFunction (0.00s)
+=== RUN   TestRefreshKeyForASliceArgumentIsThePayloadTheClientSent
+=== RUN   TestRefreshKeyForASliceArgumentIsThePayloadTheClientSent/sent_as_null
+=== RUN   TestRefreshKeyForASliceArgumentIsThePayloadTheClientSent/sent_as_an_empty_array
+--- PASS: TestRefreshKeyForASliceArgumentIsThePayloadTheClientSent (0.00s)
+    --- PASS: TestRefreshKeyForASliceArgumentIsThePayloadTheClientSent/sent_as_null (0.00s)
+    --- PASS: TestRefreshKeyForASliceArgumentIsThePayloadTheClientSent/sent_as_an_empty_array (0.00s)
+=== RUN   TestBatchQueryAnswersEveryPayloadInOneCall
+--- PASS: TestBatchQueryAnswersEveryPayloadInOneCall (0.00s)
+=== RUN   TestBatchQueryFailsTheWholeCall
+--- PASS: TestBatchQueryFailsTheWholeCall (0.00s)
+=== RUN   TestBatchQueryRefusesGet
+--- PASS: TestBatchQueryRefusesGet (0.00s)
+=== RUN   TestBatchQueryRefusesAnUndecodablePayload
+--- PASS: TestBatchQueryRefusesAnUndecodablePayload (0.00s)
+=== RUN   TestBatchQueryWithMismatchedResultsIsAnInternalError
+2026/10/18 12:00:21 skgo: batch query worolc/getQuotes failed: skgo: batch query getQuotes was given 2 arguments and answered 1 results
+--- PASS: TestBatchQueryWithMismatchedResultsIsAnInternalError (0.00s)
+=== RUN   TestBatchQueryAnswersASingleRefreshedInstance
+--- PASS: TestBatchQueryAnswersASingleRefreshedInstance (0.00s)
+=== RUN   TestRemoteCallerQueryRestrictionsAtServedEntries
+=== RUN   TestRemoteCallerQueryRestrictionsAtServedEntries/query
+=== RUN   TestRemoteCallerQueryRestrictionsAtServedEntries/batch
+=== RUN   TestRemoteCallerQueryRestrictionsAtServedEntries/live
+--- PASS: TestRemoteCallerQueryRestrictionsAtServedEntries (0.00s)
+    --- PASS: TestRemoteCallerQueryRestrictionsAtServedEntries/query (0.00s)
+    --- PASS: TestRemoteCallerQueryRestrictionsAtServedEntries/batch (0.00s)
+    --- PASS: TestRemoteCallerQueryRestrictionsAtServedEntries/live (0.00s)
+=== RUN   TestRemoteCallerRefreshedQueryRestrictions
+=== RUN   TestRemoteCallerRefreshedQueryRestrictions/false
+=== RUN   TestRemoteCallerRefreshedQueryRestrictions/true
+--- PASS: TestRemoteCallerRefreshedQueryRestrictions (0.00s)
+    --- PASS: TestRemoteCallerRefreshedQueryRestrictions/false (0.00s)
+    --- PASS: TestRemoteCallerRefreshedQueryRestrictions/true (0.00s)
+=== RUN   TestRemoteCallerSSRQueryRestrictions
+--- PASS: TestRemoteCallerSSRQueryRestrictions (0.00s)
+=== RUN   TestRemoteCallerBuildPrerenderQueryRestrictions
+--- PASS: TestRemoteCallerBuildPrerenderQueryRestrictions (0.00s)
+=== RUN   TestTypedCommandContextRetainsCancellation
+--- PASS: TestTypedCommandContextRetainsCancellation (0.00s)
+=== RUN   TestRemoteCallerURLKeepsEscapedPath
+--- PASS: TestRemoteCallerURLKeepsEscapedPath (0.00s)
+=== RUN   TestRemoteValidationHookAtHandler
+=== RUN   TestRemoteValidationHookAtHandler/query
+=== RUN   TestRemoteValidationHookAtHandler/command
+=== RUN   TestRemoteValidationHookAtHandler/batch_query
+2026/10/18 12:00:21 skgo: batch query worolc/validation failed: skgo: bad request: private /account/token: expected string
+=== RUN   TestRemoteValidationHookAtHandler/live_query
+=== RUN   TestRemoteValidationHookAtHandler/query#01
+--- PASS: TestRemoteValidationHookAtHandler (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/query (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/command (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/batch_query (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/live_query (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/query#01 (0.00s)
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/absent
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/absent?payload=WzQyXQ
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/nil
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/nil?payload=WzQyXQ
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/partial
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/partial?payload=WzQyXQ
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/panic
+2026/10/18 12:00:21 skgo: route : skgo: the handleError hook panicked: private-hook-failure
+goroutine 1213 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.runHandleError.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:136 +0x48
+panic({0x105421a48?, 0x1052f1b00?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestRemoteValidationDefaultsAndMissingArgument.func1.1({0x2b542e7746a8?, 0x10494f7c8?}, {{0x104aefd8e, 0xa}, 0x190, {0x104af0e9b, 0xb}, {0x0, 0x0}, {0x2b542e45bbe0, ...}})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error_test.go:114 +0x1c0
+github.com/tylergannon/skgo.runHandleError({0x1054f5508?, 0x2b542e1bea20?}, {0x0?, 0x2b542e293a90?}, 0x2b542e40b2c0?, {{0x104aefd8e, 0xa}, 0x190, {0x104af0e9b, 0xb}, ...}, ...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:149 +0x94
+github.com/tylergannon/skgo.handleErrorAndJSONify({0x1054f5508, 0x2b542e1bea20}, {0x0, 0x0}, 0x2b542e45bb20, 0x2b542e40b2c0, {0x1054ed020, 0x2b542e293a50}, 0x0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:128 +0x234
+github.com/tylergannon/skgo.(*Remotes).validationError(0x2b542e187d40, {0x1054f5508, 0x2b542e1be960}, {0x1054ed020, 0x2b542e293a50})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:24 +0x1ac
+github.com/tylergannon/skgo.(*Remotes).remoteError(0x2b542e1be630?, {0x1054f5508?, 0x2b542e1be960?}, {0x1054ed020, 0x2b542e293a50})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:28 +0x2c
+github.com/tylergannon/skgo.(*Remotes).writeCallError(0x2b542e187d40, {0x1054f2e98, 0x2b542e1be630}, {0x1054f5508, 0x2b542e1be960}, {0x1054ed020, 0x2b542e293a50})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:39 +0xfc
+github.com/tylergannon/skgo.(*Remotes).serveQuery(0x2b542e187d40, {0x1054f2e98, 0x2b542e1be630}, 0x2b542df557c0, 0x2b542e31a510)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:849 +0x26c
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x2b542e187d40, {0x1054f2d78, 0x2b542e2097c0}, 0x2b542df55680)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:777 +0xac4
+github.com/tylergannon/skgo.TestRemoteValidationDefaultsAndMissingArgument.func1(0x2b542e324008)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error_test.go:124 +0x254
+testing.tRunner(0x2b542e324008, 0x2b542e45bac0)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 1206
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/panic?payload=WzQyXQ
+2026/10/18 12:00:21 skgo: route : skgo: the handleError hook panicked: private-hook-failure
+goroutine 1214 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.runHandleError.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:136 +0x48
+panic({0x105421a48?, 0x1052f1b00?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestRemoteValidationDefaultsAndMissingArgument.func1.1({0x2b542e29d6a8?, 0x10494f7c8?}, {{0x104aefd8e, 0xa}, 0x190, {0x104af0e9b, 0xb}, {0x0, 0x0}, {0x2b542e45bd40, ...}})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error_test.go:114 +0x1c0
+github.com/tylergannon/skgo.runHandleError({0x1054f5508?, 0x2b542e1bfdd0?}, {0x0?, 0x2b542e293cb0?}, 0x2b542e40b428?, {{0x104aefd8e, 0xa}, 0x190, {0x104af0e9b, 0xb}, ...}, ...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:149 +0x94
+github.com/tylergannon/skgo.handleErrorAndJSONify({0x1054f5508, 0x2b542e1bfdd0}, {0x0, 0x0}, 0x2b542e45bc80, 0x2b542e40b428, {0x1054ed020, 0x2b542e293c70}, 0x0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:128 +0x234
+github.com/tylergannon/skgo.(*Remotes).validationError(0x2b542e53a900, {0x1054f5508, 0x2b542e1bfc50}, {0x1054ed020, 0x2b542e293c70})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:24 +0x1ac
+github.com/tylergannon/skgo.(*Remotes).remoteError(0x2b542e1bf710?, {0x1054f5508?, 0x2b542e1bfc50?}, {0x1054ed020, 0x2b542e293c70})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:28 +0x2c
+github.com/tylergannon/skgo.(*Remotes).writeCallError(0x2b542e53a900, {0x1054f2e98, 0x2b542e1bf710}, {0x1054f5508, 0x2b542e1bfc50}, {0x1054ed020, 0x2b542e293c70})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:39 +0xfc
+github.com/tylergannon/skgo.(*Remotes).serveQuery(0x2b542e53a900, {0x1054f2e98, 0x2b542e1bf710}, 0x2b542e210500, 0x2b542e31a990)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:849 +0x26c
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x2b542e53a900, {0x1054f2d78, 0x2b542e209840}, 0x2b542e2103c0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:777 +0xac4
+github.com/tylergannon/skgo.TestRemoteValidationDefaultsAndMissingArgument.func1(0x2b542e324248)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error_test.go:124 +0x254
+testing.tRunner(0x2b542e324248, 0x2b542e45bc20)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 1206
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+--- PASS: TestRemoteValidationDefaultsAndMissingArgument (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/absent (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/absent?payload=WzQyXQ (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/nil (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/nil?payload=WzQyXQ (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/partial (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/partial?payload=WzQyXQ (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/panic (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/panic?payload=WzQyXQ (0.00s)
+=== RUN   TestNativeValidationHookAtCallbackAndFrontDoor
+--- PASS: TestNativeValidationHookAtCallbackAndFrontDoor (0.00s)
+=== RUN   TestFormClientUsesKitProducedEnvelope
+--- PASS: TestFormClientUsesKitProducedEnvelope (0.00s)
+=== RUN   TestFormSubmissionAndSingleFlightRefresh
+--- PASS: TestFormSubmissionAndSingleFlightRefresh (0.00s)
+=== RUN   TestFormReceivesFileBytes
+--- PASS: TestFormReceivesFileBytes (0.00s)
+=== RUN   TestFormIssuesSuppressRefreshes
+--- PASS: TestFormIssuesSuppressRefreshes (0.00s)
+=== RUN   TestFormIssuePathsMatchKitsFieldNames
+=== RUN   TestFormIssuePathsMatchKitsFieldNames/email
+=== RUN   TestFormIssuePathsMatchKitsFieldNames/author.name
+=== RUN   TestFormIssuePathsMatchKitsFieldNames/tags[0]
+=== RUN   TestFormIssuePathsMatchKitsFieldNames/rows[2].label
+=== RUN   TestFormIssuePathsMatchKitsFieldNames/#00
+--- PASS: TestFormIssuePathsMatchKitsFieldNames (0.00s)
+    --- PASS: TestFormIssuePathsMatchKitsFieldNames/email (0.00s)
+    --- PASS: TestFormIssuePathsMatchKitsFieldNames/author.name (0.00s)
+    --- PASS: TestFormIssuePathsMatchKitsFieldNames/tags[0] (0.00s)
+    --- PASS: TestFormIssuePathsMatchKitsFieldNames/rows[2].label (0.00s)
+    --- PASS: TestFormIssuePathsMatchKitsFieldNames/#00 (0.00s)
+=== RUN   TestFormValidateOnlyDoesNotRunTheHandler
+--- PASS: TestFormValidateOnlyDoesNotRunTheHandler (0.00s)
+=== RUN   TestFormOptionalScalarsFromKit
+=== RUN   TestFormOptionalScalarsFromKit/omitted
+=== RUN   TestFormOptionalScalarsFromKit/explicit_zeroes
+--- PASS: TestFormOptionalScalarsFromKit (0.00s)
+    --- PASS: TestFormOptionalScalarsFromKit/omitted (0.00s)
+    --- PASS: TestFormOptionalScalarsFromKit/explicit_zeroes (0.00s)
+=== RUN   TestFormRejectsWrongMethodAndContentType
+=== RUN   TestFormRejectsWrongMethodAndContentType/GET
+=== RUN   TestFormRejectsWrongMethodAndContentType/JSON_body
+--- PASS: TestFormRejectsWrongMethodAndContentType (0.00s)
+    --- PASS: TestFormRejectsWrongMethodAndContentType/GET (0.00s)
+    --- PASS: TestFormRejectsWrongMethodAndContentType/JSON_body (0.00s)
+=== RUN   TestFormPanicIsAnOpaque500
+--- PASS: TestFormPanicIsAnOpaque500 (0.00s)
+=== RUN   TestInvalidCollectsIssues
+--- PASS: TestInvalidCollectsIssues (0.00s)
+=== RUN   TestLiveStreamCountsOnlyWhatTheOpeningRequestMaySee
+--- PASS: TestLiveStreamCountsOnlyWhatTheOpeningRequestMaySee (0.30s)
+=== RUN   TestLiveStreamSendsOneFrameForEachCommand
+--- PASS: TestLiveStreamSendsOneFrameForEachCommand (0.32s)
+=== RUN   TestOpenLiveStreamKeepsTheIdentityItOpenedWith
+--- PASS: TestOpenLiveStreamKeepsTheIdentityItOpenedWith (0.60s)
+=== RUN   TestReconnectedLiveStreamAgreesWithTheSeedExactlyOnce
+--- PASS: TestReconnectedLiveStreamAgreesWithTheSeedExactlyOnce (0.30s)
+=== RUN   TestSeedingALiveQueryTearsDownTheProducerItStarted
+--- PASS: TestSeedingALiveQueryTearsDownTheProducerItStarted (0.00s)
+=== RUN   TestRefreshSeparatesLiveQueriesFromQueries
+--- PASS: TestRefreshSeparatesLiveQueriesFromQueries (0.00s)
+=== RUN   TestSeedingALiveQueryThatYieldsNothingReportsAnError
+--- PASS: TestSeedingALiveQueryThatYieldsNothingReportsAnError (0.00s)
+=== RUN   TestLiveFirstFrameIsGolden
+--- PASS: TestLiveFirstFrameIsGolden (0.00s)
+=== RUN   TestLiveDedupesUnchangedFrames
+--- PASS: TestLiveDedupesUnchangedFrames (0.00s)
+=== RUN   TestLiveSendsKeepAlive
+--- PASS: TestLiveSendsKeepAlive (0.02s)
+=== RUN   TestLiveCancellationTearsDownOnceAndDropsLateValues
+--- PASS: TestLiveCancellationTearsDownOnceAndDropsLateValues (0.00s)
+=== RUN   TestLiveRejectsNonGet
+--- PASS: TestLiveRejectsNonGet (0.00s)
+=== RUN   TestAPanickingQueryAnswersInsteadOfResettingTheConnection
+2026/10/18 12:00:22 skgo: remote function worolc/boom panicked: the database handle was nil
+goroutine 1326 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x2b542e203320, 0x2b542e33a2d0, {0x105421a48, 0x1052f24b0}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:1011 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_execution.go:26 +0x9c
+panic({0x105421a48?, 0x1052f24b0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestAPanickingQueryAnswersInsteadOfResettingTheConnection.func1({0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_panic_test.go:38 +0x2c
+github.com/tylergannon/skgo.doubleCallNoArg[...].func1({{0x0, 0x0}, 0x40?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/registration_double_test.go:74 +0x80
+github.com/tylergannon/skgo.(*Remotes).invoke(0x1054f5540?, {0x1054f5508?, 0x2b542e188570?}, 0x104301448?, {{0x0?, 0x0?}, 0x48?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_execution.go:29 +0x90
+github.com/tylergannon/skgo.(*Remotes).call(...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:976
+github.com/tylergannon/skgo.(*Remotes).serveQuery(0x2b542e203320, {0x1054f2e98, 0x2b542e1883f0}, 0x2b542e383040, 0x2b542e33a2d0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:843 +0x1b8
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x2b542e203320, {0x1054f3198, 0x2b542e2c8d20}, 0x2b542e382f00)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:777 +0xac4
+net/http.serverHandler.ServeHTTP({0x2b542e53e9c0?}, {0x1054f3198?, 0x2b542e2c8d20?}, 0x1?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3436 +0xb0
+net/http.(*conn).serve(0x2b542e33a5a0, {0x1054f5508, 0x2b542e1db260})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2157 +0x5a0
+created by net/http.(*Server).Serve in goroutine 1324
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3604 +0x3e8
+--- PASS: TestAPanickingQueryAnswersInsteadOfResettingTheConnection (0.00s)
+=== RUN   TestAPanickingCommandAnswersInsteadOfResettingTheConnection
+2026/10/18 12:00:22 skgo: remote function worolc/boom panicked: nil map write
+goroutine 1347 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x2b542e203680, 0x2b542e33abd0, {0x105421a48, 0x1052f24e0}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:1011 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_execution.go:26 +0x9c
+panic({0x105421a48?, 0x1052f24e0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestAPanickingCommandAnswersInsteadOfResettingTheConnection.func1({0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_panic_test.go:69 +0x2c
+github.com/tylergannon/skgo.doubleCallNoArg[...].func1({{0x0, 0x0}, 0x8?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/registration_double_test.go:74 +0x80
+github.com/tylergannon/skgo.(*Remotes).invoke(0x1054f5508?, {0x1054f5508?, 0x2b542e1db5c0?}, 0x0?, {{0x0?, 0x0?}, 0xb8?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_execution.go:29 +0x90
+github.com/tylergannon/skgo.(*Remotes).call(...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:976
+github.com/tylergannon/skgo.(*Remotes).serveCommand(0x2b542e203680, {0x1054f2e98, 0x2b542e1db3b0}, 0x2b542e37a3c0, 0x2b542e33abd0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:892 +0x20c
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x2b542e203680, {0x1054f3198, 0x2b542e2be870}, 0x2b542e383cc0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:783 +0xaa8
+net/http.serverHandler.ServeHTTP({0x10?}, {0x1054f3198?, 0x2b542e2be870?}, 0x1?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3436 +0xb0
+net/http.(*conn).serve(0x2b542e33aea0, {0x1054f5508, 0x2b542e52d530})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2157 +0x5a0
+created by net/http.(*Server).Serve in goroutine 1345
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3604 +0x3e8
+--- PASS: TestAPanickingCommandAnswersInsteadOfResettingTheConnection (0.00s)
+=== RUN   TestAPanickingRefreshDoesNotDestroyTheCommandsAnswer
+2026/10/18 12:00:22 skgo: remote function worolc/boom panicked: the refresh exploded
+goroutine 1351 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x2b542e2038c0, 0x2b542e33b170, {0x105421a48, 0x1052f24d0}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:1011 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_execution.go:26 +0x9c
+panic({0x105421a48?, 0x1052f24d0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestAPanickingRefreshDoesNotDestroyTheCommandsAnswer.func1({0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_panic_test.go:91 +0x2c
+github.com/tylergannon/skgo.doubleCallNoArg[...].func1({{0x0, 0x0}, 0x30?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/registration_double_test.go:74 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke(0x1053c9120?, {0x1054f5508?, 0x2b542e244210?}, 0xc?, {{0x0?, 0x0?}, 0x58?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_execution.go:29 +0x90
+github.com/tylergannon/skgo.(*Remotes).call(...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:976
+github.com/tylergannon/skgo.(*Remotes).resolveExplicit(0x2b542e2038c0, {0x1054f5508, 0x2b542e244210}, 0x2b542e010a80)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/refresh.go:278 +0x188
+github.com/tylergannon/skgo.(*Remotes).collectRefreshes(0x2b542e2038c0, {0x1054f5508, 0x2b542e2b1e90}, 0x2b542e31b9e0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/refresh.go:386 +0x58
+github.com/tylergannon/skgo.(*Remotes).serveCommand(0x2b542e2038c0, {0x1054f2e98, 0x2b542e2b1e30}, 0x2b542e1e3680, 0x2b542e33b0e0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:905 +0x308
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x2b542e2038c0, {0x1054f3198, 0x2b542e2aac30}, 0x2b542e38a500)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:783 +0xaa8
+net/http.serverHandler.ServeHTTP({0x10?}, {0x1054f3198?, 0x2b542e2aac30?}, 0x1?)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3436 +0xb0
+net/http.(*conn).serve(0x2b542e33b440, {0x1054f5508, 0x2b542e1db890})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2157 +0x5a0
+created by net/http.(*Server).Serve in goroutine 1349
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:3604 +0x3e8
+--- PASS: TestAPanickingRefreshDoesNotDestroyTheCommandsAnswer (0.00s)
+=== RUN   TestAPanickingLiveQueryDoesNotTakeTheProcessDown
+2026/10/18 12:00:22 skgo: remote function worolc/boom panicked: the subscription exploded
+goroutine 1369 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x2b542e2d99e0, 0x2b542e3f7830, {0x105421a48, 0x1052f24c0}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:1011 +0x74
+github.com/tylergannon/skgo.(*Remotes).callLive.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:992 +0x4c
+panic({0x105421a48?, 0x1052f24c0?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestAPanickingLiveQueryDoesNotTakeTheProcessDown.func1({0x38?, 0x10549b198?}, 0x2b542e1ad6b8?)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_panic_test.go:129 +0x4c
+github.com/tylergannon/skgo.NewLiveQueryNoArg[...].func1({{0x0, 0x0}, 0xf8?, 0x0?}, 0x2b542e01b7a0?)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/registration_double_test.go:154 +0x148
+github.com/tylergannon/skgo.(*Remotes).callLive(0x20?, {0x1054f5508?, 0x2b542e1494d0?}, 0x2b542e3955d8?, {{0x0?, 0x0?}, 0x58?, 0x0?}, 0x2b542e3955d0?)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:995 +0x88
+github.com/tylergannon/skgo.(*Remotes).serveLive.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_live.go:82 +0xe8
+created by github.com/tylergannon/skgo.(*Remotes).serveLive in goroutine 1367
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_live.go:81 +0x490
+--- PASS: TestAPanickingLiveQueryDoesNotTakeTheProcessDown (0.00s)
+=== RUN   TestAPanicIsReportedToTheServerWithItsStack
+--- PASS: TestAPanicIsReportedToTheServerWithItsStack (0.00s)
+=== RUN   TestNewRedirectAcceptsExactlyTheStatusesKitAccepts
+--- PASS: TestNewRedirectAcceptsExactlyTheStatusesKitAccepts (0.00s)
+=== RUN   TestNewRedirectRefusesALocationThatCannotBeAHeader
+--- PASS: TestNewRedirectRefusesALocationThatCannotBeAHeader (0.00s)
+=== RUN   TestARedirectSaysWhichRedirectItIs
+--- PASS: TestARedirectSaysWhichRedirectItIs (0.00s)
+=== RUN   TestARemoteRedirectCarriesKitsLocationOnlyEnvelope
+--- PASS: TestARemoteRedirectCarriesKitsLocationOnlyEnvelope (0.00s)
+=== RUN   TestQueryWithoutArgument
+--- PASS: TestQueryWithoutArgument (0.00s)
+=== RUN   TestQueryWithArgument
+--- PASS: TestQueryWithArgument (0.00s)
+=== RUN   TestQueryErrorEnvelope
+--- PASS: TestQueryErrorEnvelope (0.00s)
+=== RUN   TestUnknownHashAndNameAre404
+--- PASS: TestUnknownHashAndNameAre404 (0.00s)
+=== RUN   TestCrossOriginCommandIsForbidden
+--- PASS: TestCrossOriginCommandIsForbidden (0.00s)
+=== RUN   TestCommandRefreshes
+--- PASS: TestCommandRefreshes (0.00s)
+=== RUN   TestCommandWithoutRefreshesOmitsQAndR
+--- PASS: TestCommandWithoutRefreshesOmitsQAndR (0.00s)
+=== RUN   TestInterceptOnlyClaimsThePrefix
+--- PASS: TestInterceptOnlyClaimsThePrefix (0.00s)
+=== RUN   TestPrefixHonoursBaseAndAppDir
+--- PASS: TestPrefixHonoursBaseAndAppDir (0.00s)
+=== RUN   TestReadManifestAndRemoteConfig
+--- PASS: TestReadManifestAndRemoteConfig (0.00s)
+=== RUN   TestDuplicateRegistrationIsAnError
+--- PASS: TestDuplicateRegistrationIsAnError (0.00s)
+=== RUN   TestMethodMismatchIs405
+--- PASS: TestMethodMismatchIs405 (0.00s)
+=== RUN   TestReturnedCookiesAreWrittenBackRawAndSentOnWithKitsPathDefault
+--- PASS: TestReturnedCookiesAreWrittenBackRawAndSentOnWithKitsPathDefault (0.00s)
+=== RUN   TestACookieReturnedInProcessIsSentOnTheNextFetchOfThatRequest
+--- PASS: TestACookieReturnedInProcessIsSentOnTheNextFetchOfThatRequest (0.00s)
+=== RUN   TestSameNameCookiesDifferingByDomainOrPathAreDistinctAndTheLatestMatchingWins
+--- PASS: TestSameNameCookiesDifferingByDomainOrPathAreDistinctAndTheLatestMatchingWins (0.00s)
+=== RUN   TestReturnedDeletionAndExpiryAreWrittenBackAndTracked
+--- PASS: TestReturnedDeletionAndExpiryAreWrittenBackAndTracked (0.00s)
+=== RUN   TestReturnedSecurityAttributesSurviveInKitsOrder
+--- PASS: TestReturnedSecurityAttributesSurviveInKitsOrder (0.00s)
+=== RUN   TestCookiePrecedenceIsPageThenReturnedThenExplicitHeader
+--- PASS: TestCookiePrecedenceIsPageThenReturnedThenExplicitHeader (0.00s)
+=== RUN   TestReturnedCookiesAreCollectedWhateverTheCredentialsMode
+--- PASS: TestReturnedCookiesAreCollectedWhateverTheCredentialsMode (0.00s)
+=== RUN   TestCookiesDoNotLeakAcrossExternalHookPrerenderedAndFailedBoundaries
+--- PASS: TestCookiesDoNotLeakAcrossExternalHookPrerenderedAndFailedBoundaries (0.00s)
+=== RUN   TestACookieReturnedToALoadsFetchReachesTheDataResponseAndHandle
+--- PASS: TestACookieReturnedToALoadsFetchReachesTheDataResponseAndHandle (0.00s)
+=== RUN   TestEveryKindOfApplicationDestinationAnswersInProcess
+--- PASS: TestEveryKindOfApplicationDestinationAnswersInProcess (0.00s)
+=== RUN   TestAPrerenderedFileWinsOverAMatchingDynamicRouteForFetchesAndRequests
+--- PASS: TestAPrerenderedFileWinsOverAMatchingDynamicRouteForFetchesAndRequests (0.00s)
+=== RUN   TestAPrerenderedFetchCarriesNothingOfThePageAndKeepsTheClientAddress
+--- PASS: TestAPrerenderedFetchCarriesNothingOfThePageAndKeepsTheClientAddress (0.00s)
+=== RUN   TestInternalFetchDeliversHeadersAndFirstBytesWhileTheProducerIsStillRunning
+=== RUN   TestInternalFetchDeliversHeadersAndFirstBytesWhileTheProducerIsStillRunning/no_middleware
+=== RUN   TestInternalFetchDeliversHeadersAndFirstBytesWhileTheProducerIsStillRunning/wrapping_middleware
+--- PASS: TestInternalFetchDeliversHeadersAndFirstBytesWhileTheProducerIsStillRunning (0.00s)
+    --- PASS: TestInternalFetchDeliversHeadersAndFirstBytesWhileTheProducerIsStillRunning/no_middleware (0.00s)
+    --- PASS: TestInternalFetchDeliversHeadersAndFirstBytesWhileTheProducerIsStillRunning/wrapping_middleware (0.00s)
+=== RUN   TestInternalFetchCancelledBeforeCommitmentReleasesTheProducer
+=== RUN   TestInternalFetchCancelledBeforeCommitmentReleasesTheProducer/no_middleware
+=== RUN   TestInternalFetchCancelledBeforeCommitmentReleasesTheProducer/wrapping_middleware
+--- PASS: TestInternalFetchCancelledBeforeCommitmentReleasesTheProducer (0.00s)
+    --- PASS: TestInternalFetchCancelledBeforeCommitmentReleasesTheProducer/no_middleware (0.00s)
+    --- PASS: TestInternalFetchCancelledBeforeCommitmentReleasesTheProducer/wrapping_middleware (0.00s)
+=== RUN   TestInternalFetchCancelledAfterTheFirstChunkFailsTheBlockedReaderAndReleasesTheProducer
+=== RUN   TestInternalFetchCancelledAfterTheFirstChunkFailsTheBlockedReaderAndReleasesTheProducer/no_middleware
+=== RUN   TestInternalFetchCancelledAfterTheFirstChunkFailsTheBlockedReaderAndReleasesTheProducer/wrapping_middleware
+--- PASS: TestInternalFetchCancelledAfterTheFirstChunkFailsTheBlockedReaderAndReleasesTheProducer (0.00s)
+    --- PASS: TestInternalFetchCancelledAfterTheFirstChunkFailsTheBlockedReaderAndReleasesTheProducer/no_middleware (0.00s)
+    --- PASS: TestInternalFetchCancelledAfterTheFirstChunkFailsTheBlockedReaderAndReleasesTheProducer/wrapping_middleware (0.00s)
+=== RUN   TestClosingAnInternalFetchBodyStopsABlockedProducerWrite
+=== RUN   TestClosingAnInternalFetchBodyStopsABlockedProducerWrite/wrapping_middleware
+=== RUN   TestClosingAnInternalFetchBodyStopsABlockedProducerWrite/no_middleware
+--- PASS: TestClosingAnInternalFetchBodyStopsABlockedProducerWrite (0.00s)
+    --- PASS: TestClosingAnInternalFetchBodyStopsABlockedProducerWrite/wrapping_middleware (0.00s)
+    --- PASS: TestClosingAnInternalFetchBodyStopsABlockedProducerWrite/no_middleware (0.00s)
+=== RUN   TestAbandoningAnInternalFetchBodyByCancellationStopsABlockedProducerWrite
+=== RUN   TestAbandoningAnInternalFetchBodyByCancellationStopsABlockedProducerWrite/no_middleware
+=== RUN   TestAbandoningAnInternalFetchBodyByCancellationStopsABlockedProducerWrite/wrapping_middleware
+--- PASS: TestAbandoningAnInternalFetchBodyByCancellationStopsABlockedProducerWrite (0.00s)
+    --- PASS: TestAbandoningAnInternalFetchBodyByCancellationStopsABlockedProducerWrite/no_middleware (0.00s)
+    --- PASS: TestAbandoningAnInternalFetchBodyByCancellationStopsABlockedProducerWrite/wrapping_middleware (0.00s)
+=== RUN   TestInternalFetchOfAPanickingProducerHasADefinedOutcome
+=== RUN   TestInternalFetchOfAPanickingProducerHasADefinedOutcome/before_commitment_the_fetch_fails_and_does_not_hang
+=== RUN   TestInternalFetchOfAPanickingProducerHasADefinedOutcome/a_middleware_turns_it_into_kit's_opaque_500
+=== RUN   TestInternalFetchOfAPanickingProducerHasADefinedOutcome/after_a_committed_chunk_the_body_fails,_never_ends_cleanly:_no_middleware
+=== RUN   TestInternalFetchOfAPanickingProducerHasADefinedOutcome/after_a_committed_chunk_the_body_fails,_never_ends_cleanly:_wrapping_middleware
+--- PASS: TestInternalFetchOfAPanickingProducerHasADefinedOutcome (0.00s)
+    --- PASS: TestInternalFetchOfAPanickingProducerHasADefinedOutcome/before_commitment_the_fetch_fails_and_does_not_hang (0.00s)
+    --- PASS: TestInternalFetchOfAPanickingProducerHasADefinedOutcome/a_middleware_turns_it_into_kit's_opaque_500 (0.00s)
+    --- PASS: TestInternalFetchOfAPanickingProducerHasADefinedOutcome/after_a_committed_chunk_the_body_fails,_never_ends_cleanly:_no_middleware (0.00s)
+    --- PASS: TestInternalFetchOfAPanickingProducerHasADefinedOutcome/after_a_committed_chunk_the_body_fails,_never_ends_cleanly:_wrapping_middleware (0.00s)
+=== RUN   TestInternalFetchKeepsTheContractOfFiniteAndBodylessAnswers
+=== RUN   TestInternalFetchKeepsTheContractOfFiniteAndBodylessAnswers/no_middleware
+=== RUN   TestInternalFetchKeepsTheContractOfFiniteAndBodylessAnswers/wrapping_middleware
+--- PASS: TestInternalFetchKeepsTheContractOfFiniteAndBodylessAnswers (0.00s)
+    --- PASS: TestInternalFetchKeepsTheContractOfFiniteAndBodylessAnswers/no_middleware (0.00s)
+    --- PASS: TestInternalFetchKeepsTheContractOfFiniteAndBodylessAnswers/wrapping_middleware (0.00s)
+=== RUN   TestConcurrentInternalFetchesStreamIndependently
+=== RUN   TestConcurrentInternalFetchesStreamIndependently/no_middleware
+=== RUN   TestConcurrentInternalFetchesStreamIndependently/wrapping_middleware
+--- PASS: TestConcurrentInternalFetchesStreamIndependently (0.00s)
+    --- PASS: TestConcurrentInternalFetchesStreamIndependently/no_middleware (0.00s)
+    --- PASS: TestConcurrentInternalFetchesStreamIndependently/wrapping_middleware (0.00s)
+=== RUN   TestNestedInternalFetchStreamsThroughEachLevelAtDepth
+=== RUN   TestNestedInternalFetchStreamsThroughEachLevelAtDepth/wrapping_middleware
+=== RUN   TestNestedInternalFetchStreamsThroughEachLevelAtDepth/no_middleware
+--- PASS: TestNestedInternalFetchStreamsThroughEachLevelAtDepth (0.00s)
+    --- PASS: TestNestedInternalFetchStreamsThroughEachLevelAtDepth/wrapping_middleware (0.00s)
+    --- PASS: TestNestedInternalFetchStreamsThroughEachLevelAtDepth/no_middleware (0.00s)
+=== RUN   TestLoadFetchesRelativeEndpointInProcess
+--- PASS: TestLoadFetchesRelativeEndpointInProcess (0.00s)
+=== RUN   TestEndpointFetchesAnotherEndpointAndKeepsStatusHeadersAndBytes
+--- PASS: TestEndpointFetchesAnotherEndpointAndKeepsStatusHeadersAndBytes (0.00s)
+=== RUN   TestInternalFetchInheritsCredentialsAsKitDoes
+--- PASS: TestInternalFetchInheritsCredentialsAsKitDoes (0.00s)
+=== RUN   TestCredentialsOmitInheritsNoCookiesOrAuthorization
+--- PASS: TestCredentialsOmitInheritsNoCookiesOrAuthorization (0.00s)
+=== RUN   TestExplicitHeadersBeatInheritedOnes
+--- PASS: TestExplicitHeadersBeatInheritedOnes (0.00s)
+=== RUN   TestCookiesWrittenByTheLoadReachTheSubrequestInKitsOrder
+--- PASS: TestCookiesWrittenByTheLoadReachTheSubrequestInKitsOrder (0.00s)
+=== RUN   TestExternalFetchUsesGoHTTPAndLeaksNothing
+--- PASS: TestExternalFetchUsesGoHTTPAndLeaksNothing (0.00s)
+=== RUN   TestExternalBinaryBodyIsIntact
+--- PASS: TestExternalBinaryBodyIsIntact (0.00s)
+=== RUN   TestCookiesFollowKitsDomainRulesOnExternalRequests
+--- PASS: TestCookiesFollowKitsDomainRulesOnExternalRequests (0.00s)
+=== RUN   TestConfiguredBaseDecidesWhatIsInternal
+--- PASS: TestConfiguredBaseDecidesWhatIsInternal (0.00s)
+=== RUN   TestHandleFetchSeesTheOriginalEventAndNextSkipsTheHook
+--- PASS: TestHandleFetchSeesTheOriginalEventAndNextSkipsTheHook (0.00s)
+=== RUN   TestHandleFetchRewriteIsAppliedBeforeCredentialInheritance
+--- PASS: TestHandleFetchRewriteIsAppliedBeforeCredentialInheritance (0.00s)
+=== RUN   TestHandleFetchCanShortCircuit
+--- PASS: TestHandleFetchCanShortCircuit (0.00s)
+=== RUN   TestHandleFetchErrorAndMissingResponseFailTheFetch
+--- PASS: TestHandleFetchErrorAndMissingResponseFailTheFetch (0.00s)
+=== RUN   TestSubrequestHasFreshLocalsWithoutAHandleHook
+--- PASS: TestSubrequestHasFreshLocalsWithoutAHandleHook (0.00s)
+=== RUN   TestMiddlewareAndErrorHooksCanFetch
+--- PASS: TestMiddlewareAndErrorHooksCanFetch (0.00s)
+=== RUN   TestFetchCancellation
+=== RUN   TestFetchCancellation/an_in-process_handler_is_cancelled_and_the_fetch_returns_promptly
+=== RUN   TestFetchCancellation/an_external_request_is_cancelled
+=== RUN   TestFetchCancellation/a_cancelled_context_never_reaches_the_handler
+--- PASS: TestFetchCancellation (0.01s)
+    --- PASS: TestFetchCancellation/an_in-process_handler_is_cancelled_and_the_fetch_returns_promptly (0.00s)
+    --- PASS: TestFetchCancellation/an_external_request_is_cancelled (0.01s)
+    --- PASS: TestFetchCancellation/a_cancelled_context_never_reaches_the_handler (0.00s)
+=== RUN   TestEventFetchNeedsAConfiguredFetcher
+--- PASS: TestEventFetchNeedsAConfiguredFetcher (0.00s)
+=== RUN   TestRenderFetchSharesTheSameRules
+--- PASS: TestRenderFetchSharesTheSameRules (0.00s)
+=== RUN   TestFetchCarriesOnlyHostLifetimeIntoFreshSubrequest
+--- PASS: TestFetchCarriesOnlyHostLifetimeIntoFreshSubrequest (0.00s)
+=== RUN   TestTypedHookForwardingAndIncomingContexts
+=== RUN   TestTypedHookForwardingAndIncomingContexts/false
+=== RUN   TestTypedHookForwardingAndIncomingContexts/true
+--- PASS: TestTypedHookForwardingAndIncomingContexts (0.00s)
+    --- PASS: TestTypedHookForwardingAndIncomingContexts/false (0.00s)
+    --- PASS: TestTypedHookForwardingAndIncomingContexts/true (0.00s)
+=== RUN   TestTypedBeforeHookAndNoHookInitialization
+--- PASS: TestTypedBeforeHookAndNoHookInitialization (0.00s)
+=== RUN   TestTypedRefusalNilAndResolveGuards
+=== RUN   TestTypedRefusalNilAndResolveGuards/page
+=== RUN   TestTypedRefusalNilAndResolveGuards/data
+=== RUN   TestTypedRefusalNilAndResolveGuards/remote
+=== RUN   TestTypedRefusalNilAndResolveGuards/refusal-keeps-incoming
+=== RUN   TestTypedRefusalNilAndResolveGuards/nested-refusal-keeps-inner-incoming
+=== RUN   TestTypedRefusalNilAndResolveGuards/resolve-guards-sequence=false
+=== RUN   TestTypedRefusalNilAndResolveGuards/resolve-guards-sequence=true
+--- PASS: TestTypedRefusalNilAndResolveGuards (0.00s)
+    --- PASS: TestTypedRefusalNilAndResolveGuards/page (0.00s)
+    --- PASS: TestTypedRefusalNilAndResolveGuards/data (0.00s)
+    --- PASS: TestTypedRefusalNilAndResolveGuards/remote (0.00s)
+    --- PASS: TestTypedRefusalNilAndResolveGuards/refusal-keeps-incoming (0.00s)
+    --- PASS: TestTypedRefusalNilAndResolveGuards/nested-refusal-keeps-inner-incoming (0.00s)
+    --- PASS: TestTypedRefusalNilAndResolveGuards/resolve-guards-sequence=false (0.00s)
+    --- PASS: TestTypedRefusalNilAndResolveGuards/resolve-guards-sequence=true (0.00s)
+=== RUN   TestTypedLocalsMismatchUsesPanicBoundary
+--- PASS: TestTypedLocalsMismatchUsesPanicBoundary (0.00s)
+=== RUN   TestTypedHookUsesConvertedSnapshotOnce
+--- PASS: TestTypedHookUsesConvertedSnapshotOnce (0.00s)
+=== RUN   TestTypedForwardingWithIndependentResolveContext
+--- PASS: TestTypedForwardingWithIndependentResolveContext (0.00s)
+=== RUN   TestTypedNestedHookPanicRetainsIncomingLocals
+--- PASS: TestTypedNestedHookPanicRetainsIncomingLocals (0.00s)
+=== RUN   TestRequestMetadataThroughServedLoadsEndpointsAndActions
+=== RUN   TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00
+=== RUN   TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00/data
+=== RUN   TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00/endpoint
+=== RUN   TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00/action
+=== RUN   TestRequestMetadataThroughServedLoadsEndpointsAndActions//base
+=== RUN   TestRequestMetadataThroughServedLoadsEndpointsAndActions//base/data
+=== RUN   TestRequestMetadataThroughServedLoadsEndpointsAndActions//base/endpoint
+=== RUN   TestRequestMetadataThroughServedLoadsEndpointsAndActions//base/action
+--- PASS: TestRequestMetadataThroughServedLoadsEndpointsAndActions (0.00s)
+    --- PASS: TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00 (0.00s)
+        --- PASS: TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00/data (0.00s)
+        --- PASS: TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00/endpoint (0.00s)
+        --- PASS: TestRequestMetadataThroughServedLoadsEndpointsAndActions/#00/action (0.00s)
+    --- PASS: TestRequestMetadataThroughServedLoadsEndpointsAndActions//base (0.00s)
+        --- PASS: TestRequestMetadataThroughServedLoadsEndpointsAndActions//base/data (0.00s)
+        --- PASS: TestRequestMetadataThroughServedLoadsEndpointsAndActions//base/endpoint (0.00s)
+        --- PASS: TestRequestMetadataThroughServedLoadsEndpointsAndActions//base/action (0.00s)
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/query
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/batch
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/live
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/command
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/form
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/query
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/batch
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/live
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/command
+=== RUN   TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/form
+--- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries (0.00s)
+    --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/query (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/batch (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/live (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/command (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/false/form (0.00s)
+    --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/query (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/batch (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/live (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/command (0.00s)
+        --- PASS: TestRemoteRequestMetadataAndQueryRestrictionsAtServedEntries/true/form (0.00s)
+=== RUN   TestNestedSSRQueryKeepsPageRequestFlags
+=== RUN   TestNestedSSRQueryKeepsPageRequestFlags/false
+=== RUN   TestNestedSSRQueryKeepsPageRequestFlags/true
+--- PASS: TestNestedSSRQueryKeepsPageRequestFlags (0.00s)
+    --- PASS: TestNestedSSRQueryKeepsPageRequestFlags/false (0.00s)
+    --- PASS: TestNestedSSRQueryKeepsPageRequestFlags/true (0.00s)
+=== RUN   TestClientAddressProviderInheritedByInternalFetch
+=== RUN   TestClientAddressProviderInheritedByInternalFetch/false
+=== RUN   TestClientAddressProviderInheritedByInternalFetch/true
+--- PASS: TestClientAddressProviderInheritedByInternalFetch (0.00s)
+    --- PASS: TestClientAddressProviderInheritedByInternalFetch/false (0.00s)
+    --- PASS: TestClientAddressProviderInheritedByInternalFetch/true (0.00s)
+=== RUN   TestClientAddressIsLazyAndUnavailableWithoutHostingRequest
+--- PASS: TestClientAddressIsLazyAndUnavailableWithoutHostingRequest (0.00s)
+=== RUN   TestSSRClientAddressHostIsLazySharedAndPreservesErrors
+=== RUN   TestSSRClientAddressHostIsLazySharedAndPreservesErrors/false
+=== RUN   TestSSRClientAddressHostIsLazySharedAndPreservesErrors/true
+--- PASS: TestSSRClientAddressHostIsLazySharedAndPreservesErrors (0.00s)
+    --- PASS: TestSSRClientAddressHostIsLazySharedAndPreservesErrors/false (0.00s)
+    --- PASS: TestSSRClientAddressHostIsLazySharedAndPreservesErrors/true (0.00s)
+=== RUN   TestAQueryTheHandlerNeverNamedIsNotRun
+--- PASS: TestAQueryTheHandlerNeverNamedIsNotRun (0.00s)
+=== RUN   TestInstancesBeyondTheLimitAreRefusedRatherThanRun
+--- PASS: TestInstancesBeyondTheLimitAreRefusedRatherThanRun (0.00s)
+=== RUN   TestTheLimitIsCountedPerQuery
+--- PASS: TestTheLimitIsCountedPerQuery (0.00s)
+=== RUN   TestRequestedRefreshesNothingUntilTheHandlerSaysSo
+--- PASS: TestRequestedRefreshesNothingUntilTheHandlerSaysSo (0.00s)
+=== RUN   TestRequestedQueryCanBeExplicitlyIgnored
+--- PASS: TestRequestedQueryCanBeExplicitlyIgnored (0.00s)
+=== RUN   TestAnUndecodableInstanceFailsAloneAndTheRestRun
+--- PASS: TestAnUndecodableInstanceFailsAloneAndTheRestRun (0.00s)
+=== RUN   TestRequestedRejectsWhatCannotBeAccepted
+=== RUN   TestRequestedRejectsWhatCannotBeAccepted/a_negative_limit
+=== RUN   TestRequestedRejectsWhatCannotBeAccepted/a_command_is_not_a_query
+=== RUN   TestRequestedRejectsWhatCannotBeAccepted/an_unregistered_function
+=== RUN   TestRequestedRejectsWhatCannotBeAccepted/outside_a_command_or_form
+--- PASS: TestRequestedRejectsWhatCannotBeAccepted (0.00s)
+    --- PASS: TestRequestedRejectsWhatCannotBeAccepted/a_negative_limit (0.00s)
+    --- PASS: TestRequestedRejectsWhatCannotBeAccepted/a_command_is_not_a_query (0.00s)
+    --- PASS: TestRequestedRejectsWhatCannotBeAccepted/an_unregistered_function (0.00s)
+    --- PASS: TestRequestedRejectsWhatCannotBeAccepted/outside_a_command_or_form (0.00s)
+=== RUN   TestANoArgQueryTheHandlerNeverNamedIsNotRun
+--- PASS: TestANoArgQueryTheHandlerNeverNamedIsNotRun (0.00s)
+=== RUN   TestANoArgQueryIsOneInstanceHoweverOftenItIsNamed
+--- PASS: TestANoArgQueryIsOneInstanceHoweverOftenItIsNamed (0.00s)
+=== RUN   TestAnArgumentSentToANoArgQueryIsRefusedRatherThanRun
+--- PASS: TestAnArgumentSentToANoArgQueryIsRefusedRatherThanRun (0.00s)
+=== RUN   TestKitReservedQueryParametersAreRefusedBeforeTheHandleHook
+--- PASS: TestKitReservedQueryParametersAreRefusedBeforeTheHandleHook (0.00s)
+=== RUN   TestKitDataRequestParametersRemainAvailableToKit
+--- PASS: TestKitDataRequestParametersRemainAvailableToKit (0.00s)
+=== RUN   TestRemotePathnameHeaderSelectsTheSearchKitChecks
+=== RUN   TestRemotePathnameHeaderSelectsTheSearchKitChecks/endpoint_query_is_replaced
+=== RUN   TestRemotePathnameHeaderSelectsTheSearchKitChecks/header_query_is_checked
+--- PASS: TestRemotePathnameHeaderSelectsTheSearchKitChecks (0.00s)
+    --- PASS: TestRemotePathnameHeaderSelectsTheSearchKitChecks/endpoint_query_is_replaced (0.00s)
+    --- PASS: TestRemotePathnameHeaderSelectsTheSearchKitChecks/header_query_is_checked (0.00s)
+=== RUN   TestEndpointRefusesKitReservedQueryBeforeItsHandler
+--- PASS: TestEndpointRefusesKitReservedQueryBeforeItsHandler (0.00s)
+=== RUN   TestRouteResolutionRequestChecksReservedQueryBeforeItsFallback
+--- PASS: TestRouteResolutionRequestChecksReservedQueryBeforeItsFallback (0.00s)
+=== RUN   TestReservedQueryPrecedesPageMethodResolution
+--- PASS: TestReservedQueryPrecedesPageMethodResolution (0.00s)
+=== RUN   TestResolveOptionsDefaultsPreloadScriptsButNotFontsAndKeepStylesheets
+--- PASS: TestResolveOptionsDefaultsPreloadScriptsButNotFontsAndKeepStylesheets (0.00s)
+=== RUN   TestResolveOptionsExplicitFontPreloadCarriesTheFilename
+--- PASS: TestResolveOptionsExplicitFontPreloadCarriesTheFilename (0.00s)
+=== RUN   TestResolveOptionsDeniedPreloadRemovesLinksButNotTheStylesheet
+--- PASS: TestResolveOptionsDeniedPreloadRemovesLinksButNotTheStylesheet (0.00s)
+=== RUN   TestResolveOptionsTransformPageChunkRunsOnceDoneOnTheAssembledDocument
+--- PASS: TestResolveOptionsTransformPageChunkRunsOnceDoneOnTheAssembledDocument (0.00s)
+=== RUN   TestResolveOptionsEtagFollowsTheTransformedDocumentAndStaysConditional
+--- PASS: TestResolveOptionsEtagFollowsTheTransformedDocumentAndStaysConditional (0.00s)
+=== RUN   TestResolveOptionsTransformsErrorDocumentAndSPAShellButNotStaticOrOtherResponses
+--- PASS: TestResolveOptionsTransformsErrorDocumentAndSPAShellButNotStaticOrOtherResponses (0.00s)
+=== RUN   TestSequenceOptionsComposeInnerTransformBeforeOuter
+--- PASS: TestSequenceOptionsComposeInnerTransformBeforeOuter (0.00s)
+=== RUN   TestSequenceOptionsOuterDenialWinsWithoutCallingInnerCallbacks
+--- PASS: TestSequenceOptionsOuterDenialWinsWithoutCallingInnerCallbacks (0.00s)
+=== RUN   TestSequenceOptionsLaterCallbackAppliesWhenNoOuterOneIsDefined
+--- PASS: TestSequenceOptionsLaterCallbackAppliesWhenNoOuterOneIsDefined (0.00s)
+=== RUN   TestResolveOptionsRequestPolicyOverridesAndDefaultsToTheRenderersFilter
+--- PASS: TestResolveOptionsRequestPolicyOverridesAndDefaultsToTheRenderersFilter (0.00s)
+=== RUN   TestResolveOptionsConcurrentRequestsKeepTheirOwnPoliciesTransformsAndObservations
+--- PASS: TestResolveOptionsConcurrentRequestsKeepTheirOwnPoliciesTransformsAndObservations (0.00s)
+=== RUN   TestResolveOptionsTransformedShellArrivesBeforeTheProducerIsReleasedAndChunksAreNotRetransformed
+--- PASS: TestResolveOptionsTransformedShellArrivesBeforeTheProducerIsReleasedAndChunksAreNotRetransformed (0.00s)
+=== RUN   TestResolveOptionsTransformErrorFallsBackToTheStaticErrorPage
+2026/10/18 12:00:22 skgo: rendering /: transform exploded
+2026/10/18 12:00:22 skgo: rendering /: transform exploded
+--- PASS: TestResolveOptionsTransformErrorFallsBackToTheStaticErrorPage (0.00s)
+=== RUN   TestResolveOptionsRejectsMoreThanOneOptionsValueAndASecondResolve
+--- PASS: TestResolveOptionsRejectsMoreThanOneOptionsValueAndASecondResolve (0.00s)
+=== RUN   TestSharedRoutingContracts
+=== RUN   TestSharedRoutingContracts//items/%2525/items/[id]
+=== RUN   TestSharedRoutingContracts//items/a%2Fb/items/[id]
+=== RUN   TestSharedRoutingContracts//items/%E2%9C%93/items/[id]
+=== RUN   TestSharedRoutingContracts//abc/[[lang=Lang]]/[[id]]
+=== RUN   TestSharedRoutingContracts//abc/def/[[lang=Lang]]/[...rest]
+--- PASS: TestSharedRoutingContracts (0.00s)
+    --- PASS: TestSharedRoutingContracts//items/%2525/items/[id] (0.00s)
+    --- PASS: TestSharedRoutingContracts//items/a%2Fb/items/[id] (0.00s)
+    --- PASS: TestSharedRoutingContracts//items/%E2%9C%93/items/[id] (0.00s)
+    --- PASS: TestSharedRoutingContracts//abc/[[lang=Lang]]/[[id]] (0.00s)
+    --- PASS: TestSharedRoutingContracts//abc/def/[[lang=Lang]]/[...rest] (0.00s)
+=== RUN   TestLoadRoutingPathContracts
+=== RUN   TestLoadRoutingPathContracts//items/%2525/items/[id]
+=== RUN   TestLoadRoutingPathContracts//items/%2525/items/[id]/data=false
+=== RUN   TestLoadRoutingPathContracts//items/%2525/items/[id]/data=true
+=== RUN   TestLoadRoutingPathContracts//items/a%2Fb/items/[id]
+=== RUN   TestLoadRoutingPathContracts//items/a%2Fb/items/[id]/data=false
+=== RUN   TestLoadRoutingPathContracts//items/a%2Fb/items/[id]/data=true
+=== RUN   TestLoadRoutingPathContracts//items/%2F/items/[id]
+=== RUN   TestLoadRoutingPathContracts//items/%2F/items/[id]/data=false
+=== RUN   TestLoadRoutingPathContracts//items/%2F/items/[id]/data=true
+=== RUN   TestLoadRoutingPathContracts//docs/a%2Fb/docs/[...rest]
+=== RUN   TestLoadRoutingPathContracts//docs/a%2Fb/docs/[...rest]/data=false
+=== RUN   TestLoadRoutingPathContracts//docs/a%2Fb/docs/[...rest]/data=true
+=== RUN   TestLoadRoutingPathContracts//items/%E2%9C%93/items/[id]
+=== RUN   TestLoadRoutingPathContracts//items/%E2%9C%93/items/[id]/data=false
+=== RUN   TestLoadRoutingPathContracts//items/%E2%9C%93/items/[id]/data=true
+=== RUN   TestLoadRoutingPathContracts//abc/[[lang=Lang]]/[[id]]
+=== RUN   TestLoadRoutingPathContracts//abc/[[lang=Lang]]/[[id]]/data=false
+=== RUN   TestLoadRoutingPathContracts//abc/[[lang=Lang]]/[[id]]/data=true
+=== RUN   TestLoadRoutingPathContracts//abc/def/[[lang=Lang]]/[...rest]
+=== RUN   TestLoadRoutingPathContracts//abc/def/[[lang=Lang]]/[...rest]/data=false
+=== RUN   TestLoadRoutingPathContracts//abc/def/[[lang=Lang]]/[...rest]/data=true
+--- PASS: TestLoadRoutingPathContracts (0.00s)
+    --- PASS: TestLoadRoutingPathContracts//items/%2525/items/[id] (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//items/%2525/items/[id]/data=false (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//items/%2525/items/[id]/data=true (0.00s)
+    --- PASS: TestLoadRoutingPathContracts//items/a%2Fb/items/[id] (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//items/a%2Fb/items/[id]/data=false (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//items/a%2Fb/items/[id]/data=true (0.00s)
+    --- PASS: TestLoadRoutingPathContracts//items/%2F/items/[id] (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//items/%2F/items/[id]/data=false (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//items/%2F/items/[id]/data=true (0.00s)
+    --- PASS: TestLoadRoutingPathContracts//docs/a%2Fb/docs/[...rest] (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//docs/a%2Fb/docs/[...rest]/data=false (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//docs/a%2Fb/docs/[...rest]/data=true (0.00s)
+    --- PASS: TestLoadRoutingPathContracts//items/%E2%9C%93/items/[id] (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//items/%E2%9C%93/items/[id]/data=false (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//items/%E2%9C%93/items/[id]/data=true (0.00s)
+    --- PASS: TestLoadRoutingPathContracts//abc/[[lang=Lang]]/[[id]] (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//abc/[[lang=Lang]]/[[id]]/data=false (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//abc/[[lang=Lang]]/[[id]]/data=true (0.00s)
+    --- PASS: TestLoadRoutingPathContracts//abc/def/[[lang=Lang]]/[...rest] (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//abc/def/[[lang=Lang]]/[...rest]/data=false (0.00s)
+        --- PASS: TestLoadRoutingPathContracts//abc/def/[[lang=Lang]]/[...rest]/data=true (0.00s)
+=== RUN   TestMatcherRoutesWithoutLoads
+--- PASS: TestMatcherRoutesWithoutLoads (0.00s)
+=== RUN   TestEndpointMatcherRejectionFallback
+--- PASS: TestEndpointMatcherRejectionFallback (0.00s)
+=== RUN   TestStaticHandlerServesExactClientFile
+--- PASS: TestStaticHandlerServesExactClientFile (0.00s)
+=== RUN   TestClientRemoteAssetShadowsRecordedPrerenderForHTTP
+--- PASS: TestClientRemoteAssetShadowsRecordedPrerenderForHTTP (0.00s)
+=== RUN   TestStaticHandlerRejectsMalformedRecordedRemoteArtifactAtStartup
+--- PASS: TestStaticHandlerRejectsMalformedRecordedRemoteArtifactAtStartup (0.00s)
+=== RUN   TestStaticHandlerImmutableCacheHeader
+--- PASS: TestStaticHandlerImmutableCacheHeader (0.00s)
+=== RUN   TestStaticHandlerNonImmutableFileHasNoImmutableCache
+--- PASS: TestStaticHandlerNonImmutableFileHasNoImmutableCache (0.00s)
+=== RUN   TestStaticHandlerAppDirMissIs404WithEmptyBody
+--- PASS: TestStaticHandlerAppDirMissIs404WithEmptyBody (0.00s)
+=== RUN   TestStaticHandlerKnownRoutesServeBootDocument
+--- PASS: TestStaticHandlerKnownRoutesServeBootDocument (0.00s)
+=== RUN   TestStaticHandlerUnknownPathServesBootDocumentWith404
+--- PASS: TestStaticHandlerUnknownPathServesBootDocumentWith404 (0.00s)
+=== RUN   TestStaticHandlerETagAnswers304
+--- PASS: TestStaticHandlerETagAnswers304 (0.00s)
+=== RUN   TestStaticHandlerHEAD
+--- PASS: TestStaticHandlerHEAD (0.00s)
+=== RUN   TestStaticHandlerRejectsOtherMethods
+--- PASS: TestStaticHandlerRejectsOtherMethods (0.00s)
+=== RUN   TestStaticHandlerRejectsTraversal
+--- PASS: TestStaticHandlerRejectsTraversal (0.00s)
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest/no_index.html
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest/no_manifest
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest/bad_manifest_json
+=== RUN   TestNewStaticHandlerRequiresIndexAndManifest/bad_route_pattern
+--- PASS: TestNewStaticHandlerRequiresIndexAndManifest (0.00s)
+    --- PASS: TestNewStaticHandlerRequiresIndexAndManifest/no_index.html (0.00s)
+    --- PASS: TestNewStaticHandlerRequiresIndexAndManifest/no_manifest (0.00s)
+    --- PASS: TestNewStaticHandlerRequiresIndexAndManifest/bad_manifest_json (0.00s)
+    --- PASS: TestNewStaticHandlerRequiresIndexAndManifest/bad_route_pattern (0.00s)
+=== RUN   TestStaticHandlerSubFSFromEmbedRoot
+--- PASS: TestStaticHandlerSubFSFromEmbedRoot (0.00s)
+=== RUN   TestStaticHandlerServesARestParameterRoute
+--- PASS: TestStaticHandlerServesARestParameterRoute (0.00s)
+=== RUN   TestKitPatternLeavesEverythingElseAlone
+--- PASS: TestKitPatternLeavesEverythingElseAlone (0.00s)
+=== RUN   TestTheDocumentAnswersItsOwnETag
+--- PASS: TestTheDocumentAnswersItsOwnETag (0.00s)
+=== RUN   TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt
+=== RUN   TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/the_exact_validator
+=== RUN   TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/a_list_containing_it
+=== RUN   TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/the_weak_form_of_it
+=== RUN   TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/any_validator_at_all
+=== RUN   TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/a_stale_validator
+=== RUN   TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/nothing_offered
+--- PASS: TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt (0.00s)
+    --- PASS: TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/the_exact_validator (0.00s)
+    --- PASS: TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/a_list_containing_it (0.00s)
+    --- PASS: TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/the_weak_form_of_it (0.00s)
+    --- PASS: TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/any_validator_at_all (0.00s)
+    --- PASS: TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/a_stale_validator (0.00s)
+    --- PASS: TestTheDocumentETagIsComparedTheWayHTTPSaysToCompareIt/nothing_offered (0.00s)
+=== RUN   TestAConditionalRequestForAMissingPageStays404
+--- PASS: TestAConditionalRequestForAMissingPageStays404 (0.00s)
+=== RUN   TestAConditionalHEADIsAnsweredLikeAConditionalGET
+--- PASS: TestAConditionalHEADIsAnsweredLikeAConditionalGET (0.00s)
+=== RUN   TestADataRequestIsNeverAnsweredWithTheDocument
+=== RUN   TestADataRequestIsNeverAnsweredWithTheDocument//about/__data.json
+=== RUN   TestADataRequestIsNeverAnsweredWithTheDocument//__data.json
+=== RUN   TestADataRequestIsNeverAnsweredWithTheDocument//items/7/__data.json
+=== RUN   TestADataRequestIsNeverAnsweredWithTheDocument//docs/a/b/__data.json
+=== RUN   TestADataRequestIsNeverAnsweredWithTheDocument//about.html__data.json
+=== RUN   TestADataRequestIsNeverAnsweredWithTheDocument//no-such-page/__data.json
+--- PASS: TestADataRequestIsNeverAnsweredWithTheDocument (0.00s)
+    --- PASS: TestADataRequestIsNeverAnsweredWithTheDocument//about/__data.json (0.00s)
+    --- PASS: TestADataRequestIsNeverAnsweredWithTheDocument//__data.json (0.00s)
+    --- PASS: TestADataRequestIsNeverAnsweredWithTheDocument//items/7/__data.json (0.00s)
+    --- PASS: TestADataRequestIsNeverAnsweredWithTheDocument//docs/a/b/__data.json (0.00s)
+    --- PASS: TestADataRequestIsNeverAnsweredWithTheDocument//about.html__data.json (0.00s)
+    --- PASS: TestADataRequestIsNeverAnsweredWithTheDocument//no-such-page/__data.json (0.00s)
+=== RUN   TestADataRequestIsRefusedWithA404TheClientUnderstands
+--- PASS: TestADataRequestIsRefusedWithA404TheClientUnderstands (0.00s)
+=== RUN   TestARouteResolutionRequestIsNeverAnsweredWithTheDocument
+--- PASS: TestARouteResolutionRequestIsNeverAnsweredWithTheDocument (0.00s)
+=== RUN   TestOnlyKitsOwnSuffixCountsAsADataRequest
+--- PASS: TestOnlyKitsOwnSuffixCountsAsADataRequest (0.00s)
+=== RUN   TestAPrerenderedPageIsServedFromItsFile
+--- PASS: TestAPrerenderedPageIsServedFromItsFile (0.00s)
+=== RUN   TestAPrerenderedRedirectUsesKitsCanonicalHTMLArtifact
+--- PASS: TestAPrerenderedRedirectUsesKitsCanonicalHTMLArtifact (0.00s)
+=== RUN   TestPrerenderedRedirectRejectsMutatingAndUnknownMethods
+--- PASS: TestPrerenderedRedirectRejectsMutatingAndUnknownMethods (0.00s)
+=== RUN   TestTheOtherTrailingSlashFormOfAPrerenderedPageRedirects
+--- PASS: TestTheOtherTrailingSlashFormOfAPrerenderedPageRedirects (0.00s)
+=== RUN   TestAPrerenderedColonPathRedirectStaysOnTheSameOrigin
+--- PASS: TestAPrerenderedColonPathRedirectStaysOnTheSameOrigin (0.00s)
+=== RUN   TestAPrerenderedPathWithNoFileRefusesToStart
+--- PASS: TestAPrerenderedPathWithNoFileRefusesToStart (0.00s)
+=== RUN   TestUnlistedPrerenderedFileDoesNotBecomeAStaticRoute
+--- PASS: TestUnlistedPrerenderedFileDoesNotBecomeAStaticRoute (0.00s)
+=== RUN   TestBasePrerenderedRedirectKeepsItsNativePathBoundary
+--- PASS: TestBasePrerenderedRedirectKeepsItsNativePathBoundary (0.00s)
+=== RUN   TestMappedQueryPrerenderedFilesPreservePathnameSelectionAndCompression
+--- PASS: TestMappedQueryPrerenderedFilesPreservePathnameSelectionAndCompression (0.00s)
+=== RUN   TestMappedOnlyPrerenderedTreeAndLegacyBuild
+--- PASS: TestMappedOnlyPrerenderedTreeAndLegacyBuild (0.00s)
+=== RUN   TestQueryOnlyPrerenderedInventoryDoesNotClaimHTTPPathnames
+--- PASS: TestQueryOnlyPrerenderedInventoryDoesNotClaimHTTPPathnames (0.00s)
+=== RUN   TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings
+=== RUN   TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/absolute_logical
+=== RUN   TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/traversing_logical
+=== RUN   TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/unsafe_physical
+=== RUN   TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/missing_physical
+=== RUN   TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/duplicate_physical
+=== RUN   TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/unmapped_conflict
+=== RUN   TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/encoded_sibling_conflict
+--- PASS: TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings (0.00s)
+    --- PASS: TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/absolute_logical (0.00s)
+    --- PASS: TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/traversing_logical (0.00s)
+    --- PASS: TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/unsafe_physical (0.00s)
+    --- PASS: TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/missing_physical (0.00s)
+    --- PASS: TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/duplicate_physical (0.00s)
+    --- PASS: TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/unmapped_conflict (0.00s)
+    --- PASS: TestMappedPrerenderedFilesRejectUnsafeMissingAndConflictingMappings/encoded_sibling_conflict (0.00s)
+=== RUN   TestAPrecompressedVariantIsServedWhenItIsAccepted
+--- PASS: TestAPrecompressedVariantIsServedWhenItIsAccepted (0.00s)
+=== RUN   TestEachEncodingHasItsOwnETag
+--- PASS: TestEachEncodingHasItsOwnETag (0.00s)
+=== RUN   TestAnUncompressedFileDoesNotVary
+--- PASS: TestAnUncompressedFileDoesNotVary (0.00s)
+=== RUN   TestAPrecompressedImmutableAssetKeepsItsCacheControl
+--- PASS: TestAPrecompressedImmutableAssetKeepsItsCacheControl (0.00s)
+=== RUN   TestTracingFrameworkOperations
+=== RUN   TestTracingFrameworkOperations/server_load
+=== RUN   TestTracingFrameworkOperations/endpoint_methods
+=== RUN   TestTracingFrameworkOperations/endpoint_methods/GET
+=== RUN   TestTracingFrameworkOperations/endpoint_methods/HEAD
+=== RUN   TestTracingFrameworkOperations/endpoint_methods/QUERY
+=== RUN   TestTracingFrameworkOperations/endpoint_methods/PATCH
+=== RUN   TestTracingFrameworkOperations/remote_variants_and_direct_calls
+=== RUN   TestTracingFrameworkOperations/remote_variants_and_direct_calls/query
+=== RUN   TestTracingFrameworkOperations/remote_variants_and_direct_calls/command
+=== RUN   TestTracingFrameworkOperations/remote_variants_and_direct_calls/query_batch
+=== RUN   TestTracingFrameworkOperations/remote_variants_and_direct_calls/query_live
+=== RUN   TestTracingFrameworkOperations/remote_variants_and_direct_calls/prerender
+--- PASS: TestTracingFrameworkOperations (0.00s)
+    --- PASS: TestTracingFrameworkOperations/server_load (0.00s)
+    --- PASS: TestTracingFrameworkOperations/endpoint_methods (0.00s)
+        --- PASS: TestTracingFrameworkOperations/endpoint_methods/GET (0.00s)
+        --- PASS: TestTracingFrameworkOperations/endpoint_methods/HEAD (0.00s)
+        --- PASS: TestTracingFrameworkOperations/endpoint_methods/QUERY (0.00s)
+        --- PASS: TestTracingFrameworkOperations/endpoint_methods/PATCH (0.00s)
+    --- PASS: TestTracingFrameworkOperations/remote_variants_and_direct_calls (0.00s)
+        --- PASS: TestTracingFrameworkOperations/remote_variants_and_direct_calls/query (0.00s)
+        --- PASS: TestTracingFrameworkOperations/remote_variants_and_direct_calls/command (0.00s)
+        --- PASS: TestTracingFrameworkOperations/remote_variants_and_direct_calls/query_batch (0.00s)
+        --- PASS: TestTracingFrameworkOperations/remote_variants_and_direct_calls/query_live (0.00s)
+        --- PASS: TestTracingFrameworkOperations/remote_variants_and_direct_calls/prerender (0.00s)
+=== RUN   TestTracingRemoteFormsAndRefresh
+=== RUN   TestTracingRemoteFormsAndRefresh/enhanced_form_and_requested_refresh
+=== RUN   TestTracingRemoteFormsAndRefresh/unenhanced_form
+--- PASS: TestTracingRemoteFormsAndRefresh (0.00s)
+    --- PASS: TestTracingRemoteFormsAndRefresh/enhanced_form_and_requested_refresh (0.00s)
+    --- PASS: TestTracingRemoteFormsAndRefresh/unenhanced_form (0.00s)
+=== RUN   TestTracingEndsAtResponseConstruction
+--- PASS: TestTracingEndsAtResponseConstruction (0.00s)
+=== RUN   TestTracingErrorsAndDisabled
+=== RUN   TestTracingErrorsAndDisabled/known_client
+=== RUN   TestTracingErrorsAndDisabled/known_server
+=== RUN   TestTracingErrorsAndDisabled/redirect
+=== RUN   TestTracingErrorsAndDisabled/unexpected
+=== RUN   TestTracingErrorsAndDisabled/panic_before_response
+=== RUN   TestTracingErrorsAndDisabled/disabled
+--- PASS: TestTracingErrorsAndDisabled (0.00s)
+    --- PASS: TestTracingErrorsAndDisabled/known_client (0.00s)
+    --- PASS: TestTracingErrorsAndDisabled/known_server (0.00s)
+    --- PASS: TestTracingErrorsAndDisabled/redirect (0.00s)
+    --- PASS: TestTracingErrorsAndDisabled/unexpected (0.00s)
+    --- PASS: TestTracingErrorsAndDisabled/panic_before_response (0.00s)
+    --- PASS: TestTracingErrorsAndDisabled/disabled (0.00s)
+=== RUN   TestTracingIncomingAndConcurrentContext
+--- PASS: TestTracingIncomingAndConcurrentContext (0.00s)
+=== RUN   TestTracingActionsAndSequencedHooks
+=== RUN   TestTracingActionsAndSequencedHooks/success
+=== RUN   TestTracingActionsAndSequencedHooks/failure
+=== RUN   TestTracingActionsAndSequencedHooks/redirect
+=== RUN   TestTracingActionsAndSequencedHooks/error
+--- PASS: TestTracingActionsAndSequencedHooks (0.00s)
+    --- PASS: TestTracingActionsAndSequencedHooks/success (0.00s)
+    --- PASS: TestTracingActionsAndSequencedHooks/failure (0.00s)
+    --- PASS: TestTracingActionsAndSequencedHooks/redirect (0.00s)
+    --- PASS: TestTracingActionsAndSequencedHooks/error (0.00s)
+=== RUN   TestTracingInternalGoFetch
+=== RUN   TestTracingInternalGoFetch/false
+=== RUN   TestTracingInternalGoFetch/true
+--- PASS: TestTracingInternalGoFetch (0.00s)
+    --- PASS: TestTracingInternalGoFetch/false (0.00s)
+    --- PASS: TestTracingInternalGoFetch/true (0.00s)
+=== RUN   TestTracingConfiguredPropagator
+--- PASS: TestTracingConfiguredPropagator (0.00s)
+=== RUN   TestNativeTracingAnnotationBudget
+--- PASS: TestNativeTracingAnnotationBudget (0.00s)
+=== RUN   TestTransportWalkAgreesWithEncodingJSON
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON
+=== RUN   TestTransportWalkLeavesTransportedValuesAlone
+=== PAUSE TestTransportWalkLeavesTransportedValuesAlone
+=== RUN   TestTransportEncodeTreeIsEncodeValueWithoutATransport
+=== PAUSE TestTransportEncodeTreeIsEncodeValueWithoutATransport
+=== RUN   TestTypedLoadMatcherRouting
+=== RUN   TestTypedLoadMatcherRouting//value/special
+=== RUN   TestTypedLoadMatcherRouting//value/42
+=== RUN   TestTypedLoadMatcherRouting//value/00042
+=== RUN   TestTypedLoadMatcherRouting//value/0
+=== RUN   TestTypedLoadMatcherRouting//value/no
+=== RUN   TestTypedLoadMatcherRouting//value/9223372036854775808
+=== RUN   TestTypedLoadMatcherRouting//only/no
+=== RUN   TestTypedLoadMatcherRouting//only/-1
+=== RUN   TestTypedLoadMatcherRouting//flag/false
+=== RUN   TestTypedLoadMatcherRouting//flag/true
+=== RUN   TestTypedLoadMatcherRouting//flag/no
+=== RUN   TestTypedLoadMatcherRouting//empty/blank
+=== RUN   TestTypedLoadMatcherRouting//empty
+=== RUN   TestTypedLoadMatcherRouting//empty/no
+=== RUN   TestTypedLoadMatcherRouting//chain/a/7/tail
+=== RUN   TestTypedLoadMatcherRouting//chain/7/tail/more
+=== RUN   TestTypedLoadMatcherRouting//chain/no/7/tail
+=== RUN   TestTypedLoadMatcherRouting//chain
+=== RUN   TestTypedLoadMatcherRouting//shift/7
+=== RUN   TestTypedLoadMatcherRouting//shift/7/tail
+=== RUN   TestTypedLoadMatcherRouting//embedded/pre7post/tail
+--- PASS: TestTypedLoadMatcherRouting (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//value/special (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//value/42 (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//value/00042 (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//value/0 (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//value/no (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//value/9223372036854775808 (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//only/no (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//only/-1 (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//flag/false (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//flag/true (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//flag/no (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//empty/blank (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//empty (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//empty/no (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//chain/a/7/tail (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//chain/7/tail/more (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//chain/no/7/tail (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//chain (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//shift/7 (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//shift/7/tail (0.00s)
+    --- PASS: TestTypedLoadMatcherRouting//embedded/pre7post/tail (0.00s)
+=== RUN   TestTypedLoadNilInterfaceBoundary
+=== RUN   TestTypedLoadNilInterfaceBoundary//nil/none/__data.json
+=== RUN   TestTypedLoadNilInterfaceBoundary//nil-optional/none/__data.json
+=== RUN   TestTypedLoadNilInterfaceBoundary//nil-optional/__data.json
+=== RUN   TestTypedLoadNilInterfaceBoundary//nil/42/__data.json
+=== RUN   TestTypedLoadNilInterfaceBoundary//nil-optional/42/__data.json
+--- PASS: TestTypedLoadNilInterfaceBoundary (0.00s)
+    --- PASS: TestTypedLoadNilInterfaceBoundary//nil/none/__data.json (0.00s)
+    --- PASS: TestTypedLoadNilInterfaceBoundary//nil-optional/none/__data.json (0.00s)
+    --- PASS: TestTypedLoadNilInterfaceBoundary//nil-optional/__data.json (0.00s)
+    --- PASS: TestTypedLoadNilInterfaceBoundary//nil/42/__data.json (0.00s)
+    --- PASS: TestTypedLoadNilInterfaceBoundary//nil-optional/42/__data.json (0.00s)
+=== RUN   TestTypedLoadNilMismatches
+=== RUN   TestTypedLoadNilMismatches/int
+=== RUN   TestTypedLoadNilMismatches/pointer
+=== RUN   TestTypedLoadNilMismatches/optional-int
+=== RUN   TestTypedLoadNilMismatches/wrong-interface
+--- PASS: TestTypedLoadNilMismatches (0.00s)
+    --- PASS: TestTypedLoadNilMismatches/int (0.00s)
+    --- PASS: TestTypedLoadNilMismatches/pointer (0.00s)
+    --- PASS: TestTypedLoadNilMismatches/optional-int (0.00s)
+    --- PASS: TestTypedLoadNilMismatches/wrong-interface (0.00s)
+=== CONT  TestWireEmitsDevalueBytes
+=== CONT  TestTransportWalkAgreesWithEncodingJSON
+=== CONT  TestPrerenderRemotePreservesNativeErrorOrigin
+=== RUN   TestWireEmitsDevalueBytes/object
+=== CONT  TestPrerenderRemoteRedirectStaysStructuredForKit
+=== PAUSE TestWireEmitsDevalueBytes/object
+=== CONT  TestTransportEncodeTreeIsEncodeValueWithoutATransport
+=== RUN   TestWireEmitsDevalueBytes/object_reordered
+=== PAUSE TestWireEmitsDevalueBytes/object_reordered
+=== RUN   TestWireEmitsDevalueBytes/empty_object
+=== PAUSE TestWireEmitsDevalueBytes/empty_object
+=== RUN   TestWireEmitsDevalueBytes/null_prototype_object
+=== PAUSE TestWireEmitsDevalueBytes/null_prototype_object
+=== RUN   TestWireEmitsDevalueBytes/nested_object
+=== PAUSE TestWireEmitsDevalueBytes/nested_object
+=== RUN   TestTransportWalkAgreesWithEncodingJSON/tags,_omitempty_and_unexported
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON/tags,_omitempty_and_unexported
+=== RUN   TestTransportWalkAgreesWithEncodingJSON/embedded_promotion_and_nils
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON/embedded_promotion_and_nils
+=== CONT  TestWireAcceptsDevalueBytes
+=== RUN   TestTransportWalkAgreesWithEncodingJSON/zero_value
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON/zero_value
+=== RUN   TestPrerenderRemotePreservesNativeErrorOrigin/explicit_HTTP_error_is_an_app_error
+=== RUN   TestWireEmitsDevalueBytes/integer-like_keys
+=== PAUSE TestWireEmitsDevalueBytes/integer-like_keys
+=== RUN   TestWireEmitsDevalueBytes/array
+=== PAUSE TestWireEmitsDevalueBytes/array
+=== RUN   TestWireEmitsDevalueBytes/empty_array
+=== PAUSE TestWireEmitsDevalueBytes/empty_array
+=== CONT  TestTransportWalkLeavesTransportedValuesAlone
+=== RUN   TestTransportWalkAgreesWithEncodingJSON/slice_of_structs
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON/slice_of_structs
+=== RUN   TestTransportWalkAgreesWithEncodingJSON/map_of_structs
+=== RUN   TestWireAcceptsDevalueBytes/object
+=== RUN   TestWireEmitsDevalueBytes/sparse_array
+=== PAUSE TestWireAcceptsDevalueBytes/object
+=== RUN   TestWireAcceptsDevalueBytes/object_reordered
+=== PAUSE TestWireAcceptsDevalueBytes/object_reordered
+=== PAUSE TestWireEmitsDevalueBytes/sparse_array
+=== RUN   TestWireEmitsDevalueBytes/array_with_undefined
+=== PAUSE TestWireEmitsDevalueBytes/array_with_undefined
+=== RUN   TestWireEmitsDevalueBytes/array_of_objects
+=== PAUSE TestWireEmitsDevalueBytes/array_of_objects
+=== RUN   TestWireEmitsDevalueBytes/map
+=== PAUSE TestWireEmitsDevalueBytes/map
+=== RUN   TestWireEmitsDevalueBytes/empty_map
+=== PAUSE TestWireEmitsDevalueBytes/empty_map
+=== RUN   TestWireEmitsDevalueBytes/map_with_object_keys
+=== PAUSE TestWireEmitsDevalueBytes/map_with_object_keys
+=== RUN   TestWireEmitsDevalueBytes/set
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON/map_of_structs
+=== RUN   TestTransportWalkAgreesWithEncodingJSON/pointer_to_struct
+--- PASS: TestTransportEncodeTreeIsEncodeValueWithoutATransport (0.00s)
+=== RUN   TestWireAcceptsDevalueBytes/empty_object
+--- PASS: TestPrerenderRemoteRedirectStaysStructuredForKit (0.00s)
+=== PAUSE TestWireAcceptsDevalueBytes/empty_object
+--- PASS: TestTransportWalkLeavesTransportedValuesAlone (0.00s)
+=== RUN   TestPrerenderRemotePreservesNativeErrorOrigin/ordinary_error_remains_unknown
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON/pointer_to_struct
+=== RUN   TestTransportWalkAgreesWithEncodingJSON/a_shallower_field_shadows_a_promoted_one
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON/a_shallower_field_shadows_a_promoted_one
+=== RUN   TestWireAcceptsDevalueBytes/null_prototype_object
+=== RUN   TestTransportWalkAgreesWithEncodingJSON/a_tagged_name_beats_an_untagged_one_at_the_same_depth
+=== PAUSE TestWireAcceptsDevalueBytes/null_prototype_object
+=== RUN   TestWireAcceptsDevalueBytes/nested_object
+=== PAUSE TestWireAcceptsDevalueBytes/nested_object
+=== RUN   TestWireAcceptsDevalueBytes/integer-like_keys
+=== PAUSE TestWireAcceptsDevalueBytes/integer-like_keys
+=== RUN   TestWireAcceptsDevalueBytes/array
+=== PAUSE TestWireAcceptsDevalueBytes/array
+=== RUN   TestWireAcceptsDevalueBytes/empty_array
+=== PAUSE TestWireAcceptsDevalueBytes/empty_array
+=== RUN   TestWireAcceptsDevalueBytes/sparse_array
+=== RUN   TestPrerenderRemotePreservesNativeErrorOrigin/recovered_panic_remains_unknown
+=== PAUSE TestWireAcceptsDevalueBytes/sparse_array
+=== RUN   TestWireAcceptsDevalueBytes/array_with_undefined
+=== PAUSE TestWireAcceptsDevalueBytes/array_with_undefined
+=== RUN   TestWireAcceptsDevalueBytes/array_of_objects
+=== PAUSE TestWireAcceptsDevalueBytes/array_of_objects
+=== RUN   TestWireAcceptsDevalueBytes/map
+=== PAUSE TestWireAcceptsDevalueBytes/map
+=== RUN   TestWireAcceptsDevalueBytes/empty_map
+=== PAUSE TestWireAcceptsDevalueBytes/empty_map
+=== RUN   TestWireAcceptsDevalueBytes/map_with_object_keys
+=== PAUSE TestWireAcceptsDevalueBytes/map_with_object_keys
+=== RUN   TestWireAcceptsDevalueBytes/set
+=== PAUSE TestWireAcceptsDevalueBytes/set
+=== RUN   TestWireAcceptsDevalueBytes/empty_set
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON/a_tagged_name_beats_an_untagged_one_at_the_same_depth
+=== RUN   TestTransportWalkAgreesWithEncodingJSON/an_ambiguous_name_is_nobody's_property
+=== PAUSE TestTransportWalkAgreesWithEncodingJSON/an_ambiguous_name_is_nobody's_property
+=== CONT  TestTransportWalkAgreesWithEncodingJSON/tags,_omitempty_and_unexported
+2026/10/18 12:00:22 skgo: remote function 1m4e06z/item panicked: private panic
+goroutine 2655 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.(*Remotes).recovered(0x2b542e0b6a20, 0x2b542e1ee510, {0x105421a48, 0x1052f2550}, {0x0?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:1011 +0x74
+github.com/tylergannon/skgo.(*Remotes).invoke.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_execution.go:26 +0x9c
+panic({0x105421a48?, 0x1052f2550?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestPrerenderRemotePreservesNativeErrorOrigin.func3({0x0?, 0x0?}, {{0x1400000000?, 0x11303bba8?}, 0x58?, 0x104969d5c?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/prerender_remote_test.go:34 +0x2c
+github.com/tylergannon/skgo.(*Remotes).invoke(0x0?, {0x1054f5508?, 0x2b542e41a6f0?}, 0x1054e3ae8?, {{0x0?, 0x0?}, 0xc8?, 0x0?})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_execution.go:29 +0x90
+github.com/tylergannon/skgo.(*Remotes).invokePayload(0x2b542e0b6a20, {0x1054f5508, 0x2b542e41a6f0}, 0x2b542e1ee510, {0x0, 0x0})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_execution.go:41 +0x188
+github.com/tylergannon/skgo.runPrerenderRemote({0x1054f53f0, 0x1057039a0}, {0x2b542e158200, 0x4b, 0x200}, {0x1054ecf60, 0x2b542e41a540}, 0x0, {0x2b542e2e5f40, 0x1, ...})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/prerender_remote.go:96 +0x68c
+github.com/tylergannon/skgo.prerenderHandler.func1({0x1054f2d78, 0x2b542e012300}, 0x2b542e2aac80)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/prerender_service.go:190 +0x948
+net/http.HandlerFunc.ServeHTTP(...)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/net/http/server.go:2358
+github.com/tylergannon/skgo.callBuildOperation({0x104aec091?, 0x10548a5a8?}, {0x1054ecdc0, 0x2b542e1cc0c0}, {0x1054ecca0, 0x2b542e1cc0a0}, 0x0, {0x0, 0x0, 0x0}, ...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/prerender_service_test.go:25 +0x224
+github.com/tylergannon/skgo.TestPrerenderRemotePreservesNativeErrorOrigin.func5(0x2b542e6c2b48)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/prerender_remote_test.go:51 +0x120
+testing.tRunner(0x2b542e6c2b48, 0x2b542e52e300)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 1068
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+=== PAUSE TestWireEmitsDevalueBytes/set
+=== CONT  TestTransportWalkAgreesWithEncodingJSON/pointer_to_struct
+=== PAUSE TestWireAcceptsDevalueBytes/empty_set
+=== CONT  TestTransportWalkAgreesWithEncodingJSON/zero_value
+=== RUN   TestWireAcceptsDevalueBytes/set_of_strings
+=== CONT  TestTransportWalkAgreesWithEncodingJSON/map_of_structs
+=== CONT  TestTransportWalkAgreesWithEncodingJSON/embedded_promotion_and_nils
+=== CONT  TestTransportWalkAgreesWithEncodingJSON/slice_of_structs
+=== RUN   TestWireEmitsDevalueBytes/empty_set
+=== PAUSE TestWireEmitsDevalueBytes/empty_set
+=== RUN   TestWireEmitsDevalueBytes/set_of_strings
+=== CONT  TestTransportWalkAgreesWithEncodingJSON/an_ambiguous_name_is_nobody's_property
+=== PAUSE TestWireEmitsDevalueBytes/set_of_strings
+=== RUN   TestWireEmitsDevalueBytes/date
+=== RUN   TestPrerenderRemotePreservesNativeErrorOrigin/empty_ordinary_error_retains_an_empty_diagnostic
+=== PAUSE TestWireEmitsDevalueBytes/date
+=== CONT  TestTransportWalkAgreesWithEncodingJSON/a_tagged_name_beats_an_untagged_one_at_the_same_depth
+=== CONT  TestTransportWalkAgreesWithEncodingJSON/a_shallower_field_shadows_a_promoted_one
+=== PAUSE TestWireAcceptsDevalueBytes/set_of_strings
+=== RUN   TestWireAcceptsDevalueBytes/date
+=== PAUSE TestWireAcceptsDevalueBytes/date
+=== RUN   TestWireEmitsDevalueBytes/date_epoch
+=== PAUSE TestWireEmitsDevalueBytes/date_epoch
+--- PASS: TestPrerenderRemotePreservesNativeErrorOrigin (0.00s)
+    --- PASS: TestPrerenderRemotePreservesNativeErrorOrigin/explicit_HTTP_error_is_an_app_error (0.00s)
+    --- PASS: TestPrerenderRemotePreservesNativeErrorOrigin/ordinary_error_remains_unknown (0.00s)
+    --- PASS: TestPrerenderRemotePreservesNativeErrorOrigin/recovered_panic_remains_unknown (0.00s)
+    --- PASS: TestPrerenderRemotePreservesNativeErrorOrigin/empty_ordinary_error_retains_an_empty_diagnostic (0.00s)
+--- PASS: TestTransportWalkAgreesWithEncodingJSON (0.00s)
+    --- PASS: TestTransportWalkAgreesWithEncodingJSON/tags,_omitempty_and_unexported (0.00s)
+    --- PASS: TestTransportWalkAgreesWithEncodingJSON/pointer_to_struct (0.00s)
+    --- PASS: TestTransportWalkAgreesWithEncodingJSON/map_of_structs (0.00s)
+    --- PASS: TestTransportWalkAgreesWithEncodingJSON/zero_value (0.00s)
+    --- PASS: TestTransportWalkAgreesWithEncodingJSON/slice_of_structs (0.00s)
+    --- PASS: TestTransportWalkAgreesWithEncodingJSON/an_ambiguous_name_is_nobody's_property (0.00s)
+    --- PASS: TestTransportWalkAgreesWithEncodingJSON/a_tagged_name_beats_an_untagged_one_at_the_same_depth (0.00s)
+    --- PASS: TestTransportWalkAgreesWithEncodingJSON/a_shallower_field_shadows_a_promoted_one (0.00s)
+    --- PASS: TestTransportWalkAgreesWithEncodingJSON/embedded_promotion_and_nils (0.00s)
+=== RUN   TestWireAcceptsDevalueBytes/date_epoch
+=== PAUSE TestWireAcceptsDevalueBytes/date_epoch
+=== RUN   TestWireEmitsDevalueBytes/bigint
+=== PAUSE TestWireEmitsDevalueBytes/bigint
+=== RUN   TestWireAcceptsDevalueBytes/bigint
+=== RUN   TestWireEmitsDevalueBytes/bigint_negative
+=== PAUSE TestWireAcceptsDevalueBytes/bigint
+=== RUN   TestWireAcceptsDevalueBytes/bigint_negative
+=== PAUSE TestWireEmitsDevalueBytes/bigint_negative
+=== PAUSE TestWireAcceptsDevalueBytes/bigint_negative
+=== RUN   TestWireAcceptsDevalueBytes/bigint_zero
+=== PAUSE TestWireAcceptsDevalueBytes/bigint_zero
+=== RUN   TestWireAcceptsDevalueBytes/regexp
+=== PAUSE TestWireAcceptsDevalueBytes/regexp
+=== RUN   TestWireAcceptsDevalueBytes/regexp_no_flags
+=== PAUSE TestWireAcceptsDevalueBytes/regexp_no_flags
+=== RUN   TestWireEmitsDevalueBytes/bigint_zero
+=== RUN   TestWireAcceptsDevalueBytes/arraybuffer
+=== PAUSE TestWireAcceptsDevalueBytes/arraybuffer
+=== RUN   TestWireAcceptsDevalueBytes/arraybuffer_empty
+=== PAUSE TestWireAcceptsDevalueBytes/arraybuffer_empty
+=== RUN   TestWireAcceptsDevalueBytes/boxed_number
+=== PAUSE TestWireAcceptsDevalueBytes/boxed_number
+=== RUN   TestWireAcceptsDevalueBytes/boxed_string
+=== PAUSE TestWireEmitsDevalueBytes/bigint_zero
+=== RUN   TestWireEmitsDevalueBytes/regexp
+=== PAUSE TestWireEmitsDevalueBytes/regexp
+=== RUN   TestWireEmitsDevalueBytes/regexp_no_flags
+=== PAUSE TestWireEmitsDevalueBytes/regexp_no_flags
+=== PAUSE TestWireAcceptsDevalueBytes/boxed_string
+=== RUN   TestWireAcceptsDevalueBytes/boxed_boolean
+=== RUN   TestWireEmitsDevalueBytes/arraybuffer
+=== PAUSE TestWireAcceptsDevalueBytes/boxed_boolean
+=== PAUSE TestWireEmitsDevalueBytes/arraybuffer
+=== RUN   TestWireEmitsDevalueBytes/arraybuffer_empty
+=== RUN   TestWireAcceptsDevalueBytes/undefined
+=== PAUSE TestWireEmitsDevalueBytes/arraybuffer_empty
+=== RUN   TestWireEmitsDevalueBytes/boxed_number
+=== PAUSE TestWireAcceptsDevalueBytes/undefined
+=== RUN   TestWireAcceptsDevalueBytes/null
+=== PAUSE TestWireEmitsDevalueBytes/boxed_number
+=== RUN   TestWireEmitsDevalueBytes/boxed_string
+=== PAUSE TestWireEmitsDevalueBytes/boxed_string
+=== RUN   TestWireEmitsDevalueBytes/boxed_boolean
+=== PAUSE TestWireEmitsDevalueBytes/boxed_boolean
+=== PAUSE TestWireAcceptsDevalueBytes/null
+=== RUN   TestWireAcceptsDevalueBytes/nan
+=== PAUSE TestWireAcceptsDevalueBytes/nan
+=== RUN   TestWireAcceptsDevalueBytes/infinity
+=== PAUSE TestWireAcceptsDevalueBytes/infinity
+=== RUN   TestWireAcceptsDevalueBytes/negative_infinity
+=== PAUSE TestWireAcceptsDevalueBytes/negative_infinity
+=== RUN   TestWireAcceptsDevalueBytes/negative_zero
+=== PAUSE TestWireAcceptsDevalueBytes/negative_zero
+=== RUN   TestWireAcceptsDevalueBytes/string_with_escapes
+=== PAUSE TestWireAcceptsDevalueBytes/string_with_escapes
+=== RUN   TestWireAcceptsDevalueBytes/string_astral
+=== PAUSE TestWireAcceptsDevalueBytes/string_astral
+=== RUN   TestWireAcceptsDevalueBytes/cycle_and_repeated_reference
+=== PAUSE TestWireAcceptsDevalueBytes/cycle_and_repeated_reference
+=== RUN   TestWireAcceptsDevalueBytes/everything_nested
+=== PAUSE TestWireAcceptsDevalueBytes/everything_nested
+=== CONT  TestWireAcceptsDevalueBytes/object
+=== RUN   TestWireEmitsDevalueBytes/undefined
+=== PAUSE TestWireEmitsDevalueBytes/undefined
+=== RUN   TestWireEmitsDevalueBytes/null
+=== PAUSE TestWireEmitsDevalueBytes/null
+=== RUN   TestWireEmitsDevalueBytes/nan
+=== CONT  TestWireAcceptsDevalueBytes/date
+=== PAUSE TestWireEmitsDevalueBytes/nan
+=== RUN   TestWireEmitsDevalueBytes/infinity
+=== PAUSE TestWireEmitsDevalueBytes/infinity
+=== CONT  TestWireAcceptsDevalueBytes/set_of_strings
+=== CONT  TestWireAcceptsDevalueBytes/cycle_and_repeated_reference
+=== CONT  TestWireAcceptsDevalueBytes/date_epoch
+=== CONT  TestWireAcceptsDevalueBytes/bigint_negative
+=== CONT  TestWireAcceptsDevalueBytes/infinity
+=== RUN   TestWireEmitsDevalueBytes/negative_infinity
+=== CONT  TestWireAcceptsDevalueBytes/nan
+=== CONT  TestWireAcceptsDevalueBytes/null
+=== CONT  TestWireAcceptsDevalueBytes/boxed_string
+=== CONT  TestWireAcceptsDevalueBytes/boxed_boolean
+=== PAUSE TestWireEmitsDevalueBytes/negative_infinity
+=== CONT  TestWireAcceptsDevalueBytes/bigint
+=== RUN   TestWireEmitsDevalueBytes/negative_zero
+=== PAUSE TestWireEmitsDevalueBytes/negative_zero
+=== RUN   TestWireEmitsDevalueBytes/string_with_escapes
+=== PAUSE TestWireEmitsDevalueBytes/string_with_escapes
+=== CONT  TestWireAcceptsDevalueBytes/arraybuffer
+=== CONT  TestWireAcceptsDevalueBytes/regexp
+=== CONT  TestWireAcceptsDevalueBytes/bigint_zero
+=== CONT  TestWireAcceptsDevalueBytes/sparse_array
+=== CONT  TestWireAcceptsDevalueBytes/regexp_no_flags
+=== CONT  TestWireAcceptsDevalueBytes/empty_set
+=== CONT  TestWireAcceptsDevalueBytes/set
+=== CONT  TestWireAcceptsDevalueBytes/empty_map
+=== CONT  TestWireAcceptsDevalueBytes/empty_array
+=== CONT  TestWireAcceptsDevalueBytes/string_astral
+=== CONT  TestWireAcceptsDevalueBytes/map
+=== CONT  TestWireAcceptsDevalueBytes/string_with_escapes
+=== CONT  TestWireAcceptsDevalueBytes/map_with_object_keys
+=== CONT  TestWireAcceptsDevalueBytes/array
+=== CONT  TestWireAcceptsDevalueBytes/negative_zero
+=== CONT  TestWireAcceptsDevalueBytes/array_of_objects
+=== CONT  TestWireAcceptsDevalueBytes/empty_object
+=== CONT  TestWireAcceptsDevalueBytes/integer-like_keys
+=== CONT  TestWireAcceptsDevalueBytes/negative_infinity
+=== CONT  TestWireAcceptsDevalueBytes/nested_object
+=== CONT  TestWireAcceptsDevalueBytes/array_with_undefined
+=== CONT  TestWireAcceptsDevalueBytes/everything_nested
+=== CONT  TestWireAcceptsDevalueBytes/boxed_number
+=== CONT  TestWireAcceptsDevalueBytes/arraybuffer_empty
+=== RUN   TestWireEmitsDevalueBytes/string_astral
+=== CONT  TestWireAcceptsDevalueBytes/null_prototype_object
+=== CONT  TestWireAcceptsDevalueBytes/undefined
+=== CONT  TestWireAcceptsDevalueBytes/object_reordered
+=== PAUSE TestWireEmitsDevalueBytes/string_astral
+=== RUN   TestWireEmitsDevalueBytes/cycle_and_repeated_reference
+=== PAUSE TestWireEmitsDevalueBytes/cycle_and_repeated_reference
+=== RUN   TestWireEmitsDevalueBytes/everything_nested
+=== PAUSE TestWireEmitsDevalueBytes/everything_nested
+=== CONT  TestWireEmitsDevalueBytes/object
+=== CONT  TestWireEmitsDevalueBytes/bigint_negative
+=== CONT  TestWireEmitsDevalueBytes/empty_set
+=== CONT  TestWireEmitsDevalueBytes/bigint
+=== CONT  TestWireEmitsDevalueBytes/set
+=== CONT  TestWireEmitsDevalueBytes/date_epoch
+=== CONT  TestWireEmitsDevalueBytes/date
+=== CONT  TestWireEmitsDevalueBytes/map_with_object_keys
+=== CONT  TestWireEmitsDevalueBytes/set_of_strings
+--- PASS: TestWireAcceptsDevalueBytes (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/object (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/date (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/set_of_strings (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/date_epoch (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/bigint_negative (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/infinity (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/nan (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/null (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/boxed_string (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/boxed_boolean (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/bigint (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/cycle_and_repeated_reference (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/arraybuffer (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/regexp (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/bigint_zero (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/regexp_no_flags (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/sparse_array (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/empty_set (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/set (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/empty_map (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/empty_array (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/string_astral (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/string_with_escapes (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/map (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/negative_zero (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/map_with_object_keys (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/empty_object (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/array (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/array_of_objects (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/integer-like_keys (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/negative_infinity (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/array_with_undefined (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/boxed_number (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/nested_object (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/arraybuffer_empty (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/undefined (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/null_prototype_object (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/object_reordered (0.00s)
+    --- PASS: TestWireAcceptsDevalueBytes/everything_nested (0.00s)
+=== CONT  TestWireEmitsDevalueBytes/everything_nested
+=== CONT  TestWireEmitsDevalueBytes/empty_array
+=== CONT  TestWireEmitsDevalueBytes/array
+=== CONT  TestWireEmitsDevalueBytes/empty_map
+=== CONT  TestWireEmitsDevalueBytes/map
+=== CONT  TestWireEmitsDevalueBytes/integer-like_keys
+=== CONT  TestWireEmitsDevalueBytes/array_with_undefined
+=== CONT  TestWireEmitsDevalueBytes/cycle_and_repeated_reference
+=== CONT  TestWireEmitsDevalueBytes/undefined
+=== CONT  TestWireEmitsDevalueBytes/negative_infinity
+=== CONT  TestWireEmitsDevalueBytes/infinity
+=== CONT  TestWireEmitsDevalueBytes/string_with_escapes
+=== CONT  TestWireEmitsDevalueBytes/nan
+=== CONT  TestWireEmitsDevalueBytes/negative_zero
+=== CONT  TestWireEmitsDevalueBytes/nested_object
+=== CONT  TestWireEmitsDevalueBytes/regexp
+=== CONT  TestWireEmitsDevalueBytes/bigint_zero
+=== CONT  TestWireEmitsDevalueBytes/arraybuffer
+=== CONT  TestWireEmitsDevalueBytes/regexp_no_flags
+=== CONT  TestWireEmitsDevalueBytes/boxed_number
+=== CONT  TestWireEmitsDevalueBytes/boxed_boolean
+=== CONT  TestWireEmitsDevalueBytes/arraybuffer_empty
+=== CONT  TestWireEmitsDevalueBytes/empty_object
+=== CONT  TestWireEmitsDevalueBytes/boxed_string
+=== CONT  TestWireEmitsDevalueBytes/array_of_objects
+=== CONT  TestWireEmitsDevalueBytes/string_astral
+=== CONT  TestWireEmitsDevalueBytes/null_prototype_object
+=== CONT  TestWireEmitsDevalueBytes/null
+=== CONT  TestWireEmitsDevalueBytes/object_reordered
+=== CONT  TestWireEmitsDevalueBytes/sparse_array
+--- PASS: TestWireEmitsDevalueBytes (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/object (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/bigint_negative (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/empty_set (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/bigint (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/date_epoch (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/set (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/date (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/set_of_strings (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/map_with_object_keys (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/empty_array (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/empty_map (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/array (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/integer-like_keys (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/map (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/everything_nested (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/cycle_and_repeated_reference (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/negative_infinity (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/undefined (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/infinity (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/string_with_escapes (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/nan (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/negative_zero (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/array_with_undefined (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/arraybuffer (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/nested_object (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/regexp (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/regexp_no_flags (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/boxed_number (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/boxed_boolean (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/arraybuffer_empty (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/empty_object (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/boxed_string (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/array_of_objects (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/string_astral (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/null_prototype_object (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/null (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/bigint_zero (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/object_reordered (0.00s)
+    --- PASS: TestWireEmitsDevalueBytes/sparse_array (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo	2.798s
+=== RUN   TestDocumentationRendersCleanAndCommitted
+--- PASS: TestDocumentationRendersCleanAndCommitted (0.18s)
+PASS
+ok  	github.com/tylergannon/skgo/documentation	0.293s
+=== RUN   TestIncludeAllowsRestParamDirectories
+--- PASS: TestIncludeAllowsRestParamDirectories (0.00s)
+=== RUN   TestIncludeRejectsEscapingPaths
+--- PASS: TestIncludeRejectsEscapingPaths (0.00s)
+=== RUN   TestSlugifyMatchesTheSite
+--- PASS: TestSlugifyMatchesTheSite (0.00s)
+=== RUN   TestHeadingIDsNest
+--- PASS: TestHeadingIDsNest (0.00s)
+=== RUN   TestDedentKeepsRelativeIndentation
+--- PASS: TestDedentKeepsRelativeIndentation (0.00s)
+=== RUN   TestExpandIncludesRequiresRealGo
+--- PASS: TestExpandIncludesRequiresRealGo (0.00s)
+=== RUN   TestCommandTableRendersFlags
+--- PASS: TestCommandTableRendersFlags (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/documentation/render	0.096s

@@ -1260,8 +1260,7 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 			// recorded for the boot script, because there is no document.
 			return json.Marshal(remoteAnswer{R: &ssr.Redirect{Status: redirect.status(), Location: redirect.Location}})
 		}
-		e := asHTTPError(err)
-		failure := &ssr.Error{Status: e.Status, Message: e.Message}
+		failure := s.remotes.remoteError(ctx, err)
 		s.record(into, kind, id+"/"+payload, answered{err: failure})
 		return json.Marshal(remoteAnswer{E: failure})
 	}
@@ -1329,8 +1328,7 @@ func (s *SSR) answerBatch(ctx context.Context, fn *Remote, payload string, into 
 		if redirect := asRedirect(err); redirect != nil {
 			return json.Marshal(batchAnswer{R: &ssr.Redirect{Status: redirect.status(), Location: redirect.Location}})
 		}
-		e := asHTTPError(err)
-		failure := &ssr.Error{Status: e.Status, Message: e.Message}
+		failure := s.remotes.remoteError(ctx, err)
 		// The whole batch failed, so every argument in it failed. Each one is
 		// recorded under its own key, because that is where the client will
 		// look for it and a missing key hydrates as a value that was never

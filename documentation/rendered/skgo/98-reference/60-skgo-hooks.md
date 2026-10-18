@@ -103,9 +103,9 @@ HandleConfig is what Intercept needs to recognise the requests kit's own `handle
 type HandleError func(ctx context.Context, caught CaughtError) map[string]any
 ```
 
-HandleError is skgo's mirror of kit's `handleError` hook (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app decides what a failed page's visitor is told, beyond status and message.
+HandleError is skgo's mirror of kit's `handleError` hook (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app decides what a failed request's visitor is told, beyond status and message.
 
-It runs for every error that reaches a page response except a redirect, which is not a failure and never reaches it, and an already-handled built-prerender error whose recorded App.Error body is reused without running the hook again. That includes an error the app raised on purpose with Errorf: kit's own type never exempts an "app"-kind error from the hook, only from having its message replaced by default.
+RemoteConfig uses it for rejected schema arguments. It also runs for every error that reaches a page response except a redirect, which is not a failure and never reaches it, and an already-handled built-prerender error whose recorded App.Error body is reused without running the hook again. That includes an error the app raised on purpose with Errorf: kit's own type never exempts an "app"-kind error from the hook, only from having its message replaced by default.
 
 Returning nil keeps kit's own defaults exactly: an "app" error's message survives untouched, and an "unknown" error's stays the generic "Internal Error" a real one never leaks through. Returning a map adds or overrides fields on the JSON object the error page and the client both see — "status" and "message" included, if the hook chooses to replace them — the same partial-override rule kit's own type comment states: "the hook returns only the properties it wants to override; anything it omits ... is inherited from the caught error." A "status" entry must be an int and a "message" entry a string; anything else under those two keys is ignored, the same as a value kit's own type checker would reject.
 

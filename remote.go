@@ -416,7 +416,8 @@ func BatchQuery(fn any) Marker { _ = fn; return Marker{} }
 // diagnostic — which names a JSON-pointer path into the argument — is kept on
 // the error for the server's logs and never put on the wire, because it
 // describes the shape the server expected and an unauthenticated caller has
-// not earned that.
+// not earned that. RemoteConfig.HandleError can inspect these private issues
+// and choose a public validation body.
 func BadRequest(detail error) error { return badRequest{detail: detail} }
 
 type badRequest struct{ detail error }
@@ -449,7 +450,7 @@ func RefuseArgument(call Call) error {
 // schema-validated functions refuse the same call.
 func RequireArgument(call Call) error {
 	if !call.Present {
-		return &HTTPError{Status: 400, Message: "Bad Request"}
+		return BadRequest(errors.New("argument is required"))
 	}
 	return nil
 }
@@ -469,9 +470,15 @@ func DecodeForm(arg any, into any) error {
 	return nil
 }
 
-// RemoteConfig describes the app the registry is serving. Everything but
-// Origin comes straight from the built manifest.
+// RemoteConfig describes the application and its remote-function hooks.
 type RemoteConfig struct {
+	// HandleError customizes rejected schema arguments with kind "validation".
+	// The default is status 400 and "Bad Request"; private decoder Issues are
+	// available only to the hook. Returning a partial body merges over those
+	// defaults. This applies to production requests and native development
+	// callbacks. Other remote failures retain their existing error handling.
+	HandleError HandleError
+
 	// Development mirrors Kit's development dispatch for prerender remotes.
 	// Production registries serve only their recorded static artifacts.
 	Development bool
@@ -805,7 +812,7 @@ func (rs *Remotes) servePrerender(w http.ResponseWriter, r *http.Request, fn *Re
 			rs.writeResult(w, event, map[string]any{"redirect": redirect.Location})
 			return
 		}
-		rs.writeError(w, asHTTPError(err))
+		rs.writeCallError(w, withEvent(r.Context(), event), err)
 		return
 	}
 	key := fn.id + "/" + payload
@@ -839,7 +846,7 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 			rs.writeResult(w, ev, map[string]any{"redirect": redirect.Location})
 			return
 		}
-		rs.writeError(w, asHTTPError(err))
+		rs.writeCallError(w, withEvent(r.Context(), ev), err)
 		return
 	}
 
@@ -887,7 +894,7 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 		// A redirect in a command response makes the client throw, so it is
 		// reported as an ordinary error instead. Cookies written before the
 		// failure are dropped with it.
-		rs.writeError(w, asHTTPError(err))
+		rs.writeCallError(w, withEvent(r.Context(), ev), err)
 		return
 	}
 
@@ -1072,9 +1079,9 @@ func (rs *Remotes) writeErrorStatus(w http.ResponseWriter, e *HTTPError, status 
 }
 
 type remoteResponse struct {
-	Type  string     `json:"type"`
-	Data  string     `json:"data,omitempty"`
-	Error *HTTPError `json:"error,omitempty"`
+	Type  string `json:"type"`
+	Data  string `json:"data,omitempty"`
+	Error any    `json:"error,omitempty"`
 }
 
 func errorNode(e *HTTPError) *devalue.Object {

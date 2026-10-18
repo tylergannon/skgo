@@ -1,0 +1,9 @@
+=== RUN   TestProductionValidationBoundaryKeepsPublicBody
+    validation_ssr_test.go:36: === RUN   TestValidationBoundaries
+        2026/10/18 12:11:18 skgo: batch query lv6yzp/rejectedBatch failed: skgo: bad request: /: expected a string, got a number
+        --- PASS: TestValidationBoundaries (0.01s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example	0.231s
+--- PASS: TestProductionValidationBoundaryKeepsPublicBody (9.04s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	9.296s

@@ -1,0 +1,15 @@
+=== RUN   TestProductionValidationBoundaryKeepsPublicBody
+    validation_ssr_test.go:34: production handler: exit status 1
+        === RUN   TestValidationBoundaries
+        2026/10/18 12:10:59 skgo: batch query lv6yzp/rejectedBatch failed: skgo: bad request: /: expected a string, got a number
+            validation_test.go:21: query boundary: {"status":422,"message":"PUBLIC_VALIDATION_671"} (<nil>); want map[code:PUBLIC_CODE_782 message:PUBLIC_VALIDATION_671 status:422 supportId:PUBLIC_SUPPORT_893]
+            validation_test.go:21: live boundary: {"status":422,"message":"PUBLIC_VALIDATION_671"} (<nil>); want map[code:PUBLIC_CODE_782 message:PUBLIC_VALIDATION_671 status:422 supportId:PUBLIC_SUPPORT_893]
+            validation_test.go:21: batch boundary: {"status":422,"message":"PUBLIC_VALIDATION_671"} (<nil>); want map[code:PUBLIC_CODE_782 message:PUBLIC_VALIDATION_671 status:422 supportId:PUBLIC_SUPPORT_893]
+        --- FAIL: TestValidationBoundaries (0.03s)
+        FAIL
+        FAIL	github.com/tylergannon/skgo/example	0.268s
+        FAIL
+--- FAIL: TestProductionValidationBoundaryKeepsPublicBody (4.13s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	4.414s
+FAIL

@@ -1,0 +1,97 @@
+=== RUN   TestRemoteValidationHookAtHandler
+=== RUN   TestRemoteValidationHookAtHandler/query
+=== RUN   TestRemoteValidationHookAtHandler/command
+=== RUN   TestRemoteValidationHookAtHandler/batch_query
+2026/10/18 12:11:11 skgo: batch query worolc/validation failed: skgo: bad request: private /account/token: expected string
+=== RUN   TestRemoteValidationHookAtHandler/live_query
+=== RUN   TestRemoteValidationHookAtHandler/query#01
+--- PASS: TestRemoteValidationHookAtHandler (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/query (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/command (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/batch_query (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/live_query (0.00s)
+    --- PASS: TestRemoteValidationHookAtHandler/query#01 (0.00s)
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/absent
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/absent?payload=WzQyXQ
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/nil
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/nil?payload=WzQyXQ
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/partial
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/partial?payload=WzQyXQ
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/panic
+2026/10/18 12:11:11 skgo: route : skgo: the handleError hook panicked: private-hook-failure
+goroutine 34 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.runHandleError.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:137 +0x48
+panic({0x101d2da68?, 0x101bfdb00?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestRemoteValidationDefaultsAndMissingArgument.func1.1({0x44c37712c6a8?, 0x10125b7c8?}, {{0x1013fc22e, 0xa}, 0x190, {0x1013fd345, 0xb}, {0x0, 0x0}, {0x44c3772ec800, ...}})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error_test.go:114 +0x1c0
+github.com/tylergannon/skgo.runHandleError({0x101e01528?, 0x44c3772faff0?}, {0x0?, 0x44c3773022b0?}, 0x44c3771b1398?, {{0x1013fc22e, 0xa}, 0x190, {0x1013fd345, 0xb}, ...}, ...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:150 +0x94
+github.com/tylergannon/skgo.handleErrorAndJSONify({0x101e01528, 0x44c3772faff0}, {0x0, 0x0}, 0x44c3772ec740, 0x44c3771b1398, {0x101df9040, 0x44c377302270}, 0x0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:129 +0x234
+github.com/tylergannon/skgo.(*Remotes).validationError(0x44c3772efc20, {0x101e01528, 0x44c3772faf90}, {0x101df9040, 0x44c377302270})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:24 +0x1ac
+github.com/tylergannon/skgo.(*Remotes).remoteError(0x44c3772fae70?, {0x101e01528?, 0x44c3772faf90?}, {0x101df9040, 0x44c377302270})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:28 +0x2c
+github.com/tylergannon/skgo.(*Remotes).writeCallError(0x44c3772efc20, {0x101dfeeb8, 0x44c3772fae70}, {0x101e01528, 0x44c3772faf90}, {0x101df9040, 0x44c377302270})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:39 +0xfc
+github.com/tylergannon/skgo.(*Remotes).serveQuery(0x44c3772efc20, {0x101dfeeb8, 0x44c3772fae70}, 0x44c377300b40, 0x44c3772eb9e0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:849 +0x26c
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x44c3772efc20, {0x101dfed98, 0x44c3772d6780}, 0x44c377300a00)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:777 +0xac4
+github.com/tylergannon/skgo.TestRemoteValidationDefaultsAndMissingArgument.func1(0x44c3772e9208)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error_test.go:124 +0x254
+testing.tRunner(0x44c3772e9208, 0x44c3772ec6e0)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 27
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+=== RUN   TestRemoteValidationDefaultsAndMissingArgument/panic?payload=WzQyXQ
+2026/10/18 12:11:11 skgo: route : skgo: the handleError hook panicked: private-hook-failure
+goroutine 35 [running]:
+runtime/debug.Stack()
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/debug/stack.go:26 +0x64
+github.com/tylergannon/skgo.runHandleError.func1()
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:137 +0x48
+panic({0x101d2da68?, 0x101bfdb00?})
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/runtime/panic.go:859 +0x120
+github.com/tylergannon/skgo.TestRemoteValidationDefaultsAndMissingArgument.func1.1({0x44c3772596a8?, 0x10125b7c8?}, {{0x1013fc22e, 0xa}, 0x190, {0x1013fd345, 0xb}, {0x0, 0x0}, {0x44c3772ec960, ...}})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error_test.go:114 +0x1c0
+github.com/tylergannon/skgo.runHandleError({0x101e01528?, 0x44c3772fb4d0?}, {0x0?, 0x44c3773024d0?}, 0x44c3771b14b8?, {{0x1013fc22e, 0xa}, 0x190, {0x1013fd345, 0xb}, ...}, ...)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:150 +0x94
+github.com/tylergannon/skgo.handleErrorAndJSONify({0x101e01528, 0x44c3772fb4d0}, {0x0, 0x0}, 0x44c3772ec8a0, 0x44c3771b14b8, {0x101df9040, 0x44c377302490}, 0x0)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/handle_error.go:129 +0x234
+github.com/tylergannon/skgo.(*Remotes).validationError(0x44c377308360, {0x101e01528, 0x44c3772fb470}, {0x101df9040, 0x44c377302490})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:24 +0x1ac
+github.com/tylergannon/skgo.(*Remotes).remoteError(0x44c3772fb320?, {0x101e01528?, 0x44c3772fb470?}, {0x101df9040, 0x44c377302490})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:28 +0x2c
+github.com/tylergannon/skgo.(*Remotes).writeCallError(0x44c377308360, {0x101dfeeb8, 0x44c3772fb320}, {0x101e01528, 0x44c3772fb470}, {0x101df9040, 0x44c377302490})
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error.go:39 +0xfc
+github.com/tylergannon/skgo.(*Remotes).serveQuery(0x44c377308360, {0x101dfeeb8, 0x44c3772fb320}, 0x44c377301540, 0x44c3772ebe60)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:849 +0x26c
+github.com/tylergannon/skgo.(*Remotes).ServeHTTP(0x44c377308360, {0x101dfed98, 0x44c3772d6800}, 0x44c377301400)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote.go:777 +0xac4
+github.com/tylergannon/skgo.TestRemoteValidationDefaultsAndMissingArgument.func1(0x44c3772e9448)
+	/Users/tyler/.codex/worktrees/0aa3/skgo/remote_error_test.go:124 +0x254
+testing.tRunner(0x44c3772e9448, 0x44c3772ec840)
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 27
+	/opt/homebrew/Cellar/go/1.27.2/libexec/src/testing/testing.go:2260 +0x3b8
+--- PASS: TestRemoteValidationDefaultsAndMissingArgument (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/absent (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/absent?payload=WzQyXQ (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/nil (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/nil?payload=WzQyXQ (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/partial (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/partial?payload=WzQyXQ (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/panic (0.00s)
+    --- PASS: TestRemoteValidationDefaultsAndMissingArgument/panic?payload=WzQyXQ (0.00s)
+=== RUN   TestNativeValidationHookAtCallbackAndFrontDoor
+--- PASS: TestNativeValidationHookAtCallbackAndFrontDoor (0.00s)
+=== RUN   TestRemoteValidationHookDoesNotReceiveProtocolRefusals
+--- PASS: TestRemoteValidationHookDoesNotReceiveProtocolRefusals (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo	0.237s

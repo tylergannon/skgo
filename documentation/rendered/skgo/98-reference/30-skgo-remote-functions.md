@@ -480,6 +480,13 @@ NewRemotes builds a registry. Two functions with the same module and export name
 
 ```go
 type RemoteConfig struct {
+	// HandleError customizes rejected schema arguments with kind "validation".
+	// The default is status 400 and "Bad Request"; private decoder Issues are
+	// available only to the hook. Returning a partial body merges over those
+	// defaults. This applies to production requests and native development
+	// callbacks. Other remote failures retain their existing error handling.
+	HandleError HandleError
+
 	// Development mirrors Kit's development dispatch for prerender remotes.
 	// Production registries serve only their recorded static artifacts.
 	Development bool
@@ -519,7 +526,7 @@ type RemoteConfig struct {
 }
 ```
 
-RemoteConfig describes the app the registry is serving. Everything but Origin comes straight from the built manifest.
+RemoteConfig describes the application and its remote-function hooks.
 
 ## RemoteSpec
 
