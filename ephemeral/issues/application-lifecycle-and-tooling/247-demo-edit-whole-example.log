@@ -1,0 +1,5 @@
+# github.com/tylergannon/skgo/example/web/src
+web/src/params.go:19:9: undefined: sharedFixtureUnrelatedDemoFailure
+FAIL	github.com/tylergannon/skgo/example [build failed]
+FAIL
+command_status=1

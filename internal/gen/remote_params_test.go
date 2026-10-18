@@ -20,9 +20,13 @@ func TestGeneratedCommandFormCallerEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 	source = append(source, []byte("\nvar LangCalls int\nfunc Lang(s string)(string,bool){LangCalls++;return s,s==\"en\"}\n")...)
-	source = []byte(strings.Replace(string(source), `if s=="none" {return nil,true}`, `if s=="typednil" {return (*domain.OrderRef)(nil),true};if s=="none" {return nil,true}`, 1))
 	if err := os.WriteFile(path, source, 0644); err != nil {
 		t.Fatal(err)
+	}
+	if err := replaceOnce(path, "func MaybeRef(s string) (domain.Ref, bool) {", `func MaybeRef(s string) (domain.Ref, bool) {
+ if s == "typednil" { return (*domain.OrderRef)(nil), true }
+`); err != nil {
+		t.Fatalf("extend fixture matcher with typed nil: %v", err)
 	}
 	path = filepath.Join(app, "web/src/params.ts")
 	source, err = os.ReadFile(path)

@@ -28,76 +28,10 @@ func sharedFixture(t *testing.T) (string, Config) {
 		t.Fatal(err)
 	}
 	app := t.TempDir()
-	err = stageSharedModule(root, app)
-	if err != nil {
+	if err := stageSharedModuleBootstrap(root, app); err != nil {
 		t.Fatal(err)
 	}
-	writeSharedFixture(t, app, "domain/domain.go", `package domain
-import "fmt"
-type Number int
-func (n Number) Label() string { return fmt.Sprintf("Order #%d",n) }
-type NumberAlias = Number
-type Order struct { Number int }
-func (r Order) Label() string { return fmt.Sprintf("Struct order #%d",r.Number) }
-type OrderRef struct { Number int }
-func (r *OrderRef) Label() string { return fmt.Sprintf("Ref #%d",r.Number) }
-type Ref interface { Label() string }
-type Box[T any] struct { Value T }
-type hidden int
-type PublicHidden = hidden
-`)
-	writeSharedFixture(t, app, "other/domain.go", `package domain
-type Number int
-`)
-	writeSharedFixture(t, app, "legacy/order.go", `package legacy
-import "fmt"
-type Order struct { Number int }
-func (r Order) Label() string { return fmt.Sprintf("Legacy order #%d",r.Number) }
-`)
-	matcherFile := filepath.Join(app, "web", "src", "params.go")
-	original, err := os.ReadFile(matcherFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	original = bytes.Replace(original, []byte("import ("), []byte(`import (
- domain "github.com/tylergannon/skgo/example/domain"
- "github.com/tylergannon/skgo/example/legacy"
- other "github.com/tylergannon/skgo/example/other"`), 1)
-	original = append(original, []byte(`
-func Numeric(s string) (domain.Number,bool) { n,e:=strconv.Atoi(s);return domain.Number(n),e==nil }
-func Aliased(s string) (domain.NumberAlias,bool) { return Numeric(s) }
-func Other(s string) (other.Number,bool) { return 42,true }
-func Flag(s string) (bool,bool) { return false,true }
-func Blank(s string) (string,bool) { return "",true }
-func MaybeRef(s string) (domain.Ref,bool) { if s=="none" {return nil,true};if s=="42"{return &domain.OrderRef{Number:42},true};return nil,false }
-func Pointer(s string) (*domain.OrderRef,bool) { return nil,true }
-func Generic(s string) (domain.Box[domain.Number],bool) { return domain.Box[domain.Number]{Value:42},true }
-func Structure(s string) (struct{ Value int `+"`json:\"value\"`"+` },bool) { return struct{ Value int `+"`json:\"value\"`"+` }{42},true }
-func Function(s string) (func(number int) string,bool) { return func(n int)string{return fmt.Sprint(n)},true }
-func FunctionAlias(s string) (func(value int) string,bool) { return Function(s) }
-func Slice(s string) ([]domain.Number,bool) { return nil,true }
-func Map(s string) (map[string]domain.Number,bool) { return nil,true }
-func Channel(s string) (<-chan domain.Number,bool) { return nil,true }
-func Interface(s string) (interface{Label() string},bool) { return nil,true }
-func Array(s string) ([2]domain.Number,bool) { return [2]domain.Number{0,42},true }
-func StructOrder(s string) (domain.Order,bool) { return domain.Order{Number:42},true }
-func LegacyOrder(s string) (legacy.Order,bool) { return legacy.Order{Number:17},true }
-func PublicHidden(s string) (domain.PublicHidden,bool) { return 0,true }
-`)...)
-	if err := os.WriteFile(matcherFile, original, 0644); err != nil {
-		t.Fatal(err)
-	}
-	frontend := filepath.Join(app, "web", "src", "params.ts")
-	frontendSource, err := os.ReadFile(frontend)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var entries strings.Builder
-	for _, name := range []string{"Numeric", "Aliased", "Other", "Flag", "Blank", "MaybeRef", "Pointer", "Generic", "Structure", "Function", "FunctionAlias", "Slice", "Map", "Channel", "PublicHidden", "StructOrder", "LegacyOrder", "Interface", "Array"} {
-		entries.WriteString(name + ": (value: string) => value,\n")
-	}
-	frontendSource = bytes.Replace(frontendSource, []byte("defineParams({"), []byte("defineParams({\n"+entries.String()), 1)
-	if err := os.WriteFile(frontend, frontendSource, 0644); err != nil {
+	if err := copySandboxTree(filepath.Join(root, "internal/gen/testdata/shared-params"), app, nil); err != nil {
 		t.Fatal(err)
 	}
 	for _, route := range []string{"numeric/[id=Numeric]", "alias/[id=Aliased]", "text/[id]", "optional/[[id]]", "absent", "other/[id=Other]", "flag/[flag=Flag]", "empty/[empty=Blank]", "pointer/[[pointer=Pointer]]", "nil/[id=MaybeRef]", "nil-optional/[[id=MaybeRef]]", "generic/[box=Generic]", "structure/[structure=Structure]", "fn/[fn=Function]", "fn-alias/[fn=FunctionAlias]", "slice/[slice=Slice]", "map/[map=Map]", "channel/[channel=Channel]", "hidden-alias/[hidden=PublicHidden]", "named/[order=StructOrder]", "interface/[iface=Interface]", "array/[array=Array]", "_frontend/[underscored]", "keys/[slug]/[params]/[request_event]/[1]/[_]/[-]/[a-b]/[a_b]"} {
@@ -394,8 +328,8 @@ func TestGeneratedNilLoads(t *testing.T) {
 `)
 }
 
-func TestSharedParamsSourceDiagnostics(t *testing.T) {
-	t.Parallel()
+func sharedDiagnosticFixture(t *testing.T) (string, Config, string, []byte) {
+	t.Helper()
 	app, cfg := sharedFixture(t)
 	if err := os.RemoveAll(filepath.Join(cfg.Out, "params")); err != nil {
 		t.Fatal(err)
@@ -415,6 +349,11 @@ func TestSharedParamsSourceDiagnostics(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeSharedFixture(t, app, "web/src/routes/diagnostic/[bad=Bad]/+page.svelte", "<p>diagnostic</p>")
+	return app, cfg, matcherPath, original
+}
+
+func TestSharedParamsSourceDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, importPath, setup, signature, want string }{
 		{"illegal-internal", "github.com/tylergannon/skgo/example/foreign/internal/domain", `package domain; type Value int`, `func Bad(s string) (bad.Value,bool) { return 0,true }`, "use of internal package"},
 		{"remote-owned", "github.com/tylergannon/skgo/example/web/src/lib/remote", `package remote; type Value int`, `func Bad(s string) (bad.Value,bool) { return 0,true }`, "caller-owned"},
@@ -423,6 +362,10 @@ func TestSharedParamsSourceDiagnostics(t *testing.T) {
 		{"transitive-generated", "github.com/tylergannon/skgo/example/cycledomain", `package cycledomain; import "github.com/tylergannon/skgo/example/internal/skgo/params"; type Value int; var _ params.Value`, `func Bad(s string) (bad.Value,bool) { return 0,true }`, "imports generated bindings/params"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			app, cfg, matcherPath, original := sharedDiagnosticFixture(t)
+			if tc.name == "transitive-generated" {
+				writeSharedFixture(t, app, "internal/skgo/params/value.go", "package params; type Value int\n")
+			}
 			source := append([]byte(nil), original...)
 			if tc.importPath != "" {
 				source = bytes.Replace(source, []byte("import ("), []byte("import ( bad "+`"`+tc.importPath+`"`), 1)
@@ -469,19 +412,23 @@ func TestSharedParamsSourceDiagnostics(t *testing.T) {
 			}
 		})
 	}
-	// A real import cycle is diagnosed by the Go compiler with the matcher
-	// source location and the domain ownership remedy, rather than bootstrapped
-	// using stale generated types.
-	writeSharedFixture(t, app, "internal/skgo/params/value.go", `package params; import "github.com/tylergannon/skgo/example/cycledomain"; type Value = cycledomain.Value`)
-	source := bytes.Replace(original, []byte("import ("), []byte(`import ( bad "github.com/tylergannon/skgo/example/cycledomain"`), 1)
-	source = append(source, []byte(`func Bad(s string) (bad.Value,bool) {return 0,true}`)...)
-	if err := os.WriteFile(matcherPath, source, 0644); err != nil {
-		t.Fatal(err)
-	}
-	_, err = prepareLoadParams(&cfg, nil)
-	if err == nil || !strings.Contains(err.Error(), "import cycle") || !strings.Contains(err.Error(), "params.go") {
-		t.Fatalf("want source-located cycle diagnostic: %v", err)
-	}
+	t.Run("import-cycle", func(t *testing.T) {
+		app, cfg, matcherPath, original := sharedDiagnosticFixture(t)
+		// A real import cycle is diagnosed by the Go compiler with the matcher
+		// source location and the domain ownership remedy, rather than bootstrapped
+		// using stale generated types.
+		writeSharedFixture(t, app, "cycledomain/value.go", `package cycledomain; import "github.com/tylergannon/skgo/example/internal/skgo/params"; type Value int; var _ params.Value`)
+		writeSharedFixture(t, app, "internal/skgo/params/value.go", `package params; import "github.com/tylergannon/skgo/example/cycledomain"; type Value = cycledomain.Value`)
+		source := bytes.Replace(original, []byte("import ("), []byte(`import ( bad "github.com/tylergannon/skgo/example/cycledomain"`), 1)
+		source = append(source, []byte(`func Bad(s string) (bad.Value,bool) {return 0,true}`)...)
+		if err := os.WriteFile(matcherPath, source, 0644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := prepareLoadParams(&cfg, nil)
+		if err == nil || !strings.Contains(err.Error(), "import cycle") || !strings.Contains(err.Error(), "params.go") {
+			t.Fatalf("want source-located cycle diagnostic: %v", err)
+		}
+	})
 }
 
 func TestSharedParamsFrontendOnlyApplication(t *testing.T) {
@@ -491,17 +438,11 @@ func TestSharedParamsFrontendOnlyApplication(t *testing.T) {
 		t.Fatal(err)
 	}
 	app := t.TempDir()
-	if err := stageSharedModule(root, app); err != nil {
+	if err := stageSharedModuleBootstrap(root, app); err != nil {
 		t.Fatal(err)
 	}
 	web := filepath.Join(app, "web")
 	out := filepath.Join(app, "internal", "skgo")
-	if err := os.RemoveAll(filepath.Join(web, "src")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.RemoveAll(out); err != nil {
-		t.Fatal(err)
-	}
 	writeSharedFixture(t, app, "web/src/routes/plain/[id]/+page.svelte", "<p>frontend-only</p>")
 	writeSharedFixture(t, app, "web/src/routes/optional/[[id]]/+page.svelte", "<p>optional frontend-only</p>")
 	cfg := fixtureConfig(Config{Web: web, Out: out})

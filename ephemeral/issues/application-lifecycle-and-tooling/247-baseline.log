@@ -1,0 +1,76 @@
+=== RUN   TestSharedParamsGeneratedConsumers
+=== PAUSE TestSharedParamsGeneratedConsumers
+=== RUN   TestSharedParamsSourceDiagnostics
+=== PAUSE TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsFrontendOnlyApplication
+=== PAUSE TestSharedParamsFrontendOnlyApplication
+=== CONT  TestSharedParamsGeneratedConsumers
+    shared_params_test.go:188: compiled consumers:
+        === RUN   TestGeneratedNilLoads
+        --- PASS: TestGeneratedNilLoads (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo	0.215s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bnn5yhi2lpnzqwyl23lnuwipknmf4wezksmvtf2xi	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bplnuwipknmf4wezksmvtf2	[no test files]
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.168s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+    shared_params_test.go:256: compiled consumers:
+        testing: warning: no tests to run
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo	0.206s [no tests to run]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bnn5yhi2lpnzqwyl23lnuwipknmf4wezksmvtf2xi	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bplnuwipknmf4wezksmvtf2	[no test files]
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        === RUN   TestThird
+        --- PASS: TestThird (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.170s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+=== CONT  TestSharedParamsFrontendOnlyApplication
+--- PASS: TestSharedParamsGeneratedConsumers (5.11s)
+=== NAME  TestSharedParamsFrontendOnlyApplication
+    shared_params_test.go:525: compiled consumers:
+        ?   	github.com/tylergannon/skgo/example/internal/skgo	[no test files]
+        === RUN   TestFrontendOnly
+        --- PASS: TestFrontendOnly (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.168s
+--- PASS: TestSharedParamsFrontendOnlyApplication (0.77s)
+=== CONT  TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+--- PASS: TestSharedParamsSourceDiagnostics (1.29s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.18s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.07s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.07s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.07s)
+    --- PASS: TestSharedParamsSourceDiagnostics/transitive-generated (0.72s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	7.462s
+        8.12 real         6.12 user         4.31 sys
+           361136128  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              813574  page reclaims
+               13305  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                2093  signals received
+                2301  voluntary context switches
+               68913  involuntary context switches
+          4293233838  instructions retired
+          1303154466  cycles elapsed
+            32064184  peak memory footprint

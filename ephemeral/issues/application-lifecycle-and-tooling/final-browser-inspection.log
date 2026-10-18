@@ -1,0 +1,6 @@
+Built example at http://127.0.0.1:55803, production Go server.
+Parent CUA inspection, independent of implementing agents:
+- Home rendered the working-reference heading and complete capability list.
+- Clicked Item 42: Item 42 heading, two Widget 42 values, remote form controls visible. Screenshot inspected; content present, no unintended error boundary or blank screen.
+- Returned Home, clicked unexpected-error capability: Error 500, Something went wrong on our end., case-1121. Screenshot inspected; intentional safe error page with support identifier and normal navigation, no private database connection text.
+Temporary browser tab closed. No todo/application data mutations performed during concurrent suite.

@@ -1,0 +1,93 @@
+=== RUN   TestSharedParamsGeneratedConsumers
+=== PAUSE TestSharedParamsGeneratedConsumers
+=== RUN   TestSharedParamsSourceDiagnostics
+=== PAUSE TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsFrontendOnlyApplication
+=== PAUSE TestSharedParamsFrontendOnlyApplication
+=== CONT  TestSharedParamsGeneratedConsumers
+    shared_params_test.go:167: 247 operation=Check
+    shared_params_test.go:173: 247 operation=Run
+    shared_params_test.go:189: 247 operation=consumer-go-test
+    shared_params_test.go:189: compiled consumers:
+        === RUN   TestGeneratedNilLoads
+        --- PASS: TestGeneratedNilLoads (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo	0.215s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bnn5yhi2lpnzqwyl23lnuwipknmf4wezksmvtf2xi	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bplnuwipknmf4wezksmvtf2	[no test files]
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.163s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+    shared_params_test.go:198: 247 operation=consumer-go-test
+    shared_params_test.go:209: 247 operation=Check
+    shared_params_test.go:221: 247 operation=Run
+    shared_params_test.go:232: 247 operation=Run
+    shared_params_test.go:257: 247 operation=consumer-go-test
+    shared_params_test.go:257: compiled consumers:
+        testing: warning: no tests to run
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo	0.229s [no tests to run]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bnn5yhi2lpnzqwyl23lnuwipknmf4wezksmvtf2xi	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bplnuwipknmf4wezksmvtf2	[no test files]
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        === RUN   TestThird
+        --- PASS: TestThird (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.202s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+    shared_params_test.go:259: 247 operation=Run
+=== CONT  TestSharedParamsFrontendOnlyApplication
+--- PASS: TestSharedParamsGeneratedConsumers (4.80s)
+=== NAME  TestSharedParamsFrontendOnlyApplication
+    shared_params_test.go:509: 247 operation=Check
+    shared_params_test.go:512: 247 operation=Run
+    shared_params_test.go:515: 247 operation=Check
+    shared_params_test.go:526: 247 operation=consumer-go-test
+    shared_params_test.go:526: compiled consumers:
+        ?   	github.com/tylergannon/skgo/example/internal/skgo	[no test files]
+        === RUN   TestFrontendOnly
+        --- PASS: TestFrontendOnly (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.216s
+--- PASS: TestSharedParamsFrontendOnlyApplication (0.79s)
+=== CONT  TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+    shared_params_test.go:455: 247 operation=Run
+    shared_params_test.go:455: 247 operation=Check
+--- PASS: TestSharedParamsSourceDiagnostics (1.13s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.16s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.06s)
+    --- PASS: TestSharedParamsSourceDiagnostics/transitive-generated (0.63s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	7.055s
+        8.41 real         7.34 user         3.97 sys
+           361201664  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              841822  page reclaims
+                8822  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                2134  signals received
+                1422  voluntary context switches
+               54946  involuntary context switches
+          4517451024  instructions retired
+          1401186321  cycles elapsed
+            32441016  peak memory footprint
+
+command_status=0

@@ -1,0 +1,11 @@
+-test.shuffle 247
+=== RUN   TestSharedParamsSourceDiagnostics
+=== PAUSE TestSharedParamsSourceDiagnostics
+=== CONT  TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+=== RUN   TestSharedParamsSourceDiagnostics/import-cycle
+--- PASS: TestSharedParamsSourceDiagnostics (0.81s)
+    --- PASS: TestSharedParamsSourceDiagnostics/transitive-generated (0.64s)
+    --- PASS: TestSharedParamsSourceDiagnostics/import-cycle (0.16s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	1.070s

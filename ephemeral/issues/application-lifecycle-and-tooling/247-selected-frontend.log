@@ -1,0 +1,12 @@
+=== RUN   TestSharedParamsFrontendOnlyApplication
+=== PAUSE TestSharedParamsFrontendOnlyApplication
+=== CONT  TestSharedParamsFrontendOnlyApplication
+    shared_params_test.go:466: compiled consumers:
+        ?   	github.com/tylergannon/skgo/example/internal/skgo	[no test files]
+        === RUN   TestFrontendOnly
+        --- PASS: TestFrontendOnly (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.160s
+--- PASS: TestSharedParamsFrontendOnlyApplication (0.81s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	1.034s

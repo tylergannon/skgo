@@ -29,10 +29,24 @@ func stageTypedLoadEvolutionFixture(root, app string) error {
 	return linkGeneratorKit(root, app)
 }
 
-// Shared parameter tests own their routes and domain; copying every remote,
-// hook and load of the example makes each transition analyse unrelated code.
+// Fixtures that intentionally use the example's matcher still avoid copying
+// unrelated remotes, hooks and loads.
 func stageSharedModule(root, app string) error {
-	for _, file := range []string{"go.mod", "go.sum", "web/src/params.go", "web/src/params.ts"} {
+	if err := stageSharedModuleBootstrap(root, app); err != nil {
+		return err
+	}
+	for _, file := range []string{"web/src/params.go", "web/src/params.ts"} {
+		if err := copySandboxFile(filepath.Join(root, "example", filepath.FromSlash(file)), filepath.Join(app, filepath.FromSlash(file))); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Keep the example's module identity and selected dependencies, without its
+// authored application source. Named variant identifiers depend on that identity.
+func stageSharedModuleBootstrap(root, app string) error {
+	for _, file := range []string{"go.mod", "go.sum"} {
 		if err := copySandboxFile(filepath.Join(root, "example", filepath.FromSlash(file)), filepath.Join(app, filepath.FromSlash(file))); err != nil {
 			return err
 		}

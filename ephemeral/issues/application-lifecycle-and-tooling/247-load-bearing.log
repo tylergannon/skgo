@@ -1,0 +1,25 @@
+=== RUN   TestSharedParamsGeneratedConsumers
+=== PAUSE TestSharedParamsGeneratedConsumers
+=== CONT  TestSharedParamsGeneratedConsumers
+    shared_params_test.go:122: generated consumer did not execute: exit status 1
+        === RUN   TestGeneratedNilLoads
+            nil_loads_test.go:27: /nil/none/__data.json want load:present:nil and tracked id; 200 {"type":"data","nodes":[{"type":"data","data":[{"receipt":1},"load:present:Ref #99"],"uses":{"params":["id"]}}]}
+        --- FAIL: TestGeneratedNilLoads (0.00s)
+        FAIL
+        FAIL	github.com/tylergannon/skgo/example/internal/skgo	0.224s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bnn5yhi2lpnzqwyl23lnuwipknmf4wezksmvtf2xi	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bplnuwipknmf4wezksmvtf2	[no test files]
+        === RUN   TestSharedReceipts
+            consumer_test.go:39: /numeric/[id=Numeric] receipt numeric:Broken order #42, want numeric:Order #42
+        --- FAIL: TestSharedReceipts (0.00s)
+        FAIL
+        FAIL	github.com/tylergannon/skgo/example/internal/skgo/params	0.182s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+        FAIL
+--- FAIL: TestSharedParamsGeneratedConsumers (1.92s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	2.190s
+FAIL
+
+command_status=1

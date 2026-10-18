@@ -1,0 +1,63 @@
+-test.shuffle 247
+=== RUN   TestSharedParamsSourceDiagnostics
+=== PAUSE TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsFrontendOnlyApplication
+=== PAUSE TestSharedParamsFrontendOnlyApplication
+=== RUN   TestSharedParamsGeneratedConsumers
+=== PAUSE TestSharedParamsGeneratedConsumers
+=== CONT  TestSharedParamsSourceDiagnostics
+=== RUN   TestSharedParamsSourceDiagnostics/illegal-internal
+=== CONT  TestSharedParamsGeneratedConsumers
+=== CONT  TestSharedParamsFrontendOnlyApplication
+=== RUN   TestSharedParamsSourceDiagnostics/remote-owned
+=== RUN   TestSharedParamsSourceDiagnostics/caller-owned
+=== RUN   TestSharedParamsSourceDiagnostics/generated-package
+=== RUN   TestSharedParamsSourceDiagnostics/transitive-generated
+=== NAME  TestSharedParamsFrontendOnlyApplication
+    shared_params_test.go:466: compiled consumers:
+        ?   	github.com/tylergannon/skgo/example/internal/skgo	[no test files]
+        === RUN   TestFrontendOnly
+        --- PASS: TestFrontendOnly (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.183s
+--- PASS: TestSharedParamsFrontendOnlyApplication (0.84s)
+=== RUN   TestSharedParamsSourceDiagnostics/import-cycle
+--- PASS: TestSharedParamsSourceDiagnostics (1.35s)
+    --- PASS: TestSharedParamsSourceDiagnostics/illegal-internal (0.20s)
+    --- PASS: TestSharedParamsSourceDiagnostics/remote-owned (0.09s)
+    --- PASS: TestSharedParamsSourceDiagnostics/caller-owned (0.09s)
+    --- PASS: TestSharedParamsSourceDiagnostics/generated-package (0.08s)
+    --- PASS: TestSharedParamsSourceDiagnostics/transitive-generated (0.71s)
+    --- PASS: TestSharedParamsSourceDiagnostics/import-cycle (0.18s)
+=== NAME  TestSharedParamsGeneratedConsumers
+    shared_params_test.go:122: compiled consumers:
+        === RUN   TestGeneratedNilLoads
+        --- PASS: TestGeneratedNilLoads (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo	0.224s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bnn5yhi2lpnzqwyl23lnuwipknmf4wezksmvtf2xi	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bplnuwipknmf4wezksmvtf2	[no test files]
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.172s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+    shared_params_test.go:190: compiled consumers:
+        testing: warning: no tests to run
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo	0.239s [no tests to run]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bnn5yhi2lpnzqwyl23lnuwipknmf4wezksmvtf2xi	[no test files]
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xgs3bplnuwipknmf4wezksmvtf2	[no test files]
+        === RUN   TestSharedReceipts
+        --- PASS: TestSharedReceipts (0.00s)
+        === RUN   TestThird
+        --- PASS: TestThird (0.00s)
+        PASS
+        ok  	github.com/tylergannon/skgo/example/internal/skgo/params	0.215s
+        ?   	github.com/tylergannon/skgo/example/internal/skgo/prerender	[no test files]
+--- PASS: TestSharedParamsGeneratedConsumers (5.04s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/gen	5.307s
+command_status=0
