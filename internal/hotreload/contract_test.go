@@ -88,7 +88,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	write("web/src/routes/orders/server.go", contractEndpoint)
 	write("web/src/routes/orders/extra.remote.go", contractRemote)
 	write("generate.go", "package nativefixture\n//go:generate go tool skgo generate --web web --out generated --locals-package example.com/nativefixture/internal/app --cache-dir off\n")
-	write("cmd/main.go", strings.ReplaceAll(contractHost, "PACKAGE", "example.com/nativefixture/generated/links/onzggl3sn52xizltf5xxezdfojzq"))
+	write("cmd/main.go", strings.ReplaceAll(contractHost, "PACKAGE", "example.com/nativefixture/generated/_links/onzggl3sn52xizltf5xxezdfojzq"))
 	run := func(tool Toolchain, args ...string) []byte {
 		t.Helper()
 		raw, err := tool.command(ctx, app, args...).CombinedOutput()
@@ -106,8 +106,8 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	}
 	run(tc, "mod", "tidy")
 	writeNativeRendererFixture(t, app, write)
-	pkgPath := "example.com/nativefixture/generated/links/onzggl3sn52xizltf5xxezdfojzq"
-	linkDir := filepath.Join(app, "generated/links/onzggl3sn52xizltf5xxezdfojzq")
+	pkgPath := "example.com/nativefixture/generated/_links/onzggl3sn52xizltf5xxezdfojzq"
+	linkDir := filepath.Join(app, "generated/_links/onzggl3sn52xizltf5xxezdfojzq")
 	config := &packages.Config{Context: ctx, Dir: app, Env: tc.command(ctx, app).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
 	pkgs, err := packages.Load(config, pkgPath)
 	if err != nil || len(pkgs) != 1 {

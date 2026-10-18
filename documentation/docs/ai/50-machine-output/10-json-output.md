@@ -60,7 +60,7 @@ One entry per checker that ran, in order: `goimports`; then `vite-plus` and `sve
 | `fix` | Optional. The command that would repair it, such as `goimports -w` or `vp fmt --write` with the file |
 | `documentation` | Optional. A URL for a tool's rule, or `skgo advice <code>` for SKGo's |
 
-Locations name the files you wrote, never the generated route links under the bindings' `links/` directory.
+Locations name the files you wrote, never the generated route links under the bindings' `_links/` directory.
 
 ## skgo advice --json
 

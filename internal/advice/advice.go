@@ -354,7 +354,7 @@ func routeParams(filename string) map[string]bool {
 		return nil
 	}
 	dir := filepath.Dir(filename)
-	if filepath.Base(filepath.Dir(dir)) == "links" {
+	if filepath.Base(filepath.Dir(dir)) == "_links" {
 		encoded := strings.ToUpper(filepath.Base(dir))
 		decoded, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(encoded)
 		if err != nil {

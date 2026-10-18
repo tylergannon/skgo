@@ -74,7 +74,7 @@ func TestEveryRouteDirectoryBecomesAnImportableGoPackage(t *testing.T) {
 		if err != nil {
 			t.Fatalf("importPath(%s): %v", rel, err)
 		}
-		want := "example.com/app/generated/links/" + encodeLinkName(rel)
+		want := "example.com/app/generated/_links/" + encodeLinkName(rel)
 		if path != want {
 			t.Fatalf("importPath(%s) = %q, want %q", rel, path, want)
 		}

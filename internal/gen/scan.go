@@ -287,6 +287,9 @@ func loadApp(cfg Config, files []string) (*app, error) {
 						}
 					}
 				}
+				if loadErr == nil && strings.HasPrefix(p.PkgPath, a.links.legacyImportPrefix()) {
+					loadErr = fmt.Errorf("skgo: %s: route link packages moved; import %s%s instead", p.PkgPath, a.links.importPrefix(), strings.TrimPrefix(p.PkgPath, a.links.legacyImportPrefix()))
+				}
 				if loadErr == nil {
 					loadErr = fmt.Errorf("skgo: %s: %v", p.PkgPath, e)
 				}

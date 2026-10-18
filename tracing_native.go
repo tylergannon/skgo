@@ -317,7 +317,7 @@ type developmentLoadError struct {
 func (e *developmentLoadError) Error() string { return e.err.Error() }
 func (e *developmentLoadError) Unwrap() error { return e.err }
 
-var generatedDevelopmentFrame = regexp.MustCompile(`(?m)^\s*[^\n]*?/links/([a-z2-7]+)/([^/\n]+\.go):([0-9]+)`)
+var generatedDevelopmentFrame = regexp.MustCompile(`(?m)^\s*[^\n]*?/_links/([a-z2-7]+)/([^/\n]+\.go):([0-9]+)`)
 
 func authoredDevelopmentStack(stack string) string {
 	return generatedDevelopmentFrame.ReplaceAllStringFunc(stack, func(frame string) string {

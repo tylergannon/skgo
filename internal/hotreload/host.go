@@ -204,7 +204,7 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 		return nil, err
 	}
 	var paths []string
-	linkRoot := filepath.Join(o.Inputs.Out, "links") + string(filepath.Separator)
+	linkRoot := filepath.Join(o.Inputs.Out, "_links") + string(filepath.Separator)
 	for _, p := range executable {
 		if len(p.CompiledGoFiles) == 0 || !strings.HasPrefix(p.CompiledGoFiles[0], linkRoot) {
 			continue

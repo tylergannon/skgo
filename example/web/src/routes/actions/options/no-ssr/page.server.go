@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/tylergannon/skgo"
-	actions "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
+	actions "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5qwg5djn5xhg"
 )
 
 func pageLoad(event PageRequestEvent) (actions.PageData, error) {
