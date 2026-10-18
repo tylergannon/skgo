@@ -149,7 +149,7 @@ runs them. Do not audit diffs or re-derive claims from source as a substitute.
 
 **A passing command is not evidence on its own.** Whether skgo works is three
 things, and each catches what the other two cannot: `just test` green in
-seconds, which is every contract at the real handler; `just e2e prod` green on `main`
+seconds, which is the routine Go contracts; `just e2e prod` green on `main`
 (the replacement development server has focused checks, but a complete
 development browser-suite pass is not established), which is kit's client using
 Go's bytes; and a person who opened
@@ -157,8 +157,18 @@ the box. An exit code of zero is exactly what a silently skipped test prints, so
 skips are failures: a check that cannot run because its toolchain is missing has
 not passed, and must not be able to report that it did. An expensive command
 runs the minimum number of times its assertions require, and its captured output
-is asserted against many times. A slow suite is fixed by more of that, never by
-a second, faster command beside the real one.
+is asserted against many times. Delete negligible assertions and repeated setup
+before moving tests out of the routine suite. Do not test third-party behavior.
+
+`just test` uses Go's normal test-result cache. Real compiler/process witnesses
+and tests consuming the built example use `skgo_qualification`; CI runs their
+explicit selections uncached on relevant branch changes and before release.
+The selected Vite/Go session checks use `skgo_dev_integration`. Build the example
+once for handler and production browser qualification. Trusted Linux work runs
+on Bob with persistent compiler caches; retain actual Mac/Swift and ARM proofs.
+Ordinary CI runs once per development revision, not again on main or release
+tags. Run focused tests while editing; do not repeat whole suites merely because
+a checkpoint was committed.
 
 **Never derive what you expect from the thing you are testing.** The one leak
 this project has shipped got past an assertion that was already exact — the live
