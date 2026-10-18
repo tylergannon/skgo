@@ -31,7 +31,13 @@ func TestRealSessionRequestHandoff(t *testing.T) { realSession(t, false, true, f
 
 func TestRealSessionDevelopmentLoadDiagnostics(t *testing.T) { realSession(t, false, false, true) }
 
-func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool) {
+func TestRealSessionPendingBrowser(t *testing.T) { realSession(t, false, false, false, "pending-browser") }
+
+func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool, scenario ...string) {
+	mode := ""
+	if len(scenario) > 0 {
+		mode = scenario[0]
+	}
 	if _, err := exec.LookPath("vp"); err != nil {
 		t.Fatal(err)
 	}
@@ -127,6 +133,9 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool)
 				write("web/src/routes/"+kind+"/+page.svelte", `<script>let {data}=$props();</script><h1>DIAG_SUCCESS_243 {data.receipt}</h1>`)
 				write("web/src/routes/"+kind+"/page.server.go", diagnosticSessionLoad(kind, false))
 			}
+		}
+		if mode == "pending-browser" {
+			setupPendingBrowser(t, app, write)
 		}
 		if withGenerator {
 			write("generator.json", `{"package":"./tool"}`)
@@ -356,6 +365,10 @@ func waitForReadiness() error {
 		exerciseColdSessionHandoff(t, alpha.app, alpha.origin, alpha.log)
 	}
 	check(alpha, "ALPHA", "literal-4101:8")
+	if mode == "pending-browser" {
+		exercisePendingBrowser(t, alpha.app, alpha.origin, alpha.log)
+		return
+	}
 	if withHandoff {
 		exerciseSessionHandoff(t, alpha.app, alpha.origin, alpha.log)
 		return
