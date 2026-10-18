@@ -48,7 +48,7 @@ jobs:
             version=$(go run ./cmd/skgo-release-version)
           fi
           if [ "$version" = "none" ]; then
-            echo "No feat, fix, perf, revert, or breaking commit since the last release."
+            echo "No feat, fix, perf, revert, docs, or breaking commit since the last release."
             echo "version=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
