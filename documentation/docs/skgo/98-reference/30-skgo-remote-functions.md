@@ -7,7 +7,7 @@ The Go side of a `.remote.ts` module. A Go function in a `*.remote.go` file
 marked with `Query`, `Command`, `Form`, `LiveQuery` or `BatchQuery` becomes an
 export of the generated `.remote.ts` module next to it, with the argument and
 result types Kit's client expects. Kit's guide is
-[Remote functions](https://svelte.dev/docs/kit/remote-functions).
+[Remote functions](remote-functions).
 
 A command that changes data tells the client which queries to refresh with
 `Refresh` and its relatives; `Requested` inspects which queries the caller

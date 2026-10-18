@@ -17,6 +17,7 @@ import (
 	"github.com/tylergannon/skgo/example/businesslogic/visitor"
 )
 
+// docs: layout-data
 // LayoutData is what every page under /account gets, whether it asks or not.
 type LayoutData struct {
 	// AccountUser is who the visitor is signed in as.
@@ -26,6 +27,8 @@ type LayoutData struct {
 	// this layout ran it again.
 	AccountSerial int `json:"accountSerial"`
 }
+
+// docs: end layout-data
 
 // serials counts per visitor, so the number a visitor sees is the number of
 // times this load has run for them, and nobody else can move it.
@@ -42,6 +45,7 @@ func nextSerial(ctx context.Context) int {
 	return serials.byVisitor[who]
 }
 
+// docs: guard
 // layoutLoad is the section's guard and its shared data.
 //
 // The session comes from the request's locals, which the app's one `handle`
@@ -67,3 +71,5 @@ func layoutLoad(event LayoutRequestEvent) (LayoutData, error) {
 }
 
 var _ = skgo.Load(layoutLoad)
+
+// docs: end guard

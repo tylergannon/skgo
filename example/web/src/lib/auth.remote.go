@@ -1,6 +1,7 @@
 // Package lib holds server logic shared by more than one route.
 package lib
 
+// docs: links
 import (
 	"context"
 
@@ -18,6 +19,8 @@ import (
 	todos "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf52g6zdpom"
 )
 
+// docs: end links
+
 // sessionCookie is the cookie the session id travels in.
 const sessionCookie = "skgo_session"
 
@@ -28,6 +31,7 @@ func whoami(ctx context.Context) (businesslogic.Session, error) {
 	return businesslogic.Default.Session(id), nil
 }
 
+// docs: sign-in
 // signIn opens a session and stores its id in an HttpOnly cookie. Kit allows
 // cookie writes in commands and forms and nowhere else, so declaring this as
 // anything but a command would make SetCookie fail.
@@ -48,6 +52,8 @@ func signIn(ctx context.Context, event params.RequestEvent, user string) (busine
 	}
 	return businesslogic.Session{User: user}, todos.AcceptSessionRefreshes(ctx)
 }
+
+// docs: end sign-in
 
 // signOut ends the session and clears the cookie.
 func signOut(ctx context.Context, event params.RequestEvent) (businesslogic.Session, error) {

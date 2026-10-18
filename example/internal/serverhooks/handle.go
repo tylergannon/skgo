@@ -31,6 +31,7 @@ func filterSerializedResponseHeaders(name, value string) bool {
 	return false
 }
 
+// docs: initialize
 // Handle is the app's `handle` hook — the one place it decides who the caller
 // is. It runs once per request, before any load or remote function, and puts
 // the answer where all of them can read it with app.LocalsFrom.
@@ -57,6 +58,8 @@ func initialize(ctx context.Context, event params.RequestEvent) (params.RequestE
 	event.Locals.Session = businesslogic.Default.Session(id)
 	return event, nil
 }
+
+// docs: end initialize
 
 // VisitMiddleware is the part of the app's `handle` hook that wraps the
 // response. For the /middleware pages it establishes a visit before anything

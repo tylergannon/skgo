@@ -98,12 +98,15 @@ func inspect(ctx context.Context) (InspectResult, error) {
 	}, nil
 }
 
+// docs: failure
 type ValidationFailure struct {
 	Name       string `json:"name"`
 	Email      string `json:"email"`
 	Biography  string `json:"biography"`
 	EmailError string `json:"emailError"`
 }
+
+// docs: end failure
 
 var profiles = struct {
 	sync.Mutex
@@ -150,6 +153,7 @@ func loadPageData(ctx context.Context, event *skgo.Event) (PageData, error) {
 	return PageData{Profile: fixture(id), ActionCookie: cookie}, nil
 }
 
+// docs: save
 func save(ctx context.Context) (SaveResult, error) {
 	id, err := workspace(ctx)
 	if err != nil {
@@ -181,6 +185,8 @@ func save(ctx context.Context) (SaveResult, error) {
 	return SaveResult{Receipt: "Saved " + profile.Name, Price: businesslogic.Money{Cents: 750}}, nil
 }
 
+// docs: end save
+
 type CookieResult struct {
 	Receipt string `json:"receipt"`
 }
@@ -211,6 +217,7 @@ func archive(ctx context.Context) error {
 	return nil
 }
 
+// docs: sign-in
 func signIn(ctx context.Context) error {
 	request := skgo.EventFrom(ctx).Request()
 	if err := request.ParseForm(); err != nil {
@@ -225,15 +232,22 @@ func signIn(ctx context.Context) error {
 	return &skgo.Redirect{Status: http.StatusSeeOther, Location: "/actions/signed-in"}
 }
 
+// docs: end sign-in
+
+// docs: forbidden
 func forbidden(context.Context) error {
 	return skgo.Errorf(http.StatusForbidden, "You cannot edit this profile")
 }
+
+// docs: end forbidden
 
 func unavailable(context.Context) error {
 	return errors.New(privateFailureMarker)
 }
 
 var _ = skgo.Load(pageLoad)
+
+// docs: actions
 var _ = skgo.ActionWithFailure(save, ValidationFailure{})
 var _ = skgo.Action(upload)
 var _ = skgo.Action(inspect)
@@ -243,6 +257,8 @@ var _ = skgo.ActionNoData(archive)
 var _ = skgo.ActionNoData(signIn)
 var _ = skgo.ActionNoData(forbidden)
 var _ = skgo.ActionNoData(unavailable)
+
+// docs: end actions
 
 // The option examples share the same Go fixture and mutations. Their page
 // options, rather than a second action implementation, determine the result.

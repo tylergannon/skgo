@@ -106,7 +106,7 @@ The SvelteKit project. It behaves like any Kit project, with `@skgo/sveltekit-ad
 
 ### web/src
 
-Kit's `src` directory. Go files live beside the Svelte files they serve: `page.server.go`, `layout.server.go`, `server.go` and `*.remote.go` in route directories, and `hooks.go`, `params.go` and `env.go` at the top of `src` when you need transport, [param matchers](https://svelte.dev/docs/kit/advanced-routing) or [environment variables](https://svelte.dev/docs/kit/$env-static-private). Their TypeScript halves, `hooks.ts` and `params.ts`, stay where Kit expects them. `hooks.server.ts` is generated and empty; Kit discovers hooks from a physical entry, and the adapter supplies the server hooks.
+Kit's `src` directory. Go files live beside the Svelte files they serve: `page.server.go`, `layout.server.go`, `server.go` and `*.remote.go` in route directories, and `hooks.go`, `params.go` and `env.go` at the top of `src` when you need transport, [param matchers](routing#Route-parameters-Matching) or [environment variables](environment-variables). Their TypeScript halves, `hooks.ts` and `params.ts`, stay where Kit expects them. `hooks.server.ts` is generated and empty; Kit discovers hooks from a physical entry, and the adapter supplies the server hooks.
 
 ### Justfile
 

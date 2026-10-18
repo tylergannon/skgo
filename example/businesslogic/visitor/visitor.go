@@ -34,6 +34,7 @@ const Cookie = "skgo_visitor"
 // answers with a cookie set earlier in the same request; the local is how this
 // request's remote functions get the same answer.
 
+// docs: start
 // Start makes sure a browser has a visitor id, writing a new one on the
 // response if the request carried none. The root layout's load calls it.
 //
@@ -63,6 +64,9 @@ func Start(ctx context.Context) error {
 	return nil
 }
 
+// docs: end start
+
+// docs: store
 // Of is the visitor this request belongs to, or "" for nobody.
 func Of(ctx context.Context) string {
 	if locals := app.LocalsFrom(ctx); locals != nil && locals.Visitor != "" {
@@ -76,3 +80,5 @@ func Of(ctx context.Context) string {
 func Store(ctx context.Context) *businesslogic.Store {
 	return businesslogic.For(Of(ctx))
 }
+
+// docs: end store

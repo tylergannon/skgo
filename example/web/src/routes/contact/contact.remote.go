@@ -98,6 +98,7 @@ func getMessages(_ context.Context) ([]Message, error) {
 	return out, nil
 }
 
+// docs: form
 // sendMessage records a message.
 //
 // The checks below are the form's validation. Returning a *skgo.Invalid puts
@@ -152,6 +153,8 @@ func sendMessage(ctx context.Context, event params.RequestEvent, draft Draft) (R
 		},
 		skgo.RefreshRequestedNoArg(ctx, getMessages)
 }
+
+// docs: end form
 
 // previewMessage lets the visitor check a message before submitting it.
 func previewMessage(ctx context.Context, event params.RequestEvent, body string) (Receipt, error) {
