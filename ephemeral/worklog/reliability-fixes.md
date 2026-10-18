@@ -1,6 +1,6 @@
 # Reliability fixes
 
-- correction: The user rejected committed execution dumps and review transcripts; preserve requested issue bodies/comments and annotated issue writeups, not raw run output.
+- correction: The user rejected committed execution dumps, review transcripts, copied GitHub issues/comments and task writeups. Downloading working material does not authorize keeping it in the PR; retain only actionable historical intelligence in the worklog.
 - decision: At the user's request, disconnect automatic documentation rendering and committed-output drift checks, retain source validation, and restore documentation/rendered to the PR base unchanged.
 
 - decision: The user requires one shared feature branch, ordered issue groups, independent token-cache annotation before implementation, and Claude Opus validation constrained to issue goals, load-bearing proof and reproducible introduced bugs. Avoid redundant full CI and new proof machinery.
