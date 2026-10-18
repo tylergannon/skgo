@@ -1,5 +1,8 @@
 # Reliability fixes
 
+- correction: The user rejected committed execution dumps and review transcripts; preserve requested issue bodies/comments and annotated issue writeups, not raw run output.
+- decision: At the user's request, disconnect automatic documentation rendering and committed-output drift checks, retain source validation, and restore documentation/rendered to the PR base unchanged.
+
 - decision: The user requires one shared feature branch, ordered issue groups, independent token-cache annotation before implementation, and Claude Opus validation constrained to issue goals, load-bearing proof and reproducible introduced bugs. Avoid redundant full CI and new proof machinery.
 - correction: Rebasing shared application configuration across main's Entries/Reroute/validation hooks must preserve policy branches moved out of server.go. The first composition omitted the catalog validation policy; independent documentation reconciliation caught it before final validation. Regenerate route metadata after combining generator changes, and preserve same-named prior test captures under distinct filenames.
 - correction: Kit invokes reroute before handle creates a logical request owner. Composing its internal reroute transport inside the application fetch exchange makes a real example build return 500 for /about. Keep the authenticated, same-origin/base-aware framework callback reachable before the owner-dependent exchange; the callback regression and actual build reproduced and verified this integration repair.

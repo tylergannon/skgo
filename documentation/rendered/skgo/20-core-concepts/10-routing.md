@@ -73,7 +73,7 @@ export const load = async (event: RequestEvent): Promise<{ asOf: string; invoice
 
 ### +page.ts
 
-Unchanged. A universal load runs in the browser as well as on the server, so it stays TypeScript, and so do the [page options](page-options) `prerender`, `ssr`, `csr`, `trailingSlash` and `config`. A build-time `entries` producer may also be [declared in Go](page-options#entries). When a route has both, the Go load runs first and its result is the universal load's `data` argument, exactly as with a `+page.server.ts`.
+Unchanged. A universal load runs in the browser as well as on the server, so it stays TypeScript, and so do the [page options](page-options) `prerender`, `entries`, `ssr`, `csr`, `trailingSlash` and `config`. When a route has both, the Go load runs first and its result is the universal load's `data` argument, exactly as with a `+page.server.ts`.
 
 ## +error
 

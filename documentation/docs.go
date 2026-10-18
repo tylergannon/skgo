@@ -4,8 +4,6 @@
 // print a page offline from this copy.
 package skgodocs
 
-//go:generate go run github.com/tylergannon/skgo/cmd/skgo-docs render
-
 import (
 	"embed"
 	"encoding/json"

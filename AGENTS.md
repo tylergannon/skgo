@@ -204,9 +204,10 @@ and nothing else.
   artifacts. Never write to `docs/` without express permission.
 - `documentation/` — the documentation source, its renderer and the committed
   rendered tree the project site serves. `documentation/README.md` is the
-  authoring contract; `go test ./documentation` enforces it and `just docs`
-  renders. A change to an exported symbol changes the rendered reference:
-  render and commit the diff.
+  authoring contract; `go test ./documentation` and `just docs` validate the
+  authored sources in memory. Automatic rendering and committed-output drift
+  checks are disconnected. Do not regenerate or commit `documentation/rendered/`
+  as part of application changes.
 - `example/web/node_modules/@sveltejs/kit/` — authoritative Kit source at the
   example's installed pin. Resolve Kit's transitive package sources from its
   real package directory under pnpm.

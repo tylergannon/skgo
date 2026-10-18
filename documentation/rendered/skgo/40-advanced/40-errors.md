@@ -9,7 +9,7 @@ Errors in SKGo follow [Kit's model](https://svelte.dev/docs/kit/errors). An erro
 
 The error a page receives is an `App.Error`: `{ status, message }` plus any fields your [`handleError`](hooks#handleError) hook adds. SKGo builds it in Go and hands it to Kit, so `page.error` in `+error.svelte` and the `error` of a `failed` snippet have the same shape as in any Kit app.
 
-Kit's hook sees one of four kinds: `'app'`, `'framework'`, `'validation'` or `'unknown'`. The Go hook sees three: `"app"` for an error with a status, including your own `*skgo.HTTPError` and errors SKGo raises itself; `"validation"` for a rejected generated remote argument; and `"unknown"` for other failures.
+Kit's hook sees one of four kinds: `'app'`, `'framework'`, `'validation'` or `'unknown'`. The Go hook sees two. `"app"` is an error with a status: your own `*skgo.HTTPError`, or one SKGo raised itself. `"unknown"` covers everything else.
 
 ## App errors
 
@@ -121,23 +121,22 @@ The Go `handleError` hook runs, for any error but a redirect, on:
 
 - a load or action that fails while Go renders a document;
 - a load that fails while answering a client navigation's `__data.json`;
-
-- a remote function that returns an error or panics, including streamed query errors and query refreshes;
-- a rejected generated remote argument, before its Go body runs;
-- an error a Svelte boundary catches during server rendering, in production and development;
-
+- a generated remote argument schema refusal, through `RemoteConfig.HandleError`;
 - a path that matches no route;
 - an error `handle` returns for a document request; data and remote requests get JSON without the hook;
 - a panic in a `+server` route, answered as JSON or as the fallback error page depending on `Accept`.
 
-Select it through [shared application configuration](prerendering#Shared-application-configuration) to apply the same policy during prerendering.
+It does not run:
 
-Set the same `HandleError` on the load, remote, endpoint and handle configurations in `server.go`; [Server composition](server-composition) shows where. The load configuration supplies the hook for Svelte component boundaries. Already-handled errors reuse their public body without running the hook again. The example application uses it to attach a support id to every failure and to replace the message of an unknown error:
+- for errors returned by a remote body. A remote function's `*HTTPError` reaches the caller as it is, and any other error becomes `{ "status": 500, "message": "Internal Error" }`. A query error that a `<svelte:boundary>` catches during server rendering therefore skips the hook in production. Under [`skgo dev`](development-server) the same error goes through the load configuration's hook.
+- while [prerendering](prerendering) ([#278](https://github.com/tylergannon/skgo/issues/278)).
+
+Set it as `HandleError` on the remote, load, endpoint and handle configurations in `server.go`; [Server composition](server-composition) shows where. The example application uses it to attach a support id to every failure and to replace the message of an unknown error:
 
 ```go
-/// file: internal/app/config.go
+/// file: server.go
 // HandleError is the app's `handleError` hook — kit's own contract, mirrored:
-// it runs for page and remote-function failures, expected or not
+// it runs for every error a page render raises, expected or not
 // (`exports/hooks/public.d.ts`: "runs for every error thrown ... except
 // redirects"), and whatever it returns is merged over what the error already
 // carries.
@@ -148,13 +147,11 @@ Set the same `HandleError` on the load, remote, endpoint and handle configuratio
 // about what an arbitrary Go error's text might contain, so the visitor is
 // told something a person wrote instead of it. caught.Err still carries the
 // real one, for a hook that wants to log it before replacing it.
-func handleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
-	if caught.Kind == "validation" {
-		if event := skgo.EventFrom(ctx); event != nil && event.Request() != nil && strings.HasSuffix(event.Request().URL.Path, "/validateCatalog") {
-			return map[string]any{"message": "Choose a catalog name.", "reference": "catalog-validation-166"}
-		}
+func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
+	extra := map[string]any{"supportId": supportID}
+	if caught.Kind == "validation" && strings.HasSuffix(skgo.EventFrom(ctx).Request().URL.Path, "/validateCatalog") {
+		return map[string]any{"message": "Choose a catalog name.", "reference": "catalog-validation-166"}
 	}
-	extra := map[string]any{"supportId": "case-1121"}
 	if caught.Kind == "unknown" {
 		extra["message"] = "Something went wrong on our end."
 	}

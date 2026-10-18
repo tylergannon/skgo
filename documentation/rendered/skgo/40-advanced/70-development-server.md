@@ -55,6 +55,7 @@ Applications created by `skgo new` have it in `server.go`; [Server composition](
 
 - **Rendering.** Development renders in Node. Production renders in goja, inside the Go process. Module-level state in `.svelte` and `.ts` files behaves like one Node process in development, and like one copy per renderer runtime in production.
 - **Cookies from subfetches.** A `Set-Cookie` on a response to one of Kit's server-render subrequests is visible to your Go code, but in development it is not relayed into the page response. Test sign-in and other cookie flows in both modes.
+- **handleError.** A query error that a `<svelte:boundary>` catches during server rendering reaches `HandleError` only in development. See [Errors](errors#Where-handleError-runs).
 - **Tracing.** Kit's framework spans come from Node in development, and Go annotations are relayed to them with a size budget. See [Observability](observability#In-development).
 
 ## Known issues

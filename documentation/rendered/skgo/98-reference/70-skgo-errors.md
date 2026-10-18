@@ -20,7 +20,7 @@ type HTTPError struct {
 }
 ```
 
-HTTPError is an error with a status kit's client understands. Returning one from a remote function produces `{"type":"error","error":{...}}`; any other error defaults to an opaque 500. RemoteConfig.HandleError may customize the public body, as Kit's handleError does.
+HTTPError is an error with a status kit's client understands. Returning one from a remote function produces `{"type":"error","error":{...}}`; any other error becomes an opaque 500, exactly as kit does for unexpected throws.
 
 ### Errorf
 
@@ -172,4 +172,4 @@ type CaughtError struct {
 }
 ```
 
-CaughtError is the safe error and private diagnostic supplied to HandleError. It follows Kit's discriminated CaughtError while retaining validation decoder details privately in Issues.
+CaughtError is the safe error and private diagnostic supplied to HandleError. Validation errors describe a generated remote argument schema refusal; their decoder details are available only in Issues.

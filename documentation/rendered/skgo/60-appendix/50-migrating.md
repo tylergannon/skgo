@@ -191,7 +191,7 @@ The Standard Schema validator is replaced by the Go argument type: an argument t
 ## Hooks
 
 - `handle` becomes `Handle` in `internal/serverhooks/handle.go`: `params.Handle(fn).Middleware()` for a before-only hook, `params.Sequence` to compose several. Write to `event.Locals` as you wrote to `event.locals`.
-- `handleError` becomes a `HandleError` function set on the load, remote, endpoint and handle configurations in `server.go`.
+- `handleError` becomes a `HandleError` function set on the load, endpoint and handle configurations in `server.go`.
 - `handleFetch` becomes a `HandleFetch` on the fetch and renderer configurations.
 - `init` becomes code in `cmd/main.go` that runs before the server listens.
 
