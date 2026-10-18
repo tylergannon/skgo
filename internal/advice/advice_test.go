@@ -2,42 +2,41 @@ package advice
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
 func TestAdvice(t *testing.T) {
-	results := analysistest.Run(t, analysistest.TestData(), Analyzer, "a", "a/links/onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2")
-	seen := make(map[string]bool)
+	const route = "a/links/onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2"
+	const nestedRoute = "a/links/onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2l23ln2gcys5luxvwlrofz2gc2lmlu"
+	// One package load checks every registered-handler fixture. analysistest
+	// matches messages at their authored locations; these literal counts also
+	// pin the SKGO rule identifiers exposed to CLI and editor consumers.
+	want := map[string]map[string]int{
+		"a":         {QueryCookie: 3, QueryPageInput: 5, RequestContext: 2, OperationError: 9, RefreshKind: 2, FormField: 5},
+		"q":         {QueryCookie: 4, QueryPageInput: 6},
+		"r":         {RefreshKind: 6},
+		route:       {RouteParam: 1},
+		nestedRoute: {RouteParam: 1},
+	}
+	results := analysistest.Run(t, analysistest.TestData(), Analyzer, "a", "q", "r", route, nestedRoute)
+	if len(results) != len(want) {
+		t.Fatalf("analyzed %d fixture packages, want %d", len(results), len(want))
+	}
 	for _, result := range results {
+		counts := make(map[string]int)
 		for _, diagnostic := range result.Diagnostics {
-			seen[diagnostic.Category] = true
+			counts[diagnostic.Category]++
 			if diagnostic.End <= diagnostic.Pos {
 				t.Errorf("%s has no source range", diagnostic.Category)
 			}
 		}
-	}
-	for _, code := range []string{QueryCookie, QueryPageInput, RequestContext, OperationError, RefreshKind, FormField, RouteParam} {
-		if !seen[code] {
-			t.Errorf("missing diagnostic category %s", code)
+		path := result.Pass.Pkg.Path()
+		if !reflect.DeepEqual(counts, want[path]) {
+			t.Errorf("%s diagnostics = %v, want %v", path, counts, want[path])
 		}
-	}
-}
-
-func TestQueryAdvice(t *testing.T) {
-	results := analysistest.Run(t, analysistest.TestData(), Analyzer, "q")
-	counts := map[string]int{}
-	for _, result := range results {
-		for _, diagnostic := range result.Diagnostics {
-			counts[diagnostic.Category]++
-			if diagnostic.End <= diagnostic.Pos {
-				t.Errorf("%s has no authored source range", diagnostic.Category)
-			}
-		}
-	}
-	if counts[QueryCookie] != 4 || counts[QueryPageInput] != 6 || len(counts) != 2 {
-		t.Fatalf("query fixture diagnostics = %v; want four cookie writes and six page reads only", counts)
 	}
 }
 
@@ -62,28 +61,5 @@ func TestRouteKnowledge(t *testing.T) {
 	}
 	if routeParams(filepath.Join("app", "src", "routes", "prefix-[id]", "page.server.go")) != nil {
 		t.Fatal("mixed route segment was asserted with incomplete route knowledge")
-	}
-}
-
-func TestRefreshAndRouteAdvice(t *testing.T) {
-	results := analysistest.Run(t, analysistest.TestData(), Analyzer,
-		"r",
-		"a/links/onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2",
-		"a/links/onzggl3sn52xizltf5nwg5ltorxw2zlsjfcf2l23ln2gcys5luxvwlrofz2gc2lmlu",
-	)
-	counts := map[string]int{}
-	for _, result := range results {
-		for _, d := range result.Diagnostics {
-			if d.Category != RefreshKind && d.Category != RouteParam {
-				continue
-			}
-			counts[d.Category]++
-			if d.End <= d.Pos {
-				t.Errorf("%s has no authored source range", d.Category)
-			}
-		}
-	}
-	if counts[RefreshKind] != 6 || counts[RouteParam] != 2 {
-		t.Fatalf("refresh/route findings = %v; want six target mismatches and two absent route parameters", counts)
 	}
 }

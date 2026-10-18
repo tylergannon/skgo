@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestDevelopmentEnforcesPublishedKitPin(t *testing.T) {
+func TestDevelopmentEnforcesDeclaredKitPin(t *testing.T) {
 	t.Parallel()
 	web, err := filepath.Abs("../../example/web")
 	if err != nil {
@@ -17,27 +17,32 @@ func TestDevelopmentEnforcesPublishedKitPin(t *testing.T) {
 	}
 	for _, tc := range []struct{ pin, installed string }{
 		{"3.1.0", "3.0.0"},
-		// Changing only the published peer declaration must change the gate.
+		// Changing only the package's peer declaration must change the gate.
 		{"3.1.1", "3.1.0"},
 	} {
 		t.Run(tc.pin+"-rejects-"+tc.installed, func(t *testing.T) {
 			app := t.TempDir()
 			writeQueueFixture(t, filepath.Join(app, "node_modules/@sveltejs/kit/package.json"), []byte(`{"version":"`+tc.installed+`"}`))
 			adapterRoot := filepath.Join(app, "adapter")
-			for name, body := range pack(t) {
-				if name == "package.json" && tc.pin != "3.1.0" {
-					var pkg map[string]any
-					if err := json.Unmarshal(body, &pkg); err != nil {
-						t.Fatal(err)
-					}
-					pkg["peerDependencies"].(map[string]any)["@sveltejs/kit"] = tc.pin
-					body, err = json.Marshal(pkg)
-					if err != nil {
-						t.Fatal(err)
-					}
-				}
-				writeQueueFixture(t, filepath.Join(adapterRoot, name), body)
+			if err := os.CopyFS(adapterRoot, files); err != nil {
+				t.Fatal(err)
 			}
+			body, err := os.ReadFile("package.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.pin != "3.1.0" {
+				var pkg map[string]any
+				if err := json.Unmarshal(body, &pkg); err != nil {
+					t.Fatal(err)
+				}
+				pkg["peerDependencies"].(map[string]any)["@sveltejs/kit"] = tc.pin
+				body, err = json.Marshal(pkg)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			writeQueueFixture(t, filepath.Join(adapterRoot, "package.json"), body)
 			// Import from the installed frontend environment, then point the
 			// real development adapter at the consumer's incompatible Kit.
 			program := `

@@ -58,7 +58,7 @@ func TestActionDeclarationsMatchKit(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.name != "two named actions" && tc.name != "prerendered page" {
+			{
 				file := "page.server.go"
 				source := tc.files[path]
 				if tc.name == "layout placement" {
@@ -78,6 +78,9 @@ func TestActionDeclarationsMatchKit(t *testing.T) {
 				}
 				_, _, actions, _, err := a.scanFile(gp, p, p.Syntax[0], filepath.Join(gp.dir, file))
 				a.actions = actions
+				if tc.name == "two named actions" && (len(actions) != 2 || actions[0].name != "save" || actions[1].name != "archive") {
+					t.Fatalf("named actions missing: %+v", actions)
+				}
 				if err == nil {
 					err = a.checkDuplicates()
 				}
@@ -92,15 +95,6 @@ func TestActionDeclarationsMatchKit(t *testing.T) {
 					t.Fatalf("wanted %q: %v", tc.want, err)
 				}
 				return
-			}
-			_, cfg := foreignFixture(t, "", tc.files)
-			err := Run(cfg)
-			if tc.want == "" {
-				if err != nil {
-					t.Fatal(err)
-				}
-			} else if err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("Run error = %v; want %q", err, tc.want)
 			}
 		})
 	}

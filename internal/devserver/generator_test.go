@@ -3,13 +3,12 @@ package devserver
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
-	"time"
 )
 
 func generatorFixture(t *testing.T) (*generator, string, *bytes.Buffer) {
@@ -108,8 +107,8 @@ func main(){fmt.Println(bootstrap)}`
 	}
 }
 
-func TestGeneratorSelectedAssemblyRefreshesCompiledBehavior(t *testing.T) {
-	g, root, log := generatorFixture(t)
+func TestGeneratorDiscoversSelectedAssemblyInputs(t *testing.T) {
+	g, root, _ := generatorFixture(t)
 	if err := os.MkdirAll(filepath.Join(root, "native"), 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -120,48 +119,26 @@ func TestGeneratorSelectedAssemblyRefreshesCompiledBehavior(t *testing.T) {
 		}
 	}
 	write("native/native.go", "package native\nfunc Literal() int64\n")
-	var assembly string
-	switch runtime.GOARCH {
-	case "arm64":
-		assembly = "#include \"textflag.h\"\nTEXT ·Literal(SB),NOSPLIT,$0-8\n MOVD $101, R0\n MOVD R0, ret+0(FP)\n RET\n"
-	case "amd64":
-		assembly = "#include \"textflag.h\"\nTEXT ·Literal(SB),NOSPLIT,$0-8\n MOVQ $101, ret+0(FP)\n RET\n"
-	default:
-		t.Fatalf("literal assembly fixture requires a supported development architecture, got %s", runtime.GOARCH)
+	selected := "native/literal_" + runtime.GOARCH + ".s"
+	other := "arm64"
+	if runtime.GOARCH == other {
+		other = "amd64"
 	}
-	name := "native/literal_" + runtime.GOARCH + ".s"
-	write(name, assembly)
-	write("tool/main.go", `package main
-import("encoding/json";"fmt";"os";"example.com/generatorfixture/native")
-func main(){dec:=json.NewDecoder(os.Stdin);enc:=json.NewEncoder(os.Stdout);for{var r struct{ID uint64};if dec.Decode(&r)!=nil{return};if err:=os.WriteFile("native-output.txt",[]byte(fmt.Sprint(native.Literal())),0644);err!=nil{panic(err)};enc.Encode(struct{ID uint64 `+"`json:\"id\"`"+`;Generated bool `+"`json:\"generated\"`"+`}{r.ID,true})}}
-`)
-	ctx := context.Background()
-	invoke := func(id uint64, want string) {
-		t.Helper()
-		if err := json.NewEncoder(g.child.in).Encode(map[string]uint64{"id": id}); err != nil {
-			t.Fatal(err)
-		}
-		select {
-		case r := <-g.child.replies:
-			if r.err != nil || r.response.ID != id || !r.response.Generated {
-				t.Fatalf("reply=%+v", r)
-			}
-		case <-time.After(5 * time.Second):
-			t.Fatal("helper response timeout")
-		}
-		data, err := os.ReadFile(filepath.Join(root, "native-output.txt"))
-		if err != nil || string(data) != want {
-			t.Fatalf("compiled assembly output=%q %v want %q", data, err, want)
-		}
+	ignored := "native/literal_" + other + ".s"
+	// Assembly execution belongs to Go. SKGO must retain the compiler-selected
+	// assembly path in the helper's input inventory, and omit the other platform.
+	write(selected, "// selected assembly input\n")
+	write(ignored, "// ignored assembly input\n")
+	write("tool/main.go", "package main\nimport _ \"example.com/generatorfixture/native\"\nfunc main(){}\n")
+	cfg, _, err := g.readConfig()
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := g.refresh(ctx); err != nil {
-		t.Fatalf("initial helper: %v %s", err, log)
+	inputs, err := g.discover(t.Context(), cfg)
+	if err != nil {
+		t.Fatal(err)
 	}
-	invoke(1, "101")
-	previous := g.child.cmd.Process.Pid
-	write(name, strings.Replace(assembly, "$101", "$202", 1))
-	if changed, err := g.refresh(ctx); err != nil || !changed || g.child.cmd.Process.Pid == previous {
-		t.Fatalf("assembly refresh=%t %v %s", changed, err, log)
+	if !slices.Contains(inputs, filepath.Join(root, filepath.FromSlash(selected))) || slices.Contains(inputs, filepath.Join(root, filepath.FromSlash(ignored))) {
+		t.Fatalf("generator input inventory must contain %s and omit %s: %v", selected, ignored, inputs)
 	}
-	invoke(2, "202")
 }

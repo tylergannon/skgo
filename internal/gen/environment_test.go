@@ -1,23 +1,17 @@
 package gen
 
 import (
-	"encoding/json"
+	"go/ast"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/tylergannon/skgo/internal/envspec"
 )
 
 func TestEnvironmentGenerationUsesDeclaredGoTypes(t *testing.T) {
 	t.Parallel()
-	root, cfg := foreignFixture(t, `package data`, nil)
-	stub := filepath.Join(root, "skgo", "env.go")
-	if err := os.WriteFile(stub, []byte("package skgo\nfunc Environment[T any]() Marker { return Marker{} }\n"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	source := `package appenv
+	imports := declarationImports{skgoPkg: declarationPackage(t, skgoPkg, "env.go", "package skgo;func Environment[T any]()int{return 0}", nil).Types}
+	const source = `package appenv
 import s "github.com/tylergannon/skgo"
 type Config struct {
  ID string ` + "`env:\"ID,public\"`" + `
@@ -27,53 +21,43 @@ type Config struct {
 }
 var _ = s.Environment[Config]()
 `
-	if err := os.WriteFile(filepath.Join(cfg.Web, "src", "env.go"), []byte(source), 0644); err != nil {
+	web := t.TempDir()
+	path := filepath.Join(web, "src/env.go")
+	pkg := declarationPackage(t, "environment.test", path, source, imports)
+	a := &app{cfg: Config{Web: web, Language: LanguageTypeScript, Logf: func(string, ...any) {}}}
+	var call *ast.CallExpr
+	ast.Inspect(pkg.Syntax[0], func(n ast.Node) bool {
+		if c, ok := n.(*ast.CallExpr); ok {
+			call = c
+		}
+		return true
+	})
+	ident := call.Fun.(*ast.IndexExpr).X.(*ast.SelectorExpr).Sel
+	if err := a.readEnvironment(pkg, call, ident, path); err != nil {
 		t.Fatal(err)
 	}
-	if err := Run(cfg); err != nil {
+	fields := a.environment.Fields
+	if len(fields) != 4 || fields[0].Name != "ID" || fields[0].Type != "string" || !fields[0].Public || fields[1].Type != "bool" || !fields[2].Static || !fields[3].Optional || fields[3].Type != "int" {
+		t.Fatalf("declared schema: %+v", fields)
+	}
+	if err := a.writeEnvironment(); err != nil {
 		t.Fatal(err)
 	}
-	var schema envspec.Schema
-	if err := json.Unmarshal([]byte(readFixtureFile(t, root, "app/web/skgo.env.json")), &schema); err != nil {
+	ts, err := os.ReadFile(filepath.Join(web, "src/env.ts"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if len(schema.Fields) != 4 || schema.Fields[0].Type != "string" || schema.Fields[1].Type != "bool" || !schema.Fields[2].Static || !schema.Fields[3].Optional {
-		t.Fatalf("wrong declaration: %#v", schema)
-	}
-	sourceTS := readFixtureFile(t, root, "app/web/src/env.ts")
-	for _, want := range []string{"defineEnvVars", `: boolean =>`, `: number | undefined =>`, `static: true`} {
-		if !strings.Contains(sourceTS, want) {
-			t.Errorf("generated declaration missing %s", want)
+	for _, want := range []string{"defineEnvVars", `: boolean =>`, `: number | undefined =>`, `"RELEASE": { public: false, static: true`} {
+		if !strings.Contains(string(ts), want) {
+			t.Errorf("missing %q: %s", want, ts)
 		}
 	}
-	if strings.Contains(sourceTS, "process.env") {
-		t.Fatal("generation inferred environment from ambient process")
-	}
-	if err := Check(cfg); err != nil {
+	a.cfg.Language = LanguageJavaScript
+	if err := a.writeEnvironment(); err != nil {
 		t.Fatal(err)
 	}
-	cfg.Language = LanguageJavaScript
-	if err := Run(cfg); err != nil {
-		t.Fatal(err)
+	assertCacheFile(t, filepath.Join(web, "src/env.js"), "@returns {number | undefined}")
+	if _, err := os.Stat(filepath.Join(web, "src/env.ts")); !os.IsNotExist(err) {
+		t.Fatalf("obsolete declaration: %v", err)
 	}
-	js := readFixtureFile(t, root, "app/web/src/env.js")
-	if strings.Contains(js, " as ") || strings.Contains(js, "_value:") {
-		t.Fatalf("TypeScript leaked into JS declaration: %s", js)
-	}
-	if _, err := os.Stat(filepath.Join(cfg.Web, "src", "env.ts")); !os.IsNotExist(err) {
-		t.Fatal("language switch retained env.ts")
-	}
-	if err := os.Remove(filepath.Join(cfg.Web, "src", "env.go")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(cfg.Web, "src", "data", "data.remote.go")); err != nil {
-		t.Fatal(err)
-	}
-	if err := Run(cfg); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(cfg.Web, "skgo.env.json")); !os.IsNotExist(err) {
-		t.Fatal("deleted declaration retained environment schema")
-	}
-
 }

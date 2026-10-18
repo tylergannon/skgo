@@ -55,7 +55,7 @@ func TestGeneratingAgainstAnotherSkgosAdapterIsRefused(t *testing.T) {
 		"skgo-adapter/polyfill.js": "",
 	})
 
-	err := Run(fixtureConfig(Config{Web: web, Out: filepath.Join(web, "generated")}))
+	err := checkInstalledAdapter(Config{Web: web})
 	if err == nil {
 		t.Fatal("generated against an @skgo/sveltekit-adapter from a different skgo")
 	}
@@ -140,7 +140,7 @@ func TestGeneratingAgainstThisModulesAdapterIsAllowed(t *testing.T) {
 	}
 
 	web := installAdapter(t, "0.0.0-dev", contents)
-	err = Run(fixtureConfig(Config{Web: web, Out: filepath.Join(web, "generated")}))
+	err = checkInstalledAdapter(Config{Web: web})
 	if err != nil {
 		t.Fatalf("generating against this module's own adapter was refused: %v", err)
 	}

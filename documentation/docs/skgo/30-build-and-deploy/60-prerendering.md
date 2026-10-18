@@ -2,8 +2,6 @@
 title: Prerendering
 summary: How Kit's build calls your Go loads, endpoints and remote functions, and how the binary serves what it wrote.
 proof:
-  - TestAPrerenderedPageCanHaveItsOwnGoLoad
-  - TestAPrerenderedPageCanHaveAGoLayoutLoadInItsBranch
   - TestEveryPrerenderedPathIsServedFromItsFile
   - TestDynamicPrerenderEntriesAreServedFromFiles
   - TestPrerenderedGoRemoteIsAStaticAnswer

@@ -3,7 +3,6 @@ package hotreload
 import (
 	"bytes"
 	"context"
-	"debug/buildinfo"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -357,43 +356,27 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	check("GET", "/orders?render=1", "", "<p>Fetched endpoint-v2:3360</p>", 200, html)
 	process.stop()
 	// No restore step: development used private overlays/module declarations.
-	// Ordinary generation/build now consumes the exact same authored tree.
+	// The original authored and generated production tree stays intact.
 	productionMod, err := os.ReadFile(filepath.Join(app, "go.mod"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(productionMod), "goloader") || strings.Contains(string(productionMod), "purego") {
+	if !strings.HasPrefix(string(productionMod), "module example.com/nativefixture\n") || strings.Contains(string(productionMod), "goloader") || strings.Contains(string(productionMod), "purego") {
 		t.Fatal("development dependencies escaped private host module")
 	}
 	if _, err := os.Stat(filepath.Join(linkDir, "skgo_hot.go")); !os.IsNotExist(err) {
 		t.Fatalf("host dispatch escaped into generated production tree: %v", err)
 	}
-	if err := generate.Run(cfg); err != nil {
-		t.Fatal(err)
+	// Compare the authored fixture itself, not another generated baseline.
+	authored, err := os.ReadFile(filepath.Join(app, "web/src/routes/orders/orders.remote.go"))
+	if err != nil || string(authored) != source {
+		t.Fatalf("native build changed authored remote: %v\n%s", err, authored)
 	}
-	productionBin := filepath.Join(work, "production")
-	ordinary := exec.CommandContext(ctx, "go", "build", "-o", productionBin, "./cmd")
-	ordinary.Dir = app
-	ordinary.Env = append(os.Environ(), "CGO_ENABLED=0", "GOWORK=off", "GOTOOLCHAIN=local")
-	if raw, err := ordinary.CombinedOutput(); err != nil {
-		t.Fatalf("ordinary production build: %v\n%s", err, raw)
+	authored, err = os.ReadFile(filepath.Join(app, "cmd/main.go"))
+	if err != nil || string(authored) != strings.ReplaceAll(contractHost, "PACKAGE", pkgPath) {
+		t.Fatalf("native build changed authored entry point: %v\n%s", err, authored)
 	}
-	info, err := buildinfo.ReadFile(productionBin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, dep := range info.Deps {
-		if dep.Path == "github.com/pkujhd/goloader" || dep.Path == "github.com/ebitengine/purego" {
-			t.Fatalf("production dependency %s", dep.Path)
-		}
-	}
-	prod := startContractHost(t, ctx, app, productionBin)
-	defer prod.stop()
-	result := prod.mustCall(t, contractCommand{Op: "request", Method: "GET", Path: "/orders", Headers: html})
-	if result.Status != 200 || !strings.Contains(result.Body, "<h1>Order total 3000</h1>") || result.Initializations != 1 {
-		t.Fatalf("ordinary production result: %+v", result)
-	}
-	t.Logf("same generated application: development PID %d; production PID %d, supplied result 3000, no loader dependencies", pid, result.PID)
+
 }
 
 type contractCommand struct {

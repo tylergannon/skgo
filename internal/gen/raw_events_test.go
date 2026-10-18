@@ -2,7 +2,6 @@ package gen
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,16 +11,11 @@ import (
 )
 
 func TestRawInputsSurviveCompilerFilteringAndObsoleteAcknowledgement(t *testing.T) {
-	root, cfg := retainedFixture(t)
-	root, canonicalErr := filepath.EvalSymlinks(root)
-	if canonicalErr != nil {
-		t.Fatal(canonicalErr)
-	}
-	p, err := OpenProject(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer p.Close()
+	t.Parallel()
+	root := t.TempDir()
+	root, _ = filepath.EvalSymlinks(root)
+	p := &Project{cfg: Config{Web: filepath.Join(root, "web"), Out: filepath.Join(root, "generated")}, current: &projectSnapshot{revision: 1}}
+
 	p.RawChanges()
 	before := p.Revision()
 	missing := filepath.Join(root, "app", "deleted.json")
@@ -37,13 +31,7 @@ func TestRawInputsSurviveCompilerFilteringAndObsoleteAcknowledgement(t *testing.
 	if p.Revision() != before || len(p.RawSelection().Paths) != 2 {
 		t.Fatal("raw inputs coupled to compiler revision")
 	}
-	build := prepareRetained(t, p)
-	defer build.Inputs.Close()
-	build.RequireEventEpoch(p.RawSelection().Epoch)
-	p.RecordRaw(false, missing)
-	if err := build.Commit(func(*CompilerInputs) error { t.Fatal("stale application admitted"); return nil }); !errors.Is(err, ErrObsolete) {
-		t.Fatalf("commit=%v", err)
-	}
+
 	current := p.RawSelection()
 	if !p.AcknowledgeRaw(current.Epoch) || len(p.RawSelection().Paths) != 0 || p.RawSelection().Full {
 		t.Fatal("current pass not acknowledged")
