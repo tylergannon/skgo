@@ -1,6 +1,10 @@
 package advice
 
-import "runtime/debug"
+import (
+	"runtime/debug"
+
+	"github.com/tylergannon/skgo/internal/toolchain"
+)
 
 // Entry is the repair guidance shipped with this skgo executable. Examples
 // show valid skgo APIs; they are illustrative handler fragments, not edits.
@@ -14,7 +18,7 @@ type Entry struct {
 	Example     string `json:"example"`
 }
 
-const kitVersion = "3.0.0"
+const kitVersion = toolchain.Kit
 
 func Version() string {
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {

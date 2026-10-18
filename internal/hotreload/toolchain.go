@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/tylergannon/skgo/internal/toolchain"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -53,8 +54,8 @@ func prepareToolchain(ctx context.Context, goTool, parent string, environment []
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return t, err
 	}
-	if env["GOVERSION"] != "go1.27.2" {
-		return t, fmt.Errorf("native development requires qualified Go 1.27.2; got %s", env["GOVERSION"])
+	if env["GOVERSION"] != "go"+toolchain.Go {
+		return t, fmt.Errorf("native development requires qualified Go %s; got %s", toolchain.Go, env["GOVERSION"])
 	}
 	profile := env["GOOS"] + "/" + env["GOARCH"]
 	if profile != "darwin/arm64" && profile != "linux/amd64" {
