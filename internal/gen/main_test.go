@@ -3,16 +3,11 @@ package gen
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"sync"
 	"testing"
 )
 
-// packageTemp holds what more than one test in this package reads: the skgo
-// binary and the sandboxes shared through sync.Once below. A t.TempDir belongs
-// to one test and is gone when it ends, which is exactly wrong for a result
-// computed once and asserted by several tests running in parallel.
+// packageTemp holds the generation cache and shared endpoint emitter fixture.
 var packageTemp string
 
 func TestMain(m *testing.M) {
@@ -48,20 +43,3 @@ func TestMain(m *testing.M) {
 func repoRoot() (string, error) {
 	return filepath.Abs(filepath.Join("..", ".."))
 }
-
-// skgoBinary is the real CLI, built once for the package: linking it is the
-// same few seconds whichever test asks first, and nothing a test does can
-// change it.
-var skgoBinary = sync.OnceValues(func() (string, error) {
-	root, err := repoRoot()
-	if err != nil {
-		return "", err
-	}
-	bin := filepath.Join(packageTemp, "bin", "skgo")
-	build := exec.Command("go", "build", "-o", bin, "./cmd/skgo")
-	build.Dir = root
-	if output, err := build.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build skgo: %v\n%s", err, output)
-	}
-	return bin, nil
-})

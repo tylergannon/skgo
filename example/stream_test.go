@@ -27,41 +27,6 @@ var (
 	idsInOrderOfArrival = []string{"2", "1", "3"}
 )
 
-// A cold load gets the page at once, with its loading states already rendered,
-// and each promised value follows it down on the same response as it settles.
-//
-// The nested one matters as much as the order: the forecast is not a field of
-// what the load returned, it is a field of the weather panel inside it, which
-// is where kit lets a promise sit.
-func TestTheDocumentCarriesTheLoadingStatesAndTheValuesFollowIt(t *testing.T) {
-	// Parallel: it spends seconds waiting on the stream page's deliberately
-	// slow loads, and changes nothing another test asserts on.
-	t.Parallel()
-	h := newProdHandler(t)
-	body := get(t, h, "/stream").Body.String()
-
-	end := strings.Index(body, "</html>")
-	if end < 0 {
-		t.Fatalf("the response carried no document:\n%s", body)
-	}
-	document, appended := body[:end], body[end:]
-
-	for _, state := range []string{"ticker-pending", "digest-pending", "forecast-pending"} {
-		if !strings.Contains(document, `data-testid="`+state+`"`) {
-			t.Errorf("the document has no %s", state)
-		}
-	}
-	for _, value := range promisedInOrderOfArrival {
-		if strings.Contains(document, value) {
-			t.Errorf("%q was in the document, so the page never had a loading state for it", value)
-		}
-	}
-
-	if got := arrivals(appended, promisedInOrderOfArrival); !equal(got, idsInOrderOfArrival) {
-		t.Errorf("the document's chunks arrived as %v, want %v\n%s", got, idsInOrderOfArrival, appended)
-	}
-}
-
 // The same claim about the response a client-side navigation gets. Kit's client
 // asks for __data.json and reads it as it arrives, so the order is the order
 // the browser fills the page in — and it has to be the order a cold load fills
@@ -76,7 +41,17 @@ func TestTheDataResponseCarriesTheValuesInTheOrderTheySettle(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); ct != "text/sveltekit-data" {
 		t.Errorf("Content-Type = %q, want text/sveltekit-data", ct)
 	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("data status = %d: %s", rec.Code, rec.Body)
+	}
+	if got := rec.Header().Get("X-Skgo-Middleware"); got != "/stream data=true" {
+		t.Errorf("X-Skgo-Middleware = %q", got)
+	}
 	body := rec.Body.String()
+	requireStreamValueOrder(t, body)
+	if strings.Contains(body, "data-middleware-transformed") {
+		t.Errorf("a data response was transformed: %s", body)
+	}
 	lines := strings.Split(strings.TrimSuffix(body, "\n"), "\n")
 	if len(lines) != 4 {
 		t.Fatalf("got %d lines, want a head and three chunks:\n%s", len(lines), body)
@@ -154,6 +129,18 @@ func equal(a, b []string) bool {
 	return true
 }
 
+func requireStreamValueOrder(t *testing.T, body string) {
+	t.Helper()
+	previous := -1
+	for _, value := range promisedInOrderOfArrival {
+		at := strings.Index(body, value)
+		if at < 0 || at <= previous {
+			t.Fatalf("missing or out-of-order stream value %q: %s", value, body)
+		}
+		previous = at
+	}
+}
+
 // The /stream page is wrapped by the app's Go middleware with a page transform
 // (example.VisitMiddleware marks the root element). Kit's rule is that the
 // transform runs once over the assembled document, with done:true, and that the
@@ -210,6 +197,7 @@ func TestTheTransformedStreamedShellArrivesBeforeAnyDeferredValueAndTheChunksAre
 		}
 	}
 	whole := body.String()
+	requireStreamValueOrder(t, whole)
 	end := strings.Index(whole, "</html>")
 	if end < 0 || shellAt == 0 || firstValueAt == 0 {
 		t.Fatalf("shell at %v, first value at %v, document end %d:\n%s", shellAt, firstValueAt, end, whole)
@@ -228,16 +216,5 @@ func TestTheTransformedStreamedShellArrivesBeforeAnyDeferredValueAndTheChunksAre
 	}
 	if got := arrivals(appended, promisedInOrderOfArrival); !equal(got, idsInOrderOfArrival) {
 		t.Errorf("the transformed document's chunks arrived as %v, want %v\n%s", got, idsInOrderOfArrival, appended)
-	}
-}
-
-func TestTheStreamDataResponseIsNotTransformedButIsMarkedByTheMiddleware(t *testing.T) {
-	t.Parallel()
-	rec := get(t, newProdHandler(t), "/stream/__data.json?x-sveltekit-invalidated=01")
-	if strings.Contains(rec.Body.String(), "data-middleware-transformed") {
-		t.Errorf("a data response was transformed:\n%s", rec.Body.String())
-	}
-	if got := rec.Header().Get("X-Skgo-Middleware"); got != "/stream data=true" {
-		t.Errorf("X-Skgo-Middleware = %q", got)
 	}
 }

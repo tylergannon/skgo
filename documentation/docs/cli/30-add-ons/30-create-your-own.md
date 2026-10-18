@@ -3,8 +3,8 @@ title: Create your own
 summary: Write a Go plugin that supplies SKGo add-ons and application templates.
 proof:
   - TestNewTemplateAppliesAfterBaseCreation
-  - TestNativePluginHelpApplicationAndProjectTool
-  - TestInstallQualifiesReplacementAndPreservesWorkingSelectionOnFailure
+  - TestNativePluginBuildAndCLIApplication
+  - TestInstallPublishesOnlyAfterBuildAndPeerQualification
 ---
 
 SKGo add-ons and templates come from Go plugins: a `main` package built with `-buildmode=plugin` that exports `SKGoPluginV1`. Where sv's [community add-ons](https://svelte.dev/docs/cli/community) are npm packages, an SKGo plugin is a Go module compiled for the exact `skgo` executable that loads it.

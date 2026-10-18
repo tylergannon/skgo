@@ -3,7 +3,6 @@ title: Creating a project
 summary: Install the CLI, create an SKGo application with `skgo new`, and run it.
 proof:
   - TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication
-  - TestDemoStarterGeneratesAndCompiles
 ---
 
 ## Prerequisites

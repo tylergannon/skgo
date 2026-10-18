@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/tylergannon/skgo/internal/check"
 )
 
 // Pure command/flag tests do not need a second copy of the CLI linked.
@@ -28,6 +32,20 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)
+}
+
+func TestFailedCheckReturnsStructuredOutputAndNonzeroExit(t *testing.T) {
+	t.Parallel()
+	cmd := exec.CommandContext(t.Context(), skgoBinary(t), "check", "--root", t.TempDir(), "--json")
+	output, err := cmd.Output()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 1 {
+		t.Fatalf("failed check exit: %v\n%s", err, output)
+	}
+	var report check.Report
+	if err := json.Unmarshal(output, &report); err != nil || report.OK || len(report.Checks) != 1 || report.Checks[0].Name != "project" || report.Checks[0].Status != "failed" || !strings.Contains(report.Checks[0].Message, "go.mod is missing") {
+		t.Fatalf("failed check report: %v\n%s", err, output)
+	}
 }
 
 func skgoBinary(t *testing.T) string {

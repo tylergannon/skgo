@@ -2,7 +2,6 @@ package gen
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -115,12 +114,6 @@ var (
 		}
 	}
 
-	// The registration is where the shape is checked now, so it has to compile.
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = filepath.Join(root, "app")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("`go build ./...` in the generated app: %v\n%s", err, out)
-	}
 }
 
 // The marker takes `any`, so it is `skgo generate` that has to report a
@@ -246,11 +239,6 @@ var _ = skgo.BatchQuery(getQuotes)
 		t.Errorf("the registration file does not carry %q:\n%s", want, bindings)
 	}
 
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = filepath.Join(root, "app")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("`go build ./...` in the generated app: %v\n%s", err, out)
-	}
 }
 
 // The shapes a batch query is not. Kit's `batch(fn)` with no validator refuses

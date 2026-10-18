@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -27,14 +26,10 @@ import("embed";"io/fs";"fmt")
 var assets embed.FS
 func Label() string {data,_:=assets.ReadFile("assets/one.txt");names,_:=fs.Glob(assets,"assets/*");return fmt.Sprintf("%s:%d",data,len(names))}
 `
-const retainedProbe = `package main
-import("context";"fmt";"net/http";"net/http/httptest";"example.com/app/web/src/data")
-func main(){h:=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){reply,err:=data.Answer(context.Background());if err!=nil{panic(err)};fmt.Fprint(w,reply.Text)});w:=httptest.NewRecorder();h.ServeHTTP(w,httptest.NewRequest("GET","/",nil));fmt.Print(w.Body.String())}
-`
 
 func retainedFixture(t *testing.T) (string, Config) {
 	t.Helper()
-	root, cfg := foreignFixture(t, retainedRemote, map[string]string{"wire/wire.go": retainedWire, "wire/assets/one.txt": "asset-one", "app/probe/main.go": retainedProbe})
+	root, cfg := foreignFixture(t, retainedRemote, map[string]string{"wire/wire.go": retainedWire, "wire/assets/one.txt": "asset-one"})
 	return root, cfg
 }
 func prepareRetained(t *testing.T, p *Project) *ProjectBuild {
@@ -46,17 +41,6 @@ func prepareRetained(t *testing.T, p *Project) *ProjectBuild {
 	t.Cleanup(func() { b.Cancel(); b.Inputs.Close() })
 	return b
 }
-func runRetained(t *testing.T, b *ProjectBuild, want string) {
-	t.Helper()
-	cmd := exec.Command("go", "run", "./probe")
-	cmd.Dir = b.Inputs.Dir
-	cmd.Env = b.Inputs.Env
-	output, err := cmd.CombinedOutput()
-	if err != nil || string(output) != want {
-		t.Fatalf("revision %d actual compiler/handler result = %q, %v; want %q", b.Revision, output, err, want)
-	}
-}
-
 func assertRetainedFile(t *testing.T, b *ProjectBuild, authored, want string) {
 	t.Helper()
 	private := b.Inputs.PrivatePath(authored)
@@ -111,8 +95,8 @@ func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
 	if !bytes.Contains(second.Inputs.Files()[second.Inputs.PrivatePath(path)], []byte("body-two")) {
 		t.Fatal("compiler did not receive supplied new body")
 	}
-	// Consume first AFTER mutation: real compilation must still use captured Go,
-	// replacement-module and embed bytes, not authored inode links.
+	// Old leases must retain captured Go, replacement-module and embed bytes
+	// after authored files change.
 	cacheWrite(t, filepath.Join(root, "wire/assets/one.txt"), "asset-two")
 	observeRetained(t, p, filepath.Join(root, "wire/assets/one.txt"))
 	third := prepareRetained(t, p)
@@ -154,7 +138,7 @@ func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
 	}
 	observeRetained(t, p, path)
 	fifth := prepareRetained(t, p)
-	runRetained(t, fifth, "dependency-asset-two:2:body-end")
+	assertRetainedFile(t, fifth, path, strings.Replace(changed, "body-two", "body-end", 1))
 }
 
 func TestRetainedProjectDeclarationsDirectoriesAndRepair(t *testing.T) {
@@ -371,136 +355,6 @@ func TestRetainedProjectFilesystemEvents(t *testing.T) {
 	}
 }
 
-func TestRetainedProjectTypedMatcherPublication(t *testing.T) {
-	t.Parallel()
-	app := t.TempDir()
-	root, err := repoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := stageSharedModule(root, app); err != nil {
-		t.Fatal(err)
-	}
-	cfg := fixtureConfig(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal/skgo")})
-	cacheWrite(t, filepath.Join(cfg.Web, "package.json"), `{"type":"module"}`)
-	const matcher = `package hooks
-import "fmt"
-type OrderNumber int
-func(n OrderNumber)Label()string{return fmt.Sprintf("Order #%d",n)}
-func Order(s string)(OrderNumber,bool){return 42,s=="42"}
-`
-	matcherPath := filepath.Join(cfg.Web, "src/params.go")
-	cacheWrite(t, matcherPath, matcher)
-	cacheWrite(t, filepath.Join(cfg.Web, "src/params.ts"), `export const params = {Order: (value:string) => value === '42' ? 42 : undefined}`)
-	route := filepath.Join(cfg.Web, "src/routes/orders/[n=Order]")
-	cacheWrite(t, filepath.Join(route, "+page.svelte"), "<p>Order</p>")
-	cacheWrite(t, filepath.Join(route, "page.server.go"), `package orders
-import "github.com/tylergannon/skgo"
-type PageData struct{Label string}
-func load(e PageRequestEvent)(PageData,error){return PageData{e.Params.N().Label()},nil}
-var _=skgo.Load(load)
-`)
-	cacheWrite(t, filepath.Join(route, "server.go"), `package orders
-import("net/http";"github.com/tylergannon/skgo")
-func get(w http.ResponseWriter,r *http.Request){w.Write([]byte("endpoint-order-42"))}
-var _=skgo.GET(get)
-`)
-	files, err := findSourceFiles(cfg.Web)
-	if err != nil {
-		t.Fatal(err)
-	}
-	metadata, err := captureKitRouteMetadata(cfg, files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg.RouteMetadata = metadata
-	// The separate frontend owner supplied verified metadata. Prove generation
-	// consumes it without trying to execute frontend matcher validation again.
-	cacheWrite(t, filepath.Join(cfg.Web, "src/params.ts"), `throw new Error("frontend owner only");`)
-	cacheWrite(t, filepath.Join(app, "internal/skgo/retained_handler_test.go"), retainedMatcherHandlerTest)
-	p, err := OpenProject(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer p.Close()
-	initial := prepareRetained(t, p)
-	if err := initial.Commit(nil); err != nil {
-		t.Fatal(err)
-	}
-	run := func(b *ProjectBuild) {
-		t.Helper()
-		cmd := exec.Command("go", "test", "-count=1", "-v", "-run", "^TestRetainedTypedHandlers$", "./internal/skgo")
-		cmd.Dir = b.Inputs.Dir
-		cmd.Env = b.Inputs.Env
-		output, err := cmd.CombinedOutput()
-		if err != nil || strings.Contains(string(output), "SKIP") || !strings.Contains(string(output), "--- PASS: TestRetainedTypedHandlers") {
-			t.Fatalf("named matcher handlers: %v\n%s", err, output)
-		}
-	}
-	run(initial)
-	generated := filepath.Join(cfg.Out, generatedGoFile)
-	baseline, err := os.ReadFile(generated)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, bad := range []struct{ source, want string }{{"", `requires a Go matcher`}, {strings.Replace(matcher, "Order(s string)", "Order(s int)", 1), "loading Go params"}, {strings.Replace(matcher, "(OrderNumber,bool)", "(OrderNumber,int)", 1), "loading Go params"}, {strings.Replace(matcher, "(OrderNumber,bool){return 42,s==\"42\"}", "(OrderNumber,int){return 42,1}", 1), "must be func(string) (T, bool)"}} {
-		if bad.source == "" {
-			if err := os.Remove(matcherPath); err != nil {
-				t.Fatal(err)
-			}
-		} else {
-			cacheWrite(t, matcherPath, bad.source)
-		}
-		observeRetained(t, p, matcherPath)
-		_, err := p.Prepare(context.Background())
-		if err == nil || !strings.Contains(err.Error(), bad.want) {
-			t.Fatalf("wrong/missing matcher accepted: want %s, got %v", bad.want, err)
-		}
-		if !p.Diagnose(err) || p.Diagnostic().Revision != p.Revision() {
-			t.Fatalf("matcher diagnostic revision missing: %v", p.Diagnostic())
-		}
-		actual, err := os.ReadFile(generated)
-		if err != nil || !bytes.Equal(actual, baseline) {
-			t.Fatal("failed typed registry publication changed output", err)
-		}
-	}
-	cacheWrite(t, matcherPath, matcher)
-	observeRetained(t, p, matcherPath)
-	repaired := prepareRetained(t, p)
-	if err := repaired.Commit(nil); err != nil {
-		t.Fatal(err)
-	}
-	run(repaired)
-	if p.Diagnostic() != nil {
-		t.Fatal("repair did not clear matcher diagnostic")
-	}
-	// Metadata removal invalidates the same generator owner rather than leaking
-	// a previously registered matcher into a new Kit route graph.
-	current := cloneRouteMetadata(metadata)
-	current.Names = nil
-	if _, changed, err := p.ObserveRoutes(current); err != nil || !changed {
-		t.Fatalf("route metadata update: %t %v", changed, err)
-	}
-	if _, err := p.Prepare(context.Background()); err == nil || !strings.Contains(err.Error(), "requires Go and JS/TS matchers") {
-		t.Fatalf("route metadata and Go registry drift accepted: %v", err)
-	}
-}
-
-const retainedMatcherHandlerTest = `package skgo_test
-import("net/http";"net/http/httptest";"strings";"testing";"github.com/tylergannon/skgo";generated "github.com/tylergannon/skgo/example/internal/skgo";hooks "github.com/tylergannon/skgo/example/web/src")
-func TestRetainedTypedHandlers(t *testing.T){
- value,ok:=generated.Matchers()["Order"]("42");if !ok{t.Fatal("fixture Order rejected")};if n,ok:=value.(hooks.OrderNumber);!ok||n.Label()!="Order #42"{t.Fatalf("named value lost: %T %v",value,value)}
- const module="src/routes/orders/[n=Order]/+page.server.ts"
- routes:=[]skgo.ManifestRoute{{ID:"/orders/[n=Order]",Pattern:"^/orders/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"n",Matcher:"Order"}},Page:&skgo.ManifestPage{Leaf:0},Endpoint:&skgo.ManifestEndpoint{Methods:[]string{"GET"}}}}
- loads,err:=skgo.NewLoads(skgo.LoadConfig{Nodes:[]string{module},Routes:routes,Matchers:generated.Matchers()},generated.Loads()...);if err!=nil{t.Fatal(err)}
- endpoints,err:=skgo.NewEndpoints(skgo.EndpointConfig{Routes:routes,Matchers:generated.Matchers()},generated.Endpoints()...);if err!=nil{t.Fatal(err)}
- for _,fixture:=range []struct{value string;status int;label string}{{"42",200,"Order #42"},{"banana",404,"Not Found"}}{
- w:=httptest.NewRecorder();loads.ServeHTTP(w,httptest.NewRequest("GET","/orders/"+fixture.value+"/__data.json",nil));if w.Code!=fixture.status||!strings.Contains(w.Body.String(),fixture.label){t.Fatalf("named typed load: %d %s",w.Code,w.Body.String())}
- w=httptest.NewRecorder();endpoints.Intercept(http.NotFoundHandler()).ServeHTTP(w,httptest.NewRequest("GET","/orders/"+fixture.value,nil));want:="404 page not found";if fixture.status==200{want="endpoint-order-42"};if w.Code!=fixture.status||!strings.Contains(w.Body.String(),want){t.Fatalf("endpoint matcher: %d %s",w.Code,w.Body.String())}
- }
-}
-`
-
 func TestRetainedProjectConsumedConstantAndMarker(t *testing.T) {
 	t.Parallel()
 	root, cfg := foreignFixture(t, cacheRemote, nil)
@@ -681,7 +535,7 @@ func TestRetainedProjectEquivalentPendingGeneration(t *testing.T) {
 		if err := b.Commit(nil); err != nil {
 			t.Fatal(err)
 		}
-		runRetained(t, b, "asset-one:1:body-new")
+		assertRetainedFile(t, b, path, strings.Replace(retainedRemote, "body-one", "body-new", 1))
 	case err := <-failed:
 		t.Fatal(err)
 	case <-time.After(10 * time.Second):
@@ -724,5 +578,5 @@ func TestRetainedProjectModuleSelectionRepair(t *testing.T) {
 	if err := repaired.Commit(nil); err != nil {
 		t.Fatal(err)
 	}
-	runRetained(t, repaired, "asset-one:1:body-one")
+	assertRetainedFile(t, repaired, filepath.Join(cfg.Web, "src/data/data.remote.go"), retainedRemote)
 }

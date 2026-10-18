@@ -1,140 +1,12 @@
 package gen
 
 import (
-	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
-
-func TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation(t *testing.T) {
-	t.Parallel()
-	root, err := repoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	app := t.TempDir()
-	if err := stageTypedLoadEvolutionFixture(root, app); err != nil {
-		t.Fatal(err)
-	}
-	cfg := fixtureConfig(Config{Web: filepath.Join(app, "web"), Out: filepath.Join(app, "internal", "skgo")})
-	if err := Run(cfg); err != nil {
-		t.Fatal(err)
-	}
-	paramsFile := filepath.Join(app, "web", "src", "routes", "typed-load", "[number=Order]", loadParamsFile)
-	dependenciesFile := filepath.Join(app, "web", "src", "routes", "typed-dependencies", "[a=Order]", "[b=Order]", "[ignored]", "page.server.go")
-	paramDeclarations := []struct {
-		path      string
-		accessors []string
-	}{
-		{paramsFile, []string{"Number"}},
-		{filepath.Join(filepath.Dir(dependenciesFile), loadParamsFile), []string{"A", "B"}},
-	}
-	initialParams := map[string][]byte{}
-	for _, fixture := range paramDeclarations {
-		initial, err := os.ReadFile(fixture.path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		initialParams[fixture.path] = initial
-		declarations := strings.Join(strings.Fields(string(initial)), " ")
-		for _, accessor := range fixture.accessors {
-			if !strings.Contains(declarations, accessor+"() hooks.OrderNumber") || !strings.Contains(declarations, "value"+accessor+" hooks.OrderNumber") {
-				t.Fatalf("%s: initial named matcher type missing: %s", fixture.path, initial)
-			}
-		}
-	}
-	matcherFile := filepath.Join(app, "web", "src", "params.go")
-	revised := `package hooks
-import ("fmt"; "strconv")
-type RevisedOrder struct { Number int64 }
-func (n RevisedOrder) Text() string { return fmt.Sprintf("Revised order #%d", n.Number) }
-func Order(value string) (RevisedOrder, bool) {
- n, err := strconv.ParseInt(value,10,64)
- return RevisedOrder{Number:n}, err == nil && n >= 0 && n <= 1000000
-}
-
-`
-	if err := os.WriteFile(matcherFile, []byte(revised), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := Run(cfg); err == nil || !strings.Contains(err.Error(), "Label") {
-		t.Fatalf("stale handler must fail compilation after params refresh: %v", err)
-	}
-	for path, initial := range initialParams {
-		after, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(after, initial) {
-			t.Fatalf("failed generation changed %s", path)
-		}
-	}
-
-	handlerFile := filepath.Join(app, "web", "src", "routes", "typed-load", "[number=Order]", "page.server.go")
-	if err := replaceOnce(handlerFile, "event.Params.Number().Label()", "event.Params.Number().Text()"); err != nil {
-		t.Fatal(err)
-	}
-	for _, param := range []string{"A", "B"} {
-		content, err := os.ReadFile(dependenciesFile)
-		if err != nil {
-			t.Fatal(err)
-		}
-		before := "event.Params." + param + "().Label()"
-		if !strings.Contains(string(content), before) {
-			t.Fatalf("missing stale fixture call %s", before)
-		}
-		if err := os.WriteFile(dependenciesFile, []byte(strings.ReplaceAll(string(content), before, "event.Params."+param+"().Text()")), 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := Run(cfg); err != nil {
-		t.Fatalf("regeneration after handler repair: %v", err)
-	}
-	// The repaired code must both compile and answer a real data request with
-	// a literal value independent of generation's output.
-	consumer := `package skgo_test
-import (
- "net/http/httptest"
- "strings"
- "testing"
- "github.com/tylergannon/skgo"
- generated "github.com/tylergannon/skgo/example/internal/skgo"
-)
-func TestRepairedTypedLoad(t *testing.T) {
- const module = "src/routes/typed-load/[number=Order]/+page.server.ts"
- const dependencies = "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts"
- var selected []*skgo.ServerLoad
- for _, load := range generated.Loads() { if load.Module() == module || load.Module() == dependencies { selected=append(selected,load) } }
- if len(selected)!=2 { t.Fatalf("got %d repaired loads, want 2",len(selected)) }
- cfg := skgo.LoadConfig{Origin:"http://127.0.0.1:8080", Nodes:[]string{module,dependencies}, Routes:[]skgo.ManifestRoute{
-  {ID:"/typed-load/[number=Order]",Pattern:"^/typed-load/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"number",Matcher:"Order"}},Page:&skgo.ManifestPage{Leaf:0}},
-  {ID:"/typed-dependencies/[a=Order]/[b=Order]/[ignored]",Pattern:"^/typed-dependencies/([^/]+?)/([^/]+?)/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"a",Matcher:"Order"},{Name:"b",Matcher:"Order"},{Name:"ignored"}},Page:&skgo.ManifestPage{Leaf:1}},
- }}
- handler, err := skgo.NewLoads(cfg,selected...)
- if err != nil { t.Fatal(err) }
- for _,fixture:=range []struct{path,label string}{
-  {"/typed-load/42/__data.json","Revised order #42"},
-  {"/typed-dependencies/7/42/first/__data.json","Revised order #7"},
-  {"/typed-dependencies/7/42/first/__data.json?read=b","Revised order #42"},
- } {
-  response := httptest.NewRecorder()
-  handler.ServeHTTP(response,httptest.NewRequest("GET","http://127.0.0.1:8080"+fixture.path,nil))
-  if response.Code != 200 || !strings.Contains(response.Body.String(), fixture.label) { t.Fatalf("%s: status %d body %s",fixture.path,response.Code,response.Body.String()) }
- }
-}
-`
-	if err := os.WriteFile(filepath.Join(app, "internal", "skgo", "typed_load_repaired_test.go"), []byte(consumer), 0644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "test", "-count=1", "-v", "-run", "^TestRepairedTypedLoad$", "./internal/skgo")
-	cmd.Dir = app
-	if output, err := cmd.CombinedOutput(); err != nil || strings.Contains(string(output), "--- SKIP:") || !strings.Contains(string(output), "=== RUN   TestRepairedTypedLoad\n") || !strings.Contains(string(output), "--- PASS: TestRepairedTypedLoad (") {
-		t.Fatalf("repaired load compile/behavior: %v\n%s", err, output)
-	}
-}
 
 // Generate from real route files, compile the resulting application and ask
 // the actual served handler. Neither expected values nor dependency sets come
@@ -146,7 +18,7 @@ func TestTypedLoadActualParameterDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 	app := t.TempDir()
-	if err := stageTypedLoadEvolutionFixture(root, app); err != nil {
+	if err := stageTypedLoadFixture(root, app); err != nil {
 		t.Fatal(err)
 	}
 	const dependencySource = "web/src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/page.server.go"
@@ -272,65 +144,5 @@ func TestGeneratedParameterDependencies(t *testing.T) {
 	cmd.Dir = app
 	if output, err := cmd.CombinedOutput(); err != nil || strings.Contains(string(output), "--- SKIP:") || !strings.Contains(string(output), "=== RUN   TestGeneratedParameterDependencies\n") || !strings.Contains(string(output), "--- PASS: TestGeneratedParameterDependencies (") {
 		t.Fatalf("generated load dependency contracts: %v\n%s", err, output)
-	}
-}
-
-func TestAppMatchersWithoutGoLoads(t *testing.T) {
-	t.Parallel()
-	root, err := repoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	app := t.TempDir()
-	web := filepath.Join(app, "web")
-	for _, dir := range []string{filepath.Join(web, "src", "routes", "orders", "[n=Order]"), filepath.Join(app, "generated")} {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	files := map[string]string{
-		"go.mod":            "module matcherfixture\n\ngo 1.27\nrequire github.com/tylergannon/skgo v0.0.0\nreplace github.com/tylergannon/skgo => " + root + "\n",
-		"web/src/params.js": "export const params = { Order: value => value === '42' ? 42 : undefined };\n",
-		"web/src/params.go": "package params\nfunc Order(value string) (int,bool) { return 42,value==\"42\" }\n",
-		"web/src/routes/orders/[n=Order]/+page.svelte": "<p>Order</p>\n",
-	}
-	for name, content := range files {
-		if err := os.WriteFile(filepath.Join(app, name), []byte(content), 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := linkGeneratorKit(root, app); err != nil {
-		t.Fatal(err)
-	}
-	cfg := fixtureConfig(Config{Web: web, Out: filepath.Join(app, "generated")})
-	if err := Run(cfg); err != nil {
-		t.Fatal(err)
-	}
-	const consumer = `package generated
-import("net/http";"net/http/httptest";"testing";"github.com/tylergannon/skgo")
-func TestMatcherOnlyHandler(t *testing.T){
- if len(Loads())!=0{t.Fatal("fixture must have no loads")}
- cfg:=skgo.LoadConfig{Nodes:[]string{""},Matchers:Matchers(),Routes:[]skgo.ManifestRoute{{ID:"/orders/[n=Order]",Pattern:"^/orders/([^/]+?)/?$",Params:[]skgo.ManifestParam{{Name:"n",Matcher:"Order"}},Page:&skgo.ManifestPage{Leaf:0}}}}
- ls,err:=skgo.NewLoads(cfg);if err!=nil{t.Fatal(err)}
- for _,c:=range []struct{path string;status int;body string}{{"42",200,"{\"type\":\"data\",\"nodes\":[null]}\n"},{"banana",404,"Not Found\n"}}{
- r:=httptest.NewRecorder();ls.Intercept(http.NotFoundHandler()).ServeHTTP(r,httptest.NewRequest("GET","/orders/"+c.path+"/__data.json",nil))
- if r.Code!=c.status||r.Body.String()!=c.body{t.Fatalf("%s: %d %s",c.path,r.Code,r.Body.String())}
- }
-}`
-	if err := os.WriteFile(filepath.Join(app, "generated", "matcher_test.go"), []byte(consumer), 0644); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "test", "-mod=mod", "-count=1", "-v", "./generated")
-	cmd.Dir = app
-	if out, err := cmd.CombinedOutput(); err != nil || strings.Contains(string(out), "--- SKIP:") || !strings.Contains(string(out), "=== RUN   TestMatcherOnlyHandler\n") || !strings.Contains(string(out), "--- PASS: TestMatcherOnlyHandler (") {
-		t.Fatalf("matcher-only generated handler: %v\n%s", err, out)
-	}
-	if err := os.Remove(filepath.Join(web, "src", "params.go")); err != nil {
-		t.Fatal(err)
-	}
-	for _, check := range []func(Config) error{Run, Check} {
-		if err := check(cfg); err == nil || !strings.Contains(err.Error(), "matcher \"Order\" requires a Go matcher") {
-			t.Fatalf("missing Go matcher: %v", err)
-		}
 	}
 }

@@ -174,9 +174,9 @@ func TestTheAccountSectionTurnsASignedOutVisitorAway(t *testing.T) {
 				path, rec.Code, rec.Header().Get("Location"), rec.Body.Len())
 		}
 	}
-	rec := signedIn(t, h, "grace", "/account/orders")
+	rec := signedIn(t, h, "grace", "/account")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("signed in, GET /account/orders: status %d", rec.Code)
+		t.Fatalf("signed in, GET /account: status %d", rec.Code)
 	}
 	requireMarkup(t, "/account/orders", rec.Body.String(), tagged("p", "account-user", "Account of grace"))
 }

@@ -368,7 +368,7 @@ func TestReadOnlyCheckReportsAuthoredSourceErrorsWithoutWrites(t *testing.T) {
 		t.Fatal(err)
 	}
 	app := t.TempDir()
-	if err := stageTypedLoadEvolutionFixture(root, app); err != nil {
+	if err := stageTypedLoadFixture(root, app); err != nil {
 		t.Fatal(err)
 	}
 	web := filepath.Join(app, "web")

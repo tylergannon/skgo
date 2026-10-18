@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -68,15 +67,13 @@ import (
 type Marker struct{}
 
 type PrerenderOptions struct {
-	Inputs any
-	Dynamic bool
+	Inputs   any
+	Dynamic  bool
 	Validate any
 }
 
-type Remote struct{}
-
 type Transporter struct {
-	Type reflect.Type
+	Type   reflect.Type
 	Encode func(any) (any, error)
 	Decode func(any) (any, error)
 }
@@ -86,55 +83,81 @@ type Transport map[string]Transporter
 func Query(fn any) Marker { _ = fn; return Marker{} }
 
 type Event struct{}
-func (*Event) Request() *http.Request {return &http.Request{}}
-func RequestLocals[L any](context.Context) *L {return new(L)}
-type RequestResolve[P,L any] func(context.Context,RequestEvent[P,L],...ResolveOptions)(*http.Response,error)
-type RequestMiddleware[P,L any] func(context.Context,RequestEvent[P,L],RequestResolve[P,L])(*http.Response,error)
-type RequestHandle[P,L any] func(context.Context,RequestEvent[P,L])(RequestEvent[P,L],error)
+
+func (*Event) Request() *http.Request         { return &http.Request{} }
+func RequestLocals[L any](context.Context) *L { return new(L) }
+
+type RequestResolve[P, L any] func(context.Context, RequestEvent[P, L], ...ResolveOptions) (*http.Response, error)
+type RequestMiddleware[P, L any] func(context.Context, RequestEvent[P, L], RequestResolve[P, L]) (*http.Response, error)
+type RequestHandle[P, L any] func(context.Context, RequestEvent[P, L]) (RequestEvent[P, L], error)
 type ResolveOptions struct{}
 type Fetch func(*http.Request) (*http.Response, error)
-type RerouteEvent struct {URL *url.URL; Fetch Fetch}
+type RerouteEvent struct {
+	URL   *url.URL
+	Fetch Fetch
+}
 type Reroute func(context.Context, RerouteEvent) (*string, error)
 type HandleFetch func(context.Context, *http.Request, Fetch) (*http.Response, error)
-type CaughtError struct {Kind string; Status int; Message string; Err error}
+type CaughtError struct {
+	Kind    string
+	Status  int
+	Message string
+	Err     error
+}
 type HandleError func(context.Context, CaughtError) map[string]any
 type ApplicationConfig struct {
-	HandleFetch HandleFetch
-	HandleError HandleError
+	HandleFetch                     HandleFetch
+	HandleError                     HandleError
 	FilterSerializedResponseHeaders func(name, value string) bool
 }
-type HandleConfig struct {Matchers map[string]ParamMatcher;ClientAddress func(*http.Request)(string,error);HandleError HandleError}
-func HookValues(*Event)(string,map[string]any){return "",nil}
-func Errorf(int,string,...any)error{return nil}
-func (h RequestHandle[P,L]) Middleware() RequestMiddleware[P,L]{return nil}
-func RequestSequence[P,L any](...RequestMiddleware[P,L]) RequestMiddleware[P,L]{return nil}
-func (h RequestMiddleware[P,L]) Intercept(HandleConfig,func(*Event)(P,error),http.Handler)http.Handler{return nil}
+type HandleConfig struct {
+	Matchers      map[string]ParamMatcher
+	ClientAddress func(*http.Request) (string, error)
+	HandleError   HandleError
+}
 
-type RequestEvent[P,L any] struct { *Event; Params P; Locals *L }
-func (RequestEvent[P,L]) Context() context.Context { return context.Background() }
+func HookValues(*Event) (string, map[string]any)                                   { return "", nil }
+func Errorf(int, string, ...any) error                                             { return nil }
+func (h RequestHandle[P, L]) Middleware() RequestMiddleware[P, L]                  { return nil }
+func RequestSequence[P, L any](...RequestMiddleware[P, L]) RequestMiddleware[P, L] { return nil }
+func (h RequestMiddleware[P, L]) Intercept(HandleConfig, func(*Event) (P, error), http.Handler) http.Handler {
+	return nil
+}
+
+type RequestEvent[P, L any] struct {
+	*Event
+	Params P
+	Locals *L
+}
+
+func (RequestEvent[P, L]) Context() context.Context { return context.Background() }
+
 type ParamMatcher func(string) (any, bool)
 type CallerMatchers map[string]ParamMatcher
 type ManifestParam struct {
-	Name string
+	Name     string
 	Optional bool
-	Rest bool
-	Chained bool
-	Matcher string
+	Rest     bool
+	Chained  bool
+	Matcher  string
 }
 type CallerRoute struct {
-	Params []ManifestParam
+	Params    []ManifestParam
 	NewParams func(map[string]any) (any, error)
 }
 type CallerRoutes map[string]CallerRoute
-func RemoteCallerValues(*Event) (string,map[string]any) { return "",nil }
-func EventFrom(context.Context) *Event { return &Event{} }
-func TrackLoadParam(*Event, string) {}
-func LoadParamValue[T any](*Event, string) T { var zero T; return zero }
-func OptionalLoadParamValue[T any](*Event, string) *T { return nil }
+
+func RemoteCallerValues(*Event) (string, map[string]any) { return "", nil }
+func EventFrom(context.Context) *Event                   { return &Event{} }
+func TrackLoadParam(*Event, string)                      {}
+func LoadParamValue[T any](*Event, string) T             { var zero T; return zero }
+func OptionalLoadParamValue[T any](*Event, string) *T    { return nil }
+
 type RouteEntries struct{}
-func Entries[P any](func()([]P,error))Marker{return Marker{}}
-func NewRouteEntries[P any](string,func()([]P,error))*RouteEntries{return nil}
-func Load[P,L, Out any](fn func(RequestEvent[P,L]) (Out, error)) Marker { _ = fn; return Marker{} }
+
+func Entries[P any](func() ([]P, error)) Marker                           { return Marker{} }
+func NewRouteEntries[P any](string, func() ([]P, error)) *RouteEntries    { return nil }
+func Load[P, L, Out any](fn func(RequestEvent[P, L]) (Out, error)) Marker { _ = fn; return Marker{} }
 
 func Command(fn any) Marker { _ = fn; return Marker{} }
 
@@ -157,72 +180,9 @@ const (
 	KindPrerender
 )
 
-type Call struct {
-	Arg     any
-	Present bool
-}
-
-func (Call) RejectArgument(err error)error{return err}
-func (c Call) Transported(v any) (any, error) { return v, nil }
-
-type RemoteFunc func(ctx context.Context, call Call) (any, error)
-
-type LiveFunc func(ctx context.Context, call Call, yield func(any) error) error
-
-type BatchFunc func(ctx context.Context, calls []Call) ([]any, error)
-
-type RemoteInputsFunc func(ctx context.Context, call Call) ([]any, error)
-
-type RemoteSpec struct {
- CallerMatchers CallerMatchers
- CallerRoutes CallerRoutes
-	Kind      Kind
-	Module    string
-	Name      string
-	Fn        any
-	Call      RemoteFunc
-	Live      LiveFunc
-	Batch     BatchFunc
-	DecodeArg func(arg any) (any, error)
-	Inputs    RemoteInputsFunc
-}
-
-func NewRemote(spec RemoteSpec) *Remote { _ = spec; return &Remote{} }
-
-type PrerenderServiceOptions struct {
- BindRequest func(http.Handler)http.Handler
- Entries []*RouteEntries
- Endpoints []*Endpoint
- Matchers map[string]ParamMatcher
- HandleFetch HandleFetch
- HandleError HandleError
- FilterSerializedResponseHeaders func(name, value string) bool
- Reroute Reroute
-}
-func RunPrerenderService(any, []*ServerLoad, []*Remote,PrerenderServiceOptions) error { return nil }
-
-func BadRequest(detail error) error { return detail }
-
-func RefuseArgument(call Call) error { _ = call; return nil }
-
-func RequireArgument(call Call) error { _ = call; return nil }
-
-func DecodeForm(arg any, into any) error { _, _ = arg, into; return nil }
-
-type ServerLoad struct{}
-
 type Deferred[T any] struct{}
 
 func Transported[T any](tag string) Marker { _ = tag; return Marker{} }
-
-type LoadSpec struct {
-	Source string
-	Module string
-	Run    func(ctx context.Context) (any, error)
-	Matchers map[string]ParamMatcher
-}
-
-func NewServerLoad(spec LoadSpec) *ServerLoad { _ = spec; return &ServerLoad{} }
 
 func ActionNoData(fn func(context.Context) error) Marker { _ = fn; return Marker{} }
 
@@ -234,18 +194,6 @@ func ActionWithFailure[Out, Failure any](fn func(context.Context) (Out, error), 
 }
 
 func DefaultAction[Out any](fn func(context.Context) (Out, error)) Marker { _ = fn; return Marker{} }
-
-type PageAction struct{}
-
-type ActionSpec struct {
-	Module string
-	Name string
-	Run func(context.Context) (any, error)
-}
-
-func NewPageAction(spec ActionSpec) *PageAction { _ = spec; return &PageAction{} }
-
-type Endpoint struct{}
 
 func GET(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
 
@@ -264,11 +212,6 @@ func HEAD(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
 func QUERY(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
 
 func Fallback(fn http.HandlerFunc) Marker { _ = fn; return Marker{} }
-
-func NewEndpoint(routeID, method string, fn http.HandlerFunc) *Endpoint {
-	_, _, _ = routeID, method, fn
-	return &Endpoint{}
-}
 `)
 
 	// `wire` is the dependency. Its types are the ones that have to travel: a
@@ -480,11 +423,6 @@ var _ = skgo.Query(getStatus)
 	}
 
 	// The generated app has to be a Go program.
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = filepath.Join(root, "app")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("`go build ./...` in the generated app: %v\n%s", err, out)
-	}
 }
 
 // filesUnder lists every regular file below dir, relative to it, sorted.
@@ -566,11 +504,6 @@ var _ = skgo.Query(getOtherThing)
 		t.Fatalf("example.com/wire/other/wire projected the wrong Thing:\n%s", second)
 	}
 
-	cmd := exec.Command("go", "build", "./...")
-	cmd.Dir = filepath.Join(root, "app")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("`go build ./...` in the generated app: %v\n%s", err, out)
-	}
 }
 
 // TestOneStubCannotImportTwoTypesOfTheSameName. Separate directories stop

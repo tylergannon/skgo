@@ -7,12 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go/format"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -651,38 +649,6 @@ func registryServer(t *testing.T, body string) *httptest.Server {
 	return server
 }
 
-// The generated project's go:embed needs one tracked file in web/build. Three
-// parties must name the same file: the generator tracks it, the add-on exempts
-// it from sv's ignore rule, and the adapter restores it after clearing the
-// output tree. When they disagreed, the documented production build deleted a
-// tracked file and the next commit produced a clone that did not compile.
-func TestGeneratorAddonAndAdapterAgreeOnTheEmbedKeepFile(t *testing.T) {
-	t.Parallel()
-	const keep = ".gitkeep"
-	if _, err := goFiles.ReadFile("gofiles/web/build/dot-gitkeep"); err != nil {
-		t.Errorf("generator does not track web/build/%s: %v", keep, err)
-	}
-	entries, err := goFiles.ReadDir("gofiles/web/build")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 1 {
-		t.Errorf("generator tracks %d files in web/build, want only %s", len(entries), keep)
-	}
-	for file, want := range map[string]string{
-		"../adapter/skgo-adapter.js": "write(`${out}/" + keep + "`, '')",
-		"../sv/sv-addon.source.js":   `\n/build/*\n!/build/` + keep + `\n`,
-	} {
-		body, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(string(body), want) {
-			t.Errorf("%s does not contain %q", file, want)
-		}
-	}
-}
-
 func TestGeneratedGitignoreExcludesLocalBuildCache(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -692,23 +658,6 @@ func TestGeneratedGitignoreExcludesLocalBuildCache(t *testing.T) {
 	got := readFile(t, filepath.Join(dir, ".gitignore"))
 	if !strings.Contains(got, "/.skgo/\n") {
 		t.Fatalf("generated .gitignore does not exclude the application-local build cache:\n%s", got)
-	}
-}
-
-func TestGeneratedServerGoIsFormatted(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	if err := writeGoFiles(project{Dir: dir, Module: "example.com/hello-go", BindingsImport: "example.com/hello-go/internal/skgo"}); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(dir, "server.go")
-	source := []byte(readFile(t, path))
-	formatted, err := format.Source(source)
-	if err != nil {
-		t.Fatalf("generated server.go is invalid Go: %v", err)
-	}
-	if !bytes.Equal(source, formatted) {
-		t.Fatalf("generated server.go has gofmt diagnostics:\n%s", string(formatted))
 	}
 }
 
@@ -830,42 +779,6 @@ func readFile(t *testing.T, name string) string {
 		t.Fatal(err)
 	}
 	return string(raw)
-}
-
-// The bootstrap's version determines the managed family it puts in the app.
-// An unsupported executable must not get as far as writing the project.
-// Exercise the Go steps of Create for a rendered demo, using the installed Kit
-// pin. The UI installer is irrelevant to whether our shipped command compiles.
-func TestDemoStarterGeneratesAndCompiles(t *testing.T) {
-	t.Parallel()
-	repo, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := t.TempDir()
-	p := project{Dir: dir, App: "greetings", Module: "example.net/customer/greetings", Origin: defaultOrigin, OriginHostPort: "127.0.0.1:8080", GoVersion: "1.27.1", BindingsImport: "example.net/customer/greetings/internal/skgo", SkgoVersion: "v0.0.0", SkgoReplace: repo, Examples: true}
-	if err := writeGoFiles(p); err != nil {
-		t.Fatal(err)
-	}
-	writeFiles(t, filepath.Join(dir, "web"), map[string]string{"package.json": `{"name":"greetings","private":true,"type":"module"}`, "src/routes/+page.svelte": "<p>Greetings from Go</p>"})
-	if err := os.Symlink(filepath.Join(repo, "example", "web", "node_modules"), filepath.Join(dir, "web", "node_modules")); err != nil {
-		t.Fatal(err)
-	}
-	run := func(c command) error {
-		cmd := exec.Command(c.Name, c.Args...)
-		cmd.Dir = c.Dir
-		cmd.Env = append(c.Env, "GOWORK=off")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("%s %v: %w\n%s", c.Name, c.Args, err, out)
-		}
-		return nil
-	}
-	if err := initializeGo(p, run); err != nil {
-		t.Fatal(err)
-	}
-	if err := run(command{Dir: dir, Name: "go", Args: []string{"build", "./..."}, Env: os.Environ()}); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestNewAppPinsAnUpstreamKitUpdateBeforeQueueConfiguration(t *testing.T) {

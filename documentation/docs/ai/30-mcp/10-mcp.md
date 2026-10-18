@@ -2,7 +2,7 @@
 title: Overview
 summary: Register skgo mcp so an agent can check the project and read SKGo's diagnostic guidance.
 proof:
-  - TestCLIAndInitializedStdioMCPExposeSameAdviceAndFailedCheck
+  - TestMCPInitializesDispatchesAndKeepsOutputStructured
 ---
 
 The SKGo MCP ([Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)) server is built into the CLI as [`skgo mcp`](/docs/cli/mcp). It gives your agent two [tools](tools): `skgo_check` runs [`skgo check`](/docs/cli/check) and returns the structured report, and `skgo_advice` returns the repair guidance for SKGo's `SKGO001`–`SKGO008` diagnostics. It serves no documentation; give the agent [llms.txt](llms-txt) for that.

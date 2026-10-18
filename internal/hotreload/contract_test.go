@@ -40,9 +40,13 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	app := filepath.Join(work, "app")
+	files := map[string][]byte{}
 	write := func(name, body string) {
 		t.Helper()
 		path := filepath.Join(app, name)
+		if strings.HasSuffix(name, ".go") || name == "go.mod" || name == "go.sum" {
+			files[path] = []byte(body)
+		}
 		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 			t.Fatal(err)
 		}
@@ -159,8 +163,17 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 		next[filepath.Join(linkDir, "server.go")] = []byte(endpoint)
 		return next
 	}
+	for name, body := range sources {
+		files[name] = body
+	}
+	retained := &retainedApplication{files: files}
+	t.Cleanup(func() {
+		if retained.view != nil {
+			retained.view.Close()
+		}
+	})
 	compile := func(name, order, page string) (Candidate, error) {
-		return tc.CompileApplication(ctx, app, pkgPath, filepath.Join(app, "importcfg"), filepath.Join(work, name), sources, captured(order, page))
+		return tc.compileWithLoader(ctx, app, pkgPath, filepath.Join(app, "importcfg"), filepath.Join(work, name), sources, captured(order, page), []string{"./..."}, retained.Load)
 	}
 	discount := func(n int) string {
 		return strings.Replace(source, "return total", fmt.Sprintf("return total * %d / 100", n), 1)
@@ -263,6 +276,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(work, "external-refused/candidate.o")); !os.IsNotExist(err) {
 		t.Fatalf("object created before caller fence: %v", err)
 	}
+	delete(files, filepath.Join(app, "external/caller.go"))
 	if err := os.RemoveAll(filepath.Join(app, "external")); err != nil {
 		t.Fatal(err)
 	}

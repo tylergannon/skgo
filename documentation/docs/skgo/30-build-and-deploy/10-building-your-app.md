@@ -2,7 +2,7 @@
 title: Building your app
 summary: Generate the bindings, build the frontend, and compile one Go binary that embeds it.
 proof:
-  - TestTheEmbeddedBuildProducesAWorkingServer
+  - TestARenderedPageCarriesGosAnswerToTheBrowser
   - TestDriftBetweenTheBuildAndTheBinaryStopsTheServer
   - TestBuildReusesCurrentOutputsAndRebuildsChanges
   - TestBuildEmbedsImmutableAssets

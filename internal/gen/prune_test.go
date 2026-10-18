@@ -6,8 +6,7 @@ import (
 	"testing"
 )
 
-// Real generation/removal is exercised by the output and language-switch
-// tests. Distinguish pruning ownership with literal files, without loading Go.
+// Distinguish pruning ownership with literal files, without loading Go.
 func TestGenerateRemovesWhatTheDeletedGoProduced(t *testing.T) {
 	t.Parallel()
 	for _, buffered := range []bool{false, true} {
