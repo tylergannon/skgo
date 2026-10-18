@@ -23,13 +23,15 @@ import (
 
 // This opt-in contract runs real Vite and native application children. Missing
 // prerequisites are failures, never silently skipped qualification.
-func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) { realSession(t, false, false) }
+func TestRealSessionNativeRecoveryAndIsolation(t *testing.T) { realSession(t, false, false, false) }
 
-func TestRealSessionApplicationGeneration(t *testing.T) { realSession(t, true, false) }
+func TestRealSessionApplicationGeneration(t *testing.T) { realSession(t, true, false, false) }
 
-func TestRealSessionRequestHandoff(t *testing.T) { realSession(t, false, true) }
+func TestRealSessionRequestHandoff(t *testing.T) { realSession(t, false, true, false) }
 
-func realSession(t *testing.T, withGenerator, withHandoff bool) {
+func TestRealSessionDevelopmentLoadDiagnostics(t *testing.T) { realSession(t, false, false, true) }
+
+func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool) {
 	if _, err := exec.LookPath("vp"); err != nil {
 		t.Fatal(err)
 	}
@@ -42,12 +44,13 @@ func realSession(t *testing.T, withGenerator, withHandoff bool) {
 	}
 	sharedTypes := filepath.Join(root, "example/web/node_modules/$app/types/index.d.ts")
 	originalTypes, err := os.ReadFile(sharedTypes)
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
+	originalMissing := os.IsNotExist(err)
 	t.Cleanup(func() {
 		after, err := os.ReadFile(sharedTypes)
-		if err != nil || !bytes.Equal(after, originalTypes) {
+		if (originalMissing && !os.IsNotExist(err)) || (!originalMissing && (err != nil || !bytes.Equal(after, originalTypes))) {
 			t.Errorf("session fixture changed shared Kit types: %v", err)
 		}
 	})
@@ -119,6 +122,12 @@ func realSession(t *testing.T, withGenerator, withHandoff bool) {
 		write("locals/locals.go", "package locals\ntype Locals struct{}\n")
 		write("generated/config.go", "package generated\n//go:generate go tool skgo generate --web ../web --locals-package example.com/sessionfixture/locals --locals-type Locals\n")
 		write("web/src/routes/orders/server.go", sessionRoute("4101", 7))
+		if withDiagnostics {
+			for _, kind := range []string{"returned", "panic"} {
+				write("web/src/routes/"+kind+"/+page.svelte", `<script>let {data}=$props();</script><h1>DIAG_SUCCESS_243 {data.receipt}</h1>`)
+				write("web/src/routes/"+kind+"/page.server.go", diagnosticSessionLoad(kind, false))
+			}
+		}
 		if withGenerator {
 			write("generator.json", `{"package":"./tool"}`)
 			write("producer.txt", "literal-generated-101")
@@ -205,7 +214,7 @@ func waitForReadiness() error {
 			t.Fatal(e)
 		}
 		address := ln.Addr().String()
-		occupied := label == "ALPHA" && !withHandoff
+		occupied := label == "ALPHA" && !withHandoff && !withDiagnostics
 		if occupied {
 			t.Cleanup(func() { ln.Close() })
 		} else {
@@ -338,6 +347,11 @@ func waitForReadiness() error {
 		t.Fatalf("want %s %s at %s\n%s", label, body, s.origin, s.log.String())
 	}
 	alpha := start("ALPHA")
+	if withDiagnostics {
+		check(alpha, "ALPHA", "literal-4101:7")
+		exerciseSessionLoadDiagnostics(t, alpha.app, alpha.origin, alpha.log)
+		return
+	}
 	if withHandoff {
 		exerciseColdSessionHandoff(t, alpha.app, alpha.origin, alpha.log)
 	}
@@ -1035,4 +1049,66 @@ func exerciseSessionGenerator(t *testing.T, app, origin string, log *sessionLog)
 		t.Fatal("non-Go recreate did not replace application")
 	}
 	t.Logf("generic generation runtime: initial=%s changed=%s partial-recovery=%s lost-reply-recovery=%s output-repair=%s helper-refresh=%s recreated-input=%s\n%s", first, second, third, fourth, repaired, fresh, final, log.String())
+}
+
+func diagnosticSessionLoad(kind string, repaired bool) string {
+	body := `return PageData{},fmt.Errorf("DEV_DIAG_RETURNED_REAL_243")`
+	if kind == "panic" {
+		body = `panic("DEV_DIAG_PANIC_REAL_243")`
+	}
+	if repaired {
+		body = `return PageData{Receipt:fmt.Sprint("DEV_DIAG_REPAIRED_REAL_243")},nil`
+	}
+	// fmt remains used in the panic fixture and through repair.
+	return "package diagnostics\nimport \"fmt\";import \"github.com/tylergannon/skgo\"\ntype PageData struct{Receipt string `json:\"receipt\"`}\nfunc load(event PageRequestEvent)(PageData,error){\n" + body + "\n}\nvar _=skgo.Load(load)\nvar _=fmt.Sprint\n"
+}
+
+func exerciseSessionLoadDiagnostics(t *testing.T, app, origin string, log *sessionLog) {
+	t.Helper()
+	client := &http.Client{Timeout: 10 * time.Second}
+	get := func(path string) (int, string) {
+		t.Helper()
+		r, err := client.Get(origin + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r.StatusCode, string(body)
+	}
+	for _, test := range []struct{ path, literal, frame string }{
+		{"/returned", "DEV_DIAG_RETURNED_REAL_243", "src/routes/returned/page.server.go:4"},
+		{"/panic", "DEV_DIAG_PANIC_REAL_243", "src/routes/panic/page.server.go:5"},
+	} {
+		status, body := get(test.path)
+		if status != 500 || strings.Contains(body, "DIAG_SUCCESS_243") || !strings.Contains(body, "Internal Error") {
+			t.Fatalf("failed load status=%d body=%s", status, body)
+		}
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) && !(strings.Contains(log.String(), test.literal) && strings.Contains(log.String(), test.frame)) {
+			time.Sleep(10 * time.Millisecond)
+		}
+		if !strings.Contains(log.String(), test.literal) || !strings.Contains(log.String(), test.frame) {
+			t.Fatalf("missing authored diagnostic %s at %s\n%s", test.literal, test.frame, log.String())
+		}
+	}
+	if status, body := get("/orders"); status != 200 || body != "literal-4101:7" {
+		t.Fatalf("healthy request after failures %d %s", status, body)
+	}
+	if err := os.WriteFile(filepath.Join(app, "web/src/routes/returned/page.server.go"), []byte(diagnosticSessionLoad("returned", true)), 0644); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(45 * time.Second)
+	for time.Now().Before(deadline) {
+		status, body := get("/returned")
+		if status == 200 && strings.Contains(body, "DIAG_SUCCESS_243 DEV_DIAG_REPAIRED_REAL_243") {
+			t.Logf("authored development diagnostics and repair\n%s", log.String())
+			return
+		}
+		time.Sleep(80 * time.Millisecond)
+	}
+	t.Fatalf("authored error did not recover after repair\n%s", log.String())
 }

@@ -467,6 +467,10 @@ func TestTheLoadStubContainsOnlyTypedThrowingBody(t *testing.T) {
 		}
 	}
 	assertThrowingSource(t, stub, false)
+	bindings := readFixtureFile(t, root, "app/generated/skgo_gen.go")
+	if !strings.Contains(bindings, `Source: "src/routes/account/page.server.go:7"`) {
+		t.Fatalf("generated load lost authored declaration location:\n%s", bindings)
+	}
 }
 
 func TestOptionExamplesInCommentsAndStringsAreIgnored(t *testing.T) {

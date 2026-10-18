@@ -703,7 +703,7 @@ func (a *app) writeAppBindings() error {
 	b.WriteString("// skgo.NewLoads.\n")
 	b.WriteString("func Loads() []*skgo.ServerLoad {\n\treturn []*skgo.ServerLoad{\n")
 	for _, load := range a.loads {
-		fmt.Fprintf(&b, "\t\tskgo.NewServerLoad(skgo.LoadSpec{Module: %q, Run: %s, Matchers: %s.SkgoParamMatchers()}),\n", load.module, load.handler, load.goPkg.alias)
+		fmt.Fprintf(&b, "\t\tskgo.NewServerLoad(skgo.LoadSpec{Module: %q, Source: %q, Run: %s, Matchers: %s.SkgoParamMatchers()}),\n", load.module, fmt.Sprintf("%s:%d", load.source, load.sourceLine), load.handler, load.goPkg.alias)
 	}
 	b.WriteString("\t}\n}\n")
 	if len(a.actions) > 0 {

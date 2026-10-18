@@ -234,6 +234,9 @@ LoadConfig describes the app whose loads a registry answers. Manifest.LoadConfig
 
 ```go
 type LoadSpec struct {
+	// Source is the authored Go load declaration as a Vite-root-relative file:line.
+	// Development diagnostics use it when a returned error has no Go stack.
+	Source string
 	// Module is the vite-root-relative path of the `+*.server.ts` kit
 	// compiled, which is the key kit itself records for the node.
 	Module string

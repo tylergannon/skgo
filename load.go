@@ -45,6 +45,7 @@ type ServerLoad struct {
 	// compiled, e.g. "src/routes/account/+layout.server.ts". It is the key kit
 	// itself records for the node, and so the key the manifest joins on.
 	module   string
+	source   string
 	run      func(ctx context.Context) (any, error)
 	matchers map[string]ParamMatcher
 }
@@ -56,6 +57,9 @@ func (l *ServerLoad) Module() string { return l.module }
 // LoadSpec is one generated load registration. `skgo generate` writes these;
 // an application declares its loads with Load and writes none of this by hand.
 type LoadSpec struct {
+	// Source is the authored Go load declaration as a Vite-root-relative file:line.
+	// Development diagnostics use it when a returned error has no Go stack.
+	Source string
 	// Module is the vite-root-relative path of the `+*.server.ts` kit
 	// compiled, which is the key kit itself records for the node.
 	Module string
@@ -80,7 +84,7 @@ func NewServerLoad(spec LoadSpec) *ServerLoad {
 	if spec.Run == nil {
 		panic("skgo: the generated registration for " + spec.Module + " has no Run closure")
 	}
-	return &ServerLoad{module: spec.Module, run: spec.Run, matchers: spec.Matchers}
+	return &ServerLoad{module: spec.Module, source: spec.Source, run: spec.Run, matchers: spec.Matchers}
 }
 
 // LoadConfig describes the app whose loads a registry answers. Manifest.LoadConfig
@@ -487,9 +491,18 @@ func (ls *Loads) runLoad(ctx context.Context, load *ServerLoad) (v any, err erro
 			traceError(span, "sveltekit.load", err)
 		}
 		span.End()
+		var stack []byte
+		if value != nil {
+			stack = debug.Stack()
+		}
 		err = ls.recovered(load.module, value, err)
-		if state, ok := ctx.Value(tracingKey{}).(tracingState); ok && state.native && value != nil {
-			err = fmt.Errorf("%v", value)
+		if ctx.Value(devRendererKey{}) != nil {
+			if value != nil {
+				err = fmt.Errorf("%v", value)
+			}
+			if err != nil {
+				err = &developmentLoadError{err: err, source: load.source, stack: string(stack)}
+			}
 		}
 	}()
 	return load.run(ctx)

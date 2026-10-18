@@ -60,7 +60,8 @@ type loadFn struct {
 	stub string
 	// source is the vite-root-relative path of the authored Go file. It names
 	// the load in diagnostics without exposing a machine-specific absolute path.
-	source string
+	source     string
+	sourceLine int
 	// out is the load's result type, straight out of the marker's generic
 	// instantiation.
 	out types.Type
@@ -548,13 +549,14 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 			return nil, nil, nil, nil, err
 		}
 		return nil, &loadFn{
-			name:   target.Name(),
-			goPkg:  gp,
-			module: mod,
-			stub:   stub,
-			source: source,
-			out:    sig.Results().At(0).Type(),
-			pos:    pos,
+			name:       target.Name(),
+			goPkg:      gp,
+			module:     mod,
+			stub:       stub,
+			source:     source,
+			sourceLine: p.Fset.Position(target.Pos()).Line,
+			out:        sig.Results().At(0).Type(),
+			pos:        pos,
 		}, nil, nil, nil
 	}
 	if isAction {

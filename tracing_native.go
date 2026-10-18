@@ -2,11 +2,14 @@ package skgo
 
 import (
 	"context"
+	"encoding/base32"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 	"sync"
 
 	"go.opentelemetry.io/otel"
@@ -263,17 +266,19 @@ func (w *nativeTraceWriter) finish() {
 	}
 }
 
-// The callback transports private tracing diagnostics separately from the Go
+// The private development callback transports diagnostics separately from the Go
 // handleError result. Kit sees the original error class; public responses keep
 // the already-sanitized body and never rerun the Go hook.
 type nativeErrorDiagnostic struct {
 	Kind    string `json:"kind"`
 	Message string `json:"message"`
 	Status  int    `json:"status,omitempty"`
+	Stack   string `json:"stack,omitempty"`
+	Source  string `json:"source,omitempty"`
 }
 
 func nativeErrorFor(ctx context.Context, err error) *nativeErrorDiagnostic {
-	if err == nil || !tracingOf(ctx).Enabled {
+	if err == nil {
 		return nil
 	}
 	var panicError *tracingPanicError
@@ -284,7 +289,13 @@ func nativeErrorFor(ctx context.Context, err error) *nativeErrorDiagnostic {
 	if errors.As(err, &known) {
 		return &nativeErrorDiagnostic{Kind: "known", Message: known.Message, Status: known.Status}
 	}
-	return &nativeErrorDiagnostic{Kind: "unknown", Message: err.Error()}
+	diagnostic := &nativeErrorDiagnostic{Kind: "unknown", Message: err.Error()}
+	var loadError *developmentLoadError
+	if errors.As(err, &loadError) {
+		diagnostic.Source = loadError.source
+		diagnostic.Stack = authoredDevelopmentStack(loadError.stack)
+	}
+	return diagnostic
 }
 func developmentAction(ctx context.Context, action *PageAction, name, route string) (value any, err error) {
 	defer func() {
@@ -293,4 +304,28 @@ func developmentAction(ctx context.Context, action *PageAction, name, route stri
 		}
 	}()
 	return runTracedAction(ctx, action, name, route)
+}
+
+// Ordinary Go errors have no return-site stack. Keep the authored declaration
+// separately, and retain actual panic frames rather than substituting that site.
+type developmentLoadError struct {
+	err    error
+	source string
+	stack  string
+}
+
+func (e *developmentLoadError) Error() string { return e.err.Error() }
+func (e *developmentLoadError) Unwrap() error { return e.err }
+
+var generatedDevelopmentFrame = regexp.MustCompile(`(?m)^\s*[^\n]*?/links/([a-z2-7]+)/([^/\n]+\.go):([0-9]+)`)
+
+func authoredDevelopmentStack(stack string) string {
+	return generatedDevelopmentFrame.ReplaceAllStringFunc(stack, func(frame string) string {
+		match := generatedDevelopmentFrame.FindStringSubmatch(frame)
+		route, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ToUpper(match[1]))
+		if err != nil || !strings.HasPrefix(string(route), "src/routes") {
+			return frame
+		}
+		return "\t" + string(route) + "/" + match[2] + ":" + match[3]
+	})
 }

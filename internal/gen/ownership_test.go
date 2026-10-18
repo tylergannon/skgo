@@ -191,6 +191,7 @@ type Deferred[T any] struct{}
 func Transported[T any](tag string) Marker { _ = tag; return Marker{} }
 
 type LoadSpec struct {
+	Source string
 	Module string
 	Run    func(ctx context.Context) (any, error)
 	Matchers map[string]ParamMatcher
