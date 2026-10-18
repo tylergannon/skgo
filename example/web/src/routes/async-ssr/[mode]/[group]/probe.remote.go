@@ -31,10 +31,46 @@ var gates sync.Map
 // — ordinary and batch queries are cached across hydration and never refire,
 // so it has no other participants to overlap with. That reconnect is a
 // legitimate continuation of the round the document already rendered, not a
-// second overlap to prove, so once a group has settled, later callers
-// return their fixture value immediately instead of waiting for partners
-// that were never going to arrive.
-var settled sync.Map
+// second overlap to prove, so once a group has settled, later callers return
+// their fixture value immediately for the reconnect window. Expired groups
+// are removed by a timer or on lookup, bounding this example-only cache.
+const settledTTL = 5 * time.Minute
+
+var settled = struct {
+	sync.Mutex
+	groups map[string]time.Time
+}{groups: map[string]time.Time{}}
+
+func isSettled(group string) bool {
+	now := time.Now()
+	settled.Lock()
+	defer settled.Unlock()
+	expires, ok := settled.groups[group]
+	if ok && !now.Before(expires) {
+		delete(settled.groups, group)
+		return false
+	}
+	return ok
+}
+
+func rememberSettled(group string) {
+	now := time.Now()
+	settled.Lock()
+	if expires, ok := settled.groups[group]; ok && now.Before(expires) {
+		settled.Unlock()
+		return
+	}
+	expires := now.Add(settledTTL)
+	settled.groups[group] = expires
+	settled.Unlock()
+	time.AfterFunc(settledTTL, func() {
+		settled.Lock()
+		if settled.groups[group] == expires {
+			delete(settled.groups, group)
+		}
+		settled.Unlock()
+	})
+}
 
 // A fixture, not a latency benchmark: no operation can return a value until
 // all three distinct operations enter. Blocking dispatch therefore fails.
@@ -45,7 +81,7 @@ func overlap(ctx context.Context, group, key string) (string, error) {
 		return "", fmt.Errorf("unknown fixture key %q", key)
 	}
 
-	if _, done := settled.Load(group); done {
+	if isSettled(group) {
 		return value, nil
 	}
 
@@ -78,7 +114,7 @@ func overlap(ctx context.Context, group, key string) (string, error) {
 		return "", skgo.Errorf(504, "Independent operations did not overlap")
 	case <-g.ready:
 	}
-	settled.Store(group, struct{}{})
+	rememberSettled(group)
 	return value, nil
 }
 
