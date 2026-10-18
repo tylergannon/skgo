@@ -54,6 +54,7 @@ type InspectResult struct {
 	Price     businesslogic.Money `json:"price"`
 }
 
+// docs: upload
 func upload(ctx context.Context) (UploadResult, error) {
 	r := skgo.EventFrom(ctx).Request()
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
@@ -77,6 +78,8 @@ func upload(ctx context.Context) (UploadResult, error) {
 		Price:     businesslogic.Money{Cents: 750},
 	}, nil
 }
+
+// docs: end upload
 
 func inspect(ctx context.Context) (InspectResult, error) {
 	r := skgo.EventFrom(ctx).Request()

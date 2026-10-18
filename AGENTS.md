@@ -202,6 +202,11 @@ and nothing else.
 
 - `ephemeral/` — tracked working material: worklogs, plans, downloaded
   artifacts. Never write to `docs/` without express permission.
+- `documentation/` — the documentation source, its renderer and the committed
+  rendered tree the project site serves. `documentation/README.md` is the
+  authoring contract; `go test ./documentation` enforces it and `just docs`
+  renders. A change to an exported symbol changes the rendered reference:
+  render and commit the diff.
 - `example/web/node_modules/@sveltejs/kit/` — authoritative Kit source at the
   example's installed pin. Resolve Kit's transitive package sources from its
   real package directory under pnpm.

@@ -12,7 +12,7 @@ func kitPatchCommand(args []string) {
 	fs := flag.NewFlagSet("kit-patch", flag.ExitOnError)
 	web := fs.String("web", "web", "selected frontend root containing package.json")
 	workspace := fs.String("workspace", "", "assert the selected frontend is this root; parent workspaces are never modified")
-	apply := fs.Bool("apply", false, "pin Kit 3.1.0 and configure the project-local pnpm patch (does not install)")
+	apply := fs.Bool("apply", false, "pin the supported Kit release and configure the project-local pnpm patch (does not install)")
 	check := fs.Bool("check", false, "verify configured files and actual installed Kit queue bytes")
 	fs.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: go tool skgo kit-patch [--web web] [--workspace web] (--apply | --check)")

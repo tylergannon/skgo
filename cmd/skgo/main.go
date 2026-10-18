@@ -29,26 +29,10 @@ import (
 	gen "github.com/tylergannon/skgo/generate"
 	"github.com/tylergannon/skgo/internal/advice"
 	"github.com/tylergannon/skgo/internal/check"
+	"github.com/tylergannon/skgo/internal/commands"
 )
 
-const usage = `usage:
-	skgo new [flags] DIR [-- SV_CREATE_OPTIONS]
-	                          create a SvelteKit application served by Go
-	skgo plugin install MODULE[@QUERY] | plugin remove MODULE
-	skgo add [flags] ADDON    apply a reusable application change
-	skgo update [--root DIR] [--vp GLOBAL_VP]   align CLI and application toolchain
-	skgo native build [--platform macos|iphone|simulator] [--preset NAME]
-	skgo build [--root DIR]   incrementally generate and build the frontend
-	skgo buildinfo [--json]   identify this executing CLI and its Go build
-	skgo dev [--root DIR] [--listen HOST:PORT]   develop with Go and Vite
-	skgo generate [flags]     generate the glue between the Go server and the SvelteKit app
-	skgo check [flags]        check Go, Svelte, lint and formatting without edits
-	skgo kit-patch [--web web] (--apply | --check)
-	                          configure or verify Kit 3.1.0's declared-Inputs queue correction
-	skgo advice [--json] [SKGO001..SKGO008]
-	                          show installed rule guidance and repair examples
-	skgo mcp                 serve check and advice tools over stdio MCP
-`
+var usage = commands.Usage()
 
 func main() {
 	if len(os.Args) == 2 && (os.Args[1] == "--help" || os.Args[1] == "-h" || os.Args[1] == "help") {

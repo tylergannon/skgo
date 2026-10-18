@@ -126,7 +126,7 @@ func prepare(options Options) (*project, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load packaged Kit queue correction: %w", err)
 	}
-	if metadata.Package != kitPackageName || metadata.Version != "3.1.0" || metadata.QueuePath != "src/core/postbuild/queue.js" {
+	if metadata.Package != kitPackageName || metadata.Version != toolchain.Kit || metadata.QueuePath != "src/core/postbuild/queue.js" {
 		return nil, fmt.Errorf("unsupported packaged Kit queue correction metadata: package=%q version=%q path=%q", metadata.Package, metadata.Version, metadata.QueuePath)
 	}
 	if digest(patch) != metadata.PatchSHA256 {
