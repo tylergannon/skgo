@@ -14,6 +14,7 @@
     "1eqvn7x/getNote",
     "1eqvn7x/writeNotes",
     "1klskj7/sendRemoteNote",
+    "1lcpbfl/receipt",
     "1sgmw1/getKnownReport",
     "1sgmw1/getModels",
     "1sgmw1/getReport",
@@ -63,11 +64,14 @@
     "src/routes/error/unexpected/+page.server.ts",
     "src/routes/event-layout/[section]/+layout.server.ts",
     "src/routes/invoices/+page.server.ts",
+    "src/routes/lang/[[lang]]/+page.server.ts",
     "src/routes/middleware/+page.server.ts",
     "src/routes/middleware/[slug]/+page.server.ts",
+    "src/routes/missing/[...path]/+page.server.ts",
     "src/routes/prerender/[slug]/+page.server.ts",
     "src/routes/request-fetch/+page.server.ts",
     "src/routes/stream/+page.server.ts",
+    "src/routes/traced/+page.server.ts",
     "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts",
     "src/routes/typed-load/[number=Order]/+page.server.ts"
   ],
@@ -211,11 +215,17 @@
     "src/routes/invoices/+page.server.ts": {
       "source": "src/routes/invoices/page.server.go"
     },
+    "src/routes/lang/[[lang]]/+page.server.ts": {
+      "source": "src/routes/lang/[[lang]]/page.server.go"
+    },
     "src/routes/middleware/+page.server.ts": {
       "source": "src/routes/middleware/page.server.go"
     },
     "src/routes/middleware/[slug]/+page.server.ts": {
       "source": "src/routes/middleware/[slug]/page.server.go"
+    },
+    "src/routes/missing/[...path]/+page.server.ts": {
+      "source": "src/routes/missing/[...path]/page.server.go"
     },
     "src/routes/prerender/[slug]/+page.server.ts": {
       "source": "src/routes/prerender/[slug]/page.server.go"
@@ -228,6 +238,9 @@
     },
     "src/routes/stream/+page.server.ts": {
       "source": "src/routes/stream/page.server.go"
+    },
+    "src/routes/traced/+page.server.ts": {
+      "source": "src/routes/traced/page.server.go"
     },
     "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts": {
       "source": "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/page.server.go"

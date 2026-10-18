@@ -32,7 +32,11 @@ Terminate TLS at your proxy or platform and forward plain HTTP to the `-listen` 
 `event.ClientAddress()` is the peer address of the connection, which behind a proxy is the proxy. SKGo reads no forwarding header on its own. Set `HandleConfig.ClientAddress` in `server.go` to read the one your proxy sets, and only when every request arrives through that proxy:
 
 ```go
-handleCfg.ClientAddress = func(r *http.Request) (string, error) {
+/// file: server.go
+// FlyClientAddress reads the client address from the header Fly's proxy sets.
+// Install it with handleCfg.ClientAddress only when every request arrives
+// through that proxy.
+func FlyClientAddress(r *http.Request) (string, error) {
 	if ip := r.Header.Get("Fly-Client-IP"); ip != "" {
 		return ip, nil
 	}
@@ -40,7 +44,7 @@ handleCfg.ClientAddress = func(r *http.Request) (string, error) {
 }
 ```
 
-The first value or error is shared by the request's event and every `event.Fetch` it makes.
+Assign the function to `handleCfg.ClientAddress` in `newHandler`. The first value or error is shared by the request's event and every `event.Fetch` it makes.
 
 ## Request limits
 
@@ -100,16 +104,17 @@ ENTRYPOINT ["/myapp", "-listen", "0.0.0.0:8080"]
 
 ## Shutdown
 
-The generated `main` installs no signal handler, so `SIGTERM` ends the process with requests in flight. To drain them, serve through an `http.Server` and wait for `Shutdown` before `main` returns:
+The scaffolded `main` installs no signal handler, so `SIGTERM` ends the process with requests in flight. To drain them, serve through an `http.Server` and wait for `Shutdown` before `main` returns, as the example's `main` does:
 
 ```go
-srv := &http.Server{Addr: *listen, Handler: handler}
+/// file: cmd/main.go
+srv := &http.Server{Addr: *listen, Handler: mux}
 ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 defer stop()
 
 go func() {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+		log.Fatalf("skgo-example: %v", err)
 	}
 }()
 

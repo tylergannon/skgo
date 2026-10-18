@@ -10,14 +10,7 @@ Route syntax is Kit's. Rest parameters, optional parameters, matchers, sorting, 
 A `[...rest]` segment matches any number of path segments, as in [Kit](https://svelte.dev/docs/kit/advanced-routing#Rest-parameters). In a Go load, endpoint or remote function, the parameter is one `string` holding the matched segments joined by `/`, and the empty string when nothing matched:
 
 ```go
-package shadowrest
-
-import (
-	"net/http"
-
-	"github.com/tylergannon/skgo"
-)
-
+/// file: src/routes/shadow/[...rest]/server.go
 func get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, _ = w.Write([]byte("dynamic-rest:" + skgo.EventFrom(r.Context()).Param("rest")))
@@ -33,6 +26,7 @@ A load on a rest route gets the same value from its generated accessor, `event.P
 Kit's pattern for a [custom 404 inside a subtree](https://svelte.dev/docs/kit/advanced-routing#Rest-parameters-404-pages) works with a Go load. Add a `[...path]` route under the subtree and return a 404 from its load:
 
 ```go
+/// file: src/routes/missing/[...path]/page.server.go
 func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{}, skgo.Errorf(http.StatusNotFound, "Not Found")
 }
@@ -47,6 +41,7 @@ The nearest `+error.svelte` above the route renders the error, as [Errors](error
 A `[[lang]]` segment may be absent, as in [Kit](https://svelte.dev/docs/kit/advanced-routing#Optional-parameters). Its Go accessor returns a pointer, `nil` when the segment is missing:
 
 ```go
+/// file: src/routes/lang/[[lang]]/page.server.go
 func pageLoad(event PageRequestEvent) (PageData, error) {
 	lang := "en"
 	if value := event.Params.Lang(); value != nil {

@@ -21,6 +21,7 @@ import (
 	"github.com/tylergannon/skgo/example/web"
 )
 
+// docs: prod-handler
 // prodOrigin is the origin the handler under test is configured with. Nothing
 // listens on it: every request below is served in-process.
 const prodOrigin = "http://127.0.0.1:8080"
@@ -56,6 +57,8 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 	return rec
 }
+
+// docs: end prod-handler
 
 func TestTypedDependencySerialsBelongToEachCaller(t *testing.T) {
 	h := newProdHandler(t)
@@ -553,6 +556,9 @@ var deliberateFailures = map[string]struct {
 	// slot for anything beyond status and message, though, so the support id
 	// the hook also returns never reaches this particular document.
 	"/error/render": {status: 500, says: "Something went wrong on our end.", static: true},
+	// A catch-all whose load answers every path with Not Found, the way the
+	// Advanced routing page teaches.
+	"/missing/[...path]": {status: 404, says: "Not Found", inside: `data-testid="app-nav"`, handled: true},
 }
 
 // TestAnUnknownPathIsAnsweredWithTheRenderedErrorPage is kit's `respond.js`
@@ -644,6 +650,7 @@ func TestTheServerAnswersARealRemoteCall(t *testing.T) {
 	}
 }
 
+// docs: remote-id
 // remoteID finds the `<hash>/<name>` id of a remote function by its name, so
 // the tests never hard-code a hash kit derives from a file path.
 func remoteID(t *testing.T, name string) string {
@@ -657,10 +664,13 @@ func remoteID(t *testing.T, name string) string {
 	return ""
 }
 
+// docs: end remote-id
+
 var (
-	restSegment  = regexp.MustCompile(`^\[\.\.\.[\w-]+\]$`)
-	paramSegment = regexp.MustCompile(`^\[[\w-]+\]$`)
-	groupSegment = regexp.MustCompile(`^\([^)]+\)$`)
+	restSegment     = regexp.MustCompile(`^\[\.\.\.[\w-]+\]$`)
+	optionalSegment = regexp.MustCompile(`^\[\[[\w-]+\]\]$`)
+	paramSegment    = regexp.MustCompile(`^\[[\w-]+\]$`)
+	groupSegment    = regexp.MustCompile(`^\([^)]+\)$`)
 )
 
 // samplePath turns a kit route id into one concrete URL that route must serve.
@@ -680,6 +690,8 @@ func samplePath(t *testing.T, id string) string {
 			// A group does not appear in the URL.
 		case segment == "[number=Order]", segment == "[a=Order]", segment == "[b=Order]":
 			out = append(out, "42")
+		case optionalSegment.MatchString(segment):
+			out = append(out, "fr")
 		case restSegment.MatchString(segment):
 			out = append(out, "deep", "rest", "path")
 		case paramSegment.MatchString(segment):

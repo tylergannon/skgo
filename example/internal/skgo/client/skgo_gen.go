@@ -13,20 +13,20 @@ import (
 
 	devalue "github.com/tylergannon/devalue/v5"
 	skgo "github.com/tylergannon/skgo"
-	skgo7 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
-	skgo42 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
+	skgo8 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5qwg5djn5xhg"
+	skgo45 "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5xxa5djn5xgc3a"
 )
 
 // Client uses the same enhanced Form endpoint as the browser.
 type Client struct{ skgo.FormClient }
 
 // SendRemoteNote submits src/routes/actions/coexist.remote.ts#sendRemoteNote once.
-func (c Client) SendRemoteNote(ctx context.Context, in skgo7.SkgoArg_sendRemoteNote) (skgo7.SkgoOut_sendRemoteNote, error) {
+func (c Client) SendRemoteNote(ctx context.Context, in skgo8.SkgoArg_sendRemoteNote) (skgo8.SkgoOut_sendRemoteNote, error) {
 	return skgo.SubmitForm(ctx, c.FormClient, "1klskj7/sendRemoteNote", in, DecodeRoot0)
 }
 
 // Submit submits src/routes/optional/optional.remote.ts#submit once.
-func (c Client) Submit(ctx context.Context, in skgo42.SkgoArg_submit) (skgo42.SkgoOut_submit, error) {
+func (c Client) Submit(ctx context.Context, in skgo45.SkgoArg_submit) (skgo45.SkgoOut_submit, error) {
 	return skgo.SubmitForm(ctx, c.FormClient, "83n4w1/submit", in, DecodeRoot1)
 }
 
@@ -255,16 +255,16 @@ func dvDecodeTime(raw any, at string) (time.Time, error) {
 	return v, nil
 }
 
-func encRemoteReceipt(v skgo7.RemoteReceipt, at string) (any, error) {
+func encRemoteReceipt(v skgo8.RemoteReceipt, at string) (any, error) {
 	enc1 := devalue.NewObject()
 	var enc2 any = string(v.Message)
 	enc1.Set("message", enc2)
 	return enc1, nil
 }
 
-func decRemoteReceipt(raw any, at string) (skgo7.RemoteReceipt, error) {
-	var dvZero skgo7.RemoteReceipt
-	var dec1 skgo7.RemoteReceipt
+func decRemoteReceipt(raw any, at string) (skgo8.RemoteReceipt, error) {
+	var dvZero skgo8.RemoteReceipt
+	var dec1 skgo8.RemoteReceipt
 	obj2, err := dvObject(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -285,18 +285,18 @@ func decRemoteReceipt(raw any, at string) (skgo7.RemoteReceipt, error) {
 }
 
 // EncodeRemoteReceipt converts v into the devalue value model.
-func EncodeRemoteReceipt(v skgo7.RemoteReceipt) (any, error) {
+func EncodeRemoteReceipt(v skgo8.RemoteReceipt) (any, error) {
 	return encRemoteReceipt(v, "")
 }
 
 // DecodeRemoteReceipt converts a devalue value model tree into a pkg_onzggl3sn52xizltf5qwg5djn5xhg.RemoteReceipt, rejecting any
 // shape the type grammar does not admit.
-func DecodeRemoteReceipt(raw any) (skgo7.RemoteReceipt, error) {
+func DecodeRemoteReceipt(raw any) (skgo8.RemoteReceipt, error) {
 	return decRemoteReceipt(raw, "")
 }
 
 // StringifyRemoteReceipt encodes v and serializes it with devalue.
-func StringifyRemoteReceipt(v skgo7.RemoteReceipt) (string, error) {
+func StringifyRemoteReceipt(v skgo8.RemoteReceipt) (string, error) {
 	encoded, err := encRemoteReceipt(v, "")
 	if err != nil {
 		return "", err
@@ -305,8 +305,8 @@ func StringifyRemoteReceipt(v skgo7.RemoteReceipt) (string, error) {
 }
 
 // ParseRemoteReceipt parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5qwg5djn5xhg.RemoteReceipt.
-func ParseRemoteReceipt(s string) (skgo7.RemoteReceipt, error) {
-	var zero skgo7.RemoteReceipt
+func ParseRemoteReceipt(s string) (skgo8.RemoteReceipt, error) {
+	var zero skgo8.RemoteReceipt
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -314,7 +314,7 @@ func ParseRemoteReceipt(s string) (skgo7.RemoteReceipt, error) {
 	return decRemoteReceipt(parsed, "")
 }
 
-func encResult(v skgo42.Result, at string) (any, error) {
+func encResult(v skgo45.Result, at string) (any, error) {
 	enc1 := devalue.NewObject()
 	var enc2 any = string(v.Name)
 	enc1.Set("name", enc2)
@@ -329,9 +329,9 @@ func encResult(v skgo42.Result, at string) (any, error) {
 	return enc1, nil
 }
 
-func decResult(raw any, at string) (skgo42.Result, error) {
-	var dvZero skgo42.Result
-	var dec1 skgo42.Result
+func decResult(raw any, at string) (skgo45.Result, error) {
+	var dvZero skgo45.Result
+	var dec1 skgo45.Result
 	obj2, err := dvObject(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -389,16 +389,16 @@ func decResult(raw any, at string) (skgo42.Result, error) {
 }
 
 // EncodeResult converts v into the devalue value model.
-func EncodeResult(v skgo42.Result) (any, error) { return encResult(v, "") }
+func EncodeResult(v skgo45.Result) (any, error) { return encResult(v, "") }
 
 // DecodeResult converts a devalue value model tree into a pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result, rejecting any
 // shape the type grammar does not admit.
-func DecodeResult(raw any) (skgo42.Result, error) {
+func DecodeResult(raw any) (skgo45.Result, error) {
 	return decResult(raw, "")
 }
 
 // StringifyResult encodes v and serializes it with devalue.
-func StringifyResult(v skgo42.Result) (string, error) {
+func StringifyResult(v skgo45.Result) (string, error) {
 	encoded, err := encResult(v, "")
 	if err != nil {
 		return "", err
@@ -407,8 +407,8 @@ func StringifyResult(v skgo42.Result) (string, error) {
 }
 
 // ParseResult parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result.
-func ParseResult(s string) (skgo42.Result, error) {
-	var zero skgo42.Result
+func ParseResult(s string) (skgo45.Result, error) {
+	var zero skgo45.Result
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -416,7 +416,7 @@ func ParseResult(s string) (skgo42.Result, error) {
 	return decResult(parsed, "")
 }
 
-func encRoot0(v skgo7.RemoteReceipt, at string) (any, error) {
+func encRoot0(v skgo8.RemoteReceipt, at string) (any, error) {
 	enc1, err := encRemoteReceipt(v, at)
 	if err != nil {
 		return nil, err
@@ -424,8 +424,8 @@ func encRoot0(v skgo7.RemoteReceipt, at string) (any, error) {
 	return enc1, nil
 }
 
-func decRoot0(raw any, at string) (skgo7.RemoteReceipt, error) {
-	var dvZero skgo7.RemoteReceipt
+func decRoot0(raw any, at string) (skgo8.RemoteReceipt, error) {
+	var dvZero skgo8.RemoteReceipt
 	dec1, err := decRemoteReceipt(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -434,18 +434,18 @@ func decRoot0(raw any, at string) (skgo7.RemoteReceipt, error) {
 }
 
 // EncodeRoot0 converts v into the devalue value model.
-func EncodeRoot0(v skgo7.RemoteReceipt) (any, error) {
+func EncodeRoot0(v skgo8.RemoteReceipt) (any, error) {
 	return encRoot0(v, "")
 }
 
 // DecodeRoot0 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5qwg5djn5xhg.RemoteReceipt, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot0(raw any) (skgo7.RemoteReceipt, error) {
+func DecodeRoot0(raw any) (skgo8.RemoteReceipt, error) {
 	return decRoot0(raw, "")
 }
 
 // StringifyRoot0 encodes v and serializes it with devalue.
-func StringifyRoot0(v skgo7.RemoteReceipt) (string, error) {
+func StringifyRoot0(v skgo8.RemoteReceipt) (string, error) {
 	encoded, err := encRoot0(v, "")
 	if err != nil {
 		return "", err
@@ -454,8 +454,8 @@ func StringifyRoot0(v skgo7.RemoteReceipt) (string, error) {
 }
 
 // ParseRoot0 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5qwg5djn5xhg.RemoteReceipt.
-func ParseRoot0(s string) (skgo7.RemoteReceipt, error) {
-	var zero skgo7.RemoteReceipt
+func ParseRoot0(s string) (skgo8.RemoteReceipt, error) {
+	var zero skgo8.RemoteReceipt
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -463,7 +463,7 @@ func ParseRoot0(s string) (skgo7.RemoteReceipt, error) {
 	return decRoot0(parsed, "")
 }
 
-func encRoot1(v skgo42.Result, at string) (any, error) {
+func encRoot1(v skgo45.Result, at string) (any, error) {
 	enc1, err := encResult(v, at)
 	if err != nil {
 		return nil, err
@@ -471,8 +471,8 @@ func encRoot1(v skgo42.Result, at string) (any, error) {
 	return enc1, nil
 }
 
-func decRoot1(raw any, at string) (skgo42.Result, error) {
-	var dvZero skgo42.Result
+func decRoot1(raw any, at string) (skgo45.Result, error) {
+	var dvZero skgo45.Result
 	dec1, err := decResult(raw, at)
 	if err != nil {
 		return dvZero, err
@@ -481,16 +481,16 @@ func decRoot1(raw any, at string) (skgo42.Result, error) {
 }
 
 // EncodeRoot1 converts v into the devalue value model.
-func EncodeRoot1(v skgo42.Result) (any, error) { return encRoot1(v, "") }
+func EncodeRoot1(v skgo45.Result) (any, error) { return encRoot1(v, "") }
 
 // DecodeRoot1 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot1(raw any) (skgo42.Result, error) {
+func DecodeRoot1(raw any) (skgo45.Result, error) {
 	return decRoot1(raw, "")
 }
 
 // StringifyRoot1 encodes v and serializes it with devalue.
-func StringifyRoot1(v skgo42.Result) (string, error) {
+func StringifyRoot1(v skgo45.Result) (string, error) {
 	encoded, err := encRoot1(v, "")
 	if err != nil {
 		return "", err
@@ -499,8 +499,8 @@ func StringifyRoot1(v skgo42.Result) (string, error) {
 }
 
 // ParseRoot1 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result.
-func ParseRoot1(s string) (skgo42.Result, error) {
-	var zero skgo42.Result
+func ParseRoot1(s string) (skgo45.Result, error) {
+	var zero skgo45.Result
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err

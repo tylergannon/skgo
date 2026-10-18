@@ -11,44 +11,11 @@ An SKGo application has three layers to test. Components are tested as in any Sv
 
 ## Testing the Go server
 
-`NewHandler` in `server.go` is the production stack: hooks, loads, actions, remote functions, `server.go` routes and the renderer, over the embedded build. A test builds it and sends requests without opening a socket:
+`NewHandler` in `server.go` is the production stack: hooks, loads, actions, remote functions, `server.go` routes and the renderer, over the embedded build. A test builds it and sends requests without opening a socket. The example's helpers do both, over the embedded build:
 
 ```go
-package app_test
-
-import (
-	"io/fs"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-
-	app "example.com/myapp"
-	"example.com/myapp/web"
-)
-
-const origin = "http://127.0.0.1:8080"
-
-func newHandler(t *testing.T) http.Handler {
-	t.Helper()
-	dist, err := fs.Sub(web.Build, "build")
-	if err != nil {
-		t.Fatal(err)
-	}
-	h, err := app.NewHandler(dist, origin)
-	if err != nil {
-		t.Fatalf("assembling the production stack: %v", err)
-	}
-	return h
-}
-
-func TestTheHomePageRenders(t *testing.T) {
-	rec := httptest.NewRecorder()
-	newHandler(t).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<h1>") {
-		t.Fatalf("GET /: %d\n%s", rec.Code, rec.Body.String())
-	}
-}
+/// file: server_test.go
+/// include: example/server_test.go#prod-handler
 ```
 
 `web.Build` embeds `web/build`, so build the frontend before `go test`: `just build` does it, or `go generate ./...` followed by `vp build` in `web`. On a fresh checkout the directory holds only a placeholder, and `NewHandler` fails because there is no manifest to read. A test through this handler renders real pages, so it is also the cheapest place to catch a component that breaks in the embedded renderer.
@@ -68,40 +35,32 @@ A remote function is a Go function, so when it needs nothing from the request, c
 The id comes from the generated registry, where `generated` is your bindings package `internal/skgo`:
 
 ```go
-func remoteID(t *testing.T, name string) string {
-	t.Helper()
-	for _, fn := range generated.Remotes() {
-		if strings.HasSuffix(fn.ID(), "/"+name) {
-			return fn.ID()
-		}
-	}
-	t.Fatalf("no remote function named %s is registered", name)
-	return ""
-}
+/// file: server_test.go
+/// include: example/server_test.go#remote-id
 ```
 
-A query is `GET /_app/remote/<id>`, with `?payload=` carrying the argument as a devalue document, base64url-encoded without padding. A command is `POST /_app/remote/<id>` with `Content-Type: application/json`, the matching `Origin`, and the body `{"payload": "<base64url devalue>", "refreshes": []}`. The answer is Kit's remote envelope, whose `data` is the devalue document the browser would parse.
+A query is `GET /_app/remote/<id>`, with `?payload=` carrying the argument as a devalue document, base64url-encoded without padding. A command is `POST /_app/remote/<id>` with `Content-Type: application/json`, the matching `Origin`, and the body `{"payload": "<base64url devalue>", "refreshes": []}`. The answer is Kit's remote envelope, whose `data` is the devalue document the browser would parse. The example sends both shapes:
+
+```go
+/// file: wire_test.go
+/// include: example/wire_test.go#call-query
+```
+
+```go
+/// file: wire_test.go
+/// include: example/wire_test.go#call-command
+```
 
 ## Submitting forms from Go
 
 For a remote `form` whose input is a flat struct of scalar fields, the generator also writes a typed Go client in `internal/skgo/client`, with one method per form named after the Go function. It submits what Kit's enhanced form submits, against a running server:
 
 ```go
-func TestAnEmptyNameIsRefused(t *testing.T) {
-	server := httptest.NewServer(newHandler(t))
-	defer server.Close()
-
-	c := client.Client{FormClient: skgo.FormClient{BaseURL: server.URL}}
-	_, err := c.Submit(context.Background(), optional.Input{})
-
-	var invalid *skgo.Invalid
-	if !errors.As(err, &invalid) || invalid.Issues[0].Field != "name" {
-		t.Fatalf("want a field error on name, got %v", err)
-	}
-}
+/// file: client_test.go
+/// include: example/client_test.go#invalid
 ```
 
-`optional` is the route's link package, and `Input` the form's argument type. A validation failure comes back as `*skgo.Invalid` with one `skgo.Issue{Field, Message}` per problem. The client sends an `Origin` header derived from `BaseURL`, so build the handler with the test server's own address or with an empty origin, which turns the check off. Forms outside the flat-scalar shape are tested with a form `POST` through the handler.
+`optional` is the route's link package, and `Input` the form's argument type; the client `c` was built over a test server. A validation failure comes back as `*skgo.Invalid` with one `skgo.Issue{Field, Message}` per problem. The client sends an `Origin` header derived from `BaseURL`, so build the handler with the test server's own address or with an empty origin, which turns the check off. Forms outside the flat-scalar shape are tested with a form `POST` through the handler.
 
 ## Component tests
 

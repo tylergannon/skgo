@@ -20,8 +20,10 @@ type Params struct {
 	value_69676e6f726564 Key_Ignored
 	value_6974656d       Key_Item
 	value_6b696e64       Key_Kind
+	value_6c616e67       Key_Lang
 	value_6d6f6465       Key_Mode
 	value_6e756d626572   Key_Number
+	value_70617468       Key_Path
 	value_70726f66696c65 Key_Profile
 	value_72657374       Key_Rest
 	value_73656374696f6e Key_Section
@@ -113,6 +115,14 @@ type KindParam_String struct{ Value string }
 
 func (KindParam_String) skgoParam_6b696e64() {}
 
+type Key_Lang interface{ skgoParam_6c616e67() }
+
+func (p Params) Lang() Key_Lang { return p.value_6c616e67 }
+
+type LangParam_String struct{ Value string }
+
+func (LangParam_String) skgoParam_6c616e67() {}
+
 type Key_Mode interface{ skgoParam_6d6f6465() }
 
 func (p Params) Mode() Key_Mode { return p.value_6d6f6465 }
@@ -128,6 +138,14 @@ func (p Params) Number() Key_Number { return p.value_6e756d626572 }
 type NumberParam_OrderNumber struct{ Value hooks.OrderNumber }
 
 func (NumberParam_OrderNumber) skgoParam_6e756d626572() {}
+
+type Key_Path interface{ skgoParam_70617468() }
+
+func (p Params) Path() Key_Path { return p.value_70617468 }
+
+type PathParam_String struct{ Value string }
+
+func (PathParam_String) skgoParam_70617468() {}
 
 type Key_Profile interface{ skgoParam_70726f66696c65() }
 
@@ -226,9 +244,13 @@ func SkgoCallerRoutes() skgo.CallerRoutes {
 		"/invoices":                     {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/invoices", values) }},
 		"/items":                        {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/items", values) }},
 		"/items/[id]":                   {Params: []skgo.ManifestParam{{Name: "id", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/items/[id]", values) }},
+		"/lang":                         {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/lang", values) }},
+		"/lang/[[lang]]":                {Params: []skgo.ManifestParam{{Name: "lang", Matcher: "", Optional: true, Rest: false, Chained: true}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/lang/[[lang]]", values) }},
 		"/live":                         {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/live", values) }},
 		"/middleware":                   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/middleware", values) }},
 		"/middleware/[slug]":            {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/middleware/[slug]", values) }},
+		"/missing":                      {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/missing", values) }},
+		"/missing/[...path]":            {Params: []skgo.ManifestParam{{Name: "path", Matcher: "", Optional: false, Rest: true, Chained: true}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/missing/[...path]", values) }},
 		"/nested-universal":             {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/nested-universal", values) }},
 		"/optional":                     {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/optional", values) }},
 		"/plain":                        {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/plain", values) }},
@@ -247,6 +269,7 @@ func SkgoCallerRoutes() skgo.CallerRoutes {
 		"/todos/[id]":                   {Params: []skgo.ManifestParam{{Name: "id", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/todos/[id]", values) }},
 		"/todos/gate":                   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/todos/gate", values) }},
 		"/todos/pair":                   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/todos/pair", values) }},
+		"/traced":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/traced", values) }},
 		"/typed-dependencies":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/typed-dependencies", values) }},
 		"/typed-dependencies/[a=Order]": {Params: []skgo.ManifestParam{{Name: "a", Matcher: "Order", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/typed-dependencies/[a=Order]", values) }},
 		"/typed-dependencies/[a=Order]/[b=Order]": {Params: []skgo.ManifestParam{{Name: "a", Matcher: "Order", Optional: false, Rest: false, Chained: false}, {Name: "b", Matcher: "Order", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) {
@@ -443,6 +466,15 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 			}
 			p.value_6964 = IDParam_String{Value: value}
 		}
+	case "/lang":
+	case "/lang/[[lang]]":
+		if raw, present := values["lang"]; present {
+			value, err := skgoSharedValue[string](raw)
+			if err != nil {
+				return Params{}, fmt.Errorf("skgo: caller /lang/[[lang]] param lang: %w", err)
+			}
+			p.value_6c616e67 = LangParam_String{Value: value}
+		}
 	case "/live":
 	case "/middleware":
 	case "/middleware/[slug]":
@@ -452,6 +484,15 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 				return Params{}, fmt.Errorf("skgo: caller /middleware/[slug] param slug: %w", err)
 			}
 			p.value_736c7567 = SlugParam_String{Value: value}
+		}
+	case "/missing":
+	case "/missing/[...path]":
+		if raw, present := values["path"]; present {
+			value, err := skgoSharedValue[string](raw)
+			if err != nil {
+				return Params{}, fmt.Errorf("skgo: caller /missing/[...path] param path: %w", err)
+			}
+			p.value_70617468 = PathParam_String{Value: value}
 		}
 	case "/nested-universal":
 	case "/optional":
@@ -499,6 +540,7 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 		}
 	case "/todos/gate":
 	case "/todos/pair":
+	case "/traced":
 	case "/typed-dependencies":
 	case "/typed-dependencies/[a=Order]":
 		if raw, present := values["a"]; present {

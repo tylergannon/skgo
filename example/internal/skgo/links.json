@@ -23,6 +23,10 @@
 			"target": "web/src/routes/todos/gate"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf52heyldmvsa",
+			"target": "web/src/routes/traced"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf52hs4dfmqwwizlqmvxgizlomnuwk4zplnqt2t3smrsxexjplnrd2t3smrsxexjplnuwo3tpojswixi",
 			"target": "web/src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]"
 		},
@@ -163,8 +167,16 @@
 			"target": "web/src/routes/items/[id]"
 		},
 		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5wgc3thf5nvw3dbnztv2xi",
+			"target": "web/src/routes/lang/[[lang]]"
+		},
+		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5wgs5tf",
 			"target": "web/src/routes/live"
+		},
+		{
+			"link": "internal/skgo/links/onzggl3sn52xizltf5wws43tnfxgol23fyxc44dboruf2",
+			"target": "web/src/routes/missing/[...path]"
 		},
 		{
 			"link": "internal/skgo/links/onzggl3sn52xizltf5wwszdenrsxoylsmu",

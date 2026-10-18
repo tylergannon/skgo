@@ -8,9 +8,11 @@ import (
 	"github.com/tylergannon/skgo"
 )
 
+// docs: rest-route
 func get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, _ = w.Write([]byte("dynamic-rest:" + skgo.EventFrom(r.Context()).Param("rest")))
 }
 
 var _ = skgo.GET(get)
+// docs: end rest-route
