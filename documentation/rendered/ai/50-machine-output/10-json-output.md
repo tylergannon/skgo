@@ -35,7 +35,7 @@ Three commands print JSON with `--json`. Each writes one indented JSON document 
 
 ### checks
 
-One entry per checker that ran, in order: `goimports`; then `vite-plus` and `svelte-format` when the project has VitePlus, otherwise `prettier` and `eslint`; `svelte-check`; `go-build`; `go-vet`; `staticcheck`; `skgo-advice`; and `skgo`, generation's own checks. A `project` or `go-overlay` entry appears only when the project could not be read at all.
+One entry per checker that ran, in order: `goimports`; then `vite-plus` and `svelte-format` when the project has VitePlus, otherwise `prettier` and `eslint`; `svelte-check`; `go-build`; `go-vet`; `staticcheck`; `skgo-advice`; and `skgo`, generation's own checks. With `--fix`, the fixer invocations appear first as `goimports-fix`, `vite-plus-fix` and `svelte-format-fix` (or `prettier-fix` and `eslint-fix` without VitePlus). Their failures remain in the report alongside the fresh ordinary checks. A `project` or `go-overlay` entry appears only when the project could not be read at all.
 
 | Field | Meaning |
 | --- | --- |

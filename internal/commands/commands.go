@@ -211,9 +211,10 @@ see, and the Go registration the server mounts. New applications run it from a
 	},
 	{
 		Name:    "check",
-		Summary: "check Go, Svelte, lint and formatting without edits",
+		Summary: "check Go, Svelte, lint and formatting; optionally apply safe fixes",
 		Description: `Runs the Go analyzers, ` + "`svelte-check`" + `, lint and formatting over the
-application and reports every finding without changing a file. The
+application and reports every finding. It does not edit unless ` + "`--fix`" + ` is selected,
+which applies safe formatting, import and lint fixes before ordinary checking. The
 ` + "`--json`" + ` report is what editors and agents read; ` + "`skgo mcp`" + ` serves the
 same check as a tool.`,
 		Flags: []Flag{
@@ -224,6 +225,7 @@ same check as a tool.`,
 			{"locals-type", "Locals", "application locals named struct"},
 			{"hook-package", "", "optional request hook Go import path"},
 			{"hook-symbol", "Handle", "selected request hook symbol"},
+			{"fix", "false", "apply safe formatting, import and lint fixes, then recheck"},
 			{"json", "false", "write a structured JSON report"},
 		},
 	},

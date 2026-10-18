@@ -1,0 +1,52 @@
+=== RUN   TestAdviceJSONZeroExitStillReportsFinding
+--- PASS: TestAdviceJSONZeroExitStillReportsFinding (0.00s)
+=== RUN   TestSkgoDuplicateRetainsBothAuthoredLocations
+--- PASS: TestSkgoDuplicateRetainsBothAuthoredLocations (0.00s)
+=== RUN   TestGoToolZeroExitFailureTextIsIncomplete
+--- PASS: TestGoToolZeroExitFailureTextIsIncomplete (0.00s)
+=== RUN   TestGoTypeErrorStillProducesAuthoredDiagnostic
+--- PASS: TestGoTypeErrorStillProducesAuthoredDiagnostic (0.00s)
+=== RUN   TestStaticcheckCompileFailureIsIncomplete
+--- PASS: TestStaticcheckCompileFailureIsIncomplete (0.00s)
+=== RUN   TestWireContractDiagnosticCode
+--- PASS: TestWireContractDiagnosticCode (0.00s)
+=== RUN   TestStaleRouteLinkHasAuthoredFileWithoutFabricatedRange
+--- PASS: TestStaleRouteLinkHasAuthoredFileWithoutFabricatedRange (0.00s)
+=== RUN   TestDuplicateSerializedNameRetainsFieldAndDeclaration
+--- PASS: TestDuplicateSerializedNameRetainsFieldAndDeclaration (0.03s)
+=== RUN   TestFixMissingToolsStillRunsOrdinaryChecks
+--- PASS: TestFixMissingToolsStillRunsOrdinaryChecks (0.01s)
+=== RUN   TestFixFailureSurvivesSuccessfulOrdinaryTool
+--- PASS: TestFixFailureSurvivesSuccessfulOrdinaryTool (0.39s)
+=== RUN   TestSvelteConfigSelectsTheAppsOwnFile
+--- PASS: TestSvelteConfigSelectsTheAppsOwnFile (0.00s)
+=== RUN   TestSvelteCompletionRequiresSummaryAndCount
+=== RUN   TestSvelteCompletionRequiresSummaryAndCount/complete
+=== RUN   TestSvelteCompletionRequiresSummaryAndCount/zero_exit_failure
+=== RUN   TestSvelteCompletionRequiresSummaryAndCount/truncated
+=== RUN   TestSvelteCompletionRequiresSummaryAndCount/count_mismatch
+=== RUN   TestSvelteCompletionRequiresSummaryAndCount/zero_files
+=== RUN   TestSvelteCompletionRequiresSummaryAndCount/zero_exit_errors
+--- PASS: TestSvelteCompletionRequiresSummaryAndCount (0.00s)
+    --- PASS: TestSvelteCompletionRequiresSummaryAndCount/complete (0.00s)
+    --- PASS: TestSvelteCompletionRequiresSummaryAndCount/zero_exit_failure (0.00s)
+    --- PASS: TestSvelteCompletionRequiresSummaryAndCount/truncated (0.00s)
+    --- PASS: TestSvelteCompletionRequiresSummaryAndCount/count_mismatch (0.00s)
+    --- PASS: TestSvelteCompletionRequiresSummaryAndCount/zero_files (0.00s)
+    --- PASS: TestSvelteCompletionRequiresSummaryAndCount/zero_exit_errors (0.00s)
+=== RUN   TestRouteOverlayUsesAuthoredBytesWithoutChangingCopy
+--- PASS: TestRouteOverlayUsesAuthoredBytesWithoutChangingCopy (0.00s)
+=== RUN   TestAuthoredPathThroughSymlinkedRoot
+--- PASS: TestAuthoredPathThroughSymlinkedRoot (0.00s)
+=== RUN   TestSvelteFormattingResultStatus
+=== RUN   TestSvelteFormattingResultStatus/clean
+=== RUN   TestSvelteFormattingResultStatus/unformatted
+--- PASS: TestSvelteFormattingResultStatus (0.13s)
+    --- PASS: TestSvelteFormattingResultStatus/clean (0.07s)
+    --- PASS: TestSvelteFormattingResultStatus/unformatted (0.06s)
+=== RUN   TestVitePlusLintDiagnosticFromRealCLIShape
+--- PASS: TestVitePlusLintDiagnosticFromRealCLIShape (0.00s)
+=== RUN   TestVitePlusCompletionFromInstalledVersions
+--- PASS: TestVitePlusCompletionFromInstalledVersions (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/check	0.825s

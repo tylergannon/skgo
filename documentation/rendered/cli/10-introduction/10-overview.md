@@ -36,7 +36,7 @@ buildinfo` says which binary is answering.
 | [`skgo buildinfo`](buildinfo) | identify this executing CLI and its Go build |
 | [`skgo dev`](dev) | develop with Go and Vite |
 | [`skgo generate`](generate) | generate the glue between the Go server and the SvelteKit app |
-| [`skgo check`](check) | check Go, Svelte, lint and formatting without edits |
+| [`skgo check`](check) | check Go, Svelte, lint and formatting; optionally apply safe fixes |
 | [`skgo kit-patch`](kit-patch) | configure or verify Kit's declared-Inputs queue correction |
 | [`skgo advice`](advice) | show installed rule guidance and repair examples |
 | [`skgo env`](env) | resolve declared environment variables from JSON on stdin |

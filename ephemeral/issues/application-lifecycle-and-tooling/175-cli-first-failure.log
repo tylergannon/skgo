@@ -1,0 +1,122 @@
+=== RUN   TestCheckFixCLIUsesProjectToolsAndRechecks
+    check_fix_test.go:118: web/src/probe.ts: err=<nil>
+        want "let greeting = \"hello\";\nexport { greeting };\n"
+         got "const greeting = \"hello\";\nexport { greeting };\n"
+    check_fix_test.go:119: web/src/App.svelte: err=<nil>
+        want "<script lang=\"ts\">\n  let count: number = \"wrong\";\n</script>\n\n<h1>{count}</h1>\n"
+         got "<script lang=\"ts\">let count: number = \"wrong\";</script>\n<h1>{count}</h1>\n"
+    check_fix_test.go:134: fresh check lost unfixable authored error: {OK:false Checks:[{Name:goimports-fix Status:complete Message:} {Name:vite-plus-fix Status:failed Message:error: Lint issues found
+        ! eslint(no-unused-vars): Variable 'DiagLogLevel' is assigned a value but never used. Unused variables should start with a '_'.
+            ,-[node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@opentelemetry/api/build/src/diag/types.js:13:5]
+         12 |  */
+         13 | var DiagLogLevel;
+            :     ^^^^^^|^^^^^
+            :           `-- 'DiagLogLevel' is declared here
+         14 | (function (DiagLogLevel) {
+            `----
+            ,-[node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@opentelemetry/api/build/src/diag/types.js:32:4]
+         31 |     DiagLogLevel[DiagLogLevel["ALL"] = 9999] = "ALL";
+         32 | })(DiagLogLevel = exports.DiagLogLevel || (exports.DiagLogLevel = {}));
+            :    ^^^^^^|^^^^^
+            :          `-- it was last assigned he
+[Dependency lint diagnostics omitted; original complete output retained locally in 175-cli-first-failure-full.local.log]
+     201009 | |     updateSharedExtendedConfigFileWatcher,
+         201010 | |     updateSourceFile,
+         201011 | |     updateWatchingWildcardDirectories,
+         201012 | |     usesWildcardTypes,
+         201013 | |     usingSingleLineStringWriter,
+         201014 | |     utf16EncodeAsString,
+         201015 | |     validateLocaleAndSetLanguage,
+         201016 | |     version,
+         201017 | |     versionMajorMinor,
+         201018 | |     visitArray,
+         201019 | |     visitCommaListElements,
+         201020 | |     visitEachChild,
+         201021 | |     visitFunctionBody,
+         201022 | |     visitIterationBody,
+         201023 | |     visitLexicalEnvironment,
+         201024 | |     visitNode,
+         201025 | |     visitNodes,
+         201026 | |     visitParameterList,
+         201027 | |     walkUpBindingElementsAndPatterns,
+         201028 | |     walkUpOuterExpressions,
+         201029 | |     walkUpParenthesizedExpressions,
+         201030 | |     walkUpParenthesizedTypes,
+         201031 | |     walkUpParenthesizedTypesAndGetParentAndChild,
+         201032 | |     whitespaceOrMapCommentRegExp,
+         201033 | |     writeCommentRange,
+         201034 | |     writeFile,
+         201035 | |     writeFileEnsuringDirectories,
+         201036 | |     zipWith
+         201037 | `-> });
+         201038 |     })({ get exports() { return ts; }, set exports(v) { ts = v; if (typeof module !== "undefined" && module.exports) { module.exports = v; } } })
+                `----
+          help: This expression always evaluates to the constant on the left-hand side
+        
+          ! eslint(no-unused-expressions): Expected expression to be used
+                ,-[node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/typescript/lib/typescript.js:128463:5]
+         128462 |     );
+         128463 |     (_b2 = tracing) == null ? void 0 : _b2.pop();
+                :     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         128464 |     return result;
+                `----
+          help: Consider using this expression or removing it
+        
+        Found 20229 errors and 106093 warnings in 26824 files (2.7s, 10 threads)
+        pass: Formatting completed for checked files (3.0s)} {Name:svelte-format-fix Status:failed Message:/Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/prettier@3.9.10/node_modules/prettier/bin/prettier.cjs:38
+              const opts = opts || {};
+                    ^
+        
+        SyntaxError: Identifier 'opts' has already been declared
+            at wrapSafe (node:internal/modules/cjs/loader:1861:18)
+            at Module._compile (node:internal/modules/cjs/loader:1903:20)
+            at Object..js (node:internal/modules/cjs/loader:2060:10)
+            at Module.load (node:internal/modules/cjs/loader:1651:32)
+            at Module._load (node:internal/modules/cjs/loader:1443:12)
+            at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+            at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+            at node:internal/main/run_main_module:33:47
+        
+        Node.js v24.22.0} {Name:goimports Status:complete Message:} {Name:vite-plus Status:failed Message:error: Failed to resolve vite config: GenericFailure, Cannot access 'A' before initialization} {Name:svelte-format Status:failed Message:/Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/prettier@3.9.10/node_modules/prettier/bin/prettier.cjs:38
+              const opts = opts || {};
+                    ^
+        
+        SyntaxError: Identifier 'opts' has already been declared
+            at wrapSafe (node:internal/modules/cjs/loader:1861:18)
+            at Module._compile (node:internal/modules/cjs/loader:1903:20)
+            at Object..js (node:internal/modules/cjs/loader:2060:10)
+            at Module.load (node:internal/modules/cjs/loader:1651:32)
+            at Module._load (node:internal/modules/cjs/loader:1443:12)
+            at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+            at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+            at node:internal/main/run_main_module:33:47
+        
+        Node.js v24.22.0} {Name:svelte-check Status:incomplete Message:machine output lacks a matched START/COMPLETED summary or contains unrecognized output (read 0 errors, 0 warnings): /Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript/lib/typescript.js:2298
+        })(Comparison || {});
+           ^
+        
+        ReferenceError: Cannot access 'Comparison' before initialization
+            at /Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript/lib/typescript.js:2298:4
+            at Object.<anonymous> (/Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript/lib/typescript.js:201038:3)
+            at Module._compile (node:internal/modules/cjs/loader:1929:14)
+            at Object..js (node:internal/modules/cjs/loader:2060:10)
+            at Module.load (node:internal/modules/cjs/loader:1651:32)
+            at Module._load (node:internal/modules/cjs/loader:1443:12)
+            at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+            at Module.require (node:internal/modules/cjs/loader:1674:12)
+            at require (node:internal/modules/helpers:157:16)
+            at Object.<anonymous> (/Users/tyler/.codex/worktrees/0aa3/skgo/example/web/node_modules/.pnpm/svelte-check@4.7.7_picomatch@4.0.7_svelte@5.57.2_typescript@6.0.3/node_modules/svelte-check/dist/src/index.js:14:12)
+        
+        Node.js v24.22.0} {Name:go-build Status:complete Message:} {Name:go-vet Status:complete Message:} {Name:staticcheck Status:complete Message:} {Name:skgo-advice Status:complete Message:} {Name:skgo Status:failed Message:skgo: the @skgo/sveltekit-adapter installed in this app is not the one this skgo publishes.
+        	installed in /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestCheckFixCLIUsesProjectToolsAndRechecks3101262949/001/web/node_modules/@skgo/sveltekit-adapter: skgo 0.0.0-dev (adapter 82d60815ae45)
+        	this program:  skgo v0.37.6-0.20261018182256-d510d13b3feb+dirty (adapter 09004f58db3e)
+        They are one contract in two languages, released together, so the frontend this would build could not be served by the program that generated it.
+        Install the matching one — `vp add -D '@skgo/sveltekit-adapter@<=0.37.6-0.20261018182256-d510d13b3feb+dirty'` — and run `go generate ./...` again.}] Diagnostics:[{Source:skgo Code:adapter-compatibility Severity:error Message:skgo: the @skgo/sveltekit-adapter installed in this app is not the one this skgo publishes.
+        	installed in /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestCheckFixCLIUsesProjectToolsAndRechecks3101262949/001/web/node_modules/@skgo/sveltekit-adapter: skgo 0.0.0-dev (adapter 82d60815ae45)
+        	this program:  skgo v0.37.6-0.20261018182256-d510d13b3feb+dirty (adapter 09004f58db3e)
+        They are one contract in two languages, released together, so the frontend this would build could not be served by the program that generated it.
+        Install the matching one — `vp add -D '@skgo/sveltekit-adapter@<=0.37.6-0.20261018182256-d510d13b3feb+dirty'` — and run `go generate ./...` again. Location:<nil> Related:[] Fix: Documentation:}]}
+--- FAIL: TestCheckFixCLIUsesProjectToolsAndRechecks (81.36s)
+FAIL
+FAIL	github.com/tylergannon/skgo/cmd/skgo	84.121s
+FAIL

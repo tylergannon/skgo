@@ -1,4 +1,4 @@
-// Package check composes the project's installed checkers without editing source.
+// Package check composes the project's installed checkers and deliberate safe fixes.
 package check
 
 import (
@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -50,9 +53,13 @@ type Report struct {
 	Diagnostics []Diagnostic `json:"diagnostics"`
 }
 
-type Options struct{ Root, Web, Out, LocalsPackage, LocalsType, HookPackage, HookSymbol string }
+type Options struct {
+	Root, Web, Out, LocalsPackage, LocalsType, HookPackage, HookSymbol string
+	Fix                                                                bool // Apply safe formatting/import and lint fixes before ordinary checking.
+}
 
-// Run always attempts each independent checker. A diagnostic exit is distinct
+// Run is non-editing unless Fix is explicitly selected. Fixes are followed by
+// ordinary checking, even when a fixer fails. A diagnostic exit is distinct
 // from a checker that failed or stopped before publishing a complete result.
 func Run(ctx context.Context, o Options) Report {
 	r := Report{OK: true, Checks: []Check{}, Diagnostics: []Diagnostic{}}
@@ -98,6 +105,11 @@ func Run(ctx context.Context, o Options) Report {
 	if _, err := os.Stat(filepath.Join(web, "package.json")); err != nil {
 		add(Check{Name: "project", Status: "failed", Message: "web/package.json is missing: " + err.Error()})
 		return r
+	}
+	if o.Fix {
+		for _, c := range fixProject(ctx, root, web, out) {
+			add(c)
+		}
 	}
 	routes, err := loadRoutes(out)
 	if err != nil {
@@ -282,25 +294,7 @@ func checkGoImports(ctx context.Context, root, out string) (Check, []Diagnostic)
 		c.Message = "goimports is missing"
 		return c, nil
 	}
-	var files []string
-	err = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if p == filepath.Join(out, "links") {
-				return filepath.SkipDir
-			}
-			if p != root && (d.Name() == ".git" || d.Name() == "node_modules" || d.Name() == "vendor" || d.Name() == "testdata" || d.Name() == "ephemeral" || d.Name() == "generated" || d.Name() == "build") {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if strings.HasSuffix(p, ".go") && !strings.HasSuffix(p, "_gen.go") {
-			files = append(files, p)
-		}
-		return nil
-	})
+	files, err := goImportFiles(root, out)
 	if err != nil {
 		c.Status = "failed"
 		c.Message = err.Error()
@@ -339,6 +333,33 @@ func checkGoImports(ctx context.Context, root, out string) (Check, []Diagnostic)
 		c.Message = "unformatted: " + strings.Join(different, ", ")
 	}
 	return c, ds
+}
+
+func goImportFiles(root, out string) ([]string, error) {
+	var files []string
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if p == filepath.Join(out, "links") {
+				return filepath.SkipDir
+			}
+			if p != root && (d.Name() == ".git" || d.Name() == "node_modules" || d.Name() == "vendor" || d.Name() == "testdata" || d.Name() == "ephemeral" || d.Name() == "generated" || d.Name() == "build") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.Type().IsRegular() && strings.HasSuffix(p, ".go") && !strings.HasSuffix(p, "_gen.go") {
+			f, parseErr := parser.ParseFile(token.NewFileSet(), p, nil, parser.PackageClauseOnly|parser.ParseComments)
+			if parseErr == nil && ast.IsGenerated(f) {
+				return nil
+			}
+			files = append(files, p)
+		}
+		return nil
+	})
+	return files, err
 }
 
 func firstDifferentLine(a, b []byte) int {

@@ -1,0 +1,36 @@
+vp v1.3.0
+
+Local vite-plus:
+  vite-plus  v1.3.0
+
+Tools:
+  vite             v8.3.4
+  rolldown         v1.2.14
+  vitest           v5.0.5
+  oxfmt            v0.73.0
+  oxlint           v1.88.0
+  oxlint-tsgolint  v7.0.2004
+  tsdown           v0.23.1
+
+Usage: vp check [OPTIONS] [PATHS]...
+
+Run format, lint, and type checks.
+
+Arguments:
+  [PATHS]...  File paths to pass to fmt and lint
+
+Options:
+  --fix                            Auto-fix format and lint issues
+  --quiet                          Disable reporting on warnings, only errors are reported
+  --no-fmt                         Skip format check
+  --no-lint                        Skip lint rules; type-check still runs when `lint.options.typeCheck` is true
+  --no-error-on-unmatched-pattern  Do not exit with error when pattern is unmatched
+  -h, --help                       Print help
+
+Examples:
+  vp check
+  vp check --fix
+  vp check --no-lint src/index.ts
+
+Documentation: https://viteplus.dev/guide/check
+

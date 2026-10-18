@@ -164,13 +164,14 @@ func checkProject(args []string) {
 	localsType := fs.String("locals-type", "Locals", "application locals named struct")
 	hookPackage := fs.String("hook-package", "", "optional request hook Go import path")
 	hookSymbol := fs.String("hook-symbol", "Handle", "selected request hook symbol")
+	fix := fs.Bool("fix", false, "apply safe formatting, import and lint fixes, then recheck")
 	jsonOutput := fs.Bool("json", false, "write a structured JSON report")
 	_ = fs.Parse(args)
 	if fs.NArg() != 0 {
 		fs.Usage()
 		os.Exit(2)
 	}
-	report := check.Run(context.Background(), check.Options{Root: *root, Web: *web, Out: *out, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol})
+	report := check.Run(context.Background(), check.Options{Root: *root, Web: *web, Out: *out, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol, Fix: *fix})
 	if *jsonOutput {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")

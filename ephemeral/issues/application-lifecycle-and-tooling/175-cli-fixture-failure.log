@@ -1,0 +1,7 @@
+=== RUN   TestCheckFixCLIUsesProjectToolsAndRechecks
+    check_fix_test.go:155: skgo did not complete: {Name:skgo Status:failed Message:skgo: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestCheckFixCLIUsesProjectToolsAndRechecks1966276207/001/bindings/params/skgo_gen.go is missing or stale; run skgo generate}
+    check_fix_test.go:163: real CLI: read-only check preserved authored bytes; --fix repaired Go imports, VP formatting/safe lint and Svelte formatting; fresh full check retained App.svelte:2 type error and preserved exclusions/generated/symlink bytes
+--- FAIL: TestCheckFixCLIUsesProjectToolsAndRechecks (5.41s)
+FAIL
+FAIL	github.com/tylergannon/skgo/cmd/skgo	8.171s
+FAIL

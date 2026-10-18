@@ -1,0 +1,7 @@
+✓ Lockfile passes supply-chain policies (verified 20h ago)
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 94, reused 94, downloaded 0, added 79
+Packages: +137
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 137, reused 137, downloaded 0, added 137, done
+Done in 2.1s using pnpm v12.14.0

@@ -1,0 +1,5 @@
+=== RUN   TestCheckFixCLIUsesProjectToolsAndRechecks
+    check_fix_test.go:167: real CLI: read-only check preserved authored bytes; --fix repaired Go imports, VP formatting/safe lint and Svelte formatting; fresh full check retained App.svelte:2 type error and stale-binding failure, preserving exclusions/generated/dependency/symlink bytes
+--- PASS: TestCheckFixCLIUsesProjectToolsAndRechecks (4.03s)
+PASS
+ok  	github.com/tylergannon/skgo/cmd/skgo	6.904s
