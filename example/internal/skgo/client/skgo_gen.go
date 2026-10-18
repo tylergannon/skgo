@@ -15,6 +15,7 @@ import (
 	skgo "github.com/tylergannon/skgo"
 	skgo9 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5qwg5djn5xhg"
 	skgo48 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5xxa5djn5xgc3a"
+	skgo76 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4"
 )
 
 // Client uses the same enhanced Form endpoint as the browser.
@@ -28,6 +29,11 @@ func (c Client) SendRemoteNote(ctx context.Context, in skgo9.SkgoArg_sendRemoteN
 // Submit submits src/routes/optional/optional.remote.ts#submit once.
 func (c Client) Submit(ctx context.Context, in skgo48.SkgoArg_submit) (skgo48.SkgoOut_submit, error) {
 	return skgo.SubmitForm(ctx, c.FormClient, "83n4w1/submit", in, DecodeRoot1)
+}
+
+// SignUp submits src/routes/samples/testing/testing.remote.ts#signUp once.
+func (c Client) SignUp(ctx context.Context, in skgo76.SkgoArg_signUp) (skgo76.SkgoOut_signUp, error) {
+	return skgo.SubmitForm(ctx, c.FormClient, "1mcy3mj/signUp", in, DecodeRoot2)
 }
 
 // dvAt renders a JSON-pointer-style path for a diagnostic. The root value has
@@ -416,6 +422,65 @@ func ParseResult(s string) (skgo48.Result, error) {
 	return decResult(parsed, "")
 }
 
+func encWelcome(v skgo76.Welcome, at string) (any, error) {
+	enc1 := devalue.NewObject()
+	var enc2 any = string(v.Email)
+	enc1.Set("email", enc2)
+	return enc1, nil
+}
+
+func decWelcome(raw any, at string) (skgo76.Welcome, error) {
+	var dvZero skgo76.Welcome
+	var dec1 skgo76.Welcome
+	obj2, err := dvObject(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	if err := dvKnown(obj2, at, "email"); err != nil {
+		return dvZero, err
+	}
+	raw3, err := dvRequired(obj2, "email", at+"/email")
+	if err != nil {
+		return dvZero, err
+	}
+	dec4, err := dvString(raw3, at+"/email")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Email = dec4
+	return dec1, nil
+}
+
+// EncodeWelcome converts v into the devalue value model.
+func EncodeWelcome(v skgo76.Welcome) (any, error) {
+	return encWelcome(v, "")
+}
+
+// DecodeWelcome converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, rejecting any
+// shape the type grammar does not admit.
+func DecodeWelcome(raw any) (skgo76.Welcome, error) {
+	return decWelcome(raw, "")
+}
+
+// StringifyWelcome encodes v and serializes it with devalue.
+func StringifyWelcome(v skgo76.Welcome) (string, error) {
+	encoded, err := encWelcome(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseWelcome parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome.
+func ParseWelcome(s string) (skgo76.Welcome, error) {
+	var zero skgo76.Welcome
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decWelcome(parsed, "")
+}
+
 func encRoot0(v skgo9.RemoteReceipt, at string) (any, error) {
 	enc1, err := encRemoteReceipt(v, at)
 	if err != nil {
@@ -506,4 +571,51 @@ func ParseRoot1(s string) (skgo48.Result, error) {
 		return zero, err
 	}
 	return decRoot1(parsed, "")
+}
+
+func encRoot2(v skgo76.Welcome, at string) (any, error) {
+	enc1, err := encWelcome(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot2(raw any, at string) (skgo76.Welcome, error) {
+	var dvZero skgo76.Welcome
+	dec1, err := decWelcome(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot2 converts v into the devalue value model.
+func EncodeRoot2(v skgo76.Welcome) (any, error) {
+	return encRoot2(v, "")
+}
+
+// DecodeRoot2 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot2(raw any) (skgo76.Welcome, error) {
+	return decRoot2(raw, "")
+}
+
+// StringifyRoot2 encodes v and serializes it with devalue.
+func StringifyRoot2(v skgo76.Welcome) (string, error) {
+	encoded, err := encRoot2(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot2 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome.
+func ParseRoot2(s string) (skgo76.Welcome, error) {
+	var zero skgo76.Welcome
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot2(parsed, "")
 }

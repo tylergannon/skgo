@@ -8,7 +8,7 @@ import (
 
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/example/internal/skgo/client"
-	signup "github.com/tylergannon/skgo/example/internal/skgo/links/onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4"
+	signup "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4"
 )
 
 // TestTheGeneratedClientSubmitsAForm submits the signUp form over HTTP as

@@ -78,11 +78,27 @@ import (
 	skgo58 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zg65lunfxgol3tnrqxg2bpnzsxmzls"
 	skgo59 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zgk4lvmvzxillgmv2gg2a"
 	skgo60 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zgk4tpov2gkzbplnxhk3lcmvzd2t3smrsxexi"
-	skgo61 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq"
-	skgo62 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zxi4tfmfwq"
+	pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq"
+	skgo62 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3dn5xww2lfom"
+	skgo63 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxw4ylnmvsa"
+	skgo64 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxwizlgmf2wy5a"
+	skgo65 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxwk3timfxggzi"
+	skgo66 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxxg2lhnywws3q"
+	skgo67 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxxmylmnfsgc5djn5xa"
+	pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom"
+	skgo69 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3jnz2he33eovrxi2lpny"
+	skgo70 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3mn5qwil3qmftwkllemf2gc"
+	skgo71 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3mn5qwil3vnz2heyldnmxvw43movtv2"
+	skgo72 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3nnftxeylunfxgo"
+	skgo73 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3qojsxezlomrsxe2lom4xvw43movtv2"
+	pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt"
+	pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn"
+	pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4"
+	skgo77 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq"
+	skgo78 "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zxi4tfmfwq"
 	params "github.com/tylergannon/skgo/example/internal/skgo/params"
 	hooks "github.com/tylergannon/skgo/example/web/src"
-	skgo64 "github.com/tylergannon/skgo/example/web/src/lib"
+	skgo80 "github.com/tylergannon/skgo/example/web/src/lib"
 )
 
 func RequestBoundary(cfg skgo.HandleConfig, next http.Handler) http.Handler {
@@ -506,84 +522,7 @@ func ParseQuote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d
 	return decQuote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c746634756732796c736e6e737869326c6f6d347573363464736e66727773337468(parsed, "")
 }
 
-func encTodo(v pkg_businesslogic.Todo, at string) (any, error) {
-	enc1 := devalue.NewObject()
-	var enc2 any = string(v.ID)
-	enc1.Set("id", enc2)
-	var enc3 any = string(v.Text)
-	enc1.Set("text", enc3)
-	var enc4 any = bool(v.Private)
-	enc1.Set("private", enc4)
-	return enc1, nil
-}
-
-func decTodo(raw any, at string) (pkg_businesslogic.Todo, error) {
-	var dvZero pkg_businesslogic.Todo
-	var dec1 pkg_businesslogic.Todo
-	obj2, err := dvObject(raw, at)
-	if err != nil {
-		return dvZero, err
-	}
-	if err := dvKnown(obj2, at, "id", "text", "private"); err != nil {
-		return dvZero, err
-	}
-	raw3, err := dvRequired(obj2, "id", at+"/id")
-	if err != nil {
-		return dvZero, err
-	}
-	dec4, err := dvString(raw3, at+"/id")
-	if err != nil {
-		return dvZero, err
-	}
-	dec1.ID = dec4
-	raw5, err := dvRequired(obj2, "text", at+"/text")
-	if err != nil {
-		return dvZero, err
-	}
-	dec6, err := dvString(raw5, at+"/text")
-	if err != nil {
-		return dvZero, err
-	}
-	dec1.Text = dec6
-	raw7, err := dvRequired(obj2, "private", at+"/private")
-	if err != nil {
-		return dvZero, err
-	}
-	dec8, err := dvBool(raw7, at+"/private")
-	if err != nil {
-		return dvZero, err
-	}
-	dec1.Private = dec8
-	return dec1, nil
-}
-
-// EncodeTodo converts v into the devalue value model.
-func EncodeTodo(v pkg_businesslogic.Todo) (any, error) { return encTodo(v, "") }
-
-// DecodeTodo converts a devalue value model tree into a pkg_businesslogic.Todo, rejecting any
-// shape the type grammar does not admit.
-func DecodeTodo(raw any) (pkg_businesslogic.Todo, error) { return decTodo(raw, "") }
-
-// StringifyTodo encodes v and serializes it with devalue.
-func StringifyTodo(v pkg_businesslogic.Todo) (string, error) {
-	encoded, err := encTodo(v, "")
-	if err != nil {
-		return "", err
-	}
-	return devalue.Stringify(encoded)
-}
-
-// ParseTodo parses a devalue document and decodes it into a pkg_businesslogic.Todo.
-func ParseTodo(s string) (pkg_businesslogic.Todo, error) {
-	var zero pkg_businesslogic.Todo
-	parsed, err := devalue.Parse(s, nil)
-	if err != nil {
-		return zero, err
-	}
-	return decTodo(parsed, "")
-}
-
-func encRename(v pkg_onzggl3sn52xizltf52g6zdpom.Rename, at string) (any, error) {
+func encRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(v pkg_onzggl3sn52xizltf52g6zdpom.Rename, at string) (any, error) {
 	enc1 := devalue.NewObject()
 	var enc2 any = string(v.ID)
 	enc1.Set("id", enc2)
@@ -592,7 +531,7 @@ func encRename(v pkg_onzggl3sn52xizltf52g6zdpom.Rename, at string) (any, error) 
 	return enc1, nil
 }
 
-func decRename(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
+func decRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
 	var dvZero pkg_onzggl3sn52xizltf52g6zdpom.Rename
 	var dec1 pkg_onzggl3sn52xizltf52g6zdpom.Rename
 	obj2, err := dvObject(raw, at)
@@ -623,30 +562,34 @@ func decRename(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error
 	return dec1, nil
 }
 
-// EncodeRename converts v into the devalue value model.
-func EncodeRename(v pkg_onzggl3sn52xizltf52g6zdpom.Rename) (any, error) { return encRename(v, "") }
+// EncodeRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d converts v into the devalue value model.
+func EncodeRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(v pkg_onzggl3sn52xizltf52g6zdpom.Rename) (any, error) {
+	return encRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(v, "")
+}
 
-// DecodeRename converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpom.Rename, rejecting any
+// DecodeRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpom.Rename, rejecting any
 // shape the type grammar does not admit.
-func DecodeRename(raw any) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) { return decRename(raw, "") }
+func DecodeRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(raw any) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
+	return decRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(raw, "")
+}
 
-// StringifyRename encodes v and serializes it with devalue.
-func StringifyRename(v pkg_onzggl3sn52xizltf52g6zdpom.Rename) (string, error) {
-	encoded, err := encRename(v, "")
+// StringifyRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d encodes v and serializes it with devalue.
+func StringifyRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(v pkg_onzggl3sn52xizltf52g6zdpom.Rename) (string, error) {
+	encoded, err := encRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(v, "")
 	if err != nil {
 		return "", err
 	}
 	return devalue.Stringify(encoded)
 }
 
-// ParseRename parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpom.Rename.
-func ParseRename(s string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
+// ParseRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpom.Rename.
+func ParseRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(s string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
 	var zero pkg_onzggl3sn52xizltf52g6zdpom.Rename
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
 	}
-	return decRename(parsed, "")
+	return decRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(parsed, "")
 }
 
 func encRetitle(v pkg_onzggl3sn52xizltf52g6zdpom.Retitle, at string) (any, error) {
@@ -787,7 +730,7 @@ func ParseBanner(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, error
 	return decBanner(parsed, "")
 }
 
-func encNote(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, at string) (any, error) {
+func encNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, at string) (any, error) {
 	enc1 := devalue.NewObject()
 	var enc2 any = string(v.Name)
 	enc1.Set("name", enc2)
@@ -796,7 +739,7 @@ func encNote(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, at string) (any, err
 	return enc1, nil
 }
 
-func decNote(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
+func decNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
 	var dvZero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note
 	var dec1 pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note
 	obj2, err := dvObject(raw, at)
@@ -827,32 +770,34 @@ func decNote(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, e
 	return dec1, nil
 }
 
-// EncodeNote converts v into the devalue value model.
-func EncodeNote(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note) (any, error) { return encNote(v, "") }
-
-// DecodeNote converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, rejecting any
-// shape the type grammar does not admit.
-func DecodeNote(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
-	return decNote(raw, "")
+// EncodeNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75 converts v into the devalue value model.
+func EncodeNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note) (any, error) {
+	return encNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(v, "")
 }
 
-// StringifyNote encodes v and serializes it with devalue.
-func StringifyNote(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note) (string, error) {
-	encoded, err := encNote(v, "")
+// DecodeNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, rejecting any
+// shape the type grammar does not admit.
+func DecodeNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
+	return decNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(raw, "")
+}
+
+// StringifyNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75 encodes v and serializes it with devalue.
+func StringifyNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note) (string, error) {
+	encoded, err := encNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(v, "")
 	if err != nil {
 		return "", err
 	}
 	return devalue.Stringify(encoded)
 }
 
-// ParseNote parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note.
-func ParseNote(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
+// ParseNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note.
+func ParseNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
 	var zero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
 	}
-	return decNote(parsed, "")
+	return decNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(parsed, "")
 }
 
 func encWrite(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, at string) (any, error) {
@@ -1320,7 +1265,7 @@ func ParseQuote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d
 	return decQuote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357267633564646e61(parsed, "")
 }
 
-func encMessage(v pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, at string) (any, error) {
+func encMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(v pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, at string) (any, error) {
 	enc1 := devalue.NewObject()
 	var enc2 any = string(v.ID)
 	enc1.Set("id", enc2)
@@ -1339,7 +1284,7 @@ func encMessage(v pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, at string) (any, er
 	return enc1, nil
 }
 
-func decMessage(raw any, at string) (pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, error) {
+func decMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(raw any, at string) (pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, error) {
 	var dvZero pkg_onzggl3sn52xizltf5rw63tumfrxi.Message
 	var dec1 pkg_onzggl3sn52xizltf5rw63tumfrxi.Message
 	obj2, err := dvObject(raw, at)
@@ -1416,34 +1361,34 @@ func decMessage(raw any, at string) (pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, 
 	return dec1, nil
 }
 
-// EncodeMessage converts v into the devalue value model.
-func EncodeMessage(v pkg_onzggl3sn52xizltf5rw63tumfrxi.Message) (any, error) {
-	return encMessage(v, "")
+// EncodeMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869 converts v into the devalue value model.
+func EncodeMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(v pkg_onzggl3sn52xizltf5rw63tumfrxi.Message) (any, error) {
+	return encMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(v, "")
 }
 
-// DecodeMessage converts a devalue value model tree into a pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, rejecting any
+// DecodeMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, rejecting any
 // shape the type grammar does not admit.
-func DecodeMessage(raw any) (pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, error) {
-	return decMessage(raw, "")
+func DecodeMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(raw any) (pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, error) {
+	return decMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(raw, "")
 }
 
-// StringifyMessage encodes v and serializes it with devalue.
-func StringifyMessage(v pkg_onzggl3sn52xizltf5rw63tumfrxi.Message) (string, error) {
-	encoded, err := encMessage(v, "")
+// StringifyMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869 encodes v and serializes it with devalue.
+func StringifyMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(v pkg_onzggl3sn52xizltf5rw63tumfrxi.Message) (string, error) {
+	encoded, err := encMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(v, "")
 	if err != nil {
 		return "", err
 	}
 	return devalue.Stringify(encoded)
 }
 
-// ParseMessage parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5rw63tumfrxi.Message.
-func ParseMessage(s string) (pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, error) {
+// ParseMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5rw63tumfrxi.Message.
+func ParseMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(s string) (pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, error) {
 	var zero pkg_onzggl3sn52xizltf5rw63tumfrxi.Message
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
 	}
-	return decMessage(parsed, "")
+	return decMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(parsed, "")
 }
 
 func encReceipt_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(v pkg_onzggl3sn52xizltf5rw63tumfrxi.Receipt, at string) (any, error) {
@@ -2235,6 +2180,515 @@ func ParseResult(s string) (pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result, error) {
 	return decResult(parsed, "")
 }
 
+func encProfile(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, at string) (any, error) {
+	enc1 := devalue.NewObject()
+	var enc2 any = string(v.User)
+	enc1.Set("user", enc2)
+	return enc1, nil
+}
+
+func decProfile(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile
+	var dec1 pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile
+	obj2, err := dvObject(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	if err := dvKnown(obj2, at, "user"); err != nil {
+		return dvZero, err
+	}
+	raw3, err := dvRequired(obj2, "user", at+"/user")
+	if err != nil {
+		return dvZero, err
+	}
+	dec4, err := dvString(raw3, at+"/user")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.User = dec4
+	return dec1, nil
+}
+
+// EncodeProfile converts v into the devalue value model.
+func EncodeProfile(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile) (any, error) {
+	return encProfile(v, "")
+}
+
+// DecodeProfile converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, rejecting any
+// shape the type grammar does not admit.
+func DecodeProfile(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, error) {
+	return decProfile(raw, "")
+}
+
+// StringifyProfile encodes v and serializes it with devalue.
+func StringifyProfile(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile) (string, error) {
+	encoded, err := encProfile(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseProfile parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile.
+func ParseProfile(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decProfile(parsed, "")
+}
+
+func encNoteReceipt(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, at string) (any, error) {
+	enc1 := devalue.NewObject()
+	var enc2 any = string(v.Title)
+	enc1.Set("title", enc2)
+	var enc3 any = string(v.File)
+	enc1.Set("file", enc3)
+	var enc4 any = string(v.Type)
+	enc1.Set("type", enc4)
+	var enc5 any = float64(v.Bytes)
+	enc1.Set("bytes", enc5)
+	return enc1, nil
+}
+
+func decNoteReceipt(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt
+	var dec1 pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt
+	obj2, err := dvObject(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	if err := dvKnown(obj2, at, "title", "file", "type", "bytes"); err != nil {
+		return dvZero, err
+	}
+	raw3, err := dvRequired(obj2, "title", at+"/title")
+	if err != nil {
+		return dvZero, err
+	}
+	dec4, err := dvString(raw3, at+"/title")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Title = dec4
+	raw5, err := dvRequired(obj2, "file", at+"/file")
+	if err != nil {
+		return dvZero, err
+	}
+	dec6, err := dvString(raw5, at+"/file")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.File = dec6
+	raw7, err := dvRequired(obj2, "type", at+"/type")
+	if err != nil {
+		return dvZero, err
+	}
+	dec8, err := dvString(raw7, at+"/type")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Type = dec8
+	raw9, err := dvRequired(obj2, "bytes", at+"/bytes")
+	if err != nil {
+		return dvZero, err
+	}
+	num11, err := dvInteger(raw9, at+"/bytes", math.MinInt, math.MaxInt)
+	if err != nil {
+		return dvZero, err
+	}
+	dec10 := int(num11)
+	dec1.Bytes = dec10
+	return dec1, nil
+}
+
+// EncodeNoteReceipt converts v into the devalue value model.
+func EncodeNoteReceipt(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt) (any, error) {
+	return encNoteReceipt(v, "")
+}
+
+// DecodeNoteReceipt converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, rejecting any
+// shape the type grammar does not admit.
+func DecodeNoteReceipt(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, error) {
+	return decNoteReceipt(raw, "")
+}
+
+// StringifyNoteReceipt encodes v and serializes it with devalue.
+func StringifyNoteReceipt(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt) (string, error) {
+	encoded, err := encNoteReceipt(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseNoteReceipt parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt.
+func ParseNoteReceipt(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decNoteReceipt(parsed, "")
+}
+
+func encTodo(v pkg_businesslogic.Todo, at string) (any, error) {
+	enc1 := devalue.NewObject()
+	var enc2 any = string(v.ID)
+	enc1.Set("id", enc2)
+	var enc3 any = string(v.Text)
+	enc1.Set("text", enc3)
+	var enc4 any = bool(v.Private)
+	enc1.Set("private", enc4)
+	return enc1, nil
+}
+
+func decTodo(raw any, at string) (pkg_businesslogic.Todo, error) {
+	var dvZero pkg_businesslogic.Todo
+	var dec1 pkg_businesslogic.Todo
+	obj2, err := dvObject(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	if err := dvKnown(obj2, at, "id", "text", "private"); err != nil {
+		return dvZero, err
+	}
+	raw3, err := dvRequired(obj2, "id", at+"/id")
+	if err != nil {
+		return dvZero, err
+	}
+	dec4, err := dvString(raw3, at+"/id")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.ID = dec4
+	raw5, err := dvRequired(obj2, "text", at+"/text")
+	if err != nil {
+		return dvZero, err
+	}
+	dec6, err := dvString(raw5, at+"/text")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Text = dec6
+	raw7, err := dvRequired(obj2, "private", at+"/private")
+	if err != nil {
+		return dvZero, err
+	}
+	dec8, err := dvBool(raw7, at+"/private")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Private = dec8
+	return dec1, nil
+}
+
+// EncodeTodo converts v into the devalue value model.
+func EncodeTodo(v pkg_businesslogic.Todo) (any, error) { return encTodo(v, "") }
+
+// DecodeTodo converts a devalue value model tree into a pkg_businesslogic.Todo, rejecting any
+// shape the type grammar does not admit.
+func DecodeTodo(raw any) (pkg_businesslogic.Todo, error) { return decTodo(raw, "") }
+
+// StringifyTodo encodes v and serializes it with devalue.
+func StringifyTodo(v pkg_businesslogic.Todo) (string, error) {
+	encoded, err := encTodo(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseTodo parses a devalue document and decodes it into a pkg_businesslogic.Todo.
+func ParseTodo(s string) (pkg_businesslogic.Todo, error) {
+	var zero pkg_businesslogic.Todo
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decTodo(parsed, "")
+}
+
+func encNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, at string) (any, error) {
+	enc1 := devalue.NewObject()
+	var enc2 any = string(v.ID)
+	enc1.Set("id", enc2)
+	var enc3 any = string(v.Text)
+	enc1.Set("text", enc3)
+	return enc1, nil
+}
+
+func decNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note
+	var dec1 pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note
+	obj2, err := dvObject(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	if err := dvKnown(obj2, at, "id", "text"); err != nil {
+		return dvZero, err
+	}
+	raw3, err := dvRequired(obj2, "id", at+"/id")
+	if err != nil {
+		return dvZero, err
+	}
+	dec4, err := dvString(raw3, at+"/id")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.ID = dec4
+	raw5, err := dvRequired(obj2, "text", at+"/text")
+	if err != nil {
+		return dvZero, err
+	}
+	dec6, err := dvString(raw5, at+"/text")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Text = dec6
+	return dec1, nil
+}
+
+// EncodeNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474 converts v into the devalue value model.
+func EncodeNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note) (any, error) {
+	return encNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v, "")
+}
+
+// DecodeNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, rejecting any
+// shape the type grammar does not admit.
+func DecodeNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, error) {
+	return decNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(raw, "")
+}
+
+// StringifyNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474 encodes v and serializes it with devalue.
+func StringifyNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note) (string, error) {
+	encoded, err := encNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note.
+func ParseNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(parsed, "")
+}
+
+func encRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, at string) (any, error) {
+	enc1 := devalue.NewObject()
+	var enc2 any = string(v.ID)
+	enc1.Set("id", enc2)
+	var enc3 any = string(v.Text)
+	enc1.Set("text", enc3)
+	return enc1, nil
+}
+
+func decRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename
+	var dec1 pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename
+	obj2, err := dvObject(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	if err := dvKnown(obj2, at, "id", "text"); err != nil {
+		return dvZero, err
+	}
+	raw3, err := dvRequired(obj2, "id", at+"/id")
+	if err != nil {
+		return dvZero, err
+	}
+	dec4, err := dvString(raw3, at+"/id")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.ID = dec4
+	raw5, err := dvRequired(obj2, "text", at+"/text")
+	if err != nil {
+		return dvZero, err
+	}
+	dec6, err := dvString(raw5, at+"/text")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Text = dec6
+	return dec1, nil
+}
+
+// EncodeRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474 converts v into the devalue value model.
+func EncodeRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename) (any, error) {
+	return encRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v, "")
+}
+
+// DecodeRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, rejecting any
+// shape the type grammar does not admit.
+func DecodeRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, error) {
+	return decRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(raw, "")
+}
+
+// StringifyRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474 encodes v and serializes it with devalue.
+func StringifyRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename) (string, error) {
+	encoded, err := encRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename.
+func ParseRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(parsed, "")
+}
+
+func encMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, at string) (any, error) {
+	enc1 := devalue.NewObject()
+	var enc2 any = string(v.From)
+	enc1.Set("from", enc2)
+	var enc3 any = string(v.Body)
+	enc1.Set("body", enc3)
+	var enc4 any = string(v.Attachment)
+	enc1.Set("attachment", enc4)
+	return enc1, nil
+}
+
+func decMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message
+	var dec1 pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message
+	obj2, err := dvObject(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	if err := dvKnown(obj2, at, "from", "body", "attachment"); err != nil {
+		return dvZero, err
+	}
+	raw3, err := dvRequired(obj2, "from", at+"/from")
+	if err != nil {
+		return dvZero, err
+	}
+	dec4, err := dvString(raw3, at+"/from")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.From = dec4
+	raw5, err := dvRequired(obj2, "body", at+"/body")
+	if err != nil {
+		return dvZero, err
+	}
+	dec6, err := dvString(raw5, at+"/body")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Body = dec6
+	raw7, err := dvRequired(obj2, "attachment", at+"/attachment")
+	if err != nil {
+		return dvZero, err
+	}
+	dec8, err := dvString(raw7, at+"/attachment")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Attachment = dec8
+	return dec1, nil
+}
+
+// EncodeMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e converts v into the devalue value model.
+func EncodeMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message) (any, error) {
+	return encMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(v, "")
+}
+
+// DecodeMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, rejecting any
+// shape the type grammar does not admit.
+func DecodeMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, error) {
+	return decMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(raw, "")
+}
+
+// StringifyMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e encodes v and serializes it with devalue.
+func StringifyMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message) (string, error) {
+	encoded, err := encMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message.
+func ParseMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(parsed, "")
+}
+
+func encWelcome(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, at string) (any, error) {
+	enc1 := devalue.NewObject()
+	var enc2 any = string(v.Email)
+	enc1.Set("email", enc2)
+	return enc1, nil
+}
+
+func decWelcome(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome
+	var dec1 pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome
+	obj2, err := dvObject(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	if err := dvKnown(obj2, at, "email"); err != nil {
+		return dvZero, err
+	}
+	raw3, err := dvRequired(obj2, "email", at+"/email")
+	if err != nil {
+		return dvZero, err
+	}
+	dec4, err := dvString(raw3, at+"/email")
+	if err != nil {
+		return dvZero, err
+	}
+	dec1.Email = dec4
+	return dec1, nil
+}
+
+// EncodeWelcome converts v into the devalue value model.
+func EncodeWelcome(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome) (any, error) {
+	return encWelcome(v, "")
+}
+
+// DecodeWelcome converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, rejecting any
+// shape the type grammar does not admit.
+func DecodeWelcome(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, error) {
+	return decWelcome(raw, "")
+}
+
+// StringifyWelcome encodes v and serializes it with devalue.
+func StringifyWelcome(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome) (string, error) {
+	encoded, err := encWelcome(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseWelcome parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome.
+func ParseWelcome(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decWelcome(parsed, "")
+}
+
 func encSession(v pkg_businesslogic.Session, at string) (any, error) {
 	enc1 := devalue.NewObject()
 	var enc2 any = string(v.User)
@@ -2603,7 +3057,7 @@ func ParseRoot6(s string) (pkg_onzggl3sn52xizltf5rgc5ddna.Quote, error) {
 func encRoot7(v []pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, at string) (any, error) {
 	enc1 := make([]any, 0, len(v))
 	for i2, item3 := range v {
-		enc4, err := encMessage(item3, at+"/"+strconv.Itoa(i2))
+		enc4, err := encMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(item3, at+"/"+strconv.Itoa(i2))
 		if err != nil {
 			return nil, err
 		}
@@ -2621,7 +3075,7 @@ func decRoot7(raw any, at string) ([]pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, 
 	}
 	dec1 := make([]pkg_onzggl3sn52xizltf5rw63tumfrxi.Message, 0, len(items2))
 	for i3, item4 := range items2 {
-		dec5, err := decMessage(item4, at+"/"+strconv.Itoa(i3))
+		dec5, err := decMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357277363374756d66727869(item4, at+"/"+strconv.Itoa(i3))
 		if err != nil {
 			return dvZero, err
 		}
@@ -3122,17 +3576,17 @@ func ParseRoot17(s string) (pkg_onzggl3sn52xizltf5xxa5djn5xgc3a.Result, error) {
 	return decRoot17(parsed, "")
 }
 
-func encRoot18(v pkg_onzggl3sn52xizlt.Site, at string) (any, error) {
-	enc1, err := encSite(v, at)
+func encRoot18(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, at string) (any, error) {
+	enc1, err := encProfile(v, at)
 	if err != nil {
 		return nil, err
 	}
 	return enc1, nil
 }
 
-func decRoot18(raw any, at string) (pkg_onzggl3sn52xizlt.Site, error) {
-	var dvZero pkg_onzggl3sn52xizlt.Site
-	dec1, err := decSite(raw, at)
+func decRoot18(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile
+	dec1, err := decProfile(raw, at)
 	if err != nil {
 		return dvZero, err
 	}
@@ -3140,14 +3594,18 @@ func decRoot18(raw any, at string) (pkg_onzggl3sn52xizlt.Site, error) {
 }
 
 // EncodeRoot18 converts v into the devalue value model.
-func EncodeRoot18(v pkg_onzggl3sn52xizlt.Site) (any, error) { return encRoot18(v, "") }
+func EncodeRoot18(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile) (any, error) {
+	return encRoot18(v, "")
+}
 
-// DecodeRoot18 converts a devalue value model tree into a pkg_onzggl3sn52xizlt.Site, rejecting any
+// DecodeRoot18 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot18(raw any) (pkg_onzggl3sn52xizlt.Site, error) { return decRoot18(raw, "") }
+func DecodeRoot18(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, error) {
+	return decRoot18(raw, "")
+}
 
 // StringifyRoot18 encodes v and serializes it with devalue.
-func StringifyRoot18(v pkg_onzggl3sn52xizlt.Site) (string, error) {
+func StringifyRoot18(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile) (string, error) {
 	encoded, err := encRoot18(v, "")
 	if err != nil {
 		return "", err
@@ -3155,9 +3613,9 @@ func StringifyRoot18(v pkg_onzggl3sn52xizlt.Site) (string, error) {
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot18 parses a devalue document and decodes it into a pkg_onzggl3sn52xizlt.Site.
-func ParseRoot18(s string) (pkg_onzggl3sn52xizlt.Site, error) {
-	var zero pkg_onzggl3sn52xizlt.Site
+// ParseRoot18 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile.
+func ParseRoot18(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Profile
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -3165,17 +3623,17 @@ func ParseRoot18(s string) (pkg_onzggl3sn52xizlt.Site, error) {
 	return decRoot18(parsed, "")
 }
 
-func encRoot19(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, at string) (any, error) {
-	enc1, err := encBanner(v, at)
+func encRoot19(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, at string) (any, error) {
+	enc1, err := encNoteReceipt(v, at)
 	if err != nil {
 		return nil, err
 	}
 	return enc1, nil
 }
 
-func decRoot19(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, error) {
-	var dvZero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner
-	dec1, err := decBanner(raw, at)
+func decRoot19(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt
+	dec1, err := decNoteReceipt(raw, at)
 	if err != nil {
 		return dvZero, err
 	}
@@ -3183,18 +3641,18 @@ func decRoot19(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banne
 }
 
 // EncodeRoot19 converts v into the devalue value model.
-func EncodeRoot19(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner) (any, error) {
+func EncodeRoot19(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt) (any, error) {
 	return encRoot19(v, "")
 }
 
-// DecodeRoot19 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, rejecting any
+// DecodeRoot19 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot19(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, error) {
+func DecodeRoot19(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, error) {
 	return decRoot19(raw, "")
 }
 
 // StringifyRoot19 encodes v and serializes it with devalue.
-func StringifyRoot19(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner) (string, error) {
+func StringifyRoot19(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt) (string, error) {
 	encoded, err := encRoot19(v, "")
 	if err != nil {
 		return "", err
@@ -3202,9 +3660,9 @@ func StringifyRoot19(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner) (string, e
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot19 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner.
-func ParseRoot19(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, error) {
-	var zero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner
+// ParseRoot19 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt.
+func ParseRoot19(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.NoteReceipt
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -3212,36 +3670,30 @@ func ParseRoot19(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, error
 	return decRoot19(parsed, "")
 }
 
-func encRoot20(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, at string) (any, error) {
-	enc1, err := encNote(v, at)
-	if err != nil {
-		return nil, err
-	}
+func encRoot20(v int, at string) (any, error) {
+	var enc1 any = float64(v)
 	return enc1, nil
 }
 
-func decRoot20(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
-	var dvZero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note
-	dec1, err := decNote(raw, at)
+func decRoot20(raw any, at string) (int, error) {
+	var dvZero int
+	num2, err := dvInteger(raw, at, math.MinInt, math.MaxInt)
 	if err != nil {
 		return dvZero, err
 	}
+	dec1 := int(num2)
 	return dec1, nil
 }
 
 // EncodeRoot20 converts v into the devalue value model.
-func EncodeRoot20(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note) (any, error) {
-	return encRoot20(v, "")
-}
+func EncodeRoot20(v int) (any, error) { return encRoot20(v, "") }
 
-// DecodeRoot20 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, rejecting any
+// DecodeRoot20 converts a devalue value model tree into a int, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot20(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
-	return decRoot20(raw, "")
-}
+func DecodeRoot20(raw any) (int, error) { return decRoot20(raw, "") }
 
 // StringifyRoot20 encodes v and serializes it with devalue.
-func StringifyRoot20(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note) (string, error) {
+func StringifyRoot20(v int) (string, error) {
 	encoded, err := encRoot20(v, "")
 	if err != nil {
 		return "", err
@@ -3249,9 +3701,9 @@ func StringifyRoot20(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note) (string, err
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot20 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note.
-func ParseRoot20(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
-	var zero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note
+// ParseRoot20 parses a devalue document and decodes it into a int.
+func ParseRoot20(s string) (int, error) {
+	var zero int
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -3259,99 +3711,7 @@ func ParseRoot20(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) 
 	return decRoot20(parsed, "")
 }
 
-func encRoot21(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, at string) (any, error) {
-	enc1, err := encWrite(v, at)
-	if err != nil {
-		return nil, err
-	}
-	return enc1, nil
-}
-
-func decRoot21(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, error) {
-	var dvZero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write
-	dec1, err := decWrite(raw, at)
-	if err != nil {
-		return dvZero, err
-	}
-	return dec1, nil
-}
-
-// EncodeRoot21 converts v into the devalue value model.
-func EncodeRoot21(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write) (any, error) {
-	return encRoot21(v, "")
-}
-
-// DecodeRoot21 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, rejecting any
-// shape the type grammar does not admit.
-func DecodeRoot21(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, error) {
-	return decRoot21(raw, "")
-}
-
-// StringifyRoot21 encodes v and serializes it with devalue.
-func StringifyRoot21(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write) (string, error) {
-	encoded, err := encRoot21(v, "")
-	if err != nil {
-		return "", err
-	}
-	return devalue.Stringify(encoded)
-}
-
-// ParseRoot21 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write.
-func ParseRoot21(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, error) {
-	var zero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write
-	parsed, err := devalue.Parse(s, nil)
-	if err != nil {
-		return zero, err
-	}
-	return decRoot21(parsed, "")
-}
-
-func encRoot22(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, at string) (any, error) {
-	enc1, err := encAck(v, at)
-	if err != nil {
-		return nil, err
-	}
-	return enc1, nil
-}
-
-func decRoot22(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, error) {
-	var dvZero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack
-	dec1, err := decAck(raw, at)
-	if err != nil {
-		return dvZero, err
-	}
-	return dec1, nil
-}
-
-// EncodeRoot22 converts v into the devalue value model.
-func EncodeRoot22(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack) (any, error) { return encRoot22(v, "") }
-
-// DecodeRoot22 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, rejecting any
-// shape the type grammar does not admit.
-func DecodeRoot22(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, error) {
-	return decRoot22(raw, "")
-}
-
-// StringifyRoot22 encodes v and serializes it with devalue.
-func StringifyRoot22(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack) (string, error) {
-	encoded, err := encRoot22(v, "")
-	if err != nil {
-		return "", err
-	}
-	return devalue.Stringify(encoded)
-}
-
-// ParseRoot22 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack.
-func ParseRoot22(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, error) {
-	var zero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack
-	parsed, err := devalue.Parse(s, nil)
-	if err != nil {
-		return zero, err
-	}
-	return decRoot22(parsed, "")
-}
-
-func encRoot23(v pkg_businesslogic.Todo, at string) (any, error) {
+func encRoot21(v pkg_businesslogic.Todo, at string) (any, error) {
 	enc1, err := encTodo(v, at)
 	if err != nil {
 		return nil, err
@@ -3359,7 +3719,7 @@ func encRoot23(v pkg_businesslogic.Todo, at string) (any, error) {
 	return enc1, nil
 }
 
-func decRoot23(raw any, at string) (pkg_businesslogic.Todo, error) {
+func decRoot21(raw any, at string) (pkg_businesslogic.Todo, error) {
 	var dvZero pkg_businesslogic.Todo
 	dec1, err := decTodo(raw, at)
 	if err != nil {
@@ -3368,33 +3728,33 @@ func decRoot23(raw any, at string) (pkg_businesslogic.Todo, error) {
 	return dec1, nil
 }
 
-// EncodeRoot23 converts v into the devalue value model.
-func EncodeRoot23(v pkg_businesslogic.Todo) (any, error) { return encRoot23(v, "") }
+// EncodeRoot21 converts v into the devalue value model.
+func EncodeRoot21(v pkg_businesslogic.Todo) (any, error) { return encRoot21(v, "") }
 
-// DecodeRoot23 converts a devalue value model tree into a pkg_businesslogic.Todo, rejecting any
+// DecodeRoot21 converts a devalue value model tree into a pkg_businesslogic.Todo, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot23(raw any) (pkg_businesslogic.Todo, error) { return decRoot23(raw, "") }
+func DecodeRoot21(raw any) (pkg_businesslogic.Todo, error) { return decRoot21(raw, "") }
 
-// StringifyRoot23 encodes v and serializes it with devalue.
-func StringifyRoot23(v pkg_businesslogic.Todo) (string, error) {
-	encoded, err := encRoot23(v, "")
+// StringifyRoot21 encodes v and serializes it with devalue.
+func StringifyRoot21(v pkg_businesslogic.Todo) (string, error) {
+	encoded, err := encRoot21(v, "")
 	if err != nil {
 		return "", err
 	}
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot23 parses a devalue document and decodes it into a pkg_businesslogic.Todo.
-func ParseRoot23(s string) (pkg_businesslogic.Todo, error) {
+// ParseRoot21 parses a devalue document and decodes it into a pkg_businesslogic.Todo.
+func ParseRoot21(s string) (pkg_businesslogic.Todo, error) {
 	var zero pkg_businesslogic.Todo
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
 	}
-	return decRoot23(parsed, "")
+	return decRoot21(parsed, "")
 }
 
-func encRoot24(v []pkg_businesslogic.Todo, at string) (any, error) {
+func encRoot22(v []pkg_businesslogic.Todo, at string) (any, error) {
 	enc1 := make([]any, 0, len(v))
 	for i2, item3 := range v {
 		enc4, err := encTodo(item3, at+"/"+strconv.Itoa(i2))
@@ -3407,7 +3767,7 @@ func encRoot24(v []pkg_businesslogic.Todo, at string) (any, error) {
 	return enc5, nil
 }
 
-func decRoot24(raw any, at string) ([]pkg_businesslogic.Todo, error) {
+func decRoot22(raw any, at string) ([]pkg_businesslogic.Todo, error) {
 	var dvZero []pkg_businesslogic.Todo
 	items2, err := dvArray(raw, at)
 	if err != nil {
@@ -3424,15 +3784,122 @@ func decRoot24(raw any, at string) ([]pkg_businesslogic.Todo, error) {
 	return dec1, nil
 }
 
-// EncodeRoot24 converts v into the devalue value model.
-func EncodeRoot24(v []pkg_businesslogic.Todo) (any, error) { return encRoot24(v, "") }
+// EncodeRoot22 converts v into the devalue value model.
+func EncodeRoot22(v []pkg_businesslogic.Todo) (any, error) { return encRoot22(v, "") }
 
-// DecodeRoot24 converts a devalue value model tree into a []pkg_businesslogic.Todo, rejecting any
+// DecodeRoot22 converts a devalue value model tree into a []pkg_businesslogic.Todo, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot24(raw any) ([]pkg_businesslogic.Todo, error) { return decRoot24(raw, "") }
+func DecodeRoot22(raw any) ([]pkg_businesslogic.Todo, error) { return decRoot22(raw, "") }
+
+// StringifyRoot22 encodes v and serializes it with devalue.
+func StringifyRoot22(v []pkg_businesslogic.Todo) (string, error) {
+	encoded, err := encRoot22(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot22 parses a devalue document and decodes it into a []pkg_businesslogic.Todo.
+func ParseRoot22(s string) ([]pkg_businesslogic.Todo, error) {
+	var zero []pkg_businesslogic.Todo
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot22(parsed, "")
+}
+
+func encRoot23(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, at string) (any, error) {
+	enc1, err := encNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot23(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note
+	dec1, err := decNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot23 converts v into the devalue value model.
+func EncodeRoot23(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note) (any, error) {
+	return encRoot23(v, "")
+}
+
+// DecodeRoot23 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot23(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, error) {
+	return decRoot23(raw, "")
+}
+
+// StringifyRoot23 encodes v and serializes it with devalue.
+func StringifyRoot23(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note) (string, error) {
+	encoded, err := encRoot23(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot23 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note.
+func ParseRoot23(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot23(parsed, "")
+}
+
+func encRoot24(v []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, at string) (any, error) {
+	enc1 := make([]any, 0, len(v))
+	for i2, item3 := range v {
+		enc4, err := encMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(item3, at+"/"+strconv.Itoa(i2))
+		if err != nil {
+			return nil, err
+		}
+		enc1 = append(enc1, enc4)
+	}
+	var enc5 any = enc1
+	return enc5, nil
+}
+
+func decRoot24(raw any, at string) ([]pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, error) {
+	var dvZero []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message
+	items2, err := dvArray(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	dec1 := make([]pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, 0, len(items2))
+	for i3, item4 := range items2 {
+		dec5, err := decMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(item4, at+"/"+strconv.Itoa(i3))
+		if err != nil {
+			return dvZero, err
+		}
+		dec1 = append(dec1, dec5)
+	}
+	return dec1, nil
+}
+
+// EncodeRoot24 converts v into the devalue value model.
+func EncodeRoot24(v []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message) (any, error) {
+	return encRoot24(v, "")
+}
+
+// DecodeRoot24 converts a devalue value model tree into a []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot24(raw any) ([]pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, error) {
+	return decRoot24(raw, "")
+}
 
 // StringifyRoot24 encodes v and serializes it with devalue.
-func StringifyRoot24(v []pkg_businesslogic.Todo) (string, error) {
+func StringifyRoot24(v []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message) (string, error) {
 	encoded, err := encRoot24(v, "")
 	if err != nil {
 		return "", err
@@ -3440,9 +3907,9 @@ func StringifyRoot24(v []pkg_businesslogic.Todo) (string, error) {
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot24 parses a devalue document and decodes it into a []pkg_businesslogic.Todo.
-func ParseRoot24(s string) ([]pkg_businesslogic.Todo, error) {
-	var zero []pkg_businesslogic.Todo
+// ParseRoot24 parses a devalue document and decodes it into a []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message.
+func ParseRoot24(s string) ([]pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, error) {
+	var zero []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -3450,17 +3917,17 @@ func ParseRoot24(s string) ([]pkg_businesslogic.Todo, error) {
 	return decRoot24(parsed, "")
 }
 
-func encRoot25(v pkg_onzggl3sn52xizltf52g6zdpom.Rename, at string) (any, error) {
-	enc1, err := encRename(v, at)
+func encRoot25(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, at string) (any, error) {
+	enc1, err := encMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(v, at)
 	if err != nil {
 		return nil, err
 	}
 	return enc1, nil
 }
 
-func decRoot25(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
-	var dvZero pkg_onzggl3sn52xizltf52g6zdpom.Rename
-	dec1, err := decRename(raw, at)
+func decRoot25(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message
+	dec1, err := decMessage_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474663574673634746e(raw, at)
 	if err != nil {
 		return dvZero, err
 	}
@@ -3468,14 +3935,18 @@ func decRoot25(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error
 }
 
 // EncodeRoot25 converts v into the devalue value model.
-func EncodeRoot25(v pkg_onzggl3sn52xizltf52g6zdpom.Rename) (any, error) { return encRoot25(v, "") }
+func EncodeRoot25(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message) (any, error) {
+	return encRoot25(v, "")
+}
 
-// DecodeRoot25 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpom.Rename, rejecting any
+// DecodeRoot25 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot25(raw any) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) { return decRoot25(raw, "") }
+func DecodeRoot25(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, error) {
+	return decRoot25(raw, "")
+}
 
 // StringifyRoot25 encodes v and serializes it with devalue.
-func StringifyRoot25(v pkg_onzggl3sn52xizltf52g6zdpom.Rename) (string, error) {
+func StringifyRoot25(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message) (string, error) {
 	encoded, err := encRoot25(v, "")
 	if err != nil {
 		return "", err
@@ -3483,9 +3954,9 @@ func StringifyRoot25(v pkg_onzggl3sn52xizltf52g6zdpom.Rename) (string, error) {
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot25 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpom.Rename.
-func ParseRoot25(s string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
-	var zero pkg_onzggl3sn52xizltf52g6zdpom.Rename
+// ParseRoot25 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message.
+func ParseRoot25(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Message
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
@@ -3493,7 +3964,433 @@ func ParseRoot25(s string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
 	return decRoot25(parsed, "")
 }
 
-func encRoot26(v pkg_onzggl3sn52xizltf52g6zdpom.Retitle, at string) (any, error) {
+func encRoot26(v []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, at string) (any, error) {
+	enc1 := make([]any, 0, len(v))
+	for i2, item3 := range v {
+		enc4, err := encNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(item3, at+"/"+strconv.Itoa(i2))
+		if err != nil {
+			return nil, err
+		}
+		enc1 = append(enc1, enc4)
+	}
+	var enc5 any = enc1
+	return enc5, nil
+}
+
+func decRoot26(raw any, at string) ([]pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, error) {
+	var dvZero []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note
+	items2, err := dvArray(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	dec1 := make([]pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, 0, len(items2))
+	for i3, item4 := range items2 {
+		dec5, err := decNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(item4, at+"/"+strconv.Itoa(i3))
+		if err != nil {
+			return dvZero, err
+		}
+		dec1 = append(dec1, dec5)
+	}
+	return dec1, nil
+}
+
+// EncodeRoot26 converts v into the devalue value model.
+func EncodeRoot26(v []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note) (any, error) {
+	return encRoot26(v, "")
+}
+
+// DecodeRoot26 converts a devalue value model tree into a []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot26(raw any) ([]pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, error) {
+	return decRoot26(raw, "")
+}
+
+// StringifyRoot26 encodes v and serializes it with devalue.
+func StringifyRoot26(v []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note) (string, error) {
+	encoded, err := encRoot26(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot26 parses a devalue document and decodes it into a []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note.
+func ParseRoot26(s string) ([]pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note, error) {
+	var zero []pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Note
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot26(parsed, "")
+}
+
+func encRoot27(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, at string) (any, error) {
+	enc1, err := encRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot27(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename
+	dec1, err := decRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466357a7763336c716e727378676c33736d76777736356466667674686b3374646f72757736337474(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot27 converts v into the devalue value model.
+func EncodeRoot27(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename) (any, error) {
+	return encRoot27(v, "")
+}
+
+// DecodeRoot27 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot27(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, error) {
+	return decRoot27(raw, "")
+}
+
+// StringifyRoot27 encodes v and serializes it with devalue.
+func StringifyRoot27(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename) (string, error) {
+	encoded, err := encRoot27(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot27 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename.
+func ParseRoot27(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Rename
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot27(parsed, "")
+}
+
+func encRoot28(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, at string) (any, error) {
+	enc1, err := encWelcome(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot28(raw any, at string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, error) {
+	var dvZero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome
+	dec1, err := decWelcome(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot28 converts v into the devalue value model.
+func EncodeRoot28(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome) (any, error) {
+	return encRoot28(v, "")
+}
+
+// DecodeRoot28 converts a devalue value model tree into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot28(raw any) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, error) {
+	return decRoot28(raw, "")
+}
+
+// StringifyRoot28 encodes v and serializes it with devalue.
+func StringifyRoot28(v pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome) (string, error) {
+	encoded, err := encRoot28(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot28 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome.
+func ParseRoot28(s string) (pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome, error) {
+	var zero pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Welcome
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot28(parsed, "")
+}
+
+func encRoot29(v pkg_onzggl3sn52xizlt.Site, at string) (any, error) {
+	enc1, err := encSite(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot29(raw any, at string) (pkg_onzggl3sn52xizlt.Site, error) {
+	var dvZero pkg_onzggl3sn52xizlt.Site
+	dec1, err := decSite(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot29 converts v into the devalue value model.
+func EncodeRoot29(v pkg_onzggl3sn52xizlt.Site) (any, error) { return encRoot29(v, "") }
+
+// DecodeRoot29 converts a devalue value model tree into a pkg_onzggl3sn52xizlt.Site, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot29(raw any) (pkg_onzggl3sn52xizlt.Site, error) { return decRoot29(raw, "") }
+
+// StringifyRoot29 encodes v and serializes it with devalue.
+func StringifyRoot29(v pkg_onzggl3sn52xizlt.Site) (string, error) {
+	encoded, err := encRoot29(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot29 parses a devalue document and decodes it into a pkg_onzggl3sn52xizlt.Site.
+func ParseRoot29(s string) (pkg_onzggl3sn52xizlt.Site, error) {
+	var zero pkg_onzggl3sn52xizlt.Site
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot29(parsed, "")
+}
+
+func encRoot30(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, at string) (any, error) {
+	enc1, err := encBanner(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot30(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, error) {
+	var dvZero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner
+	dec1, err := decBanner(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot30 converts v into the devalue value model.
+func EncodeRoot30(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner) (any, error) {
+	return encRoot30(v, "")
+}
+
+// DecodeRoot30 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot30(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, error) {
+	return decRoot30(raw, "")
+}
+
+// StringifyRoot30 encodes v and serializes it with devalue.
+func StringifyRoot30(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner) (string, error) {
+	encoded, err := encRoot30(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot30 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner.
+func ParseRoot30(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner, error) {
+	var zero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Banner
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot30(parsed, "")
+}
+
+func encRoot31(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, at string) (any, error) {
+	enc1, err := encNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot31(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
+	var dvZero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note
+	dec1, err := decNote_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d78776f796c756d75(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot31 converts v into the devalue value model.
+func EncodeRoot31(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note) (any, error) {
+	return encRoot31(v, "")
+}
+
+// DecodeRoot31 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot31(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
+	return decRoot31(raw, "")
+}
+
+// StringifyRoot31 encodes v and serializes it with devalue.
+func StringifyRoot31(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note) (string, error) {
+	encoded, err := encRoot31(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot31 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note.
+func ParseRoot31(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note, error) {
+	var zero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Note
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot31(parsed, "")
+}
+
+func encRoot32(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, at string) (any, error) {
+	enc1, err := encWrite(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot32(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, error) {
+	var dvZero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write
+	dec1, err := decWrite(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot32 converts v into the devalue value model.
+func EncodeRoot32(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write) (any, error) {
+	return encRoot32(v, "")
+}
+
+// DecodeRoot32 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot32(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, error) {
+	return decRoot32(raw, "")
+}
+
+// StringifyRoot32 encodes v and serializes it with devalue.
+func StringifyRoot32(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write) (string, error) {
+	encoded, err := encRoot32(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot32 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write.
+func ParseRoot32(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write, error) {
+	var zero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Write
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot32(parsed, "")
+}
+
+func encRoot33(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, at string) (any, error) {
+	enc1, err := encAck(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot33(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, error) {
+	var dvZero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack
+	dec1, err := decAck(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot33 converts v into the devalue value model.
+func EncodeRoot33(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack) (any, error) { return encRoot33(v, "") }
+
+// DecodeRoot33 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot33(raw any) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, error) {
+	return decRoot33(raw, "")
+}
+
+// StringifyRoot33 encodes v and serializes it with devalue.
+func StringifyRoot33(v pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack) (string, error) {
+	encoded, err := encRoot33(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot33 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack.
+func ParseRoot33(s string) (pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack, error) {
+	var zero pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Ack
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot33(parsed, "")
+}
+
+func encRoot34(v pkg_onzggl3sn52xizltf52g6zdpom.Rename, at string) (any, error) {
+	enc1, err := encRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(v, at)
+	if err != nil {
+		return nil, err
+	}
+	return enc1, nil
+}
+
+func decRoot34(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
+	var dvZero pkg_onzggl3sn52xizltf52g6zdpom.Rename
+	dec1, err := decRename_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c7466353267367a64706f6d(raw, at)
+	if err != nil {
+		return dvZero, err
+	}
+	return dec1, nil
+}
+
+// EncodeRoot34 converts v into the devalue value model.
+func EncodeRoot34(v pkg_onzggl3sn52xizltf52g6zdpom.Rename) (any, error) { return encRoot34(v, "") }
+
+// DecodeRoot34 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpom.Rename, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot34(raw any) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) { return decRoot34(raw, "") }
+
+// StringifyRoot34 encodes v and serializes it with devalue.
+func StringifyRoot34(v pkg_onzggl3sn52xizltf52g6zdpom.Rename) (string, error) {
+	encoded, err := encRoot34(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot34 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpom.Rename.
+func ParseRoot34(s string) (pkg_onzggl3sn52xizltf52g6zdpom.Rename, error) {
+	var zero pkg_onzggl3sn52xizltf52g6zdpom.Rename
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot34(parsed, "")
+}
+
+func encRoot35(v pkg_onzggl3sn52xizltf52g6zdpom.Retitle, at string) (any, error) {
 	enc1, err := encRetitle(v, at)
 	if err != nil {
 		return nil, err
@@ -3501,7 +4398,7 @@ func encRoot26(v pkg_onzggl3sn52xizltf52g6zdpom.Retitle, at string) (any, error)
 	return enc1, nil
 }
 
-func decRoot26(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpom.Retitle, error) {
+func decRoot35(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpom.Retitle, error) {
 	var dvZero pkg_onzggl3sn52xizltf52g6zdpom.Retitle
 	dec1, err := decRetitle(raw, at)
 	if err != nil {
@@ -3510,74 +4407,33 @@ func decRoot26(raw any, at string) (pkg_onzggl3sn52xizltf52g6zdpom.Retitle, erro
 	return dec1, nil
 }
 
-// EncodeRoot26 converts v into the devalue value model.
-func EncodeRoot26(v pkg_onzggl3sn52xizltf52g6zdpom.Retitle) (any, error) { return encRoot26(v, "") }
+// EncodeRoot35 converts v into the devalue value model.
+func EncodeRoot35(v pkg_onzggl3sn52xizltf52g6zdpom.Retitle) (any, error) { return encRoot35(v, "") }
 
-// DecodeRoot26 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpom.Retitle, rejecting any
+// DecodeRoot35 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52g6zdpom.Retitle, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot26(raw any) (pkg_onzggl3sn52xizltf52g6zdpom.Retitle, error) { return decRoot26(raw, "") }
+func DecodeRoot35(raw any) (pkg_onzggl3sn52xizltf52g6zdpom.Retitle, error) { return decRoot35(raw, "") }
 
-// StringifyRoot26 encodes v and serializes it with devalue.
-func StringifyRoot26(v pkg_onzggl3sn52xizltf52g6zdpom.Retitle) (string, error) {
-	encoded, err := encRoot26(v, "")
+// StringifyRoot35 encodes v and serializes it with devalue.
+func StringifyRoot35(v pkg_onzggl3sn52xizltf52g6zdpom.Retitle) (string, error) {
+	encoded, err := encRoot35(v, "")
 	if err != nil {
 		return "", err
 	}
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot26 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpom.Retitle.
-func ParseRoot26(s string) (pkg_onzggl3sn52xizltf52g6zdpom.Retitle, error) {
+// ParseRoot35 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52g6zdpom.Retitle.
+func ParseRoot35(s string) (pkg_onzggl3sn52xizltf52g6zdpom.Retitle, error) {
 	var zero pkg_onzggl3sn52xizltf52g6zdpom.Retitle
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
 	}
-	return decRoot26(parsed, "")
+	return decRoot35(parsed, "")
 }
 
-func encRoot27(v int, at string) (any, error) {
-	var enc1 any = float64(v)
-	return enc1, nil
-}
-
-func decRoot27(raw any, at string) (int, error) {
-	var dvZero int
-	num2, err := dvInteger(raw, at, math.MinInt, math.MaxInt)
-	if err != nil {
-		return dvZero, err
-	}
-	dec1 := int(num2)
-	return dec1, nil
-}
-
-// EncodeRoot27 converts v into the devalue value model.
-func EncodeRoot27(v int) (any, error) { return encRoot27(v, "") }
-
-// DecodeRoot27 converts a devalue value model tree into a int, rejecting any
-// shape the type grammar does not admit.
-func DecodeRoot27(raw any) (int, error) { return decRoot27(raw, "") }
-
-// StringifyRoot27 encodes v and serializes it with devalue.
-func StringifyRoot27(v int) (string, error) {
-	encoded, err := encRoot27(v, "")
-	if err != nil {
-		return "", err
-	}
-	return devalue.Stringify(encoded)
-}
-
-// ParseRoot27 parses a devalue document and decodes it into a int.
-func ParseRoot27(s string) (int, error) {
-	var zero int
-	parsed, err := devalue.Parse(s, nil)
-	if err != nil {
-		return zero, err
-	}
-	return decRoot27(parsed, "")
-}
-
-func encRoot28(v pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, at string) (any, error) {
+func encRoot36(v pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, at string) (any, error) {
 	enc1, err := encReceipt_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c746635326865796c646d767361(v, at)
 	if err != nil {
 		return nil, err
@@ -3585,7 +4441,7 @@ func encRoot28(v pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, at string) (any, erro
 	return enc1, nil
 }
 
-func decRoot28(raw any, at string) (pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, error) {
+func decRoot36(raw any, at string) (pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, error) {
 	var dvZero pkg_onzggl3sn52xizltf52heyldmvsa.Receipt
 	dec1, err := decReceipt_6769746875622e636f6d2f74796c657267616e6e6f6e2f736b676f2f6578616d706c652f696e7465726e616c2f736b676f2f5f6c696e6b732f6f6e7a67676c33736e353278697a6c746635326865796c646d767361(raw, at)
 	if err != nil {
@@ -3594,35 +4450,35 @@ func decRoot28(raw any, at string) (pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, er
 	return dec1, nil
 }
 
-// EncodeRoot28 converts v into the devalue value model.
-func EncodeRoot28(v pkg_onzggl3sn52xizltf52heyldmvsa.Receipt) (any, error) { return encRoot28(v, "") }
+// EncodeRoot36 converts v into the devalue value model.
+func EncodeRoot36(v pkg_onzggl3sn52xizltf52heyldmvsa.Receipt) (any, error) { return encRoot36(v, "") }
 
-// DecodeRoot28 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, rejecting any
+// DecodeRoot36 converts a devalue value model tree into a pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot28(raw any) (pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, error) {
-	return decRoot28(raw, "")
+func DecodeRoot36(raw any) (pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, error) {
+	return decRoot36(raw, "")
 }
 
-// StringifyRoot28 encodes v and serializes it with devalue.
-func StringifyRoot28(v pkg_onzggl3sn52xizltf52heyldmvsa.Receipt) (string, error) {
-	encoded, err := encRoot28(v, "")
+// StringifyRoot36 encodes v and serializes it with devalue.
+func StringifyRoot36(v pkg_onzggl3sn52xizltf52heyldmvsa.Receipt) (string, error) {
+	encoded, err := encRoot36(v, "")
 	if err != nil {
 		return "", err
 	}
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot28 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52heyldmvsa.Receipt.
-func ParseRoot28(s string) (pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, error) {
+// ParseRoot36 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf52heyldmvsa.Receipt.
+func ParseRoot36(s string) (pkg_onzggl3sn52xizltf52heyldmvsa.Receipt, error) {
 	var zero pkg_onzggl3sn52xizltf52heyldmvsa.Receipt
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
 	}
-	return decRoot28(parsed, "")
+	return decRoot36(parsed, "")
 }
 
-func encRoot29(v pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, at string) (any, error) {
+func encRoot37(v pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, at string) (any, error) {
 	enc1, err := encCatalogInput(v, at)
 	if err != nil {
 		return nil, err
@@ -3630,7 +4486,7 @@ func encRoot29(v pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, at string)
 	return enc1, nil
 }
 
-func decRoot29(raw any, at string) (pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, error) {
+func decRoot37(raw any, at string) (pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, error) {
 	var dvZero pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput
 	dec1, err := decCatalogInput(raw, at)
 	if err != nil {
@@ -3639,42 +4495,42 @@ func decRoot29(raw any, at string) (pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.Catal
 	return dec1, nil
 }
 
-// EncodeRoot29 converts v into the devalue value model.
-func EncodeRoot29(v pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput) (any, error) {
-	return encRoot29(v, "")
+// EncodeRoot37 converts v into the devalue value model.
+func EncodeRoot37(v pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput) (any, error) {
+	return encRoot37(v, "")
 }
 
-// DecodeRoot29 converts a devalue value model tree into a pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, rejecting any
+// DecodeRoot37 converts a devalue value model tree into a pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot29(raw any) (pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, error) {
-	return decRoot29(raw, "")
+func DecodeRoot37(raw any) (pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, error) {
+	return decRoot37(raw, "")
 }
 
-// StringifyRoot29 encodes v and serializes it with devalue.
-func StringifyRoot29(v pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput) (string, error) {
-	encoded, err := encRoot29(v, "")
+// StringifyRoot37 encodes v and serializes it with devalue.
+func StringifyRoot37(v pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput) (string, error) {
+	encoded, err := encRoot37(v, "")
 	if err != nil {
 		return "", err
 	}
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot29 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput.
-func ParseRoot29(s string) (pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, error) {
+// ParseRoot37 parses a devalue document and decodes it into a pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput.
+func ParseRoot37(s string) (pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput, error) {
 	var zero pkg_onzggl3sn52xizltf53gc3djmrqxi2lpny.CatalogInput
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
 	}
-	return decRoot29(parsed, "")
+	return decRoot37(parsed, "")
 }
 
-func encRoot30(v int64, at string) (any, error) {
+func encRoot38(v int64, at string) (any, error) {
 	var enc1 any = float64(v)
 	return enc1, nil
 }
 
-func decRoot30(raw any, at string) (int64, error) {
+func decRoot38(raw any, at string) (int64, error) {
 	var dvZero int64
 	num2, err := dvInteger(raw, at, math.MinInt64, math.MaxInt64)
 	if err != nil {
@@ -3684,30 +4540,30 @@ func decRoot30(raw any, at string) (int64, error) {
 	return dec1, nil
 }
 
-// EncodeRoot30 converts v into the devalue value model.
-func EncodeRoot30(v int64) (any, error) { return encRoot30(v, "") }
+// EncodeRoot38 converts v into the devalue value model.
+func EncodeRoot38(v int64) (any, error) { return encRoot38(v, "") }
 
-// DecodeRoot30 converts a devalue value model tree into a int64, rejecting any
+// DecodeRoot38 converts a devalue value model tree into a int64, rejecting any
 // shape the type grammar does not admit.
-func DecodeRoot30(raw any) (int64, error) { return decRoot30(raw, "") }
+func DecodeRoot38(raw any) (int64, error) { return decRoot38(raw, "") }
 
-// StringifyRoot30 encodes v and serializes it with devalue.
-func StringifyRoot30(v int64) (string, error) {
-	encoded, err := encRoot30(v, "")
+// StringifyRoot38 encodes v and serializes it with devalue.
+func StringifyRoot38(v int64) (string, error) {
+	encoded, err := encRoot38(v, "")
 	if err != nil {
 		return "", err
 	}
 	return devalue.Stringify(encoded)
 }
 
-// ParseRoot30 parses a devalue document and decodes it into a int64.
-func ParseRoot30(s string) (int64, error) {
+// ParseRoot38 parses a devalue document and decodes it into a int64.
+func ParseRoot38(s string) (int64, error) {
 	var zero int64
 	parsed, err := devalue.Parse(s, nil)
 	if err != nil {
 		return zero, err
 	}
-	return decRoot30(parsed, "")
+	return decRoot38(parsed, "")
 }
 
 func skgoCallerMatchers() skgo.CallerMatchers {
@@ -3741,7 +4597,7 @@ func remote_signIn(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo64.Skgo_signIn(event.Context(), event, in)
+	out, err := skgo80.Skgo_signIn(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
@@ -3771,7 +4627,7 @@ func remote_signOut(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := skgo64.Skgo_signOut(event.Context(), event)
+	out, err := skgo80.Skgo_signOut(event.Context(), event)
 	if err != nil {
 		return nil, err
 	}
@@ -3787,7 +4643,7 @@ func remote_whoami(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := skgo64.Skgo_whoami(ctx)
+	out, err := skgo80.Skgo_whoami(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -4493,44 +5349,239 @@ func remote_submit(ctx context.Context, call skgo.Call) (any, error) {
 	return EncodeRoot17(out)
 }
 
-// remote_getSite answers src/routes/site.remote.ts#getSite, a query.
+// remote_profile answers src/routes/samples/auth/account.remote.ts#profile, a query.
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
 // The result is encoded by EncodeRoot18, generated for its result type.
-func remote_getSite(ctx context.Context, call skgo.Call) (any, error) {
+func remote_profile(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
-	out, err := pkg_onzggl3sn52xizlt.Skgo_getSite(ctx)
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Skgo_profile(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return EncodeRoot18(out)
 }
 
-// remote_getBanner answers src/routes/todos/gate/gate.remote.ts#getBanner, a query.
+// remote_sendNote answers src/routes/samples/go-standards/note.remote.ts#sendNote, a form.
 //
-// It takes no argument, so any argument at all is refused — kit's own
-// validator for a function declared without one answers 400 too.
+// A form's submission is assigned onto the handler's own argument type:
+// kit posts a form as binary form data, which can carry an uploaded File,
+// and a File is not a value polytype describes.
 // The result is encoded by EncodeRoot19, generated for its result type.
-func remote_getBanner(ctx context.Context, call skgo.Call) (any, error) {
-	if err := skgo.RefuseArgument(call); err != nil {
+func remote_sendNote(ctx context.Context, call skgo.Call) (any, error) {
+	var in pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.SkgoArg_sendNote
+	if err := skgo.DecodeForm(call.Arg, &in); err != nil {
 		return nil, err
 	}
-	out, err := pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Skgo_getBanner(ctx)
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.Skgo_sendNote(event.Context(), event, in)
 	if err != nil {
 		return nil, err
 	}
 	return EncodeRoot19(out)
 }
 
-// remote_getNote answers src/routes/todos/gate/gate.remote.ts#getNote, a query.
+// remote_countTodos answers src/routes/samples/go-standards/session.remote.ts#countTodos, a query.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot20, generated for its result type.
+func remote_countTodos(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.Skgo_countTodos(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot20(out)
+}
+
+// remote_addTodo answers src/routes/samples/introduction/todos.remote.ts#addTodo, a command.
+//
+// The argument is decoded by DecodeRoot0, generated by polytype for addTodo's
+// own parameter type: a shape it does not admit is a 400 naming the path,
+// never a zero value.
+// The result is encoded by EncodeRoot21, generated for its result type.
+func remote_addTodo(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RequireArgument(call); err != nil {
+		return nil, err
+	}
+	in, err := DecodeRoot0(call.Arg)
+	if err != nil {
+		return nil, call.RejectArgument(err)
+	}
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out, err := skgo69.Skgo_addTodo(event.Context(), event, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot21(out)
+}
+
+// requestedArg_addTodo decodes one instance's argument for skgo.Requested, with the same
+// decoder remote_addTodo uses.
+func requestedArg_addTodo(arg any) (any, error) {
+	in, err := DecodeRoot0(arg)
+	if err != nil {
+		return nil, (skgo.Call{}).RejectArgument(err)
+	}
+	return in, nil
+}
+
+// remote_getTodos answers src/routes/samples/introduction/todos.remote.ts#getTodos, a query.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot22, generated for its result type.
+func remote_getTodos(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := skgo69.Skgo_getTodos(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot22(out)
+}
+
+// remote_greet answers src/routes/samples/migrating/greeting.remote.ts#greet, a query.
+//
+// The argument is decoded by DecodeRoot0, generated by polytype for greet's
+// own parameter type: a shape it does not admit is a 400 naming the path,
+// never a zero value.
+// The result is encoded by EncodeRoot0, generated for its result type.
+func remote_greet(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RequireArgument(call); err != nil {
+		return nil, err
+	}
+	in, err := DecodeRoot0(call.Arg)
+	if err != nil {
+		return nil, call.RejectArgument(err)
+	}
+	out, err := skgo72.Skgo_greet(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot0(out)
+}
+
+// requestedArg_greet decodes one instance's argument for skgo.Requested, with the same
+// decoder remote_greet uses.
+func requestedArg_greet(arg any) (any, error) {
+	in, err := DecodeRoot0(arg)
+	if err != nil {
+		return nil, (skgo.Call{}).RejectArgument(err)
+	}
+	return in, nil
+}
+
+// remote_addNote answers src/routes/samples/remote-functions/add.remote.ts#addNote, a command.
+//
+// The argument is decoded by DecodeRoot0, generated by polytype for addNote's
+// own parameter type: a shape it does not admit is a 400 naming the path,
+// never a zero value.
+// The result is encoded by EncodeRoot23, generated for its result type.
+func remote_addNote(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RequireArgument(call); err != nil {
+		return nil, err
+	}
+	in, err := DecodeRoot0(call.Arg)
+	if err != nil {
+		return nil, call.RejectArgument(err)
+	}
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_addNote(event.Context(), event, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot23(out)
+}
+
+// requestedArg_addNote decodes one instance's argument for skgo.Requested, with the same
+// decoder remote_addNote uses.
+func requestedArg_addNote(arg any) (any, error) {
+	in, err := DecodeRoot0(arg)
+	if err != nil {
+		return nil, (skgo.Call{}).RejectArgument(err)
+	}
+	return in, nil
+}
+
+// remote_watchCount answers src/routes/samples/remote-functions/count.remote.ts#watchCount, a query.live.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot20, generated for its result type.
+func remote_watchCount(ctx context.Context, call skgo.Call, yield func(any) error) error {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return err
+	}
+	return pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_watchCount(ctx, func(out pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.SkgoOut_watchCount) error {
+		tree, err := EncodeRoot20(out)
+		if err != nil {
+			return err
+		}
+		return yield(tree)
+	})
+}
+
+// remote_getMessages_2 answers src/routes/samples/remote-functions/form/message.remote.ts#getMessages, a query.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot24, generated for its result type.
+func remote_getMessages_2(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Skgo_getMessages(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot24(out)
+}
+
+// remote_sendMessage_2 answers src/routes/samples/remote-functions/form/message.remote.ts#sendMessage, a form.
+//
+// A form's submission is assigned onto the handler's own argument type:
+// kit posts a form as binary form data, which can carry an uploaded File,
+// and a File is not a value polytype describes.
+// The result is encoded by EncodeRoot25, generated for its result type.
+func remote_sendMessage_2(ctx context.Context, call skgo.Call) (any, error) {
+	var in pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.SkgoArg_sendMessage
+	if err := skgo.DecodeForm(call.Arg, &in); err != nil {
+		return nil, err
+	}
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Skgo_sendMessage(event.Context(), event, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot25(out)
+}
+
+// remote_getNote answers src/routes/samples/remote-functions/notes.remote.ts#getNote, a query.
 //
 // The argument is decoded by DecodeRoot0, generated by polytype for getNote's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot20, generated for its result type.
+// The result is encoded by EncodeRoot23, generated for its result type.
 func remote_getNote(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
@@ -4539,11 +5590,11 @@ func remote_getNote(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, call.RejectArgument(err)
 	}
-	out, err := pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Skgo_getNote(ctx, in)
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_getNote(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot20(out)
+	return EncodeRoot23(out)
 }
 
 // requestedArg_getNote decodes one instance's argument for skgo.Requested, with the same
@@ -4556,17 +5607,219 @@ func requestedArg_getNote(arg any) (any, error) {
 	return in, nil
 }
 
-// remote_writeNotes answers src/routes/todos/gate/gate.remote.ts#writeNotes, a command.
+// remote_getNotes answers src/routes/samples/remote-functions/notes.remote.ts#getNotes, a query.
 //
-// The argument is decoded by DecodeRoot21, generated by polytype for writeNotes's
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot26, generated for its result type.
+func remote_getNotes(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_getNotes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot26(out)
+}
+
+// remote_renameNote answers src/routes/samples/remote-functions/rename.remote.ts#renameNote, a command.
+//
+// The argument is decoded by DecodeRoot27, generated by polytype for renameNote's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot22, generated for its result type.
+// The result is encoded by EncodeRoot23, generated for its result type.
+func remote_renameNote(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RequireArgument(call); err != nil {
+		return nil, err
+	}
+	in, err := DecodeRoot27(call.Arg)
+	if err != nil {
+		return nil, call.RejectArgument(err)
+	}
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_renameNote(event.Context(), event, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot23(out)
+}
+
+// requestedArg_renameNote decodes one instance's argument for skgo.Requested, with the same
+// decoder remote_renameNote uses.
+func requestedArg_renameNote(arg any) (any, error) {
+	in, err := DecodeRoot27(arg)
+	if err != nil {
+		return nil, (skgo.Call{}).RejectArgument(err)
+	}
+	return in, nil
+}
+
+// remote_double answers src/routes/samples/testing/testing.remote.ts#double, a command.
+//
+// The argument is decoded by DecodeRoot20, generated by polytype for double's
+// own parameter type: a shape it does not admit is a 400 naming the path,
+// never a zero value.
+// The result is encoded by EncodeRoot20, generated for its result type.
+func remote_double(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RequireArgument(call); err != nil {
+		return nil, err
+	}
+	in, err := DecodeRoot20(call.Arg)
+	if err != nil {
+		return nil, call.RejectArgument(err)
+	}
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Skgo_double(event.Context(), event, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot20(out)
+}
+
+// requestedArg_double decodes one instance's argument for skgo.Requested, with the same
+// decoder remote_double uses.
+func requestedArg_double(arg any) (any, error) {
+	in, err := DecodeRoot20(arg)
+	if err != nil {
+		return nil, (skgo.Call{}).RejectArgument(err)
+	}
+	return in, nil
+}
+
+// remote_shout answers src/routes/samples/testing/testing.remote.ts#shout, a query.
+//
+// The argument is decoded by DecodeRoot0, generated by polytype for shout's
+// own parameter type: a shape it does not admit is a 400 naming the path,
+// never a zero value.
+// The result is encoded by EncodeRoot0, generated for its result type.
+func remote_shout(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RequireArgument(call); err != nil {
+		return nil, err
+	}
+	in, err := DecodeRoot0(call.Arg)
+	if err != nil {
+		return nil, call.RejectArgument(err)
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Skgo_shout(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot0(out)
+}
+
+// requestedArg_shout decodes one instance's argument for skgo.Requested, with the same
+// decoder remote_shout uses.
+func requestedArg_shout(arg any) (any, error) {
+	in, err := DecodeRoot0(arg)
+	if err != nil {
+		return nil, (skgo.Call{}).RejectArgument(err)
+	}
+	return in, nil
+}
+
+// remote_signUp answers src/routes/samples/testing/testing.remote.ts#signUp, a form.
+//
+// A form's submission is assigned onto the handler's own argument type:
+// kit posts a form as binary form data, which can carry an uploaded File,
+// and a File is not a value polytype describes.
+// The result is encoded by EncodeRoot28, generated for its result type.
+func remote_signUp(ctx context.Context, call skgo.Call) (any, error) {
+	var in pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.SkgoArg_signUp
+	if err := skgo.DecodeForm(call.Arg, &in); err != nil {
+		return nil, err
+	}
+	event, err := params.SkgoRequestEvent(skgo.EventFrom(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Skgo_signUp(event.Context(), event, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot28(out)
+}
+
+// remote_getSite answers src/routes/site.remote.ts#getSite, a query.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot29, generated for its result type.
+func remote_getSite(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizlt.Skgo_getSite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot29(out)
+}
+
+// remote_getBanner answers src/routes/todos/gate/gate.remote.ts#getBanner, a query.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot30, generated for its result type.
+func remote_getBanner(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Skgo_getBanner(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot30(out)
+}
+
+// remote_getNote_2 answers src/routes/todos/gate/gate.remote.ts#getNote, a query.
+//
+// The argument is decoded by DecodeRoot0, generated by polytype for getNote's
+// own parameter type: a shape it does not admit is a 400 naming the path,
+// never a zero value.
+// The result is encoded by EncodeRoot31, generated for its result type.
+func remote_getNote_2(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RequireArgument(call); err != nil {
+		return nil, err
+	}
+	in, err := DecodeRoot0(call.Arg)
+	if err != nil {
+		return nil, call.RejectArgument(err)
+	}
+	out, err := pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Skgo_getNote(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot31(out)
+}
+
+// requestedArg_getNote_2 decodes one instance's argument for skgo.Requested, with the same
+// decoder remote_getNote_2 uses.
+func requestedArg_getNote_2(arg any) (any, error) {
+	in, err := DecodeRoot0(arg)
+	if err != nil {
+		return nil, (skgo.Call{}).RejectArgument(err)
+	}
+	return in, nil
+}
+
+// remote_writeNotes answers src/routes/todos/gate/gate.remote.ts#writeNotes, a command.
+//
+// The argument is decoded by DecodeRoot32, generated by polytype for writeNotes's
+// own parameter type: a shape it does not admit is a 400 naming the path,
+// never a zero value.
+// The result is encoded by EncodeRoot33, generated for its result type.
 func remote_writeNotes(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
-	in, err := DecodeRoot21(call.Arg)
+	in, err := DecodeRoot32(call.Arg)
 	if err != nil {
 		return nil, call.RejectArgument(err)
 	}
@@ -4578,26 +5831,26 @@ func remote_writeNotes(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot22(out)
+	return EncodeRoot33(out)
 }
 
 // requestedArg_writeNotes decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_writeNotes uses.
 func requestedArg_writeNotes(arg any) (any, error) {
-	in, err := DecodeRoot21(arg)
+	in, err := DecodeRoot32(arg)
 	if err != nil {
 		return nil, (skgo.Call{}).RejectArgument(err)
 	}
 	return in, nil
 }
 
-// remote_addTodo answers src/routes/todos/todos.remote.ts#addTodo, a command.
+// remote_addTodo_2 answers src/routes/todos/todos.remote.ts#addTodo, a command.
 //
 // The argument is decoded by DecodeRoot0, generated by polytype for addTodo's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot23, generated for its result type.
-func remote_addTodo(ctx context.Context, call skgo.Call) (any, error) {
+// The result is encoded by EncodeRoot21, generated for its result type.
+func remote_addTodo_2(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
@@ -4613,12 +5866,12 @@ func remote_addTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot23(out)
+	return EncodeRoot21(out)
 }
 
-// requestedArg_addTodo decodes one instance's argument for skgo.Requested, with the same
-// decoder remote_addTodo uses.
-func requestedArg_addTodo(arg any) (any, error) {
+// requestedArg_addTodo_2 decodes one instance's argument for skgo.Requested, with the same
+// decoder remote_addTodo_2 uses.
+func requestedArg_addTodo_2(arg any) (any, error) {
 	in, err := DecodeRoot0(arg)
 	if err != nil {
 		return nil, (skgo.Call{}).RejectArgument(err)
@@ -4631,7 +5884,7 @@ func requestedArg_addTodo(arg any) (any, error) {
 // The argument is decoded by DecodeRoot0, generated by polytype for getTodo's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot23, generated for its result type.
+// The result is encoded by EncodeRoot21, generated for its result type.
 func remote_getTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
@@ -4644,7 +5897,7 @@ func remote_getTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot23(out)
+	return EncodeRoot21(out)
 }
 
 // requestedArg_getTodo decodes one instance's argument for skgo.Requested, with the same
@@ -4657,12 +5910,12 @@ func requestedArg_getTodo(arg any) (any, error) {
 	return in, nil
 }
 
-// remote_getTodos answers src/routes/todos/todos.remote.ts#getTodos, a query.
+// remote_getTodos_2 answers src/routes/todos/todos.remote.ts#getTodos, a query.
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot24, generated for its result type.
-func remote_getTodos(ctx context.Context, call skgo.Call) (any, error) {
+// The result is encoded by EncodeRoot22, generated for its result type.
+func remote_getTodos_2(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
 	}
@@ -4670,20 +5923,20 @@ func remote_getTodos(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot24(out)
+	return EncodeRoot22(out)
 }
 
 // remote_renameTodo answers src/routes/todos/todos.remote.ts#renameTodo, a command.
 //
-// The argument is decoded by DecodeRoot25, generated by polytype for renameTodo's
+// The argument is decoded by DecodeRoot34, generated by polytype for renameTodo's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot23, generated for its result type.
+// The result is encoded by EncodeRoot21, generated for its result type.
 func remote_renameTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
-	in, err := DecodeRoot25(call.Arg)
+	in, err := DecodeRoot34(call.Arg)
 	if err != nil {
 		return nil, call.RejectArgument(err)
 	}
@@ -4695,13 +5948,13 @@ func remote_renameTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot23(out)
+	return EncodeRoot21(out)
 }
 
 // requestedArg_renameTodo decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_renameTodo uses.
 func requestedArg_renameTodo(arg any) (any, error) {
-	in, err := DecodeRoot25(arg)
+	in, err := DecodeRoot34(arg)
 	if err != nil {
 		return nil, (skgo.Call{}).RejectArgument(err)
 	}
@@ -4710,15 +5963,15 @@ func requestedArg_renameTodo(arg any) (any, error) {
 
 // remote_retitleTodo answers src/routes/todos/todos.remote.ts#retitleTodo, a command.
 //
-// The argument is decoded by DecodeRoot26, generated by polytype for retitleTodo's
+// The argument is decoded by DecodeRoot35, generated by polytype for retitleTodo's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
-// The result is encoded by EncodeRoot23, generated for its result type.
+// The result is encoded by EncodeRoot21, generated for its result type.
 func remote_retitleTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
-	in, err := DecodeRoot26(call.Arg)
+	in, err := DecodeRoot35(call.Arg)
 	if err != nil {
 		return nil, call.RejectArgument(err)
 	}
@@ -4730,30 +5983,30 @@ func remote_retitleTodo(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot23(out)
+	return EncodeRoot21(out)
 }
 
 // requestedArg_retitleTodo decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_retitleTodo uses.
 func requestedArg_retitleTodo(arg any) (any, error) {
-	in, err := DecodeRoot26(arg)
+	in, err := DecodeRoot35(arg)
 	if err != nil {
 		return nil, (skgo.Call{}).RejectArgument(err)
 	}
 	return in, nil
 }
 
-// remote_watchCount answers src/routes/todos/todos.remote.ts#watchCount, a query.live.
+// remote_watchCount_2 answers src/routes/todos/todos.remote.ts#watchCount, a query.live.
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot27, generated for its result type.
-func remote_watchCount(ctx context.Context, call skgo.Call, yield func(any) error) error {
+// The result is encoded by EncodeRoot20, generated for its result type.
+func remote_watchCount_2(ctx context.Context, call skgo.Call, yield func(any) error) error {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return err
 	}
 	return pkg_onzggl3sn52xizltf52g6zdpom.Skgo_watchCount(ctx, func(out pkg_onzggl3sn52xizltf52g6zdpom.SkgoOut_watchCount) error {
-		tree, err := EncodeRoot27(out)
+		tree, err := EncodeRoot20(out)
 		if err != nil {
 			return err
 		}
@@ -4765,7 +6018,7 @@ func remote_watchCount(ctx context.Context, call skgo.Call, yield func(any) erro
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot28, generated for its result type.
+// The result is encoded by EncodeRoot36, generated for its result type.
 func remote_receipt(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
@@ -4774,12 +6027,12 @@ func remote_receipt(ctx context.Context, call skgo.Call) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot28(out)
+	return EncodeRoot36(out)
 }
 
 // remote_validateCatalog answers src/routes/validation/catalog.remote.ts#validateCatalog, a query.
 //
-// The argument is decoded by DecodeRoot29, generated by polytype for validateCatalog's
+// The argument is decoded by DecodeRoot37, generated by polytype for validateCatalog's
 // own parameter type: a shape it does not admit is a 400 naming the path,
 // never a zero value.
 // The result is encoded by EncodeRoot0, generated for its result type.
@@ -4787,7 +6040,7 @@ func remote_validateCatalog(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RequireArgument(call); err != nil {
 		return nil, err
 	}
-	in, err := DecodeRoot29(call.Arg)
+	in, err := DecodeRoot37(call.Arg)
 	if err != nil {
 		return nil, call.RejectArgument(err)
 	}
@@ -4801,7 +6054,7 @@ func remote_validateCatalog(ctx context.Context, call skgo.Call) (any, error) {
 // requestedArg_validateCatalog decodes one instance's argument for skgo.Requested, with the same
 // decoder remote_validateCatalog uses.
 func requestedArg_validateCatalog(arg any) (any, error) {
-	in, err := DecodeRoot29(arg)
+	in, err := DecodeRoot37(arg)
 	if err != nil {
 		return nil, (skgo.Call{}).RejectArgument(err)
 	}
@@ -4812,7 +6065,7 @@ func requestedArg_validateCatalog(arg any) (any, error) {
 //
 // It takes no argument, so any argument at all is refused — kit's own
 // validator for a function declared without one answers 400 too.
-// The result is encoded by EncodeRoot30, generated for its result type.
+// The result is encoded by EncodeRoot38, generated for its result type.
 func remote_validationBodyCalls(ctx context.Context, call skgo.Call) (any, error) {
 	if err := skgo.RefuseArgument(call); err != nil {
 		return nil, err
@@ -4821,7 +6074,7 @@ func remote_validationBodyCalls(ctx context.Context, call skgo.Call) (any, error
 	if err != nil {
 		return nil, err
 	}
-	return EncodeRoot30(out)
+	return EncodeRoot38(out)
 }
 
 // Remotes returns every remote function declared in the app, ready to hand
@@ -4832,7 +6085,7 @@ func Remotes() []*skgo.Remote {
 			Kind:           skgo.KindCommand,
 			Module:         "src/lib/auth.remote.ts",
 			Name:           "signIn",
-			Fn:             skgo64.Skgo_signIn,
+			Fn:             skgo80.Skgo_signIn,
 			CallerMatchers: skgoCallerMatchers(),
 			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_signIn,
@@ -4842,7 +6095,7 @@ func Remotes() []*skgo.Remote {
 			Kind:           skgo.KindCommand,
 			Module:         "src/lib/auth.remote.ts",
 			Name:           "signOut",
-			Fn:             skgo64.Skgo_signOut,
+			Fn:             skgo80.Skgo_signOut,
 			CallerMatchers: skgoCallerMatchers(),
 			CallerRoutes:   params.SkgoCallerRoutes(),
 			Call:           remote_signOut,
@@ -4851,7 +6104,7 @@ func Remotes() []*skgo.Remote {
 			Kind:   skgo.KindQuery,
 			Module: "src/lib/auth.remote.ts",
 			Name:   "whoami",
-			Fn:     skgo64.Skgo_whoami,
+			Fn:     skgo80.Skgo_whoami,
 			Call:   remote_whoami,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
@@ -5072,6 +6325,139 @@ func Remotes() []*skgo.Remote {
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindQuery,
+			Module: "src/routes/samples/auth/account.remote.ts",
+			Name:   "profile",
+			Fn:     pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Skgo_profile,
+			Call:   remote_profile,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:           skgo.KindForm,
+			Module:         "src/routes/samples/go-standards/note.remote.ts",
+			Name:           "sendNote",
+			Fn:             pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.Skgo_sendNote,
+			CallerMatchers: skgoCallerMatchers(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
+			Call:           remote_sendNote,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:   skgo.KindQuery,
+			Module: "src/routes/samples/go-standards/session.remote.ts",
+			Name:   "countTodos",
+			Fn:     pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.Skgo_countTodos,
+			Call:   remote_countTodos,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:           skgo.KindCommand,
+			Module:         "src/routes/samples/introduction/todos.remote.ts",
+			Name:           "addTodo",
+			Fn:             skgo69.Skgo_addTodo,
+			CallerMatchers: skgoCallerMatchers(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
+			Call:           remote_addTodo,
+			DecodeArg:      requestedArg_addTodo,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:   skgo.KindQuery,
+			Module: "src/routes/samples/introduction/todos.remote.ts",
+			Name:   "getTodos",
+			Fn:     skgo69.Skgo_getTodos,
+			Call:   remote_getTodos,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:      skgo.KindQuery,
+			Module:    "src/routes/samples/migrating/greeting.remote.ts",
+			Name:      "greet",
+			Fn:        skgo72.Skgo_greet,
+			Call:      remote_greet,
+			DecodeArg: requestedArg_greet,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:           skgo.KindCommand,
+			Module:         "src/routes/samples/remote-functions/add.remote.ts",
+			Name:           "addNote",
+			Fn:             pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_addNote,
+			CallerMatchers: skgoCallerMatchers(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
+			Call:           remote_addNote,
+			DecodeArg:      requestedArg_addNote,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:   skgo.KindLive,
+			Module: "src/routes/samples/remote-functions/count.remote.ts",
+			Name:   "watchCount",
+			Fn:     pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_watchCount,
+			Live:   remote_watchCount,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:   skgo.KindQuery,
+			Module: "src/routes/samples/remote-functions/form/message.remote.ts",
+			Name:   "getMessages",
+			Fn:     pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Skgo_getMessages,
+			Call:   remote_getMessages_2,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:           skgo.KindForm,
+			Module:         "src/routes/samples/remote-functions/form/message.remote.ts",
+			Name:           "sendMessage",
+			Fn:             pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn.Skgo_sendMessage,
+			CallerMatchers: skgoCallerMatchers(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
+			Call:           remote_sendMessage_2,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:      skgo.KindQuery,
+			Module:    "src/routes/samples/remote-functions/notes.remote.ts",
+			Name:      "getNote",
+			Fn:        pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_getNote,
+			Call:      remote_getNote,
+			DecodeArg: requestedArg_getNote,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:   skgo.KindQuery,
+			Module: "src/routes/samples/remote-functions/notes.remote.ts",
+			Name:   "getNotes",
+			Fn:     pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_getNotes,
+			Call:   remote_getNotes,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:           skgo.KindCommand,
+			Module:         "src/routes/samples/remote-functions/rename.remote.ts",
+			Name:           "renameNote",
+			Fn:             pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt.Skgo_renameNote,
+			CallerMatchers: skgoCallerMatchers(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
+			Call:           remote_renameNote,
+			DecodeArg:      requestedArg_renameNote,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:           skgo.KindCommand,
+			Module:         "src/routes/samples/testing/testing.remote.ts",
+			Name:           "double",
+			Fn:             pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Skgo_double,
+			CallerMatchers: skgoCallerMatchers(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
+			Call:           remote_double,
+			DecodeArg:      requestedArg_double,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:      skgo.KindQuery,
+			Module:    "src/routes/samples/testing/testing.remote.ts",
+			Name:      "shout",
+			Fn:        pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Skgo_shout,
+			Call:      remote_shout,
+			DecodeArg: requestedArg_shout,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:           skgo.KindForm,
+			Module:         "src/routes/samples/testing/testing.remote.ts",
+			Name:           "signUp",
+			Fn:             pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4.Skgo_signUp,
+			CallerMatchers: skgoCallerMatchers(),
+			CallerRoutes:   params.SkgoCallerRoutes(),
+			Call:           remote_signUp,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:   skgo.KindQuery,
 			Module: "src/routes/site.remote.ts",
 			Name:   "getSite",
 			Fn:     pkg_onzggl3sn52xizlt.Skgo_getSite,
@@ -5089,8 +6475,8 @@ func Remotes() []*skgo.Remote {
 			Module:    "src/routes/todos/gate/gate.remote.ts",
 			Name:      "getNote",
 			Fn:        pkg_onzggl3sn52xizltf52g6zdpomxwoylumu.Skgo_getNote,
-			Call:      remote_getNote,
-			DecodeArg: requestedArg_getNote,
+			Call:      remote_getNote_2,
+			DecodeArg: requestedArg_getNote_2,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:           skgo.KindCommand,
@@ -5109,8 +6495,8 @@ func Remotes() []*skgo.Remote {
 			Fn:             pkg_onzggl3sn52xizltf52g6zdpom.Skgo_addTodo,
 			CallerMatchers: skgoCallerMatchers(),
 			CallerRoutes:   params.SkgoCallerRoutes(),
-			Call:           remote_addTodo,
-			DecodeArg:      requestedArg_addTodo,
+			Call:           remote_addTodo_2,
+			DecodeArg:      requestedArg_addTodo_2,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:      skgo.KindQuery,
@@ -5125,7 +6511,7 @@ func Remotes() []*skgo.Remote {
 			Module: "src/routes/todos/todos.remote.ts",
 			Name:   "getTodos",
 			Fn:     pkg_onzggl3sn52xizltf52g6zdpom.Skgo_getTodos,
-			Call:   remote_getTodos,
+			Call:   remote_getTodos_2,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:           skgo.KindCommand,
@@ -5152,7 +6538,7 @@ func Remotes() []*skgo.Remote {
 			Module: "src/routes/todos/todos.remote.ts",
 			Name:   "watchCount",
 			Fn:     pkg_onzggl3sn52xizltf52g6zdpom.Skgo_watchCount,
-			Live:   remote_watchCount,
+			Live:   remote_watchCount_2,
 		}),
 		skgo.NewRemote(skgo.RemoteSpec{
 			Kind:   skgo.KindQuery,
@@ -5503,13 +6889,49 @@ func load_routing_slash_never_page(ctx context.Context) (any, error) {
 	return skgo58.Skgo_load(skgo58.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
+// load_samples_formactions_validation_page answers src/routes/samples/form-actions/validation/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_samples_formactions_validation_page(ctx context.Context) (any, error) {
+	return skgo67.Skgo_pageLoad(skgo67.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+}
+
+// load_samples_load_pagedata_page answers src/routes/samples/load/page-data/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_samples_load_pagedata_page(ctx context.Context) (any, error) {
+	return skgo70.Skgo_pageLoad(skgo70.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+}
+
+// load_samples_load_untrack_slug_page answers src/routes/samples/load/untrack/[slug]/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_samples_load_untrack_slug_page(ctx context.Context) (any, error) {
+	return skgo71.Skgo_pageLoad(skgo71.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+}
+
+// load_samples_prerendering_slug_page answers src/routes/samples/prerendering/[slug]/+page.server.ts.
+//
+// A load's result is the one value no generated encoder produces: it may
+// hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
+// type, so the value is encoded where a promise can still be recognised.
+func load_samples_prerendering_slug_page(ctx context.Context) (any, error) {
+	return skgo73.Skgo_load(skgo73.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+}
+
 // load_stream_page answers src/routes/stream/+page.server.ts.
 //
 // A load's result is the one value no generated encoder produces: it may
 // hold a skgo.Deferred, and `Promise<T>` is not a projection of any Go
 // type, so the value is encoded where a promise can still be recognised.
 func load_stream_page(ctx context.Context) (any, error) {
-	return skgo62.Skgo_pageLoad(skgo62.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
+	return skgo78.Skgo_pageLoad(skgo78.SkgoPageRequestEvent(skgo.EventFrom(ctx)))
 }
 
 // load_traced_page answers src/routes/traced/+page.server.ts.
@@ -5546,30 +6968,30 @@ func Loads() []*skgo.ServerLoad {
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/(marketing)/pricing/+page.server.ts", Source: "src/routes/(marketing)/pricing/page.server.go:22", Run: load_marketing_pricing_page, Matchers: pkg_onzggl3sn52xizltf4ug2ylsnnsxi2lom4us64dsnfrws3th.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/+layout.server.ts", Source: "src/routes/layout.server.go:33", Run: load_layout, Matchers: pkg_onzggl3sn52xizlt.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/about/+page.server.ts", Source: "src/routes/about/page.server.go:15", Run: load_about_page, Matchers: skgo8.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/+layout.server.ts", Source: "src/routes/account/layout.server.go:55", Run: load_account_layout, Matchers: skgo17.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/+page.server.ts", Source: "src/routes/account/page.server.go:16", Run: load_account_page, Matchers: skgo17.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/orders/+page.server.ts", Source: "src/routes/account/orders/page.server.go:30", Run: load_account_orders_page, Matchers: skgo18.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/reruns/[slug]/+page.server.ts", Source: "src/routes/account/reruns/[slug]/page.server.go:22", Run: load_account_reruns_slug_page, Matchers: skgo19.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/+layout.server.ts", Source: "src/routes/account/layout.server.go:51", Run: load_account_layout, Matchers: skgo17.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/+page.server.ts", Source: "src/routes/account/page.server.go:15", Run: load_account_page, Matchers: skgo17.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/orders/+page.server.ts", Source: "src/routes/account/orders/page.server.go:29", Run: load_account_orders_page, Matchers: skgo18.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/reruns/[slug]/+page.server.ts", Source: "src/routes/account/reruns/[slug]/page.server.go:21", Run: load_account_reruns_slug_page, Matchers: skgo19.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/account/statement/+page.server.ts", Source: "src/routes/account/statement/page.server.go:16", Run: load_account_statement_page, Matchers: skgo20.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/+page.server.ts", Source: "src/routes/actions/page.server.go:143", Run: load_actions_page, Matchers: pkg_onzggl3sn52xizltf5qwg5djn5xhg.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/+page.server.ts", Source: "src/routes/actions/page.server.go:137", Run: load_actions_page, Matchers: pkg_onzggl3sn52xizltf5qwg5djn5xhg.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/cross/receive/+page.server.ts", Source: "src/routes/actions/cross/receive/page.server.go:31", Run: load_actions_cross_receive_page, Matchers: skgo10.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/default/saved/+page.server.ts", Source: "src/routes/actions/default/saved/page.server.go:13", Run: load_actions_default_saved_page, Matchers: skgo12.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/options/no-client/+page.server.ts", Source: "src/routes/actions/options/no-client/page.server.go:10", Run: load_actions_options_noclient_page, Matchers: skgo13.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/options/no-ssr/+page.server.ts", Source: "src/routes/actions/options/no-ssr/page.server.go:10", Run: load_actions_options_nossr_page, Matchers: skgo14.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/profiles/[profile]/+page.server.ts", Source: "src/routes/actions/profiles/[profile]/page.server.go:28", Run: load_actions_profiles_profile_page, Matchers: skgo15.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/signed-in/+page.server.ts", Source: "src/routes/actions/signed-in/page.server.go:13", Run: load_actions_signedin_page, Matchers: skgo16.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/actions/signed-in/+page.server.ts", Source: "src/routes/actions/signed-in/page.server.go:12", Run: load_actions_signedin_page, Matchers: skgo16.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/destinations/+page.server.ts", Source: "src/routes/destinations/page.server.go:41", Run: load_destinations_page, Matchers: skgo33.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/empty/+page.server.ts", Source: "src/routes/empty/page.server.go:15", Run: load_empty_page, Matchers: pkg_onzggl3sn52xizltf5sw24dupe.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/expected/+page.server.ts", Source: "src/routes/error/expected/page.server.go:19", Run: load_error_expected_page, Matchers: skgo37.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/unexpected/+page.server.ts", Source: "src/routes/error/unexpected/page.server.go:25", Run: load_error_unexpected_page, Matchers: skgo39.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/error/unexpected/+page.server.ts", Source: "src/routes/error/unexpected/page.server.go:24", Run: load_error_unexpected_page, Matchers: skgo39.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/event-layout/[section]/+layout.server.ts", Source: "src/routes/event-layout/[section]/layout.server.go:24", Run: load_eventlayout_section_layout, Matchers: skgo40.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/invoices/+page.server.ts", Source: "src/routes/invoices/page.server.go:18", Run: load_invoices_page, Matchers: skgo41.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/lang/[[lang]]/+page.server.ts", Source: "src/routes/lang/[[lang]]/page.server.go:12", Run: load_lang_lang_page, Matchers: skgo43.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/lang/[[lang]]/+page.server.ts", Source: "src/routes/lang/[[lang]]/page.server.go:11", Run: load_lang_lang_page, Matchers: skgo43.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/middleware/+page.server.ts", Source: "src/routes/middleware/page.server.go:23", Run: load_middleware_page, Matchers: skgo46.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/middleware/[slug]/+page.server.ts", Source: "src/routes/middleware/[slug]/page.server.go:21", Run: load_middleware_slug_page, Matchers: skgo47.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/missing/[...path]/+page.server.ts", Source: "src/routes/missing/[...path]/page.server.go:15", Run: load_missing_path_page, Matchers: skgo45.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/missing/[...path]/+page.server.ts", Source: "src/routes/missing/[...path]/page.server.go:14", Run: load_missing_path_page, Matchers: skgo45.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/prerender/[slug]/+page.server.ts", Source: "src/routes/prerender/[slug]/page.server.go:12", Run: load_prerender_slug_page, Matchers: skgo49.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/request-fetch/+page.server.ts", Source: "src/routes/request-fetch/page.server.go:21", Run: load_requestfetch_page, Matchers: skgo59.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/request-fetch/+page.server.ts", Source: "src/routes/request-fetch/page.server.go:20", Run: load_requestfetch_page, Matchers: skgo59.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/rerouted/[number=Order]/+page.server.ts", Source: "src/routes/rerouted/[number=Order]/page.server.go:9", Run: load_rerouted_numberOrder_page, Matchers: skgo60.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/routing/fallback/[number=Order]/+page.server.ts", Source: "src/routes/routing/fallback/[number=Order]/page.server.go:9", Run: load_routing_fallback_numberOrder_page, Matchers: skgo50.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/routing/fallback/[value]/+page.server.ts", Source: "src/routes/routing/fallback/[value]/page.server.go:9", Run: load_routing_fallback_value_page, Matchers: skgo51.SkgoParamMatchers()}),
@@ -5579,8 +7001,12 @@ func Loads() []*skgo.ServerLoad {
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/routing/slash/ignore/+page.server.ts", Source: "src/routes/routing/slash/ignore/page.server.go:9", Run: load_routing_slash_ignore_page, Matchers: skgo56.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/routing/slash/mixed/+page.server.ts", Source: "src/routes/routing/slash/mixed/page.server.go:9", Run: load_routing_slash_mixed_page, Matchers: skgo57.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/routing/slash/never/+page.server.ts", Source: "src/routes/routing/slash/never/page.server.go:9", Run: load_routing_slash_never_page, Matchers: skgo58.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/stream/+page.server.ts", Source: "src/routes/stream/page.server.go:51", Run: load_stream_page, Matchers: skgo62.SkgoParamMatchers()}),
-		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/traced/+page.server.ts", Source: "src/routes/traced/page.server.go:16", Run: load_traced_page, Matchers: pkg_onzggl3sn52xizltf52heyldmvsa.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/samples/form-actions/validation/+page.server.ts", Source: "src/routes/samples/form-actions/validation/page.server.go:44", Run: load_samples_formactions_validation_page, Matchers: skgo67.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/samples/load/page-data/+page.server.ts", Source: "src/routes/samples/load/page-data/page.server.go:21", Run: load_samples_load_pagedata_page, Matchers: skgo70.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/samples/load/untrack/[slug]/+page.server.ts", Source: "src/routes/samples/load/untrack/[slug]/page.server.go:15", Run: load_samples_load_untrack_slug_page, Matchers: skgo71.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/samples/prerendering/[slug]/+page.server.ts", Source: "src/routes/samples/prerendering/[slug]/page.server.go:10", Run: load_samples_prerendering_slug_page, Matchers: skgo73.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/stream/+page.server.ts", Source: "src/routes/stream/page.server.go:51", Run: load_stream_page, Matchers: skgo78.SkgoParamMatchers()}),
+		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/traced/+page.server.ts", Source: "src/routes/traced/page.server.go:15", Run: load_traced_page, Matchers: pkg_onzggl3sn52xizltf52heyldmvsa.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/+page.server.ts", Source: "src/routes/typed-dependencies/[a=Order]/[b=Order]/[ignored]/page.server.go:23", Run: load_typeddependencies_aOrder_bOrder_ignored_page, Matchers: skgo5.SkgoParamMatchers()}),
 		skgo.NewServerLoad(skgo.LoadSpec{Module: "src/routes/typed-load/[number=Order]/+page.server.ts", Source: "src/routes/typed-load/[number=Order]/page.server.go:9", Run: load_typedload_numberOrder_page, Matchers: skgo6.SkgoParamMatchers()}),
 	}
@@ -5676,6 +7102,50 @@ func action_actions_profiles_profile_page_save(ctx context.Context) (any, error)
 
 func action_middleware_page_default(ctx context.Context) (any, error) { return skgo46.Skgo_note(ctx) }
 
+func action_samples_auth_page_publish(ctx context.Context) (any, error) {
+	return nil, pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Skgo_publish(ctx)
+}
+
+func action_samples_auth_page_signIn(ctx context.Context) (any, error) {
+	return nil, pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq.Skgo_signIn(ctx)
+}
+
+func action_samples_formactions_default_page_default(ctx context.Context) (any, error) {
+	return skgo64.Skgo_save(ctx)
+}
+
+func action_samples_formactions_enhance_page_save(ctx context.Context) (any, error) {
+	return skgo65.Skgo_save(ctx)
+}
+
+func action_samples_formactions_named_page_archive(ctx context.Context) (any, error) {
+	return skgo63.Skgo_archive(ctx)
+}
+
+func action_samples_formactions_named_page_save(ctx context.Context) (any, error) {
+	return skgo63.Skgo_save(ctx)
+}
+
+func action_samples_formactions_signin_page_forbidden(ctx context.Context) (any, error) {
+	return nil, skgo66.Skgo_forbidden(ctx)
+}
+
+func action_samples_formactions_signin_page_signIn(ctx context.Context) (any, error) {
+	return nil, skgo66.Skgo_signIn(ctx)
+}
+
+func action_samples_formactions_validation_page_save(ctx context.Context) (any, error) {
+	return skgo67.Skgo_save(ctx)
+}
+
+func action_samples_gostandards_page_upload(ctx context.Context) (any, error) {
+	return pkg_onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom.Skgo_upload(ctx)
+}
+
+func action_samples_migrating_page_save(ctx context.Context) (any, error) {
+	return skgo72.Skgo_save(ctx)
+}
+
 // Actions returns the Go handlers for classic page actions.
 func Actions() []*skgo.PageAction {
 	return []*skgo.PageAction{
@@ -5702,6 +7172,17 @@ func Actions() []*skgo.PageAction {
 		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/options/no-ssr/+page.server.ts", Name: "unavailable", Run: action_actions_options_nossr_page_unavailable}),
 		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/actions/profiles/[profile]/+page.server.ts", Name: "save", Run: action_actions_profiles_profile_page_save}),
 		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/middleware/+page.server.ts", Name: "default", Run: action_middleware_page_default}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/auth/+page.server.ts", Name: "publish", Run: action_samples_auth_page_publish}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/auth/+page.server.ts", Name: "signIn", Run: action_samples_auth_page_signIn}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/form-actions/default/+page.server.ts", Name: "default", Run: action_samples_formactions_default_page_default}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/form-actions/enhance/+page.server.ts", Name: "save", Run: action_samples_formactions_enhance_page_save}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/form-actions/named/+page.server.ts", Name: "archive", Run: action_samples_formactions_named_page_archive}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/form-actions/named/+page.server.ts", Name: "save", Run: action_samples_formactions_named_page_save}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/form-actions/sign-in/+page.server.ts", Name: "forbidden", Run: action_samples_formactions_signin_page_forbidden}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/form-actions/sign-in/+page.server.ts", Name: "signIn", Run: action_samples_formactions_signin_page_signIn}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/form-actions/validation/+page.server.ts", Name: "save", Run: action_samples_formactions_validation_page_save}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/go-standards/+page.server.ts", Name: "upload", Run: action_samples_gostandards_page_upload}),
+		skgo.NewPageAction(skgo.ActionSpec{Module: "src/routes/samples/migrating/+page.server.ts", Name: "save", Run: action_samples_migrating_page_save}),
 	}
 }
 
@@ -5725,7 +7206,8 @@ func Endpoints() []*skgo.Endpoint {
 		skgo.NewEndpoint("/async-ssr/control/[group]", "POST", skgo29.Skgo_release),
 		skgo.NewEndpoint("/routing/slash/api", "GET", skgo55.Skgo_get),
 		skgo.NewEndpoint("/routing/slash/mixed", "GET", skgo57.Skgo_get),
-		skgo.NewEndpoint("/shadow/[...rest]", "GET", skgo61.Skgo_get),
+		skgo.NewEndpoint("/samples/cookies", "GET", skgo62.Skgo_get),
+		skgo.NewEndpoint("/shadow/[...rest]", "GET", skgo77.Skgo_get),
 	}
 }
 

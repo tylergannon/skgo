@@ -1,0 +1,1 @@
+../../../../web/src/routes/samples/cookies/skgo_gen.go
