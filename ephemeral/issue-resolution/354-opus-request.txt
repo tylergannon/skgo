@@ -1,0 +1,16 @@
+You are Claude Opus validating completed skgo #354 production remote HandleError on shared codex/reliability-fixes in /Users/tyler/.codex/worktrees/e413/skgo. Read AGENTS.md/required agent-protocol, downloaded complete issues/comments/cache notes in ephemeral/issue-resolution/03-production-error-hooks.md. Independently map installed Kit3.1.0 relevant error/remote implementation. Native-development architecture and production pooled goja are fixed.
+
+Scope is exact: does #354 implement the issue's goal, pass load-bearing proof and avoid a new VERIFIED reproducible bug? No scope increase, new policy framework/API redesign, unrelated conformance, hypothetical blockers or repeated whole CI. Concurrent #353 SSR-boundary work is excluded from verdict.
+
+Acceptance: production remote returned errors/unexpected panics use configured Go HandleError policy and expose hook-supplied public fields, preserve private-detail protection, existing panic reporting/abort behavior and known-error/redirect semantics. Installed Kit hooks ordinary HttpError/SvelteKitError; already-handled bypass and redirects separate. Relevant existing remote kinds/envelope paths must be covered, including safe fallback and actual production config wiring, not string comparisons alone. Use literal independent handler fixtures and positive expected fields; absence-only isn't proof.
+
+Validate tests are load-bearing (would fail with integration removed/broken), then run minimal focused handler acceptance. Test mutations via overlays/temporary copies if useful, no repository edits. Reuse captured output rather than repeated expensive suites. Missing prerequisites/skips cannot pass. Parent will render godoc once after both group tasks finish; do not rerender or demand duplicate documentation build.
+
+No implementation/source/test edits, staging/commits or external messages. Return only material unmet acceptance or introduced reproducible bugs with exact expected/actual reproduction. Otherwise PASS and concise concrete evidence/proof limits. Final response is the report.
+
+Builder handoff, all passing:
+`go test . -run '^TestRemote(FailuresUseApplicationErrorPolicy|HookFailureKeepsSafeFallback|AbortBypassesErrorPolicyAndPanicReport|RefreshErrorsKeepCommandAnswerAndPublicFields)$' -count=1 -v` (0.270s, 354-handler.log).
+`go test ./example -run '^TestProductionRemoteErrorsUseConfiguredApplicationHook$' -count=1 -v` (0.249s, 354-production.log) uses actual example.NewHandler with built frontend, known readSensor409 plus hook case-1121 and unknown getDependent500 plus safe app public message, private cause absent.
+Five existing panic handler tests passed (354-existing-panic.log).
+Files owned remote.go/remote_batch.go/remote_form.go/remote_live.go/refresh.go/handle_error.go(godoc)/example/server.go(remote hook assignment)/new remote_handle_error_test.go + example/remote_error_hook_test.go. example/server_test.go is sibling #353.
+Load-bearing ideas: omit actual example remoteCfg.HandleError assignment; restore old opaque panic HTTPError recovery; bypass percall error hook; restore refresh asHTTPError conversion. Use overlays. Build-prerender config bridge is later #278 scope, not #354; existing command redirect behavior is intentionally preserved/nohook. Shared docs render pending parent after sibling ready, not blocker to this API proof.

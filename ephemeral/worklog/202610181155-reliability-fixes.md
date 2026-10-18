@@ -13,3 +13,4 @@
 - correction: Kit 3.1.0 ordinary HttpError still invokes handleError; only already-handled bodies and redirects bypass it. Preserve an unexpected remote panic as an unknown error until the shared public policy runs, while keeping OnPanic reporting independent; reducing it to HTTPError first loses classification and the original private cause.
 
 - correction: Remote HTTP envelopes do not cover Kit collect_remote_data during SSR. Assert the specific hydration query error entry, not merely a hook field elsewhere in the document. Single and batch SSR answers must record the transformed body and mark it handled before Svelte receives it, or a boundary runs the hook again.
+- correction: #354 includes SSR-collected remote errors, not only endpoint envelopes: Kit collect_remote_data stores the full handled public error. Preserve extra fields in hydration and return handled envelopes to avoid invoking the application hook again at the component boundary.

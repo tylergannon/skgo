@@ -85,7 +85,7 @@ const SessionCookie = "skgo_session"
 const supportID = "case-1121"
 
 // HandleError is the app's `handleError` hook — kit's own contract, mirrored:
-// it runs for every error a page render raises, expected or not
+// it runs for page and remote-function failures, expected or not
 // (`exports/hooks/public.d.ts`: "runs for every error thrown ... except
 // redirects"), and whatever it returns is merged over what the error already
 // carries.

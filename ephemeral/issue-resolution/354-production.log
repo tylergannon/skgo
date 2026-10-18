@@ -1,0 +1,8 @@
+=== RUN   TestProductionRemoteErrorsUseConfiguredApplicationHook
+=== RUN   TestProductionRemoteErrorsUseConfiguredApplicationHook/readSensor
+=== RUN   TestProductionRemoteErrorsUseConfiguredApplicationHook/getDependent
+--- PASS: TestProductionRemoteErrorsUseConfiguredApplicationHook (0.04s)
+    --- PASS: TestProductionRemoteErrorsUseConfiguredApplicationHook/readSensor (0.00s)
+    --- PASS: TestProductionRemoteErrorsUseConfiguredApplicationHook/getDependent (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo/example	0.249s

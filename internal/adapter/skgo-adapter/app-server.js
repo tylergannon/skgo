@@ -95,6 +95,9 @@ async function host_batch(id, args) {
 	const payloads = args.map((arg) => stringify_remote_arg(arg));
 	const raw = await globalThis.__skgo_remote(id, JSON.stringify(payloads));
 	const res = JSON.parse(raw);
+	if (res.h) {
+		throw new HandledHttpError(res.h);
+	}
 	if (res.r) {
 		throw new Redirect(res.r.status, res.r.location);
 	}

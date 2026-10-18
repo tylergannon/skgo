@@ -249,7 +249,9 @@ The hook sees the request before SKGo adds the page's cookies and `Authorization
 
 ## handleError
 
-`handleError` decides what the error page and `page.error` receive. It is a Go function on the remote, load, endpoint and handle configurations in `server.go`; [Errors](errors#Where-handleError-runs) shows it and lists where it runs. In the browser, Kit's own `handleError` from `src/hooks.client.ts` applies.
+
+`handleError` decides what the error page and `page.error` receive. It is a Go function on the load, remote, endpoint and handle configurations in `server.go`; [Errors](errors#Where-handleError-runs) shows it and lists where it runs. In the browser, Kit's own `handleError` from `src/hooks.client.ts` applies.
+
 
 ## init
 

@@ -29,7 +29,7 @@ SKGo runs SvelteKit 3.1.0's own router, client and renderer, so anything not lis
 
 - **`handle`** is `var Handle params.Middleware` in `internal/serverhooks`, with Kit's `resolve` and `ResolveOptions` (`TransformPageChunk`, `FilterSerializedResponseHeaders`, `Preload`), composed with `params.Sequence`. See [Hooks](hooks).
 - **`handleFetch`** is a Go `HandleFetch` on `FetchConfig` for Go-side fetches and on `SSROptions` for render-time fetches.
-- **`handleError`** is a Go `HandleError`, set on the load, endpoint and handle configurations in `server.go`. See [Error handling](#Error-handling).
+- **`handleError`** is a Go `HandleError`, set on the load, remote, endpoint and handle configurations in `server.go`. See [Error handling](#Error-handling).
 - **`init`** has no Go equivalent; startup work goes in `cmd/main.go` before the server listens ([#168](https://github.com/tylergannon/skgo/issues/168)).
 - **`handleValidationError`** has no Go equivalent. An argument that does not decode into the Go type gets `400 Bad Request` ([#166](https://github.com/tylergannon/skgo/issues/166)).
 - **`transport`** works: declare the Go types with `skgo.Transported` in `src/hooks.go` beside the encoders and decoders in `src/hooks.ts`. See [Types and transport](transport#Transport).
@@ -38,10 +38,8 @@ SKGo runs SvelteKit 3.1.0's own router, client and renderer, so anything not lis
 ## Error handling
 
 - **Error kinds.** `CaughtError.Kind` is `"app"` for any `*skgo.HTTPError`, including the ones SKGo makes itself for a 404, and `"unknown"` for any other Go error, whose original value is in `caught.Err`. Kit's `framework` and `validation` kinds do not exist.
-- **Remote functions skip `HandleError`.** `RemoteConfig` has no error hook: an `HTTPError` is returned as is, and any other error or a panic becomes an opaque `500` ([#354](https://github.com/tylergannon/skgo/issues/354)).
 - **Server routes** write their own error responses, so `HandleError` sees only a panic.
 - **The `handle` hook.** An error the hook returns reaches `HandleError` for page requests; a `__data.json` or remote request gets the JSON refusal Kit's client expects without it.
-- **Svelte boundaries.** An error a `<svelte:boundary>` catches during a production render skips `HandleError` ([#353](https://github.com/tylergannon/skgo/issues/353)).
 - **Prerendering.** `HandleError` and `HandleFetch` are not carried into the prerender ([#278](https://github.com/tylergannon/skgo/issues/278)).
 
 See [Errors](errors).

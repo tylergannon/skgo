@@ -8,6 +8,7 @@ import (
 
 	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/skgo/internal/remotearg"
+	"github.com/tylergannon/skgo/internal/ssr"
 )
 
 // liveKeepAlive is how long a quiet `query.live` connection waits before
@@ -26,8 +27,10 @@ type liveRedirectFrame struct {
 }
 
 type liveErrorFrame struct {
-	Type  string `json:"type"`
-	Error any    `json:"error"`
+
+	Type  string     `json:"type"`
+	Error *ssr.Error `json:"error"`
+
 }
 
 // serveLive answers a `query.live` call with an SSE stream. The producer runs
@@ -112,7 +115,7 @@ func (rs *Remotes) serveLive(w http.ResponseWriter, r *http.Request, fn *Remote)
 		case v := <-values:
 			serialized, err := devalue.StringifyWith(v, rs.cfg.Transport.reducers())
 			if err != nil {
-				rs.sendFrame(w, flusher, liveErrorFrame{Type: "error", Error: &HTTPError{Status: 500, Message: "Internal Error"}})
+				rs.sendFrame(w, flusher, liveErrorFrame{Type: "error", Error: rs.callError(liveCtx, err)})
 				return
 			}
 			// Consecutive identical frames are dropped, so a producer that
@@ -140,7 +143,9 @@ func (rs *Remotes) serveLive(w http.ResponseWriter, r *http.Request, fn *Remote)
 				rs.sendFrame(w, flusher, liveRedirectFrame{Type: "redirect", Location: redirect.Location})
 				return
 			}
-			rs.sendFrame(w, flusher, liveErrorFrame{Type: "error", Error: rs.remoteError(liveCtx, err)})
+
+			rs.sendFrame(w, flusher, liveErrorFrame{Type: "error", Error: rs.callError(liveCtx, err)})
+
 			return
 		}
 	}

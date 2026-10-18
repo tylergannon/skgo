@@ -20,7 +20,7 @@ type HTTPError struct {
 }
 ```
 
-HTTPError is an error with a status kit's client understands. Returning one from a remote function produces `{"type":"error","error":{...}}`; any other error becomes an opaque 500, exactly as kit does for unexpected throws.
+HTTPError is an error with a status kit's client understands. Returning one from a remote function produces `{"type":"error","error":{...}}`; any other error defaults to an opaque 500. RemoteConfig.HandleError may customize the public body, as Kit's handleError does.
 
 ### Errorf
 
@@ -172,4 +172,5 @@ type CaughtError struct {
 }
 ```
 
-CaughtError is the safe error and private diagnostic supplied to HandleError. Validation errors describe a generated remote argument schema refusal; their decoder details are available only in Issues.
+
+CaughtError is the error the application's `handleError` hook is told about — kit's own discriminated `CaughtError` (`exports/hooks/public.d.ts`), narrowed to what a Go port can express without modelling kit's `SvelteKitError` and `ValidationError` classes as distinct Go types the way skgo's `HTTPError` does not yet: "app" for an error already shaped as one — an \*HTTPError, whether the app raised it itself with Errorf or skgo manufactured it for a framework failure such as a 404 — and "unknown" for anything else, which is where kit's real distinction still matters: the visitor is never shown an unknown error's own message, only what the hook explicitly returns.

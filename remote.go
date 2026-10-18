@@ -28,11 +28,13 @@ import (
 	"github.com/tylergannon/skgo/internal/formdata"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/internal/remotearg"
+	"github.com/tylergannon/skgo/internal/ssr"
 )
 
 // HTTPError is an error with a status kit's client understands. Returning one
 // from a remote function produces `{"type":"error","error":{...}}`; any other
-// error becomes an opaque 500, exactly as kit does for unexpected throws.
+// error defaults to an opaque 500. RemoteConfig.HandleError may customize the
+// public body, as Kit's handleError does.
 type HTTPError struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
@@ -461,11 +463,10 @@ func DecodeForm(arg any, into any) error {
 }
 
 // RemoteConfig describes the app the registry is serving. Manifest.RemoteConfig
-// fills Development, AppDir, Base, Version, Remotes and Routes. The caller
-// supplies Origin, Transport and OnPanic.
+
+// supplies build-owned fields; application code configures the origin and hooks.
+
 type RemoteConfig struct {
-	// HandleError customizes generated argument schema refusals with kind validation.
-	HandleError HandleError
 	// Development mirrors Kit's development dispatch for prerender remotes.
 	// Production registries serve only their recorded static artifacts.
 	Development bool
@@ -494,10 +495,16 @@ type RemoteConfig struct {
 	Remotes []string
 	// Routes is Kit's ordered caller route table, including routes without loads.
 	Routes []ManifestRoute
+	// HandleError customizes generated argument schema refusals (kind
+	// "validation") and shapes failures returned by remote functions, including
+	// unexpected panics and errors from single-flight refreshes. Use the same
+	// hook as LoadConfig.HandleError for one application error policy. Redirects
+	// and already-handled errors bypass the hook; nil keeps safe defaults.
+	HandleError HandleError
 	// OnPanic is called when a remote function panics, with the function's
-	// `<hash>/<name>` id, the recovered value, and the stack. The client is
-	// told nothing but an opaque 500, so this is the only record the panic
-	// leaves; leaving it nil logs the same three things to the standard
+	// `<hash>/<name>` id, the recovered value, and the stack. HandleError may
+	// customize the public error, but never replaces this panic report.
+	// Leaving it nil logs the same three things to the standard
 	// logger, because a panicking handler that reports nowhere is a bug that
 	// cannot be found.
 	OnPanic func(id string, value any, stack []byte)
@@ -799,7 +806,9 @@ func (rs *Remotes) servePrerender(w http.ResponseWriter, r *http.Request, fn *Re
 			rs.writeResult(w, event, map[string]any{"redirect": redirect.Location})
 			return
 		}
-		rs.writeError(w, rs.remoteError(withEvent(r.Context(), event), err))
+
+		rs.writeCallError(w, withEvent(r.Context(), event), err)
+
 		return
 	}
 	key := fn.id + "/" + payload
@@ -833,7 +842,9 @@ func (rs *Remotes) serveQuery(w http.ResponseWriter, r *http.Request, fn *Remote
 			rs.writeResult(w, ev, map[string]any{"redirect": redirect.Location})
 			return
 		}
-		rs.writeError(w, rs.remoteError(withEvent(r.Context(), ev), err))
+
+		rs.writeCallError(w, withEvent(r.Context(), ev), err)
+
 		return
 	}
 
@@ -881,7 +892,9 @@ func (rs *Remotes) serveCommand(w http.ResponseWriter, r *http.Request, fn *Remo
 		// A redirect in a command response makes the client throw, so it is
 		// reported as an ordinary error instead. Cookies written before the
 		// failure are dropped with it.
-		rs.writeError(w, rs.remoteError(withEvent(r.Context(), ev), err))
+
+		rs.writeCallError(w, withEvent(r.Context(), ev), err)
+
 		return
 	}
 
@@ -1001,7 +1014,7 @@ func (rs *Remotes) recovered(fn *Remote, value any, err error) error {
 	} else {
 		log.Printf("skgo: remote function %s panicked: %v\n%s", fn.id, value, stack)
 	}
-	return &HTTPError{Status: 500, Message: "Internal Error"}
+	return fmt.Errorf("skgo: remote function %s panicked: %v", fn.id, value)
 }
 
 // newEvent builds the per-call handle. The cookie jar it carries is shared by
@@ -1056,6 +1069,25 @@ func (rs *Remotes) writeError(w http.ResponseWriter, e any) {
 	// Kit answers runtime remote errors with HTTP 200 and an error envelope;
 	// the client reads the envelope either way.
 	rs.writeErrorStatus(w, e, http.StatusOK)
+}
+
+// callError shares the document/data policy. A hook gets a read-only snapshot
+// of the call's event, including the cookie jar shared with its refreshes.
+func (rs *Remotes) callError(ctx context.Context, err error) *ssr.Error {
+	if asRedirect(err) != nil {
+		return &ssr.Error{Status: 500, Message: "Internal Error"}
+	}
+	if event := EventFrom(ctx); event != nil {
+		ctx = withEvent(ctx, event.immutable())
+	}
+	return handleErrorAndJSONify(ctx, "", rs.cfg.HandleError, asHTTPError(err), err, nil)
+}
+
+func (rs *Remotes) writeCallError(w http.ResponseWriter, ctx context.Context, err error) {
+	h := rs.header(w)
+	h.Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	writeJSON(w, map[string]any{"type": "error", "error": rs.callError(ctx, err)})
 }
 
 func (rs *Remotes) writeErrorStatus(w http.ResponseWriter, e any, status int) {

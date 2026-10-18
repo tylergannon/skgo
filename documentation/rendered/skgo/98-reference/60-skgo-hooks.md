@@ -126,11 +126,15 @@ HandleConfig is what Intercept needs to recognise the requests kit's own `handle
 type HandleError func(ctx context.Context, caught CaughtError) map[string]any
 ```
 
-HandleError is skgo's mirror of kit's `handleError` hook (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app decides what a failed page or rejected remote argument exposes publicly. Set it on RemoteConfig to customize generated schema refusals: kind "validation" has safe status 400/message "Bad Request" and private Issues.
 
-It runs for errors from server loads and page rendering on document responses, page actions on document responses, load failures on `__data.json`, `handle` errors on document requests, and server-route panics. It does not run for redirects, production remote-function errors, `handle` errors on data or remote requests, or during production prerendering. An already-handled built-prerender error reuses its recorded App.Error body without running the hook again. An error raised on purpose with Errorf still reaches the hook: Kit exempts an "app"-kind error only from having its message replaced by default.
+HandleError is skgo's mirror of kit's `handleError` hook (`exports/hooks/public.d.ts`, `HandleServerError`): the one place an app decides what a failed request's visitor is told, beyond status and message.
 
-Returning nil keeps kit's own defaults exactly: an "app" error's message survives untouched, and an "unknown" error's stays the generic "Internal Error" a real one never leaks through. Returning a map adds or overrides fields on the JSON object the error page and the client both see — "status" and "message" included, if the hook chooses to replace them — the same partial-override rule kit's own type comment states: "the hook returns only the properties it wants to override; anything it omits ... is inherited from the caught error." A "status" entry must be an int and a "message" entry a string; anything else under those two keys is ignored, the same as a value kit's own type checker would reject.
+
+
+It runs for load, action and component errors that reach a page response, and for returned errors or panics in remote functions and their single-flight refreshes. Remote error envelopes and live-query frames carry the same public fields as page errors. Redirects bypass the hook, as do already-handled errors whose recorded App.Error body is reused without running it again. The hook does see an error the app raised on purpose with Errorf: kit's own type never exempts an "app"-kind error from the hook, only from having its message replaced by default.
+
+
+Returning nil keeps kit's own defaults exactly: an "app" error's message survives untouched, and an "unknown" error's stays the generic "Internal Error" a real one never leaks through. Returning a map adds or overrides fields on the JSON object the error page or remote caller sees — "status" and "message" included, if the hook chooses to replace them — the same partial-override rule kit's own type comment states: "the hook returns only the properties it wants to override; anything it omits ... is inherited from the caught error." A "status" entry must be an int and a "message" entry a string; anything else under those two keys is ignored, the same as a value kit's own type checker would reject.
 
 The hook must never panic — kit's own doc comment says so too. One that does is logged and treated as returning nothing, except that the message becomes "Internal Error" even for an "app" error: Kit's own catch does the same (`log_handle_error_hook_failure`), because a hook that failed to run is not a hook whose omissions can be trusted.
 

@@ -1292,10 +1292,11 @@ func (s *SSR) answer(ctx context.Context, id, payload string, into map[string]ma
 			// recorded for the boot script, because there is no document.
 			return json.Marshal(remoteAnswer{R: &ssr.Redirect{Status: redirect.status(), Location: redirect.Location}})
 		}
-		e := asHTTPError(err)
-		failure := &ssr.Error{Status: e.Status, Message: e.Message}
+		failure := s.remotes.callError(ctx, err)
 		s.record(into, kind, id+"/"+payload, answered{err: failure})
-		return json.Marshal(remoteAnswer{E: failure})
+		// The same public body goes to the component and its hydration cache.
+		// Mark it handled so a Svelte boundary does not run the hook again.
+		return json.Marshal(remoteAnswer{H: failure})
 	}
 
 	// The engine gets the same bytes `/_app/remote/...` would have sent the
@@ -1361,8 +1362,7 @@ func (s *SSR) answerBatch(ctx context.Context, fn *Remote, payload string, into 
 		if redirect := asRedirect(err); redirect != nil {
 			return json.Marshal(batchAnswer{R: &ssr.Redirect{Status: redirect.status(), Location: redirect.Location}})
 		}
-		e := asHTTPError(err)
-		failure := &ssr.Error{Status: e.Status, Message: e.Message}
+		failure := s.remotes.callError(ctx, err)
 		// The whole batch failed, so every argument in it failed. Each one is
 		// recorded under its own key, because that is where the client will
 		// look for it and a missing key hydrates as a value that was never
@@ -1370,7 +1370,7 @@ func (s *SSR) answerBatch(ctx context.Context, fn *Remote, payload string, into 
 		for _, one := range payloads {
 			s.record(into, "q", fn.id+"/"+one, answered{err: failure})
 		}
-		return json.Marshal(batchAnswer{E: failure})
+		return json.Marshal(batchAnswer{H: failure})
 	}
 
 	transport := s.remotes.cfg.Transport
@@ -1394,6 +1394,7 @@ type batchAnswer struct {
 	N []remoteAnswer `json:"n,omitempty"`
 	E *ssr.Error     `json:"e,omitempty"`
 	R *ssr.Redirect  `json:"r,omitempty"`
+	H *ssr.Error     `json:"h,omitempty"`
 }
 
 // record files an answer under kit's own key: the single letter of the remote

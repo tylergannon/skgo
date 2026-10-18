@@ -121,22 +121,28 @@ The Go `handleError` hook runs, for any error but a redirect, on:
 
 - a load or action that fails while Go renders a document;
 - a load that fails while answering a client navigation's `__data.json`;
-- a generated remote argument schema refusal, through `RemoteConfig.HandleError`;
+
+- a remote function that returns an error or panics, including streamed query errors and query refreshes;
+- an error a Svelte boundary catches during server rendering, in production and development;
+
 - a path that matches no route;
 - an error `handle` returns for a document request; data and remote requests get JSON without the hook;
 - a panic in a `+server` route, answered as JSON or as the fallback error page depending on `Accept`.
 
 It does not run:
 
-- for errors returned by a remote body. A remote function's `*HTTPError` reaches the caller as it is, and any other error becomes `{ "status": 500, "message": "Internal Error" }`. A query error that a `<svelte:boundary>` catches during server rendering therefore skips the hook in production. Under [`skgo dev`](development-server) the same error goes through the load configuration's hook.
+
+
 - while [prerendering](prerendering) ([#278](https://github.com/tylergannon/skgo/issues/278)).
 
-Set it as `HandleError` on the remote, load, endpoint and handle configurations in `server.go`; [Server composition](server-composition) shows where. The example application uses it to attach a support id to every failure and to replace the message of an unknown error:
+
+Set the same `HandleError` on the load, remote, endpoint and handle configurations in `server.go`; [Server composition](server-composition) shows where. The load configuration supplies the hook for Svelte component boundaries. Already-handled errors reuse their public body without running the hook again. The example application uses it to attach a support id to every failure and to replace the message of an unknown error:
+
 
 ```go
 /// file: server.go
 // HandleError is the app's `handleError` hook — kit's own contract, mirrored:
-// it runs for every error a page render raises, expected or not
+// it runs for page and remote-function failures, expected or not
 // (`exports/hooks/public.d.ts`: "runs for every error thrown ... except
 // redirects"), and whatever it returns is merged over what the error already
 // carries.
