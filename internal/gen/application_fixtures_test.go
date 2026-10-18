@@ -21,6 +21,7 @@ func TestProductionApplication(t *testing.T) {
 	t.Run("AdapterOwnedPrerenderModules", testAdapterOwnedPrerenderModules)
 	t.Run("TypedLoadMatchersPrerenderNamedGoValues", testTypedLoadMatchersPrerenderNamedGoValues)
 	t.Run("GoPagePrerenderRedirectBuildsKitsNativeArtifact", testGoPagePrerenderRedirectBuildsKitsNativeArtifact)
+	t.Run("GoHookRefusalsMapToKitsNativeResponses", testGoHookRefusalsMapToKitsNativeResponses)
 	t.Run("RealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse", testRealKitBuildSharesPrerenderLocalsAndWrapsTheRenderedResponse)
 	t.Run("CompiledProductionPrerenderedEndpointsAndPages", testCompiledProductionPrerenderedEndpointsAndPages)
 	t.Run("RealProductionStartsWithPrerenderedEndpoints", testRealProductionStartsWithPrerenderedEndpoints)

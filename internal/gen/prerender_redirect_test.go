@@ -119,6 +119,10 @@ func testGoPagePrerenderRedirectBuildsKitsNativeArtifact(t *testing.T) {
 	fixture.run(t, "TestProductionRedirectServing")
 }
 
+func testGoHookRefusalsMapToKitsNativeResponses(t *testing.T) {
+	requireProductionFixture(t).run(t, "TestProductionHookRefusalMapping")
+}
+
 func exitCode(err error) int {
 	if err == nil {
 		return 0

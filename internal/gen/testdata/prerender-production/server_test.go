@@ -231,6 +231,22 @@ func TestProductionRedirectServing(t *testing.T) {
 	}
 }
 
+func TestProductionHookRefusalMapping(t *testing.T) {
+	dist := buildFS(t)
+	html, err := fs.ReadFile(dist, "prerendered/hook-refusals.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`418 {"status":418,"message":"teapot literal"}`,
+		`307`,
+	} {
+		if !strings.Contains(string(html), want) {
+			t.Errorf("prerendered hook refusal page lacks %q: %s", want, html)
+		}
+	}
+}
+
 func TestSharedRendererDefaultFilter(t *testing.T) {
 	dist := buildFS(t)
 	// This served route has the same universal fetch as the prerendered default

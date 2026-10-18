@@ -62,9 +62,11 @@ func prepareProductionFixture(customDefaults bool) (productionFixture, error) {
 			return productionFixture{}, err
 		}
 	} else {
-		// This intentional Kit error belongs only to the permissive options
-		// fixture. Ordinary lifecycle proof uses the generated command and
-		// Kit's strict defaults, including unseen-route and HTTP errors.
+		// The hook-refusal scenario intentionally emits one 418 internal fetch;
+		// keep every other production prerender HTTP error fatal.
+		if err := replaceOnce(filepath.Join(app, "ui", "vite.config.ts"), "adapter: skgo(),", "adapter: skgo(),\n      prerender: {handleHttpError: ({path, message}) => { if (path === '/hook-refused' || path === '/hook-target') return; throw new Error(message); }},"); err != nil {
+			return productionFixture{}, err
+		}
 		if err := os.RemoveAll(filepath.Join(app, "ui", "src", "routes", "options-rejected")); err != nil {
 			return productionFixture{}, err
 		}
