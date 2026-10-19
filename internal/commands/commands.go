@@ -265,9 +265,12 @@ server.`,
 		Flags: []Flag{{"schema", "skgo.env.json", "generated environment declaration"}},
 	},
 	{
-		Name:        "mcp",
-		Summary:     "serve check and advice tools over stdio MCP",
-		Description: `Serves ` + "`skgo check`" + ` and ` + "`skgo advice`" + ` as Model Context Protocol tools on standard input and output, for editors and agents.`,
+		Name:    "mcp",
+		Summary: "serve check and advice tools over stdio MCP",
+		Description: `Serves ` + "`skgo check`" + ` and ` + "`skgo advice`" + ` as Model Context Protocol tools
+on standard input and output, for editors and agents. Standard output carries
+only newline-delimited JSON-RPC messages; the server exits when its input
+closes. It takes no flags or arguments.`,
 	},
 	{Name: "_plugin-probe", Internal: true},
 }

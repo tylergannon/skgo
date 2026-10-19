@@ -10,10 +10,6 @@ import (
 )
 
 func nativeCommand(args []string) {
-	if len(args) == 0 || args[0] != "build" {
-		fmt.Fprintln(os.Stderr, "usage: skgo native build [--root DIR] [--platform macos|iphone|simulator] [--preset NAME] [--prepare-only] [--jobs N]")
-		os.Exit(2)
-	}
 	fs := flag.NewFlagSet("native build", flag.ExitOnError)
 	var o nativebuild.Options
 	fs.StringVar(&o.Root, "root", ".", "application root")
@@ -21,7 +17,17 @@ func nativeCommand(args []string) {
 	fs.StringVar(&o.Preset, "preset", "", "application-defined build preset")
 	fs.BoolVar(&o.PrepareOnly, "prepare-only", false, "prepare bindings, native libraries and Xcode project without compiling a Debug app")
 	fs.IntVar(&o.Jobs, "jobs", 0, "maximum Zig/Xcode build workers; zero uses the tool defaults")
-	fs.Parse(args[1:])
+	fs.Usage = commandUsage(fs, "native build")
+	// build is the only native subcommand, so skgo native --help is its help.
+	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
+		fs.Usage()
+		return
+	}
+	if len(args) == 0 || args[0] != "build" {
+		fs.Usage()
+		os.Exit(2)
+	}
+	_ = fs.Parse(args[1:])
 	if fs.NArg() != 0 {
 		fs.Usage()
 		os.Exit(2)

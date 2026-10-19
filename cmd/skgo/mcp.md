@@ -13,4 +13,4 @@ A Model Context Protocol server on standard input and output that exposes `skgo 
 ```text skgo mcp -h
 ```
 
-`skgo mcp` takes no flags or arguments; given any, including `--help`, it prints the command list and exits with status 2. [MCP server](/docs/ai/mcp) shows how to register it with a client, and [Tools](/docs/ai/tools) describes what it serves.
+`skgo mcp` takes no flags or arguments: `--help` prints the help above, and any other argument prints it and exits with status 2. [MCP server](/docs/ai/mcp) shows how to register it with a client, and [Tools](/docs/ai/tools) describes what it serves.

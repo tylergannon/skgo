@@ -35,6 +35,6 @@ binary knows:
 ```text skgo -h
 ```
 
-Every command except `skgo mcp` accepts `--help` and prints its flags. The pages in this
-section show that output for each command; the binary you run is the
+Every command accepts `-h` or `--help`, prints its help and exits with status 0. The pages
+in this section show that output for each command; the binary you run is the
 authority for its own version.

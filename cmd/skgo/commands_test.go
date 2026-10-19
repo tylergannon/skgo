@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -161,5 +163,38 @@ func TestUsageListsEveryCommand(t *testing.T) {
 	}
 	if strings.Contains(usage, "_plugin-probe") {
 		t.Error("usage lists the internal probe")
+	}
+}
+
+// The documentation runs each command's help at build time and fails on a
+// non-zero exit, so every listed command, and skgo itself, must print help
+// for -h and --help and succeed. One shared binary serves every case; each
+// runs in an empty directory with an empty home so no application or
+// installed plugin is found.
+func TestEveryCommandHelpExitsZero(t *testing.T) {
+	bin := skgoBinary(t)
+	invocations := [][]string{nil}
+	for _, command := range commands.All() {
+		invocations = append(invocations, strings.Fields(command.Name))
+	}
+	for _, words := range invocations {
+		for _, help := range []string{"-h", "--help"} {
+			args := append(append([]string{}, words...), help)
+			t.Run(strings.Join(args, " "), func(t *testing.T) {
+				t.Parallel()
+				dir := t.TempDir()
+				cmd := exec.CommandContext(t.Context(), bin, args...)
+				cmd.Dir = dir
+				cmd.Env = append(os.Environ(), "HOME="+dir, "SKGO_PLUGIN_DIRS=")
+				var output bytes.Buffer
+				cmd.Stdout, cmd.Stderr = &output, &output
+				if err := cmd.Run(); err != nil {
+					t.Fatalf("skgo %s: %v\n%s", strings.Join(args, " "), err, output.String())
+				}
+				if strings.TrimSpace(output.String()) == "" {
+					t.Fatalf("skgo %s printed nothing", strings.Join(args, " "))
+				}
+			})
+		}
 	}
 }
