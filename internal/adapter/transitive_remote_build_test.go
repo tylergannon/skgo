@@ -1,135 +1,78 @@
+//go:build skgo_qualification
+
 package adapter
 
 import (
-	"bytes"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/dop251/goja"
 )
 
+// The adapter owns the final fold, after Vite has emitted JavaScript. Supply
+// those chunks directly rather than rebuilding Kit to test chunk resolution.
 func TestProductionFoldResolvesSharedTransitiveRemoteOutsideAppTSConfig(t *testing.T) {
 	t.Parallel()
-	fixture := prepareMinimalInputsApp(t)
-	web := filepath.Join(fixture, "web")
-	tsconfigPath := filepath.Join(web, "tsconfig.json")
-	tsconfig, err := os.ReadFile(tsconfigPath)
+	root := t.TempDir()
+	deps, err := filepath.Abs("../../example/web/node_modules")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(tsconfig), `"exclude": ["build", "node_modules"]`) || strings.Contains(string(tsconfig), "build/.goja") {
-		t.Fatalf("fixture must retain the ordinary excluded-build tsconfig: %s", tsconfig)
-	}
-	writeFixtureFile(t, filepath.Join(web, "src", "routes", "editor.remote.go"), `package routes
-import("context";"github.com/tylergannon/skgo")
-func editorDocument(context.Context)(string,error){return "Literal transitive Go document 116",nil}
-var _ = skgo.Query(editorDocument)
-`)
-	writeFixtureFile(t, filepath.Join(web, "src", "lib", "api.ts"), `import { editorDocument } from '../routes/editor.remote';
-export function readDocument() { return editorDocument(); }
-`)
-	writeFixtureFile(t, filepath.Join(web, "src", "lib", "store.svelte.ts"), `import { readDocument } from './api';
-class EditorStore {
- label = $state('Literal local store 116');
- async read() { return await readDocument(); }
-}
-export const editor = new EditorStore();
-`)
-	writeFixtureFile(t, filepath.Join(web, "src", "routes", "+page.svelte"), `<script lang="ts">
- import { editor } from '#lib/store.svelte';
-</script>
-<h1>{await editor.read()}</h1><p>{editor.label}</p>
-`)
-	// The current adapter defaults to inlining. Explicitly exercise the public
-	// upstream splitting option so the historical shared-import precondition is
-	// real, rather than assuming today's optimizer happens to emit that graph.
-	configPath := filepath.Join(web, "vite.config.ts")
-	config, err := os.ReadFile(configPath)
-	if err != nil {
+	if err := os.Symlink(deps, filepath.Join(root, "node_modules")); err != nil {
 		t.Fatal(err)
 	}
-	const observer = `const sharedRemoteFixture = {
- name: 'shared-transitive-remote-fixture',
- configResolved(config) {
-  config.environments.goja.build.rolldownOptions.output.codeSplitting = {
-   groups: [{name:'editor-remote',test:id=>id.replaceAll('\\','/').includes('/src/routes/editor.remote.ts')}]
-  };
- },
- generateBundle(_options, bundle) {
-  if(this.environment.name!=='goja')return;
-  const entry=bundle['bundle.js'];
-  const targets=new Set(Object.values(bundle).filter(chunk=>chunk.type==='chunk' && !chunk.isEntry && Object.keys(chunk.modules).some(id=>id.replaceAll('\\','/').includes('/src/routes/editor.remote.ts'))).map(chunk=>chunk.fileName));
-  if(entry?.type!=='chunk'||targets.size===0)throw new Error('fixture did not emit the real remote shared chunk: '+JSON.stringify(Object.values(bundle).filter(c=>c.type==='chunk').map(c=>({file:c.fileName,entry:c.isEntry,imports:c.imports,modules:Object.keys(c.modules)}))));
-  const visited=new Set();
-  function visit(name){if(visited.has(name))return;visited.add(name);for(const imported of bundle[name]?.imports??[])visit(imported);}
-  for(const imported of entry.imports)visit(imported);
-  const shared=[...targets].filter(name=>visited.has(name));
-  if(shared.length===0)throw new Error('entry did not import the emitted remote shared chunk');
-  console.log('GOJA_SHARED_REMOTE_IMPORT:'+shared.join(','));
- }
+	const config = `{"compilerOptions":{"moduleResolution":"bundler"},"exclude":["build","node_modules"]}`
+	writeAdapterFixture(t, filepath.Join(root, "tsconfig.json"), config)
+	const program = `import assert from 'node:assert/strict';
+import {mkdirSync,writeFileSync,readFileSync,existsSync} from 'node:fs';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
+const {gojaEnvironment}=await import(pathToFileURL(process.argv[1]));
+const root=process.argv[2];process.chdir(root);
+const fold=gojaEnvironment(),out=join(root,'build/.goja');
+const files={
+ 'bundle.js':"import {readDocument} from './store.svelte.js';globalThis.__skgo_transitive=()=>readDocument();",
+ 'store.svelte.js':"export {readDocument} from './api.js';",
+ 'api.js':"export {readDocument} from './shared-remote.js';",
+ 'shared-remote.js':"export function readDocument(){return globalThis.__skgo_remote('literal116/editorDocument');}",
+ 'unrelated-remote.js':"throw new Error('unrelated remote entry must not execute');"
 };
+const environment={config:{build:{outDir:'build/.goja'}}};let builds=0;
+const builder={environments:{goja:environment},async build(received){
+ assert.equal(received,environment);builds++;mkdirSync(out,{recursive:true});
+ for(const [name,source]of Object.entries(files))writeFileSync(join(out,name),source);
+}};
+const before=readFileSync('tsconfig.json','utf8');
+await fold.build({nodes:'',hooks:''},join(root,'build/ssr/bundle.js'),builder);
+assert.equal(builds,1);assert.equal(readFileSync('tsconfig.json','utf8'),before);
+assert.equal(existsSync(out),false,'fold must remove only its own intermediate output');
 `
-	updated := strings.Replace(string(config), "export default defineConfig({", observer+"\nexport default defineConfig({", 1)
-	updated = strings.Replace(updated, "plugins: [", "plugins: [sharedRemoteFixture,", 1)
-	writeFixtureFile(t, configPath, updated)
-	generate := exec.Command("go", "generate", "./...")
-	generate.Dir = fixture
-	generate.Env = append(fixtureBuildEnv(), "GOWORK=off")
-	if output, err := timedFixtureOutput(t, "transitive remote generation", generate); err != nil {
-		t.Fatalf("generate fixture: %v\n%s", err, output)
-	}
-	stub, err := os.ReadFile(filepath.Join(web, "src", "routes", "editor.remote.ts"))
-	if err != nil || !bytes.Contains(stub, []byte(`throw new Error("skgo: implemented in Go")`)) {
-		t.Fatalf("remote body is not the generated throwing stub: %v\n%s", err, stub)
-	}
-	build := exec.Command(filepath.Join(web, "node_modules", ".bin", "vp"), "build")
-	build.Dir = web
-	build.Env = append(fixtureBuildEnv(), "GOWORK=off")
-	output, err := timedFixtureOutput(t, "shared transitive production build", build)
-	t.Logf("production build:\n%s", output)
+	runAdapterScript(t, "skgo-adapter/env.js", program, nil, root)
+	source, err := os.ReadFile(filepath.Join(root, "build/ssr/bundle.js"))
 	if err != nil {
-		t.Fatalf("production build with excluded output failed: %v\n%s", err, output)
+		t.Fatal(err)
 	}
-	if !bytes.Contains(output, []byte("GOJA_SHARED_REMOTE_IMPORT:")) {
-		t.Fatal("build never reached the shared remote import fixture assertion")
+	vm := goja.New()
+	calls := 0
+	if err := vm.Set("__skgo_remote", func(id string) string {
+		calls++
+		if id != "literal116/editorDocument" {
+			t.Errorf("remote ID %q", id)
+		}
+		return "Literal transitive Go document 116"
+	}); err != nil {
+		t.Fatal(err)
 	}
-	after, err := os.ReadFile(tsconfigPath)
-	if err != nil || !bytes.Equal(after, tsconfig) {
-		t.Fatalf("production build changed application tsconfig: %v\n%s", err, after)
+	if _, err := vm.RunString(string(source)); err != nil {
+		t.Fatalf("folded artifact: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(web, "build", "ssr", "bundle.js")); err != nil {
-		t.Fatalf("no final folded artifact: %v", err)
+	read, ok := goja.AssertFunction(vm.Get("__skgo_transitive"))
+	if !ok {
+		t.Fatal("fold omitted entry callback")
 	}
-	writeFixtureFile(t, filepath.Join(fixture, "internal", "skgo", "transitive_production_test.go"), `package skgo_test
-import (
- "net/http/httptest"
- "os"
- "strings"
- "testing"
- "github.com/tylergannon/skgo"
- generated "github.com/tylergannon/skgo/example/internal/skgo"
-)
-func TestTransitiveRemoteProductionHandler(t *testing.T) {
- dist:=os.DirFS("../../web/build")
- manifest,err:=skgo.ReadManifest(dist);if err!=nil{t.Fatal(err)}
- loads,err:=skgo.NewLoads(manifest.LoadConfig("http://127.0.0.1:8080"),generated.Loads()...);if err!=nil{t.Fatal(err)}
- remotes,err:=skgo.NewRemotes(manifest.RemoteConfig("http://127.0.0.1:8080"),generated.Remotes()...);if err!=nil{t.Fatal(err)}
- renderer,err:=skgo.NewSSR(dist,manifest,loads,remotes,skgo.SSROptions{Runtimes:1});if err!=nil{t.Fatal(err)}
- handler,err:=skgo.NewStaticHandler(dist,skgo.WithSSR(renderer));if err!=nil{t.Fatal(err)}
- response:=httptest.NewRecorder()
- handler.ServeHTTP(response,httptest.NewRequest("GET","http://127.0.0.1:8080/",nil))
- if response.Code!=200||!strings.Contains(response.Body.String(),"Literal transitive Go document 116")||!strings.Contains(response.Body.String(),"Literal local store 116") {
-  t.Fatalf("production transitive handler: status=%d body=%s",response.Code,response.Body.String())
- }
-}
-`)
-	consumer := exec.Command("go", "test", "-count=1", "-v", "./internal/skgo", "-run", "^TestTransitiveRemoteProductionHandler$")
-	consumer.Dir = fixture
-	consumer.Env = append(fixtureBuildEnv(), "GOWORK=off")
-	output, err = timedFixtureOutput(t, "production transitive handler", consumer)
-	t.Logf("Go/goja handler:\n%s", output)
-	if err != nil || bytes.Contains(output, []byte("--- SKIP:")) || !bytes.Contains(output, []byte("--- PASS: TestTransitiveRemoteProductionHandler")) {
-		t.Fatalf("production handler did not render literal Go remote result: %v\n%s", err, output)
+	value, err := read(goja.Undefined())
+	if err != nil || value.String() != "Literal transitive Go document 116" || calls != 1 {
+		t.Fatalf("folded callback: value=%v calls=%d err=%v", value, calls, err)
 	}
 }

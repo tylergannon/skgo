@@ -132,6 +132,8 @@ jobs:
       - run: mise -C native install zig
       - name: Fresh compiler and process witnesses
         run: go test -tags skgo_qualification -count=1 ./internal/gen ./internal/hotreload ./native -run '^(TestTypedLoadActualParameterDependencies|TestGeneratedLanguageApplications|TestGenerationCacheFreshProcessesAndRecovery|TestATypeFromAnotherModuleCrossesTheWire|TestRetainedProjectSelectedCompilerInputs|TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost|TestZigRemoteCalls)$'
+      - name: Production chunk fold and prerender ownership
+        run: go test -tags skgo_qualification -count=1 ./internal/adapter -run '^(TestProductionFoldResolvesSharedTransitiveRemoteOutsideAppTSConfig|TestPrerenderFailedDrainRetainsOwnerAndCanRecover|TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal)$' -v
 
   native-macos:
     name: Native replacement and Swift consumer (macOS)
@@ -160,6 +162,8 @@ jobs:
       - run: mise -C native install zig
       - name: Fresh native host, Zig exchange and Swift compiler witnesses
         run: go test -tags skgo_qualification -count=1 ./internal/hotreload ./internal/swiftgen ./native -run '^(TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost|TestGeneratedModelsCompileAndEnforceTheWireShape|TestZigRemoteCalls)$'
+      - name: Native Darwin prerender process ownership
+        run: go test -tags skgo_qualification -count=1 ./internal/adapter -run '^(TestPrerenderFailureWaitsForNativeExitedGroupReap|TestPrerenderFailedDrainRetainsOwnerAndCanRecover|TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal)$' -v
 
   development:
     name: Vite and Go session boundary

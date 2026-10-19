@@ -1,3 +1,5 @@
+//go:build skgo_qualification
+
 package adapter
 
 import (
@@ -5,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -16,50 +20,17 @@ import (
 func TestPrerenderFailureWaitsForNativeExitedGroupReap(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeFixtureFile(t, filepath.Join(root, "skgo.remotes.json"), `{"prerender":{"root":".","package":"."}}`)
-	const helper = `package main
-import("os";"os/exec";"path/filepath";"strconv";"syscall";"time")
-func main(){
- role,root:=os.Args[1],os.Args[2]
- if role=="leaf" {time.Sleep(50*time.Millisecond);return}
- exe,_:=os.Executable()
- if role=="leader" {
-  cmd:=exec.Command(exe,"reaper",root,strconv.Itoa(os.Getpid()))
-  cmd.SysProcAttr=&syscall.SysProcAttr{Setpgid:true}
-  if err:=cmd.Start();err!=nil{panic(err)}
-  deadline:=time.Now().Add(3*time.Second)
-  for time.Now().Before(deadline){if _,err:=os.Stat(filepath.Join(root,"ready"));err==nil{return};time.Sleep(time.Millisecond)}
-  panic("reaper did not start")
- }
- pgid,_:=strconv.Atoi(os.Args[3])
- child:=exec.Command(exe,"leaf",root)
- child.SysProcAttr=&syscall.SysProcAttr{Setpgid:true,Pgid:pgid}
- if err:=child.Start();err!=nil{panic(err)}
- receipt:=strconv.Itoa(child.Process.Pid)+"\n"+strconv.Itoa(os.Getpid())
- if err:=os.WriteFile(filepath.Join(root,"ready"),[]byte(receipt),0600);err!=nil{panic(err)}
- deadline:=time.Now().Add(5*time.Second)
- for time.Now().Before(deadline){if _,err:=os.Stat(filepath.Join(root,"reap"));err==nil{break};time.Sleep(time.Millisecond)}
- // Wait also reaps a child terminated by the owner's group SIGTERM.
- reaped:="reaped"
- if err:=child.Wait();err!=nil{
-  if _,ok:=err.(*exec.ExitError);!ok{panic(err)}
-  reaped+=": "+err.Error()
- }
- if err:=os.WriteFile(filepath.Join(root,"reaped"),[]byte(reaped),0600);err!=nil{panic(err)}
-}
-`
-	helperPath := filepath.Join(root, "helper.go")
-	writeFixtureFile(t, helperPath, helper)
-	binary := filepath.Join(root, "helper")
-	if output, err := exec.Command("go", "build", "-o", binary, helperPath).CombinedOutput(); err != nil {
-		t.Fatalf("build real process helper: %v\n%s", err, output)
+	writeAdapterFixture(t, filepath.Join(root, "skgo.remotes.json"), `{"prerender":{"root":".","package":"."}}`)
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
 	}
 	module, err := os.ReadFile("skgo-adapter/prerender.js")
 	if err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, "owner.js")
-	writeFixtureFile(t, path, string(module)+"\nexport {startJob};\n")
+	writePrerenderOwnerFixture(t, path, string(module)+"\nexport {startJob};\n")
 	t.Cleanup(func() {
 		// The reaper is fixture control outside the owned group. Its normal exit
 		// is asserted below; still release it if Node fails before its finally.
@@ -73,7 +44,7 @@ import {pathToFileURL} from 'node:url';
 const {createPrerenderOwner,startJob,installPrerenderFailureBoundary}=await import(pathToFileURL(process.argv[1]).href);
 const root=process.argv[2],owner=createPrerenderOwner(root);
 owner.dir=mkdtempSync(join(root,'private-'));
-const job=startJob(owner,process.argv[3],['leader',root]);
+const job=startJob(owner,process.argv[3],[root],{env:{...process.env,SKGO_ADAPTER_NATIVE_GROUP:'leader'}});
 const original=new Error('literal original native crawler failure');
 try {
  await job.closed;
@@ -125,5 +96,66 @@ try {
 	}
 	if !strings.Contains(string(output), "NATIVE_EXITED_GROUP_REAPED_BEFORE_REJECTION") {
 		t.Fatalf("native process assertions did not finish: %s", output)
+	}
+}
+
+// Reuse this test executable for the real process boundary; no new compiler run.
+func init() {
+	if os.Getenv("SKGO_ADAPTER_NATIVE_GROUP") != "" {
+		nativeExitedGroupFixture()
+		os.Exit(0)
+	}
+}
+func nativeExitedGroupFixture() {
+	role, root := os.Getenv("SKGO_ADAPTER_NATIVE_GROUP"), os.Args[1]
+	if role == "leaf" {
+		time.Sleep(50 * time.Millisecond)
+		return
+	}
+	exe, _ := os.Executable()
+	if role == "leader" {
+		cmd := exec.Command(exe, root, strconv.Itoa(os.Getpid()))
+		cmd.Env = append(os.Environ(), "SKGO_ADAPTER_NATIVE_GROUP=reaper")
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		if err := cmd.Start(); err != nil {
+			panic(err)
+		}
+		deadline := time.Now().Add(3 * time.Second)
+		for time.Now().Before(deadline) {
+			if _, err := os.Stat(filepath.Join(root, "ready")); err == nil {
+				return
+			}
+			time.Sleep(time.Millisecond)
+		}
+		panic("reaper did not start")
+	}
+	pgid, _ := strconv.Atoi(os.Args[2])
+	child := exec.Command(exe, root)
+	child.Env = append(os.Environ(), "SKGO_ADAPTER_NATIVE_GROUP=leaf")
+	child.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: pgid}
+	if err := child.Start(); err != nil {
+		panic(err)
+	}
+	receipt := strconv.Itoa(child.Process.Pid) + "\n" + strconv.Itoa(os.Getpid())
+	if err := os.WriteFile(filepath.Join(root, "ready"), []byte(receipt), 0600); err != nil {
+		panic(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(filepath.Join(root, "reap")); err == nil {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	// Wait also reaps a child terminated by the owner's group SIGTERM.
+	reaped := "reaped"
+	if err := child.Wait(); err != nil {
+		if _, ok := err.(*exec.ExitError); !ok {
+			panic(err)
+		}
+		reaped += ": " + err.Error()
+	}
+	if err := os.WriteFile(filepath.Join(root, "reaped"), []byte(reaped), 0600); err != nil {
+		panic(err)
 	}
 }

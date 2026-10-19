@@ -1,3 +1,5 @@
+//go:build skgo_qualification && !windows
+
 package adapter
 
 import (
@@ -6,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -16,11 +17,8 @@ import (
 
 func TestPrerenderFailedDrainRetainsOwnerAndCanRecover(t *testing.T) {
 	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Fatal("process-group lifecycle evidence requires Unix process groups")
-	}
 	root := t.TempDir()
-	writeFixtureFile(t, filepath.Join(root, "skgo.remotes.json"), `{"prerender":{"root":".","package":"."}}`)
+	writeAdapterFixture(t, filepath.Join(root, "skgo.remotes.json"), `{"prerender":{"root":".","package":"."}}`)
 	module, err := os.ReadFile("skgo-adapter/prerender.js")
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +27,7 @@ func TestPrerenderFailedDrainRetainsOwnerAndCanRecover(t *testing.T) {
 	// process; only the signal syscall and cleanup waiting budget are controlled.
 	source := strings.Replace(string(module), "const CLEANUP_TIMEOUT = 5_000;", "const CLEANUP_TIMEOUT = 100;", 1) + "\nexport {startJob};\n"
 	path := filepath.Join(root, "owner.js")
-	writeFixtureFile(t, path, source)
+	writePrerenderOwnerFixture(t, path, source)
 	const program = `import assert from 'node:assert/strict';
 import {existsSync,mkdtempSync} from 'node:fs';
 import {join} from 'node:path';
@@ -91,21 +89,18 @@ try{
 
 func TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal(t *testing.T) {
 	t.Parallel()
-	if runtime.GOOS == "windows" {
-		t.Fatal("process-group lifecycle evidence requires Unix process groups")
-	}
 	for _, signal := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {
 		t.Run(signal.String(), func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
-			writeFixtureFile(t, filepath.Join(root, "skgo.remotes.json"), `{"prerender":{"root":".","package":"."}}`)
+			writeAdapterFixture(t, filepath.Join(root, "skgo.remotes.json"), `{"prerender":{"root":".","package":"."}}`)
 			module, err := os.ReadFile("skgo-adapter/prerender.js")
 			if err != nil {
 				t.Fatal(err)
 			}
 			source := strings.Replace(string(module), "const CLEANUP_TIMEOUT = 5_000;", "const CLEANUP_TIMEOUT = 100;", 1) + "\nexport {startJob};\n"
 			path := filepath.Join(root, "owner.js")
-			writeFixtureFile(t, path, source)
+			writePrerenderOwnerFixture(t, path, source)
 			receipt := filepath.Join(root, "child-pid")
 			t.Cleanup(func() {
 				data, err := os.ReadFile(receipt)
