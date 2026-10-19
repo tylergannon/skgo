@@ -1,5 +1,10 @@
 // Package generate exposes SKGO's application generator to Go build tools.
 //
+// Most applications never import it: the skgo generate command, run from the
+// go:generate directive in the bindings package, is enough. A build tool that
+// already loads the application's packages can run the same generation in
+// process instead.
+//
 // Run uses a persistent generation-plan cache by default, like the skgo CLI.
 // Config.CacheDir selects its directory; "off" disables caching. Prepare and
 // Check always analyze source. See Config for the supported cache boundary.

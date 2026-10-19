@@ -1,8 +1,7 @@
 // Package commands is the table of the skgo command's subcommands: name,
 // arguments, flags and the sentences that describe them. The command prints
-// its usage from this table and the documentation renders the CLI reference
-// from it, so the two cannot disagree. A test in cmd/skgo keeps the flag
-// entries equal to the flag sets the commands actually define.
+// its usage from this table. A test in cmd/skgo keeps the flag entries equal
+// to the flag sets the commands actually define.
 package commands
 
 import (
@@ -266,9 +265,12 @@ server.`,
 		Flags: []Flag{{"schema", "skgo.env.json", "generated environment declaration"}},
 	},
 	{
-		Name:        "mcp",
-		Summary:     "serve check and advice tools over stdio MCP",
-		Description: `Serves ` + "`skgo check`" + ` and ` + "`skgo advice`" + ` as Model Context Protocol tools on standard input and output, for editors and agents.`,
+		Name:    "mcp",
+		Summary: "serve check and advice tools over stdio MCP",
+		Description: `Serves ` + "`skgo check`" + ` and ` + "`skgo advice`" + ` as Model Context Protocol tools
+on standard input and output, for editors and agents. Standard output carries
+only newline-delimited JSON-RPC messages; the server exits when its input
+closes. It takes no flags or arguments.`,
 	},
 	{Name: "_plugin-probe", Internal: true},
 }

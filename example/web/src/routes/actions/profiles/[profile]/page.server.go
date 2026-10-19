@@ -39,7 +39,6 @@ func pageLoad(event PageRequestEvent) (PageData, error) {
 	return PageData{Selected: name, Ada: pair.Ada, Grace: pair.Grace}, nil
 }
 
-// docs: param
 func save(ctx context.Context) (SaveResult, error) {
 	name, err := selected(skgo.EventFrom(ctx).Param("profile"))
 	if err != nil {
@@ -59,8 +58,6 @@ func save(ctx context.Context) (SaveResult, error) {
 	}
 	return SaveResult{Receipt: "Saved " + profile.Name}, nil
 }
-
-// docs: end param
 
 var _ = skgo.Load(pageLoad)
 var _ = skgo.Action(save)

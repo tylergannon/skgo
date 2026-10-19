@@ -6,7 +6,6 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-// docs: tracing-setup
 // SetupTracing installs a tracer provider and the W3C trace-context
 // propagator. Pass sdktrace.WithBatcher(exporter) to send spans somewhere;
 // the exporter module is the application's choice.
@@ -16,5 +15,3 @@ func SetupTracing(opts ...sdktrace.TracerProviderOption) *sdktrace.TracerProvide
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	return provider
 }
-
-// docs: end tracing-setup

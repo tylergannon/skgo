@@ -27,19 +27,3 @@ const VitePlus = "1.3.0"
 
 // PNPM is the package manager vp resolves for this release.
 const PNPM = "12.14.0"
-
-// Pins is every pinned version in one value, in the shape the rendered
-// documentation publishes as versions.json.
-type Pins struct {
-	Kit         string `json:"kit"`
-	Svelte      string `json:"svelte"`
-	Go          string `json:"go"`
-	NodeMinimum string `json:"node"`
-	VitePlus    string `json:"vitePlus"`
-	PNPM        string `json:"pnpm"`
-}
-
-// Current returns the pins of this release.
-func Current() Pins {
-	return Pins{Kit: Kit, Svelte: Svelte, Go: Go, NodeMinimum: NodeMinimum, VitePlus: VitePlus, PNPM: PNPM}
-}

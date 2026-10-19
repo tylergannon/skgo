@@ -48,10 +48,6 @@ clean:
     rm -rf example/.skgo example/native/build example/web/.svelte-kit
     find example/web/build -mindepth 1 ! -name .gitkeep -delete
 
-# Validate documentation sources without changing the published snapshot.
-docs:
-    go run ./cmd/skgo-docs check
-
 # go vet, both modules
 vet:
     go vet ./... ./example/...
@@ -80,9 +76,12 @@ e2e_json_reporter := if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_FILE", "") !=
 
 # The shared browser scenarios against an already running server. Global setup
 # checks X-Skgo-Mode against the explicit mode; it does not start the server.
+# svelte-check runs first: Svelte type-checking lives here and in CI's
+# example/web job, never in `just test`.
 # A complete pass on the replacement dev topology is not yet established.
 e2e mode="prod":
     @case "{{mode}}" in prod|dev) ;; *) echo "Expected prod or dev" >&2; exit 1;; esac
+    cd example/web && node_modules/.bin/vp run check
     cd example/e2e && BASE_URL="{{origin}}" SKGO_E2E_MODE="{{mode}}" SKGO_LOG="{{log}}" ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}}
 
 # `git worktree add -b` has silently landed an agent on main once, so the

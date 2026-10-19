@@ -1,0 +1,1 @@
+../../../../web/src/routes/samples/go-standards/session.remote.go

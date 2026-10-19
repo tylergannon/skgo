@@ -21,7 +21,6 @@ import (
 // browser as a plain `{ cents: 2000 }` and `price.format()` throws.
 var _ = skgo.Transported[businesslogic.Money]("Money")
 
-// docs: reroute
 // Reroute selects a route from Go while preserving the visitor's alias URL.
 var Reroute skgo.Reroute = func(ctx context.Context, event skgo.RerouteEvent) (*string, error) {
 	if !strings.HasPrefix(event.URL.Path, "/go-alias/") {
@@ -44,5 +43,3 @@ var Reroute skgo.Reroute = func(ctx context.Context, event skgo.RerouteEvent) (*
 	path := string(body)
 	return &path, nil
 }
-
-// docs: end reroute

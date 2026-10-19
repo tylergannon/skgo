@@ -85,3 +85,45 @@ jobs:
       native: ${{ needs.checks.outputs.native == 'true' }}
       production: ${{ needs.checks.outputs.production == 'true' }}
       development: ${{ needs.checks.outputs.development == 'true' }}
+
+  # svelte-check over the example app, only when something under example/web
+  # changed. It is the one place the Svelte and TypeScript files the
+  # documentation references are type-checked outside `just e2e`.
+  svelte-check:
+    name: Svelte type check of example/web
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    # Fork code stays off the persistent LAN runners.
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
+    timeout-minutes: 15
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Did example/web change?
+        id: changed
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            BASE=$(git merge-base origin/main HEAD)
+          fi
+          if git diff --name-only "$BASE" HEAD -- example/web | grep -q .; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No change under example/web since $BASE."
+          fi
+
+      - uses: jdx/mise-action@v4
+        if: steps.changed.outputs.run == 'true'
+        with:
+          working_directory: example
+          export_path: false
+
+      - if: steps.changed.outputs.run == 'true'
+        run: mise -C example/web exec -- vp install --frozen-lockfile
+
+      - if: steps.changed.outputs.run == 'true'
+        run: mise -C example/web exec -- vp run check

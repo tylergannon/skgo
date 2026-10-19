@@ -17,7 +17,6 @@ type Order struct {
 	Cents int `json:"cents"`
 }
 
-// docs: deferred
 // PageData is the orders page. The total is known at once; the orders
 // themselves are slow, so they are deferred and arrive on the same response.
 type PageData struct {
@@ -44,7 +43,5 @@ func pageLoad(event PageRequestEvent) (PageData, error) {
 		}),
 	}, nil
 }
-
-// docs: end deferred
 
 var _ = skgo.Load(pageLoad)

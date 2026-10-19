@@ -10,7 +10,6 @@ import (
 	"github.com/tylergannon/skgo/example/businesslogic"
 )
 
-// docs: handler
 func counts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
@@ -18,5 +17,3 @@ func counts(w http.ResponseWriter, r *http.Request) {
 }
 
 var _ = skgo.GET(counts)
-
-// docs: end handler

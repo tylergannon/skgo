@@ -14,12 +14,8 @@ import (
 
 const SessionCookie = "skgo_session"
 
-// docs: handle
 var Handle = params.Sequence(params.Handle(initialize).Middleware(), SerializedHeaders, PreloadFonts, VisitMiddleware)
 
-// docs: end handle
-
-// docs: visit-slug
 func visitSlug(p params.Params) string {
 	if value, ok := p.Slug().(params.SlugParam_String); ok {
 		return value.Value
@@ -27,8 +23,6 @@ func visitSlug(p params.Params) string {
 	return ""
 }
 
-// docs: end visit-slug
-// docs: initialize
 // Handle is the app's `handle` hook — the one place it decides who the caller
 // is. It runs once per request, before any load or remote function, and puts
 // the answer where all of them can read it with app.LocalsFrom.
@@ -56,9 +50,6 @@ func initialize(ctx context.Context, event params.RequestEvent) (params.RequestE
 	return event, nil
 }
 
-// docs: end initialize
-
-// docs: visit-middleware
 // VisitMiddleware is the part of the app's `handle` hook that wraps the
 // response. For the /middleware pages it establishes a visit before anything
 // answers — refreshing the visit cookie when it is missing or stale, so the
@@ -96,9 +87,6 @@ func VisitMiddleware(ctx context.Context, event params.RequestEvent, resolve par
 	return response, nil
 }
 
-// docs: end visit-middleware
-
-// docs: mark-transformed
 // markTransformed is the document transform of the /middleware pages and of
 // /stream, whose deferred values must still reach kit's client behind a
 // transformed shell: the one place a middleware chooses to rewrite the
@@ -108,9 +96,6 @@ func markTransformed(_ context.Context, html string, _ bool) (string, error) {
 	return strings.Replace(html, `<html lang="en">`, `<html lang="en" data-middleware-transformed="yes">`, 1), nil
 }
 
-// docs: end mark-transformed
-
-// docs: serialized-headers
 // SerializedHeaders is the app's choice of which headers a universal load's
 // hydration data carries. It is made here, per request, rather than on the
 // renderer, so the whole universal-fetch suite runs through the request-local
@@ -119,9 +104,6 @@ func SerializedHeaders(ctx context.Context, event params.RequestEvent, resolve p
 	return resolve(ctx, event, skgo.ResolveOptions{FilterSerializedResponseHeaders: app.SerializedHeader})
 }
 
-// docs: end serialized-headers
-
-// docs: preload-fonts
 // PreloadFonts adds WOFF2 fonts to the assets Kit preloads. The default
 // preloads scripts and styles only.
 func PreloadFonts(ctx context.Context, event params.RequestEvent, resolve params.Resolve) (*http.Response, error) {
@@ -132,5 +114,3 @@ func PreloadFonts(ctx context.Context, event params.RequestEvent, resolve params
 		},
 	})
 }
-
-// docs: end preload-fonts

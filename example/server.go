@@ -36,7 +36,6 @@ func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 	return appconfig.Config.HandleError(ctx, caught)
 }
 
-// docs: new-handler
 // NewHandler builds the app's server over the embedded production build in dist.
 //
 // The order is kit's own dispatch order, turned inside out into middleware.
@@ -57,16 +56,11 @@ func NewDevelopmentHandler(dist fs.FS, origin string, development *skgo.NativeDe
 	return newHandler(dist, origin, 0, development)
 }
 
-// docs: end new-handler
-
-// docs: new-handler-sized
 // NewHandlerSized is NewHandler with the number of page renders that may run
 // at once. Zero is the renderer's default, one per CPU.
 func NewHandlerSized(dist fs.FS, origin string, runtimes int) (http.Handler, error) {
 	return newHandler(dist, origin, runtimes, nil)
 }
-
-// docs: end new-handler-sized
 
 func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.NativeDevelopment) (http.Handler, error) {
 	// The manifest defines the URL prefix remote calls arrive on.
@@ -79,9 +73,7 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 	loadCfg := manifest.LoadConfig(origin)
 	endpointCfg := manifest.EndpointConfig(origin)
 	handleCfg := manifest.HandleConfig()
-	// docs: reroute-config
 	handleCfg.Reroute = hooks.Reroute
-	// docs: end reroute-config
 	loadCfg.Matchers = generated.Matchers()
 	endpointCfg.Matchers = generated.Matchers()
 	handleCfg.Matchers = generated.Matchers()
@@ -109,7 +101,6 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 	build = func(loads *skgo.Loads, remotes *skgo.Remotes) (http.Handler, error) {
 		// A render-time `event.fetch` of the app's own routes is answered
 		// by the whole stack, pages included; see `app`.
-		// docs: ssr-options
 		ssr, err := development.NewSSR(dist, manifest, loads, remotes, skgo.SSROptions{
 			Runtimes:                        runtimes,
 			Fetch:                           internal,
@@ -117,7 +108,6 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 			FilterSerializedResponseHeaders: appconfig.Config.FilterSerializedResponseHeaders,
 			Actions:                         actions,
 		})
-		// docs: end ssr-options
 		if err != nil {
 			return nil, err
 		}
@@ -163,10 +153,8 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 	// routes — is mounted outside Handle so the hook's own event can fetch too.
 	// It answers in-process through the same stack, and each subrequest runs
 	// Handle again with fresh locals.
-	// docs: compose
 	app = generated.RequestBoundary(handleCfg,
 		loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
-	// docs: end compose
 	return skgo.FetchConfig{
 		Origin:      origin,
 		Base:        manifest.Base,
@@ -181,7 +169,6 @@ func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*
 	return appconfig.Config.HandleFetch(ctx, request, next)
 }
 
-// docs: client-address
 // FlyClientAddress reads the client address from the header Fly's proxy sets.
 // Install it with handleCfg.ClientAddress only when every request arrives
 // through that proxy.
@@ -191,5 +178,3 @@ func FlyClientAddress(r *http.Request) (string, error) {
 	}
 	return "", errors.New("no Fly-Client-IP header")
 }
-
-// docs: end client-address

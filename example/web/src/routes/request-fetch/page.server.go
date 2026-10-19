@@ -14,7 +14,6 @@ type PageData struct {
 	Visitor string `json:"visitor"`
 }
 
-// docs: fetch
 // pageLoad calls /api/request-fetch the way a load calls any service: with
 // Event.Fetch, a relative URL, and no socket. The visitor's session cookie
 // travels with the subrequest, so the endpoint knows who is asking.
@@ -38,7 +37,5 @@ func pageLoad(event PageRequestEvent) (PageData, error) {
 	}
 	return data, nil
 }
-
-// docs: end fetch
 
 var _ = skgo.Load(pageLoad)

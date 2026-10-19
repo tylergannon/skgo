@@ -59,13 +59,11 @@ func checkOptionalCalls(t *testing.T, c client.Client, firstOperation int) {
 	if explicit != (optional.Result{Name: "fixture", Count: "present: 0", Enabled: "present: false", Label: `present: ""`, Operations: firstOperation + 1}) {
 		t.Fatalf("explicit zero/false/empty: %+v", explicit)
 	}
-	// docs: invalid
 	_, err = c.Submit(context.Background(), optional.Input{})
 	var invalid *skgo.Invalid
 	if !errors.As(err, &invalid) || len(invalid.Issues) != 1 || invalid.Issues[0] != (skgo.Issue{Field: "name", Message: "A name is required"}) {
 		t.Fatalf("field error: %v", err)
 	}
-	// docs: end invalid
 }
 
 func TestGeneratedFormClientOverHTTPAndUDS(t *testing.T) {

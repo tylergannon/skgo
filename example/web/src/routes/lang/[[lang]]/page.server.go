@@ -8,7 +8,6 @@ type PageData struct {
 	Lang string `json:"lang"`
 }
 
-// docs: optional-param
 func pageLoad(event PageRequestEvent) (PageData, error) {
 	lang := "en"
 	if value := event.Params.Lang(); value != nil {
@@ -16,7 +15,5 @@ func pageLoad(event PageRequestEvent) (PageData, error) {
 	}
 	return PageData{Lang: lang}, nil
 }
-
-// docs: end optional-param
 
 var _ = skgo.Load(pageLoad)

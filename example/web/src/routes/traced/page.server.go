@@ -12,7 +12,6 @@ type PageData struct {
 	TraceID string `json:"traceId"`
 }
 
-// docs: traced-load
 func pageLoad(event PageRequestEvent) (PageData, error) {
 	event.Tracing.Root.SetAttributes(attribute.String("user.id", "42"))
 	event.Tracing.Current.SetAttributes(attribute.String("report.kind", "monthly"))
@@ -24,5 +23,3 @@ func pageLoad(event PageRequestEvent) (PageData, error) {
 }
 
 var _ = skgo.Load(pageLoad)
-
-// docs: end traced-load

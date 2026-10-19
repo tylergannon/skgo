@@ -35,11 +35,9 @@ func load(event PageRequestEvent) (PageData, error) {
 	default:
 		label = event.Params.A().Label()
 	}
-	// docs: untrack
 	var ignored string
 	event.Untrack(func() { ignored = event.Params.Ignored() })
 
-	// docs: end untrack
 	// Loads run concurrently. Assign this fixture's visitor here rather than
 	// relying on the root layout to have already assigned the app's visitor.
 	// Cookieless probes get their own count too; they cannot contaminate a

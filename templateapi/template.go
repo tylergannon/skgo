@@ -2,6 +2,10 @@
 // add-ons and templates. Native Go plugins export SKGoPluginV1() Plugin and must
 // be built for the exact invoking skgo host. Plugins are trusted local code;
 // they are never loaded by generated applications.
+//
+// skgo plugin install builds a plugin from its module source for the
+// skgo executable that loads it; skgo new --template applies its templates and
+// skgo add applies its add-ons.
 package templateapi
 
 import "context"

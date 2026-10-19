@@ -1,0 +1,1 @@
+../../../../web/src/routes/samples/testing/testing.remote.go

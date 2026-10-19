@@ -251,6 +251,70 @@
 			"target": "web/src/routes/rerouted/[number=Order]"
 		},
 		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3bov2gq",
+			"target": "web/src/routes/samples/auth"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3dn5xww2lfom",
+			"target": "web/src/routes/samples/cookies"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxw4ylnmvsa",
+			"target": "web/src/routes/samples/form-actions/named"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxwizlgmf2wy5a",
+			"target": "web/src/routes/samples/form-actions/default"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxwk3timfxggzi",
+			"target": "web/src/routes/samples/form-actions/enhance"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxxg2lhnywws3q",
+			"target": "web/src/routes/samples/form-actions/sign-in"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3gn5zg2llbmn2gs33oomxxmylmnfsgc5djn5xa",
+			"target": "web/src/routes/samples/form-actions/validation"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3hn4wxg5dbnzsgc4teom",
+			"target": "web/src/routes/samples/go-standards"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3jnz2he33eovrxi2lpny",
+			"target": "web/src/routes/samples/introduction"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3mn5qwil3qmftwkllemf2gc",
+			"target": "web/src/routes/samples/load/page-data"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3mn5qwil3vnz2heyldnmxvw43movtv2",
+			"target": "web/src/routes/samples/load/untrack/[slug]"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3nnftxeylunfxgo",
+			"target": "web/src/routes/samples/migrating"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3qojsxezlomrsxe2lom4xvw43movtv2",
+			"target": "web/src/routes/samples/prerendering/[slug]"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63tt",
+			"target": "web/src/routes/samples/remote-functions"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3smvww65dffvthk3tdoruw63ttf5tg64tn",
+			"target": "web/src/routes/samples/remote-functions/form"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4",
+			"target": "web/src/routes/samples/testing"
+		},
+		{
 			"link": "internal/skgo/_links/onzggl3sn52xizltf5zwqylen53s6wzofyxhezltoroq",
 			"target": "web/src/routes/shadow/[...rest]"
 		},

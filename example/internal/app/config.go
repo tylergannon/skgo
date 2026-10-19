@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// docs: application-config
 // Config is the application policy selected by go:generate and read by server.go.
 // Generated registrations and the request boundary remain generated.
 var Config = skgo.ApplicationConfig{
@@ -16,9 +15,6 @@ var Config = skgo.ApplicationConfig{
 	FilterSerializedResponseHeaders: SerializedHeader,
 }
 
-// docs: end application-config
-
-// docs: handle-error
 // HandleError is the app's `handleError` hook — kit's own contract, mirrored:
 // it runs for page and remote-function failures, expected or not
 // (`exports/hooks/public.d.ts`: "runs for every error thrown ... except
@@ -44,9 +40,6 @@ func handleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 	return extra
 }
 
-// docs: end handle-error
-
-// docs: handle-fetch
 // The example hook rewrites an API alias query before dispatch and marks the
 // response. Fetching this API in a universal load still reuses its response
 // during hydration; the hook itself only runs in Go.
@@ -69,5 +62,3 @@ func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*
 	}
 	return response, err
 }
-
-// docs: end handle-fetch

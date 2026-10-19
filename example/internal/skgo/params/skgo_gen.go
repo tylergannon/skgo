@@ -273,6 +273,24 @@ func SkgoCallerRoutes() skgo.CallerRoutes {
 		"/routing/slash/mixed":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/slash/mixed", values) }},
 		"/routing/slash/never":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/slash/never", values) }},
 		"/runes-class":                   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/runes-class", values) }},
+		"/samples/auth":                  {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/auth", values) }},
+		"/samples/cookies":               {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/cookies", values) }},
+		"/samples/form-actions/default":  {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/form-actions/default", values) }},
+		"/samples/form-actions/enhance":  {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/form-actions/enhance", values) }},
+		"/samples/form-actions/named":    {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/form-actions/named", values) }},
+		"/samples/form-actions/sign-in":  {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/form-actions/sign-in", values) }},
+		"/samples/form-actions/validation": {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) {
+			return SkgoParams("/samples/form-actions/validation", values)
+		}},
+		"/samples/go-standards":          {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/go-standards", values) }},
+		"/samples/introduction":          {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/introduction", values) }},
+		"/samples/load/page-data":        {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/load/page-data", values) }},
+		"/samples/load/untrack/[slug]":   {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/load/untrack/[slug]", values) }},
+		"/samples/migrating":             {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/migrating", values) }},
+		"/samples/prerendering/[slug]":   {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/prerendering/[slug]", values) }},
+		"/samples/remote-functions":      {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/remote-functions", values) }},
+		"/samples/remote-functions/form": {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/remote-functions/form", values) }},
+		"/samples/testing":               {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/testing", values) }},
 		"/shadow/[...rest]":              {Params: []skgo.ManifestParam{{Name: "rest", Matcher: "", Optional: false, Rest: true, Chained: true}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/shadow/[...rest]", values) }},
 		"/shadow/[slug]":                 {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/shadow/[slug]", values) }},
 		"/spa":                           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/spa", values) }},
@@ -538,6 +556,36 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 	case "/routing/slash/mixed":
 	case "/routing/slash/never":
 	case "/runes-class":
+	case "/samples/auth":
+	case "/samples/cookies":
+	case "/samples/form-actions/default":
+	case "/samples/form-actions/enhance":
+	case "/samples/form-actions/named":
+	case "/samples/form-actions/sign-in":
+	case "/samples/form-actions/validation":
+	case "/samples/go-standards":
+	case "/samples/introduction":
+	case "/samples/load/page-data":
+	case "/samples/load/untrack/[slug]":
+		if raw, present := values["slug"]; present {
+			value, err := skgoSharedValue[string](raw)
+			if err != nil {
+				return Params{}, fmt.Errorf("skgo: caller /samples/load/untrack/[slug] param slug: %w", err)
+			}
+			p.value_736c7567 = SlugParam_String{Value: value}
+		}
+	case "/samples/migrating":
+	case "/samples/prerendering/[slug]":
+		if raw, present := values["slug"]; present {
+			value, err := skgoSharedValue[string](raw)
+			if err != nil {
+				return Params{}, fmt.Errorf("skgo: caller /samples/prerendering/[slug] param slug: %w", err)
+			}
+			p.value_736c7567 = SlugParam_String{Value: value}
+		}
+	case "/samples/remote-functions":
+	case "/samples/remote-functions/form":
+	case "/samples/testing":
 	case "/shadow/[...rest]":
 		if raw, present := values["rest"]; present {
 			value, err := skgoSharedValue[string](raw)

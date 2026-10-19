@@ -7,7 +7,7 @@
 {#if page.error?.supportId}
   <!--
 		supportId is not part of kit's App.Error — it is whatever the app's
-		own handleError hook (example.HandleError, in example/server.go)
+		own handleError hook (handleError, in example/internal/app/config.go)
 		chose to add. This is the proof that the hook ran and this page is
 		rendering what it returned, not kit's own default.
 	-->

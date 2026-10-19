@@ -56,12 +56,10 @@ func answer(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("</script><!-- \u2028 \u2029 \"q\" & ok"))
 	case "cookies":
 		// Sets two cookies when asked, and says which cookies it was sent.
-		// docs: cookie
 		if query.Get("set") != "" {
 			http.SetCookie(w, &http.Cookie{Name: "lamp", Value: "glow", Path: "/"})
 			http.SetCookie(w, &http.Cookie{Name: "other", Value: "dim", Path: "/"})
 		}
-		// docs: end cookie
 		h.Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte(r.Header.Get("Cookie")))
 	case "empty":

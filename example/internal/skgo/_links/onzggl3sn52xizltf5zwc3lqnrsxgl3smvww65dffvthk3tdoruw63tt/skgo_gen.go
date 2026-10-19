@@ -1,0 +1,1 @@
+../../../../web/src/routes/samples/remote-functions/skgo_gen.go

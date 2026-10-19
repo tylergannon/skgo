@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -57,52 +58,31 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "build":
-		if err := buildCommand(os.Args[2:]); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		exit(buildCommand(os.Args[2:]))
 	case "plugin":
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		if err := pluginCommand(ctx, os.Args[2:], os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		exit(pluginCommand(ctx, os.Args[2:], os.Stdout))
 	case "_plugin-probe":
-		if err := pluginProbe(os.Args[2:]); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		exit(pluginProbe(os.Args[2:]))
 	case "update":
 		updateCommand(os.Args[2:])
 	case "native":
 		nativeCommand(os.Args[2:])
 	case "buildinfo":
-		if err := buildinfoCommand(os.Args[2:], os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		exit(buildinfoCommand(os.Args[2:], os.Stdout))
 	case "add":
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		if err := addCommand(ctx, os.Args[2:], os.Stdout, os.Stderr); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		exit(addCommand(ctx, os.Args[2:], os.Stdout, os.Stderr))
 	case "env":
-		if err := environmentCommand(os.Args[2:], os.Stdin, os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		exit(environmentCommand(os.Args[2:], os.Stdin, os.Stdout))
 	case "new":
 		newProject(os.Args[2:])
 	case "dev":
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		if err := devCommand(ctx, os.Args[2:], os.Stdout, os.Stderr); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		exit(devCommand(ctx, os.Args[2:], os.Stdout, os.Stderr))
 	case "generate":
 		generate(os.Args[2:])
 	case "check":
@@ -112,17 +92,44 @@ func main() {
 	case "advice":
 		showAdvice(os.Args[2:])
 	case "mcp":
-		if len(os.Args) != 2 {
-			fmt.Fprint(os.Stderr, usage)
+		fs := flag.NewFlagSet("mcp", flag.ExitOnError)
+		fs.Usage = commandUsage(fs, "mcp")
+		_ = fs.Parse(os.Args[2:])
+		if fs.NArg() != 0 {
+			fs.Usage()
 			os.Exit(2)
 		}
-		if err := serveMCP(os.Stdin, os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		exit(serveMCP(os.Stdin, os.Stdout))
 	default:
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
+	}
+}
+
+// exit ends a command that returns its error. flag.ErrHelp from a
+// ContinueOnError flag set means the help the caller asked for was printed,
+// which succeeds exactly as an ExitOnError flag set does.
+func exit(err error) {
+	if err != nil && !errors.Is(err, flag.ErrHelp) {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// commandUsage prints a command's synopsis and description from the command
+// table, followed by the flag set's defaults when it defines any.
+func commandUsage(fs *flag.FlagSet, name string) func() {
+	c, ok := commands.Lookup(name)
+	if !ok {
+		panic("skgo: command table has no " + name)
+	}
+	return func() {
+		w := fs.Output()
+		fmt.Fprintf(w, "usage: %s\n\n%s\n", c.Synopsis(), strings.ReplaceAll(c.Description, "`", ""))
+		if len(c.Flags) > 0 {
+			fmt.Fprintln(w, "\nflags:")
+			fs.PrintDefaults()
+		}
 	}
 }
 

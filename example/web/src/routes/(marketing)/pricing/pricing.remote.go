@@ -11,7 +11,6 @@ import (
 	"github.com/tylergannon/skgo/example/internal/skgo/params"
 )
 
-// docs: plan
 // Plan is one row of the pricing table.
 type Plan struct {
 	// Name is the plan's name.
@@ -21,8 +20,6 @@ type Plan struct {
 	// hook for it in src/hooks.go and src/hooks.ts.
 	Price businesslogic.Money `json:"price"`
 }
-
-// docs: end plan
 
 func getPlans(ctx context.Context) ([]Plan, error) {
 	return []Plan{
@@ -65,7 +62,6 @@ type Quote struct {
 	Doubled string `json:"doubled"`
 }
 
-// docs: quote
 // quoteFor takes a price from the browser and answers in Go's own words.
 func quoteFor(ctx context.Context, _ params.RequestEvent, price businesslogic.Money) (Quote, error) {
 	return Quote{
@@ -75,5 +71,3 @@ func quoteFor(ctx context.Context, _ params.RequestEvent, price businesslogic.Mo
 }
 
 var _ = skgo.Command(quoteFor)
-
-// docs: end quote
