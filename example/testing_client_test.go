@@ -1,3 +1,5 @@
+//go:build skgo_qualification
+
 package example_test
 
 import (
@@ -7,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/tylergannon/skgo"
-	"github.com/tylergannon/skgo/example/internal/skgo/client"
 	signup "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5zwc3lqnrsxgl3umvzxi2lom4"
+	"github.com/tylergannon/skgo/example/internal/skgo/client"
 )
 
 // TestTheGeneratedClientSubmitsAForm submits the signUp form over HTTP as
