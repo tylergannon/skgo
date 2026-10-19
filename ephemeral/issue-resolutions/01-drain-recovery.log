@@ -1,0 +1,6 @@
+=== RUN   TestPrerenderFailedDrainRetainsOwnerAndCanRecover
+=== PAUSE TestPrerenderFailedDrainRetainsOwnerAndCanRecover
+=== CONT  TestPrerenderFailedDrainRetainsOwnerAndCanRecover
+--- PASS: TestPrerenderFailedDrainRetainsOwnerAndCanRecover (0.47s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	0.691s

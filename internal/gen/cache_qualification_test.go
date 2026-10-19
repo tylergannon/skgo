@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -82,18 +83,29 @@ func runCacheProcess(t *testing.T, cfg Config) cacheRunResult {
 }
 func TestGenerationCacheFreshProcessesAndRecovery(t *testing.T) {
 	t.Parallel()
-	_, cfg := foreignFixture(t, `package data
+	const remoteSource = `package data
 import("context";"github.com/tylergannon/skgo")
 type Reply struct { Text string }
 func query(context.Context)(Reply,error){return Reply{},nil}
 var _=skgo.Query(query)
-`, nil)
+`
+	const pageSource = `package data
+import "github.com/tylergannon/skgo"
+type PageData struct { Label string }
+func load(PageRequestEvent)(PageData,error){return PageData{Label:"published page"},nil}
+var _=skgo.Load(load)
+`
+	_, cfg := foreignFixture(t, "", map[string]string{
+		"app/web/src/routes/about/data.remote.go": remoteSource,
+		"app/web/src/routes/about/page.server.go": pageSource,
+	})
+	route := filepath.Join(cfg.Web, "src/routes/about")
 	cfg.CacheDir = t.TempDir()
 	first := runCacheProcess(t, cfg)
 	if first.Error != "" || first.Loads == 0 {
 		t.Fatalf("cold: %+v", first)
 	}
-	typesPath := filepath.Join(cfg.Web, "src/data/types.ts")
+	typesPath := filepath.Join(route, "types.ts")
 	assertCacheFile(t, typesPath, `"Text": string`)
 	// A fresh process must replay its persisted plan even when output vanished.
 	for _, path := range []string{filepath.Join(cfg.Out, generatedGoFile), typesPath} {
@@ -107,7 +119,7 @@ var _=skgo.Query(query)
 	}
 	assertCacheFile(t, typesPath, `"Text": string`)
 	assertCacheFile(t, filepath.Join(cfg.Out, generatedGoFile), `Name:   "query"`)
-	source := filepath.Join(cfg.Web, "src/data/data.remote.go")
+	source := filepath.Join(route, "data.remote.go")
 	raw, err := os.ReadFile(source)
 	if err != nil {
 		t.Fatal(err)
@@ -126,4 +138,69 @@ var _=skgo.Query(query)
 	if !bytes.Contains(raw, []byte(`"Count": number`)) || bytes.Contains(raw, []byte(`"Text": string`)) {
 		t.Fatalf("stale projection: %s", raw)
 	}
+
+	// Route packages are committed relative per-file links, not source copies.
+	// A failed analysis must leave declarations and link membership/targets
+	// unchanged; edits to authored files remain visible through those links.
+	snapshot := func() map[string]string {
+		t.Helper()
+		published := map[string]string{}
+		for _, base := range []string{cfg.Out, route} {
+			err := filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
+				if err != nil || entry.IsDir() {
+					return err
+				}
+				if entry.Type()&os.ModeSymlink != 0 {
+					target, err := os.Readlink(path)
+					published[path] = "link:" + target
+					return err
+				}
+				data, err := os.ReadFile(path)
+				if path == filepath.Join(cfg.Out, inventoryName) || bytes.HasPrefix(data, []byte(goHeader)) || bytes.HasPrefix(data, []byte(tsHeader)) {
+					published[path] = "file:" + string(data)
+				}
+				return err
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		return published
+	}
+	linkDir := filepath.Join(cfg.Out, linkRootName, encodeLinkName("src/routes/about"))
+	link := filepath.Join(linkDir, "page.server.go")
+	target, err := os.Readlink(link)
+	if err != nil || filepath.IsAbs(target) || filepath.Clean(filepath.Join(linkDir, target)) != filepath.Join(route, "page.server.go") {
+		t.Fatalf("published page link: %q, %v", target, err)
+	}
+	assertCacheFile(t, filepath.Join(linkDir, generatedGoFile), "Skgo_query = query")
+	before := snapshot()
+	invalid := pageSource + "\nvar _ int = \"unrelated demo consumer is broken\"\n"
+	cacheWrite(t, filepath.Join(route, "page.server.go"), invalid)
+	cacheWrite(t, filepath.Join(route, "pending.go"), "package data\nconst PendingPublication = 541\n")
+	cfg.OnPackageLoad = func(*packages.Config, []string) {
+		if !reflect.DeepEqual(snapshot(), before) {
+			t.Fatal("published declarations or route links changed before analysis completed")
+		}
+	}
+	err = Run(cfg)
+	if err == nil || !strings.Contains(err.Error(), "page.server.go") || !strings.Contains(err.Error(), "cannot use") || !strings.Contains(err.Error(), "unrelated demo consumer is broken") {
+		t.Fatalf("authored page failure: %v", err)
+	}
+	if !reflect.DeepEqual(snapshot(), before) {
+		t.Fatal("failed analysis changed published declarations or route links")
+	}
+	if body, err := os.ReadFile(link); err != nil || string(body) != invalid {
+		t.Fatalf("authored edit must remain visible through its link: %q, %v", body, err)
+	}
+	cfg.OnPackageLoad = nil
+	cacheWrite(t, filepath.Join(route, "page.server.go"), pageSource)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("generation after authored repair: %v", err)
+	}
+	pending := filepath.Join(linkDir, "pending.go")
+	if target, err := os.Readlink(pending); err != nil || filepath.IsAbs(target) || filepath.Clean(filepath.Join(linkDir, target)) != filepath.Join(route, "pending.go") {
+		t.Fatalf("repaired generation did not publish the pending relative link: %q, %v", target, err)
+	}
+	assertCacheFile(t, filepath.Join(linkDir, generatedGoFile), "Skgo_query = query")
 }

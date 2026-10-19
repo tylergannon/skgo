@@ -1,0 +1,12 @@
+=== RUN   TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation
+=== PAUSE TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation
+=== RUN   TestFailedPageLoadGenerationPreservesPublishedMirrors
+=== PAUSE TestFailedPageLoadGenerationPreservesPublishedMirrors
+=== CONT  TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation
+=== CONT  TestFailedPageLoadGenerationPreservesPublishedMirrors
+    output_test.go:74: fixture did not publish the authored load, remote and full generated remote declarations
+--- FAIL: TestFailedPageLoadGenerationPreservesPublishedMirrors (0.71s)
+--- PASS: TestTypedLoadParamsRefreshBeforeStaleHandlerCompilation (1.93s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/gen	2.177s
+FAIL

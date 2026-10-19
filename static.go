@@ -44,6 +44,10 @@ type Manifest struct {
 	AppDir string `json:"appDir"`
 	// Base is kit's `paths.base`, without a trailing slash.
 	Base string `json:"base"`
+	// RouterType is Kit's router.type: "pathname" or "hash". Hash builds
+	// serve the native client shell for document pathnames instead of SSR.
+	// An empty value retains pathname routing for older manifests.
+	RouterType string `json:"routerType,omitempty"`
 	// Version is kit's build version name.
 	Version string `json:"version"`
 	// TrustedOrigins is Kit's csrf.trustedOrigins, applied to form-shaped
@@ -327,7 +331,7 @@ type StaticOption func(*staticHandler)
 
 // WithSSR makes the handler render page documents with s rather than answer
 // them with kit's SPA shell. The shell is still what answers a page whose
-// branch turns SSR off.
+// branch turns SSR off and every document in a hash-routed build.
 func WithSSR(s *SSR) StaticOption {
 	return func(h *staticHandler) { h.ssr = s }
 }
@@ -342,6 +346,8 @@ func WithSSR(s *SSR) StaticOption {
 // route's branch does not turn SSR off; kit's boot document with status 200 for
 // a path matching a route from the manifest; and the boot document with status
 // 404 for anything else, so kit's client router can render `+error.svelte`.
+// Hash-routed builds always answer document paths with the native boot shell
+// at status 200, after asset and internal-request handling.
 func NewStaticHandler(build fs.FS, options ...StaticOption) (http.Handler, error) {
 
 	document, err := fs.ReadFile(build, "index.html")
@@ -670,7 +676,7 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if rejectReservedQuery(w, r, hasDataSuffix(r.URL.Path), false) {
 			return
 		}
-		if h.ssr != nil {
+		if h.ssr != nil && h.manifest.RouterType != "hash" {
 			if h.ssr.servePageMethod(w, r, routingPath) {
 				return
 			}
@@ -759,6 +765,17 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rejectReservedQuery(w, r, false, false) {
+		return
+	}
+	if h.manifest.RouterType == "hash" {
+		// Kit disables SSR for hash routing. Its generated fallback already
+		// contains the real client boot; the pathname cannot select a page.
+		if r.Method == http.MethodPost {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h.serveDocument(w, r, http.StatusOK)
 		return
 	}
 

@@ -1,0 +1,97 @@
+=== RUN   TestPrerenderFailedDrainRetainsOwnerAndCanRecover
+=== PAUSE TestPrerenderFailedDrainRetainsOwnerAndCanRecover
+=== RUN   TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal
+=== PAUSE TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal
+=== RUN   TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner
+=== PAUSE TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner
+=== CONT  TestPrerenderFailedDrainRetainsOwnerAndCanRecover
+=== CONT  TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner
+=== CONT  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal
+=== RUN   TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+=== PAUSE TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+=== RUN   TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+=== PAUSE TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+=== CONT  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+=== CONT  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+=== NAME  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+    prerender_owner_failure_test.go:145: SIGTERM failed-drain interruption:
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+=== NAME  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+    prerender_owner_failure_test.go:145: SIGINT failed-drain interruption:
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+--- PASS: TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal (0.00s)
+    --- PASS: TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated (0.33s)
+    --- PASS: TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt (0.33s)
+--- PASS: TestPrerenderFailedDrainRetainsOwnerAndCanRecover (0.48s)
+=== NAME  TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner
+    prerender_predicate_failure_build_test.go:235: broken transform transport native build:
+        skgo prerender service started (pid 94496)
+        (node:94396) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        (node:94396) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        skgo prerender service stopped (pid 94496)
+        Error: skgo prerender transform returned no HTML
+            at options.transformPageChunk (../adapter/skgo-adapter/prerender.js:869:54)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async render_response (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/render.js:618:4)
+            at async render_page (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/index.js:332:10)
+            at async resolve (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/respond.js:672:19)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async requestHandle (../adapter/skgo-adapter/prerender.js:878:24)
+        Error: skgo prerender transform returned no HTML
+            at options.transformPageChunk (../adapter/skgo-adapter/prerender.js:869:54)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async render_response (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/render.js:618:4)
+            at async render_page (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/page/index.js:332:10)
+            at async resolve (../../../../../../../../../../Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/runtime/server/respond.js:672:19)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async requestHandle (../adapter/skgo-adapter/prerender.js:878:24)
+        Error: skgo prerender end undefined/ failed: fetch failed
+            at invokeService (../adapter/skgo-adapter/prerender.js:656:11)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async end (../adapter/skgo-adapter/prerender.js:854:5)
+            at async requestHandle (../adapter/skgo-adapter/prerender.js:911:5)
+        [1m[31m500[39m[22m GET /
+        Error: skgo prerender begin undefined/ failed: fetch failed
+            at invokeService (../adapter/skgo-adapter/prerender.js:656:11)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async requestHandle (../adapter/skgo-adapter/prerender.js:839:29)
+        [1m[31m500[39m[22m GET /healthy
+        transforming...
+        ✓ 2 modules transformed.
+        rendering chunks...
+        ✓ built in 3ms
+        DRAIN_OBSERVATION:{"pid":94496,"group":94496,"groupAlive":false,"privateDirExists":false}
+        BUILD_APP_REJECTED:Error: skgo prerender transform returned no HTML
+            at options.transformPageChunk (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/prerender.js:280:49)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async render_response (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:1605:22)
+            at async render_page (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:2126:10)
+            at async resolve (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:3393:53)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async requestHandle (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/prerender.js:292:21)
+            at async fn (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:3282:12)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async handle (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:3264:20)
+        Error: Error: skgo prerender transform returned no HTML
+            at options.transformPageChunk (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/prerender.js:280:49)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async render_response (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:1605:22)
+            at async render_page (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:2126:10)
+            at async resolve (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:3393:53)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async requestHandle (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/prerender.js:292:21)
+            at async fn (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:3282:12)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/example/web/node_modules/.pnpm/@sveltejs+kit@3.1.0_patch_hash=0d35d370d3e5fb6e0c801cd1079013b3d487d6e301e27777f26fabbf_50f44e4a164596c3bf2980d7de0d35eb/node_modules/@sveltejs/kit/src/exports/internal/server/telemetry.js:42:11
+            at async handle (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/web/.svelte-kit/output/server/chunks/instance.js:3264:20)
+            at owner.channel.onmessage (file:///private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAn1875167747/002/example/adapter/skgo-adapter/prerender.js:469:27)
+            at BroadcastChannel.eventHandler (node:internal/event_target:1159:12)
+            at [nodejs.internal.kHybridDispatch] (node:internal/event_target:869:20)
+            at BroadcastChannel.dispatchEvent (node:internal/event_target:810:26)
+            at BroadcastChannel.onMessageEvent (node:internal/worker/io:349:8)
+            at [nodejs.internal.kHybridDispatch] (node:internal/event_target:869:20)
+            at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)
+--- PASS: TestPrerenderTransformBrokenTransportRejectsPermissiveKitBuildAndDrainsOwner (11.07s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	11.327s

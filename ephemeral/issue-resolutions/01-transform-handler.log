@@ -1,0 +1,14 @@
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/nil
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/renderer_default
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/hook_overrides_default
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/transform
+=== RUN   TestPrerenderResolveOptionDefaultsAndFailures/panic
+--- PASS: TestPrerenderResolveOptionDefaultsAndFailures (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/nil (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/renderer_default (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/hook_overrides_default (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/transform (0.00s)
+    --- PASS: TestPrerenderResolveOptionDefaultsAndFailures/panic (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo	0.246s

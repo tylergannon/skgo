@@ -1,0 +1,52 @@
+Fixture-only counterfactual: permanent50ms leaf delay, production unmodified; revert only the Go Wait ExitError acceptance to its original panic. Restore test in finally.
+=== RUN   TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== PAUSE TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== CONT  TestPrerenderFailureWaitsForNativeExitedGroupReap
+    prerender_native_darwin_test.go:119: native exited-group cleanup:
+        NATIVE_EXITED_GROUP:{"group":38436,"probe":"EPERM","state":"38445 38444 38436   501 Z    <defunct>","leaderClosed":true}
+        REJECTION_RESOURCES:{"probe":"ESRCH","privateDirExists":false,"reaped":false}
+        NATIVE_EXITED_GROUP_REAPED_BEFORE_REJECTION
+        node:internal/modules/run_main:107
+            triggerUncaughtException(
+            ^
+        
+        AssertionError [ERR_ASSERTION]: fixture parent did not complete its Go Wait
+        
+        false !== true
+        
+            at file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:46:9 {
+          generatedMessage: false,
+          code: 'ERR_ASSERTION',
+          actual: false,
+          expected: true,
+          operator: 'strictEqual',
+          diff: 'simple'
+        }
+        
+        Node.js v24.22.0
+    prerender_native_darwin_test.go:121: native exited-group cleanup: exit status 1
+        NATIVE_EXITED_GROUP:{"group":38436,"probe":"EPERM","state":"38445 38444 38436   501 Z    <defunct>","leaderClosed":true}
+        REJECTION_RESOURCES:{"probe":"ESRCH","privateDirExists":false,"reaped":false}
+        NATIVE_EXITED_GROUP_REAPED_BEFORE_REJECTION
+        node:internal/modules/run_main:107
+            triggerUncaughtException(
+            ^
+        
+        AssertionError [ERR_ASSERTION]: fixture parent did not complete its Go Wait
+        
+        false !== true
+        
+            at file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:46:9 {
+          generatedMessage: false,
+          code: 'ERR_ASSERTION',
+          actual: false,
+          expected: true,
+          operator: 'strictEqual',
+          diff: 'simple'
+        }
+        
+        Node.js v24.22.0
+--- FAIL: TestPrerenderFailureWaitsForNativeExitedGroupReap (0.72s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	0.938s
+FAIL

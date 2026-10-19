@@ -1,0 +1,10 @@
+=== RUN   TestHashRouterDocumentsPreserveGoRoutingAndSkipPathnameSSR
+=== PAUSE TestHashRouterDocumentsPreserveGoRoutingAndSkipPathnameSSR
+=== CONT  TestHashRouterDocumentsPreserveGoRoutingAndSkipPathnameSSR
+=== RUN   TestHashRouterDocumentsPreserveGoRoutingAndSkipPathnameSSR/hash
+=== RUN   TestHashRouterDocumentsPreserveGoRoutingAndSkipPathnameSSR/pathname
+--- PASS: TestHashRouterDocumentsPreserveGoRoutingAndSkipPathnameSSR (0.01s)
+    --- PASS: TestHashRouterDocumentsPreserveGoRoutingAndSkipPathnameSSR/hash (0.01s)
+    --- PASS: TestHashRouterDocumentsPreserveGoRoutingAndSkipPathnameSSR/pathname (0.00s)
+PASS
+ok  	github.com/tylergannon/skgo	0.270s

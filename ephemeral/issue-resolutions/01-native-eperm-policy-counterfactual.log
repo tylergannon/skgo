@@ -1,0 +1,68 @@
+Counterfactual: current production owner/boundary, replacing signalTree EPERM-retention with original throw policy; same real Go exited-group fixture, no syscall injection. Production file restored in finally.
+=== RUN   TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== PAUSE TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== CONT  TestPrerenderFailureWaitsForNativeExitedGroupReap
+    prerender_native_darwin_test.go:115: native exited-group cleanup:
+        skgo prerender owner failure: kill EPERM
+        NATIVE_EXITED_GROUP:{"group":21013,"probe":"EPERM","state":"21015 21014 21013   501 Z    <defunct>","leaderClosed":true}
+        REJECTION_RESOURCES:{"probe":"EPERM","privateDirExists":true,"reaped":false,"cleanupError":"skgo could not drain owned prerender processes","cleanupErrors":[{"message":"kill EPERM","code":"EPERM"}]}
+        FIXTURE_REAPER_EXITED
+        node:internal/modules/run_main:107
+            triggerUncaughtException(
+            ^
+        
+        AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+        + actual - expected
+        
+        + 'literal original native crawler failure; cleanup failed: kill EPERM'
+        - 'literal original native crawler failure'
+        
+            at Object.<anonymous> (file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:30:10)
+            at expectedException (node:assert:578:17)
+            at expectsError (node:assert:703:21)
+            at strict.rejects (node:assert:769:3)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+          generatedMessage: true,
+          code: 'ERR_ASSERTION',
+          actual: 'literal original native crawler failure; cleanup failed: kill EPERM',
+          expected: 'literal original native crawler failure',
+          operator: 'strictEqual',
+          diff: 'simple'
+        }
+        
+        Node.js v24.22.0
+    prerender_native_darwin_test.go:117: native exited-group cleanup: exit status 1
+        skgo prerender owner failure: kill EPERM
+        NATIVE_EXITED_GROUP:{"group":21013,"probe":"EPERM","state":"21015 21014 21013   501 Z    <defunct>","leaderClosed":true}
+        REJECTION_RESOURCES:{"probe":"EPERM","privateDirExists":true,"reaped":false,"cleanupError":"skgo could not drain owned prerender processes","cleanupErrors":[{"message":"kill EPERM","code":"EPERM"}]}
+        FIXTURE_REAPER_EXITED
+        node:internal/modules/run_main:107
+            triggerUncaughtException(
+            ^
+        
+        AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+        + actual - expected
+        
+        + 'literal original native crawler failure; cleanup failed: kill EPERM'
+        - 'literal original native crawler failure'
+        
+            at Object.<anonymous> (file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:30:10)
+            at expectedException (node:assert:578:17)
+            at expectsError (node:assert:703:21)
+            at strict.rejects (node:assert:769:3)
+            at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+            at async file:///Users/tyler/.codex/worktrees/cd08/skgo/internal/adapter/[eval1]:27:2 {
+          generatedMessage: true,
+          code: 'ERR_ASSERTION',
+          actual: 'literal original native crawler failure; cleanup failed: kill EPERM',
+          expected: 'literal original native crawler failure',
+          operator: 'strictEqual',
+          diff: 'simple'
+        }
+        
+        Node.js v24.22.0
+--- FAIL: TestPrerenderFailureWaitsForNativeExitedGroupReap (0.28s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	0.502s
+FAIL

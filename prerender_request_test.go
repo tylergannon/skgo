@@ -429,6 +429,10 @@ func TestPrerenderResolveOptionDefaultsAndFailures(t *testing.T) {
 			if response.Code != 500 || !strings.Contains(response.Body.String(), want) {
 				t.Fatalf("callback failure: %d %s", response.Code, response.Body.String())
 			}
+			var answer struct{ Kind string }
+			if err := json.Unmarshal(response.Body.Bytes(), &answer); err != nil || (answer.Kind == "app") != (failure == "transform") {
+				t.Fatalf("callback error classification: %s %v", response.Body.String(), err)
+			}
 			buildOperation(t, handler, "/end", map[string]string{"handle": begin.Handle}, nil)
 			if len(sessions.entries) != 0 {
 				t.Fatal("failed request leaked")

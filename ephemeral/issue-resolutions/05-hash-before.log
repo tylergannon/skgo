@@ -1,0 +1,180 @@
+=== RUN   TestProductionRouterDocumentsUseNativeKitShell
+=== RUN   TestProductionRouterDocumentsUseNativeKitShell/hash
+=== PAUSE TestProductionRouterDocumentsUseNativeKitShell/hash
+=== CONT  TestProductionRouterDocumentsUseNativeKitShell/hash
+    hash_router_build_test.go:46: fixture stage router generation: 673.005791ms
+    hash_router_build_test.go:46: fixture stage router generation CPU: user=233.651ms system=327.245ms
+    hash_router_build_test.go:52: fixture stage router production build: 1.571504959s
+    hash_router_build_test.go:52: fixture stage router production build CPU: user=1.390556s system=433.462ms
+    hash_router_build_test.go:53: hash production build:
+        note: You are running `vp build` as a Vite+ built-in command. If you meant to run the build npm script, use `vpr build` instead.
+        transforming...
+        ✓ 147 modules transformed.
+        rendering chunks...
+        computing gzip size...
+        .svelte-kit/output/server/.vite/manifest.json                    5.39 kB │ gzip:  0.67 kB
+        .svelte-kit/output/server/entries/pages/_page.svelte.js          0.25 kB │ gzip:  0.22 kB │ map:   0.19 kB
+        .svelte-kit/output/server/entries/pages/about/_page.svelte.js    0.26 kB │ gzip:  0.22 kB │ map:   0.19 kB
+        .svelte-kit/output/server/env.js                                 0.31 kB │ gzip:  0.19 kB │ map:   0.57 kB
+        .svelte-kit/output/server/entries/fallbacks/layout.svelte.js     0.53 kB │ gzip:  0.37 kB │ map:   0.56 kB
+        .svelte-kit/output/server/chunks/functions.js                    0.65 kB │ gzip:  0.42 kB │ map:   1.06 kB
+        .svelte-kit/output/server/entries/fallbacks/error.svelte.js      1.50 kB │ gzip:  0.57 kB │ map:   3.02 kB
+        .svelte-kit/output/server/index.js                               2.48 kB │ gzip:  1.06 kB │ map:   3.54 kB
+        .svelte-kit/output/server/chunks/uneval.js                      19.66 kB │ gzip:  5.42 kB │ map:  41.11 kB
+        .svelte-kit/output/server/chunks/server-errors.js               20.85 kB │ gzip:  4.15 kB │ map:  34.42 kB
+        .svelte-kit/output/server/chunks/server.js                      45.51 kB │ gzip: 12.14 kB │ map: 128.76 kB
+        .svelte-kit/output/server/remote-entry.js                       55.94 kB │ gzip: 12.02 kB │ map:  91.33 kB
+        .svelte-kit/output/server/chunks/internal.js                    81.43 kB │ gzip: 21.64 kB │ map: 216.92 kB
+        .svelte-kit/output/server/chunks/instance.js                   112.75 kB │ gzip: 30.62 kB │ map: 240.01 kB
+        
+        ✓ built in 73ms
+        Analysing routes
+        (node:99057) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        Building app
+        transforming...
+        ✓ 176 modules transformed.
+        rendering chunks...
+        computing gzip size...
+        .svelte-kit/output/client/_app/version.json                          0.02 kB │ gzip:  0.04 kB
+        .svelte-kit/output/client/.vite/manifest.json                        5.87 kB │ gzip:  0.76 kB
+        .svelte-kit/output/client/_app/immutable/chunks/a40N7Huo.js          0.03 kB │ gzip:  0.05 kB
+        .svelte-kit/output/client/_app/immutable/entry/payload.DSmR2FwN.js   0.06 kB │ gzip:  0.07 kB
+        .svelte-kit/output/client/_app/immutable/nodes/0.BBEEn7Ux.js         0.14 kB │ gzip:  0.14 kB
+        .svelte-kit/output/client/_app/immutable/nodes/3.CaOQOkDp.js         0.20 kB │ gzip:  0.19 kB
+        .svelte-kit/output/client/_app/immutable/nodes/2.DwrOUIjB.js         0.21 kB │ gzip:  0.19 kB
+        .svelte-kit/output/client/_app/immutable/nodes/1.DQe5MY8y.js         0.32 kB │ gzip:  0.24 kB
+        .svelte-kit/output/client/_app/immutable/entry/start.BVj2PN-_.js     0.52 kB │ gzip:  0.31 kB
+        .svelte-kit/output/client/_app/immutable/entry/app.BNmneWgb.js       1.21 kB │ gzip:  0.58 kB
+        .svelte-kit/output/client/_app/immutable/chunks/Bjy-W4x2.js          1.36 kB │ gzip:  0.65 kB
+        .svelte-kit/output/client/_app/immutable/chunks/CRzLMJPS.js          1.53 kB │ gzip:  0.80 kB
+        .svelte-kit/output/client/_app/immutable/chunks/1JxBYXTb.js          4.29 kB │ gzip:  1.93 kB
+        .svelte-kit/output/client/_app/immutable/chunks/CVCGQk2S.js         34.04 kB │ gzip: 13.15 kB
+        .svelte-kit/output/client/_app/immutable/chunks/0mV4sK6R.js         39.70 kB │ gzip: 14.62 kB
+        
+        ✓ built in 75ms
+        (node:99057) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        (node:99057) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        
+        Run npm run preview to preview your production build locally.
+        
+        > Using skgo
+        (node:99057) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+        (Use `node --trace-warnings ...` to show where the warning was created)
+        transforming...
+        ✓ 139 modules transformed.
+        rendering chunks...
+        computing gzip size...
+        build/.goja/bundle.js  121.11 kB │ gzip: 32.49 kB
+        
+        ✓ built in 48ms
+        skgo: lowered to es2017 for the engine's parser: 4 module(s)
+        skgo: wrote build/
+        ✔ done
+    hash_router_build_test.go:67: fixture stage embedded router handler: 1.050452s
+    hash_router_build_test.go:67: fixture stage embedded router handler CPU: user=497.494ms system=264.49ms
+    hash_router_build_test.go:68: hash embedded handler:
+        === RUN   TestEmbeddedRouterDocuments
+            server_test.go:11: hash document /: status=200 headers=map[Cache-Control:[private, no-cache] Content-Length:[1811] Content-Security-Policy:[script-src 'self' 'nonce-Kip6E6p32fFF0OBWJtsYOw=='] Content-Type:[text/html; charset=utf-8] Etag:["61n5mh"] X-Sveltekit-Page:[true] X-Sveltekit-Version:[1792349025334]] body=<!doctype html>
+                <html lang="en">
+                  <head><meta name="fixture" content="HASH_ROUTER_SHELL_42">
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1" />
+                    <link href="./_app/immutable/entry/start.BVj2PN-_.js" rel="modulepreload">
+                		<link href="./_app/immutable/entry/payload.DSmR2FwN.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/CRzLMJPS.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/0mV4sK6R.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/CVCGQk2S.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/1JxBYXTb.js" rel="modulepreload">
+                		<link href="./_app/immutable/entry/app.BNmneWgb.js" rel="modulepreload">
+                		<link href="./_app/immutable/nodes/0.BBEEn7Ux.js" rel="modulepreload">
+                		<link href="./_app/immutable/nodes/2.DwrOUIjB.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/a40N7Huo.js" rel="modulepreload">
+                		
+                  </head>
+                  <body>
+                    <div style="display: contents"><!--[--><!--[--><!--[0--><!--[--><!--[--><!--[-1--><!--[--><h1>HASH_ROUTER_HOME_42</h1><a href="#/about">About</a><!--]--><!--]--><!--]--><!----><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
+                			<script nonce="Kip6E6p32fFF0OBWJtsYOw==">
+                				{
+                					__sveltekit_1n9199x = {
+                						base: new URL(".", location).pathname.slice(0, -1),
+                						version: "1792349025334"
+                					};
+                
+                					const element = document.currentScript.parentElement;
+                
+                					import("./_app/immutable/entry/start.BVj2PN-_.js").then(async (kit) => {
+                						kit.init(__sveltekit_1n9199x);
+                						const app = await import("./_app/immutable/entry/app.BNmneWgb.js");
+                						kit.start(app, element, {
+                							node_ids: [0, 2],
+                							data: [null,null],
+                							error: null,
+                							form: null
+                						});
+                					});
+                				}
+                			</script>
+                		</div>
+                  </body>
+                </html>
+        --- FAIL: TestEmbeddedRouterDocuments (0.02s)
+        FAIL
+        FAIL	github.com/tylergannon/skgo/example/internal/server	0.290s
+        FAIL
+    hash_router_build_test.go:70: embedded router contract: exit status 1
+        === RUN   TestEmbeddedRouterDocuments
+            server_test.go:11: hash document /: status=200 headers=map[Cache-Control:[private, no-cache] Content-Length:[1811] Content-Security-Policy:[script-src 'self' 'nonce-Kip6E6p32fFF0OBWJtsYOw=='] Content-Type:[text/html; charset=utf-8] Etag:["61n5mh"] X-Sveltekit-Page:[true] X-Sveltekit-Version:[1792349025334]] body=<!doctype html>
+                <html lang="en">
+                  <head><meta name="fixture" content="HASH_ROUTER_SHELL_42">
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1" />
+                    <link href="./_app/immutable/entry/start.BVj2PN-_.js" rel="modulepreload">
+                		<link href="./_app/immutable/entry/payload.DSmR2FwN.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/CRzLMJPS.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/0mV4sK6R.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/CVCGQk2S.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/1JxBYXTb.js" rel="modulepreload">
+                		<link href="./_app/immutable/entry/app.BNmneWgb.js" rel="modulepreload">
+                		<link href="./_app/immutable/nodes/0.BBEEn7Ux.js" rel="modulepreload">
+                		<link href="./_app/immutable/nodes/2.DwrOUIjB.js" rel="modulepreload">
+                		<link href="./_app/immutable/chunks/a40N7Huo.js" rel="modulepreload">
+                		
+                  </head>
+                  <body>
+                    <div style="display: contents"><!--[--><!--[--><!--[0--><!--[--><!--[--><!--[-1--><!--[--><h1>HASH_ROUTER_HOME_42</h1><a href="#/about">About</a><!--]--><!--]--><!--]--><!----><!--]--><!--]--><!--]--><!----> <!--[-1--><!--]--><!--]-->
+                			<script nonce="Kip6E6p32fFF0OBWJtsYOw==">
+                				{
+                					__sveltekit_1n9199x = {
+                						base: new URL(".", location).pathname.slice(0, -1),
+                						version: "1792349025334"
+                					};
+                
+                					const element = document.currentScript.parentElement;
+                
+                					import("./_app/immutable/entry/start.BVj2PN-_.js").then(async (kit) => {
+                						kit.init(__sveltekit_1n9199x);
+                						const app = await import("./_app/immutable/entry/app.BNmneWgb.js");
+                						kit.start(app, element, {
+                							node_ids: [0, 2],
+                							data: [null,null],
+                							error: null,
+                							form: null
+                						});
+                					});
+                				}
+                			</script>
+                		</div>
+                  </body>
+                </html>
+        --- FAIL: TestEmbeddedRouterDocuments (0.02s)
+        FAIL
+        FAIL	github.com/tylergannon/skgo/example/internal/server	0.290s
+        FAIL
+--- FAIL: TestProductionRouterDocumentsUseNativeKitShell (0.00s)
+    --- FAIL: TestProductionRouterDocumentsUseNativeKitShell/hash (3.31s)
+FAIL
+FAIL	github.com/tylergannon/skgo/internal/adapter	3.625s
+FAIL

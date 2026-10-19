@@ -1,0 +1,42 @@
+=== RUN   TestPrerenderTransformApplicationErrorsRemainRecoverableButTransportFailsOwner
+=== PAUSE TestPrerenderTransformApplicationErrorsRemainRecoverableButTransportFailsOwner
+=== RUN   TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== PAUSE TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== RUN   TestPrerenderFailedDrainRetainsOwnerAndCanRecover
+=== PAUSE TestPrerenderFailedDrainRetainsOwnerAndCanRecover
+=== RUN   TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal
+=== PAUSE TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal
+=== RUN   TestProductionFoldResolvesSharedTransitiveRemoteOutsideAppTSConfig
+=== PAUSE TestProductionFoldResolvesSharedTransitiveRemoteOutsideAppTSConfig
+=== CONT  TestPrerenderTransformApplicationErrorsRemainRecoverableButTransportFailsOwner
+=== CONT  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal
+=== RUN   TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+=== CONT  TestPrerenderFailedDrainRetainsOwnerAndCanRecover
+=== PAUSE TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+=== CONT  TestPrerenderFailureWaitsForNativeExitedGroupReap
+=== CONT  TestProductionFoldResolvesSharedTransitiveRemoteOutsideAppTSConfig
+=== RUN   TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+=== PAUSE TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+=== CONT  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+=== CONT  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+--- PASS: TestPrerenderTransformApplicationErrorsRemainRecoverableButTransportFailsOwner (0.24s)
+--- PASS: TestProductionFoldResolvesSharedTransitiveRemoteOutsideAppTSConfig (0.28s)
+=== NAME  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated
+    prerender_owner_failure_test.go:140: SIGTERM failed-drain interruption:
+        skgo prerender owner failure: skgo prerender build interrupted by SIGTERM; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+=== NAME  TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt
+    prerender_owner_failure_test.go:140: SIGINT failed-drain interruption:
+        skgo prerender owner failure: skgo prerender build interrupted by SIGINT; cleanup failed: skgo prerender owned process did not close: literal interrupted drain EPERM; cleanup failed: skgo could not drain owned prerender processes
+--- PASS: TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal (0.00s)
+    --- PASS: TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/terminated (0.38s)
+    --- PASS: TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal/interrupt (0.39s)
+=== NAME  TestPrerenderFailureWaitsForNativeExitedGroupReap
+    prerender_native_darwin_test.go:93: native exited-group cleanup:
+        NATIVE_EXITED_GROUP:{"group":98009,"probe":"EPERM","state":"98012 98011 98009   501 Z    <defunct>","leaderClosed":true}
+        REJECTION_RESOURCES:{"probe":"ESRCH","privateDirExists":false,"reaped":true}
+        NATIVE_EXITED_GROUP_REAPED_BEFORE_REJECTION
+        FIXTURE_REAPER_EXITED:reaped: signal: terminated
+--- PASS: TestPrerenderFailureWaitsForNativeExitedGroupReap (0.45s)
+--- PASS: TestPrerenderFailedDrainRetainsOwnerAndCanRecover (0.54s)
+PASS
+ok  	github.com/tylergannon/skgo/internal/adapter	0.842s

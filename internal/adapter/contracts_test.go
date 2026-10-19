@@ -123,3 +123,14 @@ for(const extension of ['ts','js']) {
 `
 	runAdapterScript(t, "skgo-adapter/prerender-modules.js", program, nil, t.TempDir())
 }
+
+// A disposable export of a private owner seam still imports the shipped bridge.
+func writePrerenderOwnerFixture(t *testing.T, path, source string) {
+	t.Helper()
+	writeAdapterFixture(t, path, source)
+	bridge, err := os.ReadFile("skgo-adapter/fetch-bridge.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeAdapterFixture(t, filepath.Join(filepath.Dir(path), "fetch-bridge.js"), string(bridge))
+}

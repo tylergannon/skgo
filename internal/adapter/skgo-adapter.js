@@ -202,6 +202,7 @@ export default function skgo({ out = 'build', precompress = true, prerenderPacka
 						skgoAdapter: SKGO.adapter,
 						appDir: builder.config.appDir,
 						base: builder.config.paths.base,
+						routerType: builder.config.router.type,
 						version: builder.config.version.name,
 						trustedOrigins: builder.config.csrf.trustedOrigins,
                         tracingServer: builder.config.tracing.server,
