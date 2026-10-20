@@ -4,9 +4,11 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,9 +25,8 @@ import (
 // This is a local provisional host, built as a versioned module so the test
 // exercises the real release-shaped install path without special runtime flags.
 // It cannot certify compatibility with an independently published executable.
-func provisionalCapabilityHost(t *testing.T, repo, root string) string {
+func provisionalCapabilityHost(t *testing.T, repo, root string) (string, string) {
 	t.Helper()
-	const version = "v0.0.0-capability"
 	proxy := filepath.Join(root, "proxy", "github.com", "tylergannon", "skgo", "@v")
 	if err := os.MkdirAll(proxy, 0755); err != nil {
 		t.Fatal(err)
@@ -54,6 +55,22 @@ func provisionalCapabilityHost(t *testing.T, repo, root string) string {
 		}
 		files = append(files, capabilityModuleFile{name: name, full: full, info: info})
 	}
+	// A shared Go cache should reuse verified dependencies, never a CLI from
+	// different source. Give the provisional module a version naming its bytes.
+	hash := sha256.New()
+	for _, file := range files {
+		fmt.Fprintf(hash, "%s\x00", file.Path())
+		input, err := file.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, copyErr := io.Copy(hash, input)
+		closeErr := input.Close()
+		if copyErr != nil || closeErr != nil {
+			t.Fatalf("hash fixture source: %v, %v", copyErr, closeErr)
+		}
+	}
+	version := fmt.Sprintf("v0.0.0-capability-%x", hash.Sum(nil))
 	zip, err := os.Create(filepath.Join(proxy, version+".zip"))
 	if err != nil {
 		t.Fatal(err)
@@ -68,32 +85,30 @@ func provisionalCapabilityHost(t *testing.T, repo, root string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, data := range map[string][]byte{version + ".mod": mod, version + ".info": []byte(`{"Version":"` + version + `","Time":"2026-10-19T00:00:00Z"}`)} {
+	for name, data := range map[string][]byte{version + ".mod": mod, version + ".info": []byte(`{"Version":"` + version + `","Time":"2026-10-19T00:00:00Z"}`), "list": []byte(version + "\n")} {
 		if err := os.WriteFile(filepath.Join(proxy, name), data, 0644); err != nil {
 			t.Fatal(err)
 		}
 	}
+	cache := exec.CommandContext(t.Context(), "go", "env", "GOMODCACHE")
+	cache.Dir = repo
+	moduleCache, err := cache.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("GOWORK", "off")
-	t.Setenv("GOMODCACHE", filepath.Join(root, "modcache"))
+	t.Setenv("GOMODCACHE", strings.TrimSpace(string(moduleCache)))
 	t.Setenv("GOBIN", filepath.Join(root, "bin"))
 	t.Setenv("GOPROXY", "file://"+filepath.Join(root, "proxy")+",https://proxy.golang.org")
 	t.Setenv("GONOPROXY", "none")
 	t.Setenv("GONOSUMDB", "github.com/tylergannon/skgo")
 	t.Setenv("CGO_ENABLED", "1")
-	t.Cleanup(func() {
-		_ = filepath.WalkDir(filepath.Join(root, "modcache"), func(path string, d fs.DirEntry, err error) error {
-			if err == nil && d.IsDir() {
-				_ = os.Chmod(path, 0755)
-			}
-			return nil
-		})
-	})
 	build := exec.CommandContext(t.Context(), "go", "install", "-trimpath", "github.com/tylergannon/skgo/cmd/skgo@"+version)
 	build.Dir = root
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build provisional CLI: %v\n%s", err, output)
 	}
-	return filepath.Join(root, "bin", "skgo")
+	return filepath.Join(root, "bin", "skgo"), version
 }
 
 type capabilityModuleFile struct {
@@ -106,12 +121,27 @@ func (f capabilityModuleFile) Lstat() (os.FileInfo, error)  { return f.info, nil
 func (f capabilityModuleFile) Open() (io.ReadCloser, error) { return os.Open(f.full) }
 
 func TestCapabilityPluginActualCLI(t *testing.T) {
+	t.Run("ordinary dependency acquisition", exerciseCapabilityPluginActualCLI)
+	t.Run("cached dependencies survive transport failure", func(t *testing.T) {
+		transport := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("cached CLI fixture attempted external dependency transport: %s", r.Host)
+			http.Error(w, "literal dependency transport unavailable", http.StatusBadGateway)
+		}))
+		defer transport.Close()
+		t.Setenv("HTTP_PROXY", transport.URL)
+		t.Setenv("HTTPS_PROXY", transport.URL)
+		t.Setenv("NO_PROXY", "localhost,127.0.0.1")
+		exerciseCapabilityPluginActualCLI(t)
+	})
+}
+
+func exerciseCapabilityPluginActualCLI(t *testing.T) {
 	repo, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	host := provisionalCapabilityHost(t, repo, root)
+	host, version := provisionalCapabilityHost(t, repo, root)
 	project := filepath.Join(root, "application")
 	plugins := filepath.Join(root, "manual")
 	for _, dir := range []string{filepath.Join(project, "web/src"), filepath.Join(project, "internal/app"), plugins} {
@@ -119,7 +149,7 @@ func TestCapabilityPluginActualCLI(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte("module example.test/capability-consumer\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo v0.0.0-capability\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte(fmt.Sprintf("module example.test/capability-consumer\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo %s\n", version)), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(project, "skgo.json"), []byte(`{"version":1,"name":"CapabilityApp"}`), 0644); err != nil {
@@ -138,7 +168,7 @@ func TestCapabilityPluginActualCLI(t *testing.T) {
 		if err := os.MkdirAll(source, 0755); err != nil {
 			t.Fatal(err)
 		}
-		for name, data := range map[string][]byte{"main.go": fixture, "go.mod": []byte("module example.test/" + moduleName + "\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo v0.0.0-capability\n")} {
+		for name, data := range map[string][]byte{"main.go": fixture, "go.mod": []byte(fmt.Sprintf("module example.test/%s\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo %s\n", moduleName, version))} {
 			if err := os.WriteFile(filepath.Join(source, name), data, 0644); err != nil {
 				t.Fatal(err)
 			}
@@ -148,7 +178,7 @@ func TestCapabilityPluginActualCLI(t *testing.T) {
 			t.Fatalf("build fixture: %v\n%s", err, &log)
 		}
 	}
-	artifact := filepath.Join(root, fmt.Sprintf("capability-fixture-v1.0.0-skgo-v0.0.0-capability-%s-%s.so", runtime.GOOS, runtime.GOARCH))
+	artifact := filepath.Join(root, fmt.Sprintf("capability-fixture-v1.0.0-skgo-%s-%s-%s.so", version, runtime.GOOS, runtime.GOARCH))
 	buildPlugin("capability-one", artifact)
 	digest, err := pluginstore.Digest(artifact)
 	if err != nil {
