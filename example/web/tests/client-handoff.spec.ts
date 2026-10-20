@@ -45,10 +45,7 @@ test("Kit's client takes over the page Go rendered", async ({ page }) => {
   );
   const todos = page.getByTestId("todos").getByTestId("todo");
   await expect(page.getByTestId("deployment")).toHaveText("skgo example");
-  await expect(todos).toContainText([
-    "write the adapter",
-    "serve remote functions",
-  ]);
+  await expect(todos).toContainText(["write the adapter", "serve remote functions"]);
   const rendered = await todos.allTextContents();
   const nav = await page.getByTestId("app-nav").elementHandle();
   const title = await page.getByTestId("title").elementHandle();
@@ -70,8 +67,7 @@ test("Kit's client takes over the page Go rendered", async ({ page }) => {
   ] as const) {
     const kept = await node.evaluate(
       (held, testid) =>
-        held.isConnected &&
-        document.querySelector(`[data-testid="${testid}"]`) === held,
+        held.isConnected && document.querySelector(`[data-testid="${testid}"]`) === held,
       testid,
     );
     expect(kept, `hydration replaced the server's ${testid} node`).toBe(true);
@@ -111,10 +107,9 @@ test("Kit's client takes over the page Go rendered", async ({ page }) => {
         'return append(visitor.Store(ctx).Todos(signedIn(ctx)), businesslogic.Todo{ID: "composition-edit", Text: "composition-go-edit"}), nil',
       ),
     );
-    await expect(todos.filter({ hasText: "composition-go-edit" })).toHaveCount(
-      1,
-      { timeout: 90_000 },
-    );
+    await expect(todos.filter({ hasText: "composition-go-edit" })).toHaveCount(1, {
+      timeout: 90_000,
+    });
     expect(documents, "the page reloaded instead of refreshing").toBe(1);
   }
 });
