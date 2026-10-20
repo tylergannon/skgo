@@ -258,10 +258,12 @@ export function gojaEnvironment() {
 								platform: 'neutral',
 								input: { bundle: ENTRY },
 								preserveEntrySignatures: false,
+								// Asset names are inherited from kit's shared build config,
+								// so an imported asset's URL in the engine is the one kit's
+								// own server build gives it: the file kit's build wrote.
 								output: {
 									format: 'esm',
 									entryFileNames: 'bundle.js',
-									assetFileNames: 'assets/[name][extname]',
 									codeSplitting: false
 								}
 							}

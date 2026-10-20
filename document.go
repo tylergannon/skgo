@@ -61,6 +61,7 @@ type SSR struct {
 	fetch                           http.Handler
 	handleFetch                     HandleFetch
 	prerendered                     map[string]bool
+	assets                          *serverAssets
 	artifacts                       *prerenderArtifactStore
 	filterSerializedResponseHeaders func(name, value string) bool
 }
@@ -146,6 +147,10 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 	if err != nil {
 		return nil, err
 	}
+	assets, err := newServerAssets(build, strings.TrimSuffix(m.Base, "/"), info)
+	if err != nil {
+		return nil, err
+	}
 
 	s := &SSR{
 		environment:                     opts.Environment,
@@ -162,6 +167,7 @@ func NewSSR(build fs.FS, m Manifest, loads *Loads, remotes *Remotes, opts SSROpt
 		fetch:                           opts.Fetch,
 		handleFetch:                     opts.HandleFetch,
 		prerendered:                     prerenderedSet(m.Prerendered),
+		assets:                          assets,
 		artifacts:                       artifacts,
 		filterSerializedResponseHeaders: opts.FilterSerializedResponseHeaders,
 	}

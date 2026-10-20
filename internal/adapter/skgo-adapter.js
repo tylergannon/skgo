@@ -434,6 +434,7 @@ export async function readKitManifest(builder) {
 						appPath: raw.app_path,
 						assets: raw.assets,
 						mimeTypes: raw.mime_types,
+						serverAssets: raw.server_assets,
 						_: {
 							client: raw.client,
 							nodes: raw.nodes,
@@ -622,6 +623,11 @@ function describeSSR(builder, kit, nodes) {
 		globalName: globalName(builder.config),
 		assets: builder.config.paths.assets,
 		relative: builder.config.paths.relative,
+		// The files kit's server code imports, with their sizes, and kit's
+		// extension-to-type table. Kit's `event.fetch` reads such a file
+		// instead of requesting it (`runtime/server/fetch.js`), and so does Go.
+		serverAssets: kit.serverAssets ?? {},
+		mimeTypes: kit.mimeTypes ?? {},
 		// kit's own validated `csp` option (`core/config/options.js`), copied
 		// verbatim: `mode`, `directives` and `reportOnly` are plain data, and
 		// Go assembles the document's CSP header and boot-script nonce/hash
