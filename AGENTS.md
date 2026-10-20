@@ -1,262 +1,47 @@
 # skgo
 
-**A SvelteKit application server written in Go.**
+A Go server for SvelteKit. The frontend stays plain SvelteKit; Go owns the
+process and answers every server endpoint: remote functions, server loads,
+actions, hooks and `+server` routes. Kit's JavaScript for those is a generated
+stub that throws. In production, kit's own renderer runs in-process on goja
+(pure Go, no cgo) from a pool of runtimes, and no application I/O runs in
+JavaScript. One binary; Node is build-time only. `skgo dev` uses native
+Vite/Kit SSR and HMR, calling Go for application logic
+(`ephemeral/projects/dev-server/`).
 
-A Go program owns the socket and the process. Its Kit-facing interface is an
-ordinary SvelteKit adapter, so the frontend stays plain SvelteKit — kit's
-tooling, kit's conventions, no Go-isms. Go serves kit's client-rendered output
-natively, makes the trust decisions, and answers the endpoints kit's client
-already calls: remote functions (`/_app/remote/...`), server loads
-(`__data.json`) and the routes a `+server.ts` declares.
+## Workflow
 
-**Every server endpoint is Go's.** Not "Go where you want it, kit otherwise" —
-all of them. Loads and remote functions are written in Go with end-to-end types,
-and a `+server.ts` route is an ordinary `net/http` handler written beside it;
-the JavaScript kit requires is a generated stub that throws, so any real
-response proves Go answered. Running remote functions or server routes in
-TypeScript is not a supported mode.
-
-**Pages are rendered in the Go process.** A page document leaves Go with its
-markup already in it, rendered by SvelteKit's own renderer inside an embedded
-JavaScript engine — one process, one binary, no Node at request time and no
-sidecar. A page whose branch sets `ssr = false` still gets kit's SPA fallback,
-and one that sets `csr = false` gets no script at all.
-
-**No application I/O executes in JavaScript.** That is the rule the engine has
-to obey, and it is narrower than "no JavaScript runs": the engine executes kit's
-root component, Svelte's renderer and the app's components, and nothing in it
-reads a file, opens a socket or sets a timer. Every remote function's body is
-still the generated stub that throws; the only path by which a value reaches the
-engine is a call back out to Go, which is what makes a rendered value proof that
-Go answered.
-
-The engine is goja, pure Go, embedded in the binary — no cgo. Renders are
-served from a pool of runtimes, which is mandatory rather than an optimisation:
-a re-entrant render on one runtime returns empty markup with no error. A
-supervised Node sidecar is not on the table and that question is closed.
-
-To a Go developer: a real frontend framework for a Go monolith. To a Svelte
-developer: the app is still SvelteKit.
-
-One binary. One build gesture. Node is a build-time dependency only.
-
-We never reimplement kit, never write or maintain a JavaScript engine — the one
-SSR runs on is embedded, not ours — and never claim anything that hasn't been
-demonstrated running.
-
-## Development architecture exception
-
-The production statements above remain the production contract. The user selected
-native Vite/SvelteKit SSR for `skgo dev` on 2026-10-15; development need not run
-the renderer in goja. Vite/Kit owns development rendering, data/action orchestration,
-its live module graph and normal HMR. Generated development callbacks delegate
-application loads, remotes, actions, endpoints and hooks to Go. Node transport
-for those callbacks is permitted; application logic and data access stay in Go.
-
-The Go coordinator is the public network listener. Vite and the Go application
-use instance-private Unix sockets. See `ephemeral/projects/dev-server/GOAL.md`
-and `DESIGN.md` for the selected direction, executed proof and remaining bridge
-qualification. No custom waiting-page/reload policy or change to Vite behavior
-is authorized. Production remains one cgo-free Go binary with pooled goja SSR;
-dev and production must be qualified separately. Architecture validation does
-not authorize product implementation.
-
-## Read this first
-
-**Invoke the `agent-protocol` skill at the start of every session and after any
-context compaction.** It is mandatory, not advisory: worktrees, worklogs,
-`ephemeral/`, checkpoint commits, squash-merge PRs, and root-checkout
-synchronization all come from there. Do not improvise a substitute.
+- Invoke the `agent-protocol` skill at session start and after compaction.
+- Never write to `docs/` without permission.
+- `vp` owns the frontend toolchain (`vp install`, `vp run`, `vp exec`,
+  `vp dlx`). Never call pnpm or npm directly.
+- After a merge that publishes a release, run `brew update` and
+  `brew reinstall --cask tylergannon/skgo/skgo`, then check `skgo` reports it.
+- Start a watcher on every dispatched run's pid so you wake when it exits.
+- Fix problems real code or users hit, not hypotheticals.
+- Guide pages: `ephemeral/guide-pages/SKILL.md`.
 
 ## Rules
 
-**After a merge to `main`, install the published release through Homebrew.**
-Wait for the automated release workflow to succeed and the Homebrew cask to
-reference that release, then run `brew update` and
-`brew reinstall --cask tylergannon/skgo/skgo` (use `brew install --cask` with
-the same cask if it is not installed yet). Verify that `skgo` on PATH resolves
-to the Homebrew installation and reports the published version. Do not replace
-it with a local build, `go install`, or `skgo update`. If the merge produces no
-release, no reinstall is needed; if publication fails, report the blocker.
+- Kit is the spec. Read `example/web/node_modules/@sveltejs/kit` before any
+  design question; a mirrored feature obeys kit's constraints. Kit 3 breaks
+  model priors: read `ephemeral/sveltekit-current/SKILL.md` first.
+- Write Go and test with `go test`. JavaScript only where kit requires it.
+- Build the product, not ledgers, proof directories or status documents.
+- Delegate missions, not methods: the capability, kit as spec, the proof
+  that will be accepted, constraints, and what the agent owns.
 
-**VitePlus (`vp`) owns the frontend tool environment.** SKGO declares the
-supported pins; `vp` resolves and runs the corresponding package manager. Use
-`vp install`, `vp build`, `vp run`, `vp exec` and `vp dlx` from the project
-containing those declarations. Do not invoke ambient `pnpm`, install or select
-its version manually, use mise to select pnpm, or tell developers to reconcile
-pnpm versions. A conflicting recipe, test prerequisite or older instruction is
-a defect to correct, not permission to bypass `vp`. Internal SKGO code may use
-the executable that `vp` resolved; that is not a developer-facing alternative.
+## Testing
 
-
-**This is a Go library.** Write Go. Test with `go test`. Build tooling as Go
-commands. JavaScript exists here only where SvelteKit itself requires it — the
-adapter package and generated stubs — never as the implementation language for
-anything skgo owns. No `.mjs` harnesses, no shell test runners.
-
-**Test SKGO's behavior, never a dependency's behavior.** Do not carry tests of
-Svelte, SvelteKit, goja, TypeScript, devalue or other third-party functionality.
-Test the decisions, generated declarations, protocol bytes and callbacks SKGO
-owns directly. A full Vite build or compiler invocation needs a SKGO-owned
-claim that cannot be checked at that boundary; do not rebuild an application to
-exercise a small validation branch. Reuse immutable setup, call Go functions
-in-process, and reserve subprocesses for claims about actual process boundaries.
-Do not preserve a one-off bug reproducer merely because the bug once occurred.
-Keep tests for supported capabilities and remove redundant or negligible-value
-cases instead of maintaining a permanent catalogue of past mistakes.
-
-**Build the software.** Not ledgers, sprint files, chapter docs, acceptance-gate
-runners, adjudication records, proof directories, or evidence manifests. When
-asked to build something, build that thing. Verification is ordinary Go tests
-and running the real program.
-
-**This is mirroring, not design.** Kit is the specification. Before any design
-question, recommendation, or option list about a feature skgo mirrors, map kit's
-own implementation from pinned source — its API shape, its constraints, what it
-forbids and why. Kit has usually already answered the question, and more
-specifically than the answer being invented. A mirrored feature must obey kit's
-rules, not merely resemble its ergonomics — the browser runs kit's own client, so
-a constraint kit enforces on the server usually exists to protect a client-side
-invariant (an argument-keyed query cache, say), and dropping it breaks the client
-rather than skgo. If kit answers it, it was never a decision, only unmapped
-research.
-
-**Delegate missions, not methods.** A subagent gets: the capability a developer
-should have when it is done, kit as the spec and where the pinned source is, the
-proof that will be accepted, the non-negotiable constraints, and what it owns so
-parallel work does not collide. It does its own mapping and chooses its own
-path — that research is the work, and it must not arrive secondhand. Detailed
-instructions cap an agent's quality at the dispatcher's understanding and
-transmit the dispatcher's unverified assumptions as fact. Sprint documents obey
-the same rule: mission, acceptance, ownership. No file lists, no prescribed
-designs, no step-by-step.
-
-**Contracts are Go tests at the real handler; the Gherkin suite is for what only
-kit's client can prove.** skgo's claim is that the bytes Go sends are the bytes
-kit's own server would send, and the browser runs kit's own client over them.
-So a status, a header, a cookie, a body, a redirect or a rendered document is a
-Go test against the handler the binary serves, with literal fixtures, in
-milliseconds. A scenario belongs in `example/e2e` only when some part of its
-claim needs kit's client to have acted — hydration, an enhanced submit, a
-client navigation, `invalidate`, a streamed value landing in the page, a
-transported class rebuilt with its methods, calls coalesced into one batch — or
-when it is a browser with scripting off posting a real form and getting a usable
-page back. A scenario whose whole claim is HTTP is a Go test and nothing else.
-Define what winning looks like as those tests and scenarios; let the builder
-choose how. Validate by dispatching an agent that checks they are load-bearing —
-would each one actually fail if the feature were broken or removed — and then
-runs them. Do not audit diffs or re-derive claims from source as a substitute.
-
-**A passing command is not evidence on its own.** Whether skgo works is three
-things, and each catches what the other two cannot: `just test` green in
-seconds, which is the routine Go contracts; `just e2e prod` green on `main`
-(the replacement development server has focused checks, but a complete
-development browser-suite pass is not established), which is kit's client using
-Go's bytes; and a person who opened
-the box. An exit code of zero is exactly what a silently skipped test prints, so
-skips are failures: a check that cannot run because its toolchain is missing has
-not passed, and must not be able to report that it did. An expensive command
-runs the minimum number of times its assertions require, and its captured output
-is asserted against many times. Delete negligible assertions and repeated setup
-before moving tests out of the routine suite. Do not test third-party behavior.
-
-`just test` uses Go's normal test-result cache. Real compiler/process witnesses
-and tests consuming the built example use `skgo_qualification`; CI runs their
-explicit selections uncached on relevant branch changes and before release.
-The selected Vite/Go session checks use `skgo_dev_integration`. Build the example
-once for handler and production browser qualification. Trusted Linux work runs
-on Bob with persistent compiler caches; retain actual Mac/Swift and ARM proofs.
-Ordinary CI runs once per development revision, not again on main or release
-tags. Run focused tests while editing; do not repeat whole suites merely because
-a checkpoint was committed.
-
-**Never derive what you expect from the thing you are testing.** The one leak
-this project has shipped got past an assertion that was already exact — the live
-count had to equal *the count noted a moment earlier, plus one* — because the
-baseline was read off the same broken counter. Every wrong value satisfied it.
-Anchor an expectation in something independent: a fixture the test supplied, the
-rows actually visible on the page, a number written into the scenario. The same
-trap in another shape is a `Then` whose only content is "X is absent", which a
-page that rendered nothing at all satisfies perfectly.
-
-Assert at the granularity the behaviour deserves, and tighten one when it lets a
-real bug through. A suite tightened *a priori* is brittle, and brittle scenarios
-get deleted rather than fixed.
-
-Then **open the box.** A green suite does not say what a visitor sees. When
-behaviour changed substantially, before a release someone cares about, or when a
-browser failure on `main` needs a human-shaped explanation, use the example app
-the way a person does and look at it — or have something other than the agent
-that changed it read the pictures. A green suite beside a page showing an error
-boundary, an empty list, a stack trace or a blank screen means the suite is
-wrong, and that is the single most valuable thing an agent can find. A passing
-scenario leaves no screenshot; Playwright's trace and screenshot of a failing
-one are diagnostics. Never hand a human a picture you have not looked at.
-
-**Wake yourself.** Every dispatched run gets a watcher started in the same
-breath — a backgrounded `until ! kill -0 <pid>; do sleep 20; done` on its
-process — so the session is re-entered the moment the run exits. A tractor run
-does not announce itself. Without a watcher the work finishes and sits there,
-and the human ends up asking whether anything is happening, which is the one
-question a lead should never make someone ask.
-
-**Read Kit from the installed pin.** Each worktree's
-`example/web/node_modules/@sveltejs/kit` contains the authoritative package
-source installed by its frozen lockfile. Follow
-`ephemeral/sveltekit-current/SKILL.md` and verify the package version before
-mapping Kit behavior. The older ignored inspiration directory may be absent in
-new execution environments; do not infer Kit behavior from a missing source.
-
-**There is no command that means "done."** The `Justfile` holds recipes that do
-things — build, test, serve, run the suite — and not one of them returns a
-verdict. Do not write one. A single script that exits 0 is the thing every
-agent starts building toward, and it cannot see the app: that is how a project
-reaches ten thousand lines with nothing working. `just test` passing is a fact
-about the tests, not about the software.
-
-**Don't narrate.** No status documents, no progress reports, no summaries of
-work already visible in the diff. The worklog exists for actionable
-intelligence — corrections, traps, things that will change a future decision —
-and nothing else.
-
-## Documentation
-
-Guide pages are markdown files committed beside the code they describe: core
-pages in the module root, CLI and AI pages in `cmd/skgo/`, a page about
-another package in that package's directory. Location carries no meaning; the
-frontmatter does. Keys: `title`, `description` (one sentence, under twenty
-words) and `division` (`skgo`, `cli` or `ai`) are required; `section`,
-`subsection`, `slug` (when it differs from the file name) and `order` place the
-page in the site's navigation. Reference documentation is godoc.
-
-A page never contains Go, Svelte or TypeScript text. A `go`, `svelte` or `ts`
-fence has an empty body and an info string naming its source: a Go Example
-function as go/doc names it (`ExampleLoad_parent`, `generate.ExamplePrepare`),
-or a whole file by its path from the repository root
-(`example/web/src/routes/invoices/+page.svelte`). Examples live in `_test.go`
-files in the external test package, so `go test` compiles them and checks any
-`// Output:`. A `text` fence whose info string is an `skgo` command line (`skgo
-new -h`) also has an empty body: the site runs that command with the release's
-binary in an empty directory and inserts what it prints, so a page never pastes
-command output. The project site (tylergannon/skgo-project) extracts pages,
-samples and godoc from the tagged release when it builds; nothing derived is
-committed here.
-
-## Layout
-
-- `ephemeral/` — tracked working material: worklogs, plans, downloaded
-  artifacts. Never write to `docs/` without express permission.
-- `example/web/node_modules/@sveltejs/kit/` — authoritative Kit source at the
-  example's installed pin. Resolve Kit's transitive package sources from its
-  real package directory under pnpm.
-- `/Users/tyler/src/skgo/ephemeral/inspiration/` — optional historical source
-  references and the earlier junkyard attempt, when present. These are
-  gitignored and read-only, and do not replace the current installed Kit pin.
-
-## SvelteKit facts
-
-Kit 3 breaks most model priors: `svelte.config.js` is gone, `transport` is a
-universal hook, `$lib` became `#lib`, the app's origin is fixed at build time,
-and TypeScript 7 cannot build it. Read the tracked
-`ephemeral/sveltekit-current/SKILL.md` before writing SvelteKit code, and check
-the pinned kit source it names over any documentation site.
+- Contracts are Go tests at the real handler with literal fixtures. A scenario
+  in `example/e2e` exists only when kit's client must act (hydration, enhanced
+  submit, client navigation, invalidation, streaming, transport, batching) or
+  scripting is off.
+- `just test` takes seconds. Run an expensive command once and assert many
+  times on its output. Test skgo's behaviour, never a dependency's.
+- Never derive an expectation from the thing under test. Anchor it in a
+  fixture or a literal.
+- Skips are failures, and no recipe means "done". `just test` green, `just e2e`
+  green on main, and someone who looked at the running app.
+- `skgo_qualification` tags compiler/process and built-example tests;
+  `skgo_dev_integration` tags Vite/Go session checks.
