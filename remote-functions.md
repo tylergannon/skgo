@@ -35,6 +35,8 @@ Everything Kit says about calling a query holds: `await` it inside a `<svelte:bo
 
 A query may read cookies through `skgo.EventFrom(ctx)` but not write them; a write is refused, and `skgo advice SKGO001` catches it statically. `event.URL()` panics in a query, as `event.url` throws in Kit, because a query is not tied to a page: anything about the page belongs in the argument. See [Using getRequestEvent](#Using-getRequestEvent).
 
+Calling a query's Go function from your own Go code is an ordinary function call, not a Kit query call. It runs with the caller's event, so a command that calls it lets it write cookies; it is not deduplicated within the request; and its value does not reach the page. To send a query's new value to the page, use [`skgo.Refresh`](#Single-flight-mutations-Server-driven).
+
 A query that fails returns an error. `skgo.Errorf(status, format, ...)` is an expected error with a status; any other error is a 500 whose message the `handleError` hook decides, as in [Errors](/docs/skgo/load#Errors).
 
 ## query.batch

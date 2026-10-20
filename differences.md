@@ -50,7 +50,7 @@ See [Errors](/docs/skgo/errors).
 
 - **API.** `Event.Cookie`, `SetCookie` and `DeleteCookie` replace `cookies.get`, `set` and `delete`. There is no `getAll`, `serialize` or `parse`, and `CookieOptions` has no `partitioned` or `priority`.
 - **Defaults.** Path `/`, `HttpOnly` and `SameSite=Lax` as in Kit, but `Secure` is decided from the application's configured origin rather than the request URL: on unless the origin is `http://localhost`.
-- **Writes.** A query cannot write a cookie, as in Kit, but a query called directly from a command's Go code still can ([#271](https://github.com/tylergannon/skgo/issues/271)). A `server.go` handler uses `http.SetCookie`.
+- **Writes.** A query cannot write a cookie, as in Kit, but a query's Go function that a command calls directly runs with the command's event and can; see [Remote functions](#Remote-functions). A `server.go` handler uses `http.SetCookie`.
 
 See [Cookies](/docs/skgo/cookies).
 
@@ -68,6 +68,7 @@ See [Cookies](/docs/skgo/cookies).
 - **Kinds.** `query`, `query.batch`, `query.live`, `command`, `form` and `prerender` are all supported. `prerender`'s `dynamic` and `validate` options are reported as unsupported by the generator; only `inputs` works.
 - **Types.** An argument or result cannot be a pointer, a map or an interface, and a function cannot be variadic. Use value types, named structs and `polytype.Nullable`. See [Types and transport](/docs/skgo/transport).
 - **Route parameters.** Raw `Param` and `Params` panic in every remote function; use the typed getters on the generated event.
+- **Calling a query from Go** is an ordinary function call. When a Kit command calls a query, Kit refuses its cookie writes, runs it once per argument per request and sends its value to the page; calling the Go function does none of these. Use `skgo.Refresh` to send a query's value to the page. See [Remote functions](/docs/skgo/remote-functions#query).
 
 ## Environment
 
