@@ -612,12 +612,7 @@ export async function requestHandle(event, resolve) {
       },
       body: response.body,
     });
-    const result = await incomingResponse(upstream, event.request.method, end);
-    // A declared length lets the public proxy finish after N bytes, before
-    // this stream's final read has awaited Go request cleanup. Let Kit frame
-    // body responses at their actual completion; HEAD keeps its metadata.
-    if (result.body) result.headers.delete("content-length");
-    return result;
+    return await incomingResponse(upstream, event.request.method, end);
   } catch (e) {
     await end();
     throw e;

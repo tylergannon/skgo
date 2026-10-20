@@ -626,3 +626,53 @@ func TestNativeTracingAnnotationBudget(t *testing.T) {
 		t.Fatal("draining annotations retained pending operations")
 	}
 }
+
+// A traced development callback keeps the length the untraced one would have,
+// and still delivers an annotation made after the body was written.
+func TestNativeTracingKeepsResponseLength(t *testing.T) {
+	large := strings.Repeat("literal-explicit-415\n", 200)
+	for _, tc := range []struct {
+		name            string
+		write           func(http.ResponseWriter)
+		length, private string
+	}{
+		{"measured", func(w http.ResponseWriter) { io.WriteString(w, "literal-measured-415") }, "20", ""},
+		{"explicit", func(w http.ResponseWriter) {
+			w.Header().Set("Content-Length", strconv.Itoa(len(large)))
+			io.WriteString(w, large)
+		}, "", "4200"},
+		{"flushed", func(w http.ResponseWriter) {
+			io.WriteString(w, "literal-")
+			w.(http.Flusher).Flush()
+			io.WriteString(w, "flushed")
+		}, "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				sink := &nativeTraceSink{}
+				writer := &nativeTraceWriter{ResponseWriter: w, sinks: []*nativeTraceSink{sink}}
+				defer writer.finish()
+				tc.write(writer)
+				sink.append(nativeTraceOp{ID: "span-415", Method: "end"})
+			}))
+			defer server.Close()
+			res, err := http.Get(server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, err := io.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil || len(body) == 0 {
+				t.Fatal(len(body), err)
+			}
+			if res.Header.Get("Content-Length") != tc.length || res.Header.Get("X-Skgo-Content-Length") != tc.private {
+				t.Errorf("Content-Length=%q X-Skgo-Content-Length=%q, want %q %q", res.Header.Get("Content-Length"), res.Header.Get("X-Skgo-Content-Length"), tc.length, tc.private)
+			}
+			encoded := res.Header.Get("X-Skgo-Tracing") + res.Trailer.Get("X-Skgo-Tracing-After")
+			raw, _ := base64.StdEncoding.DecodeString(encoded)
+			if !strings.Contains(string(raw), `"id":"span-415","method":"end"`) {
+				t.Errorf("late annotation lost: header=%q trailer=%q", res.Header.Get("X-Skgo-Tracing"), res.Trailer.Get("X-Skgo-Tracing-After"))
+			}
+		})
+	}
+}

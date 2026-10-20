@@ -80,10 +80,10 @@ const respond=()=>requestHandle(event,async()=>new Response(%s,{status:%d,header
 if (%t) {
  const server=createServer(async(_req,res)=>setResponse(res,await respond()));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
- const text=await new Promise((resolve,reject)=>get('http://127.0.0.1:'+server.address().port,res=>{
-  let body='';res.on('data',chunk=>body+=chunk);res.on('end',()=>resolve(body));res.on('error',reject);
+ const [text,length]=await new Promise((resolve,reject)=>get('http://127.0.0.1:'+server.address().port,res=>{
+  let body='';res.on('data',chunk=>body+=chunk);res.on('end',()=>resolve([body,res.headers['content-length']]));res.on('error',reject);
  }).on('error',reject));
- assert.equal(text,'X');
+ assert.equal(text,'X');assert.equal(length,'1');
 } else {
  const response=await respond();assert.equal(response.status,%d);
  if(event.request.method==='HEAD')assert.equal(response.headers.get('content-length'),'1');

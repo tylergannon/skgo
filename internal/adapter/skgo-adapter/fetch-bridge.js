@@ -20,6 +20,7 @@ const bridgeHeaders = new Set([
   "x-skgo-tracing",
   "x-skgo-tracing-after",
   "x-skgo-native-error",
+  "x-skgo-content-length",
 ]);
 function incomingHeaders(upstream) {
   const headers = new Headers();
@@ -37,6 +38,9 @@ function incomingHeaders(upstream) {
     )
       headers.append(upstream.rawHeaders[i], upstream.rawHeaders[i + 1]);
   }
+  // A traced Go callback sends its trailer in place of an explicit length.
+  const length = upstream.headers["x-skgo-content-length"];
+  if (length !== undefined) headers.set("content-length", length);
   return headers;
 }
 export async function incomingResponse(upstream, method, finish = async () => {}) {
@@ -47,15 +51,28 @@ export async function incomingResponse(upstream, method, finish = async () => {}
     return new Response(null, { status: upstream.statusCode, headers });
   }
   const iterator = upstream[Symbol.asyncIterator]();
+  // A declared length lets a reader finish after N bytes, before the final
+  // read has awaited cleanup. Hold each chunk until the next one (or the
+  // finished cleanup) so the last byte follows it; unsized bodies stream.
+  const sized = headers.has("content-length");
+  let held;
   const body = new ReadableStream(
     {
       async pull(controller) {
         try {
-          const next = await iterator.next();
-          if (next.done) {
-            await finish();
-            controller.close();
-          } else controller.enqueue(next.value);
+          for (;;) {
+            const next = await iterator.next();
+            if (next.done) {
+              await finish();
+              if (held) controller.enqueue(held);
+              controller.close();
+              return;
+            }
+            if (!sized) return controller.enqueue(next.value);
+            const ready = held;
+            held = next.value;
+            if (ready) return controller.enqueue(ready);
+          }
         } catch (error) {
           await finish();
           controller.error(error);
