@@ -78,10 +78,7 @@ func Build(root string, out io.Writer, run Runner) error {
 	if _, err := run(root, nil, "go", "generate", "./..."); err != nil {
 		return err
 	}
-	if _, err := run(web, nil, filepath.Join(web, "node_modules/.bin/vp"), "fmt"); err != nil {
-		return err
-	}
-	// Capture after generators/formatting, before compilation. An edit during
+	// Capture after generators, before compilation. An edit during
 	// compilation must not mark the old result current for the edited source.
 	compiledInputs, err := fingerprint(root, run)
 	if err != nil {

@@ -42,7 +42,7 @@ Set the public origin once, in the `ORIGIN` variable, and both halves of the bui
 
 ## Incremental builds
 
-[`skgo build`](/docs/cli/build) runs the frontend half only when something changed. It fingerprints the Go module and the source tree, installs frontend dependencies when `web/package.json` or the lockfile changed, runs `go generate ./...`, `vp fmt` and `vp build`, and records the result under `.skgo/`. An unchanged tree prints `Frontend is current` and stops. It never compiles the Go binary; `go build` follows it.
+[`skgo build`](/docs/cli/build) runs the frontend half only when something changed. It fingerprints the Go module and the source tree, installs frontend dependencies when `web/package.json` or the lockfile changed, runs `go generate ./...` and `vp build`, and records the result under `.skgo/`. It never formats files you wrote; `skgo check` reports formatting differences. An unchanged tree prints `Frontend is current` and stops. It never compiles the Go binary; `go build` follows it.
 
 ```sh
 go tool skgo build
