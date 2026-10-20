@@ -26,7 +26,7 @@ macOS ARM64 and Linux AMD64, builds the Go host without cgo, and requires Node
 while running. Other platforms and Go versions are rejected at startup.
 Compatible Go edits update the running host; changes classified as requiring a
 full rebuild replace it and may reset in-memory Go state. A compatible edit the
-native loader fails to install also replaces the host: the terminal prints the
+native loader rejects with an error also replaces the host: the terminal prints the
 loader's error, the previous host keeps serving until the replacement starts,
 and later edits continue to apply. Browser draft preservation and full
 browser-suite coverage of this development topology are not established. Direct SSR subfetch response

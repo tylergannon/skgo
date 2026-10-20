@@ -129,8 +129,8 @@ Development currently requires exactly Go 1.27.2 on macOS ARM64 or Linux AMD64,
 Node `^22.18.0 || ^24.11.0 || >=26.0.0` and the project's VitePlus 1.3.0 environment. The Go host builds
 without cgo. Compatible Go edits update the host; changes classified as requiring
 a full rebuild replace it and may reset Go state. A compatible edit the native
-loader fails to install, by error or by no acknowledgement within ten seconds,
-takes the same replacement path: `skgo dev` prints `rebuilding revision N after
+loader rejects with an error, such as a relocation failure, takes the same
+replacement path: `skgo dev` prints `rebuilding revision N after
 install admission` with the loader's error, keeps the previous application
 serving until the replacement starts, and continues with later edits.
 Do not promise browser draft preservation or complete development
@@ -157,8 +157,8 @@ section for the current evidence boundary.
   service, and `skgo.Entries` in `page.server.go` or `server.go` lists dynamic
   entries from Go. Generation refuses a prerendered page that has Go form
   actions. Kit throws when an ordinary `query`, `query.batch` or `query.live`
-  is called while prerendering; a prerendered page reads remote data through
-  `skgo.Prerender`, whose `Inputs` lists extra arguments and whose `Dynamic`
+  is called during the prerender render; data the prerendered document needs
+  comes from Go loads or `skgo.Prerender`, whose `Inputs` lists extra arguments and whose `Dynamic`
   and `Validate` options generation refuses.
 - Classic page actions are Go declarations in `page.server.go`; use the
   example app's actions routes as the reference. Remote function signatures

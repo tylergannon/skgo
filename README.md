@@ -169,9 +169,8 @@ initialized. Add `--strict-port` to require that exact port.
 Compatible Go edits install into the running host and refresh Kit queries and
 loads. Changes classified as requiring a full rebuild, including declaration,
 initialization and import changes, replace the Go application; arbitrary
-in-memory Go state need not survive. A compatible edit the native loader fails
-to install, by reporting an error or by not acknowledging within ten seconds,
-takes the same replacement path: `skgo dev` prints `rebuilding revision N after
+in-memory Go state need not survive. A compatible edit the native loader rejects
+with an error, such as a relocation failure, takes the same replacement path: `skgo dev` prints `rebuilding revision N after
 install admission` with the loader's error, the previous application keeps
 answering until the replacement starts, and later edits, including native
 installs, continue in the same session. The
@@ -274,7 +273,7 @@ for the new development server.
 | [Remote forms, validation and file uploads](https://svelte.dev/docs/kit/remote-functions#form) | Available | Typed fields, issues, dirty state and upload bytes are [browser exercised](example/e2e/features/form.feature). |
 | [Remote forms without JavaScript](https://svelte.dev/docs/kit/remote-functions#form) | Available | Native POST returns a rendered page and survives hydration; [browser scenarios](example/e2e/features/form-noscript.feature). |
 | [Classic page form actions](https://svelte.dev/docs/kit/form-actions) | Available | Go default/named actions, `use:enhance` and script-free posts have [browser scenarios](example/e2e/features/actions.feature) and [handler contracts](example/action_protocol_test.go). |
-| [Remote prerender functions](https://svelte.dev/docs/kit/remote-functions#prerender) | Limited | `skgo.Prerender` functions run in Go during Kit's build, for the calls prerendered pages make and the arguments `Inputs` lists; the binary serves the results as files. `Dynamic` and `Validate` are refused by `skgo generate`, so a prerender function never runs at request time. [Static answer contract](example/server_test.go) and [browser reuse](example/e2e/features/engine-build.feature). |
+| [Remote prerender functions](https://svelte.dev/docs/kit/remote-functions#prerender) | Limited | `skgo.Prerender` functions run in Go during Kit's build, for the calls prerendered pages make and the arguments `Inputs` lists; the binary serves the results as files. `Dynamic` and `Validate` are refused by `skgo generate`, so the production binary never runs a prerender function at request time; under `skgo dev`, as in Kit's development server, Go answers each call. [Static answer contract](example/server_test.go) and [browser reuse](example/e2e/features/engine-build.feature). |
 | [TypeScript server implementations](https://svelte.dev/docs/kit/routing) | Not supported | Remote bodies, server loads, actions and endpoints must be Go; generated stubs throw in production and delegate to Go in development. |
 
 ### Build and developer tooling

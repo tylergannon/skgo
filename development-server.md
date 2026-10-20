@@ -31,7 +31,7 @@ What happens after an edit depends on the file:
 - **Svelte, TypeScript and CSS** go through Vite HMR, as in any Kit project.
 - **A compatible Go edit** is installed into the running application without a restart. The body of a top-level function in any package of your module hot-installs, as long as the function is not a method, not generic, not `init` and does not start a goroutine with `go`. Generated files are skipped. Kit's client then refreshes its queries and loads, so the page shows the new result.
 - **A structural Go change** makes `skgo dev` build and start a new development host, then switch traffic to it. In-memory Go state does not survive the switch.
-- **A compatible edit the native loader fails to install**, because it reports an error such as a relocation failure or does not acknowledge the install within ten seconds, takes the structural path. The running application keeps answering with the previous code until the new host takes over, and later edits, including hot installs, apply to the new host.
+- **A compatible edit the native loader rejects** with an error, such as a relocation failure, takes the structural path. The running application keeps answering with the previous code until the new host takes over, and later edits, including hot installs, apply to the new host.
 
 `skgo dev` reports why an edit needed a complete build. The reasons are a changed declaration, initialization, import or build selection; a `go` statement in the edited function; a generic function; a call from a function the hot loader could not instrument; and a failed native installation, which the terminal shows as `rebuilding revision N after install admission` followed by the loader's error.
 
@@ -43,7 +43,7 @@ A Go build error appears in the browser through Vite's error overlay, with the f
 
 ## Requirements
 
-`skgo dev` builds with the exact Go release the application pins, on `darwin/arm64` or `linux/amd64`, with `CGO_ENABLED=0` and no `GOEXPERIMENT`, and needs the Node release the [prerequisites](/docs/skgo/creating-a-project#Prerequisites) give. It reports the failing check at startup. Production builds have none of these limits.
+`skgo dev` builds with the exact Go release the application pins, on `darwin/arm64` or `linux/amd64`, with `CGO_ENABLED=0` and no `GOEXPERIMENT`, and reports a failing check at startup. It also needs a Node release in the range the [prerequisites](/docs/skgo/creating-a-project#Prerequisites) give, which it does not check itself. Production builds have none of these limits.
 
 ## The development handler
 
