@@ -53,6 +53,7 @@ jobs:
       contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
+      publication: ${{ steps.publication.outputs.id }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -88,6 +89,7 @@ jobs:
       # Publication retains the existing platform/package gates. GITHUB_TOKEN can create this
       # tag because builds are jobs in this workflow, not a tag-push workflow.
       - name: Reserve the exact source tag
+        id: publication
         if: steps.version.outputs.version != ''
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -97,6 +99,7 @@ jobs:
           test -n "$STATUS_WRITE_TOKEN"
           jq -n --arg id "release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --arg attempt "$ATTEMPT" --arg sha '${{ inputs.candidate }}' --arg tag "$VERSION" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:"requested",run:$run}' > "$RUNNER_TEMP/publication.json"
           curl --fail --silent --show-error -H "Authorization: Bearer $STATUS_WRITE_TOKEN" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/publication.json" https://skgo-site.fly.dev/api/core-publications
+          echo "id=release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
           test "$(git rev-parse HEAD)" = "${{ inputs.candidate }}"
           if git rev-parse "$VERSION^{commit}" >/dev/null 2>&1; then
             test "$(git rev-parse "$VERSION^{commit}")" = "${{ inputs.candidate }}"
@@ -342,6 +345,8 @@ jobs:
 
   publish:
     name: Publish GitHub Release and Homebrew cask
+    outputs:
+      publication: ${{ steps.publication.outputs.id }}
     needs: [version, qualification, linux-cli, macos-cli, adapter-npm, sv-package, sv-npm]
     if: ${{ !cancelled() && needs.version.outputs.version != '' && needs.qualification.result == 'success' && needs.linux-cli.result == 'success' && needs.macos-cli.result == 'success' && needs.adapter-npm.result == 'success' && (needs.sv-npm.result == 'success' || needs.sv-npm.result == 'skipped') && needs.sv-package.result == 'success' }}
     runs-on: [self-hosted, Linux, X64, skgo-release]
@@ -364,6 +369,18 @@ jobs:
           pattern: cli-*
           path: dist
           merge-multiple: true
+      - name: Register this distribution attempt
+        id: publication
+        env:
+          STATUS_WRITE_TOKEN: ${{ secrets.STATUS_WRITE_TOKEN }}
+          VERSION: ${{ needs.version.outputs.version }}
+          ATTEMPT: ${{ inputs.qualification_attempt }}
+          CANDIDATE: ${{ inputs.candidate }}
+        run: |
+          id="release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          jq -n --arg id "$id" --arg attempt "$ATTEMPT" --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:"requested",run:$run}' > "$RUNNER_TEMP/publication.json"
+          curl --fail --silent --show-error -H "Authorization: Bearer $STATUS_WRITE_TOKEN" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/publication.json" https://skgo-site.fly.dev/api/core-publications
+          echo "id=$id" >> "$GITHUB_OUTPUT"
       - name: Verify all archives and calculate final checksums
         env:
           VERSION: ${{ needs.version.outputs.version }}
@@ -403,7 +420,7 @@ jobs:
   receipt:
     name: Record core publication outcome
     needs: [version, publish]
-    if: always() && needs.version.outputs.version != ''
+    if: always() && (needs.publish.outputs.publication != '' || needs.version.outputs.publication != '')
     runs-on: ubuntu-latest
     environment: release
     steps:
@@ -414,10 +431,11 @@ jobs:
           ATTEMPT: ${{ inputs.qualification_attempt }}
           VERSION: ${{ needs.version.outputs.version }}
           RESULT: ${{ needs.publish.result }}
+          PUBLICATION: ${{ needs.publish.outputs.publication || needs.version.outputs.publication }}
         run: |
           state=failed
           if test "$RESULT" = success; then state=published; fi
-          jq -n --arg id "release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --arg attempt "$ATTEMPT" --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg state "$state" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:$state,run:$run}' > publication.json
+          jq -n --arg id "$PUBLICATION" --arg attempt "$ATTEMPT" --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg state "$state" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:$state,run:$run}' > publication.json
           curl --fail --silent --show-error -H "Authorization: Bearer $STATUS_WRITE_TOKEN" -H 'Content-Type: application/json' --data-binary @publication.json https://skgo-site.fly.dev/api/core-publications
       - name: Request actual published-channel confirmation
         if: needs.publish.result == 'success'
@@ -425,6 +443,7 @@ jobs:
           GH_TOKEN: ${{ secrets.SKGO_PROJECT_DISPATCH_TOKEN }}
           CANDIDATE: ${{ inputs.candidate }}
           VERSION: ${{ needs.version.outputs.version }}
+          PUBLICATION: ${{ needs.publish.outputs.publication || needs.version.outputs.publication }}
         run: |
-          jq -n --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg publication "release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" '{event_type:"skgo-core-published",client_payload:{sha:$sha,tag:$tag,publication:$publication}}' > installation-request.json
+          jq -n --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg publication "$PUBLICATION" '{event_type:"skgo-core-published",client_payload:{sha:$sha,tag:$tag,publication:$publication}}' > installation-request.json
           gh api repos/tylergannon/skgo-project/dispatches --input installation-request.json
