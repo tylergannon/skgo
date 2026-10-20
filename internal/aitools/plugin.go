@@ -75,8 +75,10 @@ func (p plugin) Apply(ctx context.Context, req templateapi.Request) (result temp
 			return result, err
 		}
 	}
-	if len(existing) > 0 {
-		return result, fmt.Errorf("%s already exists; ai-tools does not overwrite agent configuration, so move it aside or add what it needs by hand", strings.Join(existing, ", "))
+	if len(existing) == 1 {
+		return result, fmt.Errorf("%s already exists; ai-tools does not overwrite agent configuration, so move it aside or add what it needs by hand", existing[0])
+	} else if len(existing) > 1 {
+		return result, fmt.Errorf("%s already exist; ai-tools does not overwrite agent configuration, so move them aside or add what they need by hand", strings.Join(existing, ", "))
 	}
 	for _, f := range files {
 		if err := ctx.Err(); err != nil {
