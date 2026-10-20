@@ -76,7 +76,7 @@ func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAn
 	if filter == nil {
 		filter = s.filterSerializedResponseHeaders
 	}
-	fetcher := &requestFetcher{handler: s.fetch, hook: s.handleFetch, base: s.base, prerendered: s.prerendered}
+	fetcher := &requestFetcher{handler: s.fetch, hook: s.handleFetch, base: s.base, prerendered: s.prerendered, assets: s.assets}
 	// A render belongs to the enclosing Go request's installed revision.
 	// Reuse only its host-lifetime carry hook; serve still creates a fresh
 	// event/locals context and keeps the renderer's own fetch configuration.
@@ -109,7 +109,7 @@ func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAn
 	}
 	answer := &ssr.FetchResponse{
 		Status:     response.StatusCode,
-		StatusText: http.StatusText(response.StatusCode),
+		StatusText: statusText(response),
 		Headers:    fetchHeaders(response.Header, filter),
 	}
 	if utf8.Valid(raw) {
@@ -119,6 +119,17 @@ func (s *SSR) fetchAnswer(ctx context.Context, req ssr.FetchRequest) ssr.FetchAn
 	}
 	return ssr.FetchAnswer{Response: answer}
 
+}
+
+// statusText is a Response's statusText: the reason phrase of the status
+// line, which may be empty, as a Response kit constructs has. A response a
+// HandleFetch hook built with no status line gets the standard text.
+func statusText(response *http.Response) string {
+	if response.Status == "" {
+		return http.StatusText(response.StatusCode)
+	}
+	_, text, _ := strings.Cut(response.Status, " ")
+	return text
 }
 
 // fetchHeaders lists a response's headers the way the standard's Headers

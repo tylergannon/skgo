@@ -221,7 +221,10 @@ type requestFetcher struct {
 	base         string
 	origin       *url.URL
 	prerendered  map[string]bool
-	unavailable  func(*http.Request) error
+	// assets is the build's server assets, which the render-time fetcher reads
+	// as Kit does. Event.Fetch has none: Go code imports no Vite asset.
+	assets      *serverAssets
+	unavailable func(*http.Request) error
 }
 
 func prerenderedSet(paths []string) map[string]bool {
@@ -361,6 +364,11 @@ func (f *requestFetcher) dispatch(ctx context.Context, src fetchSource, request 
 	}
 
 	if !sameOrigin || (f.base != "" && decoded != f.base && !strings.HasPrefix(decoded, f.base+"/")) {
+		// Kit leaves this to the platform's fetch, which answers a data: URL
+		// itself rather than sending it anywhere.
+		if u.Scheme == "data" {
+			return fetchDataURL(request)
+		}
 		// Cookies go to this host and its subdomains, never to a sibling or a
 		// parent, and ports do not matter. The leading dot stops mydomain.com
 		// matching domain.com. Other cookies are not forwarded: a browser does
@@ -375,6 +383,10 @@ func (f *requestFetcher) dispatch(ctx context.Context, src fetchSource, request 
 			client = http.DefaultClient
 		}
 		return client.Do(request.WithContext(ctx))
+	}
+
+	if response, ok, err := f.assets.read(request, decoded); ok {
+		return response, err
 	}
 
 	// A prerendered path is a file, and Kit answers it with a plain request that

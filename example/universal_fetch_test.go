@@ -5,6 +5,7 @@ package example_test
 import (
 	"encoding/json"
 	"html"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -407,5 +408,43 @@ func TestCookiesAFetchSetsReachTheNextFetchAndTheDocument(t *testing.T) {
 	}
 	if strings.Join(set, ",") != "lamp=glow,other=dim" {
 		t.Errorf("the document's Set-Cookie = %v, want lamp=glow and other=dim", set)
+	}
+}
+
+// The /universal-fetch/asset page's universal load fetches two assets it
+// imports: emitted.json, which Vite writes into the build because it is over
+// the 4 KB inline limit, and inlined.json, which Vite inlines as a data: URL.
+// Kit reads the first from the build's server assets rather than requesting
+// it, and fetches the second as any fetch does, by decoding the URL. Both
+// bodies are the fixture files' bytes, stated here.
+func TestAUniversalLoadFetchesTheAssetsItImports(t *testing.T) {
+	h := newProdHandler(t)
+	body := document(t, h, "/universal-fetch/asset")
+
+	m := regexp.MustCompile(`<p data-testid="asset-emitted">(/_app/immutable/assets/emitted\.[A-Za-z0-9_-]+\.json) 200 emitted-lantern-17 4148</p>`).FindStringSubmatch(body)
+	if m == nil {
+		t.Fatalf("the document does not show the emitted asset as fetched:\n%s", body)
+	}
+	emitted := m[1]
+	if _, err := fs.Stat(prodDist(t), "client"+emitted); err != nil {
+		t.Errorf("the emitted asset's URL names no file of the build: %v", err)
+	}
+	const inlined = "data:application/json;base64,eyAibGFtcCI6ICJpbmxpbmVkLWxhbnRlcm4tNSIgfQo="
+	if want := `<p data-testid="asset-inlined">` + inlined + ` 200 inlined-lantern-5 32</p>`; !strings.Contains(body, want) {
+		t.Errorf("the document does not contain %s:\n%s", want, body)
+	}
+
+	const head = `<script type="application/json" data-sveltekit-fetched data-url=`
+	want := map[string]string{
+		// A read server asset is a bare Response: no status text, and none of
+		// a static file's caching headers, so no data-ttl either.
+		emitted: head + `"` + emitted + `">{"status":200,"statusText":"","headers":{},"body":"{\n  \"lamp\": \"emitted-lantern-17\",\n  \"padding\": \"` + strings.Repeat(".", 4096) + `\"\n}\n"}</script>`,
+		inlined: head + `"` + inlined + `">{"status":200,"statusText":"OK","headers":{},"body":"{ \"lamp\": \"inlined-lantern-5\" }\n"}</script>`,
+	}
+	tags := fetchedTags(t, body)
+	for key, wantTag := range want {
+		if got := tags[key]; len(got) != 1 || got[0] != wantTag {
+			t.Errorf("%s:\n got  %v\n want %s", key, got, wantTag)
+		}
 	}
 }

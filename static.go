@@ -129,6 +129,13 @@ type ManifestSSR struct {
 	// Relative is kit's `paths.relative`: whether the document addresses its
 	// own assets by a path relative to the page.
 	Relative bool `json:"relative"`
+	// ServerAssets is kit's `server_assets`: the build files the app's server
+	// code imports, by path below client/, with their sizes. A render's fetch
+	// of one reads the file, as kit's own `event.fetch` does.
+	ServerAssets map[string]int64 `json:"serverAssets,omitempty"`
+	// MimeTypes is kit's `mime_types`, the type kit gives a file by its
+	// extension.
+	MimeTypes map[string]string `json:"mimeTypes,omitempty"`
 	// Client is the client bundle the document boots.
 	Client ManifestClient `json:"client"`
 	// Nodes describes each node of the table `Nodes` indexes, positionally.

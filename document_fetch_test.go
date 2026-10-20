@@ -95,6 +95,40 @@ func TestFetchDispatchCarriesA404Through(t *testing.T) {
 	}
 }
 
+// TestRenderFetchDecodesADataURL is what a universal load gets when it fetches
+// an asset Vite inlined: a fetch of a data: URL answers with the URL's own
+// bytes and type, as the Fetch standard's data: URL processor reads them, and
+// nothing is asked of any handler or host. An unreadable one fails the fetch.
+func TestRenderFetchDecodesADataURL(t *testing.T) {
+	s := &SSR{fetch: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("a data: URL reached the app's handler as %s", r.URL)
+	})}
+	for _, tc := range []struct{ url, contentType, body string }{
+		{`data:application/json;base64,eyJsYW1wIjoib25lIn0=`, "application/json", `{"lamp":"one"}`},
+		{`data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'/%3E`, "image/svg+xml", `<svg xmlns='http://www.w3.org/2000/svg'/>`},
+		{`data:Text/Plain;Charset=UTF-8 ; BASE64,aGk=`, "text/plain;charset=UTF-8", "hi"},
+		{`data:,lamp%20one?query#fragment`, "text/plain;charset=US-ASCII", "lamp one?query"},
+		{`data:;base64,aG k=`, "text/plain;charset=US-ASCII", "hi"},
+		{`data:text/plain;name="a;b",x`, `text/plain;name="a;b"`, "x"},
+		{`data:not a type,x`, "text/plain;charset=US-ASCII", "x"},
+	} {
+		answer := s.fetchAnswer(renderParent(context.Background()), ssr.FetchRequest{Method: "GET", URL: tc.url})
+		if answer.Error != "" || answer.Response == nil {
+			t.Errorf("%s: the fetch failed: %q", tc.url, answer.Error)
+			continue
+		}
+		r := answer.Response
+		if r.Status != http.StatusOK || r.StatusText != "OK" || responseHeader(r, "content-type") != tc.contentType || r.Body != tc.body {
+			t.Errorf("%s: %d %q %q %q, want 200 OK %q %q", tc.url, r.Status, r.StatusText, responseHeader(r, "content-type"), r.Body, tc.contentType, tc.body)
+		}
+	}
+	for _, bad := range []string{`data:text/plain`, `data:;base64,aGkxa`, `data:;base64,a===`} {
+		if answer := s.fetchAnswer(renderParent(context.Background()), ssr.FetchRequest{Method: "GET", URL: bad}); answer.Error == "" {
+			t.Errorf("%s: answered %+v, want a failed fetch", bad, answer.Response)
+		}
+	}
+}
+
 // TestMatchDispatchFindsTheSameRouteEndpointsAnswers pins match() to the exact
 // route table a `+server.ts` request matches against — Go's own, not a second
 // router built for the engine.
