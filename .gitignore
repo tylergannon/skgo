@@ -4,7 +4,6 @@ node_modules/
 example/web/build/*
 !example/web/build/.gitkeep
 test-results/
-playwright-report/
 /ephemeral/screenshots/
 .tractor/
 

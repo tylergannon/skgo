@@ -470,10 +470,15 @@ func (s cacheSources) materializeIn(cfg Config, files map[string][]byte, root st
 		}
 		for _, imp := range parsed.Imports {
 			importPath, _ := strconv.Unquote(imp.Path.Value)
-			for _, m := range s.Modules {
-				if !strings.HasPrefix(importPath, m.Path+"/") {
-					continue
+			// As in Go, the module with the longest matching path provides the
+			// package: an app module nested under skgo's path is its own.
+			var owner *cacheModule
+			for i, m := range s.Modules {
+				if strings.HasPrefix(importPath, m.Path+"/") && (owner == nil || len(m.Path) > len(owner.Path)) {
+					owner = &s.Modules[i]
 				}
+			}
+			if m := owner; m != nil {
 				rel := strings.TrimPrefix(importPath, m.Path+"/")
 				for _, part := range strings.Split(rel, "/") {
 					if cacheToolingDirectory(part) {

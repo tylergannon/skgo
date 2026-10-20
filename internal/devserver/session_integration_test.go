@@ -40,28 +40,8 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool,
 	if mode == "relocation" {
 		routeSource = mutexSessionRoute
 	}
-	if _, err := exec.LookPath("vp"); err != nil {
-		t.Fatal(err)
-	}
-	root, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(root, "example/web/node_modules/@sveltejs/kit/package.json")); err != nil {
-		t.Fatal(err)
-	}
-	sharedTypes := filepath.Join(root, "example/web/node_modules/$app/types/index.d.ts")
-	originalTypes, err := os.ReadFile(sharedTypes)
-	if err != nil && !os.IsNotExist(err) {
-		t.Fatal(err)
-	}
-	originalMissing := os.IsNotExist(err)
-	t.Cleanup(func() {
-		after, err := os.ReadFile(sharedTypes)
-		if (originalMissing && !os.IsNotExist(err)) || (!originalMissing && (err != nil || !bytes.Equal(after, originalTypes))) {
-			t.Errorf("session fixture changed shared Kit types: %v", err)
-		}
-	})
+	root := sessionRepository(t)
+	guardSharedKitTypes(t, root)
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 	type session struct {
@@ -90,11 +70,7 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool,
 				t.Fatal(e)
 			}
 		}
-		mod, e := os.ReadFile(filepath.Join(root, "example/go.mod"))
-		if e != nil {
-			t.Fatal(e)
-		}
-		write("go.mod", strings.ReplaceAll(strings.ReplaceAll(string(mod), "module github.com/tylergannon/skgo/example", "module example.com/sessionfixture"), "=> ../", "=> "+filepath.ToSlash(root)))
+		write("go.mod", sessionGoMod(t, root, "example.com/sessionfixture"))
 		sums, e := os.ReadFile(filepath.Join(root, "example/go.sum"))
 		if e != nil {
 			t.Fatal(e)
@@ -105,24 +81,7 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool,
 			t.Fatal(e)
 		}
 		write("web/package.json", string(pkg))
-		dependencies := filepath.Join(root, "example/web/node_modules")
-		modules := filepath.Join(app, "web/node_modules")
-		if e = os.MkdirAll(modules, 0755); e != nil {
-			t.Fatal(e)
-		}
-		entries, e := os.ReadDir(dependencies)
-		if e != nil {
-			t.Fatal(e)
-		}
-		for _, entry := range entries {
-			name := entry.Name()
-			if name == "$app" || strings.HasPrefix(name, "$app.") || name == ".cache" || strings.HasPrefix(name, ".vite") {
-				continue
-			}
-			if e = os.Symlink(filepath.Join(dependencies, name), filepath.Join(modules, name)); e != nil {
-				t.Fatal(e)
-			}
-		}
+		linkSessionModules(t, root, filepath.Join(app, "web/node_modules"))
 		write("web/vite.config.ts", sessionConfig("", "_app", "https://initial.test"))
 		write("web/src/app.html", `<!doctype html><html><head>%sveltekit.head%</head><body><div>%sveltekit.body%</div></body></html>`)
 		write("web/src/routes/+page.svelte", `<script>import{PUBLIC_RECEIPT}from'$app/env/public';</script><h1>literal session frontend {PUBLIC_RECEIPT}</h1>`)
@@ -296,17 +255,7 @@ func waitForReadiness() error {
 				return ""
 			}()})
 		}()
-		t.Cleanup(func() {
-			stop()
-			select {
-			case e := <-s.done:
-				if e != nil && ctx.Err() == nil {
-					t.Errorf("session shutdown: %v\n%s", e, s.log.String())
-				}
-			case <-time.After(15 * time.Second):
-				t.Error("session did not stop")
-			}
-		})
+		t.Cleanup(func() { stopSession(t, ctx, stop, s.done, s.log) })
 
 		if occupied {
 			go func() {
@@ -676,6 +625,90 @@ func waitForReadiness() error {
 
 func sessionConfig(base, appDir, trusted string) string {
 	return fmt.Sprintf(`import {sveltekit} from '@sveltejs/kit/vite'; import {defineConfig} from 'vite-plus'; import skgo from '@skgo/sveltekit-adapter'; export default defineConfig({plugins:[sveltekit({adapter:skgo(),paths:{origin:process.env.ORIGIN,base:%q},appDir:%q,csrf:{trustedOrigins:[%q]},experimental:{remoteFunctions:true},compilerOptions:{experimental:{async:true}}})]});`, base, appDir, trusted)
+}
+
+// sessionRepository is this checkout's root, once the tools a real session
+// needs are present: vp, and the example's pinned Kit install.
+func sessionRepository(t *testing.T) string {
+	t.Helper()
+	if _, err := exec.LookPath("vp"); err != nil {
+		t.Fatal(err)
+	}
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "example/web/node_modules/@sveltejs/kit/package.json")); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// guardSharedKitTypes fails the test if a session app wrote the Kit types of
+// the checked-in example whose node_modules it links.
+func guardSharedKitTypes(t *testing.T, root string) {
+	t.Helper()
+	sharedTypes := filepath.Join(root, "example/web/node_modules/$app/types/index.d.ts")
+	originalTypes, err := os.ReadFile(sharedTypes)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	originalMissing := os.IsNotExist(err)
+	t.Cleanup(func() {
+		after, err := os.ReadFile(sharedTypes)
+		if (originalMissing && !os.IsNotExist(err)) || (!originalMissing && (err != nil || !bytes.Equal(after, originalTypes))) {
+			t.Errorf("session fixture changed shared Kit types: %v", err)
+		}
+	})
+}
+
+// sessionGoMod is the example's go.mod for an app under a temp dir: the module
+// is renamed to module, and the skgo replace points at this checkout.
+func sessionGoMod(t *testing.T, root, module string) string {
+	t.Helper()
+	mod, err := os.ReadFile(filepath.Join(root, "example/go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.ReplaceAll(strings.ReplaceAll(string(mod), "module github.com/tylergannon/skgo/example", "module "+module), "=> ../", "=> "+filepath.ToSlash(root))
+}
+
+// linkSessionModules links the example's installed packages into modules,
+// leaving out what Kit sync and Vite write so each app generates its own.
+func linkSessionModules(t *testing.T, root, modules string) {
+	t.Helper()
+	dependencies := filepath.Join(root, "example/web/node_modules")
+	if err := os.MkdirAll(modules, 0755); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == "$app" || strings.HasPrefix(name, "$app.") || name == ".cache" || strings.HasPrefix(name, ".vite") {
+			continue
+		}
+		if err := os.Symlink(filepath.Join(dependencies, name), filepath.Join(modules, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// stopSession cancels a session and requires it to exit cleanly unless the
+// test's own deadline ended it.
+func stopSession(t *testing.T, ctx context.Context, stop context.CancelFunc, done chan error, log *sessionLog) {
+	t.Helper()
+	stop()
+	select {
+	case err := <-done:
+		if err != nil && ctx.Err() == nil {
+			t.Errorf("session shutdown: %v\n%s", err, log.String())
+		}
+	case <-time.After(15 * time.Second):
+		t.Error("session did not stop")
+	}
 }
 
 func exerciseColdSessionHandoff(t *testing.T, app, origin string, log *sessionLog) {

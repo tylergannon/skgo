@@ -87,9 +87,9 @@ jobs:
       development: ${{ needs.checks.outputs.development == 'true' }}
 
   # svelte-check over the example app, only when something under example/web
-  # changed. It type-checks the Svelte and TypeScript files the documentation
-  # references and the client-handoff spec; the production qualification job
-  # also runs it after building the example.
+  # changed. It is where the Svelte and TypeScript files the documentation
+  # references are type-checked; the production qualification job also runs
+  # it after building the example.
   svelte-check:
     name: Svelte type check of example/web
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
