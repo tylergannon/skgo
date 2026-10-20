@@ -32,11 +32,11 @@ import (
 // constructor is used intact; NativeKit selects the explicit development entry.
 // Actual SKGO FetchConfig values only gain native execution-lifetime context.
 type HostOptions struct {
-	Inputs                                                            *gen.CompilerInputs
-	WorkDir, GoTool, Origin, DistDir, HandlerPackage, HandlerFunction string
-	Output                                                            io.Writer
-	SocketPath, ServiceSecret                                         string
-	NativeKit                                                         bool
+	Inputs                                                   *gen.CompilerInputs
+	WorkDir, GoTool, Origin, HandlerPackage, HandlerFunction string
+	Output                                                   io.Writer
+	SocketPath, ServiceSecret                                string
+	NativeKit                                                bool
 	// Cache, when set, carries toolchain and module preparation to the
 	// session's next host.
 	Cache *HostCache
@@ -88,19 +88,6 @@ type hostReply struct {
 	PID     int
 	Error   string
 	Rebuild bool
-}
-
-// BuildHost compiles and starts an application for initial startup or recovery.
-func BuildHost(ctx context.Context, o HostOptions) (*Host, error) {
-	h, err := CompileHost(ctx, o)
-	if err != nil {
-		return nil, err
-	}
-	if err := h.Start(ctx); err != nil {
-		h.Close()
-		return nil, err
-	}
-	return h, nil
 }
 
 // CompileHost prepares the executable without running application initialization.
@@ -323,8 +310,9 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	return h, nil
 }
 
-// Start initializes a compiled application after the previous process exits.
-func (h *Host) Start(ctx context.Context) (err error) {
+// Start initializes a compiled application after the previous process exits,
+// serving Kit's client output from dist.
+func (h *Host) Start(ctx context.Context, dist string) (err error) {
 	if h.cmd != nil {
 		return fmt.Errorf("native host is already started")
 	}
@@ -344,7 +332,7 @@ func (h *Host) Start(ctx context.Context) (err error) {
 	h.replies = replyRead
 	h.cmd = exec.CommandContext(ctx, h.binary)
 	h.cmd.Dir = o.Inputs.Dir
-	h.cmd.Env = append(append([]string(nil), o.Inputs.Env...), "SKGO_DEV_ORIGIN="+o.Origin, "SKGO_DEV_DIST="+o.DistDir, "SKGO_DEV_SOCKET="+o.SocketPath, "SKGO_DEV_SERVICE_SECRET="+o.ServiceSecret, "SKGO_DEV_NATIVE_KIT="+strconv.FormatBool(o.NativeKit))
+	h.cmd.Env = append(append([]string(nil), o.Inputs.Env...), "SKGO_DEV_ORIGIN="+o.Origin, "SKGO_DEV_DIST="+dist, "SKGO_DEV_SOCKET="+o.SocketPath, "SKGO_DEV_SERVICE_SECRET="+o.ServiceSecret, "SKGO_DEV_NATIVE_KIT="+strconv.FormatBool(o.NativeKit))
 	h.cmd.ExtraFiles = []*os.File{commandRead, replyWrite}
 	h.cmd.Stdout = o.Output
 	h.cmd.Stderr = o.Output

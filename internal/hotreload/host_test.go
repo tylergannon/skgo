@@ -115,7 +115,7 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 	}
 	first := prepare()
 	t.Setenv("SKGO_NATIVE_CAPTURE_RECEIPT", "ambient-env-881")
-	host, err := CompileHost(ctx, HostOptions{Inputs: first.Inputs, WorkDir: filepath.Join(work, "first"), Origin: "http://localhost", DistDir: work, Output: os.Stderr})
+	host, err := CompileHost(ctx, HostOptions{Inputs: first.Inputs, WorkDir: filepath.Join(work, "first"), Origin: "http://localhost", Output: os.Stderr})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 	if host.PID != 0 {
 		t.Fatal("compilation initialized the application")
 	}
-	if err := host.Start(ctx); err != nil {
+	if err := host.Start(ctx, work); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("SKGO_NATIVE_CAPTURE_RECEIPT", "captured-env-412")

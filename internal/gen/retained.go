@@ -609,17 +609,26 @@ func (b *ProjectBuild) commit(admit func(*CompilerInputs) error, close bool) err
 		return errors.New("skgo: build is closed")
 	}
 	p := b.project
+	plan, formatErr := b.plan.formatted()
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.closed || p.current != b.snapshot || (b.eventEpoch != nil && p.rawEpoch != *b.eventEpoch) {
 		return ErrObsolete
+	}
+	if formatErr != nil {
+		// The formatter may succeed once the app's tools are back; the next
+		// Prepare must generate again rather than replay this plan.
+		if p.plans[b.snapshot.key].frontend == b.plan.frontend {
+			delete(p.plans, b.snapshot.key)
+		}
+		return formatErr
 	}
 	if admit != nil {
 		if err := admit(b.Inputs); err != nil {
 			return err
 		}
 	}
-	if err := publishGenerationPlan(p.cfg, b.plan); err != nil {
+	if err := publishGenerationPlan(p.cfg, plan); err != nil {
 		return err
 	}
 	p.diagnostic = nil
@@ -750,7 +759,7 @@ func (p *Project) generate(ctx context.Context, s *projectSnapshot, sources cach
 		return generationPlan{}, err
 	}
 	cfg.analysisView = p.analysis
-	result := &generationCache{}
+	result := &generationCache{deferFormat: true}
 	cfg.cache = result
 	// Go package loads are cancellable through the shared invocation context.
 	original := cfg.OnPackageLoad

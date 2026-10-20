@@ -26,6 +26,9 @@ const maxGenerationCacheBytes = 32 << 20
 type generationPlan struct {
 	Files   map[string]string
 	GoFiles []string
+	// frontend, on a retained plan, formats Files' frontend sources while the
+	// host compiles; Files holds them unformatted until formatted() replaces them.
+	frontend *frontendFormat
 }
 type generationEntry struct {
 	InputHash  string
@@ -34,7 +37,11 @@ type generationEntry struct {
 	Metadata   *kitRouteMetadata
 	Plan       generationPlan
 }
-type generationCache struct{ plan generationPlan }
+type generationCache struct {
+	plan generationPlan
+	// deferFormat starts frontend formatting without waiting for it.
+	deferFormat bool
+}
 
 var generatorIdentity = sync.OnceValues(func() (string, error) {
 	path, err := os.Executable()
