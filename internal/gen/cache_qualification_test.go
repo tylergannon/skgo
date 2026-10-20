@@ -97,6 +97,9 @@ var _=skgo.Load(load)
 	_, cfg := foreignFixture(t, "", map[string]string{
 		"app/web/src/routes/about/data.remote.go": remoteSource,
 		"app/web/src/routes/about/page.server.go": pageSource,
+		// One package calling a route through its link, as one route package
+		// calling another does, must leave generation cacheable.
+		"app/internal/caller/caller.go": "package caller\n\nimport _ \"example.com/app/generated/_links/" + encodeLinkName("src/routes/about") + "\"\n",
 	})
 	route := filepath.Join(cfg.Web, "src/routes/about")
 	cfg.CacheDir = t.TempDir()

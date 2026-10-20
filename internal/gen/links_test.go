@@ -136,6 +136,13 @@ func TestTheModuleIgnoresTheRouteTree(t *testing.T) {
 	if second, err := os.ReadFile(goMod); err != nil || string(second) != string(first) {
 		t.Fatalf("a second run rewrote go.mod:\n%s", second)
 	}
+	// skgo check reads without writing, so it names the missing directive.
+	if err := os.WriteFile(goMod, []byte(authored), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := linksFor(t, cfg).verify(); err == nil || !strings.Contains(err.Error(), "need `ignore ./web/src/routes`; run skgo generate") {
+		t.Fatalf("verify without the directive: %v", err)
+	}
 }
 
 // TestAnAuthoredBoundaryIsLeftAlone: skgo never deletes a route-tree go.mod
