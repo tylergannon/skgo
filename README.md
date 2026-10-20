@@ -244,7 +244,7 @@ for the new development server.
 
 | SvelteKit feature | skgo | Boundary or example |
 | --- | --- | --- |
-| [`+server` endpoints and HTTP methods](https://svelte.dev/docs/kit/routing#+server) | Available | `net/http` handlers serve Kit routes, including `QUERY`; [browser scenarios](example/e2e/features/routes.feature). |
+| [`+server` endpoints and HTTP methods](https://svelte.dev/docs/kit/routing#+server) | Available | `net/http` handlers serve Kit routes, including `QUERY`; [handler contracts](example/contracts_test.go). |
 | [Page, endpoint and action on one route](https://svelte.dev/docs/kit/routing#+server) | Available | Go endpoints and classic actions share a route; [handler contracts](example/action_protocol_test.go) and [browser scenarios](example/e2e/features/actions-shared.feature). |
 | [Cookies and request-local state](https://svelte.dev/docs/kit/load#Cookies) | Available | `EventFrom`, `SetCookie` and typed locals support the [sign-in example](example/e2e/features/auth.feature). |
 | [Response headers from loads](https://svelte.dev/docs/kit/load#Headers) | Available | Go `Event.SetHeader` follows Kit's duplicate-header and cookie rules; [implementation](loadevent.go). |
