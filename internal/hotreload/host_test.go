@@ -140,6 +140,12 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 		}
 	}
 	check(host, "literal-4101:7")
+	// The host preloads its baseline: one discovery serves every package's
+	// metadata and types, and the first patch below adds none.
+	<-host.warmed
+	if got := host.analysis.session.Stats().MetadataLoads; got != 1 {
+		t.Fatalf("preloaded baseline ran Go discovery %d times, want 1", got)
+	}
 	edit := func(next string) *gen.ProjectBuild {
 		t.Helper()
 		write("web/src/routes/orders/server.go", next)
@@ -157,6 +163,9 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 		t.Fatal(err)
 	}
 	check(host, "literal-5202:7")
+	if got := host.analysis.session.Stats().MetadataLoads; got != 1 {
+		t.Fatalf("first patch after the preload ran Go discovery again: %d discoveries, want 1", got)
+	}
 	b = edit(strings.Replace(source, "initial=7", "initial=9", 1))
 	if _, err = host.Prepare(ctx, b.Inputs, filepath.Join(work, "structural")); err == nil {
 		t.Fatal("initializer edit admitted natively")

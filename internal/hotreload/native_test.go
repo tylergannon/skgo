@@ -183,12 +183,8 @@ func TestGeneratedNativeLifetime(t *testing.T) {
 		next[filepath.Join(linkDir, "orders.remote.go")] = []byte(source)
 		return next
 	}
-	analysis := &retainedApplication{files: baseline}
-	t.Cleanup(func() {
-		if analysis.view != nil {
-			analysis.view.Close()
-		}
-	})
+	analysis := &retainedApplication{files: baseline, analysis: &retainedAnalysis{}}
+	t.Cleanup(analysis.analysis.close)
 	compile := func(name, source string) (Candidate, error) {
 		return tc.compileWithLoader(ctx, app, pkgPath, filepath.Join(app, "importcfg"), filepath.Join(app, name), baseline, captured(source), nil, analysis.Load)
 	}

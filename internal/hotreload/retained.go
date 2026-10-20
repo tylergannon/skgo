@@ -13,11 +13,23 @@ import (
 	"strings"
 )
 
+// retainedAnalysis is the Go analysis a host's packages share, so one
+// discovery serves every package.
+type retainedAnalysis struct {
+	session goload.Session
+	view    *goload.View
+}
+
+func (a *retainedAnalysis) close() {
+	if a.view != nil {
+		a.view.Close()
+	}
+}
+
 // retainedApplication keeps whole-application metadata and source-checks every reverse caller.
 type retainedApplication struct {
 	files           map[string][]byte
-	session         goload.Session
-	view            *goload.View
+	analysis        *retainedAnalysis
 	selection       string
 	patterns        []string
 	dependencyFiles map[string][]byte
@@ -35,10 +47,11 @@ func (q *retainedApplication) Load(c *packages.Config, patterns ...string) ([]*p
 	for p, b := range c.Overlay {
 		files[p] = b
 	}
-	if q.view == nil {
-		q.session.SetMaxUniverses(4)
-		q.view = q.session.PrepareView(files)
-	} else if e = q.view.Update(files); e != nil {
+	a := q.analysis
+	if a.view == nil {
+		a.session.SetMaxUniverses(4)
+		a.view = a.session.PrepareView(files)
+	} else if e = a.view.Update(files); e != nil {
 		return nil, e
 	}
 	key := retainedSelection(files)
@@ -49,11 +62,16 @@ func (q *retainedApplication) Load(c *packages.Config, patterns ...string) ([]*p
 	meta := *c
 	meta.Overlay = nil
 	meta.Mode = packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedModule | packages.NeedEmbedFiles | packages.NeedTypesSizes
+	if !q.initialized {
+		// The typed load discovers with export files. Asking for them here,
+		// before any source differs, lets one go list serve both.
+		meta.Mode |= packages.NeedExportFile
+	}
 	query := q.patterns
 	if len(query) == 0 {
 		query = patterns
 	}
-	roots, e := q.view.Load(&meta, query...)
+	roots, e := a.view.Load(&meta, query...)
 	if e != nil {
 		return nil, e
 	}
@@ -171,7 +189,7 @@ func (q *retainedApplication) Load(c *packages.Config, patterns ...string) ([]*p
 	typed.Mode &^= packages.NeedDeps
 	typed.Mode |= packages.NeedEmbedFiles
 	typed.Overlay = nil
-	got, e := q.view.Load(&typed, check...)
+	got, e := a.view.Load(&typed, check...)
 	if e != nil {
 		return nil, e
 	}

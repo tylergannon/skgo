@@ -720,7 +720,11 @@ func (p *Project) generate(ctx context.Context, s *projectSnapshot, sources cach
 	analysisInputs := make(map[string][]byte, len(s.files))
 	for path, data := range s.files {
 		target := cfg.sourceView.mapPath(path, true)
-		if target != path && data != nil {
+		if target != path && data != nil && !goReadsContent(target) {
+			// Go selects these by name alone, so editing a component beside a
+			// route's Go keeps the view's discovery.
+			analysisInputs[target] = []byte{}
+		} else if target != path && data != nil {
 			actual, e := os.ReadFile(target)
 			if e != nil {
 				return generationPlan{}, e
@@ -753,6 +757,21 @@ func (p *Project) generate(ctx context.Context, s *projectSnapshot, sources cach
 		return generationPlan{}, fmt.Errorf("%s", cfg.sourceView.originalText(err.Error()))
 	}
 	return result.plan, nil
+}
+
+// goReadsContent reports whether Go's package selection reads a file's bytes:
+// Go and the other sources go/build checks for constraints, and module and
+// workspace files. Any other file, such as an embedded one, counts by name.
+func goReadsContent(path string) bool {
+	switch filepath.Base(path) {
+	case "go.mod", "go.sum", "go.work", "go.work.sum", "modules.txt":
+		return true
+	}
+	switch filepath.Ext(path) {
+	case ".go", ".c", ".cc", ".cpp", ".cxx", ".m", ".h", ".hh", ".hpp", ".hxx", ".f", ".F", ".for", ".f90", ".s", ".S", ".sx", ".swig", ".swigcxx":
+		return true
+	}
+	return false
 }
 
 // RequireEventEpoch additionally guards admission against raw generator inputs.

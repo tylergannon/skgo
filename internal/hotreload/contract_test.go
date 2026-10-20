@@ -167,12 +167,8 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	for name, body := range sources {
 		files[name] = body
 	}
-	retained := &retainedApplication{files: files}
-	t.Cleanup(func() {
-		if retained.view != nil {
-			retained.view.Close()
-		}
-	})
+	retained := &retainedApplication{files: files, analysis: &retainedAnalysis{}}
+	t.Cleanup(retained.analysis.close)
 	compile := func(name, order, page string) (Candidate, error) {
 		return tc.compileWithLoader(ctx, app, pkgPath, filepath.Join(app, "importcfg"), filepath.Join(work, name), sources, captured(order, page), []string{"./..."}, retained.Load)
 	}
