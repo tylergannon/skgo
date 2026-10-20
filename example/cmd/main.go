@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -57,13 +58,19 @@ func run() error {
 		go func() { log.Println(http.ListenAndServe(*pprofAddr, nil)) }()
 	}
 
+	// Bind before announcing: a port another process holds fails here, before
+	// any line claims this server is up.
+	ln, err := net.Listen("tcp", *listen)
+	if err != nil {
+		return err
+	}
 	log.Printf("skgo-example: pid %d listening on http://%s in production mode", os.Getpid(), *listen)
-	srv := &http.Server{Addr: *listen, Handler: mux}
+	srv := &http.Server{Handler: mux}
 	defer srv.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
 	served := make(chan error, 1)
-	go func() { served <- srv.ListenAndServe() }()
+	go func() { served <- srv.Serve(ln) }()
 	select {
 	case err := <-served:
 		return err

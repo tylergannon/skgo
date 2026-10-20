@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,13 +41,19 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	// Bind before announcing: a port another process holds fails here, before
+	// any line claims this server is up.
+	ln, err := net.Listen("tcp", *listen)
+	if err != nil {
+		return err
+	}
 	log.Printf("TinyNative: listening on http://%s", *listen)
-	srv := &http.Server{Addr: *listen, Handler: handler}
+	srv := &http.Server{Handler: handler}
 	defer srv.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	served := make(chan error, 1)
-	go func() { served <- srv.ListenAndServe() }()
+	go func() { served <- srv.Serve(ln) }()
 	select {
 	case err := <-served:
 		return err
