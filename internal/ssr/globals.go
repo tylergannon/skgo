@@ -1,20 +1,11 @@
+//go:build !skgo_development
+
 package ssr
 
 import (
 	"fmt"
 	"log"
 )
-
-// Console is told what the engine wrote to `console`. level is the method that
-// was called — "log", "warn", "error" and the rest — routeID is the route being
-// rendered, or "" for something written while the bundle was being evaluated,
-// and text is the arguments joined the way a browser's console would show them.
-//
-// It exists because the engine is a bare ECMAScript runtime: kit and Svelte
-// both report through `console`, and with no such global those reports were a
-// ReferenceError thrown in the middle of a render rather than a line an
-// operator could read.
-type Console func(routeID, level, text string)
 
 // defaultConsole is where the engine's console goes when the caller names
 // nowhere else. Losing it is not an option: it is the only channel a render

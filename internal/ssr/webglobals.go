@@ -1,3 +1,5 @@
+//go:build !skgo_development
+
 package ssr
 
 import (

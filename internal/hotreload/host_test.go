@@ -4,8 +4,8 @@ package hotreload
 
 import (
 	"context"
+	"debug/buildinfo"
 	"errors"
-	"github.com/tylergannon/skgo/internal/gen"
 	"io"
 	"net"
 	"net/http"
@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tylergannon/skgo/internal/gen"
 )
 
 func TestCapturedNativeHTTPHost(t *testing.T) {
@@ -122,6 +124,19 @@ unrelated:=other.FetchConfig{Value:"unrelated-413"};type FetchAlias = skgo.Fetch
 	defer host.Close()
 	if host.PID != 0 {
 		t.Fatal("compilation initialized the application")
+	}
+	// The app imports skgo, but Vite renders development pages: the host must
+	// link skgo without its JavaScript engine.
+	info, err := buildinfo.ReadFile(host.binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	linked := map[string]bool{}
+	for _, dep := range info.Deps {
+		linked[dep.Path] = true
+	}
+	if !linked["github.com/tylergannon/skgo"] || linked["github.com/dop251/goja"] || linked["github.com/dop251/goja_nodejs"] {
+		t.Fatalf("development host links skgo=%t goja=%t goja_nodejs=%t; want skgo without goja", linked["github.com/tylergannon/skgo"], linked["github.com/dop251/goja"], linked["github.com/dop251/goja_nodejs"])
 	}
 	if err := host.Start(ctx, work); err != nil {
 		t.Fatal(err)
