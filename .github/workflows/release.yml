@@ -1,20 +1,18 @@
 name: Release
 
-# npm's trusted publisher is bound to this workflow path. Keep qualification,
-# publication, and tagging in this top-level workflow so its OIDC identity is
-# the one the registry authorizes.
+# A qualified version tag starts publication. Re-run this workflow for the same
+# tag to finish a failed release. Keep this path for npm's trusted publisher.
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
-      candidate:
-        description: Exact qualified core commit SHA (must be on main)
-        required: true
-      qualification_attempt:
-        description: Completed core-web-v1 attempt ID in skgo-project
+      tag:
+        description: Existing qualified version tag to publish again
         required: true
 
 concurrency:
-  group: release-qualification
+  group: core-release
   cancel-in-progress: false
   queue: max
 
@@ -22,96 +20,40 @@ permissions:
   contents: read
 
 jobs:
-  qualification:
-    name: Read independent core qualification
-    if: github.ref == 'refs/heads/main'
+  source:
+    name: Read the version tag
     runs-on: ubuntu-latest
     outputs:
-      candidate: ${{ steps.assessment.outputs.candidate }}
-    steps:
-      - name: Verify exact candidate assessment
-        id: assessment
-        env:
-          CANDIDATE: ${{ inputs.candidate }}
-          ATTEMPT: ${{ inputs.qualification_attempt }}
-          APPROVED_HARNESS: ${{ vars.QUALIFICATION_HARNESS_REVISION }}
-        run: |
-          [[ "$CANDIDATE" =~ ^[a-f0-9]{40}$ ]]
-          [[ "$APPROVED_HARNESS" =~ ^[a-f0-9]{40}$ ]]
-          [[ "$ATTEMPT" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]
-          curl --fail --silent --show-error --retry 3 "https://skgo-site.fly.dev/api/qualification/$ATTEMPT" > assessment.json
-          jq -e --arg sha "$CANDIDATE" --arg id "$ATTEMPT" --arg harness "$APPROVED_HARNESS" '.id == $id and .candidate == $sha and .harness == $harness and .contract == "core-web-v1" and .state == "completed" and .verdict == "qualified"' assessment.json
-          echo "candidate=$CANDIDATE" >> "$GITHUB_OUTPUT"
-
-  version:
-    name: Reserve the qualified core version
-    environment: release
-    needs: qualification
-    if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, X64, skgo-release]
-    permissions:
-      contents: write
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      publication: ${{ steps.publication.outputs.id }}
+      version: ${{ steps.tag.outputs.version }}
+      candidate: ${{ steps.tag.outputs.candidate }}
+      attempt: ${{ steps.tag.outputs.attempt }}
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
-          ref: ${{ inputs.candidate }}
-
-      - name: Candidate belongs to main
-        run: git fetch origin main && git merge-base --is-ancestor HEAD origin/main
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version: '1.27.2'
-          cache: false
-
-      - name: Derive the release from Conventional Commits
-        id: version
+      - name: Read the tagged source and qualification
+        id: tag
         env:
-          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.tag || github.ref_name }}
+          APPROVED_HARNESS: ${{ vars.QUALIFICATION_HARNESS_REVISION }}
         run: |
-          version=$(git tag --points-at HEAD | sort -V | tail -1)
-          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            version=$(go run ./cmd/skgo-release-version)
-          fi
-          if [ "$version" = "none" ]; then
-            echo "::error::No publishable core change since the last release."
-            exit 1
-          fi
-          latest=$(gh release view --json tagName --jq .tagName)
-          git merge-base --is-ancestor "$latest^{commit}" HEAD
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      # Tags are reserved only after the independent assessment is verified.
-      # Publication retains the existing platform/package gates. GITHUB_TOKEN can create this
-      # tag because builds are jobs in this workflow, not a tag-push workflow.
-      - name: Reserve the exact source tag
-        id: publication
-        if: steps.version.outputs.version != ''
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          STATUS_WRITE_TOKEN: ${{ secrets.STATUS_WRITE_TOKEN }}
-          ATTEMPT: ${{ inputs.qualification_attempt }}
-        run: |
-          test -n "$STATUS_WRITE_TOKEN"
-          jq -n --arg id "release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --arg attempt "$ATTEMPT" --arg sha '${{ inputs.candidate }}' --arg tag "$VERSION" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:"requested",run:$run}' > "$RUNNER_TEMP/publication.json"
-          curl --fail --silent --show-error -H "Authorization: Bearer $STATUS_WRITE_TOKEN" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/publication.json" https://skgo-site.fly.dev/api/core-publications
-          echo "id=release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
-          test "$(git rev-parse HEAD)" = "${{ inputs.candidate }}"
-          if git rev-parse "$VERSION^{commit}" >/dev/null 2>&1; then
-            test "$(git rev-parse "$VERSION^{commit}")" = "${{ inputs.candidate }}"
-          else
-            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' tag -a "$VERSION" "${{ inputs.candidate }}" -m "$VERSION"
-            git push origin "$VERSION"
-          fi
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          candidate=$(git rev-parse "$VERSION^{commit}")
+          test "$(git rev-parse HEAD)" = "$candidate"
+          git merge-base --is-ancestor HEAD origin/main
+          attempt=$(git for-each-ref --format='%(contents)' "refs/tags/$VERSION" | sed -n 's/^Qualification: //p')
+          [[ "$attempt" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]
+          curl --fail --silent --show-error "https://skgo-site.fly.dev/api/qualification/$attempt" > assessment.json
+          [[ "$APPROVED_HARNESS" =~ ^[a-f0-9]{40}$ ]]
+          jq -e --arg sha "$candidate" --arg id "$attempt" --arg harness "$APPROVED_HARNESS" '.id == $id and .candidate == $sha and .harness == $harness and .contract == "core-web-v1" and .state == "completed" and .verdict == "qualified"' assessment.json
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
+          echo "attempt=$attempt" >> "$GITHUB_OUTPUT"
 
   linux-cli:
     name: CLI (${{ matrix.arch }})
-    needs: version
-    if: needs.version.outputs.version != ''
+    needs: source
     strategy:
       fail-fast: false
       matrix:
@@ -125,18 +67,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.candidate }}
+          ref: ${{ needs.source.outputs.candidate }}
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.2'
           cache: false
       - name: Build and package the versioned CLI
         env:
-          VERSION: ${{ needs.version.outputs.version }}
-        run: go run ./cmd/skgo-release build "$VERSION" "${{ inputs.candidate }}"
+          VERSION: ${{ needs.source.outputs.version }}
+        run: go run ./cmd/skgo-release build "$VERSION" "${{ needs.source.outputs.candidate }}"
       - name: Exercise the packaged CLI and an external Go plugin
         env:
-          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          RELEASE_VERSION: ${{ needs.source.outputs.version }}
         run: SKGO_RELEASE_ARCHIVE="$PWD/dist/skgo_${RELEASE_VERSION#v}_linux_${{ matrix.arch }}.tar.gz" go test -tags release ./cmd/skgo-release -run '^TestPackagedCLI$' -count=1 -v
       - uses: actions/upload-artifact@v7
         with:
@@ -147,8 +89,7 @@ jobs:
 
   macos-cli:
     name: Signed and notarized macOS CLI
-    needs: version
-    if: needs.version.outputs.version != ''
+    needs: source
     runs-on: [self-hosted, macOS, ARM64, skgo-release]
     environment: release
     timeout-minutes: 40
@@ -158,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.candidate }}
+          ref: ${{ needs.source.outputs.candidate }}
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.2'
@@ -184,11 +125,11 @@ jobs:
         run: go run ./cmd/skgo-release signing setup
       - name: Build, sign and notarize the CLI
         env:
-          VERSION: ${{ needs.version.outputs.version }}
-        run: nice -n 10 go run ./cmd/skgo-release build "$VERSION" "${{ inputs.candidate }}"
+          VERSION: ${{ needs.source.outputs.version }}
+        run: nice -n 10 go run ./cmd/skgo-release build "$VERSION" "${{ needs.source.outputs.candidate }}"
       - name: Exercise the signed archive and an external Go plugin
         env:
-          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          RELEASE_VERSION: ${{ needs.source.outputs.version }}
         run: SKGO_RELEASE_ARCHIVE="$PWD/dist/skgo_${RELEASE_VERSION#v}_darwin_arm64.tar.gz" go test -tags release ./cmd/skgo-release -run '^TestPackagedCLI$' -count=1 -v
       - uses: actions/upload-artifact@v7
         with:
@@ -202,8 +143,7 @@ jobs:
 
   adapter-npm:
     name: Publish @skgo/sveltekit-adapter
-    needs: [version, qualification, linux-cli, macos-cli]
-    if: needs.version.outputs.version != ''
+    needs: [source, linux-cli, macos-cli]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -217,7 +157,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.candidate }}
+          ref: ${{ needs.source.outputs.candidate }}
 
       - uses: actions/setup-go@v7
         with:
@@ -228,56 +168,55 @@ jobs:
           node-version: 24.22.0
           registry-url: https://registry.npmjs.org
 
-      # Independent qualification exercised the matching candidate adapter
-      # at this SHA. Package comparison and stamping are standalone Go commands;
-      # publication needs no second frontend installation or test run.
-
-      # A release whose package is byte-for-byte the newest one on the registry
-      # publishes nothing: skgo pairs with the newest adapter at or below its
-      # own version, which is that one. The Go tag is still cut below.
-      - name: Is the package any different from the published one?
-        id: changed
-        run: |
-          result=$(go run ./cmd/skgo-adapter-changed)
-          case "$result" in
-            changed) echo "publish=true" >> "$GITHUB_OUTPUT" ;;
-            unchanged) echo "publish=false" >> "$GITHUB_OUTPUT" ;;
-            *) echo "skgo-adapter-changed answered '$result'"; exit 1 ;;
-          esac
-
-      # The tag is the version. Writing it into package.json here rather than
-      # committing it means the tree never carries a version that is a promise
-      # about a release nobody has cut.
-      - name: Stamp the tag's version
-        if: steps.changed.outputs.publish == 'true'
+      - &setup_vp
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          working-directory: example/web
+          run-install: false
+          node-manager: false
+          package-manager: true
+      - name: Stamp and pack the tagged adapter
         env:
-          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          VERSION: ${{ needs.source.outputs.version }}
         run: |
-          go run ./cmd/skgo-adapter-changed -stamp "$RELEASE_VERSION"
-          echo "publishing @skgo/sveltekit-adapter@${RELEASE_VERSION#v}"
-
-      # npm binds this direct publish to the repository, this release.yml file,
-      # and this GitHub-hosted runner through the trusted publisher configured
-      # on the package. No static npm or Doppler credential reaches the runner.
-      - name: npm publish
-        if: steps.changed.outputs.publish == 'true'
-        working-directory: internal/adapter
-        run: npm publish --access public
+          go run ./cmd/skgo-adapter-changed -stamp "$VERSION"
+          mkdir -p npm-package
+          cd example/web
+          vp pm pack --pack-destination "$GITHUB_WORKSPACE/npm-package" -- --dir "$GITHUB_WORKSPACE/internal/adapter"
+      - &publish_npm
+        name: Publish the tagged package or reuse its existing bytes
+        working-directory: example/web
+        run: |
+          tarball=$(find "$GITHUB_WORKSPACE/npm-package" -name '*.tgz' -print -quit)
+          package=$(tar -xOf "$tarball" package/package.json | jq -r .name)
+          version=$(tar -xOf "$tarball" package/package.json | jq -r .version)
+          TARBALL="$tarball" PACKAGE="$package" VERSION="$version" node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          import {execFileSync} from 'node:child_process';
+          const {TARBALL,PACKAGE,VERSION}=process.env;
+          const response=await fetch(`https://registry.npmjs.org/${encodeURIComponent(PACKAGE)}/${VERSION}`);
+          if(response.status===404){execFileSync('vp',['pm','publish',TARBALL,'--access','public','--no-git-checks'],{stdio:'inherit'});}
+          else {
+            if(!response.ok)throw new Error(`Registry returned ${response.status}`);
+            const existing=await response.json();
+            const integrity='sha512-'+createHash('sha512').update(readFileSync(TARBALL)).digest('base64');
+            if(existing.dist.integrity!==integrity)throw new Error('Published package differs from this tagged package');
+            console.log(`${PACKAGE}@${VERSION} is already published`);
+          }
+          NODE
 
   sv-package:
     name: Prepare @skgo/sv on Bob
-    needs: version
-    if: needs.version.outputs.version != ''
+    needs: source
     runs-on: [self-hosted, Linux, X64, skgo-release]
     timeout-minutes: 15
-    outputs:
-      publish: ${{ steps.changed.outputs.publish }}
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.candidate }}
+          ref: ${{ needs.source.outputs.candidate }}
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
@@ -294,26 +233,15 @@ jobs:
         run: vp run build
       - name: Check the self-contained add-on
         run: go test ./internal/sv/
-      - name: Is the package any different from the published one?
-        id: changed
-        run: |
-          result=$(go run ./cmd/skgo-adapter-changed -dir internal/sv -package @skgo/sv -require-published)
-          case "$result" in
-            changed) echo "publish=true" >> "$GITHUB_OUTPUT" ;;
-            unchanged) echo "publish=false" >> "$GITHUB_OUTPUT" ;;
-            *) echo "skgo-adapter-changed answered '$result'"; exit 1 ;;
-          esac
-      - name: Stamp and pack the candidate
-        if: steps.changed.outputs.publish == 'true'
+      - name: Stamp and pack the tagged add-on
         env:
-          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+          RELEASE_VERSION: ${{ needs.source.outputs.version }}
         run: |
           go run ./cmd/skgo-adapter-changed -dir internal/sv -package @skgo/sv -stamp "$RELEASE_VERSION"
           mkdir -p "$RUNNER_TEMP/sv-package"
-          cd internal/sv
-          vp pm pack --pack-destination "$RUNNER_TEMP/sv-package"
+          cd example/web
+          vp pm pack --pack-destination "$RUNNER_TEMP/sv-package" -- --dir "$GITHUB_WORKSPACE/internal/sv"
       - uses: actions/upload-artifact@v7
-        if: steps.changed.outputs.publish == 'true'
         with:
           name: sv-package
           path: ${{ runner.temp }}/sv-package/*.tgz
@@ -322,8 +250,7 @@ jobs:
 
   sv-npm:
     name: Publish @skgo/sv
-    needs: [version, qualification, linux-cli, macos-cli, sv-package]
-    if: needs.sv-package.outputs.publish == 'true'
+    needs: [source, linux-cli, macos-cli, sv-package]
     # npm's trusted publisher requires this hosted workflow identity. Consume
     # Bob's exact stamped tarball; no build or dependency install happens here.
     runs-on: ubuntu-latest
@@ -332,23 +259,24 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.source.outputs.candidate }}
       - uses: actions/setup-node@v6
         with:
           node-version: 24.22.0
           registry-url: https://registry.npmjs.org
+      - *setup_vp
       - uses: actions/download-artifact@v8
         with:
           name: sv-package
-          path: sv-package
-      - name: npm publish
-        run: npm publish ./sv-package/*.tgz --access public
+          path: npm-package
+      - *publish_npm
+
 
   publish:
     name: Publish GitHub Release and Homebrew cask
-    outputs:
-      publication: ${{ steps.publication.outputs.id }}
-    needs: [version, qualification, linux-cli, macos-cli, adapter-npm, sv-package, sv-npm]
-    if: ${{ !cancelled() && needs.version.outputs.version != '' && needs.qualification.result == 'success' && needs.linux-cli.result == 'success' && needs.macos-cli.result == 'success' && needs.adapter-npm.result == 'success' && (needs.sv-npm.result == 'success' || needs.sv-npm.result == 'skipped') && needs.sv-package.result == 'success' }}
+    needs: [source, linux-cli, macos-cli, adapter-npm, sv-package, sv-npm]
     runs-on: [self-hosted, Linux, X64, skgo-release]
     environment: release
     timeout-minutes: 15
@@ -357,7 +285,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.candidate }}
+          ref: ${{ needs.source.outputs.candidate }}
           fetch-depth: 0
 
       - uses: actions/setup-go@v7
@@ -369,30 +297,34 @@ jobs:
           pattern: cli-*
           path: dist
           merge-multiple: true
-      - name: Register this distribution attempt
-        id: publication
+      - name: Reuse CLI archives already published for this tag
         env:
-          STATUS_WRITE_TOKEN: ${{ secrets.STATUS_WRITE_TOKEN }}
-          VERSION: ${{ needs.version.outputs.version }}
-          ATTEMPT: ${{ inputs.qualification_attempt }}
-          CANDIDATE: ${{ inputs.candidate }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.source.outputs.version }}
         run: |
-          id="release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          jq -n --arg id "$id" --arg attempt "$ATTEMPT" --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:"requested",run:$run}' > "$RUNNER_TEMP/publication.json"
-          curl --fail --silent --show-error -H "Authorization: Bearer $STATUS_WRITE_TOKEN" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/publication.json" https://skgo-site.fly.dev/api/core-publications
-          echo "id=$id" >> "$GITHUB_OUTPUT"
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            existing=$(gh release view "$VERSION" --json assets --jq '.assets[].name')
+            for archive in dist/*.tar.gz; do
+              if grep -Fxq "${archive##*/}" <<< "$existing"; then
+                gh release download "$VERSION" --pattern "${archive##*/}" --dir dist --clobber
+              fi
+            done
+          fi
       - name: Verify all archives and calculate final checksums
         env:
-          VERSION: ${{ needs.version.outputs.version }}
+          VERSION: ${{ needs.source.outputs.version }}
         run: go run ./cmd/skgo-release checksums dist "$VERSION"
       - name: Publish the qualified release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.version.outputs.version }}
+          VERSION: ${{ needs.source.outputs.version }}
         run: |
           if gh release view "$VERSION" >/dev/null 2>&1; then
-            gh release upload "$VERSION" --clobber dist/*.tar.gz dist/checksums.txt
-            gh release edit "$VERSION" --draft=false --latest --title "SKGO $VERSION"
+            existing=$(gh release view "$VERSION" --json assets --jq '.assets[].name')
+            for archive in dist/*.tar.gz; do
+              if ! grep -Fxq "${archive##*/}" <<< "$existing"; then gh release upload "$VERSION" "$archive"; fi
+            done
+            gh release upload "$VERSION" --clobber dist/checksums.txt
           else
             gh release create "$VERSION" --verify-tag --latest --title "SKGO $VERSION" --generate-notes dist/*.tar.gz dist/checksums.txt
           fi
@@ -414,36 +346,44 @@ jobs:
           ssh-key: ${{ steps.doppler.outputs.TAP_DEPLOY_KEY }}
       - name: Update Homebrew cask
         env:
-          VERSION: ${{ needs.version.outputs.version }}
-        run: go run ./cmd/skgo-release tap homebrew-tap "$VERSION"
+          VERSION: ${{ needs.source.outputs.version }}
+        run: |
+          current=$(sed -n 's/^  version "\(.*\)"/\1/p' homebrew-tap/Casks/skgo.rb)
+          if test "$(printf '%s\n' "$current" "${VERSION#v}" | sort -V | tail -1)" != "${VERSION#v}"; then
+            echo "Homebrew already points at newer version $current."
+            exit 0
+          fi
+          go run ./cmd/skgo-release tap homebrew-tap "$VERSION"
 
   receipt:
-    name: Record core publication outcome
-    needs: [version, publish]
-    if: always() && (needs.publish.outputs.publication != '' || needs.version.outputs.publication != '')
+    name: Report publication and request installation observation
+    needs: [source, publish]
+    if: always() && needs.source.result == 'success'
     runs-on: ubuntu-latest
     environment: release
     steps:
-      - name: Publish immutable distribution receipt
+      - name: Record this publication result
         env:
           STATUS_WRITE_TOKEN: ${{ secrets.STATUS_WRITE_TOKEN }}
-          CANDIDATE: ${{ inputs.candidate }}
-          ATTEMPT: ${{ inputs.qualification_attempt }}
-          VERSION: ${{ needs.version.outputs.version }}
+          CANDIDATE: ${{ needs.source.outputs.candidate }}
+          ATTEMPT: ${{ needs.source.outputs.attempt }}
+          VERSION: ${{ needs.source.outputs.version }}
           RESULT: ${{ needs.publish.result }}
-          PUBLICATION: ${{ needs.publish.outputs.publication || needs.version.outputs.publication }}
         run: |
+          id="release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          echo "PUBLICATION=$id" >> "$GITHUB_ENV"
           state=failed
           if test "$RESULT" = success; then state=published; fi
-          jq -n --arg id "$PUBLICATION" --arg attempt "$ATTEMPT" --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg state "$state" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:$state,run:$run}' > publication.json
-          curl --fail --silent --show-error -H "Authorization: Bearer $STATUS_WRITE_TOKEN" -H 'Content-Type: application/json' --data-binary @publication.json https://skgo-site.fly.dev/api/core-publications
+          for outcome in requested "$state"; do
+            jq -n --arg id "$id" --arg attempt "$ATTEMPT" --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg state "$outcome" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:$state,run:$run}' > publication.json
+            curl --fail --silent --show-error -H "Authorization: Bearer $STATUS_WRITE_TOKEN" -H 'Content-Type: application/json' --data-binary @publication.json https://skgo-site.fly.dev/api/core-publications
+          done
       - name: Request actual published-channel confirmation
         if: needs.publish.result == 'success'
         env:
           GH_TOKEN: ${{ secrets.SKGO_PROJECT_DISPATCH_TOKEN }}
-          CANDIDATE: ${{ inputs.candidate }}
-          VERSION: ${{ needs.version.outputs.version }}
-          PUBLICATION: ${{ needs.publish.outputs.publication || needs.version.outputs.publication }}
+          CANDIDATE: ${{ needs.source.outputs.candidate }}
+          VERSION: ${{ needs.source.outputs.version }}
         run: |
           jq -n --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg publication "$PUBLICATION" '{event_type:"skgo-core-published",client_payload:{sha:$sha,tag:$tag,publication:$publication}}' > installation-request.json
           gh api repos/tylergannon/skgo-project/dispatches --input installation-request.json
