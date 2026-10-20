@@ -273,3 +273,108 @@ func TestBuildInputsAcceptRouteLinks(t *testing.T) {
 		t.Fatalf("a directory link outside the tree was hashed: %v", err)
 	}
 }
+
+// go build embeds web/build as it stands, so a failed build must not leave an
+// earlier build's frontend there, whichever step failed.
+func TestFailedBuildDoesNotLeaveThePreviousFrontend(t *testing.T) {
+	root := t.TempDir()
+	write := func(name, value string) {
+		t.Helper()
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(value), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/package.json", "{}")
+	write("web/node_modules/.bin/vp", "fixture")
+	write("web/src/page.svelte", "first")
+	write("web/build/.gitkeep", "")
+	var builds int
+	failAt := ""
+	run := func(dir string, env []string, name string, args ...string) ([]byte, error) {
+		step := filepath.Base(name) + " " + args[0]
+		if step == failAt {
+			if step == "vp build" {
+				// Kit empties the output directory, then fails during prerender.
+				if err := os.RemoveAll(filepath.Join(root, "web/build")); err != nil {
+					return nil, err
+				}
+				write("web/build/partial.html", "partial")
+			}
+			return nil, fmt.Errorf("%s failed", step)
+		}
+		switch step {
+		case "go list":
+			return []byte(`{"Path":"fixture"}`), nil
+		case "vp build":
+			builds++
+			if err := os.RemoveAll(filepath.Join(root, "web/build")); err != nil {
+				return nil, err
+			}
+			write("web/build/skgo.manifest.json", `{"version":1}`)
+			write("web/build/page.html", "built from "+readFile(t, filepath.Join(root, "web/src/page.svelte")))
+		}
+		return nil, nil
+	}
+	if err := Build(root, io.Discard, run); err != nil {
+		t.Fatal(err)
+	}
+	page := filepath.Join(root, "web/build/page.html")
+	if got := readFile(t, page); got != "built from first" {
+		t.Fatalf("first build wrote %q", got)
+	}
+	// A failed build leaves only the placeholder, so go build cannot embed
+	// the first frontend and the app refuses to start without a manifest.
+	assertNoFrontend := func(step string) {
+		t.Helper()
+		entries, err := os.ReadDir(filepath.Join(root, "web/build"))
+		if err != nil {
+			t.Fatalf("%s: %v", step, err)
+		}
+		if len(entries) != 1 || entries[0].Name() != ".gitkeep" {
+			names := []string{}
+			for _, entry := range entries {
+				names = append(names, entry.Name())
+			}
+			t.Fatalf("%s left %v in build/", step, names)
+		}
+	}
+	for i, step := range []string{"go list", "vp install", "go generate", "vp build"} {
+		// A new input makes the earlier build stale. Failing at "go list" would
+		// otherwise leave a build whose currency could not be established.
+		write("web/src/page.svelte", fmt.Sprintf("revision %d", i))
+		write("web/package.json", fmt.Sprintf(`{"revision":%d}`, i))
+		failAt = step
+		if err := Build(root, io.Discard, run); err == nil || !strings.Contains(err.Error(), step+" failed") {
+			t.Fatalf("%s: build error %v", step, err)
+		}
+		assertNoFrontend(step)
+		if _, err := os.Stat(filepath.Join(root, ".skgo/build.json")); !os.IsNotExist(err) {
+			t.Fatalf("%s: stale build receipt remained: %v", step, err)
+		}
+		failAt = ""
+		before := builds
+		if err := Build(root, io.Discard, run); err != nil {
+			t.Fatalf("%s: recovery: %v", step, err)
+		}
+		if builds != before+1 || readFile(t, page) != fmt.Sprintf("built from revision %d", i) {
+			t.Fatalf("%s: recovery did not rebuild: %d builds, %q", step, builds-before, readFile(t, page))
+		}
+		// The recovered build is current again and is reused untouched.
+		if err := Build(root, io.Discard, run); err != nil || builds != before+1 {
+			t.Fatalf("%s: recovered build was not reused: %v", step, err)
+		}
+	}
+}
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}

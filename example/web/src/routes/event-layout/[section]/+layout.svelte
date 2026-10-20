@@ -3,7 +3,9 @@
 </script>
 
 <h1>Typed layout request event</h1>
-<p data-testid="event-layout-values">{data.eventSection}|{data.eventItem}|{data.eventRoute}|{data.eventUser}|{data.eventSerial}</p>
+<p data-testid="event-layout-values">
+  {data.eventSection}|{data.eventItem}|{data.eventRoute}|{data.eventUser}|{data.eventSerial}
+</p>
 <nav>
   <a href="/event-layout/red/first/two?route=untracked">Unread sibling</a>
   <a href="/event-layout/red/second/two?route=untracked">Unread item</a>
@@ -15,5 +17,9 @@
 {@render children()}
 
 <style>
-  nav { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
 </style>

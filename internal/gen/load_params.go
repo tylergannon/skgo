@@ -503,7 +503,16 @@ func readGoParamMatchers(cfg Config) (map[string]goParamMatcher, error) {
 	packages.Visit(loaded, nil, func(dependency *packages.Package) { compilerErrors = append(compilerErrors, dependency.Errors...) })
 	if len(compilerErrors) > 0 {
 		sort.Slice(compilerErrors, func(i, j int) bool { return compilerErrors[i].Error() < compilerErrors[j].Error() })
-		return nil, fmt.Errorf("skgo: %s: loading Go params: %v; matcher/domain dependencies must be leaf packages, not generated params or caller packages", fset.Position(syntax.Package), compilerErrors[0])
+		// Only a cycle through the matcher package is explained by the leaf
+		// rule; any other compiler error is reported as Go wrote it.
+		reported, hint := compilerErrors[0], ""
+		for _, compilerError := range compilerErrors {
+			if strings.Contains(compilerError.Msg, "import cycle not allowed") {
+				reported, hint = compilerError, "; matcher/domain dependencies must be leaf packages, not generated params or caller packages"
+				break
+			}
+		}
+		return nil, fmt.Errorf("skgo: %s: loading Go params: %v%s", fset.Position(syntax.Package), reported, hint)
 	}
 	for _, file := range p.Syntax {
 		if filepath.Base(p.Fset.Position(file.Pos()).Filename) != "params.go" {

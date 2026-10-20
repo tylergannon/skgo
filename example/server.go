@@ -25,12 +25,6 @@ import (
 // the app spells it: everything downstream reads the session, not the cookie.
 const SessionCookie = "skgo_session"
 
-// supportID is the fixture value HandleError adds to every failure. It is a
-// literal on purpose, the same way businesslogic.Default's fixtures are:
-// something the Go tests can assert against without asking the app what it
-// just rendered.
-const supportID = "case-1121"
-
 // HandleError exposes the example's configured application error policy.
 func HandleError(ctx context.Context, caught skgo.CaughtError) map[string]any {
 	return appconfig.Config.HandleError(ctx, caught)
@@ -162,11 +156,6 @@ func newHandler(dist fs.FS, origin string, runtimes int, development *skgo.Nativ
 		HandleFetch: appconfig.Config.HandleFetch,
 		Prerendered: manifest.Prerendered,
 	}.Intercept(app), nil
-}
-
-// handleFetch retains the example package's focused hook tests.
-func handleFetch(ctx context.Context, request *http.Request, next skgo.Fetch) (*http.Response, error) {
-	return appconfig.Config.HandleFetch(ctx, request, next)
 }
 
 // FlyClientAddress reads the client address from the header Fly's proxy sets.

@@ -70,6 +70,14 @@ jobs:
       - name: Svelte type check of the built example
         run: cd example/web && vp run check
 
+      - name: Install pinned Go checker tools
+        run: |
+          just tools
+          echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
+
+      - name: Check the unmodified built example
+        run: go test -tags skgo_qualification -count=1 ./cmd/skgo -run '^TestCheckPassesOnTheUnmodifiedExample$' -v
+
       - name: Built-example handlers and client handoff
         run: go test -tags skgo_qualification -count=1 ./example/...
 

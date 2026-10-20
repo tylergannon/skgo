@@ -1,8 +1,9 @@
 package reroutetarget
 
 import (
-	"github.com/tylergannon/skgo"
 	"net/http"
+
+	"github.com/tylergannon/skgo"
 )
 
 func get(w http.ResponseWriter, r *http.Request) {

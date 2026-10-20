@@ -13,8 +13,8 @@ import (
 
 	"github.com/tylergannon/polytype"
 	"github.com/tylergannon/skgo"
-	"github.com/tylergannon/skgo/example/internal/skgo/client"
 	optional "github.com/tylergannon/skgo/example/internal/skgo/_links/onzggl3sn52xizltf5xxa5djn5xgc3a"
+	"github.com/tylergannon/skgo/example/internal/skgo/client"
 )
 
 func main() {

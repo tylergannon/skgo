@@ -36,7 +36,7 @@ func signUp(ctx context.Context, event params.RequestEvent, in Signup) (Welcome,
 	if in.Email == "" {
 		return Welcome{}, skgo.Invalidf("email", "An email is required")
 	}
-	return Welcome{Email: in.Email}, nil
+	return Welcome(in), nil
 }
 
 var (

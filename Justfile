@@ -45,13 +45,14 @@ clean:
 vet:
     go vet ./... ./example/...
 
-# a Staticcheck that can read this Go toolchain's export data, kept in .tools/
+# Checker tools that can read this Go toolchain's export data, kept in .tools/.
 tools:
     #!/usr/bin/env bash
     set -eu
     if [ "$(.tools/bin/staticcheck -version 2>/dev/null | cut -d' ' -f1-2)" != "staticcheck 2026.2.2" ]; then
         GOBIN="{{justfile_directory()}}/.tools/bin" go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
     fi
+    GOBIN="{{justfile_directory()}}/.tools/bin" go install golang.org/x/tools/cmd/goimports@v0.52.0
 
 # go test, both modules; vp resolves the frontend tools from the project pins.
 # Compiler/process and built-example witnesses are selected explicitly by CI
