@@ -3,7 +3,7 @@
 First documentation fold for skgo; no earlier marker. Ingested: every tracked
 file under `ephemeral/` at `4591dbaa` (1,144 files, 16 MB) and the landed
 commits `f7a9ec69..4591dbaa` (guide-page tree to HEAD). The next fold starts
-after `4591dbaa`; find it with `git log --grep 'docs: fold'`.
+after `4591dbaa`; find it with `git log --grep '^docs: fold'`.
 
 ## Ledger
 
@@ -114,5 +114,10 @@ JSON reporter, bad mode);
 `check-doc-indexes.py --repo .` PASS (no docs index in this repo; `docs/` is
 the website). Kit facts read from a 3.1.0 install in a sibling worktree; this
 worktree has no `node_modules`. Independent review: three bugs (a gopls
-claim, this marker's grep, the dev-server handoff) and five design findings,
-all repaired or recorded above.
+claim, this marker's grep, the dev-server handoff) and four design findings,
+all repaired or recorded above. Round two: a `paths.origin` prerender fallback,
+three guide pages claiming the scaffold sets `paths.origin` (`differences.md`,
+`migrating.md`, `glossary.md`), and the README route meeting the fence rules;
+repaired. Left as nits: `SVELTEKIT_COMPATIBILITY.md` 3.0.0 entry still cites
+local logs and gitignored screenshots; `example/web/vite.config.ts` comment
+says Kit fixes the origin at build time unconditionally.

@@ -20,8 +20,9 @@ Kit 3 facts that overturn older SvelteKit assumptions:
   TypeScript 7 is not a compatible substitute for the `typescript` package.
 - `kit.paths.origin`, when set, is compiled into the build as the origin
   Kit's CSRF check treats as its own and the origin prerendering uses;
-  `event.url` still comes from the request. Unset (the default), both use the
-  request's origin. The example sets it from `ORIGIN` when it builds.
+  `event.url` still comes from the request. Unset (the default), the CSRF check
+  uses the request's origin and prerendering uses `http://sveltekit-prerender`.
+  The example sets it from `ORIGIN` when it builds; the scaffold does not.
 - The application alias is `#lib`, declared through package imports; `$lib`
   was removed.
 - `browser`, `dev`, `building` and `version` come from `$app/env`;

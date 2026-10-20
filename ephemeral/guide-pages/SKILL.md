@@ -12,6 +12,8 @@ Check every claim against current code, tests or the pinned Kit source, never
 against another document. Write plain claims: no slogans or pitch lines, and
 describe what the code does rather than how it changed. Setup detail
 meant for a user's agent belongs in `skills/skgo/SKILL.md`, not the README.
+These rules apply to the README too; the fence rules below do not, since
+GitHub renders the README as written.
 
 A page never contains Go, Svelte or TypeScript text. A `go`, `svelte` or `ts`
 fence has an empty body and an info string naming its source: a Go Example

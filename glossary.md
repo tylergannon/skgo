@@ -30,7 +30,7 @@ The `var _ = skgo.Query(fn)` line that declares a remote function. `skgo.Query`,
 
 ## Origin
 
-The scheme and host the application is served from, fixed at build time: `just build` passes it to Vite as `ORIGIN` for Kit's `paths.origin` and compiles the same value into the binary, and `-origin` overrides it. The Go server uses it to refuse cross-site form-shaped posts and non-GET remote calls, and to decide whether a cookie is `Secure`. See [Deploying](/docs/skgo/deploying).
+The scheme and host the application is served from, fixed at build time: `just build` passes it to Vite as `ORIGIN`, which `vite.config.ts` can read for Kit's `paths.origin` ([Building your app](/docs/skgo/building-your-app#The-origin-is-compiled-in)), and compiles the same value into the binary, and `-origin` overrides it. The Go server uses it to refuse cross-site form-shaped posts and non-GET remote calls, and to decide whether a cookie is `Secure`. See [Deploying](/docs/skgo/deploying).
 
 ## Prerender service
 
