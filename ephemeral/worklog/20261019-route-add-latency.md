@@ -17,9 +17,8 @@
   same Go pid. A Svelte-only route reusing an existing `[slug]` takes 0.37 s
   with no rebuild. A new declaration or a new Go file still rebuilds, as it
   must.
-- Not addressed: a Svelte-only child under a layout that has a Go load may
-  still change that layout's generated children union. That case was not
-  measured.
+- Under a root `layout.server.go`, a Svelte-only child also needs no rebuild
+  (0.13–0.23 s). The layout's generated code does not depend on that child.
 - Trap: the dev native path matches through middleware's external/prerender
   branch (`build.RouteID`/`build.RouteParams`), not the manifest route
   matcher. Hook state must take declarations there as well.
