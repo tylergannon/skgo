@@ -1,4 +1,0 @@
-generation cache miss
-{"detail":null,"milliseconds":7238.559,"phase":"cold-generation","stats":{"PlanHits":0,"ProjectionParses":748,"TypeScriptRuns":21,"TypeScriptHits":0,"CodecRuns":1,"CodecHits":0}}
-generation cache miss
-{"detail":null,"milliseconds":5866.945,"phase":"profile-api","stats":{"PlanHits":0,"ProjectionParses":749,"TypeScriptRuns":22,"TypeScriptHits":20,"CodecRuns":2,"CodecHits":0}}

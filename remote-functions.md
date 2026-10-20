@@ -31,7 +31,7 @@ A `query` reads data. It takes the request's context and, optionally, one argume
 ```svelte example/web/src/routes/samples/remote-functions/+page.svelte
 ```
 
-Everything Kit says about calling a query holds: `await` it inside a `<svelte:boundary>`, or read `.loading`, `.error` and `.current`; call `.refresh()` to ask for it again; two calls with the same argument in one render are one request. During server rendering, the renderer running inside your Go process calls the Go function directly, so the first value is in the document.
+Everything Kit says about calling a query holds: `await` it inside a `<svelte:boundary>`, or read `.loading`, `.error` and `.current`; call `.refresh()` to ask for it again; two calls with the same argument in one render are one request. During server rendering, the renderer running inside your Go process calls the Go function directly, so the first value is in the document, unless the query sits in a `<svelte:boundary>` with a `pending` snippet: Svelte's server renderer writes only that snippet, and the query first runs in the browser after hydration.
 
 A query may read cookies through `skgo.EventFrom(ctx)` but not write them; a write is refused, and `skgo advice SKGO001` catches it statically. `event.URL()` panics in a query, as `event.url` throws in Kit, because a query is not tied to a page: anything about the page belongs in the argument. See [Using getRequestEvent](#Using-getRequestEvent).
 

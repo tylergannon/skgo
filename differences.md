@@ -19,7 +19,7 @@ SKGo runs SvelteKit's own router, client and renderer, so anything not listed he
 - **Adapter.** There is one adapter, `@skgo/sveltekit-adapter`, with options `out`, `precompress` and `prerenderPackage`. See [Adapter](/docs/skgo/adapter).
 - **Refused options.** `output.bundleStrategy: 'inline'`, `router.resolution: 'server'` and a non-empty route `config` fail the build with a message saying so.
 - **Hash routing.** Under `router.type: 'hash'`, Go answers a document request for any path with Kit's client shell, and the browser renders the page the hash names. Kit's own server answers a path other than the root with `404`. Static assets are still served from their paths.
-- **Origin.** Kit 3 fixes `paths.origin` at build time; `skgo new` reads it from `ORIGIN` in `vite.config.ts`, and `just build` bakes the same value into the binary. `paths.base` is honoured by every Go handler.
+- **Origin.** Kit 3 fixes `paths.origin` at build time; the scaffold does not set it, so read it from `ORIGIN` in `vite.config.ts` as [Building your app](/docs/skgo/building-your-app#The-origin-is-compiled-in) shows, and `just build` bakes the same value into the binary. `paths.base` is honoured by every Go handler.
 - **Toolchain.** Kit is pinned to one exact release with a project-local patch to its prerender queue, applied by [`skgo kit-patch`](/docs/cli/kit-patch), and frontend tooling runs through a pinned VitePlus. See [Prerequisites](/docs/skgo/creating-a-project#Prerequisites).
 
 ## Routing

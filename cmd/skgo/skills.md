@@ -23,7 +23,7 @@ Add `-g` to install them for all projects rather than the current one. The CLI f
 
 The `skgo` skill applies to SvelteKit applications served by Go. In its own words: "Use for Go remote functions, server loads, route handlers, server composition, generation, development, and deployment. Do not use for ordinary SvelteKit apps whose server runs in JavaScript."
 
-It keeps the ownership boundary the [AGENTS.md block](/docs/ai/agents-md) states, and adds how to declare remote functions, where loads and routes live, how the server composition is built, Kit's invariants to preserve, and how to verify against the running binary. Where the skill and these pages disagree, as they do on whether a page with a Go server load can be prerendered, these pages describe the pinned release; see [Prerendering](/docs/skgo/prerendering).
+It keeps the ownership boundary the [AGENTS.md block](/docs/ai/agents-md) states, and adds how to declare remote functions, where loads and routes live, how the server composition is built, Kit's invariants to preserve, and how to verify against the running binary. Where the skill and these pages disagree, these pages describe the pinned release.
 
 ## polytype
 

@@ -7,7 +7,10 @@
 // Every other place in the module that needs one of these values reads it
 // from here, and the tests in this package pin each value to the file that
 // actually enforces it (go.mod, the example application's package.json and
-// lockfile), and the new-application README quotes them.
+// lockfile), and the new-application README quotes them. The project site
+// (tylergannon/skgo-project, cmd/docgen) reads these constants by name from
+// this file, so renaming or removing one breaks its build unless the old name
+// is accepted there first.
 package toolchain
 
 // Kit is the @sveltejs/kit version skgo mirrors and patches.

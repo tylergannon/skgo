@@ -1,4 +1,0 @@
-=== RUN   TestNativePluginHelpApplicationAndProjectTool
---- PASS: TestNativePluginHelpApplicationAndProjectTool (8.69s)
-PASS
-ok  	github.com/tylergannon/skgo/cmd/skgo	15.744s

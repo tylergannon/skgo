@@ -40,7 +40,7 @@ Write each Go replacement before you run `skgo generate`; once a Go file is besi
 
 ## Adapter
 
-`skgo new` configured `@skgo/sveltekit-adapter` in `web/vite.config.ts` and turned on remote functions. Copy your other Kit options, such as `csp`, `csrf` and `version`, from your old config; Kit 3 fixes `paths.origin` at build time, and the generated config reads it from `ORIGIN`. `output.bundleStrategy: 'inline'` and `router.resolution: 'server'` are refused. adapter-node's environment variables have no effect: the origin is compiled in by `just build` and the listen address is the binary's `-listen` flag. See [Adapter](/docs/skgo/adapter) and [Deploying](/docs/skgo/deploying).
+`skgo new` configured `@skgo/sveltekit-adapter` in `web/vite.config.ts` and turned on remote functions. Copy your other Kit options, such as `csp`, `csrf` and `version`, from your old config; Kit 3 fixes `paths.origin` at build time, and the generated config does not set it; see [Building your app](/docs/skgo/building-your-app#The-origin-is-compiled-in). `output.bundleStrategy: 'inline'` and `router.resolution: 'server'` are refused. adapter-node's environment variables have no effect: the origin is compiled in by `just build` and the listen address is the binary's `-listen` flag. See [Adapter](/docs/skgo/adapter) and [Deploying](/docs/skgo/deploying).
 
 ## Server loads
 

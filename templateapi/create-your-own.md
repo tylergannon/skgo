@@ -6,7 +6,7 @@ section: Add-ons
 order: 3030
 ---
 
-SKGo add-ons and templates come from Go plugins: a `main` package built with `-buildmode=plugin` that exports `SKGoPluginV1`. Where sv's [community add-ons](https://svelte.dev/docs/cli/community) are npm packages, an SKGo plugin is a Go module compiled for the exact `skgo` executable that loads it.
+Apart from the built-in `tailwindcss` add-on, SKGo add-ons and templates come from Go plugins: a `main` package built with `-buildmode=plugin` that exports `SKGoPluginV1`. Where sv's [community add-ons](https://svelte.dev/docs/cli/community) are npm packages, an SKGo plugin is a Go module compiled for the exact `skgo` executable that loads it.
 
 ## Quick start
 

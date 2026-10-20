@@ -1,6 +1,0 @@
-=== RUN   TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain
-=== PAUSE TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain
-=== CONT  TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain
---- PASS: TestPrerenderInputsBuildAppWaitsForUnrelatedCrawlerFailureDrain (10.03s)
-PASS
-ok  	github.com/tylergannon/skgo/internal/adapter	10.362s

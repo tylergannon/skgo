@@ -13,9 +13,8 @@ import (
 
 // The keys below were produced by kit itself, not by this package: kit's
 // `stringify_remote_arg` and `create_remote_key`, copied verbatim out of
-// ephemeral/inspiration/reference/kit/packages/kit/src/runtime/shared.js with
-// the transport `encoders` map empty, run against the pinned devalue 5.9.2 in
-// ephemeral/inspiration/reference/devalue. The recipe is in the worklog. They
+// Kit's src/runtime/shared.js with the transport `encoders` map empty, run
+// against the pinned devalue 5.9.2. They
 // are the keys the browser holds its query cache under, so they are the keys a
 // refresh built in Go has to hit; computing them here with remotearg would let
 // every wrong answer agree with itself.

@@ -1,7 +1,0 @@
-Validate the reopened #250 native prerender EPERM/drain failure on this branch. Read the complete issue and new native counterfactual evidence in ephemeral/issue-resolutions/01-prerender.md, the adjacent 01-native-eperm logs, and the Darwin regression.
-
-The original contract is rejection-time drain of owned process groups/private directories, preserving the original error and visible retained cleanup failure. Prior injected-denial ownership hardening alone was incorrectly called resolution. Judge whether the new native evidence actually closes that gap: historical owner failure, current throw-policy failure, and current bounded-reaping success, paired with the unchanged real Kit crawler/blocked-producer control. Distinguish the fixture builder from Kit's actual crawler and state what remains unknown about the lost original PID. Map source/OS behavior independently where needed.
-
-Check the new regression is load-bearing and run the focused native/crawler proof once. Only verified goal/proof failures or reproducible new bugs are actionable; no scope expansion, unrelated improvements, full CI or stress reruns. A regression-only resolution is valid if an existing production change supplies the demonstrated repair. Restore temporary mutations and remove scratch; do not implement or commit.
-
-Return PASS/FAIL with actual commands/results, causal reasoning and any precise remaining proof gap. Do not infer completion from green retries or error-code similarity alone.

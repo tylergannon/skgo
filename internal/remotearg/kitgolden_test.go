@@ -9,11 +9,9 @@ import (
 
 // The payloads in this file are goldens taken from kit itself, not derived by
 // hand. They were produced by running kit's `stringify_remote_arg` and
-// `stringify_command_arg` — the reducer code copied verbatim out of the pinned
-// ephemeral/inspiration/reference/kit/packages/kit/src/runtime/shared.js, with
-// the transport `encoders` map empty — against the pinned devalue 5.9.2 in
-// ephemeral/inspiration/reference/devalue, on the Node that `mise x -- node`
-// provides inside example/. The recipe is in the worklog.
+// `stringify_command_arg` — the reducer code copied verbatim out of Kit's pinned
+// src/runtime/shared.js, with the transport `encoders` map empty —
+// against the pinned devalue 5.9.2 under Node.
 //
 // kit's own shared.spec.js asserts only that two orderings of the same value
 // agree; it never pins the bytes. Those equivalence cases are ported in

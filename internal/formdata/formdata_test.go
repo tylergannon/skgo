@@ -11,10 +11,8 @@ import (
 
 // The envelopes in this file are goldens taken from kit itself, not built by
 // hand here. They were produced by running kit's own `serialize_binary_form` —
-// copied verbatim out of the pinned
-// ephemeral/inspiration/reference/kit/packages/kit/src/runtime/form-utils.js —
-// against the pinned devalue in ephemeral/inspiration/reference/devalue, on
-// the Node `mise x -- node` provides. The recipe is in the worklog.
+// copied verbatim out of Kit's pinned
+// src/runtime/form-utils.js — against the pinned devalue under Node.
 //
 // Pinning bytes kit produced is the whole point: a test that built the
 // envelope with this package's own encoder would pass no matter how wrong the

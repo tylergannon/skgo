@@ -43,7 +43,7 @@ This is a manual maintenance procedure; it creates no scheduled task.
 
 ## 3.1.0 — reviewed 2026-10-16
 
-This working branch adopts stable Kit 3.1.0 from 3.0.0. Publication and deployed
+skgo adopted stable Kit 3.1.0 from 3.0.0 in #351. Publication and deployed
 measurements remain separate. Reviewed the complete official releases for
 [3.0.1](https://github.com/sveltejs/kit/releases/tag/%40sveltejs%2Fkit%403.0.1)
 and [3.1.0](https://github.com/sveltejs/kit/releases/tag/%40sveltejs%2Fkit%403.1.0),
@@ -113,7 +113,7 @@ The [stable source tarball](https://registry.npmjs.org/@sveltejs/kit/-/kit-3.0.0
 was compared with
 [3.0.0-next.28](https://registry.npmjs.org/@sveltejs/kit/-/kit-3.0.0-next.28.tgz),
 the actual prior pin. Registry timestamps, peer constraints and tarball integrity
-are recorded in [registry.json](ephemeral/js-dependencies/registry.json).
+are recorded in [registry.json](https://github.com/tylergannon/skgo/blob/4591dbaae678ff69f6edc4a705ecde3b3a63e58b/ephemeral/js-dependencies/registry.json).
 
 **Baseline:** reviewed from PR235's published head, then reconciled onto released
 main `bfea45a9dc5be011f9e4f37204f3b37eea350fde`, which includes the release repairs
@@ -180,9 +180,8 @@ build so restored files could not invalidate the frontend freshness check.
 
 - Main-example browser suite: **174 dev scenarios and 174 production scenarios
   passed**, with no skips, on the combined `bfea45a` base. Production ran against
-  a task-owned Go binary with Node excluded from its runtime PATH. Logs:
-  `final-dev-bdd.log` and `final-prod-bdd.log` under
-  `ephemeral/js-dependencies/logs/`.
+  a task-owned Go binary with Node excluded from its runtime PATH. Its logs
+  were local and are not in the repository.
 - Fresh production build, `just test` for both modules, `just vet`, and example
   type checking passed. The Go suite includes literal handler contracts,
   startup of the production SSR runtime, 500-document renderer retention with
@@ -223,7 +222,7 @@ build so restored files could not invalidate the frontend freshness check.
   `Tyler final local 2026-10-03`, distinct from earlier captures.
 
 The working-tree code checked above was committed as `5d3e1a0`. The independent
-[whole-change review](ephemeral/reviews/20261003-stable-js-main-round-03.md)
+[whole-change review](https://github.com/tylergannon/skgo/blob/4591dbaae678ff69f6edc4a705ecde3b3a63e58b/ephemeral/reviews/20261003-stable-js-main-round-03.md)
 ran `just test` again at that committed head (21 packages passed), verified the
 addon distribution against a fresh build, and inspected both screenshots. Its
 outcome was **only nitpicks remain**. No Go or browser implementation changed after those runs; later edits clarify

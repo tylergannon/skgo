@@ -79,10 +79,12 @@ e2e_json_reporter := if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_FILE", "") !=
 # svelte-check runs first: Svelte type-checking lives here and in CI's
 # example/web job, never in `just test`.
 # A complete pass on the replacement dev topology is not yet established.
-e2e mode="prod":
+# Arguments after the mode reach Playwright: `just e2e prod --grep '<title>'`.
+[positional-arguments]
+e2e mode="prod" *args:
     @case "{{mode}}" in prod|dev) ;; *) echo "Expected prod or dev" >&2; exit 1;; esac
     cd example/web && node_modules/.bin/vp run check
-    cd example/e2e && BASE_URL="{{origin}}" SKGO_E2E_MODE="{{mode}}" SKGO_LOG="{{log}}" ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}}
+    shift; cd example/e2e && BASE_URL="{{origin}}" SKGO_E2E_MODE="{{mode}}" SKGO_LOG="{{log}}" ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}} "$@"
 
 # `git worktree add -b` has silently landed an agent on main once, so the
 # branch is confirmed rather than assumed. Each worktree installs its own
@@ -103,6 +105,7 @@ worktree branch base="main":
 ports:
     lsof -nP -iTCP -sTCP:LISTEN
 
-# Releases have no local recipe. A Conventional Commit merged to main starts
-# release.yml; it reserves a candidate tag, then publishes the qualified,
-# signed CLI and npm packages and updates Homebrew.
+# Releases have no local recipe. A core change merged to main announces a
+# candidate to skgo-project for qualification (candidate.yml); a manual
+# release.yml dispatch naming a qualified candidate publishes the signed CLI
+# and npm packages and updates Homebrew.

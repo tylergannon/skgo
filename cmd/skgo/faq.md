@@ -20,7 +20,7 @@ An SKGo application's server is Go, and its frontend always lives in `web/`. So 
 | --- | --- | --- |
 | `skgo/generate` under the user cache directory, or `SKGO_CACHE_DIR`, or `--cache-dir` | `skgo generate` plans | `--cache-dir off`, or delete it |
 | `.skgo/` in the application root | the freshness record `skgo build` keeps for the frontend | delete `.skgo/` |
-| `native/build/` | native build output and compiler caches | delete `native/build/` |
-| `~/.skgo/plugins/` | plugins you place by hand, and managed installs under `hosts/<executable-sha256>/` | `skgo plugin remove MODULE` for a managed install; delete a manual `.so` yourself |
+| `native/build/` | the native-shell plugin's build output and compiler caches | delete `native/build/` |
+| `~/.skgo/plugins/` | plugins you place by hand, managed installs under `hosts/<executable-sha256>/`, and prebuilt downloads under `prebuilt/<executable-sha256>/` | `skgo plugin remove MODULE` for a managed install; delete a manual `.so` yourself |
 
-None of these is needed to run a built application. The `.gitignore` a new application gets covers `bin/` and `web/node_modules/` but not `.skgo/`, so add that line yourself.
+None of these is needed to run a built application. The `.gitignore` a new application gets covers `bin/`, `.skgo/` and `web/node_modules/`.
