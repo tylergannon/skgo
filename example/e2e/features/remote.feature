@@ -21,8 +21,12 @@ Feature: Remote functions written in Go
     Given I open "/todos/t2"
     Then the todo detail shows "serve remote functions"
 
-  Scenario: A universal load shares its remote query with the component at hydration
-    Given I open "/items/93"
+  Scenario: A retained universal-load query is shared with the component at hydration
+    Kit's client consumes the boot payload's entry once and evicts the cached
+    query when its last proxy is garbage collected. A load that drops its
+    query leaves the component's call to the collector's timing.
+
+    Given I open "/items/93?retain=1"
     Then the item load and component both show "Widget 93"
     And no remote request was made during hydration
 
