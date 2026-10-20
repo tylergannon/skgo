@@ -81,30 +81,19 @@ jobs:
             echo "::error::Candidate is older than or diverges from the published core source."
             exit 1
           fi
-          # The annotated source tag is the first public exposure of a version.
-          # It survives npm success followed by a later distribution failure.
+          # Finish an existing reserved version before starting a different one.
           reserved=$(gh api "repos/$GITHUB_REPOSITORY/tags?per_page=100" --paginate --jq '.[] | .name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' | sort -V | tail -1)
-          reservation_time=$(jq -r .publishedAt <<< "$latest")
           if [[ "$reserved" != "$tag" ]]; then
-            reservation_status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$reserved...$CANDIDATE" --jq .status)
-            if [[ "$reservation_status" = identical ]]; then exit 0; fi
-            if [[ "$reservation_status" != ahead ]]; then
-              echo "::error::An older reserved source cannot replace a newer version."
-              exit 1
-            fi
-            reference=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$reserved")
-            test "$(jq -r .object.type <<< "$reference")" = tag
-            object=$(jq -r .object.sha <<< "$reference")
-            reservation_time=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$object" --jq .tagger.date)
-          elif [[ "$status" = identical ]]; then
-            # Continue the current version without consuming another window.
-            exit 0
+            status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$reserved...$CANDIDATE" --jq .status)
+            if [[ "$status" = identical ]]; then exit 0; fi
+            echo "::error::Finish reserved version $reserved before starting another version."
+            exit 1
           fi
+          if [[ "$status" = identical ]]; then exit 0; fi
           published=$(jq -r .publishedAt <<< "$latest")
-          PUBLISHED_AT="$published" RESERVED_AT="$reservation_time" python3 - <<'PYTHROTTLE'
+          PUBLISHED_AT="$published" python3 - <<'PYTHROTTLE'
           import datetime, os
-          timestamps = [datetime.datetime.fromisoformat(os.environ[k].replace('Z', '+00:00')) for k in ['PUBLISHED_AT', 'RESERVED_AT']]
-          due = max(timestamps) + datetime.timedelta(hours=3)
+          due = datetime.datetime.fromisoformat(os.environ['PUBLISHED_AT'].replace('Z', '+00:00')) + datetime.timedelta(hours=3)
           if datetime.datetime.now(datetime.timezone.utc) < due:
               raise SystemExit('Publication deferred until ' + due.isoformat())
           PYTHROTTLE
@@ -383,8 +372,26 @@ jobs:
           name: sv-package
           path: sv-package
       - *publication_guard
-      - name: npm publish
-        run: npm publish ./sv-package/*.tgz --access public
+      - name: Publish the missing npm package or confirm the existing bytes
+        run: |
+          tarball=$(find sv-package -name '*.tgz' -print -quit)
+          package=$(tar -xOf "$tarball" package/package.json | jq -r .name)
+          version=$(tar -xOf "$tarball" package/package.json | jq -r .version)
+          TARBALL="$tarball" PACKAGE="$package" VERSION="$version" node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          import {execFileSync} from 'node:child_process';
+          const {TARBALL,PACKAGE,VERSION}=process.env;
+          const response=await fetch(`https://registry.npmjs.org/${encodeURIComponent(PACKAGE)}/${VERSION}`);
+          if(response.status===404){execFileSync('npm',['publish',TARBALL,'--access','public'],{stdio:'inherit'});}
+          else {
+            if(!response.ok)throw new Error(`Registry returned ${response.status}`);
+            const existing=await response.json();
+            const integrity='sha512-'+createHash('sha512').update(readFileSync(TARBALL)).digest('base64');
+            if(existing.dist.integrity!==integrity)throw new Error('Published package differs from the retained release tarball');
+            console.log(`${PACKAGE}@${VERSION} is already published`);
+          }
+          NODE
 
   publish:
     name: Publish GitHub Release and Homebrew cask
@@ -425,6 +432,15 @@ jobs:
           jq -n --arg id "$id" --arg attempt "$ATTEMPT" --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:"requested",run:$run}' > "$RUNNER_TEMP/publication.json"
           curl --fail --silent --show-error -H "Authorization: Bearer $STATUS_WRITE_TOKEN" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/publication.json" https://skgo-site.fly.dev/api/core-publications
           echo "id=$id" >> "$GITHUB_OUTPUT"
+      - name: Reuse CLI archives already published for this version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            archives=$(gh release view "$VERSION" --json assets --jq '.assets[].name | select(startswith("skgo_") and endswith(".tar.gz"))')
+            if [[ -n "$archives" ]]; then gh release download "$VERSION" --pattern 'skgo_*.tar.gz' --dir dist --clobber; fi
+          fi
       - name: Verify all archives and calculate final checksums
         env:
           VERSION: ${{ needs.version.outputs.version }}
@@ -435,7 +451,11 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           if gh release view "$VERSION" >/dev/null 2>&1; then
-            gh release upload "$VERSION" --clobber dist/*.tar.gz dist/checksums.txt
+            existing=$(gh release view "$VERSION" --json assets --jq '.assets[].name')
+            for archive in dist/*.tar.gz; do
+              if ! grep -Fxq "${archive##*/}" <<< "$existing"; then gh release upload "$VERSION" "$archive"; fi
+            done
+            gh release upload "$VERSION" --clobber dist/checksums.txt
             gh release edit "$VERSION" --draft=false --latest --title "SKGO $VERSION"
           else
             gh release create "$VERSION" --verify-tag --latest --title "SKGO $VERSION" --generate-notes dist/*.tar.gz dist/checksums.txt
