@@ -1,13 +1,20 @@
 package skgo
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/tylergannon/polytype"
 	"github.com/tylergannon/skgo/internal/formdata"
@@ -30,13 +37,20 @@ const (
 	formGoldenValidateOnly = "AC4AAAAAAFtbMSwzXSx7ImZyb20iOjJ9LCIiLHsidmFsaWRhdGVfb25seSI6NH0sdHJ1ZV0="
 
 	// Produced with the pinned Kit 3.0.0-next.27 convert_formdata and
-	// serialize_binary_form, using controls named name/id, n:count/id,
-	// b:enabled/id, and label/id. The expectations below are literal fixture
-	// values, independent of the parsed submission.
-	formGoldenOptionalAbsent   = "AB8AAAAAAFtbMSwzXSx7Im5hbWUiOjJ9LCJmaXh0dXJlIix7fV0="
-	formGoldenOptionalZeroes   = "AEoAAAAAAFtbMSw2XSx7Im5hbWUiOjIsImNvdW50IjozLCJlbmFibGVkIjo0LCJsYWJlbCI6NX0sImZpeHR1cmUiLDAsZmFsc2UsIiIse31d"
+	// serialize_binary_form, using controls named name/id and n:count/id. The
+	// expectations below are literal fixture values, independent of the parsed
+	// submission.
 	formGoldenOptionalInvalid  = "ACoAAAAAAFtbMSwzXSx7Im5hbWUiOjIsImNvdW50IjotM30sImZpeHR1cmUiLHt9XQ=="
 	formGoldenOptionalValidate = "AEEAAAAAAFtbMSw0XSx7Im5hbWUiOjIsImNvdW50IjozfSwiZml4dHVyZSIsMCx7InZhbGlkYXRlX29ubHkiOjV9LHRydWVd"
+)
+
+// Envelopes the pinned Kit's convert_formdata and serialize_binary_form build
+// from the FormData in TestKitSerializesTheOptionalFormFixtures, which checks
+// Kit still produces exactly these bytes. TestFormOptionalScalarsFromKit
+// decodes them at the form handler.
+const (
+	formFixtureOmitted  = "internal/formdata/testdata/kit-optional-omitted.bin"
+	formFixtureExplicit = "internal/formdata/testdata/kit-optional-explicit.bin"
 )
 
 type draft struct {
@@ -55,7 +69,11 @@ func formRequest(t *testing.T, rs *Remotes, fn *Remote, golden string) *httptest
 	if err != nil {
 		t.Fatalf("decoding golden: %v", err)
 	}
-	req := httptest.NewRequest(http.MethodPost, rs.Prefix()+fn.ID(), strings.NewReader(string(body)))
+	return postForm(rs, fn, body)
+}
+
+func postForm(rs *Remotes, fn *Remote, body []byte) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, rs.Prefix()+fn.ID(), bytes.NewReader(body))
 	req.Header.Set("Content-Type", formdata.ContentType)
 	rec := httptest.NewRecorder()
 	rs.ServeHTTP(rec, req)
@@ -252,12 +270,75 @@ func TestFormValidateOnlyDoesNotRunTheHandler(t *testing.T) {
 	}
 }
 
+// Kit's client, not skgo, encodes an enhanced form submission, so the bytes
+// skgo decodes must be the bytes the pinned Kit writes. In the omitted
+// submission a blank number input posts "", which Kit turns into undefined,
+// and the other optional fields post nothing. The file's type and
+// lastModified are fixed so the bytes are too.
+func TestKitSerializesTheOptionalFormFixtures(t *testing.T) {
+	module, err := filepath.Abs("example/web/node_modules/@sveltejs/kit/src/runtime/form-utils.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const program = `import {pathToFileURL} from 'node:url';
+const {convert_formdata,serialize_binary_form,BINARY_FORM_CONTENT_TYPE}=await import(pathToFileURL(process.argv[1]).href);
+const id='worolc/optional';
+const omitted=new FormData();
+omitted.append('name/'+id,'fixture');
+omitted.append('n:count/'+id,'');
+const explicit=new FormData();
+explicit.append('name/'+id,'fixture');
+explicit.append('n:count/'+id,'0');
+explicit.append('b:enabled/'+id,'off');
+explicit.append('label/'+id,'');
+explicit.append('attachment/'+id,new File(['literal-upload-73'],'haiku.txt',{type:'text/plain',lastModified:1700000000000}));
+const envelope=async form=>{
+ const {blob}=serialize_binary_form(convert_formdata(id,form),{remote_refreshes:[]});
+ return Buffer.from(await blob.arrayBuffer()).toString('base64');
+};
+process.stdout.write(JSON.stringify({contentType:BINARY_FORM_CONTENT_TYPE,omitted:await envelope(omitted),explicit:await envelope(explicit)}));`
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "node", "--input-type=module", "-e", program, module).Output()
+	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			t.Fatalf("Kit's form serializer: %v\n%s", err, exit.Stderr)
+		}
+		t.Fatalf("Kit's form serializer: %v", err)
+	}
+	var kit struct {
+		ContentType string `json:"contentType"`
+		Omitted     []byte `json:"omitted"`
+		Explicit    []byte `json:"explicit"`
+	}
+	if err := json.Unmarshal(out, &kit); err != nil {
+		t.Fatalf("Kit's form serializer printed %q: %v", out, err)
+	}
+	if kit.ContentType != formdata.ContentType {
+		t.Errorf("Kit posts forms as %q; skgo's form handler accepts %q", kit.ContentType, formdata.ContentType)
+	}
+	for _, fixture := range []struct {
+		path string
+		kit  []byte
+	}{{formFixtureOmitted, kit.Omitted}, {formFixtureExplicit, kit.Explicit}} {
+		want, err := os.ReadFile(fixture.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(fixture.kit, want) {
+			t.Errorf("Kit's serializer wrote\n%q\nthe committed %s is\n%q", fixture.kit, fixture.path, want)
+		}
+	}
+}
+
 func TestFormOptionalScalarsFromKit(t *testing.T) {
 	type input struct {
-		Name    string                    `json:"name"`
-		Count   polytype.Optional[int]    `json:"count,omitzero"`
-		Enabled polytype.Optional[bool]   `json:"enabled,omitzero"`
-		Label   polytype.Optional[string] `json:"label,omitzero"`
+		Name       string                    `json:"name"`
+		Count      polytype.Optional[int]    `json:"count,omitzero"`
+		Enabled    polytype.Optional[bool]   `json:"enabled,omitzero"`
+		Label      polytype.Optional[string] `json:"label,omitzero"`
+		Attachment File                      `json:"attachment"`
 	}
 	var received []input
 	form := NewForm(testModule, "optional", func(_ context.Context, in input) (receipt, error) {
@@ -267,25 +348,33 @@ func TestFormOptionalScalarsFromKit(t *testing.T) {
 	rs := testRemotes(t, RemoteConfig{}, form)
 
 	for _, tc := range []struct {
-		name   string
-		golden string
-		want   input
+		name    string
+		fixture string
+		want    input
 	}{
-		{"omitted", formGoldenOptionalAbsent, input{Name: "fixture"}},
-		{"explicit zeroes", formGoldenOptionalZeroes, input{
-			Name:    "fixture",
-			Count:   polytype.Optional[int]{Present: true, Value: 0},
-			Enabled: polytype.Optional[bool]{Present: true, Value: false},
-			Label:   polytype.Optional[string]{Present: true, Value: ""},
+		{"omitted", formFixtureOmitted, input{Name: "fixture"}},
+		{"explicit zeroes", formFixtureExplicit, input{
+			Name:       "fixture",
+			Count:      polytype.Optional[int]{Present: true, Value: 0},
+			Enabled:    polytype.Optional[bool]{Present: true, Value: false},
+			Label:      polytype.Optional[string]{Present: true, Value: ""},
+			Attachment: File{Name: "haiku.txt", Type: "text/plain", LastModified: 1700000000000, Data: []byte("literal-upload-73")},
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			rec := formRequest(t, rs, form, tc.golden)
+			body, err := os.ReadFile(tc.fixture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rec := postForm(rs, form, body)
 			if rec.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200", rec.Code)
 			}
-			if len(received) == 0 || received[len(received)-1] != tc.want {
-				t.Fatalf("handler received %+v, want %+v", received, tc.want)
+			if len(received) == 0 {
+				t.Fatal("the handler did not run")
+			}
+			if got := received[len(received)-1]; !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("handler received %+v with file bytes %q, want %+v with %q", got, got.Attachment.Data, tc.want, tc.want.Attachment.Data)
 			}
 			kind, data, _ := envelope(t, rec.Body.Bytes())
 			if kind != "result" || field(t, field(t, field(t, data, "_"), "result"), "id") != "accepted" {

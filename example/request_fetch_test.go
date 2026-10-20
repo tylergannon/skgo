@@ -3,11 +3,13 @@
 package example_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/tylergannon/devalue/v5"
 	"github.com/tylergannon/skgo/example"
 	"github.com/tylergannon/skgo/example/businesslogic"
 )
@@ -64,14 +66,32 @@ func TestTheLoadsFetchCarriesTheVisitorsSession(t *testing.T) {
 
 func TestAClientNavigationGetsTheLoadsFetchedValueFromGo(t *testing.T) {
 	h := newProdHandler(t)
+	session := businesslogic.Default.SignIn("ada")
+	defer businesslogic.Default.SignOut(session)
 
-	rec := getAs(t, h, "/request-fetch/__data.json?x-sveltekit-invalidated=01", "")
+	rec := getAs(t, h, "/request-fetch/__data.json?x-sveltekit-invalidated=01", session)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, `"harbour-lamp-4096"`) || !strings.Contains(body, `"guest"`) {
-		t.Errorf("the data response does not carry the fetched values: %s", body)
+	var wire struct {
+		Nodes []struct{ Data json.RawMessage }
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &wire); err != nil || len(wire.Nodes) != 2 {
+		t.Fatalf("data response: %v %s", err, body)
+	}
+	tree, err := devalue.Parse(string(wire.Nodes[1].Data), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(tree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The client renders the visitor as "Fetched as ada": the session travelled.
+	var data struct{ Fact, Visitor string }
+	if err := json.Unmarshal(raw, &data); err != nil || data.Fact != "harbour-lamp-4096" || data.Visitor != "ada" {
+		t.Errorf("load data = %+v, want fact harbour-lamp-4096 fetched as ada: %s", data, body)
 	}
 	// Kit records no dependency for a fetch made by a server load.
 	if !strings.Contains(body, `"uses":{}`) {

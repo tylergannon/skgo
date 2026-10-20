@@ -33,15 +33,21 @@ Vite/Kit SSR and HMR, calling Go for application logic
 
 ## Testing
 
-- Contracts are Go tests at the real handler with literal fixtures. A scenario
-  in `example/e2e` exists only when kit's client must act (hydration, enhanced
-  submit, client navigation, invalidation, streaming, transport, batching) or
-  scripting is off.
+- Tests let agents check quickly that a change broke nothing else. Passing
+  tests are not proof of work, not the definition of done, and do not qualify
+  a release; skgo-project qualifies releases.
+- Contracts are Go tests at the real handler with literal fixtures. A test
+  that needs a running server is named for what it checks, lives in the
+  package it checks, and lets Go own the server and its cleanup. There is no
+  separate browser suite, directory or recipe.
+- Run a browser only for what needs one: Kit's client adopting the HTML and
+  data Go rendered. `example/web/tests/client-handoff.spec.ts` is the one
+  spec; `TestBuiltClientHandoff` and `TestRealSessionClientHandoff` run it.
 - `just test` takes seconds. Run an expensive command once and assert many
   times on its output. Test skgo's behaviour, never a dependency's.
 - Never derive an expectation from the thing under test. Anchor it in a
   fixture or a literal.
-- Skips are failures, and no recipe means "done". `just test` green, `just e2e`
-  green on main, and someone who looked at the running app.
+- Skips are failures, and an empty selection is not a pass. No recipe means
+  "done": someone looks at the running app.
 - `skgo_qualification` tags compiler/process and built-example tests;
   `skgo_dev_integration` tags Vite/Go session checks.

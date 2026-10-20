@@ -17,6 +17,7 @@
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/sdk-trace-base": "2.12.0",
     "@opentelemetry/sdk-trace-node": "2.12.0",
+    "@playwright/test": "1.64.1",
     "@skgo/sveltekit-adapter": "link:../../internal/adapter",
     "@sveltejs/kit": "3.1.0",
     "@sveltejs/vite-plugin-svelte": "7.3.1",

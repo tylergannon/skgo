@@ -71,6 +71,7 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool,
 		cancel context.CancelFunc
 		app    string
 	}
+	var pending *pendingGate
 	start := func(label string) *session {
 		t.Helper()
 		app := filepath.Join(t.TempDir(), "app")
@@ -136,8 +137,8 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool,
 				write("web/src/routes/"+kind+"/page.server.go", diagnosticSessionLoad(kind, false))
 			}
 		}
-		if mode == "pending-browser" {
-			setupPendingBrowser(t, app, write)
+		if mode == "pending-edit" {
+			pending = setupPendingEdit(t, write)
 		}
 		if mode == "boundary-error" {
 			setupBoundaryError(t, write)
@@ -383,8 +384,8 @@ func waitForReadiness() error {
 		exerciseSessionRelocation(t, alpha.app, alpha.origin, alpha.log)
 		return
 	}
-	if mode == "pending-browser" {
-		exercisePendingBrowser(t, alpha.app, alpha.origin, alpha.log)
+	if mode == "pending-edit" {
+		exercisePendingEdit(t, alpha.app, alpha.origin, alpha.log, pending)
 		return
 	}
 	if mode == "boundary-error" {

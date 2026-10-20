@@ -17,18 +17,19 @@ on:
 permissions:
   contents: read
 
-# This workflow qualifies production. The replacement dev server has focused
-# checks; a complete development browser-suite pass is not established.
+# Tagged Go tests that need a built example, a compiler, a native process or a
+# real development session. One browser check, Kit's client adopting the page
+# Go rendered, runs from a Go test in the production and development jobs.
 jobs:
   qualification:
-    name: Example BDD (production)
+    name: Built example and client handoff (production)
     if: github.event_name == 'workflow_dispatch' || inputs.production
     runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
     timeout-minutes: 45
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+      # TestBuiltClientHandoff serves the build on the origin Kit baked in.
       ORIGIN: http://127.0.0.1:8080
-      SKGO_PORT: "8080"
 
     steps:
       - uses: actions/checkout@v7
@@ -53,46 +54,19 @@ jobs:
       - name: Install the example and browser
         run: |
           just install
-          mise -C example/e2e exec -- vp exec playwright install --with-deps chromium
+          cd example/web && vp exec playwright install --with-deps chromium
 
       - name: Build the candidate
         run: just build
 
-      - name: Built-example handler contracts
+      - name: Svelte type check of the built example
+        run: cd example/web && vp run check
+
+      - name: Built-example handlers and client handoff
         run: go test -tags skgo_qualification -count=1 ./example/...
 
-      - name: Example BDD against the production build
-        run: |
-          bound=$(lsof -t -i tcp:"$SKGO_PORT" 2>/dev/null || true)
-          if [ -n "$bound" ]; then
-            echo "::error title=Port already bound::pid(s) $bound already listen on the qualification ports."
-            exit 1
-          fi
-          just serve &
-          for _ in $(seq 60); do
-            curl -sf -o /dev/null "$ORIGIN/" && break
-            sleep 1
-          done
-          mode=$(curl -sI "$ORIGIN/" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-skgo-mode"{print $2}')
-          if [ "$mode" != "prod" ]; then
-            echo "::error title=Wrong handler::Expected prod, got '${mode:-<absent>}'."
-            exit 1
-          fi
-          just e2e prod
-
-      - name: Stop qualification servers
-        if: always()
-        run: |
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" 2>/dev/null || true)
-          [ -n "$pids" ] || exit 0
-          kill $pids 2>/dev/null || true
-          sleep 3
-          pids=$(lsof -t -i tcp:"$SKGO_PORT" 2>/dev/null || true)
-          [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
-
-      # A green run leaves nothing to look at. A red one leaves Playwright's
-      # own trace and screenshot of each failed scenario, its HTML report, and
-      # what the server logged while it ran.
+      # A green run leaves nothing to look at. A red client-handoff run leaves
+      # Playwright's trace and screenshot of the failure.
       - name: Keep the failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -100,10 +74,7 @@ jobs:
           name: qualification-prod-${{ github.sha }}
           if-no-files-found: warn
           retention-days: 14
-          path: |
-            example/e2e/test-results/
-            example/e2e/playwright-report/
-            example/e2e/server.log
+          path: example/web/test-results/
 
   compiler-linux:
     name: Generated consumers and Go process boundaries (Linux)
@@ -176,6 +147,22 @@ jobs:
         with:
           working_directory: example
           export_path: true
-      - run: cd example/web && vp install --frozen-lockfile
-      - name: Fresh application generation and recovery witnesses
-        run: go test -tags skgo_dev_integration -count=1 ./internal/devserver -run '^TestRealSession(NativeRecoveryAndIsolation|ApplicationGeneration|RouteEmbed)$' -v
+      - name: Install the example and browser
+        run: |
+          cd example/web && vp install --frozen-lockfile
+          vp exec playwright install --with-deps chromium
+      - name: Fresh application generation, recovery and client handoff
+        shell: bash
+        run: go test -tags skgo_dev_integration -count=1 ./internal/devserver -run '^TestRealSession(NativeRecoveryAndIsolation|ApplicationGeneration|RouteEmbed|RouteEditDuringPendingLoad|ClientHandoff)$' -v 2>&1 | tee development-session.log
+      # The session log is in the test output; Playwright keeps the trace and
+      # screenshot of a failed client-handoff run.
+      - name: Keep the failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: qualification-dev-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            development-session.log
+            example/web/test-results/

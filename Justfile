@@ -3,17 +3,11 @@
 # Every recipe here DOES something. None of them decides whether the software
 # works. There is deliberately no `just check` and no `just acceptance`: a
 # single command that exits 0 becomes what agents build toward, and it cannot
-# see the app. Whether skgo works is `just test` green in seconds, `just e2e`
-# green on main, and a person who opened the box.
+# see the app. Tests let an agent check quickly that a change broke nothing
+# else; they are not proof of work, and they do not qualify a release.
 
 origin := env("ORIGIN", "http://127.0.0.1:8080")
 port := env("SKGO_PORT", "8080")
-
-# Where `just serve` copies the server's log. The Gherkin suite reads it,
-# because one claim in it is about a line only an operator ever sees: what the
-# rendering engine wrote to the console. A browser never sees that, so a
-# scenario about it has nowhere else to look.
-log := env("SKGO_LOG", justfile_directory() / "example/e2e/server.log")
 
 # Every recipe's child processes resolve Staticcheck from this tree first:
 # the one on PATH was built for an older Go and cannot read this toolchain's
@@ -27,10 +21,9 @@ export NODE_COMPILE_CACHE := env("NODE_COMPILE_CACHE", justfile_directory() / ".
 _default:
     @just --list --unsorted
 
-# node deps for the example app and its Gherkin suite
+# node deps for the example app
 install:
     cd example/web && vp install
-    cd example/e2e && vp install
 
 # the link tree, the throwing stubs, and the wire types
 generate:
@@ -68,23 +61,7 @@ test *args: tools
 
 # the example server, against the built frontend
 serve:
-    #!/usr/bin/env bash
-    set -o pipefail
-    go run ./example/cmd -listen 127.0.0.1:{{port}} 2>&1 | tee "{{log}}"
-
-e2e_json_reporter := if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_FILE", "") != "" { " --add-reporter=json" } else if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_NAME", "") != "" { " --add-reporter=json" } else { "" }
-
-# The shared browser scenarios against an already running server. Global setup
-# checks X-Skgo-Mode against the explicit mode; it does not start the server.
-# svelte-check runs first: Svelte type-checking lives here and in CI's
-# example/web job, never in `just test`.
-# A complete pass on the replacement dev topology is not yet established.
-# Arguments after the mode reach Playwright: `just e2e prod --grep '<title>'`.
-[positional-arguments]
-e2e mode="prod" *args:
-    @case "{{mode}}" in prod|dev) ;; *) echo "Expected prod or dev" >&2; exit 1;; esac
-    cd example/web && node_modules/.bin/vp run check
-    shift; cd example/e2e && BASE_URL="{{origin}}" SKGO_E2E_MODE="{{mode}}" SKGO_LOG="{{log}}" ../web/node_modules/.bin/vp run --no-cache test{{e2e_json_reporter}} "$@"
+    go run ./example/cmd -listen 127.0.0.1:{{port}}
 
 # `git worktree add -b` has silently landed an agent on main once, so the
 # branch is confirmed rather than assumed. Each worktree installs its own

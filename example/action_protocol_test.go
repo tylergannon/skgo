@@ -12,6 +12,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/tylergannon/devalue/v5"
 )
 
 func actionRequest(h http.Handler, method, target, body string, headers http.Header, cookies ...*http.Cookie) *httptest.ResponseRecorder {
@@ -60,6 +62,47 @@ func TestPageActionOutcomesThroughRealHandler(t *testing.T) {
 			t.Fatalf("validation result: %d %s", rec.Code, rec.Body.String())
 		}
 		getProfile(t, cookies, "Ada Lovelace")
+	})
+
+	t.Run("cross-page validation keeps the destination query and does not save", func(t *testing.T) {
+		cookies := start(t)
+		form := url.Values{"name": {"Grace Hopper"}, "email": {"grace-at-example"}, "biography": {"Keep this biography"}}.Encode()
+		rec := post(t, "/actions/cross/receive?/save&source=invite", form, cookies...)
+		// Kit's enhance navigates to location and devalue-parses data there.
+		var result struct {
+			Type     string `json:"type"`
+			Status   int    `json:"status"`
+			Location string `json:"location"`
+			Data     string `json:"data"`
+		}
+		if rec.Code != 422 || json.Unmarshal(rec.Body.Bytes(), &result) != nil {
+			t.Fatalf("cross-page validation: %d %s", rec.Code, rec.Body.String())
+		}
+		if result.Type != "failure" || result.Status != 422 || result.Location != "/actions/cross/receive?source=invite" {
+			t.Fatalf("cross-page result: %+v", result)
+		}
+		tree, err := devalue.Parse(result.Data, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := json.Marshal(tree)
+		if err != nil {
+			t.Fatal(err)
+		}
+		type failure struct{ Name, Email, Biography, EmailError string }
+		var got failure
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		if want := (failure{"Grace Hopper", "grace-at-example", "Keep this biography", "Enter a valid email address"}); got != want {
+			t.Fatalf("cross-page failure data = %+v, want %+v", got, want)
+		}
+		page := actionRequest(h, http.MethodGet, "/actions/cross/receive", "", http.Header{"Accept": {"text/html"}}, cookies...)
+		for _, want := range []string{`data-testid="cross-saved-name">Ada Lovelace</p>`, `data-testid="cross-saved-email">ada@example.test</p>`} {
+			if page.Code != 200 || !callerMarkupContains(page.Body.String(), want) {
+				t.Fatalf("stored cross-page profile missing %q: %d %s", want, page.Code, page.Body.String())
+			}
+		}
 	})
 
 	t.Run("archive returns no data and changes stored state", func(t *testing.T) {
@@ -116,7 +159,7 @@ func TestPageActionOutcomesThroughRealHandler(t *testing.T) {
 
 	t.Run("form data and repeated fields reach Go", func(t *testing.T) {
 		cookies := start(t)
-		file, err := os.ReadFile("e2e/fixtures/haiku.txt")
+		file, err := os.ReadFile("testdata/haiku.txt")
 		if err != nil {
 			t.Fatal(err)
 		}
