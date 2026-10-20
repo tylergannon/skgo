@@ -244,6 +244,10 @@ export function handleGoError({event,kind,error,issues}) {
     if (kind==='unknown') console.error(`Error: ${diagnostic.message}\n${diagnostic.stack || (diagnostic.source ? `    at ${diagnostic.source}` : '')}`);
     return body;
   }
+  // Kit's own default handleError prints what it catches. The Go hook below
+  // only changes what the visitor sees, so the terminal still gets the cause.
+  if (kind==='validation') console.error('Remote function schema validation failed:',issues);
+  if (kind==='unknown') {let cause=error;while(cause instanceof Error){if(cause.stack)console.error(cause.stack);cause=cause.cause;}}
   // Preserve errors already handled by Go above; route Kit and JavaScript
   // errors through the same application policy used by request handling.
   return json('error', {

@@ -967,12 +967,12 @@ export async function requestFetch({ event, request, fetch }) {
 
 // Application errors use the same Go policy as served documents. Go-originated
 // errors already carry a HandledHttpError body and Kit bypasses this hook.
+// Kit's own default handleError prints what it catches; this replacement must
+// too, because the Go hook only changes what the visitor sees.
 export function requestError({ event, kind, error, issues }) {
- if (!event.platform?.skgoErrorHook) {
- if(kind === "validation") console.error("Remote function schema validation failed:",issues);
- if(kind === "unknown") {let cause=error;while(cause instanceof Error){if(cause.stack)console.error(cause.stack);cause=cause.cause;}}
- return;
- }
+  if (kind === "validation") console.error("Remote function schema validation failed:", issues);
+  if (kind === "unknown") {let cause=error;while(cause instanceof Error){if(cause.stack)console.error(cause.stack);cause=cause.cause;}}
+  if (!event.platform?.skgoErrorHook) return;
   return invokeService({
     kind: "error", handle: event.platform?.skgoRequestHandle,
     body: kind === "unknown" ? {status:500,message:"Internal Error"} : error,
