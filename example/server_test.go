@@ -372,7 +372,7 @@ func TestTheServerAnswersARealRemoteCall(t *testing.T) {
 	if envelope.Type != "result" {
 		t.Fatalf("the remote call did not return a result: %s", body)
 	}
-	// The seeded list is what the Gherkin suite reads on screen.
+	// The seeded list is what the client handoff check reads on screen.
 	if !strings.Contains(string(body), "write the adapter") {
 		t.Fatalf("the remote call returned no todos: %s", body)
 	}

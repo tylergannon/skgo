@@ -83,8 +83,6 @@ Nothing here changes. Without JavaScript the browser posts the form and Go answe
 ```svelte example/web/src/routes/samples/form-actions/enhance/+page.svelte
 ```
 
-The example's scenarios run every action twice, once natively and once enhanced, and expect the same receipt from both.
-
 ## Alternatives
 
 A `server.go` beside the page can expose the same operation as an HTTP API, and Kit's [content negotiation](/docs/skgo/routing#server-Content-negotiation) decides which answers a `POST`: a browser form reaches the action, a `fetch` with a JSON `accept` header reaches the endpoint. As in Kit, a `fetch` that must reach the action instead sends the `x-sveltekit-action: true` header.

@@ -27,8 +27,8 @@ const SessionCookie = "skgo_session"
 
 // supportID is the fixture value HandleError adds to every failure. It is a
 // literal on purpose, the same way businesslogic.Default's fixtures are:
-// something the Gherkin suite and the Go tests can both assert against
-// without asking the app what it just rendered.
+// something the Go tests can assert against without asking the app what it
+// just rendered.
 const supportID = "case-1121"
 
 // HandleError exposes the example's configured application error policy.

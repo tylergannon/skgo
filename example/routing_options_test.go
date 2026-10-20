@@ -13,7 +13,7 @@ import (
 
 // The same supplied routing fixtures run against the embedded production
 // handler, or an explicitly selected real development session. HTTP outcomes
-// stay Go assertions; the browser scenarios cover Kit's client navigation.
+// stay Go assertions; client navigation itself is Kit's.
 func TestRoutingOptionAndMatcherContracts(t *testing.T) {
 	origin := os.Getenv("SKGO_ROUTE_ORIGIN")
 	var handler http.Handler

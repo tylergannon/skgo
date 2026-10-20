@@ -12,8 +12,8 @@ import (
 
 // The three values src/routes/stream/page.server.go promises, and the strings
 // it promises them as. They are written here rather than read off the response
-// for the same reason the Gherkin scenarios write them out: an ordering claim
-// checked against the order that arrived is no claim at all.
+// because an ordering claim checked against the order that arrived is no claim
+// at all.
 //
 // The load numbers them in the order devalue walks its result — devalue sorts
 // an object's keys, so digest, then ticker, then the forecast inside the

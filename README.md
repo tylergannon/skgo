@@ -198,8 +198,10 @@ include both entry points; existing apps must add the development entry point.
 The production build still produces one Go binary with Go/goja rendering and
 needs no Node at request time. Native Kit rendering is development-only.
 
-Development has focused browser checks and a real two-session integration test,
-but a complete browser-suite pass on this topology is not established. Direct
+Development has a real two-session integration test and one
+[browser check](example/web/tests/client-handoff.spec.ts), which confirms Kit's
+client takes over a page the session rendered and picks up a Go edit; other
+browser behavior on this topology is not established. Direct
 SSR subfetches over the private Go socket expose response cookies to server code
 but do not automatically relay them into Kit's pending cookies or the outer page
 response. This accepted limitation does not apply to every cookie path; qualify
@@ -218,46 +220,46 @@ upstream API. **Limited** names a narrower supported case. **Not supported**
 means skgo has no compatible implementation. **Not verified** means this
 repository does not yet establish the behavior. The upstream links describe SvelteKit generally; skgo follows
 the [pinned Kit 3 version](example/web/package.json), which may differ from
-the public documentation. Browser evidence below is production evidence unless
-explicitly identified as development evidence; it does not establish full parity
-for the new development server.
+the public documentation. Linked tests check Go handlers and the production
+build unless explicitly identified as development evidence; they do not
+establish full parity for the new development server.
 
 ### Pages and routing
 
 | SvelteKit feature | skgo | Boundary or example |
 | --- | --- | --- |
-| [Svelte 5 pages, server rendering and hydration](https://svelte.dev/docs/kit/routing) | Available | In production, Kit's renderer runs in Go; [cold HTML and hydration](example/e2e/features/ssr.feature) are exercised. |
-| [Client-side navigation](https://svelte.dev/docs/kit/routing) | Available | Kit's client navigates without a document reload; [browser scenario](example/e2e/features/app.feature). |
-| [Layouts, route groups and nested error pages](https://svelte.dev/docs/kit/routing) | Available | [Grouped routes](example/e2e/features/colocation.feature), [nested loads](example/e2e/features/loads.feature) and [error boundaries](example/e2e/features/showcase.feature). |
-| [Dynamic and rest route parameters](https://svelte.dev/docs/kit/advanced-routing) | Available | Parameters reach colocated Go handlers; [browser scenarios](example/e2e/features/colocation.feature). |
-| [Optional parameters and parameter matchers](https://svelte.dev/docs/kit/advanced-routing) | Available | Optional captures and paired Go matchers select loads and endpoints; matcher rejection tries the next route before 404. [Client navigation scenarios](example/e2e/features/routing-options.feature) run in development and production. |
-| [Page and layout server loads](https://svelte.dev/docs/kit/load) | Available | Go loads produce typed `data` in documents and `__data.json`; [browser scenarios](example/e2e/features/loads.feature). |
-| [Universal JavaScript loads](https://svelte.dev/docs/kit/load#Universal-vs-server) | Available | A `+page.ts` or `+layout.ts` load stays TypeScript and receives the Go load's result as `data`. It runs where Kit runs it: native Vite/Kit in development, a pooled goja runtime during production server rendering, the browser on client navigation, and Kit's build in Node for a prerendered page. [Rendered document](example/server_test.go), [fetch replay](example/universal_fetch_test.go), and browser scenarios for [hydration and navigation](example/e2e/features/universal-load.feature) and [shared remote queries](example/e2e/features/remote.feature). Application I/O in JavaScript is outside skgo's contract. |
+| [Svelte 5 pages, server rendering and hydration](https://svelte.dev/docs/kit/routing) | Available | In production, Kit's renderer runs in Go; [rendered documents](example/ssr_test.go) carry Go's answers, and a [browser check](example/web/tests/client-handoff.spec.ts) confirms Kit's client takes over a rendered page in development and production. |
+| [Client-side navigation](https://svelte.dev/docs/kit/routing) | Available | Kit's client navigates and asks Go for server load data as `__data.json`; [data contracts](data_test.go) check Go's answer, not the navigation itself. |
+| [Layouts, route groups and nested error pages](https://svelte.dev/docs/kit/routing) | Available | [Grouped routes and nested loads](example/ssr_test.go) and [nested error pages](example/contracts_test.go) have document contracts. |
+| [Dynamic and rest route parameters](https://svelte.dev/docs/kit/advanced-routing) | Available | Parameters reach colocated Go handlers; [dynamic route](example/contracts_test.go) and [rest parameter](data_test.go) contracts. |
+| [Optional parameters and parameter matchers](https://svelte.dev/docs/kit/advanced-routing) | Available | Optional captures and paired Go matchers select loads and endpoints; matcher rejection tries the next route before 404; [routing contracts](example/routing_options_test.go). |
+| [Page and layout server loads](https://svelte.dev/docs/kit/load) | Available | Go loads produce typed `data` in documents and `__data.json`; [document](example/ssr_test.go) and [data](data_test.go) contracts. |
+| [Universal JavaScript loads](https://svelte.dev/docs/kit/load#Universal-vs-server) | Available | A `+page.ts` or `+layout.ts` load stays TypeScript and receives the Go load's result as `data`. It runs where Kit runs it: native Vite/Kit in development, a pooled goja runtime during production server rendering, the browser on client navigation, and Kit's build in Node for a prerendered page. [Rendered document](example/server_test.go) and [fetch replay](example/universal_fetch_test.go) contracts. Application I/O in JavaScript is outside skgo's contract. |
 | [Parent load data, URL, params and route ID](https://svelte.dev/docs/kit/load) | Available | Go exposes `Parent` and request data through `EventFrom`; [nested example](example/web/src/routes/account/page.server.go). |
-| [Load dependencies, invalidation and untrack](https://svelte.dev/docs/kit/load#Rerunning-load-functions) | Limited | Go has `Depends` and `Untrack`; the [browser suite](example/e2e/features/loads.feature) proves reuse of a layout load, not every invalidation path. |
-| [Streaming load promises](https://svelte.dev/docs/kit/load#Streaming-with-promises) | Available | Deferred Go values stream into HTML and client navigation; [browser scenarios](example/e2e/features/stream.feature). |
-| [Expected errors, redirects and error pages](https://svelte.dev/docs/kit/errors) | Available | Go load and remote outcomes use Kit's page/error behavior; [browser scenarios](example/e2e/features/ssr.feature). |
-| [`ssr = false` and `csr = false`](https://svelte.dev/docs/kit/page-options) | Available | SPA fallback and script-free HTML are [browser exercised](example/e2e/features/ssr.feature). |
-| [Prerendering](https://svelte.dev/docs/kit/page-options#prerender) | Available | Kit's build calls Go loads, endpoints and remote prerender functions; Go serves the emitted static files and redirects. [Static file contracts](example/server_test.go) and [browser scenarios](example/e2e/features/engine-build.feature). As in Kit, an ordinary remote `query` cannot be called while prerendering. |
+| [Load dependencies, invalidation and untrack](https://svelte.dev/docs/kit/load#Rerunning-load-functions) | Limited | Go has `Depends` and `Untrack`; [data contracts](data_test.go) check the dependencies Go reports and the nodes it skips when Kit asks, not every invalidation path. |
+| [Streaming load promises](https://svelte.dev/docs/kit/load#Streaming-with-promises) | Available | Deferred Go values stream into HTML and into the `__data.json` a client navigation reads; [stream contracts](example/stream_test.go). |
+| [Expected errors, redirects and error pages](https://svelte.dev/docs/kit/errors) | Available | Go load and remote outcomes use Kit's page/error behavior; [error page and redirect contracts](example/contracts_test.go). |
+| [`ssr = false` and `csr = false`](https://svelte.dev/docs/kit/page-options) | Available | The SPA fallback has a [shell contract](example/server_test.go), and a `csr = false` page is [served without scripts](example/contracts_test.go). |
+| [Prerendering](https://svelte.dev/docs/kit/page-options#prerender) | Available | Kit's build calls Go loads, endpoints and remote prerender functions; Go serves the emitted static files and redirects. [Static file contracts](example/server_test.go). As in Kit, an ordinary remote `query` cannot be called while prerendering. |
 | [Dynamic prerender entries](https://svelte.dev/docs/kit/page-options#entries) | Available | `skgo.Entries` enumerates raw route parameters from Go during Kit analysis; [static serving contract](example/server_test.go). |
-| [Trailing slash and route config options](https://svelte.dev/docs/kit/page-options) | Limited | Page `trailingSlash` supports `never`, `always` and `ignore`, including layout inheritance and overrides; [routing contracts](example/routing_options_test.go) and [client navigation](example/e2e/features/routing-options.feature) cover development and production. Endpoint-only routes use Kit's default `never`; authored server-only slash overrides and nonempty adapter `config` are refused at generation/build with a source or route diagnostic. |
+| [Trailing slash and route config options](https://svelte.dev/docs/kit/page-options) | Limited | Page `trailingSlash` supports `never`, `always` and `ignore`, including layout inheritance and overrides; [routing contracts](example/routing_options_test.go) check the production build. Endpoint-only routes use Kit's default `never`; authored server-only slash overrides and nonempty adapter `config` are refused at generation/build with a source or route diagnostic. |
 
 ### Requests and server behavior
 
 | SvelteKit feature | skgo | Boundary or example |
 | --- | --- | --- |
 | [`+server` endpoints and HTTP methods](https://svelte.dev/docs/kit/routing#+server) | Available | `net/http` handlers serve Kit routes, including `QUERY`; [handler contracts](example/contracts_test.go). |
-| [Page, endpoint and action on one route](https://svelte.dev/docs/kit/routing#+server) | Available | Go endpoints and classic actions share a route; [handler contracts](example/action_protocol_test.go) and [browser scenarios](example/e2e/features/actions-shared.feature). |
-| [Cookies and request-local state](https://svelte.dev/docs/kit/load#Cookies) | Available | `EventFrom`, `SetCookie` and typed locals support the [sign-in example](example/e2e/features/auth.feature). |
+| [Page, endpoint and action on one route](https://svelte.dev/docs/kit/routing#+server) | Available | Go endpoints and classic actions share a route; [handler contracts](example/action_protocol_test.go). |
+| [Cookies and request-local state](https://svelte.dev/docs/kit/load#Cookies) | Available | `EventFrom`, `SetCookie` and typed locals support the [sign-in example](example/web/src/lib/auth.remote.go); [cookie](event_test.go) and [locals](handle_test.go) contracts. |
 | [Response headers from loads](https://svelte.dev/docs/kit/load#Headers) | Available | Go `Event.SetHeader` follows Kit's duplicate-header and cookie rules; [implementation](loadevent.go). |
 | [`handle` and `handleError` hooks](https://svelte.dev/docs/kit/hooks) | Available | Go hooks cover requests and public errors; [example](example/server.go). |
-| [`reroute`](https://svelte.dev/docs/kit/hooks#Universal-hooks-reroute) | Available | A Go hook selects routes and params while preserving the alias URL; Kit's universal forwarding hook keeps client navigation consistent. [Handler contracts](example/reroute_test.go) and [browser navigation](example/e2e/features/reroute.feature) cover development and production. |
+| [`reroute`](https://svelte.dev/docs/kit/hooks#Universal-hooks-reroute) | Available | A Go hook selects routes and params while preserving the alias URL; Kit's universal [forwarding hook](internal/adapter/skgo-adapter/reroute.js) asks Go during client navigation. [Handler contracts](example/reroute_test.go) check the production build, and adapter tests run the forwarding hook in Node. |
 | [Remote validation errors](https://svelte.dev/docs/kit/hooks#Server-hooks-handleError) | Available | Kit 3 uses `handleError` with kind `validation`; Go hooks choose public message and extra fields before the remote body runs. |
 | [Server `init`](https://svelte.dev/docs/kit/hooks#Server-hooks-init) | Not supported | Initialize shared Go state in application setup. |
 | [Server-side `fetch`](https://svelte.dev/docs/kit/load#Making-fetch-requests) | Limited | Go exposes request-aware fetch and `HandleFetch`; [implementation](fetch.go). Direct SSR socket subfetch cookie relay is limited in development; see [Development](#development). Application network I/O belongs in Go. |
-| [Custom transport types](https://svelte.dev/docs/kit/hooks#Universal-hooks) | Available | Paired Go and Kit transport hooks preserve methods; [browser scenarios](example/e2e/features/transport.feature). |
-| [Authentication and authorization](https://svelte.dev/docs/kit/auth) | Available | A Go `handle` hook supplies session locals and a layout load guards routes; [browser scenarios](example/e2e/features/auth.feature). |
-| [Content Security Policy](https://svelte.dev/docs/kit/configuration#csp) | Available | Nonces cover rendered and streamed documents; [browser scenarios](example/e2e/features/csp.feature). |
+| [Custom transport types](https://svelte.dev/docs/kit/hooks#Universal-hooks) | Available | Paired Go and Kit transport hooks preserve methods; [rendering](example/ssr_test.go) and [argument](example/wire_test.go) contracts. |
+| [Authentication and authorization](https://svelte.dev/docs/kit/auth) | Available | A Go `handle` hook supplies session locals and a layout load guards routes; [guard contract](example/contracts_test.go). |
+| [Content Security Policy](https://svelte.dev/docs/kit/configuration#csp) | Available | Nonces cover rendered and streamed documents; [CSP contracts](csp_test.go). |
 | [CSRF and origin checks](https://svelte.dev/docs/kit/configuration#csrf) | Limited | Remote mutations check the build-time origin; [remote implementation](remote.go). Classic action origin and content-type rules have [handler contracts](example/action_protocol_test.go). |
 | [Environment variables and platform context](https://svelte.dev/docs/kit/environment-variables) | Limited | Go server code uses Go environment and request context; Kit's JavaScript server env modules and host-specific `platform` adapters are not skgo APIs. |
 | [Server-only module isolation](https://svelte.dev/docs/kit/server-only-modules) | Limited | Kit's frontend build keeps its client/server module rules; application server logic belongs in Go, not JavaScript modules. |
@@ -269,14 +271,14 @@ for the new development server.
 
 | SvelteKit feature | skgo | Boundary or example |
 | --- | --- | --- |
-| [Remote queries and arguments](https://svelte.dev/docs/kit/remote-functions#query) | Available | Typed Go queries render on the server and answer client requests; [browser scenarios](example/e2e/features/remote.feature). |
-| [Batch queries](https://svelte.dev/docs/kit/remote-functions#query.batch) | Available | Calls combine into one Go batch; [browser scenarios](example/e2e/features/batch.feature). |
-| [Live queries](https://svelte.dev/docs/kit/remote-functions#query.live) | Available | Initial SSR value and subsequent pushes are [browser exercised](example/e2e/features/live.feature). |
-| [Commands and single-flight refresh](https://svelte.dev/docs/kit/remote-functions#command) | Available | Go commands refresh requested queries in the same response; [browser scenarios](example/e2e/features/refresh.feature). |
-| [Remote forms, validation and file uploads](https://svelte.dev/docs/kit/remote-functions#form) | Available | Typed fields, issues, dirty state and upload bytes are [browser exercised](example/e2e/features/form.feature). |
-| [Remote forms without JavaScript](https://svelte.dev/docs/kit/remote-functions#form) | Available | Native POST returns a rendered page and survives hydration; [browser scenarios](example/e2e/features/form-noscript.feature). |
-| [Classic page form actions](https://svelte.dev/docs/kit/form-actions) | Available | Go default/named actions, `use:enhance` and script-free posts have [browser scenarios](example/e2e/features/actions.feature) and [handler contracts](example/action_protocol_test.go). |
-| [Remote prerender functions](https://svelte.dev/docs/kit/remote-functions#prerender) | Limited | `skgo.Prerender` functions run in Go during Kit's build, for the calls prerendered pages make and the arguments `Inputs` lists; the binary serves the results as files. `Dynamic` and `Validate` are refused by `skgo generate`, so the production binary never runs a prerender function at request time; under `skgo dev`, as in Kit's development server, Go answers each call. [Static answer contract](example/server_test.go) and [browser reuse](example/e2e/features/engine-build.feature). |
+| [Remote queries and arguments](https://svelte.dev/docs/kit/remote-functions#query) | Available | Typed Go queries render on the server and answer client requests; [rendering](example/ssr_test.go) and [wire](example/wire_test.go) contracts, and the [browser check](example/web/tests/client-handoff.spec.ts) confirms the client does not refetch a query Go rendered. |
+| [Batch queries](https://svelte.dev/docs/kit/remote-functions#query.batch) | Available | Calls combine into one Go batch; [rendering](example/contracts_test.go) and [wire](example/wire_test.go) contracts. |
+| [Live queries](https://svelte.dev/docs/kit/remote-functions#query.live) | Available | The initial SSR value has a [document contract](example/contracts_test.go), and later pushes have [stream contracts](remote_live_test.go). |
+| [Commands and single-flight refresh](https://svelte.dev/docs/kit/remote-functions#command) | Available | Go commands refresh requested queries in the same response; [refresh contracts](refresh_test.go), and the [browser check](example/web/tests/client-handoff.spec.ts) adds a todo with `addTodo(...).updates(getTodos())`. |
+| [Remote forms, validation and file uploads](https://svelte.dev/docs/kit/remote-functions#form) | Available | Typed fields, issues and upload bytes have [form contracts](remote_form_test.go), and Go decodes the bytes the pinned Kit's own form serializer writes. |
+| [Remote forms without JavaScript](https://svelte.dev/docs/kit/remote-functions#form) | Available | Native POST returns a rendered page; [handler contracts](example/form_noscript_test.go). |
+| [Classic page form actions](https://svelte.dev/docs/kit/form-actions) | Available | Go default/named actions, `use:enhance` and script-free posts have [handler contracts](example/action_protocol_test.go). |
+| [Remote prerender functions](https://svelte.dev/docs/kit/remote-functions#prerender) | Limited | `skgo.Prerender` functions run in Go during Kit's build, for the calls prerendered pages make and the arguments `Inputs` lists; the binary serves the results as files. `Dynamic` and `Validate` are refused by `skgo generate`, so the production binary never runs a prerender function at request time; under `skgo dev`, as in Kit's development server, Go answers each call. [Static answer contract](example/server_test.go) and [reuse by server rendering](example/ssr_test.go). |
 | [TypeScript server implementations](https://svelte.dev/docs/kit/routing) | Not supported | Remote bodies, server loads, actions and endpoints must be Go; generated stubs throw in production and delegate to Go in development. |
 
 ### Build and developer tooling
@@ -287,7 +289,7 @@ for the new development server.
 | Generate Go registrations and TypeScript types | Available | `skgo generate` produces typed bindings and throwing Kit stubs; [generator](internal/gen/gen.go). |
 | Development server and hot updates | Limited | `skgo dev` combines Vite HMR, native Go body updates, rebuild fallback and process recovery; see [Development](#development). |
 | Single-binary build and static assets | Available | The generated project's [build recipe](internal/newapp/gofiles/Justfile.tmpl) embeds the client, assets and SSR bundle in a Go binary. Node is a build-time dependency. |
-| Go tests and browser scenarios | Available | `go test` and the [Gherkin/Playwright suite](example/e2e/features) cover the example; run `just e2e prod` against the built server. The development session has a real Go integration test (`go test -tags skgo_dev_integration ./internal/devserver`); full browser qualification of the new development topology remains incomplete. |
+| Go tests and a browser check | Available | `just test` runs `go test` over both modules. Tests of the built example (`go test -tags skgo_qualification ./example/...`) and of a real development session (`go test -tags skgo_dev_integration ./internal/devserver`) are tagged. One Playwright [browser check](example/web/tests/client-handoff.spec.ts) runs from a Go test in each and confirms Kit's client takes over a server-rendered page; in development it also sees a Go edit arrive. |
 | Svelte and TypeScript checking | Available | `skgo check` runs the project's `svelte-check`. It needs the type configuration `svelte-kit sync` generates and does not run sync itself; [checker](internal/check/check.go). |
 | Vitest component tests and Storybook | Available | `skgo new` provisions both through upstream tooling; [scaffolder](internal/newapp/newapp.go). |
 | Unified checking, linting and formatting | Available | `skgo check` runs `goimports`, `go build`, `go vet`, Staticcheck, skgo's `SKGO001`–`SKGO008` analyzers and generation checks, plus the project's lint and format checks and `svelte-check`. It never edits files and has no fix mode; a diagnostic may name the command that repairs it. A missing tool is a failed check, and `--json` prints the report; [checker](internal/check/check.go) and [command guide](cmd/skgo/check.md). |
@@ -306,8 +308,9 @@ regenerate their skgo bindings.
 - TypeScript server code. Remote functions, loads and API routes must be
   written in Go.
 - Development requires the exact toolchain and host platforms listed above.
-  Full development browser qualification and draft preservation remain open;
-  direct SSR socket subfetch response cookies are not automatically relayed.
+  Browser behavior in development is checked only by the client handoff check,
+  and draft preservation remains open; direct SSR socket subfetch response
+  cookies are not automatically relayed.
 - Pointer, map and interface types in remote function signatures. Use value
   types, named structs or `polytype.Nullable`.
 - `output.bundleStrategy: 'inline'` and `router.resolution: 'server'`.

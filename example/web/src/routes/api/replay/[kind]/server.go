@@ -1,9 +1,8 @@
 // Package replayapi holds the responses the /universal-fetch page's universal
 // load reads. Each kind is a different shape of answer — text, JSON, bytes that
 // are not UTF-8, a body written in chunks, no body at all — so that what Kit
-// replays into the document, and what the browser does with it, can be told
-// apart. The values are literals; the Gherkin suite and the Go tests state
-// them again rather than asking this file.
+// replays into the document can be told apart. The values are literals; the Go
+// tests state them again rather than asking this file.
 package replayapi
 
 import (
