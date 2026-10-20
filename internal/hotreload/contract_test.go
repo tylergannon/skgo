@@ -79,8 +79,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	write("web/src/app.html", `<!doctype html><html><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>`)
 	write("web/src/hooks.go", `package hooks;import("github.com/tylergannon/skgo";"example.com/nativefixture/internal/app");var _=skgo.Transported[app.Money]("Money")`)
 	write("web/src/hooks.ts", `export const transport={Money:{encode:()=>false,decode:(value)=>value}};`)
-	write("web/src/routes/orders/+page.svelte", `<script>import "./orders.remote";import "./extra.remote";let {data}=$props();</script><h1>Order total {data.order.total}</h1><p>Again {data.order.again}; initialized {data.order.initializations}; quantity {data.order.quantity}</p>{#if data.fetched}<p>Fetched {data.fetched}</p>{/if}{#await data.later}<p>Waiting</p>{:then value}<p>Deferred {value}</p>{/await}`)
-	write("web/src/routes/orders/+page.ts", `export const load=async({data,fetch,url})=>{if(!url.searchParams.has('render'))return data;const response=await fetch('/orders?raw=1&renderHold=1',{headers:{accept:'application/json'}});return {...data,fetched:await response.text()}};`)
+	write("web/src/routes/orders/+page.svelte", `<script>import "./orders.remote";import "./extra.remote";let {data}=$props();</script><h1>Order total {data.order.total}</h1><p>Again {data.order.again}; initialized {data.order.initializations}; quantity {data.order.quantity}</p>{#await data.later}<p>Waiting</p>{:then value}<p>Deferred {value}</p>{/await}`)
 
 	source := strings.Replace(orderSource, "service.quantity=n", `service.quantity=n;if err:=event.SetCookie("quantity","3",skgo.CookieOptions{});err!=nil{return Order{},err}`, 1)
 	write("web/src/routes/orders/orders.remote.go", source)
@@ -105,7 +104,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	run(tc, "mod", "tidy")
-	writeNativeRendererFixture(t, app, write)
+	writeNativeBuildFixture(t, app, write)
 	pkgPath := "example.com/nativefixture/generated/_links/onzggl3sn52xizltf5xxezdfojzq"
 	linkDir := filepath.Join(app, "generated/_links/onzggl3sn52xizltf5xxezdfojzq")
 	config := &packages.Config{Context: ctx, Dir: app, Env: tc.command(ctx, app).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
@@ -200,23 +199,30 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 		}
 		return got
 	}
-	html := map[string]string{"Accept": "text/html"}
+	// Kit invokes a page action through the development callbacks.
+	act := func(want string) {
+		t.Helper()
+		got := process.call(contractCommand{Op: "action", Path: "/orders?/save", Body: "save"})
+		if got.Error != "" || got.Status != 200 || !strings.Contains(got.Body, want) || got.PID != pid || got.Initializations != 1 {
+			t.Fatalf("action: %+v; want status 200 body %q stable PID/init1", got, want)
+		}
+	}
 	jsonHeaders := map[string]string{"Accept": "application/json"}
-	check("GET", "/orders", "", "<h1>Order total 3000</h1>", 200, html)
+	check("GET", "/orders/__data.json", "", "3000", 200, nil)
 	check("GET", "/orders?raw=1", "", "endpoint:3000", 200, jsonHeaders)
-	check("POST", "/orders?/save", "", "saved:3000", 200, map[string]string{"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded", "Origin": "http://localhost"})
+	act("saved:3000")
 	initial := check("POST", "@quantity", `{"payload":"WzNd"}`, `"type":"result"`, 200, map[string]string{"Content-Type": "application/json", "Origin": "http://localhost"})
 	if !strings.Contains(initial.Headers.Get("Set-Cookie"), "quantity=3") || !strings.Contains(initial.Body, "/order/") {
 		t.Fatalf("cookie/named refresh missing: %+v", initial)
 	}
-	check("GET", "/orders", "", "<h1>Order total 4200</h1>", 200, html)
+	check("GET", "/orders/__data.json", "", "4200", 200, nil)
 	check("GET", "@failure", "", `fixture-teapot`, 200, nil)
 	check("GET", "@coins", "", `Money`, 200, nil)
 	// Held old execution performs an internal endpoint request only AFTER the
 	// new table publishes. Both the endpoint and the unchanged summary stay old.
 	process.mustCall(t, contractCommand{Op: "start", Path: "@nested", Headers: map[string]string{"X-Hold": "execution"}})
 	process.mustCall(t, contractCommand{Op: "install", Candidate: c90})
-	check("GET", "/orders", "", "<h1>Order total 3780</h1>", 200, html)
+	check("GET", "/orders/__data.json", "", "3780", 200, nil)
 	held := process.mustCall(t, contractCommand{Op: "release"})
 	if !strings.Contains(held.Body, `4200`) || strings.Contains(held.Body, `3780`) {
 		t.Fatalf("nested old revision mixed: %+v", held)
@@ -240,8 +246,8 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 		t.Fatalf("old serialization mixed: %+v", held)
 	}
 	process.mustCall(t, contractCommand{Op: "endstream"})
-	check("GET", "/orders", "", "<h1>Order total 3361</h1>", 200, html)
-	check("POST", "/orders?/save", "", "repaired-save:3360", 200, map[string]string{"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded", "Origin": "http://localhost"})
+	check("GET", "/orders/__data.json", "", "3361", 200, nil)
+	act("repaired-save:3360")
 	// Deferred work keeps using its candidate after the load returned, a newer
 	// revision published, and GC ran. Its literal is consumed on the real wire.
 	process.mustCall(t, contractCommand{Op: "start", Path: "/orders/__data.json?defer=1", Headers: map[string]string{"X-Hold": "deferred"}})
@@ -250,7 +256,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	if !strings.Contains(held.Body, `3360`) || !strings.Contains(held.Body, `"type":"chunk"`) {
 		t.Fatalf("deferred candidate not consumed: %+v", held)
 	}
-	check("GET", "/orders", "", "<h1>Order total 3780</h1>", 200, html)
+	check("GET", "/orders/__data.json", "", "3780", 200, nil)
 	// Compile errors and structural changes never enter the host.
 	if _, err := compile("broken", strings.Replace(source, "return total", "return (", 1), contractPage); err == nil || !strings.Contains(err.Error(), "orders.remote.go") {
 		t.Fatalf("syntax diagnostic lacks authored file: %v", err)
@@ -341,17 +347,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	check("GET", "/orders?raw=1", "", "endpoint:3360", 200, jsonHeaders)
 	process.mustCall(t, contractCommand{Op: "install", Candidate: c90})
 	check("GET", "/orders?panic=1", "", "endpoint:3780:healthy", 200, jsonHeaders)
-	check("GET", "/orders", "", "<h1>Order total 3780</h1>", 200, html)
-	// The renderer fixture calls Go fetch during a goja render. Hold its
-	// Go HandleFetch hook before internal dispatch, publish, then require both
-	// the earlier Go server load and this later fetch to use the old table.
-	process.mustCall(t, contractCommand{Op: "start", Path: "/orders?render=1", Headers: map[string]string{"Accept": "text/html", "X-Hold": "render"}})
-	process.mustCall(t, contractCommand{Op: "install", Candidate: c80})
-	rendered := process.mustCall(t, contractCommand{Op: "release"})
-	if rendered.Status != 200 || !strings.Contains(rendered.Body, "<h1>Order total 3780</h1>") || !strings.Contains(rendered.Body, "<p>Fetched endpoint:3780</p>") {
-		t.Fatalf("render-time fetch mixed enclosing revision: %+v", rendered)
-	}
-	check("GET", "/orders?render=1", "", "<p>Fetched endpoint-v2:3360</p>", 200, html)
+	check("GET", "/orders/__data.json", "", "3780", 200, nil)
 	process.stop()
 	// No restore step: development used private overlays/module declarations.
 	// The original authored and generated production tree stays intact.
@@ -498,7 +494,7 @@ var _=skgo.Query(coins)
 `
 
 const contractHost = `package main
-import("context";"encoding/json";"fmt";"io";"net/http";"net/http/httptest";"os";"runtime";"strings";"sync";"time";"github.com/tylergannon/skgo";"example.com/nativefixture/generated";orders "PACKAGE")
+import("bytes";"context";"encoding/json";"fmt";"io";"net/http";"net/http/httptest";"os";"runtime";"strings";"sync";"time";"github.com/tylergannon/skgo";"example.com/nativefixture/generated";orders "PACKAGE")
 type candidate struct{Object string;Storage []string;Reclaim bool}
 type command struct{Op,Method,Path,Body string;Headers map[string]string;Candidate candidate}
 type response struct{Status,PID,Initializations,Consumers int;Body,Error,Diagnostic string;Headers http.Header}
@@ -523,14 +519,16 @@ func main(){
  var handler http.Handler
  var hold *orders.Hold
  internal:=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){handler.ServeHTTP(w,r)})
- renderer,err:=skgo.NewSSR(os.DirFS("web/build"),manifest,loads,remotes,skgo.SSROptions{Runtimes:2,Fetch:internal,Actions:actions,HandleFetch:func(ctx context.Context,r *http.Request,next skgo.Fetch)(*http.Response,error){if r.URL.Query().Has("renderHold")&&hold!=nil{close(hold.Entered);<-hold.Release};return next(r)}});if err!=nil{panic(err)}
- pages,err:=skgo.NewStaticHandler(os.DirFS("web/build"),skgo.WithSSR(renderer));if err!=nil{panic(err)}
+ development:=skgo.NewNativeDevelopment("contract-secret")
+ renderer,err:=development.NewSSR(os.DirFS("web/build"),manifest,loads,remotes,skgo.SSROptions{Fetch:internal,Actions:actions});if err!=nil{panic(err)}
+ pages,err:=development.NewStaticHandler(os.DirFS("web/build"));if err!=nil{panic(err)}
  endpoints.SetErrorTemplate(renderer.ErrorTemplate());hc.Origin="http://localhost";hc.Loads=loads;hc.Static=skgo.ServedAsFile(pages)
  app:=generated.RequestBoundary(hc,loads.Intercept(remotes.Intercept(endpoints.Intercept(pages))))
  fetchConfig:=skgo.FetchConfig{Origin:"http://localhost",Handler:internal}
  // HOT_FETCH
  stack:=fetchConfig.Intercept(app)
- handler=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){switch r.Header.Get("X-Hold"){case "execution":r=r.WithContext(context.WithValue(r.Context(),"hold",hold));case "serialization":w=&heldWriter{ResponseWriter:w,hold:hold}};stack.ServeHTTP(w,r)})
+ callbacks,closeCallbacks,err:=development.Handler(stack);if err!=nil{panic(err)};defer closeCallbacks()
+ handler=http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){if strings.HasPrefix(r.URL.Path,"/_skgo/dev/"){callbacks.ServeHTTP(w,r);return};switch r.Header.Get("X-Hold"){case "execution":r=r.WithContext(context.WithValue(r.Context(),"hold",hold));case "serialization":w=&heldWriter{ResponseWriter:w,hold:hold}};stack.ServeHTTP(w,r)})
  // HOT_HANDLER
  streamEntered,streamRelease:=make(chan struct{}),make(chan struct{})
  host:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){if r.URL.Path=="/host-stream"{w.Write([]byte("stream-open"));w.(http.Flusher).Flush();close(streamEntered);<-streamRelease;w.Write([]byte("stream-closed"));return};handler.ServeHTTP(w,r)}));defer host.Close()
@@ -539,11 +537,18 @@ func main(){
   method:=c.Method;if method==""{method="GET"};req,_:=http.NewRequest(method,host.URL+path,strings.NewReader(c.Body));for k,v:=range c.Headers{req.Header.Set(k,v)}
   result,err:=http.DefaultClient.Do(req);if err!=nil{return response{Error:err.Error()}};raw,err:=io.ReadAll(result.Body);result.Body.Close();if err!=nil{return response{Error:err.Error()}};return response{Status:result.StatusCode,Body:string(raw),Headers:result.Header}
  }
+ callback:=func(name string,in any)response{
+  raw,_:=json.Marshal(in);req,_:=http.NewRequest("POST",host.URL+"/_skgo/dev/"+name,bytes.NewReader(raw));req.Header.Set("Authorization","Bearer contract-secret")
+  result,err:=http.DefaultClient.Do(req);if err!=nil{return response{Error:err.Error()}};raw,err=io.ReadAll(result.Body);result.Body.Close();if err!=nil{return response{Error:err.Error()}};return response{Status:result.StatusCode,Body:string(raw)}
+ }
  old:=make(chan response,1);streamDone:=make(chan response,1)
  decoder,encoder:=json.NewDecoder(os.Stdin),json.NewEncoder(os.Stdout)
  for{var c command;if err:=decoder.Decode(&c);err==io.EOF{return}else if err!=nil{panic(err)};runtime.GC();var result response
  switch c.Op{
  case "request":result=request(c)
+ case "action":
+  result=callback("begin",map[string]any{"url":"http://localhost"+c.Path,"method":"POST","routeId":"/orders","headers":map[string][]string{"Origin":{"http://localhost"},"Content-Type":{"application/x-www-form-urlencoded"}}})
+  var begun struct{Handle string};if json.Unmarshal([]byte(result.Body),&begun)==nil&&begun.Handle!=""{result=callback("action",map[string]string{"handle":begun.Handle,"module":"src/routes/orders/+page.server.ts","name":c.Body});callback("end",map[string]string{"handle":begun.Handle})}
  case "install":if err:=install(c.Candidate);err!=nil{result.Error=err.Error()}
  case "start":hold=&orders.Hold{Entered:make(chan struct{}),Release:make(chan struct{})};if c.Headers["X-Hold"]=="deferred"{orders.DeferredGate=hold};go func(){old<-request(c)}();select{case<-hold.Entered:case<-time.After(5*time.Second):result.Error="held consumer did not enter"}
  case "release":close(hold.Release);select{case result=<-old:case<-time.After(5*time.Second):result.Error="held consumer did not complete"};orders.DeferredGate=nil;hold=nil
@@ -557,7 +562,7 @@ func main(){
 }
 `
 
-func writeNativeRendererFixture(t *testing.T, app string, write func(string, string)) {
+func writeNativeBuildFixture(t *testing.T, app string, write func(string, string)) {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(app, "web/skgo.remotes.json"))
 	if err != nil {
@@ -571,7 +576,6 @@ func writeNativeRendererFixture(t *testing.T, app string, write func(string, str
 	manifest.AppDir = "_app"
 	manifest.Nodes = []string{"src/routes/orders/+page.server.ts"}
 	manifest.Routes = []skgo.ManifestRoute{{ID: "/orders", Pattern: "^/orders/?$", Page: &skgo.ManifestPage{Leaf: 0}, Endpoint: &skgo.ManifestEndpoint{Methods: []string{"GET"}}}}
-	manifest.SSR = &skgo.ManifestSSR{Bundle: "bundle.js", Template: "app.html", ErrorTemplate: "error.html", Target: "es2022", GlobalName: "__native_fixture", Nodes: []skgo.ManifestSSRNode{{Index: 0, Component: true}}}
 	raw, err = json.Marshal(manifest)
 	if err != nil {
 		t.Fatal(err)
@@ -579,16 +583,4 @@ func writeNativeRendererFixture(t *testing.T, app string, write func(string, str
 	write("web/build/skgo.manifest.json", string(raw))
 	write("web/build/client/.keep", "")
 	write("web/build/index.html", "<!doctype html><html><body>fallback</body></html>")
-	write("web/build/app.html", "<!doctype html><html><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>")
-	write("web/build/error.html", "<!doctype html>%sveltekit.status% %sveltekit.error.message%")
-	write("web/build/bundle.js", `globalThis.__skgo_ping=()=>"ok";
-globalThis.__skgo_render=raw=>{
- const req=JSON.parse(raw),graph=JSON.parse(req.branch[0].data),order=graph[graph[0].order];
- const out={done:true,status:req.status,head:"",body:"<h1>Order total "+graph[order.total]+"</h1>"};
- if(req.url.includes("render=1")){
- out.done=false;__skgo_fetch(JSON.stringify({method:"GET",url:"http://localhost/orders?raw=1&renderHold=1",headers:{accept:"application/json"}})).then(raw=>{
- const answer=JSON.parse(raw);if(answer.error)throw Error(answer.error);out.body+="<p>Fetched "+answer.response.body+"</p>";out.done=true;
- },error=>{out.failure=String(error);out.done=true;});
- }return out;
-};`)
 }

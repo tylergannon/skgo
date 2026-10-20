@@ -186,6 +186,10 @@ func prepareToolchain(ctx context.Context, goTool, parent string, environment []
 	return t, nil
 }
 
+// developmentTag selects internal/ssr's development Engine for everything the
+// profile compiles. Vite renders development pages, so no host links goja.
+const developmentTag = "skgo_development"
+
 func (t Toolchain) command(ctx context.Context, dir string, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, t.Go, args...)
 	cmd.Dir = dir
@@ -193,19 +197,18 @@ func (t Toolchain) command(ctx context.Context, dir string, args ...string) *exe
 	for name, value := range t.Settings {
 		cmd.Env = append(cmd.Env, name+"="+value)
 	}
-	if t.ModFile != "" || t.Overlay != "" {
-		flags := t.envValue("GOFLAGS")
-		if t.Settings != nil {
-			flags = t.Settings["GOFLAGS"]
-		}
-		if t.ModFile != "" {
-			flags += " " + strconv.Quote("-modfile="+t.ModFile)
-		}
-		if t.Overlay != "" {
-			flags += " " + strconv.Quote("-overlay="+t.Overlay)
-		}
-		cmd.Env = append(cmd.Env, "GOFLAGS="+flags)
+	flags := t.envValue("GOFLAGS")
+	if t.Settings != nil {
+		flags = t.Settings["GOFLAGS"]
 	}
+	flags += " -tags=" + developmentTag
+	if t.ModFile != "" {
+		flags += " " + strconv.Quote("-modfile="+t.ModFile)
+	}
+	if t.Overlay != "" {
+		flags += " " + strconv.Quote("-overlay="+t.Overlay)
+	}
+	cmd.Env = append(cmd.Env, "GOFLAGS="+strings.TrimSpace(flags))
 	return cmd
 }
 
