@@ -45,7 +45,7 @@ build:
 
 # Explicitly discard example build caches; normal builds always reuse them.
 clean:
-    rm -rf example/.skgo example/native/build example/web/.svelte-kit
+    rm -rf example/.skgo example/web/.svelte-kit
     find example/web/build -mindepth 1 ! -name .gitkeep -delete
 
 # go vet, both modules

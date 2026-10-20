@@ -50,7 +50,7 @@ Kit's service workers have not been verified under SKGo's binary, and no cell of
 
 ## Desktop and mobile app
 
-Generated Swift clients for your Go queries and commands are released; [`skgo native build`](/docs/cli/native-build) prepares bindings, native libraries and an Xcode project and compiles a Debug application for macOS, iPhone or the simulator. Hosting the application natively, with bundled or hosted Go, including lifecycle, WebView coordination and distribution, is not finished, so a compiled Debug build is not a deployed app. See Native targets.
+Swift clients and the Apple shell belong to the independently versioned native-shell plugin. Install the prebuilt plugin matching the exact official skgo release before generating Swift or building an Apple application. Core web build and development remain plugin-free. Native hosting, lifecycle and distribution remain outside the demonstrated web capabilities; a compiled Debug application is not evidence of deployment. See [Plugin capabilities](/docs/skgo/plugin-capabilities).
 
 ## Browser extension and embedded device
 

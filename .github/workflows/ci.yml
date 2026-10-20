@@ -59,9 +59,9 @@ jobs:
           paths=$(git diff --name-only "$base" HEAD)
           for kind in native production development; do
             case "$kind" in
-              native) pattern='^([^/]+\.go$|internal/(gen|hotreload|swiftgen|nativebuild|pluginbuild|plugininstall|toolchain)/|native/|go\.(mod|sum|work)|example/(go\.|mise|web/(package|pnpm|vite))|\.github/workflows/|Justfile)' ;;
+              native) pattern='^([^/]+\.go$|internal/(gen|hotreload|pluginbuild|plugininstall|templates|toolchain)/|cmd/skgo/|templateapi/|go\.(mod|sum|work)|example/(go\.|mise|web/(package|pnpm|vite))|\.github/workflows/|Justfile)' ;;
               production) pattern='(\.go$|^internal/(adapter|sv|kitpatch|gen)/|^example/|^go\.|^\.github/workflows/|^Justfile)' ;;
-              development) pattern='^([^/]+\.go$|internal/(devserver|adapter|gen|hotreload|kitpatch|toolchain|nativebuild)/|cmd/skgo/|example/(go\.|mise|web/)|go\.|\.github/workflows/|Justfile)' ;;
+              development) pattern='^([^/]+\.go$|internal/(devserver|adapter|gen|hotreload|kitpatch|toolchain)/|cmd/skgo/|example/(go\.|mise|web/)|go\.|\.github/workflows/|Justfile)' ;;
             esac
             if printf '%s\n' "$paths" | grep -Eq "$pattern"; then
               echo "$kind=true" >> "$GITHUB_OUTPUT"

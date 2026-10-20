@@ -44,6 +44,7 @@ func main() {
 		} else {
 			_ = r.Help(os.Stdout, "template", "")
 			_ = r.Help(os.Stdout, "add-on", "")
+			_ = r.CommandHelp(os.Stdout)
 		}
 		return
 	}
@@ -67,8 +68,6 @@ func main() {
 		exit(pluginProbe(os.Args[2:]))
 	case "update":
 		updateCommand(os.Args[2:])
-	case "native":
-		nativeCommand(os.Args[2:])
 	case "buildinfo":
 		exit(buildinfoCommand(os.Args[2:], os.Stdout))
 	case "add":
@@ -206,17 +205,25 @@ func generate(args []string) {
 	configSymbol := fs.String("config-symbol", "Config", "selected ApplicationConfig value")
 	cacheDir := fs.String("cache-dir", "", "generation cache directory; defaults to the user cache; off disables caching")
 	quiet := fs.Bool("quiet", false, "do not list the files written")
-	swiftOut := fs.String("swift-out", "", "generated Swift source file")
-	var swiftRemotes []string
-	fs.Func("swift-remote", "select module#export for Swift and the shared safe-number contract (ordinary query/command; repeatable)", func(value string) error {
-		swiftRemotes = append(swiftRemotes, value)
-		return nil
-	})
+	withPlugins := fs.Bool("plugins", false, "run pinned plugin generators on this official host")
 	_ = fs.Parse(args)
 
 	cfg := gen.Config{Web: *web, Out: *out, Package: *pkg, LocalsPackage: *localsPackage, LocalsType: *localsType, HookPackage: *hookPackage, HookSymbol: *hookSymbol, ConfigPackage: *configPackage, ConfigSymbol: *configSymbol}
 	cfg.CacheDir = *cacheDir
-	cfg.SwiftOut, cfg.SwiftRemotes = *swiftOut, swiftRemotes
+	if *withPlugins {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		cfg.Context = ctx
+		var err error
+		cfg, err = gen.DeclaredConfig(cfg)
+		if err == nil {
+			err = configureGenerators(cfg.Context, &cfg)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
 	if !*quiet {
 		cfg.Logf = logf
 	}

@@ -36,3 +36,13 @@ ephemeral/screenshots/
 
 # Locally packaged release archives.
 /dist/
+
+# Local implementation and provisional compatibility artifacts.
+.cache/provisional/
+**/native/build/
+plugins/native-shell/example/web/build/*
+!plugins/native-shell/example/web/build/.gitkeep
+
+.cache/final-current/
+
+.cache/final-reviewed/

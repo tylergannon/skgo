@@ -1,0 +1,11 @@
+/bin/
+/.skgo/
+/web/node_modules/
+/web/.svelte-kit/
+/web/build/*
+!/web/build/.gitkeep
+/native/build/
+/native/Generated.swift
+/skgo-plugins.json
+
+/internal/skgo/skgo.plugin-outputs.json

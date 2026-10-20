@@ -84,6 +84,9 @@ type ProjectDiagnostic struct {
 // OpenProject captures initial membership once. Watch optionally connects the
 // owner's Observe method to ordered recursive filesystem events.
 func OpenProject(cfg Config) (*Project, error) {
+	if len(cfg.Generators) > 0 {
+		return nil, fmt.Errorf("skgo: plugin generation requires a fresh generate invocation")
+	}
 	cfg, err := normalizeConfig(cfg)
 	if err != nil {
 		return nil, err

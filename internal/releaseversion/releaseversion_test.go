@@ -53,3 +53,19 @@ func TestValidateSubject(t *testing.T) {
 		}
 	}
 }
+
+func TestCoreAndPluginReleaseInputs(t *testing.T) {
+	for _, tc := range []struct {
+		paths []string
+		want  bool
+	}{
+		{[]string{"plugins/native-shell/main.go", ".github/workflows/native-plugin.yml", ".github/workflows/native-plugin-tests.yml"}, false},
+		{[]string{"plugins/native-shell/main.go", "templateapi/template.go"}, true},
+		{[]string{"cmd/skgo/plugin.go"}, true},
+		{nil, false},
+	} {
+		if got := TouchesCore(tc.paths); got != tc.want {
+			t.Errorf("TouchesCore(%v)=%v, want %v", tc.paths, got, tc.want)
+		}
+	}
+}

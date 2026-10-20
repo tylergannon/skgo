@@ -20,6 +20,7 @@ func main() {
 	flag.StringVar(&o.Output, "out", "", "output .so path")
 	flag.StringVar(&o.SkgoSource, "skgo-source", "", "explicit skgo source checkout for an unreleased host")
 	flag.StringVar(&o.VersionSymbol, "version-symbol", "main.skgoVersion", "string variable filled with the actual host skgo version")
+	flag.StringVar(&o.PluginVersion, "plugin-version", "", "independent release version filled into main.Version")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		flag.Usage()

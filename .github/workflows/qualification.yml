@@ -105,8 +105,8 @@ jobs:
             example/e2e/playwright-report/
             example/e2e/server.log
 
-  native-linux:
-    name: Generated consumers and native replacement (Linux)
+  compiler-linux:
+    name: Generated consumers and Go process boundaries (Linux)
     if: github.event_name == 'workflow_dispatch' || inputs.native
     runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
     timeout-minutes: 20
@@ -125,18 +125,15 @@ jobs:
           working_directory: example
           export_path: true
       - run: cd example/web && vp install --frozen-lockfile
-      - name: Preserve Zig compiler caches across checkout cleanup
-        run: |
-          echo "ZIG_GLOBAL_CACHE_DIR=$HOME/.cache/zig" >> "$GITHUB_ENV"
-          echo "ZIG_LOCAL_CACHE_DIR=$HOME/.cache/skgo-zig-local" >> "$GITHUB_ENV"
-      - run: mise -C native install zig
       - name: Fresh compiler and process witnesses
-        run: go test -tags skgo_qualification -count=1 ./internal/gen ./internal/hotreload ./native -run '^(TestTypedLoadActualParameterDependencies|TestGeneratedLanguageApplications|TestGenerationCacheFreshProcessesAndRecovery|TestATypeFromAnotherModuleCrossesTheWire|TestRetainedProjectSelectedCompilerInputs|TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost|TestZigRemoteCalls)$'
+        run: go test -tags skgo_qualification -count=1 ./internal/gen ./internal/hotreload -run '^(TestTypedLoadActualParameterDependencies|TestGeneratedLanguageApplications|TestGenerationCacheFreshProcessesAndRecovery|TestATypeFromAnotherModuleCrossesTheWire|TestRetainedProjectSelectedCompilerInputs|TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost)$'
+      - name: Independent generator and command fixture on the real CLI
+        run: go test -tags skgo_qualification -count=1 ./cmd/skgo -run '^TestCapabilityPluginActualCLI$'
       - name: Production chunk fold and prerender ownership
         run: go test -tags skgo_qualification -count=1 ./internal/adapter -run '^(TestProductionFoldResolvesSharedTransitiveRemoteOutsideAppTSConfig|TestPrerenderFailedDrainRetainsOwnerAndCanRecover|TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal)$' -v
 
-  native-macos:
-    name: Native replacement and Swift consumer (macOS)
+  compiler-macos:
+    name: Go process boundaries (macOS)
     if: github.event_name == 'workflow_dispatch' || inputs.native
     runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["macos-15"]' || '["self-hosted","macOS","ARM64","skgo-release"]') }}
     timeout-minutes: 20
@@ -155,13 +152,8 @@ jobs:
           working_directory: example
           export_path: true
       - run: cd example/web && vp install --frozen-lockfile
-      - name: Preserve Zig compiler caches across checkout cleanup
-        run: |
-          echo "ZIG_GLOBAL_CACHE_DIR=$HOME/.cache/zig" >> "$GITHUB_ENV"
-          echo "ZIG_LOCAL_CACHE_DIR=$HOME/.cache/skgo-zig-local" >> "$GITHUB_ENV"
-      - run: mise -C native install zig
-      - name: Fresh native host, Zig exchange and Swift compiler witnesses
-        run: go test -tags skgo_qualification -count=1 ./internal/hotreload ./internal/swiftgen ./native -run '^(TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost|TestGeneratedModelsCompileAndEnforceTheWireShape|TestZigRemoteCalls)$'
+      - name: Fresh Go host process witnesses
+        run: go test -tags skgo_qualification -count=1 ./internal/hotreload -run '^(TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost)$'
       - name: Native Darwin prerender process ownership
         run: go test -tags skgo_qualification -count=1 ./internal/adapter -run '^(TestPrerenderFailureWaitsForNativeExitedGroupReap|TestPrerenderFailedDrainRetainsOwnerAndCanRecover|TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal)$' -v
 

@@ -97,7 +97,7 @@ func DiscoverFiles(paths []string, version string, builtins ...templateapi.Plugi
 	r := &Registry{}
 	for _, p := range builtins {
 		d := p.Describe()
-		if err := validate(d); err != nil {
+		if err := validateCapabilities(p, d); err != nil {
 			return nil, fmt.Errorf("built-in plugin: %w", err)
 		}
 		r.Entries = append(r.Entries, Entry{Path: "built-in:" + d.ID, Plugin: p, Descriptor: d})
@@ -116,7 +116,7 @@ func DiscoverFiles(paths []string, version string, builtins ...templateapi.Plugi
 		seenFiles[name] = true
 		p, d, err := open(name)
 		if err == nil {
-			err = validate(d)
+			err = validateCapabilities(p, d)
 		}
 		if err == nil && d.SkgoVersion != version {
 			err = fmt.Errorf("requires skgo %s; executing host is %s", d.SkgoVersion, version)
@@ -153,4 +153,33 @@ func DiscoverFiles(paths []string, version string, builtins ...templateapi.Plugi
 	}
 	r.Entries = valid
 	return r, nil
+}
+
+// Capabilities are explicit in descriptors so help can enumerate them without
+// executing commands. A lying descriptor fails discovery rather than panicking
+// later when an operation is selected.
+func validateCapabilities(p templateapi.Plugin, d templateapi.Descriptor) error {
+	if err := validate(d); err != nil {
+		return err
+	}
+	if len(d.Addons)+len(d.Templates) > 0 {
+		if _, ok := p.(templateapi.AddonPlugin); !ok {
+			return fmt.Errorf("plugin %s advertises add-ons without Apply", d.ID)
+		}
+	}
+	if d.Generator {
+		if _, ok := p.(templateapi.Generator); !ok {
+			return fmt.Errorf("plugin %s advertises generation without Generate", d.ID)
+		}
+	}
+	if d.Command != "" {
+		if _, ok := p.(templateapi.CommandPlugin); !ok {
+			return fmt.Errorf("plugin %s advertises commands without RunCommand", d.ID)
+		}
+	}
+	switch d.ID {
+	case "install", "remove", "restore":
+		return fmt.Errorf("plugin ID %q conflicts with a management command", d.ID)
+	}
+	return nil
 }

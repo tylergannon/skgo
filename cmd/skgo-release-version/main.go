@@ -2,7 +2,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"os"
@@ -31,13 +30,16 @@ func main() {
 	}
 
 	base := git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")
-	raw := gitBytes("log", "--format=%B%x00", base+"..HEAD")
-	parts := bytes.Split(bytes.TrimRight(raw, "\x00\n"), []byte{0})
-	messages := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if message := strings.TrimSpace(string(part)); message != "" {
-			messages = append(messages, message)
+	// Nested plugin products have independent releases. Only a commit that
+	// touches core inputs contributes to the root version, regardless of its
+	// Conventional Commit type. Mixed commits still contribute normally.
+	var messages []string
+	for _, revision := range strings.Fields(git("rev-list", base+"..HEAD")) {
+		paths := strings.Fields(git("diff-tree", "--root", "--no-commit-id", "--name-only", "-r", revision))
+		if !releaseversion.TouchesCore(paths) {
+			continue
 		}
+		messages = append(messages, git("show", "-s", "--format=%B", revision))
 	}
 	next, err := releaseversion.Next(base, releaseversion.Analyze(messages))
 	if err != nil {

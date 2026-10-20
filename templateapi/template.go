@@ -1,19 +1,29 @@
 // Package templateapi is the development-time interface for skgo application
-// add-ons and templates. Native Go plugins export SKGoPluginV1() Plugin and must
+// add-ons, templates, generators and commands. Native Go plugins export
+// SKGoPluginV1() Plugin and must
 // be built for the exact invoking skgo host. Plugins are trusted local code;
 // they are never loaded by generated applications.
 //
 // skgo plugin install builds a plugin from its module source for the
 // skgo executable that loads it; skgo new --template applies its templates and
-// skgo add applies its add-ons.
+// skgo add applies its add-ons. Exact prebuilt releases are installed with a
+// checksum and restored from skgo-plugins.json. Explicit skgo generate --plugins
+// runs generators; skgo plugin <ID> dispatches plugin commands.
 package templateapi
 
 import "context"
 
-// Plugin describes reusable additions and applies a single configured addition.
-// Describe and package initialization must not modify projects or install tools.
+// Plugin describes a trusted development-time extension. Describe and package
+// initialization must not modify projects or install tools. Implement AddonPlugin,
+// Generator, or CommandPlugin to provide the advertised capabilities.
 type Plugin interface {
 	Describe() Descriptor
+}
+
+// AddonPlugin applies a single configured addition. Existing template/add-on
+// providers implement this optional capability.
+type AddonPlugin interface {
+	Plugin
 	Apply(context.Context, Request) (Result, error)
 }
 
@@ -21,6 +31,10 @@ type Descriptor struct {
 	ID, Version, SkgoVersion string
 	Addons                   []Addon
 	Templates                []Template
+	// Generator advertises the optional Generator capability.
+	Generator bool
+	// Command is the help summary for `skgo plugin <ID> ...`; empty disables it.
+	Command string
 }
 
 type Option struct {

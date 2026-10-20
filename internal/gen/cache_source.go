@@ -398,9 +398,6 @@ func cacheOwned(cfg Config, path string, data []byte) bool {
 	if path == filepath.Join(cfg.Out, inventoryName) || path == filepath.Join(cfg.Web, "skgo.remotes.json") || path == filepath.Join(cfg.Web, "skgo.env.json") {
 		return true
 	}
-	if path == cfg.SwiftOut && cfg.SwiftOut != "" {
-		return true
-	}
 	if path == filepath.Join(cfg.Web, "src", "routes", "go.mod") && bytes.HasPrefix(data, []byte(boundaryMarker)) {
 		return true
 	}
@@ -634,7 +631,7 @@ func (s cacheSources) materializeIn(cfg Config, files map[string][]byte, root st
 		}
 	}
 	view.env = effectiveEnv(env)
-	cfg.Web, cfg.Out, cfg.SwiftOut = view.mapPath(cfg.Web, true), view.mapPath(cfg.Out, true), view.mapPath(cfg.SwiftOut, true)
+	cfg.Web, cfg.Out = view.mapPath(cfg.Web, true), view.mapPath(cfg.Out, true)
 	// Empty source roots remain valid after the last remote is deleted.
 	if err := os.MkdirAll(filepath.Join(cfg.Web, "src"), 0700); err != nil {
 		return fail(err)

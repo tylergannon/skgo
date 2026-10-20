@@ -23,6 +23,7 @@ import (
 
 type Options struct {
 	Host, Project, Source, Package, Output, SkgoSource, VersionSymbol string
+	PluginVersion                                                     string
 	Log                                                               io.Writer
 	Generate                                                          bool
 }
@@ -256,6 +257,12 @@ func Build(ctx context.Context, o Options) error {
 		}
 		ldflags = append(ldflags, "-X", o.VersionSymbol+"="+host.SkgoVersion)
 	}
+	if o.PluginVersion != "" {
+		if !semver.IsValid(o.PluginVersion) {
+			return fmt.Errorf("invalid plugin version %q", o.PluginVersion)
+		}
+		ldflags = append(ldflags, "-X", "main.Version="+o.PluginVersion)
+	}
 	if len(ldflags) > 0 {
 		args = append(args, "-ldflags="+strings.Join(ldflags, " "))
 	}
@@ -322,7 +329,7 @@ func copySource(source, dest string) error {
 		}
 		if d.IsDir() {
 			switch d.Name() {
-			case ".git", "node_modules", "ephemeral", ".local", ".cache", "build", ".build":
+			case ".git", "node_modules", "ephemeral", ".local", ".cache", "build", ".build", "_links", ".svelte-kit", ".skgo", "zig-out", "zig-pkg", ".zig-cache", ".swiftpm":
 				return filepath.SkipDir
 			}
 			return os.MkdirAll(filepath.Join(dest, rel), 0755)

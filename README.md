@@ -338,13 +338,11 @@ Use `--vp /path/to/vp` to select the global installation explicitly.
 Inside an existing VitePlus application, update stages dependency alignment
 without running whole-project migration. It rejects changes to authored sources
 or configuration, then installs, regenerates and builds using
-the verified project Go tool when declared. Native applications also regenerate
-Swift bindings and build macOS by default; select another build with
-`--native-platform simulator --native-preset synthetic`. A successful native
-build does not establish device installation or runtime behavior. Failures report
-an incomplete update; earlier CLI or dependency changes are not rolled back.
-Outside an application only the CLI and global vp are updated. Templates are
-never replayed, and native plugin binaries must be rebuilt for the updated host.
+the verified project Go tool when declared. Failures report an incomplete update;
+earlier CLI or dependency changes are not rolled back. Outside an application
+only the CLI and global vp are updated. Templates are never replayed. Native
+plugin updates and builds are explicit: install a prebuilt native-shell release
+matching the updated official host, then run `skgo plugin native-shell build`.
 
 ## Application add-ons and templates
 
@@ -369,8 +367,9 @@ this interface alone does not establish Voice Notes template delivery.
 `skgo new --template NAME --help` list compatible exports and their options.
 `--set NAME=VALUE` is repeatable; put flags before the destination/add-on name.
 New projects store application identity in `skgo.json`. Older projects must
-supply `skgo add --name NAME` explicitly; existing native identity requires
-verification before creating that file. Add-ons must report partial writes and
+supply `skgo add --name NAME` explicitly. Core no longer checks native-specific
+identity before creating that file; choose a name matching existing native
+configuration. Add-ons must report partial writes and
 conflicts; skgo stops at the failed step without rolling back third-party work.
 
 Plugins are trusted code, loaded only by the development CLI. Loading help can
@@ -570,43 +569,16 @@ just install && just build && just serve    # http://127.0.0.1:8080
 skgo is pronounced "skay-go". MIT licensed; see [LICENSE](LICENSE).
 
 
-### Native application foundation
+### Native application plugin
 
-`skgo add --set bundle-id=dev.example.myapp native-app` adds an embedded Go
-host and a SwiftUI shell for macOS and iOS. Build on macOS with Xcode and the
-native tool versions declared in skgo's `native/mise.toml`:
+Swift generation and the existing Apple shell live in the independently versioned
+[`plugins/native-shell`](plugins/native-shell) module. Install its prebuilt `.so`
+for the exact official skgo release; run its commands under
+`skgo plugin native-shell`. Core web generation, build and development do not
+load the native implementation. A core release alone does not publish a native
+companion; native artifacts require their own qualification and release.
 
-```sh
-go tool skgo native build --platform macos
-go tool skgo native build --platform simulator
-go tool skgo native build --platform iphone
-```
-
-Release tooling can use `--prepare-only` to generate bindings, native libraries
-and the Xcode project without compiling a Debug app. Frontend outputs and native
-compiler caches are reused automatically; there is no reuse flag. `skgo build`
-uses the same incremental frontend preparation. Delete `.skgo/` to invalidate
-frontend freshness, or `native/build/` to remove native compiler caches. `--jobs 4`
-limits Zig and Xcode build workers; Go honors its usual `GOFLAGS` and `GOMAXPROCS`.
-
-`native/skgo-native.json` is the application configuration (`nativeapp.Config`).
-The builder compiles `native/Sources` and, when `swiftRemotes` is nonempty,
-generates and compiles `native/Generated.swift`. Additional local Swift packages,
-sources, resources, platform deployment targets and Info.plist properties come
-from that configuration. Named presets select Go tags, bundle suffixes, resource
-sets and additional plist properties with `--preset NAME`; output goes to
-`native/build/<platform>[-<preset>]`. A null/omitted preset resources list inherits
-the application resources; an explicit empty list clears them. Unknown configuration
-fields fail explicitly. Native compilation does not install or launch the result.
-
-The default `native/Sources/ApplicationView.swift` is an application-owned slot.
-Its exact initial bytes are exposed as `nativeapp.DefaultApplicationView` so an
-add-on can replace only the recognized default. It defines one retained
-`ApplicationState`, the content view and macOS settings view. `NativeHost` offers
-shutdown, background-change and availability callbacks. Listener recovery retains
-the Go application's state and loopback origin; recording and WebView-specific
-readiness remain the application's responsibility.
-
-Builds are unsigned unless `SKGO_DEVELOPMENT_TEAM` is explicitly configured;
-`SKGO_DEVICE_ID` optionally chooses a signing destination. An archive or successful
-build is not evidence of distribution or physical-device behavior.
+The plugin carries its Swift/Zig runtime and shell resources. Client generation
+does not require shell setup. See the [plugin contract guide](templateapi/plugin-capabilities.md)
+and [native-shell guide](plugins/native-shell/native-shell.md) for installation,
+configuration, build limitations and the extraction's deliberate subtractions.

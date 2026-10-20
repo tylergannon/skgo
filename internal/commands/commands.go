@@ -19,7 +19,7 @@ type Flag struct {
 // Command describes one subcommand.
 type Command struct {
 	// Name is the word after skgo, or two words for a nested command such as
-	// "native build".
+	// "plugin install".
 	Name string
 	// Args is the argument syntax after the name and flags, for the synopsis.
 	Args string
@@ -103,8 +103,8 @@ Templates registered by installed plugins are applied after that scaffold.
 	},
 	{
 		Name:    "plugin",
-		Args:    "install MODULE[@QUERY] | remove MODULE",
-		Summary: "install or remove trusted plugin source for this executable",
+		Args:    "install MODULE[@QUERY] | install --prebuilt ARTIFACT --sha256 DIGEST | restore | remove MODULE | ID ...",
+		Summary: "manage trusted plugins and run their commands",
 		Description: `Installs trusted Git source for this executable, which contributes templates
 and add-ons to ` + "`skgo new`" + ` and ` + "`skgo add`" + `. Requires Git, Go and cgo.
 Source generation and plugin initialization execute code. Removal affects only
@@ -126,28 +126,11 @@ this host's managed selection.`,
 		Name:    "update",
 		Summary: "align CLI and application toolchain",
 		Description: `Brings the application's skgo module, adapter and frontend tool environment to
-the versions this executable was released with, then re-runs generation. When
-the application has native configuration, the native target is rebuilt too.`,
+the versions this executable was released with, then re-runs generation. Plugin builds and updates remain explicit.`,
 		Flags: []Flag{
 			{"root", "", "application root; otherwise locate the current application"},
 			{"vp", "", "global vp executable; defaults to PATH"},
-			{"native-platform", "macos", "native build target when native configuration exists: macos, iphone or simulator"},
-			{"native-preset", "", "native build preset from the application configuration"},
 			{"complete-version", "", "internal completion phase: must match this executable"},
-		},
-	},
-	{
-		Name:    "native build",
-		Summary: "build the macOS or iOS application",
-		Description: `Prepares bindings, native libraries and the Xcode project for the selected
-platform and compiles a Debug application. ` + "`--prepare-only`" + ` stops before
-Xcode, which is what an editor or CI step that owns the Xcode invocation wants.`,
-		Flags: []Flag{
-			{"root", ".", "application root"},
-			{"platform", "macos", "macos, iphone or simulator"},
-			{"preset", "", "application-defined build preset"},
-			{"prepare-only", "false", "prepare bindings, native libraries and Xcode project without compiling a Debug app"},
-			{"jobs", "0", "maximum Zig/Xcode build workers; zero uses the tool defaults"},
 		},
 	},
 	{
@@ -206,8 +189,7 @@ see, and the Go registration the server mounts. New applications run it from a
 			{"config-symbol", "Config", "selected ApplicationConfig value"},
 			{"cache-dir", "", "generation cache directory; defaults to the user cache; off disables caching"},
 			{"quiet", "false", "do not list the files written"},
-			{"swift-out", "", "generated Swift source file"},
-			{"swift-remote", "", "select module#export for Swift and the shared safe-number contract (ordinary query/command; repeatable)"},
+			{"plugins", "false", "run pinned plugin generators on this official host"},
 		},
 	},
 	{

@@ -1,0 +1,96 @@
+name: Native plugin tests
+
+# A nested Go module is deliberately outside core's ./... and release gates.
+# It still runs its own contracts on every relevant development revision.
+on:
+  push:
+    branches-ignore: [main]
+    tags-ignore: ['**']
+    paths:
+      - 'plugins/native-shell/**'
+      - 'templateapi/**'
+      - '*.go'
+      - 'generate/**'
+      - 'internal/gen/**'
+      - 'internal/ssr/**'
+      - 'internal/adapter/**'
+      - 'internal/remotearg/**'
+      - 'internal/formdata/**'
+      - 'internal/kithash/**'
+      - 'internal/envspec/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/native-plugin-tests.yml'
+  pull_request:
+    paths:
+      - 'plugins/native-shell/**'
+      - 'templateapi/**'
+      - '*.go'
+      - 'generate/**'
+      - 'internal/gen/**'
+      - 'internal/ssr/**'
+      - 'internal/adapter/**'
+      - 'internal/remotearg/**'
+      - 'internal/formdata/**'
+      - 'internal/kithash/**'
+      - 'internal/envspec/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/native-plugin-tests.yml'
+
+concurrency:
+  group: native-plugin-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: plugins/native-shell/go.mod
+          cache-dependency-path: |
+            go.sum
+            plugins/native-shell/go.sum
+      - name: Native plugin Go contracts
+        working-directory: plugins/native-shell
+        env:
+          GOWORK: 'off'
+        run: go test ./...
+
+  compiler-and-wire:
+    name: Native compiler and wire witnesses
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: plugins/native-shell/go.mod
+          cache-dependency-path: |
+            go.sum
+            plugins/native-shell/go.sum
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: plugins/native-shell/sdk
+          export_path: true
+      - name: Generated Swift and SDK wire regression tests
+        working-directory: plugins/native-shell
+        env:
+          GOWORK: 'off'
+        run: go test -tags skgo_qualification -count=1 ./...
+      - name: Zig SDK unit tests and Swift link library
+        working-directory: plugins/native-shell/sdk/core
+        run: mise exec -- zig build test library
+      - name: Swift SDK unit tests
+        working-directory: plugins/native-shell/sdk/swift
+        run: swift test

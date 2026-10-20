@@ -28,17 +28,12 @@ func TestBuildReusesCurrentOutputsAndRebuildsChanges(t *testing.T) {
 	write("web/node_modules/.bin/vp", "fixture")
 	write("server.go", "package app")
 	write("web/build/.gitkeep", "")
-	var builds, installs, generations, nativeGenerations int
+	var builds, installs, generations int
 	moduleData := []byte(`{"Path":"fixture"}`)
 	fail := false
 	run := func(dir string, env []string, name string, args ...string) ([]byte, error) {
 		if name == "go" && args[0] == "list" {
 			return moduleData, nil
-		}
-		if name == "go" && args[0] == "tool" {
-			nativeGenerations++
-			write("native/Generated.swift", "generated Swift")
-			return nil, nil
 		}
 		if name == "go" && args[0] == "generate" {
 			generations++
@@ -131,25 +126,6 @@ func TestBuildReusesCurrentOutputsAndRebuildsChanges(t *testing.T) {
 	if builds != before+1 {
 		t.Fatal("failed build was reused")
 	}
-	// Native and web preparation share generation, including Swift selection.
-	write("go.mod", "module example.com/fixture\n\ngo 1.27.1\n")
-	write("skgo.json", `{"version":1,"name":"Fixture"}`)
-	write("native/skgo-native.json", `{"version":1,"bundleId":"example.fixture","swiftRemotes":["src/lib/call.remote.ts#call"]}`)
-	build()
-	if nativeGenerations != 1 {
-		t.Fatal("web-first build omitted native generation")
-	}
-	build()
-	if nativeGenerations != 1 {
-		t.Fatal("shared native preparation repeated generation")
-	}
-	if err := os.Remove(filepath.Join(root, "native/Generated.swift")); err != nil {
-		t.Fatal(err)
-	}
-	build()
-	if nativeGenerations != 2 {
-		t.Fatal("missing Swift projection was reused")
-	}
 
 	replacement := t.TempDir()
 	if err := os.WriteFile(filepath.Join(replacement, "tool.go"), []byte("package tool"), 0644); err != nil {
@@ -170,7 +146,6 @@ func TestBuildReusesCurrentOutputsAndRebuildsChanges(t *testing.T) {
 	before = builds
 	write(".git", "gitdir: /different/absolute/worktree")
 	write(".gimbal/runs/run.json", "running")
-	write("native/Resources/gimbal", "updated bundled CLI")
 	build()
 	if builds != before {
 		t.Fatal("runtime state, worktree pointer or bundled CLI invalidated frontend")

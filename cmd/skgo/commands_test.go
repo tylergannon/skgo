@@ -29,7 +29,6 @@ func TestCommandTableMatchesFlagSets(t *testing.T) {
 		"checkProject":       "check",
 		"generate":           "generate",
 		"kitPatchCommand":    "kit-patch",
-		"nativeCommand":      "native build",
 		"updateCommand":      "update",
 		"newCommand":         "new",
 		"addCommand":         "add",
