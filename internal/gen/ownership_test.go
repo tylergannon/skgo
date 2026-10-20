@@ -115,7 +115,7 @@ type HandleConfig struct {
 	HandleError   HandleError
 }
 
-func HookValues(*Event) (string, map[string]any)                                   { return "", nil }
+func HookValues(*Event) (string, []ManifestParam, map[string]any)                  { return "", nil, nil }
 func Errorf(int, string, ...any) error                                             { return nil }
 func (h RequestHandle[P, L]) Middleware() RequestMiddleware[P, L]                  { return nil }
 func RequestSequence[P, L any](...RequestMiddleware[P, L]) RequestMiddleware[P, L] { return nil }
@@ -140,13 +140,9 @@ type ManifestParam struct {
 	Chained  bool
 	Matcher  string
 }
-type CallerRoute struct {
-	Params    []ManifestParam
-	NewParams func(map[string]any) (any, error)
-}
-type CallerRoutes map[string]CallerRoute
+type CallerParams func(string, []ManifestParam, map[string]any) (any, error)
 
-func RemoteCallerValues(*Event) (string, map[string]any) { return "", nil }
+func RemoteCallerValues(*Event) (string, []ManifestParam, map[string]any) { return "", nil, nil }
 func EventFrom(context.Context) *Event                   { return &Event{} }
 func TrackLoadParam(*Event, string)                      {}
 func LoadParamValue[T any](*Event, string) T             { var zero T; return zero }

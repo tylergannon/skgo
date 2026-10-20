@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -255,9 +256,9 @@ func TestTypedHookUsesConvertedSnapshotOnce(t *testing.T) {
 	cfg := manifest.HandleConfig()
 	cfg.Matchers = matchers
 	constructor := func(event *Event) (int, error) {
-		id, values := HookValues(event)
-		if id != "/locals/[n=Number]" || values["n"] != 42 {
-			return 0, fmt.Errorf("wrong converted snapshot %s %v", id, values)
+		id, declared, values := HookValues(event)
+		if id != "/locals/[n=Number]" || values["n"] != 42 || !slices.Equal(declared, []ManifestParam{{Name: "n", Matcher: "Number"}}) {
+			return 0, fmt.Errorf("wrong converted snapshot %s %v %v", id, declared, values)
 		}
 		return values["n"].(int), nil
 	}

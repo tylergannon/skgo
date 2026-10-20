@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"reflect"
 	"runtime/debug"
+	"slices"
 	"sync/atomic"
 )
 
@@ -149,17 +150,18 @@ func RequestSequence[P, L any](hooks ...RequestMiddleware[P, L]) RequestMiddlewa
 	}
 }
 
-// HookValues returns the already converted matched route snapshot. It never
-// invokes a matcher and is separate from remote caller permissions.
-func HookValues(event *Event) (string, map[string]any) {
+// HookValues returns the already converted matched route snapshot: its ID, the
+// parameters Kit declares for it and their values. It never invokes a matcher
+// and is separate from remote caller permissions.
+func HookValues(event *Event) (string, []ManifestParam, map[string]any) {
 	if event == nil || event.hook == nil {
-		return "", nil
+		return "", nil, nil
 	}
 	values := make(map[string]any, len(event.hook.converted))
 	for k, v := range event.hook.converted {
 		values[k] = v
 	}
-	return event.hook.routeID, values
+	return event.hook.routeID, slices.Clone(event.hook.declared), values
 }
 
 // Intercept is the application's single locals allocator, including when the

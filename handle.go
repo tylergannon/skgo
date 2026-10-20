@@ -301,7 +301,7 @@ func (cfg HandleConfig) matchRoute(routePath string) (handleRoute, map[string]st
 		if !ok {
 			return handleRoute{}, nil, nil, false
 		}
-		return handleRoute{trailingSlash: route.trailingSlash, id: route.id, hasPage: route.hasPage}, params, converted, true
+		return handleRoute{trailingSlash: route.trailingSlash, id: route.id, params: route.params, hasPage: route.hasPage}, params, converted, true
 	}
 	for _, route := range cfg.routes {
 		loc := route.pattern.FindStringSubmatchIndex(routePath)

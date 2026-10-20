@@ -52,8 +52,8 @@ func (h Handle) Intercept(cfg skgo.HandleConfig, next http.Handler) http.Handler
 }
 func (h Middleware) Intercept(cfg skgo.HandleConfig, next http.Handler) http.Handler {
 	return skgo.RequestMiddleware[Params, appstate.Locals](h).Intercept(cfg, func(event *skgo.Event) (Params, error) {
-		id, values := skgo.HookValues(event)
-		p, err := SkgoParams(id, values)
+		id, declared, values := skgo.HookValues(event)
+		p, err := SkgoParams(id, declared, values)
 		if err != nil {
 			return p, skgo.Errorf(503, "skgo: callerManifestDrift: %v", err)
 		}
@@ -197,480 +197,231 @@ type ValueParam_String struct{ Value string }
 
 func (ValueParam_String) skgoParam_76616c7565() {}
 
-// SkgoCallerRoutes describes every constructor generated from Kit's route metadata.
-func SkgoCallerRoutes() skgo.CallerRoutes {
-	return skgo.CallerRoutes{
-		"/":                            {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/", values) }},
-		"/(marketing)/pricing":         {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/(marketing)/pricing", values) }},
-		"/about":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/about", values) }},
-		"/account":                     {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/account", values) }},
-		"/account/orders":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/account/orders", values) }},
-		"/account/reruns/[slug]":       {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/account/reruns/[slug]", values) }},
-		"/account/statement":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/account/statement", values) }},
-		"/actions":                     {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions", values) }},
-		"/actions/cross":               {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions/cross", values) }},
-		"/actions/cross/receive":       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions/cross/receive", values) }},
-		"/actions/cross/send":          {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions/cross/send", values) }},
-		"/actions/default":             {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions/default", values) }},
-		"/actions/default/saved":       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions/default/saved", values) }},
-		"/actions/options/no-client":   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions/options/no-client", values) }},
-		"/actions/options/no-ssr":      {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions/options/no-ssr", values) }},
-		"/actions/profiles/[profile]":  {Params: []skgo.ManifestParam{{Name: "profile", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions/profiles/[profile]", values) }},
-		"/actions/signed-in":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/actions/signed-in", values) }},
-		"/api":                         {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/api", values) }},
-		"/api/fatal":                   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/api/fatal", values) }},
-		"/api/replay-count":            {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/api/replay-count", values) }},
-		"/api/replay/[kind]":           {Params: []skgo.ManifestParam{{Name: "kind", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/api/replay/[kind]", values) }},
-		"/api/request-fetch":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/api/request-fetch", values) }},
-		"/api/reroute-target":          {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/api/reroute-target", values) }},
-		"/api/rerouted/[number=Order]": {Params: []skgo.ManifestParam{{Name: "number", Matcher: "Order", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/api/rerouted/[number=Order]", values) }},
-		"/api/todos":                   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/api/todos", values) }},
-		"/async-ssr/[mode]/[group]":    {Params: []skgo.ManifestParam{{Name: "mode", Matcher: "", Optional: false, Rest: false, Chained: false}, {Name: "group", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/async-ssr/[mode]/[group]", values) }},
-		"/async-ssr/control/[group]":   {Params: []skgo.ManifestParam{{Name: "group", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/async-ssr/control/[group]", values) }},
-		"/batch":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/batch", values) }},
-		"/bits-ui":                     {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/bits-ui", values) }},
-		"/console":                     {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/console", values) }},
-		"/contact":                     {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/contact", values) }},
-		"/destinations":                {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/destinations", values) }},
-		"/docs/[...rest]":              {Params: []skgo.ManifestParam{{Name: "rest", Matcher: "", Optional: false, Rest: true, Chained: true}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/docs/[...rest]", values) }},
-		"/embedded/[name]":             {Params: []skgo.ManifestParam{{Name: "name", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/embedded/[name]", values) }},
-		"/empty":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/empty", values) }},
-		"/error":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error", values) }},
-		"/error/boundary":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/boundary", values) }},
-		"/error/command":               {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/command", values) }},
-		"/error/component-boundary":    {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/component-boundary", values) }},
-		"/error/expected":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/expected", values) }},
-		"/error/redirect":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/redirect", values) }},
-		"/error/render":                {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/render", values) }},
-		"/error/server-only":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/server-only", values) }},
-		"/error/unexpected":            {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/unexpected", values) }},
-		"/event-layout/[section]":      {Params: []skgo.ManifestParam{{Name: "section", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/event-layout/[section]", values) }},
-		"/event-layout/[section]/[item]/one": {Params: []skgo.ManifestParam{{Name: "section", Matcher: "", Optional: false, Rest: false, Chained: false}, {Name: "item", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) {
-			return SkgoParams("/event-layout/[section]/[item]/one", values)
-		}},
-		"/event-layout/[section]/[item]/two": {Params: []skgo.ManifestParam{{Name: "section", Matcher: "", Optional: false, Rest: false, Chained: false}, {Name: "item", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) {
-			return SkgoParams("/event-layout/[section]/[item]/two", values)
-		}},
-		"/fetch":                   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/fetch", values) }},
-		"/invoices":                {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/invoices", values) }},
-		"/items/[id]":              {Params: []skgo.ManifestParam{{Name: "id", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/items/[id]", values) }},
-		"/lang/[[lang]]":           {Params: []skgo.ManifestParam{{Name: "lang", Matcher: "", Optional: true, Rest: false, Chained: true}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/lang/[[lang]]", values) }},
-		"/live":                    {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/live", values) }},
-		"/middleware":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/middleware", values) }},
-		"/middleware/[slug]":       {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/middleware/[slug]", values) }},
-		"/missing":                 {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/missing", values) }},
-		"/missing/[...path]":       {Params: []skgo.ManifestParam{{Name: "path", Matcher: "", Optional: false, Rest: true, Chained: true}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/missing/[...path]", values) }},
-		"/nested-universal":        {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/nested-universal", values) }},
-		"/optional":                {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/optional", values) }},
-		"/plain":                   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/plain", values) }},
-		"/prerender-consumer":      {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/prerender-consumer", values) }},
-		"/prerender/[slug]":        {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/prerender/[slug]", values) }},
-		"/render-paths":            {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/render-paths", values) }},
-		"/request-fetch":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/request-fetch", values) }},
-		"/rerouted/[number=Order]": {Params: []skgo.ManifestParam{{Name: "number", Matcher: "Order", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/rerouted/[number=Order]", values) }},
-		"/routing/fallback/[number=Order]": {Params: []skgo.ManifestParam{{Name: "number", Matcher: "Order", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) {
-			return SkgoParams("/routing/fallback/[number=Order]", values)
-		}},
-		"/routing/fallback/[value]": {Params: []skgo.ManifestParam{{Name: "value", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/fallback/[value]", values) }},
-		"/routing/optional/[[number=Order]]": {Params: []skgo.ManifestParam{{Name: "number", Matcher: "Order", Optional: true, Rest: false, Chained: true}}, NewParams: func(values map[string]any) (any, error) {
-			return SkgoParams("/routing/optional/[[number=Order]]", values)
-		}},
-		"/routing/reject/[number=Order]": {Params: []skgo.ManifestParam{{Name: "number", Matcher: "Order", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/reject/[number=Order]", values) }},
-		"/routing/slash":                 {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/slash", values) }},
-		"/routing/slash/always":          {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/slash/always", values) }},
-		"/routing/slash/api":             {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/slash/api", values) }},
-		"/routing/slash/ignore":          {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/slash/ignore", values) }},
-		"/routing/slash/mixed":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/slash/mixed", values) }},
-		"/routing/slash/never":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/routing/slash/never", values) }},
-		"/runes-class":                   {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/runes-class", values) }},
-		"/samples/auth":                  {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/auth", values) }},
-		"/samples/cookies":               {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/cookies", values) }},
-		"/samples/form-actions/default":  {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/form-actions/default", values) }},
-		"/samples/form-actions/enhance":  {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/form-actions/enhance", values) }},
-		"/samples/form-actions/named":    {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/form-actions/named", values) }},
-		"/samples/form-actions/sign-in":  {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/form-actions/sign-in", values) }},
-		"/samples/form-actions/validation": {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) {
-			return SkgoParams("/samples/form-actions/validation", values)
-		}},
-		"/samples/go-standards":          {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/go-standards", values) }},
-		"/samples/introduction":          {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/introduction", values) }},
-		"/samples/load/page-data":        {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/load/page-data", values) }},
-		"/samples/load/untrack/[slug]":   {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/load/untrack/[slug]", values) }},
-		"/samples/migrating":             {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/migrating", values) }},
-		"/samples/prerendering/[slug]":   {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/prerendering/[slug]", values) }},
-		"/samples/remote-functions":      {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/remote-functions", values) }},
-		"/samples/remote-functions/form": {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/remote-functions/form", values) }},
-		"/samples/testing":               {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/samples/testing", values) }},
-		"/shadow/[...rest]":              {Params: []skgo.ManifestParam{{Name: "rest", Matcher: "", Optional: false, Rest: true, Chained: true}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/shadow/[...rest]", values) }},
-		"/shadow/[slug]":                 {Params: []skgo.ManifestParam{{Name: "slug", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/shadow/[slug]", values) }},
-		"/spa":                           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/spa", values) }},
-		"/stream":                        {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/stream", values) }},
-		"/todos":                         {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/todos", values) }},
-		"/todos/[id]":                    {Params: []skgo.ManifestParam{{Name: "id", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/todos/[id]", values) }},
-		"/todos/gate":                    {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/todos/gate", values) }},
-		"/todos/pair":                    {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/todos/pair", values) }},
-		"/traced":                        {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/traced", values) }},
-		"/typed-dependencies/[a=Order]/[b=Order]/[ignored]": {Params: []skgo.ManifestParam{{Name: "a", Matcher: "Order", Optional: false, Rest: false, Chained: false}, {Name: "b", Matcher: "Order", Optional: false, Rest: false, Chained: false}, {Name: "ignored", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) {
-			return SkgoParams("/typed-dependencies/[a=Order]/[b=Order]/[ignored]", values)
-		}},
-		"/typed-load/[number=Order]": {Params: []skgo.ManifestParam{{Name: "number", Matcher: "Order", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/typed-load/[number=Order]", values) }},
-		"/universal-fetch":           {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/universal-fetch", values) }},
-		"/universal-fetch/no-script": {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/universal-fetch/no-script", values) }},
-		"/validation":                {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/validation", values) }},
-	}
+// SkgoCallerParams constructs Params for the runtime's caller validation.
+func SkgoCallerParams(routeID string, declared []skgo.ManifestParam, values map[string]any) (any, error) {
+	return SkgoParams(routeID, declared, values)
 }
 
 // SkgoRequestEvent constructs the explicit event for a command or form.
 func SkgoRequestEvent(event *skgo.Event) (RequestEvent, error) {
-	routeID, values := skgo.RemoteCallerValues(event)
-	p, err := SkgoParams(routeID, values)
+	routeID, declared, values := skgo.RemoteCallerValues(event)
+	p, err := SkgoParams(routeID, declared, values)
 	return RequestEvent{Event: event, Params: p, Locals: appstate.LocalsFrom(event.Request().Context())}, err
 }
 
-// SkgoParams constructs values for an already matched caller route.
-func SkgoParams(routeID string, values map[string]any) (Params, error) {
+// SkgoParams constructs values for an already matched route from the
+// parameters Kit declares for it. A declaration without a generated variant is
+// refused even when its value is absent.
+func SkgoParams(routeID string, declared []skgo.ManifestParam, values map[string]any) (Params, error) {
 	var p Params
-	switch routeID {
-	case "/":
-	case "/(marketing)/pricing":
-	case "/about":
-	case "/account":
-	case "/account/orders":
-	case "/account/reruns/[slug]":
-		if raw, present := values["slug"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /account/reruns/[slug] param slug: %w", err)
+	for _, param := range declared {
+		switch param.Name {
+		case "a":
+			switch param.Matcher {
+			case "Order":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[hooks.OrderNumber](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_61 = AParam_OrderNumber{Value: value}
+				}
+				continue
 			}
-			p.value_736c7567 = SlugParam_String{Value: value}
-		}
-	case "/account/statement":
-	case "/actions":
-	case "/actions/cross":
-	case "/actions/cross/receive":
-	case "/actions/cross/send":
-	case "/actions/default":
-	case "/actions/default/saved":
-	case "/actions/options/no-client":
-	case "/actions/options/no-ssr":
-	case "/actions/profiles/[profile]":
-		if raw, present := values["profile"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /actions/profiles/[profile] param profile: %w", err)
+		case "b":
+			switch param.Matcher {
+			case "Order":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[hooks.OrderNumber](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_62 = BParam_OrderNumber{Value: value}
+				}
+				continue
 			}
-			p.value_70726f66696c65 = ProfileParam_String{Value: value}
-		}
-	case "/actions/signed-in":
-	case "/api":
-	case "/api/fatal":
-	case "/api/replay-count":
-	case "/api/replay/[kind]":
-		if raw, present := values["kind"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /api/replay/[kind] param kind: %w", err)
+		case "group":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_67726f7570 = GroupParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_6b696e64 = KindParam_String{Value: value}
-		}
-	case "/api/request-fetch":
-	case "/api/reroute-target":
-	case "/api/rerouted/[number=Order]":
-		if raw, present := values["number"]; present {
-			value, err := skgoSharedValue[hooks.OrderNumber](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /api/rerouted/[number=Order] param number: %w", err)
+		case "id":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_6964 = IDParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_6e756d626572 = NumberParam_OrderNumber{Value: value}
-		}
-	case "/api/todos":
-	case "/async-ssr/[mode]/[group]":
-		if raw, present := values["mode"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /async-ssr/[mode]/[group] param mode: %w", err)
+		case "ignored":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_69676e6f726564 = IgnoredParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_6d6f6465 = ModeParam_String{Value: value}
-		}
-		if raw, present := values["group"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /async-ssr/[mode]/[group] param group: %w", err)
+		case "item":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_6974656d = ItemParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_67726f7570 = GroupParam_String{Value: value}
-		}
-	case "/async-ssr/control/[group]":
-		if raw, present := values["group"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /async-ssr/control/[group] param group: %w", err)
+		case "kind":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_6b696e64 = KindParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_67726f7570 = GroupParam_String{Value: value}
-		}
-	case "/batch":
-	case "/bits-ui":
-	case "/console":
-	case "/contact":
-	case "/destinations":
-	case "/docs/[...rest]":
-		if raw, present := values["rest"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /docs/[...rest] param rest: %w", err)
+		case "lang":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_6c616e67 = LangParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_72657374 = RestParam_String{Value: value}
-		}
-	case "/embedded/[name]":
-		if raw, present := values["name"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /embedded/[name] param name: %w", err)
+		case "mode":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_6d6f6465 = ModeParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_6e616d65 = NameParam_String{Value: value}
-		}
-	case "/empty":
-	case "/error":
-	case "/error/boundary":
-	case "/error/command":
-	case "/error/component-boundary":
-	case "/error/expected":
-	case "/error/redirect":
-	case "/error/render":
-	case "/error/server-only":
-	case "/error/unexpected":
-	case "/event-layout/[section]":
-		if raw, present := values["section"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /event-layout/[section] param section: %w", err)
+		case "name":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_6e616d65 = NameParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_73656374696f6e = SectionParam_String{Value: value}
-		}
-	case "/event-layout/[section]/[item]/one":
-		if raw, present := values["section"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /event-layout/[section]/[item]/one param section: %w", err)
+		case "number":
+			switch param.Matcher {
+			case "Order":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[hooks.OrderNumber](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_6e756d626572 = NumberParam_OrderNumber{Value: value}
+				}
+				continue
 			}
-			p.value_73656374696f6e = SectionParam_String{Value: value}
-		}
-		if raw, present := values["item"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /event-layout/[section]/[item]/one param item: %w", err)
+		case "path":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_70617468 = PathParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_6974656d = ItemParam_String{Value: value}
-		}
-	case "/event-layout/[section]/[item]/two":
-		if raw, present := values["section"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /event-layout/[section]/[item]/two param section: %w", err)
+		case "profile":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_70726f66696c65 = ProfileParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_73656374696f6e = SectionParam_String{Value: value}
-		}
-		if raw, present := values["item"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /event-layout/[section]/[item]/two param item: %w", err)
+		case "rest":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_72657374 = RestParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_6974656d = ItemParam_String{Value: value}
-		}
-	case "/fetch":
-	case "/invoices":
-	case "/items/[id]":
-		if raw, present := values["id"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /items/[id] param id: %w", err)
+		case "section":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_73656374696f6e = SectionParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_6964 = IDParam_String{Value: value}
-		}
-	case "/lang/[[lang]]":
-		if raw, present := values["lang"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /lang/[[lang]] param lang: %w", err)
+		case "slug":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_736c7567 = SlugParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_6c616e67 = LangParam_String{Value: value}
-		}
-	case "/live":
-	case "/middleware":
-	case "/middleware/[slug]":
-		if raw, present := values["slug"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /middleware/[slug] param slug: %w", err)
+		case "value":
+			switch param.Matcher {
+			case "":
+				if raw, present := values[param.Name]; present {
+					value, err := skgoSharedValue[string](raw)
+					if err != nil {
+						return Params{}, fmt.Errorf("skgo: caller %s param %s: %w", routeID, param.Name, err)
+					}
+					p.value_76616c7565 = ValueParam_String{Value: value}
+				}
+				continue
 			}
-			p.value_736c7567 = SlugParam_String{Value: value}
 		}
-	case "/missing":
-	case "/missing/[...path]":
-		if raw, present := values["path"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /missing/[...path] param path: %w", err)
-			}
-			p.value_70617468 = PathParam_String{Value: value}
-		}
-	case "/nested-universal":
-	case "/optional":
-	case "/plain":
-	case "/prerender-consumer":
-	case "/prerender/[slug]":
-		if raw, present := values["slug"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /prerender/[slug] param slug: %w", err)
-			}
-			p.value_736c7567 = SlugParam_String{Value: value}
-		}
-	case "/render-paths":
-	case "/request-fetch":
-	case "/rerouted/[number=Order]":
-		if raw, present := values["number"]; present {
-			value, err := skgoSharedValue[hooks.OrderNumber](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /rerouted/[number=Order] param number: %w", err)
-			}
-			p.value_6e756d626572 = NumberParam_OrderNumber{Value: value}
-		}
-	case "/routing/fallback/[number=Order]":
-		if raw, present := values["number"]; present {
-			value, err := skgoSharedValue[hooks.OrderNumber](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /routing/fallback/[number=Order] param number: %w", err)
-			}
-			p.value_6e756d626572 = NumberParam_OrderNumber{Value: value}
-		}
-	case "/routing/fallback/[value]":
-		if raw, present := values["value"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /routing/fallback/[value] param value: %w", err)
-			}
-			p.value_76616c7565 = ValueParam_String{Value: value}
-		}
-	case "/routing/optional/[[number=Order]]":
-		if raw, present := values["number"]; present {
-			value, err := skgoSharedValue[hooks.OrderNumber](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /routing/optional/[[number=Order]] param number: %w", err)
-			}
-			p.value_6e756d626572 = NumberParam_OrderNumber{Value: value}
-		}
-	case "/routing/reject/[number=Order]":
-		if raw, present := values["number"]; present {
-			value, err := skgoSharedValue[hooks.OrderNumber](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /routing/reject/[number=Order] param number: %w", err)
-			}
-			p.value_6e756d626572 = NumberParam_OrderNumber{Value: value}
-		}
-	case "/routing/slash":
-	case "/routing/slash/always":
-	case "/routing/slash/api":
-	case "/routing/slash/ignore":
-	case "/routing/slash/mixed":
-	case "/routing/slash/never":
-	case "/runes-class":
-	case "/samples/auth":
-	case "/samples/cookies":
-	case "/samples/form-actions/default":
-	case "/samples/form-actions/enhance":
-	case "/samples/form-actions/named":
-	case "/samples/form-actions/sign-in":
-	case "/samples/form-actions/validation":
-	case "/samples/go-standards":
-	case "/samples/introduction":
-	case "/samples/load/page-data":
-	case "/samples/load/untrack/[slug]":
-		if raw, present := values["slug"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /samples/load/untrack/[slug] param slug: %w", err)
-			}
-			p.value_736c7567 = SlugParam_String{Value: value}
-		}
-	case "/samples/migrating":
-	case "/samples/prerendering/[slug]":
-		if raw, present := values["slug"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /samples/prerendering/[slug] param slug: %w", err)
-			}
-			p.value_736c7567 = SlugParam_String{Value: value}
-		}
-	case "/samples/remote-functions":
-	case "/samples/remote-functions/form":
-	case "/samples/testing":
-	case "/shadow/[...rest]":
-		if raw, present := values["rest"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /shadow/[...rest] param rest: %w", err)
-			}
-			p.value_72657374 = RestParam_String{Value: value}
-		}
-	case "/shadow/[slug]":
-		if raw, present := values["slug"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /shadow/[slug] param slug: %w", err)
-			}
-			p.value_736c7567 = SlugParam_String{Value: value}
-		}
-	case "/spa":
-	case "/stream":
-	case "/todos":
-	case "/todos/[id]":
-		if raw, present := values["id"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /todos/[id] param id: %w", err)
-			}
-			p.value_6964 = IDParam_String{Value: value}
-		}
-	case "/todos/gate":
-	case "/todos/pair":
-	case "/traced":
-	case "/typed-dependencies/[a=Order]/[b=Order]/[ignored]":
-		if raw, present := values["a"]; present {
-			value, err := skgoSharedValue[hooks.OrderNumber](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /typed-dependencies/[a=Order]/[b=Order]/[ignored] param a: %w", err)
-			}
-			p.value_61 = AParam_OrderNumber{Value: value}
-		}
-		if raw, present := values["b"]; present {
-			value, err := skgoSharedValue[hooks.OrderNumber](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /typed-dependencies/[a=Order]/[b=Order]/[ignored] param b: %w", err)
-			}
-			p.value_62 = BParam_OrderNumber{Value: value}
-		}
-		if raw, present := values["ignored"]; present {
-			value, err := skgoSharedValue[string](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /typed-dependencies/[a=Order]/[b=Order]/[ignored] param ignored: %w", err)
-			}
-			p.value_69676e6f726564 = IgnoredParam_String{Value: value}
-		}
-	case "/typed-load/[number=Order]":
-		if raw, present := values["number"]; present {
-			value, err := skgoSharedValue[hooks.OrderNumber](raw)
-			if err != nil {
-				return Params{}, fmt.Errorf("skgo: caller /typed-load/[number=Order] param number: %w", err)
-			}
-			p.value_6e756d626572 = NumberParam_OrderNumber{Value: value}
-		}
-	case "/universal-fetch":
-	case "/universal-fetch/no-script":
-	case "/validation":
-	default:
-		if routeID != "" {
-			return Params{}, fmt.Errorf("skgo: unknown caller route %q; regenerate params", routeID)
-		}
+		return Params{}, fmt.Errorf("skgo: caller %s param %s with matcher %q has no generated variant; regenerate params", routeID, param.Name, param.Matcher)
 	}
 	return p, nil
 }

@@ -13,14 +13,12 @@ import (
 // The manifest owns candidate ordering; only the Go matchers convert captures.
 type CallerMatchers map[string]ParamMatcher
 
-// CallerRoute is generated from Kit's complete caller metadata, including
-// routes without Go loads. NewParams must construct the shared Params for it.
-type CallerRoute struct {
-	Params    []ManifestParam
-	NewParams func(map[string]any) (any, error)
-}
-
-type CallerRoutes map[string]CallerRoute
+// CallerParams is generated from the parameter names and matchers Kit's routes
+// declare, including routes without Go loads. It constructs the shared Params
+// for any route whose declarations it knows, so adding or removing a route that
+// declares nothing new leaves the generated Go unchanged. It must refuse a
+// declaration it has no variant for, even when the value is absent.
+type CallerParams func(routeID string, declared []ManifestParam, values map[string]any) (any, error)
 
 func callerManifestDrift(format string, args ...any) error {
 	return Errorf(http.StatusServiceUnavailable, "skgo: caller manifest drift: "+format, args...)
@@ -29,6 +27,7 @@ func callerManifestDrift(format string, args ...any) error {
 type remoteCaller struct {
 	url     *url.URL
 	routeID string
+	params  []ManifestParam
 	values  map[string]any
 }
 type remoteCallerKey struct{}
@@ -37,7 +36,7 @@ type callerRouting struct {
 	mu        sync.RWMutex
 	routes    []*dataRoute
 	matchers  CallerMatchers
-	generated []CallerRoutes
+	generated []CallerParams
 }
 
 func (rs *Remotes) updateCallerRoutes(routes []ManifestRoute) error {
@@ -75,43 +74,37 @@ func (rs *Remotes) checkCallerDrift(routes []ManifestRoute) error {
 			}
 		}
 		for _, generated := range rs.callers.generated {
-			want, ok := generated[route.ID]
-			if !ok || want.NewParams == nil {
-				return callerManifestDrift("route %q has no generated Params constructor; regenerate and rebuild Go", route.ID)
-			}
-			if !slices.Equal(want.Params, route.Params) {
-				return callerManifestDrift("route %q parameter metadata differs from generated Go; regenerate and rebuild Go", route.ID)
-			}
-			if _, err := want.NewParams(nil); err != nil {
-				return callerManifestDrift("route %q Params constructor: %v", route.ID, err)
+			if _, err := generated(route.ID, route.Params, nil); err != nil {
+				return callerManifestDrift("route %q Params constructor: %v; regenerate and rebuild Go", route.ID, err)
 			}
 		}
 	}
 	return nil
 }
 
-// RemoteCallerValues is the generated command/form constructor's input. A
-// query event cannot reconstruct a caller's shared Params through this helper.
-func RemoteCallerValues(e *Event) (string, map[string]any) {
+// RemoteCallerValues is the generated command/form constructor's input: the
+// caller route, the parameters Kit declares for it and their converted values.
+// A query event cannot reconstruct a caller's shared Params through this helper.
+func RemoteCallerValues(e *Event) (string, []ManifestParam, map[string]any) {
 	if e == nil {
-		return "", nil
+		return "", nil, nil
 	}
 	if e.query {
 		panic("skgo: cannot read params in a remote query")
 	}
 	if e.caller == nil {
-		return "", nil
+		return "", nil, nil
 	}
 	values := make(map[string]any, len(e.caller.values))
 	for key, value := range e.caller.values {
 		values[key] = value
 	}
-	return e.caller.routeID, values
+	return e.caller.routeID, slices.Clone(e.caller.params), values
 }
 
 func (rs *Remotes) matchCaller(r *http.Request) (*remoteCaller, error) {
 	if state := hookStateOf(r.Context()); state != nil && state.routing {
-		return &remoteCaller{url: state.url, routeID: state.routeID, values: state.converted}, nil
+		return &remoteCaller{url: state.url, routeID: state.routeID, params: state.declared, values: state.converted}, nil
 	}
 	origin, _ := url.Parse(rs.cfg.Origin)
 	u, skip := (HandleConfig{}).eventURL(r, origin, rs.cfg.Base, false, true)
@@ -151,7 +144,7 @@ func (rs *Remotes) matchCaller(r *http.Request) (*remoteCaller, error) {
 		if !ok {
 			continue
 		}
-		caller.routeID, caller.values = route.id, converted
+		caller.routeID, caller.params, caller.values = route.id, route.params, converted
 		return caller, nil
 	}
 	return caller, nil

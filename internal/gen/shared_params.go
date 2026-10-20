@@ -402,7 +402,7 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 	for _, key := range keys {
 		fmt.Fprintf(&body, "value_%x Key_%s\n", key, sharedParamStem(key))
 	}
-	fmt.Fprintf(&body, "}\n\ntype RequestEvent = skgo.RequestEvent[Params, appstate.%s]\ntype Resolve = skgo.RequestResolve[Params, appstate.%s]\ntype Middleware skgo.RequestMiddleware[Params,appstate.%s]\ntype Handle skgo.RequestHandle[Params,appstate.%s]\nfunc (h Handle) Middleware() Middleware {return Middleware(skgo.RequestHandle[Params,appstate.%s](h).Middleware())}\nfunc Sequence(hooks ...Middleware) Middleware {values:=make([]skgo.RequestMiddleware[Params,appstate.%s],len(hooks));for i,h:=range hooks {values[i]=skgo.RequestMiddleware[Params,appstate.%s](h)};return Middleware(skgo.RequestSequence(values...))}\nfunc (h Handle) Intercept(cfg skgo.HandleConfig,next http.Handler) http.Handler {return h.Middleware().Intercept(cfg,next)}\nfunc (h Middleware) Intercept(cfg skgo.HandleConfig,next http.Handler) http.Handler {return skgo.RequestMiddleware[Params,appstate.%s](h).Intercept(cfg,func(event *skgo.Event)(Params,error){id,values:=skgo.HookValues(event);p,err:=SkgoParams(id,values);if err!=nil{return p,skgo.Errorf(503,\"skgo: callerManifestDrift: %%v\",err)};return p,nil},next)}\n\n", cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType)
+	fmt.Fprintf(&body, "}\n\ntype RequestEvent = skgo.RequestEvent[Params, appstate.%s]\ntype Resolve = skgo.RequestResolve[Params, appstate.%s]\ntype Middleware skgo.RequestMiddleware[Params,appstate.%s]\ntype Handle skgo.RequestHandle[Params,appstate.%s]\nfunc (h Handle) Middleware() Middleware {return Middleware(skgo.RequestHandle[Params,appstate.%s](h).Middleware())}\nfunc Sequence(hooks ...Middleware) Middleware {values:=make([]skgo.RequestMiddleware[Params,appstate.%s],len(hooks));for i,h:=range hooks {values[i]=skgo.RequestMiddleware[Params,appstate.%s](h)};return Middleware(skgo.RequestSequence(values...))}\nfunc (h Handle) Intercept(cfg skgo.HandleConfig,next http.Handler) http.Handler {return h.Middleware().Intercept(cfg,next)}\nfunc (h Middleware) Intercept(cfg skgo.HandleConfig,next http.Handler) http.Handler {return skgo.RequestMiddleware[Params,appstate.%s](h).Intercept(cfg,func(event *skgo.Event)(Params,error){id,declared,values:=skgo.HookValues(event);p,err:=SkgoParams(id,declared,values);if err!=nil{return p,skgo.Errorf(503,\"skgo: callerManifestDrift: %%v\",err)};return p,nil},next)}\n\n", cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType, cfg.LocalsType)
 	for _, key := range keys {
 		stem := sharedParamStem(key)
 		fmt.Fprintf(&body, "type Key_%s interface { skgoParam_%x() }\nfunc (p Params) %s() Key_%s { return p.value_%x }\n", stem, key, stem, stem, key)
@@ -411,40 +411,46 @@ func writeSharedParams(cfg Config, routes map[string]*routeLoadParams) error {
 			fmt.Fprintf(&body, "type %s struct { Value %s }\nfunc (%s) skgoParam_%x() {}\n", alt.name, imports.typeExpr(alt.typ), alt.name, key)
 		}
 	}
-	// A selected route's declared metadata picks the variant, never the dynamic
-	// type of an interface payload. Membership alone decides presence.
-	body.WriteString("\n// SkgoCallerRoutes describes every constructor generated from Kit's route metadata.\nfunc SkgoCallerRoutes() skgo.CallerRoutes { return skgo.CallerRoutes{\n")
+	// A route's declared name and matcher pick the variant, never the dynamic
+	// type of an interface payload. The constructors depend only on the set of
+	// declarations, so a route that declares nothing new changes no Go.
+	type declaration struct{ name, matcher string }
+	declarationTypes := map[declaration]types.Type{}
 	for _, dir := range dirs {
-		rel, _ := filepath.Rel(filepath.Join(cfg.Web, routesDir), dir)
-		id := "/" + filepath.ToSlash(rel)
-		if rel == "." {
-			id = "/"
-		}
-		fmt.Fprintf(&body, "%q:{Params:[]skgo.ManifestParam{", id)
-		for _, param := range routes[dir].params {
-			fmt.Fprintf(&body, "{Name:%q,Matcher:%q,Optional:%t,Rest:%t,Chained:%t},", param.Name, param.Matcher, param.Optional, param.Rest, param.Chained)
-		}
-		fmt.Fprintf(&body, "},NewParams:func(values map[string]any)(any,error){return SkgoParams(%q,values)}},\n", id)
-	}
-	body.WriteString("}}\n")
-	body.WriteString("\n// SkgoRequestEvent constructs the explicit event for a command or form.\nfunc SkgoRequestEvent(event *skgo.Event) (RequestEvent,error) {\n routeID,values := skgo.RemoteCallerValues(event)\n p,err := SkgoParams(routeID,values)\n return RequestEvent{Event:event,Params:p,Locals:appstate.LocalsFrom(event.Request().Context())},err\n}\n")
-	body.WriteString("\n// SkgoParams constructs values for an already matched caller route.\nfunc SkgoParams(routeID string, values map[string]any) (Params, error) {\n var p Params\n switch routeID {\n")
-	for _, dir := range dirs {
-		rel, _ := filepath.Rel(filepath.Join(cfg.Web, routesDir), dir)
-		id := "/" + filepath.ToSlash(rel)
-		if rel == "." {
-			id = "/"
-		}
-		fmt.Fprintf(&body, "case %q:\n", id)
 		for _, param := range routes[dir].params {
 			typ := types.Type(types.Typ[types.String])
 			if param.Matcher != "" {
 				typ = routes[dir].matchers[param.Matcher].out
 			}
-			fmt.Fprintf(&body, "if raw, present := values[%q]; present { value, err := skgoSharedValue[%s](raw); if err != nil { return Params{}, fmt.Errorf(%q, err) }; p.value_%x = %s{Value:value} }\n", param.Name, imports.typeExpr(typ), "skgo: caller "+id+" param "+param.Name+": %w", param.Name, sharedAlternativeName(alternatives, param.Name, typ))
+			declarationTypes[declaration{param.Name, param.Matcher}] = typ
 		}
 	}
-	body.WriteString("default: if routeID != \"\" { return Params{}, fmt.Errorf(\"skgo: unknown caller route %q; regenerate params\", routeID) }\n}\nreturn p,nil\n}\n\nfunc skgoSharedValue[T any](raw any) (T,error) {\nvar zero T\nif raw == nil && reflect.TypeFor[T]().Kind() == reflect.Interface { return zero,nil }\nvalue,ok := raw.(T)\nif !ok { return zero,fmt.Errorf(\"converted value %T does not fit %v\",raw,reflect.TypeFor[T]()) }\nreturn value,nil\n}\n")
+	matchers := map[string][]string{}
+	for d := range declarationTypes {
+		matchers[d.name] = append(matchers[d.name], d.matcher)
+	}
+	body.WriteString("\n// SkgoCallerParams constructs Params for the runtime's caller validation.\nfunc SkgoCallerParams(routeID string, declared []skgo.ManifestParam, values map[string]any) (any, error) { return SkgoParams(routeID, declared, values) }\n")
+	body.WriteString("\n// SkgoRequestEvent constructs the explicit event for a command or form.\nfunc SkgoRequestEvent(event *skgo.Event) (RequestEvent,error) {\n routeID,declared,values := skgo.RemoteCallerValues(event)\n p,err := SkgoParams(routeID,declared,values)\n return RequestEvent{Event:event,Params:p,Locals:appstate.LocalsFrom(event.Request().Context())},err\n}\n")
+	body.WriteString("\n// SkgoParams constructs values for an already matched route from the\n// parameters Kit declares for it. A declaration without a generated variant is\n// refused even when its value is absent.\nfunc SkgoParams(routeID string, declared []skgo.ManifestParam, values map[string]any) (Params, error) {\n var p Params\n")
+	refuse := "return Params{}, fmt.Errorf(\"skgo: caller %s param %s with matcher %q has no generated variant; regenerate params\", routeID, param.Name, param.Matcher)\n"
+	if len(keys) == 0 {
+		body.WriteString("if len(declared) != 0 {\nparam := declared[0]\n" + refuse + "}\n")
+	} else {
+		body.WriteString("for _, param := range declared {\n switch param.Name {\n")
+	}
+	for _, key := range keys {
+		fmt.Fprintf(&body, "case %q:\nswitch param.Matcher {\n", key)
+		sort.Strings(matchers[key])
+		for _, matcher := range matchers[key] {
+			typ := declarationTypes[declaration{key, matcher}]
+			fmt.Fprintf(&body, "case %q:\nif raw, present := values[param.Name]; present { value, err := skgoSharedValue[%s](raw); if err != nil { return Params{}, fmt.Errorf(\"skgo: caller %%s param %%s: %%w\", routeID, param.Name, err) }; p.value_%x = %s{Value:value} }\ncontinue\n", matcher, imports.typeExpr(typ), key, sharedAlternativeName(alternatives, key, typ))
+		}
+		body.WriteString("}\n")
+	}
+	if len(keys) != 0 {
+		body.WriteString("}\n" + refuse + "}\n")
+	}
+	body.WriteString("return p,nil\n}\n\nfunc skgoSharedValue[T any](raw any) (T,error) {\nvar zero T\nif raw == nil && reflect.TypeFor[T]().Kind() == reflect.Interface { return zero,nil }\nvalue,ok := raw.(T)\nif !ok { return zero,fmt.Errorf(\"converted value %T does not fit %v\",raw,reflect.TypeFor[T]()) }\nreturn value,nil\n}\n")
 	var b strings.Builder
 	b.WriteString(goHeader)
 	fmt.Fprintf(&b, "package params\nimport (skgo %q; \"fmt\"; \"reflect\"; \"net/http\"; appstate %q)\n", skgoPkg, cfg.LocalsPackage)

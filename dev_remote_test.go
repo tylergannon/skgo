@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -207,10 +208,13 @@ func TestNativeUnenhancedFormBindsTypedPageCaller(t *testing.T) {
 	fn := NewForm(testModule, "typedNativeForm", func(ctx context.Context, arg struct {
 		Name string `json:"name"`
 	}) (string, error) {
-		route, values := RemoteCallerValues(EventFrom(ctx))
+		route, declared, values := RemoteCallerValues(EventFrom(ctx))
 		number, ok := values["n"].(fixtureNumber)
 		if !ok {
 			return "typed caller absent", nil
+		}
+		if !slices.Equal(declared, []ManifestParam{{Name: "n", Matcher: "Number"}}) {
+			return "caller declarations absent", nil
 		}
 		return route + " " + number.Label() + " " + arg.Name, nil
 	})
@@ -230,7 +234,7 @@ func TestNativeUnenhancedFormBindsTypedPageCaller(t *testing.T) {
 	}
 	remoteCfg := manifest.RemoteConfig("http://app.test")
 	fn.callerMatchers = CallerMatchers(matchers)
-	fn.callerRoutes = CallerRoutes{"/typed/[n=Number]": {Params: []ManifestParam{{Name: "n", Matcher: "Number"}}, NewParams: func(map[string]any) (any, error) { return struct{}{}, nil }}}
+	fn.callerParams = func(string, []ManifestParam, map[string]any) (any, error) { return struct{}{}, nil }
 	remotes, err := NewRemotes(remoteCfg, fn)
 	if err != nil {
 		t.Fatal(err)
