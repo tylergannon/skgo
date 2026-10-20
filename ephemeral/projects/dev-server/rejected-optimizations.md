@@ -76,3 +76,51 @@ after every build, about 200 ms each.
 
 **Done instead:** a host's packages share one analysis, and one background
 preload fills it.
+
+## Pre-pay macOS's first-exec check for a new host
+
+*Considered 2026-10-20, during skgo#418.*
+
+macOS checks a newly written executable the first time it runs, which takes
+about 230–300 ms per file. Copying the same bytes to a new file pays it again.
+The idea was to pay it during the build's idle tail: launch the new binary
+under ptrace, so it stops before running any of its code, then kill it with
+`PT_KILL`. (A plain `SIGKILL` leaves the traced child stuck.) This works: after
+the probe, starting the binary takes about 50 ms.
+
+**Rejected** because nothing is left to overlap. Once the rebuild stopped
+waiting between the build and `Start`, only about 18 ms separates them, and the
+probe takes the same ~240 ms on the critical path.
+
+**Untested alternative:** listing the terminal that runs `skgo dev` under
+System Settings → Privacy & Security → Developer Tools is reported to exempt
+its child processes from the check.
+
+**Reopen** if work is found that can run between the build and `Start`.
+
+## Reuse formatted output for unchanged generated frontend files
+
+*Considered 2026-10-20, during skgo#418.*
+
+Codegen formats its generated frontend files with a `vp fmt` subprocess on
+every generation, about 90 ms. The idea was to remember each file's formatted
+text by its generated text, and skip the subprocess when nothing changed.
+
+**Rejected** because neither edit it targets reaches it. An API field edit
+changes `+page.server.ts`, so one file still needs formatting and the cost
+stays. A body edit reuses codegen's cached plan and never formats anything.
+
+**Reopen** if a common edit is shown to regenerate without changing any
+frontend file.
+
+## Give compiler inputs a stable directory
+
+*Considered 2026-10-20, during skgo#418.*
+
+Each revision is compiled from a fresh private tree, and the idea was that a
+fresh directory defeats Go's build cache.
+
+**Rejected** because the host builds with `-trimpath`, so the directory is not
+part of the cache key. A `go build` after an API field edit compiles only the
+four packages the edit reaches (the route, the bindings, the application and
+`main`), then links.
