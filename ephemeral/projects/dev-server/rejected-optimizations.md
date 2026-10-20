@@ -124,3 +124,26 @@ fresh directory defeats Go's build cache.
 part of the cache key. A `go build` after an API field edit compiles only the
 four packages the edit reaches (the route, the bindings, the application and
 `main`), then links.
+
+## Keep the host's `go list -export` from compiling downstream packages
+
+*Considered 2026-10-20, after skgo#419.*
+
+On an API field edit, the host load (about 270 ms) ends with about 115 ms of
+serial compiles. `go list -export` compiles every package it prints, so it
+compiles the edited route link, the bindings, the application and the
+production `main`. The build then compiles the first three again with its
+overlays. `go/packages` type-checks those roots from source, so their archives
+only end up in the hot-patch importcfg. A route never imports the packages
+that depend on it.
+
+**Rejected** because skipping those compiles takes a second discovery. Go
+offers no way to export only some of the printed packages. To print just the
+dependencies, the load first needs the roots' imports from a metadata pass.
+On the example with a warm cache, a metadata-only `go list -deps ./...` costs
+the same ~270 ms as the export pass, which is twice what the compiles cost.
+Polytype's `View` does not help: its metadata pass asks for export files too,
+and each revision's compiler tree has a new path, so retained discovery misses.
+
+**Reopen** if package metadata can be carried across revisions without a
+`go list`, for example from a compiler tree with a stable path.
