@@ -204,8 +204,7 @@ question a lead should never make someone ask.
 `example/web/node_modules/@sveltejs/kit` contains the authoritative package
 source installed by its frozen lockfile. Follow
 `ephemeral/sveltekit-current/SKILL.md` and verify the package version before
-mapping Kit behavior. The older ignored inspiration directory may be absent in
-new execution environments; do not infer Kit behavior from a missing source.
+mapping Kit behavior.
 
 **There is no command that means "done."** The `Justfile` holds recipes that do
 things — build, test, serve, run the suite — and not one of them returns a
@@ -249,9 +248,6 @@ committed here.
 - `example/web/node_modules/@sveltejs/kit/` — authoritative Kit source at the
   example's installed pin. Resolve Kit's transitive package sources from its
   real package directory under pnpm.
-- `/Users/tyler/src/skgo/ephemeral/inspiration/` — optional historical source
-  references and the earlier junkyard attempt, when present. These are
-  gitignored and read-only, and do not replace the current installed Kit pin.
 
 ## SvelteKit facts
 
