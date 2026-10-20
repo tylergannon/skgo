@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tylergannon/skgo/internal/aitools"
 	"github.com/tylergannon/skgo/internal/buildinfo"
 	"github.com/tylergannon/skgo/internal/newapp"
 	"github.com/tylergannon/skgo/internal/plugininstall"
@@ -104,7 +105,7 @@ func pluginsAt(root string, out io.Writer) (*templates.Registry, error) {
 			files = append(files, canonical)
 		}
 	}
-	r, err := templates.DiscoverFiles(files, info.SkgoVersion, tailwind.Plugin(info.SkgoVersion))
+	r, err := templates.DiscoverFiles(files, info.SkgoVersion, tailwind.Plugin(info.SkgoVersion), aitools.Plugin(info.SkgoVersion))
 	if err != nil {
 		return nil, err
 	}

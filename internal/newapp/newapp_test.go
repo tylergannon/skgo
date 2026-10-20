@@ -526,6 +526,8 @@ func TestCreateRejectsWhatIsNotASkgoApplication(t *testing.T) {
 		"no install": {[]string{"--no-install"}, "VitePlus installs the project with pnpm"},
 		"playground": {[]string{"--from-playground", "https://svelte.dev/playground/x"}, "--from-playground does not describe"},
 		"target":     {[]string{"elsewhere", "--template", "minimal"}, "always created in web"},
+		"ai-tools":   {[]string{"--add", "tailwindcss=plugins:none", "ai-tools=ide:claude-code+delivery:tools"}, "run `go tool skgo add ai-tools` from the application root"},
+		"ai-tools=":  {[]string{"--add=ai-tools=ide:cursor"}, "run `go tool skgo add ai-tools` from the application root"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			u := &upstream{t: t}
@@ -548,6 +550,9 @@ func TestCreateRejectsWhatIsNotASkgoApplication(t *testing.T) {
 	}{
 		"library chosen at the prompt": {&upstream{devDeps: map[string]string{"@sveltejs/package": "^2.0.0"}}, "library template is a package"},
 		"add-on wrote a server":        {&upstream{created: map[string]string{"src/hooks.server.ts": "", "src/lib/server/db/index.ts": ""}}, "src/hooks.server.ts, src/lib/server"},
+		"ai-tools individual tools":    {&upstream{created: map[string]string{"AGENTS.md": "", ".mcp.json": "{}"}}, "run `go tool skgo add ai-tools` from the application root"},
+		"ai-tools Claude Code plugin":  {&upstream{created: map[string]string{".claude/settings.json": "{}"}}, "run `go tool skgo add ai-tools` from the application root"},
+		"ai-tools OpenCode plugin":     {&upstream{created: map[string]string{".opencode/opencode.json": "{}"}}, "run `go tool skgo add ai-tools` from the application root"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			tc.u.t = t

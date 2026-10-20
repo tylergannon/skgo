@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
 import { defineAddon, defineAddonOptions } from 'sv';
 import { pnpm, svelteConfig, transforms } from '@sveltejs/sv-utils';
 
@@ -157,56 +156,6 @@ const repairPlaywright = (sv, cwd, language, origin) => {
 	}));
 };
 
-const repairMCP = (sv, cwd, file, serversKey) => {
-	if (!fs.existsSync(path.resolve(cwd, file))) return;
-	sv.file(file, transforms.json(({ data }) => {
-		const servers = data[serversKey];
-		const svelte = servers?.svelte;
-		if (
-			svelte?.command !== 'npx' ||
-			!Array.isArray(svelte.args) ||
-			svelte.args.length !== 2 ||
-			svelte.args[0] !== '-y' ||
-			svelte.args[1] !== '@sveltejs/mcp' ||
-			svelte.url
-		) return;
-		svelte.command = './node_modules/.bin/vp';
-		svelte.args = ['dlx', '@sveltejs/mcp'];
-	}));
-};
-
-const repairSvelteFallbacks = (sv, cwd) => {
-	// Fingerprints are computed from the untouched SV 1.1.0 output. They keep
-	// this repair off edited skill and agent instructions.
-	const upstream = {
-		skill: 'ccd435bc524f1bdc38f7ca34a3ff279de1e855d3e5165151345d08b85706e95f',
-		agent: '50d8ad485802d3ca15a2cf17e50effb1d8707f59edc4466cda5944441b0e181a'
-	};
-	const files = [
-		'.claude/skills/svelte-code-writer/SKILL.md',
-		'.cursor/skills/svelte-code-writer/SKILL.md',
-		'.gemini/skills/svelte-code-writer/SKILL.md',
-		'.github/skills/svelte-code-writer/SKILL.md',
-		'.claude/agents/svelte-file-editor.md',
-		'.cursor/agents/svelte-file-editor.md',
-		'.gemini/agents/svelte-file-editor.md',
-		'.github/agents/svelte-file-editor.agent.md'
-	];
-	for (const file of files) {
-		if (!fs.existsSync(path.resolve(cwd, file))) continue;
-		const expected = file.includes('/skills/') ? upstream.skill : upstream.agent;
-		sv.file(file, (content) => {
-			if (!content?.includes('npx @sveltejs/mcp')) return false;
-			const digest = createHash('sha256').update(content).digest('hex');
-			if (digest !== expected) return false;
-			return content
-				.replaceAll('npx @sveltejs/mcp', './node_modules/.bin/vp dlx @sveltejs/mcp')
-				.replace('Use these commands via `npx`:', 'Use these commands via `./node_modules/.bin/vp dlx`:')
-				.replace(/(\/node_modules\/\.bin\/vp dlx @sveltejs\/mcp@latest) -y(?=\s)/g, '$1');
-		});
-	}
-};
-
 const examplesPage = (ts) => `<script${ts ? ' lang="ts"' : ''}>
 	import { record, status } from './example.remote';
 
@@ -288,7 +237,6 @@ export default defineAddon({
 		if (!isKit) unsupported('Requires SvelteKit');
 		runsAfter('vitest');
 		runsAfter('playwright');
-		runsAfter('ai-tools');
 	},
 	run: ({ sv, file, cwd, options, language }) => {
 		const adapterVersion = decodeURIComponent(options.adapter);
@@ -424,11 +372,6 @@ export default defineAddon({
 		}
 
 		repairPlaywright(sv, cwd, language, origin);
-		repairMCP(sv, cwd, '.mcp.json', 'mcpServers');
-		repairMCP(sv, cwd, '.cursor/mcp.json', 'mcpServers');
-		repairMCP(sv, cwd, '.gemini/settings.json', 'mcpServers');
-		repairMCP(sv, cwd, '.vscode/mcp.json', 'servers');
-		repairSvelteFallbacks(sv, cwd);
 	},
 	nextSteps: () => []
 });

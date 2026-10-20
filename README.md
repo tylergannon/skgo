@@ -49,6 +49,9 @@ vp dlx skills add tylergannon/polytype -y
 Use VitePlus (`vp`) for frontend tooling. SKGO declares the pins; vp manages the underlying package-manager version. Do not install or select pnpm separately. Add -g to install the skills for all projects. Then read the skgo skill before writing skgo code.
 ```
 
+In an application, `go tool skgo add ai-tools` writes `AGENTS.md`, `CLAUDE.md`
+and the skgo and Svelte MCP servers at its root, where agents start.
+
 ## Example
 
 A query, written in Go:

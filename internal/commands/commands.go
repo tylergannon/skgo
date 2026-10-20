@@ -114,8 +114,8 @@ this host's managed selection.`,
 		Name:    "add",
 		Args:    "ADDON",
 		Summary: "apply a reusable application change",
-		Description: `Applies an add-on registered by an installed plugin to the application at
-` + "`--root`" + `. ` + "`skgo add --help`" + ` lists the add-ons the executable knows.`,
+		Description: `Applies a built-in add-on, or one an installed plugin registers, to the
+application at ` + "`--root`" + `. ` + "`skgo add --help`" + ` lists the add-ons the executable knows.`,
 		Flags: []Flag{
 			{"root", ".", "skgo application root"},
 			{"name", "", "explicit application identity for older projects; must match an existing identity"},
