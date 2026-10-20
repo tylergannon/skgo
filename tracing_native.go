@@ -193,11 +193,22 @@ func inheritNativeTracing(ctx, from context.Context) context.Context {
 
 // Headers carry annotations before the first bytes; trailers carry mutations
 // made after a streaming callback starts. Neither header is forwarded publicly.
+//
+// A trailer rules out a Content-Length, so a traced response is held the way
+// net/http holds any unflushed one. Held to the callback's end, every
+// annotation fits in a header and net/http still measures the body; committed
+// early, an explicit length travels as X-Skgo-Content-Length for the bridge.
 type nativeTraceWriter struct {
 	http.ResponseWriter
-	sinks []*nativeTraceSink
-	sent  bool
+	sinks  []*nativeTraceSink
+	sent   bool
+	status int
+	held   []byte
 }
+
+// net/http's bufferBeforeChunkingSize: it measures an unflushed body this
+// small when the handler returns, and chunks a larger one.
+const nativeTraceHold = 2048
 
 func (w *nativeTraceWriter) add(ctx context.Context) {
 	sink, _ := ctx.Value(nativeTraceSinkKey{}).(*nativeTraceSink)
@@ -231,32 +242,71 @@ func (w *nativeTraceWriter) annotations() string {
 }
 
 func (w *nativeTraceWriter) WriteHeader(status int) {
-	if !w.sent {
-		w.sent = true
-		if len(w.sinks) > 0 {
-			w.Header().Add("Trailer", "X-Skgo-Tracing-After")
-			w.Header().Del("Content-Length")
-		}
-		if value := w.annotations(); value != "" {
-			w.Header().Set("X-Skgo-Tracing", value)
-		}
+	if len(w.sinks) == 0 || w.sent || status < 200 {
+		w.ResponseWriter.WriteHeader(status)
+	} else if w.status == 0 {
+		w.status = status
 	}
-	w.ResponseWriter.WriteHeader(status)
 }
 func (w *nativeTraceWriter) Write(raw []byte) (int, error) {
-	if !w.sent {
-		w.WriteHeader(200)
+	if len(w.sinks) == 0 || w.sent {
+		return w.ResponseWriter.Write(raw)
+	}
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	if len(w.held)+len(raw) <= nativeTraceHold {
+		w.held = append(w.held, raw...)
+		return len(raw), nil
+	}
+	if err := w.commit(true); err != nil {
+		return 0, err
 	}
 	return w.ResponseWriter.Write(raw)
 }
 func (w *nativeTraceWriter) Flush() {
-	if !w.sent {
-		w.WriteHeader(200)
+	if len(w.sinks) > 0 {
+		_ = w.commit(true)
 	}
 	_ = http.NewResponseController(w.ResponseWriter).Flush()
 }
 func (w *nativeTraceWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+// commit sends the held status, headers and body. Only a response committed
+// before its callback ends needs the trailer.
+func (w *nativeTraceWriter) commit(streaming bool) error {
+	if w.sent {
+		return nil
+	}
+	w.sent = true
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	header := w.Header()
+	if streaming {
+		header.Add("Trailer", "X-Skgo-Tracing-After")
+		if length := header.Get("Content-Length"); length != "" {
+			header.Set("X-Skgo-Content-Length", length)
+			header.Del("Content-Length")
+		}
+	}
+	if value := w.annotations(); value != "" {
+		header.Set("X-Skgo-Tracing", value)
+	}
+	w.ResponseWriter.WriteHeader(w.status)
+	held := w.held
+	w.held = nil
+	if len(held) == 0 {
+		return nil
+	}
+	_, err := w.ResponseWriter.Write(held)
+	return err
+}
 func (w *nativeTraceWriter) finish() {
+	if len(w.sinks) > 0 && !w.sent && w.status != 0 {
+		_ = w.commit(false)
+		return
+	}
 	if value := w.annotations(); value != "" {
 		if !w.sent {
 			w.Header().Set("X-Skgo-Tracing", value)

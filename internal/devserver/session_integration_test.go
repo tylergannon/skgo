@@ -142,6 +142,9 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool,
 		if mode == "boundary-error" {
 			setupBoundaryError(t, write)
 		}
+		if mode == "content-length" {
+			setupContentLength(t, app, write)
+		}
 		if mode == "embed" {
 			setupRouteEmbed(write)
 		}
@@ -386,6 +389,10 @@ func waitForReadiness() error {
 	}
 	if mode == "boundary-error" {
 		exerciseBoundaryError(t, alpha.origin, alpha.log)
+		return
+	}
+	if mode == "content-length" {
+		exerciseContentLength(t, alpha.app, alpha.origin, alpha.log)
 		return
 	}
 	if mode == "embed" {
