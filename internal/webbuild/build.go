@@ -20,9 +20,22 @@ type Runner func(string, []string, string, ...string) ([]byte, error)
 
 // Build checks inputs and built bytes before reusing a frontend. Generation runs
 // only on a miss. Plugin generators run separately on an explicit official host.
-func Build(root string, out io.Writer, run Runner) error {
+func Build(root string, out io.Writer, run Runner) (err error) {
 	web := filepath.Join(root, "web")
 	cache := filepath.Join(root, ".skgo", "build.json")
+	// go build embeds web/build as it stands. A failure anywhere after this
+	// point must not leave an earlier build there for it to embed.
+	current := false
+	defer func() {
+		if err != nil && !current {
+			if removeErr := os.Remove(cache); removeErr != nil && !os.IsNotExist(removeErr) {
+				err = fmt.Errorf("%w; removing build receipt: %v", err, removeErr)
+			}
+			if discardErr := discardOutputs(filepath.Join(web, "build")); discardErr != nil {
+				err = fmt.Errorf("%w; discarding stale frontend build: %v", err, discardErr)
+			}
+		}
+	}()
 	key, err := fingerprint(root, run)
 	if err != nil {
 		return err
@@ -58,8 +71,14 @@ func Build(root string, out io.Writer, run Runner) error {
 		}
 	}
 	if manifestOK && saved.Inputs == environmentKey(key) && saved.Outputs == outputs {
+		current = true
 		fmt.Fprintln(out, "Frontend is current")
 		return nil
+	}
+	// The outputs are stale from here on. Discard them before any step runs so
+	// an interrupted or killed build cannot leave them behind either.
+	if err := discardOutputs(filepath.Join(web, "build")); err != nil {
+		return err
 	}
 	install, err := installHash(web)
 	if err != nil {
@@ -86,8 +105,15 @@ func Build(root string, out io.Writer, run Runner) error {
 	}
 	keepPath := filepath.Join(web, "build/.gitkeep")
 	keep, keepErr := os.ReadFile(keepPath)
-	if _, err := run(web, nil, filepath.Join(web, "node_modules/.bin/vp"), "build"); err != nil {
-		return err
+	_, buildErr := run(web, nil, filepath.Join(web, "node_modules/.bin/vp"), "build")
+	// Vite empties the output directory, taking the placeholder with it. Put it
+	// back even when the build failed so the package still compiles.
+	if buildErr != nil {
+		if keepErr == nil {
+			_ = os.MkdirAll(filepath.Dir(keepPath), 0755)
+			_ = os.WriteFile(keepPath, keep, 0644)
+		}
+		return buildErr
 	}
 	if keepErr == nil {
 		if err := os.WriteFile(keepPath, keep, 0644); err != nil {
@@ -126,6 +152,27 @@ func Build(root string, out io.Writer, run Runner) error {
 		return err
 	}
 	return os.WriteFile(cache, data, 0644)
+}
+
+// discardOutputs empties the embedded build directory, keeping the tracked
+// placeholder that lets Go compile before any frontend build has succeeded.
+func discardOutputs(build string) error {
+	entries, err := os.ReadDir(build)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.Name() == ".gitkeep" {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(build, entry.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func fingerprint(root string, run Runner) (string, error) {
