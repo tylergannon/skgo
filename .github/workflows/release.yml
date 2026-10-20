@@ -68,11 +68,23 @@ jobs:
           go-version: '1.27.2'
           cache: false
 
-      - name: Enforce the core publication cooldown
+      - &publication_guard
+        name: Authorize the publication interval and source order
         env:
           GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ inputs.candidate }}
         run: |
-          published=$(gh release view --repo "$GITHUB_REPOSITORY" --json publishedAt --jq .publishedAt)
+          latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json publishedAt,tagName)
+          tag=$(jq -r .tagName <<< "$latest")
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$tag...$CANDIDATE" --jq .status)
+          # Recovery may finish the same source's existing release. An older
+          # reserved candidate must never replace a newer public release.
+          if [[ "$status" = identical ]]; then exit 0; fi
+          if [[ "$status" != ahead ]]; then
+            echo "::error::Candidate does not advance the latest published core source."
+            exit 1
+          fi
+          published=$(jq -r .publishedAt <<< "$latest")
           PUBLISHED_AT="$published" python3 - <<'PYTHROTTLE'
           import datetime, os
           published = datetime.datetime.fromisoformat(os.environ['PUBLISHED_AT'].replace('Z', '+00:00'))
@@ -272,6 +284,7 @@ jobs:
       # npm binds this direct publish to the repository, this release.yml file,
       # and this GitHub-hosted runner through the trusted publisher configured
       # on the package. No static npm or Doppler credential reaches the runner.
+      - *publication_guard
       - name: npm publish
         if: steps.changed.outputs.publish == 'true'
         working-directory: internal/adapter
@@ -353,6 +366,7 @@ jobs:
         with:
           name: sv-package
           path: sv-package
+      - *publication_guard
       - name: npm publish
         run: npm publish ./sv-package/*.tgz --access public
 
@@ -382,6 +396,7 @@ jobs:
           pattern: cli-*
           path: dist
           merge-multiple: true
+      - *publication_guard
       - name: Register this distribution attempt
         id: publication
         env:
@@ -425,6 +440,7 @@ jobs:
           ref: main
           path: homebrew-tap
           ssh-key: ${{ steps.doppler.outputs.TAP_DEPLOY_KEY }}
+      - *publication_guard
       - name: Update Homebrew cask
         env:
           VERSION: ${{ needs.version.outputs.version }}
