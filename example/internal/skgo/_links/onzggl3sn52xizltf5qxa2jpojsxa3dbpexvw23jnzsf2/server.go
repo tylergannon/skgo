@@ -1,1 +1,0 @@
-../../../../web/src/routes/api/replay/[kind]/server.go

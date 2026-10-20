@@ -1,1 +1,0 @@
-../../../../web/src/routes/samples/load/page-data/skgo_gen.go

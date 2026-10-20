@@ -1,1 +1,0 @@
-../../../../web/src/routes/samples/cookies/server.go

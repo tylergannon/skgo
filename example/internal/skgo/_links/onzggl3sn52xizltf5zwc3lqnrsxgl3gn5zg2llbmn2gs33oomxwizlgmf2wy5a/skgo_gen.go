@@ -1,1 +1,0 @@
-../../../../web/src/routes/samples/form-actions/default/skgo_gen.go

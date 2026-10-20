@@ -3,8 +3,13 @@ module github.com/tylergannon/skgo/example
 go 1.27.2
 
 // web/ is a Go package (it embeds the build), so without this every ./... walk
-// descends into web/node_modules looking for Go packages.
-ignore ./web/node_modules
+// descends into web/node_modules looking for Go packages. Route directories
+// such as [id] are not Go-nameable; skgo compiles them through
+// internal/skgo/_links instead.
+ignore (
+	./web/node_modules
+	./web/src/routes
+)
 
 require (
 	github.com/tylergannon/devalue/v5 v5.0.0

@@ -1,1 +1,0 @@
-../../../../web/src/routes/routing/fallback/[value]/skgo_gen.go

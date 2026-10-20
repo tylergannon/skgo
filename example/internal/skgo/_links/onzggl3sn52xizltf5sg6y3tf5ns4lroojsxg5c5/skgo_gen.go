@@ -1,1 +1,0 @@
-../../../../web/src/routes/docs/[...rest]/skgo_gen.go

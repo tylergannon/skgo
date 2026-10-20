@@ -1,1 +1,0 @@
-../../../../web/src/routes/about/about.remote.go

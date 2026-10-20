@@ -1,10 +1,6 @@
 {
 	"schemaVersion": 1,
 	"linkRoot": "internal/skgo/_links",
-	"boundary": {
-		"path": "web/src/routes/go.mod",
-		"owned": true
-	},
 	"links": [
 		{
 			"link": "internal/skgo/_links/onzggl3sn52xizlt",
@@ -145,6 +141,10 @@
 		{
 			"link": "internal/skgo/_links/onzggl3sn52xizltf5sw24dupe",
 			"target": "web/src/routes/empty"
+		},
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizltf5sw2ytfmrsgkzbplnxgc3lflu",
+			"target": "web/src/routes/embedded/[name]"
 		},
 		{
 			"link": "internal/skgo/_links/onzggl3sn52xizltf5sxe4tpoixwe33vnzsgc4tz",

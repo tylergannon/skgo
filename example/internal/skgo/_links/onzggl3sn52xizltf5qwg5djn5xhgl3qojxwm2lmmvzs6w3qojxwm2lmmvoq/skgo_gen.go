@@ -1,1 +1,0 @@
-../../../../web/src/routes/actions/profiles/[profile]/skgo_gen.go

@@ -1,1 +1,0 @@
-../../../../web/src/routes/samples/introduction/todos.remote.go

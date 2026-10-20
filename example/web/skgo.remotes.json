@@ -153,6 +153,7 @@
     "/api/rerouted/[number=Order]": ["GET"],
     "/api/todos": ["GET", "POST", "QUERY"],
     "/async-ssr/control/[group]": ["GET", "POST"],
+    "/embedded/[name]": ["GET"],
     "/routing/slash/api": ["GET"],
     "/routing/slash/mixed": ["GET"],
     "/samples/cookies": ["GET"],
@@ -252,6 +253,9 @@
     },
     "src/routes/destinations/+page.server.ts": {
       "source": "src/routes/destinations/page.server.go"
+    },
+    "src/routes/embedded/[name]/+server.ts": {
+      "endpoint": true
     },
     "src/routes/empty/+page.server.ts": {
       "source": "src/routes/empty/page.server.go"

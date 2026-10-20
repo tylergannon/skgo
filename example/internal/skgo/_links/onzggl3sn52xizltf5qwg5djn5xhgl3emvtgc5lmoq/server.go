@@ -1,1 +1,0 @@
-../../../../web/src/routes/actions/default/server.go

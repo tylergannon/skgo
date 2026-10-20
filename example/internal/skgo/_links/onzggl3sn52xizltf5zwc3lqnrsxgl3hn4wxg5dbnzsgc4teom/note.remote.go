@@ -1,1 +1,0 @@
-../../../../web/src/routes/samples/go-standards/note.remote.go

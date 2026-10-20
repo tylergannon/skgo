@@ -2,7 +2,12 @@ module {{.Module}}
 
 go {{.GoVersion}}
 
-ignore ./web/node_modules
+// Route directories such as [id] are not Go-nameable; skgo compiles them
+// through internal/skgo/_links instead.
+ignore (
+	./web/node_modules
+	./web/src/routes
+)
 
 require github.com/tylergannon/skgo {{.SkgoVersion}}
 

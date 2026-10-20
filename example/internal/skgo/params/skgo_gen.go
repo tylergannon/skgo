@@ -22,6 +22,7 @@ type Params struct {
 	value_6b696e64       Key_Kind
 	value_6c616e67       Key_Lang
 	value_6d6f6465       Key_Mode
+	value_6e616d65       Key_Name
 	value_6e756d626572   Key_Number
 	value_70617468       Key_Path
 	value_70726f66696c65 Key_Profile
@@ -132,6 +133,14 @@ type ModeParam_String struct{ Value string }
 
 func (ModeParam_String) skgoParam_6d6f6465() {}
 
+type Key_Name interface{ skgoParam_6e616d65() }
+
+func (p Params) Name() Key_Name { return p.value_6e616d65 }
+
+type NameParam_String struct{ Value string }
+
+func (NameParam_String) skgoParam_6e616d65() {}
+
 type Key_Number interface{ skgoParam_6e756d626572() }
 
 func (p Params) Number() Key_Number { return p.value_6e756d626572 }
@@ -224,6 +233,7 @@ func SkgoCallerRoutes() skgo.CallerRoutes {
 		"/contact":                     {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/contact", values) }},
 		"/destinations":                {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/destinations", values) }},
 		"/docs/[...rest]":              {Params: []skgo.ManifestParam{{Name: "rest", Matcher: "", Optional: false, Rest: true, Chained: true}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/docs/[...rest]", values) }},
+		"/embedded/[name]":             {Params: []skgo.ManifestParam{{Name: "name", Matcher: "", Optional: false, Rest: false, Chained: false}}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/embedded/[name]", values) }},
 		"/empty":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/empty", values) }},
 		"/error":                       {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error", values) }},
 		"/error/boundary":              {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/error/boundary", values) }},
@@ -409,6 +419,14 @@ func SkgoParams(routeID string, values map[string]any) (Params, error) {
 				return Params{}, fmt.Errorf("skgo: caller /docs/[...rest] param rest: %w", err)
 			}
 			p.value_72657374 = RestParam_String{Value: value}
+		}
+	case "/embedded/[name]":
+		if raw, present := values["name"]; present {
+			value, err := skgoSharedValue[string](raw)
+			if err != nil {
+				return Params{}, fmt.Errorf("skgo: caller /embedded/[name] param name: %w", err)
+			}
+			p.value_6e616d65 = NameParam_String{Value: value}
 		}
 	case "/empty":
 	case "/error":

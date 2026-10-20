@@ -1,1 +1,0 @@
-../../../../web/src/routes/typed-load/[number=Order]/skgo_gen.go

@@ -1,1 +1,0 @@
-../../../../web/src/routes/lang/[[lang]]/skgo_gen.go
