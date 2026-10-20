@@ -5,6 +5,7 @@
 // is the only endpoint it calls on its own initiative — and Go answers it.
 // The generated `+page.server.ts` load calls Go during Kit's prerender build;
 // at request time Kit reads the export to know the route has server data.
+
 package skgo
 
 import (

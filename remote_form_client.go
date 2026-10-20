@@ -1,4 +1,5 @@
 // The Go client for SvelteKit's enhanced remote Form protocol.
+
 package skgo
 
 import (

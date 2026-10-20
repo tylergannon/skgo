@@ -7,6 +7,7 @@
 // hook is application code and application code is Go. This file shares that
 // policy across documents, navigation data, remote-function responses and
 // errors caught during component rendering.
+
 package skgo
 
 import (
