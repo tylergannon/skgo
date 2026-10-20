@@ -4,20 +4,20 @@ package devserver
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"io/fs"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tylergannon/skgo/internal/clienthandoff"
 )
 
-// TestRealSessionClientHandoff runs example/web/tests/client-handoff.spec.ts
+// TestRealSessionClientHandoff runs example/web/tests/client-handoff.test.ts
 // against a real development session serving a temp copy of the example: Kit's
 // client must adopt the page Vite rendered with Go's data, and the open page
 // must pick up a Go edit once the session publishes the rebuild.
@@ -67,7 +67,11 @@ func TestRealSessionClientHandoff(t *testing.T) {
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
-	runClientHandoff(t, filepath.Join(root, "example/web"), origin, "dev", log, "SKGO_DEV_APP="+app)
+	output, err := clienthandoff.Run(t, filepath.Join(root, "example/web"), origin, "dev", "SKGO_DEV_APP="+app)
+	if err != nil {
+		t.Fatalf("%v\n%s\nsession log:\n%s", err, output, log.String())
+	}
+	t.Logf("%s", output)
 }
 
 // copySessionExample copies the example's Go and web sources to app, keeping
@@ -123,32 +127,4 @@ func copySessionExample(t *testing.T, root, app string) {
 		t.Fatal(err)
 	}
 	linkSessionModules(t, root, filepath.Join(app, "web/node_modules"))
-}
-
-// runClientHandoff runs the browser check through example/web's pinned
-// Playwright and requires exactly one test to have run and passed. A failure's
-// trace and screenshot stay in example/web/test-results/<mode>.
-func runClientHandoff(t *testing.T, web, baseURL, mode string, log *sessionLog, env ...string) {
-	t.Helper()
-	report := filepath.Join(t.TempDir(), "report.json")
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
-	defer cancel()
-	command := exec.CommandContext(ctx, "vp", "exec", "playwright", "test", "--output", "test-results/"+mode, "--reporter", "list,json")
-	command.Dir = web
-	command.Env = append(append(os.Environ(), "BASE_URL="+baseURL, "PLAYWRIGHT_JSON_OUTPUT_FILE="+report), env...)
-	output, err := command.CombinedOutput()
-	if strings.Contains(string(output), "Executable doesn't exist") {
-		t.Fatalf("Playwright's Chromium is not installed; run `vp exec playwright install chromium` in example/web\n%s", output)
-	}
-	var result struct {
-		Stats struct{ Expected, Skipped, Unexpected, Flaky int } `json:"stats"`
-	}
-	raw, readErr := os.ReadFile(report)
-	if readErr == nil {
-		readErr = json.Unmarshal(raw, &result)
-	}
-	if err != nil || readErr != nil || result.Stats.Expected != 1 || result.Stats.Skipped+result.Stats.Unexpected+result.Stats.Flaky != 0 {
-		t.Fatalf("client handoff check: %v, report: %v, stats %+v, want exactly one passed test; output in %s\n%s\nsession log:\n%s", err, readErr, result.Stats, filepath.Join(web, "test-results", mode), output, log.String())
-	}
-	t.Logf("%s", output)
 }

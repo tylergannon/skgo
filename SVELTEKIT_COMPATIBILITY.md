@@ -4,7 +4,7 @@
 The [development handoff](ephemeral/projects/dev-server/CONTINUE.md) records
 focused browser checks and real session integration; development browser
 behavior beyond the one client handoff check
-(`example/web/tests/client-handoff.spec.ts`) is not established. References to
+(`example/web/tests/client-handoff.test.ts`) is not established. References to
 earlier development runs below qualify the retired server, not this topology.
 
 This journal records upstream releases reviewed for skgo, the Go contracts they
@@ -153,7 +153,7 @@ clean installations rather than keeping stale transitive selections.
 | vitest-browser-svelte | `3.1.0` | Stable sv emits `2.1.1`, whose peer requires Vitest 4. Version 3.1.0 supports managed Vitest 5 and passed real Chromium tests. |
 | TypeScript | `6.0.3` | Retained despite stable `7.0.2`: Kit requires `^6.0.0`, and svelte-check accepts only 5/6. |
 | Node types | `24.19.1` | Updated within 24.x to match pinned Node `24.21.0`; latest `26.6.4` describes another runtime major. |
-| Playwright; yaml | `1.63.0`; `2.9.1` | Current verified stable versions retained. Playwright is now `@playwright/test` `1.64.1`, a dev dependency of `example/web`. |
+| Playwright; yaml | `1.63.0`; `2.9.1` | Current verified stable versions retained. Playwright is now `playwright-core` `1.64.1`, a dev dependency of `example/web` whose client handoff check drives Lightpanda `1.0.1` over CDP. |
 | sv; sv-utils; tsdown | `1.0.1`; `1.0.0`; `0.23.0` | Stable-only generator selection replaces prerelease selection; adapt `pnpm.allowBuilds` to `{ cwd, packages }`. Rebuilt the distributed addon. tsdown's separate lock resolves Rolldown `1.2.12`. |
 | Storybook / create-storybook / SvelteKit integration | `10.6.1` | Upgrade matching packages together. Storybook's optional VitePlus peer range is stale; permit only `storybook@10.6.1>vite-plus: 1.0.0` after an actual Storybook build passes. |
 | Extra generated-template packages | `@storybook/addon-svelte-csf 5.1.5`; `@sveltejs/enhanced-img 1.0.0`; `playwright 1.63.0` | Actual generated installations match verified stable registry versions. Upstream sv ranges resolve these versions; no additional pin was needed. |

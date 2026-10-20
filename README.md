@@ -199,7 +199,7 @@ The production build still produces one Go binary with Go/goja rendering and
 needs no Node at request time. Native Kit rendering is development-only.
 
 Development has a real two-session integration test and one
-[browser check](example/web/tests/client-handoff.spec.ts), which confirms Kit's
+[browser check](example/web/tests/client-handoff.test.ts), which confirms Kit's
 client takes over a page the session rendered and picks up a Go edit; other
 browser behavior on this topology is not established. Direct
 SSR subfetches over the private Go socket expose response cookies to server code
@@ -228,7 +228,7 @@ establish full parity for the new development server.
 
 | SvelteKit feature | skgo | Boundary or example |
 | --- | --- | --- |
-| [Svelte 5 pages, server rendering and hydration](https://svelte.dev/docs/kit/routing) | Available | In production, Kit's renderer runs in Go; [rendered documents](example/ssr_test.go) carry Go's answers, and a [browser check](example/web/tests/client-handoff.spec.ts) confirms Kit's client takes over a rendered page in development and production. |
+| [Svelte 5 pages, server rendering and hydration](https://svelte.dev/docs/kit/routing) | Available | In production, Kit's renderer runs in Go; [rendered documents](example/ssr_test.go) carry Go's answers, and a [browser check](example/web/tests/client-handoff.test.ts) confirms Kit's client takes over a rendered page in development and production. |
 | [Client-side navigation](https://svelte.dev/docs/kit/routing) | Available | Kit's client navigates and asks Go for server load data as `__data.json`; [data contracts](data_test.go) check Go's answer, not the navigation itself. |
 | [Layouts, route groups and nested error pages](https://svelte.dev/docs/kit/routing) | Available | [Grouped routes and nested loads](example/ssr_test.go) and [nested error pages](example/contracts_test.go) have document contracts. |
 | [Dynamic and rest route parameters](https://svelte.dev/docs/kit/advanced-routing) | Available | Parameters reach colocated Go handlers; [dynamic route](example/contracts_test.go) and [rest parameter](data_test.go) contracts. |
@@ -271,10 +271,10 @@ establish full parity for the new development server.
 
 | SvelteKit feature | skgo | Boundary or example |
 | --- | --- | --- |
-| [Remote queries and arguments](https://svelte.dev/docs/kit/remote-functions#query) | Available | Typed Go queries render on the server and answer client requests; [rendering](example/ssr_test.go) and [wire](example/wire_test.go) contracts, and the [browser check](example/web/tests/client-handoff.spec.ts) confirms the client does not refetch a query Go rendered. |
+| [Remote queries and arguments](https://svelte.dev/docs/kit/remote-functions#query) | Available | Typed Go queries render on the server and answer client requests; [rendering](example/ssr_test.go) and [wire](example/wire_test.go) contracts, and the [browser check](example/web/tests/client-handoff.test.ts) confirms the client does not refetch a query Go rendered. |
 | [Batch queries](https://svelte.dev/docs/kit/remote-functions#query.batch) | Available | Calls combine into one Go batch; [rendering](example/contracts_test.go) and [wire](example/wire_test.go) contracts. |
 | [Live queries](https://svelte.dev/docs/kit/remote-functions#query.live) | Available | The initial SSR value has a [document contract](example/contracts_test.go), and later pushes have [stream contracts](remote_live_test.go). |
-| [Commands and single-flight refresh](https://svelte.dev/docs/kit/remote-functions#command) | Available | Go commands refresh requested queries in the same response; [refresh contracts](refresh_test.go), and the [browser check](example/web/tests/client-handoff.spec.ts) adds a todo with `addTodo(...).updates(getTodos())`. |
+| [Commands and single-flight refresh](https://svelte.dev/docs/kit/remote-functions#command) | Available | Go commands refresh requested queries in the same response; [refresh contracts](refresh_test.go), and the [browser check](example/web/tests/client-handoff.test.ts) adds a todo with `addTodo(...).updates(getTodos())`. |
 | [Remote forms, validation and file uploads](https://svelte.dev/docs/kit/remote-functions#form) | Available | Typed fields, issues and upload bytes have [form contracts](remote_form_test.go), and Go decodes the bytes the pinned Kit's own form serializer writes. |
 | [Remote forms without JavaScript](https://svelte.dev/docs/kit/remote-functions#form) | Available | Native POST returns a rendered page; [handler contracts](example/form_noscript_test.go). |
 | [Classic page form actions](https://svelte.dev/docs/kit/form-actions) | Available | Go default/named actions, `use:enhance` and script-free posts have [handler contracts](example/action_protocol_test.go). |
@@ -289,7 +289,7 @@ establish full parity for the new development server.
 | Generate Go registrations and TypeScript types | Available | `skgo generate` produces typed bindings and throwing Kit stubs; [generator](internal/gen/gen.go). |
 | Development server and hot updates | Limited | `skgo dev` combines Vite HMR, native Go body updates, rebuild fallback and process recovery; see [Development](#development). |
 | Single-binary build and static assets | Available | The generated project's [build recipe](internal/newapp/gofiles/Justfile.tmpl) embeds the client, assets and SSR bundle in a Go binary. Node is a build-time dependency. |
-| Go tests and a browser check | Available | `just test` runs `go test` over both modules. Tests of the built example (`go test -tags skgo_qualification ./example/...`) and of a real development session (`go test -tags skgo_dev_integration ./internal/devserver`) are tagged. One Playwright [browser check](example/web/tests/client-handoff.spec.ts) runs from a Go test in each and confirms Kit's client takes over a server-rendered page; in development it also sees a Go edit arrive. |
+| Go tests and a browser check | Available | `just test` runs `go test` over both modules. Tests of the built example (`go test -tags skgo_qualification ./example/...`) and of a real development session (`go test -tags skgo_dev_integration ./internal/devserver`) are tagged. One [browser check](example/web/tests/client-handoff.test.ts), a Vitest test driving the Lightpanda headless browser, runs from a Go test in each and confirms Kit's client takes over a server-rendered page; in development it also sees a Go edit arrive. |
 | Svelte and TypeScript checking | Available | `skgo check` runs the project's `svelte-check`. It needs the type configuration `svelte-kit sync` generates and does not run sync itself; [checker](internal/check/check.go). |
 | Vitest component tests and Storybook | Available | `skgo new` provisions both through upstream tooling; [scaffolder](internal/newapp/newapp.go). |
 | Unified checking, linting and formatting | Available | `skgo check` runs `goimports`, `go build`, `go vet`, Staticcheck, skgo's `SKGO001`–`SKGO008` analyzers and generation checks, plus the project's lint and format checks and `svelte-check`. It never edits files and has no fix mode; a diagnostic may name the command that repairs it. A missing tool is a failed check, and `--json` prints the report; [checker](internal/check/check.go) and [command guide](cmd/skgo/check.md). |

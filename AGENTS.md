@@ -41,8 +41,10 @@ Vite/Kit SSR and HMR, calling Go for application logic
   package it checks, and lets Go own the server and its cleanup. There is no
   separate browser suite, directory or recipe.
 - Run a browser only for what needs one: Kit's client adopting the HTML and
-  data Go rendered. `example/web/tests/client-handoff.spec.ts` is the one
-  spec; `TestBuiltClientHandoff` and `TestRealSessionClientHandoff` run it.
+  data Go rendered. `example/web/tests/client-handoff.test.ts` is the one
+  check, a Vitest test driving Lightpanda (`brew install
+  lightpanda-io/browser/lightpanda`); `TestBuiltClientHandoff` and
+  `TestRealSessionClientHandoff` run it.
 - `just test` takes seconds. Run an expensive command once and assert many
   times on its output. Test skgo's behaviour, never a dependency's.
 - Never derive an expectation from the thing under test. Anchor it in a

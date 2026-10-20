@@ -51,10 +51,18 @@ jobs:
 
       - uses: extractions/setup-just@v4
 
-      - name: Install the example and browser
+      - name: Install the example
+        run: just install
+
+      # The client handoff check drives Lightpanda, a headless browser without
+      # layout or rendering, pinned by release and digest.
+      - name: Install Lightpanda
         run: |
-          just install
-          cd example/web && vp exec playwright install --with-deps chromium
+          mkdir -p "$RUNNER_TEMP/lightpanda"
+          curl -fsSL -o "$RUNNER_TEMP/lightpanda/lightpanda" https://github.com/lightpanda-io/browser/releases/download/1.0.1/lightpanda-x86_64-linux
+          echo "551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd  $RUNNER_TEMP/lightpanda/lightpanda" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/lightpanda/lightpanda"
+          echo "$RUNNER_TEMP/lightpanda" >> "$GITHUB_PATH"
 
       - name: Build the candidate
         run: just build
@@ -66,7 +74,7 @@ jobs:
         run: go test -tags skgo_qualification -count=1 ./example/...
 
       # A green run leaves nothing to look at. A red client-handoff run leaves
-      # Playwright's trace and screenshot of the failure.
+      # the page's HTML at the failure.
       - name: Keep the failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -147,15 +155,20 @@ jobs:
         with:
           working_directory: example
           export_path: true
-      - name: Install the example and browser
+      - name: Install the example
+        run: cd example/web && vp install --frozen-lockfile
+      - name: Install Lightpanda
         run: |
-          cd example/web && vp install --frozen-lockfile
-          vp exec playwright install --with-deps chromium
+          mkdir -p "$RUNNER_TEMP/lightpanda"
+          curl -fsSL -o "$RUNNER_TEMP/lightpanda/lightpanda" https://github.com/lightpanda-io/browser/releases/download/1.0.1/lightpanda-x86_64-linux
+          echo "551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd  $RUNNER_TEMP/lightpanda/lightpanda" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/lightpanda/lightpanda"
+          echo "$RUNNER_TEMP/lightpanda" >> "$GITHUB_PATH"
       - name: Fresh application generation, recovery and client handoff
         shell: bash
         run: go test -tags skgo_dev_integration -count=1 ./internal/devserver -run '^TestRealSession(NativeRecoveryAndIsolation|ApplicationGeneration|RouteEmbed|RouteEditDuringPendingLoad|ClientHandoff)$' -v 2>&1 | tee development-session.log
-      # The session log is in the test output; Playwright keeps the trace and
-      # screenshot of a failed client-handoff run.
+      # The session log is in the test output; a failed client-handoff run
+      # keeps the page's HTML.
       - name: Keep the failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
