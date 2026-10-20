@@ -77,18 +77,34 @@ jobs:
           latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json publishedAt,tagName)
           tag=$(jq -r .tagName <<< "$latest")
           status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$tag...$CANDIDATE" --jq .status)
-          # Recovery may finish the same source's existing release. An older
-          # reserved candidate must never replace a newer public release.
-          if [[ "$status" = identical ]]; then exit 0; fi
-          if [[ "$status" != ahead ]]; then
-            echo "::error::Candidate does not advance the latest published core source."
+          if [[ "$status" != identical && "$status" != ahead ]]; then
+            echo "::error::Candidate is older than or diverges from the published core source."
             exit 1
           fi
+          # The annotated source tag is the first public exposure of a version.
+          # It survives npm success followed by a later distribution failure.
+          reserved=$(gh api "repos/$GITHUB_REPOSITORY/tags?per_page=100" --paginate --jq '.[] | .name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' | sort -V | tail -1)
+          reservation_time=$(jq -r .publishedAt <<< "$latest")
+          if [[ "$reserved" != "$tag" ]]; then
+            reservation_status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$reserved...$CANDIDATE" --jq .status)
+            if [[ "$reservation_status" = identical ]]; then exit 0; fi
+            if [[ "$reservation_status" != ahead ]]; then
+              echo "::error::An older reserved source cannot replace a newer version."
+              exit 1
+            fi
+            reference=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$reserved")
+            test "$(jq -r .object.type <<< "$reference")" = tag
+            object=$(jq -r .object.sha <<< "$reference")
+            reservation_time=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$object" --jq .tagger.date)
+          elif [[ "$status" = identical ]]; then
+            # Continue the current version without consuming another window.
+            exit 0
+          fi
           published=$(jq -r .publishedAt <<< "$latest")
-          PUBLISHED_AT="$published" python3 - <<'PYTHROTTLE'
+          PUBLISHED_AT="$published" RESERVED_AT="$reservation_time" python3 - <<'PYTHROTTLE'
           import datetime, os
-          published = datetime.datetime.fromisoformat(os.environ['PUBLISHED_AT'].replace('Z', '+00:00'))
-          due = published + datetime.timedelta(hours=3)
+          timestamps = [datetime.datetime.fromisoformat(os.environ[k].replace('Z', '+00:00')) for k in ['PUBLISHED_AT', 'RESERVED_AT']]
+          due = max(timestamps) + datetime.timedelta(hours=3)
           if datetime.datetime.now(datetime.timezone.utc) < due:
               raise SystemExit('Publication deferred until ' + due.isoformat())
           PYTHROTTLE
