@@ -123,6 +123,9 @@ func TestGeneratedApplicationShutdown(t *testing.T) {
 			if err := process.wait(t, 3*time.Second); err != nil {
 				t.Fatalf("drained application did not exit cleanly: %v\n%s", err, process.log.String())
 			}
+			if !strings.Contains(process.log.String(), "shutdown: listening on "+process.origin+"\n") {
+				t.Fatalf("bound application did not announce its address:\n%s", process.log.String())
+			}
 			if cleanup := readFile(t, process.cleanup); cleanup != "literal-cleanup-361:literal-handler-finished-361" {
 				t.Fatalf("cleanup did not run after request completion: %q", cleanup)
 			}
@@ -176,6 +179,10 @@ func TestGeneratedApplicationShutdown(t *testing.T) {
 		}
 		if !strings.Contains(process.log.String(), "address already in use") {
 			t.Fatalf("listen failure diagnostic missing:\n%s", process.log.String())
+		}
+		// A stale server on the port must not be mistaken for this one starting.
+		if strings.Contains(process.log.String(), "listening on") {
+			t.Fatalf("application announced an address it could not bind:\n%s", process.log.String())
 		}
 		if cleanup := readFile(t, process.cleanup); cleanup != "literal-cleanup-361:" {
 			t.Fatalf("serve failure bypassed application cleanup: %q", cleanup)
