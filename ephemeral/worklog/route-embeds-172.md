@@ -29,3 +29,12 @@
 - An authored `web/src/routes/go.mod` breaks only the route-root link (Go walks
   up the link path to find a module). It is left alone unless the route root
   has Go files, where generation fails and names the file.
+- Adding the `ignore ./web/src/routes` directive edits go.mod, and go.mod's
+  bytes key the generation cache, so a cold run that made the edit persisted a
+  plan the next run missed (`TestGenerationCacheFreshProcessesAndRecovery`).
+  `runCached` syncs links before computing the key.
+- `webbuild.treeHash` (the `skgo build` input fingerprint) refused every
+  directory symlink; it now hashes the link text of one that resolves inside
+  the app, whose target the walk already reads.
+- The pending-browser dev session test needs `vp install` in `example/e2e`
+  (bddgen); without it it fails with "Failed to find executable bddgen".

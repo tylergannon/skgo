@@ -138,9 +138,9 @@ var _=skgo.Load(load)
 		t.Fatalf("stale projection: %s", raw)
 	}
 
-	// Route packages are committed relative per-file links, not source copies.
-	// A failed analysis must leave declarations and link membership/targets
-	// unchanged; edits to authored files remain visible through those links.
+	// Route packages are committed relative directory links, not source copies.
+	// A failed analysis must leave declarations and link targets unchanged;
+	// edits to authored files remain visible through those links.
 	snapshot := func() map[string]string {
 		t.Helper()
 		published := map[string]string{}
@@ -168,9 +168,9 @@ var _=skgo.Load(load)
 	}
 	linkDir := filepath.Join(cfg.Out, linkRootName, encodeLinkName("src/routes/about"))
 	link := filepath.Join(linkDir, "page.server.go")
-	target, err := os.Readlink(link)
-	if err != nil || filepath.IsAbs(target) || filepath.Clean(filepath.Join(linkDir, target)) != filepath.Join(route, "page.server.go") {
-		t.Fatalf("published page link: %q, %v", target, err)
+	target, err := os.Readlink(linkDir)
+	if err != nil || filepath.IsAbs(target) || filepath.Clean(filepath.Join(filepath.Dir(linkDir), target)) != route {
+		t.Fatalf("published route link: %q, %v", target, err)
 	}
 	assertCacheFile(t, filepath.Join(linkDir, generatedGoFile), "Skgo_query = query")
 	before := snapshot()
@@ -196,10 +196,6 @@ var _=skgo.Load(load)
 	cacheWrite(t, filepath.Join(route, "page.server.go"), pageSource)
 	if err := Run(cfg); err != nil {
 		t.Fatalf("generation after authored repair: %v", err)
-	}
-	pending := filepath.Join(linkDir, "pending.go")
-	if target, err := os.Readlink(pending); err != nil || filepath.IsAbs(target) || filepath.Clean(filepath.Join(linkDir, target)) != filepath.Join(route, "pending.go") {
-		t.Fatalf("repaired generation did not publish the pending relative link: %q, %v", target, err)
 	}
 	assertCacheFile(t, filepath.Join(linkDir, generatedGoFile), "Skgo_query = query")
 }

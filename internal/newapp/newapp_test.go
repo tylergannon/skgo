@@ -16,6 +16,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"golang.org/x/mod/modfile"
 )
 
 func TestHighestVersionIncludesPrereleasesButNotAnotherMajor(t *testing.T) {
@@ -270,6 +272,19 @@ func TestCreateWithoutATerminalSettlesTheMinimalTypeScriptApplication(t *testing
 	}
 	if _, err := os.Stat(filepath.Join(dir, "web", "src", "routes", "example.remote.go")); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("the minimal application was given the example's Go remote functions: %v", err)
+	}
+	// Route directories such as [id] are outside ./... from the start, so
+	// generation never has to edit the new application's go.mod.
+	mod, err := modfile.Parse("go.mod", []byte(readFile(t, filepath.Join(dir, "go.mod"))), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ignores []string
+	for _, ignore := range mod.Ignore {
+		ignores = append(ignores, ignore.Path)
+	}
+	if !slices.Contains(ignores, "./web/src/routes") {
+		t.Fatalf("generated go.mod ignores %v, want ./web/src/routes among them", ignores)
 	}
 	page, err := os.ReadFile(filepath.Join(dir, "web", "src", "routes", "+page.svelte"))
 	if err != nil {
