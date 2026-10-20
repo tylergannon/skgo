@@ -41,13 +41,16 @@ jobs:
           go-version: '1.27.2'
           cache: ${{ github.event_name == 'pull_request' }}
 
-      - uses: jdx/mise-action@v4
+      - &mise
+        uses: jdx/mise-action@v4
         with:
           working_directory: example
           # Generation changes directories. Export the pinned executables;
           # a mise shim cannot resolve example's Node pin from the repo root.
           export_path: true
-
+          # Self-hosted runners keep their tools. Restoring the cache there
+          # downloads hundreds of megabytes they already have.
+          cache: ${{ runner.environment == 'github-hosted' }}
 
       - uses: extractions/setup-just@v4
 
@@ -55,14 +58,11 @@ jobs:
         run: just install
 
       # The client handoff check drives Lightpanda, a headless browser without
-      # layout or rendering, pinned by release and digest.
-      - name: Install Lightpanda
-        run: |
-          mkdir -p "$RUNNER_TEMP/lightpanda"
-          curl -fsSL -o "$RUNNER_TEMP/lightpanda/lightpanda" https://github.com/lightpanda-io/browser/releases/download/1.0.1/lightpanda-x86_64-linux
-          echo "551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd  $RUNNER_TEMP/lightpanda/lightpanda" | sha256sum -c -
-          chmod +x "$RUNNER_TEMP/lightpanda/lightpanda"
-          echo "$RUNNER_TEMP/lightpanda" >> "$GITHUB_PATH"
+      # layout or rendering. The bob runner image carries the pinned release;
+      # elsewhere the script downloads it by digest.
+      - &lightpanda
+        name: Lightpanda
+        run: scripts/ci/install-lightpanda.sh "$RUNNER_TEMP/lightpanda"
 
       - name: Build the candidate
         run: just build
@@ -107,10 +107,7 @@ jobs:
         with:
           go-version: '1.27.2'
           cache: ${{ github.event_name == 'pull_request' }}
-      - uses: jdx/mise-action@v4
-        with:
-          working_directory: example
-          export_path: true
+      - *mise
       - run: cd example/web && vp install --frozen-lockfile
       - name: Fresh compiler and process witnesses
         run: go test -tags skgo_qualification -count=1 ./internal/gen ./internal/hotreload -run '^(TestTypedLoadActualParameterDependencies|TestGeneratedLanguageApplications|TestGenerationCacheFreshProcessesAndRecovery|TestATypeFromAnotherModuleCrossesTheWire|TestRetainedProjectSelectedCompilerInputs|TestAMigratedLinkTreeCompilesRouteEmbeds|TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost)$'
@@ -134,10 +131,7 @@ jobs:
         with:
           go-version: '1.27.2'
           cache: ${{ github.event_name == 'pull_request' }}
-      - uses: jdx/mise-action@v4
-        with:
-          working_directory: example
-          export_path: true
+      - *mise
       - run: cd example/web && vp install --frozen-lockfile
       - name: Fresh Go host process witnesses
         run: go test -tags skgo_qualification -count=1 ./internal/hotreload -run '^(TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost)$'
@@ -159,19 +153,10 @@ jobs:
         with:
           go-version: '1.27.2'
           cache: ${{ github.event_name == 'pull_request' }}
-      - uses: jdx/mise-action@v4
-        with:
-          working_directory: example
-          export_path: true
+      - *mise
       - name: Install the example
         run: cd example/web && vp install --frozen-lockfile
-      - name: Install Lightpanda
-        run: |
-          mkdir -p "$RUNNER_TEMP/lightpanda"
-          curl -fsSL -o "$RUNNER_TEMP/lightpanda/lightpanda" https://github.com/lightpanda-io/browser/releases/download/1.0.1/lightpanda-x86_64-linux
-          echo "551747e35c51ba107b5d5277eca4b48e077b2a3b40f09a047bf6670448bc35fd  $RUNNER_TEMP/lightpanda/lightpanda" | sha256sum -c -
-          chmod +x "$RUNNER_TEMP/lightpanda/lightpanda"
-          echo "$RUNNER_TEMP/lightpanda" >> "$GITHUB_PATH"
+      - *lightpanda
       - name: Fresh application generation, recovery and client handoff
         shell: bash
         run: go test -tags skgo_dev_integration -count=1 ./internal/devserver -run '^TestRealSession(NativeRecoveryAndIsolation|ApplicationGeneration|RouteEmbed|RouteEditDuringPendingLoad|ClientHandoff)$' -v 2>&1 | tee development-session.log

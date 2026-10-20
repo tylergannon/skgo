@@ -19,8 +19,9 @@ import (
 	"time"
 )
 
-// Install is how to put the pinned Lightpanda on PATH.
-const Install = "brew install lightpanda-io/browser/lightpanda, or put https://github.com/lightpanda-io/browser/releases/download/1.0.1/lightpanda-<arch>-<os> on PATH as lightpanda"
+// Install is how to put Lightpanda on PATH. CI's pinned release is in
+// scripts/ci/install-lightpanda.sh.
+const Install = "brew install lightpanda-io/browser/lightpanda, or on Linux x86-64 run scripts/ci/install-lightpanda.sh with a directory on PATH"
 
 // Run runs the check in web, example/web or a copy of it, against origin and
 // requires exactly one test to have run and passed. mode names the run; a

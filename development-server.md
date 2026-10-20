@@ -62,4 +62,4 @@ Applications created by `skgo new` have it in `server.go`; [Server composition](
 
 ## Known limits
 
-- A complete browser-suite pass, preservation of browser state such as unsent form drafts across edits, and full platform qualification are not established for `skgo dev`. Check critical flows, including authentication, in both modes.
+- Browser coverage of `skgo dev` is one check: Kit's client adopts a server-rendered page and sees a Go edit arrive. Preservation of browser state such as unsent form drafts across edits, and full platform qualification, are not established. Check critical flows, including authentication, in both modes.
