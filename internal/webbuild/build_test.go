@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -42,9 +43,6 @@ func TestBuildReusesCurrentOutputsAndRebuildsChanges(t *testing.T) {
 		}
 		if name == "vp" && args[0] == "install" {
 			installs++
-			return nil, nil
-		}
-		if filepath.Base(name) == "vp" && args[0] == "fmt" {
 			return nil, nil
 		}
 		if filepath.Base(name) != "vp" || args[0] != "build" {
@@ -197,6 +195,45 @@ func TestBuildReusesCurrentOutputsAndRebuildsChanges(t *testing.T) {
 		t.Fatal("imported artifact from different source was adopted")
 	}
 
+}
+
+// A build generates and compiles; it never formats the project. Generators
+// format their own output, and authored files stay as the developer wrote them.
+func TestBuildDoesNotFormatTheProject(t *testing.T) {
+	root := t.TempDir()
+	for name, value := range map[string]string{
+		"web/package.json":         "{}",
+		"web/node_modules/.bin/vp": "fixture",
+		"server.go":                "package app",
+	} {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(value), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var commands []string
+	run := func(dir string, env []string, name string, args ...string) ([]byte, error) {
+		if name == "go" && args[0] == "list" {
+			return []byte(`{"Path":"fixture"}`), nil
+		}
+		commands = append(commands, filepath.Base(name)+" "+strings.Join(args, " "))
+		if filepath.Base(name) == "vp" && args[0] == "build" {
+			if err := os.MkdirAll(filepath.Join(root, "web/build"), 0755); err != nil {
+				return nil, err
+			}
+			return nil, os.WriteFile(filepath.Join(root, "web/build/skgo.manifest.json"), []byte(`{"version":1}`), 0644)
+		}
+		return nil, nil
+	}
+	if err := Build(root, io.Discard, run); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"vp install", "go generate ./...", "vp build"}; !slices.Equal(commands, want) {
+		t.Fatalf("build ran %q, want %q", commands, want)
+	}
 }
 
 // Generated route links are directory symlinks into the app. The input hash
