@@ -2,9 +2,10 @@ package app
 
 import (
 	"context"
-	"github.com/tylergannon/skgo"
 	"net/http"
 	"strings"
+
+	"github.com/tylergannon/skgo"
 )
 
 // Config is the application policy selected by go:generate and read by server.go.

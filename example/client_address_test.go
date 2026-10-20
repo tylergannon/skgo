@@ -1,10 +1,11 @@
 package example_test
 
 import (
-	"github.com/tylergannon/skgo/example"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/tylergannon/skgo/example"
 )
 
 func TestFlyClientAddressReadsTheProxyHeader(t *testing.T) {
