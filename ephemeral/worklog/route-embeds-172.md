@@ -38,3 +38,7 @@
   the app, whose target the walk already reads.
 - The pending-browser dev session test needs `vp install` in `example/e2e`
   (bddgen); without it it fails with "Failed to find executable bddgen".
+- Hot reload records an embed both as its files and as a pattern's directory
+  prefix. Editing an existing file only exercises the file entries; only a new
+  file matching a pattern needs the prefix entry. A dev test that only edits a
+  globbed file cannot tell the two apart.

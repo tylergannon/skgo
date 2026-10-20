@@ -227,4 +227,12 @@ func TestBuildInputsAcceptRouteLinks(t *testing.T) {
 	if after, err := treeHash(root, true); err != nil || after == before {
 		t.Fatalf("edited route reused the input hash: %v", err)
 	}
+	// A directory link that leaves the tree has bytes the walk never reads, so
+	// it must still be refused rather than hashed by its link text.
+	if err := os.Symlink(t.TempDir(), filepath.Join(links, "outside")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := treeHash(root, true); err == nil || !strings.Contains(err.Error(), "directory symlink is unsupported") {
+		t.Fatalf("a directory link outside the tree was hashed: %v", err)
+	}
 }
