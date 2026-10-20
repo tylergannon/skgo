@@ -31,8 +31,9 @@ What happens after an edit depends on the file:
 - **Svelte, TypeScript and CSS** go through Vite HMR, as in any Kit project.
 - **A compatible Go edit** is installed into the running application without a restart. The body of a top-level function in any package of your module hot-installs, as long as the function is not a method, not generic, not `init` and does not start a goroutine with `go`. Generated files are skipped. Kit's client then refreshes its queries and loads, so the page shows the new result.
 - **A structural Go change** makes `skgo dev` build and start a new development host, then switch traffic to it. In-memory Go state does not survive the switch.
+- **A compatible edit the native loader fails to install**, because it reports an error such as a relocation failure or does not acknowledge the install within ten seconds, takes the structural path. The running application keeps answering with the previous code until the new host takes over, and later edits, including hot installs, apply to the new host.
 
-`skgo dev` reports why an edit needed a complete build. The reasons are a changed declaration, initialization, import or build selection; a `go` statement in the edited function; a generic function; and a call from a function the hot loader could not instrument.
+`skgo dev` reports why an edit needed a complete build. The reasons are a changed declaration, initialization, import or build selection; a `go` statement in the edited function; a generic function; a call from a function the hot loader could not instrument; and a failed native installation, which the terminal shows as `rebuilding revision N after install admission` followed by the loader's error.
 
 If the development host is restarting when a request arrives, `skgo dev` holds the request for up to 30 seconds. After that it answers `503 Development application restarting` with `Retry-After: 1`.
 
@@ -59,6 +60,6 @@ Applications created by `skgo new` have it in `server.go`; [Server composition](
 - **Cookies from subfetches.** A `Set-Cookie` on a response to one of Kit's server-render subrequests is visible to your Go code, but in development it is not relayed into the page response. Test sign-in and other cookie flows in both modes.
 - **Tracing.** Kit's framework spans come from Node in development, and Go annotations are relayed to them with a size budget. See [Observability](/docs/skgo/observability#In-development).
 
-## Known issues
+## Known limits
 
-- An edit can fail inside the native loader and leave the old code serving ([#330](https://github.com/tylergannon/skgo/issues/330)). If a Go change seems to have no effect, check the `skgo dev` terminal and restart the session.
+- A complete browser-suite pass, preservation of browser state such as unsent form drafts across edits, and full platform qualification are not established for `skgo dev`. Check critical flows, including authentication, in both modes.

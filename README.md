@@ -95,7 +95,7 @@ Go, and `todo` has the type of the `Todo` struct.
 
 | You write, in Go | skgo generates | SvelteKit sees |
 | --- | --- | --- |
-| `todos.remote.go`, using `skgo.Query`, `Command`, `Form`, `LiveQuery` or `BatchQuery` | `todos.remote.ts`, its TypeScript types, the wire codecs and the Go registration | A remote function, imported from `./todos.remote` |
+| `todos.remote.go`, using `skgo.Query`, `Command`, `Form`, `LiveQuery`, `BatchQuery` or `Prerender` | `todos.remote.ts`, its TypeScript types, the wire codecs and the Go registration | A remote function, imported from `./todos.remote` |
 | `page.server.go` or `layout.server.go` | A typed `+page.server.ts` or `+layout.server.ts` | A server load. `data` is typed from the Go result. |
 | `server.go`, a `net/http` handler | A `+server.ts` | An API route |
 
@@ -126,9 +126,10 @@ bodies with callbacks to Go; application server logic stays in Go in both modes.
 - Components are ordinary Svelte 5.
 - Routing, layouts, error pages, navigation and the remote-function client are
   SvelteKit's own code, not a reimplementation.
-- Queries, commands, forms, live queries and batch queries are imported and
-  called as in any SvelteKit app. Only the implementation is Go.
-- A Go load's result type becomes the page's `data` type.
+- Queries, commands, forms, live queries, batch queries and prerender functions
+  are imported and called as in any SvelteKit app. Only the implementation is Go.
+- A Go load's result type becomes the page's `data` type. Universal loads in
+  `+page.ts` and `+layout.ts` stay TypeScript and receive that result as `data`.
 - Pages are rendered on the server. Streamed promises, `ssr = false` and
   `csr = false` work.
 - Remote forms still work when JavaScript is disabled.
@@ -139,7 +140,7 @@ bodies with callbacks to Go; application server logic stays in Go in both modes.
 
 ## Development
 
-`skgo dev` currently requires **Go 1.27.2 exactly**, Node 22.17 or newer and the
+`skgo dev` currently requires **Go 1.27.2 exactly**, Node `^22.18.0 || ^24.11.0 || >=26.0.0` and the
 project's VitePlus 1.3.0 environment. Its startup gate accepts only macOS ARM64
 (`darwin/arm64`) and Linux AMD64 (`linux/amd64`) on the running platform;
 Windows, Intel Macs, Linux ARM64 and other Go versions are rejected. These are
@@ -168,13 +169,16 @@ initialized. Add `--strict-port` to require that exact port.
 Compatible Go edits install into the running host and refresh Kit queries and
 loads. Changes classified as requiring a full rebuild, including declaration,
 initialization and import changes, replace the Go application; arbitrary
-in-memory Go state need not survive. Native-loader failures do not always take
-that rebuild path: an observed edit to a function with deferred
-`sync.Mutex.Unlock` emitted raw `R_ADDROFF` relocation stderr and kept serving the
-old code without a normal revision/Vite error notification, publication or
-rebuild during a 75-second check. Recovery through another edit or a restart
-has not been verified; see [issue #330](https://github.com/tylergannon/skgo/issues/330).
-Svelte edits use Vite HMR. Compile errors show the authored location and
+in-memory Go state need not survive. A compatible edit the native loader fails
+to install, by reporting an error or by not acknowledging within ten seconds,
+takes the same replacement path: `skgo dev` prints `rebuilding revision N after
+install admission` with the loader's error, the previous application keeps
+answering until the replacement starts, and later edits, including native
+installs, continue in the same session. The
+[relocation recovery test](internal/devserver/session_relocation_test.go)
+reproduces the `sync.Mutex.Unlock` `R_ADDROFF` failure and asserts response
+literals and process identity across that sequence; it does not cover browser
+state. Svelte edits use Vite HMR. Compile errors show the authored location and
 keep the last working application; repairing the source clears the error.
 Browser draft preservation is not established: a recorded Svelte title edit
 updated without manual reload but lost an unsent form draft. Vite restarts can
@@ -208,10 +212,9 @@ lifetime assertion; later passes do not establish its cause or repair.
 This matrix covers SvelteKit's server-facing features and the tooling needed to
 build a skgo app. **Available** means the current Go implementation has a
 working example or focused test; it does not promise every edge case of the
-upstream API. **Limited** names a narrower supported case. **WIP** is active
-work, not a released feature. **Not supported** means skgo has no compatible
-implementation. **Not verified** means this repository does not yet establish
-the behavior. The upstream links describe SvelteKit generally; skgo follows
+upstream API. **Limited** names a narrower supported case. **Not supported**
+means skgo has no compatible implementation. **Not verified** means this
+repository does not yet establish the behavior. The upstream links describe SvelteKit generally; skgo follows
 the [pinned Kit 3 version](example/web/package.json), which may differ from
 the public documentation. Browser evidence below is production evidence unless
 explicitly identified as development evidence; it does not establish full parity
@@ -227,13 +230,13 @@ for the new development server.
 | [Dynamic and rest route parameters](https://svelte.dev/docs/kit/advanced-routing) | Available | Parameters reach colocated Go handlers; [browser scenarios](example/e2e/features/colocation.feature). |
 | [Optional parameters and parameter matchers](https://svelte.dev/docs/kit/advanced-routing) | Available | Optional captures and paired Go matchers select loads and endpoints; matcher rejection tries the next route before 404. [Client navigation scenarios](example/e2e/features/routing-options.feature) run in development and production. |
 | [Page and layout server loads](https://svelte.dev/docs/kit/load) | Available | Go loads produce typed `data` in documents and `__data.json`; [browser scenarios](example/e2e/features/loads.feature). |
-| [Universal JavaScript loads](https://svelte.dev/docs/kit/load#Universal-vs-server) | Not verified | Page options in `+page.ts` work, but there is no demonstrated universal `load`; application I/O in JavaScript is outside skgo's contract. |
+| [Universal JavaScript loads](https://svelte.dev/docs/kit/load#Universal-vs-server) | Available | A `+page.ts` or `+layout.ts` load stays TypeScript and receives the Go load's result as `data`. It runs where Kit runs it: native Vite/Kit in development, a pooled goja runtime during production server rendering, the browser on client navigation, and Kit's build in Node for a prerendered page. [Rendered document](example/server_test.go), [fetch replay](example/universal_fetch_test.go), and browser scenarios for [hydration and navigation](example/e2e/features/universal-load.feature) and [shared remote queries](example/e2e/features/remote.feature). Application I/O in JavaScript is outside skgo's contract. |
 | [Parent load data, URL, params and route ID](https://svelte.dev/docs/kit/load) | Available | Go exposes `Parent` and request data through `EventFrom`; [nested example](example/web/src/routes/account/page.server.go). |
 | [Load dependencies, invalidation and untrack](https://svelte.dev/docs/kit/load#Rerunning-load-functions) | Limited | Go has `Depends` and `Untrack`; the [browser suite](example/e2e/features/loads.feature) proves reuse of a layout load, not every invalidation path. |
 | [Streaming load promises](https://svelte.dev/docs/kit/load#Streaming-with-promises) | Available | Deferred Go values stream into HTML and client navigation; [browser scenarios](example/e2e/features/stream.feature). |
 | [Expected errors, redirects and error pages](https://svelte.dev/docs/kit/errors) | Available | Go load and remote outcomes use Kit's page/error behavior; [browser scenarios](example/e2e/features/ssr.feature). |
 | [`ssr = false` and `csr = false`](https://svelte.dev/docs/kit/page-options) | Available | SPA fallback and script-free HTML are [browser exercised](example/e2e/features/ssr.feature). |
-| [Prerendering](https://svelte.dev/docs/kit/page-options#prerender) | Available | Kit renders Go loads at build time; Go serves the emitted static files and redirects. |
+| [Prerendering](https://svelte.dev/docs/kit/page-options#prerender) | Available | Kit's build calls Go loads, endpoints and remote prerender functions; Go serves the emitted static files and redirects. [Static file contracts](example/server_test.go) and [browser scenarios](example/e2e/features/engine-build.feature). As in Kit, an ordinary remote `query` cannot be called while prerendering. |
 | [Dynamic prerender entries](https://svelte.dev/docs/kit/page-options#entries) | Available | `skgo.Entries` enumerates raw route parameters from Go during Kit analysis; [static serving contract](example/server_test.go). |
 | [Trailing slash and route config options](https://svelte.dev/docs/kit/page-options) | Limited | Page `trailingSlash` supports `never`, `always` and `ignore`, including layout inheritance and overrides; [routing contracts](example/routing_options_test.go) and [client navigation](example/e2e/features/routing-options.feature) cover development and production. Endpoint-only routes use Kit's default `never`; authored server-only slash overrides and nonempty adapter `config` are refused at generation/build with a source or route diagnostic. |
 
@@ -257,7 +260,8 @@ for the new development server.
 | [Environment variables and platform context](https://svelte.dev/docs/kit/environment-variables) | Limited | Go server code uses Go environment and request context; Kit's JavaScript server env modules and host-specific `platform` adapters are not skgo APIs. |
 | [Server-only module isolation](https://svelte.dev/docs/kit/server-only-modules) | Limited | Kit's frontend build keeps its client/server module rules; application server logic belongs in Go, not JavaScript modules. |
 | [Server asset `read`](https://svelte.dev/docs/kit/$app-server#read) | Not verified | The Kit export is present in the SSR bundle, but there is no demonstrated asset read through skgo's Go renderer. Application I/O belongs in Go. |
-| [Server instrumentation and tracing](https://svelte.dev/docs/kit/observability) | Not supported | Kit's `instrumentation.server` JavaScript hook is not a Go hook. Use Go instrumentation in the host application. |
+| [Server tracing](https://svelte.dev/docs/kit/observability) | Available | With Kit's `tracing.server` option on, production Go emits Kit's OpenTelemetry spans for `handle`, `resolve`, Go server loads, actions, endpoints and remote calls through the application's global Go provider, and `Event.Tracing` mirrors `event.tracing`; [handler contracts](tracing_test.go) and [guide](observability.md). In development Kit's framework spans come from Node, and Go child spans export through the Go provider. |
+| [`instrumentation.server`](https://svelte.dev/docs/kit/observability) | Not supported | skgo's adapter does not declare instrumentation support, so Kit refuses `src/instrumentation.server.*`. Configure the OpenTelemetry provider and propagator in Go application setup. |
 
 ### Mutations and remote functions
 
@@ -270,7 +274,7 @@ for the new development server.
 | [Remote forms, validation and file uploads](https://svelte.dev/docs/kit/remote-functions#form) | Available | Typed fields, issues, dirty state and upload bytes are [browser exercised](example/e2e/features/form.feature). |
 | [Remote forms without JavaScript](https://svelte.dev/docs/kit/remote-functions#form) | Available | Native POST returns a rendered page and survives hydration; [browser scenarios](example/e2e/features/form-noscript.feature). |
 | [Classic page form actions](https://svelte.dev/docs/kit/form-actions) | Available | Go default/named actions, `use:enhance` and script-free posts have [browser scenarios](example/e2e/features/actions.feature) and [handler contracts](example/action_protocol_test.go). |
-| [Remote prerender functions](https://svelte.dev/docs/kit/remote-functions#prerender) | Not supported | There is no Go build-time remote-function execution path. |
+| [Remote prerender functions](https://svelte.dev/docs/kit/remote-functions#prerender) | Limited | `skgo.Prerender` functions run in Go during Kit's build, for the calls prerendered pages make and the arguments `Inputs` lists; the binary serves the results as files. `Dynamic` and `Validate` are refused by `skgo generate`, so a prerender function never runs at request time. [Static answer contract](example/server_test.go) and [browser reuse](example/e2e/features/engine-build.feature). |
 | [TypeScript server implementations](https://svelte.dev/docs/kit/routing) | Not supported | Remote bodies, server loads, actions and endpoints must be Go; generated stubs throw in production and delegate to Go in development. |
 
 ### Build and developer tooling
@@ -282,14 +286,15 @@ for the new development server.
 | Development server and hot updates | Limited | `skgo dev` combines Vite HMR, native Go body updates, rebuild fallback and process recovery; see [Development](#development). |
 | Single-binary build and static assets | Available | The generated project's [build recipe](internal/newapp/gofiles/Justfile.tmpl) embeds the client, assets and SSR bundle in a Go binary. Node is a build-time dependency. |
 | Go tests and browser scenarios | Available | `go test` and the [Gherkin/Playwright suite](example/e2e/features) cover the example; run `just e2e prod` against the built server. The development session has a real Go integration test (`go test -tags skgo_dev_integration ./internal/devserver`); full browser qualification of the new development topology remains incomplete. |
-| Svelte and TypeScript checking | Available | The example has `svelte-kit sync && svelte-check`; [package script](example/web/package.json). This is not yet an integrated skgo command. |
+| Svelte and TypeScript checking | Available | `skgo check` runs the project's `svelte-check`. It needs the type configuration `svelte-kit sync` generates and does not run sync itself; [checker](internal/check/check.go). |
 | Vitest component tests and Storybook | Available | `skgo new` provisions both through upstream tooling; [scaffolder](internal/newapp/newapp.go). |
-| Unified checking, linting and formatting | WIP | The separate agent-tooling task is developing a single skgo command; no `skgo check --fix` is released. |
-| skgo MCP tools and versioned documentation server | WIP | The separate agent-tooling task is designing and implementing these; they are not shipped here. |
+| Unified checking, linting and formatting | Available | `skgo check` runs `goimports`, `go build`, `go vet`, Staticcheck, skgo's `SKGO001`–`SKGO008` analyzers and generation checks, plus the project's lint and format checks and `svelte-check`. It never edits files and has no fix mode; a diagnostic may name the command that repairs it. A missing tool is a failed check, and `--json` prints the report; [checker](internal/check/check.go) and [command guide](cmd/skgo/check.md). |
+| skgo MCP check and advice tools | Available | `skgo mcp` serves `skgo_check`, the `skgo check --json` report, and `skgo_advice`, the installed release's diagnostic guidance, over stdio; [server](cmd/skgo/mcp.go), [contract](cmd/skgo/mcp_test.go) and [tool reference](cmd/skgo/mcp-tools.md). |
+| MCP project inspection and version-matched documentation | Not supported | Beyond its own version in the `initialize` reply, the MCP server does not discover the project's skgo or Kit versions, inspect routes or generated bindings, or serve documentation; [issue #176](https://github.com/tylergannon/skgo/issues/176). |
 | Host-specific adapters and Node runtime deployment | Not supported | skgo uses its own adapter and a Go process; Kit's Node, serverless and edge adapters are different deployment targets. |
 
 The SvelteKit transport runtime is `github.com/tylergannon/devalue/v5`
-(v5.0.0, parity with JavaScript devalue 5.9.4). Polytype v1.6.0 generates
+(v5.0.0, parity with JavaScript devalue 5.9.4). Polytype v1.10.0 generates
 its typed codecs. Applications that imported `github.com/tylergannon/polytype/devalue`
 directly must move those imports to `github.com/tylergannon/devalue/v5` and
 regenerate their skgo bindings.
@@ -359,9 +364,7 @@ skgo add --set text=Hello receipt
 
 The names above must be supplied by an installed plugin. See the
 [small external-plugin fixture](cmd/skgo/testdata/template-plugin/plugin.go)
-for an implementation that preserves existing files. Recorder template qualification remains part of
-[the application composition work](https://github.com/tylergannon/skgo/issues/293);
-this interface alone does not establish Voice Notes template delivery.
+for an implementation that preserves existing files.
 
 `skgo new --help`, `skgo add --help`, `skgo add NAME --help` and
 `skgo new --template NAME --help` list compatible exports and their options.

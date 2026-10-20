@@ -43,9 +43,10 @@ Kit 2 or a different Kit 3 build.
 ## Author through Go, consume through Kit
 
 Declare remote functions with `skgo.Query`, `skgo.Command`, `skgo.Form`,
-`skgo.LiveQuery`, or `skgo.BatchQuery` in a `*.remote.go` file. Keep exported
-wire types JSON-shaped and give fields explicit JSON tags. Let generation
-project those types and codecs; do not hand-maintain a parallel TypeScript type.
+`skgo.LiveQuery`, `skgo.BatchQuery`, or `skgo.Prerender` in a `*.remote.go`
+file. Keep exported wire types JSON-shaped and give fields explicit JSON tags.
+Let generation project those types and codecs; do not hand-maintain a parallel
+TypeScript type.
 
 Import the generated sibling `.remote` module from Svelte and use Kit's native
 client API, including `.updates(...)`. When refresh policy belongs to the
@@ -90,6 +91,13 @@ in `server.go` and are ordinary `http.Handler` functions. Keep the generated
 Kit stubs beside them; their failure is what prevents JavaScript from silently
 becoming a second server implementation.
 
+Universal loads stay in `+page.ts` and `+layout.ts` and receive the Go load's
+result as `data`. They run wherever Kit runs them: native Vite/Kit during
+development rendering, a pooled goja runtime during production server
+rendering, the browser on client navigation, and Kit's build in Node for a
+prerendered page. Keep them free of application I/O and use the `fetch` Kit
+passes them; the production renderer has no Node built-ins or global `fetch`.
+
 ## Generate and compose
 
 Use the build gesture in the project's README. It installs the frontend, runs
@@ -109,14 +117,22 @@ rendering and data/action orchestration; generated callbacks delegate applicatio
 loads, actions, remotes, endpoints and hooks to Go over private Unix sockets.
 The Go coordinator owns the public listener. Use ordinary `go tool skgo dev`.
 
+For tracing, turn on Kit's `tracing.server` option in `web/vite.config.ts` and
+install the global OpenTelemetry tracer provider and propagator from the shared
+`newHandler` setup, since development never runs `main`. Go emits Kit's spans
+in production; annotate them through `Event.Tracing`. In development Kit's
+framework spans come from Node and need a Node provider preloaded outside
+`src/`. Do not add `src/instrumentation.server.*`: skgo's adapter does not
+declare instrumentation support, so Kit refuses it.
+
 Development currently requires exactly Go 1.27.2 on macOS ARM64 or Linux AMD64,
-Node 22.17+ and the project's VitePlus 1.3.0 environment. The Go host builds
+Node `^22.18.0 || ^24.11.0 || >=26.0.0` and the project's VitePlus 1.3.0 environment. The Go host builds
 without cgo. Compatible Go edits update the host; changes classified as requiring
-a full rebuild replace it and may reset Go state. An observed native-loader
-failure emitted raw `R_ADDROFF` stderr while old code kept serving, without a
-normal revision/Vite error notification or automatic rebuild. Subsequent
-edit/restart recovery is unverified; see
-[issue #330](https://github.com/tylergannon/skgo/issues/330).
+a full rebuild replace it and may reset Go state. A compatible edit the native
+loader fails to install, by error or by no acknowledgement within ten seconds,
+takes the same replacement path: `skgo dev` prints `rebuilding revision N after
+install admission` with the loader's error, keeps the previous application
+serving until the replacement starts, and continues with later edits.
 Do not promise browser draft preservation or complete development
 browser qualification. Direct SSR socket subfetch response cookies are not
 automatically relayed to Kit's pending cookies or the outer page response;
@@ -136,8 +152,14 @@ section for the current evidence boundary.
   the command is allowed to refresh, and bound client-requested refreshes.
 - Preserve `ssr = false`, `csr = false`, prerender, errors, redirects, and
   transport hooks as Kit defines them; skgo mirrors Kit rather than inventing
-  parallel semantics. A page whose branch has a Go server load cannot be
-  prerendered, and generation refuses one that asks to be.
+  parallel semantics. A page whose branch has Go server loads can be
+  prerendered: Kit's build calls those loads through the generated prerender
+  service, and `skgo.Entries` in `page.server.go` or `server.go` lists dynamic
+  entries from Go. Generation refuses a prerendered page that has Go form
+  actions. Kit throws when an ordinary `query`, `query.batch` or `query.live`
+  is called while prerendering; a prerendered page reads remote data through
+  `skgo.Prerender`, whose `Inputs` lists extra arguments and whose `Dynamic`
+  and `Validate` options generation refuses.
 - Classic page actions are Go declarations in `page.server.go`; use the
   example app's actions routes as the reference. Remote function signatures
   cannot use pointer, map or interface types; use value types, named structs,
@@ -145,10 +167,17 @@ section for the current evidence boundary.
 
 ## Verify the real boundary
 
-Run the project's frontend build/check and `go test ./...`. Then exercise the
-running binary in the relevant mode. For server-rendered behavior, inspect the
-initial document or run with JavaScript disabled so a client-side fallback
-cannot impersonate success. For an endpoint or remote function, confirm the Go
+Run `go tool skgo check`, the project's frontend build and `go test ./...`.
+`skgo check` is read-only and covers Go build, vet, Staticcheck, `goimports`,
+skgo's analyzers, generation, VitePlus lint/format and `svelte-check`; it needs
+`goimports` and `staticcheck` on `PATH`, and a missing tool fails the check. For
+an `SKGO001`–`SKGO008` diagnostic, read `go tool skgo advice <code>` before
+changing code. `go tool skgo mcp` serves the same check and advice as MCP
+tools.
+
+Then exercise the running binary in the relevant mode. For server-rendered
+behavior, inspect the initial document or run with JavaScript disabled so a
+client-side fallback cannot impersonate success. For an endpoint or remote function, confirm the Go
 handler answered and that the generated throwing stub could not have done so.
 
 Use the repository's [example app](https://github.com/tylergannon/skgo/tree/main/example)

@@ -17,15 +17,15 @@ SKGo runs SvelteKit's own router, client and renderer, so anything not listed he
 ## Configuration
 
 - **Adapter.** There is one adapter, `@skgo/sveltekit-adapter`, with options `out`, `precompress` and `prerenderPackage`. See [Adapter](/docs/skgo/adapter).
-- **Refused options.** `output.bundleStrategy: 'inline'` and `router.resolution: 'server'` fail the build with a message saying so.
-- **Hash routing.** Under `router.type: 'hash'` Go renders the requested path instead of the client shell ([#245](https://github.com/tylergannon/skgo/issues/245)).
+- **Refused options.** `output.bundleStrategy: 'inline'`, `router.resolution: 'server'` and a non-empty route `config` fail the build with a message saying so.
+- **Hash routing.** Under `router.type: 'hash'`, Go answers a document request for any path with Kit's client shell, and the browser renders the page the hash names. Kit's own server answers a path other than the root with `404`. Static assets are still served from their paths.
 - **Origin.** Kit 3 fixes `paths.origin` at build time; `skgo new` reads it from `ORIGIN` in `vite.config.ts`, and `just build` bakes the same value into the binary. `paths.base` is honoured by every Go handler.
 - **Toolchain.** Kit is pinned to one exact release with a project-local patch to its prerender queue, applied by [`skgo kit-patch`](/docs/cli/kit-patch), and frontend tooling runs through a pinned VitePlus. See [Prerequisites](/docs/skgo/creating-a-project#Prerequisites).
 
 ## Routing
 
-- **Trailing slashes.** Go has no per-route `trailingSlash` option: every route takes Kit's default of `never`, except the root of an application with a `paths.base`, which Kit forces to `always`. A mismatched URL gets Kit's redirect ([#163](https://github.com/tylergannon/skgo/issues/163)).
-- **Param matchers.** The server runs Go matchers declared in `src/params.go`. Every matcher `src/params.ts` declares needs a Go matcher of the same name, or `skgo generate` fails with `requires a Go matcher in src/params.go` ([#159](https://github.com/tylergannon/skgo/issues/159)). See [Matching](/docs/skgo/routing#Route-parameters-Matching).
+- **Trailing slashes.** `trailingSlash` in `+page.ts` and `+layout.ts` works as in Kit. A route with only a `server.go` always takes Kit's default of `never`: its `+server.ts` is generated, so `skgo generate` refuses one that exports `trailingSlash` or `config`. See [Page options](/docs/skgo/page-options#trailingSlash).
+- **Param matchers.** The server runs Go matchers declared in `src/params.go`. Every matcher `src/params.ts` declares needs a Go matcher of the same name, or `skgo generate` fails with `requires a Go matcher in src/params.go`. See [Matching](/docs/skgo/routing#Route-parameters-Matching).
 - **`reroute`.** Write the hook body in Go and export the adapter's universal forwarding hook from `src/hooks.ts`; see [Hooks](/docs/skgo/hooks#reroute). An arbitrary JavaScript reroute body is not executed by the Go server.
 
 ## Hooks
@@ -36,7 +36,7 @@ SKGo runs SvelteKit's own router, client and renderer, so anything not listed he
 - **`init`** has no Go equivalent; startup work goes in `cmd/main.go` before the server listens ([#168](https://github.com/tylergannon/skgo/issues/168)).
 - **Remote argument validation** uses `HandleError` with `CaughtError.Kind == "validation"`, as in Kit. The hook receives private decoder issues and chooses the public error fields; see [Validation errors](/docs/skgo/errors#Validation-errors).
 - **`transport`** works: declare the Go types with `skgo.Transported` in `src/hooks.go` beside the encoders and decoders in `src/hooks.ts`. See [Types and transport](/docs/skgo/transport#Transport).
-- **`event.platform`** does not exist ([#170](https://github.com/tylergannon/skgo/issues/170)).
+- **`event.platform`** does not exist.
 
 ## Error handling
 
@@ -57,8 +57,7 @@ See [Cookies](/docs/skgo/cookies).
 ## Requests and responses
 
 - **`setHeaders`** is `Event.SetHeader`, allowed in server loads, page actions and the `handle` hook, and refused in remote functions; a `server.go` handler sets headers on its `http.ResponseWriter`.
-- **`HEAD`.** A `+server` route answered from its `GET` handler may carry a `Content-Length` Kit omits ([#201](https://github.com/tylergannon/skgo/issues/201)).
-- **`event.fetch`** is `Event.Fetch`, which answers the application's own routes in-process with Kit's credential rules. Parts of Kit's server-side fetch semantics are still open ([#169](https://github.com/tylergannon/skgo/issues/169)).
+- **`event.fetch`** is `Event.Fetch`, which answers the application's own routes in-process with Kit's credential rules.
 - **`getRequestEvent`** is `skgo.EventFrom(ctx)`.
 - **Body size.** A remote `form` body over 32 MiB is refused with `413`; the cap is not configurable.
 - **Client address.** `Event.ClientAddress()` is the peer address unless `HandleConfig.ClientAddress` is set; no proxy header is trusted by default.
@@ -81,7 +80,7 @@ See [Cookies](/docs/skgo/cookies).
 
 ## Prerendering
 
-- **Errors.** A `TransformPageChunk` failure during prerendering is always terminal ([#276](https://github.com/tylergannon/skgo/issues/276)).
+- **Errors.** A `TransformPageChunk` error fails its page, and Kit's `prerender.handleHttpError` policy decides whether the build stops, as for any page error. A malformed reply from the Go prerender service stops the build under every policy.
 - **Fetch.** During prerendering, Go `Event.Fetch` reaches server routes. An existing page, its data route or the remote-function service returns an explicit capability error because it requires Kit's request context; fetch those destinations from a universal load.
 
 See [Prerendering](/docs/skgo/prerendering).
@@ -103,9 +102,8 @@ See [Prerendering](/docs/skgo/prerendering).
 ## Development
 
 - **Toolchain.** `skgo dev` requires exactly the Go release SKGo pins, on `darwin/arm64` or `linux/amd64`, builds the host without cgo, and rejects a non-empty `GOEXPERIMENT` or custom `GOFLAGS`. See [`skgo dev`](/docs/cli/dev).
-- **Stale code.** A native relocation failure can leave old code serving without an error ([#330](https://github.com/tylergannon/skgo/issues/330)).
-- **Load errors.** A failing Go load returns an opaque 500 with no message or source frame ([#243](https://github.com/tylergannon/skgo/issues/243)).
-- **New routes.** A newly added Go route can take close to a minute to become ready ([#277](https://github.com/tylergannon/skgo/issues/277)).
+- **Go edits.** A compatible Go edit installs into the running application; any other Go change, or an edit the native loader fails to install, replaces the application and resets its in-memory state. See [Hot updates](/docs/skgo/development-server#Hot-updates).
+- **Edit latency.** Save-to-visible time for Go edits and new Go routes has no recorded measurement ([#311](https://github.com/tylergannon/skgo/issues/311)).
 - **Cookies.** A cookie set by Go on a render-time subrequest is not relayed into the page response. The default development origin is `http://127.0.0.1:PORT`, so Go-written cookies get `Secure`, unlike under Kit's own dev server.
 
 See [Development server](/docs/skgo/development-server).

@@ -127,7 +127,7 @@ A command in one route package can name a query in another only through the gene
 
 ## prerender
 
-A `skgo.Prerender` is a query answered at build time and served as a file. `PrerenderOptions.Inputs` lists the arguments to render; see [Page options](/docs/skgo/page-options#prerender-Prerendered-remote-functions).
+A `skgo.Prerender` is a query answered at build time and served as a file. `PrerenderOptions.Inputs` lists the arguments to render; see [Page options](/docs/skgo/page-options#prerender-Prerendered-remote-functions). It is distinct from `query`: Kit throws when a `query`, `query.batch` or `query.live` is called while a page is prerendered, so data a prerendered page reads through a remote function comes from a `skgo.Prerender`. See [Prerendering](/docs/skgo/prerendering#Remote-prerender-functions).
 
 ## Validation
 

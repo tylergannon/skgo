@@ -8,13 +8,13 @@ order: 1020
 
 ## Prerequisites
 
-SKGo needs Go, Node, VitePlus and `just` on your machine. Each release of SKGo is built and tested against one version each of SvelteKit, Svelte, Go, VitePlus and pnpm, and a minimum Node: `skgo new` scaffolds these versions, `skgo update` brings an application to them, and `skgo kit-patch --check` verifies the Kit pin.
+SKGo needs Go, Node, VitePlus and `just` on your machine. Each release of SKGo is built and tested against one version each of SvelteKit, Svelte, Go, VitePlus and pnpm, and a range of Node releases: `skgo new` scaffolds these versions, `skgo update` brings an application to them, and `skgo kit-patch --check` verifies the Kit pin.
 
 ```go internal/toolchain/pins.go
 ```
 
 - Go, at the release above. Production builds accept this release or newer; [`skgo dev`](/docs/cli/dev) requires exactly this release.
-- Node, at the version above or newer.
+- Node, in the range above.
 - VitePlus, the `vp` command, at the version above. It owns the frontend tool environment and resolves pnpm itself; do not install or select pnpm separately.
 - [`just`](https://just.systems), which runs the recipes in the project's `Justfile`.
 
