@@ -121,7 +121,7 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	}
 	// Package loading uses only the immutable selected tree. Production source is
 	// never rewritten and generated native support exists only in HostView.
-	cfg := &packages.Config{Context: ctx, Dir: o.Inputs.Dir, Env: tc.command(ctx, o.Inputs.Dir).Env, Mode: packages.NeedEmbedPatterns | packages.NeedEmbedFiles | packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
+	cfg := &packages.Config{Context: ctx, Dir: o.Inputs.Dir, Env: tc.command(ctx, o.Inputs.Dir).Env, Mode: packages.NeedEmbedPatterns | packages.NeedEmbedFiles | packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
 	roots, err := packages.Load(cfg, "./...")
 	if err != nil {
 		return nil, err
@@ -552,6 +552,10 @@ func (h *Host) Prepare(ctx context.Context, next *gen.CompilerInputs, outputDir 
 		after := map[string][]byte{}
 		for name := range p.sources {
 			after[name] = files[name]
+		}
+		// A changed declaration needs a new host; settle that before loading types.
+		if err := Classify(p.sources, after, nil, nil); err != nil {
+			return nil, err
 		}
 		if !p.retained.initialized {
 			baseline := &packages.Config{Context: ctx, Dir: h.inputs.Dir, Env: h.tc.command(ctx, h.inputs.Dir).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
