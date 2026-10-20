@@ -10,6 +10,7 @@
 //
 // Nothing here goes through devalue. An endpoint's body is whatever the handler
 // wrote; kit's client never parses it, because kit's client never calls it.
+
 package skgo
 
 import (

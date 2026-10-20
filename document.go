@@ -7,6 +7,7 @@
 // template. skgo keeps the split exactly there. The first half runs in the SSR
 // engine (`internal/ssr`); everything in this file is the second half, and it
 // mirrors `packages/kit/src/runtime/server/page/render.js` line for line.
+
 package skgo
 
 import (

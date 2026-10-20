@@ -34,6 +34,7 @@
 // mean one thing is worse than no parameter. RefreshRequestedNoArg and
 // ReconnectRequestedNoArg therefore take no limit; the bound is structural, and
 // the gate is unchanged — a handler that names nothing still runs nothing.
+
 package skgo
 
 import (

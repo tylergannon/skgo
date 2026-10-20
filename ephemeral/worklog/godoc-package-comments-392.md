@@ -1,0 +1,3 @@
+discovery: go/doc joins the comment attached to every `package skgo` clause, so eleven root files besides doc.go (document, document_fetch, document_form, endpoint, handle_error, load, refresh, remote, remote_form, remote_form_client, requested) put their essays into the overview `go doc` and pkg.go.dev show. A blank line before `package skgo` makes each an ordinary comment; text unchanged.
+trap: doc.New clears File.Doc from the ASTs it is given (no doc.PreserveAST), so a test that reads doc.go's comment after calling it compares against "". Read it first.
+discovery: cmd/skgo/cli-overview.md already says `brew install --cask tylergannon/skgo/skgo` (issue 380 is stale on main at 9660663f); no change made.

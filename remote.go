@@ -6,6 +6,7 @@
 // the module's vite-root-relative path. Go answers those requests directly —
 // no Node is involved — by looking the id up in a Remotes registry and running
 // an ordinary Go function.
+
 package skgo
 
 import (

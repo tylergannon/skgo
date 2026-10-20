@@ -11,6 +11,7 @@
 //
 // which is the same two facts kit's `getTodo(id)` carries, and the compiler
 // checks the argument against the query's own parameter type.
+
 package skgo
 
 import (
