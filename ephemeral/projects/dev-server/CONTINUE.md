@@ -1,7 +1,8 @@
 # Development server handoff
 
 The native Kit development implementation and review repairs were merged into
-`dev` in [PR #327](https://github.com/tylergannon/skgo/pull/327). The subsequent
+`dev` in [PR #327](https://github.com/tylergannon/skgo/pull/327) and reached `main`
+in [PR #331](https://github.com/tylergannon/skgo/pull/331) on 2026-10-16. The subsequent
 cleanup removes accumulated experiments, generated trees, logs and superseded
 review material from the live tree; their history remains in Git.
 
@@ -30,9 +31,9 @@ pre-fix runtime supplied through a Go overlay failed that assertion with HTTP
 A separate native body edit involving deferred `sync.Mutex.Unlock` emitted raw
 `R_ADDROFF` relocation stderr and kept serving old code with HTTP 200 without a
 normal revision/Vite error notification, publication or automatic rebuild during
-a 75-second check. Recovery through another edit or a restart remains unverified.
-[Issue #330](https://github.com/tylergannon/skgo/issues/330) tracks the observed
-failure; a stalled loader call or event loop is a hypothesis, not a proven cause.
+a 75-second check. [Issue #330](https://github.com/tylergannon/skgo/issues/330)
+recorded it; fb8640df closed it, with `internal/devserver/session_relocation_test.go`
+covering the recovery.
 The final repair review and Gimbal consumer upgrade remain separate acceptance
 work; the PR #327 review result does not close either one.
 
@@ -43,5 +44,5 @@ mapping assertion failed intermittently before later focused and full passes;
 its cause remains unexplained. Neither is claimed repaired by the cleanup.
 
 Automatic direct SSR subfetch response-cookie relay remains the accepted
-limitation. No new-topology latency benchmark, complete platform qualification
-or deployment to `main` follows from this development integration.
+limitation. No new-topology latency benchmark or complete platform
+qualification has been recorded.

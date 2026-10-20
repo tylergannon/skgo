@@ -10,7 +10,7 @@ page in the site's navigation. Reference documentation is godoc.
 
 Check every claim against current code, tests or the pinned Kit source, never
 against another document. Write plain claims: no slogans or pitch lines, and
-no status narration ("now", "no longer", "recently", "as of"). Setup detail
+describe what the code does rather than how it changed. Setup detail
 meant for a user's agent belongs in `skills/skgo/SKILL.md`, not the README.
 
 A page never contains Go, Svelte or TypeScript text. A `go`, `svelte` or `ts`

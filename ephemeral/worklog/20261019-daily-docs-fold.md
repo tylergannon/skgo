@@ -3,7 +3,7 @@
 First documentation fold for skgo; no earlier marker. Ingested: every tracked
 file under `ephemeral/` at `4591dbaa` (1,144 files, 16 MB) and the landed
 commits `f7a9ec69..4591dbaa` (guide-page tree to HEAD). The next fold starts
-after `4591dbaa`; find this file or `git log --grep 'docs fold'`.
+after `4591dbaa`; find it with `git log --grep 'docs: fold'`.
 
 ## Ledger
 
@@ -19,9 +19,9 @@ spot-checked against HEAD and Kit 3.1.0 before any edit.
 | `issue-resolution/`, `issue-resolutions/`, `low-effort-agent/`, `bugs/` | 212 | delete; issues closed or their notes already posted to #247, gimbal#424, gimbal#428 |
 | `research/`, `plans/`, `sprints/`, `survey/`, `brief/`, `tractor/`, `launcher-planning/`, `js-dependencies/` | 171 | delete; `registry.json` link repointed to a `4591dbaa` permalink |
 | probes (`experiments/`, `cpu/`, `gen-cpu-20261007/`, `*-probe/`), `semantic-index/`, `SEMANTIC-INDEX.md`, `index/` | 231 | delete; the semantic index's token cache (`ephemeral/inspiration/`) is gone, and the index README and all four mission dossiers were stale or finished |
-| `projects/dev-server/` | 3 | retain: active project, changed 2026-10-15 |
+| `projects/dev-server/` | 3 | retain: changed 2026-10-15 and routed from AGENTS.md; three facts corrected (#331 reached main, #330 closed by fb8640df) |
 | `guide-pages/SKILL.md`, `sveltekit-current/SKILL.md` | 2 | retain: repo skills routed from AGENTS.md |
-| commits `f7a9ec69..4591dbaa` | 30 | 7 made a durable doc false (#368, #377, 2dcc49a2, #393, #394, #402, #403); corrected below |
+| commits `f7a9ec69..4591dbaa` | 29 | 7 made a durable doc false (#368, #377, 2dcc49a2, #393, #394, #402, #403); corrected below |
 
 ## Folded
 
@@ -45,10 +45,12 @@ spot-checked against HEAD and Kit 3.1.0 before any edit.
 - `SVELTEKIT_COMPATIBILITY.md`: raw-material links pinned to `4591dbaa`; logs
   that were never committed said so; "this working branch" is #351.
 - `Justfile`: release comment matches #402 (merge announces a candidate,
-  dispatch publishes); the single-scenario e2e gesture the deleted index README
-  had wrong (`pnpm test -- live` ran everything, four incidents).
-- `AGENTS.md`: "After a merge that publishes a release" became "After a release
-  publishes"; since #402 no merge publishes.
+  dispatch publishes); `just e2e MODE ARGS...` now passes arguments to
+  Playwright, replacing the index README's wrong single-scenario gesture
+  (`pnpm test -- live` ran everything, four incidents).
+- `AGENTS.md`, no added lines: "After a merge that publishes a release" became
+  "After a release publishes" (since #402 no merge publishes); the guide-pages
+  route also names the README, which its writing rules cover.
 - `internal/toolchain/pins.go` godoc: skgo-project's docgen reads the constants
   by name (the #364 `NodeMinimum` rename).
 - Test comments citing the deleted `ephemeral/inspiration` cache and a
@@ -79,11 +81,38 @@ since typegrammar admits productive named recursion (v1.10.0
   SSR allocation cost; unmeasured, dropped.
 - `plugins/native-shell/sdk/swift/README.md` reported as overclaiming Go-run
   Swift checks; the text read at HEAD did not clearly claim it, left alone.
+- `internal/sv/sv-addon.source.js` always overwrites `scripts.test`, dropping
+  sv's `test:e2e` chain; the sv unanswered-question error has no `skgo:` prefix.
+- The native-shell example's `ApplicationView.swift` hangs with no URL; a hung
+  Swift test is bounded only by the 20-minute job timeout.
+- `hotreload.BuildHost` has no callers; the Windows prerender-control path has
+  never run; `.gitignore` carries agent-local `.cache/*` entries and the dead
+  `/ephemeral/inspiration` line.
+- `native-plugin-tests.yml` path filters miss `internal/pluginbuild/**` and
+  `cmd/skgo-plugin-build/**`.
+- Stale comments in `internal/gen/emit.go`, `internal/gen/scan.go`, `prerender.js`.
+- `internal/gen/entries.go` emits inline `import()` types in the TypeScript
+  branch, which Tyler said he dislikes; the JSDoc branch needs them.
+- README links #176, closed as not planned; the "not supported" row is true.
+
+## Corrections deliberately not folded
+
+- "Tests protect supported capabilities, not a catalogue of one-off mistakes":
+  Tyler removed it from AGENTS.md in #408; not re-added.
+- A returned command or Monitor is not a finished check; keep full output and
+  exit status before filtering (four incidents, gimbal#428): Gimbal-side
+  defect, and AGENTS.md is held at 47 lines.
+- Kit's query-cache GC rule (rediscovered three times) is stated in
+  `example/e2e/features/remote.feature`, where the next agent meets it.
 
 ## Proof
 
 `go vet` and `go test -count=1` on `.` (Refresh/CSP), `internal/remotearg`,
-`internal/formdata`, `internal/toolchain`; `just --list` parses;
+`internal/formdata`, `internal/toolchain`; `just --list` parses; the e2e
+passthrough was checked in a replica recipe (default mode, quoted `--grep`,
+JSON reporter, bad mode);
 `check-doc-indexes.py --repo .` PASS (no docs index in this repo; `docs/` is
 the website). Kit facts read from a 3.1.0 install in a sibling worktree; this
-worktree has no `node_modules`.
+worktree has no `node_modules`. Independent review: three bugs (a gopls
+claim, this marker's grep, the dev-server handoff) and five design findings,
+all repaired or recorded above.

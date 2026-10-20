@@ -409,8 +409,8 @@ release installs with `skgo plugin install --prebuilt ARTIFACT --sha256 DIGEST`
 instead; see [skgo plugin](cmd/skgo/plugin.md).
 
 Managed files live at `~/.skgo/plugins/hosts/<executable-sha256>/<module-sha256>.so`.
-Ordinary help/new/add discover this host's managed directory and the restored
-prebuilt plugins the project pins in `skgo-plugins.json`.
+Ordinary help/new/add load only this host's managed directory, not other hosts',
+along with the restored prebuilt plugins the project pins in `skgo-plugins.json`.
 An updated or differently built host needs another install; help lists retained
 other-host source references without loading those binaries or choosing a version
 for you. Old host directories remain for deliberate manual cleanup. Remove a

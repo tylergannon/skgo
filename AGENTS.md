@@ -19,7 +19,7 @@ Vite/Kit SSR and HMR, calling Go for application logic
   `brew reinstall --cask tylergannon/skgo/skgo`, then check `skgo` reports it.
 - Start a watcher on every dispatched run's pid so you wake when it exits.
 - Fix problems real code or users hit, not hypotheticals.
-- Guide pages: `ephemeral/guide-pages/SKILL.md`.
+- Guide pages and README: `ephemeral/guide-pages/SKILL.md`.
 
 ## Rules
 

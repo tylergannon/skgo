@@ -18,10 +18,10 @@ Kit 3 facts that overturn older SvelteKit assumptions:
   app-owned `svelte.config.js` in this repository.
 - Kit requires Node 22.17+, Vite 8.0.12+, Svelte 5.57.1+, and TypeScript 6.
   TypeScript 7 is not a compatible substitute for the `typescript` package.
-- `kit.paths.origin`, when set, is compiled into the build and takes
-  precedence over the request's origin; unset (the default), Kit derives the
-  origin from `request.url`. The example sets it from `ORIGIN`, so its build
-  fixes the origin.
+- `kit.paths.origin`, when set, is compiled into the build as the origin
+  Kit's CSRF check treats as its own and the origin prerendering uses;
+  `event.url` still comes from the request. Unset (the default), both use the
+  request's origin. The example sets it from `ORIGIN` when it builds.
 - The application alias is `#lib`, declared through package imports; `$lib`
   was removed.
 - `browser`, `dev`, `building` and `version` come from `$app/env`;
