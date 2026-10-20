@@ -9,6 +9,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 )
 
 // Artifact describes exactly the object the compiler produced. The generated
@@ -63,11 +65,11 @@ func dependencyIdentity(importcfg string) (string, error) {
 		if !ok {
 			return "", fmt.Errorf("invalid compiler importcfg entry: %s", text)
 		}
-		body, err := os.ReadFile(file)
+		sum, err := archiveSum(file)
 		if err != nil {
 			return "", fmt.Errorf("compiler dependency %s: %w", path, err)
 		}
-		entries = append(entries, fmt.Sprintf("%s=%x", path, sha256.Sum256(body)))
+		entries = append(entries, fmt.Sprintf("%s=%x", path, sum))
 	}
 	if err := scanner.Err(); err != nil {
 		return "", err
@@ -75,4 +77,32 @@ func dependencyIdentity(importcfg string) (string, error) {
 	sort.Strings(entries)
 	sum := sha256.Sum256([]byte(strings.Join(entries, "\n")))
 	return hex.EncodeToString(sum[:]), nil
+}
+
+type archiveStat struct {
+	path string
+	size int64
+	mod  time.Time
+}
+
+// archiveSums remembers each archive's digest. The build cache never rewrites
+// an archive in place, so a rebuild hashes only the archives it produced.
+var archiveSums sync.Map
+
+func archiveSum(file string) ([sha256.Size]byte, error) {
+	info, err := os.Stat(file)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	key := archiveStat{file, info.Size(), info.ModTime()}
+	if sum, ok := archiveSums.Load(key); ok {
+		return sum.([sha256.Size]byte), nil
+	}
+	body, err := os.ReadFile(file)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	sum := sha256.Sum256(body)
+	archiveSums.Store(key, sum)
+	return sum, nil
 }

@@ -121,8 +121,19 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	}
 	// Package loading uses only the immutable selected tree. Production source is
 	// never rewritten and generated native support exists only in HostView.
-	cfg := &packages.Config{Context: ctx, Dir: o.Inputs.Dir, Env: tc.command(ctx, o.Inputs.Dir).Env, Mode: packages.NeedEmbedPatterns | packages.NeedEmbedFiles | packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
-	roots, err := packages.Load(cfg, "./...")
+	cfg := &packages.Config{Context: ctx, Dir: o.Inputs.Dir, Env: tc.command(ctx, o.Inputs.Dir).Env, Mode: packages.NeedEmbedPatterns | packages.NeedEmbedFiles | packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule | packages.NeedExportFile}
+	// Route packages compile through their links, which ./... never matches;
+	// naming them type-checks them from source while dependencies use export data.
+	linkRoot := filepath.Join(o.Inputs.Out, "_links") + string(filepath.Separator)
+	patterns := []string{"./..."}
+	links := map[string]bool{}
+	for name := range h.files {
+		if strings.HasPrefix(name, linkRoot) && strings.HasSuffix(name, ".go") && !links[filepath.Dir(name)] {
+			links[filepath.Dir(name)] = true
+			patterns = append(patterns, filepath.Dir(name))
+		}
+	}
+	roots, err := packages.Load(cfg, patterns...)
 	if err != nil {
 		return nil, err
 	}
@@ -197,12 +208,15 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	}
 	overlays := map[string][]byte{}
 
-	raw, err := tc.command(ctx, o.Inputs.Dir, "list", "-export", "-deps", "-f", "{{if .Export}}packagefile {{.ImportPath}}={{.Export}}{{end}}", app.PkgPath).CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("native application archives: %w\n%s", err, raw)
+	// The load type-checked against these archives, so they are the ones it built.
+	var archives strings.Builder
+	for _, p := range executable {
+		if p.ExportFile != "" {
+			fmt.Fprintf(&archives, "packagefile %s=%s\n", p.ID, p.ExportFile)
+		}
 	}
 	importcfg := filepath.Join(o.WorkDir, "importcfg")
-	if err = os.WriteFile(importcfg, raw, 0644); err != nil {
+	if err = os.WriteFile(importcfg, []byte(archives.String()), 0644); err != nil {
 		return nil, err
 	}
 	identity, err := dependencyIdentity(importcfg)
@@ -210,7 +224,6 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 		return nil, err
 	}
 	var paths []string
-	linkRoot := filepath.Join(o.Inputs.Out, "_links") + string(filepath.Separator)
 	for _, p := range executable {
 		if len(p.CompiledGoFiles) == 0 || !strings.HasPrefix(p.CompiledGoFiles[0], linkRoot) {
 			continue
@@ -287,7 +300,7 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 		}
 	}
 	binary := filepath.Join(o.WorkDir, "host")
-	if raw, e := hostTC.command(ctx, o.Inputs.Dir, "build", "-ldflags=-s=false", "-o", binary, "./skgo_development_host").CombinedOutput(); e != nil {
+	if raw, e := hostTC.command(ctx, o.Inputs.Dir, "build", "-ldflags=-s=false -w", "-o", binary, "./skgo_development_host").CombinedOutput(); e != nil {
 		return nil, fmt.Errorf("build native host: %w\n%s", e, raw)
 	}
 	h.options, h.binary = o, binary
@@ -552,6 +565,10 @@ func (h *Host) Prepare(ctx context.Context, next *gen.CompilerInputs, outputDir 
 		after := map[string][]byte{}
 		for name := range p.sources {
 			after[name] = files[name]
+		}
+		// A changed declaration needs a new host; settle that before loading types.
+		if err := Classify(p.sources, after, nil, nil); err != nil {
+			return nil, err
 		}
 		if !p.retained.initialized {
 			baseline := &packages.Config{Context: ctx, Dir: h.inputs.Dir, Env: h.tc.command(ctx, h.inputs.Dir).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
