@@ -68,6 +68,19 @@ jobs:
           go-version: '1.27.2'
           cache: false
 
+      - name: Enforce the core publication cooldown
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          published=$(gh release view --repo "$GITHUB_REPOSITORY" --json publishedAt --jq .publishedAt)
+          PUBLISHED_AT="$published" python3 - <<'PYTHROTTLE'
+          import datetime, os
+          published = datetime.datetime.fromisoformat(os.environ['PUBLISHED_AT'].replace('Z', '+00:00'))
+          due = published + datetime.timedelta(hours=3)
+          if datetime.datetime.now(datetime.timezone.utc) < due:
+              raise SystemExit('Publication deferred until ' + due.isoformat())
+          PYTHROTTLE
+
       - name: Derive the release from Conventional Commits
         id: version
         env:
