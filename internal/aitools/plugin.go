@@ -24,7 +24,7 @@ var instructions []byte
 
 type plugin struct{ version string }
 
-func Plugin(skgoVersion string) templateapi.Plugin { return plugin{skgoVersion} }
+func Plugin(skgoVersion string) templateapi.AddonPlugin { return plugin{skgoVersion} }
 
 func (p plugin) Describe() templateapi.Descriptor {
 	return templateapi.Descriptor{ID: "skgo-ai-tools", Version: p.version, SkgoVersion: p.version, Addons: []templateapi.Addon{{
