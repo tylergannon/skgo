@@ -12,9 +12,11 @@ import (
 	"go/token"
 	"go/types"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -65,6 +67,9 @@ type Host struct {
 	closeOnce         sync.Once
 	options           HostOptions
 	binary            string
+	analysis          retainedAnalysis
+	stopWarm          context.CancelFunc
+	warmed            chan struct{}
 }
 type HostUpdate struct {
 	packagePath string
@@ -257,7 +262,7 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 			body = bytes.ReplaceAll(body, []byte("SKGO_HOST_DEPENDENCIES"), []byte(identity))
 			overlays[filepath.Join(dir, name)] = body
 		}
-		h.packages[p.PkgPath] = &hostPackage{path: p.PkgPath, dir: dir, importcfg: importcfg, sources: sources, retained: &retainedApplication{files: h.files}}
+		h.packages[p.PkgPath] = &hostPackage{path: p.PkgPath, dir: dir, importcfg: importcfg, sources: sources, retained: &retainedApplication{files: h.files, analysis: &h.analysis}}
 		paths = append(paths, p.PkgPath)
 	}
 	sort.Strings(paths)
@@ -358,6 +363,39 @@ func (h *Host) Start(ctx context.Context) (err error) {
 	}
 	h.URL = ready.URL
 	h.PID = ready.PID
+	warm, stop := context.WithCancel(context.Background())
+	h.stopWarm, h.warmed = stop, make(chan struct{})
+	go h.warm(warm)
+	return nil
+}
+
+// warm loads every package's baseline while the application is idle, so the
+// first patch after a build finds Go's discovery already done.
+func (h *Host) warm(ctx context.Context) {
+	defer close(h.warmed)
+	for _, path := range slices.Sorted(maps.Keys(h.packages)) {
+		h.prepareMu.Lock()
+		err := h.baseline(ctx, path)
+		h.prepareMu.Unlock()
+		if err != nil {
+			return
+		}
+	}
+}
+
+// baseline type-checks the application as the host was built, before an edit
+// to the package at path replaces any of its sources.
+func (h *Host) baseline(ctx context.Context, path string) error {
+	p := h.packages[path]
+	if p.retained.initialized {
+		return nil
+	}
+	cfg := &packages.Config{Context: ctx, Dir: h.inputs.Dir, Env: h.tc.command(ctx, h.inputs.Dir).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
+	if _, err := p.retained.Load(cfg, append([]string{path}, h.application...)...); err != nil {
+		// Prepare retries, and reports what it finds.
+		p.retained.initialized = false
+		return err
+	}
 	return nil
 }
 func constructor(p *packages.Package, name string, development bool) bool {
@@ -395,11 +433,11 @@ func (h *Host) Close() error {
 		if h.replies != nil {
 			h.replies.Close()
 		}
-		for _, p := range h.packages {
-			if p.retained.view != nil {
-				p.retained.view.Close()
-			}
+		if h.stopWarm != nil {
+			h.stopWarm()
+			<-h.warmed
 		}
+		h.analysis.close()
 	})
 	return nil
 }
@@ -570,11 +608,8 @@ func (h *Host) Prepare(ctx context.Context, next *gen.CompilerInputs, outputDir 
 		if err := Classify(p.sources, after, nil, nil); err != nil {
 			return nil, err
 		}
-		if !p.retained.initialized {
-			baseline := &packages.Config{Context: ctx, Dir: h.inputs.Dir, Env: h.tc.command(ctx, h.inputs.Dir).Env, Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
-			if _, err := p.retained.Load(baseline, append([]string{path}, h.application...)...); err != nil {
-				return nil, err
-			}
+		if err := h.baseline(ctx, path); err != nil {
+			return nil, err
 		}
 		p.retained.files = files
 		tc := h.tc

@@ -59,12 +59,20 @@ func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
 	changed = strings.Replace(changed, `json:"text"`, `json:"receipt"`, 1)
 	cacheWrite(t, path, changed)
 	observeRetained(t, p, path)
+	// Go selects an embedded file by name, so new bytes in one keep discovery.
+	asset := filepath.Join(root, "wire/assets/one.txt")
+	cacheWrite(t, asset, "asset-two")
+	observeRetained(t, p, asset)
+	discovered := p.Stats().Analysis.MetadataLoads
 	third := prepareRetained(t, p)
 	if err := third.Commit(nil); err != nil {
 		t.Fatal(err)
 	}
 	if p.Stats().Generations != 2 {
 		t.Fatalf("declaration plan not refreshed: %+v", p.Stats())
+	}
+	if got := p.Stats().Analysis.MetadataLoads - discovered; got != 0 {
+		t.Fatalf("declaration and embedded-file edit ran Go discovery %d times, want 0", got)
 	}
 	projected, err := os.ReadFile(filepath.Join(cfg.Web, "src/data/types.ts"))
 	if err != nil || !bytes.Contains(projected, []byte(`"receipt": string`)) || bytes.Contains(projected, []byte(`"text": string`)) {
