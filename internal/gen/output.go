@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/scanner"
 	"go/token"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -348,49 +349,20 @@ func (g *generatedOutput) publish(cfg Config) error {
 
 func finishGeneration(cfg Config) error {
 	g := cfg.generation
-	// Format temporary copies in one invocation; formatter failure cannot leave
-	// half-written generated project files.
+	var frontend *frontendFormat
 	if len(cfg.frontendFiles) > 0 {
-		dir, err := os.MkdirTemp("", "skgo-format-")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(dir)
-		if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"skgo-generated-output","private":true}`), 0600); err != nil {
-			return err
-		}
-		if _, err := os.Stat(filepath.Join(cfg.Web, "node_modules")); err == nil {
-			if err := os.Symlink(filepath.Join(cfg.Web, "node_modules"), filepath.Join(dir, "node_modules")); err != nil {
-				return err
-			}
-		}
-		stage := cfg
-		stage.frontendFiles = map[string]struct{}{}
-		originals := map[string]string{}
+		files := make(map[string]string, len(cfg.frontendFiles))
 		for path := range cfg.frontendFiles {
-			relative, err := filepath.Rel(cfg.Web, path)
+			files[path] = g.files[path]
+		}
+		if cfg.cache != nil && cfg.cache.deferFormat {
+			frontend = startFrontendFormat(cfg.Web, cfg.sourceView, files)
+		} else {
+			formatted, err := formatGeneratedFrontend(cfg.Web, files)
 			if err != nil {
 				return err
 			}
-			target := filepath.Join(dir, relative)
-			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-				return err
-			}
-			if err := os.WriteFile(target, []byte(g.files[path]), 0644); err != nil {
-				return err
-			}
-			stage.frontendFiles[target] = struct{}{}
-			originals[target] = path
-		}
-		if err := formatFrontendFiles(stage, dir); err != nil {
-			return err
-		}
-		for target, path := range originals {
-			data, err := os.ReadFile(target)
-			if err != nil {
-				return err
-			}
-			g.files[path] = string(data)
+			maps.Copy(g.files, formatted)
 		}
 	}
 	// The published plan includes canonical import grouping. FormatOnly never
@@ -408,6 +380,7 @@ func finishGeneration(cfg Config) error {
 	}
 	if cfg.cache != nil {
 		cfg.cache.capture(cfg)
+		cfg.cache.plan.frontend = frontend
 		return nil
 	}
 	return g.publish(cfg)

@@ -15,6 +15,16 @@ func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
 	t.Parallel()
 	root, cfg := retainedFixture(t)
 	root, _ = filepath.EvalSymlinks(root)
+	// The app's formatter marks each file it formats, and waits for the test to
+	// release it so Prepare's independence of it is observable.
+	control := t.TempDir()
+	release, broken := filepath.Join(control, "release"), filepath.Join(control, "broken")
+	cacheWrite(t, release, "")
+	vp := filepath.Join(cfg.Web, "node_modules/.bin/vp")
+	cacheWrite(t, vp, "#!/bin/sh\nfor i in $(seq 100); do [ -e "+release+" ] && break; sleep 0.1; done\n[ -e "+release+" ] || exit 3\n[ -e "+broken+" ] && exit 4\nshift 3\nfor f; do printf '// formatted\\n' >> \"$f\"; done\n")
+	if err := os.Chmod(vp, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	p, err := OpenProject(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +74,13 @@ func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
 	cacheWrite(t, asset, "asset-two")
 	observeRetained(t, p, asset)
 	discovered := p.Stats().Analysis.MetadataLoads
+	if err := os.Remove(release); err != nil {
+		t.Fatal(err)
+	}
+	// Prepare hands the compiler its inputs while the formatter waits; Commit
+	// publishes what the formatter wrote.
 	third := prepareRetained(t, p)
+	cacheWrite(t, release, "")
 	if err := third.Commit(nil); err != nil {
 		t.Fatal(err)
 	}
@@ -75,8 +91,27 @@ func TestRetainedProjectSelectedCompilerInputs(t *testing.T) {
 		t.Fatalf("declaration and embedded-file edit ran Go discovery %d times, want 0", got)
 	}
 	projected, err := os.ReadFile(filepath.Join(cfg.Web, "src/data/types.ts"))
-	if err != nil || !bytes.Contains(projected, []byte(`"receipt": string`)) || bytes.Contains(projected, []byte(`"text": string`)) {
+	if err != nil || !bytes.Contains(projected, []byte(`"receipt": string`)) || bytes.Contains(projected, []byte(`"text": string`)) || !bytes.HasSuffix(projected, []byte("// formatted\n")) {
 		t.Fatalf("retained declaration: %s %v", projected, err)
 	}
+	// A failed format is not replayed: once the formatter works, the same
+	// declarations generate and publish again.
+	changed = strings.Replace(changed, `json:"receipt"`, `json:"answer"`, 1)
+	cacheWrite(t, path, changed)
+	observeRetained(t, p, path)
+	cacheWrite(t, broken, "")
+	if err := prepareRetained(t, p).Commit(nil); err == nil || !strings.Contains(err.Error(), "vp fmt") {
+		t.Fatalf("broken formatter published: %v", err)
+	}
+	if err := os.Remove(broken); err != nil {
+		t.Fatal(err)
+	}
+	if err := prepareRetained(t, p).Commit(nil); err != nil {
+		t.Fatal(err)
+	}
+	if p.Stats().Generations != 4 {
+		t.Fatalf("failed format replayed: %+v", p.Stats())
+	}
+	assertCacheFile(t, filepath.Join(cfg.Web, "src/data/types.ts"), `"answer": string`)
 
 }

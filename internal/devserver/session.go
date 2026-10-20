@@ -219,25 +219,36 @@ retryStartup:
 	}
 	closeHost := func(host *hotreload.Host) { stopHost(host, false) }
 	cache := &hotreload.HostCache{Dir: filepath.Join(work, "hosts")}
-	compileHost := func(inputs *gen.CompilerInputs, dist string) (*hotreload.Host, error) {
+	// compileHost builds in the background; the returned join hands the host to
+	// this loop, which alone owns the session's host bookkeeping.
+	compileHost := func(ctx context.Context, inputs *gen.CompilerInputs) func() (*hotreload.Host, error) {
 		serial++
 		dir := filepath.Join(work, fmt.Sprintf("host-%d", serial))
 		socket := filepath.Join(work, fmt.Sprintf("go-%d.sock", serial))
-		host, err := hotreload.CompileHost(ctx, hotreload.HostOptions{Inputs: inputs, WorkDir: dir, GoTool: o.GoTool, Origin: origin, DistDir: dist, SocketPath: socket, NativeKit: true, ServiceSecret: secret, Output: o.Output, Cache: cache})
-		if err != nil {
-			_ = os.Remove(socket)
-			_ = os.RemoveAll(dir)
-			return nil, err
+		var host *hotreload.Host
+		var err error
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			host, err = hotreload.CompileHost(ctx, hotreload.HostOptions{Inputs: inputs, WorkDir: dir, GoTool: o.GoTool, Origin: origin, SocketPath: socket, NativeKit: true, ServiceSecret: secret, Output: o.Output, Cache: cache})
+		}()
+		return func() (*hotreload.Host, error) {
+			<-done
+			if err != nil {
+				_ = os.Remove(socket)
+				_ = os.RemoveAll(dir)
+				return nil, err
+			}
+			hostDirs[host] = hostFiles{dir, socket}
+			return host, nil
 		}
-		hostDirs[host] = hostFiles{dir, socket}
-		return host, nil
 	}
 	makeHost := func(inputs *gen.CompilerInputs, dist string) (*hotreload.Host, error) {
-		host, err := compileHost(inputs, dist)
+		host, err := compileHost(ctx, inputs)()
 		if err != nil {
 			return nil, err
 		}
-		if err := host.Start(ctx); err != nil {
+		if err := host.Start(ctx, dist); err != nil {
 			closeHost(host)
 			return nil, err
 		}
@@ -495,7 +506,11 @@ retryStartup:
 			}
 		}
 		if err == nil && rebuild {
-			// Publish new Go declarations, then capture their registration configuration.
+			// The host compiles from captured inputs while the new Go declarations
+			// are published and Kit's registration configuration is captured; only
+			// its start needs that snapshot.
+			compileCtx, cancelCompile := context.WithCancel(ctx)
+			compiled := compileHost(compileCtx, nextBuild.Inputs)
 			if err = nextBuild.Publish(); err == nil {
 				snapshot, err = front.snapshot(ctx)
 				if err == nil && snapshot.Metadata != nil {
@@ -507,64 +522,71 @@ retryStartup:
 						err = gen.ErrObsolete
 					}
 				}
-				if err == nil {
-					var replacement *hotreload.Host
-					replacement, err = compileHost(nextBuild.Inputs, snapshot.Dist)
-					if err == nil {
-						old := active
-						stopped := false
-						paused := false
-						// Commit refuses a revision that changed during the build.
-						err = nextBuild.Commit(func(*gen.CompilerInputs) error {
-							// Compilation and revision admission succeeded. Stop and wait before
-							// any replacement constructor can claim application-owned resources.
-							if err := route.requests.pause(ctx, requestDrain); err != nil {
-								return err
-							}
-							paused = true
-							stopHost(old, true)
-							stopped = true
-							if err := replacement.Start(ctx); err != nil {
-								return err
-							}
-							return publishHost(replacement)
-						})
-						if err != nil && stopped {
-							closeHost(replacement)
-							// Restore the last admitted inputs, including any installed native
-							// edits newer than the previous process's original executable.
-							recovered, recoveryErr := makeHost(goodInputs, goodDist)
-							if recoveryErr == nil {
-								recoveryErr = publishHost(recovered)
-							}
-							if recoveryErr != nil {
-								if recovered != nil {
-									closeHost(recovered)
-								}
-								return fmt.Errorf("replacement failed: %v; restore previous application: %w", err, recoveryErr)
-							}
-							active = recovered
-							if hostInputs != goodInputs {
-								hostInputs.Close()
-							}
-							hostInputs = goodInputs
-							fmt.Fprintf(o.Output, "skgo dev: restored previous application (Go pid %d) after replacement failure\n", active.PID)
-						}
-						if err == nil {
-							route.setRemotePrefix(snapshot.RemotePrefix)
-							active = replacement
-							closeHost(old)
-							if hostInputs != goodInputs {
-								sweep = append(sweep, hostInputs.Close)
-							}
-							hostInputs = nextBuild.Inputs
-						} else {
-							closeHost(replacement)
-						}
-						if paused {
-							route.requests.resume()
-						}
+			}
+			if err != nil {
+				cancelCompile()
+			}
+			replacement, compileErr := compiled()
+			cancelCompile()
+			if err != nil && compileErr == nil {
+				closeHost(replacement)
+			}
+			if err == nil {
+				err = compileErr
+			}
+			if err == nil {
+				old := active
+				stopped := false
+				paused := false
+				// Commit refuses a revision that changed during the build.
+				err = nextBuild.Commit(func(*gen.CompilerInputs) error {
+					// Compilation and revision admission succeeded. Stop and wait before
+					// any replacement constructor can claim application-owned resources.
+					if err := route.requests.pause(ctx, requestDrain); err != nil {
+						return err
 					}
+					paused = true
+					stopHost(old, true)
+					stopped = true
+					if err := replacement.Start(ctx, snapshot.Dist); err != nil {
+						return err
+					}
+					return publishHost(replacement)
+				})
+				if err != nil && stopped {
+					closeHost(replacement)
+					// Restore the last admitted inputs, including any installed native
+					// edits newer than the previous process's original executable.
+					recovered, recoveryErr := makeHost(goodInputs, goodDist)
+					if recoveryErr == nil {
+						recoveryErr = publishHost(recovered)
+					}
+					if recoveryErr != nil {
+						if recovered != nil {
+							closeHost(recovered)
+						}
+						return fmt.Errorf("replacement failed: %v; restore previous application: %w", err, recoveryErr)
+					}
+					active = recovered
+					if hostInputs != goodInputs {
+						hostInputs.Close()
+					}
+					hostInputs = goodInputs
+					fmt.Fprintf(o.Output, "skgo dev: restored previous application (Go pid %d) after replacement failure\n", active.PID)
+				}
+				if err == nil {
+					route.setRemotePrefix(snapshot.RemotePrefix)
+					active = replacement
+					closeHost(old)
+					if hostInputs != goodInputs {
+						sweep = append(sweep, hostInputs.Close)
+					}
+					hostInputs = nextBuild.Inputs
+				} else {
+					closeHost(replacement)
+				}
+				if paused {
+					route.requests.resume()
 				}
 			}
 		}
