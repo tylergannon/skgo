@@ -88,6 +88,46 @@ func TestNativeTypedCallerKeyInputPrecedence(t *testing.T) {
 	}
 }
 
+// A refused keyed submission returns its own issues and input; the bare
+// instance of the same form on the page stays empty.
+func TestNativeTypedCallerKeyedIssues(t *testing.T) {
+	h := newProdHandler(t)
+	id := remoteID(t, "sendMessage")
+	fields := url.Values{"from/" + id: {""}, "email/" + id: {"invalid-email"}, "body/" + id: {"nope"}}
+	req := httptest.NewRequest("POST", "/typed-load/42?"+url.Values{"/remote": {id + `/"k1"`}}.Encode(), strings.NewReader(fields.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", prodOrigin)
+	req.Header.Set("Accept", "text/html")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		`data-testid="keyed-issue-from">Tell us who you are</p>`,
+		`data-testid="keyed-issue-email">"invalid-email" is not an email address</p>`,
+		`data-testid="keyed-issue-body">A message needs at least 10 characters; this one has 4</p>`,
+		`data-testid="keyed-rejected">That message was not sent.</p>`,
+		`data-testid="keyed-field-email" name="email/` + id + `" aria-invalid="true" value="invalid-email"`,
+		// Kit hydrates each instance from the entry under its own remote key.
+		`f:{"` + id + `/\"k1\"":{v:{submission:true,issues:[`,
+	} {
+		if !callerMarkupContains(body, want) {
+			t.Errorf("missing literal %q in returned document", want)
+		}
+	}
+	// The bare instance rendered, empty, with no outcome of its own.
+	if !strings.Contains(body, `data-testid="field-email" name="email/`+id+`" value=""`) {
+		t.Error("bare form email field is not empty")
+	}
+	for _, leaked := range []string{`data-testid="rejected"`, `data-testid="receipt"`, `data-testid="issue-`, `"` + id + `":{v:`} {
+		if strings.Contains(body, leaked) {
+			t.Errorf("keyed result leaked into bare form: %s", leaked)
+		}
+	}
+}
+
 // Dev adds scoped CSS classes; the receipt text remains an exact literal.
 func callerMarkupContains(body, literal string) bool {
 	pattern := strings.Replace(regexp.QuoteMeta(literal), `">`, `"[^>]*>`, 1)

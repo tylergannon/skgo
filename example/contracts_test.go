@@ -5,7 +5,8 @@ package example_test
 // The claims in this file used to be browser scenarios. Each one was about
 // bytes — a status, a header, a redirect, the markup of a document before any
 // script ran — so a browser added minutes and nothing a real-handler test
-// cannot see. The Gherkin suite keeps what only kit's client can prove.
+// cannot see. What only kit's client can show is in the one browser check,
+// web/tests/client-handoff.spec.ts.
 //
 // Every expectation below is a literal written here: a fixture the app seeds,
 // a string a scenario used to name, or text kit's own rules produce. None is
@@ -356,9 +357,8 @@ func TestAnEndpointRouteAnswersEveryMethodAsWritten(t *testing.T) {
 
 // TestANativeActionIsAnsweredWithTheDocument is every page action a browser
 // with no client posts, as the bytes Go sends back: the status, the headers,
-// and the page rendered over what the action returned. A browser posting the
-// same forms is in the *-form-noscript features; a browser whose client then
-// boots over the answer is in actions.feature.
+// and the page rendered over what the action returned. The enhanced
+// submissions of the same actions are in action_protocol_test.go.
 func TestANativeActionIsAnsweredWithTheDocument(t *testing.T) {
 	h := newProdHandler(t)
 

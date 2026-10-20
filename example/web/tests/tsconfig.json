@@ -1,0 +1,15 @@
+{
+  // The client handoff check runs in Node, not in the app. Its own config keeps
+  // it from depending on $app/tsconfig, which exists only after Kit's sync.
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["es2023", "dom"],
+    "types": ["node"]
+  },
+  "include": ["*.ts"]
+}
