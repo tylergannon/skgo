@@ -432,7 +432,7 @@ func capabilityHostRejectsChangedDependency(t *testing.T) {
 	proxy := (&url.URL{Scheme: "file", Path: dependencyProxy}).String() + "," + trustedProxy
 	build := prepareCapabilityHost(t, repo, root, proxy)
 	output, err := build.CombinedOutput()
-	if err == nil || !bytes.Contains(output, []byte("checksum mismatch")) || !bytes.Contains(output, []byte("github.com/fsnotify/fsnotify@v1.10.1")) {
+	if err == nil || !bytes.Contains(output, []byte("checksum mismatch")) || !bytes.Contains(output, []byte("go.sum:")) || !bytes.Contains(output, []byte("github.com/fsnotify/fsnotify@v1.10.1")) {
 		t.Fatalf("altered dependency was not rejected against committed checksum: %v\n%s", err, output)
 	}
 }
