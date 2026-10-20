@@ -36,10 +36,10 @@ type Toolchain struct {
 // follows GoLoader's documented cmd/internal -> cmd/objfile preparation, without
 // modifying shared source through a symlink. Its parent is caller-owned.
 func PrepareToolchain(ctx context.Context, goTool, parent string) (Toolchain, error) {
-	return prepareToolchain(ctx, goTool, parent, nil)
+	return prepareToolchain(ctx, goTool, parent, nil, nil)
 }
 
-func prepareToolchain(ctx context.Context, goTool, parent string, environment []string) (Toolchain, error) {
+func prepareToolchain(ctx context.Context, goTool, parent string, environment []string, cache *HostCache) (Toolchain, error) {
 	t := Toolchain{Env: environment}
 	if err := t.checkFlags(); err != nil {
 		return t, err
@@ -68,16 +68,27 @@ func prepareToolchain(ctx context.Context, goTool, parent string, environment []
 		return t, fmt.Errorf("native development profile does not support GOEXPERIMENT=%s", env["GOEXPERIMENT"])
 	}
 	root := env["GOROOT"]
-	// Bind the actual tool executable as well as its version/path. The object
-	// reader is copied from the same installation, not a separately chosen Go.
-	compile, err := os.ReadFile(filepath.Join(root, "pkg", "tool", env["GOOS"]+"_"+env["GOARCH"], "compile"))
-	if err != nil {
-		return t, fmt.Errorf("native compiler prerequisite is missing from %s: %w", root, err)
-	}
+	compilePath := filepath.Join(root, "pkg", "tool", env["GOOS"]+"_"+env["GOARCH"], "compile")
 	for _, tool := range []string{"asm", "link"} {
 		if _, err := os.Stat(filepath.Join(root, "pkg/tool", env["GOOS"]+"_"+env["GOARCH"], tool)); err != nil {
 			return t, fmt.Errorf("native %s prerequisite is missing: %w", tool, err)
 		}
+	}
+	// The same installation, unchanged since a session's earlier host, has the
+	// same identity and view.
+	var key string
+	if info, err := os.Stat(compilePath); err == nil {
+		key = fmt.Sprintf("%s\x00%s\x00%d\x00%d", raw, parent, info.Size(), info.ModTime().UnixNano())
+		if cached, ok := cache.cachedToolchain(key); ok {
+			cached.Env = append([]string(nil), environment...)
+			return cached, nil
+		}
+	}
+	// Bind the actual tool executable as well as its version/path. The object
+	// reader is copied from the same installation, not a separately chosen Go.
+	compile, err := os.ReadFile(compilePath)
+	if err != nil {
+		return t, fmt.Errorf("native compiler prerequisite is missing from %s: %w", root, err)
 	}
 	h := sha256.New()
 	h.Write(raw)
@@ -168,7 +179,11 @@ func prepareToolchain(ctx context.Context, goTool, parent string, environment []
 			return t, fmt.Errorf("prepare private object reader: %w", err)
 		}
 	}
-	return Toolchain{Env: append([]string(nil), environment...), Go: filepath.Join(private, "bin/go"), Root: private, Version: env["GOVERSION"], OS: env["GOOS"], Arch: env["GOARCH"], Identity: identity, Settings: map[string]string{"GOOS": env["GOOS"], "GOARCH": env["GOARCH"], "GOEXPERIMENT": env["GOEXPERIMENT"], "GOAMD64": env["GOAMD64"], "GOARM64": env["GOARM64"], "GOFLAGS": env["GOFLAGS"]}}, nil
+	t = Toolchain{Env: append([]string(nil), environment...), Go: filepath.Join(private, "bin/go"), Root: private, Version: env["GOVERSION"], OS: env["GOOS"], Arch: env["GOARCH"], Identity: identity, Settings: map[string]string{"GOOS": env["GOOS"], "GOARCH": env["GOARCH"], "GOEXPERIMENT": env["GOEXPERIMENT"], "GOAMD64": env["GOAMD64"], "GOARM64": env["GOARM64"], "GOFLAGS": env["GOFLAGS"]}}
+	if key != "" {
+		cache.keepToolchain(key, t)
+	}
+	return t, nil
 }
 
 func (t Toolchain) command(ctx context.Context, dir string, args ...string) *exec.Cmd {

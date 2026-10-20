@@ -14,22 +14,17 @@ import (
 // authored and generated production files are never overwritten. The caller
 // owns parent until all build commands using the returned toolchain finish.
 func (t Toolchain) HostView(ctx context.Context, dir, parent string, sources map[string][]byte, importcfg ...string) (Toolchain, error) {
-	if err := os.MkdirAll(parent, 0755); err != nil {
-		return Toolchain{}, err
-	}
-	mod, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	t, err := t.hostOverlay(dir, parent, sources, importcfg...)
 	if err != nil {
 		return Toolchain{}, err
 	}
-	t.ModFile = filepath.Join(parent, "host.mod")
-	if err := os.WriteFile(t.ModFile, mod, 0644); err != nil {
-		return Toolchain{}, err
-	}
-	if sums, err := os.ReadFile(filepath.Join(dir, "go.sum")); err == nil {
-		if err := os.WriteFile(filepath.Join(parent, "host.sum"), sums, 0644); err != nil {
-			return Toolchain{}, err
-		}
-	} else if !os.IsNotExist(err) {
+	return t.hostModules(ctx, dir, parent, filepath.Join(parent, "native"))
+}
+
+// hostOverlay writes the host's sources beside the module and names them in an
+// overlay.
+func (t Toolchain) hostOverlay(dir, parent string, sources map[string][]byte, importcfg ...string) (Toolchain, error) {
+	if err := os.MkdirAll(parent, 0755); err != nil {
 		return Toolchain{}, err
 	}
 	overlay := struct{ Replace map[string]string }{map[string]string{}}
@@ -73,6 +68,27 @@ func (t Toolchain) HostView(ctx context.Context, dir, parent string, sources map
 	if err := os.WriteFile(t.Overlay, raw, 0644); err != nil {
 		return Toolchain{}, err
 	}
+	return t, nil
+}
+
+// hostModules gives the host a private module file that also requires the
+// native loader, which is prepared under loaders.
+func (t Toolchain) hostModules(ctx context.Context, dir, parent, loaders string) (Toolchain, error) {
+	mod, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		return Toolchain{}, err
+	}
+	t.ModFile = filepath.Join(parent, "host.mod")
+	if err := os.WriteFile(t.ModFile, mod, 0644); err != nil {
+		return Toolchain{}, err
+	}
+	if sums, err := os.ReadFile(filepath.Join(dir, "go.sum")); err == nil {
+		if err := os.WriteFile(filepath.Join(parent, "host.sum"), sums, 0644); err != nil {
+			return Toolchain{}, err
+		}
+	} else if !os.IsNotExist(err) {
+		return Toolchain{}, err
+	}
 	// -modfile is forbidden in workspace mode. Prepare loader requirements in
 	// the private modfile, then add the private loader as a workspace member.
 	// All captured application members and workspace replacements stay selected.
@@ -81,7 +97,7 @@ func (t Toolchain) HostView(ctx context.Context, dir, parent string, sources map
 	if work != "" && work != "off" {
 		loaderTC.Env = append(t.environment(), "GOWORK=off")
 	}
-	loader, err := loaderTC.PrepareLoader(ctx, dir, filepath.Join(parent, "native"))
+	loader, err := loaderTC.PrepareLoader(ctx, dir, loaders)
 	if err != nil {
 		return Toolchain{}, err
 	}

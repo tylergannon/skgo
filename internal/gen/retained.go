@@ -411,7 +411,8 @@ func (i *CompilerInputs) Close() {
 }
 
 // ProjectBuild owns prepared output and compiler inputs until Commit or Cancel.
-// Prepare never publishes generated files or diagnostics into the authored tree.
+// Prepare never publishes generated files or diagnostics into the authored tree;
+// Publish and Commit do.
 type ProjectBuild struct {
 	Revision   Revision
 	Inputs     *CompilerInputs
@@ -591,6 +592,17 @@ func rebaseGenerationPlan(plan generationPlan, view *generationSourceView) gener
 // compiler/host owner admits already prepared inputs; it must not reenter this
 // Project. A failed callback leaves generated outputs unpublished.
 func (b *ProjectBuild) Commit(admit func(*CompilerInputs) error) error {
+	return b.commit(admit, true)
+}
+
+// Publish writes the generated outputs of a current build and keeps it open, so
+// Kit can register new declarations before Commit admits the host built from
+// them.
+func (b *ProjectBuild) Publish() error {
+	return b.commit(nil, false)
+}
+
+func (b *ProjectBuild) commit(admit func(*CompilerInputs) error, close bool) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.closed {
@@ -611,7 +623,7 @@ func (b *ProjectBuild) Commit(admit func(*CompilerInputs) error) error {
 		return err
 	}
 	p.diagnostic = nil
-	b.closed = true
+	b.closed = close
 	return nil
 }
 

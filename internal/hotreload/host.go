@@ -37,6 +37,9 @@ type HostOptions struct {
 	Output                                                            io.Writer
 	SocketPath, ServiceSecret                                         string
 	NativeKit                                                         bool
+	// Cache, when set, carries toolchain and module preparation to the
+	// session's next host.
+	Cache *HostCache
 }
 type hostPackage struct {
 	path, dir, importcfg string
@@ -115,7 +118,11 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	if err = os.MkdirAll(o.WorkDir, 0755); err != nil {
 		return nil, err
 	}
-	tc, err := prepareToolchain(ctx, o.GoTool, filepath.Join(o.WorkDir, "toolchain"), o.Inputs.Env)
+	toolchains := filepath.Join(o.WorkDir, "toolchain")
+	if o.Cache != nil {
+		toolchains = filepath.Join(o.Cache.Dir, "toolchain")
+	}
+	tc, err := prepareToolchain(ctx, o.GoTool, toolchains, o.Inputs.Env, o.Cache)
 	if err != nil {
 		return nil, err
 	}
@@ -295,14 +302,18 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 	if err = os.MkdirAll(mainDir, 0755); err != nil {
 		return nil, err
 	}
-	hostTC, err := tc.HostView(ctx, o.Inputs.Dir, filepath.Join(o.WorkDir, "view"), overlays)
+	view := filepath.Join(o.WorkDir, "view")
+	hostTC, err := tc.hostOverlay(o.Inputs.Dir, view, overlays)
 	if err != nil {
 		return nil, err
 	}
-	if hostTC.ModFile != "" {
-		if raw, e := hostTC.command(ctx, o.Inputs.Dir, "mod", "tidy").CombinedOutput(); e != nil {
-			return nil, fmt.Errorf("native host dependencies: %w\n%s", e, raw)
-		}
+	built := make([]string, len(executable))
+	for i, p := range executable {
+		built[i] = p.PkgPath
+	}
+	sort.Strings(built)
+	if hostTC, err = o.Cache.resolveModules(ctx, hostTC, o.Inputs, view, built); err != nil {
+		return nil, err
 	}
 	binary := filepath.Join(o.WorkDir, "host")
 	if raw, e := hostTC.command(ctx, o.Inputs.Dir, "build", "-ldflags=-s=false -w", "-o", binary, "./skgo_development_host").CombinedOutput(); e != nil {
