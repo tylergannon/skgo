@@ -1,1 +1,0 @@
-correction: The repository's own ordinary just build must use the same incremental builder as native consumers. Leaving it on raw vp build would preserve an unconditional rebuild path after removing the reuse flag.

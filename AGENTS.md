@@ -15,7 +15,7 @@ Vite/Kit SSR and HMR, calling Go for application logic
 - Never write to `docs/` without permission.
 - `vp` owns the frontend toolchain (`vp install`, `vp run`, `vp exec`,
   `vp dlx`). Never call pnpm or npm directly.
-- After a merge that publishes a release, run `brew update` and
+- After a release publishes, run `brew update` and
   `brew reinstall --cask tylergannon/skgo/skgo`, then check `skgo` reports it.
 - Start a watcher on every dispatched run's pid so you wake when it exits.
 - Fix problems real code or users hit, not hypotheticals.

@@ -1,3 +1,0 @@
-friction: Kitpatch fixtures launched pnpm just to seed/read known configuration and reverse-applied the same immutable Kit patch for each fixture -> seed fixture maps directly and recover stock bytes once; retain real pnpm only for one configure/idempotence/verify capability witness.
-correction: Root-selection assertions must account for macOS /var resolving physically to /private/var; compare the selected physical frontend root.
-correction: Replacing package-manager packing with metadata checks must still bind the root export to the actual bundled file and include that file in publication; isolated mutations showed a missing export target and omitted published bundle passed before those existing assertions were tightened.

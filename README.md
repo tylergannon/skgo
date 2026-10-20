@@ -369,7 +369,7 @@ for an implementation that preserves existing files.
 `skgo new --template NAME --help` list compatible exports and their options.
 `--set NAME=VALUE` is repeatable; put flags before the destination/add-on name.
 New projects store application identity in `skgo.json`. Older projects must
-supply `skgo add --name NAME` explicitly. Core no longer checks native-specific
+supply `skgo add --name NAME` explicitly. Core does not check native-specific
 identity before creating that file; choose a name matching existing native
 configuration. Add-ons must report partial writes and
 conflicts; skgo stops at the failed step without rolling back third-party work.
@@ -404,11 +404,13 @@ using `GOPROXY=direct`, preserving your checksum/private-module and GOVCS policy
 and reports whether checksum-database validation is enabled or exempted. Before
 running source, it compares the checkout's module zip and go.mod hashes with Go's
 resolution. Nested module inputs come from that same canonical Git commit.
-Unavailable provenance, checksums or source access are errors; archives and
-precompiled binary installation are not supported.
+Unavailable provenance, checksums or source access are errors. A prebuilt
+release installs with `skgo plugin install --prebuilt ARTIFACT --sha256 DIGEST`
+instead; see [skgo plugin](cmd/skgo/plugin.md).
 
 Managed files live at `~/.skgo/plugins/hosts/<executable-sha256>/<module-sha256>.so`.
-Ordinary help/new/add discover only this host's managed directory automatically.
+Ordinary help/new/add discover this host's managed directory and the restored
+prebuilt plugins the project pins in `skgo-plugins.json`.
 An updated or differently built host needs another install; help lists retained
 other-host source references without loading those binaries or choosing a version
 for you. Old host directories remain for deliberate manual cleanup. Remove a

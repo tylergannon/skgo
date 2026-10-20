@@ -1,1 +1,0 @@
-decision: User prefers local post-merge SKGO installation through the automated Homebrew release. AGENTS.md now requires waiting for successful release and cask publication, reinstalling through Homebrew, and verifying PATH and version. Merges without a release do not require reinstalling.

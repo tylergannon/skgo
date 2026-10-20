@@ -79,6 +79,9 @@ e2e_json_reporter := if env_var_or_default("PLAYWRIGHT_JSON_OUTPUT_FILE", "") !=
 # svelte-check runs first: Svelte type-checking lives here and in CI's
 # example/web job, never in `just test`.
 # A complete pass on the replacement dev topology is not yet established.
+# One scenario while iterating: from example/e2e, with BASE_URL and
+# SKGO_E2E_MODE set, `../web/node_modules/.bin/vp run --no-cache test --grep
+# '<scenario title>'` (as TestRealSessionRouteEditDuringPendingLoad does).
 e2e mode="prod":
     @case "{{mode}}" in prod|dev) ;; *) echo "Expected prod or dev" >&2; exit 1;; esac
     cd example/web && node_modules/.bin/vp run check
@@ -103,6 +106,7 @@ worktree branch base="main":
 ports:
     lsof -nP -iTCP -sTCP:LISTEN
 
-# Releases have no local recipe. A Conventional Commit merged to main starts
-# release.yml; it reserves a candidate tag, then publishes the qualified,
-# signed CLI and npm packages and updates Homebrew.
+# Releases have no local recipe. A core change merged to main announces a
+# candidate to skgo-project for qualification (candidate.yml); a manual
+# release.yml dispatch naming a qualified candidate publishes the signed CLI
+# and npm packages and updates Homebrew.

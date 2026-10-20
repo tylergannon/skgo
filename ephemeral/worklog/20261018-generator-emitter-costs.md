@@ -1,3 +1,0 @@
-decision: Feed emitter tests parsed in-process type graphs, including Swift/Form grammar, instead of discovering and generating whole applications. Compiler consumers and cross-revision generation ownership run under skgo_qualification.
-correction: Generated Form decoder field assertions exercised polytype implementation; keep the SKGO-owned typed SubmitForm delegation and fixed route ID instead.
-correction: Removing package-manager archive probes exposed missing direct add-on metadata assertions. Independent disposable-fixture mutations now fail for a missing root export target and omitted bundle declaration, without invoking pack or npm publication in routine tests.

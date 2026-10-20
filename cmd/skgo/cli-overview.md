@@ -16,7 +16,7 @@ chains them.
 Install it with Homebrew, or build it from the module:
 
 ```sh
-brew install tylergannon/tap/skgo
+brew install --cask tylergannon/skgo/skgo
 ```
 
 ```sh

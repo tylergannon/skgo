@@ -1,7 +1,0 @@
-Validate the completed resolution of skgo issues #250 and #276 in this worktree. The complete issues and comments, cache annotations, goal, and proof are in ephemeral/issue-resolutions/01-prerender.md. The implementer's focused proof output is adjacent; use it to avoid duplicate expensive builds.
-
-You are the independent Claude Opus validator, not an implementer or scope designer. Determine whether both stated goals and proofs are satisfied and whether the changes create any VERIFIED, reproducible bug. No suggestions, hypothetical risks, feature expansion, unrelated cleanup, or new proof machinery. #251 is excluded. Kit's installed pin is the specification; map it yourself where needed.
-
-Check that the ordinary Go regressions are load-bearing: would their independent fixture assertions fail with the relevant feature broken or removed? Run the focused relevant proof once. Do not run full CI or repeat expensive commands without a concrete unresolved failure. Reuse captured output for multiple assertions. Do not change production code, commit, or start another reviewer. If you make a temporary mutation to validate a test, restore it before returning.
-
-Return a concise PASS or FAIL for each issue, actual commands/results, and only actionable verified findings with reproduction details. A passing rerun alone does not establish the cause or repair of intermittent #250. Preserve rejection-time group/directory assertions, original failure diagnostics, and no-skip semantics.

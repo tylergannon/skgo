@@ -26,8 +26,7 @@ func sha256Base64(content string) string {
 // `vite build` runs a developer's `csp` config through before handing it to
 // the adapter as `builder.config.csp`) and `runtime/server/page/csp.js`'s
 // `Csp` class — directly under Node, against @sveltejs/kit 3.0.0-next.27
-// pinned source, never against skgo's own output. See
-// ephemeral/worklog/csp-ground-truth.md for the script and full transcript.
+// pinned source, never against skgo's own output.
 //
 // bootScriptFixture is one exact boot script skgo's own bootScript() can
 // produce (the shape is kit's split-bundle form skgo already mirrors byte for

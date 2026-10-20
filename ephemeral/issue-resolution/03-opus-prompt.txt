@@ -1,7 +1,0 @@
-Independently validate #167 in the worktree changes after 0346c38. Invoke agent-protocol and follow AGENTS.md. Do not edit implementation or commit. Complete issue/comments are ephemeral/issue-resolution/03-reroute-167.json; accepted mission/proof is 03-reroute-167.md. Installed Kit 3.1.0 is the spec; map the relevant contract yourself.
-
-Goal: an application's Go reroute chooses consistent effective routes/params across document, data, endpoint and Kit client navigation in native dev and built production, while original URL/address identity stays as Kit defines. The capability must follow Kit's universal reroute constraints, not just a special static alias. Application logic/I/O remains Go and production remains pooled goja without Node at request time.
-
-Check focused assertions are load-bearing and run necessary focused proof. Supplied target receipts must positively distinguish effective route, translated params, original URL and an unchanged control. Read captured 03-* build/session/browser logs instead of rerunning expensive work without a concrete unresolved concern. No full CI, full browser suite or new proof machinery.
-
-Report PASS or FAIL with checked behavior, and only material accepted-goal/proof failures or new VERIFIED reproducible bugs. Material findings require a concrete reproduction/failing assertion. Do not expand scope into init, prerender entries, validation hooks, deployment, style, unrelated preexisting bugs or speculative hardening. Stop once the accepted goal/proof is satisfied.

@@ -1,5 +1,0 @@
---- FAIL: TestTrailingSlashIsRestoredOntoThePath (0.00s)
-    data_test.go:570: the load saw path "/a", want /a/
-FAIL
-FAIL	github.com/tylergannon/skgo	0.269s
-FAIL

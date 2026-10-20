@@ -1,9 +1,0 @@
-=== RUN   TestAppWithoutPageActionsStillHasAnActionRegistry
-=== PAUSE TestAppWithoutPageActionsStillHasAnActionRegistry
-=== RUN   TestAServerRouteBecomesTheModuleKitCompiles
-=== PAUSE TestAServerRouteBecomesTheModuleKitCompiles
-=== CONT  TestAppWithoutPageActionsStillHasAnActionRegistry
-=== CONT  TestAServerRouteBecomesTheModuleKitCompiles
---- PASS: TestAppWithoutPageActionsStillHasAnActionRegistry (0.25s)
---- PASS: TestAServerRouteBecomesTheModuleKitCompiles (0.25s)
-PASS

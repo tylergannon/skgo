@@ -1,1 +1,0 @@
-<h1>Native inputs fixture</h1>

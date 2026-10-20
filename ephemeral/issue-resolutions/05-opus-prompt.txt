@@ -1,5 +1,0 @@
-Independently validate #245 on this branch. Full issue/comments, cache annotation and goal/proof are in ephemeral/issue-resolutions/05-hash.md. Map the current installed Kit pin as specification.
-
-Verify the real embedded Go server serves the native Kit client shell for pathname document requests in hash mode, with literal independent template marker and native start/app imports, no authored Home/About SSR, and Kit's hash SSR/prerender constraints. Preserve Go-owned endpoints/static assets and ordinary pathname mode. Browser Forward/reload attribution and matrix expansion are explicitly excluded.
-
-Check the ordinary Go handler/build regression is load-bearing and run focused proof once. Assess supplied parent browser inspection separately; HTTP shell claims belong at the real handler. Do not repeat full CI or expensive builds without an unresolved concrete failure. Do not expand scope or introduce proof machinery. Findings must show original-goal/proof failure or a VERIFIED reproducible new bug. Do not implement or commit; restore temporary mutations and clean scratch. Return concise PASS/FAIL with actual commands/results and exact actionable reproductions.

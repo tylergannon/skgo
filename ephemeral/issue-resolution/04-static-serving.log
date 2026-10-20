@@ -1,4 +1,0 @@
-=== RUN   TestDynamicPrerenderEntriesAreServedFromFiles
---- PASS: TestDynamicPrerenderEntriesAreServedFromFiles (0.04s)
-PASS
-ok  	github.com/tylergannon/skgo/example	0.310s

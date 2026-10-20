@@ -18,11 +18,27 @@ Kit 3 facts that overturn older SvelteKit assumptions:
   app-owned `svelte.config.js` in this repository.
 - Kit requires Node 22.17+, Vite 8.0.12+, Svelte 5.57.1+, and TypeScript 6.
   TypeScript 7 is not a compatible substitute for the `typescript` package.
-- `kit.paths.origin` fixes the application origin at build time.
+- `kit.paths.origin`, when set, is compiled into the build and takes
+  precedence over the request's origin; unset (the default), Kit derives the
+  origin from `request.url`. The example sets it from `ORIGIN`, so its build
+  fixes the origin.
 - The application alias is `#lib`, declared through package imports; `$lib`
   was removed.
-- `transport` is a universal hook. Its tags and payloads must match the Go
-  codec exactly.
+- `browser`, `dev`, `building` and `version` come from `$app/env`;
+  `$app/environment` is a deprecated re-export. Environment variables are
+  declared in `src/env.ts` with `defineEnvVars` and imported from
+  `$app/env/public` and `$app/env/private`.
+- The public `$app/paths` exports only `asset`, `resolve` and `match`. Adapter
+  code that needs the base path or app directory reads Kit's build defines,
+  as `internal/adapter/skgo-adapter/reroute.js` does.
+- Sync writes the generated `$app/types` and `$app/env` declarations to
+  `node_modules/$app/types/`, not `.svelte-kit`. A fresh install has none
+  until sync runs, and a fixture that shares another app's `node_modules`
+  overwrites that app's route types: give each fixture app its own install
+  and run sync before `svelte-check`.
+- `transport` is a universal hook. A key Go sends must match the Go codec's
+  tag and payload exactly; a key only the browser uses needs no Go half, since
+  Kit also passes snapshots and history state through the hook.
 - Remote functions remain experimental and require
   `experimental.remoteFunctions`.
 - Adapter Vite plugins are split into `pre` and `post`. Kit 3.0.0-next.27 also
