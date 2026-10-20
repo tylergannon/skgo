@@ -51,11 +51,17 @@ func Run(ctx context.Context, o Options) error {
 	go server.Serve(ln)
 	// Keep Unix socket paths below platform limits; the macOS temp root alone
 	// can consume most of the available pathname. Development is Unix-only.
+	sweepInstances("/tmp")
 	work, e := os.MkdirTemp("/tmp", "skgo-")
 	if e != nil {
 		return e
 	}
 	defer os.RemoveAll(work)
+	claim, e := claimInstance(work)
+	if e != nil {
+		return e
+	}
+	defer claim.Close()
 	work, e = filepath.EvalSymlinks(work)
 	if e != nil {
 		return e

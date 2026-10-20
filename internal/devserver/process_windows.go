@@ -2,7 +2,10 @@
 
 package devserver
 
-import "os/exec"
+import (
+	"os"
+	"os/exec"
+)
 
 func ownProcess(cmd *exec.Cmd) {}
 func stopProcess(cmd *exec.Cmd) error {
@@ -11,3 +14,6 @@ func stopProcess(cmd *exec.Cmd) error {
 	}
 	return cmd.Process.Kill()
 }
+
+func claimInstance(work string) (*os.File, error) { return nil, nil }
+func sweepInstances(parent string)                {}

@@ -40,7 +40,7 @@ func startFrontend(ctx context.Context, o Options, web, work, origin, secret str
 	readyFile := filepath.Join(work, "vite-ready.json")
 	_ = os.Remove(readyFile)
 	_ = os.Remove(filepath.Join(work, "vite.sock"))
-	env := append(os.Environ(), "ORIGIN="+origin, "SKGO_DEV_ORIGIN="+origin, "SKGO_DEV_DIR="+work, "SKGO_DEV_READY="+readyFile, "SKGO_DEV_GO_SOCKET="+filepath.Join(work, "go.sock"), "SKGO_DEV_VITE_SOCKET="+filepath.Join(work, "vite.sock"), "SKGO_DEV_SERVICE_SECRET="+secret)
+	env := append(os.Environ(), "ORIGIN="+origin, "SKGO_DEV_ORIGIN="+origin, "SKGO_DEV_DIR="+work, "SKGO_DEV_READY="+readyFile, "SKGO_DEV_GO_SOCKET="+filepath.Join(work, "go.sock"), "SKGO_DEV_VITE_SOCKET="+filepath.Join(work, "vite.sock"), "SKGO_DEV_SERVICE_SECRET="+secret, "SKGO_DEV_LIFELINE=stdin")
 	vp := o.VitePlus
 	if vp == "" {
 		vp = "vp"
