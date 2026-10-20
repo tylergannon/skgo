@@ -1,1 +1,0 @@
-../../../../web/src/routes/samples/load/untrack/[slug]/skgo_gen.go

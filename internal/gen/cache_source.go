@@ -456,6 +456,10 @@ func (s cacheSources) materializeIn(cfg Config, files map[string][]byte, root st
 		view.sources = make(map[string][]byte)
 		view.moduleRoots = make(map[string]string)
 	}
+	linkRoot, err := sourcePath(filepath.Join(cfg.Out, linkRootName))
+	if err != nil {
+		return fail(err)
+	}
 	for path, data := range files {
 		if !strings.HasSuffix(path, ".go") || data == nil {
 			continue
@@ -477,7 +481,9 @@ func (s cacheSources) materializeIn(cfg Config, files map[string][]byte, root st
 					}
 				}
 				dir := filepath.Join(m.Dir, filepath.FromSlash(rel))
-				if physical, err := filepath.EvalSymlinks(dir); err == nil && physical != dir {
+				// Route links are directory symlinks the private view's own
+				// generation recreates over the captured route tree.
+				if physical, err := filepath.EvalSymlinks(dir); err == nil && physical != dir && !dirContains(linkRoot, dir) {
 					return fail(fmt.Errorf("symlinked import directory is not cached: %s", importPath))
 				}
 			}

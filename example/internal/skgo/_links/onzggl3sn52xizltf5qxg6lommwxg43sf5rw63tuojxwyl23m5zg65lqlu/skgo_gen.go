@@ -1,1 +1,0 @@
-../../../../web/src/routes/async-ssr/control/[group]/skgo_gen.go

@@ -1,1 +1,0 @@
-../../../../web/src/routes/event-layout/[section]/skgo_gen.go

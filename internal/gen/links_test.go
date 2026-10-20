@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/mod/modfile"
 )
 
 // fakeApp lays out a vite root inside a Go module, with Go files in the route
@@ -93,33 +95,60 @@ func TestEveryRouteDirectoryBecomesAnImportableGoPackage(t *testing.T) {
 	}
 }
 
-// TestTheBoundaryStopsTheParentModuleWalkingIn checks the file whose absence
-// turns `go build ./...` into `invalid char '['`.
-func TestTheBoundaryStopsTheParentModuleWalkingIn(t *testing.T) {
+// TestTheModuleIgnoresTheRouteTree checks the directive whose absence turns
+// `go build ./...` into `invalid char '['`, and that adding it keeps what the
+// author wrote.
+func TestTheModuleIgnoresTheRouteTree(t *testing.T) {
 	t.Parallel()
 	cfg := fakeApp(t, "src/routes/todos/[id]")
-	tree := linksFor(t, cfg)
-	if err := tree.sync(); err != nil {
+	goMod := filepath.Join(filepath.Dir(cfg.Web), "go.mod")
+	authored := "module example.com/app\n\ngo 1.27.1\n\n// The author's own note.\nignore ./web/node_modules\n"
+	if err := os.WriteFile(goMod, []byte(authored), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := linksFor(t, cfg).sync(); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
-
-	raw, err := os.ReadFile(filepath.Join(cfg.Web, "src", "routes", "go.mod"))
+	first, err := os.ReadFile(goMod)
 	if err != nil {
-		t.Fatalf("no module boundary: %v", err)
+		t.Fatal(err)
 	}
-	if !strings.HasPrefix(string(raw), boundaryMarker) {
-		t.Fatalf("the boundary is not marked as generated:\n%s", raw)
+	f, err := modfile.Parse(goMod, first, nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(string(raw), "module example.com/app/web/src/routes\n") {
-		t.Fatalf("the boundary declares the wrong module:\n%s", raw)
+	var ignored []string
+	for _, ignore := range f.Ignore {
+		ignored = append(ignored, ignore.Path)
 	}
-	if tree.boundary == nil || !tree.boundary.Owned {
-		t.Fatalf("boundary ownership = %+v, want owned", tree.boundary)
+	if strings.Join(ignored, " ") != "./web/node_modules ./web/src/routes" {
+		t.Fatalf("ignore directives = %v, want the author's and ./web/src/routes:\n%s", ignored, first)
+	}
+	if !strings.Contains(string(first), "// The author's own note.") || f.Module.Mod.Path != "example.com/app" {
+		t.Fatalf("adding the directive lost what the author wrote:\n%s", first)
+	}
+	if _, err := os.Stat(filepath.Join(cfg.Web, "src", "routes", "go.mod")); !os.IsNotExist(err) {
+		t.Fatalf("a module boundary was written into the route tree: %v", err)
+	}
+	if err := linksFor(t, cfg).sync(); err != nil {
+		t.Fatal(err)
+	}
+	if second, err := os.ReadFile(goMod); err != nil || string(second) != string(first) {
+		t.Fatalf("a second run rewrote go.mod:\n%s", second)
+	}
+	// skgo check reads without writing, so it names the missing directive.
+	if err := os.WriteFile(goMod, []byte(authored), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := linksFor(t, cfg).verify(); err == nil || !strings.Contains(err.Error(), "need `ignore ./web/src/routes`; run skgo generate") {
+		t.Fatalf("verify without the directive: %v", err)
 	}
 }
 
-// TestAnAuthoredBoundaryIsLeftAlone: an app that wants its route tree to be a
-// real module of its own keeps it.
+// TestAnAuthoredBoundaryIsLeftAlone: skgo never deletes a route-tree go.mod
+// it did not write. Such a file makes the route root its own module, so a
+// route root holding Go files is refused by name rather than by Go's
+// "does not contain package".
 func TestAnAuthoredBoundaryIsLeftAlone(t *testing.T) {
 	t.Parallel()
 	cfg := fakeApp(t, "src/routes/todos/[id]")
@@ -129,9 +158,14 @@ func TestAnAuthoredBoundaryIsLeftAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tree := linksFor(t, cfg)
-	if err := tree.sync(); err != nil {
+	if err := linksFor(t, cfg).sync(); err != nil {
 		t.Fatalf("sync: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.Web, "src", "routes", "root.go"), []byte("package routes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := linksFor(t, cfg).sync(); err == nil || !strings.Contains(err.Error(), "web/src/routes/go.mod makes the route root its own module") {
+		t.Fatalf("sync with an authored boundary over route-root Go = %v", err)
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -139,9 +173,6 @@ func TestAnAuthoredBoundaryIsLeftAlone(t *testing.T) {
 	}
 	if string(raw) != authored {
 		t.Fatalf("skgo rewrote a boundary it did not write:\n%s", raw)
-	}
-	if tree.boundary == nil || tree.boundary.Owned {
-		t.Fatalf("boundary ownership = %+v, want not owned", tree.boundary)
 	}
 }
 
@@ -186,10 +217,10 @@ func TestTheLinkTreeRegeneratesDeterministically(t *testing.T) {
 	}
 }
 
-// TestRemovingTheLastGoFileRemovesTheBoundary: skgo tidies up after itself
-// rather than leaving a module boundary in an app that no longer has one Go
-// file under its routes.
-func TestRemovingTheLastGoFileRemovesTheBoundary(t *testing.T) {
+// TestRemovingTheLastGoFileRemovesEveryLink: skgo tidies up after itself
+// rather than leaving links in an app that no longer has one Go file under its
+// routes.
+func TestRemovingTheLastGoFileRemovesEveryLink(t *testing.T) {
 	t.Parallel()
 	cfg := fakeApp(t, "src/routes/todos/[id]")
 	if err := linksFor(t, cfg).sync(); err != nil {
@@ -201,84 +232,12 @@ func TestRemovingTheLastGoFileRemovesTheBoundary(t *testing.T) {
 	if err := linksFor(t, cfg).sync(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(cfg.Web, "src", "routes", "go.mod")); err == nil {
-		t.Fatal("the boundary outlived the Go files it existed for")
-	}
 	entries, err := os.ReadDir(filepath.Join(cfg.Out, linkRootName))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(entries) != 0 {
 		t.Fatalf("links left behind: %v", entries)
-	}
-}
-
-// TestTheRouteRootLinkHoldsOnlyLinks: a route's link is a directory
-// skgo rebuilds from the route tree on every run, so whatever an earlier run
-// left in it — polytype's CLI output once lived there, because `go:embed`
-// cannot follow a symlink — is removed rather than compiled into the package.
-func TestTheRouteRootLinkHoldsOnlyLinks(t *testing.T) {
-	t.Parallel()
-	cfg := fakeApp(t, "src/routes")
-	tree := linksFor(t, cfg)
-	if err := tree.sync(); err != nil {
-		t.Fatal(err)
-	}
-
-	linkDir := filepath.Join(cfg.Out, linkRootName, encodeLinkName("src/routes"))
-	if err := os.WriteFile(filepath.Join(linkDir, "jsonschema_gen.go"), []byte("package p\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(linkDir, "jsonschema"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(linkDir, "jsonschema", "Item.json"), []byte("{}"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := linksFor(t, cfg).sync(); err != nil {
-		t.Fatalf("sync: %v", err)
-	}
-
-	if _, err := os.Stat(filepath.Join(linkDir, "jsonschema_gen.go")); !os.IsNotExist(err) {
-		t.Fatalf("a stray Go file survived in the route root's link: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(linkDir, "jsonschema")); !os.IsNotExist(err) {
-		t.Fatalf("a stray directory survived in the route root's link: %v", err)
-	}
-	generated, err := os.ReadFile(filepath.Join(linkDir, "data.remote.go"))
-	if err != nil || string(generated) != "package p\n" {
-		t.Fatalf("the authored source was not restored: %q, %v", generated, err)
-	}
-}
-
-// TestAStaleLinkInTheRouteRootGoes: a file the developer deleted must not keep
-// a dangling link, which would stop the package compiling altogether.
-func TestAStaleLinkInTheRouteRootGoes(t *testing.T) {
-	t.Parallel()
-	cfg := fakeApp(t, "src/routes")
-	if err := linksFor(t, cfg).sync(); err != nil {
-		t.Fatal(err)
-	}
-	linkDir := filepath.Join(cfg.Out, linkRootName, encodeLinkName("src/routes"))
-	extra := filepath.Join(cfg.Web, "src", "routes", "helper.go")
-	if err := os.WriteFile(extra, []byte("package p\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := linksFor(t, cfg).sync(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Lstat(filepath.Join(linkDir, "helper.go")); err != nil {
-		t.Fatalf("a new Go file was not linked: %v", err)
-	}
-	if err := os.Remove(extra); err != nil {
-		t.Fatal(err)
-	}
-	if err := linksFor(t, cfg).sync(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Lstat(filepath.Join(linkDir, "helper.go")); err == nil {
-		t.Fatal("a link to a deleted file survived, leaving the package uncompilable")
 	}
 }
 

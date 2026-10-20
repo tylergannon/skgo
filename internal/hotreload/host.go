@@ -178,6 +178,12 @@ func CompileHost(ctx context.Context, o HostOptions) (_ *Host, err error) {
 			h.resources[prefix+string(filepath.Separator)] = true
 		}
 	}
+	// A route package embeds through its link, but the captured view holds
+	// those files at their authored addresses, which is where an edit lands.
+	for name := range h.resources {
+		path := strings.TrimSuffix(name, string(filepath.Separator))
+		h.resources[o.Inputs.PrivatePath(o.Inputs.AuthoredPath(path))+name[len(path):]] = true
+	}
 	for _, p := range executable {
 		if len(p.Errors) > 0 {
 			return nil, fmt.Errorf("load captured application %s: %v", p.PkgPath, p.Errors)

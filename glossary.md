@@ -18,7 +18,7 @@ The JavaScript engine, written in Go, that the production binary uses to run Sve
 
 ## Link package
 
-A directory under `internal/skgo/_links/<base32>` holding a relative symlink to each Go file in one route directory, where the directory name encodes the route path. Go cannot import a path containing `[slug]` or `(group)`, so the Go compiler reaches route code through the links, and `internal/skgo/links.json` maps each link back to its route directory. The links are committed; `go generate ./...` adds and removes them as route files come and go. Go skips directories that start with `_` when it expands `./...`, so a link left pointing at a renamed or deleted route never breaks that command.
+A relative symlink at `internal/skgo/_links/<base32>` to one route directory that holds Go files, where the link's name encodes the route path. Go cannot import a path containing `[slug]` or `(group)`, so the Go compiler reaches route code through the links, and `internal/skgo/links.json` maps each link back to its route directory. The link is the directory itself, so `//go:embed` in a route's Go file finds the files beside it. The links are committed; `go generate ./...` adds and removes them as route directories gain and lose Go files. Go skips directories that start with `_` when it expands `./...`, so a link left pointing at a renamed or deleted route never breaks that command.
 
 ## Locals
 

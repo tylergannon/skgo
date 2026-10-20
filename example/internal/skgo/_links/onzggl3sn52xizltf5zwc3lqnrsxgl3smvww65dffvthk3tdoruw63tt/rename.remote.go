@@ -1,1 +1,0 @@
-../../../../web/src/routes/samples/remote-functions/rename.remote.go

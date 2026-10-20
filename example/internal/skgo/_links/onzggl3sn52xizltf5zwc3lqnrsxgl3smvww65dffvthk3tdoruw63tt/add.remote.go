@@ -1,1 +1,0 @@
-../../../../web/src/routes/samples/remote-functions/add.remote.go

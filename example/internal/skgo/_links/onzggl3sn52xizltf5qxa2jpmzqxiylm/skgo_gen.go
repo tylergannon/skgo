@@ -1,1 +1,0 @@
-../../../../web/src/routes/api/fatal/skgo_gen.go

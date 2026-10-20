@@ -77,7 +77,7 @@ Most code samples in these docs are files from SKGo's example application, whose
 
 ### go.mod
 
-The application module. It requires `github.com/tylergannon/skgo`, declares `tool github.com/tylergannon/skgo/cmd/skgo` so that `go tool skgo` runs the project's own CLI version, and contains `ignore ./web/node_modules` so that `./...` does not walk into installed packages.
+The application module. It requires `github.com/tylergannon/skgo`, declares `tool github.com/tylergannon/skgo/cmd/skgo` so that `go tool skgo` runs the project's own CLI version, and ignores `./web/node_modules` and `./web/src/routes`, so that `./...` walks neither into installed packages nor into route directories, whose names Go cannot import.
 
 ### skgo.json
 
@@ -101,7 +101,7 @@ The binary's entry point. It serves `web.Build` through `NewHandler` and takes t
 
 ### internal/skgo
 
-The generated bindings package. `config.go` holds the one line you own, the `go:generate` directive that runs `skgo generate` with this project's web directory, locals package and hook package; everything else in the directory is generated. `params/` is the typed route parameters and the hook types your code imports, `prerender/` is the program that answers Kit's prerender at build time, and `skgo_gen.go` is the registration `server.go` mounts. Once a route directory holds Go files, `_links/` and `links.json` appear too: committed symlinks to your route packages' Go files, under names Go can import. The underscore keeps them out of `./...`, so renaming or deleting a route never stops `go generate ./...` from running.
+The generated bindings package. `config.go` holds the one line you own, the `go:generate` directive that runs `skgo generate` with this project's web directory, locals package and hook package; everything else in the directory is generated. `params/` is the typed route parameters and the hook types your code imports, `prerender/` is the program that answers Kit's prerender at build time, and `skgo_gen.go` is the registration `server.go` mounts. Once a route directory holds Go files, `_links/` and `links.json` appear too: committed symlinks to your route directories, under names Go can import. The underscore keeps them out of `./...`, so renaming or deleting a route never stops `go generate ./...` from running.
 
 ### web
 

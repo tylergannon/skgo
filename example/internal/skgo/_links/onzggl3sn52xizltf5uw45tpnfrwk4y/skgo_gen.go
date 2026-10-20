@@ -1,1 +1,0 @@
-../../../../web/src/routes/invoices/skgo_gen.go

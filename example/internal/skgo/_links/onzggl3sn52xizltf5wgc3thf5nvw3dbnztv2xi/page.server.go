@@ -1,1 +1,0 @@
-../../../../web/src/routes/lang/[[lang]]/page.server.go

@@ -1,1 +1,0 @@
-../../../../web/src/routes/shadow/[...rest]/server.go

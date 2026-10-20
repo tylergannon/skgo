@@ -1,1 +1,0 @@
-../../../../web/src/routes/traced/skgo_gen.go

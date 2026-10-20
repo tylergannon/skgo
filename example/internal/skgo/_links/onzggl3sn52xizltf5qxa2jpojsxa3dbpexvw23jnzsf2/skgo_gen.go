@@ -1,1 +1,0 @@
-../../../../web/src/routes/api/replay/[kind]/skgo_gen.go

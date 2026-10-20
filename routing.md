@@ -95,7 +95,7 @@ SvelteKit spells route directories `[id]`, `(marketing)` and `[...rest]`, which 
 ```go example/web/src/routes/items/[id]/item.remote.go
 ```
 
-`skgo generate` gives each such package an import path Go can spell, under `internal/skgo/_links/`, and the generated bindings use it. Your own code needs that path only when one route package calls another:
+`skgo generate` gives each such package an import path Go can spell, a link under `internal/skgo/_links/` to the directory itself, and the generated bindings use it. A `//go:embed` in that Go file finds the files beside it. Your own code needs that path only when one route package calls another:
 
 ```go example/web/src/lib/auth.remote.go
 ```

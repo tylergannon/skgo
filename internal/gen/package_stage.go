@@ -134,6 +134,16 @@ func stagePackageOverlay(cfg *packages.Config) (func(), error) {
 		for parent := filepath.Dir(rel); !branches[parent]; parent = filepath.Dir(parent) {
 			branches[parent] = true
 		}
+		// Reached through a directory symlink such as a route link, the
+		// overlay needs the directories above that symlink real as well, so
+		// the view's copy of it points at the view's copy of its target.
+		if lexical, inside := withinDir(logicalRoot, path); inside {
+			for parent := filepath.Dir(lexical); !branches[parent]; parent = filepath.Dir(parent) {
+				if real, err := filepath.EvalSymlinks(filepath.Join(physicalRoot, parent)); err == nil && real == filepath.Join(physicalRoot, parent) {
+					branches[parent] = true
+				}
+			}
+		}
 	}
 	view, err := os.MkdirTemp("", "skgo-package-view-")
 	if err != nil {

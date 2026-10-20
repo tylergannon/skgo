@@ -197,7 +197,11 @@ func installHash(web string) (string, error) {
 
 func treeHash(root string, inputs bool) (string, error) {
 	h := sha256.New()
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -239,6 +243,16 @@ func treeHash(root string, inputs bool) (string, error) {
 				return err
 			}
 			if info.IsDir() {
+				// A link into this tree, such as a generated route link, adds
+				// no bytes the walk does not read at its target.
+				target, err := os.Readlink(path)
+				if err != nil {
+					return err
+				}
+				if real, err := filepath.EvalSymlinks(path); err == nil && (real == realRoot || strings.HasPrefix(real, realRoot+string(filepath.Separator))) {
+					io.WriteString(h, rel+"\x00"+target)
+					return nil
+				}
 				return fmt.Errorf("build input directory symlink is unsupported: %s", path)
 			}
 		}

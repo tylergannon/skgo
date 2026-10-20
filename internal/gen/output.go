@@ -40,6 +40,13 @@ func newGeneration(cfg Config) (*generatedOutput, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The overlay shows Go a route's Go files at its link address, but not
+	// the files a route embeds: Go finds those only through the link itself.
+	if !cfg.ReadOnly {
+		if err := links.sync(); err != nil {
+			return nil, err
+		}
+	}
 	g := &generatedOutput{files: map[string]string{}, parts: map[string][]string{}, owned: map[string]bool{}, removed: map[string]bool{}, links: links}
 	roots := []string{filepath.Join(cfg.Web, "src"), cfg.Out}
 	localsDir := ""

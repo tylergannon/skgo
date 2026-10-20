@@ -1,1 +1,0 @@
-../../../../web/src/routes/batch/quotes.remote.go

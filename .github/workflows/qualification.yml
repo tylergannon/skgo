@@ -126,7 +126,7 @@ jobs:
           export_path: true
       - run: cd example/web && vp install --frozen-lockfile
       - name: Fresh compiler and process witnesses
-        run: go test -tags skgo_qualification -count=1 ./internal/gen ./internal/hotreload -run '^(TestTypedLoadActualParameterDependencies|TestGeneratedLanguageApplications|TestGenerationCacheFreshProcessesAndRecovery|TestATypeFromAnotherModuleCrossesTheWire|TestRetainedProjectSelectedCompilerInputs|TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost)$'
+        run: go test -tags skgo_qualification -count=1 ./internal/gen ./internal/hotreload -run '^(TestTypedLoadActualParameterDependencies|TestGeneratedLanguageApplications|TestGenerationCacheFreshProcessesAndRecovery|TestATypeFromAnotherModuleCrossesTheWire|TestRetainedProjectSelectedCompilerInputs|TestAMigratedLinkTreeCompilesRouteEmbeds|TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost)$'
       - name: Independent generator and command fixture on the real CLI
         run: go test -tags skgo_qualification -count=1 ./cmd/skgo -run '^TestCapabilityPluginActualCLI$'
       - name: Production chunk fold and prerender ownership
@@ -178,4 +178,4 @@ jobs:
           export_path: true
       - run: cd example/web && vp install --frozen-lockfile
       - name: Fresh application generation and recovery witnesses
-        run: go test -tags skgo_dev_integration -count=1 ./internal/devserver -run '^TestRealSession(NativeRecoveryAndIsolation|ApplicationGeneration)$' -v
+        run: go test -tags skgo_dev_integration -count=1 ./internal/devserver -run '^TestRealSession(NativeRecoveryAndIsolation|ApplicationGeneration|RouteEmbed)$' -v

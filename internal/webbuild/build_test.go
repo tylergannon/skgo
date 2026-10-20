@@ -198,3 +198,41 @@ func TestBuildReusesCurrentOutputsAndRebuildsChanges(t *testing.T) {
 	}
 
 }
+
+// Generated route links are directory symlinks into the app. The input hash
+// reads the route files once, where they live, and still sees their edits.
+func TestBuildInputsAcceptRouteLinks(t *testing.T) {
+	root := t.TempDir()
+	route := filepath.Join(root, "web/src/routes/server.go")
+	if err := os.MkdirAll(filepath.Dir(route), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(route, []byte("package routes"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	links := filepath.Join(root, "internal/skgo/_links")
+	if err := os.MkdirAll(links, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("../../../web/src/routes", filepath.Join(links, "onzggl3sn52xizlt")); err != nil {
+		t.Fatal(err)
+	}
+	before, err := treeHash(root, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(route, []byte("package routes\nconst Changed = true"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if after, err := treeHash(root, true); err != nil || after == before {
+		t.Fatalf("edited route reused the input hash: %v", err)
+	}
+	// A directory link that leaves the tree has bytes the walk never reads, so
+	// it must still be refused rather than hashed by its link text.
+	if err := os.Symlink(t.TempDir(), filepath.Join(links, "outside")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := treeHash(root, true); err == nil || !strings.Contains(err.Error(), "directory symlink is unsupported") {
+		t.Fatalf("a directory link outside the tree was hashed: %v", err)
+	}
+}

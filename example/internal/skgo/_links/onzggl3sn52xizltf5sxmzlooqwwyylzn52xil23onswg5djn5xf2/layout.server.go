@@ -1,1 +1,0 @@
-../../../../web/src/routes/event-layout/[section]/layout.server.go

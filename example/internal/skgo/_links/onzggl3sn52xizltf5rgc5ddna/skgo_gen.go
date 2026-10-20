@@ -1,1 +1,0 @@
-../../../../web/src/routes/batch/skgo_gen.go

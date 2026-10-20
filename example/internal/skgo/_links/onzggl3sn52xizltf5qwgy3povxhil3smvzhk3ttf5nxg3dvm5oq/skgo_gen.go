@@ -1,1 +1,0 @@
-../../../../web/src/routes/account/reruns/[slug]/skgo_gen.go

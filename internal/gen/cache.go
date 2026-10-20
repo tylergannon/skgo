@@ -189,6 +189,19 @@ func runCached(cfg Config) error {
 			return bypass(fmt.Errorf("external package driver"))
 		}
 	}
+	// Linking routes can add go.mod's ignore directive. Make that edit before
+	// go.mod's bytes key the cache, or the next run misses.
+	host, mod, err := moduleOf(cfg.Out)
+	if err != nil {
+		return err
+	}
+	links, err := newRouteLinks(cfg, host, mod)
+	if err != nil {
+		return err
+	}
+	if err := links.sync(); err != nil {
+		return err
+	}
 	path, inputHash, err := generationCachePath(cfg)
 	if err != nil {
 		return bypass(err)
