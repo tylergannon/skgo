@@ -6,7 +6,7 @@ skgo added the Go server and bindings. Production needs no Node at request time;
 ## Prerequisites
 
 - Go {{.GoVersion}} or newer for production builds; exactly Go 1.27.2 for `skgo dev`
-- Node 22.17 or newer
+- Node `^22.18.0 || ^24.11.0 || >=26.0.0`, the range VitePlus 1.3.0 accepts
 - VitePlus 1.3.0 (`vp`) and `just`
 
 The generator installed frontend dependencies and made an initial frontend
@@ -25,13 +25,11 @@ rendering, frontend HMR and native Go updates. Development currently accepts onl
 macOS ARM64 and Linux AMD64, builds the Go host without cgo, and requires Node
 while running. Other platforms and Go versions are rejected at startup.
 Compatible Go edits update the running host; changes classified as requiring a
-full rebuild replace it and may reset in-memory Go state. An observed
-native-loader failure emitted raw `R_ADDROFF` stderr while old code kept serving,
-without a normal revision/Vite error notification or automatic rebuild.
-Subsequent edit/restart recovery is unverified; see
-[issue #330](https://github.com/tylergannon/skgo/issues/330).
-Browser draft preservation and full browser-suite coverage
-of this development topology are not established. Direct SSR subfetch response
+full rebuild replace it and may reset in-memory Go state. A compatible edit the
+native loader rejects with an error also replaces the host: the terminal prints the
+loader's error, the previous host keeps serving until the replacement starts,
+and later edits continue to apply. Browser draft preservation and full
+browser-suite coverage of this development topology are not established. Direct SSR subfetch response
 cookies over the private Go socket are not automatically relayed to the page
 response. Check authentication in both development and production; see
 [skgo's development limitations](https://github.com/tylergannon/skgo#development).
@@ -56,6 +54,11 @@ Storybook and Vitest are ready to run:
 just storybook
 just test
 ```
+
+`go tool skgo check` runs the Go, skgo, Svelte, lint and formatting checks
+without editing files; it needs `goimports` and `staticcheck` on
+`PATH`. `go tool skgo mcp` serves that check and skgo's diagnostic guidance to
+an editor or agent.
 
 ## Production
 

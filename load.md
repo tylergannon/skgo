@@ -38,6 +38,8 @@ Go loads are server loads. They always run on the server, and Kit's client asks 
 
 Use a Go load for anything that touches your Go services, a database or a secret, which is almost everything; use a universal load for what has to run in the browser or return something that cannot be serialised, as Kit's own guidance says.
 
+A universal load runs wherever Kit runs it. Under [`skgo dev`](/docs/skgo/development-server) Vite renders the page with Kit in Node. In the production binary the page renders in one of the Go process's pooled goja runtimes, so the load runs there, with no Node built-ins and no global `fetch`; the `fetch` Kit passes the load reaches your Go routes in-process and its responses are replayed into the page, as Kit's own server does. On a client-side navigation the load runs in the browser. For a prerendered page it runs during `vp build`, inside Kit's build in Node; see [Prerendering](/docs/skgo/prerendering). A remote function it calls is answered by Go in every one of those places, except that Kit refuses an ordinary `query` while prerendering.
+
 ### Input
 
 A Go load's argument is the generated event for its directory: `PageRequestEvent` in a `page.server.go`, `LayoutRequestEvent` in a `layout.server.go`. Both are `skgo.RequestEvent` with three parts:

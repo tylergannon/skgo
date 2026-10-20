@@ -10,7 +10,7 @@ Prerendering works as it does in [Kit](https://svelte.dev/docs/kit/page-options#
 
 ## How prerendering runs
 
-During `vp build` the adapter compiles the Go package named by its [`prerenderPackage`](/docs/skgo/adapter#Options-prerenderPackage) option, by default the entry `skgo generate` writes, and starts it as a service. Kit's prerenderer still drives the build: it crawls from the non-dynamic routes, follows links, honours `entries`, `handleHttpError`, `handleMissingId` and `handleUnseenRoutes` as [Kit documents](https://svelte.dev/docs/kit/page-options#prerender-Troubleshooting), and asks the service whenever a page needs a Go load, an endpoint or a remote function.
+During `vp build` the adapter compiles the Go package named by its [`prerenderPackage`](/docs/skgo/adapter#Options-prerenderPackage) option, by default the entry `skgo generate` writes, and starts it as a service. Kit's prerenderer still drives the build: it crawls from the non-dynamic routes, follows links, honours `entries`, `handleHttpError`, `handleMissingId` and `handleUnseenRoutes` as [Kit documents](https://svelte.dev/docs/kit/page-options#prerender-Troubleshooting), and asks the service whenever a page needs a Go load, an endpoint or a remote function. The pages themselves, their components and their universal loads render in Kit's own server build, in Node, as they would with any Kit adapter; the binary's goja renderer is not involved.
 
 The generated service is a `package main` of its own:
 
@@ -63,7 +63,9 @@ A [prerender remote function](/docs/skgo/remote-functions#prerender) is a Go fun
 ```go example/web/src/routes/about/about.remote.go
 ```
 
-`PrerenderOptions.Dynamic` and `Validate` are not implemented, and `skgo generate` reports either as unsupported. A prerender function is therefore never run at request time: an argument the build did not render has no answer. The browser caches the results as Kit [describes](https://svelte.dev/docs/kit/remote-functions#prerender).
+`PrerenderOptions.Dynamic` and `Validate` are not implemented, and `skgo generate` reports either as unsupported. The production binary therefore never runs a prerender function at request time: an argument the build did not render has no answer. Under `skgo dev`, as in Kit's development server, Go answers each call. The browser caches the results as Kit [describes](https://svelte.dev/docs/kit/remote-functions#prerender).
+
+An ordinary query is not a substitute. Kit throws when a `query`, `query.batch` or `query.live` is called during prerendering, telling you to use `prerender` instead, because a prerendered page needs static data. The generated `*.remote.ts` keeps Kit's own wrappers, so that rule applies to a Go query called from a prerendered page's components or universal load. Read such data in the page's Go load, or declare it with `skgo.Prerender`.
 
 ### The Kit queue correction
 

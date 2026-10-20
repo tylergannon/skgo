@@ -54,8 +54,10 @@ An `entries` export in universal `+page.ts` takes precedence over Go page entrie
 
 ## trailingSlash
 
-Not yet per route. The Go server applies Kit's default of `never` to every route, and `always` to the root of an application with a `paths.base`; a request with the other form of a path gets Kit's redirect before anything is dispatched, and a prerendered page is found under either form. Per-route `trailingSlash` is [#163](https://github.com/tylergannon/skgo/issues/163).
+Export `never`, `always` or `ignore` from `+page.ts` or `+layout.ts`, as in Kit; a page inherits the option from its layouts and can override it. The Go server applies the route's option to documents, `__data.json` requests and a `server.go` handler that shares the route with a page. A request with the other form of a path gets Kit's redirect before anything is dispatched, and a prerendered page is found under either form.
+
+A route with only a `server.go` takes Kit's default of `never`. Its `+server.ts` is generated, so `skgo generate` refuses one that exports `trailingSlash` or `config` rather than discard the option.
 
 ## config
 
-`config` is for adapters that read per-route settings. SKGo's adapter defines none, so there is nothing to put there.
+`config` is for adapters that read per-route settings. SKGo's adapter defines none, so a non-empty `config` fails the build with the route named.

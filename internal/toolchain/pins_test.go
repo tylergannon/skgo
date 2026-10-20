@@ -55,9 +55,22 @@ func TestKitAndSvelteMatchExampleApplication(t *testing.T) {
 	}
 }
 
+// VitePlus is the frontend environment's binding Node constraint; the lockfile
+// records the engines range of the exact release the example installs.
+func TestNodeMatchesVitePlusEngines(t *testing.T) {
+	entry := regexp.MustCompile(`(?m)^  vite-plus@` + regexp.QuoteMeta(VitePlus) + `:\n(?:    .*\n)*?    engines: \{node: (.+)\}$`)
+	m := entry.FindStringSubmatch(read(t, "../../example/web/pnpm-lock.yaml"))
+	if m == nil {
+		t.Fatalf("example/web/pnpm-lock.yaml records no engines for vite-plus@%s", VitePlus)
+	}
+	if m[1] != Node {
+		t.Errorf("vite-plus@%s declares node %q, toolchain.Node is %q", VitePlus, m[1], Node)
+	}
+}
+
 func TestNewApplicationREADMEQuotesThePins(t *testing.T) {
 	readme := read(t, "../../internal/newapp/gofiles/README.md.tmpl")
-	for _, want := range []string{"Go " + Go, "Node " + NodeMinimum + " or newer", "VitePlus " + VitePlus} {
+	for _, want := range []string{"Go " + Go, "Node `" + Node + "`", "VitePlus " + VitePlus} {
 		if !strings.Contains(readme, want) {
 			t.Errorf("README.md.tmpl does not say %q", want)
 		}
@@ -66,7 +79,7 @@ func TestNewApplicationREADMEQuotesThePins(t *testing.T) {
 
 func TestPinsLookLikeVersions(t *testing.T) {
 	semver := regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`)
-	for name, value := range map[string]string{"Kit": Kit, "Svelte": Svelte, "Go": Go, "NodeMinimum": NodeMinimum, "VitePlus": VitePlus, "PNPM": PNPM} {
+	for name, value := range map[string]string{"Kit": Kit, "Svelte": Svelte, "Go": Go, "VitePlus": VitePlus, "PNPM": PNPM} {
 		if !semver.MatchString(value) {
 			t.Errorf("%s = %q is not a version", name, value)
 		}
