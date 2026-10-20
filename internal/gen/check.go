@@ -64,6 +64,9 @@ func Check(cfg Config) error {
 	if err := a.checkFileUsage(); err != nil {
 		return err
 	}
+	if err := a.checkFormNulls(); err != nil {
+		return err
+	}
 	if err := a.checkWireFields(); err != nil {
 		return err
 	}

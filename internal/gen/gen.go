@@ -323,6 +323,9 @@ func (p *Prepared) Run() error {
 	if err := app.checkFileUsage(); err != nil {
 		return err
 	}
+	if err := app.checkFormNulls(); err != nil {
+		return err
+	}
 	if err := app.checkWireFields(); err != nil {
 		return err
 	}

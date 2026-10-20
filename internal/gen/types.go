@@ -558,6 +558,62 @@ func (a *app) checkFileUsage() error {
 	return nil
 }
 
+// checkFormNulls refuses a polytype.Nullable anywhere in a form's argument.
+//
+// Kit builds a form's argument from the `<form>`'s controls, and its input type
+// (`RemoteFormInput`) admits no null: `convert_formdata` leaves an empty control
+// out, so the field is undefined. Left unchecked, the generated stub hands kit's
+// `form` an input with `| null` in it, and svelte-check reports a mismatched
+// overload against the generated file instead of naming the Go field.
+func (a *app) checkFormNulls() error {
+	for _, fn := range a.remotes {
+		if fn.kind != kindForm || fn.in == nil {
+			continue
+		}
+		if field := nullableField(fn.in, map[types.Type]bool{}); field != nil {
+			pos := fn.goPkg.pkg.Fset.Position(field.Pos())
+			pos.Filename = a.links.authoredPath(pos.Filename)
+			return fmt.Errorf("skgo: %s: field %s of %s's argument is a polytype.Nullable, but a form's input is never null: kit leaves an empty control out of it, so the field is undefined. Use polytype.Optional", pos, field.Name(), fn.name)
+		}
+	}
+	return nil
+}
+
+// nullableField returns the first exported wire field of t, at any depth,
+// whose type is a polytype.Nullable.
+func nullableField(t types.Type, seen map[types.Type]bool) *types.Var {
+	t = types.Unalias(t)
+	if seen[t] {
+		return nil
+	}
+	seen[t] = true
+	if inner, ok := optionalElem(t); ok {
+		return nullableField(inner, seen)
+	}
+	switch u := t.(type) {
+	case *types.Named:
+		return nullableField(u.Underlying(), seen)
+	case *types.Slice:
+		return nullableField(u.Elem(), seen)
+	case *types.Array:
+		return nullableField(u.Elem(), seen)
+	case *types.Struct:
+		for i := 0; i < u.NumFields(); i++ {
+			field := u.Field(i)
+			if !field.Exported() || reflect.StructTag(u.Tag(i)).Get("json") == "-" {
+				continue
+			}
+			if named, ok := types.Unalias(field.Type()).(*types.Named); ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == polytypePkg && named.Obj().Name() == "Nullable" {
+				return field
+			}
+			if nested := nullableField(field.Type(), seen); nested != nil {
+				return nested
+			}
+		}
+	}
+	return nil
+}
+
 // containsFile reports whether t is, or structurally contains, a skgo.File.
 func containsFile(t types.Type) bool {
 	return findFile(t, map[types.Type]bool{})

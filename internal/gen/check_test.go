@@ -39,3 +39,36 @@ func TestCheckWireAdviceUsesAuthoredDeclarations(t *testing.T) {
 		})
 	}
 }
+
+// Kit's form input admits no null: an empty control is left out, not sent as
+// null. A Nullable anywhere in a form's argument is refused at its field.
+func TestAFormArgumentCannotBeNullable(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, fields, field string
+		kind                remoteKind
+	}{
+		{"direct", "Nickname polytype.Nullable[string]", "Nickname", kindForm},
+		{"nested", "Contacts []Contact", "Phone", kindForm},
+		{"inside optional", "Primary polytype.Optional[Contact]", "Phone", kindForm},
+		{"optional instead", "Nickname polytype.Optional[string]", "", kindForm},
+		{"query argument", "Nickname polytype.Nullable[string]", "", kindQuery},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			imports := declarationImports{}
+			imports[polytypePkg] = declarationPackage(t, polytypePkg, "polytype.go", "package polytype\ntype Nullable[T any] struct{ Valid bool; Value T }\ntype Optional[T any] struct{ Present bool; Value T }\n", imports).Types
+			p := declarationPackage(t, "fixture", "wire.go", "package fixture\nimport \"github.com/tylergannon/polytype\"\ntype Contact struct{\nPhone polytype.Nullable[string]\n}\ntype Input struct{\n"+tc.fields+"\n}\n", imports)
+			a := &app{remotes: []*remoteFn{{name: "save", kind: tc.kind, in: p.Types.Scope().Lookup("Input").Type(), goPkg: &goPackage{pkg: p}}}}
+			err := a.checkFormNulls()
+			if tc.field == "" {
+				if err != nil {
+					t.Fatalf("refused an argument kit admits: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), "wire.go:") || !strings.Contains(err.Error(), "field "+tc.field+" ") || !strings.Contains(err.Error(), "polytype.Optional") {
+				t.Fatalf("missing positioned refusal of %s: %v", tc.field, err)
+			}
+		})
+	}
+}
