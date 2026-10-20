@@ -21,3 +21,5 @@ tried, best first: (1) playwright-core over CDP to `lightpanda serve`, chosen. (
 trap: Lightpanda lays nothing out (boxes are 5x5), so Playwright's click() waits forever; dispatchEvent("click") works. page.route script holding left about half the runs unhydrated on Lightpanda; an init-script MutationObserver keeps the parser's nodes instead and DOMContentLoaded snapshots Go's text. Vitest sets process.env.BASE_URL to Vite's base "/", so the origin variable is HANDOFF_ORIGIN.
 
 ci: qualification.yml downloads lightpanda-x86_64-linux 1.0.1, checks its sha256 and puts it on PATH. bob's skgo runners are Docker containers (skgo-release-runner, Ubuntu 24.04), so a host install would not reach them; the pinned binary ran inside skgo-release-runner-1.
+
+trap: CI's development job only installs example/web; nothing runs Kit's sync, so node_modules/$app/tsconfig.json is absent and Vite's Oxc transform of the test failed on example/web/tsconfig.json's `extends: "$app/tsconfig"`. Locally Vitest's transform cache (node_modules/.vite, .vitest-cache) hid it. tests/tsconfig.json gives the Node check its own config; reproduced by moving $app and both caches aside.
