@@ -27,12 +27,11 @@ It refuses any VitePlus other than the one this SKGo release pins. `skgo new`, n
 | `storybook` | Added for you if you do not choose it |
 | `playwright` | Its `webServer` becomes `cd .. && just serve`, against the application's `ORIGIN` |
 | `tailwindcss` | Its stylesheet import survives the examples starter |
-| `ai-tools` | Its MCP configuration is repointed at VitePlus; see [below](#ai-tools) |
 | `eslint`, `prettier`, `mdsvex`, `enhanced-img`, `experimental` | Untouched; they change only the frontend |
 
 ## Add-ons SKGo cannot use
 
-`skgo new` reads the project sv wrote and refuses to continue when an add-on left JavaScript server code behind: anything under `src/lib/server`, a `hooks.server.*`, or a `+server.*`, `+page.server.*` or `+layout.server.*` file. The message names the files; create the project again without that add-on.
+`skgo new` reads the project sv wrote and refuses to continue when an add-on left JavaScript server code behind: anything under `src/lib/server`, a `hooks.server.*`, or a `+server.*`, `+page.server.*` or `+layout.server.*` file. The message names the files; create the project again without that add-on. It also refuses `ai-tools`, whose agent configuration lands in `web/`; run [`go tool skgo add ai-tools`](/docs/ai/ai-tools) from the application root instead.
 
 | Add-on | What it writes |
 | --- | --- |
@@ -40,9 +39,6 @@ It refuses any VitePlus other than the one this SKGo release pins. `skgo new`, n
 | `better-auth` | `src/lib/server/auth.*`, `src/hooks.server.*` and demo `+page.server.*` routes |
 | `paraglide` | JavaScript middleware and reroute logic must be ported to Go; the generated add-on is not directly supported |
 | `sveltekit-adapter` | another adapter in place of `@skgo/sveltekit-adapter` |
+| `ai-tools` | agent configuration in `web/`, where an agent started at the application root does not read it, with launchers that run `npx` |
 
-Added later with `sv add`, they collide with what SKGo generates: an authored `src/hooks.server.*` stops `skgo generate`, which owns that file, and the server files beside a route are generated from your Go. Write the equivalent in Go instead; [Differences](/docs/skgo/differences) lists each departure. Never run `sveltekit-adapter` on an SKGo project.
-
-## ai-tools
-
-The [ai-tools](https://svelte.dev/docs/cli/ai-tools) add-on writes an MCP configuration whose command is `npx`, which does not run in an SKGo project's `web/`. `@skgo/sv` rewrites it to the project's VitePlus; [The Svelte MCP server](/docs/ai/svelte-mcp#With-skgo-new) shows the result.
+Added later with `sv add`, the server add-ons collide with what SKGo generates: an authored `src/hooks.server.*` stops `skgo generate`, which owns that file, and the server files beside a route are generated from your Go. Write the equivalent in Go instead; [Differences](/docs/skgo/differences) lists each departure. Never run `sveltekit-adapter` on an SKGo project.

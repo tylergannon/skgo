@@ -349,6 +349,10 @@ func initializeGo(p project, run func(command) error) error {
 	return nil
 }
 
+// errAITools refuses sv's ai-tools: it configures agents in the Kit project,
+// web/, while an SKGo application's agents start at its root.
+var errAITools = errors.New("skgo: sv's ai-tools add-on configures coding agents inside web/, which an agent started at the application root does not read; create the application without it, then run `go tool skgo add ai-tools` from the application root")
+
 // svCreateArgs validates the `sv create` options a developer passed through and,
 // when nobody is there to be asked, settles the ones they left open.
 func svCreateArgs(args []string, interactive bool) ([]string, error) {
@@ -358,6 +362,9 @@ func svCreateArgs(args []string, interactive bool) ([]string, error) {
 		name, value, inline := strings.Cut(args[i], "=")
 		if !strings.HasPrefix(name, "-") {
 			if variadic {
+				if name == "ai-tools" {
+					return nil, errAITools
+				}
 				continue
 			}
 			return nil, fmt.Errorf("skgo: %q names a target, but the frontend is always created in web", args[i])
@@ -384,6 +391,9 @@ func svCreateArgs(args []string, interactive bool) ([]string, error) {
 			types = true
 		case "--add":
 			addOns, variadic = true, !inline
+			if addon, _, _ := strings.Cut(value, "="); inline && addon == "ai-tools" {
+				return nil, errAITools
+			}
 		case "--no-add-ons":
 			addOns = true
 		case "--install", "--no-install":
@@ -440,6 +450,13 @@ func inspectChoices(web string) (choices, error) {
 		return choices{}, err
 	}
 	c.storybook = len(main) != 0 && pkg.Scripts["storybook"] != ""
+
+	// What sv's ai-tools writes for any client it offers.
+	for _, name := range []string{"AGENTS.md", "GEMINI.md", ".mcp.json", ".claude", ".cursor", ".gemini", ".opencode", ".vscode/mcp.json", ".github/skills", ".github/agents"} {
+		if _, err := os.Lstat(filepath.Join(web, filepath.FromSlash(name))); err == nil {
+			return choices{}, errAITools
+		}
+	}
 
 	// Every server endpoint is Go's. An add-on that wrote a JavaScript server
 	// (drizzle, better-auth, paraglide's middleware) made an application skgo

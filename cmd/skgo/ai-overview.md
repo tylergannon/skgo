@@ -9,7 +9,8 @@ order: 1010
 
 These pages cover what SKGo provides to a coding agent working on the Go half of an application. Each piece stands on its own:
 
-- [AGENTS.md](/docs/ai/agents-md): a block for your application's `AGENTS.md` or `CLAUDE.md` that tells an agent where server code goes and which commands to run
+- [ai-tools](/docs/ai/ai-tools): `go tool skgo add ai-tools`, which writes the instructions and registers both MCP servers at the application root
+- [AGENTS.md](/docs/ai/agents-md): the instructions that tell an agent where server code goes and which commands to run
 - [MCP server](/docs/ai/mcp): `skgo mcp`, a local server with two [tools](/docs/ai/tools), one that runs `skgo check` and one that returns the repair guidance behind SKGo's diagnostic codes
 - [Skills](/docs/ai/skills): the SKGo and polytype skills, which an agent loads when it writes SKGo code or Go types that cross the wire
 - [JSON output](/docs/ai/json-output): the reports `skgo check`, `skgo advice` and `skgo buildinfo` print with `--json`, for agents and CI
@@ -21,4 +22,4 @@ The MCP server serves checks and guidance, not documentation. For documentation,
 
 The frontend of an SKGo application is ordinary SvelteKit, so the [Svelte AI tools](https://svelte.dev/docs/ai/overview) apply to components, runes, routing and client code as they do in any Kit project. Use both: the Svelte tools for `.svelte` files, the SKGo tools for Go and for checking the whole project.
 
-The Svelte tools' default setup starts the Svelte MCP server with `npx`, which does not run in an SKGo project's `web/`. [The Svelte MCP server](/docs/ai/svelte-mcp) shows the VitePlus form.
+The Svelte tools' default setup starts the Svelte MCP server with `npx`, which does not run in an SKGo project's `web/`. [The Svelte MCP server](/docs/ai/svelte-mcp) shows the VitePlus form, which the ai-tools add-on registers.

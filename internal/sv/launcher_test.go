@@ -9,7 +9,7 @@ import (
 
 // Load the shipped bundle unchanged and run its bundled sv-utils transforms
 // against fixture files. Only sv's registration surface is doubled here.
-func TestGeneratedLaunchersUseProjectLocalVitePlusAndPreserveAuthoredConfig(t *testing.T) {
+func TestPlaywrightLauncherServesTheGoBinaryAndPreservesAuthoredConfig(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatalf("node is required to load the published native add-on: %v", err)
@@ -35,15 +35,10 @@ func TestGeneratedLaunchersUseProjectLocalVitePlusAndPreserveAuthoredConfig(t *t
 		t.Fatal(err)
 	}
 	for file, body := range map[string]string{
-		"package.json":          `{"name":"fixture","scripts":{},"devDependencies":{}}`,
-		".gitignore":            "\n/build\n",
-		"vite.config.ts":        `import { defineConfig } from 'vite'; export default defineConfig({ plugins: [] });`,
-		"playwright.config.ts":  `import { defineConfig } from "@playwright/test"; export default defineConfig({ webServer: { command: "npm run build && npm run preview", port: 4173, timeout: 60000 }, testMatch: "**/*.e2e.{ts,js}", reporter: "json" });`,
-		".mcp.json":             `{"mcpServers":{"svelte":{"type":"stdio","command":"npx","env":{"TOKEN":"keep"},"args":["-y","@sveltejs/mcp"]},"other":{"command":"custom"}}}`,
-		".cursor/mcp.json":      `{"mcpServers":{"svelte":{"command":"custom-svelte","args":["serve"]}}}`,
-		".gemini/settings.json": `{"mcpServers":{"svelte":{"url":"https://mcp.svelte.dev/mcp","type":"http"}}}`,
-		".vscode/mcp.json":      `{"servers":{"svelte":{"type":"stdio","command":"npx","args":["-y","@sveltejs/mcp"]}}}`,
-		".claude/skills/svelte-code-writer/SKILL.md": "Custom instructions mentioning npx @sveltejs/mcp are authored.\n",
+		"package.json":         `{"name":"fixture","scripts":{},"devDependencies":{}}`,
+		".gitignore":           "\n/build\n",
+		"vite.config.ts":       `import { defineConfig } from 'vite'; export default defineConfig({ plugins: [] });`,
+		"playwright.config.ts": `import { defineConfig } from "@playwright/test"; export default defineConfig({ webServer: { command: "npm run build && npm run preview", port: 4173, timeout: 60000 }, testMatch: "**/*.e2e.{ts,js}", reporter: "json" });`,
 	} {
 		name := filepath.Join(root, "web", file)
 		if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
@@ -60,7 +55,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.cwd();
 const addon = (await import(pathToFileURL(path.join(root, 'sv-addon.js')))).default;
-const files = new Set(['package.json','.gitignore','vite.config.ts','playwright.config.ts','.mcp.json','.cursor/mcp.json','.gemini/settings.json','.vscode/mcp.json','.claude/skills/svelte-code-writer/SKILL.md']);
+const files = new Set(['package.json','.gitignore','vite.config.ts','playwright.config.ts']);
 const sv = {
   devDependency() {},
   file(name, transform) {
@@ -83,16 +78,6 @@ assert.doesNotMatch(config, /port:\s*4173/);
 assert.match(config, /timeout:\s*60000/);
 assert.match(config, /testMatch:\s*["']\*\*\/\*\.e2e\.\{ts,js\}["']/);
 assert.match(config, /reporter:\s*["']json["']/);
-let claude = JSON.parse(fs.readFileSync(path.join(root,'web/.mcp.json'),'utf8'));
-assert.deepEqual(claude.mcpServers.svelte.args, ['dlx','@sveltejs/mcp']);
-assert.equal(claude.mcpServers.svelte.command, './node_modules/.bin/vp');
-assert.deepEqual(claude.mcpServers.svelte.env, { TOKEN: 'keep' });
-assert.deepEqual(claude.mcpServers.other, { command: 'custom' });
-assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root,'web/.vscode/mcp.json'),'utf8')).servers.svelte.args, ['dlx','@sveltejs/mcp']);
-assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root,'web/.cursor/mcp.json'),'utf8')).mcpServers.svelte.args, ['serve']);
-assert.equal(JSON.parse(fs.readFileSync(path.join(root,'web/.cursor/mcp.json'),'utf8')).mcpServers.svelte.command, 'custom-svelte');
-assert.equal(JSON.parse(fs.readFileSync(path.join(root,'web/.gemini/settings.json'),'utf8')).mcpServers.svelte.url, 'https://mcp.svelte.dev/mcp');
-assert.equal(fs.readFileSync(path.join(root,'web/.claude/skills/svelte-code-writer/SKILL.md'),'utf8'), 'Custom instructions mentioning npx @sveltejs/mcp are authored.\n');
 const before = new Map([...files].map(name => [name, fs.readFileSync(path.join(root,'web',name),'utf8')]));
 apply();
 for (const [name, body] of before) assert.equal(fs.readFileSync(path.join(root,'web',name),'utf8'), body, name + ' changed on a second add');

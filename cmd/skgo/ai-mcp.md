@@ -19,7 +19,7 @@ The server speaks newline-delimited JSON-RPC on standard input and output, takes
 
 ### Claude Code
 
-From the application root:
+[`go tool skgo add ai-tools`](/docs/ai/ai-tools) registers the server in the application root's `.mcp.json`. To register it yourself, from the application root:
 
 ```sh
 claude mcp add -t stdio -s project skgo -- go tool skgo mcp

@@ -10,44 +10,27 @@ The [Svelte MCP server](https://svelte.dev/docs/ai/mcp) works in an SKGo applica
 
 Svelte's [local setup](https://svelte.dev/docs/ai/local-setup) starts the server with `npx -y @sveltejs/mcp`. That does not run inside an SKGo project's `web/`, whose `package.json` declares pnpm as its package manager in `devEngines`. Start it through the project's VitePlus instead: `vp dlx @sveltejs/mcp`.
 
-## With `skgo new`
+## With the ai-tools add-on
 
-Choose the `ai-tools` add-on when `skgo new` asks for sv's add-ons, or name it after `--`:
-
-```sh
-skgo new myapp -- --add ai-tools="ide:claude-code+delivery:tools+tools:mcp,svelte-code-writer+mcpSetup:local"
-```
-
-sv writes the add-on's files in `web/`, the Kit project. SKGo's add-on, `@skgo/sv`, runs afterwards and rewrites the parts that would call `npx`:
-
-- In `.mcp.json`, `.cursor/mcp.json`, `.gemini/settings.json` and `.vscode/mcp.json`, a `svelte` server whose command is exactly `npx -y @sveltejs/mcp` becomes the following, shown here in `web/.mcp.json`. Its other keys, such as `env`, are kept.
+[`go tool skgo add ai-tools`](/docs/ai/ai-tools), run from the application root, registers the server for Claude Code in the root's `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "svelte": {
       "type": "stdio",
-      "command": "./node_modules/.bin/vp",
-      "env": {},
-      "args": ["dlx", "@sveltejs/mcp"]
+      "command": "web/node_modules/.bin/vp",
+      "args": ["-C", "web", "dlx", "@sveltejs/mcp"]
     }
   }
 }
 ```
 
-- In the `svelte-code-writer` skill and the `svelte-file-editor` agent under `.claude/`, `.cursor/`, `.gemini/` and `.github/`, `npx @sveltejs/mcp` becomes `./node_modules/.bin/vp dlx @sveltejs/mcp`.
+`-C web` runs the frontend's VitePlus against `web/`, so the server is fetched with the package manager `web/package.json` declares. The command exists once `vp install` has run in `web/`.
 
-The rewrite touches only what sv generated. A remote (`url`) entry, a server with another command, other servers, and skill or agent files whose contents differ from sv's output are left as they are. The plugin settings that `delivery:plugin` writes are not changed.
+For other clients, use `web/node_modules/.bin/vp` as the command and `-C web dlx @sveltejs/mcp` as the arguments, in the shapes Svelte's [local setup](https://svelte.dev/docs/ai/local-setup) shows, with the application root as the working directory.
 
-## From the application root
-
-The files above are read by a client opened in `web/`. For a client opened at the application root, register the Svelte server there with the project's `vp`:
-
-```sh
-claude mcp add -t stdio -s project svelte -- web/node_modules/.bin/vp dlx @sveltejs/mcp
-```
-
-For other clients, use `web/node_modules/.bin/vp` as the command and `dlx @sveltejs/mcp` as the arguments, in the shapes Svelte's [local setup](https://svelte.dev/docs/ai/local-setup) shows. This also works in a project created without the add-on, once `vp install` has run.
+`skgo new` refuses sv's own `ai-tools` add-on, which writes its configuration into `web/` and starts the server with `npx`.
 
 ## Which documentation applies
 

@@ -31,4 +31,4 @@ SKGo generates TypeScript types and codecs for wire types through [polytype](htt
 
 ## Svelte skills
 
-Svelte's [skills](https://svelte.dev/docs/ai/skills) still apply to `.svelte` files and `.svelte.ts` modules. The `svelte-code-writer` skill runs the `@sveltejs/mcp` CLI with `npx`, which does not run in an SKGo project's `web/`; when the `ai-tools` add-on installs it during `skgo new`, SKGo rewrites those commands to VitePlus, as [The Svelte MCP server](/docs/ai/svelte-mcp#With-skgo-new) describes.
+Svelte's [skills](https://svelte.dev/docs/ai/skills) still apply to `.svelte` files and `.svelte.ts` modules. The `svelte-code-writer` skill runs the `@sveltejs/mcp` CLI with `npx`, which does not run in an SKGo project's `web/`; the `svelte` MCP server that [the ai-tools add-on](/docs/ai/ai-tools) registers serves the same documentation and autofixer through VitePlus.
