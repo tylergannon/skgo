@@ -1,6 +1,5 @@
 // Package site serves the remote functions of the route tree's own root
-// directory. That directory holds the generated module boundary, which its
-// link package leaves out.
+// directory.
 package site
 
 import (

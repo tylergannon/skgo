@@ -77,7 +77,7 @@ See [Cookies](/docs/skgo/cookies).
 
 - **Production renderer.** Pages render on goja: no Node built-ins, no `crypto`, `FormData` or global `fetch`, nothing loaded at run time, and one render per runtime at a time. See [UI libraries](/docs/skgo/integrations#UI-libraries).
 - **Source maps.** The production bundle has none, so render stack traces point at `ssr/bundle.js`.
-- **`read` from `$app/server`** is not resolved in the Go renderer ([#172](https://github.com/tylergannon/skgo/issues/172)). Read files in Go.
+- **`read` from `$app/server`** is not a skgo API: Kit lets only server-only modules import `$app/server`, and in skgo those are Go. Embed the file with `//go:embed` in the route's Go file and serve it with `net/http`. Go does not learn the hashed URLs Vite gives imported assets.
 
 ## Prerendering
 

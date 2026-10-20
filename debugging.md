@@ -19,7 +19,7 @@ dlv exec ./bin/my-app
 
 Tests run the same way with `dlv test` on their package; a test that serves requests through `NewHandler` exercises the production stack, rendering included.
 
-Go compiles route packages through the generated links under `internal/skgo/_links/`, not from `web/src/routes/`, because Kit's directory names are not legal import paths. Each link is a symlink to the file you wrote, but Go records the link's path, so a debugger names `internal/skgo/_links/<base32>/page.server.go` where you expect `web/src/routes/blog/page.server.go`; set breakpoints at the link path if your debugger does not resolve symlinks. `internal/skgo/links.json` maps each link directory to its route directory. Edits need no regeneration; a new Go file in a route directory needs `go generate ./...` before it is linked.
+Go compiles route packages through the generated links under `internal/skgo/_links/`, not from `web/src/routes/`, because Kit's directory names are not legal import paths. Each link is a symlink to the route directory you wrote, but Go records the link's path, so a debugger names `internal/skgo/_links/<base32>/page.server.go` where you expect `web/src/routes/blog/page.server.go`; set breakpoints at the link path if your debugger does not resolve symlinks. `internal/skgo/links.json` maps each link to its route directory. Edits need no regeneration; the first Go file in a route directory needs `go generate ./...` before it is linked.
 
 ## Svelte code in the browser
 

@@ -147,8 +147,8 @@ func watchCount(ctx context.Context, yield func(int) error) error {
 //
 // It exists because the sign-in form is in the root layout, in src/lib, and a
 // command there cannot name a query in here: SvelteKit route directories are
-// spelled `[id]` and `(marketing)`, so skgo puts the whole route tree behind
-// its own Go module boundary. What this package is willing to re-run on a
+// spelled `[id]` and `(marketing)`, which no Go import path can spell. What
+// this package is willing to re-run on a
 // client's say-so is this package's decision anyway, which is what the export
 // says out loud.
 func AcceptSessionRefreshes(ctx context.Context) error {

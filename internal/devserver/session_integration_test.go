@@ -142,6 +142,9 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool,
 		if mode == "boundary-error" {
 			setupBoundaryError(t, write)
 		}
+		if mode == "embed" {
+			setupRouteEmbed(write)
+		}
 		if withGenerator {
 			write("generator.json", `{"package":"./tool"}`)
 			write("producer.txt", "literal-generated-101")
@@ -383,6 +386,10 @@ func waitForReadiness() error {
 	}
 	if mode == "boundary-error" {
 		exerciseBoundaryError(t, alpha.origin, alpha.log)
+		return
+	}
+	if mode == "embed" {
+		exerciseRouteEmbed(t, alpha.app, alpha.origin, alpha.log)
 		return
 	}
 	if withHandoff {

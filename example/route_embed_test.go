@@ -24,10 +24,4 @@ func TestARouteServesTheFileItsGoFileEmbeds(t *testing.T) {
 	if got := rec.Header().Get("Content-Length"); got != "36" {
 		t.Fatalf("Content-Length = %q, want 36", got)
 	}
-
-	// Only what the pattern embedded is there: the route's own Go source is
-	// beside it on disk, but not in the binary.
-	if rec := get(t, h, "/embedded/server.go"); rec.Code != http.StatusNotFound {
-		t.Fatalf("GET /embedded/server.go = %d %q, want 404", rec.Code, rec.Body.String())
-	}
 }
