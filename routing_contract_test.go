@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -57,9 +58,9 @@ func TestSharedRoutingContracts(t *testing.T) {
 			}
 			command := NewRemote(RemoteSpec{Kind: KindCommand, Module: testModule, Name: "routingReceipt", CallerMatchers: matchers, Call: func(ctx context.Context, _ Call) (any, error) {
 				remoteCalls++
-				id, values := RemoteCallerValues(EventFrom(ctx))
-				if id != fixture.id {
-					return nil, fmt.Errorf("wrong route %q", id)
+				id, declared, values := RemoteCallerValues(EventFrom(ctx))
+				if id != fixture.id || !slices.Equal(declared, fixture.params) {
+					return nil, fmt.Errorf("wrong route %q %v", id, declared)
 				}
 				return routingReceipt(values), nil
 			}})

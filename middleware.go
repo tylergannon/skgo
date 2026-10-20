@@ -26,6 +26,7 @@ type hookState struct {
 	url       *url.URL
 	routeID   string
 	params    map[string]string
+	declared  []ManifestParam
 	converted map[string]any
 	routing   bool
 	isData    bool
@@ -241,7 +242,7 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 		_, buildRequest := r.Context().Value(prerenderMatchKey{}).(prerenderRequestInput)
 		if !skipRoute && !buildRequest {
 			if route, params, converted, ok := cfg.matchRoute(routePath); ok {
-				state.converted = converted
+				state.converted, state.declared = converted, route.params
 				state.routeID, state.params, hasPage = route.id, params, route.hasPage
 				if !isData && !isRemote {
 					if location, redirect := routeNormalization(pageURL.EscapedPath(), base, route.trailingSlash, pageURL); redirect {
@@ -261,7 +262,7 @@ func (m Middleware) intercept(cfg HandleConfig, next http.Handler, bind func(con
 					pageURL = logical
 				}
 			}
-			state.routeID = build.RouteID
+			state.routeID, state.declared = build.RouteID, build.RouteParams
 			state.params, state.converted = build.Params, nil
 			if build.RoutePattern != "" {
 				pattern, compileErr := regexp.Compile(kitPattern(build.RoutePattern))

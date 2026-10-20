@@ -198,7 +198,7 @@ type BatchFunc func(ctx context.Context, calls []Call) ([]any, error)
 type RemoteSpec struct {
 	// CallerMatchers are generated for commands and forms, including loadless routes.
 	CallerMatchers CallerMatchers
-	CallerRoutes   CallerRoutes
+	CallerParams   CallerParams
 	// Kind is which of kit's remote-function kinds this publishes.
 	Kind Kind
 	// Module is the vite-root-relative path of the `.remote.ts` kit compiles,
@@ -237,7 +237,7 @@ type RemoteSpec struct {
 // Query, Command, LiveQuery, BatchQuery and Form.
 type Remote struct {
 	callerMatchers CallerMatchers
-	callerRoutes   CallerRoutes
+	callerParams   CallerParams
 	module         string
 	name           string
 	hash           string
@@ -281,7 +281,7 @@ func NewRemote(spec RemoteSpec) *Remote {
 	hash := kithash.Kit(spec.Module)
 	r := &Remote{
 		callerMatchers: spec.CallerMatchers,
-		callerRoutes:   spec.CallerRoutes,
+		callerParams:   spec.CallerParams,
 		module:         spec.Module,
 		name:           spec.Name,
 		hash:           hash,
@@ -609,8 +609,8 @@ func NewRemotes(cfg RemoteConfig, fns ...*Remote) (*Remotes, error) {
 			rs.callers.matchers[name] = matcher
 		}
 		if fn.kind == KindCommand || fn.kind == KindForm {
-			if fn.callerRoutes != nil {
-				rs.callers.generated = append(rs.callers.generated, fn.callerRoutes)
+			if fn.callerParams != nil {
+				rs.callers.generated = append(rs.callers.generated, fn.callerParams)
 			} else if cfg.manifest {
 				return nil, callerManifestDrift("remote %s has no generated caller metadata; regenerate and rebuild Go", fn.id)
 			}

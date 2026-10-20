@@ -349,7 +349,7 @@ func (s *SSR) serve(w http.ResponseWriter, r *http.Request, urlPath string) bool
 		} else {
 			// Native forms use the page route already selected above, not the
 			// optional caller headers of an enhanced remote request.
-			caller := &remoteCaller{url: req.url, routeID: route.id, values: converted}
+			caller := &remoteCaller{url: req.url, routeID: route.id, params: route.params, values: converted}
 			submitted, redirect, e := s.runFormAction(r.WithContext(callerContext(r.Context(), caller)), id)
 			if redirect != nil {
 				s.writeRedirect(w, nil, redirect.status(), redirect.Location)

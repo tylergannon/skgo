@@ -675,7 +675,7 @@ func (a *app) writeAppBindings() error {
 		fmt.Fprintf(&b, "\t\t\tFn:     %s,\n", a.published(fn.goPkg, fn.name))
 		if fn.kind == kindCommand || fn.kind == kindForm {
 			b.WriteString("CallerMatchers:skgoCallerMatchers(),\n")
-			b.WriteString("CallerRoutes:skgoSharedParams.SkgoCallerRoutes(),\n")
+			b.WriteString("CallerParams:skgoSharedParams.SkgoCallerParams,\n")
 		}
 		switch fn.kind {
 		case kindLive:
