@@ -225,6 +225,8 @@ jobs:
         with:
           working_directory: example
           export_path: true
+          # Bob keeps its tools; a cache restore would download them again.
+          cache: false
       - name: Install the add-on's build-only dependencies
         working-directory: internal/sv
         run: vp install --frozen-lockfile

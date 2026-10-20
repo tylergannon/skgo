@@ -45,6 +45,9 @@ jobs:
         with:
           working_directory: example
           export_path: true
+          # Self-hosted runners keep their tools. Restoring the cache there
+          # downloads hundreds of megabytes they already have.
+          cache: ${{ runner.environment == 'github-hosted' }}
       - uses: extractions/setup-just@v4
       - name: HEAD uses a Conventional Commit subject
         run: go run ./cmd/skgo-release-version --check HEAD
@@ -122,6 +125,7 @@ jobs:
         with:
           working_directory: example
           export_path: false
+          cache: ${{ runner.environment == 'github-hosted' }}
 
       - if: steps.changed.outputs.run == 'true'
         run: mise -C example/web exec -- vp install --frozen-lockfile

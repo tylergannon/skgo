@@ -1,8 +1,13 @@
+# skgo's self-hosted Linux runners on bob. deploy-bob-runners.sh builds and
+# replaces them; the volumes keep Go modules, build caches, pnpm's store and
+# each runner's work directory across replacements.
+name: skgo-release
+
 x-runner: &runner
   image: skgo-release-runner:2.338.0
   build:
-    context: .
-    dockerfile: bob-runner.Dockerfile
+    context: ../..
+    dockerfile: scripts/ci/bob-runner.Dockerfile
   restart: unless-stopped
   cpus: 8
   mem_limit: 16g
