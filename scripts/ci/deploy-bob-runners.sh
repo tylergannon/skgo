@@ -23,8 +23,9 @@ for n in 1 2; do
 	done
 	token=$(gh api -X POST "repos/$repo/actions/runners/registration-token" --jq .token)
 	ssh bob "$compose up -d --force-recreate --no-deps runner-$n \
-		&& docker exec skgo-release-runner-$n ./config.sh --unattended --replace \
+		&& { docker exec skgo-release-runner-$n ./config.sh --unattended --replace \
 			--url https://github.com/$repo --token $token --name $name --labels skgo-release \
+			> $dir/register-$n.log 2>&1 || { cat $dir/register-$n.log; exit 1; }; } \
 		&& docker exec skgo-release-runner-$n touch .skgo-start"
 	for _ in $(seq 60); do
 		[ "$(runner "$name" status)" = online ] && break
