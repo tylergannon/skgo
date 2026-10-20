@@ -1,4 +1,4 @@
-import type { Transport } from "@sveltejs/kit/hooks";
+import type { Transport } from "./transport";
 
 /**
  * Money is the browser's half of the domain type. It is a class, not an
@@ -29,13 +29,17 @@ export class Money {
  * `encode` returns `false` for anything that is not a Money, which is how kit
  * asks "is this yours?". What it returns for a match is what the Go decoder
  * receives when a Money travels the other way, in a remote function's argument.
+ *
+ * `satisfies Transport` checks all of that against Go: `skgo generate` writes
+ * `src/transport.ts` from `src/hooks.go`, so a key or field that drifts on
+ * either side is a type error here rather than a broken page.
  */
-export const transport: Transport = {
+export const transport = {
   Money: {
     encode: (value) => value instanceof Money && { cents: value.cents },
-    decode: (data: { cents: number }) => new Money(data.cents),
+    decode: (data) => new Money(data.cents),
   },
-};
+} satisfies Transport;
 
 // Kit owns invocation and client caching; Go owns the universal hook body.
 export { reroute } from "@skgo/sveltekit-adapter/reroute";

@@ -110,7 +110,7 @@ Keep the hook pure and idempotent. Kit caches each browser result by full URL an
 
 ## transport
 
-Kit's [`transport`](https://svelte.dev/docs/kit/hooks#Universal-hooks-transport) hook stays in `src/hooks.ts`. Each key also needs a `skgo.Transported` marker in `src/hooks.go` naming the Go type that travels under it; [Transport](/docs/skgo/transport#Transport) shows both halves.
+Kit's [`transport`](https://svelte.dev/docs/kit/hooks#Universal-hooks-transport) hook stays in `src/hooks.ts`. Each key also needs a `skgo.Transported` marker in `src/hooks.go` naming the Go type that travels under it. Declare the hook `satisfies Transport`, importing `Transport` from the `src/transport.ts` that `skgo generate` writes, so TypeScript checks both halves agree; [Transport](/docs/skgo/transport#Transport) shows them.
 
 ## Further reading
 

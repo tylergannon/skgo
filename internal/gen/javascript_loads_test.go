@@ -102,6 +102,12 @@ func testJavaScriptTransportedLoad(t *testing.T, root string) {
 			t.Errorf("the JavaScript load stub does not carry:\n%s\n---\n%s", want, stub)
 		}
 	}
+	if got := readFixtureFile(t, root, "app/web/src/transport.js"); !strings.Contains(got, "Transporter<Money, { cents: number }>") {
+		t.Errorf("src/transport.js does not state the Go hook:\n%s", got)
+	}
+	if _, err := os.Stat(filepath.Join(root, "app/web/src/transport.ts")); !os.IsNotExist(err) {
+		t.Errorf("src/transport.ts survived the switch to JavaScript: %v", err)
+	}
 }
 
 func testTypeScriptLoadStub(t *testing.T, root string) {
