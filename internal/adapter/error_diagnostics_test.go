@@ -37,6 +37,20 @@ import {pathToFileURL} from 'node:url';
 const {requestError}=await import(pathToFileURL(process.argv[1]));
 const logged=[];console.error=(...parts)=>logged.push(parts.join(' '));
 const event={platform:{skgoErrorHook:true,skgoRequestHandle:'literal-handle-397'}};
+// Kit's default handler ends with String(e) for whatever the cause chain left
+// over, so a thrown string or object, or a string cause, is still printed.
+logged.length=0;
+await requestError({event,kind:'unknown',error:'literal-string-thrown-397',issues:undefined});
+assert.deepEqual(logged,['literal-string-thrown-397']);
+logged.length=0;
+await requestError({event,kind:'unknown',error:{toString(){return 'literal-object-thrown-397'}},issues:undefined});
+assert.deepEqual(logged,['literal-object-thrown-397']);
+logged.length=0;
+await requestError({event,kind:'unknown',error:new Error('literal-outer-397',{cause:'literal-string-cause-397'}),issues:undefined});
+assert.equal(logged.length,2);
+assert.match(logged[0],/^Error: literal-outer-397\n/);
+assert.equal(logged[1],'literal-string-cause-397');
+logged.length=0;
 function render(){throw new Error('Unknown type Money: literal-render-failure-397');}
 let thrown;try{render();}catch(error){thrown=error;}
 const handled=await requestError({event,kind:'unknown',error:thrown,issues:undefined});
@@ -93,6 +107,20 @@ source='import {bridgeFetch,incomingResponse} from '+JSON.stringify(pathToFileUR
 const {handleGoError}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const logged=[];console.error=(...parts)=>logged.push(parts.join(' '));
 const event={locals:{},platform:{skgoRequestHandle:'literal-handle-397'},request:new Request('http://app.test/pricing'),url:new URL('http://app.test/pricing'),route:{id:'/pricing'}};
+// Kit's default handler ends with String(e) for whatever the cause chain left
+// over, so a thrown string or object, or a string cause, is still printed.
+logged.length=0;
+await handleGoError({event,kind:'unknown',error:'literal-string-thrown-397'});
+assert.deepEqual(logged,['literal-string-thrown-397']);
+logged.length=0;
+await handleGoError({event,kind:'unknown',error:{toString(){return 'literal-object-thrown-397'}}});
+assert.deepEqual(logged,['literal-object-thrown-397']);
+logged.length=0;
+await handleGoError({event,kind:'unknown',error:new Error('literal-outer-397',{cause:'literal-string-cause-397'})});
+assert.equal(logged.length,2);
+assert.match(logged[0],/^Error: literal-outer-397\n/);
+assert.equal(logged[1],'literal-string-cause-397');
+logged.length=0;
 function render(){throw new Error('Unknown type Money: literal-render-failure-397');}
 let thrown;try{render();}catch(error){thrown=error;}
 const handled=await handleGoError({event,kind:'unknown',error:thrown});

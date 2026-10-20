@@ -971,7 +971,7 @@ export async function requestFetch({ event, request, fetch }) {
 // too, because the Go hook only changes what the visitor sees.
 export function requestError({ event, kind, error, issues }) {
   if (kind === "validation") console.error("Remote function schema validation failed:", issues);
-  if (kind === "unknown") {let cause=error;while(cause instanceof Error){if(cause.stack)console.error(cause.stack);cause=cause.cause;}}
+  if (kind === "unknown") {let cause=error;while(cause instanceof Error){if(cause.stack)console.error(cause.stack);cause=cause.cause;}if(cause)console.error(String(cause));}
   if (!event.platform?.skgoErrorHook) return;
   return invokeService({
     kind: "error", handle: event.platform?.skgoRequestHandle,
