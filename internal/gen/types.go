@@ -367,6 +367,18 @@ func (a *app) generateTypes() error {
 			}
 		}
 	}
+	for _, entry := range a.transportKeyOrder() {
+		payload, err := a.transportPayload(entry.named)
+		if err != nil {
+			return fmt.Errorf("skgo: %s: %s cannot be transported under %q: %v", entry.pos, entry.named, entry.key, err)
+		}
+		for _, dep := range payload.deps {
+			if err := a.declare(dep); err != nil {
+				return err
+			}
+		}
+		entry.payload = payload
+	}
 
 	for _, set := range a.sortedTypeSets() {
 		sort.Strings(set.names)

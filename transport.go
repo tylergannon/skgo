@@ -264,10 +264,12 @@ func (rs *Remotes) parsePayload(payload string) (Call, error) {
 //			encode: (v) => v instanceof Money && { cents: v.cents },
 //			decode: (data) => new Money(data.cents)
 //		}
-//	};
+//	} satisfies Transport;
 //
 // `skgo generate` reads the marker, projects T's shape with polytype, and emits
-// the Go encoder and strict decoder that answer the browser's pair. Like every
-// other skgo marker it is a declaration and not a call: it does nothing at run
-// time.
+// the Go encoder and strict decoder that answer the browser's pair. It also
+// writes `src/transport.ts`, whose Transport type states every key and payload
+// Go declares, and which fails to type-check until `src/hooks.ts` exports a
+// `transport` that agrees with them. Like every other skgo marker it is a
+// declaration and not a call: it does nothing at run time.
 func Transported[T any](key string) Marker { _ = key; return Marker{} }

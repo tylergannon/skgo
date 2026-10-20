@@ -34,6 +34,9 @@ var _=skgo.Load(page)
 		t.Fatal(err)
 	}
 	t.Run("TypeScriptLoadStub", func(t *testing.T) { testTypeScriptLoadStub(t, root) })
+	if got := readFixtureFile(t, root, "app/web/src/transport.ts"); !strings.Contains(got, "Transporter<Money, { cents: number }>") || !strings.Contains(got, "Satisfies<typeof transport>") {
+		t.Fatalf("src/transport.ts does not state and check the Go hook:\n%s", got)
+	}
 	for _, name := range []string{"data.remote.ts", "types.ts"} {
 		if _, err := os.Stat(filepath.Join(cfg.Web, "src/data", name)); err != nil {
 			t.Fatalf("missing TypeScript prerequisite %s: %v", name, err)

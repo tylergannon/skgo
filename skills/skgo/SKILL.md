@@ -160,6 +160,10 @@ section for the current evidence boundary.
   is called during the prerender render; data the prerendered document needs
   comes from Go loads or `skgo.Prerender`, whose `Inputs` lists extra arguments and whose `Dynamic`
   and `Validate` options generation refuses.
+- A `skgo.Transported` marker in `src/hooks.go` makes `skgo generate` write
+  `src/transport.ts`. Declare the hook in `src/hooks.ts` as
+  `export const transport = { ... } satisfies Transport`, importing `Transport`
+  from `./transport`; Kit's own `Transport` annotation fails `skgo check`.
 - Classic page actions are Go declarations in `page.server.go`; use the
   example app's actions routes as the reference. Remote function signatures
   cannot use pointer, map or interface types; use value types, named structs,

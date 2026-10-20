@@ -184,6 +184,9 @@ type transportedType struct {
 	// goPkg is the package src/hooks.go lives in.
 	goPkg *goPackage
 	pos   token.Position
+	// payload is the TypeScript for what Go's encoder produces: what the
+	// browser's `decode` receives and its `encode` has to return.
+	payload tsType
 }
 
 type namedTypes struct {

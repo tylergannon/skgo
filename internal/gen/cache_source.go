@@ -418,7 +418,7 @@ func cacheOwned(cfg Config, path string, data []byte) bool {
 		}
 	}
 	if generatedArtifact(data) && withinTree(filepath.Join(cfg.Web, "src"), path) {
-		return generatedModuleName(filepath.Base(path)) || strings.HasPrefix(filepath.Base(path), "hooks.server.") || filepath.Base(path) == "env.ts" || filepath.Base(path) == "env.js"
+		return generatedModuleName(filepath.Base(path)) || strings.HasPrefix(filepath.Base(path), "hooks.server.") || filepath.Base(path) == "env.ts" || filepath.Base(path) == "env.js" || filepath.Base(path) == "transport.ts" || filepath.Base(path) == "transport.js"
 	}
 	return false
 }

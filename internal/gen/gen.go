@@ -288,6 +288,9 @@ func (p *Prepared) Run() error {
 		if err := empty.writeEnvironment(); err != nil {
 			return err
 		}
+		if err := empty.writeTransportDeclaration(); err != nil {
+			return err
+		}
 		if err := empty.writeAppBindings(); err != nil {
 			return err
 		}
@@ -346,6 +349,9 @@ func (p *Prepared) Run() error {
 		}
 	}
 	if err := app.generateTypes(); err != nil {
+		return err
+	}
+	if err := app.writeTransportDeclaration(); err != nil {
 		return err
 	}
 	if err := app.writeStubs(); err != nil {

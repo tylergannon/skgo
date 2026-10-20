@@ -45,10 +45,17 @@ The Go half declares the type and the key it travels under:
 ```go example/web/src/hooks.go
 ```
 
-The TypeScript half is Kit's own hook, unchanged, with the same key:
+The TypeScript half is Kit's own hook with the same key, declared `satisfies Transport`:
 
 ```ts example/web/src/hooks.ts
 ```
+
+`Transport` comes from `src/transport.ts`, which `skgo generate` writes from `src/hooks.go`. It is Kit's own `Transport` type with each Go key added, as a `Transporter` from the class `hooks.ts` exports to the object Go sends for it:
+
+```ts example/web/src/transport.ts
+```
+
+The payload is the type's JSON fields, so `decode`'s `data` is typed without an annotation and `encode` has to return what Go's decoder reads. Keys only the browser uses are still allowed, since Kit also passes snapshots and history state through the hook. `src/transport.ts` also checks the export: it does not type-check until `hooks.ts` exports a `transport` that agrees with Go, so a hook typed only with Kit's own `Transport` fails, and so does a missing one. `skgo check`, svelte-check and your editor report the error.
 
 From then on a `businesslogic.Money` anywhere in a load's result, a remote function's answer or an action's data arrives in the browser as a `Money`, and the generated types name the class rather than describing its fields, so `price.format()` type-checks.
 
@@ -57,7 +64,7 @@ The same goes the other way. A command or form whose argument is a transported t
 ```go example/web/src/routes/(marketing)/pricing/pricing.remote.go
 ```
 
-Go serialises a transported value as `["Money", …]` under the key both halves spell, which is Kit's wire format for the hook; during server rendering the renderer inside the Go process runs the page's own `decode`, so the document is rendered with the class's methods too. A key declared in Go without a matching entry in `hooks.ts`, or the reverse, is a mismatch Kit reports at render time.
+Go serialises a transported value as `["Money", …]` under the key both halves spell, which is Kit's wire format for the hook; during server rendering the renderer inside the Go process runs the page's own `decode`, so the document is rendered with the class's methods too. A key or a field that differs between the two halves is therefore a type error in `hooks.ts`, not a page that fails or renders `NaN`. A transported type cannot hold another one in its fields, because the codec writes the inner value as plain fields and no class would come back for it; `skgo generate` refuses it.
 
 ## Deferred values
 
