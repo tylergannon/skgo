@@ -6,11 +6,11 @@ section: Commands
 order: 2020
 ---
 
-An add-on is a reusable change to an existing application: the built-in `native-app` add-on, or one a plugin provides. `skgo add --help` lists what this binary knows.
+An add-on is a reusable change to an existing application: one provided by an installed plugin. `skgo add --help` lists what this binary knows.
 
 ## Usage
 
 ```text skgo add -h
 ```
 
-Add-ons from installed plugins are listed beside `native-app`.
+Install a provider before selecting its add-on. Installing a plugin alone does not change the application.

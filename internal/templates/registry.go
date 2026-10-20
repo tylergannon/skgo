@@ -19,8 +19,8 @@ func validate(d templateapi.Descriptor) error {
 	if !identifier.MatchString(d.ID) || d.Version == "" || d.SkgoVersion == "" {
 		return fmt.Errorf("descriptor requires an identifier, version and skgo version")
 	}
-	if len(d.Addons)+len(d.Templates) == 0 {
-		return fmt.Errorf("descriptor exports no add-ons or templates")
+	if len(d.Addons)+len(d.Templates) == 0 && !d.Generator && d.Command == "" {
+		return fmt.Errorf("descriptor exports no capabilities")
 	}
 	check := func(name, summary string, opts []templateapi.Option, seen map[string]bool) error {
 		if !identifier.MatchString(name) || summary == "" || seen[name] {
@@ -206,7 +206,7 @@ func apply(ctx context.Context, op Operation, project templateapi.Project) (resu
 			err = fmt.Errorf("plugin panicked: %v; changed paths may be incomplete", p)
 		}
 	}()
-	return op.entry.Plugin.Apply(ctx, templateapi.Request{Addon: op.Name, Project: project, Options: op.Options})
+	return op.entry.Plugin.(templateapi.AddonPlugin).Apply(ctx, templateapi.Request{Addon: op.Name, Project: project, Options: op.Options})
 }
 
 func (r *Registry) Help(out io.Writer, kind, name string) error {

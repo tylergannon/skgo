@@ -9,14 +9,15 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/buildinfo"
 	"github.com/tylergannon/skgo/internal/newapp"
+	"github.com/tylergannon/skgo/internal/plugininstall"
 	"github.com/tylergannon/skgo/internal/pluginstore"
 	"github.com/tylergannon/skgo/internal/tailwind"
 	"github.com/tylergannon/skgo/internal/templates"
-	"github.com/tylergannon/skgo/nativeapp"
 	"golang.org/x/term"
 )
 
@@ -35,7 +36,9 @@ func (v optionValues) Set(arg string) error {
 	return nil
 }
 
-func plugins(out io.Writer) (*templates.Registry, error) {
+func plugins(out io.Writer) (*templates.Registry, error) { return pluginsAt("", out) }
+
+func pluginsAt(root string, out io.Writer) (*templates.Registry, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -43,6 +46,9 @@ func plugins(out io.Writer) (*templates.Registry, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
+	}
+	if root == "" {
+		root = pluginProjectRoot(cwd)
 	}
 	info, err := buildinfo.Current()
 	if err != nil {
@@ -75,10 +81,44 @@ func plugins(out io.Writer) (*templates.Registry, error) {
 			fmt.Fprintln(out, hint)
 		}
 	}
-	r, err := templates.DiscoverFiles(files, info.SkgoVersion, nativeapp.Plugin(info.SkgoVersion), tailwind.Plugin(info.SkgoVersion))
+	var pins []plugininstall.Prebuilt
+	expected := map[string]string{}
+	if os.Getenv(pluginstore.ProbeFiles) == "" {
+		pins, err = plugininstall.ReadPins(root)
+		if err != nil {
+			return nil, err
+		}
+		for _, pin := range pins {
+			expected[pin.ID] = ""
+			path, e := plugininstall.InstalledPath(pin, plugininstall.Options{Home: home, CWD: root, Host: info})
+			if e != nil {
+				diagnostics = append(diagnostics, e.Error())
+				continue
+			}
+			canonical, e := filepath.EvalSymlinks(path)
+			if e != nil {
+				diagnostics = append(diagnostics, e.Error())
+				continue
+			}
+			expected[pin.ID] = canonical
+			files = append(files, canonical)
+		}
+	}
+	r, err := templates.DiscoverFiles(files, info.SkgoVersion, tailwind.Plugin(info.SkgoVersion))
 	if err != nil {
 		return nil, err
 	}
+	// An unavailable pin affects only its provider. Never substitute a manual
+	// or source-installed build merely because its descriptor has the same ID.
+	valid := r.Entries[:0]
+	for _, entry := range r.Entries {
+		if path, pinned := expected[entry.Descriptor.ID]; pinned && entry.Path != path {
+			diagnostics = append(diagnostics, fmt.Sprintf("pinned plugin %s requires its verified artifact; refusing provider %s", entry.Descriptor.ID, entry.Path))
+			continue
+		}
+		valid = append(valid, entry)
+	}
+	r.Entries = valid
 	r.Diagnostics = append(diagnostics, r.Diagnostics...)
 	for _, d := range r.Diagnostics {
 		fmt.Fprintln(out, "warning:", d)
@@ -218,7 +258,7 @@ func addCommand(ctx context.Context, args []string, out, errOut io.Writer) error
 	if fs.NArg() > 1 {
 		return errors.New("skgo add accepts one add-on; put flags before its name")
 	}
-	r, err := plugins(errOut)
+	r, err := pluginsAt(*root, errOut)
 	if err != nil {
 		return err
 	}

@@ -18,6 +18,7 @@
 package gen
 
 import (
+	"context"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -28,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/tylergannon/polytype/goload"
+	"github.com/tylergannon/skgo/templateapi"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -93,12 +95,15 @@ type Config struct {
 	// Package is the name of the generated bindings package. It defaults to
 	// the base name of Out.
 	Package string
-	// SwiftOut is the generated Swift source file. SwiftRemotes selects ordinary
-	// queries and commands by Vite-root-relative module path plus #export.
-	// Selected functions adopt the finite native number profile in their shared
-	// Go handlers: unsafe integers are refused for browser and native callers.
-	SwiftOut     string
-	SwiftRemotes []string
+	// Generators are explicit, already-loaded plugin capabilities. Ordinary
+	// go:generate and development invocations leave this empty. Plugin generation
+	// bypasses persistent and retained generation caches conservatively.
+	Generators []templateapi.GeneratorInvocation
+	// ProjectName supplies the application's declared name to generators. Empty
+	// uses the module root directory name for programmatic non-scaffold apps.
+	ProjectName string
+	// Context cancels plugin work. Nil uses context.Background.
+	Context context.Context
 	// Logf receives one line per file written. It may be nil.
 	Logf func(format string, args ...any)
 	// ReadOnly makes package loading verify generated route links instead of
@@ -156,7 +161,7 @@ func Run(cfg Config) error {
 			cfg.CacheDir = filepath.Join(root, "skgo", "generate")
 		}
 	}
-	if cfg.CacheDir != "" && cfg.CacheDir != "off" && !cfg.ReadOnly && cfg.LoadPackages == nil && len(cfg.Packages) == 0 {
+	if len(cfg.Generators) == 0 && cfg.CacheDir != "" && cfg.CacheDir != "off" && !cfg.ReadOnly && cfg.LoadPackages == nil && len(cfg.Packages) == 0 {
 		return runCached(cfg)
 	}
 	return runUncached(cfg)
@@ -232,18 +237,6 @@ func normalizeConfig(cfg Config) (Config, error) {
 		return cfg, err
 	}
 	cfg.Web, cfg.Out = web, out
-	if (cfg.SwiftOut == "") != (len(cfg.SwiftRemotes) == 0) {
-		return cfg, fmt.Errorf("skgo: --swift-out and --swift-remote must be provided together")
-	}
-	if cfg.SwiftOut != "" {
-		cfg.SwiftOut, err = filepath.Abs(cfg.SwiftOut)
-		if err != nil {
-			return cfg, err
-		}
-		if filepath.Ext(cfg.SwiftOut) != ".swift" {
-			return cfg, fmt.Errorf("skgo: --swift-out must name a .swift file")
-		}
-	}
 	cfg.frontendFiles = map[string]struct{}{}
 	cfg.produced = map[string]struct{}{}
 	if cfg.Language == LanguageAuto {
@@ -276,9 +269,6 @@ func (p *Prepared) Run() error {
 	p.ran = true
 	cfg, files := p.cfg, p.files
 	if len(files) == 0 {
-		if len(cfg.SwiftRemotes) != 0 {
-			return fmt.Errorf("skgo: no remote functions match the Swift selection")
-		}
 		// An application does not need demo or placeholder server behavior. The
 		// empty bindings are still a real contract: the Go server imports these
 		// lists, and the adapter compares skgo.remotes.json with the frontend it
@@ -305,6 +295,9 @@ func (p *Prepared) Run() error {
 			return err
 		}
 		if err := empty.writeRemoteList(); err != nil {
+			return err
+		}
+		if err := empty.runGenerators(); err != nil {
 			return err
 		}
 		if err := pruneStaleArtifacts(cfg); err != nil {
@@ -371,9 +364,6 @@ func (p *Prepared) Run() error {
 	if err := app.planCodecs(); err != nil {
 		return err
 	}
-	if err := app.writeSwiftClient(); err != nil {
-		return err
-	}
 	if err := app.generateCodecs(); err != nil {
 		return err
 	}
@@ -387,6 +377,9 @@ func (p *Prepared) Run() error {
 		return err
 	}
 	if err := app.writeRemoteList(); err != nil {
+		return err
+	}
+	if err := app.runGenerators(); err != nil {
 		return err
 	}
 	if err := pruneStaleArtifacts(cfg); err != nil {

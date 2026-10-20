@@ -221,10 +221,7 @@ func complete(ctx context.Context, o Options, info buildinfo.Info) error {
 			return err
 		}
 	}
-	if err := completeNative(root, o.NativePlatform, o.NativePreset, projectRun); err != nil {
-		return err
-	}
-	fmt.Fprintln(o.Out, "Update complete: CLI, VitePlus, compatible dependencies, generation and application build passed. Application source was preserved; templates were not replayed. Rebuild plugins for the updated standalone or project Go-tool host before using new/add.")
+	fmt.Fprintln(o.Out, "Update complete: CLI, VitePlus, compatible dependencies, generation and application build passed. Application source was preserved; templates were not replayed. Plugin updates remain explicit: select a prebuilt release matching the updated official host, or reinstall source providers for the executing host.")
 	return nil
 }
 func vpVersion(b []byte, want string) bool {
@@ -253,24 +250,4 @@ func projectTool(ctx context.Context, o Options, root, version string) (string, 
 		}
 	}
 	return "", fmt.Errorf("project Go tool did not resolve to a retained executable after compilation")
-}
-func completeNative(root, platform, preset string, run func(string, string, ...string) error) error {
-	_, err := os.Stat(filepath.Join(root, "native/skgo-native.json"))
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	if platform == "" {
-		platform = "macos"
-	}
-	args := []string{"native", "build", "--root", root, "--platform", platform}
-	if preset != "" {
-		args = append(args, "--preset", preset)
-	}
-	if err := run(root, "skgo", args...); err != nil {
-		return fmt.Errorf("web update completed; native generation/build for %s remains incomplete: %w", platform, err)
-	}
-	return nil
 }

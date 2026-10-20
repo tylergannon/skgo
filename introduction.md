@@ -44,4 +44,4 @@ The generated TypeScript bodies throw; they exist so SvelteKit can build its cli
 
 ## Targets
 
-The web target is released: the binary above is what you deploy. Generated Swift clients for your Go queries and commands are also released. Hosting the application natively on macOS and iOS, with either bundled or hosted Go, including lifecycle, WebView coordination and distribution, is not finished. Native targets describes what exists today, and [/framework](/framework) tracks each target's evidence.
+The web target is released: the binary above is what you deploy. Swift clients and the existing Apple shell move to the independently released [Native-shell plugin](/docs/skgo/native-shell). A core release alone supplies no native companion; availability requires a separately qualified plugin targeting that exact official core version. Hosting the application natively on macOS and iOS, including lifecycle, WebView coordination and distribution, remains unfinished. [/framework](/framework) tracks each target's evidence.

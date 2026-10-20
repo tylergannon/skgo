@@ -14,16 +14,12 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-
-	"github.com/tylergannon/skgo/internal/templates"
-	"github.com/tylergannon/skgo/nativeapp"
 )
 
 type Runner func(string, []string, string, ...string) ([]byte, error)
 
 // Build checks inputs and built bytes before reusing a frontend. Generation runs
-// only on a miss; native generation, when supplied, precedes application-owned
-// generators so each application can finish its own projections.
+// only on a miss. Plugin generators run separately on an explicit official host.
 func Build(root string, out io.Writer, run Runner) error {
 	web := filepath.Join(root, "web")
 	cache := filepath.Join(root, ".skgo", "build.json")
@@ -79,15 +75,6 @@ func Build(root string, out io.Writer, run Runner) error {
 	if err := os.Remove(cache); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	nativeGenerate, err := nativeGeneration(root)
-	if err != nil {
-		return err
-	}
-	if len(nativeGenerate) != 0 {
-		if _, err := run(root, nil, "go", nativeGenerate...); err != nil {
-			return err
-		}
-	}
 	if _, err := run(root, nil, "go", "generate", "./..."); err != nil {
 		return err
 	}
@@ -142,35 +129,6 @@ func Build(root string, out io.Writer, run Runner) error {
 		return err
 	}
 	return os.WriteFile(cache, data, 0644)
-}
-
-func nativeGeneration(root string) ([]string, error) {
-	data, err := os.ReadFile(filepath.Join(root, "native/skgo-native.json"))
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	var c nativeapp.Config
-	if err := json.Unmarshal(data, &c); err != nil {
-		return nil, err
-	}
-	if err := c.Validate(); err != nil {
-		return nil, err
-	}
-	p, _, err := templates.Project(root, "")
-	if err != nil {
-		return nil, err
-	}
-	args := []string{"tool", "skgo", "generate", "--web", p.Web, "--out", filepath.Join(root, "internal/skgo"), "--locals-package", p.Module + "/internal/app", "--hook-package", p.Module + "/internal/serverhooks"}
-	if len(c.SwiftRemotes) > 0 {
-		args = append(args, "--swift-out", filepath.Join(root, "native/Generated.swift"))
-	}
-	for _, remote := range c.SwiftRemotes {
-		args = append(args, "--swift-remote", remote)
-	}
-	return args, nil
 }
 
 func fingerprint(root string, run Runner) (string, error) {
@@ -264,9 +222,6 @@ func treeHash(root string, inputs bool) (string, error) {
 			}
 		}
 		if d.IsDir() {
-			return nil
-		}
-		if inputs && filepath.ToSlash(rel) == "native/Resources/gimbal" {
 			return nil
 		}
 		if d.Type()&os.ModeSymlink != 0 {

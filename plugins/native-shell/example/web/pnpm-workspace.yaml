@@ -1,0 +1,6 @@
+minimumReleaseAgeExclude:
+  - '@skgo/sveltekit-adapter@0.40.1'
+overrides:
+  vitest@*: 5.0.5
+patchedDependencies:
+  '@sveltejs/kit@3.1.0': patches/skgo-kit-3.1.0-queue.patch

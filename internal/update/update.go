@@ -21,13 +21,12 @@ import (
 )
 
 type Options struct {
-	Root, VP, CompleteVersion    string
-	NativePlatform, NativePreset string
-	Out                          io.Writer
-	run                          func(context.Context, command) ([]byte, error)
-	info                         func() (buildinfo.Info, error)
-	packages                     func(string) (string, string, error)
-	release                      func(context.Context, string) (string, string, error)
+	Root, VP, CompleteVersion string
+	Out                       io.Writer
+	run                       func(context.Context, command) ([]byte, error)
+	info                      func() (buildinfo.Info, error)
+	packages                  func(string) (string, string, error)
+	release                   func(context.Context, string) (string, string, error)
 }
 type command struct {
 	Dir, Name string
@@ -155,12 +154,6 @@ func Run(ctx context.Context, o Options) error {
 	}
 	if o.VP != "" {
 		args = append(args, "--vp", o.VP)
-	}
-	if o.NativePlatform != "" {
-		args = append(args, "--native-platform", o.NativePlatform)
-	}
-	if o.NativePreset != "" {
-		args = append(args, "--native-preset", o.NativePreset)
 	}
 	if _, err = o.run(ctx, command{Name: installed, Args: args}); err != nil {
 		return fmt.Errorf("CLI %s is installed, but toolchain/project update is incomplete: %w", version, err)

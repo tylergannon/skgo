@@ -22,12 +22,13 @@ const generatedGoFile = "skgo_gen.go"
 // generation holds only this invocation's output. No package loader reads the
 // previous generated declarations, and no project output is a bootstrap file.
 type generatedOutput struct {
-	files    map[string]string
-	parts    map[string][]string
-	owned    map[string]bool
-	removed  map[string]bool
-	links    *routeLinks
-	cleanups []func()
+	files     map[string]string
+	parts     map[string][]string
+	owned     map[string]bool
+	removed   map[string]bool
+	links     *routeLinks
+	cleanups  []func()
+	preflight []func() error
 }
 
 func newGeneration(cfg Config) (*generatedOutput, error) {
@@ -296,6 +297,11 @@ func (g *generatedOutput) overlay() (map[string][]byte, error) {
 }
 
 func (g *generatedOutput) publish(cfg Config) error {
+	for _, check := range g.preflight {
+		if err := check(); err != nil {
+			return err
+		}
+	}
 	// Preflight every generated Go destination before touching any output.
 	for path := range g.parts {
 		if data, err := os.ReadFile(path); err == nil {

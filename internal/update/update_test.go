@@ -250,24 +250,3 @@ func TestProjectToolUsesRetainedExecutableAfterFirstCompilation(t *testing.T) {
 		t.Fatalf("host=%s calls=%d err=%v", got, calls, err)
 	}
 }
-
-func TestUpdateConsumesNativeConfigurationAndReportsNativeFailure(t *testing.T) {
-	root := t.TempDir()
-	calls := 0
-	run := func(dir, name string, args ...string) error {
-		calls++
-		if dir != root || name != "skgo" || !reflect.DeepEqual(args, []string{"native", "build", "--root", root, "--platform", "simulator", "--preset", "synthetic"}) {
-			t.Fatalf("native command %s %s %v", dir, name, args)
-		}
-		return errors.New("Swift compilation failed")
-	}
-	if err := completeNative(root, "simulator", "synthetic", run); err != nil || calls != 0 {
-		t.Fatalf("non-native app: %v", err)
-	}
-	os.Mkdir(filepath.Join(root, "native"), 0755)
-	os.WriteFile(filepath.Join(root, "native/skgo-native.json"), []byte(`{"version":1}`), 0644)
-	err := completeNative(root, "simulator", "synthetic", run)
-	if err == nil || !strings.Contains(err.Error(), "native generation/build for simulator remains incomplete") || calls != 1 {
-		t.Fatalf("false completion: %v, calls %d", err, calls)
-	}
-}

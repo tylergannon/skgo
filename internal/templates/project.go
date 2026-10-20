@@ -70,9 +70,6 @@ func Project(root, name string) (templateapi.Project, bool, error) {
 		if name == "" {
 			return p, false, fmt.Errorf("older project has no skgo.json: pass --name explicitly")
 		}
-		if _, err := os.Stat(filepath.Join(root, "native")); err == nil {
-			return p, false, fmt.Errorf("older project has native identity: verify its display name and bundle configuration, then create skgo.json with version 1 and that name before adding capabilities")
-		}
 	}
 	if !identifier.MatchString(name) {
 		return p, false, fmt.Errorf("invalid application name %q", name)

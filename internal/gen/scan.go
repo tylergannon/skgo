@@ -106,8 +106,7 @@ type remoteFn struct {
 	// generated for those two types — `Decode<inCodec>` and
 	// `Encode<outCodec>`. Either is empty when there is no generated codec for
 	// that half; see planCodecs for the three shapes that have none.
-	inCodec, outCodec   string
-	nativeIn, nativeOut string
+	inCodec, outCodec string
 	// handler is the name of the generated closure that answers this function.
 	handler string
 	// inputsHandler is the uniquely allocated closure that answers Kit's

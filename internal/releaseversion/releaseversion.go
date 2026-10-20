@@ -95,3 +95,16 @@ func breakingFooter(message string) bool {
 	}
 	return false
 }
+
+// TouchesCore reports whether a revision includes an input to the core product.
+// Changes confined to nested plugin products and their release workflow do not
+// advance core, even when their commit subject requests a feature or fix.
+func TouchesCore(paths []string) bool {
+	for _, path := range paths {
+		if strings.HasPrefix(path, "plugins/") || path == ".github/workflows/native-plugin.yml" || path == ".github/workflows/native-plugin-tests.yml" {
+			continue
+		}
+		return true
+	}
+	return false
+}

@@ -10,7 +10,7 @@ SKGo add-ons and templates come from Go plugins: a `main` package built with `-b
 
 ## Quick start
 
-A plugin is a Go module with a `skgo-plugin.json` and a `main` package that implements [`templateapi.Plugin`](/docs/reference/skgo/templateapi#Plugin):
+A plugin is a Go module with a `skgo-plugin.json` and a `main` package that implements [`templateapi.AddonPlugin`](/docs/reference/skgo/templateapi#AddonPlugin):
 
 ```tree
 skgo-receipt/
@@ -82,7 +82,7 @@ Publish the module from a Git repository Go can resolve directly, tagged like an
 skgo plugin install example.com/skgo-receipt@v1.0.0
 ```
 
-The installer fetches with `GOPROXY=direct`, verifies the checkout against Go's module hashes, builds with the host's exact toolchain and qualifies the result beside the user's other plugins before publishing it. Archives and prebuilt `.so` files cannot be installed.
+The installer fetches with `GOPROXY=direct`, verifies the checkout against Go's module hashes, builds with the host's exact toolchain and qualifies the result beside the user's other plugins before publishing it. Exact prebuilt `.so` releases can also be installed with a checksum; see [Plugin capabilities](/docs/skgo/plugin-capabilities).
 
 ## Version compatibility
 
@@ -90,4 +90,4 @@ A plugin is built for one host. The plugin's `go` directive cannot be newer than
 
 ## Examples
 
-The quick start is [`cmd/skgo/testdata/template-plugin/plugin.go`](https://github.com/tylergannon/skgo/blob/main/cmd/skgo/testdata/template-plugin/plugin.go). The built-in [`native-app`](/docs/cli/native-app) add-on implements the same interface in [`nativeapp/plugin.go`](https://github.com/tylergannon/skgo/blob/main/nativeapp/plugin.go).
+The quick start is [`cmd/skgo/testdata/template-plugin/plugin.go`](https://github.com/tylergannon/skgo/blob/main/cmd/skgo/testdata/template-plugin/plugin.go). Native-shell implements the same add-on interface in its separate module under `plugins/native-shell`. Generator and command capabilities are optional; see [Plugin capabilities](/docs/skgo/plugin-capabilities).

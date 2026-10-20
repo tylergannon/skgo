@@ -26,6 +26,8 @@ type Options struct {
 	probe                 func(context.Context, string, string, []string) (Exports, error)
 }
 type Exports struct {
+	ID                string
+	Version           string
 	Templates, Addons []string
 	Diagnostics       []string
 }

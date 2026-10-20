@@ -96,18 +96,17 @@ func generationCachePath(cfg Config) (string, string, error) {
 	}
 	sort.Strings(env)
 	input := struct {
-		Format, Producer, GoTool, NodePath, NodeTool, Checker, ImportPrefix                                          string
-		Web, Out, Package, LocalsPackage, LocalsType, HookPackage, HookSymbol, ConfigPackage, ConfigSymbol, SwiftOut string
-		SwiftRemotes                                                                                                 []string
-		Language                                                                                                     Language
-		Env                                                                                                          []string
-	}{generationCacheFormat, producer, goIdentity, nodePath, nodeIdentity, runtime.Version(), imports.LocalPrefix, cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.ConfigPackage, cfg.ConfigSymbol, cfg.SwiftOut, cfg.SwiftRemotes, cfg.Language, env}
+		Format, Producer, GoTool, NodePath, NodeTool, Checker, ImportPrefix                                string
+		Web, Out, Package, LocalsPackage, LocalsType, HookPackage, HookSymbol, ConfigPackage, ConfigSymbol string
+		Language                                                                                           Language
+		Env                                                                                                []string
+	}{generationCacheFormat, producer, goIdentity, nodePath, nodeIdentity, runtime.Version(), imports.LocalPrefix, cfg.Web, cfg.Out, cfg.Package, cfg.LocalsPackage, cfg.LocalsType, cfg.HookPackage, cfg.HookSymbol, cfg.ConfigPackage, cfg.ConfigSymbol, cfg.Language, env}
 	raw, err := json.Marshal(input)
 	if err != nil {
 		return "", "", err
 	}
 	sum := sha256.Sum256(raw)
-	target, _ := json.Marshal([]string{cfg.Web, cfg.Out, cfg.SwiftOut})
+	target, _ := json.Marshal([]string{cfg.Web, cfg.Out})
 	slot := sha256.Sum256(target)
 	return filepath.Join(cfg.CacheDir, fmt.Sprintf("%x.plan", slot)), fmt.Sprintf("%x", sum), nil
 }
@@ -176,12 +175,6 @@ func runCached(cfg Config) error {
 	cfg.Out, err = sourcePath(cfg.Out)
 	if err != nil {
 		return err
-	}
-	if cfg.SwiftOut != "" {
-		cfg.SwiftOut, err = sourcePath(cfg.SwiftOut)
-		if err != nil {
-			return err
-		}
 	}
 	bypass := func(reason error) error {
 		cfg.Logf("generation cache bypass: %v", reason)
@@ -280,11 +273,6 @@ func (c *generationCache) capture(cfg Config) {
 func publishGenerationPlan(cfg Config, plan generationPlan) error {
 	// A retained owner replays many plans; destination ownership is per replay.
 	cfg.produced = map[string]struct{}{}
-	if cfg.SwiftOut != "" {
-		if err := checkSwiftOutput(cfg.SwiftOut); err != nil {
-			return err
-		}
-	}
 	g, err := newGeneration(cfg)
 	if err != nil {
 		return err
