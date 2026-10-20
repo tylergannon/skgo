@@ -421,7 +421,11 @@ func TestAUniversalLoadFetchesTheAssetsItImports(t *testing.T) {
 	h := newProdHandler(t)
 	body := document(t, h, "/universal-fetch/asset")
 
-	m := regexp.MustCompile(`<p data-testid="asset-emitted">(/_app/immutable/assets/emitted\.[A-Za-z0-9_-]+\.json) 200 emitted-lantern-17 4148</p>`).FindStringSubmatch(body)
+	// The page puts each value on its own line, as Prettier lays it out. Spaces
+	// and newlines between the values and at the paragraph's edges render the
+	// same as one space, so the values are literal and the whitespace between
+	// them is \s.
+	m := regexp.MustCompile(`<p data-testid="asset-emitted">\s*(/_app/immutable/assets/emitted\.[A-Za-z0-9_-]+\.json)\s+200\s+emitted-lantern-17\s+4148\s*</p>`).FindStringSubmatch(body)
 	if m == nil {
 		t.Fatalf("the document does not show the emitted asset as fetched:\n%s", body)
 	}
@@ -430,8 +434,8 @@ func TestAUniversalLoadFetchesTheAssetsItImports(t *testing.T) {
 		t.Errorf("the emitted asset's URL names no file of the build: %v", err)
 	}
 	const inlined = "data:application/json;base64,eyAibGFtcCI6ICJpbmxpbmVkLWxhbnRlcm4tNSIgfQo="
-	if want := `<p data-testid="asset-inlined">` + inlined + ` 200 inlined-lantern-5 32</p>`; !strings.Contains(body, want) {
-		t.Errorf("the document does not contain %s:\n%s", want, body)
+	if !regexp.MustCompile(`<p data-testid="asset-inlined">\s*` + regexp.QuoteMeta(inlined) + `\s+200\s+inlined-lantern-5\s+32\s*</p>`).MatchString(body) {
+		t.Errorf("the document does not show the inlined asset %s as fetched:\n%s", inlined, body)
 	}
 
 	const head = `<script type="application/json" data-sveltekit-fetched data-url=`

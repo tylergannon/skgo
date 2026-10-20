@@ -1,6 +1,10 @@
 package check
 
-import "testing"
+import (
+	"errors"
+	"strings"
+	"testing"
+)
 
 func TestAdviceJSONZeroExitStillReportsFinding(t *testing.T) {
 	root := t.TempDir()
@@ -12,5 +16,26 @@ func TestAdviceJSONZeroExitStillReportsFinding(t *testing.T) {
 	pc, partial := parseAdvice(root, routeInventory{}, []byte(input+"{"), nil)
 	if pc.Status != "incomplete" || len(partial) != 1 {
 		t.Fatalf("partial check=%+v diagnostics=%+v", pc, partial)
+	}
+}
+
+func TestAdviceCompileFailureNamesTheOriginalDiagnostic(t *testing.T) {
+	input := "# example.com/app/src\nsrc/hooks.go:17:2: \"example.com/app/businesslogic\" imported and not used\n" + strings.Repeat("{}\n", 90)
+	c, ds := parseAdvice(t.TempDir(), routeInventory{}, []byte(input), errors.New("exit status 1"))
+	want := "Go analysis stopped: exit status 1: src/hooks.go:17:2: \"example.com/app/businesslogic\" imported and not used"
+	if c.Status != "failed" || len(ds) != 0 || c.Message != want {
+		t.Fatalf("check=%+v diagnostics=%+v", c, ds)
+	}
+	c, _ = parseAdvice(t.TempDir(), routeInventory{}, []byte(input), nil)
+	want = "Go analysis reported errors before all analyzers completed: src/hooks.go:17:2: \"example.com/app/businesslogic\" imported and not used"
+	if c.Status != "incomplete" || c.Message != want {
+		t.Fatalf("zero-exit check=%+v", c)
+	}
+}
+
+func TestAdviceMalformedJSONIsBoundedIncomplete(t *testing.T) {
+	c, _ := parseAdvice(t.TempDir(), routeInventory{}, []byte("{\n\"a\": nope\n}\n"+strings.Repeat("{}\n", 90)), nil)
+	if c.Status != "incomplete" || !strings.HasPrefix(c.Message, "Go analysis returned incomplete JSON: invalid character 'o'") || strings.Contains(c.Message, "{}") {
+		t.Fatalf("check=%+v", c)
 	}
 }

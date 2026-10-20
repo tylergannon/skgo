@@ -4,13 +4,14 @@ package example_test
 
 import (
 	"encoding/json"
-	"github.com/tylergannon/devalue/v5"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/tylergannon/devalue/v5"
 )
 
 func TestApplicationRemoteArgumentValidation(t *testing.T) {

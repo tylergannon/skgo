@@ -35,5 +35,7 @@
 </form>
 
 {#if sendNote.result}
-  <p>{sendNote.result.title}: {sendNote.result.file}, {sendNote.result.bytes} bytes</p>
+  <p>
+    {sendNote.result.title}: {sendNote.result.file}, {sendNote.result.bytes} bytes
+  </p>
 {/if}
