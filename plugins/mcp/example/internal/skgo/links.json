@@ -1,0 +1,10 @@
+{
+	"schemaVersion": 1,
+	"linkRoot": "internal/skgo/_links",
+	"links": [
+		{
+			"link": "internal/skgo/_links/onzggl3sn52xizlt",
+			"target": "web/src/routes"
+		}
+	]
+}

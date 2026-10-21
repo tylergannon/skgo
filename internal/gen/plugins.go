@@ -48,6 +48,7 @@ func (a *app) generationModel(selections []string) (templateapi.GenerationModel,
 		delete(selected, selection)
 		op := templateapi.RemoteOperation{Selection: selection, Name: fn.name, Module: fn.module, ID: kithash.Kit(fn.module) + "/" + fn.name, Kind: string(fn.kind), Input: -1, Output: -1, Source: fn.pos, WireFormat: "devalue"}
 		op.Transported = a.containsTransported(fn.out) || fn.in != nil && a.containsTransported(fn.in)
+		op.Description = fn.description
 		if fn.kind == kindForm {
 			op.WireFormat = "formdata"
 		} else {

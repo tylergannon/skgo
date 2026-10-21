@@ -1,0 +1,3 @@
+.local/
+example/web/build/*
+!example/web/build/.gitkeep

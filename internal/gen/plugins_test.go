@@ -24,7 +24,7 @@ func TestGeneratorResolvedRemoteModel(t *testing.T) {
 	a, gp := emitterPackage(t, t.TempDir(), "package data\ntype Value struct { Text string `json:\"text\"` }\n")
 	value := gp.pkg.Types.Scope().Lookup("Value").Type()
 	a.remotes = []*remoteFn{
-		{name: "read", module: "src/lib/todos.remote.ts", kind: kindQuery, goPkg: gp, out: value, pos: token.Position{Filename: "todos.remote.go", Line: 7}},
+		{name: "read", description: "Read the shared value.", module: "src/lib/todos.remote.ts", kind: kindQuery, goPkg: gp, out: value, pos: token.Position{Filename: "todos.remote.go", Line: 7}},
 		{name: "save", module: "src/lib/todos.remote.ts", kind: kindCommand, goPkg: gp, in: value, out: types.Typ[types.String]},
 	}
 	m, err := a.generationModel([]string{"src/lib/todos.remote.ts#read", "src/lib/todos.remote.ts#save"})
@@ -35,6 +35,9 @@ func TestGeneratorResolvedRemoteModel(t *testing.T) {
 		t.Fatalf("model=%+v", m)
 	}
 	read, save := m.Remotes[0], m.Remotes[1]
+	if read.Description != "Read the shared value." {
+		t.Fatalf("description=%q", read.Description)
+	}
 	if read.ID != "worolc/read" || read.Kind != "query" || read.Input != -1 || read.Output != 0 || read.Source.Line != 7 || save.Input != 0 || save.Output != 1 || save.Kind != "command" {
 		t.Fatalf("remotes=%+v", m.Remotes)
 	}

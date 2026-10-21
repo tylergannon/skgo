@@ -39,3 +39,6 @@ plugins/native-shell/example/web/build/*
 .cache/final-current/
 
 .cache/final-reviewed/
+
+# Task-local executables.
+.local/
