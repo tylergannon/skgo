@@ -27,7 +27,7 @@ func TestGeneratorResolvedRemoteModel(t *testing.T) {
 		{name: "read", description: "Read the shared value.", module: "src/lib/todos.remote.ts", kind: kindQuery, goPkg: gp, out: value, pos: token.Position{Filename: "todos.remote.go", Line: 7}},
 		{name: "save", module: "src/lib/todos.remote.ts", kind: kindCommand, goPkg: gp, in: value, out: types.Typ[types.String]},
 	}
-	m, err := a.generationModel([]string{"src/lib/todos.remote.ts#read", "src/lib/todos.remote.ts#save"})
+	m, err := a.generationModel([]string{"src/lib/todos.remote.ts#read", "src/lib/todos.remote.ts#save"}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,12 +45,12 @@ func TestGeneratorResolvedRemoteModel(t *testing.T) {
 		t.Fatalf("wire definition=%+v", m.Definitions)
 	}
 	for _, selections := range [][]string{{"missing"}, {"src/lib/todos.remote.ts#read", "src/lib/todos.remote.ts#read"}} {
-		if _, err := a.generationModel(selections); err == nil {
+		if _, err := a.generationModel(selections, ""); err == nil {
 			t.Fatalf("accepted %v", selections)
 		}
 	}
 	a.transported = []*transportedType{{key: "Value", named: value.(*types.Named)}}
-	m, err = a.generationModel([]string{"src/lib/todos.remote.ts#read"})
+	m, err = a.generationModel([]string{"src/lib/todos.remote.ts#read"}, "")
 	if err != nil || !m.Remotes[0].Transported || m.Remotes[0].Output != -1 {
 		t.Fatalf("transport model=%+v err=%v", m, err)
 	}
@@ -266,5 +266,74 @@ func TestGeneratorRunBypassesCacheAndPublishesOnlySuccess(t *testing.T) {
 	data, _ = os.ReadFile(filepath.Join(root, "client.txt"))
 	if string(data) != "second" {
 		t.Fatalf("earlier provider published before failure: %q", data)
+	}
+}
+
+// Marker filtering precedes lowering: unrelated web contracts cannot break a
+// generator that did not publish them.
+func TestGeneratorMarkerFiltersBeforeProjection(t *testing.T) {
+	a, gp := emitterPackage(t, t.TempDir(), "package data\n")
+	a.remotes = []*remoteFn{
+		{name: "read", module: "src/data.remote.ts", kind: kindQuery, goPkg: gp, out: types.Typ[types.String], markers: map[string]bool{"example.com/publish#Tool": true}},
+		{name: "webOnly", module: "src/data.remote.ts", kind: kindQuery, goPkg: gp, out: types.NewChan(types.SendRecv, types.Typ[types.String])},
+	}
+	model, err := a.generationModel(nil, "example.com/publish#Tool")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(model.Remotes) != 1 || model.Remotes[0].Name != "read" || len(model.Roots) != 1 {
+		t.Fatalf("unmarked remote leaked into model: %+v", model)
+	}
+	if _, err := a.generationModel([]string{"src/data.remote.ts#webOnly"}, "example.com/publish#Tool"); err == nil {
+		t.Fatal("selection bypassed publication marker")
+	}
+}
+
+type markedFixtureGenerator struct{ fixtureGenerator }
+
+func (markedFixtureGenerator) RemoteMarker() string { return "example.com/publish#Tool" }
+
+func TestGeneratorMarkersResolveIdentityAndLocalFunction(t *testing.T) {
+	imports := declarationImports{}
+	imports["example.com/publish"] = declarationPackage(t, "example.com/publish", "publish.go", "package publish; func Tool(any) int { return 0 }", nil).Types
+	imports["example.com/other"] = declarationPackage(t, "example.com/other", "other.go", "package other; func Tool(any) int { return 0 }", nil).Types
+	for _, tc := range []struct {
+		name, declaration string
+		remote            bool
+		want              string
+	}{
+		{"aliased-before-remote", "var _ = alias.Tool(read)", true, ""},
+		{"unrelated-same-name", "var _ = other.Tool(read)", true, ""},
+		{"non-remote", "var _ = alias.Tool(read)", false, "not declared as a remote"},
+		{"expression", "var _ = alias.Tool(func(){})", true, "named local remote"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := `package route
+import(alias "example.com/publish"; "example.com/other")
+var _ = alias.Tool; var _ = other.Tool
+` + tc.declaration + `
+func read() {}
+`
+			p := declarationPackage(t, "example.com/route", "data.remote.go", source, imports)
+			a := &app{cfg: Config{Generators: []templateapi.GeneratorInvocation{{Generator: markedFixtureGenerator{}}}}}
+			var remotes []*remoteFn
+			if tc.remote {
+				remotes = []*remoteFn{{name: "read"}}
+			}
+			err := a.scanGeneratorMarkers(p, p.Syntax[0], remotes)
+			if tc.want != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("err=%v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := tc.name != "unrelated-same-name"
+			if remotes[0].markers["example.com/publish#Tool"] != want {
+				t.Fatal("wrong marker identity")
+			}
+		})
 	}
 }

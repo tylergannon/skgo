@@ -14,6 +14,17 @@ type Generator interface {
 	Generate(context.Context, GenerationRequest) (GenerationResult, error)
 }
 
+// MarkedGenerator selects its remote surface with top-level marker declarations
+// beside the ordinary skgo remote declarations. RemoteMarker returns the resolved
+// Go identity "import/path#Function". The marker accepts one local function.
+// Core supplies only marked remotes, before projecting their wire types. An
+// empty Selections list therefore selects marked remotes rather than all remotes.
+// The generator still decides which remote kinds and contracts it supports.
+type MarkedGenerator interface {
+	Generator
+	RemoteMarker() string
+}
+
 // GeneratorInvocation selects one installed generator for an invocation.
 // ID and Version identify the provider. Selections are remote module paths
 // followed by #export; empty selects every remote. Options belong to the plugin.

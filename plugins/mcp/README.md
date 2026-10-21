@@ -1,7 +1,7 @@
 # MCP generator plugin
 
 The MCP plugin generates typed Go clients and a standalone stdio MCP server
-for explicitly selected SKGO queries and commands. Function Go comments become
+for explicitly marked SKGO queries and commands. Function Go comments become
 tool descriptions. Field and type comments become JSON Schema documentation.
 Generated clients import the application's contract types and use Polytype's
 strict devalue codecs. The runtime calls the existing application's HTTP
@@ -54,9 +54,56 @@ release must include the `RemoteOperation.Description` field. Artifacts must be
 built for that exact official CLI through `skgo-plugin-build`; this proposal
 does not publish a release artifact.
 
-Generated output lives in `internal/mcpclient/` and `cmd/mcp/main.go`.
+## Publication and server setup
+
+Put publication markers beside the existing remote declarations in the same
+`*.remote.go` file. Function names can stay unexported:
+
+```go
+import "github.com/tylergannon/skgo/plugins/mcp/mcppublish"
+
+var _ = skgo.Query(listTasks)
+var _ = mcppublish.Tool(listTasks)
+```
+
+The marker is the MCP allowlist. Do not configure `--select` entries for this
+plugin. Unmarked web remotes are excluded before projecting their contracts.
+Published names use one flat namespace, with no aliases or disambiguation.
+Two published remotes with the same name produce conflicting Go declarations
+and the MCP build fails.
+
+The plugin supplies the `mcp` template and `mcp-server` add-on. With the plugin
+installed, `skgo add mcp-server` creates `cmd/mcp/main.go` and
+`cmd/mcp/instructions.md`. The files belong to your application immediately;
+applying the add-on again preserves authored contents. The `mcp` template
+applies the same add-on to the normal minimal application scaffold.
+
+Maintain `main.go` to configure server name/version, connection flags,
+credentials, headers, your `http.Client`, and additional tools/resources/prompts.
+The skeleton supports `SKGO_ORIGIN`, `SKGO_TOKEN` (bearer) and `SKGO_API_KEY`
+(`X-API-Key`). These must match authentication implemented by your application.
+Edit `instructions.md` for application-wide guidance; it is embedded and sent
+in MCP's initialize response. Rebuild the binary after changing it. Tool and
+schema documentation continue to come directly from Go comments.
+
+Recurring `skgo generate --plugins` with your usual generation flags updates
+only `internal/mcpclient/`. Register the marked tools with `s.AddTools(c.Tools()...)`.
 SKGO owns publication, stale-file cleanup and protection of authored edits.
-An empty selection is an error. New application remotes are never automatically
+
+### Upgrading the first generator version
+
+Remove the old plugin's string-path selections and add `mcppublish.Tool` markers.
+Regenerate first: normal stale-output cleanup removes the unchanged, previously
+generated `cmd/mcp/main.go`. Then apply `skgo add mcp-server` to create authored
+setup. If you customized the old generated entrypoint, move it to
+`cmd/mcp/server.go` before regenerating and maintain that entrypoint directly
+instead of adding another main function. Edited generated files are protected
+and are never silently deleted. The checked-in example has already transferred
+its entrypoint out of generator ownership.
+
+Generated output lives in `internal/mcpclient/`.
+SKGO owns publication, stale-file cleanup and protection of authored edits.
+No marked remotes is an error. New application remotes are never automatically
 exposed. Move request/result declarations into a shared contract package when
 their route package cannot be imported from generated client code.
 

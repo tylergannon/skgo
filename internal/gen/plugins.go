@@ -22,7 +22,7 @@ import (
 	"golang.org/x/tools/imports"
 )
 
-func (a *app) generationModel(selections []string) (templateapi.GenerationModel, error) {
+func (a *app) generationModel(selections []string, marker string) (templateapi.GenerationModel, error) {
 	var model templateapi.GenerationModel
 	selected := map[string]bool{}
 	for _, selection := range selections {
@@ -41,6 +41,9 @@ func (a *app) generationModel(selections []string) (templateapi.GenerationModel,
 		return n
 	}
 	for _, fn := range a.remotes {
+		if marker != "" && !fn.markers[marker] {
+			continue
+		}
 		selection := fn.module + "#" + fn.name
 		if len(selections) > 0 && !selected[selection] {
 			continue
@@ -157,7 +160,14 @@ func (a *app) runGenerators() error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		model, err := a.generationModel(inv.Selections)
+		marker := ""
+		if g, ok := inv.Generator.(templateapi.MarkedGenerator); ok {
+			marker = g.RemoteMarker()
+			if parts := strings.Split(marker, "#"); len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+				return fmt.Errorf("skgo: generator %s has invalid remote marker %q", inv.ID, marker)
+			}
+		}
+		model, err := a.generationModel(inv.Selections, marker)
 		if err != nil {
 			return err
 		}

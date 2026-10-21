@@ -9,6 +9,7 @@ import (
 	"github.com/tylergannon/skgo"
 	"github.com/tylergannon/skgo/plugins/mcp/example/contracts"
 	"github.com/tylergannon/skgo/plugins/mcp/example/internal/skgo/params"
+	"github.com/tylergannon/skgo/plugins/mcp/mcppublish"
 )
 
 var mu sync.Mutex
@@ -36,3 +37,15 @@ func addTask(_ context.Context, _ params.RequestEvent, input contracts.NewTask) 
 
 var _ = skgo.Query(listTasks)
 var _ = skgo.Command(addTask)
+
+var _ = mcppublish.Tool(listTasks)
+var _ = mcppublish.Tool(addTask)
+
+// taskCount is a web remote, deliberately not published as an MCP tool.
+func taskCount(context.Context) (int, error) {
+	mu.Lock()
+	defer mu.Unlock()
+	return len(tasks), nil
+}
+
+var _ = skgo.Query(taskCount)

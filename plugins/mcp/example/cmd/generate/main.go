@@ -25,7 +25,7 @@ func main() {
 		Web: "web", Out: "internal/skgo", ProjectName: "TaskList",
 		ConfigPackage: module + "/internal/app", LocalsPackage: module + "/internal/app", HookPackage: module + "/internal/serverhooks",
 		Context:    context.Background(),
-		Generators: []templateapi.GeneratorInvocation{{ID: "mcp", Version: "dev", Generator: provider, Selections: []string{"src/routes/tasks.remote.ts#listTasks", "src/routes/tasks.remote.ts#addTask"}}},
+		Generators: []templateapi.GeneratorInvocation{{ID: "mcp", Version: "dev", Generator: provider}},
 	})
 	if err != nil {
 		log.Fatal(err)
