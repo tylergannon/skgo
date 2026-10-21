@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -51,6 +52,7 @@ func realSession(t *testing.T, withGenerator, withHandoff, withDiagnostics bool,
 		cancel context.CancelFunc
 		app    string
 	}
+	var restorationDelayObserved atomic.Bool
 	var pending *pendingGate
 	start := func(label string) *session {
 		t.Helper()
@@ -205,6 +207,16 @@ func waitForReadiness() error {
 		}
 		childCtx, stop := context.WithCancel(ctx)
 		s := &session{origin: "http://" + address, log: &sessionLog{}, done: make(chan error, 1), cancel: stop, app: app}
+		if label == "ALPHA" && !withGenerator && !withHandoff && !withDiagnostics && mode == "" {
+			s.log.observe = func(message string) {
+				if strings.Contains(message, "restored previous application") {
+					restorationDelayObserved.Store(true)
+					// Restoration is observable before its rejection diagnostic. Keep
+					// those observations apart to exercise a slow output consumer.
+					time.Sleep(250 * time.Millisecond)
+				}
+			}
+		}
 		if withGenerator {
 			// Keep both repository-conventional and explicitly configured Node cache
 			// writes active while the real coordinator starts, replaces and recovers.
@@ -523,11 +535,20 @@ func waitForReadiness() error {
 		t.Fatal(err)
 	}
 	deadline = time.Now().Add(40 * time.Second)
-	for time.Now().Before(deadline) && !strings.Contains(alpha.log.String()[logStart:], "restored previous application") {
+	startupRecoveryObserved := func() bool {
+		messages := alpha.log.String()[logStart:]
+		return strings.Contains(messages, "restored previous application") && strings.Contains(messages, "literal startup rejection 340")
+	}
+	// The coordinator reports restoration before writing the rejection diagnostic.
+	// Both must arrive before checking the restored application's response.
+	for time.Now().Before(deadline) && !startupRecoveryObserved() {
 		time.Sleep(50 * time.Millisecond)
 	}
-	if !strings.Contains(alpha.log.String()[logStart:], "restored previous application") || !strings.Contains(alpha.log.String()[logStart:], "literal startup rejection 340") {
+	if !startupRecoveryObserved() {
 		t.Fatalf("failed initialization did not restore previous executable\n%s", alpha.log.String())
+	}
+	if !restorationDelayObserved.Load() {
+		t.Fatal("restoration observation gap was not exercised")
 	}
 	check(alpha, "ALPHA", "literal-8754:9")
 	// A subsequent valid edit must still recover through the normal rebuild path.
