@@ -50,7 +50,8 @@ same Go module graph. This is checkout development, not an official-release
 plugin pairing. Released consumers use the existing exact-host installation:
 `skgo plugin install --prebuilt ARTIFACT --sha256 DIGEST`,
 then `skgo generate --plugins` with their normal generation flags. The core
-release must include the `RemoteOperation.Description` field. Artifacts must be
+release must include the `RemoteOperation.Description` field and the
+`MarkedGenerator` contract. Artifacts must be
 built for that exact official CLI through `skgo-plugin-build`; this proposal
 does not publish a release artifact.
 
