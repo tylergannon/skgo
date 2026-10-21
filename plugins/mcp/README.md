@@ -9,7 +9,7 @@ endpoints. It does not load the generator plugin or application handlers.
 
 The first version supports ordinary queries and commands, exported importable
 contract types, scalars, structs, slices, fixed arrays, enums, time strings,
-and Optional/Nullable fields supported by Polytype. Unsupported selections,
+and Optional/Nullable fields supported by Polytype. Unsupported published remotes,
 custom transports, unions and supplied-schema fields fail generation. Integer
 tool values must fit JavaScript's safe-integer range. Use strings for large IDs.
 Scalar/array tool inputs use an `argument` property. Successful results use a
@@ -48,7 +48,7 @@ after a tool call.
 The example's small generation host loads the real shared object using the
 same Go module graph. This is checkout development, not an official-release
 plugin pairing. Released consumers use the existing exact-host installation:
-`skgo plugin install --prebuilt ARTIFACT --sha256 DIGEST --select MODULE#EXPORT`,
+`skgo plugin install --prebuilt ARTIFACT --sha256 DIGEST`,
 then `skgo generate --plugins` with their normal generation flags. The core
 release must include the `RemoteOperation.Description` field. Artifacts must be
 built for that exact official CLI through `skgo-plugin-build`; this proposal
