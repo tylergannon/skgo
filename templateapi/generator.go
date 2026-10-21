@@ -50,9 +50,11 @@ type GenerationModel struct {
 // WireFormat is "devalue" for ordinary remote calls and "formdata" for forms.
 type RemoteOperation struct {
 	Selection, Name, Module, ID, Kind, WireFormat string
-	Input, Output                                 int
-	Transported                                   bool
-	Source                                        token.Position
+	// Description is the declared Go function's documentation comment.
+	Description   string
+	Input, Output int
+	Transported   bool
+	Source        token.Position
 }
 
 // GenerationResult proposes the current complete output for this provider.

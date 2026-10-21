@@ -1,0 +1,15 @@
+{
+  "remotes": ["1al4nqo/addTask", "1al4nqo/listTasks"],
+  "loads": [],
+  "actions": [],
+  "endpoints": {},
+  "prerender": {
+    "root": "..",
+    "package": "./internal/skgo/prerender"
+  },
+  "build": {
+    "src/hooks.server.ts": {
+      "hook": true
+    }
+  }
+}

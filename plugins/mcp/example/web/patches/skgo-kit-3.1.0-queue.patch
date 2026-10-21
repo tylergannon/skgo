@@ -1,0 +1,28 @@
+diff --git a/src/core/postbuild/queue.js b/src/core/postbuild/queue.js
+--- a/src/core/postbuild/queue.js
++++ b/src/core/postbuild/queue.js
+@@ -16,6 +16,7 @@
+ 
+ 	let current = 0;
+ 	let closed = false;
++	let done_requested = false;
+ 
+ 	promise.catch(() => {
+ 		// this is necessary in case a catch handler is never added
+@@ -39,7 +40,7 @@
+ 						current -= 1;
+ 						dequeue();
+ 					});
+-			} else if (current === 0) {
++			} else if (current === 0 && done_requested) {
+ 				closed = true;
+ 				resolve();
+ 			}
+@@ -61,6 +62,7 @@
+ 		},
+ 
+ 		done: () => {
++			done_requested = true;
+ 			if (current === 0) {
+ 				closed = true;
+ 				resolve();

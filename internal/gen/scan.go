@@ -86,7 +86,8 @@ type actionFn struct {
 
 // remoteFn is one declared remote function.
 type remoteFn struct {
-	kind remoteKind
+	kind        remoteKind
+	description string
 	// name is the Go identifier, which is also the TypeScript export name.
 	name string
 	// goPkg is the package that declares it.
@@ -627,16 +628,28 @@ func (a *app) readMarker(gp *goPackage, p *packages.Package, call *ast.CallExpr,
 	}
 
 	return &remoteFn{
-		kind:   kind,
-		name:   target.Name(),
-		goPkg:  gp,
-		module: mod,
-		stub:   stub,
-		in:     in,
-		out:    out,
-		inputs: inputsName,
-		pos:    pos,
+		kind:        kind,
+		description: functionDescription(p.Syntax, target.Pos()),
+		name:        target.Name(),
+		goPkg:       gp,
+		module:      mod,
+		stub:        stub,
+		in:          in,
+		out:         out,
+		inputs:      inputsName,
+		pos:         pos,
 	}, nil, nil, nil, nil
+}
+
+func functionDescription(files []*ast.File, pos token.Pos) string {
+	for _, file := range files {
+		for _, decl := range file.Decls {
+			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Pos() == pos {
+				return strings.TrimSpace(fn.Doc.Text())
+			}
+		}
+	}
+	return ""
 }
 
 // readPrerenderOptions accepts only the keyed literal form so authored
