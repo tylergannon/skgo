@@ -41,7 +41,7 @@ for n in 1 2; do
 	if [ ! -f "$install/.service" ]; then
 		(cd "$install" && ./svc.sh install)
 	fi
-	service=$(cat "$install/.service")
+	service=$(/usr/libexec/PlistBuddy -c 'Print :Label' "$(cat "$install/.service")")
 	if ! launchctl print "gui/$(id -u)/$service" >/dev/null 2>&1; then
 		(cd "$install" && ./svc.sh start)
 	fi
