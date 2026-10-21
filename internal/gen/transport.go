@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tylergannon/polytype/grammar"
+	"github.com/tylergannon/polytype/typegrammar"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -140,6 +142,40 @@ func (a *app) transportKeyOrder() []*transportedType {
 func codecName(entry *transportedType) string {
 	name := entry.named.Obj().Name()
 	return strings.ToUpper(name[:1]) + name[1:]
+}
+
+// transportEntryPayload uses the codec's lowered grammar to recognize a time
+// leaf, including a named type defined from time.Time. Its unexported Go
+// fields are not its wire shape: the codec sends an RFC3339 string.
+func (a *app) transportEntryPayload(entry *transportedType) (tsType, error) {
+	loaded, err := a.loadGrammar(entry.goPkg.loadDir)
+	if err != nil {
+		return tsType{}, err
+	}
+	definitions, roots, err := loaded.Lower([]grammar.Root{{Type: entry.named, Position: entry.pos}})
+	if err != nil {
+		return tsType{}, err
+	}
+	byName := make(map[typegrammar.Name]typegrammar.Type, len(definitions))
+	for _, definition := range definitions {
+		byName[definition.Name] = definition.Type
+	}
+	node := roots[0]
+	for {
+		ref, ok := node.(*typegrammar.Ref)
+		if !ok {
+			break
+		}
+		next, found := byName[ref.Target]
+		if !found {
+			return tsType{}, fmt.Errorf("transport payload references missing type %s", ref.Target)
+		}
+		node = next
+	}
+	if _, isTime := node.(*typegrammar.Time); isTime {
+		return tsType{expr: "string"}, nil
+	}
+	return a.transportPayload(entry.named)
 }
 
 // transportPayload is the TypeScript for a transported type's encoding: the

@@ -368,7 +368,7 @@ func (a *app) generateTypes() error {
 		}
 	}
 	for _, entry := range a.transportKeyOrder() {
-		payload, err := a.transportPayload(entry.named)
+		payload, err := a.transportEntryPayload(entry)
 		if err != nil {
 			return fmt.Errorf("skgo: %s: %s cannot be transported under %q: %v", entry.pos, entry.named, entry.key, err)
 		}
