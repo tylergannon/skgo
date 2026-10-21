@@ -85,7 +85,7 @@ func (c *Client) Call(ctx context.Context, id, kind string, input any) (any, err
 	httpClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	response, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("remote request failed; a command may have completed: %w", err)
+		return nil, fmt.Errorf("remote request failed: %w", err)
 	}
 	defer response.Body.Close()
 	const limit = 4 << 20

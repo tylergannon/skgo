@@ -22,6 +22,9 @@ var ErrInvalidInput = errors.New("invalid input")
 // Tool keeps schemas and decoding on the application's resolved wire contract.
 func Tool(name, description string, input, output json.RawMessage, objectInput, noInput, command bool, call func(context.Context, any) (any, error)) server.ServerTool {
 	tool := mcp.NewTool(name, mcp.WithDescription(description), mcp.WithRawInputSchema(input), mcp.WithRawOutputSchema(output))
+	// SDK defaults assert destructive behavior. The application has supplied no
+	// such claim; leave hints unspecified rather than guessing from the kind.
+	tool.Annotations = mcp.ToolAnnotation{}
 	return server.ServerTool{Tool: tool, Handler: func(ctx context.Context, r mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		raw := r.Params.RawArguments
 		if len(raw) == 0 && noInput {
@@ -59,6 +62,9 @@ func Tool(name, description string, input, output json.RawMessage, objectInput, 
 func arguments(raw []byte, objectInput, noInput bool) (any, error) {
 	if len(raw) > 1<<20 {
 		return nil, fmt.Errorf("arguments exceed 1 MiB")
+	}
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("arguments must be an object")
 	}
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.UseNumber()

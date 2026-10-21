@@ -3,6 +3,7 @@ package remoteclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -10,6 +11,17 @@ import (
 
 	"github.com/tylergannon/devalue/v5"
 )
+
+func TestTransportErrorsPreserveCauseWithoutCommandWording(t *testing.T) {
+	offline := errors.New("offline")
+	c := Client{Origin: "https://app.test", HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) { return nil, offline })}}
+	for _, kind := range []string{"query", "command"} {
+		_, err := c.Call(context.Background(), "hash/read", kind, devalue.Undefined)
+		if !errors.Is(err, offline) || strings.Contains(err.Error(), "command") {
+			t.Fatalf("%s: %v", kind, err)
+		}
+	}
+}
 
 type transport func(*http.Request) (*http.Response, error)
 

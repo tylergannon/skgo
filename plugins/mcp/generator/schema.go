@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/constant"
+	"strconv"
 	"strings"
 
 	tg "github.com/tylergannon/polytype/typegrammar"
@@ -117,6 +118,7 @@ func (s schemas) node(t tg.Type) (schema, error) {
 }
 
 func (s schemas) document(t tg.Type, wrapper string) ([]byte, error) {
+	description := ""
 	// MCP input arguments are an object. Put its fields at the root so clients
 	// can use their descriptions without resolving a top-level reference.
 	if wrapper == "" && s.object(t) {
@@ -127,6 +129,9 @@ func (s schemas) document(t tg.Type, wrapper string) ([]byte, error) {
 			case *tg.Ref:
 				for _, d := range s.definitions {
 					if d.Name == node.Target {
+						if description == "" {
+							description = d.Description
+						}
 						t = d.Type
 						break
 					}
@@ -145,19 +150,63 @@ resolved:
 			return nil, err
 		}
 	}
+	if description != "" {
+		root["description"] = description
+	}
 	if wrapper != "" {
 		root = schema{"type": "object", "properties": schema{wrapper: root}, "required": []string{wrapper}, "additionalProperties": false}
 	}
 	defs := schema{}
-	for i, d := range s.definitions {
-		v, err := s.node(d.Type)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", d.Name, err)
+	// Follow the rendered references, including references inside definitions.
+	// Each schema carries only the types that its own root needs.
+	var collect func(any) error
+	collect = func(value any) error {
+		var object map[string]any
+		switch v := value.(type) {
+		case schema:
+			object = v
+		case map[string]any:
+			object = v
+		case []any:
+			for _, item := range v {
+				if err := collect(item); err != nil {
+					return err
+				}
+			}
+			return nil
+		default:
+			return nil
 		}
-		if strings.TrimSpace(d.Description) != "" {
-			v["description"] = d.Description
+		if ref, ok := object["$ref"].(string); ok {
+			key := strings.TrimPrefix(ref, "#/$defs/")
+			if _, exists := defs[key]; !exists {
+				i, err := strconv.Atoi(strings.TrimPrefix(key, "T"))
+				if err != nil || i < 0 || i >= len(s.definitions) {
+					return fmt.Errorf("invalid schema reference %s", ref)
+				}
+				d := s.definitions[i]
+				node, err := s.node(d.Type)
+				if err != nil {
+					return fmt.Errorf("%s: %w", d.Name, err)
+				}
+				if d.Description != "" {
+					node["description"] = d.Description
+				}
+				defs[key] = node
+				if err := collect(node); err != nil {
+					return err
+				}
+			}
 		}
-		defs[fmt.Sprintf("T%d", i)] = v
+		for _, child := range object {
+			if err := collect(child); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := collect(root); err != nil {
+		return nil, err
 	}
 	if len(defs) > 0 {
 		root["$defs"] = defs

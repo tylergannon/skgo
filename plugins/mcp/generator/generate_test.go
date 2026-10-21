@@ -59,3 +59,39 @@ func TestSchemaPreservesFieldDocumentationAndPresence(t *testing.T) {
 		t.Fatalf("schema=%s", data)
 	}
 }
+
+func TestSchemasIncludeOnlyReachableDefinitions(t *testing.T) {
+	name := tg.Name{PackagePath: "example.test/contracts", Name: "Task"}
+	s := schemas{definitions: tg.Definitions{{Name: name, Description: "A task.", Type: &tg.Object{}}, {Name: tg.Name{PackagePath: "example.test/contracts", Name: "Unused"}, Type: &tg.Object{}}}}
+	data, err := s.document(&tg.Ref{Target: name}, "result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output struct {
+		Defs map[string]any `json:"$defs"`
+	}
+	if err := json.Unmarshal(data, &output); err != nil {
+		t.Fatal(err)
+	}
+	if len(output.Defs) != 1 || output.Defs["T0"] == nil {
+		t.Fatalf("unreachable definitions in %s", data)
+	}
+	data, err = s.document(nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "$defs") {
+		t.Fatalf("no-input schema carries definitions: %s", data)
+	}
+	data, err = s.document(&tg.Ref{Target: name}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var input struct{ Description string }
+	if err := json.Unmarshal(data, &input); err != nil {
+		t.Fatal(err)
+	}
+	if input.Description != "A task." {
+		t.Fatalf("lost root documentation: %s", data)
+	}
+}
