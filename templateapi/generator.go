@@ -27,7 +27,8 @@ type MarkedGenerator interface {
 
 // GeneratorInvocation selects one installed generator for an invocation.
 // ID and Version identify the provider. Selections are remote module paths
-// followed by #export; empty selects every remote. Options belong to the plugin.
+// followed by #export; empty selects every eligible remote. MarkedGenerator
+// narrows eligibility to its marker. Options belong to the plugin.
 type GeneratorInvocation struct {
 	ID, Version string
 	Generator   Generator
