@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/tylergannon/polytype/grammar"
+	"golang.org/x/tools/go/packages"
 )
 
 // transportFixture type-checks a hooks package against a stand-in for
@@ -235,5 +238,39 @@ func TestTransportDeclarationOwnership(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("stale generated module kept after its markers went: %v", err)
+	}
+}
+
+// The codec lowers a named time.Time to its RFC3339 string, not the private
+// fields of time.Time. The browser must receive that same wire declaration.
+func TestTransportedTimePayloadMatchesCodecString(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "data")
+	clock := declarationPackage(t, "time", "time.go", "package time; type Time struct{}", nil)
+	clock.PkgPath = "time"
+	p := declarationPackage(t, "example.com/app/data", filepath.Join(dir, "data.go"), `package data
+ import "time"
+ type Date time.Time
+ type LocalDate Date
+ type Empty struct{}
+ `, declarationImports{"time": clock.Types})
+	p.PkgPath = p.Types.Path()
+	p.GoFiles = []string{filepath.Join(dir, "data.go")}
+	p.CompiledGoFiles = p.GoFiles
+	loaded, err := grammar.FromPackages(&packages.Config{BuildFlags: []string{"-tags=jsonschema"}}, p, clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, want string }{{"Date", "string"}, {"LocalDate", "string"}, {"Empty", "Record<string, never>"}} {
+		t.Run(tc.name, func(t *testing.T) {
+			entry := &transportedType{key: "Manual" + tc.name, named: lookupNamed(p.Types, tc.name), goPkg: &goPackage{loadDir: dir}}
+			a := &app{transported: []*transportedType{entry}, grammarPackages: map[string]*grammar.Package{dir: loaded}, typeSets: map[*types.Package]*namedTypes{}}
+			if err := a.generateTypes(); err != nil {
+				t.Fatal(err)
+			}
+			if entry.payload.expr != tc.want {
+				t.Fatalf("transported %s wire payload=%s; want %s", tc.name, entry.payload.expr, tc.want)
+			}
+		})
 	}
 }

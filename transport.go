@@ -249,7 +249,8 @@ func (rs *Remotes) parsePayload(payload string) (Call, error) {
 
 // Transported declares that T crosses the wire as a custom type under key, and
 // is skgo's mirror of one entry of kit's `transport` hook.
-// The encoded object shape is the polytype projection of T's JSON fields.
+// The encoded payload follows polytype's codec: JSON fields for an ordinary
+// struct, or an RFC3339 string for a type defined from time.Time.
 //
 // It goes in `src/hooks.go`, beside the `src/hooks.ts` that holds the browser
 // half, because kit's transport is a universal hook and both halves are one
