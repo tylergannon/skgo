@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"path/filepath"
 	"plugin"
 
 	"github.com/tylergannon/skgo/generate"
@@ -14,6 +15,8 @@ import (
 )
 
 func main() {
+	scaffoldRoot := flag.String("root", ".", "destination for -init")
+	initServer := flag.Bool("init", false, "create missing application-owned server setup without generating bindings")
 	path := flag.String("plugin", "", "path to the MCP generator shared object")
 	flag.Parse()
 	provider, err := load(*path)
@@ -21,11 +24,25 @@ func main() {
 		log.Fatal(err)
 	}
 	const module = "github.com/tylergannon/skgo/plugins/mcp/example"
+	if *initServer {
+		addon, ok := provider.(templateapi.AddonPlugin)
+		if !ok {
+			log.Fatal("plugin does not implement AddonPlugin")
+		}
+		root, err := filepath.Abs(*scaffoldRoot)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := addon.Apply(context.Background(), templateapi.Request{Addon: "mcp-server", Project: templateapi.Project{Root: root, Module: module, Name: "TaskList"}}); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	err = generate.Run(generate.Config{
 		Web: "web", Out: "internal/skgo", ProjectName: "TaskList",
 		ConfigPackage: module + "/internal/app", LocalsPackage: module + "/internal/app", HookPackage: module + "/internal/serverhooks",
 		Context:    context.Background(),
-		Generators: []templateapi.GeneratorInvocation{{ID: "mcp", Version: "dev", Generator: provider, Selections: []string{"src/routes/tasks.remote.ts#listTasks", "src/routes/tasks.remote.ts#addTask"}}},
+		Generators: []templateapi.GeneratorInvocation{{ID: "mcp", Version: "dev", Generator: provider}},
 	})
 	if err != nil {
 		log.Fatal(err)

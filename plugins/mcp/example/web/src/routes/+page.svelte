@@ -1,8 +1,13 @@
 <script lang="ts">
-  import { listTasks, addTask } from './tasks.remote';
+  import { listTasks, addTask, taskCount } from './tasks.remote';
   let title = $state('');
   let message = $state('');
   const tasks = listTasks();
+  const count = taskCount();
+
+  async function refresh() {
+    await Promise.all([tasks.refresh(), count.refresh()]);
+  }
 
   async function submit(event: SubmitEvent) {
     event.preventDefault();
@@ -10,7 +15,7 @@
       await addTask({ title });
       title = '';
       message = '';
-      await tasks.refresh();
+      await refresh();
     } catch (error) {
       message = error instanceof Error ? error.message : 'Could not add the task';
     }
@@ -26,7 +31,8 @@
     <button type="submit">Add task</button>
   </form>
   {#if message}<p role="alert">{message}</p>{/if}
-  <button onclick={() => tasks.refresh()}>Refresh tasks</button>
+  <button onclick={refresh}>Refresh tasks</button>
+  {#await count then total}<p>Tasks: {total}</p>{/await}
   {#await tasks}
     <p>Loading tasks…</p>
   {:then items}

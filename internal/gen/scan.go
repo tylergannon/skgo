@@ -13,6 +13,7 @@ import (
 
 	"github.com/tylergannon/polytype/grammar"
 	"github.com/tylergannon/skgo/internal/envspec"
+	"github.com/tylergannon/skgo/templateapi"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 	"golang.org/x/tools/go/packages"
@@ -86,6 +87,7 @@ type actionFn struct {
 
 // remoteFn is one declared remote function.
 type remoteFn struct {
+	markers     map[string]bool
 	kind        remoteKind
 	description string
 	// name is the Go identifier, which is also the TypeScript export name.
@@ -318,6 +320,9 @@ func loadApp(cfg Config, files []string) (*app, error) {
 		for _, file := range p.Syntax {
 			path := a.links.authoredPath(p.Fset.Position(file.Pos()).Filename)
 			if !wanted[path] {
+				if err := a.scanGeneratorMarkers(p, file, nil); err != nil {
+					return nil, err
+				}
 				continue
 			}
 			fns, loads, actions, endpoints, err := a.scanFile(gp, p, file, path)
@@ -377,6 +382,9 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 	isHooksFile := base == hooksFileName
 
 	if isHooksFile {
+		if err := a.scanGeneratorMarkers(p, file, nil); err != nil {
+			return nil, nil, nil, nil, err
+		}
 		return nil, nil, nil, nil, a.scanHooks(gp, p, file, path)
 	}
 
@@ -441,6 +449,10 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 				}
 			}
 		}
+	}
+
+	if err := a.scanGeneratorMarkers(p, file, remotes); err != nil {
+		return nil, nil, nil, nil, err
 	}
 
 	if (isLoadFile || isServerFile) && len(remotes) > 0 {
@@ -975,4 +987,70 @@ func moduleOf(dir string) (root, path string, err error) {
 		}
 		cur = parent
 	}
+}
+
+// scanGeneratorMarkers uses the already loaded syntax/types. Marker functions
+// are no-ops at runtime; their import alias and declaration order do not matter.
+func (a *app) scanGeneratorMarkers(p *packages.Package, file *ast.File, remotes []*remoteFn) error {
+	wanted := map[string]bool{}
+	for _, inv := range a.cfg.Generators {
+		if g, ok := inv.Generator.(templateapi.MarkedGenerator); ok {
+			wanted[g.RemoteMarker()] = true
+		}
+	}
+	if len(wanted) == 0 {
+		return nil
+	}
+	for _, decl := range file.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.VAR {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			vs := spec.(*ast.ValueSpec)
+			for _, value := range vs.Values {
+				call, ok := value.(*ast.CallExpr)
+				if !ok {
+					continue
+				}
+				ident := calleeIdent(call.Fun)
+				if ident == nil {
+					continue
+				}
+				obj, _ := p.TypesInfo.Uses[ident].(*types.Func)
+				if obj == nil || obj.Pkg() == nil {
+					continue
+				}
+				marker := obj.Pkg().Path() + "#" + obj.Name()
+				if !wanted[marker] {
+					continue
+				}
+				pos := p.Fset.Position(call.Pos())
+				var target *types.Func
+				if len(call.Args) == 1 {
+					if arg, ok := call.Args[0].(*ast.Ident); ok {
+						target, _ = p.TypesInfo.Uses[arg].(*types.Func)
+					}
+				}
+				if target == nil || target.Pkg() != p.Types {
+					return fmt.Errorf("skgo: %s: %s needs one named local remote function", pos, marker)
+				}
+				var remote *remoteFn
+				for _, fn := range remotes {
+					if fn.name == target.Name() {
+						remote = fn
+						break
+					}
+				}
+				if remote == nil {
+					return fmt.Errorf("skgo: %s: %s is not declared as a remote in this file", pos, target.Name())
+				}
+				if remote.markers == nil {
+					remote.markers = map[string]bool{}
+				}
+				remote.markers[marker] = true
+			}
+		}
+	}
+	return nil
 }

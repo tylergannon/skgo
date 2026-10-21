@@ -513,6 +513,47 @@ func ParseRoot2(s string) ([]pkg_contracts.Task, error) {
 	return decRoot2(parsed, "")
 }
 
+func encRoot3(v int, at string) (any, error) {
+	var enc1 any = float64(v)
+	return enc1, nil
+}
+
+func decRoot3(raw any, at string) (int, error) {
+	var dvZero int
+	num2, err := dvInteger(raw, at, math.MinInt, math.MaxInt)
+	if err != nil {
+		return dvZero, err
+	}
+	dec1 := int(num2)
+	return dec1, nil
+}
+
+// EncodeRoot3 converts v into the devalue value model.
+func EncodeRoot3(v int) (any, error) { return encRoot3(v, "") }
+
+// DecodeRoot3 converts a devalue value model tree into a int, rejecting any
+// shape the type grammar does not admit.
+func DecodeRoot3(raw any) (int, error) { return decRoot3(raw, "") }
+
+// StringifyRoot3 encodes v and serializes it with devalue.
+func StringifyRoot3(v int) (string, error) {
+	encoded, err := encRoot3(v, "")
+	if err != nil {
+		return "", err
+	}
+	return devalue.Stringify(encoded)
+}
+
+// ParseRoot3 parses a devalue document and decodes it into a int.
+func ParseRoot3(s string) (int, error) {
+	var zero int
+	parsed, err := devalue.Parse(s, nil)
+	if err != nil {
+		return zero, err
+	}
+	return decRoot3(parsed, "")
+}
+
 func skgoCallerMatchers() skgo.CallerMatchers {
 	return skgo.CallerMatchers{}
 }
@@ -573,6 +614,22 @@ func remote_listTasks(ctx context.Context, call skgo.Call) (any, error) {
 	return EncodeRoot2(out)
 }
 
+// remote_taskCount answers src/routes/tasks.remote.ts#taskCount, a query.
+//
+// It takes no argument, so any argument at all is refused — kit's own
+// validator for a function declared without one answers 400 too.
+// The result is encoded by EncodeRoot3, generated for its result type.
+func remote_taskCount(ctx context.Context, call skgo.Call) (any, error) {
+	if err := skgo.RefuseArgument(call); err != nil {
+		return nil, err
+	}
+	out, err := skgo0.Skgo_taskCount(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeRoot3(out)
+}
+
 // Remotes returns every remote function declared in the app, ready to hand
 // to skgo.NewRemotes.
 func Remotes() []*skgo.Remote {
@@ -593,6 +650,13 @@ func Remotes() []*skgo.Remote {
 			Name:   "listTasks",
 			Fn:     skgo0.Skgo_listTasks,
 			Call:   remote_listTasks,
+		}),
+		skgo.NewRemote(skgo.RemoteSpec{
+			Kind:   skgo.KindQuery,
+			Module: "src/routes/tasks.remote.ts",
+			Name:   "taskCount",
+			Fn:     skgo0.Skgo_taskCount,
+			Call:   remote_taskCount,
 		}),
 	}
 }

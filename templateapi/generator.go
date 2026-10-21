@@ -14,9 +14,21 @@ type Generator interface {
 	Generate(context.Context, GenerationRequest) (GenerationResult, error)
 }
 
+// MarkedGenerator selects its remote surface with top-level marker declarations
+// beside the ordinary skgo remote declarations. RemoteMarker returns the resolved
+// Go identity "import/path#Function". The marker accepts one local function.
+// Core supplies only marked remotes, before projecting their wire types. An
+// empty Selections list therefore selects marked remotes rather than all remotes.
+// The generator still decides which remote kinds and contracts it supports.
+type MarkedGenerator interface {
+	Generator
+	RemoteMarker() string
+}
+
 // GeneratorInvocation selects one installed generator for an invocation.
 // ID and Version identify the provider. Selections are remote module paths
-// followed by #export; empty selects every remote. Options belong to the plugin.
+// followed by #export; empty selects every eligible remote. MarkedGenerator
+// narrows eligibility to its marker. Options belong to the plugin.
 type GeneratorInvocation struct {
 	ID, Version string
 	Generator   Generator
@@ -27,10 +39,14 @@ type GeneratorInvocation struct {
 // GenerationRequest is an immutable view of one application's selected remotes.
 // Plugins must not mutate Model, Selections, Options, or their reachable values.
 type GenerationRequest struct {
-	Project    Project
-	Model      GenerationModel
-	Selections []string
-	Options    map[string]string
+	// RemoteMarker records the filter actually applied by the host. A marked
+	// generator must reject an absent or different value rather than expose
+	// an unfiltered model supplied by an unsupported host.
+	RemoteMarker string
+	Project      Project
+	Model        GenerationModel
+	Selections   []string
+	Options      map[string]string
 }
 
 // GenerationModel uses Polytype's public wire grammar. Roots indexes are local

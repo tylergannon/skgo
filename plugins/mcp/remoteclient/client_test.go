@@ -29,8 +29,11 @@ func (t transport) RoundTrip(r *http.Request) (*http.Response, error) { return t
 
 func TestRemoteRequestsAndEnvelopes(t *testing.T) {
 	requests := 0
-	client := Client{Origin: "https://app.test", Base: "/shop", AppDir: "kit", HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+	client := Client{Origin: "https://app.test", Headers: http.Header{"Authorization": {"Bearer test-token"}, "X-Api-Key": {"test-key"}}, Base: "/shop", AppDir: "kit", HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		requests++
+		if r.Header.Get("Authorization") != "Bearer test-token" || r.Header.Get("X-API-Key") != "test-key" {
+			t.Fatal("application authentication headers were not forwarded")
+		}
 		if r.URL.Path != "/shop/kit/remote/hash/read" {
 			t.Fatalf("path=%s", r.URL.Path)
 		}

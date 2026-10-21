@@ -10,4 +10,6 @@ var (
 	Skgo_addTask = addTask
 	// Skgo_listTasks is listTasks, published as src/routes/tasks.remote.ts#listTasks.
 	Skgo_listTasks = listTasks
+	// Skgo_taskCount is taskCount, published as src/routes/tasks.remote.ts#taskCount.
+	Skgo_taskCount = taskCount
 )

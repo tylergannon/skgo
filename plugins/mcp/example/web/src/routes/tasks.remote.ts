@@ -14,3 +14,5 @@ const unimplemented = (): never => {
 export const addTask = command("unchecked", (_arg: NewTask): Task => unimplemented());
 
 export const listTasks = query((): Array<Task> => unimplemented());
+
+export const taskCount = query((): number => unimplemented());
