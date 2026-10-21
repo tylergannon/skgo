@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -14,6 +15,9 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/tylergannon/devalue/v5"
 )
+
+// ErrInvalidInput marks typed argument rejection before an application call.
+var ErrInvalidInput = errors.New("invalid input")
 
 // Tool keeps schemas and decoding on the application's resolved wire contract.
 func Tool(name, description string, input, output json.RawMessage, objectInput, noInput, command bool, call func(context.Context, any) (any, error)) server.ServerTool {
@@ -30,7 +34,7 @@ func Tool(name, description string, input, output json.RawMessage, objectInput, 
 		value, err := call(ctx, arg)
 		if err != nil {
 			message := err.Error()
-			if command {
+			if command && !errors.Is(err, ErrInvalidInput) {
 				message += "; the command may have taken effect. Read current state before repeating it."
 			}
 			return mcp.NewToolResultError(message), nil

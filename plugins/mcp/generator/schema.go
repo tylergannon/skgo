@@ -37,7 +37,7 @@ func (s schemas) node(t tg.Type) (schema, error) {
 		case tg.Bool:
 			return schema{"type": "boolean"}, nil
 		case tg.Float32, tg.Float64:
-			return schema{"type": "number"}, nil
+			return schema{"type": "number", "minimum": -9007199254740991, "maximum": 9007199254740991}, nil
 		default:
 			bounds := map[tg.ScalarKind][2]int64{tg.Int8: {-128, 127}, tg.Uint8: {0, 255}, tg.Int16: {-32768, 32767}, tg.Uint16: {0, 65535}, tg.Int32: {-2147483648, 2147483647}, tg.Uint32: {0, 4294967295}, tg.Int: {-9007199254740991, 9007199254740991}, tg.Int64: {-9007199254740991, 9007199254740991}, tg.Uint: {0, 9007199254740991}, tg.Uint64: {0, 9007199254740991}}
 			b, ok := bounds[t.Kind]

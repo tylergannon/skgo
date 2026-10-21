@@ -1,7 +1,7 @@
 {
   "mcp": {
     "cmd/mcp/main.go": "244f77cd2c93504d6e828a2480c94044772ba6fcbbfe02194cc58c08cbf58915",
-    "internal/mcpclient/client_gen.go": "75de4bfe00137d7f1ae32cfbf72da972f8ed0950cd5ce3bdde39e27a6bbe4083",
+    "internal/mcpclient/client_gen.go": "5759e9226464acdbc076114a5f1b1868cb4c8794593a96b0d06c80f70a047ec2",
     "internal/mcpclient/codec_gen.go": "25c119f92bf701210133ed4afefdab4b75823388e0937b7bee76a8ed15b3fdd7"
   }
 }

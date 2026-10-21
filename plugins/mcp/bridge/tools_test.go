@@ -1,9 +1,27 @@
 package bridge
 
 import (
-	"github.com/tylergannon/devalue/v5"
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
+
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/tylergannon/devalue/v5"
 )
+
+func TestTypedRejectionDoesNotSuggestTheCommandRan(t *testing.T) {
+	tool := Tool("create", "Create a task", json.RawMessage(`{"type":"object"}`), json.RawMessage(`{"type":"object"}`), true, false, true, func(context.Context, any) (any, error) { return nil, fmt.Errorf("%w: missing title", ErrInvalidInput) })
+	request := mcp.CallToolRequest{Params: mcp.CallToolParams{RawArguments: json.RawMessage(`{}`)}}
+	result, err := tool.Handler(context.Background(), request)
+	if err != nil || !result.IsError {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	if strings.Contains(result.Content[0].(mcp.TextContent).Text, "may have taken effect") {
+		t.Fatal("claimed possible dispatch for typed input rejection")
+	}
+}
 
 func TestArguments(t *testing.T) {
 	for _, raw := range []string{`{"a":1,"a":2}`, `{} {}`, `{"a":9007199254740993}`, `null`, `[]`, `{"a":1e999}`} {

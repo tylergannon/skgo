@@ -129,7 +129,7 @@ func (Generator) Generate(ctx context.Context, r templateapi.GenerationRequest) 
 		fmt.Fprintf(&methods, "// %s\nfunc (c *Client) %s(ctx context.Context%s) (%s, error) {\nvar zero %s\n%sraw, err := c.Remote.Call(ctx, %q, %q, input)\nif err != nil { return zero, err }; value, err := DecodeRoot%d(raw); if err != nil { return zero, fmt.Errorf(\"result contract: %%w\", err) }; return value, nil\n}\n", strings.ReplaceAll(op.Description, "\n", "\n// "), method, parameter, outType, outType, encode, op.ID, op.Kind, op.Output)
 		fmt.Fprintf(&tools, "bridge.Tool(%q, %q, json.RawMessage(%s), json.RawMessage(%s), %t, %t, %t, func(ctx context.Context, arg any)(any,error){\n", op.Name, op.Description, strconv.Quote(string(inputSchema)), strconv.Quote(string(outputSchema)), s.object(input), op.Input < 0, op.Kind == "command")
 		if op.Input >= 0 {
-			fmt.Fprintf(&tools, "in, err := DecodeRoot%d(arg); if err != nil { return nil, fmt.Errorf(\"invalid input: %%w\", err) }\n", op.Input)
+			fmt.Fprintf(&tools, "in, err := DecodeRoot%d(arg); if err != nil { return nil, fmt.Errorf(\"%%w: %%v\", bridge.ErrInvalidInput, err) }\n", op.Input)
 		}
 		fmt.Fprintf(&tools, "value, err := c.%s(ctx%s); if err != nil { return nil, err }; return EncodeRoot%d(value)\n}),\n", method, argument, op.Output)
 	}
