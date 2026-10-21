@@ -36,7 +36,7 @@ vp install --frozen-lockfile
 cd ..
 go tool skgo build --root .
 CGO_ENABLED=0 go build -o .local/task-list ./cmd
-CGO_ENABLED=0 go build -o .local/task-mcp ./cmd/mcp
+CGO_ENABLED=0 go build -tags=mcp -o .local/task-mcp ./cmd/mcp
 .local/task-list
 ```
 
@@ -83,6 +83,13 @@ Maintain `main.go` to configure server name/version, connection flags,
 credentials, headers, your `http.Client`, and additional tools/resources/prompts.
 The skeleton supports `SKGO_ORIGIN`, `SKGO_TOKEN` (bearer) and `SKGO_API_KEY`
 (`X-API-Key`). These must match authentication implemented by your application.
+The skeleton uses the `mcp` build tag so adding it leaves ordinary web
+builds and development working before MCP setup is complete. Add the MCP runtime
+dependency with `go get github.com/tylergannon/skgo/plugins/mcp@VERSION`, matching
+your installed plugin release; mark remotes, generate, then `go mod tidy` and
+`go build -tags=mcp -o task-mcp ./cmd/mcp`. The checkout example already supplies
+its module dependencies and local replacements.
+
 Edit `instructions.md` for application-wide guidance; it is embedded and sent
 in MCP's initialize response. Rebuild the binary after changing it. Tool and
 schema documentation continue to come directly from Go comments.
@@ -90,17 +97,6 @@ schema documentation continue to come directly from Go comments.
 Recurring `skgo generate --plugins` with your usual generation flags updates
 only `internal/mcpclient/`. Register the marked tools with `s.AddTools(c.Tools()...)`.
 SKGO owns publication, stale-file cleanup and protection of authored edits.
-
-### Upgrading the first generator version
-
-Remove the old plugin's string-path selections and add `mcppublish.Tool` markers.
-Regenerate first: normal stale-output cleanup removes the unchanged, previously
-generated `cmd/mcp/main.go`. Then apply `skgo add mcp-server` to create authored
-setup. If you customized the old generated entrypoint, move it to
-`cmd/mcp/server.go` before regenerating and maintain that entrypoint directly
-instead of adding another main function. Edited generated files are protected
-and are never silently deleted. The checked-in example has already transferred
-its entrypoint out of generator ownership.
 
 Generated output lives in `internal/mcpclient/`.
 SKGO owns publication, stale-file cleanup and protection of authored edits.

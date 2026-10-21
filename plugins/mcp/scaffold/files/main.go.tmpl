@@ -1,3 +1,5 @@
+//go:build mcp
+
 // Created by the SKGO MCP scaffold. This file belongs to the application.
 package main
 

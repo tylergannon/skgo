@@ -179,7 +179,7 @@ func (a *app) runGenerators() error {
 		if projectName == "" {
 			projectName = filepath.Base(root)
 		}
-		result, err := inv.Generator.Generate(ctx, templateapi.GenerationRequest{Project: templateapi.Project{Root: root, Module: mod, Name: projectName, Web: a.cfg.Web}, Model: model, Selections: append([]string(nil), inv.Selections...), Options: options})
+		result, err := inv.Generator.Generate(ctx, templateapi.GenerationRequest{RemoteMarker: marker, Project: templateapi.Project{Root: root, Module: mod, Name: projectName, Web: a.cfg.Web}, Model: model, Selections: append([]string(nil), inv.Selections...), Options: options})
 		if err != nil {
 			return fmt.Errorf("skgo: generator %s: %w", inv.ID, err)
 		}

@@ -26,6 +26,9 @@ func (Generator) RemoteMarker() string {
 
 func (Generator) Generate(ctx context.Context, r templateapi.GenerationRequest) (templateapi.GenerationResult, error) {
 	var result templateapi.GenerationResult
+	if r.RemoteMarker != (Generator{}).RemoteMarker() {
+		return result, fmt.Errorf("MCP requires a host that applied its publication marker filter; upgrade the SKGO host")
+	}
 	if err := ctx.Err(); err != nil {
 		return result, err
 	}

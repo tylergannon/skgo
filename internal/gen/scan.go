@@ -320,6 +320,9 @@ func loadApp(cfg Config, files []string) (*app, error) {
 		for _, file := range p.Syntax {
 			path := a.links.authoredPath(p.Fset.Position(file.Pos()).Filename)
 			if !wanted[path] {
+				if err := a.scanGeneratorMarkers(p, file, nil); err != nil {
+					return nil, err
+				}
 				continue
 			}
 			fns, loads, actions, endpoints, err := a.scanFile(gp, p, file, path)
@@ -379,6 +382,9 @@ func (a *app) scanFile(gp *goPackage, p *packages.Package, file *ast.File, path 
 	isHooksFile := base == hooksFileName
 
 	if isHooksFile {
+		if err := a.scanGeneratorMarkers(p, file, nil); err != nil {
+			return nil, nil, nil, nil, err
+		}
 		return nil, nil, nil, nil, a.scanHooks(gp, p, file, path)
 	}
 

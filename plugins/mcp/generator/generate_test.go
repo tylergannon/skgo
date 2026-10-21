@@ -15,7 +15,7 @@ import (
 )
 
 func TestGeneratorUsesResolvedIdentityAndDescriptions(t *testing.T) {
-	r := templateapi.GenerationRequest{Project: templateapi.Project{Module: "example.test/app", Name: "Tasks"}, Model: templateapi.GenerationModel{Roots: []tg.Type{&tg.Scalar{Kind: tg.String}}, Remotes: []templateapi.RemoteOperation{{Name: "read", Description: "Read the current task.", Selection: "src/tasks.remote.ts#read", ID: "resolved/read", Kind: "query", Input: -1, Output: 0}}}}
+	r := templateapi.GenerationRequest{RemoteMarker: (Generator{}).RemoteMarker(), Project: templateapi.Project{Module: "example.test/app", Name: "Tasks"}, Model: templateapi.GenerationModel{Roots: []tg.Type{&tg.Scalar{Kind: tg.String}}, Remotes: []templateapi.RemoteOperation{{Name: "read", Description: "Read the current task.", Selection: "src/tasks.remote.ts#read", ID: "resolved/read", Kind: "query", Input: -1, Output: 0}}}}
 	got, err := (Generator{}).Generate(context.Background(), r)
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +99,7 @@ func TestSchemasIncludeOnlyReachableDefinitions(t *testing.T) {
 }
 
 func TestDuplicateToolNamesRemainConflictingGo(t *testing.T) {
-	r := templateapi.GenerationRequest{Model: templateapi.GenerationModel{
+	r := templateapi.GenerationRequest{RemoteMarker: (Generator{}).RemoteMarker(), Model: templateapi.GenerationModel{
 		Roots: []tg.Type{&tg.Scalar{Kind: tg.String}},
 		Remotes: []templateapi.RemoteOperation{
 			{Name: "read", Description: "Read one.", ID: "one/read", Kind: "query", Input: -1, Output: 0},
@@ -130,7 +130,16 @@ func TestDuplicateToolNamesRemainConflictingGo(t *testing.T) {
 }
 
 func TestNoPublishedRemotes(t *testing.T) {
-	if _, err := (Generator{}).Generate(context.Background(), templateapi.GenerationRequest{}); err == nil {
+	if _, err := (Generator{}).Generate(context.Background(), templateapi.GenerationRequest{RemoteMarker: (Generator{}).RemoteMarker()}); err == nil {
 		t.Fatal("accepted an empty publication surface")
+	}
+}
+
+func TestGeneratorRequiresHostAppliedPublicationFilter(t *testing.T) {
+	for _, marker := range []string{"", "example.com/other#Tool"} {
+		_, err := (Generator{}).Generate(context.Background(), templateapi.GenerationRequest{RemoteMarker: marker})
+		if err == nil || !strings.Contains(err.Error(), "host that applied") {
+			t.Fatalf("marker=%q err=%v", marker, err)
+		}
 	}
 }
