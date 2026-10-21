@@ -1,19 +1,15 @@
 {
-	"remotes": [
-		"1al4nqo/addTask",
-		"1al4nqo/listTasks",
-		"1al4nqo/taskCount"
-	],
-	"loads": [],
-	"actions": [],
-	"endpoints": {},
-	"prerender": {
-		"root": "..",
-		"package": "./internal/skgo/prerender"
-	},
-	"build": {
-		"src/hooks.server.ts": {
-			"hook": true
-		}
-	}
+  "remotes": ["1al4nqo/addTask", "1al4nqo/listTasks", "1al4nqo/taskCount"],
+  "loads": [],
+  "actions": [],
+  "endpoints": {},
+  "prerender": {
+    "root": "..",
+    "package": "./internal/skgo/prerender"
+  },
+  "build": {
+    "src/hooks.server.ts": {
+      "hook": true
+    }
+  }
 }

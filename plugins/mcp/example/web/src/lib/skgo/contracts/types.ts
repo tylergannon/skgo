@@ -7,7 +7,7 @@ export type NewTask = {
   /**
    * Title is the task to do. Supply 1 to 120 characters of nonblank text.
    */
-  "title": string;
+  title: string;
 };
 
 /**
@@ -17,9 +17,9 @@ export type Task = {
   /**
    * ID identifies this task for the lifetime of the application process.
    */
-  "id": number;
+  id: number;
   /**
    * Title describes the work to do.
    */
-  "title": string;
+  title: string;
 };
