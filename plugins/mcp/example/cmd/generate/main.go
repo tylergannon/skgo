@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
+	"path/filepath"
 	"plugin"
 
 	"github.com/tylergannon/skgo/generate"
@@ -15,6 +15,7 @@ import (
 )
 
 func main() {
+	scaffoldRoot := flag.String("root", ".", "destination for -init")
 	initServer := flag.Bool("init", false, "create missing application-owned server setup without generating bindings")
 	path := flag.String("plugin", "", "path to the MCP generator shared object")
 	flag.Parse()
@@ -28,7 +29,7 @@ func main() {
 		if !ok {
 			log.Fatal("plugin does not implement AddonPlugin")
 		}
-		root, err := os.Getwd()
+		root, err := filepath.Abs(*scaffoldRoot)
 		if err != nil {
 			log.Fatal(err)
 		}

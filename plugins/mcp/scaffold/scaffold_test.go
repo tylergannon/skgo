@@ -2,7 +2,7 @@ package scaffold
 
 import (
 	"context"
-	"go/build"
+
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,23 +21,13 @@ func TestSkeletonBecomesApplicationOwned(t *testing.T) {
 	if len(got.Changed) != 2 {
 		t.Fatalf("changes=%v", got.Changed)
 	}
-	path := filepath.Join(root, "cmd/mcp/main.go")
+	path := filepath.Join(root, "cmd/mcp/main.go.tmpl")
 	main, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(main), `"example.com/app/internal/mcpclient"`) || !strings.Contains(string(main), "server.WithInstructions(instructions)") {
 		t.Fatal(string(main))
-	}
-	included, err := build.Default.MatchFile(filepath.Dir(path), "main.go")
-	if err != nil || included {
-		t.Fatalf("optional target entered ordinary web build: %v %v", included, err)
-	}
-	tagged := build.Default
-	tagged.BuildTags = []string{"mcp"}
-	included, err = tagged.MatchFile(filepath.Dir(path), "main.go")
-	if err != nil || !included {
-		t.Fatalf("MCP target not buildable with its tag: %v %v", included, err)
 	}
 	authored := []byte("package main\n// application-owned authentication\nfunc main() {}\n")
 	if err := os.WriteFile(path, authored, 0644); err != nil {
@@ -55,5 +45,24 @@ func TestSkeletonBecomesApplicationOwned(t *testing.T) {
 	instructions, _ := os.ReadFile(doc)
 	if string(after) != string(authored) || string(instructions) != "My application guidance." {
 		t.Fatal("authored setup overwritten")
+	}
+}
+
+func TestActivatedServerRemainsApplicationOwned(t *testing.T) {
+	root := t.TempDir()
+	req := templateapi.Request{Addon: "mcp-server", Project: templateapi.Project{Root: root, Module: "example.com/app", Name: "Tasks"}}
+	if _, err := Apply(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	pending := filepath.Join(root, "cmd/mcp/main.go.tmpl")
+	active := filepath.Join(root, "cmd/mcp/main.go")
+	if err := os.Rename(pending, active); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Apply(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(pending); !os.IsNotExist(err) {
+		t.Fatal("recreated a skeleton alongside the activated server")
 	}
 }

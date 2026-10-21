@@ -43,7 +43,7 @@ func Apply(ctx context.Context, r templateapi.Request) (result templateapi.Resul
 		path string
 		data []byte
 	}{
-		{"cmd/mcp/main.go", main},
+		{"cmd/mcp/main.go.tmpl", main},
 		{"cmd/mcp/instructions.md", []byte("Use this server to work with " + r.Project.Name + ".\n")},
 	}
 	// Preflight both files before creating anything. Never follow a symlink.
@@ -61,6 +61,18 @@ func Apply(ctx context.Context, r templateapi.Request) (result templateapi.Resul
 			}
 			if info.Mode()&os.ModeSymlink != 0 {
 				return result, fmt.Errorf("%s contains a symlink", f.path)
+			}
+		}
+		if f.path == "cmd/mcp/main.go.tmpl" {
+			active := filepath.Join(r.Project.Root, "cmd/mcp/main.go")
+			if info, err := os.Lstat(active); err == nil {
+				if !info.Mode().IsRegular() {
+					return result, fmt.Errorf("cmd/mcp/main.go is not a regular file")
+				}
+				f.data = nil
+				continue
+			} else if !os.IsNotExist(err) {
+				return result, err
 			}
 		}
 		_, err := os.ReadFile(path)
@@ -96,6 +108,6 @@ func Apply(ctx context.Context, r templateapi.Request) (result templateapi.Resul
 			return result, closeErr
 		}
 	}
-	result.Next = []string{"The mcp build tag keeps this optional target out of ordinary web builds.", "Add the MCP runtime module to your application with go get github.com/tylergannon/skgo/plugins/mcp@VERSION, using your installed plugin release.", "Mark remotes with mcppublish.Tool, then run skgo generate --plugins with your usual generation flags.", "Maintain cmd/mcp/main.go and instructions.md for application setup, authentication and guidance.", "Run go mod tidy, then go build -tags=mcp -o task-mcp ./cmd/mcp."}
+	result.Next = []string{"The inactive main.go.tmpl keeps normal builds and go mod tidy working until MCP setup is ready.", "Add the MCP runtime module to your application with go get github.com/tylergannon/skgo/plugins/mcp@VERSION, using your installed plugin release.", "Mark remotes with mcppublish.Tool, then run skgo generate --plugins with your usual generation flags.", "Maintain cmd/mcp/main.go and instructions.md for application setup, authentication and guidance.", "After generating, activate once: mv cmd/mcp/main.go.tmpl cmd/mcp/main.go. Run go mod tidy, then go build -o task-mcp ./cmd/mcp."}
 	return result, nil
 }

@@ -17,5 +17,4 @@ Follow the build/run steps in [the plugin README](../README.md#example-applicati
 State lasts for the application's process lifetime. The example listens on
 loopback and intentionally has no authentication or external services.
 
-The optional MCP target builds with `go build -tags=mcp ./cmd/mcp`. Ordinary
-web builds exclude that target.
+The activated MCP target builds with `go build ./cmd/mcp`.

@@ -36,7 +36,7 @@ vp install --frozen-lockfile
 cd ..
 go tool skgo build --root .
 CGO_ENABLED=0 go build -o .local/task-list ./cmd
-CGO_ENABLED=0 go build -tags=mcp -o .local/task-mcp ./cmd/mcp
+CGO_ENABLED=0 go build -o .local/task-mcp ./cmd/mcp
 .local/task-list
 ```
 
@@ -74,7 +74,7 @@ Two published remotes with the same name produce conflicting Go declarations
 and the MCP build fails.
 
 The plugin supplies the `mcp` template and `mcp-server` add-on. With the plugin
-installed, `skgo add mcp-server` creates `cmd/mcp/main.go` and
+installed, `skgo add mcp-server` creates `cmd/mcp/main.go.tmpl` and
 `cmd/mcp/instructions.md`. The files belong to your application immediately;
 applying the add-on again preserves authored contents. The `mcp` template
 applies the same add-on to the normal minimal application scaffold.
@@ -83,12 +83,14 @@ Maintain `main.go` to configure server name/version, connection flags,
 credentials, headers, your `http.Client`, and additional tools/resources/prompts.
 The skeleton supports `SKGO_ORIGIN`, `SKGO_TOKEN` (bearer) and `SKGO_API_KEY`
 (`X-API-Key`). These must match authentication implemented by your application.
-The skeleton uses the `mcp` build tag so adding it leaves ordinary web
-builds and development working before MCP setup is complete. Add the MCP runtime
-dependency with `go get github.com/tylergannon/skgo/plugins/mcp@VERSION`, matching
-your installed plugin release; mark remotes, generate, then `go mod tidy` and
-`go build -tags=mcp -o task-mcp ./cmd/mcp`. The checkout example already supplies
-its module dependencies and local replacements.
+The skeleton is initially inactive (`main.go.tmpl`), keeping normal web builds,
+development and `go mod tidy` working before MCP setup. Add the runtime dependency
+with `go get github.com/tylergannon/skgo/plugins/mcp@VERSION`, matching your
+installed plugin release; mark remotes and generate. Activate once with
+`mv cmd/mcp/main.go.tmpl cmd/mcp/main.go`, then `go mod tidy` and
+`go build -o task-mcp ./cmd/mcp`. After activation, `main.go` belongs to your
+application. Reapplying the add-on preserves either pending or active setup.
+The checkout example already supplies its dependencies and activated entrypoint.
 
 Edit `instructions.md` for application-wide guidance; it is embedded and sent
 in MCP's initialize response. Rebuild the binary after changing it. Tool and
