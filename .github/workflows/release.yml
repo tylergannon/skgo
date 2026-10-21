@@ -22,7 +22,7 @@ permissions:
 jobs:
   source:
     name: Read the version tag
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     outputs:
       version: ${{ steps.tag.outputs.version }}
       candidate: ${{ steps.tag.outputs.candidate }}
@@ -59,11 +59,13 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            runner: [self-hosted, Linux, X64, skgo-release]
+            runner: [self-hosted, Linux, X64, skgo-release, bob]
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: [self-hosted, Linux, ARM64, skgo-release, bob]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    # ARM64 runs under QEMU on Bob; its Go compiler and plugin test execute
+    # there as ARM64 programs rather than dropping the packaged-CLI witness.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
         with:
@@ -90,7 +92,7 @@ jobs:
   macos-cli:
     name: Signed and notarized macOS CLI
     needs: source
-    runs-on: [self-hosted, macOS, ARM64, skgo-release]
+    runs-on: [self-hosted, macOS, ARM64, skgo-release, amritanandamayi]
     environment: release
     timeout-minutes: 40
     env:
@@ -141,19 +143,13 @@ jobs:
         if: always()
         run: go run ./cmd/skgo-release signing cleanup
 
-  adapter-npm:
-    name: Publish @skgo/sveltekit-adapter
-    needs: [source, linux-cli, macos-cli]
-    runs-on: ubuntu-latest
+  adapter-package:
+    name: Prepare @skgo/sveltekit-adapter on Bob
+    needs: source
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     timeout-minutes: 25
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-    permissions:
-      contents: read
-      # npm provenance: the attestation is signed with this release.yml
-      # workflow's OIDC token, matching the package's trusted publisher.
-      id-token: write
-
     steps:
       - uses: actions/checkout@v7
         with:
@@ -183,6 +179,36 @@ jobs:
           mkdir -p npm-package
           cd example/web
           vp pm pack --pack-destination "$GITHUB_WORKSPACE/npm-package" -- --dir "$GITHUB_WORKSPACE/internal/adapter"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: adapter-package
+          path: npm-package/*.tgz
+          if-no-files-found: error
+          retention-days: 2
+
+  adapter-npm:
+    name: Publish @skgo/sveltekit-adapter
+    needs: [source, linux-cli, macos-cli, adapter-package]
+    # npm trusted publishing accepts GitHub-hosted runners only. Publish the
+    # exact tarball Bob prepared, without rebuilding or installing dependencies.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.source.outputs.candidate }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.22.0
+          registry-url: https://registry.npmjs.org
+      - *setup_vp
+      - uses: actions/download-artifact@v8
+        with:
+          name: adapter-package
+          path: npm-package
       - &publish_npm
         name: Publish the tagged package or reuse its existing bytes
         working-directory: example/web
@@ -234,7 +260,7 @@ jobs:
   sv-package:
     name: Prepare @skgo/sv on Bob
     needs: source
-    runs-on: [self-hosted, Linux, X64, skgo-release]
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     timeout-minutes: 15
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -278,7 +304,7 @@ jobs:
   sv-npm:
     name: Publish @skgo/sv
     needs: [source, linux-cli, macos-cli, sv-package]
-    # npm's trusted publisher requires this hosted workflow identity. Consume
+    # npm trusted publishing accepts GitHub-hosted runners only. Consume
     # Bob's exact stamped tarball; no build or dependency install happens here.
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -304,7 +330,7 @@ jobs:
   publish:
     name: Publish GitHub Release and Homebrew cask
     needs: [source, linux-cli, macos-cli, adapter-npm, sv-package, sv-npm]
-    runs-on: [self-hosted, Linux, X64, skgo-release]
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     environment: release
     timeout-minutes: 15
     permissions:
@@ -386,7 +412,7 @@ jobs:
     name: Report publication and request installation observation
     needs: [source, publish]
     if: always() && needs.source.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     environment: release
     steps:
       - name: Record this publication result

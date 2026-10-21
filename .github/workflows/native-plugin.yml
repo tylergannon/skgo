@@ -26,7 +26,7 @@ permissions:
 jobs:
   candidate:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64, skgo-release, amritanandamayi]
     timeout-minutes: 30
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -35,10 +35,12 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
       - uses: jdx/mise-action@v4
         with:
           working_directory: plugins/native-shell/sdk
           export_path: true
+          cache: false
       - name: Native module, generated Swift and SDK regression tests
         working-directory: plugins/native-shell
         env:
@@ -97,7 +99,7 @@ jobs:
     # and the digest it actually exercised. Neither a merge nor candidate build
     # can authorize this job. This job never recompiles the plugin.
     if: github.event_name == 'repository_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     environment: release
     timeout-minutes: 10
     permissions:

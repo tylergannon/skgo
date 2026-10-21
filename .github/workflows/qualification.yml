@@ -24,7 +24,7 @@ jobs:
   qualification:
     name: Built example and client handoff (production)
     if: github.event_name == 'workflow_dispatch' || inputs.production
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     timeout-minutes: 45
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.2'
-          cache: ${{ github.event_name == 'pull_request' }}
+          cache: false
 
       - &mise
         uses: jdx/mise-action@v4
@@ -50,7 +50,7 @@ jobs:
           export_path: true
           # Self-hosted runners keep their tools. Restoring the cache there
           # downloads hundreds of megabytes they already have.
-          cache: ${{ runner.environment == 'github-hosted' }}
+          cache: false
 
       - uses: extractions/setup-just@v4
 
@@ -95,7 +95,7 @@ jobs:
   compiler-linux:
     name: Generated consumers and Go process boundaries (Linux)
     if: github.event_name == 'workflow_dispatch' || inputs.native
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     timeout-minutes: 20
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -106,7 +106,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.2'
-          cache: ${{ github.event_name == 'pull_request' }}
+          cache: false
       - *mise
       - run: cd example/web && vp install --frozen-lockfile
       - name: Fresh compiler and process witnesses
@@ -119,7 +119,7 @@ jobs:
   compiler-macos:
     name: Go process boundaries (macOS)
     if: github.event_name == 'workflow_dispatch' || inputs.native
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["macos-15"]' || '["self-hosted","macOS","ARM64","skgo-release"]') }}
+    runs-on: [self-hosted, macOS, ARM64, skgo-release, amritanandamayi]
     timeout-minutes: 20
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -130,7 +130,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.2'
-          cache: ${{ github.event_name == 'pull_request' }}
+          cache: false
       - *mise
       - run: cd example/web && vp install --frozen-lockfile
       - name: Fresh Go host process witnesses
@@ -141,7 +141,7 @@ jobs:
   development:
     name: Vite and Go session boundary
     if: github.event_name == 'workflow_dispatch' || inputs.development
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     timeout-minutes: 20
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -152,7 +152,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.2'
-          cache: ${{ github.event_name == 'pull_request' }}
+          cache: false
       - *mise
       - name: Install the example
         run: cd example/web && vp install --frozen-lockfile

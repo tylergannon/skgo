@@ -1,0 +1,15 @@
+# Installed as a user service by deploy-bob-runners.sh. Bob's lingering user
+# manager restores ARM64 execution after a host reboot, before Docker's runner
+# restart eventually succeeds.
+[Unit]
+Description=ARM64 execution for skgo's release runner on Bob
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker run --privileged --rm tonistiigi/binfmt@sha256:465d3fdd28d0f2b871ba4b4ec98bd183292e96167f00d9fd40bd249f8632d705 --install arm64
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

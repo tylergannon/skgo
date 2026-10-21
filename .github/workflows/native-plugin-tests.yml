@@ -48,13 +48,14 @@ permissions:
 jobs:
   contracts:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version-file: plugins/native-shell/go.mod
+          cache: false
           cache-dependency-path: |
             go.sum
             plugins/native-shell/go.sum
@@ -67,7 +68,7 @@ jobs:
   compiler-and-wire:
     name: Native compiler and wire witnesses
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64, skgo-release, amritanandamayi]
     timeout-minutes: 20
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -76,6 +77,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: plugins/native-shell/go.mod
+          cache: false
           cache-dependency-path: |
             go.sum
             plugins/native-shell/go.sum
@@ -83,6 +85,7 @@ jobs:
         with:
           working_directory: plugins/native-shell/sdk
           export_path: true
+          cache: false
       - name: Generated Swift and SDK wire regression tests
         working-directory: plugins/native-shell
         env:

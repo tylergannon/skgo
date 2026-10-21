@@ -19,8 +19,7 @@ jobs:
   checks:
     name: Go contracts and Conventional Commit
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    # Fork code stays off the persistent LAN runners.
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     timeout-minutes: 20
     outputs:
       native: ${{ steps.changes.outputs.native }}
@@ -36,7 +35,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: 1.27.2
-          cache: ${{ github.event_name == 'pull_request' }}
+          cache: false
           cache-dependency-path: |
             go.sum
             go.work.sum
@@ -47,7 +46,7 @@ jobs:
           export_path: true
           # Self-hosted runners keep their tools. Restoring the cache there
           # downloads hundreds of megabytes they already have.
-          cache: ${{ runner.environment == 'github-hosted' }}
+          cache: false
       - uses: extractions/setup-just@v4
       - name: HEAD uses a Conventional Commit subject
         run: go run ./cmd/skgo-release-version --check HEAD
@@ -96,8 +95,7 @@ jobs:
   svelte-check:
     name: Svelte type check of example/web
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    # Fork code stays off the persistent LAN runners.
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted","Linux","X64","skgo-release"]') }}
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     timeout-minutes: 15
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -125,7 +123,7 @@ jobs:
         with:
           working_directory: example
           export_path: false
-          cache: ${{ runner.environment == 'github-hosted' }}
+          cache: false
 
       - if: steps.changed.outputs.run == 'true'
         run: mise -C example/web exec -- vp install --frozen-lockfile
