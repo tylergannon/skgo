@@ -9,8 +9,8 @@ x-runner: &runner
     context: ../..
     dockerfile: scripts/ci/bob-runner.Dockerfile
   restart: unless-stopped
-  cpus: 8
-  mem_limit: 16g
+  cpus: 4
+  mem_limit: 8g
   entrypoint:
     - bash
     - -lc
@@ -39,6 +39,28 @@ services:
       - /home/tyler/.cache/skgo-release/vp-config:/home/runner/.config/vite-plus
       - /home/tyler/.cache/skgo-release/vp-state:/home/runner/.local/state/vite-plus
       - /home/tyler/.cache/skgo-release/work-2:/home/runner/_work
+  runner-3:
+    <<: *runner
+    container_name: skgo-release-runner-3
+    volumes:
+      - /home/tyler/go/pkg/mod:/home/runner/go/pkg/mod
+      - /home/tyler/.cache/skgo-release/cache:/home/runner/.cache
+      - /home/tyler/.cache/skgo-release/pnpm:/home/runner/.local/share/pnpm
+      - /home/tyler/.cache/skgo-release/vp-data:/home/runner/.local/share/vite-plus
+      - /home/tyler/.cache/skgo-release/vp-config:/home/runner/.config/vite-plus
+      - /home/tyler/.cache/skgo-release/vp-state:/home/runner/.local/state/vite-plus
+      - /home/tyler/.cache/skgo-release/work-3:/home/runner/_work
+  runner-4:
+    <<: *runner
+    container_name: skgo-release-runner-4
+    volumes:
+      - /home/tyler/go/pkg/mod:/home/runner/go/pkg/mod
+      - /home/tyler/.cache/skgo-release/cache:/home/runner/.cache
+      - /home/tyler/.cache/skgo-release/pnpm:/home/runner/.local/share/pnpm
+      - /home/tyler/.cache/skgo-release/vp-data:/home/runner/.local/share/vite-plus
+      - /home/tyler/.cache/skgo-release/vp-config:/home/runner/.config/vite-plus
+      - /home/tyler/.cache/skgo-release/vp-state:/home/runner/.local/state/vite-plus
+      - /home/tyler/.cache/skgo-release/work-4:/home/runner/_work
   runner-arm64:
     <<: *runner
     image: skgo-release-runner-arm64:2.338.0

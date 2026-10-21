@@ -13,6 +13,7 @@ echo "Building the bob runner image from $(git rev-parse --short HEAD)"
 git archive HEAD scripts/ci example/mise.toml | ssh bob "mkdir -p $dir && tar -x -C $dir"
 ssh bob "mkdir -p ~/.config/systemd/user \
 		~/.cache/skgo-release/cache-arm64 ~/.cache/skgo-release/work-arm64 \
+		~/.cache/skgo-release/work-3 ~/.cache/skgo-release/work-4 \
 	&& cp $dir/scripts/ci/bob-arm64-emulation.service ~/.config/systemd/user/ \
 	&& systemctl --user daemon-reload \
 	&& systemctl --user enable --now bob-arm64-emulation.service"
@@ -20,7 +21,7 @@ ssh bob "$compose build"
 
 runner() { gh api "repos/$repo/actions/runners" --jq ".runners[] | select(.name == \"$1\") | .$2"; }
 
-for n in 1 2 arm64; do
+for n in 1 2 3 4 arm64; do
 	name=bob-skgo-release-$n
 	while [ "$(runner "$name" busy)" = true ]; do
 		echo "$name is running a job; waiting"

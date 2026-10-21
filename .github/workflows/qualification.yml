@@ -123,6 +123,8 @@ jobs:
     timeout-minutes: 20
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+      GOMAXPROCS: '4'
+      GOFLAGS: -p=4
     steps:
       - uses: actions/checkout@v7
         with:

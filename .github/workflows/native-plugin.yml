@@ -30,6 +30,8 @@ jobs:
     timeout-minutes: 30
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+      GOMAXPROCS: '4'
+      GOFLAGS: -p=4
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -48,10 +50,10 @@ jobs:
         run: go test -tags skgo_qualification -count=1 ./...
       - name: Zig SDK unit tests and Swift link library
         working-directory: plugins/native-shell/sdk/core
-        run: mise exec -- zig build test library
+        run: mise exec -- zig build -j4 test library
       - name: Swift SDK unit tests
         working-directory: plugins/native-shell/sdk/swift
-        run: swift test
+        run: swift test --jobs 4
       - name: Fetch the official executable and build against its identity
         id: candidate
         env:
