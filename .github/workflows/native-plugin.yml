@@ -26,19 +26,23 @@ permissions:
 jobs:
   candidate:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, ARM64, skgo-release, amritanandamayi]
     timeout-minutes: 30
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+      GOMAXPROCS: '4'
+      GOFLAGS: -p=4
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
       - uses: jdx/mise-action@v4
         with:
           working_directory: plugins/native-shell/sdk
           export_path: true
+          cache: false
       - name: Native module, generated Swift and SDK regression tests
         working-directory: plugins/native-shell
         env:
@@ -46,10 +50,10 @@ jobs:
         run: go test -tags skgo_qualification -count=1 ./...
       - name: Zig SDK unit tests and Swift link library
         working-directory: plugins/native-shell/sdk/core
-        run: mise exec -- zig build test library
+        run: mise exec -- zig build -j4 test library
       - name: Swift SDK unit tests
         working-directory: plugins/native-shell/sdk/swift
-        run: swift test
+        run: swift test --jobs 4
       - name: Fetch the official executable and build against its identity
         id: candidate
         env:
@@ -97,7 +101,7 @@ jobs:
     # and the digest it actually exercised. Neither a merge nor candidate build
     # can authorize this job. This job never recompiles the plugin.
     if: github.event_name == 'repository_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     environment: release
     timeout-minutes: 10
     permissions:

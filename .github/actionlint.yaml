@@ -1,2 +1,2 @@
 self-hosted-runner:
-  labels: [skgo-release]
+  labels: [skgo-release, bob, amritanandamayi]
