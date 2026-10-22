@@ -17,7 +17,7 @@ The Go-driven wire checks belong to the source checkout, not an SDK export.
 From `plugins/native-shell`, run:
 
 ```sh
-GOWORK=off go test -tags skgo_qualification -count=1 -race ./sdk
+go test -tags skgo_qualification -count=1 -race ./sdk
 ```
 
 Native development CI runs the Zig/Swift compiler and wire witnesses on macOS;

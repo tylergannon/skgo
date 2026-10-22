@@ -14,8 +14,8 @@ The final helper uses Vite's own config-file evaluator, flattens its asynchronou
 
 ## Checks personally run
 
-- Plugin module: `GOWORK=off go test -count=1 -v ./...` passed, with no skipped tests.
-- Example module: `GOWORK=off go test -count=1 -v ./...` passed, with no skipped tests.
+- Plugin module: `go test -count=1 -v ./...` passed, with no skipped tests.
+- Example module: `go test -count=1 -v ./...` passed, with no skipped tests.
 - Root adapter test: `go test -count=1 -v ./internal/adapter -run TestRemotePathUsesEvaluatedKitConfiguration` passed, including imported and environment-selected app directories and the default. Repeated it after the final helper switched away from complete build resolution.
 - Root host-forwarding test: `go test -count=1 -v ./internal/gen -run TestGeneratorReceivesConfiguredRemotePath` passed.
 - Rebuilt the actual combined CLI and standalone MCP entrypoints as `.local/reviewer-endpoint-client` and `.local/reviewer-endpoint-mcp`. Both detailed help outputs expose the base URL; neither exposes origin, base-path or app-directory flags.

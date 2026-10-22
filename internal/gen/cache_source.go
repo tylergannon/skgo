@@ -582,7 +582,7 @@ func (s cacheSources) materializeIn(cfg Config, files map[string][]byte, root st
 	// artifacts across misses. The caller's flags come last, preserving explicit
 	// overrides (including -trimpath=false), quoting, tags and compiler options.
 	env = append(env, "GOFLAGS="+strings.TrimSpace("-trimpath "+s.Environment["GOFLAGS"]))
-	env = append(env, "GOENV=off", "GOWORK=off")
+	env = append(env, "GOENV=off", "GOWORK=")
 	if work := s.Environment["GOWORK"]; work != "" && work != "off" {
 		wf, err := modfile.ParseWork(work, files[work], nil)
 		if err != nil {

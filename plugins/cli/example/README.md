@@ -8,7 +8,6 @@ Build the real generator plugin, generate its outputs, and build the application
 and client from this directory:
 
 ```sh
-export GOWORK=off
 cd web
 vp install --frozen-lockfile
 cd ..
@@ -78,8 +77,8 @@ to create missing original MCP setup without replacing authored files.
 
 ## Tests
 
-From the plugin directory, `GOWORK=off go test ./...` covers generation, argument
-handling and HTTP request preparation. From this example, `GOWORK=off go test
+From the plugin directory, `go test ./...` covers generation, argument
+handling and HTTP request preparation. From this example, `go test
 ./...` checks generated CLI and MCP calls against the real task handlers,
 including authentication, file contents, escapes, malformed input and shared
 state. Running and using the built application remains part of verification.

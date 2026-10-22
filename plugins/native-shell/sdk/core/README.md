@@ -17,5 +17,5 @@ The Swift JSON boundary has its own finite model profile, described in
 
 From this directory, `mise exec -- zig build test install` builds the core and
 CLI. From the native-shell module root,
-`GOWORK=off go test -tags skgo_qualification -count=1 -race -v ./sdk` exercises actual
+`go test -tags skgo_qualification -count=1 -race -v ./sdk` exercises actual
 query and command HTTP calls against the production remote dispatcher.

@@ -23,7 +23,7 @@ Introduced two further separate disposable regressions, both compiling successfu
 
 These failures demonstrate behavioral assertions, rather than merely a zero-exit or nonempty-output check.
 
-In the renamed plugin, independently ran `GOWORK=off go test -count=1 -v ./generator ./scaffold`; all tests passed. In its example, ran `GOWORK=off go test -count=1 -v ./cmd/client`; the real-handler and help tests passed. No broad suite was redundantly rerun while the parent was already running the default suite.
+In the renamed plugin, independently ran `go test -count=1 -v ./generator ./scaffold`; all tests passed. In its example, ran `go test -count=1 -v ./cmd/client`; the real-handler and help tests passed. No broad suite was redundantly rerun while the parent was already running the default suite.
 
 ## Actual plugin and running example
 

@@ -365,7 +365,7 @@ func Remotes() []*skgo.Remote {
 			Name:           "writeValue",
 			Fn:             skgo0.Skgo_writeValue,
 			CallerMatchers: skgoCallerMatchers(),
-			CallerRoutes:   params.SkgoCallerRoutes(),
+			CallerParams:   params.SkgoCallerParams,
 			Call:           remote_writeValue,
 			DecodeArg:      requestedArg_writeValue,
 		}),

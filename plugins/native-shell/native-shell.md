@@ -62,12 +62,12 @@ No new deployment, notarization or lifecycle capability is introduced.
 The tiny [example source](https://github.com/tylergannon/skgo/tree/main/plugins/native-shell/example)
 uses generated Swift calls against its actual Go server. With a launch argument,
 it prints a query result, writes the supplied value using a generated command,
-and prints a second query result. That example is the complete native release
-gate. It does not establish iOS distribution or broader lifecycle promises.
+and prints a second query result. It demonstrates the generated native calls
+without implying iOS distribution or broader lifecycle capabilities.
 
 Native releases have independent versions and explicit release requests. Their
-CI builds the exact host pairing; the separate qualification job authorizes
-publication of those same bytes. Core releases do not wait for native proof.
+CI builds the exact host pairing. Publication uses the original candidate
+bytes named in the release request.
 
 The example's two remote definitions are ordinary skgo declarations:
 
@@ -94,7 +94,7 @@ The former `swiftRemotes` native-configuration field is removed; migrate its
 selections to the plugin pin instead of maintaining a second remote list.
 
 Prepare the checked-in example for its chosen official core target with
-`GOWORK=off skgo update --complete-version VERSION --root plugins/native-shell/example`,
+`skgo update --complete-version VERSION --root plugins/native-shell/example`,
 using that version's official executable. This existing operation aligns the
 core dependency, compatible published adapter and frontend lockfile together.
 The example has no local core replacement. Then install the matching native

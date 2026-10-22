@@ -94,12 +94,12 @@ func fetch(ctx context.Context, ref, goVersion string, out io.Writer) (s source,
 	}()
 	// Resolve the installed exact Go tool first, so its own distribution is not
 	// downloaded afresh into the disposable source module cache.
-	goroot, err := command(ctx, temp, []string{"GOWORK=off", "GOTOOLCHAIN=" + goVersion, "GOFLAGS="}, "go", "env", "GOROOT")
+	goroot, err := command(ctx, temp, []string{"GOWORK=", "GOTOOLCHAIN=" + goVersion, "GOFLAGS="}, "go", "env", "GOROOT")
 	if err != nil {
 		return s, cleanup, err
 	}
 	goexe := filepath.Join(strings.TrimSpace(string(goroot)), "bin", "go")
-	env := []string{"GOWORK=off", "GOTOOLCHAIN=local", "GOPROXY=direct", "GOMODCACHE=" + filepath.Join(temp, "cache"), "GOFLAGS=-modcacherw"}
+	env := []string{"GOWORK=", "GOTOOLCHAIN=local", "GOPROXY=direct", "GOMODCACHE=" + filepath.Join(temp, "cache"), "GOFLAGS=-modcacherw"}
 	fmt.Fprintf(out, "Resolve trusted source directly through canonical VCS: %s@%s (GOPROXY=direct).\n", path, query)
 	policy, err := command(ctx, temp, env, goexe, "env", "-json", "GOSUMDB", "GONOSUMDB", "GOPRIVATE")
 	if err != nil {

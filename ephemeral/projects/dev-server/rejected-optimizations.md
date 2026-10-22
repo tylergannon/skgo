@@ -1,9 +1,7 @@
 # Rejected development-loop optimizations
 
 Ideas for making `skgo dev` faster that were considered and rejected. Each
-entry records why, what was done instead, and what would reopen it. Timings
-come from the skgo-project ledger (`ledger/readings.tsv`) or from timers
-placed in the code temporarily.
+entry records why, what was done instead, and what would reopen it. Historical timings below describe the observed cases, not current guarantees.
 
 ## Race a hot patch against a complete rebuild
 

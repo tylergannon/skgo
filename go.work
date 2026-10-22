@@ -3,4 +3,8 @@ go 1.27.2
 use (
 	.
 	./example
+	./plugins/cli
+	./plugins/cli/example
+	./plugins/native-shell
+	./plugins/native-shell/example
 )

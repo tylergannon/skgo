@@ -1,10 +1,6 @@
 {
 	"schemaVersion": 1,
 	"linkRoot": "internal/skgo/_links",
-	"boundary": {
-		"path": "web/src/routes/go.mod",
-		"owned": true
-	},
 	"links": [
 		{
 			"link": "internal/skgo/_links/onzggl3sn52xizlt",

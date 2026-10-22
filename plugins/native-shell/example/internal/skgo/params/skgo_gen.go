@@ -34,8 +34,8 @@ func (h Handle) Intercept(cfg skgo.HandleConfig, next http.Handler) http.Handler
 }
 func (h Middleware) Intercept(cfg skgo.HandleConfig, next http.Handler) http.Handler {
 	return skgo.RequestMiddleware[Params, appstate.Locals](h).Intercept(cfg, func(event *skgo.Event) (Params, error) {
-		id, values := skgo.HookValues(event)
-		p, err := SkgoParams(id, values)
+		id, declared, values := skgo.HookValues(event)
+		p, err := SkgoParams(id, declared, values)
 		if err != nil {
 			return p, skgo.Errorf(503, "skgo: callerManifestDrift: %v", err)
 		}
@@ -43,29 +43,26 @@ func (h Middleware) Intercept(cfg skgo.HandleConfig, next http.Handler) http.Han
 	}, next)
 }
 
-// SkgoCallerRoutes describes every constructor generated from Kit's route metadata.
-func SkgoCallerRoutes() skgo.CallerRoutes {
-	return skgo.CallerRoutes{
-		"/": {Params: []skgo.ManifestParam{}, NewParams: func(values map[string]any) (any, error) { return SkgoParams("/", values) }},
-	}
+// SkgoCallerParams constructs Params for the runtime's caller validation.
+func SkgoCallerParams(routeID string, declared []skgo.ManifestParam, values map[string]any) (any, error) {
+	return SkgoParams(routeID, declared, values)
 }
 
 // SkgoRequestEvent constructs the explicit event for a command or form.
 func SkgoRequestEvent(event *skgo.Event) (RequestEvent, error) {
-	routeID, values := skgo.RemoteCallerValues(event)
-	p, err := SkgoParams(routeID, values)
+	routeID, declared, values := skgo.RemoteCallerValues(event)
+	p, err := SkgoParams(routeID, declared, values)
 	return RequestEvent{Event: event, Params: p, Locals: appstate.LocalsFrom(event.Request().Context())}, err
 }
 
-// SkgoParams constructs values for an already matched caller route.
-func SkgoParams(routeID string, values map[string]any) (Params, error) {
+// SkgoParams constructs values for an already matched route from the
+// parameters Kit declares for it. A declaration without a generated variant is
+// refused even when its value is absent.
+func SkgoParams(routeID string, declared []skgo.ManifestParam, values map[string]any) (Params, error) {
 	var p Params
-	switch routeID {
-	case "/":
-	default:
-		if routeID != "" {
-			return Params{}, fmt.Errorf("skgo: unknown caller route %q; regenerate params", routeID)
-		}
+	if len(declared) != 0 {
+		param := declared[0]
+		return Params{}, fmt.Errorf("skgo: caller %s param %s with matcher %q has no generated variant; regenerate params", routeID, param.Name, param.Matcher)
 	}
 	return p, nil
 }

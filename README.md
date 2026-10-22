@@ -433,7 +433,7 @@ using it in `Describe`; the builder injects the actual host's version. Preparati
 is ordinary `go generate <package>`, with no JSON hooks. The builder writes host
 shared dependency pins, runs `go mod tidy -e` to prepare generator sums while
 preserving declared requirements, generates, runs strict `go mod tidy`, verifies the shared graph,
-and compiles, all under the host's exact Go toolchain with `GOWORK=off`.
+and compiles, all under the host's exact Go toolchain using the staged module graph.
 Declare generator dependencies and generated-source requirements in go.mod.
 Module mode (`-mod=mod`) ignores committed vendor trees. Direct source resolution
 uses a temporary cache; compilation uses your ordinary cache and proxy settings.

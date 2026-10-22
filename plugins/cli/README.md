@@ -28,7 +28,6 @@ generator reads the configured remote endpoint location from Kit.
 From `plugins/cli/example`, with the repository's Go toolchain and VitePlus:
 
 ```sh
-export GOWORK=off
 mkdir -p .local
 go build -buildmode=plugin -o .local/cli.so github.com/tylergannon/skgo/plugins/cli
 cd web
@@ -164,10 +163,8 @@ entrypoints and their configuration.
 
 ## Checks
 
-`GOWORK=off go test ./...` in this plugin module runs unit tests with literal
-models, JSON values and an injected HTTP transport. Mission Control owns the
-application validation at `skgo-project/scripts/mcp/run.sh`, also exposed as the
-**Validate MCP plugin** Actions workflow there. It builds this example, launches
-both binaries, discovers tools and documentation, and observes changes through
-MCP and the real Kit web frontend in both directions. Core release qualification
-and native-shell qualification remain separate.
+`go test ./...` in this plugin module runs unit tests with literal
+models, JSON values and an injected HTTP transport. Run `go test ./...` in the
+example module to exercise generated CLI and MCP calls against the application's
+real task handlers. Build and run the example to use its browser and command
+interfaces together.

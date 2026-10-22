@@ -24,6 +24,5 @@ files in the external test package, so `go test` compiles them and checks any
 `// Output:`. A `text` fence whose info string is an `skgo` command line (`skgo
 new -h`) also has an empty body: the site runs that command with the release's
 binary in an empty directory and inserts what it prints, so a page never pastes
-command output. The project site (tylergannon/skgo-project) extracts pages,
-samples and godoc from the tagged release when it builds; nothing derived is
-committed here.
+command output. Documentation builds extract pages, samples and godoc from the tagged release;
+nothing derived is committed here.

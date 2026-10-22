@@ -12,8 +12,8 @@ Read the relevant tracked diff and new implementation files: command generation 
 
 ## Checks personally run
 
-- In the plugin module: `GOWORK=off go test -count=1 -v ./...` passed. All selected tests executed; there were no skips.
-- In its example module: `GOWORK=off go test -count=1 -v ./...` passed, including literal expected task IDs, exact file/newline preservation, missing-file rejection, invalid input rejection, authentication, shared CLI/MCP handlers, and help without a connection.
+- In the plugin module: `go test -count=1 -v ./...` passed. All selected tests executed; there were no skips.
+- In its example module: `go test -count=1 -v ./...` passed, including literal expected task IDs, exact file/newline preservation, missing-file rejection, invalid input rejection, authentication, shared CLI/MCP handlers, and help without a connection.
 - Built the actual server, combined CLI/MCP binary, and retained standalone MCP binary under distinct `.local/reviewer-*` names.
 - `git diff --check` passed.
 
@@ -58,7 +58,7 @@ Binary size was not measured; no binary-size claim is made. This review is for t
 
 ## Final-source reconciliation
 
-After the initial review, the parent made three bounded example refinements. I inspected the final source and independently reran `GOWORK=off go test -count=1 -v ./cmd/client`; both tests passed with no skips. The real-handler test now additionally invokes the application-authored `add-file` command and asserts literal ID 5, exact `@from-file\n` contents, and the complete five-task list.
+After the initial review, the parent made three bounded example refinements. I inspected the final source and independently reran `go test -count=1 -v ./cmd/client`; both tests passed with no skips. The real-handler test now additionally invokes the application-authored `add-file` command and asserts literal ID 5, exact `@from-file\n` contents, and the complete five-task list.
 
 Rebuilt the reviewer server and combined client from those final sources. Ran server help with a known environment API key and asserted the key was absent from both output streams. The key is now read after flag parsing, so help cannot print it as a flag default. Ran the custom `add-file` command against a fixture containing invalid UTF-8 with an intentionally unreachable server origin; it exited 1 with `file must contain UTF-8 text` before any network attempt. No findings arose from these changes. Earlier live browser/CLI/MCP demonstrations remain applicable because the shared generator, client, transport, and CLI bridge did not change.
 
