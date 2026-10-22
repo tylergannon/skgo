@@ -22,10 +22,10 @@
   }
 </script>
 
-<svelte:head><title>Task list with MCP</title></svelte:head>
+<svelte:head><title>Task list with CLI and MCP</title></svelte:head>
 <main>
-  <h1>Task list with MCP</h1>
-  <p>The web page and MCP tools share this Go application’s in-memory task list.</p>
+  <h1>Task list with CLI and MCP</h1>
+  <p>The web page, CLI commands and MCP tools share this Go application’s in-memory task list.</p>
   <form onsubmit={submit}>
     <label>Task <input bind:value={title} required maxlength="120" /></label>
     <button type="submit">Add task</button>

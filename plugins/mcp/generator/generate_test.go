@@ -20,7 +20,7 @@ func TestGeneratorUsesResolvedIdentityAndDescriptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.Files) != 2 {
+	if len(got.Files) != 3 {
 		t.Fatalf("files=%d", len(got.Files))
 	}
 	for _, f := range got.Files {

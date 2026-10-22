@@ -1,10 +1,10 @@
-# MCP generator plugin
+# Application CLI and MCP generator plugin
 
-The MCP plugin generates typed Go clients and a standalone stdio MCP server
+The plugin generates typed Go clients, individual Cobra commands and MCP tools
 for explicitly marked SKGO queries and commands. Function Go comments become
 tool descriptions. Field and type comments become JSON Schema documentation.
 Generated clients import the application's contract types and use Polytype's
-strict devalue codecs. The runtime calls the existing application's HTTP
+strict devalue codecs. Both interfaces call the existing application's HTTP
 endpoints. It does not load the generator plugin or application handlers.
 
 The first version supports ordinary queries and commands, exported importable
@@ -105,6 +105,61 @@ SKGO owns publication, stale-file cleanup and protection of authored edits.
 No marked remotes is an error. New application remotes are never automatically
 exposed. Move request/result declarations into a shared contract package when
 their route package cannot be imported from generated client code.
+
+## Generated CLI commands
+
+The existing `mcp` plugin ID and `mcppublish.Tool` markers remain compatible.
+Each marked query or command now also generates an independent Cobra constructor
+in `internal/mcpclient/commands_gen.go`. The same selection applies to both
+interfaces; unmarked web remotes remain private to the web application.
+
+Construct commands with the generated client and assemble them yourself:
+
+```go
+c := &mcpclient.Client{Remote: remoteclient.Client{
+    Origin: origin,
+    PrepareRequest: func(r *http.Request) error {
+        r.Header.Set("X-API-Key", key)
+        return nil
+    },
+}}
+add := mcpclient.NewAddTaskCommand(c)
+add.Use = "add"
+tasks.AddCommand(add, mcpclient.NewListTasksCommand(c))
+root.AddCommand(tasks)
+```
+
+The application owns the command tree, names, shared flags, configuration and
+credentials. The optional request callback runs before every actual API request,
+after standard headers are set. Returning an error prevents dispatch. CLI and
+MCP calls through this client share it. Help and argument validation do not need
+a connection. The callback may obtain fresh credentials on each call.
+
+String fields become string flags; booleans become boolean flags. Numeric and
+structured flags accept JSON values. Optional fields remain absent unless
+supplied. Use `--input-json` for the complete MCP-shaped argument object,
+including explicit nulls and nested values; it cannot be mixed with field flags.
+If an input field already has that flag name, the complete-input flag gets a
+`-json` suffix. A field named `help` uses `--arg-help` (prefixed again if needed).
+The generated help lists the actual names and input/result documentation.
+
+For string flags, `@path` reads UTF-8 file contents exactly, including newlines;
+`@@text` sends literal `@text`. A failed read stops with an escape hint.
+File contents are never expanded again. `--input-json @request.json` reads JSON;
+strings *inside* that JSON remain literal. MCP and direct Go client arguments
+also remain literal. They never read local files implicitly.
+
+Successful commands print one JSON object with a `result` property. Errors go
+to the application entrypoint for nonzero exit and stderr reporting. A command
+is never automatically retried; failure after dispatch may follow a completed
+mutation. Applications may replace any generated command with their own and
+call the same typed client, without editing generated files.
+
+The [example](example/) contains `cmd/client`, an application-owned command tree
+with `tasks list`, `tasks add`, a custom `tasks add-file` command and an `mcp`
+mode. The older `cmd/mcp` entrypoint remains available. Generation owns only the
+three files in `internal/mcpclient`; recurring generation preserves both
+entrypoints and their configuration.
 
 ## Checks
 

@@ -1,0 +1,4 @@
+correction: The user approved implementation, not another proposal. Completion is a working plugin example demonstrating CLI and retained MCP together, not generated files or passing unit tests alone.
+decision: Generate individual Cobra commands; application code owns their composition. Both interfaces share typed calls and an optional outgoing-request callback. CLI string flags use @path for exact file contents and @@ for one literal @; failed reads stop before dispatch. MCP and direct client strings stay literal.
+friction: Cobra and Go flag help include nonempty flag defaults. Resolve API-key environment defaults after parsing or in the request callback, so help never prints the credential.
+friction: Mixing repository-relative file edits with a nested-module command workdir caused repeated path errors. Keep edits rooted at the absolute task checkout and use go -C for module commands.

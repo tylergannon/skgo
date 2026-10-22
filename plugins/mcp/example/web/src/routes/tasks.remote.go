@@ -25,12 +25,12 @@ func listTasks(context.Context) ([]contracts.Task, error) {
 // addTask creates a task in the shared list and returns its ID and title.
 func addTask(_ context.Context, _ params.RequestEvent, input contracts.NewTask) (contracts.Task, error) {
 	title := strings.TrimSpace(input.Title)
-	if title == "" || utf8.RuneCountInString(title) > 120 {
+	if title == "" || utf8.RuneCountInString(input.Title) > 120 {
 		return contracts.Task{}, &skgo.HTTPError{Status: 400, Message: "Supply a task title of 1 to 120 characters"}
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	task := contracts.Task{ID: len(tasks) + 1, Title: title}
+	task := contracts.Task{ID: len(tasks) + 1, Title: input.Title}
 	tasks = append(tasks, task)
 	return task, nil
 }

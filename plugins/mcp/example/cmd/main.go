@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -31,7 +32,11 @@ func main() {
 func run() error {
 	listen := flag.String("listen", hostPort(origin), "address to listen on")
 	trusted := flag.String("origin", origin, "public browser origin")
+	apiKey := flag.String("api-key", "", "Optional API key; browser access uses HTTP Basic with the key as password")
 	flag.Parse()
+	if *apiKey == "" {
+		*apiKey = os.Getenv("SKGO_API_KEY")
+	}
 
 	dist, err := fs.Sub(web.Build, "build")
 	if err != nil {
@@ -40,6 +45,21 @@ func run() error {
 	handler, err := app.NewHandler(dist, *trusted)
 	if err != nil {
 		return err
+	}
+	if *apiKey != "" {
+		next := handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			key := r.Header.Get("X-API-Key")
+			if _, password, ok := r.BasicAuth(); ok && key == "" {
+				key = password
+			}
+			if subtle.ConstantTimeCompare([]byte(key), []byte(*apiKey)) != 1 {
+				w.Header().Set("WWW-Authenticate", `Basic realm="TaskList"`)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
 	// Bind before announcing: a port another process holds fails here, before
 	// any line claims this server is up.

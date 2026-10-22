@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,12 +17,18 @@ import (
 	"github.com/tylergannon/skgo/remoteprotocol"
 )
 
+// ErrNotSent identifies request preparation failures, before HTTP dispatch.
+var ErrNotSent = errors.New("request not sent")
+
 // Client uses one application identity. Headers and HTTP may provide existing
 // application authentication. Base and AppDir describe the Kit deployment.
 type Client struct {
 	Origin, Base, AppDir string
 	Headers              http.Header
 	HTTP                 *http.Client
+	// PrepareRequest optionally customizes each outgoing request after standard headers
+	// are set. An error stops dispatch. Use it for fresh credentials or custom headers.
+	PrepareRequest func(*http.Request) error
 }
 
 // Call makes one request. Commands are never retried, and redirects are refused.
@@ -77,6 +84,11 @@ func (c *Client) Call(ctx context.Context, id, kind string, input any) (any, err
 	if method == http.MethodPost {
 		req.Header.Set("Origin", c.Origin)
 		req.Header.Set("Content-Type", "application/json")
+	}
+	if c.PrepareRequest != nil {
+		if err := c.PrepareRequest(req); err != nil {
+			return nil, fmt.Errorf("%w: request preparation: %w", ErrNotSent, err)
+		}
 	}
 	httpClient := http.Client{Timeout: 30 * time.Second}
 	if c.HTTP != nil {

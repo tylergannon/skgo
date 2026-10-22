@@ -88,3 +88,34 @@ func TestRemoteFailures(t *testing.T) {
 		}
 	}
 }
+
+func TestRequestCallbackRunsForEachCallAndCanStopDispatch(t *testing.T) {
+	prepared, sent := 0, 0
+	rejected := errors.New("credentials unavailable")
+	c := Client{Origin: "https://app.test", PrepareRequest: func(r *http.Request) error {
+		prepared++
+		if prepared == 3 {
+			return rejected
+		}
+		r.Header.Set("X-API-Key", "fresh-key")
+		if r.Header.Get("Accept") != "application/json" {
+			t.Fatal("callback ran before standard headers")
+		}
+		return nil
+	}, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+		sent++
+		if r.Header.Get("X-API-Key") != "fresh-key" {
+			t.Fatal("missing prepared header")
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"type":"result","data":"[{\"_\":1},\"ok\"]"}`))}, nil
+	})}}
+	for _, kind := range []string{"query", "command"} {
+		if _, err := c.Call(context.Background(), "hash/call", kind, devalue.Undefined); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, err := c.Call(context.Background(), "hash/call", "command", devalue.Undefined)
+	if !errors.Is(err, rejected) || !errors.Is(err, ErrNotSent) || prepared != 3 || sent != 2 {
+		t.Fatalf("prepared=%d sent=%d err=%v", prepared, sent, err)
+	}
+}
