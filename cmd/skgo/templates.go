@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
 
@@ -145,13 +144,8 @@ func takeHelp(args []string) ([]string, bool) {
 	return clean, help
 }
 
-func newProject(args []string) {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-	if err := newCommand(ctx, args, os.Stdout, os.Stderr, newapp.Create, plugins); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+func newProject(ctx context.Context, args []string, out, stderr io.Writer) error {
+	return newCommand(ctx, args, out, stderr, newapp.Create, plugins)
 }
 
 func newCommand(ctx context.Context, args []string, out, errOut io.Writer, create func(newapp.Options) (newapp.Result, error), load func(io.Writer) (*templates.Registry, error)) error {
@@ -288,8 +282,9 @@ func addCommand(ctx context.Context, args []string, out, errOut io.Writer) error
 	return templates.Apply(ctx, ops, p, out)
 }
 
-func buildinfoCommand(args []string, out io.Writer) error {
+func buildinfoCommand(args []string, out, stderr io.Writer) error {
 	fs := flag.NewFlagSet("buildinfo", flag.ContinueOnError)
+	fs.SetOutput(stderr)
 	jsonOutput := fs.Bool("json", false, "write executing binary and recorded Go build identity as JSON")
 	if err := fs.Parse(args); err != nil {
 		return err

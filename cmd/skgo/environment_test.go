@@ -14,7 +14,7 @@ func TestEnvironmentCommandValidatesBuildInputsInGo(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	err := environmentCommand([]string{"--schema", schema}, strings.NewReader(`{"ID":"123","COUNT":"123","ENABLED":"yes"}`), &out)
+	err := environmentCommand([]string{"--schema", schema}, strings.NewReader(`{"ID":"123","COUNT":"123","ENABLED":"yes"}`), &out, &out)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,12 +22,12 @@ func TestEnvironmentCommandValidatesBuildInputsInGo(t *testing.T) {
 		t.Fatalf("unexpected typed build values: %s", out.String())
 	}
 	out.Reset()
-	err = environmentCommand([]string{"--schema", schema}, strings.NewReader(`{"ID":"123","COUNT":"123","ENABLED":"secret-invalid-value"}`), &out)
+	err = environmentCommand([]string{"--schema", schema}, strings.NewReader(`{"ID":"123","COUNT":"123","ENABLED":"secret-invalid-value"}`), &out, &out)
 	if err == nil || !strings.Contains(err.Error(), "ENABLED") || strings.Contains(err.Error(), "secret-invalid-value") || out.Len() != 0 {
 		t.Fatalf("invalid build input not safely refused: err=%v stdout=%q", err, out.String())
 	}
 	out.Reset()
-	err = environmentCommand([]string{"--schema", schema}, strings.NewReader(`{"ID":"123","COUNT":"123"}`), &out)
+	err = environmentCommand([]string{"--schema", schema}, strings.NewReader(`{"ID":"123","COUNT":"123"}`), &out, &out)
 	if err == nil || !strings.Contains(err.Error(), "ENABLED") || out.Len() != 0 {
 		t.Fatalf("required dynamic build input silently optional: err=%v stdout=%q", err, out.String())
 	}

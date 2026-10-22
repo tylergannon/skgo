@@ -4,27 +4,32 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/tylergannon/skgo/internal/update"
+	"io"
 	"os"
 	"os/signal"
+
+	"github.com/tylergannon/skgo/internal/update"
 )
 
-func updateCommand(args []string) {
-	fs := flag.NewFlagSet("update", flag.ExitOnError)
+func updateCommand(args []string, out, stderr io.Writer) error {
+	fs := flag.NewFlagSet("update", flag.ContinueOnError)
+	fs.SetOutput(stderr)
 	var o update.Options
 	fs.StringVar(&o.Root, "root", "", "application root; otherwise locate the current application")
 	fs.StringVar(&o.VP, "vp", "", "global vp executable; defaults to PATH")
 	fs.StringVar(&o.CompleteVersion, "complete-version", "", "internal completion phase: must match this executable")
-	fs.Parse(args)
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
 	if fs.NArg() != 0 {
 		fs.Usage()
-		os.Exit(2)
+		return commandExit(2)
 	}
-	o.Out = os.Stdout
+	o.Out = out
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	if err := update.Run(ctx, o); err != nil {
-		fmt.Fprintln(os.Stderr, "skgo update incomplete:", err)
-		os.Exit(1)
+		return fmt.Errorf("skgo update incomplete: %w", err)
 	}
+	return nil
 }

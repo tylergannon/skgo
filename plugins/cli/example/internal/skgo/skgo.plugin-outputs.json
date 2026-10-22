@@ -1,0 +1,7 @@
+{
+  "cli": {
+    "internal/cliclient/client_gen.go": "8f9ea8c6890f81adfed8b7c63674aeedb13b834bffdfa3d21ffb172b7875665e",
+    "internal/cliclient/codec_gen.go": "43f7514918b0b020c49ba116b084d1cc2610bfe66c3b836c21d947b06f65946e",
+    "internal/cliclient/commands_gen.go": "784295cf9407302550552ddbeb1fa837affc3fe957863f98ff6fd633aca40fa6"
+  }
+}
